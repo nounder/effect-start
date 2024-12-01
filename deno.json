@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "noImplicitAny": false,
+    "jsxImportSource": "solid-js",
+    "jsx": "precompile"
+  },
+  "tasks": {
+    "dev": "deno run --watch main.ts"
+  },
+  "fmt": {
+    "semiColons": false
+  },
+  "imports": {
+    "solid-js/jsx-runtime": "./solid-jsx-runtime.ts",
+    "@effect/platform": "npm:@effect/platform@^0.69.30",
+    "@effect/platform-node": "npm:@effect/platform-node@^0.64.32",
+    "@solidjs/router": "npm:@solidjs/router@^0.15.1",
+    "@std/assert": "jsr:@std/assert@1",
+    "effect": "npm:effect@^3.10.19",
+    "solid-js": "npm:solid-js@^1.9.3"
+  }
+}
