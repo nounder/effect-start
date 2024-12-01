@@ -17,6 +17,7 @@
     "@solidjs/router": "npm:@solidjs/router@^0.15.1",
     "@std/assert": "jsr:@std/assert@1",
     "effect": "npm:effect@^3.10.19",
-    "solid-js": "npm:solid-js@^1.9.3"
+    "solid-js": "npm:solid-js@^1.9.3",
+    "tailwindcss": "npm:tailwindcss@^3.4.15"
   }
 }
