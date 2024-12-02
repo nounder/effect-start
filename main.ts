@@ -4,8 +4,8 @@ import {
   HttpRouter,
   HttpServerRequest,
   HttpServerResponse,
-} from "@effect/platform"
-import { Effect } from "effect"
+} from "effect/platform"
+import { Effect, Stream } from "effect"
 import entry from "./entry-server.tsx"
 import { renderToStringAsync } from "solid-js/web"
 

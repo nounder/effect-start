@@ -2,7 +2,7 @@
   "unstable": ["sloppy-imports"],
   "compilerOptions": {
     "noImplicitAny": false,
-    "jsxImportSource": "solid-js",
+    "jsxImportSource": "solid",
     "jsx": "precompile"
   },
   "tasks": {
@@ -15,12 +15,12 @@
     "./lib/solid-router"
   ],
   "imports": {
-    "solid-js/jsx-runtime": "./solid-jsx-runtime.ts",
-    "@effect/platform": "npm:@effect/platform@^0.69.30",
-    "@effect/platform-node": "npm:@effect/platform-node@^0.64.32",
-    "@std/assert": "jsr:@std/assert@1",
     "effect": "npm:effect@^3.10.19",
-    "solid-js": "npm:solid-js@^1.9.3",
-    "tailwindcss": "npm:tailwindcss@^3.4.15"
+    "effect/platform": "npm:@effect/platform@^0.69.30",
+    "solid": "npm:solid-js@^1.9.3",
+    "solid/jsx-runtime": "./solid-jsx-runtime.ts",
+    "solid/router/": "@nounder/solid-router/",
+    "tailwindcss": "npm:tailwindcss@^3.4.15",
+    "vite": "npm:vite@^6.0.1"
   }
 }
