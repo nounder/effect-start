@@ -2,22 +2,32 @@ import {
   HttpApp,
   HttpMiddleware,
   HttpRouter,
+  HttpServerRequest,
   HttpServerResponse,
 } from "@effect/platform"
 import { Effect } from "effect"
-import { RandomComponent } from "./ui.tsx"
+import entry from "./entry-server.tsx"
+import { renderToStringAsync } from "solid-js/web"
 
-console.log(
-  RandomComponent({ enabled: true }),
-)
+const render = (url) =>
+  Effect.tryPromise({
+    try: () =>
+      renderToStringAsync(() =>
+        entry({
+          url,
+        })
+      ),
+    catch: (err) => new Error("Couldn't server render"),
+  })
 
 const router = HttpRouter.empty.pipe(
   HttpRouter.get(
-    "/",
-    Effect.sync(() => {
-      const r = RandomComponent({})
+    "*",
+    Effect.gen(function* () {
+      const req = yield* HttpServerRequest.HttpServerRequest
+      const body = yield* render(req.url)
 
-      return HttpServerResponse.html(r.outerHTML)
+      return HttpServerResponse.html(body)
     }),
   ),
   HttpRouter.use(HttpMiddleware.logger),

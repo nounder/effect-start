@@ -2,12 +2,10 @@ import { HTMLElements } from "./html.ts"
 import { escape, ssr, ssrAttribute, ssrClassList } from "solid-js/web"
 
 function create(type, props) {
-  console.log("ELEMENT", type, props)
-  return type(props || {})
+  return () => type(props || {})
 }
 
 function jsxAttr(name: string, value: any) {
-  console.log("ATTR", name, value)
   if (name === "classlist") {
     return {
       classList: value,
@@ -19,7 +17,7 @@ function jsxAttr(name: string, value: any) {
 
 function jsxTemplate(templates: TemplateStringsArray, ...exprs: any[]) {
   for (let i = 0; i < exprs.length; i++) {
-    const classList = exprs[i].classList
+    const classList = exprs[i]?.classList
     if (classList) {
       // @ts-ignore value typing is wrong
       exprs[i] = ssrAttribute("class", ssrClassList(classList))
@@ -36,22 +34,27 @@ function jsxTemplate(templates: TemplateStringsArray, ...exprs: any[]) {
 }
 
 function jsxEscape(value): string {
-  console.log("jsxEscape", value)
   return escape(value)
 }
 
-declare global {
-  export namespace JSX {
-    export type Children =
-      | HTMLElements
-      | string
-      | number
-      | boolean
-      | Children[]
-    export interface IntrinsicElements extends HTMLElements {}
-    export interface ElementChildrenAttribute {
-      children: Children
-    }
+// deno-lint-ignore no-namespace
+export namespace JSX {
+  export type Children =
+    | HTMLElements
+    | string
+    | number
+    | boolean
+    | Children[]
+
+  export type Element = {
+    t: string
+    outerHTML: string
+  }
+
+  export interface IntrinsicElements extends HTMLElements {}
+
+  export interface ElementChildrenAttribute {
+    children: Children
   }
 }
 

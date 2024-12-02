@@ -5,7 +5,6 @@
     "jsr:@std/internal@^1.0.5": "1.0.5",
     "npm:@effect/platform-node@~0.64.32": "0.64.33_@effect+platform@0.69.31__effect@3.10.19_effect@3.10.19",
     "npm:@effect/platform@~0.69.30": "0.69.31_effect@3.10.19",
-    "npm:@solidjs/router@~0.15.1": "0.15.1_solid-js@1.9.3__seroval@1.1.1",
     "npm:@types/node@*": "22.5.4",
     "npm:effect@^3.10.19": "3.10.19",
     "npm:solid-js@^1.9.3": "1.9.3_seroval@1.1.1",
@@ -169,12 +168,6 @@
     },
     "@pkgjs/parseargs@0.11.0": {
       "integrity": "sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg=="
-    },
-    "@solidjs/router@0.15.1_solid-js@1.9.3__seroval@1.1.1": {
-      "integrity": "sha512-lb5BRBqQqii/1dQCglx2K68xLkgu7QcrcajWKuuEx6FHTsK/hp5IgVhjy6RzPMLj+SFyrrRi/ldirCFNxtzh0Q==",
-      "dependencies": [
-        "solid-js"
-      ]
     },
     "@types/node@22.5.4": {
       "integrity": "sha512-FDuKUJQm/ju9fT/SeX/6+gBzoPzlVCzfzmGkwKvRHQVxi4BntVbyIwf6a4Xn62mrvndLiml6z/UBXIdEVjQLXg==",
@@ -745,7 +738,6 @@
       "jsr:@std/assert@1",
       "npm:@effect/platform-node@~0.64.32",
       "npm:@effect/platform@~0.69.30",
-      "npm:@solidjs/router@~0.15.1",
       "npm:effect@^3.10.19",
       "npm:solid-js@^1.9.3",
       "npm:tailwindcss@^3.4.15"
