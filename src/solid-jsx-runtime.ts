@@ -1,4 +1,5 @@
 import { HTMLElements } from "./html.ts"
+import type { JSX } from "solid-js"
 import { escape, ssr, ssrAttribute, ssrClassList } from "solid-js/web"
 
 function create(type, props) {
@@ -37,31 +38,11 @@ function jsxEscape(value): string {
   return escape(value)
 }
 
-// deno-lint-ignore no-namespace
-export namespace JSX {
-  export type Children =
-    | HTMLElements
-    | string
-    | number
-    | boolean
-    | Children[]
-
-  export type Element = {
-    t: string
-    outerHTML: string
-  }
-
-  export interface IntrinsicElements extends HTMLElements {}
-
-  export interface ElementChildrenAttribute {
-    children: Children
-  }
-}
-
 export {
   create as jsx,
   create as jsxDEV,
   create as jsxs,
+  JSX,
   jsxAttr,
   jsxEscape,
   jsxTemplate,
