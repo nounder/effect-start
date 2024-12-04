@@ -1,4 +1,4 @@
-import { Route, Router, useLocation } from "solid/router"
+import { Route, Router, useLocation } from "solid-router"
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 

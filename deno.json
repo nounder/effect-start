@@ -2,7 +2,7 @@
   "unstable": ["sloppy-imports"],
   "compilerOptions": {
     "noImplicitAny": false,
-    "jsxImportSource": "solid",
+    "jsxImportSource": "solid-js",
     "jsx": "precompile"
   },
   "tasks": {
@@ -15,12 +15,15 @@
     "./lib/solid-router"
   ],
   "imports": {
+    "." :"./src/main.ts",
+    "@deno/vite-plugin": "npm:@deno/vite-plugin@^1.0.1",
     "effect": "npm:effect@^3.10.19",
-    "effect/platform": "npm:@effect/platform@^0.69.30",
-    "solid": "npm:solid-js@^1.9.3",
-    "solid/jsx-runtime": "./solid-jsx-runtime.ts",
-    "solid/router/": "@nounder/solid-router/",
+    "@effect/platform": "npm:@effect/platform@^0.69.30",
+    "solid-js": "npm:solid-js@^1.9.3",
+    "solid-js/jsx-runtime": "./src/solid-jsx-runtime.ts",
+    "solid-router": "./lib/solid-router/",
     "tailwindcss": "npm:tailwindcss@^3.4.15",
-    "vite": "npm:vite@^6.0.1"
+    "vite": "npm:vite@^6.0.1",
+    "vite-plugin-solid": "npm:vite-plugin-solid@^2.11.0"
   }
 }
