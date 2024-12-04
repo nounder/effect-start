@@ -12,6 +12,7 @@ import { renderToStringAsync } from "solid-js/web"
 import { IncomingMessage, ServerResponse } from "node:http"
 import { Socket } from "node:net"
 import * as Vite from "./vite.ts"
+import { Buffer } from "node:buffer"
 
 const viteRoute = HttpRouter.all(
   "*",
@@ -26,38 +27,36 @@ const viteRoute = HttpRouter.all(
     viteReq.method = req.method
     viteReq.headers = req.headers
 
-    socket.on("connect", console.log)
-
     const viteRes = new ServerResponse(viteReq)
-    const viteResFuture = Promise.withResolvers()
+    const viteResFuture = Promise.withResolvers<void>()
 
-    const readable = new ReadableStream({
-      start(controller) {
-        viteRes.write = function (chunk) {
-          console.log("yoo", chunk)
-          controller.enqueue(chunk)
+    const chunks: Uint8Array[] = []
 
-          return true
-        }
+    viteRes.write = function (chunk) {
+      chunks.push(Buffer.from(chunk))
+      return true
+    }
 
-        viteRes.end = function () {
-          controller.close()
+    viteRes.end = function (chunk?) {
+      if (chunk) {
+        chunks.push(Buffer.from(chunk))
+      }
+      viteResFuture.resolve()
 
-          viteResFuture.resolve(undefined)
+      return this
+    }
 
-          return this
-        }
-      },
-    })
-
-    // todo pass node request and response to vite and when vite is done, convert the response to solid http response
-    // TODO: it's neer calle
-    vite.middlewares.handle(viteReq, viteRes, (e) => {
-      viteRes.write("dsasdaasd")
-      console.log("oaaaaa", e)
+    vite.middlewares.handle(viteReq, viteRes, (err) => {
+      if (err) {
+        console.error("Vite middleware error:", err)
+        viteResFuture.reject(err)
+      }
     })
 
     yield* Effect.promise(() => viteResFuture.promise)
+
+    const body = new Blob(chunks)
+    const readable = body.stream()
 
     return HttpServerResponse.raw(readable, {
       status: viteRes.statusCode,
@@ -89,7 +88,7 @@ const render = (url) =>
     catch: (err) => new Error("Couldn't server render"),
   })
 
-const router = HttpRouter.empty.pipe(
+export const Router = HttpRouter.empty.pipe(
   viteRoute,
   HttpRouter.use(HttpMiddleware.logger),
   Effect.provide(Vite.ViteDev),
@@ -97,6 +96,6 @@ const router = HttpRouter.empty.pipe(
 
 if (import.meta.main) {
   Deno.serve(
-    HttpApp.toWebHandler(router),
+    HttpApp.toWebHandler(Router),
   )
 }
