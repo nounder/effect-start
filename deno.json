@@ -1,5 +1,7 @@
 {
-  "unstable": ["sloppy-imports"],
+  "unstable": [
+    "sloppy-imports"
+  ],
   "compilerOptions": {
     "noImplicitAny": false,
     "jsxImportSource": "solid-js",
@@ -11,11 +13,18 @@
   "fmt": {
     "semiColons": false
   },
+  "lint": {
+    "rules": {
+      "exclude": [
+        "require-yield",
+        "require-await"
+      ]
+    }
+  },
   "workspace": [
     "./lib/solid-router"
   ],
   "imports": {
-    "." :"./src/main.ts",
     "@deno/vite-plugin": "npm:@deno/vite-plugin@^1.0.1",
     "effect": "npm:effect@^3.10.19",
     "@effect/platform": "npm:@effect/platform@^0.69.30",
