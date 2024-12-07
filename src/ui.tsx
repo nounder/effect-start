@@ -1,4 +1,5 @@
 import { createAsync } from "@nounder/solid-router"
+
 export function Link(props: { url: string }) {
   return (
     <a href={props.url}>
@@ -21,5 +22,3 @@ export function RandomComponent() {
     </div>
   )
 }
-
-<RandomComponent />

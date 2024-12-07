@@ -1,22 +1,23 @@
-import { Route, Router, useLocation } from "solid-router"
+import { Route, StaticRouter, useCurrentMatches } from "@nounder/solid-router"
+import { RandomComponent } from "./ui.tsx"
 
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+function ServerWrapper(props) {
+  // todo: this should be empty if there are no matches.
+  // depending on that return 404?
+  const m = useCurrentMatches()
 
-function Home() {
-  return <div>home</div>
-}
-
-function Any() {
-  const loc = useLocation()
-
-  return <div>pathname: {loc.pathname}</div>
+  return props.children
 }
 
 export default function (args: { url: string }) {
   return (
-    <Router url={args.url}>
-      <Route path="/" component={Home} />
-      <Route path="*" component={Any} />
-    </Router>
+    <StaticRouter
+      url={args.url}
+      ref={(e) => console.log(e)}
+      root={ServerWrapper}
+    >
+      <Route path="/" component={ServerWrapper} />
+      <Route path="/random" component={RandomComponent} />
+    </StaticRouter>
   )
 }
