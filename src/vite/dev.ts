@@ -2,7 +2,6 @@ import { Buffer } from "node:buffer"
 import { IncomingMessage, ServerResponse } from "node:http"
 import { Socket } from "node:net"
 import { InlineConfig, ViteDevServer } from "vite"
-import { createLoggingProxy } from "../dev-utils.ts"
 
 export async function createViteDevHandler(server: ViteDevServer) {
   async function handler(req: Request): Promise<Response> {
@@ -41,7 +40,7 @@ export async function createViteDevHandler(server: ViteDevServer) {
         return this
       }
 
-      server.middlewares.handle(viteReq, createLoggingProxy(viteRes), (err) => {
+      server.middlewares.handle(viteReq, viteRes, (err) => {
         // todo: this is probably not necessary.
         // I think this is next() handler rather than error callback.
         if (err) {

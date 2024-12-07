@@ -61,7 +61,13 @@ export const ViteDevHttpRouteHandler = Effect.gen(function* () {
   }
 
   const res = yield* Effect.tryPromise(() =>
-    Promise.resolve(fetchHandler(fetchReq))
+    Promise.resolve(
+      fetchHandler(fetchReq)
+        // Effect seems to drain response stream twice
+        // causing vite to return gateway error for all
+        // subsequent requests
+        .then((v) => v.clone()),
+    )
   )
 
   return HttpServerResponse.raw(res.body, {
