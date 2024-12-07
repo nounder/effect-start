@@ -2,3 +2,5 @@
 .rgignore
 .vite/
 lib/
+node_modules/
+vendor/
