@@ -1,5 +1,5 @@
 export function createLoggingProxy(target, trace = false) {
-  const log = trace ? console.trace : console.trace
+  const log = trace ? console.trace : console.log
 
   return new Proxy(target, {
     get(obj, prop) {
