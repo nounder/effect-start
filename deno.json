@@ -30,7 +30,7 @@
     "./lib/solid-router"
   ],
   "imports": {
-    "@deno/vite-plugin": "npm:@deno/vite-plugin@^1.0.1",
+    "@deno/vite-plugin": "npm:@deno/vite-plugin@^1.0.2",
     "effect": "npm:effect@^3.10.19",
     "@effect/platform": "npm:@effect/platform@^0.69.30",
     "solid-js": "npm:solid-js@^1.9.3",
