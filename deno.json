@@ -1,15 +1,20 @@
 {
-  "unstable": [
-    "sloppy-imports"
-  ],
   "compilerOptions": {
+    "strict": true,
+    "lib": [
+      "esnext",
+      "dom",
+      "deno.ns"
+    ],
     "noImplicitAny": false,
+    "isolatedDeclarations": false,
     "jsxImportSource": "solid-js",
     "jsx": "precompile"
   },
   "tasks": {
     "dev": "deno run --watch main.ts"
   },
+  "vendor": true,
   "fmt": {
     "semiColons": false
   },
@@ -30,9 +35,9 @@
     "@effect/platform": "npm:@effect/platform@^0.69.30",
     "solid-js": "npm:solid-js@^1.9.3",
     "solid-js/jsx-runtime": "./src/solid-jsx-runtime.ts",
-    "solid-router": "./lib/solid-router/",
+    "@solidjs/router": "npm:@solidjs/router@^0.15.1",
     "tailwindcss": "npm:tailwindcss@^3.4.15",
-    "vite": "npm:vite@^6.0.1",
+    "vite": "npm:vite@^6.0.3",
     "vite-plugin-solid": "npm:vite-plugin-solid@^2.11.0"
   }
 }
