@@ -40,15 +40,7 @@ export async function createViteDevHandler(server: ViteDevServer) {
         return this
       }
 
-      server.middlewares.handle(viteReq, viteRes, (err) => {
-        // todo: this is probably not necessary.
-        // I think this is next() handler rather than error callback.
-        if (err) {
-          console.error("Vite middleware error:", err)
-          writer.abort(err)
-          viteResFuture.reject(err)
-        }
-      })
+      server.middlewares.handle(viteReq, viteRes, () => {})
 
       await viteResFuture.promise
 
