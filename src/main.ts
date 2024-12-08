@@ -21,22 +21,33 @@ const ssrRoute = HttpRouter.get(
   "*",
   Effect.gen(function* () {
     const req = yield* HttpServerRequest.HttpServerRequest
-    const body = yield* render(req.url)
+    const res = yield* render(req.url)
 
-    return HttpServerResponse.html(body)
+    return HttpServerResponse.raw(res.body, {
+      status: res.status,
+      // @ts-ignore it works
+      headers: Headers.fromInput(res.headers),
+    })
   }),
 )
 
 const render = (url) =>
-  Effect.tryPromise({
-    try: () =>
-      renderToStringAsync(() =>
-        entry({
-          url,
-        })
-      ),
-    catch: (err) => new Error("Couldn't server render"),
-  })
+  Effect.tryPromise(() =>
+    renderToStringAsync(() =>
+      entry({
+        url,
+      })
+    )
+      .then((body) => {
+        if (body.includes("~*~ 404 Not Found ~*~")) {
+          return new Response("", {
+            status: 404,
+          })
+        }
+
+        return new Response(body)
+      })
+  )
 
 const HttpServerDeno = Layer.scoped(
   HttpServer.HttpServer,
