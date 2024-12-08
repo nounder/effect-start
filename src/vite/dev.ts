@@ -19,6 +19,7 @@ export async function createViteDevHandler(server: ViteDevServer) {
 
       const viteRes = new ServerResponse(viteReq)
       const viteResFuture = Promise.withResolvers<void>()
+      const viteNextMiddlewareFuture = Promise.withResolvers<void>()
 
       const { readable, writable } = new TransformStream()
       const writer = writable.getWriter()
@@ -35,14 +36,39 @@ export async function createViteDevHandler(server: ViteDevServer) {
         }
 
         writer.close()
+
+        // this is only called when appType is different than custom
         viteResFuture.resolve()
 
         return this
       }
 
-      server.middlewares.handle(viteReq, viteRes, () => {})
+      server.middlewares.handle(viteReq, viteRes, () => {
+        // this is only called when appType=custom
+        viteNextMiddlewareFuture.resolve()
+      })
 
-      await viteResFuture.promise
+      // vite middleware behaves differently depending on appType config.
+      // when appType=custom vite adds additional middlewares to generate html
+      // causing connect's next() callback to be called when its middleware finishd.
+      // for any other appType, the response is closed in a single middleware.
+      // based on that we deduce appType and for appType=custom we don't wait
+      // for the response to be finished and return our custom html instead.
+      const viteAppType = await Promise.race([
+        viteResFuture.promise.then(() => "vite" as const),
+        viteNextMiddlewareFuture.promise.then(() => "custom" as const),
+      ])
+
+      console.log(
+        viteRes.getHeaders(),
+      )
+      if (viteAppType === "custom") {
+        return new Response(null, {
+          status: 404,
+          // @ts-ignore it's ok
+          headers: new Headers(viteRes.getHeaders()),
+        })
+      }
 
       return new Response(readable, {
         status: viteRes.statusCode,
@@ -59,17 +85,23 @@ export async function createViteDevHandler(server: ViteDevServer) {
   return handler
 }
 
-export async function createViteConfig() {
+export async function createViteConfig({
+  appType = undefined as InlineConfig["appType"],
+} = {}) {
   const { default: solidPlugin } = await import("vite-plugin-solid")
   const { default: denoPlugin } = await import("@deno/vite-plugin")
 
   const config: InlineConfig = {
+    // don't include HTML middlewares. we'll render it on our side
+    // https://v3.vitejs.dev/config/shared-options.html#apptype
+    appType,
     root: Deno.cwd(),
 
     plugins: [
       solidPlugin(),
       denoPlugin(),
     ],
+
     server: {
       middlewareMode: true,
     },

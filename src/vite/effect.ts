@@ -3,6 +3,8 @@ import { createServer, ViteDevServer } from "vite"
 import { createViteConfig, createViteDevHandler } from "./dev.ts"
 import {
   Headers,
+  HttpApp,
+  HttpRouter,
   HttpServerRequest,
   HttpServerResponse,
 } from "@effect/platform"
@@ -16,7 +18,9 @@ export const ViteDev = Layer.scoped(
   Vite,
   Effect.acquireRelease(
     Effect.tryPromise(async () => {
-      const config = await createViteConfig()
+      const config = await createViteConfig({
+        appType: "custom",
+      })
       const server = await createServer(config)
       const handler = await createViteDevHandler(server)
 
