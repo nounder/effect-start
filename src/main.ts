@@ -1,35 +1,28 @@
 import {
+  Headers,
   HttpApp,
-  HttpMiddleware,
   HttpRouter,
   HttpServer,
   HttpServerRequest,
   HttpServerResponse,
 } from "@effect/platform"
-import { Console, Context, Effect, Layer } from "effect"
+import { Array as Arr, Effect, Layer } from "effect"
 import entry from "./entry-server.tsx"
-import { renderToStringAsync, ssr } from "solid-js/web"
+import { renderToStringAsync } from "solid-js/web"
 import { ViteDev, ViteDevHttpRouteHandler } from "./vite/effect.ts"
-import { setTime } from "effect/TestClock"
+import { pipe } from "effect/Function"
+import { RouteNotFound } from "@effect/platform/HttpServerError"
 
-const viteRoute = HttpRouter.all(
-  "*",
-  ViteDevHttpRouteHandler,
-)
+const SolidSsrHandler = Effect.gen(function* () {
+  const req = yield* HttpServerRequest.HttpServerRequest
+  const res = yield* render(req.url)
 
-const ssrRoute = HttpRouter.get(
-  "*",
-  Effect.gen(function* () {
-    const req = yield* HttpServerRequest.HttpServerRequest
-    const res = yield* render(req.url)
-
-    return HttpServerResponse.raw(res.body, {
-      status: res.status,
-      // @ts-ignore it works
-      headers: Headers.fromInput(res.headers),
-    })
-  }),
-)
+  return HttpServerResponse.raw(res.body, {
+    status: res.status,
+    // @ts-ignore it works
+    headers: Headers.fromInput(res.headers),
+  })
+})
 
 const render = (url) =>
   Effect.tryPromise(() =>
@@ -78,16 +71,40 @@ const HttpServerDeno = Layer.scoped(
   )),
 )
 
-export const Router = HttpRouter.empty.pipe(
-  viteRoute,
-  HttpRouter.use(HttpMiddleware.logger),
+const FrontendHandler = pipe(
+  [
+    SolidSsrHandler,
+    ViteDevHttpRouteHandler,
+  ],
+  Arr.map((route) =>
+    route.pipe(
+      Effect.andThen(
+        (res) =>
+          res.status === 404
+            ? Effect.andThen(
+              HttpServerRequest.HttpServerRequest,
+              (request) => Effect.fail(new RouteNotFound({ request })),
+            )
+            : res,
+      ),
+    )
+  ),
+  Effect.firstSuccessOf,
+)
+
+export const router = HttpRouter.empty.pipe(
+  HttpRouter.get("/yo", Effect.sync(() => HttpServerResponse.text("yo"))),
+  HttpRouter.all("*", FrontendHandler),
+)
+
+const app = router.pipe(
   HttpServer.serve(),
   HttpServer.withLogAddress,
   Layer.provide(HttpServerDeno),
 )
 
 await Effect.runPromise(
-  Layer.launch(Router)
+  Layer.launch(app)
     .pipe(
       Effect.provide(ViteDev),
     ),
