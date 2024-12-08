@@ -6,8 +6,6 @@ import {
   HttpServerRequest,
   HttpServerResponse,
 } from "@effect/platform"
-import { IncomingMessage, ServerResponse } from "node:http"
-import { Socket } from "node:net"
 
 export class Vite extends Context.Tag("Vite")<Vite, {
   server: ViteDevServer
@@ -33,10 +31,6 @@ export const ViteDev = Layer.scoped(
     }),
     (vite) =>
       Effect.gen(function* () {
-        if (globalThis.cachedViteDevServer) {
-          return
-        }
-
         yield* Effect.log("Closing Vite Dev Server...")
         yield* Effect.promise(async () => {
           await vite.server.waitForRequestsIdle()

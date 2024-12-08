@@ -2,13 +2,15 @@ import {
   HttpApp,
   HttpMiddleware,
   HttpRouter,
+  HttpServer,
   HttpServerRequest,
   HttpServerResponse,
 } from "@effect/platform"
-import { Effect } from "effect"
+import { Console, Context, Effect, Layer } from "effect"
 import entry from "./entry-server.tsx"
-import { renderToStringAsync } from "solid-js/web"
+import { renderToStringAsync, ssr } from "solid-js/web"
 import { ViteDev, ViteDevHttpRouteHandler } from "./vite/effect.ts"
+import { setTime } from "effect/TestClock"
 
 const viteRoute = HttpRouter.all(
   "*",
@@ -36,14 +38,46 @@ const render = (url) =>
     catch: (err) => new Error("Couldn't server render"),
   })
 
+const HttpServerDeno = Layer.scoped(
+  HttpServer.HttpServer,
+  Effect.runtime().pipe(Effect.andThen((runtime) =>
+    HttpServer.make({
+      serve: (app) =>
+        Effect.acquireRelease(
+          Effect.sync(() => {
+            const handler = HttpApp.toWebHandlerRuntime(runtime)(app)
+
+            return Deno.serve({
+              hostname: "0.0.0.0",
+              port: 8000,
+              onListen: () => {},
+            }, handler)
+          }),
+          (server) =>
+            Effect.promise(async () => {
+              await server.shutdown()
+            }),
+        ),
+      address: {
+        _tag: "TcpAddress",
+        hostname: "0.0.0.0",
+        port: 8000,
+      },
+    })
+  )),
+)
+
 export const Router = HttpRouter.empty.pipe(
   viteRoute,
   HttpRouter.use(HttpMiddleware.logger),
-  Effect.provide(ViteDev),
+  HttpServer.serve(),
+  HttpServer.withLogAddress,
+  Layer.provide(HttpServerDeno),
 )
 
-if (import.meta.main) {
-  Deno.serve(
-    HttpApp.toWebHandler(Router),
-  )
-}
+await Effect.runPromise(
+  Layer.launch(Router)
+    .pipe(
+      Effect.provide(ViteDev),
+    ),
+)
