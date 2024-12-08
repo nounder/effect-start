@@ -16,15 +16,11 @@ export const ViteDev = Layer.scoped(
   Vite,
   Effect.acquireRelease(
     Effect.tryPromise(async () => {
-      if (globalThis.cachedViteDevServer) {
-        return globalThis.cachedViteDevServer
-      }
-
       const config = await createViteConfig()
       const server = await createServer(config)
       const handler = await createViteDevHandler(server)
 
-      return globalThis.cachedViteDevServer = {
+      return {
         server,
         handler,
       }
