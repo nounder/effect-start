@@ -43,11 +43,7 @@ export const ViteDevHttpRouteHandler = Effect.gen(function* () {
 
   if (sourceReq instanceof Request) {
     const res = yield* Effect.tryPromise(() =>
-      Promise.resolve(vite.handler(sourceReq.clone()))
-        // Effect seems to drain response stream twice
-        // causing vite to return gateway error for all
-        // subsequent requests
-        .then((res) => res.clone())
+      Promise.resolve(vite.handler(sourceReq))
     )
 
     // todo: cookies are not passed?
