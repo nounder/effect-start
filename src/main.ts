@@ -12,6 +12,7 @@ import { renderToStringAsync } from "solid-js/web"
 import { ViteDev, ViteDevHttpRouteHandler } from "./vite/effect.ts"
 import { pipe } from "effect/Function"
 import { RouteNotFound } from "@effect/platform/HttpServerError"
+import { DenoHttpServer } from "./effect/deno.ts"
 
 const SolidSsrHandler = Effect.gen(function* () {
   const req = yield* HttpServerRequest.HttpServerRequest
@@ -38,38 +39,13 @@ const render = (url) =>
           })
         }
 
-        return new Response(body)
+        return new Response(body, {
+          headers: {
+            "Content-Type": "text/html",
+          },
+        })
       })
   )
-
-const HttpServerDeno = Layer.scoped(
-  HttpServer.HttpServer,
-  Effect.runtime().pipe(Effect.andThen((runtime) =>
-    HttpServer.make({
-      serve: (app) =>
-        Effect.acquireRelease(
-          Effect.sync(() => {
-            const handler = HttpApp.toWebHandlerRuntime(runtime)(app)
-
-            return Deno.serve({
-              hostname: "0.0.0.0",
-              port: 8000,
-              onListen: () => {},
-            }, handler)
-          }),
-          (server) =>
-            Effect.promise(async () => {
-              await server.shutdown()
-            }),
-        ),
-      address: {
-        _tag: "TcpAddress",
-        hostname: "0.0.0.0",
-        port: 8000,
-      },
-    })
-  )),
-)
 
 const FrontendHandler = pipe(
   [
@@ -100,7 +76,7 @@ export const router = HttpRouter.empty.pipe(
 const app = router.pipe(
   HttpServer.serve(),
   HttpServer.withLogAddress,
-  Layer.provide(HttpServerDeno),
+  Layer.provide(DenoHttpServer),
 )
 
 await Effect.runPromise(

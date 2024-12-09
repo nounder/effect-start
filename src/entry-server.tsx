@@ -1,5 +1,6 @@
 import { Route, StaticRouter, useCurrentMatches } from "@nounder/solid-router"
 import { RandomComponent } from "./ui.tsx"
+import { generateHydrationScript, HydrationScript } from "solid-js/web"
 
 function ServerWrapper(props) {
   // todo: this should be empty if there are no matches.
@@ -10,19 +11,29 @@ function ServerWrapper(props) {
     return `~*~ 404 Not Found ~*~`
   }
 
-  return props.children
+  return (
+    <Document>
+      {props.children}
+    </Document>
+  )
 }
 
 function Document(props) {
+  const baseUrl = ""
+  const hydrationScript = generateHydrationScript()
+
   return (
     <html lang="en">
       <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>solid-deno</title>
+
+        <HydrationScript />
+        <script type="module" src="./src/entry-client.tsx"></script>
       </head>
-      <body class="overflow-x-hidden max-w-screen">
-        <div id="app">{props.children}</div>
+      <body>
+        {props.children}
       </body>
     </html>
   )

@@ -59,9 +59,6 @@ export async function createViteDevHandler(server: ViteDevServer) {
         viteNextMiddlewareFuture.promise.then(() => "custom" as const),
       ])
 
-      console.log(
-        viteRes.getHeaders(),
-      )
       if (viteAppType === "custom") {
         return new Response(null, {
           status: 404,
