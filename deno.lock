@@ -8,6 +8,8 @@
     "npm:@solidjs/router@~0.15.1": "0.15.1_solid-js@1.9.3__seroval@1.1.1",
     "npm:@types/node@*": "22.5.4",
     "npm:effect@^3.10.19": "3.11.2",
+    "npm:happy-dom@*": "15.11.7",
+    "npm:hyper-dom-expressions@~0.39.4": "0.39.4",
     "npm:solid-js@^1.9.3": "1.9.3_seroval@1.1.1",
     "npm:tailwindcss@^3.4.15": "3.4.16_postcss@8.4.49",
     "npm:vite-plugin-solid@^2.11.0": "2.11.0_solid-js@1.9.3__seroval@1.1.1_vite@6.0.3__@types+node@22.5.4_@babel+core@7.26.0_@types+node@22.5.4",
@@ -677,6 +679,14 @@
     "globals@11.12.0": {
       "integrity": "sha512-WOBp/EEGUiIsJSp7wcv/y6MO+lV9UoncWqxuFfm8eBwzWNgyfBd6Gz+IeKQ9jCmyhoH99g15M3T+QaVHFjizVA=="
     },
+    "happy-dom@15.11.7": {
+      "integrity": "sha512-KyrFvnl+J9US63TEzwoiJOQzZBJY7KgBushJA8X61DMbNsH+2ONkDuLDnCnwUiPTF42tLoEmrPyoqbenVA5zrg==",
+      "dependencies": [
+        "entities",
+        "webidl-conversions",
+        "whatwg-mimetype"
+      ]
+    },
     "hasown@2.0.2": {
       "integrity": "sha512-0hJU9SCPvmMzIBdZFqNPXWa6dqh7WdH0cII9y+CyS8rG3nL48Bclra9HmKhVVUHyPWNH5Y7xDwAB7bfgSjkUMQ==",
       "dependencies": [
@@ -692,6 +702,9 @@
         "agent-base",
         "debug"
       ]
+    },
+    "hyper-dom-expressions@0.39.4": {
+      "integrity": "sha512-1NM41ZQOfwBnlE/HELNeyMruI3tpaaN6Q50zIKUHfK/kfT4xkN6PmSShvHcBDz3sr4ySE/xREdudubeC8W/oGQ=="
     },
     "is-binary-path@2.1.0": {
       "integrity": "sha512-ZMERYes6pDydyuGidse7OsHxtbI7WVeUEozgR/g7rd0xUimYNlvZRE/K2MgZTjWy725IfelLeVcEM97mmtRGXw==",
@@ -1147,6 +1160,12 @@
         "vite"
       ]
     },
+    "webidl-conversions@7.0.0": {
+      "integrity": "sha512-VwddBukDzu71offAQR975unBIGqfKZpM+8ZX6ySk8nYhVoo5CYaZyzt3YBvYtRtO+aoGlqxPg/B87NGVZ/fu6g=="
+    },
+    "whatwg-mimetype@3.0.0": {
+      "integrity": "sha512-nt+N2dzIutVRxARx1nghPKGv1xHikU7HKdfafKkLNLindmPU/ch3U31NOCGGA/dmPcmb1VlofO0vnKAcsm0o/Q=="
+    },
     "which@2.0.2": {
       "integrity": "sha512-BLI3Tl1TW3Pvl70l3yq3Y64i+awpwXqsGBYWkkqMtnbXgrMD+yj7rhW0kuEDxzJaYXGjEW5ogapKNMEKNMjibA==",
       "dependencies": [
@@ -1194,6 +1213,7 @@
       "npm:@effect/platform@~0.69.30",
       "npm:@solidjs/router@~0.15.1",
       "npm:effect@^3.10.19",
+      "npm:hyper-dom-expressions@~0.39.4",
       "npm:solid-js@^1.9.3",
       "npm:tailwindcss@^3.4.15",
       "npm:vite-plugin-solid@^2.11.0",

@@ -19,9 +19,6 @@ function ServerWrapper(props) {
 }
 
 function Document(props) {
-  const baseUrl = ""
-  const hydrationScript = generateHydrationScript()
-
   return (
     <html lang="en">
       <head>

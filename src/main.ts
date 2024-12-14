@@ -16,7 +16,7 @@ import { DenoHttpServer } from "./effect/deno.ts"
 
 const SolidSsrHandler = Effect.gen(function* () {
   const req = yield* HttpServerRequest.HttpServerRequest
-  const res = yield* render(req.url)
+  const res = yield* Effect.tryPromise(() => renderSsr(req.url))
 
   return HttpServerResponse.raw(res.body, {
     status: res.status,
@@ -25,27 +25,25 @@ const SolidSsrHandler = Effect.gen(function* () {
   })
 })
 
-const render = (url) =>
-  Effect.tryPromise(() =>
-    renderToStringAsync(() =>
-      entry({
-        url,
-      })
-    )
-      .then((body) => {
-        if (body.includes("~*~ 404 Not Found ~*~")) {
-          return new Response("", {
-            status: 404,
-          })
-        }
-
-        return new Response(body, {
-          headers: {
-            "Content-Type": "text/html",
-          },
+const renderSsr = (url) =>
+  renderToStringAsync(() =>
+    entry({
+      url,
+    }), { "timeoutMs": 4000 })
+    .then((body) => {
+      console.log(body)
+      if (body.includes("~*~ 404 Not Found ~*~")) {
+        return new Response("", {
+          status: 404,
         })
+      }
+
+      return new Response(body, {
+        headers: {
+          "Content-Type": "text/html",
+        },
       })
-  )
+    })
 
 const FrontendHandler = pipe(
   [

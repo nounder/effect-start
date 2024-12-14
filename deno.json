@@ -8,11 +8,11 @@
     ],
     "noImplicitAny": false,
     "isolatedDeclarations": false,
-    "jsxImportSource": "solid-js",
-    "jsx": "precompile"
+    "jsxImportSource": "solid-deno",
+    "jsx": "react-jsx"
   },
   "tasks": {
-    "dev": "deno run --watch main.ts"
+    "dev": "deno run -A --watch src/main.ts"
   },
   "vendor": true,
   "fmt": {
@@ -30,11 +30,14 @@
     "./lib/solid-router"
   ],
   "imports": {
+    "solid-deno/jsx-runtime": "./src/ssr/jsx-runtime.ts",
     "@deno/vite-plugin": "npm:@deno/vite-plugin@^1.0.2",
     "effect": "npm:effect@^3.10.19",
     "@effect/platform": "npm:@effect/platform@^0.69.30",
+    "hyper-dom-expressions": "npm:hyper-dom-expressions@^0.39.4",
     "solid-js": "npm:solid-js@^1.9.3",
     "solid-js/jsx-runtime": "./src/solid-jsx-runtime.ts",
+    "solid-js/web": "./src/ssr/renderer.ts",
     "@solidjs/router": "npm:@solidjs/router@^0.15.1",
     "tailwindcss": "npm:tailwindcss@^3.4.15",
     "vite": "npm:vite@^6.0.3",

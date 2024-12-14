@@ -1,5 +1,33 @@
 import { createRenderer } from "solid-js/universal"
+export {
+  assign,
+  dynamicProperty,
+  generateHydrationScript,
+  HydrationScript,
+  renderToStream,
+  renderToString,
+  renderToStringAsync,
+  ssrElement,
+  SVGElements,
+} from "npm:solid-js@^1.9.3/web"
 
+export * from "npm:solid-js@^1.9.3/web"
+
+export const isServer = true
+
+export const isDev = true
+
+// required by solid-router
+export function getRequestEvent() {
+  return {}
+}
+
+// defined in dom-expressions
+// probably not needed on the server
+export function delegateEvents(eventNames, document) {
+}
+
+// todo: does it support classList, key, directives?
 const PROPERTIES = new Set([
   "className",
   "textContent",
@@ -14,6 +42,7 @@ type Element = {
   tag: string
   attrs: Record<string, any>
   style: Record<string, string>
+  events: Record<string, any>
 }
 
 type Node = (Text | Element) & {
@@ -39,6 +68,7 @@ export const {
       tag: string,
       attrs: {},
       style: {},
+      events: {},
     }
   },
   createTextNode(value): Text {
@@ -54,7 +84,7 @@ export const {
     if (name === "style") {
       Object.assign(node.style, value)
     } else if (name.startsWith("on")) {
-      node[name.toLowerCase()] = value
+      node.events[name.toLowerCase()] = value
     } else if (PROPERTIES.has(name)) {
       node[name] = value
     } else {
