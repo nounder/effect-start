@@ -1,13 +1,9 @@
-import { Route, StaticRouter, useCurrentMatches } from "@nounder/solid-router"
+import { Route, Router, useCurrentMatches } from "@nounder/solid-router"
 import { RandomComponent } from "./ui.tsx"
-import {
-  ErrorBoundary,
-  Hydration,
-  HydrationScript,
-  NoHydration,
-  ssr,
-} from "solid-js/web"
-import { sharedConfig } from "solid-js"
+import routes from "./routes.ts"
+import { ErrorBoundary, HydrationScript, ssr } from "solid-js/web"
+import { createSignal, sharedConfig } from "solid-js"
+import { StaticRouter } from "../lib/solid-router/routers/StaticRouter.ts"
 
 const docType = ssr("<!DOCTYPE html>")
 
@@ -48,13 +44,28 @@ function ServerErrorBoundary(props) {
   )
 }
 
+export function App(props) {
+  if (sharedConfig.context) {
+    sharedConfig.context.noHydrate = false
+  }
+
+  const [count, setCount] = createSignal(15)
+  return (
+    <div>
+      <h1>Hello {Math.random()}, count is {count()}</h1>
+      <button onClick={() => setCount(count() + 1)}>Yoo</button>
+    </div>
+  )
+  return props.children
+}
+
 function Document(props) {
   // for some reason <NoHydration> is evaluated last
   // instead of first \__(-_-)__/
   sharedConfig.context.noHydrate = true
 
   return (
-    <NoHydration>
+    <>
       {docType as unknown as any}
 
       <html lang="en">
@@ -70,25 +81,22 @@ function Document(props) {
           <script type="module" src="./src/entry-client.tsx"></script>
         </head>
         <body>
-          <Hydration>
-            <ServerErrorBoundary>
-              {props.children}
-            </ServerErrorBoundary>
-          </Hydration>
+          <App />
         </body>
       </html>
-    </NoHydration>
+    </>
   )
 }
 
-export default function (args: { url: string }) {
+export default function (props: { url: string }) {
   return (
     <StaticRouter
-      url={args.url}
+      url={props.url}
       root={ServerWrapper}
     >
-      <Route path="/" component={RandomComponent} />
-      <Route path="/random" component={RandomComponent} />
+      {routes.map(([path, component]) => (
+        <Route path={path} component={component} />
+      ))}
     </StaticRouter>
   )
 }

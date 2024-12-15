@@ -1,5 +1,6 @@
 import type { JSX } from "solid-js"
 import { ssrElement } from "solid-js/web"
+import { sharedConfig } from "solid-js"
 
 function Fragment(props: {
   children: JSX.Element
@@ -10,12 +11,21 @@ function Fragment(props: {
 function jsx(type: any, props: any) {
   // wrap in function so component is called after its parents
   if (typeof type === "function") {
-    return () => type(props)
+    return () => {
+      return type(props)
+    }
   }
 
   const { children, ...baseProps } = props
 
-  return ssrElement(type, baseProps, children, true)
+  return () => {
+    return ssrElement(
+      type,
+      baseProps,
+      children,
+      !sharedConfig?.context?.["noHydrate"],
+    )
+  }
 }
 
 export { Fragment, JSX, jsx, jsx as jsxDEV, jsx as jsxs }

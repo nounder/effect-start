@@ -49,7 +49,6 @@ export declare function createHyperScript(r: Runtime): HyperScript
 export {}
 
 function h(type: any, props: any) {
-  console.log(type, props)
   return type(props || {})
 }
 
