@@ -4,7 +4,6 @@ import routes from "./routes.ts"
 import { ErrorBoundary, HydrationScript, ssr } from "solid-js/web"
 import { createSignal, sharedConfig } from "solid-js"
 import { StaticRouter } from "../lib/solid-router/routers/StaticRouter.ts"
-import App from "./App.tsx"
 
 const docType = ssr("<!DOCTYPE html>")
 
@@ -66,14 +65,14 @@ function Document(props) {
           <script type="module" src="./src/entry-client.tsx"></script>
         </head>
         <body>
-          <App />
+          {props.children}
         </body>
       </html>
     </>
   )
 }
 
-export default function (props: { url: string }) {
+export default function Root(props: { url: string }) {
   return (
     <StaticRouter
       url={props.url}
