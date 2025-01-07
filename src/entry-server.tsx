@@ -4,6 +4,7 @@ import routes from "./routes.ts"
 import { ErrorBoundary, HydrationScript, ssr } from "solid-js/web"
 import { createSignal, sharedConfig } from "solid-js"
 import { StaticRouter } from "../lib/solid-router/routers/StaticRouter.ts"
+import App from "./App.tsx"
 
 const docType = ssr("<!DOCTYPE html>")
 
@@ -44,24 +45,8 @@ function ServerErrorBoundary(props) {
   )
 }
 
-export function App(props) {
-  if (sharedConfig.context) {
-    sharedConfig.context.noHydrate = false
-  }
-
-  const [count, setCount] = createSignal(15)
-  return (
-    <div>
-      <h1>Hello {Math.random()}, count is {count()}</h1>
-      <button onClick={() => setCount(count() + 1)}>Yoo</button>
-    </div>
-  )
-  return props.children
-}
-
 function Document(props) {
-  // for some reason <NoHydration> is evaluated last
-  // instead of first \__(-_-)__/
+  // @ts-expect-error
   sharedConfig.context.noHydrate = true
 
   return (

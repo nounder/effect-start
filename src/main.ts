@@ -7,7 +7,7 @@ import {
   HttpServerResponse,
 } from "@effect/platform"
 import { Array as Arr, Effect, Layer } from "effect"
-import entry from "./entry-server.tsx"
+import entryServer from "./entry-server.tsx"
 import { renderToStringAsync } from "solid-js/web"
 import { ViteDev, ViteDevHttpRouteHandler } from "./vite/effect.ts"
 import { pipe } from "effect/Function"
@@ -27,11 +27,10 @@ const SolidSsrHandler = Effect.gen(function* () {
 
 const renderSsr = (url) =>
   renderToStringAsync(() =>
-    entry({
+    entryServer({
       url,
     }), { "timeoutMs": 4000 })
     .then((body) => {
-      console.log(body)
       if (body.includes("~*~ 404 Not Found ~*~")) {
         return new Response("", {
           status: 404,
@@ -47,8 +46,8 @@ const renderSsr = (url) =>
 
 const FrontendHandler = pipe(
   [
-    SolidSsrHandler,
     ViteDevHttpRouteHandler,
+    SolidSsrHandler,
   ],
   Arr.map((route) =>
     route.pipe(
