@@ -88,6 +88,27 @@ export async function createViteConfig({
   const { default: solidPlugin } = await import("vite-plugin-solid")
   const { default: denoPlugin } = await import("@deno/vite-plugin")
 
+  const logger = {
+    warnOnce(msg, options) {
+      console.warn(msg, options)
+    },
+    warn(msg, options) {
+      console.warn(msg, options)
+    },
+    error(msg, options) {
+      console.error(msg, options)
+    },
+    hasErrorLogged(msg) {
+      return false
+    },
+    hasWarned: false,
+    info(msg, options) {
+      console.info(msg, options)
+    },
+    clearScreen() {
+    },
+  }
+
   const config: InlineConfig = {
     // don't include HTML middlewares. we'll render it on our side
     // https://v3.vitejs.dev/config/shared-options.html#apptype
@@ -102,6 +123,8 @@ export async function createViteConfig({
     server: {
       middlewareMode: true,
     },
+
+    clearScreen: false,
   }
 
   return config
