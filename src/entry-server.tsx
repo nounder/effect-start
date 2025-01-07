@@ -1,7 +1,7 @@
 import { Route, Router, useCurrentMatches } from "@nounder/solid-router"
 import { RandomComponent } from "./ui.tsx"
 import routes from "./routes.ts"
-import { ErrorBoundary, HydrationScript, ssr } from "solid-js/web"
+import { ErrorBoundary, ssr } from "solid-js/web"
 import { createSignal, sharedConfig } from "solid-js"
 import { StaticRouter } from "../lib/solid-router/routers/StaticRouter.ts"
 
@@ -45,9 +45,6 @@ function ServerErrorBoundary(props) {
 }
 
 function Document(props) {
-  // @ts-expect-error
-  sharedConfig.context.noHydrate = true
-
   return (
     <>
       {docType as unknown as any}
@@ -61,7 +58,6 @@ function Document(props) {
           />
           <title>solid-deno</title>
 
-          <HydrationScript />
           <script type="module" src="./src/entry-client.tsx"></script>
         </head>
         <body>

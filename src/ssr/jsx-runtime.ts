@@ -23,7 +23,7 @@ function jsx(type: any, props: any) {
       type,
       baseProps,
       children,
-      !sharedConfig?.context?.["noHydrate"],
+      false,
     )
   }
 }

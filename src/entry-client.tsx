@@ -1,7 +1,7 @@
-import { hydrate } from "solid-js/web"
+import { render } from "solid-js/web"
 import { Route, Router } from "@nounder/solid-router"
 import routes from "./routes.ts"
-import App from "./App.tsx"
+import Home from "./Home.tsx"
 
 // TODO: why do we need render a component before passing it to hydrate
 // for it to work?
@@ -10,9 +10,7 @@ import App from "./App.tsx"
 
 export default function Root() {
   return (
-    <Router
-      url={props.url}
-    >
+    <Router>
       {routes.map(([path, component]) => (
         <Route path={path} component={component} />
       ))}
@@ -20,4 +18,10 @@ export default function Root() {
   )
 }
 
-hydrate(<Root />, document.body)
+const ssrChildren = Array.from(document.body.children)
+
+render(<Root />, document.body)
+
+ssrChildren.forEach((child) => {
+  child.remove()
+})
