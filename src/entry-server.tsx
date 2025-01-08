@@ -58,6 +58,7 @@ function Document(props) {
           />
           <title>solid-deno</title>
 
+          <link rel="stylesheet" href="/app.css" />
           <script type="module" src="./src/entry-client.tsx"></script>
         </head>
         <body>
