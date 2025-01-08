@@ -123,6 +123,14 @@ export async function createViteConfig({
       tailwindPlugin(),
     ],
 
+    css: {
+      transformer: "lightningcss",
+    },
+
+    build: {
+      cssMinify: "lightningcss",
+    },
+
     server: {
       middlewareMode: true,
     },
