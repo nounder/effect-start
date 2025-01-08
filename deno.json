@@ -12,7 +12,7 @@
     "jsx": "react-jsx"
   },
   "tasks": {
-    "dev": "deno run -A --watch src/main.ts"
+    "dev": "deno run -A --watch src/server.ts"
   },
   "fmt": {
     "semiColons": false

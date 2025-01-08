@@ -1,20 +1,16 @@
 import {
   Headers,
-  HttpApp,
-  HttpRouter,
-  HttpServer,
   HttpServerRequest,
   HttpServerResponse,
 } from "@effect/platform"
-import { Array as Arr, Effect, Layer } from "effect"
+import { Array as Arr, Effect } from "effect"
 import entryServer from "./entry-server.tsx"
 import { renderToStringAsync } from "solid-js/web"
-import { ViteDev, ViteDevHttpRouteHandler } from "./vite/effect.ts"
+import { ViteDevHttpRoute } from "./vite/effect.ts"
 import { pipe } from "effect/Function"
 import { RouteNotFound } from "@effect/platform/HttpServerError"
-import { DenoHttpServer } from "./effect/deno.ts"
 
-const SolidSsrHandler = Effect.gen(function* () {
+const SolidSsrRoute = Effect.gen(function* () {
   const req = yield* HttpServerRequest.HttpServerRequest
   const res = yield* Effect.tryPromise(() => renderSsr(req.url))
 
@@ -44,10 +40,10 @@ const renderSsr = (url) =>
       })
     })
 
-const FrontendHandler = pipe(
+export const FrontendRoute = pipe(
   [
-    ViteDevHttpRouteHandler,
-    SolidSsrHandler,
+    ViteDevHttpRoute,
+    SolidSsrRoute,
   ],
   Arr.map((route) =>
     route.pipe(
@@ -63,22 +59,4 @@ const FrontendHandler = pipe(
     )
   ),
   Effect.firstSuccessOf,
-)
-
-export const router = HttpRouter.empty.pipe(
-  HttpRouter.get("/yo", Effect.sync(() => HttpServerResponse.text("yo"))),
-  HttpRouter.all("*", FrontendHandler),
-)
-
-const app = router.pipe(
-  HttpServer.serve(),
-  HttpServer.withLogAddress,
-  Layer.provide(DenoHttpServer),
-)
-
-Effect.runPromise(
-  Layer.launch(app)
-    .pipe(
-      Effect.provide(ViteDev),
-    ),
 )

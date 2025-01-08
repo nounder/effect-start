@@ -40,7 +40,7 @@ export const ViteDev = Layer.scoped(
   ),
 )
 
-export const ViteDevHttpRouteHandler = Effect.gen(function* () {
+export const ViteDevHttpRoute = Effect.gen(function* () {
   const vite = yield* Vite
   const req = yield* HttpServerRequest.HttpServerRequest
   const sourceReq = req.source

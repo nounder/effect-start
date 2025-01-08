@@ -1,10 +1,13 @@
 {
   "version": "4",
   "specifiers": {
+    "jsr:@std/fs@*": "1.0.8",
+    "jsr:@std/path@^1.0.8": "1.0.8",
     "npm:@deno/vite-plugin@^1.0.2": "1.0.2_vite@6.0.7__@types+node@22.5.4__lightningcss@1.28.2_@types+node@22.5.4",
     "npm:@effect/cli@~0.51.1": "0.51.1_@effect+platform@0.72.1__effect@3.12.1_@effect+printer@0.40.1__@effect+typeclass@0.31.1___effect@3.12.1__effect@3.12.1_@effect+printer-ansi@0.40.1__@effect+typeclass@0.31.1___effect@3.12.1__effect@3.12.1_effect@3.12.1",
     "npm:@effect/platform-node@~0.68.1": "0.68.1_@effect+platform@0.72.1__effect@3.12.1_effect@3.12.1",
     "npm:@effect/platform@~0.72.1": "0.72.1_effect@3.12.1",
+    "npm:@tailwindcss/language-server@*": "0.0.27",
     "npm:@tailwindcss/node@^4.0.0-beta.8": "4.0.0-beta.8",
     "npm:@tailwindcss/vite@^4.0.0-beta.8": "4.0.0-beta.8_vite@6.0.7__@types+node@22.5.4__lightningcss@1.28.2_@types+node@22.5.4_lightningcss@1.28.2",
     "npm:@types/node@*": "22.5.4",
@@ -12,7 +15,19 @@
     "npm:solid-js@^1.9.4": "1.9.4_seroval@1.2.0",
     "npm:tailwindcss@^4.0.0-beta.8": "4.0.0-beta.8",
     "npm:vite-plugin-solid@^2.11.0": "2.11.0_solid-js@1.9.4__seroval@1.2.0_vite@6.0.7__@types+node@22.5.4__lightningcss@1.28.2_@babel+core@7.26.0_@types+node@22.5.4_vite@6.0.7__@types+node@22.5.4",
-    "npm:vite@^6.0.7": "6.0.7_@types+node@22.5.4_lightningcss@1.28.2"
+    "npm:vite@^6.0.7": "6.0.7_@types+node@22.5.4_lightningcss@1.28.2",
+    "npm:vscode-json-languageserver@*": "1.3.4"
+  },
+  "jsr": {
+    "@std/fs@1.0.8": {
+      "integrity": "161c721b6f9400b8100a851b6f4061431c538b204bb76c501d02c508995cffe0",
+      "dependencies": [
+        "jsr:@std/path"
+      ]
+    },
+    "@std/path@1.0.8": {
+      "integrity": "548fa456bb6a04d3c1a1e7477986b6cffbce95102d0bb447c67c4ee70e0364be"
+    }
   },
   "npm": {
     "@ampproject/remapping@2.3.0": {
@@ -47,7 +62,7 @@
         "@babel/traverse",
         "@babel/types",
         "convert-source-map",
-        "debug",
+        "debug@4.4.0",
         "gensync",
         "json5",
         "semver"
@@ -143,7 +158,7 @@
         "@babel/parser",
         "@babel/template",
         "@babel/types",
-        "debug",
+        "debug@4.4.0",
         "globals"
       ]
     },
@@ -438,6 +453,9 @@
     "@rollup/rollup-win32-x64-msvc@4.30.1": {
       "integrity": "sha512-D6qjsXGcvhTjv0kI4fU8tUuBDF/Ueee4SVX79VfNDXZa64TfCW1Slkb6Z7O1p7vflqZjcmOVdZlqf8gvJxc6og=="
     },
+    "@tailwindcss/language-server@0.0.27": {
+      "integrity": "sha512-p1E2SbuoZiynUaK6PLsN0FMPEdvx1VXowdj0VykcPnjcAbBPzek3zZLfHDDnYY6HR4zbsWTBpuVRf5gL9ja90Q=="
+    },
     "@tailwindcss/node@4.0.0-beta.8": {
       "integrity": "sha512-ZbicJgFxo83IIH5eBm7CU3K1olsfud7/zg3+yG7P6+fZiufhh8FllM5QOJVxUEJ5zeB1V94Y+hTq5UOfu8ZloA==",
       "dependencies": [
@@ -543,6 +561,12 @@
         "undici-types"
       ]
     },
+    "agent-base@4.3.0": {
+      "integrity": "sha512-salcGninV0nPrwpGNn4VTXBb1SOuXQBiqbrNXoeizJsHrsL6ERFM2Ne3JUSBWRE6aeNJI2ROP/WEEIDUiDe3cg==",
+      "dependencies": [
+        "es6-promisify"
+      ]
+    },
     "babel-plugin-jsx-dom-expressions@0.39.5_@babel+core@7.26.0": {
       "integrity": "sha512-dwyVkszHRsZCXfFusu3xq1DJS7twhgLrjEpMC1gtTfJG1xSrMMKWWhdl1SFFFNXrvYDsoHiRxSbku/TzLxHNxg==",
       "dependencies": [
@@ -586,10 +610,16 @@
     "csstype@3.1.3": {
       "integrity": "sha512-M1uQkMl8rQK/szD0LNhtqxIPLpimGm8sOBwU7lLnCpSbTyY3yeU1Vc7l4KT5zT4s/yOxHH5O7tIuuLOCnLADRw=="
     },
+    "debug@3.1.0": {
+      "integrity": "sha512-OX8XqP7/1a9cqkxYw2yXss15f26NKWBpDXQd0/uK/KPqdQhxbPa994hnzjcE2VqQpDslf55723cKPUOGSmMY3g==",
+      "dependencies": [
+        "ms@2.0.0"
+      ]
+    },
     "debug@4.4.0": {
       "integrity": "sha512-6WTZ/IxCY/T6BALoZHaE4ctp9xm+Z5kY/pzYaCHRFeyVhojxlrm+46y68HA6hr0TcwEssoxNiDEUJQjfPZ/RYA==",
       "dependencies": [
-        "ms"
+        "ms@2.1.3"
       ]
     },
     "detect-libc@1.0.3": {
@@ -613,6 +643,15 @@
     },
     "entities@4.5.0": {
       "integrity": "sha512-V0hjH4dGPh9Ao5p0MoRY6BVqtwCjhz6vI5LT8AJ55H+4g9/4vbHx1I54fS0XuclLhDHArPQCiMjDxjaL8fPxhw=="
+    },
+    "es6-promise@4.2.8": {
+      "integrity": "sha512-HJDGx5daxeIvxdBxvG2cb9g4tEvwIk3i8+nhX0yGrYmZUzbkdg8QbDevheDB8gd0//uPj4c1EQua8Q+MViT0/w=="
+    },
+    "es6-promisify@5.0.0": {
+      "integrity": "sha512-C+d6UdsYDk0lMebHNR4S2NybQMMngAOnOwYBQjTOiv0MkoJMP0Myw2mgpDLBcpfCmRLxyFqYhS/CfOENq4SJhQ==",
+      "dependencies": [
+        "es6-promise"
+      ]
     },
     "esbuild@0.24.2": {
       "integrity": "sha512-+9egpBW8I3CD5XPe0n6BfT5fxLzxrlDzqydF3aviG+9ni1lDC/OvMHcxqEFV0+LANZG5R1bFMWfUrjVsdwxJvA==",
@@ -677,6 +716,20 @@
     "html-entities@2.3.3": {
       "integrity": "sha512-DV5Ln36z34NNTDgnz0EWGBLZENelNAtkiFA4kyNOG2tDI6Mz1uSWiq1wAKdyjnJwyDiDO7Fa2SO1CTxPXL8VxA=="
     },
+    "http-proxy-agent@2.1.0": {
+      "integrity": "sha512-qwHbBLV7WviBl0rQsOzH6o5lwyOIvwp/BdFnvVxXORldu5TmjFfjzBcWUWS5kWAZhmv+JtiDhSuQCp4sBfbIgg==",
+      "dependencies": [
+        "agent-base",
+        "debug@3.1.0"
+      ]
+    },
+    "https-proxy-agent@2.2.4": {
+      "integrity": "sha512-OmvfoQ53WLjtA9HeYP9RNrWMJzzAz1JGaSFr1nijg0PVR1JaD/xbJq1mdEIIlxGpXp9eSe/O2LgU9DJmTPd0Eg==",
+      "dependencies": [
+        "agent-base",
+        "debug@3.1.0"
+      ]
+    },
     "ini@4.1.3": {
       "integrity": "sha512-X7rqawQBvfdjS10YU1y1YVreA3SsLrW9dX2CewP2EbBJM4ypVNLDkO5y04gejPwKIY9lR+7r9gn3rFPt/kmWFg=="
     },
@@ -706,6 +759,9 @@
     },
     "json5@2.2.3": {
       "integrity": "sha512-XmOWe7eyHYH14cLdVPoyg+GOH3rYX++KpzrylJwSW98t3Nk+U8XOl8FWKOgwtzdb8lXGf6zYwDUzeHMWfxasyg=="
+    },
+    "jsonc-parser@3.3.1": {
+      "integrity": "sha512-HUgH65KyejrUFPvHFPbqOY0rsFip3Bo5wb4ngvdi1EpCYWUQDC5V+Y7mZws+DLkr4M//zQJoanu1SP+87Dv1oQ=="
     },
     "lightningcss-darwin-arm64@1.28.2": {
       "integrity": "sha512-/8cPSqZiusHSS+WQz0W4NuaqFjquys1x+NsdN/XOHb+idGHJSoJ7SoQTVl3DZuAgtPZwFZgRfb/vd1oi8uX6+g=="
@@ -775,6 +831,9 @@
     "mime@3.0.0": {
       "integrity": "sha512-jSCU7/VB1loIWBZe14aEYHU/+1UMEHoaO7qxCOVJOw9GgH72VAWppxNcjU+x9a2k3GSIBXNKxXQFqRvvZ7vr3A=="
     },
+    "ms@2.0.0": {
+      "integrity": "sha512-Tpp60P6IUJDTuOq/5Z8cdskzJujfwqfOTkrwIwj7IRISpnkJnT6SyJ4PCPnGMoFjC9ddhal5KVIYtAt97ix05A=="
+    },
     "ms@2.1.3": {
       "integrity": "sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA=="
     },
@@ -812,6 +871,14 @@
     },
     "pure-rand@6.1.0": {
       "integrity": "sha512-bVWawvoZoBYpp6yIoQtQXHZjmz35RSVHnUOTefl8Vcjr8snTPY1wnpSPMWekcFwbxI6gtmT7rSYPFvz71ldiOA=="
+    },
+    "request-light@0.4.0": {
+      "integrity": "sha512-fimzjIVw506FBZLspTAXHdpvgvQebyjpNyLRd0e6drPPRq7gcrROeGWRyF81wLqFg5ijPgnOQbmfck5wdTqpSA==",
+      "dependencies": [
+        "http-proxy-agent",
+        "https-proxy-agent",
+        "vscode-nls@4.1.2"
+      ]
     },
     "rollup@4.30.1": {
       "integrity": "sha512-mlJ4glW020fPuLi7DkM/lN97mYEZGWeqBnrljzN0gs7GLctqX3lNWxKQ7Gl712UAX+6fog/L3jh4gb7R6aVi3w==",
@@ -943,6 +1010,60 @@
         "vite@6.0.7_@types+node@22.5.4"
       ]
     },
+    "vscode-json-languageserver@1.3.4": {
+      "integrity": "sha512-+ghebnslXk6fVDySBrT0BVqozLDdmKY/qxgkDD4JtOQcU2vXc3e7jh7YyMxvuvE93E9OLvBqUrvajttj8xf3BA==",
+      "dependencies": [
+        "jsonc-parser",
+        "request-light",
+        "vscode-json-languageservice",
+        "vscode-languageserver",
+        "vscode-uri"
+      ]
+    },
+    "vscode-json-languageservice@4.2.1": {
+      "integrity": "sha512-xGmv9QIWs2H8obGbWg+sIPI/3/pFgj/5OWBhNzs00BkYQ9UaB2F6JJaGB/2/YOZJ3BvLXQTC4Q7muqU25QgAhA==",
+      "dependencies": [
+        "jsonc-parser",
+        "vscode-languageserver-textdocument",
+        "vscode-languageserver-types@3.17.5",
+        "vscode-nls@5.2.0",
+        "vscode-uri"
+      ]
+    },
+    "vscode-jsonrpc@6.0.0": {
+      "integrity": "sha512-wnJA4BnEjOSyFMvjZdpiOwhSq9uDoK8e/kpRJDTaMYzwlkrhG1fwDIZI94CLsLzlCK5cIbMMtFlJlfR57Lavmg=="
+    },
+    "vscode-languageserver-protocol@3.16.0": {
+      "integrity": "sha512-sdeUoAawceQdgIfTI+sdcwkiK2KU+2cbEYA0agzM2uqaUy2UpnnGHtWTHVEtS0ES4zHU0eMFRGN+oQgDxlD66A==",
+      "dependencies": [
+        "vscode-jsonrpc",
+        "vscode-languageserver-types@3.16.0"
+      ]
+    },
+    "vscode-languageserver-textdocument@1.0.12": {
+      "integrity": "sha512-cxWNPesCnQCcMPeenjKKsOCKQZ/L6Tv19DTRIGuLWe32lyzWhihGVJ/rcckZXJxfdKCFvRLS3fpBIsV/ZGX4zA=="
+    },
+    "vscode-languageserver-types@3.16.0": {
+      "integrity": "sha512-k8luDIWJWyenLc5ToFQQMaSrqCHiLwyKPHKPQZ5zz21vM+vIVUSvsRpcbiECH4WR88K2XZqc4ScRcZ7nk/jbeA=="
+    },
+    "vscode-languageserver-types@3.17.5": {
+      "integrity": "sha512-Ld1VelNuX9pdF39h2Hgaeb5hEZM2Z3jUrrMgWQAu82jMtZp7p3vJT3BzToKtZI7NgQssZje5o0zryOrhQvzQAg=="
+    },
+    "vscode-languageserver@7.0.0": {
+      "integrity": "sha512-60HTx5ID+fLRcgdHfmz0LDZAXYEV68fzwG0JWwEPBode9NuMYTIxuYXPg4ngO8i8+Ou0lM7y6GzaYWbiDL0drw==",
+      "dependencies": [
+        "vscode-languageserver-protocol"
+      ]
+    },
+    "vscode-nls@4.1.2": {
+      "integrity": "sha512-7bOHxPsfyuCqmP+hZXscLhiHwe7CSuFE4hyhbs22xPIhQ4jv99FcR4eBzfYYVLP356HNFpdvz63FFb/xw6T4Iw=="
+    },
+    "vscode-nls@5.2.0": {
+      "integrity": "sha512-RAaHx7B14ZU04EU31pT+rKz2/zSl7xMsfIZuo8pd+KZO6PXtQmpevpq3vxvWNcrGbdmhM/rr5Uw5Mz+NBfhVng=="
+    },
+    "vscode-uri@3.0.8": {
+      "integrity": "sha512-AyFQ0EVmsOZOlAnxoFOGOq1SQDWAB7C6aqMGS23svWAllfOaxbuFvcT8D1i8z3Gyn8fraVeZNNmN6e9bxxXkKw=="
+    },
     "ws@8.18.0": {
       "integrity": "sha512-8VbfWfHLbbwu3+N6OKsOMpBdT4kXPDDB9cJk2bJ6mh9ucxdlnNvH1e+roYkKmN9Nxw2yjz7VzeO9oOz2zJ04Pw=="
     },
@@ -952,5 +1073,20 @@
     "yaml@2.7.0": {
       "integrity": "sha512-+hSoy/QHluxmC9kCIJyL/uyFmLmc+e5CFR5Wa+bpIhIj85LVb9ZH2nVnqrHoSvKogwODv0ClqZkmiSSaIH5LTA=="
     }
+  },
+  "workspace": {
+    "dependencies": [
+      "npm:@deno/vite-plugin@^1.0.2",
+      "npm:@effect/cli@~0.51.1",
+      "npm:@effect/platform-node@~0.68.1",
+      "npm:@effect/platform@~0.72.1",
+      "npm:@tailwindcss/node@^4.0.0-beta.8",
+      "npm:@tailwindcss/vite@^4.0.0-beta.8",
+      "npm:effect@^3.12.1",
+      "npm:solid-js@^1.9.4",
+      "npm:tailwindcss@^4.0.0-beta.8",
+      "npm:vite-plugin-solid@^2.11.0",
+      "npm:vite@^6.0.7"
+    ]
   }
 }
