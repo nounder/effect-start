@@ -30,13 +30,16 @@
     "./lib/solid-router"
   ],
   "imports": {
-    "effect": "npm:effect@^3.10.19",
-    "@effect/platform": "npm:@effect/platform@^0.69.30",
-    "solid-js": "npm:solid-js@^1.9.3",
+    "@effect/cli": "npm:@effect/cli@^0.51.1",
+    "@effect/platform-node": "npm:@effect/platform-node@^0.68.1",
+    "@tailwindcss/vite": "npm:@tailwindcss/vite@^4.0.0-beta.8",
+    "effect": "npm:effect@^3.12.1",
+    "@effect/platform": "npm:@effect/platform@^0.72.1",
+    "solid-js": "npm:solid-js@^1.9.4",
     "solid-deno/jsx-runtime": "./src/ssr/jsx-runtime.ts",
-    "vite": "npm:vite@^6.0.3",
+    "vite": "npm:vite@^6.0.7",
     "vite-plugin-solid": "npm:vite-plugin-solid@^2.11.0",
     "@deno/vite-plugin": "npm:@deno/vite-plugin@^1.0.2",
-    "tailwindcss": "npm:tailwindcss@^3.4.15"
+    "tailwindcss": "npm:tailwindcss@^4.0.0-beta.8"
   }
 }

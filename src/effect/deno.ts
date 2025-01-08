@@ -14,7 +14,7 @@ export const DenoHttpServer = Layer.scoped(
               hostname: "0.0.0.0",
               port: 8000,
               onListen: () => {},
-            }, handler)
+            }, (req) => handler(req))
           }),
           (server) =>
             Effect.promise(async () => {
