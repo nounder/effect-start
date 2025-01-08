@@ -76,7 +76,7 @@ const app = router.pipe(
   Layer.provide(DenoHttpServer),
 )
 
-await Effect.runPromise(
+Effect.runPromise(
   Layer.launch(app)
     .pipe(
       Effect.provide(ViteDev),
