@@ -14,7 +14,6 @@
   "tasks": {
     "dev": "deno run -A --watch src/main.ts"
   },
-  "vendor": true,
   "fmt": {
     "semiColons": false
   },
@@ -26,12 +25,14 @@
       ]
     }
   },
+  "lock": "./etc/deno.lock",
   "workspace": [
     "./lib/solid-router"
   ],
   "imports": {
     "@effect/cli": "npm:@effect/cli@^0.51.1",
     "@effect/platform-node": "npm:@effect/platform-node@^0.68.1",
+    "@tailwindcss/node": "npm:@tailwindcss/node@^4.0.0-beta.8",
     "@tailwindcss/vite": "npm:@tailwindcss/vite@^4.0.0-beta.8",
     "effect": "npm:effect@^3.12.1",
     "@effect/platform": "npm:@effect/platform@^0.72.1",
