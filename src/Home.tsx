@@ -7,7 +7,7 @@ export default function Home() {
 
   return (
     <div>
-      <h1 style="background: green; vertical-align: middle">
+      <h1 class="bg-gray-400">
         Welcome, {count()}{" "}
         <button onClick={() => setCount(count() + 1)}>+</button>
       </h1>

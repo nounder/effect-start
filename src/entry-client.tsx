@@ -3,6 +3,8 @@ import { Route, Router } from "@nounder/solid-router"
 import routes from "./routes.ts"
 import Home from "./Home.tsx"
 
+import "./app.css"
+
 // TODO: why do we need render a component before passing it to hydrate
 // for it to work?
 // docs says it should be () => JSX.Element
