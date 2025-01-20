@@ -10,7 +10,6 @@
     "npm:@tailwindcss/cli@next": "4.0.0-beta.8",
     "npm:@tailwindcss/language-server@*": "0.0.27",
     "npm:@tailwindcss/node@^4.0.0-beta.8": "4.0.0-beta.8",
-    "npm:@tailwindcss/vite@^4.0.0-beta.8": "4.0.0-beta.8_vite@6.0.7__@types+node@22.5.4__lightningcss@1.28.2_@types+node@22.5.4_lightningcss@1.28.2",
     "npm:@types/node@*": "22.5.4",
     "npm:@vtsls/language-server@*": "0.2.8",
     "npm:effect@^3.12.1": "3.12.1",
@@ -526,16 +525,6 @@
         "@tailwindcss/oxide-linux-x64-musl",
         "@tailwindcss/oxide-win32-arm64-msvc",
         "@tailwindcss/oxide-win32-x64-msvc"
-      ]
-    },
-    "@tailwindcss/vite@4.0.0-beta.8_vite@6.0.7__@types+node@22.5.4__lightningcss@1.28.2_@types+node@22.5.4_lightningcss@1.28.2": {
-      "integrity": "sha512-ZNlj0fdeH4/uWXafrXklZY+TgmN7wOHWHHBL4i3xzD4BflcCDZJkgJER/8baJCpagMzwWDnA6CyXDX+2q7lMRQ==",
-      "dependencies": [
-        "@tailwindcss/node",
-        "@tailwindcss/oxide",
-        "lightningcss",
-        "tailwindcss",
-        "vite@6.0.7_@types+node@22.5.4_lightningcss@1.28.2"
       ]
     },
     "@types/babel__core@7.20.5": {
@@ -1160,7 +1149,6 @@
       "npm:@effect/platform-node@~0.68.1",
       "npm:@effect/platform@~0.72.1",
       "npm:@tailwindcss/node@^4.0.0-beta.8",
-      "npm:@tailwindcss/vite@^4.0.0-beta.8",
       "npm:effect@^3.12.1",
       "npm:solid-js@^1.9.4",
       "npm:tailwindcss@^4.0.0-beta.8",

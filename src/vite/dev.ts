@@ -87,7 +87,6 @@ export async function createViteConfig({
 } = {}) {
   const { default: solidPlugin } = await import("vite-plugin-solid")
   const { default: denoPlugin } = await import("@deno/vite-plugin")
-  const { default: tailwindPlugin } = await import("@tailwindcss/vite")
 
   const logger = {
     warnOnce(msg, options) {
@@ -117,19 +116,10 @@ export async function createViteConfig({
     root: Deno.cwd(),
 
     plugins: [
+      // @ts-ignore probably ntohing
       solidPlugin(),
       denoPlugin(),
-      // @ts-ignore probably ntohing
-      tailwindPlugin(),
     ],
-
-    css: {
-      transformer: "lightningcss",
-    },
-
-    build: {
-      cssMinify: "lightningcss",
-    },
 
     server: {
       middlewareMode: true,
