@@ -1,5 +1,5 @@
 import { Context, Effect, Layer } from "effect"
-import { createServer, ViteDevServer } from "vite"
+import * as vite from "vite"
 import { createViteConfig, createViteDevHandler } from "./dev.ts"
 import {
   Headers,
@@ -10,18 +10,18 @@ import {
 } from "@effect/platform"
 
 export class Vite extends Context.Tag("Vite")<Vite, {
-  server: ViteDevServer
+  server: vite.ViteDevServer
   handler: (req: Request) => Promise<Response> | Response
 }>() {}
 
-export const ViteDev = Layer.scoped(
+export const ViteDevServer = Layer.scoped(
   Vite,
   Effect.acquireRelease(
     Effect.tryPromise(async () => {
       const config = await createViteConfig({
         appType: "custom",
       })
-      const server = await createServer(config)
+      const server = await vite.createServer(config)
       const handler = await createViteDevHandler(server)
 
       return {

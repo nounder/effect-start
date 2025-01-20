@@ -1,7 +1,7 @@
 import { Buffer } from "node:buffer"
 import { IncomingMessage, ServerResponse } from "node:http"
 import { Socket } from "node:net"
-import { InlineConfig, ViteDevServer } from "vite"
+import type { InlineConfig, ViteDevServer } from "vite"
 
 export async function createViteDevHandler(server: ViteDevServer) {
   async function handler(req: Request): Promise<Response> {
@@ -113,6 +113,7 @@ export async function createViteConfig({
     // don't include HTML middlewares. we'll render it on our side
     // https://v3.vitejs.dev/config/shared-options.html#apptype
     appType,
+    configFile: false,
     root: Deno.cwd(),
 
     plugins: [

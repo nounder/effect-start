@@ -7,7 +7,11 @@ import { StaticRouter } from "../lib/solid-router/routers/StaticRouter.ts"
 
 const docType = ssr("<!DOCTYPE html>")
 
-function ServerWrapper(props) {
+function ServerWrapper(props: {
+  entryUrl: string
+  chunkUrls: string[]
+  children: any
+}) {
   // todo: this should be empty if there are no matches.
   // depending on that return 404?
   const m = useCurrentMatches()
@@ -17,7 +21,20 @@ function ServerWrapper(props) {
   }
 
   return (
-    <Document>
+    <Document
+      postBody={
+        <>
+          <script type="module" src={props.entryUrl}></script>
+
+          {props.chunkUrls.map((url) => (
+            <link
+              rel="modulepreload"
+              href={url}
+            />
+          ))}
+        </>
+      }
+    >
       {props.children}
     </Document>
   )
@@ -44,7 +61,10 @@ function ServerErrorBoundary(props) {
   )
 }
 
-function Document(props) {
+function Document(props: {
+  children: any
+  postBody?: any
+}) {
   return (
     <>
       {docType as unknown as any}
@@ -64,6 +84,8 @@ function Document(props) {
         <body>
           {props.children}
         </body>
+
+        {props.postBody}
       </html>
     </>
   )
