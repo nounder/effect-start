@@ -44,9 +44,6 @@ export const TailwidCssRoute = Effect.gen(function* () {
       onDependency: constVoid,
     })
   )
-  console.log(
-    Array.from(candidateSet),
-  )
 
   const outputCss = twCompiler.build(Array.from(candidateSet))
 

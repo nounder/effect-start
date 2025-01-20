@@ -1,6 +1,5 @@
 import type { JSX } from "solid-js"
 import { ssrElement } from "solid-js/web"
-import { sharedConfig } from "solid-js"
 
 function Fragment(props: {
   children: JSX.Element

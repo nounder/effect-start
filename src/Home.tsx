@@ -1,6 +1,5 @@
 import { createSignal } from "solid-js"
 import { A } from "@nounder/solid-router"
-import { sharedConfig } from "solid-js"
 
 export default function Home() {
   const [count, setCount] = createSignal(15)
