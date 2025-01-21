@@ -1,17 +1,19 @@
 import {
+  FileSystem,
   Headers,
   HttpServerRequest,
   HttpServerResponse,
 } from "@effect/platform"
-import { Array as Arr, Effect } from "effect"
+import { Array as Arr, Console, Effect, pipe } from "effect"
 import entryServer from "./entry-server.tsx"
 import { renderToStringAsync } from "solid-js/web"
-import { pipe } from "effect/Function"
 import { RouteNotFound } from "@effect/platform/HttpServerError"
 import { ViteDevServerHttpRoute } from "./vite/ViteDevServer.ts"
+import { NodeFileSystem } from "@effect/platform-node"
 
 const SolidSsrRoute = Effect.gen(function* () {
   const req = yield* HttpServerRequest.HttpServerRequest
+
   const res = yield* Effect.tryPromise(() => renderSsr(req.url))
 
   return HttpServerResponse.raw(res.body, {
@@ -20,6 +22,35 @@ const SolidSsrRoute = Effect.gen(function* () {
     headers: Headers.fromInput(res.headers),
   })
 })
+
+const StaticRoute = Effect.gen(function* () {
+  const req = yield* HttpServerRequest.HttpServerRequest
+  const fs = yield* FileSystem.FileSystem
+
+  const url = new URL(req.originalUrl)
+  // TODO: resolve local path safely
+  const localPath = "www/" + url.pathname.slice(1)
+
+  const stat = yield* fs.stat(localPath)
+
+  return HttpServerResponse.stream(
+    fs.stream(localPath),
+    {
+      headers: {
+        "content-type": stat.size.toString(),
+      },
+    },
+  )
+}).pipe(
+  // TODO: this is a workaround. otherwise array defined below screams
+  Effect.provide(NodeFileSystem.layer),
+  // TODO: instead of catching all, catch only SystemError
+  Effect.catchAllCause(() =>
+    HttpServerResponse.empty({
+      status: 404,
+    })
+  ),
+)
 
 const renderSsr = (url) =>
   renderToStringAsync(() =>
@@ -40,10 +71,13 @@ const renderSsr = (url) =>
       })
     })
 
+// TODO: log errors happening in the chain
+// it's each route responsibility to handle excpected errors
 export const FrontendRoute = pipe(
   [
     ViteDevServerHttpRoute,
     SolidSsrRoute,
+    StaticRoute,
   ],
   Arr.map((route) =>
     route.pipe(

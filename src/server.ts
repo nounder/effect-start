@@ -4,6 +4,7 @@ import { DenoHttpServer } from "./effect/deno.ts"
 import { TailwidCssRoute } from "./tailwind.ts"
 import { FrontendRoute } from "./solid.ts"
 import * as ViteDevServer from "./vite/ViteDevServer.ts"
+import { NodeFileSystem } from "@effect/platform-node"
 
 export const router = HttpRouter.empty.pipe(
   HttpRouter.get("/yo", HttpServerResponse.text("yo")),
@@ -16,6 +17,7 @@ const app = router.pipe(
   HttpServer.serve(),
   HttpServer.withLogAddress,
   Layer.provide(DenoHttpServer),
+  Layer.provide(NodeFileSystem.layer),
 )
 
 if (import.meta.main) {
