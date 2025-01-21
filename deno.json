@@ -11,6 +11,7 @@
     "jsxImportSource": "solid-deno",
     "jsx": "react-jsx"
   },
+  "nodeModulesDir": "auto",
   "tasks": {
     "dev": "deno run -A --watch src/server.ts"
   },
