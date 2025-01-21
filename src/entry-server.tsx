@@ -1,15 +1,13 @@
-import { Route, Router, useCurrentMatches } from "@nounder/solid-router"
-import { RandomComponent } from "./ui.tsx"
+import { Route, useCurrentMatches } from "@nounder/solid-router"
 import routes from "./routes.ts"
 import { ErrorBoundary, ssr } from "solid-js/web"
-import { createSignal, sharedConfig } from "solid-js"
 import { StaticRouter } from "../lib/solid-router/routers/StaticRouter.ts"
+import { Show } from "solid-js/web"
 
 const docType = ssr("<!DOCTYPE html>")
 
 function ServerWrapper(props: {
-  entryUrl: string
-  chunkUrls: string[]
+  entryScriptUrl: string
   children: any
 }) {
   // todo: this should be empty if there are no matches.
@@ -23,16 +21,9 @@ function ServerWrapper(props: {
   return (
     <Document
       postBody={
-        <>
-          <script type="module" src={props.entryUrl}></script>
-
-          {props.chunkUrls.map((url) => (
-            <link
-              rel="modulepreload"
-              href={url}
-            />
-          ))}
-        </>
+        <Show when={props.entryScriptUrl}>
+          {(url) => <script type="module" src={url()}></script>}
+        </Show>
       }
     >
       {props.children}
