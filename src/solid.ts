@@ -6,9 +6,9 @@ import {
 import { Array as Arr, Effect } from "effect"
 import entryServer from "./entry-server.tsx"
 import { renderToStringAsync } from "solid-js/web"
-import { ViteDevHttpRoute } from "./vite/effect.ts"
 import { pipe } from "effect/Function"
 import { RouteNotFound } from "@effect/platform/HttpServerError"
+import { ViteDevServerHttpRoute } from "./vite/ViteDevServer.ts"
 
 const SolidSsrRoute = Effect.gen(function* () {
   const req = yield* HttpServerRequest.HttpServerRequest
@@ -42,7 +42,7 @@ const renderSsr = (url) =>
 
 export const FrontendRoute = pipe(
   [
-    ViteDevHttpRoute,
+    ViteDevServerHttpRoute,
     SolidSsrRoute,
   ],
   Arr.map((route) =>

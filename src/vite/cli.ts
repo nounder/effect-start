@@ -24,20 +24,13 @@ import {
 } from "effect"
 import * as vite from "vite"
 import process from "node:process"
-import { createViteConfig } from "../vite/dev.ts"
+import { createViteConfig } from "./config.ts"
 
 async function build() {
   const config = await createViteConfig()
 
   const res = await vite.build({
     ...config,
-    publicDir: false,
-    build: {
-      manifest: true,
-      rollupOptions: {
-        input: Deno.cwd() + "/src/entry-client.tsx",
-      },
-    },
   })
 
   return res

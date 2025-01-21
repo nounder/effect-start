@@ -1,10 +1,9 @@
 import { Buffer } from "node:buffer"
 import { IncomingMessage, ServerResponse } from "node:http"
 import { Socket } from "node:net"
-import type { InlineConfig, ViteDevServer } from "vite"
-import { getDenoInfo } from "../deno.ts"
+import type { ViteDevServer } from "vite"
 
-export async function createViteDevHandler(server: ViteDevServer) {
+export async function createViteDevServerHandler(server: ViteDevServer) {
   async function handler(req: Request): Promise<Response> {
     try {
       // Extract path and query from the original request
@@ -81,63 +80,4 @@ export async function createViteDevHandler(server: ViteDevServer) {
   }
 
   return handler
-}
-
-export async function createViteConfig({
-  appType = undefined as InlineConfig["appType"],
-} = {}) {
-  const denoInfoPromise = getDenoInfo()
-  const { default: solidPlugin } = await import("vite-plugin-solid")
-  const { default: denoPlugin } = await import("@deno/vite-plugin")
-
-  const logger = {
-    warnOnce(msg, options) {
-      console.warn(msg, options)
-    },
-    warn(msg, options) {
-      console.warn(msg, options)
-    },
-    error(msg, options) {
-      console.error(msg, options)
-    },
-    hasErrorLogged(msg) {
-      return false
-    },
-    hasWarned: false,
-    info(msg, options) {
-      console.info(msg, options)
-    },
-    clearScreen() {
-    },
-  }
-
-  const denoInfo = await denoInfoPromise
-
-  const config: InlineConfig = {
-    // don't include HTML middlewares. we'll render it on our side
-    // https://v3.vitejs.dev/config/shared-options.html#apptype
-    appType,
-    configFile: false,
-    root: Deno.cwd(),
-
-    plugins: [
-      denoPlugin(),
-      // @ts-ignore probably nothing
-      solidPlugin(),
-    ],
-
-    server: {
-      middlewareMode: true,
-      fs: {
-        allow: [
-          denoInfo.npmCache,
-          Deno.cwd(),
-        ],
-      },
-    },
-
-    clearScreen: false,
-  }
-
-  return config
 }
