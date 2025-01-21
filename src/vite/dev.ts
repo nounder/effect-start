@@ -2,6 +2,7 @@ import { Buffer } from "node:buffer"
 import { IncomingMessage, ServerResponse } from "node:http"
 import { Socket } from "node:net"
 import type { InlineConfig, ViteDevServer } from "vite"
+import { getDenoInfo } from "../deno.ts"
 
 export async function createViteDevHandler(server: ViteDevServer) {
   async function handler(req: Request): Promise<Response> {
@@ -85,6 +86,7 @@ export async function createViteDevHandler(server: ViteDevServer) {
 export async function createViteConfig({
   appType = undefined as InlineConfig["appType"],
 } = {}) {
+  const denoInfoPromise = getDenoInfo()
   const { default: solidPlugin } = await import("vite-plugin-solid")
   const { default: denoPlugin } = await import("@deno/vite-plugin")
 
@@ -109,6 +111,8 @@ export async function createViteConfig({
     },
   }
 
+  const denoInfo = await denoInfoPromise
+
   const config: InlineConfig = {
     // don't include HTML middlewares. we'll render it on our side
     // https://v3.vitejs.dev/config/shared-options.html#apptype
@@ -117,13 +121,19 @@ export async function createViteConfig({
     root: Deno.cwd(),
 
     plugins: [
-      // @ts-ignore probably ntohing
-      solidPlugin(),
       denoPlugin(),
+      // @ts-ignore probably nothing
+      solidPlugin(),
     ],
 
     server: {
       middlewareMode: true,
+      fs: {
+        allow: [
+          denoInfo.npmCache,
+          Deno.cwd(),
+        ],
+      },
     },
 
     clearScreen: false,
