@@ -37,7 +37,7 @@ export async function createViteConfig({
     appType,
     configFile: false,
     root: Deno.cwd(),
-    publicDir: false,
+    publicDir: "www",
 
     plugins: [
       // @ts-ignore probably nothing
@@ -57,7 +57,30 @@ export async function createViteConfig({
 
     build: {
       manifest: true,
+      outDir: "dst",
+      assetsDir: "",
       rollupOptions: {
+        output: {
+          assetFileNames: "assets/[name]-[hash][extname]",
+          //preserveModules: true,
+          preserveModulesRoot: "src",
+          manualChunks(id) {
+            if (
+              id.includes("/lib/solid-router/")
+            ) {
+              return "solid-router"
+            }
+
+            if (
+              id.includes("/node_modules/.deno/solid-js")
+            ) {
+              return "solid-js"
+            }
+          },
+          entryFileNames: (chunkInfo) => {
+            return "[name]-[hash].js"
+          },
+        },
         input: Deno.cwd() + "/src/entry-client.tsx",
       },
     },
