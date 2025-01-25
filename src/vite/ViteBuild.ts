@@ -1,13 +1,9 @@
 import Layer from "effect/Layer"
 import Effect from "effect/Effect"
 import { Vite } from "./Vite.ts"
-import {
-  FileSystem,
-  HttpServerRequest,
-  HttpServerResponse,
-} from "@effect/platform"
-import { pipe } from "effect"
+import { FileSystem, HttpServerRequest, HttpServerResponse } from "@effect/platform"
 import * as nodeFs from "node:fs/promises"
+import { pipe } from "effect/Function"
 
 interface ViteManifest {
   [key: string]: {
@@ -18,6 +14,10 @@ interface ViteManifest {
   }
 }
 
+class ViteBuildError extends Error {
+  readonly _tag = "ViteBuildError"
+}
+
 export const make = (opts: {
   outDir?: string
 }) =>
@@ -26,7 +26,7 @@ export const make = (opts: {
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem
       const outDir = opts.outDir ?? "dist"
-      const viteManifestPath = ".vite/manifest.json"
+      const viteManifestPath = `${outDir}/.vite/manifest.json`
 
       // TODO: use the manifest to map files
       // will probly need import tree so i can provide appropriate
@@ -38,10 +38,12 @@ export const make = (opts: {
       // external function to handle static file serving instead of
       // returning handlers here.
       const viteManifest: ViteManifest = yield* pipe(
-        fs.readFileString(
-          `${outDir}/${viteManifestPath}`,
+        fs.readFileString(viteManifestPath),
+        Effect.catchAll(
+          () =>
+            Effect.fail(new ViteBuildError("vite manifest cannot be read: " + viteManifestPath)),
         ),
-        Effect.flatMap((v) => JSON.parse(v)),
+        Effect.map((v) => JSON.parse(v)),
       )
 
       const effectHandler = Effect.gen(function* () {
