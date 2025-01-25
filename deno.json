@@ -16,6 +16,7 @@
     "dev": "deno run -A --watch src/server.ts"
   },
   "fmt": {
+    "lineWidth": 100,
     "semiColons": false
   },
   "lint": {
@@ -27,10 +28,15 @@
     }
   },
   "lock": "./etc/deno.lock",
+  "exclude": [
+    "lib/"
+  ],
   "workspace": [
-    "./lib/solid-router"
+    "lib/solid-router"
   ],
   "imports": {
+    "@solidjs/router": "npm:@solidjs/router@^0.15.3",
+    "@std/fs": "jsr:@std/fs@^1.0.10",
     "solid-js": "npm:solid-js@^1.9.4",
     "solid-deno/jsx-runtime": "./src/ssr/jsx-runtime.ts",
     "vite": "npm:vite@^6.0.7",

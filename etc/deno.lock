@@ -2,11 +2,13 @@
   "version": "4",
   "specifiers": {
     "jsr:@std/fs@*": "1.0.8",
+    "jsr:@std/fs@^1.0.10": "1.0.10",
     "jsr:@std/path@^1.0.8": "1.0.8",
     "npm:@deno/vite-plugin@^1.0.2": "1.0.2_vite@6.0.7__@types+node@22.5.4__lightningcss@1.28.2_@types+node@22.5.4",
     "npm:@effect/cli@~0.51.1": "0.51.1_@effect+platform@0.72.1__effect@3.12.1_@effect+printer@0.40.1__@effect+typeclass@0.31.1___effect@3.12.1__effect@3.12.1_@effect+printer-ansi@0.40.1__@effect+typeclass@0.31.1___effect@3.12.1__effect@3.12.1_effect@3.12.1",
     "npm:@effect/platform-node@~0.68.1": "0.68.1_@effect+platform@0.72.1__effect@3.12.1_effect@3.12.1",
     "npm:@effect/platform@~0.72.1": "0.72.1_effect@3.12.1",
+    "npm:@solidjs/router@~0.15.3": "0.15.3_solid-js@1.9.4__seroval@1.2.0",
     "npm:@tailwindcss/cli@next": "4.0.0-beta.8",
     "npm:@tailwindcss/language-server@*": "0.0.27",
     "npm:@tailwindcss/node@^4.0.0-beta.8": "4.0.0-beta.8",
@@ -22,6 +24,12 @@
   "jsr": {
     "@std/fs@1.0.8": {
       "integrity": "161c721b6f9400b8100a851b6f4061431c538b204bb76c501d02c508995cffe0",
+      "dependencies": [
+        "jsr:@std/path"
+      ]
+    },
+    "@std/fs@1.0.10": {
+      "integrity": "bf041f9d7a0a460817f0421be8946d0e06011b3433e6c83a215628de5e3c7c2c",
       "dependencies": [
         "jsr:@std/path"
       ]
@@ -453,6 +461,12 @@
     },
     "@rollup/rollup-win32-x64-msvc@4.30.1": {
       "integrity": "sha512-D6qjsXGcvhTjv0kI4fU8tUuBDF/Ueee4SVX79VfNDXZa64TfCW1Slkb6Z7O1p7vflqZjcmOVdZlqf8gvJxc6og=="
+    },
+    "@solidjs/router@0.15.3_solid-js@1.9.4__seroval@1.2.0": {
+      "integrity": "sha512-iEbW8UKok2Oio7o6Y4VTzLj+KFCmQPGEpm1fS3xixwFBdclFVBvaQVeibl1jys4cujfAK5Kn6+uG2uBm3lxOMw==",
+      "dependencies": [
+        "solid-js"
+      ]
     },
     "@tailwindcss/cli@4.0.0-beta.8": {
       "integrity": "sha512-dvIHxbugUNg1Jetg6omMC/3KOGSUtYUbe95x7RgiJOuTnF/0zHAgyI2r0oMlRr8EjXealNU2gc1c99ExhDd/jQ==",
@@ -1142,12 +1156,38 @@
       "integrity": "sha512-+hSoy/QHluxmC9kCIJyL/uyFmLmc+e5CFR5Wa+bpIhIj85LVb9ZH2nVnqrHoSvKogwODv0ClqZkmiSSaIH5LTA=="
     }
   },
+  "redirects": {
+    "https://esm.sh/seroval-plugins@^1.1.0/web?target=denonext": "https://esm.sh/seroval-plugins@1.2.0/web?target=denonext",
+    "https://esm.sh/seroval@^1.0?target=denonext": "https://esm.sh/seroval@1.2.0?target=denonext",
+    "https://esm.sh/seroval@^1.1.0?target=denonext": "https://esm.sh/seroval@1.2.0?target=denonext",
+    "https://esm.sh/solid-js@^1.8.6/store?target=denonext": "https://esm.sh/solid-js@1.9.4/store?target=denonext",
+    "https://esm.sh/solid-js@^1.8.6/web?target=denonext": "https://esm.sh/solid-js@1.9.4/web?target=denonext",
+    "https://esm.sh/solid-js@^1.8.6?target=denonext": "https://esm.sh/solid-js@1.9.4?target=denonext"
+  },
+  "remote": {
+    "https://esm.sh/*@solidjs/router@0.15.3": "f34cda042409f9287a897f48e5e38c2f27e29d60f093e514a464a9a0600d4504",
+    "https://esm.sh/*@solidjs/router@0.15.3/denonext/router.mjs": "a7732bd4a32e18f603d82bfd1c7cd4592455892430837715ac572c8309df130d",
+    "https://esm.sh/@solidjs/router@0.15.3": "4e10bfcf58c19daf7b7955c5e59fe0d0b62c5999b499d22693b66ff0d2f663f6",
+    "https://esm.sh/@solidjs/router@0.15.3/denonext/router.mjs": "74c244802cb30f24c7bd9b0b001b84c0e8ad0aae98e176f1528ab22783c17269",
+    "https://esm.sh/seroval-plugins@1.2.0/denonext/web.mjs": "bff176ea485f16588524554e7f0928d9d392ce6eaaf4e705bd48895f147ea2b5",
+    "https://esm.sh/seroval-plugins@1.2.0/web?target=denonext": "570a159ff1f50f699c1b195080bc8b5e5a3598d83ef092f6d17e267534fbd2a1",
+    "https://esm.sh/seroval@1.2.0/denonext/seroval.mjs": "064a12027167c463ecbd826ba3a73d6d71a3387186070312d76c4c79bde4e2f1",
+    "https://esm.sh/seroval@1.2.0?target=denonext": "a174a6d27a5ab817e32772c5336165fbb9d50f0d3fbbb6f20f3d7d48f2fd4518",
+    "https://esm.sh/solid-js@1.9.4/denonext/solid-js.mjs": "7bac191eda42dd06ffa78be42a8487f014440890b887776ad2a5faf3078879fb",
+    "https://esm.sh/solid-js@1.9.4/denonext/store.mjs": "97bffc234cfcb0ff2ec6e9c2d3285997b6dfa3d3e79a842f27d7e50d1c5f0bae",
+    "https://esm.sh/solid-js@1.9.4/denonext/web.mjs": "bbdc2d0a6502fa37e515a2357114a634d957c7ce290fecaae8c56c547ad7897d",
+    "https://esm.sh/solid-js@1.9.4/store?target=denonext": "f31809bcf2ba0e0317890cd979fbf4c52788b3679bdf6b01e7b6b1e373d17cc1",
+    "https://esm.sh/solid-js@1.9.4/web?target=denonext": "3b4a703f37f697a7c0473d093d1c638e0936959c3be3bfe0b387659c3982ffb3",
+    "https://esm.sh/solid-js@1.9.4?target=denonext": "3de10c19dc7068e345f43cf3aa467bdd2172b966f34566dabb823e7d25f66bec"
+  },
   "workspace": {
     "dependencies": [
+      "jsr:@std/fs@^1.0.10",
       "npm:@deno/vite-plugin@^1.0.2",
       "npm:@effect/cli@~0.51.1",
       "npm:@effect/platform-node@~0.68.1",
       "npm:@effect/platform@~0.72.1",
+      "npm:@solidjs/router@~0.15.3",
       "npm:@tailwindcss/node@^4.0.0-beta.8",
       "npm:effect@^3.12.1",
       "npm:solid-js@^1.9.4",

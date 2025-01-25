@@ -56,6 +56,7 @@ if (import.meta.main) {
   Effect.runPromise(
     main(process.argv).pipe(
       Effect.provide(NodeContext.layer),
+      Effect.catchAll((e) => Console.error(e.error)),
     ),
   )
 }
