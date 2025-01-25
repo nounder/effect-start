@@ -1,10 +1,8 @@
 import type { InlineConfig } from "vite"
-import { getDenoInfo } from "../deno.ts"
 
 export async function createViteConfig({
   appType = undefined as InlineConfig["appType"],
 } = {}) {
-  const denoInfoPromise = getDenoInfo()
   const { default: solidPlugin } = await import("vite-plugin-solid")
   const { default: denoPlugin } = await import("@deno/vite-plugin")
 
@@ -29,8 +27,6 @@ export async function createViteConfig({
     },
   }
 
-  const denoInfo = await denoInfoPromise
-
   const config: InlineConfig = {
     // don't include HTML middlewares. we'll render it on our side
     // https://v3.vitejs.dev/config/shared-options.html#apptype
@@ -47,12 +43,6 @@ export async function createViteConfig({
 
     server: {
       middlewareMode: true,
-      fs: {
-        allow: [
-          denoInfo.npmCache,
-          Deno.cwd(),
-        ],
-      },
     },
 
     build: {

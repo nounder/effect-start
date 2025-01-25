@@ -1,25 +1,16 @@
-import { Array as Arr, Effect, Stream } from "effect"
-import * as tw from "@tailwindcss/node"
-import * as stdFs from "jsr:@std/fs"
-import {
-  FileSystem,
-  HttpClientResponse,
-  HttpServerResponse,
-} from "@effect/platform"
+import { Array, Effect, Stream } from "effect"
+import { FileSystem, HttpServerResponse } from "@effect/platform"
 import { constVoid, pipe } from "effect/Function"
 
 // TODO: how about etags and caching?
 export const TailwidCssRoute = Effect.gen(function* () {
+  const fs = yield* FileSystem.FileSystem
   const candidateSet = yield* pipe(
-    Stream.fromAsyncIterable(
-      stdFs.expandGlob("src/**/*.tsx", {
-        includeDirs: false,
-        followSymlinks: true,
-      }),
-      (e: any) => new Error(e?.message || e),
-    ),
+    fs.readDirectory("src/", { recursive: true }),
+    Effect.andThen(Array.filter((f) => /\.tsx$/.test(f))),
+    Stream.fromIterableEffect,
     Stream.mapEffect(
-      (f) => Effect.tryPromise(() => Deno.readTextFile(f.path)),
+      (f) => fs.readFileString(f),
       {
         concurrency: 20,
       },
@@ -39,13 +30,15 @@ export const TailwidCssRoute = Effect.gen(function* () {
   ].join("\n")
 
   const twCompiler = yield* Effect.tryPromise(() =>
-    tw.compile(inputCss, {
-      base: Deno.cwd(),
-      onDependency: constVoid,
-    })
+    import("@tailwindcss/node").then((tw) =>
+      tw.compile(inputCss, {
+        base: Deno.cwd(),
+        onDependency: constVoid,
+      })
+    )
   )
 
-  const outputCss = twCompiler.build(Array.from(candidateSet))
+  const outputCss = twCompiler.build(Array.fromIterable(candidateSet))
 
   return HttpServerResponse.text(outputCss, {
     headers: {
