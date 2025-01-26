@@ -31,6 +31,12 @@ if (import.meta.main) {
           entrypoints: [
             Bun.fileURLToPath(import.meta.resolve("./entry-client.tsx"))
           ],
+          plugins: [
+            await import("bun-plugin-solid").then(v => v.SolidPlugin({
+              generate: "dom",
+              hydratable: true
+            }))
+          ]
         })),
         Effect.catchAll(Console.error),
       ),

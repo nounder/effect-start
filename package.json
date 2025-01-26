@@ -8,13 +8,15 @@
     "@solidjs/router": "^0.15.3",
     "@tailwindcss/node": "^4.0.0",
     "lightningcss": "^1.29.1",
+    "solid-js": "^1.9.4",
     "vite": "^6.0.11",
     "vite-plugin-solid": "^2.11.0"
   },
   "name": "solid-deno",
   "type": "module",
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "bun-plugin-solid": "^1.0.0"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
