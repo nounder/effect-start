@@ -1,0 +1,22 @@
+{
+  "scripts": {
+    "dev": "bun --conditions=solid --hot src/server.ts"
+  },
+  "dependencies": {
+    "@babel/preset-typescript": "^7.26.0",
+    "@effect/platform-bun": "^0.55.1",
+    "@solidjs/router": "^0.15.3",
+    "@tailwindcss/node": "^4.0.0",
+    "lightningcss": "^1.29.1",
+    "vite": "^6.0.11",
+    "vite-plugin-solid": "^2.11.0"
+  },
+  "name": "solid-deno",
+  "type": "module",
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

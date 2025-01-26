@@ -1,10 +1,9 @@
 import { HttpRouter, HttpServer, HttpServerResponse } from "@effect/platform"
 import { Console, Effect, Layer } from "effect"
-import { DenoHttpServer } from "./effect/deno.ts"
 import { TailwidCssRoute } from "./tailwind.ts"
 import { FrontendRoute } from "./solid.ts"
-import * as ViteDevServer from "./vite/ViteDevServer.ts"
-import { NodeFileSystem } from "@effect/platform-node"
+import { BunFileSystem, BunHttpServer, BunPath, BunRuntime } from "@effect/platform-bun"
+import * as BunBuild from "./bun/BunBuild.ts"
 
 export const router = HttpRouter.empty.pipe(
   HttpRouter.get("/yo", HttpServerResponse.text("yo")),
@@ -13,18 +12,26 @@ export const router = HttpRouter.empty.pipe(
   HttpRouter.all("*", FrontendRoute),
 )
 
+
 const app = router.pipe(
   HttpServer.serve(),
   HttpServer.withLogAddress,
-  Layer.provide(DenoHttpServer),
-  Layer.provide(NodeFileSystem.layer),
+  Layer.provide(BunHttpServer.layerServer({
+    port: 3000,
+  })),
+  Layer.provide(BunFileSystem.layer),
+  Layer.provide(BunPath.layer),
 )
 
 if (import.meta.main) {
   Effect.runPromise(
     Layer.launch(app)
       .pipe(
-        Effect.provide(ViteDevServer.make()),
+        Effect.provide(BunBuild.make({
+          entrypoints: [
+            Bun.fileURLToPath(import.meta.resolve("./entry-client.tsx"))
+          ],
+        })),
         Effect.catchAll(Console.error),
       ),
   )

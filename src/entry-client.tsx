@@ -1,5 +1,5 @@
 import { render } from "solid-js/web"
-import { Route, Router } from "@nounder/solid-router"
+import { Route, Router } from "@solidjs/router"
 import routes from "./routes.ts"
 import Home from "./Home.tsx"
 

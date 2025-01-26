@@ -1,4 +1,4 @@
-import { A } from "@nounder/solid-router"
+import { A } from "@solidjs/router"
 
 export function RandomComponent() {
   return (

@@ -1,7 +1,6 @@
-import { Route, useCurrentMatches } from "@nounder/solid-router"
+import { StaticRouter, Route, useCurrentMatches } from "@solidjs/router"
 import routes from "./routes.ts"
 import { ErrorBoundary, ssr } from "solid-js/web"
-import { StaticRouter } from "@nounder/solid-router"
 import { Show } from "solid-js/web"
 
 const docType = ssr("<!DOCTYPE html>")

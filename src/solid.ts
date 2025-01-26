@@ -9,7 +9,8 @@ import entryServer from "./entry-server.tsx"
 import { renderToStringAsync } from "solid-js/web"
 import { RouteNotFound } from "@effect/platform/HttpServerError"
 import { ViteDevServerHttpRoute } from "./vite/ViteDevServer.ts"
-import { NodeFileSystem } from "@effect/platform-node"
+import { BunFileSystem } from "@effect/platform-bun"
+import { BunBuildHttpRoute } from "./bun/BunBuild"
 
 const SolidSsrRoute = Effect.gen(function* () {
   const req = yield* HttpServerRequest.HttpServerRequest
@@ -43,7 +44,7 @@ const StaticRoute = Effect.gen(function* () {
   )
 }).pipe(
   // TODO: this is a workaround. otherwise array defined below screams
-  Effect.provide(NodeFileSystem.layer),
+  Effect.provide(BunFileSystem.layer),
   // TODO: instead of catching all, catch only SystemError
   Effect.catchAllCause(() =>
     HttpServerResponse.empty({
@@ -75,9 +76,9 @@ const renderSsr = (url) =>
 // it's each route responsibility to handle excpected errors
 export const FrontendRoute = pipe(
   [
-    ViteDevServerHttpRoute,
+    BunBuildHttpRoute,
     SolidSsrRoute,
-    StaticRoute,
+    //StaticRoute,
   ],
   Arr.map((route) =>
     route.pipe(
