@@ -13,7 +13,6 @@ export const BunBuildHttpRoute = Effect.gen(function*() {
   const bunBuild = yield* BunBuild
   const req = yield* HttpServerRequest.HttpServerRequest
 
-  console.log({ url: req.url })
   const artifact = bunBuild.getArtifact(req.url)
 
   if (!artifact) {
@@ -68,7 +67,6 @@ export const make = (opts: BuildConfig) =>
             : undefined
         },
         getArtifact: (moduleId: string) => {
-          console.log(artifactByPath)
           return artifactByPath[moduleId.replace(/^\/.bundle\//, "")]
         },
         get buildOutput() {
