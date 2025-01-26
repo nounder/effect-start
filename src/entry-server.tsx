@@ -1,12 +1,16 @@
 import { Route, Router, useCurrentMatches } from "@solidjs/router"
 import { ErrorBoundary, ssr } from "solid-js/web"
-import { Show } from "solid-js/web"
 import routes from "./routes.ts"
+import { createContext, useContext } from "solid-js"
+
 
 const docType = ssr("<!DOCTYPE html>")
 
+const ServerContext = createContext({
+  resolve: (url: string) => url,
+})
+
 function ServerWrapper(props: {
-  entryScriptUrl: string
   children: any
 }) {
   // todo: this should be empty if there are no matches.
@@ -18,13 +22,7 @@ function ServerWrapper(props: {
   }
 
   return (
-    <Document
-      postBody={
-        <Show when={props.entryScriptUrl}>
-          {(url) => <script type="module" src={url()}></script>}
-        </Show>
-      }
-    >
+    <Document>
       {props.children}
     </Document>
   )
@@ -53,8 +51,10 @@ function ServerErrorBoundary(props) {
 
 function Document(props: {
   children: any
-  postBody?: any
 }) {
+  const server = useContext(ServerContext)
+  const entryScriptUrl = server.resolve(import.meta.resolve("./entry-client.tsx"))
+
   return (
     <>
       {docType as unknown as any}
@@ -69,27 +69,37 @@ function Document(props: {
           <title>solid-deno</title>
 
           <link rel="stylesheet" href="/app.css" />
-          <script type="module" src="./src/entry-client.tsx"></script>
         </head>
         <body>
           {props.children}
         </body>
 
-        {props.postBody}
+        <script type="module" src={entryScriptUrl}></script>
       </html>
     </>
   )
 }
 
-export default function Root(props: { url: string }) {
+export default function Root(props: {
+  url: string,
+  resolve: (url: string) => string,
+}) {
+  const ctx = {
+    resolve: props.resolve,
+  }
+
   return (
-    <Router
-      url={props.url}
-      root={ServerWrapper}
-    >
-      {routes.map(([path, component]) => (
-        <Route path={path} component={component} />
-      ))}
-    </Router>
+    <ErrorBoundary fallback={(error) => <span>{error?.message || JSON.stringify(error)}</span>}>
+      <ServerContext.Provider value={ctx}>
+        <Router
+          url={props.url}
+          root={ServerWrapper}
+        >
+          {routes.map(([path, component]) => (
+            <Route path={path} component={component} />
+          ))}
+        </Router>
+      </ServerContext.Provider>
+    </ErrorBoundary>
   )
 }

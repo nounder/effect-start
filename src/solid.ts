@@ -8,13 +8,16 @@ import { BunFileSystem } from "@effect/platform-bun"
 import { RouteNotFound } from "@effect/platform/HttpServerError"
 import { Array, Console, Effect, pipe } from "effect"
 import { renderToStringAsync } from "solid-js/web"
-import { BunBuildHttpRoute } from "./bun/BunBuild.ts"
+import BunBuild, { BunBuildHttpRoute } from "./bun/BunBuild.ts"
 import entryServer from "./entry-server.tsx"
 
 const SolidSsrRoute = Effect.gen(function*() {
   const req = yield* HttpServerRequest.HttpServerRequest
+  const bunBuild = yield* BunBuild
 
-  const res = yield* Effect.tryPromise(() => renderSsr(req.url))
+  const res = yield* Effect.tryPromise(() =>
+    renderSsr(req.url, bunBuild.resolve)
+  )
 
   return HttpServerResponse.raw(res.body, {
     status: res.status,
@@ -52,10 +55,11 @@ const StaticRoute = Effect.gen(function*() {
   ),
 )
 
-const renderSsr = (url) =>
+const renderSsr = (url, resolve: (id: string) => string) =>
   renderToStringAsync(() =>
     entryServer({
       url,
+      resolve,
     }), { "timeoutMs": 4000 })
     .then((body) => {
       if (body.includes("~*~ 404 Not Found ~*~")) {

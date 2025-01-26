@@ -8,9 +8,7 @@
     "allowJs": true,
 
     "jsx": "react-jsx",
-    "jsxImportSource": "solid-js/h",
-    "jsxFactory": "jsx",
-    "jsxFragmentFactory": "Fragment",
+    "jsxImportSource": "solid-js",
 
     // Bundler mode
     "moduleResolution": "bundler",

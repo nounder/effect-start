@@ -35,6 +35,7 @@ if (import.meta.main) {
           entrypoints: [
             Bun.fileURLToPath(import.meta.resolve("./entry-client.tsx")),
           ],
+          naming: "[name]:[hash].[ext]",
           plugins: [
             await import("bun-plugin-solid").then((v) =>
               v.SolidPlugin({
