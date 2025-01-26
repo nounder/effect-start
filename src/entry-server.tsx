@@ -1,7 +1,7 @@
-import { StaticRouter, Route, useCurrentMatches } from "@solidjs/router"
-import routes from "./routes.ts"
+import { Route, Router, useCurrentMatches } from "@solidjs/router"
 import { ErrorBoundary, ssr } from "solid-js/web"
 import { Show } from "solid-js/web"
+import routes from "./routes.ts"
 
 const docType = ssr("<!DOCTYPE html>")
 
@@ -83,13 +83,13 @@ function Document(props: {
 
 export default function Root(props: { url: string }) {
   return (
-    <StaticRouter
+    <Router
       url={props.url}
       root={ServerWrapper}
     >
       {routes.map(([path, component]) => (
         <Route path={path} component={component} />
       ))}
-    </StaticRouter>
+    </Router>
   )
 }

@@ -1,7 +1,7 @@
-import { render } from "solid-js/web"
 import { Route, Router } from "@solidjs/router"
-import routes from "./routes.ts"
+import { render } from "solid-js/web"
 import Home from "./Home.tsx"
+import routes from "./routes.ts"
 
 // TODO: why do we need render a component before passing it to hydrate
 // for it to work?

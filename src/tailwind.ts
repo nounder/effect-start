@@ -1,9 +1,9 @@
-import { Array, Effect, Stream } from "effect"
 import { FileSystem, HttpServerResponse } from "@effect/platform"
+import { Array, Effect, Stream } from "effect"
 import { constVoid, pipe } from "effect/Function"
 
 // TODO: how about etags and caching?
-export const TailwidCssRoute = Effect.gen(function* () {
+export const TailwidCssRoute = Effect.gen(function*() {
   const fs = yield* FileSystem.FileSystem
   const candidateSet = yield* pipe(
     fs.readDirectory("src/", { recursive: true }),

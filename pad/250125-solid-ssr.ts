@@ -1,6 +1,6 @@
+import { jsx } from "solid-js/h/jsx-runtime"
 import { renderToStringAsync } from "solid-js/web"
 import entryServer from "../src/entry-server.tsx"
-import { jsx } from "solid-js/h/jsx-runtime"
 
 globalThis.jsx = jsx
 
@@ -23,7 +23,6 @@ const renderSsr = (url) =>
       })
     })
 
-
 console.log(
-  await renderSsr("https://example.com/").then(v => v.text()),
+  await renderSsr("https://example.com/").then((v) => v.text()),
 )

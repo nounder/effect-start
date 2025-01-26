@@ -1,13 +1,13 @@
+import { HttpApp, HttpServerRequest } from "@effect/platform"
 import { Console, Effect } from "effect"
-import * as Vite from "./vite.ts"
 import * as assert from "jsr:@std/assert"
 import { Router } from "./main.ts"
-import { HttpApp, HttpServerRequest } from "@effect/platform"
+import * as Vite from "./vite.ts"
 
 Deno.test(
   "create vite dev server",
   () =>
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       const vite = yield* Vite.Vite
 
       assert.assert(vite, "vite layer didn't return anything")
@@ -23,7 +23,7 @@ Deno.test(
 Deno.test(
   "send request",
   () =>
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       const handle = HttpApp.toWebHandler(Router)
 
       yield* Effect.tryPromise(async () => {

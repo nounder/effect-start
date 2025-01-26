@@ -52,7 +52,7 @@ export async function createViteConfig({
       rollupOptions: {
         output: {
           assetFileNames: "assets/[name]-[hash][extname]",
-          //preserveModules: true,
+          // preserveModules: true,
           preserveModulesRoot: "src",
           manualChunks(id) {
             if (

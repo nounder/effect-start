@@ -1,9 +1,14 @@
 import { HttpRouter, HttpServer, HttpServerResponse } from "@effect/platform"
+import {
+  BunFileSystem,
+  BunHttpServer,
+  BunPath,
+  BunRuntime,
+} from "@effect/platform-bun"
 import { Console, Effect, Layer } from "effect"
-import { TailwidCssRoute } from "./tailwind.ts"
-import { FrontendRoute } from "./solid.ts"
-import { BunFileSystem, BunHttpServer, BunPath, BunRuntime } from "@effect/platform-bun"
 import * as BunBuild from "./bun/BunBuild.ts"
+import { FrontendRoute } from "./solid.ts"
+import { TailwidCssRoute } from "./tailwind.ts"
 
 export const router = HttpRouter.empty.pipe(
   HttpRouter.get("/yo", HttpServerResponse.text("yo")),
@@ -11,7 +16,6 @@ export const router = HttpRouter.empty.pipe(
   HttpRouter.get("/app.css", TailwidCssRoute),
   HttpRouter.all("*", FrontendRoute),
 )
-
 
 const app = router.pipe(
   HttpServer.serve(),
@@ -29,14 +33,16 @@ if (import.meta.main) {
       .pipe(
         Effect.provide(BunBuild.make({
           entrypoints: [
-            Bun.fileURLToPath(import.meta.resolve("./entry-client.tsx"))
+            Bun.fileURLToPath(import.meta.resolve("./entry-client.tsx")),
           ],
           plugins: [
-            await import("bun-plugin-solid").then(v => v.SolidPlugin({
-              generate: "dom",
-              hydratable: true
-            }))
-          ]
+            await import("bun-plugin-solid").then((v) =>
+              v.SolidPlugin({
+                generate: "dom",
+                hydratable: true,
+              })
+            ),
+          ],
         })),
         Effect.catchAll(Console.error),
       ),

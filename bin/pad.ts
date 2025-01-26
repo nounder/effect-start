@@ -35,7 +35,7 @@ const root = pipe(
     ),
   }),
   Cli.Command.withHandler((args) =>
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       const countRef = yield* Ref.make(0)
       const fs = yield* FileSystem.FileSystem
       const scriptAbsPath = yield* fs.realPath(args.script)
@@ -114,7 +114,7 @@ const root = pipe(
 
           // make effects awaitable
           Object.assign(
-            Object.getPrototypeOf(Effect.gen(function* () {})),
+            Object.getPrototypeOf(Effect.gen(function*() {})),
             {
               then(onfulfilled, onrejected) {
                 return runEffect(this).then(onfulfilled, onrejected)
@@ -124,7 +124,7 @@ const root = pipe(
 
           // run effect
           return pipe(
-            Effect.gen(function* () {
+            Effect.gen(function*() {
               const run = yield* Ref.updateAndGet(countRef, (v) => v + 1)
 
               yield* Console.group({

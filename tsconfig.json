@@ -5,9 +5,12 @@
     "target": "ESNext",
     "module": "ESNext",
     "moduleDetection": "force",
-     "jsx": "preserve",
-    "jsxImportSource": "solid-js",
     "allowJs": true,
+
+    "jsx": "react-jsx",
+    "jsxImportSource": "solid-js/h",
+    "jsxFactory": "jsx",
+    "jsxFragmentFactory": "Fragment",
 
     // Bundler mode
     "moduleResolution": "bundler",

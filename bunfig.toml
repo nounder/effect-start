@@ -2,5 +2,3 @@ preload = ["./src/bun-preload.ts"]
 
 [run]
 bun = true
-
-

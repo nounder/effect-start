@@ -1,13 +1,13 @@
-import * as vite from "vite"
 import {
   Headers,
   HttpServerRequest,
   HttpServerResponse,
 } from "@effect/platform"
-import { createViteConfig } from "./config.ts"
 import { Effect, Layer, pipe } from "effect"
-import { Vite } from "./Vite.ts"
+import * as vite from "vite"
+import { createViteConfig } from "./config.ts"
 import { createViteDevServerHandler } from "./dev.ts"
+import { Vite } from "./Vite.ts"
 
 export const make = (opts: {
   config?: vite.InlineConfig
@@ -31,7 +31,7 @@ export const make = (opts: {
           }
         }),
         (vite) =>
-          Effect.gen(function* () {
+          Effect.gen(function*() {
             yield* Effect.log("Closing Vite Dev Server...")
             yield* Effect.promise(async () => {
               await vite.server.waitForRequestsIdle()
@@ -47,7 +47,7 @@ export const make = (opts: {
     ),
   )
 
-export const ViteDevServerHttpRoute = Effect.gen(function* () {
+export const ViteDevServerHttpRoute = Effect.gen(function*() {
   const vite = yield* Vite
   const req = yield* HttpServerRequest.HttpServerRequest
   const sourceReq = req.source

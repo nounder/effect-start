@@ -24,13 +24,13 @@ export async function createViteDevServerHandler(server: ViteDevServer) {
       const { readable, writable } = new TransformStream()
       const writer = writable.getWriter()
 
-      viteRes.write = function (chunk: any) {
+      viteRes.write = function(chunk: any) {
         writer.write(Buffer.from(chunk))
 
         return true
       }
 
-      viteRes.end = function (chunk?: any) {
+      viteRes.end = function(chunk?: any) {
         if (chunk) {
           writer.write(Buffer.from(chunk))
         }

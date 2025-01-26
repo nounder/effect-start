@@ -1,9 +1,13 @@
-import Layer from "effect/Layer"
+import {
+  FileSystem,
+  HttpServerRequest,
+  HttpServerResponse,
+} from "@effect/platform"
 import Effect from "effect/Effect"
-import { Vite } from "./Vite.ts"
-import { FileSystem, HttpServerRequest, HttpServerResponse } from "@effect/platform"
-import * as nodeFs from "node:fs/promises"
 import { pipe } from "effect/Function"
+import Layer from "effect/Layer"
+import * as nodeFs from "node:fs/promises"
+import { Vite } from "./Vite.ts"
 
 interface ViteManifest {
   [key: string]: {
@@ -23,7 +27,7 @@ export const make = (opts: {
 }) =>
   Layer.scoped(
     Vite,
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       const fs = yield* FileSystem.FileSystem
       const outDir = opts.outDir ?? "dist"
       const viteManifestPath = `${outDir}/.vite/manifest.json`
@@ -41,12 +45,16 @@ export const make = (opts: {
         fs.readFileString(viteManifestPath),
         Effect.catchAll(
           () =>
-            Effect.fail(new ViteBuildError("vite manifest cannot be read: " + viteManifestPath)),
+            Effect.fail(
+              new ViteBuildError(
+                "vite manifest cannot be read: " + viteManifestPath,
+              ),
+            ),
         ),
         Effect.map((v) => JSON.parse(v)),
       )
 
-      const effectHandler = Effect.gen(function* () {
+      const effectHandler = Effect.gen(function*() {
         const fs = yield* FileSystem.FileSystem
         const req = yield* HttpServerRequest.HttpServerRequest
 

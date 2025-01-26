@@ -4,15 +4,14 @@ import {
   HttpServerRequest,
   HttpServerResponse,
 } from "@effect/platform"
-import { Array as Arr, Console, Effect, pipe } from "effect"
-import entryServer from "./entry-server.tsx"
-import { renderToStringAsync } from "solid-js/web"
-import { RouteNotFound } from "@effect/platform/HttpServerError"
-import { ViteDevServerHttpRoute } from "./vite/ViteDevServer.ts"
 import { BunFileSystem } from "@effect/platform-bun"
-import { BunBuildHttpRoute } from "./bun/BunBuild"
+import { RouteNotFound } from "@effect/platform/HttpServerError"
+import { Array, Console, Effect, pipe } from "effect"
+import { renderToStringAsync } from "solid-js/web"
+import { BunBuildHttpRoute } from "./bun/BunBuild.ts"
+import entryServer from "./entry-server.tsx"
 
-const SolidSsrRoute = Effect.gen(function* () {
+const SolidSsrRoute = Effect.gen(function*() {
   const req = yield* HttpServerRequest.HttpServerRequest
 
   const res = yield* Effect.tryPromise(() => renderSsr(req.url))
@@ -24,7 +23,7 @@ const SolidSsrRoute = Effect.gen(function* () {
   })
 })
 
-const StaticRoute = Effect.gen(function* () {
+const StaticRoute = Effect.gen(function*() {
   const req = yield* HttpServerRequest.HttpServerRequest
   const fs = yield* FileSystem.FileSystem
 
@@ -78,9 +77,9 @@ export const FrontendRoute = pipe(
   [
     BunBuildHttpRoute,
     SolidSsrRoute,
-    //StaticRoute,
+    // StaticRoute,
   ],
-  Arr.map((route) =>
+  Array.map((route) =>
     route.pipe(
       Effect.andThen(
         (res) =>

@@ -22,8 +22,8 @@ import {
   Schema,
   Stream,
 } from "effect"
-import * as vite from "vite"
 import process from "node:process"
+import * as vite from "vite"
 import { createViteConfig } from "./config.ts"
 
 async function build() {
@@ -39,7 +39,7 @@ async function build() {
 const root = pipe(
   Cli.Command.make("build", {}),
   Cli.Command.withHandler((args) =>
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       const output = yield* Effect.tryPromise(() => build())
 
       yield* Console.log(output)
