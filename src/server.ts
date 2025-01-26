@@ -1,10 +1,5 @@
 import { HttpRouter, HttpServer, HttpServerResponse } from "@effect/platform"
-import {
-  BunFileSystem,
-  BunHttpServer,
-  BunPath,
-  BunRuntime,
-} from "@effect/platform-bun"
+import { BunFileSystem, BunHttpServer, BunPath } from "@effect/platform-bun"
 import { Console, Effect, Layer } from "effect"
 import * as BunBuild from "./bun/BunBuild.ts"
 import { FrontendRoute } from "./solid.ts"
@@ -40,7 +35,7 @@ if (import.meta.main) {
             await import("bun-plugin-solid").then((v) =>
               v.SolidPlugin({
                 generate: "dom",
-                hydratable: true,
+                hydratable: false,
               })
             ),
           ],
