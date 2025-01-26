@@ -8,10 +8,8 @@ import { TailwidCssRoute } from "./tailwind.ts"
 
 export const router = HttpRouter.empty.pipe(
   HttpRouter.get("/yo", HttpServerResponse.text("yo")),
-  // TODO: is there a way to expose directory as a static route?
-
   HttpRouter.get("/.bundle/events", LiveReloadHttpRoute),
-  HttpRouter.get("/app.css", TailwidCssRoute),
+  HttpRouter.get("/.bundle/app.css", TailwidCssRoute),
   HttpRouter.all("*", FrontendRoute),
 )
 

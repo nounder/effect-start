@@ -6,7 +6,7 @@ import {
 } from "@effect/platform"
 import { BunFileSystem } from "@effect/platform-bun"
 import { RouteNotFound } from "@effect/platform/HttpServerError"
-import { Array, Console, Effect, pipe } from "effect"
+import { Array, Console, Effect, pipe, Stream } from "effect"
 import { renderToStringAsync } from "solid-js/web"
 import BunBuild, { BunBuildHttpRoute } from "./bun/BunBuild.ts"
 import entryServer from "./entry-server.tsx"
@@ -16,7 +16,24 @@ const SolidSsrRoute = Effect.gen(function*() {
   const bunBuild = yield* BunBuild
 
   const res = yield* Effect.tryPromise(() =>
-    renderSsr(req.url, bunBuild.resolve)
+    renderToStringAsync(() =>
+      entryServer({
+        url: req.url,
+        resolve: bunBuild.resolve,
+      }), { "timeoutMs": 4000 })
+      .then((body) => {
+        if (body.includes("~*~ 404 Not Found ~*~")) {
+          return new Response("", {
+            status: 404,
+          })
+        }
+
+        return new Response(body, {
+          headers: {
+            "Content-Type": "text/html",
+          },
+        })
+      })
   )
 
   return HttpServerResponse.raw(res.body, {
@@ -54,26 +71,6 @@ const StaticRoute = Effect.gen(function*() {
     })
   ),
 )
-
-const renderSsr = (url, resolve: (id: string) => string) =>
-  renderToStringAsync(() =>
-    entryServer({
-      url,
-      resolve,
-    }), { "timeoutMs": 4000 })
-    .then((body) => {
-      if (body.includes("~*~ 404 Not Found ~*~")) {
-        return new Response("", {
-          status: 404,
-        })
-      }
-
-      return new Response(body, {
-        headers: {
-          "Content-Type": "text/html",
-        },
-      })
-    })
 
 // TODO: log errors happening in the chain
 // it's each route responsibility to handle excpected errors

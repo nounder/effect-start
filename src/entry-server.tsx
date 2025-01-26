@@ -1,13 +1,12 @@
 import { Route, Router, useCurrentMatches } from "@solidjs/router"
+import { createContext, useContext } from "solid-js"
 import { ErrorBoundary, ssr } from "solid-js/web"
 import routes from "./routes.ts"
-import { createContext, useContext } from "solid-js"
-
 
 const docType = ssr("<!DOCTYPE html>")
 
 const ServerContext = createContext({
-  resolve: (url: string) => url,
+  resolve: (url: string) => url as string | undefined,
 })
 
 function ServerWrapper(props: {
@@ -53,7 +52,9 @@ function Document(props: {
   children: any
 }) {
   const server = useContext(ServerContext)
-  const entryScriptUrl = server.resolve(import.meta.resolve("./entry-client.tsx"))
+  const entryScriptUrl = server.resolve(
+    import.meta.resolve("./entry-client.tsx"),
+  )
 
   return (
     <>
@@ -68,7 +69,7 @@ function Document(props: {
           />
           <title>solid-deno</title>
 
-          <link rel="stylesheet" href="/app.css" />
+          <link rel="stylesheet" href="/.bundle/app.css" />
         </head>
         <body>
           {props.children}
@@ -81,15 +82,19 @@ function Document(props: {
 }
 
 export default function Root(props: {
-  url: string,
-  resolve: (url: string) => string,
+  url: string
+  resolve: (url: string) => string | undefined
 }) {
   const ctx = {
     resolve: props.resolve,
   }
 
   return (
-    <ErrorBoundary fallback={(error) => <span>{error?.message || JSON.stringify(error)}</span>}>
+    <ErrorBoundary
+      fallback={(error) => (
+        <span>{error?.message || JSON.stringify(error)}</span>
+      )}
+    >
       <ServerContext.Provider value={ctx}>
         <Router
           url={props.url}
