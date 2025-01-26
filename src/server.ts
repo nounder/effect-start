@@ -2,12 +2,15 @@ import { HttpRouter, HttpServer, HttpServerResponse } from "@effect/platform"
 import { BunFileSystem, BunHttpServer, BunPath } from "@effect/platform-bun"
 import { Console, Effect, Layer } from "effect"
 import * as BunBuild from "./bun/BunBuild.ts"
+import LiveReloadHttpRoute from "./LiveReloadHttpRoute.ts"
 import { FrontendRoute } from "./solid.ts"
 import { TailwidCssRoute } from "./tailwind.ts"
 
 export const router = HttpRouter.empty.pipe(
   HttpRouter.get("/yo", HttpServerResponse.text("yo")),
   // TODO: is there a way to expose directory as a static route?
+
+  HttpRouter.get("/.bundle/events", LiveReloadHttpRoute),
   HttpRouter.get("/app.css", TailwidCssRoute),
   HttpRouter.all("*", FrontendRoute),
 )
