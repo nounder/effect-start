@@ -3,10 +3,11 @@
     "start": "bun src/server.ts"
   },
   "dependencies": {
-    "@babel/preset-typescript": "^7.26.0",
+    "@effect/platform": "^0.76.0",
     "@effect/platform-bun": "^0.55.1",
     "@solidjs/router": "^0.15.3",
     "@tailwindcss/node": "^4.0.0",
+    "effect": "^3.12.11",
     "lightningcss": "^1.29.1",
     "solid-js": "^1.9.4",
     "vite": "^6.0.11",
@@ -15,6 +16,7 @@
   "name": "solid-deno",
   "type": "module",
   "devDependencies": {
+    "@babel/preset-typescript": "^7.26.0",
     "@effect/language-service": "^0.2.0",
     "@types/bun": "latest",
     "bun-plugin-solid": "^1.0.0"
