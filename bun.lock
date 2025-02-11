@@ -13,6 +13,7 @@
         "vite-plugin-solid": "^2.11.0",
       },
       "devDependencies": {
+        "@effect/language-service": "^0.2.0",
         "@types/bun": "latest",
         "bun-plugin-solid": "^1.0.0",
       },
@@ -77,6 +78,8 @@
     "@babel/traverse": ["@babel/traverse@7.26.7", "", { "dependencies": { "@babel/code-frame": "^7.26.2", "@babel/generator": "^7.26.5", "@babel/parser": "^7.26.7", "@babel/template": "^7.25.9", "@babel/types": "^7.26.7", "debug": "^4.3.1", "globals": "^11.1.0" } }, "sha512-1x1sgeyRLC3r5fQOM0/xtQKsYjyxmFjaOrLJNtZ81inNjyJHGIolTULPiSc/2qe1/qfpFLisLQYFnnZl7QoedA=="],
 
     "@babel/types": ["@babel/types@7.26.7", "", { "dependencies": { "@babel/helper-string-parser": "^7.25.9", "@babel/helper-validator-identifier": "^7.25.9" } }, "sha512-t8kDRGrKXyp6+tjUh7hw2RLyclsW4TRoRvRHtSyAX9Bb5ldlFh+90YAYY6awRXrlB4G5G2izNeGySpATlFzmOg=="],
+
+    "@effect/language-service": ["@effect/language-service@0.2.0", "", {}, "sha512-DoK41yKGyQv79o0ca8gxEogMlt+IphXkdCXwgenbQjH1BXKD7tJAr0+VsDhblycQcvQ39f1l9NZN9CBqjM9ALA=="],
 
     "@effect/platform": ["@effect/platform@0.75.1", "", { "dependencies": { "find-my-way-ts": "^0.1.5", "multipasta": "^0.2.5" }, "peerDependencies": { "effect": "^3.12.7" } }, "sha512-YIrlMiRm4dGDaMtCwiLOwDK5AqtVIWGx4MkqBmYhQTqnthDdyg4j7rxbPvzaedsnn6EEaE7kIIKJVolBQsf3qw=="],
 

@@ -15,6 +15,7 @@
   "name": "solid-deno",
   "type": "module",
   "devDependencies": {
+    "@effect/language-service": "^0.2.0",
     "@types/bun": "latest",
     "bun-plugin-solid": "^1.0.0"
   },
