@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "dev": "bun --conditions=solid --hot src/server.ts"
+    "start": "bun src/server.ts"
   },
   "dependencies": {
     "@babel/preset-typescript": "^7.26.0",

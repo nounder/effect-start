@@ -1,18 +1,8 @@
-import { HttpRouter, HttpServer, HttpServerResponse } from "@effect/platform"
+import { HttpServer } from "@effect/platform"
 import { BunFileSystem, BunHttpServer, BunPath } from "@effect/platform-bun"
 import { Console, Effect, Layer, pipe } from "effect"
 import * as BunBuild from "./bun/BunBuild.ts"
 import * as Bundle from "./bun/Bundle.ts"
-import LiveReloadHttpRoute from "./LiveReloadHttpRoute.ts"
-import { FrontendRoute } from "./solid.ts"
-import { TailwidCssRoute } from "./tailwind.ts"
-
-export const router = HttpRouter.empty.pipe(
-  HttpRouter.get("/yo", HttpServerResponse.text("yo")),
-  HttpRouter.get("/.bundle/events", LiveReloadHttpRoute),
-  HttpRouter.get("/.bundle/app.css", TailwidCssRoute),
-  HttpRouter.all("*", FrontendRoute),
-)
 
 const Router = Bundle.build<typeof import("./router.ts")>(
   import.meta.resolve("./router.ts"),

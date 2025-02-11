@@ -1,5 +1,6 @@
 import { FileSystem, HttpApp } from "@effect/platform"
 import {
+  Console,
   Effect,
   pipe,
   Ref,
@@ -21,17 +22,30 @@ async function bundleHttpApp<M extends { default: any }>(
     entrypoints: [module],
     target: "bun",
     conditions: ["solid"],
+    sourcemap: "inline",
+    packages: "external",
+    plugins: [
+      await import("bun-plugin-solid").then((v) =>
+        v.SolidPlugin({
+          generate: "ssr",
+          hydratable: false,
+        })
+      ),
+    ],
   })
 
   const [artifact] = output.outputs
-
-  const hash = Bun.hash(await artifact.text())
+  const contents = await artifact.arrayBuffer()
+  const hash = Bun.hash(contents)
   const path = "/tmp/effect-bundle-" + hash.toString(16) + ".js"
   const file = Bun.file(path)
+  await file.write(contents)
 
   const bundleModule = await import(path)
 
-  await file.delete()
+  console.log(path)
+
+  // await file.delete()
 
   return bundleModule.default
 }
@@ -52,9 +66,9 @@ export const build = <M extends { default: any }>(module: string) =>
         e => e,
       ),
       Stream.filter(event => SOURCE_FILENAME.test(event.filename!)),
+      Stream.tap(Console.log),
     )
 
-    // should probably fork that?
     pipe(
       fileChanges,
       Stream.throttle({
