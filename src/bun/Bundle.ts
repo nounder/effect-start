@@ -77,7 +77,7 @@ export const build = <M extends { default: any }>(module: string) =>
       Stream.tap(Console.log),
     )
 
-    pipe(
+    yield* Effect.fork(pipe(
       fileChanges,
       Stream.throttle({
         units: 1,
@@ -88,7 +88,7 @@ export const build = <M extends { default: any }>(module: string) =>
       Stream.runForEach(() =>
         bundleEffect.pipe(Effect.flatMap(app => Ref.update(ref, () => app)))
       ),
-    )
+    ))
 
     return yield* ref
   })
