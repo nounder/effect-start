@@ -26,7 +26,7 @@ async function bundleHttpApp<M extends { default: any }>(
     sourcemap: "inline",
     packages: "bundle",
     external: [
-      // ...external,
+      ...external,
     ],
     plugins: [
       await import("bun-plugin-solid").then((v) =>

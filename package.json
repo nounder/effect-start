@@ -1,6 +1,7 @@
 {
   "scripts": {
-    "start": "bun src/server.ts"
+    "start": "bun src/server.ts",
+    "dev": "NODE_PATH=$PWD/node_modules/ bun src/server.ts"
   },
   "dependencies": {
     "effect": "3.13.0",
