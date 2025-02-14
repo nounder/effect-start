@@ -1,5 +1,10 @@
 import { HttpServer } from "@effect/platform"
-import { BunFileSystem, BunHttpServer, BunPath } from "@effect/platform-bun"
+import {
+  BunContext,
+  BunFileSystem,
+  BunHttpServer,
+  BunRuntime,
+} from "@effect/platform-bun"
 import { Console, Effect, Layer, pipe } from "effect"
 import * as BunBuild from "./bun/BunBuild.ts"
 import * as Bundle from "./bun/Bundle.ts"
@@ -13,9 +18,6 @@ const app = Effect.andThen(Router, Router =>
     Router,
     app => Layer.scopedDiscard(HttpServer.serveEffect(app)),
     HttpServer.withLogAddress,
-    Layer.provide(BunHttpServer.layerServer({
-      port: 3000,
-    })),
   ))
 
 const frontendBuild = BunBuild.make({
@@ -34,14 +36,16 @@ const frontendBuild = BunBuild.make({
 })
 
 if (import.meta.main) {
-  Effect.runPromise(
+  BunRuntime.runMain(
     Effect.andThen(app, app =>
-      app.pipe(
+      pipe(
+        app,
+        Layer.provide(BunHttpServer.layer({
+          port: 3000,
+        })),
+        Layer.provide(frontendBuild),
+        Layer.provide(BunFileSystem.layer),
         Layer.launch,
-        Effect.provide(BunFileSystem.layer),
-        Effect.provide(BunPath.layer),
-        Effect.provide(frontendBuild),
-        Effect.catchAll(Console.error),
       )),
   )
 }

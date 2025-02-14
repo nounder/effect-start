@@ -1,6 +1,7 @@
 import { FileSystem, HttpServerResponse } from "@effect/platform"
 import { Array, Effect, Stream } from "effect"
 import { constVoid, pipe } from "effect/Function"
+import process from "node:process"
 
 // TODO: how about etags and caching?
 export const TailwidCssRoute = Effect.gen(function*() {
@@ -32,7 +33,7 @@ export const TailwidCssRoute = Effect.gen(function*() {
   const twCompiler = yield* Effect.tryPromise(() =>
     import("@tailwindcss/node").then((tw) =>
       tw.compile(inputCss, {
-        base: Deno.cwd(),
+        base: process.cwd(),
         onDependency: constVoid,
       })
     )

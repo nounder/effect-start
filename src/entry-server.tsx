@@ -1,6 +1,6 @@
 import { Route, Router, useCurrentMatches } from "@solidjs/router"
 import { createContext, useContext } from "solid-js"
-import { ErrorBoundary, ssr } from "solid-js/web"
+import { ErrorBoundary, renderToStringAsync, ssr } from "solid-js/web"
 import routes from "./routes.ts"
 
 const docType = ssr("<!DOCTYPE html>")
@@ -10,7 +10,7 @@ const ServerContext = createContext({
 })
 
 function ServerWrapper(props: {
-  children: any
+  children?: any
 }) {
   // todo: this should be empty if there are no matches.
   // depending on that return 404?
@@ -108,3 +108,5 @@ export default function Root(props: {
     </ErrorBoundary>
   )
 }
+
+

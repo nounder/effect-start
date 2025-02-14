@@ -12,6 +12,13 @@ async function bundleHttpApp<M extends { default: any }>(
   const packageJson = await import("../../package.json", {
     with: { type: "json" },
   })
+  const external = Object.keys(packageJson.dependencies)
+    .filter(v => v !== "solid-js" && v !== "@solidjs/router")
+    .flatMap(v => [
+      v,
+      v + "/*",
+    ])
+
   const output = await Bun.build({
     entrypoints: [module],
     target: "bun",
@@ -19,12 +26,7 @@ async function bundleHttpApp<M extends { default: any }>(
     sourcemap: "inline",
     packages: "bundle",
     external: [
-      ...Object.keys(packageJson.dependencies)
-        .filter(v => v !== "solid-js" && v !== "@solidjs/router")
-        .flatMap(v => [
-          v,
-          v + "/*",
-        ]),
+      // ...external,
     ],
     plugins: [
       await import("bun-plugin-solid").then((v) =>
@@ -42,8 +44,6 @@ async function bundleHttpApp<M extends { default: any }>(
   const path = "/tmp/effect-bundle-" + hash.toString(16) + ".js"
   const file = Bun.file(path)
   await file.write(contents)
-
-  console.log(path)
 
   const bundleModule = await import(path)
 
