@@ -40,11 +40,10 @@ if (import.meta.main) {
     Effect.andThen(app, app =>
       pipe(
         app,
+        Layer.provide(frontendBuild),
         Layer.provide(BunHttpServer.layer({
           port: 3000,
         })),
-        Layer.provide(frontendBuild),
-        Layer.provide(BunFileSystem.layer),
         Layer.launch,
       )),
   )
