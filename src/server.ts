@@ -1,11 +1,6 @@
 import { HttpServer } from "@effect/platform"
-import {
-  BunContext,
-  BunFileSystem,
-  BunHttpServer,
-  BunRuntime,
-} from "@effect/platform-bun"
-import { Console, Effect, Layer, pipe } from "effect"
+import { BunHttpServer, BunRuntime } from "@effect/platform-bun"
+import { Effect, Layer, pipe } from "effect"
 import * as BunBuild from "./bun/BunBuild.ts"
 import * as Bundle from "./bun/Bundle.ts"
 
@@ -16,7 +11,7 @@ const Router = Bundle.build<typeof import("./router.ts")>(
 const app = Effect.andThen(Router, Router =>
   pipe(
     Router,
-    app => Layer.scopedDiscard(HttpServer.serveEffect(app)),
+    app => Layer.scopedDiscard(HttpServer.serveEffect(app.effect)),
     HttpServer.withLogAddress,
   ))
 

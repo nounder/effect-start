@@ -8,7 +8,7 @@ import {
   HttpClientResponse,
   Path,
 } from "@effect/platform"
-import { NodeContext } from "@effect/platform-node"
+import { BunContext } from "@effect/platform-bun"
 import {
   Chunk,
   Console,
@@ -24,7 +24,6 @@ import {
   Schema,
   Stream,
 } from "effect"
-import * as path from "jsr:@std/path"
 import process from "node:process"
 
 const root = pipe(
@@ -153,6 +152,6 @@ const main = Cli.Command.run(root, {
 
 await Effect.runPromise(
   main(process.argv).pipe(
-    Effect.provide(NodeContext.layer),
+    Effect.provide(BunContext.layer),
   ),
 )

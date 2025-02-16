@@ -65,11 +65,12 @@ const StaticRoute = Effect.gen(function*() {
   // TODO: this is a workaround. otherwise array defined below screams
   Effect.provide(BunFileSystem.layer),
   // TODO: instead of catching all, catch only SystemError
-  Effect.catchAllCause(() =>
-    HttpServerResponse.empty({
+  Effect.catchAllCause((e) => {
+    console.error(e)
+    return HttpServerResponse.empty({
       status: 404,
     })
-  ),
+  }),
 )
 
 // TODO: log errors happening in the chain
