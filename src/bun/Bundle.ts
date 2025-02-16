@@ -1,4 +1,4 @@
-import { HttpApp } from "@effect/platform"
+import { HttpApp, HttpServerRequest } from "@effect/platform"
 import { Console, Effect, pipe, Ref, Stream, SubscriptionRef } from "effect"
 import * as NodeFS from "node:fs/promises"
 import * as NodePath from "node:path"
@@ -68,27 +68,31 @@ export const build = <M extends { default: any }>(module: string) =>
       yield* bundleEffect,
     )
 
-    const fileChanges = pipe(
+    const changes = pipe(
       Stream.fromAsyncIterable(
         NodeFS.watch(baseDir, { recursive: true }),
         e => e,
       ),
       Stream.filter(event => SOURCE_FILENAME.test(event.filename!)),
       Stream.tap(Console.log),
-    )
-
-    yield* Effect.fork(pipe(
-      fileChanges,
       Stream.throttle({
         units: 1,
         cost: () => 1,
         duration: "100 millis",
         strategy: "enforce",
       }),
+    )
+
+    yield* Effect.fork(pipe(
+      changes,
       Stream.runForEach(() =>
         bundleEffect.pipe(Effect.flatMap(app => Ref.update(ref, () => app)))
       ),
     ))
 
-    return yield* ref
+    return {
+      ref,
+      effect: Effect.flatten(ref),
+      changes,
+    }
   })
