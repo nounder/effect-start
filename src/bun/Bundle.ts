@@ -41,7 +41,7 @@ async function bundleHttpApp<M extends { default: any }>(
   const [artifact] = output.outputs
   const contents = await artifact.arrayBuffer()
   const hash = Bun.hash(contents)
-  const path = "/tmp/effect-bundle-" + hash.toString(16) + ".js"
+  const path = process.cwd() + "/effect-bundle-" + hash.toString(16) + ".js"
   const file = Bun.file(path)
   await file.write(contents)
 
