@@ -38,7 +38,7 @@ Effect.gen(function*() {
   yield* pipe(
     Layer.scopedDiscard(
       HttpServer.serveEffect(
-        yield* serverBundle.ref.pipe(Effect.map(v => v.default)),
+        serverBundle.ref.pipe(Effect.andThen(v => v.default)),
       ),
     ),
     HttpServer.withLogAddress,
