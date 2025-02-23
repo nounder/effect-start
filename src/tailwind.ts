@@ -50,7 +50,7 @@ export const TailwidCssRoute = Effect.gen(function*() {
 })
 
 function extractClassNames(source: string): string[] {
-  const classNames = new Set()
+  const classNames = new Set<string>()
 
   // Match class attributes
   const classRegex = /class=["']([^"']+)["']/g
@@ -71,5 +71,5 @@ function extractClassNames(source: string): string[] {
     }
   }
 
-  return Array.from(classNames)
+  return Array.fromIterable(classNames)
 }

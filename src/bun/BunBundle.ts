@@ -1,10 +1,8 @@
-import { HttpApp, HttpServerRequest } from "@effect/platform"
-import type { BuildArtifact, BuildConfig, BuildOutput } from "bun"
-import { Console, Effect, pipe, Ref, Stream, SubscriptionRef } from "effect"
+import type { BuildConfig, BuildOutput } from "bun"
+import { Effect, pipe, Ref, Stream, SubscriptionRef } from "effect"
 import * as NodeFS from "node:fs/promises"
 import * as NodePath from "node:path"
 import * as process from "node:process"
-import * as NodeUrl from "node:url"
 
 class BundleError extends Error {
   readonly _tag = "BundleError"
@@ -85,7 +83,6 @@ export const loadWatch = <M>(
         e => e,
       ),
       Stream.filter(event => SOURCE_FILENAME.test(event.filename!)),
-      Stream.tap(Console.log),
       Stream.throttle({
         units: 1,
         cost: () => 1,
@@ -96,8 +93,16 @@ export const loadWatch = <M>(
 
     yield* Effect.fork(pipe(
       changes,
-      Stream.runForEach(() =>
-        _load.pipe(Effect.flatMap(app => Ref.update(ref, () => app)))
+      Stream.runForEach(event =>
+        Effect.gen(function*() {
+          yield* Effect.logDebug(
+            `Reloading bundle due to file change: ${event.filename}`,
+          )
+
+          const app = yield* _load
+
+          yield* Ref.update(ref, () => app)
+        })
       ),
     ))
 

@@ -1,15 +1,14 @@
 import { HttpRouter, HttpServerResponse } from "@effect/platform"
-import { Console, Effect } from "effect"
+import { Effect } from "effect"
 import process from "node:process"
 import LiveReloadHttpRoute from "./LiveReloadHttpRoute.ts"
-import { FrontendRoute } from "./solid.ts"
 import { TailwidCssRoute } from "./tailwind.ts"
 
 export default HttpRouter.empty.pipe(
   HttpRouter.get("/yo", HttpServerResponse.text("yo")),
   HttpRouter.get(
     "/error",
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       yield* Effect.fail(new Error("custom error"))
 
       return HttpServerResponse.text("this will never be reached")
@@ -17,11 +16,11 @@ export default HttpRouter.empty.pipe(
   ),
   HttpRouter.get("/.bundle/events", LiveReloadHttpRoute),
   HttpRouter.get("/.bundle/app.css", TailwidCssRoute),
-  HttpRouter.all("*", FrontendRoute),
+  // HttpRouter.all("*", FrontendRoute),
   HttpRouter.catchAll(e => {
     console.error(e)
 
-    const stack = e.stack
+    const stack = e["stack"]
       ?.split("\n")
       .slice(1)
       ?.map(line => {
@@ -35,7 +34,6 @@ export default HttpRouter.empty.pipe(
         return `${fn} (${relativePath})`
       })
       .filter(Boolean)
-
 
     return HttpServerResponse.json({
       error: e?.["name"] || null,
