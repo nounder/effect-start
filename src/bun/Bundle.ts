@@ -1,44 +1,20 @@
 import { HttpApp, HttpServerRequest } from "@effect/platform"
+import type { BuildArtifact, BuildConfig, BuildOutput } from "bun"
 import { Console, Effect, pipe, Ref, Stream, SubscriptionRef } from "effect"
 import * as NodeFS from "node:fs/promises"
 import * as NodePath from "node:path"
+import * as process from "node:process"
 import * as NodeUrl from "node:url"
+
+class BundleError extends Error {
+  readonly _tag = "BundleError"
+}
 
 const SOURCE_FILENAME = /.*\.(tsx?|jsx?)$/
 
-async function bundleHttpApp<M extends { default: any }>(
-  module: string,
-): Promise<HttpApp.Default> {
-  const packageJson = await import("../../package.json", {
-    with: { type: "json" },
-  })
-  const external = Object.keys(packageJson.dependencies)
-    .filter(v => v !== "solid-js" && v !== "@solidjs/router")
-    .flatMap(v => [
-      v,
-      v + "/*",
-    ])
-
-  const output = await Bun.build({
-    entrypoints: [module],
-    target: "bun",
-    conditions: ["solid"],
-    sourcemap: "inline",
-    packages: "bundle",
-    external: [
-      ...external,
-    ],
-    plugins: [
-      await import("bun-plugin-solid").then((v) =>
-        v.SolidPlugin({
-          generate: "ssr",
-          hydratable: false,
-        })
-      ),
-    ],
-  })
-
-  const [artifact] = output.outputs
+async function importBlob<M = unknown>(
+  artifact: Blob,
+): Promise<M> {
   const contents = await artifact.arrayBuffer()
   const hash = Bun.hash(contents)
   const path = process.cwd() + "/effect-bundle-" + hash.toString(16) + ".js"
@@ -49,23 +25,58 @@ async function bundleHttpApp<M extends { default: any }>(
 
   await file.delete()
 
-  return bundleModule.default
+  return bundleModule
 }
 
-export const build = <M extends { default: any }>(module: string) =>
+type BuildOptions = Omit<
+  BuildConfig,
+  "outdir"
+>
+
+type LoadOptions =
+  & BuildOptions
+  // only one entrypoint is allowed for loading
+  & {
+    entrypoints: [string]
+  }
+
+export const build = (
+  conig: BuildOptions,
+) =>
   Effect.gen(function*() {
-    const modulePath = NodeUrl.fileURLToPath(module)
-    const baseDir = NodePath.dirname(modulePath)
-    const bundleEffect = Effect.tryPromise({
-      try: () => bundleHttpApp(modulePath),
-      catch: (err) => {
-        console.trace()
-        throw err
-      },
+    const buildOutput: BuildOutput = yield* Effect.tryPromise({
+      try: () => Bun.build(conig),
+      catch: (err) => new BundleError(String(err)),
     })
 
-    const ref = yield* SubscriptionRef.make<HttpApp.Default>(
-      yield* bundleEffect,
+    return buildOutput
+  })
+
+export const load = <M>(
+  config: LoadOptions,
+): Effect.Effect<M, BundleError, never> =>
+  pipe(
+    build(config),
+    Effect.andThen(buildOutput =>
+      Effect.tryPromise({
+        try: () => importBlob<M>(buildOutput.outputs[0]),
+        catch: (err) => new BundleError(String(err)),
+      })
+    ),
+  )
+
+export const loadWatch = <M>(
+  config: LoadOptions,
+) =>
+  Effect.gen(function*() {
+    const [entrypoint] = config.entrypoints
+    const _load = load<M>(config)
+    const ref = yield* SubscriptionRef.make<M>(yield* _load)
+
+    // get dirname after the build as user may pass URL rather than
+    // path which Bun does not resolve.
+    const baseDir = NodePath.dirname(
+      NodePath.resolve(process.cwd(), entrypoint),
     )
 
     const changes = pipe(
@@ -86,13 +97,12 @@ export const build = <M extends { default: any }>(module: string) =>
     yield* Effect.fork(pipe(
       changes,
       Stream.runForEach(() =>
-        bundleEffect.pipe(Effect.flatMap(app => Ref.update(ref, () => app)))
+        _load.pipe(Effect.flatMap(app => Ref.update(ref, () => app)))
       ),
     ))
 
     return {
       ref,
-      effect: Effect.flatten(ref),
       changes,
     }
   })
