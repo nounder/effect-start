@@ -1,6 +1,7 @@
 import type { BuildConfig, BuildOutput } from "bun"
 import { Effect, pipe, Ref, Stream, SubscriptionRef } from "effect"
-import * as NodeFS from "node:fs/promises"
+import * as NodeFS from "node:fs"
+import * as NodeFSP from "node:fs/promises"
 import * as NodePath from "node:path"
 import * as process from "node:process"
 
@@ -16,10 +17,30 @@ class BundleError extends Error {
 
 const SOURCE_FILENAME = /.*\.(tsx?|jsx?)$/
 
+function findNodeModules(startDir = process.cwd()) {
+  let currentDir = NodePath.resolve(startDir)
+
+  while (currentDir !== NodePath.parse(currentDir).root) {
+    const nodeModulesPath = NodePath.join(currentDir, "node_modules")
+    if (
+      NodeFS.statSync(nodeModulesPath).isDirectory()
+    ) {
+      return nodeModulesPath
+    }
+
+    currentDir = NodePath.dirname(currentDir)
+  }
+
+  return null
+}
+
 async function importBlob<M = unknown>(artifact: Blob): Promise<M> {
   const contents = await artifact.arrayBuffer()
   const hash = Bun.hash(contents)
-  const path = process.cwd() + "/effect-bundle-" + hash.toString(16) + ".js"
+  const basePath = findNodeModules() + "/.tmp"
+  const path = basePath + "/effect-bundler-"
+    + hash.toString(16) + ".js"
+
   const file = Bun.file(path)
   await file.write(contents)
 
@@ -76,7 +97,7 @@ export const loadWatch = <M>(config: LoadOptions) =>
 
     const changes = pipe(
       Stream.fromAsyncIterable(
-        NodeFS.watch(baseDir, { recursive: true }),
+        NodeFSP.watch(baseDir, { recursive: true }),
         (e) => e,
       ),
       Stream.filter((event) => SOURCE_FILENAME.test(event.filename!)),
