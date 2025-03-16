@@ -1,9 +1,4 @@
-import {
-  HttpClient,
-  HttpClientRequest,
-  HttpServerRequest,
-  HttpServerResponse,
-} from "@effect/platform"
+import { HttpServerRequest, HttpServerResponse } from "@effect/platform"
 import { expect, it } from "bun:test"
 import { Effect, pipe } from "effect"
 import { effectFn } from "../test.ts"
@@ -21,12 +16,7 @@ const App = Effect.gen(function*() {
   })
 })
 
-const AppClient = pipe(
-  TestHttpClient.make(App),
-  HttpClient.mapRequest(
-    HttpClientRequest.prependUrl(`http://localhost`),
-  ),
-)
+const AppClient = TestHttpClient.make(App)
 
 const effect = effectFn()
 

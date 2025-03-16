@@ -80,9 +80,12 @@ export const App = Effect.gen(function*() {
   return HttpServerResponse.empty({
     status: 404,
   })
-}).pipe(
-  Effect.catchAll(handleHttpServerResponseError),
-)
+})
+  // put it in main func? logging in this function
+  // may interfer with test runner
+  .pipe(
+    Effect.catchAll(handleHttpServerResponseError),
+  )
 
 if (import.meta.main) {
   Effect.gen(function*() {
