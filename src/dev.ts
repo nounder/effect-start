@@ -9,7 +9,7 @@ import { Effect, Layer, Logger, LogLevel, pipe } from "effect"
 import { fileURLToPath } from "node:url"
 import packageJson from "../package.json" with { type: "json" }
 import * as BunBundle from "./bun/BunBundle.ts"
-import { renderHttpServerResponseError } from "./effect/http.ts"
+import { handleHttpServerResponseError } from "./effect/http.ts"
 
 const ApiApp = BunBundle.loadWatch<typeof import("./api.ts")>({
   entrypoints: [
@@ -81,7 +81,7 @@ export const App = Effect.gen(function*() {
     status: 404,
   })
 }).pipe(
-  Effect.catchAll(renderHttpServerResponseError),
+  Effect.catchAll(handleHttpServerResponseError),
 )
 
 if (import.meta.main) {
