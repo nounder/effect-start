@@ -1,9 +1,8 @@
 import { Route, Router } from "@solidjs/router"
 import { onMount } from "solid-js"
-import { render } from "solid-js/web"
 import routes from "./routes.ts"
 
-export default function Root() {
+export default () => {
   onMount(() => {
     const eventSource = new EventSource("/.bundle/events")
 
@@ -34,11 +33,3 @@ export default function Root() {
     </Router>
   )
 }
-
-const ssrChildren = Array.from(document.body.children)
-
-render(Root, document.body)
-
-ssrChildren.forEach((child) => {
-  child.remove()
-})

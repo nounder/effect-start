@@ -1,7 +1,6 @@
-import { Route, Router, useCurrentMatches } from "@solidjs/router"
+import { useCurrentMatches } from "@solidjs/router"
 import { createContext, useContext } from "solid-js"
-import { ErrorBoundary, renderToStringAsync, ssr } from "solid-js/web"
-import routes from "./routes.ts"
+import { ErrorBoundary, ssr } from "solid-js/web"
 
 const docType = ssr("<!DOCTYPE html>")
 
@@ -81,7 +80,8 @@ function Document(props: {
   )
 }
 
-export default function Root(props: {
+export default function ServerRoot(props: {
+  children?: any
   url: string
   resolve: (url: string) => string | undefined
 }) {
@@ -96,17 +96,8 @@ export default function Root(props: {
       )}
     >
       <ServerContext.Provider value={ctx}>
-        <Router
-          url={props.url}
-          root={ServerWrapper}
-        >
-          {routes.map(([path, component]) => (
-            <Route path={path} component={component} />
-          ))}
-        </Router>
+        {props.children}
       </ServerContext.Provider>
     </ErrorBoundary>
   )
 }
-
-

@@ -7,7 +7,7 @@ import {
 import { BunRuntime } from "@effect/platform-bun"
 import { makeRunMain } from "@effect/platform/Runtime"
 import { Console, Effect, pipe } from "effect"
-import * as OurHttpApp from "../../src/effect/HttpApp.ts"
+import * as OurHttpApp from "../../src/effect/HttpAppExtra.ts"
 
 const router0 = HttpRouter.empty.pipe(
   HttpRouter.get("/", HttpServerResponse.text("Router 0")),
@@ -37,10 +37,6 @@ BunRuntime.runMain(
       HttpServerRequest.HttpServerRequest,
       HttpServerRequest.fromWeb(new Request("https://google.com/yodsad")),
     ),
-    Effect.andThen(
-      pipe(
-        res => Console.log("Res", res),
-      ),
-    ),
+    Effect.andThen(pipe((res) => Console.log("Res", res))),
   ),
 )

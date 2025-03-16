@@ -6,13 +6,17 @@ import * as process from "node:process"
 
 class BundleError extends Error {
   readonly _tag = "BundleError"
+
+  constructor(readonly cause: any) {
+    const message = cause["message"] ?? String(cause)
+
+    super(message)
+  }
 }
 
 const SOURCE_FILENAME = /.*\.(tsx?|jsx?)$/
 
-async function importBlob<M = unknown>(
-  artifact: Blob,
-): Promise<M> {
+async function importBlob<M = unknown>(artifact: Blob): Promise<M> {
   const contents = await artifact.arrayBuffer()
   const hash = Bun.hash(contents)
   const path = process.cwd() + "/effect-bundle-" + hash.toString(16) + ".js"
@@ -26,25 +30,20 @@ async function importBlob<M = unknown>(
   return bundleModule
 }
 
-type BuildOptions = Omit<
-  BuildConfig,
-  "outdir"
->
+type BuildOptions = Omit<BuildConfig, "outdir">
 
-type LoadOptions =
-  & BuildOptions
+type LoadOptions = BuildOptions & {
   // only one entrypoint is allowed for loading
-  & {
-    entrypoints: [string]
-  }
+  entrypoints: [string]
+}
 
-export const build = (
-  conig: BuildOptions,
-) =>
+export const build = (conig: BuildOptions) =>
   Effect.gen(function*() {
     const buildOutput: BuildOutput = yield* Effect.tryPromise({
       try: () => Bun.build(conig),
-      catch: (err) => new BundleError(String(err)),
+      catch: (err) => {
+        return new BundleError(err)
+      },
     })
 
     return buildOutput
@@ -55,17 +54,15 @@ export const load = <M>(
 ): Effect.Effect<M, BundleError, never> =>
   pipe(
     build(config),
-    Effect.andThen(buildOutput =>
+    Effect.andThen((buildOutput) =>
       Effect.tryPromise({
         try: () => importBlob<M>(buildOutput.outputs[0]),
-        catch: (err) => new BundleError(String(err)),
+        catch: (err) => new BundleError(err),
       })
     ),
   )
 
-export const loadWatch = <M>(
-  config: LoadOptions,
-) =>
+export const loadWatch = <M>(config: LoadOptions) =>
   Effect.gen(function*() {
     const [entrypoint] = config.entrypoints
     const _load = load<M>(config)
@@ -80,9 +77,9 @@ export const loadWatch = <M>(
     const changes = pipe(
       Stream.fromAsyncIterable(
         NodeFS.watch(baseDir, { recursive: true }),
-        e => e,
+        (e) => e,
       ),
-      Stream.filter(event => SOURCE_FILENAME.test(event.filename!)),
+      Stream.filter((event) => SOURCE_FILENAME.test(event.filename!)),
       Stream.throttle({
         units: 1,
         cost: () => 1,
@@ -91,20 +88,22 @@ export const loadWatch = <M>(
       }),
     )
 
-    yield* Effect.fork(pipe(
-      changes,
-      Stream.runForEach(event =>
-        Effect.gen(function*() {
-          yield* Effect.logDebug(
-            `Reloading bundle due to file change: ${event.filename}`,
-          )
+    yield* Effect.fork(
+      pipe(
+        changes,
+        Stream.runForEach((event) =>
+          Effect.gen(function*() {
+            yield* Effect.logDebug(
+              `Reloading bundle due to file change: ${event.filename}`,
+            )
 
-          const app = yield* _load
+            const app = yield* _load
 
-          yield* Ref.update(ref, () => app)
-        })
+            yield* Ref.update(ref, () => app)
+          })
+        ),
       ),
-    ))
+    )
 
     return {
       ref,
