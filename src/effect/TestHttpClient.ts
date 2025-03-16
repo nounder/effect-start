@@ -1,28 +1,32 @@
-import { HttpApp, HttpServerResponse } from "@effect/platform"
-import { HttpServerRequest } from "@effect/platform"
-import * as HttpClient from "@effect/platform/HttpClient"
-import * as HttpClientResponse from "@effect/platform/HttpClientResponse"
-import { Context, Layer, pipe } from "effect"
-import * as Effect from "effect/Effect"
-import * as FiberRef from "effect/FiberRef"
-import * as Stream from "effect/Stream"
+import {
+  HttpApp,
+  HttpClient,
+  HttpClientError,
+  HttpClientResponse,
+  HttpServerRequest,
+  HttpServerResponse,
+} from "@effect/platform"
+import { Context, Effect, FiberRef, Layer, pipe, Scope, Stream } from "effect"
 
 const WebHeaders = globalThis.Headers
-
-type TargetHttpApp = HttpApp.Default
 
 class TestHttpApp
   extends Context.Tag("nounder/effect-bundler/TestHttpClient/TestHttpApp")<
     TestHttpApp,
-    TargetHttpApp
+    HttpApp.Default<any>
   >()
 {}
 
-export const make = (httpApp?: TargetHttpApp): HttpClient.HttpClient =>
+export const make = <E = never>(
+  httpApp?: HttpApp.Default<E>,
+): HttpClient.HttpClient.With<
+  HttpClientError.HttpClientError | E,
+  Scope.Scope
+> =>
   HttpClient.make(
     (request, url, signal, fiber) => {
       const context = fiber.getFiberRef(FiberRef.currentContext)
-      const app: TargetHttpApp = httpApp
+      const app: HttpApp.Default<any> = httpApp
         ?? context.unsafeMap.get(TestHttpApp.key)
       const send = (body: BodyInit | undefined) => {
         const serverRequest = HttpServerRequest.fromWeb(
@@ -69,7 +73,7 @@ export const layer = HttpClient.layerMergedContext<never, TestHttpApp>(
   Effect.succeed(layerClient),
 )
 
-export const layerFrom = (httpApp: TargetHttpApp) =>
+export const layerFrom = (httpApp: HttpApp.Default) =>
   pipe(
     HttpClient.layerMergedContext<never, TestHttpApp>(
       Effect.succeed(make(httpApp)),
