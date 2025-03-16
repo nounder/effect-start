@@ -1,4 +1,8 @@
-import { HttpServer, HttpServerResponse } from "@effect/platform"
+import {
+  HttpServer,
+  HttpServerRequest,
+  HttpServerResponse,
+} from "@effect/platform"
 import { BunHttpServer, BunRuntime } from "@effect/platform-bun"
 import { SolidPlugin } from "bun-plugin-solid"
 import { Effect, Layer, Logger, LogLevel, pipe } from "effect"
@@ -80,18 +84,20 @@ export const App = Effect.gen(function*() {
   Effect.catchAll(renderHttpServerResponseError),
 )
 
-Effect.gen(function*() {
-  yield* pipe(
-    Layer.scopedDiscard(HttpServer.serveEffect(App)),
-    HttpServer.withLogAddress,
-    Layer.launch,
+if (import.meta.main) {
+  Effect.gen(function*() {
+    yield* pipe(
+      Layer.scopedDiscard(HttpServer.serveEffect(App)),
+      HttpServer.withLogAddress,
+      Layer.launch,
+    )
+  }).pipe(
+    Effect.provide(
+      BunHttpServer.layer({
+        port: 3000,
+      }),
+    ),
+    Logger.withMinimumLogLevel(LogLevel.Debug),
+    BunRuntime.runMain,
   )
-}).pipe(
-  Effect.provide(
-    BunHttpServer.layer({
-      port: 3000,
-    }),
-  ),
-  Logger.withMinimumLogLevel(LogLevel.Debug),
-  BunRuntime.runMain,
-)
+}
