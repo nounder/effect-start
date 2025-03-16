@@ -1,5 +1,5 @@
 import {
-  type HttpApp,
+  HttpApp,
   HttpClientRequest,
   HttpServerResponse,
 } from "@effect/platform"
@@ -11,25 +11,16 @@ import * as Effect from "effect/Effect"
 import * as FiberRef from "effect/FiberRef"
 import * as Stream from "effect/Stream"
 
-type TargetHttpApp = HttpApp.Default
-
 const WebHeaders = globalThis.Headers
 
+type TargetHttpApp = HttpApp.Default
+
 export class TestHttpApp
-  extends Context.Tag("nounder/effect-bundler/TestHttpClient/HttpApp")<
+  extends Context.Tag("nounder/effect-bundler/TestHttpClient/TestHttpApp")<
     TestHttpApp,
     TargetHttpApp
   >()
 {}
-
-export const from = (httpApp: TargetHttpApp) =>
-  pipe(
-    client,
-    HttpClient.filterStatusOk,
-    HttpClient.mapRequest(
-      HttpClientRequest.prependUrl(`http://localhost`),
-    ),
-  )
 
 const client: HttpClient.HttpClient = HttpClient.make(
   (request, url, signal, fiber) => {
@@ -73,6 +64,15 @@ const client: HttpClient.HttpClient = HttpClient.make(
     return send(undefined)
   },
 )
+
+export const from = (httpApp: TargetHttpApp) =>
+  pipe(
+    client,
+    HttpClient.filterStatusOk,
+    HttpClient.mapRequest(
+      HttpClientRequest.prependUrl(`http://localhost`),
+    ),
+  )
 
 export const layer = HttpClient.layerMergedContext<never, TestHttpApp>(
   Effect.succeed(client),
