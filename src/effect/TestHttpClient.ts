@@ -11,7 +11,7 @@ const WebHeaders = globalThis.Headers
 
 type TargetHttpApp = HttpApp.Default
 
-export class TestHttpApp
+class TestHttpApp
   extends Context.Tag("nounder/effect-bundler/TestHttpClient/TestHttpApp")<
     TestHttpApp,
     TargetHttpApp
@@ -72,7 +72,7 @@ export const layer = HttpClient.layerMergedContext<never, TestHttpApp>(
 export const layerFrom = (httpApp: TargetHttpApp) =>
   pipe(
     HttpClient.layerMergedContext<never, TestHttpApp>(
-      Effect.succeed(layerClient),
+      Effect.succeed(make(httpApp)),
     ),
     Layer.provideMerge(
       Layer.succeed(TestHttpApp, httpApp),
