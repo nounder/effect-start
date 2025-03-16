@@ -5,62 +5,43 @@ import {
   HttpServerResponse,
 } from "@effect/platform"
 import { expect, it } from "bun:test"
-import { Effect, flow, Layer, pipe } from "effect"
-import type { YieldWrap } from "effect/Utils"
+import { Effect, pipe } from "effect"
+import { effectFn } from "../test.ts"
 import * as TestHttpClient from "./TestHttpClient.ts"
 
-const makeEffectFn =
-  (layer: Layer.Layer<any>) =>
-  <Eff extends YieldWrap<Effect.Effect<any, any, any>>, AEff>(
-    f: () => Generator<Eff, AEff, never>,
-  ): Promise<any> =>
-    pipe(
-      Effect.gen(f),
-      Effect.scoped,
-      Effect.provide(layer),
-      Effect.runPromise,
-    )
-
 const App = Effect.gen(function*() {
-  const _req = yield* HttpServerRequest.HttpServerRequest
+  const req = yield* HttpServerRequest.HttpServerRequest
 
-  return HttpServerResponse.text("Hello, World!")
+  if (req.url == "/") {
+    return HttpServerResponse.text("Hello, World!")
+  }
+
+  return HttpServerResponse.text("Not Found", {
+    status: 404,
+  })
 })
 
-const AppClient = TestHttpClient.from(App).pipe(
-  HttpClient.filterStatusOk,
+const AppClient = pipe(
+  TestHttpClient.make(App),
   HttpClient.mapRequest(
     HttpClientRequest.prependUrl(`http://localhost`),
   ),
 )
 
-const effect = makeEffectFn(
-  TestHttpClient.layerFrom(App),
-)
+const effect = effectFn()
 
-it("singleton", () =>
+it("ok", () =>
   effect(function*() {
     const res = yield* AppClient.get("/")
-      .pipe(Effect.andThen(v => v.text))
 
-    expect(res).toEqual("Hello, World!")
+    expect(res.status).toEqual(200)
+    expect(yield* res.text).toEqual("Hello, World!")
   }))
 
-it("usingContext", () =>
+it("not found", () =>
   effect(function*() {
-    const client = yield* HttpClient.HttpClient.pipe(
-      Effect.andThen(
-        flow(
-          HttpClient.filterStatusOk,
-          HttpClient.mapRequest(
-            HttpClientRequest.prependUrl(`http://localhost`),
-          ),
-        ),
-      ),
-    )
+    const res = yield* AppClient.get("/nope")
 
-    const res = yield* client.get("/")
-      .pipe(Effect.andThen(v => v.text))
-
-    expect(res).toEqual("Hello, World!")
+    expect(res.status).toEqual(404)
+    expect(yield* res.text).toEqual("Not Found")
   }))

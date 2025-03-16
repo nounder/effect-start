@@ -1,8 +1,4 @@
-import {
-  HttpApp,
-  HttpClientRequest,
-  HttpServerResponse,
-} from "@effect/platform"
+import { HttpApp, HttpServerResponse } from "@effect/platform"
 import { HttpServerRequest } from "@effect/platform"
 import * as HttpClient from "@effect/platform/HttpClient"
 import * as HttpClientResponse from "@effect/platform/HttpClientResponse"
@@ -22,66 +18,61 @@ export class TestHttpApp
   >()
 {}
 
-const client: HttpClient.HttpClient = HttpClient.make(
-  (request, url, signal, fiber) => {
-    const context = fiber.getFiberRef(FiberRef.currentContext)
-    const httpApp: TargetHttpApp = context.unsafeMap.get(TestHttpApp.key)
-    const send = (body: BodyInit | undefined) => {
-      const serverRequest = HttpServerRequest.fromWeb(
-        new Request(url.toString(), {
-          method: request.method,
-          headers: new WebHeaders(request.headers),
-          body,
-          duplex: request.body._tag === "Stream" ? "half" : undefined,
-          signal,
-        } as any),
-      )
-
-      return pipe(
-        httpApp,
-        Effect.provideService(
-          HttpServerRequest.HttpServerRequest,
-          serverRequest,
-        ),
-        Effect.andThen(HttpServerResponse.toWeb),
-        Effect.andThen(res => HttpClientResponse.fromWeb(request, res)),
-      )
-    }
-
-    switch (request.body._tag) {
-      case "Raw":
-      case "Uint8Array":
-        return send(request.body.body as any)
-      case "FormData":
-        return send(request.body.formData)
-      case "Stream":
-        return Effect.flatMap(
-          Stream.toReadableStreamEffect(request.body.stream),
-          send,
+export const make = (httpApp?: TargetHttpApp): HttpClient.HttpClient =>
+  HttpClient.make(
+    (request, url, signal, fiber) => {
+      const context = fiber.getFiberRef(FiberRef.currentContext)
+      const app: TargetHttpApp = httpApp
+        ?? context.unsafeMap.get(TestHttpApp.key)
+      const send = (body: BodyInit | undefined) => {
+        const serverRequest = HttpServerRequest.fromWeb(
+          new Request(url.toString(), {
+            method: request.method,
+            headers: new WebHeaders(request.headers),
+            body,
+            duplex: request.body._tag === "Stream" ? "half" : undefined,
+            signal,
+          } as any),
         )
-    }
 
-    return send(undefined)
-  },
-)
+        return pipe(
+          app,
+          Effect.provideService(
+            HttpServerRequest.HttpServerRequest,
+            serverRequest,
+          ),
+          Effect.andThen(HttpServerResponse.toWeb),
+          Effect.andThen(res => HttpClientResponse.fromWeb(request, res)),
+        )
+      }
 
-export const from = (httpApp: TargetHttpApp) =>
-  pipe(
-    client,
-    HttpClient.filterStatusOk,
-    HttpClient.mapRequest(
-      HttpClientRequest.prependUrl(`http://localhost`),
-    ),
+      switch (request.body._tag) {
+        case "Raw":
+        case "Uint8Array":
+          return send(request.body.body as any)
+        case "FormData":
+          return send(request.body.formData)
+        case "Stream":
+          return Effect.flatMap(
+            Stream.toReadableStreamEffect(request.body.stream),
+            send,
+          )
+      }
+
+      return send(undefined)
+    },
   )
 
+const layerClient = make()
+
 export const layer = HttpClient.layerMergedContext<never, TestHttpApp>(
-  Effect.succeed(client),
+  Effect.succeed(layerClient),
 )
 
 export const layerFrom = (httpApp: TargetHttpApp) =>
   pipe(
     HttpClient.layerMergedContext<never, TestHttpApp>(
-      Effect.succeed(client),
+      Effect.succeed(layerClient),
     ),
     Layer.provideMerge(
       Layer.succeed(TestHttpApp, httpApp),
