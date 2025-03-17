@@ -9,6 +9,14 @@ class BundleError extends Error {
   readonly _tag = "BundleError"
 
   constructor(readonly cause: any) {
+    if (cause instanceof AggregateError) {
+      const firstError = cause.errors?.at(0)
+
+      if (firstError) {
+        cause = firstError
+      }
+    }
+
     const message = cause["message"] ?? String(cause)
 
     super(message)

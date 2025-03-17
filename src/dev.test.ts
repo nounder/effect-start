@@ -25,3 +25,11 @@ it("error", () =>
       message: "custom error",
     })
   }))
+
+it("ssr random", () =>
+  effect(function*() {
+    const res = yield* AppClient.get("/random")
+
+    expect(res.status).toEqual(200)
+    expect(yield* res.text).toInclude(">Random<")
+  }))

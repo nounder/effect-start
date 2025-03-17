@@ -24,7 +24,7 @@ const ApiApp = BunBundle.loadWatch<typeof import("./api.ts")>({
 
 const SsrApp = BunBundle.loadWatch<typeof import("./client/ssr.tsx")>({
   entrypoints: [
-    fileURLToPath(import.meta.resolve("./client/ssr.ts")),
+    fileURLToPath(import.meta.resolve("./client/ssr.tsx")),
   ],
   target: "bun",
   conditions: ["solid"],
