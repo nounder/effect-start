@@ -1,51 +1,56 @@
-import { useCurrentMatches } from "@solidjs/router"
+import {
+  Headers,
+  HttpServerRequest,
+  HttpServerResponse,
+} from "@effect/platform"
+import { Effect } from "effect"
+import { renderToStringAsync } from "solid-js/web"
+import App from "./App.tsx"
 import { createContext, useContext } from "solid-js"
 import { ErrorBoundary, ssr } from "solid-js/web"
+
+export async function renderRequest(req: Request) {
+  const comp = () => (
+    <ServerRoot url={req.url} resolve={v => v}>
+      <App />
+    </ServerRoot>
+  )
+
+  const output = await renderToStringAsync(comp, {
+    timeoutMs: 4000,
+  })
+
+  if (output.includes("~*~ 404 Not Found ~*~")) {
+    return new Response(output, {
+      status: 404,
+    })
+  }
+
+  return new Response(output, {
+    headers: {
+      "Content-Type": "text/html",
+    },
+  })
+}
+
+export const SsrApp = Effect.gen(function* () {
+  const req = yield* HttpServerRequest.HttpServerRequest
+  const fetchReq = req.source as Request
+  const output = yield* Effect.tryPromise(() => renderRequest(fetchReq))
+
+  return HttpServerResponse.raw(output.body, {
+    status: output.status,
+    statusText: output.statusText,
+    headers: Headers.fromInput(output.headers as any),
+  })
+})
+
 
 const docType = ssr("<!DOCTYPE html>")
 
 const ServerContext = createContext({
   resolve: (url: string) => url as string | undefined,
 })
-
-function ServerWrapper(props: {
-  children?: any
-}) {
-  // todo: this should be empty if there are no matches.
-  // depending on that return 404?
-  const m = useCurrentMatches()
-
-  if (m().length === 0) {
-    return `~*~ 404 Not Found ~*~`
-  }
-
-  return (
-    <Document>
-      {props.children}
-    </Document>
-  )
-}
-
-function ServerErrorBoundary(props) {
-  return (
-    <ErrorBoundary
-      fallback={(error) => {
-        return (
-          <>
-            <span style="font-size:1.5em;text-align:center;position:fixed;left:0px;bottom:55%;width:100%;">
-              Oops. Something bad happened. See server console.
-              <pre>
-                {JSON.parse(error)}
-              </pre>
-            </span>
-          </>
-        )
-      }}
-    >
-      {props.children}
-    </ErrorBoundary>
-  )
-}
 
 function Document(props: {
   children: any
@@ -70,6 +75,7 @@ function Document(props: {
 
           <link rel="stylesheet" href="/.bundle/app.css" />
         </head>
+
         <body>
           {props.children}
         </body>
@@ -101,3 +107,4 @@ export default function ServerRoot(props: {
     </ErrorBoundary>
   )
 }
+

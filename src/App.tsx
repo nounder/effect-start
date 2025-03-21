@@ -1,6 +1,7 @@
 import { Route, Router } from "@solidjs/router"
 import { onMount } from "solid-js"
-import routes from "./routes.ts"
+import Home from "./Home.tsx"
+import { RandomComponent } from "./ui.tsx"
 
 export default () => {
   onMount(() => {
@@ -27,9 +28,8 @@ export default () => {
 
   return (
     <Router>
-      {routes.map(([path, component]) => (
-        <Route path={path} component={component} />
-      ))}
+      <Route path="/" component={Home} />
+      <Route path="/random" component={RandomComponent} />
     </Router>
   )
 }

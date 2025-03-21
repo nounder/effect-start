@@ -11,28 +11,37 @@ import packageJson from "../package.json" with { type: "json" }
 import * as BunBundle from "./bun/BunBundle.ts"
 import { handleHttpServerResponseError } from "./effect/http.ts"
 
-const ApiApp = BunBundle.loadWatch<typeof import("./api.ts")>({
+export const ClientBundle = BunBundle.build({
   entrypoints: [
-    fileURLToPath(import.meta.resolve("./api.ts")),
+    fileURLToPath(import.meta.resolve("./client/entry.client.tsx")),
   ],
-  target: "bun",
-  sourcemap: "inline",
-  packages: "external",
-}).pipe(
-  Effect.cached,
-)
+  target: "browser",
+  conditions: [
+    "solid",
+  ],
+  sourcemap: "external",
+  packages: "bundle",
+  plugins: [
+    SolidPlugin({
+      generate: "dom",
+      hydratable: false,
+    }),
+  ],
+})
 
-const SsrApp = BunBundle.loadWatch<typeof import("./client/ssr.tsx")>({
+export const ServerApp = BunBundle.loadWatch<typeof import("./server.ts")>({
   entrypoints: [
-    fileURLToPath(import.meta.resolve("./client/ssr.tsx")),
+    fileURLToPath(import.meta.resolve("./server.ts")),
   ],
   target: "bun",
-  conditions: ["solid"],
+  conditions: [
+    "solid",
+  ],
   sourcemap: "inline",
   packages: "bundle",
   external: [
     // externalize everything except solid because it requires
-    // custom resolve condition
+    // different resolve conditions
     ...Object.keys(packageJson.dependencies)
       .filter((v) => v !== "solid-js" && v !== "@solidjs/router")
       .flatMap((v) => [v, v + "/*"]),
@@ -45,52 +54,16 @@ const SsrApp = BunBundle.loadWatch<typeof import("./client/ssr.tsx")>({
   ],
 }).pipe(
   Effect.cached,
+  Effect.flatten,
+  Effect.andThen((v) => v.ref),
+  Effect.andThen((v) => v.default),
+  Effect.catchAll(handleHttpServerResponseError),
 )
-
-export const App = Effect.gen(function*() {
-  const api = pipe(
-    ApiApp,
-    Effect.flatten,
-    Effect.andThen((v) => v.ref),
-    Effect.andThen((v) => v.default),
-    Effect.catchTag("RouteNotFound", () =>
-      HttpServerResponse.empty({
-        status: 404,
-      })),
-  )
-  const ssr = pipe(
-    SsrApp,
-    Effect.flatten,
-    Effect.andThen((v) => v.ref),
-    Effect.andThen((v) => v.default),
-  )
-
-  const apiRes = yield* api
-
-  if (apiRes.status !== 404) {
-    return apiRes
-  }
-
-  const ssrRes = yield* ssr
-
-  if (ssrRes.status !== 404) {
-    return ssrRes
-  }
-
-  return HttpServerResponse.empty({
-    status: 404,
-  })
-})
-  // put it in main func? logging in this function
-  // may interfer with test runner
-  .pipe(
-    Effect.catchAll(handleHttpServerResponseError),
-  )
 
 if (import.meta.main) {
   Effect.gen(function*() {
     yield* pipe(
-      Layer.scopedDiscard(HttpServer.serveEffect(App)),
+      Layer.scopedDiscard(HttpServer.serveEffect(ServerApp)),
       HttpServer.withLogAddress,
       Layer.launch,
     )

@@ -1,5 +1,20 @@
-import type { BuildConfig, BuildOutput } from "bun"
-import { Effect, pipe, Ref, Stream, SubscriptionRef } from "effect"
+import {
+  FileSystem,
+  HttpApp,
+  HttpRouter,
+  HttpServerRequest,
+  HttpServerResponse,
+} from "@effect/platform"
+import type { BuildArtifact, BuildConfig, BuildOutput } from "bun"
+import {
+  Array,
+  Effect,
+  pipe,
+  Record,
+  Ref,
+  Stream,
+  SubscriptionRef,
+} from "effect"
 import * as NodeFS from "node:fs"
 import * as NodeFSP from "node:fs/promises"
 import * as NodePath from "node:path"
@@ -66,10 +81,10 @@ type LoadOptions = BuildOptions & {
   entrypoints: [string]
 }
 
-export const build = (conig: BuildOptions) =>
+export const build = (config: BuildOptions) =>
   Effect.gen(function*() {
     const buildOutput: BuildOutput = yield* Effect.tryPromise({
-      try: () => Bun.build(conig),
+      try: () => Bun.build(config),
       catch: (err) => {
         return new BundleError(err)
       },
@@ -138,4 +153,38 @@ export const loadWatch = <M>(config: LoadOptions) =>
       ref,
       changes,
     }
+  })
+
+export const buildRouter = (
+  opts: BuildConfig,
+): Effect.Effect<HttpRouter.HttpRouter, BundleError, never> =>
+  Effect.gen(function*() {
+    const buildOutput = yield* build(opts)
+
+    // TODO: resolve common directory across all entrypoints
+    const rootDir = NodePath.dirname(opts.entrypoints[0])
+
+    const entrypointMap: Record<string, BuildArtifact> = pipe(
+      opts.entrypoints,
+      Array.map((v) => v.replace(rootDir, "")),
+      Array.zip(buildOutput.outputs),
+      Object.fromEntries,
+    )
+
+    const router = Record.reduce(
+      entrypointMap,
+      HttpRouter.empty,
+      (a, v, k) =>
+        pipe(
+          a,
+          HttpRouter.get(
+            `/${k}`,
+            HttpServerResponse.raw(v.stream(), {
+              contentType: v.type,
+            }),
+          ),
+        ),
+    )
+
+    return router
   })
