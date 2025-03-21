@@ -2,8 +2,32 @@ import { Route, Router } from "@solidjs/router"
 import { onMount } from "solid-js"
 import Home from "./Home.tsx"
 import { RandomComponent } from "./ui.tsx"
+import { useServer } from "./ssr.tsx"
+
+const Routes = [
+  {
+    path: "/",
+    component: Home,
+  },
+  {
+    path: "/random",
+    component: RandomComponent,
+  },
+  {
+    path: "*404",
+    component: () => {
+      throw new Error("Not found", {
+        cause: new Response("Not found", {
+          status: 404
+        })
+      })
+    }
+  },
+]
 
 export default () => {
+  const server = useServer()
+
   onMount(() => {
     const eventSource = new EventSource("/.bundle/events")
 
@@ -27,9 +51,8 @@ export default () => {
   })
 
   return (
-    <Router>
-      <Route path="/" component={Home} />
-      <Route path="/random" component={RandomComponent} />
+    <Router url={server.url}>
+      {Routes}
     </Router>
   )
 }

@@ -1,8 +1,4 @@
-import {
-  HttpServer,
-  HttpServerRequest,
-  HttpServerResponse,
-} from "@effect/platform"
+import { HttpServer } from "@effect/platform"
 import { BunHttpServer, BunRuntime } from "@effect/platform-bun"
 import { SolidPlugin } from "bun-plugin-solid"
 import { Effect, Layer, Logger, LogLevel, pipe } from "effect"
@@ -13,7 +9,7 @@ import { handleHttpServerResponseError } from "./effect/http.ts"
 
 export const ClientBundle = BunBundle.build({
   entrypoints: [
-    fileURLToPath(import.meta.resolve("./client/entry.client.tsx")),
+    fileURLToPath(import.meta.resolve("./client.tsx")),
   ],
   target: "browser",
   conditions: [

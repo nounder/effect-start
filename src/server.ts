@@ -1,6 +1,5 @@
 import { HttpApp, HttpRouter, HttpServerResponse } from "@effect/platform"
 import { Effect } from "effect"
-import App from "./client/App.tsx"
 import { SsrApp } from "./ssr.tsx"
 
 const Router = HttpRouter.empty.pipe(
@@ -19,7 +18,12 @@ const Router = HttpRouter.empty.pipe(
 )
 
 export default Effect.gen(function*() {
-  const routerRes = yield* Router.pipe()
+  const routerRes = yield* Router.pipe(
+    Effect.catchTag("RouteNotFound", e =>
+      HttpServerResponse.empty({
+        status: 404,
+      })),
+  )
 
   if (routerRes.status !== 404) {
     return routerRes
@@ -28,7 +32,7 @@ export default Effect.gen(function*() {
   const ssrRes = yield* SsrApp
 
   if (ssrRes.status !== 404) {
-    return routerRes
+    return ssrRes
   }
 
   return HttpServerResponse.empty({
