@@ -3,40 +3,60 @@ import {
   HttpServerRequest,
   HttpServerResponse,
 } from "@effect/platform"
-import { Effect } from "effect"
+import { Effect, Data } from "effect"
 import { renderToStringAsync } from "solid-js/web"
 import App from "./App.tsx"
 import { createContext, useContext } from "solid-js"
 import { ErrorBoundary, ssr } from "solid-js/web"
+import { RouteNotFound } from "@effect/platform/HttpServerError"
 
 export async function renderRequest(req: Request) {
-  const comp = () => (
-    <ServerRoot url={req.url} resolve={v => v}>
-      <App />
-    </ServerRoot>
-  )
+  try {
+    const comp = () => (
+      <ServerRoot url={req.url} resolve={v => v}>
+        <App />
+      </ServerRoot>
+    )
 
-  const output = await renderToStringAsync(comp, {
-    timeoutMs: 4000,
-  })
-
-  if (output.includes("~*~ 404 Not Found ~*~")) {
-    return new Response(output, {
-      status: 404,
+    const html = await renderToStringAsync(comp, {
+      timeoutMs: 4000,
     })
-  }
 
-  return new Response(output, {
-    headers: {
-      "Content-Type": "text/html",
-    },
-  })
+    return new Response(html, {
+      headers: {
+        "Content-Type": "text/html",
+      },
+    })
+  } catch (err: any) {
+    if (err.cause instanceof Response) {
+      return err.cause
+    }
+
+    throw err
+  }
 }
+
+class SsrError extends Data.TaggedError("SsrError")<{
+  message: string,
+  cause: unknown,
+}> { }
+
 
 export const SsrApp = Effect.gen(function* () {
   const req = yield* HttpServerRequest.HttpServerRequest
   const fetchReq = req.source as Request
-  const output = yield* Effect.tryPromise(() => renderRequest(fetchReq))
+  const output = yield* Effect.tryPromise({
+    try: () => renderRequest(fetchReq),
+    catch: (e) => new SsrError({
+      message: "Failed to render server-side", cause: e
+    })
+  })
+
+  if (output.status === 404) {
+    return yield* Effect.fail(new RouteNotFound({
+      request: req
+    }))
+  }
 
   return HttpServerResponse.raw(output.body, {
     status: output.status,

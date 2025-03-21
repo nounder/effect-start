@@ -7,6 +7,7 @@ import {
   HttpServerRequest,
   HttpServerResponse,
 } from "@effect/platform"
+import { RouteNotFound } from "@effect/platform/HttpServerError"
 import {
   Context,
   Effect,
@@ -27,10 +28,13 @@ class TestHttpApp
   >()
 {}
 
-export const make = <E = never>(
+export const make = <E>(
   httpApp?: HttpApp.Default<E>,
   opts?: {
     baseUrl?: string | null
+    handleRouteNotFound?: (
+      e: RouteNotFound,
+    ) => Effect.Effect<HttpClientResponse.HttpClientResponse> | null
   },
 ): HttpClient.HttpClient.With<
   HttpClientError.HttpClientError | E,
@@ -61,6 +65,15 @@ export const make = <E = never>(
             ),
             Effect.andThen(HttpServerResponse.toWeb),
             Effect.andThen(res => HttpClientResponse.fromWeb(request, res)),
+            opts?.handleRouteNotFound === null
+              ? identity
+              : Effect.catchTag("RouteNotFound", e =>
+                Effect.succeed(HttpClientResponse.fromWeb(
+                  e.request,
+                  new Response("Failed with RouteNotFound", {
+                    status: 404,
+                  }),
+                ))),
           )
         }
 

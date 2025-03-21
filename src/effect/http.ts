@@ -1,7 +1,8 @@
-import { HttpServerResponse } from "@effect/platform"
+import { Error, HttpServerResponse } from "@effect/platform"
+import { RouteNotFound } from "@effect/platform/HttpServerError"
 import { Console, Effect, Logger } from "effect"
 
-export const handleHttpServerResponseError = (e: any) =>
+export const handleHttpServerResponseError = (e: any | RouteNotFound) =>
   Effect.gen(function*() {
     yield* Effect.logError(e)
 
@@ -19,9 +20,13 @@ export const handleHttpServerResponseError = (e: any) =>
       })
       .filter(Boolean)
 
+    const status = e instanceof RouteNotFound ? 404 : 500
+
     return yield* HttpServerResponse.json({
       error: e?.["name"] || null,
       message: e.message,
       stack: stack,
+    }, {
+      status,
     })
   })
