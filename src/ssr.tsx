@@ -69,13 +69,18 @@ export const SsrApp = Effect.gen(function* () {
 const docType = ssr("<!DOCTYPE html>")
 
 const ServerContext = createContext({
+  get url(): string {
+    throw new Error("Incorrect url access from ServerContext")
+  },
   resolve: (url: string) => url as string | undefined,
 })
+
+export const useServer = () => useContext(ServerContext)
 
 function Document(props: {
   children: any
 }) {
-  const server = useContext(ServerContext)
+  const server = useServer()
   const entryScriptUrl = server.resolve(
     import.meta.resolve("./entry-client.tsx"),
   )
@@ -112,14 +117,19 @@ export default function ServerRoot(props: {
   resolve: (url: string) => string | undefined
 }) {
   const ctx = {
+    url: props.url,
     resolve: props.resolve,
   }
 
   return (
     <ErrorBoundary
-      fallback={(error) => (
-        <span>{error?.message || JSON.stringify(error)}</span>
-      )}
+      fallback={(error) => {
+        if (error.cause instanceof Response) {
+          throw error
+        }
+
+        return <span>{error?.message || JSON.stringify(error)}</span>
+      }}
     >
       <ServerContext.Provider value={ctx}>
         {props.children}
