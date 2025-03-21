@@ -19,7 +19,7 @@
   "type": "module",
   "devDependencies": {
     "@babel/preset-typescript": "^7.26.0",
-    "@effect/language-service": "^0.2.0",
+    "@effect/language-service": "^0.4.0",
     "@types/bun": "latest",
     "bun-plugin-solid": "^1.0.0"
   },
