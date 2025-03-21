@@ -8,7 +8,7 @@ const effect = effectFn()
 
 const Client = TestHttpClient.make(ServerApp)
 
-it("yo", () =>
+it("dev yo", () =>
   effect(function*() {
     const res = yield* Client.get("/yo")
 
@@ -16,7 +16,7 @@ it("yo", () =>
     expect(yield* res.text).toEqual("yo")
   }))
 
-it("error", () =>
+it("dev error", () =>
   effect(function*() {
     const res = yield* Client.get("/error")
 
@@ -27,7 +27,7 @@ it("error", () =>
     })
   }))
 
-it("ssr random", () =>
+it("dev random", () =>
   effect(function*() {
     const res = yield* Client.get("/random")
 

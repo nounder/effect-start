@@ -6,7 +6,7 @@ import { useServer } from "./ssr.tsx"
 
 const Routes = [
   {
-    path: "/",
+    path: "/home",
     component: Home,
   },
   {
@@ -16,11 +16,15 @@ const Routes = [
   {
     path: "*404",
     component: () => {
-      throw new Error("Not found", {
-        cause: new Response("Not found", {
-          status: 404
-        })
-      })
+      const server = useServer()
+
+      const msg = "Failed with RouteNotFound"
+
+      server.setResponse(new Response(msg, {
+        status: 404
+      }))
+
+      return msg
     }
   },
 ]

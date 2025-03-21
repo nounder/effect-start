@@ -41,15 +41,15 @@ const SsrAppBundle = BunBundle.load<typeof import("./ssr.tsx")>({
 
 const Client = TestHttpClient.make(SsrAppBundle)
 
-it("root", () =>
+it("ssr root", () =>
   effect(function*() {
-    const res = yield* Client.get("/")
+    const res = yield* Client.get("/home")
 
     expect(res.status).toEqual(200)
     expect(yield* res.text).toInclude(">Random<")
   }))
 
-it("/random", () =>
+it("ssr random", () =>
   effect(function*() {
     const res = yield* Client.get("/random")
 
@@ -57,7 +57,7 @@ it("/random", () =>
     expect(yield* res.text).toInclude("<h1 ")
   }))
 
-it("404", () =>
+it("ssr 404", () =>
   effect(function*() {
     const res = yield* Client.get("/not-found")
 

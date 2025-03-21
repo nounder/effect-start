@@ -12,8 +12,12 @@ import { RouteNotFound } from "@effect/platform/HttpServerError"
 
 export async function renderRequest(req: Request) {
   try {
+    const ctx = {
+      ...ServerContext.defaultValue,
+      url: req.url,
+    }
     const comp = () => (
-      <ServerRoot url={req.url} resolve={v => v}>
+      <ServerRoot url={req.url} resolve={v => v} context={ctx}>
         <App />
       </ServerRoot>
     )
@@ -21,6 +25,10 @@ export async function renderRequest(req: Request) {
     const html = await renderToStringAsync(comp, {
       timeoutMs: 4000,
     })
+
+    if (ctx._response) {
+      return ctx._response
+    }
 
     return new Response(html, {
       headers: {
@@ -69,11 +77,14 @@ export const SsrApp = Effect.gen(function* () {
 const docType = ssr("<!DOCTYPE html>")
 
 const ServerContext = createContext({
-  get url(): string {
-    throw new Error("Incorrect url access from ServerContext")
-  },
+  _response: null as Response | null,
+  url: "/",
   resolve: (url: string) => url as string | undefined,
+  setResponse(res: Response) {
+    this._response = res
+  }
 })
+
 
 export const useServer = () => useContext(ServerContext)
 
@@ -115,8 +126,10 @@ export default function ServerRoot(props: {
   children?: any
   url: string
   resolve: (url: string) => string | undefined
+  context?: typeof ServerContext.defaultValue
 }) {
-  const ctx = {
+  const ctx = props.context ?? {
+    ...ServerContext.defaultValue,
     url: props.url,
     resolve: props.resolve,
   }
