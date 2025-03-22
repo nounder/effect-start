@@ -81,17 +81,26 @@ type LoadOptions = BuildOptions & {
   entrypoints: [string]
 }
 
-export const build = (config: BuildOptions) =>
-  Effect.gen(function*() {
-    const buildOutput: BuildOutput = yield* Effect.tryPromise({
-      try: () => Bun.build(config),
-      catch: (err) => {
-        return new BundleError(err)
-      },
-    })
+export const build = (
+  config: BuildOptions,
+): Effect.Effect<BuildOutput, BundleError, never> & {
+  config: BuildOptions
+} =>
+  Object.assign(
+    Effect.gen(function*() {
+      const buildOutput: BuildOutput = yield* Effect.tryPromise({
+        try: () => Bun.build(config),
+        catch: (err) => {
+          return new BundleError(err)
+        },
+      })
 
-    return buildOutput
-  })
+      return buildOutput
+    }),
+    {
+      config,
+    },
+  )
 
 export const load = <M>(
   config: LoadOptions,
@@ -164,11 +173,11 @@ export const buildRouter = (
     // TODO: resolve common directory across all entrypoints
     const rootDir = NodePath.dirname(opts.entrypoints[0])
 
-    const entrypointMap: Record<string, BuildArtifact> = pipe(
+    const entrypointMap = pipe(
       opts.entrypoints,
-      Array.map((v) => v.replace(rootDir, "")),
+      Array.map((v) => v.replace(rootDir + "/", "")),
       Array.zip(buildOutput.outputs),
-      Object.fromEntries,
+      Record.fromEntries,
     )
 
     const router = Record.reduce(
@@ -178,9 +187,14 @@ export const buildRouter = (
         pipe(
           a,
           HttpRouter.get(
-            `/${k}`,
-            HttpServerResponse.raw(v.stream(), {
-              contentType: v.type,
+            `/${v.path.slice(2)}`,
+            Effect.sync(() => {
+              return HttpServerResponse.raw(v.stream(), {
+                headers: {
+                  "content-type": v.type,
+                  "content-length": v.size.toString(),
+                },
+              })
             }),
           ),
         ),

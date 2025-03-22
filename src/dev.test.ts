@@ -1,6 +1,8 @@
 import { HttpClient } from "@effect/platform"
 import { expect, it } from "bun:test"
-import { ServerApp } from "./dev.ts"
+import { Chunk } from "effect"
+import * as NPath from "node:path"
+import { ClientBundle, ServerApp } from "./dev.ts"
 import * as TestHttpClient from "./effect/TestHttpClient.ts"
 import { effectFn } from "./test.ts"
 
@@ -33,4 +35,13 @@ it("dev random", () =>
 
     expect(res.status).toEqual(200)
     expect(yield* res.text).toInclude(">Random<")
+  }))
+
+it("loads client bundle", () =>
+  effect(function*() {
+    const build = yield* ClientBundle
+    const [buildArtifact] = build.outputs
+    const res = yield* Client.get("/.bundle/" + buildArtifact.path.slice(2))
+
+    console.log(res)
   }))

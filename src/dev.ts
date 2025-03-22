@@ -1,4 +1,10 @@
-import { HttpServer } from "@effect/platform"
+import {
+  HttpApp,
+  HttpClientResponse,
+  HttpRouter,
+  HttpServer,
+  HttpServerResponse,
+} from "@effect/platform"
 import { BunHttpServer, BunRuntime } from "@effect/platform-bun"
 import { SolidPlugin } from "bun-plugin-solid"
 import { Effect, Layer, Logger, LogLevel, pipe } from "effect"
@@ -56,10 +62,38 @@ export const ServerApp = BunBundle.loadWatch<typeof import("./server.ts")>({
   Effect.catchAll(handleHttpServerResponseError),
 )
 
+const ClientBundleHttpApp = HttpRouter.empty.pipe(
+  HttpRouter.mountApp(
+    "/.bundle",
+    BunBundle.buildRouter(ClientBundle.config).pipe(Effect.flatten),
+  ),
+)
+
+const App = Effect.gen(function*() {
+  const serverRes = yield* ServerApp
+
+  if (serverRes.status === 404) {
+    return serverRes
+  }
+
+  const bundleRes = yield* ClientBundleHttpApp
+
+  if (bundleRes.status === 404) {
+    return bundleRes
+  }
+
+  return HttpServerResponse.text(
+    "Not Found",
+    {
+      status: 404,
+    },
+  )
+})
+
 if (import.meta.main) {
   Effect.gen(function*() {
     yield* pipe(
-      Layer.scopedDiscard(HttpServer.serveEffect(ServerApp)),
+      Layer.scopedDiscard(HttpServer.serveEffect(App)),
       HttpServer.withLogAddress,
       Layer.launch,
     )
