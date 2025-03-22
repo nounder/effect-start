@@ -43,7 +43,7 @@ const Client = TestHttpClient.make(SsrAppBundle)
 
 it("ssr root", () =>
   effect(function*() {
-    const res = yield* Client.get("/home")
+    const res = yield* Client.get("/")
 
     expect(res.status).toEqual(200)
     expect(yield* res.text).toInclude(">Random<")
@@ -60,8 +60,6 @@ it("ssr random", () =>
 it("ssr 404", () =>
   effect(function*() {
     const res = yield* Client.get("/not-found")
-
-    console.log(yield* res.text)
 
     expect(res.status).toEqual(404)
   }))

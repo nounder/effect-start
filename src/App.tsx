@@ -6,7 +6,7 @@ import { useServer } from "./ssr.tsx"
 
 const Routes = [
   {
-    path: "/home",
+    path: "/",
     component: Home,
   },
   {
@@ -29,9 +29,9 @@ const Routes = [
   },
 ]
 
-export default () => {
-  const server = useServer()
-
+export default (props: {
+  serverUrl?: string
+}) => {
   onMount(() => {
     const eventSource = new EventSource("/.bundle/events")
 
@@ -55,7 +55,7 @@ export default () => {
   })
 
   return (
-    <Router url={server.url}>
+    <Router url={props.serverUrl}>
       {Routes}
     </Router>
   )

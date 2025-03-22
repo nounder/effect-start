@@ -18,7 +18,7 @@ export async function renderRequest(req: Request) {
     }
     const comp = () => (
       <ServerRoot url={req.url} resolve={v => v} context={ctx}>
-        <App />
+        <App serverUrl={req.url} />
       </ServerRoot>
     )
 
@@ -56,7 +56,8 @@ export const SsrApp = Effect.gen(function* () {
   const output = yield* Effect.tryPromise({
     try: () => renderRequest(fetchReq),
     catch: (e) => new SsrError({
-      message: "Failed to render server-side", cause: e
+      message: "Failed to render server-side",
+      cause: e
     })
   })
 
@@ -141,7 +142,9 @@ export default function ServerRoot(props: {
           throw error
         }
 
-        return <span>{error?.message || JSON.stringify(error)}</span>
+        return <code>
+          <pre>{error?.message || JSON.stringify(error, undefined, 2)}</pre>
+        </code>
       }}
     >
       <ServerContext.Provider value={ctx}>
