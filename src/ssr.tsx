@@ -26,6 +26,15 @@ export async function renderRequest(req: Request) {
       timeoutMs: 4000,
     })
 
+    if (html.includes("SSR_NOT_FOUND")) {
+      return new Response(html, {
+        status: 404,
+        headers: {
+          "Content-Type": "text/html",
+        },
+      })
+    }
+
     if (ctx._response) {
       return ctx._response
     }

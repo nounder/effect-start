@@ -15,7 +15,7 @@ const Routes = [
   {
     path: "*404",
     component: () => {
-      const msg = "Failed with RouteNotFound"
+      const msg = "<!-- SSR_NOT_FOUND -->"
 
       return msg
     }

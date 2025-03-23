@@ -68,7 +68,12 @@ export const App = Effect.gen(function*() {
     return serverRes
   }
 
-  const bundleRes = yield* ClientBundleHttpApp
+  const bundleRes = yield* ClientBundleHttpApp.pipe(
+    Effect.catchTag("RouteNotFound", e =>
+      HttpServerResponse.empty({
+        status: 404,
+      })),
+  )
 
   if (bundleRes.status !== 404) {
     return bundleRes

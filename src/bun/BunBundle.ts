@@ -1,6 +1,7 @@
 import {
   FileSystem,
   HttpApp,
+  HttpClientResponse,
   HttpRouter,
   HttpServerRequest,
   HttpServerResponse,
@@ -180,25 +181,33 @@ export const buildRouter = (
       Record.fromEntries,
     )
 
-    const router = Record.reduce(
-      entrypointMap,
-      HttpRouter.empty,
-      (a, v, k) =>
-        pipe(
-          a,
-          HttpRouter.get(
-            // paths are in relative format, ie. './file.js'
-            `/${v.path.slice(2)}`,
-            Effect.sync(() => {
-              return HttpServerResponse.raw(v.stream(), {
-                headers: {
-                  "content-type": v.type,
-                  "content-length": v.size.toString(),
-                },
-              })
-            }),
+    const router = pipe(
+      Record.reduce(
+        entrypointMap,
+        HttpRouter.empty,
+        (a, v, k) =>
+          pipe(
+            a,
+            HttpRouter.get(
+              // paths are in relative format, ie. './file.js'
+              `/${v.path.slice(2)}`,
+              Effect.sync(() => {
+                return HttpServerResponse.raw(v.stream(), {
+                  headers: {
+                    "content-type": v.type,
+                    "content-length": v.size.toString(),
+                  },
+                })
+              }),
+            ),
           ),
-        ),
+      ),
+      HttpRouter.get(
+        "/manifest.json",
+        HttpServerResponse.unsafeJson({
+          imports: Record.mapEntries(entrypointMap, (v, k) => [k, v.path]),
+        }),
+      ),
     )
 
     return router
