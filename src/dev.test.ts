@@ -1,14 +1,12 @@
-import { HttpClient } from "@effect/platform"
 import { expect, it } from "bun:test"
-import { Chunk } from "effect"
-import * as NPath from "node:path"
-import { ClientBundle, ServerApp } from "./dev.ts"
+import { Effect } from "effect"
+import { App, ClientBundle, ServerApp } from "./dev.ts"
 import * as TestHttpClient from "./effect/TestHttpClient.ts"
 import { effectFn } from "./test.ts"
 
 const effect = effectFn()
 
-const Client = TestHttpClient.make(ServerApp)
+const Client = TestHttpClient.make(App)
 
 it("dev yo", () =>
   effect(function*() {
@@ -43,5 +41,6 @@ it("loads client bundle", () =>
     const [buildArtifact] = build.outputs
     const res = yield* Client.get("/.bundle/" + buildArtifact.path.slice(2))
 
-    console.log(res)
+    expect(res.status)
+      .toEqual(200)
   }))

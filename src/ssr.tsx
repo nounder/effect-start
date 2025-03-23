@@ -4,8 +4,8 @@ import {
   HttpServerResponse,
 } from "@effect/platform"
 import { Effect, Data } from "effect"
-import { renderToStringAsync } from "solid-js/web"
-import App from "./App.tsx"
+import { Hydration, HydrationScript, NoHydration, renderToStringAsync } from "solid-js/web"
+import { App } from "./App.tsx"
 import { createContext, useContext } from "solid-js"
 import { ErrorBoundary, ssr } from "solid-js/web"
 import { RouteNotFound } from "@effect/platform/HttpServerError"
@@ -98,7 +98,7 @@ function Document(props: {
   )
 
   return (
-    <>
+    <NoHydration>
       {docType as unknown as any}
 
       <html lang="en">
@@ -114,12 +114,15 @@ function Document(props: {
         </head>
 
         <body>
-          {props.children}
+          <Hydration>
+            {props.children}
+          </Hydration>
         </body>
 
+        <HydrationScript />
         <script type="module" src={entryScriptUrl}></script>
       </html>
-    </>
+    </NoHydration>
   )
 }
 

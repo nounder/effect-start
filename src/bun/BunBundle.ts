@@ -187,6 +187,7 @@ export const buildRouter = (
         pipe(
           a,
           HttpRouter.get(
+            // paths are in relative format, ie. './file.js'
             `/${v.path.slice(2)}`,
             Effect.sync(() => {
               return HttpServerResponse.raw(v.stream(), {
