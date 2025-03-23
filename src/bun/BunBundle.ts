@@ -10,6 +10,7 @@ import type { BuildArtifact, BuildConfig, BuildOutput } from "bun"
 import {
   Array,
   Effect,
+  Iterable,
   pipe,
   Record,
   Ref,
@@ -20,6 +21,16 @@ import * as NodeFS from "node:fs"
 import * as NodeFSP from "node:fs/promises"
 import * as NodePath from "node:path"
 import * as process from "node:process"
+
+type BunBundleManifest = {
+  artifacts: Record<string, {
+    path: string
+    hash: string | null
+    size: number
+    type: string
+    imports?: any[]
+  }>
+}
 
 class BundleError extends Error {
   readonly _tag = "BundleError"
@@ -56,6 +67,41 @@ function findNodeModules(startDir = process.cwd()) {
   }
 
   return null
+}
+
+function getBaseDir(dirs: string[]) {
+  const segmentsList = dirs.map(path => path.split("/").filter(Boolean))
+
+  return segmentsList[0]
+    .filter((segment, i) => segmentsList.every(segs => segs[i] === segment))
+    .reduce((path, seg) => `${path}/${seg}`, "") ?? ""
+}
+
+function generateManifest(
+  options: BuildOptions,
+  output: BuildOutput,
+): BunBundleManifest {
+  const commonPathPrefix = getBaseDir(
+    options.entrypoints.map(v => NodePath.dirname(v)),
+  ) + "/"
+  const mapping = pipe(
+    Iterable.zip(options.entrypoints, output.outputs),
+    Record.fromEntries,
+  )
+
+  return {
+    artifacts: Record.mapEntries(mapping, (v, k) => [
+      k.replace(commonPathPrefix, ""),
+      {
+        // we don't want to use relative path
+        path: v.path.slice(2),
+        hash: v.hash,
+        kind: v.kind,
+        size: v.size,
+        type: v.type,
+      },
+    ]),
+  }
 }
 
 async function importBlob<M = unknown>(artifact: Blob): Promise<M> {
@@ -181,6 +227,8 @@ export const buildRouter = (
       Record.fromEntries,
     )
 
+    const manifest = generateManifest(opts, buildOutput)
+
     const router = pipe(
       Record.reduce(
         entrypointMap,
@@ -204,9 +252,7 @@ export const buildRouter = (
       ),
       HttpRouter.get(
         "/manifest.json",
-        HttpServerResponse.unsafeJson({
-          imports: Record.mapEntries(entrypointMap, (v, k) => [k, v.path]),
-        }),
+        HttpServerResponse.unsafeJson(manifest),
       ),
     )
 
