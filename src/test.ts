@@ -1,4 +1,5 @@
-import { Effect, identity, Layer, pipe } from "effect"
+import { Array, Effect, Exit, identity, Layer, pipe } from "effect"
+import type { FiberFailure } from "effect/Runtime"
 import type { YieldWrap } from "effect/Utils"
 
 /**
@@ -16,4 +17,22 @@ export const effectFn =
       layer ? Effect.provide(layer) : identity,
       // @ts-expect-error will have to figure out how to clear deps
       Effect.runPromise,
+      // When effect fails, instead of throwing FiberFailure,
+      // throw a plain Error with the strack trace and hides
+      // effect internals.
+      // Otherwise, at least on Bun, the strack trace is repeated,
+      // with some junks in between taking half of the screen.
+      v =>
+        v.catch(err => {
+          const newErr = new Error(err.message)
+          const stack: string = err.stack ?? ""
+
+          newErr.stack = pipe(
+            stack.split("\n"),
+            Array.takeWhile(s => !/\(.*\/node_modules\//.test(s)),
+            Array.join("\n"),
+          )
+
+          throw newErr
+        }),
     )
