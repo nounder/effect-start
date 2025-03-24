@@ -1,6 +1,14 @@
-import { Array, Effect, Exit, identity, Layer, pipe } from "effect"
+import { Array, Effect, Exit, identity, Layer, Logger, pipe } from "effect"
 import type { FiberFailure } from "effect/Runtime"
 import type { YieldWrap } from "effect/Utils"
+
+/**
+ * Excludes a stack trace line that comes from node_modules.
+ * Direct children that starts with a dot are excluded because
+ * some tools, like effect-bundler, use it to generate temporary
+ * files that are then loaded into a runtime.
+ */
+const ExternalStackTraceLineRegexp = /\(.*\/node_modules\/[^\.]/
 
 /**
  * Creates a scoped Effects and runs is asynchronously.
@@ -14,6 +22,7 @@ export const effectFn =
     pipe(
       Effect.gen(f),
       Effect.scoped,
+      Effect.provide(Logger.pretty),
       layer ? Effect.provide(layer) : identity,
       // @ts-expect-error will have to figure out how to clear deps
       Effect.runPromise,
@@ -29,7 +38,7 @@ export const effectFn =
 
           newErr.stack = pipe(
             stack.split("\n"),
-            Array.takeWhile(s => !/\(.*\/node_modules\//.test(s)),
+            Array.takeWhile(s => !ExternalStackTraceLineRegexp.test(s)),
             Array.join("\n"),
           )
 
