@@ -9,7 +9,8 @@ import { handleHttpServerResponseError } from "./effect/http.ts"
 
 export const ClientBundle = BunBundle.build({
   entrypoints: [
-    fileURLToPath(import.meta.resolve("./client.tsx")),
+    await import("./client.tsx", { with: { type: "file" } })
+      .then(v => v["default"]),
   ],
   target: "browser",
   conditions: [
@@ -27,7 +28,8 @@ export const ClientBundle = BunBundle.build({
 
 export const ServerApp = BunBundle.loadWatch<typeof import("./server.ts")>({
   entrypoints: [
-    fileURLToPath(import.meta.resolve("./server.ts")),
+    await import("./server.ts", { with: { type: "file" } })
+      .then(v => v["default"] as unknown as string),
   ],
   target: "bun",
   conditions: [
