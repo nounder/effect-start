@@ -1,30 +1,34 @@
 import { FileSystem, HttpApp, HttpServerResponse } from "@effect/platform"
 import type { PlatformError } from "@effect/platform/Error"
-import { Array, Effect, pipe, Stream } from "effect"
+import { Array, Data, Effect, pipe, Stream } from "effect"
 import { constVoid } from "effect/Function"
 
 type Config = {
-  readonly path: string
+  path: string
+  readConcurrency?: number
+  filenamePattern?: RegExp
+  css?: string
 }
 
-class TailwindError {
-  readonly _tag = "TailwindError"
-
-  constructor(
-    readonly message: string,
-    readonly config: Config,
-  ) {}
-}
+class TailwindError extends Data.TaggedError("TailwindError")<{
+  message: string
+  config: Config
+}> {}
 
 export const extractCandidates = (config: Config) =>
   Effect.gen(function*() {
+    const {
+      readConcurrency = 32,
+      filenamePattern = /\.(tsx|jsx|html)$/,
+    } = config
+
     const fs = yield* FileSystem.FileSystem
     const candidateSet = pipe(
       fs.readDirectory(config.path, { recursive: true }),
-      Effect.andThen(Array.filter((f) => /\.tsx$/.test(f))),
+      Effect.andThen(Array.filter((f) => filenamePattern.test(f))),
       Stream.fromIterableEffect,
       Stream.mapEffect((f) => fs.readFileString(f), {
-        concurrency: 20,
+        concurrency: readConcurrency,
       }),
       Stream.map(extractClassNames),
       Stream.runFold(new Set<string>(), (a, v) => {
@@ -38,8 +42,10 @@ export const extractCandidates = (config: Config) =>
 
 export const renderCss = (config: Config) =>
   Effect.gen(function*() {
+    const {
+      css: inputCss = `@import "tailwindcss"`,
+    } = config
     const candidateSet = yield* extractCandidates(config)
-    const inputCss = [`@import "tailwindcss";`].join("\n")
 
     const twCompiler = yield* Effect.tryPromise({
       try: () =>
@@ -49,7 +55,11 @@ export const renderCss = (config: Config) =>
             onDependency: constVoid,
           })
         ),
-      catch: (e) => new TailwindError(String(e), config),
+      catch: (e) =>
+        new TailwindError({
+          message: String(e),
+          config,
+        }),
     })
 
     const outputCss = twCompiler.build(Array.fromIterable(candidateSet))
