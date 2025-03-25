@@ -1,5 +1,6 @@
 import {
   Headers,
+  HttpApp,
   HttpServerRequest,
   HttpServerResponse,
 } from "@effect/platform"
@@ -10,14 +11,22 @@ import { createContext, useContext } from "solid-js"
 import { ErrorBoundary, ssr } from "solid-js/web"
 import { RouteNotFound } from "@effect/platform/HttpServerError"
 
-export async function renderRequest(req: Request) {
+export async function renderRequest(
+  req: Request,
+  resolve = (url: string) => url
+) {
   try {
     const ctx = {
       ...ServerContext.defaultValue,
+
       url: req.url,
+      resolve,
     }
+
     const comp = () => (
-      <ServerRoot url={req.url} resolve={v => v} context={ctx}>
+      <ServerRoot
+        context={ctx}
+      >
         <App serverUrl={req.url} />
       </ServerRoot>
     )
@@ -59,7 +68,7 @@ class SsrError extends Data.TaggedError("SsrError")<{
 }> { }
 
 
-export const SsrApp = Effect.gen(function* () {
+export const SsrApp: HttpApp.Default<SsrError> = Effect.gen(function* () {
   const req = yield* HttpServerRequest.HttpServerRequest
   const fetchReq = req.source as Request
   const output = yield* Effect.tryPromise({
@@ -70,13 +79,7 @@ export const SsrApp = Effect.gen(function* () {
     })
   })
 
-  if (output.status === 404) {
-    return yield* Effect.fail(new RouteNotFound({
-      request: req
-    }))
-  }
-
-  return HttpServerResponse.raw(output.body, {
+  return yield* HttpServerResponse.raw(output.body, {
     status: output.status,
     statusText: output.statusText,
     headers: Headers.fromInput(output.headers as any),
@@ -137,16 +140,8 @@ function Document(props: {
 
 export default function ServerRoot(props: {
   children?: any
-  url: string
-  resolve: (url: string) => string | undefined
   context?: typeof ServerContext.defaultValue
 }) {
-  const ctx = props.context ?? {
-    ...ServerContext.defaultValue,
-    url: props.url,
-    resolve: props.resolve,
-  }
-
   return (
     <ErrorBoundary
       fallback={(error) => {
@@ -159,7 +154,7 @@ export default function ServerRoot(props: {
         </code>
       }}
     >
-      <ServerContext.Provider value={ctx}>
+      <ServerContext.Provider value={props.context ?? ServerContext.defaultValue}>
         {props.children}
       </ServerContext.Provider>
     </ErrorBoundary>

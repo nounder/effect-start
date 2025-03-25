@@ -1,14 +1,9 @@
-import {
-  HttpApp,
-  HttpRouter,
-  HttpServerRequest,
-  HttpServerResponse,
-} from "@effect/platform"
+import { HttpRouter, HttpServerResponse } from "@effect/platform"
 import { Effect } from "effect"
 import { handleHttpServerResponseError } from "./effect/http.ts"
 import { SsrApp } from "./ssr.tsx"
 
-const Router = HttpRouter.empty.pipe(
+const ApiApp = HttpRouter.empty.pipe(
   HttpRouter.get(
     "/yo",
     HttpServerResponse.text("yo"),
@@ -21,6 +16,7 @@ const Router = HttpRouter.empty.pipe(
       return HttpServerResponse.text("this will never be reached")
     }),
   ),
+  HttpRouter.catchAllCause(handleHttpServerResponseError),
   Effect.catchTag(
     "RouteNotFound",
     e =>
@@ -30,22 +26,4 @@ const Router = HttpRouter.empty.pipe(
   ),
 )
 
-export default Effect.gen(function*() {
-  const routerRes = yield* Router
-
-  if (routerRes.status !== 404) {
-    return routerRes
-  }
-
-  const ssrRes = yield* SsrApp
-
-  if (ssrRes.status !== 404) {
-    return ssrRes
-  }
-
-  return HttpServerResponse.empty({
-    status: 404,
-  })
-}).pipe(
-  Effect.catchAllCause(handleHttpServerResponseError),
-)
+export { ApiApp, SsrApp }

@@ -25,7 +25,7 @@ export const ClientBundle = BunBundle.build({
   ],
 })
 
-export const ServerApp = BunBundle.loadWatch<typeof import("./server.ts")>({
+export const ServerBundle = BunBundle.loadWatch<typeof import("./server.ts")>({
   entrypoints: [
     await import("./server.ts", { with: { type: "file" } })
       .then(v => v["default"] as unknown as string),
@@ -53,7 +53,6 @@ export const ServerApp = BunBundle.loadWatch<typeof import("./server.ts")>({
   Effect.cached,
   Effect.flatten,
   Effect.andThen((v) => v.ref),
-  Effect.andThen((v) => v.default),
 )
 
 const ClientBundleHttpApp = pipe(
@@ -62,10 +61,18 @@ const ClientBundleHttpApp = pipe(
 )
 
 export const App = Effect.gen(function*() {
-  const serverRes = yield* ServerApp
+  const { ApiApp, SsrApp } = yield* ServerBundle
 
-  if (serverRes.status !== 404) {
-    return serverRes
+  const apiRes = yield* ApiApp
+
+  if (apiRes.status !== 404) {
+    return apiRes
+  }
+
+  const ssrRes = yield* SsrApp
+
+  if (ssrRes.status !== 404) {
+    return ssrRes
   }
 
   const bundleRes = yield* ClientBundleHttpApp.pipe(
