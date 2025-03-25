@@ -11,7 +11,7 @@ it("build router", () =>
   effect(function*() {
     const router = yield* BunBundle.buildRouter({
       entrypoints: [
-        fileURLToPath(import.meta.resolve("./BunBundle.test.ts")),
+        fileURLToPath(import.meta.url),
       ],
       naming: "[name]-[hash].[ext]",
       target: "bun",
@@ -20,7 +20,8 @@ it("build router", () =>
     const client = TestHttpClient.make(router)
 
     expect(Chunk.size(router.routes))
-      .toEqual(1)
+      // entrypoint + manifest
+      .toEqual(2)
 
     const route = Chunk.unsafeGet(router.routes, 0)
 

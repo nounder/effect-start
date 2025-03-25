@@ -1,5 +1,11 @@
-import { HttpApp, HttpRouter, HttpServerResponse } from "@effect/platform"
+import {
+  HttpApp,
+  HttpRouter,
+  HttpServerRequest,
+  HttpServerResponse,
+} from "@effect/platform"
 import { Effect } from "effect"
+import { handleHttpServerResponseError } from "./effect/http.ts"
 import { SsrApp } from "./ssr.tsx"
 
 const Router = HttpRouter.empty.pipe(
@@ -10,20 +16,22 @@ const Router = HttpRouter.empty.pipe(
   HttpRouter.get(
     "/error",
     Effect.gen(function*() {
-      yield* Effect.fail(new Error("custom error"))
+      throw new Error("custom error")
 
       return HttpServerResponse.text("this will never be reached")
     }),
   ),
+  Effect.catchTag(
+    "RouteNotFound",
+    e =>
+      HttpServerResponse.empty({
+        status: 404,
+      }),
+  ),
 )
 
 export default Effect.gen(function*() {
-  const routerRes = yield* Router.pipe(
-    Effect.catchTag("RouteNotFound", e =>
-      HttpServerResponse.empty({
-        status: 404,
-      })),
-  )
+  const routerRes = yield* Router
 
   if (routerRes.status !== 404) {
     return routerRes
@@ -38,4 +46,6 @@ export default Effect.gen(function*() {
   return HttpServerResponse.empty({
     status: 404,
   })
-})
+}).pipe(
+  Effect.catchAllCause(handleHttpServerResponseError),
+)

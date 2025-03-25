@@ -1,14 +1,17 @@
 import {
   FileSystem,
   HttpApp,
+  HttpBody,
   HttpClientResponse,
   HttpRouter,
   HttpServerRequest,
   HttpServerResponse,
 } from "@effect/platform"
+import { HttpBodyError } from "@effect/platform/HttpBody"
 import type { BuildArtifact, BuildConfig, BuildOutput } from "bun"
 import {
   Array,
+  Console,
   Effect,
   Iterable,
   pipe,
@@ -17,6 +20,7 @@ import {
   Stream,
   SubscriptionRef,
 } from "effect"
+import { chunksOf } from "effect/Iterable"
 import * as NodeFS from "node:fs"
 import * as NodeFSP from "node:fs/promises"
 import * as NodePath from "node:path"
@@ -31,6 +35,12 @@ type BunBundleManifest = {
     imports?: any[]
   }>
 }
+
+type BunBundleContext =
+  & BunBundleManifest
+  & {
+    resolve: (url: string) => string
+  }
 
 class BundleError extends Error {
   readonly _tag = "BundleError"
@@ -50,83 +60,17 @@ class BundleError extends Error {
   }
 }
 
-const SOURCE_FILENAME = /.*\.(tsx?|jsx?)$/
-
-function findNodeModules(startDir = process.cwd()) {
-  let currentDir = NodePath.resolve(startDir)
-
-  while (currentDir !== NodePath.parse(currentDir).root) {
-    const nodeModulesPath = NodePath.join(currentDir, "node_modules")
-    if (
-      NodeFS.statSync(nodeModulesPath).isDirectory()
-    ) {
-      return nodeModulesPath
-    }
-
-    currentDir = NodePath.dirname(currentDir)
-  }
-
-  return null
-}
-
-function getBaseDir(dirs: string[]) {
-  const segmentsList = dirs.map(path => path.split("/").filter(Boolean))
-
-  return segmentsList[0]
-    .filter((segment, i) => segmentsList.every(segs => segs[i] === segment))
-    .reduce((path, seg) => `${path}/${seg}`, "") ?? ""
-}
-
-function generateManifest(
-  options: BuildOptions,
-  output: BuildOutput,
-): BunBundleManifest {
-  const commonPathPrefix = getBaseDir(
-    options.entrypoints.map(v => NodePath.dirname(v)),
-  ) + "/"
-  const mapping = pipe(
-    Iterable.zip(options.entrypoints, output.outputs),
-    Record.fromEntries,
-  )
-
-  return {
-    artifacts: Record.mapEntries(mapping, (v, k) => [
-      k.replace(commonPathPrefix, ""),
-      {
-        // we don't want to use relative path
-        path: v.path.slice(2),
-        hash: v.hash,
-        kind: v.kind,
-        size: v.size,
-        type: v.type,
-      },
-    ]),
-  }
-}
-
-async function importBlob<M = unknown>(artifact: Blob): Promise<M> {
-  const contents = await artifact.arrayBuffer()
-  const hash = Bun.hash(contents)
-  const basePath = findNodeModules() + "/.tmp"
-  const path = basePath + "/effect-bundler-"
-    + hash.toString(16) + ".js"
-
-  const file = Bun.file(path)
-  await file.write(contents)
-
-  const bundleModule = await import(path)
-
-  await file.delete()
-
-  return bundleModule
-}
+// TODO: parametrize source filename pattern
+const SOURCE_FILENAME = /\.(tsx?|jsx?)$/
 
 type BuildOptions = Omit<BuildConfig, "outdir">
 
-type LoadOptions = BuildOptions & {
-  // only one entrypoint is allowed for loading
-  entrypoints: [string]
-}
+type LoadOptions =
+  & BuildOptions
+  & {
+    // only one entrypoint is allowed for loading
+    entrypoints: [string]
+  }
 
 export const build = (
   config: BuildOptions,
@@ -149,6 +93,9 @@ export const build = (
     },
   )
 
+/**
+ * Builds, loads, and return a module as an Effect.
+ */
 export const load = <M>(
   config: LoadOptions,
 ): Effect.Effect<M, BundleError, never> =>
@@ -156,12 +103,16 @@ export const load = <M>(
     build(config),
     Effect.andThen((buildOutput) =>
       Effect.tryPromise({
-        try: () => importBlob<M>(buildOutput.outputs[0]),
+        try: () => importJsBlob<M>(buildOutput.outputs[0]),
         catch: (err) => new BundleError(err),
       })
     ),
   )
 
+/**
+ * Same as `load` but ensures that most recent module is always returned.
+ * Useful for development.
+ */
 export const loadWatch = <M>(config: LoadOptions) =>
   Effect.gen(function*() {
     const [entrypoint] = config.entrypoints
@@ -211,27 +162,21 @@ export const loadWatch = <M>(config: LoadOptions) =>
     }
   })
 
+/**
+ * Builds a static HttpRouter from a build.
+ * Useful for serving artifacts from client bundle.
+ */
 export const buildRouter = (
   opts: BuildConfig,
 ): Effect.Effect<HttpRouter.HttpRouter, BundleError, never> =>
   Effect.gen(function*() {
     const buildOutput = yield* build(opts)
-
-    // TODO: resolve common directory across all entrypoints
-    const rootDir = NodePath.dirname(opts.entrypoints[0])
-
-    const entrypointMap = pipe(
-      opts.entrypoints,
-      Array.map((v) => v.replace(rootDir + "/", "")),
-      Array.zip(buildOutput.outputs),
-      Record.fromEntries,
-    )
-
+    const mapping = mapBuildEntrypoints(opts, buildOutput)
     const manifest = generateManifest(opts, buildOutput)
 
     const router = pipe(
       Record.reduce(
-        entrypointMap,
+        mapping,
         HttpRouter.empty,
         (a, v, k) =>
           pipe(
@@ -239,14 +184,20 @@ export const buildRouter = (
             HttpRouter.get(
               // paths are in relative format, ie. './file.js'
               `/${v.path.slice(2)}`,
-              Effect.sync(() => {
-                return HttpServerResponse.raw(v.stream(), {
-                  headers: {
-                    "content-type": v.type,
-                    "content-length": v.size.toString(),
-                  },
-                })
-              }),
+              // Cannot use HttpServerResponse.raw because of a bug. [2025-03-24]
+              // PR: https://github.com/Effect-TS/effect/pull/4642
+              pipe(
+                Effect.promise(() => v.arrayBuffer()),
+                Effect.andThen(bytes => {
+                  return HttpServerResponse.uint8Array(
+                    new Uint8Array(bytes),
+                    {
+                      status: 200,
+                      contentType: v.type,
+                    },
+                  )
+                }),
+              ),
             ),
           ),
       ),
@@ -258,3 +209,101 @@ export const buildRouter = (
 
     return router
   })
+
+function findNodeModules(startDir = process.cwd()) {
+  let currentDir = NodePath.resolve(startDir)
+
+  while (currentDir !== NodePath.parse(currentDir).root) {
+    const nodeModulesPath = NodePath.join(currentDir, "node_modules")
+    if (
+      NodeFS.statSync(nodeModulesPath).isDirectory()
+    ) {
+      return nodeModulesPath
+    }
+
+    currentDir = NodePath.dirname(currentDir)
+  }
+
+  return null
+}
+
+/**
+ * Finds common path prefix across provided paths.
+ */
+function getBaseDir(paths: string[]) {
+  const segmentsList = paths.map(path => path.split("/").filter(Boolean))
+
+  return segmentsList[0]
+    .filter((segment, i) => segmentsList.every(segs => segs[i] === segment))
+    .reduce((path, seg) => `${path}/${seg}`, "") ?? ""
+}
+
+/**
+ * Maps entrypoints to their respective build artifacts.
+ * Entrypoint key is trimmed to remove common path prefix.
+ */
+function mapBuildEntrypoints(
+  options: BuildOptions,
+  output: BuildOutput,
+) {
+  const commonPathPrefix = getBaseDir(
+    options.entrypoints.map(v => NodePath.dirname(v)),
+  ) + "/"
+
+  return pipe(
+    Iterable.zip(options.entrypoints, output.outputs),
+    Iterable.map(([entrypoint, artifact]) =>
+      [
+        entrypoint.replace(commonPathPrefix, ""),
+        artifact,
+      ] as const
+    ),
+    Record.fromEntries,
+  )
+}
+
+/**
+ * Generate manifest from a build.
+ * Useful for SSR and providing source->artifact path mapping.
+ */
+function generateManifest(
+  options: BuildOptions,
+  output: BuildOutput,
+): BunBundleManifest {
+  const mapping = mapBuildEntrypoints(options, output)
+
+  return {
+    artifacts: Record.mapEntries(mapping, (v, k) => [
+      k,
+      {
+        // strip './' prefix
+        path: v.path.slice(2),
+        hash: v.hash,
+        kind: v.kind,
+        size: v.size,
+        type: v.type,
+      },
+    ]),
+  }
+}
+
+/**
+ * Imports a blob as a module.
+ * Useful for loading code from build artifacts.
+ */
+async function importJsBlob<M = unknown>(blob: Blob): Promise<M> {
+  const contents = await blob.arrayBuffer()
+  const hash = Bun.hash(contents)
+  const basePath = findNodeModules() + "/.tmp"
+  const path = basePath + "/effect-bundler-"
+    + hash.toString(16) + ".js"
+
+  const file = Bun.file(path)
+  await file.write(contents)
+
+  const bundleModule = await import(path)
+
+  await file.delete()
+
+  return bundleModule
+}

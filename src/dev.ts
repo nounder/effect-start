@@ -2,7 +2,6 @@ import { HttpRouter, HttpServer, HttpServerResponse } from "@effect/platform"
 import { BunHttpServer, BunRuntime } from "@effect/platform-bun"
 import { SolidPlugin } from "bun-plugin-solid"
 import { Effect, Layer, Logger, LogLevel, pipe } from "effect"
-import { fileURLToPath } from "node:url"
 import packageJson from "../package.json" with { type: "json" }
 import * as BunBundle from "./bun/BunBundle.ts"
 import { handleHttpServerResponseError } from "./effect/http.ts"
@@ -55,7 +54,6 @@ export const ServerApp = BunBundle.loadWatch<typeof import("./server.ts")>({
   Effect.flatten,
   Effect.andThen((v) => v.ref),
   Effect.andThen((v) => v.default),
-  Effect.catchAll(handleHttpServerResponseError),
 )
 
 const ClientBundleHttpApp = pipe(

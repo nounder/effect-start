@@ -1,32 +1,87 @@
 import { Error, HttpServerResponse } from "@effect/platform"
 import { RouteNotFound } from "@effect/platform/HttpServerError"
-import { Console, Effect, Logger } from "effect"
+import {
+  Cause,
+  Config,
+  Console,
+  Data,
+  Effect,
+  HashMap,
+  Logger,
+  Match,
+  pipe,
+  Predicate,
+} from "effect"
+import { TaggedError } from "effect/Data"
 
-export const handleHttpServerResponseError = (e: any | RouteNotFound) =>
+/**
+ * Groups: function, path
+ */
+const StackLinePattern = /^at (.*?) \((.*?)\)/
+
+export const handleHttpServerResponseError = (
+  e: RouteNotFound | Cause.Cause<unknown>,
+) =>
   Effect.gen(function*() {
-    yield* Effect.logError(e)
+    if (process.env.NODE_ENV !== "test") {
+      yield* Effect.logError(e)
+    }
 
-    const stack = e["stack"]
-      ?.split("\n")
-      .slice(1)
-      ?.map((line) => {
-        const match = line.trim().match(/^at (.*?) \((.*?)\)/)
-
-        if (!match) return line
-
-        const [_, fn, path] = match
-        const relativePath = path.replace(process.cwd(), ".")
-        return [fn, relativePath]
-      })
-      .filter(Boolean)
-
-    const status = e instanceof RouteNotFound ? 404 : 500
-
-    return yield* HttpServerResponse.json({
-      error: e?.["name"] || null,
-      message: e.message,
-      stack: stack,
-    }, {
-      status,
-    })
+    return yield* pipe(
+      Match.value(e),
+      Match.when(
+        Predicate.isTagged("RouteNotFound"),
+        () =>
+          HttpServerResponse.json(
+            {
+              error: "RouteNotFound",
+            },
+            {
+              status: 404,
+            },
+          ),
+      ),
+      Match.when(
+        Predicate.or(
+          Predicate.isTagged("Die"),
+          Predicate.isTagged("Fail"),
+        ),
+        (e) =>
+          HttpServerResponse.json(
+            {
+              error: e["defect"]?.name,
+              message: e["defect"]?.message,
+            },
+            {
+              status: 500,
+            },
+          ),
+      ),
+      Match.orElse(() =>
+        HttpServerResponse.json(
+          {
+            error: "Unexpected",
+          },
+          {
+            status: 500,
+          },
+        )
+      ),
+    )
   })
+
+function extractPrettyStack(stack: string) {
+  return stack
+    .split("\n")
+    .slice(1)
+    .map((line) => {
+      const match = line.trim().match(StackLinePattern)
+
+      if (!match) return line
+
+      const [_, fn, path] = match
+      const relativePath = path.replace(process.cwd(), ".")
+      return [fn, relativePath]
+    })
+    .filter(Boolean)
+}
