@@ -156,10 +156,7 @@ export const loadWatch = <M>(config: LoadOptions) =>
       ),
     )
 
-    return {
-      ref,
-      changes,
-    }
+    return yield* ref
   })
 
 /**

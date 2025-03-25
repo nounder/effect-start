@@ -49,11 +49,7 @@ export const ServerBundle = BunBundle.loadWatch<typeof import("./server.ts")>({
       hydratable: false,
     }),
   ],
-}).pipe(
-  Effect.cached,
-  Effect.flatten,
-  Effect.andThen((v) => v.ref),
-)
+})
 
 const ClientBundleHttpApp = pipe(
   BunBundle.buildRouter(ClientBundle.config),
