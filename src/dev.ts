@@ -25,7 +25,10 @@ export const ClientBundle = BunBundle.build({
   ],
 })
 
-export const ServerBundle = BunBundle.loadWatch<typeof import("./server.ts")>({
+const [
+  ApiApp,
+  SsrApp,
+] = BunBundle.loadWatch<typeof import("./server.ts")>({
   entrypoints: [
     await import("./server.ts", { with: { type: "file" } })
       .then(v => v["default"] as unknown as string),
@@ -49,16 +52,23 @@ export const ServerBundle = BunBundle.loadWatch<typeof import("./server.ts")>({
       hydratable: false,
     }),
   ],
-})
+}).pipe(
+  bundle => [
+    bundle.pipe(Effect.andThen(mod => mod.ApiApp)),
+    bundle.pipe(Effect.andThen(mod => mod.SsrApp)),
+  ],
+)
 
 const ClientBundleHttpApp = pipe(
   BunBundle.buildRouter(ClientBundle.config),
   Effect.andThen(HttpRouter.prefixAll("/.bundle")),
+  Effect.catchTag("RouteNotFound", e =>
+    HttpServerResponse.empty({
+      status: 404,
+    })),
 )
 
 export const App = Effect.gen(function*() {
-  const { ApiApp, SsrApp } = yield* ServerBundle
-
   const apiRes = yield* ApiApp
 
   if (apiRes.status !== 404) {
@@ -71,12 +81,7 @@ export const App = Effect.gen(function*() {
     return ssrRes
   }
 
-  const bundleRes = yield* ClientBundleHttpApp.pipe(
-    Effect.catchTag("RouteNotFound", e =>
-      HttpServerResponse.empty({
-        status: 404,
-      })),
-  )
+  const bundleRes = yield* ClientBundleHttpApp.pipe()
 
   if (bundleRes.status !== 404) {
     return bundleRes
@@ -91,18 +96,15 @@ export const App = Effect.gen(function*() {
 })
 
 if (import.meta.main) {
-  Effect.gen(function*() {
-    yield* pipe(
-      Layer.scopedDiscard(HttpServer.serveEffect(App)),
-      HttpServer.withLogAddress,
-      Layer.launch,
-    )
-  }).pipe(
-    Effect.provide(
+  pipe(
+    HttpServer.serve(App),
+    HttpServer.withLogAddress,
+    Layer.provide(
       BunHttpServer.layer({
         port: 3000,
       }),
     ),
+    Layer.launch,
     Logger.withMinimumLogLevel(LogLevel.Debug),
     BunRuntime.runMain,
   )
