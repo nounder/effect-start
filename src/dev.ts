@@ -4,12 +4,13 @@ import { SolidPlugin } from "bun-plugin-solid"
 import { Effect, Layer, Logger, LogLevel, pipe } from "effect"
 import packageJson from "../package.json" with { type: "json" }
 import * as BunBundle from "./bun/BunBundle.ts"
+import ClientFile from "./client.tsx" with { type: "file" }
 import { handleHttpServerResponseError } from "./effect/http.ts"
+import ServerFile from "./server.ts" with { type: "file" }
 
 export const ClientBundle = BunBundle.build({
   entrypoints: [
-    await import("./client.tsx", { with: { type: "file" } })
-      .then(v => v["default"]),
+    ClientFile as unknown as string,
   ],
   target: "browser",
   conditions: [
@@ -30,8 +31,7 @@ const [
   SsrApp,
 ] = BunBundle.loadWatch<typeof import("./server.ts")>({
   entrypoints: [
-    await import("./server.ts", { with: { type: "file" } })
-      .then(v => v["default"] as unknown as string),
+    ServerFile as unknown as string,
   ],
   target: "bun",
   conditions: [

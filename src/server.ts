@@ -26,4 +26,6 @@ const ApiApp = HttpRouter.empty.pipe(
   ),
 )
 
+export default ApiApp
+
 export { ApiApp, SsrApp }

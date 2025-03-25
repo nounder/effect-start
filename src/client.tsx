@@ -1,12 +1,16 @@
 import { render } from "solid-js/web"
 import { App } from "./App.tsx"
 
-if (globalThis.document) {
-  const ssrChildren = Array.from(document.body.children)
+export default function renderApp(root: HTMLElement) {
+  const ssrChildren = Array.from(root.children)
 
-  render(App, document.body)
+  render(App, root)
 
   ssrChildren.forEach((child) => {
     child.remove()
   })
+}
+
+if (globalThis.document) {
+  renderApp(document.body)
 }

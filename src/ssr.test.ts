@@ -1,18 +1,17 @@
-import { HttpClient, HttpClientResponse } from "@effect/platform"
-import { fileURLToPath } from "bun"
 import { SolidPlugin } from "bun-plugin-solid"
 import { expect, it } from "bun:test"
 import { Effect } from "effect"
 import packageJson from "../package.json" with { type: "json" }
 import * as BunBundle from "./bun/BunBundle.ts"
 import * as TestHttpClient from "./effect/TestHttpClient.ts"
+import * as SsrFile from "./ssr.tsx" with { type: "file" }
 import { effectFn } from "./test.ts"
 
 const effect = effectFn()
 
-const SsrAppBundle = BunBundle.load<typeof import("./ssr.tsx")>({
+const SsrAppBundle = BunBundle.load<typeof SsrFile>({
   entrypoints: [
-    fileURLToPath(import.meta.resolve("./ssr.tsx")),
+    SsrFile.default as unknown as string,
   ],
   target: "bun",
   conditions: [
