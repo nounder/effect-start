@@ -44,21 +44,39 @@ it("ssr root", () =>
   effect(function*() {
     const res = yield* Client.get("/")
 
-    expect(res.status).toEqual(200)
-    expect(yield* res.text).toInclude(">Random<")
+    expect(res.status)
+      .toEqual(200)
+
+    expect(yield* res.text)
+      .toInclude(">Random<")
   }))
 
 it("ssr random", () =>
   effect(function*() {
     const res = yield* Client.get("/random")
 
-    expect(res.status).toEqual(200)
-    expect(yield* res.text).toInclude("<h1 ")
+    expect(res.status)
+      .toEqual(200)
+
+    expect(yield* res.text)
+      .toInclude("<h1 ")
   }))
 
 it("ssr 404", () =>
   effect(function*() {
     const res = yield* Client.get("/not-found")
 
-    expect(res.status).toEqual(404)
+    expect(res.status)
+      .toEqual(404)
+  }))
+
+it("ssr resolve", () =>
+  effect(function*() {
+    const res = yield* Client.get("/")
+
+    expect(res.status)
+      .toEqual(200)
+
+    expect(yield* res.text)
+      .toInclude("/.bundle/client.js")
   }))

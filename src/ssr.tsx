@@ -4,16 +4,22 @@ import {
   HttpServerRequest,
   HttpServerResponse,
 } from "@effect/platform"
-import { Effect, Data } from "effect"
-import { Hydration, HydrationScript, NoHydration, renderToStringAsync } from "solid-js/web"
-import { App } from "./App.tsx"
+import { fileURLToPath } from "bun"
+import * as NPath from "node:path"
+import { Cache, Data, Effect } from "effect"
 import { createContext, useContext } from "solid-js"
+import {
+  Hydration,
+  HydrationScript,
+  NoHydration,
+  renderToStringAsync,
+} from "solid-js/web"
 import { ErrorBoundary, ssr } from "solid-js/web"
-import { RouteNotFound } from "@effect/platform/HttpServerError"
+import { App } from "./App.tsx"
 
 export async function renderRequest(
   req: Request,
-  resolve = (url: string) => url
+  resolve = (url: string) => url,
 ) {
   try {
     const ctx = {
@@ -63,20 +69,36 @@ export async function renderRequest(
 }
 
 class SsrError extends Data.TaggedError("SsrError")<{
-  message: string,
-  cause: unknown,
+  message: string
+  cause: unknown
 }> { }
-
 
 export const SsrApp: HttpApp.Default<SsrError> = Effect.gen(function* () {
   const req = yield* HttpServerRequest.HttpServerRequest
   const fetchReq = req.source as Request
   const output = yield* Effect.tryPromise({
-    try: () => renderRequest(fetchReq),
-    catch: (e) => new SsrError({
-      message: "Failed to render server-side",
-      cause: e
-    })
+    try: () =>
+      renderRequest(
+        fetchReq,
+        (url) => {
+          const path = url.startsWith("file://") ? fileURLToPath(url) : url
+          const sourceBase = process.cwd()
+          const publicBase = "/.bundle"
+          // TODO: use real artifacts
+          const artifacts = {
+            "client.tsx": "client.js"
+          }
+          const sourcePath = NPath.relative(sourceBase, path)
+          const publicPath = artifacts[sourcePath]
+
+          return NPath.join(publicBase, publicPath || path)
+        }
+      ),
+    catch: (e) =>
+      new SsrError({
+        message: "Failed to render server-side",
+        cause: e,
+      }),
   })
 
   return yield* HttpServerResponse.raw(output.body, {
@@ -86,7 +108,6 @@ export const SsrApp: HttpApp.Default<SsrError> = Effect.gen(function* () {
   })
 })
 
-
 const docType = ssr("<!DOCTYPE html>")
 
 const ServerContext = createContext({
@@ -95,19 +116,18 @@ const ServerContext = createContext({
   resolve: (url: string) => url as string | undefined,
   setResponse(res: Response) {
     this._response = res
-  }
+  },
 })
 
-
 export const useServer = () => useContext(ServerContext)
+
 
 function Document(props: {
   children: any
 }) {
   const server = useServer()
-  const entryScriptUrl = server.resolve(
-    import.meta.resolve("./entry-client.tsx"),
-  )
+  const jsUrl = server.resolve("client.tsx")
+  const cssUrl = server.resolve("app.css")
 
   return (
     <NoHydration>
@@ -122,7 +142,7 @@ function Document(props: {
           />
           <title>solid-deno</title>
 
-          <link rel="stylesheet" href="/.bundle/app.css" />
+          <link rel="stylesheet" href={cssUrl} />
         </head>
 
         <body>
@@ -132,7 +152,7 @@ function Document(props: {
         </body>
 
         <HydrationScript />
-        <script type="module" src={entryScriptUrl}></script>
+        <script type="module" src={jsUrl}></script>
       </html>
     </NoHydration>
   )
@@ -149,15 +169,20 @@ export default function ServerRoot(props: {
           throw error
         }
 
-        return <code>
-          <pre>{error?.message || JSON.stringify(error, undefined, 2)}</pre>
-        </code>
+        return (
+          <code>
+            <pre>{error?.message || JSON.stringify(error, undefined, 2)}</pre>
+          </code>
+        )
       }}
     >
-      <ServerContext.Provider value={props.context ?? ServerContext.defaultValue}>
-        {props.children}
+      <ServerContext.Provider
+        value={props.context ?? ServerContext.defaultValue}
+      >
+        <Document>
+          {props.children}
+        </Document>
       </ServerContext.Provider>
     </ErrorBoundary>
   )
 }
-
