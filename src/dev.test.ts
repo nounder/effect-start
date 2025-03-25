@@ -1,6 +1,6 @@
 import { expect, it } from "bun:test"
 import { Effect } from "effect"
-import { App, ClientBundle, ServerApp } from "./dev.ts"
+import { App, ClientBundle } from "./dev.ts"
 import * as TestHttpClient from "./effect/TestHttpClient.ts"
 import { effectFn } from "./test.ts"
 
