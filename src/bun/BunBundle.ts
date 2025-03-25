@@ -301,6 +301,9 @@ async function importJsBlob<M = unknown>(blob: Blob): Promise<M> {
   const bundleModule = await import(path)
 
   await file.delete()
+    // if called concurrently, file sometimes may be deleted
+    // safe ignore when this happens
+    .catch(() => {})
 
   return bundleModule
 }
