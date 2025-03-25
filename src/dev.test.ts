@@ -1,5 +1,4 @@
 import { expect, it } from "bun:test"
-import { Effect } from "effect"
 import { App, ClientBundle } from "./dev.ts"
 import * as TestHttpClient from "./effect/TestHttpClient.ts"
 import { effectFn } from "./test.ts"
@@ -31,8 +30,11 @@ it("dev random", () =>
   effect(function*() {
     const res = yield* Client.get("/random")
 
-    expect(res.status).toEqual(200)
-    expect(yield* res.text).toInclude(">Random<")
+    expect(res.status)
+      .toEqual(200)
+
+    expect(yield* res.text)
+      .toInclude(">Random<")
   }))
 
 it("loads client bundle", () =>

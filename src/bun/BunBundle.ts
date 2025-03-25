@@ -1,17 +1,14 @@
 import {
-  FileSystem,
+  Headers,
   HttpApp,
-  HttpBody,
-  HttpClientResponse,
   HttpRouter,
   HttpServerRequest,
   HttpServerResponse,
 } from "@effect/platform"
-import { HttpBodyError } from "@effect/platform/HttpBody"
-import type { BuildArtifact, BuildConfig, BuildOutput } from "bun"
+import { RouteNotFound } from "@effect/platform/HttpServerError"
+import { type BuildConfig, type BuildOutput, fileURLToPath } from "bun"
 import {
-  Array,
-  Console,
+  Data,
   Effect,
   Iterable,
   pipe,
@@ -20,10 +17,9 @@ import {
   Stream,
   SubscriptionRef,
 } from "effect"
-import { chunksOf } from "effect/Iterable"
-import * as NodeFS from "node:fs"
-import * as NodeFSP from "node:fs/promises"
-import * as NodePath from "node:path"
+import * as NFS from "node:fs"
+import * as NFSP from "node:fs/promises"
+import * as NPath from "node:path"
 import * as process from "node:process"
 
 type BunBundleManifest = {
@@ -72,6 +68,12 @@ type LoadOptions =
     entrypoints: [string]
   }
 
+export const make = <C extends BuildConfig>(
+  config: C,
+): C => {
+  return config
+}
+
 export const build = (
   config: BuildOptions,
 ): Effect.Effect<BuildOutput, BundleError, never> & {
@@ -99,65 +101,77 @@ export const build = (
 export const load = <M>(
   config: LoadOptions,
 ): Effect.Effect<M, BundleError, never> =>
-  pipe(
-    build(config),
-    Effect.andThen((buildOutput) =>
-      Effect.tryPromise({
-        try: () => importJsBlob<M>(buildOutput.outputs[0]),
-        catch: (err) => new BundleError(err),
-      })
+  Object.assign(
+    pipe(
+      build(config),
+      Effect.andThen((buildOutput) =>
+        Effect.tryPromise({
+          try: () => importJsBlob<M>(buildOutput.outputs[0]),
+          catch: (err) => new BundleError(err),
+        })
+      ),
     ),
+    {
+      config,
+    },
   )
 
 /**
  * Same as `load` but ensures that most recent module is always returned.
  * Useful for development.
  */
-export const loadWatch = <M>(config: LoadOptions) =>
-  Effect.gen(function*() {
-    const [entrypoint] = config.entrypoints
-    const _load = load<M>(config)
-    const ref = yield* SubscriptionRef.make<M>(yield* _load)
+export const loadWatch = <M>(
+  config: LoadOptions,
+): Effect.Effect<M, BundleError, never> & { config: BuildConfig } =>
+  Object.assign(
+    Effect.gen(function*() {
+      const [entrypoint] = config.entrypoints
+      const _load = load<M>(config)
+      const ref = yield* SubscriptionRef.make<M>(yield* _load)
 
-    // get dirname after the build as user may pass URL rather than
-    // path which Bun does not resolve.
-    const baseDir = NodePath.dirname(
-      NodePath.resolve(process.cwd(), entrypoint),
-    )
+      // get dirname after the build as user may pass URL rather than
+      // path which Bun does not resolve.
+      const baseDir = NPath.dirname(
+        NPath.resolve(process.cwd(), entrypoint),
+      )
 
-    const changes = pipe(
-      Stream.fromAsyncIterable(
-        NodeFSP.watch(baseDir, { recursive: true }),
-        (e) => e,
-      ),
-      Stream.filter((event) => SOURCE_FILENAME.test(event.filename!)),
-      Stream.throttle({
-        units: 1,
-        cost: () => 1,
-        duration: "100 millis",
-        strategy: "enforce",
-      }),
-    )
-
-    yield* Effect.fork(
-      pipe(
-        changes,
-        Stream.runForEach((event) =>
-          Effect.gen(function*() {
-            yield* Effect.logDebug(
-              `Reloading bundle due to file change: ${event.filename}`,
-            )
-
-            const app = yield* _load
-
-            yield* Ref.update(ref, () => app)
-          })
+      const changes = pipe(
+        Stream.fromAsyncIterable(
+          NFSP.watch(baseDir, { recursive: true }),
+          (e) => e,
         ),
-      ),
-    )
+        Stream.filter((event) => SOURCE_FILENAME.test(event.filename!)),
+        Stream.throttle({
+          units: 1,
+          cost: () => 1,
+          duration: "100 millis",
+          strategy: "enforce",
+        }),
+      )
 
-    return yield* ref
-  })
+      yield* Effect.fork(
+        pipe(
+          changes,
+          Stream.runForEach((event) =>
+            Effect.gen(function*() {
+              yield* Effect.logDebug(
+                `Reloading bundle due to file change: ${event.filename}`,
+              )
+
+              const app = yield* _load
+
+              yield* Ref.update(ref, () => app)
+            })
+          ),
+        ),
+      )
+
+      return yield* ref
+    }),
+    {
+      config,
+    },
+  )
 
 /**
  * Builds a static HttpRouter from a build.
@@ -207,18 +221,73 @@ export const buildRouter = (
     return router
   })
 
-function findNodeModules(startDir = process.cwd()) {
-  let currentDir = NodePath.resolve(startDir)
+class SsrError extends Data.TaggedError("SsrError")<{
+  message: string
+  cause: unknown
+}> {}
 
-  while (currentDir !== NodePath.parse(currentDir).root) {
-    const nodeModulesPath = NodePath.join(currentDir, "node_modules")
+export const ssr = (options: {
+  render: (
+    request: Request,
+    resolve: (url: string) => string,
+  ) => Promise<Response>
+  config: BuildConfig
+  publicBase?: string
+}): HttpApp.Default<SsrError | RouteNotFound> => {
+  const { render, config, publicBase } = options
+
+  const resolve = (url: string): string => {
+    const path = url.startsWith("file://")
+      ? fileURLToPath(url)
+      : url
+    const sourceBase = process.cwd()
+    const publicBase = "/.bundle"
+    // TODO: use real artifacts
+    const artifacts = {
+      "client.tsx": "client.js",
+    }
+    const sourcePath = NPath.relative(sourceBase, path)
+    const publicPath = artifacts[sourcePath]
+
+    return NPath.join(publicBase, publicPath || path)
+  }
+
+  return Effect.gen(function*() {
+    const req = yield* HttpServerRequest.HttpServerRequest
+    const fetchReq = req.source as Request
+    const output = yield* Effect.tryPromise({
+      try: () =>
+        render(
+          fetchReq,
+          resolve,
+        ),
+      catch: (e) =>
+        new SsrError({
+          message: "Failed to render server-side",
+          cause: e,
+        }),
+    })
+
+    return yield* HttpServerResponse.raw(output.body, {
+      status: output.status,
+      statusText: output.statusText,
+      headers: Headers.fromInput(output.headers as any),
+    })
+  })
+}
+
+function findNodeModules(startDir = process.cwd()) {
+  let currentDir = NPath.resolve(startDir)
+
+  while (currentDir !== NPath.parse(currentDir).root) {
+    const nodeModulesPath = NPath.join(currentDir, "node_modules")
     if (
-      NodeFS.statSync(nodeModulesPath).isDirectory()
+      NFS.statSync(nodeModulesPath).isDirectory()
     ) {
       return nodeModulesPath
     }
 
-    currentDir = NodePath.dirname(currentDir)
+    currentDir = NPath.dirname(currentDir)
   }
 
   return null
@@ -244,7 +313,7 @@ function mapBuildEntrypoints(
   output: BuildOutput,
 ) {
   const commonPathPrefix = getBaseDir(
-    options.entrypoints.map(v => NodePath.dirname(v)),
+    options.entrypoints.map(v => NPath.dirname(v)),
   ) + "/"
 
   return pipe(

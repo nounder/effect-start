@@ -1,6 +1,7 @@
 import { HttpRouter, HttpServerResponse } from "@effect/platform"
 import { Effect } from "effect"
 import { handleHttpServerResponseError } from "./effect/http.ts"
+import * as HttpAppExtra from "./effect/HttpAppExtra.ts"
 import { SsrApp } from "./ssr.tsx"
 
 const ApiApp = HttpRouter.empty.pipe(
@@ -26,6 +27,7 @@ const ApiApp = HttpRouter.empty.pipe(
   ),
 )
 
-export default ApiApp
-
-export { ApiApp, SsrApp }
+export default HttpAppExtra.chain([
+  ApiApp,
+  SsrApp,
+])
