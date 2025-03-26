@@ -1,4 +1,5 @@
 import { HttpRouter, HttpServerResponse } from "@effect/platform"
+import { BunRuntime } from "@effect/platform-bun"
 import { Effect } from "effect"
 import { handleHttpServerResponseError } from "./effect/http.ts"
 import * as HttpAppExtra from "./effect/HttpAppExtra.ts"
@@ -27,7 +28,9 @@ const ApiApp = HttpRouter.empty.pipe(
   ),
 )
 
-export default HttpAppExtra.chain([
+const App = HttpAppExtra.chain([
   ApiApp,
   SsrApp,
 ])
+
+export default App

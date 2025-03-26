@@ -1,5 +1,5 @@
 import { expect, it } from "bun:test"
-import { App, ClientBundle } from "./dev.ts"
+import { App, ClientBuild } from "./dev.ts"
 import * as TestHttpClient from "./effect/TestHttpClient.ts"
 import { effectFn } from "./test.ts"
 
@@ -39,7 +39,7 @@ it("dev random", () =>
 
 it("loads client bundle", () =>
   effect(function*() {
-    const build = yield* ClientBundle
+    const build = yield* ClientBuild
     const [buildArtifact] = build.outputs
     const res = yield* Client.get("/.bundle/" + buildArtifact.path.slice(2))
 

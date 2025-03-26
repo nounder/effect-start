@@ -8,9 +8,12 @@ import {
 import { RouteNotFound } from "@effect/platform/HttpServerError"
 import { type BuildConfig, type BuildOutput, fileURLToPath } from "bun"
 import {
+  Array,
+  Context,
   Data,
   Effect,
   Iterable,
+  Layer,
   pipe,
   Record,
   Ref,
@@ -21,6 +24,7 @@ import * as NFS from "node:fs"
 import * as NFSP from "node:fs/promises"
 import * as NPath from "node:path"
 import * as process from "node:process"
+import type { BundleContext } from "../Bundle.ts"
 
 type BunBundleManifest = {
   artifacts: Record<string, {
@@ -31,12 +35,6 @@ type BunBundleManifest = {
     imports?: any[]
   }>
 }
-
-type BunBundleContext =
-  & BunBundleManifest
-  & {
-    resolve: (url: string) => string
-  }
 
 class BundleError extends Error {
   readonly _tag = "BundleError"
@@ -67,6 +65,46 @@ type LoadOptions =
     // only one entrypoint is allowed for loading
     entrypoints: [string]
   }
+
+export const effect = (
+  config: BuildConfig,
+): Effect.Effect<BundleContext, any> =>
+  Effect.gen(function*() {
+    const output = yield* build(config)
+    const mapping = mapBuildEntrypoints(config, output)
+
+    return {
+      entrypoints: Record.mapEntries(mapping, (v, k) => [
+        k,
+        // strip ./ prefix
+        v.path.slice(2),
+      ]),
+      artifacts: Array.map(output.outputs, (v) => ({
+        // strip './' prefix
+        path: v.path.slice(2),
+        hash: v.hash,
+        kind: v.kind,
+        size: v.size,
+        type: v.type,
+      })),
+      resolve: (url: string) => {
+        return url
+      },
+      blob: (path): Blob | null => {
+        return mapping[path] ?? null
+      },
+    }
+  })
+
+export const layer = <T>(
+  tag: Context.Tag<T, BundleContext>,
+  config: BuildConfig,
+) => {
+  return Layer.effect(
+    tag,
+    effect(config),
+  )
+}
 
 export const make = <C extends BuildConfig>(
   config: C,
@@ -100,7 +138,7 @@ export const build = (
  */
 export const load = <M>(
   config: LoadOptions,
-): Effect.Effect<M, BundleError, never> =>
+): Effect.Effect<M, BundleError, never> & { config: LoadOptions } =>
   Object.assign(
     pipe(
       build(config),

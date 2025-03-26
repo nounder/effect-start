@@ -4,11 +4,14 @@ import { SolidPlugin } from "bun-plugin-solid"
 import { Effect, Layer, Logger, LogLevel, pipe } from "effect"
 import PackageJson from "../package.json" with { type: "json" }
 import * as BunBundle from "./bun/BunBundle.ts"
+import * as Bundle from "./Bundle.ts"
 import * as ClientFile from "./client.tsx" with { type: "file" }
 import * as HttpAppExtra from "./effect/HttpAppExtra.ts"
 import * as ServerFile from "./server.ts" with { type: "file" }
 
-export const ClientBundle = BunBundle.build({
+class ClientBundle extends Bundle.Tag("client")<ClientBundle>() {}
+
+export const ClientBuild = BunBundle.build({
   entrypoints: [
     ClientFile.default as unknown as string,
   ],
@@ -26,7 +29,7 @@ export const ClientBundle = BunBundle.build({
   ],
 })
 
-export const ServerBundle = BunBundle.load<typeof ServerFile>({
+export const ServerBuild = BunBundle.load<typeof ServerFile>({
   entrypoints: [
     ServerFile.default as unknown as string,
   ],
@@ -52,7 +55,7 @@ export const ServerBundle = BunBundle.load<typeof ServerFile>({
 })
 
 const ClientBundleHttpApp = pipe(
-  BunBundle.buildRouter(ClientBundle.config),
+  BunBundle.buildRouter(ClientBuild.config),
   Effect.andThen(HttpRouter.prefixAll("/.bundle")),
   Effect.catchTag("RouteNotFound", e =>
     HttpServerResponse.empty({
@@ -61,7 +64,7 @@ const ClientBundleHttpApp = pipe(
 )
 
 export const App = HttpAppExtra.chain([
-  ServerBundle
+  ServerBuild
     .pipe(Effect.andThen((v) => v.default)),
   ClientBundleHttpApp,
 ])
