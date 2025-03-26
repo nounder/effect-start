@@ -29,7 +29,7 @@ class TestHttpApp
 {}
 
 export const make = <E>(
-  httpApp?: HttpApp.Default<E>,
+  httpApp?: HttpApp.Default<E, any>,
   opts?: {
     baseUrl?: string | null
     handleRouteNotFound?: (

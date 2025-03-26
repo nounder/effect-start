@@ -1,9 +1,16 @@
 import { expect, it } from "bun:test"
-import { App, ClientBuild } from "./dev.ts"
+import { Effect, Layer } from "effect"
+import * as BunBundle from "./bun/BunBundle.ts"
+import { App, ClientBuild, ClientBundle } from "./dev.ts"
 import * as TestHttpClient from "./effect/TestHttpClient.ts"
 import { effectFn } from "./test.ts"
 
-const effect = effectFn()
+const effect = effectFn(
+  Layer.effect(
+    ClientBundle,
+    BunBundle.effect(ClientBuild.config),
+  ),
+)
 
 const Client = TestHttpClient.make(App)
 
@@ -39,9 +46,10 @@ it("dev random", () =>
 
 it("loads client bundle", () =>
   effect(function*() {
-    const build = yield* ClientBuild
-    const [buildArtifact] = build.outputs
-    const res = yield* Client.get("/.bundle/" + buildArtifact.path.slice(2))
+    const bundle = yield* ClientBundle
+    const res = yield* Client.get(
+      "/.bundle/" + bundle.artifacts[0].path,
+    )
 
     expect(res.status)
       .toEqual(200)

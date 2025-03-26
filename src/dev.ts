@@ -9,7 +9,7 @@ import * as ClientFile from "./client.tsx" with { type: "file" }
 import * as HttpAppExtra from "./effect/HttpAppExtra.ts"
 import * as ServerFile from "./server.ts" with { type: "file" }
 
-class ClientBundle extends Bundle.Tag("client")<ClientBundle>() {}
+export class ClientBundle extends Bundle.Tag("client")<ClientBundle>() {}
 
 export const ClientBuild = BunBundle.build({
   entrypoints: [
@@ -54,25 +54,22 @@ export const ServerBuild = BunBundle.load<typeof ServerFile>({
   ],
 })
 
-const ClientBundleHttpApp = pipe(
-  BunBundle.buildRouter(ClientBuild.config),
-  Effect.andThen(HttpRouter.prefixAll("/.bundle")),
-  Effect.catchTag("RouteNotFound", e =>
-    HttpServerResponse.empty({
-      status: 404,
-    })),
-)
-
 export const App = HttpAppExtra.chain([
   ServerBuild
     .pipe(Effect.andThen((v) => v.default)),
-  ClientBundleHttpApp,
+
+  Bundle.http(ClientBundle).pipe(
+    Effect.andThen(HttpRouter.prefixAll("/.bundle")),
+  ),
 ])
 
 if (import.meta.main) {
   pipe(
     HttpServer.serve(App),
     HttpServer.withLogAddress,
+    Layer.provide(
+      BunBundle.layer(ClientBundle, ClientBuild.config),
+    ),
     Layer.provide(
       BunHttpServer.layer({
         port: 3000,

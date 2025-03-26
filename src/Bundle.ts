@@ -1,4 +1,4 @@
-import { HttpRouter, HttpServerResponse } from "@effect/platform"
+import { HttpApp, HttpRouter, HttpServerResponse } from "@effect/platform"
 import { Array, Context, Effect } from "effect"
 
 export type BundleManifest = {
@@ -27,7 +27,7 @@ export const Tag = (name: string) => <Identifier>() =>
 export const http = <T>(
   bundle: Context.Tag<T, BundleContext>,
 ) => {
-  return Effect.andThen(
+  return Effect.map(
     bundle,
     v =>
       Array.reduce(

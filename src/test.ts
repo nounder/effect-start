@@ -1,5 +1,4 @@
-import { Array, Effect, Exit, identity, Layer, Logger, pipe } from "effect"
-import type { FiberFailure } from "effect/Runtime"
+import { Array, Effect, identity, Layer, Logger, pipe } from "effect"
 import type { YieldWrap } from "effect/Utils"
 
 /**
@@ -15,7 +14,7 @@ const ExternalStackTraceLineRegexp = /\(.*\/node_modules\/[^\.]/
  * Great for testing.
  */
 export const effectFn =
-  (layer?: Layer.Layer<any>) =>
+  (layer?: Layer.Layer<any, any>) =>
   <Eff extends YieldWrap<Effect.Effect<any, any, any>>, AEff>(
     f: () => Generator<Eff, AEff, never>,
   ): Promise<any> =>
@@ -23,7 +22,7 @@ export const effectFn =
       Effect.gen(f),
       Effect.scoped,
       Effect.provide(Logger.pretty),
-      layer ? Effect.provide(layer) : identity,
+      Effect.provide(layer ?? Layer.empty),
       // @ts-expect-error will have to figure out how to clear deps
       Effect.runPromise,
       // When effect fails, instead of throwing FiberFailure,
