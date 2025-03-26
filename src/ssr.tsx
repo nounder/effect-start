@@ -11,18 +11,15 @@ import { ClientBundle } from "./dev.ts"
 
 export const SsrApp = BunBundle.ssr({
   render: async (req, resolve) => {
-    const comp = () => (
-      <Document
-        server={{
-          url: req.url,
-          resolve,
-        }}
-      >
-        <App serverUrl={req.url} />
-      </Document>
+    const Component = () => (
+      Document({
+        url: req.url,
+        resolve,
+        children: App({ serverUrl: req.url }),
+      })
     )
 
-    const html = await renderToStringAsync(comp, {
+    const html = await renderToStringAsync(Component, {
       timeoutMs: 4000,
     })
 
@@ -48,14 +45,12 @@ export default SsrApp
 
 function Document(props: {
   children: any
-  server: {
-    url: string;
-    resolve: (url: string) => string,
-  }
+  url: string;
+  resolve: (url: string) => string,
 }) {
   const docType = ssr("<!DOCTYPE html>") as unknown as any
-  const jsUrl = props.server.resolve("client.tsx")
-  const cssUrl = props.server.resolve("app.css")
+  const jsUrl = props.resolve("client.tsx")
+  const cssUrl = props.resolve("app.css")
 
   return (
     <NoHydration>
