@@ -50,7 +50,7 @@ export const load = <M>(
   })
 }
 
-export const http = <T>(
+export const toHttpRouter = <T>(
   bundle: Context.Tag<T, BundleContext>,
 ) => {
   return Effect.map(
@@ -68,4 +68,10 @@ export const http = <T>(
           ),
       ),
   )
+}
+
+export const toFiles = <T>(
+  bundle: Context.Tag<T, BundleContext>,
+) => {
+  // Implement dumping files to a disk. AI!
 }
