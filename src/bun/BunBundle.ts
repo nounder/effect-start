@@ -106,10 +106,12 @@ export const layer = <T>(
   )
 }
 
-export const make = <C extends BuildConfig>(
-  config: C,
-): C => {
-  return config
+type BrandedConfig<T> = BuildConfig
+
+export const config = <M = unknown>(
+  config: BrandedConfig<M>,
+): BrandedConfig<M> => {
+  return config as BrandedConfig<M>
 }
 
 export const build = (
@@ -137,8 +139,8 @@ export const build = (
  * Builds, loads, and return a module as an Effect.
  */
 export const load = <M>(
-  config: LoadOptions,
-): Effect.Effect<M, BundleError, never> & { config: LoadOptions } =>
+  config: BuildConfig,
+): Effect.Effect<M, BundleError, never> & { config: BuildConfig } =>
   Object.assign(
     pipe(
       build(config),
@@ -159,7 +161,7 @@ export const load = <M>(
  * Useful for development.
  */
 export const loadWatch = <M>(
-  config: LoadOptions,
+  config: BuildConfig,
 ): Effect.Effect<M, BundleError, never> & { config: BuildConfig } =>
   Object.assign(
     Effect.gen(function*() {

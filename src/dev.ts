@@ -11,7 +11,9 @@ import * as ServerFile from "./server.ts" with { type: "file" }
 
 export class ClientBundle extends Bundle.Tag("client")<ClientBundle>() {}
 
-export const ClientBuild = BunBundle.build({
+export class ServerBundle extends Bundle.Tag("server")<ServerBundle>() {}
+
+const ClientConfig = BunBundle.config({
   entrypoints: [
     ClientFile.default as unknown as string,
   ],
@@ -29,7 +31,9 @@ export const ClientBuild = BunBundle.build({
   ],
 })
 
-export const ServerBuild = BunBundle.load<typeof ServerFile>({
+export const ClientBuild = BunBundle.build(ClientConfig)
+
+const ServerConfig = BunBundle.config({
   entrypoints: [
     ServerFile.default as unknown as string,
   ],
@@ -54,6 +58,8 @@ export const ServerBuild = BunBundle.load<typeof ServerFile>({
   ],
 })
 
+export const ServerBuild = BunBundle.loadWatch<typeof ServerFile>(ServerConfig)
+
 export const App = HttpAppExtra.chain([
   ServerBuild
     .pipe(Effect.andThen((v) => v.default)),
@@ -68,7 +74,10 @@ if (import.meta.main) {
     HttpServer.serve(App),
     HttpServer.withLogAddress,
     Layer.provide(
-      BunBundle.layer(ClientBundle, ClientBuild.config),
+      BunBundle.layer(ClientBundle, ClientConfig),
+    ),
+    Layer.provide(
+      BunBundle.layer(ServerBundle, ServerConfig),
     ),
     Layer.provide(
       BunHttpServer.layer({
