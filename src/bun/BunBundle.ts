@@ -54,15 +54,18 @@ export const effect = (
   Effect.gen(function*() {
     const output = yield* build(config)
     const manifest = generateManifestfromBunBundle(config, output)
-    const entrypointArtifacts = mapBuildEntrypoints(config, output)
+    const artifactsMap = Record.fromIterableBy(
+      output.outputs,
+      v => v.path.slice(2),
+    )
 
     return {
       ...manifest,
       resolve: (url: string) => {
         return url
       },
-      getBlob: (path): Blob | null => {
-        return entrypointArtifacts[path] ?? null
+      getArtifact: (path): Blob | null => {
+        return artifactsMap[path] ?? null
       },
     }
   })
@@ -339,16 +342,22 @@ function generateManifestfromBunBundle(
       v.path.slice(2),
     ]),
 
-    artifacts: Record.mapEntries(entrypointArtifacts, (v, k) => [
-      k,
-      {
-        // strip './' prefix
-        path: v.path.slice(2),
-        hash: v.hash,
-        kind: v.kind,
-        size: v.size,
-        type: v.type,
-      },
-    ]),
+    artifacts: pipe(
+      output.outputs,
+      Iterable.flatMap(v => v.sourcemap ? [v, v.sourcemap] : [v]),
+      Iterable.map((v) =>
+        [
+          // strip './' prefix
+          v.path.slice(2),
+          {
+            hash: v.hash,
+            kind: v.kind,
+            size: v.size,
+            type: v.type,
+          },
+        ] as const
+      ),
+      Record.fromEntries,
+    ),
   }
 }

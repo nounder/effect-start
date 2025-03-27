@@ -1,5 +1,5 @@
 import { HttpRouter, HttpServer, Runtime } from "@effect/platform"
-import { BunHttpServer, BunRuntime } from "@effect/platform-bun"
+import { BunContext, BunHttpServer, BunRuntime } from "@effect/platform-bun"
 import { SolidPlugin } from "bun-plugin-solid"
 import { Console, Effect, Layer, Logger, LogLevel, Match, pipe } from "effect"
 import PackageJson from "../package.json" with { type: "json" }
@@ -21,6 +21,7 @@ export const ClientBundleConfig = BunBundle.config({
   conditions: [
     "solid",
   ],
+  naming: "[name]-[hash].[ext]",
   sourcemap: "external",
   packages: "bundle",
   plugins: [
@@ -96,19 +97,19 @@ if (import.meta.main) {
       "build",
       () =>
         Effect.gen(function*() {
-          return yield* Effect.dieMessage("Not implemented")
-          yield* Console.log("Building client bundle")
+          const client = yield* BunBundle.effect(ClientBundleConfig)
 
-          yield* Effect.forEach([
-            ClientBundleConfig,
-            ServerBundleConfig,
-          ], (config) =>
-            pipe(
-              BunBundle.build(config),
-            ))
+          yield* Console.log("Building client bundle")
+          yield* Bundle.toFiles(client, "out/client")
+
+          const server = yield* BunBundle.effect(ServerBundleConfig)
+
+          yield* Console.log("Building server bundle")
+          yield* Bundle.toFiles(server, "out/server")
         }),
     ),
     Match.orElse(() => Effect.dieMessage("Unknown command")),
+    Effect.provide(BunContext.layer),
     BunRuntime.runMain,
   )
 }
