@@ -8,7 +8,6 @@ import {
 import { RouteNotFound } from "@effect/platform/HttpServerError"
 import { type BuildConfig, type BuildOutput, fileURLToPath } from "bun"
 import {
-  Array,
   Context,
   Data,
   Effect,
@@ -20,11 +19,11 @@ import {
   Stream,
   SubscriptionRef,
 } from "effect"
-import * as NFS from "node:fs"
 import * as NFSP from "node:fs/promises"
 import * as NPath from "node:path"
 import * as process from "node:process"
 import type { BundleContext } from "../Bundle.ts"
+import { importJsBlob } from "../esm.ts"
 
 type BunBundleManifest = {
   artifacts: Record<string, {
@@ -36,8 +35,8 @@ type BunBundleManifest = {
   }>
 }
 
-class BundleError extends Error {
-  readonly _tag = "BundleError"
+class BunBundleError extends Error {
+  readonly _tag = "BunBundleError"
 
   constructor(readonly cause: any) {
     if (cause instanceof AggregateError) {
@@ -71,27 +70,35 @@ export const effect = (
 ): Effect.Effect<BundleContext, any> =>
   Effect.gen(function*() {
     const output = yield* build(config)
-    const mapping = mapBuildEntrypoints(config, output)
+    const entrypointArtifacts = mapBuildEntrypoints(config, output)
 
     return {
-      entrypoints: Record.mapEntries(mapping, (v, k) => [
+      entrypoints: Record.mapEntries(entrypointArtifacts, (v, k) => [
         k,
         // strip ./ prefix
         v.path.slice(2),
       ]),
-      artifacts: Array.map(output.outputs, (v) => ({
-        // strip './' prefix
-        path: v.path.slice(2),
-        hash: v.hash,
-        kind: v.kind,
-        size: v.size,
-        type: v.type,
-      })),
+      artifacts: pipe(
+        output.outputs,
+        Iterable.map((v) =>
+          [
+            // strip './' prefix
+            v.path.slice(2),
+            {
+              hash: v.hash,
+              kind: v.kind,
+              size: v.size,
+              type: v.type,
+            },
+          ] as const
+        ),
+        Record.fromEntries,
+      ),
       resolve: (url: string) => {
         return url
       },
-      blob: (path): Blob | null => {
-        return mapping[path] ?? null
+      getBlob: (path): Blob | null => {
+        return entrypointArtifacts[path] ?? null
       },
     }
   })
@@ -116,7 +123,7 @@ export const config = <M = unknown>(
 
 export const build = (
   config: BuildOptions,
-): Effect.Effect<BuildOutput, BundleError, never> & {
+): Effect.Effect<BuildOutput, BunBundleError, never> & {
   config: BuildOptions
 } =>
   Object.assign(
@@ -124,7 +131,7 @@ export const build = (
       const buildOutput: BuildOutput = yield* Effect.tryPromise({
         try: () => Bun.build(config),
         catch: (err) => {
-          return new BundleError(err)
+          return new BunBundleError(err)
         },
       })
 
@@ -140,14 +147,14 @@ export const build = (
  */
 export const load = <M>(
   config: BuildConfig,
-): Effect.Effect<M, BundleError, never> & { config: BuildConfig } =>
+): Effect.Effect<M, BunBundleError, never> & { config: BuildConfig } =>
   Object.assign(
     pipe(
       build(config),
       Effect.andThen((buildOutput) =>
         Effect.tryPromise({
           try: () => importJsBlob<M>(buildOutput.outputs[0]),
-          catch: (err) => new BundleError(err),
+          catch: (err) => new BunBundleError(err),
         })
       ),
     ),
@@ -162,7 +169,7 @@ export const load = <M>(
  */
 export const loadWatch = <M>(
   config: BuildConfig,
-): Effect.Effect<M, BundleError, never> & { config: BuildConfig } =>
+): Effect.Effect<M, BunBundleError, never> & { config: BuildConfig } =>
   Object.assign(
     Effect.gen(function*() {
       const [entrypoint] = config.entrypoints
@@ -219,7 +226,7 @@ export const loadWatch = <M>(
  */
 export const buildRouter = (
   opts: BuildConfig,
-): Effect.Effect<HttpRouter.HttpRouter, BundleError, never> =>
+): Effect.Effect<HttpRouter.HttpRouter, BunBundleError, never> =>
   Effect.gen(function*() {
     const buildOutput = yield* build(opts)
     const mapping = mapBuildEntrypoints(opts, buildOutput)
@@ -316,23 +323,6 @@ export const ssr = (options: {
   })
 }
 
-function findNodeModules(startDir = process.cwd()) {
-  let currentDir = NPath.resolve(startDir)
-
-  while (currentDir !== NPath.parse(currentDir).root) {
-    const nodeModulesPath = NPath.join(currentDir, "node_modules")
-    if (
-      NFS.statSync(nodeModulesPath).isDirectory()
-    ) {
-      return nodeModulesPath
-    }
-
-    currentDir = NPath.dirname(currentDir)
-  }
-
-  return null
-}
-
 /**
  * Finds common path prefix across provided paths.
  */
@@ -391,28 +381,4 @@ function generateManifest(
       },
     ]),
   }
-}
-
-/**
- * Imports a blob as a module.
- * Useful for loading code from build artifacts.
- */
-async function importJsBlob<M = unknown>(blob: Blob): Promise<M> {
-  const contents = await blob.arrayBuffer()
-  const hash = Bun.hash(contents)
-  const basePath = findNodeModules() + "/.tmp"
-  const path = basePath + "/effect-bundler-"
-    + hash.toString(16) + ".js"
-
-  const file = Bun.file(path)
-  await file.write(contents)
-
-  const bundleModule = await import(path)
-
-  await file.delete()
-    // if called concurrently, file sometimes may be deleted
-    // safe ignore when this happens
-    .catch(() => {})
-
-  return bundleModule
 }

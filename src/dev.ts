@@ -60,25 +60,31 @@ const ServerConfig = BunBundle.config({
 
 export const ServerBuild = BunBundle.loadWatch<typeof ServerFile>(ServerConfig)
 
-export const App = HttpAppExtra.chain([
-  ServerBuild
-    .pipe(Effect.andThen((v) => v.default)),
+const bundles = Layer.merge(
+  BunBundle.layer(ClientBundle, ClientConfig),
+  BunBundle.layer(ServerBundle, ServerConfig),
+)
 
-  Bundle.http(ClientBundle).pipe(
+export const App = HttpAppExtra.chain([
+  pipe(
+    ServerBundle,
+    Effect.andThen(Bundle.load<typeof ServerFile>),
+    Effect.andThen(v => v.default),
+  ),
+
+  pipe(
+    ClientBundle,
+    Bundle.http,
     Effect.andThen(HttpRouter.prefixAll("/.bundle")),
   ),
-])
+]).pipe(
+  Effect.provide(bundles),
+)
 
 if (import.meta.main) {
   pipe(
     HttpServer.serve(App),
     HttpServer.withLogAddress,
-    Layer.provide(
-      BunBundle.layer(ClientBundle, ClientConfig),
-    ),
-    Layer.provide(
-      BunBundle.layer(ServerBundle, ServerConfig),
-    ),
     Layer.provide(
       BunHttpServer.layer({
         port: 3000,

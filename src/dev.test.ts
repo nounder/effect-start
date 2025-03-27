@@ -48,7 +48,7 @@ it("loads client bundle", () =>
   effect(function*() {
     const bundle = yield* ClientBundle
     const res = yield* Client.get(
-      "/.bundle/" + bundle.artifacts[0].path,
+      "/.bundle/" + Object.keys(bundle.artifacts)[0],
     )
 
     expect(res.status)
