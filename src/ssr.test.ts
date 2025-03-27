@@ -1,7 +1,7 @@
 import { expect, it } from "bun:test"
 import { Effect } from "effect"
 import * as BunBundle from "./bun/BunBundle.ts"
-import { ServerBuild } from "./dev.ts"
+import { ServerBundleConfig } from "./dev.ts"
 import * as TestHttpClient from "./effect/TestHttpClient.ts"
 import * as SsrFile from "./ssr.tsx" with { type: "file" }
 import { effectFn } from "./test.ts"
@@ -9,7 +9,7 @@ import { effectFn } from "./test.ts"
 const effect = effectFn()
 
 const SsrBundle = BunBundle.load<typeof SsrFile>({
-  ...ServerBuild.config,
+  ...ServerBundleConfig,
   entrypoints: [
     SsrFile.default as unknown as string,
   ],

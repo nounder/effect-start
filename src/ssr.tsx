@@ -7,7 +7,7 @@ import {
   ssr,
 } from "solid-js/web"
 import { App } from "./App.tsx"
-import { ClientBuild } from "./dev.ts"
+import { ClientBundleConfig } from "./dev.ts"
 
 export const SsrApp = BunBundle.ssr({
   render: async (req, resolve) => {
@@ -38,7 +38,7 @@ export const SsrApp = BunBundle.ssr({
       },
     })
   },
-  config: ClientBuild.config,
+  config: ClientBundleConfig
 })
 
 export default SsrApp

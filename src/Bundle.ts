@@ -1,5 +1,5 @@
 import { HttpRouter, HttpServerResponse } from "@effect/platform"
-import { Context, Data, Effect, Record } from "effect"
+import { Context, Data, Effect, Record, Stream } from "effect"
 import { importJsBlob } from "./esm.ts"
 
 export class BundleError extends Data.TaggedError("BundleError")<{

@@ -1,14 +1,14 @@
 import { expect, it } from "bun:test"
-import { Effect, Layer } from "effect"
+import { Layer } from "effect"
 import * as BunBundle from "./bun/BunBundle.ts"
-import { App, ClientBuild, ClientBundle } from "./dev.ts"
+import { App, ClientBundle, ClientBundleConfig } from "./dev.ts"
 import * as TestHttpClient from "./effect/TestHttpClient.ts"
 import { effectFn } from "./test.ts"
 
 const effect = effectFn(
   Layer.effect(
     ClientBundle,
-    BunBundle.effect(ClientBuild.config),
+    BunBundle.effect(ClientBundleConfig),
   ),
 )
 

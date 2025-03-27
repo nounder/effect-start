@@ -13,7 +13,7 @@ export class ClientBundle extends Bundle.Tag("client")<ClientBundle>() {}
 
 export class ServerBundle extends Bundle.Tag("server")<ServerBundle>() {}
 
-const ClientConfig = BunBundle.config({
+export const ClientBundleConfig = BunBundle.config({
   entrypoints: [
     ClientFile.default as unknown as string,
   ],
@@ -31,9 +31,7 @@ const ClientConfig = BunBundle.config({
   ],
 })
 
-export const ClientBuild = BunBundle.build(ClientConfig)
-
-const ServerConfig = BunBundle.config({
+export const ServerBundleConfig = BunBundle.config({
   entrypoints: [
     ServerFile.default as unknown as string,
   ],
@@ -58,11 +56,9 @@ const ServerConfig = BunBundle.config({
   ],
 })
 
-export const ServerBuild = BunBundle.loadWatch<typeof ServerFile>(ServerConfig)
-
 const bundles = Layer.merge(
-  BunBundle.layer(ClientBundle, ClientConfig),
-  BunBundle.layer(ServerBundle, ServerConfig),
+  BunBundle.layer(ClientBundle, ClientBundleConfig),
+  BunBundle.layer(ServerBundle, ServerBundleConfig),
 )
 
 export const App = HttpAppExtra.chain([
