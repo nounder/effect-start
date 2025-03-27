@@ -19,7 +19,7 @@ export type BundleContext =
     blob: (path: string) => Blob | null
   }
 
-export const Tag = (name: string) => <Identifier>() =>
+export const Tag = <T extends string>(name: T) => <Identifier>() =>
   Context.Tag(
     `effect-bundler/Bundle/tags/${name}`,
   )<Identifier, BundleContext>()
