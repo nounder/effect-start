@@ -1,7 +1,7 @@
-import { HttpRouter, HttpServer, HttpServerResponse } from "@effect/platform"
+import { HttpRouter, HttpServer, Runtime } from "@effect/platform"
 import { BunHttpServer, BunRuntime } from "@effect/platform-bun"
 import { SolidPlugin } from "bun-plugin-solid"
-import { Effect, Layer, Logger, LogLevel, pipe } from "effect"
+import { Console, Effect, Layer, Logger, LogLevel, Match, pipe } from "effect"
 import PackageJson from "../package.json" with { type: "json" }
 import * as BunBundle from "./bun/BunBundle.ts"
 import * as Bundle from "./Bundle.ts"
@@ -56,38 +56,59 @@ export const ServerBundleConfig = BunBundle.config({
   ],
 })
 
-const bundles = Layer.merge(
+const BundleLayer = Layer.merge(
   BunBundle.layer(ClientBundle, ClientBundleConfig),
   BunBundle.layer(ServerBundle, ServerBundleConfig),
 )
 
 export const App = HttpAppExtra.chain([
-  pipe(
-    ServerBundle,
+  ServerBundle.pipe(
     Effect.andThen(Bundle.load<typeof ServerFile>),
     Effect.andThen(v => v.default),
   ),
 
-  pipe(
-    ClientBundle,
-    Bundle.http,
+  ClientBundle.pipe(
+    Bundle.toHttpRouter,
     Effect.andThen(HttpRouter.prefixAll("/.bundle")),
   ),
 ]).pipe(
-  Effect.provide(bundles),
+  Effect.provide(BundleLayer),
 )
 
 if (import.meta.main) {
-  pipe(
-    HttpServer.serve(App),
-    HttpServer.withLogAddress,
-    Layer.provide(
-      BunHttpServer.layer({
-        port: 3000,
-      }),
+  Match.value(process.argv[2] ?? "start").pipe(
+    Match.when(
+      "start",
+      () =>
+        pipe(
+          HttpServer.serve(App),
+          HttpServer.withLogAddress,
+          Layer.provide(
+            BunHttpServer.layer({
+              port: 3000,
+            }),
+          ),
+          Layer.launch,
+          Logger.withMinimumLogLevel(LogLevel.Debug),
+        ),
     ),
-    Layer.launch,
-    Logger.withMinimumLogLevel(LogLevel.Debug),
+    Match.when(
+      "build",
+      () =>
+        Effect.gen(function*() {
+          return yield* Effect.dieMessage("Not implemented")
+          yield* Console.log("Building client bundle")
+
+          yield* Effect.forEach([
+            ClientBundleConfig,
+            ServerBundleConfig,
+          ], (config) =>
+            pipe(
+              BunBundle.build(config),
+            ))
+        }),
+    ),
+    Match.orElse(() => Effect.dieMessage("Unknown command")),
     BunRuntime.runMain,
   )
 }
