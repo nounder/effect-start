@@ -22,18 +22,8 @@ import {
 import * as NFSP from "node:fs/promises"
 import * as NPath from "node:path"
 import * as process from "node:process"
-import type { BundleContext } from "../Bundle.ts"
+import type { BundleContext, BundleManifest } from "../Bundle.ts"
 import { importJsBlob } from "../esm.ts"
-
-type BunBundleManifest = {
-  artifacts: Record<string, {
-    path: string
-    hash: string | null
-    size: number
-    type: string
-    imports?: any[]
-  }>
-}
 
 class BunBundleError extends Error {
   readonly _tag = "BunBundleError"
@@ -58,42 +48,16 @@ const SOURCE_FILENAME = /\.(tsx?|jsx?)$/
 
 type BuildOptions = Omit<BuildConfig, "outdir">
 
-type LoadOptions =
-  & BuildOptions
-  & {
-    // only one entrypoint is allowed for loading
-    entrypoints: [string]
-  }
-
 export const effect = (
   config: BuildConfig,
 ): Effect.Effect<BundleContext, any> =>
   Effect.gen(function*() {
     const output = yield* build(config)
+    const manifest = generateManifestfromBunBundle(config, output)
     const entrypointArtifacts = mapBuildEntrypoints(config, output)
 
     return {
-      entrypoints: Record.mapEntries(entrypointArtifacts, (v, k) => [
-        k,
-        // strip ./ prefix
-        v.path.slice(2),
-      ]),
-      artifacts: pipe(
-        output.outputs,
-        Iterable.map((v) =>
-          [
-            // strip './' prefix
-            v.path.slice(2),
-            {
-              hash: v.hash,
-              kind: v.kind,
-              size: v.size,
-              type: v.type,
-            },
-          ] as const
-        ),
-        Record.fromEntries,
-      ),
+      ...manifest,
       resolve: (url: string) => {
         return url
       },
@@ -225,12 +189,12 @@ export const loadWatch = <M>(
  * Useful for serving artifacts from client bundle.
  */
 export const buildRouter = (
-  opts: BuildConfig,
+  config: BuildConfig,
 ): Effect.Effect<HttpRouter.HttpRouter, BunBundleError, never> =>
   Effect.gen(function*() {
-    const buildOutput = yield* build(opts)
-    const mapping = mapBuildEntrypoints(opts, buildOutput)
-    const manifest = generateManifest(opts, buildOutput)
+    const buildOutput = yield* build(config)
+    const mapping = mapBuildEntrypoints(config, buildOutput)
+    const manifest = generateManifestfromBunBundle(config, buildOutput)
 
     const router = pipe(
       Record.reduce(
@@ -362,14 +326,20 @@ function mapBuildEntrypoints(
  * Generate manifest from a build.
  * Useful for SSR and providing source->artifact path mapping.
  */
-function generateManifest(
+function generateManifestfromBunBundle(
   options: BuildOptions,
   output: BuildOutput,
-): BunBundleManifest {
-  const mapping = mapBuildEntrypoints(options, output)
+): BundleManifest {
+  const entrypointArtifacts = mapBuildEntrypoints(options, output)
 
   return {
-    artifacts: Record.mapEntries(mapping, (v, k) => [
+    entrypoints: Record.mapEntries(entrypointArtifacts, (v, k) => [
+      k,
+      // strip ./ prefix
+      v.path.slice(2),
+    ]),
+
+    artifacts: Record.mapEntries(entrypointArtifacts, (v, k) => [
       k,
       {
         // strip './' prefix
