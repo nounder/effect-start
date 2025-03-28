@@ -22,8 +22,10 @@ import {
 import * as NFSP from "node:fs/promises"
 import * as NPath from "node:path"
 import * as process from "node:process"
-import type { BundleContext, BundleManifest } from "../Bundle.ts"
+import type { BundleContext, BundleManifest, BundleTag } from "../Bundle.ts"
 import { importJsBlob } from "../esm.ts"
+
+type BunBundleConfig = BuildConfig
 
 class BunBundleError extends Error {
   readonly _tag = "BunBundleError"
@@ -46,10 +48,30 @@ class BunBundleError extends Error {
 // TODO: parametrize source filename pattern
 const SOURCE_FILENAME = /\.(tsx?|jsx?)$/
 
-type BuildOptions = Omit<BuildConfig, "outdir">
+type BuildOptions = Omit<BunBundleConfig, "outdir">
 
+export const make = <Key extends string, Tag = Key>(
+  key: Key,
+  config: BunBundleConfig,
+): BundleTag<Key, BunBundleConfig, Tag> => {
+  const tagKey = `effect-bundler/tags/${key}` as const
+  const tag = Context.GenericTag<Tag, BundleContext>(tagKey)
+
+  return Object.assign(
+    tag,
+    {
+      key: tagKey,
+      bundleKey: key,
+      bundleConfig: config,
+    },
+  )
+}
+
+/**
+ * Given a config, build a bundle and returns every time when effect is executed.
+ */
 export const effect = (
-  config: BuildConfig,
+  config: BunBundleConfig,
 ): Effect.Effect<BundleContext, any> =>
   Effect.gen(function*() {
     const output = yield* build(config)
@@ -72,7 +94,7 @@ export const effect = (
 
 export const layer = <T>(
   tag: Context.Tag<T, BundleContext>,
-  config: BuildConfig,
+  config: BunBundleConfig,
 ) => {
   return Layer.effect(
     tag,
@@ -87,11 +109,10 @@ export const config = <M = unknown>(
 ): BrandedConfig<M> => {
   return config as BrandedConfig<M>
 }
-
 export const build = (
-  config: BuildOptions,
+  config: BunBundleConfig,
 ): Effect.Effect<BuildOutput, BunBundleError, never> & {
-  config: BuildOptions
+  config: BunBundleConfig
 } =>
   Object.assign(
     Effect.gen(function*() {
@@ -113,8 +134,8 @@ export const build = (
  * Builds, loads, and return a module as an Effect.
  */
 export const load = <M>(
-  config: BuildConfig,
-): Effect.Effect<M, BunBundleError, never> & { config: BuildConfig } =>
+  config: BunBundleConfig,
+): Effect.Effect<M, BunBundleError, never> & { config: BunBundleConfig } =>
   Object.assign(
     pipe(
       build(config),
@@ -135,8 +156,8 @@ export const load = <M>(
  * Useful for development.
  */
 export const loadWatch = <M>(
-  config: BuildConfig,
-): Effect.Effect<M, BunBundleError, never> & { config: BuildConfig } =>
+  config: BunBundleConfig,
+): Effect.Effect<M, BunBundleError, never> & { config: BunBundleConfig } =>
   Object.assign(
     Effect.gen(function*() {
       const [entrypoint] = config.entrypoints
@@ -192,7 +213,7 @@ export const loadWatch = <M>(
  * Useful for serving artifacts from client bundle.
  */
 export const buildRouter = (
-  config: BuildConfig,
+  config: BunBundleConfig,
 ): Effect.Effect<HttpRouter.HttpRouter, BunBundleError, never> =>
   Effect.gen(function*() {
     const buildOutput = yield* build(config)
@@ -245,7 +266,7 @@ export const ssr = (options: {
     request: Request,
     resolve: (url: string) => string,
   ) => Promise<Response>
-  config: BuildConfig
+  config: BunBundleConfig
   publicBase?: string
 }): HttpApp.Default<SsrError | RouteNotFound> => {
   const { render, config, publicBase } = options
@@ -351,7 +372,6 @@ function generateManifestfromBunBundle(
           v.path.slice(2),
           {
             hash: v.hash,
-            kind: v.kind,
             size: v.size,
             type: v.type,
           },
