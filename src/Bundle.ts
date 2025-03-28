@@ -239,4 +239,72 @@ export const toFiles = (
   })
 }
 
-// Write a fromFiles function that loads a bundle from a directory and returns a BundleContext AI!
+/**
+ * Loads a bundle from a directory and returns a BundleContext.
+ * Expects the directory to contain a manifest.json file and all the artifacts
+ * referenced in the manifest.
+ */
+export const fromFiles = (
+  directory: string,
+): Effect.Effect<BundleContext, BundleError> => {
+  return Effect.gen(function*() {
+    const fs = yield* FileSystem.FileSystem
+    const normalizedDir = directory.replace(/\/$/, "")
+
+    // Read and parse the manifest file
+    const manifestContent = yield* fs.readFileString(`${normalizedDir}/manifest.json`).pipe(
+      Effect.catchAll(e => Effect.fail(
+        new BundleError({
+          message: `Failed to read manifest.json from ${normalizedDir}`,
+          cause: e,
+        })
+      ))
+    )
+
+    let manifest: BundleManifest
+    try {
+      manifest = JSON.parse(manifestContent) as BundleManifest
+    } catch (e) {
+      return Effect.fail(
+        new BundleError({
+          message: "Failed to parse manifest.json",
+          cause: e,
+        })
+      )
+    }
+
+    // Create the bundle context
+    const bundleContext: BundleContext = {
+      ...manifest,
+      resolve: (url: string) => {
+        // If the URL is already in the artifacts, return it directly
+        if (manifest.artifacts[url]) {
+          return url
+        }
+        
+        // Otherwise, try to find it in entrypoints
+        for (const [key, value] of Object.entries(manifest.entrypoints)) {
+          if (key === url) {
+            return value
+          }
+        }
+        
+        return url
+      },
+      getArtifact: (path: string) => {
+        return Effect.runSync(
+          Effect.gen(function*() {
+            try {
+              const content = yield* fs.readFile(`${normalizedDir}/${path}`)
+              return new Blob([content])
+            } catch {
+              return null
+            }
+          })
+        )
+      }
+    }
+
+    return bundleContext
+  })
+}
