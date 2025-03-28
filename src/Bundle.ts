@@ -1,5 +1,14 @@
 import { FileSystem, HttpRouter, HttpServerResponse } from "@effect/platform"
-import { Array, Context, Data, Effect, Option, pipe, Record } from "effect"
+import {
+  Array,
+  Context,
+  Data,
+  Effect,
+  Option,
+  pipe,
+  Record,
+  Schema as S,
+} from "effect"
 import { importJsBlob } from "./esm.ts"
 
 export type BundleTag<Key extends string, Config, Identifier = Key> =
@@ -16,19 +25,23 @@ export type BundleTag<Key extends string, Config, Identifier = Key> =
  * Generic shape describing a bundle across multiple bundlers
  * (like bun, esbuild & vite)
  */
-export type BundleManifest = {
-  entrypoints: {
-    [path: string]: string
-  }
-  artifacts: {
-    [path: string]: {
-      type: string
-      size: number
-      hash: string | null
-      imports?: Array<any>
-    }
-  }
-}
+export const BundleManifestSchema = S.Struct({
+  entrypoints: S.Record({
+    key: S.String,
+    value: S.String,
+  }),
+  artifacts: S.Record({
+    key: S.String,
+    value: S.Struct({
+      type: S.String,
+      size: S.Number,
+      hash: S.Union(S.Null, S.String)
+        .pipe(S.optional),
+    }),
+  }),
+})
+
+export type BundleManifest = typeof BundleManifestSchema.Type
 
 /**
  * Passed to bundle effects and within bundle runtime.
@@ -246,63 +259,41 @@ export const toFiles = (
  */
 export const fromFiles = (
   directory: string,
-): Effect.Effect<BundleContext, BundleError> => {
+): Effect.Effect<BundleContext, BundleError, FileSystem.FileSystem> => {
   return Effect.gen(function*() {
     const fs = yield* FileSystem.FileSystem
     const normalizedDir = directory.replace(/\/$/, "")
 
-    // Read and parse the manifest file
-    const manifestContent = yield* fs.readFileString(`${normalizedDir}/manifest.json`).pipe(
-      Effect.catchAll(e => Effect.fail(
-        new BundleError({
-          message: `Failed to read manifest.json from ${normalizedDir}`,
-          cause: e,
-        })
-      ))
+    const manifest = yield* fs.readFileString(
+      `${normalizedDir}/manifest.json`,
+    ).pipe(
+      Effect.andThen(v => JSON.parse(v) as unknown),
+      Effect.andThen(S.decodeUnknownSync(BundleManifestSchema)),
+      Effect.catchAll(e =>
+        Effect.fail(
+          new BundleError({
+            message: `Failed to read manifest.json from ${normalizedDir}`,
+            cause: e,
+          }),
+        )
+      ),
     )
 
-    let manifest: BundleManifest
-    try {
-      manifest = JSON.parse(manifestContent) as BundleManifest
-    } catch (e) {
-      return Effect.fail(
-        new BundleError({
-          message: "Failed to parse manifest.json",
-          cause: e,
-        })
-      )
-    }
+    // Map kmanifest.artifacts to a blob from a file system AI!
+    const artifactsMap = {}
 
-    // Create the bundle context
     const bundleContext: BundleContext = {
       ...manifest,
       resolve: (url: string) => {
-        // If the URL is already in the artifacts, return it directly
         if (manifest.artifacts[url]) {
           return url
         }
-        
-        // Otherwise, try to find it in entrypoints
-        for (const [key, value] of Object.entries(manifest.entrypoints)) {
-          if (key === url) {
-            return value
-          }
-        }
-        
+
         return url
       },
       getArtifact: (path: string) => {
-        return Effect.runSync(
-          Effect.gen(function*() {
-            try {
-              const content = yield* fs.readFile(`${normalizedDir}/${path}`)
-              return new Blob([content])
-            } catch {
-              return null
-            }
-          })
-        )
-      }
+        // TODO
+      },
     }
 
     return bundleContext
