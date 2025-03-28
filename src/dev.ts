@@ -2,6 +2,7 @@ import { HttpRouter, HttpServer, Runtime } from "@effect/platform"
 import { BunContext, BunHttpServer, BunRuntime } from "@effect/platform-bun"
 import { SolidPlugin } from "bun-plugin-solid"
 import { Console, Effect, Layer, Logger, LogLevel, Match, pipe } from "effect"
+import { fileURLToPath } from "node:url"
 import PackageJson from "../package.json" with { type: "json" }
 import * as BunBundle from "./bun/BunBundle.ts"
 import * as Bundle from "./Bundle.ts"
@@ -15,7 +16,7 @@ export class ServerBundle extends Bundle.Tag("server")<ServerBundle>() {}
 
 export const ClientBundleConfig = BunBundle.config({
   entrypoints: [
-    import.meta.resolve("./client.tsx"),
+    fileURLToPath(import.meta.resolve("./client.tsx")),
   ],
   target: "browser",
   conditions: [
@@ -34,7 +35,7 @@ export const ClientBundleConfig = BunBundle.config({
 
 export const ServerBundleConfig = BunBundle.config({
   entrypoints: [
-    import.meta.resolve("./server.ts"),
+    fileURLToPath(import.meta.resolve("./server.ts")),
   ],
   target: "bun",
   conditions: [
@@ -69,7 +70,7 @@ export const App = HttpAppExtra.chain([
   ),
 
   ClientBundle.pipe(
-    Bundle.toHttpRouter,
+    Effect.map(Bundle.toHttpRouter),
     Effect.andThen(HttpRouter.prefixAll("/.bundle")),
   ),
 ]).pipe(

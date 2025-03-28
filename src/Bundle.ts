@@ -1,21 +1,21 @@
 import { FileSystem, HttpRouter, HttpServerResponse } from "@effect/platform"
-import {
-  Array,
-  Context,
-  Data,
-  Effect,
-  Match,
-  Option,
-  pipe,
-  Record,
-} from "effect"
+import { Array, Context, Data, Effect, Option, pipe, Record } from "effect"
 import { importJsBlob } from "./esm.ts"
 
-export class BundleError extends Data.TaggedError("BundleError")<{
-  message: string
-  cause?: unknown
-}> {}
+export type BundleTag<Key extends string, Config, Identifier = Key> =
+  & Context.Tag<Identifier, BundleContext>
+  & {
+    key: `effect-bundler/tags/${Key}`
+    bundleKey: Key
+    // TODO: we should consider branding the config
+    // so tag can only be passed between bundles of the same kind.
+    bundleConfig: Config
+  }
 
+/**
+ * Generic shape describing a bundle across multiple bundlers
+ * (like bun, esbuild & vite)
+ */
 export type BundleManifest = {
   entrypoints: {
     [path: string]: string
@@ -30,6 +30,11 @@ export type BundleManifest = {
   }
 }
 
+/**
+ * Passed to bundle effects and within bundle runtime.
+ * Used to expose artifacts via HTTP server and properly resolve
+ * imports within the bundle.
+ */
 export type BundleContext =
   & BundleManifest
   & {
@@ -37,15 +42,79 @@ export type BundleContext =
     getArtifact: (path: string) => Blob | null
   }
 
+export class BundleError extends Data.TaggedError("BundleError")<{
+  message: string
+  cause?: unknown
+}> {}
+
+/**
+ * Creates a tag that symbolicly identifies a bundle.
+ *
+ * Useful when you want to provide a bundle at the start of the script.
+ */
 export const Tag = <T extends string>(name: T) => <Identifier>() =>
   Context.Tag(
-    `effect-bundler/Bundle/tags/${name}`,
+    `effect-bundler/tags/${name}`,
   )<Identifier, BundleContext>()
 
+/**
+ * Loads a Bundle under given key.
+ * It first looks for the bundle in runtime context, and if not found,
+ * tries to load it from an embedded bundle.
+ *
+ * Embeded bundle are found under `effect-bundler/embeds/` module
+ * and are provided by a bundler during building process.
+ * Hence, the bundle config must include appropriate plugins
+ * that provide bundle modules.
+ *
+ * WARNING: This will fail when bundle is not properly configured.
+ */
+export const dynamic = <T extends string>(
+  key: T,
+): Effect.Effect<BundleContext, never, never> =>
+  pipe(
+    [
+      // maybe get from runtime context
+      Context.GenericTag<T, BundleContext>(
+        `effect-bundler/tags/${key}` as const,
+      ).pipe(
+        Effect.serviceOption,
+        Effect.andThen(Option.getOrThrow),
+      ),
+
+      // maybe import from bundled modules
+      Effect.tryPromise({
+        try: () => {
+          // @ts-ignore
+          return import(`effect-bundler/dynamic/${key}`)
+        },
+        catch: e =>
+          new BundleError({
+            message: "Failed to load dynamic bundle",
+            cause: e,
+          }),
+      }),
+    ],
+    Effect.firstSuccessOf,
+    Effect.orDie,
+  )
+
+/**
+ * Lodas a bundle as a javascript module.
+ * Bundle must have only one entrypoint.
+ */
 export const load = <M>(
   context: BundleContext,
 ): Effect.Effect<M, BundleError> => {
-  const [artifact] = Object.values(context.entrypoints)
+  const [artifact, ...rest] = Object.values(context.entrypoints)
+
+  if (rest.length > 0) {
+    return Effect.fail(
+      new BundleError({
+        message: "Multiple entrypoints are not supported in load()",
+      }),
+    )
+  }
 
   return Effect.tryPromise({
     try: () => {
@@ -61,27 +130,31 @@ export const load = <M>(
   })
 }
 
-export const toHttpRouter = <T>(
-  bundle: Context.Tag<T, BundleContext>,
-) => {
-  return Effect.map(
-    bundle,
-    v =>
-      Record.reduce(
-        v.artifacts,
-        HttpRouter.empty,
-        (router, artifact, path) =>
-          router.pipe(
-            HttpRouter.get(
-              `/${path}`,
-              HttpServerResponse.text("yo"),
-            ),
-          ),
+/**
+ * Converts a Bundle to a HTTP router.
+ * Useful when you want to expose Bundle via web server,
+ * like in case of client-side bundles.
+ */
+export const toHttpRouter = (
+  bundle: BundleContext,
+): HttpRouter.HttpRouter => {
+  return Record.reduce(
+    bundle.artifacts,
+    HttpRouter.empty,
+    (router, artifact, path) =>
+      router.pipe(
+        HttpRouter.get(
+          `/${path}`,
+          HttpServerResponse.text("yo"),
+        ),
       ),
   )
 }
 
-export const toFiles = <T>(
+/**
+ * Exports a bundle to a file system under specified directory.
+ */
+export const toFiles = (
   context: BundleContext,
   outDir: string,
 ) => {
@@ -113,6 +186,8 @@ export const toFiles = <T>(
       Effect.catchAll(() => Effect.succeed(null)),
     )
 
+    // check if the output directory is empty. if it contains previous build,
+    // remove it. Otherwise fail.
     if (existingOutDirFiles && existingOutDirFiles.length > 0) {
       if (existingOutDirFiles.includes("manifest.json")) {
         yield* Effect.logWarning(
