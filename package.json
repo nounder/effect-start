@@ -1,7 +1,9 @@
 {
   "scripts": {
-    "start": "bun src/server.ts",
-    "dev": "bun src/dev.ts"
+    "dev": "bun src/dev.ts start",
+    "build": "bun src/dev.ts build",
+    "bundler": "bun src/dev.ts",
+    "server": "bun --conditions=solid --preload=./src/server.preload.ts ./src/server.ts"
   },
   "dependencies": {
     "@effect/cli": "^0.56.1",

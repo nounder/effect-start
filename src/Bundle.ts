@@ -45,7 +45,7 @@ export const Tag = <T extends string>(name: T) => <Identifier>() =>
 export const load = <M>(
   context: BundleContext,
 ): Effect.Effect<M, BundleError> => {
-  const [[artifact]] = Object.values(context.entrypoints)
+  const [artifact] = Object.values(context.entrypoints)
 
   return Effect.tryPromise({
     try: () => {
@@ -55,7 +55,7 @@ export const load = <M>(
     },
     catch: (e) =>
       new BundleError({
-        message: "Failed to load entrypoint",
+        message: "Failed to load entrypoint buffer",
         cause: e,
       }),
   })

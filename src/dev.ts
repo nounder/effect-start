@@ -5,9 +5,9 @@ import { Console, Effect, Layer, Logger, LogLevel, Match, pipe } from "effect"
 import PackageJson from "../package.json" with { type: "json" }
 import * as BunBundle from "./bun/BunBundle.ts"
 import * as Bundle from "./Bundle.ts"
-import * as ClientFile from "./client.tsx" with { type: "file" }
+import * as Client from "./client.tsx"
 import * as HttpAppExtra from "./effect/HttpAppExtra.ts"
-import * as ServerFile from "./server.ts" with { type: "file" }
+import * as Server from "./server.ts"
 
 export class ClientBundle extends Bundle.Tag("client")<ClientBundle>() {}
 
@@ -15,7 +15,7 @@ export class ServerBundle extends Bundle.Tag("server")<ServerBundle>() {}
 
 export const ClientBundleConfig = BunBundle.config({
   entrypoints: [
-    ClientFile.default as unknown as string,
+    import.meta.resolve("./client.tsx"),
   ],
   target: "browser",
   conditions: [
@@ -34,7 +34,7 @@ export const ClientBundleConfig = BunBundle.config({
 
 export const ServerBundleConfig = BunBundle.config({
   entrypoints: [
-    ServerFile.default as unknown as string,
+    import.meta.resolve("./server.ts"),
   ],
   target: "bun",
   conditions: [
@@ -64,7 +64,7 @@ const BundleLayer = Layer.merge(
 
 export const App = HttpAppExtra.chain([
   ServerBundle.pipe(
-    Effect.andThen(Bundle.load<typeof ServerFile>),
+    Effect.andThen(Bundle.load<typeof Server>),
     Effect.andThen(v => v.default),
   ),
 

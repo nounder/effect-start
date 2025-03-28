@@ -1,6 +1,6 @@
-import { HttpRouter, HttpServerResponse } from "@effect/platform"
-import { BunRuntime } from "@effect/platform-bun"
-import { Effect } from "effect"
+import { HttpRouter, HttpServer, HttpServerResponse } from "@effect/platform"
+import { BunHttpServer, BunRuntime } from "@effect/platform-bun"
+import { Effect, Layer } from "effect"
 import { handleHttpServerResponseError } from "./effect/http.ts"
 import * as HttpAppExtra from "./effect/HttpAppExtra.ts"
 import { SsrApp } from "./ssr.tsx"
@@ -34,3 +34,16 @@ const App = HttpAppExtra.chain([
 ])
 
 export default App
+
+if (import.meta.main) {
+  HttpServer.serve(App).pipe(
+    HttpServer.withLogAddress,
+    Layer.provide(
+      BunHttpServer.layer({
+        port: 3000,
+      }),
+    ),
+    Layer.launch,
+    BunRuntime.runMain,
+  )
+}
