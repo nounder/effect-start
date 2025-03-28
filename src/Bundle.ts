@@ -279,8 +279,40 @@ export const fromFiles = (
       ),
     )
 
-    // Map kmanifest.artifacts to a blob from a file system AI!
-    const artifactsMap = {}
+    // Create a map of artifact paths to their corresponding blobs
+    const artifactsMap: Record<string, Blob> = {}
+    
+    // Pre-load all artifacts into memory
+    yield* pipe(
+      manifest.artifacts,
+      Record.toEntries,
+      Effect.forEach(
+        ([path, _]) => 
+          fs.readFileBytes(`${normalizedDir}/${path}`).pipe(
+            Effect.map(bytes => {
+              // Determine MIME type based on file extension
+              const mimeType = path.endsWith('.js') ? 'application/javascript' :
+                               path.endsWith('.css') ? 'text/css' :
+                               path.endsWith('.html') ? 'text/html' :
+                               path.endsWith('.json') ? 'application/json' :
+                               'application/octet-stream';
+              
+              // Store the blob in our map
+              artifactsMap[path] = new Blob([bytes], { type: mimeType });
+              return path;
+            }),
+            Effect.catchAll(e => 
+              Effect.fail(
+                new BundleError({
+                  message: `Failed to read artifact ${path} from ${normalizedDir}`,
+                  cause: e,
+                })
+              )
+            )
+          ),
+        { concurrency: 16 }
+      )
+    )
 
     const bundleContext: BundleContext = {
       ...manifest,
@@ -292,7 +324,7 @@ export const fromFiles = (
         return url
       },
       getArtifact: (path: string) => {
-        // TODO
+        return artifactsMap[path] || null;
       },
     }
 
