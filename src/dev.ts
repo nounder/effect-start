@@ -5,6 +5,7 @@ import { Console, Effect, Layer, Logger, LogLevel, Match, pipe } from "effect"
 import { fileURLToPath } from "node:url"
 import PackageJson from "../package.json" with { type: "json" }
 import * as BunBundle from "./bun/BunBundle.ts"
+import { TailwindBunPlugin } from "./bun/TailwindBunPlugin.ts"
 import * as Bundle from "./Bundle.ts"
 import * as HttpAppExtra from "./effect/HttpAppExtra.ts"
 import * as Server from "./server.ts"
@@ -16,6 +17,7 @@ export class ServerBundle extends Bundle.Tag("server")<ServerBundle>() {}
 export const ClientBundleConfig = BunBundle.config({
   entrypoints: [
     fileURLToPath(import.meta.resolve("./client.tsx")),
+    fileURLToPath(import.meta.resolve("./app.css")),
   ],
   target: "browser",
   conditions: [
@@ -29,6 +31,7 @@ export const ClientBundleConfig = BunBundle.config({
       generate: "dom",
       hydratable: false,
     }),
+    TailwindBunPlugin(),
   ],
 })
 

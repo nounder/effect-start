@@ -335,7 +335,14 @@ function mapBuildEntrypoints(
   ) + "/"
 
   return pipe(
-    Iterable.zip(options.entrypoints, output.outputs),
+    Iterable.zip(
+      options.entrypoints,
+      pipe(
+        output.outputs,
+        // Filter out source maps to properly map artifacts to entrypoints.
+        Iterable.filter(v => !v.path.endsWith(".js.map")),
+      ),
+    ),
     Iterable.map(([entrypoint, artifact]) =>
       [
         entrypoint.replace(commonPathPrefix, ""),
@@ -365,6 +372,8 @@ function generateManifestfromBunBundle(
 
     artifacts: pipe(
       output.outputs,
+      // This will mess up direct entrypoint-artifact record.
+      // Will have to filter out sourcemap when mapping.
       Iterable.flatMap(v => v.sourcemap ? [v, v.sourcemap] : [v]),
       Iterable.map((v) =>
         [
