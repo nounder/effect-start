@@ -1,9 +1,11 @@
 import { FileSystem, HttpRouter, HttpServerResponse } from "@effect/platform"
+import type { BadArgument, PlatformError } from "@effect/platform/Error"
 import {
   Array,
   Context,
   Data,
   Effect,
+  Iterable,
   Option,
   pipe,
   Record,
@@ -151,9 +153,13 @@ export const load = <M>(
 export const toHttpRouter = (
   bundle: BundleContext,
 ): HttpRouter.HttpRouter => {
-  return Record.reduce(
-    bundle.artifacts,
+  return Iterable.reduce(
+    pipe(
+      bundle.artifacts,
+      Record.collect((k, v) => [k, bundle.getArtifact(k)!] as const),
+    ),
     HttpRouter.empty.pipe(
+      // handle manifest.json
       HttpRouter.get(
         "/manifest.json",
         HttpServerResponse.text(
@@ -166,11 +172,21 @@ export const toHttpRouter = (
         ),
       ),
     ),
-    (router, artifact, path) =>
+    (router, [path, artifact]) =>
       router.pipe(
         HttpRouter.get(
           `/${path}`,
-          HttpServerResponse.text("yo"),
+          pipe(
+            Effect.promise(() => artifact.arrayBuffer()),
+            Effect.andThen(bytes =>
+              HttpServerResponse.uint8Array(new Uint8Array(bytes), {
+                headers: {
+                  "Content-Type": artifact.type,
+                  "Content-Length": String(artifact.size),
+                },
+              })
+            ),
+          ),
         ),
       ),
   )
@@ -271,14 +287,16 @@ export const toFiles = (
  */
 export const fromFiles = (
   directory: string,
-): Effect.Effect<BundleContext, BundleError, FileSystem.FileSystem> => {
+): Effect.Effect<
+  BundleContext,
+  BundleError,
+  FileSystem.FileSystem
+> => {
   return Effect.gen(function*() {
     const fs = yield* FileSystem.FileSystem
     const normalizedDir = directory.replace(/\/$/, "")
-
-    const manifest = yield* fs.readFileString(
-      `${normalizedDir}/manifest.json`,
-    ).pipe(
+    const manifest = yield* pipe(
+      fs.readFileString(`${normalizedDir}/manifest.json`),
       Effect.andThen(v => JSON.parse(v) as unknown),
       Effect.andThen(S.decodeUnknownSync(BundleManifestSchema)),
       Effect.catchAll(e =>
@@ -290,53 +308,38 @@ export const fromFiles = (
         )
       ),
     )
-
-    // Create a map of artifact paths to their corresponding blobs
-    const artifactsMap: Record<string, Blob> = {}
-    
-    // Pre-load all artifacts into memory
-    yield* pipe(
-      manifest.artifacts,
-      Record.toEntries,
-      Effect.forEach(
-        ([path, _]) => 
-          fs.readFileBytes(`${normalizedDir}/${path}`).pipe(
-            Effect.map(bytes => {
-              // Determine MIME type based on file extension
-              const mimeType = path.endsWith('.js') ? 'application/javascript' :
-                               path.endsWith('.css') ? 'text/css' :
-                               path.endsWith('.html') ? 'text/html' :
-                               path.endsWith('.json') ? 'application/json' :
-                               'application/octet-stream';
-              
-              // Store the blob in our map
-              artifactsMap[path] = new Blob([bytes], { type: mimeType });
-              return path;
-            }),
-            Effect.catchAll(e => 
-              Effect.fail(
-                new BundleError({
-                  message: `Failed to read artifact ${path} from ${normalizedDir}`,
-                  cause: e,
-                })
-              )
-            )
-          ),
-        { concurrency: 16 }
-      )
+    const artifactsPairs = Record.toEntries(manifest.artifacts)
+    const artifactBlobs = yield* pipe(
+      artifactsPairs,
+      Iterable.map(([k]) => fs.readFile(`${normalizedDir}/${k}`)),
+      Effect.all,
+      Effect.catchAll(e =>
+        new BundleError({
+          message: `Failed to read an artifact from ${normalizedDir}`,
+          cause: e,
+        })
+      ),
+      Effect.andThen(Iterable.map((v, i) =>
+        new Blob([v], {
+          type: artifactsPairs[i][0],
+        })
+      )),
+    )
+    const artifactsRecord = pipe(
+      Iterable.zip(
+        Iterable.map(artifactsPairs, v => v[0]),
+        artifactBlobs,
+      ),
+      Record.fromEntries,
     )
 
     const bundleContext: BundleContext = {
       ...manifest,
       resolve: (url: string) => {
-        if (manifest.artifacts[url]) {
-          return url
-        }
-
-        return url
+        return manifest.entrypoints[url] ?? null
       },
       getArtifact: (path: string) => {
-        return artifactsMap[path] || null;
+        return artifactsRecord[path] ?? null
       },
     }
 

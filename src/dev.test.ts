@@ -1,3 +1,4 @@
+import { BunContext } from "@effect/platform-bun"
 import { expect, it } from "bun:test"
 import { Layer } from "effect"
 import * as BunBundle from "./bun/BunBundle.ts"
@@ -6,9 +7,12 @@ import * as TestHttpClient from "./effect/TestHttpClient.ts"
 import { effectFn } from "./test.ts"
 
 const effect = effectFn(
-  Layer.effect(
-    ClientBundle,
-    BunBundle.effect(ClientBundleConfig),
+  Layer.mergeAll(
+    Layer.effect(
+      ClientBundle,
+      BunBundle.effect(ClientBundleConfig),
+    ),
+    BunContext.layer,
   ),
 )
 

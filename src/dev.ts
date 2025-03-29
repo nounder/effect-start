@@ -6,7 +6,6 @@ import { fileURLToPath } from "node:url"
 import PackageJson from "../package.json" with { type: "json" }
 import * as BunBundle from "./bun/BunBundle.ts"
 import * as Bundle from "./Bundle.ts"
-import * as Client from "./client.tsx"
 import * as HttpAppExtra from "./effect/HttpAppExtra.ts"
 import * as Server from "./server.ts"
 
@@ -59,7 +58,8 @@ export const ServerBundleConfig = BunBundle.config({
 })
 
 const BundleLayer = Layer.merge(
-  BunBundle.layer(ClientBundle, ClientBundleConfig),
+  // BunBundle.layer(ClientBundle, ClientBundleConfig),
+  Layer.effect(ClientBundle, Bundle.fromFiles("out/client")),
   BunBundle.layer(ServerBundle, ServerBundleConfig),
 )
 
