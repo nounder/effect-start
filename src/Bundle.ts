@@ -153,7 +153,19 @@ export const toHttpRouter = (
 ): HttpRouter.HttpRouter => {
   return Record.reduce(
     bundle.artifacts,
-    HttpRouter.empty,
+    HttpRouter.empty.pipe(
+      HttpRouter.get(
+        "/manifest.json",
+        HttpServerResponse.text(
+          JSON.stringify(bundle, undefined, 2),
+          {
+            headers: {
+              "Content-Type": "application/json",
+            },
+          },
+        ),
+      ),
+    ),
     (router, artifact, path) =>
       router.pipe(
         HttpRouter.get(
