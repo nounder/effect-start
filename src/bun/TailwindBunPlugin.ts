@@ -52,10 +52,6 @@ export const TailwindBunPlugin: () => BunPlugin = () => {
 
         build = twCompiler.build([...collectedClassNames])
 
-        console.log("build tailwind")
-
-        // await Bun.file(args.path).write(build!)
-
         return {
           contents: build,
           // TODO: maybe css?

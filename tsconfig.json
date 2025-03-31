@@ -7,7 +7,7 @@
     "moduleDetection": "force",
     "allowJs": true,
 
-    "jsx": "react-jsx",
+    "jsx": "preserve",
     "jsxImportSource": "solid-js",
 
     // Bundler mode
