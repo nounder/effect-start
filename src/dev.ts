@@ -1,4 +1,4 @@
-import { HttpRouter, HttpServer, Runtime } from "@effect/platform"
+import { HttpRouter, HttpServer } from "@effect/platform"
 import { BunContext, BunHttpServer, BunRuntime } from "@effect/platform-bun"
 import { SolidPlugin } from "bun-plugin-solid"
 import { Console, Effect, Layer, Logger, LogLevel, Match, pipe } from "effect"
@@ -10,11 +10,7 @@ import * as Bundle from "./Bundle.ts"
 import * as HttpAppExtra from "./effect/HttpAppExtra.ts"
 import * as Server from "./server.ts"
 
-export class ClientBundle extends Bundle.Tag("client")<ClientBundle>() {}
-
-export class ServerBundle extends Bundle.Tag("server")<ServerBundle>() {}
-
-export const ClientBundleConfig = BunBundle.config({
+export const ClientBundle = BunBundle.bundle("ClientBundle", {
   entrypoints: [
     fileURLToPath(import.meta.resolve("./client.tsx")),
     fileURLToPath(import.meta.resolve("./app.css")),
@@ -35,7 +31,7 @@ export const ClientBundleConfig = BunBundle.config({
   ],
 })
 
-export const ServerBundleConfig = BunBundle.config({
+export const ServerBundle = BunBundle.bundle("ServerBundle", {
   entrypoints: [
     fileURLToPath(import.meta.resolve("./server.ts")),
   ],
@@ -60,12 +56,6 @@ export const ServerBundleConfig = BunBundle.config({
   ],
 })
 
-const BundleLayer = Layer.merge(
-  // BunBundle.layer(ClientBundle, ClientBundleConfig),
-  Layer.effect(ClientBundle, Bundle.fromFiles("out/client")),
-  BunBundle.layer(ServerBundle, ServerBundleConfig),
-)
-
 export const App = HttpAppExtra.chain([
   ServerBundle.pipe(
     Effect.andThen(Bundle.load<typeof Server>),
@@ -76,8 +66,11 @@ export const App = HttpAppExtra.chain([
     Effect.map(Bundle.toHttpRouter),
     Effect.andThen(HttpRouter.prefixAll("/.bundle")),
   ),
-]).pipe(
-  Effect.provide(BundleLayer),
+])
+
+export const layer = Layer.merge(
+  ClientBundle.layer,
+  ServerBundle.layer,
 )
 
 if (import.meta.main) {
@@ -101,18 +94,15 @@ if (import.meta.main) {
       "build",
       () =>
         Effect.gen(function*() {
-          const client = yield* BunBundle.effect(ClientBundleConfig)
-
           yield* Console.log("Building client bundle")
-          yield* Bundle.toFiles(client, "out/client")
-
-          const server = yield* BunBundle.effect(ServerBundleConfig)
+          yield* Bundle.toFiles(yield* ClientBundle, "out/client")
 
           yield* Console.log("Building server bundle")
-          yield* Bundle.toFiles(server, "out/server")
+          yield* Bundle.toFiles(yield* ServerBundle, "out/server")
         }),
     ),
     Match.orElse(() => Effect.dieMessage("Unknown command")),
+    Effect.provide(layer),
     Effect.provide(BunContext.layer),
     BunRuntime.runMain,
   )

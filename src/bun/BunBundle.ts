@@ -23,6 +23,7 @@ import * as NFSP from "node:fs/promises"
 import * as NPath from "node:path"
 import * as process from "node:process"
 import type { BundleContext, BundleManifest, BundleTag } from "../Bundle.ts"
+import * as Bundle from "../Bundle.ts"
 import { importJsBlob } from "../esm.ts"
 
 type BunBundleConfig = BuildConfig
@@ -66,6 +67,19 @@ export const make = <Key extends string, Tag = Key>(
     },
   )
 }
+
+export const bundle = <I extends `${string}Bundle`>(
+  key: I,
+  config: BunBundleConfig,
+) =>
+  Object.assign(
+    Bundle.tagged(key),
+    {
+      config,
+      load: load(config),
+      layer: Layer.effect(Bundle.tagged(key), effect(config)),
+    },
+  )
 
 /**
  * Given a config, build a bundle and returns every time when effect is executed.

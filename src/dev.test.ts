@@ -1,22 +1,11 @@
-import { BunContext } from "@effect/platform-bun"
 import { expect, it } from "bun:test"
-import { Layer } from "effect"
-import * as BunBundle from "./bun/BunBundle.ts"
-import { App, ClientBundle, ClientBundleConfig } from "./dev.ts"
+import * as Dev from "./dev.ts"
 import * as TestHttpClient from "./effect/TestHttpClient.ts"
 import { effectFn } from "./test.ts"
 
-const effect = effectFn(
-  Layer.mergeAll(
-    Layer.effect(
-      ClientBundle,
-      BunBundle.effect(ClientBundleConfig),
-    ),
-    BunContext.layer,
-  ),
-)
+const effect = effectFn(Dev.layer)
 
-const Client = TestHttpClient.make(App)
+const Client = TestHttpClient.make(Dev.App)
 
 it("dev yo", () =>
   effect(function*() {
@@ -50,10 +39,7 @@ it("dev random", () =>
 
 it("loads client bundle", () =>
   effect(function*() {
-    const bundle = yield* ClientBundle
-    const res = yield* Client.get(
-      "/.bundle/" + Object.keys(bundle.artifacts)[0],
-    )
+    const res = yield* Client.get("/.bundle/manifest.json")
 
     expect(res.status)
       .toEqual(200)

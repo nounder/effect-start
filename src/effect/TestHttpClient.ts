@@ -28,8 +28,8 @@ class TestHttpApp
   >()
 {}
 
-export const make = <E>(
-  httpApp?: HttpApp.Default<E, any>,
+export const make = <E, R>(
+  httpApp?: HttpApp.Default<E, R>,
   opts?: {
     baseUrl?: string | null
     handleRouteNotFound?: (
@@ -38,7 +38,7 @@ export const make = <E>(
   },
 ): HttpClient.HttpClient.With<
   HttpClientError.HttpClientError | E,
-  Scope.Scope
+  Scope.Scope | R
 > =>
   pipe(
     HttpClient.make(

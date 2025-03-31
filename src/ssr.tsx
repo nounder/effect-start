@@ -6,11 +6,13 @@ import {
   ssr,
 } from "solid-js/web"
 import { App } from "./App.tsx"
+import * as Bundle from "./Bundle.ts"
 import * as BundleServer from "./BundleServer.ts"
 
 export const SsrNotFoundMagicValue = `<!--ssr-not-found-->`
 
 export const SsrApp = BundleServer.renderPromise(
+  Bundle.tagged("ClientBundle"),
   async (req, resolve) => {
     const Component = () => (
       Document({

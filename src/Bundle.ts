@@ -1,5 +1,4 @@
 import { FileSystem, HttpRouter, HttpServerResponse } from "@effect/platform"
-import type { BadArgument, PlatformError } from "@effect/platform/Error"
 import {
   Array,
   Context,
@@ -11,7 +10,6 @@ import {
   Record,
   Schema as S,
 } from "effect"
-import { GenericTag } from "effect/Context"
 import { importJsBlob } from "./esm.ts"
 
 export type BundleTag<Key extends string, Config, Identifier = Key> =
@@ -96,6 +94,12 @@ export const unsafeGetManifest = (key: `${string}Bundle`) => {
     Effect.firstSuccessOf,
     Effect.orDie,
   )
+}
+
+export const tagged = <I extends `${string}Bundle`>(
+  key: I,
+) => {
+  return Context.GenericTag<I, BundleContext>(key)
 }
 
 /**
@@ -361,6 +365,9 @@ export const fromFiles = (
 
     const bundleContext: BundleContext = {
       ...manifest,
+      // TODO: support fullpath file:// urls
+      // this will require having an access to base path of a build
+      // and maybe problematic because bundlers transform urls on build
       resolve: (url: string) => {
         return manifest.entrypoints[url] ?? null
       },
