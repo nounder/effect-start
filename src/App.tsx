@@ -1,4 +1,4 @@
-import { Route, Router } from "@solidjs/router"
+import { Router } from "@solidjs/router"
 import { onMount } from "solid-js"
 import Home from "./Home.tsx"
 import { RandomComponent } from "./ui.tsx"
@@ -15,10 +15,8 @@ const Routes = [
   {
     path: "*404",
     component: () => {
-      const msg = "<!-- SSR_NOT_FOUND -->"
-
-      return msg
-    }
+      return <div innerHTML={`<!--ssr-not-found-->`}></div>
+    },
   },
 ]
 

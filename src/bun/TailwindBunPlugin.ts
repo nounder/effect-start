@@ -1,5 +1,6 @@
 import * as Tailwind from "@tailwindcss/node"
 import type { BunPlugin } from "bun"
+import { Array } from "effect"
 
 /**
  * Bun plugin to handle dynamic modules used in `Bundle.dynamic`.

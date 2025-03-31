@@ -1,4 +1,3 @@
-import * as BunBundle from "./bun/BunBundle.ts"
 import {
   Hydration,
   HydrationScript,
@@ -7,15 +6,19 @@ import {
   ssr,
 } from "solid-js/web"
 import { App } from "./App.tsx"
-import { ClientBundleConfig } from "./dev.ts"
+import * as BundleServer from "./BundleServer.ts"
 
-export const SsrApp = BunBundle.ssr({
-  render: async (req, resolve) => {
+export const SsrNotFoundMagicValue = `<!--ssr-not-found-->`
+
+export const SsrApp = BundleServer.renderPromise(
+  async (req, resolve) => {
     const Component = () => (
       Document({
         url: req.url,
         resolve,
-        children: App({ serverUrl: req.url }),
+        children: App({
+          serverUrl: req.url,
+        }),
       })
     )
 
@@ -23,7 +26,7 @@ export const SsrApp = BunBundle.ssr({
       timeoutMs: 4000,
     })
 
-    if (html.includes("SSR_NOT_FOUND")) {
+    if (html.includes(SsrNotFoundMagicValue)) {
       return new Response(html, {
         status: 404,
         headers: {
@@ -37,16 +40,15 @@ export const SsrApp = BunBundle.ssr({
         "Content-Type": "text/html",
       },
     })
-  },
-  config: ClientBundleConfig
-})
+  }
+)
 
 export default SsrApp
 
 function Document(props: {
   children: any
-  url: string;
-  resolve: (url: string) => string,
+  url: string
+  resolve: (url: string) => string
 }) {
   const docType = ssr("<!DOCTYPE html>") as unknown as any
   const jsUrl = props.resolve("client.tsx")
@@ -80,4 +82,3 @@ function Document(props: {
     </NoHydration>
   )
 }
-

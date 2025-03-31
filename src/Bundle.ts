@@ -11,6 +11,7 @@ import {
   Record,
   Schema as S,
 } from "effect"
+import { GenericTag } from "effect/Context"
 import { importJsBlob } from "./esm.ts"
 
 export type BundleTag<Key extends string, Config, Identifier = Key> =
@@ -71,6 +72,31 @@ export const Tag = <T extends string>(name: T) => <Identifier>() =>
   Context.Tag(
     `effect-bundler/tags/${name}`,
   )<Identifier, BundleContext>()
+
+export const unsafeGetManifest = (key: `${string}Bundle`) => {
+  return pipe(
+    [
+      pipe(
+        Context.getOption(tagged(key)),
+      ),
+      Effect.tryPromise({
+        try: () => {
+          // @ts-ignore
+          return import("./manifest.json", { type: "json" }).catch(e => {
+            throw new Error("File doesn't exist")
+          })
+        },
+        catch: (e) =>
+          new BundleError({
+            message: "Failed to unsafely manifest.json",
+            cause: e,
+          }),
+      }),
+    ],
+    Effect.firstSuccessOf,
+    Effect.orDie,
+  )
+}
 
 /**
  * Loads a Bundle under given key.

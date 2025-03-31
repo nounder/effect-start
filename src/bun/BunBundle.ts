@@ -256,61 +256,6 @@ export const buildRouter = (
     return router
   })
 
-class SsrError extends Data.TaggedError("SsrError")<{
-  message: string
-  cause: unknown
-}> {}
-
-export const ssr = (options: {
-  render: (
-    request: Request,
-    resolve: (url: string) => string,
-  ) => Promise<Response>
-  config: BunBundleConfig
-  publicBase?: string
-}): HttpApp.Default<SsrError | RouteNotFound> => {
-  const { render, config, publicBase } = options
-
-  const resolve = (url: string): string => {
-    const path = url.startsWith("file://")
-      ? fileURLToPath(url)
-      : url
-    const sourceBase = process.cwd()
-    const publicBase = "/.bundle"
-    // TODO: use real artifacts
-    const artifacts = {
-      "client.tsx": "client.js",
-    }
-    const sourcePath = NPath.relative(sourceBase, path)
-    const publicPath = artifacts[sourcePath]
-
-    return NPath.join(publicBase, publicPath || path)
-  }
-
-  return Effect.gen(function*() {
-    const req = yield* HttpServerRequest.HttpServerRequest
-    const fetchReq = req.source as Request
-    const output = yield* Effect.tryPromise({
-      try: () =>
-        render(
-          fetchReq,
-          resolve,
-        ),
-      catch: (e) =>
-        new SsrError({
-          message: "Failed to render server-side",
-          cause: e,
-        }),
-    })
-
-    return yield* HttpServerResponse.raw(output.body, {
-      status: output.status,
-      statusText: output.statusText,
-      headers: Headers.fromInput(output.headers as any),
-    })
-  })
-}
-
 /**
  * Finds common path prefix across provided paths.
  */

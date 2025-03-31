@@ -4,3 +4,5 @@
 lib/
 node_modules/
 vendor/
+.aider*
+out/
