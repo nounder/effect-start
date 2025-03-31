@@ -98,7 +98,7 @@ export const effect = (
     return {
       ...manifest,
       resolve: (url: string) => {
-        return url
+        return manifest.entrypoints[url] ?? null
       },
       getArtifact: (path): Blob | null => {
         return artifactsMap[path] ?? null

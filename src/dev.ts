@@ -1,4 +1,4 @@
-import { HttpRouter, HttpServer } from "@effect/platform"
+import { HttpServer } from "@effect/platform"
 import { BunContext, BunHttpServer, BunRuntime } from "@effect/platform-bun"
 import { SolidPlugin } from "bun-plugin-solid"
 import { Console, Effect, Layer, Logger, LogLevel, Match, pipe } from "effect"
@@ -7,7 +7,6 @@ import PackageJson from "../package.json" with { type: "json" }
 import * as BunBundle from "./bun/BunBundle.ts"
 import { TailwindBunPlugin } from "./bun/TailwindBunPlugin.ts"
 import * as Bundle from "./Bundle.ts"
-import * as HttpAppExtra from "./effect/HttpAppExtra.ts"
 import * as Server from "./server.ts"
 
 export const ClientBundle = BunBundle.bundle("ClientBundle", {
@@ -56,17 +55,10 @@ export const ServerBundle = BunBundle.bundle("ServerBundle", {
   ],
 })
 
-export const App = HttpAppExtra.chain([
-  ServerBundle.pipe(
-    Effect.andThen(Bundle.load<typeof Server>),
-    Effect.andThen(v => v.default),
-  ),
-
-  ClientBundle.pipe(
-    Effect.map(Bundle.toHttpRouter),
-    Effect.andThen(HttpRouter.prefixAll("/.bundle")),
-  ),
-])
+export const App = ServerBundle.pipe(
+  Effect.andThen(Bundle.load<typeof Server>),
+  Effect.andThen(v => v.Server),
+)
 
 export const layer = Layer.merge(
   ClientBundle.layer,

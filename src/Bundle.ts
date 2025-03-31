@@ -52,6 +52,9 @@ export type BundleManifest = typeof BundleManifestSchema.Type
 export type BundleContext =
   & BundleManifest
   & {
+    // TODO: consider removing resolve: way of resolving URL should be
+    // the same regardless of underlying bundler since we have access
+    // to all artifacts already.
     resolve: (url: string) => string
     getArtifact: (path: string) => Blob | null
   }
@@ -70,31 +73,6 @@ export const Tag = <T extends string>(name: T) => <Identifier>() =>
   Context.Tag(
     `effect-bundler/tags/${name}`,
   )<Identifier, BundleContext>()
-
-export const unsafeGetManifest = (key: `${string}Bundle`) => {
-  return pipe(
-    [
-      pipe(
-        Context.getOption(tagged(key)),
-      ),
-      Effect.tryPromise({
-        try: () => {
-          // @ts-ignore
-          return import("./manifest.json", { type: "json" }).catch(e => {
-            throw new Error("File doesn't exist")
-          })
-        },
-        catch: (e) =>
-          new BundleError({
-            message: "Failed to unsafely manifest.json",
-            cause: e,
-          }),
-      }),
-    ],
-    Effect.firstSuccessOf,
-    Effect.orDie,
-  )
-}
 
 export const tagged = <I extends `${string}Bundle`>(
   key: I,

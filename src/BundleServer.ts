@@ -8,7 +8,6 @@ import type { RouteNotFound } from "@effect/platform/HttpServerError"
 import { fileURLToPath } from "bun"
 import { Context, Data, Effect } from "effect"
 import * as NPath from "node:path"
-import * as process from "node:process"
 import type { BundleContext } from "./Bundle.ts"
 
 class SsrError extends Data.TaggedError("SsrError")<{
@@ -37,7 +36,7 @@ export const renderPromise = <I extends `${string}Bundle`>(
       const publicBase = "/.bundle"
       const publicPath = bundle.resolve(path)
 
-      return NPath.join(publicBase, publicPath || path)
+      return NPath.join(publicBase, publicPath ?? path)
     }
 
     const output = yield* Effect.tryPromise({

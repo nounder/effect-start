@@ -51,8 +51,7 @@ it("ssr 404", () =>
       .toEqual(404)
   }))
 
-// TODO: revisit after implementing ssr resolve
-it.skip("ssr resolve", () =>
+it("ssr resolve", () =>
   effect(function*() {
     const res = yield* Client.get("/")
 

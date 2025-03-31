@@ -1,6 +1,7 @@
 import { HttpRouter, HttpServer, HttpServerResponse } from "@effect/platform"
-import { BunHttpServer, BunRuntime } from "@effect/platform-bun"
-import { Effect, Layer } from "effect"
+import { BunContext, BunHttpServer, BunRuntime } from "@effect/platform-bun"
+import { Effect, Layer, pipe } from "effect"
+import * as Bundle from "./Bundle.ts"
 import { handleHttpServerResponseError } from "./effect/http.ts"
 import * as HttpAppExtra from "./effect/HttpAppExtra.ts"
 import { SsrApp } from "./ssr.tsx"
@@ -18,6 +19,12 @@ const ApiApp = HttpRouter.empty.pipe(
       return HttpServerResponse.text("this will never be reached")
     }),
   ),
+  HttpRouter.mountApp(
+    "/.bundle",
+    Bundle.tagged("ClientBundle").pipe(
+      Effect.andThen(Bundle.toHttpRouter),
+    ),
+  ),
   HttpRouter.catchAllCause(handleHttpServerResponseError),
   Effect.catchTag(
     "RouteNotFound",
@@ -28,21 +35,28 @@ const ApiApp = HttpRouter.empty.pipe(
   ),
 )
 
-const App = HttpAppExtra.chain([
+export const Server = HttpAppExtra.chain([
   ApiApp,
   SsrApp,
 ])
 
-export default App
-
 if (import.meta.main) {
-  HttpServer.serve(App).pipe(
-    HttpServer.withLogAddress,
+  pipe(
+    HttpServer.serve(Server).pipe(
+      HttpServer.withLogAddress,
+    ),
     Layer.provide(
       BunHttpServer.layer({
         port: 3000,
       }),
     ),
+    Layer.provide(
+      Layer.effect(
+        Bundle.tagged("ClientBundle"),
+        Bundle.fromFiles("out/client"),
+      ),
+    ),
+    Layer.provide(BunContext.layer),
     Layer.launch,
     BunRuntime.runMain,
   )
