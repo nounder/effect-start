@@ -64,13 +64,10 @@ export const bundle = <I extends `${string}Bundle`>(
             )
           }
 
-          // TODO: conditionally update ref in one go AI!
-          if ((yield* ref) === null) {
-            yield* SynchronizedRef.updateEffect(
-              ref,
-              () => Bundle.load<M>(bundle),
-            )
-          }
+          yield* SynchronizedRef.updateEffect(
+            ref,
+            (current) => current === null ? Bundle.load<M>(bundle) : Effect.succeed(current)
+          )
 
           return yield* ref
         }),
