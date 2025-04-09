@@ -5,9 +5,9 @@ import {
   HttpServerResponse,
 } from "@effect/platform"
 import type { RouteNotFound } from "@effect/platform/HttpServerError"
-import { fileURLToPath } from "bun"
 import { Context, Data, Effect } from "effect"
 import * as NPath from "node:path"
+import { fileURLToPath } from "node:url"
 import type { BundleContext } from "./Bundle.ts"
 
 class SsrError extends Data.TaggedError("SsrError")<{

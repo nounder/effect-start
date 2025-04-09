@@ -4,14 +4,18 @@ import {
   Context,
   Data,
   Effect,
+  identity,
   Iterable,
   Option,
   pipe,
   Record,
   Ref,
   Schema as S,
+  Stream,
 } from "effect"
 import { importJsBlob } from "./esm.ts"
+import * as HttpSseResponse from "./HttpSseResponse.ts"
+import { LiveReloadHttpRoute } from "./LiveReload.ts"
 
 /**
  * Generic shape describing a bundle across multiple bundlers
@@ -48,6 +52,7 @@ export type BundleContext =
     // to all artifacts already.
     resolve: (url: string) => string
     getArtifact: (path: string) => Blob | null
+    events?: Stream.Stream<{ type: "Change"; path: string }>
   }
 
 export class BundleError extends Data.TaggedError("BundleError")<{
@@ -162,7 +167,14 @@ export const toHttpRouter = (
       HttpRouter.get(
         "/manifest.json",
         HttpServerResponse.text(
-          JSON.stringify(bundle, undefined, 2),
+          JSON.stringify(
+            {
+              entrypoints: bundle.entrypoints,
+              artifacts: bundle.artifacts,
+            },
+            undefined,
+            2,
+          ),
           {
             headers: {
               "Content-Type": "application/json",
@@ -170,6 +182,12 @@ export const toHttpRouter = (
           },
         ),
       ),
+      bundle.events
+        ? HttpRouter.get(
+          "/events",
+          HttpSseResponse.make(bundle.events),
+        )
+        : identity,
     ),
     (router, [path, artifact]) =>
       router.pipe(

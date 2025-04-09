@@ -79,14 +79,15 @@ export const bundle = <I extends `${string}Bundle`>(
         Bundle.tagged(key),
         Effect.gen(function*() {
           const sharedBundle = yield* effect(config)
-          const changes = yield* watchChanges()
+          const changes = watchChanges()
+
+          sharedBundle.events = changes
 
           sharedBundle["_loadRef"] = yield* SynchronizedRef.make(null)
 
           yield* Effect.fork(
             pipe(
               changes,
-              Stream.tap(Console.log),
               Stream.runForEach(() =>
                 Effect.gen(function*() {
                   const newBundle = yield* effect(config)
@@ -96,9 +97,7 @@ export const bundle = <I extends `${string}Bundle`>(
                     () => Bundle.load(newBundle),
                   )
 
-                  Object.assign(sharedBundle, newBundle, {
-                    "t": Date.now(),
-                  })
+                  Object.assign(sharedBundle, newBundle)
                 })
               ),
             ),
@@ -187,31 +186,35 @@ export const load = <M>(
     },
   )
 
-const watchChanges = <M>() =>
-  Effect.gen(function*() {
-    // get dirname after the build as user may pass URL rather than
-    // path which Bun does not resolve.
-    const baseDir = NPath.dirname(
-      process.cwd(),
-    )
+const watchChanges = (): Stream.Stream<
+  { type: "Change"; path: string }
+> => {
+  // get dirname after the build as user may pass URL rather than
+  // path which Bun does not resolve.
+  const baseDir = NPath.dirname(process.cwd())
 
-    const changes = pipe(
-      Stream.fromAsyncIterable(
-        NFSP.watch(baseDir, { recursive: true }),
-        (e) => e,
-      ),
-      Stream.filter((event) => SOURCE_FILENAME.test(event.filename!)),
-      Stream.filter((event) => !(/node_modules/.test(event.filename!))),
-      Stream.throttle({
-        units: 1,
-        cost: () => 1,
-        duration: "100 millis",
-        strategy: "enforce",
-      }),
-    )
+  const changes = pipe(
+    Stream.fromAsyncIterable(
+      NFSP.watch(baseDir, { recursive: true }),
+      (e) => e,
+    ),
+    Stream.filter((event) => SOURCE_FILENAME.test(event.filename!)),
+    Stream.filter((event) => !(/node_modules/.test(event.filename!))),
+    Stream.throttle({
+      units: 1,
+      cost: () => 1,
+      duration: "100 millis",
+      strategy: "enforce",
+    }),
+    Stream.map(event => ({
+      type: "Change" as const,
+      path: event.filename!,
+    })),
+    Stream.catchAll(error => Stream.empty),
+  )
 
-    return changes
-  })
+  return changes
+}
 
 /**
  * Same as `load` but ensures that most recent module is always returned.
@@ -269,54 +272,6 @@ export const loadWatch = <M>(
       config,
     },
   )
-
-/**
- * Builds a static HttpRouter from a build.
- * Useful for serving artifacts from client bundle.
- */
-export const buildRouter = (
-  config: BunBundleConfig,
-): Effect.Effect<HttpRouter.HttpRouter, BunBundleError, never> =>
-  Effect.gen(function*() {
-    const buildOutput = yield* build(config)
-    const mapping = mapBuildEntrypoints(config, buildOutput)
-    const manifest = generateManifestfromBunBundle(config, buildOutput)
-
-    const router = pipe(
-      Record.reduce(
-        mapping,
-        HttpRouter.empty,
-        (a, v, k) =>
-          pipe(
-            a,
-            HttpRouter.get(
-              // paths are in relative format, ie. './file.js'
-              `/${v.path.slice(2)}`,
-              // Cannot use HttpServerResponse.raw because of a bug. [2025-03-24]
-              // PR: https://github.com/Effect-TS/effect/pull/4642
-              pipe(
-                Effect.promise(() => v.arrayBuffer()),
-                Effect.andThen(bytes => {
-                  return HttpServerResponse.uint8Array(
-                    new Uint8Array(bytes),
-                    {
-                      status: 200,
-                      contentType: v.type,
-                    },
-                  )
-                }),
-              ),
-            ),
-          ),
-      ),
-      HttpRouter.get(
-        "/manifest.json",
-        HttpServerResponse.unsafeJson(manifest),
-      ),
-    )
-
-    return router
-  })
 
 /**
  * Finds common path prefix across provided paths.
