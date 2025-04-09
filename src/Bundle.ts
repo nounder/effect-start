@@ -8,19 +8,10 @@ import {
   Option,
   pipe,
   Record,
+  Ref,
   Schema as S,
 } from "effect"
 import { importJsBlob } from "./esm.ts"
-
-export type BundleTag<Key extends string, Config, Identifier = Key> =
-  & Context.Tag<Identifier, BundleContext>
-  & {
-    key: `effect-bundler/tags/${Key}`
-    bundleKey: Key
-    // TODO: we should consider branding the config
-    // so tag can only be passed between bundles of the same kind.
-    bundleConfig: Config
-  }
 
 /**
  * Generic shape describing a bundle across multiple bundlers
@@ -147,7 +138,7 @@ export const load = <M>(
     },
     catch: (e) =>
       new BundleError({
-        message: "Failed to load entrypoint buffer",
+        message: "Failed to load entrypoint",
         cause: e,
       }),
   })

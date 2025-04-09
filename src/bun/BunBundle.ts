@@ -1,13 +1,7 @@
-import {
-  Headers,
-  HttpApp,
-  HttpRouter,
-  HttpServerRequest,
-  HttpServerResponse,
-} from "@effect/platform"
-import { RouteNotFound } from "@effect/platform/HttpServerError"
+import { HttpRouter, HttpServerResponse } from "@effect/platform"
 import { type BuildConfig, type BuildOutput, fileURLToPath } from "bun"
 import {
+  Console,
   Context,
   Data,
   Effect,
@@ -18,11 +12,12 @@ import {
   Ref,
   Stream,
   SubscriptionRef,
+  SynchronizedRef,
 } from "effect"
 import * as NFSP from "node:fs/promises"
 import * as NPath from "node:path"
 import * as process from "node:process"
-import type { BundleContext, BundleManifest, BundleTag } from "../Bundle.ts"
+import type { BundleContext, BundleManifest } from "../Bundle.ts"
 import * as Bundle from "../Bundle.ts"
 import { importJsBlob } from "../esm.ts"
 
@@ -46,27 +41,9 @@ class BunBundleError extends Error {
   }
 }
 
-// TODO: parametrize source filename pattern
 const SOURCE_FILENAME = /\.(tsx?|jsx?)$/
 
 type BuildOptions = Omit<BunBundleConfig, "outdir">
-
-export const make = <Key extends string, Tag = Key>(
-  key: Key,
-  config: BunBundleConfig,
-): BundleTag<Key, BunBundleConfig, Tag> => {
-  const tagKey = `effect-bundler/tags/${key}` as const
-  const tag = Context.GenericTag<Tag, BundleContext>(tagKey)
-
-  return Object.assign(
-    tag,
-    {
-      key: tagKey,
-      bundleKey: key,
-      bundleConfig: config,
-    },
-  )
-}
 
 export const bundle = <I extends `${string}Bundle`>(
   key: I,
@@ -76,8 +53,60 @@ export const bundle = <I extends `${string}Bundle`>(
     Bundle.tagged(key),
     {
       config,
-      load: load(config),
+      load: <M>(): Effect.Effect<M, Bundle.BundleError, I> =>
+        Effect.gen(function*() {
+          const bundle = yield* Bundle.tagged(key)
+          const ref = bundle["_loadRef"] as SynchronizedRef.SynchronizedRef<M>
+
+          if (!ref) {
+            yield* Effect.die(
+              new Error("Trying to use load while not providing devLayer"),
+            )
+          }
+
+          // TODO: conditionally update ref in one go
+          if ((yield* ref) === null) {
+            yield* SynchronizedRef.updateEffect(
+              ref,
+              () => Bundle.load<M>(bundle),
+            )
+          }
+
+          return yield* ref
+        }),
       layer: Layer.effect(Bundle.tagged(key), effect(config)),
+      devLayer: Layer.effect(
+        Bundle.tagged(key),
+        Effect.gen(function*() {
+          const sharedBundle = yield* effect(config)
+          const changes = yield* watchChanges()
+
+          sharedBundle["_loadRef"] = yield* SynchronizedRef.make(null)
+
+          yield* Effect.fork(
+            pipe(
+              changes,
+              Stream.tap(Console.log),
+              Stream.runForEach(() =>
+                Effect.gen(function*() {
+                  const newBundle = yield* effect(config)
+
+                  yield* SynchronizedRef.updateEffect(
+                    sharedBundle["_loadRef"],
+                    () => Bundle.load(newBundle),
+                  )
+
+                  Object.assign(sharedBundle, newBundle, {
+                    "t": Date.now(),
+                  })
+                })
+              ),
+            ),
+          )
+
+          return sharedBundle
+        }),
+      ),
     },
   )
 
@@ -116,13 +145,6 @@ export const layer = <T>(
   )
 }
 
-type BrandedConfig<T> = BuildConfig
-
-export const config = <M = unknown>(
-  config: BrandedConfig<M>,
-): BrandedConfig<M> => {
-  return config as BrandedConfig<M>
-}
 export const build = (
   config: BunBundleConfig,
 ): Effect.Effect<BuildOutput, BunBundleError, never> & {
@@ -164,6 +186,32 @@ export const load = <M>(
       config,
     },
   )
+
+const watchChanges = <M>() =>
+  Effect.gen(function*() {
+    // get dirname after the build as user may pass URL rather than
+    // path which Bun does not resolve.
+    const baseDir = NPath.dirname(
+      process.cwd(),
+    )
+
+    const changes = pipe(
+      Stream.fromAsyncIterable(
+        NFSP.watch(baseDir, { recursive: true }),
+        (e) => e,
+      ),
+      Stream.filter((event) => SOURCE_FILENAME.test(event.filename!)),
+      Stream.filter((event) => !(/node_modules/.test(event.filename!))),
+      Stream.throttle({
+        units: 1,
+        cost: () => 1,
+        duration: "100 millis",
+        strategy: "enforce",
+      }),
+    )
+
+    return changes
+  })
 
 /**
  * Same as `load` but ensures that most recent module is always returned.

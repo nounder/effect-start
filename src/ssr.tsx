@@ -42,7 +42,7 @@ export const SsrApp = BundleServer.renderPromise(
         "Content-Type": "text/html",
       },
     })
-  }
+  },
 )
 
 export default SsrApp

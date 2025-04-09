@@ -55,14 +55,13 @@ export const ServerBundle = BunBundle.bundle("ServerBundle", {
   ],
 })
 
-export const App = ServerBundle.pipe(
-  Effect.andThen(Bundle.load<typeof Server>),
+export const App = ServerBundle.load<typeof Server>().pipe(
   Effect.andThen(v => v.Server),
 )
 
 export const layer = Layer.merge(
-  ClientBundle.layer,
-  ServerBundle.layer,
+  ClientBundle.devLayer,
+  ServerBundle.devLayer,
 )
 
 if (import.meta.main) {
