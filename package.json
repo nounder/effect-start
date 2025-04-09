@@ -6,12 +6,12 @@
     "server": "bun --conditions=solid --preload=./src/server.preload.ts ./src/server.ts"
   },
   "dependencies": {
-    "@effect/cli": "^0.56.1",
-    "@effect/platform": "0.77.0",
-    "@effect/platform-bun": "0.57.0",
+    "@effect/cli": "^0.59.4",
+    "@effect/platform": "0.80.4",
+    "@effect/platform-bun": "0.60.7",
     "@solidjs/router": "0.15.3",
     "@tailwindcss/node": "^4.0.6",
-    "effect": "3.13.0",
+    "effect": "3.14.4",
     "lightningcss": "^1.29.1",
     "solid-js": "^1.9.4",
     "vite": "^6.1.0",
