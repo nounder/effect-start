@@ -66,7 +66,10 @@ export const bundle = <I extends `${string}Bundle`>(
 
           yield* SynchronizedRef.updateEffect(
             ref,
-            (current) => current === null ? Bundle.load<M>(bundle) : Effect.succeed(current)
+            (current) =>
+              current === null
+                ? Bundle.load<M>(bundle)
+                : Effect.succeed(current),
           )
 
           return yield* ref
