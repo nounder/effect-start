@@ -64,7 +64,7 @@ export const bundle = <I extends `${string}Bundle`>(
             )
           }
 
-          // TODO: conditionally update ref in one go
+          // TODO: conditionally update ref in one go AI!
           if ((yield* ref) === null) {
             yield* SynchronizedRef.updateEffect(
               ref,
