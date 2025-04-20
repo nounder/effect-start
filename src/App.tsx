@@ -24,28 +24,28 @@ export function App(props?: {
   serverUrl?: string
 }) {
   if (process.env.NODE_ENV !== "production") {
-    // convert it to SSE from /.bundle/events that reloads on
-    // JSON-inified object where type==Change AI!
     onMount(() => {
-      let prevManifest = null as string | null
-
-      const timer = setInterval(() => {
-        fetch("/.bundle/manifest.json")
-          .then(v => v.text())
-          .then(v => {
-            if (prevManifest !== null && prevManifest !== v) {
-              console.debug("Bundle manifest change detected. Reloading...")
-              window.location.reload()
-
-              return
-            }
-
-            prevManifest = v
-          })
-      }, 200)
+      const eventSource = new EventSource("/.bundle/events")
+      
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data)
+          if (data.type === "Change") {
+            console.debug("Bundle change detected. Reloading...")
+            window.location.reload()
+          }
+        } catch (error) {
+          console.error("Error parsing SSE event:", error)
+        }
+      }
+      
+      eventSource.onerror = (error) => {
+        console.error("SSE connection error:", error)
+        eventSource.close()
+      }
 
       return () => {
-        clearInterval(timer)
+        eventSource.close()
       }
     })
   }
