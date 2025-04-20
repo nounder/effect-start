@@ -23,27 +23,32 @@ const Routes = [
 export function App(props?: {
   serverUrl?: string
 }) {
-  onMount(() => {
-    const eventSource = new EventSource("/.bundle/events")
+  if (process.env.NODE_ENV !== "production") {
+    // convert it to SSE from /.bundle/events that reloads on
+    // JSON-inified object where type==Change AI!
+    onMount(() => {
+      let prevManifest = null as string | null
 
-    eventSource.onmessage = (event) => {
-      const msg = JSON.parse(event.data)
+      const timer = setInterval(() => {
+        fetch("/.bundle/manifest.json")
+          .then(v => v.text())
+          .then(v => {
+            if (prevManifest !== null && prevManifest !== v) {
+              console.debug("Bundle manifest change detected. Reloading...")
+              window.location.reload()
 
-      if (msg._tag = "Update") {
-        console.log("Reloading... File updated:", msg.path)
+              return
+            }
+
+            prevManifest = v
+          })
+      }, 200)
+
+      return () => {
+        clearInterval(timer)
       }
-
-      location.reload()
-    }
-
-    eventSource.onerror = (error) => {
-      console.error("SSE Error:", error)
-    }
-
-    return () => {
-      eventSource.close()
-    }
-  })
+    })
+  }
 
   return (
     <Router url={props?.serverUrl}>
