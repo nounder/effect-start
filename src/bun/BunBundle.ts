@@ -13,6 +13,7 @@ import {
   Stream,
   SubscriptionRef,
   SynchronizedRef,
+  Take,
 } from "effect"
 import * as NFSP from "node:fs/promises"
 import * as NPath from "node:path"
@@ -80,8 +81,9 @@ export const bundle = <I extends `${string}Bundle`>(
         Effect.gen(function*() {
           const sharedBundle = yield* effect(config)
           const changes = watchChanges()
+          // create changesPubSub from changes stream AI!
 
-          sharedBundle.events = changes
+          sharedBundle.events = changesPubSub
 
           sharedBundle["_loadRef"] = yield* SynchronizedRef.make(null)
 
@@ -120,7 +122,7 @@ export const effect = (
     const manifest = generateManifestfromBunBundle(config, output)
     const artifactsMap = Record.fromIterableBy(
       output.outputs,
-      v => v.path.slice(2),
+      (v) => v.path.slice(2),
     )
 
     return {
@@ -200,17 +202,18 @@ const watchChanges = (): Stream.Stream<
     ),
     Stream.filter((event) => SOURCE_FILENAME.test(event.filename!)),
     Stream.filter((event) => !(/node_modules/.test(event.filename!))),
+    Stream.tap(Console.log),
     Stream.throttle({
       units: 1,
       cost: () => 1,
       duration: "100 millis",
       strategy: "enforce",
     }),
-    Stream.map(event => ({
+    Stream.map((event) => ({
       type: "Change" as const,
       path: event.filename!,
     })),
-    Stream.catchAll(error => Stream.empty),
+    Stream.catchAll((error) => Stream.empty),
   )
 
   return changes
@@ -277,10 +280,10 @@ export const loadWatch = <M>(
  * Finds common path prefix across provided paths.
  */
 function getBaseDir(paths: string[]) {
-  const segmentsList = paths.map(path => path.split("/").filter(Boolean))
+  const segmentsList = paths.map((path) => path.split("/").filter(Boolean))
 
   return segmentsList[0]
-    .filter((segment, i) => segmentsList.every(segs => segs[i] === segment))
+    .filter((segment, i) => segmentsList.every((segs) => segs[i] === segment))
     .reduce((path, seg) => `${path}/${seg}`, "") ?? ""
 }
 
@@ -293,7 +296,7 @@ function mapBuildEntrypoints(
   output: BuildOutput,
 ) {
   const commonPathPrefix = getBaseDir(
-    options.entrypoints.map(v => NPath.dirname(v)),
+    options.entrypoints.map((v) => NPath.dirname(v)),
   ) + "/"
 
   return pipe(
@@ -302,7 +305,7 @@ function mapBuildEntrypoints(
       pipe(
         output.outputs,
         // Filter out source maps to properly map artifacts to entrypoints.
-        Iterable.filter(v => !v.path.endsWith(".js.map")),
+        Iterable.filter((v) => !v.path.endsWith(".js.map")),
       ),
     ),
     Iterable.map(([entrypoint, artifact]) =>
@@ -336,7 +339,7 @@ function generateManifestfromBunBundle(
       output.outputs,
       // This will mess up direct entrypoint-artifact record.
       // Will have to filter out sourcemap when mapping.
-      Iterable.flatMap(v => v.sourcemap ? [v, v.sourcemap] : [v]),
+      Iterable.flatMap((v) => v.sourcemap ? [v, v.sourcemap] : [v]),
       Iterable.map((v) =>
         [
           // strip './' prefix
