@@ -194,8 +194,10 @@ export const toHttpRouter = (
         ? HttpRouter.get(
           "/events",
           Effect.gen(function*() {
-            // print this stream using stream.tap AI!
-            const stream = Stream.fromPubSub(bundle.events!)
+            const stream = pipe(
+              Stream.fromPubSub(bundle.events!),
+              Stream.tap((event) => Effect.logInfo(`SSE Event: ${JSON.stringify(event)}`))
+            )
 
             return yield* HttpSseResponse.make(stream)
           }),
