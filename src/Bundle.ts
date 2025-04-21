@@ -8,14 +8,14 @@ import {
   Iterable,
   Option,
   pipe,
+  PubSub,
   Record,
-  Ref,
+  Schedule,
   Schema as S,
   Stream,
 } from "effect"
 import { importJsBlob } from "./esm.ts"
 import * as HttpSseResponse from "./HttpSseResponse.ts"
-import { LiveReloadHttpRoute } from "./LiveReload.ts"
 
 /**
  * Generic shape describing a bundle across multiple bundlers
@@ -39,6 +39,8 @@ export const BundleManifestSchema = S.Struct({
 
 export type BundleManifest = typeof BundleManifestSchema.Type
 
+export type BundleEvent = { type: "Change"; path: string }
+
 /**
  * Passed to bundle effects and within bundle runtime.
  * Used to expose artifacts via HTTP server and properly resolve
@@ -52,7 +54,7 @@ export type BundleContext =
     // to all artifacts already.
     resolve: (url: string) => string
     getArtifact: (path: string) => Blob | null
-    events?: Stream.Stream<{ type: "Change"; path: string }>
+    events?: PubSub.PubSub<BundleEvent>
   }
 
 export class BundleError extends Data.TaggedError("BundleError")<{
@@ -107,7 +109,7 @@ export const dynamic = <T extends string>(
           // @ts-ignore
           return import(`effect-bundler/dynamic/${key}`)
         },
-        catch: e =>
+        catch: (e) =>
           new BundleError({
             message: "Failed to load dynamic bundle",
             cause: e,
@@ -163,7 +165,9 @@ export const toHttpRouter = (
       Record.collect((k, v) => [k, bundle.getArtifact(k)!] as const),
     ),
     HttpRouter.empty.pipe(
-      // handle manifest.json
+      /**
+       * Expose manifest
+       */
       HttpRouter.get(
         "/manifest.json",
         HttpServerResponse.text(
@@ -182,10 +186,19 @@ export const toHttpRouter = (
           },
         ),
       ),
+      /**
+       * Expose events endpoint if available.
+       * Useful for development to implement live reload.
+       */
       bundle.events
         ? HttpRouter.get(
           "/events",
-          HttpSseResponse.make(bundle.events),
+          Effect.gen(function*() {
+            // print this stream using stream.tap AI!
+            const stream = Stream.fromPubSub(bundle.events!)
+
+            return yield* HttpSseResponse.make(stream)
+          }),
         )
         : identity,
     ),
@@ -195,7 +208,7 @@ export const toHttpRouter = (
           `/${path}`,
           pipe(
             Effect.promise(() => artifact.arrayBuffer()),
-            Effect.andThen(bytes =>
+            Effect.andThen((bytes) =>
               HttpServerResponse.uint8Array(new Uint8Array(bytes), {
                 headers: {
                   "Content-Type": artifact.type,
@@ -277,13 +290,13 @@ export const toFiles = (
           pipe(
             Effect.tryPromise({
               try: () => b.arrayBuffer(),
-              catch: e =>
+              catch: (e) =>
                 new BundleError({
                   message: "Failed to read an artifact as a buffer",
                   cause: e,
                 }),
             }),
-            Effect.andThen(b =>
+            Effect.andThen((b) =>
               fs.writeFile(
                 `${normalizedOutDir}/${p}`,
                 new Uint8Array(b),
@@ -314,9 +327,9 @@ export const fromFiles = (
     const normalizedDir = directory.replace(/\/$/, "")
     const manifest = yield* pipe(
       fs.readFileString(`${normalizedDir}/manifest.json`),
-      Effect.andThen(v => JSON.parse(v) as unknown),
+      Effect.andThen((v) => JSON.parse(v) as unknown),
       Effect.andThen(S.decodeUnknownSync(BundleManifestSchema)),
-      Effect.catchAll(e =>
+      Effect.catchAll((e) =>
         Effect.fail(
           new BundleError({
             message: `Failed to read manifest.json from ${normalizedDir}`,
@@ -330,7 +343,7 @@ export const fromFiles = (
       artifactsPairs,
       Iterable.map(([k]) => fs.readFile(`${normalizedDir}/${k}`)),
       Effect.all,
-      Effect.catchAll(e =>
+      Effect.catchAll((e) =>
         new BundleError({
           message: `Failed to read an artifact from ${normalizedDir}`,
           cause: e,
@@ -344,7 +357,7 @@ export const fromFiles = (
     )
     const artifactsRecord = pipe(
       Iterable.zip(
-        Iterable.map(artifactsPairs, v => v[0]),
+        Iterable.map(artifactsPairs, (v) => v[0]),
         artifactBlobs,
       ),
       Record.fromEntries,
