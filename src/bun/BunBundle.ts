@@ -8,6 +8,7 @@ import {
   Iterable,
   Layer,
   pipe,
+  PubSub,
   Record,
   Ref,
   Stream,
@@ -81,7 +82,15 @@ export const bundle = <I extends `${string}Bundle`>(
         Effect.gen(function*() {
           const sharedBundle = yield* effect(config)
           const changes = watchChanges()
-          // create changesPubSub from changes stream AI!
+          const changesPubSub = yield* PubSub.unbounded<{ type: "Change"; path: string }>()
+          
+          // Subscribe to changes and publish them to the PubSub
+          yield* Effect.fork(
+            pipe(
+              changes,
+              Stream.runForEach((event) => PubSub.publish(changesPubSub, event))
+            )
+          )
 
           sharedBundle.events = changesPubSub
 
