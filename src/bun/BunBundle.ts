@@ -7,10 +7,14 @@ import {
   Effect,
   Iterable,
   Layer,
+  MutableRef,
   pipe,
   PubSub,
+  Queue,
   Record,
   Ref,
+  Schedule,
+  Scope,
   Stream,
   SubscriptionRef,
   SynchronizedRef,
@@ -77,29 +81,20 @@ export const bundle = <I extends `${string}Bundle`>(
           return yield* ref
         }),
       layer: Layer.effect(Bundle.tagged(key), effect(config)),
-      devLayer: Layer.effect(
+      devLayer: Layer.scoped(
         Bundle.tagged(key),
         Effect.gen(function*() {
           const sharedBundle = yield* effect(config)
-          const changes = watchChanges()
-          const changesPubSub = yield* PubSub.unbounded<{ type: "Change"; path: string }>()
-          
-          // Subscribe to changes and publish them to the PubSub
-          yield* Effect.fork(
-            pipe(
-              changes,
-              Stream.runForEach((event) => PubSub.publish(changesPubSub, event))
-            )
-          )
+          const changes = yield* PubSub.unbounded<Bundle.BundleEvent>()
 
-          sharedBundle.events = changesPubSub
+          sharedBundle.events = changes
 
           sharedBundle["_loadRef"] = yield* SynchronizedRef.make(null)
 
           yield* Effect.fork(
             pipe(
-              changes,
-              Stream.runForEach(() =>
+              watchChanges(),
+              Stream.runForEach((v) =>
                 Effect.gen(function*() {
                   const newBundle = yield* effect(config)
 
@@ -109,6 +104,14 @@ export const bundle = <I extends `${string}Bundle`>(
                   )
 
                   Object.assign(sharedBundle, newBundle)
+
+                  // print result AI!
+                  yield* changes.publish(v)
+
+                  yield* Effect.logInfo(
+                    "Updating bundle",
+                    yield* PubSub.size(changes),
+                  )
                 })
               ),
             ),
@@ -211,7 +214,7 @@ const watchChanges = (): Stream.Stream<
     ),
     Stream.filter((event) => SOURCE_FILENAME.test(event.filename!)),
     Stream.filter((event) => !(/node_modules/.test(event.filename!))),
-    Stream.tap(Console.log),
+    Stream.tap((v) => Console.log("Watch changes", v)),
     Stream.throttle({
       units: 1,
       cost: () => 1,
