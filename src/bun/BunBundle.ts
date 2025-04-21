@@ -105,7 +105,7 @@ export const bundle = <I extends `${string}Bundle`>(
 
                   Object.assign(sharedBundle, newBundle)
 
-                  // print result AI!
+                  yield* Effect.logInfo(`Bundle updated: ${JSON.stringify(v)}`)
                   yield* changes.publish(v)
 
                   yield* Effect.logInfo(
