@@ -2,7 +2,7 @@ import { HttpRouter, HttpServer, HttpServerResponse } from "@effect/platform"
 import { BunContext, BunHttpServer, BunRuntime } from "@effect/platform-bun"
 import { Effect, Layer, pipe } from "effect"
 import { Bundle, HttpAppExtra } from "effect-bundler"
-import { SsrApp } from "./ssr.tsx"
+import { SsrApp } from "./Ssr.tsx"
 
 const ApiApp = HttpRouter.empty.pipe(
   HttpRouter.get(

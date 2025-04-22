@@ -10,7 +10,24 @@ const Routes = [
   },
   {
     path: "/random",
-    component: RandomComponent,
+    component: () => {
+      return (
+        <div>
+          <h1 class="w-4">Random</h1>
+          {Math.random()}
+
+          <a href="/">
+            Home (plain)
+          </a>
+
+          <br />
+
+          <A href="/">
+            Home (router)
+          </A>
+        </div>
+      )
+    },
   },
   {
     path: "*404",
