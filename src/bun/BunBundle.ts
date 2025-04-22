@@ -5,6 +5,7 @@ import {
   Iterable,
   Layer,
   pipe,
+  PubSub,
   Record,
   Stream,
   SynchronizedRef,
@@ -62,7 +63,10 @@ export const bundle = <I extends `${string}Bundle`>(
         Effect.gen(function*() {
           const sharedBundle = yield* effect(config)
 
-          sharedBundle[BundleContextLoadRef] = yield* SynchronizedRef.make(null)
+          const loadRef = sharedBundle[BundleContextLoadRef] =
+            yield* SynchronizedRef.make(null)
+
+          sharedBundle.events = yield* PubSub.unbounded<Bundle.BundleEvent>()
 
           yield* Effect.fork(
             pipe(
@@ -76,9 +80,11 @@ export const bundle = <I extends `${string}Bundle`>(
                   Object.assign(sharedBundle, newBundle)
 
                   // Clean old loaded bundle
-                  const loadRef = sharedBundle[BundleContextLoadRef]
-                  if (loadRef) {
-                    yield* SynchronizedRef.update(loadRef, () => null)
+                  yield* SynchronizedRef.update(loadRef, () => null)
+
+                  // publish event after the built
+                  if (sharedBundle.events) {
+                    yield* PubSub.publish(sharedBundle.events, v)
                   }
                 })
               ),

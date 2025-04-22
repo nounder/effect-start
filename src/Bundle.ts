@@ -13,14 +13,15 @@ import {
   Effect,
   Iterable,
   pipe,
+  PubSub,
   Record,
   Schema as S,
   Scope,
+  Stream,
 } from "effect"
 import * as NPath from "node:path"
 import { fileURLToPath } from "node:url"
 import { importJsBlob } from "./esm.ts"
-import { watchFileChanges } from "./files.ts"
 import * as SseHttpResponse from "./SseHttpResponse.ts"
 
 /**
@@ -60,6 +61,7 @@ export type BundleContext =
     // to all artifacts already.
     resolve: (url: string) => string
     getArtifact: (path: string) => Blob | null
+    events?: PubSub.PubSub<BundleEvent>
   }
 
 export class BundleError extends Data.TaggedError("BundleError")<{
@@ -152,10 +154,10 @@ export const toHttpApp = <T extends `${string}Bundle`>(
      * Expose events endpoint if available.
      * Useful for development to implement live reload.
      */
-    if (process.env.NODE_ENV !== "production" && path === "events") {
-      const changes = watchFileChanges()
-
-      return yield* SseHttpResponse.make<BundleEvent>(changes)
+    if (bundle.events && path === "events") {
+      return yield* SseHttpResponse.make<BundleEvent>(
+        Stream.fromPubSub(bundle.events),
+      )
     }
 
     const artifact = bundle.artifacts[path]
