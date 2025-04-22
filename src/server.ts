@@ -21,9 +21,7 @@ const ApiApp = HttpRouter.empty.pipe(
   ),
   HttpRouter.mountApp(
     "/.bundle",
-    Bundle.tagged("ClientBundle").pipe(
-      Effect.andThen(Bundle.toHttpRouter),
-    ),
+    Bundle.toHttpApp(Bundle.tagged("ClientBundle")),
   ),
   HttpRouter.catchAllCause(handleHttpServerResponseError),
   Effect.catchTag(

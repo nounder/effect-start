@@ -26,7 +26,7 @@ export function App(props?: {
   if (process.env.NODE_ENV !== "production") {
     onMount(() => {
       const eventSource = new EventSource("/.bundle/events")
-      
+
       eventSource.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data)
@@ -35,10 +35,13 @@ export function App(props?: {
             window.location.reload()
           }
         } catch (error) {
-          console.error("Error parsing SSE event:", error)
+          console.error("Error parsing SSE event", {
+            error,
+            event,
+          })
         }
       }
-      
+
       eventSource.onerror = (error) => {
         console.error("SSE connection error:", error)
         eventSource.close()

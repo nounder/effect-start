@@ -1,6 +1,13 @@
-import { FileSystem, HttpRouter, HttpServerResponse } from "@effect/platform"
+import {
+  FileSystem,
+  HttpRouter,
+  HttpServerRequest,
+  HttpServerResponse,
+} from "@effect/platform"
+import { RouteNotFound } from "@effect/platform/HttpServerError"
 import {
   Array,
+  Console,
   Context,
   Data,
   Effect,
@@ -10,12 +17,13 @@ import {
   pipe,
   PubSub,
   Record,
-  Schedule,
   Schema as S,
+  Scope,
   Stream,
 } from "effect"
 import { importJsBlob } from "./esm.ts"
-import * as HttpSseResponse from "./HttpSseResponse.ts"
+import { watchFileChanges } from "./files.ts"
+import * as SseHttpResponse from "./SseHttpResponse.ts"
 
 /**
  * Generic shape describing a bundle across multiple bundlers
@@ -151,78 +159,75 @@ export const load = <M>(
   })
 }
 
-/**
- * Converts a Bundle to a HTTP router.
- * Useful when you want to expose Bundle via web server,
- * like in case of client-side bundles.
- */
-export const toHttpRouter = (
-  bundle: BundleContext,
-): HttpRouter.HttpRouter => {
-  return Iterable.reduce(
-    pipe(
-      bundle.artifacts,
-      Record.collect((k, v) => [k, bundle.getArtifact(k)!] as const),
-    ),
-    HttpRouter.empty.pipe(
-      /**
-       * Expose manifest
-       */
-      HttpRouter.get(
-        "/manifest.json",
-        HttpServerResponse.text(
-          JSON.stringify(
-            {
-              entrypoints: bundle.entrypoints,
-              artifacts: bundle.artifacts,
-            },
-            undefined,
-            2,
-          ),
-          {
-            headers: {
-              "Content-Type": "application/json",
-            },
-          },
-        ),
-      ),
-      /**
-       * Expose events endpoint if available.
-       * Useful for development to implement live reload.
-       */
-      bundle.events
-        ? HttpRouter.get(
-          "/events",
-          Effect.gen(function*() {
-            const stream = pipe(
-              Stream.fromPubSub(bundle.events!),
-              Stream.tap((event) => Effect.logInfo(`SSE Event: ${JSON.stringify(event)}`))
-            )
+export const toHttpApp = <T extends `${string}Bundle`>(
+  bundleTag: Context.Tag<T, BundleContext>,
+): Effect.Effect<
+  HttpServerResponse.HttpServerResponse,
+  RouteNotFound,
+  HttpServerRequest.HttpServerRequest | Scope.Scope | T
+> =>
+  Effect.gen(function*() {
+    const request = yield* HttpServerRequest.HttpServerRequest
+    const bundle = yield* bundleTag
+    const path = request.url.substring(1)
 
-            return yield* HttpSseResponse.make(stream)
-          }),
-        )
-        : identity,
-    ),
-    (router, [path, artifact]) =>
-      router.pipe(
-        HttpRouter.get(
-          `/${path}`,
-          pipe(
-            Effect.promise(() => artifact.arrayBuffer()),
-            Effect.andThen((bytes) =>
-              HttpServerResponse.uint8Array(new Uint8Array(bytes), {
-                headers: {
-                  "Content-Type": artifact.type,
-                  "Content-Length": String(artifact.size),
-                },
-              })
-            ),
-          ),
+    /**
+     * Expose manifest that contains information about the bundle.
+     */
+    if (path === "manifest.json") {
+      return HttpServerResponse.text(
+        JSON.stringify(
+          {
+            entrypoints: bundle.entrypoints,
+            artifacts: bundle.artifacts,
+          },
+          undefined,
+          2,
         ),
-      ),
-  )
-}
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        },
+      )
+    }
+
+    /**
+     * Expose events endpoint if available.
+     * Useful for development to implement live reload.
+     */
+    if (bundle.events && path === "events") {
+      const changes = watchFileChanges()
+
+      return yield* SseHttpResponse.make<BundleEvent>(changes)
+    }
+
+    const artifact = bundle.artifacts[path]
+
+    /**
+     * Expose artifacts.
+     */
+    if (artifact) {
+      const artifactBlob = bundle.getArtifact(path)!
+      const bytes = yield* Effect.promise(() => artifactBlob.arrayBuffer())
+        .pipe(
+          Effect.andThen(v => new Uint8Array(v)),
+        )
+
+      return HttpServerResponse.uint8Array(bytes, {
+        headers: {
+          "Content-Type": artifact.type,
+          "Content-Length": String(artifact.size),
+        },
+      })
+    }
+
+    return yield* Effect.fail(
+      new RouteNotFound({
+        request,
+      }),
+    )
+  })
 
 /**
  * Exports a bundle to a file system under specified directory.

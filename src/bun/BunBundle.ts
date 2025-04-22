@@ -1,31 +1,20 @@
-import { HttpRouter, HttpServerResponse } from "@effect/platform"
-import { type BuildConfig, type BuildOutput, fileURLToPath } from "bun"
+import { type BuildConfig, type BuildOutput } from "bun"
 import {
-  Console,
   Context,
-  Data,
   Effect,
   Iterable,
   Layer,
-  MutableRef,
   pipe,
   PubSub,
-  Queue,
   Record,
-  Ref,
-  Schedule,
-  Scope,
   Stream,
-  SubscriptionRef,
   SynchronizedRef,
-  Take,
 } from "effect"
-import * as NFSP from "node:fs/promises"
 import * as NPath from "node:path"
-import * as process from "node:process"
 import type { BundleContext, BundleManifest } from "../Bundle.ts"
 import * as Bundle from "../Bundle.ts"
 import { importJsBlob } from "../esm.ts"
+import { watchFileChanges } from "../files.ts"
 
 type BunBundleConfig = BuildConfig
 
@@ -46,8 +35,6 @@ class BunBundleError extends Error {
     super(message)
   }
 }
-
-const SOURCE_FILENAME = /\.(tsx?|jsx?)$/
 
 type BuildOptions = Omit<BunBundleConfig, "outdir">
 
@@ -85,17 +72,17 @@ export const bundle = <I extends `${string}Bundle`>(
         Bundle.tagged(key),
         Effect.gen(function*() {
           const sharedBundle = yield* effect(config)
-          const changes = yield* PubSub.unbounded<Bundle.BundleEvent>()
 
-          sharedBundle.events = changes
-
+          sharedBundle.events = yield* PubSub.unbounded<Bundle.BundleEvent>()
           sharedBundle["_loadRef"] = yield* SynchronizedRef.make(null)
 
-          yield* Effect.fork(
+          yield* Effect.forkScoped(
             pipe(
-              watchChanges(),
+              watchFileChanges(),
               Stream.runForEach((v) =>
                 Effect.gen(function*() {
+                  yield* Effect.logDebug("Updating bundle...")
+
                   const newBundle = yield* effect(config)
 
                   yield* SynchronizedRef.updateEffect(
@@ -105,18 +92,11 @@ export const bundle = <I extends `${string}Bundle`>(
 
                   Object.assign(sharedBundle, newBundle)
 
-                  yield* Effect.logInfo(`Bundle updated: ${JSON.stringify(v)}`)
-                  yield* changes.publish(v)
-
-                  yield* Effect.logInfo(
-                    "Updating bundle",
-                    yield* PubSub.size(changes),
-                  )
+                  yield* PubSub.publish(sharedBundle.events!, v)
                 })
               ),
             ),
           )
-
           return sharedBundle
         }),
       ),
@@ -195,94 +175,6 @@ export const load = <M>(
         })
       ),
     ),
-    {
-      config,
-    },
-  )
-
-const watchChanges = (): Stream.Stream<
-  { type: "Change"; path: string }
-> => {
-  // get dirname after the build as user may pass URL rather than
-  // path which Bun does not resolve.
-  const baseDir = NPath.dirname(process.cwd())
-
-  const changes = pipe(
-    Stream.fromAsyncIterable(
-      NFSP.watch(baseDir, { recursive: true }),
-      (e) => e,
-    ),
-    Stream.filter((event) => SOURCE_FILENAME.test(event.filename!)),
-    Stream.filter((event) => !(/node_modules/.test(event.filename!))),
-    Stream.tap((v) => Console.log("Watch changes", v)),
-    Stream.throttle({
-      units: 1,
-      cost: () => 1,
-      duration: "100 millis",
-      strategy: "enforce",
-    }),
-    Stream.map((event) => ({
-      type: "Change" as const,
-      path: event.filename!,
-    })),
-    Stream.catchAll((error) => Stream.empty),
-  )
-
-  return changes
-}
-
-/**
- * Same as `load` but ensures that most recent module is always returned.
- * Useful for development.
- */
-export const loadWatch = <M>(
-  config: BunBundleConfig,
-): Effect.Effect<M, BunBundleError, never> & { config: BunBundleConfig } =>
-  Object.assign(
-    Effect.gen(function*() {
-      const [entrypoint] = config.entrypoints
-      const _load = load<M>(config)
-      const ref = yield* SubscriptionRef.make<M>(yield* _load)
-
-      // get dirname after the build as user may pass URL rather than
-      // path which Bun does not resolve.
-      const baseDir = NPath.dirname(
-        NPath.resolve(process.cwd(), entrypoint),
-      )
-
-      const changes = pipe(
-        Stream.fromAsyncIterable(
-          NFSP.watch(baseDir, { recursive: true }),
-          (e) => e,
-        ),
-        Stream.filter((event) => SOURCE_FILENAME.test(event.filename!)),
-        Stream.throttle({
-          units: 1,
-          cost: () => 1,
-          duration: "100 millis",
-          strategy: "enforce",
-        }),
-      )
-
-      yield* Effect.fork(
-        pipe(
-          changes,
-          Stream.runForEach((event) =>
-            Effect.gen(function*() {
-              yield* Effect.logDebug(
-                `Reloading bundle due to file change: ${event.filename}`,
-              )
-
-              const app = yield* _load
-
-              yield* Ref.update(ref, () => app)
-            })
-          ),
-        ),
-      )
-
-      return yield* ref
-    }),
     {
       config,
     },
