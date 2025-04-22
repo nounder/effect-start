@@ -28,7 +28,6 @@ export const watchFileChanges = (): Stream.Stream<BundleEvent, unknown> => {
       type: "Change" as const,
       path: event.filename!,
     })),
-    Stream.tap((v) => Effect.log("watchChanges", v)),
   )
 
   return changes

@@ -13,8 +13,6 @@ export const make = <T = any>(stream: Stream.Stream<T, any>, options?: {
 
     const encoder = new TextEncoder()
 
-    yield* Effect.addFinalizer(v => Effect.log("sse finalized"))
-
     const events = pipe(
       Stream.merge(
         heartbeat.pipe(
@@ -29,7 +27,6 @@ export const make = <T = any>(stream: Stream.Stream<T, any>, options?: {
       // Asked for help here: [2025-04-09]
       // https://discord.com/channels/795981131316985866/1359523331400929341
       Stream.tap(v => Effect.gen(function*() {})),
-      Stream.tap(v => Console.log("HttpSse", v)),
       Stream.map(str => encoder.encode(str)),
     )
 
