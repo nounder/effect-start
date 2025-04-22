@@ -1,18 +1,18 @@
-import { Effect, pipe, Stream } from "effect"
+import { Console, pipe, Stream } from "effect"
 import * as NFSP from "node:fs/promises"
-import * as NPath from "node:path"
 import type { BundleEvent } from "./Bundle.ts"
 
 const SOURCE_FILENAME = /\.(tsx?|jsx?)$/
 
 export const watchFileChanges = (): Stream.Stream<BundleEvent, unknown> => {
-  // get dirname after the build as user may pass URL rather than
-  // path which Bun does not resolve.
-  const baseDir = NPath.dirname(process.cwd())
+  const baseDir = process.cwd()
 
   const changes = pipe(
     Stream.fromAsyncIterable(
-      NFSP.watch(baseDir, { recursive: true }),
+      NFSP.watch(baseDir, {
+        persistent: false,
+        recursive: true,
+      }),
       (e) => e,
     ),
     Stream.filter((event) => SOURCE_FILENAME.test(event.filename!)),

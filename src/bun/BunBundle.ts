@@ -5,7 +5,6 @@ import {
   Iterable,
   Layer,
   pipe,
-  PubSub,
   Record,
   Stream,
   SynchronizedRef,
@@ -17,24 +16,6 @@ import { importJsBlob } from "../esm.ts"
 import { watchFileChanges } from "../files.ts"
 
 type BunBundleConfig = BuildConfig
-
-class BunBundleError extends Error {
-  readonly _tag = "BunBundleError"
-
-  constructor(readonly cause: any) {
-    if (cause instanceof AggregateError) {
-      const firstError = cause.errors?.at(0)
-
-      if (firstError) {
-        cause = firstError
-      }
-    }
-
-    const message = cause["message"] ?? String(cause)
-
-    super(message)
-  }
-}
 
 type BuildOptions = Omit<BunBundleConfig, "outdir">
 
@@ -52,9 +33,7 @@ export const bundle = <I extends `${string}Bundle`>(
           const ref = bundle["_loadRef"] as SynchronizedRef.SynchronizedRef<M>
 
           if (!ref) {
-            yield* Effect.die(
-              new Error("Trying to use load while not providing devLayer"),
-            )
+            return yield* load<M>(config)
           }
 
           yield* SynchronizedRef.updateEffect(
@@ -137,7 +116,7 @@ export const layer = <T>(
 
 export const build = (
   config: BunBundleConfig,
-): Effect.Effect<BuildOutput, BunBundleError, never> & {
+): Effect.Effect<BuildOutput, Bundle.BundleError, never> & {
   config: BunBundleConfig
 } =>
   Object.assign(
@@ -145,7 +124,10 @@ export const build = (
       const buildOutput: BuildOutput = yield* Effect.tryPromise({
         try: () => Bun.build(config),
         catch: (err) => {
-          return new BunBundleError(err)
+          return new Bundle.BundleError({
+            message: "Failed to BunBundle.build",
+            cause: err,
+          })
         },
       })
 
@@ -161,14 +143,18 @@ export const build = (
  */
 export const load = <M>(
   config: BunBundleConfig,
-): Effect.Effect<M, BunBundleError, never> & { config: BunBundleConfig } =>
+): Effect.Effect<M, Bundle.BundleError, never> & { config: BunBundleConfig } =>
   Object.assign(
     pipe(
       build(config),
       Effect.andThen((buildOutput) =>
         Effect.tryPromise({
           try: () => importJsBlob<M>(buildOutput.outputs[0]),
-          catch: (err) => new BunBundleError(err),
+          catch: (err) =>
+            new Bundle.BundleError({
+              message: "Failed to load BunBundle.load",
+              cause: err,
+            }),
         })
       ),
     ),
