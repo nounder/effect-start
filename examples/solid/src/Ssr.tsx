@@ -51,7 +51,7 @@ function Document(props: {
 }) {
   const docType = ssr("<!DOCTYPE html>") as unknown as any
   const jsUrl = props.resolve("client.tsx")
-  const cssUrl = props.resolve("app.css")
+  const cssUrl = props.resolve("App.css")
 
   return (
     <NoHydration>
