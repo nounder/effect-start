@@ -21,36 +21,6 @@ const Routes = [
 export function App(props?: {
   serverUrl?: string
 }) {
-  if (process.env.NODE_ENV !== "production") {
-    onMount(() => {
-      const eventSource = new EventSource("/.bundle/events")
-
-      eventSource.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data)
-          if (data.type === "Change") {
-            console.debug("Bundle change detected. Reloading...")
-            window.location.reload()
-          }
-        } catch (error) {
-          console.error("Error parsing SSE event", {
-            error,
-            event,
-          })
-        }
-      }
-
-      eventSource.onerror = (error) => {
-        console.error("SSE connection error:", error)
-        eventSource.close()
-      }
-
-      return () => {
-        eventSource.close()
-      }
-    })
-  }
-
   return (
     <Router url={props?.serverUrl}>
       {Routes}
@@ -74,7 +44,7 @@ function Random() {
 }
 
 function Home() {
-  const [count, setCount] = createSignal(15)
+  const [count, setCount] = createSignal(12)
 
   return (
     <div>

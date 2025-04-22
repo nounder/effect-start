@@ -1,7 +1,7 @@
 import { expect, it } from "bun:test"
 import { Effect } from "effect"
 import { BunBundle, effectFn, TestHttpClient } from "effect-bundler"
-import * as Dev from "./Bundler.ts"
+import * as Dev from "./dev.ts"
 import * as SsrFile from "./Ssr.tsx" with { type: "file" }
 
 const effect = effectFn(Dev.layer)

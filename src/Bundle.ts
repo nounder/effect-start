@@ -13,7 +13,6 @@ import {
   Effect,
   Iterable,
   pipe,
-  PubSub,
   Record,
   Schema as S,
   Scope,
@@ -90,30 +89,31 @@ export const tagged = <I extends `${string}Bundle`>(
  */
 export const load = <M>(
   context: BundleContext,
-): Effect.Effect<M, BundleError> => {
-  const [artifact, ...rest] = Object.values(context.entrypoints)
+): Effect.Effect<M, BundleError> =>
+  Effect.gen(function*() {
+    const [artifact, ...rest] = Object.values(context.entrypoints)
 
-  if (rest.length > 0) {
-    return Effect.fail(
-      new BundleError({
-        message: "Multiple entrypoints are not supported in load()",
-      }),
-    )
-  }
+    if (rest.length > 0) {
+      return yield* Effect.fail(
+        new BundleError({
+          message: "Multiple entrypoints are not supported in load()",
+        }),
+      )
+    }
 
-  return Effect.tryPromise({
-    try: () => {
-      const blob = context.getArtifact(artifact)
+    return yield* Effect.tryPromise({
+      try: () => {
+        const blob = context.getArtifact(artifact)
 
-      return importJsBlob<M>(blob!)
-    },
-    catch: (e) =>
-      new BundleError({
-        message: "Failed to load entrypoint",
-        cause: e,
-      }),
+        return importJsBlob<M>(blob!)
+      },
+      catch: (e) =>
+        new BundleError({
+          message: "Failed to load entrypoint",
+          cause: e,
+        }),
+    })
   })
-}
 
 export const toHttpApp = <T extends `${string}Bundle`>(
   bundleTag: Context.Tag<T, BundleContext>,

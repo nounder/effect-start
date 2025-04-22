@@ -19,6 +19,10 @@ type BunBundleConfig = BuildConfig
 
 type BuildOptions = Omit<BunBundleConfig, "outdir">
 
+const BundleContextLoadRef = Symbol.for(
+  "effect-bundler/BunBundle/ContextLoadRef",
+)
+
 export const bundle = <I extends `${string}Bundle`>(
   key: I,
   config: BunBundleConfig,
@@ -30,49 +34,62 @@ export const bundle = <I extends `${string}Bundle`>(
       load: <M>(): Effect.Effect<M, Bundle.BundleError, I> =>
         Effect.gen(function*() {
           const bundle = yield* Bundle.tagged(key)
-          const ref = bundle["_loadRef"] as SynchronizedRef.SynchronizedRef<M>
 
-          if (!ref) {
+          const loadRef = bundle[BundleContextLoadRef] as
+            | SynchronizedRef.SynchronizedRef<M | null>
+            | undefined
+
+          if (!loadRef) {
             return yield* load<M>(config)
           }
 
-          yield* SynchronizedRef.updateEffect(
-            ref,
+          const loadedBundle = yield* SynchronizedRef.updateAndGetEffect(
+            loadRef,
             (current) =>
-              current === null
-                ? Bundle.load<M>(bundle)
-                : Effect.succeed(current),
+              current ? Effect.succeed(current) : Bundle.load<M>(bundle),
           )
 
-          return yield* ref
+          // we need to cast it manually because updateAndGetEffect
+          // doesn't properly infer return type.
+          return loadedBundle as M
         }),
-      layer: Layer.effect(Bundle.tagged(key), effect(config)),
+      layer: Layer.effect(
+        Bundle.tagged(key),
+        effect(config),
+      ),
       devLayer: Layer.scoped(
         Bundle.tagged(key),
         Effect.gen(function*() {
           const sharedBundle = yield* effect(config)
 
-          sharedBundle["_loadRef"] = yield* SynchronizedRef.make(null)
+          sharedBundle[BundleContextLoadRef] = yield* SynchronizedRef.make(null)
 
-          yield* Effect.forkScoped(
+          yield* Effect.fork(
             pipe(
               watchFileChanges(),
               Stream.runForEach((v) =>
                 Effect.gen(function*() {
-                  yield* Effect.logDebug("Updating bundle...")
+                  yield* Effect.logDebug("Updating bundle: " + key)
 
                   const newBundle = yield* effect(config)
 
-                  yield* SynchronizedRef.updateEffect(
-                    sharedBundle["_loadRef"],
-                    () => Bundle.load(newBundle),
-                  )
-
                   Object.assign(sharedBundle, newBundle)
+
+                  // Clean old loaded bundle
+                  const loadRef = sharedBundle[BundleContextLoadRef]
+                  if (loadRef) {
+                    yield* SynchronizedRef.update(loadRef, () => null)
+                  }
                 })
+              ),
+              // Log error otherwise stream would close and we would not
+              // know about it because we're processing it in a fork.
+              Effect.tapError(err =>
+                Effect.logError("Error while updating bundle", err)
               ),
             ),
           )
+
           return sharedBundle
         }),
       ),
@@ -107,12 +124,7 @@ export const effect = (
 export const layer = <T>(
   tag: Context.Tag<T, BundleContext>,
   config: BunBundleConfig,
-) => {
-  return Layer.effect(
-    tag,
-    effect(config),
-  )
-}
+) => Layer.effect(tag, effect(config))
 
 export const build = (
   config: BunBundleConfig,
