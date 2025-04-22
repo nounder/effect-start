@@ -1,18 +1,6 @@
-import { Error, HttpServerResponse } from "@effect/platform"
+import { HttpServerResponse } from "@effect/platform"
 import { RouteNotFound } from "@effect/platform/HttpServerError"
-import {
-  Cause,
-  Config,
-  Console,
-  Data,
-  Effect,
-  HashMap,
-  Logger,
-  Match,
-  pipe,
-  Predicate,
-} from "effect"
-import { TaggedError } from "effect/Data"
+import { Cause, Effect, Match, pipe, Predicate } from "effect"
 
 /**
  * Groups: function, path
@@ -31,7 +19,7 @@ export const handleHttpServerResponseError = (
       Match.value(e),
       Match.when(
         Predicate.isTagged("RouteNotFound"),
-        () =>
+        (_) =>
           HttpServerResponse.json(
             {
               error: "RouteNotFound",
