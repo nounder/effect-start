@@ -1,4 +1,4 @@
-import { type BuildConfig, type BuildOutput } from "bun"
+import type { BuildConfig, BuildOutput } from "bun"
 import {
   Context,
   Effect,

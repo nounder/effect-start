@@ -3,31 +3,13 @@
   "version": "0.12.0",
   "type": "module",
   "license": "MIT",
-  "scripts": {
-    "dev": "bun src/dev.ts start",
-    "build": "bun src/dev.ts build",
-    "bundler": "bun src/dev.ts",
-    "server": "bun --conditions=solid --preload=./src/server.preload.ts ./src/server.ts"
-  },
-  "dependencies": {
-    "@effect/cli": "^0.59.11",
-    "@effect/platform": "0.80.11",
-    "@effect/platform-bun": "0.60.21",
-    "@solidjs/router": "0.15.3",
-    "@tailwindcss/node": "^4.1.4",
-    "effect": "3.14.11",
-    "lightningcss": "^1.29.3",
-    "solid-js": "^1.9.5",
-    "vite": "^6.3.2",
-    "vite-plugin-solid": "^2.11.6"
-  },
+  "main": "./src/index.ts",
   "devDependencies": {
-    "@babel/preset-typescript": "^7.27.0",
-    "@effect/language-service": "^0.7.1",
-    "@types/bun": "^1.2.10",
-    "bun-plugin-solid": "^1.0.0"
+    "@types/bun": "^1.2.10"
   },
   "peerDependencies": {
-    "typescript": "^5.8.3"
+    "typescript": "^5",
+    "effect": "^3",
+    "@effect/platform": "^0"
   }
 }

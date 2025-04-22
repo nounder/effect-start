@@ -1,14 +1,11 @@
-import * as Tailwind from "@tailwindcss/node"
 import type { BunPlugin } from "bun"
 import { Array } from "effect"
 
-/**
- * Bun plugin to handle dynamic modules used in `Bundle.dynamic`.
- */
-export const TailwindBunPlugin: () => BunPlugin = () => {
+export const make = (importer: () => Promise<any>): BunPlugin => {
   return {
     name: "Bun Tailwind.css plugin",
-    setup(builder) {
+    async setup(builder) {
+      const Tailwind = await importer()
       const TailwindFilesPattern = /\.(tsx|jsx|html)$/
       const defaultInputCss = `@import "tailwindcss"`
       let twCompiler: Awaited<ReturnType<typeof Tailwind.compile>>
@@ -53,7 +50,7 @@ export const TailwindBunPlugin: () => BunPlugin = () => {
         build = twCompiler.build([...collectedClassNames])
 
         return {
-          contents: build,
+          contents: build!,
           // TODO: maybe css?
           loader: "css",
         }
