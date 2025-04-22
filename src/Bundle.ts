@@ -61,7 +61,6 @@ export type BundleContext =
     // to all artifacts already.
     resolve: (url: string) => string
     getArtifact: (path: string) => Blob | null
-    events?: PubSub.PubSub<BundleEvent>
   }
 
 export class BundleError extends Data.TaggedError("BundleError")<{
@@ -153,7 +152,7 @@ export const toHttpApp = <T extends `${string}Bundle`>(
      * Expose events endpoint if available.
      * Useful for development to implement live reload.
      */
-    if (bundle.events && path === "events") {
+    if (process.env.NODE_ENV !== "production" && path === "events") {
       const changes = watchFileChanges()
 
       return yield* SseHttpResponse.make<BundleEvent>(changes)

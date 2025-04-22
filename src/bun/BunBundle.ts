@@ -73,7 +73,6 @@ export const bundle = <I extends `${string}Bundle`>(
         Effect.gen(function*() {
           const sharedBundle = yield* effect(config)
 
-          sharedBundle.events = yield* PubSub.unbounded<Bundle.BundleEvent>()
           sharedBundle["_loadRef"] = yield* SynchronizedRef.make(null)
 
           yield* Effect.forkScoped(
@@ -91,8 +90,6 @@ export const bundle = <I extends `${string}Bundle`>(
                   )
 
                   Object.assign(sharedBundle, newBundle)
-
-                  yield* PubSub.publish(sharedBundle.events!, v)
                 })
               ),
             ),
