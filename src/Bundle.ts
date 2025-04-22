@@ -1,26 +1,25 @@
 import {
   FileSystem,
-  HttpRouter,
+  Headers,
+  HttpApp,
   HttpServerRequest,
   HttpServerResponse,
 } from "@effect/platform"
 import { RouteNotFound } from "@effect/platform/HttpServerError"
 import {
   Array,
-  Console,
   Context,
   Data,
   Effect,
-  identity,
   Iterable,
-  Option,
   pipe,
   PubSub,
   Record,
   Schema as S,
   Scope,
-  Stream,
 } from "effect"
+import * as NPath from "node:path"
+import { fileURLToPath } from "node:url"
 import { importJsBlob } from "./esm.ts"
 import { watchFileChanges } from "./files.ts"
 import * as SseHttpResponse from "./SseHttpResponse.ts"
@@ -85,48 +84,6 @@ export const tagged = <I extends `${string}Bundle`>(
 ) => {
   return Context.GenericTag<I, BundleContext>(key)
 }
-
-/**
- * Loads a Bundle under given key.
- * It first looks for the bundle in runtime context, and if not found,
- * tries to load it from an embedded bundle.
- *
- * Embeded bundle are found under `effect-bundler/embeds/` module
- * and are provided by a bundler during building process.
- * Hence, the bundle config must include appropriate plugins
- * that provide bundle modules.
- *
- * WARNING: This will fail when bundle is not properly configured.
- */
-export const dynamic = <T extends string>(
-  key: T,
-): Effect.Effect<BundleContext, never, never> =>
-  pipe(
-    [
-      // maybe get from runtime context
-      Context.GenericTag<T, BundleContext>(
-        `effect-bundler/tags/${key}` as const,
-      ).pipe(
-        Effect.serviceOption,
-        Effect.andThen(Option.getOrThrow),
-      ),
-
-      // maybe import from bundled modules
-      Effect.tryPromise({
-        try: () => {
-          // @ts-ignore
-          return import(`effect-bundler/dynamic/${key}`)
-        },
-        catch: (e) =>
-          new BundleError({
-            message: "Failed to load dynamic bundle",
-            cause: e,
-          }),
-      }),
-    ],
-    Effect.firstSuccessOf,
-    Effect.orDie,
-  )
 
 /**
  * Lodas a bundle as a javascript module.
@@ -384,5 +341,54 @@ export const fromFiles = (
     }
 
     return bundleContext
+  })
+}
+
+/**
+ * Render HTML to a string.
+ * Useful for SSR.
+ */
+export const renderPromise = <I extends `${string}Bundle`>(
+  clientBundle: Context.Tag<I, BundleContext>,
+  render: (
+    request: Request,
+    resolve: (url: string) => string,
+  ) => Promise<Response>,
+): HttpApp.Default<BundleError | RouteNotFound, I> => {
+  return Effect.gen(function*() {
+    const bundle = yield* clientBundle
+    const req = yield* HttpServerRequest.HttpServerRequest
+    const fetchReq = req.source as Request
+
+    // TODO: add support for file:// urls
+    // this will require handling source base path
+    const resolve = (url: string): string => {
+      const path = url.startsWith("file://")
+        ? fileURLToPath(url)
+        : url
+      const publicBase = "/.bundle"
+      const publicPath = bundle.resolve(path)
+
+      return NPath.join(publicBase, publicPath ?? path)
+    }
+
+    const output = yield* Effect.tryPromise({
+      try: () =>
+        render(
+          fetchReq,
+          resolve,
+        ),
+      catch: (e) =>
+        new BundleError({
+          message: "Failed to render",
+          cause: e,
+        }),
+    })
+
+    return yield* HttpServerResponse.raw(output.body, {
+      status: output.status,
+      statusText: output.statusText,
+      headers: Headers.fromInput(output.headers as any),
+    })
   })
 }

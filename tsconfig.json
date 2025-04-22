@@ -33,5 +33,9 @@
         "name": "@effect/language-service"
       }
     ]
-  }
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx"
+  ]
 }

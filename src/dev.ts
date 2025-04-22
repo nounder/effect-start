@@ -19,7 +19,7 @@ export const ClientBundle = BunBundle.bundle("ClientBundle", {
     "solid",
   ],
   naming: "[name]-[hash].[ext]",
-  sourcemap: "linked",
+  sourcemap: "external",
   packages: "bundle",
   plugins: [
     SolidPlugin({
@@ -38,7 +38,7 @@ export const ServerBundle = BunBundle.bundle("ServerBundle", {
   conditions: [
     "solid",
   ],
-  sourcemap: "linked",
+  sourcemap: "external",
   packages: "bundle",
   external: [
     // externalize everything except solid because it requires

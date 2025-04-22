@@ -7,3 +7,4 @@ vendor/
 .aider*
 out/
 pad/
+dst/

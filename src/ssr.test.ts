@@ -1,5 +1,5 @@
 import { expect, it } from "bun:test"
-import { Effect, Layer, Scope } from "effect"
+import { Effect } from "effect"
 import * as BunBundle from "./bun/BunBundle.ts"
 import * as Dev from "./dev.ts"
 import * as TestHttpClient from "./effect/TestHttpClient.ts"
@@ -11,7 +11,7 @@ const effect = effectFn(Dev.layer)
 const SsrBundle = BunBundle.load<typeof SsrFile>({
   ...Dev.ServerBundle.config,
   entrypoints: [
-    SsrFile.default as unknown as string,
+    SsrFile["default"] as unknown as string,
   ],
 }).pipe(
   Effect.andThen((v) => v.SsrApp),

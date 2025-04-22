@@ -7,11 +7,10 @@ import {
 } from "solid-js/web"
 import { App } from "./App.tsx"
 import * as Bundle from "./Bundle.ts"
-import * as BundleServer from "./BundleServer.ts"
 
 export const SsrNotFoundMagicValue = `<!--ssr-not-found-->`
 
-export const SsrApp = BundleServer.renderPromise(
+export const SsrApp = Bundle.renderPromise(
   Bundle.tagged("ClientBundle"),
   async (req, resolve) => {
     const Component = () => (
@@ -44,8 +43,6 @@ export const SsrApp = BundleServer.renderPromise(
     })
   },
 )
-
-export default SsrApp
 
 function Document(props: {
   children: any

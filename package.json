@@ -1,4 +1,8 @@
 {
+  "name": "effect-bundler",
+  "version": "0.12.0",
+  "type": "module",
+  "license": "MIT",
   "scripts": {
     "dev": "bun src/dev.ts start",
     "build": "bun src/dev.ts build",
@@ -17,8 +21,6 @@
     "vite": "^6.3.2",
     "vite-plugin-solid": "^2.11.6"
   },
-  "name": "solid-deno",
-  "type": "module",
   "devDependencies": {
     "@babel/preset-typescript": "^7.27.0",
     "@effect/language-service": "^0.7.1",
