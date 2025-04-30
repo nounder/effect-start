@@ -6,7 +6,7 @@
   },
   "dependencies": {
     "effect": "^3",
-    "effect-bundler": "../../",
+    "effect-bundler": "github:nounder/effect-bundler",
     "@effect/platform": "^0",
     "@effect/platform-bun": "^0",
 

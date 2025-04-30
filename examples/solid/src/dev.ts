@@ -83,10 +83,10 @@ if (import.meta.main) {
       "build",
       () =>
         Effect.gen(function*() {
-          yield* Console.log("Building client bundle")
+          yield* Console.log("Building client bundle to out/client")
           yield* Bundle.toFiles(yield* ClientBundle, "out/client")
 
-          yield* Console.log("Building server bundle")
+          yield* Console.log("Building server bundle in out/server")
           yield* Bundle.toFiles(yield* ServerBundle, "out/server")
         }),
     ),
