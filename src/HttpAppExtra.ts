@@ -34,20 +34,22 @@ export const chain = <
     apps =>
       Effect.gen(function*() {
         const request = yield* HttpServerRequest.HttpServerRequest
+        let lastResponse: HttpServerResponse.HttpServerResponse | undefined
 
         for (const app of apps) {
-          const res = yield* app.pipe()
+          const res = yield* app
+          lastResponse = res
 
           if (res.status !== 404) {
             return res
           }
         }
 
-        return yield* Effect.fail(
-          new RouteNotFound({
-            request,
-          }),
-        )
+        if (lastResponse) {
+          return lastResponse
+        }
+
+        return yield* HttpServerResponse.empty({ status: 404 })
       }),
   )
 

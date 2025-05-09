@@ -22,13 +22,6 @@ const ApiApp = HttpRouter.empty.pipe(
     Bundle.toHttpApp(Bundle.tagged("ClientBundle")),
   ),
   HttpRouter.catchAllCause(HttpAppExtra.renderError),
-  Effect.catchTag(
-    "RouteNotFound",
-    e =>
-      HttpServerResponse.empty({
-        status: 404,
-      }),
-  ),
 )
 
 export const Server = HttpAppExtra.chain([

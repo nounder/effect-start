@@ -1,6 +1,7 @@
 import { A, Router } from "@solidjs/router"
 import { createSignal, onMount } from "solid-js"
 import EffectLogo from "../assets/EffectLogo.png"
+import { SsrNotFoundMagicValue } from "./Ssr"
 
 const Routes = [
   {
@@ -14,7 +15,14 @@ const Routes = [
   {
     path: "*404",
     component: () => {
-      return <div innerHTML={`<!--ssr-not-found-->`}></div>
+      return (
+        <div>
+          <div innerHTML={`<!--ssr-not-found-->`} />
+          <div>
+            Not found.
+          </div>
+        </div>
+      )
     },
   },
 ]
