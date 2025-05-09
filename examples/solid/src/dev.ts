@@ -17,6 +17,7 @@ export const ClientBundle = BunBundle.bundle("ClientBundle", {
     "solid",
   ],
   naming: "[name]-[hash].[ext]",
+  publicPath: "/.bundle/",
   sourcemap: "external",
   packages: "bundle",
   plugins: [

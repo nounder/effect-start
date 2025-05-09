@@ -1,5 +1,6 @@
 import { A, Router } from "@solidjs/router"
 import { createSignal, onMount } from "solid-js"
+import EffectLogo from "../assets/EffectLogo.png"
 
 const Routes = [
   {
@@ -48,6 +49,8 @@ function Home() {
 
   return (
     <div>
+      <img src={EffectLogo} />
+
       <h1 class="bg-gray-400">
         Welcome, {count()}{" "}
         <button onClick={() => setCount(count() + 1)}>+</button>
