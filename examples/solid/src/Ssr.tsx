@@ -64,7 +64,7 @@ function Document(props: {
             name="viewport"
             content="width=device-width, initial-scale=1"
           />
-          <title>solid-deno</title>
+          <title>effect-bundler</title>
 
           <link rel="stylesheet" href={cssUrl} />
         </head>
