@@ -1,11 +1,18 @@
 import type { BunPlugin } from "bun"
 import { Array } from "effect"
 
-export const make = (importer: () => Promise<any>): BunPlugin => {
+export const make = (importer?: () => Promise<any>): BunPlugin => {
   return {
     name: "Bun Tailwind.css plugin",
     async setup(builder) {
-      const Tailwind = await importer()
+      const Tailwind = await (importer
+        ? importer()
+        // @ts-ignore it's okay if it's not installed
+        : import("@tailwindcss/node").catch(err => {
+          throw new Error(
+            "Tailwind not found: install @tailwindcss/node or provide custom importer",
+          )
+        }))
       const TailwindFilesPattern = /\.(tsx|jsx|html)$/
       const defaultInputCss = `@import "tailwindcss"`
       let twCompiler: Awaited<ReturnType<typeof Tailwind.compile>>
