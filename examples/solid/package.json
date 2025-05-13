@@ -1,4 +1,5 @@
 {
+  "name": "effect-bundler-solid-example",
   "private": true,
   "scripts": {
     "dev": "bun src/dev.ts start",
