@@ -14,6 +14,7 @@ import {
   SynchronizedRef,
 } from "effect"
 import * as NPath from "node:path"
+import { fileURLToPath } from "node:url"
 import type { BundleContext, BundleManifest } from "../Bundle.ts"
 import * as Bundle from "../Bundle.ts"
 import { importJsBlob } from "../esm.ts"
@@ -106,7 +107,7 @@ export const bundle = <I extends `${string}Bundle`>(
   )
 
 export const bundleBrowser = (
-  config: BuildOptions = {},
+  config: BuildOptions,
 ) => {
   const isDevelopment = process.env.NODE_ENV !== "production"
   const baseConfig = isDevelopment
@@ -297,16 +298,21 @@ export const configFromHttpRouter = (
   const entrypoints = pipe(
     router.routes,
     Iterable.filterMap((route) =>
-      route.handler[Bundle.BundleEntrypointRouteTypeId]
-        ? Option.some(route.path)
-        : Option.none()
+      Option.fromNullable(
+        route.handler[
+          Bundle.BundleEntrypointMetaKey
+        ] as Bundle.BundleEntrypointMetaValue,
+      )
+    ),
+    Iterable.map((v) =>
+      v.uri.startsWith("file://") ? fileURLToPath(v.uri) : v.uri
     ),
     Array.fromIterable,
   )
   const publicPath = pipe(
     router.mounts,
     Iterable.filterMap(([path, httpApp]) =>
-      httpApp[Bundle.BundleOutputRouteTypeId]
+      httpApp[Bundle.BundleOutputMetaKey]
         ? Option.some(path)
         : Option.none()
     ),

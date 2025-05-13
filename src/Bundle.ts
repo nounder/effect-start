@@ -12,13 +12,19 @@ import {
 } from "effect"
 import { importJsBlob } from "./esm.ts"
 
-export const BundleEntrypointRouteTypeId: unique symbol = Symbol.for(
-  "effect-bundler/BundleEntrypointRouteTypeId",
+export const BundleEntrypointMetaKey: unique symbol = Symbol.for(
+  "effect-bundler/BundleEntrypointMetaKey",
 )
 
-export const BundleOutputRouteTypeId: unique symbol = Symbol.for(
-  "effect-bundler/BundleOutputRouteTypeId",
+export type BundleEntrypointMetaValue = {
+  uri: string
+}
+
+export const BundleOutputMetaKey: unique symbol = Symbol.for(
+  "effect-bundler/BundleOutputMetaKey",
 )
+
+export type BundleOutputMetaValue = {}
 
 /**
  * Generic shape describing a bundle across multiple bundlers

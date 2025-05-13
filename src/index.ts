@@ -1,5 +1,7 @@
 export * as Bundle from "./Bundle.ts"
 
+export * as BundleHttp from "./BundleHttp.ts"
+
 export * as BunBundle from "./bun/BunBundle.ts"
 export * as BunTailwindPlugin from "./bun/BunTailwindPlugin.ts"
 

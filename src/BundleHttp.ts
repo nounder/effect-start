@@ -10,11 +10,13 @@ import * as NPath from "node:path"
 import { fileURLToPath } from "url"
 import {
   type BundleContext,
-  BundleEntrypointRouteTypeId,
+  BundleEntrypointMetaKey,
+  type BundleEntrypointMetaValue,
   BundleError,
   type BundleEvent,
   type BundleKey,
-  BundleOutputRouteTypeId,
+  BundleOutputMetaKey,
+  type BundleOutputMetaValue,
   tagged,
 } from "./Bundle.ts"
 import * as SseHttpResponse from "./SseHttpResponse.ts"
@@ -22,12 +24,13 @@ import * as SseHttpResponse from "./SseHttpResponse.ts"
 type BundleEntrypointHttpApp<E = never, R = never> =
   & HttpApp.Default<E, R>
   & {
-    readonly [BundleEntrypointRouteTypeId]: typeof BundleEntrypointRouteTypeId
+    readonly [BundleEntrypointMetaKey]: BundleEntrypointMetaValue
   }
-type BundleOutputRouteHttpApp<E = never, R = never> =
+
+type BundleOutputHttpApp<E = never, R = never> =
   & HttpApp.Default<E, R>
   & {
-    readonly [BundleOutputRouteTypeId]: typeof BundleOutputRouteTypeId
+    readonly [BundleOutputMetaKey]: BundleOutputMetaValue
   }
 
 export function handleEntrypoint(
@@ -55,20 +58,22 @@ export function handleEntrypoint<
       return HttpServerResponse.text("httpEntrypoint")
     }),
     {
-      [BundleEntrypointRouteTypeId]: BundleEntrypointRouteTypeId,
-    } as any,
+      [BundleEntrypointMetaKey]: {
+        uri,
+      },
+    },
   )
 }
 
-export function httpApp(): BundleOutputRouteHttpApp<never, "BrowserBundle">
+export function httpApp(): BundleOutputHttpApp<never, "BrowserBundle">
 export function httpApp<T extends BundleKey>(
   bundleTag?: Context.Tag<T, BundleContext>,
-): BundleOutputRouteHttpApp<never, T> {
+): BundleOutputHttpApp<RouteNotFound, T | Scope.Scope> {
   return Object.assign(
     toHttpApp(bundleTag ?? tagged("BrowserBundle" as T)),
     {
-      [BundleOutputRouteTypeId]: BundleOutputRouteTypeId,
-    } as any,
+      [BundleOutputMetaKey]: {},
+    },
   )
 }
 

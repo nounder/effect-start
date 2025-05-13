@@ -1,17 +1,19 @@
 import { HttpRouter, HttpServerResponse } from "@effect/platform"
-import { expect, it } from "bun:test"
+import { expect, test } from "bun:test"
+import { fileURLToPath } from "node:url"
 import * as BunBundle from "./bun/BunBundle.ts"
 import * as BundleHttp from "./BundleHttp.ts"
+import { TestHttpClient } from "./index.ts"
 import { effectFn } from "./testing.ts"
 
-const effect = effectFn()
+const HtmlPath = fileURLToPath(import.meta.resolve(
+  "../static/react-dashboard.html",
+))
 
 const Router = HttpRouter.empty.pipe(
   HttpRouter.get(
     "/dashboard",
-    BundleHttp.handleEntrypoint(import.meta.resolve(
-      "../samples/react-dashboard.html",
-    )),
+    BundleHttp.handleEntrypoint(HtmlPath),
   ),
   HttpRouter.mountApp(
     "/_bundle",
@@ -23,14 +25,42 @@ const Router = HttpRouter.empty.pipe(
   ),
 )
 
-it("fromHttpRouter", () =>
+const effect = effectFn(
+  BunBundle.bundleBrowser({
+    ...BunBundle.configFromHttpRouter(Router),
+  }).layer,
+)
+
+const Client = TestHttpClient.make(Router)
+
+test("fromHttpRouter", () =>
   effect(function*() {
     const config = BunBundle.configFromHttpRouter(Router)
 
     expect(config).toMatchObject({
       entrypoints: [
-        "/dashboard",
+        HtmlPath,
       ],
       publicPath: "/_bundle",
     })
+  }))
+
+test("responses", () =>
+  effect(function*() {
+    {
+      const res = yield* Client.get("/_bundle/manifest.json")
+
+      expect(res.status)
+        .toBe(200)
+    }
+
+    {
+      const res = yield* Client.get("/hello")
+
+      expect(res.status)
+        .toBe(200)
+
+      expect(yield* res.text)
+        .toBe("Hello World!")
+    }
   }))
