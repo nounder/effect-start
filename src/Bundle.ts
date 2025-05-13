@@ -2,6 +2,7 @@ import {
   FileSystem,
   Headers,
   HttpApp,
+  HttpRouter,
   HttpServerRequest,
   HttpServerResponse,
 } from "@effect/platform"
@@ -23,6 +24,14 @@ import * as NPath from "node:path"
 import { fileURLToPath } from "node:url"
 import { importJsBlob } from "./esm.ts"
 import * as SseHttpResponse from "./SseHttpResponse.ts"
+
+export const BundleEntrypointRouteTypeId: unique symbol = Symbol.for(
+  "effect-bundler/BundleEntrypointRouteTypeId",
+)
+
+export const BundleOutputRouteTypeId: unique symbol = Symbol.for(
+  "effect-bundler/BundleOutputRouteTypeId",
+)
 
 /**
  * Generic shape describing a bundle across multiple bundlers
@@ -47,6 +56,8 @@ export const BundleManifestSchema = S.Struct({
 export type BundleManifest = typeof BundleManifestSchema.Type
 
 export type BundleEvent = { type: "Change"; path: string }
+
+export type BundleKey = `${string}Bundle`
 
 /**
  * Passed to bundle effects and within bundle runtime.
@@ -79,7 +90,7 @@ export const Tag = <T extends string>(name: T) => <Identifier>() =>
     `effect-bundler/tags/${name}`,
   )<Identifier, BundleContext>()
 
-export const tagged = <I extends `${string}Bundle`>(
+export const tagged = <I extends BundleKey>(
   key: I,
 ) => {
   return Context.GenericTag<I, BundleContext>(key)
@@ -117,7 +128,7 @@ export const load = <M>(
     })
   })
 
-export const toHttpApp = <T extends `${string}Bundle`>(
+export const toHttpApp = <T extends BundleKey>(
   bundleTag: Context.Tag<T, BundleContext>,
 ): Effect.Effect<
   HttpServerResponse.HttpServerResponse,
@@ -167,17 +178,8 @@ export const toHttpApp = <T extends `${string}Bundle`>(
      */
     if (artifact) {
       const artifactBlob = bundle.getArtifact(path)!
-      const bytes = yield* Effect.promise(() => artifactBlob.arrayBuffer())
-        .pipe(
-          Effect.andThen(v => new Uint8Array(v)),
-        )
 
-      return HttpServerResponse.uint8Array(bytes, {
-        headers: {
-          "Content-Type": artifact.type,
-          "Content-Length": String(artifact.size),
-        },
-      })
+      return yield* renderBlob(artifactBlob)
     }
 
     return yield* Effect.fail(
@@ -349,7 +351,7 @@ export const fromFiles = (
  * Render HTML to a string.
  * Useful for SSR.
  */
-export const renderPromise = <I extends `${string}Bundle`>(
+export const renderPromise = <I extends BundleKey>(
   clientBundle: Context.Tag<I, BundleContext>,
   render: (
     request: Request,
@@ -393,3 +395,72 @@ export const renderPromise = <I extends `${string}Bundle`>(
     })
   })
 }
+
+type BundleEntrypointHttpApp<E = never, R = never> =
+  & HttpApp.Default<E, R>
+  & {
+    readonly [BundleEntrypointRouteTypeId]: typeof BundleEntrypointRouteTypeId
+  }
+
+type BundleOutputRouteHttpApp<E = never, R = never> =
+  & HttpApp.Default<E, R>
+  & {
+    readonly [BundleOutputRouteTypeId]: typeof BundleOutputRouteTypeId
+  }
+
+export function httpEntrypoint(
+  uri: string,
+): BundleEntrypointHttpApp<never, "BrowserBundle">
+export function httpEntrypoint<K extends BundleKey>(
+  uri: string,
+  bundleKey: K,
+): BundleEntrypointHttpApp<never, K>
+export function httpEntrypoint<
+  K extends BundleKey = "BrowserBundle",
+>(
+  uri: string,
+  bundleKey: K = "BrowserBundle" as K,
+): BundleEntrypointHttpApp<never, K> {
+  return Object.assign(
+    Effect.gen(function*() {
+      const request = yield* HttpServerRequest.HttpServerRequest
+      const bundle = yield* tagged(bundleKey)
+      const entrypointPath = uri.startsWith("file://")
+        ? fileURLToPath(uri)
+        : uri
+      const requestPath = request.url.substring(1)
+
+      return HttpServerResponse.text("httpEntrypoint")
+    }),
+    {
+      [BundleEntrypointRouteTypeId]: BundleEntrypointRouteTypeId,
+    } as any,
+  )
+}
+
+export function httpBundle(): BundleOutputRouteHttpApp<never, "BrowserBundle">
+export function httpBundle<T extends BundleKey>(
+  bundleTag?: Context.Tag<T, BundleContext>,
+): BundleOutputRouteHttpApp<never, T> {
+  return Object.assign(
+    toHttpApp(bundleTag ?? tagged("BrowserBundle" as T)),
+    {
+      [BundleOutputRouteTypeId]: BundleOutputRouteTypeId,
+    } as any,
+  )
+}
+
+const renderBlob = (blob: Blob) =>
+  Effect.gen(function*() {
+    const bytes = yield* Effect.promise(() => blob.arrayBuffer())
+      .pipe(
+        Effect.andThen(v => new Uint8Array(v)),
+      )
+
+    return HttpServerResponse.uint8Array(bytes, {
+      headers: {
+        "Content-Type": blob.type,
+        "Content-Length": String(blob.size),
+      },
+    })
+  })

@@ -1,9 +1,12 @@
+import type { HttpRouter } from "@effect/platform"
 import type { BuildConfig, BuildOutput } from "bun"
 import {
+  Array,
   Context,
   Effect,
   Iterable,
   Layer,
+  Option,
   pipe,
   PubSub,
   Record,
@@ -20,8 +23,8 @@ type BunBundleConfig = BuildConfig
 
 type BuildOptions = Omit<BunBundleConfig, "outdir">
 
-const BundleContextLoadRef = Symbol.for(
-  "effect-bundler/BunBundle/ContextLoadRef",
+const BunBundleContextLoadRef = Symbol.for(
+  "effect-bundler/BunBundleContextLoadRef",
 )
 
 export const bundle = <I extends `${string}Bundle`>(
@@ -36,7 +39,7 @@ export const bundle = <I extends `${string}Bundle`>(
         Effect.gen(function*() {
           const bundle = yield* Bundle.tagged(key)
 
-          const loadRef = bundle[BundleContextLoadRef] as
+          const loadRef = bundle[BunBundleContextLoadRef] as
             | SynchronizedRef.SynchronizedRef<M | null>
             | undefined
 
@@ -63,7 +66,7 @@ export const bundle = <I extends `${string}Bundle`>(
         Effect.gen(function*() {
           const sharedBundle = yield* effect(config)
 
-          const loadRef = sharedBundle[BundleContextLoadRef] =
+          const loadRef = sharedBundle[BunBundleContextLoadRef] =
             yield* SynchronizedRef.make(null)
 
           sharedBundle.events = yield* PubSub.unbounded<Bundle.BundleEvent>()
@@ -101,6 +104,30 @@ export const bundle = <I extends `${string}Bundle`>(
       ),
     },
   )
+
+export const bundleBrowser = (
+  config: BuildOptions = {},
+) => {
+  const isDevelopment = process.env.NODE_ENV !== "production"
+  const baseConfig = isDevelopment
+    ? {
+      naming: "[dir]/[name].[ext]",
+      sourcemap: "linked",
+      packages: "external",
+    } as const
+    : {
+      naming: "[name]-[hash].[ext]",
+      sourcemap: "none",
+      packages: "bundle",
+    } as const
+  const resolvedConfig = {
+    ...baseConfig,
+    target: "browser" as const,
+    ...config,
+  }
+
+  return bundle("BrowserBundle", resolvedConfig)
+}
 
 /**
  * Given a config, build a bundle and returns every time when effect is executed.
@@ -259,4 +286,40 @@ function generateManifestfromBunBundle(
       Record.fromEntries,
     ),
   }
+}
+
+// iterate over routes
+// find all entrypoints
+// find all httpBundles
+export const configFromHttpRouter = (
+  router: HttpRouter.HttpRouter<any, Bundle.BundleKey>,
+) => {
+  const entrypoints = pipe(
+    router.routes,
+    Iterable.filterMap((route) =>
+      route.handler[Bundle.BundleEntrypointRouteTypeId]
+        ? Option.some(route.path)
+        : Option.none()
+    ),
+    Array.fromIterable,
+  )
+  const publicPath = pipe(
+    router.mounts,
+    Iterable.filterMap(([path, httpApp]) =>
+      httpApp[Bundle.BundleOutputRouteTypeId]
+        ? Option.some(path)
+        : Option.none()
+    ),
+    Iterable.head,
+    Option.getOrThrowWith(() =>
+      new Error("HttpRouter must have a bundler route")
+    ),
+  )
+
+  const config: BuildConfig = {
+    entrypoints,
+    publicPath,
+  }
+
+  return config
 }
