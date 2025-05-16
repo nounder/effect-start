@@ -4,12 +4,12 @@
     "": {
       "name": "effect-bundler",
       "devDependencies": {
-        "@types/bun": "latest",
+        "@types/bun": "^1.2.13",
       },
       "peerDependencies": {
-        "@effect/platform": "latest",
-        "effect": "latest",
-        "typescript": "latest",
+        "@effect/platform": "^0.82.0",
+        "effect": "^3.15.0",
+        "typescript": "^5.8.3",
       },
     },
   },
