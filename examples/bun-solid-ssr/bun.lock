@@ -6,12 +6,12 @@
         "@effect/platform": "^0",
         "@effect/platform-bun": "^0",
         "@solidjs/router": "0.15.3",
-        "@tailwindcss/node": "^4.1.4",
         "effect": "^3",
-        "effect-bundler": "../../",
+        "effect-bundler": "github:nounder/effect-bundler",
         "solid-js": "^1.9.5",
       },
       "devDependencies": {
+        "@tailwindcss/node": "^4.1.4",
         "@types/bun": "latest",
         "bun-plugin-solid": "^1.0.0",
       },
@@ -177,7 +177,7 @@
 
     "effect": ["effect@3.14.12", "", { "dependencies": { "@standard-schema/spec": "^1.0.0", "fast-check": "^3.23.1" } }, "sha512-DEHmOGWhAKP1U4jZH9QpV4UusXxYOMvN60AkLjibWqsRo1mh4gItlXlX7Fbjujn6hum68JEXOtm7C5/TGClHdA=="],
 
-    "effect-bundler": ["effect-bundler@file:../..", { "devDependencies": { "@types/bun": "^1.2.10" }, "peerDependencies": { "@effect/platform": "^0", "effect": "^3", "typescript": "^5" } }],
+    "effect-bundler": ["effect-bundler@github:nounder/effect-bundler#5900504", { "peerDependencies": { "@effect/platform": "^0.82.0", "effect": "^3.15.0", "typescript": "^5.8.3" } }, "nounder-effect-bundler-5900504"],
 
     "electron-to-chromium": ["electron-to-chromium@1.5.140", "", {}, "sha512-o82Rj+ONp4Ip7Cl1r7lrqx/pXhbp/lh9DpKcMNscFJdh8ebyRofnc7Sh01B4jx403RI0oqTBvlZ7OBIZLMr2+Q=="],
 

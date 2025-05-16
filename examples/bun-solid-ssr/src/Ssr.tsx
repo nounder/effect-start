@@ -1,4 +1,4 @@
-import { Bundle } from "effect-bundler"
+import { Bundle, BundleHttp } from "effect-bundler"
 import {
   Hydration,
   HydrationScript,
@@ -10,7 +10,7 @@ import { App } from "./App.tsx"
 
 export const SsrNotFoundMagicValue = `<!--ssr-not-found-->`
 
-export const SsrApp = Bundle.renderPromise(
+export const SsrApp = BundleHttp.renderPromise(
   Bundle.tagged("ClientBundle"),
   async (req, resolve) => {
     const Component = () => (
