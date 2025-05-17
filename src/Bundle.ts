@@ -48,17 +48,19 @@ export const BundleManifestSchema = S.Struct({
   }),
 })
 
-// convert this to S.Struct AI!
-type ImportKind =
-  | "import-statement"
-  | "require-call"
-  | "require-resolve"
-  | "dynamic-import"
-  | "import-rule"
-  | "url-token"
-  | "internal"
-  | "entry-point-run"
-  | "entry-point-build"
+export const ImportKindSchema = S.Literal(
+  "import-statement",
+  "require-call",
+  "require-resolve",
+  "dynamic-import",
+  "import-rule",
+  "url-token",
+  "internal",
+  "entry-point-run",
+  "entry-point-build"
+)
+
+export type ImportKind = typeof ImportKindSchema.Type
 
 export type BundleManifest = typeof BundleManifestSchema.Type
 
