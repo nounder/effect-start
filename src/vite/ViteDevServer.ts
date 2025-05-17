@@ -1,28 +1,31 @@
 import {
   Headers,
+  HttpMiddleware,
   HttpServerRequest,
   HttpServerResponse,
 } from "@effect/platform"
 import { Effect, Layer, pipe } from "effect"
+import { Context } from "effect"
 import * as vite from "vite"
 import { createViteConfig } from "./config.ts"
 import { createViteDevServerHandler } from "./dev.ts"
-import { Vite } from "./Vite.ts"
 
-export const make = (opts: {
-  config?: vite.InlineConfig
-} = {}) =>
+export class ViteDevServer extends Context.Tag("ViteDevServer")<ViteDevServer, {
+  fetch: (req: Request) => Promise<Response> | Response
+}>() {}
+
+export const layer = (config?: vite.InlineConfig) =>
   Layer.scoped(
-    Vite,
+    ViteDevServer,
     pipe(
       Effect.acquireRelease(
         Effect.tryPromise(async () => {
-          const config = await createViteConfig({
+          const viteConfig = await createViteConfig({
             appType: "custom",
 
-            ...(opts.config ?? {}),
+            ...(config ?? {}),
           })
-          const server = await vite.createServer(config)
+          const server = await vite.createServer(viteConfig)
           const handler = await createViteDevServerHandler(server)
 
           return {
@@ -47,10 +50,26 @@ export const make = (opts: {
     ),
   )
 
-export const ViteDevServerHttpRoute = Effect.gen(function*() {
-  const vite = yield* Vite
+export const httpMiddleware = HttpMiddleware.make(app =>
+  Effect.gen(function*() {
+    const viteResponse = yield* HttpApp
+
+    if (viteResponse.status >= 200 && viteResponse.status < 300) {
+      return viteResponse
+    }
+
+    return yield* app
+  })
+)
+
+export const HttpApp = Effect.gen(function*() {
+  console.log("yoo")
+  const vite = yield* ViteDevServer
+  console.log(vite)
   const req = yield* HttpServerRequest.HttpServerRequest
   const sourceReq = req.source
+
+  console.log(req, sourceReq)
 
   if (sourceReq instanceof Request) {
     const res = yield* Effect.tryPromise(() =>
@@ -64,5 +83,5 @@ export const ViteDevServerHttpRoute = Effect.gen(function*() {
     })
   }
 
-  throw new Error("Invalid request")
+  return yield* Effect.fail(new Error("Invalid source request"))
 })

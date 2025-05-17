@@ -3,9 +3,6 @@ import type { InlineConfig } from "vite"
 export async function createViteConfig({
   appType = undefined as InlineConfig["appType"],
 } = {}) {
-  const { default: solidPlugin } = await import("vite-plugin-solid")
-  const { default: denoPlugin } = await import("@deno/vite-plugin")
-
   const logger = {
     warnOnce(msg, options) {
       console.warn(msg, options)
@@ -31,15 +28,12 @@ export async function createViteConfig({
     // don't include HTML middlewares. we'll render it on our side
     // https://v3.vitejs.dev/config/shared-options.html#apptype
     appType,
+    // don't load and merge vite config file
     configFile: false,
-    root: Deno.cwd(),
+    root: ".",
     publicDir: "www",
 
-    plugins: [
-      // @ts-ignore probably nothing
-      denoPlugin(),
-      solidPlugin(),
-    ],
+    plugins: [],
 
     server: {
       middlewareMode: true,
@@ -49,30 +43,6 @@ export async function createViteConfig({
       manifest: true,
       outDir: "dst",
       assetsDir: "",
-      rollupOptions: {
-        output: {
-          assetFileNames: "assets/[name]-[hash][extname]",
-          // preserveModules: true,
-          preserveModulesRoot: "src",
-          manualChunks(id) {
-            if (
-              id.includes("/lib/solid-router/")
-            ) {
-              return "solid-router"
-            }
-
-            if (
-              id.includes("/node_modules/.deno/solid-js")
-            ) {
-              return "solid-js"
-            }
-          },
-          entryFileNames: (chunkInfo) => {
-            return "[name]-[hash].js"
-          },
-        },
-        input: Deno.cwd() + "/src/entry-client.tsx",
-      },
     },
 
     clearScreen: false,
