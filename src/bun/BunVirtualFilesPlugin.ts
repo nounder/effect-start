@@ -12,8 +12,8 @@ export function make(files: VirtualFiles): BunPlugin {
     setup(build) {
       build.onResolve(
         {
+          // change the filter so it only works for file namespace (and when no namespace is defiend) AI!
           filter: /.*/,
-          namespace: "virtual-fs",
         },
         (args) => {
           return {
