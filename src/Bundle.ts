@@ -11,6 +11,7 @@ import {
   Schema as S,
 } from "effect"
 import { importJsBlob } from "./esm.ts"
+import { FileMap, loadContent, LoaderOptions } from "./LoadersByExt.ts"
 
 export const BundleEntrypointMetaKey: unique symbol = Symbol.for(
   "effect-bundler/BundleEntrypointMetaKey",
@@ -40,27 +41,32 @@ export const BundleManifestSchema = S.Struct({
     value: S.Struct({
       type: S.String,
       size: S.Number,
-      hash: S.String
-        .pipe(S.optional),
-      imports: S.String
-        .pipe(S.optional),
+      hash: pipe(
+        S.String,
+        S.optional,
+      ),
+      imports: pipe(
+        S.Array(
+          S.Struct({
+            path: S.String,
+            kind: S.Literal(
+              "import-statement",
+              "require-call",
+              "require-resolve",
+              "dynamic-import",
+              "import-rule",
+              "url-token",
+              "internal",
+              "entry-point-run",
+              "entry-point-build",
+            ),
+          }),
+        ),
+        S.optional,
+      ),
     }),
   }),
 })
-
-export const ImportKindSchema = S.Literal(
-  "import-statement",
-  "require-call",
-  "require-resolve",
-  "dynamic-import",
-  "import-rule",
-  "url-token",
-  "internal",
-  "entry-point-run",
-  "entry-point-build"
-)
-
-export type ImportKind = typeof ImportKindSchema.Type
 
 export type BundleManifest = typeof BundleManifestSchema.Type
 

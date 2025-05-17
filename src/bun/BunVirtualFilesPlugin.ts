@@ -2,7 +2,7 @@ import type { BunPlugin, Loader } from "bun"
 
 type VirtualFiles = Record<string, string>
 
-function getLoaderForFile(path: string): Loader {
+function loaderFromPath(path: string): Loader {
   return path.slice(path.lastIndexOf(".") + 1) as Loader
 }
 
@@ -12,18 +12,16 @@ export function make(files: VirtualFiles): BunPlugin {
     setup(build) {
       build.onResolve(
         {
+          // change the filter so it only works for file namespace
           filter: /.*/,
-          namespace: "virtual-fs",
         },
         (args) => {
-          if (args.namespace === "virtual-fs" || args.namespace === undefined) {
-            return {
-              path: args.path,
-              namespace: "virtual-fs",
-            }
-          }
           const resolved = resolvePath(args.path, args.resolveDir)
-          if (resolved in files) {
+          const resolvedFile = files[resolved]
+
+          console.log("p", args.path)
+
+          if (resolvedFile) {
             return {
               path: resolved,
               namespace: "virtual-fs",
@@ -40,8 +38,15 @@ export function make(files: VirtualFiles): BunPlugin {
         },
         (args) => {
           const contents = files[args.path]
-          if (contents === undefined) return
-          return { contents, loader: getLoaderForFile(args.path) }
+
+          if (!contents) {
+            return undefined
+          }
+
+          return {
+            contents,
+            loader: loaderFromPath(args.path),
+          }
         },
       )
     },

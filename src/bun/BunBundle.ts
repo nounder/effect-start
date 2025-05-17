@@ -19,6 +19,7 @@ import type { BundleContext, BundleManifest } from "../Bundle.ts"
 import * as Bundle from "../Bundle.ts"
 import { importJsBlob } from "../esm.ts"
 import { watchFileChanges } from "../files.ts"
+import * as BunImportTrackerPlugin from "./BunImportTrackerPlugin.ts"
 
 type BunBundleConfig = BuildConfig
 
@@ -169,10 +170,12 @@ export const build = (
     Effect.gen(function*() {
       const buildOutput: BuildOutput = yield* Effect.tryPromise({
         try: () => Bun.build(config),
-        catch: (err) => {
+        catch: (err: AggregateError | unknown) => {
           return new Bundle.BundleError({
             message: "Failed to BunBundle.build",
-            cause: err,
+            cause: err instanceof AggregateError
+              ? err.errors?.[0] || err.cause || err
+              : err,
           })
         },
       })
