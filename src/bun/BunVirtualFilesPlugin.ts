@@ -12,13 +12,15 @@ export function make(files: VirtualFiles): BunPlugin {
     setup(build) {
       build.onResolve(
         {
-          // change the filter so it only works for file namespace (and when no namespace is defiend) AI!
           filter: /.*/,
+          namespace: "virtual-fs",
         },
         (args) => {
-          return {
-            path: args.path,
-            namespace: "virtual-fs",
+          if (args.namespace === "virtual-fs" || args.namespace === undefined) {
+            return {
+              path: args.path,
+              namespace: "virtual-fs",
+            }
           }
           const resolved = resolvePath(args.path, args.resolveDir)
           if (resolved in files) {
