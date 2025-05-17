@@ -40,11 +40,25 @@ export const BundleManifestSchema = S.Struct({
     value: S.Struct({
       type: S.String,
       size: S.Number,
-      hash: S.Union(S.Null, S.String)
+      hash: S.String
+        .pipe(S.optional),
+      imports: S.String
         .pipe(S.optional),
     }),
   }),
 })
+
+// convert this to S.Struct AI!
+type ImportKind =
+  | "import-statement"
+  | "require-call"
+  | "require-resolve"
+  | "dynamic-import"
+  | "import-rule"
+  | "url-token"
+  | "internal"
+  | "entry-point-run"
+  | "entry-point-build"
 
 export type BundleManifest = typeof BundleManifestSchema.Type
 
