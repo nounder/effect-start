@@ -64,7 +64,6 @@ export function handleEntrypoint<
         .map(path => bundle.getArtifact(path))
         .find(Boolean)
 
-      console.log(artifact)
       if (artifact) {
         return yield* renderBlob(artifact)
       } else {

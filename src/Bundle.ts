@@ -11,7 +11,6 @@ import {
   Schema as S,
 } from "effect"
 import { importJsBlob } from "./esm.ts"
-import { FileMap, loadContent, LoaderOptions } from "./LoadersByExt.ts"
 
 export const BundleEntrypointMetaKey: unique symbol = Symbol.for(
   "effect-bundler/BundleEntrypointMetaKey",

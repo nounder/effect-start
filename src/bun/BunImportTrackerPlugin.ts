@@ -1,11 +1,18 @@
 import { type BunPlugin, type Import } from "bun"
 
-type ImportMap = Map<string, Import[]>
+export type ImportMap = ReadonlyMap<string, Import[]>
 
-export const make = (): BunPlugin & {
+/**
+ * Tracks all imported modules.
+ * State can be accessed via 'virtual:import-tracker' module within a bundle
+ * or through `state` property returned by this function.
+ */
+export const make = (opts: {
+  includeNodeModules?: false
+} = {}): BunPlugin & {
   state: ImportMap
 } => {
-  const foundImports: ImportMap = new Map()
+  const foundImports: Map<string, Import[]> = new Map()
 
   return {
     name: "import tracker",
@@ -19,10 +26,20 @@ export const make = (): BunPlugin & {
       build.onLoad({
         filter: /\.(ts|js)x?$/,
       }, async (args) => {
-        const contents = await Bun.file(args.path).arrayBuffer()
-        const fileImport = transpiler.scanImports(contents)
+        if (
+          !opts.includeNodeModules
+          && args.path.includes("/node_modules/")
+        ) {
+          return undefined
+        }
 
-        foundImports.set(args.path, fileImport)
+        const contents = await Bun.file(args.path).arrayBuffer()
+        try {
+          const fileImport = transpiler.scanImports(contents)
+
+          foundImports.set(args.path, fileImport)
+        } catch (e) {
+        }
 
         return undefined
       })
@@ -47,7 +64,9 @@ export const make = (): BunPlugin & {
 
         // Emit JSON containing the stats of each import
         return {
-          contents: JSON.stringify(foundImports),
+          contents: JSON.stringify(
+            Object.fromEntries(foundImports.entries()),
+          ),
           loader: "json",
         }
       })

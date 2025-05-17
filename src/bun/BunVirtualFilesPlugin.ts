@@ -19,8 +19,6 @@ export function make(files: VirtualFiles): BunPlugin {
           const resolved = resolvePath(args.path, args.resolveDir)
           const resolvedFile = files[resolved]
 
-          console.log("p", args.path)
-
           if (resolvedFile) {
             return {
               path: resolved,

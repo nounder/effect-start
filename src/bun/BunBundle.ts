@@ -19,7 +19,7 @@ import type { BundleContext, BundleManifest } from "../Bundle.ts"
 import * as Bundle from "../Bundle.ts"
 import { importJsBlob } from "../esm.ts"
 import { watchFileChanges } from "../files.ts"
-import * as BunImportTrackerPlugin from "./BunImportTrackerPlugin.ts"
+import { BunImportTrackerPlugin } from "./index.ts"
 
 type BunBundleConfig = BuildConfig
 
@@ -134,12 +134,16 @@ export const bundleBrowser = (
 /**
  * Given a config, build a bundle and returns every time when effect is executed.
  */
-export const effect = (
+export function effect(
   config: BunBundleConfig,
-): Effect.Effect<BundleContext, any> =>
-  Effect.gen(function*() {
+): Effect.Effect<BundleContext, any> {
+  return Effect.gen(function*() {
     const output = yield* build(config)
-    const manifest = generateManifestfromBunBundle(config, output)
+    const manifest = generateManifestfromBunBundle(
+      config,
+      output,
+      output.imports,
+    )
     const artifactsMap = Record.fromIterableBy(
       output.outputs,
       (v) => v.path.slice(2),
@@ -155,37 +159,68 @@ export const effect = (
       },
     }
   })
+}
 
 export const layer = <T>(
   tag: Context.Tag<T, BundleContext>,
   config: BunBundleConfig,
 ) => Layer.effect(tag, effect(config))
 
-export const build = (
+type BunBuildOutput =
+  & BuildOutput
+  & {
+    config: BunBundleConfig
+    imports?: BunImportTrackerPlugin.ImportMap
+  }
+
+export function build(
   config: BunBundleConfig,
-): Effect.Effect<BuildOutput, Bundle.BundleError, never> & {
-  config: BunBundleConfig
-} =>
-  Object.assign(
+  opts?: {
+    scanImports?: true
+  },
+): Effect.Effect<BunBuildOutput, Bundle.BundleError, never> {
+  const importPlugin = opts?.scanImports === true
+    ? BunImportTrackerPlugin.make()
+    : null
+
+  const resolvedConfig = {
+    ...config,
+    plugins: importPlugin
+      ? config.plugins
+        ? [
+          importPlugin,
+          ...config.plugins,
+        ]
+        : [
+          importPlugin,
+        ]
+      : config.plugins,
+  }
+
+  return Object.assign(
     Effect.gen(function*() {
       const buildOutput: BuildOutput = yield* Effect.tryPromise({
-        try: () => Bun.build(config),
+        try: () => Bun.build(resolvedConfig),
         catch: (err: AggregateError | unknown) => {
+          const cause = err instanceof AggregateError
+            ? err.errors?.[0] ?? err
+            : err
+
           return new Bundle.BundleError({
-            message: "Failed to BunBundle.build",
-            cause: err instanceof AggregateError
-              ? err.errors?.[0] || err.cause || err
-              : err,
+            message: "Failed to BunBundle.build: " + String(cause),
+            cause: cause,
           })
         },
       })
 
-      return buildOutput
+      return {
+        ...buildOutput,
+        config: resolvedConfig,
+        imports: importPlugin?.state,
+      }
     }),
-    {
-      config,
-    },
   )
+}
 
 /**
  * Builds, loads, and return a module as an Effect.
@@ -227,7 +262,7 @@ function getBaseDir(paths: string[]) {
  * Maps entrypoints to their respective build artifacts.
  * Entrypoint key is trimmed to remove common path prefix.
  */
-function mapBuildEntrypoints(
+function joinBuildEntrypoints(
   options: BuildOptions,
   output: BuildOutput,
 ) {
@@ -241,16 +276,16 @@ function mapBuildEntrypoints(
       pipe(
         output.outputs,
         // Filter out source maps to properly map artifacts to entrypoints.
-        Iterable.filter((v) => !v.path.endsWith(".js.map")),
+        Iterable.filter((v) => !v.path.endsWith(".map")),
       ),
     ),
-    Iterable.map(([entrypoint, artifact]) =>
-      [
-        entrypoint.replace(commonPathPrefix, ""),
+    Iterable.map(([entrypoint, artifact]) => {
+      return {
+        shortPath: entrypoint.replace(commonPathPrefix, ""),
+        fullPath: entrypoint,
         artifact,
-      ] as const
-    ),
-    Record.fromEntries,
+      } as const
+    }),
   )
 }
 
@@ -261,32 +296,41 @@ function mapBuildEntrypoints(
 function generateManifestfromBunBundle(
   options: BuildOptions,
   output: BuildOutput,
+  imports?: BunImportTrackerPlugin.ImportMap,
 ): BundleManifest {
-  const entrypointArtifacts = mapBuildEntrypoints(options, output)
+  const entrypointArtifacts = joinBuildEntrypoints(options, output)
 
   return {
-    entrypoints: Record.mapEntries(entrypointArtifacts, (v, k) => [
-      k,
-      // strip ./ prefix
-      v.path.slice(2),
-    ]),
+    entrypoints: pipe(
+      entrypointArtifacts,
+      Iterable.map((v) =>
+        [
+          v.shortPath,
+          v.artifact.path.replace(/^\.\//, ""),
+        ] as const
+      ),
+      Record.fromEntries,
+    ),
 
     artifacts: pipe(
       output.outputs,
       // This will mess up direct entrypoint-artifact record.
       // Will have to filter out sourcemap when mapping.
       Iterable.flatMap((v) => v.sourcemap ? [v, v.sourcemap] : [v]),
-      Iterable.map((v) =>
-        [
-          // strip './' prefix
-          v.path.slice(2),
+      Iterable.map((v) => {
+        // strip './' prefix
+        const shortPath = v.path.slice(2)
+
+        return [
+          shortPath,
           {
-            hash: v.hash,
+            hash: v.hash ?? undefined,
             size: v.size,
             type: v.type,
+            imports: imports?.get(v.path),
           },
         ] as const
-      ),
+      }),
       Record.fromEntries,
     ),
   }
