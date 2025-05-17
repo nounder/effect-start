@@ -1,10 +1,10 @@
 import { HttpRouter, HttpServerResponse } from "@effect/platform"
 import { expect, test } from "bun:test"
 import { fileURLToPath } from "node:url"
-import * as BunBundle from "./bun/BunBundle.ts"
-import * as BundleHttp from "./BundleHttp.ts"
-import { TestHttpClient } from "./index.ts"
-import { effectFn } from "./testing.ts"
+import * as BundleHttp from "../BundleHttp.ts"
+import { TestHttpClient } from "../index.ts"
+import { effectFn } from "../testing.ts"
+import * as BunBundle from "./BunBundle.ts"
 
 const HtmlPath = fileURLToPath(import.meta.resolve(
   "../static/react-dashboard.html",
@@ -41,7 +41,7 @@ test("fromHttpRouter", () =>
       entrypoints: [
         HtmlPath,
       ],
-      publicPath: "/_bundle",
+      publicPath: "/_bundle/",
     })
   }))
 
