@@ -7,7 +7,7 @@ import { effectFn } from "../testing.ts"
 import * as BunBundle from "./BunBundle.ts"
 
 const HtmlPath = fileURLToPath(import.meta.resolve(
-  "../static/react-dashboard.html",
+  "../../static/react-dashboard.html",
 ))
 
 const Router = HttpRouter.empty.pipe(
