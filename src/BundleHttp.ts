@@ -54,8 +54,26 @@ export function handleEntrypoint<
         ? fileURLToPath(uri)
         : uri
       const requestPath = request.url.substring(1)
+      const pathAttempts = [
+        requestPath,
+        requestPath === "" ? "index.html" : "",
+        // TODO: why does index.html has a ./ prefix
+        requestPath === "" ? "./index.html" : "",
+      ]
+      const artifact = pathAttempts
+        .map(path => bundle.getArtifact(path))
+        .find(Boolean)
 
-      return HttpServerResponse.text("httpEntrypoint")
+      console.log(artifact)
+      if (artifact) {
+        return yield* renderBlob(artifact)
+      } else {
+        return HttpServerResponse.json({
+          error: "Not Found",
+        }, {
+          status: 404,
+        })
+      }
     }),
     {
       [BundleEntrypointMetaKey]: {

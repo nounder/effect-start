@@ -1,44 +1,11 @@
 import { HttpServer } from "@effect/platform"
 import { BunContext, BunHttpServer, BunRuntime } from "@effect/platform-bun"
-import { Effect, Layer, pipe } from "effect"
-import { BunBundle, BunTailwindPlugin } from "effect-bundler"
+import { Console, Effect, Layer, pipe } from "effect"
+import { BunBundle } from "effect-bundler"
+import { App } from "./server.ts"
 
-const ServerBundle = BunBundle.bundleServer<typeof import("./server.ts")>(
-  import.meta.resolve("./server.ts"),
-)
-
-// const ClientBundle = pipe(
-//   ServerBundle.load(),
-//   Effect.map(v => v.App),
-//   Effect.andThen(router => ({
-//     ...BunBundle.configFromHttpRouter(router),
-//     plugins: [
-//       BunTailwindPlugin.make(),
-//     ],
-//   })),
-//   Effect.map(v => BunBundle.bundleBrowser(v)),
-// )
-
-const Server = ServerBundle.load()
-
-const App = pipe(
-  Server,
-  Effect.andThen(mod => mod.App),
-)
-
-const BrowserBundle = pipe(
-  Server,
-  Effect.map(v => v.App),
-  Effect.andThen(router => {
-    return {
-      ...BunBundle.configFromHttpRouter(router),
-      plugins: [
-        BunTailwindPlugin.make(),
-      ],
-    }
-  }),
-  Effect.tap(Effect.log),
-  Effect.map(v => BunBundle.bundleBrowser(v)),
+const BrowserBundle = BunBundle.bundleBrowser(
+  BunBundle.configFromHttpRouter(App),
 )
 
 if (import.meta.main) {
@@ -46,18 +13,24 @@ if (import.meta.main) {
     HttpServer.serve(App).pipe(
       HttpServer.withLogAddress,
     ),
+    // todo: how to close it when a server restarts
+    // dis called multiple times on ctrl-c for multiple hot reloads
+    // we want to ensure that the process get restarted
+    Layer.provide(
+      Layer.effectDiscard(Effect.gen(function*() {
+        yield* Console.log("yoo")
+        yield* Effect.addFinalizer((exit) => Console.log("byyte", exit._op))
+      })),
+    ),
     Layer.provide(
       BunHttpServer.layer({
         port: 3000,
       }),
     ),
-    Layer.provide(
-      Layer.unwrapEffect(BrowserBundle.pipe(
-        Effect.andThen(v => v.devLayer),
-      )),
-    ),
+    Layer.provide(BrowserBundle.devLayer),
     Layer.provide(BunContext.layer),
     Layer.launch,
+    Effect.scoped,
     BunRuntime.runMain,
   )
 }

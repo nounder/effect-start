@@ -7,11 +7,11 @@ import { SsrApp } from "./Ssr.tsx"
 const ApiApp = HttpRouter.empty.pipe(
   HttpRouter.get(
     "/yo",
-    HttpServerResponse.text("yo"),
+    HttpServerResponse.text("yooo!!!!!"),
   ),
   HttpRouter.get(
     "/error",
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       throw new Error("custom error")
 
       return HttpServerResponse.text("this will never be reached")
@@ -22,6 +22,10 @@ const ApiApp = HttpRouter.empty.pipe(
     BundleHttp.toHttpApp(Bundle.tagged("ClientBundle")),
   ),
   HttpRouter.catchAllCause(HttpAppExtra.renderError),
+)
+
+console.log(
+  "hot",
 )
 
 export const Server = HttpAppExtra.chain([

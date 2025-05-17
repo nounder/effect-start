@@ -110,11 +110,11 @@ export const bundleBrowser = (
   config: BuildOptions,
 ) => {
   const isDevelopment = process.env.NODE_ENV !== "production"
-  const baseConfig = isDevelopment
+  const baseConfig: Partial<BuildOptions> = isDevelopment
     ? {
       naming: "[dir]/[name].[ext]",
       sourcemap: "linked",
-      packages: "external",
+      packages: "bundle",
     } as const
     : {
       naming: "[name]-[hash].[ext]",
@@ -324,7 +324,7 @@ export const configFromHttpRouter = (
 
   const config: BuildConfig = {
     entrypoints,
-    publicPath,
+    publicPath: publicPath + "/",
   }
 
   return config
