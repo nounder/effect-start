@@ -26,7 +26,7 @@ const Router = HttpRouter.empty.pipe(
 )
 
 const effect = effectFn(
-  BunBundle.bundleBrowser({
+  BunBundle.bundleClient({
     ...BunBundle.configFromHttpRouter(Router),
   }).layer,
 )

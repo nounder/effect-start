@@ -1,7 +1,6 @@
-import { HttpRouter, HttpServer, HttpServerResponse } from "@effect/platform"
-import { BunContext, BunHttpServer, BunRuntime } from "@effect/platform-bun"
-import { Layer, pipe } from "effect"
+import { HttpRouter, HttpServerResponse } from "@effect/platform"
 import { Bundle, BundleHttp } from "effect-bundler"
+import { BunStart } from "effect-bundler/bun"
 import IndexHtml from "./index.html" with { type: "file" }
 
 export const App = HttpRouter.empty.pipe(
@@ -20,23 +19,8 @@ export const App = HttpRouter.empty.pipe(
 )
 
 if (import.meta.main) {
-  pipe(
-    HttpServer.serve(App).pipe(
-      HttpServer.withLogAddress,
-    ),
-    Layer.provide(
-      BunHttpServer.layer({
-        port: 3000,
-      }),
-    ),
-    Layer.provide(
-      Layer.effect(
-        Bundle.tagged("BrowserBundle"),
-        Bundle.fromFiles("out/client"),
-      ),
-    ),
-    Layer.provide(BunContext.layer),
-    Layer.launch,
-    BunRuntime.runMain,
-  )
+  BunStart.serve({
+    server: App,
+    client: Bundle.fromFiles("out/client"),
+  })
 }

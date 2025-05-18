@@ -107,9 +107,15 @@ export const bundle = <I extends `${string}Bundle`>(
     },
   )
 
-export const bundleBrowser = (
+export const bundleClient = (
   config: BuildOptions,
 ) => {
+  if (typeof config === "string") {
+    config = {
+      entrypoints: [config],
+    }
+  }
+
   const isDevelopment = process.env.NODE_ENV !== "production"
   const baseConfig: Partial<BuildOptions> = isDevelopment
     ? {
@@ -128,7 +134,31 @@ export const bundleBrowser = (
     ...config,
   }
 
-  return bundle("BrowserBundle", resolvedConfig)
+  return bundle("ClientBundle", resolvedConfig)
+}
+
+export const bundleServer = (
+  config: BuildOptions | string,
+) => {
+  if (typeof config === "string") {
+    config = {
+      entrypoints: [config],
+    }
+  }
+
+  const isDevelopment = process.env.NODE_ENV !== "production"
+  const baseConfig: Partial<BuildOptions> = {
+    naming: "[dir]/[name].[ext]",
+    sourcemap: "linked",
+    packages: "bundle",
+  } as const
+  const resolvedConfig = {
+    ...baseConfig,
+    target: "bun" as const,
+    ...config,
+  }
+
+  return bundle("ServerBundle", resolvedConfig)
 }
 
 /**

@@ -35,16 +35,16 @@ type BundleOutputHttpApp<E = never, R = never> =
 
 export function handleEntrypoint(
   uri: string,
-): BundleEntrypointHttpApp<never, "BrowserBundle">
+): BundleEntrypointHttpApp<never, "ClientBundle">
 export function handleEntrypoint<K extends BundleKey>(
   uri: string,
   bundleKey: K,
 ): BundleEntrypointHttpApp<never, K>
 export function handleEntrypoint<
-  K extends BundleKey = "BrowserBundle",
+  K extends BundleKey = "ClientBundle",
 >(
   uri: string,
-  bundleKey: K = "BrowserBundle" as K,
+  bundleKey: K = "ClientBundle" as K,
 ): BundleEntrypointHttpApp<never, K> {
   return Object.assign(
     Effect.gen(function*() {
@@ -82,12 +82,12 @@ export function handleEntrypoint<
   )
 }
 
-export function httpApp(): BundleOutputHttpApp<never, "BrowserBundle">
+export function httpApp(): BundleOutputHttpApp<never, "ClientBundle">
 export function httpApp<T extends BundleKey>(
   bundleTag?: Context.Tag<T, BundleContext>,
 ): BundleOutputHttpApp<RouteNotFound, T | Scope.Scope> {
   return Object.assign(
-    toHttpApp(bundleTag ?? tagged("BrowserBundle" as T)),
+    toHttpApp(bundleTag ?? tagged("ClientBundle" as T)),
     {
       [BundleOutputMetaKey]: {},
     },
