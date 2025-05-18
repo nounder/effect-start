@@ -13,7 +13,7 @@ export const make = (opts: {
   baseDir?: string
 } = {}): BunPlugin & {
   state: ImportMap
-} => {  
+} => {
   const foundImports: Map<string, Import[]> = new Map()
   const baseDir = opts.baseDir ?? process.cwd()
 
@@ -40,11 +40,18 @@ export const make = (opts: {
         try {
           const fileImport = transpiler.scanImports(contents)
           const resolvedImports = fileImport.map(imp => {
-            const absoluteImportPath = NPath.resolve(NPath.dirname(args.path), imp.path)
-              // TODO: make it work for arbitrary namespaces including file:
+            const absoluteImportPath = NPath.resolve(
+              NPath.dirname(args.path),
+              // 'file' is a default namespace, trim it
+              imp.path.replace(/^file:/, ""),
+            )
+
             return {
               ...imp,
-              path: /(bun|node):/.test(imp.path) ? imp.path : NPath.relative(baseDir, absoluteImportPath)
+              // keep all module identifiers with namespace intact
+              path: /(\w+):/.test(imp.path)
+                ? imp.path
+                : NPath.relative(baseDir, absoluteImportPath),
             }
           })
           foundImports.set(NPath.relative(baseDir, args.path), resolvedImports)
