@@ -1,4 +1,5 @@
 import { type BunPlugin, type Import } from "bun"
+import * as NPath from "node:path"
 
 export type ImportMap = ReadonlyMap<string, Import[]>
 
@@ -9,10 +10,12 @@ export type ImportMap = ReadonlyMap<string, Import[]>
  */
 export const make = (opts: {
   includeNodeModules?: false
+  baseDir?: string
 } = {}): BunPlugin & {
   state: ImportMap
 } => {
   const foundImports: Map<string, Import[]> = new Map()
+  const baseDir = opts.baseDir ?? process.cwd()
 
   return {
     name: "import tracker",
@@ -37,7 +40,7 @@ export const make = (opts: {
         try {
           const fileImport = transpiler.scanImports(contents)
 
-          foundImports.set(args.path, fileImport)
+          foundImports.set(NPath.relative(baseDir, args.path), fileImport)
         } catch (e) {
         }
 

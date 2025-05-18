@@ -15,19 +15,26 @@ test("imports", () =>
       scanImports: true,
     })
 
-    expect(build.imports!.get(import.meta.path))
+    const [
+      e0,
+    ] = build.imports!.entries()
+
+    expect(e0)
       .toEqual([
-        {
-          kind: "import-statement",
-          path: "bun:test",
-        },
-        {
-          kind: "import-statement",
-          path: "../testing.ts",
-        },
-        {
-          kind: "import-statement",
-          path: "./BunBundle.ts",
-        },
+        "src/bun/BunBundle_imports.test.ts",
+        [
+          {
+            kind: "import-statement",
+            path: "bun:test",
+          },
+          {
+            kind: "import-statement",
+            path: "../testing.ts",
+          },
+          {
+            kind: "import-statement",
+            path: "./BunBundle.ts",
+          },
+        ],
       ])
   }))

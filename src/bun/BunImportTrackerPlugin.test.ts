@@ -28,7 +28,9 @@ export const message = "Hello, World!"
 }
 
 test("virtual import", async () => {
-  const trackerPlugin = BunImportTrackerPlugin.make()
+  const trackerPlugin = BunImportTrackerPlugin.make({
+    baseDir: Bun.fileURLToPath(import.meta.resolve("../..")),
+  })
 
   await Bun.build({
     target: "bun",
@@ -43,7 +45,7 @@ test("virtual import", async () => {
   expect([...trackerPlugin.state.entries()])
     .toEqual([
       [
-        "/Users/rg/Projects/effect-bundler/src/bun/BunImportTrackerPlugin.test.ts",
+        "src/bun/BunImportTrackerPlugin.test.ts",
         [
           {
             kind: "import-statement",
@@ -60,8 +62,13 @@ test("virtual import", async () => {
         ],
       ],
       [
-        "/Users/rg/Projects/effect-bundler/src/bun/BunImportTrackerPlugin.ts",
-        [],
+        "src/bun/BunImportTrackerPlugin.ts",
+        [
+          {
+            kind: "import-statement",
+            path: "node:path",
+          },
+        ],
       ],
     ])
 })
