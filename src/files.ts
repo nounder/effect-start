@@ -1,8 +1,8 @@
-import { Console, pipe, Stream } from "effect"
+import { pipe, Stream } from "effect"
 import * as NFSP from "node:fs/promises"
 import type { BundleEvent } from "./Bundle.ts"
 
-const SOURCE_FILENAME = /\.(tsx?|jsx?)$/
+const SOURCE_FILENAME = /\.(tsx?|jsx?|html?|css)$/
 
 export const watchFileChanges = (): Stream.Stream<BundleEvent, unknown> => {
   const baseDir = process.cwd()
