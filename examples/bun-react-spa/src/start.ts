@@ -16,13 +16,13 @@ if (import.meta.main) {
   pipe(
     HttpServer.serve(App),
     HttpServer.withLogAddress,
-    Layer.provide(
+    Layer.provide([
       BunHttpServer.layer({
         port: 3000,
       }),
-    ),
-    Layer.provide(ClientBundle.devLayer),
-    Layer.provide(BunContext.layer),
+      ClientBundle.devLayer,
+      BunContext.layer,
+    ]),
     Layer.launch,
     Effect.scoped,
     BunRuntime.runMain,

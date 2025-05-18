@@ -16,20 +16,18 @@ export function serve(opts: {
   return pipe(
     HttpServer.serve(opts.server),
     HttpServer.withLogAddress,
-    Layer.provide(
+    Layer.provide([
       BunHttpServer.layer({
         port: opts.port ?? 3000,
       }),
-    ),
-    Layer.provide(
       Layer.effect(
         Bundle.tagged("ClientBundle"),
         opts.client?.pipe(Effect.orDie)
           ?? Effect.succeed(null as any),
         // manual casting cause TS doesn't recognize that error got cleared with orDie
       ) as Layer.Layer<"ClientBundle", never>,
-    ),
-    Layer.provide(BunContext.layer),
+      BunContext.layer,
+    ]),
     Layer.launch,
     BunRuntime.runMain,
   )

@@ -38,17 +38,15 @@ if (import.meta.main) {
     HttpServer.serve(Server).pipe(
       HttpServer.withLogAddress,
     ),
-    Layer.provide(
+    Layer.provide([
       BunHttpServer.layer({
         port: 3000,
       }),
-    ),
-    Layer.provide(
       Layer.effect(
         Bundle.tagged("ClientBundle"),
         Bundle.fromFiles("out/client"),
       ),
-    ),
+    ]),
     Layer.provide(BunContext.layer),
     Layer.launch,
     BunRuntime.runMain,
