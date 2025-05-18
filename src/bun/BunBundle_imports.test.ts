@@ -29,11 +29,11 @@ test("imports", () =>
           },
           {
             kind: "import-statement",
-            path: "../testing.ts",
+            path: "src/testing.ts",
           },
           {
             kind: "import-statement",
-            path: "./BunBundle.ts",
+            path: "src/bun/BunBundle.ts",
           },
         ],
       ])

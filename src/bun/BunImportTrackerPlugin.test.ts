@@ -53,11 +53,11 @@ test("virtual import", async () => {
           },
           {
             kind: "import-statement",
-            path: "./BunImportTrackerPlugin.ts",
+            path: "src/bun/BunImportTrackerPlugin.ts",
           },
           {
             kind: "import-statement",
-            path: "./BunVirtualFilesPlugin.ts",
+            path: "src/bun/BunVirtualFilesPlugin.ts",
           },
         ],
       ],
