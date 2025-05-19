@@ -6,20 +6,19 @@
     "build": "bun src/dev.ts build"
   },
   "dependencies": {
-    "effect": "^3",
+    "effect": "^3.15.2",
     "effect-bundler": "github:nounder/effect-bundler",
-    "@effect/platform": "^0",
-    "@effect/platform-bun": "^0",
-
-    "solid-js": "^1.9.5",
+    "@effect/platform": "^0.82.3",
+    "@effect/platform-bun": "^0.65.0",
+    "solid-js": "^1.9.7",
     "@solidjs/router": "0.15.3"
   },
   "devDependencies": {
-    "@types/bun": "latest",
+    "@types/bun": "^1.2.13",
     "bun-plugin-solid": "^1.0.0",
-    "@tailwindcss/node": "^4.1.4"
+    "@tailwindcss/node": "^4.1.7"
   },
   "peerDependencies": {
-    "typescript": "^5"
+    "typescript": "^5.8.3"
   }
 }
