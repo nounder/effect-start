@@ -1,18 +1,22 @@
 import { expect, it } from "bun:test"
 import { Effect } from "effect"
-import { BunBundle, effectFn, TestHttpClient } from "effect-bundler"
+import { BunBundle, Bundle, effectFn, TestHttpClient } from "effect-bundler"
 import * as Dev from "./dev.ts"
 import * as SsrFile from "./Ssr.tsx" with { type: "file" }
 
 const effect = effectFn(Dev.layer)
 
-const SsrBundle = BunBundle.load<typeof SsrFile>({
-  ...Dev.ServerBundle.config,
-  entrypoints: [
-    // @ts-ignore
-    SsrFile["default"] as unknown as string,
-  ],
-}).pipe(
+const SsrBundle = Bundle.load<typeof SsrFile>(
+  BunBundle.effect(
+    {
+      ...Dev.ServerBundle.config,
+      entrypoints: [
+        // @ts-ignore
+        SsrFile["default"] as unknown as string,
+      ],
+    },
+  ),
+).pipe(
   Effect.andThen((v) => v.SsrApp),
   Effect.cached,
   Effect.flatten,

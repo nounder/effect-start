@@ -19,7 +19,7 @@ import type { BundleContext, BundleManifest } from "../Bundle.ts"
 import * as Bundle from "../Bundle.ts"
 import { importJsBlob } from "../esm.ts"
 import { watchFileChanges } from "../files.ts"
-import { BunImportTrackerPlugin } from "./index.ts"
+import { BunBundle, BunImportTrackerPlugin } from "./index.ts"
 
 type BunBundleConfig = BuildConfig
 
@@ -46,13 +46,15 @@ export const bundle = <I extends `${string}Bundle`>(
             | undefined
 
           if (!loadRef) {
-            return yield* load<M>(config)
+            return yield* Bundle.load<M>(effect(config))
           }
 
           const loadedBundle = yield* SynchronizedRef.updateAndGetEffect(
             loadRef,
             (current) =>
-              current ? Effect.succeed(current) : Bundle.load<M>(bundle),
+              current
+                ? Effect.succeed(current)
+                : Bundle.load<M>(effect(config)),
           )
 
           // we need to cast it manually because updateAndGetEffect
@@ -166,7 +168,7 @@ export const bundleServer = (
  */
 export function effect(
   config: BunBundleConfig,
-): Effect.Effect<BundleContext, any> {
+): Effect.Effect<BundleContext, Bundle.BundleError> {
   return Effect.gen(function*() {
     const output = yield* build(config)
     const manifest = generateManifestfromBunBundle(
@@ -251,31 +253,6 @@ export function build(
     }),
   )
 }
-
-/**
- * Builds, loads, and return a module as an Effect.
- */
-export const load = <M>(
-  config: BunBundleConfig,
-): Effect.Effect<M, Bundle.BundleError, never> & { config: BunBundleConfig } =>
-  Object.assign(
-    pipe(
-      build(config),
-      Effect.andThen((buildOutput) =>
-        Effect.tryPromise({
-          try: () => importJsBlob<M>(buildOutput.outputs[0]),
-          catch: (err) =>
-            new Bundle.BundleError({
-              message: "Failed to load BunBundle.load",
-              cause: err,
-            }),
-        })
-      ),
-    ),
-    {
-      config,
-    },
-  )
 
 /**
  * Finds common path prefix across provided paths.

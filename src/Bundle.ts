@@ -124,10 +124,11 @@ export type ServerKey = typeof ServerKey
  * Lodas a bundle as a javascript module.
  * Bundle must have only one entrypoint.
  */
-export const load = <M>(
-  context: BundleContext,
-): Effect.Effect<M, BundleError> =>
-  Effect.gen(function*() {
+export function load<M>(
+  contextEffect: Effect.Effect<BundleContext, BundleError>,
+): Effect.Effect<M, BundleError> {
+  return Effect.gen(function*() {
+    const context = yield* contextEffect
     const [artifact, ...rest] = Object.values(context.entrypoints)
 
     if (rest.length > 0) {
@@ -151,6 +152,7 @@ export const load = <M>(
         }),
     })
   })
+}
 
 /**
  * Exports a bundle to a file system under specified directory.
