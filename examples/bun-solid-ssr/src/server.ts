@@ -7,7 +7,7 @@ import { SsrApp } from "./Ssr.tsx"
 const ApiApp = HttpRouter.empty.pipe(
   HttpRouter.get(
     "/yo",
-    HttpServerResponse.text("yooo!!!!!"),
+    HttpServerResponse.text("yo"),
   ),
   HttpRouter.get(
     "/error",
