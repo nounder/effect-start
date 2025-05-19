@@ -34,31 +34,32 @@ type BundleOutputHttpApp<E = never, R = never> =
   }
 
 export function handleEntrypoint(
-  uri: string,
-): BundleEntrypointHttpApp<never, "ClientBundle">
+  uri?: string,
+): BundleEntrypointHttpApp<RouteNotFound, "ClientBundle">
 export function handleEntrypoint<K extends BundleKey>(
   uri: string,
   bundleKey: K,
-): BundleEntrypointHttpApp<never, K>
+): BundleEntrypointHttpApp<RouteNotFound, K>
 export function handleEntrypoint<
   K extends BundleKey = "ClientBundle",
 >(
-  uri: string,
-  bundleKey: K = "ClientBundle" as K,
-): BundleEntrypointHttpApp<never, K> {
+  uri?: string,
+  bundleKey?: K,
+): BundleEntrypointHttpApp<RouteNotFound, K> {
   return Object.assign(
     Effect.gen(function*() {
       const request = yield* HttpServerRequest.HttpServerRequest
-      const bundle = yield* tagged(bundleKey)
-      const entrypointPath = uri.startsWith("file://")
-        ? fileURLToPath(uri)
-        : uri
+      const bundle = yield* tagged(bundleKey ?? "ClientBundle")
       const requestPath = request.url.substring(1)
       const pathAttempts = [
-        requestPath,
-        requestPath === "" ? "index.html" : "",
+        `${requestPath}.html`,
+        `${requestPath}/index.html`,
+        requestPath.replace(/\.w+$/, ""),
         // TODO: why does index.html has a ./ prefix
         requestPath === "" ? "./index.html" : "",
+        "./" + `${requestPath}.html`,
+        "./" + `${requestPath}/index.html`,
+        "./" + requestPath.replace(/\.w+$/, ""),
       ]
       const artifact = pathAttempts
         .map(path => bundle.getArtifact(path))
@@ -67,22 +68,25 @@ export function handleEntrypoint<
       if (artifact) {
         return yield* renderBlob(artifact)
       } else {
-        return HttpServerResponse.json({
-          error: "Not Found",
-        }, {
-          status: 404,
-        })
+        yield* Effect.fail(
+          new RouteNotFound({
+            request,
+          }),
+        )
       }
     }),
     {
       [BundleEntrypointMetaKey]: {
-        uri,
+        uri: uri ?? null,
       },
     },
   )
 }
 
 export function httpApp(): BundleOutputHttpApp<never, "ClientBundle">
+export function httpApp<T extends BundleKey>(
+  bundleTag: Context.Tag<T, BundleContext>,
+): BundleOutputHttpApp<RouteNotFound, T | Scope.Scope>
 export function httpApp<T extends BundleKey>(
   bundleTag?: Context.Tag<T, BundleContext>,
 ): BundleOutputHttpApp<RouteNotFound, T | Scope.Scope> {
