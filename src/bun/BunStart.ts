@@ -2,10 +2,11 @@ import { type HttpApp, HttpRouter, HttpServer } from "@effect/platform"
 import { BunContext, BunHttpServer, BunRuntime } from "@effect/platform-bun"
 import type { RouteNotFound } from "@effect/platform/HttpServerError"
 import { Layer, pipe } from "effect"
+import type { ClientKey } from "../Bundle.ts"
 import { BunBundle } from "../index.ts"
 
 export function serve(opts: {
-  server: HttpApp.Default<RouteNotFound, "ClientBundle">
+  server: HttpApp.Default<RouteNotFound, ClientTag>
   port?: 3000
   client?: ReturnType<typeof BunBundle.bundleClient>
 }) {
@@ -16,7 +17,7 @@ export function serve(opts: {
       BunHttpServer.layer({
         port: opts.port ?? 3000,
       }),
-      opts.client?.layer ?? Layer.empty as Layer.Layer<"ClientBundle">,
+      opts.client?.layer ?? Layer.empty as Layer.Layer<ClientTag>,
       BunContext.layer,
     ]),
     Layer.launch,
@@ -25,7 +26,7 @@ export function serve(opts: {
 }
 
 export function serveRouter(
-  router: HttpRouter.HttpRouter<never, "ClientBundle">,
+  router: HttpRouter.HttpRouter<never, ClientTag>,
   opts?: {
     port?: 3000
   },

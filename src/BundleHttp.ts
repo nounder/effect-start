@@ -17,6 +17,8 @@ import {
   type BundleKey,
   BundleOutputMetaKey,
   type BundleOutputMetaValue,
+  ClientKey,
+  ServerKey,
   tagged,
 } from "./Bundle.ts"
 import * as SseHttpResponse from "./SseHttpResponse.ts"
@@ -35,13 +37,13 @@ type BundleOutputHttpApp<E = never, R = never> =
 
 export function handleEntrypoint(
   uri?: string,
-): BundleEntrypointHttpApp<RouteNotFound, "ClientBundle">
+): BundleEntrypointHttpApp<RouteNotFound, ServerKey>
 export function handleEntrypoint<K extends BundleKey>(
   uri: string,
   bundleKey: K,
 ): BundleEntrypointHttpApp<RouteNotFound, K>
 export function handleEntrypoint<
-  K extends BundleKey = "ClientBundle",
+  K extends BundleKey = ServerKey,
 >(
   uri?: string,
   bundleKey?: K,
@@ -49,7 +51,7 @@ export function handleEntrypoint<
   return Object.assign(
     Effect.gen(function*() {
       const request = yield* HttpServerRequest.HttpServerRequest
-      const bundle = yield* tagged(bundleKey ?? "ClientBundle")
+      const bundle = yield* tagged(bundleKey ?? ClientKey)
       const requestPath = request.url.substring(1)
       const pathAttempts = [
         `${requestPath}.html`,
@@ -83,7 +85,7 @@ export function handleEntrypoint<
   )
 }
 
-export function httpApp(): BundleOutputHttpApp<never, "ClientBundle">
+export function httpApp(): BundleOutputHttpApp<never, ServerKey>
 export function httpApp<T extends BundleKey>(
   bundleTag: Context.Tag<T, BundleContext>,
 ): BundleOutputHttpApp<RouteNotFound, T | Scope.Scope>
@@ -91,7 +93,7 @@ export function httpApp<T extends BundleKey>(
   bundleTag?: Context.Tag<T, BundleContext>,
 ): BundleOutputHttpApp<RouteNotFound, T | Scope.Scope> {
   return Object.assign(
-    toHttpApp(bundleTag ?? tagged("ClientBundle" as T)),
+    toHttpApp(bundleTag ?? tagged(ClientKey as T)),
     {
       [BundleOutputMetaKey]: {},
     },

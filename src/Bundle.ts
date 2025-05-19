@@ -114,6 +114,12 @@ export const tagged = <I extends BundleKey>(
   return Context.GenericTag<I, BundleContext>(key)
 }
 
+export const ClientKey: BundleKey = "ClientBundle"
+export type ClientKey = typeof ClientKey
+
+export const ServerKey: BundleKey = "ServerBundle"
+export type ServerKey = typeof ServerKey
+
 /**
  * Lodas a bundle as a javascript module.
  * Bundle must have only one entrypoint.

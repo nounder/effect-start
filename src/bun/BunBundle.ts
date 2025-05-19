@@ -134,7 +134,7 @@ export const bundleClient = (
     ...config,
   }
 
-  return bundle("ClientBundle", resolvedConfig)
+  return bundle(Bundle.ClientKey, resolvedConfig)
 }
 
 export const bundleServer = (
@@ -158,7 +158,7 @@ export const bundleServer = (
     ...config,
   }
 
-  return bundle("ServerBundle", resolvedConfig)
+  return bundle(Bundle.ServerKey, resolvedConfig)
 }
 
 /**
