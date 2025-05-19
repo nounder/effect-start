@@ -17,7 +17,8 @@ export const BundleEntrypointMetaKey: unique symbol = Symbol.for(
 )
 
 export type BundleEntrypointMetaValue = {
-  uri: string
+  // it's if no uri is provided
+  uri: string | null
 }
 
 export const BundleOutputMetaKey: unique symbol = Symbol.for(

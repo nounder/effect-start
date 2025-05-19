@@ -108,7 +108,7 @@ export const bundle = <I extends `${string}Bundle`>(
   )
 
 export const bundleClient = (
-  config: BuildOptions,
+  config: BuildOptions | string,
 ) => {
   if (typeof config === "string") {
     config = {

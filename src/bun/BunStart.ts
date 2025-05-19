@@ -1,17 +1,13 @@
-import { type HttpApp, HttpServer } from "@effect/platform"
+import { type HttpApp, HttpRouter, HttpServer } from "@effect/platform"
 import { BunContext, BunHttpServer, BunRuntime } from "@effect/platform-bun"
 import type { RouteNotFound } from "@effect/platform/HttpServerError"
-import { Effect, Layer, pipe } from "effect"
-import { Bundle } from "../index.ts"
+import { Layer, pipe } from "effect"
+import { BunBundle } from "../index.ts"
 
 export function serve(opts: {
   server: HttpApp.Default<RouteNotFound, "ClientBundle">
   port?: 3000
-  client?: Effect.Effect<
-    Bundle.BundleContext,
-    Bundle.BundleError,
-    any
-  >
+  client?: ReturnType<typeof BunBundle.bundleClient>
 }) {
   return pipe(
     HttpServer.serve(opts.server),
@@ -20,15 +16,26 @@ export function serve(opts: {
       BunHttpServer.layer({
         port: opts.port ?? 3000,
       }),
-      Layer.effect(
-        Bundle.tagged("ClientBundle"),
-        opts.client?.pipe(Effect.orDie)
-          ?? Effect.succeed(null as any),
-        // manual casting cause TS doesn't recognize that error got cleared with orDie
-      ) as Layer.Layer<"ClientBundle", never>,
+      opts.client?.layer ?? Layer.empty as Layer.Layer<"ClientBundle">,
       BunContext.layer,
     ]),
     Layer.launch,
     BunRuntime.runMain,
   )
+}
+
+export function serveRouter(
+  router: HttpRouter.HttpRouter<never, "ClientBundle">,
+  opts?: {
+    port?: 3000
+  },
+) {
+  const clientConfig = BunBundle.configFromHttpRouter(router)
+  const bundle = BunBundle.bundleClient(clientConfig)
+
+  return serve({
+    server: router,
+    port: opts?.port,
+    client: bundle,
+  })
 }

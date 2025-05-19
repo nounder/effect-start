@@ -1,12 +1,12 @@
 import { HttpRouter, HttpServerResponse } from "@effect/platform"
-import { Bundle, BundleHttp } from "effect-bundler"
-import { BunStart } from "effect-bundler/bun"
+import { BundleHttp } from "effect-bundler"
+import { BunBundle, BunStart } from "effect-bundler/bun"
 import IndexHtml from "./index.html" with { type: "file" }
 
 export const App = HttpRouter.empty.pipe(
   HttpRouter.get(
     "/",
-    BundleHttp.handleEntrypoint(),
+    BundleHttp.handleEntrypoint(IndexHtml),
   ),
   HttpRouter.mountApp(
     "/_bundle",
@@ -19,8 +19,5 @@ export const App = HttpRouter.empty.pipe(
 )
 
 if (import.meta.main) {
-  BunStart.serve({
-    server: App,
-    client: Bundle.fromFiles("out/client"),
-  })
+  BunStart.serveRouter(App)
 }
