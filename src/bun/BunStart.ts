@@ -6,7 +6,7 @@ import type { ClientKey } from "../Bundle.ts"
 import { BunBundle } from "../index.ts"
 
 export function serve(opts: {
-  server: HttpApp.Default<RouteNotFound, ClientTag>
+  server: HttpApp.Default<RouteNotFound, ClientKey>
   port?: 3000
   client?: ReturnType<typeof BunBundle.bundleClient>
 }) {
@@ -17,7 +17,7 @@ export function serve(opts: {
       BunHttpServer.layer({
         port: opts.port ?? 3000,
       }),
-      opts.client?.layer ?? Layer.empty as Layer.Layer<ClientTag>,
+      opts.client?.layer ?? Layer.empty as Layer.Layer<ClientKey>,
       BunContext.layer,
     ]),
     Layer.launch,
@@ -26,7 +26,7 @@ export function serve(opts: {
 }
 
 export function serveRouter(
-  router: HttpRouter.HttpRouter<never, ClientTag>,
+  router: HttpRouter.HttpRouter<RouteNotFound, ClientKey>,
   opts?: {
     port?: 3000
   },
