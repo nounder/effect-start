@@ -1,23 +1,26 @@
 import { expect, test } from "bun:test"
 import { effectFn } from "../testing.ts"
 import * as BunBundle from "./BunBundle.ts"
+import * as BunImportTrackerPlugin from "./BunImportTrackerPlugin.ts"
 
 const effect = effectFn()
 
 test("imports", () =>
   effect(function*() {
-    const build = yield* BunBundle.build({
+    const importTracker = BunImportTrackerPlugin.make()
+    yield* BunBundle.build({
       target: "bun",
+      plugins: [
+        importTracker,
+      ],
       entrypoints: [
         Bun.fileURLToPath(import.meta.resolve("./BunBundle_imports.test.ts")),
       ],
-    }, {
-      scanImports: true,
     })
 
     const [
       e0,
-    ] = build.imports!.entries()
+    ] = importTracker.state.entries()
 
     expect(e0)
       .toEqual([
@@ -34,6 +37,10 @@ test("imports", () =>
           {
             kind: "import-statement",
             path: "src/bun/BunBundle.ts",
+          },
+          {
+            kind: "import-statement",
+            path: "src/bun/BunImportTrackerPlugin.ts",
           },
         ],
       ])

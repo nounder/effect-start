@@ -7,7 +7,7 @@ import * as SsrFile from "./Ssr.tsx" with { type: "file" }
 const effect = effectFn(Dev.layer)
 
 const SsrBundle = Bundle.load<typeof SsrFile>(
-  BunBundle.effect(
+  BunBundle.build(
     {
       ...Dev.ServerBundle.config,
       entrypoints: [

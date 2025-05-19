@@ -17,9 +17,8 @@ import * as NPath from "node:path"
 import { fileURLToPath } from "node:url"
 import type { BundleContext, BundleManifest } from "../Bundle.ts"
 import * as Bundle from "../Bundle.ts"
-import { importJsBlob } from "../esm.ts"
 import { watchFileChanges } from "../files.ts"
-import { BunBundle, BunImportTrackerPlugin } from "./index.ts"
+import { BunImportTrackerPlugin } from "./index.ts"
 
 type BunBundleConfig = BuildConfig
 
@@ -46,7 +45,7 @@ export const bundle = <I extends `${string}Bundle`>(
             | undefined
 
           if (!loadRef) {
-            return yield* Bundle.load<M>(effect(config))
+            return yield* Bundle.load<M>(build(config))
           }
 
           const loadedBundle = yield* SynchronizedRef.updateAndGetEffect(
@@ -54,7 +53,7 @@ export const bundle = <I extends `${string}Bundle`>(
             (current) =>
               current
                 ? Effect.succeed(current)
-                : Bundle.load<M>(effect(config)),
+                : Bundle.load<M>(build(config)),
           )
 
           // we need to cast it manually because updateAndGetEffect
@@ -63,12 +62,12 @@ export const bundle = <I extends `${string}Bundle`>(
         }),
       layer: Layer.effect(
         Bundle.tagged(key),
-        effect(config),
+        build(config),
       ),
       devLayer: Layer.scoped(
         Bundle.tagged(key),
         Effect.gen(function*() {
-          const sharedBundle = yield* effect(config)
+          const sharedBundle = yield* build(config)
 
           const loadRef = sharedBundle[BunBundleContextLoadRef] =
             yield* SynchronizedRef.make(null)
@@ -82,7 +81,7 @@ export const bundle = <I extends `${string}Bundle`>(
                 Effect.gen(function*() {
                   yield* Effect.logDebug("Updating bundle: " + key)
 
-                  const newBundle = yield* effect(config)
+                  const newBundle = yield* build(config)
 
                   Object.assign(sharedBundle, newBundle)
 
@@ -166,15 +165,14 @@ export const bundleServer = (
 /**
  * Given a config, build a bundle and returns every time when effect is executed.
  */
-export function effect(
+export function build(
   config: BunBundleConfig,
 ): Effect.Effect<BundleContext, Bundle.BundleError> {
   return Effect.gen(function*() {
-    const output = yield* build(config)
+    const output = yield* buildBun(config)
     const manifest = generateManifestfromBunBundle(
       config,
       output,
-      output.imports,
     )
     const artifactsMap = Record.fromIterableBy(
       output.outputs,
@@ -196,63 +194,7 @@ export function effect(
 export const layer = <T>(
   tag: Context.Tag<T, BundleContext>,
   config: BunBundleConfig,
-) => Layer.effect(tag, effect(config))
-
-type BunBuildOutput =
-  & BuildOutput
-  & {
-    config: BunBundleConfig
-    imports?: BunImportTrackerPlugin.ImportMap
-  }
-
-export function build(
-  config: BunBundleConfig,
-  opts?: {
-    scanImports?: true
-  },
-): Effect.Effect<BunBuildOutput, Bundle.BundleError, never> {
-  const importPlugin = opts?.scanImports === true
-    ? BunImportTrackerPlugin.make()
-    : null
-
-  const resolvedConfig = {
-    ...config,
-    plugins: importPlugin
-      ? config.plugins
-        ? [
-          importPlugin,
-          ...config.plugins,
-        ]
-        : [
-          importPlugin,
-        ]
-      : config.plugins,
-  }
-
-  return Object.assign(
-    Effect.gen(function*() {
-      const buildOutput: BuildOutput = yield* Effect.tryPromise({
-        try: () => Bun.build(resolvedConfig),
-        catch: (err: AggregateError | unknown) => {
-          const cause = err instanceof AggregateError
-            ? err.errors?.[0] ?? err
-            : err
-
-          return new Bundle.BundleError({
-            message: "Failed to BunBundle.build: " + String(cause),
-            cause: cause,
-          })
-        },
-      })
-
-      return {
-        ...buildOutput,
-        config: resolvedConfig,
-        imports: importPlugin?.state,
-      }
-    }),
-  )
-}
+) => Layer.effect(tag, build(config))
 
 /**
  * Finds common path prefix across provided paths.
@@ -382,4 +324,28 @@ export const configFromHttpRouter = (
   }
 
   return config
+}
+
+function buildBun(
+  config: BunBundleConfig,
+): Effect.Effect<BuildOutput, Bundle.BundleError, never> {
+  return Object.assign(
+    Effect.gen(function*() {
+      const buildOutput: BuildOutput = yield* Effect.tryPromise({
+        try: () => Bun.build(config),
+        catch: (err: AggregateError | unknown) => {
+          const cause = err instanceof AggregateError
+            ? err.errors?.[0] ?? err
+            : err
+
+          return new Bundle.BundleError({
+            message: "Failed to Bun.build: " + String(cause),
+            cause: cause,
+          })
+        },
+      })
+
+      return buildOutput
+    }),
+  )
 }
