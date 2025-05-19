@@ -17,7 +17,7 @@ export const BundleEntrypointMetaKey: unique symbol = Symbol.for(
 )
 
 export type BundleEntrypointMetaValue = {
-  // it's if no uri is provided
+  // if uri is null then artifact will be resolved based on request url
   uri: string | null
 }
 
