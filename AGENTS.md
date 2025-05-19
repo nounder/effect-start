@@ -1,0 +1,20 @@
+This instructs AI agents how to navigate and edit this codebase.
+
+# Environment
+
+- Everything runs on Bun.js runtime
+- dprint is used as a formatter
+  - Run `dprint fmt` to format all files
+    - Format a single file: `dprint fmt $FILE` 
+
+# Code
+
+- When importing Effect Schema, always alias it as S, like so: `import { Schema as S } from "effect"`
+- When importing node modules, always import the full module and name it NPath for node:path, NUrl for node:url, etc.
+
+# Tests
+
+- Run test by running `bun test`
+  - Test single file: `bun test $FILE`
+
+
