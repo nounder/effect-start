@@ -25,7 +25,7 @@ export const App = HttpRouter.empty.pipe(
     BundleHttp.handleEntrypoint(import.meta.resolve("./index.html")),
   ),
   HttpRouter.mountApp(
-    "/.bundle",
+    "/_bundle",
     BundleHttp.httpApp(),
   ),
   HttpRouter.get(

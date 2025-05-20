@@ -119,19 +119,15 @@ export const bundleClient = (
     }
   }
 
-  const isDevelopment = process.env.NODE_ENV !== "production"
-  const baseConfig: Partial<BunBuildOptions> = isDevelopment
-    ? {
-      naming: "[dir]/[name].[ext]",
-      sourcemap: "linked",
-      packages: "bundle",
-    } as const
-    : {
-      // naming: "[name]-[hash].[ext]",
-      naming: "[dir]/[name].[ext]",
-      sourcemap: "none",
-      packages: "bundle",
-    } as const
+  const baseConfig: Partial<BunBuildOptions> = {
+    sourcemap: "linked",
+    naming: {
+      entry: "[name]-[hash].[ext]",
+      chunk: "[name]-[hash].[ext]",
+      asset: "[name]-[hash].[ext]",
+    },
+    packages: "bundle",
+  } as const
   const resolvedConfig = {
     ...baseConfig,
     target: "browser" as const,
@@ -150,10 +146,13 @@ export const bundleServer = (
     }
   }
 
-  const isDevelopment = process.env.NODE_ENV !== "production"
   const baseConfig: Partial<BunBuildOptions> = {
-    naming: "[dir]/[name].[ext]",
     sourcemap: "linked",
+    naming: {
+      entry: "[dir]/[name]-[hash].[ext]",
+      chunk: "[name]-[hash].[ext]",
+      asset: "[name]-[hash].[ext]",
+    },
     packages: "bundle",
   } as const
   const resolvedConfig = {
@@ -179,17 +178,23 @@ export function build(
     )
     const artifactsMap = Record.fromIterableBy(
       output.outputs,
-      (v) => v.path.slice(2),
+      (v) => v.path.replace(/^\.\//, ""),
     )
+
+    const resolve = (path: string) => {
+      return manifest.entrypoints[path] ?? null
+    }
+
+    const getArtifact = (path: string): Blob | null => {
+      return artifactsMap[resolve(path)]
+        ?? artifactsMap[path]
+        ?? null
+    }
 
     return {
       ...manifest,
-      resolve: (url: string) => {
-        return manifest.entrypoints[url] ?? null
-      },
-      getArtifact: (path): Blob | null => {
-        return artifactsMap[path] ?? null
-      },
+      resolve,
+      getArtifact,
     }
   })
 }
@@ -228,7 +233,10 @@ function joinBuildEntrypoints(
       pipe(
         output.outputs,
         // Filter out source maps to properly map artifacts to entrypoints.
-        Iterable.filter((v) => !v.path.endsWith(".map")),
+        Iterable.filter((v) =>
+          v.kind !== "sourcemap"
+          && !(v.loader === "html" && v.path.endsWith(".js"))
+        ),
       ),
     ),
     Iterable.map(([entrypoint, artifact]) => {
@@ -268,10 +276,10 @@ function generateManifestfromBunBundle(
       output.outputs,
       // This will mess up direct entrypoint-artifact record.
       // Will have to filter out sourcemap when mapping.
-      Iterable.flatMap((v) => v.sourcemap ? [v, v.sourcemap] : [v]),
+      // Iterable.flatMap((v) => v.sourcemap ? [v, v.sourcemap] : [v]),
       Iterable.map((v) => {
         // strip './' prefix
-        const shortPath = v.path.slice(2)
+        const shortPath = v.path.replace(/^\.\//, "")
 
         return [
           shortPath,

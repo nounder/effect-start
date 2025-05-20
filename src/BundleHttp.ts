@@ -56,12 +56,7 @@ export function handleEntrypoint<
       const pathAttempts = [
         `${requestPath}.html`,
         `${requestPath}/index.html`,
-        requestPath.replace(/\.w+$/, ""),
-        // TODO: why does index.html has a ./ prefix
-        requestPath === "" ? "./index.html" : "",
-        "./" + `${requestPath}.html`,
-        "./" + `${requestPath}/index.html`,
-        "./" + requestPath.replace(/\.w+$/, ""),
+        requestPath === "" ? "index.html" : "",
       ]
       const artifact = pathAttempts
         .map(path => bundle.getArtifact(path))
@@ -69,13 +64,13 @@ export function handleEntrypoint<
 
       if (artifact) {
         return yield* renderBlob(artifact)
-      } else {
-        yield* Effect.fail(
-          new RouteNotFound({
-            request,
-          }),
-        )
       }
+
+      return yield* Effect.fail(
+        new RouteNotFound({
+          request,
+        }),
+      )
     }),
     {
       [BundleEntrypointMetaKey]: {
