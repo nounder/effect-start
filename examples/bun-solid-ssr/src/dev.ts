@@ -37,6 +37,7 @@ export const ServerBundle = BunBundle.bundle("ServerBundle", {
   conditions: [
     "solid",
   ],
+  publicPath: "/.bundle/",
   sourcemap: "external",
   packages: "bundle",
   external: [
