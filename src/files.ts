@@ -1,17 +1,26 @@
 import { pipe, Stream } from "effect"
+import type { WatchOptions } from "node:fs"
 import * as NFSP from "node:fs/promises"
 import type { BundleEvent } from "./Bundle.ts"
 
-const SOURCE_FILENAME = /\.(tsx?|jsx?|html?|css)$/
+const SOURCE_FILENAME = /\.(tsx?|jsx?|html?|css|json)$/
 
-export const watchFileChanges = (): Stream.Stream<BundleEvent, unknown> => {
-  const baseDir = process.cwd()
+/**
+ * `@effect/platform` doesn't support recursive file watching.
+ * This function implements that [2025-05-19]
+ */
+export const watchFileChanges = (
+  path?: string,
+  opts?: WatchOptions,
+): Stream.Stream<BundleEvent, unknown> => {
+  const baseDir = path ?? process.cwd()
 
   const changes = pipe(
     Stream.fromAsyncIterable(
       NFSP.watch(baseDir, {
         persistent: false,
         recursive: true,
+        ...(opts || {}),
       }),
       (e) => e,
     ),
@@ -21,7 +30,7 @@ export const watchFileChanges = (): Stream.Stream<BundleEvent, unknown> => {
     Stream.throttle({
       units: 1,
       cost: () => 1,
-      duration: "1000 millis",
+      duration: "400 millis",
       strategy: "enforce",
     }),
     Stream.map((event) => ({
