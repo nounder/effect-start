@@ -20,9 +20,11 @@ import * as Bundle from "../Bundle.ts"
 import { watchFileChanges } from "../files.ts"
 import { BunImportTrackerPlugin } from "./index.ts"
 
+// raw config passed to Bun.build
 type BunBundleConfig = BuildConfig
 
-type BuildOptions = Omit<BunBundleConfig, "outdir">
+// passable config for APIs
+export type BunBuildOptions = Omit<BunBundleConfig, "outdir">
 
 const BunBundleContextLoadRef = Symbol.for(
   "effect-bundler/BunBundleContextLoadRef",
@@ -109,7 +111,7 @@ export const bundle = <I extends `${string}Bundle`>(
   )
 
 export const bundleClient = (
-  config: BuildOptions | string,
+  config: BunBuildOptions | string,
 ) => {
   if (typeof config === "string") {
     config = {
@@ -118,7 +120,7 @@ export const bundleClient = (
   }
 
   const isDevelopment = process.env.NODE_ENV !== "production"
-  const baseConfig: Partial<BuildOptions> = isDevelopment
+  const baseConfig: Partial<BunBuildOptions> = isDevelopment
     ? {
       naming: "[dir]/[name].[ext]",
       sourcemap: "linked",
@@ -139,7 +141,7 @@ export const bundleClient = (
 }
 
 export const bundleServer = (
-  config: BuildOptions | string,
+  config: BunBuildOptions | string,
 ) => {
   if (typeof config === "string") {
     config = {
@@ -148,7 +150,7 @@ export const bundleServer = (
   }
 
   const isDevelopment = process.env.NODE_ENV !== "production"
-  const baseConfig: Partial<BuildOptions> = {
+  const baseConfig: Partial<BunBuildOptions> = {
     naming: "[dir]/[name].[ext]",
     sourcemap: "linked",
     packages: "bundle",
@@ -212,7 +214,7 @@ function getBaseDir(paths: string[]) {
  * Entrypoint key is trimmed to remove common path prefix.
  */
 function joinBuildEntrypoints(
-  options: BuildOptions,
+  options: BunBuildOptions,
   output: BuildOutput,
 ) {
   const commonPathPrefix = getBaseDir(
@@ -243,7 +245,7 @@ function joinBuildEntrypoints(
  * Useful for SSR and providing source->artifact path mapping.
  */
 function generateManifestfromBunBundle(
-  options: BuildOptions,
+  options: BunBuildOptions,
   output: BuildOutput,
   imports?: BunImportTrackerPlugin.ImportMap,
 ): BundleManifest {

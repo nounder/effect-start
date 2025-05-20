@@ -28,10 +28,15 @@ export function serve(opts: {
 export function serveRouter(
   router: HttpRouter.HttpRouter<RouteNotFound, ClientKey>,
   opts?: {
+    clientConfig: BunBundle.BunBuildOptions
     port?: 3000
   },
 ) {
-  const clientConfig = BunBundle.configFromHttpRouter(router)
+  const clientRouterConfig = BunBundle.configFromHttpRouter(router)
+  const clientConfig = {
+    ...clientRouterConfig,
+    ...(opts?.clientConfig || {}),
+  }
   const bundle = BunBundle.bundleClient(clientConfig)
 
   return serve({
