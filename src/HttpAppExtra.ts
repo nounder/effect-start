@@ -71,7 +71,7 @@ export const renderError = (
       Match.when(
         Predicate.isTagged("RouteNotFound"),
         (_) =>
-          HttpServerResponse.json(
+          HttpServerResponse.unsafeJson(
             {
               error: "RouteNotFound",
             },
@@ -86,7 +86,7 @@ export const renderError = (
           Predicate.isTagged("Fail"),
         ),
         (e) =>
-          HttpServerResponse.json(
+          HttpServerResponse.unsafeJson(
             {
               error: e["defect"]?.name,
               message: e["defect"]?.message,
@@ -97,7 +97,7 @@ export const renderError = (
           ),
       ),
       Match.orElse(() =>
-        HttpServerResponse.json(
+        HttpServerResponse.unsafeJson(
           {
             error: "Unexpected",
           },
