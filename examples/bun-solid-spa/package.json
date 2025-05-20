@@ -12,7 +12,8 @@
     "bun-plugin-solid": "^1.0.0",
     "effect": "^3.15.2",
     "effect-bundler": "github:nounder/effect-bundler",
-    "solid-js": "^1.9.7"
+    "solid-js": "^1.9.7",
+    "tailwindcss": "^4.1.7"
   },
   "devDependencies": {
     "@types/bun": "^1.2.13",
