@@ -295,16 +295,15 @@ export const configFromHttpRouter = (
 ) => {
   const entrypoints = pipe(
     router.routes,
-    Iterable.filterMap((route) =>
-      Option.fromNullable(
-        route.handler[
+    Iterable.filterMap((route) => {
+      const meta = route
+        .handler[
           Bundle.BundleEntrypointMetaKey
-        ] as Bundle.BundleEntrypointMetaValue,
-      )
-    ),
-    Iterable.map((v) =>
-      v.uri.startsWith("file://") ? fileURLToPath(v.uri) : v.uri
-    ),
+        ] as Bundle.BundleEntrypointMetaValue
+
+      return Option.fromNullable(meta?.uri)
+    }),
+    Iterable.map((v) => v.startsWith("file://") ? fileURLToPath(v) : v),
     Array.fromIterable,
   )
   const publicPath = pipe(
