@@ -127,7 +127,8 @@ export const bundleClient = (
       packages: "bundle",
     } as const
     : {
-      naming: "[name]-[hash].[ext]",
+      // naming: "[name]-[hash].[ext]",
+      naming: "[dir]/[name].[ext]",
       sourcemap: "none",
       packages: "bundle",
     } as const
