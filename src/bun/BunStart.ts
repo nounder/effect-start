@@ -4,6 +4,7 @@ import type { RouteNotFound } from "@effect/platform/HttpServerError"
 import { Layer, pipe } from "effect"
 import type { ClientKey } from "../Bundle.ts"
 import { BunBundle } from "../index.ts"
+import type { BunBuildOptions } from "./BunBundle.ts"
 
 export function serve(opts: {
   server: HttpApp.Default<RouteNotFound, ClientKey>
@@ -33,10 +34,15 @@ export function serveRouter(
   },
 ) {
   const clientRouterConfig = BunBundle.configFromHttpRouter(router)
-  const clientConfig = {
+  const clientConfig: BunBuildOptions = {
     ...clientRouterConfig,
     ...(opts?.clientConfig || {}),
+    entrypoints: [
+      ...clientRouterConfig.entrypoints,
+      ...(opts?.clientConfig?.entrypoints || []),
+    ],
   }
+
   const bundle = BunBundle.bundleClient(clientConfig)
 
   return serve({
