@@ -9,11 +9,11 @@
     "@effect/platform": "^0.82.3",
     "@effect/platform-bun": "^0.65.0",
     "@solidjs/router": "0.15.3",
+    "@tailwindcss/node": "^4.1.7",
     "bun-plugin-solid": "^1.0.0",
     "effect": "^3.15.2",
-    "effect-bundler": "github:nounder/effect-bundler#f4a298a",
-    "solid-js": "^1.9.7",
-    "@tailwindcss/node": "^4.1.7"
+    "effect-bundler": "github:nounder/effect-bundler",
+    "solid-js": "^1.9.7"
   },
   "devDependencies": {
     "@types/bun": "^1.2.13"

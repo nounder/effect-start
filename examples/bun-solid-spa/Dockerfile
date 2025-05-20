@@ -4,10 +4,10 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
-# Copy package.json first
-COPY package.json ./
+COPY package.json bun.lock ./
 
 # Install dependencies
+# NOTE: Remember to run `bun install` locally to generate correct lockfile
 RUN bun install --frozen-lockfile --production
 
 # Copy the rest of the application
