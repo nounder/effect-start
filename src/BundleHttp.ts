@@ -7,7 +7,7 @@ import {
 import { RouteNotFound } from "@effect/platform/HttpServerError"
 import { Context, Effect, Scope, Stream } from "effect"
 import * as NPath from "node:path"
-import { fileURLToPath } from "url"
+import * as NUrl from "node:url"
 import {
   type BundleContext,
   BundleEntrypointMetaKey,
@@ -50,14 +50,22 @@ export function handleEntrypoint<
 ): BundleEntrypointHttpApp<RouteNotFound, K> {
   return Object.assign(
     Effect.gen(function*() {
+      uri = uri?.startsWith("file://") ? NUrl.fileURLToPath(uri) : uri
+
       const request = yield* HttpServerRequest.HttpServerRequest
       const bundle = yield* tagged(bundleKey ?? ClientKey)
       const requestPath = request.url.substring(1)
-      const pathAttempts = [
-        `${requestPath}.html`,
-        `${requestPath}/index.html`,
-        requestPath === "" ? "index.html" : "",
-      ]
+      const pathAttempts = uri
+        ? [
+          // expand this array so it includes all potential path
+          // by starting with the uri and then popping root directory AI!
+        ]
+        : [
+          `${requestPath}.html`,
+          `${requestPath}/index.html`,
+          requestPath === "" ? "index.html" : "",
+        ]
+      console.log(pathAttempts)
       const artifact = pathAttempts
         .map(path => bundle.getArtifact(path))
         .find(Boolean)
