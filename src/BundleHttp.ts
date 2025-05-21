@@ -57,8 +57,10 @@ export function handleEntrypoint<
       const requestPath = request.url.substring(1)
       const pathAttempts = uri
         ? [
-          // expand this array so it includes all potential path
-          // by starting with the uri and then popping root directory AI!
+          // try paths from all parent directories in case absolute path is passed,
+          // like it is the case for `import(f, { type: "file" })`
+          ...uri.split(NPath.sep)
+            .map((_, i, a) => NPath.join(...a.slice(i))),
         ]
         : [
           `${requestPath}.html`,
