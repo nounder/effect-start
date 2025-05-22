@@ -296,9 +296,41 @@ function generateManifestfromBunBundle(
   }
 }
 
-// iterate over routes
-// find all entrypoints
-// find all httpBundles
+export const walkHttpRouter = (
+  router: HttpRouter.HttpRouter<any, Bundle.BundleKey>,
+): {
+  entrypoints: Record<string, Bundle.BundleEntrypointMetaValue>
+  outputs: Record<string, Bundle.BundleOutputMetaValue>
+} => {
+  const entrypoints = pipe(
+    router.routes,
+    Iterable.filterMap((route) => {
+      const meta = route
+        .handler[
+          Bundle.BundleEntrypointMetaKey
+        ] as Bundle.BundleEntrypointMetaValue
+
+      return Option.fromNullable(meta ? [route.path, meta] as const : null)
+    }),
+    Record.fromEntries,
+  )
+  const outputs = pipe(
+    router.mounts,
+    Iterable.filterMap(([path, httpApp]) =>
+      httpApp[Bundle.BundleOutputMetaKey]
+        ? Option.some([path, httpApp[Bundle.BundleOutputMetaKey]] as const)
+        : Option.none()
+    ),
+    Record.fromEntries,
+  )
+
+  return {
+    entrypoints,
+    outputs,
+  }
+}
+
+// rework it so it uses waklHttpRouter. think hard AI!
 export const configFromHttpRouter = (
   router: HttpRouter.HttpRouter<any, Bundle.BundleKey>,
 ) => {
