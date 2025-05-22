@@ -1,22 +1,39 @@
 /// <reference lib="dom" />
 /// <reference lib="dom.iterable" />
 
-import type { BundleEvent } from "../Bundle.ts"
+import type { BundleEvent, BundleManifest } from "../Bundle.ts"
+
+function reload() {
+  window.location.reload()
+}
+
+async function loadAllEntrypoints() {
+  const manifest: BundleManifest = await fetch("/_bundle/manifest.json")
+    .then(v => v.json())
+
+  Object.keys(manifest.artifacts)
+    .filter(v => v.endsWith(".js"))
+    .forEach((outFile) => {
+      console.log(outFile)
+      const script = document.createElement("script")
+      script.src = `/_bundle/${outFile}`
+      script.type = "module"
+      script.onload = () => {
+        console.debug("Bundle reloaded")
+      }
+      document.body.appendChild(script)
+    })
+}
 
 function handleBundleEvent(event: BundleEvent) {
   if (event.type === "Change") {
-    console.debug("Bundle change detected. Reloading...")
-
-    window.location.reload()
+    console.debug("Bundle change detected...")
+    reload()
   }
 }
 
 function listen() {
   const eventSource = new EventSource("/_bundle/events")
-
-  eventSource.addEventListener("open", () => {
-    console.debug("SSE connection opened")
-  })
 
   eventSource.addEventListener("message", (event) => {
     try {
