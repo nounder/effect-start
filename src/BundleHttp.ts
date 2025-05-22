@@ -87,7 +87,7 @@ export function entrypoint<K extends BundleKey>(
   )
 }
 
-export function httpApp(): BundleOutputHttpApp<never, ServerKey>
+export function httpApp(): BundleOutputHttpApp<never, ClientKey>
 export function httpApp<T extends BundleKey>(
   bundleTag: Context.Tag<T, BundleContext>,
 ): BundleOutputHttpApp<RouteNotFound, T | Scope.Scope>
