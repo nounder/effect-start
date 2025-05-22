@@ -334,8 +334,9 @@ export const walkHttpRouter = (
 export const configFromHttpRouter = (
   router: HttpRouter.HttpRouter<any, Bundle.BundleKey>,
 ) => {
+  const walk = walkHttpRouter(router)
   const entrypoints = pipe(
-    router.routes,
+    walk.entrypoints,
     Iterable.filterMap((route) => {
       const meta = route
         .handler[
@@ -344,8 +345,6 @@ export const configFromHttpRouter = (
 
       return Option.fromNullable(meta?.uri)
     }),
-    Iterable.map((v) => v.startsWith("file://") ? fileURLToPath(v) : v),
-    Array.fromIterable,
   )
   const publicPath = pipe(
     router.mounts,
