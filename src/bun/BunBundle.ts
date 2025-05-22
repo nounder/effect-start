@@ -11,6 +11,7 @@ import {
   PubSub,
   Record,
   Stream,
+  String,
   SynchronizedRef,
 } from "effect"
 import * as NPath from "node:path"
@@ -296,7 +297,7 @@ function generateManifestfromBunBundle(
   }
 }
 
-export const walkHttpRouter = (
+const extractBundleRoutes = (
   router: HttpRouter.HttpRouter<any, Bundle.BundleKey>,
 ): {
   entrypoints: Record<string, Bundle.BundleEntrypointMetaValue>
@@ -330,41 +331,30 @@ export const walkHttpRouter = (
   }
 }
 
-// rework it so it uses waklHttpRouter. think hard AI!
 export const configFromHttpRouter = (
   router: HttpRouter.HttpRouter<any, Bundle.BundleKey>,
-) => {
-  const walk = walkHttpRouter(router)
+): BuildConfig => {
+  const bundleRoutes = extractBundleRoutes(router)
   const entrypoints = pipe(
-    walk.entrypoints,
-    Iterable.filterMap((route) => {
-      const meta = route
-        .handler[
-          Bundle.BundleEntrypointMetaKey
-        ] as Bundle.BundleEntrypointMetaValue
-
-      return Option.fromNullable(meta?.uri)
-    }),
+    bundleRoutes.entrypoints,
+    Record.values,
+    Iterable.filterMap((meta) => Option.fromNullable(meta.uri)),
+    Array.fromIterable,
   )
   const publicPath = pipe(
-    router.mounts,
-    Iterable.filterMap(([path, httpApp]) =>
-      httpApp[Bundle.BundleOutputMetaKey]
-        ? Option.some(path)
-        : Option.none()
-    ),
+    bundleRoutes.outputs,
+    Record.keys,
     Iterable.head,
     Option.getOrThrowWith(() =>
       new Error("HttpRouter must have a bundler route")
     ),
   )
 
-  const config: BuildConfig = {
+  return {
     entrypoints,
+    // bun requires public path to end with a slash
     publicPath: publicPath + "/",
   }
-
-  return config
 }
 
 function buildBun(
@@ -380,7 +370,7 @@ function buildBun(
             : err
 
           return new Bundle.BundleError({
-            message: "Failed to Bun.build: " + String(cause),
+            message: "Failed to Bun.build: " + cause,
             cause: cause,
           })
         },

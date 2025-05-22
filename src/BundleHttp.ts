@@ -67,7 +67,6 @@ export function handleEntrypoint<
           `${requestPath}/index.html`,
           requestPath === "" ? "index.html" : "",
         ]
-      console.log(pathAttempts)
       const artifact = pathAttempts
         .map(path => bundle.getArtifact(path))
         .find(Boolean)
