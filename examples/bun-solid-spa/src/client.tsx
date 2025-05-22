@@ -1,3 +1,5 @@
+import "effect-bundler/client"
+
 import { render } from "solid-js/web"
 import { App } from "./App.tsx"
 

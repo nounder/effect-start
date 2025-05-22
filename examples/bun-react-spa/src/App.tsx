@@ -1,3 +1,5 @@
+import "effect-bundler/client"
+
 import { useEffect, useState } from "react"
 
 export function App() {
@@ -6,7 +8,7 @@ export function App() {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setCount((count) => count + 1)
+      setCount((count) => count + 100)
     }, 100)
 
     return () => clearInterval(interval)
