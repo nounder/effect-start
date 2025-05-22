@@ -35,23 +35,21 @@ type BundleOutputHttpApp<E = never, R = never> =
     readonly [BundleOutputMetaKey]: BundleOutputMetaValue
   }
 
-export function handleEntrypoint(
+export function entrypoint(
   uri?: string,
-): BundleEntrypointHttpApp<RouteNotFound, ServerKey>
-export function handleEntrypoint<K extends BundleKey>(
+): BundleEntrypointHttpApp<RouteNotFound, ClientKey>
+export function entrypoint<K extends BundleKey>(
   uri: string,
   bundleKey: K,
 ): BundleEntrypointHttpApp<RouteNotFound, K>
-export function handleEntrypoint<
-  K extends BundleKey = ServerKey,
->(
+export function entrypoint<K extends BundleKey>(
   uri?: string,
   bundleKey?: K,
 ): BundleEntrypointHttpApp<RouteNotFound, K> {
+  // @ts-ignore no idea about this error :(
   return Object.assign(
     Effect.gen(function*() {
       uri = uri?.startsWith("file://") ? NUrl.fileURLToPath(uri) : uri
-
       const request = yield* HttpServerRequest.HttpServerRequest
       const bundle = yield* tagged(bundleKey ?? ClientKey)
       const requestPath = request.url.substring(1)

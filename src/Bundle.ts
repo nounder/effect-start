@@ -114,10 +114,10 @@ export const tagged = <I extends BundleKey>(
   return Context.GenericTag<I, BundleContext>(key)
 }
 
-export const ClientKey: BundleKey = "ClientBundle"
+export const ClientKey = "ClientBundle" as const
 export type ClientKey = typeof ClientKey
 
-export const ServerKey: BundleKey = "ServerBundle"
+export const ServerKey = "ServerBundle" as const
 export type ServerKey = typeof ServerKey
 
 /**

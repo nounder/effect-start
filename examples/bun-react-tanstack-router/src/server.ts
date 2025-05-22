@@ -7,7 +7,7 @@ import IndexHtml from "./index.html" with { type: "file" }
 export const App = HttpRouter.empty.pipe(
   HttpRouter.get(
     "/",
-    BundleHttp.handleEntrypoint(IndexHtml),
+    BundleHttp.entrypoint(IndexHtml),
   ),
   HttpRouter.mountApp(
     "/_bundle",

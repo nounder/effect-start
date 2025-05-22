@@ -13,16 +13,16 @@ const effect = effectFn(
   }).layer,
 )
 
-test("handleEntrypoint", () => {
+test("entrypoint", () => {
   effect(function*() {
     const App = HttpRouter.empty.pipe(
       HttpRouter.get(
         "/",
-        BundleHttp.handleEntrypoint(),
+        BundleHttp.entrypoint(),
       ),
       HttpRouter.get(
         "/react-dashboard",
-        BundleHttp.handleEntrypoint(),
+        BundleHttp.entrypoint(),
       ),
     )
     const Client = TestHttpClient.make(App)

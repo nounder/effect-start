@@ -14,7 +14,7 @@ describe("explicit bundle route", () => {
   const Router = HttpRouter.empty.pipe(
     HttpRouter.get(
       "/dashboard",
-      BundleHttp.handleEntrypoint(HtmlPath),
+      BundleHttp.entrypoint(HtmlPath),
     ),
     HttpRouter.mountApp(
       "/_bundle",
@@ -71,7 +71,7 @@ describe("implicit bundle route", () => {
   const Router = HttpRouter.empty.pipe(
     HttpRouter.get(
       "/dashboard",
-      BundleHttp.handleEntrypoint(HtmlPath),
+      BundleHttp.entrypoint(HtmlPath),
     ),
   )
 
