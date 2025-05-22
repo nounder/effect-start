@@ -1,6 +1,6 @@
 import { HttpApp, HttpRouter, HttpServer } from "@effect/platform"
 import { BunContext, BunRuntime } from "@effect/platform-bun"
-import { Effect, Layer, pipe } from "effect"
+import { Config, Effect, Layer, Option, pipe } from "effect"
 import type { ClientKey } from "../Bundle.ts"
 import * as HttpAppExtra from "../HttpAppExtra.ts"
 import type { BunBuildOptions } from "./BunBundle.ts"
@@ -26,7 +26,15 @@ export function serve(opts: {
         port: opts.port ?? 3000,
         routes: opts.routes,
       }),
-      opts.client?.layer ?? Layer.empty as Layer.Layer<ClientKey>,
+      opts.client
+        ? Layer.unwrapEffect(Effect.gen(function*() {
+          const env = yield* Config.string("NODE_ENV").pipe(Config.option)
+
+          return Option.getOrNull(env) === "production"
+            ? opts.client!.layer
+            : opts.client!.devLayer
+        }))
+        : Layer.empty as Layer.Layer<ClientKey>,
       BunContext.layer,
     ]),
     Layer.launch,
