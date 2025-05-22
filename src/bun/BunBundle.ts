@@ -345,15 +345,14 @@ export const configFromHttpRouter = (
     bundleRoutes.outputs,
     Record.keys,
     Iterable.head,
-    Option.getOrThrowWith(() =>
-      new Error("HttpRouter must have a bundler route")
-    ),
+    // bun requires public path to end with a slash
+    Option.map(v => v + "/"),
+    Option.getOrUndefined,
   )
 
   return {
     entrypoints,
-    // bun requires public path to end with a slash
-    publicPath: publicPath + "/",
+    publicPath,
   }
 }
 

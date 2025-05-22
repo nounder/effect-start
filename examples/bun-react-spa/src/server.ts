@@ -8,10 +8,6 @@ export const App = HttpRouter.empty.pipe(
     "/",
     BundleHttp.handleEntrypoint(IndexHtml),
   ),
-  HttpRouter.mountApp(
-    "/_bundle",
-    BundleHttp.httpApp(),
-  ),
   HttpRouter.get(
     "/hello",
     HttpServerResponse.text("Hello World!"),

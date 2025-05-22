@@ -1,8 +1,9 @@
 import { HttpApp, HttpRouter, HttpServer } from "@effect/platform"
 import { BunContext, BunRuntime } from "@effect/platform-bun"
-import { Config, Effect, Layer, Option, pipe } from "effect"
+import { Config, Effect, identity, Layer, Option, pipe } from "effect"
 import type { ClientKey } from "../Bundle.ts"
 import * as HttpAppExtra from "../HttpAppExtra.ts"
+import { BundleHttp } from "../index.ts"
 import type { BunBuildOptions } from "./BunBundle.ts"
 import * as BunBundle from "./BunBundle.ts"
 import * as BunFullStackServer from "./BunFullstackServer.ts"
@@ -49,26 +50,35 @@ export function serve(opts: {
 export function serveRouter(
   router: HttpRouter.HttpRouter<any, ClientKey>,
   opts?: {
-    clientConfig: BunBundle.BunBuildOptions
+    clientConfig?: BunBundle.BunBuildOptions
     port?: 3000
   },
 ) {
   const clientRouterConfig = BunBundle.configFromHttpRouter(router)
   const clientConfig: BunBuildOptions = {
     ...clientRouterConfig,
-    ...(opts?.clientConfig || {}),
+    ...(opts?.clientConfig ?? {}),
     entrypoints: [
       ...clientRouterConfig.entrypoints,
-      ...(opts?.clientConfig?.entrypoints || []),
+      ...(opts?.clientConfig?.entrypoints ?? []),
     ],
+    publicPath: clientRouterConfig.publicPath ?? "/_bundle/",
   }
+
+  const resolvedRouter = router.pipe(
+    !clientRouterConfig.publicPath
+      ? HttpRouter.mountApp(
+        "/_bundle",
+        BundleHttp.httpApp(),
+      )
+      : identity,
+  )
 
   const bundle = BunBundle.bundleClient(clientConfig)
 
   return serve({
-    server: router,
+    server: resolvedRouter,
     port: opts?.port,
     client: bundle,
-    routes: {},
   })
 }
