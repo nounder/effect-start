@@ -11,8 +11,12 @@ export function App() {
       setCount((count) => count + 100)
     }, 100)
 
-    return () => clearInterval(interval)
-  })
+    return () => {
+      clearInterval(interval)
 
-  return <div>Hello, Effect Bundler {count}.</div>
+      console.log("UNMOUNTING")
+    }
+  }, [])
+
+  return <div>Hello, {count}</div>
 }

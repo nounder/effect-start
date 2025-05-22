@@ -11,11 +11,9 @@ import {
   PubSub,
   Record,
   Stream,
-  String,
   SynchronizedRef,
 } from "effect"
 import * as NPath from "node:path"
-import { fileURLToPath } from "node:url"
 import type { BundleContext, BundleManifest } from "../Bundle.ts"
 import * as Bundle from "../Bundle.ts"
 import { watchFileChanges } from "../files.ts"
@@ -127,15 +125,15 @@ export const bundleClient = (
       chunk: "[name]-[hash].[ext]",
       asset: "[name]-[hash].[ext]",
     },
-    packages: "bundle",
+    external: ["react"],
   } as const
-  const resolvedConfig = {
+  const resolvedConfig: Partial<BunBuildOptions> = {
     ...baseConfig,
     target: "browser" as const,
     ...config,
   }
 
-  return bundle(Bundle.ClientKey, resolvedConfig)
+  return bundle(Bundle.ClientKey, resolvedConfig as BunBuildOptions)
 }
 
 export const bundleServer = (
