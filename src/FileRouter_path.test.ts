@@ -23,160 +23,181 @@ test("literal segments", () => {
 })
 
 test("dynamic parameters", () => {
-  expect(extractSegments("[userId]")).toEqual([
-    { type: "DynamicParam", param: "userId", text: "[userId]" },
+  expect(extractSegments("$userId")).toEqual([
+    { type: "Param", param: "userId", text: "$userId" },
   ])
-  expect(extractSegments("/users/[userId]")).toEqual([
-    { type: "Literal", text: "users" },
-    { type: "DynamicParam", param: "userId", text: "[userId]" },
+  expect(extractSegments("/users/$userId")).toEqual([
+    {
+      type: "Literal",
+      text: "users",
+    },
+    {
+      type: "Param",
+      param: "userId",
+      text: "$userId",
+    },
   ])
-  expect(extractSegments("/posts/[postId]/comments/[commentId]")).toEqual([
-    { type: "Literal", text: "posts" },
-    { type: "DynamicParam", param: "postId", text: "[postId]" },
-    { type: "Literal", text: "comments" },
-    { type: "DynamicParam", param: "commentId", text: "[commentId]" },
+  expect(extractSegments("/posts/$postId/comments/$commentId")).toEqual([
+    {
+      type: "Literal",
+      text: "posts",
+    },
+    {
+      type: "Param",
+      param: "postId",
+      text: "$postId",
+    },
+    {
+      type: "Literal",
+      text: "comments",
+    },
+    {
+      type: "Param",
+      param: "commentId",
+      text: "$commentId",
+    },
   ])
-})
-
-test("optional parameters", () => {
-  expect(extractSegments("[[id]]")).toEqual([
-    { type: "OptionalParam", param: "id", text: "[[id]]" },
-  ])
-  expect(extractSegments("/items/[[itemId]]")).toEqual([
-    { type: "Literal", text: "items" },
-    { type: "OptionalParam", param: "itemId", text: "[[itemId]]" },
-  ])
-  expect(extractSegments("/categories/[[categoryId]]/products/[[productId]]"))
-    .toEqual([
-      { type: "Literal", text: "categories" },
-      { type: "OptionalParam", param: "categoryId", text: "[[categoryId]]" },
-      { type: "Literal", text: "products" },
-      { type: "OptionalParam", param: "productId", text: "[[productId]]" },
-    ])
 })
 
 test("rest parameters", () => {
-  expect(extractSegments("[...files]")).toEqual([
-    { type: "RestParam", param: "files", text: "[...files]" },
+  expect(extractSegments("$")).toEqual([
+    {
+      type: "Splat",
+      text: "$",
+    },
   ])
-  expect(extractSegments("/docs/[...slug]")).toEqual([
-    { type: "Literal", text: "docs" },
-    { type: "RestParam", param: "slug", text: "[...slug]" },
+  expect(extractSegments("/docs/$")).toEqual([
+    {
+      type: "Literal",
+      text: "docs",
+    },
+    {
+      type: "Splat",
+      text: "$",
+    },
   ])
-  expect(extractSegments("/user/[...path]/details")).toEqual([
+  expect(extractSegments("/user/$/details")).toEqual([
     { type: "Literal", text: "user" },
-    { type: "RestParam", param: "path", text: "[...path]" },
+    {
+      type: "Splat",
+      text: "$",
+    },
     { type: "Literal", text: "details" },
+  ])
+  expect(extractSegments("/$")).toEqual([
+    {
+      type: "Splat",
+      text: "$",
+    },
+  ])
+  expect(extractSegments("/test/$")).toEqual([
+    {
+      type: "Literal",
+      text: "test",
+    },
+    {
+      type: "Splat",
+      text: "$",
+    },
   ])
 })
 
 test("server handles", () => {
   expect(extractSegments("server.ts")).toEqual([
-    { type: "ServerHandle", extension: "ts" },
+    {
+      type: "ServerHandle",
+      extension: "ts",
+    },
   ])
   expect(extractSegments("/api/server.js")).toEqual([
-    { type: "Literal", text: "api" },
-    { type: "ServerHandle", extension: "js" },
+    {
+      type: "Literal",
+      text: "api",
+    },
+    {
+      type: "ServerHandle",
+      extension: "js",
+    },
   ])
 })
 
 test("page handles", () => {
   expect(extractSegments("page.tsx")).toEqual([
-    { type: "PageHandle", extension: "tsx" },
+    {
+      type: "PageHandle",
+      extension: "tsx",
+    },
   ])
   expect(extractSegments("/blog/page.jsx")).toEqual([
-    { type: "Literal", text: "blog" },
-    { type: "PageHandle", extension: "jsx" },
+    {
+      type: "Literal",
+      text: "blog",
+    },
+    {
+      type: "PageHandle",
+      extension: "jsx",
+    },
   ])
 })
 
 test("complex combinations", () => {
-  expect(extractSegments("/users/[userId]/posts/[[postId]]/page.tsx")).toEqual(
+  expect(extractSegments("/users/$userId/posts/page.tsx")).toEqual(
     [
-      { type: "Literal", text: "users" },
-      { type: "DynamicParam", param: "userId", text: "[userId]" },
-      { type: "Literal", text: "posts" },
-      { type: "OptionalParam", param: "postId", text: "[[postId]]" },
-      { type: "PageHandle", extension: "tsx" },
+      {
+        type: "Literal",
+        text: "users",
+      },
+      {
+        type: "Param",
+        param: "userId",
+        text: "$userId",
+      },
+      {
+        type: "Literal",
+        text: "posts",
+      },
+      {
+        type: "PageHandle",
+        extension: "tsx",
+      },
     ],
   )
-  expect(extractSegments("/api/v1/[...proxy]/server.ts")).toEqual([
+  expect(extractSegments("/api/v1/$/server.ts")).toEqual([
     { type: "Literal", text: "api" },
     { type: "Literal", text: "v1" },
-    { type: "RestParam", param: "proxy", text: "[...proxy]" },
+    { type: "Splat", text: "$" },
     { type: "ServerHandle", extension: "ts" },
   ])
 })
 
 test("invalid paths", () => {
-  expect(extractSegments("/[")).toEqual(null) // Unterminated dynamic
-  expect(extractSegments("/test/[]")).toEqual(null) // Empty dynamic
-  expect(extractSegments("/[[name")).toEqual(null) // Unterminated optional
-  expect(extractSegments("/test/[[]]")).toEqual(null) // Empty optional
-  expect(extractSegments("/test/[[...name]]")).toEqual(null) // Was: Literal for test, Literal for [[...name]]. Now invalid.
-  expect(extractSegments("/[...path")).toEqual(null) // Unterminated rest
+  expect(extractSegments("/$...")).toEqual(null) // $... is no longer valid
   expect(extractSegments("invalid.ts")).toEqual(null) // Invalid handle
-  expect(extractSegments("abc/def/[a]/[...b]/[[c]]/page.xyz")).toEqual(null) // Invalid extension
+  expect(extractSegments("abc/def/$a/$/page.xyz")).toEqual(null) // Invalid extension
 })
 
 test("leading/trailing/multiple slashes", () => {
-  expect(extractSegments("//users///[id]//")).toEqual([
+  expect(extractSegments("//users///$id//")).toEqual([
     { type: "Literal", text: "users" },
-    { type: "DynamicParam", param: "id", text: "[id]" },
+    { type: "Param", param: "id", text: "$id" },
   ])
 })
 
-test("param types and misclassification", () => {
-  // These look like optional/rest but are not, so should be literal
-  // With stricter literal rule, these (containing [ or ]) become null if not valid params.
-  expect(extractSegments("[[...test]]")).toEqual(null) // Was: Literal. Now invalid (mixed optional/rest like syntax).
-  expect(extractSegments("f[...test]")).toEqual(null) // Was: Literal. Now invalid (contains [ and ] but not valid param).
-  expect(extractSegments("[...test]g]")).toEqual(null)
-  expect(extractSegments("f[[test]]")).toEqual(null) // Was: Literal. Now invalid (contains [ and ] but not valid param).
-  expect(extractSegments("[[test]]g")).toEqual(null) // Was: Literal. Now invalid (contains [ and ] but not valid param).
+test("param and splat types", () => {
+  // Splat is just $
+  expect(extractSegments("$")).toEqual([{
+    type: "Splat",
+    text: "$",
+  }]) // $ is now a valid Splat
 
-  // Min length for DynamicParam [a] is 3
-  expect(extractSegments("[]")).toEqual(null)
-  expect(extractSegments("[a]")).toEqual([{
-    type: "DynamicParam",
+  // Min length for Param $a is 2
+  expect(extractSegments("$a")).toEqual([{
+    type: "Param",
     param: "a",
-    text: "[a]",
-  }])
-  expect(extractSegments("[[]]")).toEqual(null) // This is an invalid optional, not dynamic
-  expect(extractSegments("[[a]]")).toEqual([{
-    type: "OptionalParam",
-    param: "a",
-    text: "[[a]]",
+    text: "$a",
   }])
 
-  // Min length for OptionalParam [[a]] is 5
-  expect(extractSegments("[[]]")).toEqual(null)
-  expect(extractSegments("[[a]]")).toEqual([{
-    type: "OptionalParam",
-    param: "a",
-    text: "[[a]]",
-  }])
-  expect(extractSegments("[[ab]]")).toEqual([{
-    type: "OptionalParam",
-    param: "ab",
-    text: "[[ab]]",
-  }])
-
-  // Min length for RestParam [...a] is 5
-  expect(extractSegments("[...]")).toEqual(null)
-  expect(extractSegments("[...a]")).toEqual([{
-    type: "RestParam",
-    param: "a",
-    text: "[...a]",
-  }])
-  expect(extractSegments("[...ab]")).toEqual([{
-    type: "RestParam",
-    param: "ab",
-    text: "[...ab]",
-  }])
-
-  // Ensure no misclassification between param types
-  // This was expect(parsePath("[[...slug]]")).toEqual([{ type: "Literal", text: "[[...slug]]" }])
-  // Now, like [[...test]], it should be null.
-  expect(extractSegments("[[...slug]]")).toEqual(null)
+  // Splat variations that are no longer valid
+  expect(extractSegments("$...")).toEqual(null) // $... is no longer valid
+  expect(extractSegments("$...ab")).toEqual(null) // $...ab is no longer valid
 })

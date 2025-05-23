@@ -7,19 +7,13 @@ export type PathSegment =
     text: string // eg. "users"
   }
   | {
-    type: "DynamicParam"
+    type: "Param"
     param: string // eg. "userId"
-    text: string // eg. "[userId]"
+    text: string // eg. "$userId"
   }
   | {
-    type: "OptionalParam"
-    param: string // eg. "userId"
-    text: string // eg. "[[userId]]"
-  }
-  | {
-    type: "RestParam"
-    param: string // eg. "name"
-    text: string // eg. "[...name]"
+    type: "Splat"
+    text: "$"
   }
 
 export type Extension = "tsx" | "jsx" | "ts" | "js"
@@ -83,28 +77,23 @@ export function extractSegments(path: string): Segment[] | null {
         return { type: "LayoutHandle", extension: ext as Extension }
       }
 
-      // [[name]]
-      if (/^\[\[\w+\]\]$/.test(s)) {
-        const name = s.substring(2, s.length - 2)
-        if (name !== "" && !name.startsWith("...")) {
-          return { type: "OptionalParam", param: name, text: s }
-        }
-        // "[[...foo]]" falls through to Literal. Correctly formed "[[]]" already returned null.
-      }
-
-      // [...name]
-      if (/^\[\.{3}\w+\]$/.test(s)) {
-        const name = s.substring(4, s.length - 1)
-        if (name !== "") {
-          return { type: "RestParam", param: name, text: s }
+      // $ (Splat)
+      if (s === "$") {
+        return {
+          type: "Splat",
+          text: "$",
         }
       }
 
-      // [name]
-      if (/^\[\w+\]$/.test(s)) {
-        const name = s.substring(1, s.length - 1)
+      // $name (Param)
+      if (/^\$\w+$/.test(s)) {
+        const name = s.substring(1) // Remove "$"
         if (name !== "") {
-          return { type: "DynamicParam", param: name, text: s }
+          return {
+            type: "Param",
+            param: name,
+            text: s,
+          }
         }
       }
 
@@ -144,8 +133,9 @@ function extractRoute(path: string): Route | null {
  *
  * Routes are sorted by depth, like so:
  * - layout.tsx
- * - [users]/page.tsx
- * - [users]/[userId]/page.tsx
+ * - $users/page.tsx
+ * - $users/$userId/page.tsx
+ * - $/page.tsx
  */
 export function walkRoutes(dir: string) {
   return Effect.gen(function*() {
