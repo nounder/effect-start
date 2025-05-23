@@ -1,5 +1,4 @@
 import { HttpRouter, HttpServerResponse } from "@effect/platform"
-import { TanStackRouterEsbuild } from "@tanstack/router-plugin/esbuild"
 import { BundleHttp } from "effect-bundler"
 import { BunStart } from "effect-bundler/bun"
 import IndexHtml from "./index.html" with { type: "file" }
@@ -20,15 +19,5 @@ export const App = HttpRouter.empty.pipe(
 )
 
 if (import.meta.main) {
-  BunStart.serveRouter(App, {
-    clientConfig: {
-      plugins: [
-        // @ts-ignore
-        TanStackRouterEsbuild({
-          target: "react",
-          autoCodeSplitting: true,
-        }),
-      ],
-    },
-  })
+  BunStart.serveRouter(App)
 }
