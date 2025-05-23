@@ -14,6 +14,7 @@ This instructs AI agents how to navigate and edit this codebase.
 - Always use extension in file imports.
 - Do not unwrap effects in `Effect.gen`. You can `yield*` effects directly.
 - Do not write obvious comments that restate what the code is doing without adding meaningful context.
+- Make sure to run `dprint fmt` after making all the changes.
 
 # Tests
 
