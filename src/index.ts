@@ -9,6 +9,8 @@ export * as StartHttp from "./StartHttp.ts"
 export * as HttpAppExtra from "./HttpAppExtra.ts"
 
 export * as TestHttpClient from "./TestHttpClient.ts"
-export { effectFn } from "./testing.ts"
+export {
+  effectFn,
+} from "./testing.ts"
 
 export * as FileRouter from "./FileRouter.ts"

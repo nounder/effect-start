@@ -8,7 +8,9 @@
     "binaryExpression.linePerExpression": true,
     "preferSingleLine": false,
     "jsx.forceNewLinesSurroundingContent": true,
-    "memberExpression.linePerExpression": true
+    "memberExpression.linePerExpression": true,
+    "enumDeclaration.memberSpacing": "newLine",
+    "exportDeclaration.forceMultiLine": "always"
   },
   "markup": {
     "maxAttrsPerLine": 1,
