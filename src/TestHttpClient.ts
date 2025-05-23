@@ -8,8 +8,16 @@ import {
   HttpServerRequest,
   HttpServerResponse,
 } from "@effect/platform"
-import { RouteNotFound } from "@effect/platform/HttpServerError"
-import { Effect, identity, pipe, Scope, Stream } from "effect"
+import {
+  RouteNotFound,
+} from "@effect/platform/HttpServerError"
+import {
+  Effect,
+  identity,
+  pipe,
+  Scope,
+  Stream,
+} from "effect"
 
 const WebHeaders = globalThis.Headers
 

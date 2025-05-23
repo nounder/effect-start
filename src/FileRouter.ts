@@ -1,5 +1,9 @@
-import { FileSystem } from "@effect/platform"
-import { Effect } from "effect"
+import {
+  FileSystem,
+} from "@effect/platform"
+import {
+  Effect,
+} from "effect"
 
 export type PathSegment =
   | {

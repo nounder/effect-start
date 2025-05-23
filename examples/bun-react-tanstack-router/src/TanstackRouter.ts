@@ -1,6 +1,17 @@
-import { generator, getConfig } from "@tanstack/router-generator"
-import { Data, Effect, Layer, pipe, Stream } from "effect"
-import { watchFileChanges } from "../../../src/files.ts"
+import {
+  generator,
+  getConfig,
+} from "@tanstack/router-generator"
+import {
+  Data,
+  Effect,
+  Layer,
+  pipe,
+  Stream,
+} from "effect"
+import {
+  watchFileChanges,
+} from "../../../src/files.ts"
 
 const dir = import.meta.dir
 

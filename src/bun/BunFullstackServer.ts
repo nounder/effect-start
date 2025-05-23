@@ -1,5 +1,13 @@
-import { BunHttpServer } from "@effect/platform-bun"
-import { Config, Effect, Fiber, Layer, Option } from "effect"
+import {
+  BunHttpServer,
+} from "@effect/platform-bun"
+import {
+  Config,
+  Effect,
+  Fiber,
+  Layer,
+  Option,
+} from "effect"
 import * as httpServer from "./BunFullstackServer_httpServer.ts"
 
 // As of Bun v1.2.13, these types are not publicy exported.

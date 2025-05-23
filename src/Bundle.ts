@@ -1,4 +1,6 @@
-import { FileSystem } from "@effect/platform"
+import {
+  FileSystem,
+} from "@effect/platform"
 import {
   Array,
   Context,
@@ -10,7 +12,9 @@ import {
   Record,
   Schema as S,
 } from "effect"
-import { importJsBlob } from "./esm.ts"
+import {
+  importJsBlob,
+} from "./esm.ts"
 
 export const BundleEntrypointMetaKey: unique symbol = Symbol.for(
   "effect-bundler/BundleEntrypointMetaKey",

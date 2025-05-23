@@ -1,6 +1,17 @@
-import { Console, Data, Effect, Layer, pipe, Stream } from "effect"
-import { FileRouter } from "effect-bundler"
-import { watchFileChanges } from "effect-bundler/files"
+import {
+  Console,
+  Data,
+  Effect,
+  Layer,
+  pipe,
+  Stream,
+} from "effect"
+import {
+  FileRouter,
+} from "effect-bundler"
+import {
+  watchFileChanges,
+} from "effect-bundler/files"
 
 const RoutesDir = import.meta.dir + "/routes"
 

@@ -1,8 +1,23 @@
-import { HttpServerResponse } from "@effect/platform"
-import { HttpRouter } from "@effect/platform"
-import { expect, it, test } from "bun:test"
-import { Effect } from "effect"
-import { BunBundle, BundleHttp, effectFn, TestHttpClient } from "effect-bundler"
+import {
+  HttpServerResponse,
+} from "@effect/platform"
+import {
+  HttpRouter,
+} from "@effect/platform"
+import {
+  expect,
+  it,
+  test,
+} from "bun:test"
+import {
+  Effect,
+} from "effect"
+import {
+  BunBundle,
+  BundleHttp,
+  effectFn,
+  TestHttpClient,
+} from "effect-bundler"
 import IndexHtml from "../static/react-dashboard.html" with { type: "file" }
 
 const effect = effectFn(

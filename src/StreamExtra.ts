@@ -1,6 +1,18 @@
-import { Cause, Effect, Fiber, Predicate, Runtime, Stream } from "effect"
-import { dual } from "effect/Function"
-import { runForEachChunk, StreamTypeId } from "effect/Stream"
+import {
+  Cause,
+  Effect,
+  Fiber,
+  Predicate,
+  Runtime,
+  Stream,
+} from "effect"
+import {
+  dual,
+} from "effect/Function"
+import {
+  runForEachChunk,
+  StreamTypeId,
+} from "effect/Stream"
 
 /**
  * Patched version of original Stream.toReadableStreamRuntime (v3.14.4) to

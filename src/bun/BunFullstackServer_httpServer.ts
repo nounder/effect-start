@@ -13,7 +13,9 @@ import type * as FileSystem from "@effect/platform/FileSystem"
 import * as Headers from "@effect/platform/Headers"
 import * as App from "@effect/platform/HttpApp"
 import * as IncomingMessage from "@effect/platform/HttpIncomingMessage"
-import type { HttpMethod } from "@effect/platform/HttpMethod"
+import type {
+  HttpMethod,
+} from "@effect/platform/HttpMethod"
 import * as Server from "@effect/platform/HttpServer"
 import * as Error from "@effect/platform/HttpServerError"
 import * as ServerRequest from "@effect/platform/HttpServerRequest"
@@ -22,7 +24,11 @@ import type * as Multipart from "@effect/platform/Multipart"
 import type * as Path from "@effect/platform/Path"
 import * as Socket from "@effect/platform/Socket"
 import * as UrlParams from "@effect/platform/UrlParams"
-import type { ServeOptions, Server as BunServer, ServerWebSocket } from "bun"
+import type {
+  ServeOptions,
+  Server as BunServer,
+  ServerWebSocket,
+} from "bun"
 import * as Config from "effect/Config"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
@@ -31,7 +37,9 @@ import * as FiberSet from "effect/FiberSet"
 import * as Inspectable from "effect/Inspectable"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
-import type { ReadonlyRecord } from "effect/Record"
+import type {
+  ReadonlyRecord,
+} from "effect/Record"
 import type * as Runtime from "effect/Runtime"
 import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"

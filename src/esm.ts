@@ -1,4 +1,10 @@
-import { Array, Iterable, Order, pipe, Record } from "effect"
+import {
+  Array,
+  Iterable,
+  Order,
+  pipe,
+  Record,
+} from "effect"
 import * as NFS from "node:fs"
 import * as NFSP from "node:fs/promises"
 import * as NPath from "node:path"

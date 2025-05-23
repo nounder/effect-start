@@ -1,7 +1,10 @@
 /**
  * Tests are skipped here because they write to a filesystem.
  */
-import { expect, it } from "bun:test"
+import {
+  expect,
+  it,
+} from "bun:test"
 import * as Esm from "./esm.ts"
 
 it.skip("import js bundle", async () => {

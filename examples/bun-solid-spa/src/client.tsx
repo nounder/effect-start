@@ -1,7 +1,11 @@
 import "effect-bundler/client"
 
-import { render } from "solid-js/web"
-import { App } from "./App.tsx"
+import {
+  render,
+} from "solid-js/web"
+import {
+  App,
+} from "./App.tsx"
 
 /**
  * Live reload on file change in development.

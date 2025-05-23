@@ -4,9 +4,19 @@ import {
   HttpServer,
   HttpServerResponse,
 } from "@effect/platform"
-import { BunContext, BunHttpServer, BunRuntime } from "@effect/platform-bun"
-import { Effect, Layer, pipe } from "effect"
-import { ViteDevServer } from "effect-bundler/vite"
+import {
+  BunContext,
+  BunHttpServer,
+  BunRuntime,
+} from "@effect/platform-bun"
+import {
+  Effect,
+  Layer,
+  pipe,
+} from "effect"
+import {
+  ViteDevServer,
+} from "effect-bundler/vite"
 
 const App = HttpRouter.empty.pipe(
   HttpRouter.get(

@@ -1,4 +1,7 @@
-import { type BunPlugin, type Import } from "bun"
+import {
+  type BunPlugin,
+  type Import,
+} from "bun"
 import * as NPath from "node:path"
 
 export type ImportMap = ReadonlyMap<string, Import[]>

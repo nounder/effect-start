@@ -1,8 +1,21 @@
-import { FileSystem } from "@effect/platform"
-import { Link, Outlet } from "@tanstack/react-router"
-import { expect, it, test } from "bun:test"
-import { MemoryFileSystem } from "effect-memfs"
-import { effectFn } from "../../../src/testing.ts"
+import {
+  FileSystem,
+} from "@effect/platform"
+import {
+  Link,
+  Outlet,
+} from "@tanstack/react-router"
+import {
+  expect,
+  it,
+  test,
+} from "bun:test"
+import {
+  MemoryFileSystem,
+} from "effect-memfs"
+import {
+  effectFn,
+} from "../../../src/testing.ts"
 import * as TanstackRouter from "./TanstackRouter.tsx"
 
 const Files = {

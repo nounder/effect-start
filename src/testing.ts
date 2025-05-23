@@ -1,5 +1,15 @@
-import { Array, Effect, identity, Layer, Logger, pipe, Scope } from "effect"
-import type { YieldWrap } from "effect/Utils"
+import {
+  Array,
+  Effect,
+  identity,
+  Layer,
+  Logger,
+  pipe,
+  Scope,
+} from "effect"
+import type {
+  YieldWrap,
+} from "effect/Utils"
 
 /**
  * Creates a scoped Effects and runs is asynchronously.

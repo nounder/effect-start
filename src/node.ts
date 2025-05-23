@@ -1,5 +1,11 @@
-import { Error, FileSystem } from "@effect/platform"
-import { Effect, Stream } from "effect"
+import {
+  Error,
+  FileSystem,
+} from "@effect/platform"
+import {
+  Effect,
+  Stream,
+} from "effect"
 import * as NFS from "node:fs"
 
 /**

@@ -1,7 +1,16 @@
-import { Buffer } from "node:buffer"
-import { IncomingMessage, ServerResponse } from "node:http"
-import { Socket } from "node:net"
-import type { ViteDevServer } from "vite"
+import {
+  Buffer,
+} from "node:buffer"
+import {
+  IncomingMessage,
+  ServerResponse,
+} from "node:http"
+import {
+  Socket,
+} from "node:net"
+import type {
+  ViteDevServer,
+} from "vite"
 
 export async function createViteDevServerHandler(server: ViteDevServer) {
   async function handler(req: Request): Promise<Response> {

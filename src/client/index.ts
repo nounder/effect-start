@@ -1,7 +1,10 @@
 /// <reference lib="dom" />
 /// <reference lib="dom.iterable" />
 
-import type { BundleEvent, BundleManifest } from "../Bundle.ts"
+import type {
+  BundleEvent,
+  BundleManifest,
+} from "../Bundle.ts"
 
 function reload() {
   window.location.reload()

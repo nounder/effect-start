@@ -1,7 +1,18 @@
-import { HttpRouter, HttpServerResponse } from "@effect/platform"
-import { SolidPlugin } from "bun-plugin-solid"
-import { BunBundle, BundleHttp, BunTailwindPlugin } from "effect-bundler"
-import { BunStart } from "effect-bundler/bun"
+import {
+  HttpRouter,
+  HttpServerResponse,
+} from "@effect/platform"
+import {
+  SolidPlugin,
+} from "bun-plugin-solid"
+import {
+  BunBundle,
+  BundleHttp,
+  BunTailwindPlugin,
+} from "effect-bundler"
+import {
+  BunStart,
+} from "effect-bundler/bun"
 
 export const ClientBundle = BunBundle.bundleClient({
   entrypoints: [],

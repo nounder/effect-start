@@ -4,9 +4,17 @@ import {
   HttpServerRequest,
   HttpServerResponse,
 } from "@effect/platform"
-import { Effect } from "effect"
-import { Bundle, BundleHttp } from "."
-import { type ClientBundle, ClientKey } from "./Bundle.ts"
+import {
+  Effect,
+} from "effect"
+import {
+  Bundle,
+  BundleHttp,
+} from "."
+import {
+  type ClientBundle,
+  ClientKey,
+} from "./Bundle.ts"
 
 type SsrRenderer = (req: Request) => PromiseLike<Response>
 

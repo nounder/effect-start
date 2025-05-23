@@ -1,6 +1,9 @@
 import "effect-bundler/client"
 
-import { useEffect, useState } from "react"
+import {
+  useEffect,
+  useState,
+} from "react"
 
 export function App() {
   const [message, setMessage] = useState("Hello, Effect Bundler!!!!!")

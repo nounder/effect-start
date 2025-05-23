@@ -1,4 +1,6 @@
-import { Outlet } from "@tanstack/react-router"
+import {
+  Outlet,
+} from "@tanstack/react-router"
 import React from "react"
 
 export default function UsersLayout() {

@@ -1,8 +1,19 @@
-import { HttpServerRequest, HttpServerResponse } from "@effect/platform"
-import { expect, it } from "bun:test"
-import { Effect, pipe } from "effect"
+import {
+  HttpServerRequest,
+  HttpServerResponse,
+} from "@effect/platform"
+import {
+  expect,
+  it,
+} from "bun:test"
+import {
+  Effect,
+  pipe,
+} from "effect"
 import * as TestHttpClient from "./TestHttpClient.ts"
-import { effectFn } from "./testing.ts"
+import {
+  effectFn,
+} from "./testing.ts"
 
 const App = Effect.gen(function*() {
   const req = yield* HttpServerRequest.HttpServerRequest

@@ -4,11 +4,21 @@ import {
   HttpServerRequest,
   HttpServerResponse,
 } from "@effect/platform"
-import { Effect, Layer, pipe } from "effect"
-import { Context } from "effect"
+import {
+  Effect,
+  Layer,
+  pipe,
+} from "effect"
+import {
+  Context,
+} from "effect"
 import * as vite from "vite"
-import { createViteConfig } from "./config.ts"
-import { createViteDevServerHandler } from "./dev.ts"
+import {
+  createViteConfig,
+} from "./config.ts"
+import {
+  createViteDevServerHandler,
+} from "./dev.ts"
 
 export class ViteDevServer extends Context.Tag("ViteDevServer")<ViteDevServer, {
   fetch: (req: Request) => Promise<Response> | Response

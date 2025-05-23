@@ -90,7 +90,10 @@ export const router = createRouter({
 ### Root Layout (`src/routes/+page.tsx`)
 
 ```tsx
-import { Link, Outlet } from "@tanstack/react-router"
+import {
+  Link,
+  Outlet,
+} from "@tanstack/react-router"
 import React from "react"
 
 export default function RootLayout() {

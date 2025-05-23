@@ -1,5 +1,9 @@
-import type { BunPlugin } from "bun"
-import { Array } from "effect"
+import type {
+  BunPlugin,
+} from "bun"
+import {
+  Array,
+} from "effect"
 
 export const make = (importer?: () => Promise<any>): BunPlugin => {
   return {

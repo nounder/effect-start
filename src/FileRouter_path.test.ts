@@ -1,5 +1,11 @@
-import { describe, expect, test } from "bun:test"
-import { extractSegments } from "./FileRouter.ts"
+import {
+  describe,
+  expect,
+  test,
+} from "bun:test"
+import {
+  extractSegments,
+} from "./FileRouter.ts"
 test("empty path as null", () => {
   expect(extractSegments("")).toEqual([])
   expect(extractSegments("/")).toEqual([])

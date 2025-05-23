@@ -1,5 +1,11 @@
-import { A, Router } from "@solidjs/router"
-import { createSignal, onMount } from "solid-js"
+import {
+  A,
+  Router,
+} from "@solidjs/router"
+import {
+  createSignal,
+  onMount,
+} from "solid-js"
 import EffectLogo from "../assets/EffectLogo.png"
 
 const Routes = [

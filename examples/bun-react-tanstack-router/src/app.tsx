@@ -1,4 +1,6 @@
-import { RouterProvider } from "@tanstack/react-router"
+import {
+  RouterProvider,
+} from "@tanstack/react-router"
 import React from "react"
 
 // Import the auto-generated router from the macro

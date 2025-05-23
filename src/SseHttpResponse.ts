@@ -1,5 +1,14 @@
-import { HttpServerResponse } from "@effect/platform"
-import { Console, Duration, Effect, pipe, Schedule, Stream } from "effect"
+import {
+  HttpServerResponse,
+} from "@effect/platform"
+import {
+  Console,
+  Duration,
+  Effect,
+  pipe,
+  Schedule,
+  Stream,
+} from "effect"
 import * as StreamExtra from "./StreamExtra.ts"
 
 export const make = <T = any>(stream: Stream.Stream<T, any>, options?: {

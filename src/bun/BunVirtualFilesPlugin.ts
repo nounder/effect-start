@@ -1,4 +1,7 @@
-import type { BunPlugin, Loader } from "bun"
+import type {
+  BunPlugin,
+  Loader,
+} from "bun"
 
 type VirtualFiles = Record<string, string>
 

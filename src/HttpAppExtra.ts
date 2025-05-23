@@ -3,8 +3,17 @@ import {
   HttpServerRequest,
   HttpServerResponse,
 } from "@effect/platform"
-import { RouteNotFound } from "@effect/platform/HttpServerError"
-import { Array, Cause, Effect, Match, pipe, Predicate } from "effect"
+import {
+  RouteNotFound,
+} from "@effect/platform/HttpServerError"
+import {
+  Array,
+  Cause,
+  Effect,
+  Match,
+  pipe,
+  Predicate,
+} from "effect"
 
 /**
  * Sequentially call provided HttpApps until first non-404 response

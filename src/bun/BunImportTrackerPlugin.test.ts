@@ -1,4 +1,7 @@
-import { expect, test } from "bun:test"
+import {
+  expect,
+  test,
+} from "bun:test"
 import * as BunImportTrackerPlugin from "./BunImportTrackerPlugin.ts"
 import * as BunVirtualFilesPlugin from "./BunVirtualFilesPlugin.ts"
 

@@ -1,6 +1,16 @@
-import { HttpServerResponse } from "@effect/platform"
-import { RouteNotFound } from "@effect/platform/HttpServerError"
-import { Cause, Effect, Match, pipe, Predicate } from "effect"
+import {
+  HttpServerResponse,
+} from "@effect/platform"
+import {
+  RouteNotFound,
+} from "@effect/platform/HttpServerError"
+import {
+  Cause,
+  Effect,
+  Match,
+  pipe,
+  Predicate,
+} from "effect"
 
 /**
  * Groups: function, path

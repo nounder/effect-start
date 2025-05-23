@@ -4,8 +4,15 @@ import {
   HttpServerRequest,
   HttpServerResponse,
 } from "@effect/platform"
-import { RouteNotFound } from "@effect/platform/HttpServerError"
-import { Context, Effect, Scope, Stream } from "effect"
+import {
+  RouteNotFound,
+} from "@effect/platform/HttpServerError"
+import {
+  Context,
+  Effect,
+  Scope,
+  Stream,
+} from "effect"
 import * as NPath from "node:path"
 import * as NUrl from "node:url"
 import {

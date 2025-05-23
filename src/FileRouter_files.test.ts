@@ -1,7 +1,14 @@
-import { expect, it } from "bun:test"
-import { MemoryFileSystem } from "effect-memfs"
+import {
+  expect,
+  it,
+} from "bun:test"
+import {
+  MemoryFileSystem,
+} from "effect-memfs"
 import * as FileRouter from "./FileRouter.ts"
-import { effectFn } from "./testing.ts"
+import {
+  effectFn,
+} from "./testing.ts"
 
 const Files = {
   "/routes/about/layout.tsx": "",

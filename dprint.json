@@ -10,7 +10,8 @@
     "jsx.forceNewLinesSurroundingContent": true,
     "memberExpression.linePerExpression": true,
     "enumDeclaration.memberSpacing": "newLine",
-    "exportDeclaration.forceMultiLine": "always"
+    "exportDeclaration.forceMultiLine": "always",
+    "importDeclaration.forceMultiLine": "always"
   },
   "markup": {
     "maxAttrsPerLine": 1,
