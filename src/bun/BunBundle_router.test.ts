@@ -27,9 +27,11 @@ describe("explicit bundle route", () => {
   )
 
   const effect = effectFn(
-    BunBundle.bundleClient({
-      ...BunBundle.configFromHttpRouter(Router),
-    }).layer,
+    BunBundle
+      .bundleClient({
+        ...BunBundle.configFromHttpRouter(Router),
+      })
+      .layer,
   )
 
   const Client = TestHttpClient.make(Router)
@@ -76,9 +78,11 @@ describe("implicit bundle route", () => {
   )
 
   const effect = effectFn(
-    BunBundle.bundleClient({
-      ...BunBundle.configFromHttpRouter(Router),
-    }).layer,
+    BunBundle
+      .bundleClient({
+        ...BunBundle.configFromHttpRouter(Router),
+      })
+      .layer,
   )
 
   const Client = TestHttpClient.make(Router)

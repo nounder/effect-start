@@ -11,7 +11,8 @@ async function loadAllEntrypoints() {
   const manifest: BundleManifest = await fetch("/_bundle/manifest.json")
     .then(v => v.json())
 
-  Object.keys(manifest.artifacts)
+  Object
+    .keys(manifest.artifacts)
     .filter(v => v.endsWith(".js"))
     .forEach((outFile) => {
       console.log(outFile)

@@ -57,14 +57,16 @@ export async function importJsBundle<M = unknown>(
     Array.map(([path, blob]) => {
       const fullPath = `${dir}/${path}`
 
-      return blob.arrayBuffer()
+      return blob
+        .arrayBuffer()
         .then(v => NFSP.writeFile(fullPath, Buffer.from(v)))
     }),
   ))
 
   const bundleModule = await import(`${dir}/${entrypoint}`)
 
-  await NFSP.rmdir(dir, { recursive: true })
+  await NFSP
+    .rmdir(dir, { recursive: true })
     // if called concurrently, file sometimes may be deleted
     // safe ignore when this happens
     .catch(() => {})

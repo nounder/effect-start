@@ -57,7 +57,8 @@ export function entrypoint<K extends BundleKey>(
         ? [
           // try paths from all parent directories in case absolute path is passed,
           // like it is the case for `import(f, { type: "file" })`
-          ...uri.split(NPath.sep)
+          ...uri
+            .split(NPath.sep)
             .map((_, i, a) => NPath.join(...a.slice(i))),
         ]
         : [
@@ -214,7 +215,8 @@ export const renderPromise = <I extends BundleKey>(
 
 const renderBlob = (blob: Blob) =>
   Effect.gen(function*() {
-    const bytes = yield* Effect.promise(() => blob.arrayBuffer())
+    const bytes = yield* Effect
+      .promise(() => blob.arrayBuffer())
       .pipe(
         Effect.andThen(v => new Uint8Array(v)),
       )

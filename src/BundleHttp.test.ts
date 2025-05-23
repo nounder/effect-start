@@ -6,11 +6,13 @@ import { BunBundle, BundleHttp, effectFn, TestHttpClient } from "effect-bundler"
 import IndexHtml from "../static/react-dashboard.html" with { type: "file" }
 
 const effect = effectFn(
-  BunBundle.bundleClient({
-    entrypoints: [
-      IndexHtml,
-    ],
-  }).layer,
+  BunBundle
+    .bundleClient({
+      entrypoints: [
+        IndexHtml,
+      ],
+    })
+    .layer,
 )
 
 test("entrypoint", () => {
