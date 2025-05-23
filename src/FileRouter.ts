@@ -5,20 +5,21 @@ import {
   Effect,
 } from "effect"
 
-export type PathSegment =
-  | {
-    type: "Literal"
-    text: string // eg. "users"
-  }
-  | {
-    type: "Param"
-    param: string // eg. "userId"
-    text: string // eg. "$userId"
-  }
-  | {
-    type: "Splat"
-    text: "$"
-  }
+type LiteralSegment = {
+  type: "Literal"
+  text: string // eg. "users"
+}
+
+type ParamSegment = {
+  type: "Param"
+  param: string // eg. "userId"
+  text: string // eg. "$userId"
+}
+
+type SplatSegment = {
+  type: "Splat"
+  text: "$"
+}
 
 export type Extension = "tsx" | "jsx" | "ts" | "js"
 
@@ -40,19 +41,28 @@ export type HandleSegment =
   }
 
 export type Segment =
-  | PathSegment
+  | LiteralSegment
+  | ParamSegment
+  | SplatSegment
   | HandleSegment
 
-export type Route = [
-  ...Segment[],
-  HandleSegment[],
-]
+export type Route =
+  | [
+    ...(LiteralSegment | ParamSegment)[],
+    HandleSegment,
+  ]
+  // Route with a splat segment must be the last segment before the handle
+  | [
+    ...(LiteralSegment | ParamSegment)[],
+    SplatSegment,
+    HandleSegment,
+  ]
 
 const ROUTE_PATH_REGEX = /^\/?(.*\/?)(server|page|layout)\.(jsx?|tsx?)$/
 
 type RoutePathMatch = [path: string, kind: string, ext: string]
 
-export function extractSegments(path: string): Segment[] | null {
+export function parsePath(path: string): Segment[] | null {
   const trimmedPath = path.replace(/(^\/)|(\/$)/g, "") // trim leading/trailing slashes
 
   if (trimmedPath === "") {
@@ -116,9 +126,11 @@ export function extractSegments(path: string): Segment[] | null {
   return segments as Segment[]
 }
 
-function extractRoute(path: string): Route | null {
-  const segs = extractSegments(path)
-  const handle = segs?.at(-1)
+export function extractRoute(path: string): Route | null {
+  const segs = parsePath(path)
+  if (!segs) return null
+
+  const handle = segs.at(-1)
 
   if (
     !handle
@@ -129,6 +141,35 @@ function extractRoute(path: string): Route | null {
     return null
   }
 
+  // Validate Route constraints: splat segments must be the last segment before the handle
+  const pathSegments = segs.slice(0, -1) // All segments except the handle
+  const splatIndex = pathSegments.findIndex(seg => seg.type === "Splat")
+
+  if (splatIndex !== -1) {
+    // If there's a splat, it must be the last path segment
+    if (splatIndex !== pathSegments.length - 1) {
+      return null // Invalid: splat is not the last path segment
+    }
+
+    // Validate that all segments before the splat are literal or param
+    for (let i = 0; i < splatIndex; i++) {
+      const seg = pathSegments[i]
+      if (seg.type !== "Literal" && seg.type !== "Param") {
+        return null
+      }
+    }
+  } else {
+    // No splat: validate that all path segments are literal or param
+    for (const seg of pathSegments) {
+      if (
+        seg.type !== "Literal"
+        && seg.type !== "Param"
+      ) {
+        return null
+      }
+    }
+  }
+
   return segs as Route
 }
 
@@ -137,32 +178,44 @@ function extractRoute(path: string): Route | null {
  *
  * Routes are sorted by depth, like so:
  * - layout.tsx
- * - $users/page.tsx
- * - $users/$userId/page.tsx
+ * - users/page.tsx
+ * - users/$userId/page.tsx
  * - $/page.tsx
  */
 export function walkRoutes(dir: string) {
   return Effect.gen(function*() {
     const fs = yield* FileSystem.FileSystem
-    const baseDir = dir.replace(/\/$/, "")
     const files = yield* fs.readDirectory(dir, { recursive: true })
 
     const filteredFiles = files
       .map(f => f.match(ROUTE_PATH_REGEX) as RoutePathMatch)
       .filter(Boolean)
-      .toSorted((a, b) =>
-        (a.length > b.length ? 1 : -1)
-        + a[0].localeCompare(b[1])
-        + a[1].localeCompare(b[1])
-      )
       .map(v => {
         const path = v[0]
-        const route = extractRoute(path)!
+        const route = extractRoute(path)
+        const segments = path.split("/")
+        const splat = /(^|\/)\$\//.test(path)
 
         return {
           path,
           route,
+          splat,
+          depth: segments.length,
         }
+      })
+      .filter(f => f.route !== null)
+      .toSorted((a, b) => {
+        const aSplat = +a.splat
+        const bSplat = +b.splat
+
+        return (
+          // splat is a dominant factor
+          (aSplat - bSplat) * 1000
+          // depth is reversed for splats
+          + (a.depth - b.depth) * (1 - 2 * aSplat)
+          // lexicographic comparison as tiebreaker
+          + a.path.localeCompare(b.path) * 0.001
+        )
       })
 
     return filteredFiles

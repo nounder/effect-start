@@ -4,35 +4,37 @@ import {
   test,
 } from "bun:test"
 import {
-  extractSegments,
+  extractRoute,
+  parsePath,
 } from "./FileRouter.ts"
+
 test("empty path as null", () => {
-  expect(extractSegments("")).toEqual([])
-  expect(extractSegments("/")).toEqual([])
+  expect(parsePath("")).toEqual([])
+  expect(parsePath("/")).toEqual([])
 })
 
 test("literal segments", () => {
-  expect(extractSegments("users")).toEqual([{ type: "Literal", text: "users" }])
-  expect(extractSegments("/users")).toEqual([{
+  expect(parsePath("users")).toEqual([{ type: "Literal", text: "users" }])
+  expect(parsePath("/users")).toEqual([{
     type: "Literal",
     text: "users",
   }])
-  expect(extractSegments("users/")).toEqual([{
+  expect(parsePath("users/")).toEqual([{
     type: "Literal",
     text: "users",
   }])
-  expect(extractSegments("/users/create")).toEqual([
+  expect(parsePath("/users/create")).toEqual([
     { type: "Literal", text: "users" },
     { type: "Literal", text: "create" },
   ])
-  expect(extractSegments("path with spaces")).toEqual(null)
+  expect(parsePath("path with spaces")).toEqual(null)
 })
 
 test("dynamic parameters", () => {
-  expect(extractSegments("$userId")).toEqual([
+  expect(parsePath("$userId")).toEqual([
     { type: "Param", param: "userId", text: "$userId" },
   ])
-  expect(extractSegments("/users/$userId")).toEqual([
+  expect(parsePath("/users/$userId")).toEqual([
     {
       type: "Literal",
       text: "users",
@@ -43,7 +45,7 @@ test("dynamic parameters", () => {
       text: "$userId",
     },
   ])
-  expect(extractSegments("/posts/$postId/comments/$commentId")).toEqual([
+  expect(parsePath("/posts/$postId/comments/$commentId")).toEqual([
     {
       type: "Literal",
       text: "posts",
@@ -66,13 +68,13 @@ test("dynamic parameters", () => {
 })
 
 test("rest parameters", () => {
-  expect(extractSegments("$")).toEqual([
+  expect(parsePath("$")).toEqual([
     {
       type: "Splat",
       text: "$",
     },
   ])
-  expect(extractSegments("/docs/$")).toEqual([
+  expect(parsePath("/docs/$")).toEqual([
     {
       type: "Literal",
       text: "docs",
@@ -82,7 +84,7 @@ test("rest parameters", () => {
       text: "$",
     },
   ])
-  expect(extractSegments("/user/$/details")).toEqual([
+  expect(parsePath("/user/$/details")).toEqual([
     { type: "Literal", text: "user" },
     {
       type: "Splat",
@@ -90,13 +92,13 @@ test("rest parameters", () => {
     },
     { type: "Literal", text: "details" },
   ])
-  expect(extractSegments("/$")).toEqual([
+  expect(parsePath("/$")).toEqual([
     {
       type: "Splat",
       text: "$",
     },
   ])
-  expect(extractSegments("/test/$")).toEqual([
+  expect(parsePath("/test/$")).toEqual([
     {
       type: "Literal",
       text: "test",
@@ -109,13 +111,13 @@ test("rest parameters", () => {
 })
 
 test("server handles", () => {
-  expect(extractSegments("server.ts")).toEqual([
+  expect(parsePath("server.ts")).toEqual([
     {
       type: "ServerHandle",
       extension: "ts",
     },
   ])
-  expect(extractSegments("/api/server.js")).toEqual([
+  expect(parsePath("/api/server.js")).toEqual([
     {
       type: "Literal",
       text: "api",
@@ -128,13 +130,13 @@ test("server handles", () => {
 })
 
 test("page handles", () => {
-  expect(extractSegments("page.tsx")).toEqual([
+  expect(parsePath("page.tsx")).toEqual([
     {
       type: "PageHandle",
       extension: "tsx",
     },
   ])
-  expect(extractSegments("/blog/page.jsx")).toEqual([
+  expect(parsePath("/blog/page.jsx")).toEqual([
     {
       type: "Literal",
       text: "blog",
@@ -147,7 +149,7 @@ test("page handles", () => {
 })
 
 test("complex combinations", () => {
-  expect(extractSegments("/users/$userId/posts/page.tsx")).toEqual(
+  expect(parsePath("/users/$userId/posts/page.tsx")).toEqual(
     [
       {
         type: "Literal",
@@ -168,7 +170,7 @@ test("complex combinations", () => {
       },
     ],
   )
-  expect(extractSegments("/api/v1/$/server.ts")).toEqual([
+  expect(parsePath("/api/v1/$/server.ts")).toEqual([
     { type: "Literal", text: "api" },
     { type: "Literal", text: "v1" },
     { type: "Splat", text: "$" },
@@ -177,13 +179,13 @@ test("complex combinations", () => {
 })
 
 test("invalid paths", () => {
-  expect(extractSegments("/$...")).toEqual(null) // $... is no longer valid
-  expect(extractSegments("invalid.ts")).toEqual(null) // Invalid handle
-  expect(extractSegments("abc/def/$a/$/page.xyz")).toEqual(null) // Invalid extension
+  expect(parsePath("/$...")).toEqual(null) // $... is no longer valid
+  expect(parsePath("invalid.ts")).toEqual(null) // Invalid handle
+  expect(parsePath("abc/def/$a/$/page.xyz")).toEqual(null) // Invalid extension
 })
 
 test("leading/trailing/multiple slashes", () => {
-  expect(extractSegments("//users///$id//")).toEqual([
+  expect(parsePath("//users///$id//")).toEqual([
     { type: "Literal", text: "users" },
     { type: "Param", param: "id", text: "$id" },
   ])
@@ -191,19 +193,75 @@ test("leading/trailing/multiple slashes", () => {
 
 test("param and splat types", () => {
   // Splat is just $
-  expect(extractSegments("$")).toEqual([{
+  expect(parsePath("$")).toEqual([{
     type: "Splat",
     text: "$",
   }]) // $ is now a valid Splat
 
   // Min length for Param $a is 2
-  expect(extractSegments("$a")).toEqual([{
+  expect(parsePath("$a")).toEqual([{
     type: "Param",
     param: "a",
     text: "$a",
   }])
 
   // Splat variations that are no longer valid
-  expect(extractSegments("$...")).toEqual(null) // $... is no longer valid
-  expect(extractSegments("$...ab")).toEqual(null) // $...ab is no longer valid
+  expect(parsePath("$...")).toEqual(null) // $... is no longer valid
+  expect(parsePath("$...ab")).toEqual(null) // $...ab is no longer valid
+})
+
+test("route validation - valid routes without splat", () => {
+  expect(extractRoute("page.tsx")).toEqual([
+    { type: "PageHandle", extension: "tsx" },
+  ])
+
+  expect(extractRoute("users/page.tsx")).toEqual([
+    { type: "Literal", text: "users" },
+    { type: "PageHandle", extension: "tsx" },
+  ])
+
+  expect(extractRoute("users/$userId/page.tsx")).toEqual([
+    { type: "Literal", text: "users" },
+    { type: "Param", param: "userId", text: "$userId" },
+    { type: "PageHandle", extension: "tsx" },
+  ])
+})
+
+test("route validation - valid routes with splat", () => {
+  expect(extractRoute("$/page.tsx")).toEqual([
+    { type: "Splat", text: "$" },
+    { type: "PageHandle", extension: "tsx" },
+  ])
+
+  expect(extractRoute("docs/$/page.tsx")).toEqual([
+    { type: "Literal", text: "docs" },
+    { type: "Splat", text: "$" },
+    { type: "PageHandle", extension: "tsx" },
+  ])
+
+  expect(extractRoute("api/$version/$/server.ts")).toEqual([
+    { type: "Literal", text: "api" },
+    { type: "Param", param: "version", text: "$version" },
+    { type: "Splat", text: "$" },
+    { type: "ServerHandle", extension: "ts" },
+  ])
+})
+
+test("route validation - invalid routes with splat in wrong position", () => {
+  // Splat must be the last segment before handle
+  expect(extractRoute("$/users/page.tsx")).toEqual(null)
+  expect(extractRoute("docs/$/extra/page.tsx")).toEqual(null)
+  expect(extractRoute("api/$/v1/$id/server.ts")).toEqual(null)
+})
+
+test("route validation - routes without handles", () => {
+  expect(extractRoute("users")).toEqual(null)
+  expect(extractRoute("users/$userId")).toEqual(null)
+  expect(extractRoute("docs/$")).toEqual(null)
+})
+
+test("route validation - invalid file extensions", () => {
+  expect(extractRoute("page.py")).toEqual(null)
+  expect(extractRoute("server.exe")).toEqual(null)
+  expect(extractRoute("layout.html")).toEqual(null)
 })

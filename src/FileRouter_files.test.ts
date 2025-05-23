@@ -3,6 +3,9 @@ import {
   it,
 } from "bun:test"
 import {
+  Effect,
+} from "effect"
+import {
   MemoryFileSystem,
 } from "effect-memfs"
 import * as FileRouter from "./FileRouter.ts"
@@ -15,17 +18,17 @@ const Files = {
   "/routes/about/page.tsx": "",
   "/routes/users/page.tsx": "",
   "/routes/users/layout.tsx": "",
-  "/routes/users/[userId]/page.tsx": "",
+  "/routes/users/$userId/page.tsx": "",
   "/routes/layout.tsx": "",
 }
 
-const effect = effectFn(
-  MemoryFileSystem.layerWith(Files),
-)
+const effect = effectFn()
 
 it("walks routes", () =>
   effect(function*() {
-    const files = yield* FileRouter.walkRoutes("/routes")
+    const files = yield* FileRouter.walkRoutes("/routes").pipe(
+      Effect.provide(MemoryFileSystem.layerWith(Files)),
+    )
 
     expect(files.map(v => v.path)).toEqual([
       "layout.tsx",
@@ -33,6 +36,30 @@ it("walks routes", () =>
       "about/page.tsx",
       "users/layout.tsx",
       "users/page.tsx",
-      "users/[userId]/page.tsx",
+      "users/$userId/page.tsx",
+    ])
+  }))
+
+it("walks routes with splat", () =>
+  effect(function*() {
+    const files = yield* FileRouter.walkRoutes("/routes").pipe(
+      Effect.provide(
+        MemoryFileSystem.layerWith({
+          ...Files,
+          "/routes/$/page.tsx": "",
+          "/routes/users/$/page.tsx": "",
+        }),
+      ),
+    )
+
+    expect(files.map(v => v.path)).toEqual([
+      "layout.tsx",
+      "about/layout.tsx",
+      "about/page.tsx",
+      "users/layout.tsx",
+      "users/page.tsx",
+      "users/$userId/page.tsx",
+      "users/$/page.tsx",
+      "$/page.tsx",
     ])
   }))
