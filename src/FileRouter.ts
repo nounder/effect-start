@@ -1,8 +1,5 @@
 import { FileSystem } from "@effect/platform"
 import { Effect } from "effect"
-import * as NFS from "node:fs"
-import * as NFSp from "node:fs/promises"
-import * as NPath from "node:path"
 
 type PathSegment =
   | {
@@ -96,7 +93,7 @@ export function extractSegments(path: string): Segment[] | null {
       if (/^\[\.{3}\w+\]$/.test(s)) {
         const name = s.substring(4, s.length - 1)
         if (name !== "") {
-          return { type: "RestParam", text: s }
+          return { type: "RestParam", text: name }
         }
       }
 
@@ -125,12 +122,13 @@ export function extractSegments(path: string): Segment[] | null {
 
 export function extractRoute(path: string): Route | null {
   const segs = extractSegments(path)
+  const handle = segs?.at(-1)
 
   if (
-    !segs
-    || segs.length === 0
-    || segs.at(-1)?.type !== "ServerHandle"
-    || segs.at(-1)?.type !== "PageHandle"
+    !handle
+    || (handle.type !== "ServerHandle"
+      && handle.type !== "PageHandle"
+      && handle.type !== "LayoutHandle")
   ) {
     return null
   }

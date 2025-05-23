@@ -57,15 +57,15 @@ test("optional parameters", () => {
 
 test("rest parameters", () => {
   expect(extractSegments("[...files]")).toEqual([
-    { type: "RestParam", text: "[...files]" },
+    { type: "RestParam", text: "files" },
   ])
   expect(extractSegments("/docs/[...slug]")).toEqual([
     { type: "Literal", text: "docs" },
-    { type: "RestParam", text: "[...slug]" },
+    { type: "RestParam", text: "slug" },
   ])
   expect(extractSegments("/user/[...path]/details")).toEqual([
     { type: "Literal", text: "user" },
-    { type: "RestParam", text: "[...path]" },
+    { type: "RestParam", text: "path" },
     { type: "Literal", text: "details" },
   ])
 })
@@ -103,7 +103,7 @@ test("complex combinations", () => {
   expect(extractSegments("/api/v1/[...proxy]/server.ts")).toEqual([
     { type: "Literal", text: "api" },
     { type: "Literal", text: "v1" },
-    { type: "RestParam", text: "[...proxy]" },
+    { type: "RestParam", text: "proxy" },
     { type: "ServerHandle", extension: "ts" },
   ])
 })
@@ -159,11 +159,11 @@ test("param types and misclassification", () => {
   expect(extractSegments("[...]")).toEqual(null)
   expect(extractSegments("[...a]")).toEqual([{
     type: "RestParam",
-    text: "[...a]",
+    text: "a",
   }])
   expect(extractSegments("[...ab]")).toEqual([{
     type: "RestParam",
-    text: "[...ab]",
+    text: "ab",
   }])
 
   // Ensure no misclassification between param types
