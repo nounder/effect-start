@@ -1,6 +1,6 @@
 import { createRoot } from "react-dom/client"
 import { RouterProvider } from "@tanstack/react-router"
-import { router } from "./routes"
+import { router } from "./routes.macro.ts" with { type: "macro" }
 
 export function App() {
   return <RouterProvider router={router} />
