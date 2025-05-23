@@ -71,27 +71,27 @@ test("rest parameters", () => {
 })
 
 test("server handles", () => {
-  expect(extractSegments("+server.ts")).toEqual([
+  expect(extractSegments("server.ts")).toEqual([
     { type: "ServerHandle", extension: "ts" },
   ])
-  expect(extractSegments("/api/+server.js")).toEqual([
+  expect(extractSegments("/api/server.js")).toEqual([
     { type: "Literal", text: "api" },
     { type: "ServerHandle", extension: "js" },
   ])
 })
 
 test("page handles", () => {
-  expect(extractSegments("+page.tsx")).toEqual([
+  expect(extractSegments("page.tsx")).toEqual([
     { type: "PageHandle", extension: "tsx" },
   ])
-  expect(extractSegments("/blog/+page.jsx")).toEqual([
+  expect(extractSegments("/blog/page.jsx")).toEqual([
     { type: "Literal", text: "blog" },
     { type: "PageHandle", extension: "jsx" },
   ])
 })
 
 test("complex combinations", () => {
-  expect(extractSegments("/users/[userId]/posts/[[postId]]/+page.tsx")).toEqual(
+  expect(extractSegments("/users/[userId]/posts/[[postId]]/page.tsx")).toEqual(
     [
       { type: "Literal", text: "users" },
       { type: "DynamicParam", text: "userId" },
@@ -100,7 +100,7 @@ test("complex combinations", () => {
       { type: "PageHandle", extension: "tsx" },
     ],
   )
-  expect(extractSegments("/api/v1/[...proxy]/+server.ts")).toEqual([
+  expect(extractSegments("/api/v1/[...proxy]/server.ts")).toEqual([
     { type: "Literal", text: "api" },
     { type: "Literal", text: "v1" },
     { type: "RestParam", text: "[...proxy]" },
@@ -115,10 +115,8 @@ test("invalid paths", () => {
   expect(extractSegments("/test/[[]]")).toEqual(null) // Empty optional
   expect(extractSegments("/test/[[...name]]")).toEqual(null) // Was: Literal for test, Literal for [[...name]]. Now invalid.
   expect(extractSegments("/[...path")).toEqual(null) // Unterminated rest
-  expect(extractSegments("+invalid.ts")).toEqual(null) // Invalid handle
-  expect(extractSegments("/api/+server")).toEqual(null) // Missing extension
-  expect(extractSegments("/api/+page")).toEqual(null) // Missing extension
-  expect(extractSegments("abc/def/[a]/[...b]/[[c]]/+page.xyz")).toEqual(null) // Invalid extension
+  expect(extractSegments("invalid.ts")).toEqual(null) // Invalid handle
+  expect(extractSegments("abc/def/[a]/[...b]/[[c]]/page.xyz")).toEqual(null) // Invalid extension
 })
 
 test("leading/trailing/multiple slashes", () => {

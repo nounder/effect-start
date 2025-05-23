@@ -26,13 +26,18 @@ type Extension = "tsx" | "jsx" | "ts" | "js"
 
 type HandleSegment =
   | {
-    // example: '+server.ts'
+    // example: 'server.ts'
     type: "ServerHandle"
     extension: Extension
   }
   | {
-    // example: '+page.tsx'
+    // example: 'page.tsx'
     type: "PageHandle"
+    extension: Extension
+  }
+  | {
+    // example: 'layout.tsx'
+    type: "LayoutHandle"
     extension: Extension
   }
 
@@ -44,6 +49,10 @@ type Route = [
   ...Segment[],
   HandleSegment[],
 ]
+
+const ROUTE_PATH_REGEX = /^\/?(.*\/?)(server|page|layout)\.(jsx?|tsx?)$/
+
+type RoutePathMatch = [path: string, kind: string, ext: string]
 
 export function extractSegments(path: string): Segment[] | null {
   const trimmedPath = path.replace(/(^\/)|(\/$)/g, "") // trim leading/trailing slashes
@@ -62,27 +71,20 @@ export function extractSegments(path: string): Segment[] | null {
 
   const segments: (Segment | null)[] = segmentStrings.map(
     (s): Segment | null => {
-      // 2. Handles: +server.ext, +page.ext
-      if (s.startsWith("+")) {
-        const parts = s.split(".")
-        if (parts.length !== 2) {
-          return null // e.g. /api/+server (missing ext) or +server.foo.bar
-        }
-        const [name, ext] = parts
-        if (!["ts", "js", "tsx", "jsx"].includes(ext)) {
-          return null // eg. +page.xyz
-        }
-        if (name === "+server") {
-          return { type: "ServerHandle", extension: ext as Extension }
-        }
-        if (name === "+page") {
-          return { type: "PageHandle", extension: ext as Extension }
-        }
-        return null // e.g. +invalid.ts
+      // Check if it's a handle (server.ts, page.tsx, layout.jsx, etc.)
+      const [, kind, ext] = s.match(/^(server|page|layout)\.(tsx?|jsx?)$/)
+        ?? []
+
+      if (kind === "server") {
+        return { type: "ServerHandle", extension: ext as Extension }
+      } else if (kind === "page") {
+        return { type: "PageHandle", extension: ext as Extension }
+      } else if (kind === "layout") {
+        return { type: "LayoutHandle", extension: ext as Extension }
       }
 
       // [[name]]
-      if (s.startsWith("[[") && s.endsWith("]]") && s.length >= 5) {
+      if (/^\[\[\w+\]\]$/.test(s)) {
         const name = s.substring(2, s.length - 2)
         if (name !== "" && !name.startsWith("...")) {
           return { type: "OptionalParam", text: name }
@@ -136,26 +138,30 @@ export function extractRoute(path: string): Route | null {
   return segs as Route
 }
 
-export function walkRotues(dir: string) {
+/**
+ * Finds all route files in directory.
+ *
+ * Routes are sorted by depth, like so:
+ * - layout.tsx
+ * - [users]/page.tsx
+ * - [users]/[userId]/page.tsx
+ */
+export function walkRoutes(dir: string) {
   return Effect.gen(function*() {
     const fs = yield* FileSystem.FileSystem
+    const baseDir = dir.replace(/\/$/, "")
+    const files = yield* fs.readDirectory(dir, { recursive: true })
 
-    fs.readDirectory(dir, { recursive: true })
+    const filteredFiles = files
+      .map(f => f.match(ROUTE_PATH_REGEX) as RoutePathMatch)
+      .filter(Boolean)
+      .toSorted((a, b) =>
+        (a.length > b.length ? 1 : -1)
+        + a[0].localeCompare(b[1])
+        + a[1].localeCompare(b[1])
+      )
+      .map(v => `${baseDir}/${v[0]}`)
+
+    return filteredFiles
   })
-}
-
-export async function* walkRoutesDirectory(
-  dir: string,
-): AsyncGenerator<Route> {
-  for (
-    const path of await NFSp.readdir(dir, {
-      recursive: true,
-    })
-  ) {
-    const segs = extractRoute(path)
-
-    if (segs) {
-      yield segs
-    }
-  }
 }
