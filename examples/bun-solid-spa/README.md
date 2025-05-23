@@ -35,5 +35,3 @@ bun run build
 # Production
 
 Run `bun start`
-
-

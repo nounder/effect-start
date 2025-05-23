@@ -1,5 +1,5 @@
-import React from 'react'
-import { RouterProvider } from '@tanstack/react-router'
+import { RouterProvider } from "@tanstack/react-router"
+import React from "react"
 
 // Import the auto-generated router from the macro
 // In a real Bun app with macro support, you would use:
@@ -29,10 +29,13 @@ export function App() {
       <div>
         <h1>File-Based Routing Demo</h1>
         <p>This demonstrates the file-based routing structure.</p>
-        <p>In a real app with Bun macro support, the router would be auto-generated.</p>
+        <p>
+          In a real app with Bun macro support, the router would be
+          auto-generated.
+        </p>
       </div>
     </div>
   )
 }
 
-export default App 
+export default App
