@@ -4,7 +4,9 @@ import {
 } from "@tanstack/react-router"
 import React from "react"
 
-export default function() {
+export default function(props: {
+  children?: any
+}) {
   return (
     <div>
       <nav style={{ padding: "1rem", borderBottom: "1px solid #ccc" }}>
@@ -19,7 +21,7 @@ export default function() {
         </Link>
       </nav>
       <main style={{ padding: "1rem" }}>
-        <Outlet />
+        {props.children ?? <Outlet />}
       </main>
     </div>
   )

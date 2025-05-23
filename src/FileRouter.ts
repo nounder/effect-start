@@ -25,23 +25,23 @@ export type Extension = "tsx" | "jsx" | "ts" | "js"
 
 export type HandleSegment =
   | {
-    // example: 'server.ts'
+    // example: '_server.ts'
     type: "ServerHandle"
-    text: `server.${Extension}`
+    text: `_server.${Extension}`
     handle: "server"
     extension: Extension
   }
   | {
-    // example: 'page.tsx'
+    // example: '_page.tsx'
     type: "PageHandle"
-    text: `page.${Extension}`
+    text: `_page.${Extension}`
     handle: "page"
     extension: Extension
   }
   | {
-    // example: 'layout.tsx'
+    // example: '_layout.tsx'
     type: "LayoutHandle"
-    text: `layout.${Extension}`
+    text: `_layout.${Extension}`
     handle: "layout"
     extension: Extension
   }
@@ -64,9 +64,14 @@ export type Route =
     HandleSegment,
   ]
 
-const ROUTE_PATH_REGEX = /^\/?(.*\/?)(server|page|layout)\.(jsx?|tsx?)$/
+const ROUTE_PATH_REGEX = /^\/?(.*\/?)(_(server|page|layout))\.(jsx?|tsx?)$/
 
-type RoutePathMatch = [path: string, kind: string, ext: string]
+type RoutePathMatch = [
+  path: string,
+  kind: string,
+  kind: string,
+  ext: string,
+]
 
 export function parsePath(path: string): Segment[] | null {
   const trimmedPath = path.replace(/(^\/)|(\/$)/g, "") // trim leading/trailing slashes
@@ -85,28 +90,28 @@ export function parsePath(path: string): Segment[] | null {
 
   const segments: (Segment | null)[] = segmentStrings.map(
     (s): Segment | null => {
-      // Check if it's a handle (server.ts, page.tsx, layout.jsx, etc.)
-      const [, kind, ext] = s.match(/^(server|page|layout)\.(tsx?|jsx?)$/)
+      // Check if it's a handle (_server.ts, _page.tsx, _layout.jsx, etc.)
+      const [, kind, ext] = s.match(/^_(server|page|layout)\.(tsx?|jsx?)$/)
         ?? []
 
       if (kind === "server") {
         return {
           type: "ServerHandle",
-          text: s as `server.${Extension}`,
+          text: s as `_server.${Extension}`,
           handle: "server",
           extension: ext as Extension,
         }
       } else if (kind === "page") {
         return {
           type: "PageHandle",
-          text: s as `page.${Extension}`,
+          text: s as `_page.${Extension}`,
           handle: "page",
           extension: ext as Extension,
         }
       } else if (kind === "layout") {
         return {
           type: "LayoutHandle",
-          text: s as `layout.${Extension}`,
+          text: s as `_layout.${Extension}`,
           handle: "layout",
           extension: ext as Extension,
         }
@@ -197,10 +202,10 @@ export function extractRoute(path: string): Route | null {
  * Finds all route files in directory.
  *
  * Routes are sorted by depth, like so:
- * - layout.tsx
- * - users/page.tsx
- * - users/$userId/page.tsx
- * - $/page.tsx
+ * - _layout.tsx
+ * - users/_page.tsx
+ * - users/$userId/_page.tsx
+ * - $/_page.tsx
  */
 export function walkRoutes(dir: string) {
   return Effect.gen(function*() {

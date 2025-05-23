@@ -111,33 +111,33 @@ test("rest parameters", () => {
 })
 
 test("server handles", () => {
-  expect(parsePath("server.ts")).toEqual([
+  expect(parsePath("_server.ts")).toEqual([
     {
       type: "ServerHandle",
-      text: "server.ts",
+      text: "_server.ts",
       handle: "server",
       extension: "ts",
     },
   ])
-  expect(parsePath("/api/server.js")).toEqual([
+  expect(parsePath("/api/_server.js")).toEqual([
     {
       type: "Literal",
       text: "api",
     },
     {
       type: "ServerHandle",
-      text: "server.js",
+      text: "_server.js",
       handle: "server",
       extension: "js",
     },
   ])
   expect(
-    parsePath("server.js"),
+    parsePath("_server.js"),
   )
     .toEqual([
       {
         type: "ServerHandle",
-        text: "server.js",
+        text: "_server.js",
         handle: "server",
         extension: "js",
       },
@@ -145,44 +145,44 @@ test("server handles", () => {
 })
 
 test("page handles", () => {
-  expect(parsePath("page.tsx")).toEqual([
+  expect(parsePath("_page.tsx")).toEqual([
     {
       type: "PageHandle",
-      text: "page.tsx",
+      text: "_page.tsx",
       handle: "page",
       extension: "tsx",
     },
   ])
   expect(
-    parsePath("page.jsx"),
+    parsePath("_page.jsx"),
   )
     .toEqual([
       {
         type: "PageHandle",
-        text: "page.jsx",
+        text: "_page.jsx",
         handle: "page",
         extension: "jsx",
       },
     ])
   expect(
-    parsePath("page.js"),
+    parsePath("_page.js"),
   )
     .toEqual([
       {
         type: "PageHandle",
-        text: "page.js",
+        text: "_page.js",
         handle: "page",
         extension: "js",
       },
     ])
   expect(
-    parsePath("/blog/page.jsx"),
+    parsePath("/blog/_page.jsx"),
   )
     .toEqual([
       { type: "Literal", text: "blog" },
       {
         type: "PageHandle",
-        text: "page.jsx",
+        text: "_page.jsx",
         handle: "page",
         extension: "jsx",
       },
@@ -191,7 +191,7 @@ test("page handles", () => {
 
 test("complex combinations", () => {
   expect(
-    parsePath("/users/$userId/posts/page.tsx"),
+    parsePath("/users/$userId/posts/_page.tsx"),
   )
     .toEqual([
       {
@@ -209,13 +209,13 @@ test("complex combinations", () => {
       },
       {
         type: "PageHandle",
-        text: "page.tsx",
+        text: "_page.tsx",
         handle: "page",
         extension: "tsx",
       },
     ])
   expect(
-    parsePath("/api/v1/$/server.ts"),
+    parsePath("/api/v1/$/_server.ts"),
   )
     .toEqual([
       {
@@ -232,7 +232,7 @@ test("complex combinations", () => {
       },
       {
         type: "ServerHandle",
-        text: "server.ts",
+        text: "_server.ts",
         handle: "server",
         extension: "ts",
       },
@@ -273,26 +273,26 @@ test("param and splat types", () => {
 
 test("route validation - valid routes without splat", () => {
   expect(
-    extractRoute("page.tsx"),
+    extractRoute("_page.tsx"),
   )
     .toEqual([
       {
         type: "PageHandle",
-        text: "page.tsx",
+        text: "_page.tsx",
         handle: "page",
         extension: "tsx",
       },
     ])
 
   expect(
-    extractRoute("users/$id/page.tsx"),
+    extractRoute("users/$id/_page.tsx"),
   )
     .toEqual([
       { type: "Literal", text: "users" },
       { type: "Param", param: "id", text: "$id" },
       {
         type: "PageHandle",
-        text: "page.tsx",
+        text: "_page.tsx",
         handle: "page",
         extension: "tsx",
       },
@@ -301,20 +301,20 @@ test("route validation - valid routes without splat", () => {
 
 test("route validation - valid routes with splat", () => {
   expect(
-    extractRoute("$/page.tsx"),
+    extractRoute("$/_page.tsx"),
   )
     .toEqual([
       { type: "Splat", text: "$" },
       {
         type: "PageHandle",
-        text: "page.tsx",
+        text: "_page.tsx",
         handle: "page",
         extension: "tsx",
       },
     ])
 
   expect(
-    extractRoute("users/$id/$/page.tsx"),
+    extractRoute("users/$id/$/_page.tsx"),
   )
     .toEqual([
       {
@@ -332,19 +332,19 @@ test("route validation - valid routes with splat", () => {
       },
       {
         type: "PageHandle",
-        text: "page.tsx",
+        text: "_page.tsx",
         handle: "page",
         extension: "tsx",
       },
     ])
 
-  expect(extractRoute("api/$version/$/server.ts")).toEqual([
+  expect(extractRoute("api/$version/$/_server.ts")).toEqual([
     { type: "Literal", text: "api" },
     { type: "Param", param: "version", text: "$version" },
     { type: "Splat", text: "$" },
     {
       type: "ServerHandle",
-      text: "server.ts",
+      text: "_server.ts",
       handle: "server",
       extension: "ts",
     },
@@ -353,9 +353,9 @@ test("route validation - valid routes with splat", () => {
 
 test("route validation - invalid routes with splat in wrong position", () => {
   // Splat must be the last segment before handle
-  expect(extractRoute("$/users/page.tsx")).toEqual(null)
-  expect(extractRoute("docs/$/extra/page.tsx")).toEqual(null)
-  expect(extractRoute("api/$/v1/$id/server.ts")).toEqual(null)
+  expect(extractRoute("$/users/_page.tsx")).toEqual(null)
+  expect(extractRoute("docs/$/extra/_page.tsx")).toEqual(null)
+  expect(extractRoute("api/$/v1/$id/_server.ts")).toEqual(null)
 })
 
 test("route validation - routes without handles", () => {
@@ -365,20 +365,20 @@ test("route validation - routes without handles", () => {
 })
 
 test("route validation - invalid file extensions", () => {
-  expect(extractRoute("page.py")).toEqual(null)
-  expect(extractRoute("server.exe")).toEqual(null)
-  expect(extractRoute("layout.html")).toEqual(null)
+  expect(extractRoute("_page.py")).toEqual(null)
+  expect(extractRoute("_server.exe")).toEqual(null)
+  expect(extractRoute("_layout.html")).toEqual(null)
 })
 
-test("extractRoute - users/server.ts", () => {
-  expect(extractRoute("users/server.ts")).toEqual([
+test("extractRoute - users/_server.ts", () => {
+  expect(extractRoute("users/_server.ts")).toEqual([
     {
       type: "Literal",
       text: "users",
     },
     {
       type: "ServerHandle",
-      text: "server.ts",
+      text: "_server.ts",
       handle: "server",
       extension: "ts",
     },

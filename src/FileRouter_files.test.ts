@@ -14,12 +14,12 @@ import {
 } from "./testing.ts"
 
 const Files = {
-  "/routes/about/layout.tsx": "",
-  "/routes/about/page.tsx": "",
-  "/routes/users/page.tsx": "",
-  "/routes/users/layout.tsx": "",
-  "/routes/users/$userId/page.tsx": "",
-  "/routes/layout.tsx": "",
+  "/routes/about/_layout.tsx": "",
+  "/routes/about/_page.tsx": "",
+  "/routes/users/_page.tsx": "",
+  "/routes/users/_layout.tsx": "",
+  "/routes/users/$userId/_page.tsx": "",
+  "/routes/_layout.tsx": "",
 }
 
 const effect = effectFn()
@@ -31,12 +31,12 @@ it("walks routes", () =>
     )
 
     expect(files.map(v => v.path)).toEqual([
-      "layout.tsx",
-      "about/layout.tsx",
-      "about/page.tsx",
-      "users/layout.tsx",
-      "users/page.tsx",
-      "users/$userId/page.tsx",
+      "_layout.tsx",
+      "about/_layout.tsx",
+      "about/_page.tsx",
+      "users/_layout.tsx",
+      "users/_page.tsx",
+      "users/$userId/_page.tsx",
     ])
   }))
 
@@ -46,20 +46,20 @@ it("walks routes with splat", () =>
       Effect.provide(
         MemoryFileSystem.layerWith({
           ...Files,
-          "/routes/$/page.tsx": "",
-          "/routes/users/$/page.tsx": "",
+          "/routes/$/_page.tsx": "",
+          "/routes/users/$/_page.tsx": "",
         }),
       ),
     )
 
     expect(files.map(v => v.path)).toEqual([
-      "layout.tsx",
-      "about/layout.tsx",
-      "about/page.tsx",
-      "users/layout.tsx",
-      "users/page.tsx",
-      "users/$userId/page.tsx",
-      "users/$/page.tsx",
-      "$/page.tsx",
+      "_layout.tsx",
+      "about/_layout.tsx",
+      "about/_page.tsx",
+      "users/_layout.tsx",
+      "users/_page.tsx",
+      "users/$userId/_page.tsx",
+      "users/$/_page.tsx",
+      "$/_page.tsx",
     ])
   }))
