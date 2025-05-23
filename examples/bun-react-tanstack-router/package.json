@@ -16,8 +16,6 @@
   },
   "devDependencies": {
     "@tailwindcss/node": "^4.1.7",
-    "@tanstack/router-generator": "^1.120.5",
-    "@tanstack/router-plugin": "^1.120.5",
     "@types/bun": "^1.2.13",
     "@types/react-dom": "^19.1.5"
   },

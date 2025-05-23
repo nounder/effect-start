@@ -1,7 +1,7 @@
 import { FileSystem } from "@effect/platform"
 import { Effect } from "effect"
 
-type PathSegment =
+export type PathSegment =
   | {
     type: "Literal"
     text: string // eg. "users"
@@ -19,9 +19,9 @@ type PathSegment =
     text: string // eg. "[...name]"
   }
 
-type Extension = "tsx" | "jsx" | "ts" | "js"
+export type Extension = "tsx" | "jsx" | "ts" | "js"
 
-type HandleSegment =
+export type HandleSegment =
   | {
     // example: 'server.ts'
     type: "ServerHandle"
@@ -38,11 +38,11 @@ type HandleSegment =
     extension: Extension
   }
 
-type Segment =
+export type Segment =
   | PathSegment
   | HandleSegment
 
-type Route = [
+export type Route = [
   ...Segment[],
   HandleSegment[],
 ]
@@ -120,7 +120,7 @@ export function extractSegments(path: string): Segment[] | null {
   return segments as Segment[]
 }
 
-export function extractRoute(path: string): Route | null {
+function extractRoute(path: string): Route | null {
   const segs = extractSegments(path)
   const handle = segs?.at(-1)
 
@@ -158,7 +158,15 @@ export function walkRoutes(dir: string) {
         + a[0].localeCompare(b[1])
         + a[1].localeCompare(b[1])
       )
-      .map(v => `${baseDir}/${v[0]}`)
+      .map(v => {
+        const path = v[0]
+        const route = extractRoute(path)!
+
+        return {
+          path,
+          route,
+        }
+      })
 
     return filteredFiles
   })

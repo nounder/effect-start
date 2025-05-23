@@ -1,5 +1,4 @@
-import { FileSystem } from "@effect/platform"
-import { expect, it, test } from "bun:test"
+import { expect, it } from "bun:test"
 import { MemoryFileSystem } from "effect-memfs"
 import * as FileRouter from "./FileRouter.ts"
 import { effectFn } from "./testing.ts"
@@ -19,16 +18,14 @@ const effect = effectFn(
 
 it("walks routes", () =>
   effect(function*() {
-    console.log("walking")
-    const fs = yield* FileSystem.FileSystem
     const files = yield* FileRouter.walkRoutes("/routes")
 
-    expect(files).toEqual([
-      "/routes/layout.tsx",
-      "/routes/about/layout.tsx",
-      "/routes/about/page.tsx",
-      "/routes/users/layout.tsx",
-      "/routes/users/page.tsx",
-      "/routes/users/[userId]/page.tsx",
+    expect(files.map(v => v.path)).toEqual([
+      "layout.tsx",
+      "about/layout.tsx",
+      "about/page.tsx",
+      "users/layout.tsx",
+      "users/page.tsx",
+      "users/[userId]/page.tsx",
     ])
   }))

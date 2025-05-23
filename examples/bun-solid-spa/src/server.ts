@@ -22,7 +22,7 @@ export const ClientBundle = BunBundle.bundleClient({
 export const App = HttpRouter.empty.pipe(
   HttpRouter.get(
     "/",
-    BundleHttp.handleEntrypoint(import.meta.resolve("./index.html")),
+    BundleHttp.entrypoint(import.meta.resolve("./index.html")),
   ),
   HttpRouter.mountApp(
     "/_bundle",
