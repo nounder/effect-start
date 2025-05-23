@@ -45,7 +45,9 @@ test("virtual import", async () => {
     ],
   })
 
-  expect([...trackerPlugin.state.entries()])
+  expect(
+    [...trackerPlugin.state.entries()],
+  )
     .toEqual([
       [
         "src/bun/BunImportTrackerPlugin.test.ts",

@@ -50,10 +50,19 @@ test("entrypoint", () => {
         () => HttpServerResponse.empty({ status: 404 }),
       ),
     )
-    expect(indexRes.status).toBe(404)
+    expect(
+      indexRes.status,
+    )
+      .toBe(404)
 
     const dashboardRes = yield* Client.get("/react-dashboard")
-    expect(dashboardRes.status).toBe(200)
-    expect(yield* dashboardRes.text).toStartWith("<!DOCTYPE html>")
+    expect(
+      dashboardRes.status,
+    )
+      .toBe(200)
+    expect(
+      yield* dashboardRes.text,
+    )
+      .toStartWith("<!DOCTYPE html>")
   })
 })

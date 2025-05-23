@@ -53,12 +53,15 @@ describe("explicit bundle route", () => {
     effect(function*() {
       const config = BunBundle.configFromHttpRouter(Router)
 
-      expect(config).toMatchObject({
-        entrypoints: [
-          HtmlPath,
-        ],
-        publicPath: "/_bundle/",
-      })
+      expect(
+        config,
+      )
+        .toMatchObject({
+          entrypoints: [
+            HtmlPath,
+          ],
+          publicPath: "/_bundle/",
+        })
     }))
 
   test("responses", () =>
@@ -66,17 +69,23 @@ describe("explicit bundle route", () => {
       {
         const res = yield* Client.get("/_bundle/manifest.json")
 
-        expect(res.status)
+        expect(
+          res.status,
+        )
           .toBe(200)
       }
 
       {
         const res = yield* Client.get("/hello")
 
-        expect(res.status)
+        expect(
+          res.status,
+        )
           .toBe(200)
 
-        expect(yield* res.text)
+        expect(
+          yield* res.text,
+        )
           .toBe("Hello World!")
       }
     }))
@@ -104,12 +113,15 @@ describe("implicit bundle route", () => {
     effect(function*() {
       const config = BunBundle.configFromHttpRouter(Router)
 
-      expect(config).toMatchObject({
-        entrypoints: [
-          HtmlPath,
-        ],
-        publicPath: undefined,
-      })
+      expect(
+        config,
+      )
+        .toMatchObject({
+          entrypoints: [
+            HtmlPath,
+          ],
+          publicPath: undefined,
+        })
     }))
 
   test("responses", () =>
@@ -117,7 +129,10 @@ describe("implicit bundle route", () => {
       {
         const res = yield* Client.get("/_bundle/manifest.json")
 
-        expect(res.status).toBe(404)
+        expect(
+          res.status,
+        )
+          .toBe(404)
       }
     }))
 })

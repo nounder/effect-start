@@ -27,7 +27,9 @@ test("imports", () =>
       e0,
     ] = importTracker.state.entries()
 
-    expect(e0)
+    expect(
+      e0,
+    )
       .toEqual([
         "src/bun/BunBundle_imports.test.ts",
         [

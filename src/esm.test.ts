@@ -22,7 +22,10 @@ export const b = "B"
 
   const mod = await Esm.importJsBundle<any>(blobs, "a.js")
 
-  expect(mod.default).toBe("B")
+  expect(
+    mod.default,
+  )
+    .toBe("B")
 })
 
 it.skip("import single js bundle", async () => {
@@ -32,5 +35,8 @@ export const b = "B"
 
   const mod = await Esm.importJsBlob<any>(blob)
 
-  expect(mod.b).toBe("B")
+  expect(
+    mod.b,
+  )
+    .toBe("B")
 })

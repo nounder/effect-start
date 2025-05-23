@@ -30,14 +30,17 @@ it("walks routes", () =>
       Effect.provide(MemoryFileSystem.layerWith(Files)),
     )
 
-    expect(files.map(v => v.path)).toEqual([
-      "_layout.tsx",
-      "about/_layout.tsx",
-      "about/_page.tsx",
-      "users/_layout.tsx",
-      "users/_page.tsx",
-      "users/$userId/_page.tsx",
-    ])
+    expect(
+      files.map(v => v.path),
+    )
+      .toEqual([
+        "_layout.tsx",
+        "about/_layout.tsx",
+        "about/_page.tsx",
+        "users/_layout.tsx",
+        "users/_page.tsx",
+        "users/$userId/_page.tsx",
+      ])
   }))
 
 it("walks routes with splat", () =>
@@ -52,14 +55,17 @@ it("walks routes with splat", () =>
       ),
     )
 
-    expect(files.map(v => v.path)).toEqual([
-      "_layout.tsx",
-      "about/_layout.tsx",
-      "about/_page.tsx",
-      "users/_layout.tsx",
-      "users/_page.tsx",
-      "users/$userId/_page.tsx",
-      "users/$/_page.tsx",
-      "$/_page.tsx",
-    ])
+    expect(
+      files.map(v => v.path),
+    )
+      .toEqual([
+        "_layout.tsx",
+        "about/_layout.tsx",
+        "about/_page.tsx",
+        "users/_layout.tsx",
+        "users/_page.tsx",
+        "users/$userId/_page.tsx",
+        "users/$/_page.tsx",
+        "$/_page.tsx",
+      ])
   }))
