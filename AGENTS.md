@@ -13,6 +13,7 @@ This instructs AI agents how to navigate and edit this codebase.
 - When importing node modules, always import the full module and name it NPath for node:path, NUrl for node:url, etc.
 - Always use extension in file imports.
 - Do not unwrap effects in `Effect.gen`. You can `yield*` effects directly.
+- Do not write obvious comments that restate what the code is doing without adding meaningful context.
 
 # Tests
 
