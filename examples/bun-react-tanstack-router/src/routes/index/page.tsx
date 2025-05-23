@@ -1,4 +1,4 @@
-import React from 'react'
+import React from "react"
 
 export default function HomePage() {
   return (
@@ -7,4 +7,4 @@ export default function HomePage() {
       <p>This is the root route of our TanStack Router application.</p>
     </div>
   )
-} 
+}

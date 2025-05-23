@@ -1,5 +1,5 @@
-import React from 'react'
-import { Outlet } from '@tanstack/react-router'
+import { Outlet } from "@tanstack/react-router"
+import React from "react"
 
 export default function UsersLayout() {
   return (
@@ -8,4 +8,4 @@ export default function UsersLayout() {
       <Outlet />
     </div>
   )
-} 
+}
