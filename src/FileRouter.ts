@@ -8,14 +8,17 @@ export type PathSegment =
   }
   | {
     type: "DynamicParam"
-    text: string // eg. "userId"
+    param: string // eg. "userId"
+    text: string // eg. "[userId]"
   }
   | {
     type: "OptionalParam"
-    text: string // eg. "userId"
+    param: string // eg. "userId"
+    text: string // eg. "[[userId]]"
   }
   | {
     type: "RestParam"
+    param: string // eg. "name"
     text: string // eg. "[...name]"
   }
 
@@ -84,7 +87,7 @@ export function extractSegments(path: string): Segment[] | null {
       if (/^\[\[\w+\]\]$/.test(s)) {
         const name = s.substring(2, s.length - 2)
         if (name !== "" && !name.startsWith("...")) {
-          return { type: "OptionalParam", text: name }
+          return { type: "OptionalParam", param: name, text: s }
         }
         // "[[...foo]]" falls through to Literal. Correctly formed "[[]]" already returned null.
       }
@@ -93,7 +96,7 @@ export function extractSegments(path: string): Segment[] | null {
       if (/^\[\.{3}\w+\]$/.test(s)) {
         const name = s.substring(4, s.length - 1)
         if (name !== "") {
-          return { type: "RestParam", text: name }
+          return { type: "RestParam", param: name, text: s }
         }
       }
 
@@ -101,7 +104,7 @@ export function extractSegments(path: string): Segment[] | null {
       if (/^\[\w+\]$/.test(s)) {
         const name = s.substring(1, s.length - 1)
         if (name !== "") {
-          return { type: "DynamicParam", text: name }
+          return { type: "DynamicParam", param: name, text: s }
         }
       }
 

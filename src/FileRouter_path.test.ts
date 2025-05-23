@@ -24,48 +24,48 @@ test("literal segments", () => {
 
 test("dynamic parameters", () => {
   expect(extractSegments("[userId]")).toEqual([
-    { type: "DynamicParam", text: "userId" },
+    { type: "DynamicParam", param: "userId", text: "[userId]" },
   ])
   expect(extractSegments("/users/[userId]")).toEqual([
     { type: "Literal", text: "users" },
-    { type: "DynamicParam", text: "userId" },
+    { type: "DynamicParam", param: "userId", text: "[userId]" },
   ])
   expect(extractSegments("/posts/[postId]/comments/[commentId]")).toEqual([
     { type: "Literal", text: "posts" },
-    { type: "DynamicParam", text: "postId" },
+    { type: "DynamicParam", param: "postId", text: "[postId]" },
     { type: "Literal", text: "comments" },
-    { type: "DynamicParam", text: "commentId" },
+    { type: "DynamicParam", param: "commentId", text: "[commentId]" },
   ])
 })
 
 test("optional parameters", () => {
   expect(extractSegments("[[id]]")).toEqual([
-    { type: "OptionalParam", text: "id" },
+    { type: "OptionalParam", param: "id", text: "[[id]]" },
   ])
   expect(extractSegments("/items/[[itemId]]")).toEqual([
     { type: "Literal", text: "items" },
-    { type: "OptionalParam", text: "itemId" },
+    { type: "OptionalParam", param: "itemId", text: "[[itemId]]" },
   ])
   expect(extractSegments("/categories/[[categoryId]]/products/[[productId]]"))
     .toEqual([
       { type: "Literal", text: "categories" },
-      { type: "OptionalParam", text: "categoryId" },
+      { type: "OptionalParam", param: "categoryId", text: "[[categoryId]]" },
       { type: "Literal", text: "products" },
-      { type: "OptionalParam", text: "productId" },
+      { type: "OptionalParam", param: "productId", text: "[[productId]]" },
     ])
 })
 
 test("rest parameters", () => {
   expect(extractSegments("[...files]")).toEqual([
-    { type: "RestParam", text: "files" },
+    { type: "RestParam", param: "files", text: "[...files]" },
   ])
   expect(extractSegments("/docs/[...slug]")).toEqual([
     { type: "Literal", text: "docs" },
-    { type: "RestParam", text: "slug" },
+    { type: "RestParam", param: "slug", text: "[...slug]" },
   ])
   expect(extractSegments("/user/[...path]/details")).toEqual([
     { type: "Literal", text: "user" },
-    { type: "RestParam", text: "path" },
+    { type: "RestParam", param: "path", text: "[...path]" },
     { type: "Literal", text: "details" },
   ])
 })
@@ -94,16 +94,16 @@ test("complex combinations", () => {
   expect(extractSegments("/users/[userId]/posts/[[postId]]/page.tsx")).toEqual(
     [
       { type: "Literal", text: "users" },
-      { type: "DynamicParam", text: "userId" },
+      { type: "DynamicParam", param: "userId", text: "[userId]" },
       { type: "Literal", text: "posts" },
-      { type: "OptionalParam", text: "postId" },
+      { type: "OptionalParam", param: "postId", text: "[[postId]]" },
       { type: "PageHandle", extension: "tsx" },
     ],
   )
   expect(extractSegments("/api/v1/[...proxy]/server.ts")).toEqual([
     { type: "Literal", text: "api" },
     { type: "Literal", text: "v1" },
-    { type: "RestParam", text: "proxy" },
+    { type: "RestParam", param: "proxy", text: "[...proxy]" },
     { type: "ServerHandle", extension: "ts" },
   ])
 })
@@ -122,7 +122,7 @@ test("invalid paths", () => {
 test("leading/trailing/multiple slashes", () => {
   expect(extractSegments("//users///[id]//")).toEqual([
     { type: "Literal", text: "users" },
-    { type: "DynamicParam", text: "id" },
+    { type: "DynamicParam", param: "id", text: "[id]" },
   ])
 })
 
@@ -137,33 +137,42 @@ test("param types and misclassification", () => {
 
   // Min length for DynamicParam [a] is 3
   expect(extractSegments("[]")).toEqual(null)
-  expect(extractSegments("[a]")).toEqual([{ type: "DynamicParam", text: "a" }])
+  expect(extractSegments("[a]")).toEqual([{
+    type: "DynamicParam",
+    param: "a",
+    text: "[a]",
+  }])
   expect(extractSegments("[[]]")).toEqual(null) // This is an invalid optional, not dynamic
   expect(extractSegments("[[a]]")).toEqual([{
     type: "OptionalParam",
-    text: "a",
+    param: "a",
+    text: "[[a]]",
   }])
 
   // Min length for OptionalParam [[a]] is 5
   expect(extractSegments("[[]]")).toEqual(null)
   expect(extractSegments("[[a]]")).toEqual([{
     type: "OptionalParam",
-    text: "a",
+    param: "a",
+    text: "[[a]]",
   }])
   expect(extractSegments("[[ab]]")).toEqual([{
     type: "OptionalParam",
-    text: "ab",
+    param: "ab",
+    text: "[[ab]]",
   }])
 
   // Min length for RestParam [...a] is 5
   expect(extractSegments("[...]")).toEqual(null)
   expect(extractSegments("[...a]")).toEqual([{
     type: "RestParam",
-    text: "a",
+    param: "a",
+    text: "[...a]",
   }])
   expect(extractSegments("[...ab]")).toEqual([{
     type: "RestParam",
-    text: "ab",
+    param: "ab",
+    text: "[...ab]",
   }])
 
   // Ensure no misclassification between param types
