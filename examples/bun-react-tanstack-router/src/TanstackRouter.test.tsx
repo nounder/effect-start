@@ -10,9 +10,15 @@ const Files = {
     return (
       <div>
         <nav>
-          <Link to="/">Home</Link>
-          <Link to="/about">About</Link>
-          <Link to="/users">Users</Link>
+          <Link to="/">
+            Home
+          </Link>
+          <Link to="/about">
+            About
+          </Link>
+          <Link to="/users">
+            Users
+          </Link>
         </nav>
         <main>
           <Outlet />
@@ -23,16 +29,24 @@ const Files = {
   "/routes/page.tsx": () => {
     return (
       <div>
-        <h1>Welcome to the Home Page</h1>
-        <p>This is the root route of our TanStack Router application.</p>
+        <h1>
+          Welcome to the Home Page
+        </h1>
+        <p>
+          This is the root route of our TanStack Router application.
+        </p>
       </div>
     )
   },
   "/routes/about/page.tsx": () => {
     return (
       <div>
-        <h1>About Us</h1>
-        <p>This is the about page with information about our application.</p>
+        <h1>
+          About Us
+        </h1>
+        <p>
+          This is the about page with information about our application.
+        </p>
       </div>
     )
   },
@@ -40,7 +54,9 @@ const Files = {
   "/routes/users/page.tsx": () => {
     return (
       <div>
-        <h2>Users List</h2>
+        <h2>
+          Users List
+        </h2>
         <Outlet />
       </div>
     )
@@ -52,9 +68,15 @@ const Files = {
 
     return (
       <div>
-        <h2>User Details</h2>
-        <p>User ID: {userId}</p>
-        <Link to="/users">← Back to Users</Link>
+        <h2>
+          User Details
+        </h2>
+        <p>
+          User ID: {userId}
+        </p>
+        <Link to="/users">
+          ← Back to Users
+        </Link>
       </div>
     )
   },

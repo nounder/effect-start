@@ -39,8 +39,12 @@ export function App(props?: {
 function Random() {
   return (
     <div>
-      <h1 class="w-4">Random</h1>
-      <div>n = {Math.random()}</div>
+      <h1 class="w-4">
+        Random
+      </h1>
+      <div>
+        n = {Math.random()}
+      </div>
 
       <br />
 
@@ -60,12 +64,16 @@ function Home() {
 
       <h1 class="bg-gray-400">
         Welcome, {count()}{" "}
-        <button onClick={() => setCount(count() + 1)}>+</button>
+        <button onClick={() => setCount(count() + 1)}>
+          +
+        </button>
       </h1>
 
       <br />
 
-      <A href="/random">Random</A>
+      <A href="/random">
+        Random
+      </A>
 
       <style>
         {`

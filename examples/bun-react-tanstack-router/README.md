@@ -97,9 +97,15 @@ export default function RootLayout() {
   return (
     <div>
       <nav>
-        <Link to="/">Home</Link>
-        <Link to="/about">About</Link>
-        <Link to="/users">Users</Link>
+        <Link to="/">
+          Home
+        </Link>
+        <Link to="/about">
+          About
+        </Link>
+        <Link to="/users">
+          Users
+        </Link>
       </nav>
       <main>
         <Outlet />

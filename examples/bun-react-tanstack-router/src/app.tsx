@@ -27,8 +27,12 @@ export function App() {
     <div className="app">
       {/* <RouterProvider router={router} /> */}
       <div>
-        <h1>File-Based Routing Demo</h1>
-        <p>This demonstrates the file-based routing structure.</p>
+        <h1>
+          File-Based Routing Demo
+        </h1>
+        <p>
+          This demonstrates the file-based routing structure.
+        </p>
         <p>
           In a real app with Bun macro support, the router would be
           auto-generated.

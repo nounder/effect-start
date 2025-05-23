@@ -38,16 +38,24 @@ export default function UserDetailPage({ params }: UserDetailPageProps) {
   if (!user) {
     return (
       <div>
-        <h2>User Not Found</h2>
-        <p>No user found with ID: {userId}</p>
-        <Link to="/users">← Back to Users</Link>
+        <h2>
+          User Not Found
+        </h2>
+        <p>
+          No user found with ID: {userId}
+        </p>
+        <Link to="/users">
+          ← Back to Users
+        </Link>
       </div>
     )
   }
 
   return (
     <div>
-      <h2>User Details</h2>
+      <h2>
+        User Details
+      </h2>
       <div
         style={{
           border: "1px solid #ccc",
@@ -55,19 +63,32 @@ export default function UserDetailPage({ params }: UserDetailPageProps) {
           borderRadius: "4px",
         }}
       >
-        <h3>{user.name}</h3>
+        <h3>
+          {user.name}
+        </h3>
         <p>
-          <strong>Email:</strong> {user.email}
+          <strong>
+            Email:
+          </strong>{" "}
+          {user.email}
         </p>
         <p>
-          <strong>Bio:</strong> {user.bio}
+          <strong>
+            Bio:
+          </strong>{" "}
+          {user.bio}
         </p>
         <p>
-          <strong>User ID:</strong> {user.id}
+          <strong>
+            User ID:
+          </strong>{" "}
+          {user.id}
         </p>
       </div>
       <div style={{ marginTop: "1rem" }}>
-        <Link to="/users">← Back to Users List</Link>
+        <Link to="/users">
+          ← Back to Users List
+        </Link>
       </div>
     </div>
   )

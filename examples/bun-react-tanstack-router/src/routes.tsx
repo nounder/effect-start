@@ -13,9 +13,15 @@ const rootRoute = createRootRoute({
   component: () => (
     <div>
       <nav style={{ padding: "1rem", borderBottom: "1px solid #ccc" }}>
-        <Link to="/" style={{ marginRight: "1rem" }}>Home</Link>
-        <Link to="/about" style={{ marginRight: "1rem" }}>About</Link>
-        <Link to="/users" style={{ marginRight: "1rem" }}>Users</Link>
+        <Link to="/" style={{ marginRight: "1rem" }}>
+          Home
+        </Link>
+        <Link to="/about" style={{ marginRight: "1rem" }}>
+          About
+        </Link>
+        <Link to="/users" style={{ marginRight: "1rem" }}>
+          Users
+        </Link>
       </nav>
       <main style={{ padding: "1rem" }}>
         <Outlet />
@@ -30,8 +36,12 @@ const indexRoute = createRoute({
   path: "/",
   component: () => (
     <div>
-      <h1>Welcome to the Home Page</h1>
-      <p>This is the root route of our TanStack Router application.</p>
+      <h1>
+        Welcome to the Home Page
+      </h1>
+      <p>
+        This is the root route of our TanStack Router application.
+      </p>
     </div>
   ),
 })
@@ -42,8 +52,12 @@ const aboutRoute = createRoute({
   path: "/about",
   component: () => (
     <div>
-      <h1>About Us</h1>
-      <p>This is the about page with information about our application.</p>
+      <h1>
+        About Us
+      </h1>
+      <p>
+        This is the about page with information about our application.
+      </p>
     </div>
   ),
 })
@@ -54,7 +68,9 @@ const usersRoute = createRoute({
   path: "/users",
   component: () => (
     <div>
-      <h1>Users Section</h1>
+      <h1>
+        Users Section
+      </h1>
       <Outlet />
     </div>
   ),
@@ -73,7 +89,9 @@ const usersIndexRoute = createRoute({
 
     return (
       <div>
-        <h2>Users List</h2>
+        <h2>
+          Users List
+        </h2>
         <div style={{ display: "grid", gap: "1rem" }}>
           {users.map((user) => (
             <div
@@ -93,7 +111,9 @@ const usersIndexRoute = createRoute({
                   {user.name}
                 </Link>
               </h3>
-              <p>{user.email}</p>
+              <p>
+                {user.email}
+              </p>
             </div>
           ))}
         </div>
@@ -139,16 +159,24 @@ const userRoute = createRoute({
     if (!user) {
       return (
         <div>
-          <h2>User Not Found</h2>
-          <p>No user found with ID: {userId}</p>
-          <Link to="/users">← Back to Users</Link>
+          <h2>
+            User Not Found
+          </h2>
+          <p>
+            No user found with ID: {userId}
+          </p>
+          <Link to="/users">
+            ← Back to Users
+          </Link>
         </div>
       )
     }
 
     return (
       <div>
-        <h2>User Details</h2>
+        <h2>
+          User Details
+        </h2>
         <div
           style={{
             border: "1px solid #ccc",
@@ -156,19 +184,32 @@ const userRoute = createRoute({
             borderRadius: "4px",
           }}
         >
-          <h3>{user.name}</h3>
+          <h3>
+            {user.name}
+          </h3>
           <p>
-            <strong>Email:</strong> {user.email}
+            <strong>
+              Email:
+            </strong>{" "}
+            {user.email}
           </p>
           <p>
-            <strong>Bio:</strong> {user.bio}
+            <strong>
+              Bio:
+            </strong>{" "}
+            {user.bio}
           </p>
           <p>
-            <strong>User ID:</strong> {user.id}
+            <strong>
+              User ID:
+            </strong>{" "}
+            {user.id}
           </p>
         </div>
         <div style={{ marginTop: "1rem" }}>
-          <Link to="/users">← Back to Users List</Link>
+          <Link to="/users">
+            ← Back to Users List
+          </Link>
         </div>
       </div>
     )

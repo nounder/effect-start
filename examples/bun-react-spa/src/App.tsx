@@ -14,5 +14,9 @@ export function App() {
     return () => clearInterval(interval)
   })
 
-  return <div>Hello, Effect Bundler {count}.</div>
+  return (
+    <div>
+      Hello, Effect Bundler {count}.
+    </div>
+  )
 }

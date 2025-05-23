@@ -4,7 +4,10 @@
   "lineWidth": 80,
   "newLineKind": "lf",
   "typescript": {
-    "semiColons": "asi"
+    "semiColons": "asi",
+    "binaryExpression.linePerExpression": true,
+    "preferSingleLine": false,
+    "jsx.forceNewLinesSurroundingContent": true
   },
   "markup": {
     "maxAttrsPerLine": 1,
