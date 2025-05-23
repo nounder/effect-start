@@ -27,16 +27,22 @@ export type HandleSegment =
   | {
     // example: 'server.ts'
     type: "ServerHandle"
+    text: `server.${Extension}`
+    handle: "server"
     extension: Extension
   }
   | {
     // example: 'page.tsx'
     type: "PageHandle"
+    text: `page.${Extension}`
+    handle: "page"
     extension: Extension
   }
   | {
     // example: 'layout.tsx'
     type: "LayoutHandle"
+    text: `layout.${Extension}`
+    handle: "layout"
     extension: Extension
   }
 
@@ -84,11 +90,26 @@ export function parsePath(path: string): Segment[] | null {
         ?? []
 
       if (kind === "server") {
-        return { type: "ServerHandle", extension: ext as Extension }
+        return {
+          type: "ServerHandle",
+          text: s as `server.${Extension}`,
+          handle: "server",
+          extension: ext as Extension,
+        }
       } else if (kind === "page") {
-        return { type: "PageHandle", extension: ext as Extension }
+        return {
+          type: "PageHandle",
+          text: s as `page.${Extension}`,
+          handle: "page",
+          extension: ext as Extension,
+        }
       } else if (kind === "layout") {
-        return { type: "LayoutHandle", extension: ext as Extension }
+        return {
+          type: "LayoutHandle",
+          text: s as `layout.${Extension}`,
+          handle: "layout",
+          extension: ext as Extension,
+        }
       }
 
       // $ (Splat)
@@ -98,7 +119,6 @@ export function parsePath(path: string): Segment[] | null {
           text: "$",
         }
       }
-
       // $name (Param)
       if (/^\$\w+$/.test(s)) {
         const name = s.substring(1) // Remove "$"
