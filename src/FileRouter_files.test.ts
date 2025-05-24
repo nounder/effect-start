@@ -26,7 +26,7 @@ const effect = effectFn()
 
 it("walks routes", () =>
   effect(function*() {
-    const files = yield* FileRouter.walkRoutes("/routes").pipe(
+    const files = yield* FileRouter.walkRoutesDirectory("/routes").pipe(
       Effect.provide(MemoryFileSystem.layerWith(Files)),
     )
 
@@ -45,7 +45,7 @@ it("walks routes", () =>
 
 it("walks routes with splat", () =>
   effect(function*() {
-    const files = yield* FileRouter.walkRoutes("/routes").pipe(
+    const files = yield* FileRouter.walkRoutesDirectory("/routes").pipe(
       Effect.provide(
         MemoryFileSystem.layerWith({
           ...Files,

@@ -1,8 +1,12 @@
 import {
   FileSystem,
 } from "@effect/platform"
+import type {
+  PlatformError,
+} from "@effect/platform/Error"
 import {
   Effect,
+  Either,
 } from "effect"
 
 type LiteralSegment = {
@@ -52,7 +56,7 @@ export type Segment =
   | SplatSegment
   | HandleSegment
 
-export type Route =
+export type SegmentRoute =
   | [
     ...(LiteralSegment | ParamSegment)[],
     HandleSegment,
@@ -73,7 +77,14 @@ type RoutePathMatch = [
   ext: string,
 ]
 
-export function parsePath(path: string): Segment[] | null {
+type DirectoryRoute = {
+  path: string
+  route: SegmentRoute
+  splat: boolean
+  depth: number
+}
+
+export function segmentPath(path: string): Segment[] | null {
   const trimmedPath = path.replace(/(^\/)|(\/$)/g, "") // trim leading/trailing slashes
 
   if (trimmedPath === "") {
@@ -124,6 +135,7 @@ export function parsePath(path: string): Segment[] | null {
           text: "$",
         }
       }
+
       // $name (Param)
       if (/^\$\w+$/.test(s)) {
         const name = s.substring(1) // Remove "$"
@@ -137,7 +149,10 @@ export function parsePath(path: string): Segment[] | null {
       }
 
       if (/^\w+$/.test(s)) {
-        return { type: "Literal", text: s }
+        return {
+          type: "Literal",
+          text: s,
+        }
       }
 
       return null
@@ -151,17 +166,21 @@ export function parsePath(path: string): Segment[] | null {
   return segments as Segment[]
 }
 
-export function extractRoute(path: string): Route | null {
-  const segs = parsePath(path)
+export function parseRoute(
+  path: string,
+): SegmentRoute | null {
+  const segs = segmentPath(path)
   if (!segs) return null
 
   const handle = segs.at(-1)
 
   if (
     !handle
-    || (handle.type !== "ServerHandle"
+    || (
+      handle.type !== "ServerHandle"
       && handle.type !== "PageHandle"
-      && handle.type !== "LayoutHandle")
+      && handle.type !== "LayoutHandle"
+    )
   ) {
     return null
   }
@@ -195,54 +214,61 @@ export function extractRoute(path: string): Route | null {
     }
   }
 
-  return segs as Route
+  return segs as SegmentRoute
+}
+
+export function walkRoutesDirectory(
+  dir: string,
+): Effect.Effect<DirectoryRoute[], PlatformError, FileSystem.FileSystem> {
+  return Effect.gen(function*() {
+    const fs = yield* FileSystem.FileSystem
+    const files = yield* fs.readDirectory(dir, { recursive: true })
+
+    return getDirectoryRoutesFromPaths(files)
+  })
 }
 
 /**
- * Finds all route files in directory.
- *
- * Routes are sorted by depth, like so:
+ * Given a list of paths, return a list of directory routes.
+ * Routes are sorted by depth, splats are put at the end for each segment, like so:
  * - _layout.tsx
  * - users/_page.tsx
  * - users/$userId/_page.tsx
  * - $/_page.tsx
  */
-export function walkRoutes(dir: string) {
-  return Effect.gen(function*() {
-    const fs = yield* FileSystem.FileSystem
-    const files = yield* fs.readDirectory(dir, { recursive: true })
+export function getDirectoryRoutesFromPaths(
+  paths: string[],
+): DirectoryRoute[] {
+  return paths
+    .map(f => f.match(ROUTE_PATH_REGEX) as RoutePathMatch)
+    .filter(Boolean)
+    .map(v => {
+      const path = v[0]
+      const route = parseRoute(path)!
+      const segments = path.split("/")
+      const splat = /(^|\/)\$\//.test(path)
 
-    const filteredFiles = files
-      .map(f => f.match(ROUTE_PATH_REGEX) as RoutePathMatch)
-      .filter(Boolean)
-      .map(v => {
-        const path = v[0]
-        const route = extractRoute(path)
-        const segments = path.split("/")
-        const splat = /(^|\/)\$\//.test(path)
+      return {
+        path,
+        route,
+        splat,
+        depth: segments.length,
+      }
+    })
+    .filter(f => f.route !== null)
+    .toSorted((a, b) => {
+      return (
+        // splat is a dominant factor
+        (+a.splat - +b.splat) * 1000
+        // depth is reversed for splats
+        + (a.depth - b.depth) * (1 - 2 * +a.splat)
+        // lexicographic comparison as tiebreaker
+        + a.path.localeCompare(b.path) * 0.001
+      )
+    })
+}
 
-        return {
-          path,
-          route,
-          splat,
-          depth: segments.length,
-        }
-      })
-      .filter(f => f.route !== null)
-      .toSorted((a, b) => {
-        const aSplat = +a.splat
-        const bSplat = +b.splat
-
-        return (
-          // splat is a dominant factor
-          (aSplat - bSplat) * 1000
-          // depth is reversed for splats
-          + (a.depth - b.depth) * (1 - 2 * aSplat)
-          // lexicographic comparison as tiebreaker
-          + a.path.localeCompare(b.path) * 0.001
-        )
-      })
-
-    return filteredFiles
-  })
+type RouteTree = {
+  path: `/${string}`
+  children?: RouteTree[]
 }

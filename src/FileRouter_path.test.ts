@@ -3,63 +3,60 @@ import {
   expect,
   test,
 } from "bun:test"
-import {
-  extractRoute,
-  parsePath,
-} from "./FileRouter.ts"
+import * as FileRouter from "./FileRouter.ts"
 
 test("empty path as null", () => {
   expect(
-    parsePath(""),
+    FileRouter.segmentPath(""),
   )
     .toEqual([])
   expect(
-    parsePath("/"),
+    FileRouter.segmentPath("/"),
   )
     .toEqual([])
 })
 
 test("literal segments", () => {
   expect(
-    parsePath("users"),
+    FileRouter.segmentPath("users"),
   )
     .toEqual([{ type: "Literal", text: "users" }])
   expect(
-    parsePath("/users"),
+    FileRouter.segmentPath("/users"),
   )
     .toEqual([{
       type: "Literal",
       text: "users",
     }])
   expect(
-    parsePath("users/"),
+    FileRouter.segmentPath("users/"),
   )
     .toEqual([{
       type: "Literal",
       text: "users",
     }])
   expect(
-    parsePath("/users/create"),
+    FileRouter.segmentPath("/users/create"),
   )
     .toEqual([
       { type: "Literal", text: "users" },
       { type: "Literal", text: "create" },
     ])
   expect(
-    parsePath("path with spaces"),
+    FileRouter.segmentPath("path with spaces"),
   )
     .toEqual(null)
 })
 
 test("dynamic parameters", () => {
   expect(
-    parsePath("$userId"),
+    FileRouter.segmentPath("$userId"),
   )
     .toEqual([
       { type: "Param", param: "userId", text: "$userId" },
     ])
   expect(
-    parsePath("/users/$userId"),
+    FileRouter.segmentPath("/users/$userId"),
   )
     .toEqual([
       {
@@ -73,7 +70,7 @@ test("dynamic parameters", () => {
       },
     ])
   expect(
-    parsePath("/posts/$postId/comments/$commentId"),
+    FileRouter.segmentPath("/posts/$postId/comments/$commentId"),
   )
     .toEqual([
       {
@@ -99,7 +96,7 @@ test("dynamic parameters", () => {
 
 test("rest parameters", () => {
   expect(
-    parsePath("$"),
+    FileRouter.segmentPath("$"),
   )
     .toEqual([
       {
@@ -108,7 +105,7 @@ test("rest parameters", () => {
       },
     ])
   expect(
-    parsePath("/docs/$"),
+    FileRouter.segmentPath("/docs/$"),
   )
     .toEqual([
       {
@@ -121,7 +118,7 @@ test("rest parameters", () => {
       },
     ])
   expect(
-    parsePath("/user/$/details"),
+    FileRouter.segmentPath("/user/$/details"),
   )
     .toEqual([
       { type: "Literal", text: "user" },
@@ -132,7 +129,7 @@ test("rest parameters", () => {
       { type: "Literal", text: "details" },
     ])
   expect(
-    parsePath("/$"),
+    FileRouter.segmentPath("/$"),
   )
     .toEqual([
       {
@@ -141,7 +138,7 @@ test("rest parameters", () => {
       },
     ])
   expect(
-    parsePath("/test/$"),
+    FileRouter.segmentPath("/test/$"),
   )
     .toEqual([
       {
@@ -157,7 +154,7 @@ test("rest parameters", () => {
 
 test("server handles", () => {
   expect(
-    parsePath("_server.ts"),
+    FileRouter.segmentPath("_server.ts"),
   )
     .toEqual([
       {
@@ -168,7 +165,7 @@ test("server handles", () => {
       },
     ])
   expect(
-    parsePath("/api/_server.js"),
+    FileRouter.segmentPath("/api/_server.js"),
   )
     .toEqual([
       {
@@ -183,7 +180,7 @@ test("server handles", () => {
       },
     ])
   expect(
-    parsePath("_server.js"),
+    FileRouter.segmentPath("_server.js"),
   )
     .toEqual([
       {
@@ -197,7 +194,7 @@ test("server handles", () => {
 
 test("page handles", () => {
   expect(
-    parsePath("_page.tsx"),
+    FileRouter.segmentPath("_page.tsx"),
   )
     .toEqual([
       {
@@ -208,7 +205,7 @@ test("page handles", () => {
       },
     ])
   expect(
-    parsePath("_page.jsx"),
+    FileRouter.segmentPath("_page.jsx"),
   )
     .toEqual([
       {
@@ -219,7 +216,7 @@ test("page handles", () => {
       },
     ])
   expect(
-    parsePath("_page.js"),
+    FileRouter.segmentPath("_page.js"),
   )
     .toEqual([
       {
@@ -230,7 +227,7 @@ test("page handles", () => {
       },
     ])
   expect(
-    parsePath("/blog/_page.jsx"),
+    FileRouter.segmentPath("/blog/_page.jsx"),
   )
     .toEqual([
       { type: "Literal", text: "blog" },
@@ -245,7 +242,7 @@ test("page handles", () => {
 
 test("complex combinations", () => {
   expect(
-    parsePath("/users/$userId/posts/_page.tsx"),
+    FileRouter.segmentPath("/users/$userId/posts/_page.tsx"),
   )
     .toEqual([
       {
@@ -269,7 +266,7 @@ test("complex combinations", () => {
       },
     ])
   expect(
-    parsePath("/api/v1/$/_server.ts"),
+    FileRouter.segmentPath("/api/v1/$/_server.ts"),
   )
     .toEqual([
       {
@@ -295,22 +292,22 @@ test("complex combinations", () => {
 
 test("invalid paths", () => {
   expect(
-    parsePath("/$..."),
+    FileRouter.segmentPath("/$..."),
   )
     .toEqual(null) // $... is no longer valid
   expect(
-    parsePath("invalid.ts"),
+    FileRouter.segmentPath("invalid.ts"),
   )
     .toEqual(null) // Invalid handle
   expect(
-    parsePath("abc/def/$a/$/page.xyz"),
+    FileRouter.segmentPath("abc/def/$a/$/page.xyz"),
   )
     .toEqual(null) // Invalid extension
 })
 
 test("leading/trailing/multiple slashes", () => {
   expect(
-    parsePath("//users///$id//"),
+    FileRouter.segmentPath("//users///$id//"),
   )
     .toEqual([
       { type: "Literal", text: "users" },
@@ -321,7 +318,7 @@ test("leading/trailing/multiple slashes", () => {
 test("param and splat types", () => {
   // Splat is just $
   expect(
-    parsePath("$"),
+    FileRouter.segmentPath("$"),
   )
     .toEqual([{
       type: "Splat",
@@ -330,7 +327,7 @@ test("param and splat types", () => {
 
   // Min length for Param $a is 2
   expect(
-    parsePath("$a"),
+    FileRouter.segmentPath("$a"),
   )
     .toEqual([{
       type: "Param",
@@ -340,18 +337,18 @@ test("param and splat types", () => {
 
   // Splat variations that are no longer valid
   expect(
-    parsePath("$..."),
+    FileRouter.segmentPath("$..."),
   )
     .toEqual(null) // $... is no longer valid
   expect(
-    parsePath("$...ab"),
+    FileRouter.segmentPath("$...ab"),
   )
     .toEqual(null) // $...ab is no longer valid
 })
 
 test("route validation - valid routes without splat", () => {
   expect(
-    extractRoute("_page.tsx"),
+    FileRouter.segmentPath("_page.tsx"),
   )
     .toEqual([
       {
@@ -363,7 +360,7 @@ test("route validation - valid routes without splat", () => {
     ])
 
   expect(
-    extractRoute("users/$id/_page.tsx"),
+    FileRouter.segmentPath("users/$id/_page.tsx"),
   )
     .toEqual([
       { type: "Literal", text: "users" },
@@ -379,7 +376,7 @@ test("route validation - valid routes without splat", () => {
 
 test("route validation - valid routes with splat", () => {
   expect(
-    extractRoute("$/_page.tsx"),
+    FileRouter.segmentPath("$/_page.tsx"),
   )
     .toEqual([
       { type: "Splat", text: "$" },
@@ -392,7 +389,7 @@ test("route validation - valid routes with splat", () => {
     ])
 
   expect(
-    extractRoute("users/$id/$/_page.tsx"),
+    FileRouter.segmentPath("users/$id/$/_page.tsx"),
   )
     .toEqual([
       {
@@ -417,7 +414,7 @@ test("route validation - valid routes with splat", () => {
     ])
 
   expect(
-    extractRoute("api/$version/$/_server.ts"),
+    FileRouter.segmentPath("api/$version/$/_server.ts"),
   )
     .toEqual([
       { type: "Literal", text: "api" },
@@ -435,52 +432,52 @@ test("route validation - valid routes with splat", () => {
 test("route validation - invalid routes with splat in wrong position", () => {
   // Splat must be the last segment before handle
   expect(
-    extractRoute("$/users/_page.tsx"),
+    FileRouter.parseRoute("$/users/_page.tsx"),
   )
     .toEqual(null)
   expect(
-    extractRoute("docs/$/extra/_page.tsx"),
+    FileRouter.parseRoute("docs/$/extra/_page.tsx"),
   )
     .toEqual(null)
   expect(
-    extractRoute("api/$/v1/$id/_server.ts"),
+    FileRouter.parseRoute("api/$/v1/$id/_server.ts"),
   )
     .toEqual(null)
 })
 
 test("route validation - routes without handles", () => {
   expect(
-    extractRoute("users"),
+    FileRouter.parseRoute("users"),
   )
     .toEqual(null)
   expect(
-    extractRoute("users/$userId"),
+    FileRouter.parseRoute("users/$userId"),
   )
     .toEqual(null)
   expect(
-    extractRoute("docs/$"),
+    FileRouter.parseRoute("docs/$"),
   )
     .toEqual(null)
 })
 
 test("route validation - invalid file extensions", () => {
   expect(
-    extractRoute("_page.py"),
+    FileRouter.parseRoute("_page.py"),
   )
     .toEqual(null)
   expect(
-    extractRoute("_server.exe"),
+    FileRouter.parseRoute("_server.exe"),
   )
     .toEqual(null)
   expect(
-    extractRoute("_layout.html"),
+    FileRouter.parseRoute("_layout.html"),
   )
     .toEqual(null)
 })
 
 test("extractRoute - users/_server.ts", () => {
   expect(
-    extractRoute("users/_server.ts"),
+    FileRouter.segmentPath("users/_server.ts"),
   )
     .toEqual([
       {
