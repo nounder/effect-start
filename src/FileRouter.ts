@@ -33,21 +33,18 @@ export type HandleSegment =
     type: "ServerHandle"
     text: `_server.${Extension}`
     handle: "server"
-    extension: Extension
   }
   | {
     // example: '_page.tsx'
     type: "PageHandle"
     text: `_page.${Extension}`
     handle: "page"
-    extension: Extension
   }
   | {
     // example: '_layout.tsx'
     type: "LayoutHandle"
     text: `_layout.${Extension}`
     handle: "layout"
-    extension: Extension
   }
 
 export type Segment =
@@ -56,17 +53,13 @@ export type Segment =
   | SplatSegment
   | HandleSegment
 
-export type SegmentRoute =
-  | [
-    ...(LiteralSegment | ParamSegment)[],
-    HandleSegment,
-  ]
-  // Route with a splat segment must be the last segment before the handle
-  | [
-    ...(LiteralSegment | ParamSegment)[],
-    SplatSegment,
-    HandleSegment,
-  ]
+export type RouteHandle = {
+  type: "ServerHandle" | "PageHandle" | "LayoutHandle"
+  modulePath: string // eg. `about/_page.tsx`, `users/$userId/_page.tsx`, `users/$/page.tsx`
+  routePath: `/${string}` // eg. `/about`,`/users/$userId`, `/users/$`
+  segments: Segment[]
+  splat: boolean // if check if route is a splat
+}
 
 const ROUTE_PATH_REGEX = /^\/?(.*\/?)(_(server|page|layout))\.(jsx?|tsx?)$/
 
@@ -76,13 +69,6 @@ type RoutePathMatch = [
   kind: string,
   ext: string,
 ]
-
-type DirectoryRoute = {
-  path: string
-  route: SegmentRoute
-  splat: boolean
-  depth: number
-}
 
 export function segmentPath(path: string): Segment[] | null {
   const trimmedPath = path.replace(/(^\/)|(\/$)/g, "") // trim leading/trailing slashes
@@ -110,21 +96,18 @@ export function segmentPath(path: string): Segment[] | null {
           type: "ServerHandle",
           text: s as `_server.${Extension}`,
           handle: "server",
-          extension: ext as Extension,
         }
       } else if (kind === "page") {
         return {
           type: "PageHandle",
           text: s as `_page.${Extension}`,
           handle: "page",
-          extension: ext as Extension,
         }
       } else if (kind === "layout") {
         return {
           type: "LayoutHandle",
           text: s as `_layout.${Extension}`,
           handle: "layout",
-          extension: ext as Extension,
         }
       }
 
@@ -168,7 +151,7 @@ export function segmentPath(path: string): Segment[] | null {
 
 export function parseRoute(
   path: string,
-): SegmentRoute | null {
+): RouteHandle | null {
   const segs = segmentPath(path)
   if (!segs) return null
 
@@ -214,12 +197,26 @@ export function parseRoute(
     }
   }
 
-  return segs as SegmentRoute
+  // Construct routePath from path segments (excluding handle)
+  const routePath = (pathSegments.length > 0
+    ? `/${pathSegments.map(seg => seg.text).join("/")}`
+    : "/") as `/${string}`
+
+  // Check if route has splat
+  const hasSplat = pathSegments.some(seg => seg.type === "Splat")
+
+  return {
+    type: handle.type,
+    modulePath: path,
+    routePath,
+    segments: segs,
+    splat: hasSplat,
+  }
 }
 
 export function walkRoutesDirectory(
   dir: string,
-): Effect.Effect<DirectoryRoute[], PlatformError, FileSystem.FileSystem> {
+): Effect.Effect<RouteHandle[], PlatformError, FileSystem.FileSystem> {
   return Effect.gen(function*() {
     const fs = yield* FileSystem.FileSystem
     const files = yield* fs.readDirectory(dir, { recursive: true })
@@ -229,7 +226,7 @@ export function walkRoutesDirectory(
 }
 
 /**
- * Given a list of paths, return a list of directory routes.
+ * Given a list of paths, return a list of route handles.
  * Routes are sorted by depth, splats are put at the end for each segment, like so:
  * - _layout.tsx
  * - users/_page.tsx
@@ -238,32 +235,26 @@ export function walkRoutesDirectory(
  */
 export function getDirectoryRoutesFromPaths(
   paths: string[],
-): DirectoryRoute[] {
+): RouteHandle[] {
   return paths
     .map(f => f.match(ROUTE_PATH_REGEX) as RoutePathMatch)
     .filter(Boolean)
     .map(v => {
       const path = v[0]
-      const route = parseRoute(path)!
-      const segments = path.split("/")
-      const splat = /(^|\/)\$\//.test(path)
-
-      return {
-        path,
-        route,
-        splat,
-        depth: segments.length,
-      }
+      return parseRoute(path)
     })
-    .filter(f => f.route !== null)
+    .filter((route): route is RouteHandle => route !== null)
     .toSorted((a, b) => {
+      const aDepth = a.segments.length
+      const bDepth = b.segments.length
+
       return (
         // splat is a dominant factor
         (+a.splat - +b.splat) * 1000
         // depth is reversed for splats
-        + (a.depth - b.depth) * (1 - 2 * +a.splat)
+        + (aDepth - bDepth) * (1 - 2 * +a.splat)
         // lexicographic comparison as tiebreaker
-        + a.path.localeCompare(b.path) * 0.001
+        + a.modulePath.localeCompare(b.modulePath) * 0.001
       )
     })
 }

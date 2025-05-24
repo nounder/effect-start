@@ -31,7 +31,7 @@ it("walks routes", () =>
     )
 
     expect(
-      files.map(v => v.path),
+      files.map(v => v.modulePath),
     )
       .toEqual([
         "_layout.tsx",
@@ -56,7 +56,7 @@ it("walks routes with splat", () =>
     )
 
     expect(
-      files.map(v => v.path),
+      files.map(v => v.modulePath),
     )
       .toEqual([
         "_layout.tsx",

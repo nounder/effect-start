@@ -161,7 +161,6 @@ test("server handles", () => {
         type: "ServerHandle",
         text: "_server.ts",
         handle: "server",
-        extension: "ts",
       },
     ])
   expect(
@@ -176,7 +175,6 @@ test("server handles", () => {
         type: "ServerHandle",
         text: "_server.js",
         handle: "server",
-        extension: "js",
       },
     ])
   expect(
@@ -187,7 +185,6 @@ test("server handles", () => {
         type: "ServerHandle",
         text: "_server.js",
         handle: "server",
-        extension: "js",
       },
     ])
 })
@@ -201,7 +198,6 @@ test("page handles", () => {
         type: "PageHandle",
         text: "_page.tsx",
         handle: "page",
-        extension: "tsx",
       },
     ])
   expect(
@@ -212,7 +208,6 @@ test("page handles", () => {
         type: "PageHandle",
         text: "_page.jsx",
         handle: "page",
-        extension: "jsx",
       },
     ])
   expect(
@@ -223,7 +218,6 @@ test("page handles", () => {
         type: "PageHandle",
         text: "_page.js",
         handle: "page",
-        extension: "js",
       },
     ])
   expect(
@@ -235,7 +229,6 @@ test("page handles", () => {
         type: "PageHandle",
         text: "_page.jsx",
         handle: "page",
-        extension: "jsx",
       },
     ])
 })
@@ -262,7 +255,6 @@ test("complex combinations", () => {
         type: "PageHandle",
         text: "_page.tsx",
         handle: "page",
-        extension: "tsx",
       },
     ])
   expect(
@@ -285,7 +277,6 @@ test("complex combinations", () => {
         type: "ServerHandle",
         text: "_server.ts",
         handle: "server",
-        extension: "ts",
       },
     ])
 })
@@ -355,7 +346,6 @@ test("route validation - valid routes without splat", () => {
         type: "PageHandle",
         text: "_page.tsx",
         handle: "page",
-        extension: "tsx",
       },
     ])
 
@@ -369,7 +359,6 @@ test("route validation - valid routes without splat", () => {
         type: "PageHandle",
         text: "_page.tsx",
         handle: "page",
-        extension: "tsx",
       },
     ])
 })
@@ -384,7 +373,6 @@ test("route validation - valid routes with splat", () => {
         type: "PageHandle",
         text: "_page.tsx",
         handle: "page",
-        extension: "tsx",
       },
     ])
 
@@ -409,7 +397,6 @@ test("route validation - valid routes with splat", () => {
         type: "PageHandle",
         text: "_page.tsx",
         handle: "page",
-        extension: "tsx",
       },
     ])
 
@@ -424,7 +411,6 @@ test("route validation - valid routes with splat", () => {
         type: "ServerHandle",
         text: "_server.ts",
         handle: "server",
-        extension: "ts",
       },
     ])
 })
@@ -488,7 +474,6 @@ test("extractRoute - users/_server.ts", () => {
         type: "ServerHandle",
         text: "_server.ts",
         handle: "server",
-        extension: "ts",
       },
     ])
 })

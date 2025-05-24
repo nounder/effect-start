@@ -15,7 +15,3 @@ const Paths = [
   "users/$userId/_page.tsx",
   "_layout.tsx",
 ]
-
-test("makeTreeFromDirectoryRoutes", () => {
-  const segments = Paths.map(FileRouter.parseRoute)
-})
