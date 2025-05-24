@@ -5,8 +5,11 @@ import type {
   PlatformError,
 } from "@effect/platform/Error"
 import {
+  Array,
   Effect,
   Either,
+  HashMap,
+  Record,
 } from "effect"
 
 type LiteralSegment = {
@@ -274,12 +277,56 @@ export function getDirectoryRoutesFromPaths(
 
 type RouteTree = {
   path: `/${string}`
+  handles: RouteHandle[]
   children?: RouteTree[]
 }
+
 export function treeFromRouteHandles(
   handles: RouteHandle[],
-): {
-  children: RouteTree[]
-} {
-  throw new Error("treeFromRouteHandles is not yet implemented")
+): RouteTree {
+  const handlesByPath = Array.groupBy(handles, handle => handle.routePath)
+  const paths = Record.keys(handlesByPath)
+  const root: RouteTree = {
+    path: "/",
+    handles: handlesByPath["/"] || [],
+  }
+
+  const nodeMap = new Map<string, RouteTree>([["/", root]])
+
+  for (const absolutePath of paths) {
+    if (absolutePath === "/") continue
+
+    // Find parent path
+    const segments = absolutePath.split("/").filter(Boolean)
+    const parentPath = segments.length === 1
+      ? "/"
+      : "/" + segments.slice(0, -1).join("/")
+
+    const parent = nodeMap.get(parentPath)
+    if (!parent) {
+      continue // Skip orphaned paths
+    }
+
+    // Create node with relative path
+    const relativePath = parent.path === "/"
+      ? absolutePath
+      : absolutePath.slice(parentPath.length)
+
+    const node: RouteTree = {
+      path: relativePath as `/${string}`,
+      handles: handlesByPath[absolutePath]!,
+    }
+
+    // Add to parent
+    if (!parent.children) {
+      parent.children = []
+    }
+
+    parent.children.push(node)
+
+    // Store for future children
+    nodeMap.set(absolutePath, node)
+  }
+
+  return root
 }
