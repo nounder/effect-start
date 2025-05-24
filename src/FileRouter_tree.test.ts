@@ -3,9 +3,7 @@ import {
   expect,
   test,
 } from "bun:test"
-import {
-  FileRouter,
-} from "effect-bundler"
+import * as FileRouter from "./FileRouter.ts"
 
 const Paths = [
   "about/_layout.tsx",
@@ -15,3 +13,13 @@ const Paths = [
   "users/$userId/_page.tsx",
   "_layout.tsx",
 ]
+
+test.skip("treeFromRouteHandles", () => {
+  const handles = Paths.map(FileRouter.parseRoute)
+  const tree = FileRouter.treeFromRouteHandles(handles)
+  expect(tree).toEqual({
+    children: [
+      { path: "/about", children: [] },
+    ],
+  })
+})

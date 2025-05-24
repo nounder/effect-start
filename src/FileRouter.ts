@@ -70,7 +70,7 @@ type RoutePathMatch = [
   ext: string,
 ]
 
-export function segmentPath(path: string): Segment[] | null {
+export function segmentPath(path: string): Segment[] {
   const trimmedPath = path.replace(/(^\/)|(\/$)/g, "") // trim leading/trailing slashes
 
   if (trimmedPath === "") {
@@ -143,7 +143,9 @@ export function segmentPath(path: string): Segment[] | null {
   )
 
   if (segments.some((seg) => seg === null)) {
-    return null
+    throw new Error(
+      `Invalid path segment in "${path}": contains invalid characters or format`,
+    )
   }
 
   return segments as Segment[]
@@ -151,9 +153,8 @@ export function segmentPath(path: string): Segment[] | null {
 
 export function parseRoute(
   path: string,
-): RouteHandle | null {
+): RouteHandle {
   const segs = segmentPath(path)
-  if (!segs) return null
 
   const handle = segs.at(-1)
 
@@ -165,7 +166,9 @@ export function parseRoute(
       && handle.type !== "LayoutHandle"
     )
   ) {
-    return null
+    throw new Error(
+      `Invalid route path "${path}": must end with a valid handle (_server, _page, or _layout)`,
+    )
   }
 
   // Validate Route constraints: splat segments must be the last segment before the handle
@@ -175,14 +178,18 @@ export function parseRoute(
   if (splatIndex !== -1) {
     // If there's a splat, it must be the last path segment
     if (splatIndex !== pathSegments.length - 1) {
-      return null // Invalid: splat is not the last path segment
+      throw new Error(
+        `Invalid route path "${path}": splat segment ($) must be the last path segment before the handle`,
+      )
     }
 
     // Validate that all segments before the splat are literal or param
     for (let i = 0; i < splatIndex; i++) {
       const seg = pathSegments[i]
       if (seg.type !== "Literal" && seg.type !== "Param") {
-        return null
+        throw new Error(
+          `Invalid route path "${path}": segments before splat must be literal or param segments`,
+        )
       }
     }
   } else {
@@ -192,7 +199,9 @@ export function parseRoute(
         seg.type !== "Literal"
         && seg.type !== "Param"
       ) {
-        return null
+        throw new Error(
+          `Invalid route path "${path}": path segments must be literal or param segments`,
+        )
       }
     }
   }
@@ -241,7 +250,11 @@ export function getDirectoryRoutesFromPaths(
     .filter(Boolean)
     .map(v => {
       const path = v[0]
-      return parseRoute(path)
+      try {
+        return parseRoute(path)
+      } catch {
+        return null
+      }
     })
     .filter((route): route is RouteHandle => route !== null)
     .toSorted((a, b) => {
@@ -262,4 +275,11 @@ export function getDirectoryRoutesFromPaths(
 type RouteTree = {
   path: `/${string}`
   children?: RouteTree[]
+}
+export function treeFromRouteHandles(
+  handles: RouteHandle[],
+): {
+  children: RouteTree[]
+} {
+  throw new Error("treeFromRouteHandles is not yet implemented")
 }
