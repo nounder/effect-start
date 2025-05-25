@@ -1,8 +1,18 @@
 import {
+  createMemoryHistory,
+  createRouter,
+  RouterProvider,
+  useParams,
+} from "@tanstack/react-router"
+import {
   expect,
   it,
   test,
 } from "bun:test"
+import React from "react"
+import {
+  renderToReadableStream,
+} from "react-dom/server"
 import * as FileRouter from "../../FileRouter"
 import * as TanstackRouter from "./TanstackRouter"
 
@@ -281,3 +291,114 @@ test("generateRouteTree handles complex nested structure", () => {
   expect(routePaths)
     .toContain("/blog/$postId")
 })
+
+test("generateRouteTree renders React components properly", async () => {
+  const RootComponent = () =>
+    React.createElement("div", { id: "root" }, "Root Page Content")
+  const AboutComponent = () =>
+    React.createElement("div", { id: "about" }, "About Page Content")
+  const UsersComponent = () =>
+    React.createElement("div", { id: "users" }, "Users Page Content")
+
+  const paths = {
+    "_page.tsx": () => ({ default: RootComponent }),
+    "about/_page.tsx": () => ({ default: AboutComponent }),
+    "users/_page.tsx": () => ({ default: UsersComponent }),
+  }
+
+  const tree = TanstackRouter.generateRouteTree(paths)
+
+  // Test root route renders correctly
+  const rootHtml = await renderRouterToString(tree, "/")
+
+  expect(rootHtml)
+    .toContain("Root Page Content")
+  expect(rootHtml)
+    .toContain("<div id=\"root\">")
+
+  // Test about route renders correctly
+  const aboutHtml = await renderRouterToString(tree, "/about")
+  expect(aboutHtml)
+    .toContain("About Page Content")
+  expect(aboutHtml)
+    .toContain("<div id=\"about\">")
+
+  // Test users route renders correctly
+  const usersHtml = await renderRouterToString(tree, "/users")
+  expect(usersHtml)
+    .toContain("Users Page Content")
+  expect(usersHtml)
+    .toContain("<div id=\"users\">")
+})
+
+test("generateRouteTree renders async components and complex routes", async () => {
+  const BlogComponent = () =>
+    React.createElement("div", { id: "blog" }, "Blog Home")
+  const PostComponent = () => {
+    const params = useParams({ strict: false })
+    return React.createElement(
+      "div",
+      { id: "post" },
+      `Blog Post Detail: ${params.postId}`,
+    )
+  }
+  const UserDetailComponent = () => {
+    const params = useParams({ strict: false })
+    return React.createElement(
+      "div",
+      { id: "user-detail" },
+      `User Profile: ${params.userId}`,
+    )
+  }
+
+  const paths = {
+    "blog/_page.tsx": async () => ({ default: BlogComponent }),
+    "blog/$postId/_page.tsx": () => ({ default: PostComponent }),
+    "users/$userId/_page.tsx": async () => ({ default: UserDetailComponent }),
+  }
+
+  const tree = TanstackRouter.generateRouteTree(paths)
+
+  // Test blog route renders correctly
+  const blogHtml = await renderRouterToString(tree, "/blog")
+  expect(blogHtml)
+    .toContain("Blog Home")
+  expect(blogHtml)
+    .toContain("<div id=\"blog\">")
+
+  // Test blog post route with dynamic segment
+  const postHtml = await renderRouterToString(tree, "/blog/123")
+  expect(postHtml)
+    .toContain("Blog Post Detail: 123")
+  expect(postHtml)
+    .toContain("<div id=\"post\">")
+
+  // Test user detail route with dynamic segment
+  const userHtml = await renderRouterToString(tree, "/users/456")
+  expect(userHtml)
+    .toContain("User Profile: 456")
+  expect(userHtml)
+    .toContain("<div id=\"user-detail\">")
+})
+
+async function renderRouterToString(
+  routeTree: any,
+  path: string,
+): Promise<string> {
+  const memoryHistory = createMemoryHistory({
+    initialEntries: [path],
+  })
+
+  const router = createRouter({
+    routeTree,
+    history: memoryHistory,
+  })
+
+  await router.load()
+
+  const stream = await renderToReadableStream(
+    React.createElement(RouterProvider, { router }),
+  )
+
+  return await new Response(stream).text()
+}

@@ -15,8 +15,7 @@ This instructs AI agents how to navigate and edit this codebase.
 - ALWAYS use extension in file imports.
 - Do not unwrap effects in `Effect.gen`. You can `yield*` effects directly.
 - Do not write obvious comments that restate what the code is doing without adding meaningful context.
-- Make sure to run `dprint fmt` BEFORE running tests.
-  - Do NOT run tests after formatting.
+- Make sure to run `dprint fmt` AFTER running tests. DO NOT run test after formatting.
 - Always run test after making all the changes.
 
 # Tests

@@ -2,6 +2,7 @@ import {
   type AnyRoute,
   createRootRoute,
   createRoute,
+  Outlet,
 } from "@tanstack/react-router"
 import {
   Data,
@@ -16,6 +17,7 @@ import {
 import {
   watchFileChanges,
 } from "effect-bundler/files"
+import React from "react"
 
 const RoutesDir = import.meta.dir + "/routes"
 
@@ -27,9 +29,13 @@ export class TanstackRouterError
 {}
 
 type RouteModules = {
-  [path: string]: () => Promise<{
-    default: any
-  }>
+  [path: string]: () =>
+    | Promise<{
+      default: any
+    }>
+    | {
+      default: any
+    }
 }
 
 export function generateRouteTree(paths: RouteModules) {
@@ -37,7 +43,7 @@ export function generateRouteTree(paths: RouteModules) {
 
   // Create the actual root route using TanStack Router API
   const rootRoute = createRootRoute({
-    component: () => null, // Default component, can be overridden
+    component: () => React.createElement(Outlet),
   })
 
   // Convert routes to TanStack routes and build the tree
@@ -90,9 +96,27 @@ function convertRoutesToTanstackRoutes(
     const tanstackRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: routePath,
-      component: () => null, // Default component
+      component: () => {
+        let Component: any = null
+        const moduleResult = modules[route.modulePath]()
+
+        if (moduleResult instanceof Promise) {
+          Component = React.lazy(() => moduleResult)
+          return React.createElement(
+            React.Suspense,
+            { fallback: null },
+            React.createElement(Component),
+          )
+        } else {
+          Component = moduleResult.default
+          return React.createElement(Component)
+        }
+      },
       loader: async () => {
-        const module = await modules[route.modulePath]()
+        const moduleResult = modules[route.modulePath]()
+        const module = moduleResult instanceof Promise
+          ? await moduleResult
+          : moduleResult
         return module
       },
     })
