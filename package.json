@@ -18,12 +18,19 @@
   },
   "devDependencies": {
     "@types/bun": "^1.2.13",
+    "@tanstack/react-router": "^1.120.10",
     "effect-memfs": "github:nounder/effect-memfs#v0.7.0"
   },
   "peerDependencies": {
     "typescript": "^5.8.3",
     "effect": "^3.15.0",
-    "@effect/platform": "^0.82.0"
+    "@effect/platform": "^0.82.0",
+    "@tanstack/react-router": "^1.120.10"
+  },
+  "peerDependenciesMeta": {
+    "@tanstack/react-router": {
+      "optional": true
+    }
   },
   "optionalDependencies": {
     "@effect/platform-bun": "^0.65.0",
