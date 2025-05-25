@@ -9,7 +9,8 @@
     "./bun": "./src/bun/index.ts",
     "./vite": "./src/vite/index.ts",
     "./client": "./src/client/index.ts",
-    "./files": "./src/files.ts"
+    "./files": "./src/files.ts",
+    "./package.json": "./package.json"
   },
   "scripts": {
     "start": "bun src/dev.ts start",
