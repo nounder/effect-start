@@ -115,7 +115,15 @@ function importModule(path) {
   }
 
   code.push(
-    `export const rootRoute = createRootRoute({ component: () => React.createElement("div", { "data-testid": "root-outlet-wrapper" }, React.createElement(Outlet)) });
+    `export const rootRoute = createRootRoute({
+  component: () => React.createElement(
+    "div",
+    {
+      "data-testid": "root-outlet-wrapper",
+    },
+    React.createElement(Outlet),
+  ),
+});
 `,
   )
 
@@ -180,7 +188,7 @@ function importModule(path) {
   )
 
   return code.join("\n")
-} // Helper function to get the TanStack relativePath for a route
+}
 
 export function getTanstackRelativePath(
   handle: FileRouter.RouteHandle,
@@ -200,7 +208,7 @@ export function getTanstackRelativePath(
   if (relativePath === "") return "/"
   if (!relativePath.startsWith("/")) relativePath = `/${relativePath}`
   return relativePath
-} // Helper function to generate a variable name for a route
+}
 
 export function getRouteVarName(
   handle: FileRouter.RouteHandle,
@@ -233,7 +241,7 @@ export function getRouteVarName(
     }
   }
   return `route_${pathPart}`
-} // Helper function to sanitize a TanStack route path for use in variable names
+}
 
 export function sanitizeForVarName(tanstackRoutePath: string): string {
   if (tanstackRoutePath === "/") return "root"
