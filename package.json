@@ -10,7 +10,8 @@
     "./vite": "./src/vite/index.ts",
     "./client": "./src/client/index.ts",
     "./files": "./src/files.ts",
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./x/tanstack-react-router": "./src/x/tanstack-react-router/index.ts"
   },
   "scripts": {
     "start": "bun src/dev.ts start",
@@ -20,15 +21,19 @@
     "effect-memfs": "github:nounder/effect-memfs#v0.7.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "@types/bun": "^1.2.13",
+    "@types/bun": "^1.2.14",
     "@types/react": "^19.1.5",
-    "@types/react-dom": "^19.1.5"
+    "@types/react-dom": "^19.1.5",
+
+    "@effect/platform": "^0.82.7",
+    "@effect/platform-bun": "^0.65.4",
+    "@tanstack/react-router": "^1.120.10"
   },
   "peerDependencies": {
     "typescript": "^5.8.3",
-    "effect": "^3.15.0",
-    "@effect/platform": "^0.82.0",
-    "@effect/platform-bun": "^0.65.0",
+    "effect": "^3.15.4",
+    "@effect/platform": "^0.82.7",
+    "@effect/platform-bun": "^0.65.4",
     "@tanstack/react-router": "^1.120.10"
   },
   "peerDependenciesMeta": {

@@ -4,10 +4,6 @@ import {
   HttpServer,
 } from "@effect/platform"
 import {
-  BunContext,
-  BunRuntime,
-} from "@effect/platform-bun"
-import {
   Config,
   Effect,
   identity,
@@ -27,6 +23,28 @@ import type {
 } from "./BunBundle.ts"
 import * as BunBundle from "./BunBundle.ts"
 import * as BunFullStackServer from "./BunFullstackServer.ts"
+
+export function layerServe(opts?: {
+  port?: 3000
+  routes?: HttpRouter.HttpRouter<any, ClientKey>
+  client?: ReturnType<typeof BunBundle.bundleClient>
+}) {
+  return Layer.mergeAll(
+    BunFullStackServer.layer({
+      port: opts?.port ?? 3000,
+      routes: opts?.routes,
+    }),
+    opts?.client
+      ? Layer.unwrapEffect(Effect.gen(function*() {
+        const env = yield* Config.string("NODE_ENV").pipe(Config.option)
+
+        return Option.getOrNull(env) === "production"
+          ? opts.client!.layer
+          : opts.client!.devLayer
+      }))
+      : Layer.empty as Layer.Layer<ClientKey>,
+  )
+}
 
 /**
  * Starts a Bun server with client bundle if provided.
@@ -56,10 +74,7 @@ export function serve(opts: {
             : opts.client!.devLayer
         }))
         : Layer.empty as Layer.Layer<ClientKey>,
-      BunContext.layer,
     ]),
-    Layer.launch,
-    BunRuntime.runMain,
   )
 }
 

@@ -1,12 +1,19 @@
 import {
+  createHashHistory,
+  createRouter,
   RouterProvider,
 } from "@tanstack/react-router"
 import {
   createRoot,
 } from "react-dom/client"
 import {
-  router,
-} from "./routes.macro.ts" with { type: "macro" }
+  routeTree,
+} from "./routes/routes.gen.ts"
+
+const router = createRouter({
+  routeTree,
+  history: createHashHistory(),
+})
 
 export function App() {
   return <RouterProvider router={router} />

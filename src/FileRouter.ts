@@ -233,7 +233,7 @@ export function walkRoutesDirectory(
     const fs = yield* FileSystem.FileSystem
     const files = yield* fs.readDirectory(dir, { recursive: true })
 
-    return getDirectoryRoutesFromPaths(files)
+    return getRouteHandlesFromPaths(files)
   })
 }
 
@@ -245,7 +245,7 @@ export function walkRoutesDirectory(
  * - users/$userId/_page.tsx
  * - $/_page.tsx
  */
-export function getDirectoryRoutesFromPaths(
+export function getRouteHandlesFromPaths(
   paths: string[],
 ): RouteHandle[] {
   return paths

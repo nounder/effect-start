@@ -1,4 +1,10 @@
 import {
+  FileSystem,
+} from "@effect/platform"
+import type {
+  PlatformError,
+} from "@effect/platform/Error"
+import {
   createRootRoute,
   createRoute,
   Outlet,
@@ -17,6 +23,7 @@ import {
   watchFileChanges,
 } from "effect-bundler/files"
 import React from "react"
+import * as TanstackRouterCodegen from "./TanstackRouterCodegen.ts"
 
 export class TanstackRouterError
   extends Data.TaggedError("TanstackRouterError")<{
@@ -35,11 +42,29 @@ type RouteModules = {
     }
 }
 
+export function dumpTanstackGenFile(
+  dir = "src/routes",
+): Effect.Effect<void, PlatformError, FileSystem.FileSystem> {
+  return Effect.gen(function*() {
+    const fs = yield* FileSystem.FileSystem
+    const files = yield* fs.readDirectory(dir, { recursive: true })
+    const handles = FileRouter.getRouteHandlesFromPaths(files)
+    const code = TanstackRouterCodegen.generateCode(handles)
+
+    yield* fs.writeFileString(
+      `${dir}/routes.gen.ts`,
+      code,
+    )
+  })
+}
+
 export function layer() {
   const root = process.cwd()
 
   return Layer.scopedDiscard(
     Effect.gen(function*() {
+      yield* dumpTanstackGenFile()
+
       yield* pipe(
         watchFileChanges(root),
         Stream.runForEach(() =>
@@ -52,13 +77,16 @@ export function layer() {
               }),
           })
         ),
+        Effect.fork,
       )
     }),
   )
 }
 
-export function makeRootRoute(paths: RouteModules) {
-  const routes = FileRouter.getDirectoryRoutesFromPaths(Object.keys(paths))
+export function makeRootRoute(
+  paths: RouteModules,
+) {
+  const routes = FileRouter.getRouteHandlesFromPaths(Object.keys(paths))
 
   // Create the actual root route using TanStack Router API
   const rootRoute = createRootRoute({
@@ -72,7 +100,7 @@ export function makeRootRoute(paths: RouteModules) {
     rootRoute as any,
   )
 
-  return rootRoute.addChildren(childRoutes as any) as any
+  return rootRoute.addChildren(childRoutes as any)
 }
 
 function convertRoutesToTanstackRoutes(
