@@ -45,7 +45,7 @@ it("should generate correct code for a simple flat structure", async () => {
   expect(html).toContain("data-testid=\"mock-AboutPage\"")
   expect(html).toContain("AboutPage")
 
-  const code = TanstackRouterCodegen.generateRouteCode(handles)
+  const code = TanstackRouterCodegen.generateCode(handles)
   const normalizedCode = code.replace(/\/\/.*$/gm, "").replace(/\s+/g, " ")
   const normalizedCodeNoSpace = code.replace(/\/\/.*$/gm, "").replace(
     /\s/g,
@@ -120,7 +120,7 @@ it("should generate correct code for nested routes with layouts", async () => {
   expect(html).toContain("data-testid=\"mock-SettingsPage\"")
   expect(html).toContain("SettingsPage")
 
-  const code = TanstackRouterCodegen.generateRouteCode(handles)
+  const code = TanstackRouterCodegen.generateCode(handles)
   const normalizedCode = code.replace(/\/\/.*$/gm, "").replace(/\s+/g, " ")
   const normalizedCodeNoSpace = code.replace(/\/\/.*$/gm, "").replace(
     /\s/g,
@@ -173,7 +173,7 @@ it("should generate code for dynamic and splat routes", async () => {
   expect(html).toContain("data-testid=\"mock-FilesSplatPage\"")
   expect(html).toContain("FilesSplatPage")
 
-  const code = TanstackRouterCodegen.generateRouteCode(handles)
+  const code = TanstackRouterCodegen.generateCode(handles)
   const normalizedCodeNoSpace = code.replace(/\/\/.*$/gm, "").replace(
     /\s/g,
     "",
@@ -196,7 +196,7 @@ it("should generate correct code for an empty array of handles", async () => {
   // Since root component is just Outlet wrapped in a div, it should be minimal but present.
   expect(html).toContain("data-testid=\"root-outlet-wrapper\"")
 
-  const code = TanstackRouterCodegen.generateRouteCode(handles)
+  const code = TanstackRouterCodegen.generateCode(handles)
   const normalizedCodeNoSpace = code
     .replace(/\/\/.*$/gm, "")
     .replace(/\s/g, "")
@@ -265,7 +265,7 @@ it("should handle layouts without direct pages and deeply nested structures", as
   expect(html).toContain("data-testid=\"mock-AdminProfilePage\"")
   expect(html).toContain("AdminProfilePage")
 
-  const code = TanstackRouterCodegen.generateRouteCode(handles)
+  const code = TanstackRouterCodegen.generateCode(handles)
   const normalizedCode = code.replace(/\/\/.*$/gm, "").replace(/\s+/g, " ")
   const normalizedCodeNoSpace = code.replace(/\/\/.*$/gm, "").replace(
     /\s/g,
@@ -342,7 +342,7 @@ async function evalAndRender(
   initialUrl: string,
   mockComponents: Record<string, React.ComponentType<any>>,
 ) {
-  const code = TanstackRouterCodegen.generateRouteCode(handles)
+  const code = TanstackRouterCodegen.generateCode(handles)
   const blob = new Blob([code], { type: "application/javascript" })
 
   const importedModule = await importJsBlob<{

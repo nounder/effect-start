@@ -57,7 +57,7 @@ export function layer() {
   )
 }
 
-export function generateRouteTree(paths: RouteModules) {
+export function makeRootRoute(paths: RouteModules) {
   const routes = FileRouter.getDirectoryRoutesFromPaths(Object.keys(paths))
 
   // Create the actual root route using TanStack Router API

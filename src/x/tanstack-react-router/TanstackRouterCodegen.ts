@@ -2,7 +2,7 @@ import {
   FileRouter,
 } from "effect-bundler"
 
-export function generateRouteCode(
+export function generateCode(
   handles: FileRouter.RouteHandle[],
 ): string {
   const code: string[] = []
@@ -190,7 +190,7 @@ function importModule(path) {
   return code.join("\n")
 }
 
-export function getTanstackRelativePath(
+function getTanstackRelativePath(
   handle: FileRouter.RouteHandle,
   parentHandle: FileRouter.RouteHandle | null,
 ): string {
@@ -243,7 +243,7 @@ export function getRouteVarName(
   return `route_${pathPart}`
 }
 
-export function sanitizeForVarName(tanstackRoutePath: string): string {
+function sanitizeForVarName(tanstackRoutePath: string): string {
   if (tanstackRoutePath === "/") return "root"
 
   return tanstackRoutePath

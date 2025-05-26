@@ -19,7 +19,7 @@ test("generateRouteTree creates root node with correct structure", () => {
     "_page.tsx": async () => ({ default: () => "RootPage" }),
   }
 
-  const tree = TanstackRouter.generateRouteTree(paths)
+  const tree = TanstackRouter.makeRootRoute(paths)
 
   // Check that we get a proper TanStack Router root route
   expect(tree.isRoot)
@@ -50,7 +50,7 @@ test("generateRouteTree handles nested routes", () => {
     }),
   }
 
-  const tree = TanstackRouter.generateRouteTree(paths)
+  const tree = TanstackRouter.makeRootRoute(paths)
 
   expect((tree.children as any).length)
     .toBe(4) // root, about, users, users/$userId (flattened)
@@ -104,7 +104,7 @@ test("generateRouteTree handles dynamic segments", () => {
     }),
   }
 
-  const tree = TanstackRouter.generateRouteTree(paths)
+  const tree = TanstackRouter.makeRootRoute(paths)
 
   const postsRoute = (tree.children as any).find((c: any) =>
     c.options.path === "/posts/$postId"
@@ -131,7 +131,7 @@ test("generateRouteTree handles splat routes", () => {
     "files/$/_page.tsx": async () => ({ default: () => "FilesCatchAllPage" }),
   }
 
-  const tree = TanstackRouter.generateRouteTree(paths)
+  const tree = TanstackRouter.makeRootRoute(paths)
 
   // Note: FileRouter sorts splat routes last, so files/$ comes before /$
   const filesSplatRoute = (tree.children as any).find((c: any) =>
@@ -162,7 +162,7 @@ test("generateRouteTree ignores non-page handles", () => {
     "about/_page.tsx": async () => ({ default: () => "AboutPage" }),
   }
 
-  const tree = TanstackRouter.generateRouteTree(paths)
+  const tree = TanstackRouter.makeRootRoute(paths)
 
   // Should only include page handles
   expect((tree.children as any).length)
@@ -185,7 +185,7 @@ test("generateRouteTree assigns correct loaders", () => {
     "about/_page.tsx": aboutLoader,
   }
 
-  const tree = TanstackRouter.generateRouteTree(paths)
+  const tree = TanstackRouter.makeRootRoute(paths)
 
   const rootRoute = (tree.children as any).find((c: any) =>
     c.options.path === "/"
@@ -210,7 +210,7 @@ test("generateRouteTree getParentRoute returns correct parent id", () => {
     }),
   }
 
-  const tree = TanstackRouter.generateRouteTree(paths)
+  const tree = TanstackRouter.makeRootRoute(paths)
 
   // Find routes by path
   const indexRoute = (tree.children as any).find((r: any) =>
@@ -237,7 +237,7 @@ test("generateRouteTree getParentRoute returns correct parent id", () => {
 test("generateRouteTree handles empty paths", () => {
   const paths = {}
 
-  const tree = TanstackRouter.generateRouteTree(paths)
+  const tree = TanstackRouter.makeRootRoute(paths)
 
   expect(tree.isRoot)
     .toBe(true)
@@ -260,7 +260,7 @@ test("generateRouteTree handles complex nested structure", () => {
     "blog/$postId/_page.tsx": async () => ({ default: () => "BlogPostPage" }),
   }
 
-  const tree = TanstackRouter.generateRouteTree(paths)
+  const tree = TanstackRouter.makeRootRoute(paths)
 
   // Should have root, dashboard, dashboard/settings, dashboard/settings/profile, blog, blog/$postId
   expect((tree.children as any).length)
@@ -304,7 +304,7 @@ test("generateRouteTree renders React components properly", async () => {
     "users/_page.tsx": () => ({ default: UsersComponent }),
   }
 
-  const tree = TanstackRouter.generateRouteTree(paths)
+  const tree = TanstackRouter.makeRootRoute(paths)
 
   // Test root route renders correctly
   const rootHtml = await renderRouterToString(tree, "/")
@@ -355,7 +355,7 @@ test("generateRouteTree renders async components and complex routes", async () =
     "users/$userId/_page.tsx": async () => ({ default: UserDetailComponent }),
   }
 
-  const tree = TanstackRouter.generateRouteTree(paths)
+  const tree = TanstackRouter.makeRootRoute(paths)
 
   // Test blog route renders correctly
   const blogHtml = await renderRouterToString(tree, "/blog")
