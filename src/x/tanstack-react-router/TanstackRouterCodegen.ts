@@ -187,8 +187,7 @@ export function getTanstackRelativePath(
   parentHandle: FileRouter.RouteHandle | null,
 ): string {
   if (parentHandle === null) { // Root child
-    // @ts-ignore
-    return handle.routePath === "" ? "/" : handle.routePath
+    return handle.routePath
   }
 
   const parentRoutePath = parentHandle.routePath
@@ -207,8 +206,7 @@ export function getRouteVarName(
   handle: FileRouter.RouteHandle,
   layoutHandles: FileRouter.RouteHandle[],
 ): string {
-  // @ts-ignore // FileRouter.RouteHandle.routePath can be "" for root, type `/${string}` is too strict here.
-  const pathForSanitization = handle.routePath === "" ? "/" : handle.routePath
+  const pathForSanitization = handle.routePath
   let pathPart = sanitizeForVarName(pathForSanitization)
 
   if (handle.type === "PageHandle") {
@@ -219,8 +217,7 @@ export function getRouteVarName(
       // If pathPart is "root" (from "/"), this page is the root index page,
       // and if there was a root layout (uncommon, but possible), avoid "root_page" if not needed.
       // However, for /dashboard + /dashboard/_page, pathPart will be "dashboard", making it "dashboard_page".
-      // @ts-ignore // handle.routePath can be "" for root, type `/${string}` is too strict here.
-      if (pathPart === "root" && handle.routePath === "") {
+      if (pathPart === "root" && handle.routePath === "/") {
         // This is the root page (e.g. _page.tsx at root level).
         // If there was a root layout (e.g. _layout.tsx at root), its pathPart would also be "root".
         // In this specific root case, let the page also be "route_root" if no layout, or distinguish if layout exists.
@@ -231,7 +228,7 @@ export function getRouteVarName(
         // For non-root paths like /dashboard, if there's a /dashboard layout, page becomes route_dashboard_page
         pathPart = pathPart + "_page"
       }
-      // If pathPart is "root" but handle.routePath is not "" (e.g. a file named `_page.tsx` inside a folder that becomes part of root path somehow, not standard)
+      // If pathPart is "root" but handle.routePath is not "/" (e.g. a file named `_page.tsx` inside a folder that becomes part of root path somehow, not standard)
       // this logic might need more refinement, but for typical structures, this should be okay.
     }
   }
@@ -240,7 +237,6 @@ export function getRouteVarName(
 
 export function sanitizeForVarName(tanstackRoutePath: string): string {
   if (tanstackRoutePath === "/") return "root"
-  if (tanstackRoutePath === "") return "root"
 
   return tanstackRoutePath
     .replace(/^\//, "")

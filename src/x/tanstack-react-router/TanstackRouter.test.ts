@@ -1,28 +1,18 @@
 import {
   createMemoryHistory,
   createRouter,
-  Outlet,
   RouterProvider,
   useParams,
 } from "@tanstack/react-router"
 import {
-  describe,
   expect,
-  it,
   test,
 } from "bun:test"
-import {
-  FileRouter,
-} from "effect-bundler"
 import React from "react"
 import {
   renderToReadableStream,
 } from "react-dom/server"
-import {
-  importJsBlob,
-} from "../../../src/esm.ts"
 import * as TanstackRouter from "./TanstackRouter.ts"
-import * as TanstackRouterCodegen from "./TanstackRouterCodegen.ts"
 
 test("generateRouteTree creates root node with correct structure", () => {
   const paths = {
