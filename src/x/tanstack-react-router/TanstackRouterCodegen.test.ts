@@ -178,17 +178,17 @@ it("should generate code for dynamic and splat routes", async () => {
   )
 
   const expectedPostIdRoute =
-    `const route_posts_postId = createRoute({ getParentRoute: () => rootRoute, path: "/posts/$postId", component: React.lazy(() => importModule("posts/$postId/_page.tsx")), });`
+    `const route_posts_$postId = createRoute({ getParentRoute: () => rootRoute, path: "/posts/$postId", component: React.lazy(() => importModule("posts/$postId/_page.tsx")), });`
   expect(normalizedCode).toContain(expectedPostIdRoute.replace(/\s+/g, " "))
 
   const expectedFilesSplatRoute =
-    `const route_files_Splat = createRoute({ getParentRoute: () => rootRoute, path: "/files/$", component: React.lazy(() => importModule("files/$/_page.tsx")), });`
+    `const route_files_$ = createRoute({ getParentRoute: () => rootRoute, path: "/files/$", component: React.lazy(() => importModule("files/$/_page.tsx")), });`
   expect(normalizedCode).toContain(
     expectedFilesSplatRoute.replace(/\s+/g, " "),
   )
 
   const expectedRouteTreeDynamicSplat =
-    `export const routeTree = rootRoute.addChildren([ route_files_Splat, route_posts_postId ]);`
+    `export const routeTree = rootRoute.addChildren([ route_files_$, route_posts_$postId ]);`
   expect(normalizedCodeNoSpace)
     .toContain(expectedRouteTreeDynamicSplat.replace(/\s/g, ""))
 })

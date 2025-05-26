@@ -240,10 +240,5 @@ export function sanitizeForVarName(tanstackRoutePath: string): string {
 
   return tanstackRoutePath
     .replace(/^\//, "")
-    .replace(/\/\$$/, "/Splat")
-    .replace(/^$$/, "Splat")
-    .replace(/\$/g, "_")
-    .replace(/[^a-zA-Z0-9_]/g, "_")
-    .replace(/_{2,}/g, "_")
-    .replace(/^_+|_+$/g, "")
+    .replace(/[^a-zA-Z0-9_$]/g, "_")
 }
