@@ -1,15 +1,8 @@
 import {
   Link,
 } from "@tanstack/react-router"
-import React from "react"
 
-interface UserDetailPageProps {
-  params: { userId: string }
-}
-
-export default function UserDetailPage({ params }: UserDetailPageProps) {
-  const { userId } = params
-
+export default function UserDetailPage() {
   // Mock user data - in a real app, you'd fetch this from an API
   const users: Record<
     string,
@@ -35,6 +28,7 @@ export default function UserDetailPage({ params }: UserDetailPageProps) {
     },
   }
 
+  const userId = "1"
   const user = users[userId]
 
   if (!user) {

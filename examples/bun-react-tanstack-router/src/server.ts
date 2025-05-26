@@ -59,7 +59,7 @@ if (import.meta.main) {
           ],
           publicPath: `${BundlePath}/`,
         })
-        .layer,
+        .devLayer,
       TanstackRouter.layer(),
     ]),
     Layer.provide(BunContext.layer),

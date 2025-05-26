@@ -2,7 +2,6 @@ import {
   Link,
   Outlet,
 } from "@tanstack/react-router"
-import React from "react"
 
 export default function() {
   return (

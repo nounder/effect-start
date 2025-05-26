@@ -42,28 +42,12 @@ type RouteModules = {
     }
 }
 
-export function dumpTanstackGenFile(
-  dir = "src/routes",
-): Effect.Effect<void, PlatformError, FileSystem.FileSystem> {
-  return Effect.gen(function*() {
-    const fs = yield* FileSystem.FileSystem
-    const files = yield* fs.readDirectory(dir, { recursive: true })
-    const handles = FileRouter.getRouteHandlesFromPaths(files)
-    const code = TanstackRouterCodegen.generateCode(handles)
-
-    yield* fs.writeFileString(
-      `${dir}/routes.gen.ts`,
-      code,
-    )
-  })
-}
-
 export function layer() {
   const root = process.cwd()
 
   return Layer.scopedDiscard(
     Effect.gen(function*() {
-      yield* dumpTanstackGenFile()
+      yield* TanstackRouterCodegen.dump()
 
       yield* pipe(
         watchFileChanges(root),

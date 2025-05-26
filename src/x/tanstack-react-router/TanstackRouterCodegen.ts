@@ -1,4 +1,13 @@
 import {
+  FileSystem,
+} from "@effect/platform"
+import type {
+  PlatformError,
+} from "@effect/platform/Error"
+import {
+  Effect,
+} from "effect"
+import {
   FileRouter,
 } from "effect-bundler"
 
@@ -18,8 +27,8 @@ export function generateCode(
   code.push(`import React from "react";`)
   code.push(``)
 
-  // NEW: importModule infrastructure
-  code.push(`
+  // disable it for now
+  false && code.push(`
 let customModuleImporter = null;
 export function __setCustomModuleImporter(importer) {
   customModuleImporter = importer;
@@ -144,13 +153,13 @@ function importModule(path) {
     )
 
     // Ensure modulePath is treated as a string literal in the import
-    const modulePathString = JSON.stringify(currentInfo.handle.modulePath)
+    const modulePathString = "./" + currentInfo.handle.modulePath
 
     routeDefinitionCode.push(
       `const ${currentInfo.varName} = createRoute({
   getParentRoute: () => ${parentVarNameForCreate},
   path: "${tanstackRelativePath}",
-  component: React.lazy(() => importModule(${modulePathString})),
+  component: React.lazy(() => import(${JSON.stringify(modulePathString)})),
 });
 `,
     )
@@ -249,4 +258,20 @@ function sanitizeForVarName(tanstackRoutePath: string): string {
   return tanstackRoutePath
     .replace(/^\//, "")
     .replace(/[^a-zA-Z0-9_$]/g, "_")
+}
+
+export function dump(
+  dir = "src/routes",
+): Effect.Effect<void, PlatformError, FileSystem.FileSystem> {
+  return Effect.gen(function*() {
+    const fs = yield* FileSystem.FileSystem
+    const files = yield* fs.readDirectory(dir, { recursive: true })
+    const handles = FileRouter.getRouteHandlesFromPaths(files)
+    const code = generateCode(handles)
+
+    yield* fs.writeFileString(
+      `${dir}/routes.gen.ts`,
+      code,
+    )
+  })
 }

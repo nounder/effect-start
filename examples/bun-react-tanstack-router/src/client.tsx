@@ -10,6 +10,8 @@ import {
   routeTree,
 } from "./routes/routes.gen.ts"
 
+import "effect-bundler/client"
+
 const router = createRouter({
   routeTree,
   history: createHashHistory(),
