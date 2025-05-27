@@ -14,7 +14,7 @@ import {
 } from "react-dom/server"
 import * as TanstackRouter from "./TanstackRouter.ts"
 
-test("generateRouteTree creates root node with correct structure", () => {
+test("creates root node with correct structure", () => {
   const paths = {
     "_page.tsx": async () => ({ default: () => "RootPage" }),
   }
@@ -40,7 +40,7 @@ test("generateRouteTree creates root node with correct structure", () => {
     .toBe(tree)
 })
 
-test("generateRouteTree handles nested routes", () => {
+test("handles nested routes", () => {
   const paths = {
     "_page.tsx": async () => ({ default: () => "RootPage" }),
     "about/_page.tsx": async () => ({ default: () => "AboutPage" }),
@@ -96,7 +96,7 @@ test("generateRouteTree handles nested routes", () => {
     .toBe("/users/$userId")
 })
 
-test("generateRouteTree handles dynamic segments", () => {
+test("handles dynamic segments", () => {
   const paths = {
     "posts/$postId/_page.tsx": async () => ({ default: () => "PostPage" }),
     "users/$userId/posts/$postId/_page.tsx": async () => ({
@@ -125,7 +125,7 @@ test("generateRouteTree handles dynamic segments", () => {
     .toBe("/users/$userId/posts/$postId")
 })
 
-test("generateRouteTree handles splat routes", () => {
+test("handles splat routes", () => {
   const paths = {
     "$/_page.tsx": async () => ({ default: () => "CatchAllPage" }),
     "files/$/_page.tsx": async () => ({ default: () => "FilesCatchAllPage" }),
@@ -154,7 +154,7 @@ test("generateRouteTree handles splat routes", () => {
     .toBe("/$")
 })
 
-test("generateRouteTree ignores non-page handles", () => {
+test("ignores non-page handles", () => {
   const paths = {
     "_page.tsx": async () => ({ default: () => "RootPage" }),
     "_layout.tsx": async () => ({ default: () => "RootLayout" }),
@@ -176,7 +176,7 @@ test("generateRouteTree ignores non-page handles", () => {
     .toEqual(["/", "/about"])
 })
 
-test("generateRouteTree assigns correct loaders", () => {
+test("assigns correct loaders", () => {
   const rootLoader = async () => ({ default: () => "RootPage" })
   const aboutLoader = async () => ({ default: () => "AboutPage" })
 
@@ -201,7 +201,7 @@ test("generateRouteTree assigns correct loaders", () => {
     .toBeDefined()
 })
 
-test("generateRouteTree getParentRoute returns correct parent id", () => {
+test("getParentRoute returns correct parent id", () => {
   const paths = {
     "_page.tsx": async () => ({ default: () => "RootPage" }),
     "users/_page.tsx": async () => ({ default: () => "UsersPage" }),
@@ -234,7 +234,7 @@ test("generateRouteTree getParentRoute returns correct parent id", () => {
     .toBe(tree)
 })
 
-test("generateRouteTree handles empty paths", () => {
+test("handles empty paths", () => {
   const paths = {}
 
   const tree = TanstackRouter.makeRootRoute(paths)
@@ -246,7 +246,7 @@ test("generateRouteTree handles empty paths", () => {
     .toBe(0)
 })
 
-test("generateRouteTree handles complex nested structure", () => {
+test("handles complex nested structure", () => {
   const paths = {
     "_page.tsx": async () => ({ default: () => "RootPage" }),
     "dashboard/_page.tsx": async () => ({ default: () => "DashboardPage" }),
@@ -290,7 +290,7 @@ test("generateRouteTree handles complex nested structure", () => {
     .toContain("/blog/$postId")
 })
 
-test("generateRouteTree renders React components properly", async () => {
+test("renders React components properly", async () => {
   const RootComponent = () =>
     React.createElement("div", { id: "root" }, "Root Page Content")
   const AboutComponent = () =>
@@ -329,7 +329,7 @@ test("generateRouteTree renders React components properly", async () => {
     .toContain("<div id=\"users\">")
 })
 
-test("generateRouteTree renders async components and complex routes", async () => {
+test("renders async components and complex routes", async () => {
   const BlogComponent = () =>
     React.createElement("div", { id: "blog" }, "Blog Home")
   const PostComponent = () => {

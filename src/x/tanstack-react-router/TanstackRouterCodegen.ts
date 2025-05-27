@@ -57,9 +57,7 @@ import React from "react";`,
       : `export const route_root = createRootRoute({
   component: () => React.createElement(
     "div",
-    {
-      "data-testid": "root-outlet-wrapper",
-    },
+    {},
     React.createElement(Outlet),
   ),
 });`,
@@ -100,9 +98,9 @@ function findParentHandle(
       && layout.routePath !== handle.routePath
     ),
     Iterable.reduce(
-      null as any,
+      null as FileRouter.RouteHandle | null,
       (best, current) =>
-        best || current.routePath.length > best.routePath.length
+        !best || current.routePath.length > best.routePath.length
           ? current
           : best,
     ),

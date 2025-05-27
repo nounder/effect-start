@@ -1,3 +1,5 @@
+import "effect-bundler/client"
+
 import {
   createHashHistory,
   createRouter,
@@ -9,8 +11,6 @@ import {
 import {
   routeTree,
 } from "./routes/routes.gen.ts"
-
-import "effect-bundler/client"
 
 const router = createRouter({
   routeTree,

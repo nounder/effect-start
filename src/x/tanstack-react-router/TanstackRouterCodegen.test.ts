@@ -7,6 +7,8 @@ import {
   RouterProvider,
 } from "@tanstack/react-router"
 import {
+  afterEach,
+  beforeEach,
   expect,
   it,
 } from "bun:test"
@@ -25,7 +27,19 @@ import type {
 } from "../../FileRouter.ts"
 import * as TanstackRouterCodegen from "./TanstackRouterCodegen.ts"
 
-it.skip("should generate correct code for a simple flat structure", async () => {
+const MODULE_PREFIX = "./"
+
+beforeEach(() => {
+  // Initialize the global test component registry
+  globalThis["__componentMocks"] = {}
+})
+
+afterEach(() => {
+  // Clean up the global test component registry
+  delete globalThis["__componentMocks"]
+})
+
+it("generates correct code for a simple flat structure", async () => {
   const handles: RouteHandle[] = [
     parseRoute("_page.tsx"),
     parseRoute("about/_page.tsx"),
@@ -37,56 +51,35 @@ it.skip("should generate correct code for a simple flat structure", async () => 
 
   // Test rendering root
   let html = await evalAndRender(handles, "/", mockComps)
-  expect(html).toContain("data-testid=\"mock-RootPage\"")
   expect(html).toContain("RootPage")
 
   // Test rendering about
   html = await evalAndRender(handles, "/about", mockComps)
-  expect(html).toContain("data-testid=\"mock-AboutPage\"")
   expect(html).toContain("AboutPage")
 
   const code = TanstackRouterCodegen.generateCode(handles)
-  const normalizedCode = code.replace(/\/\/.*$/gm, "").replace(/\s+/g, " ")
-  const normalizedCodeNoSpace = code.replace(/\/\/.*$/gm, "").replace(
-    /\s/g,
-    "",
-  )
 
-  // Check for imports
-  const expectedImport =
-    "import { createRootRoute, createRoute, Outlet, } from \"@tanstack/react-router\";" // Removed Link, useParams
-  expect(normalizedCode).toContain(expectedImport.replace(/\s+/g, " "))
-  expect(code).toContain("import React from \"react\";")
-
-  // Check for rootRoute export
-  const expectedRootRoute = `export const rootRoute = createRootRoute({
-  component: () => React.createElement(
-    "div",
-    {
-      "data-testid": "root-outlet-wrapper",
-    },
-    React.createElement(Outlet),
-  ),
-});`
   expect(
     code,
   )
     .toContain(
-      expectedRootRoute,
+      `export const route_root = createRootRoute({
+  component: () => React.createElement(
+    "div",
+    {},
+    React.createElement(Outlet),
+  ),
+});`,
     )
 
-  expect(code).toMatch(/const route_root = /)
+  expect(code)
+    .toMatch(/const route_root_page = /)
 
-  expect(code).toMatch(/const route_about = /)
-
-  const expectedRouteTreeAssemblySimple =
-    `export const routeTree = rootRoute.addChildren([ route_about, route_root ]);`
-  expect(normalizedCodeNoSpace).toContain(
-    expectedRouteTreeAssemblySimple.replace(/\s/g, ""),
-  )
+  expect(code)
+    .toMatch(/const route_about_page = /)
 })
 
-it.skip("should generate correct code for nested routes with layouts", async () => {
+it("generate correct code for nested routes with layouts", async () => {
   const handles: RouteHandle[] = [
     parseRoute("_page.tsx"),
     parseRoute("dashboard/_layout.tsx"),
@@ -103,56 +96,26 @@ it.skip("should generate correct code for nested routes with layouts", async () 
 
   // Test rendering root
   let html = await evalAndRender(handles, "/", mockComps)
-  expect(html).toContain("data-testid=\"mock-RootPage\"")
   expect(html).toContain("RootPage")
 
-  // Test rendering dashboard index (should be wrapped by layout)
   html = await evalAndRender(handles, "/dashboard", mockComps)
-  expect(html).toContain("data-testid=\"mock-DashboardLayout\"")
   expect(html).toContain("DashboardLayout") // Layout content
-  expect(html).toContain("data-testid=\"mock-DashboardPage\"")
   expect(html).toContain("DashboardPage") // Page content
 
-  // Test rendering dashboard settings (should be wrapped by layout)
   html = await evalAndRender(handles, "/dashboard/settings", mockComps)
-  expect(html).toContain("data-testid=\"mock-DashboardLayout\"")
   expect(html).toContain("DashboardLayout")
-  expect(html).toContain("data-testid=\"mock-SettingsPage\"")
   expect(html).toContain("SettingsPage")
 
   const code = TanstackRouterCodegen.generateCode(handles)
-  const normalizedCode = code.replace(/\/\/.*$/gm, "").replace(/\s+/g, " ")
-  const normalizedCodeNoSpace = code.replace(/\/\/.*$/gm, "").replace(
-    /\s/g,
-    "",
-  )
 
-  expect(code).toMatch(/const route_dashboard = /)
+  expect(code).toMatch(/const route_dashboard_layout = /)
 
   expect(code).toMatch(/const route_dashboard_page = /)
 
-  expect(code).toMatch(/const route_dashboard_settings = /)
-
-  const expectedDashboardChildren = `route_dashboard.addChildren([ 
-  route_dashboard_page,
-  route_dashboard_settings
-])`
-  expect(normalizedCodeNoSpace)
-    .toContain(expectedDashboardChildren.replace(/\s/g, ""))
-
-  const expectedRouteTreeAssemblyNested =
-    `export const routeTree = rootRoute.addChildren([
-  route_dashboard.addChildren([
-    route_dashboard_page,
-    route_dashboard_settings
-  ]),
-  route_root
-]);`
-  expect(normalizedCodeNoSpace)
-    .toContain(expectedRouteTreeAssemblyNested.replace(/\s/g, ""))
+  expect(code).toMatch(/const route_dashboard_settings_page = /)
 })
 
-it.skip("should generate code for dynamic and splat routes", async () => {
+it("generates code for dynamic and splat routes", async () => {
   const handles: RouteHandle[] = [
     parseRoute("posts/$postId/_page.tsx"),
     parseRoute("files/$/_page.tsx"),
@@ -165,12 +128,10 @@ it.skip("should generate code for dynamic and splat routes", async () => {
 
   // Test rendering dynamic route
   let html = await evalAndRender(handles, "/posts/abc", mockComps)
-  expect(html).toContain("data-testid=\"mock-PostIdPage\"")
   expect(html).toContain("PostIdPage")
 
   // Test rendering splat route
   html = await evalAndRender(handles, "/files/a/b/c", mockComps)
-  expect(html).toContain("data-testid=\"mock-FilesSplatPage\"")
   expect(html).toContain("FilesSplatPage")
 
   const code = TanstackRouterCodegen.generateCode(handles)
@@ -179,12 +140,15 @@ it.skip("should generate code for dynamic and splat routes", async () => {
     "",
   )
 
-  expect(code).toMatch(/const route_posts_\$postId = /)
+  expect(code).toMatch(/const route_posts_\$postId_page = /)
 
-  expect(code).toMatch(/const route_files_\$ = /)
+  expect(code).toMatch(/const route_files_\$_page = /)
 
   const expectedRouteTreeDynamicSplat =
-    `export const routeTree = rootRoute.addChildren([ route_files_$, route_posts_$postId ]);`
+    `export const routeTree = route_root.addChildren([
+  route_files_$_page,
+  route_posts_$postId_page
+]);`
   expect(normalizedCodeNoSpace)
     .toContain(expectedRouteTreeDynamicSplat.replace(/\s/g, ""))
 })
@@ -194,7 +158,7 @@ it("should generate correct code for an empty array of handles", async () => {
 
   const html = await evalAndRender(handles, "/", {}) // No components to mock
   // Since root component is just Outlet wrapped in a div, it should be minimal but present.
-  expect(html).toContain("data-testid=\"root-outlet-wrapper\"")
+  expect(html).toContain("<div>")
 
   const code = TanstackRouterCodegen.generateCode(handles)
   const normalizedCodeNoSpace = code
@@ -204,9 +168,7 @@ it("should generate correct code for an empty array of handles", async () => {
   const expectedRootRoute = `export const route_root = createRootRoute({
   component: () => React.createElement(
     "div",
-    {
-      "data-testid": "root-outlet-wrapper",
-    },
+    {},
     React.createElement(Outlet),
   ),
 });`
@@ -214,17 +176,19 @@ it("should generate correct code for an empty array of handles", async () => {
     code.replace(/\/\/.*$/gm, ""), // Remove comments
   )
     .toContain(
-      expectedRootRoute, // Direct comparison
+      expectedRootRoute,
     )
 
-  const expectedEmptyTree =
-    `export const routeTree = route_root.addChildren([ ]);`
+  const expectedEmptyTree = `export const routeTree = route_root.addChildren([
+  
+]);`
+
   expect(normalizedCodeNoSpace).toContain(
     expectedEmptyTree.replace(/\s/g, ""),
   )
 })
 
-it.skip("should handle layouts without direct pages and deeply nested structures", async () => {
+it("should handle layouts without direct pages and deeply nested structures", async () => {
   const handles: RouteHandle[] = [
     parseRoute("admin/_layout.tsx"),
     parseRoute("admin/users/_page.tsx"),
@@ -246,69 +210,74 @@ it.skip("should handle layouts without direct pages and deeply nested structures
 
   // Test root
   let html = await evalAndRender(handles, "/", mockComps)
-  expect(html).toContain("data-testid=\"mock-RootPage\"")
   expect(html).toContain("RootPage")
 
   // Test admin users (AdminLayout -> AdminUsersPage)
   html = await evalAndRender(handles, "/admin/users", mockComps)
-  expect(html).toContain("data-testid=\"mock-AdminLayout\"")
   expect(html).toContain("AdminLayout")
-  expect(html).toContain("data-testid=\"mock-AdminUsersPage\"")
   expect(html).toContain("AdminUsersPage")
 
   // Test admin settings profile (AdminLayout -> AdminSettingsLayout -> AdminProfilePage)
   html = await evalAndRender(handles, "/admin/settings/profile", mockComps)
-  expect(html).toContain("data-testid=\"mock-AdminLayout\"")
   expect(html).toContain("AdminLayout")
-  expect(html).toContain("data-testid=\"mock-AdminSettingsLayout\"")
   expect(html).toContain("AdminSettingsLayout")
-  expect(html).toContain("data-testid=\"mock-AdminProfilePage\"")
   expect(html).toContain("AdminProfilePage")
 
   const code = TanstackRouterCodegen.generateCode(handles)
-  const normalizedCode = code.replace(/\/\/.*$/gm, "").replace(/\s+/g, " ")
   const normalizedCodeNoSpace = code.replace(/\/\/.*$/gm, "").replace(
     /\s/g,
     "",
   )
 
   // Check for rootRoute export
-  const expectedRootRoute = `export const rootRoute = createRootRoute({
+  const expectedRootRoute = `export const route_root = createRootRoute({
   component: () => React.createElement(
     "div",
-    {
-      "data-testid": "root-outlet-wrapper",
-    },
+    {},
     React.createElement(Outlet),
   ),
 });`
   expect(
-    code.replace(/\/\/.*$/gm, ""), // Remove comments
+    code.replace(/\/\/.*$/gm, ""),
   )
     .toContain(
-      expectedRootRoute, // Direct comparison
+      expectedRootRoute,
     )
 
-  expect(code).toMatch(/const route_admin = /)
+  expect(code).toMatch(/const route_admin_layout = /)
 
-  expect(code).toMatch(/const route_admin_users = /)
+  expect(code).toMatch(/const route_admin_users_page = /)
 
-  expect(code).toMatch(/const route_admin_settings = /)
+  expect(code).toMatch(/const route_admin_settings_layout = /)
 
-  expect(code).toMatch(/const route_admin_settings_profile = /)
+  expect(code).toMatch(/const route_admin_settings_profile_page = /)
 
   const expectedAdminSettingsChildren =
-    `route_admin_settings.addChildren([ route_admin_settings_profile ])`
+    `route_admin_settings_layout.addChildren([
+  route_admin_settings_profile_page
+])`
   expect(normalizedCodeNoSpace)
     .toContain(expectedAdminSettingsChildren.replace(/\s/g, ""))
 
-  const expectedAdminChildren =
-    `route_admin.addChildren([ route_admin_settings.addChildren([ route_admin_settings_profile ]), route_admin_users ])`
+  const expectedAdminChildren = `route_admin_layout.addChildren([
+  route_admin_settings_layout.addChildren([
+    route_admin_settings_profile_page
+  ]),
+  route_admin_users_page
+])`
   expect(normalizedCodeNoSpace)
     .toContain(expectedAdminChildren.replace(/\s/g, ""))
 
   const expectedRouteTreeComplex =
-    `export const routeTree = rootRoute.addChildren([ route_admin.addChildren([ route_admin_settings.addChildren([ route_admin_settings_profile ]), route_admin_users ]), route_root ]);`
+    `export const routeTree = route_root.addChildren([
+  route_admin_layout.addChildren([
+    route_admin_settings_layout.addChildren([
+      route_admin_settings_profile_page
+    ]),
+    route_admin_users_page
+  ]),
+  route_root_page
+]);`
   expect(normalizedCodeNoSpace)
     .toContain(expectedRouteTreeComplex.replace(/\s/g, ""))
 })
@@ -340,27 +309,40 @@ const createMockComponent = (
 async function evalAndRender(
   handles: RouteHandle[],
   initialUrl: string,
-  mockComponents: Record<string, React.ComponentType<any>>,
+  mocks: Record<string, React.ComponentType<any>>,
 ) {
-  const code = TanstackRouterCodegen.generateCode(handles)
-  const blob = new Blob([code], { type: "application/javascript" })
+  const prefixedMocks: Record<string, React.ComponentType<any>> = {}
+  for (const [key, value] of Object.entries(mocks)) {
+    prefixedMocks[MODULE_PREFIX + key] = value
+  }
+  globalThis["__componentMocks"] = prefixedMocks
+
+  let code = TanstackRouterCodegen.generateCode(handles)
+
+  const importHelper = `
+function __import(path) {
+  return Promise.resolve({ 
+    default: globalThis["__componentMocks"][path] || (() => null) 
+  });
+};
+`
+
+  // Replace import() expressions with __import()
+  code = code.replace(
+    /import\((.*?)\)/g,
+    (_, path) => {
+      return `__import(${path})`
+    },
+  ) + "\n\n" + importHelper
+
+  const blob = new Blob([code], {
+    type: "application/javascript",
+  })
 
   const importedModule = await importJsBlob<{
     routeTree: any
     route_root: any
-    __setCustomModuleImporter?: (importer: any) => void
   }>(blob)
-
-  importedModule.__setCustomModuleImporter?.((path: string) => {
-    const componentName = Object.keys(mockComponents).find(key => key === path)
-    if (componentName && mockComponents[componentName]) {
-      return Promise.resolve({ default: mockComponents[componentName] })
-    }
-    return Promise.resolve({
-      default: () =>
-        React.createElement("div", {}, `Component for ${path} not found`),
-    })
-  })
 
   const memoryHistory = createMemoryHistory({
     initialEntries: [initialUrl],
