@@ -6,125 +6,55 @@ import type {
 } from "@effect/platform/Error"
 import {
   Effect,
+  Iterable,
+  pipe,
 } from "effect"
 import {
   FileRouter,
 } from "effect-bundler"
 
+type RouteInfo = {
+  handle: FileRouter.RouteHandle
+  varName: string
+  parentHandle: FileRouter.RouteHandle | null
+}
+
 export function generateCode(
   handles: FileRouter.RouteHandle[],
 ): string {
-  const code: string[] = []
-
-  // 1. Imports
-  code.push(
-    `import {
-  createRootRoute,
-  createRoute,
-  Outlet,
-} from "@tanstack/react-router";`,
-  )
-  code.push(`import React from "react";`)
-  code.push(``)
-
-  // disable it for now
-  false && code.push(`
-let customModuleImporter = null;
-export function __setCustomModuleImporter(importer) {
-  customModuleImporter = importer;
-}
-function importModule(path) {
-  if (customModuleImporter) {
-    // customModuleImporter is expected to return Promise<{ default: ComponentType }>
-    return customModuleImporter(path);
-  }
-  // Fallback to standard dynamic import
-  return import(path);
-}
-`)
-
   const relevantHandles = handles.filter(
     h => h.type === "PageHandle" || h.type === "LayoutHandle",
   )
 
-  const routeInfos: Map<
-    string,
-    {
-      handle: FileRouter.RouteHandle
-      varName: string
-      parentVarName: string | null
-      childrenVarNames: string[]
-    }
-  > = new Map()
-
-  relevantHandles.sort((a, b) => {
-    if (a.routePath.length !== b.routePath.length) {
-      return a.routePath.length - b.routePath.length
-    }
-    if (a.type === "LayoutHandle" && b.type !== "LayoutHandle") return -1
-    if (a.type !== "LayoutHandle" && b.type === "LayoutHandle") return 1
-    return 0
-  })
-
   const layoutHandles = relevantHandles.filter(h => h.type === "LayoutHandle")
+  const rootLayoutHandle = layoutHandles.find(h => h.routePath === "/") ?? null
 
-  for (const handle of relevantHandles) {
-    const varName = getRouteVarName(handle, layoutHandles)
-    let parentVarName: string | null = null
-    let parentHandleForRelativePath: FileRouter.RouteHandle | null = null
+  // Filter out root layout from route generation if it exists
+  const routesToGenerate = rootLayoutHandle
+    ? relevantHandles.filter(h => h !== rootLayoutHandle)
+    : relevantHandles
 
-    let bestParentLayoutMatch: FileRouter.RouteHandle | null = null
+  const routeInfos = routesToGenerate.map(handle => ({
+    handle,
+    varName: getRouteVarName(handle),
+    parentHandle: findParentHandle(handle, layoutHandles, rootLayoutHandle),
+  }))
 
-    if (handle.type === "PageHandle") {
-      const exactLayoutMatch = layoutHandles.find(lh =>
-        lh.routePath === handle.routePath && lh !== handle
-      )
-      if (exactLayoutMatch) {
-        bestParentLayoutMatch = exactLayoutMatch
-      }
-    }
-
-    if (!bestParentLayoutMatch || handle.type === "LayoutHandle") {
-      for (const potentialParentLayout of layoutHandles) {
-        if (
-          potentialParentLayout !== handle
-          && handle.routePath.startsWith(potentialParentLayout.routePath + "/")
-          && potentialParentLayout.routePath !== handle.routePath
-        ) {
-          if (
-            !bestParentLayoutMatch
-            || potentialParentLayout.routePath.length
-              > bestParentLayoutMatch.routePath.length
-          ) {
-            bestParentLayoutMatch = potentialParentLayout
-          }
-        }
-      }
-    }
-
-    if (bestParentLayoutMatch) {
-      parentVarName = getRouteVarName(bestParentLayoutMatch, layoutHandles)
-      parentHandleForRelativePath = bestParentLayoutMatch
-    }
-
-    routeInfos.set(varName, {
-      handle,
-      varName,
-      parentVarName,
-      childrenVarNames: [],
-    })
-  }
-
-  for (const info of routeInfos.values()) {
-    if (info.parentVarName && routeInfos.has(info.parentVarName)) {
-      routeInfos.get(info.parentVarName)!.childrenVarNames.push(
-        info.varName,
-      )
-    }
-  }
-
-  code.push(
-    `export const rootRoute = createRootRoute({
+  return [
+    `import {
+  createRootRoute,
+  createRoute,
+  Outlet,
+} from "@tanstack/react-router";
+import React from "react";`,
+    "",
+    rootLayoutHandle
+      ? `export const route_root = createRootRoute({
+  component: React.lazy(() => import(${
+        JSON.stringify("./" + rootLayoutHandle.modulePath)
+      })),
+})`
+      : `export const route_root = createRootRoute({
   component: () => React.createElement(
     "div",
     {
@@ -132,78 +62,99 @@ function importModule(path) {
     },
     React.createElement(Outlet),
   ),
-});
-`,
+});`,
+    "",
+    ...routeInfos
+      .map(info => generateRouteDefinition(info))
+      .flatMap(v => [v, ""]),
+    generateRouteTree(routeInfos),
+  ]
+    .join("\n")
+}
+
+function findParentHandle(
+  handle: FileRouter.RouteHandle,
+  layoutHandles: FileRouter.RouteHandle[],
+  rootLayoutHandle: FileRouter.RouteHandle | null,
+): FileRouter.RouteHandle | null {
+  // First check for exact layout match (for pages)
+  if (handle.type === "PageHandle") {
+    const exactLayoutMatch = layoutHandles
+      .find(lh =>
+        lh.routePath === handle.routePath
+        && lh !== handle
+        && lh !== rootLayoutHandle
+      ) ?? null
+    if (exactLayoutMatch) {
+      return exactLayoutMatch
+    }
+  }
+
+  // Find the deepest parent layout
+  return pipe(
+    layoutHandles,
+    Iterable.filter(layout =>
+      layout !== handle
+      && layout !== rootLayoutHandle
+      && handle.routePath.startsWith(layout.routePath + "/")
+      && layout.routePath !== handle.routePath
+    ),
+    Iterable.reduce(
+      null as any,
+      (best, current) =>
+        best || current.routePath.length > best.routePath.length
+          ? current
+          : best,
+    ),
   )
+}
 
-  // 4. Individual Route Definitions (No separate component functions)
-  const routeDefinitionCode: string[] = []
-  for (const currentInfo of routeInfos.values()) {
-    const parentVarNameForCreate = currentInfo.parentVarName
-      ? currentInfo.parentVarName
-      : "rootRoute"
+function generateRouteDefinition(info: RouteInfo): string {
+  const parentVarName = info.parentHandle
+    ? getRouteVarName(info.parentHandle)
+    : "route_root"
 
-    const parentHandleForPathCalc = currentInfo.parentVarName
-      ? routeInfos.get(currentInfo.parentVarName)?.handle
-      : null
+  const relativePath = getTanstackRelativePath(info.handle, info.parentHandle)
+  const modulePathString = "./" + info.handle.modulePath
 
-    const tanstackRelativePath = getTanstackRelativePath(
-      currentInfo.handle,
-      parentHandleForPathCalc || null,
-    )
-
-    // Ensure modulePath is treated as a string literal in the import
-    const modulePathString = "./" + currentInfo.handle.modulePath
-
-    routeDefinitionCode.push(
-      `const ${currentInfo.varName} = createRoute({
-  getParentRoute: () => ${parentVarNameForCreate},
-  path: "${tanstackRelativePath}",
+  return `const ${info.varName} = createRoute({
+  getParentRoute: () => ${parentVarName},
+  path: "${relativePath}",
   component: React.lazy(() => import(${JSON.stringify(modulePathString)})),
-});
-`,
-    )
-  }
-  code.push(...routeDefinitionCode)
+});`
+}
 
-  // 5. Route Tree Assembly
-  function buildTreeAssembly(targetParentVarName: string | null): string {
-    const childrenInfos = Array.from(routeInfos.values()).filter(
-      info => info.parentVarName === targetParentVarName,
-    )
-    childrenInfos.sort((a, b) => a.varName.localeCompare(b.varName))
+function generateRouteTree(routeInfos: RouteInfo[]): string {
+  function buildTreeChildren(
+    parentHandle: FileRouter.RouteHandle | null,
+  ): string {
+    const children = routeInfos
+      .filter(info => info.parentHandle === parentHandle)
+      .sort((a, b) => a.varName.localeCompare(b.varName))
 
-    if (childrenInfos.length === 0) return ""
+    if (children.length === 0) return ""
 
-    return childrenInfos
-      .map(childInfo => {
-        const childrenOfChildAssembly = buildTreeAssembly(
-          childInfo.varName,
-        )
-        if (childrenOfChildAssembly) {
-          return `${childInfo.varName}.addChildren([${childrenOfChildAssembly}])`
-        }
-        return childInfo.varName
+    return children
+      .map(child => {
+        const args = buildTreeChildren(child.handle)
+        return args
+          ? `${child.varName}.addChildren([${args}])`
+          : child.varName
       })
-      .join(",\n        ")
+      .join(",\n  ")
   }
 
-  const routeTreeAssembly = buildTreeAssembly(null)
-  code.push(
-    `export const routeTree = rootRoute.addChildren([
-        ${routeTreeAssembly}
-      ]);
-`,
-  )
-
-  return code.join("\n")
+  const treeAssembly = buildTreeChildren(null)
+  return `export const routeTree = route_root.addChildren([
+  ${treeAssembly}
+]);`
 }
 
 function getTanstackRelativePath(
   handle: FileRouter.RouteHandle,
   parentHandle: FileRouter.RouteHandle | null,
 ): string {
-  if (parentHandle === null) { // Root child
+  if (parentHandle === null) { // root
     return handle.routePath
   }
 
@@ -221,35 +172,10 @@ function getTanstackRelativePath(
 
 export function getRouteVarName(
   handle: FileRouter.RouteHandle,
-  layoutHandles: FileRouter.RouteHandle[],
 ): string {
-  const pathForSanitization = handle.routePath
-  let pathPart = sanitizeForVarName(pathForSanitization)
-
-  if (handle.type === "PageHandle") {
-    const hasCollidingLayout = layoutHandles.some(
-      lh => lh.routePath === handle.routePath && lh !== handle,
-    )
-    if (hasCollidingLayout) {
-      // If pathPart is "root" (from "/"), this page is the root index page,
-      // and if there was a root layout (uncommon, but possible), avoid "root_page" if not needed.
-      // However, for /dashboard + /dashboard/_page, pathPart will be "dashboard", making it "dashboard_page".
-      if (pathPart === "root" && handle.routePath === "/") {
-        // This is the root page (e.g. _page.tsx at root level).
-        // If there was a root layout (e.g. _layout.tsx at root), its pathPart would also be "root".
-        // In this specific root case, let the page also be "route_root" if no layout, or distinguish if layout exists.
-        // The `hasCollidingLayout` already checks for a layout at the same path.
-        // So, if it's root and there's a colliding layout, make it `route_root_page`.
-        pathPart = pathPart + "_page"
-      } else if (pathPart !== "root") {
-        // For non-root paths like /dashboard, if there's a /dashboard layout, page becomes route_dashboard_page
-        pathPart = pathPart + "_page"
-      }
-      // If pathPart is "root" but handle.routePath is not "/" (e.g. a file named `_page.tsx` inside a folder that becomes part of root path somehow, not standard)
-      // this logic might need more refinement, but for typical structures, this should be okay.
-    }
-  }
-  return `route_${pathPart}`
+  const pathPart = sanitizeForVarName(handle.routePath)
+  const typeSuffix = handle.type === "PageHandle" ? "_page" : "_layout"
+  return `route_${pathPart}${typeSuffix}`
 }
 
 function sanitizeForVarName(tanstackRoutePath: string): string {

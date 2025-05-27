@@ -201,7 +201,7 @@ it("should generate correct code for an empty array of handles", async () => {
     .replace(/\/\/.*$/gm, "")
     .replace(/\s/g, "")
 
-  const expectedRootRoute = `export const rootRoute = createRootRoute({
+  const expectedRootRoute = `export const route_root = createRootRoute({
   component: () => React.createElement(
     "div",
     {
@@ -218,7 +218,7 @@ it("should generate correct code for an empty array of handles", async () => {
     )
 
   const expectedEmptyTree =
-    `export const routeTree = rootRoute.addChildren([ ]);`
+    `export const routeTree = route_root.addChildren([ ]);`
   expect(normalizedCodeNoSpace).toContain(
     expectedEmptyTree.replace(/\s/g, ""),
   )
@@ -347,7 +347,7 @@ async function evalAndRender(
 
   const importedModule = await importJsBlob<{
     routeTree: any
-    rootRoute: any
+    route_root: any
     __setCustomModuleImporter?: (importer: any) => void
   }>(blob)
 
