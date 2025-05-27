@@ -1,4 +1,8 @@
 import {
+  Error,
+} from "@effect/platform"
+import {
+  Effect,
   pipe,
   Stream,
 } from "effect"
@@ -19,18 +23,27 @@ const SOURCE_FILENAME = /\.(tsx?|jsx?|html?|css|json)$/
 export const watchFileChanges = (
   path?: string,
   opts?: WatchOptions,
-): Stream.Stream<BundleEvent, unknown> => {
+): Stream.Stream<BundleEvent, Error.SystemError> => {
   const baseDir = path ?? process.cwd()
 
-  const changes = pipe(
-    Stream.fromAsyncIterable(
+  let stream: Stream.Stream<NFSP.FileChangeInfo<string>, Error.SystemError>
+  try {
+    stream = Stream.fromAsyncIterable(
       NFSP.watch(baseDir, {
         persistent: false,
         recursive: true,
         ...(opts || {}),
       }),
-      (e) => e,
-    ),
+      error => handleWatchError(error, baseDir),
+    )
+  } catch (e) {
+    const err = handleWatchError(e, baseDir)
+
+    stream = Stream.fail(err)
+  }
+
+  const changes = pipe(
+    stream,
     Stream.filter((event) => SOURCE_FILENAME.test(event.filename!)),
     Stream.filter((event) => !(/node_modules/.test(event.filename!))),
     Stream.rechunk(1),
@@ -42,9 +55,19 @@ export const watchFileChanges = (
     }),
     Stream.map((event) => ({
       type: "Change" as const,
+      // it's relative to the baseDir
       path: event.filename!,
     })),
   )
 
   return changes
 }
+
+const handleWatchError = (error: any, path: string) =>
+  Error.SystemError({
+    module: "FileSystem",
+    reason: "Unknown",
+    method: "watch",
+    pathOrDescriptor: path,
+    message: error.message,
+  })

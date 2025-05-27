@@ -36,16 +36,27 @@ type RouteModules = {
     }
 }
 
+// TODO: throw error if routes directory is invalid.
+//  currently it just logs an error and continues.
 export function layer() {
-  const root = process.cwd() + "src/routes"
+  const routesDir = process.cwd() + "/src/routes"
+  const genFile = ".pages.gen.ts"
+  const path = `${routesDir}/${genFile}`
 
   return Layer.scopedDiscard(
     Effect.gen(function*() {
-      yield* TanstackRouterCodegen.dump()
+      yield* TanstackRouterCodegen.dump(path)
+
+      const stream = pipe(
+        watchFileChanges(routesDir),
+        Stream.onError((e) => Effect.logError(e)),
+      )
 
       yield* pipe(
-        watchFileChanges(root),
-        Stream.runForEach(() => TanstackRouterCodegen.dump()),
+        stream,
+        // filter out edits to gen file
+        Stream.filter(e => e.path !== genFile),
+        Stream.runForEach(() => TanstackRouterCodegen.dump(path)),
         Effect.fork,
       )
     }),

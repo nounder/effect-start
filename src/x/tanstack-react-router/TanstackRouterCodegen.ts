@@ -12,6 +12,7 @@ import {
 import {
   FileRouter,
 } from "effect-bundler"
+import * as NPath from "node:path"
 
 type RouteInfo = {
   handle: FileRouter.RouteHandle
@@ -185,16 +186,19 @@ function sanitizeForVarName(tanstackRoutePath: string): string {
 }
 
 export function dump(
-  dir = "src/routes",
+  path: string,
 ): Effect.Effect<void, PlatformError, FileSystem.FileSystem> {
   return Effect.gen(function*() {
     const fs = yield* FileSystem.FileSystem
+    const dir = NPath.dirname(path)
     const files = yield* fs.readDirectory(dir, { recursive: true })
     const handles = FileRouter.getRouteHandlesFromPaths(files)
     const code = generateCode(handles)
 
+    yield* Effect.logDebug(`Generating ${path}`)
+
     yield* fs.writeFileString(
-      `${dir}/routes.gen.ts`,
+      path,
       code,
     )
   })

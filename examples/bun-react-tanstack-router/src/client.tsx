@@ -10,7 +10,7 @@ import {
 } from "react-dom/client"
 import {
   routeTree,
-} from "./routes/routes.gen.ts"
+} from "./routes/.pages.gen.ts"
 
 const router = createRouter({
   routeTree,
