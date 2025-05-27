@@ -1,10 +1,4 @@
 import {
-  FileSystem,
-} from "@effect/platform"
-import type {
-  PlatformError,
-} from "@effect/platform/Error"
-import {
   createRootRoute,
   createRoute,
   Outlet,
@@ -43,7 +37,7 @@ type RouteModules = {
 }
 
 export function layer() {
-  const root = process.cwd()
+  const root = process.cwd() + "src/routes"
 
   return Layer.scopedDiscard(
     Effect.gen(function*() {
@@ -51,16 +45,7 @@ export function layer() {
 
       yield* pipe(
         watchFileChanges(root),
-        Stream.runForEach(() =>
-          Effect.tryPromise({
-            try: async () => console.log("generating routes"),
-            catch: cause =>
-              new TanstackRouterError({
-                message: "Failed to generate routes",
-                cause,
-              }),
-          })
-        ),
+        Stream.runForEach(() => TanstackRouterCodegen.dump()),
         Effect.fork,
       )
     }),
@@ -72,12 +57,10 @@ export function makeRootRoute(
 ) {
   const routes = FileRouter.getRouteHandlesFromPaths(Object.keys(paths))
 
-  // Create the actual root route using TanStack Router API
   const rootRoute = createRootRoute({
     component: () => React.createElement(Outlet),
   })
 
-  // Convert routes to TanStack routes and build the tree
   const childRoutes = convertRoutesToTanstackRoutes(
     routes,
     paths,
@@ -100,8 +83,6 @@ function convertRoutesToTanstackRoutes(
   for (const route of pageRoutes) {
     const routePath = route.routePath
 
-    // For TanStack Router, all routes are direct children of root in this implementation
-    // This matches the test expectations where routes are flattened
     const tanstackRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: routePath,
