@@ -1,0 +1,10 @@
+.DS_Store
+.rgignore
+.vite/
+lib/
+node_modules/
+vendor/
+.aider*
+out/
+pad/
+dst/
