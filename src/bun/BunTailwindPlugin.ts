@@ -1,3 +1,4 @@
+import * as Tailwind from "@tailwindcss/node"
 import type {
   BunPlugin,
 } from "bun"
@@ -5,20 +6,25 @@ import {
   Array,
 } from "effect"
 
-export const make = (importer?: () => Promise<any>): BunPlugin => {
+export const make = (opts: {
+  importer?: () => Promise<typeof Tailwind>
+  filesPattern?: RegExp
+} = {}): BunPlugin => {
+  const {
+    filesPattern = /\.(tsx|jsx|html|svelte|vue|astro)$/,
+    importer = () =>
+      import("@tailwindcss/node").catch(err => {
+        throw new Error(
+          "Tailwind not found: install @tailwindcss/node or provide custom importer",
+        )
+      }),
+  } = opts
+
   return {
     name: "Bun Tailwind.css plugin",
     async setup(builder) {
-      const Tailwind = await (importer
-        ? importer()
-        // @ts-ignore it's okay if it's not installed
-        : import("@tailwindcss/node").catch(err => {
-          throw new Error(
-            "Tailwind not found: install @tailwindcss/node or provide custom importer",
-          )
-        }))
-      const TailwindFilesPattern = /\.(tsx|jsx|html)$/
-      const defaultInputCss = `@import "tailwindcss"`
+      const Tailwind = await importer()
+      const defaultInputCss = `@import "tailwindcss";`
       let twCompiler: Awaited<ReturnType<typeof Tailwind.compile>>
       let build: string | null = null
 
@@ -27,7 +33,7 @@ export const make = (importer?: () => Promise<any>): BunPlugin => {
       builder.onStart(async () => {
         twCompiler = await Tailwind.compile(defaultInputCss, {
           base: process.cwd(),
-          onDependency: () => {},
+          onDependency: (path) => {},
         })
       })
 
@@ -35,7 +41,7 @@ export const make = (importer?: () => Promise<any>): BunPlugin => {
        * Extract class names from the source code.
        */
       builder.onLoad({
-        filter: TailwindFilesPattern,
+        filter: filesPattern,
       }, async (args) => {
         const contents = await Bun.file(args.path).text()
         const classNames = extractClassNames(contents)
@@ -54,15 +60,16 @@ export const make = (importer?: () => Promise<any>): BunPlugin => {
       })
 
       builder.onLoad({
-        filter: /tailwindcss$/,
+        filter: /^tailwindcss$/,
       }, async (args) => {
         await args.defer()
 
-        build = twCompiler.build([...collectedClassNames])
+        build = twCompiler.build([
+          ...collectedClassNames,
+        ])
 
         return {
           contents: build!,
-          // TODO: maybe css?
           loader: "css",
         }
       })
@@ -78,6 +85,23 @@ function extractClassNames(source: string): string[] {
   let match
   while ((match = classRegex.exec(source)) !== null) {
     const classes = match[1].split(/\s+/)
+    classes.forEach((className) => classNames.add(className))
+  }
+
+  // Match React className attributes
+  const classNameRegex = /className=["']([^"']+)["']/g
+  while ((match = classNameRegex.exec(source)) !== null) {
+    const classes = match[1].split(/\s+/)
+    classes.forEach((className) => classNames.add(className))
+  }
+
+  // Match className with template literals and expressions
+  const classNameExpressionRegex =
+    /className=\{[^}]*["'`]([a-zA-Z0-9\s\-_:]+)["'`][^}]*\}/g
+  while ((match = classNameExpressionRegex.exec(source)) !== null) {
+    const classes = match[1].split(/\s+/).filter(className =>
+      /^[a-zA-Z0-9\-_:]+$/.test(className) && className.length > 0
+    )
     classes.forEach((className) => classNames.add(className))
   }
 
