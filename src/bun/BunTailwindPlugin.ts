@@ -165,43 +165,29 @@ function hasTailwindImport(css: string): boolean {
   return /@import\s+(url\()?["']?[^"')]+["']?\)?\s*[^;]*;/.test(css)
 }
 
+const CLASS_NAME_REGEX =
+  /^[a-zA-Z0-9\-_:\[\]\/\.!]*([-:\[\/]|^(h|w|p|m|text|bg|border|rounded|shadow|flex|grid|size|gap|ring|outline|opacity|pointer|transition|shrink|grow|items|justify|font|underline|has|aria|inline|block|hidden|visible|static|fixed|absolute|relative|sticky))/
+
+function extractClassNames(source: string): Set<string> {
   const classNames = new Set<string>()
 
-  // Match class attributes
-  const classRegex = /class=["']([^"']+)["']/g
+  // Extract all string literals from the source
+  const stringLiteralRegex = /["'`]([^"'`]+)["'`]/g
   let match
-  while ((match = classRegex.exec(source)) !== null) {
-    const classes = match[1].split(/\s+/)
-    classes.forEach((className) => classNames.add(className))
-  }
 
-  // Match React className attributes
-  const classNameRegex = /className=["']([^"']+)["']/g
-  while ((match = classNameRegex.exec(source)) !== null) {
-    const classes = match[1].split(/\s+/)
-    classes.forEach((className) => classNames.add(className))
-  }
+  while ((match = stringLiteralRegex.exec(source)) !== null) {
+    const content = match[1]
 
-  // Match className with template literals and expressions
-  const classNameExpressionRegex =
-    /className=\{[^}]*["'`]([a-zA-Z0-9\s\-_:]+)["'`][^}]*\}/g
-  while ((match = classNameExpressionRegex.exec(source)) !== null) {
-    const classes = match[1].split(/\s+/).filter(className =>
-      /^[a-zA-Z0-9\-_:]+$/.test(className) && className.length > 0
-    )
-    classes.forEach((className) => classNames.add(className))
-  }
+    // Split by whitespace and filter for valid Tailwind class patterns
+    const potentialClasses = content.split(/\s+/)
 
-  // Match classList objects
-  const classListRegex = /classList=\{\s*\{([^}]+)\}\s*\}/g
-  while ((match = classListRegex.exec(source)) !== null) {
-    const classListContent = match[1]
-    const objectKeysRegex = /(\w+):/g
-    let keyMatch
-    while ((keyMatch = objectKeysRegex.exec(classListContent)) !== null) {
-      classNames.add(keyMatch[1])
+    for (const className of potentialClasses) {
+      // Validate Tailwind-like classes with a single regex
+      if (CLASS_NAME_REGEX.test(className)) {
+        classNames.add(className)
+      }
     }
   }
 
-  return Array.fromIterable(classNames)
+  return classNames
 }
