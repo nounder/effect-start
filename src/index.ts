@@ -14,3 +14,5 @@ export {
 } from "./testing.ts"
 
 export * as FileRouter from "./FileRouter.ts"
+
+export * as CloudflareTunnel from "./CloudflareTunnel.ts"
