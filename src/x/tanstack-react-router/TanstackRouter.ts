@@ -10,12 +10,8 @@ import {
   pipe,
   Stream,
 } from "effect"
-import {
-  FileRouter,
-} from "effect-bundler"
-import {
-  watchFileChanges,
-} from "effect-bundler/files"
+import { FileRouter } from "effect-bundler"
+import { watchFileChanges } from "effect-bundler/files"
 import React from "react"
 import * as TanstackRouterCodegen from "./TanstackRouterCodegen.ts"
 

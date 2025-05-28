@@ -9,9 +9,7 @@ import {
   test,
 } from "bun:test"
 import React from "react"
-import {
-  renderToReadableStream,
-} from "react-dom/server"
+import { renderToReadableStream } from "react-dom/server"
 import * as TanstackRouter from "./TanstackRouter.ts"
 
 test("creates root node with correct structure", () => {

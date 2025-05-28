@@ -11,7 +11,8 @@
     "memberExpression.linePerExpression": true,
     "enumDeclaration.memberSpacing": "newLine",
     "exportDeclaration.forceMultiLine": "always",
-    "importDeclaration.forceMultiLine": "always"
+    "importDeclaration.preferSingleLine": true,
+    "importDeclaration.forceMultiLine": "whenMultiple"
   },
   "markup": {
     "maxAttrsPerLine": 1,

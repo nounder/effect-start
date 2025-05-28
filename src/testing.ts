@@ -7,9 +7,7 @@ import {
   pipe,
   Scope,
 } from "effect"
-import type {
-  YieldWrap,
-} from "effect/Utils"
+import type { YieldWrap } from "effect/Utils"
 
 /**
  * Creates a scoped Effects and runs is asynchronously.

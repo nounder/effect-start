@@ -1,9 +1,5 @@
-import {
-  FileSystem,
-} from "@effect/platform"
-import type {
-  PlatformError,
-} from "@effect/platform/Error"
+import { FileSystem } from "@effect/platform"
+import type { PlatformError } from "@effect/platform/Error"
 import {
   Array,
   Effect,

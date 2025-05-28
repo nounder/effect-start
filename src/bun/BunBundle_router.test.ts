@@ -7,16 +7,10 @@ import {
   expect,
   test,
 } from "bun:test"
-import {
-  fileURLToPath,
-} from "node:url"
+import { fileURLToPath } from "node:url"
 import * as BundleHttp from "../BundleHttp.ts"
-import {
-  TestHttpClient,
-} from "../index.ts"
-import {
-  effectFn,
-} from "../testing.ts"
+import { TestHttpClient } from "../index.ts"
+import { effectFn } from "../testing.ts"
 import * as BunBundle from "./BunBundle.ts"
 
 const HtmlPath = fileURLToPath(import.meta.resolve(

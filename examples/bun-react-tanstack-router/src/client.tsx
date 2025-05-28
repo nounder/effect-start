@@ -5,12 +5,8 @@ import {
   createRouter,
   RouterProvider,
 } from "@tanstack/react-router"
-import {
-  createRoot,
-} from "react-dom/client"
-import {
-  routeTree,
-} from "./routes/.pages.gen.ts"
+import { createRoot } from "react-dom/client"
+import { routeTree } from "./routes/.pages.gen.ts"
 
 const router = createRouter({
   routeTree,
@@ -19,7 +15,7 @@ const router = createRouter({
 
 declare module "@tanstack/react-router" {
   interface Register {
-    router: typeof router;
+    router: typeof router
   }
 }
 

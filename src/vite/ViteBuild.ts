@@ -4,14 +4,10 @@ import {
   HttpServerResponse,
 } from "@effect/platform"
 import Effect from "effect/Effect"
-import {
-  pipe,
-} from "effect/Function"
+import { pipe } from "effect/Function"
 import Layer from "effect/Layer"
 import * as nodeFs from "node:fs/promises"
-import {
-  Vite,
-} from "./Vite.ts"
+import { Vite } from "./Vite.ts"
 
 interface ViteManifest {
   [key: string]: {

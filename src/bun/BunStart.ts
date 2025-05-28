@@ -11,16 +11,10 @@ import {
   Option,
   pipe,
 } from "effect"
-import type {
-  ClientKey,
-} from "../Bundle.ts"
+import type { ClientKey } from "../Bundle.ts"
 import * as HttpAppExtra from "../HttpAppExtra.ts"
-import {
-  BundleHttp,
-} from "../index.ts"
-import type {
-  BunBuildOptions,
-} from "./BunBundle.ts"
+import { BundleHttp } from "../index.ts"
+import type { BunBuildOptions } from "./BunBundle.ts"
 import * as BunBundle from "./BunBundle.ts"
 import * as BunFullStackServer from "./BunFullstackServer.ts"
 

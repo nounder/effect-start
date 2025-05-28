@@ -1,6 +1,4 @@
-import {
-  BunHttpServer,
-} from "@effect/platform-bun"
+import { BunHttpServer } from "@effect/platform-bun"
 import {
   Config,
   Effect,
@@ -23,7 +21,9 @@ type Options =
 
 export const make = (opts: Options) => {
   return Effect.gen(function*() {
-    const env = yield* Config.string("NODE_ENV").pipe(Config.option)
+    const env = yield* Config
+      .string("NODE_ENV")
+      .pipe(Config.option)
 
     return httpServer.make({
       development: Option.getOrNull(env) === "development",

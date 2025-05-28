@@ -17,12 +17,8 @@ import {
   BundleHttp,
   HttpAppExtra,
 } from "effect-bundler"
-import {
-  BunBundle,
-} from "effect-bundler/bun"
-import {
-  TanstackRouter,
-} from "effect-bundler/x/tanstack-react-router"
+import { BunBundle } from "effect-bundler/bun"
+import { TanstackRouter } from "effect-bundler/x/tanstack-react-router"
 import IndexHtml from "./index.html" with { type: "file" }
 
 const BundlePath = "/_bundle"

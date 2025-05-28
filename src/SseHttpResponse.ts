@@ -1,6 +1,4 @@
-import {
-  HttpServerResponse,
-} from "@effect/platform"
+import { HttpServerResponse } from "@effect/platform"
 import {
   Console,
   Duration,

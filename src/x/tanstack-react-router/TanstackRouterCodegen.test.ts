@@ -13,18 +13,10 @@ import {
   it,
 } from "bun:test"
 import React from "react"
-import {
-  renderToReadableStream,
-} from "react-dom/server"
-import {
-  importJsBlob,
-} from "../../esm.ts"
-import {
-  parseRoute,
-} from "../../FileRouter.ts"
-import type {
-  RouteHandle,
-} from "../../FileRouter.ts"
+import { renderToReadableStream } from "react-dom/server"
+import { importJsBlob } from "../../esm.ts"
+import { parseRoute } from "../../FileRouter.ts"
+import type { RouteHandle } from "../../FileRouter.ts"
 import * as TanstackRouterCodegen from "./TanstackRouterCodegen.ts"
 
 const MODULE_PREFIX = "./"

@@ -4,9 +4,7 @@ import {
   HttpServerRequest,
   HttpServerResponse,
 } from "@effect/platform"
-import {
-  Effect,
-} from "effect"
+import { Effect } from "effect"
 import {
   Bundle,
   BundleHttp,

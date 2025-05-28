@@ -11,9 +11,7 @@ import {
   pipe,
 } from "effect"
 import * as TestHttpClient from "./TestHttpClient.ts"
-import {
-  effectFn,
-} from "./testing.ts"
+import { effectFn } from "./testing.ts"
 
 const App = Effect.gen(function*() {
   const req = yield* HttpServerRequest.HttpServerRequest

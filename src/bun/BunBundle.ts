@@ -1,6 +1,4 @@
-import type {
-  HttpRouter,
-} from "@effect/platform"
+import type { HttpRouter } from "@effect/platform"
 import type {
   BuildConfig,
   BuildOutput,
@@ -20,20 +18,14 @@ import {
   SynchronizedRef,
 } from "effect"
 import * as NPath from "node:path"
-import {
-  fileURLToPath,
-} from "node:url"
+import { fileURLToPath } from "node:url"
 import type {
   BundleContext,
   BundleManifest,
 } from "../Bundle.ts"
 import * as Bundle from "../Bundle.ts"
-import {
-  watchFileChanges,
-} from "../files.ts"
-import {
-  BunImportTrackerPlugin,
-} from "./index.ts"
+import { watchFileChanges } from "../files.ts"
+import { BunImportTrackerPlugin } from "./index.ts"
 
 // raw config passed to Bun.build
 type BunBundleConfig = BuildConfig

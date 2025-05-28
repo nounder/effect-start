@@ -1,18 +1,12 @@
-import {
-  Error,
-} from "@effect/platform"
+import { Error } from "@effect/platform"
 import {
   Effect,
   pipe,
   Stream,
 } from "effect"
-import type {
-  WatchOptions,
-} from "node:fs"
+import type { WatchOptions } from "node:fs"
 import * as NFSP from "node:fs/promises"
-import type {
-  BundleEvent,
-} from "./Bundle.ts"
+import type { BundleEvent } from "./Bundle.ts"
 
 const SOURCE_FILENAME = /\.(tsx?|jsx?|html?|css|json)$/
 

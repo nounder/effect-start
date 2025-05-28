@@ -2,9 +2,7 @@ import {
   expect,
   test,
 } from "bun:test"
-import {
-  effectFn,
-} from "../testing.ts"
+import { effectFn } from "../testing.ts"
 import * as BunBundle from "./BunBundle.ts"
 import * as BunImportTrackerPlugin from "./BunImportTrackerPlugin.ts"
 

@@ -1,17 +1,11 @@
-import {
-  HttpServerResponse,
-} from "@effect/platform"
-import {
-  HttpRouter,
-} from "@effect/platform"
+import { HttpServerResponse } from "@effect/platform"
+import { HttpRouter } from "@effect/platform"
 import {
   expect,
   it,
   test,
 } from "bun:test"
-import {
-  Effect,
-} from "effect"
+import { Effect } from "effect"
 import {
   BunBundle,
   BundleHttp,

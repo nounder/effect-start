@@ -1,6 +1,4 @@
-import type {
-  InlineConfig,
-} from "vite"
+import type { InlineConfig } from "vite"
 
 export async function createViteConfig({
   appType = undefined as InlineConfig["appType"],

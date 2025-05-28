@@ -1,9 +1,5 @@
-import {
-  HttpServerResponse,
-} from "@effect/platform"
-import {
-  RouteNotFound,
-} from "@effect/platform/HttpServerError"
+import { HttpServerResponse } from "@effect/platform"
+import { RouteNotFound } from "@effect/platform/HttpServerError"
 import {
   Cause,
   Effect,

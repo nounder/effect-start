@@ -1,17 +1,11 @@
-import {
-  FileSystem,
-} from "@effect/platform"
-import type {
-  PlatformError,
-} from "@effect/platform/Error"
+import { FileSystem } from "@effect/platform"
+import type { PlatformError } from "@effect/platform/Error"
 import {
   Effect,
   Iterable,
   pipe,
 } from "effect"
-import {
-  FileRouter,
-} from "effect-bundler"
+import { FileRouter } from "effect-bundler"
 import * as NPath from "node:path"
 
 type RouteInfo = {

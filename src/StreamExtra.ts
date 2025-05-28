@@ -6,9 +6,7 @@ import {
   Runtime,
   Stream,
 } from "effect"
-import {
-  dual,
-} from "effect/Function"
+import { dual } from "effect/Function"
 import {
   runForEachChunk,
   StreamTypeId,

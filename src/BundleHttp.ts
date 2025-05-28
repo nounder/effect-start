@@ -4,9 +4,7 @@ import {
   HttpServerRequest,
   HttpServerResponse,
 } from "@effect/platform"
-import {
-  RouteNotFound,
-} from "@effect/platform/HttpServerError"
+import { RouteNotFound } from "@effect/platform/HttpServerError"
 import {
   Context,
   Effect,

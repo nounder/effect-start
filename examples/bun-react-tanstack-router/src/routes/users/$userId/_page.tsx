@@ -1,6 +1,4 @@
-import {
-  Link,
-} from "@tanstack/react-router"
+import { Link } from "@tanstack/react-router"
 
 export default function UserDetailPage() {
   // Mock user data - in a real app, you'd fetch this from an API
