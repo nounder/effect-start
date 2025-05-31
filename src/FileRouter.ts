@@ -3,8 +3,6 @@ import type { PlatformError } from "@effect/platform/Error"
 import {
   Array,
   Effect,
-  Either,
-  HashMap,
   Record,
 } from "effect"
 
