@@ -58,6 +58,16 @@ export type RouteHandle = {
   splat: boolean // if check if route is a splat
 }
 
+/**
+ * Routes are sorted by depth, layout are first,
+ * splats are put at the end for each segment.
+ * - _layout.tsx
+ * - users/_page.tsx
+ * - users/$userId/_page.tsx
+ * - $/_page.tsx
+ */
+export type OrderedRouteHandles = RouteHandle[]
+
 const ROUTE_PATH_REGEX = /^\/?(.*\/?)(_(server|page|layout))\.(jsx?|tsx?)$/
 
 type RoutePathMatch = [
@@ -222,7 +232,11 @@ export function parseRoute(
 
 export function walkRoutesDirectory(
   dir: string,
-): Effect.Effect<RouteHandle[], PlatformError, FileSystem.FileSystem> {
+): Effect.Effect<
+  OrderedRouteHandles,
+  PlatformError,
+  FileSystem.FileSystem
+> {
   return Effect.gen(function*() {
     const fs = yield* FileSystem.FileSystem
     const files = yield* fs.readDirectory(dir, { recursive: true })
@@ -233,15 +247,10 @@ export function walkRoutesDirectory(
 
 /**
  * Given a list of paths, return a list of route handles.
- * Routes are sorted by depth, splats are put at the end for each segment, like so:
- * - _layout.tsx
- * - users/_page.tsx
- * - users/$userId/_page.tsx
- * - $/_page.tsx
  */
 export function getRouteHandlesFromPaths(
   paths: string[],
-): RouteHandle[] {
+): OrderedRouteHandles {
   return paths
     .map(f => f.match(ROUTE_PATH_REGEX) as RoutePathMatch)
     .filter(Boolean)

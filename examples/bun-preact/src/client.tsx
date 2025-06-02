@@ -1,4 +1,7 @@
-import { render , h} from "preact"
+import {
+  h,
+  render,
+} from "preact"
 import { App } from "./App.tsx"
 
 render(

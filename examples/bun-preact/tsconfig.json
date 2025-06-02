@@ -1,14 +1,11 @@
 {
   "compilerOptions": {
-    // Environment setup & latest features
-    "lib": ["ESNext", "DOM"],
+    // Enable latest features
+    "lib": ["ESNext"],
     "target": "ESNext",
     "module": "ESNext",
     "moduleDetection": "force",
     "allowJs": true,
-
-    "jsx": "react-jsx",
-    "jsxImportSource": "preact",
 
     // Bundler mode
     "moduleResolution": "bundler",
@@ -16,15 +13,23 @@
     "verbatimModuleSyntax": true,
     "noEmit": true,
 
+    "jsx": "react-jsx",
+    "jsxImportSource": "preact",
+
     // Best practices
     "strict": true,
     "skipLibCheck": true,
     "noFallthroughCasesInSwitch": true,
-    "noUncheckedIndexedAccess": true,
+
+    "noImplicitAny": false,
 
     // Some stricter flags (disabled by default)
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noPropertyAccessFromIndexSignature": false
-  }
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx"
+  ]
 }
