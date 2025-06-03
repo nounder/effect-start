@@ -1,11 +1,17 @@
+import { FileSystem } from "@effect/platform"
+import type { PlatformError } from "@effect/platform/Error"
+import { Effect } from "effect"
+import * as NPath from "node:path"
 import * as FileRouter from "./FileRouter.ts"
 
 export function generateCode(
   handles: FileRouter.OrderedRouteHandles,
 ): string {
   const definitions: string[] = []
-  const layoutVariables = new Map<string, string>()
   const pageVariables: string[] = []
+
+  let currentLayout: { routePath: string; varName: string } | null = null
+  const processedLayouts: { routePath: string; varName: string }[] = []
 
   for (const handle of handles) {
     const prefix = handle.type === "LayoutHandle" ? "layout" : "page"
@@ -17,60 +23,53 @@ export function generateCode(
       .replace(/\//g, "_")
     const varName = `${prefix}_${normalizedPath}`
 
+    // Reset current layout if it's not an ancestor of current route
+    if (
+      currentLayout
+      && !(
+        currentLayout.routePath === "/"
+        || handle.routePath === currentLayout.routePath
+        || (currentLayout.routePath !== "/"
+          && handle.routePath.startsWith(currentLayout.routePath + "/"))
+      )
+    ) {
+      // Find the most specific layout that is still a valid parent
+      currentLayout = processedLayouts
+        .filter(layout =>
+          layout.routePath === "/"
+          || handle.routePath === layout.routePath
+          || handle.routePath.startsWith(layout.routePath + "/")
+        )
+        .reduce(
+          (best, layout) =>
+            !best || layout.routePath.length > best.routePath.length
+              ? layout
+              : best,
+          null as { routePath: string; varName: string } | null,
+        )
+    }
+
     switch (handle.type) {
       case "LayoutHandle": {
-        // Find parent layout from previously processed layouts
-        let parentLayoutVar: string | null = null
-        let maxDepth = -1
-
-        for (const [layoutPath, layoutVar] of layoutVariables) {
-          if (
-            layoutPath !== handle.routePath
-            && handle.routePath.startsWith(layoutPath + "/")
-            && layoutPath.length > maxDepth
-          ) {
-            parentLayoutVar = layoutVar
-            maxDepth = layoutPath.length
-          }
-        }
-
         const code = `const ${varName} = {
 \tpath: "${handle.routePath}",
-\tlayout: ${parentLayoutVar ?? "undefined"},
+\tparent: ${currentLayout?.varName ?? "undefined"},
 \tload: () => import("./${handle.modulePath}"),
 }`
 
         definitions.push(code)
-        layoutVariables.set(handle.routePath, varName)
+
+        // Set this layout as current and add to processed layouts
+        currentLayout = { routePath: handle.routePath, varName }
+        processedLayouts.push(currentLayout)
 
         break
       }
       case "PageHandle": {
-        // Find layout for this page from previously processed layouts
-        let layoutVar: string | null = null
-        let maxDepth = -1
-
-        for (const [layoutPath, layoutVarName] of layoutVariables) {
-          // Check for exact match first
-          if (layoutPath === handle.routePath) {
-            layoutVar = layoutVarName
-            break
-          }
-
-          // Then check for parent layout
-          const isParent = handle.routePath.startsWith(layoutPath + "/")
-            || (layoutPath === "/" && handle.routePath !== "/")
-
-          if (isParent && layoutPath.length > maxDepth) {
-            layoutVar = layoutVarName
-            maxDepth = layoutPath.length
-          }
-        }
-
         const code = `const ${varName} = {
-  path: "${handle.routePath}",
-  layout: ${layoutVar ?? "undefined"},
-  load: () => import("./${handle.modulePath}"),
+\tpath: "${handle.routePath}",
+\tparent: ${currentLayout?.varName ?? "undefined"},
+\tload: () => import("./${handle.modulePath}"),
 }`
 
         definitions.push(code)
@@ -81,11 +80,32 @@ export function generateCode(
     }
   }
 
-  return `${definitions.join("\n")}
+  return `${definitions.join("\n\n")}
 
 export const Pages = [
-\t${pageVariables.join(",\n")}
+\t${pageVariables.join(",\n\t")}
 ] as const
  `
     .replace(/\t/g, "  ")
+}
+
+export function dump(
+  routesPath: string,
+  manifestPath = ".routes.gen.ts",
+): Effect.Effect<void, PlatformError, FileSystem.FileSystem> {
+  return Effect.gen(function*() {
+    manifestPath = NPath.resolve(routesPath, manifestPath)
+
+    const fs = yield* FileSystem.FileSystem
+    const files = yield* fs.readDirectory(routesPath, { recursive: true })
+    const handles = FileRouter.getRouteHandlesFromPaths(files)
+    const code = generateCode(handles)
+
+    yield* Effect.logDebug(`Generating file routes manifest: ${manifestPath}`)
+
+    yield* fs.writeFileString(
+      manifestPath,
+      code,
+    )
+  })
 }

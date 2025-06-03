@@ -16,6 +16,7 @@ import {
 } from "effect"
 import {
   BundleHttp,
+  FileRouter,
   HttpAppExtra,
 } from "effect-bundler"
 import {
@@ -67,6 +68,7 @@ export const layerServer = () =>
       BunHttpServer.layer({
         port: 3400,
       }),
+      FileRouter.layer(import.meta.resolve("./routes")),
     ]),
   )
 

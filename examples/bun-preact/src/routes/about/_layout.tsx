@@ -1,14 +1,10 @@
 export default function(props) {
-  console.log(props)
   return (
     <div>
       <h1>
-        Root layout
+        About layout
       </h1>
-
-      <div>
-        {props.children}
-      </div>
+      {props.children}
     </div>
   )
 }

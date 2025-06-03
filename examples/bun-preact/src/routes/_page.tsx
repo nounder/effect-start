@@ -1,9 +1,17 @@
 export default function() {
   return (
     <div>
-      <h2>
-        Root page
-      </h2>
+      <a href="/users">
+        Users
+      </a>
+
+      <a href="/about">
+        About
+      </a>
+
+      <a href="/about/yo">
+        About yo
+      </a>
     </div>
   )
 }

@@ -1,16 +1,22 @@
 import "effect-bundler/client"
 import {
+  ErrorBoundary,
   LocationProvider,
   Router,
 } from "preact-iso"
-import { RouteComponents } from "./routes.tsx"
+import {
+  RouteComponents,
+  Routes,
+} from "./routes.tsx"
 
 export function App() {
   return (
     <LocationProvider>
-      <Router>
-        {RouteComponents}
-      </Router>
+      <ErrorBoundary>
+        <Router>
+          {RouteComponents}
+        </Router>
+      </ErrorBoundary>
     </LocationProvider>
   )
 }

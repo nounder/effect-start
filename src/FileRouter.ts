@@ -3,8 +3,15 @@ import type { PlatformError } from "@effect/platform/Error"
 import {
   Array,
   Effect,
+  Layer,
+  pipe,
   Record,
+  Stream,
 } from "effect"
+import * as NPath from "node:path"
+import * as NUrl from "node:url"
+import * as FileRouterCodegen from "./FileRouterCodegen.ts"
+import { watchFileChanges } from "./files.ts"
 
 type LiteralSegment = {
   type: "Literal"
@@ -228,6 +235,39 @@ export function parseRoute(
     segments: segs,
     splat: hasSplat,
   }
+}
+
+/**
+ * Generates a file that references all routes.
+ */
+export function layer(
+  routesPath = "src/routes",
+  manifestPath = ".routes.gen.ts",
+) {
+  if (routesPath.startsWith("file://")) {
+    routesPath = NUrl.fileURLToPath(routesPath)
+  }
+  const genFile = NPath.resolve(routesPath, manifestPath)
+
+  return Layer.scopedDiscard(
+    Effect.gen(function*() {
+      yield* FileRouterCodegen.dump(routesPath, manifestPath)
+
+      const stream = pipe(
+        watchFileChanges(routesPath),
+        Stream.onError((e) => Effect.logError(e)),
+      )
+
+      yield* pipe(
+        stream,
+        // filter out edits to gen file
+        // TODO: make sure we don't re-generate if the file is unchanged
+        Stream.filter(e => e.path !== genFile),
+        Stream.runForEach(() => FileRouterCodegen.dump(genFile, manifestPath)),
+        Effect.fork,
+      )
+    }),
+  )
 }
 
 export function walkRoutesDirectory(
