@@ -189,7 +189,7 @@ export const renderPromise = <I extends BundleKey>(
     // this will require handling source base path
     const resolve = (url: string): string => {
       const path = url.startsWith("file://")
-        ? fileURLToPath(url)
+        ? NUrl.fileURLToPath(url)
         : url
       const publicBase = "/.bundle"
       const publicPath = bundle.resolve(path)

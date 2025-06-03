@@ -16,6 +16,12 @@ const layout_about = {
   load: () => import("./about/_layout.tsx"),
 }
 
+const page_about = {
+  path: "/about",
+  parent: layout_about,
+  load: () => import("./about/_page.tsx"),
+}
+
 const layout_users = {
   path: "/users",
   parent: layout_,
@@ -42,6 +48,7 @@ const page_about_$ = {
 
 export const Pages = [
   page_,
+  page_about,
   page_users,
   page_users_$id,
   page_about_$

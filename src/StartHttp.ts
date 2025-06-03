@@ -9,10 +9,7 @@ import {
   Bundle,
   BundleHttp,
 } from "."
-import {
-  type ClientBundle,
-  ClientKey,
-} from "./Bundle.ts"
+import { ClientKey } from "./Bundle.ts"
 
 type SsrRenderer = (req: Request) => PromiseLike<Response>
 
@@ -34,7 +31,7 @@ export function ssr(renderer: SsrRenderer) {
 }
 
 export function withBundleAssets<
-  Key extends Bundle.BundleKey = ClientBundle,
+  Key extends Bundle.BundleKey = ClientKey,
 >(opts?: {
   key?: Key
   path?: string
