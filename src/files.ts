@@ -1,11 +1,11 @@
 import { Error } from "@effect/platform"
 import {
-  Effect,
   pipe,
   Stream,
 } from "effect"
 import type { WatchOptions } from "node:fs"
 import * as NFSP from "node:fs/promises"
+import * as NPath from "node:path"
 import type { BundleEvent } from "./Bundle.ts"
 
 const SOURCE_FILENAME = /\.(tsx?|jsx?|html?|css|json)$/
@@ -49,8 +49,7 @@ export const watchFileChanges = (
     }),
     Stream.map((event) => ({
       type: "Change" as const,
-      // it's relative to the baseDir
-      path: event.filename!,
+      path: NPath.resolve(baseDir, event.filename!),
     })),
   )
 
@@ -58,10 +57,9 @@ export const watchFileChanges = (
 }
 
 const handleWatchError = (error: any, path: string) =>
-  Error.SystemError({
+  new Error.SystemError({
     module: "FileSystem",
     reason: "Unknown",
     method: "watch",
     pathOrDescriptor: path,
-    message: error.message,
   })
