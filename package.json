@@ -1,6 +1,6 @@
 {
   "name": "effect-bundler",
-  "version": "0.69.0",
+  "version": "0.70.0",
   "type": "module",
   "license": "MIT",
   "main": "./src/index.ts",
@@ -22,17 +22,17 @@
     "react-dom": "^19.1.0",
     "@types/bun": "^1.2.15",
     "@types/react": "^19.1.6",
-    "@types/react-dom": "^19.1.5",
-    "@effect/platform": "^0.84.3",
-    "@effect/platform-bun": "^0.67.3",
-    "@tanstack/react-router": "^1.120.13",
+    "@types/react-dom": "^19.1.6",
+    "@effect/platform": "^0.84.8",
+    "@effect/platform-bun": "^0.69.8",
+    "@tanstack/react-router": "^1.120.18",
     "@tailwindcss/node": "^4.1.8"
   },
   "peerDependencies": {
     "typescript": "^5.8.3",
-    "effect": "^3.16.2",
-    "@effect/platform": "^0.82.7",
-    "@effect/platform-bun": "^0.65.4",
+    "effect": "^3.16.4",
+    "@effect/platform": ">=0.82",
+    "@effect/platform-bun": ">=0.65",
     "@tanstack/react-router": "^1.120.10",
     "@tailwindcss/node": "^4.1.7"
   },
