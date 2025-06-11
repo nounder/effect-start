@@ -167,8 +167,7 @@ function hasTailwindImport(css: string): boolean {
   return /@import\s+(url\()?["']?[^"')]+["']?\)?\s*[^;]*;/.test(css)
 }
 
-const CLASS_NAME_REGEX =
-  /^[a-zA-Z0-9\-_:\[\]\/\.!]*([-:\[\/]|^(h|w|p|m|text|bg|border|rounded|shadow|flex|grid|size|gap|ring|outline|opacity|pointer|transition|shrink|grow|items|justify|font|underline|has|aria|inline|block|hidden|visible|static|fixed|absolute|relative|sticky))/
+const CLASS_NAME_REGEX = /^[^"'`\s]+$/
 
 function extractClassNames(source: string): Set<string> {
   const classNames = new Set<string>()
