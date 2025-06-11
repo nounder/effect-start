@@ -147,6 +147,8 @@ export const make = (opts: {
 
               pendingModules.push(moduleImport)
             })
+
+            visitedModules.add(currentPath)
           }
         }
 
