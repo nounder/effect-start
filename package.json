@@ -23,14 +23,15 @@
     "@types/bun": "^1.2.15",
     "@types/react": "^19.1.6",
     "@types/react-dom": "^19.1.6",
-    "@effect/platform": "^0.84.8",
-    "@effect/platform-bun": "^0.69.8",
+    "effect": ">=3.16.4",
+    "@effect/platform": ">=0.82",
+    "@effect/platform-bun": ">=0.65",
     "@tanstack/react-router": "^1.120.18",
-    "@tailwindcss/node": "^4.1.8"
+    "@tailwindcss/node": ">=4.1.8"
   },
   "peerDependencies": {
     "typescript": "^5.8.3",
-    "effect": "^3.16.4",
+    "effect": ">=3.16.4",
     "@effect/platform": ">=0.82",
     "@effect/platform-bun": ">=0.65",
     "@tanstack/react-router": "^1.120.10",
