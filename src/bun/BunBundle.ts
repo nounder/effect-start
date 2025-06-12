@@ -76,32 +76,46 @@ export const bundle = <I extends `${string}Bundle`>(
       devLayer: Layer.scoped(
         Bundle.tagged(key),
         Effect.gen(function*() {
-          const sharedBundle = yield* build(config)
+          const sharedBundle: Bundle.BundleContext = {
+            entrypoints: {},
+            artifacts: {},
+            resolve: () => null,
+            getArtifact: () => null,
+          }
 
           const loadRef = sharedBundle[BunBundleContextLoadRef] =
             yield* SynchronizedRef.make(null)
 
           sharedBundle.events = yield* PubSub.unbounded<Bundle.BundleEvent>()
 
+          const update = Effect.catchAll(
+            Effect.gen(function*() {
+              yield* Effect.logDebug("Building bundle: " + key)
+
+              const newBundle = yield* build(config)
+
+              Object.assign(sharedBundle, newBundle)
+
+              // Clean old loaded bundle
+              yield* SynchronizedRef.update(loadRef, () => null)
+            }),
+            err => Effect.logError("Error while building bundle", err),
+          )
+
+          yield* update
+
           yield* Effect.fork(
             pipe(
               watchFileChanges(),
               Stream.runForEach((v) =>
-                Effect.gen(function*() {
-                  yield* Effect.logDebug("Updating bundle: " + key)
-
-                  const newBundle = yield* build(config)
-
-                  Object.assign(sharedBundle, newBundle)
-
-                  // Clean old loaded bundle
-                  yield* SynchronizedRef.update(loadRef, () => null)
-
-                  // publish event after the built
-                  if (sharedBundle.events) {
-                    yield* PubSub.publish(sharedBundle.events, v)
-                  }
-                })
+                pipe(
+                  update,
+                  Effect.tap(() =>
+                    sharedBundle.events
+                      ? PubSub.publish(sharedBundle.events, v)
+                      : Effect.unit,
+                  ),
+                )
               ),
               // Log error otherwise stream would close and we would not
               // know about it because we're processing it in a fork.
