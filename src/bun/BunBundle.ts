@@ -107,7 +107,18 @@ export const bundle = <I extends `${string}Bundle`>(
                     }
                   }),
                   Effect.catchAll(err =>
-                    Effect.logError("Error while updating bundle", err)
+                    Effect.gen(function*() {
+                      yield* Effect.logError(
+                        "Error while updating bundle",
+                        err,
+                      )
+                      if (sharedBundle.events) {
+                        yield* PubSub.publish(sharedBundle.events, {
+                          type: "BuildError",
+                          error: String(err),
+                        })
+                      }
+                    })
                   ),
                 )
               ),
