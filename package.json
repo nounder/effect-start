@@ -3,7 +3,6 @@
   "version": "0.70.0",
   "type": "module",
   "license": "MIT",
-  "main": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
     "./bun": "./src/bun/index.ts",
@@ -12,22 +11,19 @@
     "./package.json": "./package.json",
     "./x/tanstack-react-router": "./src/x/tanstack-react-router/index.ts"
   },
-  "scripts": {
-    "start": "bun src/dev.ts start",
-    "build": "bun src/dev.ts build"
-  },
   "devDependencies": {
-    "effect-memfs": "github:nounder/effect-memfs#v0.7.0",
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0",
+    "@effect/language-service": "^0.20.1",
+    "@effect/platform": "^0.84.11",
+    "@effect/platform-bun": "^0.69.16",
+    "@tailwindcss/node": ">=4.1.8",
+    "@tanstack/react-router": "^1.120.18",
     "@types/bun": "^1.2.15",
     "@types/react": "^19.1.6",
     "@types/react-dom": "^19.1.6",
-    "effect": "^3.16.6",
-    "@effect/platform": "^0.84.10",
-    "@effect/platform-bun": "^0.69.15",
-    "@tanstack/react-router": "^1.120.18",
-    "@tailwindcss/node": ">=4.1.8"
+    "effect": "^3.16.7",
+    "effect-memfs": "github:nounder/effect-memfs#v0.7.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
   },
   "peerDependencies": {
     "typescript": "^5.8.3",
