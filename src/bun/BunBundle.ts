@@ -14,7 +14,6 @@ import {
   PubSub,
   Record,
   Stream,
-  String,
   SynchronizedRef,
 } from "effect"
 import * as NPath from "node:path"
