@@ -86,27 +86,30 @@ export const bundle = <I extends `${string}Bundle`>(
           yield* Effect.fork(
             pipe(
               watchFileChanges(),
-              Stream.runForEach((v) =>
-                Effect.gen(function*() {
-                  yield* Effect.logDebug("Updating bundle: " + key)
-
-                  const newBundle = yield* build(config)
-
-                  Object.assign(sharedBundle, newBundle)
-
-                  // Clean old loaded bundle
-                  yield* SynchronizedRef.update(loadRef, () => null)
-
-                  // publish event after the built
-                  if (sharedBundle.events) {
-                    yield* PubSub.publish(sharedBundle.events, v)
-                  }
-                })
+              Stream.onError(err =>
+                Effect.logError("Error while watching files", err)
               ),
-              // Log error otherwise stream would close and we would not
-              // know about it because we're processing it in a fork.
-              Effect.tapError(err =>
-                Effect.logError("Error while updating bundle", err)
+              Stream.runForEach((v) =>
+                pipe(
+                  Effect.gen(function*() {
+                    yield* Effect.logDebug("Updating bundle: " + key)
+
+                    const newBundle = yield* build(config)
+
+                    Object.assign(sharedBundle, newBundle)
+
+                    // Clean old loaded bundle
+                    yield* SynchronizedRef.update(loadRef, () => null)
+
+                    // publish event after the built
+                    if (sharedBundle.events) {
+                      yield* PubSub.publish(sharedBundle.events, v)
+                    }
+                  }),
+                  Effect.catchAll(err =>
+                    Effect.logError("Error while updating bundle", err)
+                  ),
+                )
               ),
             ),
           )
