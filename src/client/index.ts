@@ -18,7 +18,6 @@ async function loadAllEntrypoints() {
     .keys(manifest.artifacts)
     .filter(v => v.endsWith(".js"))
     .forEach((outFile) => {
-      console.log(outFile)
       const script = document.createElement("script")
       script.src = `/_bundle/${outFile}`
       script.type = "module"
@@ -27,12 +26,53 @@ async function loadAllEntrypoints() {
       }
       document.body.appendChild(script)
     })
+  }
+
+let overlay: HTMLDivElement | null = null
+
+function getOverlay() {
+  if (!overlay) {
+    overlay = document.createElement("div")
+    overlay.style.position = "fixed"
+    overlay.style.top = "0"
+    overlay.style.left = "0"
+    overlay.style.right = "0"
+    overlay.style.maxHeight = "50vh"
+    overlay.style.overflowY = "auto"
+    overlay.style.background = "black"
+    overlay.style.color = "red"
+    overlay.style.fontFamily = "monospace"
+    overlay.style.zIndex = "2147483647"
+    document.body.appendChild(overlay)
+  }
+  return overlay
+}
+
+function appendError(text: string) {
+  const el = getOverlay()
+  const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1
+  const line = document.createElement("pre")
+  line.textContent = text
+  el.appendChild(line)
+  if (atBottom) {
+    el.scrollTop = el.scrollHeight
+  }
+}
+
+function clearOverlay() {
+  overlay?.remove()
+  overlay = null
 }
 
 function handleBundleEvent(event: BundleEvent) {
   if (event.type === "Change") {
     console.debug("Bundle change detected...")
     reload()
+    clearOverlay()
+  }
+
+  if (event.type === "BuildError") {
+    appendError(event.error)
   }
 }
 

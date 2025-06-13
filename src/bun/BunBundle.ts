@@ -17,8 +17,8 @@ import {
   String,
   SynchronizedRef,
 } from "effect"
+import * as Exit from "effect/Exit"
 import * as NPath from "node:path"
-import { fileURLToPath } from "node:url"
 import type {
   BundleContext,
   BundleManifest,
@@ -86,27 +86,46 @@ export const bundle = <I extends `${string}Bundle`>(
           yield* Effect.fork(
             pipe(
               watchFileChanges(),
-              Stream.runForEach((v) =>
-                Effect.gen(function*() {
-                  yield* Effect.logDebug("Updating bundle: " + key)
-
-                  const newBundle = yield* build(config)
-
-                  Object.assign(sharedBundle, newBundle)
-
-                  // Clean old loaded bundle
-                  yield* SynchronizedRef.update(loadRef, () => null)
-
-                  // publish event after the built
-                  if (sharedBundle.events) {
-                    yield* PubSub.publish(sharedBundle.events, v)
-                  }
-                })
+              Stream.onError(err =>
+                Effect.logError("Error while watching files", err),
               ),
-              // Log error otherwise stream would close and we would not
-              // know about it because we're processing it in a fork.
-              Effect.tapError(err =>
-                Effect.logError("Error while updating bundle", err)
+              Stream.runForEach((v) =>
+                pipe(
+                  Effect.gen(function*() {
+                    yield* Effect.logDebug("Updating bundle: " + key)
+
+                    const result = yield* Effect.exit(build(config))
+
+                    if (Exit.isSuccess(result)) {
+                      const newBundle = result.value
+
+                      Object.assign(sharedBundle, newBundle)
+
+                      // Clean old loaded bundle
+                      yield* SynchronizedRef.update(loadRef, () => null)
+
+                      // publish event after the built
+                      if (sharedBundle.events) {
+                        yield* PubSub.publish(sharedBundle.events, v)
+                      }
+                    } else {
+                      if (sharedBundle.events) {
+                        yield* PubSub.publish(sharedBundle.events, {
+                          type: "BuildError",
+                          error: String(result.cause),
+                        })
+                      }
+
+                      yield* Effect.logError(
+                        "Error while updating bundle",
+                        result.cause,
+                      )
+                    }
+                  }),
+                  Effect.catchAll((err) =>
+                    Effect.logError("Error while updating bundle", err)
+                  ),
+                )
               ),
             ),
           )
