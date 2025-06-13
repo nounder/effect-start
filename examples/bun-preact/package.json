@@ -10,7 +10,7 @@
     "@effect/platform-bun": "^0.67.3",
     "@preact/signals": "^2.2.0",
     "effect": "^3.16.2",
-    "effect-bundler": "github:nounder/effect-bundler#v0.69.0",
+    "effect-bundler": "github:nounder/effect-bundler",
     "preact": "^10.26.8",
     "preact-iso": "^2.9.1"
   },
