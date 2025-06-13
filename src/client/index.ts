@@ -1,3 +1,9 @@
+/**
+ * This module is intended to be imported in a browser bundle in a development.
+ * It is responsible for live reloading the page when bundle changes.
+ * When NODE_ENV=production, it does nothing.
+ */
+
 /// <reference lib="dom" />
 /// <reference lib="dom.iterable" />
 
@@ -5,8 +11,10 @@ import type {
   BundleEvent,
   BundleManifest,
 } from "../Bundle.ts"
+import * as ScrollState from "./ScrollState.ts"
 
 function reload() {
+  ScrollState.persist()
   window.location.reload()
 }
 
@@ -79,10 +87,7 @@ function reloadAllMetaLinks() {
 
 if (process.env.NODE_ENV !== "production") {
   window.addEventListener("load", () => {
+    ScrollState.restore()
     listen()
   })
-}
-
-export {
-  listen,
 }
