@@ -1,0 +1,24 @@
+{
+  "name": "Effect Bundler",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "installZsh": true,
+      "configureZshAsDefaultShell": true,
+      "upgradePackages": true,
+      "username": "bun"
+    }
+  },
+  "forwardPorts": [
+    3000
+  ],
+  "portsAttributes": {
+    "3000": {
+      "label": "Web Server",
+      "onAutoForward": "notify"
+    }
+  },
+  "remoteUser": "bun"
+}
