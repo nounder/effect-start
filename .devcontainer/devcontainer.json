@@ -20,5 +20,14 @@
       "onAutoForward": "notify"
     }
   },
-  "remoteUser": "bun"
+  "remoteUser": "bun",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "oven.bun-vscode",
+        "gplane.dprint2",
+        "effectful-tech.effect-vscode"
+      ]
+    }
+  }
 }
