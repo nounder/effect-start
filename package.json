@@ -21,7 +21,7 @@
     "@types/react": "^19.1.6",
     "@types/react-dom": "^19.1.6",
     "effect": "^3.16.7",
-    "effect-memfs": "github:nounder/effect-memfs#v0.7.0",
+    "effect-memfs": "github:nounder/effect-memfs#v0.7.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   },
