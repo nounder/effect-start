@@ -8,6 +8,8 @@ export * as StartHttp from "./StartHttp.ts"
 
 export * as HttpAppExtra from "./HttpAppExtra.ts"
 
+export * as PublicDirectory from "./PublicDirectory.ts"
+
 export * as TestHttpClient from "./TestHttpClient.ts"
 export {
   effectFn,
