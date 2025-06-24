@@ -102,7 +102,7 @@ export const Pages = [
 
 export function dump(
   routesPath: string,
-  manifestPath = ".routes.gen.ts",
+  manifestPath = "_manifest.ts",
 ): Effect.Effect<void, PlatformError, FileSystem.FileSystem> {
   return Effect.gen(function*() {
     manifestPath = NPath.resolve(routesPath, manifestPath)

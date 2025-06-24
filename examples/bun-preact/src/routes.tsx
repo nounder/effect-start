@@ -3,7 +3,7 @@ import {
   Route,
   useRoute,
 } from "preact-iso"
-import { Pages } from "./routes/.routes.gen.ts"
+import { Pages } from "./routes/_manifest.ts"
 
 function collectLayouts(page: (typeof Pages)[number]) {
   const layouts: NonNullable<(typeof Pages)[number]["parent"]>[] = []

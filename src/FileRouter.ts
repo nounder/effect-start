@@ -242,7 +242,7 @@ export function parseRoute(
  */
 export function layer(
   routesPath = "src/routes",
-  manifestPath = ".routes.gen.ts",
+  manifestPath = "_manifest.ts",
 ) {
   if (routesPath.startsWith("file://")) {
     routesPath = NUrl.fileURLToPath(routesPath)
