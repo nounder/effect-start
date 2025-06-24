@@ -16,6 +16,8 @@ This instructs AI agents how to navigate and edit this codebase.
 - Do not unwrap effects in `Effect.gen`. You can `yield*` effects directly.
 - Do not write obvious comments that restate what the code is doing without adding meaningful context.
 - Always run test after making all the changes.
+- When imported file name is capitalized, import it as namespace: `import * as Server from "./Server.ts"`
+- Always import files with their extension, even when it's `.ts`
 
 # Tests
 
@@ -23,3 +25,4 @@ This instructs AI agents how to navigate and edit this codebase.
   - Test single file: `bun test $FILE`.
 - Import test functions from `bun:test` module.
 - Object passed to expect() and its methods MUST have new line for each property.
+- Put empty lines before and after expect() calls.
