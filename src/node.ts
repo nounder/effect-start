@@ -48,13 +48,15 @@ export const watchNodeWithOptions = (
           }
         })
         watcher.on("error", (error) => {
-          emit.fail(Error.SystemError({
-            module: "FileSystem",
-            reason: "Unknown",
-            method: "watch",
-            pathOrDescriptor: path,
-            message: error.message,
-          }))
+          emit.fail(
+            new Error.SystemError({
+              module: "FileSystem",
+              reason: "Unknown",
+              method: "watch",
+              pathOrDescriptor: path,
+              message: error.message,
+            }),
+          )
         })
         watcher.on("close", () => {
           emit.end()
