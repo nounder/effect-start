@@ -24,7 +24,7 @@ import type {
   BundleManifest,
 } from "../Bundle.ts"
 import * as Bundle from "../Bundle.ts"
-import { watchFileChanges } from "../files.ts"
+import { watchFileChanges } from "../FileSystemExtra.ts"
 import { BunImportTrackerPlugin } from "./index.ts"
 
 // raw config passed to Bun.build

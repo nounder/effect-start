@@ -11,7 +11,7 @@ import {
 import * as NPath from "node:path"
 import * as NUrl from "node:url"
 import * as FileRouterCodegen from "./FileRouterCodegen.ts"
-import { watchFileChanges } from "./files.ts"
+import { watchFileChanges } from "./FileSystemExtra.ts"
 
 type LiteralSegment = {
   type: "Literal"

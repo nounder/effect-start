@@ -16,3 +16,5 @@ export {
 export * as FileRouter from "./FileRouter.ts"
 
 export * as CloudflareTunnel from "./CloudflareTunnel.ts"
+
+export * as FileSystemExtra from "./FileSystemExtra.ts"
