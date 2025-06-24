@@ -1,119 +1,94 @@
 import {
-  HttpApp,
-  HttpServerRequest,
+  HttpRouter,
   HttpServerResponse,
 } from "@effect/platform"
-import { RouteNotFound } from "@effect/platform/HttpServerError"
 import {
-  Array,
+  RequestError,
+  RouteNotFound,
+} from "@effect/platform/HttpServerError"
+import {
   Cause,
   Effect,
-  Match,
-  pipe,
-  Predicate,
+  Option,
+  ParseResult,
+  Record,
 } from "effect"
-
-/**
- * Sequentially call provided HttpApps until first non-404 response
- * is called.
- */
-export const chain = <
-  A extends HttpApp.Default<any | RouteNotFound, any>,
-  L extends A[],
->(
-  apps: L,
-): HttpApp.Default<
-  L[number] extends HttpApp.Default<infer E, any> ? Exclude<E, RouteNotFound>
-    : never,
-  L[number] extends HttpApp.Default<any, infer R> ? R : never
-> =>
-  pipe(
-    apps,
-    Array.map((app: A) =>
-      pipe(
-        app,
-        Effect.catchTag(
-          "RouteNotFound",
-          () => HttpServerResponse.empty({ status: 404 }),
-        ),
-      )
-    ),
-    apps =>
-      Effect.gen(function*() {
-        const request = yield* HttpServerRequest.HttpServerRequest
-        let lastResponse: HttpServerResponse.HttpServerResponse | undefined
-
-        for (const app of apps) {
-          const res = yield* app
-          lastResponse = res
-
-          if (res.status !== 404) {
-            return res
-          }
-        }
-
-        if (lastResponse) {
-          return lastResponse
-        }
-
-        return yield* HttpServerResponse.empty({ status: 404 })
-      }),
-  )
 
 /**
  * Groups: function, path
  */
 const StackLinePattern = /^at (.*?) \((.*?)\)/
 
+type GraciousError =
+  | RouteNotFound
+  | ParseResult.ParseError
+  | RequestError
+  | ParseResult.ParseError
+
 export const renderError = (
-  e: RouteNotFound | Cause.Cause<unknown>,
+  error: unknown,
 ) =>
   Effect.gen(function*() {
-    if (process.env.NODE_ENV !== "test") {
-      yield* Effect.logError(e)
+    let unwrappedError: GraciousError | undefined
+
+    if (Cause.isCause(error)) {
+      const failure = Cause.failureOption(error).pipe(Option.getOrUndefined)
+
+      if (failure?.["_tag"]) {
+        unwrappedError = failure as GraciousError
+      }
+
+      yield* Effect.logError(error)
     }
 
-    return yield* pipe(
-      Match.value(e),
-      Match.when(
-        Predicate.isTagged("RouteNotFound"),
-        (_) =>
-          HttpServerResponse.unsafeJson(
-            {
-              error: "RouteNotFound",
-            },
-            {
-              status: 404,
-            },
-          ),
-      ),
-      Match.when(
-        Predicate.or(
-          Predicate.isTagged("Die"),
-          Predicate.isTagged("Fail"),
-        ),
-        (e) =>
-          HttpServerResponse.unsafeJson(
-            {
-              error: e["defect"]?.name,
-              message: e["defect"]?.message,
-            },
-            {
-              status: 500,
-            },
-          ),
-      ),
-      Match.orElse(() =>
-        HttpServerResponse.unsafeJson(
-          {
-            error: "Unexpected",
+    switch (unwrappedError?._tag) {
+      case "RouteNotFound":
+        return yield* HttpServerResponse.unsafeJson({
+          error: {
+            _tag: unwrappedError._tag,
           },
-          {
-            status: 500,
+        }, {
+          status: 404,
+        })
+      case "RequestError": {
+        const message = unwrappedError.reason === "Decode"
+          ? "Request body is invalid"
+          : undefined
+
+        return yield* HttpServerResponse.unsafeJson({
+          error: {
+            _tag: unwrappedError._tag,
+            reason: unwrappedError.reason,
+            message,
           },
+        }, {
+          status: 400,
+        })
+      }
+      case "ParseError": {
+        const issues = yield* ParseResult.ArrayFormatter.formatIssue(
+          unwrappedError.issue,
         )
-      ),
-    )
+        const cleanIssues = issues.map(v => Record.remove(v, "_tag"))
+
+        return yield* HttpServerResponse.unsafeJson({
+          error: {
+            _tag: unwrappedError._tag,
+            issues: cleanIssues,
+          },
+        }, {
+          status: 400,
+        })
+      }
+    }
+
+    return yield* HttpServerResponse.unsafeJson({
+      error: {
+        _tag: "UnexpectedError",
+      },
+    }, {
+      status: 500,
+    })
   })
 
 function extractPrettyStack(stack: string) {
@@ -130,4 +105,15 @@ function extractPrettyStack(stack: string) {
       return [fn, relativePath]
     })
     .filter(Boolean)
+}
+
+export function withErrorHandled<
+  E,
+  R,
+>(
+  app: HttpRouter.HttpRouter<E, R>,
+): HttpRouter.HttpRouter<never, R> {
+  return app.pipe(
+    HttpRouter.catchAllCause(renderError),
+  )
 }
