@@ -14,13 +14,15 @@ import type {
 import { showBuildError } from "./Overlay.ts"
 import * as ScrollState from "./ScrollState.ts"
 
+const BUNDLE_URL = globalThis._BUNDLE_URL ?? "/_bundle"
+
 function reload() {
   ScrollState.persist()
   window.location.reload()
 }
 
 async function loadAllEntrypoints() {
-  const manifest: BundleManifest = await fetch("/_bundle/manifest.json")
+  const manifest: BundleManifest = await fetch(`/${BUNDLE_URL}/manifest.json`)
     .then(v => v.json())
 
   Object
@@ -29,7 +31,7 @@ async function loadAllEntrypoints() {
     .forEach((outFile) => {
       console.log(outFile)
       const script = document.createElement("script")
-      script.src = `/_bundle/${outFile}`
+      script.src = `${BUNDLE_URL}/${outFile}`
       script.type = "module"
       script.onload = () => {
         console.debug("Bundle reloaded")
@@ -51,7 +53,7 @@ function handleBundleEvent(event: BundleEvent) {
 }
 
 function listen() {
-  const eventSource = new EventSource("/_bundle/events")
+  const eventSource = new EventSource(`${BUNDLE_URL}/events`)
 
   eventSource.addEventListener("message", (event) => {
     try {
