@@ -16,7 +16,7 @@ export interface PublicDirectoryOptions {
   readonly prefix?: string
 }
 
-export const publicDirectory = (
+export const make = (
   options: PublicDirectoryOptions = {},
 ): HttpApp.Default<RouteNotFound, FileSystem.FileSystem> =>
   Effect.gen(function*() {
@@ -110,4 +110,3 @@ function getMimeType(filePath: string): string {
 
   return mimeTypes[ext] ?? "application/octet-stream"
 }
-

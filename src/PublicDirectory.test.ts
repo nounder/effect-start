@@ -1,8 +1,6 @@
 import { HttpServerResponse } from "@effect/platform"
-import { HttpRouter } from "@effect/platform"
 import {
   expect,
-  it,
   test,
 } from "bun:test"
 import { Effect } from "effect"
@@ -11,13 +9,13 @@ import {
   TestHttpClient,
 } from "effect-bundler"
 import { MemoryFileSystem } from "effect-memfs"
-import { publicDirectory } from "./PublicDirectory.js"
+import * as PublicDirectory from "./PublicDirectory.ts"
 
 const TestFiles = {
   "/test-public/index.html": "<html><body>Hello World</body></html>",
   "/test-public/style.css": "body { color: red; }",
   "/test-public/script.js": "console.log('hello');",
-  "/test-public/data.json": '{"message": "test"}',
+  "/test-public/data.json": "{\"message\": \"test\"}",
   "/test-public/image.png": "fake-png-data",
   "/test-public/nested/file.txt": "nested content",
 }
@@ -26,26 +24,24 @@ const effect = effectFn()
 
 test("serves index.html for root path", () => {
   effect(function*() {
-    const App = HttpRouter.empty.pipe(
-      HttpRouter.all("*", publicDirectory({ directory: "/test-public" }))
-    )
-    const Client = TestHttpClient.make(App)
+    const app = PublicDirectory.make({ directory: "/test-public" })
+    const Client = TestHttpClient.make(app)
 
     const res = yield* Client.get("/").pipe(
-      Effect.provide(MemoryFileSystem.layerWith(TestFiles))
+      Effect.provide(MemoryFileSystem.layerWith(TestFiles)),
     )
-    
+
     expect(
       res.status,
     )
       .toBe(200)
-    
+
     const body = yield* res.text
     expect(
       body,
     )
       .toBe("<html><body>Hello World</body></html>")
-    
+
     expect(
       res.headers["content-type"],
     )
@@ -55,26 +51,24 @@ test("serves index.html for root path", () => {
 
 test("serves CSS files with correct content type", () => {
   effect(function*() {
-    const App = HttpRouter.empty.pipe(
-      HttpRouter.all("*", publicDirectory({ directory: "/test-public" }))
-    )
-    const Client = TestHttpClient.make(App)
+    const app = PublicDirectory.make({ directory: "/test-public" })
+    const Client = TestHttpClient.make(app)
 
     const res = yield* Client.get("/style.css").pipe(
-      Effect.provide(MemoryFileSystem.layerWith(TestFiles))
+      Effect.provide(MemoryFileSystem.layerWith(TestFiles)),
     )
-    
+
     expect(
       res.status,
     )
       .toBe(200)
-    
+
     const body = yield* res.text
     expect(
       body,
     )
       .toBe("body { color: red; }")
-    
+
     expect(
       res.headers["content-type"],
     )
@@ -84,26 +78,24 @@ test("serves CSS files with correct content type", () => {
 
 test("serves JavaScript files with correct content type", () => {
   effect(function*() {
-    const App = HttpRouter.empty.pipe(
-      HttpRouter.all("*", publicDirectory({ directory: "/test-public" }))
-    )
-    const Client = TestHttpClient.make(App)
+    const app = PublicDirectory.make({ directory: "/test-public" })
+    const Client = TestHttpClient.make(app)
 
     const res = yield* Client.get("/script.js").pipe(
-      Effect.provide(MemoryFileSystem.layerWith(TestFiles))
+      Effect.provide(MemoryFileSystem.layerWith(TestFiles)),
     )
-    
+
     expect(
       res.status,
     )
       .toBe(200)
-    
+
     const body = yield* res.text
     expect(
       body,
     )
       .toBe("console.log('hello');")
-    
+
     expect(
       res.headers["content-type"],
     )
@@ -113,26 +105,24 @@ test("serves JavaScript files with correct content type", () => {
 
 test("serves JSON files with correct content type", () => {
   effect(function*() {
-    const App = HttpRouter.empty.pipe(
-      HttpRouter.all("*", publicDirectory({ directory: "/test-public" }))
-    )
-    const Client = TestHttpClient.make(App)
+    const app = PublicDirectory.make({ directory: "/test-public" })
+    const Client = TestHttpClient.make(app)
 
     const res = yield* Client.get("/data.json").pipe(
-      Effect.provide(MemoryFileSystem.layerWith(TestFiles))
+      Effect.provide(MemoryFileSystem.layerWith(TestFiles)),
     )
-    
+
     expect(
       res.status,
     )
       .toBe(200)
-    
+
     const body = yield* res.text
     expect(
       body,
     )
-      .toBe('{"message": "test"}')
-    
+      .toBe("{\"message\": \"test\"}")
+
     expect(
       res.headers["content-type"],
     )
@@ -142,26 +132,24 @@ test("serves JSON files with correct content type", () => {
 
 test("serves nested files", () => {
   effect(function*() {
-    const App = HttpRouter.empty.pipe(
-      HttpRouter.all("*", publicDirectory({ directory: "/test-public" }))
-    )
-    const Client = TestHttpClient.make(App)
+    const app = PublicDirectory.make({ directory: "/test-public" })
+    const Client = TestHttpClient.make(app)
 
     const res = yield* Client.get("/nested/file.txt").pipe(
-      Effect.provide(MemoryFileSystem.layerWith(TestFiles))
+      Effect.provide(MemoryFileSystem.layerWith(TestFiles)),
     )
-    
+
     expect(
       res.status,
     )
       .toBe(200)
-    
+
     const body = yield* res.text
     expect(
       body,
     )
       .toBe("nested content")
-    
+
     expect(
       res.headers["content-type"],
     )
@@ -171,10 +159,8 @@ test("serves nested files", () => {
 
 test("returns 404 for non-existent files", () => {
   effect(function*() {
-    const App = HttpRouter.empty.pipe(
-      HttpRouter.all("*", publicDirectory({ directory: "/test-public" }))
-    )
-    const Client = TestHttpClient.make(App)
+    const app = PublicDirectory.make({ directory: "/test-public" })
+    const Client = TestHttpClient.make(app)
 
     const res = yield* Client.get("/nonexistent.txt").pipe(
       Effect.provide(MemoryFileSystem.layerWith(TestFiles)),
@@ -183,7 +169,7 @@ test("returns 404 for non-existent files", () => {
         () => HttpServerResponse.empty({ status: 404 }),
       ),
     )
-    
+
     expect(
       res.status,
     )
@@ -193,10 +179,8 @@ test("returns 404 for non-existent files", () => {
 
 test("prevents directory traversal attacks", () => {
   effect(function*() {
-    const App = HttpRouter.empty.pipe(
-      HttpRouter.all("*", publicDirectory({ directory: "/test-public" }))
-    )
-    const Client = TestHttpClient.make(App)
+    const app = PublicDirectory.make({ directory: "/test-public" })
+    const Client = TestHttpClient.make(app)
 
     const res = yield* Client.get("/../../../etc/passwd").pipe(
       Effect.provide(MemoryFileSystem.layerWith(TestFiles)),
@@ -205,7 +189,7 @@ test("prevents directory traversal attacks", () => {
         () => HttpServerResponse.empty({ status: 404 }),
       ),
     )
-    
+
     expect(
       res.status,
     )
@@ -215,23 +199,21 @@ test("prevents directory traversal attacks", () => {
 
 test("works with custom prefix", () => {
   effect(function*() {
-    const App = HttpRouter.empty.pipe(
-      HttpRouter.all("*", publicDirectory({ 
-        directory: "/test-public",
-        prefix: "/static"
-      }))
-    )
-    const Client = TestHttpClient.make(App)
+    const app = PublicDirectory.make({
+      directory: "/test-public",
+      prefix: "/static",
+    })
+    const Client = TestHttpClient.make(app)
 
     const res = yield* Client.get("/static/style.css").pipe(
-      Effect.provide(MemoryFileSystem.layerWith(TestFiles))
+      Effect.provide(MemoryFileSystem.layerWith(TestFiles)),
     )
-    
+
     expect(
       res.status,
     )
       .toBe(200)
-    
+
     const body = yield* res.text
     expect(
       body,
@@ -242,13 +224,11 @@ test("works with custom prefix", () => {
 
 test("ignores requests without prefix when prefix is set", () => {
   effect(function*() {
-    const App = HttpRouter.empty.pipe(
-      HttpRouter.all("*", publicDirectory({ 
-        directory: "/test-public",
-        prefix: "/static"
-      }))
-    )
-    const Client = TestHttpClient.make(App)
+    const app = PublicDirectory.make({
+      directory: "/test-public",
+      prefix: "/static",
+    })
+    const Client = TestHttpClient.make(app)
 
     const res = yield* Client.get("/style.css").pipe(
       Effect.provide(MemoryFileSystem.layerWith(TestFiles)),
@@ -257,7 +237,7 @@ test("ignores requests without prefix when prefix is set", () => {
         () => HttpServerResponse.empty({ status: 404 }),
       ),
     )
-    
+
     expect(
       res.status,
     )
@@ -267,15 +247,13 @@ test("ignores requests without prefix when prefix is set", () => {
 
 test("sets cache control headers", () => {
   effect(function*() {
-    const App = HttpRouter.empty.pipe(
-      HttpRouter.all("*", publicDirectory({ directory: "/test-public" }))
-    )
-    const Client = TestHttpClient.make(App)
+    const app = PublicDirectory.make({ directory: "/test-public" })
+    const Client = TestHttpClient.make(app)
 
     const res = yield* Client.get("/style.css").pipe(
-      Effect.provide(MemoryFileSystem.layerWith(TestFiles))
+      Effect.provide(MemoryFileSystem.layerWith(TestFiles)),
     )
-    
+
     expect(
       res.headers["cache-control"],
     )
