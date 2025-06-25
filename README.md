@@ -13,13 +13,15 @@ If you are an AI coding agent, please read `AGENTS.md` for more instructions.
 
 ### File-based Routing
 
-Effect Bundler provides automatic file-based routing with support for layouts, pages, and server handlers. Routes are discovered based on file naming conventions:
+Effect Bundler provides automatic file-based routing with support for frontend pages, backend endpoints, and stackable layouts.
 
 ```
 src/routes/
-├── _layout.tsx           # Root layout
+├── _layout.tsx          # Root layout
 ├── _page.tsx            # Home page (/)
-├── about/_page.tsx      # Static route (/about)
+├── about/
+│   ├── _layout.tsx      # Nested layout for /about/*
+│   └── _page.tsx        # Static route (/about)
 ├── users/
 │   ├── _page.tsx        # Users list (/users)
 │   └── $id/_page.tsx    # Dynamic route (/users/:id)
@@ -56,5 +58,18 @@ Then in your main CSS files add following file:
 
 ```css
 @import "tailwindcss";
+```
+
+### Static File Serving
+
+```ts
+import { PublicDirectory } from "effect-bundler"
+
+// Serve files from ./public directory
+const PublicFiles = PublicDirectory.make()
+
+HttpRouter.empty.pipe(
+  HttpRouter.use("*", PublicFiles)
+)
 ```
 
