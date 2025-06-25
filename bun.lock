@@ -4,7 +4,7 @@
     "": {
       "name": "effect-bundler",
       "devDependencies": {
-        "@effect/language-service": "^0.20.1",
+        "@effect/language-service": "^0.23.0",
         "@effect/platform": "^0.84.11",
         "@effect/platform-bun": "^0.69.16",
         "@tailwindcss/node": ">=4.1.8",
@@ -40,7 +40,7 @@
 
     "@effect/experimental": ["@effect/experimental@0.48.12", "", { "dependencies": { "uuid": "^11.0.3" }, "peerDependencies": { "@effect/platform": "^0.84.11", "effect": "^3.16.7", "ioredis": "^5", "lmdb": "^3" }, "optionalPeers": ["ioredis", "lmdb"] }, "sha512-tRCt57mdArna62L3xu7HIlGXOwHoUDZOQCbMqzQX29TtMflY26mCb9GF3/6s2DsTDWVUCCOroHnfA/XNP+uS/w=="],
 
-    "@effect/language-service": ["@effect/language-service@0.20.1", "", {}, "sha512-AgFazqxD2rlE0mc8V03BZw1XKghfOv9rrvR0M2xBv5haT4jHw5j07UK+Ln+dyeGmvrVXUT3a8Uc3pEkRJb+XHw=="],
+    "@effect/language-service": ["@effect/language-service@0.23.0", "", {}, "sha512-S/ddox5TSqUI60q/kgWzU7Vavyj3CVN92KhMNxgIs41ECweA7ne3lj7vE7ywDQtP73k8JZg83wxJVHgI7d1mTg=="],
 
     "@effect/platform": ["@effect/platform@0.84.11", "", { "dependencies": { "find-my-way-ts": "^0.1.5", "msgpackr": "^1.11.4", "multipasta": "^0.2.5" }, "peerDependencies": { "effect": "^3.16.7" } }, "sha512-u3eURhaF38e8jqq/JC2NW9EDHUFVDETD/JLEFtFi7N6RnAUF90qaC8sRcoK5xe8UAo3/fJDQ+sEfDqYonUa30w=="],
 

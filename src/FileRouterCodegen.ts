@@ -4,17 +4,48 @@ import { Effect } from "effect"
 import * as NPath from "node:path"
 import * as FileRouter from "./FileRouter.ts"
 
+const HTTP_VERBS = [
+  "GET",
+  "POST",
+  "PUT",
+  "DELETE",
+  "PATCH",
+  "HEAD",
+  "OPTIONS",
+] as const
+
+const HANDLE_PREFIX_MAP: Record<FileRouter.RouteHandle["type"], string> = {
+  LayoutHandle: "layout",
+  PageHandle: "page",
+  ServerHandle: "server",
+} as const
+
+export function getHandlePrefix(
+  handleType: FileRouter.RouteHandle["type"],
+): string {
+  return HANDLE_PREFIX_MAP[handleType]
+}
+
+export function validateServerModule(
+  module: Record<string, unknown>,
+): boolean {
+  const hasHttpVerb = HTTP_VERBS.some(verb => verb in module)
+  const hasDefault = "default" in module
+  return hasHttpVerb || hasDefault
+}
+
 export function generateCode(
   handles: FileRouter.OrderedRouteHandles,
 ): string {
   const definitions: string[] = []
   const pageVariables: string[] = []
+  const serverVariables: string[] = []
 
   let currentLayout: { routePath: string; varName: string } | null = null
   const processedLayouts: { routePath: string; varName: string }[] = []
 
   for (const handle of handles) {
-    const prefix = handle.type === "LayoutHandle" ? "layout" : "page"
+    const prefix = getHandlePrefix(handle.type)
     const normalizedPath = handle
       .routePath
       // remove leading slash
@@ -77,6 +108,17 @@ export function generateCode(
 
         break
       }
+      case "ServerHandle": {
+        const code = `const ${varName} = {
+\tpath: "${handle.routePath}",
+\tload: () => import("./${handle.modulePath}"),
+}`
+
+        definitions.push(code)
+        serverVariables.push(varName)
+
+        break
+      }
     }
   }
 
@@ -96,6 +138,10 @@ export function generateCode(
 export const Pages = [
 \t${pageVariables.join(",\n\t")}
 ] as const
+
+export const Servers = [
+\t${serverVariables.join(",\n\t")}
+] as const
  `
     .replace(/\t/g, "  ")
 }
@@ -110,6 +156,32 @@ export function dump(
     const fs = yield* FileSystem.FileSystem
     const files = yield* fs.readDirectory(routesPath, { recursive: true })
     const handles = FileRouter.getRouteHandlesFromPaths(files)
+
+    // Validate server modules
+    const serverHandles = handles.filter(h => h.type === "ServerHandle")
+    for (const handle of serverHandles) {
+      const serverModulePath = NPath.resolve(routesPath, handle.modulePath)
+      yield* Effect.tryPromise({
+        try: async () => import(serverModulePath),
+        catch: (error) => 
+          Effect.logWarning(
+            `Failed to validate server module ${serverModulePath}: ${error}`,
+          )
+      }).pipe(
+        Effect.catchAll((logEffect) => logEffect),
+        Effect.tap((module) => {
+          if (!validateServerModule(module)) {
+            return Effect.logWarning(
+              `Server module ${serverModulePath} should export at least one HTTP verb (${
+                HTTP_VERBS.join(", ")
+              }) or a default export`,
+            )
+          }
+          return Effect.void
+        })
+      )
+    }
+
     const code = generateCode(handles)
 
     yield* Effect.logDebug(`Generating file routes manifest: ${manifestPath}`)

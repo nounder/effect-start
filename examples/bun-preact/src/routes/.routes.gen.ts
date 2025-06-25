@@ -51,6 +51,5 @@ export const Pages = [
   page_about,
   page_users,
   page_users_$id,
-  page_about_$
+  page_about_$,
 ] as const
- 
