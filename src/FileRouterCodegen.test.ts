@@ -21,21 +21,21 @@ it("generates code for pages only", () => {
  * for all programs that use FileRouter.layer.
  */
 
-  const page_ = {
+  const page__ = {
   path: "/",
   parent: undefined,
   load: () => import("./_page.tsx"),
 }
 
-const page_about = {
+const page__about = {
   path: "/about",
   parent: undefined,
   load: () => import("./about/_page.tsx"),
 }
 
 export const Pages = [
-  page_,
-  page_about
+  page__,
+  page__about
 ] as const
 
 export const Servers = [
@@ -61,12 +61,12 @@ it("generates code for server endpoints only", () => {
  * for all programs that use FileRouter.layer.
  */
 
-  const server_api = {
+  const server__api = {
   path: "/api",
   load: () => import("./api/_server.ts"),
 }
 
-const server_api_users = {
+const server__api__users = {
   path: "/api/users",
   load: () => import("./api/users/_server.ts"),
 }
@@ -76,8 +76,8 @@ export const Pages = [
 ] as const
 
 export const Servers = [
-  server_api,
-  server_api_users
+  server__api,
+  server__api__users
 ] as const
  `
 
@@ -103,48 +103,48 @@ it("generates code for mixed pages, layouts, and server endpoints", () => {
  * for all programs that use FileRouter.layer.
  */
 
-  const layout_ = {
+  const layout__ = {
   path: "/",
   parent: undefined,
   load: () => import("./_layout.tsx"),
 }
 
-const page_ = {
+const page__ = {
   path: "/",
-  parent: layout_,
+  parent: layout__,
   load: () => import("./_page.tsx"),
 }
 
-const server_api = {
+const server__api = {
   path: "/api",
   load: () => import("./api/_server.ts"),
 }
 
-const layout_dashboard = {
+const layout__dashboard = {
   path: "/dashboard",
-  parent: layout_,
+  parent: layout__,
   load: () => import("./dashboard/_layout.tsx"),
 }
 
-const page_dashboard = {
+const page__dashboard = {
   path: "/dashboard",
-  parent: layout_dashboard,
+  parent: layout__dashboard,
   load: () => import("./dashboard/_page.tsx"),
 }
 
-const server_dashboard_api = {
+const server__dashboard__api = {
   path: "/dashboard/api",
   load: () => import("./dashboard/api/_server.ts"),
 }
 
 export const Pages = [
-  page_,
-  page_dashboard
+  page__,
+  page__dashboard
 ] as const
 
 export const Servers = [
-  server_api,
-  server_dashboard_api
+  server__api,
+  server__dashboard__api
 ] as const
  `
 
@@ -160,9 +160,9 @@ it("handles dynamic routes in server endpoints", () => {
 
   const code = FileRouterCodegen.generateCode(handles)
 
-  expect(code).toContain("const server_api_users_$userId = {")
+  expect(code).toContain("const server__api__users__$userId = {")
   expect(code).toContain(
-    "const server_api_posts_$postId_comments_$commentId = {",
+    "const server__api__posts__$postId__comments__$commentId = {",
   )
   expect(code).toContain("path: \"/api/users/$userId\"")
   expect(code).toContain("path: \"/api/posts/$postId/comments/$commentId\"")
@@ -176,8 +176,8 @@ it("handles splat routes in server endpoints", () => {
 
   const code = FileRouterCodegen.generateCode(handles)
 
-  expect(code).toContain("const server_api_files_$ = {")
-  expect(code).toContain("const server_proxy_$ = {")
+  expect(code).toContain("const server__api__files__$ = {")
+  expect(code).toContain("const server__proxy__$ = {")
   expect(code).toContain("path: \"/api/files/$\"")
   expect(code).toContain("path: \"/proxy/$\"")
 })
@@ -191,10 +191,10 @@ it("generates correct variable names for root routes", () => {
 
   const code = FileRouterCodegen.generateCode(handles)
 
-  // Root routes should have underscore after prefix (e.g., page_, layout_, server_)
-  expect(code).toContain("const layout_ = {")
-  expect(code).toContain("const page_ = {")
-  expect(code).toContain("const server_ = {")
+  // Root routes should have double underscore after prefix (e.g., page__, layout__, server__)
+  expect(code).toContain("const layout__ = {")
+  expect(code).toContain("const page__ = {")
+  expect(code).toContain("const server__ = {")
   expect(code).toContain("path: \"/\"")
 })
 
@@ -209,7 +209,7 @@ it("generates empty exports when no handles provided", () => {
   expect(code).toContain("] as const")
 
   // Should not contain any const definitions
-  expect(code).not.toMatch(/const (page|layout|server)_/)
+  expect(code).not.toMatch(/const (page|layout|server)__/)
 })
 
 it("getHandlePrefix returns correct prefixes for all handle types", () => {
@@ -229,14 +229,14 @@ it("server endpoints don't include parent layout references", () => {
 
   // Page should reference layout as parent
   expect(code).toMatch(
-    /const page_dashboard = \{[\s\S]*?parent: layout_dashboard/,
+    /const page__dashboard = \{[\s\S]*?parent: layout__dashboard/,
   )
 
   // Server should not reference parent (no parent property)
   expect(code).toMatch(
-    /const server_dashboard_api = \{[\s\S]*?path: "\/dashboard\/api"[\s\S]*?load:/,
+    /const server__dashboard__api = \{[\s\S]*?path: "\/dashboard\/api"[\s\S]*?load:/,
   )
-  expect(code).not.toMatch(/const server_dashboard_api = \{[\s\S]*?parent:/)
+  expect(code).not.toMatch(/const server__dashboard__api = \{[\s\S]*?parent:/)
 })
 
 it("maintains proper variable ordering in exports", () => {
@@ -269,12 +269,12 @@ it("maintains proper variable ordering in exports", () => {
   // Check that pages are exported in the order they were processed
 
   expect(pagesContent)
-    .toMatch(/page_b,\s*page_a/)
+    .toMatch(/page__b,\s*page__a/)
 
   // Check that servers are exported in the order they were processed
 
   expect(httpContent)
-    .toMatch(/server_c,\s*server_a/)
+    .toMatch(/server__c,\s*server__a/)
 })
 
 it("generates proper code structure", () => {
@@ -284,7 +284,7 @@ it("generates proper code structure", () => {
   // Should have proper structure
 
   expect(code)
-    .toContain("const page_ = {")
+    .toContain("const page__ = {")
 
   expect(code)
     .toMatch(
@@ -457,30 +457,30 @@ it("validates server module integration with generateCode", () => {
   // Verify the generated code includes server endpoints
 
   expect(code)
-    .toContain("const server_api = {")
+    .toContain("const server__api = {")
 
   expect(code)
-    .toContain("const server_users = {")
+    .toContain("const server__users = {")
 
   expect(code)
     .toContain("export const Servers = [")
 
   expect(code)
-    .toContain("server_api,")
+    .toContain("server__api,")
 
   expect(code)
-    .toContain("server_users")
+    .toContain("server__users")
 
   // Verify that server handles are correctly processed separate from pages
 
   expect(code)
-    .toContain("const page_ = {")
+    .toContain("const page__ = {")
 
   expect(code)
     .toContain("export const Pages = [")
 
   expect(code)
-    .toContain("page_")
+    .toContain("page__")
 })
 
 it("validation logic handles complex module structures", () => {
@@ -558,4 +558,24 @@ it("validation works with realistic server module patterns", () => {
     FileRouterCodegen.validateServerModule(invalidModule),
   )
     .toBe(false)
+})
+
+it("handles routes with dots in path segments", () => {
+  const handles: RouteHandle[] = [
+    parseRoute("events.json/_server.ts"),
+    parseRoute("config.yaml.backup/_page.tsx"),
+    parseRoute("api.v2/_server.ts"),
+  ]
+
+  const code = FileRouterCodegen.generateCode(handles)
+
+  // Dots should be converted to underscores in variable names
+  expect(code).toContain("const server__events_json = {")
+  expect(code).toContain("const page__config_yaml_backup = {")
+  expect(code).toContain("const server__api_v2 = {")
+
+  // But original paths should be preserved in path property
+  expect(code).toContain("path: \"/events.json\"")
+  expect(code).toContain("path: \"/config.yaml.backup\"")
+  expect(code).toContain("path: \"/api.v2\"")
 })

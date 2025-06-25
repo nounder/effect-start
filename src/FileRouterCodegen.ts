@@ -50,9 +50,11 @@ export function generateCode(
       .routePath
       // remove leading slash
       .slice(1)
-      // convert slashes to underscores
-      .replace(/\//g, "_")
-    const varName = `${prefix}_${normalizedPath}`
+      // convert slashes to double underscores
+      .replace(/\//g, "__")
+      // convert dots to underscores
+      .replace(/\./g, "_")
+    const varName = `${prefix}__${normalizedPath}`
 
     // Reset current layout if it's not an ancestor of current route
     if (
@@ -161,25 +163,27 @@ export function dump(
     const serverHandles = handles.filter(h => h.type === "ServerHandle")
     for (const handle of serverHandles) {
       const serverModulePath = NPath.resolve(routesPath, handle.modulePath)
-      yield* Effect.tryPromise({
-        try: async () => import(serverModulePath),
-        catch: (error) => 
-          Effect.logWarning(
-            `Failed to validate server module ${serverModulePath}: ${error}`,
-          )
-      }).pipe(
-        Effect.catchAll((logEffect) => logEffect),
-        Effect.tap((module) => {
-          if (!validateServerModule(module)) {
-            return Effect.logWarning(
-              `Server module ${serverModulePath} should export at least one HTTP verb (${
-                HTTP_VERBS.join(", ")
-              }) or a default export`,
-            )
-          }
-          return Effect.void
+      yield* Effect
+        .tryPromise({
+          try: async () => import(serverModulePath),
+          catch: (error) =>
+            Effect.logWarning(
+              `Failed to validate server module ${serverModulePath}: ${error}`,
+            ),
         })
-      )
+        .pipe(
+          Effect.catchAll((logEffect) => logEffect),
+          Effect.tap((module) => {
+            if (!validateServerModule(module)) {
+              return Effect.logWarning(
+                `Server module ${serverModulePath} should export at least one HTTP verb (${
+                  HTTP_VERBS.join(", ")
+                }) or a default export`,
+              )
+            }
+            return Effect.void
+          }),
+        )
     }
 
     const code = generateCode(handles)
