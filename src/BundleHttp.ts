@@ -1,6 +1,7 @@
 import {
   Headers,
   type HttpApp,
+  HttpMiddleware,
   HttpServerRequest,
   HttpServerResponse,
 } from "@effect/platform"
@@ -8,6 +9,7 @@ import { RouteNotFound } from "@effect/platform/HttpServerError"
 import {
   Context,
   Effect,
+  Option,
   Scope,
   Stream,
 } from "effect"
@@ -23,7 +25,6 @@ import {
   BundleOutputMetaKey,
   type BundleOutputMetaValue,
   ClientKey,
-  ServerKey,
   tagged,
 } from "./Bundle.ts"
 import * as SseHttpResponse from "./SseHttpResponse.ts"
@@ -233,3 +234,76 @@ const renderBlob = (blob: Blob) =>
       },
     })
   })
+
+/**
+ * Exposes bundle assets via HTTP routes.
+ * Serves bundle artifacts, manifest.json, and events endpoint at the specified path (defaults to "/_bundle").
+ */
+export function withAssets<K extends BundleKey = ClientKey>(
+  bundleKey?: K,
+  opts?: { path?: string },
+) {
+  const path = opts?.path ?? "/_bundle"
+
+  return HttpMiddleware.make((app) =>
+    Effect.gen(function*() {
+      const request = yield* HttpServerRequest.HttpServerRequest
+
+      if (request.url.startsWith(path + "/")) {
+        return yield* toHttpApp(tagged(bundleKey ?? ClientKey))
+      }
+
+      return yield* app
+    })
+  )
+}
+
+/**
+ * Handles all entrypoints automatically.
+ * Serves HTML entrypoints without requiring explicit route definitions for each one.
+ */
+export function withEntrypoints() {
+  return HttpMiddleware.make((app) =>
+    Effect.gen(function*() {
+      const entrypointResponse = yield* entrypoint().pipe(
+        Effect.option,
+      )
+
+      if (Option.isSome(entrypointResponse)) {
+        return entrypointResponse.value
+      }
+
+      return yield* app
+    })
+  )
+}
+
+/**
+ * Combines both withAssets and withEntrypoints.
+ * Provides complete bundle HTTP functionality in a single function call.
+ */
+export function withBundle(
+  opts?: { path?: string },
+) {
+  const path = opts?.path ?? "/_bundle"
+
+  return HttpMiddleware.make((app) =>
+    Effect.gen(function*() {
+      const request = yield* HttpServerRequest.HttpServerRequest
+
+      if (request.url.startsWith(path + "/")) {
+        return yield* toHttpApp(tagged(ClientKey))
+      }
+
+      const entrypointResponse = yield* entrypoint().pipe(
+        Effect.option,
+      )
+
+      if (Option.isSome(entrypointResponse)) {
+        return entrypointResponse.value
+      }
+
+      return yield* app
+    })
+  )
+}

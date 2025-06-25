@@ -60,3 +60,103 @@ test("entrypoint", () => {
       .toStartWith("<!DOCTYPE html>")
   })
 })
+
+test("withAssets middleware", () => {
+  effect(function*() {
+    const App = HttpRouter.empty.pipe(
+      HttpRouter.get(
+        "/hello",
+        HttpServerResponse.text("Hello World!"),
+      ),
+      HttpRouter.use(BundleHttp.withAssets()),
+    )
+    const Client = TestHttpClient.make(App)
+
+    const manifestRes = yield* Client.get("/_bundle/manifest.json")
+    expect(
+      manifestRes.status,
+    )
+      .toBe(200)
+
+    const manifestData = yield* manifestRes.json
+    expect(
+      manifestData,
+    )
+      .toHaveProperty("entrypoints")
+    expect(
+      manifestData,
+    )
+      .toHaveProperty("artifacts")
+  })
+})
+
+test("withAssets middleware with custom path", () => {
+  effect(function*() {
+    const App = HttpRouter.empty.pipe(
+      HttpRouter.get(
+        "/hello",
+        HttpServerResponse.text("Hello World!"),
+      ),
+      HttpRouter.use(BundleHttp.withAssets(undefined, { path: "/assets" })),
+    )
+    const Client = TestHttpClient.make(App)
+
+    const manifestRes = yield* Client.get("/assets/manifest.json")
+    expect(
+      manifestRes.status,
+    )
+      .toBe(200)
+  })
+})
+
+test("withEntrypoints middleware", () => {
+  effect(function*() {
+    const App = HttpRouter.empty.pipe(
+      HttpRouter.get(
+        "/hello",
+        HttpServerResponse.text("Hello World!"),
+      ),
+      HttpRouter.use(BundleHttp.withEntrypoints()),
+    )
+    const Client = TestHttpClient.make(App)
+
+    const entrypointRes = yield* Client.get("/react-dashboard")
+    expect(
+      entrypointRes.status,
+    )
+      .toBe(200)
+    expect(
+      yield* entrypointRes.text,
+    )
+      .toStartWith("<!DOCTYPE html>")
+  })
+})
+
+test("withBundle middleware", () => {
+  effect(function*() {
+    const App = HttpRouter.empty.pipe(
+      HttpRouter.get(
+        "/hello",
+        HttpServerResponse.text("Hello World!"),
+      ),
+      HttpRouter.use(BundleHttp.withBundle()),
+    )
+    const Client = TestHttpClient.make(App)
+
+    const manifestRes = yield* Client.get("/_bundle/manifest.json")
+    expect(
+      manifestRes.status,
+    )
+      .toBe(200)
+
+    const entrypointRes = yield* Client.get("/react-dashboard")
+    expect(
+      entrypointRes.status,
+    )
+      .toBe(200)
+    expect(
+      yield* entrypointRes.text,
+    )
+      .toStartWith("<!DOCTYPE html>")
+  })
+})
