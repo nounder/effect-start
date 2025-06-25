@@ -9,6 +9,16 @@ by checking out `examples/` directory. Feel free to hit me up if not.
 
 If you are an AI coding agent, please read `AGENTS.md` for more instructions.
 
+## Examples
+
+See `examples/` directory for templates and additional usage using Preact, React, TanStack, and others.
+
+You can clone it by using degit, like so:
+
+```sh
+bunx degit nounder/effect-bundler/examples/bun-preact target
+```
+
 ## Development
 
 ### File-based Routing
