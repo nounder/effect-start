@@ -9,7 +9,6 @@ import {
   Bundle,
   BundleHttp,
 } from "."
-import { ClientKey } from "./Bundle.ts"
 
 type SsrRenderer = (req: Request) => PromiseLike<Response>
 
@@ -30,18 +29,13 @@ export function ssr(renderer: SsrRenderer) {
   })
 }
 
-export function withBundleAssets<
-  Key extends Bundle.BundleKey = ClientKey,
->(opts?: {
-  key?: Key
+export function withBundleAssets(opts?: {
   path?: string
 }) {
   return HttpMiddleware.make(app =>
     Effect.gen(function*() {
       const request = yield* HttpServerRequest.HttpServerRequest
-      const bundleResponse = yield* BundleHttp.httpApp(
-        Bundle.tagged(opts?.key ?? ClientKey),
-      )
+      const bundleResponse = yield* BundleHttp.httpApp()
 
       // Fallback to original app
       return yield* app

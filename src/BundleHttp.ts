@@ -41,19 +41,14 @@ type BundleOutputHttpApp<E = never, R = never> =
     readonly [BundleOutputMetaKey]: BundleOutputMetaValue
   }
 
-export function entrypoint<K extends BundleKey>(
-  uri: string,
-  bundleKey: K,
-): BundleEntrypointHttpApp<RouteNotFound, K>
-export function entrypoint<K extends BundleKey = ClientKey>(
+export function entrypoint(
   uri?: string,
-  bundleKey?: K,
-): BundleEntrypointHttpApp<RouteNotFound, K> {
+): BundleEntrypointHttpApp<RouteNotFound, ClientKey> {
   return Object.assign(
     Effect.gen(function*() {
       uri = uri?.startsWith("file://") ? NUrl.fileURLToPath(uri) : uri
       const request = yield* HttpServerRequest.HttpServerRequest
-      const bundle = yield* tagged((bundleKey ?? ClientKey) as K)
+      const bundle = yield* tagged(ClientKey)
       const requestPath = request.url.substring(1)
       const pathAttempts = uri
         ? [
@@ -90,14 +85,12 @@ export function entrypoint<K extends BundleKey = ClientKey>(
   )
 }
 
-export function httpApp<T extends BundleKey>(
-  bundleTag: Context.Tag<T, BundleContext>,
-): BundleOutputHttpApp<RouteNotFound, T | Scope.Scope>
-export function httpApp<T extends BundleKey>(
-  bundleTag?: Context.Tag<T, BundleContext>,
-): BundleOutputHttpApp<RouteNotFound, T | Scope.Scope> {
+export function httpApp(): BundleOutputHttpApp<
+  RouteNotFound,
+  ClientKey | Scope.Scope
+> {
   return Object.assign(
-    toHttpApp(bundleTag ?? tagged(ClientKey as T)),
+    toHttpApp(tagged(ClientKey)),
     {
       [BundleOutputMetaKey]: {},
     },
@@ -234,8 +227,7 @@ const renderBlob = (blob: Blob) =>
  * Exposes bundle assets via HTTP routes.
  * Serves bundle artifacts, manifest.json, and events endpoint at the specified path (defaults to "/_bundle").
  */
-export function withAssets<K extends BundleKey = ClientKey>(
-  bundleKey?: K,
+export function withAssets(
   opts?: { path?: string },
 ) {
   const path = opts?.path ?? "/_bundle"
@@ -245,7 +237,7 @@ export function withAssets<K extends BundleKey = ClientKey>(
       const request = yield* HttpServerRequest.HttpServerRequest
 
       if (request.url.startsWith(path + "/")) {
-        return yield* toHttpApp(tagged(bundleKey ?? ClientKey))
+        return yield* toHttpApp(tagged(ClientKey))
       }
 
       return yield* app

@@ -97,7 +97,7 @@ test("withAssets middleware with custom path", () => {
         "/hello",
         HttpServerResponse.text("Hello World!"),
       ),
-      HttpRouter.use(BundleHttp.withAssets(undefined, { path: "/assets" })),
+      HttpRouter.use(BundleHttp.withAssets({ path: "/assets" })),
     )
     const Client = TestHttpClient.make(App)
 

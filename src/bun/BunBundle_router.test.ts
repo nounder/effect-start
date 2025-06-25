@@ -120,13 +120,11 @@ describe("implicit bundle route", () => {
 
   test("responses", () =>
     effect(function*() {
-      {
-        const res = yield* Client.get("/_bundle/manifest.json")
+      const res = yield* Client.get("/_bundle/manifest.json")
 
-        expect(
-          res.status,
-        )
-          .toBe(404)
-      }
+      expect(
+        res.status,
+      )
+        .toBe(404)
     }))
 })
