@@ -12,7 +12,7 @@
     "./x/tanstack-react-router": "./src/x/tanstack-react-router/index.ts"
   },
   "devDependencies": {
-    "@effect/language-service": "^0.20.1",
+    "@effect/language-service": "^0.23.0",
     "@effect/platform": "^0.84.11",
     "@effect/platform-bun": "^0.69.16",
     "@tailwindcss/node": ">=4.1.8",
