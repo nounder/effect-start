@@ -41,23 +41,19 @@ type BundleOutputHttpApp<E = never, R = never> =
     readonly [BundleOutputMetaKey]: BundleOutputMetaValue
   }
 
-export function entrypoint(
-  uri?: string,
-): BundleEntrypointHttpApp<RouteNotFound, ClientKey>
 export function entrypoint<K extends BundleKey>(
   uri: string,
   bundleKey: K,
 ): BundleEntrypointHttpApp<RouteNotFound, K>
-export function entrypoint<K extends BundleKey>(
+export function entrypoint<K extends BundleKey = ClientKey>(
   uri?: string,
   bundleKey?: K,
 ): BundleEntrypointHttpApp<RouteNotFound, K> {
-  // @ts-ignore no idea about this error :(
   return Object.assign(
     Effect.gen(function*() {
       uri = uri?.startsWith("file://") ? NUrl.fileURLToPath(uri) : uri
       const request = yield* HttpServerRequest.HttpServerRequest
-      const bundle = yield* tagged(bundleKey ?? ClientKey)
+      const bundle = yield* tagged((bundleKey ?? ClientKey) as K)
       const requestPath = request.url.substring(1)
       const pathAttempts = uri
         ? [
@@ -94,7 +90,6 @@ export function entrypoint<K extends BundleKey>(
   )
 }
 
-export function httpApp(): BundleOutputHttpApp<never, ClientKey>
 export function httpApp<T extends BundleKey>(
   bundleTag: Context.Tag<T, BundleContext>,
 ): BundleOutputHttpApp<RouteNotFound, T | Scope.Scope>
