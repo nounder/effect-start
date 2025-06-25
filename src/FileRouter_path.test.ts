@@ -282,10 +282,8 @@ test("complex combinations", () => {
 test("invalid paths", () => {
   expect(() => FileRouter.segmentPath("/$..."))
     .toThrow() // $... is no longer valid
-  expect(() => FileRouter.segmentPath("invalid.ts"))
-    .toThrow() // Invalid handle
-  expect(() => FileRouter.segmentPath("abc/def/$a/$/page.xyz"))
-    .toThrow() // Invalid extension
+  expect(() => FileRouter.segmentPath("invalid%char"))
+    .toThrow() // Invalid character
 })
 
 test("leading/trailing/multiple slashes", () => {
@@ -333,6 +331,38 @@ test("extractRoute - users/_server.ts", () => {
       {
         type: "Literal",
         text: "users",
+      },
+      {
+        type: "ServerHandle",
+        text: "_server.ts",
+        handle: "server",
+      },
+    ])
+})
+
+test("segments with extensions", () => {
+  expect(
+    FileRouter.segmentPath("events.json/_server.ts"),
+  )
+    .toEqual([
+      {
+        type: "Literal",
+        text: "events.json",
+      },
+      {
+        type: "ServerHandle",
+        text: "_server.ts",
+        handle: "server",
+      },
+    ])
+
+  expect(
+    FileRouter.segmentPath("config.yaml.backup/_server.ts"),
+  )
+    .toEqual([
+      {
+        type: "Literal",
+        text: "config.yaml.backup",
       },
       {
         type: "ServerHandle",

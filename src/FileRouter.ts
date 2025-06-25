@@ -145,7 +145,7 @@ export function segmentPath(path: string): Segment[] {
         }
       }
 
-      if (/^\w+$/.test(s)) {
+      if (/^[\w.]+$/.test(s)) {
         return {
           type: "Literal",
           text: s,
