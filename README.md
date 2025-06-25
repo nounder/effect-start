@@ -8,3 +8,53 @@ However, the code is well documented so you should be able to figure out how to 
 by checking out `examples/` directory. Feel free to hit me up if not.
 
 If you are an AI coding agent, please read `AGENTS.md` for more instructions.
+
+## Development
+
+### File-based Routing
+
+Effect Bundler provides automatic file-based routing with support for layouts, pages, and server handlers. Routes are discovered based on file naming conventions:
+
+```
+src/routes/
+├── _layout.tsx           # Root layout
+├── _page.tsx            # Home page (/)
+├── about/_page.tsx      # Static route (/about)
+├── users/
+│   ├── _page.tsx        # Users list (/users)
+│   └── $id/_page.tsx    # Dynamic route (/users/:id)
+└── $/_page.tsx          # Splat/catch-all (/**)
+```
+
+```ts
+import { FileRouter } from "effect-bundler"
+
+// Generate route manifest and watch for changes
+const routerLayer = FileRouter.layer(import.meta.resolve("routes"))
+```
+
+**Note:** Ensure `FileRouter.layer` is provided after any bundle layer to guarantee the manifest file is properly generated before bundling.
+
+### Tailwind CSS Support
+
+Effect Bundler includes built-in support for Tailwind CSS:
+
+```ts
+import { BunBundle, BunTailwindPlugin } from "effect-bundler/bun"
+
+const ClientBundle = BunBundle.bundleClient({
+  entrypoints: [
+    IndexHtml,
+  ],
+  plugins: [
+    BunTailwindPlugin.make(),
+  ],
+})
+```
+
+Then in your main CSS files add following file:
+
+```css
+@import "tailwindcss";
+```
+
