@@ -85,12 +85,14 @@ export function entrypoint(
   )
 }
 
-export function httpApp(): BundleOutputHttpApp<
+export function httpApp(
+  opts?: { urlPrefix?: string },
+): BundleOutputHttpApp<
   RouteNotFound,
   ClientKey | Scope.Scope
 > {
   return Object.assign(
-    toHttpApp(tagged(ClientKey)),
+    toHttpApp(tagged(ClientKey), opts),
     {
       [BundleOutputMetaKey]: {},
     },
@@ -99,6 +101,7 @@ export function httpApp(): BundleOutputHttpApp<
 
 export const toHttpApp = <T extends BundleKey>(
   bundleTag: Context.Tag<T, BundleContext>,
+  opts?: { urlPrefix?: string },
 ): Effect.Effect<
   HttpServerResponse.HttpServerResponse,
   RouteNotFound,
@@ -107,7 +110,9 @@ export const toHttpApp = <T extends BundleKey>(
   Effect.gen(function*() {
     const request = yield* HttpServerRequest.HttpServerRequest
     const bundle = yield* bundleTag
-    const path = request.url.substring(1)
+    const path = opts?.urlPrefix && request.url.startsWith(opts.urlPrefix + "/")
+      ? request.url.substring(opts.urlPrefix.length + 1)
+      : request.url.substring(1)
 
     /**
      * Expose manifest that contains information about the bundle.
@@ -237,7 +242,7 @@ export function withAssets(
       const request = yield* HttpServerRequest.HttpServerRequest
 
       if (request.url.startsWith(path + "/")) {
-        return yield* toHttpApp(tagged(ClientKey))
+        return yield* toHttpApp(tagged(ClientKey), { urlPrefix: path })
       }
 
       return yield* app
@@ -279,7 +284,7 @@ export function withBundle(
       const request = yield* HttpServerRequest.HttpServerRequest
 
       if (request.url.startsWith(path + "/")) {
-        return yield* toHttpApp(tagged(ClientKey))
+        return yield* toHttpApp(tagged(ClientKey), { urlPrefix: path })
       }
 
       const entrypointResponse = yield* entrypoint().pipe(
