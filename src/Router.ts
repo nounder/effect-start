@@ -53,17 +53,13 @@ export type PageRoute = {
   load: () => Promise<PageModule>
 }
 
-export type Pages = ReadonlyArray<PageRoute>
-export type Layouts = ReadonlyArray<LayoutRoute>
-export type Servers = ReadonlyArray<ServerRoute>
-type RouterService = {
-  router: HttpRouter.HttpRouter
-}
+export type PageRoutes = ReadonlyArray<PageRoute>
+export type LayoutRoutes = ReadonlyArray<LayoutRoute>
+export type ServerRoutes = ReadonlyArray<ServerRoute>
 
 export class Router
   extends Effect.Service<Router>()("nounder/effect-bundler/Router", {
     effect: Effect.gen(function*() {
-      yield* tagged("RouterBundle")
       const router = HttpRouter.empty
 
       return {

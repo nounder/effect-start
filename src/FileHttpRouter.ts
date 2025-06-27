@@ -54,7 +54,7 @@ export type HttpRouterFromServerRoutes<
 /**
  * Makes a HttpRouter from file-based routes.
  */
-export function make<Routes extends ReadonlyArray<Router.ServerRoute>>(
+export function make<Routes extends Router.ServerRoutes>(
   routes: Routes,
 ): Effect.Effect<HttpRouterFromServerRoutes<Routes>, unknown> {
   return Effect.gen(function*() {
