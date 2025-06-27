@@ -23,7 +23,7 @@ import type {
   BundleManifest,
 } from "../Bundle.ts"
 import * as Bundle from "../Bundle.ts"
-import { watchFileChanges } from "../files.ts"
+import * as FileSystemExtra from "../FileSystemExtra.ts"
 import { BunImportTrackerPlugin } from "./index.ts"
 
 // raw config passed to Bun.build
@@ -84,7 +84,7 @@ export const bundle = <I extends `${string}Bundle`>(
 
           yield* Effect.fork(
             pipe(
-              watchFileChanges(),
+              FileSystemExtra.watchSource(),
               Stream.onError(err =>
                 Effect.logError("Error while watching files", err)
               ),

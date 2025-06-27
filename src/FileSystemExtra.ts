@@ -14,7 +14,7 @@ const SOURCE_FILENAME = /\.(tsx?|jsx?|html?|css|json)$/
  * `@effect/platform` doesn't support recursive file watching.
  * This function implements that [2025-05-19]
  */
-export const watchFileChanges = (
+export const watchSource = (
   path?: string,
   opts?: WatchOptions,
 ): Stream.Stream<BundleEvent, Error.SystemError> => {

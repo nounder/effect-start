@@ -18,11 +18,11 @@ import * as process from "node:process"
  * to pick up dependencies correctly and to avoid arbitrary file watchers
  * from detecting them.
  */
-export async function importJsBlob<M = unknown>(
+export async function importBlob<M = unknown>(
   blob: Blob,
   entrypoint = "index.js",
 ): Promise<M> {
-  return await importJsBundle({
+  return await importBundle({
     [entrypoint]: blob,
   }, entrypoint)
 }
@@ -37,7 +37,7 @@ export async function importJsBlob<M = unknown>(
  *
  * WARNING: dynamic imports that happened after this function will fail
  */
-export async function importJsBundle<M = unknown>(
+export async function importBundle<M = unknown>(
   blobs: {
     [path: string]: Blob
   },
@@ -95,6 +95,16 @@ export function findNodeModules(startDir = process.cwd()) {
   }
 
   return null
+}
+
+/**
+ * Loads a JS module from a string using data: import
+ */
+export async function importSource<M = unknown>(
+  code: string,
+): Promise<M> {
+  const dataUrl = `data:text/javascript,${encodeURIComponent(code)}`
+  return await import(dataUrl)
 }
 
 async function hashBuffer(buffer: BufferSource) {

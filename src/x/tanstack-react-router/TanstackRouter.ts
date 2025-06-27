@@ -11,8 +11,8 @@ import {
   Stream,
 } from "effect"
 import { FileRouter } from "effect-bundler"
-import { watchFileChanges } from "effect-bundler/files"
 import React from "react"
+import * as FileSystemExtra from "../../FileSystemExtra.ts"
 import * as TanstackRouterCodegen from "./TanstackRouterCodegen.ts"
 
 export class TanstackRouterError
@@ -44,14 +44,14 @@ export function layer() {
       yield* TanstackRouterCodegen.dump(path)
 
       const stream = pipe(
-        watchFileChanges(routesDir),
+        FileSystemExtra.watchSource(routesDir),
         Stream.onError((e) => Effect.logError(e)),
       )
 
       yield* pipe(
         stream,
         // filter out edits to gen file
-        Stream.filter(e => e.path !== genFile),
+        Stream.filter(e => e.type === "Change" && e.path !== genFile),
         Stream.runForEach(() => TanstackRouterCodegen.dump(path)),
         Effect.fork,
       )

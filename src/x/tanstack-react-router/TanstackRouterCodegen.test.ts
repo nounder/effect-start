@@ -14,9 +14,9 @@ import {
 } from "bun:test"
 import React from "react"
 import { renderToReadableStream } from "react-dom/server"
-import { importJsBlob } from "../../esm.ts"
 import { parseRoute } from "../../FileRouter.ts"
 import type { RouteHandle } from "../../FileRouter.ts"
+import { importBlob } from "../../JsModule.ts"
 import * as TanstackRouterCodegen from "./TanstackRouterCodegen.ts"
 
 const MODULE_PREFIX = "./"
@@ -331,7 +331,7 @@ function __import(path) {
     type: "application/javascript",
   })
 
-  const importedModule = await importJsBlob<{
+  const importedModule = await importBlob<{
     routeTree: any
     route_root: any
   }>(blob)

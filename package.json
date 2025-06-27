@@ -7,7 +7,7 @@
     ".": "./src/index.ts",
     "./bun": "./src/bun/index.ts",
     "./client": "./src/client/index.ts",
-    "./files": "./src/files.ts",
+    "./files": "./src/FileSystemExtra.ts",
     "./package.json": "./package.json",
     "./x/tanstack-react-router": "./src/x/tanstack-react-router/index.ts"
   },

@@ -11,7 +11,7 @@ import {
 import * as NPath from "node:path"
 import * as NUrl from "node:url"
 import * as FileRouterCodegen from "./FileRouterCodegen.ts"
-import { watchFileChanges } from "./files.ts"
+import * as FileSystemExtra from "./FileSystemExtra.ts"
 
 type LiteralSegment = {
   type: "Literal"
@@ -254,7 +254,7 @@ export function layer(
       yield* FileRouterCodegen.dump(routesPath, manifestPath)
 
       const stream = pipe(
-        watchFileChanges(routesPath),
+        FileSystemExtra.watchSource(routesPath),
         Stream.onError((e) => Effect.logError(e)),
       )
 
@@ -262,7 +262,7 @@ export function layer(
         stream,
         // filter out edits to gen file
         // TODO: make sure we don't re-generate if the file is unchanged
-        Stream.filter(e => e.path !== genFile),
+        Stream.filter(e => e.type === "Change" && e.path !== genFile),
         Stream.runForEach(() => FileRouterCodegen.dump(genFile, manifestPath)),
         Effect.fork,
       )

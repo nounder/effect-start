@@ -10,7 +10,7 @@ import {
   Record,
   Schema as S,
 } from "effect"
-import { importJsBlob } from "./esm.ts"
+import { importBlob } from "./JsModule.ts"
 
 export const BundleEntrypointMetaKey: unique symbol = Symbol.for(
   "effect-bundler/BundleEntrypointMetaKey",
@@ -148,7 +148,7 @@ export function load<M>(
       try: () => {
         const blob = context.getArtifact(artifact)
 
-        return importJsBlob<M>(blob!)
+        return importBlob<M>(blob!)
       },
       catch: (e) =>
         new BundleError({

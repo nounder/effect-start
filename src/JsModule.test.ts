@@ -5,7 +5,7 @@ import {
   expect,
   it,
 } from "bun:test"
-import * as Esm from "./esm.ts"
+import * as JsModule from "./JsModule.ts"
 
 it.skip("import js bundle", async () => {
   const blobs = {
@@ -20,7 +20,7 @@ export const b = "B"
 `]),
   }
 
-  const mod = await Esm.importJsBundle<any>(blobs, "a.js")
+  const mod = await JsModule.importBundle<any>(blobs, "a.js")
 
   expect(
     mod.default,
@@ -33,7 +33,7 @@ it.skip("import single js bundle", async () => {
 export const b = "B"
 `])
 
-  const mod = await Esm.importJsBlob<any>(blob)
+  const mod = await JsModule.importBlob<any>(blob)
 
   expect(
     mod.b,
