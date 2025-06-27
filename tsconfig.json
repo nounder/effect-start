@@ -31,7 +31,8 @@
       {
         "name": "@effect/language-service",
         "namespaceImportPackages": [
-          "effect"
+          "effect",
+          "@effect/platform"
         ]
       }
     ]
