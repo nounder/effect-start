@@ -1,4 +1,8 @@
 import type * as HttpApp from "@effect/platform/HttpApp"
+import * as HttpRouter from "@effect/platform/HttpRouter"
+import * as Path from "@effect/platform/Path"
+import * as Effect from "effect/Effect"
+import { tagged } from "./Bundle.ts"
 
 export const ServerMethods = [
   "GET",
@@ -52,3 +56,19 @@ export type PageRoute = {
 export type Pages = ReadonlyArray<PageRoute>
 export type Layouts = ReadonlyArray<LayoutRoute>
 export type Servers = ReadonlyArray<ServerRoute>
+type RouterService = {
+  router: HttpRouter.HttpRouter
+}
+
+export class Router
+  extends Effect.Service<Router>()("nounder/effect-bundler/Router", {
+    effect: Effect.gen(function*() {
+      yield* tagged("RouterBundle")
+      const router = HttpRouter.empty
+
+      return {
+        router,
+      }
+    }),
+  })
+{}
