@@ -130,6 +130,7 @@ export const make = (
               handlerStack.push(handler)
               server.reload({
                 fetch: handler,
+                // @ts-expect-error current effect veresion doesn't support routes
                 routes: options.routes,
               } as ServeOptions)
             }),
@@ -139,6 +140,7 @@ export const make = (
                 server.reload(
                   {
                     fetch: handlerStack[handlerStack.length - 1],
+                    // @ts-expect-error current effect veresion doesn't support routes
                     routes: options.routes,
                   } as ServeOptions,
                 )

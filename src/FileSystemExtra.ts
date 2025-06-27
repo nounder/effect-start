@@ -5,8 +5,6 @@ import {
 } from "effect"
 import type { WatchOptions } from "node:fs"
 import * as NFSP from "node:fs/promises"
-import * as NPath from "node:path"
-import type { BundleEvent } from "./Bundle.ts"
 
 const SOURCE_FILENAME = /\.(tsx?|jsx?|html?|css|json)$/
 
@@ -17,7 +15,7 @@ const SOURCE_FILENAME = /\.(tsx?|jsx?|html?|css|json)$/
 export const watchSource = (
   path?: string,
   opts?: WatchOptions,
-): Stream.Stream<BundleEvent, Error.SystemError> => {
+): Stream.Stream<NFSP.FileChangeInfo<string>, Error.SystemError> => {
   const baseDir = path ?? process.cwd()
 
   let stream: Stream.Stream<NFSP.FileChangeInfo<string>, Error.SystemError>
@@ -47,10 +45,6 @@ export const watchSource = (
       duration: "400 millis",
       strategy: "enforce",
     }),
-    Stream.map((event) => ({
-      type: "Change" as const,
-      path: NPath.resolve(baseDir, event.filename!),
-    })),
   )
 
   return changes

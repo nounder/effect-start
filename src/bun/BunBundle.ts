@@ -85,6 +85,12 @@ export const bundle = <I extends `${string}Bundle`>(
           yield* Effect.fork(
             pipe(
               FileSystemExtra.watchSource(),
+              Stream.map(v =>
+                ({
+                  type: "Change",
+                  path: v.filename,
+                }) as Bundle.BundleEvent
+              ),
               Stream.onError(err =>
                 Effect.logError("Error while watching files", err)
               ),

@@ -244,9 +244,11 @@ export function layer(
   routesPath = "src/routes",
   manifestPath = "_manifest.ts",
 ) {
+  // handle use of import.meta.resolve
   if (routesPath.startsWith("file://")) {
     routesPath = NUrl.fileURLToPath(routesPath)
   }
+
   const genFile = NPath.resolve(routesPath, manifestPath)
 
   return Layer.scopedDiscard(
@@ -262,7 +264,7 @@ export function layer(
         stream,
         // filter out edits to gen file
         // TODO: make sure we don't re-generate if the file is unchanged
-        Stream.filter(e => e.type === "Change" && e.path !== genFile),
+        Stream.filter(e => e.filename !== genFile),
         Stream.runForEach(() => FileRouterCodegen.dump(genFile, manifestPath)),
         Effect.fork,
       )

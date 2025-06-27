@@ -51,7 +51,7 @@ export function layer() {
       yield* pipe(
         stream,
         // filter out edits to gen file
-        Stream.filter(e => e.type === "Change" && e.path !== genFile),
+        Stream.filter(e => e.filename !== genFile),
         Stream.runForEach(() => TanstackRouterCodegen.dump(path)),
         Effect.fork,
       )
