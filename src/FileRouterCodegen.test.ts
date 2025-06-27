@@ -21,7 +21,9 @@ it("generates code for pages only", () => {
  * for all programs that use FileRouter.layer.
  */
 
-  const page__ = {
+import type * as Router from "effect-bundler"
+
+const page__ = {
   path: "/",
   parent: undefined,
   load: () => import("./_page.tsx"),
@@ -33,12 +35,16 @@ const page__about = {
   load: () => import("./about/_page.tsx"),
 }
 
-export const Pages = [
+export const Layouts: Router.Layouts = [
+  
+] as const
+
+export const Pages: Router.Pages = [
   page__,
   page__about
 ] as const
 
-export const Servers = [
+export const Servers: Router.Servers = [
   
 ] as const
  `
@@ -61,7 +67,9 @@ it("generates code for server endpoints only", () => {
  * for all programs that use FileRouter.layer.
  */
 
-  const server__api = {
+import type * as Router from "effect-bundler"
+
+const server__api = {
   path: "/api",
   load: () => import("./api/_server.ts"),
 }
@@ -71,11 +79,15 @@ const server__api__users = {
   load: () => import("./api/users/_server.ts"),
 }
 
-export const Pages = [
+export const Layouts: Router.Layouts = [
   
 ] as const
 
-export const Servers = [
+export const Pages: Router.Pages = [
+  
+] as const
+
+export const Servers: Router.Servers = [
   server__api,
   server__api__users
 ] as const
@@ -103,7 +115,9 @@ it("generates code for mixed pages, layouts, and server endpoints", () => {
  * for all programs that use FileRouter.layer.
  */
 
-  const layout__ = {
+import type * as Router from "effect-bundler"
+
+const layout__ = {
   path: "/",
   parent: undefined,
   load: () => import("./_layout.tsx"),
@@ -137,12 +151,17 @@ const server__dashboard__api = {
   load: () => import("./dashboard/api/_server.ts"),
 }
 
-export const Pages = [
+export const Layouts: Router.Layouts = [
+  layout__,
+  layout__dashboard
+] as const
+
+export const Pages: Router.Pages = [
   page__,
   page__dashboard
 ] as const
 
-export const Servers = [
+export const Servers: Router.Servers = [
   server__api,
   server__dashboard__api
 ] as const
@@ -203,9 +222,9 @@ it("generates empty exports when no handles provided", () => {
 
   const code = FileRouterCodegen.generateCode(handles)
 
-  expect(code).toContain("export const Pages = [")
+  expect(code).toContain("export const Pages: Router.Pages = [")
   expect(code).toContain("] as const")
-  expect(code).toContain("export const Servers = [")
+  expect(code).toContain("export const Servers: Router.Servers = [")
   expect(code).toContain("] as const")
 
   // Should not contain any const definitions
@@ -251,10 +270,10 @@ it("maintains proper variable ordering in exports", () => {
 
   // Variables should be generated based on the order they appear in handles array
   const pageExportMatch = code.match(
-    /export const Pages = \[([\s\S]*?)\] as const/,
+    /export const Pages: Router\.Pages = \[([\s\S]*?)\] as const/,
   )
   const httpExportMatch = code.match(
-    /export const Servers = \[([\s\S]*?)\] as const/,
+    /export const Servers: Router\.Servers = \[([\s\S]*?)\] as const/,
   )
 
   expect(pageExportMatch)
@@ -288,7 +307,7 @@ it("generates proper code structure", () => {
 
   expect(code)
     .toMatch(
-      /export const Pages = \[[\s\S]*?\] as const\s*\n\s*export const Servers = \[/,
+      /export const Pages: Router\.Pages = \[[\s\S]*?\] as const\s*\n\s*export const Servers: Router\.Servers = \[/,
     )
 })
 
@@ -463,7 +482,7 @@ it("validates server module integration with generateCode", () => {
     .toContain("const server__users = {")
 
   expect(code)
-    .toContain("export const Servers = [")
+    .toContain("export const Servers: Router.Servers = [")
 
   expect(code)
     .toContain("server__api,")
@@ -477,7 +496,7 @@ it("validates server module integration with generateCode", () => {
     .toContain("const page__ = {")
 
   expect(code)
-    .toContain("export const Pages = [")
+    .toContain("export const Pages: Router.Pages = [")
 
   expect(code)
     .toContain("page__")
@@ -578,4 +597,27 @@ it("handles routes with dots in path segments", () => {
   expect(code).toContain("path: \"/events.json\"")
   expect(code).toContain("path: \"/config.yaml.backup\"")
   expect(code).toContain("path: \"/api.v2\"")
+})
+
+it("allows customizing router module identifier", () => {
+  const handles: RouteHandle[] = [
+    parseRoute("_page.tsx"),
+  ]
+
+  const code = FileRouterCodegen.generateCode(handles, {
+    routerModuleId: "@my/custom-router",
+  })
+
+  expect(code).toContain("import type * as Router from \"@my/custom-router\"")
+  expect(code).toContain("export const Pages: Router.Pages = [")
+})
+
+it("uses default module identifier when not specified", () => {
+  const handles: RouteHandle[] = [
+    parseRoute("_page.tsx"),
+  ]
+
+  const code = FileRouterCodegen.generateCode(handles)
+
+  expect(code).toContain("import type * as Router from \"effect-bundler\"")
 })

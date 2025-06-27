@@ -34,11 +34,18 @@ export function validateServerModule(
   return hasHttpVerb || hasDefault
 }
 
+export interface GenerateCodeOptions {
+  routerModuleId?: string
+}
+
 export function generateCode(
   handles: FileRouter.OrderedRouteHandles,
+  options: GenerateCodeOptions = {},
 ): string {
+  const { routerModuleId = "effect-bundler" } = options
   const definitions: string[] = []
   const pageVariables: string[] = []
+  const layoutVariables: string[] = []
   const serverVariables: string[] = []
 
   let currentLayout: { routePath: string; varName: string } | null = null
@@ -88,9 +95,10 @@ export function generateCode(
 \tpath: "${handle.routePath}",
 \tparent: ${currentLayout?.varName ?? "undefined"},
 \tload: () => import("./${handle.modulePath}"),
-}`
+} as const`
 
         definitions.push(code)
+        layoutVariables.push(varName)
 
         // Set this layout as current and add to processed layouts
         currentLayout = { routePath: handle.routePath, varName }
@@ -103,7 +111,7 @@ export function generateCode(
 \tpath: "${handle.routePath}",
 \tparent: ${currentLayout?.varName ?? "undefined"},
 \tload: () => import("./${handle.modulePath}"),
-}`
+} as const`
 
         definitions.push(code)
         pageVariables.push(varName)
@@ -114,7 +122,7 @@ export function generateCode(
         const code = `const ${varName} = {
 \tpath: "${handle.routePath}",
 \tload: () => import("./${handle.modulePath}"),
-}`
+} as const`
 
         definitions.push(code)
         serverVariables.push(varName)
@@ -135,13 +143,19 @@ export function generateCode(
 
   return `${header}
 
-  ${definitions.join("\n\n")}
+import type { Router } from "${routerModuleId}"
 
-export const Pages = [
+${definitions.join("\n\n")}
+
+export const Layouts: Router.Layouts = [
+\t${layoutVariables.join(",\n\t")}
+] as const
+
+export const Pages: Router.Pages = [
 \t${pageVariables.join(",\n\t")}
 ] as const
 
-export const Servers = [
+export const Servers: Router.Servers = [
 \t${serverVariables.join(",\n\t")}
 ] as const
  `
@@ -151,6 +165,7 @@ export const Servers = [
 export function dump(
   routesPath: string,
   manifestPath = "_manifest.ts",
+  options: GenerateCodeOptions = {},
 ): Effect.Effect<void, PlatformError, FileSystem.FileSystem> {
   return Effect.gen(function*() {
     manifestPath = NPath.resolve(routesPath, manifestPath)
@@ -186,7 +201,7 @@ export function dump(
         )
     }
 
-    const code = generateCode(handles)
+    const code = generateCode(handles, options)
 
     yield* Effect.logDebug(`Generating file routes manifest: ${manifestPath}`)
 
