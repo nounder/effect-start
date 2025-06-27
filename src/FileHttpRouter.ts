@@ -35,8 +35,7 @@ type RecordEffectRequirements<A> = A extends Record<string, any> ? Exclude<
 export type HttpRouterFromServerRoutes<
   Routes extends ReadonlyArray<Router.ServerRoute>,
 > = HttpRouter.HttpRouter<
-  | RouteNotFound
-  | (Routes extends ReadonlyArray<infer Route>
+  (Routes extends ReadonlyArray<infer Route>
     ? Route extends Router.ServerRoute
       ? RecordEffectError<Awaited<ReturnType<Route["load"]>>>
     : never

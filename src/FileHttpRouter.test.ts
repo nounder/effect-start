@@ -47,7 +47,7 @@ test("HttpRouter Requirement and Error types infers", async () => {
 
   // This should fail to compile if the router type is HttpRouter<any, any>
   const _typeCheck: typeof router extends HttpRouter.HttpRouter<
-    Error.SystemError | "PostError" | RouteNotFound | CustomError,
+    Error.SystemError | "PostError" | CustomError,
     FileSystem.FileSystem | "PostService"
   > ? true
     : false = true
