@@ -31,13 +31,11 @@ import type { Router } from "effect-bundler"
 
 const page__ = {
   path: "/",
-  parent: undefined,
   load: () => import("./_page.tsx"),
 } as const
 
 const page__about = {
   path: "/about",
-  parent: undefined,
   load: () => import("./about/_page.tsx"),
 } as const
 
@@ -121,7 +119,6 @@ import type { Router } from "effect-bundler"
 
 const layout__ = {
   path: "/",
-  parent: undefined,
   load: () => import("./_layout.tsx"),
 } as const
 

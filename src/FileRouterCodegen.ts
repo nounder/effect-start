@@ -130,9 +130,9 @@ export function generateCode(
 
     switch (handle.type) {
       case "LayoutHandle": {
+        const parentPart = currentLayout ? `\n\tparent: ${currentLayout.varName},` : ""
         const code = `const ${varName} = {
-\tpath: "${handle.routePath}",
-\tparent: ${currentLayout?.varName ?? "undefined"},
+\tpath: "${handle.routePath}",${parentPart}
 \tload: () => import("./${handle.modulePath}"),
 } as const`
 
@@ -146,9 +146,9 @@ export function generateCode(
         break
       }
       case "PageHandle": {
+        const parentPart = currentLayout ? `\n\tparent: ${currentLayout.varName},` : ""
         const code = `const ${varName} = {
-\tpath: "${handle.routePath}",
-\tparent: ${currentLayout?.varName ?? "undefined"},
+\tpath: "${handle.routePath}",${parentPart}
 \tload: () => import("./${handle.modulePath}"),
 } as const`
 
