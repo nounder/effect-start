@@ -1,16 +1,19 @@
 import { Error } from "@effect/platform"
 import {
+  Console,
   pipe,
   Stream,
 } from "effect"
 import type { WatchOptions } from "node:fs"
 import * as NFSP from "node:fs/promises"
+import * as NPath from "node:path"
 
 const SOURCE_FILENAME = /\.(tsx?|jsx?|html?|css|json)$/
 
 /**
  * `@effect/platform` doesn't support recursive file watching.
  * This function implements that [2025-05-19]
+ * Additionally, the filename is resolved to an absolute path.
  */
 export const watchSource = (
   path?: string,
@@ -36,6 +39,10 @@ export const watchSource = (
 
   const changes = pipe(
     stream,
+    Stream.map(e => ({
+      eventType: e.eventType,
+      filename: NPath.resolve(baseDir, e.filename!),
+    })),
     Stream.filter((event) => SOURCE_FILENAME.test(event.filename!)),
     Stream.filter((event) => !(/node_modules/.test(event.filename!))),
     Stream.rechunk(1),
@@ -56,4 +63,5 @@ const handleWatchError = (error: any, path: string) =>
     reason: "Unknown",
     method: "watch",
     pathOrDescriptor: path,
+    cause: error,
   })

@@ -41,16 +41,16 @@ const page__about = {
   load: () => import("./about/_page.tsx"),
 } as const
 
-export const Layouts: Router.Layouts = [
+export const Layouts: Router.LayoutRoutes = [
   
 ] as const
 
-export const Pages: Router.Pages = [
+export const Pages: Router.PageRoutes = [
   page__,
   page__about
 ] as const
 
-export const Servers: Router.Servers = [
+export const Servers: Router.ServerRoutes = [
   
 ] as const
  `
@@ -83,15 +83,15 @@ const server__api__users = {
   load: () => import("./api/users/_server.ts"),
 } as const
 
-export const Layouts: Router.Layouts = [
+export const Layouts: Router.LayoutRoutes = [
   
 ] as const
 
-export const Pages: Router.Pages = [
+export const Pages: Router.PageRoutes = [
   
 ] as const
 
-export const Servers: Router.Servers = [
+export const Servers: Router.ServerRoutes = [
   server__api,
   server__api__users
 ] as const
@@ -153,17 +153,17 @@ const server__dashboard__api = {
   load: () => import("./dashboard/api/_server.ts"),
 } as const
 
-export const Layouts: Router.Layouts = [
+export const Layouts: Router.LayoutRoutes = [
   layout__,
   layout__dashboard
 ] as const
 
-export const Pages: Router.Pages = [
+export const Pages: Router.PageRoutes = [
   page__,
   page__dashboard
 ] as const
 
-export const Servers: Router.Servers = [
+export const Servers: Router.ServerRoutes = [
   server__api,
   server__dashboard__api
 ] as const
@@ -224,9 +224,9 @@ it("generates empty exports when no handles provided", () => {
 
   const code = FileRouterCodegen.generateCode(handles)
 
-  expect(code).toContain("export const Pages: Router.Pages = [")
+  expect(code).toContain("export const Pages: Router.PageRoutes = [")
   expect(code).toContain("] as const")
-  expect(code).toContain("export const Servers: Router.Servers = [")
+  expect(code).toContain("export const Servers: Router.ServerRoutes = [")
   expect(code).toContain("] as const")
 
   // Should not contain any const definitions
@@ -272,10 +272,10 @@ it("maintains proper variable ordering in exports", () => {
 
   // Variables should be generated based on the order they appear in handles array
   const pageExportMatch = code.match(
-    /export const Pages: Router\.Pages = \[([\s\S]*?)\] as const/,
+    /export const Pages: Router\.PageRoutes = \[([\s\S]*?)\] as const/,
   )
   const httpExportMatch = code.match(
-    /export const Servers: Router\.Servers = \[([\s\S]*?)\] as const/,
+    /export const Servers: Router\.ServerRoutes = \[([\s\S]*?)\] as const/,
   )
 
   expect(pageExportMatch)
@@ -309,7 +309,7 @@ it("generates proper code structure", () => {
 
   expect(code)
     .toMatch(
-      /export const Pages: Router\.Pages = \[[\s\S]*?\] as const\s*\n\s*export const Servers: Router\.Servers = \[/,
+      /export const Pages: Router\.PageRoutes = \[[\s\S]*?\] as const\s*\n\s*export const Servers: Router\.ServerRoutes = \[/,
     )
 })
 
@@ -484,7 +484,7 @@ it("validates server module integration with generateCode", () => {
     .toContain("const server__users = {")
 
   expect(code)
-    .toContain("export const Servers: Router.Servers = [")
+    .toContain("export const Servers: Router.ServerRoutes = [")
 
   expect(code)
     .toContain("server__api,")
@@ -498,7 +498,7 @@ it("validates server module integration with generateCode", () => {
     .toContain("const page__ = {")
 
   expect(code)
-    .toContain("export const Pages: Router.Pages = [")
+    .toContain("export const Pages: Router.PageRoutes = [")
 
   expect(code)
     .toContain("page__")
@@ -611,7 +611,7 @@ it("allows customizing router module identifier", () => {
   })
 
   expect(code).toContain("import type { Router } from \"@my/custom-router\"")
-  expect(code).toContain("export const Pages: Router.Pages = [")
+  expect(code).toContain("export const Pages: Router.PageRoutes = [")
 })
 
 it("uses default module identifier when not specified", () => {
@@ -650,7 +650,7 @@ describe("update()", () => {
         .toContain("const page__about = {")
 
       expect(manifest)
-        .toContain("export const Pages: Router.Pages = [")
+        .toContain("export const Pages: Router.PageRoutes = [")
     }))
 
   test("writes only when it changes", () =>

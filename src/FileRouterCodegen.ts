@@ -184,15 +184,15 @@ import type { Router } from "${routerModuleId}"
 
 ${definitions.join("\n\n")}
 
-export const Layouts: Router.Layouts = [
+export const Layouts: Router.LayoutRoutes = [
 \t${layoutVariables.join(",\n\t")}
 ] as const
 
-export const Pages: Router.Pages = [
+export const Pages: Router.PageRoutes = [
 \t${pageVariables.join(",\n\t")}
 ] as const
 
-export const Servers: Router.Servers = [
+export const Servers: Router.ServerRoutes = [
 \t${serverVariables.join(",\n\t")}
 ] as const
  `
