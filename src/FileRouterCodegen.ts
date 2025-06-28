@@ -184,17 +184,17 @@ import type { Router } from "${routerModuleId}"
 
 ${definitions.join("\n\n")}
 
-export const Layouts: Router.LayoutRoutes = [
+export const Layouts: Router.LayoutRoutes = ${layoutVariables.length === 0 ? "[]" : `[
 \t${layoutVariables.join(",\n\t")}
-] as const
+]`} as const
 
-export const Pages: Router.PageRoutes = [
+export const Pages: Router.PageRoutes = ${pageVariables.length === 0 ? "[]" : `[
 \t${pageVariables.join(",\n\t")}
-] as const
+]`} as const
 
-export const Servers: Router.ServerRoutes = [
+export const Servers: Router.ServerRoutes = ${serverVariables.length === 0 ? "[]" : `[
 \t${serverVariables.join(",\n\t")}
-] as const
+]`} as const
  `
     .replace(/\t/g, "  ")
 }

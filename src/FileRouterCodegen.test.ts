@@ -39,18 +39,14 @@ const page__about = {
   load: () => import("./about/_page.tsx"),
 } as const
 
-export const Layouts: Router.LayoutRoutes = [
-  
-] as const
+export const Layouts: Router.LayoutRoutes = [] as const
 
 export const Pages: Router.PageRoutes = [
   page__,
   page__about
 ] as const
 
-export const Servers: Router.ServerRoutes = [
-  
-] as const
+export const Servers: Router.ServerRoutes = [] as const
  `
 
   expect(code)
@@ -81,13 +77,9 @@ const server__api__users = {
   load: () => import("./api/users/_server.ts"),
 } as const
 
-export const Layouts: Router.LayoutRoutes = [
-  
-] as const
+export const Layouts: Router.LayoutRoutes = [] as const
 
-export const Pages: Router.PageRoutes = [
-  
-] as const
+export const Pages: Router.PageRoutes = [] as const
 
 export const Servers: Router.ServerRoutes = [
   server__api,
@@ -221,10 +213,9 @@ it("generates empty exports when no handles provided", () => {
 
   const code = FileRouterCodegen.generateCode(handles)
 
-  expect(code).toContain("export const Pages: Router.PageRoutes = [")
-  expect(code).toContain("] as const")
-  expect(code).toContain("export const Servers: Router.ServerRoutes = [")
-  expect(code).toContain("] as const")
+  expect(code).toContain("export const Pages: Router.PageRoutes = [] as const")
+  expect(code).toContain("export const Servers: Router.ServerRoutes = [] as const")
+  expect(code).toContain("export const Layouts: Router.LayoutRoutes = [] as const")
 
   // Should not contain any const definitions
   expect(code).not.toMatch(/const (page|layout|server)__/)
