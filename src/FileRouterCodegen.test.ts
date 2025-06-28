@@ -1,11 +1,19 @@
+import { FileSystem } from "@effect/platform"
 import {
+  afterEach,
+  describe,
   expect,
   it,
+  test,
 } from "bun:test"
+import { Effect } from "effect"
+import { MemoryFileSystem } from "effect-memfs"
 import * as NPath from "node:path"
+import * as FileRouter from "./FileRouter.ts"
 import { parseRoute } from "./FileRouter.ts"
 import type { RouteHandle } from "./FileRouter.ts"
 import * as FileRouterCodegen from "./FileRouterCodegen.ts"
+import { effectFn } from "./testing.ts"
 
 it("generates code for pages only", () => {
   const handles: RouteHandle[] = [
@@ -614,4 +622,95 @@ it("uses default module identifier when not specified", () => {
   const code = FileRouterCodegen.generateCode(handles)
 
   expect(code).toContain("import type { Router } from \"effect-bundler\"")
+})
+
+describe("update()", () => {
+  test("writes file", () =>
+    effectFn(
+      MemoryFileSystem.layerWith({
+        "/routes/_page.tsx": "export default () => <div>Home</div>",
+        "/routes/about/_page.tsx": "export default () => <div>About</div>",
+      }),
+    )(function*() {
+      const fs = yield* FileSystem.FileSystem
+
+      yield* FileRouterCodegen.update("/routes")
+
+      const manifestExists = yield* fs.exists("/routes/_manifest.ts")
+
+      expect(manifestExists)
+        .toBe(true)
+
+      const manifest = yield* fs.readFileString("/routes/_manifest.ts")
+
+      expect(manifest)
+        .toContain("const page__ = {")
+
+      expect(manifest)
+        .toContain("const page__about = {")
+
+      expect(manifest)
+        .toContain("export const Pages: Router.Pages = [")
+    }))
+
+  test("writes only when it changes", () =>
+    effectFn(
+      MemoryFileSystem.layerWith({
+        "/routes/_page.tsx": "export default () => <div>Home</div>",
+      }),
+    )(function*() {
+      const fs = yield* FileSystem.FileSystem
+
+      yield* FileRouterCodegen.update("/routes")
+
+      const originalManifest = yield* fs.readFileString("/routes/_manifest.ts")
+
+      yield* fs.makeDirectory("/routes/about", { recursive: true })
+      yield* fs.writeFileString(
+        "/routes/about/_page.tsx",
+        "export default () => <div>About</div>",
+      )
+
+      yield* FileRouterCodegen.update("/routes")
+
+      const updatedManifest = yield* fs.readFileString("/routes/_manifest.ts")
+
+      expect(originalManifest)
+        .not
+        .toBe(updatedManifest)
+
+      expect(updatedManifest)
+        .toContain("const page__about = {")
+
+      expect(originalManifest)
+        .not
+        .toContain("const page__about = {")
+    }))
+
+  test("skips write when unchanged", () =>
+    effectFn(
+      MemoryFileSystem.layerWith({
+        "/routes/_page.tsx": "export default () => <div>Home</div>",
+      }),
+    )(function*() {
+      const fs = yield* FileSystem.FileSystem
+
+      yield* FileRouterCodegen.update("/routes")
+
+      const originalManifest = yield* fs.readFileString("/routes/_manifest.ts")
+      const originalStats = yield* fs.stat("/routes/_manifest.ts")
+
+      yield* Effect.sleep("10 millis")
+
+      yield* FileRouterCodegen.update("/routes")
+
+      const updatedManifest = yield* fs.readFileString("/routes/_manifest.ts")
+      const updatedStats = yield* fs.stat("/routes/_manifest.ts")
+
+      expect(originalManifest)
+        .toBe(updatedManifest)
+
+      expect(originalStats.mtime)
+        .toEqual(updatedStats.mtime)
+    }))
 })

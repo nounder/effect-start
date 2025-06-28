@@ -34,6 +34,43 @@ export function validateServerModule(
   return hasHttpVerb || hasDefault
 }
 
+/**
+ * Validates all server modules in the given route handles.
+ */
+export function validateServerModules(
+  routesPath: string,
+  handles: FileRouter.OrderedRouteHandles,
+): Effect.Effect<void, never, never> {
+  return Effect.gen(function*() {
+    const serverHandles = handles.filter(h => h.type === "ServerHandle")
+
+    for (const handle of serverHandles) {
+      const serverModulePath = NPath.resolve(routesPath, handle.modulePath)
+      yield* Effect
+        .tryPromise({
+          try: async () => import(serverModulePath),
+          catch: (error) =>
+            Effect.logWarning(
+              `Failed to validate server module ${serverModulePath}: ${error}`,
+            ),
+        })
+        .pipe(
+          Effect.catchAll((logEffect) => logEffect),
+          Effect.tap((module) => {
+            if (!validateServerModule(module)) {
+              return Effect.logWarning(
+                `Server module ${serverModulePath} should export at least one HTTP verb (${
+                  HTTP_VERBS.join(", ")
+                }) or a default export`,
+              )
+            }
+            return Effect.void
+          }),
+        )
+    }
+  })
+}
+
 export interface GenerateCodeOptions {
   routerModuleId?: string
 }
@@ -162,6 +199,41 @@ export const Servers: Router.Servers = [
     .replace(/\t/g, "  ")
 }
 
+/**
+ * Updates the manifest file only if the generated content differs from the existing file.
+ * This prevents infinite loops when watching for file changes.
+ */
+export function update(
+  routesPath: string,
+  manifestPath = "_manifest.ts",
+  options: GenerateCodeOptions = {},
+): Effect.Effect<void, PlatformError, FileSystem.FileSystem> {
+  return Effect.gen(function*() {
+    manifestPath = NPath.resolve(routesPath, manifestPath)
+
+    const fs = yield* FileSystem.FileSystem
+    const files = yield* fs.readDirectory(routesPath, { recursive: true })
+    const handles = FileRouter.getRouteHandlesFromPaths(files)
+
+    // Validate server modules
+    yield* validateServerModules(routesPath, handles)
+
+    const newCode = generateCode(handles, options)
+
+    // Check if file exists and content differs
+    const existingCode = yield* fs
+      .readFileString(manifestPath)
+      .pipe(Effect.catchAll(() => Effect.succeed(null)))
+
+    if (existingCode !== newCode) {
+      yield* Effect.logDebug(`Updating file routes manifest: ${manifestPath}`)
+      yield* fs.writeFileString(manifestPath, newCode)
+    } else {
+      yield* Effect.logDebug(`File routes manifest unchanged: ${manifestPath}`)
+    }
+  })
+}
+
 export function dump(
   routesPath: string,
   manifestPath = "_manifest.ts",
@@ -175,31 +247,7 @@ export function dump(
     const handles = FileRouter.getRouteHandlesFromPaths(files)
 
     // Validate server modules
-    const serverHandles = handles.filter(h => h.type === "ServerHandle")
-    for (const handle of serverHandles) {
-      const serverModulePath = NPath.resolve(routesPath, handle.modulePath)
-      yield* Effect
-        .tryPromise({
-          try: async () => import(serverModulePath),
-          catch: (error) =>
-            Effect.logWarning(
-              `Failed to validate server module ${serverModulePath}: ${error}`,
-            ),
-        })
-        .pipe(
-          Effect.catchAll((logEffect) => logEffect),
-          Effect.tap((module) => {
-            if (!validateServerModule(module)) {
-              return Effect.logWarning(
-                `Server module ${serverModulePath} should export at least one HTTP verb (${
-                  HTTP_VERBS.join(", ")
-                }) or a default export`,
-              )
-            }
-            return Effect.void
-          }),
-        )
-    }
+    yield* validateServerModules(routesPath, handles)
 
     const code = generateCode(handles, options)
 

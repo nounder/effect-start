@@ -253,7 +253,7 @@ export function layer(
 
   return Layer.scopedDiscard(
     Effect.gen(function*() {
-      yield* FileRouterCodegen.dump(routesPath, manifestPath)
+      yield* FileRouterCodegen.update(routesPath, manifestPath)
 
       const stream = pipe(
         FileSystemExtra.watchSource(routesPath),
@@ -263,9 +263,10 @@ export function layer(
       yield* pipe(
         stream,
         // filter out edits to gen file
-        // TODO: make sure we don't re-generate if the file is unchanged
         Stream.filter(e => e.filename !== genFile),
-        Stream.runForEach(() => FileRouterCodegen.dump(genFile, manifestPath)),
+        Stream.runForEach(() =>
+          FileRouterCodegen.update(routesPath, manifestPath)
+        ),
         Effect.fork,
       )
     }),
