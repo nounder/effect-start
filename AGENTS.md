@@ -15,9 +15,12 @@ dprint fmt $FILE
 
 # Code
 
-Alias Effect Schema as `S` like so:
+Use namespace imports instead of barrel ones:
+
 ```ts
-import { Schema as S } from "effect"
+import * as Effect from "effect/Effect"
+import * as Schema from "effect/Schema"
+import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
 ````
 
 When importing builtin node modules, always import full module and alias it as such:
@@ -86,4 +89,7 @@ expect(
   .toMatchObject({
     data: [],
   })
+```
+
+```
 ```
