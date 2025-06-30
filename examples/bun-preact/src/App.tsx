@@ -4,10 +4,7 @@ import {
   LocationProvider,
   Router,
 } from "preact-iso"
-import {
-  RouteComponents,
-  Routes,
-} from "./routes.tsx"
+import { RouteComponents } from "./routes.tsx"
 
 export function App() {
   return (
