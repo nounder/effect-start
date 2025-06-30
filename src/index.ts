@@ -15,9 +15,8 @@ export {
   effectFn,
 } from "./testing.ts"
 
+export * as FileHttpRouter from "./FileHttpRouter.ts"
 export * as FileRouter from "./FileRouter.ts"
 export * as Router from "./Router.ts"
 
 export * as CloudflareTunnel from "./CloudflareTunnel.ts"
-
-export * as FileHttpRouter from "./FileHttpRouter.ts"

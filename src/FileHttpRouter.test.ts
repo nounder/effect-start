@@ -2,7 +2,6 @@ import * as Error from "@effect/platform/Error"
 import * as FileSystem from "@effect/platform/FileSystem"
 import * as HttpApp from "@effect/platform/HttpApp"
 import * as HttpRouter from "@effect/platform/HttpRouter"
-import { RouteNotFound } from "@effect/platform/HttpServerError"
 import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
 import {
   expect,
@@ -11,12 +10,13 @@ import {
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as FileHttpRouter from "./FileHttpRouter.ts"
-import type * as Router from "./Router.ts"
+import * as Router from "./Router.ts"
+import * as TestHttpClient from "./TestHttpClient.ts"
+import { effectFn } from "./testing.ts"
 
 class CustomError extends Data.TaggedError("CustomError") {}
 
-// Mock server routes with different error and requirement types
-const Routes = [
+const SampleRoutes = [
   {
     path: "/users",
     load: async () => ({
@@ -29,59 +29,114 @@ const Routes = [
     }),
   },
   {
-    path: "/posts",
+    path: "/articles",
     load: async () => ({
       GET: Effect.succeed(
-        HttpServerResponse.text("Posts list"),
+        HttpServerResponse.text("Articles list"),
       ) as HttpApp.Default<"PostError", "PostService">,
-      default: Effect.succeed(
-        HttpServerResponse.text("Default handler"),
-      ) as HttpApp.Default<never, never>,
     }),
   },
 ] as const
-test("HttpRouter Requirement and Error types infers", async () => {
-  const routerEffect = FileHttpRouter.make(Routes)
 
-  const router = await Effect.runPromise(routerEffect)
+const SampleRouteManifest: Router.RouteManifest = {
+  Pages: [],
+  Layouts: [],
+  Servers: SampleRoutes,
+}
 
-  // This should fail to compile if the router type is HttpRouter<any, any>
-  const _typeCheck: typeof router extends HttpRouter.HttpRouter<
-    Error.SystemError | "PostError" | CustomError,
-    FileSystem.FileSystem | "PostService"
-  > ? true
-    : false = true
-})
+const routerLayer = Router.layer(async () => SampleRouteManifest)
 
-test("HTTP methods", async () => {
-  const allMethodsRoute: Router.ServerRoute = {
-    path: "/",
-    load: async () => ({
-      GET: Effect.succeed(HttpServerResponse.text("GET")),
-      POST: Effect.succeed(HttpServerResponse.text("POST")),
-      PUT: Effect.succeed(HttpServerResponse.text("PUT")),
-      PATCH: Effect.succeed(HttpServerResponse.text("PATCH")),
-      DELETE: Effect.succeed(HttpServerResponse.text("DELETE")),
-      OPTIONS: Effect.succeed(HttpServerResponse.text("OPTIONS")),
-      HEAD: Effect.succeed(HttpServerResponse.text("HEAD")),
-      default: Effect.succeed(HttpServerResponse.text("DEFAULT")),
-    }),
-  }
+const effect = effectFn(routerLayer)
 
-  const router = await Effect.runPromise(FileHttpRouter.make([allMethodsRoute]))
-  const routesList = Array.from(router.routes)
+test("HttpRouter Requirement and Error types infers", () =>
+  effect(function*() {
+    const router = yield* FileHttpRouter.make(SampleRoutes)
 
-  expect(routesList)
-    .toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ path: "/", method: "GET" }),
-        expect.objectContaining({ path: "/", method: "POST" }),
-        expect.objectContaining({ path: "/", method: "PUT" }),
-        expect.objectContaining({ path: "/", method: "PATCH" }),
-        expect.objectContaining({ path: "/", method: "DELETE" }),
-        expect.objectContaining({ path: "/", method: "OPTIONS" }),
-        expect.objectContaining({ path: "/", method: "HEAD" }),
-        expect.objectContaining({ path: "/", method: "*" }),
-      ]),
-    )
-})
+    // This should fail to compile if the router type is HttpRouter<any, any>
+    const _typeCheck: typeof router extends HttpRouter.HttpRouter<
+      Error.SystemError | "PostError" | CustomError,
+      FileSystem.FileSystem | "PostService"
+    > ? true
+      : false = true
+  }))
+
+test("HTTP methods", () =>
+  effect(function*() {
+    const allMethodsRoute: Router.ServerRoute = {
+      path: "/",
+      load: async () => ({
+        GET: Effect.succeed(HttpServerResponse.text("GET")),
+        POST: Effect.succeed(HttpServerResponse.text("POST")),
+        PUT: Effect.succeed(HttpServerResponse.text("PUT")),
+        PATCH: Effect.succeed(HttpServerResponse.text("PATCH")),
+        DELETE: Effect.succeed(HttpServerResponse.text("DELETE")),
+        OPTIONS: Effect.succeed(HttpServerResponse.text("OPTIONS")),
+        HEAD: Effect.succeed(HttpServerResponse.text("HEAD")),
+        default: Effect.succeed(HttpServerResponse.text("DEFAULT")),
+      }),
+    }
+
+    const router = yield* FileHttpRouter.make([allMethodsRoute])
+    const routesList = Array.from(router.routes)
+
+    expect(routesList)
+      .toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ path: "/", method: "GET" }),
+          expect.objectContaining({ path: "/", method: "POST" }),
+          expect.objectContaining({ path: "/", method: "PUT" }),
+          expect.objectContaining({ path: "/", method: "PATCH" }),
+          expect.objectContaining({ path: "/", method: "DELETE" }),
+          expect.objectContaining({ path: "/", method: "OPTIONS" }),
+          expect.objectContaining({ path: "/", method: "HEAD" }),
+          expect.objectContaining({ path: "/", method: "*" }),
+        ]),
+      )
+  }))
+
+test("router handles requests correctly", () =>
+  effect(function*() {
+    const routerContext = yield* Router.Router
+    const client = TestHttpClient.make(routerContext.httpRouter)
+
+    const getUsersResponse = yield* client.get("/users")
+
+    expect(getUsersResponse.status)
+      .toBe(200)
+
+    expect(yield* getUsersResponse.text)
+      .toBe("Users list")
+
+    const postUsersResponse = yield* client.post("/users")
+
+    expect(postUsersResponse.status)
+      .toBe(200)
+
+    expect(yield* postUsersResponse.text)
+      .toBe("User created")
+  }))
+
+test("middleware falls back to original app on 404", () =>
+  effect(function*() {
+    const middleware = FileHttpRouter.middleware()
+    const fallbackApp = Effect.succeed(HttpServerResponse.text("fallback"))
+    const middlewareApp = middleware(fallbackApp)
+    
+    const client = TestHttpClient.make(middlewareApp)
+
+    const existingRouteResponse = yield* client.get("/users")
+
+    expect(existingRouteResponse.status)
+      .toBe(200)
+
+    expect(yield* existingRouteResponse.text)
+      .toBe("Users list")
+
+    const notFoundResponse = yield* client.get("/nonexistent")
+
+    expect(notFoundResponse.status)
+      .toBe(200)
+
+    expect(yield* notFoundResponse.text)
+      .toBe("fallback")
+  }))

@@ -1,8 +1,8 @@
-import * as HttpApp from "@effect/platform/HttpApp"
+import * as HttpMiddleware from "@effect/platform/HttpMiddleware"
 import * as HttpRouter from "@effect/platform/HttpRouter"
-import { RouteNotFound } from "@effect/platform/HttpServerError"
 import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
 import * as Effect from "effect/Effect"
+import { pipe } from "effect/Function"
 import * as Router from "./Router.ts"
 
 /**
@@ -56,12 +56,14 @@ export type HttpRouterFromServerRoutes<
  */
 export function make<Routes extends Router.ServerRoutes>(
   routes: Routes,
-): Effect.Effect<HttpRouterFromServerRoutes<Routes>, unknown> {
+): Effect.Effect<HttpRouterFromServerRoutes<Routes>> {
   return Effect.gen(function*() {
     const modules = yield* Effect.forEach(
       routes,
       (route) =>
-        Effect.tryPromise(() => route.load()).pipe(
+        pipe(
+          Effect.tryPromise(() => route.load()),
+          Effect.orDie,
           Effect.map((module) => ({ path: route.path, module })),
         ),
     )
@@ -89,4 +91,17 @@ export function make<Routes extends Router.ServerRoutes>(
 
     return router as HttpRouterFromServerRoutes<Routes>
   })
+}
+export function middleware() {
+  return HttpMiddleware.make((app) =>
+    Effect.gen(function*() {
+      const routerContext = yield* Router.Router
+      const router = routerContext.httpRouter
+      const res = yield* router.pipe(
+        Effect.catchTag("RouteNotFound", () => app),
+      )
+
+      return res
+    })
+  )
 }

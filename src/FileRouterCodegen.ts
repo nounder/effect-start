@@ -130,7 +130,9 @@ export function generateCode(
 
     switch (handle.type) {
       case "LayoutHandle": {
-        const parentPart = currentLayout ? `\n\tparent: ${currentLayout.varName},` : ""
+        const parentPart = currentLayout
+          ? `\n\tparent: ${currentLayout.varName},`
+          : ""
         const code = `const ${varName} = {
 \tpath: "${handle.routePath}",${parentPart}
 \tload: () => import("./${handle.modulePath}"),
@@ -146,7 +148,9 @@ export function generateCode(
         break
       }
       case "PageHandle": {
-        const parentPart = currentLayout ? `\n\tparent: ${currentLayout.varName},` : ""
+        const parentPart = currentLayout
+          ? `\n\tparent: ${currentLayout.varName},`
+          : ""
         const code = `const ${varName} = {
 \tpath: "${handle.routePath}",${parentPart}
 \tload: () => import("./${handle.modulePath}"),
@@ -184,17 +188,23 @@ import type { Router } from "${routerModuleId}"
 
 ${definitions.join("\n\n")}
 
-export const Layouts: Router.LayoutRoutes = ${layoutVariables.length === 0 ? "[]" : `[
+export const Layouts: Router.LayoutRoutes = ${
+    layoutVariables.length === 0 ? "[]" : `[
 \t${layoutVariables.join(",\n\t")}
-]`} as const
+]`
+  } as const
 
-export const Pages: Router.PageRoutes = ${pageVariables.length === 0 ? "[]" : `[
+export const Pages: Router.PageRoutes = ${
+    pageVariables.length === 0 ? "[]" : `[
 \t${pageVariables.join(",\n\t")}
-]`} as const
+]`
+  } as const
 
-export const Servers: Router.ServerRoutes = ${serverVariables.length === 0 ? "[]" : `[
+export const Servers: Router.ServerRoutes = ${
+    serverVariables.length === 0 ? "[]" : `[
 \t${serverVariables.join(",\n\t")}
-]`} as const
+]`
+  } as const
  `
     .replace(/\t/g, "  ")
 }

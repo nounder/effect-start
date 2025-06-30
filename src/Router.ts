@@ -1,6 +1,10 @@
 import * as HttpApp from "@effect/platform/HttpApp"
 import * as HttpRouter from "@effect/platform/HttpRouter"
+import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import { pipe } from "effect/Function"
+import * as Layer from "effect/Layer"
+import * as FileHttpRouter from "./FileHttpRouter.ts"
 
 export const ServerMethods = [
   "GET",
@@ -59,4 +63,41 @@ export type RouteManifest = {
   Pages: PageRoutes
   Layouts: LayoutRoutes
   Servers: ServerRoutes
+}
+
+export type RouterContext =
+  & RouteManifest
+  & {
+    httpRouter: HttpRouter.HttpRouter
+  }
+
+export class Router extends Context.Tag("effect-bundler/Router")<
+  Router,
+  RouterContext
+>() {}
+
+export function layer(
+  load: () => Promise<RouteManifest>,
+): Layer.Layer<Router, never, never> {
+  return Layer.effect(
+    Router,
+    Effect.gen(function*() {
+      const importedModule = yield* pipe(
+        Effect.promise(() => load()),
+        Effect.orDie,
+      )
+
+      const manifest: RouteManifest = {
+        Pages: importedModule.Pages,
+        Layouts: importedModule.Layouts,
+        Servers: importedModule.Servers,
+      }
+
+      const httpRouter = yield* FileHttpRouter.make(manifest.Servers)
+      return {
+        ...manifest,
+        httpRouter,
+      }
+    }),
+  )
 }

@@ -214,8 +214,12 @@ it("generates empty exports when no handles provided", () => {
   const code = FileRouterCodegen.generateCode(handles)
 
   expect(code).toContain("export const Pages: Router.PageRoutes = [] as const")
-  expect(code).toContain("export const Servers: Router.ServerRoutes = [] as const")
-  expect(code).toContain("export const Layouts: Router.LayoutRoutes = [] as const")
+  expect(code).toContain(
+    "export const Servers: Router.ServerRoutes = [] as const",
+  )
+  expect(code).toContain(
+    "export const Layouts: Router.LayoutRoutes = [] as const",
+  )
 
   // Should not contain any const definitions
   expect(code).not.toMatch(/const (page|layout|server)__/)
