@@ -29,7 +29,10 @@ export const make = <E = any, R = any>(
   },
 ): HttpClient.HttpClient.With<
   HttpClientError.HttpClientError | E,
-  Scope.Scope | R
+  Exclude<
+    Scope.Scope | R,
+    HttpServerRequest.HttpServerRequest
+  >
 > =>
   HttpClient
     .make(
