@@ -24,7 +24,28 @@ const effect = effectFn(
     .layer,
 )
 
-test("entrypoint", () =>
+test("entrypoint with specific uri", () =>
+  effect(function*() {
+    const App = HttpRouter.empty.pipe(
+      HttpRouter.get(
+        "/react-dashboard",
+        BundleHttp.entrypoint("../static/react-dashboard.html"),
+      ),
+    )
+    const Client = TestHttpClient.make(App)
+
+    const dashboardRes = yield* Client.get("/react-dashboard")
+    expect(
+      dashboardRes.status,
+    )
+      .toBe(200)
+    expect(
+      yield* dashboardRes.text,
+    )
+      .toStartWith("<!DOCTYPE html>")
+  }))
+
+test("entrypoint without uri parameter", () =>
   effect(function*() {
     const App = HttpRouter.empty.pipe(
       HttpRouter.get(
@@ -32,7 +53,15 @@ test("entrypoint", () =>
         BundleHttp.entrypoint(),
       ),
       HttpRouter.get(
+        "/index",
+        BundleHttp.entrypoint(),
+      ),
+      HttpRouter.get(
         "/react-dashboard",
+        BundleHttp.entrypoint(),
+      ),
+      HttpRouter.get(
+        "/nonexistent",
         BundleHttp.entrypoint(),
       ),
     )
@@ -49,6 +78,17 @@ test("entrypoint", () =>
     )
       .toBe(404)
 
+    const indexPathRes = yield* Client.get("/index").pipe(
+      Effect.catchTag(
+        "RouteNotFound",
+        () => HttpServerResponse.empty({ status: 404 }),
+      ),
+    )
+    expect(
+      indexPathRes.status,
+    )
+      .toBe(404)
+
     const dashboardRes = yield* Client.get("/react-dashboard")
     expect(
       dashboardRes.status,
@@ -58,4 +98,56 @@ test("entrypoint", () =>
       yield* dashboardRes.text,
     )
       .toStartWith("<!DOCTYPE html>")
+
+    const nonexistentRes = yield* Client.get("/nonexistent").pipe(
+      Effect.catchTag(
+        "RouteNotFound",
+        () => HttpServerResponse.empty({ status: 404 }),
+      ),
+    )
+    expect(
+      nonexistentRes.status,
+    )
+      .toBe(404)
   }))
+
+test("withEntrypoints middleware", () =>
+  effect(function*() {
+    const fallbackApp = Effect.succeed(
+      HttpServerResponse.text("Fallback", { status: 404 })
+    )
+    
+    const App = BundleHttp.withEntrypoints()(fallbackApp)
+    const Client = TestHttpClient.make(App)
+
+    const rootRes = yield* Client.get("/")
+    expect(
+      rootRes.status,
+    )
+      .toBe(404)
+    expect(
+      yield* rootRes.text,
+    )
+      .toBe("Fallback")
+
+    const dashboardRes = yield* Client.get("/react-dashboard")
+    expect(
+      dashboardRes.status,
+    )
+      .toBe(200)
+    expect(
+      yield* dashboardRes.text,
+    )
+      .toStartWith("<!DOCTYPE html>")
+
+    const nonexistentRes = yield* Client.get("/nonexistent")
+    expect(
+      nonexistentRes.status,
+    )
+      .toBe(404)
+    expect(
+      yield* nonexistentRes.text,
+    )
+      .toBe("Fallback")
+  }))
+
