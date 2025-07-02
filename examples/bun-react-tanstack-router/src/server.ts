@@ -9,14 +9,10 @@ import {
   BunRuntime,
 } from "@effect/platform-bun"
 import {
-  Effect,
   Layer,
   pipe,
 } from "effect"
-import {
-  BundleHttp,
-  HttpAppExtra,
-} from "effect-bundler"
+import { BundleHttp } from "effect-bundler"
 import { BunBundle } from "effect-bundler/bun"
 import { TanstackRouter } from "effect-bundler/x/tanstack-react-router"
 import IndexHtml from "./index.html" with { type: "file" }
@@ -40,9 +36,7 @@ export const App = HttpRouter.empty.pipe(
 
 if (import.meta.main) {
   pipe(
-    HttpServer.serve(App.pipe(
-      Effect.catchAll(HttpAppExtra.renderError),
-    )),
+    HttpServer.serve(App),
     HttpServer.withLogAddress,
     Layer.provide([
       BunHttpServer.layerServer({

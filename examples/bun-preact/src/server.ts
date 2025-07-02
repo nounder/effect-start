@@ -66,7 +66,7 @@ export const layerServer = () =>
     Layer.provide([
       FetchHttpClient.layer,
       BunHttpServer.layer({
-        port: 3400,
+        port: 3000,
       }),
       FileRouter.layer(import.meta.resolve("./routes")),
     ]),

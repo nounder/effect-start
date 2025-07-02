@@ -40,16 +40,9 @@ const page_users_$id = {
   load: () => import("./users/$id/_page.tsx"),
 }
 
-const page_about_$ = {
-  path: "/about/$",
-  parent: layout_about,
-  load: () => import("./about/$/_page.tsx"),
-}
-
 export const Pages = [
   page_,
   page_about,
   page_users,
   page_users_$id,
-  page_about_$,
 ] as const
