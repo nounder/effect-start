@@ -2,6 +2,7 @@ import {
   HttpRouter,
   HttpServerResponse,
 } from "@effect/platform"
+import * as HttpApp from "@effect/platform/HttpApp"
 import {
   RequestError,
   RouteNotFound,
@@ -111,9 +112,9 @@ export function withErrorHandled<
   E,
   R,
 >(
-  app: HttpRouter.HttpRouter<E, R>,
-): HttpRouter.HttpRouter<never, R> {
+  app: HttpApp.Default<E, R>,
+): HttpApp.Default<Exclude<E, RouteNotFound>, R> {
   return app.pipe(
-    HttpRouter.catchAllCause(renderError),
+    Effect.catchAllCause(renderError),
   )
 }
