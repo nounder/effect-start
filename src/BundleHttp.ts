@@ -9,6 +9,7 @@ import { RouteNotFound } from "@effect/platform/HttpServerError"
 import {
   Context,
   Effect,
+  flow,
   Option,
   Scope,
   Stream,
@@ -41,6 +42,16 @@ type BundleOutputHttpApp<E = never, R = never> =
     readonly [BundleOutputMetaKey]: BundleOutputMetaValue
   }
 
+const DefaultBundleEndpoint = "/_bundle"
+
+/**
+ * Handles all entrypoints automatically.
+ * Serves HTML entrypoints without requiring explicit route definitions for each one.
+ * Examples:
+ *  index.html -> /
+ *  contact.html -> /contact
+ *  about/index.html -> /about
+ */
 export function entrypoint(
   uri?: string,
 ): BundleEntrypointHttpApp<RouteNotFound, ClientKey> {
@@ -230,12 +241,12 @@ const renderBlob = (blob: Blob) =>
 
 /**
  * Exposes bundle assets via HTTP routes.
- * Serves bundle artifacts, manifest.json, and events endpoint at the specified path (defaults to "/_bundle").
+ * Serves bundle artifacts, manifest.json, and events endpoint at the specified path.
  */
 export function withAssets(
   opts?: { path?: string },
 ) {
-  const path = opts?.path ?? "/_bundle"
+  const path = opts?.path ?? DefaultBundleEndpoint
 
   return HttpMiddleware.make((app) =>
     Effect.gen(function*() {
@@ -251,8 +262,7 @@ export function withAssets(
 }
 
 /**
- * Handles all entrypoints automatically.
- * Serves HTML entrypoints without requiring explicit route definitions for each one.
+ * @see {entrypoint}
  */
 export function withEntrypoints() {
   return HttpMiddleware.make((app) =>
@@ -277,25 +287,8 @@ export function withEntrypoints() {
 export function withBundle(
   opts?: { path?: string },
 ) {
-  const path = opts?.path ?? "/_bundle"
-
-  return HttpMiddleware.make((app) =>
-    Effect.gen(function*() {
-      const request = yield* HttpServerRequest.HttpServerRequest
-
-      if (request.url.startsWith(path + "/")) {
-        return yield* toHttpApp(tagged(ClientKey), { urlPrefix: path })
-      }
-
-      const entrypointResponse = yield* entrypoint().pipe(
-        Effect.option,
-      )
-
-      if (Option.isSome(entrypointResponse)) {
-        return entrypointResponse.value
-      }
-
-      return yield* app
-    })
+  return flow(
+    withAssets(opts),
+    withEntrypoints(),
   )
 }

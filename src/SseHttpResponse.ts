@@ -1,6 +1,5 @@
 import { HttpServerResponse } from "@effect/platform"
 import {
-  Console,
   Duration,
   Effect,
   pipe,
@@ -9,13 +8,15 @@ import {
 } from "effect"
 import * as StreamExtra from "./StreamExtra.ts"
 
+const DefaultHeartbeatInterval = Duration.seconds(5)
+
 export const make = <T = any>(stream: Stream.Stream<T, any>, options?: {
   heartbeatInterval?: Duration.DurationInput
 }) =>
   Effect.gen(function*() {
     const heartbeat = Stream.repeat(
       Stream.succeed(null),
-      Schedule.spaced(options?.heartbeatInterval ?? "5 seconds"),
+      Schedule.spaced(options?.heartbeatInterval ?? DefaultHeartbeatInterval),
     )
 
     const encoder = new TextEncoder()
