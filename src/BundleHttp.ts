@@ -18,29 +18,13 @@ import * as NPath from "node:path"
 import * as NUrl from "node:url"
 import {
   type BundleContext,
-  BundleEntrypointMetaKey,
-  type BundleEntrypointMetaValue,
   BundleError,
   type BundleEvent,
   type BundleKey,
-  BundleOutputMetaKey,
-  type BundleOutputMetaValue,
   ClientKey,
   tagged,
 } from "./Bundle.ts"
 import * as SseHttpResponse from "./SseHttpResponse.ts"
-
-type BundleEntrypointHttpApp<E = never, R = never> =
-  & HttpApp.Default<E, R>
-  & {
-    readonly [BundleEntrypointMetaKey]: BundleEntrypointMetaValue
-  }
-
-type BundleOutputHttpApp<E = never, R = never> =
-  & HttpApp.Default<E, R>
-  & {
-    readonly [BundleOutputMetaKey]: BundleOutputMetaValue
-  }
 
 const DefaultBundleEndpoint = "/_bundle"
 
@@ -54,60 +38,48 @@ const DefaultBundleEndpoint = "/_bundle"
  */
 export function entrypoint(
   uri?: string,
-): BundleEntrypointHttpApp<RouteNotFound, ClientKey> {
-  return Object.assign(
-    Effect.gen(function*() {
-      uri = uri?.startsWith("file://") ? NUrl.fileURLToPath(uri) : uri
-      const request = yield* HttpServerRequest.HttpServerRequest
-      const bundle = yield* tagged(ClientKey)
-      const requestPath = request.url.substring(1)
-      const pathAttempts = uri
-        ? [
-          // try paths from all parent directories in case absolute path is passed,
-          // like it is the case for `import(f, { type: "file" })`
-          ...uri
-            .split(NPath.sep)
-            .map((_, i, a) => NPath.join(...a.slice(i))),
-        ]
-        : [
-          `${requestPath}.html`,
-          `${requestPath}/index.html`,
-          requestPath === "" ? "index.html" : "",
-        ]
-      const artifact = pathAttempts
-        .map(path => bundle.getArtifact(path))
-        .find(Boolean)
+): HttpApp.Default<RouteNotFound, ClientKey> {
+  return Effect.gen(function*() {
+    uri = uri?.startsWith("file://") ? NUrl.fileURLToPath(uri) : uri
+    const request = yield* HttpServerRequest.HttpServerRequest
+    const bundle = yield* tagged(ClientKey)
+    const requestPath = request.url.substring(1)
+    const pathAttempts = uri
+      ? [
+        // try paths from all parent directories in case absolute path is passed,
+        // like it is the case for `import(f, { type: "file" })`
+        ...uri
+          .split(NPath.sep)
+          .map((_, i, a) => NPath.join(...a.slice(i))),
+      ]
+      : [
+        `${requestPath}.html`,
+        `${requestPath}/index.html`,
+        requestPath === "" ? "index.html" : "",
+      ]
+    const artifact = pathAttempts
+      .map(path => bundle.getArtifact(path))
+      .find(Boolean)
 
-      if (artifact) {
-        return yield* renderBlob(artifact)
-      }
+    if (artifact) {
+      return yield* renderBlob(artifact)
+    }
 
-      return yield* Effect.fail(
-        new RouteNotFound({
-          request,
-        }),
-      )
-    }),
-    {
-      [BundleEntrypointMetaKey]: {
-        uri: uri ?? null,
-      },
-    },
-  )
+    return yield* Effect.fail(
+      new RouteNotFound({
+        request,
+      }),
+    )
+  })
 }
 
 export function httpApp(
   opts?: { urlPrefix?: string },
-): BundleOutputHttpApp<
+): HttpApp.Default<
   RouteNotFound,
   ClientKey | Scope.Scope
 > {
-  return Object.assign(
-    toHttpApp(tagged(ClientKey), opts),
-    {
-      [BundleOutputMetaKey]: {},
-    },
-  )
+  return toHttpApp(tagged(ClientKey), opts)
 }
 
 export const toHttpApp = <T extends BundleKey>(
@@ -117,8 +89,8 @@ export const toHttpApp = <T extends BundleKey>(
   HttpServerResponse.HttpServerResponse,
   RouteNotFound,
   HttpServerRequest.HttpServerRequest | Scope.Scope | T
-> =>
-  Effect.gen(function*() {
+> => {
+  return Effect.gen(function*() {
     const request = yield* HttpServerRequest.HttpServerRequest
     const bundle = yield* bundleTag
     const path = opts?.urlPrefix && request.url.startsWith(opts.urlPrefix + "/")
@@ -173,6 +145,7 @@ export const toHttpApp = <T extends BundleKey>(
       }),
     )
   })
+}
 
 /**
  * Render HTML to a string.
@@ -223,8 +196,8 @@ export const renderPromise = <I extends BundleKey>(
   })
 }
 
-const renderBlob = (blob: Blob) =>
-  Effect.gen(function*() {
+const renderBlob = (blob: Blob) => {
+  return Effect.gen(function*() {
     const bytes = yield* Effect
       .promise(() => blob.arrayBuffer())
       .pipe(
@@ -238,6 +211,7 @@ const renderBlob = (blob: Blob) =>
       },
     })
   })
+}
 
 /**
  * Exposes bundle assets via HTTP routes.

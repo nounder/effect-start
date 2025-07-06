@@ -44,30 +44,6 @@ export const bundle = <I extends `${string}Bundle`>(
     Bundle.tagged(key),
     {
       config,
-      load: <M>(): Effect.Effect<M, Bundle.BundleError, I> =>
-        Effect.gen(function*() {
-          const bundle = yield* Bundle.tagged(key)
-
-          const loadRef = bundle[BunBundleContextLoadRef] as
-            | SynchronizedRef.SynchronizedRef<M | null>
-            | undefined
-
-          if (!loadRef) {
-            return yield* Bundle.load<M>(build(config))
-          }
-
-          const loadedBundle = yield* SynchronizedRef.updateAndGetEffect(
-            loadRef,
-            (current) =>
-              current
-                ? Effect.succeed(current)
-                : Bundle.load<M>(build(config)),
-          )
-
-          // we need to cast it manually because updateAndGetEffect
-          // doesn't properly infer return type.
-          return loadedBundle as M
-        }),
       layer: Layer.effect(
         Bundle.tagged(key),
         build(config),
@@ -319,65 +295,6 @@ function generateManifestfromBunBundle(
       }),
       Record.fromEntries,
     ),
-  }
-}
-
-const extractBundleRoutes = (
-  router: HttpRouter.HttpRouter<any, Bundle.BundleKey>,
-): {
-  entrypoints: Record<string, Bundle.BundleEntrypointMetaValue>
-  outputs: Record<string, Bundle.BundleOutputMetaValue>
-} => {
-  const entrypoints = pipe(
-    router.routes,
-    Iterable.filterMap((route) => {
-      const meta = route
-        .handler[
-          Bundle.BundleEntrypointMetaKey
-        ] as Bundle.BundleEntrypointMetaValue
-
-      return Option.fromNullable(meta ? [route.path, meta] as const : null)
-    }),
-    Record.fromEntries,
-  )
-  const outputs = pipe(
-    router.mounts,
-    Iterable.filterMap(([path, httpApp]) =>
-      httpApp[Bundle.BundleOutputMetaKey]
-        ? Option.some([path, httpApp[Bundle.BundleOutputMetaKey]] as const)
-        : Option.none()
-    ),
-    Record.fromEntries,
-  )
-
-  return {
-    entrypoints,
-    outputs,
-  }
-}
-
-export const configFromHttpRouter = (
-  router: HttpRouter.HttpRouter<any, Bundle.BundleKey>,
-): BuildConfig => {
-  const bundleRoutes = extractBundleRoutes(router)
-  const entrypoints = pipe(
-    bundleRoutes.entrypoints,
-    Record.values,
-    Iterable.filterMap((meta) => Option.fromNullable(meta.uri)),
-    Array.fromIterable,
-  )
-  const publicPath = pipe(
-    bundleRoutes.outputs,
-    Record.keys,
-    Iterable.head,
-    // bun requires public path to end with a slash
-    Option.map(v => v + "/"),
-    Option.getOrUndefined,
-  )
-
-  return {
-    entrypoints,
-    publicPath,
   }
 }
 
