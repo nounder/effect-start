@@ -1,15 +1,12 @@
-import type { HttpRouter } from "@effect/platform"
 import type {
   BuildConfig,
   BuildOutput,
 } from "bun"
 import {
-  Array,
   Context,
   Effect,
   Iterable,
   Layer,
-  Option,
   pipe,
   PubSub,
   Record,
@@ -17,7 +14,6 @@ import {
   SynchronizedRef,
 } from "effect"
 import * as NPath from "node:path"
-import { fileURLToPath } from "node:url"
 import type {
   BundleContext,
   BundleManifest,
@@ -26,94 +22,13 @@ import * as Bundle from "../Bundle.ts"
 import * as FileSystemExtra from "../FileSystemExtra.ts"
 import { BunImportTrackerPlugin } from "./index.ts"
 
-// raw config passed to Bun.build
-type BunBundleConfig = BuildConfig
+export type BuildOptions = Omit<
+  BuildConfig,
+  "outdir"
+>
 
-// passable config for APIs
-export type BunBuildOptions = Omit<BunBundleConfig, "outdir">
-
-const BunBundleContextLoadRef = Symbol.for(
-  "effect-bundler/BunBundleContextLoadRef",
-)
-
-export const bundle = <I extends `${string}Bundle`>(
-  key: I,
-  config: BunBundleConfig,
-) =>
-  Object.assign(
-    Bundle.tagged(key),
-    {
-      config,
-      layer: Layer.effect(
-        Bundle.tagged(key),
-        build(config),
-      ),
-      devLayer: Layer.scoped(
-        Bundle.tagged(key),
-        Effect.gen(function*() {
-          const sharedBundle = yield* build(config)
-
-          const loadRef = sharedBundle[BunBundleContextLoadRef] =
-            yield* SynchronizedRef.make(null)
-
-          sharedBundle.events = yield* PubSub.unbounded<Bundle.BundleEvent>()
-
-          yield* Effect.fork(
-            pipe(
-              FileSystemExtra.watchSource(),
-              Stream.map(v =>
-                ({
-                  type: "Change",
-                  path: v.filename,
-                }) as Bundle.BundleEvent
-              ),
-              Stream.onError(err =>
-                Effect.logError("Error while watching files", err)
-              ),
-              Stream.runForEach((v) =>
-                pipe(
-                  Effect.gen(function*() {
-                    yield* Effect.logDebug("Updating bundle: " + key)
-
-                    const newBundle = yield* build(config)
-
-                    Object.assign(sharedBundle, newBundle)
-
-                    // Clean old loaded bundle
-                    yield* SynchronizedRef.update(loadRef, () => null)
-
-                    // publish event after the built
-                    if (sharedBundle.events) {
-                      yield* PubSub.publish(sharedBundle.events, v)
-                    }
-                  }),
-                  Effect.catchAll(err =>
-                    Effect.gen(function*() {
-                      yield* Effect.logError(
-                        "Error while updating bundle",
-                        err,
-                      )
-                      if (sharedBundle.events) {
-                        yield* PubSub.publish(sharedBundle.events, {
-                          type: "BuildError",
-                          error: String(err),
-                        })
-                      }
-                    })
-                  ),
-                )
-              ),
-            ),
-          )
-
-          return sharedBundle
-        }),
-      ),
-    },
-  )
-
-export const bundleClient = (
-  config: BunBuildOptions | string,
+export const buildClient = (
+  config: BuildOptions | string,
 ) => {
   if (typeof config === "string") {
     config = {
@@ -121,7 +36,7 @@ export const bundleClient = (
     }
   }
 
-  const baseConfig: Partial<BunBuildOptions> = {
+  const baseConfig: Partial<BuildOptions> = {
     sourcemap: "linked",
     naming: {
       entry: "[name]-[hash].[ext]",
@@ -136,11 +51,11 @@ export const bundleClient = (
     ...config,
   }
 
-  return bundle(Bundle.ClientKey, resolvedConfig)
+  return build(resolvedConfig)
 }
 
-export const bundleServer = (
-  config: BunBuildOptions | string,
+export const buildServer = (
+  config: BuildOptions | string,
 ) => {
   if (typeof config === "string") {
     config = {
@@ -148,7 +63,7 @@ export const bundleServer = (
     }
   }
 
-  const baseConfig: Partial<BunBuildOptions> = {
+  const baseConfig: Partial<BuildOptions> = {
     sourcemap: "linked",
     naming: {
       entry: "[dir]/[name]-[hash].[ext]",
@@ -163,14 +78,14 @@ export const bundleServer = (
     ...config,
   }
 
-  return bundle(Bundle.ServerKey, resolvedConfig)
+  return build(resolvedConfig)
 }
 
 /**
  * Given a config, build a bundle and returns every time when effect is executed.
  */
 export function build(
-  config: BunBundleConfig,
+  config: BuildOptions,
 ): Effect.Effect<BundleContext, Bundle.BundleError> {
   return Effect.gen(function*() {
     const output = yield* buildBun(config)
@@ -201,10 +116,79 @@ export function build(
   })
 }
 
-export const layer = <T>(
+export function layer<T>(
   tag: Context.Tag<T, BundleContext>,
-  config: BunBundleConfig,
-) => Layer.effect(tag, build(config))
+  config: BuildOptions,
+) {
+  return Layer.effect(tag, build(config))
+}
+
+export function layerDev<T>(
+  tag: Context.Tag<T, BundleContext>,
+  config: BuildOptions,
+) {
+  return Layer.scoped(
+    tag,
+    Effect.gen(function*() {
+      const loadRefKey = "_loadRef"
+      const sharedBundle = yield* build(config)
+
+      const loadRef = yield* SynchronizedRef.make(null)
+      sharedBundle[loadRefKey] = loadRef
+      sharedBundle.events = yield* PubSub.unbounded<Bundle.BundleEvent>()
+
+      yield* Effect.fork(
+        pipe(
+          FileSystemExtra.watchSource(),
+          Stream.map(v =>
+            ({
+              type: "Change",
+              path: v.filename,
+            }) as Bundle.BundleEvent
+          ),
+          Stream.onError(err =>
+            Effect.logError("Error while watching files", err)
+          ),
+          Stream.runForEach((v) =>
+            pipe(
+              Effect.gen(function*() {
+                yield* Effect.logDebug("Updating bundle: " + key)
+
+                const newBundle = yield* build(config)
+
+                Object.assign(sharedBundle, newBundle)
+
+                // Clean old loaded bundle
+                yield* SynchronizedRef.update(loadRef, () => null)
+
+                // publish event after the built
+                if (sharedBundle.events) {
+                  yield* PubSub.publish(sharedBundle.events, v)
+                }
+              }),
+              Effect.catchAll(err =>
+                Effect.gen(function*() {
+                  yield* Effect.logError(
+                    "Error while updating bundle",
+                    err,
+                  )
+                  if (sharedBundle.events) {
+                    yield* PubSub.publish(sharedBundle.events, {
+                      type: "BuildError",
+                      error: String(err),
+                    })
+                  }
+                })
+              ),
+            )
+          ),
+        ),
+      )
+
+      return sharedBundle
+    }),
+  )
+}
 
 /**
  * Finds common path prefix across provided paths.
@@ -222,7 +206,7 @@ function getBaseDir(paths: string[]) {
  * Entrypoint key is trimmed to remove common path prefix.
  */
 function joinBuildEntrypoints(
-  options: BunBuildOptions,
+  options: BuildOptions,
   output: BuildOutput,
 ) {
   const commonPathPrefix = getBaseDir(
@@ -256,7 +240,7 @@ function joinBuildEntrypoints(
  * Useful for SSR and providing source->artifact path mapping.
  */
 function generateManifestfromBunBundle(
-  options: BunBuildOptions,
+  options: BuildOptions,
   output: BuildOutput,
   imports?: BunImportTrackerPlugin.ImportMap,
 ): BundleManifest {
@@ -299,7 +283,7 @@ function generateManifestfromBunBundle(
 }
 
 function buildBun(
-  config: BunBundleConfig,
+  config: BuildOptions,
 ): Effect.Effect<BuildOutput, Bundle.BundleError, never> {
   return Object.assign(
     Effect.gen(function*() {

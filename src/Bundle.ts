@@ -1,13 +1,9 @@
-import { FileSystem } from "@effect/platform"
 import {
-  Array,
   Context,
   Data,
   Effect,
-  Iterable,
   pipe,
   PubSub,
-  Record,
   Schema as S,
 } from "effect"
 import { importBlob } from "./JsModule.ts"
@@ -71,7 +67,11 @@ export type BundleEvent =
     error: string
   }
 
+const IdPrefix = "effect-bundler/tags/"
+
 export type BundleKey = `${string}Bundle`
+
+export type BundleId = `${typeof IdPrefix}${BundleKey}`
 
 /**
  * Passed to bundle effects and within bundle runtime.
@@ -94,37 +94,29 @@ export class BundleError extends Data.TaggedError("BundleError")<{
   cause?: unknown
 }> {}
 
-/**
- * Creates a tag that symbolicly identifies a bundle.
- *
- * Useful when you want to provide a bundle at the start of the script.
- */
-export const Tag = <T extends string>(name: T) => <Identifier>() =>
-  Context.Tag(
-    `effect-bundler/tags/${name}`,
-  )<Identifier, BundleContext>()
+export const Tag = <const T extends BundleKey>(name: T) => <Identifier>() =>
+  Context.Tag(`${IdPrefix}${name}` as BundleId)<
+    Identifier,
+    BundleContext
+  >()
 
-export const tagged = <I extends BundleKey>(
-  key: I,
-) => {
-  return Context.GenericTag<I, BundleContext>(key)
-}
+export type Tag = Context.Tag<
+  BundleId,
+  BundleContext
+>
 
-export const ClientKey = "ClientBundle" as const
-export type ClientKey = typeof ClientKey
-
-export const ServerKey = "ServerBundle" as const
-export type ServerKey = typeof ServerKey
+export class ClientBundle extends Tag("ClientBundle")<ClientBundle>() {}
+export class ServerBundle extends Tag("ServerBundle")<ServerBundle>() {}
 
 /**
  * Lodas a bundle as a javascript module.
  * Bundle must have only one entrypoint.
  */
 export function load<M>(
-  contextEffect: Effect.Effect<BundleContext, BundleError>,
+  bundle: Effect.Effect<BundleContext, BundleError>,
 ): Effect.Effect<M, BundleError> {
   return Effect.gen(function*() {
-    const context = yield* contextEffect
+    const context = yield* bundle
     const [artifact, ...rest] = Object.values(context.entrypoints)
 
     if (rest.length > 0) {

@@ -8,20 +8,19 @@ import {
 import { Effect } from "effect"
 import {
   BunBundle,
+  Bundle,
   BundleHttp,
   effectFn,
   TestHttpClient,
 } from "effect-bundler"
+import * as Layer from "effect/Layer"
 import IndexHtml from "../static/react-dashboard.html" with { type: "file" }
 
 const effect = effectFn(
-  BunBundle
-    .bundleClient({
-      entrypoints: [
-        IndexHtml,
-      ],
-    })
-    .layer,
+  Layer.effect(
+    Bundle.ClientBundle,
+    BunBundle.buildClient(IndexHtml),
+  ),
 )
 
 test("entrypoint with specific uri", () =>
@@ -114,9 +113,9 @@ test("entrypoint without uri parameter", () =>
 test("withEntrypoints middleware", () =>
   effect(function*() {
     const fallbackApp = Effect.succeed(
-      HttpServerResponse.text("Fallback", { status: 404 })
+      HttpServerResponse.text("Fallback", { status: 404 }),
     )
-    
+
     const App = BundleHttp.withEntrypoints()(fallbackApp)
     const Client = TestHttpClient.make(App)
 
@@ -150,4 +149,3 @@ test("withEntrypoints middleware", () =>
     )
       .toBe("Fallback")
   }))
-

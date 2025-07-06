@@ -16,14 +16,7 @@ import {
 } from "effect"
 import * as NPath from "node:path"
 import * as NUrl from "node:url"
-import {
-  type BundleContext,
-  BundleError,
-  type BundleEvent,
-  type BundleKey,
-  ClientKey,
-  tagged,
-} from "./Bundle.ts"
+import * as Bundle from "./Bundle.ts"
 import * as SseHttpResponse from "./SseHttpResponse.ts"
 
 const DefaultBundleEndpoint = "/_bundle"
@@ -38,11 +31,11 @@ const DefaultBundleEndpoint = "/_bundle"
  */
 export function entrypoint(
   uri?: string,
-): HttpApp.Default<RouteNotFound, ClientKey> {
+): HttpApp.Default<RouteNotFound, Bundle.ClientBundle> {
   return Effect.gen(function*() {
     uri = uri?.startsWith("file://") ? NUrl.fileURLToPath(uri) : uri
     const request = yield* HttpServerRequest.HttpServerRequest
-    const bundle = yield* tagged(ClientKey)
+    const bundle = yield* Bundle.ClientBundle
     const requestPath = request.url.substring(1)
     const pathAttempts = uri
       ? [
@@ -77,18 +70,18 @@ export function httpApp(
   opts?: { urlPrefix?: string },
 ): HttpApp.Default<
   RouteNotFound,
-  ClientKey | Scope.Scope
+  Scope.Scope | Bundle.ClientBundle
 > {
-  return toHttpApp(tagged(ClientKey), opts)
+  return toHttpApp(Bundle.ClientBundle, opts)
 }
 
-export const toHttpApp = <T extends BundleKey>(
-  bundleTag: Context.Tag<T, BundleContext>,
+export const toHttpApp = <E, R>(
+  bundleTag: Effect.Effect<Bundle.BundleContext, E, R>,
   opts?: { urlPrefix?: string },
 ): Effect.Effect<
   HttpServerResponse.HttpServerResponse,
-  RouteNotFound,
-  HttpServerRequest.HttpServerRequest | Scope.Scope | T
+  RouteNotFound | E,
+  HttpServerRequest.HttpServerRequest | Scope.Scope | R
 > => {
   return Effect.gen(function*() {
     const request = yield* HttpServerRequest.HttpServerRequest
@@ -151,13 +144,13 @@ export const toHttpApp = <T extends BundleKey>(
  * Render HTML to a string.
  * Useful for SSR.
  */
-export const renderPromise = <I extends BundleKey>(
-  clientBundle: Context.Tag<I, BundleContext>,
+export function renderPromise(
+  clientBundle: Bundle.Tag,
   render: (
     request: Request,
     resolve: (url: string) => string,
   ) => Promise<Response>,
-): HttpApp.Default<BundleError | RouteNotFound, I> => {
+) {
   return Effect.gen(function*() {
     const bundle = yield* clientBundle
     const req = yield* HttpServerRequest.HttpServerRequest
@@ -182,7 +175,7 @@ export const renderPromise = <I extends BundleKey>(
           resolve,
         ),
       catch: (e) =>
-        new BundleError({
+        new Bundle.BundleError({
           message: "Failed to render",
           cause: e,
         }),
@@ -227,7 +220,7 @@ export function withAssets(
       const request = yield* HttpServerRequest.HttpServerRequest
 
       if (request.url.startsWith(path + "/")) {
-        return yield* toHttpApp(tagged(ClientKey), { urlPrefix: path })
+        return yield* toHttpApp(ClientBundle, { urlPrefix: path })
       }
 
       return yield* app
