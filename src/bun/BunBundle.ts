@@ -195,7 +195,12 @@ export function layerDev<T>(
  * Finds common path prefix across provided paths.
  */
 function getBaseDir(paths: string[]) {
-  const segmentsList = paths.map((path) => path.split("/").filter(Boolean))
+  if (paths.length === 0) return ""
+  if (paths.length === 1) return NPath.dirname(paths[0])
+
+  const segmentsList = paths.map((path) =>
+    NPath.dirname(path).split("/").filter(Boolean)
+  )
 
   return segmentsList[0]
     .filter((segment, i) => segmentsList.every((segs) => segs[i] === segment))
@@ -210,9 +215,7 @@ function joinBuildEntrypoints(
   options: BuildOptions,
   output: BuildOutput,
 ) {
-  const commonPathPrefix = getBaseDir(
-    options.entrypoints.map((v) => NPath.dirname(v)),
-  ) + "/"
+  const commonPathPrefix = getBaseDir(options.entrypoints) + "/"
 
   return pipe(
     Iterable.zip(
