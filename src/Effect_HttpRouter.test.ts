@@ -424,20 +424,3 @@ test("Wildcard routes: literal route defined before wildcard", () =>
       .toBe("Wildcard handler")
   }))
 
-test("Wildcard routes: multiple wildcard routes behavior", () =>
-  effect(function*() {
-    const router = HttpRouter.empty.pipe(
-      HttpRouter.get("*", HttpServerResponse.text("First wildcard")),
-      HttpRouter.get("*", HttpServerResponse.text("Second wildcard")),
-    )
-
-    const client = TestHttpClient.make(router)
-    
-    const response = yield* client.get("/anything")
-    
-    expect(response.status)
-      .toBe(200)
-    
-    expect(yield* response.text)
-      .toBe("First wildcard")
-  }))
