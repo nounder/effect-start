@@ -44,6 +44,7 @@ export const buildClient = (
       asset: "[name]-[hash].[ext]",
     },
     packages: "bundle",
+    publicPath: "/_bundle/",
   } as const
   const resolvedConfig = {
     ...baseConfig,
