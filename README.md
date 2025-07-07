@@ -52,7 +52,10 @@ const routerLayer = FileRouter.layer(import.meta.resolve("routes"))
 Effect Bundler includes built-in support for Tailwind CSS:
 
 ```ts
-import { BunBundle, BunTailwindPlugin } from "effect-bundler/bun"
+import {
+  BunBundle,
+  BunTailwindPlugin,
+} from "effect-bundler/bun"
 
 const ClientBundle = BunBundle.bundleClient({
   entrypoints: [
@@ -79,7 +82,6 @@ import { PublicDirectory } from "effect-bundler"
 const PublicFiles = PublicDirectory.make()
 
 HttpRouter.empty.pipe(
-  HttpRouter.use("*", PublicFiles)
+  HttpRouter.use("*", PublicFiles),
 )
 ```
-

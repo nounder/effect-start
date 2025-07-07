@@ -55,7 +55,7 @@ test("Router layer with import-style manifest", async () => {
     }],
     Servers: [{
       path: "/api" as const,
-      load: () => Promise.resolve({ default: {} }),
+      load: () => Promise.resolve({ default: () => {} }),
     }],
   }
 
