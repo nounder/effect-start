@@ -70,7 +70,7 @@ test("Multiple apps mounted on same path chain together", () =>
       .toBe("World from app2")
   }))
 
-test("First app returns 404 - second app should be called", () =>
+test("First app has no matching route - second app should be called", () =>
   effect(function*() {
     const app1 = HttpRouter.empty.pipe(
       HttpRouter.get("/hello", HttpServerResponse.text("Hello from app1")),
@@ -152,4 +152,292 @@ test("Multiple mounts with different methods", () =>
 
     expect(yield* postResponse.text)
       .toBe("POST data")
+  }))
+
+test("Route chaining: RouteNotFound error chains to next router (root mount)", () =>
+  effect(function*() {
+    const subApp1 = HttpRouter.empty.pipe(
+      HttpRouter.get("/admin/dashboard", HttpServerResponse.text("Dashboard from subApp1")),
+    )
+
+    const subApp2 = HttpRouter.empty.pipe(
+      HttpRouter.get("/admin/page", HttpServerResponse.text("Page from subApp2")),
+    )
+
+    const router = HttpRouter.empty.pipe(
+      HttpRouter.mount("/", subApp1),
+      HttpRouter.mount("/", subApp2),
+    )
+
+    const client = TestHttpClient.make(router)
+    const response = yield* client.get("/admin/page")
+
+    expect(response.status)
+      .toBe(200)
+
+    expect(yield* response.text)
+      .toBe("Page from subApp2")
+  }))
+
+test("Route chaining: explicit 404 response does not chain to next router (root mount)", () =>
+  effect(function*() {
+    const subApp1 = HttpRouter.empty.pipe(
+      HttpRouter.get("/admin/page", HttpServerResponse.empty({ status: 404 })),
+    )
+
+    const subApp2 = HttpRouter.empty.pipe(
+      HttpRouter.get("/admin/fallback", HttpServerResponse.text("Fallback from subApp2")),
+    )
+
+    const router = HttpRouter.empty.pipe(
+      HttpRouter.mount("/", subApp1),
+      HttpRouter.mount("/", subApp2),
+    )
+
+    const client = TestHttpClient.make(router)
+    const response = yield* client.get("/admin/page")
+
+    expect(response.status)
+      .toBe(404)
+
+    expect(yield* response.text)
+      .toBe("")
+  }))
+
+test("Route conflicts: direct handlers win when defined before root mount", () =>
+  effect(function*() {
+    const subApp = HttpRouter.empty.pipe(
+      HttpRouter.get("/admin/dashboard", HttpServerResponse.text("Dashboard from subApp")),
+      HttpRouter.get("/admin/profile", HttpServerResponse.text("Profile from subApp")),
+    )
+
+    const router = HttpRouter.empty.pipe(
+      HttpRouter.get("/admin/settings", HttpServerResponse.text("Settings from direct handler")),
+      HttpRouter.get("/admin/users", HttpServerResponse.text("Users from direct handler")),
+      HttpRouter.mount("/", subApp),
+    )
+
+    const client = TestHttpClient.make(router)
+    
+    const settingsResponse = yield* client.get("/admin/settings")
+    
+    expect(settingsResponse.status)
+      .toBe(200)
+    
+    expect(yield* settingsResponse.text)
+      .toBe("Settings from direct handler")
+
+    const usersResponse = yield* client.get("/admin/users")
+    
+    expect(usersResponse.status)
+      .toBe(200)
+    
+    expect(yield* usersResponse.text)
+      .toBe("Users from direct handler")
+
+    const dashboardResponse = yield* client.get("/admin/dashboard")
+    
+    expect(dashboardResponse.status)
+      .toBe(200)
+    
+    expect(yield* dashboardResponse.text)
+      .toBe("Dashboard from subApp")
+  }))
+
+test("Route conflicts: root mount wins when defined before direct handlers", () =>
+  effect(function*() {
+    const subApp = HttpRouter.empty.pipe(
+      HttpRouter.get("/admin/dashboard", HttpServerResponse.text("Dashboard from subApp")),
+      HttpRouter.get("/admin/profile", HttpServerResponse.text("Profile from subApp")),
+    )
+
+    const router = HttpRouter.empty.pipe(
+      HttpRouter.mount("/", subApp),
+      HttpRouter.get("/admin/settings", HttpServerResponse.text("Settings from direct handler")),
+      HttpRouter.get("/admin/users", HttpServerResponse.text("Users from direct handler")),
+    )
+
+    const client = TestHttpClient.make(router)
+    
+    const profileResponse = yield* client.get("/admin/profile")
+    
+    expect(profileResponse.status)
+      .toBe(200)
+    
+    expect(yield* profileResponse.text)
+      .toBe("Profile from subApp")
+
+    const usersResponse = yield* client.get("/admin/users")
+    
+    expect(usersResponse.status)
+      .toBe(200)
+    
+    expect(yield* usersResponse.text)
+      .toBe("Users from direct handler")
+
+    const dashboardResponse = yield* client.get("/admin/dashboard")
+    
+    expect(dashboardResponse.status)
+      .toBe(200)
+    
+    expect(yield* dashboardResponse.text)
+      .toBe("Dashboard from subApp")
+  }))
+
+test("Route conflicts: mountApp does not chain with direct handlers defined before", () =>
+  effect(function*() {
+    const subApp = HttpRouter.empty.pipe(
+      HttpRouter.get("/admin/dashboard", HttpServerResponse.text("Dashboard from subApp")),
+      HttpRouter.get("/admin/profile", HttpServerResponse.text("Profile from subApp")),
+    )
+
+    const router = HttpRouter.empty.pipe(
+      HttpRouter.get("/admin/settings", HttpServerResponse.text("Settings from direct handler")),
+      HttpRouter.get("/admin/users", HttpServerResponse.text("Users from direct handler")),
+      HttpRouter.mountApp("/", subApp),
+    )
+
+    const client = TestHttpClient.make(router)
+    
+    const settingsResponse = yield* client.get("/admin/settings")
+    
+    expect(settingsResponse.status)
+      .toBe(404)
+
+    const usersResponse = yield* client.get("/admin/users")
+    
+    expect(usersResponse.status)
+      .toBe(404)
+
+    const dashboardResponse = yield* client.get("/admin/dashboard")
+    
+    expect(dashboardResponse.status)
+      .toBe(200)
+    
+    expect(yield* dashboardResponse.text)
+      .toBe("Dashboard from subApp")
+  }))
+
+test("Route conflicts: mountApp does not chain with direct handlers defined after", () =>
+  effect(function*() {
+    const subApp = HttpRouter.empty.pipe(
+      HttpRouter.get("/admin/dashboard", HttpServerResponse.text("Dashboard from subApp")),
+      HttpRouter.get("/admin/profile", HttpServerResponse.text("Profile from subApp")),
+    )
+
+    const router = HttpRouter.empty.pipe(
+      HttpRouter.mountApp("/", subApp),
+      HttpRouter.get("/admin/settings", HttpServerResponse.text("Settings from direct handler")),
+      HttpRouter.get("/admin/users", HttpServerResponse.text("Users from direct handler")),
+    )
+
+    const client = TestHttpClient.make(router)
+    
+    const profileResponse = yield* client.get("/admin/profile")
+    
+    expect(profileResponse.status)
+      .toBe(200)
+    
+    expect(yield* profileResponse.text)
+      .toBe("Profile from subApp")
+
+    const settingsResponse = yield* client.get("/admin/settings")
+    
+    expect(settingsResponse.status)
+      .toBe(404)
+
+    const dashboardResponse = yield* client.get("/admin/dashboard")
+    
+    expect(dashboardResponse.status)
+      .toBe(200)
+    
+    expect(yield* dashboardResponse.text)
+      .toBe("Dashboard from subApp")
+  }))
+
+test("Wildcard routes: single asterisk wildcard handler", () =>
+  effect(function*() {
+    const router = HttpRouter.empty.pipe(
+      HttpRouter.get("*", HttpServerResponse.text("Wildcard handler")),
+    )
+
+    const client = TestHttpClient.make(router)
+    
+    const response = yield* client.get("/anything")
+    
+    expect(response.status)
+      .toBe(200)
+    
+    expect(yield* response.text)
+      .toBe("Wildcard handler")
+  }))
+
+test("Wildcard routes: wildcard defined before literal route", () =>
+  effect(function*() {
+    const router = HttpRouter.empty.pipe(
+      HttpRouter.get("*", HttpServerResponse.text("Wildcard handler")),
+      HttpRouter.get("/specific", HttpServerResponse.text("Literal handler")),
+    )
+
+    const client = TestHttpClient.make(router)
+    
+    const wildcardResponse = yield* client.get("/anything")
+    
+    expect(wildcardResponse.status)
+      .toBe(200)
+    
+    expect(yield* wildcardResponse.text)
+      .toBe("Wildcard handler")
+
+    const literalResponse = yield* client.get("/specific")
+    
+    expect(literalResponse.status)
+      .toBe(200)
+    
+    expect(yield* literalResponse.text)
+      .toBe("Literal handler")
+  }))
+
+test("Wildcard routes: literal route defined before wildcard", () =>
+  effect(function*() {
+    const router = HttpRouter.empty.pipe(
+      HttpRouter.get("/specific", HttpServerResponse.text("Literal handler")),
+      HttpRouter.get("*", HttpServerResponse.text("Wildcard handler")),
+    )
+
+    const client = TestHttpClient.make(router)
+    
+    const literalResponse = yield* client.get("/specific")
+    
+    expect(literalResponse.status)
+      .toBe(200)
+    
+    expect(yield* literalResponse.text)
+      .toBe("Literal handler")
+
+    const wildcardResponse = yield* client.get("/anything")
+    
+    expect(wildcardResponse.status)
+      .toBe(200)
+    
+    expect(yield* wildcardResponse.text)
+      .toBe("Wildcard handler")
+  }))
+
+test("Wildcard routes: multiple wildcard routes behavior", () =>
+  effect(function*() {
+    const router = HttpRouter.empty.pipe(
+      HttpRouter.get("*", HttpServerResponse.text("First wildcard")),
+      HttpRouter.get("*", HttpServerResponse.text("Second wildcard")),
+    )
+
+    const client = TestHttpClient.make(router)
+    
+    const response = yield* client.get("/anything")
+    
+    expect(response.status)
+      .toBe(200)
+    
+    expect(yield* response.text)
+      .toBe("First wildcard")
   }))
