@@ -46,11 +46,12 @@ export function entrypoint(
           .map((_, i, a) => NPath.join(...a.slice(i))),
       ]
       : [
-        `${requestPath}.html`,
-        `${requestPath}/index.html`,
+        requestPath ? `${requestPath}.html` : null,
+        requestPath ? `${requestPath}/index.html` : null,
         requestPath === "" ? "index.html" : "",
       ]
     const artifact = pathAttempts
+      .filter(Boolean)
       .map(path => bundle.getArtifact(path))
       .find(Boolean)
 
@@ -81,7 +82,7 @@ export const toHttpApp = <E, R>(
 ): Effect.Effect<
   HttpServerResponse.HttpServerResponse,
   RouteNotFound | E,
-  HttpServerRequest.HttpServerRequest | Scope.Scope | R
+  HttpServerRequest.HttpServerRequest | R
 > => {
   return Effect.gen(function*() {
     const request = yield* HttpServerRequest.HttpServerRequest
@@ -116,7 +117,7 @@ export const toHttpApp = <E, R>(
      * Useful for development to implement live reload.
      */
     if (bundle.events && path === "events") {
-      return yield* SseHttpResponse.make<BundleEvent>(
+      return yield* SseHttpResponse.make<Bundle.BundleEvent>(
         Stream.fromPubSub(bundle.events),
       )
     }
