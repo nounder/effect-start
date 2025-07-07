@@ -3,6 +3,7 @@ import {
   HttpServerResponse,
 } from "@effect/platform"
 import * as HttpApp from "@effect/platform/HttpApp"
+import * as HttpMiddleware from "@effect/platform/HttpMiddleware"
 import {
   RequestError,
   RouteNotFound,
@@ -108,7 +109,7 @@ function extractPrettyStack(stack: string) {
     .filter(Boolean)
 }
 
-export function withErrorHandled<
+export function handleErrors<
   E,
   R,
 >(
@@ -118,3 +119,9 @@ export function withErrorHandled<
     Effect.catchAllCause(renderError),
   )
 }
+
+export const withErrorHandled = HttpMiddleware.make(app => {
+  return app.pipe(
+    Effect.catchAllCause(renderError),
+  )
+})
