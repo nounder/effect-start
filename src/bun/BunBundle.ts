@@ -153,7 +153,7 @@ export function layerDev<T>(
           Stream.runForEach((v) =>
             pipe(
               Effect.gen(function*() {
-                yield* Effect.logDebug("Updating bundle: " + key)
+                yield* Effect.logDebug("Updating bundle: " + tag.key)
 
                 const newBundle = yield* build(config)
 

@@ -52,7 +52,7 @@ export function entrypoint(
       ]
     const artifact = pathAttempts
       .filter(Boolean)
-      .map(path => bundle.getArtifact(path))
+      .map(path => bundle.getArtifact(path as string))
       .find(Boolean)
 
     if (artifact) {
@@ -221,7 +221,7 @@ export function withAssets(
       const request = yield* HttpServerRequest.HttpServerRequest
 
       if (request.url.startsWith(path + "/")) {
-        return yield* toHttpApp(ClientBundle, { urlPrefix: path })
+        return yield* toHttpApp(Bundle.ClientBundle, { urlPrefix: path })
       }
 
       return yield* app
