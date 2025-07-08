@@ -13,14 +13,14 @@
   },
   "devDependencies": {
     "@effect/language-service": "^0.23.3",
-    "@effect/platform": "^0.87.1",
-    "@effect/platform-bun": "^0.72.3",
+    "@effect/platform": "^0.87.10",
+    "@effect/platform-bun": "^0.72.14",
     "@tailwindcss/node": ">=4.1.8",
     "@tanstack/react-router": "^1.120.18",
     "@types/bun": "^1.2.15",
     "@types/react": "^19.1.6",
     "@types/react-dom": "^19.1.6",
-    "effect": "^3.16.10",
+    "effect": "^3.16.12",
     "effect-memfs": "nounder/effect-memfs#a976bb0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
