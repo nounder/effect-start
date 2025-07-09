@@ -35,10 +35,10 @@ export function router(
   )
 }
 
-export function bundleClient(entrypoint: string) {
+export function bundleClient(config: BunBundle.BuildOptions | string) {
   const clientLayer = Layer.effect(
     Bundle.ClientBundle,
-    BunBundle.buildClient(entrypoint),
+    BunBundle.buildClient(config),
   )
   const assetsLayer = Layer.effectDiscard(Effect.gen(function*() {
     const router = yield* HttpRouter.Default
