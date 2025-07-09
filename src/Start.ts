@@ -3,6 +3,8 @@ import {
   BunHttpServer,
   BunRuntime,
 } from "@effect/platform-bun"
+import * as FetchHttpClient from "@effect/platform/FetchHttpClient"
+import * as HttpClient from "@effect/platform/HttpClient"
 import * as HttpRouter from "@effect/platform/HttpRouter"
 import {
   Effect,
@@ -88,7 +90,7 @@ export function serve<ROut, E>(
     default: Layer.Layer<
       ROut,
       E,
-      HttpServer.HttpServer | HttpRouter.Default
+      HttpServer.HttpServer | HttpRouter.Default | HttpClient.HttpClient
     >
   }>,
 ) {
@@ -105,6 +107,7 @@ export function serve<ROut, E>(
     ),
     Layer.provide(appLayer),
     Layer.provide([
+      FetchHttpClient.layer,
       HttpRouter.Default.Live,
       BunHttpServer.layer({
         port: 3000,
