@@ -1,6 +1,6 @@
 {
   "name": "effect-bundler",
-  "version": "0.70.0",
+  "version": "0.80.0",
   "type": "module",
   "license": "MIT",
   "exports": {
