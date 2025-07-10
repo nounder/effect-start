@@ -22,7 +22,7 @@
         "@effect/platform-bun": ">=0.65",
         "@tailwindcss/node": "^4.1.7",
         "@tanstack/react-router": "^1.120.10",
-        "effect": "^3.16.12",
+        "effect": ">=3.16.4",
         "typescript": "^5.8.3",
       },
       "optionalPeers": [

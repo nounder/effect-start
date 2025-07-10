@@ -1,5 +1,4 @@
 import * as HttpApp from "@effect/platform/HttpApp"
-import * as HttpMethod from "@effect/platform/HttpMethod"
 import * as HttpRouter from "@effect/platform/HttpRouter"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"

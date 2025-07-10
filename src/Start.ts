@@ -23,15 +23,14 @@ export function router(
   load: () => Promise<Router.RouteManifest>,
 ) {
   return Layer.provideMerge(
-    Layer
-      .effectDiscard(
-        Effect.gen(function*() {
-          const httpRouter = yield* HttpRouter.Default
-          const startRouter = yield* Router.Router
+    Layer.effectDiscard(
+      Effect.gen(function*() {
+        const httpRouter = yield* HttpRouter.Default
+        const startRouter = yield* Router.Router
 
-          yield* httpRouter.concat(startRouter.httpRouter)
-        }),
-      ),
+        yield* httpRouter.concat(startRouter.httpRouter)
+      }),
+    ),
     Layer.merge(
       Router.layer(load),
       FileRouter.layer(),
