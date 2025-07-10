@@ -1,24 +1,26 @@
-export * as Bundle from "./Bundle.ts"
-export * as BundleHttp from "./BundleHttp.ts"
+export * as Bundle from "./Bundle"
+export * as BundleHttp from "./BundleHttp"
 
-export * as BunBundle from "./bun/BunBundle.ts"
-export * as BunTailwindPlugin from "./bun/BunTailwindPlugin.ts"
+export * as BunBundle from "./bun/BunBundle"
+export * as BunTailwindPlugin from "./bun/BunTailwindPlugin"
 
-export * as StartHttp from "./StartHttp.ts"
+export * as StartHttp from "./StartHttp"
 
-export * as HttpAppExtra from "./HttpAppExtra.ts"
+export * as HttpAppExtra from "./HttpAppExtra"
 
-export * as PublicDirectory from "./PublicDirectory.ts"
+export * as PublicDirectory from "./PublicDirectory"
 
-export * as TestHttpClient from "./TestHttpClient.ts"
+export * as TestHttpClient from "./TestHttpClient"
 export {
   effectFn,
-} from "./testing.ts"
+} from "./testing"
 
-export * as FileHttpRouter from "./FileHttpRouter.ts"
-export * as FileRouter from "./FileRouter.ts"
-export * as Router from "./Router.ts"
+export * as FileHttpRouter from "./FileHttpRouter"
+export * as FileRouter from "./FileRouter"
+export * as Router from "./Router"
 
-export * as CloudflareTunnel from "./CloudflareTunnel.ts"
+export * as CloudflareTunnel from "./CloudflareTunnel"
 
-export * as Start from "./Start.ts"
+export * as Start from "./Start"
+
+export * as Endpoint from "./Endpoint"

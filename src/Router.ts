@@ -1,10 +1,12 @@
 import * as HttpApp from "@effect/platform/HttpApp"
+import * as HttpMethod from "@effect/platform/HttpMethod"
 import * as HttpRouter from "@effect/platform/HttpRouter"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
-import * as FileHttpRouter from "./FileHttpRouter.ts"
+import * as Endpoint from "./Endpoint"
+import * as FileHttpRouter from "./FileHttpRouter"
 
 export const ServerMethods = [
   "GET",
@@ -18,14 +20,16 @@ export const ServerMethods = [
 
 export type ServerMethod = (typeof ServerMethods)[number]
 
-export type ServerHandle = HttpApp.Default<any, any>
+export type ServerHandle<A> =
+  | HttpApp.Default<any, any>
+  | Endpoint.EndpointHandle<A, any, any>
 
 export type ServerModule =
   & {
-    [K in ServerMethod]?: ServerHandle
+    [K in ServerMethod]?: ServerHandle<any>
   }
   & {
-    default?: ServerHandle
+    default?: ServerHandle<any>
   }
 
 export type ServerRoute = {
