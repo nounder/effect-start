@@ -15,6 +15,7 @@ import * as BunBundle from "./bun/BunBundle.ts"
 import * as Bundle from "./Bundle.ts"
 import * as BundleHttp from "./BundleHttp.ts"
 import * as FileRouter from "./FileRouter"
+import * as HttpAppExtra from "./HttpAppExtra"
 import * as Router from "./Router.ts"
 
 export function router(
@@ -102,7 +103,7 @@ export function serve<ROut, E>(
   )
 
   return pipe(
-    HttpRouter.Default.serve().pipe(
+    HttpRouter.Default.serve(HttpAppExtra.handleErrors).pipe(
       HttpServer.withLogAddress,
     ),
     Layer.provide(appLayer),
