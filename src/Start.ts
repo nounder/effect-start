@@ -1,5 +1,6 @@
 import { HttpServer } from "@effect/platform"
 import {
+  BunContext,
   BunHttpServer,
   BunRuntime,
 } from "@effect/platform-bun"
@@ -23,7 +24,7 @@ export function router(
 ) {
   return Layer.provideMerge(
     Layer
-      .scopedDiscard(
+      .effectDiscard(
         Effect.gen(function*() {
           const httpRouter = yield* HttpRouter.Default
           const startRouter = yield* Router.Router
@@ -91,7 +92,10 @@ export function serve<ROut, E>(
     default: Layer.Layer<
       ROut,
       E,
-      HttpServer.HttpServer | HttpRouter.Default | HttpClient.HttpClient
+      | HttpServer.HttpServer
+      | HttpRouter.Default
+      | HttpClient.HttpClient
+      | BunContext.BunContext
     >
   }>,
 ) {
