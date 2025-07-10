@@ -5,6 +5,8 @@
   "license": "MIT",
   "exports": {
     ".": "./src/index.ts",
+    "./Router": "./src/Router.ts",
+    "./Endpoint": "./src/Endpoint.ts",
     "./bun": "./src/bun/index.ts",
     "./client": "./src/client/index.ts",
     "./files": "./src/FileSystemExtra.ts",
