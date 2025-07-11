@@ -53,7 +53,7 @@ export async function importBundle<M = unknown>(
   const bundleBlob = new Blob(sortedBlobs)
   const hashPrefix = await hashBuffer(await bundleBlob.arrayBuffer())
     .then(v => v.slice(0, 8))
-  const dir = `${basePath}/effect-bundler-${hashPrefix}`
+  const dir = `${basePath}/effect-start-${hashPrefix}`
 
   await NFSP.mkdir(dir, { recursive: true })
 

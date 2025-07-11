@@ -4,7 +4,7 @@ import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
 
-export const TypeId: unique symbol = Symbol.for("effect-bundler/Endpoint")
+export const TypeId: unique symbol = Symbol.for("effect-start/Endpoint")
 
 export type TypeId = typeof TypeId
 

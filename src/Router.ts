@@ -74,7 +74,7 @@ export type RouterContext =
     httpRouter: HttpRouter.HttpRouter
   }
 
-export class Router extends Context.Tag("effect-bundler/Router")<
+export class Router extends Context.Tag("effect-start/Router")<
   Router,
   RouterContext
 >() {}

@@ -1,4 +1,4 @@
-# Effect Bundler
+# Effect Start
 
 Build declarative full-stack apps with Effect.
 
@@ -16,14 +16,14 @@ See `examples/` directory for templates and additional usage using Preact, React
 You can clone it by using degit, like so:
 
 ```sh
-bunx degit nounder/effect-bundler/examples/bun-preact target
+bunx degit nounder/effect-start/examples/bun-preact target
 ```
 
 ## Development
 
 ### File-based Routing
 
-Effect Bundler provides automatic file-based routing with support for frontend pages, backend endpoints, and stackable layouts.
+Effect Start provides automatic file-based routing with support for frontend pages, backend endpoints, and stackable layouts.
 
 ```
 src/routes/
@@ -39,7 +39,7 @@ src/routes/
 ```
 
 ```ts
-import { FileRouter } from "effect-bundler"
+import { FileRouter } from "effect-start"
 
 // Generate route manifest and watch for changes
 const routerLayer = FileRouter.layer(import.meta.resolve("routes"))
@@ -49,13 +49,13 @@ const routerLayer = FileRouter.layer(import.meta.resolve("routes"))
 
 ### Tailwind CSS Support
 
-Effect Bundler includes built-in support for Tailwind CSS:
+Effect Start includes built-in support for Tailwind CSS:
 
 ```ts
 import {
   BunBundle,
   BunTailwindPlugin,
-} from "effect-bundler/bun"
+} from "effect-start/bun"
 
 const ClientBundle = BunBundle.bundleClient({
   entrypoints: [
@@ -77,7 +77,7 @@ Then in your main CSS files add following file:
 
 ```ts
 import { HttpRouter } from "@effect/platform"
-import { PublicDirectory } from "effect-bundler"
+import { PublicDirectory } from "effect-start"
 
 // Serve files from ./public directory
 const PublicFiles = PublicDirectory.make()

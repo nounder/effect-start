@@ -1,4 +1,4 @@
-import "effect-bundler/client"
+import "effect-start/client"
 
 import {
   useEffect,
@@ -6,7 +6,7 @@ import {
 } from "react"
 
 export function App() {
-  const [message, setMessage] = useState("Hello, Effect Bundler!!!!!")
+  const [message, setMessage] = useState("Hello, Effect Start!!!!!")
   const [count, setCount] = useState(0)
 
   useEffect(() => {
@@ -19,7 +19,7 @@ export function App() {
 
   return (
     <div>
-      Hello, Effect Bundler {count}.
+      Hello, Effect Start {count}.
     </div>
   )
 }

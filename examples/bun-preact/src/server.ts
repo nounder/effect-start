@@ -1,5 +1,5 @@
 import { Layer } from "effect"
-import { Start } from "effect-bundler"
+import { Start } from "effect-start"
 
 export default Layer.mergeAll(
   // Start.router(() => import("./routes/_manifest")),

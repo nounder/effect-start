@@ -39,7 +39,7 @@ export const effectFn = <RL>(layer?: Layer.Layer<RL, any>) =>
  * with some junks in between taking half of the screen.
  *
  * Direct children that starts with a dot are excluded because
- * some tools, like effect-bundler, use it to generate temporary
+ * some tools, like effect-start, use it to generate temporary
  * files that are then loaded into a runtime.
  */
 const clearStackTraces = (err: any | Error) => {

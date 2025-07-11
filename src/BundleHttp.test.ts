@@ -12,7 +12,7 @@ import {
   BundleHttp,
   effectFn,
   TestHttpClient,
-} from "effect-bundler"
+} from "effect-start"
 import * as Layer from "effect/Layer"
 import IndexHtml from "../static/react-dashboard.html" with { type: "file" }
 

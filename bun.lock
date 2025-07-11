@@ -2,7 +2,7 @@
   "lockfileVersion": 1,
   "workspaces": {
     "": {
-      "name": "effect-bundler",
+      "name": "effect-start",
       "devDependencies": {
         "@effect/language-service": "^0.23.3",
         "@effect/platform": "^0.87.10",

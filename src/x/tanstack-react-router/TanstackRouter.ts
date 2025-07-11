@@ -10,7 +10,7 @@ import {
   pipe,
   Stream,
 } from "effect"
-import { FileRouter } from "effect-bundler"
+import { FileRouter } from "effect-start"
 import React from "react"
 import * as FileSystemExtra from "../../FileSystemExtra.ts"
 import * as TanstackRouterCodegen from "./TanstackRouterCodegen.ts"

@@ -1,5 +1,5 @@
 {
-  "name": "effect-bundler-preact-example",
+  "name": "effect-start-preact-example",
   "private": true,
   "scripts": {
     "start": "bun src/server.ts",
@@ -10,7 +10,7 @@
     "@effect/platform-bun": "^0.67.3",
     "@preact/signals": "^2.2.0",
     "effect": "^3.16.12",
-    "effect-bundler": "github:nounder/effect-bundler",
+    "effect-start": "github:nounder/effect-start",
     "preact": "^10.26.8",
     "preact-iso": "^2.9.1"
   },

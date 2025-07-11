@@ -12,9 +12,9 @@ import {
   Layer,
   pipe,
 } from "effect"
-import { BundleHttp } from "effect-bundler"
-import { BunBundle } from "effect-bundler/bun"
-import { TanstackRouter } from "effect-bundler/x/tanstack-react-router"
+import { BundleHttp } from "effect-start"
+import { BunBundle } from "effect-start/bun"
+import { TanstackRouter } from "effect-start/x/tanstack-react-router"
 import IndexHtml from "./index.html" with { type: "file" }
 
 const BundlePath = "/_bundle"

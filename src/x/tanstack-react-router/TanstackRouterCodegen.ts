@@ -5,7 +5,7 @@ import {
   Iterable,
   pipe,
 } from "effect"
-import { FileRouter } from "effect-bundler"
+import { FileRouter } from "effect-start"
 import * as NPath from "node:path"
 
 type RouteInfo = {

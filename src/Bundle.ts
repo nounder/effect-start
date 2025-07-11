@@ -9,7 +9,7 @@ import {
 import { importBlob } from "./JsModule.ts"
 
 export const BundleEntrypointMetaKey: unique symbol = Symbol.for(
-  "effect-bundler/BundleEntrypointMetaKey",
+  "effect-start/BundleEntrypointMetaKey",
 )
 
 export type BundleOutputMetaValue = {}
@@ -67,7 +67,7 @@ export type BundleEvent =
     error: string
   }
 
-const IdPrefix = "effect-bundler/tags/"
+const IdPrefix = "effect-start/tags/"
 
 export type BundleKey = `${string}Bundle`
 

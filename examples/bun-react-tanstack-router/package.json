@@ -1,5 +1,5 @@
 {
-  "name": "effect-bundler-react-example",
+  "name": "effect-start-react-example",
   "private": true,
   "scripts": {
     "start": "bun src/server.ts",
@@ -10,7 +10,7 @@
     "@effect/platform-bun": "^0.67.3",
     "@tanstack/react-router": "^1.120.13",
     "effect": "^3.16.2",
-    "effect-bundler": "nounder/effect-bundler",
+    "effect-start": "nounder/effect-start",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   },

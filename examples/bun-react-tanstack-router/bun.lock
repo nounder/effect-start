@@ -2,13 +2,13 @@
   "lockfileVersion": 1,
   "workspaces": {
     "": {
-      "name": "effect-bundler-react-example",
+      "name": "effect-start-react-example",
       "dependencies": {
         "@effect/platform": "^0.84.3",
         "@effect/platform-bun": "^0.67.3",
         "@tanstack/react-router": "^1.120.13",
         "effect": "^3.16.2",
-        "effect-bundler": "github:nounder/effect-bundler",
+        "effect-start": "github:nounder/effect-start",
         "react": "^19.1.0",
         "react-dom": "^19.1.0",
       },
@@ -125,7 +125,7 @@
 
     "effect": ["effect@3.16.10", "", { "dependencies": { "@standard-schema/spec": "^1.0.0", "fast-check": "^3.23.1" } }, "sha512-F0hDCOLax7i3SOy5wQnJZTzKP9aGg8OQNUJ2s8YoL5fVcCgRCgE+Ky+Hfz5qC7LgVVOWDDbRpCh5MPB20wRI8Q=="],
 
-    "effect-bundler": ["effect-bundler@github:nounder/effect-bundler#68903d9", { "peerDependencies": { "@effect/platform": "^0.82.0", "@effect/platform-bun": "^0.65.0", "@tanstack/react-router": "^1.120.10", "effect": "^3.15.0", "typescript": "^5.8.3" }, "optionalPeers": ["@effect/platform", "@effect/platform-bun", "@tanstack/react-router"] }, "nounder-effect-bundler-68903d9"],
+    "effect-start": ["effect-start@github:nounder/effect-start#68903d9", { "peerDependencies": { "@effect/platform": "^0.82.0", "@effect/platform-bun": "^0.65.0", "@tanstack/react-router": "^1.120.10", "effect": "^3.15.0", "typescript": "^5.8.3" }, "optionalPeers": ["@effect/platform", "@effect/platform-bun", "@tanstack/react-router"] }, "nounder-effect-start-68903d9"],
 
     "enhanced-resolve": ["enhanced-resolve@5.18.1", "", { "dependencies": { "graceful-fs": "^4.2.4", "tapable": "^2.2.0" } }, "sha512-ZSW3ma5GkcQBIpwZTSRAI8N71Uuwgs93IezB7mf7R60tC8ZbJideoDNKjHn2O9KIlx6rkGTTEk1xUCK2E1Y2Yg=="],
 

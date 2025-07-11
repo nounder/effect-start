@@ -7,7 +7,7 @@ import { Effect } from "effect"
 import {
   effectFn,
   TestHttpClient,
-} from "effect-bundler"
+} from "effect-start"
 import { MemoryFileSystem } from "effect-memfs"
 import * as PublicDirectory from "./PublicDirectory.ts"
 
