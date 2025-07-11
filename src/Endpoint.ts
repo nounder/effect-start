@@ -13,10 +13,10 @@ export function isEndpoint(input: unknown): input is Endpoint<any> {
 }
 
 export interface Endpoint<
-  Method extends HttpMethod.HttpMethod,
+  Method = HttpMethod.HttpMethod,
   Success = Schema.Schema.Any,
   Error = Schema.Schema.Any,
-  Path = Option.Option<`/${string}`>,
+  Path = `/${string}`,
   Handle = Effect.Effect<
     Schema.Schema.Encoded<Success>,
     any,
@@ -29,7 +29,6 @@ export interface Endpoint<
   readonly success: Option.Option<Success>
   readonly error: Option.Option<Error>
   readonly path: Option.Option<Path>
-  readonly headers: Option.Option<Headers>
   readonly handle: Handle
 }
 
@@ -38,6 +37,15 @@ export declare namespace Endpoint {
     [Endpoint<infer _Method, infer _Success, infer _Error, infer _Path>]
     ? _Method
     : never
+
+  export type Success<T extends Endpoint<any, any, any, any>> =
+    Option.Option.Value<T["success"]>
+
+  export type Error<T extends Endpoint<any, any, any, any>> =
+    Option.Option.Value<T["error"]>
+
+  export type Path<T extends Endpoint<any, any, any, any>> =
+    Option.Option.Value<T["path"]>
 }
 
 const Proto = {
@@ -45,17 +53,20 @@ const Proto = {
 }
 
 export function make<
-  Success extends Schema.Schema.Any,
-  Error extends Schema.Schema.Any,
-  Path extends Option.Option<`/${string}`>,
-  Handle extends Effect.Effect<Schema.Schema.Encoded<Success>, never, never>,
   Method extends HttpMethod.HttpMethod = "GET",
+  Success = Schema.Schema.Any,
+  Error = Schema.Schema.Any,
+  Path = `/${string}`,
+  Handle = Effect.Effect<
+    Schema.Schema.Encoded<Success>,
+    any,
+    any
+  >,
 >(opts: {
   method?: Method
   path?: Path
   success?: Success
   error?: Error
-  headers?: Headers
   handle: Handle
 }): Endpoint<Method, Success, Error, Path, Handle> {
   const method = (opts.method ?? "GET") as Method
@@ -68,7 +79,6 @@ export function make<
         success: Option.fromNullable(opts.success),
         error: Option.fromNullable(opts.error),
         path: Option.fromNullable(opts.path),
-        headers: Option.fromNullable(opts.headers),
         handle: opts.handle,
       },
     )

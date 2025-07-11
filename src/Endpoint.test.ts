@@ -1,9 +1,10 @@
 import * as Effect from "effect/Effect"
+import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
 import * as Endpoint from "./Endpoint.ts"
 
 const ep = Endpoint.make({
-  method: "GET" as const,
+  method: "POST",
 
   success: Schema.Struct({
     ok: Schema.Boolean,
@@ -15,3 +16,6 @@ const ep = Endpoint.make({
 })
 
 type A = Endpoint.Endpoint.Method<typeof ep>
+type S2 = Endpoint.Endpoint.Success<typeof ep>
+type P = Endpoint.Endpoint.Path<typeof ep>
+type P2 = typeof ep["path"]

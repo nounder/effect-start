@@ -21,7 +21,7 @@ export type ServerMethod = (typeof ServerMethods)[number]
 
 export type ServerHandle<A> =
   | HttpApp.Default<any, any>
-  | Endpoint.EndpointHandle<A, any, any>
+  | Endpoint.Endpoint
 
 export type ServerModule =
   & {
