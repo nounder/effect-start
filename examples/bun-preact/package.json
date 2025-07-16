@@ -1,5 +1,6 @@
 {
   "name": "effect-start-preact-example",
+  "type": "module",
   "private": true,
   "scripts": {
     "start": "bun src/server.ts",

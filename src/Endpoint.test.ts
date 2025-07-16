@@ -1,21 +1,53 @@
 import * as Effect from "effect/Effect"
-import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
-import * as Endpoint from "./Endpoint.ts"
+import * as Endpoint from "./Endpoint"
 
-const ep = Endpoint.make({
-  method: "POST",
+export const HEAD = Endpoint
+  .empty
+  .addSuccess(
+    Schema.Struct({
+      id: Schema.UUID,
+    }),
+  )
 
-  success: Schema.Struct({
-    ok: Schema.Boolean,
+// in this case i will have to pass Handler
+// to verify it is compatible with success schema
+// this will require overwriting HttpApiEndpoint generic
+//
+export const GET = Endpoint
+  .handle(function*() {
+    return 23
+  })
+  .addSuccess(
+    Schema.Struct({
+      id: Schema.UUID,
+    }),
+  )
+
+const SampleModule = {
+  GET: Endpoint.define({
+    success: Schema.Struct({
+      id: Schema.UUID,
+    }),
+
+    handler: Effect.gen(function*() {
+      return {
+        id: crypto.randomUUID(),
+      }
+    }),
   }),
 
-  handle: Effect.succeed({
-    ok: true,
-  }),
-})
+  POST: Endpoint.define({
+    success: Schema.Array(
+      Schema.Struct({
+        id: Schema.String,
+      }),
+    ),
 
-type A = Endpoint.Endpoint.Method<typeof ep>
-type S2 = Endpoint.Endpoint.Success<typeof ep>
-type P = Endpoint.Endpoint.Path<typeof ep>
-type P2 = typeof ep["path"]
+    handler: Effect.gen(function*() {
+      return [{
+        id: "a",
+      }]
+    }),
+  }),
+}

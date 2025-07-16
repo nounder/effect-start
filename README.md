@@ -52,6 +52,8 @@ const routerLayer = FileRouter.layer(import.meta.resolve("routes"))
 Effect Start includes built-in support for Tailwind CSS:
 
 ```ts
+import { Layer } from "effect"
+import { Start } from "effect-start"
 import {
   BunBundle,
   BunTailwindPlugin,
@@ -65,6 +67,14 @@ const ClientBundle = BunBundle.bundleClient({
     BunTailwindPlugin.make(),
   ],
 })
+
+export default Layer.mergeAll(
+  ClientBundle,
+)
+
+if (import.meta.main) {
+  Start.serve(() => import("./server"))
+}
 ```
 
 Then in your main CSS files add following file:

@@ -6,9 +6,13 @@ import {
 } from "@effect/platform-bun"
 import * as FetchHttpClient from "@effect/platform/FetchHttpClient"
 import * as HttpClient from "@effect/platform/HttpClient"
+import * as HttpMiddleware from "@effect/platform/HttpMiddleware"
 import * as HttpRouter from "@effect/platform/HttpRouter"
 import {
+  Context,
   Effect,
+  flow,
+  identity,
   pipe,
 } from "effect"
 import * as Layer from "effect/Layer"
@@ -17,7 +21,8 @@ import * as Bundle from "./Bundle.ts"
 import * as BundleHttp from "./BundleHttp.ts"
 import * as FileRouter from "./FileRouter"
 import * as HttpAppExtra from "./HttpAppExtra"
-import * as Router from "./Router.ts"
+import * as PublicDirectory from "./PublicDirectory"
+import * as Router from "./Router"
 
 export function router(
   load: () => Promise<Router.RouteManifest>,
@@ -72,6 +77,61 @@ export function bundleClient(config: BunBundle.BuildOptions | string) {
   )
 }
 
+export class Middleware extends Context.Tag("effect-start/Middleware")<
+  Middleware,
+  {
+    readonly add: (
+      middleware: HttpMiddleware.HttpMiddleware,
+    ) => Effect.Effect<void>
+    readonly retrieve: Effect.Effect<HttpMiddleware.HttpMiddleware>
+  }
+>() {
+  static layer() {
+    return Layer.sync(Middleware, () => {
+      let middleware: HttpMiddleware.HttpMiddleware = identity
+
+      return Middleware.of({
+        add: (f) =>
+          Effect.sync(() => {
+            const prev = middleware
+
+            middleware = (app) => f(prev(app))
+          }),
+        retrieve: Effect.sync(() => middleware),
+      })
+    })
+  }
+}
+
+export function middleware(
+  middleware: HttpMiddleware.HttpMiddleware,
+) {
+  // TODO
+}
+
+export function publicDirectory(
+  opts?: PublicDirectory.PublicDirectoryOptions,
+) {
+  return Layer.effectDiscard(Effect.gen(function*() {
+    const router = yield* HttpRouter.Default
+    const middleware = yield* Middleware
+
+    // TODO: make PublicDirectory as middleware
+    // TODO: rename to StaticHttpApp
+    // yield* middleware.add(() => app)
+
+    const app = PublicDirectory.make(opts)
+
+    yield* router.mount(
+      "/",
+      pipe(
+        HttpRouter.empty,
+        HttpRouter.mountApp("/", app),
+      ),
+    )
+  }))
+}
+
 export function make<
   Layers extends [
     Layer.Layer<never, any, any>,
@@ -84,7 +144,10 @@ export function make<
 > {
   return Layer.mergeAll(...layers)
 }
-Layer
+
+// handles cli, serve, build, deploy
+export function start() {
+}
 
 export function serve<ROut, E>(
   load: () => Promise<{
@@ -106,9 +169,22 @@ export function serve<ROut, E>(
   )
 
   return pipe(
-    HttpRouter.Default.serve(HttpAppExtra.handleErrors).pipe(
-      HttpServer.withLogAddress,
-    ),
+    Layer.unwrapEffect(Effect.gen(function*() {
+      const middlewareService = yield* Middleware
+      const middleware = yield* middlewareService.retrieve
+
+      const finalMiddleware = flow(
+        HttpAppExtra.handleErrors,
+        middleware,
+      )
+
+      return pipe(
+        HttpRouter
+          .Default
+          .serve(finalMiddleware),
+        HttpServer.withLogAddress,
+      )
+    })),
     Layer.provide(appLayer),
     Layer.provide([
       FetchHttpClient.layer,
@@ -116,6 +192,7 @@ export function serve<ROut, E>(
       BunHttpServer.layer({
         port: 3000,
       }),
+      Middleware.layer(),
     ]),
     Layer.launch,
     BunRuntime.runMain,
