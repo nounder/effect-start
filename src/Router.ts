@@ -4,8 +4,7 @@ import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
-import * as Endpoint from "./Endpoint"
-import * as FileHttpRouter from "./FileHttpRouter"
+import * as FileHttpRouter from "./FileHttpRouter.ts"
 
 export const ServerMethods = [
   "GET",
