@@ -10,154 +10,119 @@ export const TypeId: unique symbol = Symbol.for("effect-start/Route")
 
 export type TypeId = typeof TypeId
 
-/**
- * Schema representing success and error responses.
- */
-type ResultSchema = Schema.Schema<any, any, never>
+export type RouteMethod =
+  | HttpMethod.HttpMethod
+  | "*"
 
-/**
- * Operation describes behavior of a route.
- */
-interface Operation<
-  Handler extends Effect.Effect<
-    Schema.Schema.Encoded<Success>,
-    any,
-    any
-  >,
-  Success extends ResultSchema,
-  Error extends ResultSchema,
+export type RoutePath =
+  | HttpApiEndpoint.PathSegment
+  | "*"
+
+interface Route<
+  out Handler extends Effect.Effect<Success, any, R>,
+  out Name extends string = "",
+  out Method extends RouteMethod = "*",
+  in out Path extends RoutePath = "*",
+  in out PathParams = never,
+  in out UrlParams = never,
+  in out Payload = never,
+  in out Headers = never,
+  in out Success = void,
+  in out Error = never,
+  out R = never,
+  out RE = never,
 > {
-  readonly success: Option.Option<Success>
-  readonly error: Option.Option<Error>
+  readonly [TypeId]: TypeId
+  readonly name: Name
+  readonly path: RoutePath
+  readonly method: Method
+  readonly pathSchema: Option.Option<Schema.Schema<PathParams, unknown, R>>
+  readonly urlParamsSchema: Option.Option<Schema.Schema<UrlParams, unknown, R>>
+  readonly payloadSchema: Option.Option<Schema.Schema<Payload, unknown, R>>
+  readonly headersSchema: Option.Option<Schema.Schema<Headers, unknown, R>>
+  readonly successSchema: Schema.Schema<Success, unknown, R>
+  readonly errorSchema: Schema.Schema<Error, unknown, RE>
+
   readonly handler: Handler
 }
 
-declare namespace Operation {
-  export type Any = Operation<any, any, any>
-
-  export type Success<T extends Any> = Option.Option.Value<T["success"]>
-
-  export type Error<T extends Any> = Option.Option.Value<T["error"]>
-
-  export type Handler<T extends Any> = T["handler"]
-}
-
-/**
- * Represents an Operation bounded to a method and a path,
- * (Path Item in OpenAPI terminology).
- */
-export interface Route<
-  Method extends HttpMethod.HttpMethod,
-  Path extends `/${string}`,
-  Handler extends Effect.Effect<
-    Schema.Schema.Encoded<Success>,
-    any,
-    any
-  >,
-  Success extends ResultSchema,
-  Error extends ResultSchema,
-> extends Operation<Handler, Success, Error> {
-  readonly [TypeId]: TypeId
-  readonly method: Method
-  readonly path: Path
-}
-
 export declare namespace Route {
-  export type Any = Route<
-    HttpMethod.HttpMethod,
-    `/${string}`,
-    Effect.Effect<Schema.Schema.Encoded<Schema.Schema.Any>, any, any>,
-    ResultSchema,
-    ResultSchema
-  >
-
-  export type Method<T extends Any> = [T] extends [
-    Route<
-      infer _Method,
-      infer _Path,
-      infer _Handler,
-      infer _Success,
-      infer _Error
-    >,
-  ] ? _Method
-    : never
-
-  export type Success<T extends Any> = [T] extends [
-    Route<
-      infer _Method,
-      infer _Path,
-      infer _Handler,
-      infer _Success,
-      infer _Error
-    >,
-  ] ? _Success
-    : never
-
-  export type Error<T extends Any> = [T] extends [
-    Route<
-      infer _Method,
-      infer _Path,
-      infer _Handler,
-      infer _Success,
-      infer _Error
-    >,
-  ] ? _Error
-    : never
-
-  export type Path<T extends Any> = [T] extends [
-    Route<
-      infer _Method,
-      infer _Path,
-      infer _Handler,
-      infer _Success,
-      infer _Error
-    >,
-  ] ? _Path
-    : never
+  export type Any = Route<Effect.Effect<unknown>>
 }
 
 const RouteProto = {
   [TypeId]: TypeId,
 }
 
+const DefaultSuccess = Schema.Any
+const DefaultError = Schema.Never
+
 /**
  * Creates a full Route which is an Operation bounded to a method and a path.
  */
 export function make<
-  Method extends HttpMethod.HttpMethod,
-  Path extends `/${string}`,
-  Handler extends Effect.Effect<
-    Schema.Schema.Encoded<Success>,
-    any,
-    any
-  >,
-  Success extends ResultSchema,
-  Error extends ResultSchema,
+  Handler extends Effect.Effect<Success, any, R>,
+  Name extends string = "",
+  Method extends RouteMethod = "*",
+  Path extends RoutePath = "*",
+  PathParams = never,
+  UrlParams = never,
+  Payload = never,
+  Headers = never,
+  Success = void,
+  Error = never,
+  R = never,
+  RE = never,
 >(options: {
-  method: Method
-  path: Path
   handler: Handler
-  success?: Success
-  error?: Error
-}): Route<
-  Method,
-  Path,
-  Handler,
-  Success,
-  Error
-> {
-  const method = (options.method ?? "GET") as Method
+  name?: Name
+  method?: Method
+  path?: Path
+  pathParams?: Schema.Schema<PathParams, unknown, R>
+  urlParams?: Schema.Schema<UrlParams, unknown, R>
+  payload?: Schema.Schema<Payload, unknown, R>
+  headers?: Schema.Schema<Headers, unknown, R>
+  success?: Schema.Schema<Success, unknown, R>
+  error?: Schema.Schema<Error, unknown, RE>
+}) {
+  type NewRoute = Route<
+    Handler,
+    Name,
+    Method,
+    Path,
+    PathParams,
+    UrlParams,
+    Payload,
+    Headers,
+    Success,
+    Error,
+    R,
+    RE
+  >
 
-  const route: Route<Method, Path, Handler, Success, Error> = Object
+  const {
+    name = "",
+    method = "*",
+    path = "*",
+  } = options
+
+  const impl = {
+    handler: options.handler,
+    name,
+    method,
+    path,
+    pathSchema: Option.fromNullable(options.pathParams),
+    urlParamsSchema: Option.fromNullable(options.urlParams),
+    payloadSchema: Option.fromNullable(options.payload),
+    headersSchema: Option.fromNullable(options.headers),
+    successSchema: options.success ?? DefaultSuccess,
+    errorSchema: options.error ?? DefaultError,
+  } as NewRoute
+
+  const route: NewRoute = Object
     .assign(
       Object.create(RouteProto),
-      {
-        method,
-        success: Option.fromNullable(options.success),
-        error: Option.fromNullable(options.error),
-        path: Option.fromNullable(options.path),
-        handler: options.handler,
-      },
+      impl,
     )
 
   return route
@@ -169,98 +134,116 @@ export function isRoute(
   return Predicate.hasProperty(input, TypeId)
 }
 
-/**
- * Defines an Operation which is core Route behavior without binding
- * it to a method or a path (making it an Route)
- * Used in file-based routing.
- */
-export function define<
-  Handler extends Effect.Effect<
-    Schema.Schema.Encoded<Success>,
-    any,
-    any
-  >,
-  Success extends ResultSchema,
-  Error extends ResultSchema,
->(opts: {
-  handler: Handler
-  success?: Success
-  error?: Error
-}): Operation<Handler, Success, Error> {
-  const operation: Operation<Handler, Success, Error> = Object
-    .assign(
-      Object.create(null),
-      {
-        handler: opts.handler,
-        success: Option.fromNullable(opts.success),
-        error: Option.fromNullable(opts.error),
-      },
-    )
-
-  return operation
+export function isBounded(
+  input: unknown,
+): input is Route.Any {
+  return isRoute(input)
+    && input.method !== "*"
+    && input.path !== "*"
 }
 
-/**
- * Binds {@link Route} to a method and a path creating {@link Route}.
- */
 export function bind<
+  Handler extends Effect.Effect<Success, any, R>,
   Method extends HttpMethod.HttpMethod,
-  Path extends `/${string}`,
-  Handler extends Effect.Effect<
-    Schema.Schema.Encoded<Success>,
-    any,
-    any
-  >,
-  Success extends ResultSchema,
-  Error extends ResultSchema,
+  Path extends HttpApiEndpoint.PathSegment,
+  Name extends string = "",
+  PathParams = never,
+  UrlParams = never,
+  Payload = never,
+  Headers = never,
+  Success = void,
+  Error = never,
+  R = never,
+  RE = never,
 >(
-  operation: Operation<Handler, Success, Error>,
+  route: Route<
+    Handler,
+    Name,
+    "*",
+    "*",
+    PathParams,
+    UrlParams,
+    Payload,
+    Headers,
+    Success,
+    Error,
+    R,
+    RE
+  >,
   options: {
+    name?: Name
     path: Path
     method: Method
     // annotations?: Context.Context<any>
   },
-) {
+): Route<
+  Handler,
+  Name,
+  Method,
+  Path,
+  PathParams,
+  UrlParams,
+  Payload,
+  Headers,
+  Success,
+  Error,
+  R,
+  RE
+> {
+  const {
+    name,
+    path,
+    method,
+  } = options
+
   return make({
-    method: options.method,
-    path: options.path,
-    handler: operation.handler,
-    success: Option.getOrUndefined(operation.success),
-    error: Option.getOrUndefined(operation.error),
+    ...route,
+    name,
+    path,
+    method,
   })
 }
 
 export function toHttpApiEndpoint<
+  Handler extends Effect.Effect<Success, any, R>,
   Method extends HttpMethod.HttpMethod,
-  Path extends `/${string}`,
-  Handler extends Effect.Effect<
-    Schema.Schema.Encoded<Success>,
-    any,
-    any
-  >,
-  Success extends ResultSchema,
-  Error extends ResultSchema,
+  Path extends HttpApiEndpoint.PathSegment,
+  Name extends string = "",
+  PathParams = never,
+  UrlParams = never,
+  Payload = never,
+  Headers = never,
+  Success = void,
+  Error = never,
+  R = never,
+  RE = never,
 >(
   route: Route<
+    Handler,
+    Name,
     Method,
     Path,
-    Handler,
+    PathParams,
+    UrlParams,
+    Payload,
+    Headers,
     Success,
-    Error
+    Error,
+    R,
+    RE
   >,
 ) {
+  const name = route.name ?? `${route.method.toLowerCase()}_${route.path}`
+  const path = route.path as HttpApiEndpoint.PathSegment
   const httpApiEndpoint = pipe(
-    HttpApiEndpoint.make(route.method)(
-      `${route.method.toLowerCase()}_${route.path}`,
-      route.path,
-    ),
+    HttpApiEndpoint.make(route.method)(name, path),
     ep =>
-      Option.isSome(route.success)
-        ? ep.addSuccess(route.success.value)
+      route.errorSchema as any !== DefaultError
+        ? ep.addError(route.errorSchema)
         : ep,
     ep =>
-      Option.isSome(route.error)
-        ? ep.addError(route.error.value)
+      route.successSchema as any !== DefaultSuccess
+        ? ep.addSuccess(route.successSchema)
         : ep,
     // TODO: support annotations
     // ep =>
