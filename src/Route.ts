@@ -40,17 +40,20 @@ export interface Route<
   in out Error = void,
   out R = never,
   out RE = never,
-  out HA = Success extends void ? any : Schema.Schema.Type<Success>,
-  in out Handler extends (
-    req: RouteRequest<PathParams, UrlParams, Payload>,
-  ) => Effect.Effect<HA, any, R> = () => Effect.Effect<HA, any, R>,
+  out HA = any,
 > {
   readonly [TypeId]: TypeId
 
   readonly name: Name
   readonly path: Path
   readonly method: Method
-  readonly handler: Handler
+  readonly handler: (
+    req: RouteRequest<PathParams, UrlParams, Payload>,
+  ) => Effect.Effect<
+    Success extends void ? HA : Success,
+    any,
+    R
+  >
 
   readonly pathSchema?: Schema.Schema<PathParams, unknown, R>
   readonly urlParamsSchema?: Schema.Schema<UrlParams, unknown, R>
@@ -58,6 +61,37 @@ export interface Route<
   readonly headersSchema?: Schema.Schema<Headers, unknown, R>
   readonly successSchema?: Schema.Schema<Success, unknown, R>
   readonly errorSchema?: Schema.Schema<Error, unknown, RE>
+}
+
+export namespace Route {
+  export type Any = Route<
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any
+  >
+
+  export type Success<T extends Any> = [T] extends [
+    Route<
+      infer _Name,
+      infer _Method,
+      infer _Path,
+      infer _PathParams,
+      infer _UrlParams,
+      infer _Payload,
+      infer _Headers,
+      infer _Success,
+      infer _Error,
+      infer _R,
+      infer _RE,
+      infer _HA
+    >,
+  ] ? (_Success extends void ? _HA : _Success)
+    : never
 }
 
 /**
@@ -75,21 +109,20 @@ export function make<
   Error = void,
   R = never,
   RE = never,
-  HA = Success extends void ? any : Schema.Schema.Type<Success>,
-  Handler extends (
-    req: RouteRequest<PathParams, UrlParams, Payload>,
-  ) => Effect.Effect<HA, any, R> = () => Effect.Effect<HA, any, R>,
+  HA = any,
 >(options: {
   name?: Name
   method?: Method
   path?: Path
-  handler: Handler
-  pathParams?: Schema.Schema<PathParams, unknown, R>
-  urlParams?: Schema.Schema<UrlParams, unknown, R>
-  payload?: Schema.Schema<Payload, unknown, R>
-  headers?: Schema.Schema<Headers, unknown, R>
-  success?: Schema.Schema<Success, unknown, R>
-  error?: Schema.Schema<Error, unknown, RE>
+  handler: (
+    req: RouteRequest<PathParams, UrlParams, Payload>,
+  ) => Effect.Effect<Success extends void ? HA : Success, any, R>
+  pathParams?: Schema.Schema<PathParams, any, R>
+  urlParams?: Schema.Schema<UrlParams, any, R>
+  payload?: Schema.Schema<Payload, any, R>
+  headers?: Schema.Schema<Headers, any, R>
+  success?: Schema.Schema<Success, any, R>
+  error?: Schema.Schema<Error, any, RE>
 }): Route<
   Name,
   Method,
@@ -102,8 +135,7 @@ export function make<
   Error,
   R,
   RE,
-  HA,
-  Handler
+  HA
 > {
   const {
     name = "" as Name,
@@ -152,10 +184,7 @@ export function bind<
   Error = void,
   R = never,
   RE = never,
-  HA = Success extends void ? any : Schema.Schema.Type<Success>,
-  Handler extends (
-    req: RouteRequest<PathParams, UrlParams, Payload>,
-  ) => Effect.Effect<HA, any, R> = () => Effect.Effect<HA, any, R>,
+  HA = any,
 >(
   route: Route<
     Name,
@@ -169,8 +198,7 @@ export function bind<
     Error,
     R,
     RE,
-    HA,
-    Handler
+    HA
   >,
   options: {
     name?: Name
@@ -190,8 +218,7 @@ export function bind<
   Error,
   R,
   RE,
-  HA,
-  Handler
+  HA
 > {
   const {
     name,
