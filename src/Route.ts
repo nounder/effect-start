@@ -13,9 +13,7 @@ export type RouteMethod =
   | HttpMethod.HttpMethod
   | "*"
 
-export type RoutePath =
-  | HttpApiEndpoint.PathSegment
-  | "*"
+export type RoutePath = HttpApiEndpoint.PathSegment
 
 // TODO: unionize it so params are not present
 // when generics are void
@@ -33,7 +31,7 @@ interface RouteRequest<
 export interface Route<
   out Name extends string = "",
   out Method extends RouteMethod = "*",
-  out Path extends RoutePath = "*",
+  out Path extends RoutePath = "/",
   in out PathParams = void,
   in out UrlParams = void,
   in out Payload = void,
@@ -68,7 +66,7 @@ export interface Route<
 export function make<
   Name extends string = "",
   Method extends RouteMethod = "*",
-  Path extends RoutePath = "*",
+  Path extends RoutePath = "/",
   PathParams = void,
   UrlParams = void,
   Payload = void,
@@ -139,13 +137,13 @@ export function isBounded(
 ): input is Route {
   return isRoute(input)
     && input.method !== "*"
-    && input.path !== "*"
+    && input.path !== "/"
 }
 
 export function bind<
   Name extends string = "",
   Method extends RouteMethod = "*",
-  Path extends RoutePath = "*",
+  Path extends RoutePath = "/",
   PathParams = void,
   UrlParams = void,
   Payload = void,
@@ -162,7 +160,7 @@ export function bind<
   route: Route<
     Name,
     "*",
-    "*",
+    "/",
     PathParams,
     UrlParams,
     Payload,
