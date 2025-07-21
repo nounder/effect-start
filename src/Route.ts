@@ -61,6 +61,27 @@ export interface Route<
   readonly headersSchema?: Schema.Schema<Headers, unknown, R>
   readonly successSchema?: Schema.Schema<Success, unknown, R>
   readonly errorSchema?: Schema.Schema<Error, unknown, RE>
+
+  bind<
+    NewMethod extends RouteMethod,
+    NewPath extends RoutePath,
+  >(options: {
+    method: NewMethod
+    path: NewPath
+  }): Route<
+    Name,
+    NewMethod,
+    NewPath,
+    PathParams,
+    UrlParams,
+    Payload,
+    Headers,
+    Success,
+    Error,
+    R,
+    RE,
+    HA
+  >
 }
 
 export namespace Route {
@@ -97,10 +118,54 @@ export namespace Route {
 /**
  * Creates a full Route which is an Operation bounded to a method and a path.
  */
+const Proto = {
+  [TypeId]: TypeId,
+
+  bind<
+    Name extends string = "",
+    Method extends RouteMethod = "*",
+    Path extends RoutePath = "/",
+    PathParams = void,
+    UrlParams = void,
+    Payload = void,
+    Headers = void,
+    Success = void,
+    Error = void,
+    R = never,
+    RE = never,
+    HA = any,
+  >(
+    options: {
+      method: Method
+      path: Path
+    },
+  ): Route<
+    Name,
+    Method,
+    Path,
+    PathParams,
+    UrlParams,
+    Payload,
+    Headers,
+    Success,
+    Error,
+    R,
+    RE,
+    HA
+  > {
+    return Object.assign(
+      Object.create(Proto),
+      {
+        ...this,
+        method: options.method,
+        path: options.path,
+      },
+    )
+  },
+}
+
 export function make<
   Name extends string = "",
-  Method extends RouteMethod = "*",
-  Path extends RoutePath = "/",
   PathParams = void,
   UrlParams = void,
   Payload = void,
@@ -112,8 +177,6 @@ export function make<
   HA = any,
 >(options: {
   name?: Name
-  method?: Method
-  path?: Path
   handler: (
     req: RouteRequest<PathParams, UrlParams, Payload>,
   ) => Effect.Effect<Success extends void ? HA : Success, any, R>
@@ -125,8 +188,8 @@ export function make<
   error?: Schema.Schema<Error, any, RE>
 }): Route<
   Name,
-  Method,
-  Path,
+  "*",
+  "/",
   PathParams,
   UrlParams,
   Payload,
@@ -137,25 +200,21 @@ export function make<
   RE,
   HA
 > {
-  const {
-    name = "" as Name,
-    method = "*" as Method,
-    path = "*" as Path,
-  } = options
-
-  return {
-    [TypeId]: TypeId,
-    name,
-    method,
-    path,
-    pathSchema: options.pathParams,
-    urlParamsSchema: options.urlParams,
-    payloadSchema: options.payload,
-    headersSchema: options.headers,
-    successSchema: options.success,
-    errorSchema: options.error,
-    handler: options.handler,
-  }
+  return Object.assign(
+    Object.create(Proto),
+    {
+      name: options.name ?? "",
+      method: "*" as const,
+      path: "/" as const,
+      pathSchema: options.pathParams,
+      urlParamsSchema: options.urlParams,
+      payloadSchema: options.payload,
+      headersSchema: options.headers,
+      successSchema: options.success,
+      errorSchema: options.error,
+      handler: options.handler,
+    },
+  )
 }
 
 export function isRoute(
@@ -170,66 +229,4 @@ export function isBounded(
   return isRoute(input)
     && input.method !== "*"
     && input.path !== "/"
-}
-
-export function bind<
-  Name extends string = "",
-  Method extends RouteMethod = "*",
-  Path extends RoutePath = "/",
-  PathParams = void,
-  UrlParams = void,
-  Payload = void,
-  Headers = void,
-  Success = void,
-  Error = void,
-  R = never,
-  RE = never,
-  HA = any,
->(
-  route: Route<
-    Name,
-    "*",
-    "/",
-    PathParams,
-    UrlParams,
-    Payload,
-    Headers,
-    Success,
-    Error,
-    R,
-    RE,
-    HA
-  >,
-  options: {
-    name?: Name
-    path: Path
-    method: Method
-    // annotations?: Context.Context<any>
-  },
-): Route<
-  Name,
-  Method,
-  Path,
-  PathParams,
-  UrlParams,
-  Payload,
-  Headers,
-  Success,
-  Error,
-  R,
-  RE,
-  HA
-> {
-  const {
-    name,
-    path,
-    method,
-  } = options
-
-  return make({
-    ...route,
-    name,
-    path,
-    method,
-  })
 }

@@ -5,6 +5,7 @@ import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as FileHttpRouter from "./FileHttpRouter.ts"
+import * as Route from "./Route"
 
 export const ServerMethods = [
   "GET",
@@ -20,7 +21,7 @@ export type ServerMethod = (typeof ServerMethods)[number]
 
 export type ServerHandle<A> =
   | HttpApp.Default<any, any>
-  | Endpoint.Endpoint
+  | Route.Route
 
 export type ServerModule =
   & {
