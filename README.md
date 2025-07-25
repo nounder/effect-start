@@ -21,16 +21,34 @@ bunx degit nounder/effect-start/examples/bun-preact target
 
 ## Development
 
-### Configuration in server.ts
+### Configuration
 
-`server.ts` is where all configuration lives. It's a typescript file run to be your dev server and run to be your production server as well. YES environment can be the same. No more divergence between dev and prod! What you see is what you get.
+`server.ts` is a main entrypoint for all environments. No more divergence between dev and prod!
 
-To configure server.ts notice that the bundleClient creation passed on the configuration from [bun build](https://bun.sh/docs/bundler).
+It exports a layer that applies configuration and changes the behavior of the server:
 
-When adding features like File-based routing or Tailwind support you will provide Layers to the `exportdefault Layer.mergeAll(...)` function.
+```ts
+import {
+  BunTailwindPlugin,
+  Start,
+} from "effect-start"
 
-To make a Layer for Effect-Start features you will import from "effect-start" and see how it turns into a Layer e.g. via the `.layer` or `.make` function.
-From there you add the layer to the `Layer.mergeAll()` array. Notice potential order conflicts like Filebased routing needing to be after your Bundle layer!
+export default Layer
+  .mergeAll(
+    // enable file-based router
+    Start.router(() => import("./routes/_manifest")),
+    // bundle client-side code for the browser
+    Start.bundleClient({
+      entrypoints: [
+        "src/index.html",
+      ],
+      plugins: [
+        // enable TailwindCSS for client bundle
+        BunTailwindPlugin.make(),
+      ],
+    }),
+  )
+```
 
 ### File-based Routing
 
