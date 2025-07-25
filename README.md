@@ -21,6 +21,35 @@ bunx degit nounder/effect-start/examples/bun-preact target
 
 ## Development
 
+### Configuration
+
+`server.ts` is a main entrypoint for all environments. No more divergence between dev and prod!
+
+It exports a layer that applies configuration and changes the behavior of the server:
+
+```ts
+import {
+  BunTailwindPlugin,
+  Start,
+} from "effect-start"
+
+export default Layer
+  .mergeAll(
+    // enable file-based router
+    Start.router(() => import("./routes/_manifest")),
+    // bundle client-side code for the browser
+    Start.bundleClient({
+      entrypoints: [
+        "src/index.html",
+      ],
+      plugins: [
+        // enable TailwindCSS for client bundle
+        BunTailwindPlugin.make(),
+      ],
+    }),
+  )
+```
+
 ### File-based Routing
 
 Effect Start provides automatic file-based routing with support for frontend pages, backend endpoints, and stackable layouts.
