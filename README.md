@@ -21,6 +21,17 @@ bunx degit nounder/effect-start/examples/bun-preact target
 
 ## Development
 
+### Configuration in server.ts
+
+`server.ts` is where all configuration lives. It's a typescript file run to be your dev server and run to be your production server as well. YES environment can be the same. No more divergence between dev and prod! What you see is what you get.
+
+To configure server.ts notice that the bundleClient creation passed on the configuration from [bun build](https://bun.sh/docs/bundler).
+
+When adding features like File-based routing or Tailwind support you will provide Layers to the `exportdefault Layer.mergeAll(...)` function.
+
+To make a Layer for Effect-Start features you will import from "effect-start" and see how it turns into a Layer e.g. via the `.layer` or `.make` function.
+From there you add the layer to the `Layer.mergeAll()` array. Notice potential order conflicts like Filebased routing needing to be after your Bundle layer!
+
 ### File-based Routing
 
 Effect Start provides automatic file-based routing with support for frontend pages, backend endpoints, and stackable layouts.
