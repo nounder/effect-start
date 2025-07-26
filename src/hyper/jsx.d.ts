@@ -13,20 +13,11 @@ import * as HyperNode from "./HyperNode.ts"
  * Checked against other frameworks via the following table:
  * https://potahtml.github.io/namespace-jsx-project/index.html
  */
-type DOMElement = Element
+type DOMElement = never
 
 export namespace JSX {
-  type Element =
-    | HyperNode.HyperNode
-    | Node
-    | ArrayElement
-    | (string & {})
-    | number
-    | boolean
-    | null
-    | undefined
-
-  interface ArrayElement extends Array<Element> {}
+  type Element = HyperNode.HyperNode
+  type Children = Element | string | (Element | string)[]
 
   interface ElementClass {
     // empty, libs can define requirements downstream
@@ -143,7 +134,7 @@ export namespace JSX {
   }
   interface CustomAttributes<T> {
     ref?: T | ((el: T) => void) | undefined
-    children?: Element | undefined
+    children?: Children | undefined
     classList?:
       | {
         [k: string]: boolean | undefined
