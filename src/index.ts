@@ -22,3 +22,6 @@ export * as Router from "./Router"
 export * as CloudflareTunnel from "./CloudflareTunnel"
 
 export * as Start from "./Start"
+
+export * as Hyper from "./Hyper"
+export * as HyperHtml from "./HyperHtml"

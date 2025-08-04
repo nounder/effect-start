@@ -19,16 +19,16 @@ export const ServerMethods = [
 
 export type ServerMethod = (typeof ServerMethods)[number]
 
-export type ServerHandle<A> =
+export type ServerHandle =
   | HttpApp.Default<any, any>
   | Route.Route
 
 export type ServerModule =
   & {
-    [K in ServerMethod]?: ServerHandle<any>
+    [K in ServerMethod]?: ServerHandle
   }
   & {
-    default?: ServerHandle<any>
+    default?: ServerHandle
   }
 
 export type ServerRoute = {

@@ -12,8 +12,8 @@
     "./files": "./src/FileSystemExtra.ts",
     "./package.json": "./package.json",
     "./x/tanstack-react-router": "./src/x/tanstack-react-router/index.ts",
-    "./jsx-runtime": "./src/hyper/jsx-runtime.ts",
-    "./jsx-dev-runtime": "./src/hyper/jsx-runtime.ts",
+    "./jsx-runtime": "./src/jsx-runtime.ts",
+    "./jsx-dev-runtime": "./src/jsx-runtime.ts",
     "./hyper": "./src/hyper/index.ts"
   },
   "devDependencies": {

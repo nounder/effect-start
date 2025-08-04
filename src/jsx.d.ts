@@ -1556,7 +1556,7 @@ export namespace JSX {
     tabindex?: never
 
     /** @experimental */
-    closedby: "any" | "closerequest" | "none" | undefined
+    closedby?: "any" | "closerequest" | "none" | undefined
   }
   interface EmbedHTMLAttributes<T> extends HTMLAttributes<T> {
     height?: number | string | undefined
