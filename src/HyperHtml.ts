@@ -77,7 +77,12 @@ export function renderToString(
       result += `<${type}`
 
       for (const key in props) {
-        if (key !== "children" && props[key] !== false && props[key] != null) {
+        if (
+          key !== "children"
+          && key !== "innerHTML"
+          && props[key] !== false
+          && props[key] != null
+        ) {
           result += ` ${esc(key)}="${esc(props[key])}"`
         }
       }
@@ -87,13 +92,17 @@ export function renderToString(
       if (!EMPTY_TAGS.includes(type)) {
         stack.push(`</${type}>`)
 
-        const children = props.children
-        if (Array.isArray(children)) {
-          for (let i = children.length - 1; i >= 0; i--) {
-            stack.push(children[i])
+        if ("innerHTML" in props) {
+          result += props.innerHTML
+        } else {
+          const children = props.children
+          if (Array.isArray(children)) {
+            for (let i = children.length - 1; i >= 0; i--) {
+              stack.push(children[i])
+            }
+          } else if (children != null) {
+            stack.push(children)
           }
-        } else if (children != null) {
-          stack.push(children)
         }
       }
     } else if (current && typeof current === "object") {
