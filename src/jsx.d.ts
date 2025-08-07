@@ -424,323 +424,125 @@ export namespace JSX {
   }
   /** @type {GlobalEventHandlers} */
   interface CustomEventHandlersLowerCase<T> {
-    onabort?: EventHandlerUnion<T, UIEvent> | undefined
-    onanimationcancel?: EventHandlerUnion<T, AnimationEvent> | undefined
-    onanimationend?: EventHandlerUnion<T, AnimationEvent> | undefined
-    onanimationiteration?: EventHandlerUnion<T, AnimationEvent> | undefined
-    onanimationstart?: EventHandlerUnion<T, AnimationEvent> | undefined
-    onauxclick?: EventHandlerUnion<T, PointerEvent> | undefined
-    onbeforecopy?: EventHandlerUnion<T, ClipboardEvent> | undefined
-    onbeforecut?: EventHandlerUnion<T, ClipboardEvent> | undefined
-    onbeforeinput?: InputEventHandlerUnion<T, InputEvent> | undefined
-    onbeforematch?: EventHandlerUnion<T, Event> | undefined
-    onbeforepaste?: EventHandlerUnion<T, ClipboardEvent> | undefined
-    onbeforetoggle?: EventHandlerUnion<T, ToggleEvent> | undefined
-    onbeforexrselect?: EventHandlerUnion<T, Event> | undefined
-    onblur?: FocusEventHandlerUnion<T, FocusEvent> | undefined
-    oncancel?: EventHandlerUnion<T, Event> | undefined
-    oncanplay?: EventHandlerUnion<T, Event> | undefined
-    oncanplaythrough?: EventHandlerUnion<T, Event> | undefined
-    onchange?: ChangeEventHandlerUnion<T, Event> | undefined
-    onclick?: EventHandlerUnion<T, MouseEvent> | undefined
-    onclose?: EventHandlerUnion<T, Event> | undefined
+    onabort?: string | undefined
+    onanimationcancel?: string | undefined
+    onanimationend?: string | undefined
+    onanimationiteration?: string | undefined
+    onanimationstart?: string | undefined
+    onauxclick?: string | undefined
+    onbeforecopy?: string | undefined
+    onbeforecut?: string | undefined
+    onbeforeinput?: Inputstring | undefined
+    onbeforematch?: string | undefined
+    onbeforepaste?: string | undefined
+    onbeforetoggle?: string | undefined
+    onbeforexrselect?: string | undefined
+    onblur?: Focusstring | undefined
+    oncancel?: string | undefined
+    oncanplay?: string | undefined
+    oncanplaythrough?: string | undefined
+    onchange?: Changestring | undefined
+    onclick?: string | undefined
+    onclose?: string | undefined
     // TODO `CommandEvent` is currently undefined in TS
-    oncommand?: EventHandlerUnion<T, Event> | undefined
-    oncompositionend?: EventHandlerUnion<T, CompositionEvent> | undefined
-    oncompositionstart?: EventHandlerUnion<T, CompositionEvent> | undefined
-    oncompositionupdate?: EventHandlerUnion<T, CompositionEvent> | undefined
+    oncommand?: string | undefined
+    oncompositionend?: string | undefined
+    oncompositionstart?: string | undefined
+    oncompositionupdate?: string | undefined
     oncontentvisibilityautostatechange?:
-      | EventHandlerUnion<T, ContentVisibilityAutoStateChangeEvent>
+      | string
       | undefined
-    oncontextlost?: EventHandlerUnion<T, Event> | undefined
-    oncontextmenu?: EventHandlerUnion<T, PointerEvent> | undefined
-    oncontextrestored?: EventHandlerUnion<T, Event> | undefined
-    oncopy?: EventHandlerUnion<T, ClipboardEvent> | undefined
-    oncuechange?: EventHandlerUnion<T, Event> | undefined
-    oncut?: EventHandlerUnion<T, ClipboardEvent> | undefined
-    ondblclick?: EventHandlerUnion<T, MouseEvent> | undefined
-    ondrag?: EventHandlerUnion<T, DragEvent> | undefined
-    ondragend?: EventHandlerUnion<T, DragEvent> | undefined
-    ondragenter?: EventHandlerUnion<T, DragEvent> | undefined
-    ondragexit?: EventHandlerUnion<T, DragEvent> | undefined
-    ondragleave?: EventHandlerUnion<T, DragEvent> | undefined
-    ondragover?: EventHandlerUnion<T, DragEvent> | undefined
-    ondragstart?: EventHandlerUnion<T, DragEvent> | undefined
-    ondrop?: EventHandlerUnion<T, DragEvent> | undefined
-    ondurationchange?: EventHandlerUnion<T, Event> | undefined
-    onemptied?: EventHandlerUnion<T, Event> | undefined
-    onended?: EventHandlerUnion<T, Event> | undefined
-    onerror?: EventHandlerUnion<T, ErrorEvent> | undefined
-    onfocus?: FocusEventHandlerUnion<T, FocusEvent> | undefined
-    onfocusin?: FocusEventHandlerUnion<T, FocusEvent> | undefined
-    onfocusout?: FocusEventHandlerUnion<T, FocusEvent> | undefined
-    onformdata?: EventHandlerUnion<T, FormDataEvent> | undefined
-    onfullscreenchange?: EventHandlerUnion<T, Event> | undefined
-    onfullscreenerror?: EventHandlerUnion<T, Event> | undefined
-    ongotpointercapture?: EventHandlerUnion<T, PointerEvent> | undefined
-    oninput?: InputEventHandlerUnion<T, InputEvent> | undefined
-    oninvalid?: EventHandlerUnion<T, Event> | undefined
-    onkeydown?: EventHandlerUnion<T, KeyboardEvent> | undefined
-    onkeypress?: EventHandlerUnion<T, KeyboardEvent> | undefined
-    onkeyup?: EventHandlerUnion<T, KeyboardEvent> | undefined
-    onload?: EventHandlerUnion<T, Event> | undefined
-    onloadeddata?: EventHandlerUnion<T, Event> | undefined
-    onloadedmetadata?: EventHandlerUnion<T, Event> | undefined
-    onloadstart?: EventHandlerUnion<T, Event> | undefined
-    onlostpointercapture?: EventHandlerUnion<T, PointerEvent> | undefined
-    onmousedown?: EventHandlerUnion<T, MouseEvent> | undefined
-    onmouseenter?: EventHandlerUnion<T, MouseEvent> | undefined
-    onmouseleave?: EventHandlerUnion<T, MouseEvent> | undefined
-    onmousemove?: EventHandlerUnion<T, MouseEvent> | undefined
-    onmouseout?: EventHandlerUnion<T, MouseEvent> | undefined
-    onmouseover?: EventHandlerUnion<T, MouseEvent> | undefined
-    onmouseup?: EventHandlerUnion<T, MouseEvent> | undefined
-    onpaste?: EventHandlerUnion<T, ClipboardEvent> | undefined
-    onpause?: EventHandlerUnion<T, Event> | undefined
-    onplay?: EventHandlerUnion<T, Event> | undefined
-    onplaying?: EventHandlerUnion<T, Event> | undefined
-    onpointercancel?: EventHandlerUnion<T, PointerEvent> | undefined
-    onpointerdown?: EventHandlerUnion<T, PointerEvent> | undefined
-    onpointerenter?: EventHandlerUnion<T, PointerEvent> | undefined
-    onpointerleave?: EventHandlerUnion<T, PointerEvent> | undefined
-    onpointermove?: EventHandlerUnion<T, PointerEvent> | undefined
-    onpointerout?: EventHandlerUnion<T, PointerEvent> | undefined
-    onpointerover?: EventHandlerUnion<T, PointerEvent> | undefined
-    onpointerrawupdate?: EventHandlerUnion<T, PointerEvent> | undefined
-    onpointerup?: EventHandlerUnion<T, PointerEvent> | undefined
-    onprogress?: EventHandlerUnion<T, ProgressEvent> | undefined
-    onratechange?: EventHandlerUnion<T, Event> | undefined
-    onreset?: EventHandlerUnion<T, Event> | undefined
-    onresize?: EventHandlerUnion<T, UIEvent> | undefined
-    onscroll?: EventHandlerUnion<T, Event> | undefined
-    onscrollend?: EventHandlerUnion<T, Event> | undefined
+    oncontextlost?: string | undefined
+    oncontextmenu?: string | undefined
+    oncontextrestored?: string | undefined
+    oncopy?: string | undefined
+    oncuechange?: string | undefined
+    oncut?: string | undefined
+    ondblclick?: string | undefined
+    ondrag?: string | undefined
+    ondragend?: string | undefined
+    ondragenter?: string | undefined
+    ondragexit?: string | undefined
+    ondragleave?: string | undefined
+    ondragover?: string | undefined
+    ondragstart?: string | undefined
+    ondrop?: string | undefined
+    ondurationchange?: string | undefined
+    onemptied?: string | undefined
+    onended?: string | undefined
+    onerror?: string | undefined
+    onfocus?: Focusstring | undefined
+    onfocusin?: Focusstring | undefined
+    onfocusout?: Focusstring | undefined
+    onformdata?: string | undefined
+    onfullscreenchange?: string | undefined
+    onfullscreenerror?: string | undefined
+    ongotpointercapture?: string | undefined
+    oninput?: Inputstring | undefined
+    oninvalid?: string | undefined
+    onkeydown?: string | undefined
+    onkeypress?: string | undefined
+    onkeyup?: string | undefined
+    onload?: string | undefined
+    onloadeddata?: string | undefined
+    onloadedmetadata?: string | undefined
+    onloadstart?: string | undefined
+    onlostpointercapture?: string | undefined
+    onmousedown?: string | undefined
+    onmouseenter?: string | undefined
+    onmouseleave?: string | undefined
+    onmousemove?: string | undefined
+    onmouseout?: string | undefined
+    onmouseover?: string | undefined
+    onmouseup?: string | undefined
+    onpaste?: string | undefined
+    onpause?: string | undefined
+    onplay?: string | undefined
+    onplaying?: string | undefined
+    onpointercancel?: string | undefined
+    onpointerdown?: string | undefined
+    onpointerenter?: string | undefined
+    onpointerleave?: string | undefined
+    onpointermove?: string | undefined
+    onpointerout?: string | undefined
+    onpointerover?: string | undefined
+    onpointerrawupdate?: string | undefined
+    onpointerup?: string | undefined
+    onprogress?: string | undefined
+    onratechange?: string | undefined
+    onreset?: string | undefined
+    onresize?: string | undefined
+    onscroll?: string | undefined
+    onscrollend?: string | undefined
     // todo `SnapEvent` is currently undefined in TS
-    onscrollsnapchange?: EventHandlerUnion<T, Event> | undefined
+    onscrollsnapchange?: string | undefined
     // todo `SnapEvent` is currently undefined in TS
-    onscrollsnapchanging?: EventHandlerUnion<T, Event> | undefined
+    onscrollsnapchanging?: string | undefined
     onsecuritypolicyviolation?:
-      | EventHandlerUnion<T, SecurityPolicyViolationEvent>
+      | string
       | undefined
-    onseeked?: EventHandlerUnion<T, Event> | undefined
-    onseeking?: EventHandlerUnion<T, Event> | undefined
-    onselect?: EventHandlerUnion<T, Event> | undefined
-    onselectionchange?: EventHandlerUnion<T, Event> | undefined
-    onselectstart?: EventHandlerUnion<T, Event> | undefined
-    onslotchange?: EventHandlerUnion<T, Event> | undefined
-    onstalled?: EventHandlerUnion<T, Event> | undefined
-    onsubmit?: EventHandlerUnion<T, SubmitEvent> | undefined
-    onsuspend?: EventHandlerUnion<T, Event> | undefined
-    ontimeupdate?: EventHandlerUnion<T, Event> | undefined
-    ontoggle?: EventHandlerUnion<T, ToggleEvent> | undefined
-    ontouchcancel?: EventHandlerUnion<T, TouchEvent> | undefined
-    ontouchend?: EventHandlerUnion<T, TouchEvent> | undefined
-    ontouchmove?: EventHandlerUnion<T, TouchEvent> | undefined
-    ontouchstart?: EventHandlerUnion<T, TouchEvent> | undefined
-    ontransitioncancel?: EventHandlerUnion<T, TransitionEvent> | undefined
-    ontransitionend?: EventHandlerUnion<T, TransitionEvent> | undefined
-    ontransitionrun?: EventHandlerUnion<T, TransitionEvent> | undefined
-    ontransitionstart?: EventHandlerUnion<T, TransitionEvent> | undefined
-    onvolumechange?: EventHandlerUnion<T, Event> | undefined
-    onwaiting?: EventHandlerUnion<T, Event> | undefined
-    onwheel?: EventHandlerUnion<T, WheelEvent> | undefined
-  }
-
-  interface CustomEventHandlersNamespaced<T> {
-    "on:abort"?: EventHandlerWithOptionsUnion<T, UIEvent> | undefined
-    "on:animationcancel"?:
-      | EventHandlerWithOptionsUnion<T, AnimationEvent>
-      | undefined
-    "on:animationend"?:
-      | EventHandlerWithOptionsUnion<T, AnimationEvent>
-      | undefined
-    "on:animationiteration"?:
-      | EventHandlerWithOptionsUnion<T, AnimationEvent>
-      | undefined
-    "on:animationstart"?:
-      | EventHandlerWithOptionsUnion<T, AnimationEvent>
-      | undefined
-    "on:auxclick"?: EventHandlerWithOptionsUnion<T, PointerEvent> | undefined
-    "on:beforecopy"?:
-      | EventHandlerWithOptionsUnion<T, ClipboardEvent>
-      | undefined
-    "on:beforecut"?: EventHandlerWithOptionsUnion<T, ClipboardEvent> | undefined
-    "on:beforeinput"?:
-      | EventHandlerWithOptionsUnion<
-        T,
-        InputEvent,
-        InputEventHandler<T, InputEvent>
-      >
-      | undefined
-    "on:beforematch"?: EventHandlerWithOptionsUnion<T, Event> | undefined
-    "on:beforepaste"?:
-      | EventHandlerWithOptionsUnion<T, ClipboardEvent>
-      | undefined
-    "on:beforetoggle"?: EventHandlerWithOptionsUnion<T, ToggleEvent> | undefined
-    "on:beforexrselect"?: EventHandlerWithOptionsUnion<T, Event> | undefined
-    "on:blur"?:
-      | EventHandlerWithOptionsUnion<
-        T,
-        FocusEvent,
-        FocusEventHandler<T, FocusEvent>
-      >
-      | undefined
-    "on:cancel"?: EventHandlerWithOptionsUnion<T, Event> | undefined
-    "on:canplay"?: EventHandlerWithOptionsUnion<T, Event> | undefined
-    "on:canplaythrough"?: EventHandlerWithOptionsUnion<T, Event> | undefined
-    "on:change"?:
-      | EventHandlerWithOptionsUnion<T, Event, ChangeEventHandler<T, Event>>
-      | undefined
-    "on:click"?: EventHandlerWithOptionsUnion<T, MouseEvent> | undefined
-    "on:close"?: EventHandlerWithOptionsUnion<T, Event> | undefined
-    // TODO `CommandEvent` is currently undefined in TS
-    "on:command"?: EventHandlerWithOptionsUnion<T, Event> | undefined
-    "on:compositionend"?:
-      | EventHandlerWithOptionsUnion<T, CompositionEvent>
-      | undefined
-    "on:compositionstart"?:
-      | EventHandlerWithOptionsUnion<T, CompositionEvent>
-      | undefined
-    "on:compositionupdate"?:
-      | EventHandlerWithOptionsUnion<T, CompositionEvent>
-      | undefined
-    "on:contentvisibilityautostatechange"?:
-      | EventHandlerWithOptionsUnion<T, ContentVisibilityAutoStateChangeEvent>
-      | undefined
-    "on:contextlost"?: EventHandlerWithOptionsUnion<T, Event> | undefined
-    "on:contextmenu"?: EventHandlerWithOptionsUnion<T, PointerEvent> | undefined
-    "on:contextrestored"?: EventHandlerWithOptionsUnion<T, Event> | undefined
-    "on:copy"?: EventHandlerWithOptionsUnion<T, ClipboardEvent> | undefined
-    "on:cuechange"?: EventHandlerWithOptionsUnion<T, Event> | undefined
-    "on:cut"?: EventHandlerWithOptionsUnion<T, ClipboardEvent> | undefined
-    "on:dblclick"?: EventHandlerWithOptionsUnion<T, MouseEvent> | undefined
-    "on:drag"?: EventHandlerWithOptionsUnion<T, DragEvent> | undefined
-    "on:dragend"?: EventHandlerWithOptionsUnion<T, DragEvent> | undefined
-    "on:dragenter"?: EventHandlerWithOptionsUnion<T, DragEvent> | undefined
-    "on:dragexit"?: EventHandlerWithOptionsUnion<T, DragEvent> | undefined
-    "on:dragleave"?: EventHandlerWithOptionsUnion<T, DragEvent> | undefined
-    "on:dragover"?: EventHandlerWithOptionsUnion<T, DragEvent> | undefined
-    "on:dragstart"?: EventHandlerWithOptionsUnion<T, DragEvent> | undefined
-    "on:drop"?: EventHandlerWithOptionsUnion<T, DragEvent> | undefined
-    "on:durationchange"?: EventHandlerWithOptionsUnion<T, Event> | undefined
-    "on:emptied"?: EventHandlerWithOptionsUnion<T, Event> | undefined
-    "on:ended"?: EventHandlerWithOptionsUnion<T, Event> | undefined
-    "on:error"?: EventHandlerWithOptionsUnion<T, ErrorEvent> | undefined
-    "on:focus"?:
-      | EventHandlerWithOptionsUnion<
-        T,
-        FocusEvent,
-        FocusEventHandler<T, FocusEvent>
-      >
-      | undefined
-    "on:focusin"?:
-      | EventHandlerWithOptionsUnion<
-        T,
-        FocusEvent,
-        FocusEventHandler<T, FocusEvent>
-      >
-      | undefined
-    "on:focusout"?:
-      | EventHandlerWithOptionsUnion<
-        T,
-        FocusEvent,
-        FocusEventHandler<T, FocusEvent>
-      >
-      | undefined
-    "on:formdata"?: EventHandlerWithOptionsUnion<T, FormDataEvent> | undefined
-    "on:fullscreenchange"?: EventHandlerWithOptionsUnion<T, Event> | undefined
-    "on:fullscreenerror"?: EventHandlerWithOptionsUnion<T, Event> | undefined
-    "on:gotpointercapture"?:
-      | EventHandlerWithOptionsUnion<T, PointerEvent>
-      | undefined
-    "on:input"?:
-      | EventHandlerWithOptionsUnion<
-        T,
-        InputEvent,
-        InputEventHandler<T, InputEvent>
-      >
-      | undefined
-    "on:invalid"?: EventHandlerWithOptionsUnion<T, Event> | undefined
-    "on:keydown"?: EventHandlerWithOptionsUnion<T, KeyboardEvent> | undefined
-    "on:keypress"?: EventHandlerWithOptionsUnion<T, KeyboardEvent> | undefined
-    "on:keyup"?: EventHandlerWithOptionsUnion<T, KeyboardEvent> | undefined
-    "on:load"?: EventHandlerWithOptionsUnion<T, Event> | undefined
-    "on:loadeddata"?: EventHandlerWithOptionsUnion<T, Event> | undefined
-    "on:loadedmetadata"?: EventHandlerWithOptionsUnion<T, Event> | undefined
-    "on:loadstart"?: EventHandlerWithOptionsUnion<T, Event> | undefined
-    "on:lostpointercapture"?:
-      | EventHandlerWithOptionsUnion<T, PointerEvent>
-      | undefined
-    "on:mousedown"?: EventHandlerWithOptionsUnion<T, MouseEvent> | undefined
-    "on:mouseenter"?: EventHandlerWithOptionsUnion<T, MouseEvent> | undefined
-    "on:mouseleave"?: EventHandlerWithOptionsUnion<T, MouseEvent> | undefined
-    "on:mousemove"?: EventHandlerWithOptionsUnion<T, MouseEvent> | undefined
-    "on:mouseout"?: EventHandlerWithOptionsUnion<T, MouseEvent> | undefined
-    "on:mouseover"?: EventHandlerWithOptionsUnion<T, MouseEvent> | undefined
-    "on:mouseup"?: EventHandlerWithOptionsUnion<T, MouseEvent> | undefined
-    "on:paste"?: EventHandlerWithOptionsUnion<T, ClipboardEvent> | undefined
-    "on:pause"?: EventHandlerWithOptionsUnion<T, Event> | undefined
-    "on:play"?: EventHandlerWithOptionsUnion<T, Event> | undefined
-    "on:playing"?: EventHandlerWithOptionsUnion<T, Event> | undefined
-    "on:pointercancel"?:
-      | EventHandlerWithOptionsUnion<T, PointerEvent>
-      | undefined
-    "on:pointerdown"?: EventHandlerWithOptionsUnion<T, PointerEvent> | undefined
-    "on:pointerenter"?:
-      | EventHandlerWithOptionsUnion<T, PointerEvent>
-      | undefined
-    "on:pointerleave"?:
-      | EventHandlerWithOptionsUnion<T, PointerEvent>
-      | undefined
-    "on:pointermove"?: EventHandlerWithOptionsUnion<T, PointerEvent> | undefined
-    "on:pointerout"?: EventHandlerWithOptionsUnion<T, PointerEvent> | undefined
-    "on:pointerover"?: EventHandlerWithOptionsUnion<T, PointerEvent> | undefined
-    "on:pointerrawupdate"?:
-      | EventHandlerWithOptionsUnion<T, PointerEvent>
-      | undefined
-    "on:pointerup"?: EventHandlerWithOptionsUnion<T, PointerEvent> | undefined
-    "on:progress"?: EventHandlerWithOptionsUnion<T, ProgressEvent> | undefined
-    "on:ratechange"?: EventHandlerWithOptionsUnion<T, Event> | undefined
-    "on:reset"?: EventHandlerWithOptionsUnion<T, Event> | undefined
-    "on:resize"?: EventHandlerWithOptionsUnion<T, UIEvent> | undefined
-    "on:scroll"?: EventHandlerWithOptionsUnion<T, Event> | undefined
-    "on:scrollend"?: EventHandlerWithOptionsUnion<T, Event> | undefined
-    // todo `SnapEvent` is currently undefined in TS
-    "on:scrollsnapchange"?: EventHandlerWithOptionsUnion<T, Event> | undefined
-    // todo `SnapEvent` is currently undefined in TS
-    "on:scrollsnapchanging"?: EventHandlerWithOptionsUnion<T, Event> | undefined
-    "on:securitypolicyviolation"?:
-      | EventHandlerWithOptionsUnion<T, SecurityPolicyViolationEvent>
-      | undefined
-    "on:seeked"?: EventHandlerWithOptionsUnion<T, Event> | undefined
-    "on:seeking"?: EventHandlerWithOptionsUnion<T, Event> | undefined
-    "on:select"?: EventHandlerWithOptionsUnion<T, Event> | undefined
-    "on:selectionchange"?: EventHandlerWithOptionsUnion<T, Event> | undefined
-    "on:selectstart"?: EventHandlerWithOptionsUnion<T, Event> | undefined
-    "on:slotchange"?: EventHandlerWithOptionsUnion<T, Event> | undefined
-    "on:stalled"?: EventHandlerWithOptionsUnion<T, Event> | undefined
-    "on:submit"?: EventHandlerWithOptionsUnion<T, SubmitEvent> | undefined
-    "on:suspend"?: EventHandlerWithOptionsUnion<T, Event> | undefined
-    "on:timeupdate"?: EventHandlerWithOptionsUnion<T, Event> | undefined
-    "on:toggle"?: EventHandlerWithOptionsUnion<T, ToggleEvent> | undefined
-    "on:touchcancel"?: EventHandlerWithOptionsUnion<T, TouchEvent> | undefined
-    "on:touchend"?: EventHandlerWithOptionsUnion<T, TouchEvent> | undefined
-    "on:touchmove"?: EventHandlerWithOptionsUnion<T, TouchEvent> | undefined
-    "on:touchstart"?: EventHandlerWithOptionsUnion<T, TouchEvent> | undefined
-    "on:transitioncancel"?:
-      | EventHandlerWithOptionsUnion<T, TransitionEvent>
-      | undefined
-    "on:transitionend"?:
-      | EventHandlerWithOptionsUnion<T, TransitionEvent>
-      | undefined
-    "on:transitionrun"?:
-      | EventHandlerWithOptionsUnion<T, TransitionEvent>
-      | undefined
-    "on:transitionstart"?:
-      | EventHandlerWithOptionsUnion<T, TransitionEvent>
-      | undefined
-    "on:volumechange"?: EventHandlerWithOptionsUnion<T, Event> | undefined
-    "on:waiting"?: EventHandlerWithOptionsUnion<T, Event> | undefined
-    "on:wheel"?: EventHandlerWithOptionsUnion<T, WheelEvent> | undefined
+    onseeked?: string | undefined
+    onseeking?: string | undefined
+    onselect?: string | undefined
+    onselectionchange?: string | undefined
+    onselectstart?: string | undefined
+    onslotchange?: string | undefined
+    onstalled?: string | undefined
+    onsubmit?: string | undefined
+    onsuspend?: string | undefined
+    ontimeupdate?: string | undefined
+    ontoggle?: string | undefined
+    ontouchcancel?: string | undefined
+    ontouchend?: string | undefined
+    ontouchmove?: string | undefined
+    ontouchstart?: string | undefined
+    ontransitioncancel?: string | undefined
+    ontransitionend?: string | undefined
+    ontransitionrun?: string | undefined
+    ontransitionstart?: string | undefined
+    onvolumechange?: string | undefined
+    onwaiting?: string | undefined
+    onwheel?: string | undefined
   }
 
   /**
@@ -762,7 +564,6 @@ export namespace JSX {
       OnCaptureAttributes<T>,
       CustomEventHandlersCamelCase<T>,
       CustomEventHandlersLowerCase<T>,
-      CustomEventHandlersNamespaced<T>,
       AriaAttributes
   {
     // [key: ClassKeys]: boolean;
@@ -4577,5 +4378,7 @@ export namespace JSX {
       HTMLElementDeprecatedTags,
       SVGElementTags,
       MathMLElementTags
-  {}
+  {
+    [elemName: string]: DOMAttributes<HTMLElement>
+  }
 }
