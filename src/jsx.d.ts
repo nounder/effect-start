@@ -1302,8 +1302,6 @@ export namespace JSX {
 
   /** `HTMLElement` interface keys only. (ex not svg/math) */
   interface HTMLAttributes<T> extends DOMAttributes<T> {
-    innerText?: string | number
-
     accesskey?: string | undefined
     autocapitalize?: HTMLAutocapitalize | undefined
     autocorrect?: "on" | "off" | undefined
