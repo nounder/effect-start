@@ -57,6 +57,16 @@ export function renderToString(
       continue
     }
 
+    if (typeof current === "boolean") {
+      // React-like behavior: booleans render nothing
+      continue
+    }
+
+    if (current === null || current === undefined) {
+      // React-like behavior: null/undefined render nothing
+      continue
+    }
+
     if (Array.isArray(current)) {
       // Handle arrays by pushing all items to stack in reverse order
       for (let i = current.length - 1; i >= 0; i--) {
