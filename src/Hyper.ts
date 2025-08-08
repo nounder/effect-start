@@ -4,6 +4,18 @@ import { Effect } from "effect"
 import { YieldWrap } from "effect/Utils"
 import * as HyperHtml from "./HyperHtml.ts"
 
+import type { JSX } from "./jsx.d.ts"
+
+type Elements = JSX.IntrinsicElements
+
+type Children = JSX.Children
+
+export type {
+  Children,
+  Elements,
+  JSX,
+}
+
 /**
  * Accepts Effect that returns a HyperNode
  * to a HttpApp.
