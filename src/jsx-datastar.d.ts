@@ -51,15 +51,10 @@ export interface DatastarAttributes {
   "data-view-transition"?: string | undefined
 
   // Dynamic attributes with suffixes
-  [key: `data-signals-${string}`]:
-    | string
-    | number
-    | boolean
-    | object
-    | undefined
-  [key: `data-class-${string}`]: string | boolean | undefined
-  [key: `data-attr-${string}`]: string | boolean | number | undefined
-  [key: `data-style-${string}`]: string | number | boolean | null | undefined
+  [key: `data-signals-${string}`]: string | undefined
+  [key: `data-class-${string}`]: string | undefined
+  [key: `data-attr-${string}`]: string | undefined
+  [key: `data-style-${string}`]: string | undefined
   [key: `data-bind-${string}`]: string | undefined
   [key: `data-computed-${string}`]: string | undefined
   [key: `data-indicator-${string}`]: string | undefined

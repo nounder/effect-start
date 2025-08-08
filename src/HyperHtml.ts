@@ -34,6 +34,7 @@ let map = {
 
 export function renderToString(
   node: HyperNode.HyperNode,
+  hooks?: { onNode?: (node: HyperNode.HyperNode) => void },
 ): string {
   const stack: any[] = [node]
   let result = ""
@@ -65,6 +66,8 @@ export function renderToString(
     }
 
     if (current && typeof current === "object" && current.type) {
+      hooks?.onNode?.(current)
+
       if (typeof current.type === "function") {
         const componentResult = current.type(current.props)
         if (componentResult != null) {
