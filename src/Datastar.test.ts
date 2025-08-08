@@ -5,6 +5,7 @@ import {
 import * as Datastar from "./Datastar.ts"
 import * as HyperHtml from "./HyperHtml.ts"
 import * as HyperNode from "./HyperNode.ts"
+import { jsx } from "./jsx-runtime.ts"
 
 test("data-signals object serialization", () => {
   const node = HyperNode.make("div", {
@@ -185,4 +186,72 @@ test("dynamic attributes with suffixes", () => {
     .toContain("data-attr-tabindex=\"5\"")
   expect(html)
     .toContain("data-style-opacity=\"0.5\"")
+})
+
+test("JSX with data-signals object", () => {
+  const node = jsx("div", {
+    "data-signals": { isOpen: false, count: 42 } as any,
+    children: "content",
+  })
+
+  const html = HyperHtml.renderToString(node, Datastar.HyperHooks)
+
+  expect(html)
+    .toBe(
+      "<div data-signals=\"{&quot;isOpen&quot;:false,&quot;count&quot;:42}\">content</div>",
+    )
+  expect(html)
+    .not
+    .toContain("[object Object]")
+})
+
+test("JSX component returning element with data-signals", () => {
+  function TestComponent() {
+    return jsx("div", {
+      "data-signals": { isOpen: false } as any,
+      children: jsx("span", { children: "nested content" }),
+    })
+  }
+
+  const node = jsx(TestComponent, {})
+
+  const html = HyperHtml.renderToString(node, Datastar.HyperHooks)
+
+  expect(html)
+    .toBe(
+      "<div data-signals=\"{&quot;isOpen&quot;:false}\"><span>nested content</span></div>",
+    )
+  expect(html)
+    .not
+    .toContain("[object Object]")
+})
+
+test("debug hook execution", () => {
+  const node = jsx("div", {
+    "data-signals": { isOpen: false, count: 42 } as any,
+    children: "content",
+  })
+
+  const debugHook = {
+    onNode: (node: any) => {
+      console.log("Hook called on node:", node.type, node.props)
+      if (node.props["data-signals"]) {
+        console.log("Before transformation:", typeof node.props["data-signals"], node.props["data-signals"])
+      }
+      
+      // Call the original Datastar hook
+      Datastar.HyperHooks.onNode(node)
+      
+      if (node.props["data-signals"]) {
+        console.log("After transformation:", typeof node.props["data-signals"], node.props["data-signals"])
+      }
+    }
+  }
+
+  const html = HyperHtml.renderToString(node, debugHook)
+  console.log("Final HTML:", html)
+
+  expect(html)
+    .not
+    .toContain("[object Object]")
 })
