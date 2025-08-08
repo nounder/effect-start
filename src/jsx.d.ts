@@ -1,4 +1,5 @@
 import * as HyperNode from "./HyperNode.ts"
+import type { DatastarAttributes } from "./jsx-datastar.ts"
 
 /**
  * Based on JSX types for Surplus, Inferno, and dom-expressions.
@@ -564,7 +565,8 @@ export namespace JSX {
       OnCaptureAttributes<T>,
       CustomEventHandlersCamelCase<T>,
       CustomEventHandlersLowerCase<T>,
-      AriaAttributes
+      AriaAttributes,
+      DatastarAttributes
   {
     // [key: ClassKeys]: boolean;
 

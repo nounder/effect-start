@@ -83,7 +83,11 @@ export function renderToString(
           && props[key] !== false
           && props[key] != null
         ) {
-          result += ` ${esc(key)}="${esc(props[key])}"`
+          if (props[key] === true) {
+            result += ` ${esc(key)}`
+          } else {
+            result += ` ${esc(key)}="${esc(props[key])}"`
+          }
         }
       }
 
