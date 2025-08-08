@@ -29,7 +29,8 @@
     "effect": "^3.16.12",
     "effect-memfs": "nounder/effect-memfs#a976bb0",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react-dom": "^19.1.0",
+    "ts-namespace-import": "nounder/ts-namespace-import#140c405"
   },
   "peerDependencies": {
     "typescript": "^5.8.3",
