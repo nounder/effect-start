@@ -98,8 +98,8 @@ export function generateCode(
       .slice(1)
       // convert slashes to double underscores
       .replace(/\//g, "__")
-      // convert dots to underscores
-      .replace(/\./g, "_")
+      // convert dots, tildes, and hyphens to underscores
+      .replace(/[.~-]/g, "_")
     const varName = `${prefix}__${normalizedPath}`
 
     // Reset current layout if it's not an ancestor of current route

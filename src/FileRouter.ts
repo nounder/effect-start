@@ -145,7 +145,7 @@ export function segmentPath(path: string): Segment[] {
         }
       }
 
-      if (/^[\w.]+$/.test(s)) {
+      if (/^[A-Za-z0-9._~-]+$/.test(s)) {
         return {
           type: "Literal",
           text: s,

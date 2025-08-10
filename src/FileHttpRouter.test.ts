@@ -121,7 +121,7 @@ test("middleware falls back to original app on 404", () =>
     const middleware = FileHttpRouter.middleware()
     const fallbackApp = Effect.succeed(HttpServerResponse.text("fallback"))
     const middlewareApp = middleware(fallbackApp)
-    
+
     const client = TestHttpClient.make(middlewareApp)
 
     const existingRouteResponse = yield* client.get("/users")
@@ -139,4 +139,55 @@ test("middleware falls back to original app on 404", () =>
 
     expect(yield* notFoundResponse.text)
       .toBe("fallback")
+  }))
+
+test("handles routes with special characters (tilde and hyphen)", () =>
+  effect(function*() {
+    const specialCharRoutes: Router.ServerRoute[] = [
+      {
+        path: "/api-v1",
+        load: async () => ({
+          GET: Effect.succeed(HttpServerResponse.text("API v1")),
+        }),
+      },
+      {
+        path: "/files~backup",
+        load: async () => ({
+          GET: Effect.succeed(HttpServerResponse.text("Backup files")),
+        }),
+      },
+      {
+        path: "/test-route~temp",
+        load: async () => ({
+          POST: Effect.succeed(HttpServerResponse.text("Test route")),
+        }),
+      },
+    ]
+
+    const router = yield* FileHttpRouter.make(specialCharRoutes)
+    const client = TestHttpClient.make(router)
+
+    const apiResponse = yield* client.get("/api-v1")
+
+    expect(apiResponse.status)
+      .toBe(200)
+
+    expect(yield* apiResponse.text)
+      .toBe("API v1")
+
+    const backupResponse = yield* client.get("/files~backup")
+
+    expect(backupResponse.status)
+      .toBe(200)
+
+    expect(yield* backupResponse.text)
+      .toBe("Backup files")
+
+    const testResponse = yield* client.post("/test-route~temp")
+
+    expect(testResponse.status)
+      .toBe(200)
+
+    expect(yield* testResponse.text)
+      .toBe("Test route")
   }))

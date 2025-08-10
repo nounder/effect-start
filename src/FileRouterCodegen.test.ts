@@ -593,6 +593,29 @@ it("handles routes with dots in path segments", () => {
   expect(code).toContain("path: \"/api.v2\"")
 })
 
+it("handles routes with special characters (tilde and hyphen)", () => {
+  const handles: RouteHandle[] = [
+    parseRoute("api-v1/_server.ts"),
+    parseRoute("files~backup/_page.tsx"),
+    parseRoute("test-route~temp/_server.ts"),
+    parseRoute("user-profile.json~cache/_page.tsx"),
+  ]
+
+  const code = FileRouterCodegen.generateCode(handles)
+
+  // Special characters should be converted to underscores in variable names
+  expect(code).toContain("const server__api_v1 = {")
+  expect(code).toContain("const page__files_backup = {")
+  expect(code).toContain("const server__test_route_temp = {")
+  expect(code).toContain("const page__user_profile_json_cache = {")
+
+  // But original paths should be preserved in path property
+  expect(code).toContain("path: \"/api-v1\"")
+  expect(code).toContain("path: \"/files~backup\"")
+  expect(code).toContain("path: \"/test-route~temp\"")
+  expect(code).toContain("path: \"/user-profile.json~cache\"")
+})
+
 it("allows customizing router module identifier", () => {
   const handles: RouteHandle[] = [
     parseRoute("_page.tsx"),
