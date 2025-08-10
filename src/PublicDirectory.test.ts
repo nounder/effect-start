@@ -4,11 +4,11 @@ import {
   test,
 } from "bun:test"
 import { Effect } from "effect"
+import { MemoryFileSystem } from "effect-memfs"
 import {
   effectFn,
   TestHttpClient,
 } from "effect-start"
-import { MemoryFileSystem } from "effect-memfs"
 import * as PublicDirectory from "./PublicDirectory.ts"
 
 const TestFiles = {

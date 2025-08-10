@@ -1,5 +1,9 @@
 import { Cookies } from "@effect/platform"
-import { describe, expect, test } from "bun:test"
+import {
+  describe,
+  expect,
+  test,
+} from "bun:test"
 import { Effect } from "effect"
 import * as ConfigProvider from "effect/ConfigProvider"
 import * as EncryptedCookies from "./EncryptedCookies.ts"
