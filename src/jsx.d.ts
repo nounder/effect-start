@@ -18,7 +18,16 @@ type DOMElement = never
 
 export namespace JSX {
   type Element = HyperNode.HyperNode
-  type Children = Element | string | (Element | string)[]
+  type Child = Element | string
+  type Children =
+    | Child
+    | InvisibleChild
+    | (Child | InvisibleChild)[]
+
+  type InvisibleChild =
+    | boolean
+    | null
+    | undefined
 
   interface ElementClass {
     // empty, libs can define requirements downstream
@@ -135,7 +144,7 @@ export namespace JSX {
   }
   interface CustomAttributes<T> {
     ref?: T | ((el: T) => void) | undefined
-    children?: Children | undefined
+    children?: Children
     classList?:
       | {
         [k: string]: boolean | undefined
