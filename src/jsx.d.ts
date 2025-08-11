@@ -21,10 +21,12 @@ export namespace JSX {
   type Child = Element | string
   type Children =
     | Child
-    | InvisibleChild
-    | (Child | InvisibleChild)[]
+    | SilentChild
+    | Iterable<Children>
 
-  type InvisibleChild =
+  // a child that is not rendered and is often a result
+  // of conditional rendering, like: `{condition && <div>...</div>}`
+  type SilentChild =
     | boolean
     | null
     | undefined

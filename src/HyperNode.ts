@@ -10,11 +10,8 @@ export type Type = string | HyperComponent
 export type Props = {
   [key: string]:
     | Primitive
-    | ReadonlyArray<Primitive>
     | HyperNode
-    | HyperNode[]
-    | null
-    | undefined
+    | Iterable<Primitive | HyperNode>
 }
 
 export type HyperComponent = (
