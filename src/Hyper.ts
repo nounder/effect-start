@@ -22,7 +22,7 @@ export type {
  */
 export function handle<E, R>(
   handler: Effect.Effect<
-    HyperNode | HttpServerResponse.HttpServerResponse,
+    JSX.Children | HttpServerResponse.HttpServerResponse,
     E,
     R
   >,
@@ -30,14 +30,14 @@ export function handle<E, R>(
 export function handle(
   handler: () => Generator<
     never,
-    HyperNode | HttpServerResponse.HttpServerResponse,
+    JSX.Children | HttpServerResponse.HttpServerResponse,
     any
   >,
 ): HttpApp.Default<never, never>
 export function handle<Eff extends YieldWrap<Effect.Effect<any, any, any>>>(
   handler: () => Generator<
     Eff,
-    HyperNode | HttpServerResponse.HttpServerResponse,
+    JSX.Children | HttpServerResponse.HttpServerResponse,
     any
   >,
 ): HttpApp.Default<
@@ -48,10 +48,14 @@ export function handle<Eff extends YieldWrap<Effect.Effect<any, any, any>>>(
 >
 export function handle(
   handler:
-    | Effect.Effect<HyperNode | HttpServerResponse.HttpServerResponse, any, any>
+    | Effect.Effect<
+      JSX.Children | HttpServerResponse.HttpServerResponse,
+      any,
+      any
+    >
     | (() => Generator<
       YieldWrap<Effect.Effect<any, any, any>>,
-      HyperNode | HttpServerResponse.HttpServerResponse,
+      JSX.Children | HttpServerResponse.HttpServerResponse,
       any
     >),
 ): HttpApp.Default<any, any> {
