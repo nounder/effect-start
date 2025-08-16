@@ -1,9 +1,12 @@
 import { HttpServerResponse } from "@effect/platform"
 import * as HttpApp from "@effect/platform/HttpApp"
 import { Effect } from "effect"
+import * as Context from "effect/Context"
+import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
 import { YieldWrap } from "effect/Utils"
+import { HyperHooks } from "./Datastar.ts"
 import * as HyperHtml from "./HyperHtml.ts"
-
 import type { JSX } from "./jsx.d.ts"
 
 type Elements = JSX.IntrinsicElements
@@ -14,6 +17,20 @@ export type {
   Children,
   Elements,
   JSX,
+}
+
+export class Hyper extends Context.Tag("Hyper")<Hyper, {
+  hooks: typeof HyperHooks | undefined
+}>() {}
+
+export function layer(opts: {
+  hooks: typeof HyperHooks
+}) {
+  return Layer.sync(Hyper, () => {
+    return {
+      hooks: opts.hooks,
+    }
+  })
 }
 
 /**
@@ -60,6 +77,9 @@ export function handle(
     >),
 ): HttpApp.Default<any, any> {
   return Effect.gen(function*() {
+    const hyper = yield* Effect.serviceOption(Hyper).pipe(
+      Effect.andThen(Option.getOrNull),
+    )
     const effect = isGenerator(handler) ? Effect.gen(handler) : handler
     const value = yield* effect
 
@@ -67,7 +87,7 @@ export function handle(
       return value
     }
 
-    const html = HyperHtml.renderToString(value)
+    const html = HyperHtml.renderToString(value, hyper?.hooks)
 
     return yield* HttpServerResponse.html`${html}`
   })
