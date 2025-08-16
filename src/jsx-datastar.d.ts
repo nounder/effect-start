@@ -16,7 +16,7 @@ export interface DatastarAttributes {
   "data-signals"?: string | DatastarSignalsObject | undefined
   "data-class"?: string | DatastarClassObject | undefined
   "data-attr"?: string | DatastarAttrObject | undefined
-  "data-style"?: string | DatastarStyleObject | undefined
+  "data-style"?: Function | string | DatastarStyleObject | undefined
 
   // Boolean/presence attributes (but also strings)
   "data-show"?: string | boolean | undefined
@@ -59,5 +59,5 @@ export interface DatastarAttributes {
   [key: `data-computed-${string}`]: string | undefined
   [key: `data-indicator-${string}`]: string | undefined
   [key: `data-ref-${string}`]: string | undefined
-  [key: `data-on-${string}`]: string | undefined
+  [key: `data-on-${string}`]: Function | string | undefined
 }

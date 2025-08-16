@@ -1,4 +1,5 @@
 import * as HyperNode from "./HyperNode.ts"
+import { JSX } from "./jsx"
 
 /**
  * From: https://github.com/developit/vhtml
@@ -33,7 +34,7 @@ let map = {
 }
 
 export function renderToString(
-  node: HyperNode.HyperNode,
+  node: JSX.Children,
   hooks?: { onNode?: (node: HyperNode.HyperNode) => void },
 ): string {
   const stack: any[] = [node]

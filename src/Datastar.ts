@@ -5,10 +5,6 @@ export const HyperHooks = {
 } as const
 
 function onNode(node: HyperNode.HyperNode) {
-  if (typeof node.type !== "string") {
-    return
-  }
-
   const {
     "data-signals": dataSignals,
     "data-class": dataClass,
@@ -17,13 +13,15 @@ function onNode(node: HyperNode.HyperNode) {
     "data-show": dataShow,
     "data-ignore": dataIgnore,
     "data-ignore-morph": dataIgnoreMorph,
-  } = node.props
+  } = node.props as any
 
   if (typeof dataSignals === "object" && dataSignals !== null) {
     node.props["data-signals"] = JSON.stringify(dataSignals)
   }
 
-  if (typeof dataClass === "object" && dataClass !== null) {
+  if (typeof dataClass === "function") {
+    node.props["data-class"] = `(${dataClass.toString()})()`
+  } else if (typeof dataClass === "object" && dataClass !== null) {
     node.props["data-class"] = JSON.stringify(dataClass)
   }
 
@@ -31,7 +29,9 @@ function onNode(node: HyperNode.HyperNode) {
     node.props["data-attr"] = JSON.stringify(dataAttr)
   }
 
-  if (typeof dataStyle === "object" && dataStyle !== null) {
+  if (typeof dataStyle === "function") {
+    node.props["data-style"] = `(${dataStyle.toString()})()`
+  } else if (typeof dataStyle === "object" && dataStyle !== null) {
     node.props["data-style"] = JSON.stringify(dataStyle)
   }
 
@@ -55,6 +55,14 @@ function onNode(node: HyperNode.HyperNode) {
       && value !== null
     ) {
       node.props[key] = JSON.stringify(value)
+    }
+
+    if (
+      key.startsWith("data-on-")
+      && typeof value === "function"
+    ) {
+      // @ts-ignore
+      node.props[key] = `(${value.toString()})()`
     }
   }
 }
