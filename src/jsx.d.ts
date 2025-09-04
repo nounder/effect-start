@@ -2956,6 +2956,7 @@ export namespace JSX {
       WindowEventMap<T>
   {
     "xmlns:xlink"?: string | undefined
+    [`xmlns:${string}`]?: string | undefined
     contentScriptType?: string | undefined
     contentStyleType?: string | undefined
     height?: number | string | undefined
