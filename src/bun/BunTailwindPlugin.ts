@@ -1,6 +1,5 @@
-import * as Tailwind from "@tailwindcss/node"
+import type * as Tailwind from "@tailwindcss/node"
 import type { BunPlugin } from "bun"
-import { Iterable } from "effect"
 
 type Compiler = Awaited<ReturnType<typeof Tailwind.compile>>
 
@@ -12,14 +11,26 @@ export const make = (opts: {
    * provide your own importer.
    */
   importer?: () => Promise<typeof Tailwind>
+
   /**
-   * Patterm to match component and HTML files for class name extraction.
+   * Pattern to match component and HTML files for class name extraction.
    */
   filesPattern?: RegExp
+
   /**
    * Pattern to match CSS files that import Tailwind.
    */
   cssPattern?: RegExp
+
+  /**
+   * Scan a path for candidates.
+   * By default, only class names found in files that are part of the import graph
+   * that imports tailwind are considered.
+   *
+   * This option scans the provided path and ensures that class names found under this path
+   * are includedd, even if they are not part of the import graph.
+   */
+  scanPath?: string
 } = {}): BunPlugin => {
   const {
     filesPattern = /\.(tsx|jsx|html|svelte|vue|astro)$/,
@@ -27,22 +38,30 @@ export const make = (opts: {
     importer = () =>
       import("@tailwindcss/node").catch(err => {
         throw new Error(
-          "Tailwind not found: install @tailwindcss/node or provide custom importer",
+          "Tailwind not found: install @tailwindcss/node or provide custom importer option",
         )
       }),
   } = opts
 
   return {
     name: "Bun Tailwind.css plugin",
+    target: "browser",
     async setup(builder) {
       const Tailwind = await importer()
 
+      const scannedCandidates = new Set<string>()
       // (file) -> (class names)
       const classNameCandidates = new Map<string, Set<string>>()
       // (importer path) -> (imported paths)
       const importAncestors = new Map<string, Set<string>>()
       // (imported path) -> (importer paths)
       const importDescendants = new Map<string, Set<string>>()
+
+      if (opts.scanPath) {
+        const candidates = await scanFiles(opts.scanPath, filesPattern)
+
+        candidates.forEach(candidate => scannedCandidates.add(candidate))
+      }
 
       /**
        * Track import relationships.
@@ -108,8 +127,7 @@ export const make = (opts: {
       }, async (args) => {
         const source = await Bun.file(args.path).text()
 
-        // Bypass CSS files that do not import 'tailwindcss'
-        if (!hasTailwindImport(source)) {
+        if (!hasCssImport(source, "tailwindcss")) {
           return undefined
         }
 
@@ -124,6 +142,9 @@ export const make = (opts: {
         await args.defer()
 
         const candidates = new Set<string>()
+
+        scannedCandidates.forEach(candidate => candidates.add(candidate))
+
         {
           const pendingModules = [
             // get class name candidates from all modules that import this one
@@ -152,7 +173,9 @@ export const make = (opts: {
           }
         }
 
-        const contents = compiler.build([...candidates])
+        const contents = compiler.build([
+          ...candidates,
+        ])
 
         return {
           contents,
@@ -163,8 +186,15 @@ export const make = (opts: {
   }
 }
 
-function hasTailwindImport(css: string): boolean {
-  return /@import\s+(url\()?["']?[^"')]+["']?\)?\s*[^;]*;/.test(css)
+const CSS_IMPORT_REGEX = /@import\s+(?:url\()?["']?([^"')]+)["']?\)?\s*[^;]*;/
+
+function hasCssImport(css: string, specifier?: string): boolean {
+  const [, importPath] = css.match(CSS_IMPORT_REGEX) ?? []
+
+  if (!importPath) return false
+
+  return specifier === undefined
+    || importPath.includes(specifier)
 }
 
 const CLASS_NAME_REGEX = /^[^"'`\s]+$/
@@ -191,4 +221,32 @@ function extractClassNames(source: string): Set<string> {
   }
 
   return classNames
+}
+
+async function scanFiles(dir: string, pattern?: RegExp): Promise<Set<string>> {
+  const candidates = new Set<string>()
+  const glob = new Bun.Glob("**/*")
+
+  for await (
+    const filePath of glob.scan({
+      cwd: dir,
+      absolute: true,
+    })
+  ) {
+    if (pattern && !pattern.test(filePath)) {
+      continue
+    }
+
+    try {
+      const contents = await Bun.file(filePath).text()
+      const classNames = extractClassNames(contents)
+
+      classNames.forEach((className) => candidates.add(className))
+    } catch (error) {
+      // Skip files that can't be read (binary files, permission issues, etc.)
+      continue
+    }
+  }
+
+  return candidates
 }
