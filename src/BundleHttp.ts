@@ -200,8 +200,9 @@ const renderBlob = (blob: Blob) => {
 
     return HttpServerResponse.uint8Array(bytes, {
       headers: {
-        "Content-Type": blob.type,
-        "Content-Length": String(blob.size),
+        "content-type": blob.type,
+        "content-length": String(blob.size),
+        "cache-control": "public, max-age=3600",
       },
     })
   })
