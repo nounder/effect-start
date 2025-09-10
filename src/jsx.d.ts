@@ -18,7 +18,11 @@ type DOMElement = never
 
 export namespace JSX {
   type Element = HyperNode.HyperNode
-  type Child = Element | string
+  type Child =
+    | Element
+    | string
+    | number
+    | bigint
   type Children =
     | Child
     | SilentChild
