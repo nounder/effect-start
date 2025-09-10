@@ -1,5 +1,6 @@
 import type * as Tailwind from "@tailwindcss/node"
 import type { BunPlugin } from "bun"
+import * as NodePath from "node:path"
 
 type Compiler = Awaited<ReturnType<typeof Tailwind.compile>>
 
@@ -132,7 +133,8 @@ export const make = (opts: {
         }
 
         const compiler = await Tailwind.compile(source, {
-          base: process.cwd(),
+          base: NodePath.dirname(args.path),
+          shouldRewriteUrls: true,
           onDependency: (path) => {},
         })
 
