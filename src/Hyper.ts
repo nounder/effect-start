@@ -1,6 +1,9 @@
 import { HttpServerResponse } from "@effect/platform"
 import * as HttpApp from "@effect/platform/HttpApp"
-import { Effect } from "effect"
+import {
+  Effect,
+  Fiber,
+} from "effect"
 import * as Context from "effect/Context"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
@@ -136,4 +139,13 @@ export function h(
       children: props.children ?? NoChildren,
     },
   }
+}
+
+export function unsafeUse<Value>(tag: Context.Tag<any, Value>) {
+  const currentFiber = Option.getOrThrow(
+    Fiber.getCurrentFiber(),
+  )
+  const context = currentFiber.currentContext
+
+  return Context.unsafeGet(context, tag)
 }
