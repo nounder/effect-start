@@ -54,9 +54,7 @@ export function bundleClient(config: BunBundle.BuildOptions | string) {
 
     yield* router.mountApp(
       "/_bundle",
-      app.pipe(
-        Effect.provide(clientLayer),
-      ),
+      app,
     )
   }))
 
