@@ -225,9 +225,9 @@ function extractClassNames(source: string): Set<string> {
   return classNames
 }
 
-async function scanFiles(dir: string, pattern?: RegExp): Promise<Set<string>> {
+async function scanFiles(dir: string): Promise<Set<string>> {
   const candidates = new Set<string>()
-  const glob = new Bun.Glob("**/*")
+  const glob = new Bun.Glob("**/*.{js,jsx,ts,tsx,html,vue,svelte,astro}")
 
   for await (
     const filePath of glob.scan({
@@ -235,19 +235,10 @@ async function scanFiles(dir: string, pattern?: RegExp): Promise<Set<string>> {
       absolute: true,
     })
   ) {
-    if (pattern && !pattern.test(filePath)) {
-      continue
-    }
+    const contents = await Bun.file(filePath).text()
+    const classNames = extractClassNames(contents)
 
-    try {
-      const contents = await Bun.file(filePath).text()
-      const classNames = extractClassNames(contents)
-
-      classNames.forEach((className) => candidates.add(className))
-    } catch (error) {
-      // Skip files that can't be read (binary files, permission issues, etc.)
-      continue
-    }
+    classNames.forEach((className) => candidates.add(className))
   }
 
   return candidates
