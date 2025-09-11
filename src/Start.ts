@@ -59,21 +59,10 @@ export function bundleClient(config: BunBundle.BuildOptions | string) {
       ),
     )
   }))
-  const entrypointsLayer = Layer.effectDiscard(Effect.gen(function*() {
-    const router = yield* HttpRouter.Default
-
-    yield* router.get(
-      "*",
-      BundleHttp.entrypoint().pipe(
-        Effect.provide(clientLayer),
-      ),
-    )
-  }))
 
   return Layer.mergeAll(
     clientLayer,
     assetsLayer,
-    entrypointsLayer,
   )
 }
 
