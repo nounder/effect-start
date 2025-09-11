@@ -59,7 +59,7 @@ export const make = (opts: {
       const importDescendants = new Map<string, Set<string>>()
 
       if (opts.scanPath) {
-        const candidates = await scanFiles(opts.scanPath, filesPattern)
+        const candidates = await scanFiles(opts.scanPath)
 
         candidates.forEach(candidate => scannedCandidates.add(candidate))
       }
@@ -199,30 +199,82 @@ function hasCssImport(css: string, specifier?: string): boolean {
     || importPath.includes(specifier)
 }
 
-const CLASS_NAME_REGEX = /^[^"'`\s]+$/
-
-function extractClassNames(source: string): Set<string> {
-  const classNames = new Set<string>()
-
-  // Extract all string literals from the source
-  const stringLiteralRegex = /["'`]([^"'`]+)["'`]/g
-  let match
-
-  while ((match = stringLiteralRegex.exec(source)) !== null) {
-    const content = match[1]
-
-    // Split by whitespace and filter for valid Tailwind class patterns
-    const potentialClasses = content.split(/\s+/)
-
-    for (const className of potentialClasses) {
-      // Validate Tailwind-like classes with a single regex
-      if (CLASS_NAME_REGEX.test(className)) {
-        classNames.add(className)
+export function extractClassNames(source: string): Set<string> {
+  const candidates = new Set<string>()
+  
+  // Remove HTML comments to avoid false matches
+  const sourceWithoutComments = source.replace(/<!--[\s\S]*?-->/g, '')
+  
+  // Array of pattern strings for different class/className attribute formats
+  const patterns = [
+    // HTML class attributes with double quotes: <div class="bg-blue-500 text-white">
+    '<[^>]*?\\sclass\\s*=\\s*"([^"]+)"',
+    
+    // HTML class attributes with single quotes: <div class='bg-blue-500 text-white'>
+    '<[^>]*?\\sclass\\s*=\\s*\'([^\']+)\'',
+    
+    // JSX className attributes with double quotes: <div className="bg-blue-500 text-white">
+    '<[^>]*?\\sclassName\\s*=\\s*"([^"]+)"',
+    
+    // JSX className attributes with single quotes: <div className='bg-blue-500 text-white'>
+    '<[^>]*?\\sclassName\\s*=\\s*\'([^\']+)\'',
+    
+    // JSX className with braces and double quotes: <div className={"bg-blue-500 text-white"}>
+    '<[^>]*?\\sclassName\\s*=\\s*\\{\\s*"([^"]+)"\\s*\\}',
+    
+    // JSX className with braces and single quotes: <div className={'bg-blue-500 text-white'}>
+    '<[^>]*?\\sclassName\\s*=\\s*\\{\\s*\'([^\']+)\'\\s*\\}',
+    
+    // JSX className with template literals (no expressions): <div className={`bg-blue-500 text-white`}>
+    '<[^>]*?\\sclassName\\s*=\\s*\\{\\s*`([^`]*?)`\\s*\\}',
+    
+    // HTML class at start of tag with double quotes: <div class="bg-blue-500">
+    '<\\w+\\s+class\\s*=\\s*"([^"]+)"',
+    
+    // HTML class at start of tag with single quotes: <div class='bg-blue-500'>
+    '<\\w+\\s+class\\s*=\\s*\'([^\']+)\'',
+    
+    // JSX className at start of tag with double quotes: <div className="bg-blue-500">
+    '<\\w+\\s+className\\s*=\\s*"([^"]+)"',
+    
+    // JSX className at start of tag with single quotes: <div className='bg-blue-500'>
+    '<\\w+\\s+className\\s*=\\s*\'([^\']+)\'',
+    
+    // JSX className at start with braces and double quotes: <div className={"bg-blue-500"}>
+    '<\\w+\\s+className\\s*=\\s*\\{\\s*"([^"]+)"\\s*\\}',
+    
+    // JSX className at start with braces and single quotes: <div className={'bg-blue-500'}>
+    '<\\w+\\s+className\\s*=\\s*\\{\\s*\'([^\']+)\'\\s*\\}',
+  ]
+  
+  // Combine all patterns into one regex using alternation
+  const combinedPattern = patterns
+    .map(pattern => `(?:${pattern})`)
+    .join('|')
+  
+  const combinedRegex = new RegExp(combinedPattern, 'g')
+  
+  for (const match of sourceWithoutComments.matchAll(combinedRegex)) {
+    // Find the first non-undefined capture group (skip match[0] which is full match)
+    let classString = ''
+    for (let i = 1; i < match.length; i++) {
+      if (match[i] !== undefined) {
+        classString = match[i]
+        break
       }
     }
+    
+    // Skip if empty or contains template expressions
+    if (!classString || classString.includes('${')) {
+      continue
+    }
+    
+    // Split by whitespace to get individual class names
+    const classNames = classString.split(/\s+/).filter(name => name.length > 0)
+    classNames.forEach(className => candidates.add(className))
   }
-
-  return classNames
+  
+  return candidates
 }
 
 async function scanFiles(dir: string): Promise<Set<string>> {
