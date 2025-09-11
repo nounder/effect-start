@@ -34,7 +34,7 @@ export const make = (opts: {
   scanPath?: string
 } = {}): BunPlugin => {
   const {
-    filesPattern = /\.(tsx|jsx|html|svelte|vue|astro)$/,
+    filesPattern = /\.(jsx?|tsx?|html|svelte|vue|astro)$/,
     cssPattern = /\.css$/,
     importer = () =>
       import("@tailwindcss/node").catch(err => {
