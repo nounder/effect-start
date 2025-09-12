@@ -201,79 +201,104 @@ function hasCssImport(css: string, specifier?: string): boolean {
 
 export function extractClassNames(source: string): Set<string> {
   const candidates = new Set<string>()
-  
+
   // Remove HTML comments to avoid false matches
-  const sourceWithoutComments = source.replace(/<!--[\s\S]*?-->/g, '')
-  
+  const sourceWithoutComments = source.replace(/<!--[\s\S]*?-->/g, "")
+
   // Array of pattern strings for different class/className attribute formats
   const patterns = [
     // HTML class attributes with double quotes: <div class="bg-blue-500 text-white">
-    '<[^>]*?\\sclass\\s*=\\s*"([^"]+)"',
-    
+    "<[^>]*?\\sclass\\s*=\\s*\"([^\"]+)\"",
+
     // HTML class attributes with single quotes: <div class='bg-blue-500 text-white'>
-    '<[^>]*?\\sclass\\s*=\\s*\'([^\']+)\'',
-    
+    "<[^>]*?\\sclass\\s*=\\s*'([^']+)'",
+
     // JSX className attributes with double quotes: <div className="bg-blue-500 text-white">
-    '<[^>]*?\\sclassName\\s*=\\s*"([^"]+)"',
-    
+    "<[^>]*?\\sclassName\\s*=\\s*\"([^\"]+)\"",
+
     // JSX className attributes with single quotes: <div className='bg-blue-500 text-white'>
-    '<[^>]*?\\sclassName\\s*=\\s*\'([^\']+)\'',
-    
+    "<[^>]*?\\sclassName\\s*=\\s*'([^']+)'",
+
     // JSX className with braces and double quotes: <div className={"bg-blue-500 text-white"}>
-    '<[^>]*?\\sclassName\\s*=\\s*\\{\\s*"([^"]+)"\\s*\\}',
-    
+    "<[^>]*?\\sclassName\\s*=\\s*\\{\\s*\"([^\"]+)\"\\s*\\}",
+
     // JSX className with braces and single quotes: <div className={'bg-blue-500 text-white'}>
-    '<[^>]*?\\sclassName\\s*=\\s*\\{\\s*\'([^\']+)\'\\s*\\}',
-    
-    // JSX className with template literals (no expressions): <div className={`bg-blue-500 text-white`}>
-    '<[^>]*?\\sclassName\\s*=\\s*\\{\\s*`([^`]*?)`\\s*\\}',
-    
+    "<[^>]*?\\sclassName\\s*=\\s*\\{\\s*'([^']+)'\\s*\\}",
+
+    // JSX className with template literals: <div className={`bg-blue-500 ${variable}`}>
+    "<[^>]*?\\sclassName\\s*=\\s*\\{\\s*`([^`]*)`\\s*\\}",
+
+    // HTML class with template literals: <div class={`bg-blue-500 ${variable}`}>
+    "<[^>]*?\\sclass\\s*=\\s*\\{\\s*`([^`]*)`\\s*\\}",
+
     // HTML class at start of tag with double quotes: <div class="bg-blue-500">
-    '<\\w+\\s+class\\s*=\\s*"([^"]+)"',
-    
+    "<\\w+\\s+class\\s*=\\s*\"([^\"]+)\"",
+
     // HTML class at start of tag with single quotes: <div class='bg-blue-500'>
-    '<\\w+\\s+class\\s*=\\s*\'([^\']+)\'',
-    
+    "<\\w+\\s+class\\s*=\\s*'([^']+)'",
+
     // JSX className at start of tag with double quotes: <div className="bg-blue-500">
-    '<\\w+\\s+className\\s*=\\s*"([^"]+)"',
-    
+    "<\\w+\\s+className\\s*=\\s*\"([^\"]+)\"",
+
     // JSX className at start of tag with single quotes: <div className='bg-blue-500'>
-    '<\\w+\\s+className\\s*=\\s*\'([^\']+)\'',
-    
+    "<\\w+\\s+className\\s*=\\s*'([^']+)'",
+
     // JSX className at start with braces and double quotes: <div className={"bg-blue-500"}>
-    '<\\w+\\s+className\\s*=\\s*\\{\\s*"([^"]+)"\\s*\\}',
-    
+    "<\\w+\\s+className\\s*=\\s*\\{\\s*\"([^\"]+)\"\\s*\\}",
+
     // JSX className at start with braces and single quotes: <div className={'bg-blue-500'}>
-    '<\\w+\\s+className\\s*=\\s*\\{\\s*\'([^\']+)\'\\s*\\}',
+    "<\\w+\\s+className\\s*=\\s*\\{\\s*'([^']+)'\\s*\\}",
+
+    // JSX className at start with template literals: <div className={`bg-blue-500 ${variable}`}>
+    "<\\w+\\s+className\\s*=\\s*\\{\\s*`([^`]*)`\\s*\\}",
+
+    // HTML class at start with template literals: <div class={`bg-blue-500 ${variable}`}>
+    "<\\w+\\s+class\\s*=\\s*\\{\\s*`([^`]*)`\\s*\\}",
   ]
-  
+
   // Combine all patterns into one regex using alternation
   const combinedPattern = patterns
     .map(pattern => `(?:${pattern})`)
-    .join('|')
-  
-  const combinedRegex = new RegExp(combinedPattern, 'g')
-  
+    .join("|")
+
+  const combinedRegex = new RegExp(combinedPattern, "g")
+
   for (const match of sourceWithoutComments.matchAll(combinedRegex)) {
     // Find the first non-undefined capture group (skip match[0] which is full match)
-    let classString = ''
+    let classString = ""
     for (let i = 1; i < match.length; i++) {
       if (match[i] !== undefined) {
         classString = match[i]
         break
       }
     }
-    
-    // Skip if empty or contains template expressions
-    if (!classString || classString.includes('${')) {
+
+    if (!classString) {
       continue
     }
-    
-    // Split by whitespace to get individual class names
-    const classNames = classString.split(/\s+/).filter(name => name.length > 0)
-    classNames.forEach(className => candidates.add(className))
+
+    // Only apply complex processing if the string contains characters that require it
+    if (classString.includes("${")) {
+      // Split by ${...} expressions and process each static part
+      const staticParts = classString.split(/\$\{[^}]*\}/g)
+
+      for (const part of staticParts) {
+        const names = part.trim().split(/\s+/).filter(name => {
+          if (name.length === 0) return false
+          // Don't extract incomplete classes like "bg-" or "-500"
+          if (name.endsWith("-") || name.startsWith("-")) return false
+          // Basic Tailwind class pattern validation
+          return /^[a-zA-Z0-9_:-]+(\[[^\]]*\])?$/.test(name)
+        })
+        names.forEach(name => candidates.add(name))
+      }
+    } else {
+      // Simple case: regular class string without expressions
+      const names = classString.split(/\s+/).filter(name => name.length > 0)
+      names.forEach(name => candidates.add(name))
+    }
   }
-  
+
   return candidates
 }
 

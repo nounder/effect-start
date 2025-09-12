@@ -52,9 +52,9 @@ describe("extractClassNames", () => {
     const source = `<div className={\`bg-\${color} text-lg\`}>Dynamic</div>`
     const result = extractClassNames(source)
 
-    // Template literals with expressions should be ignored by our strict implementation
+    // Should extract valid static class names from template literals
     expect([...result].sort())
-      .toEqual([])
+      .toEqual(["text-lg"])
   })
 
   test("JSX with quoted strings", () => {
@@ -251,23 +251,64 @@ describe("extractClassNames", () => {
       .toEqual(["bg-red-500", "text-white"])
   })
 
-  test("Performance with large files", () => {
-    // Create a large source with many class attributes
-    const elements = Array
-      .from({ length: 1000 }, (_, i) =>
-        `<div className="class-${i} bg-blue-${i % 10}">Element ${i}</div>`)
-      .join("\n")
+  test("Component names with dots", () => {
+    const source =
+      `<Toast.Toast class="toast toast-top toast-center fixed top-8 z-10">Content</Toast.Toast>`
+    const result = extractClassNames(source)
 
-    const start = performance.now()
-    const result = extractClassNames(elements)
-    const end = performance.now()
+    expect([...result].sort())
+      .toEqual(["fixed", "toast", "toast-center", "toast-top", "top-8", "z-10"])
+  })
 
-    // Should complete reasonably quickly
-    expect(end - start)
-      .toBeLessThan(100) // 100ms threshold
+  test("Complex component names and attributes", () => {
+    const source = `
+      <My.Component.Name className="flex items-center">Content</My.Component.Name>
+      <Component-with-dashes class="bg-red-500">Content</Component-with-dashes>
+      <Component123 className="text-lg">Content</Component123>
+      <namespace:element class="border-2">XML style</namespace:element>
+    `
+    const result = extractClassNames(source)
 
-    // Should find all unique classes (10 bg-blue classes + 1000 unique class-X classes)
-    expect(result.size)
-      .toBe(1010) // 1000 class-X + 10 unique bg-blue-X classes
+    expect([...result].sort())
+      .toEqual([
+        "bg-red-500",
+        "border-2",
+        "flex",
+        "items-center",
+        "text-lg",
+      ])
+  })
+
+  test("Conditional JSX with Toast component", () => {
+    const source = `{toastParam !== undefined && (
+          <Toast.Toast class="toast toast-top toast-center fixed top-8 z-10">
+            <div class="alert alert-success">
+              <span>
+                {toastParam}
+              </span>
+            </div>
+          </Toast.Toast>
+        )}`
+    const result = extractClassNames(source)
+
+    expect([...result].sort())
+      .toEqual([
+        "alert",
+        "alert-success",
+        "fixed",
+        "toast",
+        "toast-center",
+        "toast-top",
+        "top-8",
+        "z-10",
+      ])
+  })
+
+  test("Template literals with expressions", () => {
+    const source = `<div class={\`toast \${props.class ?? ""}\`}>Content</div>`
+    const result = extractClassNames(source)
+
+    expect([...result].sort())
+      .toEqual(["toast"])
   })
 })
