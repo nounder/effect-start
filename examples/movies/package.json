@@ -1,0 +1,25 @@
+{
+  "name": "effect-start-preact-example",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "bun src/server.ts",
+    "dev": "bun --hot --no-clear-screen src/server.ts"
+  },
+  "dependencies": {
+    "@effect/platform": "^0.84.11",
+    "@effect/platform-bun": "^0.67.3",
+    "@preact/signals": "^2.2.0",
+    "effect": "^3.16.12",
+    "effect-start": "github:nounder/effect-start",
+    "preact": "^10.26.8",
+    "preact-iso": "^2.9.1"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.2.15",
+    "@tailwindcss/node": "^4.1.8"
+  },
+  "peerDependencies": {
+    "typescript": "^5.8.3"
+  }
+}
