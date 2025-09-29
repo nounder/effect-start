@@ -8,26 +8,54 @@ import * as FetchHttpClient from "@effect/platform/FetchHttpClient"
 import * as HttpClient from "@effect/platform/HttpClient"
 import * as HttpMiddleware from "@effect/platform/HttpMiddleware"
 import * as HttpRouter from "@effect/platform/HttpRouter"
-import {
-  Context,
-  Effect,
-  flow,
-  identity,
-  pipe,
-} from "effect"
+import * as Context from "effect/Context"
+import * as Effect from "effect/Effect"
+import * as Function from "effect/Function"
 import * as Layer from "effect/Layer"
+import * as Ref from "effect/Ref"
 import * as BunBundle from "./bun/BunBundle.ts"
 import * as Bundle from "./Bundle.ts"
 import * as BundleHttp from "./BundleHttp.ts"
-import * as FileRouter from "./FileRouter"
-import * as HttpAppExtra from "./HttpAppExtra"
-import * as PublicDirectory from "./PublicDirectory"
-import * as Router from "./Router"
+import * as FileRouter from "./FileRouter.ts"
+import * as HttpAppExtra from "./HttpAppExtra.ts"
+import * as Router from "./Router.ts"
+
+export class Start extends Context.Tag("effect-start/Start")<
+  Start,
+  {
+    readonly env: "development" | "production" | string
+    readonly relativeUrlRoot?: string
+    readonly addMiddleware: (
+      middleware: HttpMiddleware.HttpMiddleware,
+    ) => Effect.Effect<void>
+    readonly middleware: Ref.Ref<HttpMiddleware.HttpMiddleware>
+  }
+>() {
+}
+
+export function layer(options?: {
+  env?: string
+}) {
+  return Layer.sync(Start, () => {
+    const env = options?.env ?? process.env.NODE_ENV ?? "development"
+    const middleware = Ref.unsafeMake(
+      Function.identity as HttpMiddleware.HttpMiddleware,
+    )
+
+    return Start.of({
+      env,
+      middleware,
+      addMiddleware: (f) =>
+        Ref.update(middleware, (prev) => (app) => f(prev(app))),
+    })
+  })
+}
 
 export function router(
   load: () => Promise<Router.RouteManifest>,
 ) {
   return Layer.provideMerge(
+    // add it to BundleHttp
     Layer.effectDiscard(
       Effect.gen(function*() {
         const httpRouter = yield* HttpRouter.Default
@@ -37,7 +65,7 @@ export function router(
       }),
     ),
     Layer.merge(
-      Router.layer(load),
+      Router.layerPromise(load),
       FileRouter.layer(),
     ),
   )
@@ -64,61 +92,6 @@ export function bundleClient(config: BunBundle.BuildOptions | string) {
   )
 }
 
-export class Middleware extends Context.Tag("effect-start/Middleware")<
-  Middleware,
-  {
-    readonly add: (
-      middleware: HttpMiddleware.HttpMiddleware,
-    ) => Effect.Effect<void>
-    readonly retrieve: Effect.Effect<HttpMiddleware.HttpMiddleware>
-  }
->() {
-  static layer() {
-    return Layer.sync(Middleware, () => {
-      let middleware: HttpMiddleware.HttpMiddleware = identity
-
-      return Middleware.of({
-        add: (f) =>
-          Effect.sync(() => {
-            const prev = middleware
-
-            middleware = (app) => f(prev(app))
-          }),
-        retrieve: Effect.sync(() => middleware),
-      })
-    })
-  }
-}
-
-export function middleware(
-  middleware: HttpMiddleware.HttpMiddleware,
-) {
-  // TODO
-}
-
-export function publicDirectory(
-  opts?: PublicDirectory.PublicDirectoryOptions,
-) {
-  return Layer.effectDiscard(Effect.gen(function*() {
-    const router = yield* HttpRouter.Default
-    const middleware = yield* Middleware
-
-    // TODO: make PublicDirectory as middleware
-    // TODO: rename to StaticHttpApp
-    // yield* middleware.add(() => app)
-
-    const app = PublicDirectory.make(opts)
-
-    yield* router.mount(
-      "/",
-      pipe(
-        HttpRouter.empty,
-        HttpRouter.mountApp("/", app),
-      ),
-    )
-  }))
-}
-
 export function make<
   Layers extends [
     Layer.Layer<never, any, any>,
@@ -130,10 +103,6 @@ export function make<
   { [k in keyof Layers]: Layer.Layer.Context<Layers[k]> }[number]
 > {
   return Layer.mergeAll(...layers)
-}
-
-// handles cli, serve, build, deploy
-export function start() {
 }
 
 export function serve<ROut, E>(
@@ -148,24 +117,24 @@ export function serve<ROut, E>(
     >
   }>,
 ) {
-  const appLayer = pipe(
-    Effect.tryPromise(load),
-    Effect.map(v => v.default),
-    Effect.orDie,
+  const appLayer = Effect.pipe(
+    Effect.Effect.tryPromise(load),
+    Effect.Effect.map(v => v.default),
+    Effect.Effect.orDie,
     Layer.unwrapEffect,
   )
 
-  return pipe(
-    Layer.unwrapEffect(Effect.gen(function*() {
+  return Effect.pipe(
+    Layer.unwrapEffect(Effect.Effect.gen(function*() {
       const middlewareService = yield* Middleware
       const middleware = yield* middlewareService.retrieve
 
-      const finalMiddleware = flow(
+      const finalMiddleware = Effect.flow(
         HttpAppExtra.handleErrors,
         middleware,
       )
 
-      return pipe(
+      return Effect.pipe(
         HttpRouter
           .Default
           .serve(finalMiddleware),

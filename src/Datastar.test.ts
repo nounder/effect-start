@@ -232,23 +232,7 @@ test("debug hook execution", () => {
     children: "content",
   })
 
-  const debugHook = {
-    onNode: (node: any) => {
-      console.log("Hook called on node:", node.type, node.props)
-      if (node.props["data-signals"]) {
-        console.log("Before transformation:", typeof node.props["data-signals"], node.props["data-signals"])
-      }
-      
-      // Call the original Datastar hook
-      Datastar.HyperHooks.onNode(node)
-      
-      if (node.props["data-signals"]) {
-        console.log("After transformation:", typeof node.props["data-signals"], node.props["data-signals"])
-      }
-    }
-  }
-
-  const html = HyperHtml.renderToString(node, debugHook)
+  const html = HyperHtml.renderToString(node)
   console.log("Final HTML:", html)
 
   expect(html)

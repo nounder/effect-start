@@ -1,14 +1,13 @@
 import {
+  Bundle,
   BunTailwindPlugin,
+  FileRouter,
   Start,
-  FileRouter
-  Bundle
 } from "effect-start"
-import { TailwindPlugin } from "effect-start/x/tailwind"
 
-export default Start.layer(
-  FileRouter.layer(() => import("./routes/_manifest")),
-  Bundle.client({
+export default Start.make(
+  FileRouter.layer(() => import("./routes")),
+  Start.bundleClient({
     entrypoints: [
       "src/index.html",
     ],

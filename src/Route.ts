@@ -115,9 +115,6 @@ export namespace Route {
     : never
 }
 
-/**
- * Creates a full Route which is an Operation bounded to a method and a path.
- */
 const Proto = {
   [TypeId]: TypeId,
 

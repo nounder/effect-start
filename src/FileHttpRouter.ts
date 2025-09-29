@@ -2,7 +2,7 @@ import * as HttpMiddleware from "@effect/platform/HttpMiddleware"
 import * as HttpRouter from "@effect/platform/HttpRouter"
 import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
 import * as Effect from "effect/Effect"
-import { pipe } from "effect/Function"
+import * as Function from "effect/Function"
 import * as Router from "./Router.ts"
 
 /**
@@ -61,7 +61,7 @@ export function make<Routes extends Router.ServerRoutes>(
     const modules = yield* Effect.forEach(
       routes,
       (route) =>
-        pipe(
+        Function.pipe(
           Effect.tryPromise(() => route.load()),
           Effect.orDie,
           Effect.map((module) => ({ path: route.path, module })),
