@@ -1,13 +1,11 @@
-import { HttpServer } from "@effect/platform"
-import {
-  BunContext,
-  BunHttpServer,
-  BunRuntime,
-} from "@effect/platform-bun"
+import * as BunContext from "@effect/platform-bun/BunContext"
+import * as BunHttpServer from "@effect/platform-bun/BunHttpServer"
+import * as BunRuntime from "@effect/platform-bun/BunRuntime"
 import * as FetchHttpClient from "@effect/platform/FetchHttpClient"
 import * as HttpClient from "@effect/platform/HttpClient"
 import * as HttpMiddleware from "@effect/platform/HttpMiddleware"
 import * as HttpRouter from "@effect/platform/HttpRouter"
+import * as HttpServer from "@effect/platform/HttpServer"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Function from "effect/Function"

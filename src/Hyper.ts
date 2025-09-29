@@ -2,7 +2,9 @@ import { HttpServerResponse } from "@effect/platform"
 import * as HttpApp from "@effect/platform/HttpApp"
 import {
   Effect,
+  Effectable,
   Fiber,
+  Function,
 } from "effect"
 import * as Context from "effect/Context"
 import * as Layer from "effect/Layer"
@@ -11,6 +13,9 @@ import { YieldWrap } from "effect/Utils"
 import { HyperHooks } from "./Datastar.ts"
 import * as HyperHtml from "./HyperHtml.ts"
 import type { JSX } from "./jsx.d.ts"
+
+const TypeId = Symbol.for("~hyper/TypeId")
+const LayoutTypeId = Symbol.for("~hyper/LayoutTypeId")
 
 type Elements = JSX.IntrinsicElements
 
@@ -39,6 +44,7 @@ export function layer(opts: {
 /**
  * Accepts Effect that returns a HyperNode
  * to a HttpApp.
+ * TODO: Implement Hyper.page that returns Hyper.Element
  */
 export function handle<E, R>(
   handler: Effect.Effect<
@@ -148,4 +154,48 @@ export function unsafeUse<Value>(tag: Context.Tag<any, Value>) {
   const context = currentFiber.currentContext
 
   return Context.unsafeGet(context, tag)
+}
+
+export interface Layout<in out Provides, in out Requires>
+  extends
+    Layer.Layer<Provides, never, Requires>,
+    Effect.Effect<Layer.Layer<Provides>, never, Requires>
+{
+  readonly [TypeId]: typeof LayoutTypeId
+}
+
+export function layout<Provides, Requires>(
+  handler:
+    | Effect.Effect<
+      JSX.Children | HttpServerResponse.HttpServerResponse,
+      any,
+      any
+    >
+    | (() => Generator<
+      YieldWrap<Effect.Effect<any, any, any>>,
+      JSX.Children | HttpServerResponse.HttpServerResponse,
+      any
+    >),
+):
+  & Layout<Provides, Requires>
+  & {
+    handler: any
+  }
+{
+  return {
+    ...Effectable.CommitPrototype,
+    [TypeId]: LayoutTypeId,
+    [Layer.LayerTypeId]: {
+      _ROut: Function.identity,
+      _E: Function.identity,
+      _RIn: Function.identity,
+    },
+    handler,
+
+    commit(this: any) {
+      return Effect.contextWith((context: Context.Context<never>) => {
+        return Layer.provide(this, Layer.succeedContext(context))
+      })
+    },
+  }
 }
