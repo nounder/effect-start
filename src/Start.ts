@@ -2,8 +2,8 @@ import * as BunContext from "@effect/platform-bun/BunContext"
 import * as BunHttpServer from "@effect/platform-bun/BunHttpServer"
 import * as BunRuntime from "@effect/platform-bun/BunRuntime"
 import * as FetchHttpClient from "@effect/platform/FetchHttpClient"
+import * as HttpApp from "@effect/platform/HttpApp"
 import * as HttpClient from "@effect/platform/HttpClient"
-import * as HttpMiddleware from "@effect/platform/HttpMiddleware"
 import * as HttpRouter from "@effect/platform/HttpRouter"
 import * as HttpServer from "@effect/platform/HttpServer"
 import * as Context from "effect/Context"
@@ -18,15 +18,19 @@ import * as FileRouter from "./FileRouter.ts"
 import * as HttpAppExtra from "./HttpAppExtra.ts"
 import * as Router from "./Router.ts"
 
+type StartMiddleware = <E, R>(
+  self: HttpApp.Default<E, R>,
+) => HttpApp.Default<never, never>
+
 export class Start extends Context.Tag("effect-start/Start")<
   Start,
   {
     readonly env: "development" | "production" | string
     readonly relativeUrlRoot?: string
     readonly addMiddleware: (
-      middleware: HttpMiddleware.HttpMiddleware,
+      middleware: StartMiddleware,
     ) => Effect.Effect<void>
-    readonly middleware: Ref.Ref<HttpMiddleware.HttpMiddleware>
+    readonly middleware: Ref.Ref<StartMiddleware>
   }
 >() {
 }
@@ -37,7 +41,7 @@ export function layer(options?: {
   return Layer.sync(Start, () => {
     const env = options?.env ?? process.env.NODE_ENV ?? "development"
     const middleware = Ref.unsafeMake(
-      Function.identity as HttpMiddleware.HttpMiddleware,
+      Function.identity as StartMiddleware,
     )
 
     return Start.of({
@@ -115,24 +119,24 @@ export function serve<ROut, E>(
     >
   }>,
 ) {
-  const appLayer = Effect.pipe(
-    Effect.Effect.tryPromise(load),
-    Effect.Effect.map(v => v.default),
-    Effect.Effect.orDie,
+  const appLayer = Function.pipe(
+    Effect.tryPromise(load),
+    Effect.map(v => v.default),
+    Effect.orDie,
     Layer.unwrapEffect,
   )
 
-  return Effect.pipe(
-    Layer.unwrapEffect(Effect.Effect.gen(function*() {
-      const middlewareService = yield* Middleware
-      const middleware = yield* middlewareService.retrieve
+  return Function.pipe(
+    Layer.unwrapEffect(Effect.gen(function*() {
+      const middlewareService = yield* Start
+      const middleware = yield* middlewareService.middleware
 
-      const finalMiddleware = Effect.flow(
+      const finalMiddleware = Function.flow(
         HttpAppExtra.handleErrors,
         middleware,
       )
 
-      return Effect.pipe(
+      return Function.pipe(
         HttpRouter
           .Default
           .serve(finalMiddleware),
@@ -146,7 +150,7 @@ export function serve<ROut, E>(
       BunHttpServer.layer({
         port: 3000,
       }),
-      Middleware.layer(),
+      layer(),
     ]),
     Layer.launch,
     BunRuntime.runMain,
