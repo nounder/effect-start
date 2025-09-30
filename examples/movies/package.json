@@ -9,11 +9,8 @@
   "dependencies": {
     "@effect/platform": "^0.84.11",
     "@effect/platform-bun": "^0.67.3",
-    "@preact/signals": "^2.2.0",
-    "effect": "^3.16.12",
-    "effect-start": "github:nounder/effect-start",
-    "preact": "^10.26.8",
-    "preact-iso": "^2.9.1"
+    "effect": "^3.17.14",
+    "effect-start": "github:nounder/effect-start"
   },
   "devDependencies": {
     "@types/bun": "^1.2.15",
