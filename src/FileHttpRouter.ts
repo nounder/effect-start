@@ -1,8 +1,11 @@
+import { HttpApp } from "@effect/platform"
 import * as HttpMiddleware from "@effect/platform/HttpMiddleware"
 import * as HttpRouter from "@effect/platform/HttpRouter"
 import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
+import * as Array from "effect/Array"
 import * as Effect from "effect/Effect"
 import * as Function from "effect/Function"
+import * as Route from "./Route.ts"
 import * as Router from "./Router.ts"
 
 /**
@@ -73,9 +76,9 @@ export function make<Routes extends Router.ServerRoutes>(
     for (const { path, module } of modules) {
       const addRoute = (
         method: "*" | Router.ServerMethod,
-        handler: Router.ServerHandle,
+        handler: HttpApp.Default<any, any>,
       ) => {
-        router = HttpRouter.route(method)(router, path, handler)
+        router = HttpRouter.route(method)(path, handler)(router)
       }
 
       Router.ServerMethods.forEach((method) => {
@@ -92,6 +95,7 @@ export function make<Routes extends Router.ServerRoutes>(
     return router as HttpRouterFromServerRoutes<Routes>
   })
 }
+
 export function middleware() {
   return HttpMiddleware.make((app) =>
     Effect.gen(function*() {
