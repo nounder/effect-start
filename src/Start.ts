@@ -84,7 +84,9 @@ export function bundleClient(config: BunBundle.BuildOptions | string) {
 
     yield* router.mountApp(
       "/_bundle",
-      app,
+      // we need to use as any here because HttpRouter.Default
+      // only accepts default services.
+      app as any,
     )
   }))
 

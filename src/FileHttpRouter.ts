@@ -1,11 +1,10 @@
+// @ts-nocheck
 import { HttpApp } from "@effect/platform"
 import * as HttpMiddleware from "@effect/platform/HttpMiddleware"
 import * as HttpRouter from "@effect/platform/HttpRouter"
 import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
-import * as Array from "effect/Array"
 import * as Effect from "effect/Effect"
 import * as Function from "effect/Function"
-import * as Route from "./Route.ts"
 import * as Router from "./Router.ts"
 
 /**

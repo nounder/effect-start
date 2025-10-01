@@ -5,6 +5,7 @@ import {
   Effectable,
   Fiber,
   Function,
+  Pipeable,
 } from "effect"
 import * as Context from "effect/Context"
 import * as Layer from "effect/Layer"
@@ -157,9 +158,7 @@ export function unsafeUse<Value>(tag: Context.Tag<any, Value>) {
 }
 
 export interface Layout<in out Provides, in out Requires>
-  extends
-    Layer.Layer<Provides, never, Requires>,
-    Effect.Effect<Layer.Layer<Provides>, never, Requires>
+  extends Layer.Layer<Provides, never, Requires>
 {
   readonly [TypeId]: typeof LayoutTypeId
 }
@@ -183,7 +182,6 @@ export function layout<Provides, Requires>(
   }
 {
   return {
-    ...Effectable.CommitPrototype,
     [TypeId]: LayoutTypeId,
     [Layer.LayerTypeId]: {
       _ROut: Function.identity,
@@ -191,11 +189,8 @@ export function layout<Provides, Requires>(
       _RIn: Function.identity,
     },
     handler,
-
-    commit(this: any) {
-      return Effect.contextWith((context: Context.Context<never>) => {
-        return Layer.provide(this, Layer.succeedContext(context))
-      })
+    pipe() {
+      return Pipeable.pipeArguments(this, arguments)
     },
   }
 }
