@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "start": "bun src/server.ts",
-    "dev": "bun --hot --no-clear-screen src/server.ts"
+    "dev": "bun --watch --hot --no-clear-screen src/server.ts"
   },
   "dependencies": {
     "@effect/platform": "^0.84.3",

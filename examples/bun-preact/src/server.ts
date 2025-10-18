@@ -6,6 +6,7 @@ import {
 
 export default Layer.mergeAll(
   // Start.router(() => import("./routes/_manifest")),
+  Start.development(),
   Start.bundleClient({
     entrypoints: [
       "src/index.html",

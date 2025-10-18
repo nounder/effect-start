@@ -6,6 +6,7 @@ import {
 } from "effect-start"
 
 export default Start.make(
+  Start.development(),
   FileRouter.layer(() => import("./routes")),
   Start.bundleClient({
     entrypoints: [
