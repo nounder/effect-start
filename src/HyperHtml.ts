@@ -97,10 +97,17 @@ export function renderToString(
           && props[key] !== false
           && props[key] != null
         ) {
-          if (props[key] === true) {
+          const propValue = props[key]
+
+          if (propValue === true) {
             result += ` ${esc(key)}`
           } else {
-            result += ` ${esc(key)}="${esc(props[key])}"`
+            const serializedValue = typeof propValue === "object"
+              && propValue !== null
+              ? JSON.stringify(propValue)
+              : propValue
+
+            result += ` ${esc(key)}="${esc(serializedValue)}"`
           }
         }
       }
