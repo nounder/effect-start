@@ -112,6 +112,23 @@ Then in your main CSS files add following file:
 @import "tailwindcss";
 ```
 
+### Running Examples Against Local Sources
+
+To try the templates in `examples/` with your in-progress copy of Effect Start:
+
+```sh
+# from the repository root – register the local package once
+bun link
+
+# inside each example you want to run
+cd examples/bun-preact
+bun link effect-start
+bun install            # optional, but keeps the lockfile tidy
+bun run dev
+```
+
+Bun will symlink `node_modules/effect-start` to your workspace until you run `bun unlink effect-start` in that example.
+
 ### Static File Serving
 
 ```ts
