@@ -61,15 +61,20 @@ export function make<Routes extends Router.ServerRoutes>(
   routes: Routes,
 ): Effect.Effect<HttpRouterFromServerRoutes<Routes>> {
   return Effect.gen(function*() {
-    const modules = yield* Effect.forEach(
-      routes,
-      (route) =>
-        Function.pipe(
-          Effect.tryPromise(() => route.load()),
-          Effect.orDie,
-          Effect.map((module) => ({ path: route.path, module })),
-        ),
-    )
+    const normalizedRoutes = routes ?? ([] as Routes)
+    const modules: Array<{ path: string; module: Router.ServerModule }> = []
+
+    for (const route of normalizedRoutes) {
+      const module = yield* Function.pipe(
+        Effect.tryPromise(() => route.load()),
+        Effect.orDie,
+      )
+
+      modules.push({
+        path: route.path,
+        module,
+      })
+    }
 
     let router: HttpRouter.HttpRouter<any, any> = HttpRouter.empty
 

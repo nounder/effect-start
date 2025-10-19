@@ -27,15 +27,9 @@ export type BuildOptions = Omit<
   "outdir"
 >
 
-export const buildClient = (
+export const resolveClientBuildConfig = (
   config: BuildOptions | string,
-) => {
-  if (typeof config === "string") {
-    config = {
-      entrypoints: [config],
-    }
-  }
-
+): BuildOptions => {
   const baseConfig: Partial<BuildOptions> = {
     sourcemap: "linked",
     naming: {
@@ -46,11 +40,21 @@ export const buildClient = (
     packages: "bundle",
     publicPath: "/_bundle/",
   } as const
-  const resolvedConfig = {
+  const userConfig = typeof config === "string"
+    ? { entrypoints: [config] }
+    : config
+
+  return {
     ...baseConfig,
     target: "browser" as const,
-    ...config,
+    ...userConfig,
   }
+}
+
+export const buildClient = (
+  config: BuildOptions | string,
+) => {
+  const resolvedConfig = resolveClientBuildConfig(config)
 
   return build(resolvedConfig)
 }
