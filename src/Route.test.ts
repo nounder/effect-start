@@ -13,34 +13,28 @@ const schemaSuccess = Schema.Struct({
 })
 
 test.it("creates a data route", () => {
-  const z = Route.schema({
-    pathParams: Schema.String,
-    headers: Schema.String,
-  })(Route.empty)
-
   const route = Function.pipe(
     Route.empty,
-    // route should provide Route.Request
-    // View.Visit
-
     Route.schema({
       pathParams: Schema.String,
+      headers: Schema.String,
+      success: schemaSuccess,
+      urlParams: schemaUrlParams,
     }),
-    // Route.data(
-    //   Effect.succeed({ username: "user" }),
-    // ),
   )
 
-  test.expect(route).toMatchObject({
-    schema: {
-      UrlParams: schemaUrlParams,
-      Success: schemaSuccess,
-    },
-    variants: [
-      {
-        method: "GET",
-        type: "application/json",
-      },
-    ],
-  })
+  test.expect(route.schema.pathParams)
+    .toBe(Schema.String)
+
+  test.expect(route.schema.headers)
+    .toBe(Schema.String)
+
+  test.expect(route.schema.success)
+    .toBe(schemaSuccess)
+
+  test.expect(route.schema.urlParams)
+    .toBe(schemaUrlParams)
+
+  test.expect(route.variants.length)
+    .toBe(0)
 })
