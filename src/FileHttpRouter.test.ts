@@ -44,7 +44,7 @@ const SampleRouteManifest: Router.RouteManifest = {
   Servers: SampleRoutes,
 }
 
-const routerLayer = Router.layer(async () => SampleRouteManifest)
+const routerLayer = Router.layer(SampleRouteManifest)
 
 const effect = effectFn(routerLayer)
 
