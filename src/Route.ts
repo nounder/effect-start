@@ -42,15 +42,15 @@ export type RouteHandler<
    * For example, a Route can render markdown for API/AI consumption
    * and another Route can wrap it in HTML for browsers.
    */
-  | Handler.Value<A, E, R>
+  | RouteHandler.Value<A, E, R>
   /**
    * A handler returns `HttpServerResponse`.
    * Should not be consumed with caution: if body is a stream,
    * consuming it in another handler may break the stream.
    */
-  | Handler.Encoded<E, R>
+  | RouteHandler.Encoded<E, R>
 
-export namespace Handler {
+export namespace RouteHandler {
   export type Value<
     A = unknown,
     E = any,
@@ -73,39 +73,6 @@ export namespace Handler {
     E,
     R
   >
-}
-
-export type RouteSet<
-  M extends Route.Tuple,
-> =
-  & Pipeable.Pipeable
-  & RouteSet.Instance<M>
-  & {
-    [RouteSetTypeId]: typeof RouteSetTypeId
-
-    post: typeof post
-
-    text: typeof text
-    html: typeof html
-  }
-
-export namespace RouteSet {
-  export type Instance<
-    M extends Route.Tuple = Route.Tuple,
-  > = {
-    set: M
-  }
-
-  export type Default = RouteSet<Route.Tuple>
-}
-
-const SetProto = {
-  [RouteSetTypeId]: RouteSetTypeId,
-
-  post,
-
-  text,
-  html,
 }
 
 export interface Route<
@@ -149,6 +116,70 @@ export namespace Route {
     }
 }
 
+export type RouteSet<
+  M extends Route.Tuple,
+> =
+  & Pipeable.Pipeable
+  & RouteSet.Instance<M>
+  & {
+    [RouteSetTypeId]: typeof RouteSetTypeId
+
+    post: typeof post
+    get: typeof get
+    put: typeof put
+    patch: typeof patch
+    del: typeof del
+    options: typeof options
+    head: typeof head
+
+    text: typeof text
+    html: typeof html
+  }
+
+export namespace RouteSet {
+  export type Instance<
+    M extends Route.Tuple = Route.Tuple,
+  > = {
+    set: M
+  }
+
+  export type Default = RouteSet<Route.Tuple>
+}
+
+export const post = makeMethodModifier("POST")
+export const get = makeMethodModifier("GET")
+export const put = makeMethodModifier("PUT")
+export const patch = makeMethodModifier("PATCH")
+export const del = makeMethodModifier("DELETE")
+export const options = makeMethodModifier("OPTIONS")
+export const head = makeMethodModifier("HEAD")
+
+export const text = makeMediaFunction(
+  "GET",
+  "text/plain",
+  makeValueHandler(HttpServerResponse.text),
+)
+
+export const html = makeMediaFunction(
+  "GET",
+  "text/html",
+  makeValueHandler(HttpServerResponse.html),
+)
+
+const SetProto = {
+  [RouteSetTypeId]: RouteSetTypeId,
+
+  post,
+  get,
+  put,
+  patch,
+  del,
+  options,
+  head,
+
+  text,
+  html,
+}
 const RouteProto = Object.assign(
   Object.create(SetProto),
   {
@@ -179,146 +210,6 @@ export type JsonValue =
   | {
     [key: string]: JsonValue
   }
-
-export function text<
-  This extends RouteThis,
-  A extends string,
-  E = never,
-  R = never,
->(
-  this: This,
-  handler: Effect.Effect<A, E, R>,
-): This extends RouteSet<infer Routes> ? RouteSet<[
-    ...Routes,
-    Route<
-      "",
-      "GET",
-      "text/plain",
-      Handler.Value<A, E, R>
-    >,
-  ]>
-  : RouteSet<[
-    Route<
-      "",
-      "GET",
-      "text/plain",
-      Handler.Value<A, E, R>
-    >,
-  ]>
-{
-  return makeSet(
-    ...(isRouteSet(this)
-      ? this.set
-      : []),
-    make({
-      name: "",
-      method: "GET",
-      media: "text/plain",
-      handler: Effect.gen(function*() {
-        const raw = Effect.isEffect(handler)
-          ? yield* handler
-          : handler
-        const response = HttpServerResponse.html(raw)
-
-        return {
-          [HttpServerRespondable.symbol]: () => Effect.succeed(response),
-          raw,
-        }
-      }) as Handler.Value<A, E, R>,
-    }),
-  ) as any
-}
-
-/**
- * TODO: Support streaming
- */
-export function html<
-  This extends RouteThis,
-  A extends string,
-  E = never,
-  R = never,
->(
-  this: This,
-  handler: Effect.Effect<A, E, R>,
-): This extends RouteSet<infer Routes> ? RouteSet<[
-    ...Routes,
-    Route<
-      "",
-      "GET",
-      "text/html",
-      Handler.Value<A, E, R>
-    >,
-  ]>
-  : RouteSet<[
-    Route<
-      "",
-      "GET",
-      "text/html",
-      Handler.Value<A, E, R>
-    >,
-  ]>
-{
-  return [
-    ...(isRouteSet(this)
-      ? this.set
-      : []),
-    make({
-      name: "",
-      method: "GET",
-      media: "text/html",
-      handler: Effect.gen(function*() {
-        const raw = Effect.isEffect(handler)
-          ? yield* handler
-          : handler
-        const response = HttpServerResponse.html(raw)
-
-        return {
-          [HttpServerRespondable.symbol]: () => Effect.succeed(response),
-          raw,
-        }
-      }) as Handler.Value<A, E, R>,
-    }),
-  ] as any
-}
-
-export function post<
-  This extends RouteThis,
-  T extends Route.Tuple,
->(
-  this: This,
-  routes: RouteSet<T>,
-): This extends RouteSet<infer B> ? RouteSet<
-    [
-      ...B,
-      ...{
-        [K in keyof T]: T[K] extends Route<infer N, infer _, infer M, infer H>
-          ? Route<N, "POST", M, H>
-          : T[K]
-      },
-    ]
-  >
-  : RouteSet<
-    {
-      [K in keyof T]: T[K] extends Route<infer N, infer _, infer M, infer H>
-        ? Route<N, "POST", M, H>
-        : T[K]
-    }
-  >
-{
-  const baseRoutes = isRouteSet(this)
-    ? this.set
-    : [] as const
-
-  return makeSet(
-    ...baseRoutes,
-    ...routes.set.map(route => {
-      return make({
-        ...route,
-        method: "POST",
-      })
-    }),
-  ) as any
-}
 
 function make<
   Name extends string = "",
@@ -370,6 +261,124 @@ function makeSet<
   ) as RouteSet<M>
 }
 
+/**
+ * Factory function that creates Route for a specific method & media.
+ */
+function makeMediaFunction<
+  Method extends HttpMethod.HttpMethod,
+  Media extends RouteMedia,
+  A extends string,
+  E = never,
+  R = never,
+>(
+  method: Method,
+  media: Media,
+  handlerFn: (
+    handler: Effect.Effect<A, E, R>,
+  ) => RouteHandler.Value<A, E, R>,
+) {
+  return function<
+    This extends RouteThis,
+  >(
+    this: This,
+    handler: Effect.Effect<A, E, R>,
+  ): This extends RouteSet<infer Routes> ? RouteSet<[
+      ...Routes,
+      Route<
+        "",
+        Method,
+        Media,
+        RouteHandler.Value<A, E, R>
+      >,
+    ]>
+    : RouteSet<[
+      Route<
+        "",
+        Method,
+        Media,
+        RouteHandler.Value<A, E, R>
+      >,
+    ]>
+  {
+    return makeSet(
+      ...(isRouteSet(this)
+        ? this.set
+        : []),
+      make({
+        name: "",
+        method,
+        media,
+        handler: handlerFn(handler),
+      }),
+    ) as any
+  }
+}
+
+function makeValueHandler(
+  responseFn: (raw: string) => HttpServerResponse.HttpServerResponse,
+) {
+  return <A extends string, E = never, R = never>(
+    handler: Effect.Effect<A, E, R>,
+  ): RouteHandler.Value<A, E, R> => {
+    return Effect.gen(function*() {
+      const raw = Effect.isEffect(handler)
+        ? yield* handler
+        : handler
+      const response = responseFn(raw)
+
+      return {
+        [HttpServerRespondable.symbol]: () => Effect.succeed(response),
+        raw,
+      }
+    }) as RouteHandler.Value<A, E, R>
+  }
+}
+
+/**
+ * Factory function that changes method in RouteSet.
+ */
+function makeMethodModifier<M extends HttpMethod.HttpMethod>(method: M) {
+  return function<
+    This extends RouteThis,
+    T extends Route.Tuple,
+  >(
+    this: This,
+    routes: RouteSet<T>,
+  ): This extends RouteSet<infer B> ? RouteSet<
+      [
+        ...B,
+        ...{
+          [K in keyof T]: T[K] extends
+            Route<infer N, infer _, infer Media, infer H>
+            ? Route<N, M, Media, H>
+            : T[K]
+        },
+      ]
+    >
+    : RouteSet<
+      {
+        [K in keyof T]: T[K] extends
+          Route<infer N, infer _, infer Media, infer H> ? Route<N, M, Media, H>
+          : T[K]
+      }
+    >
+  {
+    const baseRoutes = isRouteSet(this)
+      ? this.set
+      : [] as const
+
+    return makeSet(
+      ...baseRoutes,
+      ...routes.set.map(route => {
+        return make({
+          ...route,
+          method,
+        })
+      }),
+    ) as any
+  }
+}
+
 function routeThis(
   route: RouteThis,
 ) {
@@ -379,6 +388,6 @@ function routeThis(
       name: "",
       method: "*",
       media: "*",
-      handler: HttpServerResponse.text("empty route") as Handler.Encoded,
+      handler: HttpServerResponse.text("empty route") as RouteHandler.Encoded,
     })
 }
