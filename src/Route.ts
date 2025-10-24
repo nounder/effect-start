@@ -129,6 +129,7 @@ export type RouteSet<
 
     text: typeof text
     html: typeof html
+    json: typeof json
   }
 
 export namespace RouteSet {
@@ -152,13 +153,19 @@ export const head = makeMethodModifier("HEAD")
 export const text = makeMediaFunction(
   "GET",
   "text/plain",
-  makeValueHandler(HttpServerResponse.text),
+  makeValueHandler<string>(HttpServerResponse.text),
 )
 
 export const html = makeMediaFunction(
   "GET",
   "text/html",
-  makeValueHandler(HttpServerResponse.html),
+  makeValueHandler<string>(HttpServerResponse.html),
+)
+
+export const json = makeMediaFunction(
+  "GET",
+  "application/json",
+  makeValueHandler<JsonValue>((raw) => HttpServerResponse.unsafeJson(raw)),
 )
 
 const SetProto = {
@@ -174,7 +181,9 @@ const SetProto = {
 
   text,
   html,
+  json,
 }
+
 const RouteProto = Object.assign(
   Object.create(SetProto),
   {
@@ -258,18 +267,19 @@ function makeSet<
 function makeMediaFunction<
   Method extends HttpMethod.HttpMethod,
   Media extends RouteMedia,
-  A extends string,
-  E = never,
-  R = never,
+  HandlerFn extends (
+    handler: any,
+  ) => any,
 >(
   method: Method,
   media: Media,
-  handlerFn: (
-    handler: Effect.Effect<A, E, R>,
-  ) => RouteHandler.Value<A, E, R>,
+  handlerFn: HandlerFn,
 ) {
   return function<
     This extends RouteThis,
+    A,
+    E = never,
+    R = never,
   >(
     this: This,
     handler: Effect.Effect<A, E, R>,
@@ -278,14 +288,14 @@ function makeMediaFunction<
       Route<
         Method,
         Media,
-        RouteHandler.Value<A, E, R>
+        ReturnType<HandlerFn>
       >,
     ]>
     : RouteSet<[
       Route<
         Method,
         Media,
-        RouteHandler.Value<A, E, R>
+        ReturnType<HandlerFn>
       >,
     ]>
   {
@@ -296,26 +306,24 @@ function makeMediaFunction<
       make({
         method,
         media,
-        handler: handlerFn(handler),
+        handler: handlerFn(handler as any) as any,
       }),
     ) as any
   }
 }
 
-function makeValueHandler(
-  responseFn: (raw: string) => HttpServerResponse.HttpServerResponse,
+function makeValueHandler<ExpectedRaw = string>(
+  responseFn: (raw: ExpectedRaw) => HttpServerResponse.HttpServerResponse,
 ) {
-  return <A extends string, E = never, R = never>(
+  return <A extends ExpectedRaw, E = never, R = never>(
     handler: Effect.Effect<A, E, R>,
   ): RouteHandler.Value<A, E, R> => {
     return Effect.gen(function*() {
-      const raw = Effect.isEffect(handler)
-        ? yield* handler
-        : handler
-      const response = responseFn(raw)
+      const raw = yield* handler
 
       return {
-        [HttpServerRespondable.symbol]: () => Effect.succeed(response),
+        [HttpServerRespondable.symbol]: () =>
+          Effect.succeed(responseFn(raw as ExpectedRaw)),
         raw,
       }
     }) as RouteHandler.Value<A, E, R>
@@ -325,7 +333,9 @@ function makeValueHandler(
 /**
  * Factory function that changes method in RouteSet.
  */
-function makeMethodModifier<M extends HttpMethod.HttpMethod>(method: M) {
+function makeMethodModifier<
+  M extends HttpMethod.HttpMethod,
+>(method: M) {
   return function<
     This extends RouteThis,
     T extends Route.Tuple,

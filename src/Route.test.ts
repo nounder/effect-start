@@ -35,10 +35,11 @@ test.it("types GET & POST routes", () => {
       Effect.succeed(""),
     )
     .post(
-      Route
-        .text(
-          Effect.succeed("hello"),
-        ),
+      Route.json(
+        Effect.succeed({
+          message: "created",
+        }),
+      ),
     )
 
   Function.satisfies<
@@ -53,7 +54,7 @@ test.it("types GET & POST routes", () => {
       >,
       Route.Route<
         "POST",
-        "text/plain"
+        "application/json"
       >,
     ]>
   >()(routes)
