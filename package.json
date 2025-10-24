@@ -11,9 +11,8 @@
     "./EncryptedCookies": "./src/EncryptedCookies.ts",
     "./bun": "./src/bun/index.ts",
     "./client": "./src/client/index.ts",
-    "./files": "./src/FileSystemExtra.ts",
+    "./FileSystemExtra": "./src/FileSystemExtra.ts",
     "./package.json": "./package.json",
-    "./x/tanstack-react-router": "./src/x/tanstack-react-router/index.ts",
     "./jsx-runtime": "./src/jsx-runtime.ts",
     "./jsx-dev-runtime": "./src/jsx-runtime.ts",
     "./hyper": "./src/hyper/index.ts"
