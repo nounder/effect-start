@@ -11,12 +11,52 @@ export {
 
 type RouteModule = typeof import("./Route.ts")
 
+/**
+ * 'this' argument type for {@link RouteBuilder} functions.
+ * Its value depend on how the function is called as described below.
+ */
 type RouteThis =
+  /**
+   * Called as {@link RouteSet} method:
+   *
+   * @example
+   * ```ts
+   * let route: Route
+   *
+   * route.text("Hello")
+   *
+   * ```
+   */
   | RouteSet.Default
+  /**
+   * Called from namespaced import.
+   *
+   * @example
+   * ```ts
+   * import * as Route from "./Route.ts"
+   *
+   * let route: Route
+   *
+   * Route.text("Hello")
+   *
+   * ```
+   */
   | RouteModule
+  /**
+   * Called directly from exported function.
+   * Disencouraged but possible.
+   *
+   * @example
+   * ```ts
+   * import { text } from "./Route.ts"
+   *
+   * text("Hello")
+   *
+   * ```
+   */
+  | undefined
 
 const TypeId: unique symbol = Symbol.for("effect-start/Route")
-
 const RouteSetTypeId: unique symbol = Symbol.for("effect-start/RouteSet")
 
 export type RouteMethod =
@@ -25,6 +65,12 @@ export type RouteMethod =
 
 export type RoutePath = `/${string}`
 
+/**
+ * Route media type used for content negotiation.
+ * This allows to create routes that serve different media types
+ * for the same path & method, depending on the `Accept` header
+ * of the request.
+ */
 type RouteMedia =
   | "*"
   | "text/plain"
@@ -86,6 +132,11 @@ export interface Route<
   readonly handler: Handler
 }
 
+/**
+ * Describes a single route that varies by method & media type.
+ *
+ * Implements {@link RouteSet} interface that contains itself.
+ */
 export namespace Route {
   export type Data<
     Method extends RouteMethod = RouteMethod,
@@ -111,6 +162,32 @@ export namespace Route {
     }
 }
 
+/**
+ * Consists of function to build {@link RouteSet}.
+ * This should include all exported functions in this module ({@link RouteModule})
+ * that have `this` parameter as {@link RouteThis}.
+ *
+ * Method functions, like {@link post}, modify the method of existing routes.
+ * Media functions, like {@link json}, create new routes with specific media type.
+ */
+type RouteBuilder = {
+  post: typeof post
+  get: typeof get
+  put: typeof put
+  patch: typeof patch
+  del: typeof del
+  options: typeof options
+  head: typeof head
+
+  text: typeof text
+  html: typeof html
+  json: typeof json
+}
+
+/**
+ * Set of one or many {@link Route} with chainable builder functions
+ * to modify the set or add new routes.
+ */
 export type RouteSet<
   M extends Route.Tuple,
 > =
@@ -118,19 +195,8 @@ export type RouteSet<
   & RouteSet.Instance<M>
   & {
     [RouteSetTypeId]: typeof RouteSetTypeId
-
-    post: typeof post
-    get: typeof get
-    put: typeof put
-    patch: typeof patch
-    del: typeof del
-    options: typeof options
-    head: typeof head
-
-    text: typeof text
-    html: typeof html
-    json: typeof json
   }
+  & RouteBuilder
 
 export namespace RouteSet {
   export type Instance<
@@ -312,6 +378,12 @@ function makeMediaFunction<
   }
 }
 
+/**
+ * Factory to create RouteHandler.Value.
+ * Useful for structural handlers like JSON
+ * or content that can be embedded in other formats,
+ * like text or HTML.
+ */
 function makeValueHandler<ExpectedRaw = string>(
   responseFn: (raw: ExpectedRaw) => HttpServerResponse.HttpServerResponse,
 ) {
@@ -342,7 +414,9 @@ function makeMethodModifier<
   >(
     this: This,
     routes: RouteSet<T>,
-  ): This extends RouteSet<infer B> ? RouteSet<
+  ): This extends RouteSet<infer B>
+    // append to existing RouteSet
+    ? RouteSet<
       [
         ...B,
         ...{
@@ -359,6 +433,7 @@ function makeMethodModifier<
         },
       ]
     >
+    // otherwise create new RouteSet
     : RouteSet<
       {
         [K in keyof T]: T[K] extends Route<
