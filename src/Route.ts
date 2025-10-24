@@ -2,7 +2,6 @@ import * as HttpMethod from "@effect/platform/HttpMethod"
 import * as HttpServerRespondable from "@effect/platform/HttpServerRespondable"
 import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
 import * as Effect from "effect/Effect"
-import * as Function from "effect/Function"
 import * as Pipeable from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 
@@ -12,9 +11,13 @@ export {
 
 type RouteModule = typeof import("./Route.ts")
 
-type RouteThis = Route | RouteModule
+type RouteThis =
+  | RouteSet.Default
+  | RouteModule
 
 const TypeId: unique symbol = Symbol.for("effect-start/Route")
+
+const RouteSetTypeId: unique symbol = Symbol.for("effect-start/RouteSet")
 
 export type RouteMethod =
   | "*"
@@ -28,148 +31,123 @@ type RouteMedia =
   | "text/html"
   | "application/json"
 
-type ValueHandler<
-  A = unknown,
-  E = any,
-  R = any,
-> = Effect.Effect<
-  {
-    [HttpServerRespondable.symbol]: () => Effect.Effect<
-      HttpServerResponse.HttpServerResponse,
-      E,
-      R
-    >
-    raw: A
-  },
-  E,
-  R
->
-
-type HttpHandler<E = any, R = any> = Effect.Effect<
-  HttpServerResponse.HttpServerResponse,
-  E,
-  R
->
-
-type Handler<
+export type RouteHandler<
   A = unknown,
   E = any,
   R = any,
 > =
-  | ValueHandler<A, E, R>
-  | HttpHandler<E, R>
+  /**
+   * A handler that contains raw value.
+   * Can be consumed from other handlers to build more complex responses.
+   * For example, a Route can render markdown for API/AI consumption
+   * and another Route can wrap it in HTML for browsers.
+   */
+  | Handler.Value<A, E, R>
+  /**
+   * A handler returns `HttpServerResponse`.
+   * Should not be consumed with caution: if body is a stream,
+   * consuming it in another handler may break the stream.
+   */
+  | Handler.Encoded<E, R>
 
-const SetProto = {
-  post,
-
-  setName<
-    Name extends string,
-    M extends ReadonlyArray<
-      Route<string, RouteMethod, RouteMedia, Handler>
-    >,
-  >(
-    this: Set<M>,
-    name: Name,
-  ): Set<
+export namespace Handler {
+  export type Value<
+    A = unknown,
+    E = any,
+    R = any,
+  > = Effect.Effect<
     {
-      [K in keyof M]: M[K] extends
-        Route<infer _, infer Method, infer Media, infer H>
-        ? Route<Name, Method, Media, H>
-        : M[K]
-    }
-  > {
-    return Object.assign(
-      Object.create(SetProto),
-      {
-        set: this.set.map(route => {
-          return {
-            ...route,
-            name: name,
-          }
-        }),
-      },
-    ) as Set<
-      {
-        [K in keyof M]: M[K] extends
-          Route<infer _, infer Method, infer Media, infer H>
-          ? Route<Name, Method, Media, H>
-          : M[K]
-      }
-    >
-  },
+      [HttpServerRespondable.symbol]: () => Effect.Effect<
+        HttpServerResponse.HttpServerResponse,
+        E,
+        R
+      >
+      raw: A
+    },
+    E,
+    R
+  >
+
+  export type Encoded<E = any, R = any> = Effect.Effect<
+    HttpServerResponse.HttpServerResponse,
+    E,
+    R
+  >
 }
 
-export type Set<
-  M extends ReadonlyArray<
-    Route<string, RouteMethod, RouteMedia, Handler>
-  >,
+export type RouteSet<
+  M extends Route.Tuple,
 > =
   & Pipeable.Pipeable
-  & Set.Instance<M>
+  & RouteSet.Instance<M>
   & {
-    post: typeof SetProto.post
-    setName: typeof SetProto.setName
+    [RouteSetTypeId]: typeof RouteSetTypeId
+
+    post: typeof post
+
+    text: typeof text
+    html: typeof html
   }
 
-export namespace Set {
+export namespace RouteSet {
   export type Instance<
-    M extends ReadonlyArray<
-      Route<string, RouteMethod, RouteMedia, Handler>
-    > = [Route.Instance],
+    M extends Route.Tuple = Route.Tuple,
   > = {
     set: M
   }
+
+  export type Default = RouteSet<Route.Tuple>
 }
 
-type RouteBuilder = {
-  text: typeof text
+const SetProto = {
+  [RouteSetTypeId]: RouteSetTypeId,
+
+  post,
+
+  text,
+  html,
 }
 
 export interface Route<
   out Name extends string = "",
   out Method extends RouteMethod = "*",
   out Media extends RouteMedia = "*",
-  out _Handler extends Handler = never,
-> extends
-  Route.Instance<
-    Name,
-    Method,
-    Media
-  >,
-  RouteBuilder
-{
+  out Handler extends RouteHandler = RouteHandler,
+> extends RouteSet<[Route.Default]> {
   [TypeId]: typeof TypeId
-  readonly handler: _Handler
+  readonly name: Name
+  readonly method: Method
+  readonly media: Media
+  readonly handler: Handler
 }
 
 export namespace Route {
-  export type Instance<
-    Name extends string,
-    Method extends RouteMethod,
-    Media extends RouteMedia,
-  > =
-    & Set.Instance<[
-      Route<
-        Name,
-        Method,
-        Media
-      >,
-    ]>
-    & {
-      readonly name: Name
-      readonly method: Method
-      readonly media: Media
-    }
-
-  export type Default = Instance<string, RouteMethod, RouteMedia>
-}
-
-type RouteProto =
-  & Pipeable.Pipeable
-  & RouteBuilder
-  & {
-    [TypeId]: typeof TypeId
+  export type Data<
+    Name extends string = string,
+    Method extends RouteMethod = RouteMethod,
+    Media extends RouteMedia = RouteMedia,
+    Handler extends RouteHandler = RouteHandler,
+  > = {
+    readonly name: Name
+    readonly method: Method
+    readonly media: Media
+    readonly handler: Handler
   }
+
+  export type Default = Route<
+    string,
+    RouteMethod,
+    RouteMedia
+  >
+
+  export type Tuple<T = Default> = ReadonlyArray<T>
+
+  export type Proto =
+    & Pipeable.Pipeable
+    & {
+      [TypeId]: typeof TypeId
+    }
+}
 
 const RouteProto = Object.assign(
   Object.create(SetProto),
@@ -179,13 +157,17 @@ const RouteProto = Object.assign(
     pipe() {
       return Pipeable.pipeArguments(this, arguments)
     },
-
-    text,
-  } satisfies RouteProto,
+  } satisfies Route.Proto,
 )
 
 export function isRoute(input: unknown): input is Route {
   return Predicate.hasProperty(input, TypeId)
+}
+
+export function isRouteSet(
+  input: unknown,
+): input is RouteSet.Default {
+  return Predicate.hasProperty(input, RouteSetTypeId)
 }
 
 export type JsonValue =
@@ -198,99 +180,205 @@ export type JsonValue =
     [key: string]: JsonValue
   }
 
-export const empty = {}
-
 export function text<
+  This extends RouteThis,
   A extends string,
-  Base extends Route,
-  _Handler extends ValueHandler<A, E, R>,
   E = never,
   R = never,
 >(
-  this: RouteThis,
+  this: This,
   handler: Effect.Effect<A, E, R>,
-): Set<[
-  Route<
-    Base["name"],
-    Base["method"],
-    "text/plain",
-    _Handler
-  >,
-]> {
-  const route = Object.assign(
-    Object.create(RouteProto),
-    {
-      ...routeThis(this),
-      // @ts-expect-error: we're setting this variable below
-      set: [],
+): This extends RouteSet<infer Routes> ? RouteSet<[
+    ...Routes,
+    Route<
+      "",
+      "GET",
+      "text/plain",
+      Handler.Value<A, E, R>
+    >,
+  ]>
+  : RouteSet<[
+    Route<
+      "",
+      "GET",
+      "text/plain",
+      Handler.Value<A, E, R>
+    >,
+  ]>
+{
+  return makeSet(
+    ...(isRouteSet(this)
+      ? this.set
+      : []),
+    make({
+      name: "",
       method: "GET",
-      path: "/",
       media: "text/plain",
       handler: Effect.gen(function*() {
         const raw = Effect.isEffect(handler)
           ? yield* handler
           : handler
-        const response = HttpServerResponse.text(raw)
+        const response = HttpServerResponse.html(raw)
 
         return {
           [HttpServerRespondable.symbol]: () => Effect.succeed(response),
           raw,
         }
-      }),
-    } satisfies Route.Default,
+      }) as Handler.Value<A, E, R>,
+    }),
+  ) as any
+}
+
+/**
+ * TODO: Support streaming
+ */
+export function html<
+  This extends RouteThis,
+  A extends string,
+  E = never,
+  R = never,
+>(
+  this: This,
+  handler: Effect.Effect<A, E, R>,
+): This extends RouteSet<infer Routes> ? RouteSet<[
+    ...Routes,
+    Route<
+      "",
+      "GET",
+      "text/html",
+      Handler.Value<A, E, R>
+    >,
+  ]>
+  : RouteSet<[
+    Route<
+      "",
+      "GET",
+      "text/html",
+      Handler.Value<A, E, R>
+    >,
+  ]>
+{
+  return [
+    ...(isRouteSet(this)
+      ? this.set
+      : []),
+    make({
+      name: "",
+      method: "GET",
+      media: "text/html",
+      handler: Effect.gen(function*() {
+        const raw = Effect.isEffect(handler)
+          ? yield* handler
+          : handler
+        const response = HttpServerResponse.html(raw)
+
+        return {
+          [HttpServerRespondable.symbol]: () => Effect.succeed(response),
+          raw,
+        }
+      }) as Handler.Value<A, E, R>,
+    }),
+  ] as any
+}
+
+export function post<
+  This extends RouteThis,
+  T extends Route.Tuple,
+>(
+  this: This,
+  routes: RouteSet<T>,
+): This extends RouteSet<infer B> ? RouteSet<
+    [
+      ...B,
+      ...{
+        [K in keyof T]: T[K] extends Route<infer N, infer _, infer M, infer H>
+          ? Route<N, "POST", M, H>
+          : T[K]
+      },
+    ]
+  >
+  : RouteSet<
+    {
+      [K in keyof T]: T[K] extends Route<infer N, infer _, infer M, infer H>
+        ? Route<N, "POST", M, H>
+        : T[K]
+    }
+  >
+{
+  const baseRoutes = isRouteSet(this)
+    ? this.set
+    : [] as const
+
+  return makeSet(
+    ...baseRoutes,
+    ...routes.set.map(route => {
+      return make({
+        ...route,
+        method: "POST",
+      })
+    }),
+  ) as any
+}
+
+function make<
+  Name extends string = "",
+  Method extends RouteMethod = "*",
+  Media extends RouteMedia = "*",
+  Handler extends RouteHandler = never,
+>(
+  input: Route.Data<
+    Name,
+    Method,
+    Media,
+    Handler
+  >,
+): Route<
+  Name,
+  Method,
+  Media,
+  Handler
+> {
+  const route = Object.assign(
+    Object.create(RouteProto),
+    {
+      // @ts-expect-error: assigned below
+      set: [],
+      name: input.name,
+      method: input.method,
+      media: input.media,
+      handler: input.handler,
+    } satisfies Route.Data,
   )
 
-  route.set = [route]
+  route.set = [
+    route,
+  ]
 
   return route
 }
 
-export function post<
-  M extends ReadonlyArray<
-    Route<string, RouteMethod, RouteMedia, Handler>
-  >,
-  R extends ReadonlyArray<
-    Route<string, RouteMethod, RouteMedia, Handler>
-  >,
+function makeSet<
+  M extends Route.Tuple,
 >(
-  this: Set<M> | undefined,
-  route: Set<R>,
-): Set<
-  [
-    ...M,
-    ...{
-      [K in keyof R]: R[K] extends Route<infer N, infer _, infer M, infer H>
-        ? Route<N, "POST", M, H>
-        : R[K]
-    },
-  ]
-> {
+  ...routes: M
+): RouteSet<M> {
   return Object.assign(
     Object.create(SetProto),
     {
-      set: [
-        ...(this?.set ?? []),
-        ...route.set.map(r => ({
-          ...r,
-          method: "POST",
-        })),
-      ],
+      set: routes,
     },
-  ) as Set<
-    [
-      ...M,
-      ...{
-        [K in keyof R]: R[K] extends
-          Route<infer Name, infer _, infer Media, infer H>
-          ? Route<Name, "POST", Media, H>
-          : R[K]
-      },
-    ]
-  >
+  ) as RouteSet<M>
 }
 
-function routeThis(route: Route | RouteModule) {
+function routeThis(
+  route: RouteThis,
+) {
   return isRoute(route)
     ? route
-    : {}
+    : make({
+      name: "",
+      method: "*",
+      media: "*",
+      handler: HttpServerResponse.text("empty route") as Handler.Encoded,
+    })
 }
