@@ -76,13 +76,11 @@ export namespace RouteHandler {
 }
 
 export interface Route<
-  out Name extends string = "",
   out Method extends RouteMethod = "*",
   out Media extends RouteMedia = "*",
   out Handler extends RouteHandler = RouteHandler,
 > extends RouteSet<[Route.Default]> {
   [TypeId]: typeof TypeId
-  readonly name: Name
   readonly method: Method
   readonly media: Media
   readonly handler: Handler
@@ -90,19 +88,16 @@ export interface Route<
 
 export namespace Route {
   export type Data<
-    Name extends string = string,
     Method extends RouteMethod = RouteMethod,
     Media extends RouteMedia = RouteMedia,
     Handler extends RouteHandler = RouteHandler,
   > = {
-    readonly name: Name
     readonly method: Method
     readonly media: Media
     readonly handler: Handler
   }
 
   export type Default = Route<
-    string,
     RouteMethod,
     RouteMedia
   >
@@ -212,19 +207,16 @@ export type JsonValue =
   }
 
 function make<
-  Name extends string = "",
   Method extends RouteMethod = "*",
   Media extends RouteMedia = "*",
   Handler extends RouteHandler = never,
 >(
   input: Route.Data<
-    Name,
     Method,
     Media,
     Handler
   >,
 ): Route<
-  Name,
   Method,
   Media,
   Handler
@@ -234,7 +226,6 @@ function make<
     {
       // @ts-expect-error: assigned below
       set: [],
-      name: input.name,
       method: input.method,
       media: input.media,
       handler: input.handler,
@@ -285,7 +276,6 @@ function makeMediaFunction<
   ): This extends RouteSet<infer Routes> ? RouteSet<[
       ...Routes,
       Route<
-        "",
         Method,
         Media,
         RouteHandler.Value<A, E, R>
@@ -293,7 +283,6 @@ function makeMediaFunction<
     ]>
     : RouteSet<[
       Route<
-        "",
         Method,
         Media,
         RouteHandler.Value<A, E, R>
@@ -305,7 +294,6 @@ function makeMediaFunction<
         ? this.set
         : []),
       make({
-        name: "",
         method,
         media,
         handler: handlerFn(handler),
@@ -348,17 +336,30 @@ function makeMethodModifier<M extends HttpMethod.HttpMethod>(method: M) {
       [
         ...B,
         ...{
-          [K in keyof T]: T[K] extends
-            Route<infer N, infer _, infer Media, infer H>
-            ? Route<N, M, Media, H>
+          [K in keyof T]: T[K] extends Route<
+            infer _,
+            infer Media,
+            infer H
+          > ? Route<
+              M,
+              Media,
+              H
+            >
             : T[K]
         },
       ]
     >
     : RouteSet<
       {
-        [K in keyof T]: T[K] extends
-          Route<infer N, infer _, infer Media, infer H> ? Route<N, M, Media, H>
+        [K in keyof T]: T[K] extends Route<
+          infer _,
+          infer Media,
+          infer H
+        > ? Route<
+            M,
+            Media,
+            H
+          >
           : T[K]
       }
     >
@@ -377,17 +378,4 @@ function makeMethodModifier<M extends HttpMethod.HttpMethod>(method: M) {
       }),
     ) as any
   }
-}
-
-function routeThis(
-  route: RouteThis,
-) {
-  return isRoute(route)
-    ? route
-    : make({
-      name: "",
-      method: "*",
-      media: "*",
-      handler: HttpServerResponse.text("empty route") as RouteHandler.Encoded,
-    })
 }

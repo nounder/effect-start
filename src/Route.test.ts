@@ -15,12 +15,10 @@ test.it("types default routes", () => {
   Function.satisfies<
     Route.RouteSet<[
       Route.Route<
-        "",
         "GET",
         "text/plain"
       >,
       Route.Route<
-        "",
         "GET",
         "text/html"
       >,
@@ -46,17 +44,14 @@ test.it("types GET & POST routes", () => {
   Function.satisfies<
     Route.RouteSet<[
       Route.Route<
-        "",
         "GET",
         "text/plain"
       >,
       Route.Route<
-        "",
         "GET",
         "text/html"
       >,
       Route.Route<
-        "",
         "POST",
         "text/plain"
       >,
