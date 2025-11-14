@@ -232,7 +232,7 @@ test("debug hook execution", () => {
     children: "content",
   })
 
-  const html = HyperHtml.renderToString(node)
+  const html = HyperHtml.renderToString(node, Datastar.HyperHooks)
   console.log("Final HTML:", html)
 
   expect(html)
