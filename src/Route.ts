@@ -15,7 +15,7 @@ type RouteModule = typeof import("./Route.ts")
  * 'this' argument type for {@link RouteBuilder} functions.
  * Its value depend on how the function is called as described below.
  */
-type RouteThis =
+type Self =
   /**
    * Called as {@link RouteSet} method:
    *
@@ -165,7 +165,7 @@ export namespace Route {
 /**
  * Consists of function to build {@link RouteSet}.
  * This should include all exported functions in this module ({@link RouteModule})
- * that have `this` parameter as {@link RouteThis}.
+ * that have `this` as {@link Self}.
  *
  * Method functions, like {@link post}, modify the method of existing routes.
  * Media functions, like {@link json}, create new routes with specific media type.
@@ -206,6 +206,12 @@ export namespace RouteSet {
   }
 
   export type Default = RouteSet<Route.Tuple>
+
+  export type Proto =
+    & {
+      [RouteSetTypeId]: typeof RouteSetTypeId
+    }
+    & RouteBuilder
 }
 
 export const post = makeMethodModifier("POST")
@@ -248,7 +254,7 @@ const SetProto = {
   text,
   html,
   json,
-}
+} satisfies RouteSet.Proto
 
 const RouteProto = Object.assign(
   Object.create(SetProto),
@@ -342,14 +348,14 @@ function makeMediaFunction<
   handlerFn: HandlerFn,
 ) {
   return function<
-    This extends RouteThis,
+    S extends Self,
     A,
     E = never,
     R = never,
   >(
-    this: This,
+    this: S,
     handler: Effect.Effect<A, E, R>,
-  ): This extends RouteSet<infer Routes> ? RouteSet<[
+  ): S extends RouteSet<infer Routes> ? RouteSet<[
       ...Routes,
       Route<
         Method,
@@ -409,12 +415,12 @@ function makeMethodModifier<
   M extends HttpMethod.HttpMethod,
 >(method: M) {
   return function<
-    This extends RouteThis,
+    S extends Self,
     T extends Route.Tuple,
   >(
-    this: This,
+    this: S,
     routes: RouteSet<T>,
-  ): This extends RouteSet<infer B>
+  ): S extends RouteSet<infer B>
     // append to existing RouteSet
     ? RouteSet<
       [
