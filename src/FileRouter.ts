@@ -31,6 +31,23 @@ type SplatSegment = {
 
 export type Extension = "tsx" | "jsx" | "ts" | "js"
 
+export type RouteModuleSegment =
+  | { group: string }
+  | { literal: string }
+  | { param: string }
+  | { rest: string; optional?: boolean }
+
+export type RouteModule = {
+  path: string
+  segments: readonly RouteModuleSegment[]
+  load: () => Promise<unknown>
+  layers?: Array<() => Promise<unknown>>
+}
+
+export type RouteManifest = {
+  Modules: readonly RouteModule[]
+}
+
 export type HandleSegment =
   | {
     // example: '_server.ts'
@@ -240,20 +257,23 @@ export function parseRoute(
 /**
  * Generates a file that references all routes.
  */
-export function layer(
-  routesPath = "src/routes",
-  manifestPath = "_manifest.ts",
-) {
+export function layer(options: {
+  load: () => Promise<unknown>
+  path: string
+}) {
+  let manifestPath = options.path
+
   // handle use of import.meta.resolve
-  if (routesPath.startsWith("file://")) {
-    routesPath = NUrl.fileURLToPath(routesPath)
+  if (manifestPath.startsWith("file://")) {
+    manifestPath = NUrl.fileURLToPath(manifestPath)
   }
 
-  const genFile = NPath.resolve(routesPath, manifestPath)
+  const routesPath = NPath.dirname(manifestPath)
+  const manifestFilename = NPath.basename(manifestPath)
 
   return Layer.scopedDiscard(
     Effect.gen(function*() {
-      yield* FileRouterCodegen.update(routesPath, manifestPath)
+      yield* FileRouterCodegen.update(routesPath, manifestFilename)
 
       const stream = pipe(
         FileSystemExtra.watchSource(routesPath),
@@ -263,9 +283,9 @@ export function layer(
       yield* pipe(
         stream,
         // filter out edits to gen file
-        Stream.filter(e => e.filename !== genFile),
+        Stream.filter(e => e.filename !== manifestPath),
         Stream.runForEach(() =>
-          FileRouterCodegen.update(routesPath, manifestPath)
+          FileRouterCodegen.update(routesPath, manifestFilename)
         ),
         Effect.fork,
       )

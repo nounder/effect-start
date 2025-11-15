@@ -2,60 +2,30 @@ import * as BunContext from "@effect/platform-bun/BunContext"
 import * as BunHttpServer from "@effect/platform-bun/BunHttpServer"
 import * as BunRuntime from "@effect/platform-bun/BunRuntime"
 import * as FetchHttpClient from "@effect/platform/FetchHttpClient"
-import * as HttpApp from "@effect/platform/HttpApp"
 import * as HttpClient from "@effect/platform/HttpClient"
 import * as HttpRouter from "@effect/platform/HttpRouter"
 import * as HttpServer from "@effect/platform/HttpServer"
-import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Function from "effect/Function"
 import * as Layer from "effect/Layer"
-import * as Ref from "effect/Ref"
 import * as BunBundle from "./bun/BunBundle.ts"
 import * as Bundle from "./Bundle.ts"
 import * as BundleHttp from "./BundleHttp.ts"
 import * as FileRouter from "./FileRouter.ts"
 import * as HttpAppExtra from "./HttpAppExtra.ts"
 import * as Router from "./Router.ts"
+import * as StartApp from "./StartApp.ts"
 
-type StartMiddleware = <E, R>(
-  self: HttpApp.Default<E, R>,
-) => HttpApp.Default<never, never>
-
-export class Start extends Context.Tag("effect-start/Start")<
-  Start,
-  {
-    readonly env: "development" | "production" | string
-    readonly relativeUrlRoot?: string
-    readonly addMiddleware: (
-      middleware: StartMiddleware,
-    ) => Effect.Effect<void>
-    readonly middleware: Ref.Ref<StartMiddleware>
-  }
->() {
-}
-
-export function layer(options?: {
-  env?: string
+// TODO: we probably want to remove this API to avoid
+// multiple entrypoints for routers and bundles.
+// We could handle endpoints routing in {@link layer}
+// or {@link serve}.
+// Serve probably makes more sense because it's an entrypoint
+// for serving an HTTP server
+export function router(options: {
+  load: () => Promise<Router.RouteManifest>
+  path: string
 }) {
-  return Layer.sync(Start, () => {
-    const env = options?.env ?? process.env.NODE_ENV ?? "development"
-    const middleware = Ref.unsafeMake(
-      Function.identity as StartMiddleware,
-    )
-
-    return Start.of({
-      env,
-      middleware,
-      addMiddleware: (f) =>
-        Ref.update(middleware, (prev) => (app) => f(prev(app))),
-    })
-  })
-}
-
-export function router(
-  load: () => Promise<Router.RouteManifest>,
-) {
   return Layer.provideMerge(
     // add it to BundleHttp
     Layer.effectDiscard(
@@ -67,8 +37,8 @@ export function router(
       }),
     ),
     Layer.merge(
-      Router.layerPromise(load),
-      FileRouter.layer(),
+      Router.layerPromise(options.load),
+      FileRouter.layer(options),
     ),
   )
 }
@@ -96,7 +66,7 @@ export function bundleClient(config: BunBundle.BuildOptions | string) {
   )
 }
 
-export function make<
+export function layer<
   Layers extends [
     Layer.Layer<never, any, any>,
     ...Array<Layer.Layer<never, any, any>>,
@@ -130,7 +100,7 @@ export function serve<ROut, E>(
 
   return Function.pipe(
     Layer.unwrapEffect(Effect.gen(function*() {
-      const middlewareService = yield* Start
+      const middlewareService = yield* StartApp.StartApp
       const middleware = yield* middlewareService.middleware
 
       const finalMiddleware = Function.flow(
@@ -152,7 +122,7 @@ export function serve<ROut, E>(
       BunHttpServer.layer({
         port: 3000,
       }),
-      layer(),
+      StartApp.layer(),
     ]),
     Layer.launch,
     BunRuntime.runMain,

@@ -8,7 +8,7 @@ import ClientCss from "../client.css" with { type: "file" }
 export default Route.layer(
   Route.layout(function*() {
     const route = yield* Route.Route
-    const bundle = yield* Bundle.Client
+    const bundle = yield* Bundle.ClientBundle
 
     return (
       <html>

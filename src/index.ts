@@ -14,6 +14,8 @@ export {
 
 export * as FileHttpRouter from "./FileHttpRouter"
 export * as FileRouter from "./FileRouter"
+
+export * as Route from "./Route"
 export * as Router from "./Router"
 
 export * as Start from "./Start"

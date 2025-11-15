@@ -7,7 +7,6 @@ import {
 } from "bun:test"
 import { Effect } from "effect"
 import {
-  BunBundle,
   Bundle,
   BundleHttp,
   effectFn,
@@ -15,6 +14,7 @@ import {
 } from "effect-start"
 import * as Layer from "effect/Layer"
 import IndexHtml from "../static/react-dashboard.html" with { type: "file" }
+import * as BunBundle from "./bun/BunBundle.ts"
 
 const effect = effectFn(
   Layer.effect(

@@ -1,20 +1,16 @@
 import {
   Bundle,
-  BunTailwindPlugin,
   FileRouter,
   Start,
 } from "effect-start"
 
-export default Start.make(
-  FileRouter.layer(() => import("./routes")),
-  Start.bundleClient({
-    entrypoints: [
-      "src/index.html",
-    ],
-    plugins: [
-      BunTailwindPlugin.make(),
-    ],
+export default Start.layer(
+  // TODO: update the signature
+  FileRouter.layer({
+    load: () => import("./routes/manifest.expected.ts"),
+    path: import.meta.resolve("./routes/manifest.ts"),
   }),
+  Start.bundleClient("src/index.html"),
 )
 
 if (import.meta.main) {
