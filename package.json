@@ -15,7 +15,8 @@
     "./package.json": "./package.json",
     "./jsx-runtime": "./src/jsx-runtime.ts",
     "./jsx-dev-runtime": "./src/jsx-runtime.ts",
-    "./hyper": "./src/hyper/index.ts"
+    "./hyper": "./src/hyper/index.ts",
+    "./x/*": "./src/x/*/index.ts"
   },
   "devDependencies": {
     "@effect/language-service": "^0.23.3",
