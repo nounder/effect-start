@@ -2,22 +2,8 @@
 
 Build declarative full-stack apps with Effect.
 
-This project is in its early stage. I use it in two different projects.
-
-However, the code is well documented so you should be able to figure out how to use it
-by checking out `examples/` directory. Feel free to hit me up if not.
-
-If you are an AI coding agent, please read `AGENTS.md` for more instructions.
-
-## Examples
-
-See `examples/` directory for templates and additional usage using Preact, React, TanStack, and others.
-
-You can clone it by using degit, like so:
-
-```sh
-bunx degit nounder/effect-start/examples/bun-preact target
-```
+This project is in its early stage. However, the code is well documented so you should be able to figure out how to use it
+by checking out `examples/` directory.
 
 ## Development
 
@@ -27,27 +13,24 @@ bunx degit nounder/effect-start/examples/bun-preact target
 
 It exports a layer that applies configuration and changes the behavior of the server:
 
-```ts
-import {
-  BunTailwindPlugin,
-  Start,
-} from "effect-start"
+```typescript
+import { Start } from "effect-start"
+import { BunTailwindPlugin } from "effect-start/bun"
 
-export default Layer
-  .mergeAll(
-    // enable file-based router
-    Start.router(() => import("./routes/_manifest")),
-    // bundle client-side code for the browser
-    Start.bundleClient({
-      entrypoints: [
-        "src/index.html",
-      ],
-      plugins: [
-        // enable TailwindCSS for client bundle
-        BunTailwindPlugin.make(),
-      ],
-    }),
-  )
+export default Start.make(
+  // enable file-based router
+  Start.router(() => import("./routes/_manifest")),
+  // bundle client-side code for the browser
+  Start.bundleClient({
+    entrypoints: [
+      "src/index.html",
+    ],
+    plugins: [
+      // enable TailwindCSS for client bundle
+      BunTailwindPlugin.make(),
+    ],
+  }),
+)
 ```
 
 ### File-based Routing
@@ -81,14 +64,10 @@ const routerLayer = FileRouter.layer(import.meta.resolve("routes"))
 Effect Start includes built-in support for Tailwind CSS:
 
 ```ts
-import { Layer } from "effect"
 import { Start } from "effect-start"
-import {
-  BunBundle,
-  BunTailwindPlugin,
-} from "effect-start/bun"
+import { BunTailwindPlugin } from "effect-start/bun"
 
-const ClientBundle = BunBundle.bundleClient({
+const ClientBundle = Start.bundleClient({
   entrypoints: [
     "./src/index.html",
   ],
@@ -97,7 +76,7 @@ const ClientBundle = BunBundle.bundleClient({
   ],
 })
 
-export default Layer.mergeAll(
+export default Start.make(
   ClientBundle,
 )
 
@@ -112,16 +91,19 @@ Then in your main CSS files add following file:
 @import "tailwindcss";
 ```
 
-### Static File Serving
+### Cloudflare Tunnel
+
+Tunnel your local server to the Internet with `cloudflared`
 
 ```ts
-import { HttpRouter } from "@effect/platform"
-import { PublicDirectory } from "effect-start"
+import { Start } from "effect-start"
+import { CloudflareTunnel } from "effect-start/x/cloudflare"
 
-// Serve files from ./public directory
-const PublicFiles = PublicDirectory.make()
-
-HttpRouter.empty.pipe(
-  HttpRouter.get("*", PublicFiles),
+export default Start.make(
+  CloudflareTunnel.layer(),
 )
+
+if (import.meta.main) {
+  Start.serve(() => import("./server"))
+}
 ```
