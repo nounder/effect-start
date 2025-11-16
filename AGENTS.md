@@ -6,22 +6,23 @@ Use Bun.js runtime.
 
 dprint is used as a formatter:
 
-````sh
+```sh
 # format all files
 dprint fmt
 
 # format a single file
 dprint fmt $FILE
+```
 
 # Code
 
 Use namespace imports instead of barrel ones:
 
 ```ts
+import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
 import * as Effect from "effect/Effect"
 import * as Schema from "effect/Schema"
-import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
-````
+```
 
 When importing builtin node modules, always import full module and alias it as such:
 
@@ -89,6 +90,9 @@ expect(
   .toMatchObject({
     data: [],
   })
+```
+
+```
 ```
 
 ```
