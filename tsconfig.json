@@ -13,8 +13,6 @@
     "verbatimModuleSyntax": false,
     "noEmit": true,
 
-    "jsx": "preserve",
-
     // Best practices
     "strict": true,
     "skipLibCheck": true,

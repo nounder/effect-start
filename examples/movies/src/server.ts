@@ -5,12 +5,10 @@ import {
 } from "effect-start"
 
 export default Start.layer(
-  // TODO: update the signature
-  FileRouter.layer({
-    load: () => import("./routes/manifest.expected.ts"),
+  Start.router({
+    load: () => import("./routes/manifest.ts"),
     path: import.meta.resolve("./routes/manifest.ts"),
   }),
-  Start.bundleClient("src/index.html"),
 )
 
 if (import.meta.main) {

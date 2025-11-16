@@ -1,9 +1,12 @@
 import * as HttpMethod from "@effect/platform/HttpMethod"
+import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
 import * as HttpServerRespondable from "@effect/platform/HttpServerRespondable"
 import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
 import * as Effect from "effect/Effect"
 import * as Pipeable from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
+import type { YieldWrap } from "effect/Utils"
+import * as HyperHtml from "./HyperHtml.ts"
 
 export {
   pipe,
@@ -231,7 +234,13 @@ export const text = makeMediaFunction(
 export const html = makeMediaFunction(
   "GET",
   "text/html",
-  makeValueHandler<string>(HttpServerResponse.html),
+  makeValueHandler<string | JsxObject>((raw) => {
+    // Check if it's a JSX element (has type and props properties)
+    if (isJsxObject(raw)) {
+      return HttpServerResponse.html(HyperHtml.renderToString(raw))
+    }
+    return HttpServerResponse.html(raw as string)
+  }),
 )
 
 export const json = makeMediaFunction(
@@ -287,6 +296,32 @@ export type JsonValue =
     [key: string]: JsonValue
   }
 
+/**
+ * Constructs a URL from HttpServerRequest.
+ * Handles relative URLs by using headers to determine the base URL.
+ */
+function makeUrlFromRequest(
+  request: HttpServerRequest.HttpServerRequest,
+): URL {
+  const origin = request.headers.origin
+    ?? request.headers.host
+    ?? "http://localhost"
+  const protocol = request.headers["x-forwarded-proto"] ?? "http"
+  const host = request.headers.host ?? "localhost"
+  const base = origin.startsWith("http")
+    ? origin
+    : `${protocol}://${host}`
+  return new URL(request.url, base)
+}
+
+/**
+ * Context passed to route handler generator functions.
+ */
+export type RouteContext = {
+  request: HttpServerRequest.HttpServerRequest
+  get url(): URL
+}
+
 function make<
   Method extends RouteMethod = "*",
   Media extends RouteMedia = "*",
@@ -335,6 +370,7 @@ function makeSet<
 
 /**
  * Factory function that creates Route for a specific method & media.
+ * Supports both Effect values and generator functions that receive context.
  */
 function makeMediaFunction<
   Method extends HttpMethod.HttpMethod,
@@ -354,7 +390,11 @@ function makeMediaFunction<
     R = never,
   >(
     this: S,
-    handler: Effect.Effect<A, E, R>,
+    handler:
+      | Effect.Effect<A, E, R>
+      | ((
+        context: RouteContext,
+      ) => Generator<YieldWrap<Effect.Effect<A, E, R>>, A, never>),
   ): S extends RouteSet<infer Routes> ? RouteSet<[
       ...Routes,
       Route<
@@ -371,6 +411,19 @@ function makeMediaFunction<
       >,
     ]>
   {
+    const effect = typeof handler === "function"
+      ? Effect.gen(function*() {
+        const request = yield* HttpServerRequest.HttpServerRequest
+        const context: RouteContext = {
+          request,
+          get url() {
+            return makeUrlFromRequest(request)
+          },
+        }
+        return yield* Effect.gen(() => handler(context))
+      })
+      : handler
+
     return makeSet(
       ...(isRouteSet(this)
         ? this.set
@@ -378,7 +431,7 @@ function makeMediaFunction<
       make({
         method,
         media,
-        handler: handlerFn(handler as any) as any,
+        handler: handlerFn(effect as any) as any,
       }),
     ) as any
   }
@@ -469,4 +522,16 @@ function makeMethodModifier<
       }),
     ) as any
   }
+}
+
+type JsxObject = {
+  type: any
+  props: any
+}
+
+function isJsxObject(value: any) {
+  return typeof value === "object"
+    && value !== null
+    && "type" in value
+    && "props" in value
 }

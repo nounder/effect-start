@@ -1,9 +1,9 @@
 import { Route } from "effect-start"
 
-export default Route.page(function(props) {
+export default Route.html(function*(ctx) {
   return (
     <div>
-      Users {props.params.id} Page
+      Movie ID from URL: {ctx.url.pathname}
     </div>
   )
 })

@@ -10,6 +10,7 @@ import {
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as FileHttpRouter from "./FileHttpRouter.ts"
+import * as Route from "./Route.ts"
 import * as Router from "./Router.ts"
 import * as TestHttpClient from "./TestHttpClient.ts"
 import { effectFn } from "./testing.ts"
@@ -19,29 +20,24 @@ class CustomError extends Data.TaggedError("CustomError") {}
 const SampleRoutes = [
   {
     path: "/users",
+    segments: [{ literal: "users" }],
     load: async () => ({
-      GET: Effect.succeed(
-        HttpServerResponse.text("Users list"),
-      ) as HttpApp.Default<CustomError, never>,
-      POST: Effect.succeed(
-        HttpServerResponse.text("User created"),
-      ) as HttpApp.Default<Error.SystemError, FileSystem.FileSystem>,
+      default: Route
+        .html(Effect.succeed("Users list"))
+        .post(Route.html(Effect.succeed("User created"))),
     }),
   },
   {
     path: "/articles",
+    segments: [{ literal: "articles" }],
     load: async () => ({
-      GET: Effect.succeed(
-        HttpServerResponse.text("Articles list"),
-      ) as HttpApp.Default<"PostError", "PostService">,
+      default: Route.html(Effect.succeed("Articles list")),
     }),
   },
 ] as const
 
 const SampleRouteManifest: Router.RouteManifest = {
-  Pages: [],
-  Layouts: [],
-  Servers: SampleRoutes,
+  modules: SampleRoutes,
 }
 
 const routerLayer = Router.layerPromise(async () => SampleRouteManifest)
@@ -64,15 +60,16 @@ test("HTTP methods", () =>
   effect(function*() {
     const allMethodsRoute: Router.ServerRoute = {
       path: "/",
+      segments: [],
       load: async () => ({
-        GET: Effect.succeed(HttpServerResponse.text("GET")),
-        POST: Effect.succeed(HttpServerResponse.text("POST")),
-        PUT: Effect.succeed(HttpServerResponse.text("PUT")),
-        PATCH: Effect.succeed(HttpServerResponse.text("PATCH")),
-        DELETE: Effect.succeed(HttpServerResponse.text("DELETE")),
-        OPTIONS: Effect.succeed(HttpServerResponse.text("OPTIONS")),
-        HEAD: Effect.succeed(HttpServerResponse.text("HEAD")),
-        default: Effect.succeed(HttpServerResponse.text("DEFAULT")),
+        default: Route
+          .html(Effect.succeed("GET"))
+          .post(Route.html(Effect.succeed("POST")))
+          .put(Route.html(Effect.succeed("PUT")))
+          .patch(Route.html(Effect.succeed("PATCH")))
+          .del(Route.html(Effect.succeed("DELETE")))
+          .options(Route.html(Effect.succeed("OPTIONS")))
+          .head(Route.html(Effect.succeed("HEAD"))),
       }),
     }
 
@@ -89,7 +86,6 @@ test("HTTP methods", () =>
           expect.objectContaining({ path: "/", method: "DELETE" }),
           expect.objectContaining({ path: "/", method: "OPTIONS" }),
           expect.objectContaining({ path: "/", method: "HEAD" }),
-          expect.objectContaining({ path: "/", method: "*" }),
         ]),
       )
   }))
@@ -146,20 +142,23 @@ test("handles routes with special characters (tilde and hyphen)", () =>
     const specialCharRoutes: Router.ServerRoute[] = [
       {
         path: "/api-v1",
+        segments: [{ literal: "api-v1" }],
         load: async () => ({
-          GET: Effect.succeed(HttpServerResponse.text("API v1")),
+          default: Route.text(Effect.succeed("API v1")),
         }),
       },
       {
         path: "/files~backup",
+        segments: [{ literal: "files~backup" }],
         load: async () => ({
-          GET: Effect.succeed(HttpServerResponse.text("Backup files")),
+          default: Route.text(Effect.succeed("Backup files")),
         }),
       },
       {
         path: "/test-route~temp",
+        segments: [{ literal: "test-route~temp" }],
         load: async () => ({
-          POST: Effect.succeed(HttpServerResponse.text("Test route")),
+          default: Route.post(Route.text(Effect.succeed("Test route"))),
         }),
       },
     ]

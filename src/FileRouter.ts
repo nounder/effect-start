@@ -12,87 +12,77 @@ import * as NPath from "node:path"
 import * as NUrl from "node:url"
 import * as FileRouterCodegen from "./FileRouterCodegen.ts"
 import * as FileSystemExtra from "./FileSystemExtra.ts"
+import { ServerModule } from "./Router.ts"
 
 type LiteralSegment = {
-  type: "Literal"
-  text: string // eg. "users"
+  literal: string
+}
+
+type GroupSegment = {
+  group: string
 }
 
 type ParamSegment = {
-  type: "Param"
-  param: string // eg. "userId"
-  text: string // eg. "$userId"
+  param: string
+  optional?: true
 }
 
-type SplatSegment = {
-  type: "Splat"
-  text: "$"
+type RestSegment = {
+  rest: string
+  optional?: true
+}
+
+type HandleSegment = {
+  handle: "route" | "layer"
 }
 
 export type Extension = "tsx" | "jsx" | "ts" | "js"
 
-export type RouteModuleSegment =
-  | { group: string }
-  | { literal: string }
-  | { param: string }
-  | { rest: string; optional?: boolean }
+export type Segment =
+  | LiteralSegment
+  | GroupSegment
+  | ParamSegment
+  | RestSegment
+  | HandleSegment
+
+export function isSegmentEqual(a: Segment, b: Segment): boolean {
+  if ("literal" in a && "literal" in b) return a.literal === b.literal
+  if ("group" in a && "group" in b) return a.group === b.group
+  if ("param" in a && "param" in b) return a.param === b.param
+  if ("rest" in a && "rest" in b) return a.rest === b.rest
+  if ("handle" in a && "handle" in b) return a.handle === b.handle
+  return false
+}
 
 export type RouteModule = {
-  path: string
-  segments: readonly RouteModuleSegment[]
-  load: () => Promise<unknown>
-  layers?: Array<() => Promise<unknown>>
+  path: `/${string}`
+  segments: readonly Segment[]
+  load: () => Promise<ServerModule>
+  layers?: ReadonlyArray<() => Promise<unknown>>
 }
 
 export type RouteManifest = {
   Modules: readonly RouteModule[]
 }
 
-export type HandleSegment =
-  | {
-    // example: '_server.ts'
-    type: "ServerHandle"
-    text: `_server.${Extension}`
-    handle: "server"
-  }
-  | {
-    // example: '_page.tsx'
-    type: "PageHandle"
-    text: `_page.${Extension}`
-    handle: "page"
-  }
-  | {
-    // example: '_layout.tsx'
-    type: "LayoutHandle"
-    text: `_layout.${Extension}`
-    handle: "layout"
-  }
-
-export type Segment =
-  | LiteralSegment
-  | ParamSegment
-  | SplatSegment
-  | HandleSegment
-
 export type RouteHandle = {
-  type: "ServerHandle" | "PageHandle" | "LayoutHandle"
-  modulePath: string // eg. `about/_page.tsx`, `users/$userId/_page.tsx`, `users/$/page.tsx`
-  routePath: `/${string}` // eg. `/about`,`/users/$userId`, `/users/$`
+  handle: "route" | "layer"
+  modulePath: string // eg. `about/route.tsx`, `users/[userId]/route.tsx`, `(admin)/users/route.tsx`
+  routePath: `/${string}` // eg. `/about`, `/users/[userId]`, `/users` (groups stripped)
   segments: Segment[]
-  splat: boolean // if check if route is a splat
 }
 
 /**
- * Routes are sorted by depth, layout are first,
- * splats are put at the end for each segment.
- * - _layout.tsx
- * - users/_page.tsx
- * - users/$userId/_page.tsx
- * - $/_page.tsx
+ * Routes are sorted by depth, layers are first,
+ * rest parameters are put at the end for each segment.
+ * - layer.tsx
+ * - users/route.tsx
+ * - users/[userId]/route.tsx
+ * - [[...rest]]/route.tsx
  */
 export type OrderedRouteHandles = RouteHandle[]
 
-const ROUTE_PATH_REGEX = /^\/?(.*\/?)(_(server|page|layout))\.(jsx?|tsx?)$/
+const ROUTE_PATH_REGEX = /^\/?(.*\/?)((route|layer))\.(jsx?|tsx?)$/
 
 type RoutePathMatch = [
   path: string,
@@ -118,55 +108,45 @@ export function segmentPath(path: string): Segment[] {
 
   const segments: (Segment | null)[] = segmentStrings.map(
     (s): Segment | null => {
-      // Check if it's a handle (_server.ts, _page.tsx, _layout.jsx, etc.)
-      const [, kind, ext] = s.match(/^_(server|page|layout)\.(tsx?|jsx?)$/)
+      // Check if it's a handle (route.ts, layer.tsx, etc.)
+      const [, handle] = s.match(/^(route|layer)\.(tsx?|jsx?)$/)
         ?? []
 
-      if (kind === "server") {
+      if (handle) {
+        // @ts-expect-error regexp group ain't typed
+        return { handle }
+      }
+
+      // (group) - Groups
+      const groupMatch = s.match(/^\((\w+)\)$/)
+      if (groupMatch) {
+        return { group: groupMatch[1] }
+      }
+
+      // [[...rest]] - Optional rest parameter
+      const optionalRestMatch = s.match(/^\[\[\.\.\.(\w+)\]\]$/)
+      if (optionalRestMatch) {
         return {
-          type: "ServerHandle",
-          text: s as `_server.${Extension}`,
-          handle: "server",
-        }
-      } else if (kind === "page") {
-        return {
-          type: "PageHandle",
-          text: s as `_page.${Extension}`,
-          handle: "page",
-        }
-      } else if (kind === "layout") {
-        return {
-          type: "LayoutHandle",
-          text: s as `_layout.${Extension}`,
-          handle: "layout",
+          rest: optionalRestMatch[1],
+          optional: true,
         }
       }
 
-      // $ (Splat)
-      if (s === "$") {
-        return {
-          type: "Splat",
-          text: "$",
-        }
+      // [...rest] - Required rest parameter
+      const requiredRestMatch = s.match(/^\[\.\.\.(\w+)\]$/)
+      if (requiredRestMatch) {
+        return { rest: requiredRestMatch[1] }
       }
 
-      // $name (Param)
-      if (/^\$\w+$/.test(s)) {
-        const name = s.substring(1) // Remove "$"
-        if (name !== "") {
-          return {
-            type: "Param",
-            param: name,
-            text: s,
-          }
-        }
+      // [param] - Dynamic parameter
+      const paramMatch = s.match(/^\[(\w+)\]$/)
+      if (paramMatch) {
+        return { param: paramMatch[1] }
       }
 
+      // Literal segment
       if (/^[A-Za-z0-9._~-]+$/.test(s)) {
-        return {
-          type: "Literal",
-          text: s,
-        }
+        return { literal: s }
       }
 
       return null
@@ -182,6 +162,17 @@ export function segmentPath(path: string): Segment[] {
   return segments as Segment[]
 }
 
+function segmentToText(seg: Segment): string {
+  if ("literal" in seg) return seg.literal
+  if ("group" in seg) return `(${seg.group})`
+  if ("param" in seg) return `[${seg.param}]`
+  if ("rest" in seg) {
+    return seg.optional ? `[[...${seg.rest}]]` : `[...${seg.rest}]`
+  }
+  if ("handle" in seg) return seg.handle
+  return ""
+}
+
 export function parseRoute(
   path: string,
 ): RouteHandle {
@@ -189,68 +180,59 @@ export function parseRoute(
 
   const handle = segs.at(-1)
 
-  if (
-    !handle
-    || (
-      handle.type !== "ServerHandle"
-      && handle.type !== "PageHandle"
-      && handle.type !== "LayoutHandle"
-    )
-  ) {
+  if (!handle || !("handle" in handle)) {
     throw new Error(
-      `Invalid route path "${path}": must end with a valid handle (_server, _page, or _layout)`,
+      `Invalid route path "${path}": must end with a valid handle (route or layer)`,
     )
   }
 
-  // Validate Route constraints: splat segments must be the last segment before the handle
+  // Validate Route constraints: rest segments must be the last segment before the handle
   const pathSegments = segs.slice(0, -1) // All segments except the handle
-  const splatIndex = pathSegments.findIndex(seg => seg.type === "Splat")
+  const restIndex = pathSegments.findIndex(seg => "rest" in seg)
 
-  if (splatIndex !== -1) {
-    // If there's a splat, it must be the last path segment
-    if (splatIndex !== pathSegments.length - 1) {
+  if (restIndex !== -1) {
+    // If there's a rest, it must be the last path segment
+    if (restIndex !== pathSegments.length - 1) {
       throw new Error(
-        `Invalid route path "${path}": splat segment ($) must be the last path segment before the handle`,
+        `Invalid route path "${path}": rest segment ([...rest] or [[...rest]]) must be the last path segment before the handle`,
       )
     }
 
-    // Validate that all segments before the splat are literal or param
-    for (let i = 0; i < splatIndex; i++) {
+    // Validate that all segments before the rest are literal, param, or group
+    for (let i = 0; i < restIndex; i++) {
       const seg = pathSegments[i]
-      if (seg.type !== "Literal" && seg.type !== "Param") {
+      if (!("literal" in seg) && !("param" in seg) && !("group" in seg)) {
         throw new Error(
-          `Invalid route path "${path}": segments before splat must be literal or param segments`,
+          `Invalid route path "${path}": segments before rest must be literal, param, or group segments`,
         )
       }
     }
   } else {
-    // No splat: validate that all path segments are literal or param
+    // No rest: validate that all path segments are literal, param, or group
     for (const seg of pathSegments) {
-      if (
-        seg.type !== "Literal"
-        && seg.type !== "Param"
-      ) {
+      if (!("literal" in seg) && !("param" in seg) && !("group" in seg)) {
         throw new Error(
-          `Invalid route path "${path}": path segments must be literal or param segments`,
+          `Invalid route path "${path}": path segments must be literal, param, or group segments`,
         )
       }
     }
   }
 
-  // Construct routePath from path segments (excluding handle)
-  const routePath = (pathSegments.length > 0
-    ? `/${pathSegments.map(seg => seg.text).join("/")}`
+  // Construct routePath from path segments (excluding handle and groups)
+  // Groups like (admin) are stripped from the URL path
+  const routePathSegments = pathSegments
+    .filter(seg => !("group" in seg))
+    .map(segmentToText)
+
+  const routePath = (routePathSegments.length > 0
+    ? `/${routePathSegments.join("/")}`
     : "/") as `/${string}`
 
-  // Check if route has splat
-  const hasSplat = pathSegments.some(seg => seg.type === "Splat")
-
   return {
-    type: handle.type,
+    handle: handle.handle,
     modulePath: path,
     routePath,
     segments: segs,
-    splat: hasSplat,
   }
 }
 
@@ -314,7 +296,7 @@ export function walkRoutesDirectory(
 export function getRouteHandlesFromPaths(
   paths: string[],
 ): OrderedRouteHandles {
-  return paths
+  const handles = paths
     .map(f => f.match(ROUTE_PATH_REGEX) as RoutePathMatch)
     .filter(Boolean)
     .map(v => {
@@ -329,16 +311,39 @@ export function getRouteHandlesFromPaths(
     .toSorted((a, b) => {
       const aDepth = a.segments.length
       const bDepth = b.segments.length
+      const aHasRest = a.segments.some(seg => "rest" in seg)
+      const bHasRest = b.segments.some(seg => "rest" in seg)
 
       return (
-        // splat is a dominant factor
-        (+a.splat - +b.splat) * 1000
-        // depth is reversed for splats
-        + (aDepth - bDepth) * (1 - 2 * +a.splat)
+        // rest is a dominant factor (routes with rest come last)
+        (+aHasRest - +bHasRest) * 1000
+        // depth is reversed for rest
+        + (aDepth - bDepth) * (1 - 2 * +aHasRest)
         // lexicographic comparison as tiebreaker
         + a.modulePath.localeCompare(b.modulePath) * 0.001
       )
     })
+
+  // Detect conflicting routes at the same path
+  const routesByPath = new Map<string, RouteHandle[]>()
+  for (const handle of handles) {
+    const existing = routesByPath.get(handle.routePath) || []
+    existing.push(handle)
+    routesByPath.set(handle.routePath, existing)
+  }
+
+  for (const [path, pathHandles] of routesByPath) {
+    const routeHandles = pathHandles.filter(h => h.handle === "route")
+
+    if (routeHandles.length > 1) {
+      const modulePaths = routeHandles.map(h => h.modulePath).join(", ")
+      throw new Error(
+        `Conflicting routes detected at path ${path}: ${modulePaths}`,
+      )
+    }
+  }
+
+  return handles
 }
 
 type RouteTree = {

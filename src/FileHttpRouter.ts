@@ -54,6 +54,23 @@ export type HttpRouterFromServerRoutes<
 >
 
 /**
+ * Converts file-based route path format to HttpRouter path format.
+ * Examples:
+ *   /movies/[id] -> /movies/:id
+ *   /docs/[[...slug]] -> /docs/*
+ *   /api/[...path] -> /api/*
+ */
+function convertPathFormat(path: string): string {
+  return path
+    // Convert required params: [id] -> :id
+    .replace(/\[([^\]\.]+)\]/g, ":$1")
+    // Convert optional rest params: [[...slug]] -> *
+    .replace(/\[\[\.\.\.([^\]]+)\]\]/g, "*")
+    // Convert required rest params: [...path] -> *
+    .replace(/\[\.\.\.([^\]]+)\]/g, "*")
+}
+
+/**
  * Makes a HttpRouter from file-based routes.
  */
 export function make<Routes extends Router.ServerRoutes>(
@@ -73,21 +90,16 @@ export function make<Routes extends Router.ServerRoutes>(
     let router: HttpRouter.HttpRouter<any, any> = HttpRouter.empty
 
     for (const { path, module } of modules) {
-      const addRoute = (
-        method: "*" | Router.ServerMethod,
-        handler: HttpApp.Default<any, any>,
-      ) => {
-        router = HttpRouter.route(method)(path, handler)(router)
-      }
+      const routeSet = module.default
+      const httpRouterPath = convertPathFormat(path)
 
-      Router.ServerMethods.forEach((method) => {
-        if (module[method]) {
-          addRoute(method, module[method])
-        }
-      })
-
-      if (module.default) {
-        addRoute("*", module.default)
+      for (const route of routeSet.set) {
+        router = HttpRouter.route(route.method)(
+          httpRouterPath,
+          route.handler as any,
+        )(
+          router,
+        )
       }
     }
 

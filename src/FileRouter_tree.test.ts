@@ -1,5 +1,4 @@
 import {
-  describe,
   expect,
   test,
 } from "bun:test"
@@ -7,8 +6,8 @@ import * as FileRouter from "./FileRouter.ts"
 
 test("tree with root only", () => {
   const handles = [
-    "_page.tsx",
-    "_layout.tsx",
+    "route.tsx",
+    "layer.tsx",
   ]
     .map(FileRouter.parseRoute)
   const tree = FileRouter.treeFromRouteHandles(handles)
@@ -17,10 +16,10 @@ test("tree with root only", () => {
     path: "/",
     handles: [
       expect.objectContaining({
-        type: "PageHandle",
+        handle: "route",
       }),
       expect.objectContaining({
-        type: "LayoutHandle",
+        handle: "layer",
       }),
     ],
   })
@@ -39,11 +38,10 @@ test("tree without root", () => {
 
 test("deep tree", () => {
   const handles = [
-    "users/_page.tsx",
-    "users/_server.ts",
-    "users/_layout.tsx",
-    "users/$userId/_page.tsx",
-    "_layout.tsx",
+    "users/route.tsx",
+    "users/layer.tsx",
+    "users/[userId]/route.tsx",
+    "layer.tsx",
   ]
     .map(FileRouter.parseRoute)
   const tree = FileRouter.treeFromRouteHandles(handles)
@@ -52,7 +50,7 @@ test("deep tree", () => {
     path: "/",
     handles: [
       expect.objectContaining({
-        type: "LayoutHandle",
+        handle: "layer",
       }),
     ],
     children: [
@@ -60,21 +58,18 @@ test("deep tree", () => {
         path: "/users",
         handles: [
           expect.objectContaining({
-            type: "PageHandle",
+            handle: "route",
           }),
           expect.objectContaining({
-            type: "ServerHandle",
-          }),
-          expect.objectContaining({
-            type: "LayoutHandle",
+            handle: "layer",
           }),
         ],
         children: [
           {
-            path: "/$userId",
+            path: "/[userId]",
             handles: [
               expect.objectContaining({
-                type: "PageHandle",
+                handle: "route",
               }),
             ],
           },
@@ -82,4 +77,50 @@ test("deep tree", () => {
       },
     ],
   })
+})
+
+test("throws on overlapping routes from groups", () => {
+  expect(() => {
+    const handles = [
+      "(admin)/users/route.tsx",
+      "users/route.tsx",
+    ]
+      .map(FileRouter.parseRoute)
+
+    FileRouter.getRouteHandlesFromPaths(
+      handles.map(h => h.modulePath),
+    )
+  })
+    .toThrow("Conflicting routes detected at path /users")
+})
+
+test("throws on overlapping routes with same path", () => {
+  expect(() => {
+    const handles = [
+      "about/route.tsx",
+      "about/route.ts",
+    ]
+      .map(FileRouter.parseRoute)
+
+    FileRouter.getRouteHandlesFromPaths(
+      handles.map(h => h.modulePath),
+    )
+  })
+    .toThrow("Conflicting routes detected at path /about")
+})
+
+test("allows route and layer at same path", () => {
+  expect(() => {
+    const handles = [
+      "users/route.tsx",
+      "users/layer.tsx",
+    ]
+      .map(FileRouter.parseRoute)
+
+    FileRouter.getRouteHandlesFromPaths(
+      handles.map(h => h.modulePath),
+    )
+  })
+    .not
+    .toThrow()
 })

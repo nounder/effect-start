@@ -8,12 +8,12 @@ import * as FileRouter from "./FileRouter.ts"
 import { effectFn } from "./testing.ts"
 
 const Files = {
-  "/routes/about/_layout.tsx": "",
-  "/routes/about/_page.tsx": "",
-  "/routes/users/_page.tsx": "",
-  "/routes/users/_layout.tsx": "",
-  "/routes/users/$userId/_page.tsx": "",
-  "/routes/_layout.tsx": "",
+  "/routes/about/layer.tsx": "",
+  "/routes/about/route.tsx": "",
+  "/routes/users/route.tsx": "",
+  "/routes/users/layer.tsx": "",
+  "/routes/users/[userId]/route.tsx": "",
+  "/routes/layer.tsx": "",
 }
 
 const effect = effectFn()
@@ -28,23 +28,23 @@ it("walks routes", () =>
       files.map(v => v.modulePath),
     )
       .toEqual([
-        "_layout.tsx",
-        "about/_layout.tsx",
-        "about/_page.tsx",
-        "users/_layout.tsx",
-        "users/_page.tsx",
-        "users/$userId/_page.tsx",
+        "layer.tsx",
+        "about/layer.tsx",
+        "about/route.tsx",
+        "users/layer.tsx",
+        "users/route.tsx",
+        "users/[userId]/route.tsx",
       ])
   }))
 
-it("walks routes with splat", () =>
+it("walks routes with rest", () =>
   effect(function*() {
     const files = yield* FileRouter.walkRoutesDirectory("/routes").pipe(
       Effect.provide(
         MemoryFileSystem.layerWith({
           ...Files,
-          "/routes/$/_page.tsx": "",
-          "/routes/users/$/_page.tsx": "",
+          "/routes/[[...rest]]/route.tsx": "",
+          "/routes/users/[...path]/route.tsx": "",
         }),
       ),
     )
@@ -53,13 +53,13 @@ it("walks routes with splat", () =>
       files.map(v => v.modulePath),
     )
       .toEqual([
-        "_layout.tsx",
-        "about/_layout.tsx",
-        "about/_page.tsx",
-        "users/_layout.tsx",
-        "users/_page.tsx",
-        "users/$userId/_page.tsx",
-        "users/$/_page.tsx",
-        "$/_page.tsx",
+        "layer.tsx",
+        "about/layer.tsx",
+        "about/route.tsx",
+        "users/layer.tsx",
+        "users/route.tsx",
+        "users/[userId]/route.tsx",
+        "users/[...path]/route.tsx",
+        "[[...rest]]/route.tsx",
       ])
   }))

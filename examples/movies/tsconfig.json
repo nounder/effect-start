@@ -14,7 +14,6 @@
     "noEmit": true,
 
     "jsx": "react-jsx",
-    "jsxImportSource": "preact",
 
     // Best practices
     "strict": true,

@@ -1,6 +1,6 @@
 import { Route } from "effect-start"
 
-export default Route.page(function() {
+export default Route.html(function*() {
   return (
     <ul>
       <li>

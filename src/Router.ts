@@ -5,6 +5,7 @@ import * as Effect from "effect/Effect"
 import * as Function from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as FileHttpRouter from "./FileHttpRouter.ts"
+import * as FileRouter from "./FileRouter.ts"
 import * as Route from "./Route"
 
 export const ServerMethods = [
@@ -19,53 +20,18 @@ export const ServerMethods = [
 
 export type ServerMethod = (typeof ServerMethods)[number]
 
-export type ServerHandle =
-  | HttpApp.Default<any, any>
-  | Route.Route
-
-export type ServerModule =
-  & {
-    [K in ServerMethod]?: ServerHandle
-  }
-  & {
-    default?: ServerHandle
-  }
+export type ServerModule = {
+  default: Route.Route | Route.RouteSet.Default
+}
 
 export type ServerRoute = {
   path: `/${string}`
+  segments: readonly FileRouter.Segment[]
   load: () => Promise<ServerModule>
 }
 
-export type LayoutModule<Component = any, Children = Component> = {
-  default: (props: {
-    children: Children
-  }) => Component
-}
-
-export type LayoutRoute = {
-  path: `/${string}`
-  parent?: LayoutRoute
-  load: () => Promise<LayoutModule>
-}
-
-export type PageModule<Component = any> = {
-  default: (props: {}) => Component
-}
-
-export type PageRoute = {
-  path: `/${string}`
-  parent?: LayoutRoute
-  load: () => Promise<PageModule>
-}
-
-export type PageRoutes = ReadonlyArray<PageRoute>
-export type LayoutRoutes = ReadonlyArray<LayoutRoute>
-export type ServerRoutes = ReadonlyArray<ServerRoute>
-
 export type RouteManifest = {
-  Pages: PageRoutes
-  Layouts: LayoutRoutes
-  Servers: ServerRoutes
+  modules: readonly FileRouter.RouteModule[]
 }
 
 export type RouterContext =
@@ -85,7 +51,11 @@ export function layer(
   return Layer.effect(
     Router,
     Effect.gen(function*() {
-      const httpRouter = yield* FileHttpRouter.make(manifest.Servers)
+      const serverRoutes = manifest.modules.map((mod) => ({
+        path: mod.path,
+        load: mod.load,
+      }))
+      const httpRouter = yield* FileHttpRouter.make(serverRoutes)
       return {
         ...manifest,
         httpRouter,
