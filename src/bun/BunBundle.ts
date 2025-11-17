@@ -100,11 +100,15 @@ export function build(
     )
 
     const resolve = (path: string) => {
-      return manifest.entrypoints[path] ?? null
+      const entry = manifest.inputs.find((e) => e.input === path)
+
+      return entry?.output ?? null
     }
 
     const getArtifact = (path: string): Blob | null => {
-      return artifactsMap[resolve(path)]
+      const resolved = resolve(path)
+
+      return artifactsMap[resolved ?? ""]
         ?? artifactsMap[path]
         ?? null
     }
@@ -251,37 +255,30 @@ function generateManifestfromBunBundle(
   const entrypointArtifacts = joinBuildEntrypoints(options, output)
 
   return {
-    entrypoints: pipe(
+    inputs: pipe(
       entrypointArtifacts,
-      Iterable.map((v) =>
-        [
-          v.shortPath,
-          v.artifact.path.replace(/^\.\//, ""),
-        ] as const
-      ),
-      Record.fromEntries,
+      Iterable.map((v) => ({
+        input: v.shortPath,
+        output: v.artifact.path.replace(/^\.\//, ""),
+      })),
+      Array.fromIterable,
     ),
 
-    artifacts: pipe(
+    outputs: pipe(
       output.outputs,
-      // This will mess up direct entrypoint-artifact record.
-      // Will have to filter out sourcemap when mapping.
-      // Iterable.flatMap((v) => v.sourcemap ? [v, v.sourcemap] : [v]),
       Iterable.map((v) => {
         // strip './' prefix
         const shortPath = v.path.replace(/^\.\//, "")
 
-        return [
-          shortPath,
-          {
-            hash: v.hash ?? undefined,
-            size: v.size,
-            type: v.type,
-            imports: imports?.get(v.path),
-          },
-        ] as const
+        return {
+          output: shortPath,
+          type: v.type,
+          size: v.size,
+          hash: v.hash ?? undefined,
+          imports: imports?.get(v.path),
+        }
       }),
-      Record.fromEntries,
+      Array.fromIterable,
     ),
   }
 }

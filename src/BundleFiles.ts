@@ -24,15 +24,16 @@ export const toFiles = (
   return Effect.gen(function*() {
     const fs = yield* FileSystem.FileSystem
     const manifest: BundleManifest = {
-      entrypoints: context.entrypoints,
-      artifacts: context.artifacts,
+      inputs: context.inputs,
+      outputs: context.outputs,
     }
 
     const normalizedOutDir = outDir.replace(/\/$/, "")
 
     const bundleArtifacts = pipe(
-      manifest.artifacts,
-      Record.mapEntries((_, k) => [k, context.getArtifact(k)!]),
+      manifest.outputs,
+      Array.map((output) => [output.output, context.getArtifact(output.output)!] as const),
+      Record.fromEntries,
     )
     const extraArtifacts = {
       "manifest.json": new Blob([JSON.stringify(manifest, undefined, 2)], {
@@ -130,10 +131,10 @@ export const fromFiles = (
         )
       ),
     )
-    const artifactsPairs = Record.toEntries(manifest.artifacts)
+    const outputPaths = Array.map(manifest.outputs, (o) => o.output)
     const artifactBlobs = yield* pipe(
-      artifactsPairs,
-      Iterable.map(([k]) => fs.readFile(`${normalizedDir}/${k}`)),
+      outputPaths,
+      Iterable.map((path) => fs.readFile(`${normalizedDir}/${path}`)),
       Effect.all,
       Effect.catchAll((e) =>
         new BundleError({
@@ -143,13 +144,13 @@ export const fromFiles = (
       ),
       Effect.andThen(Iterable.map((v, i) =>
         new Blob([v.slice(0)], {
-          type: artifactsPairs[i][0],
+          type: manifest.outputs[i].type,
         })
       )),
     )
     const artifactsRecord = pipe(
       Iterable.zip(
-        Iterable.map(artifactsPairs, (v) => v[0]),
+        outputPaths,
         artifactBlobs,
       ),
       Record.fromEntries,
@@ -161,7 +162,9 @@ export const fromFiles = (
       // this will require having an access to base path of a build
       // and maybe problematic because bundlers transform urls on build
       resolve: (url: string) => {
-        return manifest.entrypoints[url] ?? null
+        const entry = manifest.inputs.find((e) => e.input === url)
+
+        return entry?.output ?? null
       },
       getArtifact: (path: string) => {
         return artifactsRecord[path] ?? null

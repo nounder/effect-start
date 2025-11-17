@@ -25,13 +25,12 @@ async function loadAllEntrypoints() {
   const manifest: BundleManifest = await fetch(`/${BUNDLE_URL}/manifest.json`)
     .then(v => v.json())
 
-  Object
-    .keys(manifest.artifacts)
-    .filter(v => v.endsWith(".js"))
-    .forEach((outFile) => {
-      console.log(outFile)
+  manifest.outputs
+    .filter(v => v.output.endsWith(".js"))
+    .forEach((output) => {
+      console.log(output.output)
       const script = document.createElement("script")
-      script.src = `${BUNDLE_URL}/${outFile}`
+      script.src = `${BUNDLE_URL}/${output.output}`
       script.type = "module"
       script.onload = () => {
         console.debug("Bundle reloaded")
