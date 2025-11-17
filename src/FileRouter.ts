@@ -252,6 +252,7 @@ export function layer(options: {
 
   const routesPath = NPath.dirname(manifestPath)
   const manifestFilename = NPath.basename(manifestPath)
+  const resolvedManifestPath = NPath.resolve(routesPath, manifestFilename)
 
   return Layer.scopedDiscard(
     Effect.gen(function*() {
@@ -265,7 +266,7 @@ export function layer(options: {
       yield* pipe(
         stream,
         // filter out edits to gen file
-        Stream.filter(e => e.filename !== manifestPath),
+        Stream.filter(e => e.filename !== resolvedManifestPath),
         Stream.runForEach(() =>
           FileRouterCodegen.update(routesPath, manifestFilename)
         ),
