@@ -1,4 +1,4 @@
-import { FileSystem } from "@effect/platform"
+import { Error, FileSystem } from "@effect/platform"
 import type { PlatformError } from "@effect/platform/Error"
 import {
   Array,
@@ -8,6 +8,8 @@ import {
   Record,
   Stream,
 } from "effect"
+import type { WatchOptions } from "node:fs"
+import * as NFSP from "node:fs/promises"
 import * as NPath from "node:path"
 import * as NUrl from "node:url"
 import * as FileRouterCodegen from "./FileRouterCodegen.ts"
@@ -237,6 +239,66 @@ export function parseRoute(
 }
 
 /**
+ * Watch a directory for any changes (additions, deletions, modifications).
+ * Unlike watchSource, this doesn't filter by file extension, making it suitable
+ * for detecting route file deletions and directory changes.
+ */
+const watchDirectory = (
+  path: string,
+  opts?: WatchOptions,
+): Stream.Stream<NFSP.FileChangeInfo<string>, Error.SystemError> => {
+  const baseDir = path
+
+  let stream: Stream.Stream<NFSP.FileChangeInfo<string>, Error.SystemError>
+  try {
+    stream = Stream.fromAsyncIterable(
+      NFSP.watch(baseDir, {
+        persistent: false,
+        recursive: true,
+        ...(opts || {}),
+      }),
+      (error) =>
+        new Error.SystemError({
+          module: "FileSystem",
+          reason: "Unknown",
+          method: "watch",
+          pathOrDescriptor: baseDir,
+          cause: error,
+        }),
+    )
+  } catch (e) {
+    stream = Stream.fail(
+      new Error.SystemError({
+        module: "FileSystem",
+        reason: "Unknown",
+        method: "watch",
+        pathOrDescriptor: baseDir,
+        cause: e,
+      }),
+    )
+  }
+
+  const changes = pipe(
+    stream,
+    Stream.map(e => ({
+      eventType: e.eventType,
+      filename: NPath.resolve(baseDir, e.filename!),
+    })),
+    // Filter out node_modules but allow all other changes
+    Stream.filter((event) => !(/node_modules/.test(event.filename!))),
+    Stream.rechunk(1),
+    Stream.throttle({
+      units: 1,
+      cost: () => 1,
+      duration: "400 millis",
+      strategy: "enforce",
+    }),
+  )
+
+  return changes
+}
+
+/**
  * Generates a file that references all routes.
  */
 export function layer(options: {
@@ -258,7 +320,7 @@ export function layer(options: {
       yield* FileRouterCodegen.update(routesPath, manifestFilename)
 
       const stream = pipe(
-        FileSystemExtra.watchSource(routesPath),
+        watchDirectory(routesPath),
         Stream.onError((e) => Effect.logError(e)),
       )
 
