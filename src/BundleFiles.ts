@@ -32,7 +32,9 @@ export const toFiles = (
 
     const bundleArtifacts = pipe(
       manifest.artifacts,
-      Array.map((artifact) => [artifact.path, context.getArtifact(artifact.path)!] as const),
+      Array.map((artifact) =>
+        [artifact.path, context.getArtifact(artifact.path)!] as const
+      ),
       Record.fromEntries,
     )
     const extraArtifacts = {

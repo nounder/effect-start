@@ -4,8 +4,8 @@ import {
   Effect,
   pipe,
   PubSub,
-  Schema as S,
 } from "effect"
+import * as Schema from "effect/Schema"
 import { importBlob } from "./JsModule.ts"
 
 export const BundleEntrypointMetaKey: unique symbol = Symbol.for(
@@ -18,25 +18,25 @@ export type BundleOutputMetaValue = {}
  * Generic shape describing a bundle across multiple bundlers
  * (like bun, esbuild & vite)
  */
-export const BundleManifestSchema = S.Struct({
-  entrypoints: S.Record({
-    key: S.String,
-    value: S.String,
+export const BundleManifestSchema = Schema.Struct({
+  entrypoints: Schema.Record({
+    key: Schema.String,
+    value: Schema.String,
   }),
-  artifacts: S.Array(
-    S.Struct({
-      path: S.String,
-      type: S.String,
-      size: S.Number,
+  artifacts: Schema.Array(
+    Schema.Struct({
+      path: Schema.String,
+      type: Schema.String,
+      size: Schema.Number,
       hash: pipe(
-        S.String,
-        S.optional,
+        Schema.String,
+        Schema.optional,
       ),
       imports: pipe(
-        S.Array(
-          S.Struct({
-            path: S.String,
-            kind: S.Literal(
+        Schema.Array(
+          Schema.Struct({
+            path: Schema.String,
+            kind: Schema.Literal(
               "import-statement",
               "require-call",
               "require-resolve",
@@ -49,7 +49,7 @@ export const BundleManifestSchema = S.Struct({
             ),
           }),
         ),
-        S.optional,
+        Schema.optional,
       ),
     }),
   ),
@@ -57,15 +57,20 @@ export const BundleManifestSchema = S.Struct({
 
 export type BundleManifest = typeof BundleManifestSchema.Type
 
-export type BundleEvent =
-  | {
-    type: "Change"
-    path: string
-  }
-  | {
-    type: "BuildError"
-    error: string
-  }
+const BundleEventChange = Schema.TaggedStruct("Change", {
+  path: Schema.String,
+})
+
+const BundleEventBuildError = Schema.TaggedStruct("BuildError", {
+  error: Schema.String,
+})
+
+export const BundleEvent = Schema.Union(
+  BundleEventChange,
+  BundleEventBuildError,
+)
+
+export type BundleEvent = typeof BundleEvent.Type
 
 const IdPrefix = "effect-start/tags/"
 

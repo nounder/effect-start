@@ -144,7 +144,7 @@ export function layerDev<T>(
           FileSystemExtra.watchSource(),
           Stream.map(v =>
             ({
-              type: "Change",
+              _tag: "Change",
               path: v.filename,
             }) as Bundle.BundleEvent
           ),
@@ -176,7 +176,7 @@ export function layerDev<T>(
                   )
                   if (sharedBundle.events) {
                     yield* PubSub.publish(sharedBundle.events, {
-                      type: "BuildError",
+                      _tag: "BuildError",
                       error: String(err),
                     })
                   }

@@ -1,7 +1,7 @@
-import * as HttpRouter from "@effect/platform/HttpRouter"
-import * as HttpServer from "@effect/platform/HttpServer"
 import * as BunContext from "@effect/platform-bun/BunContext"
 import * as BunHttpServer from "@effect/platform-bun/BunHttpServer"
+import * as HttpRouter from "@effect/platform/HttpRouter"
+import * as HttpServer from "@effect/platform/HttpServer"
 import * as t from "bun:test"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
@@ -44,34 +44,44 @@ export const greeting = "Hello World";`
         }),
       )
 
-      t.expect(bundle.entrypoints)
+      t
+        .expect(bundle.entrypoints)
         .toBeObject()
-      t.expect(bundle.artifacts)
+      t
+        .expect(bundle.artifacts)
         .toBeArray()
 
-      t.expect(Object.keys(bundle.entrypoints).length)
+      t
+        .expect(Object.keys(bundle.entrypoints).length)
         .toBe(1)
-      t.expect(bundle.artifacts.length)
+      t
+        .expect(bundle.artifacts.length)
         .toBe(3)
 
       const entrypointKeys = Object.keys(bundle.entrypoints)
       const firstEntrypoint = entrypointKeys[0]
 
-      t.expect(firstEntrypoint)
+      t
+        .expect(firstEntrypoint)
         .toBeString()
-      t.expect(bundle.entrypoints[firstEntrypoint])
+      t
+        .expect(bundle.entrypoints[firstEntrypoint])
         .toBeString()
 
       const firstArtifact = bundle.artifacts[0]
 
-      t.expect(firstArtifact)
+      t
+        .expect(firstArtifact)
         .toHaveProperty("path")
-      t.expect(firstArtifact)
+      t
+        .expect(firstArtifact)
         .toHaveProperty("type")
-      t.expect(firstArtifact)
+      t
+        .expect(firstArtifact)
         .toHaveProperty("size")
 
-      t.expect(firstArtifact.size)
+      t
+        .expect(firstArtifact.size)
         .toBeGreaterThan(0)
     } finally {
       await NFS.rm(tmpDir, {
@@ -105,58 +115,71 @@ export const greeting = "Hello World";`
       )
 
       const result = await Effect.runPromise(
-        Effect.scoped(
-          Effect.gen(function*() {
-            const App = HttpRouter.empty.pipe(
-              HttpRouter.mountApp(
-                "/_bundle",
-                BundleHttp.httpApp(),
-              ),
-            )
+        Effect
+          .scoped(
+            Effect.gen(function*() {
+              const App = HttpRouter.empty.pipe(
+                HttpRouter.mountApp(
+                  "/_bundle",
+                  BundleHttp.httpApp(),
+                ),
+              )
 
-            const Client = TestHttpClient.make(App)
+              const Client = TestHttpClient.make(App)
 
-            const response = yield* Client.get("/_bundle/manifest.json")
+              const response = yield* Client.get("/_bundle/manifest.json")
 
-            const manifestText = yield* response.text
+              const manifestText = yield* response.text
 
-            return JSON.parse(manifestText)
-          }),
-        ).pipe(
-          Effect.provide(testLayer),
-        ),
+              return JSON.parse(manifestText)
+            }),
+          )
+          .pipe(
+            Effect.provide(testLayer),
+          ),
       )
 
-      t.expect(result)
+      t
+        .expect(result)
         .toHaveProperty("entrypoints")
-      t.expect(result)
+      t
+        .expect(result)
         .toHaveProperty("artifacts")
 
-      t.expect(result.entrypoints)
+      t
+        .expect(result.entrypoints)
         .toBeObject()
-      t.expect(result.artifacts)
+      t
+        .expect(result.artifacts)
         .toBeArray()
 
-      t.expect(Object.keys(result.entrypoints).length)
+      t
+        .expect(Object.keys(result.entrypoints).length)
         .toBe(1)
-      t.expect(result.artifacts.length)
+      t
+        .expect(result.artifacts.length)
         .toBe(3)
 
       const entrypointKeys = Object.keys(result.entrypoints)
       const firstKey = entrypointKeys[0]
 
-      t.expect(firstKey)
+      t
+        .expect(firstKey)
         .toBeString()
-      t.expect(result.entrypoints[firstKey])
+      t
+        .expect(result.entrypoints[firstKey])
         .toBeString()
 
       const artifact = result.artifacts[0]
 
-      t.expect(artifact)
+      t
+        .expect(artifact)
         .toHaveProperty("path")
-      t.expect(artifact)
+      t
+        .expect(artifact)
         .toHaveProperty("type")
-      t.expect(artifact)
+      t
+        .expect(artifact)
         .toHaveProperty("size")
     } finally {
       await NFS.rm(tmpDir, {
@@ -190,16 +213,19 @@ export const greeting = "Hello World";`
       const expectedOutput = bundle.entrypoints[firstEntrypoint]
       const resolvedOutput = bundle.resolve(firstEntrypoint)
 
-      t.expect(resolvedOutput)
+      t
+        .expect(resolvedOutput)
         .toBe(expectedOutput)
 
       const artifact = bundle.getArtifact(resolvedOutput!)
 
-      t.expect(artifact)
+      t
+        .expect(artifact)
         .not
         .toBeNull()
 
-      t.expect(artifact)
+      t
+        .expect(artifact)
         .toBeTruthy()
     } finally {
       await NFS.rm(tmpDir, {
@@ -228,14 +254,18 @@ export const greeting = "Hello World";`
 
       const artifact = bundle.artifacts[0]
 
-      t.expect(artifact.path)
+      t
+        .expect(artifact.path)
         .toBeString()
-      t.expect(artifact.type)
+      t
+        .expect(artifact.type)
         .toBeString()
-      t.expect(artifact.size)
+      t
+        .expect(artifact.size)
         .toBeNumber()
 
-      t.expect(artifact.type)
+      t
+        .expect(artifact.type)
         .toContain("javascript")
     } finally {
       await NFS.rm(tmpDir, {

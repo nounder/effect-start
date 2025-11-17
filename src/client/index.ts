@@ -25,7 +25,8 @@ async function loadAllEntrypoints() {
   const manifest: BundleManifest = await fetch(`/${BUNDLE_URL}/manifest.json`)
     .then(v => v.json())
 
-  manifest.artifacts
+  manifest
+    .artifacts
     .filter(v => v.path.endsWith(".js"))
     .forEach((artifact) => {
       console.log(artifact.path)
@@ -40,7 +41,7 @@ async function loadAllEntrypoints() {
 }
 
 function handleBundleEvent(event: BundleEvent) {
-  switch (event.type) {
+  switch (event._tag) {
     case "Change":
       console.debug("Bundle change detected...")
       reload()
