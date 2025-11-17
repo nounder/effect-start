@@ -1,5 +1,6 @@
-import { Error, FileSystem } from "@effect/platform"
-import type { PlatformError } from "@effect/platform/Error"
+import { FileSystem } from "@effect/platform"
+import * as PlatformError from "@effect/platform/Error"
+import type { PlatformError as PlatformErrorType } from "@effect/platform/Error"
 import {
   Array,
   Effect,
@@ -246,10 +247,10 @@ export function parseRoute(
 const watchDirectory = (
   path: string,
   opts?: WatchOptions,
-): Stream.Stream<NFSP.FileChangeInfo<string>, Error.SystemError> => {
+): Stream.Stream<NFSP.FileChangeInfo<string>, PlatformError.SystemError> => {
   const baseDir = path
 
-  let stream: Stream.Stream<NFSP.FileChangeInfo<string>, Error.SystemError>
+  let stream: Stream.Stream<NFSP.FileChangeInfo<string>, PlatformError.SystemError>
   try {
     stream = Stream.fromAsyncIterable(
       NFSP.watch(baseDir, {
@@ -258,7 +259,7 @@ const watchDirectory = (
         ...(opts || {}),
       }),
       (error) =>
-        new Error.SystemError({
+        new PlatformError.SystemError({
           module: "FileSystem",
           reason: "Unknown",
           method: "watch",
@@ -268,7 +269,7 @@ const watchDirectory = (
     )
   } catch (e) {
     stream = Stream.fail(
-      new Error.SystemError({
+      new PlatformError.SystemError({
         module: "FileSystem",
         reason: "Unknown",
         method: "watch",
@@ -341,7 +342,7 @@ export function walkRoutesDirectory(
   dir: string,
 ): Effect.Effect<
   OrderedRouteHandles,
-  PlatformError,
+  PlatformErrorType,
   FileSystem.FileSystem
 > {
   return Effect.gen(function*() {

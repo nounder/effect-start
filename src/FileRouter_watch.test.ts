@@ -10,7 +10,6 @@ t.it("update() > regenerates manifest when files are added", () =>
       const fs = yield* FileSystem.FileSystem
 
       // Initial state with one route
-      yield* fs.writeFileString("/routes/route.tsx", "")
       yield* FileRouterCodegen.update("/routes")
 
       let content = yield* fs.readFileString("/routes/_manifest.ts")
@@ -22,7 +21,7 @@ t.it("update() > regenerates manifest when files are added", () =>
         .not.toContain("about")
 
       // Add a new route
-      yield* fs.makeDirectory("/routes/about")
+      yield* fs.makeDirectory("/routes/about", { recursive: true })
       yield* fs.writeFileString("/routes/about/route.tsx", "")
       yield* FileRouterCodegen.update("/routes")
 
@@ -35,7 +34,12 @@ t.it("update() > regenerates manifest when files are added", () =>
         .toContain('path: "/about"')
     })
     .pipe(
-      Effect.provide(MemoryFileSystem.layer),
+      Effect.provide(
+        MemoryFileSystem.layerWith({
+          "/routes/route.tsx": "",
+          "/routes/_manifest.ts": "",
+        }),
+      ),
       Effect.runPromise,
     ))
 
@@ -45,9 +49,6 @@ t.it("update() > regenerates manifest when files are deleted", () =>
       const fs = yield* FileSystem.FileSystem
 
       // Initial state with two routes
-      yield* fs.writeFileString("/routes/route.tsx", "")
-      yield* fs.makeDirectory("/routes/about")
-      yield* fs.writeFileString("/routes/about/route.tsx", "")
       yield* FileRouterCodegen.update("/routes")
 
       let content = yield* fs.readFileString("/routes/_manifest.ts")
@@ -71,7 +72,13 @@ t.it("update() > regenerates manifest when files are deleted", () =>
         .not.toContain("about")
     })
     .pipe(
-      Effect.provide(MemoryFileSystem.layer),
+      Effect.provide(
+        MemoryFileSystem.layerWith({
+          "/routes/route.tsx": "",
+          "/routes/about/route.tsx": "",
+          "/routes/_manifest.ts": "",
+        }),
+      ),
       Effect.runPromise,
     ))
 
@@ -81,9 +88,6 @@ t.it("update() > regenerates manifest when directory with routes is deleted", ()
       const fs = yield* FileSystem.FileSystem
 
       // Initial state with nested routes
-      yield* fs.writeFileString("/routes/route.tsx", "")
-      yield* fs.makeDirectory("/routes/about")
-      yield* fs.writeFileString("/routes/about/route.tsx", "")
       yield* FileRouterCodegen.update("/routes")
 
       let content = yield* fs.readFileString("/routes/_manifest.ts")
@@ -107,6 +111,13 @@ t.it("update() > regenerates manifest when directory with routes is deleted", ()
         .not.toContain("about")
     })
     .pipe(
-      Effect.provide(MemoryFileSystem.layer),
+      Effect.provide(
+        MemoryFileSystem.layerWith({
+          "/routes/route.tsx": "",
+          "/routes/about/route.tsx": "",
+          "/routes/_manifest.ts": "",
+        }),
+      ),
       Effect.runPromise,
     ))
+
