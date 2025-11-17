@@ -8,5 +8,6 @@ vendor/
 out/
 pad/
 dst/
+package-lock.json
 
 routes/.routes.gen.ts
