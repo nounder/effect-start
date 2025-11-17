@@ -100,6 +100,43 @@ test.it("schemaPathParams adds schema to RouteSet", () => {
   Function.satisfies<Expected>()(routes)
 })
 
+test.it("schemaPathParams accepts struct fields directly", () => {
+  const routes = Route
+    .schemaPathParams({
+      id: Schema.String,
+    })
+    .text(
+      Effect.succeed("hello"),
+    )
+
+  type ExpectedSchemas = {
+    readonly PathParams: Schema.Struct<{
+      id: typeof Schema.String
+    }>
+  }
+
+  type Expected = Route.RouteSet<
+    [Route.Route<"GET", "text/plain", any, ExpectedSchemas>],
+    ExpectedSchemas
+  >
+
+  Function.satisfies<Expected>()(routes)
+})
+
+test.it("schemaPathParams with struct fields types context correctly", () => {
+  Route
+    .schemaPathParams({
+      id: Schema.String,
+    })
+    .text(
+      (context) => {
+        Function.satisfies<string>()(context.pathParams.id)
+
+        return Effect.succeed("hello")
+      },
+    )
+})
+
 test.it("schemaPayload propagates to all routes", () => {
   const PayloadSchema = Schema.Struct({
     name: Schema.String,

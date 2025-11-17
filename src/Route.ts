@@ -242,7 +242,7 @@ export namespace RouteSet {
     Schemas extends RouteSchemas = RouteSchemas.Empty,
   > = {
     set: M
-    schemas: Schemas
+    schema: Schemas
   }
 
   export type Default = RouteSet<Route.Tuple, RouteSchemas>
@@ -286,42 +286,58 @@ export const json = makeMediaFunction(
   makeValueHandler<JsonValue>((raw) => HttpServerResponse.unsafeJson(raw)),
 )
 
-function makeSchemaFunction<
+function makeSchemaModifier<
   K extends keyof RouteSchemas,
 >(key: K) {
   return function<
     S extends Self,
-    Sch extends Schema.Schema.Any,
+    Fields extends Schema.Struct.Fields | Schema.Schema.Any,
   >(
     this: S,
-    schema: Sch,
-  ): S extends RouteSet<infer Routes, infer Schemas>
-    ? RouteSet<Routes, Schemas & { [P in K]: Sch }>
-    : RouteSet<[], { [P in K]: Sch }>
+    fieldsOrSchema: Fields,
+  ): S extends RouteSet<infer Routes, infer Schemas> ? RouteSet<
+      Routes,
+      & Schemas
+      & {
+        [P in K]: Fields extends Schema.Schema.Any ? Fields
+          : Schema.Struct<Fields & {}>
+      }
+    >
+    : RouteSet<
+      [],
+      {
+        [P in K]: Fields extends Schema.Schema.Any ? Fields
+          : Schema.Struct<Fields & {}>
+      }
+    >
   {
     const baseRoutes = isRouteSet(this)
       ? this.set
       : []
-    const baseSchemas = isRouteSet(this)
-      ? this.schemas
+    const baseSchema = isRouteSet(this)
+      ? this.schema
       : {} as RouteSchemas.Empty
+
+    const schema = Schema.isSchema(fieldsOrSchema)
+      ? fieldsOrSchema
+      : Schema.Struct(fieldsOrSchema as Schema.Struct.Fields)
 
     return makeSet(
       baseRoutes as any,
       {
-        ...baseSchemas,
+        ...baseSchema,
         [key]: schema,
       } as any,
     ) as any
   }
 }
 
-export const schemaPathParams = makeSchemaFunction("PathParams")
-export const schemaUrlParams = makeSchemaFunction("UrlParams")
-export const schemaPayload = makeSchemaFunction("Payload")
-export const schemaSuccess = makeSchemaFunction("Success")
-export const schemaError = makeSchemaFunction("Error")
-export const schemaHeaders = makeSchemaFunction("Headers")
+export const schemaPathParams = makeSchemaModifier("PathParams")
+export const schemaUrlParams = makeSchemaModifier("UrlParams")
+export const schemaPayload = makeSchemaModifier("Payload")
+export const schemaSuccess = makeSchemaModifier("Success")
+export const schemaError = makeSchemaModifier("Error")
+export const schemaHeaders = makeSchemaModifier("Headers")
 
 const SetProto = {
   [RouteSetTypeId]: RouteSetTypeId,
@@ -551,13 +567,13 @@ function makeSet<
   Schemas extends RouteSchemas = RouteSchemas.Empty,
 >(
   routes: M,
-  schemas: Schemas = {} as Schemas,
+  schema: Schemas = {} as Schemas,
 ): RouteSet<M, Schemas> {
   return Object.assign(
     Object.create(SetProto),
     {
       set: routes,
-      schemas,
+      schema,
     },
   ) as RouteSet<M, Schemas>
 }
@@ -637,8 +653,8 @@ function makeMediaFunction<
     const baseRoutes = isRouteSet(this)
       ? this.set
       : []
-    const baseSchemas = isRouteSet(this)
-      ? this.schemas
+    const baseSchema = isRouteSet(this)
+      ? this.schema
       : {} as RouteSchemas.Empty
 
     return makeSet(
@@ -648,10 +664,10 @@ function makeMediaFunction<
           method,
           media,
           handler: handlerFn(effect as any) as any,
-          schemas: baseSchemas as any,
+          schemas: baseSchema as any,
         }),
       ],
-      baseSchemas as any,
+      baseSchema as any,
     ) as any
   }
 }
@@ -737,11 +753,11 @@ function makeMethodModifier<
     const baseRoutes = isRouteSet(this)
       ? this.set
       : [] as const
-    const baseSchemas = isRouteSet(this)
-      ? this.schemas
+    const baseSchema = isRouteSet(this)
+      ? this.schema
       : {} as RouteSchemas.Empty
 
-    const mergedSchemas = mergeSchemas(baseSchemas, routes.schemas)
+    const mergedSchema = mergeSchemas(baseSchema, routes.schema)
 
     return makeSet(
       [
@@ -750,11 +766,11 @@ function makeMethodModifier<
           return make({
             ...route,
             method,
-            schemas: mergeSchemas(baseSchemas, route.schemas) as any,
+            schemas: mergeSchemas(baseSchema, route.schemas) as any,
           })
         }),
       ],
-      mergedSchemas as any,
+      mergedSchema as any,
     ) as any
   }
 }
