@@ -663,3 +663,407 @@ test.it("method modifiers preserve and merge schemas", () => {
 
   Function.satisfies<Expected>()(routes)
 })
+
+test.it("PathParams are struct merged when both RouteSet and Route define them", () => {
+  const BasePathSchema = Schema.Struct({
+    id: Schema.String,
+  })
+
+  const ExtendedPathSchema = Schema.Struct({
+    name: Schema.String,
+  })
+
+  const routes = Route
+    .schemaPathParams(BasePathSchema)
+    .get(
+      Route
+        .schemaPathParams(ExtendedPathSchema)
+        .text(Effect.succeed("hello")),
+    )
+
+  type Expected = Route.RouteSet<
+    [
+      Route.Route<
+        "GET",
+        "text/plain",
+        any,
+        {
+          readonly PathParams: Schema.Struct<
+            {
+              id: typeof Schema.String
+              name: typeof Schema.String
+            }
+          >
+        }
+      >,
+    ],
+    {
+      readonly PathParams: typeof BasePathSchema
+    }
+  >
+
+  Function.satisfies<Expected>()(routes)
+
+  routes
+    .set[0]
+    .text(
+      (context) => {
+        Function.satisfies<string>()(context.pathParams.id)
+        Function.satisfies<string>()(context.pathParams.name)
+
+        return Effect.succeed("merged")
+      },
+    )
+})
+
+test.it("UrlParams are struct merged when both RouteSet and Route define them", () => {
+  const BaseUrlSchema = Schema.Struct({
+    page: Schema.NumberFromString,
+  })
+
+  const ExtendedUrlSchema = Schema.Struct({
+    limit: Schema.NumberFromString,
+  })
+
+  const routes = Route
+    .schemaUrlParams(BaseUrlSchema)
+    .get(
+      Route
+        .schemaUrlParams(ExtendedUrlSchema)
+        .text(Effect.succeed("hello")),
+    )
+
+  type Expected = Route.RouteSet<
+    [
+      Route.Route<
+        "GET",
+        "text/plain",
+        any,
+        {
+          readonly UrlParams: Schema.Struct<
+            {
+              page: typeof Schema.NumberFromString
+              limit: typeof Schema.NumberFromString
+            }
+          >
+        }
+      >,
+    ],
+    {
+      readonly UrlParams: typeof BaseUrlSchema
+    }
+  >
+
+  Function.satisfies<Expected>()(routes)
+
+  routes
+    .set[0]
+    .text(
+      (context) => {
+        Function.satisfies<number>()(context.urlParams.page)
+        Function.satisfies<number>()(context.urlParams.limit)
+
+        return Effect.succeed("merged")
+      },
+    )
+})
+
+test.it("Headers are struct merged when both RouteSet and Route define them", () => {
+  const BaseHeadersSchema = Schema.Struct({
+    authorization: Schema.String,
+  })
+
+  const ExtendedHeadersSchema = Schema.Struct({
+    "x-api-key": Schema.String,
+  })
+
+  const routes = Route
+    .schemaHeaders(BaseHeadersSchema)
+    .get(
+      Route
+        .schemaHeaders(ExtendedHeadersSchema)
+        .text(Effect.succeed("hello")),
+    )
+
+  type Expected = Route.RouteSet<
+    [
+      Route.Route<
+        "GET",
+        "text/plain",
+        any,
+        {
+          readonly Headers: Schema.Struct<
+            {
+              authorization: typeof Schema.String
+              "x-api-key": typeof Schema.String
+            }
+          >
+        }
+      >,
+    ],
+    {
+      readonly Headers: typeof BaseHeadersSchema
+    }
+  >
+
+  Function.satisfies<Expected>()(routes)
+
+  routes
+    .set[0]
+    .text(
+      (context) => {
+        Function.satisfies<string>()(context.headers.authorization)
+        Function.satisfies<string>()(context.headers["x-api-key"])
+
+        return Effect.succeed("merged")
+      },
+    )
+})
+
+test.it("Payload is unionized when both RouteSet and Route define it", () => {
+  const BasePayloadSchema = Schema.Struct({
+    type: Schema.Literal("create"),
+    name: Schema.String,
+  })
+
+  const ExtendedPayloadSchema = Schema.Struct({
+    type: Schema.Literal("update"),
+    id: Schema.String,
+    name: Schema.String,
+  })
+
+  const routes = Route
+    .schemaPayload(BasePayloadSchema)
+    .post(
+      Route
+        .schemaPayload(ExtendedPayloadSchema)
+        .json(Effect.succeed({ ok: true })),
+    )
+
+  type Expected = Route.RouteSet<
+    [
+      Route.Route<
+        "POST",
+        "application/json",
+        any,
+        {
+          readonly Payload: Schema.Union<
+            [typeof BasePayloadSchema, typeof ExtendedPayloadSchema]
+          >
+        }
+      >,
+    ],
+    {
+      readonly Payload: typeof BasePayloadSchema
+    }
+  >
+
+  Function.satisfies<Expected>()(routes)
+})
+
+test.it("Error is unionized when both RouteSet and Route define it", () => {
+  const BaseErrorSchema = Schema.Struct({
+    type: Schema.Literal("validation"),
+    message: Schema.String,
+  })
+
+  const ExtendedErrorSchema = Schema.Struct({
+    type: Schema.Literal("authentication"),
+    message: Schema.String,
+  })
+
+  const routes = Route
+    .schemaError(BaseErrorSchema)
+    .get(
+      Route
+        .schemaError(ExtendedErrorSchema)
+        .json(Effect.succeed({ ok: true })),
+    )
+
+  type Expected = Route.RouteSet<
+    [
+      Route.Route<
+        "GET",
+        "application/json",
+        any,
+        {
+          readonly Error: Schema.Union<
+            [typeof BaseErrorSchema, typeof ExtendedErrorSchema]
+          >
+        }
+      >,
+    ],
+    {
+      readonly Error: typeof BaseErrorSchema
+    }
+  >
+
+  Function.satisfies<Expected>()(routes)
+})
+
+test.it("Success is unionized when both RouteSet and Route define it", () => {
+  const BaseSuccessSchema = Schema.Struct({
+    type: Schema.Literal("user"),
+    id: Schema.String,
+  })
+
+  const ExtendedSuccessSchema = Schema.Struct({
+    type: Schema.Literal("admin"),
+    id: Schema.String,
+    permissions: Schema.Array(Schema.String),
+  })
+
+  const routes = Route
+    .schemaSuccess(BaseSuccessSchema)
+    .get(
+      Route
+        .schemaSuccess(ExtendedSuccessSchema)
+        .json(
+          Effect.succeed({ type: "admin" as const, id: "1", permissions: [] }),
+        ),
+    )
+
+  type Expected = Route.RouteSet<
+    [
+      Route.Route<
+        "GET",
+        "application/json",
+        any,
+        {
+          readonly Success: Schema.Union<
+            [typeof BaseSuccessSchema, typeof ExtendedSuccessSchema]
+          >
+        }
+      >,
+    ],
+    {
+      readonly Success: typeof BaseSuccessSchema
+    }
+  >
+
+  Function.satisfies<Expected>()(routes)
+})
+
+test.it("struct schemas merge fields and union schemas unionize", () => {
+  const BasePathSchema = Schema.Struct({
+    id: Schema.String,
+  })
+
+  const ExtendedPathSchema = Schema.Struct({
+    version: Schema.String,
+  })
+
+  const BaseUrlSchema = Schema.Struct({
+    page: Schema.NumberFromString,
+  })
+
+  const ExtendedUrlSchema = Schema.Struct({
+    sort: Schema.String,
+  })
+
+  const BasePayloadSchema = Schema.Struct({
+    type: Schema.Literal("create"),
+  })
+
+  const ExtendedPayloadSchema = Schema.Struct({
+    type: Schema.Literal("update"),
+  })
+
+  const routes = Route
+    .schemaPathParams(BasePathSchema)
+    .schemaUrlParams(BaseUrlSchema)
+    .schemaPayload(BasePayloadSchema)
+    .post(
+      Route
+        .schemaPathParams(ExtendedPathSchema)
+        .schemaUrlParams(ExtendedUrlSchema)
+        .schemaPayload(ExtendedPayloadSchema)
+        .json(Effect.succeed({ ok: true })),
+    )
+
+  type Expected = Route.RouteSet<
+    [
+      Route.Route<
+        "POST",
+        "application/json",
+        any,
+        {
+          readonly PathParams: Schema.Struct<
+            {
+              id: typeof Schema.String
+              version: typeof Schema.String
+            }
+          >
+          readonly UrlParams: Schema.Struct<
+            {
+              page: typeof Schema.NumberFromString
+              sort: typeof Schema.String
+            }
+          >
+          readonly Payload: Schema.Union<
+            [typeof BasePayloadSchema, typeof ExtendedPayloadSchema]
+          >
+        }
+      >,
+    ],
+    {
+      readonly PathParams: typeof BasePathSchema
+      readonly UrlParams: typeof BaseUrlSchema
+      readonly Payload: typeof BasePayloadSchema
+    }
+  >
+
+  Function.satisfies<Expected>()(routes)
+
+  routes
+    .set[0]
+    .json(
+      (context) => {
+        Function.satisfies<string>()(context.pathParams.id)
+        Function.satisfies<string>()(context.pathParams.version)
+
+        Function.satisfies<number>()(context.urlParams.page)
+        Function.satisfies<string>()(context.urlParams.sort)
+
+        Function.satisfies<{ type: "create" } | { type: "update" }>()(
+          context.payload,
+        )
+
+        return Effect.succeed({ ok: true })
+      },
+    )
+})
+
+test.it("struct fields from inline syntax are properly merged", () => {
+  const routes = Route
+    .schemaPathParams({
+      id: Schema.String,
+    })
+    .schemaUrlParams({
+      page: Schema.NumberFromString,
+    })
+    .get(
+      Route
+        .schemaPathParams({
+          version: Schema.String,
+        })
+        .schemaUrlParams({
+          limit: Schema.NumberFromString,
+        })
+        .text(Effect.succeed("hello")),
+    )
+
+  routes
+    .set[0]
+    .text(
+      (context) => {
+        Function.satisfies<string>()(context.pathParams.id)
+        Function.satisfies<string>()(context.pathParams.version)
+
+        Function.satisfies<number>()(context.urlParams.page)
+        Function.satisfies<number>()(context.urlParams.limit)
+
+        return Effect.succeed("merged")
+      },
+    )
+})
