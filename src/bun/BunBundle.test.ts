@@ -50,9 +50,9 @@ export const greeting = "Hello World";`
         .toBeArray()
 
       t.expect(bundle.inputs.length)
-        .toBeGreaterThan(0)
+        .toBe(1)
       t.expect(bundle.outputs.length)
-        .toBeGreaterThan(0)
+        .toBe(3)
 
       const firstInput = bundle.inputs[0]
 
@@ -103,23 +103,25 @@ export const greeting = "Hello World";`
         }),
       )
 
-      const App = HttpRouter.empty.pipe(
-        HttpRouter.mountApp(
-          "/_bundle",
-          BundleHttp.httpApp(),
-        ),
-      )
-
-      const Client = TestHttpClient.make(App)
-
       const result = await Effect.runPromise(
-        Effect.gen(function*() {
-          const response = yield* Client.get("/_bundle/manifest.json")
+        Effect.scoped(
+          Effect.gen(function*() {
+            const App = HttpRouter.empty.pipe(
+              HttpRouter.mountApp(
+                "/_bundle",
+                BundleHttp.httpApp(),
+              ),
+            )
 
-          const manifestText = yield* response.text
+            const Client = TestHttpClient.make(App)
 
-          return JSON.parse(manifestText)
-        }).pipe(
+            const response = yield* Client.get("/_bundle/manifest.json")
+
+            const manifestText = yield* response.text
+
+            return JSON.parse(manifestText)
+          }),
+        ).pipe(
           Effect.provide(testLayer),
         ),
       )
@@ -135,9 +137,9 @@ export const greeting = "Hello World";`
         .toBeArray()
 
       t.expect(result.inputs.length)
-        .toBeGreaterThan(0)
+        .toBe(1)
       t.expect(result.outputs.length)
-        .toBeGreaterThan(0)
+        .toBe(3)
 
       const input = result.inputs[0]
 

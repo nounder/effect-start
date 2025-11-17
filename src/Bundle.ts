@@ -86,7 +86,7 @@ export type BundleContext =
     // TODO: consider removing resolve: way of resolving URL should be
     // the same regardless of underlying bundler since we have access
     // to all artifacts already.
-    resolve: (url: string) => string
+    resolve: (url: string) => string | null
     getArtifact: (path: string) => Blob | null
     events?: PubSub.PubSub<BundleEvent>
   }
