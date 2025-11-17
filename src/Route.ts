@@ -229,7 +229,7 @@ type RouteBuilder = {
  * to modify the set or add new routes.
  */
 export type RouteSet<
-  M extends Route.Tuple | Route.Empty,
+  M extends ReadonlyArray<Route.Default>,
   Schemas extends RouteSchemas = RouteSchemas.Empty,
 > =
   & Pipeable.Pipeable
@@ -241,7 +241,7 @@ export type RouteSet<
 
 export namespace RouteSet {
   export type Instance<
-    M extends Route.Tuple | Route.Empty = Route.Tuple,
+    M extends ReadonlyArray<Route.Default> = Route.Tuple,
     Schemas extends RouteSchemas = RouteSchemas.Empty,
   > = {
     set: M
@@ -644,7 +644,7 @@ function make<
 }
 
 function makeSet<
-  M extends Route.Tuple | Route.Empty,
+  M extends ReadonlyArray<Route.Default>,
   Schemas extends RouteSchemas = RouteSchemas.Empty,
 >(
   routes: M,
@@ -809,7 +809,7 @@ function makeMethodModifier<
             >
             : T[K]
         },
-      ] & any,
+      ],
       BaseSchemas
     >
     // otherwise create new RouteSet
@@ -827,7 +827,7 @@ function makeMethodModifier<
             RouteSchemas
           >
           : T[K]
-      } & any,
+      },
       InSchemas
     >
   {
