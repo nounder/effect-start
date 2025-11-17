@@ -69,8 +69,6 @@ export type RouteMethod =
 
 export type RoutePath = `/${string}`
 
-type NonEmptyArray<T> = readonly [T, ...T[]]
-
 /**
  * Route media type used for content negotiation.
  * This allows to create routes that serve different media types
@@ -185,8 +183,7 @@ export namespace Route {
     RouteSchemas
   >
 
-  export type Tuple<T = Default> = ReadonlyArray<T>
-  export type NonEmptyTuple<T = Default> = NonEmptyArray<T>
+  export type Tuple<T = Default> = readonly [T, ...T[]]
 
   export type Proto =
     & Pipeable.Pipeable
@@ -785,7 +782,7 @@ function makeMethodModifier<
 >(method: M) {
   return function<
     S extends Self,
-    T extends Route.NonEmptyTuple,
+    T extends Route.Tuple,
     InSchemas extends RouteSchemas,
   >(
     this: S,
