@@ -3,6 +3,7 @@ import type {
   BuildOutput,
 } from "bun"
 import {
+  Array,
   Context,
   Effect,
   Iterable,
@@ -264,24 +265,19 @@ function generateManifestfromBunBundle(
 
     artifacts: pipe(
       output.outputs,
-      // This will mess up direct entrypoint-artifact record.
-      // Will have to filter out sourcemap when mapping.
-      // Iterable.flatMap((v) => v.sourcemap ? [v, v.sourcemap] : [v]),
       Iterable.map((v) => {
         // strip './' prefix
         const shortPath = v.path.replace(/^\.\//, "")
 
-        return [
-          shortPath,
-          {
-            hash: v.hash ?? undefined,
-            size: v.size,
-            type: v.type,
-            imports: imports?.get(v.path),
-          },
-        ] as const
+        return {
+          path: shortPath,
+          type: v.type,
+          size: v.size,
+          hash: v.hash ?? undefined,
+          imports: imports?.get(v.path),
+        }
       }),
-      Record.fromEntries,
+      Array.fromIterable,
     ),
   }
 }
