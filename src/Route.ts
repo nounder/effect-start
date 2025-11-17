@@ -81,6 +81,18 @@ type RouteMedia =
   | "text/html"
   | "application/json"
 
+/**
+ * Schema configuration object type containing all schema types.
+ */
+export type SchemaConfig = {
+  readonly pathParams?: Schema.Schema.Any
+  readonly urlParams?: Schema.Schema.Any
+  readonly payload?: Schema.Schema.Any
+  readonly success?: Schema.Schema.Any
+  readonly error?: Schema.Schema.Any
+  readonly headers?: Schema.Schema.Any
+}
+
 export type RouteHandler<
   A = unknown,
   E = any,
@@ -129,23 +141,12 @@ export interface Route<
   out Method extends RouteMethod = "*",
   out Media extends RouteMedia = "*",
   out Handler extends RouteHandler = RouteHandler,
-  out SchemaPathParams extends Schema.Schema.Any = never,
-  out SchemaUrlParams extends Schema.Schema.Any = never,
-  out SchemaPayload extends Schema.Schema.Any = never,
-  out SchemaSuccess extends Schema.Schema.Any = never,
-  out SchemaError extends Schema.Schema.Any = never,
-  out SchemaHeaders extends Schema.Schema.Any = never,
-> extends RouteSet<[Route.Default]> {
+  out Schemas extends SchemaConfig = {},
+> extends RouteSet<[Route.Default], Schemas> {
   [TypeId]: typeof TypeId
   readonly method: Method
   readonly media: Media
   readonly handler: Handler
-  readonly schemaPathParams?: SchemaPathParams
-  readonly schemaUrlParams?: SchemaUrlParams
-  readonly schemaPayload?: SchemaPayload
-  readonly schemaSuccess?: SchemaSuccess
-  readonly schemaError?: SchemaError
-  readonly schemaHeaders?: SchemaHeaders
 }
 
 /**
@@ -158,23 +159,12 @@ export namespace Route {
     Method extends RouteMethod = RouteMethod,
     Media extends RouteMedia = RouteMedia,
     Handler extends RouteHandler = RouteHandler,
-    SchemaPathParams extends Schema.Schema.Any = never,
-    SchemaUrlParams extends Schema.Schema.Any = never,
-    SchemaPayload extends Schema.Schema.Any = never,
-    SchemaSuccess extends Schema.Schema.Any = never,
-    SchemaError extends Schema.Schema.Any = never,
-    SchemaHeaders extends Schema.Schema.Any = never,
+    Schemas extends SchemaConfig = {},
   > = {
     readonly method: Method
     readonly media: Media
     readonly handler: Handler
-    readonly schemaPathParams?: SchemaPathParams
-    readonly schemaUrlParams?: SchemaUrlParams
-    readonly schemaPayload?: SchemaPayload
-    readonly schemaSuccess?: SchemaSuccess
-    readonly schemaError?: SchemaError
-    readonly schemaHeaders?: SchemaHeaders
-  }
+  } & Schemas
 
   export type Default = Route<
     RouteMethod,
@@ -225,9 +215,10 @@ type RouteBuilder = {
  */
 export type RouteSet<
   M extends Route.Tuple,
+  Schemas extends SchemaConfig = {},
 > =
   & Pipeable.Pipeable
-  & RouteSet.Instance<M>
+  & RouteSet.Instance<M, Schemas>
   & {
     [RouteSetTypeId]: typeof RouteSetTypeId
   }
@@ -236,15 +227,10 @@ export type RouteSet<
 export namespace RouteSet {
   export type Instance<
     M extends Route.Tuple = Route.Tuple,
+    Schemas extends SchemaConfig = {},
   > = {
     set: M
-    readonly schemaPathParams?: Schema.Schema.Any
-    readonly schemaUrlParams?: Schema.Schema.Any
-    readonly schemaPayload?: Schema.Schema.Any
-    readonly schemaSuccess?: Schema.Schema.Any
-    readonly schemaError?: Schema.Schema.Any
-    readonly schemaHeaders?: Schema.Schema.Any
-  }
+  } & Schemas
 
   export type Default = RouteSet<Route.Tuple>
 
@@ -290,25 +276,25 @@ export const json = makeMediaFunction(
 function schemaPathParams<S extends Self>(
   this: S,
   schema: Schema.Schema.Any,
-): S extends RouteSet<infer Routes> ? RouteSet<Routes> : RouteSet<[]> {
+): S extends RouteSet<infer Routes, infer Schemas> ? RouteSet<Routes, Schemas & { pathParams: typeof schema }> : RouteSet<[], { pathParams: typeof schema }> {
   const baseSet = isRouteSet(this)
     ? (this as RouteSet.Default)
     : undefined
 
   const set = baseSet?.set ?? ([] as const)
-  const schemasObj: Record<string, any> = {
-    schemaPathParams: schema,
+  const schemasObj: SchemaConfig = {
+    pathParams: schema,
   }
-  if (baseSet?.schemaUrlParams)
-    schemasObj.schemaUrlParams = baseSet.schemaUrlParams
-  if (baseSet?.schemaPayload)
-    schemasObj.schemaPayload = baseSet.schemaPayload
-  if (baseSet?.schemaSuccess)
-    schemasObj.schemaSuccess = baseSet.schemaSuccess
-  if (baseSet?.schemaError)
-    schemasObj.schemaError = baseSet.schemaError
-  if (baseSet?.schemaHeaders)
-    schemasObj.schemaHeaders = baseSet.schemaHeaders
+  if (baseSet?.urlParams)
+    schemasObj.urlParams = baseSet.urlParams
+  if (baseSet?.payload)
+    schemasObj.payload = baseSet.payload
+  if (baseSet?.success)
+    schemasObj.success = baseSet.success
+  if (baseSet?.error)
+    schemasObj.error = baseSet.error
+  if (baseSet?.headers)
+    schemasObj.headers = baseSet.headers
 
   return makeSet(schemasObj, ...(set as any)) as any
 }
@@ -316,25 +302,25 @@ function schemaPathParams<S extends Self>(
 function schemaUrlParams<S extends Self>(
   this: S,
   schema: Schema.Schema.Any,
-): S extends RouteSet<infer Routes> ? RouteSet<Routes> : RouteSet<[]> {
+): S extends RouteSet<infer Routes, infer Schemas> ? RouteSet<Routes, Schemas & { urlParams: typeof schema }> : RouteSet<[], { urlParams: typeof schema }> {
   const baseSet = isRouteSet(this)
     ? (this as RouteSet.Default)
     : undefined
 
   const set = baseSet?.set ?? ([] as const)
-  const schemasObj: Record<string, any> = {
-    schemaUrlParams: schema,
+  const schemasObj: SchemaConfig = {
+    urlParams: schema,
   }
-  if (baseSet?.schemaPathParams)
-    schemasObj.schemaPathParams = baseSet.schemaPathParams
-  if (baseSet?.schemaPayload)
-    schemasObj.schemaPayload = baseSet.schemaPayload
-  if (baseSet?.schemaSuccess)
-    schemasObj.schemaSuccess = baseSet.schemaSuccess
-  if (baseSet?.schemaError)
-    schemasObj.schemaError = baseSet.schemaError
-  if (baseSet?.schemaHeaders)
-    schemasObj.schemaHeaders = baseSet.schemaHeaders
+  if (baseSet?.pathParams)
+    schemasObj.pathParams = baseSet.pathParams
+  if (baseSet?.payload)
+    schemasObj.payload = baseSet.payload
+  if (baseSet?.success)
+    schemasObj.success = baseSet.success
+  if (baseSet?.error)
+    schemasObj.error = baseSet.error
+  if (baseSet?.headers)
+    schemasObj.headers = baseSet.headers
 
   return makeSet(schemasObj, ...(set as any)) as any
 }
@@ -342,25 +328,25 @@ function schemaUrlParams<S extends Self>(
 function schemaPayload<S extends Self>(
   this: S,
   schema: Schema.Schema.Any,
-): S extends RouteSet<infer Routes> ? RouteSet<Routes> : RouteSet<[]> {
+): S extends RouteSet<infer Routes, infer Schemas> ? RouteSet<Routes, Schemas & { payload: typeof schema }> : RouteSet<[], { payload: typeof schema }> {
   const baseSet = isRouteSet(this)
     ? (this as RouteSet.Default)
     : undefined
 
   const set = baseSet?.set ?? ([] as const)
-  const schemasObj: Record<string, any> = {
-    schemaPayload: schema,
+  const schemasObj: SchemaConfig = {
+    payload: schema,
   }
-  if (baseSet?.schemaPathParams)
-    schemasObj.schemaPathParams = baseSet.schemaPathParams
-  if (baseSet?.schemaUrlParams)
-    schemasObj.schemaUrlParams = baseSet.schemaUrlParams
-  if (baseSet?.schemaSuccess)
-    schemasObj.schemaSuccess = baseSet.schemaSuccess
-  if (baseSet?.schemaError)
-    schemasObj.schemaError = baseSet.schemaError
-  if (baseSet?.schemaHeaders)
-    schemasObj.schemaHeaders = baseSet.schemaHeaders
+  if (baseSet?.pathParams)
+    schemasObj.pathParams = baseSet.pathParams
+  if (baseSet?.urlParams)
+    schemasObj.urlParams = baseSet.urlParams
+  if (baseSet?.success)
+    schemasObj.success = baseSet.success
+  if (baseSet?.error)
+    schemasObj.error = baseSet.error
+  if (baseSet?.headers)
+    schemasObj.headers = baseSet.headers
 
   return makeSet(schemasObj, ...(set as any)) as any
 }
@@ -368,25 +354,25 @@ function schemaPayload<S extends Self>(
 function schemaSuccess<S extends Self>(
   this: S,
   schema: Schema.Schema.Any,
-): S extends RouteSet<infer Routes> ? RouteSet<Routes> : RouteSet<[]> {
+): S extends RouteSet<infer Routes, infer Schemas> ? RouteSet<Routes, Schemas & { success: typeof schema }> : RouteSet<[], { success: typeof schema }> {
   const baseSet = isRouteSet(this)
     ? (this as RouteSet.Default)
     : undefined
 
   const set = baseSet?.set ?? ([] as const)
-  const schemasObj: Record<string, any> = {
-    schemaSuccess: schema,
+  const schemasObj: SchemaConfig = {
+    success: schema,
   }
-  if (baseSet?.schemaPathParams)
-    schemasObj.schemaPathParams = baseSet.schemaPathParams
-  if (baseSet?.schemaUrlParams)
-    schemasObj.schemaUrlParams = baseSet.schemaUrlParams
-  if (baseSet?.schemaPayload)
-    schemasObj.schemaPayload = baseSet.schemaPayload
-  if (baseSet?.schemaError)
-    schemasObj.schemaError = baseSet.schemaError
-  if (baseSet?.schemaHeaders)
-    schemasObj.schemaHeaders = baseSet.schemaHeaders
+  if (baseSet?.pathParams)
+    schemasObj.pathParams = baseSet.pathParams
+  if (baseSet?.urlParams)
+    schemasObj.urlParams = baseSet.urlParams
+  if (baseSet?.payload)
+    schemasObj.payload = baseSet.payload
+  if (baseSet?.error)
+    schemasObj.error = baseSet.error
+  if (baseSet?.headers)
+    schemasObj.headers = baseSet.headers
 
   return makeSet(schemasObj, ...(set as any)) as any
 }
@@ -394,25 +380,25 @@ function schemaSuccess<S extends Self>(
 function schemaError<S extends Self>(
   this: S,
   schema: Schema.Schema.Any,
-): S extends RouteSet<infer Routes> ? RouteSet<Routes> : RouteSet<[]> {
+): S extends RouteSet<infer Routes, infer Schemas> ? RouteSet<Routes, Schemas & { error: typeof schema }> : RouteSet<[], { error: typeof schema }> {
   const baseSet = isRouteSet(this)
     ? (this as RouteSet.Default)
     : undefined
 
   const set = baseSet?.set ?? ([] as const)
-  const schemasObj: Record<string, any> = {
-    schemaError: schema,
+  const schemasObj: SchemaConfig = {
+    error: schema,
   }
-  if (baseSet?.schemaPathParams)
-    schemasObj.schemaPathParams = baseSet.schemaPathParams
-  if (baseSet?.schemaUrlParams)
-    schemasObj.schemaUrlParams = baseSet.schemaUrlParams
-  if (baseSet?.schemaPayload)
-    schemasObj.schemaPayload = baseSet.schemaPayload
-  if (baseSet?.schemaSuccess)
-    schemasObj.schemaSuccess = baseSet.schemaSuccess
-  if (baseSet?.schemaHeaders)
-    schemasObj.schemaHeaders = baseSet.schemaHeaders
+  if (baseSet?.pathParams)
+    schemasObj.pathParams = baseSet.pathParams
+  if (baseSet?.urlParams)
+    schemasObj.urlParams = baseSet.urlParams
+  if (baseSet?.payload)
+    schemasObj.payload = baseSet.payload
+  if (baseSet?.success)
+    schemasObj.success = baseSet.success
+  if (baseSet?.headers)
+    schemasObj.headers = baseSet.headers
 
   return makeSet(schemasObj, ...(set as any)) as any
 }
@@ -420,25 +406,25 @@ function schemaError<S extends Self>(
 function schemaHeaders<S extends Self>(
   this: S,
   schema: Schema.Schema.Any,
-): S extends RouteSet<infer Routes> ? RouteSet<Routes> : RouteSet<[]> {
+): S extends RouteSet<infer Routes, infer Schemas> ? RouteSet<Routes, Schemas & { headers: typeof schema }> : RouteSet<[], { headers: typeof schema }> {
   const baseSet = isRouteSet(this)
     ? (this as RouteSet.Default)
     : undefined
 
   const set = baseSet?.set ?? ([] as const)
-  const schemasObj: Record<string, any> = {
-    schemaHeaders: schema,
+  const schemasObj: SchemaConfig = {
+    headers: schema,
   }
-  if (baseSet?.schemaPathParams)
-    schemasObj.schemaPathParams = baseSet.schemaPathParams
-  if (baseSet?.schemaUrlParams)
-    schemasObj.schemaUrlParams = baseSet.schemaUrlParams
-  if (baseSet?.schemaPayload)
-    schemasObj.schemaPayload = baseSet.schemaPayload
-  if (baseSet?.schemaSuccess)
-    schemasObj.schemaSuccess = baseSet.schemaSuccess
-  if (baseSet?.schemaError)
-    schemasObj.schemaError = baseSet.schemaError
+  if (baseSet?.pathParams)
+    schemasObj.pathParams = baseSet.pathParams
+  if (baseSet?.urlParams)
+    schemasObj.urlParams = baseSet.urlParams
+  if (baseSet?.payload)
+    schemasObj.payload = baseSet.payload
+  if (baseSet?.success)
+    schemasObj.success = baseSet.success
+  if (baseSet?.error)
+    schemasObj.error = baseSet.error
 
   return makeSet(schemasObj, ...(set as any)) as any
 }
@@ -517,59 +503,40 @@ function makeUrlFromRequest(
 
 /**
  * Context passed to route handler generator functions.
- * Extended with validated schema properties when schemaPathParams, schemaUrlParams,
- * schemaPayload, and schemaHeaders are defined.
+ * Extended with validated schema properties when defined in SchemaConfig.
  */
 export type RouteContext<
-  SchemaPathParams extends Schema.Schema.Any = never,
-  SchemaUrlParams extends Schema.Schema.Any = never,
-  SchemaPayload extends Schema.Schema.Any = never,
-  SchemaHeaders extends Schema.Schema.Any = never,
+  Schemas extends SchemaConfig = {},
 > = {
   request: HttpServerRequest.HttpServerRequest
   get url(): URL
-} & (SchemaPathParams extends never ? {} : {
-  pathParams: Schema.Schema.Type<SchemaPathParams>
-}) & (SchemaUrlParams extends never ? {} : {
-  urlParams: Schema.Schema.Type<SchemaUrlParams>
-}) & (SchemaPayload extends never ? {} : {
-  payload: Schema.Schema.Type<SchemaPayload>
-}) & (SchemaHeaders extends never ? {} : {
-  headers: Schema.Schema.Type<SchemaHeaders>
+} & (Schemas["pathParams"] extends never ? {} : {
+  pathParams: Schema.Schema.Type<Schemas["pathParams"]>
+}) & (Schemas["urlParams"] extends never ? {} : {
+  urlParams: Schema.Schema.Type<Schemas["urlParams"]>
+}) & (Schemas["payload"] extends never ? {} : {
+  payload: Schema.Schema.Type<Schemas["payload"]>
+}) & (Schemas["headers"] extends never ? {} : {
+  headers: Schema.Schema.Type<Schemas["headers"]>
 })
 
 function make<
   Method extends RouteMethod = "*",
   Media extends RouteMedia = "*",
   Handler extends RouteHandler = never,
-  SchemaPathParams extends Schema.Schema.Any = never,
-  SchemaUrlParams extends Schema.Schema.Any = never,
-  SchemaPayload extends Schema.Schema.Any = never,
-  SchemaSuccess extends Schema.Schema.Any = never,
-  SchemaError extends Schema.Schema.Any = never,
-  SchemaHeaders extends Schema.Schema.Any = never,
+  Schemas extends SchemaConfig = {},
 >(
   input: Route.Data<
     Method,
     Media,
     Handler,
-    SchemaPathParams,
-    SchemaUrlParams,
-    SchemaPayload,
-    SchemaSuccess,
-    SchemaError,
-    SchemaHeaders
+    Schemas
   >,
 ): Route<
   Method,
   Media,
   Handler,
-  SchemaPathParams,
-  SchemaUrlParams,
-  SchemaPayload,
-  SchemaSuccess,
-  SchemaError,
-  SchemaHeaders
+  Schemas
 > {
   const routeData: Record<string, any> = {
     set: [],
@@ -578,18 +545,19 @@ function make<
     handler: input.handler,
   }
 
-  if (input.schemaPathParams)
-    routeData.schemaPathParams = input.schemaPathParams
-  if (input.schemaUrlParams)
-    routeData.schemaUrlParams = input.schemaUrlParams
-  if (input.schemaPayload)
-    routeData.schemaPayload = input.schemaPayload
-  if (input.schemaSuccess)
-    routeData.schemaSuccess = input.schemaSuccess
-  if (input.schemaError)
-    routeData.schemaError = input.schemaError
-  if (input.schemaHeaders)
-    routeData.schemaHeaders = input.schemaHeaders
+  // Copy schema properties from input to routeData
+  if (input.pathParams)
+    routeData.pathParams = input.pathParams
+  if (input.urlParams)
+    routeData.urlParams = input.urlParams
+  if (input.payload)
+    routeData.payload = input.payload
+  if (input.success)
+    routeData.success = input.success
+  if (input.error)
+    routeData.error = input.error
+  if (input.headers)
+    routeData.headers = input.headers
 
   const route = Object.assign(
     Object.create(RouteProto),
@@ -605,28 +573,24 @@ function make<
 
 function makeSet<
   M extends Route.Tuple,
+  Schemas extends SchemaConfig = {},
 >(
   ...routes: M
-): RouteSet<M>
+): RouteSet<M, Schemas>
 function makeSet<
   M extends Route.Tuple,
+  Schemas extends SchemaConfig = {},
 >(
-  schemas: {
-    schemaPathParams?: Schema.Schema.Any
-    schemaUrlParams?: Schema.Schema.Any
-    schemaPayload?: Schema.Schema.Any
-    schemaSuccess?: Schema.Schema.Any
-    schemaError?: Schema.Schema.Any
-    schemaHeaders?: Schema.Schema.Any
-  },
+  schemas: Schemas,
   ...routes: M
-): RouteSet<M>
+): RouteSet<M, Schemas>
 function makeSet<
   M extends Route.Tuple,
+  Schemas extends SchemaConfig = {},
 >(
   schemasOrRoute?: any,
   ...rest: any[]
-): RouteSet<M> {
+): RouteSet<M, Schemas> {
   let schemas = {}
   let routes: M
 
@@ -649,7 +613,7 @@ function makeSet<
       set: routes,
       ...schemas,
     },
-  ) as RouteSet<M>
+  ) as RouteSet<M, Schemas>
 }
 
 /**
@@ -677,21 +641,23 @@ function makeMediaFunction<
     handler:
       | Effect.Effect<A, E, R>
       | ((
-        context: RouteContext<any, any, any, any>,
+        context: RouteContext,
       ) => Generator<YieldWrap<Effect.Effect<A, E, R>>, A, never>),
-  ): S extends RouteSet<infer Routes> ? RouteSet<[
+  ): S extends RouteSet<infer Routes, infer Schemas> ? RouteSet<[
       ...Routes,
       Route<
         Method,
         Media,
-        ReturnType<HandlerFn>
+        ReturnType<HandlerFn>,
+        Schemas
       >,
-    ]>
+    ], Schemas>
     : RouteSet<[
       Route<
         Method,
         Media,
-        ReturnType<HandlerFn>
+        ReturnType<HandlerFn>,
+        {}
       >,
     ]>
   {
@@ -702,7 +668,7 @@ function makeMediaFunction<
     const effect = typeof handler === "function"
       ? Effect.gen(function*() {
         const request = yield* HttpServerRequest.HttpServerRequest
-        const context: RouteContext<any, any, any, any> = {
+        const context: RouteContext = {
           request,
           get url() {
             return makeUrlFromRequest(request)
@@ -712,37 +678,43 @@ function makeMediaFunction<
       })
       : handler
 
-    // Merge schemas from RouteSet to Route
-    const mergedSchemas: Record<string, any> = {}
-    if (baseSet?.schemaPathParams)
-      mergedSchemas.schemaPathParams = baseSet.schemaPathParams
-    if (baseSet?.schemaUrlParams)
-      mergedSchemas.schemaUrlParams = baseSet.schemaUrlParams
-    if (baseSet?.schemaPayload)
-      mergedSchemas.schemaPayload = baseSet.schemaPayload
-    if (baseSet?.schemaSuccess)
-      mergedSchemas.schemaSuccess = baseSet.schemaSuccess
-    if (baseSet?.schemaError)
-      mergedSchemas.schemaError = baseSet.schemaError
-    if (baseSet?.schemaHeaders)
-      mergedSchemas.schemaHeaders = baseSet.schemaHeaders
+    // Build schema config for both RouteSet and Route
+    const schemasConfig: SchemaConfig = {}
+    if (baseSet?.pathParams)
+      schemasConfig.pathParams = baseSet.pathParams
+    if (baseSet?.urlParams)
+      schemasConfig.urlParams = baseSet.urlParams
+    if (baseSet?.payload)
+      schemasConfig.payload = baseSet.payload
+    if (baseSet?.success)
+      schemasConfig.success = baseSet.success
+    if (baseSet?.error)
+      schemasConfig.error = baseSet.error
+    if (baseSet?.headers)
+      schemasConfig.headers = baseSet.headers
 
-    const schemasForSet: Record<string, any> = {}
-    if (baseSet?.schemaPathParams)
-      schemasForSet.schemaPathParams = baseSet.schemaPathParams
-    if (baseSet?.schemaUrlParams)
-      schemasForSet.schemaUrlParams = baseSet.schemaUrlParams
-    if (baseSet?.schemaPayload)
-      schemasForSet.schemaPayload = baseSet.schemaPayload
-    if (baseSet?.schemaSuccess)
-      schemasForSet.schemaSuccess = baseSet.schemaSuccess
-    if (baseSet?.schemaError)
-      schemasForSet.schemaError = baseSet.schemaError
-    if (baseSet?.schemaHeaders)
-      schemasForSet.schemaHeaders = baseSet.schemaHeaders
+    const mergedSchemas: any = {}
+    if (schemasConfig.pathParams) {
+      mergedSchemas.pathParams = schemasConfig.pathParams
+    }
+    if (schemasConfig.urlParams) {
+      mergedSchemas.urlParams = schemasConfig.urlParams
+    }
+    if (schemasConfig.payload) {
+      mergedSchemas.payload = schemasConfig.payload
+    }
+    if (schemasConfig.success) {
+      mergedSchemas.success = schemasConfig.success
+    }
+    if (schemasConfig.error) {
+      mergedSchemas.error = schemasConfig.error
+    }
+    if (schemasConfig.headers) {
+      mergedSchemas.headers = schemasConfig.headers
+    }
 
     return makeSet(
-      Object.keys(schemasForSet).length > 0 ? schemasForSet : {},
+      Object.keys(schemasConfig).length > 0 ? schemasConfig : {},
       ...(baseSet
         ? baseSet.set
         : []),
@@ -789,10 +761,11 @@ function makeMethodModifier<
   return function<
     S extends Self,
     T extends Route.Tuple,
+    Schemas extends SchemaConfig = {},
   >(
     this: S,
-    routes: RouteSet<T>,
-  ): S extends RouteSet<infer B>
+    routes: RouteSet<T, Schemas>,
+  ): S extends RouteSet<infer B, infer BaseSchemas>
     // append to existing RouteSet
     ? RouteSet<
       [
@@ -801,15 +774,18 @@ function makeMethodModifier<
           [K in keyof T]: T[K] extends Route<
             infer _,
             infer Media,
-            infer H
+            infer H,
+            infer RouteSch
           > ? Route<
               M,
               Media,
-              H
+              H,
+              RouteSch
             >
             : T[K]
         },
-      ]
+      ],
+      Schemas & BaseSchemas
     >
     // otherwise create new RouteSet
     : RouteSet<
@@ -817,14 +793,17 @@ function makeMethodModifier<
         [K in keyof T]: T[K] extends Route<
           infer _,
           infer Media,
-          infer H
+          infer H,
+          infer RouteSch
         > ? Route<
             M,
             Media,
-            H
+            H,
+            RouteSch
           >
           : T[K]
-      }
+      },
+      Schemas
     >
   {
     const baseSet = isRouteSet(this)
@@ -832,70 +811,70 @@ function makeMethodModifier<
       : undefined
     const baseRoutes = baseSet?.set ?? ([] as const)
 
-    const schemasForSet: Record<string, any> = {}
-    if (baseSet?.schemaPathParams)
-      schemasForSet.schemaPathParams = baseSet.schemaPathParams
-    if (baseSet?.schemaUrlParams)
-      schemasForSet.schemaUrlParams = baseSet.schemaUrlParams
-    if (baseSet?.schemaPayload)
-      schemasForSet.schemaPayload = baseSet.schemaPayload
-    if (baseSet?.schemaSuccess)
-      schemasForSet.schemaSuccess = baseSet.schemaSuccess
-    if (baseSet?.schemaError)
-      schemasForSet.schemaError = baseSet.schemaError
-    if (baseSet?.schemaHeaders)
-      schemasForSet.schemaHeaders = baseSet.schemaHeaders
+    const schemasConfig: SchemaConfig = {}
+    if (baseSet?.pathParams)
+      schemasConfig.pathParams = baseSet.pathParams
+    if (baseSet?.urlParams)
+      schemasConfig.urlParams = baseSet.urlParams
+    if (baseSet?.payload)
+      schemasConfig.payload = baseSet.payload
+    if (baseSet?.success)
+      schemasConfig.success = baseSet.success
+    if (baseSet?.error)
+      schemasConfig.error = baseSet.error
+    if (baseSet?.headers)
+      schemasConfig.headers = baseSet.headers
 
     return makeSet(
-      Object.keys(schemasForSet).length > 0 ? schemasForSet : {},
+      Object.keys(schemasConfig).length > 0 ? schemasConfig : {},
       ...(baseRoutes as any),
       ...routes.set.map(route => {
-        const routeMergedSchemas: Record<string, any> = {}
+        const routeMergedSchemas: any = {}
         const hasOwnProp = (obj: any, prop: string): boolean =>
           Object.prototype.hasOwnProperty.call(obj, prop)
 
         // Prioritize route own schemas, then routes schemas, then baseSet schemas
-        if (hasOwnProp(route, "schemaPathParams"))
-          routeMergedSchemas.schemaPathParams = route.schemaPathParams
-        else if (hasOwnProp(routes, "schemaPathParams"))
-          routeMergedSchemas.schemaPathParams = routes.schemaPathParams
-        else if (hasOwnProp(baseSet, "schemaPathParams"))
-          routeMergedSchemas.schemaPathParams = baseSet.schemaPathParams
+        if (hasOwnProp(route, "pathParams"))
+          routeMergedSchemas.pathParams = route.pathParams
+        else if (hasOwnProp(routes, "pathParams"))
+          routeMergedSchemas.pathParams = routes.pathParams
+        else if (baseSet && hasOwnProp(baseSet, "pathParams"))
+          routeMergedSchemas.pathParams = baseSet.pathParams
 
-        if (hasOwnProp(route, "schemaUrlParams"))
-          routeMergedSchemas.schemaUrlParams = route.schemaUrlParams
-        else if (hasOwnProp(routes, "schemaUrlParams"))
-          routeMergedSchemas.schemaUrlParams = routes.schemaUrlParams
-        else if (hasOwnProp(baseSet, "schemaUrlParams"))
-          routeMergedSchemas.schemaUrlParams = baseSet.schemaUrlParams
+        if (hasOwnProp(route, "urlParams"))
+          routeMergedSchemas.urlParams = route.urlParams
+        else if (hasOwnProp(routes, "urlParams"))
+          routeMergedSchemas.urlParams = routes.urlParams
+        else if (baseSet && hasOwnProp(baseSet, "urlParams"))
+          routeMergedSchemas.urlParams = baseSet.urlParams
 
-        if (hasOwnProp(route, "schemaPayload"))
-          routeMergedSchemas.schemaPayload = route.schemaPayload
-        else if (hasOwnProp(routes, "schemaPayload"))
-          routeMergedSchemas.schemaPayload = routes.schemaPayload
-        else if (hasOwnProp(baseSet, "schemaPayload"))
-          routeMergedSchemas.schemaPayload = baseSet.schemaPayload
+        if (hasOwnProp(route, "payload"))
+          routeMergedSchemas.payload = route.payload
+        else if (hasOwnProp(routes, "payload"))
+          routeMergedSchemas.payload = routes.payload
+        else if (baseSet && hasOwnProp(baseSet, "payload"))
+          routeMergedSchemas.payload = baseSet.payload
 
-        if (hasOwnProp(route, "schemaSuccess"))
-          routeMergedSchemas.schemaSuccess = route.schemaSuccess
-        else if (hasOwnProp(routes, "schemaSuccess"))
-          routeMergedSchemas.schemaSuccess = routes.schemaSuccess
-        else if (hasOwnProp(baseSet, "schemaSuccess"))
-          routeMergedSchemas.schemaSuccess = baseSet.schemaSuccess
+        if (hasOwnProp(route, "success"))
+          routeMergedSchemas.success = route.success
+        else if (hasOwnProp(routes, "success"))
+          routeMergedSchemas.success = routes.success
+        else if (baseSet && hasOwnProp(baseSet, "success"))
+          routeMergedSchemas.success = baseSet.success
 
-        if (hasOwnProp(route, "schemaError"))
-          routeMergedSchemas.schemaError = route.schemaError
-        else if (hasOwnProp(routes, "schemaError"))
-          routeMergedSchemas.schemaError = routes.schemaError
-        else if (hasOwnProp(baseSet, "schemaError"))
-          routeMergedSchemas.schemaError = baseSet.schemaError
+        if (hasOwnProp(route, "error"))
+          routeMergedSchemas.error = route.error
+        else if (hasOwnProp(routes, "error"))
+          routeMergedSchemas.error = routes.error
+        else if (baseSet && hasOwnProp(baseSet, "error"))
+          routeMergedSchemas.error = baseSet.error
 
-        if (hasOwnProp(route, "schemaHeaders"))
-          routeMergedSchemas.schemaHeaders = route.schemaHeaders
-        else if (hasOwnProp(routes, "schemaHeaders"))
-          routeMergedSchemas.schemaHeaders = routes.schemaHeaders
-        else if (hasOwnProp(baseSet, "schemaHeaders"))
-          routeMergedSchemas.schemaHeaders = baseSet.schemaHeaders
+        if (hasOwnProp(route, "headers"))
+          routeMergedSchemas.headers = route.headers
+        else if (hasOwnProp(routes, "headers"))
+          routeMergedSchemas.headers = routes.headers
+        else if (baseSet && hasOwnProp(baseSet, "headers"))
+          routeMergedSchemas.headers = baseSet.headers
 
         return make({
           ...route,

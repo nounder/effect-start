@@ -89,8 +89,8 @@ it("schema propagates from RouteSet to Route on schemaPayload", () => {
 
   const [textRoute] = route.set
 
-  // Text route should have the schemaPayload from RouteSet
-  expect(textRoute.schemaPayload)
+  // Text route should have the payload from RouteSet
+  expect(textRoute.payload)
     .toBe(payloadSchema)
 })
 
@@ -105,7 +105,7 @@ it("schema propagates from RouteSet to Route on schemaPathParams", () => {
 
   const [jsonRoute] = route.set
 
-  expect(jsonRoute.schemaPathParams)
+  expect(jsonRoute.pathParams)
     .toBe(pathSchema)
 })
 
@@ -128,13 +128,13 @@ it("multiple schemas propagate from RouteSet to Route", () => {
 
   const [postRoute] = route.set
 
-  expect(postRoute.schemaPathParams)
+  expect(postRoute.pathParams)
     .toBe(pathSchema)
 
-  expect(postRoute.schemaPayload)
+  expect(postRoute.payload)
     .toBe(payloadSchema)
 
-  expect(postRoute.schemaHeaders)
+  expect(postRoute.headers)
     .toBe(headersSchema)
 })
 
@@ -150,10 +150,10 @@ it("schemas propagate through method modifiers", () => {
 
   const [getRoute, postRoute] = route.set
 
-  expect(getRoute.schemaPayload)
+  expect(getRoute.payload)
     .toBe(payloadSchema)
 
-  expect(postRoute.schemaPayload)
+  expect(postRoute.payload)
     .toBe(payloadSchema)
 })
 
@@ -170,13 +170,13 @@ it("schemas are maintained when chaining multiple schemas", () => {
 
   const [postRoute] = route.set
 
-  expect(postRoute.schemaPathParams)
+  expect(postRoute.pathParams)
     .toBe(pathSchema)
 
-  expect(postRoute.schemaPayload)
+  expect(postRoute.payload)
     .toBe(payloadSchema)
 
-  expect(postRoute.schemaSuccess)
+  expect(postRoute.success)
     .toBe(successSchema)
 })
 
@@ -256,21 +256,21 @@ it("schema methods can be chained in any order", () => {
   const [route2Handler] = route2.set
 
   // Both should have all schemas
-  expect(route1Handler.schemaPayload)
+  expect(route1Handler.payload)
     .toBe(payloadSchema)
 
-  expect(route1Handler.schemaPathParams)
+  expect(route1Handler.pathParams)
     .toBe(pathSchema)
 
-  expect(route1Handler.schemaHeaders)
+  expect(route1Handler.headers)
     .toBe(headerSchema)
 
-  expect(route2Handler.schemaPayload)
+  expect(route2Handler.payload)
     .toBe(payloadSchema)
 
-  expect(route2Handler.schemaPathParams)
+  expect(route2Handler.pathParams)
     .toBe(pathSchema)
 
-  expect(route2Handler.schemaHeaders)
+  expect(route2Handler.headers)
     .toBe(headerSchema)
 })
