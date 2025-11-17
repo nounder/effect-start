@@ -5,6 +5,7 @@ import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
 import * as Effect from "effect/Effect"
 import * as Pipeable from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
+import * as Schema from "effect/Schema"
 import type { YieldWrap } from "effect/Utils"
 import * as HyperHtml from "./HyperHtml.ts"
 
@@ -124,15 +125,37 @@ export namespace RouteHandler {
   >
 }
 
+export type RouteSchemas = {
+  readonly PathParams?: Schema.Schema.Any
+  readonly UrlParams?: Schema.Schema.Any
+  readonly Payload?: Schema.Schema.Any
+  readonly Success?: Schema.Schema.Any
+  readonly Error?: Schema.Schema.Any
+  readonly Headers?: Schema.Schema.Any
+}
+
+export namespace RouteSchemas {
+  export type Empty = {
+    readonly PathParams?: never
+    readonly UrlParams?: never
+    readonly Payload?: never
+    readonly Success?: never
+    readonly Error?: never
+    readonly Headers?: never
+  }
+}
+
 export interface Route<
   out Method extends RouteMethod = "*",
   out Media extends RouteMedia = "*",
   out Handler extends RouteHandler = RouteHandler,
-> extends RouteSet<[Route.Default]> {
+  out Schemas extends RouteSchemas = RouteSchemas.Empty,
+> extends RouteSet<[Route.Default], Schemas> {
   [TypeId]: typeof TypeId
   readonly method: Method
   readonly media: Media
   readonly handler: Handler
+  readonly schemas: Schemas
 }
 
 /**
@@ -145,15 +168,19 @@ export namespace Route {
     Method extends RouteMethod = RouteMethod,
     Media extends RouteMedia = RouteMedia,
     Handler extends RouteHandler = RouteHandler,
+    Schemas extends RouteSchemas = RouteSchemas.Empty,
   > = {
     readonly method: Method
     readonly media: Media
     readonly handler: Handler
+    readonly schemas: Schemas
   }
 
   export type Default = Route<
     RouteMethod,
-    RouteMedia
+    RouteMedia,
+    RouteHandler,
+    RouteSchemas
   >
 
   export type Tuple<T = Default> = ReadonlyArray<T>
@@ -185,6 +212,13 @@ type RouteBuilder = {
   text: typeof text
   html: typeof html
   json: typeof json
+
+  schemaPathParams: typeof schemaPathParams
+  schemaUrlParams: typeof schemaUrlParams
+  schemaPayload: typeof schemaPayload
+  schemaSuccess: typeof schemaSuccess
+  schemaError: typeof schemaError
+  schemaHeaders: typeof schemaHeaders
 }
 
 /**
@@ -193,9 +227,10 @@ type RouteBuilder = {
  */
 export type RouteSet<
   M extends Route.Tuple,
+  Schemas extends RouteSchemas = RouteSchemas.Empty,
 > =
   & Pipeable.Pipeable
-  & RouteSet.Instance<M>
+  & RouteSet.Instance<M, Schemas>
   & {
     [RouteSetTypeId]: typeof RouteSetTypeId
   }
@@ -204,11 +239,13 @@ export type RouteSet<
 export namespace RouteSet {
   export type Instance<
     M extends Route.Tuple = Route.Tuple,
+    Schemas extends RouteSchemas = RouteSchemas.Empty,
   > = {
     set: M
+    schema: Schemas
   }
 
-  export type Default = RouteSet<Route.Tuple>
+  export type Default = RouteSet<Route.Tuple, RouteSchemas>
 
   export type Proto =
     & {
@@ -249,6 +286,59 @@ export const json = makeMediaFunction(
   makeValueHandler<JsonValue>((raw) => HttpServerResponse.unsafeJson(raw)),
 )
 
+function makeSchemaModifier<
+  K extends keyof RouteSchemas,
+>(key: K) {
+  return function<
+    S extends Self,
+    Fields extends Schema.Struct.Fields | Schema.Schema.Any,
+  >(
+    this: S,
+    fieldsOrSchema: Fields,
+  ): S extends RouteSet<infer Routes, infer Schemas> ? RouteSet<
+      Routes,
+      & Schemas
+      & {
+        [P in K]: Fields extends Schema.Schema.Any ? Fields
+          : Schema.Struct<Fields & {}>
+      }
+    >
+    : RouteSet<
+      [],
+      {
+        [P in K]: Fields extends Schema.Schema.Any ? Fields
+          : Schema.Struct<Fields & {}>
+      }
+    >
+  {
+    const baseRoutes = isRouteSet(this)
+      ? this.set
+      : []
+    const baseSchema = isRouteSet(this)
+      ? this.schema
+      : {} as RouteSchemas.Empty
+
+    const schema = Schema.isSchema(fieldsOrSchema)
+      ? fieldsOrSchema
+      : Schema.Struct(fieldsOrSchema as Schema.Struct.Fields)
+
+    return makeSet(
+      baseRoutes as any,
+      {
+        ...baseSchema,
+        [key]: schema,
+      } as any,
+    ) as any
+  }
+}
+
+export const schemaPathParams = makeSchemaModifier("PathParams")
+export const schemaUrlParams = makeSchemaModifier("UrlParams")
+export const schemaPayload = makeSchemaModifier("Payload")
+export const schemaSuccess = makeSchemaModifier("Success")
+export const schemaError = makeSchemaModifier("Error")
+export const schemaHeaders = makeSchemaModifier("Headers")
+
 const SetProto = {
   [RouteSetTypeId]: RouteSetTypeId,
 
@@ -263,6 +353,13 @@ const SetProto = {
   text,
   html,
   json,
+
+  schemaPathParams,
+  schemaUrlParams,
+  schemaPayload,
+  schemaSuccess,
+  schemaError,
+  schemaHeaders,
 } satisfies RouteSet.Proto
 
 const RouteProto = Object.assign(
@@ -317,31 +414,140 @@ function makeUrlFromRequest(
 /**
  * Context passed to route handler generator functions.
  */
-export type RouteContext = {
-  request: HttpServerRequest.HttpServerRequest
-  get url(): URL
+export type RouteContext<
+  Schemas extends RouteSchemas = RouteSchemas.Empty,
+> =
+  & {
+    request: HttpServerRequest.HttpServerRequest
+    get url(): URL
+  }
+  & (Schemas["PathParams"] extends Schema.Schema.Any ? {
+      pathParams: Schema.Schema.Type<Schemas["PathParams"]>
+    }
+    : {})
+  & (Schemas["UrlParams"] extends Schema.Schema.Any ? {
+      urlParams: Schema.Schema.Type<Schemas["UrlParams"]>
+    }
+    : {})
+  & (Schemas["Payload"] extends Schema.Schema.Any ? {
+      payload: Schema.Schema.Type<Schemas["Payload"]>
+    }
+    : {})
+  & (Schemas["Headers"] extends Schema.Schema.Any ? {
+      headers: Schema.Schema.Type<Schemas["Headers"]>
+    }
+    : {})
+
+/**
+ * Merges two RouteSchemas types by unionizing schemas with the same key.
+ */
+type MergeSchemas<
+  A extends RouteSchemas,
+  B extends RouteSchemas,
+> = {
+  readonly PathParams: [A["PathParams"], B["PathParams"]] extends [
+    Schema.Schema.Any,
+    Schema.Schema.Any,
+  ] ? Schema.Union<[A["PathParams"], B["PathParams"]]>
+    : A["PathParams"] extends Schema.Schema.Any ? A["PathParams"]
+    : B["PathParams"] extends Schema.Schema.Any ? B["PathParams"]
+    : never
+  readonly UrlParams: [A["UrlParams"], B["UrlParams"]] extends [
+    Schema.Schema.Any,
+    Schema.Schema.Any,
+  ] ? Schema.Union<[A["UrlParams"], B["UrlParams"]]>
+    : A["UrlParams"] extends Schema.Schema.Any ? A["UrlParams"]
+    : B["UrlParams"] extends Schema.Schema.Any ? B["UrlParams"]
+    : never
+  readonly Payload: [A["Payload"], B["Payload"]] extends [
+    Schema.Schema.Any,
+    Schema.Schema.Any,
+  ] ? Schema.Union<[A["Payload"], B["Payload"]]>
+    : A["Payload"] extends Schema.Schema.Any ? A["Payload"]
+    : B["Payload"] extends Schema.Schema.Any ? B["Payload"]
+    : never
+  readonly Success: [A["Success"], B["Success"]] extends [
+    Schema.Schema.Any,
+    Schema.Schema.Any,
+  ] ? Schema.Union<[A["Success"], B["Success"]]>
+    : A["Success"] extends Schema.Schema.Any ? A["Success"]
+    : B["Success"] extends Schema.Schema.Any ? B["Success"]
+    : never
+  readonly Error: [A["Error"], B["Error"]] extends [
+    Schema.Schema.Any,
+    Schema.Schema.Any,
+  ] ? Schema.Union<[A["Error"], B["Error"]]>
+    : A["Error"] extends Schema.Schema.Any ? A["Error"]
+    : B["Error"] extends Schema.Schema.Any ? B["Error"]
+    : never
+  readonly Headers: [A["Headers"], B["Headers"]] extends [
+    Schema.Schema.Any,
+    Schema.Schema.Any,
+  ] ? Schema.Union<[A["Headers"], B["Headers"]]>
+    : A["Headers"] extends Schema.Schema.Any ? A["Headers"]
+    : B["Headers"] extends Schema.Schema.Any ? B["Headers"]
+    : never
+}
+
+/**
+ * Runtime function to merge two RouteSchemas by unionizing schemas with the same key.
+ */
+function mergeSchemas<
+  A extends RouteSchemas,
+  B extends RouteSchemas,
+>(
+  a: A,
+  b: B,
+): MergeSchemas<A, B> {
+  const result: any = {}
+
+  const keys: Array<keyof RouteSchemas> = [
+    "PathParams",
+    "UrlParams",
+    "Payload",
+    "Success",
+    "Error",
+    "Headers",
+  ]
+
+  for (const key of keys) {
+    if (a[key] && b[key]) {
+      result[key] = Schema.Union(a[key]!, b[key]!)
+    } else if (a[key]) {
+      result[key] = a[key]
+    } else if (b[key]) {
+      result[key] = b[key]
+    }
+  }
+
+  return result
 }
 
 function make<
   Method extends RouteMethod = "*",
   Media extends RouteMedia = "*",
   Handler extends RouteHandler = never,
+  Schemas extends RouteSchemas = RouteSchemas.Empty,
 >(
   input: Route.Data<
     Method,
     Media,
-    Handler
+    Handler,
+    Schemas
   >,
 ): Route<
   Method,
   Media,
-  Handler
+  Handler,
+  Schemas
 > {
   const route = Object.assign(
     Object.create(RouteProto),
     {
       // @ts-expect-error: assigned below
       set: [],
+      // @ts-expect-error: assigned below
+      schemas: input.schemas,
       method: input.method,
       media: input.media,
       handler: input.handler,
@@ -351,21 +557,25 @@ function make<
   route.set = [
     route,
   ]
+  route.schemas = input.schemas
 
   return route
 }
 
 function makeSet<
   M extends Route.Tuple,
+  Schemas extends RouteSchemas = RouteSchemas.Empty,
 >(
-  ...routes: M
-): RouteSet<M> {
+  routes: M,
+  schema: Schemas = {} as Schemas,
+): RouteSet<M, Schemas> {
   return Object.assign(
     Object.create(SetProto),
     {
       set: routes,
+      schema,
     },
-  ) as RouteSet<M>
+  ) as RouteSet<M, Schemas>
 }
 
 /**
@@ -390,49 +600,74 @@ function makeMediaFunction<
     R = never,
   >(
     this: S,
-    handler:
-      | Effect.Effect<A, E, R>
-      | ((
-        context: RouteContext,
-      ) => Generator<YieldWrap<Effect.Effect<A, E, R>>, A, never>),
-  ): S extends RouteSet<infer Routes> ? RouteSet<[
+    handler: S extends RouteSet<infer _Routes, infer Schemas> ?
+        | Effect.Effect<A, E, R>
+        | ((
+          context: RouteContext<Schemas>,
+        ) =>
+          | Effect.Effect<A, E, R>
+          | Generator<YieldWrap<Effect.Effect<A, E, R>>, A, never>)
+      :
+        | Effect.Effect<A, E, R>
+        | ((
+          context: RouteContext<RouteSchemas.Empty>,
+        ) =>
+          | Effect.Effect<A, E, R>
+          | Generator<YieldWrap<Effect.Effect<A, E, R>>, A, never>),
+  ): S extends RouteSet<infer Routes, infer Schemas> ? RouteSet<[
       ...Routes,
       Route<
         Method,
         Media,
-        ReturnType<HandlerFn>
+        ReturnType<HandlerFn>,
+        Schemas
       >,
-    ]>
+    ], Schemas>
     : RouteSet<[
       Route<
         Method,
         Media,
-        ReturnType<HandlerFn>
+        ReturnType<HandlerFn>,
+        RouteSchemas.Empty
       >,
-    ]>
+    ], RouteSchemas.Empty>
   {
     const effect = typeof handler === "function"
       ? Effect.gen(function*() {
         const request = yield* HttpServerRequest.HttpServerRequest
-        const context: RouteContext = {
+        const context: RouteContext<any> = {
           request,
           get url() {
             return makeUrlFromRequest(request)
           },
         }
-        return yield* Effect.gen(() => handler(context))
+        const result = handler(context)
+        return yield* (typeof result === "object"
+            && result !== null
+            && Symbol.iterator in result
+          ? Effect.gen(() => result as any)
+          : result as Effect.Effect<A, E, R>)
       })
       : handler
 
+    const baseRoutes = isRouteSet(this)
+      ? this.set
+      : []
+    const baseSchema = isRouteSet(this)
+      ? this.schema
+      : {} as RouteSchemas.Empty
+
     return makeSet(
-      ...(isRouteSet(this)
-        ? this.set
-        : []),
-      make({
-        method,
-        media,
-        handler: handlerFn(effect as any) as any,
-      }),
+      [
+        ...baseRoutes,
+        make({
+          method,
+          media,
+          handler: handlerFn(effect as any) as any,
+          schemas: baseSchema as any,
+        }),
+      ],
+      baseSchema as any,
     ) as any
   }
 }
@@ -470,10 +705,11 @@ function makeMethodModifier<
   return function<
     S extends Self,
     T extends Route.Tuple,
+    InSchemas extends RouteSchemas,
   >(
     this: S,
-    routes: RouteSet<T>,
-  ): S extends RouteSet<infer B>
+    routes: RouteSet<T, InSchemas>,
+  ): S extends RouteSet<infer B, infer BaseSchemas>
     // append to existing RouteSet
     ? RouteSet<
       [
@@ -482,15 +718,18 @@ function makeMethodModifier<
           [K in keyof T]: T[K] extends Route<
             infer _,
             infer Media,
-            infer H
+            infer H,
+            infer RouteSchemas
           > ? Route<
               M,
               Media,
-              H
+              H,
+              MergeSchemas<BaseSchemas, RouteSchemas>
             >
             : T[K]
         },
-      ]
+      ],
+      MergeSchemas<BaseSchemas, InSchemas>
     >
     // otherwise create new RouteSet
     : RouteSet<
@@ -498,28 +737,40 @@ function makeMethodModifier<
         [K in keyof T]: T[K] extends Route<
           infer _,
           infer Media,
-          infer H
+          infer H,
+          infer RouteSchemas
         > ? Route<
             M,
             Media,
-            H
+            H,
+            RouteSchemas
           >
           : T[K]
-      }
+      },
+      InSchemas
     >
   {
     const baseRoutes = isRouteSet(this)
       ? this.set
       : [] as const
+    const baseSchema = isRouteSet(this)
+      ? this.schema
+      : {} as RouteSchemas.Empty
+
+    const mergedSchema = mergeSchemas(baseSchema, routes.schema)
 
     return makeSet(
-      ...baseRoutes,
-      ...routes.set.map(route => {
-        return make({
-          ...route,
-          method,
-        })
-      }),
+      [
+        ...baseRoutes,
+        ...routes.set.map(route => {
+          return make({
+            ...route,
+            method,
+            schemas: mergeSchemas(baseSchema, route.schemas) as any,
+          })
+        }),
+      ],
+      mergedSchema as any,
     ) as any
   }
 }
