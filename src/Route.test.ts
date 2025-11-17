@@ -663,3 +663,24 @@ test.it("method modifiers preserve and merge schemas", () => {
 
   Function.satisfies<Expected>()(routes)
 })
+
+test.it("method modifiers require routes with handlers", () => {
+  const PathSchema = Schema.Struct({
+    id: Schema.String,
+  })
+
+  Route
+    .schemaPathParams(PathSchema)
+    .get(
+      Route
+        .schemaPathParams({ userId: Schema.String })
+        .text(Effect.succeed("hello")),
+    )
+
+  Route
+    .schemaPathParams(PathSchema)
+    .get(
+      // @ts-expect-error - method modifiers should reject empty RouteSet
+      Route.schemaPathParams({ userId: Schema.String }),
+    )
+})
