@@ -185,6 +185,8 @@ export namespace Route {
 
   export type Tuple<T = Default> = ReadonlyArray<T>
 
+  export type NonEmpty<T = Default> = readonly [T, ...T[]]
+
   export type Proto =
     & Pipeable.Pipeable
     & {
@@ -782,7 +784,7 @@ function makeMethodModifier<
 >(method: M) {
   return function<
     S extends Self,
-    T extends readonly [Route.Default, ...Route.Default[]],
+    T extends Route.NonEmpty,
     InSchemas extends RouteSchemas,
   >(
     this: S,
