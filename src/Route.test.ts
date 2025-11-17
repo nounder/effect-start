@@ -151,7 +151,7 @@ test.it("context is typed with pathParams when schemaPathParams is provided", ()
 
         Function.satisfies<Expected>()(context)
 
-        const _id: string = context.pathParams.id
+        Function.satisfies<string>()(context.pathParams.id)
 
         return Effect.succeed("hello")
       },
@@ -174,9 +174,9 @@ test.it("context is typed with urlParams when schemaUrlParams is provided", () =
 
         Function.satisfies<Expected>()(context)
 
-        const _page: number = context.urlParams.page
+        Function.satisfies<number>()(context.urlParams.page)
 
-        const _limit: number = context.urlParams.limit
+        Function.satisfies<number>()(context.urlParams.limit)
 
         return Effect.succeed("hello")
       },
@@ -199,9 +199,9 @@ test.it("context is typed with payload when schemaPayload is provided", () => {
 
         Function.satisfies<Expected>()(context)
 
-        const _name: string = context.payload.name
+        Function.satisfies<string>()(context.payload.name)
 
-        const _age: number = context.payload.age
+        Function.satisfies<number>()(context.payload.age)
 
         return Effect.succeed("hello")
       },
@@ -223,7 +223,7 @@ test.it("context is typed with headers when schemaHeaders is provided", () => {
 
         Function.satisfies<Expected>()(context)
 
-        const _auth: string = context.headers.authorization
+        Function.satisfies<string>()(context.headers.authorization)
 
         return Effect.succeed("hello")
       },
@@ -257,11 +257,11 @@ test.it("context is typed with multiple schemas", () => {
 
         Function.satisfies<Expected>()(context)
 
-        const _id: string = context.pathParams.id
+        Function.satisfies<string>()(context.pathParams.id)
 
-        const _page: number = context.urlParams.page
+        Function.satisfies<number>()(context.urlParams.page)
 
-        const _name: string = context.payload.name
+        Function.satisfies<string>()(context.payload.name)
 
         return Effect.succeed("hello")
       },
