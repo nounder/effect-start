@@ -183,9 +183,11 @@ export namespace Route {
     RouteSchemas
   >
 
-  export type Tuple<T = Default> = ReadonlyArray<T>
+  export type Tuple = ReadonlyArray<Default>
 
-  export type NonEmpty<T = Default> = readonly [T, ...T[]]
+  export type Empty = readonly []
+
+  export type NonEmpty = readonly [Default, ...Default[]]
 
   export type Proto =
     & Pipeable.Pipeable
