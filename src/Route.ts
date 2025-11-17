@@ -32,6 +32,7 @@ type Self =
    * ```
    */
   | RouteSet.Default
+  | RouteSet<Route.Empty, RouteSchemas>
   /**
    * Called from namespaced import.
    *
@@ -183,11 +184,9 @@ export namespace Route {
     RouteSchemas
   >
 
-  export type Tuple = ReadonlyArray<Default>
+  export type Tuple = readonly [Default, ...Default[]]
 
   export type Empty = readonly []
-
-  export type NonEmpty = readonly [Default, ...Default[]]
 
   export type Proto =
     & Pipeable.Pipeable
@@ -230,7 +229,7 @@ type RouteBuilder = {
  * to modify the set or add new routes.
  */
 export type RouteSet<
-  M extends Route.Tuple,
+  M extends Route.Tuple | Route.Empty,
   Schemas extends RouteSchemas = RouteSchemas.Empty,
 > =
   & Pipeable.Pipeable
@@ -242,7 +241,7 @@ export type RouteSet<
 
 export namespace RouteSet {
   export type Instance<
-    M extends Route.Tuple = Route.Tuple,
+    M extends Route.Tuple | Route.Empty = Route.Tuple,
     Schemas extends RouteSchemas = RouteSchemas.Empty,
   > = {
     set: M
@@ -645,7 +644,7 @@ function make<
 }
 
 function makeSet<
-  M extends Route.Tuple,
+  M extends Route.Tuple | Route.Empty,
   Schemas extends RouteSchemas = RouteSchemas.Empty,
 >(
   routes: M,
@@ -748,7 +747,7 @@ function makeMediaFunction<
           handler: handlerFn(effect as any) as any,
           schemas: baseSchema as any,
         }),
-      ],
+      ] as any,
       baseSchema as any,
     ) as any
   }
@@ -786,7 +785,7 @@ function makeMethodModifier<
 >(method: M) {
   return function<
     S extends Self,
-    T extends Route.NonEmpty,
+    T extends Route.Tuple,
     InSchemas extends RouteSchemas,
   >(
     this: S,
@@ -810,7 +809,7 @@ function makeMethodModifier<
             >
             : T[K]
         },
-      ],
+      ] & any,
       BaseSchemas
     >
     // otherwise create new RouteSet
@@ -828,7 +827,7 @@ function makeMethodModifier<
             RouteSchemas
           >
           : T[K]
-      },
+      } & any,
       InSchemas
     >
   {
@@ -849,7 +848,7 @@ function makeMethodModifier<
             schemas: mergeSchemas(baseSchema, route.schemas) as any,
           })
         }),
-      ],
+      ] as any,
       baseSchema as any,
     ) as any
   }
