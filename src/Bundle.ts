@@ -57,15 +57,18 @@ export const BundleManifestSchema = S.Struct({
 
 export type BundleManifest = typeof BundleManifestSchema.Type
 
-export type BundleEvent =
-  | {
-    type: "Change"
-    path: string
-  }
-  | {
-    type: "BuildError"
-    error: string
-  }
+export const BundleEvent = S.Union(
+  S.Struct({
+    _tag: S.Literal("Change"),
+    path: S.String,
+  }),
+  S.Struct({
+    _tag: S.Literal("BuildError"),
+    error: S.String,
+  }),
+)
+
+export type BundleEvent = typeof BundleEvent.Type
 
 const IdPrefix = "effect-start/tags/"
 
