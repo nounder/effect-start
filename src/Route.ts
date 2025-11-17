@@ -126,22 +126,22 @@ export namespace RouteHandler {
 }
 
 export type RouteSchemas = {
-  readonly pathParams?: Schema.Schema.Any
-  readonly urlParams?: Schema.Schema.Any
-  readonly payload?: Schema.Schema.Any
-  readonly success?: Schema.Schema.Any
-  readonly error?: Schema.Schema.Any
-  readonly headers?: Schema.Schema.Any
+  readonly PathParams?: Schema.Schema.Any
+  readonly UrlParams?: Schema.Schema.Any
+  readonly Payload?: Schema.Schema.Any
+  readonly Success?: Schema.Schema.Any
+  readonly Error?: Schema.Schema.Any
+  readonly Headers?: Schema.Schema.Any
 }
 
 export namespace RouteSchemas {
   export type Empty = {
-    readonly pathParams?: never
-    readonly urlParams?: never
-    readonly payload?: never
-    readonly success?: never
-    readonly error?: never
-    readonly headers?: never
+    readonly PathParams?: never
+    readonly UrlParams?: never
+    readonly Payload?: never
+    readonly Success?: never
+    readonly Error?: never
+    readonly Headers?: never
   }
 }
 
@@ -316,12 +316,12 @@ function makeSchemaFunction<
   }
 }
 
-export const schemaPathParams = makeSchemaFunction("pathParams")
-export const schemaUrlParams = makeSchemaFunction("urlParams")
-export const schemaPayload = makeSchemaFunction("payload")
-export const schemaSuccess = makeSchemaFunction("success")
-export const schemaError = makeSchemaFunction("error")
-export const schemaHeaders = makeSchemaFunction("headers")
+export const schemaPathParams = makeSchemaFunction("PathParams")
+export const schemaUrlParams = makeSchemaFunction("UrlParams")
+export const schemaPayload = makeSchemaFunction("Payload")
+export const schemaSuccess = makeSchemaFunction("Success")
+export const schemaError = makeSchemaFunction("Error")
+export const schemaHeaders = makeSchemaFunction("Headers")
 
 const SetProto = {
   [RouteSetTypeId]: RouteSetTypeId,
@@ -405,20 +405,20 @@ export type RouteContext<
     request: HttpServerRequest.HttpServerRequest
     get url(): URL
   }
-  & (Schemas["pathParams"] extends Schema.Schema.Any ? {
-      pathParams: Schema.Schema.Type<Schemas["pathParams"]>
+  & (Schemas["PathParams"] extends Schema.Schema.Any ? {
+      pathParams: Schema.Schema.Type<Schemas["PathParams"]>
     }
     : {})
-  & (Schemas["urlParams"] extends Schema.Schema.Any ? {
-      urlParams: Schema.Schema.Type<Schemas["urlParams"]>
+  & (Schemas["UrlParams"] extends Schema.Schema.Any ? {
+      urlParams: Schema.Schema.Type<Schemas["UrlParams"]>
     }
     : {})
-  & (Schemas["payload"] extends Schema.Schema.Any ? {
-      payload: Schema.Schema.Type<Schemas["payload"]>
+  & (Schemas["Payload"] extends Schema.Schema.Any ? {
+      payload: Schema.Schema.Type<Schemas["Payload"]>
     }
     : {})
-  & (Schemas["headers"] extends Schema.Schema.Any ? {
-      headers: Schema.Schema.Type<Schemas["headers"]>
+  & (Schemas["Headers"] extends Schema.Schema.Any ? {
+      headers: Schema.Schema.Type<Schemas["Headers"]>
     }
     : {})
 
@@ -429,47 +429,47 @@ type MergeSchemas<
   A extends RouteSchemas,
   B extends RouteSchemas,
 > = {
-  readonly pathParams: [A["pathParams"], B["pathParams"]] extends [
+  readonly PathParams: [A["PathParams"], B["PathParams"]] extends [
     Schema.Schema.Any,
     Schema.Schema.Any,
-  ] ? Schema.Union<[A["pathParams"], B["pathParams"]]>
-    : A["pathParams"] extends Schema.Schema.Any ? A["pathParams"]
-    : B["pathParams"] extends Schema.Schema.Any ? B["pathParams"]
+  ] ? Schema.Union<[A["PathParams"], B["PathParams"]]>
+    : A["PathParams"] extends Schema.Schema.Any ? A["PathParams"]
+    : B["PathParams"] extends Schema.Schema.Any ? B["PathParams"]
     : never
-  readonly urlParams: [A["urlParams"], B["urlParams"]] extends [
+  readonly UrlParams: [A["UrlParams"], B["UrlParams"]] extends [
     Schema.Schema.Any,
     Schema.Schema.Any,
-  ] ? Schema.Union<[A["urlParams"], B["urlParams"]]>
-    : A["urlParams"] extends Schema.Schema.Any ? A["urlParams"]
-    : B["urlParams"] extends Schema.Schema.Any ? B["urlParams"]
+  ] ? Schema.Union<[A["UrlParams"], B["UrlParams"]]>
+    : A["UrlParams"] extends Schema.Schema.Any ? A["UrlParams"]
+    : B["UrlParams"] extends Schema.Schema.Any ? B["UrlParams"]
     : never
-  readonly payload: [A["payload"], B["payload"]] extends [
+  readonly Payload: [A["Payload"], B["Payload"]] extends [
     Schema.Schema.Any,
     Schema.Schema.Any,
-  ] ? Schema.Union<[A["payload"], B["payload"]]>
-    : A["payload"] extends Schema.Schema.Any ? A["payload"]
-    : B["payload"] extends Schema.Schema.Any ? B["payload"]
+  ] ? Schema.Union<[A["Payload"], B["Payload"]]>
+    : A["Payload"] extends Schema.Schema.Any ? A["Payload"]
+    : B["Payload"] extends Schema.Schema.Any ? B["Payload"]
     : never
-  readonly success: [A["success"], B["success"]] extends [
+  readonly Success: [A["Success"], B["Success"]] extends [
     Schema.Schema.Any,
     Schema.Schema.Any,
-  ] ? Schema.Union<[A["success"], B["success"]]>
-    : A["success"] extends Schema.Schema.Any ? A["success"]
-    : B["success"] extends Schema.Schema.Any ? B["success"]
+  ] ? Schema.Union<[A["Success"], B["Success"]]>
+    : A["Success"] extends Schema.Schema.Any ? A["Success"]
+    : B["Success"] extends Schema.Schema.Any ? B["Success"]
     : never
-  readonly error: [A["error"], B["error"]] extends [
+  readonly Error: [A["Error"], B["Error"]] extends [
     Schema.Schema.Any,
     Schema.Schema.Any,
-  ] ? Schema.Union<[A["error"], B["error"]]>
-    : A["error"] extends Schema.Schema.Any ? A["error"]
-    : B["error"] extends Schema.Schema.Any ? B["error"]
+  ] ? Schema.Union<[A["Error"], B["Error"]]>
+    : A["Error"] extends Schema.Schema.Any ? A["Error"]
+    : B["Error"] extends Schema.Schema.Any ? B["Error"]
     : never
-  readonly headers: [A["headers"], B["headers"]] extends [
+  readonly Headers: [A["Headers"], B["Headers"]] extends [
     Schema.Schema.Any,
     Schema.Schema.Any,
-  ] ? Schema.Union<[A["headers"], B["headers"]]>
-    : A["headers"] extends Schema.Schema.Any ? A["headers"]
-    : B["headers"] extends Schema.Schema.Any ? B["headers"]
+  ] ? Schema.Union<[A["Headers"], B["Headers"]]>
+    : A["Headers"] extends Schema.Schema.Any ? A["Headers"]
+    : B["Headers"] extends Schema.Schema.Any ? B["Headers"]
     : never
 }
 
@@ -486,12 +486,12 @@ function mergeSchemas<
   const result: any = {}
 
   const keys: Array<keyof RouteSchemas> = [
-    "pathParams",
-    "urlParams",
-    "payload",
-    "success",
-    "error",
-    "headers",
+    "PathParams",
+    "UrlParams",
+    "Payload",
+    "Success",
+    "Error",
+    "Headers",
   ]
 
   for (const key of keys) {

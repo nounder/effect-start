@@ -89,7 +89,7 @@ test.it("schemaPathParams adds schema to RouteSet", () => {
     )
 
   type ExpectedSchemas = {
-    readonly pathParams: typeof IdSchema
+    readonly PathParams: typeof IdSchema
   }
 
   type Expected = Route.RouteSet<
@@ -120,7 +120,7 @@ test.it("schemaPayload propagates to all routes", () => {
     )
 
   type ExpectedSchemas = {
-    readonly payload: typeof PayloadSchema
+    readonly Payload: typeof PayloadSchema
   }
 
   type Expected = Route.RouteSet<
@@ -146,7 +146,7 @@ test.it("context is typed with pathParams when schemaPathParams is provided", ()
         type ContextType = typeof context
 
         type Expected = Route.RouteContext<{
-          readonly pathParams: typeof IdSchema
+          readonly PathParams: typeof IdSchema
         }>
 
         Function.satisfies<Expected>()(context)
@@ -169,7 +169,7 @@ test.it("context is typed with urlParams when schemaUrlParams is provided", () =
     .text(
       (context) => {
         type Expected = Route.RouteContext<{
-          readonly urlParams: typeof QuerySchema
+          readonly UrlParams: typeof QuerySchema
         }>
 
         Function.satisfies<Expected>()(context)
@@ -194,7 +194,7 @@ test.it("context is typed with payload when schemaPayload is provided", () => {
     .text(
       (context) => {
         type Expected = Route.RouteContext<{
-          readonly payload: typeof PayloadSchema
+          readonly Payload: typeof PayloadSchema
         }>
 
         Function.satisfies<Expected>()(context)
@@ -218,7 +218,7 @@ test.it("context is typed with headers when schemaHeaders is provided", () => {
     .text(
       (context) => {
         type Expected = Route.RouteContext<{
-          readonly headers: typeof HeadersSchema
+          readonly Headers: typeof HeadersSchema
         }>
 
         Function.satisfies<Expected>()(context)
@@ -250,9 +250,9 @@ test.it("context is typed with multiple schemas", () => {
     .text(
       (context) => {
         type Expected = Route.RouteContext<{
-          readonly pathParams: typeof IdSchema
-          readonly urlParams: typeof QuerySchema
-          readonly payload: typeof PayloadSchema
+          readonly PathParams: typeof IdSchema
+          readonly UrlParams: typeof QuerySchema
+          readonly Payload: typeof PayloadSchema
         }>
 
         Function.satisfies<Expected>()(context)
@@ -285,8 +285,8 @@ test.it("schemaSuccess and schemaError are stored in RouteSet", () => {
     )
 
   type ExpectedSchemas = {
-    readonly success: typeof SuccessSchema
-    readonly error: typeof ErrorSchema
+    readonly Success: typeof SuccessSchema
+    readonly Error: typeof ErrorSchema
   }
 
   type Expected = Route.RouteSet<
@@ -334,12 +334,12 @@ test.it("all schema methods work together", () => {
     )
 
   type ExpectedSchemas = {
-    readonly pathParams: typeof PathSchema
-    readonly urlParams: typeof QuerySchema
-    readonly payload: typeof PayloadSchema
-    readonly success: typeof SuccessSchema
-    readonly error: typeof ErrorSchema
-    readonly headers: typeof HeadersSchema
+    readonly PathParams: typeof PathSchema
+    readonly UrlParams: typeof QuerySchema
+    readonly Payload: typeof PayloadSchema
+    readonly Success: typeof SuccessSchema
+    readonly Error: typeof ErrorSchema
+    readonly Headers: typeof HeadersSchema
   }
 
   type Expected = Route.RouteSet<
