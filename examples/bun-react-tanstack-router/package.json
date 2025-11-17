@@ -15,6 +15,7 @@
     "react-dom": "^19.1.0"
   },
   "devDependencies": {
+    "@effect/language-service": "^0.23.3",
     "@tailwindcss/node": "^4.1.8",
     "@types/bun": "^1.2.15",
     "@types/react-dom": "^19.1.5"

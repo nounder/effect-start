@@ -11,6 +11,7 @@
         "react-dom": "^19.1.0",
       },
       "devDependencies": {
+        "@effect/language-service": "^0.23.3",
         "@tailwindcss/node": "^4.1.7",
         "@types/bun": "^1.2.13",
         "@types/react-dom": "^19.1.5",
@@ -26,6 +27,8 @@
     "@effect/cluster": ["@effect/cluster@0.31.1", "", { "peerDependencies": { "@effect/platform": "^0.81.1", "@effect/rpc": "^0.57.1", "@effect/sql": "^0.34.1", "effect": "^3.14.22" } }, "sha512-FDj6WMR7zDg1PPei9qXCvIsoUoQEOuWSmM3TQEruvTouWEfMPXwoRoNiUAzQa6nrqrfXtur/T31ZvgcCL8WvYg=="],
 
     "@effect/experimental": ["@effect/experimental@0.45.1", "", { "dependencies": { "uuid": "^11.0.3" }, "peerDependencies": { "@effect/platform": "^0.81.1", "effect": "^3.14.22", "ioredis": "^5", "lmdb": "^3" }, "optionalPeers": ["ioredis", "lmdb"] }, "sha512-vfr8z0UalIk0fWHnPwOPzvkKKzVvyPqZuXB0VMyMeSK0uZkXPC3yPaiP/2rvuyeLbLXXMZqo1DF40106GUvfjg=="],
+
+    "@effect/language-service": ["@effect/language-service@0.23.5", "", {}, "sha512-aQN24eziWuqK/EdFhhZ2Jr/CZgYxNfsP9r7DT7jCYgJWhZ8HPO39hyHcij14cMv41ZM8j0p8lmBnHYZwYN1Wyg=="],
 
     "@effect/platform": ["@effect/platform@0.82.3", "", { "dependencies": { "find-my-way-ts": "^0.1.5", "msgpackr": "^1.11.2", "multipasta": "^0.2.5" }, "peerDependencies": { "effect": "^3.15.2" } }, "sha512-KKCmBGP3IoQDwj4jThTicLprdViFrFfwtRkJwZTR5z+zFmwgF1J2cOk3MSafkcrL8FMpAItD9FizXvcz/bG4QA=="],
 
