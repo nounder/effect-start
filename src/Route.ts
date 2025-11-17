@@ -31,7 +31,7 @@ type Self =
    *
    * ```
    */
-  | RouteSet.Default
+  | RouteSet<Route.Tuple | Route.Empty, RouteSchemas>
   /**
    * Called from namespaced import.
    *
@@ -183,7 +183,8 @@ export namespace Route {
     RouteSchemas
   >
 
-  export type Tuple<T = Default> = readonly [T, ...T[]]
+  export type Tuple<T = Default> = [T, ...T[]]
+  export type Empty = []
 
   export type Proto =
     & Pipeable.Pipeable
@@ -226,7 +227,7 @@ type RouteBuilder = {
  * to modify the set or add new routes.
  */
 export type RouteSet<
-  M extends Route.Tuple,
+  M extends ReadonlyArray<any> = Route.Tuple,
   Schemas extends RouteSchemas = RouteSchemas.Empty,
 > =
   & Pipeable.Pipeable
@@ -238,7 +239,7 @@ export type RouteSet<
 
 export namespace RouteSet {
   export type Instance<
-    M extends Route.Tuple = Route.Tuple,
+    M extends ReadonlyArray<any> = Route.Tuple,
     Schemas extends RouteSchemas = RouteSchemas.Empty,
   > = {
     set: M
@@ -305,7 +306,7 @@ function makeStructSchemaModifier<
       }
     >
     : RouteSet<
-      [],
+      Route.Empty,
       {
         [P in K]: Fields extends Schema.Struct<infer F> ? Schema.Struct<F>
           : Fields extends Schema.Struct.Fields ? Schema.Struct<Fields>
@@ -353,7 +354,7 @@ function makeUnionSchemaModifier<
       }
     >
     : RouteSet<
-      [],
+      Route.Empty,
       {
         [P in K]: Fields extends Schema.Schema.Any ? Fields
           : Fields extends Schema.Struct.Fields ? Schema.Struct<Fields>
@@ -641,7 +642,7 @@ function make<
 }
 
 function makeSet<
-  M extends Route.Tuple,
+  M extends ReadonlyArray<any>,
   Schemas extends RouteSchemas = RouteSchemas.Empty,
 >(
   routes: M,
@@ -744,7 +745,7 @@ function makeMediaFunction<
           handler: handlerFn(effect as any) as any,
           schemas: baseSchema as any,
         }),
-      ],
+      ] as any,
       baseSchema as any,
     ) as any
   }
@@ -791,7 +792,7 @@ function makeMethodModifier<
     // append to existing RouteSet
     ? RouteSet<
       [
-        ...B,
+        ...B extends any[] ? B : [],
         ...{
           [K in keyof T]: T[K] extends Route<
             infer _,
@@ -845,7 +846,7 @@ function makeMethodModifier<
             schemas: mergeSchemas(baseSchema, route.schemas) as any,
           })
         }),
-      ],
+      ] as any,
       baseSchema as any,
     ) as any
   }
