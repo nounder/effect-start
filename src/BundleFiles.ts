@@ -142,7 +142,7 @@ export const fromFiles = (
         })
       ),
       Effect.andThen(Iterable.map((v, i) =>
-        new Blob([v], {
+        new Blob([v.slice(0)], {
           type: artifactsPairs[i][0],
         })
       )),

@@ -249,7 +249,7 @@ function decryptWithDerivedKey(
     const decrypted = yield* Effect.tryPromise({
       try: () =>
         crypto.subtle.decrypt(
-          { name: "AES-GCM", iv },
+          { name: "AES-GCM", iv: iv.slice(0) },
           derivedKey,
           encryptedData,
         ),
