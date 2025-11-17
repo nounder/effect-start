@@ -3,6 +3,7 @@ import type {
   BuildOutput,
 } from "bun"
 import {
+  Array,
   Context,
   Effect,
   Iterable,
