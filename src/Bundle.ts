@@ -94,6 +94,25 @@ export class BundleError extends Data.TaggedError("BundleError")<{
   cause?: unknown
 }> {}
 
+export const emptyBundleContext: BundleContext = {
+  entrypoints: {},
+  artifacts: [],
+  resolve: () => null,
+  getArtifact: () => null,
+}
+
+export const handleBundleErrorSilently = (
+  effect: Effect.Effect<BundleContext, BundleError>,
+): Effect.Effect<BundleContext, never> =>
+  pipe(
+    effect,
+    Effect.catchTag("BundleError", (error) =>
+      Effect.gen(function*() {
+        yield* Effect.logError("Bundle build failed", error)
+        return emptyBundleContext
+      })),
+  )
+
 export const Tag = <const T extends BundleKey>(name: T) => <Identifier>() =>
   Context.Tag(`${IdPrefix}${name}` as BundleId)<
     Identifier,

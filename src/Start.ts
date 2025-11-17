@@ -46,7 +46,10 @@ export function router(options: {
 export function bundleClient(config: BunBundle.BuildOptions | string) {
   const clientLayer = Layer.effect(
     Bundle.ClientBundle,
-    BunBundle.buildClient(config),
+    Function.pipe(
+      BunBundle.buildClient(config),
+      Bundle.handleBundleErrorSilently,
+    ),
   )
   const assetsLayer = Layer.effectDiscard(Effect.gen(function*() {
     const router = yield* HttpRouter.Default
