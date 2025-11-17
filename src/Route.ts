@@ -588,12 +588,16 @@ function makeMediaFunction<
         | Effect.Effect<A, E, R>
         | ((
           context: RouteContext<Schemas>,
-        ) => Generator<YieldWrap<Effect.Effect<A, E, R>>, A, never>)
+        ) =>
+          | Effect.Effect<A, E, R>
+          | Generator<YieldWrap<Effect.Effect<A, E, R>>, A, never>)
       :
         | Effect.Effect<A, E, R>
         | ((
           context: RouteContext<RouteSchemas.Empty>,
-        ) => Generator<YieldWrap<Effect.Effect<A, E, R>>, A, never>),
+        ) =>
+          | Effect.Effect<A, E, R>
+          | Generator<YieldWrap<Effect.Effect<A, E, R>>, A, never>),
   ): S extends RouteSet<infer Routes, infer Schemas> ? RouteSet<[
       ...Routes,
       Route<
@@ -621,7 +625,12 @@ function makeMediaFunction<
             return makeUrlFromRequest(request)
           },
         }
-        return yield* Effect.gen(() => handler(context))
+        const result = handler(context)
+        return yield* (typeof result === "object"
+            && result !== null
+            && Symbol.iterator in result
+          ? Effect.gen(() => result as any)
+          : result as Effect.Effect<A, E, R>)
       })
       : handler
 
