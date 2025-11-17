@@ -101,15 +101,11 @@ export function build(
     )
 
     const resolve = (path: string) => {
-      const entry = manifest.inputs.find((e) => e.input === path)
-
-      return entry?.output ?? null
+      return manifest.entrypoints[path] ?? null
     }
 
     const getArtifact = (path: string): Blob | null => {
-      const resolved = resolve(path)
-
-      return artifactsMap[resolved ?? ""]
+      return artifactsMap[resolve(path)]
         ?? artifactsMap[path]
         ?? null
     }
@@ -256,23 +252,25 @@ function generateManifestfromBunBundle(
   const entrypointArtifacts = joinBuildEntrypoints(options, output)
 
   return {
-    inputs: pipe(
+    entrypoints: pipe(
       entrypointArtifacts,
-      Iterable.map((v) => ({
-        input: v.shortPath,
-        output: v.artifact.path.replace(/^\.\//, ""),
-      })),
-      Array.fromIterable,
+      Iterable.map((v) =>
+        [
+          v.shortPath,
+          v.artifact.path.replace(/^\.\//, ""),
+        ] as const
+      ),
+      Record.fromEntries,
     ),
 
-    outputs: pipe(
+    artifacts: pipe(
       output.outputs,
       Iterable.map((v) => {
         // strip './' prefix
         const shortPath = v.path.replace(/^\.\//, "")
 
         return {
-          output: shortPath,
+          path: shortPath,
           type: v.type,
           size: v.size,
           hash: v.hash ?? undefined,

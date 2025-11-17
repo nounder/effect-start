@@ -98,8 +98,8 @@ export const toHttpApp = <E, R>(
       return HttpServerResponse.text(
         JSON.stringify(
           {
-            inputs: bundle.inputs,
-            outputs: bundle.outputs,
+            entrypoints: bundle.entrypoints,
+            artifacts: bundle.artifacts,
           },
           undefined,
           2,
@@ -122,7 +122,7 @@ export const toHttpApp = <E, R>(
       )
     }
 
-    const artifact = bundle.outputs.find((o) => o.output === path)
+    const artifact = bundle.artifacts.find((a) => a.path === path)
 
     /**
      * Expose artifacts.

@@ -24,15 +24,15 @@ export const toFiles = (
   return Effect.gen(function*() {
     const fs = yield* FileSystem.FileSystem
     const manifest: BundleManifest = {
-      inputs: context.inputs,
-      outputs: context.outputs,
+      entrypoints: context.entrypoints,
+      artifacts: context.artifacts,
     }
 
     const normalizedOutDir = outDir.replace(/\/$/, "")
 
     const bundleArtifacts = pipe(
-      manifest.outputs,
-      Array.map((output) => [output.output, context.getArtifact(output.output)!] as const),
+      manifest.artifacts,
+      Array.map((artifact) => [artifact.path, context.getArtifact(artifact.path)!] as const),
       Record.fromEntries,
     )
     const extraArtifacts = {
@@ -131,9 +131,9 @@ export const fromFiles = (
         )
       ),
     )
-    const outputPaths = Array.map(manifest.outputs, (o) => o.output)
+    const artifactPaths = Array.map(manifest.artifacts, (a) => a.path)
     const artifactBlobs = yield* pipe(
-      outputPaths,
+      artifactPaths,
       Iterable.map((path) => fs.readFile(`${normalizedDir}/${path}`)),
       Effect.all,
       Effect.catchAll((e) =>
@@ -144,13 +144,13 @@ export const fromFiles = (
       ),
       Effect.andThen(Iterable.map((v, i) =>
         new Blob([v.slice(0)], {
-          type: manifest.outputs[i].type,
+          type: manifest.artifacts[i].type,
         })
       )),
     )
     const artifactsRecord = pipe(
       Iterable.zip(
-        outputPaths,
+        artifactPaths,
         artifactBlobs,
       ),
       Record.fromEntries,
@@ -162,9 +162,7 @@ export const fromFiles = (
       // this will require having an access to base path of a build
       // and maybe problematic because bundlers transform urls on build
       resolve: (url: string) => {
-        const entry = manifest.inputs.find((e) => e.input === url)
-
-        return entry?.output ?? null
+        return manifest.entrypoints[url] ?? null
       },
       getArtifact: (path: string) => {
         return artifactsRecord[path] ?? null

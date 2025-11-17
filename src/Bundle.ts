@@ -19,15 +19,13 @@ export type BundleOutputMetaValue = {}
  * (like bun, esbuild & vite)
  */
 export const BundleManifestSchema = S.Struct({
-  inputs: S.Array(
+  entrypoints: S.Record({
+    key: S.String,
+    value: S.String,
+  }),
+  artifacts: S.Array(
     S.Struct({
-      input: S.String,
-      output: S.String,
-    }),
-  ),
-  outputs: S.Array(
-    S.Struct({
-      output: S.String,
+      path: S.String,
       type: S.String,
       size: S.Number,
       hash: pipe(
@@ -119,7 +117,7 @@ export function load<M>(
 ): Effect.Effect<M, BundleError> {
   return Effect.gen(function*() {
     const context = yield* bundle
-    const [firstInput, ...rest] = context.inputs
+    const [artifact, ...rest] = Object.values(context.entrypoints)
 
     if (rest.length > 0) {
       return yield* Effect.fail(
@@ -131,7 +129,7 @@ export function load<M>(
 
     return yield* Effect.tryPromise({
       try: () => {
-        const blob = context.getArtifact(firstInput.output)
+        const blob = context.getArtifact(artifact)
 
         return importBlob<M>(blob!)
       },

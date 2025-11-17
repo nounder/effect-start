@@ -44,33 +44,34 @@ export const greeting = "Hello World";`
         }),
       )
 
-      t.expect(bundle.inputs)
-        .toBeArray()
-      t.expect(bundle.outputs)
+      t.expect(bundle.entrypoints)
+        .toBeObject()
+      t.expect(bundle.artifacts)
         .toBeArray()
 
-      t.expect(bundle.inputs.length)
+      t.expect(Object.keys(bundle.entrypoints).length)
         .toBe(1)
-      t.expect(bundle.outputs.length)
+      t.expect(bundle.artifacts.length)
         .toBe(3)
 
-      const firstInput = bundle.inputs[0]
+      const entrypointKeys = Object.keys(bundle.entrypoints)
+      const firstEntrypoint = entrypointKeys[0]
 
-      t.expect(firstInput)
-        .toHaveProperty("input")
-      t.expect(firstInput)
-        .toHaveProperty("output")
+      t.expect(firstEntrypoint)
+        .toBeString()
+      t.expect(bundle.entrypoints[firstEntrypoint])
+        .toBeString()
 
-      const firstOutput = bundle.outputs[0]
+      const firstArtifact = bundle.artifacts[0]
 
-      t.expect(firstOutput)
-        .toHaveProperty("output")
-      t.expect(firstOutput)
+      t.expect(firstArtifact)
+        .toHaveProperty("path")
+      t.expect(firstArtifact)
         .toHaveProperty("type")
-      t.expect(firstOutput)
+      t.expect(firstArtifact)
         .toHaveProperty("size")
 
-      t.expect(firstOutput.size)
+      t.expect(firstArtifact.size)
         .toBeGreaterThan(0)
     } finally {
       await NFS.rm(tmpDir, {
@@ -127,34 +128,35 @@ export const greeting = "Hello World";`
       )
 
       t.expect(result)
-        .toHaveProperty("inputs")
+        .toHaveProperty("entrypoints")
       t.expect(result)
-        .toHaveProperty("outputs")
+        .toHaveProperty("artifacts")
 
-      t.expect(result.inputs)
-        .toBeArray()
-      t.expect(result.outputs)
+      t.expect(result.entrypoints)
+        .toBeObject()
+      t.expect(result.artifacts)
         .toBeArray()
 
-      t.expect(result.inputs.length)
+      t.expect(Object.keys(result.entrypoints).length)
         .toBe(1)
-      t.expect(result.outputs.length)
+      t.expect(result.artifacts.length)
         .toBe(3)
 
-      const input = result.inputs[0]
+      const entrypointKeys = Object.keys(result.entrypoints)
+      const firstKey = entrypointKeys[0]
 
-      t.expect(input)
-        .toHaveProperty("input")
-      t.expect(input)
-        .toHaveProperty("output")
+      t.expect(firstKey)
+        .toBeString()
+      t.expect(result.entrypoints[firstKey])
+        .toBeString()
 
-      const output = result.outputs[0]
+      const artifact = result.artifacts[0]
 
-      t.expect(output)
-        .toHaveProperty("output")
-      t.expect(output)
+      t.expect(artifact)
+        .toHaveProperty("path")
+      t.expect(artifact)
         .toHaveProperty("type")
-      t.expect(output)
+      t.expect(artifact)
         .toHaveProperty("size")
     } finally {
       await NFS.rm(tmpDir, {
@@ -164,7 +166,7 @@ export const greeting = "Hello World";`
     }
   })
 
-  t.it("should resolve inputs to outputs correctly", async () => {
+  t.it("should resolve entrypoints to artifacts correctly", async () => {
     const tmpDir = await NFS.mkdtemp(
       NPath.join(NOS.tmpdir(), "effect-start-test-"),
     )
@@ -183,11 +185,13 @@ export const greeting = "Hello World";`
         }),
       )
 
-      const input = bundle.inputs[0]
-      const resolvedOutput = bundle.resolve(input.input)
+      const entrypointKeys = Object.keys(bundle.entrypoints)
+      const firstEntrypoint = entrypointKeys[0]
+      const expectedOutput = bundle.entrypoints[firstEntrypoint]
+      const resolvedOutput = bundle.resolve(firstEntrypoint)
 
       t.expect(resolvedOutput)
-        .toBe(input.output)
+        .toBe(expectedOutput)
 
       const artifact = bundle.getArtifact(resolvedOutput!)
 
@@ -205,7 +209,7 @@ export const greeting = "Hello World";`
     }
   })
 
-  t.it("should include all output metadata", async () => {
+  t.it("should include all artifact metadata", async () => {
     const tmpDir = await NFS.mkdtemp(
       NPath.join(NOS.tmpdir(), "effect-start-test-"),
     )
@@ -222,16 +226,16 @@ export const greeting = "Hello World";`
         }),
       )
 
-      const output = bundle.outputs[0]
+      const artifact = bundle.artifacts[0]
 
-      t.expect(output.output)
+      t.expect(artifact.path)
         .toBeString()
-      t.expect(output.type)
+      t.expect(artifact.type)
         .toBeString()
-      t.expect(output.size)
+      t.expect(artifact.size)
         .toBeNumber()
 
-      t.expect(output.type)
+      t.expect(artifact.type)
         .toContain("javascript")
     } finally {
       await NFS.rm(tmpDir, {
