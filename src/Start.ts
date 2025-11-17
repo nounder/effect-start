@@ -46,7 +46,24 @@ export function router(options: {
 export function bundleClient(config: BunBundle.BuildOptions | string) {
   const clientLayer = Layer.effect(
     Bundle.ClientBundle,
-    BunBundle.buildClient(config),
+    Effect.gen(function*() {
+      const result = yield* BunBundle.buildClient(config).pipe(
+        Effect.catchAll((error) =>
+          Effect.gen(function*() {
+            yield* Effect.logError("Build error during startup", error)
+
+            return {
+              entrypoints: {},
+              artifacts: {},
+              resolve: () => "",
+              getArtifact: () => null,
+            } satisfies Bundle.BundleContext
+          })
+        ),
+      )
+
+      return result
+    }),
   )
   const assetsLayer = Layer.effectDiscard(Effect.gen(function*() {
     const router = yield* HttpRouter.Default
