@@ -64,14 +64,14 @@ Test single file:
 bun test $FILE
 ```
 
-Import test functions from `bun:test` module.
+Import `bun:test` module as namespace:
 
 ```ts
-import {
-  expect,
-  it,
-  test,
-} from "bun:test"
+import * as t from "bun:test"
+
+t.it("...", () => {
+  t.expect(true).toBe(true)
+})
 ```
 
 Object passed to `expect()` and its methods MUST have new line for each property.
@@ -92,8 +92,8 @@ expect(
   })
 ```
 
-```
-```
+Use `Function.satisfies` to test types:
 
-```
+```ts
+Function.satisfies<string>()("hello")
 ```
