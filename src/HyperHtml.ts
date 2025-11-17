@@ -94,13 +94,16 @@ export function renderToString(
         if (
           key !== "children"
           && key !== "innerHTML"
+          && key !== "dangerouslySetInnerHTML"
           && props[key] !== false
           && props[key] != null
         ) {
           if (props[key] === true) {
             result += ` ${esc(key)}`
           } else {
-            result += ` ${esc(key)}="${esc(props[key])}"`
+            const resolvedKey = key === "className" ? "class" : key
+
+            result += ` ${esc(resolvedKey)}="${esc(props[key])}"`
           }
         }
       }
@@ -110,8 +113,11 @@ export function renderToString(
       if (!EMPTY_TAGS.includes(type)) {
         stack.push(`</${type}>`)
 
-        if ("innerHTML" in props) {
-          result += props.innerHTML
+        const html = props.dangerouslySetInnerHTML?.__html
+          ?? props.innerHTML
+
+        if (html) {
+          result += html
         } else {
           const children = props.children
           if (Array.isArray(children)) {
