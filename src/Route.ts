@@ -438,91 +438,6 @@ export type RouteContext<
     }
     : {})
 
-/**
- * Merges two RouteSchemas types by unionizing schemas with the same key.
- */
-type MergeSchemas<
-  A extends RouteSchemas,
-  B extends RouteSchemas,
-> = {
-  readonly PathParams: [A["PathParams"], B["PathParams"]] extends [
-    Schema.Schema.Any,
-    Schema.Schema.Any,
-  ] ? Schema.Union<[A["PathParams"], B["PathParams"]]>
-    : A["PathParams"] extends Schema.Schema.Any ? A["PathParams"]
-    : B["PathParams"] extends Schema.Schema.Any ? B["PathParams"]
-    : never
-  readonly UrlParams: [A["UrlParams"], B["UrlParams"]] extends [
-    Schema.Schema.Any,
-    Schema.Schema.Any,
-  ] ? Schema.Union<[A["UrlParams"], B["UrlParams"]]>
-    : A["UrlParams"] extends Schema.Schema.Any ? A["UrlParams"]
-    : B["UrlParams"] extends Schema.Schema.Any ? B["UrlParams"]
-    : never
-  readonly Payload: [A["Payload"], B["Payload"]] extends [
-    Schema.Schema.Any,
-    Schema.Schema.Any,
-  ] ? Schema.Union<[A["Payload"], B["Payload"]]>
-    : A["Payload"] extends Schema.Schema.Any ? A["Payload"]
-    : B["Payload"] extends Schema.Schema.Any ? B["Payload"]
-    : never
-  readonly Success: [A["Success"], B["Success"]] extends [
-    Schema.Schema.Any,
-    Schema.Schema.Any,
-  ] ? Schema.Union<[A["Success"], B["Success"]]>
-    : A["Success"] extends Schema.Schema.Any ? A["Success"]
-    : B["Success"] extends Schema.Schema.Any ? B["Success"]
-    : never
-  readonly Error: [A["Error"], B["Error"]] extends [
-    Schema.Schema.Any,
-    Schema.Schema.Any,
-  ] ? Schema.Union<[A["Error"], B["Error"]]>
-    : A["Error"] extends Schema.Schema.Any ? A["Error"]
-    : B["Error"] extends Schema.Schema.Any ? B["Error"]
-    : never
-  readonly Headers: [A["Headers"], B["Headers"]] extends [
-    Schema.Schema.Any,
-    Schema.Schema.Any,
-  ] ? Schema.Union<[A["Headers"], B["Headers"]]>
-    : A["Headers"] extends Schema.Schema.Any ? A["Headers"]
-    : B["Headers"] extends Schema.Schema.Any ? B["Headers"]
-    : never
-}
-
-/**
- * Runtime function to merge two RouteSchemas by unionizing schemas with the same key.
- */
-function mergeSchemas<
-  A extends RouteSchemas,
-  B extends RouteSchemas,
->(
-  a: A,
-  b: B,
-): MergeSchemas<A, B> {
-  const result: any = {}
-
-  const keys: Array<keyof RouteSchemas> = [
-    "PathParams",
-    "UrlParams",
-    "Payload",
-    "Success",
-    "Error",
-    "Headers",
-  ]
-
-  for (const key of keys) {
-    if (a[key] && b[key]) {
-      result[key] = Schema.Union(a[key]!, b[key]!)
-    } else if (a[key]) {
-      result[key] = a[key]
-    } else if (b[key]) {
-      result[key] = b[key]
-    }
-  }
-
-  return result
-}
-
 function make<
   Method extends RouteMethod = "*",
   Media extends RouteMedia = "*",
@@ -664,7 +579,7 @@ function makeMediaFunction<
           method,
           media,
           handler: handlerFn(effect as any) as any,
-          schemas: baseSchema as any,
+          schemas: {} as RouteSchemas.Empty,
         }),
       ],
       baseSchema as any,
@@ -724,12 +639,12 @@ function makeMethodModifier<
               M,
               Media,
               H,
-              MergeSchemas<BaseSchemas, RouteSchemas>
+              RouteSchemas
             >
             : T[K]
         },
       ],
-      MergeSchemas<BaseSchemas, InSchemas>
+      BaseSchemas
     >
     // otherwise create new RouteSet
     : RouteSet<
@@ -757,8 +672,6 @@ function makeMethodModifier<
       ? this.schema
       : {} as RouteSchemas.Empty
 
-    const mergedSchema = mergeSchemas(baseSchema, routes.schema)
-
     return makeSet(
       [
         ...baseRoutes,
@@ -766,11 +679,10 @@ function makeMethodModifier<
           return make({
             ...route,
             method,
-            schemas: mergeSchemas(baseSchema, route.schemas) as any,
           })
         }),
       ],
-      mergedSchema as any,
+      baseSchema as any,
     ) as any
   }
 }

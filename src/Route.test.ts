@@ -137,7 +137,7 @@ test.it("schemaPathParams with struct fields types context correctly", () => {
     )
 })
 
-test.it("schemaPayload propagates to all routes", () => {
+test.it("RouteSet schema is independent from Route schemas", () => {
   const PayloadSchema = Schema.Struct({
     name: Schema.String,
     age: Schema.Number,
@@ -156,19 +156,20 @@ test.it("schemaPayload propagates to all routes", () => {
       ),
     )
 
-  type ExpectedSchemas = {
+  type ExpectedSetSchema = {
     readonly Payload: typeof PayloadSchema
   }
 
   type Expected = Route.RouteSet<
     [
-      Route.Route<"GET", "text/plain", any, ExpectedSchemas>,
-      Route.Route<"POST", "text/plain", any, ExpectedSchemas>,
+      Route.Route<"GET", "text/plain", any, Route.RouteSchemas.Empty>,
+      Route.Route<"POST", "text/plain", any, Route.RouteSchemas.Empty>,
     ],
-    ExpectedSchemas
+    ExpectedSetSchema
   >
 
   Function.satisfies<Expected>()(routes)
+  Function.satisfies<ExpectedSetSchema>()(routes.schema)
 })
 
 test.it("context is typed with pathParams when schemaPathParams is provided", () => {
@@ -387,7 +388,7 @@ test.it("all schema methods work together", () => {
   Function.satisfies<Expected>()(routes)
 })
 
-test.it("schemas merge when RouteSet and Route both define same schema", () => {
+test.it("RouteSet and Route schemas are independent", () => {
   const BaseSchema = Schema.Struct({
     id: Schema.String,
   })
@@ -411,16 +412,12 @@ test.it("schemas merge when RouteSet and Route both define same schema", () => {
         "text/plain",
         any,
         {
-          readonly PathParams: Schema.Union<
-            [typeof BaseSchema, typeof ExtendedSchema]
-          >
+          readonly PathParams: typeof ExtendedSchema
         }
       >,
     ],
     {
-      readonly PathParams: Schema.Union<
-        [typeof BaseSchema, typeof ExtendedSchema]
-      >
+      readonly PathParams: typeof BaseSchema
     }
   >
 
@@ -578,7 +575,7 @@ test.it("schema order doesn't matter", () => {
   Function.satisfies<Expected>()(routes2.schema)
 })
 
-test.it("multiple routes in RouteSet each get the schema", () => {
+test.it("RouteSet schema is separate from individual Route schemas", () => {
   const PathSchema = Schema.Struct({
     id: Schema.String,
   })
@@ -589,23 +586,24 @@ test.it("multiple routes in RouteSet each get the schema", () => {
     .html(Effect.succeed("<p>html</p>"))
     .json(Effect.succeed({ data: "json" }))
 
-  type ExpectedSchemas = {
+  type ExpectedSetSchema = {
     readonly PathParams: typeof PathSchema
   }
 
   type Expected = Route.RouteSet<
     [
-      Route.Route<"GET", "text/plain", any, ExpectedSchemas>,
-      Route.Route<"GET", "text/html", any, ExpectedSchemas>,
-      Route.Route<"GET", "application/json", any, ExpectedSchemas>,
+      Route.Route<"GET", "text/plain", any, Route.RouteSchemas.Empty>,
+      Route.Route<"GET", "text/html", any, Route.RouteSchemas.Empty>,
+      Route.Route<"GET", "application/json", any, Route.RouteSchemas.Empty>,
     ],
-    ExpectedSchemas
+    ExpectedSetSchema
   >
 
   Function.satisfies<Expected>()(routes)
+  Function.satisfies<ExpectedSetSchema>()(routes.schema)
 })
 
-test.it("schemas merge correctly with struct fields syntax", () => {
+test.it("Route schemas override struct fields syntax", () => {
   const routes = Route
     .schemaPathParams({ id: Schema.String })
     .get(
@@ -618,15 +616,17 @@ test.it("schemas merge correctly with struct fields syntax", () => {
     .set[0]
     .text(
       (context) => {
-        Function.satisfies<string>()(context.pathParams.id)
         Function.satisfies<string>()(context.pathParams.userId)
+
+        // @ts-expect-error - id is not in this route's schema
+        context.pathParams.id
 
         return Effect.succeed("hello")
       },
     )
 })
 
-test.it("method modifiers preserve and merge schemas", () => {
+test.it("method modifiers preserve Route schemas independently", () => {
   const PathSchema = Schema.Struct({
     id: Schema.String,
   })
@@ -650,16 +650,12 @@ test.it("method modifiers preserve and merge schemas", () => {
         "text/plain",
         any,
         {
-          readonly PathParams: typeof PathSchema
           readonly Payload: typeof PayloadSchema
         }
       >,
     ],
     {
-      readonly PathParams: Schema.Union<
-        [typeof PathSchema, Route.RouteSchemas.Empty]
-      >
-      readonly Payload: typeof PayloadSchema
+      readonly PathParams: typeof PathSchema
     }
   >
 
