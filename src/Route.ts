@@ -775,6 +775,14 @@ function makeValueHandler<ExpectedRaw = string>(
 }
 
 /**
+ * Helper type that ensures RouteSet is non-empty and provides a descriptive error message.
+ */
+type NonEmptyRouteSet<T extends Route.Tuple, InSchemas extends RouteSchemas> =
+  T extends readonly []
+    ? "Error: RouteSet cannot be empty. Add at least one route handler (e.g., .text(), .json(), .html())"
+    : RouteSet<T, InSchemas>
+
+/**
  * Factory function that changes method in RouteSet.
  */
 function makeMethodModifier<
@@ -786,7 +794,7 @@ function makeMethodModifier<
     InSchemas extends RouteSchemas,
   >(
     this: S,
-    routes: T extends readonly [] ? never : RouteSet<T, InSchemas>,
+    routes: NonEmptyRouteSet<T, InSchemas>,
   ): S extends RouteSet<infer B, infer BaseSchemas>
     // append to existing RouteSet
     ? RouteSet<
