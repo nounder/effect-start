@@ -261,20 +261,7 @@ test("handles routes with dots in path segments", () => {
     .toContain("{ literal: \"config.yaml.backup\" }")
 })
 
-test("allows customizing router module identifier", () => {
-  const handles: RouteHandle[] = [
-    parseRoute("route.tsx"),
-  ]
-
-  const code = FileRouterCodegen.generateCode(handles, {
-    routerModuleId: "@my/router",
-  })
-
-  expect(code)
-    .toContain("import type { Router } from \"@my/router\"")
-})
-
-test("uses default module identifier when not specified", () => {
+test("uses default module identifier", () => {
   const handles: RouteHandle[] = [
     parseRoute("route.tsx"),
   ]

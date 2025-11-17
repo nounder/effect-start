@@ -52,10 +52,6 @@ export function validateRouteModules(
   })
 }
 
-export interface GenerateCodeOptions {
-  routerModuleId?: string
-}
-
 /**
  * Converts a segment to RouteModuleSegment format
  */
@@ -81,11 +77,8 @@ function segmentToModuleSegment(segment: FileRouter.Segment): string | null {
 
 export function generateCode(
   handles: FileRouter.OrderedRouteHandles,
-  options: GenerateCodeOptions = {},
 ): string {
-  const {
-    routerModuleId = "effect-start",
-  } = options
+  const routerModuleId = "effect-start"
 
   // Group routes by path to find layers
   const routesByPath = new Map<string, {
@@ -205,7 +198,6 @@ export const modules = ${modulesArray} as const
 export function update(
   routesPath: string,
   manifestPath = "_manifest.ts",
-  options: GenerateCodeOptions = {},
 ): Effect.Effect<void, PlatformError, FileSystem.FileSystem> {
   return Effect.gen(function*() {
     manifestPath = NPath.resolve(routesPath, manifestPath)
@@ -217,7 +209,7 @@ export function update(
     // Validate route modules
     yield* validateRouteModules(routesPath, handles)
 
-    const newCode = generateCode(handles, options)
+    const newCode = generateCode(handles)
 
     // Check if file exists and content differs
     const existingCode = yield* fs
@@ -236,7 +228,6 @@ export function update(
 export function dump(
   routesPath: string,
   manifestPath = "_manifest.ts",
-  options: GenerateCodeOptions = {},
 ): Effect.Effect<void, PlatformError, FileSystem.FileSystem> {
   return Effect.gen(function*() {
     manifestPath = NPath.resolve(routesPath, manifestPath)
@@ -248,7 +239,7 @@ export function dump(
     // Validate route modules
     yield* validateRouteModules(routesPath, handles)
 
-    const code = generateCode(handles, options)
+    const code = generateCode(handles)
 
     yield* Effect.logDebug(`Generating file routes manifest: ${manifestPath}`)
 
