@@ -122,7 +122,7 @@ export const toHttpApp = <E, R>(
       )
     }
 
-    const artifact = bundle.artifacts[path]
+    const artifact = bundle.artifacts.find((a) => a.path === path)
 
     /**
      * Expose artifacts.

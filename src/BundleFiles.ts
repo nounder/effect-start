@@ -32,7 +32,8 @@ export const toFiles = (
 
     const bundleArtifacts = pipe(
       manifest.artifacts,
-      Record.mapEntries((_, k) => [k, context.getArtifact(k)!]),
+      Array.map((artifact) => [artifact.path, context.getArtifact(artifact.path)!] as const),
+      Record.fromEntries,
     )
     const extraArtifacts = {
       "manifest.json": new Blob([JSON.stringify(manifest, undefined, 2)], {
@@ -130,10 +131,10 @@ export const fromFiles = (
         )
       ),
     )
-    const artifactsPairs = Record.toEntries(manifest.artifacts)
+    const artifactPaths = Array.map(manifest.artifacts, (a) => a.path)
     const artifactBlobs = yield* pipe(
-      artifactsPairs,
-      Iterable.map(([k]) => fs.readFile(`${normalizedDir}/${k}`)),
+      artifactPaths,
+      Iterable.map((path) => fs.readFile(`${normalizedDir}/${path}`)),
       Effect.all,
       Effect.catchAll((e) =>
         new BundleError({
@@ -143,13 +144,13 @@ export const fromFiles = (
       ),
       Effect.andThen(Iterable.map((v, i) =>
         new Blob([v.slice(0)], {
-          type: artifactsPairs[i][0],
+          type: manifest.artifacts[i].type,
         })
       )),
     )
     const artifactsRecord = pipe(
       Iterable.zip(
-        Iterable.map(artifactsPairs, (v) => v[0]),
+        artifactPaths,
         artifactBlobs,
       ),
       Record.fromEntries,

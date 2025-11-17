@@ -23,9 +23,9 @@ export const BundleManifestSchema = S.Struct({
     key: S.String,
     value: S.String,
   }),
-  artifacts: S.Record({
-    key: S.String,
-    value: S.Struct({
+  artifacts: S.Array(
+    S.Struct({
+      path: S.String,
       type: S.String,
       size: S.Number,
       hash: pipe(
@@ -52,7 +52,7 @@ export const BundleManifestSchema = S.Struct({
         S.optional,
       ),
     }),
-  }),
+  ),
 })
 
 export type BundleManifest = typeof BundleManifestSchema.Type
@@ -84,7 +84,7 @@ export type BundleContext =
     // TODO: consider removing resolve: way of resolving URL should be
     // the same regardless of underlying bundler since we have access
     // to all artifacts already.
-    resolve: (url: string) => string
+    resolve: (url: string) => string | null
     getArtifact: (path: string) => Blob | null
     events?: PubSub.PubSub<BundleEvent>
   }
