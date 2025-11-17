@@ -782,7 +782,7 @@ function makeMethodModifier<
 >(method: M) {
   return function<
     S extends Self,
-    T extends readonly [Route, ...Route[]],
+    T extends readonly [any, ...any[]],
     InSchemas extends RouteSchemas,
   >(
     this: S,
