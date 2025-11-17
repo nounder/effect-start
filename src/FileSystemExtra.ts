@@ -17,9 +17,10 @@ const SOURCE_FILENAME = /\.(tsx?|jsx?|html?|css|json)$/
  */
 export const watchSource = (
   path?: string,
-  opts?: WatchOptions,
+  opts?: WatchOptions & { filterSourceFiles?: boolean },
 ): Stream.Stream<NFSP.FileChangeInfo<string>, Error.SystemError> => {
   const baseDir = path ?? process.cwd()
+  const filterSourceFiles = opts?.filterSourceFiles ?? true
 
   let stream: Stream.Stream<NFSP.FileChangeInfo<string>, Error.SystemError>
   try {
@@ -43,7 +44,10 @@ export const watchSource = (
       eventType: e.eventType,
       filename: NPath.resolve(baseDir, e.filename!),
     })),
-    Stream.filter((event) => SOURCE_FILENAME.test(event.filename!)),
+    // Optionally filter by source file extensions
+    filterSourceFiles
+      ? Stream.filter((event) => SOURCE_FILENAME.test(event.filename!))
+      : Stream.identity,
     Stream.filter((event) => !(/node_modules/.test(event.filename!))),
     Stream.rechunk(1),
     Stream.throttle({
