@@ -57,6 +57,51 @@ export const watchSource = (
   return changes
 }
 
+/**
+ * Watch a directory for any changes, including directory deletions/additions.
+ * Unlike watchSource, this includes directory events to catch folder deletions.
+ */
+export const watchDirectory = (
+  path?: string,
+  opts?: WatchOptions,
+): Stream.Stream<NFSP.FileChangeInfo<string>, Error.SystemError> => {
+  const baseDir = path ?? process.cwd()
+
+  let stream: Stream.Stream<NFSP.FileChangeInfo<string>, Error.SystemError>
+  try {
+    stream = Stream.fromAsyncIterable(
+      NFSP.watch(baseDir, {
+        persistent: false,
+        recursive: true,
+        ...(opts || {}),
+      }),
+      error => handleWatchError(error, baseDir),
+    )
+  } catch (e) {
+    const err = handleWatchError(e, baseDir)
+
+    stream = Stream.fail(err)
+  }
+
+  const changes = pipe(
+    stream,
+    Stream.map(e => ({
+      eventType: e.eventType,
+      filename: NPath.resolve(baseDir, e.filename!),
+    })),
+    Stream.filter((event) => !(/node_modules/.test(event.filename!))),
+    Stream.rechunk(1),
+    Stream.throttle({
+      units: 1,
+      cost: () => 1,
+      duration: "400 millis",
+      strategy: "enforce",
+    }),
+  )
+
+  return changes
+}
+
 const handleWatchError = (error: any, path: string) =>
   new Error.SystemError({
     module: "FileSystem",
