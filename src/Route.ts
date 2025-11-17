@@ -786,7 +786,7 @@ function makeMethodModifier<
     InSchemas extends RouteSchemas,
   >(
     this: S,
-    routes: RouteSet<T, InSchemas>,
+    routes: T extends readonly [] ? never : RouteSet<T, InSchemas>,
   ): S extends RouteSet<infer B, infer BaseSchemas>
     // append to existing RouteSet
     ? RouteSet<
