@@ -32,6 +32,7 @@ type Self =
    * ```
    */
   | RouteSet.Default
+  | RouteSet<Route.Empty, RouteSchemas>
   /**
    * Called from namespaced import.
    *
@@ -183,7 +184,9 @@ export namespace Route {
     RouteSchemas
   >
 
-  export type Tuple<T = Default> = ReadonlyArray<T>
+  export type Tuple = readonly [Default, ...Default[]]
+
+  export type Empty = readonly []
 
   export type Proto =
     & Pipeable.Pipeable
@@ -226,7 +229,7 @@ type RouteBuilder = {
  * to modify the set or add new routes.
  */
 export type RouteSet<
-  M extends Route.Tuple,
+  M extends ReadonlyArray<Route.Default>,
   Schemas extends RouteSchemas = RouteSchemas.Empty,
 > =
   & Pipeable.Pipeable
@@ -238,7 +241,7 @@ export type RouteSet<
 
 export namespace RouteSet {
   export type Instance<
-    M extends Route.Tuple = Route.Tuple,
+    M extends ReadonlyArray<Route.Default> = Route.Tuple,
     Schemas extends RouteSchemas = RouteSchemas.Empty,
   > = {
     set: M
@@ -641,7 +644,7 @@ function make<
 }
 
 function makeSet<
-  M extends Route.Tuple,
+  M extends ReadonlyArray<Route.Default>,
   Schemas extends RouteSchemas = RouteSchemas.Empty,
 >(
   routes: M,
@@ -744,7 +747,7 @@ function makeMediaFunction<
           handler: handlerFn(effect as any) as any,
           schemas: baseSchema as any,
         }),
-      ],
+      ] as any,
       baseSchema as any,
     ) as any
   }
@@ -786,7 +789,7 @@ function makeMethodModifier<
     InSchemas extends RouteSchemas,
   >(
     this: S,
-    routes: T extends readonly [] ? never : RouteSet<T, InSchemas>,
+    routes: RouteSet<T, InSchemas>,
   ): S extends RouteSet<infer B, infer BaseSchemas>
     // append to existing RouteSet
     ? RouteSet<
@@ -845,7 +848,7 @@ function makeMethodModifier<
             schemas: mergeSchemas(baseSchema, route.schemas) as any,
           })
         }),
-      ],
+      ] as any,
       baseSchema as any,
     ) as any
   }

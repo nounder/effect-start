@@ -684,3 +684,37 @@ test.it("method modifiers require routes with handlers", () => {
       Route.schemaPathParams({ userId: Schema.String }),
     )
 })
+
+test.it("method modifiers preserve proper types when nesting schemas", () => {
+  const PathSchema = Schema.Struct({
+    id: Schema.String,
+  })
+
+  const route = Route
+    .schemaPathParams(PathSchema)
+    .get(
+      Route
+        .schemaPathParams({ userId: Schema.String })
+        .text(Effect.succeed("hello")),
+    )
+
+  type BaseSchemas = {
+    readonly PathParams: typeof PathSchema
+  }
+
+  type MergedPathParams = Schema.Struct<{
+    id: typeof Schema.String
+    userId: typeof Schema.String
+  }>
+
+  type Expected = Route.RouteSet<
+    [
+      Route.Route<"GET", "text/plain", any, {
+        readonly PathParams: MergedPathParams
+      }>,
+    ],
+    BaseSchemas
+  >
+
+  Function.satisfies<Expected>()(route)
+})
