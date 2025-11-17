@@ -126,12 +126,12 @@ export namespace RouteHandler {
 }
 
 export type RouteSchemas = {
-  readonly PathParams?: Schema.Schema.Any
-  readonly UrlParams?: Schema.Schema.Any
+  readonly PathParams?: Schema.Struct<any>
+  readonly UrlParams?: Schema.Struct<any>
   readonly Payload?: Schema.Schema.Any
   readonly Success?: Schema.Schema.Any
   readonly Error?: Schema.Schema.Any
-  readonly Headers?: Schema.Schema.Any
+  readonly Headers?: Schema.Struct<any>
 }
 
 export namespace RouteSchemas {
@@ -286,12 +286,12 @@ export const json = makeMediaFunction(
   makeValueHandler<JsonValue>((raw) => HttpServerResponse.unsafeJson(raw)),
 )
 
-function makeSchemaModifier<
-  K extends keyof RouteSchemas,
+function makeStructSchemaModifier<
+  K extends "PathParams" | "UrlParams" | "Headers",
 >(key: K) {
   return function<
     S extends Self,
-    Fields extends Schema.Struct.Fields | Schema.Schema.Any,
+    Fields extends Schema.Struct.Fields | Schema.Struct<any>,
   >(
     this: S,
     fieldsOrSchema: Fields,
@@ -299,15 +299,17 @@ function makeSchemaModifier<
       Routes,
       & Schemas
       & {
-        [P in K]: Fields extends Schema.Schema.Any ? Fields
-          : Schema.Struct<Fields & {}>
+        [P in K]: Fields extends Schema.Struct<infer F> ? Schema.Struct<F>
+          : Fields extends Schema.Struct.Fields ? Schema.Struct<Fields>
+          : never
       }
     >
     : RouteSet<
       [],
       {
-        [P in K]: Fields extends Schema.Schema.Any ? Fields
-          : Schema.Struct<Fields & {}>
+        [P in K]: Fields extends Schema.Struct<infer F> ? Schema.Struct<F>
+          : Fields extends Schema.Struct.Fields ? Schema.Struct<Fields>
+          : never
       }
     >
   {
@@ -332,12 +334,60 @@ function makeSchemaModifier<
   }
 }
 
-export const schemaPathParams = makeSchemaModifier("PathParams")
-export const schemaUrlParams = makeSchemaModifier("UrlParams")
-export const schemaPayload = makeSchemaModifier("Payload")
-export const schemaSuccess = makeSchemaModifier("Success")
-export const schemaError = makeSchemaModifier("Error")
-export const schemaHeaders = makeSchemaModifier("Headers")
+function makeUnionSchemaModifier<
+  K extends "Payload" | "Success" | "Error",
+>(key: K) {
+  return function<
+    S extends Self,
+    Fields extends Schema.Struct.Fields | Schema.Schema.Any,
+  >(
+    this: S,
+    fieldsOrSchema: Fields,
+  ): S extends RouteSet<infer Routes, infer Schemas> ? RouteSet<
+      Routes,
+      & Schemas
+      & {
+        [P in K]: Fields extends Schema.Schema.Any ? Fields
+          : Fields extends Schema.Struct.Fields ? Schema.Struct<Fields>
+          : never
+      }
+    >
+    : RouteSet<
+      [],
+      {
+        [P in K]: Fields extends Schema.Schema.Any ? Fields
+          : Fields extends Schema.Struct.Fields ? Schema.Struct<Fields>
+          : never
+      }
+    >
+  {
+    const baseRoutes = isRouteSet(this)
+      ? this.set
+      : []
+    const baseSchema = isRouteSet(this)
+      ? this.schema
+      : {} as RouteSchemas.Empty
+
+    const schema = Schema.isSchema(fieldsOrSchema)
+      ? fieldsOrSchema
+      : Schema.Struct(fieldsOrSchema as Schema.Struct.Fields)
+
+    return makeSet(
+      baseRoutes as any,
+      {
+        ...baseSchema,
+        [key]: schema,
+      } as any,
+    ) as any
+  }
+}
+
+export const schemaPathParams = makeStructSchemaModifier("PathParams")
+export const schemaUrlParams = makeStructSchemaModifier("UrlParams")
+export const schemaPayload = makeUnionSchemaModifier("Payload")
+export const schemaSuccess = makeUnionSchemaModifier("Success")
+export const schemaError = makeUnionSchemaModifier("Error")
+export const schemaHeaders = makeStructSchemaModifier("Headers")
 
 const SetProto = {
   [RouteSetTypeId]: RouteSetTypeId,
@@ -421,11 +471,11 @@ export type RouteContext<
     request: HttpServerRequest.HttpServerRequest
     get url(): URL
   }
-  & (Schemas["PathParams"] extends Schema.Schema.Any ? {
+  & (Schemas["PathParams"] extends Schema.Struct<any> ? {
       pathParams: Schema.Schema.Type<Schemas["PathParams"]>
     }
     : {})
-  & (Schemas["UrlParams"] extends Schema.Schema.Any ? {
+  & (Schemas["UrlParams"] extends Schema.Struct<any> ? {
       urlParams: Schema.Schema.Type<Schemas["UrlParams"]>
     }
     : {})
@@ -433,31 +483,39 @@ export type RouteContext<
       payload: Schema.Schema.Type<Schemas["Payload"]>
     }
     : {})
-  & (Schemas["Headers"] extends Schema.Schema.Any ? {
+  & (Schemas["Headers"] extends Schema.Struct<any> ? {
       headers: Schema.Schema.Type<Schemas["Headers"]>
     }
     : {})
 
 /**
- * Merges two RouteSchemas types by unionizing schemas with the same key.
+ * Extracts fields from a Schema.Struct or returns never if not a struct.
+ */
+type ExtractStructFields<S> = S extends Schema.Struct<infer Fields> ? Fields
+  : never
+
+/**
+ * Merges two RouteSchemas types.
+ * For PathParams, UrlParams, and Headers: merges struct fields.
+ * For Payload, Success, and Error: creates Schema.Union.
  */
 type MergeSchemas<
   A extends RouteSchemas,
   B extends RouteSchemas,
 > = {
   readonly PathParams: [A["PathParams"], B["PathParams"]] extends [
-    Schema.Schema.Any,
-    Schema.Schema.Any,
-  ] ? Schema.Union<[A["PathParams"], B["PathParams"]]>
-    : A["PathParams"] extends Schema.Schema.Any ? A["PathParams"]
-    : B["PathParams"] extends Schema.Schema.Any ? B["PathParams"]
+    Schema.Struct<infer AFields>,
+    Schema.Struct<infer BFields>,
+  ] ? Schema.Struct<AFields & BFields>
+    : A["PathParams"] extends Schema.Struct<any> ? A["PathParams"]
+    : B["PathParams"] extends Schema.Struct<any> ? B["PathParams"]
     : never
   readonly UrlParams: [A["UrlParams"], B["UrlParams"]] extends [
-    Schema.Schema.Any,
-    Schema.Schema.Any,
-  ] ? Schema.Union<[A["UrlParams"], B["UrlParams"]]>
-    : A["UrlParams"] extends Schema.Schema.Any ? A["UrlParams"]
-    : B["UrlParams"] extends Schema.Schema.Any ? B["UrlParams"]
+    Schema.Struct<infer AFields>,
+    Schema.Struct<infer BFields>,
+  ] ? Schema.Struct<AFields & BFields>
+    : A["UrlParams"] extends Schema.Struct<any> ? A["UrlParams"]
+    : B["UrlParams"] extends Schema.Struct<any> ? B["UrlParams"]
     : never
   readonly Payload: [A["Payload"], B["Payload"]] extends [
     Schema.Schema.Any,
@@ -481,16 +539,18 @@ type MergeSchemas<
     : B["Error"] extends Schema.Schema.Any ? B["Error"]
     : never
   readonly Headers: [A["Headers"], B["Headers"]] extends [
-    Schema.Schema.Any,
-    Schema.Schema.Any,
-  ] ? Schema.Union<[A["Headers"], B["Headers"]]>
-    : A["Headers"] extends Schema.Schema.Any ? A["Headers"]
-    : B["Headers"] extends Schema.Schema.Any ? B["Headers"]
+    Schema.Struct<infer AFields>,
+    Schema.Struct<infer BFields>,
+  ] ? Schema.Struct<AFields & BFields>
+    : A["Headers"] extends Schema.Struct<any> ? A["Headers"]
+    : B["Headers"] extends Schema.Struct<any> ? B["Headers"]
     : never
 }
 
 /**
- * Runtime function to merge two RouteSchemas by unionizing schemas with the same key.
+ * Runtime function to merge two RouteSchemas.
+ * For PathParams, UrlParams, and Headers: merges struct fields.
+ * For Payload, Success, and Error: creates Schema.Union.
  */
 function mergeSchemas<
   A extends RouteSchemas,
@@ -501,16 +561,35 @@ function mergeSchemas<
 ): MergeSchemas<A, B> {
   const result: any = {}
 
-  const keys: Array<keyof RouteSchemas> = [
+  const structKeys: Array<keyof RouteSchemas> = [
     "PathParams",
     "UrlParams",
-    "Payload",
-    "Success",
-    "Error",
     "Headers",
   ]
 
-  for (const key of keys) {
+  const unionKeys: Array<keyof RouteSchemas> = [
+    "Payload",
+    "Success",
+    "Error",
+  ]
+
+  for (const key of structKeys) {
+    if (a[key] && b[key]) {
+      const aSchema = a[key]! as Schema.Struct<any>
+      const bSchema = b[key]! as Schema.Struct<any>
+      const mergedFields = {
+        ...aSchema.fields,
+        ...bSchema.fields,
+      }
+      result[key] = Schema.Struct(mergedFields)
+    } else if (a[key]) {
+      result[key] = a[key]
+    } else if (b[key]) {
+      result[key] = b[key]
+    }
+  }
+
+  for (const key of unionKeys) {
     if (a[key] && b[key]) {
       result[key] = Schema.Union(a[key]!, b[key]!)
     } else if (a[key]) {
@@ -544,7 +623,6 @@ function make<
   const route = Object.assign(
     Object.create(RouteProto),
     {
-      // @ts-expect-error: assigned below
       set: [],
       // @ts-expect-error: assigned below
       schemas: input.schemas,
@@ -729,7 +807,7 @@ function makeMethodModifier<
             : T[K]
         },
       ],
-      MergeSchemas<BaseSchemas, InSchemas>
+      BaseSchemas
     >
     // otherwise create new RouteSet
     : RouteSet<
@@ -757,8 +835,6 @@ function makeMethodModifier<
       ? this.schema
       : {} as RouteSchemas.Empty
 
-    const mergedSchema = mergeSchemas(baseSchema, routes.schema)
-
     return makeSet(
       [
         ...baseRoutes,
@@ -770,7 +846,7 @@ function makeMethodModifier<
           })
         }),
       ],
-      mergedSchema as any,
+      baseSchema as any,
     ) as any
   }
 }
