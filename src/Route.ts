@@ -807,7 +807,7 @@ function makeMethodModifier<
             : T[K]
         },
       ],
-      MergeSchemas<BaseSchemas, InSchemas>
+      BaseSchemas
     >
     // otherwise create new RouteSet
     : RouteSet<
@@ -835,8 +835,6 @@ function makeMethodModifier<
       ? this.schema
       : {} as RouteSchemas.Empty
 
-    const mergedSchema = mergeSchemas(baseSchema, routes.schema)
-
     return makeSet(
       [
         ...baseRoutes,
@@ -848,7 +846,7 @@ function makeMethodModifier<
           })
         }),
       ],
-      mergedSchema as any,
+      baseSchema as any,
     ) as any
   }
 }

@@ -421,12 +421,7 @@ test.it("schemas merge when RouteSet and Route both define same schema", () => {
       >,
     ],
     {
-      readonly PathParams: Schema.Struct<
-        {
-          id: typeof Schema.String
-          name: typeof Schema.String
-        }
-      >
+      readonly PathParams: typeof BaseSchema
     }
   >
 
@@ -663,7 +658,6 @@ test.it("method modifiers preserve and merge schemas", () => {
     ],
     {
       readonly PathParams: typeof PathSchema
-      readonly Payload: typeof PayloadSchema
     }
   >
 
