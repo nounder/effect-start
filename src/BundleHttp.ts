@@ -1,19 +1,15 @@
-import {
-  Headers,
-  type HttpApp,
-  HttpMiddleware,
-  HttpServerRequest,
-  HttpServerResponse,
-} from "@effect/platform"
+import * as Headers from "@effect/platform/Headers"
+import type * as HttpApp from "@effect/platform/HttpApp"
+import * as HttpMiddleware from "@effect/platform/HttpMiddleware"
+import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
+import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
 import { RouteNotFound } from "@effect/platform/HttpServerError"
-import {
-  Context,
-  Effect,
-  flow,
-  Option,
-  Scope,
-  Stream,
-} from "effect"
+import * as Context from "effect/Context"
+import * as Effect from "effect/Effect"
+import * as Function from "effect/Function"
+import * as Option from "effect/Option"
+import * as Scope from "effect/Scope"
+import * as Stream from "effect/Stream"
 import * as NPath from "node:path"
 import * as NUrl from "node:url"
 import * as Bundle from "./Bundle.ts"
@@ -256,7 +252,7 @@ export function withEntrypoints() {
 export function withBundle(
   opts?: { path?: string },
 ) {
-  return flow(
+  return Function.flow(
     withAssets(opts),
     withEntrypoints(),
   )

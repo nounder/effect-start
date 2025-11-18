@@ -1,14 +1,11 @@
-import {
-  expect,
-  test,
-} from "bun:test"
+import * as t from "bun:test"
 import { effectFn } from "../testing.ts"
 import * as BunBundle from "./BunBundle.ts"
 import * as BunImportTrackerPlugin from "./BunImportTrackerPlugin.ts"
 
 const effect = effectFn()
 
-test("imports", () =>
+t.it("imports", () =>
   effect(function*() {
     const importTracker = BunImportTrackerPlugin.make()
     yield* BunBundle.build({
@@ -25,7 +22,8 @@ test("imports", () =>
       e0,
     ] = importTracker.state.entries()
 
-    expect(
+    t
+      .expect(
       e0,
     )
       .toEqual([

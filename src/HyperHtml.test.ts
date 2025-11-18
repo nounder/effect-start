@@ -1,11 +1,8 @@
-import {
-  expect,
-  test,
-} from "bun:test"
+import * as t from "bun:test"
 import * as HyperHtml from "./HyperHtml.ts"
 import * as HyperNode from "./HyperNode.ts"
 
-test("boolean true attributes render without value (React-like)", () => {
+t.it("boolean true attributes render without value (React-like)", () => {
   const node = HyperNode.make("div", {
     hidden: true,
     disabled: true,
@@ -14,11 +11,12 @@ test("boolean true attributes render without value (React-like)", () => {
 
   const html = HyperHtml.renderToString(node)
 
-  expect(html)
+  t
+    .expect(html)
     .toBe("<div hidden disabled data-active></div>")
 })
 
-test("boolean false attributes are omitted", () => {
+t.it("boolean false attributes are omitted", () => {
   const node = HyperNode.make("div", {
     hidden: false,
     disabled: false,
@@ -27,11 +25,12 @@ test("boolean false attributes are omitted", () => {
 
   const html = HyperHtml.renderToString(node)
 
-  expect(html)
+  t
+    .expect(html)
     .toBe("<div></div>")
 })
 
-test("string attributes render with values", () => {
+t.it("string attributes render with values", () => {
   const node = HyperNode.make("div", {
     id: "test",
     class: "my-class",
@@ -40,11 +39,12 @@ test("string attributes render with values", () => {
 
   const html = HyperHtml.renderToString(node)
 
-  expect(html)
+  t
+    .expect(html)
     .toBe("<div id=\"test\" class=\"my-class\" data-value=\"hello\"></div>")
 })
 
-test("number attributes render with values", () => {
+t.it("number attributes render with values", () => {
   const node = HyperNode.make("input", {
     type: "number",
     min: 0,
@@ -54,11 +54,12 @@ test("number attributes render with values", () => {
 
   const html = HyperHtml.renderToString(node)
 
-  expect(html)
+  t
+    .expect(html)
     .toBe("<input type=\"number\" min=\"0\" max=\"100\" value=\"50\">")
 })
 
-test("null and undefined attributes are omitted", () => {
+t.it("null and undefined attributes are omitted", () => {
   const node = HyperNode.make("div", {
     id: null,
     class: undefined,
@@ -67,11 +68,12 @@ test("null and undefined attributes are omitted", () => {
 
   const html = HyperHtml.renderToString(node)
 
-  expect(html)
+  t
+    .expect(html)
     .toBe("<div data-test=\"value\"></div>")
 })
 
-test("mixed boolean and string attributes", () => {
+t.it("mixed boolean and string attributes", () => {
   const node = HyperNode.make("input", {
     type: "checkbox",
     checked: true,
@@ -82,6 +84,7 @@ test("mixed boolean and string attributes", () => {
 
   const html = HyperHtml.renderToString(node)
 
-  expect(html)
+  t
+    .expect(html)
     .toBe("<input type=\"checkbox\" checked name=\"test\" value=\"on\">")
 })

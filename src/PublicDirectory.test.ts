@@ -1,9 +1,6 @@
-import { HttpServerResponse } from "@effect/platform"
-import {
-  expect,
-  test,
-} from "bun:test"
-import { Effect } from "effect"
+import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
+import * as t from "bun:test"
+import * as Effect from "effect/Effect"
 import { MemoryFileSystem } from "effect-memfs"
 import {
   effectFn,
@@ -22,7 +19,7 @@ const TestFiles = {
 
 const effect = effectFn()
 
-test("serves index.html for root path", () => {
+t.it("serves index.html for root path", () => {
   effect(function*() {
     const app = PublicDirectory.make({ directory: "/test-public" })
     const Client = TestHttpClient.make(app)
@@ -31,25 +28,28 @@ test("serves index.html for root path", () => {
       Effect.provide(MemoryFileSystem.layerWith(TestFiles)),
     )
 
-    expect(
+    t
+      .expect(
       res.status,
     )
       .toBe(200)
 
     const body = yield* res.text
-    expect(
+    t
+      .expect(
       body,
     )
       .toBe("<html><body>Hello World</body></html>")
 
-    expect(
+    t
+      .expect(
       res.headers["content-type"],
     )
       .toBe("text/html")
   })
 })
 
-test("serves CSS files with correct content type", () => {
+t.it("serves CSS files with correct content type", () => {
   effect(function*() {
     const app = PublicDirectory.make({ directory: "/test-public" })
     const Client = TestHttpClient.make(app)
@@ -58,25 +58,28 @@ test("serves CSS files with correct content type", () => {
       Effect.provide(MemoryFileSystem.layerWith(TestFiles)),
     )
 
-    expect(
+    t
+      .expect(
       res.status,
     )
       .toBe(200)
 
     const body = yield* res.text
-    expect(
+    t
+      .expect(
       body,
     )
       .toBe("body { color: red; }")
 
-    expect(
+    t
+      .expect(
       res.headers["content-type"],
     )
       .toBe("text/css")
   })
 })
 
-test("serves JavaScript files with correct content type", () => {
+t.it("serves JavaScript files with correct content type", () => {
   effect(function*() {
     const app = PublicDirectory.make({ directory: "/test-public" })
     const Client = TestHttpClient.make(app)
@@ -85,25 +88,28 @@ test("serves JavaScript files with correct content type", () => {
       Effect.provide(MemoryFileSystem.layerWith(TestFiles)),
     )
 
-    expect(
+    t
+      .expect(
       res.status,
     )
       .toBe(200)
 
     const body = yield* res.text
-    expect(
+    t
+      .expect(
       body,
     )
       .toBe("console.log('hello');")
 
-    expect(
+    t
+      .expect(
       res.headers["content-type"],
     )
       .toBe("application/javascript")
   })
 })
 
-test("serves JSON files with correct content type", () => {
+t.it("serves JSON files with correct content type", () => {
   effect(function*() {
     const app = PublicDirectory.make({ directory: "/test-public" })
     const Client = TestHttpClient.make(app)
@@ -112,25 +118,28 @@ test("serves JSON files with correct content type", () => {
       Effect.provide(MemoryFileSystem.layerWith(TestFiles)),
     )
 
-    expect(
+    t
+      .expect(
       res.status,
     )
       .toBe(200)
 
     const body = yield* res.text
-    expect(
+    t
+      .expect(
       body,
     )
       .toBe("{\"message\": \"test\"}")
 
-    expect(
+    t
+      .expect(
       res.headers["content-type"],
     )
       .toBe("application/json")
   })
 })
 
-test("serves nested files", () => {
+t.it("serves nested files", () => {
   effect(function*() {
     const app = PublicDirectory.make({ directory: "/test-public" })
     const Client = TestHttpClient.make(app)
@@ -139,25 +148,28 @@ test("serves nested files", () => {
       Effect.provide(MemoryFileSystem.layerWith(TestFiles)),
     )
 
-    expect(
+    t
+      .expect(
       res.status,
     )
       .toBe(200)
 
     const body = yield* res.text
-    expect(
+    t
+      .expect(
       body,
     )
       .toBe("nested content")
 
-    expect(
+    t
+      .expect(
       res.headers["content-type"],
     )
       .toBe("text/plain")
   })
 })
 
-test("returns 404 for non-existent files", () => {
+t.it("returns 404 for non-existent files", () => {
   effect(function*() {
     const app = PublicDirectory.make({ directory: "/test-public" })
     const Client = TestHttpClient.make(app)
@@ -170,14 +182,15 @@ test("returns 404 for non-existent files", () => {
       ),
     )
 
-    expect(
+    t
+      .expect(
       res.status,
     )
       .toBe(404)
   })
 })
 
-test("prevents directory traversal attacks", () => {
+t.it("prevents directory traversal attacks", () => {
   effect(function*() {
     const app = PublicDirectory.make({ directory: "/test-public" })
     const Client = TestHttpClient.make(app)
@@ -190,14 +203,15 @@ test("prevents directory traversal attacks", () => {
       ),
     )
 
-    expect(
+    t
+      .expect(
       res.status,
     )
       .toBe(404)
   })
 })
 
-test("works with custom prefix", () => {
+t.it("works with custom prefix", () => {
   effect(function*() {
     const app = PublicDirectory.make({
       directory: "/test-public",
@@ -209,20 +223,22 @@ test("works with custom prefix", () => {
       Effect.provide(MemoryFileSystem.layerWith(TestFiles)),
     )
 
-    expect(
+    t
+      .expect(
       res.status,
     )
       .toBe(200)
 
     const body = yield* res.text
-    expect(
+    t
+      .expect(
       body,
     )
       .toBe("body { color: red; }")
   })
 })
 
-test("ignores requests without prefix when prefix is set", () => {
+t.it("ignores requests without prefix when prefix is set", () => {
   effect(function*() {
     const app = PublicDirectory.make({
       directory: "/test-public",
@@ -238,14 +254,15 @@ test("ignores requests without prefix when prefix is set", () => {
       ),
     )
 
-    expect(
+    t
+      .expect(
       res.status,
     )
       .toBe(404)
   })
 })
 
-test("sets cache control headers", () => {
+t.it("sets cache control headers", () => {
   effect(function*() {
     const app = PublicDirectory.make({ directory: "/test-public" })
     const Client = TestHttpClient.make(app)
@@ -254,7 +271,8 @@ test("sets cache control headers", () => {
       Effect.provide(MemoryFileSystem.layerWith(TestFiles)),
     )
 
-    expect(
+    t
+      .expect(
       res.headers["cache-control"],
     )
       .toBe("public, max-age=3600")

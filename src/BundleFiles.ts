@@ -1,12 +1,10 @@
-import { FileSystem } from "@effect/platform"
-import {
-  Array,
-  Effect,
-  Iterable,
-  pipe,
-  Record,
-  Schema as S,
-} from "effect"
+import * as FileSystem from "@effect/platform/FileSystem"
+import * as Array from "effect/Array"
+import * as Effect from "effect/Effect"
+import * as Function from "effect/Function"
+import * as Iterable from "effect/Iterable"
+import * as Record from "effect/Record"
+import * as S from "effect/Schema"
 import {
   type BundleContext,
   BundleError,
@@ -30,7 +28,7 @@ export const toFiles = (
 
     const normalizedOutDir = outDir.replace(/\/$/, "")
 
-    const bundleArtifacts = pipe(
+    const bundleArtifacts = Function.pipe(
       manifest.artifacts,
       Array.map((artifact) =>
         [artifact.path, context.getArtifact(artifact.path)!] as const
@@ -78,11 +76,11 @@ export const toFiles = (
 
     // write all artifacts to files
     yield* Effect.all(
-      pipe(
+      Function.pipe(
         allArtifacts,
         Record.toEntries,
         Array.map(([p, b]) =>
-          pipe(
+          Function.pipe(
             Effect.tryPromise({
               try: () => b.arrayBuffer(),
               catch: (e) =>
@@ -120,7 +118,7 @@ export const fromFiles = (
   return Effect.gen(function*() {
     const fs = yield* FileSystem.FileSystem
     const normalizedDir = directory.replace(/\/$/, "")
-    const manifest = yield* pipe(
+    const manifest = yield* Function.pipe(
       fs.readFileString(`${normalizedDir}/manifest.json`),
       Effect.andThen((v) => JSON.parse(v) as unknown),
       Effect.andThen(S.decodeUnknownSync(BundleManifestSchema)),
@@ -134,7 +132,7 @@ export const fromFiles = (
       ),
     )
     const artifactPaths = Array.map(manifest.artifacts, (a) => a.path)
-    const artifactBlobs = yield* pipe(
+    const artifactBlobs = yield* Function.pipe(
       artifactPaths,
       Iterable.map((path) => fs.readFile(`${normalizedDir}/${path}`)),
       Effect.all,
@@ -150,7 +148,7 @@ export const fromFiles = (
         })
       )),
     )
-    const artifactsRecord = pipe(
+    const artifactsRecord = Function.pipe(
       Iterable.zip(
         artifactPaths,
         artifactBlobs,

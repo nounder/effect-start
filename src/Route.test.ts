@@ -1,10 +1,10 @@
-import * as test from "bun:test"
+import * as t from "bun:test"
 import * as Effect from "effect/Effect"
 import * as Function from "effect/Function"
 import * as Schema from "effect/Schema"
 import * as Route from "./Route.ts"
 
-test.it("types default routes", () => {
+t.it("types default routes", () => {
   const implicit = Route
     .text(
       Effect.succeed("hello"),
@@ -33,7 +33,7 @@ test.it("types default routes", () => {
   Function.satisfies<Expected>()(explicit)
 })
 
-test.it("types GET & POST routes", () => {
+t.it("types GET & POST routes", () => {
   const implicit = Route
     .text(
       Effect.succeed("hello"),
@@ -77,7 +77,7 @@ test.it("types GET & POST routes", () => {
   Function.satisfies<Expected>()(explicit)
 })
 
-test.it("schemaPathParams adds schema to RouteSet", () => {
+t.it("schemaPathParams adds schema to RouteSet", () => {
   const IdSchema = Schema.Struct({
     id: Schema.String,
   })
@@ -100,7 +100,7 @@ test.it("schemaPathParams adds schema to RouteSet", () => {
   Function.satisfies<Expected>()(routes)
 })
 
-test.it("schemaPathParams accepts struct fields directly", () => {
+t.it("schemaPathParams accepts struct fields directly", () => {
   const routes = Route
     .schemaPathParams({
       id: Schema.String,
@@ -123,7 +123,7 @@ test.it("schemaPathParams accepts struct fields directly", () => {
   Function.satisfies<Expected>()(routes)
 })
 
-test.it("schemaPathParams with struct fields types context correctly", () => {
+t.it("schemaPathParams with struct fields types context correctly", () => {
   Route
     .schemaPathParams({
       id: Schema.String,
@@ -137,7 +137,7 @@ test.it("schemaPathParams with struct fields types context correctly", () => {
     )
 })
 
-test.it("schemaPayload propagates to all routes", () => {
+t.it("schemaPayload propagates to all routes", () => {
   const PayloadSchema = Schema.Struct({
     name: Schema.String,
     age: Schema.Number,
@@ -171,7 +171,7 @@ test.it("schemaPayload propagates to all routes", () => {
   Function.satisfies<Expected>()(routes)
 })
 
-test.it("context is typed with pathParams when schemaPathParams is provided", () => {
+t.it("context is typed with pathParams when schemaPathParams is provided", () => {
   const IdSchema = Schema.Struct({
     id: Schema.String,
   })
@@ -195,7 +195,7 @@ test.it("context is typed with pathParams when schemaPathParams is provided", ()
     )
 })
 
-test.it("context is typed with urlParams when schemaUrlParams is provided", () => {
+t.it("context is typed with urlParams when schemaUrlParams is provided", () => {
   const QuerySchema = Schema.Struct({
     page: Schema.NumberFromString,
     limit: Schema.NumberFromString,
@@ -220,7 +220,7 @@ test.it("context is typed with urlParams when schemaUrlParams is provided", () =
     )
 })
 
-test.it("context is typed with payload when schemaPayload is provided", () => {
+t.it("context is typed with payload when schemaPayload is provided", () => {
   const PayloadSchema = Schema.Struct({
     name: Schema.String,
     age: Schema.Number,
@@ -245,7 +245,7 @@ test.it("context is typed with payload when schemaPayload is provided", () => {
     )
 })
 
-test.it("context is typed with headers when schemaHeaders is provided", () => {
+t.it("context is typed with headers when schemaHeaders is provided", () => {
   const HeadersSchema = Schema.Struct({
     authorization: Schema.String,
   })
@@ -267,7 +267,7 @@ test.it("context is typed with headers when schemaHeaders is provided", () => {
     )
 })
 
-test.it("context is typed with multiple schemas", () => {
+t.it("context is typed with multiple schemas", () => {
   const IdSchema = Schema.Struct({
     id: Schema.String,
   })
@@ -305,7 +305,7 @@ test.it("context is typed with multiple schemas", () => {
     )
 })
 
-test.it("schemaSuccess and schemaError are stored in RouteSet", () => {
+t.it("schemaSuccess and schemaError are stored in RouteSet", () => {
   const SuccessSchema = Schema.Struct({
     ok: Schema.Boolean,
   })
@@ -334,7 +334,7 @@ test.it("schemaSuccess and schemaError are stored in RouteSet", () => {
   Function.satisfies<Expected>()(routes)
 })
 
-test.it("all schema methods work together", () => {
+t.it("all schema methods work together", () => {
   const PathSchema = Schema.Struct({
     id: Schema.String,
   })
@@ -387,7 +387,7 @@ test.it("all schema methods work together", () => {
   Function.satisfies<Expected>()(routes)
 })
 
-test.it("schemas merge when RouteSet and Route both define same schema", () => {
+t.it("schemas merge when RouteSet and Route both define same schema", () => {
   const BaseSchema = Schema.Struct({
     id: Schema.String,
   })
@@ -428,7 +428,7 @@ test.it("schemas merge when RouteSet and Route both define same schema", () => {
   Function.satisfies<Expected>()(routes)
 })
 
-test.it("context has only request and url when no schemas provided", () => {
+t.it("context has only request and url when no schemas provided", () => {
   Route
     .text(
       (context) => {
@@ -448,7 +448,7 @@ test.it("context has only request and url when no schemas provided", () => {
     )
 })
 
-test.it("schemas work with all media types", () => {
+t.it("schemas work with all media types", () => {
   const PathSchema = Schema.Struct({
     id: Schema.String,
   })
@@ -474,7 +474,7 @@ test.it("schemas work with all media types", () => {
     )
 })
 
-test.it("schemas work with generator functions", () => {
+t.it("schemas work with generator functions", () => {
   const IdSchema = Schema.Struct({
     id: Schema.String,
   })
@@ -490,7 +490,7 @@ test.it("schemas work with generator functions", () => {
     )
 })
 
-test.it("schema property is correctly set on RouteSet", () => {
+t.it("schema property is correctly set on RouteSet", () => {
   const PathSchema = Schema.Struct({
     id: Schema.String,
   })
@@ -506,7 +506,7 @@ test.it("schema property is correctly set on RouteSet", () => {
   Function.satisfies<Expected>()(routes.schema)
 })
 
-test.it("schemas don't leak between independent route chains", () => {
+t.it("schemas don't leak between independent route chains", () => {
   const Schema1 = Schema.Struct({
     id: Schema.String,
   })
@@ -551,7 +551,7 @@ test.it("schemas don't leak between independent route chains", () => {
   Function.satisfies<Expected2>()(route2)
 })
 
-test.it("schema order doesn't matter", () => {
+t.it("schema order doesn't matter", () => {
   const PathSchema = Schema.Struct({
     id: Schema.String,
   })
@@ -579,7 +579,7 @@ test.it("schema order doesn't matter", () => {
   Function.satisfies<Expected>()(routes2.schema)
 })
 
-test.it("multiple routes in RouteSet each get the schema", () => {
+t.it("multiple routes in RouteSet each get the schema", () => {
   const PathSchema = Schema.Struct({
     id: Schema.String,
   })
@@ -606,7 +606,7 @@ test.it("multiple routes in RouteSet each get the schema", () => {
   Function.satisfies<Expected>()(routes)
 })
 
-test.it("schemas merge correctly with struct fields syntax", () => {
+t.it("schemas merge correctly with struct fields syntax", () => {
   const routes = Route
     .schemaPathParams({ id: Schema.String })
     .get(
@@ -627,7 +627,7 @@ test.it("schemas merge correctly with struct fields syntax", () => {
     )
 })
 
-test.it("method modifiers preserve and merge schemas", () => {
+t.it("method modifiers preserve and merge schemas", () => {
   const PathSchema = Schema.Struct({
     id: Schema.String,
   })
@@ -664,7 +664,7 @@ test.it("method modifiers preserve and merge schemas", () => {
   Function.satisfies<Expected>()(routes)
 })
 
-test.it("method modifiers require routes with handlers", () => {
+t.it("method modifiers require routes with handlers", () => {
   const PathSchema = Schema.Struct({
     id: Schema.String,
   })
@@ -685,7 +685,7 @@ test.it("method modifiers require routes with handlers", () => {
     )
 })
 
-test.it("method modifiers preserve proper types when nesting schemas", () => {
+t.it("method modifiers preserve proper types when nesting schemas", () => {
   const PathSchema = Schema.Struct({
     id: Schema.String,
   })

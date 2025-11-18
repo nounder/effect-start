@@ -3,10 +3,7 @@ import * as FileSystem from "@effect/platform/FileSystem"
 import * as HttpApp from "@effect/platform/HttpApp"
 import * as HttpRouter from "@effect/platform/HttpRouter"
 import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
-import {
-  expect,
-  test,
-} from "bun:test"
+import * as t from "bun:test"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as FileHttpRouter from "./FileHttpRouter.ts"
@@ -44,7 +41,7 @@ const routerLayer = Router.layerPromise(async () => SampleRouteManifest)
 
 const effect = effectFn(routerLayer)
 
-test("HttpRouter Requirement and Error types infers", () =>
+t.it("HttpRouter Requirement and Error types infers", () =>
   effect(function*() {
     const router = yield* FileHttpRouter.make(SampleRoutes)
 
@@ -56,7 +53,7 @@ test("HttpRouter Requirement and Error types infers", () =>
       : false = true
   }))
 
-test("HTTP methods", () =>
+t.it("HTTP methods", () =>
   effect(function*() {
     const allMethodsRoute: Router.ServerRoute = {
       path: "/",
@@ -76,43 +73,43 @@ test("HTTP methods", () =>
     const router = yield* FileHttpRouter.make([allMethodsRoute])
     const routesList = Array.from(router.routes)
 
-    expect(routesList)
+    t.expect(routesList)
       .toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({ path: "/", method: "GET" }),
-          expect.objectContaining({ path: "/", method: "POST" }),
-          expect.objectContaining({ path: "/", method: "PUT" }),
-          expect.objectContaining({ path: "/", method: "PATCH" }),
-          expect.objectContaining({ path: "/", method: "DELETE" }),
-          expect.objectContaining({ path: "/", method: "OPTIONS" }),
-          expect.objectContaining({ path: "/", method: "HEAD" }),
+        t.expect.arrayContaining([
+          t.expect.objectContaining({ path: "/", method: "GET" }),
+          t.expect.objectContaining({ path: "/", method: "POST" }),
+          t.expect.objectContaining({ path: "/", method: "PUT" }),
+          t.expect.objectContaining({ path: "/", method: "PATCH" }),
+          t.expect.objectContaining({ path: "/", method: "DELETE" }),
+          t.expect.objectContaining({ path: "/", method: "OPTIONS" }),
+          t.expect.objectContaining({ path: "/", method: "HEAD" }),
         ]),
       )
   }))
 
-test("router handles requests correctly", () =>
+t.it("router handles requests correctly", () =>
   effect(function*() {
     const routerContext = yield* Router.Router
     const client = TestHttpClient.make(routerContext.httpRouter)
 
     const getUsersResponse = yield* client.get("/users")
 
-    expect(getUsersResponse.status)
+    t.expect(getUsersResponse.status)
       .toBe(200)
 
-    expect(yield* getUsersResponse.text)
+    t.expect(yield* getUsersResponse.text)
       .toBe("Users list")
 
     const postUsersResponse = yield* client.post("/users")
 
-    expect(postUsersResponse.status)
+    t.expect(postUsersResponse.status)
       .toBe(200)
 
-    expect(yield* postUsersResponse.text)
+    t.expect(yield* postUsersResponse.text)
       .toBe("User created")
   }))
 
-test("middleware falls back to original app on 404", () =>
+t.it("middleware falls back to original app on 404", () =>
   effect(function*() {
     const middleware = FileHttpRouter.middleware()
     const fallbackApp = Effect.succeed(HttpServerResponse.text("fallback"))
@@ -122,22 +119,22 @@ test("middleware falls back to original app on 404", () =>
 
     const existingRouteResponse = yield* client.get("/users")
 
-    expect(existingRouteResponse.status)
+    t.expect(existingRouteResponse.status)
       .toBe(200)
 
-    expect(yield* existingRouteResponse.text)
+    t.expect(yield* existingRouteResponse.text)
       .toBe("Users list")
 
     const notFoundResponse = yield* client.get("/nonexistent")
 
-    expect(notFoundResponse.status)
+    t.expect(notFoundResponse.status)
       .toBe(200)
 
-    expect(yield* notFoundResponse.text)
+    t.expect(yield* notFoundResponse.text)
       .toBe("fallback")
   }))
 
-test("handles routes with special characters (tilde and hyphen)", () =>
+t.it("handles routes with special characters (tilde and hyphen)", () =>
   effect(function*() {
     const specialCharRoutes: Router.ServerRoute[] = [
       {
@@ -168,25 +165,25 @@ test("handles routes with special characters (tilde and hyphen)", () =>
 
     const apiResponse = yield* client.get("/api-v1")
 
-    expect(apiResponse.status)
+    t.expect(apiResponse.status)
       .toBe(200)
 
-    expect(yield* apiResponse.text)
+    t.expect(yield* apiResponse.text)
       .toBe("API v1")
 
     const backupResponse = yield* client.get("/files~backup")
 
-    expect(backupResponse.status)
+    t.expect(backupResponse.status)
       .toBe(200)
 
-    expect(yield* backupResponse.text)
+    t.expect(yield* backupResponse.text)
       .toBe("Backup files")
 
     const testResponse = yield* client.post("/test-route~temp")
 
-    expect(testResponse.status)
+    t.expect(testResponse.status)
       .toBe(200)
 
-    expect(yield* testResponse.text)
+    t.expect(yield* testResponse.text)
       .toBe("Test route")
   }))

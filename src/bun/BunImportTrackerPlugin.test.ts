@@ -1,7 +1,4 @@
-import {
-  expect,
-  test,
-} from "bun:test"
+import * as t from "bun:test"
 import * as BunImportTrackerPlugin from "./BunImportTrackerPlugin.ts"
 import * as BunVirtualFilesPlugin from "./BunVirtualFilesPlugin.ts"
 
@@ -30,7 +27,7 @@ export const message = "Hello, World!"
 `,
 }
 
-test("virtual import", async () => {
+t.it("virtual import", async () => {
   const trackerPlugin = BunImportTrackerPlugin.make({
     baseDir: Bun.fileURLToPath(import.meta.resolve("../..")),
   })
@@ -45,7 +42,8 @@ test("virtual import", async () => {
     ],
   })
 
-  expect(
+  t
+    .expect(
     [...trackerPlugin.state.entries()],
   )
     .toEqual([

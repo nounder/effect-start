@@ -1,13 +1,11 @@
-import { FileSystem } from "@effect/platform"
+import * as FileSystem from "@effect/platform/FileSystem"
 import type { PlatformError } from "@effect/platform/Error"
-import {
-  Array,
-  Effect,
-  Layer,
-  pipe,
-  Record,
-  Stream,
-} from "effect"
+import * as Array from "effect/Array"
+import * as Effect from "effect/Effect"
+import * as Function from "effect/Function"
+import * as Layer from "effect/Layer"
+import * as Record from "effect/Record"
+import * as Stream from "effect/Stream"
 import * as NPath from "node:path"
 import * as NUrl from "node:url"
 import * as FileRouterCodegen from "./FileRouterCodegen.ts"
@@ -258,7 +256,7 @@ export function layer(options: {
     Effect.gen(function*() {
       yield* FileRouterCodegen.update(routesPath, manifestFilename)
 
-      const stream = pipe(
+      const stream = Function.pipe(
         FileSystemExtra.watchSource({
           path: routesPath,
           filter: (e) => !e.path.includes("node_modules"),
@@ -266,7 +264,7 @@ export function layer(options: {
         Stream.onError((e) => Effect.logError(e)),
       )
 
-      yield* pipe(
+      yield* Function.pipe(
         stream,
         // filter out edits to gen file
         Stream.filter(e => e.path !== resolvedManifestPath),

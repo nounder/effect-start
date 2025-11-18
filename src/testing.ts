@@ -1,12 +1,9 @@
-import {
-  Array,
-  Effect,
-  identity,
-  Layer,
-  Logger,
-  pipe,
-  Scope,
-} from "effect"
+import * as Array from "effect/Array"
+import * as Effect from "effect/Effect"
+import * as Function from "effect/Function"
+import * as Layer from "effect/Layer"
+import * as Logger from "effect/Logger"
+import * as Scope from "effect/Scope"
 import type { YieldWrap } from "effect/Utils"
 
 /**
@@ -21,7 +18,7 @@ export const effectFn = <RL>(layer?: Layer.Layer<RL, any>) =>
 >(
   f: () => Generator<Eff, AEff, never>,
 ): Promise<void> =>
-  pipe(
+  Function.pipe(
     Effect.gen(f),
     Effect.scoped,
     Effect.provide(Logger.pretty),
@@ -48,7 +45,7 @@ const clearStackTraces = (err: any | Error) => {
   const newErr = new Error(err.message)
   const stack: string = err.stack ?? ""
 
-  newErr.stack = pipe(
+  newErr.stack = Function.pipe(
     stack.split("\n"),
     Array.takeWhile(s => !ExternalStackTraceLineRegexp.test(s)),
     Array.join("\n"),
