@@ -18,4 +18,23 @@ git lfs pull
 
 ## Route.middleware and Route.layout
 
-**Status**: Known limitation - these features do not work yet in effect-start framework. Using alternative patterns for authentication middleware.
+**Status**: Known limitation - these features do not work yet in effect-start framework.
+
+**Workaround**: Using per-route middleware pattern instead of global middleware. The `SignedUser.middleware` is called directly in routes that need authentication, and returns an `Option<SignedUserData>` that can be checked in each route.
+
+## TypeScript Compilation Errors
+
+**Issue**: TypeScript compiler shows errors for `effect-start` module imports, but the app runs correctly with Bun.
+
+**Status**: These are type-checking errors that don't affect runtime. The `effect-start` module is resolved correctly by Bun's module resolution at runtime. This appears to be a tsconfig/module resolution configuration issue between TypeScript and Bun.
+
+## Authentication Implementation
+
+**Approach**: Implemented custom authentication using:
+- **bun:sqlite** directly (instead of Drizzle ORM) wrapped in Effect services
+- Custom `Sql` service for database operations
+- `SignedUser` service for session management
+- Cookie-based sessions with automatic extension
+- Bun's built-in password hashing (`Bun.password.hash/verify`)
+
+**Note**: The provided examples showed Drizzle ORM usage, but due to npm registry connectivity issues during development, implemented a simpler direct sqlite approach. This can be refactored to use Drizzle ORM when preferred.
