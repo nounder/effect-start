@@ -13,7 +13,7 @@ import * as NPath from "node:path"
 const SOURCE_FILENAME = /\.(tsx?|jsx?|html?|css|json)$/
 
 export type WatchEvent = {
-  _tag: string
+  _tag: "rename" | "change"
   path: string
 }
 
@@ -46,15 +46,14 @@ export const watchSource = (
   const baseDir = opts?.path ?? process.cwd()
   const customFilter = opts?.filter
 
-  const { path: _, filter: __, ...watchOpts } = opts ?? {}
-
   let stream: Stream.Stream<NFSP.FileChangeInfo<string>, Error.SystemError>
   try {
     stream = Stream.fromAsyncIterable(
       NFSP.watch(baseDir, {
-        persistent: false,
-        recursive: true,
-        ...watchOpts,
+        persistent: opts?.persistent ?? false,
+        recursive: opts?.recursive ?? true,
+        encoding: opts?.encoding,
+        signal: opts?.signal,
       }),
       error => handleWatchError(error, baseDir),
     )
@@ -72,11 +71,11 @@ export const watchSource = (
         return NFSP
           .stat(resolvedPath)
           .then(stat => ({
-            _tag: e.eventType,
+            _tag: e.eventType as "rename" | "change",
             path: stat.isDirectory() ? `${resolvedPath}/` : resolvedPath,
           }))
           .catch(() => ({
-            _tag: e.eventType,
+            _tag: e.eventType as "rename" | "change",
             path: resolvedPath,
           }))
       })
