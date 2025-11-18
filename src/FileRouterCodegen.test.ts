@@ -8,7 +8,7 @@ import * as FileRouterCodegen from "./FileRouterCodegen.ts"
 import * as Route from "./Route.ts"
 import { effectFn } from "./testing.ts"
 
-t.test("generates code for routes only", () => {
+t.it("generates code for routes only", () => {
   const handles: RouteHandle[] = [
     parseRoute("route.tsx"),
     parseRoute("about/route.tsx"),
@@ -42,7 +42,7 @@ export const modules = [
     .toBe(expected)
 })
 
-t.test("generates code with layers", () => {
+t.it("generates code with layers", () => {
   const handles: RouteHandle[] = [
     parseRoute("layer.tsx"),
     parseRoute("route.tsx"),
@@ -83,7 +83,7 @@ export const modules = [
     .toBe(expected)
 })
 
-t.test("generates code with nested layers", () => {
+t.it("generates code with nested layers", () => {
   const handles: RouteHandle[] = [
     parseRoute("layer.tsx"),
     parseRoute("dashboard/layer.tsx"),
@@ -130,7 +130,7 @@ export const modules = [
     .toBe(expected)
 })
 
-t.test("only includes group layers for routes in that group", () => {
+t.it("only includes group layers for routes in that group", () => {
   const handles: RouteHandle[] = [
     parseRoute("layer.tsx"),
     parseRoute("(admin)/layer.ts"),
@@ -169,7 +169,7 @@ t.test("only includes group layers for routes in that group", () => {
     .toContain(expectedMovies)
 })
 
-t.test("handles dynamic routes with params", () => {
+t.it("handles dynamic routes with params", () => {
   const handles: RouteHandle[] = [
     parseRoute("users/route.tsx"),
     parseRoute("users/[userId]/route.tsx"),
@@ -192,7 +192,7 @@ t.test("handles dynamic routes with params", () => {
     .toContain("{ param: \"commentId\" }")
 })
 
-t.test("handles rest parameters", () => {
+t.it("handles rest parameters", () => {
   const handles: RouteHandle[] = [
     parseRoute("docs/[[...slug]]/route.tsx"),
     parseRoute("api/[...path]/route.tsx"),
@@ -210,7 +210,7 @@ t.test("handles rest parameters", () => {
     .toContain("{ rest: \"path\" }")
 })
 
-t.test("handles groups in path", () => {
+t.it("handles groups in path", () => {
   const handles: RouteHandle[] = [
     parseRoute("(admin)/users/route.tsx"),
     parseRoute("(admin)/layer.tsx"),
@@ -226,7 +226,7 @@ t.test("handles groups in path", () => {
     .toContain("layers: [\n      () => import(\"./(admin)/layer.tsx\"),\n    ]")
 })
 
-t.test("generates correct variable names for root routes", () => {
+t.it("generates correct variable names for root routes", () => {
   const handles: RouteHandle[] = [
     parseRoute("route.tsx"),
   ]
@@ -239,7 +239,7 @@ t.test("generates correct variable names for root routes", () => {
     .toContain("segments: []")
 })
 
-t.test("handles routes with dots in path segments", () => {
+t.it("handles routes with dots in path segments", () => {
   const handles: RouteHandle[] = [
     parseRoute("events.json/route.ts"),
     parseRoute("config.yaml.backup/route.ts"),
@@ -257,7 +257,7 @@ t.test("handles routes with dots in path segments", () => {
     .toContain("{ literal: \"config.yaml.backup\" }")
 })
 
-t.test("uses default module identifier", () => {
+t.it("uses default module identifier", () => {
   const handles: RouteHandle[] = [
     parseRoute("route.tsx"),
   ]
@@ -268,7 +268,7 @@ t.test("uses default module identifier", () => {
     .toContain("import type { Router } from \"effect-start\"")
 })
 
-t.test("generates empty modules array when no handles provided", () => {
+t.it("generates empty modules array when no handles provided", () => {
   const handles: RouteHandle[] = []
 
   const code = FileRouterCodegen.generateCode(handles)
@@ -277,7 +277,7 @@ t.test("generates empty modules array when no handles provided", () => {
     .toContain("export const modules = [] as const")
 })
 
-t.test("only includes routes in modules, not layers", () => {
+t.it("only includes routes in modules, not layers", () => {
   const handles: RouteHandle[] = [
     parseRoute("layer.tsx"),
     parseRoute("users/layer.tsx"),
@@ -289,7 +289,7 @@ t.test("only includes routes in modules, not layers", () => {
     .toContain("export const modules = [] as const")
 })
 
-t.test("complex nested routes with multiple layers", () => {
+t.it("complex nested routes with multiple layers", () => {
   const handles: RouteHandle[] = [
     parseRoute("layer.tsx"),
     parseRoute("(auth)/layer.tsx"),
@@ -320,7 +320,7 @@ t.test("complex nested routes with multiple layers", () => {
     .toContain("() => import(\"./dashboard/layer.tsx\")")
 })
 
-t.test("handles routes with hyphens and underscores in path segments", () => {
+t.it("handles routes with hyphens and underscores in path segments", () => {
   const handles: RouteHandle[] = [
     parseRoute("api-v1/route.ts"),
     parseRoute("my_resource/route.ts"),
@@ -338,7 +338,7 @@ t.test("handles routes with hyphens and underscores in path segments", () => {
     .toContain("{ literal: \"my_resource\" }")
 })
 
-t.test("validateRouteModule returns true for valid modules", () => {
+t.it("validateRouteModule returns true for valid modules", () => {
   const validRoute = Route.text(Effect.succeed("Hello"))
 
   t.expect(
@@ -361,7 +361,7 @@ t.test("validateRouteModule returns true for valid modules", () => {
     .toBe(true)
 })
 
-t.test("validateRouteModule returns false for invalid modules", () => {
+t.it("validateRouteModule returns false for invalid modules", () => {
   t.expect(FileRouterCodegen.validateRouteModule({}))
     .toBe(false)
 
@@ -393,7 +393,7 @@ t.test("validateRouteModule returns false for invalid modules", () => {
     .toBe(false)
 })
 
-t.test("mixed params and rest in same route", () => {
+t.it("mixed params and rest in same route", () => {
   const handles: RouteHandle[] = [
     parseRoute("users/[userId]/files/[...path]/route.tsx"),
   ]

@@ -1,12 +1,12 @@
 import * as t from "bun:test"
 import * as FileRouter from "./FileRouter.ts"
 
-t.test("empty path as null", () => {
+t.it("empty path as null", () => {
   t.expect(FileRouter.segmentPath("")).toEqual([])
   t.expect(FileRouter.segmentPath("/")).toEqual([])
 })
 
-t.test("literal segments", () => {
+t.it("literal segments", () => {
   t.expect(FileRouter.segmentPath("users")).toEqual([{ literal: "users" }])
   t.expect(FileRouter.segmentPath("/users")).toEqual([{ literal: "users" }])
   t.expect(FileRouter.segmentPath("users/")).toEqual([{ literal: "users" }])
@@ -17,7 +17,7 @@ t.test("literal segments", () => {
   t.expect(() => FileRouter.segmentPath("path with spaces")).toThrow()
 })
 
-t.test("dynamic parameters", () => {
+t.it("dynamic parameters", () => {
   t.expect(FileRouter.segmentPath("[userId]")).toEqual([{ param: "userId" }])
   t.expect(FileRouter.segmentPath("/users/[userId]")).toEqual([
     { literal: "users" },
@@ -32,7 +32,7 @@ t.test("dynamic parameters", () => {
     ])
 })
 
-t.test("rest parameters", () => {
+t.it("rest parameters", () => {
   t.expect(FileRouter.segmentPath("[[...rest]]")).toEqual([
     { rest: "rest", optional: true },
   ])
@@ -47,7 +47,7 @@ t.test("rest parameters", () => {
   ])
 })
 
-t.test("groups", () => {
+t.it("groups", () => {
   t.expect(FileRouter.segmentPath("(admin)")).toEqual([{ group: "admin" }])
   t.expect(FileRouter.segmentPath("/(admin)/users")).toEqual([
     { group: "admin" },
@@ -60,7 +60,7 @@ t.test("groups", () => {
   ])
 })
 
-t.test("route handles", () => {
+t.it("route handles", () => {
   t.expect(FileRouter.segmentPath("route.ts")).toEqual([{ handle: "route" }])
   t.expect(FileRouter.segmentPath("/api/route.js")).toEqual([
     { literal: "api" },
@@ -69,7 +69,7 @@ t.test("route handles", () => {
   t.expect(FileRouter.segmentPath("route.tsx")).toEqual([{ handle: "route" }])
 })
 
-t.test("layer handles", () => {
+t.it("layer handles", () => {
   t.expect(FileRouter.segmentPath("layer.tsx")).toEqual([{ handle: "layer" }])
   t.expect(FileRouter.segmentPath("layer.jsx")).toEqual([{ handle: "layer" }])
   t.expect(FileRouter.segmentPath("layer.js")).toEqual([{ handle: "layer" }])
@@ -79,7 +79,7 @@ t.test("layer handles", () => {
   ])
 })
 
-t.test("complex combinations", () => {
+t.it("complex combinations", () => {
   t.expect(FileRouter.segmentPath("/users/[userId]/posts/route.tsx")).toEqual([
     { literal: "users" },
     { param: "userId" },
@@ -99,12 +99,12 @@ t.test("complex combinations", () => {
   ])
 })
 
-t.test("invalid paths", () => {
+t.it("invalid paths", () => {
   t.expect(() => FileRouter.segmentPath("$...")).toThrow()
   t.expect(() => FileRouter.segmentPath("invalid%char")).toThrow()
 })
 
-t.test("param and rest types", () => {
+t.it("param and rest types", () => {
   t.expect(FileRouter.segmentPath("[a]")).toEqual([{ param: "a" }])
   t.expect(FileRouter.segmentPath("[...rest]")).toEqual([{ rest: "rest" }])
   t.expect(FileRouter.segmentPath("[[...rest]]")).toEqual([
@@ -112,14 +112,14 @@ t.test("param and rest types", () => {
   ])
 })
 
-t.test("extractRoute - users/route.ts", () => {
+t.it("extractRoute - users/route.ts", () => {
   t.expect(FileRouter.segmentPath("users/route.ts")).toEqual([
     { literal: "users" },
     { handle: "route" },
   ])
 })
 
-t.test("segments with extensions", () => {
+t.it("segments with extensions", () => {
   t.expect(FileRouter.segmentPath("events.json/route.ts")).toEqual([
     { literal: "events.json" },
     { handle: "route" },

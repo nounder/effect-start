@@ -41,7 +41,7 @@ const routerLayer = Router.layerPromise(async () => SampleRouteManifest)
 
 const effect = effectFn(routerLayer)
 
-t.test("HttpRouter Requirement and Error types infers", () =>
+t.it("HttpRouter Requirement and Error types infers", () =>
   effect(function*() {
     const router = yield* FileHttpRouter.make(SampleRoutes)
 
@@ -53,7 +53,7 @@ t.test("HttpRouter Requirement and Error types infers", () =>
       : false = true
   }))
 
-t.test("HTTP methods", () =>
+t.it("HTTP methods", () =>
   effect(function*() {
     const allMethodsRoute: Router.ServerRoute = {
       path: "/",
@@ -87,7 +87,7 @@ t.test("HTTP methods", () =>
       )
   }))
 
-t.test("router handles requests correctly", () =>
+t.it("router handles requests correctly", () =>
   effect(function*() {
     const routerContext = yield* Router.Router
     const client = TestHttpClient.make(routerContext.httpRouter)
@@ -109,7 +109,7 @@ t.test("router handles requests correctly", () =>
       .toBe("User created")
   }))
 
-t.test("middleware falls back to original app on 404", () =>
+t.it("middleware falls back to original app on 404", () =>
   effect(function*() {
     const middleware = FileHttpRouter.middleware()
     const fallbackApp = Effect.succeed(HttpServerResponse.text("fallback"))
@@ -134,7 +134,7 @@ t.test("middleware falls back to original app on 404", () =>
       .toBe("fallback")
   }))
 
-t.test("handles routes with special characters (tilde and hyphen)", () =>
+t.it("handles routes with special characters (tilde and hyphen)", () =>
   effect(function*() {
     const specialCharRoutes: Router.ServerRoute[] = [
       {

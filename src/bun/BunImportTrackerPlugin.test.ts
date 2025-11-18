@@ -27,7 +27,7 @@ export const message = "Hello, World!"
 `,
 }
 
-t.test("virtual import", async () => {
+t.it("virtual import", async () => {
   const trackerPlugin = BunImportTrackerPlugin.make({
     baseDir: Bun.fileURLToPath(import.meta.resolve("../..")),
   })

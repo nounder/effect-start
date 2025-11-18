@@ -4,7 +4,7 @@ import * as HyperHtml from "./HyperHtml.ts"
 import * as HyperNode from "./HyperNode.ts"
 import { jsx } from "./jsx-runtime.ts"
 
-t.test("data-signals object serialization", () => {
+t.it("data-signals object serialization", () => {
   const node = HyperNode.make("div", {
     "data-signals": { foo: 1, bar: { baz: "hello" } } as any,
   })
@@ -18,7 +18,7 @@ t.test("data-signals object serialization", () => {
     )
 })
 
-t.test("data-signals string passthrough", () => {
+t.it("data-signals string passthrough", () => {
   const node = HyperNode.make("div", {
     "data-signals": "$mySignal",
   })
@@ -30,7 +30,7 @@ t.test("data-signals string passthrough", () => {
     .toBe("<div data-signals=\"$mySignal\"></div>")
 })
 
-t.test("data-signals-* object serialization", () => {
+t.it("data-signals-* object serialization", () => {
   const node = HyperNode.make("div", {
     "data-signals-user": { name: "John", age: 30 } as any,
   })
@@ -44,7 +44,7 @@ t.test("data-signals-* object serialization", () => {
     )
 })
 
-t.test("non-data attributes unchanged", () => {
+t.it("non-data attributes unchanged", () => {
   const node = HyperNode.make("div", {
     id: "test",
     class: "my-class",
@@ -68,7 +68,7 @@ t.test("non-data attributes unchanged", () => {
     .toContain("data-signals=\"{&quot;count&quot;:0}\"")
 })
 
-t.test("null and undefined values ignored", () => {
+t.it("null and undefined values ignored", () => {
   const node = HyperNode.make("div", {
     "data-signals": null,
     "data-other": undefined,
@@ -81,7 +81,7 @@ t.test("null and undefined values ignored", () => {
     .toBe("<div></div>")
 })
 
-t.test("complex nested objects serialization", () => {
+t.it("complex nested objects serialization", () => {
   const complexObject = {
     user: { name: "John Doe", preferences: { theme: "dark" } },
     items: [1, 2, 3],
@@ -101,7 +101,7 @@ t.test("complex nested objects serialization", () => {
     .toContain("John Doe")
 })
 
-t.test("non-signals data attributes serialized", () => {
+t.it("non-signals data attributes serialized", () => {
   const node = HyperNode.make("div", {
     "data-class": { hidden: true, visible: false } as any,
     "data-style": { color: "red", display: "none" } as any,
@@ -129,7 +129,7 @@ t.test("non-signals data attributes serialized", () => {
     .toContain("data-text=\"$count\"")
 })
 
-t.test("data-attr object serialization", () => {
+t.it("data-attr object serialization", () => {
   const node = HyperNode.make("div", {
     "data-attr": { disabled: true, tabindex: 0 } as any,
   })
@@ -143,7 +143,7 @@ t.test("data-attr object serialization", () => {
     )
 })
 
-t.test("boolean attributes converted to strings", () => {
+t.it("boolean attributes converted to strings", () => {
   const node = HyperNode.make("div", {
     "data-ignore": false as any,
     "data-ignore-morph": true as any,
@@ -164,7 +164,7 @@ t.test("boolean attributes converted to strings", () => {
     .toContain("data-ignore-morph=")
 })
 
-t.test("data-ignore attributes only present when true", () => {
+t.it("data-ignore attributes only present when true", () => {
   const nodeTrue = HyperNode.make("div", {
     "data-ignore": true as any,
   })
@@ -189,7 +189,7 @@ t.test("data-ignore attributes only present when true", () => {
     .toContain("data-ignore")
 })
 
-t.test("dynamic attributes with suffixes", () => {
+t.it("dynamic attributes with suffixes", () => {
   const node = HyperNode.make("div", {
     "data-class-active": "hidden" as any,
     "data-attr-tabindex": "5" as any,
@@ -209,7 +209,7 @@ t.test("dynamic attributes with suffixes", () => {
     .toContain("data-style-opacity=\"0.5\"")
 })
 
-t.test("JSX with data-signals object", () => {
+t.it("JSX with data-signals object", () => {
   const node = jsx("div", {
     "data-signals": { isOpen: false, count: 42 } as any,
     children: "content",
@@ -228,7 +228,7 @@ t.test("JSX with data-signals object", () => {
     .toContain("[object Object]")
 })
 
-t.test("JSX component returning element with data-signals", () => {
+t.it("JSX component returning element with data-signals", () => {
   function TestComponent() {
     return jsx("div", {
       "data-signals": { isOpen: false } as any,
@@ -251,7 +251,7 @@ t.test("JSX component returning element with data-signals", () => {
     .toContain("[object Object]")
 })
 
-t.test("debug hook execution", () => {
+t.it("debug hook execution", () => {
   const node = jsx("div", {
     "data-signals": { isOpen: false, count: 42 } as any,
     children: "content",

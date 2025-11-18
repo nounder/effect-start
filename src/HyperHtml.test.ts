@@ -2,7 +2,7 @@ import * as t from "bun:test"
 import * as HyperHtml from "./HyperHtml.ts"
 import * as HyperNode from "./HyperNode.ts"
 
-t.test("boolean true attributes render without value (React-like)", () => {
+t.it("boolean true attributes render without value (React-like)", () => {
   const node = HyperNode.make("div", {
     hidden: true,
     disabled: true,
@@ -16,7 +16,7 @@ t.test("boolean true attributes render without value (React-like)", () => {
     .toBe("<div hidden disabled data-active></div>")
 })
 
-t.test("boolean false attributes are omitted", () => {
+t.it("boolean false attributes are omitted", () => {
   const node = HyperNode.make("div", {
     hidden: false,
     disabled: false,
@@ -30,7 +30,7 @@ t.test("boolean false attributes are omitted", () => {
     .toBe("<div></div>")
 })
 
-t.test("string attributes render with values", () => {
+t.it("string attributes render with values", () => {
   const node = HyperNode.make("div", {
     id: "test",
     class: "my-class",
@@ -44,7 +44,7 @@ t.test("string attributes render with values", () => {
     .toBe("<div id=\"test\" class=\"my-class\" data-value=\"hello\"></div>")
 })
 
-t.test("number attributes render with values", () => {
+t.it("number attributes render with values", () => {
   const node = HyperNode.make("input", {
     type: "number",
     min: 0,
@@ -59,7 +59,7 @@ t.test("number attributes render with values", () => {
     .toBe("<input type=\"number\" min=\"0\" max=\"100\" value=\"50\">")
 })
 
-t.test("null and undefined attributes are omitted", () => {
+t.it("null and undefined attributes are omitted", () => {
   const node = HyperNode.make("div", {
     id: null,
     class: undefined,
@@ -73,7 +73,7 @@ t.test("null and undefined attributes are omitted", () => {
     .toBe("<div data-test=\"value\"></div>")
 })
 
-t.test("mixed boolean and string attributes", () => {
+t.it("mixed boolean and string attributes", () => {
   const node = HyperNode.make("input", {
     type: "checkbox",
     checked: true,

@@ -19,7 +19,7 @@ const TestFiles = {
 
 const effect = effectFn()
 
-t.test("serves index.html for root path", () => {
+t.it("serves index.html for root path", () => {
   effect(function*() {
     const app = PublicDirectory.make({ directory: "/test-public" })
     const Client = TestHttpClient.make(app)
@@ -49,7 +49,7 @@ t.test("serves index.html for root path", () => {
   })
 })
 
-t.test("serves CSS files with correct content type", () => {
+t.it("serves CSS files with correct content type", () => {
   effect(function*() {
     const app = PublicDirectory.make({ directory: "/test-public" })
     const Client = TestHttpClient.make(app)
@@ -79,7 +79,7 @@ t.test("serves CSS files with correct content type", () => {
   })
 })
 
-t.test("serves JavaScript files with correct content type", () => {
+t.it("serves JavaScript files with correct content type", () => {
   effect(function*() {
     const app = PublicDirectory.make({ directory: "/test-public" })
     const Client = TestHttpClient.make(app)
@@ -109,7 +109,7 @@ t.test("serves JavaScript files with correct content type", () => {
   })
 })
 
-t.test("serves JSON files with correct content type", () => {
+t.it("serves JSON files with correct content type", () => {
   effect(function*() {
     const app = PublicDirectory.make({ directory: "/test-public" })
     const Client = TestHttpClient.make(app)
@@ -139,7 +139,7 @@ t.test("serves JSON files with correct content type", () => {
   })
 })
 
-t.test("serves nested files", () => {
+t.it("serves nested files", () => {
   effect(function*() {
     const app = PublicDirectory.make({ directory: "/test-public" })
     const Client = TestHttpClient.make(app)
@@ -169,7 +169,7 @@ t.test("serves nested files", () => {
   })
 })
 
-t.test("returns 404 for non-existent files", () => {
+t.it("returns 404 for non-existent files", () => {
   effect(function*() {
     const app = PublicDirectory.make({ directory: "/test-public" })
     const Client = TestHttpClient.make(app)
@@ -190,7 +190,7 @@ t.test("returns 404 for non-existent files", () => {
   })
 })
 
-t.test("prevents directory traversal attacks", () => {
+t.it("prevents directory traversal attacks", () => {
   effect(function*() {
     const app = PublicDirectory.make({ directory: "/test-public" })
     const Client = TestHttpClient.make(app)
@@ -211,7 +211,7 @@ t.test("prevents directory traversal attacks", () => {
   })
 })
 
-t.test("works with custom prefix", () => {
+t.it("works with custom prefix", () => {
   effect(function*() {
     const app = PublicDirectory.make({
       directory: "/test-public",
@@ -238,7 +238,7 @@ t.test("works with custom prefix", () => {
   })
 })
 
-t.test("ignores requests without prefix when prefix is set", () => {
+t.it("ignores requests without prefix when prefix is set", () => {
   effect(function*() {
     const app = PublicDirectory.make({
       directory: "/test-public",
@@ -262,7 +262,7 @@ t.test("ignores requests without prefix when prefix is set", () => {
   })
 })
 
-t.test("sets cache control headers", () => {
+t.it("sets cache control headers", () => {
   effect(function*() {
     const app = PublicDirectory.make({ directory: "/test-public" })
     const Client = TestHttpClient.make(app)

@@ -1,7 +1,7 @@
 import * as t from "bun:test"
 import * as FileRouter from "./FileRouter.ts"
 
-t.test("tree with root only", () => {
+t.it("tree with root only", () => {
   const handles = [
     "route.tsx",
     "layer.tsx",
@@ -22,7 +22,7 @@ t.test("tree with root only", () => {
   })
 })
 
-t.test("tree without root", () => {
+t.it("tree without root", () => {
   const handles = []
     .map(FileRouter.parseRoute)
   const tree = FileRouter.treeFromRouteHandles(handles)
@@ -33,7 +33,7 @@ t.test("tree without root", () => {
   })
 })
 
-t.test("deep tree", () => {
+t.it("deep tree", () => {
   const handles = [
     "users/route.tsx",
     "users/layer.tsx",
@@ -76,7 +76,7 @@ t.test("deep tree", () => {
   })
 })
 
-t.test("throws on overlapping routes from groups", () => {
+t.it("throws on overlapping routes from groups", () => {
   t.expect(() => {
     const handles = [
       "(admin)/users/route.tsx",
@@ -91,7 +91,7 @@ t.test("throws on overlapping routes from groups", () => {
     .toThrow("Conflicting routes detected at path /users")
 })
 
-t.test("throws on overlapping routes with same path", () => {
+t.it("throws on overlapping routes with same path", () => {
   t.expect(() => {
     const handles = [
       "about/route.tsx",
@@ -106,7 +106,7 @@ t.test("throws on overlapping routes with same path", () => {
     .toThrow("Conflicting routes detected at path /about")
 })
 
-t.test("allows route and layer at same path", () => {
+t.it("allows route and layer at same path", () => {
   t.expect(() => {
     const handles = [
       "users/route.tsx",

@@ -13,7 +13,7 @@ import { effectFn } from "../src/testing.ts"
 
 const effect = effectFn()
 
-t.test("Single app mounted on path", () =>
+t.it("Single app mounted on path", () =>
   effect(function*() {
     const app1 = HttpRouter.empty.pipe(
       HttpRouter.get("/hello", HttpServerResponse.text("Hello from app1")),
@@ -35,7 +35,7 @@ t.test("Single app mounted on path", () =>
       .toBe("Hello from app1")
   }))
 
-t.test("Multiple apps mounted on same path chain together", () =>
+t.it("Multiple apps mounted on same path chain together", () =>
   effect(function*() {
     const app1 = HttpRouter.empty.pipe(
       HttpRouter.get("/hello", HttpServerResponse.text("Hello from app1")),
@@ -73,7 +73,7 @@ t.test("Multiple apps mounted on same path chain together", () =>
       .toBe("World from app2")
   }))
 
-t.test("First app has no matching route - second app should be called", () =>
+t.it("First app has no matching route - second app should be called", () =>
   effect(function*() {
     const app1 = HttpRouter.empty.pipe(
       HttpRouter.get("/hello", HttpServerResponse.text("Hello from app1")),
@@ -100,7 +100,7 @@ t.test("First app has no matching route - second app should be called", () =>
       .toBe("Found in app2")
   }))
 
-t.test("First app has no matching route - second app should be called", () =>
+t.it("First app has no matching route - second app should be called", () =>
   effect(function*() {
     const app1 = HttpRouter.empty.pipe(
       HttpRouter.get("/specific", HttpServerResponse.text("Specific route")),
@@ -127,7 +127,7 @@ t.test("First app has no matching route - second app should be called", () =>
       .toBe("Different route")
   }))
 
-t.test("Multiple mounts with different methods", () =>
+t.it("Multiple mounts with different methods", () =>
   effect(function*() {
     const app1 = HttpRouter.empty.pipe(
       HttpRouter.get("/data", HttpServerResponse.text("GET data")),
@@ -165,7 +165,7 @@ t.test("Multiple mounts with different methods", () =>
       .toBe("POST data")
   }))
 
-t.test("Route chaining: RouteNotFound error chains to next router (root mount)", () =>
+t.it("Route chaining: RouteNotFound error chains to next router (root mount)", () =>
   effect(function*() {
     const subApp1 = HttpRouter.empty.pipe(
       HttpRouter.get(
@@ -198,7 +198,7 @@ t.test("Route chaining: RouteNotFound error chains to next router (root mount)",
       .toBe("Page from subApp2")
   }))
 
-t.test("Route chaining: explicit 404 response does not chain to next router (root mount)", () =>
+t.it("Route chaining: explicit 404 response does not chain to next router (root mount)", () =>
   effect(function*() {
     const subApp1 = HttpRouter.empty.pipe(
       HttpRouter.get("/admin/page", HttpServerResponse.empty({ status: 404 })),
@@ -228,7 +228,7 @@ t.test("Route chaining: explicit 404 response does not chain to next router (roo
       .toBe("")
   }))
 
-t.test("Route conflicts: direct handlers win when defined before root mount", () =>
+t.it("Route conflicts: direct handlers win when defined before root mount", () =>
   effect(function*() {
     const subApp = HttpRouter.empty.pipe(
       HttpRouter.get(
@@ -286,7 +286,7 @@ t.test("Route conflicts: direct handlers win when defined before root mount", ()
       .toBe("Dashboard from subApp")
   }))
 
-t.test("Route conflicts: root mount wins when defined before direct handlers", () =>
+t.it("Route conflicts: root mount wins when defined before direct handlers", () =>
   effect(function*() {
     const subApp = HttpRouter.empty.pipe(
       HttpRouter.get(
@@ -344,7 +344,7 @@ t.test("Route conflicts: root mount wins when defined before direct handlers", (
       .toBe("Dashboard from subApp")
   }))
 
-t.test("Route conflicts: mountApp does not chain with direct handlers defined before", () =>
+t.it("Route conflicts: mountApp does not chain with direct handlers defined before", () =>
   effect(function*() {
     const subApp = HttpRouter.empty.pipe(
       HttpRouter.get(
@@ -394,7 +394,7 @@ t.test("Route conflicts: mountApp does not chain with direct handlers defined be
       .toBe("Dashboard from subApp")
   }))
 
-t.test("Route conflicts: mountApp does not chain with direct handlers defined after", () =>
+t.it("Route conflicts: mountApp does not chain with direct handlers defined after", () =>
   effect(function*() {
     const subApp = HttpRouter.empty.pipe(
       HttpRouter.get(
@@ -448,7 +448,7 @@ t.test("Route conflicts: mountApp does not chain with direct handlers defined af
       .toBe("Dashboard from subApp")
   }))
 
-t.test("Wildcard routes: single asterisk wildcard handler", () =>
+t.it("Wildcard routes: single asterisk wildcard handler", () =>
   effect(function*() {
     const router = HttpRouter.empty.pipe(
       HttpRouter.get("*", HttpServerResponse.text("Wildcard handler")),
@@ -467,7 +467,7 @@ t.test("Wildcard routes: single asterisk wildcard handler", () =>
       .toBe("Wildcard handler")
   }))
 
-t.test("Wildcard routes: wildcard defined before literal route", () =>
+t.it("Wildcard routes: wildcard defined before literal route", () =>
   effect(function*() {
     const router = HttpRouter.empty.pipe(
       HttpRouter.get("*", HttpServerResponse.text("Wildcard handler")),
@@ -497,7 +497,7 @@ t.test("Wildcard routes: wildcard defined before literal route", () =>
       .toBe("Literal handler")
   }))
 
-t.test("Wildcard routes: literal route defined before wildcard", () =>
+t.it("Wildcard routes: literal route defined before wildcard", () =>
   effect(function*() {
     const router = HttpRouter.empty.pipe(
       HttpRouter.get("/specific", HttpServerResponse.text("Literal handler")),

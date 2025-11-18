@@ -5,7 +5,7 @@ import * as BunImportTrackerPlugin from "./BunImportTrackerPlugin.ts"
 
 const effect = effectFn()
 
-t.test("imports", () =>
+t.it("imports", () =>
   effect(function*() {
     const importTracker = BunImportTrackerPlugin.make()
     yield* BunBundle.build({

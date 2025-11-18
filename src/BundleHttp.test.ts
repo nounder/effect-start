@@ -19,7 +19,7 @@ const effect = effectFn(
   ),
 )
 
-t.test("entrypoint with specific uri", () =>
+t.it("entrypoint with specific uri", () =>
   effect(function*() {
     const App = HttpRouter.empty.pipe(
       HttpRouter.get(
@@ -42,7 +42,7 @@ t.test("entrypoint with specific uri", () =>
       .toStartWith("<!DOCTYPE html>")
   }))
 
-t.test("entrypoint without uri parameter", () =>
+t.it("entrypoint without uri parameter", () =>
   effect(function*() {
     const App = HttpRouter.empty.pipe(
       HttpRouter.get(
@@ -113,7 +113,7 @@ t.test("entrypoint without uri parameter", () =>
       .toBe(404)
   }))
 
-t.test("withEntrypoints middleware", () =>
+t.it("withEntrypoints middleware", () =>
   effect(function*() {
     const fallbackApp = Effect.succeed(
       HttpServerResponse.text("Fallback", { status: 404 }),
