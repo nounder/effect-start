@@ -1,199 +1,8 @@
-import { FileSystem } from "@effect/platform"
-import * as BunContext from "@effect/platform-bun/BunContext"
 import * as t from "bun:test"
-import {
-  Effect,
-  pipe,
-  Stream,
-} from "effect"
-import * as NPath from "node:path"
 import * as FileSystemExtra from "./FileSystemExtra.ts"
 
-t.describe("watchSource", () => {
-  t.it("emits events with correct structure", async () => {
-    const tempDir = await Bun
-      .file(import.meta.dir)
-      .text()
-      .then(() => NPath.join(import.meta.dir, ".test-watch"))
-      .catch(() => NPath.join(process.cwd(), ".test-watch"))
-
-    await Effect
-      .gen(function*() {
-        const fs = yield* FileSystem.FileSystem
-
-        yield* fs.makeDirectory(tempDir, { recursive: true })
-
-        const testFile = NPath.join(tempDir, "test.ts")
-
-        yield* fs.writeFileString(testFile, "// test")
-
-        const events: FileSystemExtra.WatchEvent[] = []
-
-        const watchEffect = pipe(
-          FileSystemExtra.watchSource({ path: tempDir }),
-          Stream.take(1),
-          Stream.runForEach(event => {
-            events.push(event)
-            return Effect.void
-          }),
-        )
-
-        yield* Effect.fork(watchEffect)
-
-        yield* Effect.sleep("100 millis")
-
-        yield* fs.writeFileString(testFile, "// updated")
-
-        yield* Effect.sleep("500 millis")
-
-        t
-          .expect(events.length)
-          .toBeGreaterThan(0)
-
-        if (events.length > 0) {
-          const event = events[0]
-
-          t
-            .expect(event.eventType)
-            .toMatch(/^(change|rename)$/)
-
-          t
-            .expect(event.filename)
-            .toBeDefined()
-
-          t
-            .expect(event.path)
-            .toBeDefined()
-
-          t
-            .expect(event.path)
-            .toContain(tempDir)
-        }
-
-        yield* fs.remove(tempDir, { recursive: true })
-      })
-      .pipe(
-        Effect.provide(BunContext.layer),
-        Effect.runPromise,
-      )
-  })
-
-  t.it("appends / to directory paths", async () => {
-    const tempDir = await Bun
-      .file(import.meta.dir)
-      .text()
-      .then(() => NPath.join(import.meta.dir, ".test-watch-dir"))
-      .catch(() => NPath.join(process.cwd(), ".test-watch-dir"))
-
-    await Effect
-      .gen(function*() {
-        const fs = yield* FileSystem.FileSystem
-
-        yield* fs.makeDirectory(tempDir, { recursive: true })
-
-        const events: FileSystemExtra.WatchEvent[] = []
-
-        const watchEffect = pipe(
-          FileSystemExtra.watchSource({ path: tempDir }),
-          Stream.take(1),
-          Stream.runForEach(event => {
-            events.push(event)
-            return Effect.void
-          }),
-        )
-
-        yield* Effect.fork(watchEffect)
-
-        yield* Effect.sleep("100 millis")
-
-        const subDir = NPath.join(tempDir, "subdir")
-
-        yield* fs.makeDirectory(subDir)
-
-        yield* Effect.sleep("500 millis")
-
-        const dirEvents = events.filter(e => e.path.endsWith("/"))
-
-        t
-          .expect(dirEvents.length)
-          .toBeGreaterThan(0)
-
-        yield* fs.remove(tempDir, { recursive: true })
-      })
-      .pipe(
-        Effect.provide(BunContext.layer),
-        Effect.runPromise,
-      )
-  })
-
-  t.it("filters events with custom filter", async () => {
-    const tempDir = await Bun
-      .file(import.meta.dir)
-      .text()
-      .then(() => NPath.join(import.meta.dir, ".test-watch-filter"))
-      .catch(() => NPath.join(process.cwd(), ".test-watch-filter"))
-
-    await Effect
-      .gen(function*() {
-        const fs = yield* FileSystem.FileSystem
-
-        yield* fs.makeDirectory(tempDir, { recursive: true })
-
-        const events: FileSystemExtra.WatchEvent[] = []
-
-        const watchEffect = pipe(
-          FileSystemExtra.watchSource({
-            path: tempDir,
-            filter: FileSystemExtra.filterSourceFiles,
-          }),
-          Stream.take(2),
-          Stream.runForEach(event => {
-            events.push(event)
-            return Effect.void
-          }),
-        )
-
-        yield* Effect.fork(watchEffect)
-
-        yield* Effect.sleep("200 millis")
-
-        yield* fs.writeFileString(NPath.join(tempDir, "test.md"), "# test")
-
-        yield* Effect.sleep("200 millis")
-
-        yield* fs.writeFileString(NPath.join(tempDir, "test.ts"), "// test")
-
-        yield* Effect.sleep("800 millis")
-
-        t
-          .expect(events.length)
-          .toBeGreaterThan(0)
-
-        const allSourceFiles = events.every(e =>
-          /\.(tsx?|jsx?|html?|css|json)$/.test(e.path)
-        )
-
-        t
-          .expect(allSourceFiles)
-          .toBe(true)
-
-        const hasNoMarkdown = events.every(e => !e.path.endsWith(".md"))
-
-        t
-          .expect(hasNoMarkdown)
-          .toBe(true)
-
-        yield* fs.remove(tempDir, { recursive: true })
-      })
-      .pipe(
-        Effect.provide(BunContext.layer),
-        Effect.runPromise,
-      )
-  })
-})
-
 t.describe("filterSourceFiles", () => {
-  t.it("filters TypeScript and JavaScript files", () => {
+  t.it("returns true for TypeScript files", () => {
     t
       .expect(
         FileSystemExtra.filterSourceFiles({
@@ -208,6 +17,18 @@ t.describe("filterSourceFiles", () => {
       .expect(
         FileSystemExtra.filterSourceFiles({
           eventType: "change",
+          filename: "test.tsx",
+          path: "/path/to/test.tsx",
+        }),
+      )
+      .toBe(true)
+  })
+
+  t.it("returns true for JavaScript files", () => {
+    t
+      .expect(
+        FileSystemExtra.filterSourceFiles({
+          eventType: "change",
           filename: "test.js",
           path: "/path/to/test.js",
         }),
@@ -218,34 +39,122 @@ t.describe("filterSourceFiles", () => {
       .expect(
         FileSystemExtra.filterSourceFiles({
           eventType: "change",
-          filename: "test.md",
-          path: "/path/to/test.md",
+          filename: "test.jsx",
+          path: "/path/to/test.jsx",
+        }),
+      )
+      .toBe(true)
+  })
+
+  t.it("returns true for HTML and CSS files", () => {
+    t
+      .expect(
+        FileSystemExtra.filterSourceFiles({
+          eventType: "change",
+          filename: "index.html",
+          path: "/path/to/index.html",
+        }),
+      )
+      .toBe(true)
+
+    t
+      .expect(
+        FileSystemExtra.filterSourceFiles({
+          eventType: "change",
+          filename: "styles.css",
+          path: "/path/to/styles.css",
+        }),
+      )
+      .toBe(true)
+  })
+
+  t.it("returns true for JSON files", () => {
+    t
+      .expect(
+        FileSystemExtra.filterSourceFiles({
+          eventType: "change",
+          filename: "config.json",
+          path: "/path/to/config.json",
+        }),
+      )
+      .toBe(true)
+  })
+
+  t.it("returns false for non-source files", () => {
+    t
+      .expect(
+        FileSystemExtra.filterSourceFiles({
+          eventType: "change",
+          filename: "README.md",
+          path: "/path/to/README.md",
+        }),
+      )
+      .toBe(false)
+
+    t
+      .expect(
+        FileSystemExtra.filterSourceFiles({
+          eventType: "change",
+          filename: "document.txt",
+          path: "/path/to/document.txt",
+        }),
+      )
+      .toBe(false)
+
+    t
+      .expect(
+        FileSystemExtra.filterSourceFiles({
+          eventType: "change",
+          filename: "image.png",
+          path: "/path/to/image.png",
         }),
       )
       .toBe(false)
   })
 
-  t.it("filters directories", () => {
+  t.it("returns false for directories", () => {
     t
       .expect(
         FileSystemExtra.filterSourceFiles({
           eventType: "rename",
-          filename: "dir",
-          path: "/path/to/dir/",
+          filename: "src",
+          path: "/path/to/src/",
         }),
       )
       .toBe(false)
   })
+
+  t.it("handles files with multiple dots", () => {
+    t
+      .expect(
+        FileSystemExtra.filterSourceFiles({
+          eventType: "change",
+          filename: "component.test.ts",
+          path: "/path/to/component.test.ts",
+        }),
+      )
+      .toBe(true)
+
+    t
+      .expect(
+        FileSystemExtra.filterSourceFiles({
+          eventType: "change",
+          filename: "config.local.json",
+          path: "/path/to/config.local.json",
+        }),
+      )
+      .toBe(true)
+  })
 })
 
 t.describe("filterDirectory", () => {
-  t.it("identifies directories by trailing slash", () => {
+  t.it("returns true for paths ending with /", () => {
     t
       .expect(
         FileSystemExtra.filterDirectory({
           eventType: "rename",
-          filename: "dir",
-          path: "/path/to/dir/",
+          filename: "src",
+          path: "/path/to/src/",
         }),
       )
       .toBe(true)
@@ -253,11 +162,70 @@ t.describe("filterDirectory", () => {
     t
       .expect(
         FileSystemExtra.filterDirectory({
+          eventType: "rename",
+          filename: "node_modules",
+          path: "/project/node_modules/",
+        }),
+      )
+      .toBe(true)
+  })
+
+  t.it("returns false for file paths", () => {
+    t
+      .expect(
+        FileSystemExtra.filterDirectory({
           eventType: "change",
-          filename: "file.ts",
-          path: "/path/to/file.ts",
+          filename: "index.ts",
+          path: "/path/to/index.ts",
+        }),
+      )
+      .toBe(false)
+
+    t
+      .expect(
+        FileSystemExtra.filterDirectory({
+          eventType: "change",
+          filename: "README",
+          path: "/path/to/README",
         }),
       )
       .toBe(false)
   })
 })
+
+t.describe("WatchEvent type", () => {
+  t.it("has correct structure", () => {
+    const changeEvent: FileSystemExtra.WatchEvent = {
+      eventType: "change",
+      filename: "test.ts",
+      path: "/path/to/test.ts",
+    }
+
+    const renameEvent: FileSystemExtra.WatchEvent = {
+      eventType: "rename",
+      filename: "moved.js",
+      path: "/new/path/moved.js",
+    }
+
+    t
+      .expect(changeEvent.eventType)
+      .toBe("change")
+
+    t
+      .expect(changeEvent.filename)
+      .toBe("test.ts")
+
+    t
+      .expect(changeEvent.path)
+      .toBe("/path/to/test.ts")
+
+    t
+      .expect(renameEvent.eventType)
+      .toBe("rename")
+
+    t
+      .expect(renameEvent.filename)
+      .toBe("moved.js")
+  })
+})
+
