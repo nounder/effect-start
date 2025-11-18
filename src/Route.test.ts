@@ -782,7 +782,7 @@ t.it("schemaHeaders accepts string-encoded schemas", () => {
     .text(Effect.succeed("hello"))
 })
 
-t.it("schemaUrlParams type documentation - avoid non-string schemas", () => {
+t.it("schemaUrlParams type documentation - string-encoded schemas work correctly", () => {
   Route
     .schemaUrlParams({
       count: Schema.NumberFromString,

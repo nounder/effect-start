@@ -290,27 +290,47 @@ export const json = makeMediaFunction(
 )
 
 /**
+ * Type utilities for validating string-encoded schemas.
+ *
+ * PathParams, UrlParams, and Headers should only use schemas with string-encoded types
+ * (e.g., Schema.String, Schema.NumberFromString) because these values are always
+ * passed as strings from HTTP requests.
+ *
+ * Invalid schemas (DO NOT USE):
+ * - Schema.Number (expects number, not string)
+ * - Schema.Boolean (expects boolean, not string)
+ * - Schema.Struct(...) (expects object, not string)
+ *
+ * Valid schemas:
+ * - Schema.String
+ * - Schema.NumberFromString
+ * - Schema.BooleanFromString
+ * - Schema.optional(Schema.String)
+ */
+
+/**
  * Extracts the Encoded type from a Schema
  */
 type GetEncodedType<S> = S extends Schema.Schema<any, infer E, any> ? E : unknown
 
 /**
- * Validates that a schema field has a string-encoded type.
- * This is a mapped type that transforms non-string-encoded fields to `never`.
+ * Checks if a schema field has a string-encoded type.
  */
-type ValidateStringEncoded<Fields> = {
-  [K in keyof Fields]: GetEncodedType<Fields[K]> extends string
-    ? Fields[K]
-    : Fields[K] extends Schema.PropertySignature.All
-      ? Fields[K]
-      : never
-}
+type IsStringEncodedField<F> = F extends Schema.PropertySignature.All ? true
+  : GetEncodedType<F> extends string ? true
+  : false
 
 /**
- * Validates that all fields in a Struct have string-encoded types.
+ * Extracts fields from either a Schema.Struct or a plain fields object.
  */
-type ValidateStructStringEncoded<S> = S extends Schema.Struct<infer Fields>
-  ? Schema.Struct<ValidateStringEncoded<Fields>>
+type ExtractFields<T> = T extends Schema.Struct<infer F> ? F : T
+
+/**
+ * Creates a union of field names that have invalid (non-string) encoded types.
+ */
+type InvalidFields<T> = ExtractFields<T> extends infer Fields ? {
+    [K in keyof Fields]: IsStringEncodedField<Fields[K]> extends false ? K : never
+  }[keyof Fields]
   : never
 
 function makeStructSchemaModifier<
