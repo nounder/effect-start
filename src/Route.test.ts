@@ -718,3 +718,37 @@ test.it("method modifiers preserve proper types when nesting schemas", () => {
 
   Function.satisfies<Expected>()(route)
 })
+
+test.it("schemaUrlParams accepts optional fields", () => {
+  const route = Route
+    .schemaUrlParams({
+      hello: Function.pipe(
+        Schema.String,
+        Schema.optional,
+      ),
+    })
+    .html(
+      function*(ctx) {
+        const page = ctx.urlParams.hello
+
+        Function.satisfies<string | undefined>()(page)
+
+        return "<div><h1>About</h1></div>"
+      },
+    )
+
+  type ExpectedUrlParams = Schema.Struct<{
+    hello: Schema.optional<typeof Schema.String>
+  }>
+
+  type ExpectedSchemas = {
+    readonly UrlParams: ExpectedUrlParams
+  }
+
+  type Expected = Route.RouteSet<
+    [Route.Route<"GET", "text/html", any, ExpectedSchemas>],
+    ExpectedSchemas
+  >
+
+  Function.satisfies<Expected>()(route)
+})
