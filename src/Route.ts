@@ -324,8 +324,8 @@ function makeStructSchemaModifier<
       : {} as RouteSchemas.Empty
 
     const schema = Schema.isSchema(fieldsOrSchema)
-      ? fieldsOrSchema
-      : Schema.Struct(fieldsOrSchema)
+      ? fieldsOrSchema as Schema.Struct<any>
+      : Schema.Struct(fieldsOrSchema as Schema.Struct.Fields)
 
     return makeSet(
       baseRoutes as any,
@@ -373,7 +373,7 @@ function makeUnionSchemaModifier<
 
     const schema = Schema.isSchema(fieldsOrSchema)
       ? fieldsOrSchema
-      : Schema.Struct(fieldsOrSchema)
+      : Schema.Struct(fieldsOrSchema as Schema.Struct.Fields)
 
     return makeSet(
       baseRoutes as any,
