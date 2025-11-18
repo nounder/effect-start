@@ -7,8 +7,8 @@
     "dev": "bun --hot --no-clear-screen src/server.ts"
   },
   "dependencies": {
-    "@effect/platform": "^0.84.11",
-    "@effect/platform-bun": "^0.67.3",
+    "@effect/platform": "^0.87.13",
+    "@effect/platform-bun": "^0.72.18",
     "@effect/sql": "^0.48.0",
     "@effect/sql-sqlite-bun": "^0.49.0",
     "effect": "^3.19.4",
