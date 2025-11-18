@@ -73,5 +73,4 @@ export class Sql extends Effect.Service<Sql>()("Sql", {
       },
     }
   }),
-  dependencies: [],
 }) {}

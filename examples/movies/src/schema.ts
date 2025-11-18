@@ -1,8 +1,7 @@
 import { index, sqliteTable, text } from "drizzle-orm/sqlite-core"
-import * as Crypto from "effect/Crypto"
-import * as Effect from "effect/Effect"
+import { randomUUID } from "crypto"
 
-export const primaryId = () => text("id").primaryKey().$defaultFn(() => Crypto.randomUUID())
+export const primaryId = () => text("id").primaryKey().$defaultFn(() => randomUUID())
 
 export const id = () => text("id")
 

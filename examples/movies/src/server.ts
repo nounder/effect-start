@@ -14,8 +14,8 @@ export default Layer.mergeAll(
       path: import.meta.resolve("./routes/manifest.ts"),
     }),
   ),
-  Sql.Sql.Default,
-  MediaStorage.MediaStorage.Default,
+  Sql.Default,
+  MediaStorage.Default,
 )
 
 if (import.meta.main) {
