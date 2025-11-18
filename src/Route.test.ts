@@ -100,11 +100,11 @@ t.it("schemaPathParams adds schema to RouteSet", () => {
   Function.satisfies<Expected>()(routes)
 })
 
-t.it("schemaPathParams accepts struct fields directly", () => {
+t.it("schemaPathParams requires Schema.Struct wrapper", () => {
   const routes = Route
-    .schemaPathParams({
+    .schemaPathParams(Schema.Struct({
       id: Schema.String,
-    })
+    }))
     .text(
       Effect.succeed("hello"),
     )
@@ -125,9 +125,9 @@ t.it("schemaPathParams accepts struct fields directly", () => {
 
 t.it("schemaPathParams with struct fields types context correctly", () => {
   Route
-    .schemaPathParams({
+    .schemaPathParams(Schema.Struct({
       id: Schema.String,
-    })
+    }))
     .text(
       (context) => {
         Function.satisfies<string>()(context.pathParams.id)
@@ -608,10 +608,10 @@ t.it("multiple routes in RouteSet each get the schema", () => {
 
 t.it("schemas merge correctly with struct fields syntax", () => {
   const routes = Route
-    .schemaPathParams({ id: Schema.String })
+    .schemaPathParams(Schema.Struct({ id: Schema.String }))
     .get(
       Route
-        .schemaPathParams({ userId: Schema.String })
+        .schemaPathParams(Schema.Struct({ userId: Schema.String }))
         .text(Effect.succeed("hello")),
     )
 
@@ -673,7 +673,7 @@ t.it("method modifiers require routes with handlers", () => {
     .schemaPathParams(PathSchema)
     .get(
       Route
-        .schemaPathParams({ userId: Schema.String })
+        .schemaPathParams(Schema.Struct({ userId: Schema.String }))
         .text(Effect.succeed("hello")),
     )
 
@@ -681,7 +681,7 @@ t.it("method modifiers require routes with handlers", () => {
     .schemaPathParams(PathSchema)
     .get(
       // @ts-expect-error - method modifiers should reject empty RouteSet
-      Route.schemaPathParams({ userId: Schema.String }),
+      Route.schemaPathParams(Schema.Struct({ userId: Schema.String })),
     )
 })
 
@@ -694,7 +694,7 @@ t.it("method modifiers preserve proper types when nesting schemas", () => {
     .schemaPathParams(PathSchema)
     .get(
       Route
-        .schemaPathParams({ userId: Schema.String })
+        .schemaPathParams(Schema.Struct({ userId: Schema.String }))
         .text(Effect.succeed("hello")),
     )
 
@@ -721,12 +721,12 @@ t.it("method modifiers preserve proper types when nesting schemas", () => {
 
 t.it("schemaUrlParams accepts optional fields", () => {
   const routes = Route
-    .schemaUrlParams({
+    .schemaUrlParams(Schema.Struct({
       hello: Function.pipe(
         Schema.String,
         Schema.optional,
       ),
-    })
+    }))
     .html(
       (ctx) => {
         Function.satisfies<string | undefined>()(ctx.urlParams.hello)
@@ -753,42 +753,77 @@ t.it("schemaUrlParams accepts optional fields", () => {
 
 t.it("schemaUrlParams accepts string-encoded schemas", () => {
   Route
-    .schemaUrlParams({
+    .schemaUrlParams(Schema.Struct({
       name: Schema.String,
       age: Schema.NumberFromString,
       active: Function.pipe(
         Schema.String,
         Schema.optional,
       ),
-    })
+    }))
     .text(Effect.succeed("hello"))
 })
 
 t.it("schemaPathParams accepts string-encoded schemas", () => {
   Route
-    .schemaPathParams({
+    .schemaPathParams(Schema.Struct({
       id: Schema.String,
       count: Schema.NumberFromString,
-    })
+    }))
     .text(Effect.succeed("hello"))
 })
 
 t.it("schemaHeaders accepts string-encoded schemas", () => {
   Route
-    .schemaHeaders({
+    .schemaHeaders(Schema.Struct({
       authorization: Schema.String,
       "content-type": Schema.String,
-    })
+    }))
     .text(Effect.succeed("hello"))
 })
 
 t.it("schemaUrlParams type documentation - string-encoded schemas work correctly", () => {
   Route
-    .schemaUrlParams({
+    .schemaUrlParams(Schema.Struct({
       count: Schema.NumberFromString,
-    })
+    }))
     .text((ctx) => {
       Function.satisfies<number>()(ctx.urlParams.count)
       return Effect.succeed("hello")
     })
+})
+
+t.it("schemaUrlParams rejects Schema.Number (non-string encoded)", () => {
+  Route
+    .schemaUrlParams(
+      // @ts-expect-error - Schema.Number expects number input, not string
+      Schema.Struct({
+        count: Schema.Number,
+      }),
+    )
+    .text(Effect.succeed("hello"))
+})
+
+t.it("schemaPathParams rejects Schema.Boolean (non-string encoded)", () => {
+  Route
+    .schemaPathParams(
+      // @ts-expect-error - Schema.Boolean expects boolean input, not string
+      Schema.Struct({
+        active: Schema.Boolean,
+      }),
+    )
+    .text(Effect.succeed("hello"))
+})
+
+t.it("schemaHeaders rejects Schema.Struct nested in fields (non-string encoded)", () => {
+  Route
+    .schemaHeaders(
+      // @ts-expect-error - Schema.Struct expects object input, not string
+      Schema.Struct({
+        user: Schema.Struct({
+          name: Schema.String,
+        }),
+      }),
+    )
+    .text(Effect.succeed("hello"))
 })

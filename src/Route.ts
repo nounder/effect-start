@@ -299,13 +299,17 @@ export const json = makeMediaFunction(
  * Invalid schemas (DO NOT USE):
  * - Schema.Number (expects number, not string)
  * - Schema.Boolean (expects boolean, not string)
- * - Schema.Struct(...) (expects object, not string)
+ * - Schema.Struct(...) nested in fields (expects object, not string)
  *
  * Valid schemas:
  * - Schema.String
  * - Schema.NumberFromString
  * - Schema.BooleanFromString
  * - Schema.optional(Schema.String)
+ *
+ * Usage:
+ * - Route.schemaUrlParams(Schema.Struct({ id: Schema.String }))  ✓
+ * - Route.schemaUrlParams({ id: Schema.String })                  ✗ (will not compile)
  */
 
 /**
@@ -321,16 +325,23 @@ type IsStringEncodedField<F> = F extends Schema.PropertySignature.All ? true
   : false
 
 /**
- * Extracts fields from either a Schema.Struct or a plain fields object.
- */
-type ExtractFields<T> = T extends Schema.Struct<infer F> ? F : T
-
-/**
  * Creates a union of field names that have invalid (non-string) encoded types.
  */
-type InvalidFields<T> = ExtractFields<T> extends infer Fields ? {
-    [K in keyof Fields]: IsStringEncodedField<Fields[K]> extends false ? K : never
-  }[keyof Fields]
+type InvalidFieldNames<Fields> = {
+  [K in keyof Fields]: IsStringEncodedField<Fields[K]> extends false ? K : never
+}[keyof Fields]
+
+/**
+ * Validates that a Schema.Struct only contains string-encoded fields.
+ * Returns the struct if valid, or never if any field has non-string encoding.
+ */
+type ValidateStringEncodedStruct<S> = S extends Schema.Struct<infer Fields>
+  ? InvalidFieldNames<Fields> extends never ? S
+  : {
+    "ERROR: The following fields must use string-encoded schemas": InvalidFieldNames<Fields>
+    "Valid schemas": "Schema.String | Schema.NumberFromString | Schema.BooleanFromString"
+    "Invalid schemas": "Schema.Number | Schema.Boolean | Schema.Struct(...)"
+  }
   : never
 
 function makeStructSchemaModifier<
@@ -338,30 +349,21 @@ function makeStructSchemaModifier<
 >(key: K) {
   return function<
     S extends Self,
-    Fields extends
-      | Schema.Struct.Fields
-      | Schema.Struct<any>
-      | Record<PropertyKey, Schema.Schema.Any | Schema.PropertySignature.All>,
+    SchemaStruct extends Schema.Struct<any>,
   >(
     this: S,
-    fieldsOrSchema: Fields,
+    schema: ValidateStringEncodedStruct<SchemaStruct>,
   ): S extends RouteSet<infer Routes, infer Schemas> ? RouteSet<
       Routes,
       & Schemas
       & {
-        [P in K]: Fields extends Schema.Struct<infer F> ? Schema.Struct<F>
-          : Schema.Struct<
-            Fields extends Record<PropertyKey, infer _> ? Fields : never
-          >
+        [P in K]: SchemaStruct
       }
     >
     : RouteSet<
       [],
       {
-        [P in K]: Fields extends Schema.Struct<infer F> ? Schema.Struct<F>
-          : Schema.Struct<
-            Fields extends Record<PropertyKey, infer _> ? Fields : never
-          >
+        [P in K]: SchemaStruct
       }
     >
   {
@@ -371,10 +373,6 @@ function makeStructSchemaModifier<
     const baseSchema = isRouteSet(this)
       ? this.schema
       : {} as RouteSchemas.Empty
-
-    const schema = Schema.isSchema(fieldsOrSchema)
-      ? fieldsOrSchema
-      : Schema.Struct(fieldsOrSchema as Schema.Struct.Fields)
 
     return makeSet(
       baseRoutes as any,
