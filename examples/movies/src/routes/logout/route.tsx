@@ -1,11 +1,10 @@
 import { Route } from "effect-start"
-import * as Effect from "effect/Effect"
 import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
 import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
 import { Sql } from "../../services/Sql.ts"
 import { USER_SESSION } from "../../services/SignedUser.ts"
 
-export default Route.handler(function*(ctx) {
+export default Route.html(function*() {
   const request = yield* HttpServerRequest.HttpServerRequest
   const sql = yield* Sql
 

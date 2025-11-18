@@ -38,3 +38,25 @@ git lfs pull
 - Bun's built-in password hashing (`Bun.password.hash/verify`)
 
 **Note**: The provided examples showed Drizzle ORM usage, but due to npm registry connectivity issues during development, implemented a simpler direct sqlite approach. This can be refactored to use Drizzle ORM when preferred.
+
+## Route.html() POST Support
+
+**Issue**: `Route.html()` appears to only handle GET requests by default. When attempting to POST to /login or /register routes, the server returns:
+```
+RouteNotFound: POST /register not found
+```
+
+**Current Status**: The routes correctly render the GET (form display) pages, but POST submissions (form handling) return 404.
+
+**Investigation Needed**: The Route API has `.post`, `.get`, etc. methods, but how to create a single route that handles both GET (display form) and POST (process form) is unclear from the current examples.
+
+**GET Routes Working**:
+✅ /register - Displays registration form
+✅ /login - Displays login form
+✅ /logout - Should work for GET redirects
+✅ / - Home page shows auth links/status
+✅ /movies, /shows, /people - All display routes work
+
+**POST Routes Not Working**:
+❌ POST /register - Form submission returns 404
+❌ POST /login - Form submission returns 404
