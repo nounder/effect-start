@@ -8,7 +8,17 @@ export const modules = [
   {
     path: "/",
     segments: [],
-    load: () => import("./route.ts"),
+    load: () => import("./route.tsx"),
+    layers: [
+      () => import("./layer.tsx"),
+    ],
+  },
+  {
+    path: "/login",
+    segments: [
+      { literal: "login" },
+    ],
+    load: () => import("./login/route.tsx"),
     layers: [
       () => import("./layer.tsx"),
     ],
@@ -22,6 +32,36 @@ export const modules = [
     layers: [
       () => import("./layer.tsx"),
       () => import("./movies/layer.tsx"),
+    ],
+  },
+  {
+    path: "/people",
+    segments: [
+      { literal: "people" },
+    ],
+    load: () => import("./people/route.tsx"),
+    layers: [
+      () => import("./layer.tsx"),
+    ],
+  },
+  {
+    path: "/register",
+    segments: [
+      { literal: "register" },
+    ],
+    load: () => import("./register/route.tsx"),
+    layers: [
+      () => import("./layer.tsx"),
+    ],
+  },
+  {
+    path: "/shows",
+    segments: [
+      { literal: "shows" },
+    ],
+    load: () => import("./shows/route.tsx"),
+    layers: [
+      () => import("./layer.tsx"),
     ],
   },
   {
@@ -46,6 +86,28 @@ export const modules = [
     layers: [
       () => import("./layer.tsx"),
       () => import("./movies/layer.tsx"),
+    ],
+  },
+  {
+    path: "/people/[id]",
+    segments: [
+      { literal: "people" },
+      { param: "id" },
+    ],
+    load: () => import("./people/[id]/route.tsx"),
+    layers: [
+      () => import("./layer.tsx"),
+    ],
+  },
+  {
+    path: "/shows/[id]",
+    segments: [
+      { literal: "shows" },
+      { param: "id" },
+    ],
+    load: () => import("./shows/[id]/route.tsx"),
+    layers: [
+      () => import("./layer.tsx"),
     ],
   },
   {

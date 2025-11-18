@@ -11,7 +11,7 @@ export class DrizzleError extends Data.TaggedError("DrizzleError")<{
 
 export class Sql extends Effect.Service<Sql>()("Sql", {
   effect: Effect.gen(function*() {
-    const dbPath = "./examples/movies/data/movies.db"
+    const dbPath = "./data/movies.db"
 
     const sqlite = new Database(dbPath)
     const driver = drizzle(sqlite, { schema: Schema.schema })

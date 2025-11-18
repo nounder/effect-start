@@ -45,7 +45,7 @@ export class DataService extends Effect.Service<DataService>()("DataService", {
     const fs = yield* FileSystem.FileSystem
     const path = yield* Path.Path
 
-    const dataDir = "./examples/movies/data"
+    const dataDir = "./data"
 
     const loadJSON = <T>(filename: string) =>
       Effect.gen(function*() {
