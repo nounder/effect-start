@@ -719,7 +719,7 @@ t.it("method modifiers preserve proper types when nesting schemas", () => {
   Function.satisfies<Expected>()(route)
 })
 
-test.it("schemaUrlParams accepts optional fields", () => {
+t.it("schemaUrlParams accepts optional fields", () => {
   const route = Route
     .schemaUrlParams({
       hello: Function.pipe(
