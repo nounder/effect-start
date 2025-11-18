@@ -13,7 +13,8 @@ import * as NPath from "node:path"
 const SOURCE_FILENAME = /\.(tsx?|jsx?|html?|css|json)$/
 
 export type WatchEvent = {
-  _tag: "rename" | "change"
+  eventType: "rename" | "change"
+  filename: string
   path: string
 }
 
@@ -71,11 +72,13 @@ export const watchSource = (
         return NFSP
           .stat(resolvedPath)
           .then(stat => ({
-            _tag: e.eventType as "rename" | "change",
+            eventType: e.eventType as "rename" | "change",
+            filename: e.filename!,
             path: stat.isDirectory() ? `${resolvedPath}/` : resolvedPath,
           }))
           .catch(() => ({
-            _tag: e.eventType as "rename" | "change",
+            eventType: e.eventType as "rename" | "change",
+            filename: e.filename!,
             path: resolvedPath,
           }))
       })

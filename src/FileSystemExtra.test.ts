@@ -6,7 +6,8 @@ t.describe("filterSourceFiles", () => {
     t
       .expect(
         FileSystemExtra.filterSourceFiles({
-          _tag: "change",
+          eventType: "change",
+          filename: "file.ts",
           path: "/path/to/file.ts",
         }),
       )
@@ -15,7 +16,8 @@ t.describe("filterSourceFiles", () => {
     t
       .expect(
         FileSystemExtra.filterSourceFiles({
-          _tag: "change",
+          eventType: "change",
+          filename: "file.tsx",
           path: "/path/to/file.tsx",
         }),
       )
@@ -26,7 +28,8 @@ t.describe("filterSourceFiles", () => {
     t
       .expect(
         FileSystemExtra.filterSourceFiles({
-          _tag: "change",
+          eventType: "change",
+          filename: "file.js",
           path: "/path/to/file.js",
         }),
       )
@@ -35,7 +38,8 @@ t.describe("filterSourceFiles", () => {
     t
       .expect(
         FileSystemExtra.filterSourceFiles({
-          _tag: "change",
+          eventType: "change",
+          filename: "file.jsx",
           path: "/path/to/file.jsx",
         }),
       )
@@ -46,7 +50,8 @@ t.describe("filterSourceFiles", () => {
     t
       .expect(
         FileSystemExtra.filterSourceFiles({
-          _tag: "change",
+          eventType: "change",
+          filename: "file.html",
           path: "/path/to/file.html",
         }),
       )
@@ -57,7 +62,8 @@ t.describe("filterSourceFiles", () => {
     t
       .expect(
         FileSystemExtra.filterSourceFiles({
-          _tag: "change",
+          eventType: "change",
+          filename: "file.css",
           path: "/path/to/file.css",
         }),
       )
@@ -68,7 +74,8 @@ t.describe("filterSourceFiles", () => {
     t
       .expect(
         FileSystemExtra.filterSourceFiles({
-          _tag: "change",
+          eventType: "change",
+          filename: "file.json",
           path: "/path/to/file.json",
         }),
       )
@@ -79,7 +86,8 @@ t.describe("filterSourceFiles", () => {
     t
       .expect(
         FileSystemExtra.filterSourceFiles({
-          _tag: "change",
+          eventType: "change",
+          filename: "directory",
           path: "/path/to/directory/",
         }),
       )
@@ -90,7 +98,8 @@ t.describe("filterSourceFiles", () => {
     t
       .expect(
         FileSystemExtra.filterSourceFiles({
-          _tag: "change",
+          eventType: "change",
+          filename: "file.md",
           path: "/path/to/file.md",
         }),
       )
@@ -99,7 +108,8 @@ t.describe("filterSourceFiles", () => {
     t
       .expect(
         FileSystemExtra.filterSourceFiles({
-          _tag: "change",
+          eventType: "change",
+          filename: "file.txt",
           path: "/path/to/file.txt",
         }),
       )
@@ -108,7 +118,8 @@ t.describe("filterSourceFiles", () => {
     t
       .expect(
         FileSystemExtra.filterSourceFiles({
-          _tag: "change",
+          eventType: "change",
+          filename: "file.pdf",
           path: "/path/to/file.pdf",
         }),
       )
@@ -119,7 +130,8 @@ t.describe("filterSourceFiles", () => {
     t
       .expect(
         FileSystemExtra.filterSourceFiles({
-          _tag: "change",
+          eventType: "change",
+          filename: "file.test.ts",
           path: "/path/to/file.test.ts",
         }),
       )
@@ -128,7 +140,8 @@ t.describe("filterSourceFiles", () => {
     t
       .expect(
         FileSystemExtra.filterSourceFiles({
-          _tag: "change",
+          eventType: "change",
+          filename: "config.local.json",
           path: "/path/to/config.local.json",
         }),
       )
@@ -141,7 +154,8 @@ t.describe("filterDirectory", () => {
     t
       .expect(
         FileSystemExtra.filterDirectory({
-          _tag: "rename",
+          eventType: "rename",
+          filename: "directory",
           path: "/path/to/directory/",
         }),
       )
@@ -150,7 +164,8 @@ t.describe("filterDirectory", () => {
     t
       .expect(
         FileSystemExtra.filterDirectory({
-          _tag: "rename",
+          eventType: "rename",
+          filename: "root",
           path: "/root/",
         }),
       )
@@ -161,7 +176,8 @@ t.describe("filterDirectory", () => {
     t
       .expect(
         FileSystemExtra.filterDirectory({
-          _tag: "change",
+          eventType: "change",
+          filename: "file.ts",
           path: "/path/to/file.ts",
         }),
       )
@@ -170,7 +186,8 @@ t.describe("filterDirectory", () => {
     t
       .expect(
         FileSystemExtra.filterDirectory({
-          _tag: "change",
+          eventType: "change",
+          filename: "file",
           path: "/path/to/file",
         }),
       )
@@ -179,23 +196,41 @@ t.describe("filterDirectory", () => {
 })
 
 t.describe("WatchEvent type", () => {
-  t.it("has correct _tag values", () => {
+  t.it("has correct eventType values", () => {
     const changeEvent: FileSystemExtra.WatchEvent = {
-      _tag: "change",
+      eventType: "change",
+      filename: "test.ts",
       path: "/test/path",
     }
 
     const renameEvent: FileSystemExtra.WatchEvent = {
-      _tag: "rename",
+      eventType: "rename",
+      filename: "test.ts",
       path: "/test/path",
     }
 
     t
-      .expect(changeEvent._tag)
+      .expect(changeEvent.eventType)
       .toBe("change")
 
     t
-      .expect(renameEvent._tag)
+      .expect(renameEvent.eventType)
       .toBe("rename")
+  })
+
+  t.it("includes filename field", () => {
+    const event: FileSystemExtra.WatchEvent = {
+      eventType: "change",
+      filename: "test.ts",
+      path: "/test/path/test.ts",
+    }
+
+    t
+      .expect(event.filename)
+      .toBe("test.ts")
+
+    t
+      .expect(event.path)
+      .toBe("/test/path/test.ts")
   })
 })
