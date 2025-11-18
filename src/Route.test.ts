@@ -183,7 +183,9 @@ t.it("context is typed with pathParams when schemaPathParams is provided", () =>
         type ContextType = typeof context
 
         type Expected = Route.RouteContext<{
-          readonly PathParams: typeof IdSchema
+          pathParams: {
+            id: string
+          }
         }>
 
         Function.satisfies<Expected>()(context)
@@ -206,7 +208,10 @@ t.it("context is typed with urlParams when schemaUrlParams is provided", () => {
     .text(
       (context) => {
         type Expected = Route.RouteContext<{
-          readonly UrlParams: typeof QuerySchema
+          urlParams: {
+            page: number
+            limit: number
+          }
         }>
 
         Function.satisfies<Expected>()(context)
@@ -231,7 +236,10 @@ t.it("context is typed with payload when schemaPayload is provided", () => {
     .text(
       (context) => {
         type Expected = Route.RouteContext<{
-          readonly Payload: typeof PayloadSchema
+          payload: {
+            name: string
+            age: number
+          }
         }>
 
         Function.satisfies<Expected>()(context)
@@ -255,7 +263,9 @@ t.it("context is typed with headers when schemaHeaders is provided", () => {
     .text(
       (context) => {
         type Expected = Route.RouteContext<{
-          readonly Headers: typeof HeadersSchema
+          headers: {
+            authorization: string
+          }
         }>
 
         Function.satisfies<Expected>()(context)
@@ -287,9 +297,15 @@ t.it("context is typed with multiple schemas", () => {
     .text(
       (context) => {
         type Expected = Route.RouteContext<{
-          readonly PathParams: typeof IdSchema
-          readonly UrlParams: typeof QuerySchema
-          readonly Payload: typeof PayloadSchema
+          pathParams: {
+            id: string
+          }
+          urlParams: {
+            page: number
+          }
+          payload: {
+            name: string
+          }
         }>
 
         Function.satisfies<Expected>()(context)
@@ -432,7 +448,7 @@ t.it("context has only request and url when no schemas provided", () => {
   Route
     .text(
       (context) => {
-        type Expected = Route.RouteContext<Route.RouteSchemas.Empty>
+        type Expected = Route.RouteContext<{}>
 
         Function.satisfies<Expected>()(context)
 

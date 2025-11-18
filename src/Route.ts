@@ -470,15 +470,23 @@ function makeUrlFromRequest(
 }
 
 /**
- * Context passed to route handler generator functions.
+ * Simplified format for RouteContext generic parameter.
+ * Shows decoded types with lowercase keys matching context properties.
  */
-export type RouteContext<
-  Schemas extends RouteSchemas = RouteSchemas.Empty,
-> =
-  & {
-    request: HttpServerRequest.HttpServerRequest
-    get url(): URL
-  }
+export type RouteContextInput = {
+  readonly pathParams?: Record<string, any>
+  readonly urlParams?: Record<string, any>
+  readonly payload?: any
+  readonly headers?: Record<string, any>
+}
+
+/**
+ * Transforms RouteSchemas into simplified RouteContextInput format.
+ * - Converts capitalized keys (PathParams, UrlParams) to lowercase (pathParams, urlParams)
+ * - Decodes schema types to their Type representation
+ * - Only includes defined schemas
+ */
+export type SimplifyRouteSchemas<Schemas extends RouteSchemas> =
   & (Schemas["PathParams"] extends Schema.Struct<any> ? {
       pathParams: Schema.Schema.Type<Schemas["PathParams"]>
     }
@@ -495,6 +503,16 @@ export type RouteContext<
       headers: Schema.Schema.Type<Schemas["Headers"]>
     }
     : {})
+
+/**
+ * Context passed to route handler generator functions.
+ */
+export type RouteContext<
+  Input extends RouteContextInput = {},
+> = {
+  request: HttpServerRequest.HttpServerRequest
+  get url(): URL
+} & Input
 
 /**
  * Extracts fields from a Schema.Struct or returns never if not a struct.
@@ -689,14 +707,14 @@ function makeMediaFunction<
     handler: S extends RouteSet<infer _Routes, infer Schemas> ?
         | Effect.Effect<A, E, R>
         | ((
-          context: RouteContext<Schemas>,
+          context: RouteContext<SimplifyRouteSchemas<Schemas>>,
         ) =>
           | Effect.Effect<A, E, R>
           | Generator<YieldWrap<Effect.Effect<A, E, R>>, A, never>)
       :
         | Effect.Effect<A, E, R>
         | ((
-          context: RouteContext<RouteSchemas.Empty>,
+          context: RouteContext<{}>,
         ) =>
           | Effect.Effect<A, E, R>
           | Generator<YieldWrap<Effect.Effect<A, E, R>>, A, never>),
