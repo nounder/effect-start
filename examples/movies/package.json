@@ -11,6 +11,8 @@
     "@effect/platform-bun": "^0.67.3",
     "@effect/sql": "^0.48.0",
     "@effect/sql-sqlite-bun": "^0.49.0",
+    "drizzle-kit": "^0.31.7",
+    "drizzle-orm": "^0.44.7",
     "effect": "^3.19.4",
     "effect-start": "file:../../"
   },
