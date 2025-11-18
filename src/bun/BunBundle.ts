@@ -141,7 +141,7 @@ export function layerDev<T>(
 
       yield* Effect.fork(
         pipe(
-          FileSystemExtra.watchSource(undefined, {
+          FileSystemExtra.watchSource({
             filter: FileSystemExtra.filterSourceFiles,
           }),
           Stream.map(v =>

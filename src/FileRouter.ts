@@ -259,7 +259,8 @@ export function layer(options: {
       yield* FileRouterCodegen.update(routesPath, manifestFilename)
 
       const stream = pipe(
-        FileSystemExtra.watchSource(routesPath, {
+        FileSystemExtra.watchSource({
+          path: routesPath,
           filter: (e) => !e.path.includes("node_modules"),
         }),
         Stream.onError((e) => Effect.logError(e)),
