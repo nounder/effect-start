@@ -1,5 +1,5 @@
 import * as t from "bun:test"
-import { Effect } from "effect"
+import * as Effect from "effect/Effect"
 import { MemoryFileSystem } from "effect-memfs"
 import * as FileRouter from "./FileRouter.ts"
 import { effectFn } from "./testing.ts"

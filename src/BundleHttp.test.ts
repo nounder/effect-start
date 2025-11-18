@@ -1,7 +1,7 @@
-import { HttpServerResponse } from "@effect/platform"
-import { HttpRouter } from "@effect/platform"
+import * as HttpRouter from "@effect/platform/HttpRouter"
+import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
 import * as t from "bun:test"
-import { Effect } from "effect"
+import * as Effect from "effect/Effect"
 import {
   Bundle,
   BundleHttp,

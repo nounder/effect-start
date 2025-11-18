@@ -1,10 +1,8 @@
-import {
-  HttpApp,
-  HttpMiddleware,
-  HttpServerRequest,
-  HttpServerResponse,
-} from "@effect/platform"
-import { Effect } from "effect"
+import * as HttpApp from "@effect/platform/HttpApp"
+import * as HttpMiddleware from "@effect/platform/HttpMiddleware"
+import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
+import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
+import * as Effect from "effect/Effect"
 import {
   Bundle,
   BundleHttp,

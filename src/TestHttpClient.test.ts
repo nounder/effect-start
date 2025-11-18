@@ -1,12 +1,7 @@
-import {
-  HttpServerRequest,
-  HttpServerResponse,
-} from "@effect/platform"
+import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
+import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
 import * as t from "bun:test"
-import {
-  Effect,
-  pipe,
-} from "effect"
+import * as Effect from "effect/Effect"
 import * as TestHttpClient from "./TestHttpClient.ts"
 import { effectFn } from "./testing.ts"
 

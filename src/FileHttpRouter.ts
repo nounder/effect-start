@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { HttpApp } from "@effect/platform"
+import * as HttpApp from "@effect/platform/HttpApp"
 import * as HttpMiddleware from "@effect/platform/HttpMiddleware"
 import * as HttpRouter from "@effect/platform/HttpRouter"
 import * as HttpServerRequest from "@effect/platform/HttpServerRequest"

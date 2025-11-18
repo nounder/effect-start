@@ -1,9 +1,7 @@
-import { Error } from "@effect/platform"
-import {
-  Console,
-  pipe,
-  Stream,
-} from "effect"
+import * as Error from "@effect/platform/Error"
+import * as Console from "effect/Console"
+import * as Function from "effect/Function"
+import * as Stream from "effect/Stream"
 import type { WatchOptions } from "node:fs"
 import * as NFSP from "node:fs/promises"
 import * as NPath from "node:path"
@@ -37,7 +35,7 @@ export const watchSource = (
     stream = Stream.fail(err)
   }
 
-  const changes = pipe(
+  const changes = Function.pipe(
     stream,
     Stream.map(e => ({
       eventType: e.eventType,

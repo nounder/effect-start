@@ -1,6 +1,6 @@
-import { FileSystem } from "@effect/platform"
+import * as FileSystem from "@effect/platform/FileSystem"
 import * as t from "bun:test"
-import { Effect } from "effect"
+import * as Effect from "effect/Effect"
 import { MemoryFileSystem } from "effect-memfs"
 import { parseRoute } from "./FileRouter.ts"
 import type { RouteHandle } from "./FileRouter.ts"

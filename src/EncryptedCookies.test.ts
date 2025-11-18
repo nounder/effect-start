@@ -1,6 +1,6 @@
-import { Cookies } from "@effect/platform"
+import * as Cookies from "@effect/platform/Cookies"
 import * as t from "bun:test"
-import { Effect } from "effect"
+import * as Effect from "effect/Effect"
 import * as ConfigProvider from "effect/ConfigProvider"
 import * as EncryptedCookies from "./EncryptedCookies.ts"
 
