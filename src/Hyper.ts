@@ -9,7 +9,7 @@ import * as Context from "effect/Context"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import { YieldWrap } from "effect/Utils"
-import { HyperHooks } from "./Datastar.ts"
+import { HyperHooks } from "./x/datastar/index.ts"
 import * as HyperHtml from "./HyperHtml.ts"
 import type { JSX } from "./jsx.d.ts"
 

@@ -1,5 +1,5 @@
 import * as HyperNode from "./HyperNode.ts"
-import type { DatastarAttributes } from "./jsx-datastar.ts"
+import type { DatastarAttributes } from "./x/datastar/jsx-datastar.ts"
 
 /**
  * Based on JSX types for Surplus, Inferno, and dom-expressions.
