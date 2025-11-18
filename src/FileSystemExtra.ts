@@ -1,6 +1,8 @@
 import { Error } from "@effect/platform"
 import {
   Console,
+  Effect,
+  Function,
   pipe,
   Stream,
 } from "effect"
@@ -10,24 +12,49 @@ import * as NPath from "node:path"
 
 const SOURCE_FILENAME = /\.(tsx?|jsx?|html?|css|json)$/
 
+export type WatchEvent = {
+  eventType: "rename" | "change"
+  filename: string
+  path: string
+}
+
+/**
+ * Filter for source files based on file extension.
+ */
+export const filterSourceFiles = (event: WatchEvent): boolean => {
+  return SOURCE_FILENAME.test(event.path)
+}
+
+/**
+ * Filter for directories (paths ending with /).
+ */
+export const filterDirectory = (event: WatchEvent): boolean => {
+  return event.path.endsWith("/")
+}
+
 /**
  * `@effect/platform` doesn't support recursive file watching.
  * This function implements that [2025-05-19]
  * Additionally, the filename is resolved to an absolute path.
+ * If the path is a directory, it appends / to the path.
  */
 export const watchSource = (
-  path?: string,
-  opts?: WatchOptions,
-): Stream.Stream<NFSP.FileChangeInfo<string>, Error.SystemError> => {
-  const baseDir = path ?? process.cwd()
+  opts?: WatchOptions & {
+    path?: string
+    filter?: (event: WatchEvent) => boolean
+  },
+): Stream.Stream<WatchEvent, Error.SystemError> => {
+  const baseDir = opts?.path ?? process.cwd()
+  const customFilter = opts?.filter
 
   let stream: Stream.Stream<NFSP.FileChangeInfo<string>, Error.SystemError>
   try {
     stream = Stream.fromAsyncIterable(
       NFSP.watch(baseDir, {
-        persistent: false,
-        recursive: true,
-        ...(opts || {}),
+        persistent: opts?.persistent ?? false,
+        recursive: opts?.recursive ?? true,
+        encoding: opts?.encoding,
+        signal: opts?.signal,
       }),
       error => handleWatchError(error, baseDir),
     )
@@ -39,12 +66,24 @@ export const watchSource = (
 
   const changes = pipe(
     stream,
-    Stream.map(e => ({
-      eventType: e.eventType,
-      filename: NPath.resolve(baseDir, e.filename!),
-    })),
-    Stream.filter((event) => SOURCE_FILENAME.test(event.filename!)),
-    Stream.filter((event) => !(/node_modules/.test(event.filename!))),
+    Stream.mapEffect(e =>
+      Effect.promise(() => {
+        const resolvedPath = NPath.resolve(baseDir, e.filename!)
+        return NFSP
+          .stat(resolvedPath)
+          .then(stat => ({
+            eventType: e.eventType as "rename" | "change",
+            filename: e.filename!,
+            path: stat.isDirectory() ? `${resolvedPath}/` : resolvedPath,
+          }))
+          .catch(() => ({
+            eventType: e.eventType as "rename" | "change",
+            filename: e.filename!,
+            path: resolvedPath,
+          }))
+      })
+    ),
+    customFilter ? Stream.filter(customFilter) : Function.identity,
     Stream.rechunk(1),
     Stream.throttle({
       units: 1,

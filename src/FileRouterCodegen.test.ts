@@ -457,3 +457,79 @@ it("update() > writes only when it changes", () =>
       Effect.provide(MemoryFileSystem.layerWith(update_FilesWithRoutes)),
       Effect.runPromise,
     ))
+
+it("update() > removes deleted routes from manifest", () =>
+  Effect
+    .gen(function*() {
+      const fs = yield* FileSystem.FileSystem
+
+      yield* FileRouterCodegen.update("/routes")
+
+      const content = yield* fs.readFileString("/routes/_manifest.ts")
+
+      expect(content)
+        .toContain("path: \"/\"")
+
+      expect(content)
+        .toContain("path: \"/about\"")
+
+      yield* fs.remove("/routes/about/route.tsx")
+
+      yield* FileRouterCodegen.update("/routes")
+
+      const content2 = yield* fs.readFileString("/routes/_manifest.ts")
+
+      expect(content2)
+        .toContain("path: \"/\"")
+
+      expect(content2)
+        .not
+        .toContain("path: \"/about\"")
+    })
+    .pipe(
+      Effect.provide(MemoryFileSystem.layerWith(update_FilesWithRoutes)),
+      Effect.runPromise,
+    ))
+
+it("update() > removes routes when entire directory is deleted", () =>
+  Effect
+    .gen(function*() {
+      const fs = yield* FileSystem.FileSystem
+
+      yield* fs.makeDirectory("/routes/users", { recursive: true })
+
+      yield* fs.writeFileString("/routes/users/route.tsx", "")
+
+      yield* FileRouterCodegen.update("/routes")
+
+      const content = yield* fs.readFileString("/routes/_manifest.ts")
+
+      expect(content)
+        .toContain("path: \"/\"")
+
+      expect(content)
+        .toContain("path: \"/about\"")
+
+      expect(content)
+        .toContain("path: \"/users\"")
+
+      yield* fs.remove("/routes/users", { recursive: true })
+
+      yield* FileRouterCodegen.update("/routes")
+
+      const content2 = yield* fs.readFileString("/routes/_manifest.ts")
+
+      expect(content2)
+        .toContain("path: \"/\"")
+
+      expect(content2)
+        .toContain("path: \"/about\"")
+
+      expect(content2)
+        .not
+        .toContain("path: \"/users\"")
+    })
+    .pipe(
+      Effect.provide(MemoryFileSystem.layerWith(update_FilesWithRoutes)),
+      Effect.runPromise,
+    ))
