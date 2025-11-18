@@ -1,3 +1,32 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:5c69e32cb5e06c05c49787a7bf3892ee032229bacb223e471abc416a850099a6
-size 47397
+[
+  {"id": 1, "name": "Tim Robbins", "birthYear": 1958, "roles": ["actor"]},
+  {"id": 2, "name": "Morgan Freeman", "birthYear": 1937, "roles": ["actor"]},
+  {"id": 3, "name": "Bob Gunton", "birthYear": 1945, "roles": ["actor"]},
+  {"id": 4, "name": "Marlon Brando", "birthYear": 1924, "roles": ["actor"]},
+  {"id": 5, "name": "Al Pacino", "birthYear": 1940, "roles": ["actor"]},
+  {"id": 6, "name": "James Caan", "birthYear": 1940, "roles": ["actor"]},
+  {"id": 7, "name": "Bryan Cranston", "birthYear": 1956, "roles": ["actor"]},
+  {"id": 8, "name": "Aaron Paul", "birthYear": 1979, "roles": ["actor"]},
+  {"id": 9, "name": "Anna Gunn", "birthYear": 1968, "roles": ["actor"]},
+  {"id": 10, "name": "Christian Bale", "birthYear": 1974, "roles": ["actor"]},
+  {"id": 11, "name": "Heath Ledger", "birthYear": 1979, "roles": ["actor"]},
+  {"id": 12, "name": "Aaron Eckhart", "birthYear": 1968, "roles": ["actor"]},
+  {"id": 13, "name": "Emilia Clarke", "birthYear": 1986, "roles": ["actor"]},
+  {"id": 14, "name": "Kit Harington", "birthYear": 1986, "roles": ["actor"]},
+  {"id": 15, "name": "Peter Dinklage", "birthYear": 1969, "roles": ["actor"]},
+  {"id": 16, "name": "John Travolta", "birthYear": 1954, "roles": ["actor"]},
+  {"id": 17, "name": "Samuel L. Jackson", "birthYear": 1948, "roles": ["actor"]},
+  {"id": 18, "name": "Uma Thurman", "birthYear": 1970, "roles": ["actor"]},
+  {"id": 19, "name": "James Gandolfini", "birthYear": 1961, "roles": ["actor"]},
+  {"id": 20, "name": "Lorraine Bracco", "birthYear": 1954, "roles": ["actor"]},
+  {"id": 21, "name": "Edie Falco", "birthYear": 1963, "roles": ["actor"]},
+  {"id": 22, "name": "Leonardo DiCaprio", "birthYear": 1974, "roles": ["actor"]},
+  {"id": 23, "name": "Joseph Gordon-Levitt", "birthYear": 1981, "roles": ["actor"]},
+  {"id": 24, "name": "Ellen Page", "birthYear": 1987, "roles": ["actor"]},
+  {"id": 25, "name": "Frank Darabont", "birthYear": 1959, "roles": ["director", "writer"]},
+  {"id": 26, "name": "Francis Ford Coppola", "birthYear": 1939, "roles": ["director", "writer"]},
+  {"id": 27, "name": "Vince Gilligan", "birthYear": 1967, "roles": ["writer", "producer"]},
+  {"id": 28, "name": "Christopher Nolan", "birthYear": 1970, "roles": ["director", "writer"]},
+  {"id": 29, "name": "Quentin Tarantino", "birthYear": 1963, "roles": ["director", "writer"]},
+  {"id": 30, "name": "David Chase", "birthYear": 1945, "roles": ["writer", "producer"]}
+]
