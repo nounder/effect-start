@@ -294,10 +294,7 @@ function makeStructSchemaModifier<
 >(key: K) {
   return function<
     S extends Self,
-    Fields extends
-      | Schema.Struct.Fields
-      | Schema.Struct<any>
-      | Record<PropertyKey, Schema.Schema.Any | Schema.PropertySignature.All>,
+    Fields extends Schema.Schema.Any | Record<PropertyKey, any>,
   >(
     this: S,
     fieldsOrSchema: Fields,
@@ -305,19 +302,15 @@ function makeStructSchemaModifier<
       Routes,
       & Schemas
       & {
-        [P in K]: Fields extends Schema.Struct<infer F> ? Schema.Struct<F>
-          : Schema.Struct<
-            Fields extends Record<PropertyKey, infer _> ? Fields : never
-          >
+        [P in K]: Fields extends Schema.Schema.Any ? Fields
+          : Schema.Struct<Extract<Fields, Record<PropertyKey, any>>>
       }
     >
     : RouteSet<
       [],
       {
-        [P in K]: Fields extends Schema.Struct<infer F> ? Schema.Struct<F>
-          : Schema.Struct<
-            Fields extends Record<PropertyKey, infer _> ? Fields : never
-          >
+        [P in K]: Fields extends Schema.Schema.Any ? Fields
+          : Schema.Struct<Extract<Fields, Record<PropertyKey, any>>>
       }
     >
   {

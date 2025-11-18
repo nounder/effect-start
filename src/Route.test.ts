@@ -750,3 +750,35 @@ t.it("schemaUrlParams accepts optional fields", () => {
 
   Function.satisfies<Expected>()(routes)
 })
+
+t.it("schemaUrlParams accepts Schema.Struct directly with optional fields", () => {
+  const UrlParamsSchema = Schema.Struct({
+    section: Function.pipe(
+      Schema.String,
+      Schema.optional,
+    ),
+  })
+
+  const routes = Route
+    .schemaUrlParams(UrlParamsSchema)
+    .html(
+      (ctx) => {
+        Function.satisfies<string | undefined>()(ctx.urlParams.section)
+
+        const page = ctx.urlParams.section ?? "default"
+
+        return Effect.succeed(`<div><h1>About ${page}</h1></div>`)
+      },
+    )
+
+  type ExpectedSchemas = {
+    readonly UrlParams: typeof UrlParamsSchema
+  }
+
+  type Expected = Route.RouteSet<
+    [Route.Route<"GET", "text/html", any, ExpectedSchemas>],
+    ExpectedSchemas
+  >
+
+  Function.satisfies<Expected>()(routes)
+})
