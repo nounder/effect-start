@@ -1,6 +1,7 @@
 import { Route } from "effect-start"
 import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
 import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
+import * as Cookies from "@effect/platform/Cookies"
 import { Sql } from "../../services/Sql.ts"
 import { USER_SESSION } from "../../services/SignedUser.ts"
 
@@ -14,11 +15,8 @@ export default Route.html(function*() {
     yield* sql.deleteSession(sessionId)
   }
 
-  return HttpServerResponse.empty({
+  return HttpServerResponse.redirect("/", {
     status: 302,
-    headers: {
-      Location: "/",
-      "Set-Cookie": `${USER_SESSION}=; Path=/; HttpOnly; Max-Age=0`,
-    },
+    cookies: Cookies.remove(Cookies.empty, USER_SESSION),
   })
 })

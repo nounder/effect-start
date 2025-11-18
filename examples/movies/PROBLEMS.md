@@ -39,24 +39,52 @@ git lfs pull
 
 **Note**: The provided examples showed Drizzle ORM usage, but due to npm registry connectivity issues during development, implemented a simpler direct sqlite approach. This can be refactored to use Drizzle ORM when preferred.
 
-## Route.html() POST Support
+## Route.html() POST Support - RESOLVED
 
-**Issue**: `Route.html()` appears to only handle GET requests by default. When attempting to POST to /login or /register routes, the server returns:
+**Solution Found**: Use method chaining pattern:
+```typescript
+export default Route.html(function*() {
+  // GET handler
+}).post(Route.html(function*() {
+  // POST handler
+}))
 ```
-RouteNotFound: POST /register not found
+
+**Status**: POST requests now reach handlers correctly. Form data parsing with `UrlParams.getFirst()` works.
+
+## HttpServerResponse with Cookies - CURRENT BLOCKER
+
+**Issue**: Creating `HttpServerResponse.redirect()` with cookies causes runtime error:
+```
+TypeError: undefined is not an object (evaluating 'self.cookies')
+  at isEmpty (/node_modules/@effect/platform/dist/esm/Cookies.js:239:53)
+  at makeResponse (/@effect/platform-bun/dist/esm/internal/httpServer.js:97:16)
 ```
 
-**Current Status**: The routes correctly render the GET (form display) pages, but POST submissions (form handling) return 404.
+**Code Pattern Attempted**:
+```typescript
+const cookie = Cookies.unsafeMakeCookie(USER_SESSION, sessionId, {
+  path: "/",
+  httpOnly: true,
+  maxAge: "30 days",
+})
 
-**Investigation Needed**: The Route API has `.post`, `.get`, etc. methods, but how to create a single route that handles both GET (display form) and POST (process form) is unclear from the current examples.
+return HttpServerResponse.redirect("/", {
+  status: 302,
+  cookies: Cookies.setCookie(Cookies.empty, cookie),
+})
+```
 
-**GET Routes Working**:
-✅ /register - Displays registration form
-✅ /login - Displays login form
-✅ /logout - Should work for GET redirects
-✅ / - Home page shows auth links/status
-✅ /movies, /shows, /people - All display routes work
+**Investigation Needed**:
+- Verify if `HttpServerResponse.redirect/empty` with cookies option is fully supported in current version
+- Check if Route.html() wrapper is compatible with HttpServerResponse returns
+- May need alternative approach for setting cookies on redirects
 
-**POST Routes Not Working**:
-❌ POST /register - Form submission returns 404
-❌ POST /login - Form submission returns 404
+**Current Status**:
+✅ POST /register - Receives data, validates email uniqueness
+✅ POST /login - Receives data, validates credentials
+❌ POST /register - Crashes when trying to set session cookie on redirect
+❌ POST /login - Crashes when trying to set session cookie on redirect
+✅ GET /register, /login, /logout - All form displays work
+✅ / - Home page works
+✅ /movies, /shows, /people - All data routes work

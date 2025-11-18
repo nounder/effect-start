@@ -4,67 +4,67 @@ import * as Option from "effect/Option"
 import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
 import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
 import * as UrlParams from "@effect/platform/UrlParams"
+import * as Cookies from "@effect/platform/Cookies"
 import { Sql } from "../../services/Sql.ts"
 import { USER_SESSION } from "../../services/SignedUser.ts"
 
-const SESSION_DURATION = 30 * 24 * 60 * 60 * 1000
+const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000
+const SESSION_DURATION = "30 days"
 
 export default Route.html(function*() {
+  return (
+    <div>
+      <h1>Login</h1>
+      <form method="POST" action="/login">
+        <div>
+          <label htmlFor="email">Email:</label>
+          <input type="email" id="email" name="email" required />
+        </div>
+        <div>
+          <label htmlFor="password">Password:</label>
+          <input type="password" id="password" name="password" required />
+        </div>
+        <button type="submit">Login</button>
+      </form>
+      <p>
+        Don't have an account? <a href="/register">Register</a>
+      </p>
+      <style>{`
+        form {
+          max-width: 400px;
+          margin: 20px 0;
+        }
+        div {
+          margin-bottom: 15px;
+        }
+        label {
+          display: block;
+          margin-bottom: 5px;
+        }
+        input {
+          width: 100%;
+          padding: 8px;
+          border: 1px solid #ccc;
+          border-radius: 4px;
+        }
+        button {
+          padding: 10px 20px;
+          background-color: #007bff;
+          color: white;
+          border: none;
+          border-radius: 4px;
+          cursor: pointer;
+        }
+        button:hover {
+          background-color: #0056b3;
+        }
+      `}</style>
+    </div>
+  )
+}).post(Route.html(function*() {
   const request = yield* HttpServerRequest.HttpServerRequest
-
-  if (request.method === "GET") {
-    return (
-      <div>
-        <h1>Login</h1>
-        <form method="POST" action="/login">
-          <div>
-            <label htmlFor="email">Email:</label>
-            <input type="email" id="email" name="email" required />
-          </div>
-          <div>
-            <label htmlFor="password">Password:</label>
-            <input type="password" id="password" name="password" required />
-          </div>
-          <button type="submit">Login</button>
-        </form>
-        <p>
-          Don't have an account? <a href="/register">Register</a>
-        </p>
-        <style>{`
-          form {
-            max-width: 400px;
-            margin: 20px 0;
-          }
-          div {
-            margin-bottom: 15px;
-          }
-          label {
-            display: block;
-            margin-bottom: 5px;
-          }
-          input {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-          }
-          button {
-            padding: 10px 20px;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-          }
-          button:hover {
-            background-color: #0056b3;
-          }
-        `}</style>
-      </div>
-    )
-  }
-
   const formData = yield* request.urlParamsBody
+
   const emailOpt = UrlParams.getFirst(formData, "email")
   const passwordOpt = UrlParams.getFirst(formData, "password")
 
@@ -82,7 +82,6 @@ export default Route.html(function*() {
   const password = passwordOpt.value
 
   const sql = yield* Sql
-
   const user = yield* sql.findUserByEmail(email)
 
   if (!user) {
@@ -107,13 +106,16 @@ export default Route.html(function*() {
     )
   }
 
-  const sessionId = yield* sql.createSession(user.id, SESSION_DURATION)
+  const sessionId = yield* sql.createSession(user.id, SESSION_DURATION_MS)
 
-  return HttpServerResponse.empty({
-    status: 302,
-    headers: {
-      Location: "/",
-      "Set-Cookie": `${USER_SESSION}=${sessionId}; Path=/; HttpOnly; Max-Age=${SESSION_DURATION / 1000}`,
-    },
+  const cookie = Cookies.unsafeMakeCookie(USER_SESSION, sessionId, {
+    path: "/",
+    httpOnly: true,
+    maxAge: SESSION_DURATION,
   })
-})
+
+  return HttpServerResponse.redirect("/", {
+    status: 302,
+    cookies: Cookies.setCookie(Cookies.empty, cookie),
+  })
+}))
