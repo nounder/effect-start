@@ -2,6 +2,7 @@ import * as FileSystem from "@effect/platform/FileSystem"
 import * as t from "bun:test"
 import { MemoryFileSystem } from "effect-memfs"
 import * as Effect from "effect/Effect"
+import * as Schema from "effect/Schema"
 import { parseRoute } from "./FileRouter.ts"
 import type { RouteHandle } from "./FileRouter.ts"
 import * as FileRouterCodegen from "./FileRouterCodegen.ts"
@@ -596,3 +597,128 @@ t.it("update() > removes routes when entire directory is deleted", () =>
       Effect.provide(MemoryFileSystem.layerWith(update_FilesWithRoutes)),
       Effect.runPromise,
     ))
+
+t.describe("createRoutePathParamsSchema", () => {
+  t.it("creates schema for route with single param", () => {
+    const segments = [
+      { literal: "users" },
+      { param: "id" },
+    ] as const
+
+    const schema = FileRouterCodegen.createRoutePathParamsSchema(segments)
+
+    t.expect(schema).toBeDefined()
+    t.expect(schema?.fields).toHaveProperty("id")
+  })
+
+  t.it("creates schema for route with multiple params", () => {
+    const segments = [
+      { literal: "posts" },
+      { param: "postId" },
+      { literal: "comments" },
+      { param: "commentId" },
+    ] as const
+
+    const schema = FileRouterCodegen.createRoutePathParamsSchema(segments)
+
+    t.expect(schema).toBeDefined()
+    t.expect(schema?.fields).toHaveProperty("postId")
+    t.expect(schema?.fields).toHaveProperty("commentId")
+  })
+
+  t.it("creates schema for route with optional rest param", () => {
+    const segments = [
+      { literal: "about" },
+      { rest: "section", optional: true },
+    ] as const
+
+    const schema = FileRouterCodegen.createRoutePathParamsSchema(segments)
+
+    t.expect(schema).toBeDefined()
+    t.expect(schema?.fields).toHaveProperty("section")
+  })
+
+  t.it("creates schema for route with required rest param", () => {
+    const segments = [
+      { literal: "api" },
+      { rest: "path" },
+    ] as const
+
+    const schema = FileRouterCodegen.createRoutePathParamsSchema(segments)
+
+    t.expect(schema).toBeDefined()
+    t.expect(schema?.fields).toHaveProperty("path")
+  })
+
+  t.it("returns undefined for route with no params", () => {
+    const segments = [
+      { literal: "about" },
+      { literal: "team" },
+    ] as const
+
+    const schema = FileRouterCodegen.createRoutePathParamsSchema(segments)
+
+    t.expect(schema).toBeUndefined()
+  })
+
+  t.it("returns undefined for empty segments", () => {
+    const segments = [] as const
+
+    const schema = FileRouterCodegen.createRoutePathParamsSchema(segments)
+
+    t.expect(schema).toBeUndefined()
+  })
+
+  t.it("creates schema for mixed params and rest", () => {
+    const segments = [
+      { literal: "users" },
+      { param: "userId" },
+      { literal: "files" },
+      { rest: "path" },
+    ] as const
+
+    const schema = FileRouterCodegen.createRoutePathParamsSchema(segments)
+
+    t.expect(schema).toBeDefined()
+    t.expect(schema?.fields).toHaveProperty("userId")
+    t.expect(schema?.fields).toHaveProperty("path")
+  })
+})
+
+t.describe("areStructSchemasEqual", () => {
+  t.it("returns true for two undefined schemas", () => {
+    const result = FileRouterCodegen.areStructSchemasEqual(undefined, undefined)
+    t.expect(result).toBe(true)
+  })
+
+  t.it("returns false when one schema is undefined", () => {
+    const schema = Schema.Struct({ id: Schema.String })
+    t.expect(FileRouterCodegen.areStructSchemasEqual(schema, undefined)).toBe(false)
+    t.expect(FileRouterCodegen.areStructSchemasEqual(undefined, schema)).toBe(false)
+  })
+
+  t.it("returns true for identical schemas", () => {
+    const schema1 = Schema.Struct({ id: Schema.String })
+    const schema2 = Schema.Struct({ id: Schema.String })
+
+    const result = FileRouterCodegen.areStructSchemasEqual(schema1, schema2)
+    t.expect(result).toBe(true)
+  })
+
+  t.it("returns false for schemas with different fields", () => {
+    const schema1 = Schema.Struct({ id: Schema.String })
+    const schema2 = Schema.Struct({ name: Schema.String })
+
+    const result = FileRouterCodegen.areStructSchemasEqual(schema1, schema2)
+    t.expect(result).toBe(false)
+  })
+
+  t.it("returns false for schemas with different field count", () => {
+    const schema1 = Schema.Struct({ id: Schema.String })
+    const schema2 = Schema.Struct({ id: Schema.String, name: Schema.String })
+
+    const result = FileRouterCodegen.areStructSchemasEqual(schema1, schema2)
+    t.expect(result).toBe(false)
+  })
+})
+

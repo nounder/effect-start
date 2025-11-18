@@ -1,6 +1,8 @@
 import * as FileSystem from "@effect/platform/FileSystem"
 import type { PlatformError } from "@effect/platform/Error"
 import * as Effect from "effect/Effect"
+import * as Function from "effect/Function"
+import * as Schema from "effect/Schema"
 import * as NPath from "node:path"
 import * as FileRouter from "./FileRouter.ts"
 import * as Route from "./Route.ts"
@@ -17,6 +19,59 @@ export function validateRouteModule(
   return Route.isRouteSet(module.default)
 }
 
+export function createRoutePathParamsSchema(
+  segments: readonly FileRouter.Segment[],
+): Schema.Struct<any> | undefined {
+  const fields: Record<string, Schema.Schema.Any> = {}
+
+  for (const seg of segments) {
+    if ("param" in seg) {
+      fields[seg.param] = Schema.String
+    } else if ("rest" in seg) {
+      fields[seg.rest] = seg.optional
+        ? Function.pipe(Schema.String, Schema.optional)
+        : Schema.String
+    }
+  }
+
+  if (Object.keys(fields).length === 0) {
+    return undefined
+  }
+
+  return Schema.Struct(fields)
+}
+
+export function areStructSchemasEqual(
+  a: Schema.Struct<any> | undefined,
+  b: Schema.Struct<any> | undefined,
+): boolean {
+  if (!a && !b) return true
+  if (!a || !b) return false
+
+  const aFields = a.fields
+  const bFields = b.fields
+
+  const aKeys = Object.keys(aFields)
+  const bKeys = Object.keys(bFields)
+
+  if (aKeys.length !== bKeys.length) return false
+
+  for (const key of aKeys) {
+    if (!(key in bFields)) return false
+
+    const aField = aFields[key]
+    const bField = bFields[key]
+
+    if (Schema.isSchema(aField) && Schema.isSchema(bField)) {
+      if (aField.ast !== bField.ast) {
+        return false
+      }
+    }
+  }
+
+  return true
+}
+
 /**
  * Validates all route modules in the given route handles.
  */
@@ -29,6 +84,10 @@ export function validateRouteModules(
 
     for (const handle of routeHandles) {
       const routeModulePath = NPath.resolve(routesPath, handle.modulePath)
+
+      const pathSegments = handle.segments.filter(seg => !("handle" in seg))
+      const routePathParams = createRoutePathParamsSchema(pathSegments)
+
       yield* Effect
         .tryPromise({
           try: async () => import(routeModulePath),
@@ -45,6 +104,24 @@ export function validateRouteModules(
                 `Route module ${routeModulePath} should export default Route`,
               )
             }
+
+            const routeSet = module.default as Route.RouteSet.Default
+
+            if (routePathParams) {
+              const existingPathParams = routeSet.schema.PathParams
+
+              if (existingPathParams) {
+                if (!areStructSchemasEqual(existingPathParams, routePathParams)) {
+                  routeSet.schema.PathParams = routePathParams
+                  return Effect.logError(
+                    `Route ${handle.routePath} (${routeModulePath}): PathParams schema mismatch. Expected schema based on route path params, but found different schema. The route's PathParams has been replaced with the expected schema.`,
+                  )
+                }
+              } else {
+                routeSet.schema.PathParams = routePathParams
+              }
+            }
+
             return Effect.void
           }),
         )
