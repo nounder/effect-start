@@ -750,3 +750,45 @@ t.it("schemaUrlParams accepts optional fields", () => {
 
   Function.satisfies<Expected>()(routes)
 })
+
+t.it("schemaUrlParams accepts string-encoded schemas", () => {
+  Route
+    .schemaUrlParams({
+      name: Schema.String,
+      age: Schema.NumberFromString,
+      active: Function.pipe(
+        Schema.String,
+        Schema.optional,
+      ),
+    })
+    .text(Effect.succeed("hello"))
+})
+
+t.it("schemaPathParams accepts string-encoded schemas", () => {
+  Route
+    .schemaPathParams({
+      id: Schema.String,
+      count: Schema.NumberFromString,
+    })
+    .text(Effect.succeed("hello"))
+})
+
+t.it("schemaHeaders accepts string-encoded schemas", () => {
+  Route
+    .schemaHeaders({
+      authorization: Schema.String,
+      "content-type": Schema.String,
+    })
+    .text(Effect.succeed("hello"))
+})
+
+t.it("schemaUrlParams type documentation - avoid non-string schemas", () => {
+  Route
+    .schemaUrlParams({
+      count: Schema.NumberFromString,
+    })
+    .text((ctx) => {
+      Function.satisfies<number>()(ctx.urlParams.count)
+      return Effect.succeed("hello")
+    })
+})

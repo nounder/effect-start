@@ -289,6 +289,30 @@ export const json = makeMediaFunction(
   makeValueHandler<JsonValue>((raw) => HttpServerResponse.unsafeJson(raw)),
 )
 
+/**
+ * Extracts the Encoded type from a Schema
+ */
+type GetEncodedType<S> = S extends Schema.Schema<any, infer E, any> ? E : unknown
+
+/**
+ * Validates that a schema field has a string-encoded type.
+ * This is a mapped type that transforms non-string-encoded fields to `never`.
+ */
+type ValidateStringEncoded<Fields> = {
+  [K in keyof Fields]: GetEncodedType<Fields[K]> extends string
+    ? Fields[K]
+    : Fields[K] extends Schema.PropertySignature.All
+      ? Fields[K]
+      : never
+}
+
+/**
+ * Validates that all fields in a Struct have string-encoded types.
+ */
+type ValidateStructStringEncoded<S> = S extends Schema.Struct<infer Fields>
+  ? Schema.Struct<ValidateStringEncoded<Fields>>
+  : never
+
 function makeStructSchemaModifier<
   K extends "PathParams" | "UrlParams" | "Headers",
 >(key: K) {
