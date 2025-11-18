@@ -1,21 +1,16 @@
 // @ts-nocheck
-import {
-  HttpApp,
-  HttpClient,
-  HttpClientError,
-  HttpClientRequest,
-  HttpClientResponse,
-  HttpServerRequest,
-  HttpServerResponse,
-} from "@effect/platform"
+import * as HttpApp from "@effect/platform/HttpApp"
+import * as HttpClient from "@effect/platform/HttpClient"
+import * as HttpClientError from "@effect/platform/HttpClientError"
+import * as HttpClientRequest from "@effect/platform/HttpClientRequest"
+import * as HttpClientResponse from "@effect/platform/HttpClientResponse"
+import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
+import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
 import { RouteNotFound } from "@effect/platform/HttpServerError"
-import {
-  Effect,
-  identity,
-  pipe,
-  Scope,
-  Stream,
-} from "effect"
+import * as Effect from "effect/Effect"
+import * as Function from "effect/Function"
+import * as Scope from "effect/Scope"
+import * as Stream from "effect/Stream"
 
 const WebHeaders = globalThis.Headers
 
@@ -51,7 +46,7 @@ export const make = <E = any, R = any>(
             } as any),
           )
 
-          return pipe(
+          return Function.pipe(
             app,
             Effect.provideService(
               HttpServerRequest.HttpServerRequest,
@@ -60,7 +55,7 @@ export const make = <E = any, R = any>(
             Effect.andThen(HttpServerResponse.toWeb),
             Effect.andThen(res => HttpClientResponse.fromWeb(request, res)),
             opts?.handleRouteNotFound === null
-              ? identity
+              ? Function.identity
               : Effect.catchTag("RouteNotFound", e =>
                 Effect
                   .succeed(HttpClientResponse.fromWeb(
@@ -98,7 +93,7 @@ export const make = <E = any, R = any>(
     )
     .pipe(
       opts?.baseUrl === null
-        ? identity
+        ? Function.identity
         : HttpClient.mapRequest(
           HttpClientRequest.prependUrl(opts?.baseUrl ?? "http://localhost"),
         ),

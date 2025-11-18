@@ -1,18 +1,14 @@
-import { FileSystem } from "@effect/platform"
-import {
-  expect,
-  it,
-  test,
-} from "bun:test"
-import { Effect } from "effect"
+import * as FileSystem from "@effect/platform/FileSystem"
+import * as t from "bun:test"
 import { MemoryFileSystem } from "effect-memfs"
+import * as Effect from "effect/Effect"
 import { parseRoute } from "./FileRouter.ts"
 import type { RouteHandle } from "./FileRouter.ts"
 import * as FileRouterCodegen from "./FileRouterCodegen.ts"
 import * as Route from "./Route.ts"
 import { effectFn } from "./testing.ts"
 
-test("generates code for routes only", () => {
+t.it("generates code for routes only", () => {
   const handles: RouteHandle[] = [
     parseRoute("route.tsx"),
     parseRoute("about/route.tsx"),
@@ -42,11 +38,12 @@ export const modules = [
 ] as const
 `
 
-  expect(code)
+  t
+    .expect(code)
     .toBe(expected)
 })
 
-test("generates code with layers", () => {
+t.it("generates code with layers", () => {
   const handles: RouteHandle[] = [
     parseRoute("layer.tsx"),
     parseRoute("route.tsx"),
@@ -83,11 +80,12 @@ export const modules = [
 ] as const
 `
 
-  expect(code)
+  t
+    .expect(code)
     .toBe(expected)
 })
 
-test("generates code with nested layers", () => {
+t.it("generates code with nested layers", () => {
   const handles: RouteHandle[] = [
     parseRoute("layer.tsx"),
     parseRoute("dashboard/layer.tsx"),
@@ -130,11 +128,12 @@ export const modules = [
 ] as const
 `
 
-  expect(code)
+  t
+    .expect(code)
     .toBe(expected)
 })
 
-test("only includes group layers for routes in that group", () => {
+t.it("only includes group layers for routes in that group", () => {
   const handles: RouteHandle[] = [
     parseRoute("layer.tsx"),
     parseRoute("(admin)/layer.ts"),
@@ -144,17 +143,21 @@ test("only includes group layers for routes in that group", () => {
 
   const code = FileRouterCodegen.generateCode(handles)
 
-  expect(code)
+  t
+    .expect(code)
     .toContain("path: \"/users\"")
 
-  expect(code)
+  t
+    .expect(code)
     .toContain("path: \"/movies\"")
 
   // /users should have both root layer and (admin) layer
-  expect(code)
+  t
+    .expect(code)
     .toContain("() => import(\"./layer.tsx\")")
 
-  expect(code)
+  t
+    .expect(code)
     .toContain("() => import(\"./(admin)/layer.ts\")")
 
   // /movies should only have root layer, not (admin) layer
@@ -169,11 +172,12 @@ test("only includes group layers for routes in that group", () => {
     ],
   },`
 
-  expect(code)
+  t
+    .expect(code)
     .toContain(expectedMovies)
 })
 
-test("handles dynamic routes with params", () => {
+t.it("handles dynamic routes with params", () => {
   const handles: RouteHandle[] = [
     parseRoute("users/route.tsx"),
     parseRoute("users/[userId]/route.tsx"),
@@ -182,21 +186,27 @@ test("handles dynamic routes with params", () => {
 
   const code = FileRouterCodegen.generateCode(handles)
 
-  expect(code)
+  t
+    .expect(code)
     .toContain("path: \"/users\"")
-  expect(code)
+  t
+    .expect(code)
     .toContain("path: \"/users/[userId]\"")
-  expect(code)
+  t
+    .expect(code)
     .toContain("{ literal: \"users\" }")
-  expect(code)
+  t
+    .expect(code)
     .toContain("{ param: \"userId\" }")
-  expect(code)
+  t
+    .expect(code)
     .toContain("{ param: \"postId\" }")
-  expect(code)
+  t
+    .expect(code)
     .toContain("{ param: \"commentId\" }")
 })
 
-test("handles rest parameters", () => {
+t.it("handles rest parameters", () => {
   const handles: RouteHandle[] = [
     parseRoute("docs/[[...slug]]/route.tsx"),
     parseRoute("api/[...path]/route.tsx"),
@@ -204,17 +214,21 @@ test("handles rest parameters", () => {
 
   const code = FileRouterCodegen.generateCode(handles)
 
-  expect(code)
+  t
+    .expect(code)
     .toContain("path: \"/docs/[[...slug]]\"")
-  expect(code)
+  t
+    .expect(code)
     .toContain("path: \"/api/[...path]\"")
-  expect(code)
+  t
+    .expect(code)
     .toContain("{ rest: \"slug\", optional: true }")
-  expect(code)
+  t
+    .expect(code)
     .toContain("{ rest: \"path\" }")
 })
 
-test("handles groups in path", () => {
+t.it("handles groups in path", () => {
   const handles: RouteHandle[] = [
     parseRoute("(admin)/users/route.tsx"),
     parseRoute("(admin)/layer.tsx"),
@@ -222,28 +236,33 @@ test("handles groups in path", () => {
 
   const code = FileRouterCodegen.generateCode(handles)
 
-  expect(code)
+  t
+    .expect(code)
     .toContain("path: \"/users\"") // groups stripped from URL
-  expect(code)
+  t
+    .expect(code)
     .toContain("{ group: \"admin\" }")
-  expect(code)
+  t
+    .expect(code)
     .toContain("layers: [\n      () => import(\"./(admin)/layer.tsx\"),\n    ]")
 })
 
-test("generates correct variable names for root routes", () => {
+t.it("generates correct variable names for root routes", () => {
   const handles: RouteHandle[] = [
     parseRoute("route.tsx"),
   ]
 
   const code = FileRouterCodegen.generateCode(handles)
 
-  expect(code)
+  t
+    .expect(code)
     .toContain("path: \"/\"")
-  expect(code)
+  t
+    .expect(code)
     .toContain("segments: []")
 })
 
-test("handles routes with dots in path segments", () => {
+t.it("handles routes with dots in path segments", () => {
   const handles: RouteHandle[] = [
     parseRoute("events.json/route.ts"),
     parseRoute("config.yaml.backup/route.ts"),
@@ -251,37 +270,43 @@ test("handles routes with dots in path segments", () => {
 
   const code = FileRouterCodegen.generateCode(handles)
 
-  expect(code)
+  t
+    .expect(code)
     .toContain("path: \"/events.json\"")
-  expect(code)
+  t
+    .expect(code)
     .toContain("path: \"/config.yaml.backup\"")
-  expect(code)
+  t
+    .expect(code)
     .toContain("{ literal: \"events.json\" }")
-  expect(code)
+  t
+    .expect(code)
     .toContain("{ literal: \"config.yaml.backup\" }")
 })
 
-test("uses default module identifier", () => {
+t.it("uses default module identifier", () => {
   const handles: RouteHandle[] = [
     parseRoute("route.tsx"),
   ]
 
   const code = FileRouterCodegen.generateCode(handles)
 
-  expect(code)
+  t
+    .expect(code)
     .toContain("import type { Router } from \"effect-start\"")
 })
 
-test("generates empty modules array when no handles provided", () => {
+t.it("generates empty modules array when no handles provided", () => {
   const handles: RouteHandle[] = []
 
   const code = FileRouterCodegen.generateCode(handles)
 
-  expect(code)
+  t
+    .expect(code)
     .toContain("export const modules = [] as const")
 })
 
-test("only includes routes in modules, not layers", () => {
+t.it("only includes routes in modules, not layers", () => {
   const handles: RouteHandle[] = [
     parseRoute("layer.tsx"),
     parseRoute("users/layer.tsx"),
@@ -289,11 +314,12 @@ test("only includes routes in modules, not layers", () => {
 
   const code = FileRouterCodegen.generateCode(handles)
 
-  expect(code)
+  t
+    .expect(code)
     .toContain("export const modules = [] as const")
 })
 
-test("complex nested routes with multiple layers", () => {
+t.it("complex nested routes with multiple layers", () => {
   const handles: RouteHandle[] = [
     parseRoute("layer.tsx"),
     parseRoute("(auth)/layer.tsx"),
@@ -306,25 +332,32 @@ test("complex nested routes with multiple layers", () => {
 
   const code = FileRouterCodegen.generateCode(handles)
 
-  expect(code)
+  t
+    .expect(code)
     .toContain("path: \"/login\"") // group stripped
-  expect(code)
+  t
+    .expect(code)
     .toContain("path: \"/signup\"") // group stripped
-  expect(code)
+  t
+    .expect(code)
     .toContain("path: \"/dashboard\"")
-  expect(code)
+  t
+    .expect(code)
     .toContain("path: \"/dashboard/settings\"")
 
   // Check layers are properly inherited
-  expect(code)
+  t
+    .expect(code)
     .toContain("() => import(\"./layer.tsx\")")
-  expect(code)
+  t
+    .expect(code)
     .toContain("() => import(\"./(auth)/layer.tsx\")")
-  expect(code)
+  t
+    .expect(code)
     .toContain("() => import(\"./dashboard/layer.tsx\")")
 })
 
-test("handles routes with hyphens and underscores in path segments", () => {
+t.it("handles routes with hyphens and underscores in path segments", () => {
   const handles: RouteHandle[] = [
     parseRoute("api-v1/route.ts"),
     parseRoute("my_resource/route.ts"),
@@ -332,81 +365,98 @@ test("handles routes with hyphens and underscores in path segments", () => {
 
   const code = FileRouterCodegen.generateCode(handles)
 
-  expect(code)
+  t
+    .expect(code)
     .toContain("path: \"/api-v1\"")
-  expect(code)
+  t
+    .expect(code)
     .toContain("path: \"/my_resource\"")
-  expect(code)
+  t
+    .expect(code)
     .toContain("{ literal: \"api-v1\" }")
-  expect(code)
+  t
+    .expect(code)
     .toContain("{ literal: \"my_resource\" }")
 })
 
-test("validateRouteModule returns true for valid modules", () => {
+t.it("validateRouteModule returns true for valid modules", () => {
   const validRoute = Route.text(Effect.succeed("Hello"))
 
-  expect(
-    FileRouterCodegen.validateRouteModule({ default: validRoute }),
-  )
+  t
+    .expect(
+      FileRouterCodegen.validateRouteModule({ default: validRoute }),
+    )
     .toBe(true)
 
-  expect(
-    FileRouterCodegen.validateRouteModule({
-      default: Route.html(Effect.succeed("<div>Hello</div>")),
-    }),
-  )
+  t
+    .expect(
+      FileRouterCodegen.validateRouteModule({
+        default: Route.html(Effect.succeed("<div>Hello</div>")),
+      }),
+    )
     .toBe(true)
 
-  expect(
-    FileRouterCodegen.validateRouteModule({
-      default: Route.json(Effect.succeed({ message: "Hello" })),
-    }),
-  )
+  t
+    .expect(
+      FileRouterCodegen.validateRouteModule({
+        default: Route.json(Effect.succeed({ message: "Hello" })),
+      }),
+    )
     .toBe(true)
 })
 
-test("validateRouteModule returns false for invalid modules", () => {
-  expect(FileRouterCodegen.validateRouteModule({}))
+t.it("validateRouteModule returns false for invalid modules", () => {
+  t
+    .expect(FileRouterCodegen.validateRouteModule({}))
     .toBe(false)
 
-  expect(
-    FileRouterCodegen.validateRouteModule({ default: {} }),
-  )
+  t
+    .expect(
+      FileRouterCodegen.validateRouteModule({ default: {} }),
+    )
     .toBe(false)
 
-  expect(
-    FileRouterCodegen.validateRouteModule({ default: "not a route" }),
-  )
+  t
+    .expect(
+      FileRouterCodegen.validateRouteModule({ default: "not a route" }),
+    )
     .toBe(false)
 
-  expect(
-    FileRouterCodegen.validateRouteModule({ foo: "bar" }),
-  )
+  t
+    .expect(
+      FileRouterCodegen.validateRouteModule({ foo: "bar" }),
+    )
     .toBe(false)
 
-  expect(FileRouterCodegen.validateRouteModule(null))
+  t
+    .expect(FileRouterCodegen.validateRouteModule(null))
     .toBe(false)
 
-  expect(FileRouterCodegen.validateRouteModule(undefined))
+  t
+    .expect(FileRouterCodegen.validateRouteModule(undefined))
     .toBe(false)
 
-  expect(FileRouterCodegen.validateRouteModule("string"))
+  t
+    .expect(FileRouterCodegen.validateRouteModule("string"))
     .toBe(false)
 
-  expect(FileRouterCodegen.validateRouteModule(42))
+  t
+    .expect(FileRouterCodegen.validateRouteModule(42))
     .toBe(false)
 })
 
-test("mixed params and rest in same route", () => {
+t.it("mixed params and rest in same route", () => {
   const handles: RouteHandle[] = [
     parseRoute("users/[userId]/files/[...path]/route.tsx"),
   ]
 
   const code = FileRouterCodegen.generateCode(handles)
 
-  expect(code)
+  t
+    .expect(code)
     .toContain("{ param: \"userId\" }")
-  expect(code)
+  t
+    .expect(code)
     .toContain("{ rest: \"path\" }")
 })
 
@@ -418,7 +468,7 @@ const update_FilesWithRoutes = {
   "/routes/_manifest.ts": "",
 }
 
-it("update() > writes file", () =>
+t.it("update() > writes file", () =>
   Effect
     .gen(function*() {
       yield* FileRouterCodegen.update("/routes")
@@ -426,7 +476,8 @@ it("update() > writes file", () =>
       const fs = yield* FileSystem.FileSystem
       const content = yield* fs.readFileString("/routes/_manifest.ts")
 
-      expect(content)
+      t
+        .expect(content)
         .toContain("export const modules =")
     })
     .pipe(
@@ -434,7 +485,7 @@ it("update() > writes file", () =>
       Effect.runPromise,
     ))
 
-it("update() > writes only when it changes", () =>
+t.it("update() > writes only when it changes", () =>
   Effect
     .gen(function*() {
       yield* FileRouterCodegen.update("/routes")
@@ -446,11 +497,13 @@ it("update() > writes only when it changes", () =>
 
       const content2 = yield* fs.readFileString("/routes/_manifest.ts")
 
-      expect(content2)
+      t
+        .expect(content2)
         .not
         .toBe("")
 
-      expect(content2)
+      t
+        .expect(content2)
         .toBe(content)
     })
     .pipe(
@@ -458,7 +511,7 @@ it("update() > writes only when it changes", () =>
       Effect.runPromise,
     ))
 
-it("update() > removes deleted routes from manifest", () =>
+t.it("update() > removes deleted routes from manifest", () =>
   Effect
     .gen(function*() {
       const fs = yield* FileSystem.FileSystem
@@ -467,10 +520,12 @@ it("update() > removes deleted routes from manifest", () =>
 
       const content = yield* fs.readFileString("/routes/_manifest.ts")
 
-      expect(content)
+      t
+        .expect(content)
         .toContain("path: \"/\"")
 
-      expect(content)
+      t
+        .expect(content)
         .toContain("path: \"/about\"")
 
       yield* fs.remove("/routes/about/route.tsx")
@@ -479,10 +534,12 @@ it("update() > removes deleted routes from manifest", () =>
 
       const content2 = yield* fs.readFileString("/routes/_manifest.ts")
 
-      expect(content2)
+      t
+        .expect(content2)
         .toContain("path: \"/\"")
 
-      expect(content2)
+      t
+        .expect(content2)
         .not
         .toContain("path: \"/about\"")
     })
@@ -491,7 +548,7 @@ it("update() > removes deleted routes from manifest", () =>
       Effect.runPromise,
     ))
 
-it("update() > removes routes when entire directory is deleted", () =>
+t.it("update() > removes routes when entire directory is deleted", () =>
   Effect
     .gen(function*() {
       const fs = yield* FileSystem.FileSystem
@@ -504,13 +561,16 @@ it("update() > removes routes when entire directory is deleted", () =>
 
       const content = yield* fs.readFileString("/routes/_manifest.ts")
 
-      expect(content)
+      t
+        .expect(content)
         .toContain("path: \"/\"")
 
-      expect(content)
+      t
+        .expect(content)
         .toContain("path: \"/about\"")
 
-      expect(content)
+      t
+        .expect(content)
         .toContain("path: \"/users\"")
 
       yield* fs.remove("/routes/users", { recursive: true })
@@ -519,13 +579,16 @@ it("update() > removes routes when entire directory is deleted", () =>
 
       const content2 = yield* fs.readFileString("/routes/_manifest.ts")
 
-      expect(content2)
+      t
+        .expect(content2)
         .toContain("path: \"/\"")
 
-      expect(content2)
+      t
+        .expect(content2)
         .toContain("path: \"/about\"")
 
-      expect(content2)
+      t
+        .expect(content2)
         .not
         .toContain("path: \"/users\"")
     })

@@ -1,11 +1,9 @@
-import { HttpServerResponse } from "@effect/platform"
-import {
-  Duration,
-  Effect,
-  pipe,
-  Schedule,
-  Stream,
-} from "effect"
+import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
+import * as Duration from "effect/Duration"
+import * as Effect from "effect/Effect"
+import * as Function from "effect/Function"
+import * as Schedule from "effect/Schedule"
+import * as Stream from "effect/Stream"
 import * as StreamExtra from "./StreamExtra.ts"
 
 const DefaultHeartbeatInterval = Duration.seconds(5)
@@ -21,7 +19,7 @@ export const make = <T = any>(stream: Stream.Stream<T, any>, options?: {
 
     const encoder = new TextEncoder()
 
-    const events = pipe(
+    const events = Function.pipe(
       Stream.merge(
         heartbeat.pipe(
           Stream.map(() => ":\n\n"),

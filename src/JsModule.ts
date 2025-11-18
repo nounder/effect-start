@@ -1,10 +1,8 @@
-import {
-  Array,
-  Iterable,
-  Order,
-  pipe,
-  Record,
-} from "effect"
+import * as Array from "effect/Array"
+import * as Function from "effect/Function"
+import * as Iterable from "effect/Iterable"
+import * as Order from "effect/Order"
+import * as Record from "effect/Record"
 import * as NFS from "node:fs"
 import * as NFSP from "node:fs/promises"
 import * as NPath from "node:path"
@@ -44,7 +42,7 @@ export async function importBundle<M = unknown>(
   entrypoint: string,
   basePath = findNodeModules() + "/.tmp",
 ): Promise<M> {
-  const sortedBlobs = pipe(
+  const sortedBlobs = Function.pipe(
     blobs,
     Record.toEntries,
     Array.sortWith(v => v[0], Order.string),
@@ -57,7 +55,7 @@ export async function importBundle<M = unknown>(
 
   await NFSP.mkdir(dir, { recursive: true })
 
-  await Promise.all(pipe(
+  await Promise.all(Function.pipe(
     blobs,
     Record.toEntries,
     Array.map(([path, blob]) => {
@@ -110,7 +108,7 @@ export async function importSource<M = unknown>(
 async function hashBuffer(buffer: BufferSource) {
   const hashBuffer = await crypto.subtle.digest("SHA-256", buffer)
 
-  return pipe(
+  return Function.pipe(
     new Uint8Array(hashBuffer),
     Iterable.map(b => b.toString(16).padStart(2, "0")),
     Iterable.reduce("", (a, b) => a + b),

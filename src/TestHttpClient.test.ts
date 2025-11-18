@@ -1,15 +1,7 @@
-import {
-  HttpServerRequest,
-  HttpServerResponse,
-} from "@effect/platform"
-import {
-  expect,
-  it,
-} from "bun:test"
-import {
-  Effect,
-  pipe,
-} from "effect"
+import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
+import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
+import * as t from "bun:test"
+import * as Effect from "effect/Effect"
 import * as TestHttpClient from "./TestHttpClient.ts"
 import { effectFn } from "./testing.ts"
 
@@ -29,30 +21,34 @@ const AppClient = TestHttpClient.make(App)
 
 const effect = effectFn()
 
-it("ok", () =>
+t.it("ok", () =>
   effect(function*() {
     const res = yield* AppClient.get("/")
 
-    expect(
-      res.status,
-    )
+    t
+      .expect(
+        res.status,
+      )
       .toEqual(200)
-    expect(
-      yield* res.text,
-    )
+    t
+      .expect(
+        yield* res.text,
+      )
       .toEqual("Hello, World!")
   }))
 
-it("not found", () =>
+t.it("not found", () =>
   effect(function*() {
     const res = yield* AppClient.get("/nope")
 
-    expect(
-      res.status,
-    )
+    t
+      .expect(
+        res.status,
+      )
       .toEqual(404)
-    expect(
-      yield* res.text,
-    )
+    t
+      .expect(
+        yield* res.text,
+      )
       .toEqual("Not Found")
   }))

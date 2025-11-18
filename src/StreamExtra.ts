@@ -1,12 +1,10 @@
-import {
-  Cause,
-  Effect,
-  Fiber,
-  Predicate,
-  Runtime,
-  Stream,
-} from "effect"
+import * as Cause from "effect/Cause"
+import * as Effect from "effect/Effect"
+import * as Fiber from "effect/Fiber"
 import { dual } from "effect/Function"
+import * as Predicate from "effect/Predicate"
+import * as Runtime from "effect/Runtime"
+import * as Stream from "effect/Stream"
 import {
   runForEachChunk,
   StreamTypeId,

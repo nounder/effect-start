@@ -1,11 +1,9 @@
-import { HttpApp } from "@effect/platform"
-import {
-  Context,
-  Effect,
-  Layer,
-  Ref,
-} from "effect"
+import * as HttpApp from "@effect/platform/HttpApp"
+import * as Context from "effect/Context"
+import * as Effect from "effect/Effect"
 import * as Function from "effect/Function"
+import * as Layer from "effect/Layer"
+import * as Ref from "effect/Ref"
 
 type NewType = HttpApp.Default<never, never>
 

@@ -1,6 +1,6 @@
-import { FileSystem } from "@effect/platform"
+import * as FileSystem from "@effect/platform/FileSystem"
 import type { PlatformError } from "@effect/platform/Error"
-import { Effect } from "effect"
+import * as Effect from "effect/Effect"
 import * as NPath from "node:path"
 import * as FileRouter from "./FileRouter.ts"
 import * as Route from "./Route.ts"

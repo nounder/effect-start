@@ -1,10 +1,7 @@
-import {
-  expect,
-  test,
-} from "bun:test"
+import * as t from "bun:test"
 import * as FileRouter from "./FileRouter.ts"
 
-test("tree with root only", () => {
+t.it("tree with root only", () => {
   const handles = [
     "route.tsx",
     "layer.tsx",
@@ -12,31 +9,31 @@ test("tree with root only", () => {
     .map(FileRouter.parseRoute)
   const tree = FileRouter.treeFromRouteHandles(handles)
 
-  expect(tree).toEqual({
+  t.expect(tree).toEqual({
     path: "/",
     handles: [
-      expect.objectContaining({
+      t.expect.objectContaining({
         handle: "route",
       }),
-      expect.objectContaining({
+      t.expect.objectContaining({
         handle: "layer",
       }),
     ],
   })
 })
 
-test("tree without root", () => {
+t.it("tree without root", () => {
   const handles = []
     .map(FileRouter.parseRoute)
   const tree = FileRouter.treeFromRouteHandles(handles)
 
-  expect(tree).toEqual({
+  t.expect(tree).toEqual({
     path: "/",
     handles: [],
   })
 })
 
-test("deep tree", () => {
+t.it("deep tree", () => {
   const handles = [
     "users/route.tsx",
     "users/layer.tsx",
@@ -46,10 +43,10 @@ test("deep tree", () => {
     .map(FileRouter.parseRoute)
   const tree = FileRouter.treeFromRouteHandles(handles)
 
-  expect(tree).toEqual({
+  t.expect(tree).toEqual({
     path: "/",
     handles: [
-      expect.objectContaining({
+      t.expect.objectContaining({
         handle: "layer",
       }),
     ],
@@ -57,10 +54,10 @@ test("deep tree", () => {
       {
         path: "/users",
         handles: [
-          expect.objectContaining({
+          t.expect.objectContaining({
             handle: "route",
           }),
-          expect.objectContaining({
+          t.expect.objectContaining({
             handle: "layer",
           }),
         ],
@@ -68,7 +65,7 @@ test("deep tree", () => {
           {
             path: "/[userId]",
             handles: [
-              expect.objectContaining({
+              t.expect.objectContaining({
                 handle: "route",
               }),
             ],
@@ -79,8 +76,8 @@ test("deep tree", () => {
   })
 })
 
-test("throws on overlapping routes from groups", () => {
-  expect(() => {
+t.it("throws on overlapping routes from groups", () => {
+  t.expect(() => {
     const handles = [
       "(admin)/users/route.tsx",
       "users/route.tsx",
@@ -94,8 +91,8 @@ test("throws on overlapping routes from groups", () => {
     .toThrow("Conflicting routes detected at path /users")
 })
 
-test("throws on overlapping routes with same path", () => {
-  expect(() => {
+t.it("throws on overlapping routes with same path", () => {
+  t.expect(() => {
     const handles = [
       "about/route.tsx",
       "about/route.ts",
@@ -109,8 +106,8 @@ test("throws on overlapping routes with same path", () => {
     .toThrow("Conflicting routes detected at path /about")
 })
 
-test("allows route and layer at same path", () => {
-  expect(() => {
+t.it("allows route and layer at same path", () => {
+  t.expect(() => {
     const handles = [
       "users/route.tsx",
       "users/layer.tsx",

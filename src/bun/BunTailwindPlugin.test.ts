@@ -1,9 +1,4 @@
-import {
-  describe,
-  expect,
-  it,
-  test,
-} from "bun:test"
+import * as t from "bun:test"
 
 import { extractClassNames } from "./BunTailwindPlugin.ts"
 
@@ -22,50 +17,55 @@ function extractClassNamesBroad(source: string): Set<string> {
   )
 }
 
-describe("extractClassNames", () => {
-  test("Basic HTML class attributes", () => {
+t.describe("extractClassNames", () => {
+  t.test("Basic HTML class attributes", () => {
     const source = `<div class="bg-red-500 text-white">Hello</div>`
     const result = extractClassNames(source)
 
-    expect([...result].sort())
+    t
+      .expect([...result].sort())
       .toEqual(["bg-red-500", "text-white"])
   })
 
-  test("Basic JSX className attributes", () => {
+  t.test("Basic JSX className attributes", () => {
     const source =
       `<div className="flex items-center justify-between">Content</div>`
     const result = extractClassNames(source)
 
-    expect([...result].sort())
+    t
+      .expect([...result].sort())
       .toEqual(["flex", "items-center", "justify-between"])
   })
 
-  test("Single quotes", () => {
+  t.test("Single quotes", () => {
     const source = `<div class='bg-blue-500 hover:bg-blue-600'>Button</div>`
     const result = extractClassNames(source)
 
-    expect([...result].sort())
+    t
+      .expect([...result].sort())
       .toEqual(["bg-blue-500", "hover:bg-blue-600"])
   })
 
-  test("Template literals in JSX", () => {
+  t.test("Template literals in JSX", () => {
     const source = `<div className={\`bg-\${color} text-lg\`}>Dynamic</div>`
     const result = extractClassNames(source)
 
     // Should extract valid static class names from template literals
-    expect([...result].sort())
+    t
+      .expect([...result].sort())
       .toEqual(["text-lg"])
   })
 
-  test("JSX with quoted strings", () => {
+  t.test("JSX with quoted strings", () => {
     const source = `<div className={"p-4 m-2"}>Static in braces</div>`
     const result = extractClassNames(source)
 
-    expect([...result].sort())
+    t
+      .expect([...result].sort())
       .toEqual(["m-2", "p-4"])
   })
 
-  test("Multi-line attributes", () => {
+  t.test("Multi-line attributes", () => {
     const source = `<div 
       className="
         grid 
@@ -75,11 +75,12 @@ describe("extractClassNames", () => {
     >Grid</div>`
     const result = extractClassNames(source)
 
-    expect([...result].sort())
+    t
+      .expect([...result].sort())
       .toEqual(["gap-4", "grid", "grid-cols-3"])
   })
 
-  test("Whitespace variations around equals", () => {
+  t.test("Whitespace variations around equals", () => {
     const cases = [
       `<div class="text-sm">Normal</div>`,
       `<div class ="text-md">Space before</div>`,
@@ -90,34 +91,38 @@ describe("extractClassNames", () => {
     for (const source of cases) {
       const result = extractClassNames(source)
 
-      expect(result.size)
+      t
+      .expect(result.size)
         .toBe(1)
     }
   })
 
-  test("Arbitrary value classes", () => {
+  t.test("Arbitrary value classes", () => {
     const source =
       `<div className="w-[32px] bg-[#ff0000] text-[1.5rem]">Arbitrary</div>`
     const result = extractClassNames(source)
 
-    expect([...result].sort())
+    t
+      .expect([...result].sort())
       .toEqual(["bg-[#ff0000]", "text-[1.5rem]", "w-[32px]"])
   })
 
-  test("Fraction classes", () => {
+  t.test("Fraction classes", () => {
     const source = `<div className="w-1/2 h-3/4">Fractions</div>`
     const result = extractClassNames(source)
 
-    expect([...result].sort())
+    t
+      .expect([...result].sort())
       .toEqual(["h-3/4", "w-1/2"])
   })
 
-  test("Complex Tailwind classes", () => {
+  t.test("Complex Tailwind classes", () => {
     const source =
       `<div className="sm:w-1/2 md:w-1/3 lg:w-1/4 hover:bg-gray-100 focus:ring-2">Responsive</div>`
     const result = extractClassNames(source)
 
-    expect([...result].sort())
+    t
+      .expect([...result].sort())
       .toEqual([
         "focus:ring-2",
         "hover:bg-gray-100",
@@ -127,65 +132,71 @@ describe("extractClassNames", () => {
       ])
   })
 
-  test("Should ignore similar attribute names", () => {
+  t.test("Should ignore similar attribute names", () => {
     const source =
       `<div data-class="should-ignore" myclass="also-ignore" class="keep-this">Test</div>`
     const result = extractClassNames(source)
 
-    expect([...result])
+    t
+      .expect([...result])
       .toEqual(["keep-this"])
   })
 
-  test("Should handle case sensitivity", () => {
+  t.test("Should handle case sensitivity", () => {
     const source =
       `<div Class="uppercase-class" class="lowercase-class">Mixed case</div>`
     const result = extractClassNames(source)
 
     // Our current implementation only matches lowercase 'class'
-    expect([...result])
+    t
+      .expect([...result])
       .toEqual(["lowercase-class"])
   })
 
-  test("Empty class attributes", () => {
+  t.test("Empty class attributes", () => {
     const source = `<div class="" className=''>Empty</div>`
     const result = extractClassNames(source)
 
-    expect(result.size)
+    t
+      .expect(result.size)
       .toBe(0)
   })
 
-  test("Classes with special characters", () => {
+  t.test("Classes with special characters", () => {
     const source =
       `<div className="group-hover:text-blue-500 peer-focus:ring-2">Special chars</div>`
     const result = extractClassNames(source)
 
-    expect([...result].sort())
+    t
+      .expect([...result].sort())
       .toEqual(["group-hover:text-blue-500", "peer-focus:ring-2"])
   })
 
-  test("Should not match classes in comments", () => {
+  t.test("Should not match classes in comments", () => {
     const source = `
       <!-- <div class="commented-out">Should not match</div> -->
       <div class="real-class">Should match</div>
     `
     const result = extractClassNames(source)
 
-    expect([...result])
+    t
+      .expect([...result])
       .toEqual(["real-class"])
   })
 
-  test("Should not match classes in strings", () => {
+  t.test("Should not match classes in strings", () => {
     const source = `
       const message = "This class='fake-class' should not match";
       <div class="real-class">Real element</div>
     `
     const result = extractClassNames(source)
 
-    expect([...result])
+    t
+      .expect([...result])
       .toEqual(["real-class"])
   })
 
-  test("Complex JSX expressions should be ignored", () => {
+  t.test("Complex JSX expressions should be ignored", () => {
     const source = `
       <div className={condition ? "conditional-class" : "other-class"}>Conditional</div>
       <div className={\`template-\${variable}\`}>Template</div>
@@ -195,11 +206,12 @@ describe("extractClassNames", () => {
     const result = extractClassNames(source)
 
     // Only the static class should match with our strict implementation
-    expect([...result])
+    t
+      .expect([...result])
       .toEqual(["static-class"])
   })
 
-  test("Vue.js class bindings should be ignored", () => {
+  t.test("Vue.js class bindings should be ignored", () => {
     const source = `
       <div :class="{ 'active': isActive }">Vue object</div>
       <div :class="['base', condition && 'active']">Vue array</div>
@@ -208,31 +220,34 @@ describe("extractClassNames", () => {
     const result = extractClassNames(source)
 
     // Only static class should match
-    expect([...result])
+    t
+      .expect([...result])
       .toEqual(["static-vue-class"])
   })
 
-  test("Svelte class directives should be ignored", () => {
+  t.test("Svelte class directives should be ignored", () => {
     const source = `
       <div class:active={condition}>Svelte directive</div>
       <div class="static-svelte-class">Static Svelte</div>
     `
     const result = extractClassNames(source)
 
-    expect([...result])
+    t
+      .expect([...result])
       .toEqual(["static-svelte-class"])
   })
 
-  test("Escaped quotes should be handled", () => {
+  t.test("Escaped quotes should be handled", () => {
     const source =
       `<div class="text-sm before:content-['Hello']">Escaped quotes</div>`
     const result = extractClassNames(source)
 
-    expect([...result].sort())
+    t
+      .expect([...result].sort())
       .toEqual(["before:content-['Hello']", "text-sm"])
   })
 
-  test("Current broad implementation comparison", () => {
+  t.test("Current broad implementation comparison", () => {
     const source = `
       <div class="bg-red-500 text-white">Element</div>
       <p>Some random-text-with-hyphens in content</p>
@@ -243,24 +258,27 @@ describe("extractClassNames", () => {
     const strictResult = extractClassNames(source)
 
     // Broad should pick up more tokens
-    expect(broadResult.size)
+    t
+      .expect(broadResult.size)
       .toBeGreaterThan(strictResult.size)
 
     // Strict should only have the actual class names
-    expect([...strictResult].sort())
+    t
+      .expect([...strictResult].sort())
       .toEqual(["bg-red-500", "text-white"])
   })
 
-  test("Component names with dots", () => {
+  t.test("Component names with dots", () => {
     const source =
       `<Toast.Toast class="toast toast-top toast-center fixed top-8 z-10">Content</Toast.Toast>`
     const result = extractClassNames(source)
 
-    expect([...result].sort())
+    t
+      .expect([...result].sort())
       .toEqual(["fixed", "toast", "toast-center", "toast-top", "top-8", "z-10"])
   })
 
-  test("Complex component names and attributes", () => {
+  t.test("Complex component names and attributes", () => {
     const source = `
       <My.Component.Name className="flex items-center">Content</My.Component.Name>
       <Component-with-dashes class="bg-red-500">Content</Component-with-dashes>
@@ -269,7 +287,8 @@ describe("extractClassNames", () => {
     `
     const result = extractClassNames(source)
 
-    expect([...result].sort())
+    t
+      .expect([...result].sort())
       .toEqual([
         "bg-red-500",
         "border-2",
@@ -279,7 +298,7 @@ describe("extractClassNames", () => {
       ])
   })
 
-  test("Conditional JSX with Toast component", () => {
+  t.test("Conditional JSX with Toast component", () => {
     const source = `{toastParam !== undefined && (
           <Toast.Toast class="toast toast-top toast-center fixed top-8 z-10">
             <div class="alert alert-success">
@@ -291,7 +310,8 @@ describe("extractClassNames", () => {
         )}`
     const result = extractClassNames(source)
 
-    expect([...result].sort())
+    t
+      .expect([...result].sort())
       .toEqual([
         "alert",
         "alert-success",
@@ -304,11 +324,12 @@ describe("extractClassNames", () => {
       ])
   })
 
-  test("Template literals with expressions", () => {
+  t.test("Template literals with expressions", () => {
     const source = `<div class={\`toast \${props.class ?? ""}\`}>Content</div>`
     const result = extractClassNames(source)
 
-    expect([...result].sort())
+    t
+      .expect([...result].sort())
       .toEqual(["toast"])
   })
 })

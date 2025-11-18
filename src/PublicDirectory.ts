@@ -1,14 +1,10 @@
-import {
-  HttpApp,
-  HttpServerRequest,
-  HttpServerResponse,
-} from "@effect/platform"
-import { FileSystem } from "@effect/platform"
+import * as FileSystem from "@effect/platform/FileSystem"
+import * as HttpApp from "@effect/platform/HttpApp"
+import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
+import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
 import { RouteNotFound } from "@effect/platform/HttpServerError"
-import {
-  Effect,
-  pipe,
-} from "effect"
+import * as Effect from "effect/Effect"
+import * as Function from "effect/Function"
 import * as NPath from "node:path"
 
 export interface PublicDirectoryOptions {
@@ -50,7 +46,7 @@ export const make = (
       return yield* Effect.fail(new RouteNotFound({ request }))
     }
 
-    const exists = yield* pipe(
+    const exists = yield* Function.pipe(
       fs.exists(filePath),
       Effect.catchAll(() => Effect.succeed(false)),
     )
@@ -59,7 +55,7 @@ export const make = (
       return yield* Effect.fail(new RouteNotFound({ request }))
     }
 
-    const stat = yield* pipe(
+    const stat = yield* Function.pipe(
       fs.stat(filePath),
       Effect.catchAll(() => Effect.fail(new RouteNotFound({ request }))),
     )
@@ -68,7 +64,7 @@ export const make = (
       return yield* Effect.fail(new RouteNotFound({ request }))
     }
 
-    const content = yield* pipe(
+    const content = yield* Function.pipe(
       fs.readFile(filePath),
       Effect.catchAll(() => Effect.fail(new RouteNotFound({ request }))),
     )
