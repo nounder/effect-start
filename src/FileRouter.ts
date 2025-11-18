@@ -260,7 +260,7 @@ export function layer(options: {
 
       const stream = pipe(
         FileSystemExtra.watchSource(routesPath, {
-          includeDirectories: true,
+          filter: (e) => !e.path.includes("node_modules"),
         }),
         Stream.onError((e) => Effect.logError(e)),
       )
@@ -268,7 +268,7 @@ export function layer(options: {
       yield* pipe(
         stream,
         // filter out edits to gen file
-        Stream.filter(e => e.filename !== resolvedManifestPath),
+        Stream.filter(e => e.path !== resolvedManifestPath),
         Stream.runForEach(() =>
           FileRouterCodegen.update(routesPath, manifestFilename)
         ),

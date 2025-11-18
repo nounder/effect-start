@@ -1,6 +1,7 @@
 import { Error } from "@effect/platform"
 import {
   Console,
+  Effect,
   pipe,
   Stream,
 } from "effect"
@@ -10,22 +11,39 @@ import * as NPath from "node:path"
 
 const SOURCE_FILENAME = /\.(tsx?|jsx?|html?|css|json)$/
 
+export type WatchEventType = {
+  eventType: string
+  path: string
+}
+
+/**
+ * Filter for source files based on file extension.
+ */
+export const filterSourceFiles = (event: WatchEventType): boolean => {
+  return SOURCE_FILENAME.test(event.path)
+}
+
+/**
+ * Filter for directories (paths ending with /).
+ */
+export const filterDirectory = (event: WatchEventType): boolean => {
+  return event.path.endsWith("/")
+}
+
 /**
  * `@effect/platform` doesn't support recursive file watching.
  * This function implements that [2025-05-19]
  * Additionally, the filename is resolved to an absolute path.
+ * If the path is a directory, it appends / to the path.
  */
 export const watchSource = (
   path?: string,
   opts?: WatchOptions & {
-    includeDirectories?: boolean
-    filter?: (event: NFSP.FileChangeInfo<string>) => boolean
+    filter?: (event: WatchEventType) => boolean
   },
-): Stream.Stream<NFSP.FileChangeInfo<string>, Error.SystemError> => {
+): Stream.Stream<WatchEventType, Error.SystemError> => {
   const baseDir = path ?? process.cwd()
-  const includeDirectories = opts?.includeDirectories ?? false
   const customFilter = opts?.filter
-    ?? ((event) => !(/node_modules/.test(event.filename!)))
 
   let stream: Stream.Stream<NFSP.FileChangeInfo<string>, Error.SystemError>
   try {
@@ -45,16 +63,22 @@ export const watchSource = (
 
   const changes = pipe(
     stream,
-    Stream.map(e => ({
-      eventType: e.eventType,
-      filename: NPath.resolve(baseDir, e.filename!),
-    })),
-    includeDirectories
-      ? Stream.filter(customFilter)
-      : pipe(
-        Stream.filter((event) => SOURCE_FILENAME.test(event.filename!)),
-        Stream.filter(customFilter),
-      ),
+    Stream.mapEffect(e =>
+      Effect.promise(() => {
+        const resolvedPath = NPath.resolve(baseDir, e.filename!)
+        return NFSP
+          .stat(resolvedPath)
+          .then(stat => ({
+            eventType: e.eventType,
+            path: stat.isDirectory() ? `${resolvedPath}/` : resolvedPath,
+          }))
+          .catch(() => ({
+            eventType: e.eventType,
+            path: resolvedPath,
+          }))
+      })
+    ),
+    customFilter ? Stream.filter(customFilter) : (s => s),
     Stream.rechunk(1),
     Stream.throttle({
       units: 1,
