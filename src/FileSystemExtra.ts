@@ -17,9 +17,15 @@ const SOURCE_FILENAME = /\.(tsx?|jsx?|html?|css|json)$/
  */
 export const watchSource = (
   path?: string,
-  opts?: WatchOptions,
+  opts?: WatchOptions & {
+    includeDirectories?: boolean
+    filter?: (event: NFSP.FileChangeInfo<string>) => boolean
+  },
 ): Stream.Stream<NFSP.FileChangeInfo<string>, Error.SystemError> => {
   const baseDir = path ?? process.cwd()
+  const includeDirectories = opts?.includeDirectories ?? false
+  const customFilter = opts?.filter
+    ?? ((event) => !(/node_modules/.test(event.filename!)))
 
   let stream: Stream.Stream<NFSP.FileChangeInfo<string>, Error.SystemError>
   try {
@@ -43,53 +49,12 @@ export const watchSource = (
       eventType: e.eventType,
       filename: NPath.resolve(baseDir, e.filename!),
     })),
-    Stream.filter((event) => SOURCE_FILENAME.test(event.filename!)),
-    Stream.filter((event) => !(/node_modules/.test(event.filename!))),
-    Stream.rechunk(1),
-    Stream.throttle({
-      units: 1,
-      cost: () => 1,
-      duration: "400 millis",
-      strategy: "enforce",
-    }),
-  )
-
-  return changes
-}
-
-/**
- * Watch a directory for any changes, including directory deletions/additions.
- * Unlike watchSource, this includes directory events to catch folder deletions.
- */
-export const watchDirectory = (
-  path?: string,
-  opts?: WatchOptions,
-): Stream.Stream<NFSP.FileChangeInfo<string>, Error.SystemError> => {
-  const baseDir = path ?? process.cwd()
-
-  let stream: Stream.Stream<NFSP.FileChangeInfo<string>, Error.SystemError>
-  try {
-    stream = Stream.fromAsyncIterable(
-      NFSP.watch(baseDir, {
-        persistent: false,
-        recursive: true,
-        ...(opts || {}),
-      }),
-      error => handleWatchError(error, baseDir),
-    )
-  } catch (e) {
-    const err = handleWatchError(e, baseDir)
-
-    stream = Stream.fail(err)
-  }
-
-  const changes = pipe(
-    stream,
-    Stream.map(e => ({
-      eventType: e.eventType,
-      filename: NPath.resolve(baseDir, e.filename!),
-    })),
-    Stream.filter((event) => !(/node_modules/.test(event.filename!))),
+    includeDirectories
+      ? Stream.filter(customFilter)
+      : pipe(
+        Stream.filter((event) => SOURCE_FILENAME.test(event.filename!)),
+        Stream.filter(customFilter),
+      ),
     Stream.rechunk(1),
     Stream.throttle({
       units: 1,
