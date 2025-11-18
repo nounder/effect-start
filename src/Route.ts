@@ -126,6 +126,21 @@ export namespace RouteHandler {
   >
 }
 
+/**
+ * A schema field that accepts string input (encoded type is string).
+ * Used for path params, URL params, and headers.
+ */
+export type StringEncodedField = Schema.Schema<any, string, any>
+
+/**
+ * A schema field that accepts string or string array input.
+ * Used for URL params and headers to support multi-value fields.
+ */
+export type StringOrArrayEncodedField =
+  | Schema.Schema<any, string, any>
+  | Schema.Schema<any, readonly string[], any>
+
+
 export type RouteSchemas = {
   readonly PathParams?: Schema.Struct<any>
   readonly UrlParams?: Schema.Struct<any>
@@ -289,15 +304,67 @@ export const json = makeMediaFunction(
   makeValueHandler<JsonValue>((raw) => HttpServerResponse.unsafeJson(raw)),
 )
 
-function makeStructSchemaModifier<
-  K extends "PathParams" | "UrlParams" | "Headers",
+function makePathParamsSchemaModifier() {
+  return function<
+    S extends Self,
+    const Fields extends
+      | Record<PropertyKey, StringEncodedField | Schema.PropertySignature.All>
+      | Schema.Struct<any>,
+  >(
+    this: S,
+    fieldsOrSchema: Fields,
+  ): S extends RouteSet<infer Routes, infer Schemas> ? RouteSet<
+      Routes,
+      & Schemas
+      & {
+        PathParams: Fields extends Schema.Struct<infer F> ? Schema.Struct<F>
+          : Schema.Struct<
+            Fields extends Record<PropertyKey, infer _> ? Fields : never
+          >
+      }
+    >
+    : RouteSet<
+      [],
+      {
+        PathParams: Fields extends Schema.Struct<infer F> ? Schema.Struct<F>
+          : Schema.Struct<
+            Fields extends Record<PropertyKey, infer _> ? Fields : never
+          >
+      }
+    >
+  {
+    const baseRoutes = isRouteSet(this)
+      ? this.set
+      : []
+    const baseSchema = isRouteSet(this)
+      ? this.schema
+      : {} as RouteSchemas.Empty
+
+    const schema = Schema.isSchema(fieldsOrSchema)
+      ? fieldsOrSchema
+      : Schema.Struct(fieldsOrSchema as Schema.Struct.Fields)
+
+    return makeSet(
+      baseRoutes as any,
+      {
+        ...baseSchema,
+        PathParams: schema,
+      } as any,
+    ) as any
+  }
+}
+
+function makeUrlParamOrHeaderSchemaModifier<
+  K extends "UrlParams" | "Headers",
 >(key: K) {
   return function<
     S extends Self,
-    Fields extends
-      | Schema.Struct.Fields
-      | Schema.Struct<any>
-      | Record<PropertyKey, Schema.Schema.Any | Schema.PropertySignature.All>,
+    const Fields extends
+      | Record<
+        PropertyKey,
+        StringOrArrayEncodedField | Schema.PropertySignature.All
+      >
+      | Schema.Struct<any>,
   >(
     this: S,
     fieldsOrSchema: Fields,
@@ -390,12 +457,12 @@ function makeUnionSchemaModifier<
   }
 }
 
-export const schemaPathParams = makeStructSchemaModifier("PathParams")
-export const schemaUrlParams = makeStructSchemaModifier("UrlParams")
+export const schemaPathParams = makePathParamsSchemaModifier()
+export const schemaUrlParams = makeUrlParamOrHeaderSchemaModifier("UrlParams")
 export const schemaPayload = makeUnionSchemaModifier("Payload")
 export const schemaSuccess = makeUnionSchemaModifier("Success")
 export const schemaError = makeUnionSchemaModifier("Error")
-export const schemaHeaders = makeStructSchemaModifier("Headers")
+export const schemaHeaders = makeUrlParamOrHeaderSchemaModifier("Headers")
 
 const SetProto = {
   [RouteSetTypeId]: RouteSetTypeId,
