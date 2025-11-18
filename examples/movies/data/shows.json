@@ -1,3 +1,57 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:d3a01b4467176b21d063b2499ff58814e5caef43f99a44e89cf917f8e8b2c4c4
-size 173947
+[
+  {
+    "id": 1,
+    "title": "Breaking Bad",
+    "years": "2008-2013",
+    "seasons": 5,
+    "genre": ["Crime", "Drama", "Thriller"],
+    "creator": "Vince Gilligan",
+    "cast": ["Bryan Cranston", "Aaron Paul"],
+    "rating": 9.5,
+    "plot": "A high school chemistry teacher turned methamphetamine producer partners with a former student to secure his family's future."
+  },
+  {
+    "id": 2,
+    "title": "Game of Thrones",
+    "years": "2011-2019",
+    "seasons": 8,
+    "genre": ["Action", "Adventure", "Drama"],
+    "creator": "David Benioff, D.B. Weiss",
+    "cast": ["Emilia Clarke", "Peter Dinklage", "Kit Harington"],
+    "rating": 9.3,
+    "plot": "Nine noble families fight for control over the lands of Westeros, while an ancient enemy returns after being dormant for millennia."
+  },
+  {
+    "id": 3,
+    "title": "Stranger Things",
+    "years": "2016-",
+    "seasons": 4,
+    "genre": ["Drama", "Fantasy", "Horror"],
+    "creator": "The Duffer Brothers",
+    "cast": ["Millie Bobby Brown", "Finn Wolfhard"],
+    "rating": 8.7,
+    "plot": "When a young boy disappears, his mother, a police chief and his friends must confront terrifying supernatural forces in order to get him back."
+  },
+  {
+    "id": 4,
+    "title": "The Office",
+    "years": "2005-2013",
+    "seasons": 9,
+    "genre": ["Comedy"],
+    "creator": "Greg Daniels",
+    "cast": ["Steve Carell", "Rainn Wilson", "John Krasinski"],
+    "rating": 9.0,
+    "plot": "A mockumentary on a group of typical office workers, where the workday consists of ego clashes, inappropriate behavior, and tedium."
+  },
+  {
+    "id": 5,
+    "title": "The Crown",
+    "years": "2016-2023",
+    "seasons": 6,
+    "genre": ["Biography", "Drama", "History"],
+    "creator": "Peter Morgan",
+    "cast": ["Claire Foy", "Olivia Colman", "Imelda Staunton"],
+    "rating": 8.6,
+    "plot": "Follows the political rivalries and romance of Queen Elizabeth II's reign and the events that shaped the second half of the 20th century."
+  }
+]

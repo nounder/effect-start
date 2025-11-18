@@ -1,3 +1,66 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:5c69e32cb5e06c05c49787a7bf3892ee032229bacb223e471abc416a850099a6
-size 47397
+[
+  {
+    "id": 1,
+    "name": "Morgan Freeman",
+    "birthYear": 1937,
+    "nationality": "American",
+    "occupation": ["Actor", "Producer"],
+    "knownFor": ["The Shawshank Redemption", "Million Dollar Baby", "The Dark Knight"]
+  },
+  {
+    "id": 2,
+    "name": "Al Pacino",
+    "birthYear": 1940,
+    "nationality": "American",
+    "occupation": ["Actor", "Filmmaker"],
+    "knownFor": ["The Godfather", "Scarface", "Scent of a Woman"]
+  },
+  {
+    "id": 3,
+    "name": "Christopher Nolan",
+    "birthYear": 1970,
+    "nationality": "British-American",
+    "occupation": ["Director", "Producer", "Screenwriter"],
+    "knownFor": ["Inception", "The Dark Knight", "Interstellar"]
+  },
+  {
+    "id": 4,
+    "name": "Quentin Tarantino",
+    "birthYear": 1963,
+    "nationality": "American",
+    "occupation": ["Director", "Writer", "Actor"],
+    "knownFor": ["Pulp Fiction", "Kill Bill", "Django Unchained"]
+  },
+  {
+    "id": 5,
+    "name": "Tom Hanks",
+    "birthYear": 1956,
+    "nationality": "American",
+    "occupation": ["Actor", "Producer"],
+    "knownFor": ["Forrest Gump", "Cast Away", "Saving Private Ryan"]
+  },
+  {
+    "id": 6,
+    "name": "Bryan Cranston",
+    "birthYear": 1956,
+    "nationality": "American",
+    "occupation": ["Actor", "Producer", "Director"],
+    "knownFor": ["Breaking Bad", "Malcolm in the Middle", "Trumbo"]
+  },
+  {
+    "id": 7,
+    "name": "Emilia Clarke",
+    "birthYear": 1986,
+    "nationality": "British",
+    "occupation": ["Actress"],
+    "knownFor": ["Game of Thrones", "Me Before You", "Last Christmas"]
+  },
+  {
+    "id": 8,
+    "name": "Millie Bobby Brown",
+    "birthYear": 2004,
+    "nationality": "British",
+    "occupation": ["Actress", "Producer"],
+    "knownFor": ["Stranger Things", "Enola Holmes", "Godzilla: King of the Monsters"]
+  }
+]
