@@ -289,6 +289,31 @@ export const json = makeMediaFunction(
   makeValueHandler<JsonValue>((raw) => HttpServerResponse.unsafeJson(raw)),
 )
 
+/**
+ * Schema that can decode from string inputs.
+ * URL params, path params, and headers are always received as strings from HTTP requests.
+ *
+ * Valid examples:
+ * - Schema.String
+ * - Schema.NumberFromString
+ * - Schema.optional(Schema.String)
+ * - Schema.BooleanFromString
+ *
+ * Invalid examples (will not decode properly from string):
+ * - Schema.Number (expects number, not string)
+ * - Schema.Boolean (expects boolean, not string)
+ * - Schema.Struct (expects object, not string)
+ */
+type StringDecodableSchema = Schema.Schema<any, string, any>
+
+/**
+ * Field types for URL/Path/Header params that can decode from string inputs.
+ */
+type StringDecodableField =
+  | StringDecodableSchema
+  | Schema.PropertySignature<any, any, any, any, string, any>
+  | Schema.PropertySignature<any, any, any, any, string | undefined, any>
+
 function makeStructSchemaModifier<
   K extends "PathParams" | "UrlParams" | "Headers",
 >(key: K) {

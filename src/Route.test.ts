@@ -750,3 +750,30 @@ t.it("schemaUrlParams accepts optional fields", () => {
 
   Function.satisfies<Expected>()(routes)
 })
+
+t.it("schemaPathParams works with Schema.NumberFromString (string-decodable)", () => {
+  const routes = Route
+    .schemaPathParams({
+      id: Schema.NumberFromString,
+    })
+    .text(
+      (context) => {
+        Function.satisfies<number>()(context.pathParams.id)
+
+        return Effect.succeed("hello")
+      },
+    )
+
+  type ExpectedSchemas = {
+    readonly PathParams: Schema.Struct<{
+      id: typeof Schema.NumberFromString
+    }>
+  }
+
+  type Expected = Route.RouteSet<
+    [Route.Route<"GET", "text/plain", any, ExpectedSchemas>],
+    ExpectedSchemas
+  >
+
+  Function.satisfies<Expected>()(routes)
+})
