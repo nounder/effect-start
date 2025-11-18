@@ -141,11 +141,13 @@ export function layerDev<T>(
 
       yield* Effect.fork(
         pipe(
-          FileSystemExtra.watchSource(),
+          FileSystemExtra.watchSource({
+            filter: FileSystemExtra.filterSourceFiles,
+          }),
           Stream.map(v =>
             ({
               _tag: "Change",
-              path: v.filename,
+              path: v.path,
             }) as Bundle.BundleEvent
           ),
           Stream.onError(err =>
