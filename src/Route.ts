@@ -469,16 +469,19 @@ function makeUrlFromRequest(
   return new URL(request.url, base)
 }
 
+type RouteContextDecoded = {
+  readonly pathParams?: Record<string, any>
+  readonly urlParams?: Record<string, any>
+  readonly payload?: any
+  readonly headers?: Record<string, any>
+}
+
 /**
- * Context passed to route handler generator functions.
+ * Decode RouteSchemas to make context in media handlers easier to read:
+ * - Converts keys from PascalCase to camelCase
+ * - Decodes schema types to their Type representation
  */
-export type RouteContext<
-  Schemas extends RouteSchemas = RouteSchemas.Empty,
-> =
-  & {
-    request: HttpServerRequest.HttpServerRequest
-    get url(): URL
-  }
+export type DecodeRouteSchemas<Schemas extends RouteSchemas> =
   & (Schemas["PathParams"] extends Schema.Struct<any> ? {
       pathParams: Schema.Schema.Type<Schemas["PathParams"]>
     }
@@ -495,6 +498,16 @@ export type RouteContext<
       headers: Schema.Schema.Type<Schemas["Headers"]>
     }
     : {})
+
+/**
+ * Context passed to route handler generator functions.
+ */
+export type RouteContext<
+  Input extends RouteContextDecoded = {},
+> = {
+  request: HttpServerRequest.HttpServerRequest
+  get url(): URL
+} & Input
 
 /**
  * Extracts fields from a Schema.Struct or returns never if not a struct.
@@ -689,14 +702,14 @@ function makeMediaFunction<
     handler: S extends RouteSet<infer _Routes, infer Schemas> ?
         | Effect.Effect<A, E, R>
         | ((
-          context: RouteContext<Schemas>,
+          context: RouteContext<DecodeRouteSchemas<Schemas>>,
         ) =>
           | Effect.Effect<A, E, R>
           | Generator<YieldWrap<Effect.Effect<A, E, R>>, A, never>)
       :
         | Effect.Effect<A, E, R>
         | ((
-          context: RouteContext<RouteSchemas.Empty>,
+          context: RouteContext<{}>,
         ) =>
           | Effect.Effect<A, E, R>
           | Generator<YieldWrap<Effect.Effect<A, E, R>>, A, never>),
