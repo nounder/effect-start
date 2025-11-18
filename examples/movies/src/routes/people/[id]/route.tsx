@@ -51,7 +51,7 @@ export default Route.html(function*(ctx) {
       <h1>{person.name}</h1>
       <p><a href="/people">Back to people</a></p>
 
-      <div class="person-details">
+      <div className="person-details">
         <p><strong>Born:</strong> {person.birthYear} (age {new Date().getFullYear() - person.birthYear})</p>
         <p><strong>Roles:</strong> {person.roles.join(", ")}</p>
 

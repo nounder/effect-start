@@ -21,9 +21,9 @@ export default Route.html(function*() {
   return (
     <div>
       <h1>People</h1>
-      <div class="people-grid">
+      <div className="people-grid">
         {people.map(person => (
-          <div key={person.id} class="person-card">
+          <div key={person.id} className="person-card">
             <h2>
               <a href={`/people/${person.id}`}>{person.name}</a>
             </h2>

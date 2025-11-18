@@ -28,9 +28,9 @@ export default Route.html(function*() {
   return (
     <div>
       <h1>Movies</h1>
-      <div class="movies-grid">
+      <div className="movies-grid">
         {movies.map(movie => (
-          <div key={movie.id} class="movie-card">
+          <div key={movie.id} className="movie-card">
             <h2>
               <a href={`/movies/${movie.id}`}>{movie.title}</a>
             </h2>

@@ -60,7 +60,7 @@ export default Route.html(function*(ctx) {
       <h1>{show.title}</h1>
       <p><a href={show.type === "movie" ? "/movies" : "/shows"}>Back to {show.type === "movie" ? "movies" : "shows"}</a></p>
 
-      <div class="show-details">
+      <div className="show-details">
         <p><strong>Type:</strong> {show.type === "movie" ? "Movie" : "TV Show"}</p>
         <p><strong>Year:</strong> {show.year}{show.endYear ? ` - ${show.endYear}` : ""}</p>
         <p><strong>Rating:</strong> {show.rating}/10</p>
