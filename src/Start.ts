@@ -9,6 +9,7 @@ import * as Effect from "effect/Effect"
 import * as Function from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as BunBundle from "./bun/BunBundle.ts"
+import * as BunFullstackServer from "./bun/BunFullstackServer.ts"
 import * as Bundle from "./Bundle.ts"
 import * as BundleHttp from "./BundleHttp.ts"
 import * as FileRouter from "./FileRouter.ts"
@@ -122,7 +123,7 @@ export function serve<ROut, E>(
     Layer.provide([
       FetchHttpClient.layer,
       HttpRouter.Default.Live,
-      BunHttpServer.layer({
+      BunFullstackServer.layer({
         port: 3000,
       }),
       StartApp.layer(),

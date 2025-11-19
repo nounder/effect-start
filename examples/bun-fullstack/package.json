@@ -1,0 +1,24 @@
+{
+  "name": "effect-start-movies-example",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "bun src/server.ts",
+    "dev": "bun --hot --no-clear-screen src/server.ts"
+  },
+  "dependencies": {
+    "@effect/platform": "^0.87.13",
+    "@effect/platform-bun": "^0.72.18",
+    "@effect/sql": "^0.48.0",
+    "@effect/sql-sqlite-bun": "^0.49.0",
+    "effect": "^3.19.4",
+    "effect-start": "file:../../"
+  },
+  "devDependencies": {
+    "@effect/language-service": "^0.23.3",
+    "@types/bun": "^1.3.2"
+  },
+  "peerDependencies": {
+    "typescript": "^5.9.3"
+  }
+}

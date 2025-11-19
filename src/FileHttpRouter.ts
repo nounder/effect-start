@@ -3,9 +3,11 @@ import * as HttpApp from "@effect/platform/HttpApp"
 import * as HttpMiddleware from "@effect/platform/HttpMiddleware"
 import * as HttpRouter from "@effect/platform/HttpRouter"
 import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
+import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
 import * as Effect from "effect/Effect"
 import * as Function from "effect/Function"
 import * as Router from "./Router.ts"
+import * as BunRoute from "./bun/BunRoute.ts"
 
 /**
  * Combines Effect error channel from a record of effects.
@@ -93,13 +95,41 @@ export function make<Routes extends Router.ServerRoutes>(
       const routeSet = module.default
       const httpRouterPath = convertPathFormat(path)
 
-      for (const route of routeSet.set) {
-        router = HttpRouter.route(route.method)(
-          httpRouterPath,
-          route.handler as any,
-        )(
-          router,
-        )
+      if (BunRoute.isBunRoute(routeSet)) {
+        const originalPath = `${path}.original`
+
+        const proxyHandler = Effect.gen(function*() {
+          const request = yield* HttpServerRequest.HttpServerRequest
+          const url = new URL(request.url)
+          url.pathname = originalPath
+
+          const response = yield* Effect.tryPromise(() =>
+            fetch(url.toString())
+          )
+
+          const arrayBuffer = yield* Effect.tryPromise(() =>
+            response.arrayBuffer()
+          )
+
+          return HttpServerResponse.raw(
+            new Uint8Array(arrayBuffer),
+            {
+              status: response.status,
+              headers: Object.fromEntries(response.headers.entries()),
+            }
+          )
+        })
+
+        router = HttpRouter.get(httpRouterPath, proxyHandler)(router)
+      } else {
+        for (const route of routeSet.set) {
+          router = HttpRouter.route(route.method)(
+            httpRouterPath,
+            route.handler as any,
+          )(
+            router,
+          )
+        }
       }
     }
 
