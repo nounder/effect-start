@@ -5,19 +5,20 @@ export default Route.layer(
   Route
     .layout(function*(props) {
       const route = yield* Route.Route
+      const usersUrl = routeUrl("users")
 
-      return (
+      return `
         <div>
-          <a href={routeUrl("users")}>
+          <a href="${usersUrl}">
             yo
           </a>
           <h1>
             Users Layout
           </h1>
           <div>
-            {props.children}
+            ${props.children}
           </div>
         </div>
-      )
+      `
     }),
 )

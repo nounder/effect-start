@@ -37,14 +37,18 @@ export const load = (loader: () => Promise<HTMLBundle>): BunRoute => {
   const route = Route.html(
     Effect.gen(function*() {
       const request = yield* HttpServerRequest.HttpServerRequest
-      const url = new URL(request.url)
+
+      // Build full URL from request
+      const host = request.headers.host || "localhost:3000"
+      const protocol = "http:"
+      const pathname = request.url
+      const fullUrl = `${protocol}//${host}${pathname}`
 
       // Fetch from Bun's native route at {path}.original
-      const originalPath = `${url.pathname}.original`
-      url.pathname = originalPath
+      const originalUrl = `${protocol}//${host}${pathname}.original`
 
       const response = yield* Effect.tryPromise(() =>
-        fetch(url.toString())
+        fetch(originalUrl)
       )
 
       const text = yield* Effect.tryPromise(() =>

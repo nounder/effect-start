@@ -10,7 +10,7 @@ export const modules = [
     segments: [],
     load: () => import("./route.ts"),
     layers: [
-      () => import("./layer.tsx"),
+      () => import("./layer.ts"),
     ],
   },
   {
@@ -18,10 +18,10 @@ export const modules = [
     segments: [
       { literal: "movies" },
     ],
-    load: () => import("./movies/route.tsx"),
+    load: () => import("./movies/route.ts"),
     layers: [
-      () => import("./layer.tsx"),
-      () => import("./movies/layer.tsx"),
+      () => import("./layer.ts"),
+      () => import("./movies/layer.ts"),
     ],
   },
   {
@@ -30,9 +30,9 @@ export const modules = [
       { group: "admin" },
       { literal: "users" },
     ],
-    load: () => import("./(admin)/users/route.tsx"),
+    load: () => import("./(admin)/users/route.ts"),
     layers: [
-      () => import("./layer.tsx"),
+      () => import("./layer.ts"),
       () => import("./(admin)/layer.ts"),
     ],
   },
@@ -42,10 +42,10 @@ export const modules = [
       { literal: "movies" },
       { param: "id" },
     ],
-    load: () => import("./movies/[id]/route.tsx"),
+    load: () => import("./movies/[id]/route.ts"),
     layers: [
-      () => import("./layer.tsx"),
-      () => import("./movies/layer.tsx"),
+      () => import("./layer.ts"),
+      () => import("./movies/layer.ts"),
     ],
   },
   {
@@ -54,10 +54,10 @@ export const modules = [
       { literal: "about" },
       { rest: "section", optional: true },
     ],
-    load: () => import("./about/[[...section]]/route.tsx"),
+    load: () => import("./about/[[...section]]/route.ts"),
     layers: [
-      () => import("./layer.tsx"),
-      () => import("./about/[[...section]]/layer.tsx"),
+      () => import("./layer.ts"),
+      () => import("./about/[[...section]]/layer.ts"),
     ],
   },
 ] as const

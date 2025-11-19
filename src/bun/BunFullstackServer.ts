@@ -60,7 +60,8 @@ const processBunRouteModule = (
       const originalPath = `${path}.original`
 
       // Load the HTML bundle using the loader function
-      const bundle = yield* Effect.tryPromise(() => defaultExport.loader())
+      const bundleModule = yield* Effect.tryPromise(() => defaultExport.loader())
+      const bundle = bundleModule.default
 
       return Option.some({ originalPath, bundle })
     }
@@ -83,21 +84,31 @@ export const layer = (opts: Options) => {
       // Try to get the router service if available
       const routerOption = yield* Effect.serviceOption(Router.Router)
 
+      console.log("Router option:", Option.isSome(routerOption) ? "SOME" : "NONE")
+
       let bunRoutes: Record<string, any> = {}
 
       if (Option.isSome(routerOption)) {
         const router = routerOption.value
+        console.log("Router modules count:", router.modules.length)
 
         // Extract BunRoute bundles from all route modules
         for (const routeModule of router.modules) {
+          console.log("Processing route module:", routeModule.path)
           const result = yield* processBunRouteModule(routeModule)
+
+          console.log("Result for", routeModule.path, ":", Option.isSome(result) ? "FOUND BunRoute" : "Not a BunRoute")
 
           if (Option.isSome(result)) {
             const { originalPath, bundle } = result.value
+            console.log(`Registering Bun route: ${originalPath}`, bundle)
             bunRoutes[originalPath] = bundle
           }
         }
       }
+
+      console.log("Final bunRoutes:", bunRoutes)
+      console.log("BunRoutes keys:", Object.keys(bunRoutes))
 
       return httpServer.layer({
         development,
