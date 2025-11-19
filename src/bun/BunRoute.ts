@@ -34,9 +34,10 @@ export type BunRoute = Route.RouteSet.Default & {
  */
 export const load = (loader: () => Promise<HTMLBundle>): BunRoute => {
   // Create a Route.html that fetches from Bun's server
-  const route = Route.html((ctx) =>
+  const route = Route.html(
     Effect.gen(function*() {
-      const url = new URL(ctx.request.url)
+      const request = yield* HttpServerRequest.HttpServerRequest
+      const url = new URL(request.url)
 
       // Fetch from Bun's native route at {path}.original
       const originalPath = `${url.pathname}.original`
