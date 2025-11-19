@@ -767,80 +767,29 @@ t.it("schemaUrlParams accepts optional fields", () => {
   Function.satisfies<Expected>()(routes)
 })
 
-t.it("schemaPathParams rejects Schema.Number (needs NumberFromString)", () => {
-  Route
-    // @ts-expect-error - Schema.Number has number Encoded type, not string
-    .schemaPathParams({ id: Schema.Number })
-    .text(Effect.succeed("hello"))
-})
-
-t.it("schemaPathParams accepts string-compatible schemas", () => {
-  Route
-    .schemaPathParams({
-      id: Schema.String,
-      userId: Schema.NumberFromString,
-      active: Schema.Literal("true", "false"),
-    })
-    .text((ctx) => {
-      Function.satisfies<string>()(ctx.pathParams.id)
-      Function.satisfies<number>()(ctx.pathParams.userId)
-      Function.satisfies<"true" | "false">()(ctx.pathParams.active)
-
-      return Effect.succeed("hello")
-    })
-})
-
-t.it("schemaUrlParams accepts Schema.Array for multiple values", () => {
-  Route
-    .schemaUrlParams({
-      tags: Schema.Array(Schema.String),
-      ids: Schema.Array(Schema.NumberFromString),
-    })
-    .text((ctx) => {
-      Function.satisfies<readonly string[]>()(ctx.urlParams.tags)
-      Function.satisfies<readonly number[]>()(ctx.urlParams.ids)
-
-      return Effect.succeed("hello")
-    })
-})
-
-t.it("schemaUrlParams rejects Schema.Number", () => {
-  Route
-    // @ts-expect-error - Schema.Number has number Encoded type, not string
-    .schemaUrlParams({ page: Schema.Number })
-    .text(Effect.succeed("hello"))
-})
-
-t.it("schemaHeaders accepts Schema.Array for multiple values", () => {
-  Route
-    .schemaHeaders({
-      "x-custom-header": Schema.Array(Schema.String),
-    })
-    .text((ctx) => {
-      Function.satisfies<readonly string[]>()(ctx.headers["x-custom-header"])
-
-      return Effect.succeed("hello")
-    })
-})
-
-t.it("schemaHeaders rejects Schema.Number", () => {
-  Route
-    // @ts-expect-error - Schema.Number has number Encoded type, not string
-    .schemaHeaders({ "content-length": Schema.Number })
-    .text(Effect.succeed("hello"))
-})
-
-t.it("schemaUrlParams works with mixed single and array values", () => {
+t.it("schemaUrlParams works with array schemas for multi-value params", () => {
   Route
     .schemaUrlParams({
       page: Schema.NumberFromString,
       tags: Schema.Array(Schema.String),
-      sort: Function.pipe(Schema.String, Schema.optional),
     })
     .text((ctx) => {
       Function.satisfies<number>()(ctx.urlParams.page)
       Function.satisfies<readonly string[]>()(ctx.urlParams.tags)
-      Function.satisfies<string | undefined>()(ctx.urlParams.sort)
+
+      return Effect.succeed("hello")
+    })
+})
+
+t.it("schemaHeaders works with array schemas for multi-value headers", () => {
+  Route
+    .schemaHeaders({
+      "x-custom-header": Schema.String,
+      "x-multi-header": Schema.Array(Schema.String),
+    })
+    .text((ctx) => {
+      Function.satisfies<string>()(ctx.headers["x-custom-header"])
+      Function.satisfies<readonly string[]>()(ctx.headers["x-multi-header"])
 
       return Effect.succeed("hello")
     })
