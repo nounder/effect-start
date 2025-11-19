@@ -277,39 +277,19 @@ const AppLayer = UserServiceLive.pipe(
 
 ## 🔧 DEVELOPMENT WORKFLOW PATTERNS
 
-### Immediate Linting Pattern
-
-**MANDATORY**: Always lint TypeScript files immediately after editing:
-
-```bash
-# After editing any TypeScript file
-pnpm lint --fix packages/effect/src/ModifiedFile.ts
-
-# This ensures:
-# - Consistent code formatting
-# - Early detection of style issues
-# - Compliance with project standards
-```
-
 ### Validation Checkpoint Pattern
 
 Run comprehensive validation after implementation:
 
 ```bash
-# 1. Lint all modified files
-pnpm lint --fix packages/effect/src/*.ts
+# 1. Check types
+tsc
 
-# 2. Validate JSDoc examples compile
-pnpm docgen
+# 2. Run specific test
+bun test <test_file.ts>
 
-# 3. Check types
-pnpm check
-
-# 4. Run tests
-pnpm test packages/effect/test/ModifiedTest.ts
-
-# 5. Build project
-pnpm build
+# 3. Run all tests
+bun test
 ```
 
 ### Progressive Implementation Pattern
@@ -346,119 +326,75 @@ const createFeatureWithValidation = (config: FeatureConfig) =>
 // ... continue building incrementally
 ```
 
-## 📚 INTEGRATION PATTERNS
+## 📚 TESTING PATTERNS
 
-### Module Export Pattern
+### Basic Testing Pattern
 
-Structure module exports for clarity and discoverability:
-
-````typescript
-// ModuleName.ts
-/**
- * @since 1.0.0
- */
-
-// Internal implementations
-const internal = {
-  // Private helper functions
-}
-
-// Public API exports
-
-/**
- * Creates a new instance with the given configuration.
- *
- * @example
- * ```ts
- * import { ModuleName } from "effect"
- *
- * const instance = ModuleName.create({ value: 42 })
- * ```
- *
- * @since 1.0.0
- * @category constructors
- */
-export const create: <A>(
-  config: Config<A>,
-) => Effect.Effect<Instance<A>, never, never> = (config) =>
-  Effect.succeed({ config })
-
-/**
- * Transforms an instance using the provided function.
- *
- * @example
- * ```ts
- * import { ModuleName, Effect } from "effect"
- *
- * const program = Effect.gen(function*() {
- *   const instance = yield* ModuleName.create({ value: 42 })
- *   const transformed = yield* ModuleName.map(instance, x => x * 2)
- *   return transformed
- * })
- * ```
- *
- * @since 1.0.0
- * @category combinators
- */
-export const map: <A, B>(
-  instance: Instance<A>,
-  f: (a: A) => B,
-) => Effect.Effect<Instance<B>, never, never> = (instance, f) =>
-  Effect.succeed({ config: f(instance.config) })
-````
-
-### Testing Integration Pattern
-
-Structure tests to validate all aspects of functionality:
+Structure tests with Bun test runner:
 
 ```typescript
-import {
-  assert,
-  describe,
-  it,
-} from "@effect/vitest"
-import {
-  Duration,
-  Effect,
-  TestClock,
-} from "effect"
-import * as ModuleName from "../src/ModuleName.js"
+import * as t from "bun:test"
+import * as HyperNode from "./HyperNode.ts"
+import * as HyperHtml from "./HyperHtml.ts"
 
-describe("ModuleName", () => {
-  describe("constructors", () => {
-    it.effect("create should initialize with config", () =>
-      Effect.gen(function*() {
-        const config = { value: 42 }
-        const instance = yield* ModuleName.create(config)
-
-        assert.deepStrictEqual(instance.config, config)
-      }))
+t.it("boolean true attributes render without value", () => {
+  const node = HyperNode.make("div", {
+    hidden: true,
+    disabled: true,
   })
 
-  describe("combinators", () => {
-    it.effect("map should transform instance", () =>
-      Effect.gen(function*() {
-        const instance = yield* ModuleName.create({ value: 10 })
-        const transformed = yield* ModuleName.map(instance, x => x * 2)
+  const html = HyperHtml.renderToString(node)
 
-        assert.strictEqual(transformed.config.value, 20)
-      }))
+  t.expect(html).toBe("<div hidden disabled></div>")
+})
+
+t.it("string attributes render with values", () => {
+  const node = HyperNode.make("div", {
+    id: "test",
+    class: "my-class",
   })
 
-  describe("time-dependent operations", () => {
-    it.effect("should handle delays properly", () =>
-      Effect.gen(function*() {
-        const fiber = yield* Effect.fork(
-          ModuleName.delayedOperation(Duration.seconds(5)),
-        )
+  const html = HyperHtml.renderToString(node)
 
-        // Use TestClock to advance time
-        yield* TestClock.advance(Duration.seconds(5))
+  t.expect(html).toBe("<div id=\"test\" class=\"my-class\"></div>")
+})
+```
 
-        const result = yield* Effect.join(fiber)
-        assert.strictEqual(result, "completed")
-      }))
+### Type-Safe Testing Pattern
+
+Use Effect and type satisfaction checks for compile-time validation:
+
+```typescript
+import * as t from "bun:test"
+import * as Effect from "effect/Effect"
+import * as Function from "effect/Function"
+import * as Schema from "effect/Schema"
+import * as Route from "./Route.ts"
+
+t.it("types default routes", () => {
+  const routes = Route
+    .text(Effect.succeed("hello"))
+    .html(Effect.succeed("<div>world</div>"))
+
+  type Expected = Route.RouteSet<[
+    Route.Route<"GET", "text/plain">,
+    Route.Route<"GET", "text/html">,
+  ]>
+
+  Function.satisfies<Expected>()(routes)
+})
+
+t.it("context is typed with schemas", () => {
+  const PathSchema = Schema.Struct({
+    id: Schema.String,
   })
+
+  Route
+    .schemaPathParams(PathSchema)
+    .text((context) => {
+      Function.satisfies<string>()(context.pathParams.id)
+      return Effect.succeed("hello")
+    })
 })
 ```
 

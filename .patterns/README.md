@@ -8,28 +8,43 @@ This directory provides reusable solutions and best practices for Effect TypeScr
 
 ### Core Development Patterns
 
-- **[effect-library-development.md](./effect-library-development.md)** - Fundamental patterns for Effect library development
-- **[error-handling.md](./error-handling.md)** - Structured error management with Effect
+**[EffectLibraryDevelopment.md](./EffectLibraryDevelopment.md)**
+- **Use for:** New functions, Effect.gen composition, resource management, Layer patterns
+- **Contains:** Effect constructors, testing with TestClock, validation workflows
+- **Reference before:** Creating any new Effect-based function or service
+
+**[ErrorHandling.md](./ErrorHandling.md)**
+- **Use for:** Creating custom errors, error recovery, retry logic, error testing
+- **Contains:** Data.TaggedError patterns, catchTag/catchAll, error transformations
+- **Reference before:** Implementing error handling, validation, or failure recovery
+
+**[QuickReference.md](./QuickReference.md)**
+- **Use for:** Quick lookup of common patterns
+- **Contains:** One-page cheat sheet with dos/don'ts, common code snippets
+- **Reference when:** Need quick reminder of mandatory patterns
+
+## 🎯 QUICK REFERENCE
+
+**Creating new Effect function?** → EffectLibraryDevelopment.md (Effect.gen patterns)
+**Handling errors?** → ErrorHandling.md (Data.TaggedError section)
+**Testing time-dependent code?** → EffectLibraryDevelopment.md (TestClock section)
+**Creating custom error types?** → ErrorHandling.md (Structured Error Types)
+**Building services with dependencies?** → EffectLibraryDevelopment.md (Layer Composition)
+**Need quick reminder?** → QuickReference.md (one-page cheat sheet)
 
 ## 🔧 HOW TO USE
 
-### For Developers
+### For Development
 
-1. **Reference before implementing** - Check relevant patterns before starting new work
-2. **Follow established conventions** - Use patterns as templates for consistency
-3. **Contribute improvements** - Update patterns based on lessons learned
+1. **Before implementing** - Check relevant patterns for established approaches
+2. **During implementation** - Use patterns as templates for consistency
+3. **When stuck** - Reference similar implementations in codebase following these patterns
 
 ### For Code Reviews
 
 1. **Validate pattern compliance** - Ensure implementations follow established patterns
-2. **Identify pattern violations** - Look for anti-patterns and forbidden practices
-3. **Suggest pattern usage** - Recommend appropriate patterns for specific use cases
-
-### For Documentation
-
-1. **Extract reusable patterns** - Identify common solutions for documentation
-2. **Update patterns** - Keep patterns current with library evolution
-3. **Cross-reference examples** - Link patterns to real codebase examples
+2. **Identify anti-patterns** - Look for forbidden practices (try-catch in Effect.gen, type assertions)
+3. **Suggest patterns** - Recommend appropriate patterns for specific use cases
 
 ## 🚨 CRITICAL PRINCIPLES
 
@@ -41,8 +56,9 @@ This directory provides reusable solutions and best practices for Effect TypeScr
 
 ### Mandatory Patterns (ALWAYS USE)
 
-- __return yield_ for errors_*: Makes termination explicit in generators
-- **TestClock for time**: Use TestClock for any time-dependent operations
+- **return yield* for errors**: Makes termination explicit in generators
+- **TestClock for time**: Use TestClock for any time-dependent tests
+- **Data.TaggedError**: Use for all custom error types
 
 ## 📈 PATTERN QUALITY METRICS
 
