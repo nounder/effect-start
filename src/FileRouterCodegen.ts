@@ -22,7 +22,10 @@ export function validateRouteModule(
 export function createRoutePathParamsSchema(
   segments: readonly FileRouter.Segment[],
 ): Schema.Struct<any> | undefined {
-  const fields: Record<string, Schema.Schema.Any> = {}
+  const fields: Record<
+    string,
+    Schema.Schema.Any | Schema.PropertySignature.All
+  > = {}
 
   for (const seg of segments) {
     if ("param" in seg) {
@@ -112,13 +115,14 @@ export function validateRouteModules(
 
               if (existingPathParams) {
                 if (!areStructSchemasEqual(existingPathParams, routePathParams)) {
-                  routeSet.schema.PathParams = routePathParams
                   return Effect.logError(
-                    `Route ${handle.routePath} (${routeModulePath}): PathParams schema mismatch. Expected schema based on route path params, but found different schema. The route's PathParams has been replaced with the expected schema.`,
+                    `Route ${handle.routePath} (${routeModulePath}): PathParams schema mismatch. Expected schema based on route path params, but found different schema. Please update the route to use .schemaPathParams() with the correct schema.`,
                   )
                 }
               } else {
-                routeSet.schema.PathParams = routePathParams
+                return Effect.logWarning(
+                  `Route ${handle.routePath} (${routeModulePath}): Missing PathParams schema. Consider adding .schemaPathParams() to define path parameter types.`,
+                )
               }
             }
 

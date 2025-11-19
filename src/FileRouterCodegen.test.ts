@@ -3,6 +3,7 @@ import * as t from "bun:test"
 import { MemoryFileSystem } from "effect-memfs"
 import * as Effect from "effect/Effect"
 import * as Schema from "effect/Schema"
+import * as FileRouter from "./FileRouter.ts"
 import { parseRoute } from "./FileRouter.ts"
 import type { RouteHandle } from "./FileRouter.ts"
 import * as FileRouterCodegen from "./FileRouterCodegen.ts"
@@ -600,10 +601,10 @@ t.it("update() > removes routes when entire directory is deleted", () =>
 
 t.describe("createRoutePathParamsSchema", () => {
   t.it("creates schema for route with single param", () => {
-    const segments = [
+    const segments: FileRouter.Segment[] = [
       { literal: "users" },
       { param: "id" },
-    ] as const
+    ]
 
     const schema = FileRouterCodegen.createRoutePathParamsSchema(segments)
 
@@ -612,12 +613,12 @@ t.describe("createRoutePathParamsSchema", () => {
   })
 
   t.it("creates schema for route with multiple params", () => {
-    const segments = [
+    const segments: FileRouter.Segment[] = [
       { literal: "posts" },
       { param: "postId" },
       { literal: "comments" },
       { param: "commentId" },
-    ] as const
+    ]
 
     const schema = FileRouterCodegen.createRoutePathParamsSchema(segments)
 
@@ -627,10 +628,10 @@ t.describe("createRoutePathParamsSchema", () => {
   })
 
   t.it("creates schema for route with optional rest param", () => {
-    const segments = [
+    const segments: FileRouter.Segment[] = [
       { literal: "about" },
       { rest: "section", optional: true },
-    ] as const
+    ]
 
     const schema = FileRouterCodegen.createRoutePathParamsSchema(segments)
 
@@ -639,10 +640,10 @@ t.describe("createRoutePathParamsSchema", () => {
   })
 
   t.it("creates schema for route with required rest param", () => {
-    const segments = [
+    const segments: FileRouter.Segment[] = [
       { literal: "api" },
       { rest: "path" },
-    ] as const
+    ]
 
     const schema = FileRouterCodegen.createRoutePathParamsSchema(segments)
 
@@ -651,10 +652,10 @@ t.describe("createRoutePathParamsSchema", () => {
   })
 
   t.it("returns undefined for route with no params", () => {
-    const segments = [
+    const segments: FileRouter.Segment[] = [
       { literal: "about" },
       { literal: "team" },
-    ] as const
+    ]
 
     const schema = FileRouterCodegen.createRoutePathParamsSchema(segments)
 
@@ -662,7 +663,7 @@ t.describe("createRoutePathParamsSchema", () => {
   })
 
   t.it("returns undefined for empty segments", () => {
-    const segments = [] as const
+    const segments: FileRouter.Segment[] = []
 
     const schema = FileRouterCodegen.createRoutePathParamsSchema(segments)
 
@@ -670,12 +671,12 @@ t.describe("createRoutePathParamsSchema", () => {
   })
 
   t.it("creates schema for mixed params and rest", () => {
-    const segments = [
+    const segments: FileRouter.Segment[] = [
       { literal: "users" },
       { param: "userId" },
       { literal: "files" },
       { rest: "path" },
-    ] as const
+    ]
 
     const schema = FileRouterCodegen.createRoutePathParamsSchema(segments)
 
