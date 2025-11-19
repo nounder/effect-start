@@ -127,18 +127,26 @@ export namespace RouteHandler {
 }
 
 /**
- * A schema field that accepts string input (encoded type is string).
- * Used for path params, URL params, and headers.
+ * Helper type for a schema with a specific encoded type.
  */
-export type StringEncodedField = Schema.Schema<any, string, any>
+export type Encoded<T> = Schema.Schema<any, T, any>
+
+/**
+ * Helper type for a value that can be a single item or an array.
+ */
+export type OneOrMany<T> = T | T[]
+
+/**
+ * A schema field that accepts string input (encoded type is string).
+ * Used for path params.
+ */
+export type StringEncodedField = Encoded<string>
 
 /**
  * A schema field that accepts string or string array input.
  * Used for URL params and headers to support multi-value fields.
  */
-export type StringOrArrayEncodedField =
-  | Schema.Schema<any, string, any>
-  | Schema.Schema<any, readonly string[], any>
+export type StringOrArrayEncodedField = Encoded<OneOrMany<string>>
 
 
 export type RouteSchemas = {
