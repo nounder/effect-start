@@ -295,48 +295,30 @@ export const json = makeMediaFunction(
 )
 
 /**
- * Helper type to extract the Encoded type from a Schema.
+ * Schema type that accepts string-encoded input.
+ * Used for path parameters which are always strings.
  */
-type GetEncoded<S> = S extends { Encoded: infer E } ? E : never
+type StringEncodedSchema =
+  | Schema.Schema<any, string, any>
+  | Schema.PropertySignature.All
 
 /**
- * Check if a schema's encoded type is string.
+ * Schema type that accepts string or string array encoded input.
+ * Used for URL params and headers which can have multiple values.
  */
-type IsStringEncoded<S> = S extends Schema.PropertySignature.All ? true
-  : GetEncoded<S> extends string ? true
-  : false
-
-/**
- * Check if a schema's encoded type is string or string array.
- */
-type IsStringOrArrayEncoded<S> = S extends Schema.PropertySignature.All ? true
-  : GetEncoded<S> extends OneOrMany<string> ? true
-  : false
-
-/**
- * Validate that all fields have string-encoded schemas.
- */
-type ValidateStringEncodedFields<T extends Record<PropertyKey, any>> = {
-  [K in keyof T]: IsStringEncoded<T[K]> extends true ? T[K]
-    : never
-}
-
-/**
- * Validate that all fields have string or array-encoded schemas.
- */
-type ValidateStringOrArrayEncodedFields<T extends Record<PropertyKey, any>> = {
-  [K in keyof T]: IsStringOrArrayEncoded<T[K]> extends true ? T[K]
-    : never
-}
+type StringOrArrayEncodedSchema =
+  | Schema.Schema<any, OneOrMany<string>, any>
+  | Schema.PropertySignature.All
 
 function makePathParamsSchemaModifier() {
   return function<
     S extends Self,
-    const Fields extends Record<PropertyKey, any>,
+    const Fields extends
+      | Record<PropertyKey, StringEncodedSchema>
+      | Schema.Struct<any>,
   >(
     this: S,
-    fieldsOrSchema: Fields extends Schema.Struct<any> ? Fields
-      : ValidateStringEncodedFields<Fields>,
+    fieldsOrSchema: Fields,
   ): S extends RouteSet<infer Routes, infer Schemas> ? RouteSet<
       Routes,
       & Schemas
@@ -383,11 +365,12 @@ function makeUrlParamOrHeaderSchemaModifier<
 >(key: K) {
   return function<
     S extends Self,
-    const Fields extends Record<PropertyKey, any>,
+    const Fields extends
+      | Record<PropertyKey, StringOrArrayEncodedSchema>
+      | Schema.Struct<any>,
   >(
     this: S,
-    fieldsOrSchema: Fields extends Schema.Struct<any> ? Fields
-      : ValidateStringOrArrayEncodedFields<Fields>,
+    fieldsOrSchema: Fields,
   ): S extends RouteSet<infer Routes, infer Schemas> ? RouteSet<
       Routes,
       & Schemas
