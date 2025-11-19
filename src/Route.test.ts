@@ -766,3 +766,105 @@ t.it("schemaUrlParams accepts optional fields", () => {
 
   Function.satisfies<Expected>()(routes)
 })
+
+t.it("schemaPathParams only accepts string-encoded schemas", () => {
+  Route
+    .schemaPathParams({
+      id: Schema.String,
+    })
+    .text(Effect.succeed("ok"))
+
+  Route
+    .schemaPathParams({
+      id: Schema.NumberFromString,
+    })
+    .text(Effect.succeed("ok"))
+
+  Route
+    .schemaPathParams({
+      // @ts-expect-error - Schema.Number is not string-encoded
+      id: Schema.Number,
+    })
+    .text(Effect.succeed("ok"))
+
+  Route
+    .schemaPathParams({
+      // @ts-expect-error - Schema.Struct is not string-encoded
+      nested: Schema.Struct({
+        field: Schema.String,
+      }),
+    })
+    .text(Effect.succeed("ok"))
+})
+
+t.it("schemaUrlParams accepts string and string array encoded schemas", () => {
+  Route
+    .schemaUrlParams({
+      page: Schema.String,
+    })
+    .text(Effect.succeed("ok"))
+
+  Route
+    .schemaUrlParams({
+      page: Schema.NumberFromString,
+    })
+    .text(Effect.succeed("ok"))
+
+  Route
+    .schemaUrlParams({
+      tags: Schema.Array(Schema.String),
+    })
+    .text(Effect.succeed("ok"))
+
+  Route
+    .schemaUrlParams({
+      // @ts-expect-error - Schema.Number is not string-encoded
+      page: Schema.Number,
+    })
+    .text(Effect.succeed("ok"))
+
+  Route
+    .schemaUrlParams({
+      // @ts-expect-error - Schema.Struct is not string-encoded
+      nested: Schema.Struct({
+        field: Schema.String,
+      }),
+    })
+    .text(Effect.succeed("ok"))
+})
+
+t.it("schemaHeaders accepts string and string array encoded schemas", () => {
+  Route
+    .schemaHeaders({
+      authorization: Schema.String,
+    })
+    .text(Effect.succeed("ok"))
+
+  Route
+    .schemaHeaders({
+      "x-custom-header": Schema.NumberFromString,
+    })
+    .text(Effect.succeed("ok"))
+
+  Route
+    .schemaHeaders({
+      "accept-encoding": Schema.Array(Schema.String),
+    })
+    .text(Effect.succeed("ok"))
+
+  Route
+    .schemaHeaders({
+      // @ts-expect-error - Schema.Number is not string-encoded
+      "x-count": Schema.Number,
+    })
+    .text(Effect.succeed("ok"))
+
+  Route
+    .schemaHeaders({
+      // @ts-expect-error - Schema.Struct is not string-encoded
+      "x-metadata": Schema.Struct({
+        field: Schema.String,
+      }),
+    })
+    .text(Effect.succeed("ok"))
+})
