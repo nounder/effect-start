@@ -1,23 +1,19 @@
+import type { HTMLBundle } from "bun"
+import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
+import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
+import * as Effect from "effect/Effect"
+import * as Route from "../Route.ts"
+
 export const TypeId = Symbol.for("effect-start/BunRoute")
 export type TypeId = typeof TypeId
 
 /**
- * Represents a Bun native HTML bundle that can be served directly by Bun's
- * built-in file routing system.
+ * A Route that serves Bun-native HTML bundles.
+ * Extends Route with an additional TypeId and loader function.
  */
-export interface HTMLBundle {
-  readonly default: unknown
-}
-
-/**
- * A route that serves a Bun-native HTML bundle.
- * When detected in the router, the bundle is attached to Bun's native routes
- * and a proxy handler is created to forward requests.
- */
-export interface BunRoute {
+export type BunRoute = Route.RouteSet.Default & {
   readonly [TypeId]: TypeId
-  readonly _tag: "BunRoute"
-  readonly load: () => Promise<HTMLBundle>
+  readonly loader: () => Promise<HTMLBundle>
 }
 
 /**
@@ -30,17 +26,46 @@ export interface BunRoute {
  * export default BunRoute.load(() => import("./index.html"))
  * ```
  *
- * The HTML file will be bundled by Bun and served natively, while Effect
- * handles the routing logic through a proxy mechanism.
+ * The HTML file will be bundled by Bun and served natively. The route handler
+ * fetches the content from Bun's native route ({path}.original) at runtime.
  */
 export const load = (loader: () => Promise<HTMLBundle>): BunRoute => {
-  return {
-    [TypeId]: TypeId,
-    _tag: "BunRoute",
-    load: loader,
-  }
+  // Create a Route.html that fetches from Bun's server
+  const route = Route.html(function*() {
+    const request = yield* HttpServerRequest.HttpServerRequest
+    const url = new URL(request.url)
+
+    // Fetch from Bun's native route at {path}.original
+    const originalPath = `${url.pathname}.original`
+    url.pathname = originalPath
+
+    const response = yield* Effect.tryPromise(() =>
+      fetch(url.toString())
+    )
+
+    const text = yield* Effect.tryPromise(() =>
+      response.text()
+    )
+
+    return text
+  })
+
+  // Add BunRoute marker using prototype chain
+  const bunRoute = Object.assign(
+    Object.create(Object.getPrototypeOf(route)),
+    route,
+    {
+      [TypeId]: TypeId,
+      loader,
+    }
+  ) as BunRoute
+
+  return bunRoute
 }
 
+/**
+ * Type guard to check if a value is a BunRoute.
+ */
 export const isBunRoute = (value: unknown): value is BunRoute => {
   return (
     typeof value === "object" &&

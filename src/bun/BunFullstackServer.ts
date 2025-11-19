@@ -59,8 +59,8 @@ const processBunRouteModule = (
       // Bun will serve the bundle at {path}.original
       const originalPath = `${path}.original`
 
-      // Load the HTML bundle
-      const bundle = yield* Effect.tryPromise(() => defaultExport.load())
+      // Load the HTML bundle using the loader function
+      const bundle = yield* Effect.tryPromise(() => defaultExport.loader())
 
       return Option.some({ originalPath, bundle })
     }
