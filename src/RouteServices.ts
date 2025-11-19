@@ -3,23 +3,24 @@ import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 
-export interface RouteInfo {
+export interface RouteContext {
   readonly request: HttpServerRequest.HttpServerRequest
   readonly url: URL
   readonly path: string
   readonly params: Record<string, string>
   readonly clientModuleUrl?: string
-  readonly context: Map<string, unknown>
+  readonly slots: Record<string, any>
 }
 
 export class Route extends Context.Tag("effect-start/Route")<
   Route,
-  RouteInfo
+  RouteContext
 >() {}
 
 export interface LayoutContext<T = unknown> {
   readonly children: T
-  readonly route: RouteInfo
+  readonly slots: Record<string, any>
+  readonly route: RouteContext
 }
 
 export interface LayoutWrapper {
@@ -44,7 +45,7 @@ export const makeLayoutLayer = (
     wrap: (children) =>
       Effect.gen(function*() {
         const route = yield* Route
-        return yield* handler({ children, route })
+        return yield* handler({ children, slots: route.slots, route })
       }),
   })
 

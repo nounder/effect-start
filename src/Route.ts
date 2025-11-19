@@ -1047,17 +1047,3 @@ export function layout<T = unknown>(
 }
 
 export const Route = RouteServices.Route
-
-export const context = {
-  set: (key: string, value: unknown) =>
-    Effect.gen(function*() {
-      const route = yield* RouteServices.Route
-      route.context.set(key, value)
-    }),
-
-  get: (key: string) =>
-    Effect.gen(function*() {
-      const route = yield* RouteServices.Route
-      return route.context.get(key)
-    }),
-}

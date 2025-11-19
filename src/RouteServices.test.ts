@@ -22,27 +22,31 @@ t.describe("RouteServices", () => {
     t.expect(Layer.isLayer(layer)).toBe(true)
   })
 
-  t.it("should provide layout service with route context", async () => {
-    const layoutHandler: RouteServices.LayoutHandler = (ctx) =>
-      Effect.succeed({
+  t.it("should provide layout service with route context and slots", async () => {
+    const layoutHandler: RouteServices.LayoutHandler = (ctx) => {
+      ctx.slots.title = "Test Page"
+
+      return Effect.succeed({
         type: "div",
         props: {
           children: ctx.children,
           "data-path": ctx.route.path,
+          "data-title": ctx.slots.title,
         },
       })
+    }
 
     const layer = RouteServices.makeLayoutLayer(layoutHandler)
 
-    const routeInfo: RouteServices.RouteInfo = {
+    const routeContext: RouteServices.RouteContext = {
       request: {} as any,
       url: new URL("http://localhost/test"),
       path: "/test",
       params: {},
-      context: new Map(),
+      slots: {},
     }
 
-    const routeLayer = Layer.succeed(RouteServices.Route, routeInfo)
+    const routeLayer = Layer.succeed(RouteServices.Route, routeContext)
 
     const program = Effect.gen(function*() {
       const layoutService = yield* RouteServices.LayoutService
@@ -62,41 +66,57 @@ t.describe("RouteServices", () => {
       props: {
         children: "Hello",
         "data-path": "/test",
+        "data-title": "Test Page",
       },
     })
+
+    t.expect(routeContext.slots.title).toBe("Test Page")
   })
 
-  t.it("should provide route context with metadata", async () => {
-    const program = Effect.gen(function*() {
-      yield* Route.context.set("title", "Test Page")
-      yield* Route.context.set("description", "A test page")
+  t.it("should allow direct slots mutation", async () => {
+    const layoutHandler: RouteServices.LayoutHandler = (ctx) => {
+      ctx.slots.title = "My Title"
+      ctx.slots.description = "My Description"
 
-      const title = yield* Route.context.get("title")
-      const description = yield* Route.context.get("description")
-      const missing = yield* Route.context.get("missing")
+      return Effect.succeed({
+        type: "html",
+        props: {
+          children: [
+            { type: "title", props: { children: ctx.slots.title } },
+            ctx.children,
+          ],
+        },
+      })
+    }
 
-      return { title, description, missing }
-    })
+    const layer = RouteServices.makeLayoutLayer(layoutHandler)
 
-    const routeInfo: RouteServices.RouteInfo = {
+    const routeContext: RouteServices.RouteContext = {
       request: {} as any,
       url: new URL("http://localhost/test"),
       path: "/test",
       params: {},
-      context: new Map(),
+      slots: {},
     }
+
+    const routeLayer = Layer.succeed(RouteServices.Route, routeContext)
+
+    const program = Effect.gen(function*() {
+      const layoutService = yield* RouteServices.LayoutService
+      const wrapped = yield* layoutService.wrap("Content")
+
+      return wrapped
+    })
 
     const result = await Effect.runPromise(
       program.pipe(
-        Effect.provide(Layer.succeed(RouteServices.Route, routeInfo)),
+        Effect.provide(Layer.merge(routeLayer, layer)),
       ),
     )
 
-    t.expect(result).toEqual({
-      title: "Test Page",
-      description: "A test page",
-      missing: undefined,
-    })
+    t.expect(result.props.children[0].props.children).toBe("My Title")
+    t.expect(routeContext.slots.title).toBe("My Title")
+    t.expect(routeContext.slots.description).toBe("My Description")
   })
 
   t.it("should merge multiple layers", () => {

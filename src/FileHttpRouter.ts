@@ -90,10 +90,10 @@ function buildRouteLayer(
 function wrapHandlerWithLayers(
   handler: Effect.Effect<any, any, any>,
   routeLayer: Layer.Layer<any, never, never>,
-  routeInfo: RouteServices.RouteInfo,
+  routeContext: RouteServices.RouteContext,
 ): Effect.Effect<any, any, any> {
   return Effect.gen(function*() {
-    const routeContextLayer = Layer.succeed(RouteServices.Route, routeInfo)
+    const routeContextLayer = Layer.succeed(RouteServices.Route, routeContext)
 
     const fullLayer = Layer.merge(
       routeContextLayer,
@@ -148,18 +148,18 @@ export function make<Routes extends ReadonlyArray<FileRouter.RouteModule>>(
             `http://${request.headers.host ?? "localhost"}`,
           )
 
-          const routeInfo: RouteServices.RouteInfo = {
+          const routeContext: RouteServices.RouteContext = {
             request,
             url,
             path,
             params: {},
-            context: new Map(),
+            slots: {},
           }
 
           return yield* wrapHandlerWithLayers(
             route.handler,
             routeLayer,
-            routeInfo,
+            routeContext,
           )
         })
 
