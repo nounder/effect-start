@@ -1048,22 +1048,16 @@ export function layout<T = unknown>(
 
 export const Route = RouteServices.Route
 
-export const slots = {
+export const context = {
   set: (key: string, value: unknown) =>
     Effect.gen(function*() {
-      const metadata = yield* RouteServices.RouteMetadata
-      return yield* metadata.set(key, value)
+      const route = yield* RouteServices.Route
+      route.context.set(key, value)
     }),
 
   get: (key: string) =>
     Effect.gen(function*() {
-      const metadata = yield* RouteServices.RouteMetadata
-      return yield* metadata.get(key)
+      const route = yield* RouteServices.Route
+      return route.context.get(key)
     }),
-
-  unsafeGet: (key: string) => {
-    throw new Error(
-      "slots.unsafeGet can only be called within an Effect execution context",
-    )
-  },
 }

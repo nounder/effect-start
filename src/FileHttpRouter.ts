@@ -94,11 +94,9 @@ function wrapHandlerWithLayers(
 ): Effect.Effect<any, any, any> {
   return Effect.gen(function*() {
     const routeContextLayer = Layer.succeed(RouteServices.Route, routeInfo)
-    const metadataLayer = RouteServices.RouteMetadata.Live
 
-    const fullLayer = Layer.mergeAll(
+    const fullLayer = Layer.merge(
       routeContextLayer,
-      metadataLayer,
       routeLayer,
     )
 
@@ -155,6 +153,7 @@ export function make<Routes extends ReadonlyArray<FileRouter.RouteModule>>(
             url,
             path,
             params: {},
+            context: new Map(),
           }
 
           return yield* wrapHandlerWithLayers(

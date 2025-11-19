@@ -1,24 +1,20 @@
 import * as t from "bun:test"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import * as Option from "effect/Option"
 import * as Route from "./Route.ts"
 import * as RouteServices from "./RouteServices.ts"
 
 t.describe("RouteServices", () => {
   t.it("should create layout layer", async () => {
-    const layoutHandler: RouteServices.LayoutHandler = (props) =>
-      Effect.gen(function*() {
-        const route = yield* RouteServices.Route
-        return {
-          type: "div",
-          props: {
-            children: [
-              { type: "h1", props: { children: "Layout" } },
-              props.children,
-            ],
-          },
-        }
+    const layoutHandler: RouteServices.LayoutHandler = (ctx) =>
+      Effect.succeed({
+        type: "div",
+        props: {
+          children: [
+            { type: "h1", props: { children: "Layout" } },
+            ctx.children,
+          ],
+        },
       })
 
     const layer = RouteServices.makeLayoutLayer(layoutHandler)
@@ -26,13 +22,14 @@ t.describe("RouteServices", () => {
     t.expect(Layer.isLayer(layer)).toBe(true)
   })
 
-  t.it("should provide layout service", async () => {
-    const layoutHandler: RouteServices.LayoutHandler = (props) =>
-      Effect.gen(function*() {
-        return {
-          type: "div",
-          props: { children: props.children },
-        }
+  t.it("should provide layout service with route context", async () => {
+    const layoutHandler: RouteServices.LayoutHandler = (ctx) =>
+      Effect.succeed({
+        type: "div",
+        props: {
+          children: ctx.children,
+          "data-path": ctx.route.path,
+        },
       })
 
     const layer = RouteServices.makeLayoutLayer(layoutHandler)
@@ -42,6 +39,7 @@ t.describe("RouteServices", () => {
       url: new URL("http://localhost/test"),
       path: "/test",
       params: {},
+      context: new Map(),
     }
 
     const routeLayer = Layer.succeed(RouteServices.Route, routeInfo)
@@ -61,49 +59,58 @@ t.describe("RouteServices", () => {
 
     t.expect(result).toEqual({
       type: "div",
-      props: { children: "Hello" },
+      props: {
+        children: "Hello",
+        "data-path": "/test",
+      },
     })
   })
 
-  t.it("should provide metadata service", async () => {
+  t.it("should provide route context with metadata", async () => {
     const program = Effect.gen(function*() {
-      const metadata = yield* RouteServices.RouteMetadata
+      yield* Route.context.set("title", "Test Page")
+      yield* Route.context.set("description", "A test page")
 
-      yield* metadata.set("title", "Test Page")
-      yield* metadata.set("description", "A test page")
-
-      const title = yield* metadata.get("title")
-      const description = yield* metadata.get("description")
-      const missing = yield* metadata.get("missing")
+      const title = yield* Route.context.get("title")
+      const description = yield* Route.context.get("description")
+      const missing = yield* Route.context.get("missing")
 
       return { title, description, missing }
     })
 
+    const routeInfo: RouteServices.RouteInfo = {
+      request: {} as any,
+      url: new URL("http://localhost/test"),
+      path: "/test",
+      params: {},
+      context: new Map(),
+    }
+
     const result = await Effect.runPromise(
       program.pipe(
-        Effect.provide(RouteServices.RouteMetadata.Live),
+        Effect.provide(Layer.succeed(RouteServices.Route, routeInfo)),
       ),
     )
 
     t.expect(result).toEqual({
-      title: Option.some("Test Page"),
-      description: Option.some("A test page"),
-      missing: Option.none(),
+      title: "Test Page",
+      description: "A test page",
+      missing: undefined,
     })
   })
 
   t.it("should merge multiple layers", () => {
-    const layout1 = Route.layout(() =>
+    const layout1 = Route.layout((ctx) =>
       Effect.succeed({
         type: "div",
-        props: { children: "Layout 1" },
+        props: { children: ctx.children },
       })
     )
 
-    const layout2 = Route.layout(() =>
+    const layout2 = Route.layout((ctx) =>
       Effect.succeed({
-        type: "div",
-        props: { children: "Layout 2" },
+        type: "section",
+        props: { children: ctx.children },
       })
     )
 
@@ -119,10 +126,10 @@ t.describe("RouteServices", () => {
   })
 
   t.it("should handle single layer", () => {
-    const layout = Route.layout(() =>
+    const layout = Route.layout((ctx) =>
       Effect.succeed({
         type: "div",
-        props: { children: "Layout" },
+        props: { children: ctx.children },
       })
     )
 
