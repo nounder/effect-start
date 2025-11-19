@@ -5,7 +5,10 @@ import * as HttpRouter from "@effect/platform/HttpRouter"
 import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
 import * as Effect from "effect/Effect"
 import * as Function from "effect/Function"
+import * as Layer from "effect/Layer"
+import * as FileRouter from "./FileRouter.ts"
 import * as Router from "./Router.ts"
+import * as RouteServices from "./RouteServices.ts"
 
 /**
  * Combines Effect error channel from a record of effects.
@@ -70,40 +73,107 @@ function convertPathFormat(path: string): string {
     .replace(/\[\.\.\.([^\]]+)\]/g, "*")
 }
 
+function buildRouteLayer(
+  layerModules: ReadonlyArray<{ default?: any }>,
+): Layer.Layer<any, never, never> {
+  const layers = layerModules
+    .map((mod) => mod.default)
+    .filter((layer): layer is Layer.Layer<any> => layer !== undefined)
+
+  if (layers.length === 0) {
+    return Layer.empty
+  }
+
+  return Layer.mergeAll(...layers)
+}
+
+function wrapHandlerWithLayers(
+  handler: Effect.Effect<any, any, any>,
+  routeLayer: Layer.Layer<any, never, never>,
+  routeInfo: RouteServices.RouteInfo,
+): Effect.Effect<any, any, any> {
+  return Effect.gen(function*() {
+    const routeContextLayer = Layer.succeed(RouteServices.Route, routeInfo)
+    const metadataLayer = RouteServices.RouteMetadata.Live
+
+    const fullLayer = Layer.mergeAll(
+      routeContextLayer,
+      metadataLayer,
+      routeLayer,
+    )
+
+    return yield* handler.pipe(Effect.provide(fullLayer))
+  })
+}
+
 /**
  * Makes a HttpRouter from file-based routes.
  */
-export function make<Routes extends Router.ServerRoutes>(
+export function make<Routes extends ReadonlyArray<FileRouter.RouteModule>>(
   routes: Routes,
-): Effect.Effect<HttpRouterFromServerRoutes<Routes>> {
+): Effect.Effect<HttpRouter.HttpRouter<any, any>> {
   return Effect.gen(function*() {
-    const modules = yield* Effect.forEach(
-      routes,
-      (route) =>
-        Function.pipe(
-          Effect.tryPromise(() => route.load()),
+    const loadedRoutes = yield* Effect.forEach(routes, (route) =>
+      Effect.gen(function*() {
+        const module = yield* Effect.tryPromise(() => route.load()).pipe(
           Effect.orDie,
-          Effect.map((module) => ({ path: route.path, module })),
-        ),
-    )
+        )
+
+        const layerModules = route.layers
+          ? yield* Effect.forEach(
+            route.layers,
+            (loadLayer) =>
+              Effect.tryPromise(() => loadLayer()).pipe(Effect.orDie),
+          )
+          : []
+
+        const routeLayer = buildRouteLayer(layerModules)
+
+        return {
+          path: route.path,
+          module,
+          routeLayer,
+        }
+      }))
 
     let router: HttpRouter.HttpRouter<any, any> = HttpRouter.empty
 
-    for (const { path, module } of modules) {
+    for (const { path, module, routeLayer } of loadedRoutes) {
       const routeSet = module.default
       const httpRouterPath = convertPathFormat(path)
 
       for (const route of routeSet.set) {
+        const wrappedHandler = Effect.gen(function*() {
+          const request = yield* HttpServerRequest.HttpServerRequest
+          const url = new URL(
+            request.url,
+            `http://${request.headers.host ?? "localhost"}`,
+          )
+
+          const routeInfo: RouteServices.RouteInfo = {
+            request,
+            url,
+            path,
+            params: {},
+          }
+
+          return yield* wrapHandlerWithLayers(
+            route.handler,
+            routeLayer,
+            routeInfo,
+          )
+        })
+
         router = HttpRouter.route(route.method)(
           httpRouterPath,
-          route.handler as any,
+          wrappedHandler as any,
         )(
           router,
         )
       }
     }
 
-    return router as HttpRouterFromServerRoutes<Routes>
+    return router
   })
 }
 

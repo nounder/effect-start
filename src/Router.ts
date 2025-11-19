@@ -51,14 +51,10 @@ export function layer(
   return Layer.effect(
     Router,
     Effect.gen(function*() {
-      const serverRoutes = manifest.modules.map((mod) => ({
-        path: mod.path,
-        load: mod.load,
-      }))
-      const httpRouter = yield* FileHttpRouter.make(serverRoutes)
+      const httpRouter = yield* FileHttpRouter.make(manifest.modules)
       return {
         ...manifest,
-        httpRouter,
+        httpRouter: httpRouter as HttpRouter.HttpRouter,
       }
     }),
   )
