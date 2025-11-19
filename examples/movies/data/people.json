@@ -1,34 +1,3 @@
-[
-  { "id": 1, "name": "Bryan Cranston", "role": "Actor", "birthYear": 1956 },
-  { "id": 2, "name": "Aaron Paul", "role": "Actor", "birthYear": 1979 },
-  { "id": 3, "name": "Anna Gunn", "role": "Actor", "birthYear": 1968 },
-  { "id": 4, "name": "Dominic West", "role": "Actor", "birthYear": 1969 },
-  { "id": 5, "name": "Lance Reddick", "role": "Actor", "birthYear": 1962 },
-  { "id": 6, "name": "Sonja Sohn", "role": "Actor", "birthYear": 1964 },
-  { "id": 7, "name": "Emilia Clarke", "role": "Actor", "birthYear": 1986 },
-  { "id": 8, "name": "Kit Harington", "role": "Actor", "birthYear": 1986 },
-  { "id": 9, "name": "Peter Dinklage", "role": "Actor", "birthYear": 1969 },
-  { "id": 10, "name": "Lena Headey", "role": "Actor", "birthYear": 1973 },
-  { "id": 11, "name": "James Gandolfini", "role": "Actor", "birthYear": 1961 },
-  { "id": 12, "name": "Edie Falco", "role": "Actor", "birthYear": 1963 },
-  { "id": 13, "name": "Michael Imperioli", "role": "Actor", "birthYear": 1966 },
-  { "id": 14, "name": "Millie Bobby Brown", "role": "Actor", "birthYear": 2004 },
-  { "id": 15, "name": "Finn Wolfhard", "role": "Actor", "birthYear": 2002 },
-  { "id": 16, "name": "Winona Ryder", "role": "Actor", "birthYear": 1971 },
-  { "id": 17, "name": "Claire Foy", "role": "Actor", "birthYear": 1984 },
-  { "id": 18, "name": "Olivia Colman", "role": "Actor", "birthYear": 1974 },
-  { "id": 19, "name": "Imelda Staunton", "role": "Actor", "birthYear": 1956 },
-  { "id": 20, "name": "Steve Carell", "role": "Actor", "birthYear": 1962 },
-  { "id": 21, "name": "Rainn Wilson", "role": "Actor", "birthYear": 1966 },
-  { "id": 22, "name": "John Krasinski", "role": "Actor", "birthYear": 1979 },
-  { "id": 23, "name": "Jennifer Aniston", "role": "Actor", "birthYear": 1969 },
-  { "id": 24, "name": "Courteney Cox", "role": "Actor", "birthYear": 1964 },
-  { "id": 25, "name": "Lisa Kudrow", "role": "Actor", "birthYear": 1963 },
-  { "id": 26, "name": "Matt LeBlanc", "role": "Actor", "birthYear": 1967 },
-  { "id": 27, "name": "Matthew Perry", "role": "Actor", "birthYear": 1969 },
-  { "id": 28, "name": "David Schwimmer", "role": "Actor", "birthYear": 1966 },
-  { "id": 29, "name": "Matthew McConaughey", "role": "Actor", "birthYear": 1969 },
-  { "id": 30, "name": "Woody Harrelson", "role": "Actor", "birthYear": 1961 },
-  { "id": 31, "name": "Benedict Cumberbatch", "role": "Actor", "birthYear": 1976 },
-  { "id": 32, "name": "Martin Freeman", "role": "Actor", "birthYear": 1971 }
-]
+version https://git-lfs.github.com/spec/v1
+oid sha256:244bf9601fb12de90e7a6bb308c674004ea9a20e17121365329351c9c9d21c9b
+size 2471
