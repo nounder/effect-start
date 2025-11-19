@@ -134,7 +134,7 @@ export type Encoded<T> = Schema.Schema<any, T, any>
 /**
  * Helper type for a value that can be a single item or an array.
  */
-export type OneOrMany<T> = T | T[]
+export type OneOrMany<T> = T | T[] | readonly T[]
 
 /**
  * A schema field that accepts string input (encoded type is string).
@@ -312,15 +312,49 @@ export const json = makeMediaFunction(
   makeValueHandler<JsonValue>((raw) => HttpServerResponse.unsafeJson(raw)),
 )
 
+/**
+ * Helper type to extract the Encoded type from a Schema.
+ */
+type GetEncoded<S> = S extends { Encoded: infer E } ? E : never
+
+/**
+ * Check if a schema's encoded type is string.
+ */
+type IsStringEncoded<S> = S extends Schema.PropertySignature.All ? true
+  : GetEncoded<S> extends string ? true
+  : false
+
+/**
+ * Check if a schema's encoded type is string or string array.
+ */
+type IsStringOrArrayEncoded<S> = S extends Schema.PropertySignature.All ? true
+  : GetEncoded<S> extends OneOrMany<string> ? true
+  : false
+
+/**
+ * Validate that all fields have string-encoded schemas.
+ */
+type ValidateStringEncodedFields<T extends Record<PropertyKey, any>> = {
+  [K in keyof T]: IsStringEncoded<T[K]> extends true ? T[K]
+    : never
+}
+
+/**
+ * Validate that all fields have string or array-encoded schemas.
+ */
+type ValidateStringOrArrayEncodedFields<T extends Record<PropertyKey, any>> = {
+  [K in keyof T]: IsStringOrArrayEncoded<T[K]> extends true ? T[K]
+    : never
+}
+
 function makePathParamsSchemaModifier() {
   return function<
     S extends Self,
-    const Fields extends
-      | Record<PropertyKey, StringEncodedField | Schema.PropertySignature.All>
-      | Schema.Struct<any>,
+    const Fields extends Record<PropertyKey, any>,
   >(
     this: S,
-    fieldsOrSchema: Fields,
+    fieldsOrSchema: Fields extends Schema.Struct<any> ? Fields
+      : ValidateStringEncodedFields<Fields>,
   ): S extends RouteSet<infer Routes, infer Schemas> ? RouteSet<
       Routes,
       & Schemas
@@ -367,15 +401,11 @@ function makeUrlParamOrHeaderSchemaModifier<
 >(key: K) {
   return function<
     S extends Self,
-    const Fields extends
-      | Record<
-        PropertyKey,
-        StringOrArrayEncodedField | Schema.PropertySignature.All
-      >
-      | Schema.Struct<any>,
+    const Fields extends Record<PropertyKey, any>,
   >(
     this: S,
-    fieldsOrSchema: Fields,
+    fieldsOrSchema: Fields extends Schema.Struct<any> ? Fields
+      : ValidateStringOrArrayEncodedFields<Fields>,
   ): S extends RouteSet<infer Routes, infer Schemas> ? RouteSet<
       Routes,
       & Schemas
