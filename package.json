@@ -26,6 +26,7 @@
     "@types/bun": "^1.2.15",
     "@types/react": "^19.1.6",
     "@types/react-dom": "^19.1.6",
+    "dprint": "^0.50.2",
     "effect": "^3.19.4",
     "effect-memfs": "nounder/effect-memfs#a976bb0",
     "ts-namespace-import": "nounder/ts-namespace-import#140c405"

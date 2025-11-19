@@ -1,0 +1,11 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "match": "Edit|Write",
+        "type": "command",
+        "command": "/home/user/effect-start/.claude/format-hook.sh"
+      }
+    ]
+  }
+}

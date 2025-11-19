@@ -18,9 +18,6 @@
     "maxAttrsPerLine": 1,
     "component.selfClosing": true
   },
-  "sql": {
-    "linesBetweenQueries": 3
-  },
   "excludes": [
     "**/node_modules",
     "**/*-lock.json",
