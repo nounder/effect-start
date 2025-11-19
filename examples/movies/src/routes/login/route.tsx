@@ -4,7 +4,6 @@ import * as Option from "effect/Option"
 import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
 import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
 import * as UrlParams from "@effect/platform/UrlParams"
-import * as Cookies from "@effect/platform/Cookies"
 import { Sql } from "../../services/Sql.ts"
 import { USER_SESSION } from "../../services/SignedUser.ts"
 
@@ -108,14 +107,12 @@ export default Route.html(function*() {
 
   const sessionId = yield* sql.createSession(user.id, SESSION_DURATION_MS)
 
-  const cookie = Cookies.unsafeMakeCookie(USER_SESSION, sessionId, {
-    path: "/",
-    httpOnly: true,
-    maxAge: SESSION_DURATION,
-  })
+  const cookieValue = `${USER_SESSION}=${sessionId}; Path=/; HttpOnly; Max-Age=${SESSION_DURATION_MS / 1000}`
 
   return HttpServerResponse.redirect("/", {
     status: 302,
-    cookies: Cookies.setCookie(Cookies.empty, cookie),
+    headers: {
+      "set-cookie": cookieValue,
+    },
   })
 }))

@@ -1,7 +1,5 @@
 import { Route } from "effect-start"
-import * as Effect from "effect/Effect"
-import * as FileSystem from "@effect/platform/FileSystem"
-import * as Path from "@effect/platform/Path"
+import shows from "../../data/shows.json" with { type: "json" }
 
 interface Movie {
   id: number
@@ -16,13 +14,6 @@ interface Movie {
 }
 
 export default Route.html(function*() {
-  const fs = yield* FileSystem.FileSystem
-  const path = yield* Path.Path
-
-  const dataPath = path.join(import.meta.dir, "../../data/shows.json")
-  const content = yield* fs.readFileString(dataPath)
-  const shows: Movie[] = JSON.parse(content)
-
   const movies = shows.filter(show => show.type === "movie")
 
   return (

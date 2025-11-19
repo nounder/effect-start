@@ -1,7 +1,6 @@
 import { Route } from "effect-start"
-import * as Effect from "effect/Effect"
-import * as FileSystem from "@effect/platform/FileSystem"
-import * as Path from "@effect/platform/Path"
+import people from "../../../data/people.json" with { type: "json" }
+import shows from "../../../data/shows.json" with { type: "json" }
 
 interface Person {
   id: number
@@ -19,19 +18,7 @@ interface Show {
 }
 
 export default Route.html(function*(ctx) {
-  const fs = yield* FileSystem.FileSystem
-  const path = yield* Path.Path
-
   const id = parseInt(ctx.params.id)
-
-  const peoplePath = path.join(import.meta.dir, "../../../data/people.json")
-  const showsPath = path.join(import.meta.dir, "../../../data/shows.json")
-
-  const peopleContent = yield* fs.readFileString(peoplePath)
-  const showsContent = yield* fs.readFileString(showsPath)
-
-  const people: Person[] = JSON.parse(peopleContent)
-  const shows: Show[] = JSON.parse(showsContent)
 
   const person = people.find(p => p.id === id)
 
