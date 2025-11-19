@@ -129,6 +129,11 @@ export namespace RouteHandler {
   >
 }
 
+/**
+ * Helper type for a value that can be a single item or an array.
+ */
+export type OneOrMany<T> = T | T[] | readonly T[]
+
 export type RouteSchemas = {
   readonly PathParams?: Schema.Struct<any>
   readonly UrlParams?: Schema.Struct<any>
@@ -293,36 +298,119 @@ export const json = makeMediaFunction(
 )
 
 /**
- * Creates schema modifier for struct-based schemas (PathParams, UrlParams, Headers).
- *
- * **IMPORTANT**: These schema fields must have string-based Encoded types because
- * HTTP path params, URL params, and headers are always transmitted as strings.
- *
- * Valid schema types:
- * - `Schema.String` - for string values
- * - `Schema.NumberFromString` - for numeric values passed as strings
- * - `Schema.DateFromString` - for dates passed as strings
- * - `Schema.Literal("a", "b")` - for string literal unions
- * - `Schema.Array(Schema.String)` - for multi-value params/headers (UrlParams/Headers only)
- * - `Schema.optional(...)` - for optional fields
- *
- * Invalid schema types (will cause runtime errors):
- * - `Schema.Number` - use `Schema.NumberFromString` instead
- * - `Schema.Boolean` - use `Schema.Literal("true", "false")` or custom string schema
- * - `Schema.Struct(...)` - nested objects cannot be passed in URLs
+ * Schema type that accepts string-encoded input.
+ * Used for path parameters which are always strings.
  */
-function makeStructSchemaModifier<
-  K extends "PathParams" | "UrlParams" | "Headers",
+type StringEncodedSchema =
+  | Schema.Schema<any, string, any>
+  // TODO: we accept PropertySignature to support Schema.optional
+  // not great but Effect 4 should be better about it
+  | Schema.PropertySignature.All
+
+/**
+ * Schema type that accepts string or string array encoded input.
+ * Used for URL params and headers which can have multiple values.
+ */
+type StringOrArrayEncodedSchema =
+  | Schema.Schema<any, OneOrMany<string>, any>
+  | Schema.PropertySignature.All
+
+/**
+ * Helper type to extract the Encoded type from a Schema.
+ */
+type GetEncoded<S> = S extends { Encoded: infer E } ? E : never
+
+/**
+ * Check if a schema's encoded type is string.
+ */
+type IsStringEncoded<S> = S extends Schema.PropertySignature.All ? true
+  : GetEncoded<S> extends string ? true
+  : false
+
+/**
+ * Check if a schema's encoded type is string or string array.
+ */
+type IsStringOrArrayEncoded<S> = S extends Schema.PropertySignature.All ? true
+  : GetEncoded<S> extends OneOrMany<string> ? true
+  : false
+
+/**
+ * Validate that all fields have string-encoded schemas.
+ */
+type ValidateStringEncodedFields<T extends Record<PropertyKey, any>> = {
+  [K in keyof T]: IsStringEncoded<T[K]> extends true ? T[K]
+    : StringEncodedSchema
+}
+
+/**
+ * Validate that all fields have string or array-encoded schemas.
+ */
+type ValidateStringOrArrayEncodedFields<T extends Record<PropertyKey, any>> = {
+  [K in keyof T]: IsStringOrArrayEncoded<T[K]> extends true ? T[K]
+    : StringOrArrayEncodedSchema
+}
+
+function makeSingleStringSchemaModifier<
+  K extends string,
 >(key: K) {
   return function<
     S extends Self,
-    Fields extends
-      | Schema.Struct.Fields
-      | Schema.Struct<any>
-      | Record<PropertyKey, Schema.Schema.Any | Schema.PropertySignature.All>,
+    const Fields extends Record<PropertyKey, any>,
   >(
     this: S,
-    fieldsOrSchema: Fields,
+    fieldsOrSchema: Fields extends Schema.Struct<any> ? Fields
+      : ValidateStringEncodedFields<Fields>,
+  ): S extends RouteSet<infer Routes, infer Schemas> ? RouteSet<
+      Routes,
+      & Schemas
+      & {
+        [P in K]: Fields extends Schema.Struct<infer F> ? Schema.Struct<F>
+          : Schema.Struct<
+            Fields extends Record<PropertyKey, infer _> ? Fields : never
+          >
+      }
+    >
+    : RouteSet<
+      [],
+      {
+        [P in K]: Fields extends Schema.Struct<infer F> ? Schema.Struct<F>
+          : Schema.Struct<
+            Fields extends Record<PropertyKey, infer _> ? Fields : never
+          >
+      }
+    >
+  {
+    const baseRoutes = isRouteSet(this)
+      ? this.set
+      : []
+    const baseSchema = isRouteSet(this)
+      ? this.schema
+      : {} as RouteSchemas.Empty
+
+    const schema = Schema.isSchema(fieldsOrSchema)
+      ? fieldsOrSchema
+      : Schema.Struct(fieldsOrSchema as Schema.Struct.Fields)
+
+    return makeSet(
+      baseRoutes as any,
+      {
+        ...baseSchema,
+        [key]: schema,
+      } as any,
+    ) as any
+  }
+}
+
+function makeMultiStringSchemaModifier<
+  K extends string,
+>(key: K) {
+  return function<
+    S extends Self,
+    const Fields extends Record<PropertyKey, any>,
+  >(
+    this: S,
+    fieldsOrSchema: Fields extends Schema.Struct<any> ? Fields
+      : ValidateStringOrArrayEncodedFields<Fields>,
   ): S extends RouteSet<infer Routes, infer Schemas> ? RouteSet<
       Routes,
       & Schemas
@@ -412,12 +500,12 @@ function makeUnionSchemaModifier<
   }
 }
 
-export const schemaPathParams = makeStructSchemaModifier("PathParams")
-export const schemaUrlParams = makeStructSchemaModifier("UrlParams")
+export const schemaPathParams = makeSingleStringSchemaModifier("PathParams")
+export const schemaUrlParams = makeMultiStringSchemaModifier("UrlParams")
+export const schemaHeaders = makeMultiStringSchemaModifier("Headers")
 export const schemaPayload = makeUnionSchemaModifier("Payload")
 export const schemaSuccess = makeUnionSchemaModifier("Success")
 export const schemaError = makeUnionSchemaModifier("Error")
-export const schemaHeaders = makeStructSchemaModifier("Headers")
 
 const SetProto = {
   [RouteSetTypeId]: RouteSetTypeId,
@@ -746,10 +834,6 @@ function prepareSchemaInput(
   return result
 }
 
-/**
- * Factory function that creates Route for a specific method & media.
- * Supports both Effect values and generator functions that receive context.
- */
 function makeMediaFunction<
   Method extends HttpMethod.HttpMethod,
   Media extends RouteMedia,
