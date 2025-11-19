@@ -1,8 +1,11 @@
 import * as HttpMethod from "@effect/platform/HttpMethod"
+import * as HttpRouter from "@effect/platform/HttpRouter"
 import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
 import * as HttpServerRespondable from "@effect/platform/HttpServerRespondable"
 import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
+import * as UrlParams from "@effect/platform/UrlParams"
 import * as Effect from "effect/Effect"
+import * as Option from "effect/Option"
 import * as Pipeable from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
@@ -697,6 +700,53 @@ function makeSet<
 }
 
 /**
+ * Checks if a schema field expects an array by inspecting its AST.
+ */
+function isArraySchema(fieldSchema: Schema.Schema.Any | Schema.PropertySignature.All): boolean {
+  try {
+    const schema = Schema.isSchema(fieldSchema)
+      ? fieldSchema
+      : Schema.make((fieldSchema as any).ast.type)
+
+    const ast = schema.ast
+    return ast._tag === "TupleType"
+      || (ast._tag === "TypeLiteral" && "indexSignatures" in ast && ast.indexSignatures.length > 0)
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Prepares input data for schema validation by handling single vs array values.
+ * For each field in the schema:
+ * - If schema expects an array (Schema.Array), pass all values as an array
+ * - If schema expects a single value, pass only the first value
+ */
+function prepareSchemaInput(
+  schema: Schema.Struct<any>,
+  rawData: Record<string, string | readonly string[] | undefined>,
+): Record<string, unknown> {
+  const result: Record<string, unknown> = {}
+  const fields = schema.fields
+
+  for (const key in fields) {
+    const value = rawData[key]
+    if (value === undefined) continue
+
+    const fieldSchema = fields[key]
+    const expectsArray = isArraySchema(fieldSchema)
+
+    if (Array.isArray(value)) {
+      result[key] = expectsArray ? value : value[0]
+    } else {
+      result[key] = value
+    }
+  }
+
+  return result
+}
+
+/**
  * Factory function that creates Route for a specific method & media.
  * Supports both Effect values and generator functions that receive context.
  */
@@ -750,6 +800,13 @@ function makeMediaFunction<
       >,
     ], RouteSchemas.Empty>
   {
+    const baseRoutes = isRouteSet(this)
+      ? this.set
+      : []
+    const baseSchema = isRouteSet(this)
+      ? this.schema
+      : {} as RouteSchemas.Empty
+
     const effect = typeof handler === "function"
       ? Effect.gen(function*() {
         const request = yield* HttpServerRequest.HttpServerRequest
@@ -759,21 +816,68 @@ function makeMediaFunction<
             return makeUrlFromRequest(request)
           },
         }
+
+        // Decode path params if schema exists
+        if (baseSchema.PathParams) {
+          const routeContextOption = yield* Effect.serviceOption(HttpRouter.RouteContext)
+          const rawPathParams = Option.match(routeContextOption, {
+            onNone: () => ({}),
+            onSome: (ctx) => ctx.params as Record<string, string | undefined>,
+          })
+          const preparedPathParams = prepareSchemaInput(
+            baseSchema.PathParams,
+            rawPathParams,
+          )
+          context.pathParams = yield* Schema.decodeUnknown(baseSchema.PathParams)(
+            preparedPathParams,
+          )
+        }
+
+        // Decode URL params if schema exists
+        if (baseSchema.UrlParams) {
+          const url = makeUrlFromRequest(request)
+          const searchParams = url.searchParams
+          const rawUrlParams: Record<string, string | readonly string[]> = {}
+          for (const key of searchParams.keys()) {
+            const values = searchParams.getAll(key)
+            rawUrlParams[key] = values.length === 1 ? values[0] : values
+          }
+          const preparedUrlParams = prepareSchemaInput(
+            baseSchema.UrlParams,
+            rawUrlParams,
+          )
+          context.urlParams = yield* Schema.decodeUnknown(baseSchema.UrlParams)(
+            preparedUrlParams,
+          )
+        }
+
+        // Decode headers if schema exists
+        if (baseSchema.Headers) {
+          const rawHeaders: Record<string, string | readonly string[]> = {}
+          for (const key in request.headers) {
+            const value = request.headers[key]
+            if (value !== undefined) {
+              rawHeaders[key] = value
+            }
+          }
+          const preparedHeaders = prepareSchemaInput(
+            baseSchema.Headers,
+            rawHeaders,
+          )
+          context.headers = yield* Schema.decodeUnknown(baseSchema.Headers)(
+            preparedHeaders,
+          )
+        }
+
         const result = handler(context)
         return yield* (typeof result === "object"
             && result !== null
-            && Symbol.iterator in result
-          ? Effect.gen(() => result as any)
+            && "next" in result
+            && typeof result.next === "function"
+          ? Effect.gen(result as any)
           : result as Effect.Effect<A, E, R>)
       })
       : handler
-
-    const baseRoutes = isRouteSet(this)
-      ? this.set
-      : []
-    const baseSchema = isRouteSet(this)
-      ? this.schema
-      : {} as RouteSchemas.Empty
 
     return makeSet(
       [
