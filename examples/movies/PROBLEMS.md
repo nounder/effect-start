@@ -28,6 +28,8 @@ git lfs pull
 
 **Status**: These are type-checking errors that don't affect runtime. The `effect-start` module is resolved correctly by Bun's module resolution at runtime. This appears to be a tsconfig/module resolution configuration issue between TypeScript and Bun.
 
+**Specific Issue**: TypeScript complains about `for` attribute on `<label>` elements, expecting React's `htmlFor` instead. However, effect-start uses HyperHTML which follows standard HTML attributes (defined in `/home/user/effect-start/src/jsx.d.ts:1606` as `for?: string`). The code is correct; TypeScript is using React's type definitions as a fallback when effect-start's types aren't available due to missing node_modules.
+
 ## Authentication Implementation
 
 **Approach**: Implemented custom authentication using:
