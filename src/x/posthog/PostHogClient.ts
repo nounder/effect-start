@@ -9,6 +9,7 @@ interface PostHogClientConfig {
   readonly apiKey: string
   readonly host: string
   readonly personalApiKey?: string
+  readonly distinctId?: string
 }
 
 interface CapturePayload {
@@ -116,13 +117,29 @@ function makeRequest<A, I = unknown, R = never>(
 export function createClient(config: PostHogClientConfig): PostHogService.PostHogService {
   const host = config.host || DEFAULT_HOST
 
-  return {
+  function getDistinctId(provided?: string): Effect.Effect<string, PostHogError.PostHogConfigError> {
+    const distinctId = provided || config.distinctId
+
+    if (!distinctId) {
+      return Effect.fail(
+        new PostHogError.PostHogConfigError({
+          reason: "distinctId is required but was not provided in options or config",
+        }),
+      )
+    }
+
+    return Effect.succeed(distinctId)
+  }
+
+  const client: PostHogService.PostHogService = {
     capture: (options) =>
       Effect.gen(function*() {
+        const distinctId = yield* getDistinctId(options.distinctId)
+
         const payload: CapturePayload = {
           api_key: config.apiKey,
           event: options.event,
-          distinct_id: options.distinctId,
+          distinct_id: distinctId,
           properties: options.properties as Record<string, unknown> | undefined,
           timestamp: options.timestamp,
         }
@@ -141,14 +158,23 @@ export function createClient(config: PostHogClientConfig): PostHogService.PostHo
 
     captureBatch: (options) =>
       Effect.gen(function*() {
+        const batchWithDistinctIds = yield* Effect.all(
+          options.events.map((event) =>
+            Effect.gen(function*() {
+              const distinctId = yield* getDistinctId(event.distinctId)
+              return {
+                event: event.event,
+                distinct_id: distinctId,
+                properties: event.properties as Record<string, unknown> | undefined,
+                timestamp: event.timestamp,
+              }
+            })
+          ),
+        )
+
         const payload: BatchPayload = {
           api_key: config.apiKey,
-          batch: options.events.map((event) => ({
-            event: event.event,
-            distinct_id: event.distinctId,
-            properties: event.properties as Record<string, unknown> | undefined,
-            timestamp: event.timestamp,
-          })),
+          batch: batchWithDistinctIds,
         }
 
         yield* makeRequest(
@@ -165,10 +191,12 @@ export function createClient(config: PostHogClientConfig): PostHogService.PostHo
 
     identify: (options) =>
       Effect.gen(function*() {
+        const distinctId = yield* getDistinctId(options.distinctId)
+
         const payload: CapturePayload = {
           api_key: config.apiKey,
           event: "$identify",
-          distinct_id: options.distinctId,
+          distinct_id: distinctId,
           properties: {
             $set: options.properties,
           },
@@ -188,12 +216,14 @@ export function createClient(config: PostHogClientConfig): PostHogService.PostHo
 
     alias: (options) =>
       Effect.gen(function*() {
+        const distinctId = yield* getDistinctId(options.distinctId)
+
         const payload: CapturePayload = {
           api_key: config.apiKey,
           event: "$create_alias",
-          distinct_id: options.distinctId,
+          distinct_id: distinctId,
           properties: {
-            distinct_id: options.distinctId,
+            distinct_id: distinctId,
             alias: options.alias,
           },
         }
@@ -212,9 +242,11 @@ export function createClient(config: PostHogClientConfig): PostHogService.PostHo
 
     getAllFeatureFlags: (options) =>
       Effect.gen(function*() {
+        const distinctId = yield* getDistinctId(options.distinctId)
+
         const payload: FeatureFlagsPayload = {
           api_key: config.apiKey,
-          distinct_id: options.distinctId,
+          distinct_id: distinctId,
           person_properties: options.personProperties as Record<string, unknown> | undefined,
           group_properties: options.groupProperties as Record<string, unknown> | undefined,
           groups: options.groups,
@@ -239,21 +271,23 @@ export function createClient(config: PostHogClientConfig): PostHogService.PostHo
 
     getFeatureFlag: (flagKey, options) =>
       Effect.gen(function*() {
-        const flags = yield* createClient(config).getAllFeatureFlags(options)
+        const flags = yield* client.getAllFeatureFlags(options)
         return flags[flagKey]
       }),
 
     isFeatureEnabled: (flagKey, options) =>
       Effect.gen(function*() {
-        const value = yield* createClient(config).getFeatureFlag(flagKey, options)
+        const value = yield* client.getFeatureFlag(flagKey, options)
         return value === true
       }),
 
     getFeatureFlagPayload: (flagKey, options) =>
       Effect.gen(function*() {
+        const distinctId = yield* getDistinctId(options.distinctId)
+
         const payload: FeatureFlagsPayload = {
           api_key: config.apiKey,
-          distinct_id: options.distinctId,
+          distinct_id: distinctId,
           person_properties: options.personProperties as Record<string, unknown> | undefined,
           group_properties: options.groupProperties as Record<string, unknown> | undefined,
           groups: options.groups,
@@ -281,7 +315,7 @@ export function createClient(config: PostHogClientConfig): PostHogService.PostHo
 
     getExperimentVariant: (options) =>
       Effect.gen(function*() {
-        const flags = yield* createClient(config).getAllFeatureFlags({
+        const flags = yield* client.getAllFeatureFlags({
           distinctId: options.distinctId,
           personProperties: options.personProperties,
           groupProperties: options.groupProperties,
@@ -297,7 +331,7 @@ export function createClient(config: PostHogClientConfig): PostHogService.PostHo
           )
         }
 
-        const payload = yield* createClient(config).getFeatureFlagPayload(
+        const payload = yield* client.getFeatureFlagPayload(
           options.experimentKey,
           {
             distinctId: options.distinctId,
@@ -312,4 +346,6 @@ export function createClient(config: PostHogClientConfig): PostHogService.PostHo
         }
       }),
   }
+
+  return client
 }

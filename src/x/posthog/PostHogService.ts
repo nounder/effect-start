@@ -8,6 +8,7 @@ export interface PostHogConfig {
   readonly apiKey: string
   readonly host?: string
   readonly personalApiKey?: string
+  readonly distinctId?: string
 }
 
 export interface EventProperties {
@@ -24,7 +25,7 @@ export interface GroupProperties {
 
 export interface CaptureEventOptions {
   readonly event: string
-  readonly distinctId: string
+  readonly distinctId?: string
   readonly properties?: EventProperties
   readonly timestamp?: string
 }
@@ -34,17 +35,17 @@ export interface CaptureEventsOptions {
 }
 
 export interface IdentifyOptions {
-  readonly distinctId: string
+  readonly distinctId?: string
   readonly properties: PersonProperties
 }
 
 export interface AliasOptions {
-  readonly distinctId: string
+  readonly distinctId?: string
   readonly alias: string
 }
 
 export interface FeatureFlagOptions {
-  readonly distinctId: string
+  readonly distinctId?: string
   readonly personProperties?: PersonProperties
   readonly groupProperties?: GroupProperties
   readonly groups?: Record<string, string>
@@ -59,7 +60,7 @@ export interface FeatureFlagPayload {
 }
 
 export interface ExperimentOptions {
-  readonly distinctId: string
+  readonly distinctId?: string
   readonly experimentKey: string
   readonly personProperties?: PersonProperties
   readonly groupProperties?: GroupProperties
@@ -122,6 +123,7 @@ export function layer(config: PostHogConfig): Layer.Layer<PostHog> {
       apiKey: config.apiKey,
       host: config.host || "https://us.i.posthog.com",
       personalApiKey: config.personalApiKey,
+      distinctId: config.distinctId,
     })
   )
 }

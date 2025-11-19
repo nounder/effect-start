@@ -84,4 +84,106 @@ test.describe("PostHogService", () => {
 
     test.expect(result).toBeDefined()
   })
+
+  test.it("should accept distinctId in config", async () => {
+    const configWithDistinctId: PostHogService.PostHogConfig = {
+      apiKey: "test-api-key",
+      host: "https://test.posthog.com",
+      distinctId: "user-123",
+    }
+
+    const layer = PostHogService.layer(configWithDistinctId)
+
+    const program = Effect.gen(function*() {
+      const service = yield* PostHogService.PostHog
+      return service
+    })
+
+    const result = await Effect.runPromise(
+      program.pipe(Effect.provide(layer)),
+    )
+
+    test.expect(result).toBeDefined()
+  })
+
+  test.it("should make distinctId optional in capture options", async () => {
+    const configWithDistinctId: PostHogService.PostHogConfig = {
+      apiKey: "test-api-key",
+      host: "https://test.posthog.com",
+      distinctId: "user-123",
+    }
+
+    const layer = PostHogService.layer(configWithDistinctId)
+
+    const program = Effect.gen(function*() {
+      const service = yield* PostHogService.PostHog
+
+      const captureOptions: PostHogService.CaptureEventOptions = {
+        event: "test_event",
+      }
+
+      test.expect(captureOptions.distinctId).toBeUndefined()
+      return true
+    })
+
+    const result = await Effect.runPromise(
+      program.pipe(Effect.provide(layer)),
+    )
+
+    test.expect(result).toBe(true)
+  })
+
+  test.it("should make distinctId optional in identify options", async () => {
+    const configWithDistinctId: PostHogService.PostHogConfig = {
+      apiKey: "test-api-key",
+      host: "https://test.posthog.com",
+      distinctId: "user-123",
+    }
+
+    const layer = PostHogService.layer(configWithDistinctId)
+
+    const program = Effect.gen(function*() {
+      const service = yield* PostHogService.PostHog
+
+      const identifyOptions: PostHogService.IdentifyOptions = {
+        properties: { name: "Test User" },
+      }
+
+      test.expect(identifyOptions.distinctId).toBeUndefined()
+      return true
+    })
+
+    const result = await Effect.runPromise(
+      program.pipe(Effect.provide(layer)),
+    )
+
+    test.expect(result).toBe(true)
+  })
+
+  test.it("should make distinctId optional in feature flag options", async () => {
+    const configWithDistinctId: PostHogService.PostHogConfig = {
+      apiKey: "test-api-key",
+      host: "https://test.posthog.com",
+      distinctId: "user-123",
+    }
+
+    const layer = PostHogService.layer(configWithDistinctId)
+
+    const program = Effect.gen(function*() {
+      const service = yield* PostHogService.PostHog
+
+      const flagOptions: PostHogService.FeatureFlagOptions = {
+        personProperties: { email: "test@example.com" },
+      }
+
+      test.expect(flagOptions.distinctId).toBeUndefined()
+      return true
+    })
+
+    const result = await Effect.runPromise(
+      program.pipe(Effect.provide(layer)),
+    )
+
+    test.expect(result).toBe(true)
+  })
 })
