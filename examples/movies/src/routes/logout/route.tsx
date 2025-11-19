@@ -1,6 +1,5 @@
 import { Route } from "effect-start"
 import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
-import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
 import { Sql } from "../../services/Sql.ts"
 import { USER_SESSION } from "../../services/SignedUser.ts"
 
@@ -14,12 +13,31 @@ export default Route.html(function*() {
     yield* sql.deleteSession(sessionId)
   }
 
-  const cookieValue = `${USER_SESSION}=; Path=/; HttpOnly; Max-Age=0`
-
-  return HttpServerResponse.redirect("/", {
-    status: 302,
-    headers: {
-      "set-cookie": cookieValue,
-    },
-  })
+  return (
+    <div>
+      <h1>Logged Out</h1>
+      <p>You have been successfully logged out.</p>
+      <p><a href="/">Go to home page</a></p>
+      <p><a href="/login">Login again</a></p>
+      <style>{`
+        div {
+          max-width: 400px;
+          margin: 40px auto;
+          text-align: center;
+        }
+        a {
+          display: inline-block;
+          margin: 10px;
+          padding: 10px 20px;
+          background-color: #007bff;
+          color: white;
+          text-decoration: none;
+          border-radius: 4px;
+        }
+        a:hover {
+          background-color: #0056b3;
+        }
+      `}</style>
+    </div>
+  )
 })

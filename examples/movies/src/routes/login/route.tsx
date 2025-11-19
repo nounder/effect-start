@@ -2,25 +2,23 @@ import { Route } from "effect-start"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
 import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
-import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
 import * as UrlParams from "@effect/platform/UrlParams"
 import { Sql } from "../../services/Sql.ts"
 import { USER_SESSION } from "../../services/SignedUser.ts"
 
 const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000
-const SESSION_DURATION = "30 days"
 
 export default Route.html(function*() {
   return (
     <div>
       <h1>Login</h1>
-      <form method="POST" action="/login">
+      <form method="post" action="/login">
         <div>
-          <label htmlFor="email">Email:</label>
+          <label for="email">Email:</label>
           <input type="email" id="email" name="email" required />
         </div>
         <div>
-          <label htmlFor="password">Password:</label>
+          <label for="password">Password:</label>
           <input type="password" id="password" name="password" required />
         </div>
         <button type="submit">Login</button>
@@ -107,12 +105,33 @@ export default Route.html(function*() {
 
   const sessionId = yield* sql.createSession(user.id, SESSION_DURATION_MS)
 
-  const cookieValue = `${USER_SESSION}=${sessionId}; Path=/; HttpOnly; Max-Age=${SESSION_DURATION_MS / 1000}`
-
-  return HttpServerResponse.redirect("/", {
-    status: 302,
-    headers: {
-      "set-cookie": cookieValue,
-    },
-  })
+  return (
+    <div>
+      <h1>Login Successful!</h1>
+      <p>Welcome back! Your session has been created.</p>
+      <p><a href="/">Go to home page</a></p>
+      <style>{`
+        div {
+          max-width: 400px;
+          margin: 40px auto;
+          text-align: center;
+        }
+        h1 {
+          color: #28a745;
+        }
+        a {
+          display: inline-block;
+          margin-top: 20px;
+          padding: 10px 20px;
+          background-color: #007bff;
+          color: white;
+          text-decoration: none;
+          border-radius: 4px;
+        }
+        a:hover {
+          background-color: #0056b3;
+        }
+      `}</style>
+    </div>
+  )
 }))

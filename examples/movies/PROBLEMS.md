@@ -52,22 +52,31 @@ export default Route.html(function*() {
 
 **Status**: POST requests now reach handlers correctly. Form data parsing with `UrlParams.getFirst()` works.
 
-## HttpServerResponse with Cookies - RESOLVED
+## Route.html() Cookie-Based Authentication - LIMITATION
 
-**Issue**: Creating `HttpServerResponse.redirect()` with cookies option caused runtime error when returned from Route.html() handlers.
+**Issue**: `Route.html()` handlers cannot set HTTP cookies because they expect to return HTML/JSX content, not `HttpServerResponse` objects with cookies.
 
-**Root Cause**: `Route.html()` expects handlers to return values (string/JSX), not `HttpServerResponse` objects. When an `HttpServerResponse` with cookies was returned, the framework wrapped it again, causing the Cookies object to lose its proper prototype chain.
+**Root Cause**: The Route API has two handler types:
+- `RouteHandler.Value` (used by Route.html/json/text) - returns raw values that get wrapped in responses
+- `RouteHandler.Encoded` - returns `HttpServerResponse` directly (not currently exposed in public API)
 
-**Solution**: Use Set-Cookie header directly instead of the cookies option:
-```typescript
-const cookieValue = `${USER_SESSION}=${sessionId}; Path=/; HttpOnly; Max-Age=${SESSION_DURATION_MS / 1000}`
+Route.html() wraps return values in HTML responses, so returning `HttpServerResponse.redirect()` with cookies causes type errors and runtime issues.
 
-return HttpServerResponse.redirect("/", {
-  status: 302,
-  headers: {
-    "set-cookie": cookieValue,
-  },
-})
-```
+**Current Solution**: Authentication routes return HTML success pages instead of HTTP redirects:
+- `/login` POST → Returns "Login Successful" page with link to home
+- `/register` POST → Returns "Registration Successful" page
+- `/logout` → Returns "Logged Out" page
 
-**Status**: Implemented header-based cookies for /register, /login, and /logout routes. Testing pending due to npm registry connectivity preventing dependency installation.
+**Limitation**: Session cookies are created in the database but not sent to the browser. The `SignedUser.middleware` cannot validate sessions without browser cookies being set.
+
+**Future Enhancement Needed**: To properly implement cookie-based auth, effect-start would need:
+1. A Route constructor that returns `RouteHandler.Encoded` for direct HttpServerResponse control, OR
+2. Middleware support that can intercept responses and set cookies, OR
+3. Server-level cookie management that works with session IDs returned from route handlers
+
+**Current Auth Status**:
+✅ Database schema and services implemented
+✅ Password hashing and validation works
+✅ Session creation in database works
+❌ Cookies not set in browser (authentication non-functional)
+✅ All route forms display correctly
