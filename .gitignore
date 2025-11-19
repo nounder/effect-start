@@ -8,5 +8,6 @@ vendor/
 out/
 pad/
 dst/
+tree/
 
 routes/.routes.gen.ts
