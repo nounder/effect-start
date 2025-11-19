@@ -203,6 +203,6 @@ bun test           # All tests
 
 ## See Full Patterns
 
-- **[effect-library-development.md](./effect-library-development.md)** - Complete Effect patterns, constructors, Layer composition
-- **[error-handling.md](./error-handling.md)** - Comprehensive error handling, recovery patterns, error testing
+- **[EffectLibraryDevelopment.md](./EffectLibraryDevelopment.md)** - Complete Effect patterns, constructors, Layer composition
+- **[ErrorHandling.md](./ErrorHandling.md)** - Comprehensive error handling, recovery patterns, error testing
 - **[README.md](./README.md)** - Pattern organization and usage guide

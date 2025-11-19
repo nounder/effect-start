@@ -48,9 +48,9 @@ if (error) yield* Effect.fail("error")
 ## 📚 Development Patterns
 
 **CRITICAL:** Reference `.patterns/` directory BEFORE implementing:
-- **effect-library-development.md** - Core Effect patterns, constructors, composition
-- **error-handling.md** - Data.TaggedError, error recovery, testing
-- **quick-reference.md** - One-page cheat sheet for common patterns
+- **EffectLibraryDevelopment.md** - Core Effect patterns, constructors, composition
+- **ErrorHandling.md** - Data.TaggedError, error recovery, testing
+- **QuickReference.md** - One-page cheat sheet for common patterns
 
 **Pattern Usage:**
 1. Before coding → Review relevant pattern
