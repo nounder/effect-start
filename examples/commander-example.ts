@@ -9,10 +9,14 @@ const unhandledFormat = Commander.make({
 })
 
 const handledFormat = unhandledFormat
-  .option("--style", "-s")
-  .description("Code style to use")
-  .default("standard")
-  .schema(Commander.choice(["standard", "prettier", "biome"]))
+  .option(
+    Commander
+      .option("--style")
+      .short("-s")
+      .description("Code style to use")
+      .default("standard")
+      .schema(Commander.choice(["standard", "prettier", "biome"]))
+  )
   .handle((opts) => Console.log(`Formatting with style: ${opts.style}`))
 
 const main = Commander
@@ -21,12 +25,20 @@ const main = Commander
     description: "this is doing that",
     version: "1.0.0"
   })
-  .option("--source", "-s")
-  .schema(Schema.String)
-  .option("--verbose", "-v")
-  .description("Enable verbose output")
-  .default(false)
-  .schema(Commander.BooleanFromString)
+  .option(
+    Commander
+      .option("--source")
+      .short("-s")
+      .schema(Schema.String)
+  )
+  .option(
+    Commander
+      .option("--verbose")
+      .short("-v")
+      .description("Enable verbose output")
+      .default(false)
+      .schema(Commander.BooleanFromString)
+  )
   .optionHelp()
   .subcommand(handledFormat)
   .handle((opts) =>

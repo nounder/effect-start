@@ -15,48 +15,195 @@ t.describe("Commander", () => {
     })
   })
 
-  t.describe("option", () => {
+  t.describe("option - nested builder API", () => {
     t.it("should add an option with schema", () => {
       const cmd = Commander
         .make({ name: "app" })
-        .option("--output", "-o")
-        .schema(Schema.String)
+        .option(
+          Commander
+            .option("--output")
+            .short("-o")
+            .schema(Schema.String)
+        )
 
-      t.expect(cmd.options.output).toBeDefined()
-      t.expect(cmd.options.output.long).toBe("output")
-      t.expect(cmd.options.output.short).toBe("o")
+      t.expect(cmd.options["--output"]).toBeDefined()
+      t.expect(cmd.options["--output"].long).toBe("--output")
+      t.expect(cmd.options["--output"].short).toBe("o")
     })
 
     t.it("should add option with description", () => {
       const cmd = Commander
         .make({ name: "app" })
-        .option("--output", "-o")
-        .description("Output file")
-        .schema(Schema.String)
+        .option(
+          Commander
+            .option("--output")
+            .short("-o")
+            .description("Output file")
+            .schema(Schema.String)
+        )
 
-      t.expect(cmd.options.output.description).toBe("Output file")
+      t.expect(cmd.options["--output"].description).toBe("Output file")
     })
 
     t.it("should add option with default value", () => {
       const cmd = Commander
         .make({ name: "app" })
-        .option("--count", "-c")
-        .default(10)
-        .schema(Commander.NumberFromString)
+        .option(
+          Commander
+            .option("--count")
+            .short("-c")
+            .default(10)
+            .schema(Commander.NumberFromString)
+        )
 
-      t.expect(cmd.options.count.defaultValue).toBe(10)
+      t.expect(cmd.options["--count"].defaultValue).toBe(10)
     })
 
     t.it("should chain multiple options", () => {
       const cmd = Commander
         .make({ name: "app" })
-        .option("--input", "-i")
-        .schema(Schema.String)
-        .option("--output", "-o")
-        .schema(Schema.String)
+        .option(
+          Commander
+            .option("--input")
+            .short("-i")
+            .schema(Schema.String)
+        )
+        .option(
+          Commander
+            .option("--output")
+            .short("-o")
+            .schema(Schema.String)
+        )
 
-      t.expect(cmd.options.input).toBeDefined()
-      t.expect(cmd.options.output).toBeDefined()
+      t.expect(cmd.options["--input"]).toBeDefined()
+      t.expect(cmd.options["--output"]).toBeDefined()
+    })
+  })
+
+  t.describe("parse - kebab-to-camel conversion", () => {
+    t.it("should convert kebab-case to camelCase", async () => {
+      const cmd = Commander
+        .make({ name: "app" })
+        .option(
+          Commander
+            .option("--input-file")
+            .schema(Schema.String)
+        )
+
+      const result = await Effect.runPromise(
+        Commander.parse(cmd, ["--input-file", "test.txt"])
+      )
+
+      t.expect(result.inputFile).toBe("test.txt")
+    })
+
+    t.it("should handle single word options", async () => {
+      const cmd = Commander
+        .make({ name: "app" })
+        .option(
+          Commander
+            .option("--port")
+            .schema(Commander.NumberFromString)
+        )
+
+      const result = await Effect.runPromise(
+        Commander.parse(cmd, ["--port", "3000"])
+      )
+
+      t.expect(result.port).toBe(3000)
+    })
+
+    t.it("should parse short options", async () => {
+      const cmd = Commander
+        .make({ name: "app" })
+        .option(
+          Commander
+            .option("--port")
+            .short("-p")
+            .schema(Commander.NumberFromString)
+        )
+
+      const result = await Effect.runPromise(
+        Commander.parse(cmd, ["-p", "8080"])
+      )
+
+      t.expect(result.port).toBe(8080)
+    })
+
+    t.it("should parse multiple options", async () => {
+      const cmd = Commander
+        .make({ name: "app" })
+        .option(
+          Commander
+            .option("--host")
+            .short("-h")
+            .schema(Schema.String)
+        )
+        .option(
+          Commander
+            .option("--port")
+            .short("-p")
+            .schema(Commander.NumberFromString)
+        )
+
+      const result = await Effect.runPromise(
+        Commander.parse(cmd, ["--host", "localhost", "--port", "3000"])
+      )
+
+      t.expect(result.host).toBe("localhost")
+      t.expect(result.port).toBe(3000)
+    })
+
+    t.it("should handle options with equals syntax", async () => {
+      const cmd = Commander
+        .make({ name: "app" })
+        .option(
+          Commander
+            .option("--port")
+            .schema(Commander.NumberFromString)
+        )
+
+      const result = await Effect.runPromise(
+        Commander.parse(cmd, ["--port=3000"])
+      )
+
+      t.expect(result.port).toBe(3000)
+    })
+
+    t.it("should use default value when option not provided", async () => {
+      const cmd = Commander
+        .make({ name: "app" })
+        .option(
+          Commander
+            .option("--port")
+            .short("-p")
+            .default(3000)
+            .schema(Commander.NumberFromString)
+        )
+
+      const result = await Effect.runPromise(
+        Commander.parse(cmd, [])
+      )
+
+      t.expect(result.port).toBe(3000)
+    })
+
+    t.it("should override default when option specified", async () => {
+      const cmd = Commander
+        .make({ name: "app" })
+        .option(
+          Commander
+            .option("--port")
+            .short("-p")
+            .default(3000)
+            .schema(Commander.NumberFromString)
+        )
+
+      const result = await Effect.runPromise(
+        Commander.parse(cmd, ["--port", "8080"])
+      )
+
+      t.expect(result.port).toBe(8080)
     })
   })
 
@@ -66,9 +213,9 @@ t.describe("Commander", () => {
         .make({ name: "app" })
         .optionHelp()
 
-      t.expect(cmd.options.help).toBeDefined()
-      t.expect(cmd.options.help.long).toBe("help")
-      t.expect(cmd.options.help.short).toBe("h")
+      t.expect(cmd.options["--help"]).toBeDefined()
+      t.expect(cmd.options["--help"].long).toBe("--help")
+      t.expect(cmd.options["--help"].short).toBe("h")
     })
   })
 
@@ -78,98 +225,9 @@ t.describe("Commander", () => {
         .make({ name: "app", version: "1.0.0" })
         .optionVersion()
 
-      t.expect(cmd.options.version).toBeDefined()
-      t.expect(cmd.options.version.long).toBe("version")
-      t.expect(cmd.options.version.short).toBe("V")
-    })
-  })
-
-  t.describe("parse", () => {
-    t.it("should parse simple option", async () => {
-      const cmd = Commander
-        .make({ name: "app" })
-        .option("--output", "-o")
-        .schema(Schema.String)
-
-      const result = await Effect.runPromise(
-        Commander.parse(cmd, ["--output", "file.txt"])
-      )
-
-      t.expect(result.output).toBe("file.txt")
-    })
-
-    t.it("should parse short option", async () => {
-      const cmd = Commander
-        .make({ name: "app" })
-        .option("--output", "-o")
-        .schema(Schema.String)
-
-      const result = await Effect.runPromise(
-        Commander.parse(cmd, ["-o", "file.txt"])
-      )
-
-      t.expect(result.output).toBe("file.txt")
-    })
-
-    t.it("should parse option with equals sign", async () => {
-      const cmd = Commander
-        .make({ name: "app" })
-        .option("--output")
-        .schema(Schema.String)
-
-      const result = await Effect.runPromise(
-        Commander.parse(cmd, ["--output=file.txt"])
-      )
-
-      t.expect(result.output).toBe("file.txt")
-    })
-
-    t.it("should use default value when option not provided", async () => {
-      const cmd = Commander
-        .make({ name: "app" })
-        .option("--count")
-        .default(10)
-        .schema(Commander.NumberFromString)
-
-      const result = await Effect.runPromise(
-        Commander.parse(cmd, [])
-      )
-
-      t.expect(result.count).toBe(10)
-    })
-
-    t.it("should override default value", async () => {
-      const cmd = Commander
-        .make({ name: "app" })
-        .option("--count")
-        .default(10)
-        .schema(Commander.NumberFromString)
-
-      const result = await Effect.runPromise(
-        Commander.parse(cmd, ["--count", "20"])
-      )
-
-      t.expect(result.count).toBe(20)
-    })
-
-    t.it("should parse multiple options", async () => {
-      const cmd = Commander
-        .make({ name: "app" })
-        .option("--input", "-i")
-        .schema(Schema.String)
-        .option("--output", "-o")
-        .schema(Schema.String)
-        .option("--count", "-c")
-        .default(1)
-        .schema(Commander.NumberFromString)
-
-      const result = await Effect.runPromise(
-        Commander.parse(cmd, ["-i", "in.txt", "--output", "out.txt", "-c", "5"])
-      )
-
-      t.expect(result.input).toBe("in.txt")
-      t.expect(result.output).toBe("out.txt")
-      t.expect(result.count).toBe(5)
+      t.expect(cmd.options["--version"]).toBeDefined()
+      t.expect(cmd.options["--version"].long).toBe("--version")
+      t.expect(cmd.options["--version"].short).toBe("V")
     })
   })
 
@@ -177,14 +235,22 @@ t.describe("Commander", () => {
     t.it("should mark command as handled", () => {
       const handled = Commander
         .make({ name: "app" })
-        .option("--name", "-n")
-        .schema(Schema.String)
+        .option(
+          Commander
+            .option("--name")
+            .short("-n")
+            .schema(Schema.String)
+        )
         .handle((opts) => Effect.void)
 
       const unhandled = Commander
         .make({ name: "app2" })
-        .option("--name", "-n")
-        .schema(Schema.String)
+        .option(
+          Commander
+            .option("--name")
+            .short("-n")
+            .schema(Schema.String)
+        )
 
       t.expect(handled.handler).toBeDefined()
       t.expect(unhandled.handler).toBeUndefined()
@@ -195,8 +261,11 @@ t.describe("Commander", () => {
     t.it("should add subcommand", () => {
       const subCmd = Commander
         .make({ name: "format" })
-        .option("--style")
-        .schema(Schema.String)
+        .option(
+          Commander
+            .option("--style")
+            .schema(Schema.String)
+        )
         .handle((opts) => Effect.void)
 
       const main = Commander
@@ -216,9 +285,13 @@ t.describe("Commander", () => {
           description: "My awesome application",
           version: "1.0.0"
         })
-        .option("--output", "-o")
-        .description("Output file")
-        .schema(Schema.String)
+        .option(
+          Commander
+            .option("--output")
+            .short("-o")
+            .description("Output file")
+            .schema(Schema.String)
+        )
         .optionHelp()
 
       const helpText = Commander.help(cmd)
@@ -265,7 +338,7 @@ t.describe("Commander", () => {
   })
 
   t.describe("choice", () => {
-    t.it("should accept valid choices", async () => {
+    t.it("should accept valid choice", async () => {
       const ColorSchema = Commander.choice(["red", "green", "blue"])
 
       const result = await Effect.runPromise(
@@ -336,16 +409,28 @@ t.describe("Commander", () => {
           description: "Convert files",
           version: "2.1.0"
         })
-        .option("--input", "-i")
-        .description("Input file")
-        .schema(Schema.String)
-        .option("--output", "-o")
-        .description("Output file")
-        .default("output.txt")
-        .schema(Schema.String)
-        .option("--format", "-f")
-        .default("json")
-        .schema(Commander.choice(["json", "xml", "yaml"]))
+        .option(
+          Commander
+            .option("--input")
+            .short("-i")
+            .description("Input file")
+            .schema(Schema.String)
+        )
+        .option(
+          Commander
+            .option("--output")
+            .short("-o")
+            .description("Output file")
+            .default("output.txt")
+            .schema(Schema.String)
+        )
+        .option(
+          Commander
+            .option("--format")
+            .short("-f")
+            .default("json")
+            .schema(Commander.choice(["json", "xml", "yaml"]))
+        )
         .optionHelp()
 
       const result = await Effect.runPromise(
@@ -361,6 +446,29 @@ t.describe("Commander", () => {
       t.expect(result.output).toBe("output.txt")
       t.expect(result.format).toBe("yaml")
       t.expect(result.help).toBe(false)
+    })
+
+    t.it("should handle kebab-case option names", async () => {
+      const cmd = Commander
+        .make({ name: "app" })
+        .option(
+          Commander
+            .option("--dry-run")
+            .default(false)
+            .schema(Commander.BooleanFromString)
+        )
+        .option(
+          Commander
+            .option("--cache-dir")
+            .schema(Schema.String)
+        )
+
+      const result = await Effect.runPromise(
+        Commander.parse(cmd, ["--dry-run", "true", "--cache-dir", "/tmp/cache"])
+      )
+
+      t.expect(result.dryRun).toBe(true)
+      t.expect(result.cacheDir).toBe("/tmp/cache")
     })
   })
 })

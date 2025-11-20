@@ -1,3 +1,4 @@
+import * as Array from "effect/Array"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
@@ -13,35 +14,365 @@ export class CommanderError extends Data.TaggedError("CommanderError")<{
 
 const TypeId: unique symbol = Symbol.for("effect-start/Commander")
 
-type Self =
-  | CommanderSet.Default
-  | CommanderSet<any, any, any>
-  | typeof import("./Commander.ts")
-  | undefined
+type KebabToCamel<S extends string> = S extends
+  `${infer First}-${infer Second}${infer Rest}`
+  ? `${First}${Uppercase<Second>}${KebabToCamel<Rest>}`
+  : S
 
-export interface OptionDef<A = any, Name extends string = string> {
-  readonly _tag: "OptionDef"
+type StripPrefix<S extends string> = S extends `--${infer Name}` ? Name
+  : S extends `-${infer Name}` ? Name
+  : S
+
+type OptionNameToCamelCase<S extends string> = KebabToCamel<StripPrefix<S>>
+
+export interface OptionBuilder<A = any, Name extends string = string> {
+  readonly _tag: "OptionBuilder"
   readonly name: Name
-  readonly long: string
+  readonly long: Name
   readonly short?: string
   readonly description: string
   readonly schema?: Schema.Schema<A, string>
   readonly defaultValue?: A
 }
 
+type OptionBuilderWithSchema<A, Name extends string> = Omit<
+  OptionBuilder<A, Name>,
+  "schema" | "defaultValue"
+> & {
+  readonly schema: Schema.Schema<A, string>
+  readonly defaultValue?: A
+}
+
+export const option = <const Long extends `--${string}`>(
+  long: Long
+): {
+  schema<A>(
+    schema: Schema.Schema<A, string>
+  ): OptionBuilderWithSchema<A, Long>
+
+  short<const Short extends `-${string}`>(
+    short: Short
+  ): {
+    schema<A>(
+      schema: Schema.Schema<A, string>
+    ): OptionBuilderWithSchema<A, Long>
+
+    description(
+      desc: string
+    ): {
+      schema<A>(
+        schema: Schema.Schema<A, string>
+      ): OptionBuilderWithSchema<A, Long>
+
+      default<A>(
+        value: A
+      ): {
+        schema<A2 extends A>(
+          schema: Schema.Schema<A2, string>
+        ): OptionBuilderWithSchema<A2, Long>
+      }
+    }
+
+    default<A>(
+      value: A
+    ): {
+      schema<A2 extends A>(
+        schema: Schema.Schema<A2, string>
+      ): OptionBuilderWithSchema<A2, Long>
+
+      description(
+        desc: string
+      ): {
+        schema<A2 extends A>(
+          schema: Schema.Schema<A2, string>
+        ): OptionBuilderWithSchema<A2, Long>
+      }
+    }
+  }
+
+  description(
+    desc: string
+  ): {
+    schema<A>(
+      schema: Schema.Schema<A, string>
+    ): OptionBuilderWithSchema<A, Long>
+
+    short<const Short extends `-${string}`>(
+      short: Short
+    ): {
+      schema<A>(
+        schema: Schema.Schema<A, string>
+      ): OptionBuilderWithSchema<A, Long>
+
+      default<A>(
+        value: A
+      ): {
+        schema<A2 extends A>(
+          schema: Schema.Schema<A2, string>
+        ): OptionBuilderWithSchema<A2, Long>
+      }
+    }
+
+    default<A>(
+      value: A
+    ): {
+      schema<A2 extends A>(
+        schema: Schema.Schema<A2, string>
+      ): OptionBuilderWithSchema<A2, Long>
+
+      short<const Short extends `-${string}`>(
+        short: Short
+      ): {
+        schema<A2 extends A>(
+          schema: Schema.Schema<A2, string>
+        ): OptionBuilderWithSchema<A2, Long>
+      }
+    }
+  }
+
+  default<A>(
+    value: A
+  ): {
+    schema<A2 extends A>(
+      schema: Schema.Schema<A2, string>
+    ): OptionBuilderWithSchema<A2, Long>
+
+    description(
+      desc: string
+    ): {
+      schema<A2 extends A>(
+        schema: Schema.Schema<A2, string>
+      ): OptionBuilderWithSchema<A2, Long>
+
+      short<const Short extends `-${string}`>(
+        short: Short
+      ): {
+        schema<A2 extends A>(
+          schema: Schema.Schema<A2, string>
+        ): OptionBuilderWithSchema<A2, Long>
+      }
+    }
+
+    short<const Short extends `-${string}`>(
+      short: Short
+    ): {
+      schema<A2 extends A>(
+        schema: Schema.Schema<A2, string>
+      ): OptionBuilderWithSchema<A2, Long>
+
+      description(
+        desc: string
+      ): {
+        schema<A2 extends A>(
+          schema: Schema.Schema<A2, string>
+        ): OptionBuilderWithSchema<A2, Long>
+      }
+    }
+  }
+} => {
+  const longName = long
+
+  return {
+    schema: <A>(schema: Schema.Schema<A, string>) => ({
+      _tag: "OptionBuilder" as const,
+      name: longName,
+      long: longName,
+      description: "",
+      schema
+    }),
+
+    short: (short) => ({
+      schema: <A>(schema: Schema.Schema<A, string>) => ({
+        _tag: "OptionBuilder" as const,
+        name: longName,
+        long: longName,
+        short: short.slice(1),
+        description: "",
+        schema
+      }),
+
+      description: (desc) => ({
+        schema: <A>(schema: Schema.Schema<A, string>) => ({
+          _tag: "OptionBuilder" as const,
+          name: longName,
+          long: longName,
+          short: short.slice(1),
+          description: desc,
+          schema
+        }),
+
+        default: <A,>(value: A) => ({
+          schema: <A2 extends A>(schema: Schema.Schema<A2, string>) => ({
+            _tag: "OptionBuilder" as const,
+            name: longName,
+            long: longName,
+            short: short.slice(1),
+            description: desc,
+            schema,
+            defaultValue: value as A2
+          })
+        })
+      }),
+
+      default: <A,>(value: A) => ({
+        schema: <A2 extends A>(schema: Schema.Schema<A2, string>) => ({
+          _tag: "OptionBuilder" as const,
+          name: longName,
+          long: longName,
+          short: short.slice(1),
+          description: "",
+          schema,
+          defaultValue: value as A2
+        }),
+
+        description: (desc) => ({
+          schema: <A2 extends A>(schema: Schema.Schema<A2, string>) => ({
+            _tag: "OptionBuilder" as const,
+            name: longName,
+            long: longName,
+            short: short.slice(1),
+            description: desc,
+            schema,
+            defaultValue: value as A2
+          })
+        })
+      })
+    }),
+
+    description: (desc) => ({
+      schema: <A>(schema: Schema.Schema<A, string>) => ({
+        _tag: "OptionBuilder" as const,
+        name: longName,
+        long: longName,
+        description: desc,
+        schema
+      }),
+
+      short: (short) => ({
+        schema: <A>(schema: Schema.Schema<A, string>) => ({
+          _tag: "OptionBuilder" as const,
+          name: longName,
+          long: longName,
+          short: short.slice(1),
+          description: desc,
+          schema
+        }),
+
+        default: <A,>(value: A) => ({
+          schema: <A2 extends A>(schema: Schema.Schema<A2, string>) => ({
+            _tag: "OptionBuilder" as const,
+            name: longName,
+            long: longName,
+            short: short.slice(1),
+            description: desc,
+            schema,
+            defaultValue: value as A2
+          })
+        })
+      }),
+
+      default: <A,>(value: A) => ({
+        schema: <A2 extends A>(schema: Schema.Schema<A2, string>) => ({
+          _tag: "OptionBuilder" as const,
+          name: longName,
+          long: longName,
+          description: desc,
+          schema,
+          defaultValue: value as A2
+        }),
+
+        short: (short) => ({
+          schema: <A2 extends A>(schema: Schema.Schema<A2, string>) => ({
+            _tag: "OptionBuilder" as const,
+            name: longName,
+            long: longName,
+            short: short.slice(1),
+            description: desc,
+            schema,
+            defaultValue: value as A2
+          })
+        })
+      })
+    }),
+
+    default: <A,>(value: A) => ({
+      schema: <A2 extends A>(schema: Schema.Schema<A2, string>) => ({
+        _tag: "OptionBuilder" as const,
+        name: longName,
+        long: longName,
+        description: "",
+        schema,
+        defaultValue: value as A2
+      }),
+
+      description: (desc) => ({
+        schema: <A2 extends A>(schema: Schema.Schema<A2, string>) => ({
+          _tag: "OptionBuilder" as const,
+          name: longName,
+          long: longName,
+          description: desc,
+          schema,
+          defaultValue: value as A2
+        }),
+
+        short: (short) => ({
+          schema: <A2 extends A>(schema: Schema.Schema<A2, string>) => ({
+            _tag: "OptionBuilder" as const,
+            name: longName,
+            long: longName,
+            short: short.slice(1),
+            description: desc,
+            schema,
+            defaultValue: value as A2
+          })
+        })
+      }),
+
+      short: (short) => ({
+        schema: <A2 extends A>(schema: Schema.Schema<A2, string>) => ({
+          _tag: "OptionBuilder" as const,
+          name: longName,
+          long: longName,
+          short: short.slice(1),
+          description: "",
+          schema,
+          defaultValue: value as A2
+        }),
+
+        description: (desc) => ({
+          schema: <A2 extends A>(schema: Schema.Schema<A2, string>) => ({
+            _tag: "OptionBuilder" as const,
+            name: longName,
+            long: longName,
+            short: short.slice(1),
+            description: desc,
+            schema,
+            defaultValue: value as A2
+          })
+        })
+      })
+    })
+  }
+}
+
+export type OptionsMap = Record<string, OptionBuilder<any, any>>
+
+type ExtractOptionsFromBuilders<Opts extends OptionsMap> = {
+  [K in keyof Opts as Opts[K] extends OptionBuilder<any, infer Name>
+    ? OptionNameToCamelCase<Name>
+    : never]: Opts[K] extends OptionBuilder<infer A, any> ? A : never
+}
+
+export type ExtractOptionValues<Opts extends OptionsMap> =
+  ExtractOptionsFromBuilders<Opts>
+
 export interface SubcommandDef<Handled extends boolean = boolean> {
   readonly _tag: "SubcommandDef"
   readonly command: CommanderSet<any, any, Handled>
 }
 
-export type CommandOptions = Record<string, OptionDef<any, string>>
-
-export type ExtractOptionValues<Opts extends CommandOptions> = {
-  [K in keyof Opts]: Opts[K] extends OptionDef<infer A, any> ? A : never
-}
-
 type CommanderBuilder = {
-  option: typeof option
+  option: typeof optionMethod
   optionHelp: typeof optionHelp
   optionVersion: typeof optionVersion
   subcommand: typeof subcommand
@@ -49,7 +380,7 @@ type CommanderBuilder = {
 }
 
 export type CommanderSet<
-  Opts extends CommandOptions = {},
+  Opts extends OptionsMap = {},
   Subcommands extends ReadonlyArray<SubcommandDef> = [],
   Handled extends boolean = false,
 > =
@@ -62,7 +393,7 @@ export type CommanderSet<
 
 export namespace CommanderSet {
   export type Instance<
-    Opts extends CommandOptions = {},
+    Opts extends OptionsMap = {},
     Subcommands extends ReadonlyArray<SubcommandDef> = [],
     Handled extends boolean = false,
   > = {
@@ -84,300 +415,24 @@ export namespace CommanderSet {
   } & CommanderBuilder
 }
 
-export const option = function<
-  S extends Self,
-  const Long extends string,
-  const Short extends string | undefined = undefined,
+const optionMethod = function<
+  S,
+  Opt extends OptionBuilder<any, any>,
 >(
   this: S,
-  long: Long,
-  short?: Short
-): OptionBuilder<S, Long, Short> {
-  const baseName = this && typeof this === "object" && "name" in this
-    ? (this as any).name
-    : ""
-  const baseOptions = this && typeof this === "object" && "options" in this
-    ? (this as any).options
-    : {}
-  const baseSubcommands = this && typeof this === "object" && "subcommands" in this
-    ? (this as any).subcommands
-    : []
-  const baseDescription = this && typeof this === "object" && "description" in this
-    ? (this as any).description
-    : undefined
-  const baseVersion = this && typeof this === "object" && "version" in this
-    ? (this as any).version
-    : undefined
-
-  const longName = long.startsWith("--") ? long.slice(2) : long
-  const shortName = short?.startsWith("-") ? short.slice(1) : short
-
-  return {
-    schema: <A>(schema: Schema.Schema<A, string>) => {
-      const optionDef: OptionDef<A, typeof longName> = {
-        _tag: "OptionDef",
-        name: longName,
-        long: longName,
-        short: shortName,
-        description: "",
-        schema
-      }
-
-      return makeSet({
-        name: baseName,
-        description: baseDescription,
-        version: baseVersion,
-        options: {
-          ...baseOptions,
-          [longName]: optionDef
-        } as any,
-        subcommands: baseSubcommands
-      })
-    },
-
-    description: (desc: string) => {
-      return {
-        schema: <A>(schema: Schema.Schema<A, string>) => {
-          const optionDef: OptionDef<A, typeof longName> = {
-            _tag: "OptionDef",
-            name: longName,
-            long: longName,
-            short: shortName,
-            description: desc,
-            schema
-          }
-
-          return makeSet({
-            name: baseName,
-            description: baseDescription,
-            version: baseVersion,
-            options: {
-              ...baseOptions,
-              [longName]: optionDef
-            } as any,
-            subcommands: baseSubcommands
-          })
-        },
-
-        default: <A>(defaultValue: A) => {
-          return {
-            schema: <A2 extends A>(schema: Schema.Schema<A2, string>) => {
-              const optionDef: OptionDef<A2, typeof longName> = {
-                _tag: "OptionDef",
-                name: longName,
-                long: longName,
-                short: shortName,
-                description: desc,
-                schema,
-                defaultValue: defaultValue as A2
-              }
-
-              return makeSet({
-                name: baseName,
-                description: baseDescription,
-                version: baseVersion,
-                options: {
-                  ...baseOptions,
-                  [longName]: optionDef
-                } as any,
-                subcommands: baseSubcommands
-              })
-            }
-          }
-        }
-      }
-    },
-
-    default: <A>(defaultValue: A) => {
-      return {
-        schema: <A2 extends A>(schema: Schema.Schema<A2, string>) => {
-          const optionDef: OptionDef<A2, typeof longName> = {
-            _tag: "OptionDef",
-            name: longName,
-            long: longName,
-            short: shortName,
-            description: "",
-            schema,
-            defaultValue: defaultValue as A2
-          }
-
-          return makeSet({
-            name: baseName,
-            description: baseDescription,
-            version: baseVersion,
-            options: {
-              ...baseOptions,
-              [longName]: optionDef
-            } as any,
-            subcommands: baseSubcommands
-          })
-        },
-
-        description: (desc: string) => {
-          return {
-            schema: <A2 extends A>(schema: Schema.Schema<A2, string>) => {
-              const optionDef: OptionDef<A2, typeof longName> = {
-                _tag: "OptionDef",
-                name: longName,
-                long: longName,
-                short: shortName,
-                description: desc,
-                schema,
-                defaultValue: defaultValue as A2
-              }
-
-              return makeSet({
-                name: baseName,
-                description: baseDescription,
-                version: baseVersion,
-                options: {
-                  ...baseOptions,
-                  [longName]: optionDef
-                } as any,
-                subcommands: baseSubcommands
-              })
-            }
-          }
-        }
-      }
-    }
-  } as any
-}
-
-export type OptionBuilder<
-  S,
-  Long extends string,
-  Short extends string | undefined,
-> = {
-  schema<A>(
-    schema: Schema.Schema<A, string>
-  ): S extends CommanderSet<infer Opts, infer Subs, infer _H>
-    ? CommanderSet<
-      & Opts
-      & {
-        [K in Long]: OptionDef<
-          A,
-          Long
-        >
-      },
-      Subs,
-      false
-    >
-    : CommanderSet<
-      {
-        [K in Long]: OptionDef<A, Long>
-      },
-      [],
-      false
-    >
-
-  description(
-    desc: string
-  ): {
-    schema<A>(
-      schema: Schema.Schema<A, string>
-    ): S extends CommanderSet<infer Opts, infer Subs, infer _H>
-      ? CommanderSet<
-        & Opts
-        & {
-          [K in Long]: OptionDef<A, Long>
-        },
-        Subs,
-        false
-      >
-      : CommanderSet<
-        {
-          [K in Long]: OptionDef<A, Long>
-        },
-        [],
-        false
-      >
-
-    default<A>(
-      defaultValue: A
-    ): {
-      schema<A2 extends A>(
-        schema: Schema.Schema<A2, string>
-      ): S extends CommanderSet<infer Opts, infer Subs, infer _H>
-        ? CommanderSet<
-          & Opts
-          & {
-            [K in Long]: OptionDef<A2, Long>
-          },
-          Subs,
-          false
-        >
-        : CommanderSet<
-          {
-            [K in Long]: OptionDef<A2, Long>
-          },
-          [],
-          false
-        >
-    }
-  }
-
-  default<A>(
-    defaultValue: A
-  ): {
-    schema<A2 extends A>(
-      schema: Schema.Schema<A2, string>
-    ): S extends CommanderSet<infer Opts, infer Subs, infer _H>
-      ? CommanderSet<
-        & Opts
-        & {
-          [K in Long]: OptionDef<A2, Long>
-        },
-        Subs,
-        false
-      >
-      : CommanderSet<
-        {
-          [K in Long]: OptionDef<A2, Long>
-        },
-        [],
-        false
-      >
-
-    description(
-      desc: string
-    ): {
-      schema<A2 extends A>(
-        schema: Schema.Schema<A2, string>
-      ): S extends CommanderSet<infer Opts, infer Subs, infer _H>
-        ? CommanderSet<
-          & Opts
-          & {
-            [K in Long]: OptionDef<A2, Long>
-          },
-          Subs,
-          false
-        >
-        : CommanderSet<
-          {
-            [K in Long]: OptionDef<A2, Long>
-          },
-          [],
-          false
-        >
-    }
-  }
-}
-
-export const optionHelp = function<S extends Self>(
-  this: S
+  opt: Opt
 ): S extends CommanderSet<infer Opts, infer Subs, infer _H>
   ? CommanderSet<
     & Opts
     & {
-      help: OptionDef<boolean, "help">
+      [K in Opt["name"]]: Opt
     },
     Subs,
     false
   >
   : CommanderSet<
     {
-      help: OptionDef<boolean, "help">
+      [K in Opt["name"]]: Opt
     },
     [],
     false
@@ -390,10 +445,48 @@ export const optionHelp = function<S extends Self>(
   const baseDescription = base.description
   const baseVersion = base.version
 
-  const helpOption: OptionDef<boolean, "help"> = {
-    _tag: "OptionDef",
-    name: "help",
-    long: "help",
+  return makeSet({
+    name: baseName,
+    description: baseDescription,
+    version: baseVersion,
+    options: {
+      ...baseOptions,
+      [opt.name]: opt
+    } as any,
+    subcommands: baseSubcommands
+  }) as any
+}
+
+export const optionHelp = function<S>(
+  this: S
+): S extends CommanderSet<infer Opts, infer Subs, infer _H>
+  ? CommanderSet<
+    & Opts
+    & {
+      "--help": OptionBuilder<boolean, "--help">
+    },
+    Subs,
+    false
+  >
+  : CommanderSet<
+    {
+      "--help": OptionBuilder<boolean, "--help">
+    },
+    [],
+    false
+  >
+{
+  const base = this && typeof this === "object" ? this as any : {}
+  const baseName = base.name || ""
+  const baseOptions = base.options || {}
+  const baseSubcommands = base.subcommands || []
+  const baseDescription = base.description
+  const baseVersion = base.version
+
+  const helpOption: OptionBuilder<boolean, "--help"> = {
+    _tag: "OptionBuilder",
+    name: "--help",
+    long: "--help",
     short: "h",
     description: "Show help information",
     defaultValue: false
@@ -405,26 +498,26 @@ export const optionHelp = function<S extends Self>(
     version: baseVersion,
     options: {
       ...baseOptions,
-      help: helpOption
+      "--help": helpOption
     } as any,
     subcommands: baseSubcommands
   }) as any
 }
 
-export const optionVersion = function<S extends Self>(
+export const optionVersion = function<S>(
   this: S
 ): S extends CommanderSet<infer Opts, infer Subs, infer _H>
   ? CommanderSet<
     & Opts
     & {
-      version: OptionDef<boolean, "version">
+      "--version": OptionBuilder<boolean, "--version">
     },
     Subs,
     false
   >
   : CommanderSet<
     {
-      version: OptionDef<boolean, "version">
+      "--version": OptionBuilder<boolean, "--version">
     },
     [],
     false
@@ -437,10 +530,10 @@ export const optionVersion = function<S extends Self>(
   const baseDescription = base.description
   const baseVersion = base.version
 
-  const versionOption: OptionDef<boolean, "version"> = {
-    _tag: "OptionDef",
-    name: "version",
-    long: "version",
+  const versionOption: OptionBuilder<boolean, "--version"> = {
+    _tag: "OptionBuilder",
+    name: "--version",
+    long: "--version",
     short: "V",
     description: "Show version information",
     defaultValue: false
@@ -452,15 +545,15 @@ export const optionVersion = function<S extends Self>(
     version: baseVersion,
     options: {
       ...baseOptions,
-      version: versionOption
+      "--version": versionOption
     } as any,
     subcommands: baseSubcommands
   }) as any
 }
 
 export const subcommand = function<
-  S extends Self,
-  SubOpts extends CommandOptions,
+  S,
+  SubOpts extends OptionsMap,
   SubSubs extends ReadonlyArray<SubcommandDef>,
   SubHandled extends boolean,
 >(
@@ -485,9 +578,9 @@ export const subcommand = function<
   const baseDescription = base.description
   const baseVersion = base.version
 
-  const subDef: SubcommandDef<SubHandled> = {
+  const subDef: SubcommandDef = {
     _tag: "SubcommandDef",
-    command: cmd
+    command: cmd as any
   }
 
   return makeSet({
@@ -500,19 +593,12 @@ export const subcommand = function<
 }
 
 export const handle = function<
-  S extends Self,
-  Opts extends CommandOptions,
+  Opts extends OptionsMap,
   Subs extends ReadonlyArray<SubcommandDef>,
 >(
-  this: S extends CommanderSet<infer O, infer Su, any> ? CommanderSet<O, Su, false>
-    : never,
-  handler: (
-    args: S extends CommanderSet<infer O, any, any> ? ExtractOptionValues<O> : never
-  ) => Effect.Effect<void>
-): S extends CommanderSet<infer O, infer Su, any>
-  ? CommanderSet<O, Su, true>
-  : never
-{
+  this: CommanderSet<Opts, Subs, false>,
+  handler: (args: ExtractOptionValues<Opts>) => Effect.Effect<void>
+): CommanderSet<Opts, Subs, true> {
   const base = this && typeof this === "object" ? this as any : {}
 
   return makeSet({
@@ -541,7 +627,7 @@ export const make = <const Name extends string>(config: {
 const CommanderProto = {
   [TypeId]: TypeId,
 
-  option,
+  option: optionMethod,
   optionHelp,
   optionVersion,
   subcommand,
@@ -553,7 +639,7 @@ const CommanderProto = {
 } satisfies CommanderSet.Proto
 
 function makeSet<
-  Opts extends CommandOptions,
+  Opts extends OptionsMap,
   Subs extends ReadonlyArray<SubcommandDef>,
   Handled extends boolean = false,
 >(config: {
@@ -574,6 +660,16 @@ export function isCommanderSet(
   input: unknown
 ): input is CommanderSet<any, any, any> {
   return Predicate.hasProperty(input, TypeId)
+}
+
+const kebabToCamel = (str: string): string => {
+  return str.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase())
+}
+
+const stripPrefix = (str: string): string => {
+  if (str.startsWith("--")) return str.slice(2)
+  if (str.startsWith("-")) return str.slice(1)
+  return str
 }
 
 interface ParsedArgs {
@@ -639,7 +735,7 @@ const parseRawArgs = (
   })
 
 export const parse = <
-  Opts extends CommandOptions,
+  Opts extends OptionsMap,
   Subs extends ReadonlyArray<SubcommandDef>,
   Handled extends boolean,
 >(
@@ -649,43 +745,49 @@ export const parse = <
   Effect.gen(function* () {
     const parsed = yield* parseRawArgs(args)
 
-    const optionsData: Record<string, any> = {}
+    const result: Record<string, any> = {}
 
-    for (const [key, optDef] of Object.entries(cmd.options)) {
-      const longMatch = parsed.options[optDef.long] || parsed.flags[optDef.long]
-      const shortMatch = optDef.short
-        ? (parsed.options[optDef.short] || parsed.flags[optDef.short])
+    for (const [optName, optBuilder] of Object.entries(cmd.options)) {
+      const longName = stripPrefix(optBuilder.long)
+      const shortName = optBuilder.short
+
+      const longMatch = parsed.options[longName] || parsed.flags[longName]
+      const shortMatch = shortName
+        ? (parsed.options[shortName] || parsed.flags[shortName])
         : undefined
 
       const rawValue = longMatch ?? shortMatch
 
+      const camelKey = kebabToCamel(stripPrefix(optName))
+
       if (rawValue !== undefined) {
         if (typeof rawValue === "boolean") {
-          optionsData[key] = rawValue
-        } else if (optDef.schema) {
-          const decoded = yield* Schema.decode(optDef.schema)(rawValue).pipe(
-            Effect.mapError(
-              (error) =>
-                new CommanderError({
-                  message: `Invalid value for option --${optDef.long}: ${error.message}`,
-                  cause: error
-                })
+          result[camelKey] = rawValue
+        } else if (optBuilder.schema) {
+          const decoded = yield* Schema.decode(optBuilder.schema)(rawValue)
+            .pipe(
+              Effect.mapError(
+                (error) =>
+                  new CommanderError({
+                    message: `Invalid value for option ${optName}: ${error.message}`,
+                    cause: error
+                  })
+              )
             )
-          )
-          optionsData[key] = decoded
+          result[camelKey] = decoded
         } else {
-          optionsData[key] = rawValue
+          result[camelKey] = rawValue
         }
-      } else if (optDef.defaultValue !== undefined) {
-        optionsData[key] = optDef.defaultValue
+      } else if (optBuilder.defaultValue !== undefined) {
+        result[camelKey] = optBuilder.defaultValue
       }
     }
 
-    return optionsData as ExtractOptionValues<Opts>
+    return result as ExtractOptionValues<Opts>
   })
 
 export const runMain = <
-  Opts extends CommandOptions,
+  Opts extends OptionsMap,
   Subs extends ReadonlyArray<SubcommandDef>,
 >(
   cmd: CommanderSet<Opts, Subs, true>
@@ -711,7 +813,7 @@ export const runMain = <
   })
 
 const generateHelp = <
-  Opts extends CommandOptions,
+  Opts extends OptionsMap,
   Subs extends ReadonlyArray<SubcommandDef>,
   Handled extends boolean,
 >(cmd: CommanderSet<Opts, Subs, Handled>): string => {
@@ -732,7 +834,7 @@ const generateHelp = <
 
     for (const opt of optionsList) {
       const short = opt.short ? `-${opt.short}, ` : "    "
-      const long = `--${opt.long}`
+      const long = opt.long
       const hasValue = opt.schema !== undefined
       const name = hasValue ? `${long} <value>` : long
       lines.push(`  ${short}${name.padEnd(20)} ${opt.description}`)
@@ -754,7 +856,7 @@ const generateHelp = <
 }
 
 export const help = <
-  Opts extends CommandOptions,
+  Opts extends OptionsMap,
   Subs extends ReadonlyArray<SubcommandDef>,
   Handled extends boolean,
 >(cmd: CommanderSet<Opts, Subs, Handled>): string => generateHelp(cmd)

@@ -8,8 +8,12 @@ t.describe("Commander - High-level Tests (inspired by commander.js)", () => {
     t.it("should parse with explicit args", async () => {
       const cmd = Commander
         .make({ name: "app" })
-        .option("--port", "-p")
-        .schema(Commander.NumberFromString)
+        .option(
+          Commander
+            .option("--port")
+            .short("-p")
+            .schema(Commander.NumberFromString)
+        )
 
       const result = await Effect.runPromise(
         Commander.parse(cmd, ["--port", "3000"])
@@ -21,8 +25,12 @@ t.describe("Commander - High-level Tests (inspired by commander.js)", () => {
     t.it("should parse short options", async () => {
       const cmd = Commander
         .make({ name: "app" })
-        .option("--port", "-p")
-        .schema(Commander.NumberFromString)
+        .option(
+          Commander
+            .option("--port")
+            .short("-p")
+            .schema(Commander.NumberFromString)
+        )
 
       const result = await Effect.runPromise(
         Commander.parse(cmd, ["-p", "8080"])
@@ -34,10 +42,18 @@ t.describe("Commander - High-level Tests (inspired by commander.js)", () => {
     t.it("should parse multiple options", async () => {
       const cmd = Commander
         .make({ name: "app" })
-        .option("--host", "-h")
-        .schema(Schema.String)
-        .option("--port", "-p")
-        .schema(Commander.NumberFromString)
+        .option(
+          Commander
+            .option("--host")
+            .short("-h")
+            .schema(Schema.String)
+        )
+        .option(
+          Commander
+            .option("--port")
+            .short("-p")
+            .schema(Commander.NumberFromString)
+        )
 
       const result = await Effect.runPromise(
         Commander.parse(cmd, ["--host", "localhost", "--port", "3000"])
@@ -50,8 +66,11 @@ t.describe("Commander - High-level Tests (inspired by commander.js)", () => {
     t.it("should handle options with equals syntax", async () => {
       const cmd = Commander
         .make({ name: "app" })
-        .option("--port")
-        .schema(Commander.NumberFromString)
+        .option(
+          Commander
+            .option("--port")
+            .schema(Commander.NumberFromString)
+        )
 
       const result = await Effect.runPromise(
         Commander.parse(cmd, ["--port=3000"])
@@ -63,12 +82,20 @@ t.describe("Commander - High-level Tests (inspired by commander.js)", () => {
     t.it("should parse combined short flags", async () => {
       const cmd = Commander
         .make({ name: "app" })
-        .option("--verbose", "-v")
-        .default(false)
-        .schema(Commander.BooleanFromString)
-        .option("--debug", "-d")
-        .default(false)
-        .schema(Commander.BooleanFromString)
+        .option(
+          Commander
+            .option("--verbose")
+            .short("-v")
+            .default(false)
+            .schema(Commander.BooleanFromString)
+        )
+        .option(
+          Commander
+            .option("--debug")
+            .short("-d")
+            .default(false)
+            .schema(Commander.BooleanFromString)
+        )
 
       const result = await Effect.runPromise(
         Commander.parse(cmd, [])
@@ -83,9 +110,13 @@ t.describe("Commander - High-level Tests (inspired by commander.js)", () => {
     t.it("should return false for boolean flag when not specified", async () => {
       const cmd = Commander
         .make({ name: "app" })
-        .option("--verbose", "-v")
-        .default(false)
-        .schema(Commander.BooleanFromString)
+        .option(
+          Commander
+            .option("--verbose")
+            .short("-v")
+            .default(false)
+            .schema(Commander.BooleanFromString)
+        )
 
       const result = await Effect.runPromise(
         Commander.parse(cmd, [])
@@ -97,9 +128,13 @@ t.describe("Commander - High-level Tests (inspired by commander.js)", () => {
     t.it("should return true for boolean flag when specified", async () => {
       const cmd = Commander
         .make({ name: "app" })
-        .option("--verbose", "-v")
-        .default(false)
-        .schema(Commander.BooleanFromString)
+        .option(
+          Commander
+            .option("--verbose")
+            .short("-v")
+            .default(false)
+            .schema(Commander.BooleanFromString)
+        )
 
       const result = await Effect.runPromise(
         Commander.parse(cmd, ["--verbose", "true"])
@@ -111,9 +146,12 @@ t.describe("Commander - High-level Tests (inspired by commander.js)", () => {
     t.it("should handle boolean with custom default", async () => {
       const cmd = Commander
         .make({ name: "app" })
-        .option("--color")
-        .default("auto")
-        .schema(Schema.String)
+        .option(
+          Commander
+            .option("--color")
+            .default("auto")
+            .schema(Schema.String)
+        )
 
       const result = await Effect.runPromise(
         Commander.parse(cmd, [])
@@ -127,8 +165,12 @@ t.describe("Commander - High-level Tests (inspired by commander.js)", () => {
     t.it("should accept valid choice", async () => {
       const cmd = Commander
         .make({ name: "app" })
-        .option("--color", "-c")
-        .schema(Commander.choice(["red", "green", "blue"]))
+        .option(
+          Commander
+            .option("--color")
+            .short("-c")
+            .schema(Commander.choice(["red", "green", "blue"]))
+        )
 
       const result = await Effect.runPromise(
         Commander.parse(cmd, ["--color", "red"])
@@ -140,8 +182,12 @@ t.describe("Commander - High-level Tests (inspired by commander.js)", () => {
     t.it("should reject invalid choice", async () => {
       const cmd = Commander
         .make({ name: "app" })
-        .option("--color", "-c")
-        .schema(Commander.choice(["red", "green", "blue"]))
+        .option(
+          Commander
+            .option("--color")
+            .short("-c")
+            .schema(Commander.choice(["red", "green", "blue"]))
+        )
 
       const result = await Effect.runPromise(
         Effect.either(Commander.parse(cmd, ["--color", "yellow"]))
@@ -153,12 +199,20 @@ t.describe("Commander - High-level Tests (inspired by commander.js)", () => {
     t.it("should handle multiple choice options", async () => {
       const cmd = Commander
         .make({ name: "app" })
-        .option("--format", "-f")
-        .default("json")
-        .schema(Commander.choice(["json", "xml", "yaml"]))
-        .option("--level", "-l")
-        .default("info")
-        .schema(Commander.choice(["debug", "info", "warn", "error"]))
+        .option(
+          Commander
+            .option("--format")
+            .short("-f")
+            .default("json")
+            .schema(Commander.choice(["json", "xml", "yaml"]))
+        )
+        .option(
+          Commander
+            .option("--level")
+            .short("-l")
+            .default("info")
+            .schema(Commander.choice(["debug", "info", "warn", "error"]))
+        )
 
       const result = await Effect.runPromise(
         Commander.parse(cmd, ["--format", "xml", "--level", "debug"])
@@ -173,9 +227,13 @@ t.describe("Commander - High-level Tests (inspired by commander.js)", () => {
     t.it("should use default when option not specified", async () => {
       const cmd = Commander
         .make({ name: "app" })
-        .option("--port", "-p")
-        .default(3000)
-        .schema(Commander.NumberFromString)
+        .option(
+          Commander
+            .option("--port")
+            .short("-p")
+            .default(3000)
+            .schema(Commander.NumberFromString)
+        )
 
       const result = await Effect.runPromise(
         Commander.parse(cmd, [])
@@ -187,9 +245,13 @@ t.describe("Commander - High-level Tests (inspired by commander.js)", () => {
     t.it("should override default when option specified", async () => {
       const cmd = Commander
         .make({ name: "app" })
-        .option("--port", "-p")
-        .default(3000)
-        .schema(Commander.NumberFromString)
+        .option(
+          Commander
+            .option("--port")
+            .short("-p")
+            .default(3000)
+            .schema(Commander.NumberFromString)
+        )
 
       const result = await Effect.runPromise(
         Commander.parse(cmd, ["--port", "8080"])
@@ -201,15 +263,24 @@ t.describe("Commander - High-level Tests (inspired by commander.js)", () => {
     t.it("should handle multiple defaults", async () => {
       const cmd = Commander
         .make({ name: "app" })
-        .option("--host")
-        .default("localhost")
-        .schema(Schema.String)
-        .option("--port")
-        .default(3000)
-        .schema(Commander.NumberFromString)
-        .option("--debug")
-        .default(false)
-        .schema(Commander.BooleanFromString)
+        .option(
+          Commander
+            .option("--host")
+            .default("localhost")
+            .schema(Schema.String)
+        )
+        .option(
+          Commander
+            .option("--port")
+            .default(3000)
+            .schema(Commander.NumberFromString)
+        )
+        .option(
+          Commander
+            .option("--debug")
+            .default(false)
+            .schema(Commander.BooleanFromString)
+        )
 
       const result = await Effect.runPromise(
         Commander.parse(cmd, [])
@@ -223,9 +294,13 @@ t.describe("Commander - High-level Tests (inspired by commander.js)", () => {
     t.it("should use default for string option", async () => {
       const cmd = Commander
         .make({ name: "app" })
-        .option("--output", "-o")
-        .default("output.txt")
-        .schema(Schema.String)
+        .option(
+          Commander
+            .option("--output")
+            .short("-o")
+            .default("output.txt")
+            .schema(Schema.String)
+        )
 
       const result = await Effect.runPromise(
         Commander.parse(cmd, [])
@@ -241,8 +316,12 @@ t.describe("Commander - High-level Tests (inspired by commander.js)", () => {
 
       const cmd = Commander
         .make({ name: "app" })
-        .option("--name", "-n")
-        .schema(Schema.String)
+        .option(
+          Commander
+            .option("--name")
+            .short("-n")
+            .schema(Schema.String)
+        )
         .handle((opts) =>
           Effect.sync(() => {
             capturedOptions = opts
@@ -261,9 +340,12 @@ t.describe("Commander - High-level Tests (inspired by commander.js)", () => {
 
       const cmd = Commander
         .make({ name: "app" })
-        .option("--delay")
-        .default(0)
-        .schema(Commander.NumberFromString)
+        .option(
+          Commander
+            .option("--delay")
+            .default(0)
+            .schema(Commander.NumberFromString)
+        )
         .handle((opts) =>
           Effect.gen(function* () {
             yield* Effect.sleep(opts.delay)
@@ -283,13 +365,25 @@ t.describe("Commander - High-level Tests (inspired by commander.js)", () => {
 
       const cmd = Commander
         .make({ name: "app" })
-        .option("--input", "-i")
-        .schema(Schema.String)
-        .option("--output", "-o")
-        .schema(Schema.String)
-        .option("--verbose", "-v")
-        .default(false)
-        .schema(Commander.BooleanFromString)
+        .option(
+          Commander
+            .option("--input")
+            .short("-i")
+            .schema(Schema.String)
+        )
+        .option(
+          Commander
+            .option("--output")
+            .short("-o")
+            .schema(Schema.String)
+        )
+        .option(
+          Commander
+            .option("--verbose")
+            .short("-v")
+            .default(false)
+            .schema(Commander.BooleanFromString)
+        )
         .handle((opts) =>
           Effect.sync(() => {
             capturedOpts = opts
@@ -309,7 +403,7 @@ t.describe("Commander - High-level Tests (inspired by commander.js)", () => {
         .optionVersion()
 
       t.expect(cmd.version).toBe("1.0.0")
-      t.expect(cmd.options.version).toBeDefined()
+      t.expect(cmd.options["--version"]).toBeDefined()
     })
 
     t.it("should handle version without version option", () => {
@@ -317,7 +411,7 @@ t.describe("Commander - High-level Tests (inspired by commander.js)", () => {
         .make({ name: "app", version: "2.0.0" })
 
       t.expect(cmd.version).toBe("2.0.0")
-      t.expect(cmd.options.version).toBeUndefined()
+      t.expect(cmd.options["--version"]).toBeUndefined()
     })
 
     t.it("should include version option in help", () => {
@@ -350,12 +444,20 @@ t.describe("Commander - High-level Tests (inspired by commander.js)", () => {
     t.it("should include all options in help", () => {
       const cmd = Commander
         .make({ name: "app" })
-        .option("--input", "-i")
-        .description("Input file")
-        .schema(Schema.String)
-        .option("--output", "-o")
-        .description("Output file")
-        .schema(Schema.String)
+        .option(
+          Commander
+            .option("--input")
+            .short("-i")
+            .description("Input file")
+            .schema(Schema.String)
+        )
+        .option(
+          Commander
+            .option("--output")
+            .short("-o")
+            .description("Output file")
+            .schema(Schema.String)
+        )
         .optionHelp()
 
       const help = Commander.help(cmd)
@@ -388,9 +490,13 @@ t.describe("Commander - High-level Tests (inspired by commander.js)", () => {
     t.it("should format option descriptions properly", () => {
       const cmd = Commander
         .make({ name: "app" })
-        .option("--config", "-c")
-        .description("Config file path")
-        .schema(Schema.String)
+        .option(
+          Commander
+            .option("--config")
+            .short("-c")
+            .description("Config file path")
+            .schema(Schema.String)
+        )
 
       const help = Commander.help(cmd)
 
@@ -403,9 +509,13 @@ t.describe("Commander - High-level Tests (inspired by commander.js)", () => {
     t.it("should add subcommand", () => {
       const subCmd = Commander
         .make({ name: "build" })
-        .option("--watch", "-w")
-        .default(false)
-        .schema(Commander.BooleanFromString)
+        .option(
+          Commander
+            .option("--watch")
+            .short("-w")
+            .default(false)
+            .schema(Commander.BooleanFromString)
+        )
         .handle(() => Effect.void)
 
       const cmd = Commander
@@ -460,8 +570,11 @@ t.describe("Commander - High-level Tests (inspired by commander.js)", () => {
     t.it("should parse string option", async () => {
       const cmd = Commander
         .make({ name: "app" })
-        .option("--name")
-        .schema(Schema.String)
+        .option(
+          Commander
+            .option("--name")
+            .schema(Schema.String)
+        )
 
       const result = await Effect.runPromise(
         Commander.parse(cmd, ["--name", "test"])
@@ -474,8 +587,11 @@ t.describe("Commander - High-level Tests (inspired by commander.js)", () => {
     t.it("should parse number option", async () => {
       const cmd = Commander
         .make({ name: "app" })
-        .option("--count")
-        .schema(Commander.NumberFromString)
+        .option(
+          Commander
+            .option("--count")
+            .schema(Commander.NumberFromString)
+        )
 
       const result = await Effect.runPromise(
         Commander.parse(cmd, ["--count", "42"])
@@ -488,8 +604,11 @@ t.describe("Commander - High-level Tests (inspired by commander.js)", () => {
     t.it("should parse boolean option", async () => {
       const cmd = Commander
         .make({ name: "app" })
-        .option("--enabled")
-        .schema(Commander.BooleanFromString)
+        .option(
+          Commander
+            .option("--enabled")
+            .schema(Commander.BooleanFromString)
+        )
 
       const result = await Effect.runPromise(
         Commander.parse(cmd, ["--enabled", "true"])
@@ -502,8 +621,11 @@ t.describe("Commander - High-level Tests (inspired by commander.js)", () => {
     t.it("should fail on invalid number", async () => {
       const cmd = Commander
         .make({ name: "app" })
-        .option("--count")
-        .schema(Commander.NumberFromString)
+        .option(
+          Commander
+            .option("--count")
+            .schema(Commander.NumberFromString)
+        )
 
       const result = await Effect.runPromise(
         Effect.either(Commander.parse(cmd, ["--count", "not-a-number"]))
@@ -517,18 +639,33 @@ t.describe("Commander - High-level Tests (inspired by commander.js)", () => {
     t.it("should handle mixed option types", async () => {
       const cmd = Commander
         .make({ name: "server" })
-        .option("--host", "-h")
-        .default("localhost")
-        .schema(Schema.String)
-        .option("--port", "-p")
-        .default(3000)
-        .schema(Commander.NumberFromString)
-        .option("--ssl")
-        .default(false)
-        .schema(Commander.BooleanFromString)
-        .option("--env", "-e")
-        .default("development")
-        .schema(Commander.choice(["development", "production", "test"]))
+        .option(
+          Commander
+            .option("--host")
+            .short("-h")
+            .default("localhost")
+            .schema(Schema.String)
+        )
+        .option(
+          Commander
+            .option("--port")
+            .short("-p")
+            .default(3000)
+            .schema(Commander.NumberFromString)
+        )
+        .option(
+          Commander
+            .option("--ssl")
+            .default(false)
+            .schema(Commander.BooleanFromString)
+        )
+        .option(
+          Commander
+            .option("--env")
+            .short("-e")
+            .default("development")
+            .schema(Commander.choice(["development", "production", "test"]))
+        )
 
       const result = await Effect.runPromise(
         Commander.parse(cmd, [
@@ -552,8 +689,12 @@ t.describe("Commander - High-level Tests (inspired by commander.js)", () => {
     t.it("should handle repeatable options", async () => {
       const cmd = Commander
         .make({ name: "app" })
-        .option("--tags", "-t")
-        .schema(Commander.repeatable(Schema.String))
+        .option(
+          Commander
+            .option("--tags")
+            .short("-t")
+            .schema(Commander.repeatable(Schema.String))
+        )
 
       const result = await Effect.runPromise(
         Commander.parse(cmd, ["--tags", "foo,bar,baz"])
@@ -565,10 +706,16 @@ t.describe("Commander - High-level Tests (inspired by commander.js)", () => {
     t.it("should preserve option order independence", async () => {
       const cmd = Commander
         .make({ name: "app" })
-        .option("--first")
-        .schema(Schema.String)
-        .option("--second")
-        .schema(Schema.String)
+        .option(
+          Commander
+            .option("--first")
+            .schema(Schema.String)
+        )
+        .option(
+          Commander
+            .option("--second")
+            .schema(Schema.String)
+        )
 
       const result1 = await Effect.runPromise(
         Commander.parse(cmd, ["--first", "1", "--second", "2"])
@@ -587,19 +734,25 @@ t.describe("Commander - High-level Tests (inspired by commander.js)", () => {
     t.it("should handle options with hyphens in names", async () => {
       const cmd = Commander
         .make({ name: "app" })
-        .option("--dry-run")
-        .default(false)
-        .schema(Commander.BooleanFromString)
-        .option("--no-cache")
-        .default(false)
-        .schema(Commander.BooleanFromString)
+        .option(
+          Commander
+            .option("--dry-run")
+            .default(false)
+            .schema(Commander.BooleanFromString)
+        )
+        .option(
+          Commander
+            .option("--no-cache")
+            .default(false)
+            .schema(Commander.BooleanFromString)
+        )
 
       const result = await Effect.runPromise(
         Commander.parse(cmd, ["--dry-run", "true", "--no-cache", "true"])
       )
 
-      t.expect(result["dry-run"]).toBe(true)
-      t.expect(result["no-cache"]).toBe(true)
+      t.expect(result.dryRun).toBe(true)
+      t.expect(result.noCache).toBe(true)
     })
   })
 
@@ -607,8 +760,11 @@ t.describe("Commander - High-level Tests (inspired by commander.js)", () => {
     t.it("should fail gracefully on invalid option value", async () => {
       const cmd = Commander
         .make({ name: "app" })
-        .option("--port")
-        .schema(Commander.NumberFromString)
+        .option(
+          Commander
+            .option("--port")
+            .schema(Commander.NumberFromString)
+        )
 
       const result = await Effect.runPromise(
         Effect.either(Commander.parse(cmd, ["--port", "invalid"]))
@@ -623,8 +779,11 @@ t.describe("Commander - High-level Tests (inspired by commander.js)", () => {
     t.it("should fail on invalid choice", async () => {
       const cmd = Commander
         .make({ name: "app" })
-        .option("--mode")
-        .schema(Commander.choice(["dev", "prod"]))
+        .option(
+          Commander
+            .option("--mode")
+            .schema(Commander.choice(["dev", "prod"]))
+        )
 
       const result = await Effect.runPromise(
         Effect.either(Commander.parse(cmd, ["--mode", "staging"]))
@@ -638,38 +797,52 @@ t.describe("Commander - High-level Tests (inspired by commander.js)", () => {
     t.it("should chain option definitions fluently", () => {
       const cmd = Commander
         .make({ name: "app" })
-        .option("--input", "-i")
-        .description("Input file")
-        .schema(Schema.String)
-        .option("--output", "-o")
-        .description("Output file")
-        .default("out.txt")
-        .schema(Schema.String)
+        .option(
+          Commander
+            .option("--input")
+            .short("-i")
+            .description("Input file")
+            .schema(Schema.String)
+        )
+        .option(
+          Commander
+            .option("--output")
+            .short("-o")
+            .description("Output file")
+            .default("out.txt")
+            .schema(Schema.String)
+        )
 
-      t.expect(cmd.options.input.description).toBe("Input file")
-      t.expect(cmd.options.output.description).toBe("Output file")
-      t.expect(cmd.options.output.defaultValue).toBe("out.txt")
+      t.expect(cmd.options["--input"].description).toBe("Input file")
+      t.expect(cmd.options["--output"].description).toBe("Output file")
+      t.expect(cmd.options["--output"].defaultValue).toBe("out.txt")
     })
 
     t.it("should chain description and default in any order", () => {
       const cmd1 = Commander
         .make({ name: "app" })
-        .option("--port")
-        .description("Port number")
-        .default(3000)
-        .schema(Commander.NumberFromString)
+        .option(
+          Commander
+            .option("--port")
+            .description("Port number")
+            .default(3000)
+            .schema(Commander.NumberFromString)
+        )
 
       const cmd2 = Commander
         .make({ name: "app" })
-        .option("--port")
-        .default(3000)
-        .description("Port number")
-        .schema(Commander.NumberFromString)
+        .option(
+          Commander
+            .option("--port")
+            .default(3000)
+            .description("Port number")
+            .schema(Commander.NumberFromString)
+        )
 
-      t.expect(cmd1.options.port.description).toBe("Port number")
-      t.expect(cmd1.options.port.defaultValue).toBe(3000)
-      t.expect(cmd2.options.port.description).toBe("Port number")
-      t.expect(cmd2.options.port.defaultValue).toBe(3000)
+      t.expect(cmd1.options["--port"].description).toBe("Port number")
+      t.expect(cmd1.options["--port"].defaultValue).toBe(3000)
+      t.expect(cmd2.options["--port"].description).toBe("Port number")
+      t.expect(cmd2.options["--port"].defaultValue).toBe(3000)
     })
 
     t.it("should support method chaining with subcommands", () => {
@@ -683,14 +856,17 @@ t.describe("Commander - High-level Tests (inspired by commander.js)", () => {
 
       const cmd = Commander
         .make({ name: "app" })
-        .option("--global")
-        .schema(Schema.String)
+        .option(
+          Commander
+            .option("--global")
+            .schema(Schema.String)
+        )
         .subcommand(sub1)
         .subcommand(sub2)
         .optionHelp()
 
-      t.expect(cmd.options.global).toBeDefined()
-      t.expect(cmd.options.help).toBeDefined()
+      t.expect(cmd.options["--global"]).toBeDefined()
+      t.expect(cmd.options["--help"]).toBeDefined()
       t.expect(cmd.subcommands.length).toBe(2)
     })
   })
