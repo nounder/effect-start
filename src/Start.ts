@@ -136,8 +136,8 @@ export function serve<ROut, E>(
         HttpServer.withLogAddress,
       )
     })),
-    Layer.provide(appLayer),
     Layer.provide([
+      appLayer,
       FetchHttpClient.layer,
       HttpRouter.Default.Live,
       BunFullstackServer.layer({
