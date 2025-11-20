@@ -43,52 +43,16 @@ type OptionBuilderWithSchema<A, Name extends string> = Omit<
   readonly defaultValue?: A
 }
 
-export const option = <const Long extends `--${string}`>(
-  long: Long
+export const option = <
+  const Long extends `--${string}`,
+  const Short extends `-${string}` | undefined = undefined
+>(
+  long: Long,
+  short?: Short
 ): {
   schema<A>(
     schema: Schema.Schema<A, string>
   ): OptionBuilderWithSchema<A, Long>
-
-  short<const Short extends `-${string}`>(
-    short: Short
-  ): {
-    schema<A>(
-      schema: Schema.Schema<A, string>
-    ): OptionBuilderWithSchema<A, Long>
-
-    description(
-      desc: string
-    ): {
-      schema<A>(
-        schema: Schema.Schema<A, string>
-      ): OptionBuilderWithSchema<A, Long>
-
-      default<A>(
-        value: A
-      ): {
-        schema<A2 extends A>(
-          schema: Schema.Schema<A2, string>
-        ): OptionBuilderWithSchema<A2, Long>
-      }
-    }
-
-    default<A>(
-      value: A
-    ): {
-      schema<A2 extends A>(
-        schema: Schema.Schema<A2, string>
-      ): OptionBuilderWithSchema<A2, Long>
-
-      description(
-        desc: string
-      ): {
-        schema<A2 extends A>(
-          schema: Schema.Schema<A2, string>
-        ): OptionBuilderWithSchema<A2, Long>
-      }
-    }
-  }
 
   description(
     desc: string
@@ -97,36 +61,12 @@ export const option = <const Long extends `--${string}`>(
       schema: Schema.Schema<A, string>
     ): OptionBuilderWithSchema<A, Long>
 
-    short<const Short extends `-${string}`>(
-      short: Short
-    ): {
-      schema<A>(
-        schema: Schema.Schema<A, string>
-      ): OptionBuilderWithSchema<A, Long>
-
-      default<A>(
-        value: A
-      ): {
-        schema<A2 extends A>(
-          schema: Schema.Schema<A2, string>
-        ): OptionBuilderWithSchema<A2, Long>
-      }
-    }
-
     default<A>(
       value: A
     ): {
       schema<A2 extends A>(
         schema: Schema.Schema<A2, string>
       ): OptionBuilderWithSchema<A2, Long>
-
-      short<const Short extends `-${string}`>(
-        short: Short
-      ): {
-        schema<A2 extends A>(
-          schema: Schema.Schema<A2, string>
-        ): OptionBuilderWithSchema<A2, Long>
-      }
     }
   }
 
@@ -143,100 +83,20 @@ export const option = <const Long extends `--${string}`>(
       schema<A2 extends A>(
         schema: Schema.Schema<A2, string>
       ): OptionBuilderWithSchema<A2, Long>
-
-      short<const Short extends `-${string}`>(
-        short: Short
-      ): {
-        schema<A2 extends A>(
-          schema: Schema.Schema<A2, string>
-        ): OptionBuilderWithSchema<A2, Long>
-      }
-    }
-
-    short<const Short extends `-${string}`>(
-      short: Short
-    ): {
-      schema<A2 extends A>(
-        schema: Schema.Schema<A2, string>
-      ): OptionBuilderWithSchema<A2, Long>
-
-      description(
-        desc: string
-      ): {
-        schema<A2 extends A>(
-          schema: Schema.Schema<A2, string>
-        ): OptionBuilderWithSchema<A2, Long>
-      }
     }
   }
 } => {
   const longName = long
+  const shortName = short ? short.slice(1) : undefined
 
   return {
     schema: <A>(schema: Schema.Schema<A, string>) => ({
       _tag: "OptionBuilder" as const,
       name: longName,
       long: longName,
+      short: shortName,
       description: "",
       schema
-    }),
-
-    short: (short) => ({
-      schema: <A>(schema: Schema.Schema<A, string>) => ({
-        _tag: "OptionBuilder" as const,
-        name: longName,
-        long: longName,
-        short: short.slice(1),
-        description: "",
-        schema
-      }),
-
-      description: (desc) => ({
-        schema: <A>(schema: Schema.Schema<A, string>) => ({
-          _tag: "OptionBuilder" as const,
-          name: longName,
-          long: longName,
-          short: short.slice(1),
-          description: desc,
-          schema
-        }),
-
-        default: <A,>(value: A) => ({
-          schema: <A2 extends A>(schema: Schema.Schema<A2, string>) => ({
-            _tag: "OptionBuilder" as const,
-            name: longName,
-            long: longName,
-            short: short.slice(1),
-            description: desc,
-            schema,
-            defaultValue: value as A2
-          })
-        })
-      }),
-
-      default: <A,>(value: A) => ({
-        schema: <A2 extends A>(schema: Schema.Schema<A2, string>) => ({
-          _tag: "OptionBuilder" as const,
-          name: longName,
-          long: longName,
-          short: short.slice(1),
-          description: "",
-          schema,
-          defaultValue: value as A2
-        }),
-
-        description: (desc) => ({
-          schema: <A2 extends A>(schema: Schema.Schema<A2, string>) => ({
-            _tag: "OptionBuilder" as const,
-            name: longName,
-            long: longName,
-            short: short.slice(1),
-            description: desc,
-            schema,
-            defaultValue: value as A2
-          })
-        })
-      })
     }),
 
     description: (desc) => ({
@@ -244,31 +104,9 @@ export const option = <const Long extends `--${string}`>(
         _tag: "OptionBuilder" as const,
         name: longName,
         long: longName,
+        short: shortName,
         description: desc,
         schema
-      }),
-
-      short: (short) => ({
-        schema: <A>(schema: Schema.Schema<A, string>) => ({
-          _tag: "OptionBuilder" as const,
-          name: longName,
-          long: longName,
-          short: short.slice(1),
-          description: desc,
-          schema
-        }),
-
-        default: <A,>(value: A) => ({
-          schema: <A2 extends A>(schema: Schema.Schema<A2, string>) => ({
-            _tag: "OptionBuilder" as const,
-            name: longName,
-            long: longName,
-            short: short.slice(1),
-            description: desc,
-            schema,
-            defaultValue: value as A2
-          })
-        })
       }),
 
       default: <A,>(value: A) => ({
@@ -276,21 +114,10 @@ export const option = <const Long extends `--${string}`>(
           _tag: "OptionBuilder" as const,
           name: longName,
           long: longName,
+          short: shortName,
           description: desc,
           schema,
           defaultValue: value as A2
-        }),
-
-        short: (short) => ({
-          schema: <A2 extends A>(schema: Schema.Schema<A2, string>) => ({
-            _tag: "OptionBuilder" as const,
-            name: longName,
-            long: longName,
-            short: short.slice(1),
-            description: desc,
-            schema,
-            defaultValue: value as A2
-          })
         })
       })
     }),
@@ -300,6 +127,7 @@ export const option = <const Long extends `--${string}`>(
         _tag: "OptionBuilder" as const,
         name: longName,
         long: longName,
+        short: shortName,
         description: "",
         schema,
         defaultValue: value as A2
@@ -310,45 +138,10 @@ export const option = <const Long extends `--${string}`>(
           _tag: "OptionBuilder" as const,
           name: longName,
           long: longName,
+          short: shortName,
           description: desc,
           schema,
           defaultValue: value as A2
-        }),
-
-        short: (short) => ({
-          schema: <A2 extends A>(schema: Schema.Schema<A2, string>) => ({
-            _tag: "OptionBuilder" as const,
-            name: longName,
-            long: longName,
-            short: short.slice(1),
-            description: desc,
-            schema,
-            defaultValue: value as A2
-          })
-        })
-      }),
-
-      short: (short) => ({
-        schema: <A2 extends A>(schema: Schema.Schema<A2, string>) => ({
-          _tag: "OptionBuilder" as const,
-          name: longName,
-          long: longName,
-          short: short.slice(1),
-          description: "",
-          schema,
-          defaultValue: value as A2
-        }),
-
-        description: (desc) => ({
-          schema: <A2 extends A>(schema: Schema.Schema<A2, string>) => ({
-            _tag: "OptionBuilder" as const,
-            name: longName,
-            long: longName,
-            short: short.slice(1),
-            description: desc,
-            schema,
-            defaultValue: value as A2
-          })
         })
       })
     })

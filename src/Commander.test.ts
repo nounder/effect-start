@@ -21,8 +21,7 @@ t.describe("Commander", () => {
         .make({ name: "app" })
         .option(
           Commander
-            .option("--output")
-            .short("-o")
+            .option("--output", "-o")
             .schema(Schema.String)
         )
 
@@ -36,8 +35,7 @@ t.describe("Commander", () => {
         .make({ name: "app" })
         .option(
           Commander
-            .option("--output")
-            .short("-o")
+            .option("--output", "-o")
             .description("Output file")
             .schema(Schema.String)
         )
@@ -50,8 +48,7 @@ t.describe("Commander", () => {
         .make({ name: "app" })
         .option(
           Commander
-            .option("--count")
-            .short("-c")
+            .option("--count", "-c")
             .default(10)
             .schema(Commander.NumberFromString)
         )
@@ -64,14 +61,12 @@ t.describe("Commander", () => {
         .make({ name: "app" })
         .option(
           Commander
-            .option("--input")
-            .short("-i")
+            .option("--input", "-i")
             .schema(Schema.String)
         )
         .option(
           Commander
-            .option("--output")
-            .short("-o")
+            .option("--output", "-o")
             .schema(Schema.String)
         )
 
@@ -118,8 +113,7 @@ t.describe("Commander", () => {
         .make({ name: "app" })
         .option(
           Commander
-            .option("--port")
-            .short("-p")
+            .option("--port", "-p")
             .schema(Commander.NumberFromString)
         )
 
@@ -135,14 +129,12 @@ t.describe("Commander", () => {
         .make({ name: "app" })
         .option(
           Commander
-            .option("--host")
-            .short("-h")
+            .option("--host", "-h")
             .schema(Schema.String)
         )
         .option(
           Commander
-            .option("--port")
-            .short("-p")
+            .option("--port", "-p")
             .schema(Commander.NumberFromString)
         )
 
@@ -175,8 +167,7 @@ t.describe("Commander", () => {
         .make({ name: "app" })
         .option(
           Commander
-            .option("--port")
-            .short("-p")
+            .option("--port", "-p")
             .default(3000)
             .schema(Commander.NumberFromString)
         )
@@ -193,8 +184,7 @@ t.describe("Commander", () => {
         .make({ name: "app" })
         .option(
           Commander
-            .option("--port")
-            .short("-p")
+            .option("--port", "-p")
             .default(3000)
             .schema(Commander.NumberFromString)
         )
@@ -237,8 +227,7 @@ t.describe("Commander", () => {
         .make({ name: "app" })
         .option(
           Commander
-            .option("--name")
-            .short("-n")
+            .option("--name", "-n")
             .schema(Schema.String)
         )
         .handle((opts) => Effect.void)
@@ -247,8 +236,7 @@ t.describe("Commander", () => {
         .make({ name: "app2" })
         .option(
           Commander
-            .option("--name")
-            .short("-n")
+            .option("--name", "-n")
             .schema(Schema.String)
         )
 
@@ -287,8 +275,7 @@ t.describe("Commander", () => {
         })
         .option(
           Commander
-            .option("--output")
-            .short("-o")
+            .option("--output", "-o")
             .description("Output file")
             .schema(Schema.String)
         )
@@ -339,7 +326,7 @@ t.describe("Commander", () => {
 
   t.describe("choice", () => {
     t.it("should accept valid choice", async () => {
-      const ColorSchema = Commander.choice(["red", "green", "blue"])
+      const ColorSchema = Schema.compose(Schema.String, Schema.Literal("red", "green", "blue"))
 
       const result = await Effect.runPromise(
         Schema.decode(ColorSchema)("red")
@@ -349,7 +336,7 @@ t.describe("Commander", () => {
     })
 
     t.it("should fail on invalid choice", async () => {
-      const ColorSchema = Commander.choice(["red", "green", "blue"])
+      const ColorSchema = Schema.compose(Schema.String, Schema.Literal("red", "green", "blue"))
 
       const result = await Effect.runPromise(
         Effect.either(Schema.decode(ColorSchema)("yellow"))
@@ -411,25 +398,22 @@ t.describe("Commander", () => {
         })
         .option(
           Commander
-            .option("--input")
-            .short("-i")
+            .option("--input", "-i")
             .description("Input file")
             .schema(Schema.String)
         )
         .option(
           Commander
-            .option("--output")
-            .short("-o")
+            .option("--output", "-o")
             .description("Output file")
             .default("output.txt")
             .schema(Schema.String)
         )
         .option(
           Commander
-            .option("--format")
-            .short("-f")
+            .option("--format", "-f")
             .default("json")
-            .schema(Commander.choice(["json", "xml", "yaml"]))
+            .schema(Schema.compose(Schema.String, Schema.Literal("json", "xml", "yaml")))
         )
         .optionHelp()
 

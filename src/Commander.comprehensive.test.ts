@@ -10,8 +10,7 @@ t.describe("Commander - High-level Tests (inspired by commander.js)", () => {
         .make({ name: "app" })
         .option(
           Commander
-            .option("--port")
-            .short("-p")
+            .option("--port", "-p")
             .schema(Commander.NumberFromString)
         )
 
@@ -27,8 +26,7 @@ t.describe("Commander - High-level Tests (inspired by commander.js)", () => {
         .make({ name: "app" })
         .option(
           Commander
-            .option("--port")
-            .short("-p")
+            .option("--port", "-p")
             .schema(Commander.NumberFromString)
         )
 
@@ -44,14 +42,12 @@ t.describe("Commander - High-level Tests (inspired by commander.js)", () => {
         .make({ name: "app" })
         .option(
           Commander
-            .option("--host")
-            .short("-h")
+            .option("--host", "-h")
             .schema(Schema.String)
         )
         .option(
           Commander
-            .option("--port")
-            .short("-p")
+            .option("--port", "-p")
             .schema(Commander.NumberFromString)
         )
 
@@ -84,15 +80,13 @@ t.describe("Commander - High-level Tests (inspired by commander.js)", () => {
         .make({ name: "app" })
         .option(
           Commander
-            .option("--verbose")
-            .short("-v")
+            .option("--verbose", "-v")
             .default(false)
             .schema(Commander.BooleanFromString)
         )
         .option(
           Commander
-            .option("--debug")
-            .short("-d")
+            .option("--debug", "-d")
             .default(false)
             .schema(Commander.BooleanFromString)
         )
@@ -112,8 +106,7 @@ t.describe("Commander - High-level Tests (inspired by commander.js)", () => {
         .make({ name: "app" })
         .option(
           Commander
-            .option("--verbose")
-            .short("-v")
+            .option("--verbose", "-v")
             .default(false)
             .schema(Commander.BooleanFromString)
         )
@@ -130,8 +123,7 @@ t.describe("Commander - High-level Tests (inspired by commander.js)", () => {
         .make({ name: "app" })
         .option(
           Commander
-            .option("--verbose")
-            .short("-v")
+            .option("--verbose", "-v")
             .default(false)
             .schema(Commander.BooleanFromString)
         )
@@ -167,9 +159,8 @@ t.describe("Commander - High-level Tests (inspired by commander.js)", () => {
         .make({ name: "app" })
         .option(
           Commander
-            .option("--color")
-            .short("-c")
-            .schema(Commander.choice(["red", "green", "blue"]))
+            .option("--color", "-c")
+            .schema(Schema.compose(Schema.String, Schema.Literal("red", "green", "blue")))
         )
 
       const result = await Effect.runPromise(
@@ -184,9 +175,8 @@ t.describe("Commander - High-level Tests (inspired by commander.js)", () => {
         .make({ name: "app" })
         .option(
           Commander
-            .option("--color")
-            .short("-c")
-            .schema(Commander.choice(["red", "green", "blue"]))
+            .option("--color", "-c")
+            .schema(Schema.compose(Schema.String, Schema.Literal("red", "green", "blue")))
         )
 
       const result = await Effect.runPromise(
@@ -201,17 +191,15 @@ t.describe("Commander - High-level Tests (inspired by commander.js)", () => {
         .make({ name: "app" })
         .option(
           Commander
-            .option("--format")
-            .short("-f")
+            .option("--format", "-f")
             .default("json")
-            .schema(Commander.choice(["json", "xml", "yaml"]))
+            .schema(Schema.compose(Schema.String, Schema.Literal("json", "xml", "yaml")))
         )
         .option(
           Commander
-            .option("--level")
-            .short("-l")
+            .option("--level", "-l")
             .default("info")
-            .schema(Commander.choice(["debug", "info", "warn", "error"]))
+            .schema(Schema.compose(Schema.String, Schema.Literal("debug", "info", "warn", "error")))
         )
 
       const result = await Effect.runPromise(
@@ -229,8 +217,7 @@ t.describe("Commander - High-level Tests (inspired by commander.js)", () => {
         .make({ name: "app" })
         .option(
           Commander
-            .option("--port")
-            .short("-p")
+            .option("--port", "-p")
             .default(3000)
             .schema(Commander.NumberFromString)
         )
@@ -247,8 +234,7 @@ t.describe("Commander - High-level Tests (inspired by commander.js)", () => {
         .make({ name: "app" })
         .option(
           Commander
-            .option("--port")
-            .short("-p")
+            .option("--port", "-p")
             .default(3000)
             .schema(Commander.NumberFromString)
         )
@@ -296,8 +282,7 @@ t.describe("Commander - High-level Tests (inspired by commander.js)", () => {
         .make({ name: "app" })
         .option(
           Commander
-            .option("--output")
-            .short("-o")
+            .option("--output", "-o")
             .default("output.txt")
             .schema(Schema.String)
         )
@@ -318,8 +303,7 @@ t.describe("Commander - High-level Tests (inspired by commander.js)", () => {
         .make({ name: "app" })
         .option(
           Commander
-            .option("--name")
-            .short("-n")
+            .option("--name", "-n")
             .schema(Schema.String)
         )
         .handle((opts) =>
@@ -367,20 +351,17 @@ t.describe("Commander - High-level Tests (inspired by commander.js)", () => {
         .make({ name: "app" })
         .option(
           Commander
-            .option("--input")
-            .short("-i")
+            .option("--input", "-i")
             .schema(Schema.String)
         )
         .option(
           Commander
-            .option("--output")
-            .short("-o")
+            .option("--output", "-o")
             .schema(Schema.String)
         )
         .option(
           Commander
-            .option("--verbose")
-            .short("-v")
+            .option("--verbose", "-v")
             .default(false)
             .schema(Commander.BooleanFromString)
         )
@@ -446,15 +427,13 @@ t.describe("Commander - High-level Tests (inspired by commander.js)", () => {
         .make({ name: "app" })
         .option(
           Commander
-            .option("--input")
-            .short("-i")
+            .option("--input", "-i")
             .description("Input file")
             .schema(Schema.String)
         )
         .option(
           Commander
-            .option("--output")
-            .short("-o")
+            .option("--output", "-o")
             .description("Output file")
             .schema(Schema.String)
         )
@@ -492,8 +471,7 @@ t.describe("Commander - High-level Tests (inspired by commander.js)", () => {
         .make({ name: "app" })
         .option(
           Commander
-            .option("--config")
-            .short("-c")
+            .option("--config", "-c")
             .description("Config file path")
             .schema(Schema.String)
         )
@@ -511,8 +489,7 @@ t.describe("Commander - High-level Tests (inspired by commander.js)", () => {
         .make({ name: "build" })
         .option(
           Commander
-            .option("--watch")
-            .short("-w")
+            .option("--watch", "-w")
             .default(false)
             .schema(Commander.BooleanFromString)
         )
@@ -641,15 +618,13 @@ t.describe("Commander - High-level Tests (inspired by commander.js)", () => {
         .make({ name: "server" })
         .option(
           Commander
-            .option("--host")
-            .short("-h")
+            .option("--host", "-h")
             .default("localhost")
             .schema(Schema.String)
         )
         .option(
           Commander
-            .option("--port")
-            .short("-p")
+            .option("--port", "-p")
             .default(3000)
             .schema(Commander.NumberFromString)
         )
@@ -661,10 +636,9 @@ t.describe("Commander - High-level Tests (inspired by commander.js)", () => {
         )
         .option(
           Commander
-            .option("--env")
-            .short("-e")
+            .option("--env", "-e")
             .default("development")
-            .schema(Commander.choice(["development", "production", "test"]))
+            .schema(Schema.compose(Schema.String, Schema.Literal("development", "production", "test")))
         )
 
       const result = await Effect.runPromise(
@@ -691,8 +665,7 @@ t.describe("Commander - High-level Tests (inspired by commander.js)", () => {
         .make({ name: "app" })
         .option(
           Commander
-            .option("--tags")
-            .short("-t")
+            .option("--tags", "-t")
             .schema(Commander.repeatable(Schema.String))
         )
 
@@ -782,7 +755,7 @@ t.describe("Commander - High-level Tests (inspired by commander.js)", () => {
         .option(
           Commander
             .option("--mode")
-            .schema(Commander.choice(["dev", "prod"]))
+            .schema(Schema.compose(Schema.String, Schema.Literal("dev", "prod")))
         )
 
       const result = await Effect.runPromise(
@@ -799,15 +772,13 @@ t.describe("Commander - High-level Tests (inspired by commander.js)", () => {
         .make({ name: "app" })
         .option(
           Commander
-            .option("--input")
-            .short("-i")
+            .option("--input", "-i")
             .description("Input file")
             .schema(Schema.String)
         )
         .option(
           Commander
-            .option("--output")
-            .short("-o")
+            .option("--output", "-o")
             .description("Output file")
             .default("out.txt")
             .schema(Schema.String)
