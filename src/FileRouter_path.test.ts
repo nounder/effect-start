@@ -23,7 +23,8 @@ t.it("dynamic parameters", () => {
     { literal: "users" },
     { param: "userId" },
   ])
-  t.expect(FileRouter.segmentPath("/posts/[postId]/comments/[commentId]"))
+  t
+    .expect(FileRouter.segmentPath("/posts/[postId]/comments/[commentId]"))
     .toEqual([
       { literal: "posts" },
       { param: "postId" },

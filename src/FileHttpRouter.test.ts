@@ -73,7 +73,8 @@ t.it("HTTP methods", () =>
     const router = yield* FileHttpRouter.make([allMethodsRoute])
     const routesList = Array.from(router.routes)
 
-    t.expect(routesList)
+    t
+      .expect(routesList)
       .toEqual(
         t.expect.arrayContaining([
           t.expect.objectContaining({ path: "/", method: "GET" }),
@@ -94,18 +95,22 @@ t.it("router handles requests correctly", () =>
 
     const getUsersResponse = yield* client.get("/users")
 
-    t.expect(getUsersResponse.status)
+    t
+      .expect(getUsersResponse.status)
       .toBe(200)
 
-    t.expect(yield* getUsersResponse.text)
+    t
+      .expect(yield* getUsersResponse.text)
       .toBe("Users list")
 
     const postUsersResponse = yield* client.post("/users")
 
-    t.expect(postUsersResponse.status)
+    t
+      .expect(postUsersResponse.status)
       .toBe(200)
 
-    t.expect(yield* postUsersResponse.text)
+    t
+      .expect(yield* postUsersResponse.text)
       .toBe("User created")
   }))
 
@@ -119,71 +124,84 @@ t.it("middleware falls back to original app on 404", () =>
 
     const existingRouteResponse = yield* client.get("/users")
 
-    t.expect(existingRouteResponse.status)
+    t
+      .expect(existingRouteResponse.status)
       .toBe(200)
 
-    t.expect(yield* existingRouteResponse.text)
+    t
+      .expect(yield* existingRouteResponse.text)
       .toBe("Users list")
 
     const notFoundResponse = yield* client.get("/nonexistent")
 
-    t.expect(notFoundResponse.status)
+    t
+      .expect(notFoundResponse.status)
       .toBe(200)
 
-    t.expect(yield* notFoundResponse.text)
+    t
+      .expect(yield* notFoundResponse.text)
       .toBe("fallback")
   }))
 
-t.it("handles routes with special characters (tilde and hyphen)", () =>
-  effect(function*() {
-    const specialCharRoutes: Router.ServerRoute[] = [
-      {
-        path: "/api-v1",
-        segments: [{ literal: "api-v1" }],
-        load: async () => ({
-          default: Route.text(Effect.succeed("API v1")),
-        }),
-      },
-      {
-        path: "/files~backup",
-        segments: [{ literal: "files~backup" }],
-        load: async () => ({
-          default: Route.text(Effect.succeed("Backup files")),
-        }),
-      },
-      {
-        path: "/test-route~temp",
-        segments: [{ literal: "test-route~temp" }],
-        load: async () => ({
-          default: Route.post(Route.text(Effect.succeed("Test route"))),
-        }),
-      },
-    ]
+t.it(
+  "handles routes with special characters (tilde and hyphen)",
+  () =>
+    effect(function*() {
+      const specialCharRoutes: Router.ServerRoute[] = [
+        {
+          path: "/api-v1",
+          segments: [{ literal: "api-v1" }],
+          load: async () => ({
+            default: Route.text(Effect.succeed("API v1")),
+          }),
+        },
+        {
+          path: "/files~backup",
+          segments: [{ literal: "files~backup" }],
+          load: async () => ({
+            default: Route.text(Effect.succeed("Backup files")),
+          }),
+        },
+        {
+          path: "/test-route~temp",
+          segments: [{ literal: "test-route~temp" }],
+          load: async () => ({
+            default: Route.post(Route.text(Effect.succeed("Test route"))),
+          }),
+        },
+      ]
 
-    const router = yield* FileHttpRouter.make(specialCharRoutes)
-    const client = TestHttpClient.make(router)
+      const router = yield* FileHttpRouter.make(specialCharRoutes)
+      const client = TestHttpClient.make(router)
 
-    const apiResponse = yield* client.get("/api-v1")
+      const apiResponse = yield* client.get("/api-v1")
 
-    t.expect(apiResponse.status)
-      .toBe(200)
+      t
+        .expect(apiResponse.status)
+        .toBe(200)
 
-    t.expect(yield* apiResponse.text)
-      .toBe("API v1")
+      t
+        .expect(yield* apiResponse.text)
+        .toBe("API v1")
 
-    const backupResponse = yield* client.get("/files~backup")
+      const backupResponse = yield* client.get("/files~backup")
 
-    t.expect(backupResponse.status)
-      .toBe(200)
+      t
+        .expect(backupResponse.status)
+        .toBe(200)
 
-    t.expect(yield* backupResponse.text)
-      .toBe("Backup files")
+      t
+        .expect(yield* backupResponse.text)
+        .toBe("Backup files")
 
-    const testResponse = yield* client.post("/test-route~temp")
+      const testResponse = yield* client.post("/test-route~temp")
 
-    t.expect(testResponse.status)
-      .toBe(200)
+      t
+        .expect(testResponse.status)
+        .toBe(200)
 
-    t.expect(yield* testResponse.text)
-      .toBe("Test route")
-  }))
+      t
+        .expect(yield* testResponse.text)
+        .toBe("Test route")
+    }),
+)

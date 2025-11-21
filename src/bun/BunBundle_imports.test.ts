@@ -24,8 +24,8 @@ t.it("imports", () =>
 
     t
       .expect(
-      e0,
-    )
+        e0,
+      )
       .toEqual([
         "src/bun/BunBundle_imports.test.ts",
         [

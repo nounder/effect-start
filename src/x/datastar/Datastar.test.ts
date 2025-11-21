@@ -1,8 +1,8 @@
 import * as t from "bun:test"
-import * as Datastar from "./Datastar.ts"
 import * as HyperHtml from "../../HyperHtml.ts"
 import * as HyperNode from "../../HyperNode.ts"
 import { jsx } from "../../jsx-runtime.ts"
+import * as Datastar from "./Datastar.ts"
 
 t.it("data-signals object serialization", () => {
   const node = HyperNode.make("div", {

@@ -1,6 +1,6 @@
 import * as t from "bun:test"
-import * as Effect from "effect/Effect"
 import { MemoryFileSystem } from "effect-memfs"
+import * as Effect from "effect/Effect"
 import * as FileRouter from "./FileRouter.ts"
 import { effectFn } from "./testing.ts"
 
@@ -23,8 +23,8 @@ t.it("walks routes", () =>
 
     t
       .expect(
-      files.map(v => v.modulePath),
-    )
+        files.map(v => v.modulePath),
+      )
       .toEqual([
         "layer.tsx",
         "about/layer.tsx",
@@ -49,8 +49,8 @@ t.it("walks routes with rest", () =>
 
     t
       .expect(
-      files.map(v => v.modulePath),
-    )
+        files.map(v => v.modulePath),
+      )
       .toEqual([
         "layer.tsx",
         "about/layer.tsx",

@@ -1,11 +1,11 @@
 import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
 import * as t from "bun:test"
-import * as Effect from "effect/Effect"
 import { MemoryFileSystem } from "effect-memfs"
 import {
   effectFn,
   TestHttpClient,
 } from "effect-start"
+import * as Effect from "effect/Effect"
 import * as PublicDirectory from "./PublicDirectory.ts"
 
 const TestFiles = {
@@ -30,21 +30,21 @@ t.it("serves index.html for root path", () => {
 
     t
       .expect(
-      res.status,
-    )
+        res.status,
+      )
       .toBe(200)
 
     const body = yield* res.text
     t
       .expect(
-      body,
-    )
+        body,
+      )
       .toBe("<html><body>Hello World</body></html>")
 
     t
       .expect(
-      res.headers["content-type"],
-    )
+        res.headers["content-type"],
+      )
       .toBe("text/html")
   })
 })
@@ -60,21 +60,21 @@ t.it("serves CSS files with correct content type", () => {
 
     t
       .expect(
-      res.status,
-    )
+        res.status,
+      )
       .toBe(200)
 
     const body = yield* res.text
     t
       .expect(
-      body,
-    )
+        body,
+      )
       .toBe("body { color: red; }")
 
     t
       .expect(
-      res.headers["content-type"],
-    )
+        res.headers["content-type"],
+      )
       .toBe("text/css")
   })
 })
@@ -90,21 +90,21 @@ t.it("serves JavaScript files with correct content type", () => {
 
     t
       .expect(
-      res.status,
-    )
+        res.status,
+      )
       .toBe(200)
 
     const body = yield* res.text
     t
       .expect(
-      body,
-    )
+        body,
+      )
       .toBe("console.log('hello');")
 
     t
       .expect(
-      res.headers["content-type"],
-    )
+        res.headers["content-type"],
+      )
       .toBe("application/javascript")
   })
 })
@@ -120,21 +120,21 @@ t.it("serves JSON files with correct content type", () => {
 
     t
       .expect(
-      res.status,
-    )
+        res.status,
+      )
       .toBe(200)
 
     const body = yield* res.text
     t
       .expect(
-      body,
-    )
+        body,
+      )
       .toBe("{\"message\": \"test\"}")
 
     t
       .expect(
-      res.headers["content-type"],
-    )
+        res.headers["content-type"],
+      )
       .toBe("application/json")
   })
 })
@@ -150,21 +150,21 @@ t.it("serves nested files", () => {
 
     t
       .expect(
-      res.status,
-    )
+        res.status,
+      )
       .toBe(200)
 
     const body = yield* res.text
     t
       .expect(
-      body,
-    )
+        body,
+      )
       .toBe("nested content")
 
     t
       .expect(
-      res.headers["content-type"],
-    )
+        res.headers["content-type"],
+      )
       .toBe("text/plain")
   })
 })
@@ -184,8 +184,8 @@ t.it("returns 404 for non-existent files", () => {
 
     t
       .expect(
-      res.status,
-    )
+        res.status,
+      )
       .toBe(404)
   })
 })
@@ -205,8 +205,8 @@ t.it("prevents directory traversal attacks", () => {
 
     t
       .expect(
-      res.status,
-    )
+        res.status,
+      )
       .toBe(404)
   })
 })
@@ -225,15 +225,15 @@ t.it("works with custom prefix", () => {
 
     t
       .expect(
-      res.status,
-    )
+        res.status,
+      )
       .toBe(200)
 
     const body = yield* res.text
     t
       .expect(
-      body,
-    )
+        body,
+      )
       .toBe("body { color: red; }")
   })
 })
@@ -256,8 +256,8 @@ t.it("ignores requests without prefix when prefix is set", () => {
 
     t
       .expect(
-      res.status,
-    )
+        res.status,
+      )
       .toBe(404)
   })
 })
@@ -273,8 +273,8 @@ t.it("sets cache control headers", () => {
 
     t
       .expect(
-      res.headers["cache-control"],
-    )
+        res.headers["cache-control"],
+      )
       .toBe("public, max-age=3600")
   })
 })

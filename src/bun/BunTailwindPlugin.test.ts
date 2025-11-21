@@ -92,7 +92,7 @@ t.describe("extractClassNames", () => {
       const result = extractClassNames(source)
 
       t
-      .expect(result.size)
+        .expect(result.size)
         .toBe(1)
     }
   })

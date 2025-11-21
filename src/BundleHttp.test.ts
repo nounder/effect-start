@@ -1,13 +1,13 @@
 import * as HttpRouter from "@effect/platform/HttpRouter"
 import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
 import * as t from "bun:test"
-import * as Effect from "effect/Effect"
 import {
   Bundle,
   BundleHttp,
   effectFn,
   TestHttpClient,
 } from "effect-start"
+import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import IndexHtml from "../static/react-dashboard.html" with { type: "file" }
 import * as BunBundle from "./bun/BunBundle.ts"
@@ -32,13 +32,13 @@ t.it("entrypoint with specific uri", () =>
     const dashboardRes = yield* Client.get("/react-dashboard")
     t
       .expect(
-      dashboardRes.status,
-    )
+        dashboardRes.status,
+      )
       .toBe(200)
     t
       .expect(
-      yield* dashboardRes.text,
-    )
+        yield* dashboardRes.text,
+      )
       .toStartWith("<!DOCTYPE html>")
   }))
 
@@ -72,8 +72,8 @@ t.it("entrypoint without uri parameter", () =>
     )
     t
       .expect(
-      indexRes.status,
-    )
+        indexRes.status,
+      )
       .toBe(404)
 
     const indexPathRes = yield* Client.get("/index").pipe(
@@ -84,20 +84,20 @@ t.it("entrypoint without uri parameter", () =>
     )
     t
       .expect(
-      indexPathRes.status,
-    )
+        indexPathRes.status,
+      )
       .toBe(404)
 
     const dashboardRes = yield* Client.get("/react-dashboard")
     t
       .expect(
-      dashboardRes.status,
-    )
+        dashboardRes.status,
+      )
       .toBe(200)
     t
       .expect(
-      yield* dashboardRes.text,
-    )
+        yield* dashboardRes.text,
+      )
       .toStartWith("<!DOCTYPE html>")
 
     const nonexistentRes = yield* Client.get("/nonexistent").pipe(
@@ -108,8 +108,8 @@ t.it("entrypoint without uri parameter", () =>
     )
     t
       .expect(
-      nonexistentRes.status,
-    )
+        nonexistentRes.status,
+      )
       .toBe(404)
   }))
 
@@ -125,36 +125,36 @@ t.it("withEntrypoints middleware", () =>
     const rootRes = yield* Client.get("/")
     t
       .expect(
-      rootRes.status,
-    )
+        rootRes.status,
+      )
       .toBe(404)
     t
       .expect(
-      yield* rootRes.text,
-    )
+        yield* rootRes.text,
+      )
       .toBe("Fallback")
 
     const dashboardRes = yield* Client.get("/react-dashboard")
     t
       .expect(
-      dashboardRes.status,
-    )
+        dashboardRes.status,
+      )
       .toBe(200)
     t
       .expect(
-      yield* dashboardRes.text,
-    )
+        yield* dashboardRes.text,
+      )
       .toStartWith("<!DOCTYPE html>")
 
     const nonexistentRes = yield* Client.get("/nonexistent")
     t
       .expect(
-      nonexistentRes.status,
-    )
+        nonexistentRes.status,
+      )
       .toBe(404)
     t
       .expect(
-      yield* nonexistentRes.text,
-    )
+        yield* nonexistentRes.text,
+      )
       .toBe("Fallback")
   }))

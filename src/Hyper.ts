@@ -1,17 +1,17 @@
-import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
 import * as HttpApp from "@effect/platform/HttpApp"
+import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
+import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Effectable from "effect/Effectable"
 import * as Fiber from "effect/Fiber"
 import * as Function from "effect/Function"
-import * as Pipeable from "effect/Pipeable"
-import * as Context from "effect/Context"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
+import * as Pipeable from "effect/Pipeable"
 import { YieldWrap } from "effect/Utils"
-import { HyperHooks } from "./x/datastar/index.ts"
 import * as HyperHtml from "./HyperHtml.ts"
 import type { JSX } from "./jsx.d.ts"
+import { HyperHooks } from "./x/datastar/index.ts"
 
 const TypeId = Symbol.for("~hyper/TypeId")
 const LayoutTypeId = Symbol.for("~hyper/LayoutTypeId")

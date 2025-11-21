@@ -1,7 +1,7 @@
 import * as Cookies from "@effect/platform/Cookies"
 import * as t from "bun:test"
-import * as Effect from "effect/Effect"
 import * as ConfigProvider from "effect/ConfigProvider"
+import * as Effect from "effect/Effect"
 import * as EncryptedCookies from "./EncryptedCookies.ts"
 
 t.describe("encrypt", () => {
@@ -122,11 +122,12 @@ t.describe("decrypt", () => {
   t.test("fail with invalid format", () => {
     const invalidValue = "not-encrypted"
 
-    t.expect(
-      Effect.runPromise(
-        EncryptedCookies.decrypt(invalidValue, { secret: "test-secret" }),
-      ),
-    )
+    t
+      .expect(
+        Effect.runPromise(
+          EncryptedCookies.decrypt(invalidValue, { secret: "test-secret" }),
+        ),
+      )
       .rejects
       .toThrow()
   })
@@ -134,11 +135,12 @@ t.describe("decrypt", () => {
   t.test("fail with wrong number of segments", () => {
     const invalidValue = "one.two"
 
-    t.expect(
-      Effect.runPromise(
-        EncryptedCookies.decrypt(invalidValue, { secret: "test-secret" }),
-      ),
-    )
+    t
+      .expect(
+        Effect.runPromise(
+          EncryptedCookies.decrypt(invalidValue, { secret: "test-secret" }),
+        ),
+      )
       .rejects
       .toThrow()
   })
@@ -146,41 +148,45 @@ t.describe("decrypt", () => {
   t.test("fail with invalid base64", () => {
     const invalidValue = "invalid.base64.data"
 
-    t.expect(
-      Effect.runPromise(
-        EncryptedCookies.decrypt(invalidValue, { secret: "test-secret" }),
-      ),
-    )
+    t
+      .expect(
+        Effect.runPromise(
+          EncryptedCookies.decrypt(invalidValue, { secret: "test-secret" }),
+        ),
+      )
       .rejects
       .toThrow()
   })
 
   t.test("fail with null value", () => {
-    t.expect(
-      Effect.runPromise(
-        EncryptedCookies.encrypt(null, { secret: "test-secret" }),
-      ),
-    )
+    t
+      .expect(
+        Effect.runPromise(
+          EncryptedCookies.encrypt(null, { secret: "test-secret" }),
+        ),
+      )
       .rejects
       .toThrow()
   })
 
   t.test("fail with undefined value", () => {
-    t.expect(
-      Effect.runPromise(
-        EncryptedCookies.encrypt(undefined, { secret: "test-secret" }),
-      ),
-    )
+    t
+      .expect(
+        Effect.runPromise(
+          EncryptedCookies.encrypt(undefined, { secret: "test-secret" }),
+        ),
+      )
       .rejects
       .toThrow()
   })
 
   t.test("fail with empty encrypted value", () => {
-    t.expect(
-      Effect.runPromise(
-        EncryptedCookies.decrypt("", { secret: "test-secret" }),
-      ),
-    )
+    t
+      .expect(
+        Effect.runPromise(
+          EncryptedCookies.decrypt("", { secret: "test-secret" }),
+        ),
+      )
       .rejects
       .toThrow()
   })
@@ -379,20 +385,21 @@ t.describe("layerConfig", () => {
       return yield* service.encrypt("test")
     })
 
-    t.expect(
-      Effect.runPromise(
-        program.pipe(
-          Effect.provide(
-            EncryptedCookies.layerConfig("SECRET_KEY_BASE"),
-          ),
-          Effect.withConfigProvider(
-            ConfigProvider.fromMap(
-              new Map([["SECRET_KEY_BASE", shortSecret]]),
+    t
+      .expect(
+        Effect.runPromise(
+          program.pipe(
+            Effect.provide(
+              EncryptedCookies.layerConfig("SECRET_KEY_BASE"),
+            ),
+            Effect.withConfigProvider(
+              ConfigProvider.fromMap(
+                new Map([["SECRET_KEY_BASE", shortSecret]]),
+              ),
             ),
           ),
         ),
-      ),
-    )
+      )
       .rejects
       .toThrow("SECRET_KEY_BASE must be at least 40 characters")
   })
@@ -403,16 +410,17 @@ t.describe("layerConfig", () => {
       return yield* service.encrypt("test")
     })
 
-    t.expect(
-      Effect.runPromise(
-        program.pipe(
-          Effect.provide(
-            EncryptedCookies.layerConfig("SECRET_KEY_BASE"),
+    t
+      .expect(
+        Effect.runPromise(
+          program.pipe(
+            Effect.provide(
+              EncryptedCookies.layerConfig("SECRET_KEY_BASE"),
+            ),
+            Effect.withConfigProvider(ConfigProvider.fromMap(new Map())),
           ),
-          Effect.withConfigProvider(ConfigProvider.fromMap(new Map())),
         ),
-      ),
-    )
+      )
       .rejects
       .toThrow("SECRET_KEY_BASE must be at least 40 characters")
   })

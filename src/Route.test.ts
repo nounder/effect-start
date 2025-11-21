@@ -171,31 +171,34 @@ t.it("schemaPayload propagates to all routes", () => {
   Function.satisfies<Expected>()(routes)
 })
 
-t.it("context is typed with pathParams when schemaPathParams is provided", () => {
-  const IdSchema = Schema.Struct({
-    id: Schema.String,
-  })
+t.it(
+  "context is typed with pathParams when schemaPathParams is provided",
+  () => {
+    const IdSchema = Schema.Struct({
+      id: Schema.String,
+    })
 
-  Route
-    .schemaPathParams(IdSchema)
-    .text(
-      (context) => {
-        type ContextType = typeof context
+    Route
+      .schemaPathParams(IdSchema)
+      .text(
+        (context) => {
+          type ContextType = typeof context
 
-        type Expected = Route.RouteContext<{
-          pathParams: {
-            id: string
-          }
-        }>
+          type Expected = Route.RouteContext<{
+            pathParams: {
+              id: string
+            }
+          }>
 
-        Function.satisfies<Expected>()(context)
+          Function.satisfies<Expected>()(context)
 
-        Function.satisfies<string>()(context.pathParams.id)
+          Function.satisfies<string>()(context.pathParams.id)
 
-        return Effect.succeed("hello")
-      },
-    )
-})
+          return Effect.succeed("hello")
+        },
+      )
+  },
+)
 
 t.it("context is typed with urlParams when schemaUrlParams is provided", () => {
   const QuerySchema = Schema.Struct({

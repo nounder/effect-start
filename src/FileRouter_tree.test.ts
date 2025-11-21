@@ -77,47 +77,50 @@ t.it("deep tree", () => {
 })
 
 t.it("throws on overlapping routes from groups", () => {
-  t.expect(() => {
-    const handles = [
-      "(admin)/users/route.tsx",
-      "users/route.tsx",
-    ]
-      .map(FileRouter.parseRoute)
+  t
+    .expect(() => {
+      const handles = [
+        "(admin)/users/route.tsx",
+        "users/route.tsx",
+      ]
+        .map(FileRouter.parseRoute)
 
-    FileRouter.getRouteHandlesFromPaths(
-      handles.map(h => h.modulePath),
-    )
-  })
+      FileRouter.getRouteHandlesFromPaths(
+        handles.map(h => h.modulePath),
+      )
+    })
     .toThrow("Conflicting routes detected at path /users")
 })
 
 t.it("throws on overlapping routes with same path", () => {
-  t.expect(() => {
-    const handles = [
-      "about/route.tsx",
-      "about/route.ts",
-    ]
-      .map(FileRouter.parseRoute)
+  t
+    .expect(() => {
+      const handles = [
+        "about/route.tsx",
+        "about/route.ts",
+      ]
+        .map(FileRouter.parseRoute)
 
-    FileRouter.getRouteHandlesFromPaths(
-      handles.map(h => h.modulePath),
-    )
-  })
+      FileRouter.getRouteHandlesFromPaths(
+        handles.map(h => h.modulePath),
+      )
+    })
     .toThrow("Conflicting routes detected at path /about")
 })
 
 t.it("allows route and layer at same path", () => {
-  t.expect(() => {
-    const handles = [
-      "users/route.tsx",
-      "users/layer.tsx",
-    ]
-      .map(FileRouter.parseRoute)
+  t
+    .expect(() => {
+      const handles = [
+        "users/route.tsx",
+        "users/layer.tsx",
+      ]
+        .map(FileRouter.parseRoute)
 
-    FileRouter.getRouteHandlesFromPaths(
-      handles.map(h => h.modulePath),
-    )
-  })
+      FileRouter.getRouteHandlesFromPaths(
+        handles.map(h => h.modulePath),
+      )
+    })
     .not
     .toThrow()
 })
