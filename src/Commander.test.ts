@@ -24,9 +24,9 @@ t.describe("make", () => {
             .schema(Schema.String)
         )
 
-      t.expect(cmd.options.length).toBe(1)
-      t.expect(cmd.options[0]!.long).toBe("--output")
-      t.expect(cmd.options[0]!.short).toBe("o")
+      t.expect(cmd.options.output).toBeDefined()
+      t.expect(cmd.options.output.long).toBe("--output")
+      t.expect(cmd.options.output.short).toBe("o")
     })
 
     t.it("should add option with description", () => {
@@ -39,7 +39,7 @@ t.describe("make", () => {
             .schema(Schema.String)
         )
 
-      t.expect(cmd.options[0]!.description).toBe("Output file")
+      t.expect(cmd.options.output.description).toBe("Output file")
     })
 
     t.it("should add option with default value", () => {
@@ -52,7 +52,7 @@ t.describe("make", () => {
             .schema(Commander.NumberFromString)
         )
 
-      t.expect(cmd.options[0]!.defaultValue).toBe(10)
+      t.expect(cmd.options.count.defaultValue).toBe(10)
     })
 
     t.it("should chain multiple options", () => {
@@ -69,9 +69,10 @@ t.describe("make", () => {
             .schema(Schema.String)
         )
 
-      t.expect(cmd.options.length).toBe(2)
-      t.expect(cmd.options[0]!.long).toBe("--input")
-      t.expect(cmd.options[1]!.long).toBe("--output")
+      t.expect(cmd.options.input).toBeDefined()
+      t.expect(cmd.options.output).toBeDefined()
+      t.expect(cmd.options.input.long).toBe("--input")
+      t.expect(cmd.options.output.long).toBe("--output")
     })
   })
 
@@ -203,10 +204,9 @@ t.describe("make", () => {
         .make({ name: "app" })
         .optionHelp()
 
-      const helpOpt = cmd.options.find(opt => opt.long === "--help")
-      t.expect(helpOpt).toBeDefined()
-      t.expect(helpOpt!.long).toBe("--help")
-      t.expect(helpOpt!.short).toBe("h")
+      t.expect(cmd.options.help).toBeDefined()
+      t.expect(cmd.options.help.long).toBe("--help")
+      t.expect(cmd.options.help.short).toBe("h")
     })
   })
 
@@ -216,10 +216,9 @@ t.describe("make", () => {
         .make({ name: "app", version: "1.0.0" })
         .optionVersion()
 
-      const versionOpt = cmd.options.find(opt => opt.long === "--version")
-      t.expect(versionOpt).toBeDefined()
-      t.expect(versionOpt!.long).toBe("--version")
-      t.expect(versionOpt!.short).toBe("V")
+      t.expect(cmd.options.version).toBeDefined()
+      t.expect(cmd.options.version.long).toBe("--version")
+      t.expect(cmd.options.version.short).toBe("V")
     })
   })
 
@@ -838,8 +837,7 @@ t.describe("version", () => {
       .optionVersion()
 
     t.expect(cmd.version).toBe("1.0.0")
-    const versionOpt = cmd.options.find(opt => opt.long === "--version")
-    t.expect(versionOpt).toBeDefined()
+    t.expect(cmd.options.version).toBeDefined()
   })
 
   t.it("should handle version without version option", () => {
@@ -847,8 +845,7 @@ t.describe("version", () => {
       .make({ name: "app", version: "2.0.0" })
 
     t.expect(cmd.version).toBe("2.0.0")
-    const versionOpt = cmd.options.find(opt => opt.long === "--version")
-    t.expect(versionOpt).toBeUndefined()
+    t.expect((cmd.options as any).version).toBeUndefined()
   })
 
   t.it("should include version option in help", () => {
@@ -1240,11 +1237,9 @@ t.describe("builder pattern", () => {
           .schema(Schema.String)
       )
 
-    const inputOpt = cmd.options.find(opt => opt.long === "--input")
-    const outputOpt = cmd.options.find(opt => opt.long === "--output")
-    t.expect(inputOpt!.description).toBe("Input file")
-    t.expect(outputOpt!.description).toBe("Output file")
-    t.expect(outputOpt!.defaultValue).toBe("out.txt")
+    t.expect(cmd.options.input.description).toBe("Input file")
+    t.expect(cmd.options.output.description).toBe("Output file")
+    t.expect(cmd.options.output.defaultValue).toBe("out.txt")
   })
 
   t.it("should chain description and default in any order", () => {
@@ -1268,12 +1263,10 @@ t.describe("builder pattern", () => {
           .schema(Commander.NumberFromString)
       )
 
-    const port1 = cmd1.options.find(opt => opt.long === "--port")
-    const port2 = cmd2.options.find(opt => opt.long === "--port")
-    t.expect(port1!.description).toBe("Port number")
-    t.expect(port1!.defaultValue).toBe(3000)
-    t.expect(port2!.description).toBe("Port number")
-    t.expect(port2!.defaultValue).toBe(3000)
+    t.expect(cmd1.options.port.description).toBe("Port number")
+    t.expect(cmd1.options.port.defaultValue).toBe(3000)
+    t.expect(cmd2.options.port.description).toBe("Port number")
+    t.expect(cmd2.options.port.defaultValue).toBe(3000)
   })
 
   t.it("should support method chaining with subcommands", () => {
@@ -1296,10 +1289,8 @@ t.describe("builder pattern", () => {
       .subcommand(sub2)
       .optionHelp()
 
-    const globalOpt = cmd.options.find(opt => opt.long === "--global")
-    const helpOpt = cmd.options.find(opt => opt.long === "--help")
-    t.expect(globalOpt).toBeDefined()
-    t.expect(helpOpt).toBeDefined()
+    t.expect(cmd.options.global).toBeDefined()
+    t.expect(cmd.options.help).toBeDefined()
     t.expect(cmd.subcommands.length).toBe(2)
   })
 })
@@ -1354,8 +1345,7 @@ t.describe("example scenario", () => {
     t.expect(main.subcommands.length).toBe(1)
     t.expect(main.subcommands[0]!.command.name).toBe("format")
 
-    const styleOpt = main.subcommands[0]!.command.options.find(opt => opt.long === "--style")
-    t.expect(styleOpt).toBeDefined()
-    t.expect(styleOpt!.defaultValue).toBe("standard")
+    t.expect(main.subcommands[0]!.command.options.style).toBeDefined()
+    t.expect(main.subcommands[0]!.command.options.style.defaultValue).toBe("standard")
   })
 })

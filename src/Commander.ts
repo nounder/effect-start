@@ -192,7 +192,7 @@ export namespace CommanderSet {
     readonly name: string
     readonly description?: string
     readonly version?: string
-    readonly options: ReadonlyArray<OptionBuilder<any, any>>
+    readonly options: Opts
     readonly subcommands: Subcommands
     readonly handler?: Handled extends true
       ? (args: ExtractOptionValues<Opts>) => Effect.Effect<void>
@@ -232,16 +232,18 @@ const optionMethod = function<
 {
   const base = this && typeof this === "object" ? this as any : {}
   const baseName = base.name || ""
-  const baseOptions: ReadonlyArray<OptionBuilder<any, any>> = base.options || []
+  const baseOptions: OptionsMap = base.options || {}
   const baseSubcommands = base.subcommands || []
   const baseDescription = base.description
   const baseVersion = base.version
+
+  const camelKey = kebabToCamel(stripPrefix(opt.long))
 
   return makeSet({
     name: baseName,
     description: baseDescription,
     version: baseVersion,
-    options: [...baseOptions, opt],
+    options: { ...baseOptions, [camelKey]: opt },
     subcommands: baseSubcommands
   }) as any
 }
@@ -267,7 +269,7 @@ export const optionHelp = function<S>(
 {
   const base = this && typeof this === "object" ? this as any : {}
   const baseName = base.name || ""
-  const baseOptions: ReadonlyArray<OptionBuilder<any, any>> = base.options || []
+  const baseOptions: OptionsMap = base.options || {}
   const baseSubcommands = base.subcommands || []
   const baseDescription = base.description
   const baseVersion = base.version
@@ -285,7 +287,7 @@ export const optionHelp = function<S>(
     name: baseName,
     description: baseDescription,
     version: baseVersion,
-    options: [...baseOptions, helpOption],
+    options: { ...baseOptions, help: helpOption },
     subcommands: baseSubcommands
   }) as any
 }
@@ -311,7 +313,7 @@ export const optionVersion = function<S>(
 {
   const base = this && typeof this === "object" ? this as any : {}
   const baseName = base.name || ""
-  const baseOptions: ReadonlyArray<OptionBuilder<any, any>> = base.options || []
+  const baseOptions: OptionsMap = base.options || {}
   const baseSubcommands = base.subcommands || []
   const baseDescription = base.description
   const baseVersion = base.version
@@ -329,7 +331,7 @@ export const optionVersion = function<S>(
     name: baseName,
     description: baseDescription,
     version: baseVersion,
-    options: [...baseOptions, versionOption],
+    options: { ...baseOptions, version: versionOption },
     subcommands: baseSubcommands
   }) as any
 }
@@ -388,7 +390,7 @@ export const handle = function<
     name: base.name || "",
     description: base.description,
     version: base.version,
-    options: base.options || [],
+    options: base.options || {},
     subcommands: base.subcommands || [],
     handler: handler as any
   }) as any
@@ -403,7 +405,7 @@ export const make = <const Name extends string>(config: {
     name: config.name,
     description: config.description,
     version: config.version,
-    options: [],
+    options: {},
     subcommands: []
   })
 
@@ -429,7 +431,7 @@ function makeSet<
   readonly name: string
   readonly description?: string
   readonly version?: string
-  readonly options: ReadonlyArray<OptionBuilder<any, any>>
+  readonly options: Opts
   readonly subcommands: Subs
   readonly handler?: (args: ExtractOptionValues<Opts>) => Effect.Effect<void>
 }): CommanderSet<Opts, Subs, Handled> {
@@ -530,7 +532,7 @@ export const parse = <
 
     const result: Record<string, any> = {}
 
-    for (const optBuilder of cmd.options) {
+    for (const optBuilder of Object.values(cmd.options)) {
       const longName = stripPrefix(optBuilder.long)
       const shortName = optBuilder.short
 
@@ -610,10 +612,11 @@ const generateHelp = <
   lines.push(`Usage: ${cmd.name} [options]`)
   lines.push("")
 
-  if (cmd.options.length > 0) {
+  const optionsArray = Object.values(cmd.options)
+  if (optionsArray.length > 0) {
     lines.push("Options:")
 
-    for (const opt of cmd.options) {
+    for (const opt of optionsArray) {
       const short = opt.short ? `-${opt.short}, ` : "    "
       const long = opt.long
       const hasValue = opt.schema !== undefined
