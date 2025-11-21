@@ -14,9 +14,8 @@ export class CommanderError extends Data.TaggedError("CommanderError")<{
 
 const TypeId: unique symbol = Symbol.for("effect-start/Commander")
 
-type KebabToCamel<S extends string> = S extends
-  `${infer First}-${infer Second}${infer Rest}`
-  ? `${First}${Uppercase<Second>}${KebabToCamel<Rest>}`
+type KebabToCamel<S extends string> = S extends `${infer First}-${infer Rest}`
+  ? `${First}${KebabToCamel<Capitalize<Rest>>}`
   : S
 
 type StripPrefix<S extends string> = S extends `--${infer Name}` ? Name
@@ -193,7 +192,7 @@ export namespace CommanderSet {
     readonly name: string
     readonly description?: string
     readonly version?: string
-    readonly options: Opts
+    readonly options: ReadonlyArray<OptionBuilder<any, any>>
     readonly subcommands: Subcommands
     readonly handler?: Handled extends true
       ? (args: ExtractOptionValues<Opts>) => Effect.Effect<void>
@@ -218,14 +217,14 @@ const optionMethod = function<
   ? CommanderSet<
     & Opts
     & {
-      [K in Opt["name"]]: Opt
+      [K in Opt["name"] as OptionNameToCamelCase<K>]: Opt
     },
     Subs,
     false
   >
   : CommanderSet<
     {
-      [K in Opt["name"]]: Opt
+      [K in Opt["name"] as OptionNameToCamelCase<K>]: Opt
     },
     [],
     false
@@ -233,7 +232,7 @@ const optionMethod = function<
 {
   const base = this && typeof this === "object" ? this as any : {}
   const baseName = base.name || ""
-  const baseOptions = base.options || {}
+  const baseOptions: ReadonlyArray<OptionBuilder<any, any>> = base.options || []
   const baseSubcommands = base.subcommands || []
   const baseDescription = base.description
   const baseVersion = base.version
@@ -242,10 +241,7 @@ const optionMethod = function<
     name: baseName,
     description: baseDescription,
     version: baseVersion,
-    options: {
-      ...baseOptions,
-      [opt.name]: opt
-    } as any,
+    options: [...baseOptions, opt],
     subcommands: baseSubcommands
   }) as any
 }
@@ -256,14 +252,14 @@ export const optionHelp = function<S>(
   ? CommanderSet<
     & Opts
     & {
-      "--help": OptionBuilder<boolean, "--help">
+      "help": OptionBuilder<boolean, "--help">
     },
     Subs,
     false
   >
   : CommanderSet<
     {
-      "--help": OptionBuilder<boolean, "--help">
+      "help": OptionBuilder<boolean, "--help">
     },
     [],
     false
@@ -271,7 +267,7 @@ export const optionHelp = function<S>(
 {
   const base = this && typeof this === "object" ? this as any : {}
   const baseName = base.name || ""
-  const baseOptions = base.options || {}
+  const baseOptions: ReadonlyArray<OptionBuilder<any, any>> = base.options || []
   const baseSubcommands = base.subcommands || []
   const baseDescription = base.description
   const baseVersion = base.version
@@ -289,10 +285,7 @@ export const optionHelp = function<S>(
     name: baseName,
     description: baseDescription,
     version: baseVersion,
-    options: {
-      ...baseOptions,
-      "--help": helpOption
-    } as any,
+    options: [...baseOptions, helpOption],
     subcommands: baseSubcommands
   }) as any
 }
@@ -303,14 +296,14 @@ export const optionVersion = function<S>(
   ? CommanderSet<
     & Opts
     & {
-      "--version": OptionBuilder<boolean, "--version">
+      "version": OptionBuilder<boolean, "--version">
     },
     Subs,
     false
   >
   : CommanderSet<
     {
-      "--version": OptionBuilder<boolean, "--version">
+      "version": OptionBuilder<boolean, "--version">
     },
     [],
     false
@@ -318,7 +311,7 @@ export const optionVersion = function<S>(
 {
   const base = this && typeof this === "object" ? this as any : {}
   const baseName = base.name || ""
-  const baseOptions = base.options || {}
+  const baseOptions: ReadonlyArray<OptionBuilder<any, any>> = base.options || []
   const baseSubcommands = base.subcommands || []
   const baseDescription = base.description
   const baseVersion = base.version
@@ -336,10 +329,7 @@ export const optionVersion = function<S>(
     name: baseName,
     description: baseDescription,
     version: baseVersion,
-    options: {
-      ...baseOptions,
-      "--version": versionOption
-    } as any,
+    options: [...baseOptions, versionOption],
     subcommands: baseSubcommands
   }) as any
 }
@@ -398,7 +388,7 @@ export const handle = function<
     name: base.name || "",
     description: base.description,
     version: base.version,
-    options: base.options || {},
+    options: base.options || [],
     subcommands: base.subcommands || [],
     handler: handler as any
   }) as any
@@ -413,7 +403,7 @@ export const make = <const Name extends string>(config: {
     name: config.name,
     description: config.description,
     version: config.version,
-    options: {},
+    options: [],
     subcommands: []
   })
 
@@ -439,7 +429,7 @@ function makeSet<
   readonly name: string
   readonly description?: string
   readonly version?: string
-  readonly options: Opts
+  readonly options: ReadonlyArray<OptionBuilder<any, any>>
   readonly subcommands: Subs
   readonly handler?: (args: ExtractOptionValues<Opts>) => Effect.Effect<void>
 }): CommanderSet<Opts, Subs, Handled> {
@@ -540,7 +530,7 @@ export const parse = <
 
     const result: Record<string, any> = {}
 
-    for (const [optName, optBuilder] of Object.entries(cmd.options)) {
+    for (const optBuilder of cmd.options) {
       const longName = stripPrefix(optBuilder.long)
       const shortName = optBuilder.short
 
@@ -551,7 +541,7 @@ export const parse = <
 
       const rawValue = longMatch ?? shortMatch
 
-      const camelKey = kebabToCamel(stripPrefix(optName))
+      const camelKey = kebabToCamel(stripPrefix(optBuilder.long))
 
       if (rawValue !== undefined) {
         if (typeof rawValue === "boolean") {
@@ -562,7 +552,7 @@ export const parse = <
               Effect.mapError(
                 (error) =>
                   new CommanderError({
-                    message: `Invalid value for option ${optName}: ${error.message}`,
+                    message: `Invalid value for option ${optBuilder.long}: ${error.message}`,
                     cause: error
                   })
               )
@@ -620,12 +610,10 @@ const generateHelp = <
   lines.push(`Usage: ${cmd.name} [options]`)
   lines.push("")
 
-  const optionsList = Object.values(cmd.options)
-
-  if (optionsList.length > 0) {
+  if (cmd.options.length > 0) {
     lines.push("Options:")
 
-    for (const opt of optionsList) {
+    for (const opt of cmd.options) {
       const short = opt.short ? `-${opt.short}, ` : "    "
       const long = opt.long
       const hasValue = opt.schema !== undefined
