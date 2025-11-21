@@ -5,7 +5,7 @@ import * as BunRoute from "./BunRoute.ts"
 describe("BunRoute", () => {
   test("load creates a BunRoute that is also a RouteSet", () => {
     const mockBundle = { default: {}, index: "" } as HTMLBundle
-    const route = BunRoute.load(() => Promise.resolve(mockBundle))
+    const route = BunRoute.load(() => Promise.resolve({ default: mockBundle }))
 
     expect(BunRoute.isBunRoute(route)).toBe(true)
     expect(typeof route.loader).toBe("function")
@@ -24,15 +24,15 @@ describe("BunRoute", () => {
 
   test("loader function is callable", async () => {
     const mockBundle = { default: {}, index: "" } as HTMLBundle
-    const route = BunRoute.load(() => Promise.resolve(mockBundle))
+    const route = BunRoute.load(() => Promise.resolve({ default: mockBundle }))
     const result = await route.loader()
 
-    expect(result).toEqual(mockBundle)
+    expect(result).toEqual({ default: mockBundle })
   })
 
   test("BunRoute has TypeId marker", () => {
     const mockBundle = { default: {}, index: "" } as HTMLBundle
-    const route = BunRoute.load(() => Promise.resolve(mockBundle))
+    const route = BunRoute.load(() => Promise.resolve({ default: mockBundle }))
 
     expect(BunRoute.TypeId in route).toBe(true)
     expect(route[BunRoute.TypeId]).toBe(BunRoute.TypeId)

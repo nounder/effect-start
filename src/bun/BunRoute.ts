@@ -16,7 +16,7 @@ export type TypeId = typeof TypeId
  */
 export type BunRoute = Route.RouteSet.Default & {
   readonly [TypeId]: TypeId
-  readonly loader: () => Promise<HTMLBundle>
+  readonly loader: () => Promise<{ default: HTMLBundle }>
 }
 
 /**
@@ -32,7 +32,9 @@ export type BunRoute = Route.RouteSet.Default & {
  * The HTML file will be bundled by Bun and served natively. The route handler
  * fetches the content from Bun's native route ({path}.original) at runtime.
  */
-export const load = (loader: () => Promise<HTMLBundle>): BunRoute => {
+export const load = (
+  loader: () => Promise<{ default: HTMLBundle }>,
+): BunRoute => {
   // Create a Route.html that fetches from Bun's server
   const route = Route.html(
     Effect.gen(function*() {

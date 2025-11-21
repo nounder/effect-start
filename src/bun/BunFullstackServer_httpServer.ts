@@ -43,6 +43,7 @@ import * as Stream from "effect/Stream"
 /** @internal */
 export const make = (
   options: Omit<ServeOptions, "fetch" | "error">,
+  buildBunRoutes?: Effect.Effect<Record<string, any>, never, any>,
 ): Effect.Effect<Server.HttpServer, never, Scope.Scope> =>
   Effect.gen(function*() {
     const handlerStack: Array<
@@ -125,13 +126,23 @@ export const make = (
             })
           }
 
+          // Dynamically build BunRoutes from Router service (if provided)
+          const bunRoutes = buildBunRoutes
+            ? yield* buildBunRoutes
+            : {}
+
+          const allRoutes = {
+            // @ts-expect-error current effect version doesn't support routes
+            ...(options.routes ?? {}),
+            ...bunRoutes,
+          }
+
           yield* Effect.acquireRelease(
             Effect.sync(() => {
               handlerStack.push(handler)
               server.reload({
                 fetch: handler,
-                // @ts-expect-error current effect veresion doesn't support routes
-                routes: options.routes,
+                routes: allRoutes,
               } as ServeOptions)
             }),
             () =>
@@ -140,8 +151,7 @@ export const make = (
                 server.reload(
                   {
                     fetch: handlerStack[handlerStack.length - 1],
-                    // @ts-expect-error current effect veresion doesn't support routes
-                    routes: options.routes,
+                    routes: allRoutes,
                   } as ServeOptions,
                 )
               }),
@@ -202,7 +212,8 @@ const makeResponse = (
 /** @internal */
 export const layerServer = (
   options: Omit<ServeOptions, "fetch" | "error">,
-) => Layer.scoped(Server.HttpServer, make(options))
+  buildBunRoutes?: Effect.Effect<Record<string, any>, never, any>,
+) => Layer.scoped(Server.HttpServer, make(options, buildBunRoutes))
 
 /** @internal */
 export const layerContext = Layer.mergeAll(
@@ -214,9 +225,10 @@ export const layerContext = Layer.mergeAll(
 /** @internal */
 export const layer = (
   options: Omit<ServeOptions, "fetch" | "error">,
+  buildBunRoutes?: Effect.Effect<Record<string, any>, never, any>,
 ) =>
   Layer.mergeAll(
-    Layer.scoped(Server.HttpServer, make(options)),
+    Layer.scoped(Server.HttpServer, make(options, buildBunRoutes)),
     layerContext,
   )
 
