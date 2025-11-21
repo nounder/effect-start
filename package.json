@@ -32,11 +32,16 @@
     }
   },
   "devDependencies": {
+    "@dprint/json": "^0.21.0",
+    "@dprint/markdown": "^0.20.0",
+    "@dprint/typescript": "^0.95.12",
     "@effect/language-service": "^0.23.3",
     "@tailwindcss/node": ">=4.1.8",
     "@types/bun": "^1.2.15",
     "@types/react": "^19.1.6",
     "@types/react-dom": "^19.1.6",
+    "dprint-js": "nounder/dprint-js#8d56ec0",
+    "dprint-markup": "nounder/dprint-markup",
     "effect": "^3.19.4",
     "effect-memfs": "nounder/effect-memfs#a976bb0",
     "ts-namespace-import": "nounder/ts-namespace-import#140c405"
