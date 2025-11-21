@@ -30,7 +30,7 @@ export interface OptionBuilder<A = any, Name extends string = string> {
   readonly long: Name
   readonly short?: string
   readonly description: string
-  readonly schema?: Schema.Schema<A, string>
+  readonly schema?: Schema.Schema<A, any>
   readonly defaultValue?: A
 }
 
@@ -38,7 +38,7 @@ type OptionBuilderWithSchema<A, Name extends string> = Omit<
   OptionBuilder<A, Name>,
   "schema" | "defaultValue"
 > & {
-  readonly schema: Schema.Schema<A, string>
+  readonly schema: Schema.Schema<A, any>
   readonly defaultValue?: A
 }
 
@@ -49,22 +49,22 @@ export const option = <
   long: Long,
   short?: Short
 ): {
-  schema<A>(
-    schema: Schema.Schema<A, string>
+  schema<A, I extends string = string>(
+    schema: Schema.Schema<A, I>
   ): OptionBuilderWithSchema<A, Long>
 
   description(
     desc: string
   ): {
-    schema<A>(
-      schema: Schema.Schema<A, string>
+    schema<A, I extends string = string>(
+      schema: Schema.Schema<A, I>
     ): OptionBuilderWithSchema<A, Long>
 
     default<A>(
       value: A
     ): {
-      schema<A2 extends A>(
-        schema: Schema.Schema<A2, string>
+      schema<A2 extends A, I extends string = string>(
+        schema: Schema.Schema<A2, I>
       ): OptionBuilderWithSchema<A2, Long>
     }
   }
@@ -72,15 +72,15 @@ export const option = <
   default<A>(
     value: A
   ): {
-    schema<A2 extends A>(
-      schema: Schema.Schema<A2, string>
+    schema<A2 extends A, I extends string = string>(
+      schema: Schema.Schema<A2, I>
     ): OptionBuilderWithSchema<A2, Long>
 
     description(
       desc: string
     ): {
-      schema<A2 extends A>(
-        schema: Schema.Schema<A2, string>
+      schema<A2 extends A, I extends string = string>(
+        schema: Schema.Schema<A2, I>
       ): OptionBuilderWithSchema<A2, Long>
     }
   }
@@ -89,7 +89,7 @@ export const option = <
   const shortName = short ? short.slice(1) : undefined
 
   return {
-    schema: <A>(schema: Schema.Schema<A, string>) => ({
+    schema: <A, I extends string = string>(schema: Schema.Schema<A, I>) => ({
       _tag: "OptionBuilder" as const,
       name: longName,
       long: longName,
@@ -99,7 +99,7 @@ export const option = <
     }),
 
     description: (desc) => ({
-      schema: <A>(schema: Schema.Schema<A, string>) => ({
+      schema: <A, I extends string = string>(schema: Schema.Schema<A, I>) => ({
         _tag: "OptionBuilder" as const,
         name: longName,
         long: longName,
@@ -109,7 +109,7 @@ export const option = <
       }),
 
       default: <A,>(value: A) => ({
-        schema: <A2 extends A>(schema: Schema.Schema<A2, string>) => ({
+        schema: <A2 extends A, I extends string = string>(schema: Schema.Schema<A2, I>) => ({
           _tag: "OptionBuilder" as const,
           name: longName,
           long: longName,
@@ -122,7 +122,7 @@ export const option = <
     }),
 
     default: <A,>(value: A) => ({
-      schema: <A2 extends A>(schema: Schema.Schema<A2, string>) => ({
+      schema: <A2 extends A, I extends string = string>(schema: Schema.Schema<A2, I>) => ({
         _tag: "OptionBuilder" as const,
         name: longName,
         long: longName,
@@ -133,7 +133,7 @@ export const option = <
       }),
 
       description: (desc) => ({
-        schema: <A2 extends A>(schema: Schema.Schema<A2, string>) => ({
+        schema: <A2 extends A, I extends string = string>(schema: Schema.Schema<A2, I>) => ({
           _tag: "OptionBuilder" as const,
           name: longName,
           long: longName,
