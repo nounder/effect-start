@@ -49,6 +49,8 @@ export const option = <
   long: Long,
   short?: Short
 ): {
+  // Generic I allows string subtypes (e.g., "true" | "false") due to Schema's type parameter invariance.
+  // Using exact `string` would reject schemas with literal encoded types.
   schema<A, I extends string = string>(
     schema: Schema.Schema<A, I>
   ): OptionBuilderWithSchema<A, Long>
