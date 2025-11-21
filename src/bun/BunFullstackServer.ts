@@ -107,36 +107,21 @@ export const layer = (opts: Options) => {
 export const buildBunRoutes = Effect.gen(function*() {
   const routerOption = yield* Effect.serviceOption(Router.Router)
 
-  console.log("Router option:", Option.isSome(routerOption) ? "SOME" : "NONE")
-
   const bunRoutes: Record<string, any> = {}
 
   if (Option.isSome(routerOption)) {
     const router = routerOption.value
-    console.log("Router modules count:", router.modules.length)
 
     // Extract BunRoute bundles from all route modules
     for (const routeModule of router.modules) {
-      console.log("Processing route module:", routeModule.path)
       const result = yield* processBunRouteModule(routeModule)
-
-      console.log(
-        "Result for",
-        routeModule.path,
-        ":",
-        Option.isSome(result) ? "FOUND BunRoute" : "Not a BunRoute",
-      )
 
       if (Option.isSome(result)) {
         const { originalPath, bundle } = result.value
-        console.log(`Registering Bun route: ${originalPath}`, bundle)
         bunRoutes[originalPath] = bundle
       }
     }
   }
-
-  console.log("Final bunRoutes:", bunRoutes)
-  console.log("BunRoutes keys:", Object.keys(bunRoutes))
 
   return bunRoutes
 })
