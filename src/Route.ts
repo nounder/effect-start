@@ -281,7 +281,7 @@ export const text = makeMediaFunction(
 export const html = makeMediaFunction(
   "GET",
   "text/html",
-  makeLayoutAwareHandler<string | JsxObject>((raw) => {
+  makeValueHandler<string | JsxObject>((raw) => {
     if (isJsxObject(raw)) {
       return HttpServerResponse.html(HyperHtml.renderToString(raw))
     }
@@ -903,39 +903,6 @@ function makeValueHandler<ExpectedRaw = string>(
   }
 }
 
-function makeLayoutAwareHandler<ExpectedRaw = string>(
-  responseFn: (raw: ExpectedRaw) => HttpServerResponse.HttpServerResponse,
-) {
-  return <A extends ExpectedRaw, E = never, R = never>(
-    handler: Effect.Effect<A, E, R>,
-  ): RouteHandler.Value<A, E, R> => {
-    return Effect.gen(function*() {
-      const raw = yield* handler
-
-      const layoutOpt = yield* Effect.serviceOption(
-        RouteServices.LayoutService,
-      )
-
-      if (layoutOpt._tag === "Some") {
-        const wrapped = yield* layoutOpt.value.wrap(raw)
-        return {
-          [HttpServerRespondable.symbol]: () =>
-            Effect.succeed(
-              HttpServerResponse.html(HyperHtml.renderToString(wrapped)),
-            ),
-          raw: wrapped as A,
-        }
-      }
-
-      return {
-        [HttpServerRespondable.symbol]: () =>
-          Effect.succeed(responseFn(raw as ExpectedRaw)),
-        raw,
-      }
-    }) as RouteHandler.Value<A, E, R>
-  }
-}
-
 /**
  * Factory function that changes method in RouteSet.
  */
@@ -1023,27 +990,6 @@ function isJsxObject(value: any) {
     && value !== null
     && "type" in value
     && "props" in value
-}
-
-export function layer(
-  ...layers: RouteServices.LayerComponent[]
-): RouteServices.LayerComponent {
-  if (layers.length === 0) {
-    return Layer.empty as RouteServices.LayerComponent
-  }
-  if (layers.length === 1) {
-    return layers[0]
-  }
-  return layers.reduce(
-    (acc, layer) => Layer.merge(acc, layer),
-    Layer.empty,
-  ) as RouteServices.LayerComponent
-}
-
-export function layout<T = unknown>(
-  handler: RouteServices.LayoutHandler,
-): RouteServices.LayerComponent {
-  return RouteServices.makeLayoutLayer(handler)
 }
 
 export const Route = RouteServices.Route

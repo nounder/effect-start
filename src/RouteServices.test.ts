@@ -1,42 +1,14 @@
 import * as t from "bun:test"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import * as Route from "./Route.ts"
 import * as RouteServices from "./RouteServices.ts"
 
-t.describe("RouteServices", () => {
-  t.it("should create layout layer", async () => {
-    const layoutHandler: RouteServices.LayoutHandler = (ctx) =>
-      Effect.succeed({
-        type: "div",
-        props: {
-          children: [
-            { type: "h1", props: { children: "Layout" } },
-            ctx.children,
-          ],
-        },
-      })
-
-    const layer = RouteServices.makeLayoutLayer(layoutHandler)
-
-    t.expect(Layer.isLayer(layer)).toBe(true)
-  })
-
-  t.it("should provide layout service with route context and slots", async () => {
-    const layoutHandler: RouteServices.LayoutHandler = (ctx) => {
-      ctx.slots.title = "Test Page"
-
-      return Effect.succeed({
-        type: "div",
-        props: {
-          children: ctx.children,
-          "data-path": ctx.route.path,
-          "data-title": ctx.slots.title,
-        },
-      })
-    }
-
-    const layer = RouteServices.makeLayoutLayer(layoutHandler)
+t.describe("RouteServices - Slots", () => {
+  t.it("route context contains slots object", async () => {
+    const program = Effect.gen(function*() {
+      const route = yield* RouteServices.Route
+      return route.slots
+    })
 
     const routeContext: RouteServices.RouteContext = {
       request: {} as any,
@@ -46,50 +18,82 @@ t.describe("RouteServices", () => {
       slots: {},
     }
 
-    const routeLayer = Layer.succeed(RouteServices.Route, routeContext)
-
-    const program = Effect.gen(function*() {
-      const layoutService = yield* RouteServices.LayoutService
-      const wrapped = yield* layoutService.wrap("Hello")
-
-      return wrapped
-    })
-
     const result = await Effect.runPromise(
       program.pipe(
-        Effect.provide(Layer.merge(routeLayer, layer)),
+        Effect.provide(Layer.succeed(RouteServices.Route, routeContext)),
       ),
     )
 
-    t.expect(result).toEqual({
-      type: "div",
-      props: {
-        children: "Hello",
-        "data-path": "/test",
-        "data-title": "Test Page",
+    t.expect(result).toEqual({})
+    t.expect(typeof result).toBe("object")
+  })
+
+  t.it("route context contains slots with default properties", async () => {
+    const program = Effect.gen(function*() {
+      const route = yield* RouteServices.Route
+      return route.slots
+    })
+
+    const routeContext: RouteServices.RouteContext = {
+      request: {} as any,
+      url: new URL("http://localhost/test"),
+      path: "/test",
+      params: {},
+      slots: {
+        title: "Default Title",
+        description: "Default Description",
       },
-    })
-
-    t.expect(routeContext.slots.title).toBe("Test Page")
-  })
-
-  t.it("should allow direct slots mutation", async () => {
-    const layoutHandler: RouteServices.LayoutHandler = (ctx) => {
-      ctx.slots.title = "My Title"
-      ctx.slots.description = "My Description"
-
-      return Effect.succeed({
-        type: "html",
-        props: {
-          children: [
-            { type: "title", props: { children: ctx.slots.title } },
-            ctx.children,
-          ],
-        },
-      })
     }
 
-    const layer = RouteServices.makeLayoutLayer(layoutHandler)
+    const result = await Effect.runPromise(
+      program.pipe(
+        Effect.provide(Layer.succeed(RouteServices.Route, routeContext)),
+      ),
+    )
+
+    t.expect(result.title).toBe("Default Title")
+    t.expect(result.description).toBe("Default Description")
+  })
+
+  t.it("route handler can read slots", async () => {
+    const program = Effect.gen(function*() {
+      const route = yield* RouteServices.Route
+      const title = route.slots.title
+      const description = route.slots.description
+      return { title, description }
+    })
+
+    const routeContext: RouteServices.RouteContext = {
+      request: {} as any,
+      url: new URL("http://localhost/test"),
+      path: "/test",
+      params: {},
+      slots: {
+        title: "My Page Title",
+        description: "My Page Description",
+      },
+    }
+
+    const result = await Effect.runPromise(
+      program.pipe(
+        Effect.provide(Layer.succeed(RouteServices.Route, routeContext)),
+      ),
+    )
+
+    t.expect(result.title).toBe("My Page Title")
+    t.expect(result.description).toBe("My Page Description")
+  })
+
+  t.it("route handler can write to slots", async () => {
+    const program = Effect.gen(function*() {
+      const route = yield* RouteServices.Route
+
+      route.slots.title = "Updated Title"
+      route.slots.description = "Updated Description"
+      route.slots.custom = "Custom Value"
+
+      return route.slots
+    })
 
     const routeContext: RouteServices.RouteContext = {
       request: {} as any,
@@ -99,62 +103,86 @@ t.describe("RouteServices", () => {
       slots: {},
     }
 
-    const routeLayer = Layer.succeed(RouteServices.Route, routeContext)
-
-    const program = Effect.gen(function*() {
-      const layoutService = yield* RouteServices.LayoutService
-      const wrapped = yield* layoutService.wrap("Content")
-
-      return wrapped
-    })
-
     const result = await Effect.runPromise(
       program.pipe(
-        Effect.provide(Layer.merge(routeLayer, layer)),
+        Effect.provide(Layer.succeed(RouteServices.Route, routeContext)),
       ),
     )
 
-    t.expect(result.props.children[0].props.children).toBe("My Title")
-    t.expect(routeContext.slots.title).toBe("My Title")
-    t.expect(routeContext.slots.description).toBe("My Description")
+    t.expect(result.title).toBe("Updated Title")
+    t.expect(result.description).toBe("Updated Description")
+    t.expect(result.custom).toBe("Custom Value")
+
+    t.expect(routeContext.slots.title).toBe("Updated Title")
+    t.expect(routeContext.slots.description).toBe("Updated Description")
+    t.expect(routeContext.slots.custom).toBe("Custom Value")
   })
 
-  t.it("should merge multiple layers", () => {
-    const layout1 = Route.layout((ctx) =>
-      Effect.succeed({
-        type: "div",
-        props: { children: ctx.children },
-      })
+  t.it("slots mutations persist across yields", async () => {
+    const program = Effect.gen(function*() {
+      const route = yield* RouteServices.Route
+
+      route.slots.title = "First"
+
+      yield* Effect.succeed(void 0)
+
+      route.slots.description = "Second"
+
+      const routeAgain = yield* RouteServices.Route
+
+      return {
+        title: routeAgain.slots.title,
+        description: routeAgain.slots.description,
+      }
+    })
+
+    const routeContext: RouteServices.RouteContext = {
+      request: {} as any,
+      url: new URL("http://localhost/test"),
+      path: "/test",
+      params: {},
+      slots: {},
+    }
+
+    const result = await Effect.runPromise(
+      program.pipe(
+        Effect.provide(Layer.succeed(RouteServices.Route, routeContext)),
+      ),
     )
 
-    const layout2 = Route.layout((ctx) =>
-      Effect.succeed({
-        type: "section",
-        props: { children: ctx.children },
-      })
-    )
-
-    const merged = Route.layer(layout1, layout2)
-
-    t.expect(Layer.isLayer(merged)).toBe(true)
+    t.expect(result.title).toBe("First")
+    t.expect(result.description).toBe("Second")
   })
 
-  t.it("should handle empty layer", () => {
-    const empty = Route.layer()
+  t.it("slots support custom properties beyond title and description", async () => {
+    const program = Effect.gen(function*() {
+      const route = yield* RouteServices.Route
 
-    t.expect(Layer.isLayer(empty)).toBe(true)
-  })
+      route.slots.author = "John Doe"
+      route.slots.publishedDate = "2024-01-01"
+      route.slots.tags = ["typescript", "effect"]
+      route.slots.metadata = { views: 100, likes: 50 }
 
-  t.it("should handle single layer", () => {
-    const layout = Route.layout((ctx) =>
-      Effect.succeed({
-        type: "div",
-        props: { children: ctx.children },
-      })
+      return route.slots
+    })
+
+    const routeContext: RouteServices.RouteContext = {
+      request: {} as any,
+      url: new URL("http://localhost/test"),
+      path: "/test",
+      params: {},
+      slots: {},
+    }
+
+    const result = await Effect.runPromise(
+      program.pipe(
+        Effect.provide(Layer.succeed(RouteServices.Route, routeContext)),
+      ),
     )
 
-    const single = Route.layer(layout)
-
-    t.expect(single).toBe(layout)
+    t.expect(result.author).toBe("John Doe")
+    t.expect(result.publishedDate).toBe("2024-01-01")
+    t.expect(result.tags).toEqual(["typescript", "effect"])
+    t.expect(result.metadata).toEqual({ views: 100, likes: 50 })
   })
 })
