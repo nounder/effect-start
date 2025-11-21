@@ -18,10 +18,21 @@
     "./hyper": "./src/hyper/index.ts",
     "./x/*": "./src/x/*/index.ts"
   },
+  "dependencies": {
+    "@effect/platform": ">=0.82",
+    "@effect/platform-bun": ">=0.65"
+  },
+  "peerDependencies": {
+    "typescript": "^5.8.3",
+    "effect": ">=3.16.4"
+  },
+  "peerDependenciesMeta": {
+    "@tailwindcss/node": {
+      "optional": true
+    }
+  },
   "devDependencies": {
     "@effect/language-service": "^0.23.3",
-    "@effect/platform": "^0.87.13",
-    "@effect/platform-bun": "^0.72.18",
     "@tailwindcss/node": ">=4.1.8",
     "@types/bun": "^1.2.15",
     "@types/react": "^19.1.6",
@@ -29,27 +40,5 @@
     "effect": "^3.19.4",
     "effect-memfs": "nounder/effect-memfs#a976bb0",
     "ts-namespace-import": "nounder/ts-namespace-import#140c405"
-  },
-  "peerDependencies": {
-    "typescript": "^5.8.3",
-    "effect": ">=3.16.4",
-    "@effect/platform": ">=0.82",
-    "@effect/platform-bun": ">=0.65",
-    "@tailwindcss/node": "^4.1.7"
-  },
-  "peerDependenciesMeta": {
-    "@effect/platform": {
-      "optional": true
-    },
-    "@effect/platform-bun": {
-      "optional": true
-    },
-    "@tailwindcss/node": {
-      "optional": true
-    }
-  },
-  "dependencies": {
-    "@effect/sql": "^0.48.0",
-    "@effect/sql-sqlite-bun": "^0.49.0"
   }
 }
