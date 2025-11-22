@@ -6,6 +6,7 @@
       "dependencies": {
         "@effect/platform": ">=0.82",
         "@effect/platform-bun": ">=0.65",
+        "dprint-cli": "^0.2.1",
       },
       "devDependencies": {
         "@dprint/json": "^0.21.0",
@@ -135,9 +136,11 @@
 
     "detect-libc": ["detect-libc@2.0.4", "", {}, "sha512-3UDv+G9CsCKO1WKMGw9fwq/SWJYbI0c5Y7LU1AXYoDdbhE2AHQ6N6Nb34sG8Fj7T5APy8qXDCKuuIHd1BR0tVA=="],
 
+    "dprint-cli": ["dprint-cli@0.2.1", "", { "dependencies": { "@dprint/formatter": "^0.4.1" }, "bin": { "dprint": "bin/dprint" } }, "sha512-J1xIXj4JCWrY3OvXoWyULozFEEAkmWDqC5sa9hUfHvjEHaLMVOpebmdfhoCgdiuYGyezDk4xAuRGZ7Aop/Ahvg=="],
+
     "dprint-js": ["dprint-js@github:nounder/dprint-js#8d56ec0", { "dependencies": { "@dprint/formatter": "^0.4.1", "ignore": "^7.0.5" }, "bin": { "dprint-js": "./bin/dprint-js" } }, "nounder-dprint-js-8d56ec0"],
 
-    "dprint-markup": ["dprint-markup@github:nounder/dprint-markup#dd6eb36", {}, "nounder-dprint-markup-dd6eb36"],
+    "dprint-markup": ["dprint-markup@github:nounder/dprint-markup#74fa37f", {}, "nounder-dprint-markup-74fa37f"],
 
     "effect": ["effect@3.19.6", "", { "dependencies": { "@standard-schema/spec": "^1.0.0", "fast-check": "^3.23.1" } }, "sha512-Eh1E/CI+xCAcMSDC5DtyE29yWJINC0zwBbwHappQPorjKyS69rCA8qzpsHpfhKnPDYgxdg8zkknii8mZ+6YMQA=="],
 
