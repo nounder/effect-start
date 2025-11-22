@@ -6,13 +6,19 @@
       "dependencies": {
         "@effect/platform": ">=0.82",
         "@effect/platform-bun": ">=0.65",
+        "dprint-cli": "^0.2.1",
       },
       "devDependencies": {
+        "@dprint/json": "^0.21.0",
+        "@dprint/markdown": "^0.20.0",
+        "@dprint/typescript": "^0.95.12",
         "@effect/language-service": "^0.23.3",
         "@tailwindcss/node": ">=4.1.8",
         "@types/bun": "^1.2.15",
         "@types/react": "^19.1.6",
         "@types/react-dom": "^19.1.6",
+        "dprint-js": "nounder/dprint-js#8d56ec0",
+        "dprint-markup": "nounder/dprint-markup",
         "effect": "^3.19.4",
         "effect-memfs": "nounder/effect-memfs#a976bb0",
         "ts-namespace-import": "nounder/ts-namespace-import#140c405",
@@ -25,6 +31,14 @@
   },
   "packages": {
     "@ampproject/remapping": ["@ampproject/remapping@2.3.0", "", { "dependencies": { "@jridgewell/gen-mapping": "^0.3.5", "@jridgewell/trace-mapping": "^0.3.24" } }, "sha512-30iZtAPgz+LTIYoeivqYo853f02jBYSd5uGnGpkFV0M3xOt9aN73erkgYAmZU43x4VfqcnLxW9Kpg3R5LC4YYw=="],
+
+    "@dprint/formatter": ["@dprint/formatter@0.4.1", "", {}, "sha512-IB/GXdlMOvi0UhQQ9mcY15Fxcrc2JPadmo6tqefCNV0bptFq7YBpggzpqYXldBXDa04CbKJ+rDwO2eNRPE2+/g=="],
+
+    "@dprint/json": ["@dprint/json@0.21.0", "", {}, "sha512-Ptds5055ES2mziP7WDh04DOU/KDumQ+iBb3FuYyniXaEBDasp7Jr/Emarxo9JCEtGb0zEMdM83H7iADHSNXxtg=="],
+
+    "@dprint/markdown": ["@dprint/markdown@0.20.0", "", {}, "sha512-qvynFdQZwul4Y+hoMP02QerEhM5VItb4cO8/qpQrSuQuYvDU+bIseiheVAetSpWlNPBU1JK8bQKloiCSp9lXnA=="],
+
+    "@dprint/typescript": ["@dprint/typescript@0.95.12", "", {}, "sha512-zcXPOAWdE+R6pyga06YL5oPpPCZwlPX12Dq3yBOky+sjHDGqYcVV3PIGLWG0kl036iGLmbzK1qkD35sDTZpkjg=="],
 
     "@effect/cluster": ["@effect/cluster@0.38.16", "", { "peerDependencies": { "@effect/platform": "^0.84.11", "@effect/rpc": "^0.61.15", "@effect/sql": "^0.37.12", "@effect/workflow": "^0.1.14", "effect": "^3.16.7" } }, "sha512-Q3UJmDx/ABn3Rx/S6n9O8f2TS1qrJNbP0W6lfouel9JduvDW/1dKQ1dFJYRNCk3i5mcpPTSGn47Oq08muArrqw=="],
 
@@ -122,6 +136,12 @@
 
     "detect-libc": ["detect-libc@2.0.4", "", {}, "sha512-3UDv+G9CsCKO1WKMGw9fwq/SWJYbI0c5Y7LU1AXYoDdbhE2AHQ6N6Nb34sG8Fj7T5APy8qXDCKuuIHd1BR0tVA=="],
 
+    "dprint-cli": ["dprint-cli@0.2.1", "", { "dependencies": { "@dprint/formatter": "^0.4.1" }, "bin": { "dprint": "bin/dprint" } }, "sha512-J1xIXj4JCWrY3OvXoWyULozFEEAkmWDqC5sa9hUfHvjEHaLMVOpebmdfhoCgdiuYGyezDk4xAuRGZ7Aop/Ahvg=="],
+
+    "dprint-js": ["dprint-js@github:nounder/dprint-js#8d56ec0", { "dependencies": { "@dprint/formatter": "^0.4.1", "ignore": "^7.0.5" }, "bin": { "dprint-js": "./bin/dprint-js" } }, "nounder-dprint-js-8d56ec0"],
+
+    "dprint-markup": ["dprint-markup@github:nounder/dprint-markup#74fa37f", {}, "nounder-dprint-markup-74fa37f"],
+
     "effect": ["effect@3.19.6", "", { "dependencies": { "@standard-schema/spec": "^1.0.0", "fast-check": "^3.23.1" } }, "sha512-Eh1E/CI+xCAcMSDC5DtyE29yWJINC0zwBbwHappQPorjKyS69rCA8qzpsHpfhKnPDYgxdg8zkknii8mZ+6YMQA=="],
 
     "effect-memfs": ["effect-memfs@github:nounder/effect-memfs#a976bb0", { "dependencies": { "memfs": "^4.17.2" }, "peerDependencies": { "@effect/platform": ">=0.82", "effect": ">=3.15", "typescript": ">=5" } }, "nounder-effect-memfs-a976bb0"],
@@ -137,6 +157,8 @@
     "graceful-fs": ["graceful-fs@4.2.11", "", {}, "sha512-RbJ5/jmFcNNCcDV5o9eTnBLJ/HszWV0P73bc+Ff4nS/rJj+YaS6IGyiOL0VoBYX+l1Wrl3k63h/KrH+nhJ0XvQ=="],
 
     "hyperdyperid": ["hyperdyperid@1.2.0", "", {}, "sha512-Y93lCzHYgGWdrJ66yIktxiaGULYc6oGiABxhcO5AufBeOyoIdZF7bIfLaOrbM0iGIOXQQgxxRrFEnb+Y6w1n4A=="],
+
+    "ignore": ["ignore@7.0.5", "", {}, "sha512-Hs59xBNfUIunMFgWAbGX5cq6893IbWg4KnrjbYwX3tx0ztorVgTDA6B2sxf8ejHJ4wz8BqGUMYlnzNBer5NvGg=="],
 
     "is-extglob": ["is-extglob@2.1.1", "", {}, "sha512-SbKbANkN603Vi4jEZv49LeVJMn4yGwsbzZworEoyEiutsN3nJYdbO36zfhGJ6QEDpOZIFkDtnq5JRxmvl3jsoQ=="],
 
