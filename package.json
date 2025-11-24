@@ -18,6 +18,10 @@
     "./hyper": "./src/hyper/index.ts",
     "./x/*": "./src/x/*/index.ts"
   },
+  "scripts": {
+    "format": "bunx dprint fmt",
+    "deploy": "bunx npm publish --access public"
+  },
   "dependencies": {
     "@effect/platform": ">=0.82",
     "@effect/platform-bun": ">=0.65"
@@ -45,5 +49,9 @@
     "effect": "^3.19.4",
     "effect-memfs": "nounder/effect-memfs#a976bb0",
     "ts-namespace-import": "nounder/ts-namespace-import#140c405"
-  }
+  },
+  "files": [
+    "src/",
+    "package.json"
+  ]
 }
