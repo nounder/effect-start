@@ -730,7 +730,7 @@ function mergeSchemas<
   return result
 }
 
-function make<
+export function make<
   Method extends RouteMethod = "*",
   Media extends RouteMedia = "*",
   Handler extends RouteHandler = never,
