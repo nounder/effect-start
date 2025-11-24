@@ -242,10 +242,11 @@ export function layer(options: {
   path: string
 }) {
   let manifestPath = options.path
-
-  // handle use of import.meta.resolve
   if (manifestPath.startsWith("file://")) {
     manifestPath = NUrl.fileURLToPath(manifestPath)
+  }
+  if (NPath.extname(manifestPath) === "") {
+    manifestPath = NPath.join(manifestPath, "index.ts")
   }
 
   const routesPath = NPath.dirname(manifestPath)
