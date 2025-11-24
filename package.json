@@ -20,8 +20,7 @@
   },
   "dependencies": {
     "@effect/platform": ">=0.82",
-    "@effect/platform-bun": ">=0.65",
-    "dprint-cli": "^0.2.1"
+    "@effect/platform-bun": ">=0.65"
   },
   "peerDependencies": {
     "typescript": "^5.8.3",
@@ -41,7 +40,8 @@
     "@types/bun": "^1.2.15",
     "@types/react": "^19.1.6",
     "@types/react-dom": "^19.1.6",
-    "dprint-js": "nounder/dprint-js#8d56ec0",
+    "dprint-cli": "^0.3.2",
+    "dprint": "^0.50.2",
     "dprint-markup": "nounder/dprint-markup",
     "effect": "^3.19.4",
     "effect-memfs": "nounder/effect-memfs#a976bb0",
