@@ -36,7 +36,7 @@ export function router(options: {
         yield* httpRouter.concat(startRouter.httpRouter)
       }),
     ),
-    Layer.merge(
+    Layer.provideMerge(
       Router.layerPromise(options.load),
       FileRouter.layer(options),
     ),
