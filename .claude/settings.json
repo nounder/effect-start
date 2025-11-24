@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/scripts/format"
+            "command": "bun -e 'await import(\"dprint-cli/x/claude\").then(mod => mod.ClaudeCodeHooks.runMain())'"
           }
         ]
       }
