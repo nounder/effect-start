@@ -1,6 +1,4 @@
-import { Route } from "effect-start"
+import { BunRoute } from "effect-start/bun"
 
-export default Route
-  .text(function*() {
-    return "Hello!"
-  })
+export default BunRoute
+  .loadBundle(() => import("../../app.html"))
