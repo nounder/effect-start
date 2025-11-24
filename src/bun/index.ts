@@ -1,4 +1,5 @@
 export * as BunBundle from "./BunBundle.ts"
+export * as BunHttpServer from "./BunHttpServer.ts"
 export * as BunImportTrackerPlugin from "./BunImportTrackerPlugin.ts"
 export * as BunRoute from "./BunRoute.ts"
 export * as BunTailwindPlugin from "./BunTailwindPlugin.ts"

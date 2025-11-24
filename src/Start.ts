@@ -1,5 +1,4 @@
 import * as BunContext from "@effect/platform-bun/BunContext"
-import * as BunHttpServer from "@effect/platform-bun/BunHttpServer"
 import * as BunRuntime from "@effect/platform-bun/BunRuntime"
 import * as FetchHttpClient from "@effect/platform/FetchHttpClient"
 import * as HttpClient from "@effect/platform/HttpClient"
@@ -9,6 +8,7 @@ import * as Effect from "effect/Effect"
 import * as Function from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as BunBundle from "./bun/BunBundle.ts"
+import * as BunHttpServer from "./bun/BunHttpServer.ts"
 import * as Bundle from "./Bundle.ts"
 import * as BundleHttp from "./BundleHttp.ts"
 import * as FileRouter from "./FileRouter.ts"
@@ -122,8 +122,13 @@ export function serve<ROut, E>(
     Layer.provide([
       FetchHttpClient.layer,
       HttpRouter.Default.Live,
-      BunHttpServer.layer({
+      BunHttpServer.layerServer({
+        reusePort: false,
         port: 3000,
+        development: true,
+        routes: {
+          "/data": Response.json({ message: "Hello from /data!" }),
+        },
       }),
       StartApp.layer(),
     ]),

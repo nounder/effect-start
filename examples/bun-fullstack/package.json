@@ -6,12 +6,12 @@
     "dev": "bun --hot src/server.ts"
   },
   "dependencies": {
-    "effect": "^3.19.4",
+    "effect": "^3.19.6",
     "effect-start": "^0.9.0"
   },
   "devDependencies": {
-    "@effect/language-service": "^0.23.3",
-    "@types/bun": "^1.3.2"
+    "@effect/language-service": "^0.56.0",
+    "@types/bun": "^1.3.3"
   },
   "peerDependencies": {
     "typescript": "^5.9.3"
