@@ -18,7 +18,7 @@
         "@types/react": "^19.1.6",
         "@types/react-dom": "^19.1.6",
         "dprint": "^0.50.2",
-        "dprint-cli": "^0.3.2",
+        "dprint-cli": "^0.4.0",
         "dprint-markup": "nounder/dprint-markup",
         "effect": "^3.19.4",
         "effect-memfs": "nounder/effect-memfs#a976bb0",
@@ -155,7 +155,7 @@
 
     "dprint": ["dprint@0.50.2", "", { "optionalDependencies": { "@dprint/darwin-arm64": "0.50.2", "@dprint/darwin-x64": "0.50.2", "@dprint/linux-arm64-glibc": "0.50.2", "@dprint/linux-arm64-musl": "0.50.2", "@dprint/linux-riscv64-glibc": "0.50.2", "@dprint/linux-x64-glibc": "0.50.2", "@dprint/linux-x64-musl": "0.50.2", "@dprint/win32-arm64": "0.50.2", "@dprint/win32-x64": "0.50.2" }, "bin": { "dprint": "bin.js" } }, "sha512-+0Fzg+17jsMMUouK00/Fara5YtGOuE76EAJINHB8VpkXHd0n00rMXtw/03qorOgz23eo8Y0UpYvNZBJJo3aNtw=="],
 
-    "dprint-cli": ["dprint-cli@0.3.2", "", { "bin": { "dprint": "bin/dprint" } }, "sha512-88XwQFHsqg940c6p4d0MBvTvXcqwHFrLBc1dROruDbNKHyk4BmpRFML4lQsiKuYzqOzPMopq08+ixbSvv1hDpw=="],
+    "dprint-cli": ["dprint-cli@0.4.0", "", { "bin": { "dprint": "bin/dprint" } }, "sha512-XdPL9R+n/HAvMJtA99lBiKnQOENqt5NUOjyof7ykOWt12L7p0jb189DWMAJmga8YHcO3cxmMrZPuCe6lsd2CuA=="],
 
     "dprint-markup": ["dprint-markup@github:nounder/dprint-markup#74fa37f", {}, "nounder-dprint-markup-74fa37f"],
 
