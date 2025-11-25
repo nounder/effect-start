@@ -34,6 +34,7 @@ export class ServerRequestImpl extends Inspectable.Class
 {
   readonly [HttpServerRequest.TypeId]: HttpServerRequest.TypeId
   readonly [HttpIncomingMessage.TypeId]: HttpIncomingMessage.TypeId
+
   constructor(
     readonly source: Request,
     public resolve: (response: Response) => void,
@@ -46,6 +47,7 @@ export class ServerRequestImpl extends Inspectable.Class
     this[HttpServerRequest.TypeId] = HttpServerRequest.TypeId
     this[HttpIncomingMessage.TypeId] = HttpIncomingMessage.TypeId
   }
+
   toJSON(): unknown {
     return HttpIncomingMessage.inspect(this, {
       _id: "@effect/platform/HttpServerRequest",
@@ -53,6 +55,7 @@ export class ServerRequestImpl extends Inspectable.Class
       url: this.originalUrl,
     })
   }
+
   modify(
     options: {
       readonly url?: string | undefined
@@ -69,17 +72,21 @@ export class ServerRequestImpl extends Inspectable.Class
       options.remoteAddress ?? this.remoteAddressOverride,
     )
   }
+
   get method(): HttpMethod {
     return this.source.method.toUpperCase() as HttpMethod
   }
+
   get originalUrl() {
     return this.source.url
   }
+
   get remoteAddress(): Option.Option<string> {
     return this.remoteAddressOverride
       ? Option.some(this.remoteAddressOverride)
       : Option.fromNullable(this.bunServer.requestIP(this.source)?.address)
   }
+
   get headers(): Headers.Headers {
     this.headersOverride ??= Headers.fromInput(this.source.headers)
     return this.headersOverride
@@ -116,6 +123,7 @@ export class ServerRequestImpl extends Inspectable.Class
   private textEffect:
     | Effect.Effect<string, HttpServerError.RequestError>
     | undefined
+
   get text(): Effect.Effect<string, HttpServerError.RequestError> {
     if (this.textEffect) {
       return this.textEffect
@@ -169,6 +177,7 @@ export class ServerRequestImpl extends Inspectable.Class
       Scope.Scope | FileSystem.FileSystem | Path.Path
     >
     | undefined
+
   get multipart(): Effect.Effect<
     Multipart.Persisted,
     Multipart.MultipartError,
@@ -220,7 +229,7 @@ export class ServerRequestImpl extends Inspectable.Class
       ]),
       ([deferred, closeDeferred, semaphore]) =>
         Effect.async<Socket.Socket, HttpServerError.RequestError>((resume) => {
-          const success = this.bunServer.upgrade<WebSocketContext>(
+          const success = this.bunServer.upgrade(
             this.source,
             {
               data: {

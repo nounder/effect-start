@@ -21,16 +21,28 @@ import {
   WebSocketContext,
 } from "./BunHttpServer_request.ts"
 
-export type ServeOptions<R extends string = string> =
-  & Omit<Bun.Serve.Options<undefined, R>, "fetch" | "error" | "websocket">
-  & { readonly routes?: Bun.Serve.Routes<undefined, R> }
+/**
+ * Basically `Omit<Bun.Serve.Options, "fetch" | "error" | "websocket">`
+ * TypeScript 5.9 cannot verify discriminated union types used in
+ * {@link Bun.serve} so we need to define them explicitly.
+ */
+interface ServeOptions<R extends string = string> {
+  readonly port?: number
+  readonly hostname?: string
+  readonly routes?: Bun.Serve.Routes<WebSocketContext, R>
+  readonly reusePort?: boolean
+  readonly ipv6Only?: boolean
+  readonly idleTimeout?: number
+}
 
-export interface BunServer<R extends string = string> {
-  readonly server: Bun.Server<undefined>
+export interface BunServer<
+  R extends string = string,
+> {
+  readonly server: Bun.Server<WebSocketContext>
   readonly reload: (options: {
     fetch: (
       request: Request,
-      server: Bun.Server<undefined>,
+      server: Bun.Server<WebSocketContext>,
     ) => Response | Promise<Response>
   }) => void
 }
@@ -39,14 +51,16 @@ export const BunServer = Context.GenericTag<BunServer>(
   "effect-start/BunHttpServer",
 )
 
-export const make = <R extends string = string>(
+export const make = <
+  R extends string = string,
+>(
   options: ServeOptions<R>,
 ): Effect.Effect<BunServer<R>, never, Scope.Scope> =>
   Effect.gen(function*() {
     const handlerStack: Array<
       (
         request: Request,
-        server: BunServerInstance<undefined>,
+        server: BunServerInstance<WebSocketContext>,
       ) => Response | Promise<Response>
     > = [
       function(_request, _server) {
@@ -54,31 +68,33 @@ export const make = <R extends string = string>(
       },
     ]
 
-    const server = Bun.serve<WebSocketContext>({
+    const websocket: Bun.WebSocketHandler<WebSocketContext> = {
+      open(ws) {
+        Deferred.unsafeDone(ws.data.deferred, Exit.succeed(ws))
+      },
+      message(ws, message) {
+        ws.data.run(message)
+      },
+      close(ws, code, closeReason) {
+        Deferred.unsafeDone(
+          ws.data.closeDeferred,
+          Socket.defaultCloseCodeIsError(code)
+            ? Exit.fail(
+              new Socket.SocketCloseError({
+                reason: "Close",
+                code,
+                closeReason,
+              }),
+            )
+            : Exit.void,
+        )
+      },
+    }
+
+    const server = Bun.serve({
       ...options,
       fetch: handlerStack[0],
-      websocket: {
-        open(ws) {
-          Deferred.unsafeDone(ws.data.deferred, Exit.succeed(ws))
-        },
-        message(ws, message) {
-          ws.data.run(message)
-        },
-        close(ws, code, closeReason) {
-          Deferred.unsafeDone(
-            ws.data.closeDeferred,
-            Socket.defaultCloseCodeIsError(code)
-              ? Exit.fail(
-                new Socket.SocketCloseError({
-                  reason: "Close",
-                  code,
-                  closeReason,
-                }),
-              )
-              : Exit.void,
-          )
-        },
-      },
+      websocket,
     })
 
     yield* Effect.addFinalizer(() =>
@@ -90,12 +106,13 @@ export const make = <R extends string = string>(
     const routes = options.routes
 
     return BunServer.of({
-      server: server as unknown as Bun.Server<undefined>,
+      server,
       reload({ fetch }) {
         handlerStack.push(fetch)
         server.reload({
           fetch,
           routes,
+          websocket,
         })
       },
     })
@@ -105,7 +122,9 @@ export const layer = <R extends string = string>(
   options: ServeOptions<R>,
 ): Layer.Layer<BunServer<R>> => Layer.scoped(BunServer, make(options))
 
-export const makeHttpServer = <R extends string = string>(
+export const makeHttpServer = <
+  R extends string = string,
+>(
   options: ServeOptions<R>,
 ): Effect.Effect<HttpServer.HttpServer, never, Scope.Scope> =>
   Effect.gen(function*() {
@@ -120,31 +139,33 @@ export const makeHttpServer = <R extends string = string>(
       },
     ]
 
-    const server = Bun.serve<WebSocketContext>({
+    const websocket: Bun.WebSocketHandler<WebSocketContext> = {
+      open(ws) {
+        Deferred.unsafeDone(ws.data.deferred, Exit.succeed(ws))
+      },
+      message(ws, message) {
+        ws.data.run(message)
+      },
+      close(ws, code, closeReason) {
+        Deferred.unsafeDone(
+          ws.data.closeDeferred,
+          Socket.defaultCloseCodeIsError(code)
+            ? Exit.fail(
+              new Socket.SocketCloseError({
+                reason: "Close",
+                code,
+                closeReason,
+              }),
+            )
+            : Exit.void,
+        )
+      },
+    }
+
+    const server = Bun.serve({
       ...options,
       fetch: handlerStack[0],
-      websocket: {
-        open(ws) {
-          Deferred.unsafeDone(ws.data.deferred, Exit.succeed(ws))
-        },
-        message(ws, message) {
-          ws.data.run(message)
-        },
-        close(ws, code, closeReason) {
-          Deferred.unsafeDone(
-            ws.data.closeDeferred,
-            Socket.defaultCloseCodeIsError(code)
-              ? Exit.fail(
-                new Socket.SocketCloseError({
-                  reason: "Close",
-                  code,
-                  closeReason,
-                }),
-              )
-              : Exit.void,
-          )
-        },
-      },
+      websocket,
     })
 
     yield* Effect.addFinalizer(() =>
@@ -205,6 +226,7 @@ export const makeHttpServer = <R extends string = string>(
               server.reload({
                 fetch: handler,
                 routes,
+                websocket,
               })
             }),
             () =>
@@ -213,6 +235,7 @@ export const makeHttpServer = <R extends string = string>(
                 server.reload({
                   fetch: handlerStack[handlerStack.length - 1],
                   routes,
+                  websocket,
                 })
               }),
           )
