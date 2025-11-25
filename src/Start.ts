@@ -1,4 +1,5 @@
 import * as FetchHttpClient from "@effect/platform/FetchHttpClient"
+import * as FileSystem from "@effect/platform/FileSystem"
 import * as HttpClient from "@effect/platform/HttpClient"
 import * as HttpRouter from "@effect/platform/HttpRouter"
 import * as HttpServer from "@effect/platform/HttpServer"
@@ -12,6 +13,7 @@ import * as Bundle from "./Bundle.ts"
 import * as BundleHttp from "./BundleHttp.ts"
 import * as FileRouter from "./FileRouter.ts"
 import * as HttpAppExtra from "./HttpAppExtra.ts"
+import * as NodeFileSystem from "./NodeFileSystem.ts"
 import * as Router from "./Router.ts"
 import * as StartApp from "./StartApp.ts"
 
@@ -87,8 +89,9 @@ export function serve<ROut, E>(
       ROut,
       E,
       | HttpServer.HttpServer
-      | HttpRouter.Default
       | HttpClient.HttpClient
+      | HttpRouter.Default
+      | FileSystem.FileSystem
     >
   }>,
 ) {
@@ -128,6 +131,9 @@ export function serve<ROut, E>(
           "/data": Response.json({ message: "Hello from /data!" }),
         },
       }),
+      // We probably want to include the filesystem only in development where
+      // we use it for FileRouter, bundler reloading
+      NodeFileSystem.layer,
       StartApp.layer(),
     ]),
     Layer.launch,

@@ -17,5 +17,5 @@ export default Start.layer(
 )
 
 if (import.meta.main) {
-  Start.serve(() => import(import.meta.url))
+  Start.serve(() => import("./server"))
 }
