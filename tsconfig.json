@@ -30,8 +30,7 @@
         "name": "@effect/language-service",
         "namespaceImportPackages": [
           "effect",
-          "@effect/platform",
-          "@effect/platform-bun"
+          "@effect/platform"
         ]
       },
       {
