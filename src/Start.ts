@@ -131,6 +131,7 @@ export function serve<ROut, E>(
         },
       }),
       StartApp.layer(),
+      BunContext.layer,
     ]),
     Layer.launch,
     BunRuntime.runMain,

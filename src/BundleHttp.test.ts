@@ -15,7 +15,7 @@ import * as BunBundle from "./bun/BunBundle.ts"
 const effect = effectFn(
   Layer.effect(
     Bundle.ClientBundle,
-    BunBundle.buildClient(IndexHtml),
+    BunBundle.buildClient(IndexHtml as any),
   ),
 )
 

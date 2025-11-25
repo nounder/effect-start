@@ -33,7 +33,9 @@ interface ServeOptions<R extends string = string> {
   readonly reusePort?: boolean
   readonly ipv6Only?: boolean
   readonly idleTimeout?: number
+  readonly development?: boolean
 }
+
 
 export interface BunServer<
   R extends string = string,

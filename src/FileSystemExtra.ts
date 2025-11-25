@@ -35,7 +35,7 @@ export const filterDirectory = (event: WatchEvent): boolean => {
  * If the path is a directory, it appends / to the path.
  */
 export const watchSource = (
-  opts?: WatchOptions & {
+  opts?: Omit<WatchOptions, "encoding"> & {
     path?: string
     filter?: (event: WatchEvent) => boolean
   },
@@ -49,7 +49,7 @@ export const watchSource = (
       NFSP.watch(baseDir, {
         persistent: opts?.persistent ?? false,
         recursive: opts?.recursive ?? true,
-        encoding: opts?.encoding,
+        encoding: "utf-8",
         signal: opts?.signal,
       }),
       error => handleWatchError(error, baseDir),

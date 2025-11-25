@@ -46,7 +46,7 @@
     "dprint-cli": "^0.4.1",
     "dprint-markup": "nounder/dprint-markup",
     "effect": "^3.19.6",
-    "effect-memfs": "nounder/effect-memfs#a976bb0",
+    "effect-memfs": "^0.8.0",
     "ts-namespace-import": "nounder/ts-namespace-import#140c405"
   },
   "files": [
