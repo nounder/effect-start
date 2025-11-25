@@ -57,18 +57,22 @@ export type HttpRouterFromServerRoutes<
  * Converts file-based route path format to HttpRouter path format.
  * Examples:
  *   /movies/[id] -> /movies/:id
+ *   /users/[[id]] -> /users/:id (optional treated as required)
  *   /docs/[[...slug]] -> /docs/*
  *   /api/[...path] -> /api/*
  */
 function convertPathFormat(path: string): string {
   return path
-    // Convert required params: [id] -> :id
-    .replace(/\[([^\]\.]+)\]/g, ":$1")
     // Convert optional rest params: [[...slug]] -> *
     .replace(/\[\[\.\.\.([^\]]+)\]\]/g, "*")
     // Convert required rest params: [...path] -> *
     .replace(/\[\.\.\.([^\]]+)\]/g, "*")
+    // Convert optional params: [[id]] -> :id (no optional support)
+    .replace(/\[\[([^\]\.]+)\]\]/g, ":$1")
+    // Convert required params: [id] -> :id
+    .replace(/\[([^\]\.]+)\]/g, ":$1")
 }
+
 
 /**
  * Makes a HttpRouter from file-based routes.

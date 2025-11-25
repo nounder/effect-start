@@ -13,6 +13,7 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as FiberSet from "effect/FiberSet"
 import * as Layer from "effect/Layer"
+import * as Ref from "effect/Ref"
 import type * as Runtime from "effect/Runtime"
 import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
@@ -21,54 +22,49 @@ import {
   WebSocketContext,
 } from "./BunHttpServer_request.ts"
 
+type FetchHandler = (
+  request: Request,
+  server: BunServerInstance<WebSocketContext>,
+) => Response | Promise<Response>
+
 /**
  * Basically `Omit<Bun.Serve.Options, "fetch" | "error" | "websocket">`
  * TypeScript 5.9 cannot verify discriminated union types used in
  * {@link Bun.serve} so we need to define them explicitly.
  */
-interface ServeOptions<R extends string = string> {
+interface ServeOptions {
   readonly port?: number
   readonly hostname?: string
-  readonly routes?: Bun.Serve.Routes<WebSocketContext, R>
   readonly reusePort?: boolean
   readonly ipv6Only?: boolean
   readonly idleTimeout?: number
   readonly development?: boolean
 }
 
-
-export interface BunServer<
-  R extends string = string,
-> {
+export type BunServer = {
   readonly server: Bun.Server<WebSocketContext>
-  readonly reload: (options: {
-    fetch: (
-      request: Request,
-      server: Bun.Server<WebSocketContext>,
-    ) => Response | Promise<Response>
-  }) => void
+  readonly addRoutes: (routes: Record<string, Bun.HTMLBundle>) => void
+  // TODO: we probably don't want to expose these methods publicly
+  readonly pushHandler: (fetch: FetchHandler) => void
+  readonly popHandler: () => void
 }
 
 export const BunServer = Context.GenericTag<BunServer>(
   "effect-start/BunHttpServer",
 )
 
-export const make = <
-  R extends string = string,
->(
-  options: ServeOptions<R>,
-): Effect.Effect<BunServer<R>, never, Scope.Scope> =>
+export const make = (
+  options: ServeOptions,
+): Effect.Effect<BunServer, never, Scope.Scope> =>
   Effect.gen(function*() {
-    const handlerStack: Array<
-      (
-        request: Request,
-        server: BunServerInstance<WebSocketContext>,
-      ) => Response | Promise<Response>
-    > = [
+    const handlerStack: Array<FetchHandler> = [
       function(_request, _server) {
         return new Response("not found", { status: 404 })
       },
     ]
+
+    // TODO: should we put it in the ref?
+    let currentRoutes: Record<string, Bun.HTMLBundle> = {}
 
     const websocket: Bun.WebSocketHandler<WebSocketContext> = {
       open(ws) {
@@ -105,146 +101,102 @@ export const make = <
       })
     )
 
-    const routes = options.routes
+    const reload = () => {
+      server.reload({
+        fetch: handlerStack[handlerStack.length - 1],
+        routes: currentRoutes,
+        websocket,
+      })
+    }
 
     return BunServer.of({
       server,
-      reload({ fetch }) {
+      pushHandler(fetch) {
         handlerStack.push(fetch)
-        server.reload({
-          fetch,
-          routes,
-          websocket,
-        })
+        reload()
+      },
+      popHandler() {
+        handlerStack.pop()
+        reload()
+      },
+      addRoutes(routes) {
+        currentRoutes = {
+          ...currentRoutes,
+          ...routes,
+        }
+        reload()
       },
     })
   })
 
-export const layer = <R extends string = string>(
-  options: ServeOptions<R>,
-): Layer.Layer<BunServer<R>> => Layer.scoped(BunServer, make(options))
+export const layer = (
+  options: ServeOptions,
+): Layer.Layer<BunServer> => Layer.scoped(BunServer, make(options))
 
-export const makeHttpServer = <
-  R extends string = string,
->(
-  options: ServeOptions<R>,
-): Effect.Effect<HttpServer.HttpServer, never, Scope.Scope> =>
-  Effect.gen(function*() {
-    const handlerStack: Array<
-      (
-        request: Request,
-        server: BunServerInstance<WebSocketContext>,
-      ) => Response | Promise<Response>
-    > = [
-      function(_request, _server) {
-        return new Response("not found", { status: 404 })
-      },
-    ]
+export const makeHttpServer: Effect.Effect<
+  HttpServer.HttpServer,
+  never,
+  Scope.Scope | BunServer
+> = Effect.gen(function*() {
+  const bunServer = yield* BunServer
 
-    const websocket: Bun.WebSocketHandler<WebSocketContext> = {
-      open(ws) {
-        Deferred.unsafeDone(ws.data.deferred, Exit.succeed(ws))
-      },
-      message(ws, message) {
-        ws.data.run(message)
-      },
-      close(ws, code, closeReason) {
-        Deferred.unsafeDone(
-          ws.data.closeDeferred,
-          Socket.defaultCloseCodeIsError(code)
-            ? Exit.fail(
-              new Socket.SocketCloseError({
-                reason: "Close",
-                code,
-                closeReason,
-              }),
-            )
-            : Exit.void,
-        )
-      },
-    }
-
-    const server = Bun.serve({
-      ...options,
-      fetch: handlerStack[0],
-      websocket,
-    })
-
-    yield* Effect.addFinalizer(() =>
-      Effect.sync(() => {
-        server.stop()
-      })
-    )
-
-    const routes = options.routes
-
-    return HttpServer.make({
-      address: {
-        _tag: "TcpAddress",
-        port: server.port!,
-        hostname: server.hostname!,
-      },
-      serve(httpApp, middleware) {
-        return Effect.gen(function*() {
-          const runFork = yield* FiberSet.makeRuntime<never>()
-          const runtime = yield* Effect.runtime<never>()
-          const app = HttpApp.toHandled(
-            httpApp,
-            (request, response) =>
-              Effect.sync(() => {
-                ;(request as ServerRequestImpl).resolve(
-                  makeResponse(request, response, runtime),
-                )
-              }),
-            middleware,
-          )
-
-          function handler(
-            request: Request,
-            bunServer: BunServerInstance<WebSocketContext>,
-          ) {
-            return new Promise<Response>((resolve, _reject) => {
-              const fiber = runFork(Effect.provideService(
-                app,
-                HttpServerRequest.HttpServerRequest,
-                new ServerRequestImpl(
-                  request,
-                  resolve,
-                  removeHost(request.url),
-                  bunServer,
-                ),
-              ))
-              request.signal.addEventListener("abort", () => {
-                runFork(
-                  fiber.interruptAsFork(HttpServerError.clientAbortFiberId),
-                )
-              }, { once: true })
-            })
-          }
-
-          yield* Effect.acquireRelease(
+  return HttpServer.make({
+    address: {
+      _tag: "TcpAddress",
+      port: bunServer.server.port!,
+      hostname: bunServer.server.hostname!,
+    },
+    serve(httpApp, middleware) {
+      return Effect.gen(function*() {
+        const runFork = yield* FiberSet.makeRuntime<never>()
+        const runtime = yield* Effect.runtime<never>()
+        const app = HttpApp.toHandled(
+          httpApp,
+          (request, response) =>
             Effect.sync(() => {
-              handlerStack.push(handler)
-              server.reload({
-                fetch: handler,
-                routes,
-                websocket,
-              })
+              ;(request as ServerRequestImpl).resolve(
+                makeResponse(request, response, runtime),
+              )
             }),
-            () =>
-              Effect.sync(() => {
-                handlerStack.pop()
-                server.reload({
-                  fetch: handlerStack[handlerStack.length - 1],
-                  routes,
-                  websocket,
-                })
-              }),
-          )
-        })
-      },
-    })
+          middleware,
+        )
+
+        function handler(
+          request: Request,
+          server: BunServerInstance<WebSocketContext>,
+        ) {
+          return new Promise<Response>((resolve, _reject) => {
+            const fiber = runFork(Effect.provideService(
+              app,
+              HttpServerRequest.HttpServerRequest,
+              new ServerRequestImpl(
+                request,
+                resolve,
+                removeHost(request.url),
+                server,
+              ),
+            ))
+            request.signal.addEventListener("abort", () => {
+              runFork(
+                fiber.interruptAsFork(HttpServerError.clientAbortFiberId),
+              )
+            }, { once: true })
+          })
+        }
+
+        yield* Effect.acquireRelease(
+          Effect.sync(() => {
+            bunServer.pushHandler(handler)
+          }),
+          () =>
+            Effect.sync(() => {
+              bunServer.popHandler()
+            }),
+        )
+      })
+    },
   })
+})
 
 const makeResponse = (
   request: HttpServerRequest.HttpServerRequest,
@@ -301,14 +253,12 @@ const makeResponse = (
   }
 }
 
-export const layerServer = <R extends string = string>(
-  options: ServeOptions<R>,
-): Layer.Layer<
-  HttpServer.HttpServer
-> =>
-  Layer.scoped(
-    HttpServer.HttpServer,
-    makeHttpServer(options),
+export const layerServer = (
+  options: ServeOptions,
+): Layer.Layer<HttpServer.HttpServer | BunServer> =>
+  Layer.provideMerge(
+    Layer.scoped(HttpServer.HttpServer, makeHttpServer),
+    layer(options),
   )
 
 const removeHost = (url: string) => {

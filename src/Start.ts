@@ -6,8 +6,10 @@ import * as HttpServer from "@effect/platform/HttpServer"
 import * as Effect from "effect/Effect"
 import * as Function from "effect/Function"
 import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
 import * as BunBundle from "./bun/BunBundle.ts"
 import * as BunHttpServer from "./bun/BunHttpServer.ts"
+import * as BunRoute from "./bun/BunRoute.ts"
 import * as BunRuntime from "./bun/BunRuntime.ts"
 import * as Bundle from "./Bundle.ts"
 import * as BundleHttp from "./BundleHttp.ts"
@@ -92,6 +94,7 @@ export function serve<ROut, E>(
       | HttpClient.HttpClient
       | HttpRouter.Default
       | FileSystem.FileSystem
+      | BunHttpServer.BunServer
     >
   }>,
 ) {
@@ -104,6 +107,14 @@ export function serve<ROut, E>(
 
   return Function.pipe(
     Layer.unwrapEffect(Effect.gen(function*() {
+      const bunServer = yield* BunHttpServer.BunServer
+      const router = yield* Effect.serviceOption(Router.Router)
+
+      if (Option.isSome(router)) {
+        const bunRoutes = yield* BunRoute.bundlesFromRouter(router.value)
+        bunServer.addRoutes(bunRoutes)
+      }
+
       const middlewareService = yield* StartApp.StartApp
       const middleware = yield* middlewareService.middleware
 
@@ -123,16 +134,7 @@ export function serve<ROut, E>(
     Layer.provide([
       FetchHttpClient.layer,
       HttpRouter.Default.Live,
-      BunHttpServer.layerServer({
-        reusePort: false,
-        port: 3000,
-        development: true,
-        routes: {
-          "/data": Response.json({ message: "Hello from /data!" }),
-        },
-      }),
-      // We probably want to include the filesystem only in development where
-      // we use it for FileRouter, bundler reloading
+      BunHttpServer.layerServer({ port: 3000 }),
       NodeFileSystem.layer,
       StartApp.layer(),
     ]),
