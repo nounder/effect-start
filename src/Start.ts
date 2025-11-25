@@ -111,7 +111,7 @@ export function serve<ROut, E>(
       const router = yield* Effect.serviceOption(Router.Router)
 
       if (Option.isSome(router)) {
-        const bunRoutes = yield* BunRoute.bundlesFromRouter(router.value)
+        const bunRoutes = yield* BunRoute.routesFromRouter(router.value)
         bunServer.addRoutes(bunRoutes)
       }
 

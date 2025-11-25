@@ -1,8 +1,11 @@
+import * as HttpApp from "@effect/platform/HttpApp"
+import * as HttpServerRespondable from "@effect/platform/HttpServerRespondable"
 import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
-import { type HTMLBundle } from "bun"
+import type * as Bun from "bun"
 import * as Effect from "effect/Effect"
 import * as Function from "effect/Function"
 import * as Predicate from "effect/Predicate"
+import type * as Runtime from "effect/Runtime"
 import * as Route from "../Route.ts"
 import * as Router from "../Router.ts"
 import * as BunRouteSyntax from "./BunRouteSyntax.ts"
@@ -13,11 +16,11 @@ export type BunRoute =
   & Route.Route
   & {
     [TypeId]: typeof TypeId
-    load: () => Promise<HTMLBundle>
+    load: () => Promise<Bun.HTMLBundle>
   }
 
 export function loadBundle(
-  load: () => Promise<HTMLBundle | { default: HTMLBundle }>,
+  load: () => Promise<Bun.HTMLBundle | { default: Bun.HTMLBundle }>,
 ): BunRoute {
   const route = Route.make({
     method: "GET",
@@ -50,7 +53,7 @@ export function isBunRoute(input: unknown): input is BunRoute {
  */
 export function bundlesFromRouter(
   router: Router.RouterContext,
-): Effect.Effect<Record<string, HTMLBundle>> {
+): Effect.Effect<Record<string, Bun.HTMLBundle>> {
   return Function.pipe(
     Effect.forEach(
       router.modules,
@@ -90,7 +93,83 @@ export function bundlesFromRouter(
       )
     ),
     Effect.map((entries) =>
-      Object.fromEntries(entries) as Record<string, HTMLBundle>
+      Object.fromEntries(entries) as Record<string, Bun.HTMLBundle>
     ),
   )
+}
+
+type BunServerFetchHandler = (request: Request) => Response | Promise<Response>
+
+type BunServerRouteHandler =
+  | Bun.HTMLBundle
+  | BunServerFetchHandler
+  | Partial<Record<Bun.Serve.HTTPMethod, BunServerFetchHandler>>
+
+export type BunRoutes = Record<string, BunServerRouteHandler>
+
+type MethodHandlers = Partial<
+  Record<Bun.Serve.HTTPMethod, BunServerFetchHandler>
+>
+
+function isMethodHandlers(value: unknown): value is MethodHandlers {
+  return typeof value === "object" && value !== null && !("index" in value)
+}
+
+export function routesFromRouter(
+  router: Router.RouterContext,
+  runtime?: Runtime.Runtime<never>,
+): Effect.Effect<BunRoutes> {
+  return Effect.gen(function*() {
+    const rt = runtime ?? (yield* Effect.runtime<never>())
+
+    const modules = yield* Effect.forEach(
+      router.modules,
+      (mod) =>
+        Effect.promise(() =>
+          mod.load().then((m) => ({ path: mod.path, exported: m.default }))
+        ),
+    )
+
+    const allRoutes = modules.flatMap(({ path, exported }) => {
+      if (Route.isRouteSet(exported)) {
+        return [...exported.set].map((route) => [path, route] as const)
+      }
+      return []
+    })
+
+    const result: BunRoutes = {}
+
+    for (const [path, route] of allRoutes) {
+      const bunPath = BunRouteSyntax.toBunPath(path)
+
+      if (isBunRoute(route)) {
+        const bundle = yield* Effect.promise(() => route.load())
+        result[bunPath] = bundle
+      } else {
+        const httpApp = Effect.gen(function*() {
+          const res = yield* route.handler
+          if (HttpServerResponse.isServerResponse(res)) {
+            return res
+          }
+          return yield* res[HttpServerRespondable.symbol]()
+        })
+
+        const webHandler = HttpApp.toWebHandlerRuntime(rt)(httpApp)
+        const handler: BunServerFetchHandler = (request) => webHandler(request)
+
+        if (route.method === "*") {
+          result[bunPath] = handler
+        } else {
+          const existing = result[bunPath]
+          if (isMethodHandlers(existing)) {
+            existing[route.method] = handler
+          } else {
+            result[bunPath] = { [route.method]: handler }
+          }
+        }
+      }
+    }
+
+    return result
+  })
 }

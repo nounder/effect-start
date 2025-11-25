@@ -21,6 +21,7 @@ import {
   ServerRequestImpl,
   WebSocketContext,
 } from "./BunHttpServer_request.ts"
+import type * as BunRoute from "./BunRoute.ts"
 
 type FetchHandler = (
   request: Request,
@@ -43,7 +44,7 @@ interface ServeOptions {
 
 export type BunServer = {
   readonly server: Bun.Server<WebSocketContext>
-  readonly addRoutes: (routes: Record<string, Bun.HTMLBundle>) => void
+  readonly addRoutes: (routes: BunRoute.BunRoutes) => void
   // TODO: we probably don't want to expose these methods publicly
   readonly pushHandler: (fetch: FetchHandler) => void
   readonly popHandler: () => void
@@ -63,8 +64,7 @@ export const make = (
       },
     ]
 
-    // TODO: should we put it in the ref?
-    let currentRoutes: Record<string, Bun.HTMLBundle> = {}
+    let currentRoutes: BunRoute.BunRoutes = {}
 
     const websocket: Bun.WebSocketHandler<WebSocketContext> = {
       open(ws) {
