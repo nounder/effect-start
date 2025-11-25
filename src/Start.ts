@@ -1,5 +1,3 @@
-import * as BunContext from "@effect/platform-bun/BunContext"
-import * as BunRuntime from "@effect/platform-bun/BunRuntime"
 import * as FetchHttpClient from "@effect/platform/FetchHttpClient"
 import * as HttpClient from "@effect/platform/HttpClient"
 import * as HttpRouter from "@effect/platform/HttpRouter"
@@ -9,6 +7,7 @@ import * as Function from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as BunBundle from "./bun/BunBundle.ts"
 import * as BunHttpServer from "./bun/BunHttpServer.ts"
+import * as BunRuntime from "./bun/BunRuntime.ts"
 import * as Bundle from "./Bundle.ts"
 import * as BundleHttp from "./BundleHttp.ts"
 import * as FileRouter from "./FileRouter.ts"
@@ -90,7 +89,6 @@ export function serve<ROut, E>(
       | HttpServer.HttpServer
       | HttpRouter.Default
       | HttpClient.HttpClient
-      | BunContext.BunContext
     >
   }>,
 ) {
@@ -131,9 +129,10 @@ export function serve<ROut, E>(
         },
       }),
       StartApp.layer(),
-      BunContext.layer,
     ]),
     Layer.launch,
     BunRuntime.runMain,
   )
 }
+
+export const runMain = BunRuntime.runMain
