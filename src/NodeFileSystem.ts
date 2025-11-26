@@ -711,11 +711,14 @@ const makeFileSystem = Effect.map(
 
 export const layer = Layer.effect(FileSystem.FileSystem, makeFileSystem)
 
-export function handleErrnoException(module: SystemError["module"], method: string) {
-  return function (
+export function handleErrnoException(
+  module: SystemError["module"],
+  method: string,
+) {
+  return function(
     err: NodeJS.ErrnoException,
     [path]: [path: NFS.PathLike | number, ...args: Array<any>],
-  ): PlatformError  {
+  ): PlatformError {
     let reason: SystemErrorReason = "Unknown"
 
     switch (err.code) {

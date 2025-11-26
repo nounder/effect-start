@@ -90,8 +90,8 @@ t.it("HTTP methods", () =>
 
 t.it("router handles requests correctly", () =>
   effect(function*() {
-    const routerContext = yield* Router.Router
-    const client = TestHttpClient.make(routerContext.httpRouter)
+    const router = yield* FileHttpRouter.make(SampleRoutes)
+    const client = TestHttpClient.make(router)
 
     const getUsersResponse = yield* client.get("/users")
 

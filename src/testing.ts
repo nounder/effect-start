@@ -39,12 +39,21 @@ export const effectFn = <RL>(layer?: Layer.Layer<RL, any>) =>
  * some tools, like effect-start, use it to generate temporary
  * files that are then loaded into a runtime.
  */
-const clearStackTraces = (err: any | Error) => {
+const clearStackTraces = (err: unknown) => {
   const ExternalStackTraceLineRegexp = /\(.*\/node_modules\/[^\.]/
 
-  const newErr = new Error(err.message)
-  const stack: string = err.stack ?? ""
+  const message = err instanceof Error
+    ? err.message
+    : typeof err === "object" && err !== null && "message" in err
+    ? String(err.message)
+    : String(err)
+  const stack: string = err instanceof Error
+    ? err.stack ?? ""
+    : typeof err === "object" && err !== null && "stack" in err
+    ? String(err.stack)
+    : ""
 
+  const newErr = new Error(message)
   newErr.stack = Function.pipe(
     stack.split("\n"),
     Array.takeWhile(s => !ExternalStackTraceLineRegexp.test(s)),

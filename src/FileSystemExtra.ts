@@ -33,9 +33,10 @@ export const watchSource = (
 
   return Function.pipe(
     Stream.unwrap(
-      Effect.map(FileSystem.FileSystem, fs =>
-        fs.watch(baseDir, { recursive: opts?.recursive ?? true })
-      )
+      Effect.map(
+        FileSystem.FileSystem,
+        fs => fs.watch(baseDir, { recursive: opts?.recursive ?? true }),
+      ),
     ),
     Stream.mapEffect(e =>
       Effect.gen(function*() {

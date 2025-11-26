@@ -28,4 +28,3 @@ function transformSegment(segment: string): string {
 
   return segment
 }
-

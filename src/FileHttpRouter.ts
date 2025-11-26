@@ -1,5 +1,4 @@
 // @ts-nocheck
-import * as HttpApp from "@effect/platform/HttpApp"
 import * as HttpMiddleware from "@effect/platform/HttpMiddleware"
 import * as HttpRouter from "@effect/platform/HttpRouter"
 import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
@@ -73,11 +72,10 @@ function convertPathFormat(path: string): string {
     .replace(/\[([^\]\.]+)\]/g, ":$1")
 }
 
-
 /**
  * Makes a HttpRouter from file-based routes.
  */
-export function make<Routes extends Router.ServerRoutes>(
+export function make<Routes extends ReadonlyArray<Router.ServerRoute>>(
   routes: Routes,
 ): Effect.Effect<HttpRouterFromServerRoutes<Routes>> {
   return Effect.gen(function*() {
@@ -115,11 +113,12 @@ export function middleware() {
   return HttpMiddleware.make((app) =>
     Effect.gen(function*() {
       const routerContext = yield* Router.Router
-      const router = routerContext.httpRouter
+      const router = yield* make(
+        routerContext.modules as ReadonlyArray<Router.ServerRoute>,
+      )
       const res = yield* router.pipe(
         Effect.catchTag("RouteNotFound", () => app),
       )
-
       return res
     })
   )
