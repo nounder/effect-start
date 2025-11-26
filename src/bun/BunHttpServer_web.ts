@@ -1,10 +1,12 @@
 import * as Cookies from "@effect/platform/Cookies"
 import type * as FileSystem from "@effect/platform/FileSystem"
 import * as Headers from "@effect/platform/Headers"
+import * as HttpApp from "@effect/platform/HttpApp"
 import * as HttpIncomingMessage from "@effect/platform/HttpIncomingMessage"
 import type { HttpMethod } from "@effect/platform/HttpMethod"
 import * as HttpServerError from "@effect/platform/HttpServerError"
 import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
+import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
 import type * as Multipart from "@effect/platform/Multipart"
 import type * as Path from "@effect/platform/Path"
 import * as Socket from "@effect/platform/Socket"
@@ -19,6 +21,7 @@ import * as FiberSet from "effect/FiberSet"
 import * as Inspectable from "effect/Inspectable"
 import * as Option from "effect/Option"
 import type { ReadonlyRecord } from "effect/Record"
+import * as Runtime from "effect/Runtime"
 import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 
@@ -323,4 +326,59 @@ export class ServerRequestImpl extends Inspectable.Class
 
 function wsDefaultRun(this: WebSocketContext, _: Uint8Array | string) {
   this.buffer.push(_)
+}
+
+export function makeResponse(
+  request: HttpServerRequest.HttpServerRequest,
+  response: HttpServerResponse.HttpServerResponse,
+  runtime: Runtime.Runtime<never>,
+): Response {
+  const fields: {
+    headers: globalThis.Headers
+    status?: number
+    statusText?: string
+  } = {
+    headers: new globalThis.Headers(response.headers),
+    status: response.status,
+  }
+
+  if (!Cookies.isEmpty(response.cookies)) {
+    for (const header of Cookies.toSetCookieHeaders(response.cookies)) {
+      fields.headers.append("set-cookie", header)
+    }
+  }
+
+  if (response.statusText !== undefined) {
+    fields.statusText = response.statusText
+  }
+
+  if (request.method === "HEAD") {
+    return new Response(undefined, fields)
+  }
+  const ejectedResponse = HttpApp.unsafeEjectStreamScope(response)
+  const body = ejectedResponse.body
+  switch (body._tag) {
+    case "Empty": {
+      return new Response(undefined, fields)
+    }
+    case "Uint8Array":
+    case "Raw": {
+      if (body.body instanceof Response) {
+        for (const [key, value] of fields.headers.entries()) {
+          body.body.headers.set(key, value)
+        }
+        return body.body
+      }
+      return new Response(body.body as BodyInit, fields)
+    }
+    case "FormData": {
+      return new Response(body.formData as FormData, fields)
+    }
+    case "Stream": {
+      return new Response(
+        Stream.toReadableStreamRuntime(body.stream, runtime),
+        fields,
+      )
+    }
+  }
 }

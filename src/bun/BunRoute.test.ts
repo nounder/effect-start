@@ -139,7 +139,7 @@ t.describe("routesFromRouter", () => {
     t.expect(routes["/docs/[...path]"]).toBeUndefined()
   })
 
-  t.test("includes BunRoute bundles in result", async () => {
+  t.test("creates proxy and internal routes for BunRoute", async () => {
     const mockBundle = { index: "index.html" } as HTMLBundle
     const bunRoute = BunRoute.loadBundle(() => Promise.resolve(mockBundle))
 
@@ -149,7 +149,12 @@ t.describe("routesFromRouter", () => {
       ),
     )
 
-    t.expect(routes["/app"]).toBe(mockBundle)
+    const internalPath = Object.keys(routes).find((k) =>
+      k.includes("~BunRoute-")
+    )
+    t.expect(internalPath).toBeDefined()
+    t.expect(routes[internalPath!]).toBe(mockBundle)
+    t.expect(typeof routes["/app"]).toBe("function")
   })
 
   t.test("handles mixed BunRoute and regular routes", async () => {
@@ -173,11 +178,15 @@ t.describe("routesFromRouter", () => {
               }),
           },
         ],
-        httpRouter: {} as Router.RouterContext["httpRouter"],
       }),
     )
 
-    t.expect(routes["/app"]).toBe(mockBundle)
+    const internalPath = Object.keys(routes).find((k) =>
+      k.includes("~BunRoute-")
+    )
+    t.expect(internalPath).toBeDefined()
+    t.expect(routes[internalPath!]).toBe(mockBundle)
+    t.expect(typeof routes["/app"]).toBe("function")
     t.expect(routes["/api/health"]).toBeDefined()
     t.expect(typeof routes["/api/health"]).toBe("object")
   })
@@ -297,15 +306,18 @@ const makeRouter = (
     segments: [],
     load: () => Promise.resolve({ default: m.routes }),
   })),
-  httpRouter: {} as Router.RouterContext["httpRouter"],
 })
 
 type FetchFn = (path: string, init?: { method?: string }) => Promise<Response>
 
-type HandlerFn = (req: Request) => Response | Promise<Response>
+type HandlerFn = (
+  req: Request,
+  server: unknown,
+) => Response | Promise<Response>
 
 async function makeFetch(router: Router.RouterContext): Promise<FetchFn> {
   const routes = await Effect.runPromise(BunRoute.routesFromRouter(router))
+  const mockServer = {} as import("bun").Server<unknown>
 
   return async (path, init) => {
     const method = init?.method ?? "GET"
@@ -316,7 +328,7 @@ async function makeFetch(router: Router.RouterContext): Promise<FetchFn> {
     }
 
     if (typeof handler === "function") {
-      return handler(new Request(`http://localhost${path}`, init))
+      return handler(new Request(`http://localhost${path}`, init), mockServer)
     }
 
     const methodHandler = (handler as Record<string, HandlerFn>)[method]
@@ -324,6 +336,9 @@ async function makeFetch(router: Router.RouterContext): Promise<FetchFn> {
       throw new Error(`No handler for ${method} ${path}`)
     }
 
-    return methodHandler(new Request(`http://localhost${path}`, init))
+    return methodHandler(
+      new Request(`http://localhost${path}`, init),
+      mockServer,
+    )
   }
 }

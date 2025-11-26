@@ -6,6 +6,7 @@ import * as Effect from "effect/Effect"
 import * as Function from "effect/Function"
 import * as Predicate from "effect/Predicate"
 import type * as Runtime from "effect/Runtime"
+import * as Random from "../Random.ts"
 import * as Route from "../Route.ts"
 import * as Router from "../Router.ts"
 import * as BunRouteSyntax from "./BunRouteSyntax.ts"
@@ -98,7 +99,10 @@ export function bundlesFromRouter(
   )
 }
 
-type BunServerFetchHandler = (request: Request) => Response | Promise<Response>
+type BunServerFetchHandler = (
+  request: Request,
+  server: Bun.Server<unknown>,
+) => Response | Promise<Response>
 
 type BunServerRouteHandler =
   | Bun.HTMLBundle
@@ -115,18 +119,32 @@ function isMethodHandlers(value: unknown): value is MethodHandlers {
   return typeof value === "object" && value !== null && !("index" in value)
 }
 
+/**
+ * Converts a Router into Bun-compatible routes passed to {@link Bun.serve}.
+ *
+ * For BunRoutes (HtmlBundle), creates two routes:
+ * - An internal route at `${path}~BunRoute-${nonce}:${path}` holding the actual HtmlBundle
+ * - A proxy route at the original path that forwards requests to the internal route
+ *
+ * This allows middleware to be attached to the proxy route while Bun handles
+ * the HtmlBundle natively on the internal route.
+ */
 export function routesFromRouter(
   router: Router.RouterContext,
   runtime?: Runtime.Runtime<never>,
 ): Effect.Effect<BunRoutes> {
   return Effect.gen(function*() {
     const rt = runtime ?? (yield* Effect.runtime<never>())
+    const nonce = Random.token(6)
 
     const modules = yield* Effect.forEach(
       router.modules,
       (mod) =>
         Effect.promise(() =>
-          mod.load().then((m) => ({ path: mod.path, exported: m.default }))
+          mod.load().then((m) => ({
+            path: mod.path,
+            exported: m.default,
+          }))
         ),
     )
 
@@ -144,7 +162,16 @@ export function routesFromRouter(
 
       if (isBunRoute(route)) {
         const bundle = yield* Effect.promise(() => route.load())
-        result[bunPath] = bundle
+        const internalPath = `${path}~BunRoute-${nonce}`
+
+        result[internalPath] = bundle
+
+        const proxyHandler: BunServerFetchHandler = (request) => {
+          const url = new URL(internalPath, request.url)
+          return fetch(new Request(url, request))
+        }
+
+        result[bunPath] = proxyHandler
       } else {
         const httpApp = Effect.gen(function*() {
           const res = yield* route.handler
@@ -157,7 +184,7 @@ export function routesFromRouter(
         const webHandler = HttpApp.toWebHandlerRuntime(rt)(httpApp)
         const handler: BunServerFetchHandler = (request) => webHandler(request)
 
-        if (route.method === "*") {
+        if (route.method === "*" || isBunRoute(route)) {
           result[bunPath] = handler
         } else {
           const existing = result[bunPath]
@@ -172,4 +199,13 @@ export function routesFromRouter(
 
     return result
   })
+}
+
+export const isHTMLBundle = (handle: any) => {
+  return (
+    typeof handle === "object"
+    && handle !== null
+    && (handle.toString() === "[object HTMLBundle]"
+      || typeof handle.index === "string")
+  )
 }

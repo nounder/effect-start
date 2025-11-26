@@ -1,9 +1,7 @@
-import * as Cookies from "@effect/platform/Cookies"
 import * as HttpApp from "@effect/platform/HttpApp"
 import * as HttpServer from "@effect/platform/HttpServer"
 import * as HttpServerError from "@effect/platform/HttpServerError"
 import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
-import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
 import * as Socket from "@effect/platform/Socket"
 import * as Bun from "bun"
 import * as Context from "effect/Context"
@@ -12,13 +10,14 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as FiberSet from "effect/FiberSet"
 import * as Layer from "effect/Layer"
-import type * as Runtime from "effect/Runtime"
 import type * as Scope from "effect/Scope"
-import * as Stream from "effect/Stream"
+import * as Random from "../Random.ts"
+import EmptyHTML from "./_empty.html"
 import {
+  makeResponse,
   ServerRequestImpl,
   WebSocketContext,
-} from "./BunHttpServer_request.ts"
+} from "./BunHttpServer_web.ts"
 import type * as BunRoute from "./BunRoute.ts"
 
 type FetchHandler = (
@@ -49,7 +48,7 @@ export type BunServer = {
 }
 
 export const BunServer = Context.GenericTag<BunServer>(
-  "effect-start/BunHttpServer",
+  "effect-start/BunServer",
 )
 
 export const make = (
@@ -67,6 +66,11 @@ export const make = (
     ]
 
     let currentRoutes: BunRoute.BunRoutes = {}
+
+    // Bun HMR doesn't work on successive calls to `server.reload` if there are no routes
+    // on server start. We workaround that by passing a dummy HTMLBundle [2025-11-26]
+    // see: https://github.com/oven-sh/bun/issues/23564
+    currentRoutes[`/.BunEmptyHtml-${Random.token(6)}`] = EmptyHTML
 
     const websocket: Bun.WebSocketHandler<WebSocketContext> = {
       open(ws) {
@@ -93,6 +97,7 @@ export const make = (
 
     const server = Bun.serve({
       ...options,
+      routes: currentRoutes,
       fetch: handlerStack[0],
       websocket,
     })
@@ -199,61 +204,6 @@ export const makeHttpServer: Effect.Effect<
     },
   })
 })
-
-const makeResponse = (
-  request: HttpServerRequest.HttpServerRequest,
-  response: HttpServerResponse.HttpServerResponse,
-  runtime: Runtime.Runtime<never>,
-): Response => {
-  const fields: {
-    headers: globalThis.Headers
-    status?: number
-    statusText?: string
-  } = {
-    headers: new globalThis.Headers(response.headers),
-    status: response.status,
-  }
-
-  if (!Cookies.isEmpty(response.cookies)) {
-    for (const header of Cookies.toSetCookieHeaders(response.cookies)) {
-      fields.headers.append("set-cookie", header)
-    }
-  }
-
-  if (response.statusText !== undefined) {
-    fields.statusText = response.statusText
-  }
-
-  if (request.method === "HEAD") {
-    return new Response(undefined, fields)
-  }
-  const ejectedResponse = HttpApp.unsafeEjectStreamScope(response)
-  const body = ejectedResponse.body
-  switch (body._tag) {
-    case "Empty": {
-      return new Response(undefined, fields)
-    }
-    case "Uint8Array":
-    case "Raw": {
-      if (body.body instanceof Response) {
-        for (const [key, value] of fields.headers.entries()) {
-          body.body.headers.set(key, value)
-        }
-        return body.body
-      }
-      return new Response(body.body as BodyInit, fields)
-    }
-    case "FormData": {
-      return new Response(body.formData as FormData, fields)
-    }
-    case "Stream": {
-      return new Response(
-        Stream.toReadableStreamRuntime(body.stream, runtime),
-        fields,
-      )
-    }
-  }
-}
 
 export const layerServer = (
   options: ServeOptions,
