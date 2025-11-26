@@ -1,10 +1,7 @@
-import * as HttpApp from "@effect/platform/HttpApp"
-import * as HttpRouter from "@effect/platform/HttpRouter"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Function from "effect/Function"
 import * as Layer from "effect/Layer"
-import * as FileHttpRouter from "./FileHttpRouter.ts"
 import * as FileRouter from "./FileRouter.ts"
 import * as Route from "./Route"
 
@@ -21,7 +18,7 @@ export const ServerMethods = [
 export type ServerMethod = (typeof ServerMethods)[number]
 
 export type ServerModule = {
-  default: Route.Route | Route.RouteSet.Default
+  default: Route.RouteSet.Default
 }
 
 export type ServerRoute = {
@@ -32,13 +29,10 @@ export type ServerRoute = {
 
 export type RouteManifest = {
   modules: readonly FileRouter.RouteModule[]
+  layers?: any[]
 }
 
-export type RouterContext =
-  & RouteManifest
-  & {
-    httpRouter: HttpRouter.HttpRouter
-  }
+export type RouterContext = RouteManifest
 
 export class Router extends Context.Tag("effect-start/Router")<
   Router,
@@ -51,18 +45,14 @@ export function layer(
   return Layer.effect(
     Router,
     Effect.gen(function*() {
-      const serverRoutes = manifest.modules.map((mod) => ({
-        path: mod.path,
-        load: mod.load,
-      }))
-      const httpRouter = yield* FileHttpRouter.make(serverRoutes)
       return {
         ...manifest,
-        httpRouter,
       }
     }),
   )
 }
+
+export const layerFiles = FileRouter.layer
 
 export function layerPromise(
   load: () => Promise<RouteManifest>,

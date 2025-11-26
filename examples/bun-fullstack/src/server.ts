@@ -1,8 +1,10 @@
-import { Start } from "effect-start"
-import { BunHttpServer } from "effect-start/bun"
+import {
+  Router,
+  Start,
+} from "effect-start"
 
 export default Start.layer(
-  Start.router({
+  Router.layerFiles({
     load: () => import("./routes"),
     path: import.meta.resolve("./routes"),
   }),

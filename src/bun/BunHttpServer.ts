@@ -5,7 +5,6 @@ import * as HttpServerError from "@effect/platform/HttpServerError"
 import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
 import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
 import * as Socket from "@effect/platform/Socket"
-import type { Server as BunServerInstance } from "bun"
 import * as Bun from "bun"
 import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
@@ -13,7 +12,6 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as FiberSet from "effect/FiberSet"
 import * as Layer from "effect/Layer"
-import * as Ref from "effect/Ref"
 import type * as Runtime from "effect/Runtime"
 import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
@@ -25,7 +23,7 @@ import type * as BunRoute from "./BunRoute.ts"
 
 type FetchHandler = (
   request: Request,
-  server: BunServerInstance<WebSocketContext>,
+  server: Bun.Server<WebSocketContext>,
 ) => Response | Promise<Response>
 
 /**
@@ -56,7 +54,11 @@ export const BunServer = Context.GenericTag<BunServer>(
 
 export const make = (
   options: ServeOptions,
-): Effect.Effect<BunServer, never, Scope.Scope> =>
+): Effect.Effect<
+  BunServer,
+  never,
+  Scope.Scope
+> =>
   Effect.gen(function*() {
     const handlerStack: Array<FetchHandler> = [
       function(_request, _server) {
@@ -163,7 +165,7 @@ export const makeHttpServer: Effect.Effect<
 
         function handler(
           request: Request,
-          server: BunServerInstance<WebSocketContext>,
+          server: Bun.Server<WebSocketContext>,
         ) {
           return new Promise<Response>((resolve, _reject) => {
             const fiber = runFork(Effect.provideService(

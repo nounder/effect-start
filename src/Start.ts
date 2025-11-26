@@ -13,38 +13,10 @@ import * as BunRoute from "./bun/BunRoute.ts"
 import * as BunRuntime from "./bun/BunRuntime.ts"
 import * as Bundle from "./Bundle.ts"
 import * as BundleHttp from "./BundleHttp.ts"
-import * as FileRouter from "./FileRouter.ts"
 import * as HttpAppExtra from "./HttpAppExtra.ts"
 import * as NodeFileSystem from "./NodeFileSystem.ts"
 import * as Router from "./Router.ts"
 import * as StartApp from "./StartApp.ts"
-
-// TODO: we probably want to remove this API to avoid
-// multiple entrypoints for routers and bundles.
-// We could handle endpoints routing in {@link layer}
-// or {@link serve}.
-// Serve probably makes more sense because it's an entrypoint
-// for serving an HTTP server
-export function router(options: {
-  load: () => Promise<Router.RouteManifest>
-  path: string
-}) {
-  return Layer.provideMerge(
-    // add it to BundleHttp
-    Layer.effectDiscard(
-      Effect.gen(function*() {
-        const httpRouter = yield* HttpRouter.Default
-        const startRouter = yield* Router.Router
-
-        yield* httpRouter.concat(startRouter.httpRouter)
-      }),
-    ),
-    Layer.provideMerge(
-      Router.layerPromise(options.load),
-      FileRouter.layer(options),
-    ),
-  )
-}
 
 export function bundleClient(config: BunBundle.BuildOptions | string) {
   const clientLayer = Layer.effect(
@@ -134,7 +106,9 @@ export function serve<ROut, E>(
     Layer.provide([
       FetchHttpClient.layer,
       HttpRouter.Default.Live,
-      BunHttpServer.layerServer({ port: 3000 }),
+      BunHttpServer.layerServer({
+        port: 3000,
+      }),
       NodeFileSystem.layer,
       StartApp.layer(),
     ]),
@@ -142,5 +116,3 @@ export function serve<ROut, E>(
     BunRuntime.runMain,
   )
 }
-
-export const runMain = BunRuntime.runMain

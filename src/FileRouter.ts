@@ -10,6 +10,7 @@ import * as NPath from "node:path"
 import * as NUrl from "node:url"
 import * as FileRouterCodegen from "./FileRouterCodegen.ts"
 import * as FileSystemExtra from "./FileSystemExtra.ts"
+import * as Router from "./Router.ts"
 import { ServerModule } from "./Router.ts"
 
 type LiteralSegment = {
@@ -60,7 +61,7 @@ export type RouteModule = {
 }
 
 export type RouteManifest = {
-  Modules: readonly RouteModule[]
+  modules: readonly RouteModule[]
 }
 
 export type RouteHandle = {
@@ -235,9 +236,9 @@ export function parseRoute(
 }
 
 /**
- * Generates a file that references all routes.
+ * Generates a manifest file that references all routes.
  */
-export function layer(options: {
+export function layerManifest(options: {
   load: () => Promise<unknown>
   path: string
 }) {
@@ -275,6 +276,19 @@ export function layer(options: {
         Effect.fork,
       )
     }),
+  )
+}
+
+export function layer(options: {
+  load: () => Promise<Router.RouteManifest>
+  path: string
+}) {
+  return Layer.mergeAll(
+    Layer.effect(
+      Router.Router,
+      Effect.promise(() => options.load()),
+    ),
+    layerManifest(options),
   )
 }
 
