@@ -280,7 +280,6 @@ export const html = makeMediaFunction(
   "GET",
   "text/html",
   makeValueHandler<string | JsxObject>((raw) => {
-    // Check if it's a JSX element (has type and props properties)
     if (isJsxObject(raw)) {
       return HttpServerResponse.html(HyperHtml.renderToString(raw))
     }
@@ -379,7 +378,7 @@ function makeSingleStringSchemaModifier<
   {
     const baseRoutes = isRouteSet(this)
       ? this.set
-      : []
+      : [] as const
     const baseSchema = isRouteSet(this)
       ? this.schema
       : {} as RouteSchemas.Empty
@@ -389,12 +388,12 @@ function makeSingleStringSchemaModifier<
       : Schema.Struct(fieldsOrSchema as Schema.Struct.Fields)
 
     return makeSet(
-      baseRoutes as any,
+      baseRoutes as ReadonlyArray<Route.Default>,
       {
         ...baseSchema,
         [key]: schema,
-      } as any,
-    ) as any
+      },
+    ) as never
   }
 }
 
@@ -430,7 +429,7 @@ function makeMultiStringSchemaModifier<
   {
     const baseRoutes = isRouteSet(this)
       ? this.set
-      : []
+      : [] as const
     const baseSchema = isRouteSet(this)
       ? this.schema
       : {} as RouteSchemas.Empty
@@ -440,12 +439,12 @@ function makeMultiStringSchemaModifier<
       : Schema.Struct(fieldsOrSchema as Schema.Struct.Fields)
 
     return makeSet(
-      baseRoutes as any,
+      baseRoutes as ReadonlyArray<Route.Default>,
       {
         ...baseSchema,
         [key]: schema,
-      } as any,
-    ) as any
+      },
+    ) as never
   }
 }
 
@@ -478,7 +477,7 @@ function makeUnionSchemaModifier<
   {
     const baseRoutes = isRouteSet(this)
       ? this.set
-      : []
+      : [] as const
     const baseSchema = isRouteSet(this)
       ? this.schema
       : {} as RouteSchemas.Empty
@@ -488,12 +487,12 @@ function makeUnionSchemaModifier<
       : Schema.Struct(fieldsOrSchema as Schema.Struct.Fields)
 
     return makeSet(
-      baseRoutes as any,
+      baseRoutes as ReadonlyArray<Route.Default>,
       {
         ...baseSchema,
         [key]: schema,
-      } as any,
-    ) as any
+      },
+    ) as never
   }
 }
 
@@ -614,6 +613,8 @@ export type RouteContext<
 > = {
   request: HttpServerRequest.HttpServerRequest
   get url(): URL
+  children: any | undefined
+  slots: Record<string, string>
 } & Input
 
 /**
@@ -841,24 +842,32 @@ function makeMediaFunction<
     const effect = typeof handler === "function"
       ? Effect.gen(function*() {
         const request = yield* HttpServerRequest.HttpServerRequest
-        const context: RouteContext<any> = {
+        const context: RouteContext = {
           request,
           get url() {
             return makeUrlFromRequest(request)
           },
+          children: undefined,
+          slots: {},
         }
         const result = handler(context)
         return yield* (typeof result === "object"
             && result !== null
             && Symbol.iterator in result
-          ? Effect.gen(() => result as any)
+          ? Effect.gen(() =>
+            result as Generator<
+              YieldWrap<Effect.Effect<unknown, unknown, unknown>>,
+              A,
+              never
+            >
+          )
           : result as Effect.Effect<A, E, R>)
       })
       : handler
 
     const baseRoutes = isRouteSet(this)
       ? this.set
-      : []
+      : [] as const
     const baseSchema = isRouteSet(this)
       ? this.schema
       : {} as RouteSchemas.Empty
@@ -869,12 +878,12 @@ function makeMediaFunction<
         make({
           method,
           media,
-          handler: handlerFn(effect as any) as any,
-          schemas: baseSchema as any,
+          handler: handlerFn(effect) as ReturnType<HandlerFn>,
+          schemas: baseSchema,
         }),
-      ] as any,
-      baseSchema as any,
-    ) as any
+      ] as ReadonlyArray<Route.Default>,
+      baseSchema,
+    ) as never
   }
 }
 
@@ -970,12 +979,12 @@ function makeMethodModifier<
           return make({
             ...route,
             method,
-            schemas: mergeSchemas(baseSchema, route.schemas) as any,
+            schemas: mergeSchemas(baseSchema, route.schemas),
           })
         }),
-      ] as any,
-      baseSchema as any,
-    ) as any
+      ] as ReadonlyArray<Route.Default>,
+      baseSchema,
+    ) as never
   }
 }
 
