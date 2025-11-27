@@ -1,13 +1,10 @@
 import * as HttpMethod from "@effect/platform/HttpMethod"
 import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
-import * as HttpServerRespondable from "@effect/platform/HttpServerRespondable"
-import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
 import * as Effect from "effect/Effect"
 import * as Pipeable from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
 import type { YieldWrap } from "effect/Utils"
-import * as HyperHtml from "./HyperHtml.ts"
 
 export {
   pipe,
@@ -76,55 +73,22 @@ export type RoutePath = `/${string}`
  * for the same path & method, depending on the `Accept` header
  * of the request.
  */
-type RouteMedia =
+export type RouteMedia =
   | "*"
   | "text/plain"
   | "text/html"
   | "application/json"
 
+/**
+ * A handler that produces a raw value.
+ * The value will be rendered to an HttpServerResponse by RouteRender
+ * based on the route's media type.
+ */
 export type RouteHandler<
   A = unknown,
   E = any,
   R = any,
-> =
-  /**
-   * A handler that contains raw value.
-   * Can be consumed from other handlers to build more complex responses.
-   * For example, a Route can render markdown for API/AI consumption
-   * and another Route can wrap it in HTML for browsers.
-   */
-  | RouteHandler.Value<A, E, R>
-  /**
-   * A handler returns `HttpServerResponse`.
-   * Should not be consumed with caution: if body is a stream,
-   * consuming it in another handler may break the stream.
-   */
-  | RouteHandler.Encoded<E, R>
-
-export namespace RouteHandler {
-  export type Value<
-    A = unknown,
-    E = any,
-    R = any,
-  > = Effect.Effect<
-    {
-      [HttpServerRespondable.symbol]: () => Effect.Effect<
-        HttpServerResponse.HttpServerResponse,
-        E,
-        R
-      >
-      raw: A
-    },
-    E,
-    R
-  >
-
-  export type Encoded<E = any, R = any> = Effect.Effect<
-    HttpServerResponse.HttpServerResponse,
-    E,
-    R
-  >
-}
+> = Effect.Effect<A, E, R>
 
 /**
  * Helper type for a value that can be a single item or an array.
@@ -270,27 +234,19 @@ export const del = makeMethodModifier("DELETE")
 export const options = makeMethodModifier("OPTIONS")
 export const head = makeMethodModifier("HEAD")
 
-export const text = makeMediaFunction(
+export const text = makeMediaFunction<"GET", "text/plain", string>(
   "GET",
   "text/plain",
-  makeValueHandler<string>(HttpServerResponse.text),
 )
 
-export const html = makeMediaFunction(
+export const html = makeMediaFunction<"GET", "text/html", string | JsxObject>(
   "GET",
   "text/html",
-  makeValueHandler<string | JsxObject>((raw) => {
-    if (isJsxObject(raw)) {
-      return HttpServerResponse.html(HyperHtml.renderToString(raw))
-    }
-    return HttpServerResponse.html(raw as string)
-  }),
 )
 
-export const json = makeMediaFunction(
+export const json = makeMediaFunction<"GET", "application/json", JsonValue>(
   "GET",
   "application/json",
-  makeValueHandler<JsonValue>((raw) => HttpServerResponse.unsafeJson(raw)),
 )
 
 /**
@@ -792,17 +748,14 @@ function makeSet<
 function makeMediaFunction<
   Method extends HttpMethod.HttpMethod,
   Media extends RouteMedia,
-  HandlerFn extends (
-    handler: any,
-  ) => any,
+  ExpectedValue,
 >(
   method: Method,
   media: Media,
-  handlerFn: HandlerFn,
 ) {
   return function<
     S extends Self,
-    A,
+    A extends ExpectedValue,
     E = never,
     R = never,
   >(
@@ -826,7 +779,7 @@ function makeMediaFunction<
       Route<
         Method,
         Media,
-        ReturnType<HandlerFn>,
+        RouteHandler<A, E, R>,
         Schemas
       >,
     ], Schemas>
@@ -834,7 +787,7 @@ function makeMediaFunction<
       Route<
         Method,
         Media,
-        ReturnType<HandlerFn>,
+        RouteHandler<A, E, R>,
         RouteSchemas.Empty
       >,
     ], RouteSchemas.Empty>
@@ -878,7 +831,7 @@ function makeMediaFunction<
         make({
           method,
           media,
-          handler: handlerFn(effect) as ReturnType<HandlerFn>,
+          handler: effect as RouteHandler<A, E, R>,
           schemas: baseSchema,
         }),
       ] as ReadonlyArray<Route.Default>,
@@ -888,32 +841,9 @@ function makeMediaFunction<
 }
 
 /**
- * Factory to create RouteHandler.Value.
- * Useful for structural handlers like JSON
- * or content that can be embedded in other formats,
- * like text or HTML.
- */
-function makeValueHandler<ExpectedRaw = string>(
-  responseFn: (raw: ExpectedRaw) => HttpServerResponse.HttpServerResponse,
-) {
-  return <A extends ExpectedRaw, E = never, R = never>(
-    handler: Effect.Effect<A, E, R>,
-  ): RouteHandler.Value<A, E, R> => {
-    return Effect.gen(function*() {
-      const raw = yield* handler
-
-      return {
-        [HttpServerRespondable.symbol]: () =>
-          Effect.succeed(responseFn(raw as ExpectedRaw)),
-        raw,
-      }
-    }) as RouteHandler.Value<A, E, R>
-  }
-}
-
-/**
  * Factory function that changes method in RouteSet.
  */
+
 function makeMethodModifier<
   M extends HttpMethod.HttpMethod,
 >(method: M) {
@@ -988,12 +918,12 @@ function makeMethodModifier<
   }
 }
 
-type JsxObject = {
+export type JsxObject = {
   type: any
   props: any
 }
 
-function isJsxObject(value: any) {
+export function isJsxObject(value: unknown): value is JsxObject {
   return typeof value === "object"
     && value !== null
     && "type" in value

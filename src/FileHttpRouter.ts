@@ -4,7 +4,9 @@ import * as HttpRouter from "@effect/platform/HttpRouter"
 import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
 import * as Effect from "effect/Effect"
 import * as Function from "effect/Function"
+import * as RoutePath from "./RoutePath.ts"
 import * as Router from "./Router.ts"
+import * as RouteRender from "./RouteRender.ts"
 
 /**
  * Combines Effect error channel from a record of effects.
@@ -53,29 +55,11 @@ export type HttpRouterFromServerRoutes<
 >
 
 /**
- * Converts file-based route path format to HttpRouter path format.
- * Examples:
- *   /movies/[id] -> /movies/:id
- *   /users/[[id]] -> /users/:id (optional treated as required)
- *   /docs/[[...slug]] -> /docs/*
- *   /api/[...path] -> /api/*
- */
-function convertPathFormat(path: string): string {
-  return path
-    // Convert optional rest params: [[...slug]] -> *
-    .replace(/\[\[\.\.\.([^\]]+)\]\]/g, "*")
-    // Convert required rest params: [...path] -> *
-    .replace(/\[\.\.\.([^\]]+)\]/g, "*")
-    // Convert optional params: [[id]] -> :id (no optional support)
-    .replace(/\[\[([^\]\.]+)\]\]/g, ":$1")
-    // Convert required params: [id] -> :id
-    .replace(/\[([^\]\.]+)\]/g, ":$1")
-}
-
-/**
  * Makes a HttpRouter from file-based routes.
  */
-export function make<Routes extends ReadonlyArray<Router.ServerRoute>>(
+export function make<
+  Routes extends ReadonlyArray<Router.ServerRoute>,
+>(
   routes: Routes,
 ): Effect.Effect<HttpRouterFromServerRoutes<Routes>> {
   return Effect.gen(function*() {
@@ -93,12 +77,12 @@ export function make<Routes extends ReadonlyArray<Router.ServerRoute>>(
 
     for (const { path, module } of modules) {
       const routeSet = module.default
-      const httpRouterPath = convertPathFormat(path)
+      const httpRouterPath = RoutePath.toHttpPath(path)
 
       for (const route of routeSet.set) {
         router = HttpRouter.route(route.method)(
           httpRouterPath,
-          route.handler as any,
+          RouteRender.render(route) as any,
         )(
           router,
         )

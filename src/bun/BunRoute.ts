@@ -1,5 +1,4 @@
 import * as HttpApp from "@effect/platform/HttpApp"
-import * as HttpServerRespondable from "@effect/platform/HttpServerRespondable"
 import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
 import type * as Bun from "bun"
 import * as Effect from "effect/Effect"
@@ -8,8 +7,9 @@ import * as Predicate from "effect/Predicate"
 import type * as Runtime from "effect/Runtime"
 import * as Random from "../Random.ts"
 import * as Route from "../Route.ts"
+import * as RoutePath from "../RoutePath.ts"
 import * as Router from "../Router.ts"
-import * as BunRouteSyntax from "./BunRouteSyntax.ts"
+import * as RouteRender from "../RouteRender.ts"
 
 const TypeId: unique symbol = Symbol.for("effect-start/BunRoute")
 
@@ -85,9 +85,9 @@ export function bundlesFromRouter(
         ([path, route]) =>
           Effect.promise(() =>
             route.load().then((bundle) => {
-              const bunPath = BunRouteSyntax.toBunPath(path)
+              const httpPath = RoutePath.toHttpPath(path)
 
-              return [bunPath, bundle] as const
+              return [httpPath, bundle] as const
             })
           ),
         { concurrency: "unbounded" },
@@ -158,7 +158,7 @@ export function routesFromRouter(
     const result: BunRoutes = {}
 
     for (const [path, route] of allRoutes) {
-      const bunPath = BunRouteSyntax.toBunPath(path)
+      const httpPaths = RoutePath.toBun(path)
 
       if (isBunRoute(route)) {
         const bundle = yield* Effect.promise(() => route.load())
@@ -171,27 +171,34 @@ export function routesFromRouter(
           return fetch(new Request(url, request))
         }
 
-        result[bunPath] = proxyHandler
-      } else {
-        const httpApp = Effect.gen(function*() {
-          const res = yield* route.handler
-          if (HttpServerResponse.isServerResponse(res)) {
-            return res
+        for (const httpPath of httpPaths) {
+          // Skip paths already registered to preserve more specific routes.
+          // Optional catch-all like [[...frontend]] returns ["/", "/*"].
+          // @see {@link RoutePath.toBun}
+          if (!(httpPath in result)) {
+            result[httpPath] = proxyHandler
           }
-          return yield* res[HttpServerRespondable.symbol]()
-        })
+        }
+      } else {
+        const httpApp = RouteRender.render(route)
 
         const webHandler = HttpApp.toWebHandlerRuntime(rt)(httpApp)
         const handler: BunServerFetchHandler = (request) => webHandler(request)
 
-        if (route.method === "*" || isBunRoute(route)) {
-          result[bunPath] = handler
-        } else {
-          const existing = result[bunPath]
-          if (isMethodHandlers(existing)) {
-            existing[route.method] = handler
+        for (const httpPath of httpPaths) {
+          if (route.method === "*" || isBunRoute(route)) {
+            if (!(httpPath in result)) {
+              result[httpPath] = handler
+            }
           } else {
-            result[bunPath] = { [route.method]: handler }
+            const existing = result[httpPath]
+            if (isMethodHandlers(existing)) {
+              existing[route.method] = handler
+            } else if (httpPath in result) {
+              continue
+            } else {
+              result[httpPath] = { [route.method]: handler }
+            }
           }
         }
       }

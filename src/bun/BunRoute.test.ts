@@ -5,7 +5,7 @@ import * as Route from "../Route.ts"
 import type * as Router from "../Router.ts"
 import * as BunRoute from "./BunRoute.ts"
 
-t.describe("loadBundle", () => {
+t.describe(`${BunRoute.loadBundle.name}`, () => {
   t.test("creates BunRoute from HTMLBundle", () => {
     const mockBundle = { index: "index.html" } as HTMLBundle
     const bunRoute = BunRoute.loadBundle(() => Promise.resolve(mockBundle))
@@ -36,7 +36,7 @@ t.describe("loadBundle", () => {
   })
 })
 
-t.describe("isBunRoute", () => {
+t.describe(`${BunRoute.isBunRoute.name}`, () => {
   t.test("returns true for BunRoute", () => {
     const mockBundle = { index: "index.html" } as HTMLBundle
     const bunRoute = BunRoute.loadBundle(() => Promise.resolve(mockBundle))
@@ -58,7 +58,7 @@ t.describe("isBunRoute", () => {
   })
 })
 
-t.describe("routesFromRouter", () => {
+t.describe(`${BunRoute.routesFromRouter.name}`, () => {
   t.test("converts text route to fetch handler", async () => {
     const fetch = await makeFetch(
       makeRouter([
