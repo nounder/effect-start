@@ -860,7 +860,7 @@ t.describe(`${Commander.optionVersion.name} - version behavior`, () => {
       .make({ name: "app", version: "2.0.0" })
 
     t.expect(cmd.version).toBe("2.0.0")
-    t.expect((cmd.options as any).version).toBeUndefined()
+    t.expect(cmd.options["version"]).toBeUndefined()
   })
 
   t.it("should include version option in help", () => {

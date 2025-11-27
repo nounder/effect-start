@@ -172,6 +172,19 @@ export interface SubcommandDef<Handled extends boolean = boolean> {
   readonly command: CommanderSet<any, any, Handled>
 }
 
+type Extend<
+  S,
+  NewOpts extends OptionsMap,
+  NewSubs extends ReadonlyArray<SubcommandDef> = [],
+  Handled extends boolean = false,
+> = S extends CommanderSet<infer Opts, infer Subs, infer _H> ? CommanderSet<
+    & Opts
+    & NewOpts,
+    [...Subs, ...NewSubs],
+    Handled
+  >
+  : CommanderSet<NewOpts, NewSubs, Handled>
+
 type CommanderBuilder = {
   option: typeof optionMethod
   optionHelp: typeof optionHelp
@@ -222,26 +235,13 @@ const optionMethod = function<
 >(
   this: S,
   opt: Opt,
-): S extends CommanderSet<infer Opts, infer Subs, infer _H> ? CommanderSet<
-    & Opts
-    & {
-      [K in Opt["name"] as OptionNameToCamelCase<K>]: Opt
-    },
-    Subs,
-    false
+): Extend<S, { [K in Opt["name"] as OptionNameToCamelCase<K>]: Opt }> {
+  const base = (this && typeof this === "object" ? this : {}) as Partial<
+    CommanderSet.Instance
   >
-  : CommanderSet<
-    {
-      [K in Opt["name"] as OptionNameToCamelCase<K>]: Opt
-    },
-    [],
-    false
-  >
-{
-  const base = this && typeof this === "object" ? this as any : {}
-  const baseName = base.name || ""
-  const baseOptions: OptionsMap = base.options || {}
-  const baseSubcommands = base.subcommands || []
+  const baseName = base.name ?? ""
+  const baseOptions: OptionsMap = base.options ?? {}
+  const baseSubcommands = base.subcommands ?? []
   const baseDescription = base.description
   const baseVersion = base.version
 
@@ -253,31 +253,18 @@ const optionMethod = function<
     version: baseVersion,
     options: { ...baseOptions, [camelKey]: opt },
     subcommands: baseSubcommands,
-  }) as any
+  }) as Extend<S, { [K in Opt["name"] as OptionNameToCamelCase<K>]: Opt }>
 }
 
 export const optionHelp = function<S>(
   this: S,
-): S extends CommanderSet<infer Opts, infer Subs, infer _H> ? CommanderSet<
-    & Opts
-    & {
-      "help": OptionBuilder<boolean, "--help">
-    },
-    Subs,
-    false
+): Extend<S, { "help": OptionBuilder<boolean, "--help"> }> {
+  const base = (this && typeof this === "object" ? this : {}) as Partial<
+    CommanderSet.Instance
   >
-  : CommanderSet<
-    {
-      "help": OptionBuilder<boolean, "--help">
-    },
-    [],
-    false
-  >
-{
-  const base = this && typeof this === "object" ? this as any : {}
-  const baseName = base.name || ""
-  const baseOptions: OptionsMap = base.options || {}
-  const baseSubcommands = base.subcommands || []
+  const baseName = base.name ?? ""
+  const baseOptions: OptionsMap = base.options ?? {}
+  const baseSubcommands = base.subcommands ?? []
   const baseDescription = base.description
   const baseVersion = base.version
 
@@ -296,31 +283,18 @@ export const optionHelp = function<S>(
     version: baseVersion,
     options: { ...baseOptions, help: helpOption },
     subcommands: baseSubcommands,
-  }) as any
+  }) as Extend<S, { "help": OptionBuilder<boolean, "--help"> }>
 }
 
 export const optionVersion = function<S>(
   this: S,
-): S extends CommanderSet<infer Opts, infer Subs, infer _H> ? CommanderSet<
-    & Opts
-    & {
-      "version": OptionBuilder<boolean, "--version">
-    },
-    Subs,
-    false
+): Extend<S, { "version": OptionBuilder<boolean, "--version"> }> {
+  const base = (this && typeof this === "object" ? this : {}) as Partial<
+    CommanderSet.Instance
   >
-  : CommanderSet<
-    {
-      "version": OptionBuilder<boolean, "--version">
-    },
-    [],
-    false
-  >
-{
-  const base = this && typeof this === "object" ? this as any : {}
-  const baseName = base.name || ""
-  const baseOptions: OptionsMap = base.options || {}
-  const baseSubcommands = base.subcommands || []
+  const baseName = base.name ?? ""
+  const baseOptions: OptionsMap = base.options ?? {}
+  const baseSubcommands = base.subcommands ?? []
   const baseDescription = base.description
   const baseVersion = base.version
 
@@ -339,7 +313,7 @@ export const optionVersion = function<S>(
     version: baseVersion,
     options: { ...baseOptions, version: versionOption },
     subcommands: baseSubcommands,
-  }) as any
+  }) as Extend<S, { "version": OptionBuilder<boolean, "--version"> }>
 }
 
 export const subcommand = function<
@@ -350,27 +324,19 @@ export const subcommand = function<
 >(
   this: S,
   cmd: CommanderSet<SubOpts, SubSubs, SubHandled>,
-): S extends CommanderSet<infer Opts, infer Subs, infer _H> ? CommanderSet<
-    Opts,
-    [...Subs, SubcommandDef<SubHandled>],
-    false
+): Extend<S, {}, [SubcommandDef<SubHandled>]> {
+  const base = (this && typeof this === "object" ? this : {}) as Partial<
+    CommanderSet.Instance
   >
-  : CommanderSet<
-    {},
-    [SubcommandDef<SubHandled>],
-    false
-  >
-{
-  const base = this && typeof this === "object" ? this as any : {}
-  const baseName = base.name || ""
-  const baseOptions = base.options || {}
-  const baseSubcommands = base.subcommands || []
+  const baseName = base.name ?? ""
+  const baseOptions = base.options ?? {}
+  const baseSubcommands = base.subcommands ?? []
   const baseDescription = base.description
   const baseVersion = base.version
 
-  const subDef: SubcommandDef = {
+  const subDef: SubcommandDef<SubHandled> = {
     _tag: "SubcommandDef",
-    command: cmd as any,
+    command: cmd,
   }
 
   return makeSet({
@@ -378,8 +344,8 @@ export const subcommand = function<
     description: baseDescription,
     version: baseVersion,
     options: baseOptions,
-    subcommands: [...baseSubcommands, subDef] as any,
-  }) as any
+    subcommands: [...baseSubcommands, subDef],
+  }) as Extend<S, {}, [SubcommandDef<SubHandled>]>
 }
 
 export const handle = function<
@@ -389,16 +355,16 @@ export const handle = function<
   this: CommanderSet<Opts, Subs, false>,
   handler: (args: ExtractOptionValues<Opts>) => Effect.Effect<void>,
 ): CommanderSet<Opts, Subs, true> {
-  const base = this && typeof this === "object" ? this as any : {}
+  const base = this as CommanderSet.Instance<Opts, Subs, false>
 
-  return makeSet({
-    name: base.name || "",
+  return makeSet<Opts, Subs, true>({
+    name: base.name,
     description: base.description,
     version: base.version,
-    options: base.options || {},
-    subcommands: base.subcommands || [],
-    handler: handler as any,
-  }) as any
+    options: base.options,
+    subcommands: base.subcommands,
+    handler,
+  })
 }
 
 export const make = <const Name extends string>(config: {
@@ -589,12 +555,16 @@ export const runMain = <
 
     const parsedOptions = yield* parse(cmd, args)
 
-    if ((parsedOptions as any).help) {
+    if (Predicate.hasProperty(parsedOptions, "help") && parsedOptions.help) {
       console.log(generateHelp(cmd))
       return
     }
 
-    if ((parsedOptions as any).version && cmd.version) {
+    if (
+      Predicate.hasProperty(parsedOptions, "version")
+      && parsedOptions.version
+      && cmd.version
+    ) {
       console.log(`${cmd.name} v${cmd.version}`)
       return
     }
@@ -669,4 +639,4 @@ export const repeatable = <A>(
     })
     .pipe(
       Schema.compose(Schema.Array(schema)),
-    ) as any
+    )
