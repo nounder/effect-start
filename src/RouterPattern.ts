@@ -4,39 +4,44 @@ export type ParamDelimiter = "_" | "-" | "." | "," | ";" | "!" | "@" | "~"
 export type ParamPrefix = `${string}${ParamDelimiter}` | ""
 export type ParamSuffix = `${ParamDelimiter}${string}` | ""
 
-export type Literal<
+export type LiteralSegment<
   Value extends string = string,
 > = {
-  _tag: "Literal"
+  _tag: "LiteralSegment"
   value: Value
 }
 
-export type Param<
+export type ParamSegment<
   Name extends string = string,
   Optional extends boolean = boolean,
   Prefix extends ParamPrefix = "",
   Suffix extends ParamSuffix = "",
 > = {
-  _tag: "Param"
+  _tag: "ParamSegment"
   name: Name
   optional?: Optional
   prefix?: Prefix
   suffix?: Suffix
 }
 
-export type Rest<
+export type RestSegment<
   Name extends string = string,
   Optional extends boolean = boolean,
 > = {
-  _tag: "Rest"
+  _tag: "RestSegment"
   name: Name
   optional?: Optional
 }
 
 export type Segment =
-  | Literal
-  | Param<string, boolean, ParamPrefix, ParamSuffix>
-  | Rest
+  | LiteralSegment
+  | ParamSegment<
+    string,
+    boolean,
+    ParamPrefix,
+    ParamSuffix
+  >
+  | RestSegment
 
 /**
  * Parses a route path string into a tuple of Segment types at compile time.
@@ -45,20 +50,20 @@ export type Segment =
  * ```ts
  * type Usage = Segments<"/users/[id]/posts/[...rest]">
  * type Expected = [
- *   Literal<"users">,
- *   Param<"id", false>,
- *   Literal<"posts">,
- *   Rest<"rest", false>
+ *   LiteralSegment<"users">,
+ *   ParamSegment<"id", false>,
+ *   LiteralSegment<"posts">,
+ *   RestSegment<"rest", false>
  * ]
  * ```
  *
  * Supports:
- * - Literals: `users` → `Literal<"users">`
- * - Params: `[id]` → `Param<"id", false>`
- * - Params (optional): `[[id]]` → `Param<"id", true>`
- * - Rest: `[...rest]` → `Rest<"rest", false>`
- * - Rest (optional): `[[...rest]]` → `Rest<"rest", true>`
- * - {Pre,Suf}fixed params: `prefix_[id]_suffix` → `Param<"id", false, "prefix_", "_suffix">`
+ * - Literals: `users` → `LiteralSegment<"users">`
+ * - Params: `[id]` → `ParamSegment<"id", false>`
+ * - Params (optional): `[[id]]` → `ParamSegment<"id", true>`
+ * - Rest: `[...rest]` → `RestSegment<"rest", false>`
+ * - Rest (optional): `[[...rest]]` → `RestSegment<"rest", true>`
+ * - {Pre,Suf}fixed params: `prefix_[id]_suffix` → `ParamSegment<"id", false, "prefix_", "_suffix">`
  * - Malformed segments: `pk_[id]foo` → `undefined` (suffix must start with delimiter)
  *
  * @limit Paths with more than 48 segments in TypeScript 5.9.3 will fail with
@@ -74,13 +79,13 @@ export type Segments<Path extends string> = Path extends `/${infer PathRest}`
 const PARAM_PATTERN =
   /^(?<prefix>.*[^a-zA-Z0-9])?\[(?<name>[^\]]+)\](?<suffix>[^a-zA-Z0-9].*)?$/
 
-function parseSegment(segment: string): Segment {
+export function parseSegment(segment: string): Segment | null {
   if (
     segment.startsWith("[[...")
     && segment.endsWith("]]")
   ) {
     return {
-      _tag: "Rest",
+      _tag: "RestSegment",
       name: segment.slice(5, -2),
       optional: true,
     }
@@ -91,7 +96,7 @@ function parseSegment(segment: string): Segment {
     && segment.endsWith("]")
   ) {
     return {
-      _tag: "Rest",
+      _tag: "RestSegment",
       name: segment.slice(4, -1),
     }
   }
@@ -101,7 +106,7 @@ function parseSegment(segment: string): Segment {
     && segment.endsWith("]]")
   ) {
     return {
-      _tag: "Param",
+      _tag: "ParamSegment",
       name: segment.slice(2, -2),
       optional: true,
     }
@@ -112,29 +117,57 @@ function parseSegment(segment: string): Segment {
     const { prefix, name, suffix } = match.groups
 
     return {
-      _tag: "Param",
+      _tag: "ParamSegment",
       name,
       prefix: (prefix as ParamPrefix) || undefined,
       suffix: (suffix as ParamSuffix) || undefined,
     }
   }
 
-  return { _tag: "Literal", value: segment }
+  if (/^[\p{L}\p{N}._~-]+$/u.test(segment)) {
+    return { _tag: "LiteralSegment", value: segment }
+  }
+
+  return null
 }
 
-function parseSegments(path: string): Segment[] {
-  return path.split("/").filter(Boolean).map(parseSegment)
+export function parse(pattern: string): Segment[] {
+  const segments = pattern.split("/").filter(Boolean).map(parseSegment)
+
+  if (segments.some((seg) => seg === null)) {
+    throw new Error(
+      `Invalid path segment in "${pattern}": contains invalid characters or format`,
+    )
+  }
+
+  return segments as Segment[]
 }
 
-type SegmentMapper = (segment: Segment) => string
+export function formatSegment(seg: Segment): string {
+  switch (seg._tag) {
+    case "LiteralSegment":
+      return seg.value
+    case "ParamSegment": {
+      const param = seg.optional ? `[[${seg.name}]]` : `[${seg.name}]`
+      return (seg.prefix ?? "") + param + (seg.suffix ?? "")
+    }
+    case "RestSegment":
+      return seg.optional ? `[[...${seg.name}]]` : `[...${seg.name}]`
+  }
+}
+
+export function format(segments: Segment[]): `/${string}` {
+  const joined = segments.map(formatSegment).join("/")
+  return (joined ? `/${joined}` : "/") as `/${string}`
+}
 
 function buildPaths(
   segments: Segment[],
-  mapper: SegmentMapper,
+  mapper: (seg: Segment) => string,
   restWildcard: string,
 ): string[] {
   const optionalRestIndex = segments.findIndex(
-    (s) => s._tag === "Rest" && s.optional,
+    (s) => s._tag === "RestSegment" && s.optional,
   )
 
   if (optionalRestIndex !== -1) {
@@ -153,13 +186,13 @@ function buildPaths(
 
 function colonParamSegment(segment: Segment): string {
   switch (segment._tag) {
-    case "Literal":
+    case "LiteralSegment":
       return segment.value
-    case "Param": {
+    case "ParamSegment": {
       const param = `:${segment.name}${segment.optional ? "?" : ""}`
       return (segment.prefix ?? "") + param + (segment.suffix ?? "")
     }
-    case "Rest":
+    case "RestSegment":
       return "*"
   }
 }
@@ -173,8 +206,8 @@ function colonParamSegment(segment: Segment): string {
  * - `[[...param]]` → `/`, `/*`
  * - `pk_[id]` → `pk_:id`
  */
-export function toColon(path: Route.RoutePath): string[] {
-  return buildPaths(parseSegments(path), colonParamSegment, "/*")
+export function toColon(path: Route.RoutePattern): string[] {
+  return buildPaths(parse(path), colonParamSegment, "/*")
 }
 
 export const toHono = toColon
@@ -188,21 +221,21 @@ export const toHono = toColon
  * - `[[...param]]` → `/`, `/*param`
  * - `pk_[id]` → `pk_:id`
  */
-export function toExpress(path: Route.RoutePath): string[] {
-  const segments = parseSegments(path)
+export function toExpress(path: Route.RoutePattern): string[] {
+  const segments = parse(path)
   const optionalRestIndex = segments.findIndex(
-    (s) => s._tag === "Rest" && s.optional,
+    (s) => s._tag === "RestSegment" && s.optional,
   )
 
   const mapper = (segment: Segment): string => {
     switch (segment._tag) {
-      case "Literal":
+      case "LiteralSegment":
         return segment.value
-      case "Param": {
+      case "ParamSegment": {
         const param = `:${segment.name}`
         return (segment.prefix ?? "") + param + (segment.suffix ?? "")
       }
-      case "Rest":
+      case "RestSegment":
         return `*${segment.name}`
     }
   }
@@ -210,7 +243,7 @@ export function toExpress(path: Route.RoutePath): string[] {
   if (optionalRestIndex !== -1) {
     const before = segments.slice(0, optionalRestIndex)
     const rest = segments[optionalRestIndex]
-    if (rest._tag !== "Rest") throw new Error("unreachable")
+    if (rest._tag !== "RestSegment") throw new Error("unreachable")
     const restName = rest.name
     const beforeJoined = before.map(mapper).join("/")
     const basePath = beforeJoined ? "/" + beforeJoined : "/"
@@ -225,10 +258,10 @@ export function toExpress(path: Route.RoutePath): string[] {
     const segment = segments[i]
     const isFirst = i === 0
     switch (segment._tag) {
-      case "Literal":
+      case "LiteralSegment":
         result += "/" + segment.value
         break
-      case "Param":
+      case "ParamSegment":
         if (segment.optional && !segment.prefix && !segment.suffix) {
           result += isFirst
             ? "/{/:$name}".replace("$name", segment.name)
@@ -241,7 +274,7 @@ export function toExpress(path: Route.RoutePath): string[] {
             + (segment.suffix ?? "")
         }
         break
-      case "Rest":
+      case "RestSegment":
         result += `/*${segment.name}`
         break
     }
@@ -258,8 +291,8 @@ export function toExpress(path: Route.RoutePath): string[] {
  * - `[[...param]]` → `/`, `/*`
  * - `pk_[id]` → `pk_:id`
  */
-export function toEffect(path: Route.RoutePath): string[] {
-  return buildPaths(parseSegments(path), colonParamSegment, "/*")
+export function toEffect(path: Route.RoutePattern): string[] {
+  return buildPaths(parse(path), colonParamSegment, "/*")
 }
 
 /**
@@ -271,18 +304,18 @@ export function toEffect(path: Route.RoutePath): string[] {
  * - `[[...param]]` → `:param*`
  * - `pk_[id]` → `pk_:id`
  */
-export function toURLPattern(path: Route.RoutePath): string[] {
-  const segments = parseSegments(path)
+export function toURLPattern(path: Route.RoutePattern): string[] {
+  const segments = parse(path)
   const joined = segments
     .map((segment) => {
       switch (segment._tag) {
-        case "Literal":
+        case "LiteralSegment":
           return segment.value
-        case "Param": {
+        case "ParamSegment": {
           const param = `:${segment.name}${segment.optional ? "?" : ""}`
           return (segment.prefix ?? "") + param + (segment.suffix ?? "")
         }
-        case "Rest":
+        case "RestSegment":
           return `:${segment.name}${segment.optional ? "*" : "+"}`
       }
     })
@@ -299,23 +332,23 @@ export function toURLPattern(path: Route.RoutePath): string[] {
  * - `[[...param]]` → `/`, `$`
  * - `pk_[id]` → (not supported, emits `pk_$id`)
  */
-export function toRemix(path: Route.RoutePath): string[] {
-  const segments = parseSegments(path)
+export function toRemix(path: Route.RoutePattern): string[] {
+  const segments = parse(path)
   const optionalRestIndex = segments.findIndex(
-    (s) => s._tag === "Rest" && s.optional,
+    (s) => s._tag === "RestSegment" && s.optional,
   )
 
   const mapper = (segment: Segment): string => {
     switch (segment._tag) {
-      case "Literal":
+      case "LiteralSegment":
         return segment.value
-      case "Param": {
+      case "ParamSegment": {
         const param = segment.optional
           ? `($${segment.name})`
           : `$${segment.name}`
         return (segment.prefix ?? "") + param + (segment.suffix ?? "")
       }
-      case "Rest":
+      case "RestSegment":
         return "$"
     }
   }
@@ -337,22 +370,22 @@ export const toBun = toColon
 /**
  * @deprecated Use toEffectHttpRouterPath instead
  */
-export function toHttpPath(path: Route.RoutePath): string {
+export function toHttpPath(path: Route.RoutePattern): string {
   return toEffect(path)[0]
 }
 
 type ExtractSegment<S extends string> = S extends `[[...${infer Name}]]`
-  ? Rest<Name, true>
-  : S extends `[...${infer Name}]` ? Rest<Name, false>
-  : S extends `[[${infer Name}]]` ? Param<Name, true, "", "">
+  ? RestSegment<Name, true>
+  : S extends `[...${infer Name}]` ? RestSegment<Name, false>
+  : S extends `[[${infer Name}]]` ? ParamSegment<Name, true, "", "">
   : S extends
     `${infer Pre
       extends `${string}${ParamDelimiter}`}[${infer Name}]${infer Suf}`
     ? Suf extends `${infer Delim extends ParamDelimiter}${infer SufRest}`
-      ? Param<Name, false, Pre, `${Delim}${SufRest}`>
-    : Suf extends "" ? Param<Name, false, Pre, "">
+      ? ParamSegment<Name, false, Pre, `${Delim}${SufRest}`>
+    : Suf extends "" ? ParamSegment<Name, false, Pre, "">
     : undefined
   : S extends `[${infer Name}]${infer Suf extends `${ParamDelimiter}${string}`}`
-    ? Param<Name, false, "", Suf>
-  : S extends `[${infer Name}]` ? Param<Name, false, "", "">
-  : Literal<S>
+    ? ParamSegment<Name, false, "", Suf>
+  : S extends `[${infer Name}]` ? ParamSegment<Name, false, "", "">
+  : LiteralSegment<S>

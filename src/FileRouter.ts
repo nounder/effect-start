@@ -9,39 +9,14 @@ import * as Stream from "effect/Stream"
 import * as NPath from "node:path"
 import * as NUrl from "node:url"
 import * as FileRouterCodegen from "./FileRouterCodegen.ts"
+import * as FileRouterPattern from "./FileRouterPattern.ts"
 import * as FileSystemExtra from "./FileSystemExtra.ts"
 import * as Router from "./Router.ts"
 
-type LiteralSegment = {
-  literal: string
-}
+export type GroupSegment<Name extends string = string> =
+  FileRouterPattern.GroupSegment<Name>
 
-type GroupSegment = {
-  group: string
-}
-
-type ParamSegment = {
-  param: string
-  optional?: true
-}
-
-type RestSegment = {
-  rest: string
-  optional?: true
-}
-
-type HandleSegment = {
-  handle: "route" | "layer"
-}
-
-export type Extension = "tsx" | "jsx" | "ts" | "js"
-
-export type Segment =
-  | LiteralSegment
-  | GroupSegment
-  | ParamSegment
-  | RestSegment
-  | HandleSegment
+export type Segment = FileRouterPattern.Segment
 
 export type RouteManifest = {
   routes: readonly Router.LazyRoute[]
@@ -68,107 +43,21 @@ export type OrderedRouteHandles = RouteHandle[]
 
 const ROUTE_PATH_REGEX = /^\/?(.*\/?)(?:route|layer)\.(jsx?|tsx?)$/
 
-export function segmentPath(path: string): Segment[] {
-  const trimmedPath = path.replace(/(^\/)|(\/$)/g, "") // trim leading/trailing slashes
-
-  if (trimmedPath === "") {
-    return [] // Handles "" and "/"
-  }
-
-  const segmentStrings = trimmedPath
-    .split("/")
-    .filter(s => s !== "") // Remove empty segments from multiple slashes, e.g. "foo//bar"
-
-  if (segmentStrings.length === 0) {
-    return []
-  }
-
-  const segments: (Segment | null)[] = segmentStrings.map(
-    (s): Segment | null => {
-      // Check if it's a handle (route.ts, layer.tsx, etc.)
-      const [, handle] = s.match(/^(route|layer)\.(tsx?|jsx?)$/)
-        ?? []
-
-      if (handle) {
-        // @ts-expect-error regexp group ain't typed
-        return { handle }
-      }
-
-      // (group) - Groups
-      const groupMatch = s.match(/^\((\w+)\)$/)
-      if (groupMatch) {
-        return { group: groupMatch[1] }
-      }
-
-      // [[...rest]] - Optional rest parameter
-      const optionalRestMatch = s.match(/^\[\[\.\.\.(\w+)\]\]$/)
-      if (optionalRestMatch) {
-        return {
-          rest: optionalRestMatch[1],
-          optional: true,
-        }
-      }
-
-      // [...rest] - Required rest parameter
-      const requiredRestMatch = s.match(/^\[\.\.\.(\w+)\]$/)
-      if (requiredRestMatch) {
-        return { rest: requiredRestMatch[1] }
-      }
-
-      // [[param]] - Optional parameter
-      const optionalParamMatch = s.match(/^\[\[(\w+)\]\]$/)
-      if (optionalParamMatch) {
-        return {
-          param: optionalParamMatch[1],
-          optional: true,
-        }
-      }
-
-      // [param] - Dynamic parameter
-      const paramMatch = s.match(/^\[(\w+)\]$/)
-      if (paramMatch) {
-        return { param: paramMatch[1] }
-      }
-
-      // Literal segment
-      if (/^[A-Za-z0-9._~-]+$/.test(s)) {
-        return { literal: s }
-      }
-
-      return null
-    },
-  )
-
-  if (segments.some((seg) => seg === null)) {
-    throw new Error(
-      `Invalid path segment in "${path}": contains invalid characters or format`,
-    )
-  }
-
-  return segments as Segment[]
-}
-
-function segmentToText(seg: Segment): string {
-  if ("literal" in seg) return seg.literal
-  if ("group" in seg) return `(${seg.group})`
-  if ("param" in seg) {
-    return seg.optional ? `[[${seg.param}]]` : `[${seg.param}]`
-  }
-  if ("rest" in seg) {
-    return seg.optional ? `[[...${seg.rest}]]` : `[...${seg.rest}]`
-  }
-  if ("handle" in seg) return seg.handle
-  return ""
-}
+export const parse = FileRouterPattern.parse
+export const formatSegment = FileRouterPattern.formatSegment
+export const format = FileRouterPattern.format
 
 export function parseRoute(
   path: string,
 ): RouteHandle {
-  const segs = segmentPath(path)
+  const segs = parse(path)
 
-  const handle = segs.at(-1)
+  const lastSeg = segs.at(-1)
+  const handleMatch = lastSeg?._tag === "LiteralSegment"
+    && lastSeg.value.match(/^(route|layer)\.(tsx?|jsx?)$/)
+  const handle = handleMatch ? handleMatch[1] as "route" | "layer" : null
 
-  if (!handle || !("handle" in handle)) {
+  if (!handle) {
     throw new Error(
       `Invalid route path "${path}": must end with a valid handle (route or layer)`,
     )
@@ -176,7 +65,7 @@ export function parseRoute(
 
   // Validate Route constraints: rest segments must be the last segment before the handle
   const pathSegments = segs.slice(0, -1) // All segments except the handle
-  const restIndex = pathSegments.findIndex(seg => "rest" in seg)
+  const restIndex = pathSegments.findIndex(seg => seg._tag === "RestSegment")
 
   if (restIndex !== -1) {
     // If there's a rest, it must be the last path segment
@@ -189,7 +78,11 @@ export function parseRoute(
     // Validate that all segments before the rest are literal, param, or group
     for (let i = 0; i < restIndex; i++) {
       const seg = pathSegments[i]
-      if (!("literal" in seg) && !("param" in seg) && !("group" in seg)) {
+      if (
+        seg._tag !== "LiteralSegment"
+        && seg._tag !== "ParamSegment"
+        && seg._tag !== "GroupSegment"
+      ) {
         throw new Error(
           `Invalid route path "${path}": segments before rest must be literal, param, or group segments`,
         )
@@ -198,7 +91,11 @@ export function parseRoute(
   } else {
     // No rest: validate that all path segments are literal, param, or group
     for (const seg of pathSegments) {
-      if (!("literal" in seg) && !("param" in seg) && !("group" in seg)) {
+      if (
+        seg._tag !== "LiteralSegment"
+        && seg._tag !== "ParamSegment"
+        && seg._tag !== "GroupSegment"
+      ) {
         throw new Error(
           `Invalid route path "${path}": path segments must be literal, param, or group segments`,
         )
@@ -206,21 +103,18 @@ export function parseRoute(
     }
   }
 
-  // Construct routePath from path segments (excluding handle and groups)
+  // Construct routePath from path segments (excluding groups)
   // Groups like (admin) are stripped from the URL path
-  const routePathSegments = pathSegments
-    .filter(seg => !("group" in seg))
-    .map(segmentToText)
-
-  const routePath = (routePathSegments.length > 0
-    ? `/${routePathSegments.join("/")}`
-    : "/") as `/${string}`
+  const routePathSegments = pathSegments.filter(
+    seg => seg._tag !== "GroupSegment",
+  )
+  const routePath = FileRouterPattern.format(routePathSegments)
 
   return {
-    handle: handle.handle,
+    handle,
     modulePath: path,
     routePath,
-    segments: segs,
+    segments: pathSegments,
   }
 }
 
@@ -317,8 +211,8 @@ export function getRouteHandlesFromPaths(
     .toSorted((a, b) => {
       const aDepth = a.segments.length
       const bDepth = b.segments.length
-      const aHasRest = a.segments.some(seg => "rest" in seg)
-      const bHasRest = b.segments.some(seg => "rest" in seg)
+      const aHasRest = a.segments.some(seg => seg._tag === "RestSegment")
+      const bHasRest = b.segments.some(seg => seg._tag === "RestSegment")
 
       return (
         // rest is a dominant factor (routes with rest come last)

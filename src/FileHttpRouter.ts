@@ -4,9 +4,9 @@ import * as HttpRouter from "@effect/platform/HttpRouter"
 import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
 import * as Effect from "effect/Effect"
 import * as Function from "effect/Function"
-import * as RoutePath from "./RoutePath.ts"
 import * as Router from "./Router.ts"
 import * as RouteRender from "./RouteRender.ts"
+import * as RouterPattern from "./RouterPattern.ts"
 
 /**
  * Combines Effect error channel from a record of effects.
@@ -77,7 +77,7 @@ export function make<
 
     for (const { path, module } of modules) {
       const routeSet = module.default
-      const httpRouterPath = RoutePath.toHttpPath(path)
+      const httpRouterPath = RouterPattern.toHttpPath(path)
 
       for (const route of routeSet.set) {
         router = HttpRouter.route(route.method)(

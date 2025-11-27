@@ -7,9 +7,9 @@ import * as Predicate from "effect/Predicate"
 import type * as Runtime from "effect/Runtime"
 import * as Random from "../Random.ts"
 import * as Route from "../Route.ts"
-import * as RoutePath from "../RoutePath.ts"
 import * as Router from "../Router.ts"
 import * as RouteRender from "../RouteRender.ts"
+import * as RouterPattern from "../RouterPattern.ts"
 
 const TypeId: unique symbol = Symbol.for("effect-start/BunRoute")
 
@@ -85,7 +85,7 @@ export function bundlesFromRouter(
         ([path, route]) =>
           Effect.promise(() =>
             route.load().then((bundle) => {
-              const httpPath = RoutePath.toHttpPath(path)
+              const httpPath = RouterPattern.toHttpPath(path)
 
               return [httpPath, bundle] as const
             })
@@ -158,7 +158,7 @@ export function routesFromRouter(
     const result: BunRoutes = {}
 
     for (const [path, route] of allRoutes) {
-      const httpPaths = RoutePath.toBun(path)
+      const httpPaths = RouterPattern.toBun(path)
 
       if (isBunRoute(route)) {
         const bundle = yield* Effect.promise(() => route.load())
@@ -174,7 +174,7 @@ export function routesFromRouter(
         for (const httpPath of httpPaths) {
           // Skip paths already registered to preserve more specific routes.
           // Optional catch-all like [[...frontend]] returns ["/", "/*"].
-          // @see {@link RoutePath.toBun}
+          // @see {@link RouterPattern.toBun}
           if (!(httpPath in result)) {
             result[httpPath] = proxyHandler
           }

@@ -65,7 +65,7 @@ export type RouteMethod =
   | "*"
   | HttpMethod.HttpMethod
 
-export type RoutePath = `/${string}`
+export type RoutePattern = `/${string}`
 
 /**
  * Route media type used for content negotiation.
@@ -743,7 +743,7 @@ function makeSet<
 
 /**
  * Factory function that creates Route for a specific method & media.
- * Supports both Effect values and generator functions that receive context.
+ * Accepts Effect, function that returns Effect, and effectful generator.
  */
 function makeMediaFunction<
   Method extends HttpMethod.HttpMethod,
@@ -843,7 +843,6 @@ function makeMediaFunction<
 /**
  * Factory function that changes method in RouteSet.
  */
-
 function makeMethodModifier<
   M extends HttpMethod.HttpMethod,
 >(method: M) {

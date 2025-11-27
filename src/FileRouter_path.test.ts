@@ -1,132 +1,93 @@
 import * as t from "bun:test"
 import * as FileRouter from "./FileRouter.ts"
 
-t.it("empty path as null", () => {
-  t.expect(FileRouter.segmentPath("")).toEqual([])
-  t.expect(FileRouter.segmentPath("/")).toEqual([])
-})
-
-t.it("literal segments", () => {
-  t.expect(FileRouter.segmentPath("users")).toEqual([{ literal: "users" }])
-  t.expect(FileRouter.segmentPath("/users")).toEqual([{ literal: "users" }])
-  t.expect(FileRouter.segmentPath("users/")).toEqual([{ literal: "users" }])
-  t.expect(FileRouter.segmentPath("/users/create")).toEqual([
-    { literal: "users" },
-    { literal: "create" },
-  ])
-  t.expect(() => FileRouter.segmentPath("path with spaces")).toThrow()
-})
-
-t.it("dynamic parameters", () => {
-  t.expect(FileRouter.segmentPath("[userId]")).toEqual([{ param: "userId" }])
-  t.expect(FileRouter.segmentPath("/users/[userId]")).toEqual([
-    { literal: "users" },
-    { param: "userId" },
-  ])
-  t
-    .expect(FileRouter.segmentPath("/posts/[postId]/comments/[commentId]"))
-    .toEqual([
-      { literal: "posts" },
-      { param: "postId" },
-      { literal: "comments" },
-      { param: "commentId" },
-    ])
-})
-
-t.it("rest parameters", () => {
-  t.expect(FileRouter.segmentPath("[[...rest]]")).toEqual([
-    { rest: "rest", optional: true },
-  ])
-  t.expect(FileRouter.segmentPath("[...rest]")).toEqual([{ rest: "rest" }])
-  t.expect(FileRouter.segmentPath("/docs/[[...slug]]")).toEqual([
-    { literal: "docs" },
-    { rest: "slug", optional: true },
-  ])
-  t.expect(FileRouter.segmentPath("/api/[...path]")).toEqual([
-    { literal: "api" },
-    { rest: "path" },
-  ])
+t.it("empty path", () => {
+  t.expect(FileRouter.parse("")).toEqual([])
+  t.expect(FileRouter.parse("/")).toEqual([])
 })
 
 t.it("groups", () => {
-  t.expect(FileRouter.segmentPath("(admin)")).toEqual([{ group: "admin" }])
-  t.expect(FileRouter.segmentPath("/(admin)/users")).toEqual([
-    { group: "admin" },
-    { literal: "users" },
+  t.expect(FileRouter.parse("(admin)")).toEqual([
+    { _tag: "GroupSegment", name: "admin" },
   ])
-  t.expect(FileRouter.segmentPath("(auth)/login/(step1)")).toEqual([
-    { group: "auth" },
-    { literal: "login" },
-    { group: "step1" },
+  t.expect(FileRouter.parse("/(admin)/users")).toEqual([
+    { _tag: "GroupSegment", name: "admin" },
+    { _tag: "LiteralSegment", value: "users" },
   ])
-})
-
-t.it("route handles", () => {
-  t.expect(FileRouter.segmentPath("route.ts")).toEqual([{ handle: "route" }])
-  t.expect(FileRouter.segmentPath("/api/route.js")).toEqual([
-    { literal: "api" },
-    { handle: "route" },
-  ])
-  t.expect(FileRouter.segmentPath("route.tsx")).toEqual([{ handle: "route" }])
-})
-
-t.it("layer handles", () => {
-  t.expect(FileRouter.segmentPath("layer.tsx")).toEqual([{ handle: "layer" }])
-  t.expect(FileRouter.segmentPath("layer.jsx")).toEqual([{ handle: "layer" }])
-  t.expect(FileRouter.segmentPath("layer.js")).toEqual([{ handle: "layer" }])
-  t.expect(FileRouter.segmentPath("/blog/layer.jsx")).toEqual([
-    { literal: "blog" },
-    { handle: "layer" },
+  t.expect(FileRouter.parse("(auth)/login/(step1)")).toEqual([
+    { _tag: "GroupSegment", name: "auth" },
+    { _tag: "LiteralSegment", value: "login" },
+    { _tag: "GroupSegment", name: "step1" },
   ])
 })
 
-t.it("complex combinations", () => {
-  t.expect(FileRouter.segmentPath("/users/[userId]/posts/route.tsx")).toEqual([
-    { literal: "users" },
-    { param: "userId" },
-    { literal: "posts" },
-    { handle: "route" },
+t.it("handle files parsed as Literal", () => {
+  t.expect(FileRouter.parse("route.ts")).toEqual([
+    { _tag: "LiteralSegment", value: "route.ts" },
   ])
-  t.expect(FileRouter.segmentPath("/api/v1/[[...path]]/route.ts")).toEqual([
-    { literal: "api" },
-    { literal: "v1" },
-    { rest: "path", optional: true },
-    { handle: "route" },
+  t.expect(FileRouter.parse("/api/route.js")).toEqual([
+    { _tag: "LiteralSegment", value: "api" },
+    { _tag: "LiteralSegment", value: "route.js" },
   ])
-  t.expect(FileRouter.segmentPath("(admin)/users/route.tsx")).toEqual([
-    { group: "admin" },
-    { literal: "users" },
-    { handle: "route" },
+  t.expect(FileRouter.parse("layer.tsx")).toEqual([
+    { _tag: "LiteralSegment", value: "layer.tsx" },
+  ])
+  t.expect(FileRouter.parse("/blog/layer.jsx")).toEqual([
+    { _tag: "LiteralSegment", value: "blog" },
+    { _tag: "LiteralSegment", value: "layer.jsx" },
+  ])
+})
+
+t.it("parseRoute extracts handle from Literal", () => {
+  const route = FileRouter.parseRoute("users/route.tsx")
+  t.expect(route.handle).toBe("route")
+  t.expect(route.routePath).toBe("/users")
+  t.expect(route.segments).toEqual([
+    { _tag: "LiteralSegment", value: "users" },
+  ])
+
+  const layer = FileRouter.parseRoute("api/layer.ts")
+  t.expect(layer.handle).toBe("layer")
+  t.expect(layer.routePath).toBe("/api")
+})
+
+t.it("parseRoute with groups", () => {
+  const route = FileRouter.parseRoute("(admin)/users/route.tsx")
+  t.expect(route.handle).toBe("route")
+  t.expect(route.routePath).toBe("/users")
+  t.expect(route.segments).toEqual([
+    { _tag: "GroupSegment", name: "admin" },
+    { _tag: "LiteralSegment", value: "users" },
+  ])
+})
+
+t.it("parseRoute with params and rest", () => {
+  const route = FileRouter.parseRoute("users/[userId]/posts/route.tsx")
+  t.expect(route.handle).toBe("route")
+  t.expect(route.routePath).toBe("/users/[userId]/posts")
+  t.expect(route.segments).toEqual([
+    { _tag: "LiteralSegment", value: "users" },
+    { _tag: "ParamSegment", name: "userId" },
+    { _tag: "LiteralSegment", value: "posts" },
+  ])
+
+  const rest = FileRouter.parseRoute("api/[[...path]]/route.ts")
+  t.expect(rest.handle).toBe("route")
+  t.expect(rest.segments).toEqual([
+    { _tag: "LiteralSegment", value: "api" },
+    { _tag: "RestSegment", name: "path", optional: true },
   ])
 })
 
 t.it("invalid paths", () => {
-  t.expect(() => FileRouter.segmentPath("$...")).toThrow()
-  t.expect(() => FileRouter.segmentPath("invalid%char")).toThrow()
+  t.expect(() => FileRouter.parse("$...")).toThrow()
+  t.expect(() => FileRouter.parse("invalid%char")).toThrow()
+  t.expect(() => FileRouter.parse("path with spaces")).toThrow()
 })
 
-t.it("param and rest types", () => {
-  t.expect(FileRouter.segmentPath("[a]")).toEqual([{ param: "a" }])
-  t.expect(FileRouter.segmentPath("[...rest]")).toEqual([{ rest: "rest" }])
-  t.expect(FileRouter.segmentPath("[[...rest]]")).toEqual([
-    { rest: "rest", optional: true },
-  ])
-})
-
-t.it("extractRoute - users/route.ts", () => {
-  t.expect(FileRouter.segmentPath("users/route.ts")).toEqual([
-    { literal: "users" },
-    { handle: "route" },
-  ])
-})
-
-t.it("segments with extensions", () => {
-  t.expect(FileRouter.segmentPath("events.json/route.ts")).toEqual([
-    { literal: "events.json" },
-    { handle: "route" },
-  ])
-  t.expect(FileRouter.segmentPath("config.yaml.backup/route.ts")).toEqual([
-    { literal: "config.yaml.backup" },
-    { handle: "route" },
+t.it("segments with extensions (literal with dots)", () => {
+  t.expect(FileRouter.parse("events.json/route.ts")).toEqual([
+    { _tag: "LiteralSegment", value: "events.json" },
+    { _tag: "LiteralSegment", value: "route.ts" },
   ])
 })
