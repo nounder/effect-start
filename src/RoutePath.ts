@@ -123,7 +123,7 @@ function parseSegment(segment: string): Segment {
 }
 
 function parseSegments(path: string): Segment[] {
-  return path.split("/").map(parseSegment)
+  return path.split("/").filter(Boolean).map(parseSegment)
 }
 
 type SegmentMapper = (segment: Segment) => string
@@ -139,13 +139,16 @@ function buildPaths(
 
   if (optionalRestIndex !== -1) {
     const before = segments.slice(0, optionalRestIndex)
-    const beforePath = before.map(mapper).join("/")
-    const basePath = beforePath || "/"
-    const withWildcard = beforePath + restWildcard
+    const beforeJoined = before.map(mapper).join("/")
+    const basePath = beforeJoined ? "/" + beforeJoined : "/"
+    const withWildcard = basePath === "/"
+      ? restWildcard
+      : basePath + restWildcard
     return [basePath, withWildcard]
   }
 
-  return [segments.map(mapper).join("/")]
+  const joined = segments.map(mapper).join("/")
+  return [joined ? "/" + joined : "/"]
 }
 
 function colonParamSegment(segment: Segment): string {
@@ -209,21 +212,27 @@ export function toExpress(path: Route.RoutePath): string[] {
     const rest = segments[optionalRestIndex]
     if (rest._tag !== "Rest") throw new Error("unreachable")
     const restName = rest.name
-    const beforePath = before.map(mapper).join("/")
-    const basePath = beforePath || "/"
-    const withWildcard = beforePath + `/*${restName}`
+    const beforeJoined = before.map(mapper).join("/")
+    const basePath = beforeJoined ? "/" + beforeJoined : "/"
+    const withWildcard = basePath === "/"
+      ? `/*${restName}`
+      : basePath + `/*${restName}`
     return [basePath, withWildcard]
   }
 
   let result = ""
-  for (const segment of segments) {
+  for (let i = 0; i < segments.length; i++) {
+    const segment = segments[i]
+    const isFirst = i === 0
     switch (segment._tag) {
       case "Literal":
         result += "/" + segment.value
         break
       case "Param":
         if (segment.optional && !segment.prefix && !segment.suffix) {
-          result += `{/:${segment.name}}`
+          result += isFirst
+            ? "/{/:$name}".replace("$name", segment.name)
+            : `{/:${segment.name}}`
         } else {
           const param = `:${segment.name}`
           result += "/"
@@ -237,7 +246,7 @@ export function toExpress(path: Route.RoutePath): string[] {
         break
     }
   }
-  return [result.replace(/^\/\//, "/")]
+  return [result || "/"]
 }
 
 /**
@@ -264,22 +273,21 @@ export function toEffect(path: Route.RoutePath): string[] {
  */
 export function toURLPattern(path: Route.RoutePath): string[] {
   const segments = parseSegments(path)
-  return [
-    segments
-      .map((segment) => {
-        switch (segment._tag) {
-          case "Literal":
-            return segment.value
-          case "Param": {
-            const param = `:${segment.name}${segment.optional ? "?" : ""}`
-            return (segment.prefix ?? "") + param + (segment.suffix ?? "")
-          }
-          case "Rest":
-            return `:${segment.name}${segment.optional ? "*" : "+"}`
+  const joined = segments
+    .map((segment) => {
+      switch (segment._tag) {
+        case "Literal":
+          return segment.value
+        case "Param": {
+          const param = `:${segment.name}${segment.optional ? "?" : ""}`
+          return (segment.prefix ?? "") + param + (segment.suffix ?? "")
         }
-      })
-      .join("/"),
-  ]
+        case "Rest":
+          return `:${segment.name}${segment.optional ? "*" : "+"}`
+      }
+    })
+    .join("/")
+  return [joined ? "/" + joined : "/"]
 }
 
 /**
@@ -314,13 +322,14 @@ export function toRemix(path: Route.RoutePath): string[] {
 
   if (optionalRestIndex !== -1) {
     const before = segments.slice(0, optionalRestIndex)
-    const beforePath = before.map(mapper).join("/")
-    const basePath = beforePath || "/"
-    const withWildcard = beforePath ? beforePath + "/$" : "$"
+    const beforeJoined = before.map(mapper).join("/")
+    const basePath = beforeJoined ? "/" + beforeJoined : "/"
+    const withWildcard = basePath === "/" ? "$" : basePath + "/$"
     return [basePath, withWildcard]
   }
 
-  return [segments.map(mapper).join("/")]
+  const joined = segments.map(mapper).join("/")
+  return [joined ? "/" + joined : "/"]
 }
 
 export const toBun = toColon

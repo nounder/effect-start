@@ -57,7 +57,7 @@ export function bundlesFromRouter(
 ): Effect.Effect<Record<string, Bun.HTMLBundle>> {
   return Function.pipe(
     Effect.forEach(
-      router.modules,
+      router.routes,
       (mod) =>
         Effect.promise(() =>
           mod.load().then((m) => ({ path: mod.path, exported: m.default }))
@@ -137,8 +137,8 @@ export function routesFromRouter(
     const rt = runtime ?? (yield* Effect.runtime<never>())
     const nonce = Random.token(6)
 
-    const modules = yield* Effect.forEach(
-      router.modules,
+    const loadedRoutes = yield* Effect.forEach(
+      router.routes,
       (mod) =>
         Effect.promise(() =>
           mod.load().then((m) => ({
@@ -148,7 +148,7 @@ export function routesFromRouter(
         ),
     )
 
-    const allRoutes = modules.flatMap(({ path, exported }) => {
+    const allRoutes = loadedRoutes.flatMap(({ path, exported }) => {
       if (Route.isRouteSet(exported)) {
         return [...exported.set].map((route) => [path, route] as const)
       }

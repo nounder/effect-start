@@ -4,10 +4,9 @@
 
 import type { Router } from "effect-start"
 
-export const modules = [
+export const routes = [
   {
     path: "/",
-    segments: [],
     load: () => import("./route.ts"),
     layers: [
       () => import("./layer.tsx"),
@@ -15,9 +14,6 @@ export const modules = [
   },
   {
     path: "/movies",
-    segments: [
-      { literal: "movies" },
-    ],
     load: () => import("./movies/route.tsx"),
     layers: [
       () => import("./layer.tsx"),
@@ -26,10 +22,6 @@ export const modules = [
   },
   {
     path: "/users",
-    segments: [
-      { group: "admin" },
-      { literal: "users" },
-    ],
     load: () => import("./(admin)/users/route.tsx"),
     layers: [
       () => import("./layer.tsx"),
@@ -38,10 +30,6 @@ export const modules = [
   },
   {
     path: "/movies/[id]",
-    segments: [
-      { literal: "movies" },
-      { param: "id" },
-    ],
     load: () => import("./movies/[id]/route.tsx"),
     layers: [
       () => import("./layer.tsx"),
@@ -50,10 +38,6 @@ export const modules = [
   },
   {
     path: "/about/[[...section]]",
-    segments: [
-      { literal: "about" },
-      { rest: "section", optional: true },
-    ],
     load: () => import("./about/[[...section]]/route.tsx"),
     layers: [
       () => import("./layer.tsx"),

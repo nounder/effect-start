@@ -53,21 +53,22 @@ export function isSegmentEqual(a: Segment, b: Segment): boolean {
   return false
 }
 
-export type RouteModule = {
+export type RouteRef = {
   path: `/${string}`
-  segments: readonly Segment[]
   load: () => Promise<ServerModule>
   layers?: ReadonlyArray<() => Promise<unknown>>
 }
 
 export type RouteManifest = {
-  modules: readonly RouteModule[]
+  routes: readonly RouteRef[]
 }
 
 export type RouteHandle = {
   handle: "route" | "layer"
-  modulePath: string // eg. `about/route.tsx`, `users/[userId]/route.tsx`, `(admin)/users/route.tsx`
-  routePath: `/${string}` // eg. `/about`, `/users/[userId]`, `/users` (groups stripped)
+  // eg. `about/route.tsx`, `users/[userId]/route.tsx`, `(admin)/users/route.tsx`
+  modulePath: string
+  // eg. `/about`, `/users/[userId]`, `/users` (groups stripped)
+  routePath: `/${string}`
   segments: Segment[]
 }
 
@@ -81,14 +82,7 @@ export type RouteHandle = {
  */
 export type OrderedRouteHandles = RouteHandle[]
 
-const ROUTE_PATH_REGEX = /^\/?(.*\/?)((route|layer))\.(jsx?|tsx?)$/
-
-type RoutePathMatch = [
-  path: string,
-  kind: string,
-  kind: string,
-  ext: string,
-]
+const ROUTE_PATH_REGEX = /^\/?(.*\/?)(?:route|layer)\.(jsx?|tsx?)$/
 
 export function segmentPath(path: string): Segment[] {
   const trimmedPath = path.replace(/(^\/)|(\/$)/g, "") // trim leading/trailing slashes
@@ -314,10 +308,10 @@ export function getRouteHandlesFromPaths(
   paths: string[],
 ): OrderedRouteHandles {
   const handles = paths
-    .map(f => f.match(ROUTE_PATH_REGEX) as RoutePathMatch)
+    .map(f => f.match(ROUTE_PATH_REGEX))
     .filter(Boolean)
     .map(v => {
-      const path = v[0]
+      const path = v![0]
       try {
         return parseRoute(path)
       } catch {

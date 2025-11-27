@@ -12,10 +12,9 @@ t.describe("BunRoute proxy with Bun.serve", () => {
     )
 
     const router: Router.RouterContext = {
-      modules: [
+      routes: [
         {
           path: "/test",
-          segments: [],
           load: () => Promise.resolve({ default: bunRoute }),
         },
       ],
@@ -67,15 +66,13 @@ t.describe("BunRoute proxy with Bun.serve", () => {
     )
 
     const router: Router.RouterContext = {
-      modules: [
+      routes: [
         {
           path: "/page1",
-          segments: [],
           load: () => Promise.resolve({ default: bunRoute1 }),
         },
         {
           path: "/page2",
-          segments: [],
           load: () => Promise.resolve({ default: bunRoute2 }),
         },
       ],
@@ -120,10 +117,9 @@ t.describe("BunRoute proxy with Bun.serve", () => {
     )
 
     const router: Router.RouterContext = {
-      modules: [
+      routes: [
         {
           path: "/headers-test",
-          segments: [],
           load: () => Promise.resolve({ default: bunRoute }),
         },
       ],
@@ -162,15 +158,13 @@ t.describe("BunRoute proxy with Bun.serve", () => {
     const textRoute = Route.text(Effect.succeed("Hello from text route"))
 
     const router: Router.RouterContext = {
-      modules: [
+      routes: [
         {
           path: "/html",
-          segments: [],
           load: () => Promise.resolve({ default: bunRoute }),
         },
         {
           path: "/api",
-          segments: [],
           load: () => Promise.resolve({ default: textRoute }),
         },
       ],
@@ -201,10 +195,9 @@ t.describe("BunRoute proxy with Bun.serve", () => {
     )
 
     const router: Router.RouterContext = {
-      modules: [
+      routes: [
         {
           path: "/test",
-          segments: [],
           load: () => Promise.resolve({ default: bunRoute }),
         },
       ],

@@ -21,14 +21,10 @@ export type ServerModule = {
   default: Route.RouteSet.Default
 }
 
-export type ServerRoute = {
-  path: `/${string}`
-  segments: readonly FileRouter.Segment[]
-  load: () => Promise<ServerModule>
-}
+export type ServerRoute = FileRouter.RouteRef
 
 export type RouteManifest = {
-  modules: readonly FileRouter.RouteModule[]
+  routes: readonly FileRouter.RouteRef[]
   layers?: any[]
 }
 

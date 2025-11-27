@@ -17,7 +17,6 @@ class CustomError extends Data.TaggedError("CustomError") {}
 const SampleRoutes = [
   {
     path: "/users",
-    segments: [{ literal: "users" }],
     load: async () => ({
       default: Route
         .html(Effect.succeed("Users list"))
@@ -26,7 +25,6 @@ const SampleRoutes = [
   },
   {
     path: "/articles",
-    segments: [{ literal: "articles" }],
     load: async () => ({
       default: Route.html(Effect.succeed("Articles list")),
     }),
@@ -34,7 +32,7 @@ const SampleRoutes = [
 ] as const
 
 const SampleRouteManifest: Router.RouteManifest = {
-  modules: SampleRoutes,
+  routes: SampleRoutes,
 }
 
 const routerLayer = Router.layerPromise(async () => SampleRouteManifest)
@@ -57,7 +55,6 @@ t.it("HTTP methods", () =>
   effect(function*() {
     const allMethodsRoute: Router.ServerRoute = {
       path: "/",
-      segments: [],
       load: async () => ({
         default: Route
           .html(Effect.succeed("GET"))
@@ -150,21 +147,18 @@ t.it(
       const specialCharRoutes: Router.ServerRoute[] = [
         {
           path: "/api-v1",
-          segments: [{ literal: "api-v1" }],
           load: async () => ({
             default: Route.text(Effect.succeed("API v1")),
           }),
         },
         {
           path: "/files~backup",
-          segments: [{ literal: "files~backup" }],
           load: async () => ({
             default: Route.text(Effect.succeed("Backup files")),
           }),
         },
         {
           path: "/test-route~temp",
-          segments: [{ literal: "test-route~temp" }],
           load: async () => ({
             default: Route.post(Route.text(Effect.succeed("Test route"))),
           }),

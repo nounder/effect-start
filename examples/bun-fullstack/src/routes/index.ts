@@ -4,10 +4,9 @@
 
 import type { Router } from "effect-start"
 
-export const modules = [
+export const routes = [
   {
     path: "/",
-    segments: [],
     load: () => import("./route.ts"),
     layers: [
       () => import("./layer.tsx"),
@@ -15,9 +14,6 @@ export const modules = [
   },
   {
     path: "/[[...frontend]]",
-    segments: [
-      { rest: "frontend", optional: true },
-    ],
     load: () => import("./[[...frontend]]/route.ts"),
     layers: [
       () => import("./layer.tsx"),

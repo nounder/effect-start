@@ -163,15 +163,13 @@ t.describe(`${BunRoute.routesFromRouter.name}`, () => {
 
     const routes = await Effect.runPromise(
       BunRoute.routesFromRouter({
-        modules: [
+        routes: [
           {
             path: "/app",
-            segments: [],
             load: () => Promise.resolve({ default: bunRoute }),
           },
           {
             path: "/api/health",
-            segments: [],
             load: () =>
               Promise.resolve({
                 default: Route.json(Effect.succeed({ ok: true })),
@@ -296,14 +294,13 @@ t.describe("fetch handler Response", () => {
 })
 
 const makeRouter = (
-  modules: Array<{
+  routesList: Array<{
     path: `/${string}`
     routes: Route.RouteSet.Default
   }>,
 ): Router.RouterContext => ({
-  modules: modules.map((m) => ({
+  routes: routesList.map((m) => ({
     path: m.path,
-    segments: [],
     load: () => Promise.resolve({ default: m.routes }),
   })),
 })

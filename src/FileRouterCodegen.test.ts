@@ -22,17 +22,13 @@ t.it("generates code for routes only", () => {
 
 import type { Router } from "effect-start"
 
-export const modules = [
+export const routes = [
   {
     path: "/",
-    segments: [],
     load: () => import("./route.tsx"),
   },
   {
     path: "/about",
-    segments: [
-      { literal: "about" },
-    ],
     load: () => import("./about/route.tsx"),
   },
 ] as const
@@ -58,10 +54,9 @@ t.it("generates code with layers", () => {
 
 import type { Router } from "effect-start"
 
-export const modules = [
+export const routes = [
   {
     path: "/",
-    segments: [],
     load: () => import("./route.tsx"),
     layers: [
       () => import("./layer.tsx"),
@@ -69,9 +64,6 @@ export const modules = [
   },
   {
     path: "/about",
-    segments: [
-      { literal: "about" },
-    ],
     load: () => import("./about/route.tsx"),
     layers: [
       () => import("./layer.tsx"),
@@ -101,12 +93,9 @@ t.it("generates code with nested layers", () => {
 
 import type { Router } from "effect-start"
 
-export const modules = [
+export const routes = [
   {
     path: "/dashboard",
-    segments: [
-      { literal: "dashboard" },
-    ],
     load: () => import("./dashboard/route.tsx"),
     layers: [
       () => import("./layer.tsx"),
@@ -115,10 +104,6 @@ export const modules = [
   },
   {
     path: "/dashboard/settings",
-    segments: [
-      { literal: "dashboard" },
-      { literal: "settings" },
-    ],
     load: () => import("./dashboard/settings/route.tsx"),
     layers: [
       () => import("./layer.tsx"),
@@ -163,9 +148,6 @@ t.it("only includes group layers for routes in that group", () => {
   // /movies should only have root layer, not (admin) layer
   const expectedMovies = `  {
     path: "/movies",
-    segments: [
-      { literal: "movies" },
-    ],
     load: () => import("./movies/route.tsx"),
     layers: [
       () => import("./layer.tsx"),
@@ -194,16 +176,7 @@ t.it("handles dynamic routes with params", () => {
     .toContain("path: \"/users/[userId]\"")
   t
     .expect(code)
-    .toContain("{ literal: \"users\" }")
-  t
-    .expect(code)
-    .toContain("{ param: \"userId\" }")
-  t
-    .expect(code)
-    .toContain("{ param: \"postId\" }")
-  t
-    .expect(code)
-    .toContain("{ param: \"commentId\" }")
+    .toContain("path: \"/posts/[postId]/comments/[commentId]\"")
 })
 
 t.it("handles rest parameters", () => {
@@ -220,12 +193,6 @@ t.it("handles rest parameters", () => {
   t
     .expect(code)
     .toContain("path: \"/api/[...path]\"")
-  t
-    .expect(code)
-    .toContain("{ rest: \"slug\", optional: true }")
-  t
-    .expect(code)
-    .toContain("{ rest: \"path\" }")
 })
 
 t.it("handles groups in path", () => {
@@ -241,9 +208,6 @@ t.it("handles groups in path", () => {
     .toContain("path: \"/users\"") // groups stripped from URL
   t
     .expect(code)
-    .toContain("{ group: \"admin\" }")
-  t
-    .expect(code)
     .toContain("layers: [\n      () => import(\"./(admin)/layer.tsx\"),\n    ]")
 })
 
@@ -257,9 +221,6 @@ t.it("generates correct variable names for root routes", () => {
   t
     .expect(code)
     .toContain("path: \"/\"")
-  t
-    .expect(code)
-    .toContain("segments: []")
 })
 
 t.it("handles routes with dots in path segments", () => {
@@ -276,12 +237,6 @@ t.it("handles routes with dots in path segments", () => {
   t
     .expect(code)
     .toContain("path: \"/config.yaml.backup\"")
-  t
-    .expect(code)
-    .toContain("{ literal: \"events.json\" }")
-  t
-    .expect(code)
-    .toContain("{ literal: \"config.yaml.backup\" }")
 })
 
 t.it("uses default module identifier", () => {
@@ -296,17 +251,17 @@ t.it("uses default module identifier", () => {
     .toContain("import type { Router } from \"effect-start\"")
 })
 
-t.it("generates empty modules array when no handles provided", () => {
+t.it("generates empty routes array when no handles provided", () => {
   const handles: RouteHandle[] = []
 
   const code = FileRouterCodegen.generateCode(handles)
 
   t
     .expect(code)
-    .toContain("export const modules = [] as const")
+    .toContain("export const routes = [] as const")
 })
 
-t.it("only includes routes in modules, not layers", () => {
+t.it("only includes routes, not layers", () => {
   const handles: RouteHandle[] = [
     parseRoute("layer.tsx"),
     parseRoute("users/layer.tsx"),
@@ -316,7 +271,7 @@ t.it("only includes routes in modules, not layers", () => {
 
   t
     .expect(code)
-    .toContain("export const modules = [] as const")
+    .toContain("export const routes = [] as const")
 })
 
 t.it("complex nested routes with multiple layers", () => {
@@ -371,12 +326,6 @@ t.it("handles routes with hyphens and underscores in path segments", () => {
   t
     .expect(code)
     .toContain("path: \"/my_resource\"")
-  t
-    .expect(code)
-    .toContain("{ literal: \"api-v1\" }")
-  t
-    .expect(code)
-    .toContain("{ literal: \"my_resource\" }")
 })
 
 t.it("validateRouteModule returns true for valid modules", () => {
@@ -454,10 +403,7 @@ t.it("mixed params and rest in same route", () => {
 
   t
     .expect(code)
-    .toContain("{ param: \"userId\" }")
-  t
-    .expect(code)
-    .toContain("{ rest: \"path\" }")
+    .toContain("path: \"/users/[userId]/files/[...path]\"")
 })
 
 const effect = effectFn()
@@ -478,7 +424,7 @@ t.it("update() > writes file", () =>
 
       t
         .expect(content)
-        .toContain("export const modules =")
+        .toContain("export const routes =")
     })
     .pipe(
       Effect.provide(MemoryFileSystem.layerWith(update_FilesWithRoutes)),
