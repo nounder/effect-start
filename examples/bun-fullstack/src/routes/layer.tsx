@@ -1,36 +1,35 @@
-import {
-  Bundle,
-  html,
-  Route,
-} from "effect-start"
-import ClientCss from "../client.css" with { type: "file" }
+import { Route } from "effect-start"
+import * as Schema from "effect/Schema"
+
+Route
+  .schemaPathParams({
+    id: Schema.String,
+  })
+  .html(function*(props) {
+    return (
+      <div>
+        <h2>
+          Layer Route with ID: {props.pathParams.id}
+        </h2>
+      </div>
+    )
+  })
 
 export default Route.layer(
-  Route.layout(function*() {
-    const route = yield* Route.Route
-    const bundle = yield* Bundle.ClientBundle
-
+  Route.html(function*(props) {
     return (
       <html>
         <head>
           <title>
-            {Route.slots.unsafeGet("title") ?? "Default title"}
+            {props.slots.title ?? "Default title"}
           </title>
         </head>
         <body>
-          Hello HTML!
+          <h1>
+            Root
+          </h1>
 
-          <link
-            rel="stylesheet"
-            href={"/_bundle/" + bundle.resolve(ClientCss)}
-          />
-          {route.clientModuleUrl
-            && (
-              <script
-                type="module"
-                src={bundle.resolve(route.clientModuleUrl)}
-              />
-            )}
+          {props.children}
         </body>
       </html>
     )
