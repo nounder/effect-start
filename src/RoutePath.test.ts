@@ -1,5 +1,125 @@
 import * as t from "bun:test"
+import { Types } from "effect"
 import * as RoutePath from "./RoutePath.ts"
+
+type Assert<_T extends true> = void
+
+t.describe("Segments", () => {
+  t.test("literal path", () => {
+    type _1 = Assert<Types.Equals<RoutePath.Segments<"/">, []>>
+    type _2 = Assert<
+      Types.Equals<RoutePath.Segments<"/about">, [RoutePath.Literal<"about">]>
+    >
+    type _3 = Assert<
+      Types.Equals<
+        RoutePath.Segments<"/users/profile">,
+        [RoutePath.Literal<"users">, RoutePath.Literal<"profile">]
+      >
+    >
+  })
+
+  t.test("simple param [param]", () => {
+    type _1 = Assert<
+      Types.Equals<
+        RoutePath.Segments<"/users/[id]">,
+        [RoutePath.Literal<"users">, RoutePath.Param<"id", false>]
+      >
+    >
+    type _2 = Assert<
+      Types.Equals<
+        RoutePath.Segments<"/[category]/[product]">,
+        [RoutePath.Param<"category", false>, RoutePath.Param<"product", false>]
+      >
+    >
+  })
+
+  t.test("optional param [[param]]", () => {
+    type _ = Assert<
+      Types.Equals<
+        RoutePath.Segments<"/users/[[id]]">,
+        [RoutePath.Literal<"users">, RoutePath.Param<"id", true>]
+      >
+    >
+  })
+
+  t.test("rest param [...param]", () => {
+    type _ = Assert<
+      Types.Equals<
+        RoutePath.Segments<"/docs/[...path]">,
+        [RoutePath.Literal<"docs">, RoutePath.Rest<"path", false>]
+      >
+    >
+  })
+
+  t.test("optional rest param [[...param]]", () => {
+    type _1 = Assert<
+      Types.Equals<
+        RoutePath.Segments<"/[[...frontend]]">,
+        [RoutePath.Rest<"frontend", true>]
+      >
+    >
+    type _2 = Assert<
+      Types.Equals<
+        RoutePath.Segments<"/app/[[...slug]]">,
+        [RoutePath.Literal<"app">, RoutePath.Rest<"slug", true>]
+      >
+    >
+  })
+
+  t.test("param with prefix pk_[id]", () => {
+    type _ = Assert<
+      Types.Equals<
+        RoutePath.Segments<"/keys/pk_[id]">,
+        [RoutePath.Literal<"keys">, RoutePath.Param<"id", false, "pk_">]
+      >
+    >
+  })
+
+  t.test("param with suffix [id].json", () => {
+    type _ = Assert<
+      Types.Equals<
+        RoutePath.Segments<"/api/[id].json">,
+        [RoutePath.Literal<"api">, RoutePath.Param<"id", false, "", ".json">]
+      >
+    >
+  })
+
+  t.test("param with prefix and suffix file_[id].txt", () => {
+    type _ = Assert<
+      Types.Equals<
+        RoutePath.Segments<"/files/file_[id].txt">,
+        [
+          RoutePath.Literal<"files">,
+          RoutePath.Param<"id", false, "file_", ".txt">,
+        ]
+      >
+    >
+  })
+
+  t.test("param with prefix and suffix prefix_[id]_suffix", () => {
+    type _ = Assert<
+      Types.Equals<
+        RoutePath.Segments<"/prefix_[id]_suffix">,
+        [RoutePath.Param<"id", false, "prefix_", "_suffix">]
+      >
+    >
+  })
+
+  t.test("malformed segment pk_[id]foo → undefined (suffix without delimiter)", () => {
+    type _ = Assert<
+      Types.Equals<RoutePath.Segments<"/pk_[id]foo">, [undefined]>
+    >
+  })
+
+  t.test("no delimiter prefix/suffix → Literal", () => {
+    type _ = Assert<
+      Types.Equals<
+        RoutePath.Segments<"/pk[id]foo">,
+        [RoutePath.Literal<"pk[id]foo">]
+      >
+    >
+  })
+})
 
 t.describe(`${RoutePath.toColon.name}`, () => {
   t.test("literal path unchanged", () => {

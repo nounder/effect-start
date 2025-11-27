@@ -1,32 +1,75 @@
 import type * as Route from "./Route.ts"
 
-type ParamDelimiter = "_" | "-" | "." | "," | ";" | "!" | "@" | "~"
-type ParamPrefix = `${string}${ParamDelimiter}`
-type ParamSuffix = `${ParamDelimiter}${string}`
+export type ParamDelimiter = "_" | "-" | "." | "," | ";" | "!" | "@" | "~"
+export type ParamPrefix = `${string}${ParamDelimiter}` | ""
+export type ParamSuffix = `${ParamDelimiter}${string}` | ""
 
-type Literal = {
+export type Literal<
+  Value extends string = string,
+> = {
   _tag: "Literal"
-  value: string
+  value: Value
 }
 
-type Param = {
+export type Param<
+  Name extends string = string,
+  Optional extends boolean = boolean,
+  Prefix extends ParamPrefix = "",
+  Suffix extends ParamSuffix = "",
+> = {
   _tag: "Param"
-  name: string
-  optional?: boolean
-  prefix?: ParamPrefix
-  suffix?: ParamSuffix
+  name: Name
+  optional?: Optional
+  prefix?: Prefix
+  suffix?: Suffix
 }
 
-type Rest = {
+export type Rest<
+  Name extends string = string,
+  Optional extends boolean = boolean,
+> = {
   _tag: "Rest"
-  name: string
-  optional?: boolean
+  name: Name
+  optional?: Optional
 }
 
-type Segment =
+export type Segment =
   | Literal
-  | Param
+  | Param<string, boolean, ParamPrefix, ParamSuffix>
   | Rest
+
+/**
+ * Parses a route path string into a tuple of Segment types at compile time.
+ *
+ * @example
+ * ```ts
+ * type Usage = Segments<"/users/[id]/posts/[...rest]">
+ * type Expected = [
+ *   Literal<"users">,
+ *   Param<"id", false>,
+ *   Literal<"posts">,
+ *   Rest<"rest", false>
+ * ]
+ * ```
+ *
+ * Supports:
+ * - Literals: `users` → `Literal<"users">`
+ * - Params: `[id]` → `Param<"id", false>`
+ * - Params (optional): `[[id]]` → `Param<"id", true>`
+ * - Rest: `[...rest]` → `Rest<"rest", false>`
+ * - Rest (optional): `[[...rest]]` → `Rest<"rest", true>`
+ * - {Pre,Suf}fixed params: `prefix_[id]_suffix` → `Param<"id", false, "prefix_", "_suffix">`
+ * - Malformed segments: `pk_[id]foo` → `undefined` (suffix must start with delimiter)
+ *
+ * @limit Paths with more than 48 segments in TypeScript 5.9.3 will fail with
+ * `TS2589: Type instantiation is excessively deep and possibly infinite`.
+ */
+export type Segments<Path extends string> = Path extends `/${infer PathRest}`
+  ? Segments<PathRest>
+  : Path extends `${infer Head}/${infer Tail}`
+    ? [ExtractSegment<Head>, ...Segments<Tail>]
+  : Path extends "" ? []
+  : [ExtractSegment<Path>]
 
 const PARAM_PATTERN =
   /^(?<prefix>.*[^a-zA-Z0-9])?\[(?<name>[^\]]+)\](?<suffix>[^a-zA-Z0-9].*)?$/
@@ -71,8 +114,8 @@ function parseSegment(segment: string): Segment {
     return {
       _tag: "Param",
       name,
-      prefix: (prefix as ParamPrefix) ?? undefined,
-      suffix: (suffix as ParamSuffix) ?? undefined,
+      prefix: (prefix as ParamPrefix) || undefined,
+      suffix: (suffix as ParamSuffix) || undefined,
     }
   }
 
@@ -163,7 +206,9 @@ export function toExpress(path: Route.RoutePath): string[] {
 
   if (optionalRestIndex !== -1) {
     const before = segments.slice(0, optionalRestIndex)
-    const restName = (segments[optionalRestIndex] as Rest).name
+    const rest = segments[optionalRestIndex]
+    if (rest._tag !== "Rest") throw new Error("unreachable")
+    const restName = rest.name
     const beforePath = before.map(mapper).join("/")
     const basePath = beforePath || "/"
     const withWildcard = beforePath + `/*${restName}`
@@ -286,3 +331,19 @@ export const toBun = toColon
 export function toHttpPath(path: Route.RoutePath): string {
   return toEffect(path)[0]
 }
+
+type ExtractSegment<S extends string> = S extends `[[...${infer Name}]]`
+  ? Rest<Name, true>
+  : S extends `[...${infer Name}]` ? Rest<Name, false>
+  : S extends `[[${infer Name}]]` ? Param<Name, true, "", "">
+  : S extends
+    `${infer Pre
+      extends `${string}${ParamDelimiter}`}[${infer Name}]${infer Suf}`
+    ? Suf extends `${infer Delim extends ParamDelimiter}${infer SufRest}`
+      ? Param<Name, false, Pre, `${Delim}${SufRest}`>
+    : Suf extends "" ? Param<Name, false, Pre, "">
+    : undefined
+  : S extends `[${infer Name}]${infer Suf extends `${ParamDelimiter}${string}`}`
+    ? Param<Name, false, "", Suf>
+  : S extends `[${infer Name}]` ? Param<Name, false, "", "">
+  : Literal<S>
