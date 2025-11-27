@@ -4,7 +4,7 @@ import * as ConfigProvider from "effect/ConfigProvider"
 import * as Effect from "effect/Effect"
 import * as EncryptedCookies from "./EncryptedCookies.ts"
 
-t.describe("encrypt", () => {
+t.describe(`${EncryptedCookies.encrypt.name}`, () => {
   t.test("return encrypted string in correct format", async () => {
     const value = "hello world"
 
@@ -79,7 +79,7 @@ t.describe("encrypt", () => {
   })
 })
 
-t.describe("decrypt", () => {
+t.describe(`${EncryptedCookies.decrypt.name}`, () => {
   t.test("decrypt encrypted string successfully", async () => {
     const originalValue = "hello world"
 
@@ -192,7 +192,7 @@ t.describe("decrypt", () => {
   })
 })
 
-t.describe("encryptCookie", () => {
+t.describe(`${EncryptedCookies.encryptCookie.name}`, () => {
   t.test("preserve cookie properties and encrypt value", async () => {
     const cookie = Cookies.unsafeMakeCookie("test", "hello world")
 
@@ -211,7 +211,7 @@ t.describe("encryptCookie", () => {
   })
 })
 
-t.describe("decryptCookie", () => {
+t.describe(`${EncryptedCookies.decryptCookie.name}`, () => {
   t.test("preserve cookie properties and decrypt value", async () => {
     const originalCookie = Cookies.unsafeMakeCookie("test", "hello world")
 

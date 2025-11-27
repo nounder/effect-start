@@ -17,7 +17,7 @@ function extractClassNamesBroad(source: string): Set<string> {
   )
 }
 
-t.describe("extractClassNames", () => {
+t.describe(`${extractClassNames.name}`, () => {
   t.test("Basic HTML class attributes", () => {
     const source = `<div class="bg-red-500 text-white">Hello</div>`
     const result = extractClassNames(source)

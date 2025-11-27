@@ -3,7 +3,7 @@ import * as Effect from "effect/Effect"
 import * as Schema from "effect/Schema"
 import * as Commander from "./Commander.ts"
 
-t.describe("make", () => {
+t.describe(`${Commander.make.name}`, () => {
   t.it("should create a basic command", () => {
     const cmd = Commander.make({
       name: "test-app",
@@ -14,7 +14,7 @@ t.describe("make", () => {
   })
 })
 
-t.describe("option - nested builder API", () => {
+t.describe(`${Commander.option.name} - nested builder API`, () => {
   t.it("should add an option with schema", () => {
     const cmd = Commander
       .make({ name: "app" })
@@ -76,7 +76,7 @@ t.describe("option - nested builder API", () => {
   })
 })
 
-t.describe("parse - kebab-to-camel conversion", () => {
+t.describe(`${Commander.parse.name} - kebab-to-camel conversion`, () => {
   t.it("should convert kebab-case to camelCase", async () => {
     const cmd = Commander
       .make({ name: "app" })
@@ -198,7 +198,7 @@ t.describe("parse - kebab-to-camel conversion", () => {
   })
 })
 
-t.describe("optionHelp", () => {
+t.describe(`${Commander.optionHelp.name}`, () => {
   t.it("should add help option", () => {
     const cmd = Commander
       .make({ name: "app" })
@@ -210,7 +210,7 @@ t.describe("optionHelp", () => {
   })
 })
 
-t.describe("optionVersion", () => {
+t.describe(`${Commander.optionVersion.name}`, () => {
   t.it("should add version option", () => {
     const cmd = Commander
       .make({ name: "app", version: "1.0.0" })
@@ -222,7 +222,7 @@ t.describe("optionVersion", () => {
   })
 })
 
-t.describe("handle", () => {
+t.describe(`${Commander.handle.name}`, () => {
   t.it("should mark command as handled", () => {
     const handled = Commander
       .make({ name: "app" })
@@ -246,7 +246,7 @@ t.describe("handle", () => {
   })
 })
 
-t.describe("subcommand", () => {
+t.describe(`${Commander.subcommand.name}`, () => {
   t.it("should add subcommand", () => {
     const subCmd = Commander
       .make({ name: "format" })
@@ -266,7 +266,7 @@ t.describe("subcommand", () => {
   })
 })
 
-t.describe("help", () => {
+t.describe(`${Commander.help.name}`, () => {
   t.it("should generate help text", () => {
     const cmd = Commander
       .make({
@@ -309,7 +309,7 @@ t.describe("BooleanFromString", () => {
   })
 })
 
-t.describe("choice", () => {
+t.describe(`${Commander.choice.name}`, () => {
   t.it("should accept valid choice", async () => {
     const ColorSchema = Schema.compose(
       Schema.String,
@@ -337,7 +337,7 @@ t.describe("choice", () => {
   })
 })
 
-t.describe("repeatable", () => {
+t.describe(`${Commander.repeatable.name}`, () => {
   t.it("should parse comma-separated values", async () => {
     const schema = Commander.repeatable(Schema.String)
 
@@ -452,7 +452,7 @@ t.describe("integration", () => {
   })
 })
 
-t.describe("parse - comprehensive", () => {
+t.describe(`${Commander.parse.name} - comprehensive`, () => {
   t.it("should parse with explicit args", async () => {
     const cmd = Commander
       .make({ name: "app" })
@@ -845,7 +845,7 @@ t.describe("action/handler", () => {
   })
 })
 
-t.describe("version", () => {
+t.describe(`${Commander.optionVersion.name} - version behavior`, () => {
   t.it("should include version in command definition", () => {
     const cmd = Commander
       .make({ name: "app", version: "1.0.0" })
@@ -875,7 +875,7 @@ t.describe("version", () => {
   })
 })
 
-t.describe("help - comprehensive", () => {
+t.describe(`${Commander.help.name} - comprehensive`, () => {
   t.it("should generate help with description", () => {
     const cmd = Commander
       .make({
@@ -951,7 +951,7 @@ t.describe("help - comprehensive", () => {
   })
 })
 
-t.describe("subcommands - comprehensive", () => {
+t.describe(`${Commander.subcommand.name} - comprehensive`, () => {
   t.it("should add subcommand", () => {
     const subCmd = Commander
       .make({ name: "build" })

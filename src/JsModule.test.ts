@@ -1,7 +1,7 @@
 import * as t from "bun:test"
 import * as JsModule from "./JsModule.ts"
 
-t.describe("importSource", () => {
+t.describe(`${JsModule.importSource.name}`, () => {
   t.it("imports a string", async () => {
     const mod = await JsModule.importSource<any>(`
       export const b = "B"

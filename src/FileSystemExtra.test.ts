@@ -8,7 +8,7 @@ import * as Function from "effect/Function"
 import * as Stream from "effect/Stream"
 import * as FileSystemExtra from "./FileSystemExtra.ts"
 
-t.describe("watchSource", () => {
+t.describe(`${FileSystemExtra.watchSource.name}`, () => {
   t.it("emits events for file creation", () =>
     Effect
       .gen(function*() {
@@ -110,7 +110,7 @@ t.describe("watchSource", () => {
       ))
 })
 
-t.describe("filterSourceFiles", () => {
+t.describe(`${FileSystemExtra.filterSourceFiles.name}`, () => {
   t.it("matches source file extensions", () => {
     t
       .expect(
@@ -199,7 +199,7 @@ t.describe("filterSourceFiles", () => {
   })
 })
 
-t.describe("filterDirectory", () => {
+t.describe(`${FileSystemExtra.filterDirectory.name}`, () => {
   t.it("matches directories", () => {
     t
       .expect(

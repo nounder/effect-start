@@ -1,9 +1,27 @@
+/**
+ * Renders Hyper JSX nodes to HTML.
+ *
+ * Effect Start comes with {@link Hyper} and {@link JsxRuntime} to enable
+ * JSX support. The advantage of using JSX over HTML strings or templates
+ * is type safety and better editor support.
+ *
+ * JSX nodes are compatible with React's and Solid's.
+
+ * You can enable JSX support by updating `tsconfig.json`:
+ *
+ * {
+ *   compilerOptions: {
+ *     jsx: "react-jsx",
+ *     jsxImportSource: "effect-start" | "react" | "praect" // etc.
+ *   }
+ * }
+ */
+
+import type * as Hyper from "./Hyper.tsx"
 import * as HyperNode from "./HyperNode.ts"
 import { JSX } from "./jsx"
+import type * as JsxRuntime from "./jsx-runtime.ts"
 
-/**
- * From: https://github.com/developit/vhtml
- */
 const EMPTY_TAGS = [
   "area",
   "base",
@@ -93,8 +111,8 @@ export function renderToString(
       for (const key in props) {
         if (
           key !== "children"
-          && key !== "innerHTML"
-          && key !== "dangerouslySetInnerHTML"
+          && key !== "innerHTML" // Solid-specific
+          && key !== "dangerouslySetInnerHTML" // React-specific
           && props[key] !== false
           && props[key] != null
         ) {
@@ -113,6 +131,7 @@ export function renderToString(
       if (!EMPTY_TAGS.includes(type)) {
         stack.push(`</${type}>`)
 
+        // React-specific
         const html = props.dangerouslySetInnerHTML?.__html
           ?? props.innerHTML
 
