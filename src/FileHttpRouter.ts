@@ -98,7 +98,7 @@ export function middleware() {
     Effect.gen(function*() {
       const routerContext = yield* Router.Router
       const router = yield* make(
-        routerContext.routes as ReadonlyArray<Router.ServerRoute>,
+        routerContext.routes as ReadonlyArray<Router.LazyRoute>,
       )
       const res = yield* router.pipe(
         Effect.catchTag("RouteNotFound", () => app),

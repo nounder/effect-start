@@ -11,7 +11,6 @@ import * as NUrl from "node:url"
 import * as FileRouterCodegen from "./FileRouterCodegen.ts"
 import * as FileSystemExtra from "./FileSystemExtra.ts"
 import * as Router from "./Router.ts"
-import { ServerModule } from "./Router.ts"
 
 type LiteralSegment = {
   literal: string
@@ -44,23 +43,8 @@ export type Segment =
   | RestSegment
   | HandleSegment
 
-export function isSegmentEqual(a: Segment, b: Segment): boolean {
-  if ("literal" in a && "literal" in b) return a.literal === b.literal
-  if ("group" in a && "group" in b) return a.group === b.group
-  if ("param" in a && "param" in b) return a.param === b.param
-  if ("rest" in a && "rest" in b) return a.rest === b.rest
-  if ("handle" in a && "handle" in b) return a.handle === b.handle
-  return false
-}
-
-export type RouteRef = {
-  path: `/${string}`
-  load: () => Promise<ServerModule>
-  layers?: ReadonlyArray<() => Promise<unknown>>
-}
-
 export type RouteManifest = {
-  routes: readonly RouteRef[]
+  routes: readonly Router.LazyRoute[]
 }
 
 export type RouteHandle = {
@@ -131,6 +115,15 @@ export function segmentPath(path: string): Segment[] {
         return { rest: requiredRestMatch[1] }
       }
 
+      // [[param]] - Optional parameter
+      const optionalParamMatch = s.match(/^\[\[(\w+)\]\]$/)
+      if (optionalParamMatch) {
+        return {
+          param: optionalParamMatch[1],
+          optional: true,
+        }
+      }
+
       // [param] - Dynamic parameter
       const paramMatch = s.match(/^\[(\w+)\]$/)
       if (paramMatch) {
@@ -158,7 +151,9 @@ export function segmentPath(path: string): Segment[] {
 function segmentToText(seg: Segment): string {
   if ("literal" in seg) return seg.literal
   if ("group" in seg) return `(${seg.group})`
-  if ("param" in seg) return `[${seg.param}]`
+  if ("param" in seg) {
+    return seg.optional ? `[[${seg.param}]]` : `[${seg.param}]`
+  }
   if ("rest" in seg) {
     return seg.optional ? `[[...${seg.rest}]]` : `[...${seg.rest}]`
   }
@@ -274,7 +269,7 @@ export function layerManifest(options: {
 }
 
 export function layer(options: {
-  load: () => Promise<Router.RouteManifest>
+  load: () => Promise<Router.RouterManifest>
   path: string
 }) {
   return Layer.mergeAll(

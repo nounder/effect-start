@@ -31,7 +31,7 @@ const SampleRoutes = [
   },
 ] as const
 
-const SampleRouteManifest: Router.RouteManifest = {
+const SampleRouteManifest: Router.RouterManifest = {
   routes: SampleRoutes,
 }
 
@@ -53,7 +53,7 @@ t.it("HttpRouter Requirement and Error types infers", () =>
 
 t.it("HTTP methods", () =>
   effect(function*() {
-    const allMethodsRoute: Router.ServerRoute = {
+    const allMethodsRoute: Router.LazyRoute = {
       path: "/",
       load: async () => ({
         default: Route
@@ -144,7 +144,7 @@ t.it(
   "handles routes with special characters (tilde and hyphen)",
   () =>
     effect(function*() {
-      const specialCharRoutes: Router.ServerRoute[] = [
+      const specialCharRoutes: Router.LazyRoute[] = [
         {
           path: "/api-v1",
           load: async () => ({

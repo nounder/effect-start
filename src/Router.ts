@@ -5,30 +5,22 @@ import * as Layer from "effect/Layer"
 import * as FileRouter from "./FileRouter.ts"
 import * as Route from "./Route"
 
-export const ServerMethods = [
-  "GET",
-  "POST",
-  "PUT",
-  "PATCH",
-  "DELETE",
-  "OPTIONS",
-  "HEAD",
-] as const
-
-export type ServerMethod = (typeof ServerMethods)[number]
-
 export type ServerModule = {
   default: Route.RouteSet.Default
 }
 
-export type ServerRoute = FileRouter.RouteRef
+export type LazyRoute = {
+  path: `/${string}`
+  load: () => Promise<ServerModule>
+  layers?: ReadonlyArray<() => Promise<unknown>>
+}
 
-export type RouteManifest = {
-  routes: readonly FileRouter.RouteRef[]
+export type RouterManifest = {
+  routes: readonly LazyRoute[]
   layers?: any[]
 }
 
-export type RouterContext = RouteManifest
+export type RouterContext = RouterManifest
 
 export class Router extends Context.Tag("effect-start/Router")<
   Router,
@@ -36,7 +28,7 @@ export class Router extends Context.Tag("effect-start/Router")<
 >() {}
 
 export function layer(
-  manifest: RouteManifest,
+  manifest: RouterManifest,
 ): Layer.Layer<Router, never, never> {
   return Layer.effect(
     Router,
@@ -51,7 +43,7 @@ export function layer(
 export const layerFiles = FileRouter.layer
 
 export function layerPromise(
-  load: () => Promise<RouteManifest>,
+  load: () => Promise<RouterManifest>,
 ): Layer.Layer<Router, never, never> {
   return Layer.unwrapEffect(
     Effect.gen(function*() {

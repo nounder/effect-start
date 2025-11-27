@@ -406,6 +406,246 @@ t.it("mixed params and rest in same route", () => {
     .toContain("path: \"/users/[userId]/files/[...path]\"")
 })
 
+t.describe("layerMatchesRoute", () => {
+  t.it("layer in dynamic param dir only applies to routes in that dir", () => {
+    const handles: RouteHandle[] = [
+      parseRoute("[userId]/layer.tsx"),
+      parseRoute("[userId]/posts/route.tsx"),
+      parseRoute("[otherId]/route.tsx"),
+    ]
+
+    const code = FileRouterCodegen.generateCode(handles)
+
+    const expectedUserIdPosts = `  {
+    path: "/[userId]/posts",
+    load: () => import("./[userId]/posts/route.tsx"),
+    layers: [
+      () => import("./[userId]/layer.tsx"),
+    ],
+  },`
+
+    t
+      .expect(code)
+      .toContain(expectedUserIdPosts)
+
+    const expectedOtherId = `  {
+    path: "/[otherId]",
+    load: () => import("./[otherId]/route.tsx"),
+  },`
+
+    t
+      .expect(code)
+      .toContain(expectedOtherId)
+  })
+
+  t.it("nested groups only apply to routes in those groups", () => {
+    const handles: RouteHandle[] = [
+      parseRoute("layer.tsx"),
+      parseRoute("(admin)/(dashboard)/layer.tsx"),
+      parseRoute("(admin)/(dashboard)/users/route.tsx"),
+      parseRoute("(admin)/settings/route.tsx"),
+      parseRoute("(other)/(dashboard)/route.tsx"),
+    ]
+
+    const code = FileRouterCodegen.generateCode(handles)
+
+    const expectedAdminDashboardUsers = `  {
+    path: "/users",
+    load: () => import("./(admin)/(dashboard)/users/route.tsx"),
+    layers: [
+      () => import("./layer.tsx"),
+      () => import("./(admin)/(dashboard)/layer.tsx"),
+    ],
+  },`
+
+    t
+      .expect(code)
+      .toContain(expectedAdminDashboardUsers)
+
+    const expectedAdminSettings = `  {
+    path: "/settings",
+    load: () => import("./(admin)/settings/route.tsx"),
+    layers: [
+      () => import("./layer.tsx"),
+    ],
+  },`
+
+    t
+      .expect(code)
+      .toContain(expectedAdminSettings)
+
+    const expectedOtherDashboard = `  {
+    path: "/",
+    load: () => import("./(other)/(dashboard)/route.tsx"),
+    layers: [
+      () => import("./layer.tsx"),
+    ],
+  },`
+
+    t
+      .expect(code)
+      .toContain(expectedOtherDashboard)
+  })
+
+  t.it("similar directory names do not match (user vs users)", () => {
+    const handles: RouteHandle[] = [
+      parseRoute("user/layer.tsx"),
+      parseRoute("user/route.tsx"),
+      parseRoute("users/route.tsx"),
+    ]
+
+    const code = FileRouterCodegen.generateCode(handles)
+
+    const expectedUser = `  {
+    path: "/user",
+    load: () => import("./user/route.tsx"),
+    layers: [
+      () => import("./user/layer.tsx"),
+    ],
+  },`
+
+    t
+      .expect(code)
+      .toContain(expectedUser)
+
+    const expectedUsers = `  {
+    path: "/users",
+    load: () => import("./users/route.tsx"),
+  },`
+
+    t
+      .expect(code)
+      .toContain(expectedUsers)
+  })
+
+  t.it("mixed groups and literals layer matching", () => {
+    const handles: RouteHandle[] = [
+      parseRoute("(admin)/users/layer.tsx"),
+      parseRoute("(admin)/users/[userId]/route.tsx"),
+      parseRoute("users/route.tsx"),
+      parseRoute("(admin)/posts/route.tsx"),
+    ]
+
+    const code = FileRouterCodegen.generateCode(handles)
+
+    const expectedAdminUsersId = `  {
+    path: "/users/[userId]",
+    load: () => import("./(admin)/users/[userId]/route.tsx"),
+    layers: [
+      () => import("./(admin)/users/layer.tsx"),
+    ],
+  },`
+
+    t
+      .expect(code)
+      .toContain(expectedAdminUsersId)
+
+    const expectedUsers = `  {
+    path: "/users",
+    load: () => import("./users/route.tsx"),
+  },`
+
+    t
+      .expect(code)
+      .toContain(expectedUsers)
+
+    const expectedAdminPosts = `  {
+    path: "/posts",
+    load: () => import("./(admin)/posts/route.tsx"),
+  },`
+
+    t
+      .expect(code)
+      .toContain(expectedAdminPosts)
+  })
+
+  t.it("param directory layer only applies to routes in that dir", () => {
+    const handles: RouteHandle[] = [
+      parseRoute("[tenantId]/layer.tsx"),
+      parseRoute("[tenantId]/settings/route.tsx"),
+      parseRoute("other/route.tsx"),
+    ]
+
+    const code = FileRouterCodegen.generateCode(handles)
+
+    const expectedTenantSettings = `  {
+    path: "/[tenantId]/settings",
+    load: () => import("./[tenantId]/settings/route.tsx"),
+    layers: [
+      () => import("./[tenantId]/layer.tsx"),
+    ],
+  },`
+
+    t
+      .expect(code)
+      .toContain(expectedTenantSettings)
+
+    const expectedOther = `  {
+    path: "/other",
+    load: () => import("./other/route.tsx"),
+  },`
+
+    t
+      .expect(code)
+      .toContain(expectedOther)
+  })
+
+  t.it(
+    "optional param directory layer only applies to routes in that dir",
+    () => {
+      const handles: RouteHandle[] = [
+        parseRoute("[[id]]/layer.tsx"),
+        parseRoute("[[id]]/settings/route.tsx"),
+        parseRoute("other/route.tsx"),
+      ]
+
+      const code = FileRouterCodegen.generateCode(handles)
+
+      const expectedIdSettings = `  {
+    path: "/[[id]]/settings",
+    load: () => import("./[[id]]/settings/route.tsx"),
+    layers: [
+      () => import("./[[id]]/layer.tsx"),
+    ],
+  },`
+
+      t
+        .expect(code)
+        .toContain(expectedIdSettings)
+
+      const expectedOther = `  {
+    path: "/other",
+    load: () => import("./other/route.tsx"),
+  },`
+
+      t
+        .expect(code)
+        .toContain(expectedOther)
+    },
+  )
+
+  t.it("layer and route at same directory level", () => {
+    const handles: RouteHandle[] = [
+      parseRoute("users/layer.tsx"),
+      parseRoute("users/route.tsx"),
+    ]
+
+    const code = FileRouterCodegen.generateCode(handles)
+
+    const expected = `  {
+    path: "/users",
+    load: () => import("./users/route.tsx"),
+    layers: [
+      () => import("./users/layer.tsx"),
+    ],
+  },`
+
+    t
+      .expect(code)
+      .toContain(expected)
+  })
+})
+
 const effect = effectFn()
 
 const update_FilesWithRoutes = {

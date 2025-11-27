@@ -81,22 +81,14 @@ export function generateCode(
     layer: FileRouter.RouteHandle,
     route: FileRouter.RouteHandle,
   ): boolean => {
-    // Exclude handle segment (last segment) from comparison
-    const layerLength = layer.segments.length - 1
-    const routeLength = route.segments.length - 1
+    // Get the directory of the layer (strip the filename like layer.tsx)
+    const layerDir = layer.modulePath.replace(/\/?(layer)\.(tsx?|jsx?)$/, "")
 
-    // Layer's segments must be a prefix of route's segments
-    if (layerLength > routeLength) {
-      return false
-    }
+    // Layer at root (empty layerDir) applies to all routes
+    if (layerDir === "") return true
 
-    for (let i = 0; i < layerLength; i++) {
-      if (!FileRouter.isSegmentEqual(layer.segments[i], route.segments[i])) {
-        return false
-      }
-    }
-
-    return true
+    // Route's modulePath must start with the layer's directory
+    return route.modulePath.startsWith(layerDir + "/")
   }
 
   // Find layers for each route by walking up the path hierarchy
