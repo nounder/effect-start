@@ -4,6 +4,7 @@ import * as HttpServerError from "@effect/platform/HttpServerError"
 import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
 import * as Socket from "@effect/platform/Socket"
 import * as Bun from "bun"
+import * as Config from "effect/Config"
 import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
@@ -61,6 +62,13 @@ export const make = (
   Scope.Scope
 > =>
   Effect.gen(function*() {
+    const port = yield* Config.number("PORT").pipe(
+      Effect.catchTag("ConfigError", () => Effect.succeed(3000)),
+    )
+    const hostname = yield* Config.string("HOSTNAME").pipe(
+      Effect.catchTag("ConfigError", () => Effect.succeed(undefined)),
+    )
+
     const handlerStack: Array<FetchHandler> = [
       function(_request, _server) {
         return new Response("not found", { status: 404 })
@@ -98,6 +106,8 @@ export const make = (
     }
 
     const server = Bun.serve({
+      port,
+      hostname,
       ...options,
       routes: currentRoutes,
       fetch: handlerStack[0],
@@ -139,8 +149,8 @@ export const make = (
   })
 
 export const layer = (
-  options: ServeOptions,
-): Layer.Layer<BunServer> => Layer.scoped(BunServer, make(options))
+  options?: ServeOptions,
+): Layer.Layer<BunServer> => Layer.scoped(BunServer, make(options ?? {}))
 
 export const makeHttpServer: Effect.Effect<
   HttpServer.HttpServer,
@@ -208,11 +218,11 @@ export const makeHttpServer: Effect.Effect<
 })
 
 export const layerServer = (
-  options: ServeOptions,
+  options?: ServeOptions,
 ): Layer.Layer<HttpServer.HttpServer | BunServer> =>
   Layer.provideMerge(
     Layer.scoped(HttpServer.HttpServer, makeHttpServer),
-    layer(options),
+    layer(options ?? {}),
   )
 
 export function layerRoutes() {
