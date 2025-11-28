@@ -9,9 +9,10 @@ import * as Route from "./Route.ts"
  */
 export function render<E, R>(
   route: Route.Route<any, any, Route.RouteHandler<any, E, R>, any>,
+  context: Route.RouteContext,
 ): Effect.Effect<HttpServerResponse.HttpServerResponse, E, R> {
   return Effect.gen(function*() {
-    const raw = yield* route.handler
+    const raw = yield* route.handler(context)
 
     switch (route.media) {
       case "text/plain":

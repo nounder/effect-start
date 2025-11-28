@@ -1,10 +1,15 @@
 import * as HttpMethod from "@effect/platform/HttpMethod"
+import * as HttpMiddleware from "@effect/platform/HttpMiddleware"
 import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
+import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
+
 import * as Effect from "effect/Effect"
+import * as Function from "effect/Function"
 import * as Pipeable from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
 import type { YieldWrap } from "effect/Utils"
+import * as RouteRender from "./RouteRender.ts"
 
 export {
   pipe,
@@ -60,6 +65,7 @@ type Self =
 
 const TypeId: unique symbol = Symbol.for("effect-start/Route")
 const RouteSetTypeId: unique symbol = Symbol.for("effect-start/RouteSet")
+const RouteLayerTypeId: unique symbol = Symbol.for("effect-start/RouteLayer")
 
 export type RouteMethod =
   | "*"
@@ -80,15 +86,17 @@ export type RouteMedia =
   | "application/json"
 
 /**
- * A handler that produces a raw value.
+ * A handler function that produces a raw value.
  * The value will be rendered to an HttpServerResponse by RouteRender
  * based on the route's media type.
+ *
+ * Receives RouteContext which includes an optional next() for layers.
  */
 export type RouteHandler<
   A = unknown,
   E = any,
   R = any,
-> = Effect.Effect<A, E, R>
+> = (context: RouteContext) => Effect.Effect<A, E, R>
 
 /**
  * Helper type for a value that can be a single item or an array.
@@ -226,7 +234,58 @@ export namespace RouteSet {
     & RouteBuilder
 }
 
+/**
+ * Type for HTTP middleware function
+ */
+export type HttpMiddlewareFunction = ReturnType<typeof HttpMiddleware.make>
+
+/**
+ * Marker type for route middleware specification.
+ * Used to distinguish middleware from routes in Route.layer() arguments.
+ */
+export interface RouteMiddleware {
+  readonly _tag: "RouteMiddleware"
+  readonly middleware: HttpMiddlewareFunction
+}
+
+export type RouteLayer<
+  M extends ReadonlyArray<Route.Default> = ReadonlyArray<Route.Default>,
+  Schemas extends RouteSchemas = RouteSchemas.Empty,
+> =
+  & Pipeable.Pipeable
+  & {
+    [RouteLayerTypeId]: typeof RouteLayerTypeId
+    [RouteSetTypeId]: typeof RouteSetTypeId
+    set: M
+    schema: Schemas
+    httpMiddleware?: HttpMiddlewareFunction
+  }
+  & RouteBuilder
+
+export const isRouteLayer = (u: unknown): u is RouteLayer =>
+  Predicate.hasProperty(u, RouteLayerTypeId)
+
+/**
+ * Check if two routes match based on method and media type.
+ * Returns true if both method and media type match, accounting for wildcards.
+ */
+export function matches(
+  a: Route.Default,
+  b: Route.Default,
+): boolean {
+  const methodMatches = a.method === "*"
+    || b.method === "*"
+    || a.method === b.method
+
+  const mediaMatches = a.media === "*"
+    || b.media === "*"
+    || a.media === b.media
+
+  return methodMatches && mediaMatches
+}
+
 export const post = makeMethodModifier("POST")
+
 export const get = makeMethodModifier("GET")
 export const put = makeMethodModifier("PUT")
 export const patch = makeMethodModifier("PATCH")
@@ -493,6 +552,13 @@ const RouteProto = Object.assign(
   } satisfies Route.Proto,
 )
 
+const RouteLayerProto = Object.assign(
+  Object.create(SetProto),
+  {
+    [RouteLayerTypeId]: RouteLayerTypeId,
+  },
+)
+
 export function isRoute(input: unknown): input is Route {
   return Predicate.hasProperty(input, TypeId)
 }
@@ -512,24 +578,6 @@ export type JsonValue =
   | {
     [key: string]: JsonValue
   }
-
-/**
- * Constructs a URL from HttpServerRequest.
- * Handles relative URLs by using headers to determine the base URL.
- */
-function makeUrlFromRequest(
-  request: HttpServerRequest.HttpServerRequest,
-): URL {
-  const origin = request.headers.origin
-    ?? request.headers.host
-    ?? "http://localhost"
-  const protocol = request.headers["x-forwarded-proto"] ?? "http"
-  const host = request.headers.host ?? "localhost"
-  const base = origin.startsWith("http")
-    ? origin
-    : `${protocol}://${host}`
-  return new URL(request.url, base)
-}
 
 type RouteContextDecoded = {
   readonly pathParams?: Record<string, any>
@@ -562,15 +610,15 @@ export type DecodeRouteSchemas<Schemas extends RouteSchemas> =
     : {})
 
 /**
- * Context passed to route handler generator functions.
+ * Context passed to route handler functions.
  */
 export type RouteContext<
   Input extends RouteContextDecoded = {},
 > = {
   request: HttpServerRequest.HttpServerRequest
   get url(): URL
-  children: any | undefined
   slots: Record<string, string>
+  next: () => Effect.Effect<any, any, any>
 } & Input
 
 /**
@@ -762,16 +810,12 @@ function makeMediaFunction<
     this: S,
     handler: S extends RouteSet<infer _Routes, infer Schemas> ?
         | Effect.Effect<A, E, R>
-        | ((
-          context: RouteContext<DecodeRouteSchemas<Schemas>>,
-        ) =>
+        | ((context: RouteContext<DecodeRouteSchemas<Schemas>>) =>
           | Effect.Effect<A, E, R>
           | Generator<YieldWrap<Effect.Effect<A, E, R>>, A, never>)
       :
         | Effect.Effect<A, E, R>
-        | ((
-          context: RouteContext<{}>,
-        ) =>
+        | ((context: RouteContext<{}>) =>
           | Effect.Effect<A, E, R>
           | Generator<YieldWrap<Effect.Effect<A, E, R>>, A, never>),
   ): S extends RouteSet<infer Routes, infer Schemas> ? RouteSet<[
@@ -792,31 +836,22 @@ function makeMediaFunction<
       >,
     ], RouteSchemas.Empty>
   {
-    const effect = typeof handler === "function"
-      ? Effect.gen(function*() {
-        const request = yield* HttpServerRequest.HttpServerRequest
-        const context: RouteContext = {
-          request,
-          get url() {
-            return makeUrlFromRequest(request)
-          },
-          children: undefined,
-          slots: {},
-        }
-        const result = handler(context)
-        return yield* (typeof result === "object"
-            && result !== null
-            && Symbol.iterator in result
-          ? Effect.gen(() =>
+    const normalizedHandler: RouteHandler<A, E, R> =
+      typeof handler === "function"
+        ? (context: RouteContext): Effect.Effect<A, E, R> => {
+          const result = handler(context)
+          if (Effect.isEffect(result)) {
+            return result
+          }
+          return Effect.gen(() =>
             result as Generator<
-              YieldWrap<Effect.Effect<unknown, unknown, unknown>>,
+              YieldWrap<Effect.Effect<A, E, R>>,
               A,
               never
             >
-          )
-          : result as Effect.Effect<A, E, R>)
-      })
-      : handler
+          ) as Effect.Effect<A, E, R>
+        }
+        : () => handler
 
     const baseRoutes = isRouteSet(this)
       ? this.set
@@ -831,7 +866,7 @@ function makeMediaFunction<
         make({
           method,
           media,
-          handler: effect as RouteHandler<A, E, R>,
+          handler: normalizedHandler,
           schemas: baseSchema,
         }),
       ] as ReadonlyArray<Route.Default>,
@@ -927,4 +962,176 @@ export function isJsxObject(value: unknown): value is JsxObject {
     && value !== null
     && "type" in value
     && "props" in value
+}
+
+/**
+ * Create HTTP middleware spec for Route.layer().
+ * Multiple middleware can be composed by passing multiple Route.http() to Route.layer().
+ *
+ * @example
+ * Route.layer(
+ *   Route.http(middleware1),
+ *   Route.http(middleware2),
+ *   Route.http(middleware3)
+ * )
+ */
+export function http(
+  middleware: HttpMiddlewareFunction,
+): RouteMiddleware {
+  return {
+    _tag: "RouteMiddleware",
+    middleware,
+  }
+}
+
+/**
+ * Create a RouteLayer from routes and middleware.
+ *
+ * Accepts:
+ * - Route.http(middleware) - HTTP middleware to apply to all child routes
+ * - Route.html/text/json/etc handlers - Wrapper routes that receive props.children
+ * - Other RouteSets - Routes to include in the layer
+ *
+ * Multiple middleware are composed in order - first middleware wraps second, etc.
+ * Routes in the layer act as wrappers for child routes with matching method + media type.
+ *
+ * @example
+ * Route.layer(
+ *   Route.http(loggingMiddleware),
+ *   Route.http(authMiddleware),
+ *   Route.html(function*(props) {
+ *     return <html><body>{props.children}</body></html>
+ *   })
+ * )
+ */
+export function layer(
+  ...items: Array<RouteMiddleware | RouteSet.Default>
+): RouteLayer {
+  const routeMiddleware: RouteMiddleware[] = []
+  const routeSets: RouteSet.Default[] = []
+
+  for (const item of items) {
+    if ("_tag" in item && item._tag === "RouteMiddleware") {
+      routeMiddleware.push(item)
+    } else if (isRouteSet(item)) {
+      routeSets.push(item)
+    }
+  }
+
+  const layerRoutes: Route.Default[] = []
+
+  for (const routeSet of routeSets) {
+    for (const route of routeSet.set) {
+      layerRoutes.push(make({
+        method: route.method,
+        media: route.media,
+        handler: route.handler,
+        schemas: {},
+      }))
+    }
+  }
+
+  const middlewareFunctions = routeMiddleware.map((spec) => spec.middleware)
+  const httpMiddleware = middlewareFunctions.length === 0
+    ? undefined
+    : middlewareFunctions.length === 1
+    ? middlewareFunctions[0]
+    : (app: any) => middlewareFunctions.reduceRight((acc, mw) => mw(acc), app)
+
+  return Object.assign(
+    Object.create(RouteLayerProto),
+    {
+      set: layerRoutes,
+      schema: {},
+      httpMiddleware,
+    },
+  )
+}
+
+/**
+ * Extract method union from a RouteSet's routes
+ */
+
+type ExtractMethods<T extends ReadonlyArray<Route.Default>> =
+  T[number]["method"]
+
+/**
+ * Extract media union from a RouteSet's routes
+ */
+type ExtractMedia<T extends ReadonlyArray<Route.Default>> = T[number]["media"]
+
+/**
+ * Merge two RouteSets into one with content negotiation.
+ * Properly infers union types for method/media and merges schemas.
+ */
+export function merge<
+  RoutesA extends ReadonlyArray<Route.Default>,
+  SchemasA extends RouteSchemas,
+  RoutesB extends ReadonlyArray<Route.Default>,
+  SchemasB extends RouteSchemas,
+>(
+  self: RouteSet<RoutesA, SchemasA>,
+  other: RouteSet<RoutesB, SchemasB>,
+): RouteSet<
+  [
+    Route<
+      ExtractMethods<RoutesA> | ExtractMethods<RoutesB>,
+      ExtractMedia<RoutesA> | ExtractMedia<RoutesB>,
+      RouteHandler<HttpServerResponse.HttpServerResponse, any, never>,
+      MergeSchemas<SchemasA, SchemasB>
+    >,
+  ],
+  MergeSchemas<SchemasA, SchemasB>
+> {
+  const allRoutes = [...self.set, ...other.set]
+  const mergedSchemas = mergeSchemas(self.schema, other.schema)
+
+  const handler: RouteHandler<HttpServerResponse.HttpServerResponse> = (
+    context,
+  ) =>
+    Effect.gen(function*() {
+      const accept = context.request.headers.accept ?? ""
+
+      if (accept.includes("application/json")) {
+        const jsonRoute = allRoutes.find((r) => r.media === "application/json")
+        if (jsonRoute) {
+          return yield* RouteRender.render(jsonRoute, context)
+        }
+      }
+
+      if (accept.includes("text/plain")) {
+        const textRoute = allRoutes.find((r) => r.media === "text/plain")
+        if (textRoute) {
+          return yield* RouteRender.render(textRoute, context)
+        }
+      }
+
+      if (
+        accept.includes("text/html") || accept.includes("*/*") || !accept
+      ) {
+        const htmlRoute = allRoutes.find((r) => r.media === "text/html")
+        if (htmlRoute) {
+          return yield* RouteRender.render(htmlRoute, context)
+        }
+      }
+
+      const firstRoute = allRoutes[0]
+      if (firstRoute) {
+        return yield* RouteRender.render(firstRoute, context)
+      }
+
+      return HttpServerResponse.empty({ status: 406 })
+    })
+
+  return makeSet(
+    [
+      make({
+        method: allRoutes[0]?.method ?? "*",
+        media: allRoutes[0]?.media ?? "*",
+        handler,
+        schemas: mergedSchemas,
+      }),
+    ] as any,
+    mergedSchemas,
+  ) as any
 }

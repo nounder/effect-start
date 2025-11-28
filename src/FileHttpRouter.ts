@@ -1,9 +1,13 @@
 // @ts-nocheck
+import * as HttpApp from "@effect/platform/HttpApp"
 import * as HttpMiddleware from "@effect/platform/HttpMiddleware"
 import * as HttpRouter from "@effect/platform/HttpRouter"
 import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
+import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
 import * as Effect from "effect/Effect"
 import * as Function from "effect/Function"
+import * as HttpUtils from "./HttpUtils.ts"
+import * as Route from "./Route.ts"
 import * as Router from "./Router.ts"
 import * as RouteRender from "./RouteRender.ts"
 import * as RouterPattern from "./RouterPattern.ts"
@@ -55,34 +59,132 @@ export type HttpRouterFromServerRoutes<
 >
 
 /**
+ * Find layer routes that match a given route's method and media type.
+ */
+function findMatchingLayerRoutes(
+  route: Route.Route.Default,
+  layers: Route.RouteLayer[],
+): Route.Route.Default[] {
+  const matchingRoutes: Route.Route.Default[] = []
+
+  for (const layer of layers) {
+    for (const layerRoute of layer.set) {
+      if (Route.matches(layerRoute, route)) {
+        matchingRoutes.push(layerRoute)
+      }
+    }
+  }
+
+  return matchingRoutes
+}
+
+/**
+ * Wrap an inner route with a layer route.
+ * Returns a new route that, when executed, provides next() to call the inner route.
+ */
+function wrapWithLayerRoute(
+  innerRoute: Route.Route.Default,
+  layerRoute: Route.Route.Default,
+): Route.Route.Default {
+  const handler: Route.RouteHandler = (context) => {
+    const innerNext = () => innerRoute.handler(context)
+
+    const contextWithNext: Route.RouteContext = {
+      ...context,
+      next: innerNext,
+    }
+
+    return layerRoute.handler(contextWithNext)
+  }
+
+  return Route.make({
+    method: layerRoute.method,
+    media: layerRoute.media,
+    handler,
+    schemas: {},
+  })
+}
+
+/**
  * Makes a HttpRouter from file-based routes.
  */
+
 export function make<
   Routes extends ReadonlyArray<Router.ServerRoute>,
 >(
   routes: Routes,
 ): Effect.Effect<HttpRouterFromServerRoutes<Routes>> {
   return Effect.gen(function*() {
-    const modules = yield* Effect.forEach(
+    const routesWithModules = yield* Effect.forEach(
       routes,
       (route) =>
-        Function.pipe(
-          Effect.tryPromise(() => route.load()),
-          Effect.orDie,
-          Effect.map((module) => ({ path: route.path, module })),
-        ),
+        Effect.gen(function*() {
+          const module = yield* Effect.tryPromise(() => route.load()).pipe(
+            Effect.orDie,
+          )
+
+          const layerModules = route.layers
+            ? yield* Effect.forEach(
+              route.layers,
+              (layerLoad) =>
+                Effect.tryPromise(() => layerLoad()).pipe(Effect.orDie),
+            )
+            : []
+
+          const layers = layerModules
+            .map((mod: any) => mod.default)
+            .filter(Route.isRouteLayer)
+
+          return {
+            path: route.path,
+            routeSet: module.default,
+            layers,
+          }
+        }),
     )
 
     let router: HttpRouter.HttpRouter<any, any> = HttpRouter.empty
 
-    for (const { path, module } of modules) {
-      const routeSet = module.default
+    for (const { path, routeSet, layers } of routesWithModules) {
       const httpRouterPath = RouterPattern.toHttpPath(path)
 
       for (const route of routeSet.set) {
+        const matchingLayerRoutes = findMatchingLayerRoutes(route, layers)
+
+        let wrappedRoute = route
+        // Reverse so first layer in array becomes outermost wrapper.
+        // Example: [outerLayer, innerLayer] wraps as outer(inner(route))
+        for (const layerRoute of matchingLayerRoutes.reverse()) {
+          wrappedRoute = wrapWithLayerRoute(wrappedRoute, layerRoute)
+        }
+
+        const wrappedHandler: HttpApp.Default = Effect.gen(function*() {
+          const request = yield* HttpServerRequest.HttpServerRequest
+
+          const context: Route.RouteContext = {
+            request,
+            get url() {
+              return HttpUtils.makeUrlFromRequest(request)
+            },
+            slots: {},
+            next: () => Effect.void,
+          }
+
+          return yield* RouteRender.render(wrappedRoute, context)
+        })
+
+        const allMiddleware = layers
+          .map((layer) => layer.httpMiddleware)
+          .filter((m): m is Route.HttpMiddlewareFunction => m !== undefined)
+
+        let finalHandler = wrappedHandler
+        for (const middleware of allMiddleware) {
+          finalHandler = middleware(finalHandler)
+        }
+
         router = HttpRouter.route(route.method)(
           httpRouterPath,
-          RouteRender.render(route) as any,
+          finalHandler as any,
         )(
           router,
         )

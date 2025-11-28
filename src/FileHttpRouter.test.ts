@@ -199,3 +199,78 @@ t.it(
         .toBe("Test route")
     }),
 )
+
+t.it(
+  "layer routes can wrap inner routes using next()",
+  () =>
+    effect(function*() {
+      const routeWithLayer: Router.LazyRoute = {
+        path: "/page",
+        load: async () => ({
+          default: Route.html(Effect.succeed("<h1>Page Content</h1>")),
+        }),
+        layers: [
+          async () => ({
+            default: Route.layer(
+              Route.html(function*(context) {
+                const innerContent = yield* context.next()
+                return `<html><body>${innerContent}</body></html>`
+              }),
+            ),
+          }),
+        ],
+      }
+
+      const router = yield* FileHttpRouter.make([routeWithLayer])
+      const client = TestHttpClient.make(router)
+
+      const response = yield* client.get("/page")
+
+      t.expect(response.status).toBe(200)
+
+      const html = yield* response.text
+
+      t.expect(html).toBe("<html><body><h1>Page Content</h1></body></html>")
+    }),
+)
+
+t.it("nested layers compose correctly with next()", () =>
+  effect(function*() {
+    const routeWithNestedLayers: Router.LazyRoute = {
+      path: "/nested",
+      load: async () => ({
+        default: Route.html(Effect.succeed("content")),
+      }),
+      layers: [
+        async () => ({
+          default: Route.layer(
+            Route.html(function*(context) {
+              const inner = yield* context.next()
+              return `<div class="outer">${inner}</div>`
+            }),
+          ),
+        }),
+        async () => ({
+          default: Route.layer(
+            Route.html(function*(context) {
+              const inner = yield* context.next()
+              return `<div class="inner">${inner}</div>`
+            }),
+          ),
+        }),
+      ],
+    }
+
+    const router = yield* FileHttpRouter.make([routeWithNestedLayers])
+    const client = TestHttpClient.make(router)
+
+    const response = yield* client.get("/nested")
+
+    t.expect(response.status).toBe(200)
+
+    const html = yield* response.text
+
+    t.expect(html).toBe(
+      "<div class=\"outer\"><div class=\"inner\">content</div></div>",
+    )
+  }))

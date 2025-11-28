@@ -1,10 +1,13 @@
 import * as HttpApp from "@effect/platform/HttpApp"
+import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
 import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
 import type * as Bun from "bun"
 import * as Effect from "effect/Effect"
+
 import * as Function from "effect/Function"
 import * as Predicate from "effect/Predicate"
 import type * as Runtime from "effect/Runtime"
+import * as HttpUtils from "../HttpUtils.ts"
 import * as Random from "../Random.ts"
 import * as Route from "../Route.ts"
 import * as Router from "../Router.ts"
@@ -26,7 +29,7 @@ export function loadBundle(
   const route = Route.make({
     method: "GET",
     media: "text/html",
-    handler: HttpServerResponse.text("Empty BunRoute"),
+    handler: () => HttpServerResponse.text("Empty BunRoute"),
     schemas: {},
   })
 
@@ -45,6 +48,44 @@ export function loadBundle(
 
 export function isBunRoute(input: unknown): input is BunRoute {
   return Predicate.hasProperty(input, TypeId)
+}
+
+function findMatchingLayerRoutes(
+  route: Route.Route.Default,
+  layers: Route.RouteLayer[],
+): Route.Route.Default[] {
+  const matchingRoutes: Route.Route.Default[] = []
+  for (const layer of layers) {
+    for (const layerRoute of layer.set) {
+      if (Route.matches(layerRoute, route)) {
+        matchingRoutes.push(layerRoute)
+      }
+    }
+  }
+  return matchingRoutes
+}
+
+function wrapWithLayerRoute(
+  innerRoute: Route.Route.Default,
+  layerRoute: Route.Route.Default,
+): Route.Route.Default {
+  const handler: Route.RouteHandler = (context) => {
+    const innerNext = () => innerRoute.handler(context)
+
+    const contextWithNext: Route.RouteContext = {
+      ...context,
+      next: innerNext,
+    }
+
+    return layerRoute.handler(contextWithNext)
+  }
+
+  return Route.make({
+    method: layerRoute.method,
+    media: layerRoute.media,
+    handler,
+    schemas: {},
+  })
 }
 
 /**
@@ -140,64 +181,131 @@ export function routesFromRouter(
     const loadedRoutes = yield* Effect.forEach(
       router.routes,
       (mod) =>
-        Effect.promise(() =>
-          mod.load().then((m) => ({
-            path: mod.path,
-            exported: m.default,
-          }))
-        ),
-    )
+        Effect.gen(function*() {
+          const routeModule = yield* Effect.promise(() => mod.load())
 
-    const allRoutes = loadedRoutes.flatMap(({ path, exported }) => {
-      if (Route.isRouteSet(exported)) {
-        return [...exported.set].map((route) => [path, route] as const)
-      }
-      return []
-    })
+          const layerModules = mod.layers
+            ? yield* Effect.forEach(
+              mod.layers,
+              (layerLoad) => Effect.promise(() => layerLoad()),
+            )
+            : []
+
+          const layers = layerModules
+            .map((m: any) => m.default)
+            .filter(Route.isRouteLayer)
+
+          return {
+            path: mod.path,
+            exported: routeModule.default,
+            layers,
+          }
+        }),
+    )
 
     const result: BunRoutes = {}
 
-    for (const [path, route] of allRoutes) {
+    for (const { path, exported, layers } of loadedRoutes) {
       const httpPaths = RouterPattern.toBun(path)
 
-      if (isBunRoute(route)) {
-        const bundle = yield* Effect.promise(() => route.load())
-        const internalPath = `${path}~BunRoute-${nonce}`
+      const byMethod = new Map<Route.RouteMethod, Route.Route.Default[]>()
+      for (const route of exported.set) {
+        if (isBunRoute(route)) {
+          const bundle = yield* Effect.promise(() => route.load())
+          const internalPath = `${path}~BunRoute-${nonce}`
 
-        result[internalPath] = bundle
+          result[internalPath] = bundle
 
-        const proxyHandler: BunServerFetchHandler = (request) => {
-          const url = new URL(internalPath, request.url)
-          return fetch(new Request(url, request))
-        }
-
-        for (const httpPath of httpPaths) {
-          // Skip paths already registered to preserve more specific routes.
-          // Optional catch-all like [[...frontend]] returns ["/", "/*"].
-          // @see {@link RouterPattern.toBun}
-          if (!(httpPath in result)) {
-            result[httpPath] = proxyHandler
+          const proxyHandler: BunServerFetchHandler = (request) => {
+            const url = new URL(internalPath, request.url)
+            return fetch(new Request(url, request))
           }
-        }
-      } else {
-        const httpApp = RouteRender.render(route)
 
-        const webHandler = HttpApp.toWebHandlerRuntime(rt)(httpApp)
+          for (const httpPath of httpPaths) {
+            if (!(httpPath in result)) {
+              result[httpPath] = proxyHandler
+            }
+          }
+        } else {
+          const existing = byMethod.get(route.method) ?? []
+          existing.push(route)
+          byMethod.set(route.method, existing)
+        }
+      }
+
+      for (const [method, routes] of byMethod) {
+        const httpApp = Effect.gen(function*() {
+          const request = yield* HttpServerRequest.HttpServerRequest
+          const accept = request.headers.accept ?? ""
+
+          let selectedRoute: Route.Route.Default | undefined
+
+          if (accept.includes("application/json")) {
+            selectedRoute = routes.find((r) => r.media === "application/json")
+          }
+          if (!selectedRoute && accept.includes("text/plain")) {
+            selectedRoute = routes.find((r) => r.media === "text/plain")
+          }
+          if (
+            !selectedRoute
+            && (accept.includes("text/html")
+              || accept.includes("*/*")
+              || !accept)
+          ) {
+            selectedRoute = routes.find((r) => r.media === "text/html")
+          }
+          if (!selectedRoute) {
+            selectedRoute = routes[0]
+          }
+
+          if (!selectedRoute) {
+            return HttpServerResponse.empty({ status: 406 })
+          }
+
+          const matchingLayerRoutes = findMatchingLayerRoutes(
+            selectedRoute,
+            layers,
+          )
+          let wrappedRoute = selectedRoute
+          for (const layerRoute of matchingLayerRoutes.reverse()) {
+            wrappedRoute = wrapWithLayerRoute(wrappedRoute, layerRoute)
+          }
+
+          const context: Route.RouteContext = {
+            request,
+            get url() {
+              return HttpUtils.makeUrlFromRequest(request)
+            },
+            slots: {},
+            next: () => Effect.void,
+          }
+
+          return yield* RouteRender.render(wrappedRoute, context)
+        })
+
+        const allMiddleware = layers
+          .map((layer) => layer.httpMiddleware)
+          .filter((m): m is Route.HttpMiddlewareFunction => m !== undefined)
+
+        let finalHandler = httpApp
+        for (const middleware of allMiddleware) {
+          finalHandler = middleware(finalHandler)
+        }
+
+        const webHandler = HttpApp.toWebHandlerRuntime(rt)(finalHandler)
         const handler: BunServerFetchHandler = (request) => webHandler(request)
 
         for (const httpPath of httpPaths) {
-          if (route.method === "*" || isBunRoute(route)) {
+          if (method === "*") {
             if (!(httpPath in result)) {
               result[httpPath] = handler
             }
           } else {
             const existing = result[httpPath]
             if (isMethodHandlers(existing)) {
-              existing[route.method] = handler
-            } else if (httpPath in result) {
-              continue
-            } else {
-              result[httpPath] = { [route.method]: handler }
+              existing[method] = handler
+            } else if (!(httpPath in result)) {
+              result[httpPath] = { [method]: handler }
             }
           }
         }

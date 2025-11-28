@@ -1,4 +1,9 @@
+import * as HttpApp from "@effect/platform/HttpApp"
+import * as HttpMiddleware from "@effect/platform/HttpMiddleware"
+import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
+import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
 import * as t from "bun:test"
+
 import * as Effect from "effect/Effect"
 import * as Function from "effect/Function"
 import * as Schema from "effect/Schema"
@@ -870,4 +875,470 @@ t.it("schemaHeaders accepts string and string array encoded schemas", () => {
       }),
     })
     .text(Effect.succeed("ok"))
+})
+
+t.it("Route.http creates RouteMiddleware", () => {
+  const middleware = (app: any) => app
+
+  const spec = Route.http(middleware)
+
+  t.expect(spec._tag).toBe("RouteMiddleware")
+  t.expect(spec.middleware).toBe(middleware)
+})
+
+t.it("Route.layer creates RouteLayer with middleware", () => {
+  const middleware = (app: any) => app
+
+  const layer = Route.layer(
+    Route.http(middleware),
+    Route.html(Effect.succeed("<div>test</div>")),
+  )
+
+  t.expect(Route.isRouteLayer(layer)).toBe(true)
+  t.expect(layer.httpMiddleware).toBe(middleware)
+  t.expect(layer.set.length).toBe(1)
+})
+
+t.it("Route.layer merges multiple route sets", () => {
+  const routes1 = Route.html(Effect.succeed("<div>1</div>"))
+  const routes2 = Route.text(Effect.succeed("text"))
+
+  const layer = Route.layer(routes1, routes2)
+
+  t.expect(layer.set.length).toBe(2)
+  t.expect(Route.isRouteLayer(layer)).toBe(true)
+})
+
+t.it("Route.layer merges routes from all route sets", () => {
+  const routes1 = Route
+    .schemaPathParams({ id: Schema.String })
+    .html(Effect.succeed("<div>test</div>"))
+
+  const routes2 = Route
+    .schemaUrlParams({ page: Schema.NumberFromString })
+    .text(Effect.succeed("text"))
+
+  const layer = Route.layer(routes1, routes2)
+
+  t.expect(layer.set.length).toBe(2)
+  t.expect(layer.set[0]!.media).toBe("text/html")
+  t.expect(layer.set[1]!.media).toBe("text/plain")
+})
+
+t.it("Route.layer works with no middleware", () => {
+  const layer = Route.layer(
+    Route.html(Effect.succeed("<div>test</div>")),
+  )
+
+  t.expect(Route.isRouteLayer(layer)).toBe(true)
+  t.expect(layer.httpMiddleware).toBeUndefined()
+  t.expect(layer.set.length).toBe(1)
+})
+
+t.it("Route.layer works with no routes", () => {
+  const middleware = (app: any) => app
+
+  const layer = Route.layer(
+    Route.http(middleware),
+  )
+
+  t.expect(Route.isRouteLayer(layer)).toBe(true)
+  t.expect(layer.httpMiddleware).toBe(middleware)
+  t.expect(layer.set.length).toBe(0)
+})
+
+t.it("isRouteLayer type guard works correctly", () => {
+  const middleware = (app: any) => app
+  const layer = Route.layer(Route.http(middleware))
+  const regularRoutes = Route.html(Effect.succeed("<div>test</div>"))
+
+  t.expect(Route.isRouteLayer(layer)).toBe(true)
+  t.expect(Route.isRouteLayer(regularRoutes)).toBe(false)
+  t.expect(Route.isRouteLayer(null)).toBe(false)
+  t.expect(Route.isRouteLayer(undefined)).toBe(false)
+  t.expect(Route.isRouteLayer({})).toBe(false)
+})
+
+t.it("Route.layer composes multiple middleware in order", async () => {
+  const executionOrder: string[] = []
+
+  const middleware1 = HttpMiddleware.make((app) =>
+    Effect.gen(function*() {
+      executionOrder.push("middleware1-before")
+      const result = yield* app
+      executionOrder.push("middleware1-after")
+      return result
+    })
+  ) as Route.HttpMiddlewareFunction
+
+  const middleware2 = HttpMiddleware.make((app) =>
+    Effect.gen(function*() {
+      executionOrder.push("middleware2-before")
+      const result = yield* app
+      executionOrder.push("middleware2-after")
+      return result
+    })
+  ) as Route.HttpMiddlewareFunction
+
+  const middleware3 = HttpMiddleware.make((app) =>
+    Effect.gen(function*() {
+      executionOrder.push("middleware3-before")
+      const result = yield* app
+      executionOrder.push("middleware3-after")
+      return result
+    })
+  ) as Route.HttpMiddlewareFunction
+
+  const layer = Route.layer(
+    Route.http(middleware1),
+    Route.http(middleware2),
+    Route.http(middleware3),
+  )
+
+  t.expect(layer.httpMiddleware).toBeDefined()
+
+  const mockApp = Effect.sync(() => {
+    executionOrder.push("app")
+    return HttpServerResponse.text("result")
+  })
+
+  const composed = layer.httpMiddleware!(mockApp) as Effect.Effect<
+    HttpServerResponse.HttpServerResponse,
+    never,
+    never
+  >
+  await Effect.runPromise(composed.pipe(Effect.orDie))
+
+  t.expect(executionOrder).toEqual([
+    "middleware1-before",
+    "middleware2-before",
+    "middleware3-before",
+    "app",
+    "middleware3-after",
+    "middleware2-after",
+    "middleware1-after",
+  ])
+})
+
+t.it("Route.layer with single middleware works correctly", async () => {
+  let middlewareCalled = false
+
+  const middleware = HttpMiddleware.make((app) =>
+    Effect.gen(function*() {
+      middlewareCalled = true
+      return yield* app
+    })
+  ) as Route.HttpMiddlewareFunction
+
+  const layer = Route.layer(Route.http(middleware))
+
+  t.expect(layer.httpMiddleware).toBeDefined()
+
+  const mockApp = Effect.succeed(HttpServerResponse.text("result"))
+  const composed = layer.httpMiddleware!(mockApp) as Effect.Effect<
+    HttpServerResponse.HttpServerResponse,
+    never,
+    never
+  >
+  await Effect.runPromise(composed.pipe(Effect.orDie))
+
+  t.expect(middlewareCalled).toBe(true)
+})
+
+t.it("Route.layer middleware can modify responses", async () => {
+  const addHeader1 = HttpMiddleware.make((app) =>
+    Effect.gen(function*() {
+      const result = yield* app
+      return HttpServerResponse.setHeader(result, "X-Custom-1", "value1")
+    })
+  ) as Route.HttpMiddlewareFunction
+
+  const addHeader2 = HttpMiddleware.make((app) =>
+    Effect.gen(function*() {
+      const result = yield* app
+      return HttpServerResponse.setHeader(result, "X-Custom-2", "value2")
+    })
+  ) as Route.HttpMiddlewareFunction
+
+  const layer = Route.layer(
+    Route.http(addHeader1),
+    Route.http(addHeader2),
+  )
+
+  const mockApp = Effect.succeed(HttpServerResponse.text("data"))
+  const composed = layer.httpMiddleware!(mockApp) as Effect.Effect<
+    HttpServerResponse.HttpServerResponse,
+    never,
+    never
+  >
+  const result = await Effect.runPromise(composed.pipe(Effect.orDie))
+
+  t.expect(result.headers["x-custom-1"]).toBe("value1")
+  t.expect(result.headers["x-custom-2"]).toBe("value2")
+})
+
+t.it("Route.matches returns true for exact method and media match", () => {
+  const route1 = Route.get(Route.html(Effect.succeed("<div>test</div>")))
+  const route2 = Route.get(Route.html(Effect.succeed("<div>other</div>")))
+
+  t.expect(Route.matches(route1.set[0]!, route2.set[0]!)).toBe(true)
+})
+
+t.it("Route.matches returns false for different methods", () => {
+  const route1 = Route.get(Route.html(Effect.succeed("<div>test</div>")))
+  const route2 = Route.post(Route.html(Effect.succeed("<div>other</div>")))
+
+  t.expect(Route.matches(route1.set[0]!, route2.set[0]!)).toBe(false)
+})
+
+t.it("Route.matches returns false for different media types", () => {
+  const route1 = Route.get(Route.html(Effect.succeed("<div>test</div>")))
+  const route2 = Route.get(Route.json(Effect.succeed({ data: "test" })))
+
+  t.expect(Route.matches(route1.set[0]!, route2.set[0]!)).toBe(false)
+})
+
+t.it("Route.matches returns true when method is wildcard", () => {
+  const route1 = Route.html(Effect.succeed("<div>test</div>"))
+  const route2 = Route.get(Route.html(Effect.succeed("<div>other</div>")))
+
+  t.expect(Route.matches(route1.set[0]!, route2.set[0]!)).toBe(true)
+  t.expect(Route.matches(route2.set[0]!, route1.set[0]!)).toBe(true)
+})
+
+t.it("Route.matches returns true when one route has wildcard method", () => {
+  const wildcardRoute = Route.html(Effect.succeed("<div>test</div>"))
+  const specificRoute = Route.get(
+    Route.html(Effect.succeed("<div>other</div>")),
+  )
+
+  t.expect(Route.matches(wildcardRoute.set[0]!, specificRoute.set[0]!)).toBe(
+    true,
+  )
+})
+
+t.describe("Route.merge", () => {
+  t.it("types merged routes with union of methods", () => {
+    const textRoute = Route.text(Effect.succeed("hello"))
+    const htmlRoute = Route.html(Effect.succeed("<div>world</div>"))
+
+    const merged = Route.merge(textRoute, htmlRoute)
+
+    type Expected = Route.RouteSet<
+      [
+        Route.Route<
+          "GET",
+          "text/plain" | "text/html",
+          Route.RouteHandler<HttpServerResponse.HttpServerResponse>
+        >,
+      ]
+    >
+
+    Function.satisfies<Expected>()(merged)
+  })
+
+  t.it("types merged routes with different methods", () => {
+    const getRoute = Route.get(Route.text(Effect.succeed("get")))
+    const postRoute = Route.post(Route.json(Effect.succeed({ ok: true })))
+
+    const merged = Route.merge(getRoute, postRoute)
+
+    type Expected = Route.RouteSet<
+      [
+        Route.Route<
+          "GET" | "POST",
+          "text/plain" | "application/json",
+          Route.RouteHandler<HttpServerResponse.HttpServerResponse>
+        >,
+      ]
+    >
+
+    Function.satisfies<Expected>()(merged)
+  })
+
+  t.it("types merged schemas using MergeSchemas", () => {
+    const routeA = Route
+      .schemaPathParams({ id: Schema.NumberFromString })
+      .text(Effect.succeed("a"))
+
+    const routeB = Route
+      .schemaUrlParams({ page: Schema.NumberFromString })
+      .html(Effect.succeed("<div>b</div>"))
+
+    const merged = Route.merge(routeA, routeB)
+
+    type MergedSchemas = typeof merged.schema
+
+    type ExpectedPathParams = {
+      readonly id: typeof Schema.NumberFromString
+    }
+    type ExpectedUrlParams = {
+      readonly page: typeof Schema.NumberFromString
+    }
+
+    type CheckPathParams = MergedSchemas["PathParams"] extends
+      Schema.Struct<ExpectedPathParams> ? true : false
+    type CheckUrlParams = MergedSchemas["UrlParams"] extends
+      Schema.Struct<ExpectedUrlParams> ? true : false
+
+    const _pathParamsCheck: CheckPathParams = true
+    const _urlParamsCheck: CheckUrlParams = true
+  })
+
+  t.it("merged route does content negotiation for text/plain", async () => {
+    const textRoute = Route.text(Effect.succeed("plain text"))
+    const htmlRoute = Route.html(Effect.succeed("<div>html</div>"))
+
+    const merged = Route.merge(textRoute, htmlRoute)
+    const route = merged.set[0]!
+
+    const request = HttpServerRequest.fromWeb(
+      new Request("http://localhost/test", {
+        headers: { Accept: "text/plain" },
+      }),
+    )
+
+    const context: Route.RouteContext = {
+      request,
+      get url() {
+        return new URL(request.url)
+      },
+      slots: {},
+      next: () => Effect.void,
+    }
+
+    const result = await Effect.runPromise(route.handler(context))
+
+    const webResponse = HttpServerResponse.toWeb(result)
+    const text = await webResponse.text()
+
+    t.expect(text).toBe("plain text")
+    t.expect(result.headers["content-type"]).toBe("text/plain")
+  })
+
+  t.it("merged route does content negotiation for text/html", async () => {
+    const textRoute = Route.text(Effect.succeed("plain text"))
+    const htmlRoute = Route.html(Effect.succeed("<div>html</div>"))
+
+    const merged = Route.merge(textRoute, htmlRoute)
+    const route = merged.set[0]!
+
+    const request = HttpServerRequest.fromWeb(
+      new Request("http://localhost/test", {
+        headers: { Accept: "text/html" },
+      }),
+    )
+
+    const context: Route.RouteContext = {
+      request,
+      get url() {
+        return new URL(request.url)
+      },
+      slots: {},
+      next: () => Effect.void,
+    }
+
+    const result = await Effect.runPromise(route.handler(context))
+
+    const webResponse = HttpServerResponse.toWeb(result)
+    const text = await webResponse.text()
+
+    t.expect(text).toBe("<div>html</div>")
+    t.expect(result.headers["content-type"]).toContain("text/html")
+  })
+
+  t.it(
+    "merged route does content negotiation for application/json",
+    async () => {
+      const textRoute = Route.text(Effect.succeed("plain text"))
+      const jsonRoute = Route.json(Effect.succeed({ message: "json" }))
+
+      const merged = Route.merge(textRoute, jsonRoute)
+      const route = merged.set[0]!
+
+      const request = HttpServerRequest.fromWeb(
+        new Request("http://localhost/test", {
+          headers: { Accept: "application/json" },
+        }),
+      )
+
+      const context: Route.RouteContext = {
+        request,
+        get url() {
+          return new URL(request.url)
+        },
+        slots: {},
+        next: () => Effect.void,
+      }
+
+      const result = await Effect.runPromise(route.handler(context))
+
+      const webResponse = HttpServerResponse.toWeb(result)
+      const text = await webResponse.text()
+
+      t.expect(text).toBe("{\"message\":\"json\"}")
+      t.expect(result.headers["content-type"]).toContain("application/json")
+    },
+  )
+
+  t.it("merged route defaults to html for */* accept", async () => {
+    const textRoute = Route.text(Effect.succeed("plain text"))
+    const htmlRoute = Route.html(Effect.succeed("<div>html</div>"))
+
+    const merged = Route.merge(textRoute, htmlRoute)
+    const route = merged.set[0]!
+
+    const request = HttpServerRequest.fromWeb(
+      new Request("http://localhost/test", {
+        headers: { Accept: "*/*" },
+      }),
+    )
+
+    const context: Route.RouteContext = {
+      request,
+      get url() {
+        return new URL(request.url)
+      },
+      slots: {},
+      next: () => Effect.void,
+    }
+
+    const result = await Effect.runPromise(route.handler(context))
+
+    const webResponse = HttpServerResponse.toWeb(result)
+    const text = await webResponse.text()
+
+    t.expect(text).toBe("<div>html</div>")
+  })
+
+  t.it(
+    "merged route defaults to first route when no Accept header",
+    async () => {
+      const textRoute = Route.text(Effect.succeed("plain text"))
+      const htmlRoute = Route.html(Effect.succeed("<div>html</div>"))
+
+      const merged = Route.merge(textRoute, htmlRoute)
+      const route = merged.set[0]!
+
+      const request = HttpServerRequest.fromWeb(
+        new Request("http://localhost/test"),
+      )
+
+      const context: Route.RouteContext = {
+        request,
+        get url() {
+          return new URL(request.url)
+        },
+        slots: {},
+        next: () => Effect.void,
+      }
+
+      const result = await Effect.runPromise(route.handler(context))
+
+      const webResponse = HttpServerResponse.toWeb(result)
+      const text = await webResponse.text()
+
+      t.expect(text).toBe("<div>html</div>")
+    },
+  )
 })

@@ -13,6 +13,22 @@ export const routes = [
     ],
   },
   {
+    path: "/admin",
+    load: () => import("./admin/route.tsx"),
+    layers: [
+      () => import("./layer.tsx"),
+      () => import("./admin/layer.tsx"),
+    ],
+  },
+  {
+    path: "/admin/[data.json]",
+    load: () => import("./admin/[data.json]/route.tsx"),
+    layers: [
+      () => import("./layer.tsx"),
+      () => import("./admin/layer.tsx"),
+    ],
+  },
+  {
     path: "/[[...frontend]]",
     load: () => import("./[[...frontend]]/route.ts"),
     layers: [

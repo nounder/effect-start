@@ -1,37 +1,43 @@
+import * as HttpMiddleware from "@effect/platform/HttpMiddleware"
 import { Route } from "effect-start"
-import * as Schema from "effect/Schema"
-
-Route
-  .schemaPathParams({
-    id: Schema.String,
-  })
-  .html(function*(props) {
-    return (
-      <div>
-        <h2>
-          Layer Route with ID: {props.pathParams.id}
-        </h2>
-      </div>
-    )
-  })
+import * as Effect from "effect/Effect"
 
 export default Route.layer(
-  Route.html(function*(props) {
+  Route.http(
+    HttpMiddleware.make((app) =>
+      Effect.gen(function*() {
+        const startTime = Date.now()
+        const res = yield* app
+        const duration = Date.now() - startTime
+        console.log(`Request completed in ${duration}ms`)
+        return res
+      })
+    ),
+  ),
+  Route.html(function*(context) {
+    const inner = yield* context.next()
+
     return (
       <html>
         <head>
           <title>
-            {props.slots.title ?? "Default title"}
+            {context.slots.title ?? "Default title"}
           </title>
         </head>
         <body>
           <h1>
-            Root
+            Root Layout
           </h1>
-
-          {props.children}
+          {inner}
         </body>
       </html>
     )
+  }),
+  Route.json(function*(context) {
+    const inner = yield* context.next()
+
+    return {
+      wrappedResponse: inner,
+    }
   }),
 )
