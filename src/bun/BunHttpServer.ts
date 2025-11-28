@@ -10,15 +10,17 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as FiberSet from "effect/FiberSet"
 import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
 import type * as Scope from "effect/Scope"
 import * as Random from "../Random.ts"
+import * as Router from "../Router.ts"
 import EmptyHTML from "./_empty.html"
 import {
   makeResponse,
   ServerRequestImpl,
   WebSocketContext,
 } from "./BunHttpServer_web.ts"
-import type * as BunRoute from "./BunRoute.ts"
+import * as BunRoute from "./BunRoute.ts"
 
 type FetchHandler = (
   request: Request,
@@ -212,6 +214,18 @@ export const layerServer = (
     Layer.scoped(HttpServer.HttpServer, makeHttpServer),
     layer(options),
   )
+
+export function layerRoutes() {
+  return Layer.effectDiscard(Effect.gen(function*() {
+    const bunServer = yield* BunServer
+    const router = yield* Effect.serviceOption(Router.Router)
+
+    if (Option.isSome(router)) {
+      const bunRoutes = yield* BunRoute.routesFromRouter(router.value)
+      bunServer.addRoutes(bunRoutes)
+    }
+  }))
+}
 
 const removeHost = (url: string) => {
   if (url[0] === "/") {

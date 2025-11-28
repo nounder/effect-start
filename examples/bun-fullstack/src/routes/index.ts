@@ -7,7 +7,7 @@ import type { Router } from "effect-start"
 export const routes = [
   {
     path: "/",
-    load: () => import("./route.ts"),
+    load: () => import("./route.tsx"),
     layers: [
       () => import("./layer.tsx"),
     ],

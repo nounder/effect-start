@@ -78,30 +78,7 @@ export function serve<ROut, E>(
   )
 
   return Function.pipe(
-    Layer.unwrapEffect(Effect.gen(function*() {
-      const bunServer = yield* BunHttpServer.BunServer
-      const router = yield* Effect.serviceOption(Router.Router)
-
-      if (Option.isSome(router)) {
-        const bunRoutes = yield* BunRoute.routesFromRouter(router.value)
-        bunServer.addRoutes(bunRoutes)
-      }
-
-      const middlewareService = yield* StartApp.StartApp
-      const middleware = yield* middlewareService.middleware
-
-      const finalMiddleware = Function.flow(
-        HttpAppExtra.handleErrors,
-        middleware,
-      )
-
-      return Function.pipe(
-        HttpRouter
-          .Default
-          .serve(finalMiddleware),
-        HttpServer.withLogAddress,
-      )
-    })),
+    BunHttpServer.layerRoutes(),
     Layer.provide(appLayer),
     Layer.provide([
       FetchHttpClient.layer,

@@ -7,7 +7,6 @@
     ".": "./src/index.ts",
     "./Router": "./src/Router.ts",
     "./Route": "./src/Route.ts",
-    "./Datastar": "./src/Datastar.ts",
     "./EncryptedCookies": "./src/EncryptedCookies.ts",
     "./bun": "./src/bun/index.ts",
     "./client": "./src/client/index.ts",
