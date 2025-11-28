@@ -1,1 +1,0 @@
-// initialize posthog or whatever
