@@ -15,7 +15,8 @@
     "./jsx-runtime": "./src/jsx-runtime.ts",
     "./jsx-dev-runtime": "./src/jsx-runtime.ts",
     "./hyper": "./src/hyper/index.ts",
-    "./x/*": "./src/x/*/index.ts"
+    "./x/*": "./src/x/*/index.ts",
+    "./assets.d.ts": "./src/assets.d.ts"
   },
   "scripts": {
     "format": "bunx dprint fmt",
