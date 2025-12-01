@@ -166,7 +166,7 @@ export function layer(options: {
   load: () => Promise<Router.RouterManifest>
   path: string
 }) {
-  return Layer.mergeAll(
+  return Layer.provide(
     Layer.effect(
       Router.Router,
       Effect.promise(() => options.load()),
