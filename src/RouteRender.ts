@@ -19,7 +19,7 @@ export function render<E, R>(
         return HttpServerResponse.text(raw as string)
 
       case "text/html":
-        if (Route.isJsxObject(raw)) {
+        if (Route.isGenericJsxObject(raw)) {
           return HttpServerResponse.html(HyperHtml.renderToString(raw))
         }
         return HttpServerResponse.html(raw as string)

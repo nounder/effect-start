@@ -486,7 +486,8 @@ t.it("context.next() returns correct type for html handler", () => {
   Route.html(function*(context) {
     const next = context.next()
     type NextType = Effect.Effect.Success<typeof next>
-    type _check = [NextType] extends [string | Route.JsxObject] ? true : false
+    type _check = [NextType] extends [string | Route.GenericJsxObject] ? true
+      : false
     const _assert: _check = true
     return "<div>hello</div>"
   })

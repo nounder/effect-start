@@ -63,7 +63,7 @@ export function parseRoute(
     )
   }
 
-  // Validate Route constraints: rest segments must be the last segment before the handle
+  // rest segments must be the last segment before the handle
   const pathSegments = segs.slice(0, -1) // All segments except the handle
   const restIndex = pathSegments.findIndex(seg => seg._tag === "RestSegment")
 
@@ -75,7 +75,7 @@ export function parseRoute(
       )
     }
 
-    // Validate that all segments before the rest are literal, param, or group
+    // all segments before the rest must be literal, param, or group
     for (let i = 0; i < restIndex; i++) {
       const seg = pathSegments[i]
       if (
@@ -89,7 +89,7 @@ export function parseRoute(
       }
     }
   } else {
-    // No rest: validate that all path segments are literal, param, or group
+    // No rest: all path segments are literal, param, or group
     for (const seg of pathSegments) {
       if (
         seg._tag !== "LiteralSegment"
@@ -103,8 +103,6 @@ export function parseRoute(
     }
   }
 
-  // Construct routePath from path segments (excluding groups)
-  // Groups like (admin) are stripped from the URL path
   const routePathSegments = pathSegments.filter(
     seg => seg._tag !== "GroupSegment",
   )

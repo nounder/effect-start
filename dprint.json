@@ -26,11 +26,5 @@
     "**/*-lock.json",
     "**/package.json",
     "vscode/*.json"
-  ],
-  "plugins": [
-    "@dprint/typescript",
-    "@dprint/json",
-    "@dprint/markdown",
-    "dprint-markup"
   ]
 }

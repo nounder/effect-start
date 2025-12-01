@@ -61,7 +61,7 @@ t.it("HTTP methods", () =>
           .post(Route.html(Effect.succeed("POST")))
           .put(Route.html(Effect.succeed("PUT")))
           .patch(Route.html(Effect.succeed("PATCH")))
-          .del(Route.html(Effect.succeed("DELETE")))
+          .delete(Route.html(Effect.succeed("DELETE")))
           .options(Route.html(Effect.succeed("OPTIONS")))
           .head(Route.html(Effect.succeed("HEAD"))),
       }),

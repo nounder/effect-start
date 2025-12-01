@@ -197,7 +197,7 @@ t.describe(`${BunRoute.routesFromRouter.name}`, () => {
           routes: Route
             .get(Route.text("get"))
             .post(Route.text("post"))
-            .del(Route.text("delete")),
+            .delete(Route.text("delete")),
         },
       ]),
     )
