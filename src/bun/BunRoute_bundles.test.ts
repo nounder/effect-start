@@ -155,7 +155,7 @@ t.describe("BunRoute proxy with Bun.serve", () => {
     const bunRoute = BunRoute.loadBundle(() =>
       import("../../static/TestPage.html")
     )
-    const textRoute = Route.text(Effect.succeed("Hello from text route"))
+    const textRoute = Route.text("Hello from text route")
 
     const router: Router.RouterContext = {
       routes: [

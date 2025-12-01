@@ -45,7 +45,7 @@ t.describe(`${BunRoute.isBunRoute.name}`, () => {
   })
 
   t.test("returns false for regular Route", () => {
-    const route = Route.text(Effect.succeed("hello"))
+    const route = Route.text("hello")
 
     t.expect(BunRoute.isBunRoute(route)).toBe(false)
   })
@@ -62,7 +62,7 @@ t.describe(`${BunRoute.routesFromRouter.name}`, () => {
   t.test("converts text route to fetch handler", async () => {
     const fetch = await makeFetch(
       makeRouter([
-        { path: "/hello", routes: Route.text(Effect.succeed("Hello World")) },
+        { path: "/hello", routes: Route.text("Hello World") },
       ]),
     )
 
@@ -77,7 +77,7 @@ t.describe(`${BunRoute.routesFromRouter.name}`, () => {
       makeRouter([
         {
           path: "/api/data",
-          routes: Route.json(Effect.succeed({ message: "ok", count: 42 })),
+          routes: Route.json({ message: "ok", count: 42 }),
         },
       ]),
     )
@@ -106,8 +106,8 @@ t.describe(`${BunRoute.routesFromRouter.name}`, () => {
       makeRouter([
         {
           path: "/users",
-          routes: Route.get(Route.json(Effect.succeed({ users: [] }))).post(
-            Route.json(Effect.succeed({ created: true })),
+          routes: Route.get(Route.json({ users: [] })).post(
+            Route.json({ created: true }),
           ),
         },
       ]),
@@ -124,10 +124,10 @@ t.describe(`${BunRoute.routesFromRouter.name}`, () => {
     const routes = await Effect.runPromise(
       BunRoute.routesFromRouter(
         makeRouter([
-          { path: "/users/[id]", routes: Route.text(Effect.succeed("user")) },
+          { path: "/users/[id]", routes: Route.text("user") },
           {
             path: "/docs/[...path]",
-            routes: Route.text(Effect.succeed("docs")),
+            routes: Route.text("docs"),
           },
         ]),
       ),
@@ -172,7 +172,7 @@ t.describe(`${BunRoute.routesFromRouter.name}`, () => {
             path: "/api/health",
             load: () =>
               Promise.resolve({
-                default: Route.json(Effect.succeed({ ok: true })),
+                default: Route.json({ ok: true }),
               }),
           },
         ],
@@ -195,9 +195,9 @@ t.describe(`${BunRoute.routesFromRouter.name}`, () => {
         {
           path: "/resource",
           routes: Route
-            .get(Route.text(Effect.succeed("get")))
-            .post(Route.text(Effect.succeed("post")))
-            .del(Route.text(Effect.succeed("delete"))),
+            .get(Route.text("get"))
+            .post(Route.text("post"))
+            .del(Route.text("delete")),
         },
       ]),
     )
@@ -217,7 +217,7 @@ t.describe("fetch handler Response", () => {
     const fetch = await makeFetch(
       makeRouter([{
         path: "/test",
-        routes: Route.text(Effect.succeed("test")),
+        routes: Route.text("test"),
       }]),
     )
 
@@ -230,7 +230,7 @@ t.describe("fetch handler Response", () => {
     const fetch = await makeFetch(
       makeRouter([{
         path: "/text",
-        routes: Route.text(Effect.succeed("hello")),
+        routes: Route.text("hello"),
       }]),
     )
 
@@ -243,7 +243,7 @@ t.describe("fetch handler Response", () => {
     const fetch = await makeFetch(
       makeRouter([{
         path: "/json",
-        routes: Route.json(Effect.succeed({ data: 1 })),
+        routes: Route.json({ data: 1 }),
       }]),
     )
 
@@ -269,7 +269,7 @@ t.describe("fetch handler Response", () => {
     const fetch = await makeFetch(
       makeRouter([{
         path: "/body",
-        routes: Route.text(Effect.succeed("readable body")),
+        routes: Route.text("readable body"),
       }]),
     )
 
@@ -283,7 +283,7 @@ t.describe("fetch handler Response", () => {
 
   t.test("response ok is true for 200 status", async () => {
     const fetch = await makeFetch(
-      makeRouter([{ path: "/ok", routes: Route.text(Effect.succeed("ok")) }]),
+      makeRouter([{ path: "/ok", routes: Route.text("ok") }]),
     )
 
     const response = await fetch("/ok")

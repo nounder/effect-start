@@ -789,6 +789,31 @@ function makeSet<
   ) as RouteSet<M, Schemas>
 }
 
+type HandlerInput<A, E, R> =
+  | A
+  | Effect.Effect<A, E, R>
+  | ((context: RouteContext) =>
+    | Effect.Effect<A, E, R>
+    | Generator<YieldWrap<Effect.Effect<A, E, R>>, A, never>)
+
+function normalizeHandler<A, E, R>(
+  handler: HandlerInput<A, E, R>,
+): RouteHandler<A, E, R> {
+  if (typeof handler === "function") {
+    return (context): Effect.Effect<A, E, R> => {
+      const result = (handler as Function)(context)
+      if (Effect.isEffect(result)) {
+        return result as Effect.Effect<A, E, R>
+      }
+      return Effect.gen(() => result) as Effect.Effect<A, E, R>
+    }
+  }
+  if (Effect.isEffect(handler)) {
+    return () => handler
+  }
+  return () => Effect.succeed(handler as A)
+}
+
 /**
  * Factory function that creates Route for a specific method & media.
  * Accepts Effect, function that returns Effect, and effectful generator.
@@ -809,11 +834,13 @@ function makeMediaFunction<
   >(
     this: S,
     handler: S extends RouteSet<infer _Routes, infer Schemas> ?
+        | A
         | Effect.Effect<A, E, R>
         | ((context: RouteContext<DecodeRouteSchemas<Schemas>>) =>
           | Effect.Effect<A, E, R>
           | Generator<YieldWrap<Effect.Effect<A, E, R>>, A, never>)
       :
+        | A
         | Effect.Effect<A, E, R>
         | ((context: RouteContext<{}>) =>
           | Effect.Effect<A, E, R>
@@ -836,23 +863,6 @@ function makeMediaFunction<
       >,
     ], RouteSchemas.Empty>
   {
-    const normalizedHandler: RouteHandler<A, E, R> =
-      typeof handler === "function"
-        ? (context: RouteContext): Effect.Effect<A, E, R> => {
-          const result = handler(context)
-          if (Effect.isEffect(result)) {
-            return result
-          }
-          return Effect.gen(() =>
-            result as Generator<
-              YieldWrap<Effect.Effect<A, E, R>>,
-              A,
-              never
-            >
-          ) as Effect.Effect<A, E, R>
-        }
-        : () => handler
-
     const baseRoutes = isRouteSet(this)
       ? this.set
       : [] as const
@@ -866,7 +876,7 @@ function makeMediaFunction<
         make({
           method,
           media,
-          handler: normalizedHandler,
+          handler: normalizeHandler(handler),
           schemas: baseSchema,
         }),
       ] as ReadonlyArray<Route.Default>,

@@ -34,4 +34,3 @@ export const make = (config: BasicAuthConfig) =>
       return yield* app
     })
   )
-

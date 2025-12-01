@@ -148,19 +148,19 @@ t.it(
         {
           path: "/api-v1",
           load: async () => ({
-            default: Route.text(Effect.succeed("API v1")),
+            default: Route.text("API v1"),
           }),
         },
         {
           path: "/files~backup",
           load: async () => ({
-            default: Route.text(Effect.succeed("Backup files")),
+            default: Route.text("Backup files"),
           }),
         },
         {
           path: "/test-route~temp",
           load: async () => ({
-            default: Route.post(Route.text(Effect.succeed("Test route"))),
+            default: Route.post(Route.text("Test route")),
           }),
         },
       ]

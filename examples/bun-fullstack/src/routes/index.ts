@@ -21,8 +21,8 @@ export const routes = [
     ],
   },
   {
-    path: "/admin/[data.json]",
-    load: () => import("./admin/[data.json]/route.tsx"),
+    path: "/admin/data.json",
+    load: () => import("./admin/data.json/route.tsx"),
     layers: [
       () => import("./layer.tsx"),
       () => import("./admin/layer.tsx"),

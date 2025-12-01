@@ -901,7 +901,7 @@ t.it("Route.layer creates RouteLayer with middleware", () => {
 
 t.it("Route.layer merges multiple route sets", () => {
   const routes1 = Route.html(Effect.succeed("<div>1</div>"))
-  const routes2 = Route.text(Effect.succeed("text"))
+  const routes2 = Route.text("text")
 
   const layer = Route.layer(routes1, routes2)
 
@@ -1093,7 +1093,7 @@ t.it("Route.matches returns false for different methods", () => {
 
 t.it("Route.matches returns false for different media types", () => {
   const route1 = Route.get(Route.html(Effect.succeed("<div>test</div>")))
-  const route2 = Route.get(Route.json(Effect.succeed({ data: "test" })))
+  const route2 = Route.get(Route.json({ data: "test" }))
 
   t.expect(Route.matches(route1.set[0]!, route2.set[0]!)).toBe(false)
 })
@@ -1119,7 +1119,8 @@ t.it("Route.matches returns true when one route has wildcard method", () => {
 
 t.describe("Route.merge", () => {
   t.it("types merged routes with union of methods", () => {
-    const textRoute = Route.text(Effect.succeed("hello"))
+    const textRoute = Route.text("hello")
+
     const htmlRoute = Route.html(Effect.succeed("<div>world</div>"))
 
     const merged = Route.merge(textRoute, htmlRoute)
@@ -1138,8 +1139,8 @@ t.describe("Route.merge", () => {
   })
 
   t.it("types merged routes with different methods", () => {
-    const getRoute = Route.get(Route.text(Effect.succeed("get")))
-    const postRoute = Route.post(Route.json(Effect.succeed({ ok: true })))
+    const getRoute = Route.get(Route.text("get"))
+    const postRoute = Route.post(Route.json({ ok: true }))
 
     const merged = Route.merge(getRoute, postRoute)
 
@@ -1186,8 +1187,8 @@ t.describe("Route.merge", () => {
   })
 
   t.it("merged route does content negotiation for text/plain", async () => {
-    const textRoute = Route.text(Effect.succeed("plain text"))
-    const htmlRoute = Route.html(Effect.succeed("<div>html</div>"))
+    const textRoute = Route.text("plain text")
+    const htmlRoute = Route.html("<div>html</div>")
 
     const merged = Route.merge(textRoute, htmlRoute)
     const route = merged.set[0]!
@@ -1217,8 +1218,8 @@ t.describe("Route.merge", () => {
   })
 
   t.it("merged route does content negotiation for text/html", async () => {
-    const textRoute = Route.text(Effect.succeed("plain text"))
-    const htmlRoute = Route.html(Effect.succeed("<div>html</div>"))
+    const textRoute = Route.text("plain text")
+    const htmlRoute = Route.html("<div>html</div>")
 
     const merged = Route.merge(textRoute, htmlRoute)
     const route = merged.set[0]!
@@ -1250,8 +1251,8 @@ t.describe("Route.merge", () => {
   t.it(
     "merged route does content negotiation for application/json",
     async () => {
-      const textRoute = Route.text(Effect.succeed("plain text"))
-      const jsonRoute = Route.json(Effect.succeed({ message: "json" }))
+      const textRoute = Route.text("plain text")
+      const jsonRoute = Route.json({ message: "json" })
 
       const merged = Route.merge(textRoute, jsonRoute)
       const route = merged.set[0]!
@@ -1282,8 +1283,8 @@ t.describe("Route.merge", () => {
   )
 
   t.it("merged route defaults to html for */* accept", async () => {
-    const textRoute = Route.text(Effect.succeed("plain text"))
-    const htmlRoute = Route.html(Effect.succeed("<div>html</div>"))
+    const textRoute = Route.text("plain text")
+    const htmlRoute = Route.html("<div>html</div>")
 
     const merged = Route.merge(textRoute, htmlRoute)
     const route = merged.set[0]!
@@ -1314,8 +1315,8 @@ t.describe("Route.merge", () => {
   t.it(
     "merged route defaults to first route when no Accept header",
     async () => {
-      const textRoute = Route.text(Effect.succeed("plain text"))
-      const htmlRoute = Route.html(Effect.succeed("<div>html</div>"))
+      const textRoute = Route.text("plain text")
+      const htmlRoute = Route.html("<div>html</div>")
 
       const merged = Route.merge(textRoute, htmlRoute)
       const route = merged.set[0]!

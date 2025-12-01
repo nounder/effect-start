@@ -329,7 +329,7 @@ t.it("handles routes with hyphens and underscores in path segments", () => {
 })
 
 t.it("validateRouteModule returns true for valid modules", () => {
-  const validRoute = Route.text(Effect.succeed("Hello"))
+  const validRoute = Route.text("Hello")
 
   t
     .expect(
@@ -348,7 +348,7 @@ t.it("validateRouteModule returns true for valid modules", () => {
   t
     .expect(
       FileRouterCodegen.validateRouteModule({
-        default: Route.json(Effect.succeed({ message: "Hello" })),
+        default: Route.json({ message: "Hello" }),
       }),
     )
     .toBe(true)
