@@ -611,21 +611,21 @@ export type DecodeRouteSchemas<Schemas extends RouteSchemas> =
 
 /**
  * Context passed to route handler functions.
+ *
+ * @template {Input} Decoded schema values (pathParams, urlParams, etc.)
+ * @template {Next}  Return type of next() based on media type
  */
 export type RouteContext<
   Input extends RouteContextDecoded = {},
-> = {
-  request: HttpServerRequest.HttpServerRequest
-  get url(): URL
-  slots: Record<string, string>
-  next: () => Effect.Effect<any, any, any>
-} & Input
-
-/**
- * Extracts fields from a Schema.Struct or returns never if not a struct.
- */
-type ExtractStructFields<S> = S extends Schema.Struct<infer Fields> ? Fields
-  : never
+  Next = unknown,
+> =
+  & {
+    request: HttpServerRequest.HttpServerRequest
+    get url(): URL
+    slots: Record<string, string>
+    next: <E = unknown, R = unknown>() => Effect.Effect<Next, E, R>
+  }
+  & Input
 
 /**
  * Merges two RouteSchemas types.
@@ -836,13 +836,15 @@ function makeMediaFunction<
     handler: S extends RouteSet<infer _Routes, infer Schemas> ?
         | A
         | Effect.Effect<A, E, R>
-        | ((context: RouteContext<DecodeRouteSchemas<Schemas>>) =>
+        | ((
+          context: RouteContext<DecodeRouteSchemas<Schemas>, ExpectedValue>,
+        ) =>
           | Effect.Effect<A, E, R>
           | Generator<YieldWrap<Effect.Effect<A, E, R>>, A, never>)
       :
         | A
         | Effect.Effect<A, E, R>
-        | ((context: RouteContext<{}>) =>
+        | ((context: RouteContext<{}, ExpectedValue>) =>
           | Effect.Effect<A, E, R>
           | Generator<YieldWrap<Effect.Effect<A, E, R>>, A, never>),
   ): S extends RouteSet<infer Routes, infer Schemas> ? RouteSet<[

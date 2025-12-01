@@ -472,6 +472,36 @@ t.it("context has only request and url when no schemas provided", () => {
     )
 })
 
+t.it("context.next() returns correct type for text handler", () => {
+  Route.text(function*(context) {
+    const next = context.next()
+    type NextType = Effect.Effect.Success<typeof next>
+    type _check = [NextType] extends [string] ? true : false
+    const _assert: _check = true
+    return "hello"
+  })
+})
+
+t.it("context.next() returns correct type for html handler", () => {
+  Route.html(function*(context) {
+    const next = context.next()
+    type NextType = Effect.Effect.Success<typeof next>
+    type _check = [NextType] extends [string | Route.JsxObject] ? true : false
+    const _assert: _check = true
+    return "<div>hello</div>"
+  })
+})
+
+t.it("context.next() returns correct type for json handler", () => {
+  Route.json(function*(context) {
+    const next = context.next()
+    type NextType = Effect.Effect.Success<typeof next>
+    type _check = [NextType] extends [Route.JsonValue] ? true : false
+    const _assert: _check = true
+    return { message: "hello" }
+  })
+})
+
 t.it("schemas work with all media types", () => {
   const PathSchema = Schema.Struct({
     id: Schema.String,
@@ -479,23 +509,19 @@ t.it("schemas work with all media types", () => {
 
   Route
     .schemaPathParams(PathSchema)
-    .html(
-      (context) => {
-        Function.satisfies<string>()(context.pathParams.id)
+    .html((context) => {
+      Function.satisfies<string>()(context.pathParams.id)
 
-        return Effect.succeed("<h1>Hello</h1>")
-      },
-    )
+      return Effect.succeed("<h1>Hello</h1>")
+    })
 
   Route
     .schemaPathParams(PathSchema)
-    .json(
-      (context) => {
-        Function.satisfies<string>()(context.pathParams.id)
+    .json((context) => {
+      Function.satisfies<string>()(context.pathParams.id)
 
-        return Effect.succeed({ message: "hello" })
-      },
-    )
+      return Effect.succeed({ message: "hello" })
+    })
 })
 
 t.it("schemas work with generator functions", () => {
@@ -505,13 +531,11 @@ t.it("schemas work with generator functions", () => {
 
   Route
     .schemaPathParams(IdSchema)
-    .text(
-      function*(context) {
-        Function.satisfies<string>()(context.pathParams.id)
+    .text(function*(context) {
+      Function.satisfies<string>()(context.pathParams.id)
 
-        return "hello"
-      },
-    )
+      return "hello"
+    })
 })
 
 t.it("schema property is correctly set on RouteSet", () => {

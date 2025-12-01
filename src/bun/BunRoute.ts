@@ -70,11 +70,9 @@ function wrapWithLayerRoute(
   layerRoute: Route.Route.Default,
 ): Route.Route.Default {
   const handler: Route.RouteHandler = (context) => {
-    const innerNext = () => innerRoute.handler(context)
-
     const contextWithNext: Route.RouteContext = {
       ...context,
-      next: innerNext,
+      next: () => innerRoute.handler(context),
     }
 
     return layerRoute.handler(contextWithNext)
