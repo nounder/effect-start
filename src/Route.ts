@@ -2,9 +2,7 @@ import * as HttpMethod from "@effect/platform/HttpMethod"
 import * as HttpMiddleware from "@effect/platform/HttpMiddleware"
 import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
 import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
-
 import * as Effect from "effect/Effect"
-import * as Function from "effect/Function"
 import * as Pipeable from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
@@ -185,7 +183,7 @@ type RouteBuilder = {
   get: typeof get
   put: typeof put
   patch: typeof patch
-  del: typeof del
+  delete: typeof _delete
   options: typeof options
   head: typeof head
 
@@ -285,20 +283,26 @@ export function matches(
 }
 
 export const post = makeMethodModifier("POST")
-
 export const get = makeMethodModifier("GET")
 export const put = makeMethodModifier("PUT")
 export const patch = makeMethodModifier("PATCH")
-export const del = makeMethodModifier("DELETE")
 export const options = makeMethodModifier("OPTIONS")
 export const head = makeMethodModifier("HEAD")
+const _delete = makeMethodModifier("DELETE")
+export {
+  _delete as delete,
+}
 
 export const text = makeMediaFunction<"GET", "text/plain", string>(
   "GET",
   "text/plain",
 )
 
-export const html = makeMediaFunction<"GET", "text/html", string | JsxObject>(
+export const html = makeMediaFunction<
+  "GET",
+  "text/html",
+  string | GenericJsxObject
+>(
   "GET",
   "text/html",
 )
@@ -525,7 +529,7 @@ const SetProto = {
   get,
   put,
   patch,
-  del,
+  delete: _delete,
   options,
   head,
 
@@ -964,12 +968,12 @@ function makeMethodModifier<
   }
 }
 
-export type JsxObject = {
+export type GenericJsxObject = {
   type: any
   props: any
 }
 
-export function isJsxObject(value: unknown): value is JsxObject {
+export function isGenericJsxObject(value: unknown): value is GenericJsxObject {
   return typeof value === "object"
     && value !== null
     && "type" in value

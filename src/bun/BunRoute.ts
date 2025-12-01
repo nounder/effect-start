@@ -3,7 +3,6 @@ import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
 import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
 import type * as Bun from "bun"
 import * as Effect from "effect/Effect"
-
 import * as Function from "effect/Function"
 import * as Predicate from "effect/Predicate"
 import type * as Runtime from "effect/Runtime"
@@ -85,6 +84,61 @@ function wrapWithLayerRoute(
     schemas: {},
   })
 }
+
+function makeHandler(
+  routes: Route.Route.Default[],
+  layers: Route.RouteLayer[],
+) {
+  return Effect.gen(function*() {
+    const request = yield* HttpServerRequest.HttpServerRequest
+    const accept = request.headers.accept ?? ""
+
+    let selectedRoute: Route.Route.Default | undefined
+
+    if (accept.includes("application/json")) {
+      selectedRoute = routes.find((r) => r.media === "application/json")
+    }
+    if (!selectedRoute && accept.includes("text/plain")) {
+      selectedRoute = routes.find((r) => r.media === "text/plain")
+    }
+    if (
+      !selectedRoute
+      && (accept.includes("text/html")
+        || accept.includes("*/*")
+        || !accept)
+    ) {
+      selectedRoute = routes.find((r) => r.media === "text/html")
+    }
+    if (!selectedRoute) {
+      selectedRoute = routes[0]
+    }
+
+    if (!selectedRoute) {
+      return HttpServerResponse.empty({ status: 406 })
+    }
+
+    const matchingLayerRoutes = findMatchingLayerRoutes(
+      selectedRoute,
+      layers,
+    )
+    let wrappedRoute = selectedRoute
+    for (const layerRoute of matchingLayerRoutes.reverse()) {
+      wrappedRoute = wrapWithLayerRoute(wrappedRoute, layerRoute)
+    }
+
+    const context: Route.RouteContext = {
+      request,
+      get url() {
+        return HttpUtils.makeUrlFromRequest(request)
+      },
+      slots: {},
+      next: () => Effect.void,
+    }
+
+    return yield* RouteRender.render(wrappedRoute, context)
+  })
+}
+
 
 /**
  * Finds BunRoutes in the Router and returns
@@ -232,54 +286,7 @@ export function routesFromRouter(
       }
 
       for (const [method, routes] of byMethod) {
-        const httpApp = Effect.gen(function*() {
-          const request = yield* HttpServerRequest.HttpServerRequest
-          const accept = request.headers.accept ?? ""
-
-          let selectedRoute: Route.Route.Default | undefined
-
-          if (accept.includes("application/json")) {
-            selectedRoute = routes.find((r) => r.media === "application/json")
-          }
-          if (!selectedRoute && accept.includes("text/plain")) {
-            selectedRoute = routes.find((r) => r.media === "text/plain")
-          }
-          if (
-            !selectedRoute
-            && (accept.includes("text/html")
-              || accept.includes("*/*")
-              || !accept)
-          ) {
-            selectedRoute = routes.find((r) => r.media === "text/html")
-          }
-          if (!selectedRoute) {
-            selectedRoute = routes[0]
-          }
-
-          if (!selectedRoute) {
-            return HttpServerResponse.empty({ status: 406 })
-          }
-
-          const matchingLayerRoutes = findMatchingLayerRoutes(
-            selectedRoute,
-            layers,
-          )
-          let wrappedRoute = selectedRoute
-          for (const layerRoute of matchingLayerRoutes.reverse()) {
-            wrappedRoute = wrapWithLayerRoute(wrappedRoute, layerRoute)
-          }
-
-          const context: Route.RouteContext = {
-            request,
-            get url() {
-              return HttpUtils.makeUrlFromRequest(request)
-            },
-            slots: {},
-            next: () => Effect.void,
-          }
-
-          return yield* RouteRender.render(wrappedRoute, context)
-        })
+        const httpApp = makeHandler(routes, layers)
 
         const allMiddleware = layers
           .map((layer) => layer.httpMiddleware)
