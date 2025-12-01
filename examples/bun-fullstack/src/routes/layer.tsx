@@ -1,5 +1,5 @@
+import { Effect } from "effect"
 import { Route } from "effect-start"
-import * as Effect from "effect/Effect"
 
 export default Route.layer(
   Route.html(function*(context) {
@@ -17,7 +17,7 @@ export default Route.layer(
           <h1>
             Root Layout
           </h1>
-          {Effect.succeed(0)}
+          {inner}
         </body>
       </html>
     )

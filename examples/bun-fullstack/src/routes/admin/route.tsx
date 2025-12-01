@@ -1,5 +1,5 @@
+import { Effect } from "effect"
 import { Route } from "effect-start"
-import * as Effect from "effect/Effect"
 
 const users = [
   { id: 1, name: "Alice Johnson", email: "alice@example.com", role: "Admin" },
