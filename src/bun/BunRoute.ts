@@ -22,14 +22,16 @@ export type BunRoute =
   & Route.Route
   & {
     [TypeId]: typeof TypeId
-    internalPathSuffix: string
+    // Prefix because Bun.serve routes ignore everything after `*` in wildcard patterns.
+    // A suffix like `/*~internal` would match the same as `/*`, shadowing the internal route.
+    internalPathPrefix: string
     load: () => Promise<Bun.HTMLBundle>
   }
 
 export function html(
   load: () => Promise<Bun.HTMLBundle | { default: Bun.HTMLBundle }>,
 ): BunRoute {
-  const internalPathSuffix = `~BunRoute-${Random.token(6)}`
+  const internalPathPrefix = `/.BunRoute-${Random.token(6)}`
 
   const handler: Route.RouteHandler<
     HttpServerResponse.HttpServerResponse,
@@ -38,7 +40,7 @@ export function html(
   > = (context) =>
     Effect.gen(function*() {
       const bunServer = yield* BunHttpServer.BunServer
-      const internalPath = `${context.url.pathname}${internalPathSuffix}`
+      const internalPath = `${internalPathPrefix}${context.url.pathname}`
       const internalUrl = new URL(internalPath, bunServer.server.url)
 
       const originalRequest = context.request.source as Request
@@ -65,7 +67,7 @@ export function html(
     Object.create(route),
     {
       [TypeId]: TypeId,
-      internalPathSuffix,
+      internalPathPrefix,
       load: () => load().then(mod => "default" in mod ? mod.default : mod),
       set: [],
     },
@@ -284,7 +286,7 @@ export function routesFromRouter(
           const bundle = yield* Effect.promise(() => route.load())
           const bunPaths = RouterPattern.toBun(path)
           for (const bunPath of bunPaths) {
-            const internalPath = `${bunPath}${route.internalPathSuffix}`
+            const internalPath = `${route.internalPathPrefix}${bunPath}`
             result[internalPath] = bundle
           }
         }
