@@ -367,13 +367,6 @@ export function toRemix(path: Route.RoutePattern): string[] {
 
 export const toBun = toColon
 
-/**
- * @deprecated Use toEffectHttpRouterPath instead
- */
-export function toHttpPath(path: Route.RoutePattern): string {
-  return toEffect(path)[0]
-}
-
 type ExtractSegment<S extends string> = S extends `[[...${infer Name}]]`
   ? RestSegment<Name, true>
   : S extends `[...${infer Name}]` ? RestSegment<Name, false>

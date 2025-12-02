@@ -146,8 +146,6 @@ export function make<
     let router: HttpRouter.HttpRouter<any, any> = HttpRouter.empty
 
     for (const { path, routeSet, layers } of routesWithModules) {
-      const httpRouterPath = RouterPattern.toHttpPath(path)
-
       for (const route of routeSet.set) {
         const matchingLayerRoutes = findMatchingLayerRoutes(route, layers)
 
@@ -182,12 +180,12 @@ export function make<
           finalHandler = middleware(finalHandler)
         }
 
-        router = HttpRouter.route(route.method)(
-          httpRouterPath,
-          finalHandler as any,
-        )(
-          router,
-        )
+        for (const pattern of RouterPattern.toEffect(path)) {
+          router = HttpRouter.route(route.method)(
+            pattern,
+            finalHandler as any,
+          )(router)
+        }
       }
     }
 

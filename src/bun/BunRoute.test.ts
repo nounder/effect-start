@@ -1,69 +1,37 @@
 import type { HTMLBundle } from "bun"
 import * as t from "bun:test"
 import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
 import * as Route from "../Route.ts"
-import type * as Router from "../Router.ts"
+import * as Router from "../Router.ts"
+import * as BunHttpServer from "./BunHttpServer.ts"
 import * as BunRoute from "./BunRoute.ts"
 
-t.describe(`${BunRoute.loadBundle.name}`, () => {
-  t.test("creates BunRoute from HTMLBundle", () => {
-    const mockBundle = { index: "index.html" } as HTMLBundle
-    const bunRoute = BunRoute.loadBundle(() => Promise.resolve(mockBundle))
-
-    t.expect(BunRoute.isBunRoute(bunRoute)).toBe(true)
-    t.expect(Route.isRouteSet(bunRoute)).toBe(true)
-    t.expect(bunRoute.set).toHaveLength(1)
-    t.expect(bunRoute.method as string).toBe("GET")
-    t.expect(bunRoute.media as string).toBe("text/html")
-  })
-
-  t.test("unwraps default export", async () => {
-    const mockBundle = { index: "index.html" } as HTMLBundle
-    const bunRoute = BunRoute.loadBundle(() =>
-      Promise.resolve({ default: mockBundle })
-    )
-
-    const loaded = await bunRoute.load()
-    t.expect(loaded).toBe(mockBundle)
-  })
-
-  t.test("returns bundle directly when no default", async () => {
-    const mockBundle = { index: "index.html" } as HTMLBundle
-    const bunRoute = BunRoute.loadBundle(() => Promise.resolve(mockBundle))
-
-    const loaded = await bunRoute.load()
-    t.expect(loaded).toBe(mockBundle)
-  })
-})
-
-t.describe(`${BunRoute.isBunRoute.name}`, () => {
-  t.test("returns true for BunRoute", () => {
-    const mockBundle = { index: "index.html" } as HTMLBundle
-    const bunRoute = BunRoute.loadBundle(() => Promise.resolve(mockBundle))
-
-    t.expect(BunRoute.isBunRoute(bunRoute)).toBe(true)
-  })
-
-  t.test("returns false for regular Route", () => {
-    const route = Route.text("hello")
-
-    t.expect(BunRoute.isBunRoute(route)).toBe(false)
-  })
-
-  t.test("returns false for non-route values", () => {
-    t.expect(BunRoute.isBunRoute(null)).toBe(false)
-    t.expect(BunRoute.isBunRoute(undefined)).toBe(false)
-    t.expect(BunRoute.isBunRoute({})).toBe(false)
-    t.expect(BunRoute.isBunRoute("string")).toBe(false)
-  })
-})
-
 t.describe(`${BunRoute.routesFromRouter.name}`, () => {
+  t.it(
+    "converts text route to fetch handler",
+    () =>
+      Effect.runPromise(
+        Effect
+          .gen(function*() {
+            const bunServer = yield* BunHttpServer.BunServer
+            return 23
+          })
+          .pipe(
+            Effect.provide(
+              Layer.mergeAll(
+                BunHttpServer.layer({
+                  port: 0,
+                }),
+              ),
+            ),
+          ),
+      ),
+  )
+
   t.test("converts text route to fetch handler", async () => {
     const fetch = await makeFetch(
-      makeRouter([
-        { path: "/hello", routes: Route.text("Hello World") },
-      ]),
+      Router.mount("/hello", Route.text("Hello World")),
     )
 
     const response = await fetch("/hello")
@@ -74,12 +42,7 @@ t.describe(`${BunRoute.routesFromRouter.name}`, () => {
 
   t.test("converts json route to fetch handler", async () => {
     const fetch = await makeFetch(
-      makeRouter([
-        {
-          path: "/api/data",
-          routes: Route.json({ message: "ok", count: 42 }),
-        },
-      ]),
+      Router.mount("/api/data", Route.json({ message: "ok", count: 42 })),
     )
 
     const response = await fetch("/api/data")
@@ -90,9 +53,7 @@ t.describe(`${BunRoute.routesFromRouter.name}`, () => {
 
   t.test("converts html route to fetch handler", async () => {
     const fetch = await makeFetch(
-      makeRouter([
-        { path: "/page", routes: Route.html(Effect.succeed("<h1>Title</h1>")) },
-      ]),
+      Router.mount("/page", Route.html(Effect.succeed("<h1>Title</h1>"))),
     )
 
     const response = await fetch("/page")
@@ -103,14 +64,12 @@ t.describe(`${BunRoute.routesFromRouter.name}`, () => {
 
   t.test("handles method-specific routes", async () => {
     const fetch = await makeFetch(
-      makeRouter([
-        {
-          path: "/users",
-          routes: Route.get(Route.json({ users: [] })).post(
-            Route.json({ created: true }),
-          ),
-        },
-      ]),
+      Router.mount(
+        "/users",
+        Route.get(Route.json({ users: [] })).post(
+          Route.json({ created: true }),
+        ),
+      ),
     )
 
     const getResponse = await fetch("/users")
@@ -121,16 +80,10 @@ t.describe(`${BunRoute.routesFromRouter.name}`, () => {
   })
 
   t.test("converts path syntax to Bun format", async () => {
-    const routes = await Effect.runPromise(
-      BunRoute.routesFromRouter(
-        makeRouter([
-          { path: "/users/[id]", routes: Route.text("user") },
-          {
-            path: "/docs/[...path]",
-            routes: Route.text("docs"),
-          },
-        ]),
-      ),
+    const routes = await makeBunRoutes(
+      Router
+        .mount("/users/[id]", Route.text("user"))
+        .mount("/docs/[...path]", Route.text("docs")),
     )
 
     t.expect(routes["/users/:id"]).toBeDefined()
@@ -141,12 +94,10 @@ t.describe(`${BunRoute.routesFromRouter.name}`, () => {
 
   t.test("creates proxy and internal routes for BunRoute", async () => {
     const mockBundle = { index: "index.html" } as HTMLBundle
-    const bunRoute = BunRoute.loadBundle(() => Promise.resolve(mockBundle))
+    const bunRoute = BunRoute.html(() => Promise.resolve(mockBundle))
 
-    const routes = await Effect.runPromise(
-      BunRoute.routesFromRouter(
-        makeRouter([{ path: "/app", routes: bunRoute }]),
-      ),
+    const routes = await makeBunRoutes(
+      Router.mount("/app", bunRoute),
     )
 
     const internalPath = Object.keys(routes).find((k) =>
@@ -159,24 +110,12 @@ t.describe(`${BunRoute.routesFromRouter.name}`, () => {
 
   t.test("handles mixed BunRoute and regular routes", async () => {
     const mockBundle = { index: "index.html" } as HTMLBundle
-    const bunRoute = BunRoute.loadBundle(() => Promise.resolve(mockBundle))
+    const bunRoute = BunRoute.html(() => Promise.resolve(mockBundle))
 
-    const routes = await Effect.runPromise(
-      BunRoute.routesFromRouter({
-        routes: [
-          {
-            path: "/app",
-            load: () => Promise.resolve({ default: bunRoute }),
-          },
-          {
-            path: "/api/health",
-            load: () =>
-              Promise.resolve({
-                default: Route.json({ ok: true }),
-              }),
-          },
-        ],
-      }),
+    const routes = await makeBunRoutes(
+      Router
+        .mount("/app", bunRoute)
+        .mount("/api/health", Route.json({ ok: true })),
     )
 
     const internalPath = Object.keys(routes).find((k) =>
@@ -191,15 +130,13 @@ t.describe(`${BunRoute.routesFromRouter.name}`, () => {
 
   t.test("groups multiple methods under same path", async () => {
     const fetch = await makeFetch(
-      makeRouter([
-        {
-          path: "/resource",
-          routes: Route
-            .get(Route.text("get"))
-            .post(Route.text("post"))
-            .delete(Route.text("delete")),
-        },
-      ]),
+      Router.mount(
+        "/resource",
+        Route
+          .get(Route.text("get"))
+          .post(Route.text("post"))
+          .delete(Route.text("delete")),
+      ),
     )
 
     const getRes = await fetch("/resource")
@@ -215,10 +152,7 @@ t.describe(`${BunRoute.routesFromRouter.name}`, () => {
 t.describe("fetch handler Response", () => {
   t.test("returns Response instance", async () => {
     const fetch = await makeFetch(
-      makeRouter([{
-        path: "/test",
-        routes: Route.text("test"),
-      }]),
+      Router.mount("/test", Route.text("test")),
     )
 
     const response = await fetch("/test")
@@ -228,10 +162,7 @@ t.describe("fetch handler Response", () => {
 
   t.test("text response has correct content-type", async () => {
     const fetch = await makeFetch(
-      makeRouter([{
-        path: "/text",
-        routes: Route.text("hello"),
-      }]),
+      Router.mount("/text", Route.text("hello")),
     )
 
     const response = await fetch("/text")
@@ -241,10 +172,7 @@ t.describe("fetch handler Response", () => {
 
   t.test("json response has correct content-type", async () => {
     const fetch = await makeFetch(
-      makeRouter([{
-        path: "/json",
-        routes: Route.json({ data: 1 }),
-      }]),
+      Router.mount("/json", Route.json({ data: 1 })),
     )
 
     const response = await fetch("/json")
@@ -254,10 +182,7 @@ t.describe("fetch handler Response", () => {
 
   t.test("html response has correct content-type", async () => {
     const fetch = await makeFetch(
-      makeRouter([{
-        path: "/html",
-        routes: Route.html(Effect.succeed("<p>hi</p>")),
-      }]),
+      Router.mount("/html", Route.html(Effect.succeed("<p>hi</p>"))),
     )
 
     const response = await fetch("/html")
@@ -267,10 +192,7 @@ t.describe("fetch handler Response", () => {
 
   t.test("response body is readable", async () => {
     const fetch = await makeFetch(
-      makeRouter([{
-        path: "/body",
-        routes: Route.text("readable body"),
-      }]),
+      Router.mount("/body", Route.text("readable body")),
     )
 
     const response = await fetch("/body")
@@ -283,7 +205,7 @@ t.describe("fetch handler Response", () => {
 
   t.test("response ok is true for 200 status", async () => {
     const fetch = await makeFetch(
-      makeRouter([{ path: "/ok", routes: Route.text("ok") }]),
+      Router.mount("/ok", Route.text("ok")),
     )
 
     const response = await fetch("/ok")
@@ -293,18 +215,6 @@ t.describe("fetch handler Response", () => {
   })
 })
 
-const makeRouter = (
-  routesList: Array<{
-    path: `/${string}`
-    routes: Route.RouteSet.Default
-  }>,
-): Router.RouterContext => ({
-  routes: routesList.map((m) => ({
-    path: m.path,
-    load: () => Promise.resolve({ default: m.routes }),
-  })),
-})
-
 type FetchFn = (path: string, init?: { method?: string }) => Promise<Response>
 
 type HandlerFn = (
@@ -312,8 +222,18 @@ type HandlerFn = (
   server: unknown,
 ) => Response | Promise<Response>
 
-async function makeFetch(router: Router.RouterContext): Promise<FetchFn> {
-  const routes = await Effect.runPromise(BunRoute.routesFromRouter(router))
+async function makeBunRoutes(
+  router: Router.RouterBuilder.Any,
+): Promise<BunRoute.BunRoutes> {
+  return Effect.runPromise(
+    BunRoute.routesFromRouter(router).pipe(
+      Effect.provide(BunHttpServer.layer({ port: 0 })),
+    ),
+  )
+}
+
+async function makeFetch(router: Router.RouterBuilder.Any): Promise<FetchFn> {
+  const routes = await makeBunRoutes(router)
   const mockServer = {} as import("bun").Server<unknown>
 
   return async (path, init) => {

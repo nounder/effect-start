@@ -14,6 +14,11 @@ export function render<E, R>(
   return Effect.gen(function*() {
     const raw = yield* route.handler(context)
 
+    // Allow handlers to return HttpServerResponse directly (e.g. BunRoute proxy)
+    if (HttpServerResponse.isServerResponse(raw)) {
+      return raw
+    }
+
     switch (route.media) {
       case "text/plain":
         return HttpServerResponse.text(raw as string)
@@ -29,9 +34,6 @@ export function render<E, R>(
 
       case "*":
       default:
-        if (HttpServerResponse.isServerResponse(raw)) {
-          return raw
-        }
         return HttpServerResponse.text(String(raw))
     }
   })

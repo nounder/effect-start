@@ -1,218 +1,205 @@
-import * as Bun from "bun"
 import * as t from "bun:test"
 import * as Effect from "effect/Effect"
 import * as Route from "../Route.ts"
-import type * as Router from "../Router.ts"
+import * as Router from "../Router.ts"
+import * as TestHttpClient from "../TestHttpClient.ts"
+import * as BunHttpServer from "./BunHttpServer.ts"
 import * as BunRoute from "./BunRoute.ts"
 
 t.describe("BunRoute proxy with Bun.serve", () => {
   t.test("BunRoute proxy returns same content as direct bundle access", async () => {
-    const bunRoute = BunRoute.loadBundle(() =>
-      import("../../static/TestPage.html")
+    const bunRoute = BunRoute.html(() => import("../../static/TestPage.html"))
+
+    const router = Router.mount("/test", bunRoute)
+
+    await Effect.runPromise(
+      Effect
+        .gen(function*() {
+          const bunServer = yield* BunHttpServer.BunServer
+          const routes = yield* BunRoute.routesFromRouter(router)
+          bunServer.addRoutes(routes)
+
+          const internalPath = Object.keys(routes).find((k) =>
+            k.includes("~BunRoute-")
+          )
+          t.expect(internalPath).toBeDefined()
+
+          const proxyHandler = routes["/test"]
+          t.expect(typeof proxyHandler).toBe("function")
+
+          const internalBundle = routes[internalPath!]
+          t.expect(internalBundle).toHaveProperty("index")
+
+          const baseUrl =
+            `http://${bunServer.server.hostname}:${bunServer.server.port}`
+          const client = TestHttpClient.make<never, never>((req) => fetch(req), {
+            baseUrl,
+          })
+
+          const directResponse = yield* client.get(internalPath!)
+          const proxyResponse = yield* client.get("/test")
+
+          t.expect(proxyResponse.status).toBe(directResponse.status)
+
+          const directText = yield* directResponse.text
+          const proxyText = yield* proxyResponse.text
+
+          t.expect(proxyText).toBe(directText)
+          t.expect(proxyText).toContain("Test Page Content")
+        })
+        .pipe(
+          Effect.scoped,
+          Effect.provide(BunHttpServer.layer({ port: 0 })),
+        ),
     )
-
-    const router: Router.RouterContext = {
-      routes: [
-        {
-          path: "/test",
-          load: () => Promise.resolve({ default: bunRoute }),
-        },
-      ],
-    }
-
-    const routes = await Effect.runPromise(BunRoute.routesFromRouter(router))
-
-    const internalPath = Object.keys(routes).find((k) =>
-      k.includes("~BunRoute-")
-    )
-    t.expect(internalPath).toBeDefined()
-
-    const proxyHandler = routes["/test"]
-    t.expect(typeof proxyHandler).toBe("function")
-
-    const internalBundle = routes[internalPath!]
-    t.expect(internalBundle).toHaveProperty("index")
-
-    const server = Bun.serve({
-      port: 0,
-      routes,
-      fetch: () => new Response("Not found", { status: 404 }),
-    })
-
-    try {
-      const directResponse = await fetch(
-        `http://localhost:${server.port}${internalPath}`,
-      )
-      const proxyResponse = await fetch(`http://localhost:${server.port}/test`)
-
-      t.expect(proxyResponse.status).toBe(directResponse.status)
-
-      const directText = await directResponse.text()
-      const proxyText = await proxyResponse.text()
-
-      t.expect(proxyText).toBe(directText)
-      t.expect(proxyText).toContain("Test Page Content")
-    } finally {
-      server.stop()
-    }
   })
 
   t.test("multiple BunRoutes each get unique internal paths", async () => {
-    const bunRoute1 = BunRoute.loadBundle(() =>
-      import("../../static/TestPage.html")
-    )
-    const bunRoute2 = BunRoute.loadBundle(() =>
+    const bunRoute1 = BunRoute.html(() => import("../../static/TestPage.html"))
+    const bunRoute2 = BunRoute.html(() =>
       import("../../static/AnotherPage.html")
     )
 
-    const router: Router.RouterContext = {
-      routes: [
-        {
-          path: "/page1",
-          load: () => Promise.resolve({ default: bunRoute1 }),
-        },
-        {
-          path: "/page2",
-          load: () => Promise.resolve({ default: bunRoute2 }),
-        },
-      ],
-    }
+    const router = Router
+      .mount("/page1", bunRoute1)
+      .mount("/page2", bunRoute2)
 
-    const routes = await Effect.runPromise(BunRoute.routesFromRouter(router))
+    await Effect.runPromise(
+      Effect
+        .gen(function*() {
+          const bunServer = yield* BunHttpServer.BunServer
+          const routes = yield* BunRoute.routesFromRouter(router)
+          bunServer.addRoutes(routes)
 
-    const internalPaths = Object.keys(routes).filter((k) =>
-      k.includes("~BunRoute-")
+          const internalPaths = Object.keys(routes).filter((k) =>
+            k.includes("~BunRoute-")
+          )
+          t.expect(internalPaths).toHaveLength(2)
+
+          const nonces = internalPaths.map((p) => {
+            const match = p.match(/~BunRoute-([a-z0-9]+)$/)
+            return match?.[1]
+          })
+          t.expect(nonces[0]).not.toBe(nonces[1])
+
+          const baseUrl =
+            `http://${bunServer.server.hostname}:${bunServer.server.port}`
+          const client = TestHttpClient.make<never, never>((req) => fetch(req), {
+            baseUrl,
+          })
+
+          const response1 = yield* client.get("/page1")
+          const response2 = yield* client.get("/page2")
+
+          const text1 = yield* response1.text
+          const text2 = yield* response2.text
+
+          t.expect(text1).toContain("Test Page Content")
+          t.expect(text2).toContain("Another Page Content")
+        })
+        .pipe(
+          Effect.scoped,
+          Effect.provide(BunHttpServer.layer({ port: 0 })),
+        ),
     )
-    t.expect(internalPaths).toHaveLength(2)
-
-    const nonces = internalPaths.map((p) => {
-      const match = p.match(/~BunRoute-([a-z0-9]+)$/)
-      return match?.[1]
-    })
-    t.expect(nonces[0]).toBe(nonces[1])
-
-    const server = Bun.serve({
-      port: 0,
-      routes,
-      fetch: () => new Response("Not found", { status: 404 }),
-    })
-
-    try {
-      const response1 = await fetch(`http://localhost:${server.port}/page1`)
-      const response2 = await fetch(`http://localhost:${server.port}/page2`)
-
-      const text1 = await response1.text()
-      const text2 = await response2.text()
-
-      t.expect(text1).toContain("Test Page Content")
-      t.expect(text2).toContain("Another Page Content")
-    } finally {
-      server.stop()
-    }
   })
 
   t.test("proxy preserves request headers", async () => {
-    const bunRoute = BunRoute.loadBundle(() =>
-      import("../../static/TestPage.html")
+    const bunRoute = BunRoute.html(() => import("../../static/TestPage.html"))
+
+    const router = Router.mount("/headers-test", bunRoute)
+
+    await Effect.runPromise(
+      Effect
+        .gen(function*() {
+          const bunServer = yield* BunHttpServer.BunServer
+          const routes = yield* BunRoute.routesFromRouter(router)
+          bunServer.addRoutes(routes)
+
+          const baseUrl =
+            `http://${bunServer.server.hostname}:${bunServer.server.port}`
+          const client = TestHttpClient.make<never, never>((req) => fetch(req), {
+            baseUrl,
+          })
+
+          const response = yield* client.get("/headers-test", {
+            headers: {
+              "Accept": "text/html",
+              "X-Custom-Header": "test-value",
+            },
+          })
+
+          t.expect(response.status).toBe(200)
+          const text = yield* response.text
+          t.expect(text).toContain("Test Page Content")
+        })
+        .pipe(
+          Effect.scoped,
+          Effect.provide(BunHttpServer.layer({ port: 0 })),
+        ),
     )
-
-    const router: Router.RouterContext = {
-      routes: [
-        {
-          path: "/headers-test",
-          load: () => Promise.resolve({ default: bunRoute }),
-        },
-      ],
-    }
-
-    const routes = await Effect.runPromise(BunRoute.routesFromRouter(router))
-
-    const server = Bun.serve({
-      port: 0,
-      routes,
-      fetch: () => new Response("Not found", { status: 404 }),
-    })
-
-    try {
-      const response = await fetch(
-        `http://localhost:${server.port}/headers-test`,
-        {
-          headers: {
-            "Accept": "text/html",
-            "X-Custom-Header": "test-value",
-          },
-        },
-      )
-
-      t.expect(response.status).toBe(200)
-      t.expect(await response.text()).toContain("Test Page Content")
-    } finally {
-      server.stop()
-    }
   })
 
   t.test("mixed BunRoute and regular routes work together", async () => {
-    const bunRoute = BunRoute.loadBundle(() =>
-      import("../../static/TestPage.html")
+    const bunRoute = BunRoute.html(() => import("../../static/TestPage.html"))
+
+    const router = Router
+      .mount("/html", bunRoute)
+      .mount("/api", Route.text("Hello from text route"))
+
+    await Effect.runPromise(
+      Effect
+        .gen(function*() {
+          const bunServer = yield* BunHttpServer.BunServer
+          const routes = yield* BunRoute.routesFromRouter(router)
+          bunServer.addRoutes(routes)
+
+          const baseUrl =
+            `http://${bunServer.server.hostname}:${bunServer.server.port}`
+          const client = TestHttpClient.make<never, never>((req) => fetch(req), {
+            baseUrl,
+          })
+
+          const htmlResponse = yield* client.get("/html")
+          const apiResponse = yield* client.get("/api")
+
+          const htmlText = yield* htmlResponse.text
+          const apiText = yield* apiResponse.text
+
+          t.expect(htmlText).toContain("Test Page Content")
+          t.expect(apiText).toBe("Hello from text route")
+        })
+        .pipe(
+          Effect.scoped,
+          Effect.provide(BunHttpServer.layer({ port: 0 })),
+        ),
     )
-    const textRoute = Route.text("Hello from text route")
-
-    const router: Router.RouterContext = {
-      routes: [
-        {
-          path: "/html",
-          load: () => Promise.resolve({ default: bunRoute }),
-        },
-        {
-          path: "/api",
-          load: () => Promise.resolve({ default: textRoute }),
-        },
-      ],
-    }
-
-    const routes = await Effect.runPromise(BunRoute.routesFromRouter(router))
-
-    const server = Bun.serve({
-      port: 0,
-      routes,
-      fetch: () => new Response("Not found", { status: 404 }),
-    })
-
-    try {
-      const htmlResponse = await fetch(`http://localhost:${server.port}/html`)
-      const apiResponse = await fetch(`http://localhost:${server.port}/api`)
-
-      t.expect(await htmlResponse.text()).toContain("Test Page Content")
-      t.expect(await apiResponse.text()).toBe("Hello from text route")
-    } finally {
-      server.stop()
-    }
   })
 
-  t.test("nonce is different across separate routesFromRouter calls", async () => {
-    const bunRoute = BunRoute.loadBundle(() =>
-      import("../../static/TestPage.html")
+  t.test("nonce is different across separate BunRoute instances", async () => {
+    const bunRoute1 = BunRoute.html(() => import("../../static/TestPage.html"))
+    const bunRoute2 = BunRoute.html(() => import("../../static/TestPage.html"))
+
+    const router = Router
+      .mount("/test1", bunRoute1)
+      .mount("/test2", bunRoute2)
+
+    await Effect.runPromise(
+      Effect
+        .gen(function*() {
+          const routes = yield* BunRoute.routesFromRouter(router)
+
+          const internalPaths = Object.keys(routes).filter((k) =>
+            k.includes("~BunRoute-")
+          )
+
+          t.expect(internalPaths).toHaveLength(2)
+          t.expect(internalPaths[0]).not.toBe(internalPaths[1])
+        })
+        .pipe(
+          Effect.scoped,
+          Effect.provide(BunHttpServer.layer({ port: 0 })),
+        ),
     )
-
-    const router: Router.RouterContext = {
-      routes: [
-        {
-          path: "/test",
-          load: () => Promise.resolve({ default: bunRoute }),
-        },
-      ],
-    }
-
-    const routes1 = await Effect.runPromise(BunRoute.routesFromRouter(router))
-    const routes2 = await Effect.runPromise(BunRoute.routesFromRouter(router))
-
-    const internalPath1 = Object.keys(routes1).find((k) =>
-      k.includes("~BunRoute-")
-    )
-    const internalPath2 = Object.keys(routes2).find((k) =>
-      k.includes("~BunRoute-")
-    )
-
-    t.expect(internalPath1).not.toBe(internalPath2)
   })
 })

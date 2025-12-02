@@ -228,10 +228,11 @@ export const layerServer = (
 export function layerRoutes() {
   return Layer.effectDiscard(Effect.gen(function*() {
     const bunServer = yield* BunServer
-    const router = yield* Effect.serviceOption(Router.Router)
+    const routerContext = yield* Effect.serviceOption(Router.Router)
 
-    if (Option.isSome(router)) {
-      const bunRoutes = yield* BunRoute.routesFromRouter(router.value)
+    if (Option.isSome(routerContext)) {
+      const router = yield* Router.fromManifest(routerContext.value)
+      const bunRoutes = yield* BunRoute.routesFromRouter(router)
       bunServer.addRoutes(bunRoutes)
     }
   }))
