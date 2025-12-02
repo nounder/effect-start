@@ -2,8 +2,10 @@ import * as HttpApp from "@effect/platform/HttpApp"
 import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
 import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
 import type * as Bun from "bun"
+import * as Array from "effect/Array"
 import * as Effect from "effect/Effect"
 import * as Function from "effect/Function"
+import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import type * as Runtime from "effect/Runtime"
 import * as HttpUtils from "../HttpUtils.ts"
@@ -196,6 +198,61 @@ function isMethodHandlers(value: unknown): value is MethodHandlers {
 }
 
 /**
+ * Validates that a route pattern is supported by Bun.serve.
+ *
+ * Supported patterns:
+ * - /exact     - Exact match
+ * - /users/:id - Full-segment named param
+ * - /path/*    - Directory wildcard
+ * - /*         - Catch-all
+ *
+ * Unsupported patterns:
+ * - /pk_:id    - Prefix before param
+ * - /:id_sfx   - Suffix after param
+ * - /:id.json  - Suffix with dot (Bun treats as param name)
+ * - /:id~test  - Suffix with tilde (Bun treats as param name)
+ * - /:id?      - Optional param
+ * - /hello-*   - Inline prefix wildcard
+ * - /*~suffix  - Suffix after wildcard
+ */
+export function validateBunPattern(
+  pattern: string,
+): Option.Option<Router.RouterError> {
+  const segments = RouterPattern.parse(pattern)
+
+  const unsupported = Array.findFirst(segments, (seg) => {
+    if (seg._tag === "ParamSegment") {
+      return seg.optional === true
+        || seg.prefix !== undefined
+        || seg.suffix !== undefined
+    }
+
+    return false
+  })
+
+  if (Option.isSome(unsupported)) {
+    const seg = unsupported.value
+    const reason = seg._tag === "ParamSegment"
+      ? seg.optional
+        ? "optional params ([[param]])"
+        : "prefixed/suffixed params (prefix_[param] or [param]_suffix)"
+      : "optional rest params ([[...rest]])"
+
+    return Option.some(
+      new Router.RouterError({
+        reason: "UnsupportedPattern",
+        pattern,
+        message:
+          `Pattern "${pattern}" uses ${reason} which is not supported by Bun.serve. `
+          + `Bun only supports full-segment params ([id]) and trailing wildcards ([...rest]).`,
+      }),
+    )
+  }
+
+  return Option.none()
+}
+
+/**
  * Converts a RouterBuilder into Bun-compatible routes passed to {@link Bun.serve}.
  *
  * For BunRoutes (HtmlBundle), creates two routes:
@@ -208,7 +265,7 @@ function isMethodHandlers(value: unknown): value is MethodHandlers {
 export function routesFromRouter(
   router: Router.RouterBuilder.Any,
   runtime?: Runtime.Runtime<BunHttpServer.BunServer>,
-): Effect.Effect<BunRoutes, never, BunHttpServer.BunServer> {
+): Effect.Effect<BunRoutes, Router.RouterError, BunHttpServer.BunServer> {
   return Effect.gen(function*() {
     const rt = runtime ?? (yield* Effect.runtime<BunHttpServer.BunServer>())
 
@@ -217,17 +274,31 @@ export function routesFromRouter(
     for (const entry of router.entries) {
       const { path, route: routeSet } = entry
 
+      const validationError = validateBunPattern(path)
+      if (Option.isSome(validationError)) {
+        return yield* Effect.fail(validationError.value)
+      }
+
       for (const route of routeSet.set) {
         if (isBunRoute(route)) {
           const bundle = yield* Effect.promise(() => route.load())
-          const internalPath = `${path}${route.internalPathSuffix}`
-          result[internalPath] = bundle
+          const bunPaths = RouterPattern.toBun(path)
+          for (const bunPath of bunPaths) {
+            const internalPath = `${bunPath}${route.internalPathSuffix}`
+            result[internalPath] = bundle
+          }
         }
       }
     }
 
     for (const path of Object.keys(router.mounts) as Array<`/${string}`>) {
       const routeSet = router.mounts[path]
+
+      const validationError = validateBunPattern(path)
+      if (Option.isSome(validationError)) {
+        return yield* Effect.fail(validationError.value)
+      }
+
       const httpPaths = RouterPattern.toBun(path)
 
       const byMethod = new Map<Route.RouteMethod, Route.Route.Default[]>()

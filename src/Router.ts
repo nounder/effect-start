@@ -1,4 +1,5 @@
 import * as Context from "effect/Context"
+import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Function from "effect/Function"
 import * as Layer from "effect/Layer"
@@ -6,6 +7,15 @@ import * as Pipeable from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import * as FileRouter from "./FileRouter.ts"
 import * as Route from "./Route"
+
+export type RouterErrorReason =
+  | "UnsupportedPattern"
+
+export class RouterError extends Data.TaggedError("RouterError")<{
+  reason: RouterErrorReason
+  pattern: string
+  message: string
+}> {}
 
 export type ServerModule = {
   default: Route.RouteSet.Default
