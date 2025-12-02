@@ -21,7 +21,7 @@
   },
   "scripts": {
     "format": "bunx dprint fmt",
-    "test": "bun test src/",
+    "test": "bun test ./src/",
     "deploy": "bunx npm publish --access public"
   },
   "dependencies": {

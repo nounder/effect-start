@@ -52,3 +52,32 @@ t.it("not found", () =>
       )
       .toEqual("Not Found")
   }))
+
+t.describe("FetchHandler", () => {
+  const FetchClient = TestHttpClient.make((req) =>
+    new Response(`Hello from ${req.url}`, { status: 200 })
+  )
+
+  t.it("works with sync handler", () =>
+    effect(function*() {
+      const res = yield* FetchClient.get("/test")
+
+      t.expect(res.status).toEqual(200)
+      t.expect(yield* res.text).toContain("/test")
+    }))
+
+  const AsyncFetchClient = TestHttpClient.make(async (req) => {
+    await Promise.resolve()
+    return new Response(`Async: ${req.method} ${new URL(req.url).pathname}`, {
+      status: 201,
+    })
+  })
+
+  t.it("works with async handler", () =>
+    effect(function*() {
+      const res = yield* AsyncFetchClient.post("/async-path")
+
+      t.expect(res.status).toEqual(201)
+      t.expect(yield* res.text).toEqual("Async: POST /async-path")
+    }))
+})
