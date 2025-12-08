@@ -8,6 +8,7 @@ import * as Function from "effect/Function"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import type * as Runtime from "effect/Runtime"
+import * as HttpAppExtra from "../HttpAppExtra.ts"
 import * as HttpUtils from "../HttpUtils.ts"
 import * as Random from "../Random.ts"
 import * as Route from "../Route.ts"
@@ -120,7 +121,9 @@ function makeHandler(routes: Route.Route.Default[]) {
       next: () => Effect.void,
     }
 
-    return yield* RouteRender.render(selectedRoute, context)
+    return yield* RouteRender.render(selectedRoute, context).pipe(
+      Effect.catchAllCause((cause) => HttpAppExtra.renderError(cause, accept)),
+    )
   })
 }
 
@@ -270,7 +273,6 @@ export function routesFromRouter(
 ): Effect.Effect<BunRoutes, Router.RouterError, BunHttpServer.BunServer> {
   return Effect.gen(function*() {
     const rt = runtime ?? (yield* Effect.runtime<BunHttpServer.BunServer>())
-
     const result: BunRoutes = {}
 
     for (const entry of router.entries) {

@@ -32,9 +32,12 @@ t.describe("BunRoute proxy with Bun.serve", () => {
 
           const baseUrl =
             `http://${bunServer.server.hostname}:${bunServer.server.port}`
-          const client = TestHttpClient.make<never, never>((req) => fetch(req), {
-            baseUrl,
-          })
+          const client = TestHttpClient.make<never, never>(
+            (req) => fetch(req),
+            {
+              baseUrl,
+            },
+          )
 
           const directResponse = yield* client.get(internalPath!)
           const proxyResponse = yield* client.get("/test")
@@ -84,9 +87,12 @@ t.describe("BunRoute proxy with Bun.serve", () => {
 
           const baseUrl =
             `http://${bunServer.server.hostname}:${bunServer.server.port}`
-          const client = TestHttpClient.make<never, never>((req) => fetch(req), {
-            baseUrl,
-          })
+          const client = TestHttpClient.make<never, never>(
+            (req) => fetch(req),
+            {
+              baseUrl,
+            },
+          )
 
           const response1 = yield* client.get("/page1")
           const response2 = yield* client.get("/page2")
@@ -118,9 +124,12 @@ t.describe("BunRoute proxy with Bun.serve", () => {
 
           const baseUrl =
             `http://${bunServer.server.hostname}:${bunServer.server.port}`
-          const client = TestHttpClient.make<never, never>((req) => fetch(req), {
-            baseUrl,
-          })
+          const client = TestHttpClient.make<never, never>(
+            (req) => fetch(req),
+            {
+              baseUrl,
+            },
+          )
 
           const response = yield* client.get("/headers-test", {
             headers: {
@@ -156,9 +165,12 @@ t.describe("BunRoute proxy with Bun.serve", () => {
 
           const baseUrl =
             `http://${bunServer.server.hostname}:${bunServer.server.port}`
-          const client = TestHttpClient.make<never, never>((req) => fetch(req), {
-            baseUrl,
-          })
+          const client = TestHttpClient.make<never, never>(
+            (req) => fetch(req),
+            {
+              baseUrl,
+            },
+          )
 
           const htmlResponse = yield* client.get("/html")
           const apiResponse = yield* client.get("/api")

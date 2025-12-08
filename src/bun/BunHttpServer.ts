@@ -236,16 +236,18 @@ export const layerServer = (
   )
 
 export function layerRoutes() {
-  return Layer.effectDiscard(Effect.gen(function*() {
-    const bunServer = yield* BunServer
-    const routerContext = yield* Effect.serviceOption(Router.Router)
+  return Layer.effectDiscard(
+    Effect.gen(function*() {
+      const bunServer = yield* BunServer
+      const routerContext = yield* Effect.serviceOption(Router.Router)
 
-    if (Option.isSome(routerContext)) {
-      const router = yield* Router.fromManifest(routerContext.value)
-      const bunRoutes = yield* BunRoute.routesFromRouter(router)
-      bunServer.addRoutes(bunRoutes)
-    }
-  }))
+      if (Option.isSome(routerContext)) {
+        const router = yield* Router.fromManifest(routerContext.value)
+        const bunRoutes = yield* BunRoute.routesFromRouter(router)
+        bunServer.addRoutes(bunRoutes)
+      }
+    }),
+  )
 }
 
 const removeHost = (url: string) => {
