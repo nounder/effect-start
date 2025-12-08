@@ -63,7 +63,17 @@ export const make = (
 > =>
   Effect.gen(function*() {
     const port = yield* Config.number("PORT").pipe(
-      Effect.catchTag("ConfigError", () => Effect.succeed(3000)),
+      Effect.catchTag("ConfigError", () => {
+        if (
+          typeof process !== "undefined"
+          && !process.stdout.isTTY
+          && process.env.CLAUDECODE
+        ) {
+          return Effect.succeed(0)
+        }
+
+        return Effect.succeed(3000)
+      }),
     )
     const hostname = yield* Config.string("HOSTNAME").pipe(
       Effect.catchTag("ConfigError", () => Effect.succeed(undefined)),
