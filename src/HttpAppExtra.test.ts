@@ -1,10 +1,29 @@
+import { HttpServerRequest } from "@effect/platform"
 import { RouteNotFound } from "@effect/platform/HttpServerError"
 import * as t from "bun:test"
+import {
+  Effect,
+  Layer,
+} from "effect"
 import * as Cause from "effect/Cause"
 import * as HttpAppExtra from "./HttpAppExtra.ts"
 import { effectFn } from "./testing.ts"
 
-const effect = effectFn()
+const mockRequest = HttpServerRequest.HttpServerRequest.of({
+  url: "http://localhost:3000/test",
+  method: "GET",
+  headers: {
+    "accept": "application/json",
+    "user-agent": "test",
+  },
+} as any)
+
+const mockRequestLayer = Layer.succeed(
+  HttpServerRequest.HttpServerRequest,
+  mockRequest,
+)
+
+const effect = effectFn(mockRequestLayer)
 
 t.describe("renderError", () => {
   const routeNotFoundCause = Cause.fail(
