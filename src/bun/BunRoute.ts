@@ -20,6 +20,8 @@ import * as BunHttpServer from "./BunHttpServer.ts"
 
 const TypeId: unique symbol = Symbol.for("effect-start/BunRoute")
 
+const INTERNAL_FETCH_HEADER = "x-effect-start-internal-fetch"
+
 export type BunRoute =
   & Route.Route
   & {
@@ -41,14 +43,31 @@ export function html(
     BunHttpServer.BunServer
   > = (context) =>
     Effect.gen(function*() {
+      const originalRequest = context.request.source as Request
+
+      if (
+        originalRequest.headers.get(INTERNAL_FETCH_HEADER) === "true"
+      ) {
+        return yield* Effect.fail(
+          new Router.RouterError({
+            reason: "ProxyError",
+            pattern: context.url.pathname,
+            message:
+              "Request to internal Bun server was caught by BunRoute handler. This should not happen. Please report a bug.",
+          }),
+        )
+      }
+
       const bunServer = yield* BunHttpServer.BunServer
       const internalPath = `${internalPathPrefix}${context.url.pathname}`
       const internalUrl = new URL(internalPath, bunServer.server.url)
 
-      const originalRequest = context.request.source as Request
+      const headers = new Headers(originalRequest.headers)
+      headers.set(INTERNAL_FETCH_HEADER, "true")
+
       const proxyRequest = new Request(internalUrl, {
         method: originalRequest.method,
-        headers: originalRequest.headers,
+        headers,
       })
 
       const response = yield* Effect.tryPromise({
@@ -57,7 +76,7 @@ export function html(
           new Router.RouterError({
             reason: "ProxyError",
             pattern: internalPath,
-            message: String(error),
+            message: `Failed to fetch internal HTML bundle: ${String(error)}`,
           }),
       })
 
@@ -72,12 +91,19 @@ export function html(
       })
 
       const children = yield* context.next<Router.RouterError, never>()
-      const childrenHtml = children != null
-        ? Route.isGenericJsxObject(children)
-          ? HyperHtml.renderToString(children)
-          : String(children)
-        : ""
-      html = html.replace(/%children%/g, childrenHtml)
+      let childrenHtml = ""
+      if (children != null) {
+        if (HttpServerResponse.isServerResponse(children)) {
+          const webResponse = HttpServerResponse.toWeb(children)
+          childrenHtml = yield* Effect.promise(() => webResponse.text())
+        } else if (Route.isGenericJsxObject(children)) {
+          childrenHtml = HyperHtml.renderToString(children)
+        } else {
+          childrenHtml = String(children)
+        }
+      }
+
+      html = html.replace(/%yield%/g, childrenHtml)
       html = html.replace(/%slots\.(\w+)%/g, (_, name) =>
         context.slots[name] ?? "")
 
@@ -328,7 +354,7 @@ export function routesFromRouter(
       }
     }
 
-    for (const path of Object.keys(router.mounts) as Array<`/${string}`>) {
+    for (const path of Object.keys(router.mounts)) {
       const routeSet = router.mounts[path]
 
       const validationError = validateBunPattern(path)
@@ -336,7 +362,7 @@ export function routesFromRouter(
         continue
       }
 
-      const httpPaths = RouterPattern.toBun(path)
+      const httpPaths = RouterPattern.toBun(path as Route.RoutePattern)
 
       const byMethod = new Map<Route.RouteMethod, Route.Route.Default[]>()
       for (const route of routeSet.set) {
@@ -348,7 +374,17 @@ export function routesFromRouter(
       for (const [method, routes] of byMethod) {
         const httpApp = makeHandler(routes)
         const webHandler = HttpApp.toWebHandlerRuntime(rt)(httpApp)
-        const handler: BunServerFetchHandler = (request) => webHandler(request)
+        const handler: BunServerFetchHandler = (request) => {
+          const url = new URL(request.url)
+          if (url.pathname.startsWith("/.BunRoute-")) {
+            return new Response(
+              "Internal routing error: BunRoute internal path was not matched. "
+                + "This indicates the HTMLBundle route was not registered. Please report a bug.",
+              { status: 500 },
+            )
+          }
+          return webHandler(request)
+        }
 
         for (const httpPath of httpPaths) {
           if (method === "*") {

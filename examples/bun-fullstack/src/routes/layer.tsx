@@ -8,7 +8,7 @@ export default Route.layer(
   // BunRoute will use Bun Full-stack server to serve HTML,
   // with automatic bundling transparent and HMR in development.
   BunRoute.html(() => import("../app.html")),
-  // Here, we are wrapping all JSON responses in a `data` field.
+  // Here, we are wrapping all JSON responses in `data` field.
   // This only applies to JSON routes within this layer.
   Route.json(function*(context) {
     // context.next() calls matched route

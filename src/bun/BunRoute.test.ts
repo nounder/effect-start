@@ -296,12 +296,85 @@ t.describe("fetch handler Response", () => {
   })
 })
 
+t.describe("BunRoute placeholder replacement", () => {
+  t.test("%yield% is replaced with nested route content via layer", async () => {
+    const layoutBundle = BunRoute.html(() =>
+      import("../../static/LayoutSlots.html")
+    )
+
+    const router = Router
+      .use(Route.layer(layoutBundle))
+      .mount("/page", Route.html(Effect.succeed("<p>Child Content</p>")))
+
+    await Effect.runPromise(
+      Effect
+        .gen(function*() {
+          const bunServer = yield* BunHttpServer.BunServer
+          const routes = yield* BunRoute.routesFromRouter(router)
+          bunServer.addRoutes(routes)
+
+          const baseUrl =
+            `http://${bunServer.server.hostname}:${bunServer.server.port}`
+          const response = yield* Effect.promise(() => fetch(`${baseUrl}/page`))
+
+          const html = yield* Effect.promise(() => response.text())
+
+          t.expect(html).toContain("<body>")
+          t.expect(html).toContain("<p>Child Content</p>")
+          t.expect(html).not.toContain("%yield%")
+          t.expect(html).not.toContain("%slots.")
+        })
+        .pipe(
+          Effect.scoped,
+          Effect.provide(BunHttpServer.layer({ port: 0 })),
+        ),
+    )
+  })
+
+  t.test("%yield% and %slots% are replaced with empty when no nested content", async () => {
+    const layoutBundle = BunRoute.html(() =>
+      import("../../static/LayoutSlots.html")
+    )
+
+    const router = Router.mount("/layout", layoutBundle)
+
+    await Effect.runPromise(
+      Effect
+        .gen(function*() {
+          const bunServer = yield* BunHttpServer.BunServer
+          const routes = yield* BunRoute.routesFromRouter(router)
+          bunServer.addRoutes(routes)
+
+          const baseUrl =
+            `http://${bunServer.server.hostname}:${bunServer.server.port}`
+          const response = yield* Effect.promise(() =>
+            fetch(`${baseUrl}/layout`)
+          )
+
+          const html = yield* Effect.promise(() => response.text())
+
+          t.expect(html).toContain("<title></title>")
+          t.expect(html).toContain("<body>")
+          t.expect(html).not.toContain("%yield%")
+          t.expect(html).not.toContain("%slots.")
+        })
+        .pipe(
+          Effect.scoped,
+          Effect.provide(BunHttpServer.layer({ port: 0 })),
+        ),
+    )
+  })
+})
+
+
+
 type FetchFn = (path: string, init?: { method?: string }) => Promise<Response>
 
 type HandlerFn = (
   req: Request,
   server: unknown,
 ) => Response | Promise<Response>
+
 
 async function makeBunRoutes(
   router: Router.RouterBuilder.Any,

@@ -69,6 +69,7 @@ export type RouteMethod =
   | "*"
   | HttpMethod.HttpMethod
 
+// TODO: This should be a RouterPattern and moved to its file?
 export type RoutePattern = `/${string}`
 
 /**

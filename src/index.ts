@@ -1,24 +1,24 @@
-export * as Bundle from "./Bundle"
-export * as BundleHttp from "./BundleHttp"
+export * as Bundle from "./Bundle.ts"
+export * as BundleHttp from "./BundleHttp.ts"
 
-export * as StartHttp from "./StartHttp"
+export * as StartHttp from "./StartHttp.ts"
 
-export * as HttpAppExtra from "./HttpAppExtra"
+export * as HttpAppExtra from "./HttpAppExtra.ts"
 
-export * as PublicDirectory from "./PublicDirectory"
+export * as PublicDirectory from "./PublicDirectory.ts"
 
-export * as TestHttpClient from "./TestHttpClient"
+export * as TestHttpClient from "./TestHttpClient.ts"
 export {
   effectFn,
-} from "./testing"
+} from "./testing.ts"
 
-export * as FileHttpRouter from "./FileHttpRouter"
-export * as FileRouter from "./FileRouter"
+export * as FileHttpRouter from "./FileHttpRouter.ts"
+export * as FileRouter from "./FileRouter.ts"
 
-export * as Route from "./Route"
-export * as Router from "./Router"
+export * as Route from "./Route.ts"
+export * as Router from "./Router.ts"
 
-export * as Start from "./Start"
+export * as Start from "./Start.ts"
 
-export * as Hyper from "./Hyper"
-export * as HyperHtml from "./HyperHtml"
+export * as Hyper from "./Hyper.ts"
+export * as HyperHtml from "./HyperHtml.ts"

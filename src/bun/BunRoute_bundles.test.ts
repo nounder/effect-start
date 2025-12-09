@@ -20,7 +20,8 @@ t.describe("BunRoute proxy with Bun.serve", () => {
           bunServer.addRoutes(routes)
 
           const internalPath = Object.keys(routes).find((k) =>
-            k.includes("~BunRoute-")
+            k.includes(".BunRoute-")
+
           )
           t.expect(internalPath).toBeDefined()
 
@@ -75,12 +76,12 @@ t.describe("BunRoute proxy with Bun.serve", () => {
           bunServer.addRoutes(routes)
 
           const internalPaths = Object.keys(routes).filter((k) =>
-            k.includes("~BunRoute-")
+            k.includes(".BunRoute-")
           )
           t.expect(internalPaths).toHaveLength(2)
 
           const nonces = internalPaths.map((p) => {
-            const match = p.match(/~BunRoute-([a-z0-9]+)$/)
+            const match = p.match(/\.BunRoute-([a-z0-9]+)/)
             return match?.[1]
           })
           t.expect(nonces[0]).not.toBe(nonces[1])
@@ -202,7 +203,7 @@ t.describe("BunRoute proxy with Bun.serve", () => {
           const routes = yield* BunRoute.routesFromRouter(router)
 
           const internalPaths = Object.keys(routes).filter((k) =>
-            k.includes("~BunRoute-")
+            k.includes(".BunRoute-")
           )
 
           t.expect(internalPaths).toHaveLength(2)
