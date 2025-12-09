@@ -9,7 +9,10 @@ export default Route.layer(
     }),
   ),
   Route.html(function*(context) {
-    const inner = yield* context.next()
+    // we need to type case here due to react types mismatch
+    const inner = yield* context.next() as any
+
+    context.slots.head = `<title>Admin Panel</title>`
 
     return (
       <div className="admin-container">
