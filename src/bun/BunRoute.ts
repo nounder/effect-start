@@ -371,8 +371,18 @@ export function routesFromRouter(
         byMethod.set(route.method, existing)
       }
 
+      const entry = router.entries.find((e) => e.path === path)
+      const allMiddleware = (entry?.layers ?? [])
+        .map((layer) => layer.httpMiddleware)
+        .filter((m): m is Route.HttpMiddlewareFunction => m !== undefined)
+
       for (const [method, routes] of byMethod) {
-        const httpApp = makeHandler(routes)
+        let httpApp: HttpApp.Default<any, any> = makeHandler(routes)
+
+        for (const middleware of allMiddleware) {
+          httpApp = middleware(httpApp)
+        }
+
         const webHandler = HttpApp.toWebHandlerRuntime(rt)(httpApp)
         const handler: BunServerFetchHandler = (request) => {
           const url = new URL(request.url)

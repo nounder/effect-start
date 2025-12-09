@@ -108,7 +108,7 @@ t.describe("Router", () => {
       t.expect(router.entries[0].layers).toHaveLength(1)
     })
 
-    t.test("layer added after mount applies to existing routes", async () => {
+    t.test("layer only applies to routes mounted after use()", async () => {
       const layer = Route.layer(
         Route.html(function*(c) {
           const inner = yield* c.next()
@@ -138,7 +138,7 @@ t.describe("Router", () => {
         afterRoute.handler(mockContext("/after")) as Effect.Effect<unknown>,
       )
 
-      t.expect(beforeResult).toBe("<wrap>before-content</wrap>")
+      t.expect(beforeResult).toBe("before-content")
       t.expect(afterResult).toBe("<wrap>after-content</wrap>")
     })
   })

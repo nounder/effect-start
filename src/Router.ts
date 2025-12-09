@@ -173,14 +173,9 @@ function addGlobalLayer<E, R>(
   layerRoute: Route.RouteLayer,
 ): RouterBuilder<E, R> {
   const newGlobalLayers = [...builder.globalLayers, layerRoute]
-
-  const updatedEntries = builder.entries.map((entry) => ({
-    ...entry,
-    layers: [...entry.layers, layerRoute],
-  }))
-
-  return makeBuilder(updatedEntries, newGlobalLayers)
+  return makeBuilder(builder.entries, newGlobalLayers)
 }
+
 
 function findMatchingLayerRoutes(
   route: Route.Route.Default,

@@ -1,3 +1,5 @@
+import * as HttpMiddleware from "@effect/platform/HttpMiddleware"
+import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
 import type { HTMLBundle } from "bun"
 import * as t from "bun:test"
 import * as Effect from "effect/Effect"
@@ -6,6 +8,7 @@ import * as Route from "../Route.ts"
 import * as Router from "../Router.ts"
 import * as BunHttpServer from "./BunHttpServer.ts"
 import * as BunRoute from "./BunRoute.ts"
+
 
 t.describe(`${BunRoute.validateBunPattern.name}`, () => {
   t.test("allows exact paths", () => {
@@ -293,6 +296,102 @@ t.describe("fetch handler Response", () => {
 
     t.expect(response.ok).toBe(true)
     t.expect(response.status).toBe(200)
+  })
+})
+
+t.describe("Route.layer httpMiddleware", () => {
+  t.test("applies middleware headers to child routes", async () => {
+    const addHeader = HttpMiddleware.make((app) =>
+      Effect.gen(function*() {
+        const response = yield* app
+        return HttpServerResponse.setHeader(response, "X-Layer-Applied", "true")
+      })
+    ) as Route.HttpMiddlewareFunction
+
+    const router = Router
+      .use(Route.layer(Route.http(addHeader)))
+      .mount("/child", Route.text("child content"))
+
+    const fetch = await makeFetch(router)
+    const response = await fetch("/child")
+
+    t.expect(response.headers.get("X-Layer-Applied")).toBe("true")
+    t.expect(await response.text()).toBe("child content")
+  })
+
+  t.test("middleware only applies to children, not siblings", async () => {
+    const addHeader = HttpMiddleware.make((app) =>
+      Effect.gen(function*() {
+        const response = yield* app
+        return HttpServerResponse.setHeader(response, "X-Layer-Applied", "true")
+      })
+    ) as Route.HttpMiddlewareFunction
+
+    const router = Router
+      .mount("/outside", Route.text("outside content"))
+      .use(Route.layer(Route.http(addHeader)))
+      .mount("/inside", Route.text("inside content"))
+
+    const fetch = await makeFetch(router)
+
+    const insideResponse = await fetch("/inside")
+    t.expect(insideResponse.headers.get("X-Layer-Applied")).toBe("true")
+
+    const outsideResponse = await fetch("/outside")
+    t.expect(outsideResponse.headers.get("X-Layer-Applied")).toBeNull()
+  })
+
+  t.test("multiple middleware are applied in order", async () => {
+    const addHeader1 = HttpMiddleware.make((app) =>
+      Effect.gen(function*() {
+        const response = yield* app
+        return HttpServerResponse.setHeader(response, "X-First", "1")
+      })
+    ) as Route.HttpMiddlewareFunction
+
+    const addHeader2 = HttpMiddleware.make((app) =>
+      Effect.gen(function*() {
+        const response = yield* app
+        return HttpServerResponse.setHeader(response, "X-Second", "2")
+      })
+    ) as Route.HttpMiddlewareFunction
+
+    const router = Router
+      .use(Route.layer(Route.http(addHeader1), Route.http(addHeader2)))
+      .mount("/test", Route.text("test"))
+
+    const fetch = await makeFetch(router)
+    const response = await fetch("/test")
+
+    t.expect(response.headers.get("X-First")).toBe("1")
+    t.expect(response.headers.get("X-Second")).toBe("2")
+  })
+
+  t.test("nested layers apply all middleware", async () => {
+    const outerHeader = HttpMiddleware.make((app) =>
+      Effect.gen(function*() {
+        const response = yield* app
+        return HttpServerResponse.setHeader(response, "X-Outer", "outer")
+      })
+    ) as Route.HttpMiddlewareFunction
+
+    const innerHeader = HttpMiddleware.make((app) =>
+      Effect.gen(function*() {
+        const response = yield* app
+        return HttpServerResponse.setHeader(response, "X-Inner", "inner")
+      })
+    ) as Route.HttpMiddlewareFunction
+
+    const router = Router
+      .use(Route.layer(Route.http(outerHeader)))
+      .use(Route.layer(Route.http(innerHeader)))
+      .mount("/nested", Route.text("nested"))
+
+    const fetch = await makeFetch(router)
+    const response = await fetch("/nested")
+
+    t.expect(response.headers.get("X-Outer")).toBe("outer")
+    t.expect(response.headers.get("X-Inner")).toBe("inner")
   })
 })
 
