@@ -365,7 +365,39 @@ export function toRemix(path: Route.RoutePattern): string[] {
   return [joined ? "/" + joined : "/"]
 }
 
-export const toBun = toColon
+/**
+ * Converts to Bun.serve path pattern.
+ *
+ * Since Bun doesn't support optional params (`:param?`), optional segments
+ * are expanded into multiple routes recursively.
+ *
+ * - `[param]` → `:param`
+ * - `[[param]]` → `/`, `/:param` (two routes)
+ * - `[...param]` → `*`
+ * - `[[...param]]` → `/`, `/*` (two routes)
+ * - `pk_[id]` → `pk_:id`
+ */
+export function toBun(path: Route.RoutePattern): string[] {
+  const segments = parse(path)
+
+  const optionalIndex = segments.findIndex(
+    (s) =>
+      (s._tag === "ParamSegment" || s._tag === "RestSegment") && s.optional,
+  )
+
+  if (optionalIndex === -1) {
+    return buildPaths(segments, colonParamSegment, "/*")
+  }
+
+  const before = segments.slice(0, optionalIndex)
+  const optional = { ...segments[optionalIndex], optional: false }
+  const after = segments.slice(optionalIndex + 1)
+
+  return [
+    ...toBun(format(before)),
+    ...toBun(format([...before, optional, ...after])),
+  ]
+}
 
 type ExtractSegment<S extends string> = S extends `[[...${infer Name}]]`
   ? RestSegment<Name, true>

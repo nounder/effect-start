@@ -56,32 +56,28 @@ t.describe(`${BunRoute.validateBunPattern.name}`, () => {
     }
   })
 
-  t.test("rejects optional params", () => {
+  t.test("allows optional params (implemented via two patterns)", () => {
     const result = BunRoute.validateBunPattern("/users/[[id]]")
-    t.expect(result._tag).toBe("Some")
-    if (result._tag === "Some") {
-      t.expect(result.value.reason).toBe("UnsupportedPattern")
-    }
+    t.expect(result._tag).toBe("None")
   })
 
-  t.test("rejects optional rest params", () => {
+  t.test("allows optional rest params (implemented via two patterns)", () => {
     const result = BunRoute.validateBunPattern("/docs/[[...path]]")
-    t.expect(result._tag).toBe("Some")
-    if (result._tag === "Some") {
-      t.expect(result.value.reason).toBe("UnsupportedPattern")
-    }
+    t.expect(result._tag).toBe("None")
   })
 })
 
 t.describe(`${BunRoute.routesFromRouter.name}`, () => {
   t.test("fails with RouterError for unsupported patterns", async () => {
     const result = await Effect.runPromise(
-      BunRoute.routesFromRouter(
-        Router.mount("/users/pk_[id]", Route.text("user")),
-      ).pipe(
-        Effect.either,
-        Effect.provide(BunHttpServer.layer({ port: 0 })),
-      ),
+      BunRoute
+        .routesFromRouter(
+          Router.mount("/users/pk_[id]", Route.text("user")),
+        )
+        .pipe(
+          Effect.either,
+          Effect.provide(BunHttpServer.layer({ port: 0 })),
+        ),
     )
 
     t.expect(result._tag).toBe("Left")
@@ -184,8 +180,9 @@ t.describe(`${BunRoute.routesFromRouter.name}`, () => {
     )
 
     const internalPath = Object.keys(routes).find((k) =>
-      k.includes("~BunRoute-")
+      k.includes(".BunRoute-")
     )
+
     t.expect(internalPath).toBeDefined()
     t.expect(routes[internalPath!]).toBe(mockBundle)
     t.expect(typeof routes["/app"]).toBe("function")
@@ -202,8 +199,9 @@ t.describe(`${BunRoute.routesFromRouter.name}`, () => {
     )
 
     const internalPath = Object.keys(routes).find((k) =>
-      k.includes("~BunRoute-")
+      k.includes(".BunRoute-")
     )
+
     t.expect(internalPath).toBeDefined()
     t.expect(routes[internalPath!]).toBe(mockBundle)
     t.expect(typeof routes["/app"]).toBe("function")

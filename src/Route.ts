@@ -1037,14 +1037,7 @@ export function layer(
   const layerRoutes: Route.Default[] = []
 
   for (const routeSet of routeSets) {
-    for (const route of routeSet.set) {
-      layerRoutes.push(make({
-        method: route.method,
-        media: route.media,
-        handler: route.handler,
-        schemas: {},
-      }))
-    }
+    layerRoutes.push(...routeSet.set)
   }
 
   const middlewareFunctions = routeMiddleware.map((spec) => spec.middleware)

@@ -10,6 +10,7 @@ import * as Predicate from "effect/Predicate"
 import type * as Runtime from "effect/Runtime"
 import * as HttpAppExtra from "../HttpAppExtra.ts"
 import * as HttpUtils from "../HttpUtils.ts"
+import * as HyperHtml from "../HyperHtml.ts"
 import * as Random from "../Random.ts"
 import * as Route from "../Route.ts"
 import * as Router from "../Router.ts"
@@ -36,7 +37,7 @@ export function html(
 
   const handler: Route.RouteHandler<
     HttpServerResponse.HttpServerResponse,
-    never,
+    Router.RouterError,
     BunHttpServer.BunServer
   > = (context) =>
     Effect.gen(function*() {
@@ -50,11 +51,38 @@ export function html(
         headers: originalRequest.headers,
       })
 
-      // Use fetch() instead of bunServer.server.fetch() because server.fetch()
-      // bypasses Bun's route matching and goes directly to the fetch handler
-      const response = yield* Effect.promise(() => fetch(proxyRequest))
+      const response = yield* Effect.tryPromise({
+        try: () => fetch(proxyRequest),
+        catch: (error) =>
+          new Router.RouterError({
+            reason: "ProxyError",
+            pattern: internalPath,
+            message: String(error),
+          }),
+      })
 
-      return HttpServerResponse.raw(response)
+      let html = yield* Effect.tryPromise({
+        try: () => response.text(),
+        catch: (error) =>
+          new Router.RouterError({
+            reason: "ProxyError",
+            pattern: internalPath,
+            message: String(error),
+          }),
+      })
+
+      const children = yield* context.next<Router.RouterError, never>()
+      const childrenHtml = children != null
+        ? Route.isGenericJsxObject(children)
+          ? HyperHtml.renderToString(children)
+          : String(children)
+        : ""
+      html = html.replace(/%children%/g, childrenHtml)
+      html = html.replace(/%slots\.(\w+)%/g, (_, name) =>
+        context.slots[name] ?? "")
+
+      return HttpServerResponse
+        .html(html)
     })
 
   const route = Route.make({
@@ -203,23 +231,24 @@ function isMethodHandlers(value: unknown): value is MethodHandlers {
 }
 
 /**
- * Validates that a route pattern is supported by Bun.serve.
+ * Validates that a route pattern can be implemented with Bun.serve routes.
  *
- * Supported patterns:
- * - /exact     - Exact match
- * - /users/:id - Full-segment named param
- * - /path/*    - Directory wildcard
- * - /*         - Catch-all
+ * Supported patterns (native or via multiple routes):
+ * - /exact        - Exact match
+ * - /users/:id    - Full-segment named param
+ * - /path/*       - Directory wildcard
+ * - /*            - Catch-all
+ * - /[[id]]       - Optional param (implemented via `/` and `/:id`)
+ * - /[[...rest]]  - Optional rest param (implemented via `/` and `/*`)
  *
- * Unsupported patterns:
- * - /pk_:id    - Prefix before param
- * - /:id_sfx   - Suffix after param
- * - /:id.json  - Suffix with dot (Bun treats as param name)
- * - /:id~test  - Suffix with tilde (Bun treats as param name)
- * - /:id?      - Optional param
+ * Unsupported patterns (cannot be implemented in Bun):
+ * - /pk_[id]   - Prefix before param
+ * - /[id]_sfx  - Suffix after param
+ * - /[id].json - Suffix with dot
+ * - /[id]~test - Suffix with tilde
  * - /hello-*   - Inline prefix wildcard
- * - /*~suffix  - Suffix after wildcard
  */
+
 export function validateBunPattern(
   pattern: string,
 ): Option.Option<Router.RouterError> {
@@ -227,29 +256,20 @@ export function validateBunPattern(
 
   const unsupported = Array.findFirst(segments, (seg) => {
     if (seg._tag === "ParamSegment") {
-      return seg.optional === true
-        || seg.prefix !== undefined
-        || seg.suffix !== undefined
+      return seg.prefix !== undefined || seg.suffix !== undefined
     }
 
     return false
   })
 
   if (Option.isSome(unsupported)) {
-    const seg = unsupported.value
-    const reason = seg._tag === "ParamSegment"
-      ? seg.optional
-        ? "optional params ([[param]])"
-        : "prefixed/suffixed params (prefix_[param] or [param]_suffix)"
-      : "optional rest params ([[...rest]])"
-
     return Option.some(
       new Router.RouterError({
         reason: "UnsupportedPattern",
         pattern,
         message:
-          `Pattern "${pattern}" uses ${reason} which is not supported by Bun.serve. `
-          + `Bun only supports full-segment params ([id]) and trailing wildcards ([...rest]).`,
+          `Pattern "${pattern}" uses prefixed/suffixed params (prefix_[param] or [param]_suffix) `
+          + `which cannot be implemented in Bun.serve.`,
       }),
     )
   }
@@ -276,7 +296,7 @@ export function routesFromRouter(
     const result: BunRoutes = {}
 
     for (const entry of router.entries) {
-      const { path, route: routeSet } = entry
+      const { path, route: routeSet, layers } = entry
 
       const validationError = validateBunPattern(path)
       if (Option.isSome(validationError)) {
@@ -293,6 +313,19 @@ export function routesFromRouter(
           }
         }
       }
+
+      for (const layer of layers) {
+        for (const route of layer.set) {
+          if (isBunRoute(route)) {
+            const bundle = yield* Effect.promise(() => route.load())
+            const bunPaths = RouterPattern.toBun(path)
+            for (const bunPath of bunPaths) {
+              const internalPath = `${route.internalPathPrefix}${bunPath}`
+              result[internalPath] = bundle
+            }
+          }
+        }
+      }
     }
 
     for (const path of Object.keys(router.mounts) as Array<`/${string}`>) {
@@ -300,7 +333,7 @@ export function routesFromRouter(
 
       const validationError = validateBunPattern(path)
       if (Option.isSome(validationError)) {
-        return yield* Effect.fail(validationError.value)
+        continue
       }
 
       const httpPaths = RouterPattern.toBun(path)

@@ -213,10 +213,36 @@ t.describe(`${RouterPattern.toColon.name}`, () => {
       "/files/file_:id.txt",
     ])
   })
+})
 
-  t.test("toHono and toBun are aliases", () => {
-    t.expect(RouterPattern.toHono).toBe(RouterPattern.toColon)
-    t.expect(RouterPattern.toBun).toBe(RouterPattern.toColon)
+t.describe(`${RouterPattern.toBun.name}`, () => {
+  t.test("literal path unchanged", () => {
+    t.expect(RouterPattern.toBun("/")).toEqual(["/"])
+    t.expect(RouterPattern.toBun("/about")).toEqual(["/about"])
+  })
+
+  t.test("param [param] -> :param", () => {
+    t.expect(RouterPattern.toBun("/users/[id]")).toEqual(["/users/:id"])
+  })
+
+  t.test("optional param [[param]] -> two routes", () => {
+    t.expect(RouterPattern.toBun("/users/[[id]]")).toEqual([
+      "/users",
+      "/users/:id",
+    ])
+    t.expect(RouterPattern.toBun("/[[id]]")).toEqual(["/", "/:id"])
+  })
+
+  t.test("rest param [...param] -> *", () => {
+    t.expect(RouterPattern.toBun("/docs/[...path]")).toEqual(["/docs/*"])
+  })
+
+  t.test("optional rest param [[...param]] -> two routes", () => {
+    t.expect(RouterPattern.toBun("/docs/[[...path]]")).toEqual([
+      "/docs",
+      "/docs/*",
+    ])
+    t.expect(RouterPattern.toBun("/[[...path]]")).toEqual(["/", "/*"])
   })
 })
 

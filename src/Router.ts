@@ -8,7 +8,9 @@ import * as Predicate from "effect/Predicate"
 import * as FileRouter from "./FileRouter.ts"
 import * as Route from "./Route"
 
-export type RouterErrorReason = "UnsupportedPattern"
+export type RouterErrorReason =
+  | "UnsupportedPattern"
+  | "ProxyError"
 
 export class RouterError extends Data.TaggedError("RouterError")<{
   reason: RouterErrorReason
