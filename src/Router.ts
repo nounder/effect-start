@@ -176,7 +176,6 @@ function addGlobalLayer<E, R>(
   return makeBuilder(builder.entries, newGlobalLayers)
 }
 
-
 function findMatchingLayerRoutes(
   route: Route.Route.Default,
   layers: readonly Route.RouteLayer[],

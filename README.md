@@ -14,96 +14,65 @@ by checking out `examples/` directory.
 It exports a layer that applies configuration and changes the behavior of the server:
 
 ```typescript
-import { Start } from "effect-start"
-import { BunTailwindPlugin } from "effect-start/bun"
+import {
+  Router,
+  Start,
+} from "effect-start"
 
-export default Start.make(
-  // enable file-based router
-  Start.router(() => import("./routes/_manifest")),
-  // bundle client-side code for the browser
-  Start.bundleClient({
-    entrypoints: [
-      "src/index.html",
-    ],
-    plugins: [
-      // enable TailwindCSS for client bundle
-      BunTailwindPlugin.make(),
-    ],
+export default Start.layer(
+  Router.layerFiles({
+    load: () => import("./routes/manifest.ts"),
+    path: import.meta.resolve("./routes/manifest.ts"),
   }),
 )
+
+if (import.meta.main) {
+  Start.serve(() => import("./server.ts"))
+}
 ```
 
 ### File-based Routing
 
-Effect Start provides automatic file-based routing with support for frontend pages, backend endpoints, and stackable layouts.
+Effect Start provides automatic file-based routing with support for frontend pages, backend endpoints, and stackable middlewares called Route Layers.
 
 ```
-src/routes/
-├── _layout.tsx          # Root layout
-├── _page.tsx            # Home page (/)
-├── about/
-│   ├── _layout.tsx      # Nested layout for /about/*
-│   └── _page.tsx        # Static route (/about)
-├── users/
-│   ├── _page.tsx        # Users list (/users)
-│   └── $id/_page.tsx    # Dynamic route (/users/:id)
-└── $/_page.tsx          # Splat/catch-all (/**)
+$ tree src/routes
+src/routes
+├── [[...frontend]]
+│   └── route.ts
+├── admin
+│   ├── data.json
+│   │   └── route.tsx
+│   ├── layer.tsx
+│   └── route.tsx
+├── layer.tsx
+├── manifest.ts
+└── route.tsx
 ```
-
-```ts
-import { FileRouter } from "effect-start"
-
-// Generate route manifest and watch for changes
-const routerLayer = FileRouter.layer(import.meta.resolve("routes"))
-```
-
-**Note:** Ensure `FileRouter.layer` is provided after any bundle layer to guarantee the manifest file is properly generated before bundling.
 
 ### Tailwind CSS Support
 
-Effect Start includes built-in support for Tailwind CSS:
+Install Tailwind plugin:
 
-```ts
-import { Start } from "effect-start"
-import { BunTailwindPlugin } from "effect-start/bun"
-
-const ClientBundle = Start.bundleClient({
-  entrypoints: [
-    "./src/index.html",
-  ],
-  plugins: [
-    BunTailwindPlugin.make(),
-  ],
-})
-
-export default Start.make(
-  ClientBundle,
-)
-
-if (import.meta.main) {
-  Start.serve(() => import("./server"))
-}
+```sh
+bun add tailwindcss bun-plugin-tailwind
 ```
 
-Then in your main CSS files add following file:
+In `bunfig.toml`:
 
-```css
-@import "tailwindcss";
+```toml
+[serve.static]
+plugins = ["bun-plugin-tailwind"]
 ```
 
-### Cloudflare Tunnel
+Finally, include it in your `src/app.html`:
 
-Tunnel your local server to the Internet with `cloudflared`
-
-```ts
-import { Start } from "effect-start"
-import { CloudflareTunnel } from "effect-start/x/cloudflare"
-
-export default Start.make(
-  CloudflareTunnel.layer(),
-)
-
-if (import.meta.main) {
-  Start.serve(() => import("./server"))
-}
+```html
+<!doctype html>
+<html>
+  <head>
+    <link rel="stylesheet" href="tailwindcss" />
+  </head>
+  <!-- the rest of your HTML... -->
+</html>
 ```

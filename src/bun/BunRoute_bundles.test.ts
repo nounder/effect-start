@@ -21,7 +21,6 @@ t.describe("BunRoute proxy with Bun.serve", () => {
 
           const internalPath = Object.keys(routes).find((k) =>
             k.includes(".BunRoute-")
-
           )
           t.expect(internalPath).toBeDefined()
 

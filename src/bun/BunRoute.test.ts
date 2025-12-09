@@ -9,7 +9,6 @@ import * as Router from "../Router.ts"
 import * as BunHttpServer from "./BunHttpServer.ts"
 import * as BunRoute from "./BunRoute.ts"
 
-
 t.describe(`${BunRoute.validateBunPattern.name}`, () => {
   t.test("allows exact paths", () => {
     const result = BunRoute.validateBunPattern("/users")
@@ -465,15 +464,12 @@ t.describe("BunRoute placeholder replacement", () => {
   })
 })
 
-
-
 type FetchFn = (path: string, init?: { method?: string }) => Promise<Response>
 
 type HandlerFn = (
   req: Request,
   server: unknown,
 ) => Response | Promise<Response>
-
 
 async function makeBunRoutes(
   router: Router.RouterBuilder.Any,
