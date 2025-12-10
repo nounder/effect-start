@@ -1,6 +1,7 @@
 import * as t from "bun:test"
 import * as Effect from "effect/Effect"
 import * as Schema from "effect/Schema"
+import * as assert from "node:assert"
 import * as Commander from "./Commander.ts"
 
 t.describe(`${Commander.make.name}`, () => {
@@ -1216,10 +1217,8 @@ t.describe("error handling", () => {
       Effect.either(Commander.parse(cmd, ["--port", "invalid"])),
     )
 
-    t.expect(result._tag).toBe("Left")
-    if (result._tag === "Left") {
-      t.expect(result.left.message).toContain("Invalid value")
-    }
+    assert.strictEqual(result._tag, "Left")
+    t.expect(result.left.message).toContain("Invalid value")
   })
 
   t.it("should fail on invalid choice", async () => {

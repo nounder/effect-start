@@ -4,6 +4,7 @@ import type { HTMLBundle } from "bun"
 import * as t from "bun:test"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
+import * as assert from "node:assert"
 import * as Route from "../Route.ts"
 import * as Router from "../Router.ts"
 import * as BunHttpServer from "./BunHttpServer.ts"
@@ -27,35 +28,27 @@ t.describe(`${BunRoute.validateBunPattern.name}`, () => {
 
   t.test("rejects prefixed params", () => {
     const result = BunRoute.validateBunPattern("/users/pk_[id]")
-    t.expect(result._tag).toBe("Some")
-    if (result._tag === "Some") {
-      t.expect(result.value.reason).toBe("UnsupportedPattern")
-      t.expect(result.value.pattern).toBe("/users/pk_[id]")
-    }
+    assert.strictEqual(result._tag, "Some")
+    t.expect(result.value.reason).toBe("UnsupportedPattern")
+    t.expect(result.value.pattern).toBe("/users/pk_[id]")
   })
 
   t.test("rejects suffixed params", () => {
     const result = BunRoute.validateBunPattern("/users/[id]_details")
-    t.expect(result._tag).toBe("Some")
-    if (result._tag === "Some") {
-      t.expect(result.value.reason).toBe("UnsupportedPattern")
-    }
+    assert.strictEqual(result._tag, "Some")
+    t.expect(result.value.reason).toBe("UnsupportedPattern")
   })
 
   t.test("rejects dot suffix on params", () => {
     const result = BunRoute.validateBunPattern("/api/[id].json")
-    t.expect(result._tag).toBe("Some")
-    if (result._tag === "Some") {
-      t.expect(result.value.reason).toBe("UnsupportedPattern")
-    }
+    assert.strictEqual(result._tag, "Some")
+    t.expect(result.value.reason).toBe("UnsupportedPattern")
   })
 
   t.test("rejects tilde suffix on params", () => {
     const result = BunRoute.validateBunPattern("/api/[id]~test")
-    t.expect(result._tag).toBe("Some")
-    if (result._tag === "Some") {
-      t.expect(result.value.reason).toBe("UnsupportedPattern")
-    }
+    assert.strictEqual(result._tag, "Some")
+    t.expect(result.value.reason).toBe("UnsupportedPattern")
   })
 
   t.test("allows optional params (implemented via two patterns)", () => {
@@ -82,11 +75,9 @@ t.describe(`${BunRoute.routesFromRouter.name}`, () => {
         ),
     )
 
-    t.expect(result._tag).toBe("Left")
-    if (result._tag === "Left") {
-      t.expect(result.left._tag).toBe("RouterError")
-      t.expect(result.left.reason).toBe("UnsupportedPattern")
-    }
+    assert.strictEqual(result._tag, "Left")
+    t.expect(result.left._tag).toBe("RouterError")
+    t.expect(result.left.reason).toBe("UnsupportedPattern")
   })
 
   t.it(
