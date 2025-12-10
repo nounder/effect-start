@@ -1,0 +1,57 @@
+import * as Context from "effect/Context"
+import * as Effect from "effect/Effect"
+import * as FiberRef from "effect/FiberRef"
+import * as HashSet from "effect/HashSet"
+import * as Layer from "effect/Layer"
+import * as Logger from "effect/Logger"
+import * as Ref from "effect/Ref"
+
+export type TestLoggerContext = {
+  messages: Ref.Ref<Array<string>>
+}
+
+export class TestLogger extends Context.Tag("effect-start/TestLogger")<
+  TestLogger,
+  TestLoggerContext
+>() {}
+
+export function layer(): Layer.Layer<TestLogger> {
+  return Layer.effect(
+    TestLogger,
+    Effect.gen(function*() {
+      const messages = yield* Ref.make<Array<string>>([])
+
+      const customLogger = Logger.make(({ message, logLevel }) => {
+        Effect.runSync(
+          Ref.update(
+            messages,
+            (msgs) => [...msgs, `[${logLevel._tag}] ${String(message)}`],
+          ),
+        )
+      })
+
+      yield* FiberRef.update(
+        FiberRef.currentLoggers,
+        (loggers) =>
+          HashSet.add(
+            HashSet.remove(loggers, Logger.defaultLogger),
+            customLogger,
+          ),
+      )
+
+      return {
+        messages,
+      }
+    }),
+  )
+}
+
+export const messages: Effect.Effect<
+  Array<string>,
+  never,
+  TestLogger
+> = Effect.gen(function*() {
+  const logger = yield* TestLogger
+  return yield* Ref.get(logger.messages)
+})
+

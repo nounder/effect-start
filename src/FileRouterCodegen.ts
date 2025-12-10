@@ -1,13 +1,18 @@
 import type { PlatformError } from "@effect/platform/Error"
 import * as FileSystem from "@effect/platform/FileSystem"
 import * as Effect from "effect/Effect"
+import * as Function from "effect/Function"
+import * as Schema from "effect/Schema"
 import * as NPath from "node:path"
 import * as FileRouter from "./FileRouter.ts"
+import * as FileRouterPattern from "./FileRouterPattern.ts"
 import * as Route from "./Route.ts"
+import * as Router from "./Router.ts"
+import * as SchemaExtra from "./SchemaExtra.ts"
 
 export function validateRouteModule(
   module: unknown,
-): boolean {
+): module is Router.ServerModule {
   if (typeof module !== "object" || module === null) {
     return false
   }
@@ -17,37 +22,77 @@ export function validateRouteModule(
   return Route.isRouteSet(module.default)
 }
 
+export function generatePathParamsSchema(
+  segments: ReadonlyArray<FileRouterPattern.Segment>,
+): Schema.Struct<any> | null {
+  const fields: Record<
+    PropertyKey,
+    Schema.Schema.Any | Schema.PropertySignature.All
+  > = {}
+
+  for (const segment of segments) {
+    if (
+      segment._tag === "ParamSegment"
+      || segment._tag === "RestSegment"
+    ) {
+      fields[segment.name] = segment.optional
+        ? Function.pipe(Schema.String, Schema.optional)
+        : Schema.String
+    }
+  }
+
+  if (Object.keys(fields).length === 0) {
+    return null
+  }
+
+  return Schema.Struct(fields)
+}
+
 /**
  * Validates all route modules in the given route handles.
  */
+
 export function validateRouteModules(
   routesPath: string,
   handles: FileRouter.OrderedRouteHandles,
-): Effect.Effect<void, never, never> {
+): Effect.Effect<void, PlatformError, FileSystem.FileSystem> {
   return Effect.gen(function*() {
+    const fs = yield* FileSystem.FileSystem
     const routeHandles = handles.filter(h => h.handle === "route")
 
     for (const handle of routeHandles) {
       const routeModulePath = NPath.resolve(routesPath, handle.modulePath)
-      yield* Effect
-        .tryPromise({
-          try: async () => import(routeModulePath),
-          catch: (error) =>
-            Effect.logWarning(
-              `Failed to validate route module ${routeModulePath}: ${error}`,
-            ),
-        })
-        .pipe(
-          Effect.catchAll((logEffect) => logEffect),
-          Effect.tap((module) => {
-            if (!validateRouteModule(module)) {
-              return Effect.logWarning(
-                `Route module ${routeModulePath} should export default Route`,
-              )
-            }
-            return Effect.void
-          }),
+      const expectedSchema = generatePathParamsSchema(handle.segments)
+
+      const fileExists = yield* fs.exists(routeModulePath)
+      if (!fileExists) {
+        continue
+      }
+
+      const module = yield* Effect.promise(() => import(routeModulePath))
+
+      if (!validateRouteModule(module)) {
+        yield* Effect.logWarning(
+          `Route module ${routeModulePath} should export default Route`,
         )
+        continue
+      }
+
+      const routeSet = module.default
+      const userSchema = routeSet.schema?.PathParams
+
+      if (
+        expectedSchema
+        && userSchema
+        && !SchemaExtra.schemaEqual(userSchema, expectedSchema)
+      ) {
+        const relativeFilePath = NPath.relative(process.cwd(), routeModulePath)
+        yield* Effect.logError(
+          `Route '${relativeFilePath}' has incorrect PathParams schema, expected schemaPathParams(${
+            SchemaExtra.formatSchemaCode(expectedSchema)
+          })`,
+        )
+      }
     }
   })
 }
@@ -154,7 +199,7 @@ export const routes = ${routesArray} as const
  */
 export function update(
   routesPath: string,
-  manifestPath = "_manifest.ts",
+  manifestPath = "manifest.ts",
 ): Effect.Effect<void, PlatformError, FileSystem.FileSystem> {
   return Effect.gen(function*() {
     manifestPath = NPath.resolve(routesPath, manifestPath)
@@ -184,7 +229,7 @@ export function update(
 
 export function dump(
   routesPath: string,
-  manifestPath = "_manifest.ts",
+  manifestPath = "manifest.ts",
 ): Effect.Effect<void, PlatformError, FileSystem.FileSystem> {
   return Effect.gen(function*() {
     manifestPath = NPath.resolve(routesPath, manifestPath)
