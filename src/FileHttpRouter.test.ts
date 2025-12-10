@@ -1,14 +1,12 @@
 import * as Error from "@effect/platform/Error"
 import * as FileSystem from "@effect/platform/FileSystem"
-import * as HttpApp from "@effect/platform/HttpApp"
 import * as HttpRouter from "@effect/platform/HttpRouter"
-import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
 import * as t from "bun:test"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as FileHttpRouter from "./FileHttpRouter.ts"
+import * as FileRouter from "./FileRouter.ts"
 import * as Route from "./Route.ts"
-import * as Router from "./Router.ts"
 import * as TestHttpClient from "./TestHttpClient.ts"
 import { effectFn } from "./testing.ts"
 
@@ -31,13 +29,7 @@ const SampleRoutes = [
   },
 ] as const
 
-const SampleRouteManifest: Router.RouterManifest = {
-  routes: SampleRoutes,
-}
-
-const routerLayer = Router.layerPromise(async () => SampleRouteManifest)
-
-const effect = effectFn(routerLayer)
+const effect = effectFn()
 
 t.it("HttpRouter Requirement and Error types infers", () =>
   effect(function*() {
@@ -53,7 +45,7 @@ t.it("HttpRouter Requirement and Error types infers", () =>
 
 t.it("HTTP methods", () =>
   effect(function*() {
-    const allMethodsRoute: Router.LazyRoute = {
+    const allMethodsRoute: FileRouter.LazyRoute = {
       path: "/",
       load: async () => ({
         default: Route
@@ -111,40 +103,11 @@ t.it("router handles requests correctly", () =>
       .toBe("User created")
   }))
 
-t.it("middleware falls back to original app on 404", () =>
-  effect(function*() {
-    const middleware = FileHttpRouter.middleware()
-    const fallbackApp = Effect.succeed(HttpServerResponse.text("fallback"))
-    const middlewareApp = middleware(fallbackApp)
-
-    const client = TestHttpClient.make(middlewareApp)
-
-    const existingRouteResponse = yield* client.get("/users")
-
-    t
-      .expect(existingRouteResponse.status)
-      .toBe(200)
-
-    t
-      .expect(yield* existingRouteResponse.text)
-      .toBe("Users list")
-
-    const notFoundResponse = yield* client.get("/nonexistent")
-
-    t
-      .expect(notFoundResponse.status)
-      .toBe(200)
-
-    t
-      .expect(yield* notFoundResponse.text)
-      .toBe("fallback")
-  }))
-
 t.it(
   "handles routes with special characters (tilde and hyphen)",
   () =>
     effect(function*() {
-      const specialCharRoutes: Router.LazyRoute[] = [
+      const specialCharRoutes: FileRouter.LazyRoute[] = [
         {
           path: "/api-v1",
           load: async () => ({
@@ -204,7 +167,7 @@ t.it(
   "layer routes can wrap inner routes using next()",
   () =>
     effect(function*() {
-      const routeWithLayer: Router.LazyRoute = {
+      const routeWithLayer: FileRouter.LazyRoute = {
         path: "/page",
         load: async () => ({
           default: Route.html(Effect.succeed("<h1>Page Content</h1>")),
@@ -236,7 +199,7 @@ t.it(
 
 t.it("nested layers compose correctly with next()", () =>
   effect(function*() {
-    const routeWithNestedLayers: Router.LazyRoute = {
+    const routeWithNestedLayers: FileRouter.LazyRoute = {
       path: "/nested",
       load: async () => ({
         default: Route.html(Effect.succeed("content")),

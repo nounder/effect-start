@@ -264,11 +264,11 @@ t.describe("Router", () => {
     t.test("infers never for routes without requirements", () => {
       const router = Router.mount("/hello", Route.text("Hello"))
 
-      type RouterError = Router.RouterBuilder.Error<typeof router>
-      type RouterContext = Router.RouterBuilder.Context<typeof router>
+      type RouterError = Router.Router.Error<typeof router>
+      type RouterRequirements = Router.Router.Requirements<typeof router>
 
       const _checkError: RouterError = undefined as never
-      const _checkContext: RouterContext = undefined as never
+      const _checkRequirements: RouterRequirements = undefined as never
 
       t.expect(true).toBe(true)
     })
@@ -283,7 +283,7 @@ t.describe("Router", () => {
         Route.text(Effect.fail(new MyError())),
       )
 
-      type RouterError = Router.RouterBuilder.Error<typeof router>
+      type RouterError = Router.Router.Error<typeof router>
 
       const _checkError: MyError extends RouterError ? true : false = true
 
@@ -306,9 +306,10 @@ t.describe("Router", () => {
         ),
       )
 
-      type RouterContext = Router.RouterBuilder.Context<typeof router>
+      type RouterRequirements = Router.Router.Requirements<typeof router>
 
-      const _checkContext: MyService extends RouterContext ? true : false = true
+      const _checkRequirements: MyService extends RouterRequirements ? true
+        : false = true
 
       t.expect(true).toBe(true)
     })
@@ -325,7 +326,7 @@ t.describe("Router", () => {
         .mount("/a", Route.text(Effect.fail(new ErrorA())))
         .mount("/b", Route.text(Effect.fail(new ErrorB())))
 
-      type RouterError = Router.RouterBuilder.Error<typeof router>
+      type RouterError = Router.Router.Error<typeof router>
 
       const _checkA: ErrorA extends RouterError ? true : false = true
       const _checkB: ErrorB extends RouterError ? true : false = true
@@ -363,54 +364,12 @@ t.describe("Router", () => {
           ),
         )
 
-      type RouterContext = Router.RouterBuilder.Context<typeof router>
+      type RouterRequirements = Router.Router.Requirements<typeof router>
 
-      const _checkA: ServiceA extends RouterContext ? true : false = true
-      const _checkB: ServiceB extends RouterContext ? true : false = true
+      const _checkA: ServiceA extends RouterRequirements ? true : false = true
+      const _checkB: ServiceB extends RouterRequirements ? true : false = true
 
       t.expect(true).toBe(true)
-    })
-  })
-
-  t.describe("fromManifest", () => {
-    t.test("loads routes from manifest", async () => {
-      const manifest: Router.RouterManifest = {
-        routes: [
-          {
-            path: "/test",
-            load: () => Promise.resolve({ default: Route.text("Test") }),
-          },
-        ],
-      }
-
-      const router = await Effect.runPromise(Router.fromManifest(manifest))
-
-      t.expect(router.entries).toHaveLength(1)
-      t.expect(router.entries[0].path).toBe("/test")
-    })
-
-    t.test("loads layers from manifest", async () => {
-      const layer = Route.layer(
-        Route.html(function*(c) {
-          const inner = yield* c.next()
-          return `<wrap>${inner}</wrap>`
-        }),
-      )
-
-      const manifest: Router.RouterManifest = {
-        routes: [
-          {
-            path: "/test",
-            load: () => Promise.resolve({ default: Route.text("Test") }),
-            layers: [() => Promise.resolve({ default: layer })],
-          },
-        ],
-      }
-
-      const router = await Effect.runPromise(Router.fromManifest(manifest))
-
-      t.expect(router.entries).toHaveLength(1)
-      t.expect(router.entries[0].layers).toHaveLength(1)
     })
   })
 })

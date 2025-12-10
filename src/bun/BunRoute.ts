@@ -40,7 +40,7 @@ export function html(
   const handler: Route.RouteHandler<
     HttpServerResponse.HttpServerResponse,
     Router.RouterError,
-    BunHttpServer.BunServer
+    BunHttpServer.BunHttpServer
   > = (context) =>
     Effect.gen(function*() {
       const originalRequest = context.request.source as Request
@@ -58,7 +58,8 @@ export function html(
         )
       }
 
-      const bunServer = yield* BunHttpServer.BunServer
+      const bunServer = yield* BunHttpServer.BunHttpServer
+
       const internalPath = `${internalPathPrefix}${context.url.pathname}`
       const internalUrl = new URL(internalPath, bunServer.server.url)
 
@@ -181,61 +182,6 @@ function makeHandler(routes: Route.Route.Default[]) {
   })
 }
 
-/**
- * Finds BunRoutes in the Router and returns
- * a mapping of paths to their bundles that can be passed
- * to Bun's `serve` function.
- */
-export function bundlesFromRouter(
-  router: Router.RouterContext,
-): Effect.Effect<Record<string, Bun.HTMLBundle>> {
-  return Function.pipe(
-    Effect.forEach(
-      router.routes,
-      (mod) =>
-        Effect.promise(() =>
-          mod.load().then((m) => ({ path: mod.path, exported: m.default }))
-        ),
-    ),
-    Effect.map((modules) =>
-      modules.flatMap(({ path, exported }) => {
-        if (Route.isRouteSet(exported)) {
-          return [...exported.set]
-            .filter(isBunRoute)
-            .map((route) =>
-              [
-                path,
-                route,
-              ] as const
-            )
-        }
-
-        return []
-      })
-    ),
-    Effect.flatMap((bunRoutes) =>
-      Effect.forEach(
-        bunRoutes,
-        ([path, route]) =>
-          Effect.promise(() =>
-            route.load().then((bundle) => {
-              const httpPath = RouterPattern.toBun(path)
-
-              return [
-                httpPath,
-                bundle,
-              ] as const
-            })
-          ),
-        { concurrency: "unbounded" },
-      )
-    ),
-    Effect.map((entries) =>
-      Object.fromEntries(entries) as Record<string, Bun.HTMLBundle>
-    ),
-  )
-}
-
 type BunServerFetchHandler = (
   request: Request,
   server: Bun.Server<unknown>,
@@ -314,11 +260,11 @@ export function validateBunPattern(
  * the HtmlBundle natively on the internal route.
  */
 export function routesFromRouter(
-  router: Router.RouterBuilder.Any,
-  runtime?: Runtime.Runtime<BunHttpServer.BunServer>,
-): Effect.Effect<BunRoutes, Router.RouterError, BunHttpServer.BunServer> {
+  router: Router.Router.Any,
+  runtime?: Runtime.Runtime<BunHttpServer.BunHttpServer>,
+): Effect.Effect<BunRoutes, Router.RouterError, BunHttpServer.BunHttpServer> {
   return Effect.gen(function*() {
-    const rt = runtime ?? (yield* Effect.runtime<BunHttpServer.BunServer>())
+    const rt = runtime ?? (yield* Effect.runtime<BunHttpServer.BunHttpServer>())
     const result: BunRoutes = {}
 
     for (const entry of router.entries) {

@@ -1,12 +1,14 @@
-import * as Context from "effect/Context"
 import * as Data from "effect/Data"
-import * as Effect from "effect/Effect"
-import * as Function from "effect/Function"
-import * as Layer from "effect/Layer"
 import * as Pipeable from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
-import * as FileRouter from "./FileRouter.ts"
-import * as Route from "./Route"
+import * as Route from "./Route.ts"
+
+type RouterModule = typeof import("./Router.ts")
+
+type Self =
+  | Router.Any
+  | RouterModule
+  | undefined
 
 export type RouterErrorReason =
   | "UnsupportedPattern"
@@ -18,68 +20,9 @@ export class RouterError extends Data.TaggedError("RouterError")<{
   message: string
 }> {}
 
-export type ServerModule = {
-  default: Route.RouteSet.Default
-}
-
-export type LazyRoute = {
-  path: `/${string}`
-  load: () => Promise<ServerModule>
-  layers?: ReadonlyArray<() => Promise<unknown>>
-}
-
-export type RouterManifest = {
-  routes: readonly LazyRoute[]
-  layers?: any[]
-}
-
-export type RouterContext = RouterManifest
-
-export class Router extends Context.Tag("effect-start/Router")<
-  Router,
-  RouterContext
->() {}
-
-export function layer(
-  manifest: RouterManifest,
-): Layer.Layer<Router, never, never> {
-  return Layer.effect(
-    Router,
-    Effect.gen(function*() {
-      return {
-        ...manifest,
-      }
-    }),
-  )
-}
-
-export const layerFiles = FileRouter.layer
-
-export function layerPromise(
-  load: () => Promise<RouterManifest>,
-): Layer.Layer<Router, never, never> {
-  return Layer.unwrapEffect(
-    Effect.gen(function*() {
-      const importedModule = yield* Function.pipe(
-        Effect.promise(() => load()),
-        Effect.orDie,
-      )
-
-      return layer(importedModule)
-    }),
-  )
-}
-
-const RouterBuilderTypeId: unique symbol = Symbol.for(
-  "effect-start/RouterBuilder",
+const TypeId: unique symbol = Symbol.for(
+  "effect-start/Router",
 )
-
-type RouterModule = typeof import("./Router.ts")
-
-type Self =
-  | RouterBuilder<any, any>
-  | RouterModule
-  | undefined
 
 export type RouterEntry = {
   path: `/${string}`
@@ -87,16 +30,16 @@ export type RouterEntry = {
   layers: Route.RouteLayer[]
 }
 
-type RouterBuilderMethods = {
+type Methods = {
   use: typeof use
   mount: typeof mount
 }
 
-export interface RouterBuilder<
+export interface Router<
   out E = never,
   out R = never,
-> extends Pipeable.Pipeable, RouterBuilderMethods {
-  [RouterBuilderTypeId]: typeof RouterBuilderTypeId
+> extends Pipeable.Pipeable, Methods {
+  [TypeId]: typeof TypeId
   readonly entries: readonly RouterEntry[]
   readonly globalLayers: readonly Route.RouteLayer[]
   readonly mounts: Record<`/${string}`, Route.RouteSet.Default>
@@ -104,18 +47,17 @@ export interface RouterBuilder<
   readonly _R: () => R
 }
 
-export namespace RouterBuilder {
-  export type Any = RouterBuilder<any, any>
-
-  export type Error<T> = T extends RouterBuilder<infer E, any> ? E : never
-  export type Context<T> = T extends RouterBuilder<any, infer R> ? R : never
+export namespace Router {
+  export type Any = Router<any, any>
+  export type Error<T> = T extends Router<infer E, any> ? E : never
+  export type Requirements<T> = T extends Router<any, infer R> ? R : never
 }
 
-const RouterBuilderProto: RouterBuilderMethods & {
-  [RouterBuilderTypeId]: typeof RouterBuilderTypeId
+const Proto: Methods & {
+  [TypeId]: typeof TypeId
   pipe: Pipeable.Pipeable["pipe"]
 } = {
-  [RouterBuilderTypeId]: RouterBuilderTypeId,
+  [TypeId]: TypeId,
 
   pipe() {
     return Pipeable.pipeArguments(this, arguments)
@@ -143,17 +85,17 @@ function addRoute<
   RouteE,
   RouteR,
 >(
-  builder: RouterBuilder<E, R>,
+  builder: Router<E, R>,
   path: `/${string}`,
   route: Route.RouteSet.Default,
-): RouterBuilder<E | RouteE, R | RouteR> {
+): Router<E | RouteE, R | RouteR> {
   const existingEntry = builder.entries.find((e) => e.path === path)
   if (existingEntry) {
     const updatedEntry: RouterEntry = {
       ...existingEntry,
       route: Route.merge(existingEntry.route, route),
     }
-    return makeBuilder(
+    return make(
       builder.entries.map((e) => (e.path === path ? updatedEntry : e)),
       builder.globalLayers,
     )
@@ -165,15 +107,15 @@ function addRoute<
     layers: [...builder.globalLayers],
   }
 
-  return makeBuilder([...builder.entries, newEntry], builder.globalLayers)
+  return make([...builder.entries, newEntry], builder.globalLayers)
 }
 
 function addGlobalLayer<E, R>(
-  builder: RouterBuilder<E, R>,
+  builder: Router<E, R>,
   layerRoute: Route.RouteLayer,
-): RouterBuilder<E, R> {
+): Router<E, R> {
   const newGlobalLayers = [...builder.globalLayers, layerRoute]
-  return makeBuilder(builder.entries, newGlobalLayers)
+  return make(builder.entries, newGlobalLayers)
 }
 
 function findMatchingLayerRoutes(
@@ -243,10 +185,10 @@ function applyLayersToRouteSet(
   } as unknown as Route.RouteSet.Default
 }
 
-function makeBuilder<E, R>(
+export function make<E, R>(
   entries: readonly RouterEntry[],
   globalLayers: readonly Route.RouteLayer[] = [],
-): RouterBuilder<E, R> {
+): Router<E, R> {
   const mounts: Record<`/${string}`, Route.RouteSet.Default> = {}
 
   for (const entry of entries) {
@@ -255,15 +197,18 @@ function makeBuilder<E, R>(
     }
   }
 
-  return Object.assign(Object.create(RouterBuilderProto), {
-    entries,
-    globalLayers,
-    mounts,
-  })
+  return Object.assign(
+    Object.create(Proto),
+    {
+      entries,
+      globalLayers,
+      mounts,
+    },
+  )
 }
 
-export function isRouterBuilder(input: unknown): input is RouterBuilder.Any {
-  return Predicate.hasProperty(input, RouterBuilderTypeId)
+export function isRouter(input: unknown): input is Router.Any {
+  return Predicate.hasProperty(input, TypeId)
 }
 
 export function use<
@@ -271,13 +216,14 @@ export function use<
 >(
   this: S,
   layerRoute: Route.RouteLayer,
-): S extends RouterBuilder<infer E, infer R> ? RouterBuilder<E, R>
-  : RouterBuilder<never, never>
+): S extends Router<infer E, infer R> ? Router<E, R>
+  : Router<never, never>
 {
-  const builder = isRouterBuilder(this)
+  const router = isRouter(this)
     ? this
-    : makeBuilder<never, never>([], [])
-  return addGlobalLayer(builder, layerRoute) as any
+    : make<never, never>([], [])
+
+  return addGlobalLayer(router, layerRoute) as any
 }
 
 export function mount<
@@ -288,49 +234,22 @@ export function mount<
   this: S,
   path: `/${string}`,
   route: Route.RouteSet<Routes, Schemas>,
-): S extends RouterBuilder<infer E, infer R> ? RouterBuilder<
+): S extends Router<infer E, infer R> ? Router<
     E | ExtractRouteSetError<Route.RouteSet<Routes, Schemas>>,
     R | ExtractRouteSetContext<Route.RouteSet<Routes, Schemas>>
   >
-  : RouterBuilder<
+  : Router<
     ExtractRouteSetError<Route.RouteSet<Routes, Schemas>>,
     ExtractRouteSetContext<Route.RouteSet<Routes, Schemas>>
   >
 {
-  const builder = isRouterBuilder(this)
+  const router = isRouter(this)
     ? this
-    : makeBuilder<never, never>([], [])
-  return addRoute(builder, path, route as Route.RouteSet.Default) as any
-}
+    : make<never, never>([], [])
 
-export function fromManifest(
-  manifest: RouterManifest,
-): Effect.Effect<RouterBuilder.Any> {
-  return Effect.gen(function*() {
-    const loadedEntries = yield* Effect.forEach(
-      manifest.routes,
-      (lazyRoute) =>
-        Effect.gen(function*() {
-          const routeModule = yield* Effect.promise(() => lazyRoute.load())
-          const layerModules = lazyRoute.layers
-            ? yield* Effect.forEach(
-              lazyRoute.layers,
-              (loadLayer) => Effect.promise(() => loadLayer()),
-            )
-            : []
-
-          const layers = layerModules
-            .map((m: any) => m.default)
-            .filter(Route.isRouteLayer)
-
-          return {
-            path: lazyRoute.path,
-            route: routeModule.default,
-            layers,
-          }
-        }),
-    )
-
-    return makeBuilder(loadedEntries, [])
-  })
+  return addRoute(
+    router,
+    path,
+    route as Route.RouteSet.Default,
+  ) as any
 }

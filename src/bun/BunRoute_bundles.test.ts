@@ -15,7 +15,8 @@ t.describe("BunRoute proxy with Bun.serve", () => {
     await Effect.runPromise(
       Effect
         .gen(function*() {
-          const bunServer = yield* BunHttpServer.BunServer
+          const bunServer = yield* BunHttpServer.BunHttpServer
+
           const routes = yield* BunRoute.routesFromRouter(router)
           bunServer.addRoutes(routes)
 
@@ -70,7 +71,7 @@ t.describe("BunRoute proxy with Bun.serve", () => {
     await Effect.runPromise(
       Effect
         .gen(function*() {
-          const bunServer = yield* BunHttpServer.BunServer
+          const bunServer = yield* BunHttpServer.BunHttpServer
           const routes = yield* BunRoute.routesFromRouter(router)
           bunServer.addRoutes(routes)
 
@@ -118,7 +119,8 @@ t.describe("BunRoute proxy with Bun.serve", () => {
     await Effect.runPromise(
       Effect
         .gen(function*() {
-          const bunServer = yield* BunHttpServer.BunServer
+          const bunServer = yield* BunHttpServer.BunHttpServer
+
           const routes = yield* BunRoute.routesFromRouter(router)
           bunServer.addRoutes(routes)
 
@@ -159,7 +161,7 @@ t.describe("BunRoute proxy with Bun.serve", () => {
     await Effect.runPromise(
       Effect
         .gen(function*() {
-          const bunServer = yield* BunHttpServer.BunServer
+          const bunServer = yield* BunHttpServer.BunHttpServer
           const routes = yield* BunRoute.routesFromRouter(router)
           bunServer.addRoutes(routes)
 

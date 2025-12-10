@@ -1,6 +1,7 @@
 import type { PlatformError } from "@effect/platform/Error"
 import * as FileSystem from "@effect/platform/FileSystem"
 import * as Array from "effect/Array"
+import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Function from "effect/Function"
 import * as Layer from "effect/Layer"
@@ -11,16 +12,32 @@ import * as NUrl from "node:url"
 import * as FileRouterCodegen from "./FileRouterCodegen.ts"
 import * as FileRouterPattern from "./FileRouterPattern.ts"
 import * as FileSystemExtra from "./FileSystemExtra.ts"
+import * as Route from "./Route.ts"
 import * as Router from "./Router.ts"
+
+export type RouteModule = {
+  default: Route.RouteSet.Default
+}
+
+export type LazyRoute = {
+  path: `/${string}`
+  load: () => Promise<RouteModule>
+  layers?: ReadonlyArray<() => Promise<unknown>>
+}
+
+type Manifest = {
+  routes: readonly LazyRoute[]
+}
+
+export class FileRouter extends Context.Tag("effect-start/FileRouter")<
+  FileRouter,
+  Manifest
+>() {}
 
 export type GroupSegment<Name extends string = string> =
   FileRouterPattern.GroupSegment<Name>
 
 export type Segment = FileRouterPattern.Segment
-
-export type RouteManifest = {
-  routes: readonly Router.LazyRoute[]
-}
 
 export type RouteHandle = {
   handle: "route" | "layer"
@@ -119,8 +136,8 @@ export function parseRoute(
 /**
  * Generates a manifest file that references all routes.
  */
-export function layerManifest(options: {
-  load: () => Promise<unknown>
+export function layer(options: {
+  load: () => Promise<Manifest>
   path: string
 }) {
   let manifestPath = options.path
@@ -135,42 +152,67 @@ export function layerManifest(options: {
   const manifestFilename = NPath.basename(manifestPath)
   const resolvedManifestPath = NPath.resolve(routesPath, manifestFilename)
 
-  return Layer.scopedDiscard(
-    Effect.gen(function*() {
-      yield* FileRouterCodegen.update(routesPath, manifestFilename)
+  return Layer.provide(
+    Layer.effect(
+      FileRouter,
+      Effect.promise(() => options.load()),
+    ),
+    Layer.scopedDiscard(
+      Effect.gen(function*() {
+        yield* FileRouterCodegen.update(routesPath, manifestFilename)
 
-      const stream = Function.pipe(
-        FileSystemExtra.watchSource({
-          path: routesPath,
-          filter: (e) => !e.path.includes("node_modules"),
-        }),
-        Stream.onError((e) => Effect.logError(e)),
-      )
+        const stream = Function.pipe(
+          FileSystemExtra.watchSource({
+            path: routesPath,
+            filter: (e) => !e.path.includes("node_modules"),
+          }),
+          Stream.onError((e) => Effect.logError(e)),
+        )
 
-      yield* Function.pipe(
-        stream,
-        // filter out edits to gen file
-        Stream.filter(e => e.path !== resolvedManifestPath),
-        Stream.runForEach(() =>
-          FileRouterCodegen.update(routesPath, manifestFilename)
-        ),
-        Effect.fork,
-      )
-    }),
+        yield* Function.pipe(
+          stream,
+          // filter out edits to gen file
+          Stream.filter(e => e.path !== resolvedManifestPath),
+          Stream.runForEach(() =>
+            FileRouterCodegen.update(routesPath, manifestFilename)
+          ),
+          Effect.fork,
+        )
+      }),
+    ),
   )
 }
 
-export function layer(options: {
-  load: () => Promise<Router.RouterManifest>
-  path: string
-}) {
-  return Layer.provide(
-    Layer.effect(
-      Router.Router,
-      Effect.promise(() => options.load()),
-    ),
-    layerManifest(options),
-  )
+export function fromManifest(
+  manifest: Manifest,
+): Effect.Effect<Router.Router.Any> {
+  return Effect.gen(function*() {
+    const loadedEntries = yield* Effect.forEach(
+      manifest.routes,
+      (lazyRoute) =>
+        Effect.gen(function*() {
+          const routeModule = yield* Effect.promise(() => lazyRoute.load())
+          const layerModules = lazyRoute.layers
+            ? yield* Effect.forEach(
+              lazyRoute.layers,
+              (loadLayer) => Effect.promise(() => loadLayer()),
+            )
+            : []
+
+          const layers = layerModules
+            .map((m: any) => m.default)
+            .filter(Route.isRouteLayer)
+
+          return {
+            path: lazyRoute.path,
+            route: routeModule.default,
+            layers,
+          }
+        }),
+    )
+
+    return Router.make(loadedEntries, [])
+  })
 }
 
 export function walkRoutesDirectory(

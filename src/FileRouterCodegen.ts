@@ -12,7 +12,7 @@ import * as SchemaExtra from "./SchemaExtra.ts"
 
 export function validateRouteModule(
   module: unknown,
-): module is Router.ServerModule {
+): module is FileRouter.RouteModule {
   if (typeof module !== "object" || module === null) {
     return false
   }

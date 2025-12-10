@@ -48,8 +48,7 @@ type Self =
    */
   | RouteModule
   /**
-   * Called directly from exported function.
-   * Disencouraged but possible.
+   * Called directly from exported function. Don't do it.
    *
    * @example
    * ```ts

@@ -13,8 +13,8 @@ import * as FiberSet from "effect/FiberSet"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import type * as Scope from "effect/Scope"
+import * as FileRouter from "../FileRouter.ts"
 import * as Random from "../Random.ts"
-import * as Router from "../Router.ts"
 import EmptyHTML from "./_empty.html"
 import {
   makeResponse,
@@ -42,7 +42,7 @@ interface ServeOptions {
   readonly development?: boolean
 }
 
-export type BunServer = {
+export type BunHttpServer = {
   readonly server: Bun.Server<WebSocketContext>
   readonly addRoutes: (routes: BunRoute.BunRoutes) => void
   // TODO: we probably don't want to expose these methods publicly
@@ -50,14 +50,14 @@ export type BunServer = {
   readonly popHandler: () => void
 }
 
-export const BunServer = Context.GenericTag<BunServer>(
+export const BunHttpServer = Context.GenericTag<BunHttpServer>(
   "effect-start/BunServer",
 )
 
 export const make = (
   options: ServeOptions,
 ): Effect.Effect<
-  BunServer,
+  BunHttpServer,
   never,
   Scope.Scope
 > =>
@@ -138,7 +138,7 @@ export const make = (
       })
     }
 
-    return BunServer.of({
+    return BunHttpServer.of({
       server,
       pushHandler(fetch) {
         handlerStack.push(fetch)
@@ -160,14 +160,15 @@ export const make = (
 
 export const layer = (
   options?: ServeOptions,
-): Layer.Layer<BunServer> => Layer.scoped(BunServer, make(options ?? {}))
+): Layer.Layer<BunHttpServer> =>
+  Layer.scoped(BunHttpServer, make(options ?? {}))
 
 export const makeHttpServer: Effect.Effect<
   HttpServer.HttpServer,
   never,
-  Scope.Scope | BunServer
+  Scope.Scope | BunHttpServer
 > = Effect.gen(function*() {
-  const bunServer = yield* BunServer
+  const bunServer = yield* BunHttpServer
 
   return HttpServer.make({
     address: {
@@ -229,20 +230,26 @@ export const makeHttpServer: Effect.Effect<
 
 export const layerServer = (
   options?: ServeOptions,
-): Layer.Layer<HttpServer.HttpServer | BunServer> =>
+): Layer.Layer<HttpServer.HttpServer | BunHttpServer> =>
   Layer.provideMerge(
     Layer.scoped(HttpServer.HttpServer, makeHttpServer),
     layer(options ?? {}),
   )
 
-export function layerRoutes() {
+/**
+ * Adds routes from {@like FileRouter.FileRouter} to Bun Server.
+ *
+ * It ain't clean but it works until we figure out interfaces
+ * for other servers.
+ */
+export function layerFileRouter() {
   return Layer.effectDiscard(
     Effect.gen(function*() {
-      const bunServer = yield* BunServer
-      const routerContext = yield* Effect.serviceOption(Router.Router)
+      const bunServer = yield* BunHttpServer
+      const manifest = yield* Effect.serviceOption(FileRouter.FileRouter)
 
-      if (Option.isSome(routerContext)) {
-        const router = yield* Router.fromManifest(routerContext.value)
+      if (Option.isSome(manifest)) {
+        const router = yield* FileRouter.fromManifest(manifest.value)
         const bunRoutes = yield* BunRoute.routesFromRouter(router)
         bunServer.addRoutes(bunRoutes)
       }

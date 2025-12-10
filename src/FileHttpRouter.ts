@@ -192,18 +192,3 @@ export function make<
     return router as HttpRouterFromServerRoutes<Routes>
   })
 }
-
-export function middleware() {
-  return HttpMiddleware.make((app) =>
-    Effect.gen(function*() {
-      const routerContext = yield* Router.Router
-      const router = yield* make(
-        routerContext.routes as ReadonlyArray<Router.LazyRoute>,
-      )
-      const res = yield* router.pipe(
-        Effect.catchTag("RouteNotFound", () => app),
-      )
-      return res
-    })
-  )
-}

@@ -80,27 +80,6 @@ t.describe(`${BunRoute.routesFromRouter.name}`, () => {
     t.expect(result.left.reason).toBe("UnsupportedPattern")
   })
 
-  t.it(
-    "converts text route to fetch handler",
-    () =>
-      Effect.runPromise(
-        Effect
-          .gen(function*() {
-            const bunServer = yield* BunHttpServer.BunServer
-            return 23
-          })
-          .pipe(
-            Effect.provide(
-              Layer.mergeAll(
-                BunHttpServer.layer({
-                  port: 0,
-                }),
-              ),
-            ),
-          ),
-      ),
-  )
-
   t.test("converts text route to fetch handler", async () => {
     const fetch = await makeFetch(
       Router.mount("/hello", Route.text("Hello World")),
@@ -398,7 +377,7 @@ t.describe("BunRoute placeholder replacement", () => {
     await Effect.runPromise(
       Effect
         .gen(function*() {
-          const bunServer = yield* BunHttpServer.BunServer
+          const bunServer = yield* BunHttpServer.BunHttpServer
           const routes = yield* BunRoute.routesFromRouter(router)
           bunServer.addRoutes(routes)
 
@@ -430,7 +409,7 @@ t.describe("BunRoute placeholder replacement", () => {
     await Effect.runPromise(
       Effect
         .gen(function*() {
-          const bunServer = yield* BunHttpServer.BunServer
+          const bunServer = yield* BunHttpServer.BunHttpServer
           const routes = yield* BunRoute.routesFromRouter(router)
           bunServer.addRoutes(routes)
 
@@ -463,7 +442,7 @@ type HandlerFn = (
 ) => Response | Promise<Response>
 
 async function makeBunRoutes(
-  router: Router.RouterBuilder.Any,
+  router: Router.Router.Any,
 ): Promise<BunRoute.BunRoutes> {
   return Effect.runPromise(
     BunRoute.routesFromRouter(router).pipe(
@@ -472,7 +451,7 @@ async function makeBunRoutes(
   )
 }
 
-async function makeFetch(router: Router.RouterBuilder.Any): Promise<FetchFn> {
+async function makeFetch(router: Router.Router.Any): Promise<FetchFn> {
   const routes = await makeBunRoutes(router)
   const mockServer = {} as import("bun").Server<unknown>
 

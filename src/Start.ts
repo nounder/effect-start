@@ -67,7 +67,7 @@ export function serve<ROut, E>(
       | HttpClient.HttpClient
       | HttpRouter.Default
       | FileSystem.FileSystem
-      | BunHttpServer.BunServer
+      | BunHttpServer.BunHttpServer
     >
   }>,
 ) {
@@ -79,7 +79,7 @@ export function serve<ROut, E>(
   )
 
   return Function.pipe(
-    BunHttpServer.layerRoutes(),
+    BunHttpServer.layerFileRouter(),
     HttpServer.withLogAddress,
     Layer.provide(appLayer),
     Layer.provide([

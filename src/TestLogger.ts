@@ -54,4 +54,3 @@ export const messages: Effect.Effect<
   const logger = yield* TestLogger
   return yield* Ref.get(logger.messages)
 })
-
