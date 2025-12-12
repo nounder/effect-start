@@ -2,10 +2,18 @@
 
 import { $ } from "bun"
 
-const [type] = process.argv.slice(2)
+const args = process.argv.slice(2)
+const skipPrompt = args.includes("-y")
+const type = args.find(a => a !== "-y")
 
 if (!type || !["major", "minor", "patch"].includes(type)) {
-  console.error("Usage: bump <major|minor|patch>")
+  console.error("Usage: package-version <major|minor|patch> [-y]")
+  process.exit(1)
+}
+
+const status = await $`git status --porcelain`.text()
+if (status.trim()) {
+  console.error("Working directory is not clean. Commit or stash changes first.")
   process.exit(1)
 }
 
@@ -24,13 +32,27 @@ const newVersion =
   : type === "minor" ? `${major}.${minor + 1}.0`
   : `${major}.${minor}.${patch + 1}`
 
+console.log(`${match[1]}.${match[2]}.${match[3]} -> ${newVersion}`)
+console.log(`This will: commit, tag, push, and publish to npm`)
+
+if (!skipPrompt) {
+  process.stdout.write("Proceed? [y/N] ")
+  for await (const line of console) {
+    if (line.toLowerCase() !== "y") {
+      console.log("Aborted.")
+      process.exit(0)
+    }
+    break
+  }
+}
+
 const updated = content.replace(/"version":\s*"\d+\.\d+\.\d+"/, `"version": "${newVersion}"`)
 await Bun.write("package.json", updated)
 
-await $`git add package.json`
-await $`git commit -m "version ${newVersion}"`
+await $`git commit -am "version ${newVersion}"`
 await $`git tag v${newVersion}`
 await $`git push`
 await $`git push --tags`
+await $`bun run deploy`
 
-console.log(`Bumped to ${newVersion}`)
+console.log(`Published ${newVersion}`)
