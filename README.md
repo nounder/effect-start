@@ -52,27 +52,24 @@ src/routes
 
 ### Tailwind CSS Support
 
-Install Tailwind plugin:
+Effect Start comes with native Tailwind support that is lightweight and
+works with minimal setup.
+
+First, install Tailwind package:
 
 ```sh
-bun add tailwindcss bun-plugin-tailwind
+bun add tailwindcss
 ```
 
-In `bunfig.toml`:
+Then, register a plugin in `bunfig.toml`:
 
 ```toml
 [serve.static]
-plugins = ["bun-plugin-tailwind"]
+plugins = ["effect-start/x/tailwind/plugin"]
 ```
 
-Finally, include it in your `src/app.html`:
+Finally, include it in your `src/app.css`:
 
 ```html
-<!doctype html>
-<html>
-  <head>
-    <link rel="stylesheet" href="tailwindcss" />
-  </head>
-  <!-- the rest of your HTML... -->
-</html>
+@import "tailwindcss";
 ```

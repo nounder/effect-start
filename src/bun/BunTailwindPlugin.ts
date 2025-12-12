@@ -1,6 +1,6 @@
 import type * as Tailwind from "@tailwindcss/node"
 import type { BunPlugin } from "bun"
-import * as NodePath from "node:path"
+import * as NPath from "node:path"
 
 type Compiler = Awaited<ReturnType<typeof Tailwind.compile>>
 
@@ -30,6 +30,7 @@ export const make = (opts: {
    *
    * This option scans the provided path and ensures that class names found under this path
    * are includedd, even if they are not part of the import graph.
+   * Useful when we want to scan clientside code which is not imported directly on serverside.
    */
   scanPath?: string
 } = {}): BunPlugin => {
@@ -65,44 +66,51 @@ export const make = (opts: {
       }
 
       /**
-       * Track import relationships.
-       * We do this to scope all class name candidates to tailwind entrypoints
+       * Track import relationships when dynamically scanning
+       * from tailwind entrypoints.
+       *
+       * As of Bun 1.3 this pathway break for Bun Full-Stack server.
+       * Better to pass scanPath explicitly.
+       * @see https://github.com/oven-sh/bun/issues/20877
        */
-      builder.onResolve({
-        filter: /.*/,
-      }, (args) => {
-        const fullPath = Bun.resolveSync(args.path, args.resolveDir)
+      if (!opts.scanPath) {
+        builder.onResolve({
+          filter: /.*/,
+        }, (args) => {
+          const fullPath = Bun.resolveSync(args.path, args.resolveDir)
+          const importer = args.importer
 
-        if (fullPath.includes("/node_modules/")) {
+          if (fullPath.includes("/node_modules/")) {
+            return undefined
+          }
+
+          /**
+           * Register every visited module.
+           */
+          {
+            if (!importAncestors.has(fullPath)) {
+              importAncestors.set(fullPath, new Set())
+            }
+
+            if (!importDescendants.has(fullPath)) {
+              importDescendants.set(fullPath, new Set())
+            }
+
+            if (!importAncestors.has(importer)) {
+              importAncestors.set(args.importer, new Set())
+            }
+
+            if (!importDescendants.has(importer)) {
+              importDescendants.set(importer, new Set())
+            }
+          }
+
+          importAncestors.get(fullPath)!.add(importer)
+          importDescendants.get(importer)!.add(fullPath)
+
           return undefined
-        }
-
-        /**
-         * Register every visited module.
-         */
-        {
-          if (!importAncestors.has(fullPath)) {
-            importAncestors.set(fullPath, new Set())
-          }
-
-          if (!importDescendants.has(fullPath)) {
-            importDescendants.set(fullPath, new Set())
-          }
-
-          if (!importAncestors.has(args.importer)) {
-            importAncestors.set(args.importer, new Set())
-          }
-
-          if (!importDescendants.has(args.importer)) {
-            importDescendants.set(args.importer, new Set())
-          }
-        }
-
-        importAncestors.get(fullPath)!.add(args.importer)
-        importDescendants.get(args.importer)!.add(fullPath)
-
-        return undefined
-      })
+        })
+      }
 
       /**
        * Scan for class name candidates in component files.
@@ -133,7 +141,7 @@ export const make = (opts: {
         }
 
         const compiler = await Tailwind.compile(source, {
-          base: NodePath.dirname(args.path),
+          base: NPath.dirname(args.path),
           shouldRewriteUrls: true,
           onDependency: (path) => {},
         })
@@ -187,16 +195,6 @@ export const make = (opts: {
 }
 
 const CSS_IMPORT_REGEX = /@import\s+(?:url\()?["']?([^"')]+)["']?\)?\s*[^;]*;/
-
-function hasCssImport(css: string, specifier?: string): boolean {
-  const [, importPath] = css.match(CSS_IMPORT_REGEX) ?? []
-
-  if (!importPath) return false
-
-  return specifier === undefined
-    || importPath.includes(specifier)
-}
-
 const HTML_COMMENT_REGEX = /<!--[\s\S]*?-->/g
 const TEMPLATE_EXPRESSION_REGEX = /\$\{[^}]*\}/g
 const TAILWIND_CLASS_REGEX = /^[a-zA-Z0-9_:-]+(\[[^\]]*\])?$/
@@ -254,6 +252,15 @@ const CLASS_NAME_REGEX = new RegExp(
   CLASS_NAME_PATTERNS.map(pattern => `(?:${pattern})`).join("|"),
   "g",
 )
+
+function hasCssImport(css: string, specifier?: string): boolean {
+  const [, importPath] = css.match(CSS_IMPORT_REGEX) ?? []
+
+  if (!importPath) return false
+
+  return specifier === undefined
+    || importPath.includes(specifier)
+}
 
 export function extractClassNames(source: string): Set<string> {
   const candidates = new Set<string>()
