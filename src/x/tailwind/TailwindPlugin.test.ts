@@ -1,6 +1,6 @@
 import * as t from "bun:test"
 
-import { extractClassNames } from "./BunTailwindPlugin.ts"
+import { extractClassNames } from "./TailwindPlugin.ts"
 
 // Keep the old broad implementation for comparison tests
 function extractClassNamesBroad(source: string): Set<string> {

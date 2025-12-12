@@ -1,6 +1,6 @@
 import * as NPath from "node:path"
-import * as BunTailwindPlugin from "../../bun/BunTailwindPlugin.ts"
 import * as NodeUtils from "../../NodeUtils.ts"
+import * as TailwindPlugin from "./TailwindPlugin.ts"
 
 // Append `?dir=` to module identifier to pass custom directory to scan
 const dirParam = URL.parse(import.meta.url)?.searchParams.get("dir")
@@ -12,6 +12,6 @@ const scanPath = dirParam
   : process.cwd()
 
 // Export as default to be used in bunfig.toml
-export default BunTailwindPlugin.make({
+export default TailwindPlugin.make({
   scanPath,
 })

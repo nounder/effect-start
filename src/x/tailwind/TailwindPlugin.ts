@@ -1,18 +1,8 @@
-import type * as Tailwind from "@tailwindcss/node"
 import type { BunPlugin } from "bun"
 import * as NPath from "node:path"
+import * as Tailwind from "./compile.ts"
 
-type Compiler = Awaited<ReturnType<typeof Tailwind.compile>>
-
-export const make = (opts: {
-  /**
-   * Custom importer function to load Tailwind.
-   * By default, it imports from '@tailwindcss/node'.
-   * If you want to use a different version or a custom implementation,
-   * provide your own importer.
-   */
-  importer?: () => Promise<typeof Tailwind>
-
+export const make = (opts?: {
   /**
    * Pattern to match component and HTML files for class name extraction.
    */
@@ -33,24 +23,19 @@ export const make = (opts: {
    * Useful when we want to scan clientside code which is not imported directly on serverside.
    */
   scanPath?: string
-} = {}): BunPlugin => {
+
+  target?: "browser" | "bun" | "node"
+}): BunPlugin => {
   const {
     filesPattern = /\.(jsx?|tsx?|html|svelte|vue|astro)$/,
     cssPattern = /\.css$/,
-    importer = () =>
-      import("@tailwindcss/node").catch(err => {
-        throw new Error(
-          "Tailwind not found: install @tailwindcss/node or provide custom importer option",
-        )
-      }),
-  } = opts
+    target = "browser",
+  } = opts ?? {}
 
   return {
-    name: "Bun Tailwind.css plugin",
-    target: "browser",
+    name: "Tailwind.css plugin",
+    target,
     async setup(builder) {
-      const Tailwind = await importer()
-
       const scannedCandidates = new Set<string>()
       // (file) -> (class names)
       const classNameCandidates = new Map<string, Set<string>>()
@@ -59,7 +44,7 @@ export const make = (opts: {
       // (imported path) -> (importer paths)
       const importDescendants = new Map<string, Set<string>>()
 
-      if (opts.scanPath) {
+      if (opts?.scanPath) {
         const candidates = await scanFiles(opts.scanPath)
 
         candidates.forEach(candidate => scannedCandidates.add(candidate))
@@ -73,7 +58,7 @@ export const make = (opts: {
        * Better to pass scanPath explicitly.
        * @see https://github.com/oven-sh/bun/issues/20877
        */
-      if (!opts.scanPath) {
+      if (!opts?.scanPath) {
         builder.onResolve({
           filter: /.*/,
         }, (args) => {
@@ -142,7 +127,6 @@ export const make = (opts: {
 
         const compiler = await Tailwind.compile(source, {
           base: NPath.dirname(args.path),
-          shouldRewriteUrls: true,
           onDependency: (path) => {},
         })
 

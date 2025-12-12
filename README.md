@@ -58,7 +58,7 @@ works with minimal configuration.
 First, install official Tailwind package:
 
 ```sh
-bun add -D @tailwindcss/node
+bun add -D tailwindcss
 ```
 
 Then, register a plugin in `bunfig.toml`:
