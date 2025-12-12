@@ -1,0 +1,36 @@
+#!/usr/bin/env bun
+
+import { $ } from "bun"
+
+const [type] = process.argv.slice(2)
+
+if (!type || !["major", "minor", "patch"].includes(type)) {
+  console.error("Usage: bump <major|minor|patch>")
+  process.exit(1)
+}
+
+const content = await Bun.file("package.json").text()
+const match = content.match(/"version":\s*"(\d+)\.(\d+)\.(\d+)"/)
+
+if (!match) {
+  console.error("Could not find version in package.json")
+  process.exit(1)
+}
+
+const [, major, minor, patch] = match.map(Number)
+
+const newVersion =
+  type === "major" ? `${major + 1}.0.0`
+  : type === "minor" ? `${major}.${minor + 1}.0`
+  : `${major}.${minor}.${patch + 1}`
+
+const updated = content.replace(/"version":\s*"\d+\.\d+\.\d+"/, `"version": "${newVersion}"`)
+await Bun.write("package.json", updated)
+
+await $`git add package.json`
+await $`git commit -m "version ${newVersion}"`
+await $`git tag v${newVersion}`
+await $`git push`
+await $`git push --tags`
+
+console.log(`Bumped to ${newVersion}`)
