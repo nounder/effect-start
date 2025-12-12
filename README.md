@@ -52,13 +52,13 @@ src/routes
 
 ### Tailwind CSS Support
 
-Effect Start comes with native Tailwind support that is lightweight and
-works with minimal setup.
+Effect Start comes with Tailwind plugin that is lightweight and
+works with minimal configuration.
 
-First, install Tailwind package:
+First, install official Tailwind package:
 
 ```sh
-bun add tailwindcss
+bun add -D @tailwindcss/node
 ```
 
 Then, register a plugin in `bunfig.toml`:
