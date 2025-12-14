@@ -44,21 +44,22 @@ export const make = (opts?: {
       // (imported path) -> (importer paths)
       const importDescendants = new Map<string, Set<string>>()
 
-      if (opts?.scanPath) {
-        const candidates = await scanFiles(opts.scanPath)
+      const prepopulateCandidates = opts?.scanPath
+        ? async () => {
+          const candidates = await scanFiles(opts.scanPath!)
 
-        candidates.forEach(candidate => scannedCandidates.add(candidate))
-      }
+          scannedCandidates.clear()
 
-      /**
-       * Track import relationships when dynamically scanning
-       * from tailwind entrypoints.
-       *
-       * As of Bun 1.3 this pathway break for Bun Full-Stack server.
-       * Better to pass scanPath explicitly.
-       * @see https://github.com/oven-sh/bun/issues/20877
-       */
-      if (!opts?.scanPath) {
+          candidates.forEach(candidate => scannedCandidates.add(candidate))
+        }
+        : null
+
+      // Track import relationships when dynamically scanning
+      // from tailwind entrypoints.
+      // As of Bun 1.3 this pathway break for Bun Full-Stack server.
+      // Better to pass scanPath explicitly.
+      // @see https://github.com/oven-sh/bun/issues/20877
+      if (!prepopulateCandidates) {
         builder.onResolve({
           filter: /.*/,
         }, (args) => {
@@ -103,6 +104,7 @@ export const make = (opts?: {
       builder.onLoad({
         filter: filesPattern,
       }, async (args) => {
+        console.log("onLoad", args)
         const contents = await Bun.file(args.path).text()
         const classNames = extractClassNames(contents)
 
@@ -130,14 +132,15 @@ export const make = (opts?: {
           onDependency: (path) => {},
         })
 
+        await prepopulateCandidates?.()
+
         // wait for other files to be loaded so we can collect class name candidates
         await args.defer()
 
-        const candidates = new Set<string>()
+        const candidates = new Set<string>(scannedCandidates)
 
-        scannedCandidates.forEach(candidate => candidates.add(candidate))
-
-        {
+        // when we scan a path, we don't need to track candidate tree
+        if (!prepopulateCandidates) {
           const pendingModules = [
             // get class name candidates from all modules that import this one
             ...(importAncestors.get(args.path) ?? []),
