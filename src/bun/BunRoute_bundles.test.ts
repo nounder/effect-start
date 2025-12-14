@@ -2,7 +2,7 @@ import * as t from "bun:test"
 import * as Effect from "effect/Effect"
 import * as Route from "../Route.ts"
 import * as Router from "../Router.ts"
-import * as TestHttpClient from "../TestHttpClient.ts"
+import * as TestHttpClient from "../testing/TestHttpClient.ts"
 import * as BunHttpServer from "./BunHttpServer.ts"
 import * as BunRoute from "./BunRoute.ts"
 

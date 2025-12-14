@@ -10,7 +10,6 @@ import * as UrlParams from "@effect/platform/UrlParams"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import * as Function from "effect/Function"
-import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 
 const WebHeaders = globalThis.Headers

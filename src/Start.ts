@@ -3,47 +3,13 @@ import * as FileSystem from "@effect/platform/FileSystem"
 import * as HttpClient from "@effect/platform/HttpClient"
 import * as HttpRouter from "@effect/platform/HttpRouter"
 import * as HttpServer from "@effect/platform/HttpServer"
-import * as Config from "effect/Config"
 import * as Effect from "effect/Effect"
 import * as Function from "effect/Function"
 import * as Layer from "effect/Layer"
-import * as Option from "effect/Option"
-import * as BunBundle from "./bun/BunBundle.ts"
 import * as BunHttpServer from "./bun/BunHttpServer.ts"
-import * as BunRoute from "./bun/BunRoute.ts"
 import * as BunRuntime from "./bun/BunRuntime.ts"
-import * as Bundle from "./Bundle.ts"
-import * as BundleHttp from "./BundleHttp.ts"
-import * as HttpAppExtra from "./HttpAppExtra.ts"
 import * as NodeFileSystem from "./NodeFileSystem.ts"
-import * as Router from "./Router.ts"
 import * as StartApp from "./StartApp.ts"
-
-export function bundleClient(config: BunBundle.BuildOptions | string) {
-  const clientLayer = Layer.effect(
-    Bundle.ClientBundle,
-    Function.pipe(
-      BunBundle.buildClient(config),
-      Bundle.handleBundleErrorSilently,
-    ),
-  )
-  const assetsLayer = Layer.effectDiscard(Effect.gen(function*() {
-    const router = yield* HttpRouter.Default
-    const app = BundleHttp.toHttpApp(Bundle.ClientBundle)
-
-    yield* router.mountApp(
-      "/_bundle",
-      // we need to use as any here because HttpRouter.Default
-      // only accepts default services.
-      app as any,
-    )
-  }))
-
-  return Layer.mergeAll(
-    clientLayer,
-    assetsLayer,
-  )
-}
 
 export function layer<
   Layers extends [

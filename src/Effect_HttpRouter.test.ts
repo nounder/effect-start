@@ -7,9 +7,8 @@
 import * as HttpRouter from "@effect/platform/HttpRouter"
 import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
 import * as t from "bun:test"
-import * as Effect from "effect/Effect"
-import * as TestHttpClient from "../src/TestHttpClient.ts"
-import { effectFn } from "../src/testing.ts"
+import { effectFn } from "../src/testing"
+import * as TestHttpClient from "./testing/TestHttpClient.ts"
 
 const effect = effectFn()
 

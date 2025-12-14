@@ -7,7 +7,7 @@ import {
 } from "effect"
 import * as Cause from "effect/Cause"
 import * as HttpAppExtra from "./HttpAppExtra.ts"
-import { effectFn } from "./testing.ts"
+import { effectFn } from "./testing"
 
 const mockRequest = HttpServerRequest.HttpServerRequest.of({
   url: "http://localhost:3000/test",

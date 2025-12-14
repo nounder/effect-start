@@ -1,5 +1,5 @@
 import { Route } from "effect-start"
-import * as BasicAuthMiddleware from "effect-start/middlewares/BasicAuthMiddleware"
+import { BasicAuthMiddleware } from "effect-start/middlewares"
 
 export default Route.layer(
   Route.http(

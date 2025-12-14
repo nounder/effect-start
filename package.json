@@ -5,20 +5,20 @@
   "license": "MIT",
   "exports": {
     ".": "./src/index.ts",
+    "./StartApp": "./src/StartApp.ts",
     "./FileRouter": "./src/FileRouter.ts",
     "./Route": "./src/Route.ts",
-    "./EncryptedCookies": "./src/EncryptedCookies.ts",
     "./bun": "./src/bun/index.ts",
     "./client": "./src/client/index.ts",
-    "./FileSystemExtra": "./src/FileSystemExtra.ts",
-    "./package.json": "./package.json",
-    "./jsx-runtime": "./src/jsx-runtime.ts",
-    "./jsx-dev-runtime": "./src/jsx-runtime.ts",
-    "./hyper": "./src/hyper/index.ts",
+    "./testing": "./src/testing/index.ts",
     "./x/*": "./src/x/*/index.ts",
     "./x/tailwind/plugin": "./src/x/tailwind/plugin.ts",
-    "./middlewares/BasicAuthMiddleware": "./src/middlewares/BasicAuthMiddleware.ts",
-    "./assets.d.ts": "./src/assets.d.ts"
+    "./middlewares": "./src/middlewares/index.ts",
+    "./experimental": "./src/experimental/index.ts",
+    "./assets.d.ts": "./src/assets.d.ts",
+    "./jsx-runtime": "./src/jsx-runtime.ts",
+    "./jsx-dev-runtime": "./src/jsx-runtime.ts",
+    "./package.json": "./package.json"
   },
   "scripts": {
     "format": "bunx dprint fmt",

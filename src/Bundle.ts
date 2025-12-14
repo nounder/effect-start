@@ -6,7 +6,6 @@ import {
   PubSub,
 } from "effect"
 import * as Schema from "effect/Schema"
-import { importBlob } from "./JsModule.ts"
 
 export const BundleEntrypointMetaKey: unique symbol = Symbol.for(
   "effect-start/BundleEntrypointMetaKey",
@@ -131,37 +130,3 @@ export type Tag = Context.Tag<
 
 export class ClientBundle extends Tag("ClientBundle")<ClientBundle>() {}
 export class ServerBundle extends Tag("ServerBundle")<ServerBundle>() {}
-
-/**
- * Lodas a bundle as a javascript module.
- * Bundle must have only one entrypoint.
- */
-export function load<M>(
-  bundle: Effect.Effect<BundleContext, BundleError>,
-): Effect.Effect<M, BundleError> {
-  return Effect.gen(function*() {
-    const context = yield* bundle
-    const [artifact, ...rest] = Object.values(context.entrypoints)
-
-    if (rest.length > 0) {
-      return yield* Effect.fail(
-        new BundleError({
-          message: "Multiple entrypoints are not supported in load()",
-        }),
-      )
-    }
-
-    return yield* Effect.tryPromise({
-      try: () => {
-        const blob = context.getArtifact(artifact)
-
-        return importBlob<M>(blob!)
-      },
-      catch: (e) =>
-        new BundleError({
-          message: "Failed to load entrypoint",
-          cause: e,
-        }),
-    })
-  })
-}

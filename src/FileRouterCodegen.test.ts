@@ -12,7 +12,7 @@ import * as FileRouterCodegen from "./FileRouterCodegen.ts"
 import * as NodeFileSystem from "./NodeFileSystem.ts"
 import * as Route from "./Route.ts"
 import * as SchemaExtra from "./SchemaExtra.ts"
-import * as TestLogger from "./TestLogger.ts"
+import * as TestLogger from "./testing/TestLogger.ts"
 
 function createTempDirWithFiles(
   files: Record<string, string>,

@@ -7,7 +7,7 @@ import * as NOS from "node:os"
 import * as NPath from "node:path"
 import * as Bundle from "../Bundle.ts"
 import * as BundleHttp from "../BundleHttp.ts"
-import * as TestHttpClient from "../TestHttpClient.ts"
+import * as TestHttpClient from "../testing/TestHttpClient.ts"
 import * as BunBundle from "./BunBundle.ts"
 
 t.describe("BunBundle manifest structure", () => {

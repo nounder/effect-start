@@ -7,8 +7,8 @@ import * as Effect from "effect/Effect"
 import * as FileHttpRouter from "./FileHttpRouter.ts"
 import * as FileRouter from "./FileRouter.ts"
 import * as Route from "./Route.ts"
-import * as TestHttpClient from "./TestHttpClient.ts"
-import { effectFn } from "./testing.ts"
+import { effectFn } from "./testing"
+import * as TestHttpClient from "./testing/TestHttpClient.ts"
 
 class CustomError extends Data.TaggedError("CustomError") {}
 

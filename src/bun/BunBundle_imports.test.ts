@@ -1,5 +1,5 @@
 import * as t from "bun:test"
-import { effectFn } from "../testing.ts"
+import { effectFn } from "../testing"
 import * as BunBundle from "./BunBundle.ts"
 import * as BunImportTrackerPlugin from "./BunImportTrackerPlugin.ts"
 
@@ -35,7 +35,7 @@ t.it("imports", () =>
           },
           {
             kind: "import-statement",
-            path: "src/testing.ts",
+            path: "src/testing",
           },
           {
             kind: "import-statement",

@@ -2,7 +2,7 @@ import * as t from "bun:test"
 import { MemoryFileSystem } from "effect-memfs"
 import * as Effect from "effect/Effect"
 import * as FileRouter from "./FileRouter.ts"
-import { effectFn } from "./testing.ts"
+import { effectFn } from "./testing"
 
 const Files = {
   "/routes/about/layer.tsx": "",

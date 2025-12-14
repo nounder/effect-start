@@ -2,8 +2,8 @@ import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
 import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
 import * as t from "bun:test"
 import * as Effect from "effect/Effect"
+import { effectFn } from "./index.ts"
 import * as TestHttpClient from "./TestHttpClient.ts"
-import { effectFn } from "./testing.ts"
 
 const App = Effect.gen(function*() {
   const req = yield* HttpServerRequest.HttpServerRequest
