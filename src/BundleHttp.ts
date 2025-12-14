@@ -15,7 +15,6 @@ import * as NUrl from "node:url"
 import * as Bundle from "./Bundle.ts"
 import * as SseHttpResponse from "./experimental/SseHttpResponse.ts"
 
-
 const DefaultBundleEndpoint = "/_bundle"
 
 /**

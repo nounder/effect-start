@@ -605,33 +605,10 @@ export function merge<
   ) =>
     Effect.gen(function*() {
       const accept = context.request.headers.accept ?? ""
+      const selectedRoute = RouteRender.selectRouteByMedia(allRoutes, accept)
 
-      if (accept.includes("application/json")) {
-        const jsonRoute = allRoutes.find((r) => r.media === "application/json")
-        if (jsonRoute) {
-          return yield* RouteRender.render(jsonRoute, context)
-        }
-      }
-
-      if (accept.includes("text/plain")) {
-        const textRoute = allRoutes.find((r) => r.media === "text/plain")
-        if (textRoute) {
-          return yield* RouteRender.render(textRoute, context)
-        }
-      }
-
-      if (
-        accept.includes("text/html") || accept.includes("*/*") || !accept
-      ) {
-        const htmlRoute = allRoutes.find((r) => r.media === "text/html")
-        if (htmlRoute) {
-          return yield* RouteRender.render(htmlRoute, context)
-        }
-      }
-
-      const firstRoute = allRoutes[0]
-      if (firstRoute) {
-        return yield* RouteRender.render(firstRoute, context)
+      if (selectedRoute) {
+        return yield* RouteRender.render(selectedRoute, context)
       }
 
       return HttpServerResponse.empty({ status: 406 })

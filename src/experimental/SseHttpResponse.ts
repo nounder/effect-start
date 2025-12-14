@@ -6,7 +6,6 @@ import * as Schedule from "effect/Schedule"
 import * as Stream from "effect/Stream"
 import * as StreamExtra from "../StreamExtra.ts"
 
-
 const DefaultHeartbeatInterval = Duration.seconds(5)
 
 export const make = <T = any>(stream: Stream.Stream<T, any>, options?: {

@@ -143,25 +143,7 @@ function makeHandler(routes: Route.Route.Default[]) {
     const request = yield* HttpServerRequest.HttpServerRequest
     const accept = request.headers.accept ?? ""
 
-    let selectedRoute: Route.Route.Default | undefined
-
-    if (accept.includes("application/json")) {
-      selectedRoute = routes.find((r) => r.media === "application/json")
-    }
-    if (!selectedRoute && accept.includes("text/plain")) {
-      selectedRoute = routes.find((r) => r.media === "text/plain")
-    }
-    if (
-      !selectedRoute
-      && (accept.includes("text/html")
-        || accept.includes("*/*")
-        || !accept)
-    ) {
-      selectedRoute = routes.find((r) => r.media === "text/html")
-    }
-    if (!selectedRoute) {
-      selectedRoute = routes[0]
-    }
+    const selectedRoute = RouteRender.selectRouteByMedia(routes, accept)
 
     if (!selectedRoute) {
       return HttpServerResponse.empty({ status: 406 })

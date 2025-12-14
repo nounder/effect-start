@@ -1307,38 +1307,41 @@ t.describe("Route.merge", () => {
     },
   )
 
-  t.it("merged route defaults to html for */* accept", async () => {
-    const textRoute = Route.text("plain text")
-    const htmlRoute = Route.html("<div>html</div>")
+  t.it(
+    "merged route uses priority (json > text > html) for */* accept",
+    async () => {
+      const textRoute = Route.text("plain text")
+      const htmlRoute = Route.html("<div>html</div>")
 
-    const merged = Route.merge(textRoute, htmlRoute)
-    const route = merged.set[0]!
+      const merged = Route.merge(textRoute, htmlRoute)
+      const route = merged.set[0]!
 
-    const request = HttpServerRequest.fromWeb(
-      new Request("http://localhost/test", {
-        headers: { Accept: "*/*" },
-      }),
-    )
+      const request = HttpServerRequest.fromWeb(
+        new Request("http://localhost/test", {
+          headers: { Accept: "*/*" },
+        }),
+      )
 
-    const context: Route.RouteContext = {
-      request,
-      get url() {
-        return new URL(request.url)
-      },
-      slots: {},
-      next: () => Effect.void,
-    }
+      const context: Route.RouteContext = {
+        request,
+        get url() {
+          return new URL(request.url)
+        },
+        slots: {},
+        next: () => Effect.void,
+      }
 
-    const result = await Effect.runPromise(route.handler(context))
+      const result = await Effect.runPromise(route.handler(context))
 
-    const webResponse = HttpServerResponse.toWeb(result)
-    const text = await webResponse.text()
+      const webResponse = HttpServerResponse.toWeb(result)
+      const text = await webResponse.text()
 
-    t.expect(text).toBe("<div>html</div>")
-  })
+      t.expect(text).toBe("plain text")
+    },
+  )
 
   t.it(
-    "merged route defaults to first route when no Accept header",
+    "merged route uses priority (json > text > html) when no Accept header",
     async () => {
       const textRoute = Route.text("plain text")
       const htmlRoute = Route.html("<div>html</div>")
@@ -1364,7 +1367,7 @@ t.describe("Route.merge", () => {
       const webResponse = HttpServerResponse.toWeb(result)
       const text = await webResponse.text()
 
-      t.expect(text).toBe("<div>html</div>")
+      t.expect(text).toBe("plain text")
     },
   )
 })

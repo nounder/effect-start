@@ -1,7 +1,40 @@
 import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
 import * as Effect from "effect/Effect"
+import * as ContentNegotiation from "./Accept.ts"
 import * as HyperHtml from "./HyperHtml.ts"
 import * as Route from "./Route.ts"
+
+const WILDCARD_PRIORITY: Route.RouteMedia[] = [
+  "application/json",
+  "text/plain",
+  "text/html",
+]
+
+export function selectRouteByMedia(
+  routes: Route.Route.Default[],
+  accept: string,
+): Route.Route.Default | undefined {
+  const availableMedia = routes
+    .map((r) => r.media)
+    .filter((m): m is Exclude<Route.RouteMedia, "*"> => m !== "*")
+
+  const normalizedAccept = accept || "*/*"
+  const hasWildcard = normalizedAccept.includes("*")
+  const preferred = ContentNegotiation.media(normalizedAccept, availableMedia)
+
+  if (preferred.length > 0) {
+    if (hasWildcard) {
+      for (const media of WILDCARD_PRIORITY) {
+        if (preferred.includes(media)) {
+          return routes.find((r) => r.media === media)
+        }
+      }
+    }
+    return routes.find((r) => r.media === preferred[0])
+  }
+
+  return routes.find((r) => r.media === "*") ?? routes[0]
+}
 
 /**
  * Renders a route handler to an HttpServerResponse.
