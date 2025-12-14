@@ -104,7 +104,6 @@ export const make = (opts?: {
       builder.onLoad({
         filter: filesPattern,
       }, async (args) => {
-        console.log("onLoad", args)
         const contents = await Bun.file(args.path).text()
         const classNames = extractClassNames(contents)
 
@@ -298,6 +297,10 @@ async function scanFiles(dir: string): Promise<Set<string>> {
       absolute: true,
     })
   ) {
+    if (filePath.includes("/node_modules/")) {
+      continue
+    }
+
     const contents = await Bun.file(filePath).text()
     const classNames = extractClassNames(contents)
 
