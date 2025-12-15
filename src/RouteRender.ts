@@ -1,6 +1,7 @@
 import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
 import * as Effect from "effect/Effect"
-import * as ContentNegotiation from "./Accept.ts"
+import * as ContentNegotiation from "./ContentNegotiation.ts"
+
 import * as HyperHtml from "./HyperHtml.ts"
 import * as Route from "./Route.ts"
 
@@ -14,7 +15,13 @@ export function selectRouteByMedia(
   routes: Route.Route.Default[],
   accept: string,
 ): Route.Route.Default | undefined {
-  const availableMedia = routes
+  // Filter out HTTP middleware/handler routes (they don't participate in content negotiation)
+  // and wildcard media types
+  const contentRoutes = routes.filter((r) =>
+    !Route.isHttpMiddlewareHandler(r.handler) && !Route.isHttpHandler(r.handler)
+  )
+
+  const availableMedia = contentRoutes
     .map((r) => r.media)
     .filter((m): m is Exclude<Route.RouteMedia, "*"> => m !== "*")
 
@@ -26,14 +33,15 @@ export function selectRouteByMedia(
     if (hasWildcard) {
       for (const media of WILDCARD_PRIORITY) {
         if (preferred.includes(media)) {
-          return routes.find((r) => r.media === media)
+          return contentRoutes.find((r) => r.media === media)
         }
       }
     }
-    return routes.find((r) => r.media === preferred[0])
+    return contentRoutes.find((r) => r.media === preferred[0])
   }
 
-  return routes.find((r) => r.media === "*") ?? routes[0]
+  // Fallback to wildcard media routes
+  return contentRoutes.find((r) => r.media === "*") ?? routes[0]
 }
 
 /**

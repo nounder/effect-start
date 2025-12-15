@@ -1,14 +1,14 @@
 import { Route } from "effect-start"
 import { BasicAuthMiddleware } from "effect-start/middlewares"
 
-export default Route.layer(
-  Route.http(
+export default Route
+  .http(
     BasicAuthMiddleware.make({
       username: "admin",
       password: "admin",
     }),
-  ),
-  Route.html(function*(context) {
+  )
+  .html(function*(context) {
     // we need to type case here due to react types mismatch
     const inner = yield* context.next() as any
 
@@ -22,5 +22,4 @@ export default Route.layer(
         {inner}
       </div>
     )
-  }),
-)
+  })

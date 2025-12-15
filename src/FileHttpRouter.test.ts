@@ -174,12 +174,10 @@ t.it(
         }),
         layers: [
           async () => ({
-            default: Route.layer(
-              Route.html(function*(context) {
-                const innerContent = yield* context.next()
-                return `<html><body>${innerContent}</body></html>`
-              }),
-            ),
+            default: Route.html(function*(context) {
+              const innerContent = yield* context.next()
+              return `<html><body>${innerContent}</body></html>`
+            }),
           }),
         ],
       }
@@ -206,20 +204,16 @@ t.it("nested layers compose correctly with next()", () =>
       }),
       layers: [
         async () => ({
-          default: Route.layer(
-            Route.html(function*(context) {
-              const inner = yield* context.next()
-              return `<div class="outer">${inner}</div>`
-            }),
-          ),
+          default: Route.html(function*(context) {
+            const inner = yield* context.next()
+            return `<div class="outer">${inner}</div>`
+          }),
         }),
         async () => ({
-          default: Route.layer(
-            Route.html(function*(context) {
-              const inner = yield* context.next()
-              return `<div class="inner">${inner}</div>`
-            }),
-          ),
+          default: Route.html(function*(context) {
+            const inner = yield* context.next()
+            return `<div class="inner">${inner}</div>`
+          }),
         }),
       ],
     }

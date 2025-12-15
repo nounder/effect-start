@@ -187,8 +187,6 @@ export function generateCode(
 
   return `${header}
 
-import type { Router } from "${routerModuleId}"
-
 export const routes = ${routesArray} as const
 `
 }

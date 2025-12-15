@@ -7,9 +7,11 @@ import * as Pipeable from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
 import {
+  makeHttpFunction,
   makeMediaFunction,
   makeMethodModifier,
 } from "./Route_builder.ts"
+
 import {
   type DecodeRouteSchemas,
   makeMultiStringSchemaModifier,
@@ -74,7 +76,6 @@ type Self =
 
 const TypeId: unique symbol = Symbol.for("effect-start/Route")
 const RouteSetTypeId: unique symbol = Symbol.for("effect-start/RouteSet")
-const RouteLayerTypeId: unique symbol = Symbol.for("effect-start/RouteLayer")
 
 export type RouteMethod =
   | "*"
@@ -82,6 +83,37 @@ export type RouteMethod =
 
 // TODO: This should be a RouterPattern and moved to its file?
 export type RoutePattern = `/${string}`
+
+/**
+ * Symbol key for HTTP handler kind discriminant.
+ * Used to distinguish between middleware and HTTP handlers at runtime.
+ */
+export const RouteHttpKind: unique symbol = Symbol.for(
+  "effect-start/RouteHttpKind",
+)
+
+/**
+ * Discriminant values for HTTP handler kinds.
+ */
+export type RouteHttpKindValue = "HttpHandler" | "HttpMiddleware"
+
+/**
+ * Check if a handler is an HTTP middleware handler.
+ */
+export function isHttpMiddlewareHandler(h: unknown): boolean {
+  return typeof h === "function"
+    && RouteHttpKind in h
+    && (h as Record<symbol, unknown>)[RouteHttpKind] === "HttpMiddleware"
+}
+
+/**
+ * Check if a handler is a raw HTTP handler.
+ */
+export function isHttpHandler(h: unknown): boolean {
+  return typeof h === "function"
+    && RouteHttpKind in h
+    && (h as Record<symbol, unknown>)[RouteHttpKind] === "HttpHandler"
+}
 
 /**
  * Route media type used for content negotiation.
@@ -180,6 +212,18 @@ export namespace Route {
     & {
       [TypeId]: typeof TypeId
     }
+
+  export type Error<T> = T extends RouteSet<infer Routes, any>
+    ? Routes[number] extends Route<any, any, infer H, any>
+      ? H extends RouteHandler<any, infer E, any> ? E : never
+    : never
+    : never
+
+  export type Requirements<T> = T extends RouteSet<infer Routes, any>
+    ? Routes[number] extends Route<any, any, infer H, any>
+      ? H extends RouteHandler<any, any, infer R> ? R : never
+    : never
+    : never
 }
 
 /**
@@ -202,6 +246,7 @@ type RouteBuilder = {
   text: typeof text
   html: typeof html
   json: typeof json
+  http: typeof http
 
   schemaPathParams: typeof schemaPathParams
   schemaUrlParams: typeof schemaUrlParams
@@ -248,32 +293,6 @@ export namespace RouteSet {
  * Type for HTTP middleware function
  */
 export type HttpMiddlewareFunction = ReturnType<typeof HttpMiddleware.make>
-
-/**
- * Marker type for route middleware specification.
- * Used to distinguish middleware from routes in Route.layer() arguments.
- */
-export interface RouteMiddleware {
-  readonly _tag: "RouteMiddleware"
-  readonly middleware: HttpMiddlewareFunction
-}
-
-export type RouteLayer<
-  M extends ReadonlyArray<Route.Default> = ReadonlyArray<Route.Default>,
-  Schemas extends RouteSchemas = RouteSchemas.Empty,
-> =
-  & Pipeable.Pipeable
-  & {
-    [RouteLayerTypeId]: typeof RouteLayerTypeId
-    [RouteSetTypeId]: typeof RouteSetTypeId
-    set: M
-    schema: Schemas
-    httpMiddleware?: HttpMiddlewareFunction
-  }
-  & RouteBuilder
-
-export const isRouteLayer = (u: unknown): u is RouteLayer =>
-  Predicate.hasProperty(u, RouteLayerTypeId)
 
 /**
  * Check if two routes match based on method and media type.
@@ -333,6 +352,8 @@ export const json = makeMediaFunction<"GET", "application/json", JsonValue>(
   "application/json",
 )
 
+export const http = makeHttpFunction()
+
 const SetProto = {
   [RouteSetTypeId]: RouteSetTypeId,
 
@@ -347,6 +368,7 @@ const SetProto = {
   text,
   html,
   json,
+  http,
 
   schemaPathParams,
   schemaUrlParams,
@@ -365,13 +387,6 @@ const RouteProto = Object.assign(
       return Pipeable.pipeArguments(this, arguments)
     },
   } satisfies Route.Proto,
-)
-
-const RouteLayerProto = Object.assign(
-  Object.create(SetProto),
-  {
-    [RouteLayerTypeId]: RouteLayerTypeId,
-  },
 )
 
 export function isRoute(input: unknown): input is Route {
@@ -483,83 +498,6 @@ export function isGenericJsxObject(value: unknown): value is GenericJsxObject {
     && value !== null
     && "type" in value
     && "props" in value
-}
-
-/**
- * Create HTTP middleware spec for Route.layer().
- * Multiple middleware can be composed by passing multiple Route.http() to Route.layer().
- *
- * @example
- * Route.layer(
- *   Route.http(middleware1),
- *   Route.http(middleware2),
- *   Route.http(middleware3)
- * )
- */
-export function http(
-  middleware: HttpMiddlewareFunction,
-): RouteMiddleware {
-  return {
-    _tag: "RouteMiddleware",
-    middleware,
-  }
-}
-
-/**
- * Create a RouteLayer from routes and middleware.
- *
- * Accepts:
- * - Route.http(middleware) - HTTP middleware to apply to all child routes
- * - Route.html/text/json/etc handlers - Wrapper routes that receive props.children
- * - Other RouteSets - Routes to include in the layer
- *
- * Multiple middleware are composed in order - first middleware wraps second, etc.
- * Routes in the layer act as wrappers for child routes with matching method + media type.
- *
- * @example
- * Route.layer(
- *   Route.http(loggingMiddleware),
- *   Route.http(authMiddleware),
- *   Route.html(function*(props) {
- *     return <html><body>{props.children}</body></html>
- *   })
- * )
- */
-export function layer(
-  ...items: Array<RouteMiddleware | RouteSet.Default>
-): RouteLayer {
-  const routeMiddleware: RouteMiddleware[] = []
-  const routeSets: RouteSet.Default[] = []
-
-  for (const item of items) {
-    if ("_tag" in item && item._tag === "RouteMiddleware") {
-      routeMiddleware.push(item)
-    } else if (isRouteSet(item)) {
-      routeSets.push(item)
-    }
-  }
-
-  const layerRoutes: Route.Default[] = []
-
-  for (const routeSet of routeSets) {
-    layerRoutes.push(...routeSet.set)
-  }
-
-  const middlewareFunctions = routeMiddleware.map((spec) => spec.middleware)
-  const httpMiddleware = middlewareFunctions.length === 0
-    ? undefined
-    : middlewareFunctions.length === 1
-    ? middlewareFunctions[0]
-    : (app: any) => middlewareFunctions.reduceRight((acc, mw) => mw(acc), app)
-
-  return Object.assign(
-    Object.create(RouteLayerProto),
-    {
-      set: layerRoutes,
-      schema: {},
-      httpMiddleware,
-    },
-  )
 }
 
 /**

@@ -3,8 +3,8 @@ import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
 import type { HTMLBundle } from "bun"
 import * as t from "bun:test"
 import * as Effect from "effect/Effect"
-import * as Layer from "effect/Layer"
 import * as assert from "node:assert"
+
 import * as Route from "../Route.ts"
 import * as Router from "../Router.ts"
 import * as BunHttpServer from "./BunHttpServer.ts"
@@ -143,44 +143,6 @@ t.describe(`${BunRoute.routesFromRouter.name}`, () => {
     t.expect(routes["/docs/[...path]"]).toBeUndefined()
   })
 
-  t.test("creates proxy and internal routes for BunRoute", async () => {
-    const mockBundle = { index: "index.html" } as HTMLBundle
-    const bunRoute = BunRoute.html(() => Promise.resolve(mockBundle))
-
-    const routes = await makeBunRoutes(
-      Router.mount("/app", bunRoute),
-    )
-
-    const internalPath = Object.keys(routes).find((k) =>
-      k.includes(".BunRoute-")
-    )
-
-    t.expect(internalPath).toBeDefined()
-    t.expect(routes[internalPath!]).toBe(mockBundle)
-    t.expect(typeof routes["/app"]).toBe("function")
-  })
-
-  t.test("handles mixed BunRoute and regular routes", async () => {
-    const mockBundle = { index: "index.html" } as HTMLBundle
-    const bunRoute = BunRoute.html(() => Promise.resolve(mockBundle))
-
-    const routes = await makeBunRoutes(
-      Router
-        .mount("/app", bunRoute)
-        .mount("/api/health", Route.json({ ok: true })),
-    )
-
-    const internalPath = Object.keys(routes).find((k) =>
-      k.includes(".BunRoute-")
-    )
-
-    t.expect(internalPath).toBeDefined()
-    t.expect(routes[internalPath!]).toBe(mockBundle)
-    t.expect(typeof routes["/app"]).toBe("function")
-    t.expect(routes["/api/health"]).toBeDefined()
-    t.expect(typeof routes["/api/health"]).toBe("object")
-  })
-
   t.test("groups multiple methods under same path", async () => {
     const fetch = await makeFetch(
       Router.mount(
@@ -278,7 +240,7 @@ t.describe("Route.layer httpMiddleware", () => {
     ) as Route.HttpMiddlewareFunction
 
     const router = Router
-      .use(Route.layer(Route.http(addHeader)))
+      .use(Route.http(addHeader))
       .mount("/child", Route.text("child content"))
 
     const fetch = await makeFetch(router)
@@ -298,7 +260,7 @@ t.describe("Route.layer httpMiddleware", () => {
 
     const router = Router
       .mount("/outside", Route.text("outside content"))
-      .use(Route.layer(Route.http(addHeader)))
+      .use(Route.http(addHeader))
       .mount("/inside", Route.text("inside content"))
 
     const fetch = await makeFetch(router)
@@ -326,7 +288,7 @@ t.describe("Route.layer httpMiddleware", () => {
     ) as Route.HttpMiddlewareFunction
 
     const router = Router
-      .use(Route.layer(Route.http(addHeader1), Route.http(addHeader2)))
+      .use(Route.http(addHeader1).http(addHeader2))
       .mount("/test", Route.text("test"))
 
     const fetch = await makeFetch(router)
@@ -352,8 +314,8 @@ t.describe("Route.layer httpMiddleware", () => {
     ) as Route.HttpMiddlewareFunction
 
     const router = Router
-      .use(Route.layer(Route.http(outerHeader)))
-      .use(Route.layer(Route.http(innerHeader)))
+      .use(Route.http(outerHeader))
+      .use(Route.http(innerHeader))
       .mount("/nested", Route.text("nested"))
 
     const fetch = await makeFetch(router)
@@ -364,73 +326,50 @@ t.describe("Route.layer httpMiddleware", () => {
   })
 })
 
-t.describe("BunRoute placeholder replacement", () => {
-  t.test("%yield% is replaced with nested route content via layer", async () => {
-    const layoutBundle = BunRoute.html(() =>
-      import("../../static/LayoutSlots.html")
-    )
+t.describe(`${BunRoute.bundle.name}`, () => {
+  t.test("creates a BunHandler with required properties", () => {
+    const mockBundle = { index: "index.html" } as HTMLBundle
+    const handler = BunRoute.bundle(() => Promise.resolve(mockBundle))
 
-    const router = Router
-      .use(Route.layer(layoutBundle))
-      .mount("/page", Route.html(Effect.succeed("<p>Child Content</p>")))
-
-    await Effect.runPromise(
-      Effect
-        .gen(function*() {
-          const bunServer = yield* BunHttpServer.BunHttpServer
-          const routes = yield* BunRoute.routesFromRouter(router)
-          bunServer.addRoutes(routes)
-
-          const baseUrl =
-            `http://${bunServer.server.hostname}:${bunServer.server.port}`
-          const response = yield* Effect.promise(() => fetch(`${baseUrl}/page`))
-
-          const html = yield* Effect.promise(() => response.text())
-
-          t.expect(html).toContain("<body>")
-          t.expect(html).toContain("<p>Child Content</p>")
-          t.expect(html).not.toContain("%yield%")
-          t.expect(html).not.toContain("%slots.")
-        })
-        .pipe(
-          Effect.scoped,
-          Effect.provide(BunHttpServer.layer({ port: 0 })),
-        ),
-    )
+    t.expect(BunRoute.isBunHandler(handler)).toBe(true)
+    t.expect(typeof handler.internalPathPrefix).toBe("string")
+    t.expect(handler.internalPathPrefix).toMatch(/^\/\.BunRoute-/)
+    t.expect(typeof handler.load).toBe("function")
   })
 
-  t.test("%yield% and %slots% are replaced with empty when no nested content", async () => {
-    const layoutBundle = BunRoute.html(() =>
-      import("../../static/LayoutSlots.html")
+  t.test("load resolves HTMLBundle from default export", async () => {
+    const mockBundle = { index: "index.html" } as HTMLBundle
+    const handler = BunRoute.bundle(() =>
+      Promise.resolve({ default: mockBundle })
     )
 
-    const router = Router.mount("/layout", layoutBundle)
+    const bundle = await handler.load()
+    t.expect(bundle).toBe(mockBundle)
+  })
 
-    await Effect.runPromise(
-      Effect
-        .gen(function*() {
-          const bunServer = yield* BunHttpServer.BunHttpServer
-          const routes = yield* BunRoute.routesFromRouter(router)
-          bunServer.addRoutes(routes)
+  t.test("load resolves HTMLBundle from direct export", async () => {
+    const mockBundle = { index: "index.html" } as HTMLBundle
+    const handler = BunRoute.bundle(() => Promise.resolve(mockBundle))
 
-          const baseUrl =
-            `http://${bunServer.server.hostname}:${bunServer.server.port}`
-          const response = yield* Effect.promise(() =>
-            fetch(`${baseUrl}/layout`)
-          )
+    const bundle = await handler.load()
+    t.expect(bundle).toBe(mockBundle)
+  })
 
-          const html = yield* Effect.promise(() => response.text())
+  t.test("Route.html(bundle(...)) creates proxy and internal routes", async () => {
+    const mockBundle = { index: "index.html" } as HTMLBundle
+    const handler = BunRoute.bundle(() => Promise.resolve(mockBundle))
 
-          t.expect(html).toContain("<title></title>")
-          t.expect(html).toContain("<body>")
-          t.expect(html).not.toContain("%yield%")
-          t.expect(html).not.toContain("%slots.")
-        })
-        .pipe(
-          Effect.scoped,
-          Effect.provide(BunHttpServer.layer({ port: 0 })),
-        ),
+    const routes = await makeBunRoutes(
+      Router.mount("/app", Route.html(handler)),
     )
+
+    const internalPath = Object.keys(routes).find((k) =>
+      k.includes(".BunRoute-")
+    )
+
+    t.expect(internalPath).toBeDefined()
+    t.expect(routes[internalPath!]).toBe(mockBundle)
+    t.expect(typeof routes["/app"]).toBe("object")
   })
 })
 

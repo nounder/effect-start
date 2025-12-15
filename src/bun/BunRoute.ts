@@ -4,8 +4,8 @@ import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
 import type * as Bun from "bun"
 import * as Array from "effect/Array"
 import * as Effect from "effect/Effect"
-import * as Function from "effect/Function"
 import * as Option from "effect/Option"
+
 import * as Predicate from "effect/Predicate"
 import type * as Runtime from "effect/Runtime"
 import * as HttpAppExtra from "../HttpAppExtra.ts"
@@ -18,27 +18,31 @@ import * as RouteRender from "../RouteRender.ts"
 import * as RouterPattern from "../RouterPattern.ts"
 import * as BunHttpServer from "./BunHttpServer.ts"
 
-const TypeId: unique symbol = Symbol.for("effect-start/BunRoute")
+const BunHandlerTypeId: unique symbol = Symbol.for("effect-start/BunHandler")
+
 
 const INTERNAL_FETCH_HEADER = "x-effect-start-internal-fetch"
 
-export type BunRoute =
-  & Route.Route
+export type BunHandler =
+  & Route.RouteHandler<string, Router.RouterError, BunHttpServer.BunHttpServer>
   & {
-    [TypeId]: typeof TypeId
-    // Prefix because Bun.serve routes ignore everything after `*` in wildcard patterns.
-    // A suffix like `/*~internal` would match the same as `/*`, shadowing the internal route.
+    [BunHandlerTypeId]: typeof BunHandlerTypeId
     internalPathPrefix: string
     load: () => Promise<Bun.HTMLBundle>
   }
 
-export function html(
+export function isBunHandler(input: unknown): input is BunHandler {
+  return typeof input === "function"
+    && Predicate.hasProperty(input, BunHandlerTypeId)
+}
+
+export function bundle(
   load: () => Promise<Bun.HTMLBundle | { default: Bun.HTMLBundle }>,
-): BunRoute {
+): BunHandler {
   const internalPathPrefix = `/.BunRoute-${Random.token(6)}`
 
   const handler: Route.RouteHandler<
-    HttpServerResponse.HttpServerResponse,
+    string,
     Router.RouterError,
     BunHttpServer.BunHttpServer
   > = (context) =>
@@ -108,34 +112,14 @@ export function html(
       html = html.replace(/%slots\.(\w+)%/g, (_, name) =>
         context.slots[name] ?? "")
 
-      return HttpServerResponse
-        .html(html)
+      return html
     })
 
-  const route = Route.make({
-    method: "*",
-    media: "text/html",
-    handler,
-    schemas: {},
-  })
-
-  const bunRoute: BunRoute = Object.assign(
-    Object.create(route),
-    {
-      [TypeId]: TypeId,
-      internalPathPrefix,
-      load: () => load().then(mod => "default" in mod ? mod.default : mod),
-      set: [],
-    },
-  )
-
-  bunRoute.set.push(bunRoute)
-
-  return bunRoute
-}
-
-export function isBunRoute(input: unknown): input is BunRoute {
-  return Predicate.hasProperty(input, TypeId)
+  return Object.assign(handler, {
+    [BunHandlerTypeId]: BunHandlerTypeId,
+    internalPathPrefix,
+    load: () => load().then(mod => "default" in mod ? mod.default : mod),
+  }) as BunHandler
 }
 
 function makeHandler(routes: Route.Route.Default[]) {
@@ -250,33 +234,35 @@ export function routesFromRouter(
     const result: BunRoutes = {}
 
     for (const entry of router.entries) {
-      const { path, route: routeSet, layers } = entry
+      const { path, route: routeSet, middlewareRoutes } = entry
 
       const validationError = validateBunPattern(path)
       if (Option.isSome(validationError)) {
         return yield* Effect.fail(validationError.value)
       }
 
+      // Check for BunHandlers in the routeSet
       for (const route of routeSet.set) {
-        if (isBunRoute(route)) {
-          const bundle = yield* Effect.promise(() => route.load())
+        if (isBunHandler(route.handler)) {
+          const bunHandler = route.handler as BunHandler
+          const bundle = yield* Effect.promise(() => bunHandler.load())
           const bunPaths = RouterPattern.toBun(path)
           for (const bunPath of bunPaths) {
-            const internalPath = `${route.internalPathPrefix}${bunPath}`
+            const internalPath = `${bunHandler.internalPathPrefix}${bunPath}`
             result[internalPath] = bundle
           }
         }
       }
 
-      for (const layer of layers) {
-        for (const route of layer.set) {
-          if (isBunRoute(route)) {
-            const bundle = yield* Effect.promise(() => route.load())
-            const bunPaths = RouterPattern.toBun(path)
-            for (const bunPath of bunPaths) {
-              const internalPath = `${route.internalPathPrefix}${bunPath}`
-              result[internalPath] = bundle
-            }
+      // Check for BunHandlers in middleware routes
+      for (const route of middlewareRoutes) {
+        if (isBunHandler(route.handler)) {
+          const bunHandler = route.handler as BunHandler
+          const bundle = yield* Effect.promise(() => bunHandler.load())
+          const bunPaths = RouterPattern.toBun(path)
+          for (const bunPath of bunPaths) {
+            const internalPath = `${bunHandler.internalPathPrefix}${bunPath}`
+            result[internalPath] = bundle
           }
         }
       }
@@ -299,16 +285,21 @@ export function routesFromRouter(
         byMethod.set(route.method, existing)
       }
 
+      // Extract HTTP middleware routes from entry
       const entry = router.entries.find((e) => e.path === path)
-      const allMiddleware = (entry?.layers ?? [])
-        .map((layer) => layer.httpMiddleware)
-        .filter((m): m is Route.HttpMiddlewareFunction => m !== undefined)
+      const httpMiddlewareRoutes = entry?.middlewareRoutes.filter(
+        (r) => Route.isHttpMiddlewareHandler(r.handler),
+      ) ?? []
 
+      // Wrapper routes are already applied in router.mounts via applyMiddlewareToRouteSet
       for (const [method, routes] of byMethod) {
         let httpApp: HttpApp.Default<any, any> = makeHandler(routes)
 
-        for (const middleware of allMiddleware) {
-          httpApp = middleware(httpApp)
+        // Apply HTTP middleware in order (first middleware wraps outermost)
+        for (const mwRoute of httpMiddlewareRoutes) {
+          httpApp = mwRoute.handler(
+            { next: () => httpApp } as Route.RouteContext,
+          ) as HttpApp.Default<any, any>
         }
 
         const webHandler = HttpApp.toWebHandlerRuntime(rt)(httpApp)

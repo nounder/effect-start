@@ -1,7 +1,10 @@
+import type * as HttpApp from "@effect/platform/HttpApp"
 import type * as HttpMethod from "@effect/platform/HttpMethod"
 import * as Effect from "effect/Effect"
 import type { YieldWrap } from "effect/Utils"
+
 import type {
+  HttpMiddlewareFunction,
   Route,
   RouteContext,
   RouteHandler,
@@ -13,7 +16,9 @@ import {
   isRouteSet,
   make,
   makeSet,
+  RouteHttpKind,
 } from "./Route.ts"
+
 import type {
   DecodeRouteSchemas,
   MergeSchemas,
@@ -39,13 +44,14 @@ export function normalizeHandler<A, E, R>(
   handler: HandlerInput<A, E, R>,
 ): RouteHandler<A, E, R> {
   if (typeof handler === "function") {
-    return (context): Effect.Effect<A, E, R> => {
+    const wrapper = (context: RouteContext): Effect.Effect<A, E, R> => {
       const result = (handler as Function)(context)
       if (Effect.isEffect(result)) {
         return result as Effect.Effect<A, E, R>
       }
       return Effect.gen(() => result) as Effect.Effect<A, E, R>
     }
+    return Object.assign(wrapper, handler)
   }
   if (Effect.isEffect(handler)) {
     return () => handler
@@ -107,6 +113,8 @@ export function makeMediaFunction<
       ? this.schema
       : {} as RouteSchemas.Empty
 
+    // Cast required: TypeScript cannot narrow generic S based on isRouteSet(this) runtime check.
+    // The conditional return type is correct for callers; this is a TS limitation with generic narrowing.
     return makeSet(
       [
         ...baseRoutes,
@@ -116,7 +124,7 @@ export function makeMediaFunction<
           handler: normalizeHandler(handler),
           schemas: baseSchema,
         }),
-      ] as ReadonlyArray<Route.Default>,
+      ],
       baseSchema,
     ) as never
   }
@@ -177,6 +185,8 @@ export function makeMethodModifier<
       ? this.schema
       : {} as RouteSchemas.Empty
 
+    // Cast required: TypeScript cannot narrow generic S based on isRouteSet(this) runtime check.
+    // The conditional return type is correct for callers; this is a TS limitation with generic narrowing.
     return makeSet(
       [
         ...baseRoutes,
@@ -187,7 +197,74 @@ export function makeMethodModifier<
             schemas: mergeSchemas(baseSchema, route.schemas),
           })
         }),
-      ] as ReadonlyArray<Route.Default>,
+      ],
+      baseSchema,
+    ) as never
+  }
+}
+
+export function makeHttpFunction() {
+  return function<
+    S extends Self,
+    A,
+    E,
+    R,
+  >(
+    this: S,
+    handler: HttpMiddlewareFunction | Effect.Effect<A, E, R>,
+  ): S extends RouteSet<infer Routes, infer Schemas> ? RouteSet<[
+      ...Routes,
+      Route<
+        "*",
+        "*",
+        RouteHandler<A, E, R>,
+        Schemas
+      >,
+    ], Schemas>
+    : RouteSet<[
+      Route<
+        "*",
+        "*",
+        RouteHandler<A, E, R>,
+        RouteSchemas.Empty
+      >,
+    ], RouteSchemas.Empty>
+  {
+    const baseRoutes = isRouteSet(this)
+      ? this.set
+      : [] as const
+    const baseSchema = isRouteSet(this)
+      ? this.schema
+      : {} as RouteSchemas.Empty
+
+    const isMiddleware = typeof handler === "function"
+      && !Effect.isEffect(handler)
+
+    const routeHandler: RouteHandler = isMiddleware
+      ? (context: RouteContext) => {
+        const innerApp: HttpApp.Default = context.next() as HttpApp.Default
+        return (handler as HttpMiddlewareFunction)(innerApp)
+      }
+      : () => handler as Effect.Effect<A, E, R>
+
+    Object.defineProperty(routeHandler, RouteHttpKind, {
+      value: isMiddleware ? "HttpMiddleware" : "HttpHandler",
+      enumerable: false,
+      writable: false,
+    })
+
+    // Cast required: TypeScript cannot narrow generic S based on isRouteSet(this) runtime check.
+    // The conditional return type is correct for callers; this is a TS limitation with generic narrowing.
+    return makeSet(
+      [
+        ...baseRoutes,
+        make({
+          method: "*",
+          media: "*",
+          handler: routeHandler,
+          schemas: baseSchema,
+        }),
+      ],
       baseSchema,
     ) as never
   }

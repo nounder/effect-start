@@ -1,6 +1,6 @@
 import * as Headers from "@effect/platform/Headers"
 import * as t from "bun:test"
-import * as ContentNegotiation from "./Accept.ts"
+import * as ContentNegotiation from "./ContentNegotiation.ts"
 
 t.describe("ContentNegotiation.media", () => {
   t.it("returns empty array when no types provided", () => {

@@ -199,14 +199,20 @@ export function fromManifest(
             )
             : []
 
-          const layers = layerModules
-            .map((m: any) => m.default)
-            .filter(Route.isRouteLayer)
+          const middlewareRoutes: Route.Route.Default[] = []
+          for (const m of layerModules) {
+            const routeSet = (m as any).default
+            if (Route.isRouteSet(routeSet)) {
+              for (const route of routeSet.set) {
+                middlewareRoutes.push(route)
+              }
+            }
+          }
 
           return {
             path: lazyRoute.path,
             route: routeModule.default,
-            layers,
+            middlewareRoutes,
           }
         }),
     )

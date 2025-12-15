@@ -63,12 +63,12 @@ export type HttpRouterFromServerRoutes<
  */
 function findMatchingLayerRoutes(
   route: Route.Route.Default,
-  layers: Route.RouteLayer[],
+  layerRouteSets: Route.RouteSet.Default[],
 ): Route.Route.Default[] {
   const matchingRoutes: Route.Route.Default[] = []
 
-  for (const layer of layers) {
-    for (const layerRoute of layer.set) {
+  for (const layerRouteSet of layerRouteSets) {
+    for (const layerRoute of layerRouteSet.set) {
       if (Route.matches(layerRoute, route)) {
         matchingRoutes.push(layerRoute)
       }
@@ -131,23 +131,26 @@ export function make<
             )
             : []
 
-          const layers = layerModules
+          const layerRouteSets = layerModules
             .map((mod: any) => mod.default)
-            .filter(Route.isRouteLayer)
+            .filter(Route.isRouteSet)
 
           return {
             path: route.path,
             routeSet: module.default,
-            layers,
+            layerRouteSets,
           }
         }),
     )
 
     let router: HttpRouter.HttpRouter<any, any> = HttpRouter.empty
 
-    for (const { path, routeSet, layers } of routesWithModules) {
+    for (const { path, routeSet, layerRouteSets } of routesWithModules) {
       for (const route of routeSet.set) {
-        const matchingLayerRoutes = findMatchingLayerRoutes(route, layers)
+        const matchingLayerRoutes = findMatchingLayerRoutes(
+          route,
+          layerRouteSets,
+        )
 
         let wrappedRoute = route
         // Reverse so first layer in array becomes outermost wrapper.
@@ -171,9 +174,17 @@ export function make<
           return yield* RouteRender.render(wrappedRoute, context)
         })
 
-        const allMiddleware = layers
-          .map((layer) => layer.httpMiddleware)
-          .filter((m): m is Route.HttpMiddlewareFunction => m !== undefined)
+        // Extract HTTP middleware routes
+        const allMiddleware: Route.HttpMiddlewareFunction[] = []
+        for (const layerRouteSet of layerRouteSets) {
+          for (const layerRoute of layerRouteSet.set) {
+            if (Route.isHttpMiddlewareHandler(layerRoute.handler)) {
+              allMiddleware.push(
+                layerRoute.handler as unknown as Route.HttpMiddlewareFunction,
+              )
+            }
+          }
+        }
 
         let finalHandler = wrappedHandler
         for (const middleware of allMiddleware) {

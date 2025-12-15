@@ -4,9 +4,12 @@ import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
 import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
 import * as t from "bun:test"
 
+import * as Context from "effect/Context"
+import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Function from "effect/Function"
 import * as Schema from "effect/Schema"
+
 import * as Route from "./Route.ts"
 
 t.it("types default routes", () => {
@@ -902,89 +905,85 @@ t.it("schemaHeaders accepts string and string array encoded schemas", () => {
     .text(Effect.succeed("ok"))
 })
 
-t.it("Route.http creates RouteMiddleware", () => {
+t.it(
+  "Route.http creates RouteSet with HttpMiddleware handler for middleware function",
+  () => {
+    const middleware = (app: any) => app
+
+    const routes = Route.http(middleware)
+
+    t.expect(Route.isRouteSet(routes)).toBe(true)
+    t.expect(routes.set.length).toBe(1)
+    t.expect(routes.set[0]!.media).toBe("*")
+    t.expect(routes.set[0]!.method).toBe("*")
+    t.expect(Route.isHttpMiddlewareHandler(routes.set[0]!.handler)).toBe(true)
+  },
+)
+
+t.it(
+  "Route.http creates RouteSet with HttpHandler for Effect.gen handler",
+  () => {
+    const routes = Route.http(Effect.gen(function*() {
+      return HttpServerResponse.text("SSE stream")
+    }))
+
+    t.expect(Route.isRouteSet(routes)).toBe(true)
+    t.expect(routes.set.length).toBe(1)
+    t.expect(routes.set[0]!.media).toBe("*")
+    t.expect(Route.isHttpHandler(routes.set[0]!.handler)).toBe(true)
+  },
+)
+
+t.it("Route.http creates RouteSet with HttpHandler for effect handler", () => {
+  const routes = Route.http(Effect.succeed(HttpServerResponse.text("response")))
+
+  t.expect(Route.isRouteSet(routes)).toBe(true)
+  t.expect(routes.set.length).toBe(1)
+  t.expect(routes.set[0]!.media).toBe("*")
+  t.expect(Route.isHttpHandler(routes.set[0]!.handler)).toBe(true)
+})
+
+t.it("Route.http can be chained with other media functions", () => {
   const middleware = (app: any) => app
 
-  const spec = Route.http(middleware)
-
-  t.expect(spec._tag).toBe("RouteMiddleware")
-  t.expect(spec.middleware).toBe(middleware)
-})
-
-t.it("Route.layer creates RouteLayer with middleware", () => {
-  const middleware = (app: any) => app
-
-  const layer = Route.layer(
-    Route.http(middleware),
-    Route.html(Effect.succeed("<div>test</div>")),
-  )
-
-  t.expect(Route.isRouteLayer(layer)).toBe(true)
-  t.expect(layer.httpMiddleware).toBe(middleware)
-  t.expect(layer.set.length).toBe(1)
-})
-
-t.it("Route.layer merges multiple route sets", () => {
-  const routes1 = Route.html(Effect.succeed("<div>1</div>"))
-  const routes2 = Route.text("text")
-
-  const layer = Route.layer(routes1, routes2)
-
-  t.expect(layer.set.length).toBe(2)
-  t.expect(Route.isRouteLayer(layer)).toBe(true)
-})
-
-t.it("Route.layer merges routes from all route sets", () => {
-  const routes1 = Route
-    .schemaPathParams({ id: Schema.String })
+  const routes = Route
+    .http(middleware)
     .html(Effect.succeed("<div>test</div>"))
+    .json({ data: "test" })
 
-  const routes2 = Route
-    .schemaUrlParams({ page: Schema.NumberFromString })
-    .text(Effect.succeed("text"))
-
-  const layer = Route.layer(routes1, routes2)
-
-  t.expect(layer.set.length).toBe(2)
-  t.expect(layer.set[0]!.media).toBe("text/html")
-  t.expect(layer.set[1]!.media).toBe("text/plain")
+  t.expect(Route.isRouteSet(routes)).toBe(true)
+  t.expect(routes.set.length).toBe(3)
+  t.expect(routes.set[0]!.media).toBe("*")
+  t.expect(Route.isHttpMiddlewareHandler(routes.set[0]!.handler)).toBe(true)
+  t.expect(routes.set[1]!.media).toBe("text/html")
+  t.expect(routes.set[2]!.media).toBe("application/json")
 })
 
-t.it("Route.layer works with no middleware", () => {
-  const layer = Route.layer(
-    Route.html(Effect.succeed("<div>test</div>")),
+t.it("Route.http middleware handler can use context.next()", async () => {
+  const middleware: Route.HttpMiddlewareFunction = HttpMiddleware.make((app) =>
+    app
   )
+  const routes = Route.http(middleware)
 
-  t.expect(Route.isRouteLayer(layer)).toBe(true)
-  t.expect(layer.httpMiddleware).toBeUndefined()
-  t.expect(layer.set.length).toBe(1)
+  const handler = routes.set[0]!.handler
+  const mockNext = Effect.succeed(HttpServerResponse.text("inner"))
+  const context: Route.RouteContext = {
+    request: {} as HttpServerRequest.HttpServerRequest,
+    get url() {
+      return new URL("http://localhost")
+    },
+    slots: {},
+    next: () => mockNext,
+  }
+
+  const effect = handler(context) as Effect.Effect<
+    HttpServerResponse.HttpServerResponse
+  >
+  const result = await Effect.runPromise(effect)
+  t.expect(HttpServerResponse.isServerResponse(result)).toBe(true)
 })
 
-t.it("Route.layer works with no routes", () => {
-  const middleware = (app: any) => app
-
-  const layer = Route.layer(
-    Route.http(middleware),
-  )
-
-  t.expect(Route.isRouteLayer(layer)).toBe(true)
-  t.expect(layer.httpMiddleware).toBe(middleware)
-  t.expect(layer.set.length).toBe(0)
-})
-
-t.it("isRouteLayer type guard works correctly", () => {
-  const middleware = (app: any) => app
-  const layer = Route.layer(Route.http(middleware))
-  const regularRoutes = Route.html(Effect.succeed("<div>test</div>"))
-
-  t.expect(Route.isRouteLayer(layer)).toBe(true)
-  t.expect(Route.isRouteLayer(regularRoutes)).toBe(false)
-  t.expect(Route.isRouteLayer(null)).toBe(false)
-  t.expect(Route.isRouteLayer(undefined)).toBe(false)
-  t.expect(Route.isRouteLayer({})).toBe(false)
-})
-
-t.it("Route.layer composes multiple middleware in order", async () => {
+t.it("Route.http composes multiple middleware in execution order", async () => {
   const executionOrder: string[] = []
 
   const middleware1 = HttpMiddleware.make((app) =>
@@ -1014,24 +1013,26 @@ t.it("Route.layer composes multiple middleware in order", async () => {
     })
   ) as Route.HttpMiddlewareFunction
 
-  const layer = Route.layer(
-    Route.http(middleware1),
-    Route.http(middleware2),
-    Route.http(middleware3),
-  )
+  const routes = Route
+    .http(middleware1)
+    .http(middleware2)
+    .http(middleware3)
 
-  t.expect(layer.httpMiddleware).toBeDefined()
+  t.expect(routes.set.length).toBe(3)
 
   const mockApp = Effect.sync(() => {
     executionOrder.push("app")
     return HttpServerResponse.text("result")
   })
 
-  const composed = layer.httpMiddleware!(mockApp) as Effect.Effect<
-    HttpServerResponse.HttpServerResponse,
-    never,
-    never
-  >
+  let composed = mockApp
+  for (const route of [...routes.set].reverse()) {
+    const currentComposed = composed
+    composed = route.handler({
+      next: () => currentComposed,
+    } as unknown as Route.RouteContext) as typeof composed
+  }
+
   await Effect.runPromise(composed.pipe(Effect.orDie))
 
   t.expect(executionOrder).toEqual([
@@ -1045,7 +1046,7 @@ t.it("Route.layer composes multiple middleware in order", async () => {
   ])
 })
 
-t.it("Route.layer with single middleware works correctly", async () => {
+t.it("Route.http single middleware works correctly", async () => {
   let middlewareCalled = false
 
   const middleware = HttpMiddleware.make((app) =>
@@ -1055,12 +1056,14 @@ t.it("Route.layer with single middleware works correctly", async () => {
     })
   ) as Route.HttpMiddlewareFunction
 
-  const layer = Route.layer(Route.http(middleware))
+  const routes = Route.http(middleware)
 
-  t.expect(layer.httpMiddleware).toBeDefined()
+  t.expect(routes.set.length).toBe(1)
 
   const mockApp = Effect.succeed(HttpServerResponse.text("result"))
-  const composed = layer.httpMiddleware!(mockApp) as Effect.Effect<
+  const composed = routes.set[0]!.handler({
+    next: () => mockApp,
+  } as unknown as Route.RouteContext) as Effect.Effect<
     HttpServerResponse.HttpServerResponse,
     never,
     never
@@ -1070,7 +1073,7 @@ t.it("Route.layer with single middleware works correctly", async () => {
   t.expect(middlewareCalled).toBe(true)
 })
 
-t.it("Route.layer middleware can modify responses", async () => {
+t.it("Route.http middleware can modify responses", async () => {
   const addHeader1 = HttpMiddleware.make((app) =>
     Effect.gen(function*() {
       const result = yield* app
@@ -1085,17 +1088,20 @@ t.it("Route.layer middleware can modify responses", async () => {
     })
   ) as Route.HttpMiddlewareFunction
 
-  const layer = Route.layer(
-    Route.http(addHeader1),
-    Route.http(addHeader2),
-  )
+  const routes = Route
+    .http(addHeader1)
+    .http(addHeader2)
 
   const mockApp = Effect.succeed(HttpServerResponse.text("data"))
-  const composed = layer.httpMiddleware!(mockApp) as Effect.Effect<
-    HttpServerResponse.HttpServerResponse,
-    never,
-    never
-  >
+
+  let composed = mockApp
+  for (const route of [...routes.set].reverse()) {
+    const currentComposed = composed
+    composed = route.handler({
+      next: () => currentComposed,
+    } as unknown as Route.RouteContext) as typeof composed
+  }
+
   const result = await Effect.runPromise(composed.pipe(Effect.orDie))
 
   t.expect(result.headers["x-custom-1"]).toBe("value1")
@@ -1370,4 +1376,246 @@ t.describe("Route.merge", () => {
       t.expect(text).toBe("plain text")
     },
   )
+})
+
+t.describe("Route.http type inference", () => {
+  class TestService extends Context.Tag("TestService")<
+    TestService,
+    { getValue: () => string }
+  >() {}
+
+  class TestError extends Data.TaggedError("TestError")<{
+    message: string
+  }> {}
+
+  t.it("propagates requirements from Effect.gen handler", () => {
+    const routes = Route.http(Effect.gen(function*() {
+      const service = yield* TestService
+      return HttpServerResponse.text(service.getValue())
+    }))
+
+    type Expected = Route.RouteSet<
+      [
+        Route.Route<
+          "*",
+          "*",
+          Route.RouteHandler<
+            HttpServerResponse.HttpServerResponse,
+            never,
+            TestService
+          >
+        >,
+      ]
+    >
+    Function.satisfies<Expected>()(routes)
+
+    t.expect(routes.set.length).toBe(1)
+  })
+
+  t.it("propagates error type from Effect.gen handler", () => {
+    const routes = Route.http(Effect.gen(function*() {
+      const shouldFail = Math.random() > 0.5
+      if (shouldFail) {
+        return yield* Effect.fail(new TestError({ message: "failed" }))
+      }
+      return HttpServerResponse.text("ok")
+    }))
+
+    type Expected = Route.RouteSet<
+      [
+        Route.Route<
+          "*",
+          "*",
+          Route.RouteHandler<
+            HttpServerResponse.HttpServerResponse,
+            TestError,
+            never
+          >
+        >,
+      ]
+    >
+    Function.satisfies<Expected>()(routes)
+
+    t.expect(routes.set.length).toBe(1)
+  })
+
+  t.it("propagates both error and requirements from Effect.gen handler", () => {
+    const routes = Route.http(Effect.gen(function*() {
+      const service = yield* TestService
+      const shouldFail = Math.random() > 0.5
+      if (shouldFail) {
+        return yield* Effect.fail(new TestError({ message: "failed" }))
+      }
+      return HttpServerResponse.text(service.getValue())
+    }))
+
+    type Expected = Route.RouteSet<
+      [
+        Route.Route<
+          "*",
+          "*",
+          Route.RouteHandler<
+            HttpServerResponse.HttpServerResponse,
+            TestError,
+            TestService
+          >
+        >,
+      ]
+    >
+    Function.satisfies<Expected>()(routes)
+
+    t.expect(routes.set.length).toBe(1)
+  })
+
+  t.it("propagates requirements from Effect handler", () => {
+    const routes = Route.http(
+      TestService.pipe(
+        Effect.map((service) => HttpServerResponse.text(service.getValue())),
+      ),
+    )
+
+    type Expected = Route.RouteSet<
+      [
+        Route.Route<
+          "*",
+          "*",
+          Route.RouteHandler<
+            HttpServerResponse.HttpServerResponse,
+            never,
+            TestService
+          >
+        >,
+      ]
+    >
+    Function.satisfies<Expected>()(routes)
+
+    t.expect(routes.set.length).toBe(1)
+  })
+
+  t.it("propagates error from Effect handler", () => {
+    const routes = Route.http(
+      Effect.fail(new TestError({ message: "failed" })).pipe(
+        Effect.catchTag(
+          "TestError",
+          () => Effect.succeed(HttpServerResponse.text("recovered")),
+        ),
+        Effect.flatMap(() =>
+          Effect.fail(new TestError({ message: "another" }))
+        ),
+      ),
+    )
+
+    type Expected = Route.RouteSet<
+      [Route.Route<"*", "*", Route.RouteHandler<never, TestError, never>>]
+    >
+    Function.satisfies<Expected>()(routes)
+
+    t.expect(routes.set.length).toBe(1)
+  })
+})
+
+t.describe("Route.text type inference", () => {
+  class TestService extends Context.Tag("TestService")<
+    TestService,
+    { getValue: () => string }
+  >() {}
+
+  class TestError extends Data.TaggedError("TestError")<{
+    message: string
+  }> {}
+
+  t.it("propagates requirements from Effect handler", () => {
+    const routes = Route.text(
+      TestService.pipe(
+        Effect.map((service) => service.getValue()),
+      ),
+    )
+
+    type Expected = Route.RouteSet<
+      [
+        Route.Route<
+          "GET",
+          "text/plain",
+          Route.RouteHandler<string, never, TestService>
+        >,
+      ]
+    >
+    Function.satisfies<Expected>()(routes)
+
+    t.expect(routes.set.length).toBe(1)
+  })
+
+  t.it("propagates error from Effect handler", () => {
+    const routes = Route.text(
+      Effect.fail(new TestError({ message: "failed" })).pipe(
+        Effect.catchTag(
+          "TestError",
+          () => Effect.succeed("recovered"),
+        ),
+        Effect.flatMap(() =>
+          Effect.fail(new TestError({ message: "another" }))
+        ),
+      ),
+    )
+
+    type Expected = Route.RouteSet<
+      [
+        Route.Route<
+          "GET",
+          "text/plain",
+          Route.RouteHandler<never, TestError, never>
+        >,
+      ]
+    >
+    Function.satisfies<Expected>()(routes)
+
+    t.expect(routes.set.length).toBe(1)
+  })
+
+  t.it("propagates requirements from function returning Effect.gen", () => {
+    const routes = Route.text(() =>
+      Effect.gen(function*() {
+        const service = yield* TestService
+        return service.getValue()
+      })
+    )
+
+    type Expected = Route.RouteSet<
+      [
+        Route.Route<
+          "GET",
+          "text/plain",
+          Route.RouteHandler<string, never, TestService>
+        >,
+      ]
+    >
+    Function.satisfies<Expected>()(routes)
+
+    t.expect(routes.set.length).toBe(1)
+  })
+
+  t.it("propagates error from function returning Effect.gen", () => {
+    const routes = Route.text(() =>
+      Effect.gen(function*() {
+        const shouldFail = Math.random() > 0.5
+        if (shouldFail) {
+          return yield* Effect.fail(new TestError({ message: "failed" }))
+        }
+        return "ok"
+      })
+    )
+
+    type Expected = Route.RouteSet<
+      [
+        Route.Route<
+          "GET",
+          "text/plain",
+          Route.RouteHandler<string, TestError, never>
+        >,
+      ]
+    >
+    Function.satisfies<Expected>()(routes)
+
+    t.expect(routes.set.length).toBe(1)
+  })
 })
