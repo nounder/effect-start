@@ -22,6 +22,7 @@ import {
   WebSocketContext,
 } from "./BunHttpServer_web.ts"
 import * as BunRoute from "./BunRoute.ts"
+import * as BunRouter from "./BunRouter.ts"
 
 type FetchHandler = (
   request: Request,
@@ -250,7 +251,8 @@ export function layerFileRouter() {
 
       if (Option.isSome(manifest)) {
         const router = yield* FileRouter.fromManifest(manifest.value)
-        const bunRoutes = yield* BunRoute.routesFromRouter(router)
+        const bunRoutes = yield* BunRouter.routesFrom(router)
+
         bunServer.addRoutes(bunRoutes)
       }
     }),

@@ -1,27 +1,22 @@
+import * as HttpApp from "@effect/platform/HttpApp"
 import type * as HttpMethod from "@effect/platform/HttpMethod"
-import * as HttpMiddleware from "@effect/platform/HttpMiddleware"
-import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
-import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
 import * as Effect from "effect/Effect"
 import * as Pipeable from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
+import { GenericJsxObject } from "./Hyper.ts"
 import {
-  makeHttpFunction,
+  http,
   makeMediaFunction,
   makeMethodModifier,
 } from "./Route_builder.ts"
-
 import {
-  type DecodeRouteSchemas,
   makeMultiStringSchemaModifier,
   makeSingleStringSchemaModifier,
   makeUnionSchemaModifier,
   type MergeSchemas,
   mergeSchemas,
 } from "./Route_schema.ts"
-
-import * as RouteRender from "./RouteRender.ts"
 
 export {
   pipe,
@@ -85,34 +80,40 @@ export type RouteMethod =
 export type RoutePattern = `/${string}`
 
 /**
- * Symbol key for HTTP handler kind discriminant.
- * Used to distinguish between middleware and HTTP handlers at runtime.
+ * Symbol key for HTTP middleware type discriminant.
  */
-export const RouteHttpKind: unique symbol = Symbol.for(
-  "effect-start/RouteHttpKind",
+export const RouteHttpTypeId: unique symbol = Symbol.for(
+  "effect-start/RouteHttpTypeId",
 )
 
 /**
- * Discriminant values for HTTP handler kinds.
+ * Function signature for HTTP middleware.
+ * Takes an HttpApp and returns an HttpApp or Effect.
  */
-export type RouteHttpKindValue = "HttpHandler" | "HttpMiddleware"
+export type HttpMiddlewareFunction<E = any, R = any> = <AppE, AppR>(
+  app: HttpApp.Default<AppE, AppR>,
+) => HttpApp.HttpApp<E | AppE, R | AppR>
+
+/**
+ * Type helper to check if all routes in a RouteSet are HttpMiddleware.
+ * HTTP middleware routes are characterized by method="*" and media="*".
+ */
+export type IsHttpMiddlewareRouteSet<RS> = RS extends
+  RouteSet<infer Routes, any> ? Routes extends readonly [] ? true
+  : Routes extends readonly Route<infer M, infer Media, any, any>[]
+    ? M extends "*" ? Media extends "*" ? true
+      : false
+    : false
+  : false
+  : false
 
 /**
  * Check if a handler is an HTTP middleware handler.
  */
 export function isHttpMiddlewareHandler(h: unknown): boolean {
   return typeof h === "function"
-    && RouteHttpKind in h
-    && (h as Record<symbol, unknown>)[RouteHttpKind] === "HttpMiddleware"
-}
-
-/**
- * Check if a handler is a raw HTTP handler.
- */
-export function isHttpHandler(h: unknown): boolean {
-  return typeof h === "function"
-    && RouteHttpKind in h
-    && (h as Record<symbol, unknown>)[RouteHttpKind] === "HttpHandler"
+    && RouteHttpTypeId in h
+    && (h as Record<symbol, unknown>)[RouteHttpTypeId] === RouteHttpTypeId
 }
 
 /**
@@ -290,15 +291,10 @@ export namespace RouteSet {
 }
 
 /**
- * Type for HTTP middleware function
- */
-export type HttpMiddlewareFunction = ReturnType<typeof HttpMiddleware.make>
-
-/**
  * Check if two routes match based on method and media type.
  * Returns true if both method and media type match, accounting for wildcards.
  */
-export function matches(
+export function overlaps(
   a: Route.Default,
   b: Route.Default,
 ): boolean {
@@ -352,7 +348,9 @@ export const json = makeMediaFunction<"GET", "application/json", JsonValue>(
   "application/json",
 )
 
-export const http = makeHttpFunction()
+export {
+  http,
+}
 
 const SetProto = {
   [RouteSetTypeId]: RouteSetTypeId,
@@ -427,7 +425,6 @@ export type RouteContext<
   Next = unknown,
 > =
   & {
-    request: HttpServerRequest.HttpServerRequest
     get url(): URL
     slots: Record<string, string>
     next: <E = unknown, R = unknown>() => Effect.Effect<Next, E, R>
@@ -473,10 +470,10 @@ export function make<
 }
 
 export function makeSet<
-  M extends ReadonlyArray<Route.Default>,
+  M extends ReadonlyArray<Route.Default> = [],
   Schemas extends RouteSchemas = RouteSchemas.Empty,
 >(
-  routes: M,
+  routes: M = [] as unknown as M,
   schema: Schemas = {} as Schemas,
 ): RouteSet<M, Schemas> {
   return Object.assign(
@@ -488,33 +485,13 @@ export function makeSet<
   ) as RouteSet<M, Schemas>
 }
 
-export type GenericJsxObject = {
-  type: any
-  props: any
-}
-
-export function isGenericJsxObject(value: unknown): value is GenericJsxObject {
-  return typeof value === "object"
-    && value !== null
-    && "type" in value
-    && "props" in value
-}
-
 /**
- * Extract method union from a RouteSet's routes
- */
-
-type ExtractMethods<T extends ReadonlyArray<Route.Default>> =
-  T[number]["method"]
-
-/**
- * Extract media union from a RouteSet's routes
- */
-type ExtractMedia<T extends ReadonlyArray<Route.Default>> = T[number]["media"]
-
-/**
- * Merge two RouteSets into one with content negotiation.
- * Properly infers union types for method/media and merges schemas.
+ * Merge two RouteSets into one.
+ * Combines route arrays.
+ *
+ * Rules:
+ * - Multiple HttpMiddleware routes are allowed (they stack)
+ * - Content routes with same method+media are allowed (for route-level middleware)
  */
 export function merge<
   RoutesA extends ReadonlyArray<Route.Default>,
@@ -525,42 +502,13 @@ export function merge<
   self: RouteSet<RoutesA, SchemasA>,
   other: RouteSet<RoutesB, SchemasB>,
 ): RouteSet<
-  [
-    Route<
-      ExtractMethods<RoutesA> | ExtractMethods<RoutesB>,
-      ExtractMedia<RoutesA> | ExtractMedia<RoutesB>,
-      RouteHandler<HttpServerResponse.HttpServerResponse, any, never>,
-      MergeSchemas<SchemasA, SchemasB>
-    >,
-  ],
+  readonly [...RoutesA, ...RoutesB],
   MergeSchemas<SchemasA, SchemasB>
 > {
-  const allRoutes = [...self.set, ...other.set]
+  const combined = [...self.set, ...other.set]
   const mergedSchemas = mergeSchemas(self.schema, other.schema)
-
-  const handler: RouteHandler<HttpServerResponse.HttpServerResponse> = (
-    context,
-  ) =>
-    Effect.gen(function*() {
-      const accept = context.request.headers.accept ?? ""
-      const selectedRoute = RouteRender.selectRouteByMedia(allRoutes, accept)
-
-      if (selectedRoute) {
-        return yield* RouteRender.render(selectedRoute, context)
-      }
-
-      return HttpServerResponse.empty({ status: 406 })
-    })
-
   return makeSet(
-    [
-      make({
-        method: allRoutes[0]?.method ?? "*",
-        media: allRoutes[0]?.media ?? "*",
-        handler,
-        schemas: mergedSchemas,
-      }),
-    ] as any,
+    combined as unknown as readonly [...RoutesA, ...RoutesB],
     mergedSchemas,
-  ) as any
+  )
 }

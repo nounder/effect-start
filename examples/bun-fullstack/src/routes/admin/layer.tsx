@@ -1,3 +1,5 @@
+import { HttpServerResponse } from "@effect/platform"
+import { Schema } from "effect"
 import { Route } from "effect-start"
 import { BasicAuthMiddleware } from "effect-start/middlewares"
 
@@ -8,11 +10,15 @@ export default Route
       password: "admin",
     }),
   )
-  .html(function*(context) {
+  .http(app => HttpServerResponse.text("yoo"))
+  .schemaUrlParams({
+    id: Schema.String,
+  })
+  .html(function*(action) {
     // we need to type case here due to react types mismatch
-    const inner = yield* context.next() as any
+    const inner = yield* action.next() as any
 
-    context.slots.head = `<title>Admin Panel</title>`
+    action.slots.head = `<title>Admin Panel</title>`
 
     return (
       <div className="admin-container">

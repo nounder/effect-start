@@ -29,15 +29,11 @@
       {
         "name": "@effect/language-service",
         "namespaceImportPackages": [
+          "*",
           "effect",
           "@effect/platform"
-        ]
-      },
-      {
-        "name": "ts-namespace-import",
-        "options": {
-          "capitalizedFilesOnly": true
-        }
+        ],
+        "topLevelNamedReexports": "follow"
       }
     ]
   },

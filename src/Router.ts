@@ -1,6 +1,7 @@
 import * as Data from "effect/Data"
 import * as Pipeable from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
+import * as ContentNegotiation from "./ContentNegotiation.ts"
 import * as Route from "./Route.ts"
 
 type RouterModule = typeof import("./Router.ts")
@@ -24,11 +25,7 @@ const TypeId: unique symbol = Symbol.for(
   "effect-start/Router",
 )
 
-export type RouterEntry = {
-  path: `/${string}`
-  route: Route.RouteSet.Default
-  middlewareRoutes: Route.Route.Default[]
-}
+const RouteSetTypeId: unique symbol = Symbol.for("effect-start/RouteSet")
 
 type Methods = {
   use: typeof use
@@ -40,9 +37,11 @@ export interface Router<
   out R = never,
 > extends Pipeable.Pipeable, Methods {
   [TypeId]: typeof TypeId
-  readonly entries: readonly RouterEntry[]
-  readonly globalMiddleware: readonly Route.Route.Default[]
+  [RouteSetTypeId]: typeof RouteSetTypeId
   readonly mounts: Record<`/${string}`, Route.RouteSet.Default>
+  readonly layer: Route.RouteSet.Default
+  readonly set: Route.Route.Default[]
+  readonly schema: Route.RouteSchemas
   readonly _E: () => E
   readonly _R: () => R
 }
@@ -55,12 +54,29 @@ export namespace Router {
 
 const Proto: Methods & {
   [TypeId]: typeof TypeId
+  [RouteSetTypeId]: typeof RouteSetTypeId
   pipe: Pipeable.Pipeable["pipe"]
+  set: Route.Route.Default[]
+  schema: Route.RouteSchemas
 } = {
   [TypeId]: TypeId,
+  [RouteSetTypeId]: RouteSetTypeId,
 
   pipe() {
     return Pipeable.pipeArguments(this, arguments)
+  },
+
+  get set(): Route.Route.Default[] {
+    const self = this as unknown as Router.Any
+    const allRoutes: Route.Route.Default[] = []
+    for (const routeSet of Object.values(self.mounts)) {
+      allRoutes.push(...routeSet.set)
+    }
+    return allRoutes
+  },
+
+  get schema(): Route.RouteSchemas {
+    return {}
   },
 
   use,
@@ -79,110 +95,6 @@ type ExtractRouteSetContext<T> = T extends Route.RouteSet<infer Routes, any>
   : never
   : never
 
-/**
- * Calculates a specificity score for a route path.
- *
- * Rules:
- * - Static segments are most specific
- * - Required params are less specific
- * - Optional params are even less specific
- * - Wildcards/catch-alls are least specific
- *
- * Examples:
- * - `/admin/users` → high specificity (all static)
- * - `/users/[id]` → medium specificity (has param)
- * - `/[[...slug]]` → low specificity (optional catch-all)
- */
-function pathSpecificity(path: string): number {
-  const segments = path.split("/").filter(Boolean)
-  if (segments.length === 0) return 1000 // Root path `/` is very specific
-
-  let score = 0
-  for (const segment of segments) {
-    if (segment.startsWith("[[...")) {
-      // Optional catch-all: least specific
-      score += 1
-    } else if (segment.startsWith("[...")) {
-      // Required catch-all: very low specificity
-      score += 10
-    } else if (segment.startsWith("[[")) {
-      // Optional param
-      score += 50
-    } else if (segment.startsWith("[")) {
-      // Required param
-      score += 100
-    } else {
-      // Static segment: most specific
-      score += 1000
-    }
-  }
-  return score
-}
-
-/**
- * Inserts an entry into the entries array, maintaining sorted order by specificity.
- * More specific routes (higher score) come first.
- */
-function insertSorted(
-  entries: readonly RouterEntry[],
-  newEntry: RouterEntry,
-): RouterEntry[] {
-  const newScore = pathSpecificity(newEntry.path)
-  const result = [...entries]
-
-  // Find insertion point (first entry with lower specificity)
-  const insertIndex = result.findIndex(
-    (e) => pathSpecificity(e.path) < newScore,
-  )
-
-  if (insertIndex === -1) {
-    result.push(newEntry)
-  } else {
-    result.splice(insertIndex, 0, newEntry)
-  }
-
-  return result
-}
-
-function addRoute<
-  E,
-  R,
-  RouteE,
-  RouteR,
->(
-  builder: Router<E, R>,
-  path: `/${string}`,
-  route: Route.RouteSet.Default,
-): Router<E | RouteE, R | RouteR> {
-  const existingEntry = builder.entries.find((e) => e.path === path)
-  if (existingEntry) {
-    const updatedEntry: RouterEntry = {
-      ...existingEntry,
-      route: Route.merge(existingEntry.route, route),
-    }
-    return make(
-      builder.entries.map((e) => (e.path === path ? updatedEntry : e)),
-      builder.globalMiddleware,
-    )
-  }
-
-  const newEntry: RouterEntry = {
-    path,
-    route,
-    middlewareRoutes: [...builder.globalMiddleware],
-  }
-
-  return make(insertSorted(builder.entries, newEntry), builder.globalMiddleware)
-}
-
-function addGlobalMiddleware<E, R>(
-  builder: Router<E, R>,
-  middlewareRoutes: Route.Route.Default[],
-): Router<E, R> {
-  const newGlobalMiddleware = [...builder.globalMiddleware, ...middlewareRoutes]
-  return make(builder.entries, newGlobalMiddleware)
-}
-
 function findMatchingMiddlewareRoutes(
   route: Route.Route.Default,
   middlewareRoutes: readonly Route.Route.Default[],
@@ -193,7 +105,7 @@ function findMatchingMiddlewareRoutes(
     if (Route.isHttpMiddlewareHandler(mwRoute.handler)) {
       continue
     }
-    if (Route.matches(mwRoute, route)) {
+    if (Route.overlaps(mwRoute, route)) {
       matchingRoutes.push(mwRoute)
     }
   }
@@ -260,39 +172,84 @@ function applyMiddlewareToRoute(
 
 function applyMiddlewareToRouteSet(
   routeSet: Route.RouteSet.Default,
-  middlewareRoutes: readonly Route.Route.Default[],
 ): Route.RouteSet.Default {
-  if (middlewareRoutes.length === 0) {
-    return routeSet
+  const routes = routeSet.set
+
+  // Keep HTTP middleware routes unchanged (they're applied at HttpApp level)
+  const httpMiddlewareRoutes = routes.filter((r) =>
+    Route.isHttpMiddlewareHandler(r.handler)
+  )
+
+  // Non-HTTP routes (candidates for middleware wrapping)
+  const nonHttpRoutes = routes.filter((r) =>
+    !Route.isHttpMiddlewareHandler(r.handler)
+  )
+
+  if (nonHttpRoutes.length <= 1) {
+    return Route.makeSet(
+      [
+        ...httpMiddlewareRoutes,
+        ...nonHttpRoutes,
+      ] as unknown as Route.Route.Tuple,
+      routeSet.schema,
+    )
   }
 
-  // Filter out middleware and raw HTTP routes from the route set - only wrap content routes
-  const contentRoutes = routeSet.set.filter((r) =>
-    !Route.isHttpMiddlewareHandler(r.handler) && !Route.isHttpHandler(r.handler)
-  )
+  // Determine which routes are middleware vs content based on position.
+  // A route is middleware if there's a LATER route in the set that it matches.
+  // This works because RouteSet composition puts wrapper routes before content.
+  const middlewareRoutes: Route.Route.Default[] = []
+  const contentRoutes: Route.Route.Default[] = []
+
+  for (let i = 0; i < nonHttpRoutes.length; i++) {
+    const route = nonHttpRoutes[i]
+    let isMiddleware = false
+
+    for (let j = i + 1; j < nonHttpRoutes.length; j++) {
+      if (Route.overlaps(route, nonHttpRoutes[j])) {
+        isMiddleware = true
+        break
+      }
+    }
+
+    if (isMiddleware) {
+      middlewareRoutes.push(route)
+    } else {
+      contentRoutes.push(route)
+    }
+  }
+
+  if (middlewareRoutes.length === 0) {
+    return Route.makeSet(
+      [
+        ...httpMiddlewareRoutes,
+        ...contentRoutes,
+      ] as unknown as Route.Route.Tuple,
+      routeSet.schema,
+    )
+  }
 
   const wrappedRoutes = contentRoutes.map((route) =>
     applyMiddlewareToRoute(route, middlewareRoutes)
   )
 
-  return {
-    set: wrappedRoutes,
-    schema: routeSet.schema,
-  } as unknown as Route.RouteSet.Default
+  return Route.makeSet(
+    [...httpMiddlewareRoutes, ...wrappedRoutes] as unknown as Route.Route.Tuple,
+    routeSet.schema,
+  )
 }
 
 export function make<E, R>(
-  entries: readonly RouterEntry[],
-  globalMiddleware: readonly Route.Route.Default[] = [],
+  mounts: Record<`/${string}`, Route.RouteSet.Default>,
+  layer: Route.RouteSet.Default = Route.makeSet(),
 ): Router<E, R> {
-  const mounts: Record<`/${string}`, Route.RouteSet.Default> = {}
+  // Process each mount - apply route-level middleware from its RouteSet
+  const processedMounts: Record<`/${string}`, Route.RouteSet.Default> = {}
 
-  // Entries are already sorted by specificity (via insertSorted in addRoute)
-  for (const entry of entries) {
-    if (entry.route.set.length > 0) {
-      mounts[entry.path] = applyMiddlewareToRouteSet(
-        entry.route,
-        entry.middlewareRoutes,
+  for (const [path, routeSet] of Object.entries(mounts)) {
+    if (routeSet.set.length > 0) {
+      processedMounts[path as `/${string}`] = applyMiddlewareToRouteSet(
+        routeSet,
       )
     }
   }
@@ -300,9 +257,8 @@ export function make<E, R>(
   return Object.assign(
     Object.create(Proto),
     {
-      entries,
-      globalMiddleware,
-      mounts,
+      mounts: processedMounts,
+      layer,
     },
   )
 }
@@ -317,6 +273,37 @@ export function use<
   Schemas extends Route.RouteSchemas,
 >(
   this: S,
+  routeSet:
+    Route.IsHttpMiddlewareRouteSet<Route.RouteSet<Routes, Schemas>> extends true
+      ? Route.RouteSet<Routes, Schemas>
+      : never,
+): S extends Router<infer E, infer R> ? Router<
+    E | ExtractRouteSetError<Route.RouteSet<Routes, Schemas>>,
+    R | ExtractRouteSetContext<Route.RouteSet<Routes, Schemas>>
+  >
+  : Router<
+    ExtractRouteSetError<Route.RouteSet<Routes, Schemas>>,
+    ExtractRouteSetContext<Route.RouteSet<Routes, Schemas>>
+  >
+{
+  const router = isRouter(this)
+    ? this
+    : make<never, never>({}, Route.makeSet())
+
+  // Merge new HttpMiddleware into existing layer
+  const newLayer = Route.merge(router.layer, routeSet)
+
+  // Return new router with same mounts but updated layer
+  return make(router.mounts, newLayer) as any
+}
+
+export function mount<
+  S extends Self,
+  Routes extends Route.Route.Tuple,
+  Schemas extends Route.RouteSchemas,
+>(
+  this: S,
+  path: `/${string}`,
   routeSet: Route.RouteSet<Routes, Schemas>,
 ): S extends Router<infer E, infer R> ? Router<
     E | ExtractRouteSetError<Route.RouteSet<Routes, Schemas>>,
@@ -329,35 +316,93 @@ export function use<
 {
   const router = isRouter(this)
     ? this
-    : make<never, never>([], [])
+    : make<never, never>({}, Route.makeSet())
 
-  return addGlobalMiddleware(router, [...routeSet.set]) as any
+  // Merge current layer (HttpMiddleware) with the routes being mounted
+  const mergedRouteSet = Route.merge(router.layer, routeSet)
+
+  // Add to mounts (merge if path already exists)
+  const existingRouteSet = router.mounts[path]
+  const finalRouteSet = existingRouteSet
+    ? Route.merge(existingRouteSet, mergedRouteSet)
+    : mergedRouteSet
+
+  return make(
+    { ...router.mounts, [path]: finalRouteSet },
+    router.layer,
+  ) as any
 }
 
-export function mount<
-  S extends Self,
-  Routes extends Route.Route.Tuple,
-  Schemas extends Route.RouteSchemas,
->(
-  this: S,
-  path: `/${string}`,
-  route: Route.RouteSet<Routes, Schemas>,
-): S extends Router<infer E, infer R> ? Router<
-    E | ExtractRouteSetError<Route.RouteSet<Routes, Schemas>>,
-    R | ExtractRouteSetContext<Route.RouteSet<Routes, Schemas>>
-  >
-  : Router<
-    ExtractRouteSetError<Route.RouteSet<Routes, Schemas>>,
-    ExtractRouteSetContext<Route.RouteSet<Routes, Schemas>>
-  >
-{
-  const router = isRouter(this)
-    ? this
-    : make<never, never>([], [])
+const MEDIA_PRIORITY: Route.RouteMedia[] = [
+  "application/json",
+  "text/plain",
+  "text/html",
+]
 
-  return addRoute(
-    router,
-    path,
-    route as Route.RouteSet.Default,
-  ) as any
+export function get(
+  router: Router.Any,
+  method: Route.RouteMethod,
+  path: `/${string}`,
+  media: Route.RouteMedia | "*/*" = "*/*",
+): Route.Route.Default | undefined {
+  const routeSet = router.mounts[path]
+  if (!routeSet) return undefined
+
+  const isMediaWildcard = media === "*" || media === "*/*"
+
+  const methodMatching = routeSet.set.filter((route) => {
+    return method === "*"
+      || route.method === "*"
+      || route.method === method
+  })
+
+  if (methodMatching.length === 0) return undefined
+
+  if (isMediaWildcard) {
+    // Content negotiation: return by priority order
+    for (const priorityMedia of MEDIA_PRIORITY) {
+      const route = methodMatching.find((r) => r.media === priorityMedia)
+      if (route) return route
+    }
+    // Fallback to wildcard media route or first match
+    return methodMatching.find((r) => r.media === "*") ?? methodMatching[0]
+  }
+
+  return methodMatching.find((route) => {
+    return route.media === "*" || route.media === media
+  })
+}
+
+export function matchMedia(
+  routeSet: Route.RouteSet.Instance<ReadonlyArray<Route.Route.Default>, Route.RouteSchemas>,
+  accept: string,
+): Route.Route.Default | undefined {
+  const routes = routeSet.set
+
+  const contentRoutes = routes.filter((r) =>
+    !Route.isHttpMiddlewareHandler(r.handler)
+  )
+
+  if (contentRoutes.length === 0) return undefined
+
+  const availableMedia = contentRoutes
+    .map((r) => r.media)
+    .filter((m): m is Exclude<Route.RouteMedia, "*"> => m !== "*")
+
+  const normalizedAccept = accept || "*/*"
+  const hasWildcard = normalizedAccept.includes("*")
+  const preferred = ContentNegotiation.media(normalizedAccept, availableMedia)
+
+  if (preferred.length > 0) {
+    if (hasWildcard) {
+      for (const media of MEDIA_PRIORITY) {
+        if (preferred.includes(media)) {
+          return contentRoutes.find((r) => r.media === media)
+        }
+      }
+    }
+    return contentRoutes.find((r) => r.media === preferred[0])
+  }
+
+  return contentRoutes.find((r) => r.media === "*") ?? routes[0]
 }

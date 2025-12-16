@@ -6,10 +6,9 @@ import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
 import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
 import * as Effect from "effect/Effect"
 import * as Function from "effect/Function"
-import * as HttpUtils from "./HttpUtils.ts"
 import * as Route from "./Route.ts"
+import * as RouteHttp from "./RouteHttp.ts"
 import * as Router from "./Router.ts"
-import * as RouteRender from "./RouteRender.ts"
 import * as RouterPattern from "./RouterPattern.ts"
 
 /**
@@ -69,7 +68,7 @@ function findMatchingLayerRoutes(
 
   for (const layerRouteSet of layerRouteSets) {
     for (const layerRoute of layerRouteSet.set) {
-      if (Route.matches(layerRoute, route)) {
+      if (Route.overlaps(layerRoute, route)) {
         matchingRoutes.push(layerRoute)
       }
     }
@@ -161,17 +160,7 @@ export function make<
 
         const wrappedHandler: HttpApp.Default = Effect.gen(function*() {
           const request = yield* HttpServerRequest.HttpServerRequest
-
-          const context: Route.RouteContext = {
-            request,
-            get url() {
-              return HttpUtils.makeUrlFromRequest(request)
-            },
-            slots: {},
-            next: () => Effect.void,
-          }
-
-          return yield* RouteRender.render(wrappedRoute, context)
+          return yield* RouteHttp.render(wrappedRoute, request)
         })
 
         // Extract HTTP middleware routes

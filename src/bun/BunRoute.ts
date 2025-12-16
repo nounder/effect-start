@@ -1,25 +1,19 @@
-import * as HttpApp from "@effect/platform/HttpApp"
 import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
 import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
 import type * as Bun from "bun"
 import * as Array from "effect/Array"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
-
 import * as Predicate from "effect/Predicate"
-import type * as Runtime from "effect/Runtime"
-import * as HttpAppExtra from "../HttpAppExtra.ts"
-import * as HttpUtils from "../HttpUtils.ts"
+import * as Hyper from "../Hyper.ts"
 import * as HyperHtml from "../HyperHtml.ts"
 import * as Random from "../Random.ts"
 import * as Route from "../Route.ts"
 import * as Router from "../Router.ts"
-import * as RouteRender from "../RouteRender.ts"
 import * as RouterPattern from "../RouterPattern.ts"
 import * as BunHttpServer from "./BunHttpServer.ts"
 
 const BunHandlerTypeId: unique symbol = Symbol.for("effect-start/BunHandler")
-
 
 const INTERNAL_FETCH_HEADER = "x-effect-start-internal-fetch"
 
@@ -44,10 +38,11 @@ export function bundle(
   const handler: Route.RouteHandler<
     string,
     Router.RouterError,
-    BunHttpServer.BunHttpServer
+    BunHttpServer.BunHttpServer | HttpServerRequest.HttpServerRequest
   > = (context) =>
     Effect.gen(function*() {
-      const originalRequest = context.request.source as Request
+      const request = yield* HttpServerRequest.HttpServerRequest
+      const originalRequest = request.source as Request
 
       if (
         originalRequest.headers.get(INTERNAL_FETCH_HEADER) === "true"
@@ -101,7 +96,7 @@ export function bundle(
         if (HttpServerResponse.isServerResponse(children)) {
           const webResponse = HttpServerResponse.toWeb(children)
           childrenHtml = yield* Effect.promise(() => webResponse.text())
-        } else if (Route.isGenericJsxObject(children)) {
+        } else if (Hyper.isGenericJsxObject(children)) {
           childrenHtml = HyperHtml.renderToString(children)
         } else {
           childrenHtml = String(children)
@@ -120,32 +115,6 @@ export function bundle(
     internalPathPrefix,
     load: () => load().then(mod => "default" in mod ? mod.default : mod),
   }) as BunHandler
-}
-
-function makeHandler(routes: Route.Route.Default[]) {
-  return Effect.gen(function*() {
-    const request = yield* HttpServerRequest.HttpServerRequest
-    const accept = request.headers.accept ?? ""
-
-    const selectedRoute = RouteRender.selectRouteByMedia(routes, accept)
-
-    if (!selectedRoute) {
-      return HttpServerResponse.empty({ status: 406 })
-    }
-
-    const context: Route.RouteContext = {
-      request,
-      get url() {
-        return HttpUtils.makeUrlFromRequest(request)
-      },
-      slots: {},
-      next: () => Effect.void,
-    }
-
-    return yield* RouteRender.render(selectedRoute, context).pipe(
-      Effect.catchAllCause((cause) => HttpAppExtra.renderError(cause, accept)),
-    )
-  })
 }
 
 type BunServerFetchHandler = (
@@ -213,127 +182,6 @@ export function validateBunPattern(
   }
 
   return Option.none()
-}
-
-/**
- * Converts a RouterBuilder into Bun-compatible routes passed to {@link Bun.serve}.
- *
- * For BunRoutes (HtmlBundle), creates two routes:
- * - An internal route at `${path}~BunRoute-${nonce}:${path}` holding the actual HtmlBundle
- * - A proxy route at the original path that forwards requests to the internal route
- *
- * This allows middleware to be attached to the proxy route while Bun handles
- * the HtmlBundle natively on the internal route.
- */
-export function routesFromRouter(
-  router: Router.Router.Any,
-  runtime?: Runtime.Runtime<BunHttpServer.BunHttpServer>,
-): Effect.Effect<BunRoutes, Router.RouterError, BunHttpServer.BunHttpServer> {
-  return Effect.gen(function*() {
-    const rt = runtime ?? (yield* Effect.runtime<BunHttpServer.BunHttpServer>())
-    const result: BunRoutes = {}
-
-    for (const entry of router.entries) {
-      const { path, route: routeSet, middlewareRoutes } = entry
-
-      const validationError = validateBunPattern(path)
-      if (Option.isSome(validationError)) {
-        return yield* Effect.fail(validationError.value)
-      }
-
-      // Check for BunHandlers in the routeSet
-      for (const route of routeSet.set) {
-        if (isBunHandler(route.handler)) {
-          const bunHandler = route.handler as BunHandler
-          const bundle = yield* Effect.promise(() => bunHandler.load())
-          const bunPaths = RouterPattern.toBun(path)
-          for (const bunPath of bunPaths) {
-            const internalPath = `${bunHandler.internalPathPrefix}${bunPath}`
-            result[internalPath] = bundle
-          }
-        }
-      }
-
-      // Check for BunHandlers in middleware routes
-      for (const route of middlewareRoutes) {
-        if (isBunHandler(route.handler)) {
-          const bunHandler = route.handler as BunHandler
-          const bundle = yield* Effect.promise(() => bunHandler.load())
-          const bunPaths = RouterPattern.toBun(path)
-          for (const bunPath of bunPaths) {
-            const internalPath = `${bunHandler.internalPathPrefix}${bunPath}`
-            result[internalPath] = bundle
-          }
-        }
-      }
-    }
-
-    for (const path of Object.keys(router.mounts)) {
-      const routeSet = router.mounts[path]
-
-      const validationError = validateBunPattern(path)
-      if (Option.isSome(validationError)) {
-        continue
-      }
-
-      const httpPaths = RouterPattern.toBun(path as Route.RoutePattern)
-
-      const byMethod = new Map<Route.RouteMethod, Route.Route.Default[]>()
-      for (const route of routeSet.set) {
-        const existing = byMethod.get(route.method) ?? []
-        existing.push(route)
-        byMethod.set(route.method, existing)
-      }
-
-      // Extract HTTP middleware routes from entry
-      const entry = router.entries.find((e) => e.path === path)
-      const httpMiddlewareRoutes = entry?.middlewareRoutes.filter(
-        (r) => Route.isHttpMiddlewareHandler(r.handler),
-      ) ?? []
-
-      // Wrapper routes are already applied in router.mounts via applyMiddlewareToRouteSet
-      for (const [method, routes] of byMethod) {
-        let httpApp: HttpApp.Default<any, any> = makeHandler(routes)
-
-        // Apply HTTP middleware in order (first middleware wraps outermost)
-        for (const mwRoute of httpMiddlewareRoutes) {
-          httpApp = mwRoute.handler(
-            { next: () => httpApp } as Route.RouteContext,
-          ) as HttpApp.Default<any, any>
-        }
-
-        const webHandler = HttpApp.toWebHandlerRuntime(rt)(httpApp)
-        const handler: BunServerFetchHandler = (request) => {
-          const url = new URL(request.url)
-          if (url.pathname.startsWith("/.BunRoute-")) {
-            return new Response(
-              "Internal routing error: BunRoute internal path was not matched. "
-                + "This indicates the HTMLBundle route was not registered. Please report a bug.",
-              { status: 500 },
-            )
-          }
-          return webHandler(request)
-        }
-
-        for (const httpPath of httpPaths) {
-          if (method === "*") {
-            if (!(httpPath in result)) {
-              result[httpPath] = handler
-            }
-          } else {
-            const existing = result[httpPath]
-            if (isMethodHandlers(existing)) {
-              existing[method] = handler
-            } else if (!(httpPath in result)) {
-              result[httpPath] = { [method]: handler }
-            }
-          }
-        }
-      }
-    }
-
-    return result
-  })
 }
 
 export const isHTMLBundle = (handle: any) => {

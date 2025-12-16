@@ -187,7 +187,9 @@ export function fromManifest(
   manifest: Manifest,
 ): Effect.Effect<Router.Router.Any> {
   return Effect.gen(function*() {
-    const loadedEntries = yield* Effect.forEach(
+    const mounts: Record<`/${string}`, Route.RouteSet.Default> = {}
+
+    yield* Effect.forEach(
       manifest.routes,
       (lazyRoute) =>
         Effect.gen(function*() {
@@ -199,25 +201,22 @@ export function fromManifest(
             )
             : []
 
-          const middlewareRoutes: Route.Route.Default[] = []
+          // Start with the route from the route module
+          let mergedRouteSet: Route.RouteSet.Default = routeModule.default
+
+          // Concatenate each layer's routes into the routeSet
           for (const m of layerModules) {
-            const routeSet = (m as any).default
-            if (Route.isRouteSet(routeSet)) {
-              for (const route of routeSet.set) {
-                middlewareRoutes.push(route)
-              }
+            const layerRouteSet = (m as any).default
+            if (Route.isRouteSet(layerRouteSet)) {
+              mergedRouteSet = Route.merge(layerRouteSet, mergedRouteSet)
             }
           }
 
-          return {
-            path: lazyRoute.path,
-            route: routeModule.default,
-            middlewareRoutes,
-          }
+          mounts[lazyRoute.path] = mergedRouteSet
         }),
     )
 
-    return Router.make(loadedEntries, [])
+    return Router.make(mounts, Route.makeSet())
   })
 }
 

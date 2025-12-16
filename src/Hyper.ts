@@ -192,3 +192,15 @@ export function layout<Provides, Requires>(
     },
   }
 }
+
+export type GenericJsxObject = {
+  type: any
+  props: any
+}
+
+export function isGenericJsxObject(value: unknown): value is GenericJsxObject {
+  return typeof value === "object"
+    && value !== null
+    && "type" in value
+    && "props" in value
+}

@@ -1,5 +1,7 @@
 import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
 
+export type FetchHandler = (request: Request) => Promise<Response>
+
 export function makeUrlFromRequest(
   request: HttpServerRequest.HttpServerRequest,
 ): URL {

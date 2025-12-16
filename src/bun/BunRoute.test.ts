@@ -4,11 +4,11 @@ import type { HTMLBundle } from "bun"
 import * as t from "bun:test"
 import * as Effect from "effect/Effect"
 import * as assert from "node:assert"
-
 import * as Route from "../Route.ts"
 import * as Router from "../Router.ts"
 import * as BunHttpServer from "./BunHttpServer.ts"
 import * as BunRoute from "./BunRoute.ts"
+import * as BunRouter from "./BunRouter.ts"
 
 t.describe(`${BunRoute.validateBunPattern.name}`, () => {
   t.test("allows exact paths", () => {
@@ -62,11 +62,11 @@ t.describe(`${BunRoute.validateBunPattern.name}`, () => {
   })
 })
 
-t.describe(`${BunRoute.routesFromRouter.name}`, () => {
+t.describe(`${BunRouter.routesFrom.name}`, () => {
   t.test("fails with RouterError for unsupported patterns", async () => {
     const result = await Effect.runPromise(
-      BunRoute
-        .routesFromRouter(
+      BunRouter
+        .routesFrom(
           Router.mount("/users/pk_[id]", Route.text("user")),
         )
         .pipe(
@@ -384,7 +384,7 @@ async function makeBunRoutes(
   router: Router.Router.Any,
 ): Promise<BunRoute.BunRoutes> {
   return Effect.runPromise(
-    BunRoute.routesFromRouter(router).pipe(
+    BunRouter.routesFrom(router).pipe(
       Effect.provide(BunHttpServer.layer({ port: 0 })),
     ),
   )

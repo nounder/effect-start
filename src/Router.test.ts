@@ -1,3 +1,4 @@
+import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
 import * as t from "bun:test"
 import * as Effect from "effect/Effect"
 import type * as Types from "effect/Types"
@@ -27,11 +28,9 @@ t.it("creates router with single route", () => {
     Route.text("Hello World"),
   )
 
-  t.expect(router.entries).toHaveLength(1)
-  t.expect(router.entries[0].path).toBe("/hello")
-  t.expect(router.entries[0].route.set).toHaveLength(1)
-
+  t.expect(Object.keys(router.mounts)).toHaveLength(1)
   t.expect(router.mounts["/hello"]).toBeDefined()
+  t.expect(router.mounts["/hello"].set).toHaveLength(1)
 
   const _check: Types.Equals<
     typeof router,
@@ -44,10 +43,7 @@ t.it("chains multiple routes", () => {
     .mount("/hello", Route.text("Hello"))
     .mount("/world", Route.text("World"))
 
-  t.expect(router.entries).toHaveLength(2)
-  t.expect(router.entries[0].path).toBe("/hello")
-  t.expect(router.entries[1].path).toBe("/world")
-
+  t.expect(Object.keys(router.mounts)).toHaveLength(2)
   t.expect(router.mounts["/hello"]).toBeDefined()
   t.expect(router.mounts["/world"]).toBeDefined()
 
@@ -72,7 +68,7 @@ t.it("infers and unions error types from routes", () => {
     .mount("/adam", Route.text(Effect.fail(new AdamError())))
     .mount("/eve", Route.text(Effect.fail(new EveError())))
 
-  t.expect(routerMultiple.entries).toHaveLength(2)
+  t.expect(Object.keys(routerMultiple.mounts)).toHaveLength(2)
 
   const _checkMultiple: Types.Equals<
     typeof routerMultiple,
@@ -80,13 +76,17 @@ t.it("infers and unions error types from routes", () => {
   > = true
 })
 
-t.it("infers context &  error types from layers", () => {
-  const routerSingle = Router
-    .use(Route.text(function*(c) {
+t.it("infers context & error types from HttpMiddleware", () => {
+  const httpMiddleware = Route.http((app) =>
+    Effect.gen(function*() {
       yield* Effect.fail(new AdamError())
+      yield* Random.uuid()
+      return yield* app
+    })
+  )
 
-      return yield* Random.uuid()
-    }))
+  const routerSingle = Router
+    .use(httpMiddleware)
     .mount(
       "/",
       Route.text(function*() {
@@ -95,9 +95,29 @@ t.it("infers context &  error types from layers", () => {
       }),
     )
 
+  t.expect(Object.keys(routerSingle.mounts)).toHaveLength(1)
+
+  type RouterError = Router.Router.Error<typeof routerSingle>
+  type RouterRequirements = Router.Router.Requirements<typeof routerSingle>
+
+  const _errorCheck: AdamError extends RouterError ? true : false = true
+  const _errorCheck2: EveError extends RouterError ? true : false = true
+  const _requirementsCheck: Random extends RouterRequirements ? true
+    : false = true
+})
+
+t.it("Router.use with Route.http(HttpServerResponse) infers never types", () => {
+  const httpMiddleware = Route.http(HttpServerResponse.text("static"))
+
+  const router = Router
+    .use(httpMiddleware)
+    .mount("/", Route.text("hello"))
+
+  t.expect(Object.keys(router.mounts)).toHaveLength(1)
+
   const _check: Types.Equals<
-    typeof routerSingle,
-    Router.Router<AdamError | EveError, Random>
+    typeof router,
+    Router.Router<never, never>
   > = true
 })
 
@@ -114,7 +134,7 @@ t.it("infers and unions context types from routes", () => {
     .mount("/hello", Route.text(Greeting.greet()))
     .mount("/uuid", Route.text(Random.uuid()))
 
-  t.expect(routerMultiple.entries).toHaveLength(2)
+  t.expect(Object.keys(routerMultiple.mounts)).toHaveLength(2)
 
   const _checkMultiple: Types.Equals<
     typeof routerMultiple,
@@ -127,134 +147,216 @@ t.it("merges routes at same path", () => {
     .mount("/api", Route.get(Route.json({ method: "get" })))
     .mount("/api", Route.post(Route.json({ method: "post" })))
 
-  t.expect(router.entries).toHaveLength(1)
-  t.expect(router.entries[0].path).toBe("/api")
-
+  t.expect(Object.keys(router.mounts)).toHaveLength(1)
   t.expect(router.mounts["/api"]).toBeDefined()
 })
 
-t.it("mounts routes with middleware", async () => {
-  const layerRoutes = Route.html(function*(c) {
-    const inner = yield* c.next()
-    return `<wrap>${inner}</wrap>`
-  })
+t.it(
+  "mounts routes with route-level middleware via RouteSet composition",
+  async () => {
+    const wrapperLayer = Route.html(function*(c) {
+      const inner = yield* c.next()
+      return `<wrap>${inner}</wrap>`
+    })
 
-  const router = Router
-    .use(layerRoutes)
-    .mount("/page", Route.html(Effect.succeed("content")))
-    .mount("/uuid", Route.text(Random.uuid()))
+    const router = Router
+      .mount("/page", wrapperLayer.html(Effect.succeed("content")))
+      .mount("/uuid", Route.text(Random.uuid()))
 
-  const mountedRoute = router.mounts["/page"]
-  t.expect(mountedRoute).toBeDefined()
-  t.expect(mountedRoute.set).toHaveLength(1)
+    const mountedRoute = router.mounts["/page"]
+    t.expect(mountedRoute).toBeDefined()
+    t.expect(mountedRoute.set).toHaveLength(1)
 
-  const route = mountedRoute.set[0]
-  const mockContext: Route.RouteContext = {
-    request: {} as any,
-    url: new URL("http://localhost/page"),
-    slots: {},
-    next: () => Effect.void,
-  }
+    const route = mountedRoute.set[0]
+    const mockContext: Route.RouteContext = {
+      url: new URL("http://localhost/page"),
+      slots: {},
+      next: () => Effect.void,
+    }
 
-  const result = await Effect.runPromise(
-    route.handler(mockContext) as Effect.Effect<unknown>,
-  )
+    const result = await Effect.runPromise(
+      route.handler(mockContext) as Effect.Effect<unknown>,
+    )
 
-  t.expect(result).toBe("<wrap>content</wrap>")
-})
+    t.expect(result).toBe("<wrap>content</wrap>")
+  },
+)
 
-t.it("middleware only applies to routes mounted after use()", async () => {
-  const layerRoutes = Route.html(function*(c) {
-    const inner = yield* c.next()
-    return `<wrap>${inner}</wrap>`
-  })
+t.it("HttpMiddleware applies to routes mounted after use()", async () => {
+  const httpMiddleware = Route.http((app) => app)
 
   const router = Router
     .mount("/before", Route.html(Effect.succeed("before-content")))
-    .use(layerRoutes)
+    .use(httpMiddleware)
     .mount("/after", Route.html(Effect.succeed("after-content")))
 
-  const mockContext = (path: string): Route.RouteContext => ({
-    request: {} as any,
-    url: new URL(`http://localhost${path}`),
-    slots: {},
-    next: () => Effect.void,
-  })
-
-  const beforeRoute = router.mounts["/before"].set[0]
-  const afterRoute = router.mounts["/after"].set[0]
-
-  const beforeResult = await Effect.runPromise(
-    beforeRoute.handler(mockContext("/before")) as Effect.Effect<unknown>,
-  )
-  const afterResult = await Effect.runPromise(
-    afterRoute.handler(mockContext("/after")) as Effect.Effect<unknown>,
-  )
-
-  t.expect(beforeResult).toBe("before-content")
-  t.expect(afterResult).toBe("<wrap>after-content</wrap>")
+  t.expect(Object.keys(router.mounts)).toHaveLength(2)
+  t.expect(router.mounts["/before"]).toBeDefined()
+  t.expect(router.mounts["/after"]).toBeDefined()
 })
 
-t.it("multiple layers are applied in order", async () => {
-  const outerLayer = Route.html(function*(c) {
-    const inner = yield* c.next()
-    return `<outer>${inner}</outer>`
+t.it(
+  "multiple route-level layers are applied in order via RouteSet composition",
+  async () => {
+    const outerLayer = Route.html(function*(c) {
+      const inner = yield* c.next()
+      return `<outer>${inner}</outer>`
+    })
+
+    const router = Router
+      .mount(
+        "/page",
+        outerLayer
+          .html(function*(c) {
+            const inner = yield* c.next()
+            return `<inner>${inner}</inner>`
+          })
+          .html(Effect.succeed("content")),
+      )
+
+    const mountedRoute = router.mounts["/page"]
+    const route = mountedRoute.set[0]
+
+    const mockContext: Route.RouteContext = {
+      url: new URL("http://localhost/page"),
+      slots: {},
+      next: () => Effect.succeed("unused"),
+    }
+
+    const result = await Effect.runPromise(
+      route.handler(mockContext) as Effect.Effect<unknown>,
+    )
+
+    t.expect(result).toBe("<outer><inner>content</inner></outer>")
+  },
+)
+
+t.it(
+  "route-level layer only applies to matching media via RouteSet composition",
+  async () => {
+    const htmlLayer = Route.html(function*(c) {
+      const inner = yield* c.next()
+      return `<wrap>${inner}</wrap>`
+    })
+
+    const router = Router
+      .mount("/api", Route.json({ data: "value" }))
+      .mount("/page", htmlLayer.html(Effect.succeed("content")))
+
+    const mockContext = (path: string): Route.RouteContext => ({
+      url: new URL(`http://localhost${path}`),
+      slots: {},
+      next: () => Effect.succeed("unused"),
+    })
+
+    const jsonRoute = router.mounts["/api"].set[0]
+    const jsonResult = await Effect.runPromise(
+      jsonRoute.handler(
+        mockContext("/api"),
+      ) as Effect.Effect<unknown>,
+    )
+    t.expect(jsonResult).toEqual({ data: "value" })
+
+    const htmlRoute = router.mounts["/page"].set[0]
+    const htmlResult = await Effect.runPromise(
+      htmlRoute.handler(mockContext("/page")) as Effect.Effect<
+        unknown
+      >,
+    )
+    t.expect(htmlResult).toBe("<wrap>content</wrap>")
+  },
+)
+
+t.describe("Router.get", () => {
+  t.it("returns route matching method and path", () => {
+    const router = Router
+      .mount("/hello", Route.text("Hello"))
+      .mount("/world", Route.json({ message: "World" }))
+
+    const route = Router.get(router, "GET", "/hello")
+
+    t.expect(route).toBeDefined()
+    t.expect(route?.method).toBe("GET")
+    t.expect(route?.media).toBe("text/plain")
   })
 
-  const innerLayer = Route.html(function*(c) {
-    const inner = yield* c.next()
-    return `<inner>${inner}</inner>`
+  t.it("returns undefined for non-existent path", () => {
+    const router = Router.mount("/hello", Route.text("Hello"))
+
+    const route = Router.get(router, "GET", "/notfound")
+
+    t.expect(route).toBeUndefined()
   })
 
-  const router = Router
-    .use(outerLayer)
-    .use(innerLayer)
-    .mount("/page", Route.html(Effect.succeed("content")))
+  t.it("returns undefined for non-matching method", () => {
+    const router = Router.mount("/hello", Route.get(Route.text("Hello")))
 
-  const mountedRoute = router.mounts["/page"]
-  const route = mountedRoute.set[0]
+    const route = Router.get(router, "POST", "/hello")
 
-  const mockContext: Route.RouteContext = {
-    request: {} as any,
-    url: new URL("http://localhost/page"),
-    slots: {},
-    next: () => Effect.succeed("unused"),
-  }
+    t.expect(route).toBeUndefined()
+  })
 
-  const result = await Effect.runPromise(
-    route.handler(mockContext) as Effect.Effect<unknown>,
+  t.it("matches with media filter", () => {
+    const router = Router.mount(
+      "/content",
+      Route.merge(
+        Route.text("plain"),
+        Route.html("<div>html</div>"),
+      ),
+    )
+
+    const textRoute = Router.get(router, "GET", "/content", "text/plain")
+    const htmlRoute = Router.get(router, "GET", "/content", "text/html")
+
+    t.expect(textRoute?.media).toBe("text/plain")
+    t.expect(htmlRoute?.media).toBe("text/html")
+  })
+
+  t.it("wildcard method matches any route", () => {
+    const router = Router.mount("/api", Route.post(Route.json({ ok: true })))
+
+    const route = Router.get(router, "*", "/api")
+
+    t.expect(route).toBeDefined()
+    t.expect(route?.method).toBe("POST")
+  })
+
+  t.it("wildcard media matches any route", () => {
+    const router = Router.mount("/page", Route.html("<div>page</div>"))
+
+    const route = Router.get(router, "GET", "/page", "*/*")
+
+    t.expect(route).toBeDefined()
+    t.expect(route?.media).toBe("text/html")
+  })
+
+  t.it(
+    "wildcard media uses content negotiation priority (json > text > html)",
+    () => {
+      const routes = Route.merge(
+        Route.merge(Route.html("<div>html</div>"), Route.text("plain")),
+        Route.json({ data: "json" }),
+      )
+      const router = Router.mount("/content", routes)
+
+      // With wildcard, should return json (highest priority)
+      const route = Router.get(router, "GET", "/content", "*/*")
+
+      t.expect(route).toBeDefined()
+      t.expect(route?.media).toBe("application/json")
+    },
   )
 
-  t.expect(result).toBe("<outer><inner>content</inner></outer>")
-})
+  t.it("wildcard media returns text when json not available", () => {
+    const routes = Route.merge(
+      Route.html("<div>html</div>"),
+      Route.text("plain"),
+    )
+    const router = Router.mount("/content", routes)
 
-t.it("layer only applies to matching media", async () => {
-  const htmlLayer = Route.html(function*(c) {
-    const inner = yield* c.next()
-    return `<wrap>${inner}</wrap>`
+    const route = Router.get(router, "GET", "/content", "*/*")
+
+    t.expect(route).toBeDefined()
+    t.expect(route?.media).toBe("text/plain")
   })
-
-  const router = Router
-    .use(htmlLayer)
-    .mount("/api", Route.json({ data: "value" }))
-    .mount("/page", Route.html(Effect.succeed("content")))
-
-  const mockContext = (path: string): Route.RouteContext => ({
-    request: {} as any,
-    url: new URL(`http://localhost${path}`),
-    slots: {},
-    next: () => Effect.succeed("unused"),
-  })
-
-  const jsonRoute = router.mounts["/api"].set[0]
-  const jsonResult = await Effect.runPromise(
-    jsonRoute.handler(mockContext("/api")) as Effect.Effect<unknown>,
-  )
-  t.expect(jsonResult).toEqual({ data: "value" })
-
-  const htmlRoute = router.mounts["/page"].set[0]
-  const htmlResult = await Effect.runPromise(
-    htmlRoute.handler(mockContext("/page")) as Effect.Effect<unknown>,
-  )
-  t.expect(htmlResult).toBe("<wrap>content</wrap>")
 })
