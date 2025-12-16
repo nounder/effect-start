@@ -19,8 +19,8 @@
 
 import type * as Hyper from "./Hyper.ts"
 import * as HyperNode from "./HyperNode.ts"
-import type { JSX } from "../jsx.d.ts"
 import type * as JsxRuntime from "./jsx-runtime.ts"
+import type { JSX } from "./jsx.d.ts"
 
 const EMPTY_TAGS = [
   "area",

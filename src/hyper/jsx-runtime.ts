@@ -1,5 +1,5 @@
 import * as HyperNode from "./HyperNode.ts"
-import type { JSX } from "../jsx.d.ts"
+import type { JSX } from "./jsx.d.ts"
 
 function Fragment(props: { children: JSX.Element }) {
   return props.children
