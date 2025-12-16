@@ -1,7 +1,4 @@
-import {
-  HttpApp,
-  HttpServerRequest,
-} from "@effect/platform"
+import * as HttpApiBuilder from "@effect/platform/HttpApiBuilder"
 import * as HttpMiddleware from "@effect/platform/HttpMiddleware"
 import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
 import * as t from "bun:test"
@@ -13,6 +10,24 @@ import * as Schema from "effect/Schema"
 import * as Types from "effect/Types"
 import * as Hyper from "./Hyper.ts"
 import * as Route from "./Route.ts"
+
+class Greeting extends Effect.Tag("Greeting")<Greeting, {
+  greet(): string
+}>() {}
+
+class Random extends Effect.Tag("Random")<Random, {
+  boolean(): boolean
+  number(): number
+  uuid(): string
+}>() {}
+
+class EveError {
+  readonly _tag = "EveError"
+}
+
+class RandomError {
+  readonly _tag = "LoserError"
+}
 
 t.it("types default routes", () => {
   const implicit = Route
@@ -475,13 +490,85 @@ t.it("context has only url when no schemas provided", () => {
     )
 })
 
-t.it("context.next() returns correct type for text handler", () => {
-  Route.text(function*(context) {
-    const next = context.next()
-    type NextType = Effect.Effect.Success<typeof next>
-    type _check = [NextType] extends [string] ? true : false
-    const _assert: _check = true
-    return "hello"
+t.describe(`${Route.text}`, () => {
+  t.it("accepts string directly", () => {
+    const routes = Route.text("static response")
+
+    Function.satisfies<
+      Route.RouteSet<
+        [
+          Route.Route<
+            "GET",
+            "text/plain",
+            Route.RouteHandler<"static response", never, never>
+          >,
+        ]
+      >
+    >()(routes)
+  })
+
+  t.it("accepts Effect directly", () => {
+    const routes = Route.text(Effect.succeed("effect response"))
+
+    Function.satisfies<
+      Route.RouteSet<
+        [
+          Route.Route<
+            "GET",
+            "text/plain",
+            Route.RouteHandler<string, never, never>
+          >,
+        ]
+      >
+    >()(routes)
+  })
+
+  t.it("infers Error and Requirements", () => {
+    const route = Route.text(function*(context) {
+      const greeting = yield* Greeting.greet()
+      const isLucky = yield* Random.boolean()
+
+      if (!isLucky) {
+        return yield* Effect.fail(new RandomError())
+      }
+
+      return greeting
+    })
+
+    Function.satisfies<
+      Route.RouteSet<
+        [
+          Route.Route<
+            "GET",
+            "text/plain",
+            Route.RouteHandler<string, RandomError, Greeting | Random>
+          >,
+        ]
+      >
+    >()(route)
+  })
+
+  t.it("chains with other actions", () => {
+    const routes = Route
+      .text("hello")
+      .html(Effect.succeed("<div>world</div>"))
+      .json({ data: "test" })
+
+    t.expect(Route.isRouteSet(routes)).toBe(true)
+    t.expect(routes.set.length).toBe(3)
+    t.expect(routes.set[0]!.media).toBe("text/plain")
+    t.expect(routes.set[1]!.media).toBe("text/html")
+    t.expect(routes.set[2]!.media).toBe("application/json")
+  })
+
+  t.it("context.next() returns correct type", () => {
+    Route.text(function*(context) {
+      const next = context.next()
+      type NextType = Effect.Effect.Success<typeof next>
+      type _check = [NextType] extends [string] ? true : false
+      const _assert: _check = true
+      return "hello"
+    })
   })
 })
 
@@ -771,233 +858,307 @@ t.it("method modifiers preserve proper types when nesting schemas", () => {
   Function.satisfies<Expected>()(route)
 })
 
-t.it("schemaUrlParams accepts optional fields", () => {
-  const routes = Route
-    .schemaUrlParams({
-      hello: Function.pipe(
-        Schema.String,
-        Schema.optional,
-      ),
-    })
-    .html(
-      (ctx) => {
-        Function.satisfies<string | undefined>()(ctx.urlParams.hello)
+t.describe(`${Route.schemaPathParams}`, () => {
+  t.it("only accepts string-encoded schemas", () => {
+    Route
+      .schemaPathParams({
+        id: Schema.String,
+      })
+      .text(Effect.succeed("ok"))
 
-        const page = ctx.urlParams.hello ?? "default"
+    Route
+      .schemaPathParams({
+        id: Schema.NumberFromString,
+      })
+      .text(Effect.succeed("ok"))
 
-        return Effect.succeed(`<div><h1>About ${page}</h1></div>`)
-      },
-    )
+    Route
+      .schemaPathParams({
+        // @ts-expect-error - Schema.Number is not string-encoded
+        id: Schema.Number,
+      })
+      .text(Effect.succeed("ok"))
 
-  type ExpectedSchemas = {
-    readonly UrlParams: Schema.Struct<{
-      hello: Schema.optional<typeof Schema.String>
-    }>
-  }
-
-  type Expected = Route.RouteSet<
-    [Route.Route<"GET", "text/html", any, ExpectedSchemas>],
-    ExpectedSchemas
-  >
-
-  Function.satisfies<Expected>()(routes)
+    Route
+      .schemaPathParams({
+        // @ts-expect-error - Schema.Struct is not string-encoded
+        nested: Schema.Struct({
+          field: Schema.String,
+        }),
+      })
+      .text(Effect.succeed("ok"))
+  })
 })
 
-t.it("schemaPathParams only accepts string-encoded schemas", () => {
-  Route
-    .schemaPathParams({
-      id: Schema.String,
-    })
-    .text(Effect.succeed("ok"))
+t.describe(`${Route.schemaUrlParams}`, () => {
+  t.it("accepts optional fields", () => {
+    const routes = Route
+      .schemaUrlParams({
+        hello: Function.pipe(
+          Schema.String,
+          Schema.optional,
+        ),
+      })
+      .html(
+        (ctx) => {
+          Function.satisfies<string | undefined>()(ctx.urlParams.hello)
 
-  Route
-    .schemaPathParams({
-      id: Schema.NumberFromString,
-    })
-    .text(Effect.succeed("ok"))
+          const page = ctx.urlParams.hello ?? "default"
 
-  Route
-    .schemaPathParams({
-      // @ts-expect-error - Schema.Number is not string-encoded
-      id: Schema.Number,
-    })
-    .text(Effect.succeed("ok"))
+          return Effect.succeed(`<div><h1>About ${page}</h1></div>`)
+        },
+      )
 
-  Route
-    .schemaPathParams({
-      // @ts-expect-error - Schema.Struct is not string-encoded
-      nested: Schema.Struct({
-        field: Schema.String,
-      }),
-    })
-    .text(Effect.succeed("ok"))
+    type ExpectedSchemas = {
+      readonly UrlParams: Schema.Struct<{
+        hello: Schema.optional<typeof Schema.String>
+      }>
+    }
+
+    type Expected = Route.RouteSet<
+      [Route.Route<"GET", "text/html", any, ExpectedSchemas>],
+      ExpectedSchemas
+    >
+
+    Function.satisfies<Expected>()(routes)
+  })
+
+  t.it("only accepts string-encoded schemas", () => {
+    Route
+      .schemaUrlParams({
+        page: Schema.String,
+      })
+      .text(Effect.succeed("ok"))
+
+    Route
+      .schemaUrlParams({
+        page: Schema.NumberFromString,
+      })
+      .text(Effect.succeed("ok"))
+
+    Route
+      .schemaUrlParams({
+        tags: Schema.Array(Schema.String),
+      })
+      .text(Effect.succeed("ok"))
+
+    Route
+      .schemaUrlParams({
+        // @ts-expect-error - Schema.Number is not string-encoded
+        page: Schema.Number,
+      })
+      .text(Effect.succeed("ok"))
+
+    Route
+      .schemaUrlParams({
+        // @ts-expect-error - Schema.Struct is not string-encoded
+        nested: Schema.Struct({
+          field: Schema.String,
+        }),
+      })
+      .text(Effect.succeed("ok"))
+  })
 })
 
-t.it("schemaUrlParams accepts string and string array encoded schemas", () => {
-  Route
-    .schemaUrlParams({
-      page: Schema.String,
-    })
-    .text(Effect.succeed("ok"))
+t.describe(`${Route.schemaHeaders}`, () => {
+  t.it("only accepts string-encoded schemas", () => {
+    Route
+      .schemaHeaders({
+        authorization: Schema.String,
+      })
+      .text(Effect.succeed("ok"))
 
-  Route
-    .schemaUrlParams({
-      page: Schema.NumberFromString,
-    })
-    .text(Effect.succeed("ok"))
+    Route
+      .schemaHeaders({
+        "x-custom-header": Schema.NumberFromString,
+      })
+      .text(Effect.succeed("ok"))
 
-  Route
-    .schemaUrlParams({
-      tags: Schema.Array(Schema.String),
-    })
-    .text(Effect.succeed("ok"))
+    Route
+      .schemaHeaders({
+        "accept-encoding": Schema.Array(Schema.String),
+      })
+      .text(Effect.succeed("ok"))
 
-  Route
-    .schemaUrlParams({
-      // @ts-expect-error - Schema.Number is not string-encoded
-      page: Schema.Number,
-    })
-    .text(Effect.succeed("ok"))
+    Route
+      .schemaHeaders({
+        // @ts-expect-error - Schema.Number is not string-encoded
+        "x-count": Schema.Number,
+      })
+      .text(Effect.succeed("ok"))
 
-  Route
-    .schemaUrlParams({
-      // @ts-expect-error - Schema.Struct is not string-encoded
-      nested: Schema.Struct({
-        field: Schema.String,
-      }),
-    })
-    .text(Effect.succeed("ok"))
+    Route
+      .schemaHeaders({
+        // @ts-expect-error - Schema.Struct is not string-encoded
+        "x-metadata": Schema.Struct({
+          field: Schema.String,
+        }),
+      })
+      .text(Effect.succeed("ok"))
+  })
 })
 
-t.it("schemaHeaders accepts string and string array encoded schemas", () => {
-  Route
-    .schemaHeaders({
-      authorization: Schema.String,
-    })
-    .text(Effect.succeed("ok"))
-
-  Route
-    .schemaHeaders({
-      "x-custom-header": Schema.NumberFromString,
-    })
-    .text(Effect.succeed("ok"))
-
-  Route
-    .schemaHeaders({
-      "accept-encoding": Schema.Array(Schema.String),
-    })
-    .text(Effect.succeed("ok"))
-
-  Route
-    .schemaHeaders({
-      // @ts-expect-error - Schema.Number is not string-encoded
-      "x-count": Schema.Number,
-    })
-    .text(Effect.succeed("ok"))
-
-  Route
-    .schemaHeaders({
-      // @ts-expect-error - Schema.Struct is not string-encoded
-      "x-metadata": Schema.Struct({
-        field: Schema.String,
-      }),
-    })
-    .text(Effect.succeed("ok"))
-})
-
-t.it(
-  "Route.http creates RouteSet with HttpMiddleware handler for HttpServerResponse",
-  () => {
-    const response = HttpServerResponse.text("static response")
-    const routes = Route.http(response)
-
-    t.expect(Route.isRouteSet(routes)).toBe(true)
-    t.expect(routes.set.length).toBe(1)
-    t.expect(routes.set[0]!.media).toBe("*")
-    t.expect(routes.set[0]!.method).toBe("*")
-    t.expect(Route.isHttpMiddlewareHandler(routes.set[0]!.handler)).toBe(true)
-  },
-)
-
-t.it("Route.http with HttpServerResponse returns the response", async () => {
-  const response = HttpServerResponse.text("static response")
-  const routes = Route.http(response)
-
-  const handler = routes.set[0]!.handler
-  const mockNext = Effect.succeed(HttpServerResponse.text("inner"))
+function executeHandle(handler: Route.RouteHandler) {
   const context: Route.RouteContext = {
     get url() {
       return new URL("http://localhost")
     },
     slots: {},
-    next: () => mockNext,
+    next: () => Effect.void,
   }
 
-  const effect = handler(context) as Effect.Effect<
-    HttpServerResponse.HttpServerResponse
-  >
-  const result = await Effect.runPromise(effect)
-  t.expect(HttpServerResponse.isServerResponse(result)).toBe(true)
-  t.expect(result).toBe(response)
+  return handler(context) as Effect.Effect<unknown, never, never>
+}
+
+t.describe(`${Route.http}`, () => {
+  t.it("accepts response directly", async () => {
+    const routes = Route.http(
+      HttpServerResponse.text("static response"),
+    )
+
+    Function.satisfies<
+      Route.RouteSet<
+        [
+          Route.Route<
+            "*",
+            "*",
+            Route.RouteHandler<
+              HttpServerResponse.HttpServerResponse,
+              never,
+              never
+            >
+          >,
+        ]
+      >
+    >()(routes)
+
+    const handler = routes.set[0]!.handler
+    const result = await Effect.runPromise(executeHandle(handler))
+
+    t
+      .expect(HttpServerResponse.isServerResponse(result))
+      .toBe(true)
+  })
+
+  t.it("infers Error and Requirements", () => {
+    const middlewareRoute = Route
+      .http(HttpMiddleware.make(app =>
+        Effect.gen(function*() {
+          const isLucky = yield* Random.boolean()
+
+          if (isLucky) {
+            return yield* app
+          } else {
+            return yield* Effect.fail(new RandomError())
+          }
+        })
+      ))
+
+    const fullRoute = middlewareRoute
+      .text(function*() {
+        const greeting = yield* Greeting.greet()
+
+        return greeting
+      })
+
+    Function.satisfies<
+      Route.RouteSet<
+        [
+          Route.Route<
+            "*",
+            "*",
+            Route.RouteHandler<
+              HttpServerResponse.HttpServerResponse,
+              RandomError,
+              Random
+            >
+          >,
+          Route.Route<
+            "GET",
+            "text/plain",
+            Route.RouteHandler<
+              string,
+              never,
+              Greeting
+            >
+          >,
+        ]
+      >
+    >()(fullRoute)
+
+    type Requirements = Route.Route.Requirements<typeof fullRoute>
+    type Errors = Route.Route.Error<typeof fullRoute>
+
+    const _checksRequirements: Types.Equals<
+      Requirements,
+      Greeting | Random
+    > = true
+
+    const _checkErrors: Types.Equals<
+      Errors,
+      RandomError
+    > = true
+  })
+
+  t.it("chains with other actions", () => {
+    const routes = Route
+      .http(app => app)
+      .html(Effect.succeed("<div>test</div>"))
+      .json({ data: "test" })
+
+    t.expect(Route.isRouteSet(routes)).toBe(true)
+    t.expect(routes.set.length).toBe(3)
+    t.expect(routes.set[0]!.media).toBe("*")
+
+    t.expect(Route.isHttpMiddlewareHandler(routes.set[0]!.handler)).toBe(true)
+    t.expect(routes.set[1]!.media).toBe("text/html")
+    t.expect(routes.set[2]!.media).toBe("application/json")
+  })
 })
 
-t.it("Route.http can be chained with other media functions", () => {
-  const middleware = (app: any) => app
+t.describe(`${Route.overlaps}`, () => {
+  t.it("Route.matches returns true for exact method and media match", () => {
+    const route1 = Route.get(Route.html(Effect.succeed("<div>test</div>")))
+    const route2 = Route.get(Route.html(Effect.succeed("<div>other</div>")))
 
-  const routes = Route
-    .http(middleware)
-    .html(Effect.succeed("<div>test</div>"))
-    .json({ data: "test" })
+    t.expect(Route.overlaps(route1.set[0]!, route2.set[0]!)).toBe(true)
+  })
 
-  t.expect(Route.isRouteSet(routes)).toBe(true)
-  t.expect(routes.set.length).toBe(3)
-  t.expect(routes.set[0]!.media).toBe("*")
-  t.expect(Route.isHttpMiddlewareHandler(routes.set[0]!.handler)).toBe(true)
-  t.expect(routes.set[1]!.media).toBe("text/html")
-  t.expect(routes.set[2]!.media).toBe("application/json")
+  t.it("Route.matches returns false for different methods", () => {
+    const route1 = Route.get(Route.html(Effect.succeed("<div>test</div>")))
+    const route2 = Route.post(Route.html(Effect.succeed("<div>other</div>")))
+
+    t.expect(Route.overlaps(route1.set[0]!, route2.set[0]!)).toBe(false)
+  })
+
+  t.it("Route.matches returns false for different media types", () => {
+    const route1 = Route.get(Route.html(Effect.succeed("<div>test</div>")))
+    const route2 = Route.get(Route.json({ data: "test" }))
+
+    t.expect(Route.overlaps(route1.set[0]!, route2.set[0]!)).toBe(false)
+  })
+
+  t.it("Route.matches returns true when method is wildcard", () => {
+    const route1 = Route.html(Effect.succeed("<div>test</div>"))
+    const route2 = Route.get(Route.html(Effect.succeed("<div>other</div>")))
+
+    t.expect(Route.overlaps(route1.set[0]!, route2.set[0]!)).toBe(true)
+    t.expect(Route.overlaps(route2.set[0]!, route1.set[0]!)).toBe(true)
+  })
+
+  t.it("Route.matches returns true when one route has wildcard method", () => {
+    const wildcardRoute = Route.html(Effect.succeed("<div>test</div>"))
+    const specificRoute = Route.get(
+      Route.html(Effect.succeed("<div>other</div>")),
+    )
+
+    t.expect(Route.overlaps(wildcardRoute.set[0]!, specificRoute.set[0]!)).toBe(
+      true,
+    )
+  })
 })
 
-t.it("Route.matches returns true for exact method and media match", () => {
-  const route1 = Route.get(Route.html(Effect.succeed("<div>test</div>")))
-  const route2 = Route.get(Route.html(Effect.succeed("<div>other</div>")))
-
-  t.expect(Route.overlaps(route1.set[0]!, route2.set[0]!)).toBe(true)
-})
-
-t.it("Route.matches returns false for different methods", () => {
-  const route1 = Route.get(Route.html(Effect.succeed("<div>test</div>")))
-  const route2 = Route.post(Route.html(Effect.succeed("<div>other</div>")))
-
-  t.expect(Route.overlaps(route1.set[0]!, route2.set[0]!)).toBe(false)
-})
-
-t.it("Route.matches returns false for different media types", () => {
-  const route1 = Route.get(Route.html(Effect.succeed("<div>test</div>")))
-  const route2 = Route.get(Route.json({ data: "test" }))
-
-  t.expect(Route.overlaps(route1.set[0]!, route2.set[0]!)).toBe(false)
-})
-
-t.it("Route.matches returns true when method is wildcard", () => {
-  const route1 = Route.html(Effect.succeed("<div>test</div>"))
-  const route2 = Route.get(Route.html(Effect.succeed("<div>other</div>")))
-
-  t.expect(Route.overlaps(route1.set[0]!, route2.set[0]!)).toBe(true)
-  t.expect(Route.overlaps(route2.set[0]!, route1.set[0]!)).toBe(true)
-})
-
-t.it("Route.matches returns true when one route has wildcard method", () => {
-  const wildcardRoute = Route.html(Effect.succeed("<div>test</div>"))
-  const specificRoute = Route.get(
-    Route.html(Effect.succeed("<div>other</div>")),
-  )
-
-  t.expect(Route.overlaps(wildcardRoute.set[0]!, specificRoute.set[0]!)).toBe(
-    true,
-  )
-})
-
-t.describe("Route.merge", () => {
+t.describe(`${Route.merge}`, () => {
   t.it("combines routes into a single RouteSet", () => {
     const textRoute = Route.text("hello")
     const htmlRoute = Route.html(Effect.succeed("<div>world</div>"))
@@ -1086,225 +1247,5 @@ t.describe("Route.merge", () => {
 
     const merged = Route.merge(middleware1, middleware2)
     t.expect(merged.set).toHaveLength(2)
-  })
-})
-
-t.describe("Route.http type inference", () => {
-  class TestService extends Context.Tag("TestService")<
-    TestService,
-    { getValue: () => string }
-  >() {}
-
-  class TestError extends Data.TaggedError("TestError")<{
-    message: string
-  }> {}
-
-  t.it("infers error type from middleware function", () => {
-    const routes = Route.http((app) =>
-      Effect.gen(function*() {
-        const shouldFail = Math.random() > 0.5
-        if (shouldFail) {
-          return yield* Effect.fail(new TestError({ message: "failed" }))
-        }
-        return yield* app
-      })
-    )
-
-    type RouteError = Route.Route.Error<typeof routes>
-    type RouteRequirements = Route.Route.Requirements<typeof routes>
-
-    const _errorCheck: Types.Equals<RouteError, TestError> = true
-    t.expect(routes.set.length).toBe(1)
-  })
-
-  t.it("infers requirements type from middleware function", () => {
-    const routes = Route.http((app) =>
-      Effect.gen(function*() {
-        const service = yield* TestService
-        return yield* app
-      })
-    )
-
-    type RouteRequirements = Route.Route.Requirements<typeof routes>
-
-    const _requirementsIncludesService: TestService extends RouteRequirements
-      ? true
-      : false = true
-    t.expect(routes.set.length).toBe(1)
-  })
-
-  t.it("infers both error and requirements from middleware function", () => {
-    const routes = Route.http((app) =>
-      Effect.gen(function*() {
-        const service = yield* TestService
-        const shouldFail = Math.random() > 0.5
-        if (shouldFail) {
-          return yield* Effect.fail(new TestError({ message: "failed" }))
-        }
-        console.log(service.getValue())
-        return yield* app
-      })
-    )
-
-    type RouteError = Route.Route.Error<typeof routes>
-    type RouteRequirements = Route.Route.Requirements<typeof routes>
-
-    const _errorCheck: Types.Equals<RouteError, TestError> = true
-    const _requirementsIncludesService: TestService extends RouteRequirements
-      ? true
-      : false = true
-    t.expect(routes.set.length).toBe(1)
-  })
-
-  t.it("types HttpServerResponse as never error and never requirements", () => {
-    const routes = Route.http(HttpServerResponse.text("static"))
-
-    type Expected = Route.RouteSet<
-      [
-        Route.Route<
-          "*",
-          "*",
-          Route.RouteHandler<
-            HttpServerResponse.HttpServerResponse,
-            never,
-            never
-          >
-        >,
-      ]
-    >
-    Function.satisfies<Expected>()(routes)
-  })
-
-  t.it(
-    "HttpMiddleware.make erases types - use direct function for inference",
-    () => {
-      const middleware = HttpMiddleware.make((app) =>
-        Effect.gen(function*() {
-          yield* TestService
-          return yield* app
-        })
-      )
-
-      const routes = Route.http(middleware)
-
-      const httpHandler = routes.set[0]!.handler
-
-      const _checkHandler: Types.Equals<
-        typeof httpHandler,
-        Route.RouteHandler<
-          HttpServerResponse.HttpServerResponse,
-          never,
-          TestService
-        >
-      > = true
-
-      t.expect(routes.set.length).toBe(1)
-    },
-  )
-})
-
-t.describe("Route.text type inference", () => {
-  class TestService extends Context.Tag("TestService")<
-    TestService,
-    { getValue: () => string }
-  >() {}
-
-  class TestError extends Data.TaggedError("TestError")<{
-    message: string
-  }> {}
-
-  t.it("propagates requirements from Effect handler", () => {
-    const routes = Route.text(
-      TestService.pipe(
-        Effect.map((service) => service.getValue()),
-      ),
-    )
-
-    type Expected = Route.RouteSet<
-      [
-        Route.Route<
-          "GET",
-          "text/plain",
-          Route.RouteHandler<string, never, TestService>
-        >,
-      ]
-    >
-    Function.satisfies<Expected>()(routes)
-
-    t.expect(routes.set.length).toBe(1)
-  })
-
-  t.it("propagates error from Effect handler", () => {
-    const routes = Route.text(
-      Effect.fail(new TestError({ message: "failed" })).pipe(
-        Effect.catchTag(
-          "TestError",
-          () => Effect.succeed("recovered"),
-        ),
-        Effect.flatMap(() =>
-          Effect.fail(new TestError({ message: "another" }))
-        ),
-      ),
-    )
-
-    type Expected = Route.RouteSet<
-      [
-        Route.Route<
-          "GET",
-          "text/plain",
-          Route.RouteHandler<never, TestError, never>
-        >,
-      ]
-    >
-    Function.satisfies<Expected>()(routes)
-
-    t.expect(routes.set.length).toBe(1)
-  })
-
-  t.it("propagates requirements from function returning Effect.gen", () => {
-    const routes = Route.text(() =>
-      Effect.gen(function*() {
-        const service = yield* TestService
-        return service.getValue()
-      })
-    )
-
-    type Expected = Route.RouteSet<
-      [
-        Route.Route<
-          "GET",
-          "text/plain",
-          Route.RouteHandler<string, never, TestService>
-        >,
-      ]
-    >
-    Function.satisfies<Expected>()(routes)
-
-    t.expect(routes.set.length).toBe(1)
-  })
-
-  t.it("propagates error from function returning Effect.gen", () => {
-    const routes = Route.text(() =>
-      Effect.gen(function*() {
-        const shouldFail = Math.random() > 0.5
-        if (shouldFail) {
-          return yield* Effect.fail(new TestError({ message: "failed" }))
-        }
-        return "ok"
-      })
-    )
-
-    type Expected = Route.RouteSet<
-      [
-        Route.Route<
-          "GET",
-          "text/plain",
-          Route.RouteHandler<string, TestError, never>
-        >,
-      ]
-    >
-    Function.satisfies<Expected>()(routes)
-
-    t.expect(routes.set.length).toBe(1)
   })
 })
