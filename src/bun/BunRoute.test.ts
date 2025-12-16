@@ -6,6 +6,7 @@ import * as Effect from "effect/Effect"
 import * as assert from "node:assert"
 import * as Route from "../Route.ts"
 import * as Router from "../Router.ts"
+import type { HttpMiddlewareFunction } from "../RouteSet_http.ts"
 import * as BunHttpServer from "./BunHttpServer.ts"
 import * as BunRoute from "./BunRoute.ts"
 import * as BunRouter from "./BunRouter.ts"
@@ -150,7 +151,7 @@ t.describe(`${BunRouter.routesFrom.name}`, () => {
         Route
           .get(Route.text("get"))
           .post(Route.text("post"))
-          .delete(Route.text("delete")),
+          .del(Route.text("delete")),
       ),
     )
 
@@ -237,7 +238,7 @@ t.describe("Route.layer httpMiddleware", () => {
         const response = yield* app
         return HttpServerResponse.setHeader(response, "X-Layer-Applied", "true")
       })
-    ) as Route.HttpMiddlewareFunction
+    ) as HttpMiddlewareFunction
 
     const router = Router
       .use(Route.http(addHeader))
@@ -256,7 +257,7 @@ t.describe("Route.layer httpMiddleware", () => {
         const response = yield* app
         return HttpServerResponse.setHeader(response, "X-Layer-Applied", "true")
       })
-    ) as Route.HttpMiddlewareFunction
+    ) as HttpMiddlewareFunction
 
     const router = Router
       .mount("/outside", Route.text("outside content"))
@@ -278,14 +279,14 @@ t.describe("Route.layer httpMiddleware", () => {
         const response = yield* app
         return HttpServerResponse.setHeader(response, "X-First", "1")
       })
-    ) as Route.HttpMiddlewareFunction
+    ) as HttpMiddlewareFunction
 
     const addHeader2 = HttpMiddleware.make((app) =>
       Effect.gen(function*() {
         const response = yield* app
         return HttpServerResponse.setHeader(response, "X-Second", "2")
       })
-    ) as Route.HttpMiddlewareFunction
+    ) as HttpMiddlewareFunction
 
     const router = Router
       .use(Route.http(addHeader1).http(addHeader2))
@@ -304,14 +305,14 @@ t.describe("Route.layer httpMiddleware", () => {
         const response = yield* app
         return HttpServerResponse.setHeader(response, "X-Outer", "outer")
       })
-    ) as Route.HttpMiddlewareFunction
+    ) as HttpMiddlewareFunction
 
     const innerHeader = HttpMiddleware.make((app) =>
       Effect.gen(function*() {
         const response = yield* app
         return HttpServerResponse.setHeader(response, "X-Inner", "inner")
       })
-    ) as Route.HttpMiddlewareFunction
+    ) as HttpMiddlewareFunction
 
     const router = Router
       .use(Route.http(outerHeader))

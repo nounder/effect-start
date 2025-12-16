@@ -7,6 +7,7 @@ import * as BunHttpServer from "./bun/BunHttpServer.ts"
 import * as Route from "./Route.ts"
 import * as RouteHttp from "./RouteHttp.ts"
 import * as Router from "./Router.ts"
+import * as RouteSet from "./RouteSet.ts"
 
 function runWithBunHttpServer<A, E>(
   effect: Effect.Effect<A, E, BunHttpServer.BunHttpServer>,
@@ -116,12 +117,14 @@ t.describe("Router.matchMedia", () => {
 
   t.describe("fallback behavior", () => {
     t.it("returns wildcard route when no specific match", () => {
-      const routes = Route.make({
-        method: "GET",
-        media: "*",
-        handler: () => Effect.succeed("raw"),
-        schemas: {},
-      }).json({ data: "json" })
+      const routes = Route
+        .make({
+          method: "GET",
+          media: "*",
+          handler: () => Effect.succeed("raw"),
+          schemas: {},
+        })
+        .json({ data: "json" })
       const result = Router.matchMedia(routes, "image/png")
       t.expect(result?.media).toBe("*")
     })
@@ -133,7 +136,7 @@ t.describe("Router.matchMedia", () => {
     })
 
     t.it("returns undefined for empty routes", () => {
-      const routes = Route.makeSet()
+      const routes = RouteSet.make()
       const result = Router.matchMedia(routes, "application/json")
       t.expect(result).toBeUndefined()
     })
@@ -155,6 +158,9 @@ t.describe("RouteHttp.toWebHandler", () => {
   t.describe("basic route rendering", () => {
     t.it("renders text route", async () => {
       const routes = Route.text("Hello World")
+      const routes2 = Route.text(function*() {
+        return "Hello World"
+      })
 
       const webHandler = RouteHttp.toWebHandler(routes)
       const response = await webHandler(new Request("http://localhost/test"))
@@ -211,7 +217,7 @@ t.describe("RouteHttp.toWebHandler", () => {
     })
 
     t.it("returns 406 when routes are empty", async () => {
-      const routes = Route.makeSet()
+      const routes = RouteSet.make()
       const webHandler = RouteHttp.toWebHandler(routes)
       const response = await webHandler(new Request("http://localhost/test"))
 

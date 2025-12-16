@@ -6,6 +6,7 @@ import * as Route from "../Route.ts"
 import * as RouteHttp from "../RouteHttp.ts"
 import * as Router from "../Router.ts"
 import * as RouterPattern from "../RouterPattern.ts"
+import { isHttpMiddlewareHandler } from "../RouteSet_http.ts"
 import * as BunHttpServer from "./BunHttpServer.ts"
 import {
   type BunHandler,
@@ -59,7 +60,7 @@ export function routesFrom(
       // Group content routes by method
       const byMethod = new Map<Route.RouteMethod, Route.Route.Default[]>()
       for (const route of routeSet.set) {
-        if (Route.isHttpMiddlewareHandler(route.handler)) continue
+        if (isHttpMiddlewareHandler(route.handler)) continue
         const existing = byMethod.get(route.method) ?? []
         existing.push(route)
         byMethod.set(route.method, existing)

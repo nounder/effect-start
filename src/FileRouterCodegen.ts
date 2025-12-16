@@ -8,6 +8,7 @@ import * as FileRouter from "./FileRouter.ts"
 import * as FileRouterPattern from "./FileRouterPattern.ts"
 import * as Route from "./Route.ts"
 import * as Router from "./Router.ts"
+import * as RouteSet from "./RouteSet.ts"
 import * as SchemaExtra from "./SchemaExtra.ts"
 
 export function validateRouteModule(
@@ -19,7 +20,7 @@ export function validateRouteModule(
   if (!("default" in module)) {
     return false
   }
-  return Route.isRouteSet(module.default)
+  return RouteSet.isRouteSet(module.default)
 }
 
 export function generatePathParamsSchema(

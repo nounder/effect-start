@@ -4,6 +4,7 @@ import * as Effect from "effect/Effect"
 import type * as Types from "effect/Types"
 import * as Route from "./Route.ts"
 import * as Router from "./Router.ts"
+import * as RouteSet from "./RouteSet.ts"
 
 class Greeting extends Effect.Tag("Greeting")<Greeting, {
   greet(): string
@@ -106,20 +107,23 @@ t.it("infers context & error types from HttpMiddleware", () => {
     : false = true
 })
 
-t.it("Router.use with Route.http(HttpServerResponse) infers never types", () => {
-  const httpMiddleware = Route.http(HttpServerResponse.text("static"))
+t.it(
+  "Router.use with Route.http(HttpServerResponse) infers never types",
+  () => {
+    const httpMiddleware = Route.http(HttpServerResponse.text("static"))
 
-  const router = Router
-    .use(httpMiddleware)
-    .mount("/", Route.text("hello"))
+    const router = Router
+      .use(httpMiddleware)
+      .mount("/", Route.text("hello"))
 
-  t.expect(Object.keys(router.mounts)).toHaveLength(1)
+    t.expect(Object.keys(router.mounts)).toHaveLength(1)
 
-  const _check: Types.Equals<
-    typeof router,
-    Router.Router<never, never>
-  > = true
-})
+    const _check: Types.Equals<
+      typeof router,
+      Router.Router<never, never>
+    > = true
+  },
+)
 
 t.it("infers and unions context types from routes", () => {
   const routerSingle = Router
@@ -299,7 +303,7 @@ t.describe("Router.get", () => {
   t.it("matches with media filter", () => {
     const router = Router.mount(
       "/content",
-      Route.merge(
+      RouteSet.merge(
         Route.text("plain"),
         Route.html("<div>html</div>"),
       ),
@@ -333,8 +337,8 @@ t.describe("Router.get", () => {
   t.it(
     "wildcard media uses content negotiation priority (json > text > html)",
     () => {
-      const routes = Route.merge(
-        Route.merge(Route.html("<div>html</div>"), Route.text("plain")),
+      const routes = RouteSet.merge(
+        RouteSet.merge(Route.html("<div>html</div>"), Route.text("plain")),
         Route.json({ data: "json" }),
       )
       const router = Router.mount("/content", routes)
@@ -348,7 +352,7 @@ t.describe("Router.get", () => {
   )
 
   t.it("wildcard media returns text when json not available", () => {
-    const routes = Route.merge(
+    const routes = RouteSet.merge(
       Route.html("<div>html</div>"),
       Route.text("plain"),
     )

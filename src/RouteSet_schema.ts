@@ -1,28 +1,17 @@
 import * as Schema from "effect/Schema"
-import type {
-  OneOrMany,
-  Route,
-  RouteSchemas,
-  RouteSet,
-} from "./Route.ts"
-import {
-  isRouteSet,
-  makeSet,
-} from "./Route.ts"
+import type * as Route from "./Route.ts"
+import * as RouteSet from "./RouteSet.ts"
 
-type RouteModule = typeof import("./Route.ts")
-
-type Self =
-  | RouteSet.Default
-  | RouteSet<Route.Empty, RouteSchemas>
-  | RouteModule
-  | undefined
+/**
+ * Helper type for a value that can be a single item or an array.
+ */
+type OneOrMany<T> = T | T[] | readonly T[]
 
 /**
  * Schema type that accepts string-encoded input.
  * Used for path parameters which are always strings.
  */
-export type StringEncodedSchema =
+type StringEncodedSchema =
   | Schema.Schema<any, string, any>
   | Schema.PropertySignature.All
 
@@ -30,34 +19,33 @@ export type StringEncodedSchema =
  * Schema type that accepts string or string array encoded input.
  * Used for URL params and headers which can have multiple values.
  */
-export type StringOrArrayEncodedSchema =
+type StringOrArrayEncodedSchema =
   | Schema.Schema<any, OneOrMany<string>, any>
   | Schema.PropertySignature.All
 
 /**
  * Helper type to extract the Encoded type from a Schema.
  */
-export type GetEncoded<S> = S extends { Encoded: infer E } ? E : never
+type GetEncoded<S> = S extends { Encoded: infer E } ? E : never
 
 /**
  * Check if a schema's encoded type is string.
  */
-export type IsStringEncoded<S> = S extends Schema.PropertySignature.All ? true
+type IsStringEncoded<S> = S extends Schema.PropertySignature.All ? true
   : GetEncoded<S> extends string ? true
   : false
 
 /**
  * Check if a schema's encoded type is string or string array.
  */
-export type IsStringOrArrayEncoded<S> = S extends Schema.PropertySignature.All
-  ? true
+type IsStringOrArrayEncoded<S> = S extends Schema.PropertySignature.All ? true
   : GetEncoded<S> extends OneOrMany<string> ? true
   : false
 
 /**
  * Validate that all fields have string-encoded schemas.
  */
-export type ValidateStringEncodedFields<T extends Record<PropertyKey, any>> = {
+type ValidateStringEncodedFields<T extends Record<PropertyKey, any>> = {
   [K in keyof T]: IsStringEncoded<T[K]> extends true ? T[K]
     : StringEncodedSchema
 }
@@ -65,7 +53,7 @@ export type ValidateStringEncodedFields<T extends Record<PropertyKey, any>> = {
 /**
  * Validate that all fields have string or array-encoded schemas.
  */
-export type ValidateStringOrArrayEncodedFields<
+type ValidateStringOrArrayEncodedFields<
   T extends Record<PropertyKey, any>,
 > = {
   [K in keyof T]: IsStringOrArrayEncoded<T[K]> extends true ? T[K]
@@ -77,7 +65,7 @@ export type ValidateStringOrArrayEncodedFields<
  * - Converts keys from PascalCase to camelCase
  * - Decodes schema types to their Type representation
  */
-export type DecodeRouteSchemas<Schemas extends RouteSchemas> =
+export type DecodeRouteSchemas<Schemas extends Route.RouteSchemas> =
   & (Schemas["PathParams"] extends Schema.Struct<any> ? {
       pathParams: Schema.Schema.Type<Schemas["PathParams"]>
     }
@@ -101,8 +89,8 @@ export type DecodeRouteSchemas<Schemas extends RouteSchemas> =
  * For Payload, Success, and Error: creates Schema.Union.
  */
 export type MergeSchemas<
-  A extends RouteSchemas,
-  B extends RouteSchemas,
+  A extends Route.RouteSchemas,
+  B extends Route.RouteSchemas,
 > = {
   readonly PathParams: [A["PathParams"], B["PathParams"]] extends [
     Schema.Struct<infer AFields>,
@@ -154,21 +142,21 @@ export type MergeSchemas<
  * For Payload, Success, and Error: creates Schema.Union.
  */
 export function mergeSchemas<
-  A extends RouteSchemas,
-  B extends RouteSchemas,
+  A extends Route.RouteSchemas,
+  B extends Route.RouteSchemas,
 >(
   a: A,
   b: B,
 ): MergeSchemas<A, B> {
   const result: any = {}
 
-  const structKeys: Array<keyof RouteSchemas> = [
+  const structKeys: Array<keyof Route.RouteSchemas> = [
     "PathParams",
     "UrlParams",
     "Headers",
   ]
 
-  const unionKeys: Array<keyof RouteSchemas> = [
+  const unionKeys: Array<keyof Route.RouteSchemas> = [
     "Payload",
     "Success",
     "Error",
@@ -203,17 +191,17 @@ export function mergeSchemas<
   return result
 }
 
-export function makeSingleStringSchemaModifier<
+export function makeSingleSchemaModifier<
   K extends string,
 >(key: K) {
   return function<
-    S extends Self,
+    S extends Route.Self,
     const Fields extends Record<PropertyKey, any>,
   >(
     this: S,
     fieldsOrSchema: Fields extends Schema.Struct<any> ? Fields
       : ValidateStringEncodedFields<Fields>,
-  ): S extends RouteSet<infer Routes, infer Schemas> ? RouteSet<
+  ): S extends Route.Set<infer Routes, infer Schemas> ? Route.Set<
       Routes,
       & Schemas
       & {
@@ -223,7 +211,7 @@ export function makeSingleStringSchemaModifier<
           >
       }
     >
-    : RouteSet<
+    : Route.Set<
       [],
       {
         [P in K]: Fields extends Schema.Struct<infer F> ? Schema.Struct<F>
@@ -233,19 +221,19 @@ export function makeSingleStringSchemaModifier<
       }
     >
   {
-    const baseRoutes = isRouteSet(this)
+    const baseRoutes = RouteSet.isRouteSet(this)
       ? this.set
       : [] as const
-    const baseSchema = isRouteSet(this)
+    const baseSchema = RouteSet.isRouteSet(this)
       ? this.schema
-      : {} as RouteSchemas.Empty
+      : {} as Route.RouteSchemas.Empty
 
     const schema = Schema.isSchema(fieldsOrSchema)
       ? fieldsOrSchema
       : Schema.Struct(fieldsOrSchema as Schema.Struct.Fields)
 
-    return makeSet(
-      baseRoutes as ReadonlyArray<Route.Default>,
+    return RouteSet.make(
+      baseRoutes as ReadonlyArray<Route.Route.Default>,
       {
         ...baseSchema,
         [key]: schema,
@@ -254,17 +242,17 @@ export function makeSingleStringSchemaModifier<
   }
 }
 
-export function makeMultiStringSchemaModifier<
+export function makeMultiSchemaModifier<
   K extends string,
 >(key: K) {
   return function<
-    S extends Self,
+    S extends Route.Self,
     const Fields extends Record<PropertyKey, any>,
   >(
     this: S,
     fieldsOrSchema: Fields extends Schema.Struct<any> ? Fields
       : ValidateStringOrArrayEncodedFields<Fields>,
-  ): S extends RouteSet<infer Routes, infer Schemas> ? RouteSet<
+  ): S extends Route.Set<infer Routes, infer Schemas> ? Route.Set<
       Routes,
       & Schemas
       & {
@@ -274,7 +262,7 @@ export function makeMultiStringSchemaModifier<
           >
       }
     >
-    : RouteSet<
+    : Route.Set<
       [],
       {
         [P in K]: Fields extends Schema.Struct<infer F> ? Schema.Struct<F>
@@ -284,19 +272,19 @@ export function makeMultiStringSchemaModifier<
       }
     >
   {
-    const baseRoutes = isRouteSet(this)
+    const baseRoutes = RouteSet.isRouteSet(this)
       ? this.set
       : [] as const
-    const baseSchema = isRouteSet(this)
+    const baseSchema = RouteSet.isRouteSet(this)
       ? this.schema
-      : {} as RouteSchemas.Empty
+      : {} as Route.RouteSchemas.Empty
 
     const schema = Schema.isSchema(fieldsOrSchema)
       ? fieldsOrSchema
       : Schema.Struct(fieldsOrSchema as Schema.Struct.Fields)
 
-    return makeSet(
-      baseRoutes as ReadonlyArray<Route.Default>,
+    return RouteSet.make(
+      baseRoutes as ReadonlyArray<Route.Route.Default>,
       {
         ...baseSchema,
         [key]: schema,
@@ -309,12 +297,12 @@ export function makeUnionSchemaModifier<
   K extends "Payload" | "Success" | "Error",
 >(key: K) {
   return function<
-    S extends Self,
+    S extends Route.Self,
     Fields extends Schema.Struct.Fields | Schema.Schema.Any,
   >(
     this: S,
     fieldsOrSchema: Fields,
-  ): S extends RouteSet<infer Routes, infer Schemas> ? RouteSet<
+  ): S extends Route.Set<infer Routes, infer Schemas> ? Route.Set<
       Routes,
       & Schemas
       & {
@@ -323,7 +311,7 @@ export function makeUnionSchemaModifier<
           : never
       }
     >
-    : RouteSet<
+    : Route.Set<
       [],
       {
         [P in K]: Fields extends Schema.Schema.Any ? Fields
@@ -332,19 +320,19 @@ export function makeUnionSchemaModifier<
       }
     >
   {
-    const baseRoutes = isRouteSet(this)
+    const baseRoutes = RouteSet.isRouteSet(this)
       ? this.set
       : [] as const
-    const baseSchema = isRouteSet(this)
+    const baseSchema = RouteSet.isRouteSet(this)
       ? this.schema
-      : {} as RouteSchemas.Empty
+      : {} as Route.RouteSchemas.Empty
 
     const schema = Schema.isSchema(fieldsOrSchema)
       ? fieldsOrSchema
       : Schema.Struct(fieldsOrSchema as Schema.Struct.Fields)
 
-    return makeSet(
-      baseRoutes as ReadonlyArray<Route.Default>,
+    return RouteSet.make(
+      baseRoutes as ReadonlyArray<Route.Route.Default>,
       {
         ...baseSchema,
         [key]: schema,

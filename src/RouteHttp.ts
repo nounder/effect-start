@@ -9,6 +9,8 @@ import * as Hyper from "./Hyper.ts"
 import * as HyperHtml from "./HyperHtml.ts"
 import * as Route from "./Route.ts"
 import * as Router from "./Router.ts"
+import * as RouteSet from "./RouteSet.ts"
+import { isHttpMiddlewareHandler } from "./RouteSet_http.ts"
 
 export function render<E, R>(
   route: Route.Route<any, any, Route.RouteHandler<any, E, R>, any>,
@@ -43,12 +45,15 @@ export function render<E, R>(
 }
 
 export const toHttpApp = (
-  routeSet: Route.RouteSet.Instance<ReadonlyArray<Route.Route.Default>, Route.RouteSchemas>,
+  routeSet: RouteSet.Instance<
+    ReadonlyArray<Route.Route.Default>,
+    Route.RouteSchemas
+  >,
 ): HttpApp.Default<any, any> => {
   const routes = routeSet.set
 
   const httpMiddleware = routes.filter((r) =>
-    Route.isHttpMiddlewareHandler(r.handler)
+    isHttpMiddlewareHandler(r.handler)
   )
 
   let app: HttpApp.Default<any, any> = Effect.gen(function*() {
@@ -81,14 +86,20 @@ export const toWebHandlerRuntime = <R>(
   runtime: Runtime.Runtime<R>,
 ) =>
 (
-  routeSet: Route.RouteSet.Instance<ReadonlyArray<Route.Route.Default>, Route.RouteSchemas>,
-  middlewareRouteSet?: Route.RouteSet.Instance<ReadonlyArray<Route.Route.Default>, Route.RouteSchemas>,
+  routeSet: RouteSet.Instance<
+    ReadonlyArray<Route.Route.Default>,
+    Route.RouteSchemas
+  >,
+  middlewareRouteSet?: RouteSet.Instance<
+    ReadonlyArray<Route.Route.Default>,
+    Route.RouteSchemas
+  >,
 ): HttpUtils.FetchHandler => {
   let app = toHttpApp(routeSet)
 
   if (middlewareRouteSet) {
     const httpMiddleware = middlewareRouteSet.set.filter((r) =>
-      Route.isHttpMiddlewareHandler(r.handler)
+      isHttpMiddlewareHandler(r.handler)
     )
 
     for (const mw of [...httpMiddleware].reverse()) {

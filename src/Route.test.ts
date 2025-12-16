@@ -10,6 +10,9 @@ import * as Schema from "effect/Schema"
 import * as Types from "effect/Types"
 import * as Hyper from "./Hyper.ts"
 import * as Route from "./Route.ts"
+import * as RouteSet from "./RouteSet.ts"
+import { isHttpMiddlewareHandler } from "./RouteSet_http.ts"
+import * as Values from "./Values.ts"
 
 class Greeting extends Effect.Tag("Greeting")<Greeting, {
   greet(): string
@@ -49,7 +52,7 @@ t.it("types default routes", () => {
         ),
     )
 
-  type Expected = Route.RouteSet<[
+  type Expected = Route.Set<[
     Route.Route<"GET", "text/plain">,
     Route.Route<"GET", "text/html">,
   ]>
@@ -92,7 +95,7 @@ t.it("types GET & POST routes", () => {
       ),
     )
 
-  type Expected = Route.RouteSet<[
+  type Expected = Route.Set<[
     Route.Route<"GET", "text/plain">,
     Route.Route<"GET", "text/html">,
     Route.Route<"POST", "application/json">,
@@ -117,7 +120,7 @@ t.it("schemaPathParams adds schema to RouteSet", () => {
     readonly PathParams: typeof IdSchema
   }
 
-  type Expected = Route.RouteSet<
+  type Expected = Route.Set<
     [Route.Route<"GET", "text/plain", any, ExpectedSchemas>],
     ExpectedSchemas
   >
@@ -140,7 +143,7 @@ t.it("schemaPathParams accepts struct fields directly", () => {
     }>
   }
 
-  type Expected = Route.RouteSet<
+  type Expected = Route.Set<
     [Route.Route<"GET", "text/plain", any, ExpectedSchemas>],
     ExpectedSchemas
   >
@@ -185,7 +188,7 @@ t.it("schemaPayload propagates to all routes", () => {
     readonly Payload: typeof PayloadSchema
   }
 
-  type Expected = Route.RouteSet<
+  type Expected = Route.Set<
     [
       Route.Route<"GET", "text/plain", any, ExpectedSchemas>,
       Route.Route<"POST", "text/plain", any, ExpectedSchemas>,
@@ -370,7 +373,7 @@ t.it("schemaSuccess and schemaError are stored in RouteSet", () => {
     readonly Error: typeof ErrorSchema
   }
 
-  type Expected = Route.RouteSet<
+  type Expected = Route.Set<
     [Route.Route<"GET", "text/plain", any, ExpectedSchemas>],
     ExpectedSchemas
   >
@@ -423,7 +426,7 @@ t.it("all schema methods work together", () => {
     readonly Headers: typeof HeadersSchema
   }
 
-  type Expected = Route.RouteSet<
+  type Expected = Route.Set<
     [Route.Route<"GET", "text/plain", any, ExpectedSchemas>],
     ExpectedSchemas
   >
@@ -448,7 +451,7 @@ t.it("schemas merge when RouteSet and Route both define same schema", () => {
         .text(Effect.succeed("hello")),
     )
 
-  type Expected = Route.RouteSet<
+  type Expected = Route.Set<
     [
       Route.Route<
         "GET",
@@ -495,7 +498,7 @@ t.describe(`${Route.text}`, () => {
     const routes = Route.text("static response")
 
     Function.satisfies<
-      Route.RouteSet<
+      Route.Set<
         [
           Route.Route<
             "GET",
@@ -511,7 +514,7 @@ t.describe(`${Route.text}`, () => {
     const routes = Route.text(Effect.succeed("effect response"))
 
     Function.satisfies<
-      Route.RouteSet<
+      Route.Set<
         [
           Route.Route<
             "GET",
@@ -536,7 +539,7 @@ t.describe(`${Route.text}`, () => {
     })
 
     Function.satisfies<
-      Route.RouteSet<
+      Route.Set<
         [
           Route.Route<
             "GET",
@@ -554,7 +557,9 @@ t.describe(`${Route.text}`, () => {
       .html(Effect.succeed("<div>world</div>"))
       .json({ data: "test" })
 
-    t.expect(Route.isRouteSet(routes)).toBe(true)
+    console.log("wtf is this", routes)
+
+    t.expect(RouteSet.isRouteSet(routes)).toBe(true)
     t.expect(routes.set.length).toBe(3)
     t.expect(routes.set[0]!.media).toBe("text/plain")
     t.expect(routes.set[1]!.media).toBe("text/html")
@@ -587,7 +592,7 @@ t.it("context.next() returns correct type for json handler", () => {
   Route.json(function*(context) {
     const next = context.next()
     type NextType = Effect.Effect.Success<typeof next>
-    type _check = [NextType] extends [Route.JsonValue] ? true : false
+    type _check = [NextType] extends [Values.Json] ? true : false
     const _assert: _check = true
     return { message: "hello" }
   })
@@ -662,7 +667,7 @@ t.it("schemas don't leak between independent route chains", () => {
     .schemaPathParams(Schema2)
     .text(Effect.succeed("route2"))
 
-  type Expected1 = Route.RouteSet<
+  type Expected1 = Route.Set<
     [
       Route.Route<
         "GET",
@@ -674,7 +679,7 @@ t.it("schemas don't leak between independent route chains", () => {
     { readonly PathParams: typeof Schema1 }
   >
 
-  type Expected2 = Route.RouteSet<
+  type Expected2 = Route.Set<
     [
       Route.Route<
         "GET",
@@ -733,7 +738,7 @@ t.it("multiple routes in RouteSet each get the schema", () => {
     readonly PathParams: typeof PathSchema
   }
 
-  type Expected = Route.RouteSet<
+  type Expected = Route.Set<
     [
       Route.Route<"GET", "text/plain", any, ExpectedSchemas>,
       Route.Route<"GET", "text/html", any, ExpectedSchemas>,
@@ -783,7 +788,7 @@ t.it("method modifiers preserve and merge schemas", () => {
         .text(Effect.succeed("created")),
     )
 
-  type Expected = Route.RouteSet<
+  type Expected = Route.Set<
     [
       Route.Route<
         "POST",
@@ -846,7 +851,7 @@ t.it("method modifiers preserve proper types when nesting schemas", () => {
     userId: typeof Schema.String
   }>
 
-  type Expected = Route.RouteSet<
+  type Expected = Route.Set<
     [
       Route.Route<"GET", "text/plain", any, {
         readonly PathParams: MergedPathParams
@@ -915,7 +920,7 @@ t.describe(`${Route.schemaUrlParams}`, () => {
       }>
     }
 
-    type Expected = Route.RouteSet<
+    type Expected = Route.Set<
       [Route.Route<"GET", "text/html", any, ExpectedSchemas>],
       ExpectedSchemas
     >
@@ -1017,7 +1022,7 @@ t.describe(`${Route.http}`, () => {
     )
 
     Function.satisfies<
-      Route.RouteSet<
+      Route.Set<
         [
           Route.Route<
             "*",
@@ -1062,7 +1067,7 @@ t.describe(`${Route.http}`, () => {
       })
 
     Function.satisfies<
-      Route.RouteSet<
+      Route.Set<
         [
           Route.Route<
             "*",
@@ -1106,11 +1111,11 @@ t.describe(`${Route.http}`, () => {
       .html(Effect.succeed("<div>test</div>"))
       .json({ data: "test" })
 
-    t.expect(Route.isRouteSet(routes)).toBe(true)
+    t.expect(RouteSet.isRouteSet(routes)).toBe(true)
     t.expect(routes.set.length).toBe(3)
     t.expect(routes.set[0]!.media).toBe("*")
 
-    t.expect(Route.isHttpMiddlewareHandler(routes.set[0]!.handler)).toBe(true)
+    t.expect(isHttpMiddlewareHandler(routes.set[0]!.handler)).toBe(true)
     t.expect(routes.set[1]!.media).toBe("text/html")
     t.expect(routes.set[2]!.media).toBe("application/json")
   })
@@ -1158,12 +1163,12 @@ t.describe(`${Route.overlaps}`, () => {
   })
 })
 
-t.describe(`${Route.merge}`, () => {
+t.describe(`${RouteSet.merge}`, () => {
   t.it("combines routes into a single RouteSet", () => {
     const textRoute = Route.text("hello")
     const htmlRoute = Route.html(Effect.succeed("<div>world</div>"))
 
-    const merged = Route.merge(textRoute, htmlRoute)
+    const merged = RouteSet.merge(textRoute, htmlRoute)
 
     t.expect(merged.set).toHaveLength(2)
     t.expect(merged.set[0].media).toBe("text/plain")
@@ -1174,9 +1179,9 @@ t.describe(`${Route.merge}`, () => {
     const textRoute = Route.text("hello")
     const htmlRoute = Route.html(Effect.succeed("<div>world</div>"))
 
-    const merged = Route.merge(textRoute, htmlRoute)
+    const merged = RouteSet.merge(textRoute, htmlRoute)
 
-    type Expected = Route.RouteSet<
+    type Expected = Route.Set<
       readonly [
         Route.Route<
           "GET",
@@ -1203,7 +1208,7 @@ t.describe(`${Route.merge}`, () => {
       .schemaUrlParams({ page: Schema.NumberFromString })
       .html(Effect.succeed("<div>b</div>"))
 
-    const merged = Route.merge(routeA, routeB)
+    const merged = RouteSet.merge(routeA, routeB)
 
     type MergedSchemas = typeof merged.schema
 
@@ -1231,7 +1236,7 @@ t.describe(`${Route.merge}`, () => {
       })
       const content = Route.html("<div>content</div>")
 
-      const merged = Route.merge(wrapper, content)
+      const merged = RouteSet.merge(wrapper, content)
       t.expect(merged.set).toHaveLength(2)
     },
   )
@@ -1245,7 +1250,7 @@ t.describe(`${Route.merge}`, () => {
       HttpMiddleware.make(() => HttpServerResponse.empty()),
     )
 
-    const merged = Route.merge(middleware1, middleware2)
+    const merged = RouteSet.merge(middleware1, middleware2)
     t.expect(merged.set).toHaveLength(2)
   })
 })

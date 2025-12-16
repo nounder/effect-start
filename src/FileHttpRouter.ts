@@ -10,6 +10,11 @@ import * as Route from "./Route.ts"
 import * as RouteHttp from "./RouteHttp.ts"
 import * as Router from "./Router.ts"
 import * as RouterPattern from "./RouterPattern.ts"
+import * as RouteSet from "./RouteSet.ts"
+import {
+  type HttpMiddlewareFunction,
+  isHttpMiddlewareHandler,
+} from "./RouteSet_http.ts"
 
 /**
  * Combines Effect error channel from a record of effects.
@@ -132,7 +137,7 @@ export function make<
 
           const layerRouteSets = layerModules
             .map((mod: any) => mod.default)
-            .filter(Route.isRouteSet)
+            .filter(RouteSet.isRouteSet)
 
           return {
             path: route.path,
@@ -164,12 +169,12 @@ export function make<
         })
 
         // Extract HTTP middleware routes
-        const allMiddleware: Route.HttpMiddlewareFunction[] = []
+        const allMiddleware: HttpMiddlewareFunction[] = []
         for (const layerRouteSet of layerRouteSets) {
           for (const layerRoute of layerRouteSet.set) {
-            if (Route.isHttpMiddlewareHandler(layerRoute.handler)) {
+            if (isHttpMiddlewareHandler(layerRoute.handler)) {
               allMiddleware.push(
-                layerRoute.handler as unknown as Route.HttpMiddlewareFunction,
+                layerRoute.handler as unknown as HttpMiddlewareFunction,
               )
             }
           }

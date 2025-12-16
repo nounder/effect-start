@@ -3,6 +3,11 @@ import * as Pipeable from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import * as ContentNegotiation from "./ContentNegotiation.ts"
 import * as Route from "./Route.ts"
+import * as RouteSet from "./RouteSet.ts"
+import {
+  isHttpMiddlewareHandler,
+  type IsHttpMiddlewareRouteSet,
+} from "./RouteSet_http.ts"
 
 type RouterModule = typeof import("./Router.ts")
 
@@ -25,8 +30,6 @@ const TypeId: unique symbol = Symbol.for(
   "effect-start/Router",
 )
 
-const RouteSetTypeId: unique symbol = Symbol.for("effect-start/RouteSet")
-
 type Methods = {
   use: typeof use
   mount: typeof mount
@@ -37,9 +40,9 @@ export interface Router<
   out R = never,
 > extends Pipeable.Pipeable, Methods {
   [TypeId]: typeof TypeId
-  [RouteSetTypeId]: typeof RouteSetTypeId
-  readonly mounts: Record<`/${string}`, Route.RouteSet.Default>
-  readonly layer: Route.RouteSet.Default
+  [RouteSet.TypeId]: typeof RouteSet.TypeId
+  readonly mounts: Record<`/${string}`, RouteSet.Default>
+  readonly layer: RouteSet.Default
   readonly set: Route.Route.Default[]
   readonly schema: Route.RouteSchemas
   readonly _E: () => E
@@ -54,13 +57,13 @@ export namespace Router {
 
 const Proto: Methods & {
   [TypeId]: typeof TypeId
-  [RouteSetTypeId]: typeof RouteSetTypeId
+  [RouteSet.TypeId]: typeof RouteSet.TypeId
   pipe: Pipeable.Pipeable["pipe"]
   set: Route.Route.Default[]
   schema: Route.RouteSchemas
 } = {
   [TypeId]: TypeId,
-  [RouteSetTypeId]: RouteSetTypeId,
+  [RouteSet.TypeId]: RouteSet.TypeId,
 
   pipe() {
     return Pipeable.pipeArguments(this, arguments)
@@ -83,13 +86,13 @@ const Proto: Methods & {
   mount,
 }
 
-type ExtractRouteSetError<T> = T extends Route.RouteSet<infer Routes, any>
+type ExtractRouteSetError<T> = T extends RouteSet.RouteSet<infer Routes, any>
   ? Routes[number] extends Route.Route<any, any, infer H, any>
     ? H extends Route.RouteHandler<any, infer E, any> ? E : never
   : never
   : never
 
-type ExtractRouteSetContext<T> = T extends Route.RouteSet<infer Routes, any>
+type ExtractRouteSetContext<T> = T extends RouteSet.RouteSet<infer Routes, any>
   ? Routes[number] extends Route.Route<any, any, infer H, any>
     ? H extends Route.RouteHandler<any, any, infer R> ? R : never
   : never
@@ -102,7 +105,7 @@ function findMatchingMiddlewareRoutes(
   const matchingRoutes: Route.Route.Default[] = []
   for (const mwRoute of middlewareRoutes) {
     // Skip HTTP middleware routes - they're applied at HttpApp level, not route handler level
-    if (Route.isHttpMiddlewareHandler(mwRoute.handler)) {
+    if (isHttpMiddlewareHandler(mwRoute.handler)) {
       continue
     }
     if (Route.overlaps(mwRoute, route)) {
@@ -171,22 +174,22 @@ function applyMiddlewareToRoute(
 }
 
 function applyMiddlewareToRouteSet(
-  routeSet: Route.RouteSet.Default,
-): Route.RouteSet.Default {
+  routeSet: RouteSet.Default,
+): RouteSet.Default {
   const routes = routeSet.set
 
   // Keep HTTP middleware routes unchanged (they're applied at HttpApp level)
   const httpMiddlewareRoutes = routes.filter((r) =>
-    Route.isHttpMiddlewareHandler(r.handler)
+    isHttpMiddlewareHandler(r.handler)
   )
 
   // Non-HTTP routes (candidates for middleware wrapping)
   const nonHttpRoutes = routes.filter((r) =>
-    !Route.isHttpMiddlewareHandler(r.handler)
+    !isHttpMiddlewareHandler(r.handler)
   )
 
   if (nonHttpRoutes.length <= 1) {
-    return Route.makeSet(
+    return RouteSet.make(
       [
         ...httpMiddlewareRoutes,
         ...nonHttpRoutes,
@@ -220,7 +223,7 @@ function applyMiddlewareToRouteSet(
   }
 
   if (middlewareRoutes.length === 0) {
-    return Route.makeSet(
+    return RouteSet.make(
       [
         ...httpMiddlewareRoutes,
         ...contentRoutes,
@@ -233,18 +236,18 @@ function applyMiddlewareToRouteSet(
     applyMiddlewareToRoute(route, middlewareRoutes)
   )
 
-  return Route.makeSet(
+  return RouteSet.make(
     [...httpMiddlewareRoutes, ...wrappedRoutes] as unknown as Route.Route.Tuple,
     routeSet.schema,
   )
 }
 
 export function make<E, R>(
-  mounts: Record<`/${string}`, Route.RouteSet.Default>,
-  layer: Route.RouteSet.Default = Route.makeSet(),
+  mounts: Record<`/${string}`, RouteSet.Default>,
+  layer: RouteSet.Default = RouteSet.make(),
 ): Router<E, R> {
   // Process each mount - apply route-level middleware from its RouteSet
-  const processedMounts: Record<`/${string}`, Route.RouteSet.Default> = {}
+  const processedMounts: Record<`/${string}`, RouteSet.Default> = {}
 
   for (const [path, routeSet] of Object.entries(mounts)) {
     if (routeSet.set.length > 0) {
@@ -273,25 +276,24 @@ export function use<
   Schemas extends Route.RouteSchemas,
 >(
   this: S,
-  routeSet:
-    Route.IsHttpMiddlewareRouteSet<Route.RouteSet<Routes, Schemas>> extends true
-      ? Route.RouteSet<Routes, Schemas>
-      : never,
+  routeSet: IsHttpMiddlewareRouteSet<RouteSet.RouteSet<Routes, Schemas>> extends
+    true ? RouteSet.RouteSet<Routes, Schemas>
+    : never,
 ): S extends Router<infer E, infer R> ? Router<
-    E | ExtractRouteSetError<Route.RouteSet<Routes, Schemas>>,
-    R | ExtractRouteSetContext<Route.RouteSet<Routes, Schemas>>
+    E | ExtractRouteSetError<RouteSet.RouteSet<Routes, Schemas>>,
+    R | ExtractRouteSetContext<RouteSet.RouteSet<Routes, Schemas>>
   >
   : Router<
-    ExtractRouteSetError<Route.RouteSet<Routes, Schemas>>,
-    ExtractRouteSetContext<Route.RouteSet<Routes, Schemas>>
+    ExtractRouteSetError<RouteSet.RouteSet<Routes, Schemas>>,
+    ExtractRouteSetContext<RouteSet.RouteSet<Routes, Schemas>>
   >
 {
   const router = isRouter(this)
     ? this
-    : make<never, never>({}, Route.makeSet())
+    : make<never, never>({}, RouteSet.make())
 
   // Merge new HttpMiddleware into existing layer
-  const newLayer = Route.merge(router.layer, routeSet)
+  const newLayer = RouteSet.merge(router.layer, routeSet)
 
   // Return new router with same mounts but updated layer
   return make(router.mounts, newLayer) as any
@@ -304,27 +306,27 @@ export function mount<
 >(
   this: S,
   path: `/${string}`,
-  routeSet: Route.RouteSet<Routes, Schemas>,
+  routeSet: RouteSet.RouteSet<Routes, Schemas>,
 ): S extends Router<infer E, infer R> ? Router<
-    E | ExtractRouteSetError<Route.RouteSet<Routes, Schemas>>,
-    R | ExtractRouteSetContext<Route.RouteSet<Routes, Schemas>>
+    E | ExtractRouteSetError<RouteSet.RouteSet<Routes, Schemas>>,
+    R | ExtractRouteSetContext<RouteSet.RouteSet<Routes, Schemas>>
   >
   : Router<
-    ExtractRouteSetError<Route.RouteSet<Routes, Schemas>>,
-    ExtractRouteSetContext<Route.RouteSet<Routes, Schemas>>
+    ExtractRouteSetError<RouteSet.RouteSet<Routes, Schemas>>,
+    ExtractRouteSetContext<RouteSet.RouteSet<Routes, Schemas>>
   >
 {
   const router = isRouter(this)
     ? this
-    : make<never, never>({}, Route.makeSet())
+    : make<never, never>({}, RouteSet.make())
 
   // Merge current layer (HttpMiddleware) with the routes being mounted
-  const mergedRouteSet = Route.merge(router.layer, routeSet)
+  const mergedRouteSet = RouteSet.merge(router.layer, routeSet)
 
   // Add to mounts (merge if path already exists)
   const existingRouteSet = router.mounts[path]
   const finalRouteSet = existingRouteSet
-    ? Route.merge(existingRouteSet, mergedRouteSet)
+    ? RouteSet.merge(existingRouteSet, mergedRouteSet)
     : mergedRouteSet
 
   return make(
@@ -374,13 +376,16 @@ export function get(
 }
 
 export function matchMedia(
-  routeSet: Route.RouteSet.Instance<ReadonlyArray<Route.Route.Default>, Route.RouteSchemas>,
+  routeSet: RouteSet.Instance<
+    ReadonlyArray<Route.Route.Default>,
+    Route.RouteSchemas
+  >,
   accept: string,
 ): Route.Route.Default | undefined {
   const routes = routeSet.set
 
   const contentRoutes = routes.filter((r) =>
-    !Route.isHttpMiddlewareHandler(r.handler)
+    !isHttpMiddlewareHandler(r.handler)
   )
 
   if (contentRoutes.length === 0) return undefined
