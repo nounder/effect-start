@@ -17,9 +17,9 @@
  * }
  */
 
-import type * as Hyper from "./Hyper.tsx"
+import type * as Hyper from "./Hyper.ts"
 import * as HyperNode from "./HyperNode.ts"
-import { JSX } from "./jsx"
+import type { JSX } from "../jsx.d.ts"
 import type * as JsxRuntime from "./jsx-runtime.ts"
 
 const EMPTY_TAGS = [

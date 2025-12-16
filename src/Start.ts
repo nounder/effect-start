@@ -8,7 +8,7 @@ import * as Function from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as BunHttpServer from "./bun/BunHttpServer.ts"
 import * as BunRuntime from "./bun/BunRuntime.ts"
-import * as NodeFileSystem from "./NodeFileSystem.ts"
+import * as NodeFileSystem from "./node/FileSystem.ts"
 import * as StartApp from "./StartApp.ts"
 
 export function layer<

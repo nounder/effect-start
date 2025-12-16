@@ -1,7 +1,7 @@
 import * as Data from "effect/Data"
 import * as Pipeable from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
-import * as ContentNegotiation from "./ContentNegotiation.ts"
+import * as ContentNegotiation from "../ContentNegotiation.ts"
 import * as Route from "./Route.ts"
 import * as RouteSet from "./RouteSet.ts"
 import {

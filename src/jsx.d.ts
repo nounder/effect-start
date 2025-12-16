@@ -1,4 +1,4 @@
-import * as HyperNode from "./HyperNode.ts"
+import * as HyperNode from "./hyper/HyperNode.ts"
 import type { DatastarAttributes } from "./x/datastar/jsx-datastar.ts"
 
 /**

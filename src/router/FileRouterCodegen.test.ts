@@ -9,10 +9,10 @@ import * as FileRouter from "./FileRouter.ts"
 import { parseRoute } from "./FileRouter.ts"
 import type { RouteHandle } from "./FileRouter.ts"
 import * as FileRouterCodegen from "./FileRouterCodegen.ts"
-import * as NodeFileSystem from "./NodeFileSystem.ts"
+import * as NodeFileSystem from "../node/FileSystem.ts"
 import * as Route from "./Route.ts"
-import * as SchemaExtra from "./SchemaExtra.ts"
-import * as TestLogger from "./testing/TestLogger.ts"
+import * as SchemaExtra from "../SchemaExtra.ts"
+import * as TestLogger from "../testing/TestLogger.ts"
 
 function createTempDirWithFiles(
   files: Record<string, string>,
@@ -920,7 +920,7 @@ export default Route.text("User")
             const fs = yield* FileSystem.FileSystem
             const schemaPath = path.resolve(
               import.meta.dirname,
-              "../node_modules/effect/Schema",
+              "../../node_modules/effect/Schema",
             )
             const routeContent = `import * as Route from "${
               path.resolve(import.meta.dirname, "./Route.ts")

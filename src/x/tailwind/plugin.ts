@@ -1,5 +1,5 @@
 import * as NPath from "node:path"
-import * as NodeUtils from "../../NodeUtils.ts"
+import * as NodeUtils from "../../node/Utils.ts"
 import * as TailwindPlugin from "./TailwindPlugin.ts"
 
 // Append `?dir=` to module identifier to pass custom directory to scan

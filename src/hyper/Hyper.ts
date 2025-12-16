@@ -10,8 +10,8 @@ import * as Option from "effect/Option"
 import * as Pipeable from "effect/Pipeable"
 import { YieldWrap } from "effect/Utils"
 import * as HyperHtml from "./HyperHtml.ts"
-import type { JSX } from "./jsx.d.ts"
-import { HyperHooks } from "./x/datastar/index.ts"
+import type { JSX } from "../jsx.d.ts"
+import { HyperHooks } from "../x/datastar/index.ts"
 
 const TypeId = Symbol.for("~hyper/TypeId")
 const LayoutTypeId = Symbol.for("~hyper/LayoutTypeId")

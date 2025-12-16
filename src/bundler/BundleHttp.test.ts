@@ -3,12 +3,12 @@ import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
 import * as t from "bun:test"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import IndexHtml from "../static/react-dashboard.html" with { type: "file" }
-import * as BunBundle from "./bun/BunBundle.ts"
+import IndexHtml from "../../static/react-dashboard.html" with { type: "file" }
+import * as BunBundle from "../bun/BunBundle.ts"
+import { effectFn } from "../testing"
+import * as TestHttpClient from "../testing/TestHttpClient.ts"
 import * as Bundle from "./Bundle.ts"
 import * as BundleHttp from "./BundleHttp.ts"
-import { effectFn } from "./testing"
-import * as TestHttpClient from "./testing/TestHttpClient.ts"
 
 const effect = effectFn(
   Layer.effect(

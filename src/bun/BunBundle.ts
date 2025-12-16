@@ -18,8 +18,8 @@ import * as NPath from "node:path"
 import type {
   BundleContext,
   BundleManifest,
-} from "../Bundle.ts"
-import * as Bundle from "../Bundle.ts"
+} from "../bundler/Bundle.ts"
+import * as Bundle from "../bundler/Bundle.ts"
 import * as FileSystemExtra from "../FileSystemExtra.ts"
 import { BunImportTrackerPlugin } from "./index.ts"
 

@@ -1,9 +1,9 @@
-import * as Hyper from "./Hyper.ts"
+import * as Hyper from "../hyper/Hyper.ts"
 import * as _handler from "./RouteSet_handler.ts"
 import * as _http from "./RouteSet_http.ts"
 import * as _method from "./RouteSet_method.ts"
 import * as _schema from "./RouteSet_schema.ts"
-import * as Values from "./Values.ts"
+import * as Values from "../Values.ts"
 
 export const schemaPathParams = _schema.makeSingleSchemaModifier("PathParams")
 export const schemaUrlParams = _schema.makeMultiSchemaModifier("UrlParams")

@@ -10,7 +10,7 @@
 import type {
   BundleEvent,
   BundleManifest,
-} from "../Bundle.ts"
+} from "../bundler/Bundle.ts"
 import { showBuildError } from "./Overlay.ts"
 import * as ScrollState from "./ScrollState.ts"
 

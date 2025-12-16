@@ -1,14 +1,16 @@
 /**
  * This file tests `@effect/platform/HttpRouter`, not our code.
  * Since Platform code is still unstable and we relay heavily on its
- * chaining/fallback behavior in `BundleHttp` & `FileHttpRouter`.
+ * chaining/fallback behavior in `BundleHttp`
  * We want to ensure the behavior doesn't change across versions.
  */
 import * as HttpRouter from "@effect/platform/HttpRouter"
 import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
 import * as t from "bun:test"
-import { effectFn } from "../src/testing"
-import * as TestHttpClient from "./testing/TestHttpClient.ts"
+import {
+  effectFn,
+  TestHttpClient,
+} from "../testing"
 
 const effect = effectFn()
 

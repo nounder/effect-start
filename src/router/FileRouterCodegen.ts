@@ -4,12 +4,10 @@ import * as Effect from "effect/Effect"
 import * as Function from "effect/Function"
 import * as Schema from "effect/Schema"
 import * as NPath from "node:path"
+import * as SchemaExtra from "../SchemaExtra.ts"
 import * as FileRouter from "./FileRouter.ts"
 import * as FileRouterPattern from "./FileRouterPattern.ts"
-import * as Route from "./Route.ts"
-import * as Router from "./Router.ts"
 import * as RouteSet from "./RouteSet.ts"
-import * as SchemaExtra from "./SchemaExtra.ts"
 
 export function validateRouteModule(
   module: unknown,

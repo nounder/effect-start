@@ -8,11 +8,11 @@ import * as Effect from "effect/Effect"
 import * as Function from "effect/Function"
 import * as Schema from "effect/Schema"
 import * as Types from "effect/Types"
-import * as Hyper from "./Hyper.ts"
+import * as Hyper from "../hyper/Hyper.ts"
 import * as Route from "./Route.ts"
 import * as RouteSet from "./RouteSet.ts"
 import { isHttpMiddlewareHandler } from "./RouteSet_http.ts"
-import * as Values from "./Values.ts"
+import * as Values from "../Values.ts"
 
 class Greeting extends Effect.Tag("Greeting")<Greeting, {
   greet(): string

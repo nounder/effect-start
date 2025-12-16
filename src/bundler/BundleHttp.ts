@@ -13,7 +13,7 @@ import * as Stream from "effect/Stream"
 import * as NPath from "node:path"
 import * as NUrl from "node:url"
 import * as Bundle from "./Bundle.ts"
-import * as SseHttpResponse from "./experimental/SseHttpResponse.ts"
+import * as SseHttpResponse from "../experimental/SseHttpResponse.ts"
 
 const DefaultBundleEndpoint = "/_bundle"
 

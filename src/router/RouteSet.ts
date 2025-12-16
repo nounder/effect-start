@@ -1,13 +1,13 @@
 import * as Pipeable from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
-import * as Hyper from "./Hyper.ts"
+import * as Hyper from "../hyper/Hyper.ts"
 import type * as Route from "./Route.ts"
 import * as _builder from "./RouteSet_builder.ts"
 import * as _handler from "./RouteSet_handler.ts"
 import * as _http from "./RouteSet_http.ts"
 import * as _method from "./RouteSet_method.ts"
 import * as _schema from "./RouteSet_schema.ts"
-import * as Values from "./Values.ts"
+import * as Values from "../Values.ts"
 
 /**
  * Consists of function to build {@link RouteSet}.

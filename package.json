@@ -6,8 +6,6 @@
   "exports": {
     ".": "./src/index.ts",
     "./StartApp": "./src/StartApp.ts",
-    "./FileRouter": "./src/FileRouter.ts",
-    "./Route": "./src/Route.ts",
     "./bun": "./src/bun/index.ts",
     "./client": "./src/client/index.ts",
     "./testing": "./src/testing/index.ts",
@@ -15,9 +13,9 @@
     "./x/tailwind/plugin": "./src/x/tailwind/plugin.ts",
     "./middlewares": "./src/middlewares/index.ts",
     "./experimental": "./src/experimental/index.ts",
-    "./assets.d.ts": "./src/assets.d.ts",
-    "./jsx-runtime": "./src/jsx-runtime.ts",
-    "./jsx-dev-runtime": "./src/jsx-runtime.ts",
+    "./client/assets.d.ts": "./src/assets.d.ts",
+    "./jsx-runtime": "./src/hyper/jsx-runtime.ts",
+    "./jsx-dev-runtime": "./src/hyper/jsx-runtime.ts",
     "./package.json": "./package.json"
   },
   "scripts": {
