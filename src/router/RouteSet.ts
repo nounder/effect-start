@@ -1,4 +1,3 @@
-import * as Pipeable from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import type * as Route from "./Route.ts"
 import * as _builder from "./RouteSet_builder.ts"
@@ -22,7 +21,6 @@ export type RouteSet<
   M extends Route.Route.Array,
   Schemas extends Route.RouteSchemas = Route.RouteSchemas.Empty,
 > =
-  & Pipeable.Pipeable
   & RouteSet.Data<M, Schemas>
   & {
     [TypeId]: typeof TypeId
@@ -44,7 +42,6 @@ export namespace RouteSet {
   >
 
   export type Proto =
-    & Pipeable.Pipeable
     & {
       [TypeId]: typeof TypeId
     }
