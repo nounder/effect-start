@@ -6,6 +6,8 @@ import * as Route from "./Route.ts"
 import * as Router from "./Router.ts"
 import * as RouteSet from "./RouteSet.ts"
 
+const noopNext: Route.RouteNext = () => Effect.void
+
 class Greeting extends Effect.Tag("Greeting")<Greeting, {
   greet(): string
 }>() {}
@@ -158,8 +160,8 @@ t.it("merges routes at same path", () => {
 t.it(
   "mounts routes with route-level middleware via RouteSet composition",
   async () => {
-    const wrapperLayer = Route.html(function*(c) {
-      const inner = yield* c.next()
+    const wrapperLayer = Route.html(function*(_c, next) {
+      const inner = yield* next()
       return `<wrap>${inner}</wrap>`
     })
 
@@ -175,11 +177,10 @@ t.it(
     const mockContext: Route.RouteContext = {
       url: new URL("http://localhost/page"),
       slots: {},
-      next: () => Effect.void,
     }
 
     const result = await Effect.runPromise(
-      route.handler(mockContext) as Effect.Effect<unknown>,
+      route.handler(mockContext, noopNext) as Effect.Effect<unknown>,
     )
 
     t.expect(result).toBe("<wrap>content</wrap>")
@@ -202,8 +203,8 @@ t.it("HttpMiddleware applies to routes mounted after use()", async () => {
 t.it(
   "multiple route-level layers are applied in order via RouteSet composition",
   async () => {
-    const outerLayer = Route.html(function*(c) {
-      const inner = yield* c.next()
+    const outerLayer = Route.html(function*(_c, next) {
+      const inner = yield* next()
       return `<outer>${inner}</outer>`
     })
 
@@ -211,8 +212,8 @@ t.it(
       .mount(
         "/page",
         outerLayer
-          .html(function*(c) {
-            const inner = yield* c.next()
+          .html(function*(_c, next) {
+            const inner = yield* next()
             return `<inner>${inner}</inner>`
           })
           .html(Effect.succeed("content")),
@@ -224,11 +225,10 @@ t.it(
     const mockContext: Route.RouteContext = {
       url: new URL("http://localhost/page"),
       slots: {},
-      next: () => Effect.succeed("unused"),
     }
 
     const result = await Effect.runPromise(
-      route.handler(mockContext) as Effect.Effect<unknown>,
+      route.handler(mockContext, noopNext) as Effect.Effect<unknown>,
     )
 
     t.expect(result).toBe("<outer><inner>content</inner></outer>")
@@ -238,8 +238,8 @@ t.it(
 t.it(
   "route-level layer only applies to matching media via RouteSet composition",
   async () => {
-    const htmlLayer = Route.html(function*(c) {
-      const inner = yield* c.next()
+    const htmlLayer = Route.html(function*(_c, next) {
+      const inner = yield* next()
       return `<wrap>${inner}</wrap>`
     })
 
@@ -250,20 +250,20 @@ t.it(
     const mockContext = (path: string): Route.RouteContext => ({
       url: new URL(`http://localhost${path}`),
       slots: {},
-      next: () => Effect.succeed("unused"),
     })
 
     const jsonRoute = RouteSet.items(router.mounts["/api"])[0]
     const jsonResult = await Effect.runPromise(
       jsonRoute.handler(
         mockContext("/api"),
+        noopNext,
       ) as Effect.Effect<unknown>,
     )
     t.expect(jsonResult).toEqual({ data: "value" })
 
     const htmlRoute = RouteSet.items(router.mounts["/page"])[0]
     const htmlResult = await Effect.runPromise(
-      htmlRoute.handler(mockContext("/page")) as Effect.Effect<
+      htmlRoute.handler(mockContext("/page"), noopNext) as Effect.Effect<
         unknown
       >,
     )

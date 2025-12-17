@@ -35,11 +35,7 @@ export function bundle(
 ): BunHandler {
   const internalPathPrefix = `/.BunRoute-${Random.token(6)}`
 
-  const handler: Route.RouteHandler<
-    string,
-    Router.RouterError,
-    BunHttpServer.BunHttpServer | HttpServerRequest.HttpServerRequest
-  > = (context) =>
+  const handler = (context: Route.RouteContext, next: Route.RouteNext) =>
     Effect.gen(function*() {
       const request = yield* HttpServerRequest.HttpServerRequest
       const originalRequest = request.source as Request
@@ -90,7 +86,7 @@ export function bundle(
           }),
       })
 
-      const children = yield* context.next<Router.RouterError, never>()
+      const children = yield* next()
       let childrenHtml = ""
       if (children != null) {
         if (HttpServerResponse.isServerResponse(children)) {

@@ -42,23 +42,6 @@ export function isHttpMiddlewareHandler(h: unknown): boolean {
     && (h as Record<symbol, unknown>)[RouteHttpTypeId] === RouteHttpTypeId
 }
 
-/**
- * http() uses 4 overloads instead of a single signature with a union parameter type.
- *
- * With a union parameter like `handler: MiddlewareFunc<E,R> | Effect<A,E,R>`,
- * TypeScript attempts to infer E and R from both branches simultaneously.
- * When the branches have different structures, inference fails and falls back
- * to `unknown`. For example, passing a middleware function would yield
- * `Effect<HttpServerResponse, unknown, unknown>` instead of the actual types.
- *
- * Separate overloads give TypeScript a single, unambiguous inference path:
- * - Overloads 1-2: Function handlers → infer E, R from return type
- * - Overloads 3-4: Effect handlers → infer A, E, R from Effect type
- *
- * TypeScript checks overloads top-to-bottom until one matches, then infers
- * generics from that single signature without union ambiguity.
- */
-
 type HttpRouteResult<
   Routes extends readonly Route.Route.Default[],
   Schemas extends Route.RouteSchemas,
@@ -130,11 +113,11 @@ export function http<
     E,
     R | HttpServerRequest.HttpServerRequest
   > = isMiddleware
-    ? (context: Route.RouteContext) => {
-      const innerApp: HttpApp.Default = context.next() as HttpApp.Default
+    ? (_context: Route.RouteContext, next: Route.RouteNext) => {
+      const innerApp: HttpApp.Default = next() as HttpApp.Default
       return (handler as HttpMiddlewareFunction)(innerApp)
     }
-    : () => handler as Effect.Effect<A, E, R>
+    : (_context, _next) => handler as Effect.Effect<A, E, R>
 
   Object.defineProperty(routeHandler, RouteHttpTypeId, {
     value: RouteHttpTypeId,

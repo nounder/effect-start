@@ -57,25 +57,13 @@ export namespace Router {
 
 const Proto: Methods & {
   [TypeId]: typeof TypeId
-  [RouteSet.TypeId]: typeof RouteSet.TypeId
   pipe: Pipeable.Pipeable["pipe"]
-  set: Route.Route.Default[]
   schema: Route.RouteSchemas
 } = {
   [TypeId]: TypeId,
-  [RouteSet.TypeId]: RouteSet.TypeId,
 
   pipe() {
     return Pipeable.pipeArguments(this, arguments)
-  },
-
-  get set(): Route.Route.Default[] {
-    const self = this as unknown as Router.Any
-    const allRoutes: Route.Route.Default[] = []
-    for (const routeSet of Object.values(self.mounts)) {
-      allRoutes.push(...RouteSet.items(routeSet))
-    }
-    return allRoutes
   },
 
   get schema(): Route.RouteSchemas {
@@ -140,12 +128,9 @@ function wrapWithMiddlewareRoute(
 
   const innerHandlerAtWrapTime = innerRoute.handler
 
-  const handler: Route.RouteHandler = (context) => {
-    const contextWithNext: Route.RouteContext = {
-      ...context,
-      next: () => innerHandlerAtWrapTime(context),
-    }
-    return middlewareRoute.handler(contextWithNext)
+  const handler: Route.RouteHandler = (context, outerNext) => {
+    const next: Route.RouteNext = () => innerHandlerAtWrapTime(context, outerNext)
+    return middlewareRoute.handler(context, next)
   }
 
   return Route.make({

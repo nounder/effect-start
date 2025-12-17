@@ -16,7 +16,7 @@ type ExtractContext<Eff> = [Eff] extends [never] ? never
 export type HandlerInput<A, E, R> =
   | A
   | Effect.Effect<A, E, R>
-  | ((context: Route.RouteContext) =>
+  | ((context: Route.RouteContext, next: Route.RouteNext) =>
     | Effect.Effect<A, E, R>
     | Generator<Utils.YieldWrap<Effect.Effect<any, E, R>>, A, any>)
 
@@ -24,8 +24,11 @@ export function normalizeHandler<A, E, R>(
   handler: HandlerInput<A, E, R>,
 ): Route.RouteHandler<A, E, R> {
   if (typeof handler === "function") {
-    const wrapper = (context: Route.RouteContext): Effect.Effect<A, E, R> => {
-      const result = (handler as Function)(context)
+    const wrapper = (
+      context: Route.RouteContext,
+      next: Route.RouteNext,
+    ): Effect.Effect<A, E, R> => {
+      const result = (handler as Function)(context, next)
       if (Effect.isEffect(result)) {
         return result as Effect.Effect<A, E, R>
       }
@@ -34,9 +37,9 @@ export function normalizeHandler<A, E, R>(
     return Object.assign(wrapper, handler)
   }
   if (Effect.isEffect(handler)) {
-    return () => handler
+    return (_context, _next) => handler
   }
-  return () => Effect.succeed(handler as A)
+  return (_context, _next) => Effect.succeed(handler as A)
 }
 
 export function makeHandlerMaker<
@@ -74,8 +77,10 @@ export function makeHandlerMaker<
 
   type ContextType<S extends Route.Self> = S extends
     RouteSet.RouteSet<infer _Routes, infer Schemas>
-    ? Route.RouteContext<_schema.DecodeRouteSchemas<Schemas>, Value>
-    : Route.RouteContext<{}, Value>
+    ? Route.RouteContext<_schema.DecodeRouteSchemas<Schemas>>
+    : Route.RouteContext<{}>
+
+  type NextType = Route.RouteNext<Value>
 
   function make<S extends Route.Self, A extends Value>(
     this: S,
@@ -87,7 +92,7 @@ export function makeHandlerMaker<
   ): ResultType<S, A, E, R>
   function make<S extends Route.Self, A extends Value, E, R>(
     this: S,
-    handler: (context: ContextType<S>) => Effect.Effect<A, E, R>,
+    handler: (context: ContextType<S>, next: NextType) => Effect.Effect<A, E, R>,
   ): ResultType<S, A, E, R>
   function make<
     S extends Route.Self,
@@ -95,7 +100,7 @@ export function makeHandlerMaker<
     Eff extends Utils.YieldWrap<Effect.Effect<any, any, any>>,
   >(
     this: S,
-    handler: (context: ContextType<S>) => Generator<Eff, A, never>,
+    handler: (context: ContextType<S>, next: NextType) => Generator<Eff, A, never>,
   ): ResultType<S, A, ExtractError<Eff>, ExtractContext<Eff>>
 
   function make(

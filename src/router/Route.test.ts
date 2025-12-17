@@ -561,10 +561,11 @@ t.describe(`${Route.text}`, () => {
     t.expect(RouteSet.items(routes)[2]!.media).toBe("application/json")
   })
 
-  t.it("context.next() returns correct type", () => {
-    Route.text(function*(context) {
-      const next = context.next()
-      type NextType = Effect.Effect.Success<typeof next>
+  t.it("next() returns correct type", () => {
+    Route.text(function*(_context, next) {
+      type NextFn = NonNullable<typeof next>
+      type NextResult = ReturnType<NextFn>
+      type NextType = Effect.Effect.Success<NextResult>
       type _check = [NextType] extends [string] ? true : false
       const _assert: _check = true
       return "hello"
@@ -572,10 +573,11 @@ t.describe(`${Route.text}`, () => {
   })
 })
 
-t.it("context.next() returns correct type for html handler", () => {
-  Route.html(function*(context) {
-    const next = context.next()
-    type NextType = Effect.Effect.Success<typeof next>
+t.it("next() returns correct type for html handler", () => {
+  Route.html(function*(_context, next) {
+    type NextFn = NonNullable<typeof next>
+    type NextResult = ReturnType<NextFn>
+    type NextType = Effect.Effect.Success<NextResult>
     type _check = [NextType] extends [string | Hyper.GenericJsxObject] ? true
       : false
     const _assert: _check = true
@@ -583,10 +585,11 @@ t.it("context.next() returns correct type for html handler", () => {
   })
 })
 
-t.it("context.next() returns correct type for json handler", () => {
-  Route.json(function*(context) {
-    const next = context.next()
-    type NextType = Effect.Effect.Success<typeof next>
+t.it("next() returns correct type for json handler", () => {
+  Route.json(function*(_context, next) {
+    type NextFn = NonNullable<typeof next>
+    type NextResult = ReturnType<NextFn>
+    type NextType = Effect.Effect.Success<NextResult>
     type _check = [NextType] extends [Values.Json] ? true : false
     const _assert: _check = true
     return { message: "hello" }
@@ -991,16 +994,17 @@ t.describe(`${Route.schemaHeaders}`, () => {
   })
 })
 
+const noopNext: Route.RouteNext = () => Effect.void
+
 function executeHandle(handler: Route.RouteHandler) {
   const context: Route.RouteContext = {
     get url() {
       return new URL("http://localhost")
     },
     slots: {},
-    next: () => Effect.void,
   }
 
-  return handler(context) as Effect.Effect<unknown, never, never>
+  return handler(context, noopNext) as Effect.Effect<unknown, never, never>
 }
 
 t.describe(`${Route.http}`, () => {

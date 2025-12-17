@@ -12,13 +12,15 @@ import * as Router from "./Router.ts"
 import * as RouteSet from "./RouteSet.ts"
 import { isHttpMiddlewareHandler } from "./RouteSet_http.ts"
 
+const noopNext: Route.RouteNext = () => Effect.void
+
 export function render<E, R>(
   route: Route.Route<any, any, Route.RouteHandler<any, E, R>, any>,
   request: HttpServerRequest.HttpServerRequest,
 ): Effect.Effect<HttpServerResponse.HttpServerResponse, E, R> {
   return Effect.gen(function*() {
     const context = makeContext(HttpUtils.makeUrlFromRequest(request))
-    const raw = yield* route.handler(context)
+    const raw = yield* route.handler(context, noopNext)
 
     if (HttpServerResponse.isServerResponse(raw)) {
       return raw
@@ -74,9 +76,8 @@ export const toHttpApp = (
   // Wrap with HttpMiddleware (first middleware is outermost)
   for (const mw of [...httpMiddleware].reverse()) {
     const inner = app
-    app = mw.handler(
-      { next: () => inner } as Route.RouteContext,
-    ) as HttpApp.Default<any, any>
+    const next: Route.RouteNext = () => inner
+    app = mw.handler({} as Route.RouteContext, next) as HttpApp.Default<any, any>
   }
 
   return app
@@ -104,9 +105,8 @@ export const toWebHandlerRuntime = <R>(
 
     for (const mw of [...httpMiddleware].reverse()) {
       const inner = app
-      app = mw.handler(
-        { next: () => inner } as Route.RouteContext,
-      ) as HttpApp.Default<any, any>
+      const next: Route.RouteNext = () => inner
+      app = mw.handler({} as Route.RouteContext, next) as HttpApp.Default<any, any>
     }
   }
 
@@ -121,6 +121,5 @@ function makeContext(url: URL): Route.RouteContext {
       return url
     },
     slots: {},
-    next: () => Effect.void,
   }
 }

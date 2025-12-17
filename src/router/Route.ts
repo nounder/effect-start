@@ -82,14 +82,21 @@ export type RouteMedia =
  * A handler function that produces a raw value.
  * The value will be rendered to an HttpServerResponse by RouteRender
  * based on the route's media type.
- *
- * Receives RouteContext which includes an optional next() for layers.
  */
 export type RouteHandler<
   A = unknown,
   E = any,
   R = any,
-> = (context: RouteContext) => Effect.Effect<A, E, R>
+> = (
+  context: RouteContext,
+  next: RouteNext,
+) => Effect.Effect<A, E, R>
+
+export type RouteNext<
+  A = unknown,
+  E = unknown,
+  R = unknown,
+> = () => Effect.Effect<A, E, R>
 
 type RouteContextDecoded = {
   readonly pathParams?: Record<string, any>
@@ -100,18 +107,16 @@ type RouteContextDecoded = {
 
 /**
  * Context passed to route handler functions.
+ * Stable across handlers - does not change between middleware/handlers.
  *
  * @template {Input} Decoded schema values (pathParams, urlParams, etc.)
- * @template {Next}  Return type of next() based on media type
  */
 export type RouteContext<
   Input extends RouteContextDecoded = {},
-  Next = unknown,
 > =
   & {
     get url(): URL
     slots: Record<string, string>
-    next: <E = unknown, R = unknown>() => Effect.Effect<Next, E, R>
   }
   & Input
 
