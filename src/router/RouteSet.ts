@@ -41,6 +41,11 @@ export namespace RouteSet {
     Route.RouteSchemas
   >
 
+  export type Any = RouteSet<
+    Route.Route.Array,
+    Route.RouteSchemas
+  >
+
   export type Proto =
     & {
       [TypeId]: typeof TypeId

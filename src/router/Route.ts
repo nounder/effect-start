@@ -194,6 +194,18 @@ export namespace Route {
     : never
 }
 
+export type Merge<
+  A extends RouteSet.RouteSet.Any,
+  B extends RouteSet.RouteSet.Any,
+> = A extends RouteSet.RouteSet<infer RoutesA, infer SchemasA>
+  ? B extends RouteSet.RouteSet<infer RoutesB, infer SchemasB>
+    ? RouteSet.RouteSet<
+      readonly [...RoutesA, ...RoutesB],
+      _schema.MergeSchemas<SchemasA, SchemasB>
+    >
+  : never
+  : never
+
 type Builder = typeof import("./RouteSet_builder.ts")
 
 export function make<
@@ -249,9 +261,9 @@ export function overlaps(
  * - Content routes with same method+kind are allowed (for route-level middleware)
  */
 export function merge<
-  RoutesA extends Route.Tuple,
+  RoutesA extends Route.Array,
   SchemasA extends RouteSchemas,
-  RoutesB extends Route.Tuple,
+  RoutesB extends Route.Array,
   SchemasB extends RouteSchemas,
 >(
   self: RouteSet.RouteSet<RoutesA, SchemasA>,
