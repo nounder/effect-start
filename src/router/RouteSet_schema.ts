@@ -201,7 +201,8 @@ export function makeSingleSchemaModifier<
     this: S,
     fieldsOrSchema: Fields extends Schema.Struct<any> ? Fields
       : ValidateStringEncodedFields<Fields>,
-  ): S extends Route.Set<infer Routes, infer Schemas> ? Route.Set<
+  ): S extends RouteSet.RouteSet<infer Routes, infer Schemas>
+    ? RouteSet.RouteSet<
       Routes,
       & Schemas
       & {
@@ -211,7 +212,7 @@ export function makeSingleSchemaModifier<
           >
       }
     >
-    : Route.Set<
+    : RouteSet.RouteSet<
       [],
       {
         [P in K]: Fields extends Schema.Struct<infer F> ? Schema.Struct<F>
@@ -222,18 +223,18 @@ export function makeSingleSchemaModifier<
     >
   {
     const baseRoutes = RouteSet.isRouteSet(this)
-      ? this.set
-      : [] as const
+      ? RouteSet.items(this)
+      : ([] as const)
     const baseSchema = RouteSet.isRouteSet(this)
-      ? this.schema
-      : {} as Route.RouteSchemas.Empty
+      ? RouteSet.schemas(this)
+      : ({} as Route.RouteSchemas.Empty)
 
     const schema = Schema.isSchema(fieldsOrSchema)
       ? fieldsOrSchema
       : Schema.Struct(fieldsOrSchema as Schema.Struct.Fields)
 
     return RouteSet.make(
-      baseRoutes as ReadonlyArray<Route.Route.Default>,
+      baseRoutes as Route.Route.Array,
       {
         ...baseSchema,
         [key]: schema,
@@ -252,7 +253,8 @@ export function makeMultiSchemaModifier<
     this: S,
     fieldsOrSchema: Fields extends Schema.Struct<any> ? Fields
       : ValidateStringOrArrayEncodedFields<Fields>,
-  ): S extends Route.Set<infer Routes, infer Schemas> ? Route.Set<
+  ): S extends RouteSet.RouteSet<infer Routes, infer Schemas>
+    ? RouteSet.RouteSet<
       Routes,
       & Schemas
       & {
@@ -262,7 +264,7 @@ export function makeMultiSchemaModifier<
           >
       }
     >
-    : Route.Set<
+    : RouteSet.RouteSet<
       [],
       {
         [P in K]: Fields extends Schema.Struct<infer F> ? Schema.Struct<F>
@@ -273,18 +275,18 @@ export function makeMultiSchemaModifier<
     >
   {
     const baseRoutes = RouteSet.isRouteSet(this)
-      ? this.set
-      : [] as const
+      ? RouteSet.items(this)
+      : ([] as const)
     const baseSchema = RouteSet.isRouteSet(this)
-      ? this.schema
-      : {} as Route.RouteSchemas.Empty
+      ? RouteSet.schemas(this)
+      : ({} as Route.RouteSchemas.Empty)
 
     const schema = Schema.isSchema(fieldsOrSchema)
       ? fieldsOrSchema
       : Schema.Struct(fieldsOrSchema as Schema.Struct.Fields)
 
     return RouteSet.make(
-      baseRoutes as ReadonlyArray<Route.Route.Default>,
+      baseRoutes,
       {
         ...baseSchema,
         [key]: schema,
@@ -302,7 +304,8 @@ export function makeUnionSchemaModifier<
   >(
     this: S,
     fieldsOrSchema: Fields,
-  ): S extends Route.Set<infer Routes, infer Schemas> ? Route.Set<
+  ): S extends RouteSet.RouteSet<infer Routes, infer Schemas>
+    ? RouteSet.RouteSet<
       Routes,
       & Schemas
       & {
@@ -311,7 +314,7 @@ export function makeUnionSchemaModifier<
           : never
       }
     >
-    : Route.Set<
+    : RouteSet.RouteSet<
       [],
       {
         [P in K]: Fields extends Schema.Schema.Any ? Fields
@@ -321,18 +324,18 @@ export function makeUnionSchemaModifier<
     >
   {
     const baseRoutes = RouteSet.isRouteSet(this)
-      ? this.set
-      : [] as const
+      ? RouteSet.items(this)
+      : ([] as const)
     const baseSchema = RouteSet.isRouteSet(this)
-      ? this.schema
-      : {} as Route.RouteSchemas.Empty
+      ? RouteSet.schemas(this)
+      : ({} as Route.RouteSchemas.Empty)
 
     const schema = Schema.isSchema(fieldsOrSchema)
       ? fieldsOrSchema
       : Schema.Struct(fieldsOrSchema as Schema.Struct.Fields)
 
     return RouteSet.make(
-      baseRoutes as ReadonlyArray<Route.Route.Default>,
+      baseRoutes,
       {
         ...baseSchema,
         [key]: schema,

@@ -40,12 +40,14 @@ t.describe("Router.matchMedia", () => {
       })
 
       t.it("returns wildcard route when no known media", () => {
-        const wildcardRoute = Route.make({
-          method: "GET",
-          media: "*",
-          handler: () => Effect.succeed("raw"),
-          schemas: {},
-        })
+        const wildcardRoute = RouteSet.make([
+          Route.make({
+            method: "GET",
+            media: "*",
+            handler: () => Effect.succeed("raw"),
+            schemas: {},
+          }),
+        ])
         const result = Router.matchMedia(wildcardRoute, "")
         t.expect(result?.media).toBe("*")
       })
@@ -117,14 +119,13 @@ t.describe("Router.matchMedia", () => {
 
   t.describe("fallback behavior", () => {
     t.it("returns wildcard route when no specific match", () => {
-      const routes = Route
-        .make({
-          method: "GET",
-          media: "*",
-          handler: () => Effect.succeed("raw"),
-          schemas: {},
-        })
-        .json({ data: "json" })
+      const wildcardRoute = Route.make({
+        method: "GET",
+        media: "*",
+        handler: () => Effect.succeed("raw"),
+        schemas: {},
+      })
+      const routes = RouteSet.make([wildcardRoute]).json({ data: "json" })
       const result = Router.matchMedia(routes, "image/png")
       t.expect(result?.media).toBe("*")
     })

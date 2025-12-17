@@ -41,8 +41,8 @@ export interface Router<
 > extends Pipeable.Pipeable, Methods {
   [TypeId]: typeof TypeId
   [RouteSet.TypeId]: typeof RouteSet.TypeId
-  readonly mounts: Record<`/${string}`, RouteSet.Default>
-  readonly layer: RouteSet.Default
+  readonly mounts: Record<`/${string}`, RouteSet.RouteSet.Default>
+  readonly layer: RouteSet.RouteSet.Default
   readonly set: Route.Route.Default[]
   readonly schema: Route.RouteSchemas
   readonly _E: () => E
@@ -73,7 +73,7 @@ const Proto: Methods & {
     const self = this as unknown as Router.Any
     const allRoutes: Route.Route.Default[] = []
     for (const routeSet of Object.values(self.mounts)) {
-      allRoutes.push(...routeSet.set)
+      allRoutes.push(...RouteSet.items(routeSet))
     }
     return allRoutes
   },
@@ -174,9 +174,9 @@ function applyMiddlewareToRoute(
 }
 
 function applyMiddlewareToRouteSet(
-  routeSet: RouteSet.Default,
-): RouteSet.Default {
-  const routes = routeSet.set
+  routeSet: RouteSet.RouteSet.Default,
+): RouteSet.RouteSet.Default {
+  const routes = RouteSet.items(routeSet)
 
   // Keep HTTP middleware routes unchanged (they're applied at HttpApp level)
   const httpMiddlewareRoutes = routes.filter((r) =>
@@ -194,7 +194,7 @@ function applyMiddlewareToRouteSet(
         ...httpMiddlewareRoutes,
         ...nonHttpRoutes,
       ] as unknown as Route.Route.Tuple,
-      routeSet.schema,
+      RouteSet.schemas(routeSet),
     )
   }
 
@@ -228,7 +228,7 @@ function applyMiddlewareToRouteSet(
         ...httpMiddlewareRoutes,
         ...contentRoutes,
       ] as unknown as Route.Route.Tuple,
-      routeSet.schema,
+      RouteSet.schemas(routeSet),
     )
   }
 
@@ -238,19 +238,19 @@ function applyMiddlewareToRouteSet(
 
   return RouteSet.make(
     [...httpMiddlewareRoutes, ...wrappedRoutes] as unknown as Route.Route.Tuple,
-    routeSet.schema,
+    RouteSet.schemas(routeSet),
   )
 }
 
 export function make<E, R>(
-  mounts: Record<`/${string}`, RouteSet.Default>,
-  layer: RouteSet.Default = RouteSet.make(),
+  mounts: Record<`/${string}`, RouteSet.RouteSet.Default>,
+  layer: RouteSet.RouteSet.Default = RouteSet.make(),
 ): Router<E, R> {
   // Process each mount - apply route-level middleware from its RouteSet
-  const processedMounts: Record<`/${string}`, RouteSet.Default> = {}
+  const processedMounts: Record<`/${string}`, RouteSet.RouteSet.Default> = {}
 
   for (const [path, routeSet] of Object.entries(mounts)) {
-    if (routeSet.set.length > 0) {
+    if (RouteSet.items(routeSet).length > 0) {
       processedMounts[path as `/${string}`] = applyMiddlewareToRouteSet(
         routeSet,
       )
@@ -276,7 +276,7 @@ export function use<
   Schemas extends Route.RouteSchemas,
 >(
   this: S,
-  routeSet: IsHttpMiddlewareRouteSet<RouteSet.RouteSet<Routes, Schemas>> extends
+  route: IsHttpMiddlewareRouteSet<RouteSet.RouteSet<Routes, Schemas>> extends
     true ? RouteSet.RouteSet<Routes, Schemas>
     : never,
 ): S extends Router<infer E, infer R> ? Router<
@@ -293,7 +293,7 @@ export function use<
     : make<never, never>({}, RouteSet.make())
 
   // Merge new HttpMiddleware into existing layer
-  const newLayer = RouteSet.merge(router.layer, routeSet)
+  const newLayer = Route.merge(router.layer, route)
 
   // Return new router with same mounts but updated layer
   return make(router.mounts, newLayer) as any
@@ -306,7 +306,7 @@ export function mount<
 >(
   this: S,
   path: `/${string}`,
-  routeSet: RouteSet.RouteSet<Routes, Schemas>,
+  route: RouteSet.RouteSet<Routes, Schemas>,
 ): S extends Router<infer E, infer R> ? Router<
     E | ExtractRouteSetError<RouteSet.RouteSet<Routes, Schemas>>,
     R | ExtractRouteSetContext<RouteSet.RouteSet<Routes, Schemas>>
@@ -321,12 +321,12 @@ export function mount<
     : make<never, never>({}, RouteSet.make())
 
   // Merge current layer (HttpMiddleware) with the routes being mounted
-  const mergedRouteSet = RouteSet.merge(router.layer, routeSet)
+  const mergedRouteSet = Route.merge(router.layer, route)
 
   // Add to mounts (merge if path already exists)
   const existingRouteSet = router.mounts[path]
   const finalRouteSet = existingRouteSet
-    ? RouteSet.merge(existingRouteSet, mergedRouteSet)
+    ? Route.merge(existingRouteSet, mergedRouteSet)
     : mergedRouteSet
 
   return make(
@@ -352,7 +352,7 @@ export function get(
 
   const isMediaWildcard = media === "*" || media === "*/*"
 
-  const methodMatching = routeSet.set.filter((route) => {
+  const methodMatching = RouteSet.items(routeSet).filter((route) => {
     return method === "*"
       || route.method === "*"
       || route.method === method
@@ -376,13 +376,13 @@ export function get(
 }
 
 export function matchMedia(
-  routeSet: RouteSet.Instance<
-    ReadonlyArray<Route.Route.Default>,
+  routeSet: RouteSet.RouteSet.Data<
+    Route.Route.Array,
     Route.RouteSchemas
   >,
   accept: string,
 ): Route.Route.Default | undefined {
-  const routes = routeSet.set
+  const routes = RouteSet.items(routeSet)
 
   const contentRoutes = routes.filter((r) =>
     !isHttpMiddlewareHandler(r.handler)

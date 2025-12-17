@@ -65,7 +65,7 @@ type HttpRouteResult<
   A,
   E,
   R,
-> = Route.Set<
+> = RouteSet.RouteSet<
   [
     ...Routes,
     Route.Route<"*", "*", Route.RouteHandler<A, E, R>, Schemas>,
@@ -80,7 +80,7 @@ export function http<
 >(
   this: S,
   handler: (app: HttpApp.Default<never, never>) => HttpApp.Default<E, R>,
-): S extends Route.Set<infer Routes, infer Schemas> ? HttpRouteResult<
+): S extends RouteSet.RouteSet<infer Routes, infer Schemas> ? HttpRouteResult<
     Routes,
     Schemas,
     HttpServerResponse.HttpServerResponse,
@@ -102,7 +102,7 @@ export function http<
 >(
   this: S,
   handler: Effect.Effect<A, E, R>,
-): S extends Route.Set<infer Routes, infer Schemas>
+): S extends RouteSet.RouteSet<infer Routes, infer Schemas>
   ? HttpRouteResult<Routes, Schemas, A, E, R>
   : HttpRouteResult<[], Route.RouteSchemas.Empty, A, E, R>
 export function http<
@@ -114,12 +114,12 @@ export function http<
   handler:
     | ((app: HttpApp.Default<never, never>) => HttpApp.Default<E, R>)
     | Effect.Effect<A, E, R>,
-): Route.Set<readonly Route.Route.Default[], Route.RouteSchemas> {
+): RouteSet.RouteSet<readonly Route.Route.Default[], Route.RouteSchemas> {
   const baseRoutes = RouteSet.isRouteSet(this)
-    ? this.set
+    ? RouteSet.items(this)
     : [] as const
   const baseSchema = RouteSet.isRouteSet(this)
-    ? this.schema
+    ? RouteSet.schemas(this)
     : {} as Route.RouteSchemas.Empty
 
   const isMiddleware = typeof handler === "function"

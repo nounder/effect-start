@@ -31,7 +31,7 @@ t.it("creates router with single route", () => {
 
   t.expect(Object.keys(router.mounts)).toHaveLength(1)
   t.expect(router.mounts["/hello"]).toBeDefined()
-  t.expect(router.mounts["/hello"].set).toHaveLength(1)
+  t.expect(RouteSet.items(router.mounts["/hello"])).toHaveLength(1)
 
   const _check: Types.Equals<
     typeof router,
@@ -80,8 +80,8 @@ t.it("infers and unions error types from routes", () => {
 t.it("infers context & error types from HttpMiddleware", () => {
   const httpMiddleware = Route.http((app) =>
     Effect.gen(function*() {
-      yield* Effect.fail(new AdamError())
       yield* Random.uuid()
+      return yield* Effect.fail(new AdamError())
       return yield* app
     })
   )
@@ -169,9 +169,9 @@ t.it(
 
     const mountedRoute = router.mounts["/page"]
     t.expect(mountedRoute).toBeDefined()
-    t.expect(mountedRoute.set).toHaveLength(1)
+    t.expect(RouteSet.items(mountedRoute)).toHaveLength(1)
 
-    const route = mountedRoute.set[0]
+    const route = RouteSet.items(mountedRoute)[0]
     const mockContext: Route.RouteContext = {
       url: new URL("http://localhost/page"),
       slots: {},
@@ -219,7 +219,7 @@ t.it(
       )
 
     const mountedRoute = router.mounts["/page"]
-    const route = mountedRoute.set[0]
+    const route = RouteSet.items(mountedRoute)[0]
 
     const mockContext: Route.RouteContext = {
       url: new URL("http://localhost/page"),
@@ -253,7 +253,7 @@ t.it(
       next: () => Effect.succeed("unused"),
     })
 
-    const jsonRoute = router.mounts["/api"].set[0]
+    const jsonRoute = RouteSet.items(router.mounts["/api"])[0]
     const jsonResult = await Effect.runPromise(
       jsonRoute.handler(
         mockContext("/api"),
@@ -261,7 +261,7 @@ t.it(
     )
     t.expect(jsonResult).toEqual({ data: "value" })
 
-    const htmlRoute = router.mounts["/page"].set[0]
+    const htmlRoute = RouteSet.items(router.mounts["/page"])[0]
     const htmlResult = await Effect.runPromise(
       htmlRoute.handler(mockContext("/page")) as Effect.Effect<
         unknown
@@ -303,7 +303,7 @@ t.describe("Router.get", () => {
   t.it("matches with media filter", () => {
     const router = Router.mount(
       "/content",
-      RouteSet.merge(
+      Route.merge(
         Route.text("plain"),
         Route.html("<div>html</div>"),
       ),
@@ -337,8 +337,8 @@ t.describe("Router.get", () => {
   t.it(
     "wildcard media uses content negotiation priority (json > text > html)",
     () => {
-      const routes = RouteSet.merge(
-        RouteSet.merge(Route.html("<div>html</div>"), Route.text("plain")),
+      const routes = Route.merge(
+        Route.merge(Route.html("<div>html</div>"), Route.text("plain")),
         Route.json({ data: "json" }),
       )
       const router = Router.mount("/content", routes)
@@ -352,7 +352,7 @@ t.describe("Router.get", () => {
   )
 
   t.it("wildcard media returns text when json not available", () => {
-    const routes = RouteSet.merge(
+    const routes = Route.merge(
       Route.html("<div>html</div>"),
       Route.text("plain"),
     )

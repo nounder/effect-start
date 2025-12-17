@@ -9,15 +9,15 @@ import * as Record from "effect/Record"
 import * as Stream from "effect/Stream"
 import * as NPath from "node:path"
 import * as NUrl from "node:url"
+import * as FileSystemExtra from "../FileSystemExtra.ts"
 import * as FileRouterCodegen from "./FileRouterCodegen.ts"
 import * as FileRouterPattern from "./FileRouterPattern.ts"
-import * as FileSystemExtra from "../FileSystemExtra.ts"
 import * as Route from "./Route.ts"
 import * as Router from "./Router.ts"
 import * as RouteSet from "./RouteSet.ts"
 
 export type RouteModule = {
-  default: RouteSet.Default
+  default: RouteSet.RouteSet.Default
 }
 
 export type LazyRoute = {
@@ -188,7 +188,7 @@ export function fromManifest(
   manifest: Manifest,
 ): Effect.Effect<Router.Router.Any> {
   return Effect.gen(function*() {
-    const mounts: Record<`/${string}`, RouteSet.Default> = {}
+    const mounts: Record<`/${string}`, RouteSet.RouteSet.Default> = {}
 
     yield* Effect.forEach(
       manifest.routes,
@@ -203,13 +203,13 @@ export function fromManifest(
             : []
 
           // Start with the route from the route module
-          let mergedRouteSet: RouteSet.Default = routeModule.default
+          let mergedRouteSet: RouteSet.RouteSet.Default = routeModule.default
 
           // Concatenate each layer's routes into the routeSet
           for (const m of layerModules) {
             const layerRouteSet = (m as any).default
             if (RouteSet.isRouteSet(layerRouteSet)) {
-              mergedRouteSet = RouteSet.merge(layerRouteSet, mergedRouteSet)
+              mergedRouteSet = Route.merge(layerRouteSet, mergedRouteSet)
             }
           }
 

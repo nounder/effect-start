@@ -1,27 +1,13 @@
 import type * as HttpMethod from "@effect/platform/HttpMethod"
 import * as Effect from "effect/Effect"
-import * as Pipeable from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
-import * as Schema from "effect/Schema"
+import type * as Schema from "effect/Schema"
 import * as RouteSet from "./RouteSet.ts"
+import * as _schema from "./RouteSet_schema.ts"
 
-export {
-  pipe,
-} from "effect/Function"
-
-export type {
-  RouteSet as Set,
-} from "./RouteSet.ts"
-
-export * from "./RouteSet_builder.ts"
-
-/**
- * 'this' argument type for {@link RouteBuilder} functions.
- * Its value depend on how the function is called as described below.
- */
 export type Self =
   /**
-   * Called as {@link RouteSet} method:
+   * Called as {@link RouteSet.RouteSet} method:
    *
    * @example
    * ```ts
@@ -31,8 +17,23 @@ export type Self =
    *
    * ```
    */
-  | RouteSet.Default
-  | RouteSet.RouteSet<Route.Empty, RouteSchemas>
+  | RouteSet.RouteSet.Default
+  /**
+   * Called as {@link RouteSet.RouteSet} with only schema, no handlers
+   *
+   * @example
+   * ```ts
+   * let route: Route
+   *
+   * route.schemaUrlParams({ id:
+   *   Schema.Number()
+   * })
+   * ```
+   */
+  | RouteSet.RouteSet<
+    [],
+    RouteSchemas
+  >
   /**
    * Called from namespaced import.
    *
@@ -40,13 +41,10 @@ export type Self =
    * ```ts
    * import * as Route from "./Route.ts"
    *
-   * let route: Route
-   *
    * Route.text("Hello")
-   *
    * ```
    */
-  | typeof import("./Route.ts")
+  | Builder
   /**
    * Called directly from exported function. Don't do it.
    *
@@ -55,19 +53,18 @@ export type Self =
    * import { text } from "./Route.ts"
    *
    * text("Hello")
-   *
    * ```
    */
   | undefined
 
-const TypeId: unique symbol = Symbol.for("effect-start/Route")
+/**
+ * Export all RouteSet builder functions.
+ */
+export * from "./RouteSet_builder.ts"
 
 export type RouteMethod =
   | "*"
   | HttpMethod.HttpMethod
-
-// TODO: This should be a PathPattern and moved to its own file?
-export type RoutePattern = `/${string}`
 
 /**
  * Route media type used for content negotiation.
@@ -94,6 +91,30 @@ export type RouteHandler<
   R = any,
 > = (context: RouteContext) => Effect.Effect<A, E, R>
 
+type RouteContextDecoded = {
+  readonly pathParams?: Record<string, any>
+  readonly urlParams?: Record<string, any>
+  readonly payload?: any
+  readonly headers?: Record<string, any>
+}
+
+/**
+ * Context passed to route handler functions.
+ *
+ * @template {Input} Decoded schema values (pathParams, urlParams, etc.)
+ * @template {Next}  Return type of next() based on media type
+ */
+export type RouteContext<
+  Input extends RouteContextDecoded = {},
+  Next = unknown,
+> =
+  & {
+    get url(): URL
+    slots: Record<string, string>
+    next: <E = unknown, R = unknown>() => Effect.Effect<Next, E, R>
+  }
+  & Input
+
 export type RouteSchemas = {
   readonly PathParams?: Schema.Struct<any>
   readonly UrlParams?: Schema.Struct<any>
@@ -119,19 +140,17 @@ export interface Route<
   out Media extends RouteMedia = "*",
   out Handler extends RouteHandler = RouteHandler,
   out Schemas extends RouteSchemas = RouteSchemas.Empty,
-> extends RouteSet.RouteSet<[Route.Default], Schemas> {
-  [TypeId]: typeof TypeId
+> extends
+  RouteSet.RouteSet<[
+    Route<Method, Media, Handler, Schemas>,
+  ]>
+{
   readonly method: Method
   readonly media: Media
   readonly handler: Handler
   readonly schemas: Schemas
 }
 
-/**
- * Describes a single route that varies by method & media type.
- *
- * Implements {@link RouteSet} interface that contains itself.
- */
 export namespace Route {
   export type Data<
     Method extends RouteMethod = RouteMethod,
@@ -154,13 +173,7 @@ export namespace Route {
 
   export type Tuple = readonly [Default, ...Default[]]
 
-  export type Empty = readonly []
-
-  export type Proto =
-    & Pipeable.Pipeable
-    & {
-      [TypeId]: typeof TypeId
-    }
+  export type Array = ReadonlyArray<Default>
 
   export type Error<T> = T extends RouteSet.RouteSet<infer Routes, any>
     ? Routes[number] extends Route<any, any, infer H, any>
@@ -175,44 +188,7 @@ export namespace Route {
     : never
 }
 
-const Proto = Object.assign(
-  Object.create(RouteSet.Proto),
-  {
-    [TypeId]: TypeId,
-
-    pipe() {
-      return Pipeable.pipeArguments(this, arguments)
-    },
-  } satisfies Route.Proto,
-)
-
-export function isRoute(input: unknown): input is Route {
-  return Predicate.hasProperty(input, TypeId)
-}
-
-type RouteContextDecoded = {
-  readonly pathParams?: Record<string, any>
-  readonly urlParams?: Record<string, any>
-  readonly payload?: any
-  readonly headers?: Record<string, any>
-}
-
-/**
- * Context passed to route handler functions.
- *
- * @template {Input} Decoded schema values (pathParams, urlParams, etc.)
- * @template {Next}  Return type of next() based on media type
- */
-export type RouteContext<
-  Input extends RouteContextDecoded = {},
-  Next = unknown,
-> =
-  & {
-    get url(): URL
-    slots: Record<string, string>
-    next: <E = unknown, R = unknown>() => Effect.Effect<Next, E, R>
-  }
-  & Input
+type Builder = typeof import("./RouteSet_builder.ts")
 
 export function make<
   Method extends RouteMethod = "*",
@@ -232,24 +208,10 @@ export function make<
   Handler,
   Schemas
 > {
-  const route = Object.assign(
-    Object.create(Proto),
-    {
-      set: [],
-      // @ts-expect-error: assigned below
-      schemas: input.schemas,
-      method: input.method,
-      media: input.media,
-      handler: input.handler,
-    } satisfies Route.Data,
+  return Object.assign(
+    Object.create(null),
+    input,
   )
-
-  route.set = [
-    route,
-  ]
-  route.schemas = input.schemas
-
-  return route
 }
 
 /**
@@ -269,4 +231,39 @@ export function overlaps(
     || a.media === b.media
 
   return methodMatches && mediaMatches
+}
+
+/**
+ * Merge two RouteSets into one.
+ * Combines route arrays.
+ *
+ * Rules:
+ * - Multiple HttpMiddleware routes are allowed (they stack)
+ * - Content routes with same method+media are allowed (for route-level middleware)
+ */
+export function merge<
+  RoutesA extends Route.Tuple,
+  SchemasA extends RouteSchemas,
+  RoutesB extends Route.Tuple,
+  SchemasB extends RouteSchemas,
+>(
+  self: RouteSet.RouteSet<RoutesA, SchemasA>,
+  other: RouteSet.RouteSet<RoutesB, SchemasB>,
+): RouteSet.RouteSet<
+  readonly [...RoutesA, ...RoutesB],
+  _schema.MergeSchemas<SchemasA, SchemasB>
+> {
+  const combined = [
+    ...RouteSet.items(self),
+    ...RouteSet.items(other),
+  ] as const
+  const mergedSchemas = _schema.mergeSchemas(
+    RouteSet.schemas(self),
+    RouteSet.schemas(other),
+  )
+
+  return RouteSet.make(
+    combined,
+    mergedSchemas,
+  )
 }

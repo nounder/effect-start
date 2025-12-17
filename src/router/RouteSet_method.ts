@@ -12,8 +12,9 @@ export function makeMethodMaker<
     InSchemas extends Route.RouteSchemas,
   >(
     this: S,
-    routes: Route.Set<T, InSchemas>,
-  ): S extends Route.Set<infer B, infer BaseSchemas> ? Route.Set<
+    routes: RouteSet.RouteSet<T, InSchemas>,
+  ): S extends RouteSet.RouteSet<infer B, infer BaseSchemas>
+    ? RouteSet.RouteSet<
       [
         ...B,
         ...{
@@ -33,7 +34,7 @@ export function makeMethodMaker<
       ],
       BaseSchemas
     >
-    : Route.Set<
+    : RouteSet.RouteSet<
       {
         [K in keyof T]: T[K] extends Route.Route<
           infer _,
@@ -52,16 +53,16 @@ export function makeMethodMaker<
     >
   {
     const baseRoutes = RouteSet.isRouteSet(this)
-      ? this.set
+      ? RouteSet.items(this)
       : [] as const
     const baseSchema = RouteSet.isRouteSet(this)
-      ? this.schema
+      ? RouteSet.schemas(this)
       : {} as Route.RouteSchemas.Empty
 
     return RouteSet.make(
       [
         ...baseRoutes,
-        ...routes.set.map(route => {
+        ...RouteSet.items(routes).map(route => {
           return Route.make({
             ...route,
             method,

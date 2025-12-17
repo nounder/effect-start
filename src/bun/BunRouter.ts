@@ -6,6 +6,7 @@ import * as Route from "../router/Route.ts"
 import * as RouteHttp from "../router/RouteHttp.ts"
 import * as Router from "../router/Router.ts"
 import * as RouterPattern from "../router/RouterPattern.ts"
+import * as RouteSet from "../router/RouteSet.ts"
 import { isHttpMiddlewareHandler } from "../router/RouteSet_http.ts"
 import * as BunHttpServer from "./BunHttpServer.ts"
 import {
@@ -43,11 +44,13 @@ export function routesFrom(
       }
 
       // Check for BunHandlers in the routeSet
-      for (const route of routeSet.set) {
+      for (const route of RouteSet.items(routeSet)) {
         if (isBunHandler(route.handler)) {
           const bunHandler = route.handler as BunHandler
           const bundle = yield* Effect.promise(() => bunHandler.load())
-          const bunPaths = RouterPattern.toBun(path as Route.RoutePattern)
+          const bunPaths = RouterPattern.toBun(
+            path as RouterPattern.RouterPattern,
+          )
           for (const bunPath of bunPaths) {
             const internalPath = `${bunHandler.internalPathPrefix}${bunPath}`
             result[internalPath] = bundle
@@ -55,11 +58,11 @@ export function routesFrom(
         }
       }
 
-      const httpPaths = RouterPattern.toBun(path as Route.RoutePattern)
+      const httpPaths = RouterPattern.toBun(path as RouterPattern.RouterPattern)
 
       // Group content routes by method
       const byMethod = new Map<Route.RouteMethod, Route.Route.Default[]>()
-      for (const route of routeSet.set) {
+      for (const route of RouteSet.items(routeSet)) {
         if (isHttpMiddlewareHandler(route.handler)) continue
         const existing = byMethod.get(route.method) ?? []
         existing.push(route)
@@ -69,7 +72,7 @@ export function routesFrom(
       for (const [method, routes] of byMethod) {
         // toHttpApp handles content negotiation, toWebHandler applies middleware
         const webHandler = RouteHttp.toWebHandler(
-          { set: routes, schema: {} },
+          RouteSet.make(routes, {}),
           routeSet,
         )
 

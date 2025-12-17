@@ -1,4 +1,4 @@
-import type * as Route from "./Route.ts"
+export type RouterPattern = `/${string}`
 
 export type ParamDelimiter = "_" | "-" | "." | "," | ";" | "!" | "@" | "~"
 export type ParamPrefix = `${string}${ParamDelimiter}` | ""
@@ -206,7 +206,7 @@ function colonParamSegment(segment: Segment): string {
  * - `[[...param]]` → `/`, `/*`
  * - `pk_[id]` → `pk_:id`
  */
-export function toColon(path: Route.RoutePattern): string[] {
+export function toColon(path: RouterPattern): string[] {
   return buildPaths(parse(path), colonParamSegment, "/*")
 }
 
@@ -221,7 +221,7 @@ export const toHono = toColon
  * - `[[...param]]` → `/`, `/*param`
  * - `pk_[id]` → `pk_:id`
  */
-export function toExpress(path: Route.RoutePattern): string[] {
+export function toExpress(path: RouterPattern): string[] {
   const segments = parse(path)
   const optionalRestIndex = segments.findIndex(
     (s) => s._tag === "RestSegment" && s.optional,
@@ -291,7 +291,7 @@ export function toExpress(path: Route.RoutePattern): string[] {
  * - `[[...param]]` → `/`, `/*`
  * - `pk_[id]` → `pk_:id`
  */
-export function toEffect(path: Route.RoutePattern): string[] {
+export function toEffect(path: RouterPattern): string[] {
   return buildPaths(parse(path), colonParamSegment, "/*")
 }
 
@@ -304,7 +304,7 @@ export function toEffect(path: Route.RoutePattern): string[] {
  * - `[[...param]]` → `:param*`
  * - `pk_[id]` → `pk_:id`
  */
-export function toURLPattern(path: Route.RoutePattern): string[] {
+export function toURLPattern(path: RouterPattern): string[] {
   const segments = parse(path)
   const joined = segments
     .map((segment) => {
@@ -332,7 +332,7 @@ export function toURLPattern(path: Route.RoutePattern): string[] {
  * - `[[...param]]` → `/`, `$`
  * - `pk_[id]` → (not supported, emits `pk_$id`)
  */
-export function toRemix(path: Route.RoutePattern): string[] {
+export function toRemix(path: RouterPattern): string[] {
   const segments = parse(path)
   const optionalRestIndex = segments.findIndex(
     (s) => s._tag === "RestSegment" && s.optional,
@@ -377,7 +377,7 @@ export function toRemix(path: Route.RoutePattern): string[] {
  * - `[[...param]]` → `/`, `/*` (two routes)
  * - `pk_[id]` → `pk_:id`
  */
-export function toBun(path: Route.RoutePattern): string[] {
+export function toBun(path: RouterPattern): string[] {
   const segments = parse(path)
 
   const optionalIndex = segments.findIndex(

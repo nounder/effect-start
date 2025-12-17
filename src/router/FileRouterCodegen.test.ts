@@ -5,14 +5,14 @@ import * as Effect from "effect/Effect"
 import * as Schema from "effect/Schema"
 import * as Scope from "effect/Scope"
 import * as path from "node:path"
+import * as NodeFileSystem from "../node/FileSystem.ts"
+import * as SchemaExtra from "../SchemaExtra.ts"
+import * as TestLogger from "../testing/TestLogger.ts"
 import * as FileRouter from "./FileRouter.ts"
 import { parseRoute } from "./FileRouter.ts"
 import type { RouteHandle } from "./FileRouter.ts"
 import * as FileRouterCodegen from "./FileRouterCodegen.ts"
-import * as NodeFileSystem from "../node/FileSystem.ts"
 import * as Route from "./Route.ts"
-import * as SchemaExtra from "../SchemaExtra.ts"
-import * as TestLogger from "../testing/TestLogger.ts"
 
 function createTempDirWithFiles(
   files: Record<string, string>,

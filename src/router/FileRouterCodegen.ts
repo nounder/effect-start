@@ -78,7 +78,7 @@ export function validateRouteModules(
       }
 
       const routeSet = module.default
-      const userSchema = routeSet.schema?.PathParams
+      const userSchema = RouteSet.schemas(routeSet)?.PathParams
 
       if (
         expectedSchema

@@ -52,14 +52,15 @@ export function makeHandlerMaker<
     A,
     E,
     R,
-  > = S extends Route.Set<infer Routes, infer Schemas> ? Route.Set<
+  > = S extends RouteSet.RouteSet<infer Routes, infer Schemas>
+    ? RouteSet.RouteSet<
       [
         ...Routes,
         Route.Route<Method, Media, Route.RouteHandler<A, E, R>, Schemas>,
       ],
       Schemas
     >
-    : Route.Set<
+    : RouteSet.RouteSet<
       [
         Route.Route<
           Method,
@@ -72,7 +73,7 @@ export function makeHandlerMaker<
     >
 
   type ContextType<S extends Route.Self> = S extends
-    Route.Set<infer _Routes, infer Schemas>
+    RouteSet.RouteSet<infer _Routes, infer Schemas>
     ? Route.RouteContext<_schema.DecodeRouteSchemas<Schemas>, Value>
     : Route.RouteContext<{}, Value>
 
@@ -100,12 +101,12 @@ export function makeHandlerMaker<
   function make(
     this: Route.Self,
     handler: unknown,
-  ): Route.Set<readonly Route.Route.Default[], Route.RouteSchemas> {
+  ): RouteSet.RouteSet<readonly Route.Route.Default[], Route.RouteSchemas> {
     const baseRoutes = RouteSet.isRouteSet(this)
-      ? this.set
+      ? RouteSet.items(this)
       : [] as const
     const baseSchema = RouteSet.isRouteSet(this)
-      ? this.schema
+      ? RouteSet.schemas(this)
       : {} as Route.RouteSchemas.Empty
 
     return RouteSet.make(

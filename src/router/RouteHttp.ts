@@ -45,12 +45,12 @@ export function render<E, R>(
 }
 
 export const toHttpApp = (
-  routeSet: RouteSet.Instance<
-    ReadonlyArray<Route.Route.Default>,
+  routeSet: RouteSet.RouteSet.Data<
+    Route.Route.Array,
     Route.RouteSchemas
   >,
 ): HttpApp.Default<any, any> => {
-  const routes = routeSet.set
+  const routes = RouteSet.items(routeSet)
 
   const httpMiddleware = routes.filter((r) =>
     isHttpMiddlewareHandler(r.handler)
@@ -86,19 +86,19 @@ export const toWebHandlerRuntime = <R>(
   runtime: Runtime.Runtime<R>,
 ) =>
 (
-  routeSet: RouteSet.Instance<
-    ReadonlyArray<Route.Route.Default>,
+  routeSet: RouteSet.RouteSet.Data<
+    Route.Route.Array,
     Route.RouteSchemas
   >,
-  middlewareRouteSet?: RouteSet.Instance<
-    ReadonlyArray<Route.Route.Default>,
+  middlewareRouteSet?: RouteSet.RouteSet.Data<
+    Route.Route.Array,
     Route.RouteSchemas
   >,
 ): HttpUtils.FetchHandler => {
   let app = toHttpApp(routeSet)
 
   if (middlewareRouteSet) {
-    const httpMiddleware = middlewareRouteSet.set.filter((r) =>
+    const httpMiddleware = RouteSet.items(middlewareRouteSet).filter((r) =>
       isHttpMiddlewareHandler(r.handler)
     )
 
