@@ -1,4 +1,4 @@
-import * as t from "bun:test"
+import * as test from "bun:test"
 import { MemoryFileSystem } from "effect-memfs"
 import * as Effect from "effect/Effect"
 import { effectFn } from "../testing"
@@ -15,13 +15,13 @@ const Files = {
 
 const effect = effectFn()
 
-t.it("walks routes", () =>
+test.it("walks routes", () =>
   effect(function*() {
     const files = yield* FileRouter.walkRoutesDirectory("/routes").pipe(
       Effect.provide(MemoryFileSystem.layerWith(Files)),
     )
 
-    t
+    test
       .expect(
         files.map(v => v.modulePath),
       )
@@ -35,7 +35,7 @@ t.it("walks routes", () =>
       ])
   }))
 
-t.it("walks routes with rest", () =>
+test.it("walks routes with rest", () =>
   effect(function*() {
     const files = yield* FileRouter.walkRoutesDirectory("/routes").pipe(
       Effect.provide(
@@ -47,7 +47,7 @@ t.it("walks routes with rest", () =>
       ),
     )
 
-    t
+    test
       .expect(
         files.map(v => v.modulePath),
       )

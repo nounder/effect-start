@@ -1,6 +1,6 @@
 import * as Error from "@effect/platform/Error"
 import * as FileSystem from "@effect/platform/FileSystem"
-import * as t from "bun:test"
+import * as test from "bun:test"
 import * as Effect from "effect/Effect"
 import * as Schema from "effect/Schema"
 import * as Scope from "effect/Scope"
@@ -37,7 +37,7 @@ function createTempDirWithFiles(
   })
 }
 
-t.it("generates code for routes only", () => {
+test.it("generates code for routes only", () => {
   const handles: RouteHandle[] = [
     parseRoute("route.tsx"),
     parseRoute("about/route.tsx"),
@@ -61,10 +61,12 @@ export const routes = [
 ] as const
 `
 
-  t.expect(code).toBe(expected)
+  test
+    .expect(code)
+    .toBe(expected)
 })
 
-t.it("generates code with layers", () => {
+test.it("generates code with layers", () => {
   const handles: RouteHandle[] = [
     parseRoute("layer.tsx"),
     parseRoute("route.tsx"),
@@ -95,10 +97,12 @@ export const routes = [
 ] as const
 `
 
-  t.expect(code).toBe(expected)
+  test
+    .expect(code)
+    .toBe(expected)
 })
 
-t.it("generates code with nested layers", () => {
+test.it("generates code with nested layers", () => {
   const handles: RouteHandle[] = [
     parseRoute("layer.tsx"),
     parseRoute("dashboard/layer.tsx"),
@@ -132,10 +136,12 @@ export const routes = [
 ] as const
 `
 
-  t.expect(code).toBe(expected)
+  test
+    .expect(code)
+    .toBe(expected)
 })
 
-t.it("only includes group layers for routes in that group", () => {
+test.it("only includes group layers for routes in that group", () => {
   const handles: RouteHandle[] = [
     parseRoute("layer.tsx"),
     parseRoute("(admin)/layer.ts"),
@@ -145,16 +151,19 @@ t.it("only includes group layers for routes in that group", () => {
 
   const code = FileRouterCodegen.generateCode(handles)
 
-  t.expect(code).toContain("path: \"/users\"")
+  test
+    .expect(code)
+    .toContain("path: \"/users\"")
+  test
+    .expect(code)
+    .toContain("path: \"/movies\"")
+  test
+    .expect(code)
+    .toContain("() => import(\"./layer.tsx\")")
+  test
+    .expect(code)
+    .toContain("() => import(\"./(admin)/layer.ts\")")
 
-  t.expect(code).toContain("path: \"/movies\"")
-
-  // /users should have both root layer and (admin) layer
-  t.expect(code).toContain("() => import(\"./layer.tsx\")")
-
-  t.expect(code).toContain("() => import(\"./(admin)/layer.ts\")")
-
-  // /movies should only have root layer, not (admin) layer
   const expectedMovies = `  {
     path: "/movies",
     load: () => import("./movies/route.tsx"),
@@ -163,10 +172,12 @@ t.it("only includes group layers for routes in that group", () => {
     ],
   },`
 
-  t.expect(code).toContain(expectedMovies)
+  test
+    .expect(code)
+    .toContain(expectedMovies)
 })
 
-t.it("handles dynamic routes with params", () => {
+test.it("handles dynamic routes with params", () => {
   const handles: RouteHandle[] = [
     parseRoute("users/route.tsx"),
     parseRoute("users/[userId]/route.tsx"),
@@ -175,12 +186,18 @@ t.it("handles dynamic routes with params", () => {
 
   const code = FileRouterCodegen.generateCode(handles)
 
-  t.expect(code).toContain("path: \"/users\"")
-  t.expect(code).toContain("path: \"/users/[userId]\"")
-  t.expect(code).toContain("path: \"/posts/[postId]/comments/[commentId]\"")
+  test
+    .expect(code)
+    .toContain("path: \"/users\"")
+  test
+    .expect(code)
+    .toContain("path: \"/users/[userId]\"")
+  test
+    .expect(code)
+    .toContain("path: \"/posts/[postId]/comments/[commentId]\"")
 })
 
-t.it("handles rest parameters", () => {
+test.it("handles rest parameters", () => {
   const handles: RouteHandle[] = [
     parseRoute("docs/[[...slug]]/route.tsx"),
     parseRoute("api/[...path]/route.tsx"),
@@ -188,11 +205,15 @@ t.it("handles rest parameters", () => {
 
   const code = FileRouterCodegen.generateCode(handles)
 
-  t.expect(code).toContain("path: \"/docs/[[...slug]]\"")
-  t.expect(code).toContain("path: \"/api/[...path]\"")
+  test
+    .expect(code)
+    .toContain("path: \"/docs/[[...slug]]\"")
+  test
+    .expect(code)
+    .toContain("path: \"/api/[...path]\"")
 })
 
-t.it("handles groups in path", () => {
+test.it("handles groups in path", () => {
   const handles: RouteHandle[] = [
     parseRoute("(admin)/users/route.tsx"),
     parseRoute("(admin)/layer.tsx"),
@@ -200,23 +221,29 @@ t.it("handles groups in path", () => {
 
   const code = FileRouterCodegen.generateCode(handles)
 
-  t.expect(code).toContain("path: \"/users\"") // groups stripped from URL
-  t.expect(code).toContain(
+  test
+    .expect(code)
+    .toContain("path: \"/users\"")
+  test
+    .expect(code)
+    .toContain(
     "layers: [\n      () => import(\"./(admin)/layer.tsx\"),\n    ]",
   )
 })
 
-t.it("generates correct variable names for root routes", () => {
+test.it("generates correct variable names for root routes", () => {
   const handles: RouteHandle[] = [
     parseRoute("route.tsx"),
   ]
 
   const code = FileRouterCodegen.generateCode(handles)
 
-  t.expect(code).toContain("path: \"/\"")
+  test
+    .expect(code)
+    .toContain("path: \"/\"")
 })
 
-t.it("handles routes with dots in path segments", () => {
+test.it("handles routes with dots in path segments", () => {
   const handles: RouteHandle[] = [
     parseRoute("events.json/route.ts"),
     parseRoute("config.yaml.backup/route.ts"),
@@ -224,11 +251,15 @@ t.it("handles routes with dots in path segments", () => {
 
   const code = FileRouterCodegen.generateCode(handles)
 
-  t.expect(code).toContain("path: \"/events.json\"")
-  t.expect(code).toContain("path: \"/config.yaml.backup\"")
+  test
+    .expect(code)
+    .toContain("path: \"/events.json\"")
+  test
+    .expect(code)
+    .toContain("path: \"/config.yaml.backup\"")
 })
 
-t.it("uses default module identifier", () => {
+test.it("uses default module identifier", () => {
   const handles: RouteHandle[] = [
     parseRoute("route.tsx"),
   ]
@@ -236,15 +267,17 @@ t.it("uses default module identifier", () => {
   const code = FileRouterCodegen.generateCode(handles)
 })
 
-t.it("generates empty routes array when no handles provided", () => {
+test.it("generates empty routes array when no handles provided", () => {
   const handles: RouteHandle[] = []
 
   const code = FileRouterCodegen.generateCode(handles)
 
-  t.expect(code).toContain("export const routes = [] as const")
+  test
+    .expect(code)
+    .toContain("export const routes = [] as const")
 })
 
-t.it("only includes routes, not layers", () => {
+test.it("only includes routes, not layers", () => {
   const handles: RouteHandle[] = [
     parseRoute("layer.tsx"),
     parseRoute("users/layer.tsx"),
@@ -252,10 +285,12 @@ t.it("only includes routes, not layers", () => {
 
   const code = FileRouterCodegen.generateCode(handles)
 
-  t.expect(code).toContain("export const routes = [] as const")
+  test
+    .expect(code)
+    .toContain("export const routes = [] as const")
 })
 
-t.it("complex nested routes with multiple layers", () => {
+test.it("complex nested routes with multiple layers", () => {
   const handles: RouteHandle[] = [
     parseRoute("layer.tsx"),
     parseRoute("(auth)/layer.tsx"),
@@ -268,18 +303,30 @@ t.it("complex nested routes with multiple layers", () => {
 
   const code = FileRouterCodegen.generateCode(handles)
 
-  t.expect(code).toContain("path: \"/login\"") // group stripped
-  t.expect(code).toContain("path: \"/signup\"") // group stripped
-  t.expect(code).toContain("path: \"/dashboard\"")
-  t.expect(code).toContain("path: \"/dashboard/settings\"")
-
-  // Check layers are properly inherited
-  t.expect(code).toContain("() => import(\"./layer.tsx\")")
-  t.expect(code).toContain("() => import(\"./(auth)/layer.tsx\")")
-  t.expect(code).toContain("() => import(\"./dashboard/layer.tsx\")")
+  test
+    .expect(code)
+    .toContain("path: \"/login\"")
+  test
+    .expect(code)
+    .toContain("path: \"/signup\"")
+  test
+    .expect(code)
+    .toContain("path: \"/dashboard\"")
+  test
+    .expect(code)
+    .toContain("path: \"/dashboard/settings\"")
+  test
+    .expect(code)
+    .toContain("() => import(\"./layer.tsx\")")
+  test
+    .expect(code)
+    .toContain("() => import(\"./(auth)/layer.tsx\")")
+  test
+    .expect(code)
+    .toContain("() => import(\"./dashboard/layer.tsx\")")
 })
 
-t.it("handles routes with hyphens and underscores in path segments", () => {
+test.it("handles routes with hyphens and underscores in path segments", () => {
   const handles: RouteHandle[] = [
     parseRoute("api-v1/route.ts"),
     parseRoute("my_resource/route.ts"),
@@ -287,66 +334,73 @@ t.it("handles routes with hyphens and underscores in path segments", () => {
 
   const code = FileRouterCodegen.generateCode(handles)
 
-  t.expect(code).toContain("path: \"/api-v1\"")
-  t.expect(code).toContain("path: \"/my_resource\"")
+  test
+    .expect(code)
+    .toContain("path: \"/api-v1\"")
+  test
+    .expect(code)
+    .toContain("path: \"/my_resource\"")
 })
 
-t.it("validateRouteModule returns true for valid modules", () => {
+test.it("validateRouteModule returns true for valid modules", () => {
   const validRoute = Route.text("Hello")
 
-  t
+  test
     .expect(FileRouterCodegen.validateRouteModule({ default: validRoute }))
     .toBe(true)
-
-  t
+  test
     .expect(FileRouterCodegen.validateRouteModule({
       default: Route.html(Effect.succeed("<div>Hello</div>")),
     }))
     .toBe(true)
-
-  t
+  test
     .expect(FileRouterCodegen.validateRouteModule({
       default: Route.json({ message: "Hello" }),
     }))
     .toBe(true)
 })
 
-t.it("validateRouteModule returns false for invalid modules", () => {
-  t.expect(FileRouterCodegen.validateRouteModule({})).toBe(false)
-
-  t
+test.it("validateRouteModule returns false for invalid modules", () => {
+  test
+    .expect(FileRouterCodegen.validateRouteModule({}))
+    .toBe(false)
+  test
     .expect(FileRouterCodegen.validateRouteModule({ default: {} }))
     .toBe(false)
-
-  t
+  test
     .expect(FileRouterCodegen.validateRouteModule({ default: "not a route" }))
     .toBe(false)
-
-  t
+  test
     .expect(FileRouterCodegen.validateRouteModule({ foo: "bar" }))
     .toBe(false)
-
-  t.expect(FileRouterCodegen.validateRouteModule(null)).toBe(false)
-
-  t.expect(FileRouterCodegen.validateRouteModule(undefined)).toBe(false)
-
-  t.expect(FileRouterCodegen.validateRouteModule("string")).toBe(false)
-
-  t.expect(FileRouterCodegen.validateRouteModule(42)).toBe(false)
+  test
+    .expect(FileRouterCodegen.validateRouteModule(null))
+    .toBe(false)
+  test
+    .expect(FileRouterCodegen.validateRouteModule(undefined))
+    .toBe(false)
+  test
+    .expect(FileRouterCodegen.validateRouteModule("string"))
+    .toBe(false)
+  test
+    .expect(FileRouterCodegen.validateRouteModule(42))
+    .toBe(false)
 })
 
-t.it("mixed params and rest in same route", () => {
+test.it("mixed params and rest in same route", () => {
   const handles: RouteHandle[] = [
     parseRoute("users/[userId]/files/[...path]/route.tsx"),
   ]
 
   const code = FileRouterCodegen.generateCode(handles)
 
-  t.expect(code).toContain("path: \"/users/[userId]/files/[...path]\"")
+  test
+    .expect(code)
+    .toContain("path: \"/users/[userId]/files/[...path]\"")
 })
 
-t.describe("layerMatchesRoute", () => {
-  t.it("layer in dynamic param dir only applies to routes in that dir", () => {
+test.describe("layerMatchesRoute", () => {
+  test.it("layer in dynamic param dir only applies to routes in that dir", () => {
     const handles: RouteHandle[] = [
       parseRoute("[userId]/layer.tsx"),
       parseRoute("[userId]/posts/route.tsx"),
@@ -363,17 +417,21 @@ t.describe("layerMatchesRoute", () => {
     ],
   },`
 
-    t.expect(code).toContain(expectedUserIdPosts)
+    test
+      .expect(code)
+      .toContain(expectedUserIdPosts)
 
     const expectedOtherId = `  {
     path: "/[otherId]",
     load: () => import("./[otherId]/route.tsx"),
   },`
 
-    t.expect(code).toContain(expectedOtherId)
+    test
+      .expect(code)
+      .toContain(expectedOtherId)
   })
 
-  t.it("nested groups only apply to routes in those groups", () => {
+  test.it("nested groups only apply to routes in those groups", () => {
     const handles: RouteHandle[] = [
       parseRoute("layer.tsx"),
       parseRoute("(admin)/(dashboard)/layer.tsx"),
@@ -393,7 +451,9 @@ t.describe("layerMatchesRoute", () => {
     ],
   },`
 
-    t.expect(code).toContain(expectedAdminDashboardUsers)
+    test
+      .expect(code)
+      .toContain(expectedAdminDashboardUsers)
 
     const expectedAdminSettings = `  {
     path: "/settings",
@@ -403,7 +463,9 @@ t.describe("layerMatchesRoute", () => {
     ],
   },`
 
-    t.expect(code).toContain(expectedAdminSettings)
+    test
+      .expect(code)
+      .toContain(expectedAdminSettings)
 
     const expectedOtherDashboard = `  {
     path: "/",
@@ -413,10 +475,12 @@ t.describe("layerMatchesRoute", () => {
     ],
   },`
 
-    t.expect(code).toContain(expectedOtherDashboard)
+    test
+      .expect(code)
+      .toContain(expectedOtherDashboard)
   })
 
-  t.it("similar directory names do not match (user vs users)", () => {
+  test.it("similar directory names do not match (user vs users)", () => {
     const handles: RouteHandle[] = [
       parseRoute("user/layer.tsx"),
       parseRoute("user/route.tsx"),
@@ -433,17 +497,21 @@ t.describe("layerMatchesRoute", () => {
     ],
   },`
 
-    t.expect(code).toContain(expectedUser)
+    test
+      .expect(code)
+      .toContain(expectedUser)
 
     const expectedUsers = `  {
     path: "/users",
     load: () => import("./users/route.tsx"),
   },`
 
-    t.expect(code).toContain(expectedUsers)
+    test
+      .expect(code)
+      .toContain(expectedUsers)
   })
 
-  t.it("mixed groups and literals layer matching", () => {
+  test.it("mixed groups and literals layer matching", () => {
     const handles: RouteHandle[] = [
       parseRoute("(admin)/users/layer.tsx"),
       parseRoute("(admin)/users/[userId]/route.tsx"),
@@ -461,24 +529,30 @@ t.describe("layerMatchesRoute", () => {
     ],
   },`
 
-    t.expect(code).toContain(expectedAdminUsersId)
+    test
+      .expect(code)
+      .toContain(expectedAdminUsersId)
 
     const expectedUsers = `  {
     path: "/users",
     load: () => import("./users/route.tsx"),
   },`
 
-    t.expect(code).toContain(expectedUsers)
+    test
+      .expect(code)
+      .toContain(expectedUsers)
 
     const expectedAdminPosts = `  {
     path: "/posts",
     load: () => import("./(admin)/posts/route.tsx"),
   },`
 
-    t.expect(code).toContain(expectedAdminPosts)
+    test
+      .expect(code)
+      .toContain(expectedAdminPosts)
   })
 
-  t.it("param directory layer only applies to routes in that dir", () => {
+  test.it("param directory layer only applies to routes in that dir", () => {
     const handles: RouteHandle[] = [
       parseRoute("[tenantId]/layer.tsx"),
       parseRoute("[tenantId]/settings/route.tsx"),
@@ -495,17 +569,21 @@ t.describe("layerMatchesRoute", () => {
     ],
   },`
 
-    t.expect(code).toContain(expectedTenantSettings)
+    test
+      .expect(code)
+      .toContain(expectedTenantSettings)
 
     const expectedOther = `  {
     path: "/other",
     load: () => import("./other/route.tsx"),
   },`
 
-    t.expect(code).toContain(expectedOther)
+    test
+      .expect(code)
+      .toContain(expectedOther)
   })
 
-  t.it(
+  test.it(
     "optional param directory layer only applies to routes in that dir",
     () => {
       const handles: RouteHandle[] = [
@@ -524,18 +602,22 @@ t.describe("layerMatchesRoute", () => {
     ],
   },`
 
-      t.expect(code).toContain(expectedIdSettings)
+      test
+        .expect(code)
+        .toContain(expectedIdSettings)
 
       const expectedOther = `  {
     path: "/other",
     load: () => import("./other/route.tsx"),
   },`
 
-      t.expect(code).toContain(expectedOther)
+      test
+        .expect(code)
+        .toContain(expectedOther)
     },
   )
 
-  t.it("layer and route at same directory level", () => {
+  test.it("layer and route at same directory level", () => {
     const handles: RouteHandle[] = [
       parseRoute("users/layer.tsx"),
       parseRoute("users/route.tsx"),
@@ -551,7 +633,9 @@ t.describe("layerMatchesRoute", () => {
     ],
   },`
 
-    t.expect(code).toContain(expected)
+    test
+      .expect(code)
+      .toContain(expected)
   })
 })
 
@@ -561,7 +645,7 @@ const simpleRouteContent = `import * as Route from "${
 export default Route.text("Hello")
 `
 
-t.it("update() > writes file", () =>
+test.it("update() > writes file", () =>
   Effect
     .gen(function*() {
       const fs = yield* FileSystem.FileSystem
@@ -577,7 +661,9 @@ t.it("update() > writes file", () =>
         path.join(routesPath, "manifest.ts"),
       )
 
-      t.expect(content).toContain("export const routes =")
+      test
+        .expect(content)
+        .toContain("export const routes =")
     })
     .pipe(
       Effect.scoped,
@@ -585,7 +671,7 @@ t.it("update() > writes file", () =>
       Effect.runPromise,
     ))
 
-t.it("update() > writes only when it changes", () =>
+test.it("update() > writes only when it changes", () =>
   Effect
     .gen(function*() {
       const fs = yield* FileSystem.FileSystem
@@ -607,8 +693,13 @@ t.it("update() > writes only when it changes", () =>
         path.join(routesPath, "manifest.ts"),
       )
 
-      t.expect(content2).not.toBe("")
-      t.expect(content2).toBe(content)
+      test
+        .expect(content2)
+        .not
+        .toBe("")
+      test
+        .expect(content2)
+        .toBe(content)
     })
     .pipe(
       Effect.scoped,
@@ -616,7 +707,7 @@ t.it("update() > writes only when it changes", () =>
       Effect.runPromise,
     ))
 
-t.it(
+test.it(
   "update() > removes deleted routes from manifest",
   () =>
     Effect
@@ -634,8 +725,12 @@ t.it(
           path.join(routesPath, "manifest.ts"),
         )
 
-        t.expect(content).toContain("path: \"/\"")
-        t.expect(content).toContain("path: \"/about\"")
+        test
+          .expect(content)
+          .toContain("path: \"/\"")
+        test
+          .expect(content)
+          .toContain("path: \"/about\"")
 
         yield* fs.remove(path.join(routesPath, "about/route.tsx"))
 
@@ -645,8 +740,13 @@ t.it(
           path.join(routesPath, "manifest.ts"),
         )
 
-        t.expect(content2).toContain("path: \"/\"")
-        t.expect(content2).not.toContain("path: \"/about\"")
+        test
+          .expect(content2)
+          .toContain("path: \"/\"")
+        test
+          .expect(content2)
+          .not
+          .toContain("path: \"/about\"")
       })
       .pipe(
         Effect.scoped,
@@ -655,7 +755,7 @@ t.it(
       ),
 )
 
-t.it(
+test.it(
   "update() > removes routes when entire directory is deleted",
   () =>
     Effect
@@ -674,9 +774,15 @@ t.it(
           path.join(routesPath, "manifest.ts"),
         )
 
-        t.expect(content).toContain("path: \"/\"")
-        t.expect(content).toContain("path: \"/about\"")
-        t.expect(content).toContain("path: \"/users\"")
+        test
+          .expect(content)
+          .toContain("path: \"/\"")
+        test
+          .expect(content)
+          .toContain("path: \"/about\"")
+        test
+          .expect(content)
+          .toContain("path: \"/users\"")
 
         yield* fs.remove(path.join(routesPath, "users"), {
           recursive: true,
@@ -688,9 +794,16 @@ t.it(
           path.join(routesPath, "manifest.ts"),
         )
 
-        t.expect(content2).toContain("path: \"/\"")
-        t.expect(content2).toContain("path: \"/about\"")
-        t.expect(content2).not.toContain("path: \"/users\"")
+        test
+          .expect(content2)
+          .toContain("path: \"/\"")
+        test
+          .expect(content2)
+          .toContain("path: \"/about\"")
+        test
+          .expect(content2)
+          .not
+          .toContain("path: \"/users\"")
       })
       .pipe(
         Effect.scoped,
@@ -699,121 +812,176 @@ t.it(
       ),
 )
 
-t.describe("PathParams schema generation and validation", () => {
-  t.describe("generatePathParamsSchema", () => {
-    t.it("returns null for routes with no params", () => {
+test.describe("PathParams schema generation and validation", () => {
+  test.describe("generatePathParamsSchema", () => {
+    test.it("returns null for routes with no params", () => {
       const handle = parseRoute("users/route.tsx")
       const schema = FileRouterCodegen.generatePathParamsSchema(handle.segments)
-      t.expect(schema).toBe(null)
+      test
+        .expect(schema)
+        .toBe(null)
     })
 
-    t.it("generates schema for single required param", () => {
+    test.it("generates schema for single required param", () => {
       const handle = parseRoute("users/[id]/route.tsx")
       const schema = FileRouterCodegen.generatePathParamsSchema(handle.segments)
-      t.expect(schema).not.toBe(null)
-      t.expect(Object.keys(schema!.fields)).toEqual(["id"])
+      test
+        .expect(schema)
+        .not
+        .toBe(null)
+      test
+        .expect(Object.keys(schema!.fields))
+        .toEqual(["id"])
     })
 
-    t.it("generates schema for single optional param", () => {
+    test.it("generates schema for single optional param", () => {
       const handle = parseRoute("about/[[section]]/route.tsx")
       const schema = FileRouterCodegen.generatePathParamsSchema(handle.segments)
-      t.expect(schema).not.toBe(null)
-      t.expect(Object.keys(schema!.fields)).toEqual(["section"])
+      test
+        .expect(schema)
+        .not
+        .toBe(null)
+      test
+        .expect(Object.keys(schema!.fields))
+        .toEqual(["section"])
     })
 
-    t.it("generates schema for rest segment", () => {
+    test.it("generates schema for rest segment", () => {
       const handle = parseRoute("docs/[...path]/route.tsx")
       const schema = FileRouterCodegen.generatePathParamsSchema(handle.segments)
-      t.expect(schema).not.toBe(null)
-      t.expect(Object.keys(schema!.fields)).toEqual(["path"])
+      test
+        .expect(schema)
+        .not
+        .toBe(null)
+      test
+        .expect(Object.keys(schema!.fields))
+        .toEqual(["path"])
     })
 
-    t.it("rest segment should capture path starting with /", () => {
+    test.it("rest segment should capture path starting with /", () => {
       const handle = parseRoute("docs/[...path]/route.tsx")
       const schema = FileRouterCodegen.generatePathParamsSchema(handle.segments)
-      t.expect(schema).not.toBe(null)
+      test
+        .expect(schema)
+        .not
+        .toBe(null)
 
-      // Rest segments capture remaining path as string
-      // For route /docs/[...path] matching /docs/guide/getting-started
-      // The path param should be: "/guide/getting-started" (with leading /)
       const formatted = SchemaExtra.formatSchemaCode(schema!)
-      t.expect(formatted).toBe("{ path: Schema.String }")
+      test
+        .expect(formatted)
+        .toBe("{ path: Schema.String }")
     })
 
-    t.it("generates schema for optional rest segment", () => {
+    test.it("generates schema for optional rest segment", () => {
       const handle = parseRoute("docs/[[...slug]]/route.tsx")
       const schema = FileRouterCodegen.generatePathParamsSchema(handle.segments)
-      t.expect(schema).not.toBe(null)
-      t.expect(Object.keys(schema!.fields)).toEqual(["slug"])
+      test
+        .expect(schema)
+        .not
+        .toBe(null)
+      test
+        .expect(Object.keys(schema!.fields))
+        .toEqual(["slug"])
     })
 
-    t.it("generates schema for multiple params", () => {
+    test.it("generates schema for multiple params", () => {
       const handle = parseRoute("posts/[postId]/comments/[commentId]/route.tsx")
       const schema = FileRouterCodegen.generatePathParamsSchema(handle.segments)
-      t.expect(schema).not.toBe(null)
-      t.expect(Object.keys(schema!.fields).sort()).toEqual([
+      test
+        .expect(schema)
+        .not
+        .toBe(null)
+      test
+        .expect(Object.keys(schema!.fields).sort())
+        .toEqual([
         "commentId",
         "postId",
       ])
     })
 
-    t.it("generates schema for mixed required and optional params", () => {
+    test.it("generates schema for mixed required and optional params", () => {
       const handle = parseRoute("users/[userId]/posts/[[postId]]/route.tsx")
       const schema = FileRouterCodegen.generatePathParamsSchema(handle.segments)
-      t.expect(schema).not.toBe(null)
-      t.expect(Object.keys(schema!.fields).sort()).toEqual(["postId", "userId"])
+      test
+        .expect(schema)
+        .not
+        .toBe(null)
+      test
+        .expect(Object.keys(schema!.fields).sort())
+        .toEqual(["postId", "userId"])
     })
 
-    t.it("ignores group segments", () => {
+    test.it("ignores group segments", () => {
       const handle = parseRoute("(admin)/users/[id]/route.tsx")
       const schema = FileRouterCodegen.generatePathParamsSchema(handle.segments)
-      t.expect(schema).not.toBe(null)
-      t.expect(Object.keys(schema!.fields)).toEqual(["id"])
+      test
+        .expect(schema)
+        .not
+        .toBe(null)
+      test
+        .expect(Object.keys(schema!.fields))
+        .toEqual(["id"])
     })
   })
 
-  t.describe("schemaEqual", () => {
-    t.it("returns true when both schemas are undefined/null", () => {
-      t.expect(SchemaExtra.schemaEqual(undefined, null)).toBe(true)
+  test.describe("schemaEqual", () => {
+    test.it("returns true when both schemas are undefined/null", () => {
+      test
+        .expect(SchemaExtra.schemaEqual(undefined, null))
+        .toBe(true)
     })
 
-    t.it("returns false when only one schema is undefined", () => {
+    test.it("returns false when only one schema is undefined", () => {
       const schema = Schema.Struct({ id: Schema.String })
-      t.expect(SchemaExtra.schemaEqual(undefined, schema)).toBe(false)
-      t.expect(SchemaExtra.schemaEqual(schema, null)).toBe(false)
+      test
+        .expect(SchemaExtra.schemaEqual(undefined, schema))
+        .toBe(false)
+      test
+        .expect(SchemaExtra.schemaEqual(schema, null))
+        .toBe(false)
     })
 
-    t.it("returns true for exact matches", () => {
+    test.it("returns true for exact matches", () => {
       const schema1 = Schema.Struct({ id: Schema.String })
       const schema2 = Schema.Struct({ id: Schema.String })
-      t.expect(SchemaExtra.schemaEqual(schema1, schema2)).toBe(true)
+      test
+        .expect(SchemaExtra.schemaEqual(schema1, schema2))
+        .toBe(true)
     })
 
-    t.it("returns true for refinement matches (UUID = String)", () => {
+    test.it("returns true for refinement matches (UUID = String)", () => {
       const userSchema = Schema.Struct({ id: Schema.UUID })
       const expectedSchema = Schema.Struct({ id: Schema.String })
-      t.expect(SchemaExtra.schemaEqual(userSchema, expectedSchema)).toBe(true)
+      test
+        .expect(SchemaExtra.schemaEqual(userSchema, expectedSchema))
+        .toBe(true)
     })
 
-    t.it("returns false for type mismatches", () => {
+    test.it("returns false for type mismatches", () => {
       const schema1 = Schema.Struct({ id: Schema.String })
       const schema2 = Schema.Struct({ id: Schema.Number })
-      t.expect(SchemaExtra.schemaEqual(schema1, schema2)).toBe(false)
+      test
+        .expect(SchemaExtra.schemaEqual(schema1, schema2))
+        .toBe(false)
     })
 
-    t.it("returns false for field name mismatches", () => {
+    test.it("returns false for field name mismatches", () => {
       const schema1 = Schema.Struct({ id: Schema.String })
       const schema2 = Schema.Struct({ userId: Schema.String })
-      t.expect(SchemaExtra.schemaEqual(schema1, schema2)).toBe(false)
+      test
+        .expect(SchemaExtra.schemaEqual(schema1, schema2))
+        .toBe(false)
     })
 
-    t.it("returns false for field count mismatches", () => {
+    test.it("returns false for field count mismatches", () => {
       const schema1 = Schema.Struct({ id: Schema.String })
       const schema2 = Schema.Struct({ id: Schema.String, name: Schema.String })
-      t.expect(SchemaExtra.schemaEqual(schema1, schema2)).toBe(false)
+      test
+        .expect(SchemaExtra.schemaEqual(schema1, schema2))
+        .toBe(false)
     })
 
-    t.it("returns true for multiple fields with UUID refinement", () => {
+    test.it("returns true for multiple fields with UUID refinement", () => {
       const userSchema = Schema.Struct({
         id: Schema.UUID,
         name: Schema.String,
@@ -822,10 +990,12 @@ t.describe("PathParams schema generation and validation", () => {
         id: Schema.String,
         name: Schema.String,
       })
-      t.expect(SchemaExtra.schemaEqual(userSchema, expectedSchema)).toBe(true)
+      test
+        .expect(SchemaExtra.schemaEqual(userSchema, expectedSchema))
+        .toBe(true)
     })
 
-    t.it("handles optional fields correctly", () => {
+    test.it("handles optional fields correctly", () => {
       const schema1 = Schema.Struct({
         id: Schema.String,
         name: Schema.optional(Schema.String),
@@ -834,48 +1004,62 @@ t.describe("PathParams schema generation and validation", () => {
         id: Schema.String,
         name: Schema.optional(Schema.String),
       })
-      t.expect(SchemaExtra.schemaEqual(schema1, schema2)).toBe(true)
+      test
+        .expect(SchemaExtra.schemaEqual(schema1, schema2))
+        .toBe(true)
     })
   })
 
-  t.describe("formatSchemaCode", () => {
-    t.it("formats single required field", () => {
+  test.describe("formatSchemaCode", () => {
+    test.it("formats single required field", () => {
       const schema = Schema.Struct({ id: Schema.String })
       const formatted = SchemaExtra.formatSchemaCode(schema)
-      t.expect(formatted).toBe("{ id: Schema.String }")
+      test
+        .expect(formatted)
+        .toBe("{ id: Schema.String }")
     })
 
-    t.it("formats multiple fields", () => {
+    test.it("formats multiple fields", () => {
       const schema = Schema.Struct({
         id: Schema.String,
         count: Schema.Number,
       })
       const formatted = SchemaExtra.formatSchemaCode(schema)
-      t.expect(formatted).toContain("id: Schema.String")
-      t.expect(formatted).toContain("count: Schema.Number")
+      test
+        .expect(formatted)
+        .toContain("id: Schema.String")
+      test
+        .expect(formatted)
+        .toContain("count: Schema.Number")
     })
 
-    t.it("formats optional fields with ? marker", () => {
+    test.it("formats optional fields with ? marker", () => {
       const schema = Schema.Struct({
         id: Schema.String,
         name: Schema.optional(Schema.String),
       })
       const formatted = SchemaExtra.formatSchemaCode(schema)
-      t.expect(formatted).toContain("id: Schema.String")
-      t.expect(formatted).toContain("name")
+      test
+        .expect(formatted)
+        .toContain("id: Schema.String")
+      test
+        .expect(formatted)
+        .toContain("name")
     })
 
-    t.it("formats boolean fields", () => {
+    test.it("formats boolean fields", () => {
       const schema = Schema.Struct({
         active: Schema.Boolean,
       })
       const formatted = SchemaExtra.formatSchemaCode(schema)
-      t.expect(formatted).toBe("{ active: Schema.Boolean }")
+      test
+        .expect(formatted)
+        .toBe("{ active: Schema.Boolean }")
     })
   })
 
-  t.describe("validateRouteModules", () => {
-    t.it(
+  test.describe("validateRouteModules", () => {
+    test.it(
       "does not log when PathParams schema is missing",
       () =>
         Effect
@@ -898,9 +1082,10 @@ export default Route.text("User")
 
             yield* FileRouterCodegen.validateRouteModules(routesPath, handles)
 
-            // Verify no logs were created
             const messages = yield* TestLogger.messages
-            t.expect(messages).toHaveLength(0)
+            test
+              .expect(messages)
+              .toHaveLength(0)
           })
           .pipe(
             Effect.scoped,
@@ -912,7 +1097,7 @@ export default Route.text("User")
           ),
     )
 
-    t.it(
+    test.it(
       "logs error when PathParams schema is incorrect",
       () =>
         Effect
@@ -940,12 +1125,19 @@ export default Route.text("User").schemaPathParams({ userId: Schema.String })
 
             yield* FileRouterCodegen.validateRouteModules(routesPath, handles)
 
-            // Verify error was logged
             const messages = yield* TestLogger.messages
-            t.expect(messages).toHaveLength(1)
-            t.expect(messages[0]).toContain("[Error]")
-            t.expect(messages[0]).toContain("incorrect PathParams schema")
-            t.expect(messages[0]).toContain("expected schemaPathParams")
+            test
+              .expect(messages)
+              .toHaveLength(1)
+            test
+              .expect(messages[0])
+              .toContain("[Error]")
+            test
+              .expect(messages[0])
+              .toContain("incorrect PathParams schema")
+            test
+              .expect(messages[0])
+              .toContain("expected schemaPathParams")
           })
           .pipe(
             Effect.scoped,

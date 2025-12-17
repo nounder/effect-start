@@ -1,10 +1,9 @@
 import * as HttpMiddleware from "@effect/platform/HttpMiddleware"
 import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
-import * as t from "bun:test"
+import * as test from "bun:test"
 import * as Effect from "effect/Effect"
-import * as Function from "effect/Function"
 import * as Schema from "effect/Schema"
-import * as Types from "effect/Types"
+import * as type from "expect-type"
 import * as Hyper from "../hyper/Hyper.ts"
 import * as Values from "../Values.ts"
 import * as Route from "./Route.ts"
@@ -28,7 +27,7 @@ class RandomError {
   readonly _tag = "LoserError"
 }
 
-t.it("types default routes", () => {
+test.it("types default routes", () => {
   const implicit = Route
     .text(
       Effect.succeed("hello"),
@@ -48,16 +47,21 @@ t.it("types default routes", () => {
         ),
     )
 
-  type Expected = RouteSet.RouteSet<[
-    Route.Route<"GET", "text">,
-    Route.Route<"GET", "html">,
-  ]>
-
-  Function.satisfies<Expected>()(implicit)
-  Function.satisfies<Expected>()(explicit)
+  type
+    .expectTypeOf(implicit)
+    .toMatchTypeOf<RouteSet.RouteSet<[
+      Route.Route<"GET", "text">,
+      Route.Route<"GET", "html">,
+    ]>>()
+  type
+    .expectTypeOf(explicit)
+    .toMatchTypeOf<RouteSet.RouteSet<[
+      Route.Route<"GET", "text">,
+      Route.Route<"GET", "html">,
+    ]>>()
 })
 
-t.it("types GET & POST routes", () => {
+test.it("types GET & POST routes", () => {
   const implicit = Route
     .text(
       Effect.succeed("hello"),
@@ -91,17 +95,23 @@ t.it("types GET & POST routes", () => {
       ),
     )
 
-  type Expected = RouteSet.RouteSet<[
-    Route.Route<"GET", "text">,
-    Route.Route<"GET", "html">,
-    Route.Route<"POST", "json">,
-  ]>
-
-  Function.satisfies<Expected>()(implicit)
-  Function.satisfies<Expected>()(explicit)
+  type
+    .expectTypeOf(implicit)
+    .toMatchTypeOf<RouteSet.RouteSet<[
+      Route.Route<"GET", "text">,
+      Route.Route<"GET", "html">,
+      Route.Route<"POST", "json">,
+    ]>>()
+  type
+    .expectTypeOf(explicit)
+    .toMatchTypeOf<RouteSet.RouteSet<[
+      Route.Route<"GET", "text">,
+      Route.Route<"GET", "html">,
+      Route.Route<"POST", "json">,
+    ]>>()
 })
 
-t.it("schemaPathParams adds schema to RouteSet", () => {
+test.it("schemaPathParams adds schema to RouteSet", () => {
   const IdSchema = Schema.Struct({
     id: Schema.String,
   })
@@ -112,19 +122,15 @@ t.it("schemaPathParams adds schema to RouteSet", () => {
       Effect.succeed("hello"),
     )
 
-  type ExpectedSchemas = {
-    readonly PathParams: typeof IdSchema
-  }
-
-  type Expected = RouteSet.RouteSet<
-    [Route.Route<"GET", "text", any, ExpectedSchemas>],
-    ExpectedSchemas
-  >
-
-  Function.satisfies<Expected>()(routes)
+  type
+    .expectTypeOf(routes)
+    .toMatchTypeOf<RouteSet.RouteSet<
+      [Route.Route<"GET", "text", any, { readonly PathParams: typeof IdSchema }>],
+      { readonly PathParams: typeof IdSchema }
+    >>()
 })
 
-t.it("schemaPathParams accepts struct fields directly", () => {
+test.it("schemaPathParams accepts struct fields directly", () => {
   const routes = Route
     .schemaPathParams({
       id: Schema.String,
@@ -133,35 +139,32 @@ t.it("schemaPathParams accepts struct fields directly", () => {
       Effect.succeed("hello"),
     )
 
-  type ExpectedSchemas = {
-    readonly PathParams: Schema.Struct<{
-      id: typeof Schema.String
-    }>
-  }
-
-  type Expected = RouteSet.RouteSet<
-    [Route.Route<"GET", "text", any, ExpectedSchemas>],
-    ExpectedSchemas
-  >
-
-  Function.satisfies<Expected>()(routes)
+  type
+    .expectTypeOf(routes)
+    .toMatchTypeOf<RouteSet.RouteSet<
+      [Route.Route<"GET", "text", any, {
+        readonly PathParams: Schema.Struct<{ id: typeof Schema.String }>
+      }>],
+      { readonly PathParams: Schema.Struct<{ id: typeof Schema.String }> }
+    >>()
 })
 
-t.it("schemaPathParams with struct fields types context correctly", () => {
+test.it("schemaPathParams with struct fields types context correctly", () => {
   Route
     .schemaPathParams({
       id: Schema.String,
     })
     .text(
       (context) => {
-        Function.satisfies<string>()(context.pathParams.id)
-
+        type
+          .expectTypeOf(context.pathParams.id)
+          .toEqualTypeOf<string>()
         return Effect.succeed("hello")
       },
     )
 })
 
-t.it("schemaPayload propagates to all routes", () => {
+test.it("schemaPayload propagates to all routes", () => {
   const PayloadSchema = Schema.Struct({
     name: Schema.String,
     age: Schema.Number,
@@ -180,22 +183,18 @@ t.it("schemaPayload propagates to all routes", () => {
       ),
     )
 
-  type ExpectedSchemas = {
-    readonly Payload: typeof PayloadSchema
-  }
-
-  type Expected = RouteSet.RouteSet<
-    [
-      Route.Route<"GET", "text", any, ExpectedSchemas>,
-      Route.Route<"POST", "text", any, ExpectedSchemas>,
-    ],
-    ExpectedSchemas
-  >
-
-  Function.satisfies<Expected>()(routes)
+  type
+    .expectTypeOf(routes)
+    .toMatchTypeOf<RouteSet.RouteSet<
+      [
+        Route.Route<"GET", "text", any, { readonly Payload: typeof PayloadSchema }>,
+        Route.Route<"POST", "text", any, { readonly Payload: typeof PayloadSchema }>,
+      ],
+      { readonly Payload: typeof PayloadSchema }
+    >>()
 })
 
-t.it(
+test.it(
   "context is typed with pathParams when schemaPathParams is provided",
   () => {
     const IdSchema = Schema.Struct({
@@ -206,25 +205,19 @@ t.it(
       .schemaPathParams(IdSchema)
       .text(
         (context) => {
-          type ContextType = typeof context
-
-          type Expected = Route.RouteContext<{
-            pathParams: {
-              id: string
-            }
-          }>
-
-          Function.satisfies<Expected>()(context)
-
-          Function.satisfies<string>()(context.pathParams.id)
-
+          type
+            .expectTypeOf(context)
+            .toMatchTypeOf<Route.RouteContext<{ pathParams: { id: string } }>>()
+          type
+            .expectTypeOf(context.pathParams.id)
+            .toEqualTypeOf<string>()
           return Effect.succeed("hello")
         },
       )
   },
 )
 
-t.it("context is typed with urlParams when schemaUrlParams is provided", () => {
+test.it("context is typed with urlParams when schemaUrlParams is provided", () => {
   const QuerySchema = Schema.Struct({
     page: Schema.NumberFromString,
     limit: Schema.NumberFromString,
@@ -234,25 +227,21 @@ t.it("context is typed with urlParams when schemaUrlParams is provided", () => {
     .schemaUrlParams(QuerySchema)
     .text(
       (context) => {
-        type Expected = Route.RouteContext<{
-          urlParams: {
-            page: number
-            limit: number
-          }
-        }>
-
-        Function.satisfies<Expected>()(context)
-
-        Function.satisfies<number>()(context.urlParams.page)
-
-        Function.satisfies<number>()(context.urlParams.limit)
-
+        type
+          .expectTypeOf(context)
+          .toMatchTypeOf<Route.RouteContext<{ urlParams: { page: number; limit: number } }>>()
+        type
+          .expectTypeOf(context.urlParams.page)
+          .toEqualTypeOf<number>()
+        type
+          .expectTypeOf(context.urlParams.limit)
+          .toEqualTypeOf<number>()
         return Effect.succeed("hello")
       },
     )
 })
 
-t.it("context is typed with payload when schemaPayload is provided", () => {
+test.it("context is typed with payload when schemaPayload is provided", () => {
   const PayloadSchema = Schema.Struct({
     name: Schema.String,
     age: Schema.Number,
@@ -262,25 +251,21 @@ t.it("context is typed with payload when schemaPayload is provided", () => {
     .schemaPayload(PayloadSchema)
     .text(
       (context) => {
-        type Expected = Route.RouteContext<{
-          payload: {
-            name: string
-            age: number
-          }
-        }>
-
-        Function.satisfies<Expected>()(context)
-
-        Function.satisfies<string>()(context.payload.name)
-
-        Function.satisfies<number>()(context.payload.age)
-
+        type
+          .expectTypeOf(context)
+          .toMatchTypeOf<Route.RouteContext<{ payload: { name: string; age: number } }>>()
+        type
+          .expectTypeOf(context.payload.name)
+          .toEqualTypeOf<string>()
+        type
+          .expectTypeOf(context.payload.age)
+          .toEqualTypeOf<number>()
         return Effect.succeed("hello")
       },
     )
 })
 
-t.it("context is typed with headers when schemaHeaders is provided", () => {
+test.it("context is typed with headers when schemaHeaders is provided", () => {
   const HeadersSchema = Schema.Struct({
     authorization: Schema.String,
   })
@@ -289,22 +274,18 @@ t.it("context is typed with headers when schemaHeaders is provided", () => {
     .schemaHeaders(HeadersSchema)
     .text(
       (context) => {
-        type Expected = Route.RouteContext<{
-          headers: {
-            authorization: string
-          }
-        }>
-
-        Function.satisfies<Expected>()(context)
-
-        Function.satisfies<string>()(context.headers.authorization)
-
+        type
+          .expectTypeOf(context)
+          .toMatchTypeOf<Route.RouteContext<{ headers: { authorization: string } }>>()
+        type
+          .expectTypeOf(context.headers.authorization)
+          .toEqualTypeOf<string>()
         return Effect.succeed("hello")
       },
     )
 })
 
-t.it("context is typed with multiple schemas", () => {
+test.it("context is typed with multiple schemas", () => {
   const IdSchema = Schema.Struct({
     id: Schema.String,
   })
@@ -323,32 +304,28 @@ t.it("context is typed with multiple schemas", () => {
     .schemaPayload(PayloadSchema)
     .text(
       (context) => {
-        type Expected = Route.RouteContext<{
-          pathParams: {
-            id: string
-          }
-          urlParams: {
-            page: number
-          }
-          payload: {
-            name: string
-          }
-        }>
-
-        Function.satisfies<Expected>()(context)
-
-        Function.satisfies<string>()(context.pathParams.id)
-
-        Function.satisfies<number>()(context.urlParams.page)
-
-        Function.satisfies<string>()(context.payload.name)
-
+        type
+          .expectTypeOf(context)
+          .toMatchTypeOf<Route.RouteContext<{
+            pathParams: { id: string }
+            urlParams: { page: number }
+            payload: { name: string }
+          }>>()
+        type
+          .expectTypeOf(context.pathParams.id)
+          .toEqualTypeOf<string>()
+        type
+          .expectTypeOf(context.urlParams.page)
+          .toEqualTypeOf<number>()
+        type
+          .expectTypeOf(context.payload.name)
+          .toEqualTypeOf<string>()
         return Effect.succeed("hello")
       },
     )
 })
 
-t.it("schemaSuccess and schemaError are stored in RouteSet", () => {
+test.it("schemaSuccess and schemaError are stored in RouteSet", () => {
   const SuccessSchema = Schema.Struct({
     ok: Schema.Boolean,
   })
@@ -364,20 +341,21 @@ t.it("schemaSuccess and schemaError are stored in RouteSet", () => {
       Effect.succeed("hello"),
     )
 
-  type ExpectedSchemas = {
-    readonly Success: typeof SuccessSchema
-    readonly Error: typeof ErrorSchema
-  }
-
-  type Expected = RouteSet.RouteSet<
-    [Route.Route<"GET", "text", any, ExpectedSchemas>],
-    ExpectedSchemas
-  >
-
-  Function.satisfies<Expected>()(routes)
+  type
+    .expectTypeOf(routes)
+    .toMatchTypeOf<RouteSet.RouteSet<
+      [Route.Route<"GET", "text", any, {
+        readonly Success: typeof SuccessSchema
+        readonly Error: typeof ErrorSchema
+      }>],
+      {
+        readonly Success: typeof SuccessSchema
+        readonly Error: typeof ErrorSchema
+      }
+    >>()
 })
 
-t.it("all schema methods work together", () => {
+test.it("all schema methods work together", () => {
   const PathSchema = Schema.Struct({
     id: Schema.String,
   })
@@ -413,24 +391,29 @@ t.it("all schema methods work together", () => {
       Effect.succeed("hello"),
     )
 
-  type ExpectedSchemas = {
-    readonly PathParams: typeof PathSchema
-    readonly UrlParams: typeof QuerySchema
-    readonly Payload: typeof PayloadSchema
-    readonly Success: typeof SuccessSchema
-    readonly Error: typeof ErrorSchema
-    readonly Headers: typeof HeadersSchema
-  }
-
-  type Expected = RouteSet.RouteSet<
-    [Route.Route<"GET", "text", any, ExpectedSchemas>],
-    ExpectedSchemas
-  >
-
-  Function.satisfies<Expected>()(routes)
+  type
+    .expectTypeOf(routes)
+    .toMatchTypeOf<RouteSet.RouteSet<
+      [Route.Route<"GET", "text", any, {
+        readonly PathParams: typeof PathSchema
+        readonly UrlParams: typeof QuerySchema
+        readonly Payload: typeof PayloadSchema
+        readonly Success: typeof SuccessSchema
+        readonly Error: typeof ErrorSchema
+        readonly Headers: typeof HeadersSchema
+      }>],
+      {
+        readonly PathParams: typeof PathSchema
+        readonly UrlParams: typeof QuerySchema
+        readonly Payload: typeof PayloadSchema
+        readonly Success: typeof SuccessSchema
+        readonly Error: typeof ErrorSchema
+        readonly Headers: typeof HeadersSchema
+      }
+    >>()
 })
 
-t.it("schemas merge when RouteSet and Route both define same schema", () => {
+test.it("schemas merge when RouteSet and Route both define same schema", () => {
   const BaseSchema = Schema.Struct({
     id: Schema.String,
   })
@@ -447,82 +430,65 @@ t.it("schemas merge when RouteSet and Route both define same schema", () => {
         .text(Effect.succeed("hello")),
     )
 
-  type Expected = RouteSet.RouteSet<
-    [
-      Route.Route<
-        "GET",
-        "text",
-        any,
-        {
-          readonly PathParams: Schema.Struct<
-            {
+  type
+    .expectTypeOf(routes)
+    .toMatchTypeOf<RouteSet.RouteSet<
+      [
+        Route.Route<
+          "GET",
+          "text",
+          any,
+          {
+            readonly PathParams: Schema.Struct<{
               id: typeof Schema.String
               name: typeof Schema.String
-            }
-          >
-        }
-      >,
-    ],
-    {
-      readonly PathParams: typeof BaseSchema
-    }
-  >
-
-  Function.satisfies<Expected>()(routes)
+            }>
+          }
+        >,
+      ],
+      { readonly PathParams: typeof BaseSchema }
+    >>()
 })
 
-t.it("context has only url when no schemas provided", () => {
+test.it("context has only url when no schemas provided", () => {
   Route
     .text(
       (context) => {
-        type Expected = Route.RouteContext<{}>
-
-        Function.satisfies<Expected>()(context)
-
-        Function.satisfies<URL>()(context.url)
-
+        type
+          .expectTypeOf(context)
+          .toMatchTypeOf<Route.RouteContext<{}>>()
+        type
+          .expectTypeOf(context.url)
+          .toEqualTypeOf<URL>()
         // @ts-expect-error - pathParams should not exist
         context.pathParams
-
         return Effect.succeed("hello")
       },
     )
 })
 
-t.describe(`${Route.text}`, () => {
-  t.it("accepts string directly", () => {
+test.describe(`${Route.text}`, () => {
+  test.it("accepts string directly", () => {
     const routes = Route.text("static response")
 
-    Function.satisfies<
-      RouteSet.RouteSet<
-        [
-          Route.Route<
-            "GET",
-            "text",
-            Route.RouteHandler<"static response", never, never>
-          >,
-        ]
-      >
-    >()(routes)
+    type
+      .expectTypeOf(routes)
+      .toMatchTypeOf<RouteSet.RouteSet<[
+        Route.Route<"GET", "text", Route.RouteHandler<"static response", never, never>>,
+      ]>>()
   })
 
-  t.it("accepts Effect directly", () => {
+  test.it("accepts Effect directly", () => {
     const routes = Route.text(Effect.succeed("effect response"))
 
-    Function.satisfies<
-      RouteSet.RouteSet<
-        [
-          Route.Route<
-            "GET",
-            "text",
-            Route.RouteHandler<string, never, never>
-          >,
-        ]
-      >
-    >()(routes)
+    type
+      .expectTypeOf(routes)
+      .toMatchTypeOf<RouteSet.RouteSet<[
+        Route.Route<"GET", "text", Route.RouteHandler<string, never, never>>,
+      ]>>()
   })
 
-  t.it("infers Error and Requirements", () => {
+  test.it("infers Error and Requirements", () => {
     const route = Route.text(function*(context) {
       const greeting = yield* Greeting.greet()
       const isLucky = yield* Random.boolean()
@@ -534,68 +500,74 @@ t.describe(`${Route.text}`, () => {
       return greeting
     })
 
-    Function.satisfies<
-      RouteSet.RouteSet<
-        [
-          Route.Route<
-            "GET",
-            "text",
-            Route.RouteHandler<string, RandomError, Greeting | Random>
-          >,
-        ]
-      >
-    >()(route)
+    type
+      .expectTypeOf(route)
+      .toMatchTypeOf<RouteSet.RouteSet<[
+        Route.Route<"GET", "text", Route.RouteHandler<string, RandomError, Greeting | Random>>,
+      ]>>()
   })
 
-  t.it("chains with other actions", () => {
+  test.it("chains with other actions", () => {
     const routes = Route
       .text("hello")
       .html(Effect.succeed("<div>world</div>"))
       .json({ data: "test" })
 
-    t.expect(RouteSet.isRouteSet(routes)).toBe(true)
-    t.expect(RouteSet.items(routes).length).toBe(3)
-    t.expect(RouteSet.items(routes)[0]!.kind).toBe("text")
-    t.expect(RouteSet.items(routes)[1]!.kind).toBe("html")
-    t.expect(RouteSet.items(routes)[2]!.kind).toBe("json")
+    test
+      .expect(RouteSet.isRouteSet(routes))
+      .toBe(true)
+    test
+      .expect(RouteSet.items(routes).length)
+      .toBe(3)
+    test
+      .expect(RouteSet.items(routes)[0]!.kind)
+      .toBe("text")
+    test
+      .expect(RouteSet.items(routes)[1]!.kind)
+      .toBe("html")
+    test
+      .expect(RouteSet.items(routes)[2]!.kind)
+      .toBe("json")
   })
 
-  t.it("next() returns correct type", () => {
+  test.it("next() returns correct type", () => {
     Route.text(function*(_context, next) {
       type NextFn = NonNullable<typeof next>
       type NextResult = ReturnType<NextFn>
       type NextType = Effect.Effect.Success<NextResult>
-      type _check = [NextType] extends [string] ? true : false
-      const _assert: _check = true
+      type
+        .expectTypeOf<NextType>()
+        .toExtend<string>()
       return "hello"
     })
   })
 })
 
-t.it("next() returns correct type for html handler", () => {
+test.it("next() returns correct type for html handler", () => {
   Route.html(function*(_context, next) {
     type NextFn = NonNullable<typeof next>
     type NextResult = ReturnType<NextFn>
     type NextType = Effect.Effect.Success<NextResult>
-    type _check = [NextType] extends [string | Hyper.GenericJsxObject] ? true
-      : false
-    const _assert: _check = true
+    type
+      .expectTypeOf<NextType>()
+      .toExtend<string | Hyper.GenericJsxObject>()
     return "<div>hello</div>"
   })
 })
 
-t.it("next() returns correct type for json handler", () => {
+test.it("next() returns correct type for json handler", () => {
   Route.json(function*(_context, next) {
     type NextFn = NonNullable<typeof next>
     type NextResult = ReturnType<NextFn>
     type NextType = Effect.Effect.Success<NextResult>
-    type _check = [NextType] extends [Values.Json] ? true : false
-    const _assert: _check = true
+    type
+      .expectTypeOf<NextType>()
+      .toExtend<Values.Json>()
     return { message: "hello" }
   })
 })
 
-t.it("schemas work with all media types", () => {
+test.it("schemas work with all media types", () => {
   const PathSchema = Schema.Struct({
     id: Schema.String,
   })
@@ -603,21 +575,23 @@ t.it("schemas work with all media types", () => {
   Route
     .schemaPathParams(PathSchema)
     .html((context) => {
-      Function.satisfies<string>()(context.pathParams.id)
-
+      type
+        .expectTypeOf(context.pathParams.id)
+        .toEqualTypeOf<string>()
       return Effect.succeed("<h1>Hello</h1>")
     })
 
   Route
     .schemaPathParams(PathSchema)
     .json((context) => {
-      Function.satisfies<string>()(context.pathParams.id)
-
+      type
+        .expectTypeOf(context.pathParams.id)
+        .toEqualTypeOf<string>()
       return Effect.succeed({ message: "hello" })
     })
 })
 
-t.it("schemas work with generator functions", () => {
+test.it("schemas work with generator functions", () => {
   const IdSchema = Schema.Struct({
     id: Schema.String,
   })
@@ -625,13 +599,14 @@ t.it("schemas work with generator functions", () => {
   Route
     .schemaPathParams(IdSchema)
     .text(function*(context) {
-      Function.satisfies<string>()(context.pathParams.id)
-
+      type
+        .expectTypeOf(context.pathParams.id)
+        .toEqualTypeOf<string>()
       return "hello"
     })
 })
 
-t.it("schema property is correctly set on RouteSet", () => {
+test.it("schema property is correctly set on RouteSet", () => {
   const PathSchema = Schema.Struct({
     id: Schema.String,
   })
@@ -640,14 +615,12 @@ t.it("schema property is correctly set on RouteSet", () => {
     .schemaPathParams(PathSchema)
     .text(Effect.succeed("hello"))
 
-  type Expected = {
-    readonly PathParams: typeof PathSchema
-  }
-
-  Function.satisfies<Expected>()(RouteSet.schemas(routes))
+  type
+    .expectTypeOf(RouteSet.schemas(routes))
+    .toMatchTypeOf<{ readonly PathParams: typeof PathSchema }>()
 })
 
-t.it("schemas don't leak between independent route chains", () => {
+test.it("schemas don't leak between independent route chains", () => {
   const Schema1 = Schema.Struct({
     id: Schema.String,
   })
@@ -664,35 +637,21 @@ t.it("schemas don't leak between independent route chains", () => {
     .schemaPathParams(Schema2)
     .text(Effect.succeed("route2"))
 
-  type Expected1 = RouteSet.RouteSet<
-    [
-      Route.Route<
-        "GET",
-        "text",
-        any,
-        { readonly PathParams: typeof Schema1 }
-      >,
-    ],
-    { readonly PathParams: typeof Schema1 }
-  >
-
-  type Expected2 = RouteSet.RouteSet<
-    [
-      Route.Route<
-        "GET",
-        "text",
-        any,
-        { readonly PathParams: typeof Schema2 }
-      >,
-    ],
-    { readonly PathParams: typeof Schema2 }
-  >
-
-  Function.satisfies<Expected1>()(route1)
-  Function.satisfies<Expected2>()(route2)
+  type
+    .expectTypeOf(route1)
+    .toMatchTypeOf<RouteSet.RouteSet<
+      [Route.Route<"GET", "text", any, { readonly PathParams: typeof Schema1 }>],
+      { readonly PathParams: typeof Schema1 }
+    >>()
+  type
+    .expectTypeOf(route2)
+    .toMatchTypeOf<RouteSet.RouteSet<
+      [Route.Route<"GET", "text", any, { readonly PathParams: typeof Schema2 }>],
+      { readonly PathParams: typeof Schema2 }
+    >>()
 })
 
-t.it("schema order doesn't matter", () => {
+test.it("schema order doesn't matter", () => {
   const PathSchema = Schema.Struct({
     id: Schema.String,
   })
@@ -711,16 +670,21 @@ t.it("schema order doesn't matter", () => {
     .schemaPathParams(PathSchema)
     .text(Effect.succeed("hello"))
 
-  type Expected = {
-    readonly PathParams: typeof PathSchema
-    readonly Payload: typeof PayloadSchema
-  }
-
-  Function.satisfies<Expected>()(RouteSet.schemas(routes1))
-  Function.satisfies<Expected>()(RouteSet.schemas(routes2))
+  type
+    .expectTypeOf(RouteSet.schemas(routes1))
+    .toMatchTypeOf<{
+      readonly PathParams: typeof PathSchema
+      readonly Payload: typeof PayloadSchema
+    }>()
+  type
+    .expectTypeOf(RouteSet.schemas(routes2))
+    .toMatchTypeOf<{
+      readonly PathParams: typeof PathSchema
+      readonly Payload: typeof PayloadSchema
+    }>()
 })
 
-t.it("multiple routes in RouteSet each get the schema", () => {
+test.it("multiple routes in RouteSet each get the schema", () => {
   const PathSchema = Schema.Struct({
     id: Schema.String,
   })
@@ -731,23 +695,19 @@ t.it("multiple routes in RouteSet each get the schema", () => {
     .html(Effect.succeed("<p>html</p>"))
     .json(Effect.succeed({ data: "json" }))
 
-  type ExpectedSchemas = {
-    readonly PathParams: typeof PathSchema
-  }
-
-  type Expected = RouteSet.RouteSet<
-    [
-      Route.Route<"GET", "text", any, ExpectedSchemas>,
-      Route.Route<"GET", "html", any, ExpectedSchemas>,
-      Route.Route<"GET", "json", any, ExpectedSchemas>,
-    ],
-    ExpectedSchemas
-  >
-
-  Function.satisfies<Expected>()(routes)
+  type
+    .expectTypeOf(routes)
+    .toMatchTypeOf<RouteSet.RouteSet<
+      [
+        Route.Route<"GET", "text", any, { readonly PathParams: typeof PathSchema }>,
+        Route.Route<"GET", "html", any, { readonly PathParams: typeof PathSchema }>,
+        Route.Route<"GET", "json", any, { readonly PathParams: typeof PathSchema }>,
+      ],
+      { readonly PathParams: typeof PathSchema }
+    >>()
 })
 
-t.it("schemas merge correctly with struct fields syntax", () => {
+test.it("schemas merge correctly with struct fields syntax", () => {
   const routes = Route
     .schemaPathParams({ id: Schema.String })
     .get(
@@ -757,11 +717,15 @@ t.it("schemas merge correctly with struct fields syntax", () => {
     )
 
   const route = RouteSet.items(routes)[0]!
-  t.expect(route.schemas.PathParams!.fields.id).toBe(Schema.String)
-  t.expect(route.schemas.PathParams!.fields.userId).toBe(Schema.String)
+  test
+    .expect(route.schemas.PathParams!.fields.id)
+    .toBe(Schema.String)
+  test
+    .expect(route.schemas.PathParams!.fields.userId)
+    .toBe(Schema.String)
 })
 
-t.it("method modifiers preserve and merge schemas", () => {
+test.it("method modifiers preserve and merge schemas", () => {
   const PathSchema = Schema.Struct({
     id: Schema.String,
   })
@@ -778,27 +742,25 @@ t.it("method modifiers preserve and merge schemas", () => {
         .text(Effect.succeed("created")),
     )
 
-  type Expected = RouteSet.RouteSet<
-    [
-      Route.Route<
-        "POST",
-        "text",
-        any,
-        {
-          readonly PathParams: typeof PathSchema
-          readonly Payload: typeof PayloadSchema
-        }
-      >,
-    ],
-    {
-      readonly PathParams: typeof PathSchema
-    }
-  >
-
-  Function.satisfies<Expected>()(routes)
+  type
+    .expectTypeOf(routes)
+    .toMatchTypeOf<RouteSet.RouteSet<
+      [
+        Route.Route<
+          "POST",
+          "text",
+          any,
+          {
+            readonly PathParams: typeof PathSchema
+            readonly Payload: typeof PayloadSchema
+          }
+        >,
+      ],
+      { readonly PathParams: typeof PathSchema }
+    >>()
 })
 
-t.it("method modifiers require routes with handlers", () => {
+test.it("method modifiers require routes with handlers", () => {
   const PathSchema = Schema.Struct({
     id: Schema.String,
   })
@@ -819,7 +781,7 @@ t.it("method modifiers require routes with handlers", () => {
     )
 })
 
-t.it("method modifiers preserve proper types when nesting schemas", () => {
+test.it("method modifiers preserve proper types when nesting schemas", () => {
   const PathSchema = Schema.Struct({
     id: Schema.String,
   })
@@ -832,29 +794,23 @@ t.it("method modifiers preserve proper types when nesting schemas", () => {
         .text(Effect.succeed("hello")),
     )
 
-  type BaseSchemas = {
-    readonly PathParams: typeof PathSchema
-  }
-
-  type MergedPathParams = Schema.Struct<{
-    id: typeof Schema.String
-    userId: typeof Schema.String
-  }>
-
-  type Expected = RouteSet.RouteSet<
-    [
-      Route.Route<"GET", "text", any, {
-        readonly PathParams: MergedPathParams
-      }>,
-    ],
-    BaseSchemas
-  >
-
-  Function.satisfies<Expected>()(route)
+  type
+    .expectTypeOf(route)
+    .toMatchTypeOf<RouteSet.RouteSet<
+      [
+        Route.Route<"GET", "text", any, {
+          readonly PathParams: Schema.Struct<{
+            id: typeof Schema.String
+            userId: typeof Schema.String
+          }>
+        }>,
+      ],
+      { readonly PathParams: typeof PathSchema }
+    >>()
 })
 
-t.describe(`${Route.schemaPathParams}`, () => {
-  t.it("only accepts string-encoded schemas", () => {
+test.describe(`${Route.schemaPathParams}`, () => {
+  test.it("only accepts string-encoded schemas", () => {
     Route
       .schemaPathParams({
         id: Schema.String,
@@ -885,40 +841,39 @@ t.describe(`${Route.schemaPathParams}`, () => {
   })
 })
 
-t.describe(`${Route.schemaUrlParams}`, () => {
-  t.it("accepts optional fields", () => {
+test.describe(`${Route.schemaUrlParams}`, () => {
+  test.it("accepts optional fields", () => {
     const routes = Route
       .schemaUrlParams({
-        hello: Function.pipe(
-          Schema.String,
-          Schema.optional,
-        ),
+        hello: Schema.optional(Schema.String),
       })
       .html(
         (ctx) => {
-          Function.satisfies<string | undefined>()(ctx.urlParams.hello)
-
+          type
+            .expectTypeOf(ctx.urlParams.hello)
+            .toEqualTypeOf<string | undefined>()
           const page = ctx.urlParams.hello ?? "default"
-
           return Effect.succeed(`<div><h1>About ${page}</h1></div>`)
         },
       )
 
-    type ExpectedSchemas = {
-      readonly UrlParams: Schema.Struct<{
-        hello: Schema.optional<typeof Schema.String>
-      }>
-    }
-
-    type Expected = RouteSet.RouteSet<
-      [Route.Route<"GET", "html", any, ExpectedSchemas>],
-      ExpectedSchemas
-    >
-
-    Function.satisfies<Expected>()(routes)
+    type
+      .expectTypeOf(routes)
+      .toMatchTypeOf<RouteSet.RouteSet<
+        [Route.Route<"GET", "html", any, {
+          readonly UrlParams: Schema.Struct<{
+            hello: Schema.optional<typeof Schema.String>
+          }>
+        }>],
+        {
+          readonly UrlParams: Schema.Struct<{
+            hello: Schema.optional<typeof Schema.String>
+          }>
+        }
+      >>()
   })
 
-  t.it("only accepts string-encoded schemas", () => {
+  test.it("only accepts string-encoded schemas", () => {
     Route
       .schemaUrlParams({
         page: Schema.String,
@@ -955,8 +910,8 @@ t.describe(`${Route.schemaUrlParams}`, () => {
   })
 })
 
-t.describe(`${Route.schemaHeaders}`, () => {
-  t.it("only accepts string-encoded schemas", () => {
+test.describe(`${Route.schemaHeaders}`, () => {
+  test.it("only accepts string-encoded schemas", () => {
     Route
       .schemaHeaders({
         authorization: Schema.String,
@@ -1006,37 +961,31 @@ function executeHandle(handler: Route.RouteHandler) {
   return handler(context, noopNext) as Effect.Effect<unknown, never, never>
 }
 
-t.describe(`${Route.http}`, () => {
-  t.it("accepts response directly", async () => {
+test.describe(`${Route.http}`, () => {
+  test.it("accepts response directly", async () => {
     const routes = Route.http(
       HttpServerResponse.text("static response"),
     )
 
-    Function.satisfies<
-      RouteSet.RouteSet<
-        [
-          Route.Route<
-            "*",
-            "http",
-            Route.RouteHandler<
-              HttpServerResponse.HttpServerResponse,
-              never,
-              never
-            >
-          >,
-        ]
-      >
-    >()(routes)
+    type
+      .expectTypeOf(routes)
+      .toMatchTypeOf<RouteSet.RouteSet<[
+        Route.Route<"*", "http", Route.RouteHandler<
+          HttpServerResponse.HttpServerResponse,
+          never,
+          never
+        >>,
+      ]>>()
 
     const handler = RouteSet.items(routes)[0]!.handler
     const result = await Effect.runPromise(executeHandle(handler))
 
-    t
+    test
       .expect(HttpServerResponse.isServerResponse(result))
       .toBe(true)
   })
 
-  t.it("infers Error and Requirements", () => {
+  test.it("infers Error and Requirements", () => {
     const middlewareRoute = Route
       .http(HttpMiddleware.make(app =>
         Effect.gen(function*() {
@@ -1057,174 +1006,155 @@ t.describe(`${Route.http}`, () => {
         return greeting
       })
 
-    Function.satisfies<
-      RouteSet.RouteSet<
-        [
-          Route.Route<
-            "*",
-            "http",
-            Route.RouteHandler<
-              HttpServerResponse.HttpServerResponse,
-              RandomError,
-              Random
-            >
-          >,
-          Route.Route<
-            "GET",
-            "text",
-            Route.RouteHandler<
-              string,
-              never,
-              Greeting
-            >
-          >,
-        ]
-      >
-    >()(fullRoute)
+    type
+      .expectTypeOf(fullRoute)
+      .toMatchTypeOf<RouteSet.RouteSet<[
+        Route.Route<"*", "http", Route.RouteHandler<
+          HttpServerResponse.HttpServerResponse,
+          RandomError,
+          Random
+        >>,
+        Route.Route<"GET", "text", Route.RouteHandler<string, never, Greeting>>,
+      ]>>()
 
     type Requirements = Route.Route.Requirements<typeof fullRoute>
     type Errors = Route.Route.Error<typeof fullRoute>
 
-    const _checksRequirements: Types.Equals<
-      Requirements,
-      Greeting | Random
-    > = true
-
-    const _checkErrors: Types.Equals<
-      Errors,
-      RandomError
-    > = true
+    type
+      .expectTypeOf<Requirements>()
+      .toEqualTypeOf<Greeting | Random>()
+    type
+      .expectTypeOf<Errors>()
+      .toEqualTypeOf<RandomError>()
   })
 
-  t.it("chains with other actions", () => {
+  test.it("chains with other actions", () => {
     const routes = Route
       .http(app => app)
       .html(Effect.succeed("<div>test</div>"))
       .json({ data: "test" })
 
-    t.expect(RouteSet.isRouteSet(routes)).toBe(true)
-    t.expect(RouteSet.items(routes).length).toBe(3)
-    t.expect(RouteSet.items(routes)[0]!.kind).toBe("http")
-    t.expect(RouteSet.items(routes)[1]!.kind).toBe("html")
-    t.expect(RouteSet.items(routes)[2]!.kind).toBe("json")
+    test
+      .expect(RouteSet.isRouteSet(routes))
+      .toBe(true)
+    test
+      .expect(RouteSet.items(routes).length)
+      .toBe(3)
+    test
+      .expect(RouteSet.items(routes)[0]!.kind)
+      .toBe("http")
+    test
+      .expect(RouteSet.items(routes)[1]!.kind)
+      .toBe("html")
+    test
+      .expect(RouteSet.items(routes)[2]!.kind)
+      .toBe("json")
   })
 })
 
-t.describe(`${Route.overlaps}`, () => {
-  t.it("Route.matches returns true for exact method and kind match", () => {
+test.describe(`${Route.overlaps}`, () => {
+  test.it("Route.matches returns true for exact method and kind match", () => {
     const route1 = Route.get(Route.html(Effect.succeed("<div>test</div>")))
     const route2 = Route.get(Route.html(Effect.succeed("<div>other</div>")))
 
-    t
+    test
       .expect(Route.overlaps(
-        RouteSet
-          .items(route1)[0]!,
+        RouteSet.items(route1)[0]!,
         RouteSet.items(route2)[0]!,
       ))
       .toBe(true)
   })
 
-  t.it("Route.matches returns false for different methods", () => {
+  test.it("Route.matches returns false for different methods", () => {
     const route1 = Route.get(Route.html(Effect.succeed("<div>test</div>")))
     const route2 = Route.post(Route.html(Effect.succeed("<div>other</div>")))
 
-    t
+    test
       .expect(Route.overlaps(
-        RouteSet
-          .items(route1)[0]!,
+        RouteSet.items(route1)[0]!,
         RouteSet.items(route2)[0]!,
       ))
       .toBe(false)
   })
 
-  t.it("Route.matches returns false for different kinds", () => {
+  test.it("Route.matches returns false for different kinds", () => {
     const route1 = Route.get(Route.html(Effect.succeed("<div>test</div>")))
     const route2 = Route.get(Route.json({ data: "test" }))
 
-    t
+    test
       .expect(Route.overlaps(
-        RouteSet
-          .items(route1)[0]!,
+        RouteSet.items(route1)[0]!,
         RouteSet.items(route2)[0]!,
       ))
       .toBe(false)
   })
 
-  t.it("Route.matches returns true when method is wildcard", () => {
+  test.it("Route.matches returns true when method is wildcard", () => {
     const route1 = Route.html(Effect.succeed("<div>test</div>"))
     const route2 = Route.get(Route.html(Effect.succeed("<div>other</div>")))
 
-    t
+    test
       .expect(Route.overlaps(
-        RouteSet
-          .items(route1)[0]!,
+        RouteSet.items(route1)[0]!,
         RouteSet.items(route2)[0]!,
       ))
       .toBe(true)
-    t
+    test
       .expect(Route.overlaps(
-        RouteSet
-          .items(route2)[0]!,
+        RouteSet.items(route2)[0]!,
         RouteSet.items(route1)[0]!,
       ))
       .toBe(true)
   })
 
-  t.it("Route.matches returns true when one route has wildcard method", () => {
+  test.it("Route.matches returns true when one route has wildcard method", () => {
     const wildcardRoute = Route.html(Effect.succeed("<div>test</div>"))
     const specificRoute = Route.get(
       Route.html(Effect.succeed("<div>other</div>")),
     )
 
-    t
+    test
       .expect(Route.overlaps(
-        RouteSet
-          .items(wildcardRoute)[0]!,
+        RouteSet.items(wildcardRoute)[0]!,
         RouteSet.items(specificRoute)[0]!,
       ))
-      .toBe(
-        true,
-      )
+      .toBe(true)
   })
 })
 
-t.describe(`${Route.merge}`, () => {
-  t.it("combines routes into a single RouteSet", () => {
+test.describe(`${Route.merge}`, () => {
+  test.it("combines routes into a single RouteSet", () => {
     const textRoute = Route.text("hello")
     const htmlRoute = Route.html(Effect.succeed("<div>world</div>"))
 
     const merged = Route.merge(textRoute, htmlRoute)
 
-    t.expect(RouteSet.items(merged)).toHaveLength(2)
-    t.expect(RouteSet.items(merged)[0].kind).toBe("text")
-    t.expect(RouteSet.items(merged)[1].kind).toBe("html")
+    test
+      .expect(RouteSet.items(merged))
+      .toHaveLength(2)
+    test
+      .expect(RouteSet.items(merged)[0].kind)
+      .toBe("text")
+    test
+      .expect(RouteSet.items(merged)[1].kind)
+      .toBe("html")
   })
 
-  t.it("types merged routes preserving individual routes", () => {
+  test.it("types merged routes preserving individual routes", () => {
     const textRoute = Route.text("hello")
     const htmlRoute = Route.html(Effect.succeed("<div>world</div>"))
 
     const merged = Route.merge(textRoute, htmlRoute)
 
-    type Expected = RouteSet.RouteSet<
-      readonly [
-        Route.Route<
-          "GET",
-          "text",
-          Route.RouteHandler<"hello", never, never>
-        >,
-        Route.Route<
-          "GET",
-          "html",
-          Route.RouteHandler<string, never, never>
-        >,
-      ]
-    >
-
-    const _check: Expected = merged
+    type
+      .expectTypeOf(merged)
+      .toMatchTypeOf<RouteSet.RouteSet<readonly [
+        Route.Route<"GET", "text", Route.RouteHandler<"hello", never, never>>,
+        Route.Route<"GET", "html", Route.RouteHandler<string, never, never>>,
+      ]>>()
   })
 
-  t.it("types merged schemas using MergeSchemas", () => {
+  test.it("types merged schemas using MergeSchemas", () => {
     const routeA = Route
       .schemaPathParams({ id: Schema.NumberFromString })
       .text(Effect.succeed("a"))
@@ -1237,23 +1167,15 @@ t.describe(`${Route.merge}`, () => {
 
     type MergedSchemas = RouteSet.RouteSet.Schemas<typeof merged>
 
-    type ExpectedPathParams = {
-      readonly id: typeof Schema.NumberFromString
-    }
-    type ExpectedUrlParams = {
-      readonly page: typeof Schema.NumberFromString
-    }
-
-    type CheckPathParams = MergedSchemas["PathParams"] extends
-      Schema.Struct<ExpectedPathParams> ? true : false
-    type CheckUrlParams = MergedSchemas["UrlParams"] extends
-      Schema.Struct<ExpectedUrlParams> ? true : false
-
-    const _pathParamsCheck: CheckPathParams = true
-    const _urlParamsCheck: CheckUrlParams = true
+    type
+      .expectTypeOf<MergedSchemas["PathParams"]>()
+      .toExtend<Schema.Struct<{ readonly id: typeof Schema.NumberFromString }>>()
+    type
+      .expectTypeOf<MergedSchemas["UrlParams"]>()
+      .toExtend<Schema.Struct<{ readonly page: typeof Schema.NumberFromString }>>()
   })
 
-  t.it(
+  test.it(
     "allows multiple content routes with same method+kind for layering",
     () => {
       const wrapper = Route.html(function*(_c) {
@@ -1262,12 +1184,13 @@ t.describe(`${Route.merge}`, () => {
       const content = Route.html("<div>content</div>")
 
       const merged = Route.merge(wrapper, content)
-      t.expect(RouteSet.items(merged)).toHaveLength(2)
+      test
+        .expect(RouteSet.items(merged))
+        .toHaveLength(2)
     },
   )
 
-  t.it("allows multiple HttpMiddleware routes", () => {
-    // HttpMiddleware is created by passing a function (not an Effect)
+  test.it("allows multiple HttpMiddleware routes", () => {
     const middleware1 = Route.http(
       HttpMiddleware.make(() => HttpServerResponse.empty()),
     )
@@ -1276,6 +1199,8 @@ t.describe(`${Route.merge}`, () => {
     )
 
     const merged = Route.merge(middleware1, middleware2)
-    t.expect(RouteSet.items(merged)).toHaveLength(2)
+    test
+      .expect(RouteSet.items(merged))
+      .toHaveLength(2)
   })
 })

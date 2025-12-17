@@ -1,10 +1,6 @@
 import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
 import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
-import {
-  describe,
-  expect,
-  it,
-} from "bun:test"
+import * as test from "bun:test"
 import * as Effect from "effect/Effect"
 import * as BasicAuthMiddleware from "./BasicAuthMiddleware.js"
 
@@ -36,39 +32,53 @@ const runWithAuth = (authHeader: string | undefined) => {
   )
 }
 
-describe("BasicAuthMiddleware", () => {
-  it("returns 401 when no authorization header is present", async () => {
+test.describe("BasicAuthMiddleware", () => {
+  test.it("returns 401 when no authorization header is present", async () => {
     const response = await runWithAuth(undefined)
-    expect(response.status).toBe(401)
-    expect(response.headers["www-authenticate"]).toBe("Basic")
+    test
+      .expect(response.status)
+      .toBe(401)
+    test
+      .expect(response.headers["www-authenticate"])
+      .toBe("Basic")
   })
 
-  it("returns 401 when authorization header does not start with Basic", async () => {
+  test.it("returns 401 when authorization header does not start with Basic", async () => {
     const response = await runWithAuth("Bearer token")
-    expect(response.status).toBe(401)
+    test
+      .expect(response.status)
+      .toBe(401)
   })
 
-  it("returns 401 when credentials are invalid", async () => {
+  test.it("returns 401 when credentials are invalid", async () => {
     const invalidCredentials = btoa("wrong:credentials")
     const response = await runWithAuth(`Basic ${invalidCredentials}`)
-    expect(response.status).toBe(401)
+    test
+      .expect(response.status)
+      .toBe(401)
   })
 
-  it("returns 401 when username is wrong", async () => {
+  test.it("returns 401 when username is wrong", async () => {
     const invalidCredentials = btoa("wronguser:secret")
     const response = await runWithAuth(`Basic ${invalidCredentials}`)
-    expect(response.status).toBe(401)
+    test
+      .expect(response.status)
+      .toBe(401)
   })
 
-  it("returns 401 when password is wrong", async () => {
+  test.it("returns 401 when password is wrong", async () => {
     const invalidCredentials = btoa("admin:wrongpassword")
     const response = await runWithAuth(`Basic ${invalidCredentials}`)
-    expect(response.status).toBe(401)
+    test
+      .expect(response.status)
+      .toBe(401)
   })
 
-  it("passes through to app when credentials are valid", async () => {
+  test.it("passes through to app when credentials are valid", async () => {
     const validCredentials = btoa("admin:secret")
     const response = await runWithAuth(`Basic ${validCredentials}`)
-    expect(response.status).toBe(200)
+    test
+      .expect(response.status)
+      .toBe(200)
   })
 })

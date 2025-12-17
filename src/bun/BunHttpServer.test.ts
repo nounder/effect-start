@@ -1,11 +1,11 @@
-import * as t from "bun:test"
+import * as test from "bun:test"
 import * as Effect from "effect/Effect"
 import * as BunHttpServer from "./BunHttpServer.ts"
 
-t.describe("BunHttpServer smart port selection", () => {
+test.describe("BunHttpServer smart port selection", () => {
   // Skip when running in TTY because the random port logic requires !isTTY && CLAUDECODE,
   // and process.stdout.isTTY cannot be mocked
-  t.test.skipIf(process.stdout.isTTY)(
+  test.test.skipIf(process.stdout.isTTY)(
     "uses random port when PORT not set, isTTY=false, CLAUDECODE set",
     async () => {
       const originalPort = process.env.PORT
@@ -24,7 +24,9 @@ t.describe("BunHttpServer smart port selection", () => {
           ),
         )
 
-        t.expect(port).not.toBe(3000)
+        test
+          .expect(port)
+          .not.toBe(3000)
       } finally {
         if (originalPort !== undefined) {
           process.env.PORT = originalPort
@@ -40,7 +42,7 @@ t.describe("BunHttpServer smart port selection", () => {
     },
   )
 
-  t.test("uses explicit PORT even when CLAUDECODE is set", async () => {
+  test.test("uses explicit PORT even when CLAUDECODE is set", async () => {
     const originalPort = process.env.PORT
     const originalClaudeCode = process.env.CLAUDECODE
 
@@ -57,7 +59,9 @@ t.describe("BunHttpServer smart port selection", () => {
         ),
       )
 
-      t.expect(port).toBe(5678)
+      test
+        .expect(port)
+        .toBe(5678)
     } finally {
       if (originalPort !== undefined) {
         process.env.PORT = originalPort

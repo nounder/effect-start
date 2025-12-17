@@ -1,6 +1,6 @@
 import { HttpServerRequest } from "@effect/platform"
 import { RouteNotFound } from "@effect/platform/HttpServerError"
-import * as t from "bun:test"
+import * as test from "bun:test"
 import {
   Effect,
   Layer,
@@ -25,53 +25,69 @@ const mockRequestLayer = Layer.succeed(
 
 const effect = effectFn(mockRequestLayer)
 
-t.describe("renderError", () => {
+test.describe("renderError", () => {
   const routeNotFoundCause = Cause.fail(
     new RouteNotFound({ request: {} as any }),
   )
 
-  t.it("returns JSON for Accept: application/json", () =>
+  test.it("returns JSON for Accept: application/json", () =>
     effect(function*() {
       const response = yield* HttpAppExtra.renderError(
         routeNotFoundCause,
         "application/json",
       )
 
-      t.expect(response.status).toEqual(404)
-      t.expect(response.headers["content-type"]).toContain("application/json")
+      test
+        .expect(response.status)
+        .toEqual(404)
+      test
+        .expect(response.headers["content-type"])
+        .toContain("application/json")
     }))
 
-  t.it("returns HTML for Accept: text/html", () =>
+  test.it("returns HTML for Accept: text/html", () =>
     effect(function*() {
       const response = yield* HttpAppExtra.renderError(
         routeNotFoundCause,
         "text/html",
       )
 
-      t.expect(response.status).toEqual(404)
-      t.expect(response.headers["content-type"]).toContain("text/html")
+      test
+        .expect(response.status)
+        .toEqual(404)
+      test
+        .expect(response.headers["content-type"])
+        .toContain("text/html")
     }))
 
-  t.it("returns plain text for Accept: text/plain", () =>
+  test.it("returns plain text for Accept: text/plain", () =>
     effect(function*() {
       const response = yield* HttpAppExtra.renderError(
         routeNotFoundCause,
         "text/plain",
       )
 
-      t.expect(response.status).toEqual(404)
-      t.expect(response.headers["content-type"]).toContain("text/plain")
+      test
+        .expect(response.status)
+        .toEqual(404)
+      test
+        .expect(response.headers["content-type"])
+        .toContain("text/plain")
     }))
 
-  t.it("returns JSON by default (no Accept header)", () =>
+  test.it("returns JSON by default (no Accept header)", () =>
     effect(function*() {
       const response = yield* HttpAppExtra.renderError(routeNotFoundCause, "")
 
-      t.expect(response.status).toEqual(404)
-      t.expect(response.headers["content-type"]).toContain("application/json")
+      test
+        .expect(response.status)
+        .toEqual(404)
+      test
+        .expect(response.headers["content-type"])
+        .toContain("application/json")
     }))
 
-  t.it("returns 500 for unexpected errors", () =>
+  test.it("returns 500 for unexpected errors", () =>
     effect(function*() {
       const unexpectedCause = Cause.fail({ message: "Something went wrong" })
       const response = yield* HttpAppExtra.renderError(
@@ -79,6 +95,8 @@ t.describe("renderError", () => {
         "application/json",
       )
 
-      t.expect(response.status).toEqual(500)
+      test
+        .expect(response.status)
+        .toEqual(500)
     }))
 })

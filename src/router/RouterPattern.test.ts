@@ -1,655 +1,673 @@
-import * as t from "bun:test"
-import { Types } from "effect"
+import * as test from "bun:test"
+import * as type from "expect-type"
 import * as RouterPattern from "./RouterPattern.ts"
 
-type Assert<_T extends true> = void
-
-t.describe("Segments", () => {
-  t.test("literal path", () => {
-    type _1 = Assert<Types.Equals<RouterPattern.Segments<"/">, []>>
-    type _2 = Assert<
-      Types.Equals<
-        RouterPattern.Segments<"/about">,
-        [RouterPattern.LiteralSegment<"about">]
-      >
-    >
-    type _3 = Assert<
-      Types.Equals<
-        RouterPattern.Segments<"/users/profile">,
-        [
-          RouterPattern.LiteralSegment<"users">,
-          RouterPattern.LiteralSegment<"profile">,
-        ]
-      >
-    >
+test.describe("Segments", () => {
+  test.it("literal path", () => {
+    type
+      .expectTypeOf<RouterPattern.Segments<"/">>()
+      .toEqualTypeOf<[]>()
+    type
+      .expectTypeOf<RouterPattern.Segments<"/about">>()
+      .toEqualTypeOf<[RouterPattern.LiteralSegment<"about">]>()
+    type
+      .expectTypeOf<RouterPattern.Segments<"/users/profile">>()
+      .toEqualTypeOf<[
+        RouterPattern.LiteralSegment<"users">,
+        RouterPattern.LiteralSegment<"profile">,
+      ]>()
   })
 
-  t.test("simple param [param]", () => {
-    type _1 = Assert<
-      Types.Equals<
-        RouterPattern.Segments<"/users/[id]">,
-        [
-          RouterPattern.LiteralSegment<"users">,
-          RouterPattern.ParamSegment<"id", false>,
-        ]
-      >
-    >
-    type _2 = Assert<
-      Types.Equals<
-        RouterPattern.Segments<"/[category]/[product]">,
-        [
-          RouterPattern.ParamSegment<"category", false>,
-          RouterPattern.ParamSegment<"product", false>,
-        ]
-      >
-    >
+  test.it("simple param [param]", () => {
+    type
+      .expectTypeOf<RouterPattern.Segments<"/users/[id]">>()
+      .toEqualTypeOf<[
+        RouterPattern.LiteralSegment<"users">,
+        RouterPattern.ParamSegment<"id", false>,
+      ]>()
+    type
+      .expectTypeOf<RouterPattern.Segments<"/[category]/[product]">>()
+      .toEqualTypeOf<[
+        RouterPattern.ParamSegment<"category", false>,
+        RouterPattern.ParamSegment<"product", false>,
+      ]>()
   })
 
-  t.test("optional param [[param]]", () => {
-    type _ = Assert<
-      Types.Equals<
-        RouterPattern.Segments<"/users/[[id]]">,
-        [
-          RouterPattern.LiteralSegment<"users">,
-          RouterPattern.ParamSegment<"id", true>,
-        ]
-      >
-    >
+  test.it("optional param [[param]]", () => {
+    type
+      .expectTypeOf<RouterPattern.Segments<"/users/[[id]]">>()
+      .toEqualTypeOf<[
+        RouterPattern.LiteralSegment<"users">,
+        RouterPattern.ParamSegment<"id", true>,
+      ]>()
   })
 
-  t.test("rest param [...param]", () => {
-    type _ = Assert<
-      Types.Equals<
-        RouterPattern.Segments<"/docs/[...path]">,
-        [
-          RouterPattern.LiteralSegment<"docs">,
-          RouterPattern.RestSegment<"path", false>,
-        ]
-      >
-    >
+  test.it("rest param [...param]", () => {
+    type
+      .expectTypeOf<RouterPattern.Segments<"/docs/[...path]">>()
+      .toEqualTypeOf<[
+        RouterPattern.LiteralSegment<"docs">,
+        RouterPattern.RestSegment<"path", false>,
+      ]>()
   })
 
-  t.test("optional rest param [[...param]]", () => {
-    type _1 = Assert<
-      Types.Equals<
-        RouterPattern.Segments<"/[[...frontend]]">,
-        [RouterPattern.RestSegment<"frontend", true>]
-      >
-    >
-    type _2 = Assert<
-      Types.Equals<
-        RouterPattern.Segments<"/app/[[...slug]]">,
-        [
-          RouterPattern.LiteralSegment<"app">,
-          RouterPattern.RestSegment<"slug", true>,
-        ]
-      >
-    >
+  test.it("optional rest param [[...param]]", () => {
+    type
+      .expectTypeOf<RouterPattern.Segments<"/[[...frontend]]">>()
+      .toEqualTypeOf<[RouterPattern.RestSegment<"frontend", true>]>()
+    type
+      .expectTypeOf<RouterPattern.Segments<"/app/[[...slug]]">>()
+      .toEqualTypeOf<[
+        RouterPattern.LiteralSegment<"app">,
+        RouterPattern.RestSegment<"slug", true>,
+      ]>()
   })
 
-  t.test("param with prefix pk_[id]", () => {
-    type _ = Assert<
-      Types.Equals<
-        RouterPattern.Segments<"/keys/pk_[id]">,
-        [
-          RouterPattern.LiteralSegment<"keys">,
-          RouterPattern.ParamSegment<"id", false, "pk_">,
-        ]
-      >
-    >
+  test.it("param with prefix pk_[id]", () => {
+    type
+      .expectTypeOf<RouterPattern.Segments<"/keys/pk_[id]">>()
+      .toEqualTypeOf<[
+        RouterPattern.LiteralSegment<"keys">,
+        RouterPattern.ParamSegment<"id", false, "pk_">,
+      ]>()
   })
 
-  t.test("param with suffix [id].json", () => {
-    type _ = Assert<
-      Types.Equals<
-        RouterPattern.Segments<"/api/[id].json">,
-        [
-          RouterPattern.LiteralSegment<"api">,
-          RouterPattern.ParamSegment<"id", false, "", ".json">,
-        ]
-      >
-    >
+  test.it("param with suffix [id].json", () => {
+    type
+      .expectTypeOf<RouterPattern.Segments<"/api/[id].json">>()
+      .toEqualTypeOf<[
+        RouterPattern.LiteralSegment<"api">,
+        RouterPattern.ParamSegment<"id", false, "", ".json">,
+      ]>()
   })
 
-  t.test("param with prefix and suffix file_[id].txt", () => {
-    type _ = Assert<
-      Types.Equals<
-        RouterPattern.Segments<"/files/file_[id].txt">,
-        [
-          RouterPattern.LiteralSegment<"files">,
-          RouterPattern.ParamSegment<"id", false, "file_", ".txt">,
-        ]
-      >
-    >
+  test.it("param with prefix and suffix file_[id].txt", () => {
+    type
+      .expectTypeOf<RouterPattern.Segments<"/files/file_[id].txt">>()
+      .toEqualTypeOf<[
+        RouterPattern.LiteralSegment<"files">,
+        RouterPattern.ParamSegment<"id", false, "file_", ".txt">,
+      ]>()
   })
 
-  t.test("param with prefix and suffix prefix_[id]_suffix", () => {
-    type _ = Assert<
-      Types.Equals<
-        RouterPattern.Segments<"/prefix_[id]_suffix">,
-        [RouterPattern.ParamSegment<"id", false, "prefix_", "_suffix">]
-      >
-    >
+  test.it("param with prefix and suffix prefix_[id]_suffix", () => {
+    type
+      .expectTypeOf<RouterPattern.Segments<"/prefix_[id]_suffix">>()
+      .toEqualTypeOf<[RouterPattern.ParamSegment<"id", false, "prefix_", "_suffix">]>()
   })
 
-  t.test("malformed segment pk_[id]foo → undefined (suffix without delimiter)", () => {
-    type _ = Assert<
-      Types.Equals<RouterPattern.Segments<"/pk_[id]foo">, [undefined]>
-    >
+  test.it("malformed segment pk_[id]foo → undefined (suffix without delimiter)", () => {
+    type
+      .expectTypeOf<RouterPattern.Segments<"/pk_[id]foo">>()
+      .toEqualTypeOf<[undefined]>()
   })
 
-  t.test("no delimiter prefix/suffix → Literal", () => {
-    type _ = Assert<
-      Types.Equals<
-        RouterPattern.Segments<"/pk[id]foo">,
-        [RouterPattern.LiteralSegment<"pk[id]foo">]
-      >
-    >
+  test.it("no delimiter prefix/suffix → Literal", () => {
+    type
+      .expectTypeOf<RouterPattern.Segments<"/pk[id]foo">>()
+      .toEqualTypeOf<[RouterPattern.LiteralSegment<"pk[id]foo">]>()
   })
 })
 
-t.describe(`${RouterPattern.toColon.name}`, () => {
-  t.test("literal path unchanged", () => {
-    t.expect(RouterPattern.toColon("/")).toEqual(["/"])
-    t.expect(RouterPattern.toColon("/about")).toEqual(["/about"])
-    t.expect(RouterPattern.toColon("/users/profile")).toEqual([
-      "/users/profile",
-    ])
+test.describe(`${RouterPattern.toColon.name}`, () => {
+  test.it("literal path unchanged", () => {
+    test
+      .expect(RouterPattern.toColon("/"))
+      .toEqual(["/"])
+    test
+      .expect(RouterPattern.toColon("/about"))
+      .toEqual(["/about"])
+    test
+      .expect(RouterPattern.toColon("/users/profile"))
+      .toEqual(["/users/profile"])
   })
 
-  t.test("param [param] -> :param", () => {
-    t.expect(RouterPattern.toColon("/users/[id]")).toEqual(["/users/:id"])
-    t.expect(RouterPattern.toColon("/[category]/[product]")).toEqual([
-      "/:category/:product",
-    ])
+  test.it("param [param] -> :param", () => {
+    test
+      .expect(RouterPattern.toColon("/users/[id]"))
+      .toEqual(["/users/:id"])
+    test
+      .expect(RouterPattern.toColon("/[category]/[product]"))
+      .toEqual(["/:category/:product"])
   })
 
-  t.test("optional param [[param]] -> :param?", () => {
-    t.expect(RouterPattern.toColon("/users/[[id]]")).toEqual([
-      "/users/:id?",
-    ])
-    t.expect(RouterPattern.toColon("/[[lang]]/about")).toEqual([
-      "/:lang?/about",
-    ])
+  test.it("optional param [[param]] -> :param?", () => {
+    test
+      .expect(RouterPattern.toColon("/users/[[id]]"))
+      .toEqual(["/users/:id?"])
+    test
+      .expect(RouterPattern.toColon("/[[lang]]/about"))
+      .toEqual(["/:lang?/about"])
   })
 
-  t.test("rest [...param] -> *", () => {
-    t.expect(RouterPattern.toColon("/docs/[...path]")).toEqual(["/docs/*"])
-    t.expect(RouterPattern.toColon("/files/[...rest]")).toEqual([
-      "/files/*",
-    ])
+  test.it("rest [...param] -> *", () => {
+    test
+      .expect(RouterPattern.toColon("/docs/[...path]"))
+      .toEqual(["/docs/*"])
+    test
+      .expect(RouterPattern.toColon("/files/[...rest]"))
+      .toEqual(["/files/*"])
   })
 
-  t.test("optional rest [[...param]] -> two routes", () => {
-    t.expect(RouterPattern.toColon("/[[...frontend]]")).toEqual([
-      "/",
-      "/*",
-    ])
-    t.expect(RouterPattern.toColon("/app/[[...slug]]")).toEqual([
-      "/app",
-      "/app/*",
-    ])
-    t.expect(RouterPattern.toColon("/docs/[[...path]]")).toEqual([
-      "/docs",
-      "/docs/*",
-    ])
+  test.it("optional rest [[...param]] -> two routes", () => {
+    test
+      .expect(RouterPattern.toColon("/[[...frontend]]"))
+      .toEqual(["/", "/*"])
+    test
+      .expect(RouterPattern.toColon("/app/[[...slug]]"))
+      .toEqual(["/app", "/app/*"])
+    test
+      .expect(RouterPattern.toColon("/docs/[[...path]]"))
+      .toEqual(["/docs", "/docs/*"])
   })
 
-  t.test("param with prefix pk_[id] -> pk_:id", () => {
-    t.expect(RouterPattern.toColon("/keys/pk_[id]")).toEqual([
-      "/keys/pk_:id",
-    ])
-    t.expect(RouterPattern.toColon("/sk_[key]")).toEqual(["/sk_:key"])
+  test.it("param with prefix pk_[id] -> pk_:id", () => {
+    test
+      .expect(RouterPattern.toColon("/keys/pk_[id]"))
+      .toEqual(["/keys/pk_:id"])
+    test
+      .expect(RouterPattern.toColon("/sk_[key]"))
+      .toEqual(["/sk_:key"])
   })
 
-  t.test("param with suffix [name].json -> :name.json", () => {
-    t.expect(RouterPattern.toColon("/api/[id].json")).toEqual([
-      "/api/:id.json",
-    ])
+  test.it("param with suffix [name].json -> :name.json", () => {
+    test
+      .expect(RouterPattern.toColon("/api/[id].json"))
+      .toEqual(["/api/:id.json"])
   })
 
-  t.test("param with prefix and suffix", () => {
-    t.expect(RouterPattern.toColon("/files/file_[id].txt")).toEqual([
-      "/files/file_:id.txt",
-    ])
-  })
-})
-
-t.describe(`${RouterPattern.toBun.name}`, () => {
-  t.test("literal path unchanged", () => {
-    t.expect(RouterPattern.toBun("/")).toEqual(["/"])
-    t.expect(RouterPattern.toBun("/about")).toEqual(["/about"])
-  })
-
-  t.test("param [param] -> :param", () => {
-    t.expect(RouterPattern.toBun("/users/[id]")).toEqual(["/users/:id"])
-  })
-
-  t.test("optional param [[param]] -> two routes", () => {
-    t.expect(RouterPattern.toBun("/users/[[id]]")).toEqual([
-      "/users",
-      "/users/:id",
-    ])
-    t.expect(RouterPattern.toBun("/[[id]]")).toEqual(["/", "/:id"])
-  })
-
-  t.test("rest param [...param] -> *", () => {
-    t.expect(RouterPattern.toBun("/docs/[...path]")).toEqual(["/docs/*"])
-  })
-
-  t.test("optional rest param [[...param]] -> two routes", () => {
-    t.expect(RouterPattern.toBun("/docs/[[...path]]")).toEqual([
-      "/docs",
-      "/docs/*",
-    ])
-    t.expect(RouterPattern.toBun("/[[...path]]")).toEqual(["/", "/*"])
+  test.it("param with prefix and suffix", () => {
+    test
+      .expect(RouterPattern.toColon("/files/file_[id].txt"))
+      .toEqual(["/files/file_:id.txt"])
   })
 })
 
-t.describe(`${RouterPattern.toExpress.name}`, () => {
-  t.test("literal path unchanged", () => {
-    t.expect(RouterPattern.toExpress("/")).toEqual(["/"])
-    t.expect(RouterPattern.toExpress("/about")).toEqual(["/about"])
+test.describe(`${RouterPattern.toBun.name}`, () => {
+  test.it("literal path unchanged", () => {
+    test
+      .expect(RouterPattern.toBun("/"))
+      .toEqual(["/"])
+    test
+      .expect(RouterPattern.toBun("/about"))
+      .toEqual(["/about"])
   })
 
-  t.test("param [param] -> :param", () => {
-    t.expect(RouterPattern.toExpress("/users/[id]")).toEqual([
-      "/users/:id",
-    ])
+  test.it("param [param] -> :param", () => {
+    test
+      .expect(RouterPattern.toBun("/users/[id]"))
+      .toEqual(["/users/:id"])
   })
 
-  t.test("optional param [[param]] -> {/:param}", () => {
-    t.expect(RouterPattern.toExpress("/users/[[id]]")).toEqual([
-      "/users{/:id}",
-    ])
-    t.expect(RouterPattern.toExpress("/[[lang]]/about")).toEqual([
-      "/{/:lang}/about",
-    ])
+  test.it("optional param [[param]] -> two routes", () => {
+    test
+      .expect(RouterPattern.toBun("/users/[[id]]"))
+      .toEqual(["/users", "/users/:id"])
+    test
+      .expect(RouterPattern.toBun("/[[id]]"))
+      .toEqual(["/", "/:id"])
   })
 
-  t.test("rest [...param] -> /*param", () => {
-    t.expect(RouterPattern.toExpress("/docs/[...path]")).toEqual([
-      "/docs/*path",
-    ])
-    t.expect(RouterPattern.toExpress("/files/[...rest]")).toEqual([
-      "/files/*rest",
-    ])
+  test.it("rest param [...param] -> *", () => {
+    test
+      .expect(RouterPattern.toBun("/docs/[...path]"))
+      .toEqual(["/docs/*"])
   })
 
-  t.test("optional rest [[...param]] -> two routes", () => {
-    t.expect(RouterPattern.toExpress("/[[...frontend]]")).toEqual([
-      "/",
-      "/*frontend",
-    ])
-    t.expect(RouterPattern.toExpress("/app/[[...slug]]")).toEqual([
-      "/app",
-      "/app/*slug",
-    ])
-  })
-
-  t.test("param with prefix pk_[id] -> pk_:id", () => {
-    t.expect(RouterPattern.toExpress("/keys/pk_[id]")).toEqual([
-      "/keys/pk_:id",
-    ])
+  test.it("optional rest param [[...param]] -> two routes", () => {
+    test
+      .expect(RouterPattern.toBun("/docs/[[...path]]"))
+      .toEqual(["/docs", "/docs/*"])
+    test
+      .expect(RouterPattern.toBun("/[[...path]]"))
+      .toEqual(["/", "/*"])
   })
 })
 
-t.describe(`${RouterPattern.toEffect.name}`, () => {
-  t.test("literal path unchanged", () => {
-    t.expect(RouterPattern.toEffect("/")).toEqual(["/"])
-    t.expect(RouterPattern.toEffect("/about")).toEqual([
-      "/about",
-    ])
+test.describe(`${RouterPattern.toExpress.name}`, () => {
+  test.it("literal path unchanged", () => {
+    test
+      .expect(RouterPattern.toExpress("/"))
+      .toEqual(["/"])
+    test
+      .expect(RouterPattern.toExpress("/about"))
+      .toEqual(["/about"])
   })
 
-  t.test("param [param] -> :param", () => {
-    t.expect(RouterPattern.toEffect("/users/[id]")).toEqual([
-      "/users/:id",
-    ])
+  test.it("param [param] -> :param", () => {
+    test
+      .expect(RouterPattern.toExpress("/users/[id]"))
+      .toEqual(["/users/:id"])
   })
 
-  t.test("optional param [[param]] -> :param?", () => {
-    t.expect(RouterPattern.toEffect("/users/[[id]]")).toEqual([
-      "/users/:id?",
-    ])
+  test.it("optional param [[param]] -> {/:param}", () => {
+    test
+      .expect(RouterPattern.toExpress("/users/[[id]]"))
+      .toEqual(["/users{/:id}"])
+    test
+      .expect(RouterPattern.toExpress("/[[lang]]/about"))
+      .toEqual(["/{/:lang}/about"])
   })
 
-  t.test("rest [...param] -> *", () => {
-    t.expect(RouterPattern.toEffect("/docs/[...path]")).toEqual(
-      [
-        "/docs/*",
-      ],
-    )
+  test.it("rest [...param] -> /*param", () => {
+    test
+      .expect(RouterPattern.toExpress("/docs/[...path]"))
+      .toEqual(["/docs/*path"])
+    test
+      .expect(RouterPattern.toExpress("/files/[...rest]"))
+      .toEqual(["/files/*rest"])
   })
 
-  t.test("optional rest [[...param]] -> two routes", () => {
-    t
+  test.it("optional rest [[...param]] -> two routes", () => {
+    test
+      .expect(RouterPattern.toExpress("/[[...frontend]]"))
+      .toEqual(["/", "/*frontend"])
+    test
+      .expect(RouterPattern.toExpress("/app/[[...slug]]"))
+      .toEqual(["/app", "/app/*slug"])
+  })
+
+  test.it("param with prefix pk_[id] -> pk_:id", () => {
+    test
+      .expect(RouterPattern.toExpress("/keys/pk_[id]"))
+      .toEqual(["/keys/pk_:id"])
+  })
+})
+
+test.describe(`${RouterPattern.toEffect.name}`, () => {
+  test.it("literal path unchanged", () => {
+    test
+      .expect(RouterPattern.toEffect("/"))
+      .toEqual(["/"])
+    test
+      .expect(RouterPattern.toEffect("/about"))
+      .toEqual(["/about"])
+  })
+
+  test.it("param [param] -> :param", () => {
+    test
+      .expect(RouterPattern.toEffect("/users/[id]"))
+      .toEqual(["/users/:id"])
+  })
+
+  test.it("optional param [[param]] -> :param?", () => {
+    test
+      .expect(RouterPattern.toEffect("/users/[[id]]"))
+      .toEqual(["/users/:id?"])
+  })
+
+  test.it("rest [...param] -> *", () => {
+    test
+      .expect(RouterPattern.toEffect("/docs/[...path]"))
+      .toEqual(["/docs/*"])
+  })
+
+  test.it("optional rest [[...param]] -> two routes", () => {
+    test
       .expect(RouterPattern.toEffect("/[[...frontend]]"))
-      .toEqual(
-        ["/", "/*"],
-      )
-    t
+      .toEqual(["/", "/*"])
+    test
       .expect(RouterPattern.toEffect("/app/[[...slug]]"))
-      .toEqual(
-        ["/app", "/app/*"],
-      )
+      .toEqual(["/app", "/app/*"])
   })
 
-  t.test("param with prefix pk_[id] -> pk_:id", () => {
-    t.expect(RouterPattern.toEffect("/keys/pk_[id]")).toEqual([
-      "/keys/pk_:id",
-    ])
+  test.it("param with prefix pk_[id] -> pk_:id", () => {
+    test
+      .expect(RouterPattern.toEffect("/keys/pk_[id]"))
+      .toEqual(["/keys/pk_:id"])
   })
 })
 
-t.describe(`${RouterPattern.toURLPattern.name}`, () => {
-  t.test("literal path unchanged", () => {
-    t.expect(RouterPattern.toURLPattern("/")).toEqual(["/"])
-    t.expect(RouterPattern.toURLPattern("/about")).toEqual(["/about"])
+test.describe(`${RouterPattern.toURLPattern.name}`, () => {
+  test.it("literal path unchanged", () => {
+    test
+      .expect(RouterPattern.toURLPattern("/"))
+      .toEqual(["/"])
+    test
+      .expect(RouterPattern.toURLPattern("/about"))
+      .toEqual(["/about"])
   })
 
-  t.test("param [param] -> :param", () => {
-    t.expect(RouterPattern.toURLPattern("/users/[id]")).toEqual([
-      "/users/:id",
-    ])
+  test.it("param [param] -> :param", () => {
+    test
+      .expect(RouterPattern.toURLPattern("/users/[id]"))
+      .toEqual(["/users/:id"])
   })
 
-  t.test("optional param [[param]] -> :param?", () => {
-    t.expect(RouterPattern.toURLPattern("/users/[[id]]")).toEqual([
-      "/users/:id?",
-    ])
+  test.it("optional param [[param]] -> :param?", () => {
+    test
+      .expect(RouterPattern.toURLPattern("/users/[[id]]"))
+      .toEqual(["/users/:id?"])
   })
 
-  t.test("rest [...param] -> :param+", () => {
-    t.expect(RouterPattern.toURLPattern("/docs/[...path]")).toEqual([
-      "/docs/:path+",
-    ])
+  test.it("rest [...param] -> :param+", () => {
+    test
+      .expect(RouterPattern.toURLPattern("/docs/[...path]"))
+      .toEqual(["/docs/:path+"])
   })
 
-  t.test("optional rest [[...param]] -> :param*", () => {
-    t.expect(RouterPattern.toURLPattern("/[[...frontend]]")).toEqual([
-      "/:frontend*",
-    ])
-    t.expect(RouterPattern.toURLPattern("/app/[[...slug]]")).toEqual([
-      "/app/:slug*",
-    ])
+  test.it("optional rest [[...param]] -> :param*", () => {
+    test
+      .expect(RouterPattern.toURLPattern("/[[...frontend]]"))
+      .toEqual(["/:frontend*"])
+    test
+      .expect(RouterPattern.toURLPattern("/app/[[...slug]]"))
+      .toEqual(["/app/:slug*"])
   })
 
-  t.test("param with prefix pk_[id] -> pk_:id", () => {
-    t.expect(RouterPattern.toURLPattern("/keys/pk_[id]")).toEqual([
-      "/keys/pk_:id",
-    ])
-  })
-})
-
-t.describe(`${RouterPattern.toRemix.name}`, () => {
-  t.test("literal path unchanged", () => {
-    t.expect(RouterPattern.toRemix("/")).toEqual(["/"])
-    t.expect(RouterPattern.toRemix("/about")).toEqual(["/about"])
-  })
-
-  t.test("param [param] -> $param", () => {
-    t.expect(RouterPattern.toRemix("/users/[id]")).toEqual([
-      "/users/$id",
-    ])
-  })
-
-  t.test("optional param [[param]] -> ($param)", () => {
-    t.expect(RouterPattern.toRemix("/users/[[id]]")).toEqual([
-      "/users/($id)",
-    ])
-  })
-
-  t.test("rest [...param] -> $", () => {
-    t.expect(RouterPattern.toRemix("/docs/[...path]")).toEqual([
-      "/docs/$",
-    ])
-  })
-
-  t.test("optional rest [[...param]] -> two routes", () => {
-    t.expect(RouterPattern.toRemix("/[[...frontend]]")).toEqual([
-      "/",
-      "$",
-    ])
-    t.expect(RouterPattern.toRemix("/app/[[...slug]]")).toEqual([
-      "/app",
-      "/app/$",
-    ])
-  })
-
-  t.test("param with prefix pk_[id] -> pk_$id (not officially supported)", () => {
-    t.expect(RouterPattern.toRemix("/keys/pk_[id]")).toEqual([
-      "/keys/pk_$id",
-    ])
+  test.it("param with prefix pk_[id] -> pk_:id", () => {
+    test
+      .expect(RouterPattern.toURLPattern("/keys/pk_[id]"))
+      .toEqual(["/keys/pk_:id"])
   })
 })
 
-t.describe(`${RouterPattern.format.name}`, () => {
-  t.test("empty segments", () => {
-    t.expect(RouterPattern.format([])).toBe("/")
+test.describe(`${RouterPattern.toRemix.name}`, () => {
+  test.it("literal path unchanged", () => {
+    test
+      .expect(RouterPattern.toRemix("/"))
+      .toEqual(["/"])
+    test
+      .expect(RouterPattern.toRemix("/about"))
+      .toEqual(["/about"])
   })
 
-  t.test("literal segments", () => {
-    t
-      .expect(
-        RouterPattern.format([{ _tag: "LiteralSegment", value: "users" }]),
-      )
-      .toBe(
-        "/users",
-      )
-    t
-      .expect(
-        RouterPattern.format([
-          { _tag: "LiteralSegment", value: "users" },
-          { _tag: "LiteralSegment", value: "profile" },
-        ]),
-      )
+  test.it("param [param] -> $param", () => {
+    test
+      .expect(RouterPattern.toRemix("/users/[id]"))
+      .toEqual(["/users/$id"])
+  })
+
+  test.it("optional param [[param]] -> ($param)", () => {
+    test
+      .expect(RouterPattern.toRemix("/users/[[id]]"))
+      .toEqual(["/users/($id)"])
+  })
+
+  test.it("rest [...param] -> $", () => {
+    test
+      .expect(RouterPattern.toRemix("/docs/[...path]"))
+      .toEqual(["/docs/$"])
+  })
+
+  test.it("optional rest [[...param]] -> two routes", () => {
+    test
+      .expect(RouterPattern.toRemix("/[[...frontend]]"))
+      .toEqual(["/", "$"])
+    test
+      .expect(RouterPattern.toRemix("/app/[[...slug]]"))
+      .toEqual(["/app", "/app/$"])
+  })
+
+  test.it("param with prefix pk_[id] -> pk_$id (not officially supported)", () => {
+    test
+      .expect(RouterPattern.toRemix("/keys/pk_[id]"))
+      .toEqual(["/keys/pk_$id"])
+  })
+})
+
+test.describe(`${RouterPattern.format.name}`, () => {
+  test.it("empty segments", () => {
+    test
+      .expect(RouterPattern.format([]))
+      .toBe("/")
+  })
+
+  test.it("literal segments", () => {
+    test
+      .expect(RouterPattern.format([{ _tag: "LiteralSegment", value: "users" }]))
+      .toBe("/users")
+    test
+      .expect(RouterPattern.format([
+        { _tag: "LiteralSegment", value: "users" },
+        { _tag: "LiteralSegment", value: "profile" },
+      ]))
       .toBe("/users/profile")
   })
 
-  t.test("param segments", () => {
-    t.expect(RouterPattern.format([{ _tag: "ParamSegment", name: "id" }])).toBe(
-      "/[id]",
-    )
-    t
-      .expect(
-        RouterPattern.format([{
-          _tag: "ParamSegment",
-          name: "id",
-          optional: true,
-        }]),
-      )
+  test.it("param segments", () => {
+    test
+      .expect(RouterPattern.format([{ _tag: "ParamSegment", name: "id" }]))
+      .toBe("/[id]")
+    test
+      .expect(RouterPattern.format([{
+        _tag: "ParamSegment",
+        name: "id",
+        optional: true,
+      }]))
       .toBe("/[[id]]")
   })
 
-  t.test("param with prefix/suffix", () => {
-    t
-      .expect(
-        RouterPattern.format([{
-          _tag: "ParamSegment",
-          name: "id",
-          prefix: "pk_",
-        }]),
-      )
+  test.it("param with prefix/suffix", () => {
+    test
+      .expect(RouterPattern.format([{
+        _tag: "ParamSegment",
+        name: "id",
+        prefix: "pk_",
+      }]))
       .toBe("/pk_[id]")
-    t
-      .expect(
-        RouterPattern.format([{
-          _tag: "ParamSegment",
-          name: "id",
-          suffix: ".json",
-        }]),
-      )
+    test
+      .expect(RouterPattern.format([{
+        _tag: "ParamSegment",
+        name: "id",
+        suffix: ".json",
+      }]))
       .toBe("/[id].json")
-    t
-      .expect(
-        RouterPattern.format([
-          { _tag: "ParamSegment", name: "id", prefix: "file_", suffix: ".txt" },
-        ]),
-      )
+    test
+      .expect(RouterPattern.format([
+        { _tag: "ParamSegment", name: "id", prefix: "file_", suffix: ".txt" },
+      ]))
       .toBe("/file_[id].txt")
   })
 
-  t.test("rest segments", () => {
-    t
+  test.it("rest segments", () => {
+    test
       .expect(RouterPattern.format([{ _tag: "RestSegment", name: "path" }]))
-      .toBe(
-        "/[...path]",
-      )
-    t
-      .expect(
-        RouterPattern.format([{
-          _tag: "RestSegment",
-          name: "path",
-          optional: true,
-        }]),
-      )
+      .toBe("/[...path]")
+    test
+      .expect(RouterPattern.format([{
+        _tag: "RestSegment",
+        name: "path",
+        optional: true,
+      }]))
       .toBe("/[[...path]]")
   })
 
-  t.test("mixed segments", () => {
-    t
-      .expect(
-        RouterPattern.format([
-          { _tag: "LiteralSegment", value: "users" },
-          { _tag: "ParamSegment", name: "id" },
-          { _tag: "LiteralSegment", value: "posts" },
-        ]),
-      )
+  test.it("mixed segments", () => {
+    test
+      .expect(RouterPattern.format([
+        { _tag: "LiteralSegment", value: "users" },
+        { _tag: "ParamSegment", name: "id" },
+        { _tag: "LiteralSegment", value: "posts" },
+      ]))
       .toBe("/users/[id]/posts")
   })
 })
 
-t.describe("parseSegment", () => {
-  t.test("parses literal segments", () => {
-    t.expect(RouterPattern.parseSegment("users")).toEqual({
-      _tag: "LiteralSegment",
-      value: "users",
-    })
+test.describe("parseSegment", () => {
+  test.it("parses literal segments", () => {
+    test
+      .expect(RouterPattern.parseSegment("users"))
+      .toEqual({
+        _tag: "LiteralSegment",
+        value: "users",
+      })
   })
 
-  t.test("parses param segments", () => {
-    t.expect(RouterPattern.parseSegment("[id]")).toEqual({
-      _tag: "ParamSegment",
-      name: "id",
-    })
+  test.it("parses param segments", () => {
+    test
+      .expect(RouterPattern.parseSegment("[id]"))
+      .toEqual({
+        _tag: "ParamSegment",
+        name: "id",
+      })
   })
 
-  t.test("parses optional param segments", () => {
-    t.expect(RouterPattern.parseSegment("[[id]]")).toEqual({
-      _tag: "ParamSegment",
-      name: "id",
-      optional: true,
-    })
+  test.it("parses optional param segments", () => {
+    test
+      .expect(RouterPattern.parseSegment("[[id]]"))
+      .toEqual({
+        _tag: "ParamSegment",
+        name: "id",
+        optional: true,
+      })
   })
 
-  t.test("parses rest segments", () => {
-    t.expect(RouterPattern.parseSegment("[...path]")).toEqual({
-      _tag: "RestSegment",
-      name: "path",
-    })
+  test.it("parses rest segments", () => {
+    test
+      .expect(RouterPattern.parseSegment("[...path]"))
+      .toEqual({
+        _tag: "RestSegment",
+        name: "path",
+      })
   })
 
-  t.test("parses optional rest segments", () => {
-    t.expect(RouterPattern.parseSegment("[[...path]]")).toEqual({
-      _tag: "RestSegment",
-      name: "path",
-      optional: true,
-    })
+  test.it("parses optional rest segments", () => {
+    test
+      .expect(RouterPattern.parseSegment("[[...path]]"))
+      .toEqual({
+        _tag: "RestSegment",
+        name: "path",
+        optional: true,
+      })
   })
 
-  t.test("parses param with prefix", () => {
-    t.expect(RouterPattern.parseSegment("pk_[id]")).toEqual({
-      _tag: "ParamSegment",
-      name: "id",
-      prefix: "pk_",
-    })
+  test.it("parses param with prefix", () => {
+    test
+      .expect(RouterPattern.parseSegment("pk_[id]"))
+      .toEqual({
+        _tag: "ParamSegment",
+        name: "id",
+        prefix: "pk_",
+      })
   })
 
-  t.test("parses param with suffix", () => {
-    t.expect(RouterPattern.parseSegment("[id].json")).toEqual({
-      _tag: "ParamSegment",
-      name: "id",
-      suffix: ".json",
-    })
+  test.it("parses param with suffix", () => {
+    test
+      .expect(RouterPattern.parseSegment("[id].json"))
+      .toEqual({
+        _tag: "ParamSegment",
+        name: "id",
+        suffix: ".json",
+      })
   })
 
-  t.test("accepts Unicode literals", () => {
-    t.expect(RouterPattern.parseSegment("café")).toEqual({
-      _tag: "LiteralSegment",
-      value: "café",
-    })
-    t.expect(RouterPattern.parseSegment("日本語")).toEqual({
-      _tag: "LiteralSegment",
-      value: "日本語",
-    })
-    t.expect(RouterPattern.parseSegment("москва")).toEqual({
-      _tag: "LiteralSegment",
-      value: "москва",
-    })
+  test.it("accepts Unicode literals", () => {
+    test
+      .expect(RouterPattern.parseSegment("café"))
+      .toEqual({
+        _tag: "LiteralSegment",
+        value: "café",
+      })
+    test
+      .expect(RouterPattern.parseSegment("日本語"))
+      .toEqual({
+        _tag: "LiteralSegment",
+        value: "日本語",
+      })
+    test
+      .expect(RouterPattern.parseSegment("москва"))
+      .toEqual({
+        _tag: "LiteralSegment",
+        value: "москва",
+      })
   })
 
-  t.test("accepts safe punctuation in literals", () => {
-    t.expect(RouterPattern.parseSegment("file.txt")).toEqual({
-      _tag: "LiteralSegment",
-      value: "file.txt",
-    })
-    t.expect(RouterPattern.parseSegment("my-file")).toEqual({
-      _tag: "LiteralSegment",
-      value: "my-file",
-    })
-    t.expect(RouterPattern.parseSegment("my_file")).toEqual({
-      _tag: "LiteralSegment",
-      value: "my_file",
-    })
-    t.expect(RouterPattern.parseSegment("file~1")).toEqual({
-      _tag: "LiteralSegment",
-      value: "file~1",
-    })
+  test.it("accepts safe punctuation in literals", () => {
+    test
+      .expect(RouterPattern.parseSegment("file.txt"))
+      .toEqual({
+        _tag: "LiteralSegment",
+        value: "file.txt",
+      })
+    test
+      .expect(RouterPattern.parseSegment("my-file"))
+      .toEqual({
+        _tag: "LiteralSegment",
+        value: "my-file",
+      })
+    test
+      .expect(RouterPattern.parseSegment("my_file"))
+      .toEqual({
+        _tag: "LiteralSegment",
+        value: "my_file",
+      })
+    test
+      .expect(RouterPattern.parseSegment("file~1"))
+      .toEqual({
+        _tag: "LiteralSegment",
+        value: "file~1",
+      })
   })
 
-  t.test("rejects invalid literal segments", () => {
-    t.expect(RouterPattern.parseSegment("invalid$char")).toBe(null)
-    t.expect(RouterPattern.parseSegment("has%20spaces")).toBe(null)
-    t.expect(RouterPattern.parseSegment("special@char")).toBe(null)
-    t.expect(RouterPattern.parseSegment("bad#hash")).toBe(null)
-    t.expect(RouterPattern.parseSegment("with spaces")).toBe(null)
-    t.expect(RouterPattern.parseSegment("")).toBe(null)
+  test.it("rejects invalid literal segments", () => {
+    test
+      .expect(RouterPattern.parseSegment("invalid$char"))
+      .toBe(null)
+    test
+      .expect(RouterPattern.parseSegment("has%20spaces"))
+      .toBe(null)
+    test
+      .expect(RouterPattern.parseSegment("special@char"))
+      .toBe(null)
+    test
+      .expect(RouterPattern.parseSegment("bad#hash"))
+      .toBe(null)
+    test
+      .expect(RouterPattern.parseSegment("with spaces"))
+      .toBe(null)
+    test
+      .expect(RouterPattern.parseSegment(""))
+      .toBe(null)
   })
 })
 
-t.describe("parse", () => {
-  t.test("parses simple paths", () => {
-    t.expect(RouterPattern.parse("/users")).toEqual([
-      { _tag: "LiteralSegment", value: "users" },
-    ])
-    t.expect(RouterPattern.parse("/users/profile")).toEqual([
-      { _tag: "LiteralSegment", value: "users" },
-      { _tag: "LiteralSegment", value: "profile" },
-    ])
+test.describe("parse", () => {
+  test.it("parses simple paths", () => {
+    test
+      .expect(RouterPattern.parse("/users"))
+      .toEqual([
+        { _tag: "LiteralSegment", value: "users" },
+      ])
+    test
+      .expect(RouterPattern.parse("/users/profile"))
+      .toEqual([
+        { _tag: "LiteralSegment", value: "users" },
+        { _tag: "LiteralSegment", value: "profile" },
+      ])
   })
 
-  t.test("parses paths with params", () => {
-    t.expect(RouterPattern.parse("/users/[id]")).toEqual([
-      { _tag: "LiteralSegment", value: "users" },
-      { _tag: "ParamSegment", name: "id" },
-    ])
+  test.it("parses paths with params", () => {
+    test
+      .expect(RouterPattern.parse("/users/[id]"))
+      .toEqual([
+        { _tag: "LiteralSegment", value: "users" },
+        { _tag: "ParamSegment", name: "id" },
+      ])
   })
 
-  t.test("parses Unicode paths", () => {
-    t.expect(RouterPattern.parse("/café/日本語/москва")).toEqual([
-      { _tag: "LiteralSegment", value: "café" },
-      { _tag: "LiteralSegment", value: "日本語" },
-      { _tag: "LiteralSegment", value: "москва" },
-    ])
+  test.it("parses Unicode paths", () => {
+    test
+      .expect(RouterPattern.parse("/café/日本語/москва"))
+      .toEqual([
+        { _tag: "LiteralSegment", value: "café" },
+        { _tag: "LiteralSegment", value: "日本語" },
+        { _tag: "LiteralSegment", value: "москва" },
+      ])
   })
 
-  t.test("throws on invalid segments", () => {
-    t.expect(() => RouterPattern.parse("/users/$invalid")).toThrow(
-      /Invalid path segment.*contains invalid characters/,
-    )
-    t.expect(() => RouterPattern.parse("/path%20encoded")).toThrow()
-    t.expect(() => RouterPattern.parse("/special@char")).toThrow()
-    t.expect(() => RouterPattern.parse("/has spaces")).toThrow()
+  test.it("throws on invalid segments", () => {
+    test
+      .expect(() => RouterPattern.parse("/users/$invalid"))
+      .toThrow(/Invalid path segment.*contains invalid characters/)
+    test
+      .expect(() => RouterPattern.parse("/path%20encoded"))
+      .toThrow()
+    test
+      .expect(() => RouterPattern.parse("/special@char"))
+      .toThrow()
+    test
+      .expect(() => RouterPattern.parse("/has spaces"))
+      .toThrow()
   })
 })

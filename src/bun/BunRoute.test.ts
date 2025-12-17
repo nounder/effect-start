@@ -1,7 +1,7 @@
 import * as HttpMiddleware from "@effect/platform/HttpMiddleware"
 import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
 import type { HTMLBundle } from "bun"
-import * as t from "bun:test"
+import * as test from "bun:test"
 import * as Effect from "effect/Effect"
 import * as assert from "node:assert"
 import * as Route from "../router/Route.ts"
@@ -11,60 +11,80 @@ import * as BunHttpServer from "./BunHttpServer.ts"
 import * as BunRoute from "./BunRoute.ts"
 import * as BunRouter from "./BunRouter.ts"
 
-t.describe(`${BunRoute.validateBunPattern.name}`, () => {
-  t.test("allows exact paths", () => {
+test.describe(`${BunRoute.validateBunPattern.name}`, () => {
+  test.it("allows exact paths", () => {
     const result = BunRoute.validateBunPattern("/users")
-    t.expect(result._tag).toBe("None")
+    test
+      .expect(result._tag)
+      .toBe("None")
   })
 
-  t.test("allows full-segment params", () => {
+  test.it("allows full-segment params", () => {
     const result = BunRoute.validateBunPattern("/users/[id]")
-    t.expect(result._tag).toBe("None")
+    test
+      .expect(result._tag)
+      .toBe("None")
   })
 
-  t.test("allows rest params", () => {
+  test.it("allows rest params", () => {
     const result = BunRoute.validateBunPattern("/docs/[...path]")
-    t.expect(result._tag).toBe("None")
+    test
+      .expect(result._tag)
+      .toBe("None")
   })
 
-  t.test("rejects prefixed params", () => {
+  test.it("rejects prefixed params", () => {
     const result = BunRoute.validateBunPattern("/users/pk_[id]")
     assert.strictEqual(result._tag, "Some")
-    t.expect(result.value.reason).toBe("UnsupportedPattern")
-    t.expect(result.value.pattern).toBe("/users/pk_[id]")
+    test
+      .expect(result.value.reason)
+      .toBe("UnsupportedPattern")
+    test
+      .expect(result.value.pattern)
+      .toBe("/users/pk_[id]")
   })
 
-  t.test("rejects suffixed params", () => {
+  test.it("rejects suffixed params", () => {
     const result = BunRoute.validateBunPattern("/users/[id]_details")
     assert.strictEqual(result._tag, "Some")
-    t.expect(result.value.reason).toBe("UnsupportedPattern")
+    test
+      .expect(result.value.reason)
+      .toBe("UnsupportedPattern")
   })
 
-  t.test("rejects dot suffix on params", () => {
+  test.it("rejects dot suffix on params", () => {
     const result = BunRoute.validateBunPattern("/api/[id].json")
     assert.strictEqual(result._tag, "Some")
-    t.expect(result.value.reason).toBe("UnsupportedPattern")
+    test
+      .expect(result.value.reason)
+      .toBe("UnsupportedPattern")
   })
 
-  t.test("rejects tilde suffix on params", () => {
+  test.it("rejects tilde suffix on params", () => {
     const result = BunRoute.validateBunPattern("/api/[id]~test")
     assert.strictEqual(result._tag, "Some")
-    t.expect(result.value.reason).toBe("UnsupportedPattern")
+    test
+      .expect(result.value.reason)
+      .toBe("UnsupportedPattern")
   })
 
-  t.test("allows optional params (implemented via two patterns)", () => {
+  test.it("allows optional params (implemented via two patterns)", () => {
     const result = BunRoute.validateBunPattern("/users/[[id]]")
-    t.expect(result._tag).toBe("None")
+    test
+      .expect(result._tag)
+      .toBe("None")
   })
 
-  t.test("allows optional rest params (implemented via two patterns)", () => {
+  test.it("allows optional rest params (implemented via two patterns)", () => {
     const result = BunRoute.validateBunPattern("/docs/[[...path]]")
-    t.expect(result._tag).toBe("None")
+    test
+      .expect(result._tag)
+      .toBe("None")
   })
 })
 
-t.describe(`${BunRouter.routesFrom.name}`, () => {
-  t.test("fails with RouterError for unsupported patterns", async () => {
+test.describe(`${BunRouter.routesFrom.name}`, () => {
+  test.it("fails with RouterError for unsupported patterns", async () => {
     const result = await Effect.runPromise(
       BunRouter
         .routesFrom(
@@ -77,44 +97,60 @@ t.describe(`${BunRouter.routesFrom.name}`, () => {
     )
 
     assert.strictEqual(result._tag, "Left")
-    t.expect(result.left._tag).toBe("RouterError")
-    t.expect(result.left.reason).toBe("UnsupportedPattern")
+    test
+      .expect(result.left._tag)
+      .toBe("RouterError")
+    test
+      .expect(result.left.reason)
+      .toBe("UnsupportedPattern")
   })
 
-  t.test("converts text route to fetch handler", async () => {
+  test.it("converts text route to fetch handler", async () => {
     const fetch = await makeFetch(
       Router.mount("/hello", Route.text("Hello World")),
     )
 
     const response = await fetch("/hello")
 
-    t.expect(response.status).toBe(200)
-    t.expect(await response.text()).toBe("Hello World")
+    test
+      .expect(response.status)
+      .toBe(200)
+    test
+      .expect(await response.text())
+      .toBe("Hello World")
   })
 
-  t.test("converts json route to fetch handler", async () => {
+  test.it("converts json route to fetch handler", async () => {
     const fetch = await makeFetch(
       Router.mount("/api/data", Route.json({ message: "ok", count: 42 })),
     )
 
     const response = await fetch("/api/data")
 
-    t.expect(response.status).toBe(200)
-    t.expect(await response.json()).toEqual({ message: "ok", count: 42 })
+    test
+      .expect(response.status)
+      .toBe(200)
+    test
+      .expect(await response.json())
+      .toEqual({ message: "ok", count: 42 })
   })
 
-  t.test("converts html route to fetch handler", async () => {
+  test.it("converts html route to fetch handler", async () => {
     const fetch = await makeFetch(
       Router.mount("/page", Route.html(Effect.succeed("<h1>Title</h1>"))),
     )
 
     const response = await fetch("/page")
 
-    t.expect(response.status).toBe(200)
-    t.expect(await response.text()).toBe("<h1>Title</h1>")
+    test
+      .expect(response.status)
+      .toBe(200)
+    test
+      .expect(await response.text())
+      .toBe("<h1>Title</h1>")
   })
 
-  t.test("handles method-specific routes", async () => {
+  test.it("handles method-specific routes", async () => {
     const fetch = await makeFetch(
       Router.mount(
         "/users",
@@ -125,26 +161,38 @@ t.describe(`${BunRouter.routesFrom.name}`, () => {
     )
 
     const getResponse = await fetch("/users")
-    t.expect(await getResponse.json()).toEqual({ users: [] })
+    test
+      .expect(await getResponse.json())
+      .toEqual({ users: [] })
 
     const postResponse = await fetch("/users", { method: "POST" })
-    t.expect(await postResponse.json()).toEqual({ created: true })
+    test
+      .expect(await postResponse.json())
+      .toEqual({ created: true })
   })
 
-  t.test("converts path syntax to Bun format", async () => {
+  test.it("converts path syntax to Bun format", async () => {
     const routes = await makeBunRoutes(
       Router
         .mount("/users/[id]", Route.text("user"))
         .mount("/docs/[...path]", Route.text("docs")),
     )
 
-    t.expect(routes["/users/:id"]).toBeDefined()
-    t.expect(routes["/docs/*"]).toBeDefined()
-    t.expect(routes["/users/[id]"]).toBeUndefined()
-    t.expect(routes["/docs/[...path]"]).toBeUndefined()
+    test
+      .expect(routes["/users/:id"])
+      .toBeDefined()
+    test
+      .expect(routes["/docs/*"])
+      .toBeDefined()
+    test
+      .expect(routes["/users/[id]"])
+      .toBeUndefined()
+    test
+      .expect(routes["/docs/[...path]"])
+      .toBeUndefined()
   })
 
-  t.test("groups multiple methods under same path", async () => {
+  test.it("groups multiple methods under same path", async () => {
     const fetch = await makeFetch(
       Router.mount(
         "/resource",
@@ -159,80 +207,104 @@ t.describe(`${BunRouter.routesFrom.name}`, () => {
     const postRes = await fetch("/resource", { method: "POST" })
     const delRes = await fetch("/resource", { method: "DELETE" })
 
-    t.expect(await getRes.text()).toBe("get")
-    t.expect(await postRes.text()).toBe("post")
-    t.expect(await delRes.text()).toBe("delete")
+    test
+      .expect(await getRes.text())
+      .toBe("get")
+    test
+      .expect(await postRes.text())
+      .toBe("post")
+    test
+      .expect(await delRes.text())
+      .toBe("delete")
   })
 })
 
-t.describe("fetch handler Response", () => {
-  t.test("returns Response instance", async () => {
+test.describe("fetch handler Response", () => {
+  test.it("returns Response instance", async () => {
     const fetch = await makeFetch(
       Router.mount("/test", Route.text("test")),
     )
 
     const response = await fetch("/test")
 
-    t.expect(response).toBeInstanceOf(Response)
+    test
+      .expect(response)
+      .toBeInstanceOf(Response)
   })
 
-  t.test("text response has correct content-type", async () => {
+  test.it("text response has correct content-type", async () => {
     const fetch = await makeFetch(
       Router.mount("/text", Route.text("hello")),
     )
 
     const response = await fetch("/text")
 
-    t.expect(response.headers.get("content-type")).toContain("text/plain")
+    test
+      .expect(response.headers.get("content-type"))
+      .toContain("text/plain")
   })
 
-  t.test("json response has correct content-type", async () => {
+  test.it("json response has correct content-type", async () => {
     const fetch = await makeFetch(
       Router.mount("/json", Route.json({ data: 1 })),
     )
 
     const response = await fetch("/json")
 
-    t.expect(response.headers.get("content-type")).toContain("application/json")
+    test
+      .expect(response.headers.get("content-type"))
+      .toContain("application/json")
   })
 
-  t.test("html response has correct content-type", async () => {
+  test.it("html response has correct content-type", async () => {
     const fetch = await makeFetch(
       Router.mount("/html", Route.html(Effect.succeed("<p>hi</p>"))),
     )
 
     const response = await fetch("/html")
 
-    t.expect(response.headers.get("content-type")).toContain("text/html")
+    test
+      .expect(response.headers.get("content-type"))
+      .toContain("text/html")
   })
 
-  t.test("response body is readable", async () => {
+  test.it("response body is readable", async () => {
     const fetch = await makeFetch(
       Router.mount("/body", Route.text("readable body")),
     )
 
     const response = await fetch("/body")
 
-    t.expect(response.bodyUsed).toBe(false)
+    test
+      .expect(response.bodyUsed)
+      .toBe(false)
     const text = await response.text()
-    t.expect(text).toBe("readable body")
-    t.expect(response.bodyUsed).toBe(true)
+    test
+      .expect(text)
+      .toBe("readable body")
+    test
+      .expect(response.bodyUsed)
+      .toBe(true)
   })
 
-  t.test("response ok is true for 200 status", async () => {
+  test.it("response ok is true for 200 status", async () => {
     const fetch = await makeFetch(
       Router.mount("/ok", Route.text("ok")),
     )
 
     const response = await fetch("/ok")
 
-    t.expect(response.ok).toBe(true)
-    t.expect(response.status).toBe(200)
+    test
+      .expect(response.ok)
+      .toBe(true)
+    test
+      .expect(response.status)
+      .toBe(200)
   })
 })
 
-t.describe("Route.layer httpMiddleware", () => {
-  t.test("applies middleware headers to child routes", async () => {
+test.describe("Route.layer httpMiddleware", () => {
+  test.it("applies middleware headers to child routes", async () => {
     const addHeader = HttpMiddleware.make((app) =>
       Effect.gen(function*() {
         const response = yield* app
@@ -247,11 +319,15 @@ t.describe("Route.layer httpMiddleware", () => {
     const fetch = await makeFetch(router)
     const response = await fetch("/child")
 
-    t.expect(response.headers.get("X-Layer-Applied")).toBe("true")
-    t.expect(await response.text()).toBe("child content")
+    test
+      .expect(response.headers.get("X-Layer-Applied"))
+      .toBe("true")
+    test
+      .expect(await response.text())
+      .toBe("child content")
   })
 
-  t.test("middleware only applies to children, not siblings", async () => {
+  test.it("middleware only applies to children, not siblings", async () => {
     const addHeader = HttpMiddleware.make((app) =>
       Effect.gen(function*() {
         const response = yield* app
@@ -267,13 +343,17 @@ t.describe("Route.layer httpMiddleware", () => {
     const fetch = await makeFetch(router)
 
     const insideResponse = await fetch("/inside")
-    t.expect(insideResponse.headers.get("X-Layer-Applied")).toBe("true")
+    test
+      .expect(insideResponse.headers.get("X-Layer-Applied"))
+      .toBe("true")
 
     const outsideResponse = await fetch("/outside")
-    t.expect(outsideResponse.headers.get("X-Layer-Applied")).toBeNull()
+    test
+      .expect(outsideResponse.headers.get("X-Layer-Applied"))
+      .toBeNull()
   })
 
-  t.test("multiple middleware are applied in order", async () => {
+  test.it("multiple middleware are applied in order", async () => {
     const addHeader1 = HttpMiddleware.make((app) =>
       Effect.gen(function*() {
         const response = yield* app
@@ -295,11 +375,15 @@ t.describe("Route.layer httpMiddleware", () => {
     const fetch = await makeFetch(router)
     const response = await fetch("/test")
 
-    t.expect(response.headers.get("X-First")).toBe("1")
-    t.expect(response.headers.get("X-Second")).toBe("2")
+    test
+      .expect(response.headers.get("X-First"))
+      .toBe("1")
+    test
+      .expect(response.headers.get("X-Second"))
+      .toBe("2")
   })
 
-  t.test("nested layers apply all middleware", async () => {
+  test.it("nested layers apply all middleware", async () => {
     const outerHeader = HttpMiddleware.make((app) =>
       Effect.gen(function*() {
         const response = yield* app
@@ -322,41 +406,57 @@ t.describe("Route.layer httpMiddleware", () => {
     const fetch = await makeFetch(router)
     const response = await fetch("/nested")
 
-    t.expect(response.headers.get("X-Outer")).toBe("outer")
-    t.expect(response.headers.get("X-Inner")).toBe("inner")
+    test
+      .expect(response.headers.get("X-Outer"))
+      .toBe("outer")
+    test
+      .expect(response.headers.get("X-Inner"))
+      .toBe("inner")
   })
 })
 
-t.describe(`${BunRoute.bundle.name}`, () => {
-  t.test("creates a BunHandler with required properties", () => {
+test.describe(`${BunRoute.bundle.name}`, () => {
+  test.it("creates a BunHandler with required properties", () => {
     const mockBundle = { index: "index.html" } as HTMLBundle
     const handler = BunRoute.bundle(() => Promise.resolve(mockBundle))
 
-    t.expect(BunRoute.isBunHandler(handler)).toBe(true)
-    t.expect(typeof handler.internalPathPrefix).toBe("string")
-    t.expect(handler.internalPathPrefix).toMatch(/^\/\.BunRoute-/)
-    t.expect(typeof handler.load).toBe("function")
+    test
+      .expect(BunRoute.isBunHandler(handler))
+      .toBe(true)
+    test
+      .expect(typeof handler.internalPathPrefix)
+      .toBe("string")
+    test
+      .expect(handler.internalPathPrefix)
+      .toMatch(/^\/\.BunRoute-/)
+    test
+      .expect(typeof handler.load)
+      .toBe("function")
   })
 
-  t.test("load resolves HTMLBundle from default export", async () => {
+  test.it("load resolves HTMLBundle from default export", async () => {
     const mockBundle = { index: "index.html" } as HTMLBundle
     const handler = BunRoute.bundle(() =>
       Promise.resolve({ default: mockBundle })
     )
 
     const bundle = await handler.load()
-    t.expect(bundle).toBe(mockBundle)
+    test
+      .expect(bundle)
+      .toBe(mockBundle)
   })
 
-  t.test("load resolves HTMLBundle from direct export", async () => {
+  test.it("load resolves HTMLBundle from direct export", async () => {
     const mockBundle = { index: "index.html" } as HTMLBundle
     const handler = BunRoute.bundle(() => Promise.resolve(mockBundle))
 
     const bundle = await handler.load()
-    t.expect(bundle).toBe(mockBundle)
+    test
+      .expect(bundle)
+      .toBe(mockBundle)
   })
 
-  t.test("Route.html(bundle(...)) creates proxy and internal routes", async () => {
+  test.it("Route.html(bundle(...)) creates proxy and internal routes", async () => {
     const mockBundle = { index: "index.html" } as HTMLBundle
     const handler = BunRoute.bundle(() => Promise.resolve(mockBundle))
 
@@ -368,9 +468,15 @@ t.describe(`${BunRoute.bundle.name}`, () => {
       k.includes(".BunRoute-")
     )
 
-    t.expect(internalPath).toBeDefined()
-    t.expect(routes[internalPath!]).toBe(mockBundle)
-    t.expect(typeof routes["/app"]).toBe("object")
+    test
+      .expect(internalPath)
+      .toBeDefined()
+    test
+      .expect(routes[internalPath!])
+      .toBe(mockBundle)
+    test
+      .expect(typeof routes["/app"])
+      .toBe("object")
   })
 })
 

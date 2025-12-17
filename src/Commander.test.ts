@@ -1,22 +1,26 @@
-import * as t from "bun:test"
+import * as test from "bun:test"
 import * as Effect from "effect/Effect"
 import * as Schema from "effect/Schema"
 import * as assert from "node:assert"
 import * as Commander from "./Commander.ts"
 
-t.describe(`${Commander.make.name}`, () => {
-  t.it("should create a basic command", () => {
+test.describe(`${Commander.make.name}`, () => {
+  test.it("should create a basic command", () => {
     const cmd = Commander.make({
       name: "test-app",
       description: "A test application",
     })
-    t.expect(cmd.name).toBe("test-app")
-    t.expect(cmd.description).toBe("A test application")
+    test
+      .expect(cmd.name)
+      .toBe("test-app")
+    test
+      .expect(cmd.description)
+      .toBe("A test application")
   })
 })
 
-t.describe(`${Commander.option.name} - nested builder API`, () => {
-  t.it("should add an option with schema", () => {
+test.describe(`${Commander.option.name} - nested builder API`, () => {
+  test.it("should add an option with schema", () => {
     const cmd = Commander
       .make({ name: "app" })
       .option(
@@ -25,12 +29,18 @@ t.describe(`${Commander.option.name} - nested builder API`, () => {
           .schema(Schema.String),
       )
 
-    t.expect(cmd.options.output).toBeDefined()
-    t.expect(cmd.options.output.long).toBe("--output")
-    t.expect(cmd.options.output.short).toBe("o")
+    test
+      .expect(cmd.options.output)
+      .toBeDefined()
+    test
+      .expect(cmd.options.output.long)
+      .toBe("--output")
+    test
+      .expect(cmd.options.output.short)
+      .toBe("o")
   })
 
-  t.it("should add option with description", () => {
+  test.it("should add option with description", () => {
     const cmd = Commander
       .make({ name: "app" })
       .option(
@@ -40,10 +50,12 @@ t.describe(`${Commander.option.name} - nested builder API`, () => {
           .schema(Schema.String),
       )
 
-    t.expect(cmd.options.output.description).toBe("Output file")
+    test
+      .expect(cmd.options.output.description)
+      .toBe("Output file")
   })
 
-  t.it("should add option with default value", () => {
+  test.it("should add option with default value", () => {
     const cmd = Commander
       .make({ name: "app" })
       .option(
@@ -53,10 +65,12 @@ t.describe(`${Commander.option.name} - nested builder API`, () => {
           .schema(Commander.NumberFromString),
       )
 
-    t.expect(cmd.options.count.defaultValue).toBe(10)
+    test
+      .expect(cmd.options.count.defaultValue)
+      .toBe(10)
   })
 
-  t.it("should chain multiple options", () => {
+  test.it("should chain multiple options", () => {
     const cmd = Commander
       .make({ name: "app" })
       .option(
@@ -70,15 +84,23 @@ t.describe(`${Commander.option.name} - nested builder API`, () => {
           .schema(Schema.String),
       )
 
-    t.expect(cmd.options.input).toBeDefined()
-    t.expect(cmd.options.output).toBeDefined()
-    t.expect(cmd.options.input.long).toBe("--input")
-    t.expect(cmd.options.output.long).toBe("--output")
+    test
+      .expect(cmd.options.input)
+      .toBeDefined()
+    test
+      .expect(cmd.options.output)
+      .toBeDefined()
+    test
+      .expect(cmd.options.input.long)
+      .toBe("--input")
+    test
+      .expect(cmd.options.output.long)
+      .toBe("--output")
   })
 })
 
-t.describe(`${Commander.parse.name} - kebab-to-camel conversion`, () => {
-  t.it("should convert kebab-case to camelCase", async () => {
+test.describe(`${Commander.parse.name} - kebab-to-camel conversion`, () => {
+  test.it("should convert kebab-case to camelCase", async () => {
     const cmd = Commander
       .make({ name: "app" })
       .option(
@@ -91,10 +113,12 @@ t.describe(`${Commander.parse.name} - kebab-to-camel conversion`, () => {
       Commander.parse(cmd, ["--input-file", "test.txt"]),
     )
 
-    t.expect(result.inputFile).toBe("test.txt")
+    test
+      .expect(result.inputFile)
+      .toBe("test.txt")
   })
 
-  t.it("should handle single word options", async () => {
+  test.it("should handle single word options", async () => {
     const cmd = Commander
       .make({ name: "app" })
       .option(
@@ -107,10 +131,12 @@ t.describe(`${Commander.parse.name} - kebab-to-camel conversion`, () => {
       Commander.parse(cmd, ["--port", "3000"]),
     )
 
-    t.expect(result.port).toBe(3000)
+    test
+      .expect(result.port)
+      .toBe(3000)
   })
 
-  t.it("should parse short options", async () => {
+  test.it("should parse short options", async () => {
     const cmd = Commander
       .make({ name: "app" })
       .option(
@@ -123,10 +149,12 @@ t.describe(`${Commander.parse.name} - kebab-to-camel conversion`, () => {
       Commander.parse(cmd, ["-p", "8080"]),
     )
 
-    t.expect(result.port).toBe(8080)
+    test
+      .expect(result.port)
+      .toBe(8080)
   })
 
-  t.it("should parse multiple options", async () => {
+  test.it("should parse multiple options", async () => {
     const cmd = Commander
       .make({ name: "app" })
       .option(
@@ -144,11 +172,15 @@ t.describe(`${Commander.parse.name} - kebab-to-camel conversion`, () => {
       Commander.parse(cmd, ["--host", "localhost", "--port", "3000"]),
     )
 
-    t.expect(result.host).toBe("localhost")
-    t.expect(result.port).toBe(3000)
+    test
+      .expect(result.host)
+      .toBe("localhost")
+    test
+      .expect(result.port)
+      .toBe(3000)
   })
 
-  t.it("should handle options with equals syntax", async () => {
+  test.it("should handle options with equals syntax", async () => {
     const cmd = Commander
       .make({ name: "app" })
       .option(
@@ -161,10 +193,12 @@ t.describe(`${Commander.parse.name} - kebab-to-camel conversion`, () => {
       Commander.parse(cmd, ["--port=3000"]),
     )
 
-    t.expect(result.port).toBe(3000)
+    test
+      .expect(result.port)
+      .toBe(3000)
   })
 
-  t.it("should use default value when option not provided", async () => {
+  test.it("should use default value when option not provided", async () => {
     const cmd = Commander
       .make({ name: "app" })
       .option(
@@ -178,10 +212,12 @@ t.describe(`${Commander.parse.name} - kebab-to-camel conversion`, () => {
       Commander.parse(cmd, []),
     )
 
-    t.expect(result.port).toBe(3000)
+    test
+      .expect(result.port)
+      .toBe(3000)
   })
 
-  t.it("should override default when option specified", async () => {
+  test.it("should override default when option specified", async () => {
     const cmd = Commander
       .make({ name: "app" })
       .option(
@@ -195,36 +231,50 @@ t.describe(`${Commander.parse.name} - kebab-to-camel conversion`, () => {
       Commander.parse(cmd, ["--port", "8080"]),
     )
 
-    t.expect(result.port).toBe(8080)
+    test
+      .expect(result.port)
+      .toBe(8080)
   })
 })
 
-t.describe(`${Commander.optionHelp.name}`, () => {
-  t.it("should add help option", () => {
+test.describe(`${Commander.optionHelp.name}`, () => {
+  test.it("should add help option", () => {
     const cmd = Commander
       .make({ name: "app" })
       .optionHelp()
 
-    t.expect(cmd.options.help).toBeDefined()
-    t.expect(cmd.options.help.long).toBe("--help")
-    t.expect(cmd.options.help.short).toBe("h")
+    test
+      .expect(cmd.options.help)
+      .toBeDefined()
+    test
+      .expect(cmd.options.help.long)
+      .toBe("--help")
+    test
+      .expect(cmd.options.help.short)
+      .toBe("h")
   })
 })
 
-t.describe(`${Commander.optionVersion.name}`, () => {
-  t.it("should add version option", () => {
+test.describe(`${Commander.optionVersion.name}`, () => {
+  test.it("should add version option", () => {
     const cmd = Commander
       .make({ name: "app", version: "1.0.0" })
       .optionVersion()
 
-    t.expect(cmd.options.version).toBeDefined()
-    t.expect(cmd.options.version.long).toBe("--version")
-    t.expect(cmd.options.version.short).toBe("V")
+    test
+      .expect(cmd.options.version)
+      .toBeDefined()
+    test
+      .expect(cmd.options.version.long)
+      .toBe("--version")
+    test
+      .expect(cmd.options.version.short)
+      .toBe("V")
   })
 })
 
-t.describe(`${Commander.handle.name}`, () => {
-  t.it("should mark command as handled", () => {
+test.describe(`${Commander.handle.name}`, () => {
+  test.it("should mark command as handled", () => {
     const handled = Commander
       .make({ name: "app" })
       .option(
@@ -242,13 +292,17 @@ t.describe(`${Commander.handle.name}`, () => {
           .schema(Schema.String),
       )
 
-    t.expect(handled.handler).toBeDefined()
-    t.expect(unhandled.handler).toBeUndefined()
+    test
+      .expect(handled.handler)
+      .toBeDefined()
+    test
+      .expect(unhandled.handler)
+      .toBeUndefined()
   })
 })
 
-t.describe(`${Commander.subcommand.name}`, () => {
-  t.it("should add subcommand", () => {
+test.describe(`${Commander.subcommand.name}`, () => {
+  test.it("should add subcommand", () => {
     const subCmd = Commander
       .make({ name: "format" })
       .option(
@@ -262,13 +316,17 @@ t.describe(`${Commander.subcommand.name}`, () => {
       .make({ name: "main" })
       .subcommand(subCmd)
 
-    t.expect(main.subcommands.length).toBe(1)
-    t.expect(main.subcommands[0]!.command.name).toBe("format")
+    test
+      .expect(main.subcommands.length)
+      .toBe(1)
+    test
+      .expect(main.subcommands[0]!.command.name)
+      .toBe("format")
   })
 })
 
-t.describe(`${Commander.help.name}`, () => {
-  t.it("should generate help text", () => {
+test.describe(`${Commander.help.name}`, () => {
+  test.it("should generate help text", () => {
     const cmd = Commander
       .make({
         name: "myapp",
@@ -285,33 +343,49 @@ t.describe(`${Commander.help.name}`, () => {
 
     const helpText = Commander.help(cmd)
 
-    t.expect(helpText).toContain("My awesome application")
-    t.expect(helpText).toContain("Usage: myapp [options]")
-    t.expect(helpText).toContain("--output")
-    t.expect(helpText).toContain("-o,")
-    t.expect(helpText).toContain("Output file")
-    t.expect(helpText).toContain("--help")
+    test
+      .expect(helpText)
+      .toContain("My awesome application")
+    test
+      .expect(helpText)
+      .toContain("Usage: myapp [options]")
+    test
+      .expect(helpText)
+      .toContain("--output")
+    test
+      .expect(helpText)
+      .toContain("-o,")
+    test
+      .expect(helpText)
+      .toContain("Output file")
+    test
+      .expect(helpText)
+      .toContain("--help")
   })
 })
 
-t.describe("BooleanFromString", () => {
-  t.it("should decode true value", async () => {
+test.describe("BooleanFromString", () => {
+  test.it("should decode true value", async () => {
     const result = await Effect.runPromise(
       Schema.decode(Schema.BooleanFromString)("true"),
     )
-    t.expect(result).toBe(true)
+    test
+      .expect(result)
+      .toBe(true)
   })
 
-  t.it("should decode false value", async () => {
+  test.it("should decode false value", async () => {
     const result = await Effect.runPromise(
       Schema.decode(Schema.BooleanFromString)("false"),
     )
-    t.expect(result).toBe(false)
+    test
+      .expect(result)
+      .toBe(false)
   })
 })
 
-t.describe(`${Commander.choice.name}`, () => {
-  t.it("should accept valid choice", async () => {
+test.describe(`${Commander.choice.name}`, () => {
+  test.it("should accept valid choice", async () => {
     const ColorSchema = Schema.compose(
       Schema.String,
       Schema.Literal("red", "green", "blue"),
@@ -321,10 +395,12 @@ t.describe(`${Commander.choice.name}`, () => {
       Schema.decode(ColorSchema)("red"),
     )
 
-    t.expect(result).toBe("red")
+    test
+      .expect(result)
+      .toBe("red")
   })
 
-  t.it("should fail on invalid choice", async () => {
+  test.it("should fail on invalid choice", async () => {
     const ColorSchema = Schema.compose(
       Schema.String,
       Schema.Literal("red", "green", "blue"),
@@ -334,54 +410,64 @@ t.describe(`${Commander.choice.name}`, () => {
       Effect.either(Schema.decode(ColorSchema)("yellow")),
     )
 
-    t.expect(result._tag).toBe("Left")
+    test
+      .expect(result._tag)
+      .toBe("Left")
   })
 })
 
-t.describe(`${Commander.repeatable.name}`, () => {
-  t.it("should parse comma-separated values", async () => {
+test.describe(`${Commander.repeatable.name}`, () => {
+  test.it("should parse comma-separated values", async () => {
     const schema = Commander.repeatable(Schema.String)
 
     const result = await Effect.runPromise(
       Schema.decode(schema)("foo,bar,baz"),
     )
 
-    t.expect(result).toEqual(["foo", "bar", "baz"])
+    test
+      .expect(result)
+      .toEqual(["foo", "bar", "baz"])
   })
 
-  t.it("should parse comma-separated numbers", async () => {
+  test.it("should parse comma-separated numbers", async () => {
     const schema = Commander.repeatable(Commander.NumberFromString)
 
     const result = await Effect.runPromise(
       Schema.decode(schema)("1,2,3,4,5"),
     )
 
-    t.expect(result).toEqual([1, 2, 3, 4, 5])
+    test
+      .expect(result)
+      .toEqual([1, 2, 3, 4, 5])
   })
 
-  t.it("should trim whitespace", async () => {
+  test.it("should trim whitespace", async () => {
     const schema = Commander.repeatable(Schema.String)
 
     const result = await Effect.runPromise(
       Schema.decode(schema)("foo, bar , baz"),
     )
 
-    t.expect(result).toEqual(["foo", "bar", "baz"])
+    test
+      .expect(result)
+      .toEqual(["foo", "bar", "baz"])
   })
 
-  t.it("should encode back to string", async () => {
+  test.it("should encode back to string", async () => {
     const schema = Commander.repeatable(Schema.String)
 
     const result = await Effect.runPromise(
       Schema.encode(schema)(["foo", "bar", "baz"]),
     )
 
-    t.expect(result).toBe("foo,bar,baz")
+    test
+      .expect(result)
+      .toBe("foo,bar,baz")
   })
 })
 
-t.describe("integration", () => {
-  t.it("should work with builder pattern", async () => {
+test.describe("integration", () => {
+  test.it("should work with builder pattern", async () => {
     const cmd = Commander
       .make({
         name: "converter",
@@ -423,13 +509,21 @@ t.describe("integration", () => {
       ]),
     )
 
-    t.expect(result.input).toBe("input.txt")
-    t.expect(result.output).toBe("output.txt")
-    t.expect(result.format).toBe("yaml")
-    t.expect(result.help).toBe(false)
+    test
+      .expect(result.input)
+      .toBe("input.txt")
+    test
+      .expect(result.output)
+      .toBe("output.txt")
+    test
+      .expect(result.format)
+      .toBe("yaml")
+    test
+      .expect(result.help)
+      .toBe(false)
   })
 
-  t.it("should handle kebab-case option names", async () => {
+  test.it("should handle kebab-case option names", async () => {
     const cmd = Commander
       .make({ name: "app" })
       .option(
@@ -448,13 +542,17 @@ t.describe("integration", () => {
       Commander.parse(cmd, ["--dry-run", "true", "--cache-dir", "/tmp/cache"]),
     )
 
-    t.expect(result.dryRun).toBe(true)
-    t.expect(result.cacheDir).toBe("/tmp/cache")
+    test
+      .expect(result.dryRun)
+      .toBe(true)
+    test
+      .expect(result.cacheDir)
+      .toBe("/tmp/cache")
   })
 })
 
-t.describe(`${Commander.parse.name} - comprehensive`, () => {
-  t.it("should parse with explicit args", async () => {
+test.describe(`${Commander.parse.name} - comprehensive`, () => {
+  test.it("should parse with explicit args", async () => {
     const cmd = Commander
       .make({ name: "app" })
       .option(
@@ -467,10 +565,12 @@ t.describe(`${Commander.parse.name} - comprehensive`, () => {
       Commander.parse(cmd, ["--port", "3000"]),
     )
 
-    t.expect(result.port).toBe(3000)
+    test
+      .expect(result.port)
+      .toBe(3000)
   })
 
-  t.it("should parse short options", async () => {
+  test.it("should parse short options", async () => {
     const cmd = Commander
       .make({ name: "app" })
       .option(
@@ -483,10 +583,12 @@ t.describe(`${Commander.parse.name} - comprehensive`, () => {
       Commander.parse(cmd, ["-p", "8080"]),
     )
 
-    t.expect(result.port).toBe(8080)
+    test
+      .expect(result.port)
+      .toBe(8080)
   })
 
-  t.it("should parse multiple options", async () => {
+  test.it("should parse multiple options", async () => {
     const cmd = Commander
       .make({ name: "app" })
       .option(
@@ -504,11 +606,15 @@ t.describe(`${Commander.parse.name} - comprehensive`, () => {
       Commander.parse(cmd, ["--host", "localhost", "--port", "3000"]),
     )
 
-    t.expect(result.host).toBe("localhost")
-    t.expect(result.port).toBe(3000)
+    test
+      .expect(result.host)
+      .toBe("localhost")
+    test
+      .expect(result.port)
+      .toBe(3000)
   })
 
-  t.it("should handle options with equals syntax", async () => {
+  test.it("should handle options with equals syntax", async () => {
     const cmd = Commander
       .make({ name: "app" })
       .option(
@@ -521,10 +627,12 @@ t.describe(`${Commander.parse.name} - comprehensive`, () => {
       Commander.parse(cmd, ["--port=3000"]),
     )
 
-    t.expect(result.port).toBe(3000)
+    test
+      .expect(result.port)
+      .toBe(3000)
   })
 
-  t.it("should parse combined short flags", async () => {
+  test.it("should parse combined short flags", async () => {
     const cmd = Commander
       .make({ name: "app" })
       .option(
@@ -544,13 +652,17 @@ t.describe(`${Commander.parse.name} - comprehensive`, () => {
       Commander.parse(cmd, []),
     )
 
-    t.expect(result.verbose).toBe(false)
-    t.expect(result.debug).toBe(false)
+    test
+      .expect(result.verbose)
+      .toBe(false)
+    test
+      .expect(result.debug)
+      .toBe(false)
   })
 })
 
-t.describe("boolean options", () => {
-  t.it("should return false for boolean flag when not specified", async () => {
+test.describe("boolean options", () => {
+  test.it("should return false for boolean flag when not specified", async () => {
     const cmd = Commander
       .make({ name: "app" })
       .option(
@@ -564,10 +676,12 @@ t.describe("boolean options", () => {
       Commander.parse(cmd, []),
     )
 
-    t.expect(result.verbose).toBe(false)
+    test
+      .expect(result.verbose)
+      .toBe(false)
   })
 
-  t.it("should return true for boolean flag when specified", async () => {
+  test.it("should return true for boolean flag when specified", async () => {
     const cmd = Commander
       .make({ name: "app" })
       .option(
@@ -581,10 +695,12 @@ t.describe("boolean options", () => {
       Commander.parse(cmd, ["--verbose", "true"]),
     )
 
-    t.expect(result.verbose).toBe(true)
+    test
+      .expect(result.verbose)
+      .toBe(true)
   })
 
-  t.it("should handle boolean with custom default", async () => {
+  test.it("should handle boolean with custom default", async () => {
     const cmd = Commander
       .make({ name: "app" })
       .option(
@@ -598,12 +714,14 @@ t.describe("boolean options", () => {
       Commander.parse(cmd, []),
     )
 
-    t.expect(result.color).toBe("auto")
+    test
+      .expect(result.color)
+      .toBe("auto")
   })
 })
 
-t.describe("options with choices", () => {
-  t.it("should accept valid choice", async () => {
+test.describe("options with choices", () => {
+  test.it("should accept valid choice", async () => {
     const cmd = Commander
       .make({ name: "app" })
       .option(
@@ -621,10 +739,12 @@ t.describe("options with choices", () => {
       Commander.parse(cmd, ["--color", "red"]),
     )
 
-    t.expect(result.color).toBe("red")
+    test
+      .expect(result.color)
+      .toBe("red")
   })
 
-  t.it("should reject invalid choice", async () => {
+  test.it("should reject invalid choice", async () => {
     const cmd = Commander
       .make({ name: "app" })
       .option(
@@ -642,10 +762,12 @@ t.describe("options with choices", () => {
       Effect.either(Commander.parse(cmd, ["--color", "yellow"])),
     )
 
-    t.expect(result._tag).toBe("Left")
+    test
+      .expect(result._tag)
+      .toBe("Left")
   })
 
-  t.it("should handle multiple choice options", async () => {
+  test.it("should handle multiple choice options", async () => {
     const cmd = Commander
       .make({ name: "app" })
       .option(
@@ -675,13 +797,17 @@ t.describe("options with choices", () => {
       Commander.parse(cmd, ["--format", "xml", "--level", "debug"]),
     )
 
-    t.expect(result.format).toBe("xml")
-    t.expect(result.level).toBe("debug")
+    test
+      .expect(result.format)
+      .toBe("xml")
+    test
+      .expect(result.level)
+      .toBe("debug")
   })
 })
 
-t.describe("options with defaults", () => {
-  t.it("should use default when option not specified", async () => {
+test.describe("options with defaults", () => {
+  test.it("should use default when option not specified", async () => {
     const cmd = Commander
       .make({ name: "app" })
       .option(
@@ -695,10 +821,12 @@ t.describe("options with defaults", () => {
       Commander.parse(cmd, []),
     )
 
-    t.expect(result.port).toBe(3000)
+    test
+      .expect(result.port)
+      .toBe(3000)
   })
 
-  t.it("should override default when option specified", async () => {
+  test.it("should override default when option specified", async () => {
     const cmd = Commander
       .make({ name: "app" })
       .option(
@@ -712,10 +840,12 @@ t.describe("options with defaults", () => {
       Commander.parse(cmd, ["--port", "8080"]),
     )
 
-    t.expect(result.port).toBe(8080)
+    test
+      .expect(result.port)
+      .toBe(8080)
   })
 
-  t.it("should handle multiple defaults", async () => {
+  test.it("should handle multiple defaults", async () => {
     const cmd = Commander
       .make({ name: "app" })
       .option(
@@ -741,12 +871,18 @@ t.describe("options with defaults", () => {
       Commander.parse(cmd, []),
     )
 
-    t.expect(result.host).toBe("localhost")
-    t.expect(result.port).toBe(3000)
-    t.expect(result.debug).toBe(false)
+    test
+      .expect(result.host)
+      .toBe("localhost")
+    test
+      .expect(result.port)
+      .toBe(3000)
+    test
+      .expect(result.debug)
+      .toBe(false)
   })
 
-  t.it("should use default for string option", async () => {
+  test.it("should use default for string option", async () => {
     const cmd = Commander
       .make({ name: "app" })
       .option(
@@ -760,12 +896,14 @@ t.describe("options with defaults", () => {
       Commander.parse(cmd, []),
     )
 
-    t.expect(result.output).toBe("output.txt")
+    test
+      .expect(result.output)
+      .toBe("output.txt")
   })
 })
 
-t.describe("action/handler", () => {
-  t.it("should invoke handler with parsed options", async () => {
+test.describe("action/handler", () => {
+  test.it("should invoke handler with parsed options", async () => {
     let capturedOptions: any = null
 
     const cmd = Commander
@@ -785,10 +923,12 @@ t.describe("action/handler", () => {
       Commander.parse(cmd, ["--name", "test"]),
     )
 
-    t.expect(parsed.name).toBe("test")
+    test
+      .expect(parsed.name)
+      .toBe("test")
   })
 
-  t.it("should support async handlers", async () => {
+  test.it("should support async handlers", async () => {
     let executed = false
 
     const cmd = Commander
@@ -810,10 +950,12 @@ t.describe("action/handler", () => {
       Commander.parse(cmd, ["--delay", "10"]),
     )
 
-    t.expect(executed).toBe(false)
+    test
+      .expect(executed)
+      .toBe(false)
   })
 
-  t.it("should pass all options to handler", async () => {
+  test.it("should pass all options to handler", async () => {
     let capturedOpts: any = null
 
     const cmd = Commander
@@ -846,38 +988,50 @@ t.describe("action/handler", () => {
   })
 })
 
-t.describe(`${Commander.optionVersion.name} - version behavior`, () => {
-  t.it("should include version in command definition", () => {
+test.describe(`${Commander.optionVersion.name} - version behavior`, () => {
+  test.it("should include version in command definition", () => {
     const cmd = Commander
       .make({ name: "app", version: "1.0.0" })
       .optionVersion()
 
-    t.expect(cmd.version).toBe("1.0.0")
-    t.expect(cmd.options.version).toBeDefined()
+    test
+      .expect(cmd.version)
+      .toBe("1.0.0")
+    test
+      .expect(cmd.options.version)
+      .toBeDefined()
   })
 
-  t.it("should handle version without version option", () => {
+  test.it("should handle version without version option", () => {
     const cmd = Commander
       .make({ name: "app", version: "2.0.0" })
 
-    t.expect(cmd.version).toBe("2.0.0")
-    t.expect(cmd.options["version"]).toBeUndefined()
+    test
+      .expect(cmd.version)
+      .toBe("2.0.0")
+    test
+      .expect(cmd.options["version"])
+      .toBeUndefined()
   })
 
-  t.it("should include version option in help", () => {
+  test.it("should include version option in help", () => {
     const cmd = Commander
       .make({ name: "app", version: "1.0.0" })
       .optionVersion()
 
     const help = Commander.help(cmd)
 
-    t.expect(help).toContain("--version")
-    t.expect(help).toContain("-V")
+    test
+      .expect(help)
+      .toContain("--version")
+    test
+      .expect(help)
+      .toContain("-V")
   })
 })
 
-t.describe(`${Commander.help.name} - comprehensive`, () => {
-  t.it("should generate help with description", () => {
+test.describe(`${Commander.help.name} - comprehensive`, () => {
+  test.it("should generate help with description", () => {
     const cmd = Commander
       .make({
         name: "myapp",
@@ -887,11 +1041,15 @@ t.describe(`${Commander.help.name} - comprehensive`, () => {
 
     const help = Commander.help(cmd)
 
-    t.expect(help).toContain("A test application")
-    t.expect(help).toContain("Usage: myapp [options]")
+    test
+      .expect(help)
+      .toContain("A test application")
+    test
+      .expect(help)
+      .toContain("Usage: myapp [options]")
   })
 
-  t.it("should include all options in help", () => {
+  test.it("should include all options in help", () => {
     const cmd = Commander
       .make({ name: "app" })
       .option(
@@ -910,15 +1068,27 @@ t.describe(`${Commander.help.name} - comprehensive`, () => {
 
     const help = Commander.help(cmd)
 
-    t.expect(help).toContain("--input")
-    t.expect(help).toContain("-i,")
-    t.expect(help).toContain("Input file")
-    t.expect(help).toContain("--output")
-    t.expect(help).toContain("-o,")
-    t.expect(help).toContain("Output file")
+    test
+      .expect(help)
+      .toContain("--input")
+    test
+      .expect(help)
+      .toContain("-i,")
+    test
+      .expect(help)
+      .toContain("Input file")
+    test
+      .expect(help)
+      .toContain("--output")
+    test
+      .expect(help)
+      .toContain("-o,")
+    test
+      .expect(help)
+      .toContain("Output file")
   })
 
-  t.it("should show subcommands in help", () => {
+  test.it("should show subcommands in help", () => {
     const subCmd = Commander
       .make({ name: "init", description: "Initialize project" })
       .handle(() => Effect.void)
@@ -930,12 +1100,18 @@ t.describe(`${Commander.help.name} - comprehensive`, () => {
 
     const help = Commander.help(cmd)
 
-    t.expect(help).toContain("Commands:")
-    t.expect(help).toContain("init")
-    t.expect(help).toContain("Initialize project")
+    test
+      .expect(help)
+      .toContain("Commands:")
+    test
+      .expect(help)
+      .toContain("init")
+    test
+      .expect(help)
+      .toContain("Initialize project")
   })
 
-  t.it("should format option descriptions properly", () => {
+  test.it("should format option descriptions properly", () => {
     const cmd = Commander
       .make({ name: "app" })
       .option(
@@ -947,13 +1123,17 @@ t.describe(`${Commander.help.name} - comprehensive`, () => {
 
     const help = Commander.help(cmd)
 
-    t.expect(help).toContain("-c, --config")
-    t.expect(help).toContain("Config file path")
+    test
+      .expect(help)
+      .toContain("-c, --config")
+    test
+      .expect(help)
+      .toContain("Config file path")
   })
 })
 
-t.describe(`${Commander.subcommand.name} - comprehensive`, () => {
-  t.it("should add subcommand", () => {
+test.describe(`${Commander.subcommand.name} - comprehensive`, () => {
+  test.it("should add subcommand", () => {
     const subCmd = Commander
       .make({ name: "build" })
       .option(
@@ -968,30 +1148,40 @@ t.describe(`${Commander.subcommand.name} - comprehensive`, () => {
       .make({ name: "app" })
       .subcommand(subCmd)
 
-    t.expect(cmd.subcommands.length).toBe(1)
-    t.expect(cmd.subcommands[0]!.command.name).toBe("build")
+    test
+      .expect(cmd.subcommands.length)
+      .toBe(1)
+    test
+      .expect(cmd.subcommands[0]!.command.name)
+      .toBe("build")
   })
 
-  t.it("should add multiple subcommands", () => {
+  test.it("should add multiple subcommands", () => {
     const build = Commander
       .make({ name: "build" })
       .handle(() => Effect.void)
 
-    const test = Commander
+    const testCmd = Commander
       .make({ name: "test" })
       .handle(() => Effect.void)
 
     const cmd = Commander
       .make({ name: "app" })
       .subcommand(build)
-      .subcommand(test)
+      .subcommand(testCmd)
 
-    t.expect(cmd.subcommands.length).toBe(2)
-    t.expect(cmd.subcommands[0]!.command.name).toBe("build")
-    t.expect(cmd.subcommands[1]!.command.name).toBe("test")
+    test
+      .expect(cmd.subcommands.length)
+      .toBe(2)
+    test
+      .expect(cmd.subcommands[0]!.command.name)
+      .toBe("build")
+    test
+      .expect(cmd.subcommands[1]!.command.name)
+      .toBe("test")
   })
 
-  t.it("should nest subcommands", () => {
+  test.it("should nest subcommands", () => {
     const deploy = Commander
       .make({ name: "deploy" })
       .handle(() => Effect.void)
@@ -1005,15 +1195,17 @@ t.describe(`${Commander.subcommand.name} - comprehensive`, () => {
       .make({ name: "app" })
       .subcommand(build)
 
-    t.expect(cmd.subcommands[0]!.command.subcommands.length).toBe(1)
-    t.expect(cmd.subcommands[0]!.command.subcommands[0]!.command.name).toBe(
-      "deploy",
-    )
+    test
+      .expect(cmd.subcommands[0]!.command.subcommands.length)
+      .toBe(1)
+    test
+      .expect(cmd.subcommands[0]!.command.subcommands[0]!.command.name)
+      .toBe("deploy")
   })
 })
 
-t.describe("option types", () => {
-  t.it("should parse string option", async () => {
+test.describe("option types", () => {
+  test.it("should parse string option", async () => {
     const cmd = Commander
       .make({ name: "app" })
       .option(
@@ -1026,11 +1218,15 @@ t.describe("option types", () => {
       Commander.parse(cmd, ["--name", "test"]),
     )
 
-    t.expect(result.name).toBe("test")
-    t.expect(typeof result.name).toBe("string")
+    test
+      .expect(result.name)
+      .toBe("test")
+    test
+      .expect(typeof result.name)
+      .toBe("string")
   })
 
-  t.it("should parse number option", async () => {
+  test.it("should parse number option", async () => {
     const cmd = Commander
       .make({ name: "app" })
       .option(
@@ -1043,11 +1239,15 @@ t.describe("option types", () => {
       Commander.parse(cmd, ["--count", "42"]),
     )
 
-    t.expect(result.count).toBe(42)
-    t.expect(typeof result.count).toBe("number")
+    test
+      .expect(result.count)
+      .toBe(42)
+    test
+      .expect(typeof result.count)
+      .toBe("number")
   })
 
-  t.it("should parse boolean option", async () => {
+  test.it("should parse boolean option", async () => {
     const cmd = Commander
       .make({ name: "app" })
       .option(
@@ -1060,11 +1260,15 @@ t.describe("option types", () => {
       Commander.parse(cmd, ["--enabled", "true"]),
     )
 
-    t.expect(result.enabled).toBe(true)
-    t.expect(typeof result.enabled).toBe("boolean")
+    test
+      .expect(result.enabled)
+      .toBe(true)
+    test
+      .expect(typeof result.enabled)
+      .toBe("boolean")
   })
 
-  t.it("should fail on invalid number", async () => {
+  test.it("should fail on invalid number", async () => {
     const cmd = Commander
       .make({ name: "app" })
       .option(
@@ -1077,12 +1281,14 @@ t.describe("option types", () => {
       Effect.either(Commander.parse(cmd, ["--count", "not-a-number"])),
     )
 
-    t.expect(result._tag).toBe("Left")
+    test
+      .expect(result._tag)
+      .toBe("Left")
   })
 })
 
-t.describe("complex scenarios", () => {
-  t.it("should handle mixed option types", async () => {
+test.describe("complex scenarios", () => {
+  test.it("should handle mixed option types", async () => {
     const cmd = Commander
       .make({ name: "server" })
       .option(
@@ -1128,13 +1334,21 @@ t.describe("complex scenarios", () => {
       ]),
     )
 
-    t.expect(result.host).toBe("0.0.0.0")
-    t.expect(result.port).toBe(8080)
-    t.expect(result.ssl).toBe(true)
-    t.expect(result.env).toBe("production")
+    test
+      .expect(result.host)
+      .toBe("0.0.0.0")
+    test
+      .expect(result.port)
+      .toBe(8080)
+    test
+      .expect(result.ssl)
+      .toBe(true)
+    test
+      .expect(result.env)
+      .toBe("production")
   })
 
-  t.it("should handle repeatable options", async () => {
+  test.it("should handle repeatable options", async () => {
     const cmd = Commander
       .make({ name: "app" })
       .option(
@@ -1147,10 +1361,12 @@ t.describe("complex scenarios", () => {
       Commander.parse(cmd, ["--tags", "foo,bar,baz"]),
     )
 
-    t.expect(result.tags).toEqual(["foo", "bar", "baz"])
+    test
+      .expect(result.tags)
+      .toEqual(["foo", "bar", "baz"])
   })
 
-  t.it("should preserve option order independence", async () => {
+  test.it("should preserve option order independence", async () => {
     const cmd = Commander
       .make({ name: "app" })
       .option(
@@ -1172,13 +1388,21 @@ t.describe("complex scenarios", () => {
       Commander.parse(cmd, ["--second", "2", "--first", "1"]),
     )
 
-    t.expect(result1.first).toBe("1")
-    t.expect(result1.second).toBe("2")
-    t.expect(result2.first).toBe("1")
-    t.expect(result2.second).toBe("2")
+    test
+      .expect(result1.first)
+      .toBe("1")
+    test
+      .expect(result1.second)
+      .toBe("2")
+    test
+      .expect(result2.first)
+      .toBe("1")
+    test
+      .expect(result2.second)
+      .toBe("2")
   })
 
-  t.it("should handle options with hyphens in names", async () => {
+  test.it("should handle options with hyphens in names", async () => {
     const cmd = Commander
       .make({ name: "app" })
       .option(
@@ -1198,13 +1422,17 @@ t.describe("complex scenarios", () => {
       Commander.parse(cmd, ["--dry-run", "true", "--no-cache", "true"]),
     )
 
-    t.expect(result.dryRun).toBe(true)
-    t.expect(result.noCache).toBe(true)
+    test
+      .expect(result.dryRun)
+      .toBe(true)
+    test
+      .expect(result.noCache)
+      .toBe(true)
   })
 })
 
-t.describe("error handling", () => {
-  t.it("should fail gracefully on invalid option value", async () => {
+test.describe("error handling", () => {
+  test.it("should fail gracefully on invalid option value", async () => {
     const cmd = Commander
       .make({ name: "app" })
       .option(
@@ -1218,10 +1446,12 @@ t.describe("error handling", () => {
     )
 
     assert.strictEqual(result._tag, "Left")
-    t.expect(result.left.message).toContain("Invalid value")
+    test
+      .expect(result.left.message)
+      .toContain("Invalid value")
   })
 
-  t.it("should fail on invalid choice", async () => {
+  test.it("should fail on invalid choice", async () => {
     const cmd = Commander
       .make({ name: "app" })
       .option(
@@ -1234,12 +1464,14 @@ t.describe("error handling", () => {
       Effect.either(Commander.parse(cmd, ["--mode", "staging"])),
     )
 
-    t.expect(result._tag).toBe("Left")
+    test
+      .expect(result._tag)
+      .toBe("Left")
   })
 })
 
-t.describe("builder pattern", () => {
-  t.it("should chain option definitions fluently", () => {
+test.describe("builder pattern", () => {
+  test.it("should chain option definitions fluently", () => {
     const cmd = Commander
       .make({ name: "app" })
       .option(
@@ -1256,12 +1488,18 @@ t.describe("builder pattern", () => {
           .schema(Schema.String),
       )
 
-    t.expect(cmd.options.input.description).toBe("Input file")
-    t.expect(cmd.options.output.description).toBe("Output file")
-    t.expect(cmd.options.output.defaultValue).toBe("out.txt")
+    test
+      .expect(cmd.options.input.description)
+      .toBe("Input file")
+    test
+      .expect(cmd.options.output.description)
+      .toBe("Output file")
+    test
+      .expect(cmd.options.output.defaultValue)
+      .toBe("out.txt")
   })
 
-  t.it("should chain description and default in any order", () => {
+  test.it("should chain description and default in any order", () => {
     const cmd1 = Commander
       .make({ name: "app" })
       .option(
@@ -1282,13 +1520,21 @@ t.describe("builder pattern", () => {
           .schema(Commander.NumberFromString),
       )
 
-    t.expect(cmd1.options.port.description).toBe("Port number")
-    t.expect(cmd1.options.port.defaultValue).toBe(3000)
-    t.expect(cmd2.options.port.description).toBe("Port number")
-    t.expect(cmd2.options.port.defaultValue).toBe(3000)
+    test
+      .expect(cmd1.options.port.description)
+      .toBe("Port number")
+    test
+      .expect(cmd1.options.port.defaultValue)
+      .toBe(3000)
+    test
+      .expect(cmd2.options.port.description)
+      .toBe("Port number")
+    test
+      .expect(cmd2.options.port.defaultValue)
+      .toBe(3000)
   })
 
-  t.it("should support method chaining with subcommands", () => {
+  test.it("should support method chaining with subcommands", () => {
     const sub1 = Commander
       .make({ name: "sub1" })
       .handle(() => Effect.void)
@@ -1308,14 +1554,20 @@ t.describe("builder pattern", () => {
       .subcommand(sub2)
       .optionHelp()
 
-    t.expect(cmd.options.global).toBeDefined()
-    t.expect(cmd.options.help).toBeDefined()
-    t.expect(cmd.subcommands.length).toBe(2)
+    test
+      .expect(cmd.options.global)
+      .toBeDefined()
+    test
+      .expect(cmd.options.help)
+      .toBeDefined()
+    test
+      .expect(cmd.subcommands.length)
+      .toBe(2)
   })
 })
 
-t.describe("example scenario", () => {
-  t.it("should handle main command with subcommand", async () => {
+test.describe("example scenario", () => {
+  test.it("should handle main command with subcommand", async () => {
     const unhandledFormat = Commander.make({
       name: "format",
       description: "Format source files",
@@ -1362,16 +1614,26 @@ t.describe("example scenario", () => {
       Commander.parse(main, ["--source", "test.ts", "--verbose", "true"]),
     )
 
-    t.expect(resultMain.source).toBe("test.ts")
-    t.expect(resultMain.verbose).toBe(true)
-    t.expect(resultMain.help).toBe(false)
-
-    t.expect(main.subcommands.length).toBe(1)
-    t.expect(main.subcommands[0]!.command.name).toBe("format")
-
-    t.expect(main.subcommands[0]!.command.options.style).toBeDefined()
-    t.expect(main.subcommands[0]!.command.options.style.defaultValue).toBe(
-      "standard",
-    )
+    test
+      .expect(resultMain.source)
+      .toBe("test.ts")
+    test
+      .expect(resultMain.verbose)
+      .toBe(true)
+    test
+      .expect(resultMain.help)
+      .toBe(false)
+    test
+      .expect(main.subcommands.length)
+      .toBe(1)
+    test
+      .expect(main.subcommands[0]!.command.name)
+      .toBe("format")
+    test
+      .expect(main.subcommands[0]!.command.options.style)
+      .toBeDefined()
+    test
+      .expect(main.subcommands[0]!.command.options.style.defaultValue)
+      .toBe("standard")
   })
 })

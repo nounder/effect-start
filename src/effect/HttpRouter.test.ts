@@ -6,7 +6,7 @@
  */
 import * as HttpRouter from "@effect/platform/HttpRouter"
 import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
-import * as t from "bun:test"
+import * as test from "bun:test"
 import {
   effectFn,
   TestHttpClient,
@@ -14,7 +14,7 @@ import {
 
 const effect = effectFn()
 
-t.it("Single app mounted on path", () =>
+test.it("Single app mounted on path", () =>
   effect(function*() {
     const app1 = HttpRouter.empty.pipe(
       HttpRouter.get("/hello", HttpServerResponse.text("Hello from app1")),
@@ -27,16 +27,15 @@ t.it("Single app mounted on path", () =>
     const client = TestHttpClient.make(router)
     const response = yield* client.get("/api/hello")
 
-    t
+    test
       .expect(response.status)
       .toBe(200)
-
-    t
+    test
       .expect(yield* response.text)
       .toBe("Hello from app1")
   }))
 
-t.it(
+test.it(
   "Multiple apps mounted on same path chain together",
   () =>
     effect(function*() {
@@ -57,27 +56,25 @@ t.it(
 
       const response1 = yield* client.get("/api/hello")
 
-      t
+      test
         .expect(response1.status)
         .toBe(200)
-
-      t
+      test
         .expect(yield* response1.text)
         .toBe("Hello from app1")
 
       const response2 = yield* client.get("/api/world")
 
-      t
+      test
         .expect(response2.status)
         .toBe(200)
-
-      t
+      test
         .expect(yield* response2.text)
         .toBe("World from app2")
     }),
 )
 
-t.it(
+test.it(
   "First app has no matching route - second app should be called",
   () =>
     effect(function*() {
@@ -97,17 +94,16 @@ t.it(
       const client = TestHttpClient.make(router)
       const response = yield* client.get("/api/missing")
 
-      t
+      test
         .expect(response.status)
         .toBe(200)
-
-      t
+      test
         .expect(yield* response.text)
         .toBe("Found in app2")
     }),
 )
 
-t.it(
+test.it(
   "First app has no matching route - second app should be called",
   () =>
     effect(function*() {
@@ -130,17 +126,16 @@ t.it(
       const client = TestHttpClient.make(router)
       const response = yield* client.get("/api/different")
 
-      t
+      test
         .expect(response.status)
         .toBe(200)
-
-      t
+      test
         .expect(yield* response.text)
         .toBe("Different route")
     }),
 )
 
-t.it("Multiple mounts with different methods", () =>
+test.it("Multiple mounts with different methods", () =>
   effect(function*() {
     const app1 = HttpRouter.empty.pipe(
       HttpRouter.get("/data", HttpServerResponse.text("GET data")),
@@ -159,26 +154,24 @@ t.it("Multiple mounts with different methods", () =>
 
     const getResponse = yield* client.get("/api/data")
 
-    t
+    test
       .expect(getResponse.status)
       .toBe(200)
-
-    t
+    test
       .expect(yield* getResponse.text)
       .toBe("GET data")
 
     const postResponse = yield* client.post("/api/data")
 
-    t
+    test
       .expect(postResponse.status)
       .toBe(200)
-
-    t
+    test
       .expect(yield* postResponse.text)
       .toBe("POST data")
   }))
 
-t.it(
+test.it(
   "Route chaining: RouteNotFound error chains to next router (root mount)",
   () =>
     effect(function*() {
@@ -204,17 +197,16 @@ t.it(
       const client = TestHttpClient.make(router)
       const response = yield* client.get("/admin/page")
 
-      t
+      test
         .expect(response.status)
         .toBe(200)
-
-      t
+      test
         .expect(yield* response.text)
         .toBe("Page from subApp2")
     }),
 )
 
-t.it(
+test.it(
   "Route chaining: explicit 404 response does not chain to next router (root mount)",
   () =>
     effect(function*() {
@@ -240,17 +232,16 @@ t.it(
       const client = TestHttpClient.make(router)
       const response = yield* client.get("/admin/page")
 
-      t
+      test
         .expect(response.status)
         .toBe(404)
-
-      t
+      test
         .expect(yield* response.text)
         .toBe("")
     }),
 )
 
-t.it(
+test.it(
   "Route conflicts: direct handlers win when defined before root mount",
   () =>
     effect(function*() {
@@ -281,37 +272,34 @@ t.it(
 
       const settingsResponse = yield* client.get("/admin/settings")
 
-      t
+      test
         .expect(settingsResponse.status)
         .toBe(200)
-
-      t
+      test
         .expect(yield* settingsResponse.text)
         .toBe("Settings from direct handler")
 
       const usersResponse = yield* client.get("/admin/users")
 
-      t
+      test
         .expect(usersResponse.status)
         .toBe(200)
-
-      t
+      test
         .expect(yield* usersResponse.text)
         .toBe("Users from direct handler")
 
       const dashboardResponse = yield* client.get("/admin/dashboard")
 
-      t
+      test
         .expect(dashboardResponse.status)
         .toBe(200)
-
-      t
+      test
         .expect(yield* dashboardResponse.text)
         .toBe("Dashboard from subApp")
     }),
 )
 
-t.it(
+test.it(
   "Route conflicts: root mount wins when defined before direct handlers",
   () =>
     effect(function*() {
@@ -342,37 +330,34 @@ t.it(
 
       const profileResponse = yield* client.get("/admin/profile")
 
-      t
+      test
         .expect(profileResponse.status)
         .toBe(200)
-
-      t
+      test
         .expect(yield* profileResponse.text)
         .toBe("Profile from subApp")
 
       const usersResponse = yield* client.get("/admin/users")
 
-      t
+      test
         .expect(usersResponse.status)
         .toBe(200)
-
-      t
+      test
         .expect(yield* usersResponse.text)
         .toBe("Users from direct handler")
 
       const dashboardResponse = yield* client.get("/admin/dashboard")
 
-      t
+      test
         .expect(dashboardResponse.status)
         .toBe(200)
-
-      t
+      test
         .expect(yield* dashboardResponse.text)
         .toBe("Dashboard from subApp")
     }),
 )
 
-t.it(
+test.it(
   "Route conflicts: mountApp does not chain with direct handlers defined before",
   () =>
     effect(function*() {
@@ -403,29 +388,28 @@ t.it(
 
       const settingsResponse = yield* client.get("/admin/settings")
 
-      t
+      test
         .expect(settingsResponse.status)
         .toBe(404)
 
       const usersResponse = yield* client.get("/admin/users")
 
-      t
+      test
         .expect(usersResponse.status)
         .toBe(404)
 
       const dashboardResponse = yield* client.get("/admin/dashboard")
 
-      t
+      test
         .expect(dashboardResponse.status)
         .toBe(200)
-
-      t
+      test
         .expect(yield* dashboardResponse.text)
         .toBe("Dashboard from subApp")
     }),
 )
 
-t.it(
+test.it(
   "Route conflicts: mountApp does not chain with direct handlers defined after",
   () =>
     effect(function*() {
@@ -456,33 +440,31 @@ t.it(
 
       const profileResponse = yield* client.get("/admin/profile")
 
-      t
+      test
         .expect(profileResponse.status)
         .toBe(200)
-
-      t
+      test
         .expect(yield* profileResponse.text)
         .toBe("Profile from subApp")
 
       const settingsResponse = yield* client.get("/admin/settings")
 
-      t
+      test
         .expect(settingsResponse.status)
         .toBe(404)
 
       const dashboardResponse = yield* client.get("/admin/dashboard")
 
-      t
+      test
         .expect(dashboardResponse.status)
         .toBe(200)
-
-      t
+      test
         .expect(yield* dashboardResponse.text)
         .toBe("Dashboard from subApp")
     }),
 )
 
-t.it(
+test.it(
   "Wildcard routes: single asterisk wildcard handler",
   () =>
     effect(function*() {
@@ -494,17 +476,16 @@ t.it(
 
       const response = yield* client.get("/anything")
 
-      t
+      test
         .expect(response.status)
         .toBe(200)
-
-      t
+      test
         .expect(yield* response.text)
         .toBe("Wildcard handler")
     }),
 )
 
-t.it(
+test.it(
   "Wildcard routes: wildcard defined before literal route",
   () =>
     effect(function*() {
@@ -517,27 +498,25 @@ t.it(
 
       const wildcardResponse = yield* client.get("/anything")
 
-      t
+      test
         .expect(wildcardResponse.status)
         .toBe(200)
-
-      t
+      test
         .expect(yield* wildcardResponse.text)
         .toBe("Wildcard handler")
 
       const literalResponse = yield* client.get("/specific")
 
-      t
+      test
         .expect(literalResponse.status)
         .toBe(200)
-
-      t
+      test
         .expect(yield* literalResponse.text)
         .toBe("Literal handler")
     }),
 )
 
-t.it(
+test.it(
   "Wildcard routes: literal route defined before wildcard",
   () =>
     effect(function*() {
@@ -550,21 +529,19 @@ t.it(
 
       const literalResponse = yield* client.get("/specific")
 
-      t
+      test
         .expect(literalResponse.status)
         .toBe(200)
-
-      t
+      test
         .expect(yield* literalResponse.text)
         .toBe("Literal handler")
 
       const wildcardResponse = yield* client.get("/anything")
 
-      t
+      test
         .expect(wildcardResponse.status)
         .toBe(200)
-
-      t
+      test
         .expect(yield* wildcardResponse.text)
         .toBe("Wildcard handler")
     }),

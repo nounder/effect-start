@@ -1,6 +1,6 @@
 import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
 import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
-import * as t from "bun:test"
+import * as test from "bun:test"
 import * as Effect from "effect/Effect"
 import { effectFn } from "./index.ts"
 import * as TestHttpClient from "./TestHttpClient.ts"
@@ -21,49 +21,45 @@ const AppClient = TestHttpClient.make(App)
 
 const effect = effectFn()
 
-t.it("ok", () =>
+test.it("ok", () =>
   effect(function*() {
     const res = yield* AppClient.get("/")
 
-    t
-      .expect(
-        res.status,
-      )
+    test
+      .expect(res.status)
       .toEqual(200)
-    t
-      .expect(
-        yield* res.text,
-      )
+    test
+      .expect(yield* res.text)
       .toEqual("Hello, World!")
   }))
 
-t.it("not found", () =>
+test.it("not found", () =>
   effect(function*() {
     const res = yield* AppClient.get("/nope")
 
-    t
-      .expect(
-        res.status,
-      )
+    test
+      .expect(res.status)
       .toEqual(404)
-    t
-      .expect(
-        yield* res.text,
-      )
+    test
+      .expect(yield* res.text)
       .toEqual("Not Found")
   }))
 
-t.describe("FetchHandler", () => {
+test.describe("FetchHandler", () => {
   const FetchClient = TestHttpClient.make((req) =>
     new Response(`Hello from ${req.url}`, { status: 200 })
   )
 
-  t.it("works with sync handler", () =>
+  test.it("works with sync handler", () =>
     effect(function*() {
       const res = yield* FetchClient.get("/test")
 
-      t.expect(res.status).toEqual(200)
-      t.expect(yield* res.text).toContain("/test")
+      test
+        .expect(res.status)
+        .toEqual(200)
+      test
+        .expect(yield* res.text)
+        .toContain("/test")
     }))
 
   const AsyncFetchClient = TestHttpClient.make(async (req) => {
@@ -73,11 +69,15 @@ t.describe("FetchHandler", () => {
     })
   })
 
-  t.it("works with async handler", () =>
+  test.it("works with async handler", () =>
     effect(function*() {
       const res = yield* AsyncFetchClient.post("/async-path")
 
-      t.expect(res.status).toEqual(201)
-      t.expect(yield* res.text).toEqual("Async: POST /async-path")
+      test
+        .expect(res.status)
+        .toEqual(201)
+      test
+        .expect(yield* res.text)
+        .toEqual("Async: POST /async-path")
     }))
 })

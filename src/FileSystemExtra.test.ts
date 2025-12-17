@@ -1,5 +1,5 @@
 import * as FileSystem from "@effect/platform/FileSystem"
-import * as t from "bun:test"
+import * as test from "bun:test"
 import { MemoryFileSystem } from "effect-memfs"
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
@@ -8,8 +8,8 @@ import * as Function from "effect/Function"
 import * as Stream from "effect/Stream"
 import * as FileSystemExtra from "./FileSystemExtra.ts"
 
-t.describe(`${FileSystemExtra.watchSource.name}`, () => {
-  t.it("emits events for file creation", () =>
+test.describe(`${FileSystemExtra.watchSource.name}`, () => {
+  test.it("emits events for file creation", () =>
     Effect
       .gen(function*() {
         const fs = yield* FileSystem.FileSystem
@@ -28,11 +28,19 @@ t.describe(`${FileSystemExtra.watchSource.name}`, () => {
 
         const events = yield* Fiber.join(fiber)
 
-        t.expect(Chunk.size(events)).toBeGreaterThan(0)
+        test
+          .expect(Chunk.size(events))
+          .toBeGreaterThan(0)
         const first = Chunk.unsafeGet(events, 0)
-        t.expect(first.path).toContain("test.ts")
-        t.expect(["rename", "change"]).toContain(first.eventType)
-        t.expect(first.filename).toBe("test.ts")
+        test
+          .expect(first.path)
+          .toContain("test.ts")
+        test
+          .expect(["rename", "change"])
+          .toContain(first.eventType)
+        test
+          .expect(first.filename)
+          .toBe("test.ts")
       })
       .pipe(
         Effect.scoped,
@@ -42,7 +50,7 @@ t.describe(`${FileSystemExtra.watchSource.name}`, () => {
         Effect.runPromise,
       ))
 
-  t.it(
+  test.it(
     "emits change event for file modification",
     () =>
       Effect
@@ -63,8 +71,12 @@ t.describe(`${FileSystemExtra.watchSource.name}`, () => {
 
           const events = yield* Fiber.join(fiber)
 
-          t.expect(Chunk.size(events)).toBeGreaterThan(0)
-          t.expect(Chunk.unsafeGet(events, 0).eventType).toBe("change")
+          test
+            .expect(Chunk.size(events))
+            .toBeGreaterThan(0)
+          test
+            .expect(Chunk.unsafeGet(events, 0).eventType)
+            .toBe("change")
         })
         .pipe(
           Effect.scoped,
@@ -75,7 +87,7 @@ t.describe(`${FileSystemExtra.watchSource.name}`, () => {
         ),
   )
 
-  t.it("applies custom filter", () =>
+  test.it("applies custom filter", () =>
     Effect
       .gen(function*() {
         const fs = yield* FileSystem.FileSystem
@@ -98,8 +110,12 @@ t.describe(`${FileSystemExtra.watchSource.name}`, () => {
 
         const events = yield* Fiber.join(fiber)
 
-        t.expect(Chunk.size(events)).toBe(1)
-        t.expect(Chunk.unsafeGet(events, 0).path).toContain("included.ts")
+        test
+          .expect(Chunk.size(events))
+          .toBe(1)
+        test
+          .expect(Chunk.unsafeGet(events, 0).path)
+          .toContain("included.ts")
       })
       .pipe(
         Effect.scoped,
@@ -110,9 +126,9 @@ t.describe(`${FileSystemExtra.watchSource.name}`, () => {
       ))
 })
 
-t.describe(`${FileSystemExtra.filterSourceFiles.name}`, () => {
-  t.it("matches source file extensions", () => {
-    t
+test.describe(`${FileSystemExtra.filterSourceFiles.name}`, () => {
+  test.it("matches source file extensions", () => {
+    test
       .expect(
         FileSystemExtra.filterSourceFiles({
           eventType: "change",
@@ -121,7 +137,7 @@ t.describe(`${FileSystemExtra.filterSourceFiles.name}`, () => {
         }),
       )
       .toBe(true)
-    t
+    test
       .expect(
         FileSystemExtra.filterSourceFiles({
           eventType: "change",
@@ -130,7 +146,7 @@ t.describe(`${FileSystemExtra.filterSourceFiles.name}`, () => {
         }),
       )
       .toBe(true)
-    t
+    test
       .expect(
         FileSystemExtra.filterSourceFiles({
           eventType: "change",
@@ -139,7 +155,7 @@ t.describe(`${FileSystemExtra.filterSourceFiles.name}`, () => {
         }),
       )
       .toBe(true)
-    t
+    test
       .expect(
         FileSystemExtra.filterSourceFiles({
           eventType: "change",
@@ -148,7 +164,7 @@ t.describe(`${FileSystemExtra.filterSourceFiles.name}`, () => {
         }),
       )
       .toBe(true)
-    t
+    test
       .expect(
         FileSystemExtra.filterSourceFiles({
           eventType: "change",
@@ -157,7 +173,7 @@ t.describe(`${FileSystemExtra.filterSourceFiles.name}`, () => {
         }),
       )
       .toBe(true)
-    t
+    test
       .expect(
         FileSystemExtra.filterSourceFiles({
           eventType: "change",
@@ -166,7 +182,7 @@ t.describe(`${FileSystemExtra.filterSourceFiles.name}`, () => {
         }),
       )
       .toBe(true)
-    t
+    test
       .expect(
         FileSystemExtra.filterSourceFiles({
           eventType: "change",
@@ -177,8 +193,8 @@ t.describe(`${FileSystemExtra.filterSourceFiles.name}`, () => {
       .toBe(true)
   })
 
-  t.it("rejects non-source files", () => {
-    t
+  test.it("rejects non-source files", () => {
+    test
       .expect(
         FileSystemExtra.filterSourceFiles({
           eventType: "change",
@@ -187,7 +203,7 @@ t.describe(`${FileSystemExtra.filterSourceFiles.name}`, () => {
         }),
       )
       .toBe(false)
-    t
+    test
       .expect(
         FileSystemExtra.filterSourceFiles({
           eventType: "change",
@@ -199,9 +215,9 @@ t.describe(`${FileSystemExtra.filterSourceFiles.name}`, () => {
   })
 })
 
-t.describe(`${FileSystemExtra.filterDirectory.name}`, () => {
-  t.it("matches directories", () => {
-    t
+test.describe(`${FileSystemExtra.filterDirectory.name}`, () => {
+  test.it("matches directories", () => {
+    test
       .expect(
         FileSystemExtra.filterDirectory({
           eventType: "change",
@@ -212,8 +228,8 @@ t.describe(`${FileSystemExtra.filterDirectory.name}`, () => {
       .toBe(true)
   })
 
-  t.it("rejects files", () => {
-    t
+  test.it("rejects files", () => {
+    test
       .expect(
         FileSystemExtra.filterDirectory({
           eventType: "change",

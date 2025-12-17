@@ -1,7 +1,7 @@
-import * as t from "bun:test"
+import * as test from "bun:test"
 import * as FileRouter from "./FileRouter.ts"
 
-t.it("tree with root only", () => {
+test.it("tree with root only", () => {
   const handles = [
     "route.tsx",
     "layer.tsx",
@@ -9,31 +9,35 @@ t.it("tree with root only", () => {
     .map(FileRouter.parseRoute)
   const tree = FileRouter.treeFromRouteHandles(handles)
 
-  t.expect(tree).toEqual({
-    path: "/",
-    handles: [
-      t.expect.objectContaining({
-        handle: "route",
-      }),
-      t.expect.objectContaining({
-        handle: "layer",
-      }),
-    ],
-  })
+  test
+    .expect(tree)
+    .toEqual({
+      path: "/",
+      handles: [
+        test.expect.objectContaining({
+          handle: "route",
+        }),
+        test.expect.objectContaining({
+          handle: "layer",
+        }),
+      ],
+    })
 })
 
-t.it("tree without root", () => {
+test.it("tree without root", () => {
   const handles = []
     .map(FileRouter.parseRoute)
   const tree = FileRouter.treeFromRouteHandles(handles)
 
-  t.expect(tree).toEqual({
-    path: "/",
-    handles: [],
-  })
+  test
+    .expect(tree)
+    .toEqual({
+      path: "/",
+      handles: [],
+    })
 })
 
-t.it("deep tree", () => {
+test.it("deep tree", () => {
   const handles = [
     "users/route.tsx",
     "users/layer.tsx",
@@ -43,41 +47,43 @@ t.it("deep tree", () => {
     .map(FileRouter.parseRoute)
   const tree = FileRouter.treeFromRouteHandles(handles)
 
-  t.expect(tree).toEqual({
-    path: "/",
-    handles: [
-      t.expect.objectContaining({
-        handle: "layer",
-      }),
-    ],
-    children: [
-      {
-        path: "/users",
-        handles: [
-          t.expect.objectContaining({
-            handle: "route",
-          }),
-          t.expect.objectContaining({
-            handle: "layer",
-          }),
-        ],
-        children: [
-          {
-            path: "/[userId]",
-            handles: [
-              t.expect.objectContaining({
-                handle: "route",
-              }),
-            ],
-          },
-        ],
-      },
-    ],
-  })
+  test
+    .expect(tree)
+    .toEqual({
+      path: "/",
+      handles: [
+        test.expect.objectContaining({
+          handle: "layer",
+        }),
+      ],
+      children: [
+        {
+          path: "/users",
+          handles: [
+            test.expect.objectContaining({
+              handle: "route",
+            }),
+            test.expect.objectContaining({
+              handle: "layer",
+            }),
+          ],
+          children: [
+            {
+              path: "/[userId]",
+              handles: [
+                test.expect.objectContaining({
+                  handle: "route",
+                }),
+              ],
+            },
+          ],
+        },
+      ],
+    })
 })
 
-t.it("throws on overlapping routes from groups", () => {
-  t
+test.it("throws on overlapping routes from groups", () => {
+  test
     .expect(() => {
       const handles = [
         "(admin)/users/route.tsx",
@@ -92,8 +98,8 @@ t.it("throws on overlapping routes from groups", () => {
     .toThrow("Conflicting routes detected at path /users")
 })
 
-t.it("throws on overlapping routes with same path", () => {
-  t
+test.it("throws on overlapping routes with same path", () => {
+  test
     .expect(() => {
       const handles = [
         "about/route.tsx",
@@ -108,8 +114,8 @@ t.it("throws on overlapping routes with same path", () => {
     .toThrow("Conflicting routes detected at path /about")
 })
 
-t.it("allows route and layer at same path", () => {
-  t
+test.it("allows route and layer at same path", () => {
+  test
     .expect(() => {
       const handles = [
         "users/route.tsx",

@@ -1,5 +1,5 @@
 import * as HttpRouter from "@effect/platform/HttpRouter"
-import * as t from "bun:test"
+import * as test from "bun:test"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as NFS from "node:fs/promises"
@@ -10,8 +10,8 @@ import * as BundleHttp from "../bundler/BundleHttp.ts"
 import * as TestHttpClient from "../testing/TestHttpClient.ts"
 import * as BunBundle from "./BunBundle.ts"
 
-t.describe("BunBundle manifest structure", () => {
-  t.it("should generate manifest with inputs and outputs arrays", async () => {
+test.describe("BunBundle manifest structure", () => {
+  test.it("should generate manifest with inputs and outputs arrays", async () => {
     const tmpDir = await NFS.mkdtemp(
       NPath.join(NOS.tmpdir(), "effect-start-test-"),
     )
@@ -41,43 +41,41 @@ export const greeting = "Hello World";`
         }),
       )
 
-      t
+      test
         .expect(bundle.entrypoints)
         .toBeObject()
-      t
+      test
         .expect(bundle.artifacts)
         .toBeArray()
-
-      t
+      test
         .expect(Object.keys(bundle.entrypoints).length)
         .toBe(1)
-      t
+      test
         .expect(bundle.artifacts.length)
         .toBe(3)
 
       const entrypointKeys = Object.keys(bundle.entrypoints)
       const firstEntrypoint = entrypointKeys[0]
 
-      t
+      test
         .expect(firstEntrypoint)
         .toBeString()
-      t
+      test
         .expect(bundle.entrypoints[firstEntrypoint])
         .toBeString()
 
       const firstArtifact = bundle.artifacts[0]
 
-      t
+      test
         .expect(firstArtifact)
         .toHaveProperty("path")
-      t
+      test
         .expect(firstArtifact)
         .toHaveProperty("type")
-      t
+      test
         .expect(firstArtifact)
         .toHaveProperty("size")
-
-      t
+      test
         .expect(firstArtifact.size)
         .toBeGreaterThan(0)
     } finally {
@@ -88,7 +86,7 @@ export const greeting = "Hello World";`
     }
   })
 
-  t.it("should serve manifest via HTTP with correct structure", async () => {
+  test.it("should serve manifest via HTTP with correct structure", async () => {
     const tmpDir = await NFS.mkdtemp(
       NPath.join(NOS.tmpdir(), "effect-start-test-"),
     )
@@ -136,46 +134,44 @@ export const greeting = "Hello World";`
           ),
       )
 
-      t
+      test
         .expect(result)
         .toHaveProperty("entrypoints")
-      t
+      test
         .expect(result)
         .toHaveProperty("artifacts")
-
-      t
+      test
         .expect(result.entrypoints)
         .toBeObject()
-      t
+      test
         .expect(result.artifacts)
         .toBeArray()
-
-      t
+      test
         .expect(Object.keys(result.entrypoints).length)
         .toBe(1)
-      t
+      test
         .expect(result.artifacts.length)
         .toBe(3)
 
       const entrypointKeys = Object.keys(result.entrypoints)
       const firstKey = entrypointKeys[0]
 
-      t
+      test
         .expect(firstKey)
         .toBeString()
-      t
+      test
         .expect(result.entrypoints[firstKey])
         .toBeString()
 
       const artifact = result.artifacts[0]
 
-      t
+      test
         .expect(artifact)
         .toHaveProperty("path")
-      t
+      test
         .expect(artifact)
         .toHaveProperty("type")
-      t
+      test
         .expect(artifact)
         .toHaveProperty("size")
     } finally {
@@ -186,7 +182,7 @@ export const greeting = "Hello World";`
     }
   })
 
-  t.it("should resolve entrypoints to artifacts correctly", async () => {
+  test.it("should resolve entrypoints to artifacts correctly", async () => {
     const tmpDir = await NFS.mkdtemp(
       NPath.join(NOS.tmpdir(), "effect-start-test-"),
     )
@@ -210,18 +206,17 @@ export const greeting = "Hello World";`
       const expectedOutput = bundle.entrypoints[firstEntrypoint]
       const resolvedOutput = bundle.resolve(firstEntrypoint)
 
-      t
+      test
         .expect(resolvedOutput)
         .toBe(expectedOutput)
 
       const artifact = bundle.getArtifact(resolvedOutput!)
 
-      t
+      test
         .expect(artifact)
         .not
         .toBeNull()
-
-      t
+      test
         .expect(artifact)
         .toBeTruthy()
     } finally {
@@ -232,7 +227,7 @@ export const greeting = "Hello World";`
     }
   })
 
-  t.it("should include all artifact metadata", async () => {
+  test.it("should include all artifact metadata", async () => {
     const tmpDir = await NFS.mkdtemp(
       NPath.join(NOS.tmpdir(), "effect-start-test-"),
     )
@@ -251,17 +246,16 @@ export const greeting = "Hello World";`
 
       const artifact = bundle.artifacts[0]
 
-      t
+      test
         .expect(artifact.path)
         .toBeString()
-      t
+      test
         .expect(artifact.type)
         .toBeString()
-      t
+      test
         .expect(artifact.size)
         .toBeNumber()
-
-      t
+      test
         .expect(artifact.type)
         .toContain("javascript")
     } finally {
