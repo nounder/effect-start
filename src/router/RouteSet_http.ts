@@ -13,20 +13,6 @@ export type HttpMiddlewareFunction<E = any, R = any> = <AppE, AppR>(
   app: HttpApp.Default<AppE, AppR>,
 ) => HttpApp.HttpApp<E | AppE, R | AppR>
 
-type HttpRouteResult<
-  Routes extends readonly Route.Route.Default[],
-  Schemas extends Route.RouteSchemas,
-  A,
-  E,
-  R,
-> = RouteSet.RouteSet<
-  [
-    ...Routes,
-    Route.Route<"*", "http", Route.RouteHandler<A, E, R>, Schemas>,
-  ],
-  Schemas
->
-
 export function http<
   S extends Route.Self,
   E,
@@ -34,19 +20,29 @@ export function http<
 >(
   this: S,
   handler: (app: HttpApp.Default<never, never>) => HttpApp.Default<E, R>,
-): S extends RouteSet.RouteSet<infer Routes, infer Schemas> ? HttpRouteResult<
-    Routes,
-    Schemas,
-    HttpServerResponse.HttpServerResponse,
-    E,
-    R
+): S extends RouteSet.RouteSet<infer Routes, infer Schemas>
+  ? RouteSet.RouteSet<
+    [
+      ...Routes,
+      Route.Route<
+        "*",
+        "http",
+        Route.RouteHandler<HttpServerResponse.HttpServerResponse, E, R>,
+        Schemas
+      >,
+    ],
+    Schemas
   >
-  : HttpRouteResult<
-    [],
-    Route.RouteSchemas.Empty,
-    HttpServerResponse.HttpServerResponse,
-    E,
-    R
+  : RouteSet.RouteSet<
+    [
+      Route.Route<
+        "*",
+        "http",
+        Route.RouteHandler<HttpServerResponse.HttpServerResponse, E, R>,
+        Route.RouteSchemas.Empty
+      >,
+    ],
+    Route.RouteSchemas.Empty
   >
 export function http<
   S extends Route.Self,
@@ -57,8 +53,24 @@ export function http<
   this: S,
   handler: Effect.Effect<A, E, R>,
 ): S extends RouteSet.RouteSet<infer Routes, infer Schemas>
-  ? HttpRouteResult<Routes, Schemas, A, E, R>
-  : HttpRouteResult<[], Route.RouteSchemas.Empty, A, E, R>
+  ? RouteSet.RouteSet<
+    [
+      ...Routes,
+      Route.Route<"*", "http", Route.RouteHandler<A, E, R>, Schemas>,
+    ],
+    Schemas
+  >
+  : RouteSet.RouteSet<
+    [
+      Route.Route<
+        "*",
+        "http",
+        Route.RouteHandler<A, E, R>,
+        Route.RouteSchemas.Empty
+      >,
+    ],
+    Route.RouteSchemas.Empty
+  >
 export function http<
   A extends HttpServerResponse.HttpServerResponse,
   E,
