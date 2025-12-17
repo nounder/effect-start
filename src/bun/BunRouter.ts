@@ -1,4 +1,3 @@
-import * as HttpApp from "@effect/platform/HttpApp"
 import type * as Bun from "bun"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
@@ -7,7 +6,6 @@ import * as RouteHttp from "../router/RouteHttp.ts"
 import * as Router from "../router/Router.ts"
 import * as RouterPattern from "../router/RouterPattern.ts"
 import * as RouteSet from "../router/RouteSet.ts"
-import { isHttpMiddlewareHandler } from "../router/RouteSet_http.ts"
 import * as BunHttpServer from "./BunHttpServer.ts"
 import {
   type BunHandler,
@@ -63,7 +61,7 @@ export function routesFrom(
       // Group content routes by method
       const byMethod = new Map<Route.RouteMethod, Route.Route.Default[]>()
       for (const route of RouteSet.items(routeSet)) {
-        if (isHttpMiddlewareHandler(route.handler)) continue
+        if (route.kind === "http") continue
         const existing = byMethod.get(route.method) ?? []
         existing.push(route)
         byMethod.set(route.method, existing)

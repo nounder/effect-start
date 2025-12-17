@@ -236,7 +236,7 @@ t.it(
 )
 
 t.it(
-  "route-level layer only applies to matching media via RouteSet composition",
+  "route-level layer only applies to matching kind via RouteSet composition",
   async () => {
     const htmlLayer = Route.html(function*(_c, next) {
       const inner = yield* next()
@@ -281,7 +281,7 @@ t.describe("Router.get", () => {
 
     t.expect(route).toBeDefined()
     t.expect(route?.method).toBe("GET")
-    t.expect(route?.media).toBe("text/plain")
+    t.expect(route?.kind).toBe("text")
   })
 
   t.it("returns undefined for non-existent path", () => {
@@ -300,7 +300,7 @@ t.describe("Router.get", () => {
     t.expect(route).toBeUndefined()
   })
 
-  t.it("matches with media filter", () => {
+  t.it("matches with kind filter", () => {
     const router = Router.mount(
       "/content",
       Route.merge(
@@ -309,11 +309,11 @@ t.describe("Router.get", () => {
       ),
     )
 
-    const textRoute = Router.get(router, "GET", "/content", "text/plain")
-    const htmlRoute = Router.get(router, "GET", "/content", "text/html")
+    const textRoute = Router.get(router, "GET", "/content", "text")
+    const htmlRoute = Router.get(router, "GET", "/content", "html")
 
-    t.expect(textRoute?.media).toBe("text/plain")
-    t.expect(htmlRoute?.media).toBe("text/html")
+    t.expect(textRoute?.kind).toBe("text")
+    t.expect(htmlRoute?.kind).toBe("html")
   })
 
   t.it("wildcard method matches any route", () => {
@@ -325,42 +325,12 @@ t.describe("Router.get", () => {
     t.expect(route?.method).toBe("POST")
   })
 
-  t.it("wildcard media matches any route", () => {
+  t.it("returns first route when kind not specified", () => {
     const router = Router.mount("/page", Route.html("<div>page</div>"))
 
-    const route = Router.get(router, "GET", "/page", "*/*")
+    const route = Router.get(router, "GET", "/page")
 
     t.expect(route).toBeDefined()
-    t.expect(route?.media).toBe("text/html")
-  })
-
-  t.it(
-    "wildcard media uses content negotiation priority (json > text > html)",
-    () => {
-      const routes = Route.merge(
-        Route.merge(Route.html("<div>html</div>"), Route.text("plain")),
-        Route.json({ data: "json" }),
-      )
-      const router = Router.mount("/content", routes)
-
-      // With wildcard, should return json (highest priority)
-      const route = Router.get(router, "GET", "/content", "*/*")
-
-      t.expect(route).toBeDefined()
-      t.expect(route?.media).toBe("application/json")
-    },
-  )
-
-  t.it("wildcard media returns text when json not available", () => {
-    const routes = Route.merge(
-      Route.html("<div>html</div>"),
-      Route.text("plain"),
-    )
-    const router = Router.mount("/content", routes)
-
-    const route = Router.get(router, "GET", "/content", "*/*")
-
-    t.expect(route).toBeDefined()
-    t.expect(route?.media).toBe("text/plain")
+    t.expect(route?.kind).toBe("html")
   })
 })

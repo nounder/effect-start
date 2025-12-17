@@ -67,16 +67,17 @@ export type RouteMethod =
   | HttpMethod.HttpMethod
 
 /**
- * Route media type used for content negotiation.
- * This allows to create routes that serve different media types
- * for the same path & method, depending on the `Accept` header
- * of the request.
+ * Route kind determines the handler type and response format.
+ * - "text": Plain text responses
+ * - "html": HTML responses (can be string or JSX)
+ * - "json": JSON responses
+ * - "http": HTTP middleware that wraps other handlers
  */
-export type RouteMedia =
-  | "*"
-  | "text/plain"
-  | "text/html"
-  | "application/json"
+export type RouteKind =
+  | "text"
+  | "html"
+  | "json"
+  | "http"
 
 /**
  * A handler function that produces a raw value.
@@ -142,16 +143,16 @@ export namespace RouteSchemas {
 
 export interface Route<
   out Method extends RouteMethod = "*",
-  out Media extends RouteMedia = "*",
+  out Kind extends RouteKind = "text",
   out Handler extends RouteHandler = RouteHandler,
   out Schemas extends RouteSchemas = RouteSchemas.Empty,
 > extends
   RouteSet.RouteSet<[
-    Route<Method, Media, Handler, Schemas>,
+    Route<Method, Kind, Handler, Schemas>,
   ]>
 {
   readonly method: Method
-  readonly media: Media
+  readonly kind: Kind
   readonly handler: Handler
   readonly schemas: Schemas
 }
@@ -159,19 +160,19 @@ export interface Route<
 export namespace Route {
   export type Data<
     Method extends RouteMethod = RouteMethod,
-    Media extends RouteMedia = RouteMedia,
+    Kind extends RouteKind = RouteKind,
     Handler extends RouteHandler = RouteHandler,
     Schemas extends RouteSchemas = RouteSchemas.Empty,
   > = {
     readonly method: Method
-    readonly media: Media
+    readonly kind: Kind
     readonly handler: Handler
     readonly schemas: Schemas
   }
 
   export type Default = Route<
     RouteMethod,
-    RouteMedia,
+    RouteKind,
     RouteHandler,
     RouteSchemas
   >
@@ -197,19 +198,19 @@ type Builder = typeof import("./RouteSet_builder.ts")
 
 export function make<
   Method extends RouteMethod = "*",
-  Media extends RouteMedia = "*",
+  Kind extends RouteKind = "text",
   Handler extends RouteHandler = never,
   Schemas extends RouteSchemas = RouteSchemas.Empty,
 >(
   input: Route.Data<
     Method,
-    Media,
+    Kind,
     Handler,
     Schemas
   >,
 ): Route<
   Method,
-  Media,
+  Kind,
   Handler,
   Schemas
 > {
@@ -220,8 +221,9 @@ export function make<
 }
 
 /**
- * Check if two routes match based on method and media type.
- * Returns true if both method and media type match, accounting for wildcards.
+ * Check if two routes match based on method and kind.
+ * Returns true if both method and kind match, accounting for wildcards.
+ * HTTP routes (kind="http") overlap with all other kinds.
  */
 export function overlaps(
   a: Route.Default,
@@ -231,11 +233,11 @@ export function overlaps(
     || b.method === "*"
     || a.method === b.method
 
-  const mediaMatches = a.media === "*"
-    || b.media === "*"
-    || a.media === b.media
+  const kindMatches = a.kind === "http"
+    || b.kind === "http"
+    || a.kind === b.kind
 
-  return methodMatches && mediaMatches
+  return methodMatches && kindMatches
 }
 
 /**
@@ -243,8 +245,8 @@ export function overlaps(
  * Combines route arrays.
  *
  * Rules:
- * - Multiple HttpMiddleware routes are allowed (they stack)
- * - Content routes with same method+media are allowed (for route-level middleware)
+ * - Multiple HTTP routes are allowed (they stack as middleware)
+ * - Content routes with same method+kind are allowed (for route-level middleware)
  */
 export function merge<
   RoutesA extends Route.Tuple,

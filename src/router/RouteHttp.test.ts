@@ -6,7 +6,6 @@ import * as Effect from "effect/Effect"
 import * as BunHttpServer from "../bun/BunHttpServer.ts"
 import * as Route from "./Route.ts"
 import * as RouteHttp from "./RouteHttp.ts"
-import * as Router from "./Router.ts"
 import * as RouteSet from "./RouteSet.ts"
 
 function runWithBunHttpServer<A, E>(
@@ -17,39 +16,26 @@ function runWithBunHttpServer<A, E>(
   )
 }
 
-t.describe("Router.matchMedia", () => {
+t.describe("RouteHttp.matchKind", () => {
   t.describe(
     "empty accept header (wildcard priority: json > text > html)",
     () => {
       t.it("returns JSON route when available", () => {
         const routes = Route.html("html").text("text").json({ data: "json" })
-        const result = Router.matchMedia(routes, "")
-        t.expect(result?.media).toBe("application/json")
+        const result = RouteHttp.matchKind(routes, "")
+        t.expect(result?.kind).toBe("json")
       })
 
       t.it("returns text route when no JSON", () => {
         const routes = Route.html("html").text("text")
-        const result = Router.matchMedia(routes, "")
-        t.expect(result?.media).toBe("text/plain")
+        const result = RouteHttp.matchKind(routes, "")
+        t.expect(result?.kind).toBe("text")
       })
 
       t.it("returns HTML route when no JSON or text", () => {
         const routes = Route.html("html")
-        const result = Router.matchMedia(routes, "")
-        t.expect(result?.media).toBe("text/html")
-      })
-
-      t.it("returns wildcard route when no known media", () => {
-        const wildcardRoute = RouteSet.make([
-          Route.make({
-            method: "GET",
-            media: "*",
-            handler: () => Effect.succeed("raw"),
-            schemas: {},
-          }),
-        ])
-        const result = Router.matchMedia(wildcardRoute, "")
-        t.expect(result?.media).toBe("*")
+        const result = RouteHttp.matchKind(routes, "")
+        t.expect(result?.kind).toBe("html")
       })
     },
   )
@@ -57,88 +43,76 @@ t.describe("Router.matchMedia", () => {
   t.describe("explicit accept header", () => {
     t.it("returns JSON when Accept: application/json", () => {
       const routes = Route.html("html").json({ data: "json" }).text("text")
-      const result = Router.matchMedia(routes, "application/json")
-      t.expect(result?.media).toBe("application/json")
+      const result = RouteHttp.matchKind(routes, "application/json")
+      t.expect(result?.kind).toBe("json")
     })
 
     t.it("returns text when Accept: text/plain", () => {
       const routes = Route.html("html").json({ data: "json" }).text("text")
-      const result = Router.matchMedia(routes, "text/plain")
-      t.expect(result?.media).toBe("text/plain")
+      const result = RouteHttp.matchKind(routes, "text/plain")
+      t.expect(result?.kind).toBe("text")
     })
 
     t.it("returns HTML when Accept: text/html", () => {
       const routes = Route.json({ data: "json" }).html("html").text("text")
-      const result = Router.matchMedia(routes, "text/html")
-      t.expect(result?.media).toBe("text/html")
+      const result = RouteHttp.matchKind(routes, "text/html")
+      t.expect(result?.kind).toBe("html")
     })
   })
 
   t.describe("quality values", () => {
     t.it("respects quality values - prefers higher q", () => {
       const routes = Route.html("html").json({ data: "json" })
-      const result = Router.matchMedia(
+      const result = RouteHttp.matchKind(
         routes,
         "text/html;q=0.9, application/json;q=1.0",
       )
-      t.expect(result?.media).toBe("application/json")
+      t.expect(result?.kind).toBe("json")
     })
 
     t.it("prefers HTML when HTML has higher q", () => {
       const routes = Route.html("html").json({ data: "json" })
-      const result = Router.matchMedia(
+      const result = RouteHttp.matchKind(
         routes,
         "text/html;q=1.0, application/json;q=0.5",
       )
-      t.expect(result?.media).toBe("text/html")
+      t.expect(result?.kind).toBe("html")
     })
 
     t.it("default q=1.0 when not specified", () => {
       const routes = Route.html("html").json({ data: "json" })
-      const result = Router.matchMedia(
+      const result = RouteHttp.matchKind(
         routes,
         "text/html;q=0.9, application/json",
       )
-      t.expect(result?.media).toBe("application/json")
+      t.expect(result?.kind).toBe("json")
     })
   })
 
   t.describe("wildcards", () => {
     t.it("*/* uses priority order (json > text > html)", () => {
       const routes = Route.html("html").text("text").json({ data: "json" })
-      const result = Router.matchMedia(routes, "*/*")
-      t.expect(result?.media).toBe("application/json")
+      const result = RouteHttp.matchKind(routes, "*/*")
+      t.expect(result?.kind).toBe("json")
     })
 
-    t.it("text/* matches text/plain first (by priority)", () => {
+    t.it("text/* matches text first (by priority)", () => {
       const routes = Route.json({ data: "json" }).html("html").text("text")
-      const result = Router.matchMedia(routes, "text/*")
-      t.expect(result?.media).toBe("text/plain")
+      const result = RouteHttp.matchKind(routes, "text/*")
+      t.expect(result?.kind).toBe("text")
     })
   })
 
   t.describe("fallback behavior", () => {
-    t.it("returns wildcard route when no specific match", () => {
-      const wildcardRoute = Route.make({
-        method: "GET",
-        media: "*",
-        handler: () => Effect.succeed("raw"),
-        schemas: {},
-      })
-      const routes = RouteSet.make([wildcardRoute]).json({ data: "json" })
-      const result = Router.matchMedia(routes, "image/png")
-      t.expect(result?.media).toBe("*")
-    })
-
-    t.it("returns first route when no match and no wildcard", () => {
+    t.it("returns first route when no match", () => {
       const routes = Route.json({ data: "json" }).text("text")
-      const result = Router.matchMedia(routes, "image/png")
-      t.expect(result?.media).toBe("application/json")
+      const result = RouteHttp.matchKind(routes, "image/png")
+      t.expect(result?.kind).toBe("json")
     })
 
     t.it("returns undefined for empty routes", () => {
       const routes = RouteSet.make()
-      const result = Router.matchMedia(routes, "application/json")
+      const result = RouteHttp.matchKind(routes, "application/json")
       t.expect(result).toBeUndefined()
     })
   })
@@ -146,11 +120,11 @@ t.describe("Router.matchMedia", () => {
   t.describe("specificity", () => {
     t.it("prefers exact match over wildcard", () => {
       const routes = Route.html("html").json({ data: "json" })
-      const result = Router.matchMedia(
+      const result = RouteHttp.matchKind(
         routes,
         "text/*, application/json",
       )
-      t.expect(result?.media).toBe("application/json")
+      t.expect(result?.kind).toBe("json")
     })
   })
 })

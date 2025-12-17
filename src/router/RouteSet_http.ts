@@ -6,41 +6,12 @@ import * as Route from "./Route.ts"
 import * as RouteSet from "./RouteSet.ts"
 
 /**
- * Symbol key for HTTP middleware type discriminant.
- */
-export const RouteHttpTypeId: unique symbol = Symbol.for(
-  "effect-start/RouteHttpTypeId",
-)
-
-/**
  * Function signature for HTTP middleware.
  * Takes an HttpApp and returns an HttpApp or Effect.
  */
 export type HttpMiddlewareFunction<E = any, R = any> = <AppE, AppR>(
   app: HttpApp.Default<AppE, AppR>,
 ) => HttpApp.HttpApp<E | AppE, R | AppR>
-
-/**
- * Type helper to check if all routes in a RouteSet are HttpMiddleware.
- * HTTP middleware routes are characterized by method="*" and media="*".
- */
-export type IsHttpMiddlewareRouteSet<RS> = RS extends
-  RouteSet.RouteSet<infer Routes, any> ? Routes extends readonly [] ? true
-  : Routes extends readonly Route.Route<infer M, infer Media, any, any>[]
-    ? M extends "*" ? Media extends "*" ? true
-      : false
-    : false
-  : false
-  : false
-
-/**
- * Check if a handler is an HTTP middleware handler.
- */
-export function isHttpMiddlewareHandler(h: unknown): boolean {
-  return typeof h === "function"
-    && RouteHttpTypeId in h
-    && (h as Record<symbol, unknown>)[RouteHttpTypeId] === RouteHttpTypeId
-}
 
 type HttpRouteResult<
   Routes extends readonly Route.Route.Default[],
@@ -51,7 +22,7 @@ type HttpRouteResult<
 > = RouteSet.RouteSet<
   [
     ...Routes,
-    Route.Route<"*", "*", Route.RouteHandler<A, E, R>, Schemas>,
+    Route.Route<"*", "http", Route.RouteHandler<A, E, R>, Schemas>,
   ],
   Schemas
 >
@@ -119,18 +90,12 @@ export function http<
     }
     : (_context, _next) => handler as Effect.Effect<A, E, R>
 
-  Object.defineProperty(routeHandler, RouteHttpTypeId, {
-    value: RouteHttpTypeId,
-    enumerable: false,
-    writable: false,
-  })
-
   return RouteSet.make(
     [
       ...baseRoutes,
       Route.make({
         method: "*",
-        media: "*",
+        kind: "http",
         handler: routeHandler,
         schemas: baseSchema,
       }),

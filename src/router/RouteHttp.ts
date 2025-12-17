@@ -3,16 +3,34 @@ import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
 import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
 import * as Effect from "effect/Effect"
 import * as Runtime from "effect/Runtime"
+import * as ContentNegotiation from "../ContentNegotiation.ts"
 import * as HttpAppExtra from "../HttpAppExtra.ts"
 import * as HttpUtils from "../HttpUtils.ts"
 import * as Hyper from "../hyper/Hyper.ts"
 import * as HyperHtml from "../hyper/HyperHtml.ts"
 import * as Route from "./Route.ts"
-import * as Router from "./Router.ts"
 import * as RouteSet from "./RouteSet.ts"
-import { isHttpMiddlewareHandler } from "./RouteSet_http.ts"
 
 const noopNext: Route.RouteNext = () => Effect.void
+
+const MEDIA_PRIORITY = [
+  "application/json",
+  "text/plain",
+  "text/html",
+]
+
+const kindToMime: Record<Route.RouteKind, string> = {
+  text: "text/plain",
+  html: "text/html",
+  json: "application/json",
+  http: "*/*",
+}
+
+const mimeToKind: Record<string, Route.RouteKind> = {
+  "text/plain": "text",
+  "text/html": "html",
+  "application/json": "json",
+}
 
 export function render<E, R>(
   route: Route.Route<any, any, Route.RouteHandler<any, E, R>, any>,
@@ -26,24 +44,65 @@ export function render<E, R>(
       return raw
     }
 
-    switch (route.media) {
-      case "text/plain":
+    switch (route.kind) {
+      case "text":
         return HttpServerResponse.text(raw as string)
 
-      case "text/html":
+      case "html":
         if (Hyper.isGenericJsxObject(raw)) {
           return HttpServerResponse.html(HyperHtml.renderToString(raw))
         }
         return HttpServerResponse.html(raw as string)
 
-      case "application/json":
+      case "json":
         return HttpServerResponse.unsafeJson(raw)
 
-      case "*":
+      case "http":
       default:
         return HttpServerResponse.raw(String(raw))
     }
   })
+}
+
+export function matchKind(
+  routeSet: RouteSet.RouteSet.Data<
+    Route.Route.Array,
+    Route.RouteSchemas
+  >,
+  accept: string,
+): Route.Route.Default | undefined {
+  const routes = RouteSet.items(routeSet)
+
+  const contentRoutes = routes.filter((r) => r.kind !== "http")
+
+  if (contentRoutes.length === 0) return undefined
+
+  const availableKinds = contentRoutes
+    .map((r) => r.kind)
+    .filter((k): k is Exclude<Route.RouteKind, "http"> => k !== "http")
+
+  const availableMimes = availableKinds.map((k) => kindToMime[k])
+
+  const normalizedAccept = accept || "*/*"
+  const hasWildcard = normalizedAccept.includes("*")
+  const preferred = ContentNegotiation.media(normalizedAccept, availableMimes)
+
+  if (preferred.length > 0) {
+    if (hasWildcard) {
+      for (const mime of MEDIA_PRIORITY) {
+        if (preferred.includes(mime)) {
+          const kind = mimeToKind[mime]
+          return contentRoutes.find((r) => r.kind === kind)
+        }
+      }
+    }
+    const preferredKind = mimeToKind[preferred[0]]
+    if (preferredKind) {
+      return contentRoutes.find((r) => r.kind === preferredKind)
+    }
+  }
+
+  return contentRoutes[0]
 }
 
 export const toHttpApp = (
@@ -54,15 +113,13 @@ export const toHttpApp = (
 ): HttpApp.Default<any, any> => {
   const routes = RouteSet.items(routeSet)
 
-  const httpMiddleware = routes.filter((r) =>
-    isHttpMiddlewareHandler(r.handler)
-  )
+  const httpMiddleware = routes.filter((r) => r.kind === "http")
 
   let app: HttpApp.Default<any, any> = Effect.gen(function*() {
     const request = yield* HttpServerRequest.HttpServerRequest
     const accept = request.headers.accept ?? ""
 
-    const selectedRoute = Router.matchMedia(routeSet, accept)
+    const selectedRoute = matchKind(routeSet, accept)
 
     if (!selectedRoute) {
       return HttpServerResponse.empty({ status: 406 })
@@ -73,7 +130,6 @@ export const toHttpApp = (
     )
   })
 
-  // Wrap with HttpMiddleware (first middleware is outermost)
   for (const mw of [...httpMiddleware].reverse()) {
     const inner = app
     const next: Route.RouteNext = () => inner
@@ -99,9 +155,7 @@ export const toWebHandlerRuntime = <R>(
   let app = toHttpApp(routeSet)
 
   if (middlewareRouteSet) {
-    const httpMiddleware = RouteSet.items(middlewareRouteSet).filter((r) =>
-      isHttpMiddlewareHandler(r.handler)
-    )
+    const httpMiddleware = RouteSet.items(middlewareRouteSet).filter((r) => r.kind === "http")
 
     for (const mw of [...httpMiddleware].reverse()) {
       const inner = app

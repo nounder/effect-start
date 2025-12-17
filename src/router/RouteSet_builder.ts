@@ -20,25 +20,25 @@ export const options = _method.makeMethodMaker("OPTIONS")
 export const head = _method.makeMethodMaker("HEAD")
 export const del = _method.makeMethodMaker("DELETE")
 
-export const text = _handler.makeHandlerMaker<"GET", "text/plain", string>(
+export const text = _handler.makeHandlerMaker<"GET", "text", string>(
   "GET",
-  "text/plain",
+  "text",
 )
 export const html = _handler.makeHandlerMaker<
   "GET",
-  "text/html",
+  "html",
   string | Hyper.GenericJsxObject
 >(
   "GET",
-  "text/html",
+  "html",
 )
 export const json = _handler.makeHandlerMaker<
   "GET",
-  "application/json",
+  "json",
   Values.Json
 >(
   "GET",
-  "application/json",
+  "json",
 )
 
 export const http = _http.http

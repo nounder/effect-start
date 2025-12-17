@@ -44,11 +44,11 @@ export function normalizeHandler<A, E, R>(
 
 export function makeHandlerMaker<
   Method extends HttpMethod.HttpMethod,
-  Media extends Route.RouteMedia,
+  Kind extends Route.RouteKind,
   Value,
 >(
   method: Method,
-  media: Media,
+  kind: Kind,
 ) {
   type ResultType<
     S extends Route.Self,
@@ -59,7 +59,7 @@ export function makeHandlerMaker<
     ? RouteSet.RouteSet<
       [
         ...Routes,
-        Route.Route<Method, Media, Route.RouteHandler<A, E, R>, Schemas>,
+        Route.Route<Method, Kind, Route.RouteHandler<A, E, R>, Schemas>,
       ],
       Schemas
     >
@@ -67,7 +67,7 @@ export function makeHandlerMaker<
       [
         Route.Route<
           Method,
-          Media,
+          Kind,
           Route.RouteHandler<A, E, R>,
           Route.RouteSchemas.Empty
         >,
@@ -119,7 +119,7 @@ export function makeHandlerMaker<
         ...baseRoutes,
         Route.make({
           method,
-          media,
+          kind,
           handler: normalizeHandler(
             handler as HandlerInput<unknown, unknown, unknown>,
           ),
