@@ -4,6 +4,25 @@ import * as Pipeable from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
 
+type HttpMethod =
+  | "GET"
+  | "POST"
+
+type Path = `/${string}`
+
+type HttpAction = {
+  type: "HttpAction"
+  path: Path | undefined
+  method: HttpMethod
+}
+
+type MediaAction = {
+  type: "MediaAction"
+  media:
+    | "text/plain"
+    | "application/json"
+}
+
 type ActionPattern = {
   protocol:
     | "http"
@@ -15,7 +34,7 @@ type ActionPattern = {
   path: `/${string}`
 }
 
-const ActionSetItems: unique symbol = Symbol()
+export const ActionSetItems: unique symbol = Symbol()
 
 export const TypeId: unique symbol = Symbol.for("effect-start/ActionSet")
 
@@ -50,12 +69,12 @@ export namespace ActionSet {
     infer Head,
     ...infer Tail extends ItemArray,
   ] ? (
-      Head extends Action.Action<any, infer B> ? B & _ExtractBindings<Tail>
+      Head extends Action.Action<any, infer B> ? B | _ExtractBindings<Tail>
         : Head extends ActionSet<infer Nested>
-          ? _ExtractBindings<Nested> & _ExtractBindings<Tail>
+          ? _ExtractBindings<Nested> | _ExtractBindings<Tail>
         : _ExtractBindings<Tail>
     )
-    : {}
+    : never
 }
 
 const Proto = {
@@ -95,7 +114,10 @@ export function items<T extends ActionSet.Data<any>>(
   return self[ActionSetItems]
 }
 
-function makeAction<H extends ActionHandler, B extends Record<string, any>>(
+export function makeAction<
+  H extends ActionHandler,
+  B extends Record<string, any>,
+>(
   handler: H,
 ): Action.Action<H, B> {
   const action: Action.Action<H, B> = Object.assign(
@@ -117,12 +139,15 @@ export type ActionHandler<
   R = any,
 > = (bindings: any) => Effect.Effect<A, E, R>
 
+export type ActionBindings = Record<string, any>
+
 export namespace Action {
   export interface Action<
-    out Handler extends ActionHandler = ActionHandler,
-    out Bindings extends Record<string, any> = Record<string, any>,
+    out Handler extends ActionHandler,
+    out Bindings extends ActionBindings | null = null,
   > extends ActionSet.ActionSet<[Action<Handler, Bindings>]> {
     readonly handler: Handler
+    readonly bindings: Bindings
   }
 
   export type Default = Action<ActionHandler, Record<string, any>>
@@ -275,27 +300,13 @@ type ExtractBindings<M extends ItemArray> = M extends readonly [
   )
   : {}
 
-function makeMethodAction<M extends ActionPattern["method"]>(_method: M) {
-  return <R extends ActionSet.Any>(
-    f: (
-      self: ActionSet.ActionSet<
-        readonly [
-          Action.Action<ActionHandler<void, never, never>, { method: M }>,
-        ]
-      >,
-    ) => R,
-  ): R => {
-    const methodAction = makeAction<
-      ActionHandler<void, never, never>,
-      { method: M }
-    >(() => Effect.void)
-    const set = make([methodAction] as const)
-    return f(set)
-  }
-}
-
-export const get = makeMethodAction("GET")
-export const post = makeMethodAction("POST")
+export {
+  get,
+  post,
+} from "./ActionMethod.ts"
+export type {
+  ActionMethod,
+} from "./ActionMethod.ts"
 
 export const text: {
   <M extends ItemArray, A, E, R>(

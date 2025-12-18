@@ -17,8 +17,8 @@ test.it("infers schema", async () => {
   type ExpectedBindings = {
     headers: typeof headers
   }
-
   const action = Action.empty.pipe(
+    // we also need to annotate at runtime (for docs, etc.)
     Action.schemaHeaders(schemaHeaders),
     Action.text((action) =>
       Effect.gen(function*() {
@@ -118,14 +118,29 @@ test.it("uses GET method", async () => {
 test.it("uses GET & POST method", async () => {
   test.expect.assertions(1)
 
-  type ExpectedBindings =
-    | { method: "GET" }
-    | { method: "POST" }
+  type ExpectedBindings = {
+    method: "GET" | "POST"
+  }
 
-  const action = Action.merge(
-    Action.get(Action.text(() => Effect.succeed("get"))),
-    Action.post(Action.text(() => Effect.succeed("post"))),
-  )
+  const action = Action
+    .get(
+      Action.text((action) => {
+        test
+          .expectTypeOf(action.method)
+          .toEqualTypeOf<"GET">()
+
+        return Effect.succeed("get")
+      }),
+    )
+    .post(
+      Action.text((action) => {
+        test
+          .expectTypeOf(action.method)
+          .toEqualTypeOf<"POST">()
+
+        return Effect.succeed("post")
+      }),
+    )
 
   test
     .expectTypeOf<Action.Action.Bindings<typeof action>>()
