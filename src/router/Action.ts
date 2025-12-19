@@ -308,30 +308,34 @@ export type {
   ActionMethod,
 } from "./ActionMethod.ts"
 
-export const text: {
-  <M extends ItemArray, A, E, R>(
-    handler: (bindings: ExtractBindings<M>) => Effect.Effect<A, E, R>,
-  ): (
-    self: ActionSet.ActionSet<M>,
-  ) => ActionSet.ActionSet<
-    [...M, Action.Action<ActionHandler<A, E, R>, ExtractBindings<M>>]
-  >
-
-  <M extends ItemArray, A, E, R>(
-    self: ActionSet.ActionSet<M>,
-    handler: (bindings: ExtractBindings<M>) => Effect.Effect<A, E, R>,
-  ): ActionSet.ActionSet<
-    [...M, Action.Action<ActionHandler<A, E, R>, ExtractBindings<M>>]
-  >
-} = dual(2, <M extends ItemArray, A, E, R>(
-  self: ActionSet.ActionSet<M>,
+export function text<
+  M extends ItemArray,
+  A,
+  E,
+  R,
+>(
   handler: (bindings: ExtractBindings<M>) => Effect.Effect<A, E, R>,
-): ActionSet.ActionSet<
-  [...M, Action.Action<ActionHandler<A, E, R>, ExtractBindings<M>>]
-> => {
-  const action = makeAction<ActionHandler<A, E, R>, ExtractBindings<M>>(
-    handler as ActionHandler<A, E, R>,
-  )
+): (
+  self: ActionSet.ActionSet<M>,
+) => ActionSet.ActionSet<
+  [
+    ...M,
+    Action.Action<
+      ActionHandler<A, E, R>,
+      ExtractBindings<M>
+    >,
+  ]
+> {
+  return function makeText(self: ActionSet.ActionSet<M>) {
+    const action = makeAction<ActionHandler<A, E, R>, ExtractBindings<M>>(
+      handler as ActionHandler<A, E, R>,
+    )
 
-  return make([...items(self), action] as const)
-})
+    return make(
+      [
+        ...items(self),
+        action,
+      ] as const,
+    )
+  }
+}

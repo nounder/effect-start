@@ -40,16 +40,18 @@ test.it("infers schema", async () => {
   test
     .expectTypeOf(action)
     .toExtend<
-      Action.ActionSet.ActionSet<[
-        Action.Action.Action<
-          Action.ActionHandler<void, never, never>,
-          ExpectedBindings
-        >,
-        Action.Action.Action<
-          Action.ActionHandler<string, never, never>,
-          ExpectedBindings
-        >,
-      ]>
+      Action.ActionSet.ActionSet<
+        [
+          Action.Action.Action<
+            Action.ActionHandler<void, never, never>,
+            ExpectedBindings
+          >,
+          Action.Action.Action<
+            Action.ActionHandler<string, never, never>,
+            ExpectedBindings
+          >,
+        ]
+      >
     >()
   test
     .expectTypeOf<Action.Action.Bindings<typeof action>>()
