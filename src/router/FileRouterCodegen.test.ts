@@ -227,8 +227,8 @@ test.it("handles groups in path", () => {
   test
     .expect(code)
     .toContain(
-    "layers: [\n      () => import(\"./(admin)/layer.tsx\"),\n    ]",
-  )
+      "layers: [\n      () => import(\"./(admin)/layer.tsx\"),\n    ]",
+    )
 })
 
 test.it("generates correct variable names for root routes", () => {
@@ -894,9 +894,9 @@ test.describe("PathParams schema generation and validation", () => {
       test
         .expect(Object.keys(schema!.fields).sort())
         .toEqual([
-        "commentId",
-        "postId",
-      ])
+          "commentId",
+          "postId",
+        ])
     })
 
     test.it("generates schema for mixed required and optional params", () => {

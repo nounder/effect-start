@@ -133,7 +133,10 @@ export const toHttpApp = (
   for (const mw of [...httpMiddleware].reverse()) {
     const inner = app
     const next: Route.RouteNext = () => inner
-    app = mw.handler({} as Route.RouteContext, next) as HttpApp.Default<any, any>
+    app = mw.handler({} as Route.RouteContext, next) as HttpApp.Default<
+      any,
+      any
+    >
   }
 
   return app
@@ -155,12 +158,17 @@ export const toWebHandlerRuntime = <R>(
   let app = toHttpApp(routeSet)
 
   if (middlewareRouteSet) {
-    const httpMiddleware = RouteSet.items(middlewareRouteSet).filter((r) => r.kind === "http")
+    const httpMiddleware = RouteSet.items(middlewareRouteSet).filter((r) =>
+      r.kind === "http"
+    )
 
     for (const mw of [...httpMiddleware].reverse()) {
       const inner = app
       const next: Route.RouteNext = () => inner
-      app = mw.handler({} as Route.RouteContext, next) as HttpApp.Default<any, any>
+      app = mw.handler({} as Route.RouteContext, next) as HttpApp.Default<
+        any,
+        any
+      >
     }
   }
 

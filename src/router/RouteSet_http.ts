@@ -20,8 +20,7 @@ export function http<
 >(
   this: S,
   handler: (app: HttpApp.Default<never, never>) => HttpApp.Default<E, R>,
-): S extends RouteSet.RouteSet<infer Routes, infer Schemas>
-  ? RouteSet.RouteSet<
+): S extends RouteSet.RouteSet<infer Routes, infer Schemas> ? RouteSet.RouteSet<
     [
       ...Routes,
       Route.Route<
@@ -52,8 +51,7 @@ export function http<
 >(
   this: S,
   handler: Effect.Effect<A, E, R>,
-): S extends RouteSet.RouteSet<infer Routes, infer Schemas>
-  ? RouteSet.RouteSet<
+): S extends RouteSet.RouteSet<infer Routes, infer Schemas> ? RouteSet.RouteSet<
     [
       ...Routes,
       Route.Route<"*", "http", Route.RouteHandler<A, E, R>, Schemas>,

@@ -68,17 +68,22 @@ export namespace Router {
     : never
     : never
 
-  export type Error<T> = T extends Router<infer M, infer L> ? {
-      [K in keyof M]: M[K] extends RouteSet.RouteSet.Any ? ExtractRouteSetError<M[K]>
-        : never
-    }[keyof M] | ExtractRouteSetError<L>
+  export type Error<T> = T extends Router<infer M, infer L> ?
+      | {
+        [K in keyof M]: M[K] extends RouteSet.RouteSet.Any
+          ? ExtractRouteSetError<M[K]>
+          : never
+      }[keyof M]
+      | ExtractRouteSetError<L>
     : never
 
-  export type Requirements<T> = T extends Router<infer M, infer L> ? {
-      [K in keyof M]: M[K] extends RouteSet.RouteSet.Any
-        ? ExtractRouteSetRequirements<M[K]>
-        : never
-    }[keyof M] | ExtractRouteSetRequirements<L>
+  export type Requirements<T> = T extends Router<infer M, infer L> ?
+      | {
+        [K in keyof M]: M[K] extends RouteSet.RouteSet.Any
+          ? ExtractRouteSetRequirements<M[K]>
+          : never
+      }[keyof M]
+      | ExtractRouteSetRequirements<L>
     : never
 
   export type Entry<
@@ -107,9 +112,8 @@ export namespace Router {
         ? Existing[K] extends RouteSet.RouteSet.Any
           ? Route.Merge<Existing[K], NewSet>
         : NewSet
-        : NewSet
-      : K extends keyof Existing
-        ? Existing[K]
+      : NewSet
+      : K extends keyof Existing ? Existing[K]
       : never
   }
 }
@@ -182,9 +186,12 @@ export function mount<
   this: S,
   path: Path,
   route: RouteSet.RouteSet<Routes, Schemas>,
-): S extends Router<infer M, infer L>
-  ? Router<
-    Router.MergeMounts<M, Path, Route.Merge<L, RouteSet.RouteSet<Routes, Schemas>>>,
+): S extends Router<infer M, infer L> ? Router<
+    Router.MergeMounts<
+      M,
+      Path,
+      Route.Merge<L, RouteSet.RouteSet<Routes, Schemas>>
+    >,
     L
   >
   : Router<

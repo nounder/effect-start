@@ -92,7 +92,10 @@ export function makeHandlerMaker<
   ): ResultType<S, A, E, R>
   function make<S extends Route.Self, A extends Value, E, R>(
     this: S,
-    handler: (context: ContextType<S>, next: NextType) => Effect.Effect<A, E, R>,
+    handler: (
+      context: ContextType<S>,
+      next: NextType,
+    ) => Effect.Effect<A, E, R>,
   ): ResultType<S, A, E, R>
   function make<
     S extends Route.Self,
@@ -100,7 +103,10 @@ export function makeHandlerMaker<
     Eff extends Utils.YieldWrap<Effect.Effect<any, any, any>>,
   >(
     this: S,
-    handler: (context: ContextType<S>, next: NextType) => Generator<Eff, A, never>,
+    handler: (
+      context: ContextType<S>,
+      next: NextType,
+    ) => Generator<Eff, A, never>,
   ): ResultType<S, A, ExtractError<Eff>, ExtractContext<Eff>>
 
   function make(

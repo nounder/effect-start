@@ -100,8 +100,10 @@ export function bundle(
       }
 
       html = html.replace(/%yield%/g, childrenHtml)
-      html = html.replace(/%slots\.(\w+)%/g, (_, name) =>
-        context.slots[name] ?? "")
+      html = html.replace(
+        /%slots\.(\w+)%/g,
+        (_, name) => context.slots[name] ?? "",
+      )
 
       return html
     })

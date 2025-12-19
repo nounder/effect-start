@@ -26,7 +26,8 @@ test.describe("BunHttpServer smart port selection", () => {
 
         test
           .expect(port)
-          .not.toBe(3000)
+          .not
+          .toBe(3000)
       } finally {
         if (originalPort !== undefined) {
           process.env.PORT = originalPort

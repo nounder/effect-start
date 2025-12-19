@@ -93,7 +93,9 @@ test.describe("Segments", () => {
   test.it("param with prefix and suffix prefix_[id]_suffix", () => {
     type
       .expectTypeOf<RouterPattern.Segments<"/prefix_[id]_suffix">>()
-      .toEqualTypeOf<[RouterPattern.ParamSegment<"id", false, "prefix_", "_suffix">]>()
+      .toEqualTypeOf<
+        [RouterPattern.ParamSegment<"id", false, "prefix_", "_suffix">]
+      >()
   })
 
   test.it("malformed segment pk_[id]foo → undefined (suffix without delimiter)", () => {
@@ -415,7 +417,9 @@ test.describe(`${RouterPattern.format.name}`, () => {
 
   test.it("literal segments", () => {
     test
-      .expect(RouterPattern.format([{ _tag: "LiteralSegment", value: "users" }]))
+      .expect(
+        RouterPattern.format([{ _tag: "LiteralSegment", value: "users" }]),
+      )
       .toBe("/users")
     test
       .expect(RouterPattern.format([
