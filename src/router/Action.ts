@@ -1,5 +1,6 @@
+import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
 import * as Effect from "effect/Effect"
-import { dual } from "effect/Function"
+import * as ParseResult from "effect/ParseResult"
 import * as Pipeable from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
@@ -8,55 +9,73 @@ type HttpMethod =
   | "GET"
   | "POST"
 
-type Path = `/${string}`
+export namespace ActionDescriptor {
+  export type Any =
+    | Empty
+    | Media
+    | Proto
+    | Path
+    | Method
 
-type HttpAction = {
-  type: "HttpAction"
-  path: Path | undefined
-  method: HttpMethod
+  export type Empty = {}
+
+  export type Media = {
+    media:
+      | "text/plain"
+      | "application/json"
+  }
+
+  export type Proto = {
+    proto: "http"
+  }
+
+  export type Path = {
+    path: `/${string}`
+  }
+
+  export type Method = {
+    method: HttpMethod
+  }
+
+  export type Data = Partial<
+    & Media
+    & Proto
+    & Path
+    & Method
+  >
 }
 
-type MediaAction = {
-  type: "MediaAction"
-  media:
-    | "text/plain"
-    | "application/json"
-}
-
-type ActionPattern = {
-  protocol:
-    | "http"
-    | "*"
-  method:
-    | "GET"
-    | "POST"
-    | "PUT"
-  path: `/${string}`
-}
-
-export const ActionSetItems: unique symbol = Symbol()
+export const ActionItems: unique symbol = Symbol()
+export const ActionDescriptor: unique symbol = Symbol()
 
 export const TypeId: unique symbol = Symbol.for("effect-start/ActionSet")
 
-export type Item = Action.Default | ActionSet.Any
-export type ItemArray = ReadonlyArray<Item>
+export type Action = Action.Default
+export type Actions = ReadonlyArray<Action>
 
 export namespace ActionSet {
-  export type ActionSet<M extends ItemArray = []> =
-    & Data<M>
+  export type ActionSet<
+    M extends Actions = [],
+    D extends ActionDescriptor.Empty = {},
+  > =
+    & Data<M, D>
     & {
       [TypeId]: typeof TypeId
     }
     & Pipeable.Pipeable
     & Iterable<Action.Default>
 
-  export type Data<M extends ItemArray = []> = {
-    [ActionSetItems]: M
+  export type Data<
+    M extends Actions = [],
+    D extends ActionDescriptor.Empty = {},
+  > = {
+    [ActionItems]: M
+    [ActionDescriptor]: D
   }
 
-  export type Default = ActionSet<readonly [Item, ...Item[]]>
+  export type Default = ActionSet<readonly [Action, ...Action[]]>
 
-  export type Any = ActionSet<ItemArray>
+  export type Any = ActionSet<Actions>
 
   export type Items<T extends Data<any>> = T extends Data<infer M> ? M
     : never
@@ -65,9 +84,9 @@ export namespace ActionSet {
     ? _ExtractBindings<M>
     : never
 
-  type _ExtractBindings<M extends ItemArray> = M extends readonly [
+  type _ExtractBindings<M extends Actions> = M extends readonly [
     infer Head,
-    ...infer Tail extends ItemArray,
+    ...infer Tail extends Actions,
   ] ? (
       Head extends Action.Action<any, infer B> ? B | _ExtractBindings<Tail>
         : Head extends ActionSet<infer Nested>
@@ -83,7 +102,7 @@ const Proto = {
     return Pipeable.pipeArguments(this, arguments)
   },
   *[Symbol.iterator](this: ActionSet.Any) {
-    for (const item of this[ActionSetItems]) {
+    for (const item of this[ActionItems]) {
       yield* item
     }
   },
@@ -95,74 +114,87 @@ export function isActionSet(
   return Predicate.hasProperty(input, TypeId)
 }
 
-export function make<M extends ItemArray = []>(
+export function set<
+  M extends Actions = [],
+  D extends ActionDescriptor.Any = ActionDescriptor.Empty,
+>(
   items: M = [] as unknown as M,
 ): ActionSet.ActionSet<M> {
   return Object.assign(
     Object.create(Proto),
     {
-      [ActionSetItems]: items,
+      [ActionItems]: items,
+      [ActionDescriptor]: {} as ActionDescriptor.Empty,
     },
   ) as ActionSet.ActionSet<M>
 }
 
-export const empty: ActionSet.ActionSet<[]> = make()
+export function make<
+  H extends ActionHandler,
+  B extends Record<string, any>,
+  D extends ActionDescriptor.Any = {},
+>(
+  handler: H,
+  descriptor?: D,
+): Action.Action<H, B> {
+  const items: any = []
+  const action: Action.Action<H, B> = Object.assign(
+    Object.create(Proto),
+    {
+      [ActionItems]: items,
+      [ActionDescriptor]: descriptor,
+      handler,
+    },
+  )
+
+  items.push(action)
+
+  return action
+}
+
+export const empty: ActionSet.ActionSet<[]> = set()
 
 export function items<T extends ActionSet.Data<any>>(
   self: T,
 ): ActionSet.Items<T> {
-  return self[ActionSetItems]
-}
-
-export function makeAction<
-  H extends ActionHandler,
-  B extends Record<string, any>,
->(
-  handler: H,
-): Action.Action<H, B> {
-  const action: Action.Action<H, B> = Object.assign(
-    Object.create(Proto),
-    {
-      [ActionSetItems]: [],
-      handler,
-      *[Symbol.iterator]() {
-        yield action
-      },
-    },
-  )
-  return action
+  return self[ActionItems]
 }
 
 export type ActionHandler<
   A = unknown,
   E = any,
   R = any,
-> = (bindings: any) => Effect.Effect<A, E, R>
+> = (context: any) => Effect.Effect<A, E, R>
 
 export type ActionBindings = Record<string, any>
 
 export namespace Action {
   export interface Action<
     out Handler extends ActionHandler,
-    out Bindings extends ActionBindings | null = null,
-  > extends ActionSet.ActionSet<[Action<Handler, Bindings>]> {
+    out Bindings extends ActionBindings = {},
+    out Descriptor extends ActionDescriptor.Empty = {},
+  > extends
+    ActionSet.ActionSet<[
+      Action<Handler, Descriptor>,
+    ]>
+  {
     readonly handler: Handler
-    readonly bindings: Bindings
   }
 
-  export type Default = Action<ActionHandler, Record<string, any>>
+  export type Default = Action<
+    ActionHandler,
+    Record<string, any>
+  >
 
-  export type Tuple = readonly [Item, ...Item[]]
-
-  export type Array = ItemArray
+  export type Array = Actions
 
   export type Error<T> = T extends ActionSet.ActionSet<infer Items>
     ? _ExtractError<Items>
     : never
 
-  type _ExtractError<M extends ItemArray> = M extends readonly [
+  type _ExtractError<M extends Actions> = M extends readonly [
     infer Head,
-    ...infer Tail extends ItemArray,
+    ...infer Tail extends Actions,
   ] ? (
       Head extends Action<infer H, any> ?
           | (H extends ActionHandler<any, infer E, any> ? E : never)
@@ -177,9 +209,9 @@ export namespace Action {
     ? _ExtractRequirements<Items>
     : never
 
-  type _ExtractRequirements<M extends ItemArray> = M extends readonly [
+  type _ExtractRequirements<M extends Actions> = M extends readonly [
     infer Head,
-    ...infer Tail extends ItemArray,
+    ...infer Tail extends Actions,
   ] ? (
       Head extends Action<infer H, any> ?
           | (H extends ActionHandler<any, any, infer R> ? R : never)
@@ -194,9 +226,9 @@ export namespace Action {
     ? _ExtractBindings<Items>
     : never
 
-  type _ExtractBindings<M extends ItemArray> = M extends readonly [
+  type _ExtractBindings<M extends Actions> = M extends readonly [
     infer Head,
-    ...infer Tail extends ItemArray,
+    ...infer Tail extends Actions,
   ] ? (
       Head extends Action<any, infer B> ? B | _ExtractBindings<Tail>
         : Head extends ActionSet.ActionSet<infer Nested>
@@ -206,92 +238,9 @@ export namespace Action {
     : never
 }
 
-export type Merge<
-  A extends ActionSet.Any,
-  B extends ActionSet.Any,
-> = ActionSet.ActionSet<readonly [A, B]>
-
-export const merge: {
-  <B extends ActionSet.Any>(
-    other: B,
-  ): <A extends ActionSet.Any>(
-    self: A,
-  ) => ActionSet.ActionSet<readonly [A, B]>
-
-  <A extends ActionSet.Any, B extends ActionSet.Any>(
-    self: A,
-    other: B,
-  ): ActionSet.ActionSet<readonly [A, B]>
-} = dual(2, <A extends ActionSet.Any, B extends ActionSet.Any>(
-  self: A,
-  other: B,
-): ActionSet.ActionSet<readonly [A, B]> => {
-  return make([self, other] as const)
-})
-
-export function mergeAll<
-  Sets extends readonly [ActionSet.Any, ...ActionSet.Any[]],
->(
-  ...sets: Sets
-): ActionSet.ActionSet<Sets> {
-  return make(sets)
-}
-
-type Mutable<T> = { -readonly [K in keyof T]: T[K] } & {}
-
-export const schemaHeaders: {
-  <T extends Schema.Struct<any>>(
-    schema: T,
-  ): <M extends ItemArray>(
-    self: ActionSet.ActionSet<M>,
-  ) => ActionSet.ActionSet<
-    [
-      ...M,
-      Action.Action<
-        ActionHandler<void, never, never>,
-        { headers: Mutable<Schema.Schema.Type<T>> }
-      >,
-    ]
-  >
-
-  <M extends ItemArray, T extends Schema.Struct<any>>(
-    self: ActionSet.ActionSet<M>,
-    schema: T,
-  ): ActionSet.ActionSet<
-    [
-      ...M,
-      Action.Action<
-        ActionHandler<void, never, never>,
-        { headers: Mutable<Schema.Schema.Type<T>> }
-      >,
-    ]
-  >
-} = dual(
-  2,
-  <M extends ItemArray, T extends Schema.Struct<any>>(
-    self: ActionSet.ActionSet<M>,
-    _schema: T,
-  ): ActionSet.ActionSet<
-    [
-      ...M,
-      Action.Action<
-        ActionHandler<void, never, never>,
-        { headers: Mutable<Schema.Schema.Type<T>> }
-      >,
-    ]
-  > => {
-    const action = makeAction<
-      ActionHandler<void, never, never>,
-      { headers: Mutable<Schema.Schema.Type<T>> }
-    >(() => Effect.void)
-
-    return make([...items(self), action] as const)
-  },
-)
-
-type ExtractBindings<M extends ItemArray> = M extends readonly [
+type ExtractBindings<M extends Actions> = M extends readonly [
   infer Head,
-  ...infer Tail extends ItemArray,
+  ...infer Tail extends Actions,
 ] ? (
     Head extends Action.Action<any, infer B> ? B & ExtractBindings<Tail>
       : Head extends ActionSet.ActionSet<infer Nested>
@@ -309,33 +258,84 @@ export type {
 } from "./ActionMethod.ts"
 
 export function text<
-  M extends ItemArray,
-  A,
+  A extends string,
   E,
   R,
+  Priors extends Actions,
 >(
-  handler: (bindings: ExtractBindings<M>) => Effect.Effect<A, E, R>,
-): (
-  self: ActionSet.ActionSet<M>,
-) => ActionSet.ActionSet<
-  [
-    ...M,
-    Action.Action<
+  handler: (
+    context: ExtractBindings<Priors>,
+  ) => Effect.Effect<A, E, R>,
+) {
+  return function(
+    self: ActionSet.ActionSet<Priors> = set(),
+  ) {
+    const action = make<
       ActionHandler<A, E, R>,
-      ExtractBindings<M>
-    >,
-  ]
-> {
-  return function makeText(self: ActionSet.ActionSet<M>) {
-    const action = makeAction<ActionHandler<A, E, R>, ExtractBindings<M>>(
-      handler as ActionHandler<A, E, R>,
+      ExtractBindings<Priors>
+    >(
+      handler,
+      { media: "text/plain" },
     )
 
-    return make(
+    return set(
       [
         ...items(self),
         action,
       ] as const,
     )
   }
+}
+
+export function filter<
+  B extends Record<string, any>,
+  E,
+  R,
+  Ctx = unknown,
+>(
+  filterHandler: (
+    context: Ctx,
+  ) => Effect.Effect<{ context: B }, E, R>,
+) {
+  return function<Priors extends Actions>(
+    self: ActionSet.ActionSet<Priors> = set() as ActionSet.ActionSet<Priors>,
+  ) {
+    const action = make<
+      ActionHandler<{ context: B }, E, R>,
+      ExtractBindings<Priors> & B
+    >(
+      (context) =>
+        Effect.gen(function*() {
+          const filterResult = yield* filterHandler(context)
+
+          return filterResult
+        }),
+    )
+
+    return set(
+      [
+        ...items(self),
+        action,
+      ] as const,
+    )
+  }
+}
+
+export function schemaHeaders<
+  A,
+  I extends Readonly<Record<string, string | undefined>>,
+  R,
+>(
+  fields: Schema.Schema<A, I, R>,
+) {
+  return filter(() =>
+    Effect.map(
+      HttpServerRequest.schemaHeaders(fields),
+      (headers) => ({
+        context: {
+          headers,
+        },
+      }),
+    )
+  )
 }

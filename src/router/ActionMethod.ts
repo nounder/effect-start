@@ -12,14 +12,20 @@ export type Self =
   | undefined
 
 export namespace ActionMethod {
-  export interface ActionMethod<M extends Action.ItemArray = []>
-    extends Action.ActionSet.ActionSet<M>
-  {
+  export interface ActionMethod<
+    Actions extends ReadonlyArray<
+      Action.Action.Action<
+        any,
+        any,
+        { method: "GET" | "POST" }
+      >
+    >,
+  > extends Action.ActionSet.ActionSet<Actions> {
     get: typeof get
     post: typeof post
   }
 
-  export type Any = ActionMethod<Action.ItemArray>
+  export type Any = ActionMethod<Action.Actions>
 }
 
 export const get = make("GET")
@@ -31,7 +37,7 @@ const Proto = {
     return Pipeable.pipeArguments(this, arguments)
   },
   *[Symbol.iterator](this: Action.ActionSet.Any) {
-    for (const item of this[Action.ActionSetItems]) {
+    for (const item of this[Action.ActionItems]) {
       yield* item
     }
   },
@@ -39,18 +45,22 @@ const Proto = {
   post,
 }
 
-function makeActionMethod<M extends Action.ItemArray>(
-  methodItems: M,
+function makeActionMethod<M extends Action.Actions>(
+  items: M,
+  descriptor: Action.ActionDescriptor.Method,
 ): ActionMethod.ActionMethod<M> {
   return Object.assign(
     Object.create(Proto),
     {
-      [Action.ActionSetItems]: methodItems,
+      [Action.ActionItems]: items,
+      [Action.ActionDescriptor]: descriptor,
     },
   ) as ActionMethod.ActionMethod<M>
 }
 
-function make<Method extends "GET" | "POST">(method: Method) {
+function make<
+  Method extends "GET" | "POST",
+>(method: Method) {
   return function<
     S extends Self,
     R extends Action.ActionSet.Any,
@@ -67,23 +77,32 @@ function make<Method extends "GET" | "POST">(method: Method) {
       >,
     ) => R,
   ): S extends Action.ActionSet.Any ? ActionMethod.ActionMethod<
-      readonly [...Action.ActionSet.Items<S>, ...Action.ActionSet.Items<R>]
+      readonly [
+        ...Action.ActionSet.Items<S>,
+        ...Action.ActionSet.Items<R>,
+      ]
     >
     : ActionMethod.ActionMethod<Action.ActionSet.Items<R>>
   {
     const baseItems = Action.isActionSet(this)
-      ? this[Action.ActionSetItems]
+      ? this[Action.ActionItems]
       : [] as const
 
-    const methodAction = Action.makeAction<
+    const methodAction = Action.make<
       Action.ActionHandler<void, never, never>,
       { method: Method }
     >(() => Effect.void)
-    const set = Action.make([methodAction] as const)
+    const set = Action.set([methodAction] as const)
     const result = f(set)
 
     return makeActionMethod(
-      [...baseItems, ...Action.items(result)] as Action.ItemArray,
+      [
+        ...baseItems,
+        ...Action.items(result),
+      ] as Action.Actions,
+      {
+        method,
+      },
     ) as never
   }
 }

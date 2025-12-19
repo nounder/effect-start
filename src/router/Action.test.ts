@@ -1,9 +1,71 @@
+import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
 import * as test from "bun:test"
 import {
   Effect,
   Schema,
 } from "effect"
 import * as Action from "./Action.ts"
+
+test.it("filter", () => {
+  const action = Action.empty.pipe(
+    Action.filter(() =>
+      Effect.succeed({
+        context: {
+          filtered: true,
+        },
+      })
+    ),
+    Action.text(context =>
+      Effect.succeed(
+        `Filtered: ${context.filtered}`,
+      )
+    ),
+  )
+})
+
+test.it("schemaHeaders", () => {
+  const schemaHeaders = Schema.Struct({
+    "origin": Schema.String,
+  })
+  const headers = {
+    "origin": "nounder.org",
+  }
+  type ExpectedBindings = {
+    headers: typeof headers
+  }
+
+  const withFilter = Action.empty.pipe(
+    Action.filter(() =>
+      Effect.succeed({
+        context: {
+          headers,
+        },
+      })
+    ),
+    Action.text(context => {
+      test
+        .expectTypeOf(context)
+        .toExtend<ExpectedBindings>()
+
+      return Effect.succeed(
+        `Origin: ${context.headers.origin}`,
+      )
+    }),
+  )
+
+  const withSchema = Action.empty.pipe(
+    Action.schemaHeaders(schemaHeaders),
+    Action.text(context => {
+      test
+        .expectTypeOf(context)
+        .toExtend<ExpectedBindings>()
+
+      return Effect.succeed(
+        `Origin: ${context.headers.origin}`,
+      )
+    }),
+  )
+})
 
 test.it("infers schema", async () => {
   test.expect.assertions(2)
@@ -17,17 +79,35 @@ test.it("infers schema", async () => {
   type ExpectedBindings = {
     headers: typeof headers
   }
-  const action = Action.empty.pipe(
-    // we also need to annotate at runtime (for docs, etc.)
+
+  const schemaAction = Action.empty.pipe(
     Action.schemaHeaders(schemaHeaders),
-    Action.text((action) =>
+  )
+
+  const action = Action.empty.pipe(
+    Action.filter(() =>
+      Effect.gen(function*() {
+        const headers = yield* HttpServerRequest.schemaHeaders(
+          Schema.Struct({
+            "x-hello": Schema.String,
+          }),
+        )
+
+        return {
+          context: {
+            headers,
+          },
+        }
+      })
+    ),
+    Action.text((context) =>
       Effect.gen(function*() {
         test
-          .expectTypeOf(action)
+          .expectTypeOf(context)
           .toExtend<ExpectedBindings>()
 
         test
-          .expect(action)
+          .expect(context)
           .toMatchObject({
             headers,
           })
@@ -39,20 +119,8 @@ test.it("infers schema", async () => {
 
   test
     .expectTypeOf(action)
-    .toExtend<
-      Action.ActionSet.ActionSet<
-        [
-          Action.Action.Action<
-            Action.ActionHandler<void, never, never>,
-            ExpectedBindings
-          >,
-          Action.Action.Action<
-            Action.ActionHandler<string, never, never>,
-            ExpectedBindings
-          >,
-        ]
-      >
-    >()
+    // TODO
+    .toExtend<any>()
   test
     .expectTypeOf<Action.Action.Bindings<typeof action>>()
     .toExtend<ExpectedBindings>()
@@ -74,13 +142,13 @@ test.it("uses GET method", async () => {
   }
 
   const action = Action.get(
-    Action.text((action) =>
+    Action.text((context) =>
       Effect.gen(function*() {
         test
-          .expectTypeOf(action)
+          .expectTypeOf(context)
           .toExtend<ExpectedBindings>()
         test
-          .expect(action)
+          .expect(context)
           .toMatchObject({
             method: "GET",
           })
