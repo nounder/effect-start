@@ -145,9 +145,9 @@ export function make<
 >(
   handler: H,
   descriptor?: D,
-): Action.Action<H, B> {
+): Action.Action<H, B, D> {
   const items: any = []
-  const action: Action.Action<H, B> = Object.assign(
+  const action: Action.Action<H, B, D> = Object.assign(
     Object.create(Proto),
     {
       [ActionItems]: items,
@@ -170,16 +170,18 @@ export function items<T extends ActionSet.Data<any>>(
 }
 
 export type ActionHandler<
-  A = unknown,
+  A = any,
   E = any,
   R = any,
-  // if ActionHandler contains bindings, we don't have to store it in Action??
   B = any,
-> = (
-  context: B,
-  // next shuold return value of compatbile type?
-  next?: (context: B) => ReturnType<ActionHandler>,
-) => Effect.Effect<A, E, R>
+> =
+  | ((
+    context: B,
+    next: (context: B) => Effect.Effect<A, never, never>,
+  ) => Effect.Effect<A, E, R>)
+  | ((
+    context: B,
+  ) => Effect.Effect<A, E, R>)
 
 export type ActionBindings = Record<string, any>
 
@@ -269,9 +271,6 @@ export {
   get,
   post,
 } from "./ActionMethod.ts"
-export type {
-  ActionMethod,
-} from "./ActionMethod.ts"
 
 export function text<
   A extends string,
@@ -288,7 +287,8 @@ export function text<
   ) {
     const action = make<
       ActionHandler<A, E, R>,
-      ExtractBindings<Priors>
+      ExtractBindings<Priors>,
+      { media: "text/plain" }
     >(
       handler,
       { media: "text/plain" },
@@ -303,28 +303,66 @@ export function text<
   }
 }
 
-export function filter<
-  B extends Record<string, any>,
+export function html<
+  A extends string,
   E,
   R,
-  C = unknown,
+  Priors extends Actions,
+>(
+  handler: (
+    context: ExtractBindings<Priors>,
+  ) => Effect.Effect<A, E, R>,
+) {
+  return function(
+    self: ActionSet.ActionSet<Priors> = set(),
+  ) {
+    const action = make<
+      ActionHandler<A, E, R>,
+      ExtractBindings<Priors>,
+      { media: "text/html" }
+    >(
+      handler,
+      { media: "text/html" },
+    )
+
+    return set(
+      [
+        ...items(self),
+        action,
+      ] as const,
+    )
+  }
+}
+
+export function filter<
+  B extends Record<string, any>,
+  E = any,
+  R = any,
+  C = any,
 >(
   filterHandler: (
     context: C,
   ) => Effect.Effect<{ context: B }, E, R>,
 ) {
   return function<Priors extends Actions>(
-    self: ActionSet.ActionSet<Priors> = set() as ActionSet.ActionSet<Priors>,
+    self: ActionSet.ActionSet<Priors> = set(),
   ) {
     const action = make<
-      ActionHandler<{ context: B }, E, R>,
+      ActionHandler<any, E, R>,
       ExtractBindings<Priors> & B
     >(
-      (context) =>
+      (context, next) =>
         Effect.gen(function*() {
           const filterResult = yield* filterHandler(context)
 
-          return filterResult
+          yield* next(
+            filterResult
+              ? {
+                ...context,
+                ...filterResult.context,
+              }
+              : context,
+          )
         }),
     )
 

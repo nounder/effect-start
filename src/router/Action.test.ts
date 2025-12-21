@@ -4,7 +4,7 @@ import {
   Effect,
   Schema,
 } from "effect"
-import { ParseError } from "effect/ParseResult"
+import * as Function from "effect/Function"
 import * as Action from "./Action.ts"
 
 test.describe(`${Action.filter.name}()`, () => {
@@ -69,20 +69,10 @@ test.describe(`${Action.schemaHeaders.name}()`, () => {
     }
 
     const action = Action.empty.pipe(
-      Action.filter(() =>
-        Effect.gen(function*() {
-          const headers = yield* HttpServerRequest.schemaHeaders(
-            Schema.Struct({
-              "x-hello": Schema.String,
-            }),
-          )
-
-          return {
-            context: {
-              headers,
-            },
-          }
-        })
+      Action.schemaHeaders(
+        Schema.Struct({
+          "x-hello": Schema.String,
+        }),
       ),
       Action.text((context) =>
         Effect.gen(function*() {
@@ -202,6 +192,69 @@ test.it("uses GET & POST method", async () => {
   test.expect(Action.items(action)).toHaveLength(4)
 })
 
+test.describe(`${Action.get.name}()`, () => {
+  test.it("accepts many media handlers", () => {
+    const methodActions = Action
+      .get(
+        Action.text(() => Effect.succeed("get 1")),
+        Action.html(() => Effect.succeed("get 2")),
+      )
+      .post(
+        Action.text(() => Effect.succeed("get 1")),
+      )
+    const actions = Action.items(methodActions)
+
+    test
+      .expectTypeOf(actions)
+      .toExtend<
+        readonly [
+          // TODO: why is there a dummp Action here?
+          Action.Action.Action<
+            Action.ActionHandler<void, never, never, any>,
+            {
+              method: "GET"
+            },
+            {}
+          >,
+          Action.Action.Action<
+            Action.ActionHandler<string, never, never, any>,
+            {
+              method: "GET"
+            },
+            {
+              media: "text/plain"
+            }
+          >,
+          Action.Action.Action<
+            Action.ActionHandler<string, never, never, any>,
+            {
+              method: "GET"
+            },
+            {
+              media: "text/html"
+            }
+          >,
+          Action.Action.Action<
+            Action.ActionHandler<void, never, never, any>,
+            {
+              method: "POST"
+            },
+            {}
+          >,
+          Action.Action.Action<
+            Action.ActionHandler<string, never, never, any>,
+            {
+              method: "POST"
+            },
+            {
+              media: "text/plain"
+            }
+          >,
+        ]
+      >()
+  })
+})
+
 function runAction(
   actionSet: Action.ActionSet.Any,
   bindings: unknown,
@@ -210,6 +263,6 @@ function runAction(
   const action = actions[actions.length - 1]
 
   return Effect.runPromise(
-    action.handler(bindings) as Effect.Effect<unknown>,
+    action.handler(bindings, () => Effect.void) as Effect.Effect<unknown>,
   )
 }
