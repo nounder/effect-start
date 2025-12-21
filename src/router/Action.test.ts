@@ -134,17 +134,20 @@ test.it("uses GET method", async () => {
     .toExtend<
       Action.ActionSet.ActionSet<
         [
-          Action.Action.Action<
-            Action.ActionHandler<string, never, never>,
-            {}
+          Action.ActionSet.ActionSet<
+            [
+              Action.Action.Action<
+                Action.ActionHandler<string, never, never>,
+                {},
+                {}
+              >,
+            ],
+            ExpectedBindings
           >,
         ],
-        ExpectedBindings
+        {}
       >
     >()
-  test
-    .expectTypeOf<Action.Action.Bindings<typeof action>>()
-    .toExtend<ExpectedBindings>()
 
   const result = await runAction(action, {
     method: "GET",
@@ -156,12 +159,6 @@ test.it("uses GET method", async () => {
 })
 
 test.it("uses GET & POST method", async () => {
-  test.expect.assertions(1)
-
-  type ExpectedBindings = {
-    method: "GET" | "POST"
-  }
-
   const action = Action
     .get(
       Action.text((action) => {
@@ -183,8 +180,41 @@ test.it("uses GET & POST method", async () => {
     )
 
   test
-    .expectTypeOf<Action.Action.Bindings<typeof action>>()
-    .toExtend<ExpectedBindings>()
+    .expectTypeOf(action)
+    .toExtend<
+      Action.ActionSet.ActionSet<
+        [
+          Action.ActionSet.ActionSet<
+            [
+              Action.Action.Action<
+                Action.ActionHandler<string, never, never, any>,
+                {},
+                {
+                  media: "text/plain"
+                }
+              >,
+            ],
+            {
+              method: "GET"
+            }
+          >,
+          Action.ActionSet.ActionSet<
+            [
+              Action.Action.Action<
+                Action.ActionHandler<string, never, never, any>,
+                {},
+                {
+                  media: "text/plain"
+                }
+              >,
+            ],
+            {
+              method: "POST"
+            }
+          >,
+        ]
+      >
+    >()
 
   test.expect(Action.items(action)).toHaveLength(2)
 })

@@ -50,7 +50,8 @@ export const ActionDescriptor: unique symbol = Symbol()
 export const TypeId: unique symbol = Symbol.for("effect-start/ActionSet")
 
 export type Action = Action.Default
-export type Actions = [...Action[]]
+export type ActionItem = Action.Default | ActionSet.Any
+export type Actions = [...ActionItem[]]
 
 export namespace ActionSet {
   export type ActionSet<
@@ -146,14 +147,15 @@ export function set<
   D extends ActionDescriptor.Any = ActionDescriptor.Empty,
 >(
   items: M = [] as unknown as M,
-): ActionSet.ActionSet<M> {
+  descriptor: D = {} as D,
+): ActionSet.ActionSet<M, D> {
   return Object.assign(
     Object.create(Proto),
     {
       [ActionItems]: items,
-      [ActionDescriptor]: {} as ActionDescriptor.Empty,
+      [ActionDescriptor]: descriptor,
     },
-  ) as ActionSet.ActionSet<M>
+  ) as ActionSet.ActionSet<M, D>
 }
 
 export function make<

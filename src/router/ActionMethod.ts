@@ -4,12 +4,11 @@ import * as Action from "./Action.ts"
 
 const TypeId: unique symbol = Symbol.for("effect-start/ActionSet")
 
-type Builder = typeof import("./ActionMethod.ts")
+type Module = typeof import("./ActionMethod.ts")
 
 export type Self =
-  | Action.ActionSet.Any
-  | Builder
-  | undefined
+  | ActionMethod.Builder
+  | Module
 
 export const get = makeMethodDescriber("GET")
 export const post = makeMethodDescriber("POST")
@@ -28,37 +27,25 @@ const Proto = {
   post,
 }
 
-function makeActionMethod<M extends Action.Actions>(
+function makeMethodSet<
+  M extends [...ActionMethod.MethodSet[]] = [],
+  D extends Action.ActionDescriptor.Any = {},
+>(
   items: M,
-  descriptor: Action.ActionDescriptor.Method,
-): Action.ActionSet.ActionSet<M> {
+  descriptor: D = {} as D,
+): ActionMethod.Builder<M, D> {
   return Object.assign(
     Object.create(Proto),
     {
       [Action.ActionItems]: items,
       [Action.ActionDescriptor]: descriptor,
     },
-  ) as Action.ActionSet.ActionSet<M>
+  )
 }
 
-interface ActionMethodBuilder<
-  Actions extends [...Action.Action[]],
-> extends Action.ActionSet.ActionSet<Actions> {
-  get: typeof get
-  post: typeof post
-}
-
-type MethodResult<
-  S extends Self,
-  R extends Action.ActionSet.Any,
-> = S extends Action.ActionSet.Any ? ActionMethodBuilder<
-    [...Action.ActionSet.Items<S>, ...Action.ActionSet.Items<R>]
-  >
-  : ActionMethodBuilder<Action.ActionSet.Items<R>>
-
-function makeMethodDescriber<Method extends "GET" | "POST">(
+function makeMethodDescriber<Method extends ActionMethod.HttpMethod>(
   method: Method,
-): ActionMethodDescriber<Method> {
+): ActionMethod.Describer<Method> {
   const fn = function(
     this: Self,
     ...fs: ((self: Action.ActionSet.Any) => Action.ActionSet.Any)[]
@@ -67,65 +54,87 @@ function makeMethodDescriber<Method extends "GET" | "POST">(
       ? this[Action.ActionItems]
       : [] as const
 
-    const methodSet = makeActionMethod([] as const, { method })
+    const methodSet = makeMethodSet([] as const, { method })
     const f = Function.flow(
       ...fs as [(_: Action.ActionSet.Any) => Action.ActionSet.Any],
     )
     const result = f(methodSet)
 
-    return makeActionMethod(
+    const wrappedResult = Action.set(
+      Action.items(result) as Action.Actions,
+      { method },
+    )
+
+    return makeMethodSet(
       [
         ...baseItems,
-        ...Action.items(result),
-      ] as Action.Actions,
-      {
-        method,
-      },
+        wrappedResult,
+      ] as [...ActionMethod.MethodSet[]],
     )
   }
-  return fn as ActionMethodDescriber<Method>
+  return fn as ActionMethod.Describer<Method>
 }
 
-type ActionMethodDescriberResult<
-  Items extends Action.Actions,
-  Method extends string,
-> =
-  & Action.ActionSet.ActionSet<Items, { method: Method }>
-  & {
+export namespace ActionMethod {
+  export type HttpMethod =
+    | "GET"
+    | "POST"
+
+  export type MethodSet = Action.ActionSet.ActionSet<
+    Action.Actions,
+    { method: HttpMethod }
+  >
+
+  export interface Builder<
+    Items extends [...MethodSet[]] = [],
+    D extends Action.ActionDescriptor.Any = {},
+  > extends Action.ActionSet.ActionSet<Items, D> {
     get: typeof get
     post: typeof post
   }
 
-type MethodActionSet<M extends string> = Action.ActionSet.ActionSet<
-  [],
-  { method: M }
->
+  export type EmptySet<M extends HttpMethod> = Action.ActionSet.ActionSet<
+    [],
+    { method: M }
+  >
 
-interface ActionMethodDescriber<Method extends string> {
-  <S extends Self, A extends Action.ActionSet.Any>(
-    this: S,
-    ab: (a: MethodActionSet<Method>) => A,
-  ): ActionMethodDescriberResult<Action.ActionSet.Items<MethodResult<S, A>>, Method>
+  type Items<S> = S extends Builder<infer I> ? I : []
 
-  <
-    S extends Self,
-    A extends Action.ActionSet.Any,
-    B extends Action.ActionSet.Any,
-  >(
-    this: S,
-    ab: (a: MethodActionSet<Method>) => A,
-    bc: (b: A) => B,
-  ): ActionMethodDescriberResult<Action.ActionSet.Items<MethodResult<S, B>>, Method>
+  export interface Describer<Method extends HttpMethod> {
+    <S extends Self, A extends Action.ActionSet.Any>(
+      this: S,
+      ab: (a: EmptySet<Method>) => A,
+    ): Builder<[
+      ...Items<S>,
+      Action.ActionSet.ActionSet<Action.ActionSet.Items<A>, { method: Method }>,
+    ]>
 
-  <
-    S extends Self,
-    A extends Action.ActionSet.Any,
-    B extends Action.ActionSet.Any,
-    C extends Action.ActionSet.Any,
-  >(
-    this: S,
-    ab: (a: MethodActionSet<Method>) => A,
-    bc: (b: A) => B,
-    cd: (c: B) => C,
-  ): ActionMethodDescriberResult<Action.ActionSet.Items<MethodResult<S, C>>, Method>
+    <
+      S extends Self,
+      A extends Action.ActionSet.Any,
+      B extends Action.ActionSet.Any,
+    >(
+      this: S,
+      ab: (a: EmptySet<Method>) => A,
+      bc: (b: A) => B,
+    ): Builder<[
+      ...Items<S>,
+      Action.ActionSet.ActionSet<Action.ActionSet.Items<B>, { method: Method }>,
+    ]>
+
+    <
+      S extends Self,
+      A extends Action.ActionSet.Any,
+      B extends Action.ActionSet.Any,
+      C extends Action.ActionSet.Any,
+    >(
+      this: S,
+      ab: (a: EmptySet<Method>) => A,
+      bc: (b: A) => B,
+      cd: (c: B) => C,
+    ): Builder<[
+      ...Items<S>,
+      Action.ActionSet.ActionSet<Action.ActionSet.Items<C>, { method: Method }>,
+    ]>
+  }
 }
