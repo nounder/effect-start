@@ -38,7 +38,7 @@ test.describe(`${Action.filter.name}()`, () => {
       .expectTypeOf(actions)
       .toExtend<
         Action.ActionSet.ActionSet<
-          readonly [
+          [
             Action.Action.Action<
               Action.ActionHandler<typeof filterResult, never, never>,
               ExpectedBindings,
@@ -133,16 +133,13 @@ test.it("uses GET method", async () => {
     .expectTypeOf(action)
     .toExtend<
       Action.ActionSet.ActionSet<
-        readonly [
-          Action.Action.Action<
-            Action.ActionHandler<void, never, never>,
-            ExpectedBindings
-          >,
+        [
           Action.Action.Action<
             Action.ActionHandler<string, never, never>,
-            ExpectedBindings
+            {}
           >,
-        ]
+        ],
+        ExpectedBindings
       >
     >()
   test
@@ -189,7 +186,7 @@ test.it("uses GET & POST method", async () => {
     .expectTypeOf<Action.Action.Bindings<typeof action>>()
     .toExtend<ExpectedBindings>()
 
-  test.expect(Action.items(action)).toHaveLength(4)
+  test.expect(Action.items(action)).toHaveLength(2)
 })
 
 test.describe(`${Action.get.name}()`, () => {
@@ -202,55 +199,51 @@ test.describe(`${Action.get.name}()`, () => {
       .post(
         Action.text(() => Effect.succeed("get 1")),
       )
-    const actions = Action.items(methodActions)
 
     test
-      .expectTypeOf(actions)
+      .expectTypeOf(methodActions)
       .toExtend<
-        readonly [
-          // TODO: why is there a dummp Action here?
-          Action.Action.Action<
-            Action.ActionHandler<void, never, never, any>,
-            {
-              method: "GET"
-            },
-            {}
-          >,
-          Action.Action.Action<
-            Action.ActionHandler<string, never, never, any>,
-            {
-              method: "GET"
-            },
-            {
-              media: "text/plain"
-            }
-          >,
-          Action.Action.Action<
-            Action.ActionHandler<string, never, never, any>,
-            {
-              method: "GET"
-            },
-            {
-              media: "text/html"
-            }
-          >,
-          Action.Action.Action<
-            Action.ActionHandler<void, never, never, any>,
-            {
-              method: "POST"
-            },
-            {}
-          >,
-          Action.Action.Action<
-            Action.ActionHandler<string, never, never, any>,
-            {
-              method: "POST"
-            },
-            {
-              media: "text/plain"
-            }
-          >,
-        ]
+        Action.ActionSet.ActionSet<
+          [
+            Action.ActionSet.ActionSet<
+              [
+                Action.Action.Action<
+                  Action.ActionHandler<string, never, never, any>,
+                  {},
+                  {
+                    media: "text/plain"
+                  }
+                >,
+                Action.Action.Action<
+                  Action.ActionHandler<string, never, never, any>,
+                  {},
+                  {
+                    media: "text/html"
+                  }
+                >,
+              ],
+              {
+                method: "GET"
+              }
+            >,
+
+            Action.ActionSet.ActionSet<
+              [
+                Action.Action.Action<
+                  Action.ActionHandler<string, never, never, any>,
+                  {},
+                  {
+                    media: "text/plain"
+                  }
+                >,
+              ],
+              {
+                method: "POST"
+              }
+            >,
+          ],
+          {}
+        >
       >()
   })
 })

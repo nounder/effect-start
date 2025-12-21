@@ -1,4 +1,3 @@
-import * as Effect from "effect/Effect"
 import * as Function from "effect/Function"
 import * as Pipeable from "effect/Pipeable"
 import * as Action from "./Action.ts"
@@ -12,8 +11,8 @@ export type Self =
   | Builder
   | undefined
 
-export const get = make("GET")
-export const post = make("POST")
+export const get = makeMethodDescriber("GET")
+export const post = makeMethodDescriber("POST")
 
 const Proto = {
   [TypeId]: TypeId,
@@ -42,17 +41,8 @@ function makeActionMethod<M extends Action.Actions>(
   ) as Action.ActionSet.ActionSet<M>
 }
 
-type MethodActionSet<Method extends string> = Action.ActionSet.ActionSet<
-  readonly [
-    Action.Action.Action<
-      Action.ActionHandler<void, never, never>,
-      { method: Method }
-    >,
-  ]
->
-
 interface ActionMethodBuilder<
-  Actions extends ReadonlyArray<Action.Action>,
+  Actions extends [...Action.Action[]],
 > extends Action.ActionSet.ActionSet<Actions> {
   get: typeof get
   post: typeof post
@@ -66,24 +56,22 @@ type MethodResult<
   >
   : ActionMethodBuilder<Action.ActionSet.Items<R>>
 
-function make<Method extends "GET" | "POST">(method: Method): MethodFn<Method> {
+function makeMethodDescriber<Method extends "GET" | "POST">(
+  method: Method,
+): ActionMethodDescriber<Method> {
   const fn = function(
     this: Self,
-    ...fs: ReadonlyArray<(self: Action.ActionSet.Any) => Action.ActionSet.Any>
+    ...fs: ((self: Action.ActionSet.Any) => Action.ActionSet.Any)[]
   ): Action.ActionSet.Any {
     const baseItems = Action.isActionSet(this)
       ? this[Action.ActionItems]
       : [] as const
 
-    const methodAction = Action.make<
-      Action.ActionHandler<void, never, never>,
-      { method: Method }
-    >(() => Effect.void)
-    const set = Action.set([methodAction] as const)
+    const methodSet = makeActionMethod([] as const, { method })
     const f = Function.flow(
       ...fs as [(_: Action.ActionSet.Any) => Action.ActionSet.Any],
     )
-    const result = f(set)
+    const result = f(methodSet)
 
     return makeActionMethod(
       [
@@ -95,136 +83,49 @@ function make<Method extends "GET" | "POST">(method: Method): MethodFn<Method> {
       },
     )
   }
-  return fn as MethodFn<Method>
+  return fn as ActionMethodDescriber<Method>
 }
 
-interface MethodFn<
+type ActionMethodDescriberResult<
+  Items extends Action.Actions,
   Method extends string,
-  V extends Action.ActionSet.Any = Action.ActionSet.Any,
-> {
-  <S extends Self, A extends V>(
-    this: S,
-    ab: (a: MethodActionSet<Method>) => A,
-  ): MethodResult<S, A>
+> =
+  & Action.ActionSet.ActionSet<Items, { method: Method }>
+  & {
+    get: typeof get
+    post: typeof post
+  }
 
-  <S extends Self, A extends V, B extends V>(
-    this: S,
-    ab: (a: MethodActionSet<Method>) => A,
-    bc: (b: A) => B,
-  ): MethodResult<S, B>
+type MethodActionSet<M extends string> = Action.ActionSet.ActionSet<
+  [],
+  { method: M }
+>
 
-  <S extends Self, A extends V, B extends V, C extends V>(
+interface ActionMethodDescriber<Method extends string> {
+  <S extends Self, A extends Action.ActionSet.Any>(
     this: S,
     ab: (a: MethodActionSet<Method>) => A,
-    bc: (b: A) => B,
-    cd: (c: B) => C,
-  ): MethodResult<S, C>
-
-  <S extends Self, A extends V, B extends V, C extends V, D extends V>(
-    this: S,
-    ab: (a: MethodActionSet<Method>) => A,
-    bc: (b: A) => B,
-    cd: (c: B) => C,
-    de: (d: C) => D,
-  ): MethodResult<S, D>
+  ): ActionMethodDescriberResult<Action.ActionSet.Items<MethodResult<S, A>>, Method>
 
   <
     S extends Self,
-    A extends V,
-    B extends V,
-    C extends V,
-    D extends V,
-    E extends V,
+    A extends Action.ActionSet.Any,
+    B extends Action.ActionSet.Any,
+  >(
+    this: S,
+    ab: (a: MethodActionSet<Method>) => A,
+    bc: (b: A) => B,
+  ): ActionMethodDescriberResult<Action.ActionSet.Items<MethodResult<S, B>>, Method>
+
+  <
+    S extends Self,
+    A extends Action.ActionSet.Any,
+    B extends Action.ActionSet.Any,
+    C extends Action.ActionSet.Any,
   >(
     this: S,
     ab: (a: MethodActionSet<Method>) => A,
     bc: (b: A) => B,
     cd: (c: B) => C,
-    de: (d: C) => D,
-    ef: (e: D) => E,
-  ): MethodResult<S, E>
-
-  <
-    S extends Self,
-    A extends V,
-    B extends V,
-    C extends V,
-    D extends V,
-    E extends V,
-    F extends V,
-  >(
-    this: S,
-    ab: (a: MethodActionSet<Method>) => A,
-    bc: (b: A) => B,
-    cd: (c: B) => C,
-    de: (d: C) => D,
-    ef: (e: D) => E,
-    fg: (f: E) => F,
-  ): MethodResult<S, F>
-
-  <
-    S extends Self,
-    A extends V,
-    B extends V,
-    C extends V,
-    D extends V,
-    E extends V,
-    F extends V,
-    G extends V,
-  >(
-    this: S,
-    ab: (a: MethodActionSet<Method>) => A,
-    bc: (b: A) => B,
-    cd: (c: B) => C,
-    de: (d: C) => D,
-    ef: (e: D) => E,
-    fg: (f: E) => F,
-    gh: (g: F) => G,
-  ): MethodResult<S, G>
-
-  <
-    S extends Self,
-    A extends V,
-    B extends V,
-    C extends V,
-    D extends V,
-    E extends V,
-    F extends V,
-    G extends V,
-    H extends V,
-  >(
-    this: S,
-    ab: (a: MethodActionSet<Method>) => A,
-    bc: (b: A) => B,
-    cd: (c: B) => C,
-    de: (d: C) => D,
-    ef: (e: D) => E,
-    fg: (f: E) => F,
-    gh: (g: F) => G,
-    hi: (h: G) => H,
-  ): MethodResult<S, H>
-
-  <
-    S extends Self,
-    A extends V,
-    B extends V,
-    C extends V,
-    D extends V,
-    E extends V,
-    F extends V,
-    G extends V,
-    H extends V,
-    I extends V,
-  >(
-    this: S,
-    ab: (a: MethodActionSet<Method>) => A,
-    bc: (b: A) => B,
-    cd: (c: B) => C,
-    de: (d: C) => D,
-    ef: (e: D) => E,
-    fg: (f: E) => F,
-    gh: (g: F) => G,
-    hi: (h: G) => H,
-    ij: (i: H) => I,
-  ): MethodResult<S, I>
+  ): ActionMethodDescriberResult<Action.ActionSet.Items<MethodResult<S, C>>, Method>
 }

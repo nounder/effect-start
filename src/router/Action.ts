@@ -50,7 +50,7 @@ export const ActionDescriptor: unique symbol = Symbol()
 export const TypeId: unique symbol = Symbol.for("effect-start/ActionSet")
 
 export type Action = Action.Default
-export type Actions = ReadonlyArray<Action>
+export type Actions = [...Action[]]
 
 export namespace ActionSet {
   export type ActionSet<
@@ -72,18 +72,36 @@ export namespace ActionSet {
     [ActionDescriptor]: D
   }
 
-  export type Default = ActionSet<readonly [Action, ...Action[]]>
+  export type Default = ActionSet<[Action, ...Action[]]>
 
   export type Any = ActionSet<Actions>
 
   export type Items<T extends Data<any>> = T extends Data<infer M> ? M
     : never
 
+  export type Descriptor<T extends Data<any, any>> = T extends Data<any, infer D> ? D
+    : never
+
+  export type Descriptors<T extends Data<any>> = T extends Data<infer M>
+    ? _ExtractDescriptors<M>
+    : never
+
+  type _ExtractDescriptors<M extends Actions> = M extends [
+    infer Head,
+    ...infer Tail extends Actions,
+  ] ? (
+      Head extends Action.Action<any, any, infer D> ? D & _ExtractDescriptors<Tail>
+        : Head extends ActionSet<infer Nested, infer D>
+          ? D & _ExtractDescriptors<Nested> & _ExtractDescriptors<Tail>
+        : _ExtractDescriptors<Tail>
+    )
+    : {}
+
   export type Bindings<T extends Data<any>> = T extends Data<infer M>
     ? _ExtractBindings<M>
     : never
 
-  type _ExtractBindings<M extends Actions> = M extends readonly [
+  type _ExtractBindings<M extends Actions> = M extends [
     infer Head,
     ...infer Tail extends Actions,
   ] ? (
@@ -210,7 +228,7 @@ export namespace Action {
     ? _ExtractError<Items>
     : never
 
-  type _ExtractError<M extends Actions> = M extends readonly [
+  type _ExtractError<M extends Actions> = M extends [
     infer Head,
     ...infer Tail extends Actions,
   ] ? (
@@ -227,7 +245,7 @@ export namespace Action {
     ? _ExtractRequirements<Items>
     : never
 
-  type _ExtractRequirements<M extends Actions> = M extends readonly [
+  type _ExtractRequirements<M extends Actions> = M extends [
     infer Head,
     ...infer Tail extends Actions,
   ] ? (
@@ -240,23 +258,24 @@ export namespace Action {
     )
     : never
 
-  export type Bindings<T> = T extends ActionSet.ActionSet<infer Items>
-    ? _ExtractBindings<Items>
+  export type Bindings<T> = T extends ActionSet.ActionSet<infer Items, infer D>
+    ? D & _ExtractBindings<Items>
     : never
 
-  type _ExtractBindings<M extends Actions> = M extends readonly [
+  type _ExtractBindings<M extends Actions> = M extends [
     infer Head,
     ...infer Tail extends Actions,
   ] ? (
-      Head extends Action<any, infer B> ? B | _ExtractBindings<Tail>
+      Head extends Action<any, infer B>
+        ? B & _ExtractBindings<Tail>
         : Head extends ActionSet.ActionSet<infer Nested>
-          ? _ExtractBindings<Nested> | _ExtractBindings<Tail>
+          ? _ExtractBindings<Nested> & _ExtractBindings<Tail>
         : _ExtractBindings<Tail>
     )
-    : never
+    : {}
 }
 
-type ExtractBindings<M extends Actions> = M extends readonly [
+type ExtractBindings<M extends Actions> = M extends [
   infer Head,
   ...infer Tail extends Actions,
 ] ? (
@@ -266,6 +285,11 @@ type ExtractBindings<M extends Actions> = M extends readonly [
       : ExtractBindings<Tail>
   )
   : {}
+
+type ExtractContext<
+  Items extends Actions,
+  Descriptor extends ActionDescriptor.Empty,
+> = ExtractBindings<Items> & Descriptor
 
 export {
   get,
@@ -277,13 +301,14 @@ export function text<
   E,
   R,
   Priors extends Actions,
+  D extends ActionDescriptor.Empty,
 >(
   handler: (
-    context: ExtractBindings<Priors>,
+    context: ExtractContext<Priors, D>,
   ) => Effect.Effect<A, E, R>,
 ) {
   return function(
-    self: ActionSet.ActionSet<Priors> = set(),
+    self: ActionSet.ActionSet<Priors, D>,
   ) {
     const action = make<
       ActionHandler<A, E, R>,
@@ -308,13 +333,14 @@ export function html<
   E,
   R,
   Priors extends Actions,
+  D extends ActionDescriptor.Empty,
 >(
   handler: (
-    context: ExtractBindings<Priors>,
+    context: ExtractContext<Priors, D>,
   ) => Effect.Effect<A, E, R>,
 ) {
   return function(
-    self: ActionSet.ActionSet<Priors> = set(),
+    self: ActionSet.ActionSet<Priors, D>,
   ) {
     const action = make<
       ActionHandler<A, E, R>,
@@ -344,8 +370,8 @@ export function filter<
     context: C,
   ) => Effect.Effect<{ context: B }, E, R>,
 ) {
-  return function<Priors extends Actions>(
-    self: ActionSet.ActionSet<Priors> = set(),
+  return function<Priors extends Actions, D extends ActionDescriptor.Empty>(
+    self: ActionSet.ActionSet<Priors, D>,
   ) {
     const action = make<
       ActionHandler<any, E, R>,
