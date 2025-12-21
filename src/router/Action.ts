@@ -1,6 +1,5 @@
 import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
 import * as Effect from "effect/Effect"
-import * as ParseResult from "effect/ParseResult"
 import * as Pipeable from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
@@ -103,7 +102,11 @@ const Proto = {
   },
   *[Symbol.iterator](this: ActionSet.Any) {
     for (const item of this[ActionItems]) {
-      yield* item
+      if (isAction(item)) {
+        yield item
+      } else {
+        yield* item as ActionSet.Any
+      }
     }
   },
 }
@@ -112,6 +115,12 @@ export function isActionSet(
   input: unknown,
 ): input is ActionSet.Any {
   return Predicate.hasProperty(input, TypeId)
+}
+
+export function isAction(
+  input: unknown,
+): input is Action.Default {
+  return isActionSet(input) && Predicate.hasProperty(input, "handler")
 }
 
 export function set<
@@ -164,7 +173,13 @@ export type ActionHandler<
   A = unknown,
   E = any,
   R = any,
-> = (context: any) => Effect.Effect<A, E, R>
+  // if ActionHandler contains bindings, we don't have to store it in Action??
+  B = any,
+> = (
+  context: B,
+  // next shuold return value of compatbile type?
+  next?: (context: B) => ReturnType<ActionHandler>,
+) => Effect.Effect<A, E, R>
 
 export type ActionBindings = Record<string, any>
 
@@ -179,6 +194,7 @@ export namespace Action {
     ]>
   {
     readonly handler: Handler
+    readonly _bindings: Bindings
   }
 
   export type Default = Action<
@@ -291,10 +307,10 @@ export function filter<
   B extends Record<string, any>,
   E,
   R,
-  Ctx = unknown,
+  C = unknown,
 >(
   filterHandler: (
-    context: Ctx,
+    context: C,
   ) => Effect.Effect<{ context: B }, E, R>,
 ) {
   return function<Priors extends Actions>(

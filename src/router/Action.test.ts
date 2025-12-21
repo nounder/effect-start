@@ -4,134 +4,115 @@ import {
   Effect,
   Schema,
 } from "effect"
+import { ParseError } from "effect/ParseResult"
 import * as Action from "./Action.ts"
 
-test.it("filter", () => {
-  const action = Action.empty.pipe(
-    Action.filter(() =>
-      Effect.succeed({
-        context: {
-          filtered: true,
-        },
-      })
-    ),
-    Action.text(context =>
-      Effect.succeed(
-        `Filtered: ${context.filtered}`,
-      )
-    ),
-  )
-})
+test.describe(`${Action.filter.name}()`, () => {
+  test.it("passes bindings", () => {
+    const headers = {
+      "origin": "nounder.org",
+    }
+    type ExpectedBindings = {
+      headers: typeof headers
+    }
+    const filterResult = {
+      context: {
+        headers,
+      },
+    }
 
-test.it("schemaHeaders", () => {
-  const schemaHeaders = Schema.Struct({
-    "origin": Schema.String,
-  })
-  const headers = {
-    "origin": "nounder.org",
-  }
-  type ExpectedBindings = {
-    headers: typeof headers
-  }
-
-  const withFilter = Action.empty.pipe(
-    Action.filter(() =>
-      Effect.succeed({
-        context: {
-          headers,
-        },
-      })
-    ),
-    Action.text(context => {
-      test
-        .expectTypeOf(context)
-        .toExtend<ExpectedBindings>()
-
-      return Effect.succeed(
-        `Origin: ${context.headers.origin}`,
-      )
-    }),
-  )
-
-  const withSchema = Action.empty.pipe(
-    Action.schemaHeaders(schemaHeaders),
-    Action.text(context => {
-      test
-        .expectTypeOf(context)
-        .toExtend<ExpectedBindings>()
-
-      return Effect.succeed(
-        `Origin: ${context.headers.origin}`,
-      )
-    }),
-  )
-})
-
-test.it("infers schema", async () => {
-  test.expect.assertions(2)
-
-  const schemaHeaders = Schema.Struct({
-    "x-hello": Schema.String,
-  })
-  const headers = {
-    "x-hello": "test-value",
-  }
-  type ExpectedBindings = {
-    headers: typeof headers
-  }
-
-  const schemaAction = Action.empty.pipe(
-    Action.schemaHeaders(schemaHeaders),
-  )
-
-  const action = Action.empty.pipe(
-    Action.filter(() =>
-      Effect.gen(function*() {
-        const headers = yield* HttpServerRequest.schemaHeaders(
-          Schema.Struct({
-            "x-hello": Schema.String,
-          }),
-        )
-
-        return {
-          context: {
-            headers,
-          },
-        }
-      })
-    ),
-    Action.text((context) =>
-      Effect.gen(function*() {
+    const actions = Action.empty.pipe(
+      Action.filter(() => Effect.succeed(filterResult)),
+      Action.text(context => {
         test
           .expectTypeOf(context)
           .toExtend<ExpectedBindings>()
 
-        test
-          .expect(context)
-          .toMatchObject({
-            headers,
-          })
+        return Effect.succeed(
+          `Origin: ${context.headers.origin}`,
+        )
+      }),
+    )
 
-        return "Hello, World!"
-      })
-    ),
-  )
-
-  test
-    .expectTypeOf(action)
-    // TODO
-    .toExtend<any>()
-  test
-    .expectTypeOf<Action.Action.Bindings<typeof action>>()
-    .toExtend<ExpectedBindings>()
-
-  const result = await runAction(action, {
-    headers,
+    test
+      .expectTypeOf(actions)
+      .toExtend<
+        Action.ActionSet.ActionSet<
+          readonly [
+            Action.Action.Action<
+              Action.ActionHandler<typeof filterResult, never, never>,
+              ExpectedBindings,
+              {}
+            >,
+            Action.Action.Action<
+              Action.ActionHandler<string, never, never>,
+              // Bindings are passed to subsequent actions
+              ExpectedBindings,
+              {}
+            >,
+          ],
+          {}
+        >
+      >()
   })
+})
 
-  test
-    .expect(result)
-    .toBe("Hello, World!")
+test.describe(`${Action.schemaHeaders.name}()`, () => {
+  test.it("passes bindings and parses value", async () => {
+    test.expect.assertions(2)
+
+    const headers = {
+      "x-hello": "test-value",
+    }
+    type ExpectedBindings = {
+      headers: typeof headers
+    }
+
+    const action = Action.empty.pipe(
+      Action.filter(() =>
+        Effect.gen(function*() {
+          const headers = yield* HttpServerRequest.schemaHeaders(
+            Schema.Struct({
+              "x-hello": Schema.String,
+            }),
+          )
+
+          return {
+            context: {
+              headers,
+            },
+          }
+        })
+      ),
+      Action.text((context) =>
+        Effect.gen(function*() {
+          test
+            .expectTypeOf(context)
+            .toExtend<ExpectedBindings>()
+
+          test
+            .expect(context)
+            .toMatchObject({
+              headers,
+            })
+
+          return "Hello, World!"
+        })
+      ),
+    )
+
+    test
+      .expectTypeOf<Action.Action.Bindings<typeof action>>()
+      .toExtend<ExpectedBindings>()
+
+    const result = await runAction(action, {
+      headers,
+    })
+
+    test
+      .expect(result)
+      .toBe("Hello, World!")
+  })
 })
 
 test.it("uses GET method", async () => {
@@ -161,16 +142,18 @@ test.it("uses GET method", async () => {
   test
     .expectTypeOf(action)
     .toExtend<
-      Action.ActionSet.ActionSet<[
-        Action.Action.Action<
-          Action.ActionHandler<void, never, never>,
-          ExpectedBindings
-        >,
-        Action.Action.Action<
-          Action.ActionHandler<string, never, never>,
-          ExpectedBindings
-        >,
-      ]>
+      Action.ActionSet.ActionSet<
+        readonly [
+          Action.Action.Action<
+            Action.ActionHandler<void, never, never>,
+            ExpectedBindings
+          >,
+          Action.Action.Action<
+            Action.ActionHandler<string, never, never>,
+            ExpectedBindings
+          >,
+        ]
+      >
     >()
   test
     .expectTypeOf<Action.Action.Bindings<typeof action>>()
@@ -216,8 +199,7 @@ test.it("uses GET & POST method", async () => {
     .expectTypeOf<Action.Action.Bindings<typeof action>>()
     .toExtend<ExpectedBindings>()
 
-  const allActions = [...action]
-  test.expect(allActions.length).toBe(4)
+  test.expect(Action.items(action)).toHaveLength(4)
 })
 
 function runAction(
@@ -226,6 +208,7 @@ function runAction(
 ) {
   const actions = [...actionSet]
   const action = actions[actions.length - 1]
+
   return Effect.runPromise(
     action.handler(bindings) as Effect.Effect<unknown>,
   )

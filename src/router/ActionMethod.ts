@@ -14,11 +14,7 @@ export type Self =
 export namespace ActionMethod {
   export interface ActionMethod<
     Actions extends ReadonlyArray<
-      Action.Action.Action<
-        any,
-        any,
-        { method: "GET" | "POST" }
-      >
+      Action.Action.Action<any, any, any>
     >,
   > extends Action.ActionSet.ActionSet<Actions> {
     get: typeof get
