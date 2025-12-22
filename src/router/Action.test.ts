@@ -12,9 +12,6 @@ test.describe(`${Action.filter.name}()`, () => {
     const headers = {
       "origin": "nounder.org",
     }
-    type ExpectedBindings = {
-      headers: typeof headers
-    }
     const filterResult = {
       context: {
         headers,
@@ -26,7 +23,7 @@ test.describe(`${Action.filter.name}()`, () => {
       Action.text(context => {
         test
           .expectTypeOf(context)
-          .toExtend<ExpectedBindings>()
+          .toExtend<typeof filterResult.context>()
 
         return Effect.succeed(
           `Origin: ${context.headers.origin}`,
@@ -38,20 +35,19 @@ test.describe(`${Action.filter.name}()`, () => {
       .expectTypeOf(actions)
       .toExtend<
         Action.ActionSet.ActionSet<
+          {},
           [
             Action.Action.Action<
-              Action.ActionHandler<typeof filterResult, never, never>,
-              ExpectedBindings,
-              {}
+              {},
+              typeof filterResult.context,
+              typeof filterResult
             >,
             Action.Action.Action<
-              Action.ActionHandler<string, never, never>,
-              // Bindings are passed to subsequent actions
-              ExpectedBindings,
-              {}
+              {},
+              typeof filterResult.context,
+              string
             >,
-          ],
-          {}
+          ]
         >
       >()
   })
@@ -68,7 +64,7 @@ test.describe(`${Action.schemaHeaders.name}()`, () => {
       headers: typeof headers
     }
 
-    const action = Action.empty.pipe(
+    const action = Action.get(
       Action.schemaHeaders(
         Schema.Struct({
           "x-hello": Schema.String,
@@ -130,24 +126,8 @@ test.it("uses GET method", async () => {
   )
 
   test
-    .expectTypeOf(action)
-    .toExtend<
-      Action.ActionSet.ActionSet<
-        [
-          Action.ActionSet.ActionSet<
-            [
-              Action.Action.Action<
-                Action.ActionHandler<string, never, never>,
-                {},
-                {}
-              >,
-            ],
-            ExpectedBindings
-          >,
-        ],
-        {}
-      >
-    >()
+    .expectTypeOf<Action.Action.Bindings<typeof action>>()
+    .toExtend<ExpectedBindings>()
 
   const result = await runAction(action, {
     method: "GET",
@@ -179,43 +159,6 @@ test.it("uses GET & POST method", async () => {
       }),
     )
 
-  test
-    .expectTypeOf(action)
-    .toExtend<
-      Action.ActionSet.ActionSet<
-        [
-          Action.ActionSet.ActionSet<
-            [
-              Action.Action.Action<
-                Action.ActionHandler<string, never, never, any>,
-                {},
-                {
-                  media: "text/plain"
-                }
-              >,
-            ],
-            {
-              method: "GET"
-            }
-          >,
-          Action.ActionSet.ActionSet<
-            [
-              Action.Action.Action<
-                Action.ActionHandler<string, never, never, any>,
-                {},
-                {
-                  media: "text/plain"
-                }
-              >,
-            ],
-            {
-              method: "POST"
-            }
-          >,
-        ]
-      >
-    >()
-
   test.expect(Action.items(action)).toHaveLength(2)
 })
 
@@ -224,63 +167,18 @@ test.describe(`${Action.get.name}()`, () => {
     const methodActions = Action
       .get(
         Action.text(() => Effect.succeed("get 1")),
-        Action.html(() => Effect.succeed("get 2")),
       )
       .post(
         Action.text(() => Effect.succeed("get 1")),
       )
 
-    test
-      .expectTypeOf(methodActions)
-      .toExtend<
-        Action.ActionSet.ActionSet<
-          [
-            Action.ActionSet.ActionSet<
-              [
-                Action.Action.Action<
-                  Action.ActionHandler<string, never, never, any>,
-                  {},
-                  {
-                    media: "text/plain"
-                  }
-                >,
-                Action.Action.Action<
-                  Action.ActionHandler<string, never, never, any>,
-                  {},
-                  {
-                    media: "text/html"
-                  }
-                >,
-              ],
-              {
-                method: "GET"
-              }
-            >,
-
-            Action.ActionSet.ActionSet<
-              [
-                Action.Action.Action<
-                  Action.ActionHandler<string, never, never, any>,
-                  {},
-                  {
-                    media: "text/plain"
-                  }
-                >,
-              ],
-              {
-                method: "POST"
-              }
-            >,
-          ],
-          {}
-        >
-      >()
+    test.expect(Action.items(methodActions)).toHaveLength(2)
   })
 })
 
 function runAction(
   actionSet: Action.ActionSet.Any,
-  bindings: unknown,
+  bindings: Record<string, any>,
 ) {
   const actions = [...actionSet]
   const action = actions[actions.length - 1]

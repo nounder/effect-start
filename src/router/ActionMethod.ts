@@ -29,16 +29,14 @@ const Proto = {
 
 function makeMethodSet<
   M extends [...ActionMethod.MethodSet[]] = [],
-  D extends Action.ActionDescriptor.Any = {},
 >(
   items: M,
-  descriptor: D = {} as D,
-): ActionMethod.Builder<M, D> {
+): ActionMethod.Builder<M> {
   return Object.assign(
     Object.create(Proto),
     {
       [Action.ActionItems]: items,
-      [Action.ActionDescriptor]: descriptor,
+      [Action.ActionDescriptor]: {},
     },
   )
 }
@@ -54,7 +52,7 @@ function makeMethodDescriber<Method extends ActionMethod.HttpMethod>(
       ? this[Action.ActionItems]
       : [] as const
 
-    const methodSet = makeMethodSet([] as const, { method })
+    const methodSet = Action.set<{ method: Method }, []>([], { method })
     const f = Function.flow(
       ...fs as [(_: Action.ActionSet.Any) => Action.ActionSet.Any],
     )
@@ -81,21 +79,20 @@ export namespace ActionMethod {
     | "POST"
 
   export type MethodSet = Action.ActionSet.ActionSet<
-    Action.Actions,
-    { method: HttpMethod }
+    { method: HttpMethod },
+    Action.Actions
   >
 
   export interface Builder<
     Items extends [...MethodSet[]] = [],
-    D extends Action.ActionDescriptor.Any = {},
-  > extends Action.ActionSet.ActionSet<Items, D> {
+  > extends Action.ActionSet.ActionSet<{}, Items> {
     get: typeof get
     post: typeof post
   }
 
   export type EmptySet<M extends HttpMethod> = Action.ActionSet.ActionSet<
-    [],
-    { method: M }
+    { method: M },
+    []
   >
 
   type Items<S> = S extends Builder<infer I> ? I : []
@@ -106,7 +103,7 @@ export namespace ActionMethod {
       ab: (a: EmptySet<Method>) => A,
     ): Builder<[
       ...Items<S>,
-      Action.ActionSet.ActionSet<Action.ActionSet.Items<A>, { method: Method }>,
+      Action.ActionSet.ActionSet<{ method: Method }, Action.ActionSet.Items<A>>,
     ]>
 
     <
@@ -119,7 +116,7 @@ export namespace ActionMethod {
       bc: (b: A) => B,
     ): Builder<[
       ...Items<S>,
-      Action.ActionSet.ActionSet<Action.ActionSet.Items<B>, { method: Method }>,
+      Action.ActionSet.ActionSet<{ method: Method }, Action.ActionSet.Items<B>>,
     ]>
 
     <
@@ -134,7 +131,7 @@ export namespace ActionMethod {
       cd: (c: B) => C,
     ): Builder<[
       ...Items<S>,
-      Action.ActionSet.ActionSet<Action.ActionSet.Items<C>, { method: Method }>,
+      Action.ActionSet.ActionSet<{ method: Method }, Action.ActionSet.Items<C>>,
     ]>
   }
 }
