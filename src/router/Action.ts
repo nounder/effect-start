@@ -279,10 +279,7 @@ type ExtractContext<
   Descriptor extends ActionDescriptor.Empty,
 > = ExtractBindings<Items> & Descriptor
 
-export {
-  get,
-  post,
-} from "./ActionMethod.ts"
+export * from "./ActionMethod.ts"
 
 export function text<
   A extends string,

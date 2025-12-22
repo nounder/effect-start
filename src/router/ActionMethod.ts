@@ -1,5 +1,4 @@
 import * as Function from "effect/Function"
-import * as Pipeable from "effect/Pipeable"
 import * as Action from "./Action.ts"
 
 const TypeId: unique symbol = Symbol.for("effect-start/ActionSet")
@@ -12,12 +11,14 @@ export type Self =
 
 export const get = makeMethodDescriber("GET")
 export const post = makeMethodDescriber("POST")
+export const put = makeMethodDescriber("PUT")
+export const del = makeMethodDescriber("DELETE")
+export const patch = makeMethodDescriber("PATCH")
+export const head = makeMethodDescriber("HEAD")
+export const options = makeMethodDescriber("OPTIONS")
 
 const Proto = {
   [TypeId]: TypeId,
-  pipe() {
-    return Pipeable.pipeArguments(this, arguments)
-  },
   *[Symbol.iterator](this: Action.ActionSet.Any) {
     for (const item of this[Action.ActionItems]) {
       yield* item
@@ -25,6 +26,11 @@ const Proto = {
   },
   get,
   post,
+  put,
+  del,
+  patch,
+  head,
+  options,
 }
 
 function makeMethodSet<
@@ -90,9 +96,7 @@ export namespace ActionMethod {
 
   export interface Builder<
     Items extends [...MethodSet[]] = [],
-  > extends Action.ActionSet.ActionSet<{}, Items> {
-    get: typeof get
-    post: typeof post
+  > extends Action.ActionSet.ActionSet<{}, Items>, Module {
   }
 
   export type EmptySet<M extends HttpMethod> = Action.ActionSet.ActionSet<
