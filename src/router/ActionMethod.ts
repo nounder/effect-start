@@ -103,7 +103,9 @@ export namespace ActionMethod {
       ab: (a: EmptySet<Method>) => A,
     ): Builder<[
       ...Items<S>,
-      Action.ActionSet.ActionSet<{ method: Method }, Action.ActionSet.Items<A>>,
+      Action.ActionSet.ActionSet<{
+        method: Method
+      }, Action.ActionSet.Items<A>>,
     ]>
 
     <

@@ -91,9 +91,12 @@ export namespace ActionSet {
     infer Head,
     ...infer Tail extends Actions,
   ] ? (
-      Head extends Action.Action<infer D> ? D & _ExtractDescriptors<Tail>
-        : Head extends ActionSet<infer D, infer Nested>
-          ? D & _ExtractDescriptors<Nested> & _ExtractDescriptors<Tail>
+      Head extends { handler: any; [ActionDescriptor]: infer D }
+        ? D & _ExtractDescriptors<Tail>
+        : Head extends {
+          [ActionDescriptor]: infer D
+          [ActionItems]: infer Nested extends Actions
+        } ? D & _ExtractDescriptors<Nested> & _ExtractDescriptors<Tail>
         : _ExtractDescriptors<Tail>
     )
     : {}
@@ -165,7 +168,7 @@ export function make<
   E = never,
   R = never,
 >(
-  handler: ActionHandler<B, A, E, R>,
+  handler: ActionHandler<B & D, A, E, R>,
   descriptor?: D,
 ): Action.Action<D, B, A, E, R> {
   const items: any = []
@@ -214,7 +217,7 @@ export namespace Action {
       Action<D, B, A>,
     ]>
   {
-    readonly handler: ActionHandler<B, A, E, R>
+    readonly handler: ActionHandler<B & D, A, E, R>
   }
 
   export type Default = Action<{}, Record<string, any>, any>
@@ -260,12 +263,14 @@ export namespace Action {
     infer Head,
     ...infer Tail extends Actions,
   ] ? (
-      Head extends Action<any, infer B> ? B & _ExtractBindings<Tail>
-        : Head extends ActionSet.ActionSet<any, infer Nested>
-          ? _ExtractBindings<Nested> & _ExtractBindings<Tail>
+      Head extends Action<infer D, infer B> ? D & B & _ExtractBindings<Tail>
+        : Head extends ActionSet.ActionSet<infer D, infer Nested>
+          ? D & _ExtractBindings<Nested> & _ExtractBindings<Tail>
         : _ExtractBindings<Tail>
     )
     : {}
+
+  export type Descriptor<T> = T extends Action<infer D> ? D : never
 }
 
 type ExtractBindings<M extends Actions> = M extends [
@@ -297,7 +302,7 @@ export function text<
   Priors extends Actions,
 >(
   handler: (
-    context: ExtractContext<Priors, D>,
+    context: ExtractContext<Priors, D> & { media: "text/plain" },
   ) => Effect.Effect<A, E, R>,
 ) {
   return function(
@@ -305,10 +310,17 @@ export function text<
   ) {
     const action = make<
       { media: "text/plain" },
-      ActionHandler<A, E, R>,
-      ExtractBindings<Priors>
+      ExtractBindings<Priors>,
+      A,
+      E,
+      R
     >(
-      handler,
+      handler as ActionHandler<
+        ExtractBindings<Priors> & { media: "text/plain" },
+        A,
+        E,
+        R
+      >,
       { media: "text/plain" },
     )
 
@@ -337,8 +349,10 @@ export function html<
   ) {
     const action = make<
       { media: "text/html" },
-      ActionHandler<A, E, R>,
-      ExtractBindings<Priors>
+      ExtractContext<Priors, D>,
+      A,
+      E,
+      R
     >(
       handler,
       { media: "text/html" },
