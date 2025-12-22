@@ -275,56 +275,12 @@ export type ExtractBindings<
   )
   : {}
 
-type ExtractContext<
+export type ExtractContext<
   Items extends RouteSet.Tuple,
   Descriptor extends RouteDescriptor.Any,
 > = ExtractBindings<Items> & Descriptor
 
-export function text<
-  A extends string,
-  E,
-  R,
-  D extends RouteDescriptor.Any,
-  Priors extends RouteSet.Tuple,
->(
-  handler: (
-    context:
-      & ExtractContext<
-        Priors,
-        D
-      >
-      & { media: "text/plain" },
-  ) => Effect.Effect<A, E, R>,
-) {
-  return function(
-    self: RouteSet.RouteSet<D, Priors>,
-  ) {
-    const route = make<
-      { media: "text/plain" },
-      ExtractBindings<Priors>,
-      A,
-      E,
-      R
-    >(
-      handler as Route.Handler<
-        & ExtractBindings<Priors>
-        & { media: "text/plain" },
-        A,
-        E,
-        R
-      >,
-      { media: "text/plain" },
-    )
-
-    return set(
-      [
-        ...items(self),
-        route,
-      ] as const,
-    )
-  }
-}
-
+export * from "./RouteBody.ts"
 export * from "./RouteHook.ts"
 export * from "./RouteMethod.ts"
 export * from "./RouteSchema.ts"

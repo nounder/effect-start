@@ -4,8 +4,10 @@ import {
   Schema,
 } from "effect"
 import * as Route from "./Route.ts"
+import * as RouteMethod from "./RouteMethod.ts"
+import * as RouteSchema from "./RouteSchema.ts"
 
-test.describe(`${Route.schemaHeaders.name}()`, () => {
+test.describe(`${RouteSchema.schemaHeaders.name}()`, () => {
   test.it("passes bindings and parses value", async () => {
     const headers = {
       "x-hello": "test-value",
@@ -14,8 +16,8 @@ test.describe(`${Route.schemaHeaders.name}()`, () => {
       headers: typeof headers
     }
 
-    const route = Route.get(
-      Route.schemaHeaders(
+    const route = RouteMethod.get(
+      RouteSchema.schemaHeaders(
         Schema.Struct({
           "x-hello": Schema.String,
         }),

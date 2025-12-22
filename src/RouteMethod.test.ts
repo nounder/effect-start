@@ -10,13 +10,13 @@ test.it("uses GET method", async () => {
           .expectTypeOf(context)
           .toMatchObjectType<{
             method: "GET"
-            media: "text/plain"
+            format: "text"
           }>()
         test
           .expect(context)
           .toEqual({
             method: "GET",
-            media: "text/plain",
+            format: "text",
           })
 
         return "Hello, World!"
@@ -33,7 +33,7 @@ test.it("uses GET method", async () => {
         }, [
           Route.Route.Route<
             {
-              media: "text/plain"
+              format: "text"
             },
             {},
             string
@@ -46,7 +46,7 @@ test.it("uses GET method", async () => {
     .expectTypeOf<Route.Route.Bindings<typeof route>>()
     .toMatchObjectType<{
       method: "GET"
-      media: "text/plain"
+      format: "text"
     }>()
 })
 

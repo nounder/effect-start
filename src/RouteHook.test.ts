@@ -35,16 +35,12 @@ test.it("passes bindings", () => {
           any
         >,
         Route.Route.Route<
-          { media: "text/plain" },
+          { format: "text" },
           typeof filterResult.context,
           string
         >,
       ]>
     >()
-
-  test
-    .expectTypeOf<Route.RouteSet.Descriptors<typeof routes>>()
-    .toMatchObjectType<{ media: "text/plain" }>()
 
   test
     .expect(Route.items(routes))
