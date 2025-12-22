@@ -1,12 +1,12 @@
 import * as Function from "effect/Function"
-import * as Action from "./Action.ts"
+import * as Route from "./Route.ts"
 
-const TypeId: unique symbol = Symbol.for("effect-start/ActionSet")
+const TypeId: unique symbol = Symbol.for("effect-start/RouteSet")
 
-type Module = typeof import("./ActionMethod.ts")
+type Module = typeof import("./RouteMethod.ts")
 
 export type Self =
-  | ActionMethod.Builder
+  | RouteMethod.Builder
   | Module
 
 export const get = makeMethodDescriber("GET")
@@ -19,8 +19,8 @@ export const options = makeMethodDescriber("OPTIONS")
 
 const Proto = {
   [TypeId]: TypeId,
-  *[Symbol.iterator](this: Action.ActionSet.Any) {
-    for (const item of this[Action.ActionItems]) {
+  *[Symbol.iterator](this: Route.RouteSet.Any) {
+    for (const item of this[Route.RouteItems]) {
       yield* item
     }
   },
@@ -34,38 +34,38 @@ const Proto = {
 }
 
 function makeMethodSet<
-  M extends [...ActionMethod.MethodSet[]] = [],
+  M extends [...RouteMethod.MethodSet[]] = [],
 >(
   items: M,
-): ActionMethod.Builder<M> {
+): RouteMethod.Builder<M> {
   return Object.assign(
     Object.create(Proto),
     {
-      [Action.ActionItems]: items,
-      [Action.ActionDescriptor]: {},
+      [Route.RouteItems]: items,
+      [Route.RouteDescriptor]: {},
     },
   )
 }
 
-function makeMethodDescriber<Method extends ActionMethod.HttpMethod>(
+function makeMethodDescriber<Method extends RouteMethod.HttpMethod>(
   method: Method,
-): ActionMethod.Describer<Method> {
+): RouteMethod.Describer<Method> {
   const fn = function(
     this: Self,
-    ...fs: ((self: Action.ActionSet.Any) => Action.ActionSet.Any)[]
-  ): Action.ActionSet.Any {
-    const baseItems = Action.isActionSet(this)
-      ? this[Action.ActionItems]
+    ...fs: ((self: Route.RouteSet.Any) => Route.RouteSet.Any)[]
+  ): Route.RouteSet.Any {
+    const baseItems = Route.isRouteSet(this)
+      ? this[Route.RouteItems]
       : [] as const
 
-    const methodSet = Action.set<{ method: Method }, []>([], { method })
+    const methodSet = Route.set<{ method: Method }, []>([], { method })
     const f = Function.flow(
-      ...fs as [(_: Action.ActionSet.Any) => Action.ActionSet.Any],
+      ...fs as [(_: Route.RouteSet.Any) => Route.RouteSet.Any],
     )
     const result = f(methodSet)
 
-    const wrappedResult = Action.set(
-      Action.items(result) as Action.Actions,
+    const wrappedResult = Route.set(
+      Route.items(result) as Route.Routes,
       { method },
     )
 
@@ -73,13 +73,13 @@ function makeMethodDescriber<Method extends ActionMethod.HttpMethod>(
       [
         ...baseItems,
         wrappedResult,
-      ] as [...ActionMethod.MethodSet[]],
+      ] as [...RouteMethod.MethodSet[]],
     )
   }
-  return fn as ActionMethod.Describer<Method>
+  return fn as RouteMethod.Describer<Method>
 }
 
-export namespace ActionMethod {
+export namespace RouteMethod {
   export type HttpMethod =
     | "GET"
     | "POST"
@@ -89,17 +89,17 @@ export namespace ActionMethod {
     | "HEAD"
     | "OPTIONS"
 
-  export type MethodSet = Action.ActionSet.ActionSet<
+  export type MethodSet = Route.RouteSet.RouteSet<
     { method: HttpMethod },
-    Action.Actions
+    Route.Routes
   >
 
   export interface Builder<
     Items extends [...MethodSet[]] = [],
-  > extends Action.ActionSet.ActionSet<{}, Items>, Module {
+  > extends Route.RouteSet.RouteSet<{}, Items>, Module {
   }
 
-  export type EmptySet<M extends HttpMethod> = Action.ActionSet.ActionSet<
+  export type EmptySet<M extends HttpMethod> = Route.RouteSet.RouteSet<
     { method: M },
     []
   >
@@ -107,34 +107,34 @@ export namespace ActionMethod {
   type Items<S> = S extends Builder<infer I> ? I : []
 
   export interface Describer<Method extends HttpMethod> {
-    <S extends Self, A extends Action.ActionSet.Any>(
+    <S extends Self, A extends Route.RouteSet.Any>(
       this: S,
       ab: (a: EmptySet<Method>) => A,
     ): Builder<[
       ...Items<S>,
-      Action.ActionSet.ActionSet<{
+      Route.RouteSet.RouteSet<{
         method: Method
-      }, Action.ActionSet.Items<A>>,
+      }, Route.RouteSet.Items<A>>,
     ]>
 
     <
       S extends Self,
-      A extends Action.ActionSet.Any,
-      B extends Action.ActionSet.Any,
+      A extends Route.RouteSet.Any,
+      B extends Route.RouteSet.Any,
     >(
       this: S,
       ab: (a: EmptySet<Method>) => A,
       bc: (b: A) => B,
     ): Builder<[
       ...Items<S>,
-      Action.ActionSet.ActionSet<{ method: Method }, Action.ActionSet.Items<B>>,
+      Route.RouteSet.RouteSet<{ method: Method }, Route.RouteSet.Items<B>>,
     ]>
 
     <
       S extends Self,
-      A extends Action.ActionSet.Any,
-      B extends Action.ActionSet.Any,
-      C extends Action.ActionSet.Any,
+      A extends Route.RouteSet.Any,
+      B extends Route.RouteSet.Any,
+      C extends Route.RouteSet.Any,
     >(
       this: S,
       ab: (a: EmptySet<Method>) => A,
@@ -142,7 +142,7 @@ export namespace ActionMethod {
       cd: (c: B) => C,
     ): Builder<[
       ...Items<S>,
-      Action.ActionSet.ActionSet<{ method: Method }, Action.ActionSet.Items<C>>,
+      Route.RouteSet.RouteSet<{ method: Method }, Route.RouteSet.Items<C>>,
     ]>
   }
 }

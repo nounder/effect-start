@@ -1,0 +1,52 @@
+import * as test from "bun:test"
+import { Effect } from "effect"
+import * as Route from "./Route.ts"
+
+test.it("passes bindings", () => {
+  const headers = {
+    "origin": "nounder.org",
+  }
+  const filterResult = {
+    context: {
+      headers,
+    },
+  }
+
+  const routes = Route.empty.pipe(
+    Route.filter(() => Effect.succeed(filterResult)),
+    Route.text(context => {
+      test
+        .expectTypeOf(context)
+        .toExtend<typeof filterResult.context>()
+
+      return Effect.succeed(
+        `Origin: ${context.headers.origin}`,
+      )
+    }),
+  )
+
+  test
+    .expectTypeOf(routes)
+    .toExtend<
+      Route.RouteSet.RouteSet<{}, [
+        Route.Route.Route<
+          {},
+          typeof filterResult.context,
+          any
+        >,
+        Route.Route.Route<
+          { media: "text/plain" },
+          typeof filterResult.context,
+          string
+        >,
+      ]>
+    >()
+
+  test
+    .expectTypeOf<Route.RouteSet.Descriptors<typeof routes>>()
+    .toMatchObjectType<{ media: "text/plain" }>()
+
+  test
+    .expect(Route.items(routes))
+    .toHaveLength(2)
+})
