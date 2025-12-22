@@ -1,8 +1,6 @@
-import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
 import * as Effect from "effect/Effect"
 import * as Pipeable from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
-import * as Schema from "effect/Schema"
 
 export const RouteItems: unique symbol = Symbol()
 export const RouteDescriptor: unique symbol = Symbol()
@@ -255,7 +253,7 @@ export function items<
   return self[RouteItems]
 }
 
-type ExtractBindings<
+export type ExtractBindings<
   M extends RouteSet.Tuple,
 > = M extends [
   infer Head,
@@ -281,8 +279,6 @@ type ExtractContext<
   Items extends RouteSet.Tuple,
   Descriptor extends RouteDescriptor.Any,
 > = ExtractBindings<Items> & Descriptor
-
-export * from "./RouteMethod.ts"
 
 export function text<
   A extends string,
@@ -329,68 +325,6 @@ export function text<
   }
 }
 
-export function filter<
-  B extends Record<string, any>,
-  E = never,
-  R = never,
->(
-  filterHandler: (
-    context: any,
-  ) => Effect.Effect<{ context: B }, E, R>,
-) {
-  return function<
-    D extends RouteDescriptor.Any,
-    Priors extends RouteSet.Tuple,
-  >(
-    self: RouteSet.RouteSet<D, Priors>,
-  ) {
-    const route = make<
-      {},
-      & ExtractBindings<Priors>
-      & B,
-      any,
-      E,
-      R
-    >(
-      (context, next) =>
-        Effect.gen(function*() {
-          const filterResult = yield* filterHandler(context)
-
-          yield* next(
-            filterResult
-              ? {
-                ...context,
-                ...filterResult.context,
-              }
-              : context,
-          )
-        }),
-    )
-
-    return set(
-      [
-        ...items(self),
-        route,
-      ] as const,
-    )
-  }
-}
-
-export function schemaHeaders<
-  A,
-  I extends Readonly<Record<string, string | undefined>>,
-  R,
->(
-  fields: Schema.Schema<A, I, R>,
-) {
-  return filter(() =>
-    Effect.map(
-      HttpServerRequest.schemaHeaders(fields),
-      (headers) => ({
-        context: {
-          headers,
-        },
-      }),
-    )
-  )
-}
+export * from "./RouteHook.ts"
+export * from "./RouteMethod.ts"
+export * from "./RouteSchema.ts"
