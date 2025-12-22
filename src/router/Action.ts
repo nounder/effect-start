@@ -4,17 +4,12 @@ import * as Pipeable from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
 
-type HttpMethod =
-  | "GET"
-  | "POST"
-
 export namespace ActionDescriptor {
   export type Any =
     | Empty
     | Media
     | Proto
     | Path
-    | Method
 
   export type Empty = {}
 
@@ -32,15 +27,10 @@ export namespace ActionDescriptor {
     path: `/${string}`
   }
 
-  export type Method = {
-    method: HttpMethod
-  }
-
   export type Data = Partial<
     & Media
     & Proto
     & Path
-    & Method
   >
 }
 

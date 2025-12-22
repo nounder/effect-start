@@ -77,6 +77,11 @@ export namespace ActionMethod {
   export type HttpMethod =
     | "GET"
     | "POST"
+    | "PUT"
+    | "DELETE"
+    | "PATCH"
+    | "HEAD"
+    | "OPTIONS"
 
   export type MethodSet = Action.ActionSet.ActionSet<
     { method: HttpMethod },
