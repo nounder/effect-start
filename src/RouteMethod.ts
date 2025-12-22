@@ -65,7 +65,7 @@ function makeMethodDescriber<Method extends RouteMethod.HttpMethod>(
     const result = f(methodSet)
 
     const wrappedResult = Route.set(
-      Route.items(result) as Route.Routes,
+      Route.items(result) as Route.RouteSet.Tuple,
       { method },
     )
 
@@ -91,7 +91,7 @@ export namespace RouteMethod {
 
   export type MethodSet = Route.RouteSet.RouteSet<
     { method: HttpMethod },
-    Route.Routes
+    Route.RouteSet.Tuple
   >
 
   export interface Builder<

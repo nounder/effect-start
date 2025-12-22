@@ -4,110 +4,178 @@ import * as Pipeable from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
 
-export namespace RouteDescriptor {
-  export type Any =
-    | Empty
-    | Media
-    | Proto
-    | Path
-
-  export type Empty = {}
-
-  export type Media = {
-    media:
-      | "text/plain"
-      | "application/json"
-  }
-
-  export type Proto = {
-    proto: "http"
-  }
-
-  export type Path = {
-    path: `/${string}`
-  }
-
-  export type Data = Partial<
-    & Media
-    & Proto
-    & Path
-  >
-}
-
 export const RouteItems: unique symbol = Symbol()
 export const RouteDescriptor: unique symbol = Symbol()
 
 export const TypeId: unique symbol = Symbol.for("effect-start/RouteSet")
 
-export type Route = Route.Default
-export type RouteItem = Route.Default | RouteSet.Any
-export type Routes = [...RouteItem[]]
+export namespace RouteDescriptor {
+  export type Any = {}
+}
 
 export namespace RouteSet {
+  export type Tuple = [
+    ...Any[],
+  ]
+
   export type RouteSet<
-    D extends RouteDescriptor.Empty = {},
-    M extends Routes = [],
+    D extends RouteDescriptor.Any = {},
+    M extends Tuple = [],
   > =
     & Data<D, M>
     & {
       [TypeId]: typeof TypeId
     }
     & Pipeable.Pipeable
-    & Iterable<Route.Default>
+    & Iterable<Route.Route>
 
   export type Data<
-    D extends RouteDescriptor.Empty = {},
-    M extends Routes = [],
+    D extends RouteDescriptor.Any = {},
+    M extends Tuple = [],
   > = {
     [RouteItems]: M
     [RouteDescriptor]: D
   }
 
-  export type Default = RouteSet<{}, [Route, ...Route[]]>
+  export type Proto =
+    & Pipeable.Pipeable
+    & Iterable<Route.Route>
+    & {
+      [TypeId]: typeof TypeId
+    }
 
-  export type Any = RouteSet<{}, Routes>
+  export type Any = RouteSet<{}, Tuple>
 
-  export type Items<T extends Data<any, any>> = T extends Data<any, infer M> ? M
+  export type Items<
+    T extends Data<any, any>,
+  > = T extends Data<
+    any,
+    infer M
+  > ? M
     : never
 
-  export type Descriptor<T extends Data<any, any>> = T extends Data<infer D> ? D
+  export type Descriptors<
+    T extends Data<
+      any,
+      any
+    >,
+  > = T extends Data<
+    any,
+    infer M
+  > ? _ExtractDescriptors<M>
     : never
 
-  export type Descriptors<T extends Data<any, any>> = T extends
-    Data<any, infer M> ? _ExtractDescriptors<M>
-    : never
-
-  type _ExtractDescriptors<M extends Routes> = M extends [
+  type _ExtractDescriptors<
+    M extends Tuple,
+  > = M extends [
     infer Head,
-    ...infer Tail extends Routes,
+    ...infer Tail extends Tuple,
   ] ? (
-      Head extends { handler: any; [RouteDescriptor]: infer D }
-        ? D & _ExtractDescriptors<Tail>
+      Head extends {
+        handler: any
+        [RouteDescriptor]: infer D
+      } ?
+          & D
+          & _ExtractDescriptors<Tail>
         : Head extends {
           [RouteDescriptor]: infer D
-          [RouteItems]: infer Nested extends Routes
-        } ? D & _ExtractDescriptors<Nested> & _ExtractDescriptors<Tail>
+          [RouteItems]: infer Nested extends Tuple
+        } ?
+            & D
+            & _ExtractDescriptors<Nested>
+            & _ExtractDescriptors<Tail>
         : _ExtractDescriptors<Tail>
     )
     : {}
 
-  export type Bindings<T extends Data<any, any>> = T extends Data<any, infer M>
-    ? _ExtractBindings<M>
+  export type Bindings<
+    T extends Data<any, any>,
+  > = T extends Data<any, infer M> ? (
+      _ExtractBindings<M>
+    )
     : never
 
-  type _ExtractBindings<M extends Routes> = M extends [
+  type _ExtractBindings<
+    M extends Tuple,
+  > = M extends [
     infer Head,
-    ...infer Tail extends Routes,
+    ...infer Tail extends Tuple,
   ] ? (
-      Head extends Route.Route<any, infer B> ? B | _ExtractBindings<Tail>
-        : Head extends RouteSet<any, infer Nested>
-          ? _ExtractBindings<Nested> | _ExtractBindings<Tail>
+      Head extends Route.Route<
+        any,
+        infer B
+      > ?
+          | B
+          | _ExtractBindings<Tail>
+        : Head extends RouteSet<
+          any,
+          infer Nested
+        > ?
+            | _ExtractBindings<Nested>
+            | _ExtractBindings<Tail>
         : _ExtractBindings<Tail>
     )
     : never
 }
 
-const Proto = {
+export namespace Route {
+  export interface Route<
+    D extends RouteDescriptor.Any = {},
+    B extends Record<string, any> = {},
+    A = any,
+    E = never,
+    R = never,
+  > extends
+    RouteSet.RouteSet<D, [
+      Route<D, B, A>,
+    ]>
+  {
+    readonly handler: Handler<B & D, A, E, R>
+  }
+
+  export type Handler<B, A, E, R> =
+    | ((
+      context: B,
+      next: (context: B) => Effect.Effect<A>,
+    ) => Effect.Effect<A, E, R>)
+    | ((
+      context: B,
+    ) => Effect.Effect<A, E, R>)
+
+  export type Array = RouteSet.Tuple
+
+  export type Bindings<T> = T extends RouteSet.RouteSet<
+    infer D,
+    infer Items
+  > ? D & _ExtractBindings<Items>
+    : never
+
+  type _ExtractBindings<
+    M extends RouteSet.Tuple,
+  > = M extends [
+    infer Head,
+    ...infer Tail extends RouteSet.Tuple,
+  ] ? (
+      Head extends Route<
+        infer D,
+        infer B
+      > ?
+          & D
+          & B
+          & _ExtractBindings<Tail>
+        : Head extends RouteSet.RouteSet<
+          infer D,
+          infer Nested
+        > ?
+            & D
+            & _ExtractBindings<Nested>
+            & _ExtractBindings<Tail>
+        : _ExtractBindings<Tail>
+    )
+    : {}
+}
+
+const Proto: RouteSet.Proto = {
   [TypeId]: TypeId,
   pipe() {
     return Pipeable.pipeArguments(this, arguments)
@@ -131,13 +199,14 @@ export function isRouteSet(
 
 export function isRoute(
   input: unknown,
-): input is Route.Default {
-  return isRouteSet(input) && Predicate.hasProperty(input, "handler")
+): input is Route.Route {
+  return isRouteSet(input)
+    && Predicate.hasProperty(input, "handler")
 }
 
 export function set<
   D extends RouteDescriptor.Any = {},
-  M extends Routes = [],
+  M extends RouteSet.Tuple = [],
 >(
   items: M = [] as unknown as M,
   descriptor: D = {} as D,
@@ -158,7 +227,7 @@ export function make<
   E = never,
   R = never,
 >(
-  handler: RouteHandler<B & D, A, E, R>,
+  handler: Route.Handler<B & D, A, E, R>,
   descriptor?: D,
 ): Route.Route<D, B, A, E, R> {
   const items: any = []
@@ -178,105 +247,39 @@ export function make<
 
 export const empty: RouteSet.RouteSet<{}, []> = set()
 
-export function items<T extends RouteSet.Data<any, any>>(
+export function items<
+  T extends RouteSet.Data<any, any>,
+>(
   self: T,
 ): RouteSet.Items<T> {
   return self[RouteItems]
 }
 
-export type RouteBindings = Record<string, any>
-
-export type RouteHandler<B, A, E, R> =
-  | ((
-    context: B,
-    next: (context: B) => Effect.Effect<A>,
-  ) => Effect.Effect<A, E, R>)
-  | ((
-    context: B,
-  ) => Effect.Effect<A, E, R>)
-
-export namespace Route {
-  export interface Route<
-    D extends RouteDescriptor.Empty = {},
-    B extends RouteBindings = {},
-    A = any,
-    E = never,
-    R = never,
-  > extends
-    RouteSet.RouteSet<D, [
-      Route<D, B, A>,
-    ]>
-  {
-    readonly handler: RouteHandler<B & D, A, E, R>
-  }
-
-  export type Default = Route<{}, Record<string, any>, any>
-
-  export type Array = Routes
-
-  export type Error<T> = T extends RouteSet.RouteSet<any, infer Items>
-    ? _ExtractError<Items>
-    : never
-
-  type _ExtractError<M extends Routes> = M extends [
-    infer Head,
-    ...infer Tail extends Routes,
-  ] ? (
-      Head extends Route<any, any, any, infer E> ? E | _ExtractError<Tail>
-        : Head extends RouteSet.RouteSet<any, infer Nested>
-          ? _ExtractError<Nested> | _ExtractError<Tail>
-        : _ExtractError<Tail>
-    )
-    : never
-
-  export type Requirements<T> = T extends RouteSet.RouteSet<any, infer Items>
-    ? _ExtractRequirements<Items>
-    : never
-
-  type _ExtractRequirements<M extends Routes> = M extends [
-    infer Head,
-    ...infer Tail extends Routes,
-  ] ? (
-      Head extends Route<any, any, any, any, infer R>
-        ? R | _ExtractRequirements<Tail>
-        : Head extends RouteSet.RouteSet<any, infer Nested>
-          ? _ExtractRequirements<Nested> | _ExtractRequirements<Tail>
-        : _ExtractRequirements<Tail>
-    )
-    : never
-
-  export type Bindings<T> = T extends RouteSet.RouteSet<infer D, infer Items>
-    ? D & _ExtractBindings<Items>
-    : never
-
-  type _ExtractBindings<M extends Routes> = M extends [
-    infer Head,
-    ...infer Tail extends Routes,
-  ] ? (
-      Head extends Route<infer D, infer B> ? D & B & _ExtractBindings<Tail>
-        : Head extends RouteSet.RouteSet<infer D, infer Nested>
-          ? D & _ExtractBindings<Nested> & _ExtractBindings<Tail>
-        : _ExtractBindings<Tail>
-    )
-    : {}
-
-  export type Descriptor<T> = T extends Route<infer D> ? D : never
-}
-
-type ExtractBindings<M extends Routes> = M extends [
+type ExtractBindings<
+  M extends RouteSet.Tuple,
+> = M extends [
   infer Head,
-  ...infer Tail extends Routes,
+  ...infer Tail extends RouteSet.Tuple,
 ] ? (
-    Head extends Route.Route<any, infer B> ? B & ExtractBindings<Tail>
-      : Head extends RouteSet.RouteSet<any, infer Nested>
-        ? ExtractBindings<Nested> & ExtractBindings<Tail>
+    Head extends Route.Route<
+      any,
+      infer B
+    > ?
+        & B
+        & ExtractBindings<Tail>
+      : Head extends RouteSet.RouteSet<
+        any,
+        infer Nested
+      > ?
+          & ExtractBindings<Nested>
+          & ExtractBindings<Tail>
       : ExtractBindings<Tail>
   )
   : {}
 
 type ExtractContext<
-  Items extends Routes,
-  Descriptor extends RouteDescriptor.Empty,
+  Items extends RouteSet.Tuple,
+  Descriptor extends RouteDescriptor.Any,
 > = ExtractBindings<Items> & Descriptor
 
 export * from "./RouteMethod.ts"
@@ -285,11 +288,16 @@ export function text<
   A extends string,
   E,
   R,
-  D extends RouteDescriptor.Empty,
-  Priors extends Routes,
+  D extends RouteDescriptor.Any,
+  Priors extends RouteSet.Tuple,
 >(
   handler: (
-    context: ExtractContext<Priors, D> & { media: "text/plain" },
+    context:
+      & ExtractContext<
+        Priors,
+        D
+      >
+      & { media: "text/plain" },
   ) => Effect.Effect<A, E, R>,
 ) {
   return function(
@@ -302,47 +310,14 @@ export function text<
       E,
       R
     >(
-      handler as RouteHandler<
-        ExtractBindings<Priors> & { media: "text/plain" },
+      handler as Route.Handler<
+        & ExtractBindings<Priors>
+        & { media: "text/plain" },
         A,
         E,
         R
       >,
       { media: "text/plain" },
-    )
-
-    return set(
-      [
-        ...items(self),
-        route,
-      ] as const,
-    )
-  }
-}
-
-export function html<
-  A extends string,
-  E,
-  R,
-  D extends RouteDescriptor.Empty,
-  Priors extends Routes,
->(
-  handler: (
-    context: ExtractContext<Priors, D>,
-  ) => Effect.Effect<A, E, R>,
-) {
-  return function(
-    self: RouteSet.RouteSet<D, Priors>,
-  ) {
-    const route = make<
-      { media: "text/html" },
-      ExtractContext<Priors, D>,
-      A,
-      E,
-      R
-    >(
-      handler,
-      { media: "text/html" },
     )
 
     return set(
@@ -363,12 +338,16 @@ export function filter<
     context: any,
   ) => Effect.Effect<{ context: B }, E, R>,
 ) {
-  return function<D extends RouteDescriptor.Empty, Priors extends Routes>(
+  return function<
+    D extends RouteDescriptor.Any,
+    Priors extends RouteSet.Tuple,
+  >(
     self: RouteSet.RouteSet<D, Priors>,
   ) {
     const route = make<
       {},
-      ExtractBindings<Priors> & B,
+      & ExtractBindings<Priors>
+      & B,
       any,
       E,
       R
