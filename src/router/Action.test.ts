@@ -1,10 +1,8 @@
-import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
 import * as test from "bun:test"
 import {
   Effect,
   Schema,
 } from "effect"
-import * as Function from "effect/Function"
 import * as Action from "./Action.ts"
 
 test.describe(`${Action.filter.name}()`, () => {
@@ -34,22 +32,29 @@ test.describe(`${Action.filter.name}()`, () => {
     test
       .expectTypeOf(actions)
       .toExtend<
-        Action.ActionSet.ActionSet<
-          {},
-          [
-            Action.Action.Action<
-              {},
-              typeof filterResult.context,
-              typeof filterResult
-            >,
-            Action.Action.Action<
-              {},
-              typeof filterResult.context,
-              string
-            >,
-          ]
-        >
+        Action.ActionSet.ActionSet<{}, [
+          Action.Action.Action<
+            {},
+            typeof filterResult.context,
+            any,
+            never,
+            never
+          >,
+          Action.Action.Action<
+            { media: "text/plain" },
+            typeof filterResult.context,
+            string,
+            never,
+            never
+          >,
+        ]>
       >()
+
+    test
+      .expectTypeOf<Action.ActionSet.Descriptors<typeof actions>>()
+      .toMatchObjectType<{ media: "text/plain" }>()
+
+    test.expect(Action.items(actions)).toHaveLength(2)
   })
 })
 
@@ -104,20 +109,20 @@ test.describe(`${Action.schemaHeaders.name}()`, () => {
 test.it("uses GET method", async () => {
   test.expect.assertions(2)
 
-  type ExpectedBindings = {
-    method: "GET"
-  }
-
   const action = Action.get(
     Action.text((context) =>
       Effect.gen(function*() {
         test
           .expectTypeOf(context)
-          .toExtend<ExpectedBindings>()
+          .toMatchObjectType<{
+            method: "GET"
+            media: "text/plain"
+          }>()
         test
           .expect(context)
-          .toMatchObject({
+          .toEqual({
             method: "GET",
+            media: "text/plain",
           })
 
         return "Hello, World!"
@@ -126,11 +131,35 @@ test.it("uses GET method", async () => {
   )
 
   test
+    .expectTypeOf(action)
+    .toExtend<
+      Action.ActionSet.ActionSet<{}, [
+        Action.ActionSet.ActionSet<{
+          method: "GET"
+        }, [
+          Action.Action.Action<
+            {
+              media: "text/plain"
+            },
+            {},
+            string,
+            never,
+            never
+          >,
+        ]>,
+      ]>
+    >()
+
+  test
     .expectTypeOf<Action.Action.Bindings<typeof action>>()
-    .toExtend<ExpectedBindings>()
+    .toMatchObjectType<{
+      method: "GET"
+      media: "text/plain"
+    }>()
 
   const result = await runAction(action, {
     method: "GET",
+    media: "text/plain",
   })
 
   test

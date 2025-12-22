@@ -368,7 +368,7 @@ export function filter<
   ) {
     const action = make<
       {},
-      ExtractContext<Priors, D> & B,
+      ExtractBindings<Priors> & B,
       any,
       E,
       R
