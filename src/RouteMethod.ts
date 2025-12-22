@@ -17,21 +17,24 @@ export const patch = makeMethodDescriber("PATCH")
 export const head = makeMethodDescriber("HEAD")
 export const options = makeMethodDescriber("OPTIONS")
 
-const Proto = {
-  [TypeId]: TypeId,
-  *[Symbol.iterator](this: Route.RouteSet.Any) {
-    for (const item of this[Route.RouteItems]) {
-      yield* item
-    }
+const Proto = Object.assign(
+  Object.create(null),
+  {
+    [TypeId]: TypeId,
+    *[Symbol.iterator](this: Route.RouteSet.Any) {
+      for (const item of Route.items(this)) {
+        yield* item
+      }
+    },
+    get,
+    post,
+    put,
+    del,
+    patch,
+    head,
+    options,
   },
-  get,
-  post,
-  put,
-  del,
-  patch,
-  head,
-  options,
-}
+)
 
 function makeMethodSet<
   M extends [...RouteMethod.MethodSet[]] = [],
@@ -55,7 +58,7 @@ function makeMethodDescriber<Method extends RouteMethod.HttpMethod>(
     ...fs: ((self: Route.RouteSet.Any) => Route.RouteSet.Any)[]
   ): Route.RouteSet.Any {
     const baseItems = Route.isRouteSet(this)
-      ? this[Route.RouteItems]
+      ? Route.items(this)
       : [] as const
 
     const methodSet = Route.set<{ method: Method }, []>([], { method })

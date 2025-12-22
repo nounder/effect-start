@@ -140,8 +140,6 @@ export namespace Route {
       context: B,
     ) => Effect.Effect<A, E, R>)
 
-  export type Array = RouteSet.Tuple
-
   export type Bindings<T> = T extends RouteSet.RouteSet<
     infer D,
     infer Items
@@ -179,7 +177,7 @@ const Proto: RouteSet.Proto = {
     return Pipeable.pipeArguments(this, arguments)
   },
   *[Symbol.iterator](this: RouteSet.Any) {
-    for (const item of this[RouteItems]) {
+    for (const item of items(this)) {
       if (isRoute(item)) {
         yield item
       } else {
@@ -243,7 +241,15 @@ export function make<
   return route
 }
 
-export const empty: RouteSet.RouteSet<{}, []> = set()
+export const empty = set()
+
+export function describe<
+  D extends RouteDescriptor.Any,
+>(
+  descriptor: D,
+) {
+  return set([], descriptor)
+}
 
 export function items<
   T extends RouteSet.Data<any, any>,
