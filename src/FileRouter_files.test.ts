@@ -1,7 +1,7 @@
 import * as test from "bun:test"
 import { MemoryFileSystem } from "effect-memfs"
 import * as Effect from "effect/Effect"
-import { effectFn } from "../testing"
+import { effectFn } from "./testing"
 import * as FileRouter from "./FileRouter.ts"
 
 const Files = {

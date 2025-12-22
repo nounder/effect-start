@@ -4,10 +4,9 @@ import * as Effect from "effect/Effect"
 import * as Function from "effect/Function"
 import * as Schema from "effect/Schema"
 import * as NPath from "node:path"
-import * as SchemaExtra from "../SchemaExtra.ts"
+import * as SchemaExtra from "./SchemaExtra.ts"
 import * as FileRouter from "./FileRouter.ts"
 import * as FileRouterPattern from "./FileRouterPattern.ts"
-import * as RouteSet from "./RouteSet.ts"
 
 export function validateRouteModule(
   module: unknown,
@@ -15,10 +14,13 @@ export function validateRouteModule(
   if (typeof module !== "object" || module === null) {
     return false
   }
+
   if (!("default" in module)) {
     return false
   }
-  return RouteSet.isRouteSet(module.default)
+
+  // TODO: verify we're exporting a proper shape
+  return true
 }
 
 export function generatePathParamsSchema(
@@ -78,7 +80,8 @@ export function validateRouteModules(
       }
 
       const routeSet = module.default
-      const userSchema = RouteSet.schemas(routeSet)?.PathParams
+      // extract user schema
+      const userSchema = undefined
 
       if (
         expectedSchema

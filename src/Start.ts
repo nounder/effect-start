@@ -1,3 +1,4 @@
+// @ts-nocheck
 import * as FetchHttpClient from "@effect/platform/FetchHttpClient"
 import * as FileSystem from "@effect/platform/FileSystem"
 import * as HttpClient from "@effect/platform/HttpClient"

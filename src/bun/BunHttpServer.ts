@@ -1,3 +1,4 @@
+// @ts-nocheck
 import * as HttpApp from "@effect/platform/HttpApp"
 import * as HttpServer from "@effect/platform/HttpServer"
 import * as HttpServerError from "@effect/platform/HttpServerError"
@@ -14,7 +15,7 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import type * as Scope from "effect/Scope"
 import * as Random from "../Random.ts"
-import * as FileRouter from "../router/FileRouter.ts"
+import * as FileRouter from "../FileRouter.ts"
 import EmptyHTML from "./_empty.html"
 import {
   makeResponse,

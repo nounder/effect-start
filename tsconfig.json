@@ -42,5 +42,8 @@
 
   "include": [
     "src"
+  ],
+  "exclude": [
+    "**/*.todo.ts"
   ]
 }

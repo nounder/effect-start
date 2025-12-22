@@ -1,10 +1,7 @@
 import { HttpServerRequest } from "@effect/platform"
 import { RouteNotFound } from "@effect/platform/HttpServerError"
 import * as test from "bun:test"
-import {
-  Effect,
-  Layer,
-} from "effect"
+import { Layer } from "effect"
 import * as Cause from "effect/Cause"
 import * as HttpAppExtra from "./HttpAppExtra.ts"
 import { effectFn } from "./testing"

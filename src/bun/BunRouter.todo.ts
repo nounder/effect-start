@@ -1,11 +1,11 @@
 import type * as Bun from "bun"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
-import * as Route from "../router/Route.ts"
-import * as RouteHttp from "../router/RouteHttp.ts"
-import * as Router from "../router/Router.ts"
-import * as RouterPattern from "../router/RouterPattern.ts"
-import * as RouteSet from "../router/RouteSet.ts"
+import * as Route from "../Route.ts"
+import * as RouteHttp from "../RouteHttp.ts"
+import * as Router from "../Router.ts"
+import * as RouterPattern from "../RouterPattern.ts"
+import * as RouteSet from "../RouteSet.ts"
 import * as BunHttpServer from "./BunHttpServer.ts"
 import {
   type BunHandler,

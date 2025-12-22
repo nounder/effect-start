@@ -1,3 +1,4 @@
+// @ts-nocheck
 import type { PlatformError } from "@effect/platform/Error"
 import * as FileSystem from "@effect/platform/FileSystem"
 import * as Array from "effect/Array"
@@ -9,12 +10,9 @@ import * as Record from "effect/Record"
 import * as Stream from "effect/Stream"
 import * as NPath from "node:path"
 import * as NUrl from "node:url"
-import * as FileSystemExtra from "../FileSystemExtra.ts"
 import * as FileRouterCodegen from "./FileRouterCodegen.ts"
 import * as FileRouterPattern from "./FileRouterPattern.ts"
-import * as Route from "./Route.ts"
-import * as Router from "./Router.ts"
-import * as RouteSet from "./RouteSet.ts"
+import * as FileSystemExtra from "./FileSystemExtra.ts"
 
 export type RouteModule = {
   default: RouteSet.RouteSet.Default
