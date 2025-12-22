@@ -37,18 +37,30 @@ export class ServerRequestImpl extends Inspectable.Class
 {
   readonly [HttpServerRequest.TypeId]: HttpServerRequest.TypeId
   readonly [HttpIncomingMessage.TypeId]: HttpIncomingMessage.TypeId
+  readonly source: Request
+  resolve: (response: Response) => void
+  readonly url: string
+  private bunServer: BunServerInstance<WebSocketContext>
+  headersOverride?: Headers.Headers
+  private remoteAddressOverride?: string
 
   constructor(
-    readonly source: Request,
-    public resolve: (response: Response) => void,
-    readonly url: string,
-    private bunServer: BunServerInstance<WebSocketContext>,
-    public headersOverride?: Headers.Headers,
-    private remoteAddressOverride?: string,
+    source: Request,
+    resolve: (response: Response) => void,
+    url: string,
+    bunServer: BunServerInstance<WebSocketContext>,
+    headersOverride?: Headers.Headers,
+    remoteAddressOverride?: string,
   ) {
     super()
     this[HttpServerRequest.TypeId] = HttpServerRequest.TypeId
     this[HttpIncomingMessage.TypeId] = HttpIncomingMessage.TypeId
+    this.source = source
+    this.resolve = resolve
+    this.url = url
+    this.bunServer = bunServer
+    this.headersOverride = headersOverride
+    this.remoteAddressOverride = remoteAddressOverride
   }
 
   toJSON(): unknown {

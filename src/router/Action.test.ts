@@ -36,16 +36,12 @@ test.describe(`${Action.filter.name}()`, () => {
           Action.Action.Action<
             {},
             typeof filterResult.context,
-            any,
-            never,
-            never
+            any
           >,
           Action.Action.Action<
             { media: "text/plain" },
             typeof filterResult.context,
-            string,
-            never,
-            never
+            string
           >,
         ]>
       >()
@@ -142,9 +138,7 @@ test.it("uses GET method", async () => {
               media: "text/plain"
             },
             {},
-            string,
-            never,
-            never
+            string
           >,
         ]>,
       ]>
