@@ -18,44 +18,36 @@ export const bytes = build<Uint8Array, "bytes">({
   format: "bytes",
 })
 
-function build<Value, Format extends string>(
-  options: {
-    format: Format
-  },
+type Format<V extends string> = {
+  format: V
+}
+
+function build<
+  Value,
+  F extends string,
+>(
+  options: Format<F>,
 ) {
   return function<
     A extends Value,
-    E,
-    R,
-    D extends Route.RouteDescriptor.Any,
-    Priors extends Route.RouteSet.Tuple,
-    B =
-      & Route.ExtractContext<
-        Priors,
-        D
-      >
-      & {
-        format: Format
-      },
+    E = never,
+    R = never,
   >(
-    handler:
+    handler: Route.Route.Handler<
+      Format<F>,
+      A,
+      E,
+      R
+    >,
   ) {
-        context:
-          & Route.ExtractContext<
-            Priors,
-            D
-          >
-          & {
-            format: Format
-          },
-      ) => Effect.Effect<A, E, R>,
-    return function(
+    return function<
+      D extends Route.RouteDescriptor.Any,
+      Priors extends Route.RouteSet.Tuple,
+    >(
       self: Route.RouteSet.RouteSet<D, Priors>,
     ) {
       const route = Route.make<
-        {
-          format: Format
-        },
+        Format<F>,
         Route.ExtractBindings<Priors>,
         A,
         E,
@@ -63,7 +55,7 @@ function build<Value, Format extends string>(
       >(
         handler as Route.Route.Handler<
           & Route.ExtractBindings<Priors>
-          & { format: Format },
+          & Format<F>,
           A,
           E,
           R

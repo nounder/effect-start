@@ -50,9 +50,13 @@ function makeMethodSet<
   )
 }
 
-function makeMethodDescriber<Method extends RouteMethod.HttpMethod>(
-  method: Method,
-): RouteMethod.Describer<Method> {
+type Method<V extends RouteMethod.HttpMethod> = {
+  method: V
+}
+
+function makeMethodDescriber<M extends RouteMethod.HttpMethod>(
+  method: M,
+): RouteMethod.Describer<M> {
   const fn = function(
     this: Self,
     ...fs: ((self: Route.RouteSet.Any) => Route.RouteSet.Any)[]
@@ -61,7 +65,7 @@ function makeMethodDescriber<Method extends RouteMethod.HttpMethod>(
       ? Route.items(this)
       : [] as const
 
-    const methodSet = Route.set<{ method: Method }, []>([], { method })
+    const methodSet = Route.set<Method<M>, []>([], { method })
     const f = Function.flow(
       ...fs as [(_: Route.RouteSet.Any) => Route.RouteSet.Any],
     )
@@ -79,7 +83,7 @@ function makeMethodDescriber<Method extends RouteMethod.HttpMethod>(
       ] as [...RouteMethod.MethodSet[]],
     )
   }
-  return fn as RouteMethod.Describer<Method>
+  return fn as RouteMethod.Describer<M>
 }
 
 export namespace RouteMethod {
@@ -93,7 +97,7 @@ export namespace RouteMethod {
     | "OPTIONS"
 
   export type MethodSet = Route.RouteSet.RouteSet<
-    { method: HttpMethod },
+    Method<HttpMethod>,
     Route.RouteSet.Tuple
   >
 
@@ -103,21 +107,19 @@ export namespace RouteMethod {
   }
 
   export type EmptySet<M extends HttpMethod> = Route.RouteSet.RouteSet<
-    { method: M },
+    Method<M>,
     []
   >
 
   type Items<S> = S extends Builder<infer I> ? I : []
 
-  export interface Describer<Method extends HttpMethod> {
+  export interface Describer<M extends HttpMethod> {
     <S extends Self, A extends Route.RouteSet.Any>(
       this: S,
-      ab: (a: EmptySet<Method>) => A,
+      ab: (a: EmptySet<M>) => A,
     ): Builder<[
       ...Items<S>,
-      Route.RouteSet.RouteSet<{
-        method: Method
-      }, Route.RouteSet.Items<A>>,
+      Route.RouteSet.RouteSet<Method<M>, Route.RouteSet.Items<A>>,
     ]>
 
     <
@@ -126,11 +128,11 @@ export namespace RouteMethod {
       B extends Route.RouteSet.Any,
     >(
       this: S,
-      ab: (a: EmptySet<Method>) => A,
+      ab: (a: EmptySet<M>) => A,
       bc: (b: A) => B,
     ): Builder<[
       ...Items<S>,
-      Route.RouteSet.RouteSet<{ method: Method }, Route.RouteSet.Items<B>>,
+      Route.RouteSet.RouteSet<Method<M>, Route.RouteSet.Items<B>>,
     ]>
 
     <
@@ -140,12 +142,12 @@ export namespace RouteMethod {
       C extends Route.RouteSet.Any,
     >(
       this: S,
-      ab: (a: EmptySet<Method>) => A,
+      ab: (a: EmptySet<M>) => A,
       bc: (b: A) => B,
       cd: (c: B) => C,
     ): Builder<[
       ...Items<S>,
-      Route.RouteSet.RouteSet<{ method: Method }, Route.RouteSet.Items<C>>,
+      Route.RouteSet.RouteSet<Method<M>, Route.RouteSet.Items<C>>,
     ]>
   }
 }
