@@ -18,25 +18,23 @@ export function filter<
   ) {
     const route = Route.make<
       {},
-      & Route.ExtractBindings<Priors>
-      & B,
-      any,
+      B & Route.ExtractBindings<Priors>,
+      void,
       E,
       R
-    >(
-      (context, next) =>
-        Effect.gen(function*() {
-          const filterResult = yield* filterHandler(context)
+    >((context, next) =>
+      Effect.gen(function*() {
+        const filterResult = yield* filterHandler(context)
 
-          yield* next(
-            filterResult
-              ? {
-                ...context,
-                ...filterResult.context,
-              }
-              : context,
-          )
-        }),
+        yield* next(
+          filterResult
+            ? {
+              ...context,
+              ...filterResult.context,
+            }
+            : context,
+        )
+      })
     )
 
     return Route.set(

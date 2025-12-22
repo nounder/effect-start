@@ -131,14 +131,16 @@ export namespace Route {
     readonly handler: Handler<B & D, A, E, R>
   }
 
-  export type Handler<B, A, E, R> =
-    | ((
-      context: B,
-      next: (context: B) => Effect.Effect<A>,
-    ) => Effect.Effect<A, E, R>)
-    | ((
-      context: B,
-    ) => Effect.Effect<A, E, R>)
+  export type Handler<B, A, E, R> = (
+    context: B,
+    next: (context: B) => Effect.Effect<A>,
+  ) => Effect.Effect<A, E, R>
+
+  // handler that cannot modify the context
+  export type HandlerImmutable<B, A, E, R> = (
+    context: B,
+    next: () => Effect.Effect<A>,
+  ) => Effect.Effect<A, E, R>
 
   export type Bindings<T> = T extends RouteSet.RouteSet<
     infer D,

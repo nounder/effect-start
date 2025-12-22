@@ -26,41 +26,24 @@ function build<
   Value,
   F extends string,
 >(
-  options: Format<F>,
+  descriptors: Format<F>,
 ) {
   return function<
+    D extends Route.RouteDescriptor.Any,
+    Priors extends Route.RouteSet.Tuple,
     A extends Value,
     E = never,
     R = never,
+    B = D & Route.ExtractBindings<Priors> & Format<F>,
   >(
-    handler: Route.Route.Handler<
-      Format<F>,
-      A,
-      E,
-      R
-    >,
+    handler: Route.Route.HandlerImmutable<B, A, E, R>,
   ) {
-    return function<
-      D extends Route.RouteDescriptor.Any,
-      Priors extends Route.RouteSet.Tuple,
-    >(
+    return function(
       self: Route.RouteSet.RouteSet<D, Priors>,
     ) {
-      const route = Route.make<
-        Format<F>,
-        Route.ExtractBindings<Priors>,
-        A,
-        E,
-        R
-      >(
-        handler as Route.Route.Handler<
-          & Route.ExtractBindings<Priors>
-          & Format<F>,
-          A,
-          E,
-          R
-        >,
-        options,
+      const route = Route.make(
+        handler as any,
+        descriptors,
       )
 
       return Route.set(
