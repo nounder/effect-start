@@ -1,11 +1,15 @@
 import * as test from "bun:test"
 import * as Effect from "effect/Effect"
 import * as RouteBody from "./RouteBody.ts"
-import * as RouteMethod from "./RouteMethod.ts"
+import * as RouteMount from "./RouteMount.ts"
+
+const text = RouteBody.build<string, "text">({
+  format: "text",
+})
 
 test.it("infers parent descriptions", () => {
-  RouteMethod.get(
-    RouteBody.text((ctx) =>
+  RouteMount.get(
+    text((ctx) =>
       Effect.gen(function*() {
         test
           .expectTypeOf(ctx)
@@ -21,7 +25,7 @@ test.it("infers parent descriptions", () => {
 })
 
 test.it("cannot modify context", () => {
-  RouteBody.text((ctx, next) =>
+  text((ctx, next) =>
     Effect.gen(function*() {
       test
         .expectTypeOf(next)
@@ -35,7 +39,7 @@ test.it("cannot modify context", () => {
 
 test.it("enforces result value", () => {
   // @ts-expect-error must return string
-  RouteBody.text((ctx, next) =>
+  text((ctx, next) =>
     Effect.gen(function*() {
       return 1337
     })
@@ -46,7 +50,7 @@ test.it("accepts value directly", () => {
   const value = "Hello, world!"
 
   test
-    .expectTypeOf(RouteBody.text)
+    .expectTypeOf(text)
     .toBeCallableWith(value)
 })
 
@@ -87,7 +91,10 @@ test.describe(`${RouteBody.handle.name}()`, () => {
       >()
 
     const result = await Effect.runPromise(handler(ctx, next))
-    test.expect(result).toBe("from effect")
+
+    test
+      .expect(result)
+      .toBe("from effect")
   })
 
   test.it("handles Effect with error", async () => {
@@ -119,8 +126,13 @@ test.describe(`${RouteBody.handle.name}()`, () => {
         Effect.Effect<number, never, never>
       >()
 
-    const result = await Effect.runPromise(handler({ id: 42 }, next))
-    test.expect(result).toBe(42)
+    const result = await Effect.runPromise(
+      handler({ id: 42 }, () => Effect.succeed(23)),
+    )
+
+    test
+      .expect(result)
+      .toBe(42)
   })
 
   test.it("handles generator", async () => {
@@ -143,8 +155,14 @@ test.describe(`${RouteBody.handle.name}()`, () => {
         Effect.Effect<number, never, never>
       >()
 
-    const result = await Effect.runPromise(handler({ id: 21 }, next))
-    test.expect(result).toBe(42)
+    const result = await Effect.runPromise(
+      // TODO: we should accept Effect.void in next here
+      handler({ id: 21 }, () => Effect.succeed(23)),
+    )
+
+    test
+      .expect(result)
+      .toBe(42)
   })
 
   test.it("generator can call next", async () => {

@@ -4,7 +4,7 @@ import {
   Schema,
 } from "effect"
 import * as Route from "./Route.ts"
-import * as RouteMethod from "./RouteMethod.ts"
+import * as RouteMount from "./RouteMount.ts"
 import * as RouteSchema from "./RouteSchema.ts"
 
 test.describe(`${RouteSchema.schemaHeaders.name}()`, () => {
@@ -16,7 +16,7 @@ test.describe(`${RouteSchema.schemaHeaders.name}()`, () => {
       headers: typeof headers
     }
 
-    const route = RouteMethod.get(
+    const route = RouteMount.get(
       RouteSchema.schemaHeaders(
         Schema.Struct({
           "x-hello": Schema.String,

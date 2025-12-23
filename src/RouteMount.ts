@@ -3,10 +3,10 @@ import * as Route from "./Route.ts"
 
 const TypeId: unique symbol = Symbol.for("effect-start/RouteSet")
 
-type Module = typeof import("./RouteMethod.ts")
+type Module = typeof import("./RouteMount.ts")
 
 export type Self =
-  | RouteMethod.Builder
+  | RouteMount.Builder
   | Module
 
 export const get = makeMethodDescriber("GET")
@@ -36,11 +36,11 @@ const Proto = Object.assign(
   },
 )
 
-function makeMethodSet<
-  M extends [...RouteMethod.MethodSet[]] = [],
+function makeMountSet<
+  M extends [...RouteMount.MountSet[]] = [],
 >(
   items: M,
-): RouteMethod.Builder<M> {
+): RouteMount.Builder<M> {
   return Object.assign(
     Object.create(Proto),
     {
@@ -50,13 +50,13 @@ function makeMethodSet<
   )
 }
 
-type Method<V extends RouteMethod.HttpMethod> = {
+type Method<V extends RouteMount.HttpMethod> = {
   method: V
 }
 
-function makeMethodDescriber<M extends RouteMethod.HttpMethod>(
+function makeMethodDescriber<M extends RouteMount.HttpMethod>(
   method: M,
-): RouteMethod.Describer<M> {
+): RouteMount.Describer<M> {
   const fn = function(
     this: Self,
     ...fs: ((self: Route.RouteSet.Any) => Route.RouteSet.Any)[]
@@ -76,17 +76,17 @@ function makeMethodDescriber<M extends RouteMethod.HttpMethod>(
       { method },
     )
 
-    return makeMethodSet(
+    return makeMountSet(
       [
         ...baseItems,
         wrappedResult,
-      ] as [...RouteMethod.MethodSet[]],
+      ] as [...RouteMount.MountSet[]],
     )
   }
-  return fn as RouteMethod.Describer<M>
+  return fn as RouteMount.Describer<M>
 }
 
-export namespace RouteMethod {
+export namespace RouteMount {
   export type HttpMethod =
     | "GET"
     | "POST"
@@ -96,13 +96,13 @@ export namespace RouteMethod {
     | "HEAD"
     | "OPTIONS"
 
-  export type MethodSet = Route.RouteSet.RouteSet<
+  export type MountSet = Route.RouteSet.RouteSet<
     Method<HttpMethod>,
     Route.RouteSet.Tuple
   >
 
   export interface Builder<
-    Items extends [...MethodSet[]] = [],
+    Items extends [...MountSet[]] = [],
   > extends Route.RouteSet.RouteSet<{}, Items>, Module {
   }
 

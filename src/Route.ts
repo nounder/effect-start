@@ -291,7 +291,7 @@ export type ExtractContext<
 > = ExtractBindings<Items> & Descriptor
 
 export * from "./RouteHook.ts"
-export * from "./RouteMethod.ts"
+export * from "./RouteMount.ts"
 export * from "./RouteSchema.ts"
 
 export const text = RouteBody.build<string, "text">({
