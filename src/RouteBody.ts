@@ -1,23 +1,6 @@
 import * as Effect from "effect/Effect"
 import type * as Utils from "effect/Utils"
 import * as Route from "./Route.ts"
-import * as Values from "./Values.ts"
-
-export const text = build<string, "text">({
-  format: "text",
-})
-
-export const html = build<string, "html">({
-  format: "html",
-})
-
-export const json = build<Values.Json, "json">({
-  format: "json",
-})
-
-export const bytes = build<Uint8Array, "bytes">({
-  format: "bytes",
-})
 
 type Format<V extends string> = {
   format: V
@@ -67,7 +50,7 @@ export function handle<B, A, E, R>(
   return (_context, _next) => Effect.succeed(handler as A)
 }
 
-function build<
+export function build<
   Value,
   F extends string,
 >(

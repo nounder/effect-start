@@ -1,6 +1,8 @@
 import * as Effect from "effect/Effect"
 import * as Pipeable from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
+import * as RouteBody from "./RouteBody.ts"
+import * as Values from "./Values.ts"
 
 export const RouteItems: unique symbol = Symbol()
 export const RouteDescriptor: unique symbol = Symbol()
@@ -288,7 +290,22 @@ export type ExtractContext<
   Descriptor extends RouteDescriptor.Any,
 > = ExtractBindings<Items> & Descriptor
 
-export * from "./RouteBody.ts"
 export * from "./RouteHook.ts"
 export * from "./RouteMethod.ts"
 export * from "./RouteSchema.ts"
+
+export const text = RouteBody.build<string, "text">({
+  format: "text",
+})
+
+export const html = RouteBody.build<string, "html">({
+  format: "html",
+})
+
+export const json = RouteBody.build<Values.Json, "json">({
+  format: "json",
+})
+
+export const bytes = RouteBody.build<Uint8Array, "bytes">({
+  format: "bytes",
+})
