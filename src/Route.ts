@@ -20,7 +20,7 @@ export namespace RouteSet {
 
   export type RouteSet<
     D extends RouteDescriptor.Any = {},
-    B extends {} = {},
+    B extends Record<string, any> = {},
     M extends Tuple = [],
   > =
     & Data<D, B, M>
@@ -32,7 +32,7 @@ export namespace RouteSet {
 
   export type Data<
     D extends RouteDescriptor.Any = {},
-    B extends {} = {},
+    B extends Record<string, any> = {},
     M extends Tuple = [],
   > = {
     [RouteItems]: M
@@ -214,18 +214,19 @@ export function isRoute(
 
 export function set<
   D extends RouteDescriptor.Any = {},
-  M extends RouteSet.Tuple = [],
+  B extends Record<string, any> = {},
+  I extends RouteSet.Tuple = [],
 >(
-  items: M = [] as unknown as M,
+  items: I = [] as unknown as I,
   descriptor: D = {} as D,
-): RouteSet.RouteSet<D, {}, M> {
+): RouteSet.RouteSet<D, {}, I> {
   return Object.assign(
     Object.create(Proto),
     {
       [RouteItems]: items,
       [RouteDescriptor]: descriptor,
     },
-  ) as RouteSet.RouteSet<D, {}, M>
+  ) as RouteSet.RouteSet<D, B, I>
 }
 
 export function make<
