@@ -36,11 +36,11 @@ const Proto = Object.assign(
   },
 )
 
-function makeMountSet<
+function make<
   M extends [...RouteMount.MountSet[]] = [],
 >(
   items: M,
-): RouteMount.Builder<M> {
+): RouteMount.Builder<{}, {}, M> {
   return Object.assign(
     Object.create(Proto),
     {
@@ -52,6 +52,34 @@ function makeMountSet<
 
 type Method<V extends RouteMount.HttpMethod> = {
   method: V
+}
+
+function use(
+  this: Self,
+  ...fs: ((self: Route.RouteSet.Any) => Route.RouteSet.Any)[]
+) {
+  const method = "*"
+  const baseItems = Route.isRouteSet(this)
+    ? Route.items(this)
+    : [] as const
+
+  const methodSet = Route.set<Method<"*">, []>([], { method })
+  const f = Function.flow(
+    ...fs as [(_: Route.RouteSet.Any) => Route.RouteSet.Any],
+  )
+  const result = f(methodSet)
+
+  const wrappedResult = Route.set(
+    Route.items(result) as Route.RouteSet.Tuple,
+    { method },
+  )
+
+  return make(
+    [
+      ...baseItems,
+      wrappedResult,
+    ] as [...RouteMount.MountSet[]],
+  )
 }
 
 function makeMethodDescriber<M extends RouteMount.HttpMethod>(
@@ -76,7 +104,7 @@ function makeMethodDescriber<M extends RouteMount.HttpMethod>(
       { method },
     )
 
-    return makeMountSet(
+    return make(
       [
         ...baseItems,
         wrappedResult,
@@ -88,6 +116,7 @@ function makeMethodDescriber<M extends RouteMount.HttpMethod>(
 
 export namespace RouteMount {
   export type HttpMethod =
+    | "*"
     | "GET"
     | "POST"
     | "PUT"
@@ -98,28 +127,32 @@ export namespace RouteMount {
 
   export type MountSet = Route.RouteSet.RouteSet<
     Method<HttpMethod>,
+    {},
     Route.RouteSet.Tuple
   >
 
   export interface Builder<
+    D extends {} = {},
+    B extends Record<string, string> = {},
     Items extends [...MountSet[]] = [],
-  > extends Route.RouteSet.RouteSet<{}, Items>, Module {
+  > extends Route.RouteSet.RouteSet<D, B, Items>, Module {
   }
 
   export type EmptySet<M extends HttpMethod> = Route.RouteSet.RouteSet<
     Method<M>,
+    {},
     []
   >
 
-  type Items<S> = S extends Builder<infer I> ? I : []
+  type Items<S> = S extends Builder<any, any, infer I> ? I : []
 
   export interface Describer<M extends HttpMethod> {
     <S extends Self, A extends Route.RouteSet.Any>(
       this: S,
       ab: (a: EmptySet<M>) => A,
-    ): Builder<[
+    ): Builder<{}, {}, [
       ...Items<S>,
-      Route.RouteSet.RouteSet<Method<M>, Route.RouteSet.Items<A>>,
+      Route.RouteSet.RouteSet<Method<M>, {}, Route.RouteSet.Items<A>>,
     ]>
 
     <
@@ -130,9 +163,9 @@ export namespace RouteMount {
       this: S,
       ab: (a: EmptySet<M>) => A,
       bc: (b: A) => B,
-    ): Builder<[
+    ): Builder<{}, {}, [
       ...Items<S>,
-      Route.RouteSet.RouteSet<Method<M>, Route.RouteSet.Items<B>>,
+      Route.RouteSet.RouteSet<Method<M>, {}, Route.RouteSet.Items<B>>,
     ]>
 
     <
@@ -145,9 +178,9 @@ export namespace RouteMount {
       ab: (a: EmptySet<M>) => A,
       bc: (b: A) => B,
       cd: (c: B) => C,
-    ): Builder<[
+    ): Builder<{}, {}, [
       ...Items<S>,
-      Route.RouteSet.RouteSet<Method<M>, Route.RouteSet.Items<C>>,
+      Route.RouteSet.RouteSet<Method<M>, {}, Route.RouteSet.Items<C>>,
     ]>
   }
 }

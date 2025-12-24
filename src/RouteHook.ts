@@ -12,13 +12,13 @@ export function filter<
 ) {
   return function<
     D extends Route.RouteDescriptor.Any,
-    Priors extends Route.RouteSet.Tuple,
+    P extends Route.RouteSet.Tuple,
   >(
-    self: Route.RouteSet.RouteSet<D, Priors>,
+    self: Route.RouteSet.RouteSet<D, {}, P>,
   ) {
     const route = Route.make<
       {},
-      B & Route.ExtractBindings<Priors>,
+      B & Route.ExtractBindings<P>,
       void,
       E,
       R

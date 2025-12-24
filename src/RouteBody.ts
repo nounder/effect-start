@@ -58,16 +58,16 @@ export function build<
 ) {
   return function<
     D extends Route.RouteDescriptor.Any,
-    Priors extends Route.RouteSet.Tuple,
+    P extends Route.RouteSet.Tuple,
     A extends Value,
     E = never,
     R = never,
-    B = D & Route.ExtractBindings<Priors> & Format<F>,
+    B = D & Route.ExtractBindings<P> & Format<F>,
   >(
     handler: HandlerInput<B, A, E, R>,
   ) {
     return function(
-      self: Route.RouteSet.RouteSet<D, Priors>,
+      self: Route.RouteSet.RouteSet<D, {}, P>,
     ) {
       const route = Route.make(
         handle(handler) as any,

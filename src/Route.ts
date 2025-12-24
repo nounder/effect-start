@@ -20,9 +20,10 @@ export namespace RouteSet {
 
   export type RouteSet<
     D extends RouteDescriptor.Any = {},
+    B extends {} = {},
     M extends Tuple = [],
   > =
-    & Data<D, M>
+    & Data<D, B, M>
     & {
       [TypeId]: typeof TypeId
     }
@@ -31,6 +32,7 @@ export namespace RouteSet {
 
   export type Data<
     D extends RouteDescriptor.Any = {},
+    B extends {} = {},
     M extends Tuple = [],
   > = {
     [RouteItems]: M
@@ -44,11 +46,12 @@ export namespace RouteSet {
       [TypeId]: typeof TypeId
     }
 
-  export type Any = RouteSet<{}, Tuple>
+  export type Any = RouteSet<{}, {}, Tuple>
 
   export type Items<
-    T extends Data<any, any>,
+    T extends Data<any, any, any>,
   > = T extends Data<
+    any,
     any,
     infer M
   > ? M
@@ -57,9 +60,11 @@ export namespace RouteSet {
   export type Descriptors<
     T extends Data<
       any,
+      any,
       any
     >,
   > = T extends Data<
+    any,
     any,
     infer M
   > ? _ExtractDescriptors<M>
@@ -89,8 +94,8 @@ export namespace RouteSet {
     : {}
 
   export type Bindings<
-    T extends Data<any, any>,
-  > = T extends Data<any, infer M> ? (
+    T extends Data<any, any, any>,
+  > = T extends Data<any, any, infer M> ? (
       _ExtractBindings<M>
     )
     : never
@@ -109,6 +114,7 @@ export namespace RouteSet {
           | _ExtractBindings<Tail>
         : Head extends RouteSet<
           any,
+          any,
           infer Nested
         > ?
             | _ExtractBindings<Nested>
@@ -126,7 +132,7 @@ export namespace Route {
     E = never,
     R = never,
   > extends
-    RouteSet.RouteSet<D, [
+    RouteSet.RouteSet<D, {}, [
       Route<D, B, A>,
     ]>
   {
@@ -146,6 +152,7 @@ export namespace Route {
 
   export type Bindings<T> = T extends RouteSet.RouteSet<
     infer D,
+    any,
     infer Items
   > ? D & _ExtractBindings<Items>
     : never
@@ -165,6 +172,7 @@ export namespace Route {
           & _ExtractBindings<Tail>
         : Head extends RouteSet.RouteSet<
           infer D,
+          any,
           infer Nested
         > ?
             & D
@@ -210,14 +218,14 @@ export function set<
 >(
   items: M = [] as unknown as M,
   descriptor: D = {} as D,
-): RouteSet.RouteSet<D, M> {
+): RouteSet.RouteSet<D, {}, M> {
   return Object.assign(
     Object.create(Proto),
     {
       [RouteItems]: items,
       [RouteDescriptor]: descriptor,
     },
-  ) as RouteSet.RouteSet<D, M>
+  ) as RouteSet.RouteSet<D, {}, M>
 }
 
 export function make<
@@ -256,7 +264,7 @@ export function describe<
 }
 
 export function items<
-  T extends RouteSet.Data<any, any>,
+  T extends RouteSet.Data<any, any, any>,
 >(
   self: T,
 ): RouteSet.Items<T> {
@@ -276,6 +284,7 @@ export type ExtractBindings<
         & B
         & ExtractBindings<Tail>
       : Head extends RouteSet.RouteSet<
+        any,
         any,
         infer Nested
       > ?
