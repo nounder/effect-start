@@ -6,32 +6,9 @@ export type FilterHandlerInput<B, E, R> =
   | { context: B }
   | Effect.Effect<{ context: B }, E, R>
   | ((context: any) =>
+    | { context: B }
     | Effect.Effect<{ context: B }, E, R>
     | Generator<Utils.YieldWrap<Effect.Effect<any, E, R>>, { context: B }, any>)
-
-function normalizeFilterHandler<B, E, R>(
-  handler: FilterHandlerInput<B, E, R>,
-): (context: any) => Effect.Effect<{ context: B }, E, R> {
-  if (typeof handler === "function") {
-    return (context: any): Effect.Effect<{ context: B }, E, R> => {
-      const result = handler(context)
-
-      if (Effect.isEffect(result)) {
-        return result as Effect.Effect<{ context: B }, E, R>
-      }
-
-      return Effect.gen(function*() {
-        return yield* result
-      }) as Effect.Effect<{ context: B }, E, R>
-    }
-  }
-
-  if (Effect.isEffect(handler)) {
-    return (_context) => handler
-  }
-
-  return (_context) => Effect.succeed(handler as { context: B })
-}
 
 export function filter<
   B extends Record<string, any>,
@@ -77,4 +54,41 @@ export function filter<
       self[Route.RouteDescriptor],
     )
   }
+}
+
+function isGenerator(value: unknown): value is Generator {
+  return (
+    typeof value === "object"
+    && value !== null
+    && Symbol.iterator in value
+    && typeof (value as Generator).next === "function"
+  )
+}
+
+function normalizeFilterHandler<B, E, R>(
+  handler: FilterHandlerInput<B, E, R>,
+): (context: any) => Effect.Effect<{ context: B }, E, R> {
+  if (typeof handler === "function") {
+    return (context: any): Effect.Effect<{ context: B }, E, R> => {
+      const result = handler(context)
+
+      if (Effect.isEffect(result)) {
+        return result as Effect.Effect<{ context: B }, E, R>
+      }
+
+      if (isGenerator(result)) {
+        return Effect.gen(function*() {
+          return yield* result
+        }) as Effect.Effect<{ context: B }, E, R>
+      }
+
+      return Effect.succeed(result)
+    }
+  }
+
+  if (Effect.isEffect(handler)) {
+    return (_context) => handler
+  }
+
+  return (_context) => Effect.succeed(handler as { context: B })
 }
