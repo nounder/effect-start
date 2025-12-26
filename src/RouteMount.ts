@@ -1,4 +1,5 @@
 import * as Function from "effect/Function"
+import * as Types from "effect/Types"
 import * as Route from "./Route.ts"
 
 const TypeId: unique symbol = Symbol.for("effect-start/RouteSet")
@@ -110,8 +111,8 @@ export namespace RouteMount {
   export interface Builder<
     D extends {} = {},
     B = {},
-    Items extends [...MountSet[]] = [],
-  > extends Route.RouteSet.RouteSet<D, B, Items>, Module {
+    I extends [...MountSet[]] = [],
+  > extends Route.RouteSet.RouteSet<D, B, I>, Module {
   }
 
   export type EmptySet<
@@ -125,8 +126,30 @@ export namespace RouteMount {
 
   export type Items<S> = S extends Builder<any, any, infer I> ? I : []
 
-  export type BuilderBindings<S> = S extends
-    Route.RouteSet.Data<any, infer B, any> ? B : {}
+  export type BuilderBindings<S> = S extends Builder<any, any, infer I>
+    ? WildcardBindings<I>
+    : {}
+
+  export type WildcardBindings<
+    I extends [...MountSet[]],
+  > = I extends [
+    infer Head extends MountSet,
+    ...infer Tail extends [...MountSet[]],
+  ] ? (
+      Head extends Route.RouteSet.RouteSet<
+        Method<"*">,
+        any,
+        infer IAny extends Route.RouteSet.Tuple
+      > ? Route.ExtractBindings<IAny> & WildcardBindings<Tail>
+        : WildcardBindings<Tail>
+    )
+    : {}
+
+  export type AccumulateBindings<
+    M extends HttpMethod,
+    Prev,
+    New,
+  > = M extends "*" ? Prev & New : Prev
 
   export interface Describer<M extends HttpMethod> {
     <S extends Self, A extends Route.RouteSet.Any>(
@@ -134,7 +157,13 @@ export namespace RouteMount {
       ab: (a: EmptySet<M, BuilderBindings<S>>) => A,
     ): Builder<
       {},
-      BuilderBindings<S> & Route.ExtractBindings<Route.RouteSet.Items<A>>,
+      Types.Simplify<
+        AccumulateBindings<
+          M,
+          BuilderBindings<S>,
+          Route.ExtractBindings<Route.RouteSet.Items<A>>
+        >
+      >,
       [
         ...Items<S>,
         Route.RouteSet.RouteSet<Method<M>, {}, Route.RouteSet.Items<A>>,
@@ -151,7 +180,13 @@ export namespace RouteMount {
       bc: (b: A) => B,
     ): Builder<
       {},
-      BuilderBindings<S> & Route.ExtractBindings<Route.RouteSet.Items<B>>,
+      Types.Simplify<
+        AccumulateBindings<
+          M,
+          BuilderBindings<S>,
+          Route.ExtractBindings<Route.RouteSet.Items<B>>
+        >
+      >,
       [
         ...Items<S>,
         Route.RouteSet.RouteSet<Method<M>, {}, Route.RouteSet.Items<B>>,
@@ -170,7 +205,13 @@ export namespace RouteMount {
       cd: (c: B) => C,
     ): Builder<
       {},
-      BuilderBindings<S> & Route.ExtractBindings<Route.RouteSet.Items<C>>,
+      Types.Simplify<
+        AccumulateBindings<
+          M,
+          BuilderBindings<S>,
+          Route.ExtractBindings<Route.RouteSet.Items<C>>
+        >
+      >,
       [
         ...Items<S>,
         Route.RouteSet.RouteSet<Method<M>, {}, Route.RouteSet.Items<C>>,

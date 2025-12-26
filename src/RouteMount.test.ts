@@ -1,5 +1,5 @@
 import * as test from "bun:test"
-import { Effect } from "effect"
+import * as Effect from "effect/Effect"
 import * as Route from "./Route.ts"
 
 test.it("uses GET method", async () => {
@@ -126,6 +126,13 @@ test.it(`infers context from use()`, () => {
     )
     .post(
       Route.json(function*(ctx) {
+        // bindings defined specific method routes must not propagate
+        // to other methods
+        test
+          .expectTypeOf(ctx)
+          .not
+          .toHaveProperty("getter")
+
         test
           .expectTypeOf(ctx)
           .toMatchObjectType<{
@@ -142,5 +149,85 @@ test.it(`infers context from use()`, () => {
       }),
     )
 
-  // TODO :type check for compatbility with RouteSet and presence of method=* descriptor
+  test
+    .expectTypeOf(routes)
+    .toExtend<
+      Route.RouteSet.RouteSet<
+        {},
+        {
+          answer: number
+          doubledAnswer: number
+        },
+        [
+          Route.RouteSet.RouteSet<
+            { method: "*" },
+            {},
+            [
+              Route.Route.Route<
+                {},
+                { answer: number },
+                void
+              >,
+            ]
+          >,
+          Route.RouteSet.RouteSet<
+            { method: "*" },
+            {},
+            [
+              Route.Route.Route<
+                {},
+                { answer: number },
+                void,
+                never,
+                never
+              >,
+              Route.Route.Route<
+                {},
+                { doubledAnswer: number },
+                void
+              >,
+            ]
+          >,
+          Route.RouteSet.RouteSet<
+            { method: "GET" },
+            {},
+            [
+              Route.Route.Route<
+                {},
+                { answer: number; doubledAnswer: number },
+                void
+              >,
+              Route.Route.Route<
+                {},
+                { getter: boolean },
+                void,
+                never,
+                never
+              >,
+              Route.Route.Route<
+                { format: "text" },
+                {},
+                any
+              >,
+            ]
+          >,
+          Route.RouteSet.RouteSet<
+            { method: "POST" },
+            {},
+            [
+              Route.Route.Route<
+                {},
+                { answer: number; doubledAnswer: number },
+                void
+              >,
+              Route.Route.Route<
+                { format: "json" },
+                {},
+                any
+              >,
+            ]
+          >,
+        ]
+      >
+    >()
 })
