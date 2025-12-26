@@ -18,21 +18,22 @@ export type FilterHandlerInput<BIn, BOut, E, R> =
 
 export function filter<
   D extends Route.RouteDescriptor.Any,
+  SB extends {},
   P extends Route.RouteSet.Tuple,
   BOut extends {},
   E = never,
   R = never,
-  BIn = D & Route.ExtractBindings<P>,
+  BIn = D & SB & Route.ExtractBindings<P>,
 >(
   filterHandler: FilterHandlerInput<BIn, BOut, E, R>,
 ) {
   const normalized = normalizeFilterHandler(filterHandler)
 
   return function(
-    self: Route.RouteSet.RouteSet<D, {}, P>,
+    self: Route.RouteSet.RouteSet<D, SB, P>,
   ): Route.RouteSet.RouteSet<
     D,
-    {},
+    SB,
     [...P, Route.Route.Route<{}, BOut, void, E, R>]
   > {
     const route = Route.make<

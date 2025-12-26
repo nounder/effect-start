@@ -1,4 +1,5 @@
 import * as Effect from "effect/Effect"
+import type * as Types from "effect/Types"
 import type * as Utils from "effect/Utils"
 import * as Route from "./Route.ts"
 
@@ -9,7 +10,7 @@ type Format<V extends string> = {
 export type HandlerInput<B, A, E, R> =
   | A
   | Effect.Effect<A, E, R>
-  | ((context: B, next: () => Effect.Effect<A>) =>
+  | ((context: Types.Simplify<B>, next: () => Effect.Effect<A>) =>
     | Effect.Effect<A, E, R>
     | Generator<Utils.YieldWrap<Effect.Effect<any, E, R>>, A, any>)
 
@@ -58,16 +59,23 @@ export function build<
 ) {
   return function<
     D extends Route.RouteDescriptor.Any,
-    P extends Route.RouteSet.Tuple,
+    B extends {},
+    I extends Route.RouteSet.Tuple,
     A extends Value,
     E = never,
     R = never,
-    B = D & Route.ExtractBindings<P> & Format<F>,
   >(
-    handler: HandlerInput<B, A, E, R>,
+    handler: HandlerInput<
+      NoInfer<
+        D & B & Route.ExtractBindings<I> & Format<F>
+      >,
+      A,
+      E,
+      R
+    >,
   ) {
     return function(
-      self: Route.RouteSet.RouteSet<D, {}, P>,
+      self: Route.RouteSet.RouteSet<D, B, I>,
     ) {
       const route = Route.make(
         handle(handler) as any,
@@ -78,7 +86,7 @@ export function build<
         [
           ...Route.items(self),
           route,
-        ] as const,
+        ] as [...I, Route.Route.Route<Format<F>, {}, A, E, R>],
       )
     }
   }

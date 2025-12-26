@@ -288,9 +288,10 @@ export type ExtractBindings<
         & ExtractBindings<Tail>
       : Head extends RouteSet.RouteSet<
         any,
-        any,
+        infer B,
         infer Nested
       > ?
+          & B
           & ExtractBindings<Nested>
           & ExtractBindings<Tail>
       : ExtractBindings<Tail>

@@ -120,8 +120,8 @@ export namespace RouteMount {
     B = {},
   > = Route.RouteSet.RouteSet<
     Method<M>,
-    {},
-    keyof B extends never ? [] : [Route.Route.Route<{}, B & {}, void>]
+    B,
+    []
   >
 
   export type Items<S> = S extends Builder<any, any, infer I> ? I : []
@@ -166,7 +166,11 @@ export namespace RouteMount {
       >,
       [
         ...Items<S>,
-        Route.RouteSet.RouteSet<Method<M>, {}, Route.RouteSet.Items<A>>,
+        Route.RouteSet.RouteSet<
+          Method<M>,
+          BuilderBindings<S>,
+          Route.RouteSet.Items<A>
+        >,
       ]
     >
 
@@ -189,7 +193,11 @@ export namespace RouteMount {
       >,
       [
         ...Items<S>,
-        Route.RouteSet.RouteSet<Method<M>, {}, Route.RouteSet.Items<B>>,
+        Route.RouteSet.RouteSet<
+          Method<M>,
+          BuilderBindings<S>,
+          Route.RouteSet.Items<B>
+        >,
       ]
     >
 
@@ -214,7 +222,11 @@ export namespace RouteMount {
       >,
       [
         ...Items<S>,
-        Route.RouteSet.RouteSet<Method<M>, {}, Route.RouteSet.Items<C>>,
+        Route.RouteSet.RouteSet<
+          Method<M>,
+          BuilderBindings<S>,
+          Route.RouteSet.Items<C>
+        >,
       ]
     >
   }

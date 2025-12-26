@@ -61,6 +61,9 @@ test.it("uses GET & POST method", async () => {
         test
           .expectTypeOf(r.method)
           .toEqualTypeOf<"GET">()
+        test
+          .expectTypeOf(r.format)
+          .toEqualTypeOf<"text">()
 
         return Effect.succeed("get")
       }),
@@ -70,6 +73,9 @@ test.it("uses GET & POST method", async () => {
         test
           .expectTypeOf(r.method)
           .toEqualTypeOf<"POST">()
+        test
+          .expectTypeOf(r.format)
+          .toEqualTypeOf<"text">()
 
         return Effect.succeed("post")
       }),
@@ -126,8 +132,6 @@ test.it(`infers context from use()`, () => {
     )
     .post(
       Route.json(function*(ctx) {
-        // bindings defined specific method routes must not propagate
-        // to other methods
         test
           .expectTypeOf(ctx)
           .not
@@ -149,84 +153,57 @@ test.it(`infers context from use()`, () => {
       }),
     )
 
+  type Items = Route.RouteSet.Items<typeof routes>
+
+  // First use() - adds answer context
   test
-    .expectTypeOf(routes)
+    .expectTypeOf<Items[0]>()
     .toExtend<
       Route.RouteSet.RouteSet<
+        { method: "*" },
         {},
-        {
-          answer: number
-          doubledAnswer: number
-        },
         [
-          Route.RouteSet.RouteSet<
-            { method: "*" },
-            {},
-            [
-              Route.Route.Route<
-                {},
-                { answer: number },
-                void
-              >,
-            ]
-          >,
-          Route.RouteSet.RouteSet<
-            { method: "*" },
-            {},
-            [
-              Route.Route.Route<
-                {},
-                { answer: number },
-                void,
-                never,
-                never
-              >,
-              Route.Route.Route<
-                {},
-                { doubledAnswer: number },
-                void
-              >,
-            ]
-          >,
-          Route.RouteSet.RouteSet<
-            { method: "GET" },
-            {},
-            [
-              Route.Route.Route<
-                {},
-                { answer: number; doubledAnswer: number },
-                void
-              >,
-              Route.Route.Route<
-                {},
-                { getter: boolean },
-                void,
-                never,
-                never
-              >,
-              Route.Route.Route<
-                { format: "text" },
-                {},
-                any
-              >,
-            ]
-          >,
-          Route.RouteSet.RouteSet<
-            { method: "POST" },
-            {},
-            [
-              Route.Route.Route<
-                {},
-                { answer: number; doubledAnswer: number },
-                void
-              >,
-              Route.Route.Route<
-                { format: "json" },
-                {},
-                any
-              >,
-            ]
-          >,
+          Route.Route.Route<{}, { answer: number }, void>,
+        ]
+      >
+    >()
+
+  // Second use() - adds doubledAnswer context
+  test
+    .expectTypeOf<Items[1]>()
+    .toExtend<
+      Route.RouteSet.RouteSet<
+        { method: "*" },
+        { answer: number },
+        [
+          Route.Route.Route<{}, { doubledAnswer: number }, void>,
+        ]
+      >
+    >()
+
+  // GET route - inherits answer/doubledAnswer, adds getter
+  test
+    .expectTypeOf<Items[2]>()
+    .toExtend<
+      Route.RouteSet.RouteSet<
+        { method: "GET" },
+        { answer: number; doubledAnswer: number },
+        [
+          Route.Route.Route<{}, { getter: boolean }, void, never, never>,
+          Route.Route.Route<{ format: "text" }, {}, any>,
+        ]
+      >
+    >()
+
+  // POST route - inherits answer/doubledAnswer only
+  test
+    .expectTypeOf<Items[3]>()
+    .toExtend<
+      Route.RouteSet.RouteSet<
+        { method: "POST" },
+        { answer: number; doubledAnswer: number },
+        [
+          Route.Route.Route<{ format: "json" }, {}, any>,
         ]
       >
     >()
