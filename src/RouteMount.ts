@@ -9,6 +9,7 @@ export type Self =
   | RouteMount.Builder
   | Module
 
+export const use = makeMethodDescriber("*")
 export const get = makeMethodDescriber("GET")
 export const post = makeMethodDescriber("POST")
 export const put = makeMethodDescriber("PUT")
@@ -55,78 +56,6 @@ function make<
 
 type Method<V extends RouteMount.HttpMethod> = {
   method: V
-}
-
-export function use<
-  S extends Self,
-  A extends Route.RouteSet.Any,
->(
-  this: S,
-  ab: (a: RouteMount.EmptySet<"*", RouteMount.BuilderBindings<S>>) => A,
-): RouteMount.Builder<
-  {},
-  & RouteMount.BuilderBindings<S>
-  & Route.ExtractBindings<Route.RouteSet.Items<A>>,
-  RouteMount.MountSet[]
->
-export function use<
-  S extends Self,
-  A extends Route.RouteSet.Any,
-  B extends Route.RouteSet.Any,
->(
-  this: S,
-  ab: (a: RouteMount.EmptySet<"*", RouteMount.BuilderBindings<S>>) => A,
-  bc: (b: A) => B,
-): RouteMount.Builder<
-  {},
-  & RouteMount.BuilderBindings<S>
-  & Route.ExtractBindings<Route.RouteSet.Items<B>>,
-  RouteMount.MountSet[]
->
-export function use<
-  S extends Self,
-  A extends Route.RouteSet.Any,
-  B extends Route.RouteSet.Any,
-  C extends Route.RouteSet.Any,
->(
-  this: S,
-  ab: (a: RouteMount.EmptySet<"*", RouteMount.BuilderBindings<S>>) => A,
-  bc: (b: A) => B,
-  cd: (c: B) => C,
-): RouteMount.Builder<
-  {},
-  & RouteMount.BuilderBindings<S>
-  & Route.ExtractBindings<Route.RouteSet.Items<C>>,
-  RouteMount.MountSet[]
->
-export function use(
-  this: Self,
-  ab: (a: any) => any,
-  ...rest: ((a: any) => any)[]
-): any {
-  const fs = [ab, ...rest]
-  const method = "*" as const
-  const baseItems: RouteMount.MountSet[] = Route.isRouteSet(this)
-    ? Route.items(this) as RouteMount.MountSet[]
-    : []
-
-  const emptySet = Route.set([], { method }) as Route.RouteSet.Any
-  const f = Function.flow(
-    ...fs as [(_: Route.RouteSet.Any) => Route.RouteSet.Any],
-  )
-  const result = f(emptySet)
-
-  const wrapped: RouteMount.MountSet = Route.set(
-    Route.items(result) as Route.RouteSet.Tuple,
-    { method },
-  )
-
-  return make(
-    [
-      ...baseItems,
-      wrapped,
-    ],
-  )
 }
 
 function makeMethodDescriber<M extends RouteMount.HttpMethod>(
