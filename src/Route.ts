@@ -6,6 +6,7 @@ import * as Values from "./Values.ts"
 
 export const RouteItems: unique symbol = Symbol()
 export const RouteDescriptor: unique symbol = Symbol()
+export const RouteBindings: unique symbol = Symbol()
 
 export const TypeId: unique symbol = Symbol.for("effect-start/RouteSet")
 
@@ -20,7 +21,7 @@ export namespace RouteSet {
 
   export type RouteSet<
     D extends RouteDescriptor.Any = {},
-    B extends Record<string, any> = {},
+    B = {},
     M extends Tuple = [],
   > =
     & Data<D, B, M>
@@ -32,11 +33,12 @@ export namespace RouteSet {
 
   export type Data<
     D extends RouteDescriptor.Any = {},
-    B extends Record<string, any> = {},
+    B = {},
     M extends Tuple = [],
   > = {
     [RouteItems]: M
     [RouteDescriptor]: D
+    [RouteBindings]: B
   }
 
   export type Proto =
@@ -127,7 +129,7 @@ export namespace RouteSet {
 export namespace Route {
   export interface Route<
     D extends RouteDescriptor.Any = {},
-    B extends Record<string, any> = {},
+    B = {},
     A = any,
     E = never,
     R = never,
@@ -214,12 +216,12 @@ export function isRoute(
 
 export function set<
   D extends RouteDescriptor.Any = {},
-  B extends Record<string, any> = {},
+  B = {},
   I extends RouteSet.Tuple = [],
 >(
   items: I = [] as unknown as I,
   descriptor: D = {} as D,
-): RouteSet.RouteSet<D, {}, I> {
+): RouteSet.RouteSet<D, B, I> {
   return Object.assign(
     Object.create(Proto),
     {
@@ -231,7 +233,7 @@ export function set<
 
 export function make<
   D extends RouteDescriptor.Any = {},
-  B extends Record<string, any> = {},
+  B = {},
   A = any,
   E = never,
   R = never,

@@ -2,36 +2,46 @@ import * as Effect from "effect/Effect"
 import type * as Utils from "effect/Utils"
 import * as Route from "./Route.ts"
 
-export type FilterHandlerInput<B, E, R> =
-  | { context: B }
-  | Effect.Effect<{ context: B }, E, R>
-  | ((context: any) =>
-    | { context: B }
-    | Effect.Effect<{ context: B }, E, R>
-    | Generator<Utils.YieldWrap<Effect.Effect<any, E, R>>, { context: B }, any>)
+export type FilterResult<BOut, E, R> =
+  | { context: BOut }
+  | Effect.Effect<{ context: BOut }, E, R>
+
+export type FilterHandlerInput<BIn, BOut, E, R> =
+  | FilterResult<BOut, E, R>
+  | ((context: BIn) =>
+    | FilterResult<BOut, E, R>
+    | Generator<
+      Utils.YieldWrap<Effect.Effect<any, E, R>>,
+      { context: BOut },
+      any
+    >)
 
 export function filter<
-  B extends Record<string, any>,
+  D extends Route.RouteDescriptor.Any,
+  P extends Route.RouteSet.Tuple,
+  BOut extends {},
   E = never,
   R = never,
+  BIn = D & Route.ExtractBindings<P>,
 >(
-  filterHandler: FilterHandlerInput<B, E, R>,
+  filterHandler: FilterHandlerInput<BIn, BOut, E, R>,
 ) {
   const normalized = normalizeFilterHandler(filterHandler)
 
-  return function<
-    D extends Route.RouteDescriptor.Any,
-    P extends Route.RouteSet.Tuple,
-  >(
+  return function(
     self: Route.RouteSet.RouteSet<D, {}, P>,
-  ) {
+  ): Route.RouteSet.RouteSet<
+    D,
+    {},
+    [...P, Route.Route.Route<{}, BOut, void, E, R>]
+  > {
     const route = Route.make<
       {},
-      B & Route.ExtractBindings<P>,
+      BOut,
       void,
       E,
       R
-    >((context, next) =>
+    >((context: any, next) =>
       Effect.gen(function*() {
         const filterResult = yield* normalized(context)
 
@@ -50,7 +60,7 @@ export function filter<
       [
         ...Route.items(self),
         route,
-      ] as const,
+      ] as [...P, Route.Route.Route<{}, BOut, void, E, R>],
       self[Route.RouteDescriptor],
     )
   }
@@ -65,21 +75,21 @@ function isGenerator(value: unknown): value is Generator {
   )
 }
 
-function normalizeFilterHandler<B, E, R>(
-  handler: FilterHandlerInput<B, E, R>,
-): (context: any) => Effect.Effect<{ context: B }, E, R> {
+function normalizeFilterHandler<BIn, BOut, E, R>(
+  handler: FilterHandlerInput<BIn, BOut, E, R>,
+): (context: BIn) => Effect.Effect<{ context: BOut }, E, R> {
   if (typeof handler === "function") {
-    return (context: any): Effect.Effect<{ context: B }, E, R> => {
+    return (context: BIn): Effect.Effect<{ context: BOut }, E, R> => {
       const result = handler(context)
 
       if (Effect.isEffect(result)) {
-        return result as Effect.Effect<{ context: B }, E, R>
+        return result as Effect.Effect<{ context: BOut }, E, R>
       }
 
       if (isGenerator(result)) {
         return Effect.gen(function*() {
           return yield* result
-        }) as Effect.Effect<{ context: B }, E, R>
+        }) as Effect.Effect<{ context: BOut }, E, R>
       }
 
       return Effect.succeed(result)
@@ -87,8 +97,8 @@ function normalizeFilterHandler<B, E, R>(
   }
 
   if (Effect.isEffect(handler)) {
-    return (_context) => handler
+    return (_context) => handler as Effect.Effect<{ context: BOut }, E, R>
   }
 
-  return (_context) => Effect.succeed(handler as { context: B })
+  return (_context) => Effect.succeed(handler as { context: BOut })
 }

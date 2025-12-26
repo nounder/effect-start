@@ -81,17 +81,28 @@ test.it("uses GET & POST method", async () => {
 })
 
 test.it(`infers context from use()`, () => {
-  const context = {
-    answer: 42,
-  }
-
-  const filterAnswer = Route.filter({
-    context,
-  })
-
   const routes = Route
     .use(
-      filterAnswer,
+      Route.filter({
+        context: {
+          answer: 42,
+        },
+      }),
+    )
+    .use(
+      Route.filter((ctx) => {
+        test
+          .expectTypeOf(ctx)
+          .toMatchObjectType<{
+            answer: number
+          }>()
+
+        return {
+          context: {
+            doubledAnswer: ctx.answer * 2,
+          },
+        }
+      }),
     )
     .get(
       Route.filter({
@@ -106,6 +117,7 @@ test.it(`infers context from use()`, () => {
             method: "GET"
             format: "text"
             answer: number
+            doubledAnswer: number
             getter: boolean
           }>()
 
@@ -119,6 +131,7 @@ test.it(`infers context from use()`, () => {
           .toMatchObjectType<{
             method: "POST"
             answer: number
+            doubledAnswer: number
             format: "json"
           }>()
 
