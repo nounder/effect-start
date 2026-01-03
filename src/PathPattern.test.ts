@@ -133,22 +133,20 @@ test.describe(PathPattern.format, () => {
   })
 })
 
-test.describe("round-trip", () => {
-  test.it("parse then format returns original", () => {
-    const paths = [
-      "/",
-      "/users",
-      "/users/:id",
-      "/users/:id?",
-      "/files/:path*",
-      "/users/:userId/posts/:postId",
-    ] as const
-    for (const path of paths) {
-      test
-        .expect(PathPattern.format(PathPattern.parse(path)))
-        .toBe(path)
-    }
-  })
+test.it("round trips", () => {
+  const paths = [
+    "/",
+    "/users",
+    "/users/:id",
+    "/users/:id?",
+    "/files/:path*",
+    "/users/:userId/posts/:postId",
+  ] as const
+  for (const path of paths) {
+    test
+      .expect(PathPattern.format(PathPattern.parse(path)))
+      .toBe(path)
+  }
 })
 
 test.describe("Segments", () => {
