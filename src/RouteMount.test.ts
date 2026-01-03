@@ -224,25 +224,70 @@ test.it("mount contents", () => {
       Route.get(Route.text("User profile")),
     )
 
-  test
-    .expectTypeOf(routes)
-    .toExtend<
-      Route.RouteSet.RouteSet<
-        {},
-        {},
-        [
-          Route.Route.Route<
-            { path: "/about" },
-            {},
-            any
-          >,
+  const items = Route.items(routes)
 
-          Route.Route.Route<
-            { path: "/users/:id" },
-            {},
-            any
-          >,
-        ]
-      >
-    >()
+  test
+    .expect(items)
+    .toHaveLength(2)
+
+  test
+    .expect(items[0][Route.RouteDescriptor])
+    .toEqual({ path: "/about" })
+
+  test
+    .expect(items[1][Route.RouteDescriptor])
+    .toEqual({ path: "/users/:id" })
+
+  type Items = Route.RouteSet.Items<typeof routes>
+
+  test
+    .expectTypeOf<Items[0][typeof Route.RouteDescriptor]>()
+    .toMatchObjectType<{ path: "/about" }>()
+
+  test
+    .expectTypeOf<Items[1][typeof Route.RouteDescriptor]>()
+    .toMatchObjectType<{ path: "/users/:id" }>()
+})
+
+test.it("mount mounted content", () => {
+  const routes = Route.add(
+    "/admin",
+    Route
+      .add(
+        "/users",
+        Route.get(Route.text("Admin users list")),
+      )
+      .add(
+        "/settings",
+        Route.get(Route.text("Admin settings")),
+      ),
+  )
+
+  const items = Route.items(routes)
+
+  test
+    .expect(items)
+    .toHaveLength(2)
+
+  test
+    .expect(items[0][Route.RouteDescriptor])
+    .toEqual({ path: "/admin/users" })
+
+  test
+    .expect(items[1][Route.RouteDescriptor])
+    .toEqual({ path: "/admin/settings" })
+
+  type Items = Route.RouteSet.Items<typeof routes>
+
+  test
+    .expectTypeOf<Items["length"]>()
+    .toEqualTypeOf<2>()
+
+  test
+    .expectTypeOf<Items[0][typeof Route.RouteDescriptor]>()
+    .toMatchObjectType<{ path: "/admin/users" }>()
+
+  test
+    .expectTypeOf<Items[1][typeof Route.RouteDescriptor]>()
+    .toMatchObjectType<{ path: "/admin/settings" }>()
 })

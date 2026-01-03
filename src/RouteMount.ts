@@ -19,6 +19,42 @@ export const patch = makeMethodDescriber("PATCH")
 export const head = makeMethodDescriber("HEAD")
 export const options = makeMethodDescriber("OPTIONS")
 
+export const add: RouteMount.Add = function(
+  this: Self,
+  path: string,
+  routes: Route.RouteSet.Any,
+) {
+  const baseItems = Route.isRouteSet(this)
+    ? Route.items(this)
+    : [] as const
+
+  const routeItems = Route.items(routes)
+  const newItems: Route.RouteSet.Any[] = []
+
+  for (const item of routeItems) {
+    const descriptor = item[Route.RouteDescriptor] as { path?: string }
+    if (descriptor && typeof descriptor.path === "string") {
+      const concatenatedPath = path + descriptor.path
+      const route = Route.make(
+        (context, next) => next(context),
+        { path: concatenatedPath },
+      )
+      newItems.push(route)
+    } else {
+      const route = Route.make(
+        (context, next) => next(context),
+        { path },
+      )
+      newItems.push(route)
+    }
+  }
+
+  return make([
+    ...baseItems,
+    ...newItems,
+  ] as any)
+}
+
 const Proto = Object.assign(
   Object.create(null),
   {
@@ -36,13 +72,14 @@ const Proto = Object.assign(
     patch,
     head,
     options,
+    add,
   },
 )
 
 function make<
   D extends {} = {},
   B = {},
-  I extends [...RouteMount.MountSet[]] = [],
+  I extends [...RouteMount.BuilderItem[]] = [],
 >(
   items: I,
 ): RouteMount.Builder<D, B, I> {
@@ -57,6 +94,10 @@ function make<
 
 type Method<V extends RouteMount.HttpMethod> = {
   method: V
+}
+
+type Path<P extends string> = {
+  path: P
 }
 
 function makeMethodDescriber<M extends RouteMount.HttpMethod>(
@@ -85,7 +126,7 @@ function makeMethodDescriber<M extends RouteMount.HttpMethod>(
       [
         ...baseItems,
         wrappedResult,
-      ] as [...RouteMount.MountSet[]],
+      ] as [...RouteMount.BuilderItem[]],
     )
   }
   return fn as RouteMount.Describer<M>
@@ -108,10 +149,20 @@ export namespace RouteMount {
     Route.RouteSet.Tuple
   >
 
+  export type PathRoute = Route.Route.Route<
+    { path: string },
+    {},
+    any,
+    any,
+    any
+  >
+
+  export type BuilderItem = MountSet | PathRoute | Route.RouteSet.Any
+
   export interface Builder<
     D extends {} = {},
     B = {},
-    I extends [...MountSet[]] = [],
+    I extends Route.RouteSet.Tuple = [],
   > extends Route.RouteSet.RouteSet<D, B, I>, Module {
   }
 
@@ -131,10 +182,10 @@ export namespace RouteMount {
     : {}
 
   export type WildcardBindings<
-    I extends [...MountSet[]],
+    I extends Route.RouteSet.Tuple,
   > = I extends [
-    infer Head extends MountSet,
-    ...infer Tail extends [...MountSet[]],
+    infer Head,
+    ...infer Tail extends Route.RouteSet.Tuple,
   ] ? (
       Head extends Route.RouteSet.RouteSet<
         Method<"*">,
@@ -150,6 +201,45 @@ export namespace RouteMount {
     Prev,
     New,
   > = M extends "*" ? Prev & New : Prev
+
+  export type PrefixPath<
+    Prefix extends string,
+    I extends Route.RouteSet.Tuple,
+  > = I extends [
+    infer Head,
+    ...infer Tail extends Route.RouteSet.Tuple,
+  ] ? (
+      Head extends Route.Route.Route<infer D, any, any, any, any>
+        ? D extends { path: infer P extends string }
+          ? [
+              Route.Route.Route<{ path: `${Prefix}${P}` }, {}, any, any, any>,
+              ...PrefixPath<Prefix, Tail>,
+            ]
+          : [
+              Route.Route.Route<{ path: Prefix }, {}, any, any, any>,
+              ...PrefixPath<Prefix, Tail>,
+            ]
+        : [
+            Route.Route.Route<{ path: Prefix }, {}, any, any, any>,
+            ...PrefixPath<Prefix, Tail>,
+          ]
+    )
+    : []
+
+  export interface Add {
+    <S extends Self, P extends string, R extends Route.RouteSet.Any>(
+      this: S,
+      path: P,
+      routes: R,
+    ): Builder<
+      {},
+      {},
+      [
+        ...Items<S>,
+        ...PrefixPath<P, Route.RouteSet.Items<R>>,
+      ]
+    >
+  }
 
   export interface Describer<M extends HttpMethod> {
     <S extends Self, A extends Route.RouteSet.Any>(
