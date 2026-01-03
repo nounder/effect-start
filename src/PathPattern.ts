@@ -122,3 +122,15 @@ export function match(
 
   return params
 }
+
+export function toRegex(pattern: string): RegExp {
+  const result = pattern
+    .replace(/\/+(\/|$)/g, "$1")
+    .replace(/\./g, "\\.")
+    .replace(/(\/?):(\w+)\+/g, "($1(?<$2>*))")
+    .replace(/(\/?):(\w+)\*/g, "(\\/?(?<$2>.*))?")
+    .replace(/(\/?):(\w+)/g, "($1(?<$2>[^$1/]+?))")
+    .replace(/(\/?)\*/g, "($1.*)?")
+
+  return new RegExp(`^${result}/*$`)
+}

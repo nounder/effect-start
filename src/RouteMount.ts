@@ -54,9 +54,7 @@ const Proto = Object.assign(
   {
     [TypeId]: TypeId,
     *[Symbol.iterator](this: Route.RouteSet.Any) {
-      for (const item of Route.items(this)) {
-        yield* item
-      }
+      yield* Route.items(this)
     },
     use,
     get,
