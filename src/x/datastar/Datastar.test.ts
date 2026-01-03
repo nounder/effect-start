@@ -258,7 +258,6 @@ test.it("debug hook execution", () => {
   })
 
   const html = HyperHtml.renderToString(node, Datastar.HyperHooks)
-  console.log("Final HTML:", html)
 
   test
     .expect(html)

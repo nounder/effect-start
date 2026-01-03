@@ -1,7 +1,7 @@
 import { HttpServerRequest } from "@effect/platform"
 import { RouteNotFound } from "@effect/platform/HttpServerError"
 import * as test from "bun:test"
-import { Layer } from "effect"
+import { Layer, Logger } from "effect"
 import * as Cause from "effect/Cause"
 import * as HttpAppExtra from "./HttpAppExtra.ts"
 import { effectFn } from "./testing"
@@ -15,9 +15,9 @@ const mockRequest = HttpServerRequest.HttpServerRequest.of({
   },
 } as any)
 
-const mockRequestLayer = Layer.succeed(
-  HttpServerRequest.HttpServerRequest,
-  mockRequest,
+const mockRequestLayer = Layer.mergeAll(
+  Layer.succeed(HttpServerRequest.HttpServerRequest, mockRequest),
+  Logger.minimumLogLevel("None"),
 )
 
 const effect = effectFn(mockRequestLayer)
