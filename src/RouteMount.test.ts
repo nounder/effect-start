@@ -234,21 +234,21 @@ test.it("mount contents", () => {
 
   test
     .expect(Route.descriptor(items[0]))
-    .toEqual({ path: "/about" })
+    .toMatchObject({ path: "/about", method: "GET" })
 
   test
     .expect(Route.descriptor(items[1]))
-    .toEqual({ path: "/users/:id" })
+    .toMatchObject({ path: "/users/:id", method: "GET" })
 
   type Items = Route.RouteSet.Items<typeof routes>
 
   test
     .expectTypeOf<Items[0][typeof Route.RouteDescriptor]>()
-    .toMatchObjectType<{ path: "/about" }>()
+    .toMatchObjectType<{ path: "/about"; method: "GET" }>()
 
   test
     .expectTypeOf<Items[1][typeof Route.RouteDescriptor]>()
-    .toMatchObjectType<{ path: "/users/:id" }>()
+    .toMatchObjectType<{ path: "/users/:id"; method: "GET" }>()
 })
 
 test.it("mount mounted content", () => {
@@ -274,11 +274,11 @@ test.it("mount mounted content", () => {
 
   test
     .expect(Route.descriptor(items[0]))
-    .toEqual({ path: "/admin/users" })
+    .toMatchObject({ path: "/admin/users", method: "GET" })
 
   test
     .expect(Route.descriptor(items[1]))
-    .toEqual({ path: "/admin/settings" })
+    .toMatchObject({ path: "/admin/settings", method: "GET" })
 
   type Items = Route.RouteSet.Items<typeof routes>
 
@@ -288,9 +288,44 @@ test.it("mount mounted content", () => {
 
   test
     .expectTypeOf<Items[0][typeof Route.RouteDescriptor]>()
-    .toMatchObjectType<{ path: "/admin/users" }>()
+    .toMatchObjectType<{ path: "/admin/users"; method: "GET" }>()
 
   test
     .expectTypeOf<Items[1][typeof Route.RouteDescriptor]>()
-    .toMatchObjectType<{ path: "/admin/settings" }>()
+    .toMatchObjectType<{ path: "/admin/settings"; method: "GET" }>()
+})
+
+test.it("add preserves original handlers", async () => {
+  let handlerCalled = false
+  const routes = Route.add(
+    "/api",
+    Route.get(
+      Route.text((ctx) => {
+        handlerCalled = true
+        return Effect.succeed(`Hello from ${ctx.format}`)
+      }),
+    ),
+  )
+
+  const items = Route.items(routes)
+  test.expect(items).toHaveLength(1)
+
+  const mountedItem = items[0] as Route.RouteSet.Any
+  test.expect(Route.descriptor(mountedItem)).toMatchObject({ path: "/api" })
+
+  const nestedItems = Route.items(mountedItem)
+  test.expect(nestedItems).toHaveLength(1)
+
+  const textRoute = nestedItems[0] as Route.Route.Route
+  test.expect(Route.isRoute(textRoute)).toBe(true)
+  test.expect(Route.descriptor(textRoute)).toMatchObject({ format: "text" })
+
+  const result = await Effect.runPromise(
+    textRoute.handler(
+      { format: "text", method: "GET", path: "/api" },
+      () => Effect.succeed("unused"),
+    ),
+  )
+  test.expect(result).toBe("Hello from text")
+  test.expect(handlerCalled).toBe(true)
 })

@@ -17,6 +17,12 @@ test.describe(PathPattern.parseSegment, () => {
       .toBe("file.txt")
   })
 
+  test.it("parses unicode literal segments", () => {
+    test
+      .expect(PathPattern.parseSegment("用户"))
+      .toBe("用户")
+  })
+
   test.it("parses param segments", () => {
     test
       .expect(PathPattern.parseSegment(":id"))

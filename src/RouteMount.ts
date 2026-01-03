@@ -29,25 +29,19 @@ export const add: RouteMount.Add = function(
     : [] as const
 
   const routeItems = Route.items(routes)
-  const newItems: Route.RouteSet.Any[] = []
-
-  for (const item of routeItems) {
+  const newItems = routeItems.map((item) => {
     const itemDescriptor = Route.descriptor(item) as { path?: string }
-    if (itemDescriptor && typeof itemDescriptor.path === "string") {
-      const concatenatedPath = path + itemDescriptor.path
-      const route = Route.make(
-        (context, next) => next(context),
-        { path: concatenatedPath },
+    const concatenatedPath = typeof itemDescriptor?.path === "string"
+      ? path + itemDescriptor.path
+      : path
+    const newDescriptor = { ...itemDescriptor, path: concatenatedPath }
+    return Route.isRoute(item)
+      ? Route.make(
+        item.handler as Route.Route.Handler<any, any, any, any>,
+        newDescriptor,
       )
-      newItems.push(route)
-    } else {
-      const route = Route.make(
-        (context, next) => next(context),
-        { path },
-      )
-      newItems.push(route)
-    }
-  }
+      : Route.set(Route.items(item), newDescriptor)
+  })
 
   return make([
     ...baseItems,
@@ -214,19 +208,36 @@ export namespace RouteMount {
     infer Head,
     ...infer Tail extends Route.RouteSet.Tuple,
   ] ? (
-      Head extends Route.Route.Route<infer D, any, any, any, any>
+      Head extends
+        Route.Route.Route<infer D, infer B, infer A, infer E, infer R>
         ? D extends { path: infer P extends string } ? [
-            Route.Route.Route<{ path: `${Prefix}${P}` }, {}, any, any, any>,
+            Route.Route.Route<
+              Omit<D, "path"> & { path: `${Prefix}${P}` },
+              B,
+              A,
+              E,
+              R
+            >,
             ...PrefixPath<Prefix, Tail>,
           ]
         : [
-          Route.Route.Route<{ path: Prefix }, {}, any, any, any>,
+          Route.Route.Route<D & { path: Prefix }, B, A, E, R>,
           ...PrefixPath<Prefix, Tail>,
         ]
-        : [
-          Route.Route.Route<{ path: Prefix }, {}, any, any, any>,
-          ...PrefixPath<Prefix, Tail>,
-        ]
+        : Head extends Route.RouteSet.RouteSet<infer D, infer B, infer Items>
+          ? D extends { path: infer P extends string } ? [
+              Route.RouteSet.RouteSet<
+                Omit<D, "path"> & { path: `${Prefix}${P}` },
+                B,
+                Items
+              >,
+              ...PrefixPath<Prefix, Tail>,
+            ]
+          : [
+            Route.RouteSet.RouteSet<D & { path: Prefix }, B, Items>,
+            ...PrefixPath<Prefix, Tail>,
+          ]
+        : PrefixPath<Prefix, Tail>
     )
     : []
 

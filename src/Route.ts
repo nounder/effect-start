@@ -11,7 +11,9 @@ export const RouteBindings: unique symbol = Symbol()
 export const TypeId: unique symbol = Symbol.for("effect-start/RouteSet")
 
 export namespace RouteDescriptor {
-  export type Any = {}
+  export type Any = {
+    [key: string]: unknown
+  }
 }
 
 export namespace RouteSet {
