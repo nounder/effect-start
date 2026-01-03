@@ -44,13 +44,22 @@ test.describe(PathPattern.parseSegment, () => {
       .toBe(":slug?")
   })
 
-  test.it("parses rest segments", () => {
+  test.it("parses optional wildcard segments", () => {
     test
       .expect(PathPattern.parseSegment(":path*"))
       .toBe(":path*")
     test
       .expect(PathPattern.parseSegment(":rest*"))
       .toBe(":rest*")
+  })
+
+  test.it("parses required wildcard segments", () => {
+    test
+      .expect(PathPattern.parseSegment(":path+"))
+      .toBe(":path+")
+    test
+      .expect(PathPattern.parseSegment(":rest+"))
+      .toBe(":rest+")
   })
 
   test.it("returns null for invalid segments", () => {
@@ -62,6 +71,9 @@ test.describe(PathPattern.parseSegment, () => {
       .toBe(null)
     test
       .expect(PathPattern.parseSegment(":*"))
+      .toBe(null)
+    test
+      .expect(PathPattern.parseSegment(":+"))
       .toBe(null)
     test
       .expect(PathPattern.parseSegment(""))
@@ -97,10 +109,16 @@ test.describe(PathPattern.parse, () => {
       .toEqual(["users", ":id?"])
   })
 
-  test.it("parses paths with rest", () => {
+  test.it("parses paths with optional wildcard", () => {
     test
       .expect(PathPattern.parse("/files/:path*"))
       .toEqual(["files", ":path*"])
+  })
+
+  test.it("parses paths with required wildcard", () => {
+    test
+      .expect(PathPattern.parse("/files/:path+"))
+      .toEqual(["files", ":path+"])
   })
 
   test.it("parses root path", () => {
@@ -134,6 +152,9 @@ test.describe(PathPattern.format, () => {
       .expect(PathPattern.format(["files", ":path*"]))
       .toBe("/files/:path*")
     test
+      .expect(PathPattern.format(["files", ":path+"]))
+      .toBe("/files/:path+")
+    test
       .expect(PathPattern.format([]))
       .toBe("/")
   })
@@ -146,6 +167,7 @@ test.it("round trips", () => {
     "/users/:id",
     "/users/:id?",
     "/files/:path*",
+    "/files/:path+",
     "/users/:userId/posts/:postId",
   ] as const
   for (const path of paths) {
@@ -177,10 +199,16 @@ test.describe("Segments", () => {
       .toEqualTypeOf<["users", ":id?"]>()
   })
 
-  test.it("extracts rest segments", () => {
+  test.it("extracts optional wildcard segments", () => {
     test
       .expectTypeOf<PathPattern.Segments<"/files/:path*">>()
       .toEqualTypeOf<["files", ":path*"]>()
+  })
+
+  test.it("extracts required wildcard segments", () => {
+    test
+      .expectTypeOf<PathPattern.Segments<"/files/:path+">>()
+      .toEqualTypeOf<["files", ":path+"]>()
   })
 
   test.it("extracts complex paths", () => {
@@ -209,10 +237,16 @@ test.describe("Params", () => {
       .toEqualTypeOf<{ id?: string }>()
   })
 
-  test.it("extracts rest params as optional", () => {
+  test.it("extracts optional wildcard params as optional", () => {
     test
       .expectTypeOf<PathPattern.Params<"/files/:path*">>()
       .toEqualTypeOf<{ path?: string }>()
+  })
+
+  test.it("extracts required wildcard params as required", () => {
+    test
+      .expectTypeOf<PathPattern.Params<"/files/:path+">>()
+      .toEqualTypeOf<{ path: string }>()
   })
 
   test.it("extracts multiple params", () => {
@@ -227,10 +261,79 @@ test.describe("Params", () => {
       .toEqualTypeOf<{}>()
   })
 
-  test.it("handles mixed params", () => {
+  test.it("handles mixed params with optional wildcard", () => {
     test
       .expectTypeOf<PathPattern.Params<"/users/:id/files/:path*">>()
       .toEqualTypeOf<{ id: string } & { path?: string }>()
+  })
+
+  test.it("handles mixed params with required wildcard", () => {
+    test
+      .expectTypeOf<PathPattern.Params<"/users/:id/files/:path+">>()
+      .toEqualTypeOf<{ id: string } & { path: string }>()
+  })
+})
+
+test.describe(PathPattern.match, () => {
+  test.it("matches static path", () => {
+    const result = PathPattern.match(["users"], ["users"])
+    test.expect(result).toEqual({})
+  })
+
+  test.it("returns null for non-matching static path", () => {
+    const result = PathPattern.match(["users"], ["posts"])
+    test.expect(result).toBeNull()
+  })
+
+  test.it("extracts required param", () => {
+    const result = PathPattern.match(["users", ":id"], ["users", "123"])
+    test.expect(result).toEqual({ id: "123" })
+  })
+
+  test.it("extracts optional param when present", () => {
+    const result = PathPattern.match(["users", ":id?"], ["users", "123"])
+    test.expect(result).toEqual({ id: "123" })
+  })
+
+  test.it("omits optional param when absent", () => {
+    const result = PathPattern.match(["users", ":id?"], ["users"])
+    test.expect(result).toEqual({})
+  })
+
+  test.it("extracts optional wildcard when present", () => {
+    const result = PathPattern.match(["docs", ":path*"], [
+      "docs",
+      "api",
+      "users",
+    ])
+    test.expect(result).toEqual({ path: "api/users" })
+  })
+
+  test.it("omits optional wildcard when absent", () => {
+    const result = PathPattern.match(["docs", ":path*"], ["docs"])
+    test.expect(result).toEqual({})
+  })
+
+  test.it("extracts required wildcard when present", () => {
+    const result = PathPattern.match(["docs", ":path+"], [
+      "docs",
+      "api",
+      "users",
+    ])
+    test.expect(result).toEqual({ path: "api/users" })
+  })
+
+  test.it("returns null for required wildcard when absent", () => {
+    const result = PathPattern.match(["docs", ":path+"], ["docs"])
+    test.expect(result).toBeNull()
+  })
+
+  test.it("distinguishes optional from required wildcard", () => {
+    const optionalMatch = PathPattern.match(["files", ":path*"], ["files"])
+    const requiredMatch = PathPattern.match(["files", ":path+"], ["files"])
+
+    test.expect(optionalMatch).toEqual({})
+    test.expect(requiredMatch).toBeNull()
   })
 })
 

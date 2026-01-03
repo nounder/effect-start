@@ -86,6 +86,8 @@ function getPathPriority(path: string): number {
     while (i < len && path[i] !== "/") i++
 
     if (path[i - 1] === "*") {
+      score += 3
+    } else if (path[i - 1] === "+") {
       score += 2
     } else if (path[segStart] === ":") {
       score += 1

@@ -5,8 +5,10 @@ export interface Node {
   children: Record<string, Node>
   paramChild: Node | null
   paramName: string | null
-  wildcardChild: Node | null
-  wildcardName: string | null
+  requiredWildcardChild: Node | null
+  requiredWildcardName: string | null
+  optionalWildcardChild: Node | null
+  optionalWildcardName: string | null
   routes: Route.Route.Route[]
 }
 
@@ -24,8 +26,10 @@ function createNode(): Node {
     children: {},
     paramChild: null,
     paramName: null,
-    wildcardChild: null,
-    wildcardName: null,
+    requiredWildcardChild: null,
+    requiredWildcardName: null,
+    optionalWildcardChild: null,
+    optionalWildcardName: null,
     routes: [],
   }
 }
@@ -46,12 +50,18 @@ function insertRoute(
   if (segment.startsWith(":")) {
     const name = segment.slice(1)
 
-    if (name.endsWith("*")) {
-      if (!node.wildcardChild) {
-        node.wildcardChild = createNode()
+    if (name.endsWith("+")) {
+      if (!node.requiredWildcardChild) {
+        node.requiredWildcardChild = createNode()
       }
-      node.wildcardChild.wildcardName = name.slice(0, -1)
-      node.wildcardChild.routes.push(route)
+      node.requiredWildcardChild.requiredWildcardName = name.slice(0, -1)
+      node.requiredWildcardChild.routes.push(route)
+    } else if (name.endsWith("*")) {
+      if (!node.optionalWildcardChild) {
+        node.optionalWildcardChild = createNode()
+      }
+      node.optionalWildcardChild.optionalWildcardName = name.slice(0, -1)
+      node.optionalWildcardChild.routes.push(route)
     } else if (name.endsWith("?")) {
       if (!node.paramChild) {
         node.paramChild = createNode()
@@ -137,6 +147,14 @@ function lookupNode(
     for (const route of node.routes) {
       results.push({ route, params })
     }
+    if (
+      node.optionalWildcardChild
+      && node.optionalWildcardChild.optionalWildcardName
+    ) {
+      for (const route of node.optionalWildcardChild.routes) {
+        results.push({ route, params })
+      }
+    }
     return results
   }
 
@@ -152,13 +170,30 @@ function lookupNode(
     results.push(...lookupNode(node.paramChild, rest, newParams))
   }
 
-  if (node.wildcardChild && node.wildcardChild.wildcardName) {
+  if (
+    node.requiredWildcardChild
+    && node.requiredWildcardChild.requiredWildcardName
+  ) {
     const wildcardValue = segments.join("/")
     const newParams = {
       ...params,
-      [node.wildcardChild.wildcardName]: wildcardValue,
+      [node.requiredWildcardChild.requiredWildcardName]: wildcardValue,
     }
-    for (const route of node.wildcardChild.routes) {
+    for (const route of node.requiredWildcardChild.routes) {
+      results.push({ route, params: newParams })
+    }
+  }
+
+  if (
+    node.optionalWildcardChild
+    && node.optionalWildcardChild.optionalWildcardName
+  ) {
+    const wildcardValue = segments.join("/")
+    const newParams = {
+      ...params,
+      [node.optionalWildcardChild.optionalWildcardName]: wildcardValue,
+    }
+    for (const route of node.optionalWildcardChild.routes) {
       results.push({ route, params: newParams })
     }
   }

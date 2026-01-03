@@ -106,7 +106,7 @@ test.describe(RouteTree.lookup, () => {
       .toEqual({})
   })
 
-  test.it("matches path with wildcard param", () => {
+  test.it("matches path with optional wildcard param", () => {
     const routes = Route
       .add("/docs/:path*", Route.get(Route.text("Docs")))
     const tree = RouteTree.make(routes)
@@ -121,6 +121,85 @@ test.describe(RouteTree.lookup, () => {
       .toEqual({
         path: "api/users/create",
       })
+  })
+
+  test.it("matches path with optional wildcard when empty", () => {
+    const routes = Route
+      .add("/docs/:path*", Route.get(Route.text("Docs")))
+    const tree = RouteTree.make(routes)
+
+    const results = RouteTree.lookup(tree, "GET", "/docs")
+
+    test
+      .expect(results.length)
+      .toBe(1)
+    test
+      .expect(results[0].params)
+      .toEqual({})
+  })
+
+  test.it("matches path with required wildcard param", () => {
+    const routes = Route
+      .add("/docs/:path+", Route.get(Route.text("Docs")))
+    const tree = RouteTree.make(routes)
+
+    const results = RouteTree.lookup(tree, "GET", "/docs/api/users/create")
+
+    test
+      .expect(results.length)
+      .toBe(1)
+    test
+      .expect(results[0].params)
+      .toEqual({
+        path: "api/users/create",
+      })
+  })
+
+  test.it("does not match required wildcard when empty", () => {
+    const routes = Route
+      .add("/docs/:path+", Route.get(Route.text("Docs")))
+    const tree = RouteTree.make(routes)
+
+    const results = RouteTree.lookup(tree, "GET", "/docs")
+
+    test
+      .expect(results.length)
+      .toBe(0)
+  })
+
+  test.it("required wildcard beats optional wildcard in priority", () => {
+    const routes = Route
+      .add("/files/:path*", Route.get(Route.text("Optional")))
+      .add("/files/:path+", Route.get(Route.text("Required")))
+    const tree = RouteTree.make(routes)
+
+    const multiResults = RouteTree.lookup(tree, "GET", "/files/a/b/c")
+
+    test
+      .expect(multiResults.length)
+      .toBe(2)
+    test
+      .expect(multiResults[0].params)
+      .toEqual({ path: "a/b/c" })
+    test
+      .expect(multiResults[1].params)
+      .toEqual({ path: "a/b/c" })
+  })
+
+  test.it("optional wildcard matches when required cannot", () => {
+    const routes = Route
+      .add("/files/:path*", Route.get(Route.text("Optional")))
+      .add("/files/:path+", Route.get(Route.text("Required")))
+    const tree = RouteTree.make(routes)
+
+    const emptyResults = RouteTree.lookup(tree, "GET", "/files")
+
+    test
+      .expect(emptyResults.length)
+      .toBe(1)
+    test
+      .expect(emptyResults[0].params)
+      .toEqual({})
   })
 
   test.it("prioritizes static over param routes", () => {

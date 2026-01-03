@@ -80,7 +80,7 @@ test.describe(RouteMatch.match, () => {
       .toEqual({})
   })
 
-  test.it("extracts wildcard param as joined path", () => {
+  test.it("extracts optional wildcard param as joined path", () => {
     const routes = Route.add("/docs/:path*", Route.get(Route.text("Docs")))
 
     const result = RouteMatch.match(Route.items(routes), {
@@ -92,9 +92,46 @@ test.describe(RouteMatch.match, () => {
       .toEqual({ path: "api/users/create" })
   })
 
-  test.it("static > dynamic > wildcard priority", () => {
+  test.it("matches optional wildcard when path is empty", () => {
+    const routes = Route.add("/docs/:path*", Route.get(Route.text("Docs")))
+
+    const result = RouteMatch.match(Route.items(routes), {
+      path: "/docs",
+    })
+
+    test
+      .expect(result!.params)
+      .toEqual({})
+  })
+
+  test.it("extracts required wildcard param as joined path", () => {
+    const routes = Route.add("/docs/:path+", Route.get(Route.text("Docs")))
+
+    const result = RouteMatch.match(Route.items(routes), {
+      path: "/docs/api/users/create",
+    })
+
+    test
+      .expect(result!.params)
+      .toEqual({ path: "api/users/create" })
+  })
+
+  test.it("does not match required wildcard when path is empty", () => {
+    const routes = Route.add("/docs/:path+", Route.get(Route.text("Docs")))
+
+    const result = RouteMatch.match(Route.items(routes), {
+      path: "/docs",
+    })
+
+    test
+      .expect(result)
+      .toBeNull()
+  })
+
+  test.it("static > dynamic > required wildcard > optional wildcard priority", () => {
     const routes = Route
-      .add("/items/:path*", Route.get(Route.text("Wildcard")))
+      .add("/items/:path*", Route.get(Route.text("OptionalWildcard")))
+      .add("/items/:path+", Route.get(Route.text("RequiredWildcard")))
       .add("/items/:id", Route.get(Route.text("Dynamic")))
       .add("/items/special", Route.get(Route.text("Static")))
 
@@ -104,8 +141,11 @@ test.describe(RouteMatch.match, () => {
     const dynamicMatch = RouteMatch.match(Route.items(routes), {
       path: "/items/123",
     })
-    const wildcardMatch = RouteMatch.match(Route.items(routes), {
+    const requiredWildcardMatch = RouteMatch.match(Route.items(routes), {
       path: "/items/a/b/c",
+    })
+    const optionalWildcardMatch = RouteMatch.match(Route.items(routes), {
+      path: "/items",
     })
 
     test
@@ -115,8 +155,39 @@ test.describe(RouteMatch.match, () => {
       .expect(dynamicMatch!.params)
       .toEqual({ id: "123" })
     test
-      .expect(wildcardMatch!.params)
+      .expect(requiredWildcardMatch!.params)
       .toEqual({ path: "a/b/c" })
+    test
+      .expect(optionalWildcardMatch!.params)
+      .toEqual({})
+  })
+
+  test.it("required wildcard beats optional wildcard for multi-segment paths", () => {
+    const routes = Route
+      .add("/files/:path*", Route.get(Route.text("Optional")))
+      .add("/files/:path+", Route.get(Route.text("Required")))
+
+    const multiSegmentMatch = RouteMatch.match(Route.items(routes), {
+      path: "/files/a/b/c",
+    })
+
+    test
+      .expect(multiSegmentMatch!.params)
+      .toEqual({ path: "a/b/c" })
+  })
+
+  test.it("optional wildcard matches when required cannot", () => {
+    const routes = Route
+      .add("/files/:path*", Route.get(Route.text("Optional")))
+      .add("/files/:path+", Route.get(Route.text("Required")))
+
+    const emptyMatch = RouteMatch.match(Route.items(routes), {
+      path: "/files",
+    })
+
+    test
+      .expect(emptyMatch!.params)
+      .toEqual({})
   })
 
   test.it("more static segments wins", () => {
