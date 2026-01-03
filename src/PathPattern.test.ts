@@ -1,180 +1,82 @@
 import * as test from "bun:test"
 import * as PathPattern from "./PathPattern.ts"
 
-test.describe(PathPattern.parseSegment, () => {
-  test.it("parses literal segments", () => {
+test.describe(PathPattern.validate, () => {
+  test.it("validates simple paths", () => {
     test
-      .expect(PathPattern.parseSegment("users"))
-      .toBe("users")
+      .expect(PathPattern.validate("/users"))
+      .toEqual({ ok: true, segments: ["users"] })
     test
-      .expect(PathPattern.parseSegment("posts"))
-      .toBe("posts")
-    test
-      .expect(PathPattern.parseSegment("my-page"))
-      .toBe("my-page")
-    test
-      .expect(PathPattern.parseSegment("file.txt"))
-      .toBe("file.txt")
+      .expect(PathPattern.validate("/users/posts"))
+      .toEqual({ ok: true, segments: ["users", "posts"] })
   })
 
-  test.it("parses unicode literal segments", () => {
+  test.it("validates paths with params", () => {
     test
-      .expect(PathPattern.parseSegment("用户"))
-      .toBe("用户")
+      .expect(PathPattern.validate("/users/:id"))
+      .toEqual({ ok: true, segments: ["users", ":id"] })
+    test
+      .expect(PathPattern.validate("/users/:userId/posts/:postId"))
+      .toEqual({ ok: true, segments: ["users", ":userId", "posts", ":postId"] })
   })
 
-  test.it("parses param segments", () => {
+  test.it("validates paths with optional params", () => {
     test
-      .expect(PathPattern.parseSegment(":id"))
-      .toBe(":id")
-    test
-      .expect(PathPattern.parseSegment(":userId"))
-      .toBe(":userId")
-    test
-      .expect(PathPattern.parseSegment(":post_id"))
-      .toBe(":post_id")
+      .expect(PathPattern.validate("/users/:id?"))
+      .toEqual({ ok: true, segments: ["users", ":id?"] })
   })
 
-  test.it("parses optional param segments", () => {
+  test.it("validates paths with optional wildcard", () => {
     test
-      .expect(PathPattern.parseSegment(":id?"))
-      .toBe(":id?")
-    test
-      .expect(PathPattern.parseSegment(":slug?"))
-      .toBe(":slug?")
+      .expect(PathPattern.validate("/files/:path*"))
+      .toEqual({ ok: true, segments: ["files", ":path*"] })
   })
 
-  test.it("parses optional wildcard segments", () => {
+  test.it("validates paths with required wildcard", () => {
     test
-      .expect(PathPattern.parseSegment(":path*"))
-      .toBe(":path*")
-    test
-      .expect(PathPattern.parseSegment(":rest*"))
-      .toBe(":rest*")
+      .expect(PathPattern.validate("/files/:path+"))
+      .toEqual({ ok: true, segments: ["files", ":path+"] })
   })
 
-  test.it("parses required wildcard segments", () => {
+  test.it("validates root path", () => {
     test
-      .expect(PathPattern.parseSegment(":path+"))
-      .toBe(":path+")
-    test
-      .expect(PathPattern.parseSegment(":rest+"))
-      .toBe(":rest+")
+      .expect(PathPattern.validate("/"))
+      .toEqual({ ok: true, segments: [] })
   })
 
-  test.it("returns null for invalid segments", () => {
+  test.it("validates unicode segments", () => {
     test
-      .expect(PathPattern.parseSegment(":"))
-      .toBe(null)
-    test
-      .expect(PathPattern.parseSegment(":?"))
-      .toBe(null)
-    test
-      .expect(PathPattern.parseSegment(":*"))
-      .toBe(null)
-    test
-      .expect(PathPattern.parseSegment(":+"))
-      .toBe(null)
-    test
-      .expect(PathPattern.parseSegment(""))
-      .toBe(null)
-    test
-      .expect(PathPattern.parseSegment("foo bar"))
-      .toBe(null)
-  })
-})
-
-test.describe(PathPattern.parse, () => {
-  test.it("parses simple paths", () => {
-    test
-      .expect(PathPattern.parse("/users"))
-      .toEqual(["users"])
-    test
-      .expect(PathPattern.parse("/users/posts"))
-      .toEqual(["users", "posts"])
+      .expect(PathPattern.validate("/用户"))
+      .toEqual({ ok: true, segments: ["用户"] })
   })
 
-  test.it("parses paths with params", () => {
+  test.it("validates segments with dots and dashes", () => {
     test
-      .expect(PathPattern.parse("/users/:id"))
-      .toEqual(["users", ":id"])
+      .expect(PathPattern.validate("/my-page"))
+      .toEqual({ ok: true, segments: ["my-page"] })
     test
-      .expect(PathPattern.parse("/users/:userId/posts/:postId"))
-      .toEqual(["users", ":userId", "posts", ":postId"])
+      .expect(PathPattern.validate("/file.txt"))
+      .toEqual({ ok: true, segments: ["file.txt"] })
   })
 
-  test.it("parses paths with optional params", () => {
-    test
-      .expect(PathPattern.parse("/users/:id?"))
-      .toEqual(["users", ":id?"])
+  test.it("returns error for invalid segments", () => {
+    const result = PathPattern.validate("/foo bar")
+    test.expect(result.ok).toBe(false)
+    if (!result.ok) {
+      test.expect(result.error).toContain("foo bar")
+    }
   })
 
-  test.it("parses paths with optional wildcard", () => {
-    test
-      .expect(PathPattern.parse("/files/:path*"))
-      .toEqual(["files", ":path*"])
+  test.it("returns error for empty param name", () => {
+    const result = PathPattern.validate("/:")
+    test.expect(result.ok).toBe(false)
   })
 
-  test.it("parses paths with required wildcard", () => {
-    test
-      .expect(PathPattern.parse("/files/:path+"))
-      .toEqual(["files", ":path+"])
+  test.it("returns error for param with only modifier", () => {
+    test.expect(PathPattern.validate("/:?").ok).toBe(false)
+    test.expect(PathPattern.validate("/:*").ok).toBe(false)
+    test.expect(PathPattern.validate("/:+").ok).toBe(false)
   })
-
-  test.it("parses root path", () => {
-    test
-      .expect(PathPattern.parse("/"))
-      .toEqual([])
-  })
-
-  test.it("throws on invalid segments", () => {
-    test
-      .expect(() => PathPattern.parse("/foo bar"))
-      .toThrow()
-    test
-      .expect(() => PathPattern.parse("/:"))
-      .toThrow()
-  })
-})
-
-test.describe(PathPattern.format, () => {
-  test.it("formats segments back to path", () => {
-    test
-      .expect(PathPattern.format(["users"]))
-      .toBe("/users")
-    test
-      .expect(PathPattern.format(["users", ":id"]))
-      .toBe("/users/:id")
-    test
-      .expect(PathPattern.format(["users", ":id?"]))
-      .toBe("/users/:id?")
-    test
-      .expect(PathPattern.format(["files", ":path*"]))
-      .toBe("/files/:path*")
-    test
-      .expect(PathPattern.format(["files", ":path+"]))
-      .toBe("/files/:path+")
-    test
-      .expect(PathPattern.format([]))
-      .toBe("/")
-  })
-})
-
-test.it("round trips", () => {
-  const paths = [
-    "/",
-    "/users",
-    "/users/:id",
-    "/users/:id?",
-    "/files/:path*",
-    "/files/:path+",
-    "/users/:userId/posts/:postId",
-  ] as const
-  for (const path of paths) {
-    test
-      .expect(PathPattern.format(PathPattern.parse(path)))
-      .toBe(path)
-  }
 })
 
 test.describe("Segments", () => {
@@ -276,61 +178,53 @@ test.describe("Params", () => {
 
 test.describe(PathPattern.match, () => {
   test.it("matches static path", () => {
-    const result = PathPattern.match(["users"], ["users"])
+    const result = PathPattern.match("/users", "/users")
     test.expect(result).toEqual({})
   })
 
   test.it("returns null for non-matching static path", () => {
-    const result = PathPattern.match(["users"], ["posts"])
+    const result = PathPattern.match("/users", "/posts")
     test.expect(result).toBeNull()
   })
 
   test.it("extracts required param", () => {
-    const result = PathPattern.match(["users", ":id"], ["users", "123"])
+    const result = PathPattern.match("/users/:id", "/users/123")
     test.expect(result).toEqual({ id: "123" })
   })
 
   test.it("extracts optional param when present", () => {
-    const result = PathPattern.match(["users", ":id?"], ["users", "123"])
+    const result = PathPattern.match("/users/:id?", "/users/123")
     test.expect(result).toEqual({ id: "123" })
   })
 
   test.it("omits optional param when absent", () => {
-    const result = PathPattern.match(["users", ":id?"], ["users"])
+    const result = PathPattern.match("/users/:id?", "/users")
     test.expect(result).toEqual({})
   })
 
   test.it("extracts optional wildcard when present", () => {
-    const result = PathPattern.match(["docs", ":path*"], [
-      "docs",
-      "api",
-      "users",
-    ])
+    const result = PathPattern.match("/docs/:path*", "/docs/api/users")
     test.expect(result).toEqual({ path: "api/users" })
   })
 
   test.it("omits optional wildcard when absent", () => {
-    const result = PathPattern.match(["docs", ":path*"], ["docs"])
+    const result = PathPattern.match("/docs/:path*", "/docs")
     test.expect(result).toEqual({})
   })
 
   test.it("extracts required wildcard when present", () => {
-    const result = PathPattern.match(["docs", ":path+"], [
-      "docs",
-      "api",
-      "users",
-    ])
+    const result = PathPattern.match("/docs/:path+", "/docs/api/users")
     test.expect(result).toEqual({ path: "api/users" })
   })
 
   test.it("returns null for required wildcard when absent", () => {
-    const result = PathPattern.match(["docs", ":path+"], ["docs"])
+    const result = PathPattern.match("/docs/:path+", "/docs")
     test.expect(result).toBeNull()
   })
 
   test.it("distinguishes optional from required wildcard", () => {
-    const optionalMatch = PathPattern.match(["files", ":path*"], ["files"])
-    const requiredMatch = PathPattern.match(["files", ":path+"], ["files"])
+    const optionalMatch = PathPattern.match("/files/:path*", "/files")
+    const requiredMatch = PathPattern.match("/files/:path+", "/files")
 
     test.expect(optionalMatch).toEqual({})
     test.expect(requiredMatch).toBeNull()

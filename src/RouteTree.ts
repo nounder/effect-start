@@ -129,8 +129,11 @@ export function make(set: Route.RouteSet.Any): RouteTree {
     if (!methods[method]) {
       methods[method] = createNode()
     }
-    const segments = PathPattern.parse(path)
-    insertRoute(methods[method], segments, route)
+    const result = PathPattern.validate(path)
+    if (!result.ok) {
+      throw new Error(result.error)
+    }
+    insertRoute(methods[method], result.segments, route)
   }
 
   return { methods }

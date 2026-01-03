@@ -17,60 +17,41 @@ export type Params<T extends string> = string extends T ? Record<string, string>
   : T extends `${infer _Start}:${infer Param}` ? { [K in Param]: string }
   : {}
 
-export function parseSegment(segment: string): string | null {
+export type ValidateResult =
+  | { ok: true; segments: string[] }
+  | { ok: false; error: string }
+
+function isValidSegment(segment: string): boolean {
   if (segment.startsWith(":")) {
     const rest = segment.slice(1)
-    if (rest.endsWith("*")) {
+    if (rest.endsWith("*") || rest.endsWith("+") || rest.endsWith("?")) {
       const name = rest.slice(0, -1)
-      if (name && /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name)) {
-        return segment
-      }
-    } else if (rest.endsWith("+")) {
-      const name = rest.slice(0, -1)
-      if (name && /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name)) {
-        return segment
-      }
-    } else if (rest.endsWith("?")) {
-      const name = rest.slice(0, -1)
-      if (name && /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name)) {
-        return segment
-      }
-    } else {
-      if (rest && /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(rest)) {
-        return segment
+      return name !== "" && /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name)
+    }
+    return rest !== "" && /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(rest)
+  }
+  return /^[\p{L}\p{N}._~-]+$/u.test(segment)
+}
+
+export function validate(pattern: string): ValidateResult {
+  const segments = pattern.split("/").filter(Boolean)
+  for (const segment of segments) {
+    if (!isValidSegment(segment)) {
+      return {
+        ok: false,
+        error: `Invalid segment "${segment}" in "${pattern}"`,
       }
     }
-    return null
   }
-
-  if (/^[\p{L}\p{N}._~-]+$/u.test(segment)) {
-    return segment
-  }
-
-  return null
-}
-
-export function parse(pattern: string): string[] {
-  const segments = pattern.split("/").filter(Boolean).map(parseSegment)
-
-  if (segments.some((seg) => seg === null)) {
-    throw new Error(
-      `Invalid path segment in "${pattern}": contains invalid characters or format`,
-    )
-  }
-
-  return segments as string[]
-}
-
-export function format(segments: readonly string[]): PathPattern {
-  const joined = segments.join("/")
-  return (joined ? `/${joined}` : "/") as PathPattern
+  return { ok: true, segments }
 }
 
 export function match(
-  patternSegments: string[],
-  pathSegments: string[],
+  pattern: string,
+  path: string,
 ): Record<string, string> | null {
+  const patternSegments = pattern.split("/").filter(Boolean)
+  const pathSegments = path.split("/").filter(Boolean)
   const params: Record<string, string> = {}
   let patternIndex = 0
   let pathIndex = 0
