@@ -62,7 +62,7 @@ export function filter<
         ...Route.items(self),
         route,
       ] as [...P, Route.Route.Route<{}, BOut, void, E, R>],
-      self[Route.RouteDescriptor],
+      Route.descriptor(self),
     )
   }
 }

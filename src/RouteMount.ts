@@ -32,9 +32,9 @@ export const add: RouteMount.Add = function(
   const newItems: Route.RouteSet.Any[] = []
 
   for (const item of routeItems) {
-    const descriptor = item[Route.RouteDescriptor] as { path?: string }
-    if (descriptor && typeof descriptor.path === "string") {
-      const concatenatedPath = path + descriptor.path
+    const itemDescriptor = Route.descriptor(item) as { path?: string }
+    if (itemDescriptor && typeof itemDescriptor.path === "string") {
+      const concatenatedPath = path + itemDescriptor.path
       const route = Route.make(
         (context, next) => next(context),
         { path: concatenatedPath },

@@ -59,7 +59,7 @@ export namespace RouteSet {
   > ? M
     : never
 
-  export type Descriptors<
+  export type Descriptor<
     T extends Data<
       any,
       any,
@@ -69,10 +69,10 @@ export namespace RouteSet {
     any,
     any,
     infer M
-  > ? _ExtractDescriptors<M>
+  > ? _ExtractDescriptor<M>
     : never
 
-  type _ExtractDescriptors<
+  type _ExtractDescriptor<
     M extends Tuple,
   > = M extends [
     infer Head,
@@ -83,15 +83,15 @@ export namespace RouteSet {
         [RouteDescriptor]: infer D
       } ?
           & D
-          & _ExtractDescriptors<Tail>
+          & _ExtractDescriptor<Tail>
         : Head extends {
           [RouteDescriptor]: infer D
           [RouteItems]: infer Nested extends Tuple
         } ?
             & D
-            & _ExtractDescriptors<Nested>
-            & _ExtractDescriptors<Tail>
-        : _ExtractDescriptors<Tail>
+            & _ExtractDescriptor<Nested>
+            & _ExtractDescriptor<Tail>
+        : _ExtractDescriptor<Tail>
     )
     : {}
 
@@ -272,6 +272,14 @@ export function items<
   self: T,
 ): RouteSet.Items<T> {
   return self[RouteItems]
+}
+
+export function descriptor<
+  T extends RouteSet.Data<any, any, any>,
+>(
+  self: T,
+): T[typeof RouteDescriptor] {
+  return self[RouteDescriptor]
 }
 
 export type ExtractBindings<
