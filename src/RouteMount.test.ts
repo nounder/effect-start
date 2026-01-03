@@ -86,7 +86,7 @@ test.it("uses GET & POST method", async () => {
     .toHaveLength(2)
 })
 
-test.it(`infers context from use()`, () => {
+test.it(`infers context from ${Route.use.toString}()`, () => {
   const routes = Route
     .use(
       Route.filter({
@@ -155,6 +155,10 @@ test.it(`infers context from use()`, () => {
 
   type Items = Route.RouteSet.Items<typeof routes>
 
+  test
+    .expect(Route.items(routes))
+    .toHaveLength(3)
+
   // First use() - adds answer context
   test
     .expectTypeOf<Items[0]>()
@@ -181,7 +185,7 @@ test.it(`infers context from use()`, () => {
       >
     >()
 
-  // GET route - inherits answer/doubledAnswer, adds getter
+  // GET route
   test
     .expectTypeOf<Items[2]>()
     .toExtend<
@@ -204,6 +208,40 @@ test.it(`infers context from use()`, () => {
         { answer: number; doubledAnswer: number },
         [
           Route.Route.Route<{ format: "json" }, {}, any>,
+        ]
+      >
+    >()
+})
+
+test.it("mount contents", () => {
+  const routes = Route
+    .add(
+      "/about",
+      Route.get(Route.text("It's about me!")),
+    )
+    .add(
+      "/users/:id",
+      Route.get(Route.text("User profile")),
+    )
+
+  test
+    .expectTypeOf(routes)
+    .toExtend<
+      Route.RouteSet.RouteSet<
+        {},
+        {},
+        [
+          Route.Route.Route<
+            { path: "/about" },
+            {},
+            any
+          >,
+
+          Route.Route.Route<
+            { path: "/users/:id" },
+            {},
+            any
+          >,
         ]
       >
     >()
