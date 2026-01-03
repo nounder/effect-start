@@ -128,7 +128,7 @@ export function toRegex(pattern: string): RegExp {
     .replace(/\/+(\/|$)/g, "$1")
     .replace(/\./g, "\\.")
     .replace(/(\/?):(\w+)\+/g, "($1(?<$2>*))")
-    .replace(/(\/?):(\w+)\*/g, "(\\/?(?<$2>.*))?")
+    .replace(/(\/?):(\w+)\*/g, "(?:\\/(?<$2>.*))?")
     .replace(/(\/?):(\w+)/g, "($1(?<$2>[^$1/]+?))")
     .replace(/(\/?)\*/g, "($1.*)?")
 

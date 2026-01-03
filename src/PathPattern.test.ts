@@ -339,8 +339,13 @@ test.describe(PathPattern.toRegex, () => {
 
   test.it("extracts optional wildcard params with :param*", () => {
     const regex = PathPattern.toRegex("/docs/:path*")
+    const emptyMatch = "/docs".match(regex)
+
     test
-      .expect("/docs".match(regex)?.groups?.path)
+      .expect(emptyMatch?.groups)
+      .toHaveProperty("path")
+    test
+      .expect(emptyMatch?.groups?.path)
       .toBeUndefined()
     test
       .expect("/docs/api".match(regex)?.groups)
