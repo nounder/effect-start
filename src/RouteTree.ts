@@ -1,0 +1,186 @@
+import * as PathPattern from "./PathPattern.ts"
+import * as Route from "./Route.ts"
+
+export interface Node {
+  children: Record<string, Node>
+  paramChild: Node | null
+  paramName: string | null
+  wildcardChild: Node | null
+  wildcardName: string | null
+  routes: Route.Route.Route[]
+}
+
+export interface RouteTree {
+  readonly methods: Record<string, Node>
+}
+
+export interface LookupResult {
+  route: Route.Route.Route
+  params: Record<string, string>
+}
+
+function createNode(): Node {
+  return {
+    children: {},
+    paramChild: null,
+    paramName: null,
+    wildcardChild: null,
+    wildcardName: null,
+    routes: [],
+  }
+}
+
+function insertRoute(
+  node: Node,
+  segments: string[],
+  route: Route.Route.Route,
+): void {
+  if (segments.length === 0) {
+    node.routes.push(route)
+    return
+  }
+
+  const segment = segments[0]
+  const rest = segments.slice(1)
+
+  if (segment.startsWith(":")) {
+    const name = segment.slice(1)
+
+    if (name.endsWith("*")) {
+      if (!node.wildcardChild) {
+        node.wildcardChild = createNode()
+      }
+      node.wildcardChild.wildcardName = name.slice(0, -1)
+      node.wildcardChild.routes.push(route)
+    } else if (name.endsWith("?")) {
+      if (!node.paramChild) {
+        node.paramChild = createNode()
+      }
+      node.paramChild.paramName = name.slice(0, -1)
+      insertRoute(node.paramChild, rest, route)
+      insertRoute(node, rest, route)
+    } else {
+      if (!node.paramChild) {
+        node.paramChild = createNode()
+      }
+      node.paramChild.paramName = name
+      insertRoute(node.paramChild, rest, route)
+    }
+  } else {
+    if (!node.children[segment]) {
+      node.children[segment] = createNode()
+    }
+    insertRoute(node.children[segment], rest, route)
+  }
+}
+
+interface CollectedRoute {
+  route: Route.Route.Route
+  method: string
+  path: string
+}
+
+function collectRoutes(
+  items: Route.RouteSet.Tuple,
+  parentPath: string,
+  parentMethod: string,
+): CollectedRoute[] {
+  const results: CollectedRoute[] = []
+
+  for (const item of items) {
+    const desc = Route.descriptor(item) as { path?: string; method?: string }
+    const currentPath = typeof desc?.path === "string"
+      ? parentPath + desc.path
+      : parentPath
+    const currentMethod = desc?.method ?? parentMethod
+
+    if (Route.isRoute(item)) {
+      if (currentPath !== "") {
+        results.push({
+          route: item,
+          method: currentMethod,
+          path: currentPath,
+        })
+      }
+    } else {
+      const nestedItems = Route.items(item)
+      results.push(...collectRoutes(nestedItems, currentPath, currentMethod))
+    }
+  }
+
+  return results
+}
+
+export function make(set: Route.RouteSet.Any): RouteTree {
+  const methods: Record<string, Node> = {}
+  const collected = collectRoutes(Route.items(set), "", "*")
+
+  for (const { route, method, path } of collected) {
+    if (!methods[method]) {
+      methods[method] = createNode()
+    }
+    const segments = PathPattern.parse(path)
+    insertRoute(methods[method], segments, route)
+  }
+
+  return { methods }
+}
+
+function lookupNode(
+  node: Node,
+  segments: string[],
+  params: Record<string, string>,
+): LookupResult[] {
+  const results: LookupResult[] = []
+
+  if (segments.length === 0) {
+    for (const route of node.routes) {
+      results.push({ route, params })
+    }
+    return results
+  }
+
+  const segment = segments[0]
+  const rest = segments.slice(1)
+
+  if (node.children[segment]) {
+    results.push(...lookupNode(node.children[segment], rest, params))
+  }
+
+  if (node.paramChild && node.paramChild.paramName) {
+    const newParams = { ...params, [node.paramChild.paramName]: segment }
+    results.push(...lookupNode(node.paramChild, rest, newParams))
+  }
+
+  if (node.wildcardChild && node.wildcardChild.wildcardName) {
+    const wildcardValue = segments.join("/")
+    const newParams = {
+      ...params,
+      [node.wildcardChild.wildcardName]: wildcardValue,
+    }
+    for (const route of node.wildcardChild.routes) {
+      results.push({ route, params: newParams })
+    }
+  }
+
+  return results
+}
+
+export function lookup(
+  tree: RouteTree,
+  method: string,
+  path: string,
+): LookupResult[] {
+  const segments = path.split("/").filter(Boolean)
+  const results: LookupResult[] = []
+
+  if (tree.methods[method]) {
+    results.push(...lookupNode(tree.methods[method], segments, {}))
+  }
+
+  if (method !== "*" && tree.methods["*"]) {
+    results.push(...lookupNode(tree.methods["*"], segments, {}))
+  }
+
+  return results
+}
