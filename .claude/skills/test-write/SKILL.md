@@ -1,6 +1,6 @@
 ---
 name: testing
-description: Write TypeScript runtime and type tests (project)
+description: Write TypeScript runtime and type tests
 ---
 
 # Testing Skill
@@ -11,7 +11,6 @@ Write TypeScript runtime and type tests for this project.
 
 ```ts
 import * as test from "bun:test"
-import * as type from "expect-type"
 ```
 
 ## Test Structure
@@ -46,20 +45,6 @@ test
   .toThrow("error message")
 ```
 
-No blank lines between consecutive assertions:
-
-```ts
-test
-  .expect(a)
-  .toBe(1)
-test
-  .expect(b)
-  .toBe(2)
-test
-  .expect(c)
-  .toBe(3)
-```
-
 ## Type Assertions with expect-type
 
 Use `expect-type` for compile-time type checking. Inline types directly - no type aliases:
@@ -68,20 +53,20 @@ Use `expect-type` for compile-time type checking. Inline types directly - no typ
 // Check a value matches a type
 type
   .expectTypeOf(someValue)
-  .toMatchTypeOf<ExpectedType>()
+  .toMatchObjectType<ExpectedType>()
 
 // Check two types are exactly equal
 type
   .expectTypeOf<ActualType>()
-  .toEqualTypeOf<ExpectedType>()
+  .toMatchObjectType<ExpectedType>()
 
-// Check a type extends another
+// Check a type extends another (less strict)
 type
   .expectTypeOf<SubType>()
   .toExtend<SuperType>()
 ```
 
-## Naming Conventions
+## Variable names
 
 Avoid variable names that shadow imports. Use descriptive suffixes:
 
@@ -92,6 +77,19 @@ const test = Commander.make({ name: "test" })
 // Good
 const testCmd = Commander.make({ name: "test" })
 ```
+
+## describe() block
+
+When testing multiple exported functions or logic, use describe() at the root:
+
+```
+// when testing a function, use its reference:
+test.describe(PathPattern.parseSegment, () => {})
+
+test.describe("Params", () => {})
+```
+
+Keep describe() blocks flat and never wrap them in describe(MODULE_NAME)
 
 ## File Location
 
