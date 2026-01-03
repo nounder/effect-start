@@ -79,7 +79,7 @@ const Proto = Object.assign(
 function make<
   D extends {} = {},
   B = {},
-  I extends [...RouteMount.BuilderItem[]] = [],
+  I extends Route.RouteSet.Tuple<{ method: string; path?: string }> = [],
 >(
   items: I,
 ): RouteMount.Builder<D, B, I> {
@@ -96,14 +96,10 @@ type Method<V extends RouteMount.HttpMethod> = {
   method: V
 }
 
-type Path<P extends string> = {
-  path: P
-}
-
 function makeMethodDescriber<M extends RouteMount.HttpMethod>(
   method: M,
 ): RouteMount.Describer<M> {
-  const fn = function(
+  function describeMethod(
     this: Self,
     ...fs: ((self: Route.RouteSet.Any) => Route.RouteSet.Any)[]
   ): Route.RouteSet.Any {
@@ -116,9 +112,28 @@ function makeMethodDescriber<M extends RouteMount.HttpMethod>(
       ...fs as [(_: Route.RouteSet.Any) => Route.RouteSet.Any],
     )
     const result = f(methodSet)
+    const resultItems = Route.items(result)
+
+    if (method === "*" && baseItems.length > 0) {
+      const lastItem = baseItems[baseItems.length - 1]
+      const lastDescriptor = Route.descriptor(lastItem) as { method?: string }
+
+      if (lastDescriptor?.method === "*") {
+        const mergedItems = [
+          ...Route.items(lastItem),
+          ...resultItems,
+        ]
+        const mergedSet = Route.set(mergedItems, { method: "*" })
+
+        return make([
+          ...baseItems.slice(0, -1),
+          mergedSet,
+        ] as any)
+      }
+    }
 
     const wrappedResult = Route.set(
-      Route.items(result) as Route.RouteSet.Tuple,
+      resultItems as Route.RouteSet.Tuple,
       { method },
     )
 
@@ -126,10 +141,10 @@ function makeMethodDescriber<M extends RouteMount.HttpMethod>(
       [
         ...baseItems,
         wrappedResult,
-      ] as [...RouteMount.BuilderItem[]],
+      ],
     )
   }
-  return fn as RouteMount.Describer<M>
+  return describeMethod as RouteMount.Describer<M>
 }
 
 export namespace RouteMount {
@@ -148,16 +163,6 @@ export namespace RouteMount {
     {},
     Route.RouteSet.Tuple
   >
-
-  export type PathRoute = Route.Route.Route<
-    { path: string },
-    {},
-    any,
-    any,
-    any
-  >
-
-  export type BuilderItem = MountSet | PathRoute | Route.RouteSet.Any
 
   export interface Builder<
     D extends {} = {},
@@ -210,19 +215,18 @@ export namespace RouteMount {
     ...infer Tail extends Route.RouteSet.Tuple,
   ] ? (
       Head extends Route.Route.Route<infer D, any, any, any, any>
-        ? D extends { path: infer P extends string }
-          ? [
-              Route.Route.Route<{ path: `${Prefix}${P}` }, {}, any, any, any>,
-              ...PrefixPath<Prefix, Tail>,
-            ]
-          : [
-              Route.Route.Route<{ path: Prefix }, {}, any, any, any>,
-              ...PrefixPath<Prefix, Tail>,
-            ]
-        : [
-            Route.Route.Route<{ path: Prefix }, {}, any, any, any>,
+        ? D extends { path: infer P extends string } ? [
+            Route.Route.Route<{ path: `${Prefix}${P}` }, {}, any, any, any>,
             ...PrefixPath<Prefix, Tail>,
           ]
+        : [
+          Route.Route.Route<{ path: Prefix }, {}, any, any, any>,
+          ...PrefixPath<Prefix, Tail>,
+        ]
+        : [
+          Route.Route.Route<{ path: Prefix }, {}, any, any, any>,
+          ...PrefixPath<Prefix, Tail>,
+        ]
     )
     : []
 

@@ -86,131 +86,133 @@ test.it("uses GET & POST method", async () => {
     .toHaveLength(2)
 })
 
-test.it(`infers context from ${Route.use.toString}()`, () => {
-  const routes = Route
-    .use(
-      Route.filter({
-        context: {
-          answer: 42,
-        },
-      }),
-    )
-    .use(
-      Route.filter((ctx) => {
-        test
-          .expectTypeOf(ctx)
-          .toMatchObjectType<{
-            answer: number
-          }>()
-
-        return {
+test.describe("use", () => {
+  test.it(`infers context`, () => {
+    const routes = Route
+      .use(
+        Route.filter({
           context: {
-            doubledAnswer: ctx.answer * 2,
+            answer: 42,
           },
-        }
-      }),
-    )
-    .get(
-      Route.filter({
-        context: {
-          getter: true,
-        },
-      }),
-      Route.text(function*(ctx) {
-        test
-          .expectTypeOf(ctx)
-          .toMatchObjectType<{
-            method: "GET"
-            format: "text"
-            answer: number
-            doubledAnswer: number
-            getter: boolean
-          }>()
+        }),
+      )
+      .use(
+        Route.filter((ctx) => {
+          test
+            .expectTypeOf(ctx)
+            .toMatchObjectType<{
+              answer: number
+            }>()
 
-        return `The answer is ${ctx.answer}`
-      }),
-    )
-    .post(
-      Route.json(function*(ctx) {
-        test
-          .expectTypeOf(ctx)
-          .not
-          .toHaveProperty("getter")
+          return {
+            context: {
+              doubledAnswer: ctx.answer * 2,
+            },
+          }
+        }),
+      )
+      .get(
+        Route.filter({
+          context: {
+            getter: true,
+          },
+        }),
+        Route.text(function*(ctx) {
+          test
+            .expectTypeOf(ctx)
+            .toMatchObjectType<{
+              method: "GET"
+              format: "text"
+              answer: number
+              doubledAnswer: number
+              getter: boolean
+            }>()
 
-        test
-          .expectTypeOf(ctx)
-          .toMatchObjectType<{
-            method: "POST"
-            answer: number
-            doubledAnswer: number
-            format: "json"
-          }>()
+          return `The answer is ${ctx.answer}`
+        }),
+      )
+      .post(
+        Route.json(function*(ctx) {
+          test
+            .expectTypeOf(ctx)
+            .not
+            .toHaveProperty("getter")
 
-        return {
-          ok: true,
-          answer: ctx.answer,
-        }
-      }),
-    )
+          test
+            .expectTypeOf(ctx)
+            .toMatchObjectType<{
+              method: "POST"
+              answer: number
+              doubledAnswer: number
+              format: "json"
+            }>()
 
-  type Items = Route.RouteSet.Items<typeof routes>
+          return {
+            ok: true,
+            answer: ctx.answer,
+          }
+        }),
+      )
 
-  test
-    .expect(Route.items(routes))
-    .toHaveLength(3)
+    type Items = Route.RouteSet.Items<typeof routes>
 
-  // First use() - adds answer context
-  test
-    .expectTypeOf<Items[0]>()
-    .toExtend<
-      Route.RouteSet.RouteSet<
-        { method: "*" },
-        {},
-        [
-          Route.Route.Route<{}, { answer: number }, void>,
-        ]
-      >
-    >()
+    test
+      .expect(Route.items(routes))
+      .toHaveLength(3)
 
-  // Second use() - adds doubledAnswer context
-  test
-    .expectTypeOf<Items[1]>()
-    .toExtend<
-      Route.RouteSet.RouteSet<
-        { method: "*" },
-        { answer: number },
-        [
-          Route.Route.Route<{}, { doubledAnswer: number }, void>,
-        ]
-      >
-    >()
+    // First use() - adds answer context
+    test
+      .expectTypeOf<Items[0]>()
+      .toExtend<
+        Route.RouteSet.RouteSet<
+          { method: "*" },
+          {},
+          [
+            Route.Route.Route<{}, { answer: number }, void>,
+          ]
+        >
+      >()
 
-  // GET route
-  test
-    .expectTypeOf<Items[2]>()
-    .toExtend<
-      Route.RouteSet.RouteSet<
-        { method: "GET" },
-        { answer: number; doubledAnswer: number },
-        [
-          Route.Route.Route<{}, { getter: boolean }, void, never, never>,
-          Route.Route.Route<{ format: "text" }, {}, any>,
-        ]
-      >
-    >()
+    // Second use() - adds doubledAnswer context
+    test
+      .expectTypeOf<Items[1]>()
+      .toExtend<
+        Route.RouteSet.RouteSet<
+          { method: "*" },
+          { answer: number },
+          [
+            Route.Route.Route<{}, { doubledAnswer: number }, void>,
+          ]
+        >
+      >()
 
-  // POST route - inherits answer/doubledAnswer only
-  test
-    .expectTypeOf<Items[3]>()
-    .toExtend<
-      Route.RouteSet.RouteSet<
-        { method: "POST" },
-        { answer: number; doubledAnswer: number },
-        [
-          Route.Route.Route<{ format: "json" }, {}, any>,
-        ]
-      >
-    >()
+    // GET route
+    test
+      .expectTypeOf<Items[2]>()
+      .toExtend<
+        Route.RouteSet.RouteSet<
+          { method: "GET" },
+          { answer: number; doubledAnswer: number },
+          [
+            Route.Route.Route<{}, { getter: boolean }, void, never, never>,
+            Route.Route.Route<{ format: "text" }, {}, any>,
+          ]
+        >
+      >()
+
+    // POST route - inherits answer/doubledAnswer only
+    test
+      .expectTypeOf<Items[3]>()
+      .toExtend<
+        Route.RouteSet.RouteSet<
+          { method: "POST" },
+          { answer: number; doubledAnswer: number },
+          [
+            Route.Route.Route<{ format: "json" }, {}, any>,
+          ]
+        >
+      >()
+  })
 })
 
 test.it("mount contents", () => {
