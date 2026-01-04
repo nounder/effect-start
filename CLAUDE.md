@@ -42,7 +42,7 @@ if (error) yield * Effect.fail("error")
 **NEVER skip steps. NEVER continue if step fails.**
 
 1. Create function implementation
-2. Run `tsc` - must compile
+2. Run `tsgo` - must compile
 3. Write test in `*.test.ts` (co-located)
 4. Run `tsc` - test must compile
 5. Run `bun test <file>` - must pass
@@ -126,3 +126,9 @@ examples/           # Example applications
 - **Error Handling:** Use `Data.TaggedError` for custom errors
 - **Early Returns:** Prefer for readability
 - **Never create scripts/tools** unless explicitly requested
+
+## Local Effect Source
+
+The Effect repository is cloned to `~/Projects/effect/.tree/start/packages/effect` for reference.
+Use this to explore APIs, find usage examples, and understand implementation
+details when the documentation isn't enough.

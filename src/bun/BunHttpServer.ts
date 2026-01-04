@@ -14,8 +14,8 @@ import * as FiberSet from "effect/FiberSet"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import type * as Scope from "effect/Scope"
-import * as Random from "../Random.ts"
 import * as FileRouter from "../FileRouter.ts"
+import * as Random from "../Random.ts"
 import EmptyHTML from "./_empty.html"
 import {
   makeResponse,
