@@ -3,7 +3,9 @@ import type * as Types from "effect/Types"
 import type * as Utils from "effect/Utils"
 import * as Route from "./Route.ts"
 
-type Format<V extends string> = {
+export type Format<
+  V extends string = string,
+> = {
   format: V
 }
 
