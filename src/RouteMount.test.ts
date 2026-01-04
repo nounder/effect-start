@@ -27,12 +27,12 @@ test.it("uses GET method", async () => {
   )
 
   test
-    .expectTypeOf<Route.RouteMount.Routes<typeof route>>()
+    .expectTypeOf<RouteMount.Routes<typeof route>>()
     .toMatchObjectType<{}>()
 })
 
 test.it("uses GET & POST method", async () => {
-  const route = Route
+  const route = RouteMount
     .get(
       Route.text((r) => {
         test
@@ -135,12 +135,14 @@ test.describe("use", () => {
       .expect(Route.items(routes))
       .toHaveLength(3)
 
+    type Routes = RouteMount.Routes<typeof routes>
+
     test
-      .expectTypeOf<Route.RouteMount.Routes<typeof routes>>()
+      .expectTypeOf<Routes>()
       .toMatchObjectType<{}>()
 
     test
-      .expectTypeOf<Route.RouteMount.BuilderBindings<typeof routes>>()
+      .expectTypeOf<RouteMount.BuilderBindings<typeof routes>>()
       .toMatchObjectType<{
         answer: number
         doubledAnswer: number
@@ -173,7 +175,7 @@ test.it("mount contents", () => {
     .expect(Route.descriptor(items[1]))
     .toMatchObject({ path: "/users/:id", method: "GET" })
 
-  type Routes = Route.RouteMount.Routes<typeof routes>
+  type Routes = RouteMount.Routes<typeof routes>
 
   test
     .expectTypeOf<Routes["/about"]>()
@@ -231,7 +233,7 @@ test.it("mount mounted content", () => {
       method: "GET",
     })
 
-  type Routes = Route.RouteMount.Routes<typeof routes>
+  type Routes = RouteMount.Routes<typeof routes>
 
   test
     .expectTypeOf<Routes["/admin"]>()

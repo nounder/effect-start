@@ -6,7 +6,8 @@ import * as Values from "./Values.ts"
 
 export const RouteItems: unique symbol = Symbol()
 export const RouteDescriptor: unique symbol = Symbol()
-export const RouteBindings: unique symbol = Symbol()
+// only for structural type matching
+const RouteBindings: unique symbol = Symbol()
 
 export const TypeId: unique symbol = Symbol.for("effect-start/RouteSet")
 
@@ -144,6 +145,12 @@ export namespace Route {
   {
     readonly handler: Handler<B & D, A, E, R>
   }
+
+  export type Tuple<
+    D extends RouteDescriptor.Any = {},
+  > = [
+    ...Route<D, {}, Tuple>[],
+  ]
 
   export type Handler<B, A, E, R> = (
     context: B,
@@ -310,8 +317,19 @@ export type ExtractContext<
 > = ExtractBindings<Items> & Descriptor
 
 export * from "./RouteHook.ts"
-export * from "./RouteMount.ts"
 export * from "./RouteSchema.ts"
+
+export {
+  add,
+  del,
+  get,
+  head,
+  options,
+  patch,
+  post,
+  put,
+  use,
+} from "./RouteMount.ts"
 
 export const text = RouteBody.build<string, "text">({
   format: "text",

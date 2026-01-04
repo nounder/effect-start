@@ -8,11 +8,18 @@ const TypeId: unique symbol = Symbol.for("effect-start/RouteMount")
 
 const RouteSetTypeId: unique symbol = Symbol.for("effect-start/RouteSet")
 
+// only for structural type matching
+const BuilderMapping: unique symbol = Symbol()
+
 type Module = typeof import("./RouteMount.ts")
 
 export type Self =
   | RouteMount.Builder
   | Module
+
+export type Routes<S> = S extends RouteMount.Builder<infer M, any> ? M : {}
+
+export type BuilderBindings<S> = RouteMount.BuilderBindings<S>
 
 export const use = makeMethodDescriber("*")
 export const get = makeMethodDescriber("GET")
@@ -34,7 +41,7 @@ interface Add {
     path: P,
     routes: R,
   ): RouteMount.Builder<
-    & RouteMount.Routes<S>
+    & Routes<S>
     & {
       [K in P]: Route.RouteSet.RouteSet<
         Method,
@@ -205,13 +212,13 @@ export namespace RouteMount {
       {},
       B,
       Route.RouteSet.Tuple<{
-        path: M[keyof M]
         method: HttpMethod
       }>
     >,
     Module
   {
     [TypeId]: typeof TypeId
+    [BuilderMapping]: M
   }
 
   export type EmptySet<
@@ -222,8 +229,6 @@ export namespace RouteMount {
     B,
     []
   >
-
-  export type Routes<S> = S extends Builder<infer M, any> ? M : {}
 
   export type RouteValues<S> = S extends Builder<infer M, any> ? M[keyof M]
     : never

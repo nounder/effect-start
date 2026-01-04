@@ -1,5 +1,6 @@
 import * as test from "bun:test"
 import * as Route from "./Route.ts"
+import * as RouteMount from "./RouteMount.ts"
 import * as RouteTree from "./RouteTree.ts"
 
 test.describe(RouteTree.make, () => {
