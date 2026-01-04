@@ -2,7 +2,7 @@ import * as Function from "effect/Function"
 import * as Types from "effect/Types"
 import * as Route from "./Route.ts"
 
-const TypeId: unique symbol = Symbol.for("effect-start/RouteSet")
+const RouteSetTypeId: unique symbol = Symbol.for("effect-start/RouteSet")
 
 type Module = typeof import("./RouteMount.ts")
 
@@ -24,8 +24,9 @@ export const add: RouteMount.Add = function(
   path: string,
   routes:
     | Route.RouteSet.Any
-    | ((self: RouteMount.Builder<{}, RouteMount.BuilderBindings<Self>, []>) =>
-      Route.RouteSet.Any),
+    | ((
+      self: RouteMount.Builder<{}, RouteMount.BuilderBindings<Self>, []>,
+    ) => Route.RouteSet.Any),
 ) {
   const baseItems = Route.isRouteSet(this)
     ? Route.items(this)
@@ -58,7 +59,7 @@ export const add: RouteMount.Add = function(
 const Proto = Object.assign(
   Object.create(null),
   {
-    [TypeId]: TypeId,
+    [RouteSetTypeId]: RouteSetTypeId,
     *[Symbol.iterator](this: Route.RouteSet.Any) {
       yield* Route.items(this)
     },
@@ -205,45 +206,33 @@ export namespace RouteMount {
     New,
   > = M extends "*" ? Prev & New : Prev
 
+  type PrefixPathItem<Prefix extends string, T> = T extends
+    Route.Route.Route<infer D, infer B, infer A, infer E, infer R>
+    ? D extends { path: infer P extends string }
+      ? Route.Route.Route<
+        Omit<D, "path"> & { path: `${Prefix}${P}` },
+        B,
+        A,
+        E,
+        R
+      >
+    : Route.Route.Route<D & { path: Prefix }, B, A, E, R>
+    : T extends Route.RouteSet.RouteSet<infer D, infer B, infer Items>
+      ? D extends { path: infer P extends string }
+        ? Route.RouteSet.RouteSet<
+          Omit<D, "path"> & { path: `${Prefix}${P}` },
+          B,
+          Items
+        >
+      : Route.RouteSet.RouteSet<D & { path: Prefix }, B, Items>
+    : T
+
   export type PrefixPath<
     Prefix extends string,
     I extends Route.RouteSet.Tuple,
-  > = I extends [
-    infer Head,
-    ...infer Tail extends Route.RouteSet.Tuple,
-  ] ? (
-      Head extends
-        Route.Route.Route<infer D, infer B, infer A, infer E, infer R>
-        ? D extends { path: infer P extends string } ? [
-            Route.Route.Route<
-              Omit<D, "path"> & { path: `${Prefix}${P}` },
-              B,
-              A,
-              E,
-              R
-            >,
-            ...PrefixPath<Prefix, Tail>,
-          ]
-        : [
-          Route.Route.Route<D & { path: Prefix }, B, A, E, R>,
-          ...PrefixPath<Prefix, Tail>,
-        ]
-        : Head extends Route.RouteSet.RouteSet<infer D, infer B, infer Items>
-          ? D extends { path: infer P extends string } ? [
-              Route.RouteSet.RouteSet<
-                Omit<D, "path"> & { path: `${Prefix}${P}` },
-                B,
-                Items
-              >,
-              ...PrefixPath<Prefix, Tail>,
-            ]
-          : [
-            Route.RouteSet.RouteSet<D & { path: Prefix }, B, Items>,
-            ...PrefixPath<Prefix, Tail>,
-          ]
-        : PrefixPath<Prefix, Tail>
-    )
-    : []
+  > = {
+    [K in keyof I]: PrefixPathItem<Prefix, I[K]>
+  } extends infer R extends Route.RouteSet.Tuple ? R : never
 
   export interface Add {
     <S extends Self, P extends string, R extends Route.RouteSet.Any>(
