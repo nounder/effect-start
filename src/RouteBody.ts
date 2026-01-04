@@ -82,11 +82,18 @@ export function build<
         descriptors,
       )
 
-      return Route.set(
-        [
-          ...Route.items(self),
-          route,
-        ] as [...I, Route.Route.Route<Format<F>, {}, A, E, R>],
+      const items: [...I, Route.Route.Route<Format<F>, {}, A, E, R>] = [
+        ...Route.items(self),
+        route,
+      ]
+
+      return Route.set<
+        D,
+        B,
+        [...I, Route.Route.Route<Format<F>, {}, A, E, R>]
+      >(
+        items,
+        Route.descriptor(self),
       )
     }
   }

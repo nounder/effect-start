@@ -350,6 +350,17 @@ test.it("add preserves higher context when using callback", () => {
 
               return `Hello, ${c.name}`
             }),
+            Route.html(function*(c) {
+              test
+                .expectTypeOf(c)
+                .toHaveProperty("app")
+
+              test
+                .expectTypeOf(c)
+                .toHaveProperty("name")
+
+              return `<h1>Hello, ${c.name}</h1>`
+            }),
           ),
     )
 })
