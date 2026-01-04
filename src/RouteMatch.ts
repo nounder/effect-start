@@ -14,17 +14,12 @@ export interface MatchResult {
   readonly params: Record<string, string>
 }
 
-type RouteWithPath = Route.RouteSet.RouteSet<
-  { path: string; method: string },
-  {},
-  Route.RouteSet.Tuple
->
-
-function compile(routes: Iterable<RouteWithPath>) {
-  return [...routes]
+function compile(routes: Route.RouteSet.Any) {
+  const children = Route.items(routes)
+  return children
     .flatMap((routeSet) => {
-      const { path } = Route.descriptor(routeSet)
-      return [...routeSet].map((route) =>
+      const { path } = Route.descriptor(routeSet) as { path: string }
+      return [...routeSet].filter(Route.isRoute).map((route) =>
         [path, PathPattern.toRegex(path), route] as const
       )
     })
@@ -32,7 +27,7 @@ function compile(routes: Iterable<RouteWithPath>) {
 }
 
 export function match(
-  routes: Iterable<RouteWithPath>,
+  routes: Route.RouteSet.Any,
   options: MatchOptions,
 ): MatchResult | null {
   const { path, headers } = options
@@ -59,7 +54,7 @@ export function match(
 }
 
 export function matchRequest(
-  routes: Iterable<RouteWithPath>,
+  routes: Route.RouteSet.Any,
   request: Request,
 ): MatchResult | null {
   const url = new URL(request.url)

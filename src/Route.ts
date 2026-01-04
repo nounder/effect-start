@@ -33,7 +33,7 @@ export namespace RouteSet {
       [TypeId]: typeof TypeId
     }
     & Pipeable.Pipeable
-    & Iterable<Route.Route>
+    & Iterable<RouteSet<{}, {}, Tuple>>
 
   export type Data<
     D extends RouteDescriptor.Any = {},
@@ -47,7 +47,7 @@ export namespace RouteSet {
 
   export type Proto =
     & Pipeable.Pipeable
-    & Iterable<Route.Route>
+    & Iterable<RouteSet<{}, {}, Tuple>>
     & {
       [TypeId]: typeof TypeId
     }
@@ -195,13 +195,7 @@ const Proto: RouteSet.Proto = {
     return Pipeable.pipeArguments(this, arguments)
   },
   *[Symbol.iterator](this: RouteSet.Any) {
-    for (const item of items(this)) {
-      if (isRoute(item)) {
-        yield item
-      } else {
-        yield* item as RouteSet.Any
-      }
-    }
+    yield* items(this)
   },
 }
 
