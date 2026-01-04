@@ -329,3 +329,27 @@ test.it("add preserves original handlers", async () => {
   test.expect(result).toBe("Hello from text")
   test.expect(handlerCalled).toBe(true)
 })
+
+test.it("add preserves higher context when using callback", () => {
+  Route
+    .use(
+      Route.filter({ context: { app: "Ecma" } }),
+    )
+    .add(
+      "/user",
+      (self) =>
+        self
+          .use(
+            Route.filter({ context: { name: "Johnny" } }),
+          )
+          .get(
+            Route.text(function*(c) {
+              test
+                .expectTypeOf(c)
+                .toHaveProperty("app")
+
+              return `Hello, ${c.name}`
+            }),
+          ),
+    )
+})

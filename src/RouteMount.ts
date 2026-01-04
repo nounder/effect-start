@@ -22,13 +22,19 @@ export const options = makeMethodDescriber("OPTIONS")
 export const add: RouteMount.Add = function(
   this: Self,
   path: string,
-  routes: Route.RouteSet.Any,
+  routes:
+    | Route.RouteSet.Any
+    | ((self: RouteMount.Builder<{}, RouteMount.BuilderBindings<Self>, []>) =>
+      Route.RouteSet.Any),
 ) {
   const baseItems = Route.isRouteSet(this)
     ? Route.items(this)
     : [] as const
 
-  const routeItems = Route.items(routes)
+  const routeSet = typeof routes === "function"
+    ? routes(make<{}, RouteMount.BuilderBindings<Self>, []>([]))
+    : routes
+  const routeItems = Route.items(routeSet)
   const newItems = routeItems.map((item) => {
     const itemDescriptor = Route.descriptor(item) as { path?: string }
     const concatenatedPath = typeof itemDescriptor?.path === "string"
@@ -174,8 +180,8 @@ export namespace RouteMount {
 
   export type Items<S> = S extends Builder<any, any, infer I> ? I : []
 
-  export type BuilderBindings<S> = S extends Builder<any, any, infer I>
-    ? WildcardBindings<I>
+  export type BuilderBindings<S> = S extends Builder<any, infer B, infer I>
+    ? Types.Simplify<B & WildcardBindings<I>>
     : {}
 
   export type WildcardBindings<
@@ -246,7 +252,24 @@ export namespace RouteMount {
       routes: R,
     ): Builder<
       {},
+      BuilderBindings<S>,
+      [
+        ...Items<S>,
+        ...PrefixPath<P, Route.RouteSet.Items<R>>,
+      ]
+    >
+
+    <S extends Self, P extends string, R extends Route.RouteSet.Any>(
+      this: S,
+      path: P,
+      /**
+       * Callback form provides a builder seeded with higher-level bindings so
+       * nested routes can type-infer outer context when mounting.
+       */
+      routes: (self: Builder<{}, BuilderBindings<S>, []>) => R,
+    ): Builder<
       {},
+      BuilderBindings<S>,
       [
         ...Items<S>,
         ...PrefixPath<P, Route.RouteSet.Items<R>>,
