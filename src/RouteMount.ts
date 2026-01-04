@@ -41,12 +41,13 @@ interface Add {
     path: P,
     routes: R,
   ): RouteMount.Builder<
-    & Routes<S>
+    // Omit ensures adding the same path twice replaces the previous entry
+    & Omit<Routes<S>, P>
     & {
       [K in P]: Route.RouteSet.RouteSet<
         Method,
         {},
-        Route.RouteSet.Tuple<RouteBody.Format>
+        Route.Route.Tuple<RouteBody.Format>
       >
     },
     RouteMount.BuilderBindings<S>
@@ -109,7 +110,7 @@ function make<
     [path: PathPattern.PathPattern]: Route.RouteSet.RouteSet<
       Method,
       {},
-      Route.RouteSet.Tuple<RouteBody.Format>
+      Route.Route.Tuple<RouteBody.Format>
     >
   } = {},
   B = {},
@@ -203,7 +204,7 @@ export namespace RouteMount {
       [path: PathPattern.PathPattern]: Route.RouteSet.RouteSet<
         Method,
         {},
-        Route.RouteSet.Tuple<RouteBody.Format>
+        Route.Route.Tuple<RouteBody.Format>
       >
     } = {},
     B = {},
