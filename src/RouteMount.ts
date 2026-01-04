@@ -185,20 +185,16 @@ export namespace RouteMount {
     ? Types.Simplify<B & WildcardBindings<I>>
     : {}
 
-  export type WildcardBindings<
-    I extends Route.RouteSet.Tuple,
-  > = I extends [
-    infer Head,
-    ...infer Tail extends Route.RouteSet.Tuple,
-  ] ? (
-      Head extends Route.RouteSet.RouteSet<
-        Method<"*">,
-        any,
-        infer IAny extends Route.RouteSet.Tuple
-      > ? Route.ExtractBindings<IAny> & WildcardBindings<Tail>
-        : WildcardBindings<Tail>
-    )
-    : {}
+  type WildcardBindingsItem<T> =
+    T extends Route.RouteSet.RouteSet<Method<"*">, any, infer IAny extends Route.RouteSet.Tuple>
+      ? Route.ExtractBindings<IAny>
+      : {}
+
+  type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (k: infer I) => void ? I : never
+
+  export type WildcardBindings<I extends Route.RouteSet.Tuple> = UnionToIntersection<{
+    [K in keyof I]: WildcardBindingsItem<I[K]>
+  }[number]>
 
   export type AccumulateBindings<
     M extends HttpMethod,
