@@ -11,6 +11,9 @@ Follow these import rules:
 import * as NPath from "node:path`
 import * as NUrl from "node:url`
 
+// always import test module as namespace:
+import * as test from "bun:test"
+
 // import Effect sub-modules directly
 import * as Schema from "effect/Schema"
 
@@ -37,6 +40,9 @@ bun test
 
 # run specific test
 bun test routing.test.ts
+
+# run type system tests
+tsgo
 ```
 
 Write tests:

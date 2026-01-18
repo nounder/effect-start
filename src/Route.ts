@@ -324,6 +324,7 @@ export {
   del,
   get,
   head,
+  mount,
   options,
   patch,
   post,

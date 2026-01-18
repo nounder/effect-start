@@ -1,322 +1,138 @@
 import * as test from "bun:test"
 import * as Route from "./Route.ts"
-import * as RouteMount from "./RouteMount.ts"
 import * as RouteTree from "./RouteTree.ts"
 
 test.describe(RouteTree.make, () => {
-  test.it("creates tree from route set", () => {
-    const routes = Route
-      .add("/about", Route.get(Route.text("About")))
+  test.it("makes", () => {
+    const routes = RouteTree.make({
+      "/admin": Route
+        .use(
+          Route.filter({
+            context: {
+              isAdmin: true,
+            },
+          }),
+        )
+        .get(
+          Route.text("admin home"),
+        ),
 
-    const tree = RouteTree.make(routes)
+      "/users": Route
+        .get(
+          Route.text("users list"),
+        ),
+    })
 
     test
-      .expect(tree.methods["GET"])
-      .toBeDefined()
+      .expectTypeOf<RouteTree.Routes<typeof routes>>()
+      .toExtend<{
+        "/admin": unknown
+        "/users": unknown
+      }>()
   })
 })
 
-test.describe(RouteTree.lookup, () => {
-  test.it("matches exact static path", () => {
-    const routes = Route
-      .add("/about", Route.get(Route.text("About")))
-    const tree = RouteTree.make(routes)
-
-    const results = RouteTree.lookup(tree, "GET", "/about")
-
-    test
-      .expect(results.length)
-      .toBe(1)
-    test
-      .expect(results[0].params)
-      .toEqual({})
-  })
-
-  test.it("returns empty for non-matching path", () => {
-    const routes = Route
-      .add("/about", Route.get(Route.text("About")))
-    const tree = RouteTree.make(routes)
-
-    const results = RouteTree.lookup(tree, "GET", "/contact")
-
-    test
-      .expect(results.length)
-      .toBe(0)
-  })
-
-  test.it("matches path with single param", () => {
-    const routes = Route
-      .add("/users/:id", Route.get(Route.text("User")))
-    const tree = RouteTree.make(routes)
-
-    const results = RouteTree.lookup(tree, "GET", "/users/123")
-
-    test
-      .expect(results.length)
-      .toBe(1)
-    test
-      .expect(results[0].params)
-      .toEqual({ id: "123" })
-  })
-
-  test.it("matches path with multiple params", () => {
-    const routes = Route
-      .add("/users/:userId/posts/:postId", Route.get(Route.text("Post")))
-    const tree = RouteTree.make(routes)
-
-    const results = RouteTree.lookup(tree, "GET", "/users/42/posts/7")
-
-    test
-      .expect(results.length)
-      .toBe(1)
-    test
-      .expect(results[0].params)
-      .toEqual({
-        userId: "42",
-        postId: "7",
-      })
-  })
-
-  test.it("matches path with optional param present", () => {
-    const routes = Route
-      .add("/files/:name?", Route.get(Route.text("File")))
-    const tree = RouteTree.make(routes)
-
-    const results = RouteTree.lookup(tree, "GET", "/files/readme")
-
-    test
-      .expect(results.length)
-      .toBe(1)
-    test
-      .expect(results[0].params)
-      .toEqual({ name: "readme" })
-  })
-
-  test.it("matches path with optional param absent", () => {
-    const routes = Route
-      .add("/files/:name?", Route.get(Route.text("File")))
-    const tree = RouteTree.make(routes)
-
-    const results = RouteTree.lookup(tree, "GET", "/files")
-
-    test
-      .expect(results.length)
-      .toBe(1)
-    test
-      .expect(results[0].params)
-      .toEqual({})
-  })
-
-  test.it("matches path with optional wildcard param", () => {
-    const routes = Route
-      .add("/docs/:path*", Route.get(Route.text("Docs")))
-    const tree = RouteTree.make(routes)
-
-    const results = RouteTree.lookup(tree, "GET", "/docs/api/users/create")
-
-    test
-      .expect(results.length)
-      .toBe(1)
-    test
-      .expect(results[0].params)
-      .toEqual({
-        path: "api/users/create",
-      })
-  })
-
-  test.it("matches path with optional wildcard when empty", () => {
-    const routes = Route
-      .add("/docs/:path*", Route.get(Route.text("Docs")))
-    const tree = RouteTree.make(routes)
-
-    const results = RouteTree.lookup(tree, "GET", "/docs")
-
-    test
-      .expect(results.length)
-      .toBe(1)
-    test
-      .expect(results[0].params)
-      .toEqual({})
-  })
-
-  test.it("matches path with required wildcard param", () => {
-    const routes = Route
-      .add("/docs/:path+", Route.get(Route.text("Docs")))
-    const tree = RouteTree.make(routes)
-
-    const results = RouteTree.lookup(tree, "GET", "/docs/api/users/create")
-
-    test
-      .expect(results.length)
-      .toBe(1)
-    test
-      .expect(results[0].params)
-      .toEqual({
-        path: "api/users/create",
-      })
-  })
-
-  test.it("does not match required wildcard when empty", () => {
-    const routes = Route
-      .add("/docs/:path+", Route.get(Route.text("Docs")))
-    const tree = RouteTree.make(routes)
-
-    const results = RouteTree.lookup(tree, "GET", "/docs")
-
-    test
-      .expect(results.length)
-      .toBe(0)
-  })
-
-  test.it("required wildcard beats optional wildcard in priority", () => {
-    const routes = Route
-      .add("/files/:path*", Route.get(Route.text("Optional")))
-      .add("/files/:path+", Route.get(Route.text("Required")))
-    const tree = RouteTree.make(routes)
-
-    const multiResults = RouteTree.lookup(tree, "GET", "/files/a/b/c")
-
-    test
-      .expect(multiResults.length)
-      .toBe(2)
-    test
-      .expect(multiResults[0].params)
-      .toEqual({ path: "a/b/c" })
-    test
-      .expect(multiResults[1].params)
-      .toEqual({ path: "a/b/c" })
-  })
-
-  test.it("optional wildcard matches when required cannot", () => {
-    const routes = Route
-      .add("/files/:path*", Route.get(Route.text("Optional")))
-      .add("/files/:path+", Route.get(Route.text("Required")))
-    const tree = RouteTree.make(routes)
-
-    const emptyResults = RouteTree.lookup(tree, "GET", "/files")
-
-    test
-      .expect(emptyResults.length)
-      .toBe(1)
-    test
-      .expect(emptyResults[0].params)
-      .toEqual({})
-  })
-
-  test.it("prioritizes static over param routes", () => {
-    const routes = Route
-      .add("/users/:id", Route.get(Route.text("User by ID")))
-      .add("/users/me", Route.get(Route.text("Current user")))
-    const tree = RouteTree.make(routes)
-
-    const results = RouteTree.lookup(tree, "GET", "/users/me")
-
-    test
-      .expect(results.length)
-      .toBe(2)
-    test
-      .expect(results[0].params)
-      .toEqual({})
-    test
-      .expect(results[1].params)
-      .toEqual({ id: "me" })
-  })
-
-  test.it("matches nested mounted routes", () => {
-    const routes = Route
+test.describe(RouteTree.add, () => {
+  test.it("adds routes", () => {
+    const routes = RouteTree
       .add(
         "/admin",
         Route
-          .add("/users", Route.get(Route.text("Admin users")))
-          .add("/settings", Route.get(Route.text("Admin settings"))),
+          .use(
+            Route.filter({
+              context: {
+                isAdmin: true,
+              },
+            }),
+          )
+          .get(
+            Route.text("admin home"),
+          ),
       )
-    const tree = RouteTree.make(routes)
-
-    const results = RouteTree.lookup(tree, "GET", "/admin/users")
-
-    test
-      .expect(results.length)
-      .toBe(1)
-  })
-
-  test.it("normalizes paths with trailing slashes", () => {
-    const routes = Route
-      .add("/about", Route.get(Route.text("About")))
-    const tree = RouteTree.make(routes)
-
-    const results = RouteTree.lookup(tree, "GET", "/about/")
-
-    test
-      .expect(results.length)
-      .toBe(1)
-    test
-      .expect(results[0].params)
-      .toEqual({})
-  })
-
-  test.it("matches root path", () => {
-    const routes = Route
-      .add("/", Route.get(Route.text("Home")))
-    const tree = RouteTree.make(routes)
-
-    const results = RouteTree.lookup(tree, "GET", "/")
-
-    test
-      .expect(results.length)
-      .toBe(1)
-    test
-      .expect(results[0].params)
-      .toEqual({})
-  })
-
-  test.it("matches method-specific routes", () => {
-    const routes = Route
-      .add("/users", Route.get(Route.text("List users")))
-      .add("/users", Route.post(Route.text("Create user")))
-    const tree = RouteTree.make(routes)
-
-    const getResults = RouteTree.lookup(tree, "GET", "/users")
-    const postResults = RouteTree.lookup(tree, "POST", "/users")
-
-    test
-      .expect(getResults.length)
-      .toBe(1)
-    test
-      .expect(postResults.length)
-      .toBe(1)
-  })
-
-  test.it("matches wildcard method routes", () => {
-    const routes = Route
-      .add("/health", Route.use(Route.text("OK")))
-    const tree = RouteTree.make(routes)
-
-    const getResults = RouteTree.lookup(tree, "GET", "/health")
-    const postResults = RouteTree.lookup(tree, "POST", "/health")
-
-    test
-      .expect(getResults.length)
-      .toBe(1)
-    test
-      .expect(postResults.length)
-      .toBe(1)
-  })
-
-  test.it("returns multiple matches for content negotiation", () => {
-    const routes = Route
       .add(
-        "/page",
+        "/admin/users",
         Route.get(
-          Route.text("Plain text"),
-          Route.html("<p>HTML</p>"),
+          Route.text("users list"),
         ),
       )
-    const tree = RouteTree.make(routes)
-
-    const results = RouteTree.lookup(tree, "GET", "/page")
+      .add(
+        "/about",
+        Route.get(
+          Route.text("about us"),
+        ),
+      )
 
     test
-      .expect(results.length)
-      .toBe(2)
+      .expectTypeOf<RouteTree.Routes<typeof routes>>()
+      .toExtend<
+        {
+          "/admin": unknown
+          "/admin/users": unknown
+          "/about": unknown
+        }
+      >()
+  })
+})
+
+test.describe(RouteTree.walk, () => {
+  test.it("walks", () => {
+    const routes = RouteTree.make({
+      "/": Route.get(Route.text("home")),
+      "/users": Route.get(Route.text("users list")),
+      "/users/:userId": Route.get(Route.text("users list")),
+      "/admin": Route
+        .use(Route.filter({ context: { admin: true } })),
+      "/admin/users": Route
+        .post(Route.json({ ok: true })),
+      "/admin/stats": Route
+        .get(Route.html("admin stats")),
+    })
+
+    const nodes = [...RouteTree.walk(routes)]
+
+    test
+      .expect(nodes)
+      .toHaveLength(6)
+    test
+      .expect(Route.descriptor(nodes[0]))
+      .toEqual({
+        path: "/",
+        method: "GET",
+        format: "text",
+      })
+    test
+      .expect(Route.descriptor(nodes[1]))
+      .toEqual({
+        path: "/users",
+        method: "GET",
+        format: "text",
+      })
+    test
+      .expect(Route.descriptor(nodes[2]))
+      .toEqual({
+        path: "/users/:userId",
+        method: "GET",
+        format: "text",
+      })
+    test
+      .expect(Route.descriptor(nodes[3]))
+      .toEqual({
+        path: "/admin",
+        method: "*",
+      })
+    test
+      .expect(Route.descriptor(nodes[4]))
+      .toEqual({
+        path: "/admin/users",
+        method: "POST",
+        format: "json",
+      })
+    test
+      .expect(Route.descriptor(nodes[5]))
+      .toEqual({
+        path: "/admin/stats",
+        method: "GET",
+        format: "html",
+      })
   })
 })

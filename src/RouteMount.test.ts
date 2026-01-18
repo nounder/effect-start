@@ -1,8 +1,6 @@
 import * as test from "bun:test"
 import * as Effect from "effect/Effect"
 import * as Route from "./Route.ts"
-import * as RouteBody from "./RouteBody.ts"
-import * as RouteMount from "./RouteMount.ts"
 
 test.it("uses GET method", async () => {
   const route = Route.get(
@@ -27,12 +25,37 @@ test.it("uses GET method", async () => {
   )
 
   test
-    .expectTypeOf<RouteMount.Routes<typeof route>>()
-    .toMatchObjectType<{}>()
+    .expectTypeOf(route)
+    .toExtend<
+      Route.RouteSet.RouteSet<{}, {}, [
+        Route.RouteSet.RouteSet<
+          {
+            method: "GET"
+          },
+          {},
+          [
+            Route.Route.Route<
+              {
+                format: "text"
+              },
+              {},
+              string
+            >,
+          ]
+        >,
+      ]>
+    >()
+
+  test
+    .expectTypeOf<Route.Route.Bindings<typeof route>>()
+    .toMatchObjectType<{
+      method: "GET"
+      format: "text"
+    }>()
 })
 
 test.it("uses GET & POST method", async () => {
-  const route = RouteMount
+  const route = Route
     .get(
       Route.text((r) => {
         test
@@ -131,23 +154,93 @@ test.describe("use", () => {
         }),
       )
 
+    type Items = Route.RouteSet.Items<typeof routes>
+
     test
       .expect(Route.items(routes))
       .toHaveLength(3)
 
-    type Routes = RouteMount.Routes<typeof routes>
-
+    // First use() - adds answer context
     test
-      .expectTypeOf<Routes>()
-      .toMatchObjectType<{}>()
+      .expectTypeOf<Items[0]>()
+      .toExtend<
+        Route.RouteSet.RouteSet<
+          { method: "*" },
+          {},
+          [
+            Route.Route.Route<{}, { answer: number }, void>,
+          ]
+        >
+      >()
 
+    // Second use() - adds doubledAnswer context
     test
-      .expectTypeOf<RouteMount.BuilderBindings<typeof routes>>()
-      .toMatchObjectType<{
-        answer: number
-        doubledAnswer: number
-      }>()
+      .expectTypeOf<Items[1]>()
+      .toExtend<
+        Route.RouteSet.RouteSet<
+          { method: "*" },
+          { answer: number },
+          [
+            Route.Route.Route<{}, { doubledAnswer: number }, void>,
+          ]
+        >
+      >()
+
+    // GET route
+    test
+      .expectTypeOf<Items[2]>()
+      .toExtend<
+        Route.RouteSet.RouteSet<
+          { method: "GET" },
+          { answer: number; doubledAnswer: number },
+          [
+            Route.Route.Route<{}, { getter: boolean }, void, never, never>,
+            Route.Route.Route<{ format: "text" }, {}, any>,
+          ]
+        >
+      >()
+
+    // POST route - inherits answer/doubledAnswer only
+    test
+      .expectTypeOf<Items[3]>()
+      .toExtend<
+        Route.RouteSet.RouteSet<
+          { method: "POST" },
+          { answer: number; doubledAnswer: number },
+          [
+            Route.Route.Route<{ format: "json" }, {}, any>,
+          ]
+        >
+      >()
   })
+})
+
+test.it("Builder extends RouteSet", () => {
+  const builder = Route
+    .use(
+      Route.filter({
+        context: { answer: 42 },
+      }),
+    )
+    .get(Route.text("Hello"))
+
+  test
+    .expectTypeOf(builder)
+    .toExtend<Route.RouteSet.Any>()
+
+  test
+    .expectTypeOf(builder)
+    .toExtend<Route.RouteSet.RouteSet<any, any, any>>()
+
+  // Verify it has the TypeId
+  test
+    .expect(builder[Route.TypeId])
+    .toBe(Route.TypeId)
+
+  // Verify it's iterable (from RouteSet.Proto)
+  test
+    .expect(Symbol.iterator in builder)
+    .toBe(true)
 })
 
 test.it("mount contents", () => {
@@ -175,27 +268,15 @@ test.it("mount contents", () => {
     .expect(Route.descriptor(items[1]))
     .toMatchObject({ path: "/users/:id", method: "GET" })
 
-  type Routes = RouteMount.Routes<typeof routes>
+  type Items = Route.RouteSet.Items<typeof routes>
 
   test
-    .expectTypeOf<Routes["/about"]>()
-    .toExtend<
-      Route.RouteSet.RouteSet<
-        RouteMount.Method,
-        {},
-        Route.RouteSet.Tuple<RouteBody.Format>
-      >
-    >()
+    .expectTypeOf<Items[0][typeof Route.RouteDescriptor]>()
+    .toMatchObjectType<{ path: "/about"; method: "GET" }>()
 
   test
-    .expectTypeOf<Routes["/users/:id"]>()
-    .toExtend<
-      Route.RouteSet.RouteSet<
-        RouteMount.Method,
-        {},
-        Route.RouteSet.Tuple<RouteBody.Format>
-      >
-    >()
+    .expectTypeOf<Items[1][typeof Route.RouteDescriptor]>()
+    .toMatchObjectType<{ path: "/users/:id"; method: "GET" }>()
 })
 
 test.it("mount mounted content", () => {
@@ -221,29 +302,25 @@ test.it("mount mounted content", () => {
 
   test
     .expect(Route.descriptor(items[0]))
-    .toMatchObject({
-      path: "/admin/users",
-      method: "GET",
-    })
+    .toMatchObject({ path: "/admin/users", method: "GET" })
 
   test
     .expect(Route.descriptor(items[1]))
-    .toMatchObject({
-      path: "/admin/settings",
-      method: "GET",
-    })
+    .toMatchObject({ path: "/admin/settings", method: "GET" })
 
-  type Routes = RouteMount.Routes<typeof routes>
+  type Items = Route.RouteSet.Items<typeof routes>
 
   test
-    .expectTypeOf<Routes["/admin"]>()
-    .toExtend<
-      Route.RouteSet.RouteSet<
-        RouteMount.Method,
-        {},
-        Route.RouteSet.Tuple<RouteBody.Format>
-      >
-    >()
+    .expectTypeOf<Items["length"]>()
+    .toEqualTypeOf<2>()
+
+  test
+    .expectTypeOf<Items[0][typeof Route.RouteDescriptor]>()
+    .toMatchObjectType<{ path: "/admin/users"; method: "GET" }>()
+
+  test
+    .expectTypeOf<Items[1][typeof Route.RouteDescriptor]>()
+    .toMatchObjectType<{ path: "/admin/settings"; method: "GET" }>()
 })
 
 test.it("add preserves original handlers", async () => {
@@ -295,37 +372,89 @@ test.it("add preserves original handlers", async () => {
     .toBe(true)
 })
 
-// test.it("add preserves higher context when using callback", () => {
-//   Route
-//     .use(
-//       Route.filter({ context: { app: "Ecma" } }),
-//     )
-//     .add(
-//       "/user",
-//       (self) =>
-//         self
-//           .use(
-//             Route.filter({ context: { name: "Johnny" } }),
-//           )
-//           .get(
-//             Route.text(function*(c) {
-//               test
-//                 .expectTypeOf(c)
-//                 .toHaveProperty("app")
+test.it("add preserves higher context when using callback", () => {
+  Route
+    .use(
+      Route.filter({
+        context: {
+          app: "Ecma",
+        },
+      }),
+    )
+    .add(
+      "/user",
+      (self) =>
+        self
+          .use(
+            Route.filter({
+              context: {
+                name: "Johnny",
+              },
+            }),
+          )
+          .get(
+            Route.text(function*(c) {
+              test
+                .expectTypeOf(c)
+                .toHaveProperty("app")
 
-//               return `Hello, ${c.name}`
-//             }),
-//             Route.html(function*(c) {
-//               test
-//                 .expectTypeOf(c)
-//                 .toHaveProperty("app")
+              test
+                .expectTypeOf(c)
+                .toHaveProperty("name")
 
-//               test
-//                 .expectTypeOf(c)
-//                 .toHaveProperty("name")
+              return `Hello, ${c.name}`
+            }),
+            Route.html(function*(c) {
+              test
+                .expectTypeOf(c)
+                .toHaveProperty("app")
 
-//               return `<h1>Hello, ${c.name}</h1>`
-//             }),
-//           ),
-//     )
-// })
+              test
+                .expectTypeOf(c)
+                .toHaveProperty("name")
+
+              return `<h1>Hello, ${c.name}</h1>`
+            }),
+          ),
+    )
+})
+
+// @ts-ignore - headers merging not yet implemented
+test.it.skip(`${Route.schemaHeaders.name} merges`, () => {
+  const route = Route
+    .use(
+      Route.schemaHeaders(
+        Schema.Struct({
+          "hello": Schema.String,
+        }),
+      ),
+    )
+    .get(
+      Route.schemaHeaders(
+        Schema.Struct({
+          "x-custom-header": Schema.String,
+        }),
+      ),
+      Route.html(function*(ctx) {
+        test
+          .expectTypeOf(ctx.headers)
+          // @ts-ignore - headers merging not yet implemented
+          .toMatchObjectType<{
+            hello: string
+            "x-custom-header": string
+          }>()
+
+        return `<h1>Hello, world!</h1>`
+      }),
+    )
+
+  test
+    .expectTypeOf<Route.Route.Bindings<typeof route>>()
+    // @ts-ignore - headers merging not yet implemented
+    .toMatchObjectType<{
+      headers: {
+        hello: string
+        "x-custom-header": string
+      }
+    }>()
+})
