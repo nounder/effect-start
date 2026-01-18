@@ -1,8 +1,8 @@
 import type * as PathPattern from "./PathPattern.ts"
 import * as Route from "./Route.ts"
 
-export const RouteTreeRoutes: unique symbol = Symbol()
-export const RouteTreeKeys: unique symbol = Symbol()
+const RouteTreeRoutes: unique symbol = Symbol()
+const RouteTreeKeys: unique symbol = Symbol()
 
 export interface RouteTree<
   Routes extends Record<PathPattern.PathPattern, Route.RouteSet.Any> = {},
@@ -13,11 +13,15 @@ export interface RouteTree<
   add<P extends PathPattern.PathPattern, R extends Route.RouteSet.Any>(
     path: P,
     route: R,
-  ): RouteTree<Routes & { [K in P]: R }>
+  ): RouteTree<
+    {
+      [K in keyof Routes | P]: K extends keyof Routes ? Routes[K]
+        : Route.RouteSet.Infer<R>
+    }
+  >
 }
 
 export type Routes<T extends RouteTree<any>> = T[typeof RouteTreeRoutes]
-
 
 function routes<
   Routes extends Record<PathPattern.PathPattern, Route.RouteSet.Any>,
@@ -48,7 +52,13 @@ const TreeProto = {
 
 export function make<
   const Routes extends Record<PathPattern.PathPattern, Route.RouteSet.Any>,
->(routes: Routes): RouteTree<Routes> {
+>(
+  routes: Routes,
+): RouteTree<
+  {
+    [K in keyof Routes]: Route.RouteSet.Infer<Routes[K]>
+  }
+> {
   return Object.assign(Object.create(TreeProto), {
     [RouteTreeRoutes]: routes,
     [RouteTreeKeys]: Object.keys(routes) as PathPattern.PathPattern[],
@@ -61,7 +71,7 @@ export function add<
 >(
   path: P,
   route: R,
-): RouteTree<{ [K in P]: R }> {
+): RouteTree<{ [K in P]: Route.RouteSet.Infer<R> }> {
   return make({ [path]: route } as { [K in P]: R })
 }
 
