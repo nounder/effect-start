@@ -146,102 +146,6 @@ function makeMethodDescriber<M extends RouteMount.HttpMethod>(
   return describeMethod as RouteMount.Describer<M>
 }
 
-export function mount<
-  const Routes extends Record<string, Route.RouteSet.Any>,
->(
-  routes: Routes,
-): Mount.Mounted<Routes> {
-  return Object.assign(routes, {
-    *[Symbol.iterator]() {
-      for (const key of Object.keys(routes)) {
-        yield* Route.items(routes[key])
-      }
-    },
-  }) as Mount.Mounted<Routes>
-}
-
-export namespace Mount {
-  export type Mounted<
-    Routes extends Record<string, Route.RouteSet.Any>,
-  > = Routes & Iterable<FlatRoutes<Routes>>
-
-  export type FlatRoutes<Routes> = FlattenRoutes<ExtractRecord<Routes>>
-
-  type ExtractRecord<T> = {
-    [K in keyof T & string]: T[K] extends Route.RouteSet.Any ? T[K] : never
-  }
-
-  type FlattenRoutes<
-    Routes extends Record<string, Route.RouteSet.Any>,
-  > = {
-    [K in keyof Routes & string]: FlattenRouteSet<K, Routes[K], InheritedBindings<K, Routes>>
-  }[keyof Routes & string] extends infer Arrs
-    ? Arrs extends unknown[]
-      ? Arrs[number]
-      : never
-    : never
-
-  type InheritedBindings<
-    Path extends string,
-    Routes extends Record<string, Route.RouteSet.Any>,
-  > = {
-    [K in keyof Routes & string]: Path extends `${K}${string}`
-      ? K extends Path
-        ? never
-        : ExtractAllBindings<Routes[K]>
-      : never
-  }[keyof Routes & string]
-
-  type ExtractAllBindings<R extends Route.RouteSet.Any> = R extends Route.RouteSet.RouteSet<
-    any,
-    infer B,
-    infer Items
-  > ? B & Route.ExtractBindings<Items>
-    : {}
-
-  type FlattenRouteSet<
-    Path extends string,
-    R extends Route.RouteSet.Any,
-    Inherited = {},
-  > = R extends Route.RouteSet.RouteSet<infer D, infer B, infer Items>
-    ? FlattenItems<Path, D, B & Inherited, Items>
-    : []
-
-  type FlattenItems<
-    Path extends string,
-    ParentD,
-    AccBindings,
-    Items extends Route.RouteSet.Tuple,
-    Acc extends unknown[] = [],
-  > = Items extends [infer Head, ...infer Tail extends Route.RouteSet.Tuple]
-    ? Head extends Route.Route.Route<infer D, infer B, infer A, infer E, infer R>
-      ? FlattenItems<
-        Path,
-        ParentD,
-        AccBindings,
-        Tail,
-        [...Acc, Route.Route.Route<MergeDescriptors<Path, ParentD, D>, AccBindings & B, A, E, R>]
-      >
-    : Head extends Route.RouteSet.RouteSet<infer D, infer B, infer NestedItems>
-      ? FlattenItems<
-        Path,
-        MergeDescriptors<Path, ParentD, D>,
-        AccBindings & B,
-        Tail,
-        [...Acc, ...FlattenItems<Path, MergeDescriptors<Path, ParentD, D>, AccBindings & B, NestedItems>]
-      >
-    : FlattenItems<Path, ParentD, AccBindings, Tail, Acc>
-    : Acc
-
-  type MergeDescriptors<
-    Path extends string,
-    A,
-    B,
-  > = {
-    [K in keyof (Omit<A, "path"> & Omit<B, "path"> & { path: Path })]: (Omit<A, "path"> & Omit<B, "path"> & { path: Path })[K]
-  }
-}
-
 export namespace RouteMount {
   export type HttpMethod =
     | "*"
@@ -281,16 +185,23 @@ export namespace RouteMount {
     ? Types.Simplify<B & WildcardBindings<I>>
     : {}
 
-  type WildcardBindingsItem<T> =
-    T extends Route.RouteSet.RouteSet<Method<"*">, any, infer IAny extends Route.RouteSet.Tuple>
-      ? Route.ExtractBindings<IAny>
-      : {}
+  type WildcardBindingsItem<T> = T extends
+    Route.RouteSet.RouteSet<
+      Method<"*">,
+      any,
+      infer IAny extends Route.RouteSet.Tuple
+    > ? Route.ExtractBindings<IAny>
+    : {}
 
-  type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (k: infer I) => void ? I : never
+  type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends
+    (k: infer I) => void ? I : never
 
-  export type WildcardBindings<I extends Route.RouteSet.Tuple> = UnionToIntersection<{
-    [K in keyof I]: WildcardBindingsItem<I[K]>
-  }[number]>
+  export type WildcardBindings<I extends Route.RouteSet.Tuple> =
+    UnionToIntersection<
+      {
+        [K in keyof I]: WildcardBindingsItem<I[K]>
+      }[number]
+    >
 
   export type AccumulateBindings<
     M extends HttpMethod,
@@ -300,8 +211,7 @@ export namespace RouteMount {
 
   type PrefixPathItem<Prefix extends string, T> = T extends
     Route.Route.Route<infer D, infer B, infer A, infer E, infer R>
-    ? D extends { path: infer P extends string }
-      ? Route.Route.Route<
+    ? D extends { path: infer P extends string } ? Route.Route.Route<
         Omit<D, "path"> & { path: `${Prefix}${P}` },
         B,
         A,
@@ -310,8 +220,7 @@ export namespace RouteMount {
       >
     : Route.Route.Route<D & { path: Prefix }, B, A, E, R>
     : T extends Route.RouteSet.RouteSet<infer D, infer B, infer Items>
-      ? D extends { path: infer P extends string }
-        ? Route.RouteSet.RouteSet<
+      ? D extends { path: infer P extends string } ? Route.RouteSet.RouteSet<
           Omit<D, "path"> & { path: `${Prefix}${P}` },
           B,
           Items

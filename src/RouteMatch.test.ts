@@ -278,13 +278,13 @@ test.describe("content negotiation", () => {
     })
 
     test
-      .expect(textResult!.route[Route.RouteDescriptor])
+      .expect(Route.descriptor(textResult!.route))
       .toEqual({ format: "text" })
     test
-      .expect(htmlResult!.route[Route.RouteDescriptor])
+      .expect(Route.descriptor(htmlResult!.route))
       .toEqual({ format: "html" })
     test
-      .expect(jsonResult!.route[Route.RouteDescriptor])
+      .expect(Route.descriptor(jsonResult!.route))
       .toEqual({ format: "json" })
   })
 
@@ -295,7 +295,7 @@ test.describe("content negotiation", () => {
     })
 
     test
-      .expect(result!.route[Route.RouteDescriptor])
+      .expect(Route.descriptor(result!.route))
       .toEqual({ format: "html" })
   })
 
@@ -309,10 +309,10 @@ test.describe("content negotiation", () => {
     })
 
     test
-      .expect(noAccept!.route[Route.RouteDescriptor])
+      .expect(Route.descriptor(noAccept!.route))
       .toEqual({ format: "text" })
     test
-      .expect(wildcard!.route[Route.RouteDescriptor])
+      .expect(Route.descriptor(wildcard!.route))
       .toEqual({ format: "text" })
   })
 
@@ -326,7 +326,7 @@ test.describe("content negotiation", () => {
     )
 
     test
-      .expect(result!.route[Route.RouteDescriptor])
+      .expect(Route.descriptor(result!.route))
       .toEqual({ format: "html" })
   })
 })

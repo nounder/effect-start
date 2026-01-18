@@ -1,5 +1,6 @@
 import * as test from "bun:test"
 import * as Effect from "effect/Effect"
+import * as Schema from "effect/Schema"
 import * as Route from "./Route.ts"
 
 test.it("uses GET method", async () => {
@@ -271,11 +272,11 @@ test.it("mount contents", () => {
   type Items = Route.RouteSet.Items<typeof routes>
 
   test
-    .expectTypeOf<Items[0][typeof Route.RouteDescriptor]>()
+    .expectTypeOf<Route.RouteSet.Descriptor<Items[0]>>()
     .toMatchObjectType<{ path: "/about"; method: "GET" }>()
 
   test
-    .expectTypeOf<Items[1][typeof Route.RouteDescriptor]>()
+    .expectTypeOf<Route.RouteSet.Descriptor<Items[1]>>()
     .toMatchObjectType<{ path: "/users/:id"; method: "GET" }>()
 })
 
@@ -315,11 +316,11 @@ test.it("mount mounted content", () => {
     .toEqualTypeOf<2>()
 
   test
-    .expectTypeOf<Items[0][typeof Route.RouteDescriptor]>()
+    .expectTypeOf<Route.RouteSet.Descriptor<Items[0]>>()
     .toMatchObjectType<{ path: "/admin/users"; method: "GET" }>()
 
   test
-    .expectTypeOf<Items[1][typeof Route.RouteDescriptor]>()
+    .expectTypeOf<Route.RouteSet.Descriptor<Items[1]>>()
     .toMatchObjectType<{ path: "/admin/settings"; method: "GET" }>()
 })
 

@@ -7,7 +7,7 @@ import * as Values from "./Values.ts"
 export const RouteItems: unique symbol = Symbol()
 export const RouteDescriptor: unique symbol = Symbol()
 // only for structural type matching
-const RouteBindings: unique symbol = Symbol()
+export const RouteBindings: unique symbol = Symbol()
 
 export const TypeId: unique symbol = Symbol.for("effect-start/RouteSet")
 
@@ -55,6 +55,10 @@ export namespace RouteSet {
 
   export type Any = RouteSet<{}, {}, Tuple>
 
+  export type Infer<R> = R extends RouteSet<infer D, infer B, infer I>
+    ? RouteSet<D, B, I>
+    : R
+
   export type Items<
     T extends Data<any, any, any>,
   > = T extends Data<
@@ -65,40 +69,8 @@ export namespace RouteSet {
     : never
 
   export type Descriptor<
-    T extends Data<
-      any,
-      any,
-      any
-    >,
-  > = T extends Data<
-    any,
-    any,
-    infer M
-  > ? _ExtractDescriptor<M>
-    : never
-
-  type _ExtractDescriptor<
-    M extends Tuple,
-  > = M extends [
-    infer Head,
-    ...infer Tail extends Tuple,
-  ] ? (
-      Head extends {
-        handler: any
-        [RouteDescriptor]: infer D
-      } ?
-          & D
-          & _ExtractDescriptor<Tail>
-        : Head extends {
-          [RouteDescriptor]: infer D
-          [RouteItems]: infer Nested extends Tuple
-        } ?
-            & D
-            & _ExtractDescriptor<Nested>
-            & _ExtractDescriptor<Tail>
-        : _ExtractDescriptor<Tail>
-    )
-    : {}
+    T extends Data<any, any, any>,
+  > = T extends Data<infer D, any, any> ? D : never
 
   export type Bindings<
     T extends Data<any, any, any>,
@@ -163,13 +135,16 @@ export namespace Route {
     next: () => Effect.Effect<A>,
   ) => Effect.Effect<A, E, R>
 
-  export type Bindings<T> = T extends RouteSet.RouteSet<
-    infer D,
-    any,
-    infer Items
-  > ? D & _ExtractBindings<Items>
-    : never
+  export type Bindings<T extends RouteSet.Any> =
+    & Omit<
+      RouteSet.Descriptor<T>,
+      keyof _ExtractBindings<RouteSet.Items<T>>
+    >
+    & _ExtractBindings<RouteSet.Items<T>>
 
+  // Extracts merged bindings from a RouteSet.
+  // We don't use intersection types here to avoid producing never, like in:
+  // { method: "*" } & { method: "GET" } = { method: never }
   type _ExtractBindings<
     M extends RouteSet.Tuple,
   > = M extends [
@@ -180,16 +155,22 @@ export namespace Route {
         infer D,
         infer B
       > ?
-          & D
-          & B
+          & Omit<
+            & Omit<D, keyof B>
+            & B,
+            keyof _ExtractBindings<Tail>
+          >
           & _ExtractBindings<Tail>
         : Head extends RouteSet.RouteSet<
           infer D,
           any,
           infer Nested
         > ?
-            & D
-            & _ExtractBindings<Nested>
+            & Omit<
+              & Omit<D, keyof _ExtractBindings<Nested>>
+              & _ExtractBindings<Nested>,
+              keyof _ExtractBindings<Tail>
+            >
             & _ExtractBindings<Tail>
         : _ExtractBindings<Tail>
     )
@@ -324,7 +305,6 @@ export {
   del,
   get,
   head,
-  mount,
   options,
   patch,
   post,
