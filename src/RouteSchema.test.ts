@@ -8,6 +8,41 @@ import * as RouteMount from "./RouteMount.ts"
 import * as RouteSchema from "./RouteSchema.ts"
 
 test.describe(`${RouteSchema.schemaHeaders.name}()`, () => {
+  test.it(`${RouteSchema.schemaHeaders.name} merges`, () => {
+    type ExpectedBindings = {
+      hello: string
+      "x-custom-header": string
+    }
+    const route = Route
+      .use(
+        RouteSchema.schemaHeaders(
+          Schema.Struct({
+            "hello": Schema.String,
+          }),
+        ),
+      )
+      .get(
+        RouteSchema.schemaHeaders(
+          Schema.Struct({
+            "x-custom-header": Schema.String,
+          }),
+        ),
+        Route.html(function*(ctx) {
+          test
+            .expectTypeOf(ctx.headers)
+            .toExtend<ExpectedBindings>()
+
+          return `<h1>Hello, world!</h1>`
+        }),
+      )
+
+    test
+      .expectTypeOf<Route.Route.Bindings<typeof route>>()
+      .toExtend<{
+        headers: ExpectedBindings
+      }>()
+  })
+
   test.it("passes bindings and parses value", async () => {
     const headers = {
       "x-hello": "test-value",

@@ -72,35 +72,6 @@ export namespace RouteSet {
     T extends Data<any, any, any>,
   > = T extends Data<infer D, any, any> ? D : never
 
-  export type Bindings<
-    T extends Data<any, any, any>,
-  > = T extends Data<any, any, infer M> ? (
-      _ExtractBindings<M>
-    )
-    : never
-
-  type _ExtractBindings<
-    M extends Tuple,
-  > = M extends [
-    infer Head,
-    ...infer Tail extends Tuple,
-  ] ? (
-      Head extends Route.Route<
-        any,
-        infer B
-      > ?
-          | B
-          | _ExtractBindings<Tail>
-        : Head extends RouteSet<
-          any,
-          any,
-          infer Nested
-        > ?
-            | _ExtractBindings<Nested>
-            | _ExtractBindings<Tail>
-        : _ExtractBindings<Tail>
-    )
-    : never
 }
 
 export namespace Route {
@@ -138,14 +109,16 @@ export namespace Route {
   export type Bindings<T extends RouteSet.Any> =
     & Omit<
       RouteSet.Descriptor<T>,
-      keyof _ExtractBindings<RouteSet.Items<T>>
+      keyof ExtractBindingsWithDescriptors<RouteSet.Items<T>>
     >
-    & _ExtractBindings<RouteSet.Items<T>>
+    & ExtractBindingsWithDescriptors<RouteSet.Items<T>>
 
-  // Extracts merged bindings from a RouteSet.
+  // Extracts merged bindings from a RouteSet, including descriptors.
+  // Used by Route.Bindings to get the final shape of a completed route.
   // We don't use intersection types here to avoid producing never, like in:
   // { method: "*" } & { method: "GET" } = { method: never }
-  type _ExtractBindings<
+  // For overlapping keys (like headers), we shallow merge them.
+  type ExtractBindingsWithDescriptors<
     M extends RouteSet.Tuple,
   > = M extends [
     infer Head,
@@ -154,25 +127,21 @@ export namespace Route {
       Head extends Route<
         infer D,
         infer B
-      > ?
-          & Omit<
-            & Omit<D, keyof B>
-            & B,
-            keyof _ExtractBindings<Tail>
-          >
-          & _ExtractBindings<Tail>
+      > ? ShallowMerge<
+          & Omit<D, keyof B>
+          & B,
+          ExtractBindingsWithDescriptors<Tail>
+        >
         : Head extends RouteSet.RouteSet<
           infer D,
           any,
           infer Nested
-        > ?
-            & Omit<
-              & Omit<D, keyof _ExtractBindings<Nested>>
-              & _ExtractBindings<Nested>,
-              keyof _ExtractBindings<Tail>
-            >
-            & _ExtractBindings<Tail>
-        : _ExtractBindings<Tail>
+        > ? ShallowMerge<
+            & Omit<D, keyof ExtractBindingsWithDescriptors<Nested>>
+            & ExtractBindingsWithDescriptors<Nested>,
+            ExtractBindingsWithDescriptors<Tail>
+          >
+        : ExtractBindingsWithDescriptors<Tail>
     )
     : {}
 }
@@ -277,20 +246,26 @@ export type ExtractBindings<
     Head extends Route.Route<
       any,
       infer B
-    > ?
-        & B
-        & ExtractBindings<Tail>
+    > ? ShallowMerge<B, ExtractBindings<Tail>>
       : Head extends RouteSet.RouteSet<
         any,
         infer B,
         infer Nested
-      > ?
-          & B
-          & ExtractBindings<Nested>
-          & ExtractBindings<Tail>
+      > ? ShallowMerge<
+          ShallowMerge<B, ExtractBindings<Nested>>,
+          ExtractBindings<Tail>
+        >
       : ExtractBindings<Tail>
   )
   : {}
+
+// Shallow merge two object types.
+// For overlapping keys, intersect the values.
+type ShallowMerge<A, B> =
+  & Omit<A, keyof B>
+  & {
+    [K in keyof B]: K extends keyof A ? A[K] & B[K] : B[K]
+  }
 
 export type ExtractContext<
   Items extends RouteSet.Tuple,

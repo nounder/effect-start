@@ -1,5 +1,4 @@
 import * as Effect from "effect/Effect"
-import type * as Types from "effect/Types"
 import type * as Utils from "effect/Utils"
 import * as Route from "./Route.ts"
 
@@ -12,13 +11,10 @@ export type Format<
 export type HandlerInput<B, A, E, R> =
   | A
   | Effect.Effect<A, E, R>
-  | ((context: Types.Simplify<B>, next: () => Effect.Effect<A>) =>
+  | ((context: _Simplify<B>, next: () => Effect.Effect<A>) =>
     | Effect.Effect<A, E, R>
     | Generator<Utils.YieldWrap<Effect.Effect<any, E, R>>, A, any>)
 
-/**
- * Normalize handler.
- */
 export function handle<B, A, E, R>(
   handler: (context: B, next: () => Effect.Effect<A>) =>
     | Effect.Effect<A, E, R>
@@ -100,3 +96,11 @@ export function build<
     }
   }
 }
+
+// used to simplify the context type passed to route handlers
+// for those who prefer to write code by hand :)
+type _Simplify<T> = {
+  -readonly [K in keyof T]: T[K] extends object
+    ? { -readonly [P in keyof T[K]]: T[K][P] }
+    : T[K]
+} extends infer U ? { [K in keyof U]: U[K] } : never

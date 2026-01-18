@@ -13,12 +13,13 @@ export function schemaHeaders<
   fields: Schema.Schema<A, I, R>,
 ): <
   D extends Route.RouteDescriptor.Any,
+  SB extends {},
   P extends Route.RouteSet.Tuple,
 >(
-  self: Route.RouteSet.RouteSet<D, {}, P>,
+  self: Route.RouteSet.RouteSet<D, SB, P>,
 ) => Route.RouteSet.RouteSet<
   D,
-  {},
+  SB,
   [
     ...P,
     Route.Route.Route<
