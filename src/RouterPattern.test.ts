@@ -1,16 +1,15 @@
 import * as test from "bun:test"
-import * as type from "expect-type"
 import * as RouterPattern from "./RouterPattern.ts"
 
 test.describe("Segments", () => {
   test.it("literal path", () => {
-    type
+    test
       .expectTypeOf<RouterPattern.Segments<"/">>()
       .toEqualTypeOf<[]>()
-    type
+    test
       .expectTypeOf<RouterPattern.Segments<"/about">>()
       .toEqualTypeOf<[RouterPattern.LiteralSegment<"about">]>()
-    type
+    test
       .expectTypeOf<RouterPattern.Segments<"/users/profile">>()
       .toEqualTypeOf<[
         RouterPattern.LiteralSegment<"users">,
@@ -19,13 +18,13 @@ test.describe("Segments", () => {
   })
 
   test.it("simple param [param]", () => {
-    type
+    test
       .expectTypeOf<RouterPattern.Segments<"/users/[id]">>()
       .toEqualTypeOf<[
         RouterPattern.LiteralSegment<"users">,
         RouterPattern.ParamSegment<"id", false>,
       ]>()
-    type
+    test
       .expectTypeOf<RouterPattern.Segments<"/[category]/[product]">>()
       .toEqualTypeOf<[
         RouterPattern.ParamSegment<"category", false>,
@@ -34,7 +33,7 @@ test.describe("Segments", () => {
   })
 
   test.it("optional param [[param]]", () => {
-    type
+    test
       .expectTypeOf<RouterPattern.Segments<"/users/[[id]]">>()
       .toEqualTypeOf<[
         RouterPattern.LiteralSegment<"users">,
@@ -43,7 +42,7 @@ test.describe("Segments", () => {
   })
 
   test.it("rest param [...param]", () => {
-    type
+    test
       .expectTypeOf<RouterPattern.Segments<"/docs/[...path]">>()
       .toEqualTypeOf<[
         RouterPattern.LiteralSegment<"docs">,
@@ -52,10 +51,10 @@ test.describe("Segments", () => {
   })
 
   test.it("optional rest param [[...param]]", () => {
-    type
+    test
       .expectTypeOf<RouterPattern.Segments<"/[[...frontend]]">>()
       .toEqualTypeOf<[RouterPattern.RestSegment<"frontend", true>]>()
-    type
+    test
       .expectTypeOf<RouterPattern.Segments<"/app/[[...slug]]">>()
       .toEqualTypeOf<[
         RouterPattern.LiteralSegment<"app">,
@@ -64,7 +63,7 @@ test.describe("Segments", () => {
   })
 
   test.it("param with prefix pk_[id]", () => {
-    type
+    test
       .expectTypeOf<RouterPattern.Segments<"/keys/pk_[id]">>()
       .toEqualTypeOf<[
         RouterPattern.LiteralSegment<"keys">,
@@ -73,7 +72,7 @@ test.describe("Segments", () => {
   })
 
   test.it("param with suffix [id].json", () => {
-    type
+    test
       .expectTypeOf<RouterPattern.Segments<"/api/[id].json">>()
       .toEqualTypeOf<[
         RouterPattern.LiteralSegment<"api">,
@@ -82,7 +81,7 @@ test.describe("Segments", () => {
   })
 
   test.it("param with prefix and suffix file_[id].txt", () => {
-    type
+    test
       .expectTypeOf<RouterPattern.Segments<"/files/file_[id].txt">>()
       .toEqualTypeOf<[
         RouterPattern.LiteralSegment<"files">,
@@ -91,7 +90,7 @@ test.describe("Segments", () => {
   })
 
   test.it("param with prefix and suffix prefix_[id]_suffix", () => {
-    type
+    test
       .expectTypeOf<RouterPattern.Segments<"/prefix_[id]_suffix">>()
       .toEqualTypeOf<
         [RouterPattern.ParamSegment<"id", false, "prefix_", "_suffix">]
@@ -99,13 +98,13 @@ test.describe("Segments", () => {
   })
 
   test.it("malformed segment pk_[id]foo → undefined (suffix without delimiter)", () => {
-    type
+    test
       .expectTypeOf<RouterPattern.Segments<"/pk_[id]foo">>()
       .toEqualTypeOf<[undefined]>()
   })
 
   test.it("no delimiter prefix/suffix → Literal", () => {
-    type
+    test
       .expectTypeOf<RouterPattern.Segments<"/pk[id]foo">>()
       .toEqualTypeOf<[RouterPattern.LiteralSegment<"pk[id]foo">]>()
   })
