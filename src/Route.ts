@@ -1,7 +1,10 @@
-import * as Effect from "effect/Effect"
+import * as Context from "effect/Context"
+import type * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
 import * as Pipeable from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import * as RouteBody from "./RouteBody.ts"
+import * as RouteTree from "./RouteTree.ts"
 import * as Values from "./Values.ts"
 
 export const RouteItems: unique symbol = Symbol()
@@ -301,6 +304,21 @@ export const json = RouteBody.build<Values.Json, "json">({
 export const bytes = RouteBody.build<Uint8Array, "bytes">({
   format: "bytes",
 })
+
+export class Routes extends Context.Tag("effect-start/Routes")<
+  Routes,
+  RouteTree.RouteTree
+>() {}
+
+export function layer(routes: RouteTree.RouteMap | RouteTree.RouteTree) {
+  return Layer.sync(
+    Routes,
+    () =>
+      RouteTree.isRouteTree(routes)
+        ? routes
+        : RouteTree.make(routes),
+  )
+}
 
 export {
   make as tree,

@@ -1,79 +1,58 @@
-import * as Context from "effect/Context"
-import * as Layer from "effect/Layer"
 import * as Predicate from "effect/Predicate"
-import type * as PathPattern from "./PathPattern.ts"
+import * as PathPattern from "./PathPattern.ts"
 import * as Route from "./Route.ts"
 
 const TypeId: unique symbol = Symbol.for("effect-start/RouteTree")
 const RouteTreeRoutes: unique symbol = Symbol()
-const RouteTreeKeys: unique symbol = Symbol()
 
-type TreeRoutes = Record<PathPattern.PathPattern, Route.RouteSet.Any>
+export type RouteMap = {
+  [path: PathPattern.PathPattern]: Route.RouteSet.Any
+}
 
 export type Routes<T extends RouteTree<any>> = T[typeof RouteTreeRoutes]
 
-export class Tag extends Context.Tag("effect-start/RouteTree")<
-  Tag,
-  RouteTree
->() {}
-
-export function layer(routes: TreeRoutes | RouteTree) {
-  return Layer.sync(
-    Tag,
-    () =>
-      isRouteTree(routes)
-        ? routes
-        : make(routes),
-  )
-}
-
 export interface RouteTree<
-  Routes extends Record<PathPattern.PathPattern, Route.RouteSet.Any> = {},
+  Routes extends RouteMap = {},
 > {
   [TypeId]: typeof TypeId
   [RouteTreeRoutes]: Routes
-  [RouteTreeKeys]: PathPattern.PathPattern[]
-
-  add<P extends PathPattern.PathPattern, R extends Route.RouteSet.Any>(
-    path: P,
-    route: R,
-  ): RouteTree<
-    {
-      [K in keyof Routes | P]: K extends keyof Routes ? Routes[K]
-        : Route.RouteSet.Infer<R>
-    }
-  >
 }
 
 function routes<
-  Routes extends Record<PathPattern.PathPattern, Route.RouteSet.Any>,
+  Routes extends RouteMap,
 >(
   tree: RouteTree<Routes>,
 ): Routes {
   return tree[RouteTreeRoutes]
 }
 
-function keys(
-  tree: RouteTree<any>,
-): PathPattern.PathPattern[] {
-  return tree[RouteTreeKeys]
+// segment priority: static (0) < :param (1) < :param? (2) < :param+ (3) < :param* (4)
+function sortScore(path: string): number {
+  const segments = path.split("/")
+  const greedyIdx = segments.findIndex((s) => s.endsWith("*") || s.endsWith("+"))
+  const maxPriority = Math.max(...segments.map((s) =>
+    !s.startsWith(":") ? 0 : s.endsWith("*") ? 4 : s.endsWith("+") ? 3 : s.endsWith("?") ? 2 : 1
+  ), 0)
+
+  return greedyIdx === -1
+    // non-greedy: sort by depth, then by max segment priority
+    ? (segments.length << 16) + (maxPriority << 8)
+    // greedy: sort after non-greedy, by greedy position (later = first), then priority
+    : (1 << 24) + ((16 - greedyIdx) << 16) + (maxPriority << 8)
 }
 
-const Proto = {
-  add<P extends PathPattern.PathPattern, R extends Route.RouteSet.Any>(
-    this: RouteTree<any>,
-    path: P,
-    route: R,
-  ): RouteTree<any> {
-    return make({
-      ...routes(this),
-      [path]: route,
-    })
-  },
+function sortRoutes(input: RouteMap): RouteMap {
+  const keys = Object.keys(input).sort((a, b) => sortScore(a) - sortScore(b) || a.localeCompare(b))
+  const sorted: RouteMap = {}
+  for (const key of keys) {
+    sorted[key as PathPattern.PathPattern] =
+      input[key as PathPattern.PathPattern]
+  }
+  return sorted
 }
 
 export function make<
-  const Routes extends TreeRoutes,
+  const Routes extends RouteMap,
 >(
   routes: Routes,
 ): RouteTree<
@@ -81,64 +60,85 @@ export function make<
     [K in keyof Routes]: Route.RouteSet.Infer<Routes[K]>
   }
 > {
-  return Object.assign(
-    Object.create(Proto),
-    {
-      [TypeId]: TypeId,
-      [RouteTreeRoutes]: routes,
-      [RouteTreeKeys]: Object.keys(routes) as PathPattern.PathPattern[],
-    },
-  )
+  return {
+    [TypeId]: TypeId,
+    [RouteTreeRoutes]: sortRoutes(routes),
+  } as RouteTree<{ [K in keyof Routes]: Route.RouteSet.Infer<Routes[K]> }>
 }
 
-export function add<
-  P extends PathPattern.PathPattern,
-  R extends Route.RouteSet.Any,
->(
-  path: P,
-  route: R,
-): RouteTree<{ [K in P]: Route.RouteSet.Infer<R> }> {
-  return make({ [path]: route } as { [K in P]: R })
-}
+export type WalkDescriptor = {
+  path: PathPattern.PathPattern
+  method: string
+} & Route.RouteDescriptor.Any
+
+export type WalkRoute = Route.Route.Route<
+  WalkDescriptor,
+  {},
+  unknown,
+  unknown,
+  unknown
+>
 
 function* flattenItems(
-  path: string,
+  path: PathPattern.PathPattern,
   items: Route.RouteSet.Tuple,
-  parentDescriptor: Record<string, unknown>,
-): Generator<Route.Route.Route<any, any, any, any, any>> {
+  parentDescriptor: { method: string } & Route.RouteDescriptor.Any,
+): Generator<WalkRoute> {
   for (const item of items) {
     if (Route.isRoute(item)) {
-      const itemDescriptor = Route.descriptor(item)
       const mergedDescriptor = {
         ...parentDescriptor,
-        ...itemDescriptor,
+        ...Route.descriptor(item),
         path,
       }
-      yield Route.make(item.handler, mergedDescriptor)
+      yield Route.make(
+        // handler receives mergedDescriptor (which includes path) at runtime
+        item.handler as unknown as WalkRoute["handler"],
+        mergedDescriptor,
+      )
     } else if (Route.isRouteSet(item)) {
-      const itemDescriptor = Route.descriptor(item)
       const mergedDescriptor = {
         ...parentDescriptor,
-        ...itemDescriptor,
+        ...Route.descriptor(item),
       }
       yield* flattenItems(path, Route.items(item), mergedDescriptor)
     }
   }
 }
 
-export function* walk(
-  tree: RouteTree<any>,
-): Generator<Route.Route.Route<any, any, any, any, any>> {
+export function* walk(tree: RouteTree): Generator<WalkRoute> {
   const _routes = routes(tree)
-  for (const path of keys(tree)) {
-    const routeSet = _routes[path] as Route.RouteSet.Any
-    const items = Route.items(routeSet)
-    const descriptor = Route.descriptor(routeSet)
-    yield* flattenItems(path, items, descriptor)
+  for (const path of Object.keys(_routes) as PathPattern.PathPattern[]) {
+    const routeSet = _routes[path]
+    yield* flattenItems(path, Route.items(routeSet), Route.descriptor(routeSet))
   }
 }
+
 export function isRouteTree(
   input: unknown,
 ): input is RouteTree {
   return Predicate.hasProperty(input, TypeId)
+}
+
+export interface LookupResult {
+  route: WalkRoute
+  params: Record<string, string>
+}
+
+export function lookup(
+  tree: RouteTree,
+  method: string,
+  path: string,
+): LookupResult | null {
+  for (const route of walk(tree)) {
+    const descriptor = Route.descriptor(route)
+
+    if (descriptor.method !== "*" && descriptor.method !== method) continue
+
+    const params = PathPattern.match(descriptor.path, path)
+    if (params !== null) {
+      return { route, params }
+    }
+  }
+  return null
 }
