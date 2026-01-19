@@ -1,12 +1,36 @@
+import * as Context from "effect/Context"
+import * as Layer from "effect/Layer"
+import * as Predicate from "effect/Predicate"
 import type * as PathPattern from "./PathPattern.ts"
 import * as Route from "./Route.ts"
 
+const TypeId: unique symbol = Symbol.for("effect-start/RouteTree")
 const RouteTreeRoutes: unique symbol = Symbol()
 const RouteTreeKeys: unique symbol = Symbol()
+
+type TreeRoutes = Record<PathPattern.PathPattern, Route.RouteSet.Any>
+
+export type Routes<T extends RouteTree<any>> = T[typeof RouteTreeRoutes]
+
+export class Tag extends Context.Tag("effect-start/RouteTree")<
+  Tag,
+  RouteTree
+>() {}
+
+export function layer(routes: TreeRoutes | RouteTree) {
+  return Layer.sync(
+    Tag,
+    () =>
+      isRouteTree(routes)
+        ? routes
+        : make(routes),
+  )
+}
 
 export interface RouteTree<
   Routes extends Record<PathPattern.PathPattern, Route.RouteSet.Any> = {},
 > {
+  [TypeId]: typeof TypeId
   [RouteTreeRoutes]: Routes
   [RouteTreeKeys]: PathPattern.PathPattern[]
 
@@ -20,8 +44,6 @@ export interface RouteTree<
     }
   >
 }
-
-export type Routes<T extends RouteTree<any>> = T[typeof RouteTreeRoutes]
 
 function routes<
   Routes extends Record<PathPattern.PathPattern, Route.RouteSet.Any>,
@@ -37,7 +59,7 @@ function keys(
   return tree[RouteTreeKeys]
 }
 
-const TreeProto = {
+const Proto = {
   add<P extends PathPattern.PathPattern, R extends Route.RouteSet.Any>(
     this: RouteTree<any>,
     path: P,
@@ -51,7 +73,7 @@ const TreeProto = {
 }
 
 export function make<
-  const Routes extends Record<PathPattern.PathPattern, Route.RouteSet.Any>,
+  const Routes extends TreeRoutes,
 >(
   routes: Routes,
 ): RouteTree<
@@ -59,10 +81,14 @@ export function make<
     [K in keyof Routes]: Route.RouteSet.Infer<Routes[K]>
   }
 > {
-  return Object.assign(Object.create(TreeProto), {
-    [RouteTreeRoutes]: routes,
-    [RouteTreeKeys]: Object.keys(routes) as PathPattern.PathPattern[],
-  })
+  return Object.assign(
+    Object.create(Proto),
+    {
+      [TypeId]: TypeId,
+      [RouteTreeRoutes]: routes,
+      [RouteTreeKeys]: Object.keys(routes) as PathPattern.PathPattern[],
+    },
+  )
 }
 
 export function add<
@@ -110,4 +136,9 @@ export function* walk(
     const descriptor = Route.descriptor(routeSet)
     yield* flattenItems(path, items, descriptor)
   }
+}
+export function isRouteTree(
+  input: unknown,
+): input is RouteTree {
+  return Predicate.hasProperty(input, TypeId)
 }

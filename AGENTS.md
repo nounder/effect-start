@@ -25,6 +25,9 @@ import * as Files from "./Files.ts"
 // When import module is lowercase, prefer named imports:
 import { start } from "./server.ts"
 import { list } from "./games" // or index.ts
+
+// also import types as namespace
+import type * as Types from "effect/Types"
 ```
 
 Do not write obvious comments that restate what the code is doing

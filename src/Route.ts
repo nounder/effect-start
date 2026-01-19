@@ -71,7 +71,6 @@ export namespace RouteSet {
   export type Descriptor<
     T extends Data<any, any, any>,
   > = T extends Data<infer D, any, any> ? D : never
-
 }
 
 export namespace Route {
@@ -302,3 +301,7 @@ export const json = RouteBody.build<Values.Json, "json">({
 export const bytes = RouteBody.build<Uint8Array, "bytes">({
   format: "bytes",
 })
+
+export {
+  make as tree,
+} from "./RouteTree.ts"

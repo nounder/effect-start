@@ -11,6 +11,13 @@ export const routes = [
     ],
   },
   {
+    path: "/[[404]]",
+    load: () => import("./[[404]]/route.ts"),
+    layers: [
+      () => import("./layer.tsx"),
+    ],
+  },
+  {
     path: "/admin",
     load: () => import("./admin/route.tsx"),
     layers: [
