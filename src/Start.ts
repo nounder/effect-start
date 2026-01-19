@@ -1,4 +1,3 @@
-// @ts-nocheck
 import * as FetchHttpClient from "@effect/platform/FetchHttpClient"
 import * as FileSystem from "@effect/platform/FileSystem"
 import * as HttpClient from "@effect/platform/HttpClient"
@@ -46,13 +45,13 @@ export function serve<ROut, E>(
   )
 
   return Function.pipe(
-    BunHttpServer.layerFileRouter(),
+    BunHttpServer.layerAuto(),
     HttpServer.withLogAddress,
     Layer.provide(appLayer),
     Layer.provide([
       FetchHttpClient.layer,
       HttpRouter.Default.Live,
-      BunHttpServer.layerServer(),
+      BunHttpServer.layer(),
       NodeFileSystem.layer,
       StartApp.layer(),
     ]),

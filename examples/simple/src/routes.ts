@@ -4,11 +4,10 @@ export default Route.tree({
   "/": Route.get(
     Route.text("Homepage"),
   ),
-  "/data.json": Route.redirect("/"),
   "/data.json": Route
     .get(
       Route.json(function*() {
-        return {}
+        return { woah22: 23 }
       }),
     ),
 })

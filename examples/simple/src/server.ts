@@ -2,12 +2,12 @@ import {
   Route,
   Start,
 } from "effect-start"
+import { BunHttpServer } from "effect-start/bun"
 import routes from "./routes.ts"
 
 export default Start.layer(
   // provies RouteTree
   // stores routes and allows to be accessed from
-  // BunRoute
   Route.layer(routes),
 )
 

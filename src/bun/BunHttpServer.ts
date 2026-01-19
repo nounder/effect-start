@@ -15,7 +15,10 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import type * as Scope from "effect/Scope"
 import * as FileRouter from "../FileRouter.ts"
+import * as PathPattern from "../PathPattern.ts"
 import * as Random from "../Random.ts"
+import * as Route from "../Route.ts"
+import * as RouteTree from "../RouteTree.ts"
 import EmptyHTML from "./_empty.html"
 import {
   makeResponse,
@@ -159,12 +162,128 @@ export const make = (
     })
   })
 
+/**
+ * Provides HttpServer using BunHttpServer under the hood.
+ */
 export const layer = (
   options?: ServeOptions,
-): Layer.Layer<BunHttpServer> =>
-  Layer.scoped(BunHttpServer, make(options ?? {}))
+): Layer.Layer<HttpServer.HttpServer | BunHttpServer> =>
+  Layer.provideMerge(
+    Layer.scoped(HttpServer.HttpServer, makeBunServer),
+    Layer.scoped(BunHttpServer, make(options ?? {})),
+  )
 
-export const makeHttpServer: Effect.Effect<
+/**
+ * Registers routes provided via {@link Route.layer}
+ */
+export function layerAuto() {
+  return Layer.unwrapEffect(
+    Effect.gen(function*() {
+      const bunServer = yield* BunHttpServer
+      const routes = yield* Effect.serviceOption(Route.Routes)
+
+      if (Option.isSome(routes)) {
+        return layerRoutes(routes.value)
+      } else {
+        return Layer.empty
+      }
+    }),
+  )
+}
+
+/**
+ * Register routes in Bun.serve.
+ * TODO: support content negotiation (possibly in RouteHttp)
+ */
+export function layerRoutes(
+  tree: RouteTree.RouteTree,
+): Layer.Layer<never, never, BunHttpServer> {
+  return Layer.effectDiscard(
+    Effect.gen(function*() {
+      const bunServer = yield* BunHttpServer
+
+      const bunRoutes: BunRoute.BunRoutes = {}
+
+      for (const route of RouteTree.walk(tree)) {
+        const descriptor = Route.descriptor(route)
+        const bunPaths = PathPattern.toBun(descriptor.path)
+
+        for (const bunPath of bunPaths) {
+          const existingHandler = bunRoutes[bunPath]
+
+          const handler: BunRoute.BunRoutes[string] = (request, server) => {
+            return new Promise<Response>((resolve) => {
+              const url = new URL(request.url)
+              const params = PathPattern.match(descriptor.path, url.pathname)
+                ?? {}
+
+              const context = {
+                ...descriptor,
+                params,
+                url,
+                request,
+                server,
+              }
+
+              const effect = route.handler(
+                context,
+                () => Effect.succeed(undefined),
+              )
+
+              Effect
+                .runPromise(effect)
+                .then((result) => {
+                  if (result instanceof Response) {
+                    resolve(result)
+                  } else if (typeof result === "string") {
+                    resolve(
+                      new Response(result, {
+                        headers: { "Content-Type": "text/html; charset=utf-8" },
+                      }),
+                    )
+                  } else {
+                    resolve(
+                      new Response(JSON.stringify(result), {
+                        headers: { "Content-Type": "application/json" },
+                      }),
+                    )
+                  }
+                })
+                .catch((error) => {
+                  resolve(new Response(String(error), { status: 500 }))
+                })
+            })
+          }
+
+          // Handle method-specific routing
+          if (descriptor.method && descriptor.method !== "*") {
+            const method = descriptor
+              .method
+              .toUpperCase() as Bun.Serve.HTTPMethod
+
+            if (
+              existingHandler
+              && typeof existingHandler === "object"
+              && !BunRoute.isHTMLBundle(existingHandler)
+            ) {
+              // Merge with existing method handlers
+              ;(existingHandler as Record<string, unknown>)[method] = handler
+            } else {
+              bunRoutes[bunPath] = { [method]: handler }
+            }
+          } else {
+            // Wildcard method - register as direct handler
+            bunRoutes[bunPath] = handler
+          }
+        }
+      }
+
+      bunServer.addRoutes(bunRoutes)
+    }),
+  )
+}
+
+const makeBunServer: Effect.Effect<
   HttpServer.HttpServer,
   never,
   Scope.Scope | BunHttpServer
@@ -228,36 +347,6 @@ export const makeHttpServer: Effect.Effect<
     },
   })
 })
-
-export const layerServer = (
-  options?: ServeOptions,
-): Layer.Layer<HttpServer.HttpServer | BunHttpServer> =>
-  Layer.provideMerge(
-    Layer.scoped(HttpServer.HttpServer, makeHttpServer),
-    layer(options ?? {}),
-  )
-
-/**
- * Adds routes from {@like FileRouter.FileRouter} to Bun Server.
- *
- * It ain't clean but it works until we figure out interfaces
- * for other servers.
- */
-export function layerFileRouter() {
-  return Layer.effectDiscard(
-    Effect.gen(function*() {
-      const bunServer = yield* BunHttpServer
-      const manifest = yield* Effect.serviceOption(FileRouter.FileRouter)
-
-      if (Option.isSome(manifest)) {
-        const router = yield* FileRouter.fromManifest(manifest.value)
-        // const bunRoutes = yield* BunRouter.routesFrom(router)
-
-        bunServer.addRoutes({})
-      }
-    }),
-  )
-}
 
 const removeHost = (url: string) => {
   if (url[0] === "/") {

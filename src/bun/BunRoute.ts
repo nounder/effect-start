@@ -10,7 +10,6 @@ import * as Hyper from "../hyper/Hyper.ts"
 import * as HyperHtml from "../hyper/HyperHtml.ts"
 import * as Random from "../Random.ts"
 import * as Route from "../Route.ts"
-import * as Router from "../Router.ts"
 import * as RouterPattern from "../RouterPattern.ts"
 import * as BunHttpServer from "./BunHttpServer.ts"
 
