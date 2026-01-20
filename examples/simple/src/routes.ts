@@ -1,3 +1,4 @@
+import { Schema } from "effect"
 import { Route } from "effect-start"
 
 export default Route.tree({
@@ -6,8 +7,13 @@ export default Route.tree({
   ),
   "/data.json": Route
     .get(
-      Route.json(function*() {
-        return { woah22: 23 }
+      Route.schemaHeaders(Schema.Struct({
+        auth: Schema.String,
+      })),
+      Route.json(function*(ctx) {
+        return {
+          woah22: 23,
+        }
       }),
     ),
 })

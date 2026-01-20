@@ -15,6 +15,7 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import type * as Scope from "effect/Scope"
 import * as FileRouter from "../FileRouter.ts"
+import * as PathPattern from "../PathPattern.ts"
 import * as Random from "../Random.ts"
 import * as Route from "../Route.ts"
 import * as RouteHttp from "../RouteHttp.ts"
@@ -193,7 +194,6 @@ export function layerAuto() {
 
 /**
  * Register routes in Bun.serve.
- * TODO: support content negotiation (possibly in RouteHttp)
  */
 export function layerRoutes(
   tree: RouteTree.RouteTree,
@@ -201,8 +201,17 @@ export function layerRoutes(
   return Layer.effectDiscard(
     Effect.gen(function*() {
       const bunServer = yield* BunHttpServer
-      const handles = RouteHttp.treeHandles(tree)
-      bunServer.addRoutes(handles as BunRoute.BunRoutes)
+      const routes: BunRoute.BunRoutes = {}
+      for (const [path, handler] of RouteHttp.walkHandles(tree)) {
+        for (const bunPath of PathPattern.toBun(path)) {
+          routes[bunPath] = handler
+        }
+      }
+
+      // TODO: think how can we define routes upfront rather
+      // than add them after startup?
+      // now that we have Rooutes.Route thats should be possible
+      bunServer.addRoutes(routes)
     }),
   )
 }

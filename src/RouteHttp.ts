@@ -1,33 +1,32 @@
+import * as Array from "effect/Array"
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as Runtime from "effect/Runtime"
 import * as ContentNegotiation from "./ContentNegotiation.ts"
 import * as Http from "./Http.ts"
-import * as PathPattern from "./PathPattern.ts"
 import * as Route from "./Route.ts"
+import * as RouteBody from "./RouteBody.ts"
+import * as RouteMount from "./RouteMount.ts"
 import * as RouteTree from "./RouteTree.ts"
 
-export type FetchHandles = {
-  [path: PathPattern.PathPattern]: Http.WebHandler
-}
-
-export type RouteWithMethod = Route.Route.With<{
-  method: string
+type UnboundedRouteWithMethod = Route.Route.With<{
+  method: RouteMount.RouteMount.Method
+  format?: RouteBody.Format
 }>
 
-const formatToMediaType: Record<string, string> = {
+const formatToMediaType = {
   text: "text/plain",
   html: "text/html",
   json: "application/json",
   bytes: "application/octet-stream",
-}
+} as const
 
-const formatToContentType: Record<string, string> = {
+const formatToContentType = {
   text: "text/plain; charset=utf-8",
   html: "text/html; charset=utf-8",
   json: "application/json",
   bytes: "application/octet-stream",
-}
+} as const
 
 function toResponse(result: unknown, format?: string): Response {
   if (result instanceof Response) {
@@ -49,35 +48,53 @@ function toResponse(result: unknown, format?: string): Response {
   })
 }
 
-interface RouteCandidate {
-  route: Route.Route.Route<any, any, any, any, any>
-  descriptor: Route.RouteDescriptor.Any
-  format: string | undefined
-  mediaType: string | undefined
+function getMediaType(format: string | undefined): string | undefined {
+  return format && format in formatToMediaType
+    ? formatToMediaType[format]
+    : undefined
 }
 
-function selectRoute(
-  candidates: RouteCandidate[],
+const defaultFormatPriority = ["json", "text", "html", "bytes"] as const
+
+function negotiateRoute(
+  routes: UnboundedRouteWithMethod[],
   accept: string | null,
-): RouteCandidate {
-  if (candidates.length === 1 || !accept) {
-    return candidates[0]
+): UnboundedRouteWithMethod | undefined {
+  if (routes.length === 1) {
+    if (!accept) return routes[0]
+    const format = Route.descriptor(routes[0]).format
+    const mediaType = getMediaType(format)
+    if (!mediaType) return routes[0]
+    const matched = ContentNegotiation.media(accept, [mediaType])
+    return matched.length > 0 ? routes[0] : undefined
   }
 
+  const formatMap = new Map<string, UnboundedRouteWithMethod>()
   const available: string[] = []
-  const mediaTypeMap = new Map<string, RouteCandidate>()
+  const mediaTypeMap = new Map<string, UnboundedRouteWithMethod>()
 
-  for (const candidate of candidates) {
-    if (candidate.format && candidate.mediaType) {
-      if (!mediaTypeMap.has(candidate.mediaType)) {
-        available.push(candidate.mediaType)
-        mediaTypeMap.set(candidate.mediaType, candidate)
-      }
+  for (const route of routes) {
+    const format = Route.descriptor(route).format
+    if (format && !formatMap.has(format)) {
+      formatMap.set(format, route)
+    }
+    const mediaType = getMediaType(format)
+    if (format && mediaType && !mediaTypeMap.has(mediaType)) {
+      available.push(mediaType)
+      mediaTypeMap.set(mediaType, route)
     }
   }
 
+  if (!accept) {
+    for (const format of defaultFormatPriority) {
+      const route = formatMap.get(format)
+      if (route) return route
+    }
+    return routes[0]
+  }
+
   if (available.length === 0) {
-    return candidates[0]
+    return routes[0]
   }
 
   const preferred = ContentNegotiation.media(accept, available)
@@ -88,7 +105,7 @@ function selectRoute(
     }
   }
 
-  return candidates[0]
+  return undefined
 }
 
 export const toWebHandlerRuntime = <R>(
@@ -96,40 +113,52 @@ export const toWebHandlerRuntime = <R>(
 ) => {
   const run = Runtime.runPromise(runtime)
 
-  return (routes: Iterable<RouteWithMethod>): Http.WebHandler => {
-    // Group by method for content negotiation within same method
-    const methodGroups = new Map<string, RouteCandidate[]>()
+  return (
+    routes: Iterable<
+      UnboundedRouteWithMethod
+    >,
+  ): Http.WebHandler => {
+    const grouped = Array.groupBy(
+      Array.fromIterable(routes),
+      (route) => Route.descriptor(route).method?.toUpperCase() ?? "*",
+    )
+    const wildcards = grouped["*"] ?? []
+    const methodGroups: {
+      [method in Http.Method]?: UnboundedRouteWithMethod[]
+    } = {
+      GET: undefined,
+      POST: undefined,
+      PUT: undefined,
+      PATCH: undefined,
+      DELETE: undefined,
+      HEAD: undefined,
+      OPTIONS: undefined,
+    }
 
-    for (const route of routes) {
-      const descriptor = Route.descriptor(route)
-      const format = descriptor.format as string | undefined
-      const mediaType = format && format in formatToMediaType
-        ? formatToMediaType[format]
-        : undefined
-      const method = descriptor.method && descriptor.method !== "*"
-        ? descriptor.method.toUpperCase()
-        : "*"
-
-      const candidates = methodGroups.get(method) ?? []
-      candidates.push({ route, descriptor, format, mediaType })
-      methodGroups.set(method, candidates)
+    for (const method in grouped) {
+      if (method !== "*") {
+        methodGroups[method] = [...wildcards, ...grouped[method]]
+      }
     }
 
     return (request) => {
       const method = request.method.toUpperCase()
-      const accept = request.headers.get("Accept")
+      const accept = request.headers.get("accept")
+      const group = methodGroups[method]
 
-      const candidates = methodGroups.get(method)
-        ?? methodGroups.get("*")
-
-      if (!candidates) {
+      if (!group || group.length === 0) {
         return Promise.resolve(
           new Response("Method Not Allowed", { status: 405 }),
         )
       }
 
-      const selected = selectRoute(candidates, accept)
-      const { route, descriptor, format } = selected
+      const route = negotiateRoute(group, accept)
+      if (!route) {
+        return Promise.resolve(
+          new Response("Not Acceptable", { status: 406 }),
+        )
+      }
+      const descriptor = Route.descriptor(route)
 
       const context = {
         ...descriptor,
@@ -143,7 +172,7 @@ export const toWebHandlerRuntime = <R>(
 
       return run(
         effect.pipe(
-          Effect.map((result) => toResponse(result, format)),
+          Effect.map((result) => toResponse(result, descriptor.format)),
           Effect.catchAllCause((cause) =>
             Effect.succeed(
               new Response(Cause.pretty(cause), { status: 500 }),
@@ -156,36 +185,28 @@ export const toWebHandlerRuntime = <R>(
 }
 
 export const toWebHandler: (
-  routes: Iterable<RouteWithMethod>,
+  routes: Iterable<UnboundedRouteWithMethod>,
 ) => Http.WebHandler = toWebHandlerRuntime(Runtime.defaultRuntime)
 
-export function treeHandles(
+export function* walkHandles(
   tree: RouteTree.RouteTree,
-): FetchHandles {
-  const handles: FetchHandles = {}
-
-  // Group routes by bunPath
+): Generator<[path: string, handler: Http.WebHandler]> {
   const pathGroups = new Map<
-    PathPattern.PathPattern,
+    string,
     Array<Route.Route.With<{ path: string; method: string }>>
   >()
 
   for (const route of RouteTree.walk(tree)) {
     const descriptor = Route.descriptor(route)
-    const bunPaths = PathPattern.toBun(descriptor.path)
-
-    for (const bunPath of bunPaths) {
-      const routes = pathGroups.get(bunPath) ?? []
-      routes.push(route)
-      pathGroups.set(bunPath, routes)
-    }
+    const path = descriptor.path
+    const routes = pathGroups.get(path) ?? []
+    routes.push(route)
+    pathGroups.set(path, routes)
   }
 
-  for (const [bunPath, routes] of pathGroups) {
-    handles[bunPath] = toWebHandler(routes)
+  for (const [path, routes] of pathGroups) {
+    yield [path, toWebHandler(routes)]
   }
-
-  return handles
 }
 
 export function fetch(
