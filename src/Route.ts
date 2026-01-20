@@ -22,9 +22,9 @@ export namespace RouteDescriptor {
 
 export namespace RouteSet {
   export type Tuple<
-    D extends RouteDescriptor.Any = {},
+    _D extends RouteDescriptor.Any = {},
   > = [
-    ...RouteSet<D, {}, Tuple>[],
+    ...Route.Route<any, any, any, any, any>[],
   ]
 
   export type RouteSet<

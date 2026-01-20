@@ -1,7 +1,10 @@
+import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
 import * as test from "bun:test"
 import * as Effect from "effect/Effect"
+import * as ParseResult from "effect/ParseResult"
 import * as Schema from "effect/Schema"
 import * as Route from "./Route.ts"
+import * as RouteMount from "./RouteMount.ts"
 
 test.it("uses GET method", async () => {
   const route = Route.get(
@@ -45,6 +48,10 @@ test.it("uses GET method", async () => {
     >()
 
   test
+    .expect(Route.items(route))
+    .toHaveLength(1)
+
+  test
     .expectTypeOf<Route.Route.Bindings<typeof route>>()
     .toMatchObjectType<{
       method: "GET"
@@ -82,6 +89,34 @@ test.it("uses GET & POST method", async () => {
   test
     .expect(Route.items(route))
     .toHaveLength(2)
+
+  type Items = Route.RouteSet.Items<typeof route>
+
+  test
+    .expectTypeOf<Items[0]>()
+    .toExtend<
+      Route.Route.Route<
+        {
+          method: "GET"
+          format: "text"
+        },
+        {},
+        string
+      >
+    >()
+
+  test
+    .expectTypeOf<Items[1]>()
+    .toExtend<
+      Route.Route.Route<
+        {
+          method: "POST"
+          format: "text"
+        },
+        {},
+        string
+      >
+    >()
 })
 
 test.describe("use", () => {
@@ -160,80 +195,68 @@ test.describe("use", () => {
 
     // First use() - adds answer context (method flattened into Route descriptor)
     test
-      .expectTypeOf<Items[0]>()
-      .toExtend<
-        Route.Route.Route<
-          { method: "*" },
-          { answer: number },
-          void
-        >
-      >()
+      .expectTypeOf<Route.RouteSet.Descriptor<Items[0]>>()
+      .toMatchObjectType<{ method: "*" }>()
+
+    test
+      .expectTypeOf<Route.Route.Bindings<Items[0]>>()
+      .toMatchObjectType<{ answer: number }>()
 
     // Second use() - adds doubledAnswer context, inherits answer binding (method flattened into Route descriptor)
     test
-      .expectTypeOf<Items[1]>()
-      .toExtend<
-        Route.Route.Route<
-          { method: "*" },
-          {
-            answer: number
-            doubledAnswer: number
-          },
-          void
-        >
-      >()
+      .expectTypeOf<Route.RouteSet.Descriptor<Items[1]>>()
+      .toMatchObjectType<{ method: "*" }>()
+
+    test
+      .expectTypeOf<Route.Route.Bindings<Items[1]>>()
+      .toMatchObjectType<{
+        answer: number
+        doubledAnswer: number
+      }>()
 
     // GET filter route
     test
-      .expectTypeOf<Items[2]>()
-      .toExtend<
-        Route.Route.Route<
-          { method: "GET" },
-          {
-            answer: number
-            doubledAnswer: number
-            getter: boolean
-          },
-          void,
-          never,
-          never
-        >
-      >()
+      .expectTypeOf<Route.RouteSet.Descriptor<Items[2]>>()
+      .toMatchObjectType<{ method: "GET" }>()
+
+    test
+      .expectTypeOf<Route.Route.Bindings<Items[2]>>()
+      .toMatchObjectType<{
+        answer: number
+        doubledAnswer: number
+        getter: boolean
+      }>()
 
     // GET text route
     test
-      .expectTypeOf<Items[3]>()
-      .toExtend<
-        Route.Route.Route<
-          {
-            method: "GET"
-            format: "text"
-          },
-          {
-            answer: number
-            doubledAnswer: number
-            getter: boolean
-          },
-          any
-        >
-      >()
+      .expectTypeOf<Route.RouteSet.Descriptor<Items[3]>>()
+      .toMatchObjectType<{
+        method: "GET"
+        format: "text"
+      }>()
+
+    test
+      .expectTypeOf<Route.Route.Bindings<Items[3]>>()
+      .toMatchObjectType<{
+        answer: number
+        doubledAnswer: number
+        getter: boolean
+      }>()
 
     // POST route - inherits answer/doubledAnswer only (no getter since that was in GET branch)
     test
-      .expectTypeOf<Items[4]>()
-      .toExtend<
-        Route.Route.Route<
-          {
-            method: "POST"
-            format: "json"
-          },
-          {
-            answer: number
-            doubledAnswer: number
-          },
-          any
-        >
-      >()
+      .expectTypeOf<Route.RouteSet.Descriptor<Items[4]>>()
+      .toMatchObjectType<{
+        method: "POST"
+        format: "json"
+      }>()
+
+    test
+      .expectTypeOf<Route.Route.Bindings<Items[4]>>()
+      .toMatchObjectType<{
+        answer: number
+        doubledAnswer: number
+      }>()
   })
 })
 
@@ -265,3 +288,103 @@ test.it("Builder extends RouteSet", () => {
     .toBe(true)
 })
 
+test.it("schemaHeaders flattens method into route descriptor", () => {
+  const routes = Route
+    .use(
+      Route.schemaHeaders(
+        Schema.Struct({
+          "hello": Schema.String,
+        }),
+      ),
+    )
+    .get(
+      Route.schemaHeaders(
+        Schema.Struct({
+          "x-custom-header": Schema.String,
+        }),
+      ),
+      Route.html(function*(_ctx) {
+        return `<h1>Hello, world!</h1>`
+      }),
+    )
+    .post(
+      Route.filter({
+        context: {
+          postOnly: "yo",
+        },
+      }),
+      Route.text(function*(ctx) {
+        return "hello"
+      }),
+    )
+
+  type Items = Route.RouteSet.Items<typeof routes>
+
+  // Assert routes is a Builder with specific descriptor
+  test
+    .expectTypeOf(routes)
+    .toExtend<
+      RouteMount.RouteMount.Builder<
+        {},
+        Items
+      >
+    >()
+
+  test
+    .expect(Route.items(routes))
+    .toHaveLength(3)
+
+  // First use() - schemaHeaders with method "*"
+  test
+    .expectTypeOf<Items[0]>()
+    .toExtend<
+      Route.Route.Route<
+        { method: "*" },
+        {
+          headers: {
+            readonly hello: string
+          }
+        },
+        void,
+        ParseResult.ParseError,
+        HttpServerRequest.HttpServerRequest
+      >
+    >()
+
+  // GET schemaHeaders
+  test
+    .expectTypeOf<Items[1]>()
+    .toExtend<
+      Route.Route.Route<
+        { method: "GET" },
+        {
+          headers: {
+            readonly hello: string
+            readonly "x-custom-header": string
+          }
+        },
+        void,
+        ParseResult.ParseError,
+        HttpServerRequest.HttpServerRequest
+      >
+    >()
+
+  // GET html route
+  test
+    .expectTypeOf<Items[2]>()
+    .toExtend<
+      Route.Route.Route<
+        {
+          method: "GET"
+          format: "html"
+        },
+        {
+          headers: {
+            readonly hello: string
+            readonly "x-custom-header": string
+          }
+        },
+        any
+      >
+    >()
+})

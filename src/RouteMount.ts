@@ -26,7 +26,7 @@ export const add: RouteMount.Add = function(
   routes:
     | Route.RouteSet.Any
     | ((
-      self: RouteMount.Builder<{}, RouteMount.BuilderBindings<Self>, []>,
+      self: RouteMount.Builder<{}, []>,
     ) => Route.RouteSet.Any),
 ) {
   const baseItems = Route.isRouteSet(this)
@@ -34,7 +34,7 @@ export const add: RouteMount.Add = function(
     : [] as const
 
   const routeSet = typeof routes === "function"
-    ? routes(make<{}, RouteMount.BuilderBindings<Self>, []>([]))
+    ? routes(make<{}, []>([]))
     : routes
   const routeItems = Route.items(routeSet)
   const newItems = routeItems.map((item) => {
@@ -78,11 +78,10 @@ const Proto = Object.assign(
 
 function make<
   D extends {} = {},
-  B = {},
   I extends Route.RouteSet.Tuple<{ method: string; path?: string }> = [],
 >(
   items: I,
-): RouteMount.Builder<D, B, I> {
+): RouteMount.Builder<D, I> {
   return Object.assign(
     Object.create(Proto),
     {
@@ -110,34 +109,23 @@ function makeMethodDescriber<M extends RouteMount.Method>(
     const result = f(methodSet)
     const resultItems = Route.items(result)
 
-    if (method === "*" && baseItems.length > 0) {
-      const lastItem = baseItems[baseItems.length - 1]
-      const lastDescriptor = Route.descriptor(lastItem) as { method?: string }
-
-      if (lastDescriptor?.method === "*") {
-        const mergedItems = [
-          ...Route.items(lastItem),
-          ...resultItems,
-        ]
-        const mergedSet = Route.set(mergedItems, { method: "*" })
-
-        return make([
-          ...baseItems.slice(0, -1),
-          mergedSet,
-        ] as any)
-      }
-    }
-
-    const wrappedResult = Route.set(
-      resultItems as Route.RouteSet.Tuple,
-      { method },
-    )
+    // Flatten: merge method into each item's descriptor
+    const flattenedItems = resultItems.map((item) => {
+      const itemDescriptor = Route.descriptor(item)
+      const newDescriptor = { method, ...itemDescriptor }
+      return Route.isRoute(item)
+        ? Route.make(
+          item.handler as Route.Route.Handler<any, any, any, any>,
+          newDescriptor,
+        )
+        : Route.set(Route.items(item), newDescriptor)
+    })
 
     return make(
       [
         ...baseItems,
-        wrappedResult,
-      ],
+        ...flattenedItems,
+      ] as any,
     )
   }
   return describeMethod as RouteMount.Describer<M>
@@ -156,9 +144,8 @@ export namespace RouteMount {
 
   export interface Builder<
     D extends {} = {},
-    B = {},
     I extends Route.RouteSet.Tuple = [],
-  > extends Route.RouteSet.RouteSet<D, B, I>, Module {
+  > extends Route.RouteSet.RouteSet<D, {}, I>, Module {
   }
 
   export type EmptySet<
@@ -170,17 +157,24 @@ export namespace RouteMount {
     []
   >
 
-  export type Items<S> = S extends Builder<any, any, infer I> ? I : []
+  export type Items<S> = S extends Builder<any, infer I> ? I : []
 
-  export type BuilderBindings<S> = S extends Builder<any, infer B, infer I>
-    ? Types.Simplify<B & WildcardBindings<I>>
+  export type BuilderBindings<S> = S extends Builder<any, infer I>
+    ? Types.Simplify<WildcardBindings<I>>
     : {}
 
-  type WildcardBindingsItem<T> = T extends Route.RouteSet.RouteSet<
+  type WildcardBindingsItem<T> = T extends Route.Route.Route<
     { method: "*" },
+    infer B,
     any,
-    infer IAny extends Route.RouteSet.Tuple
-  > ? Route.ExtractBindings<IAny>
+    any,
+    any
+  > ? B
+    : T extends Route.RouteSet.RouteSet<
+        { method: "*" },
+        infer B,
+        any
+      > ? B
     : {}
 
   type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends
@@ -192,12 +186,6 @@ export namespace RouteMount {
         [K in keyof I]: WildcardBindingsItem<I[K]>
       }[number]
     >
-
-  export type AccumulateBindings<
-    M extends Method,
-    Prev,
-    New,
-  > = M extends "*" ? Prev & New : Prev
 
   type PrefixPathItem<Prefix extends string, T> = T extends
     Route.Route.Route<infer D, infer B, infer A, infer E, infer R>
@@ -232,7 +220,6 @@ export namespace RouteMount {
       routes: R,
     ): Builder<
       {},
-      BuilderBindings<S>,
       [
         ...Items<S>,
         ...PrefixPath<P, Route.RouteSet.Items<R>>,
@@ -246,10 +233,9 @@ export namespace RouteMount {
        * Callback form provides a builder seeded with higher-level bindings so
        * nested routes can type-infer outer context when mounting.
        */
-      routes: (self: Builder<{}, BuilderBindings<S>, []>) => R,
+      routes: (self: Builder<{}, []>) => R,
     ): Builder<
       {},
-      BuilderBindings<S>,
       [
         ...Items<S>,
         ...PrefixPath<P, Route.RouteSet.Items<R>>,
@@ -257,26 +243,30 @@ export namespace RouteMount {
     >
   }
 
+  // Flatten items: merge method into descriptor and accumulate bindings through the chain
+  export type FlattenItems<
+    M extends Method,
+    B,
+    I extends Route.RouteSet.Tuple,
+  > = I extends [
+    Route.Route.Route<infer D, infer RB, infer A, infer E, infer R>,
+    ...infer Tail extends Route.RouteSet.Tuple,
+  ]
+    ? [
+        Route.Route.Route<{ method: M } & D, B & RB, A, E, R>,
+        ...FlattenItems<M, B & RB, Tail>,
+      ]
+    : []
+
   export interface Describer<M extends Method> {
     <S extends Self, A extends Route.RouteSet.Any>(
       this: S,
       ab: (a: EmptySet<M, BuilderBindings<S>>) => A,
     ): Builder<
       {},
-      Types.Simplify<
-        AccumulateBindings<
-          M,
-          BuilderBindings<S>,
-          Route.ExtractBindings<Route.RouteSet.Items<A>>
-        >
-      >,
       [
         ...Items<S>,
-        Route.RouteSet.RouteSet<
-          { method: M },
-          BuilderBindings<S>,
-          Route.RouteSet.Items<A>
-        >,
+        ...FlattenItems<M, BuilderBindings<S>, Route.RouteSet.Items<A>>,
       ]
     >
 
@@ -290,20 +280,9 @@ export namespace RouteMount {
       bc: (b: A) => B,
     ): Builder<
       {},
-      Types.Simplify<
-        AccumulateBindings<
-          M,
-          BuilderBindings<S>,
-          Route.ExtractBindings<Route.RouteSet.Items<B>>
-        >
-      >,
       [
         ...Items<S>,
-        Route.RouteSet.RouteSet<
-          { method: M },
-          BuilderBindings<S>,
-          Route.RouteSet.Items<B>
-        >,
+        ...FlattenItems<M, BuilderBindings<S>, Route.RouteSet.Items<B>>,
       ]
     >
 
@@ -319,20 +298,9 @@ export namespace RouteMount {
       cd: (c: B) => C,
     ): Builder<
       {},
-      Types.Simplify<
-        AccumulateBindings<
-          M,
-          BuilderBindings<S>,
-          Route.ExtractBindings<Route.RouteSet.Items<C>>
-        >
-      >,
       [
         ...Items<S>,
-        Route.RouteSet.RouteSet<
-          { method: M },
-          BuilderBindings<S>,
-          Route.RouteSet.Items<C>
-        >,
+        ...FlattenItems<M, BuilderBindings<S>, Route.RouteSet.Items<C>>,
       ]
     >
   }
