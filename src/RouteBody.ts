@@ -2,11 +2,11 @@ import * as Effect from "effect/Effect"
 import type * as Utils from "effect/Utils"
 import * as Route from "./Route.ts"
 
-export type Format<
-  V extends string = string,
-> = {
-  format: V
-}
+export type Format =
+  | "text"
+  | "html"
+  | "json"
+  | "bytes"
 
 export type HandlerInput<B, A, E, R> =
   | A
@@ -51,9 +51,9 @@ export function handle<B, A, E, R>(
 
 export function build<
   Value,
-  F extends string,
+  F extends Format,
 >(
-  descriptors: Format<F>,
+  descriptors: { format: F },
 ) {
   return function<
     D extends Route.RouteDescriptor.Any,
@@ -65,7 +65,7 @@ export function build<
   >(
     handler: HandlerInput<
       NoInfer<
-        D & B & Route.ExtractBindings<I> & Format<F>
+        D & B & Route.ExtractBindings<I> & { format: F }
       >,
       A,
       E,
@@ -75,12 +75,12 @@ export function build<
     return function(
       self: Route.RouteSet.RouteSet<D, B, I>,
     ) {
-      const route = Route.make<Format<F>, {}, A, E, R>(
+      const route = Route.make<{ format: F }, {}, A, E, R>(
         handle(handler) as any,
         descriptors,
       )
 
-      const items: [...I, Route.Route.Route<Format<F>, {}, A, E, R>] = [
+      const items: [...I, Route.Route.Route<{ format: F }, {}, A, E, R>] = [
         ...Route.items(self),
         route,
       ]
@@ -88,7 +88,7 @@ export function build<
       return Route.set<
         D,
         B,
-        [...I, Route.Route.Route<Format<F>, {}, A, E, R>]
+        [...I, Route.Route.Route<{ format: F }, {}, A, E, R>]
       >(
         items,
         Route.descriptor(self),

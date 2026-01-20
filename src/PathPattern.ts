@@ -430,7 +430,7 @@ export function toEffect(path: string): string[] {
  * - `:param+` → `/*`
  * - `:param*` → `/`, `/*` (two routes)
  */
-export function toBun(path: string): string[] {
+export function toBun(path: string): PathPattern[] {
   const segments = path.split("/").filter(Boolean)
 
   const optionalIndex = segments.findIndex(
@@ -446,7 +446,7 @@ export function toBun(path: string): string[] {
         return modifier === "+" || modifier === "*" ? "*" : `:${name}`
       })
       .join("/")
-    return [joined ? "/" + joined : "/"]
+    return [joined ? `/${joined}` : "/"]
   }
 
   const before = segments.slice(0, optionalIndex)
@@ -468,7 +468,7 @@ export function toBun(path: string): string[] {
   }
 
   const beforePath = before.map(formatSegment).join("/")
-  const basePath = beforePath ? "/" + beforePath : "/"
+  const basePath: PathPattern = beforePath ? `/${beforePath}` : "/"
 
   const optionalModifier = getModifier(optional)
   const optionalName = getParamName(optional)
@@ -477,8 +477,7 @@ export function toBun(path: string): string[] {
     : `:${optionalName}`
 
   const withOptionalSegments = [...before, requiredOptional, ...after]
-  const withOptionalPath = "/"
-    + withOptionalSegments.map(formatSegment).join("/")
+  const withOptionalPath: PathPattern = `/${withOptionalSegments.map(formatSegment).join("/")}`
 
   return [...toBun(basePath), ...toBun(withOptionalPath)]
 }

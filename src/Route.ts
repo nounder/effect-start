@@ -31,7 +31,7 @@ export namespace RouteSet {
       [TypeId]: typeof TypeId
     }
     & Pipeable.Pipeable
-    & Iterable<RouteSet<{}, {}, Route.Tuple>>
+    & Iterable<M[number]>
 
   export type Data<
     D extends RouteDescriptor.Any = {},
@@ -45,7 +45,7 @@ export namespace RouteSet {
 
   export type Proto =
     & Pipeable.Pipeable
-    & Iterable<RouteSet<{}, {}, Route.Tuple>>
+    & Iterable<Route.Route<any, any, any, any, any>>
     & {
       [TypeId]: typeof TypeId
     }
@@ -84,6 +84,12 @@ export namespace Route {
   {
     readonly handler: Handler<B & D, A, E, R>
   }
+
+  export type With<D extends RouteDescriptor.Any> =
+    & Route<any, any, any, any, any>
+    & {
+      [RouteDescriptor]: D
+    }
 
   export type Tuple<
     _D extends RouteDescriptor.Any = {},

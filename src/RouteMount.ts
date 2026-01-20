@@ -1,7 +1,9 @@
 import * as Function from "effect/Function"
 import * as Types from "effect/Types"
 import * as Http from "./Http.ts"
+import * as PathPattern from "./PathPattern.ts"
 import * as Route from "./Route.ts"
+import * as RouteBody from "./RouteBody.ts"
 
 const RouteSetTypeId: unique symbol = Symbol.for("effect-start/RouteSet")
 
@@ -135,6 +137,18 @@ function makeMethodDescriber<M extends RouteMount.Method>(
   }
   return describeMethod as RouteMount.Describer<M>
 }
+
+export type MountedRoute = Route.Route.Route<
+  {
+    method: RouteMount.Method
+    path: PathPattern.PathPattern
+    format?: string
+  },
+  {},
+  any,
+  any,
+  any
+>
 
 export namespace RouteMount {
   export type Method =

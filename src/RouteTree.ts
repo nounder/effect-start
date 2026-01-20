@@ -7,10 +7,8 @@ const TypeId: unique symbol = Symbol.for("effect-start/RouteTree")
 const RouteTreeRoutes: unique symbol = Symbol()
 
 export type RouteMap = {
-  [path: PathPattern.PathPattern]: Route.RouteSet.RouteSet<
-    {},
-    {},
-    Route.Route.Tuple<{
+  [path: PathPattern.PathPattern]: Iterable<
+    Route.Route.With<{
       method: RouteMount.RouteMount.Method
       format?: string
     }>
@@ -96,19 +94,11 @@ export type WalkDescriptor = {
   method: string
 } & Route.RouteDescriptor.Any
 
-export type WalkRoute = Route.Route.Route<
-  WalkDescriptor,
-  {},
-  unknown,
-  unknown,
-  never
->
-
 function* flattenItems(
   path: PathPattern.PathPattern,
   items: Route.Route.Tuple,
   parentDescriptor: { method: string } & Route.RouteDescriptor.Any,
-): Generator<WalkRoute> {
+): Generator<RouteMount.MountedRoute> {
   for (const item of items) {
     if (Route.isRoute(item)) {
       const mergedDescriptor = {
@@ -118,9 +108,9 @@ function* flattenItems(
       }
       yield Route.make(
         // handler receives mergedDescriptor (which includes path) at runtime
-        item.handler as unknown as WalkRoute["handler"],
+        item.handler as any,
         mergedDescriptor,
-      )
+      ) as RouteMount.MountedRoute
     } else if (Route.isRouteSet(item)) {
       const mergedDescriptor = {
         ...parentDescriptor,
@@ -131,11 +121,17 @@ function* flattenItems(
   }
 }
 
-export function* walk(tree: RouteTree): Generator<WalkRoute> {
+export function* walk(
+  tree: RouteTree,
+): Generator<RouteMount.MountedRoute> {
   const _routes = routes(tree)
   for (const path of Object.keys(_routes) as PathPattern.PathPattern[]) {
     const routeSet = _routes[path]
-    yield* flattenItems(path, Route.items(routeSet), Route.descriptor(routeSet))
+    yield* flattenItems(
+      path,
+      Route.items(routeSet),
+      Route.descriptor(routeSet),
+    )
   }
 }
 
@@ -146,7 +142,7 @@ export function isRouteTree(
 }
 
 export interface LookupResult {
-  route: WalkRoute
+  route: RouteMount.MountedRoute
   params: Record<string, string>
 }
 
