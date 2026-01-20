@@ -15,9 +15,9 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import type * as Scope from "effect/Scope"
 import * as FileRouter from "../FileRouter.ts"
-import * as PathPattern from "../PathPattern.ts"
 import * as Random from "../Random.ts"
 import * as Route from "../Route.ts"
+import * as RouteHttp from "../RouteHttp.ts"
 import * as RouteTree from "../RouteTree.ts"
 import EmptyHTML from "./_empty.html"
 import {
@@ -201,84 +201,8 @@ export function layerRoutes(
   return Layer.effectDiscard(
     Effect.gen(function*() {
       const bunServer = yield* BunHttpServer
-
-      const bunRoutes: BunRoute.BunRoutes = {}
-
-      for (const route of RouteTree.walk(tree)) {
-        const descriptor = Route.descriptor(route)
-        const bunPaths = PathPattern.toBun(descriptor.path)
-
-        for (const bunPath of bunPaths) {
-          const existingHandler = bunRoutes[bunPath]
-
-          const handler: BunRoute.BunRoutes[string] = (request, server) => {
-            return new Promise<Response>((resolve) => {
-              const url = new URL(request.url)
-              const params = PathPattern.match(descriptor.path, url.pathname)
-                ?? {}
-
-              const context = {
-                ...descriptor,
-                params,
-                url,
-                request,
-                server,
-              }
-
-              const effect = route.handler(
-                context,
-                () => Effect.succeed(undefined),
-              )
-
-              Effect
-                .runPromise(effect)
-                .then((result) => {
-                  if (result instanceof Response) {
-                    resolve(result)
-                  } else if (typeof result === "string") {
-                    resolve(
-                      new Response(result, {
-                        headers: { "Content-Type": "text/html; charset=utf-8" },
-                      }),
-                    )
-                  } else {
-                    resolve(
-                      new Response(JSON.stringify(result), {
-                        headers: { "Content-Type": "application/json" },
-                      }),
-                    )
-                  }
-                })
-                .catch((error) => {
-                  resolve(new Response(String(error), { status: 500 }))
-                })
-            })
-          }
-
-          // Handle method-specific routing
-          if (descriptor.method && descriptor.method !== "*") {
-            const method = descriptor
-              .method
-              .toUpperCase() as Bun.Serve.HTTPMethod
-
-            if (
-              existingHandler
-              && typeof existingHandler === "object"
-              && !BunRoute.isHTMLBundle(existingHandler)
-            ) {
-              // Merge with existing method handlers
-              ;(existingHandler as Record<string, unknown>)[method] = handler
-            } else {
-              bunRoutes[bunPath] = { [method]: handler }
-            }
-          } else {
-            // Wildcard method - register as direct handler
-            bunRoutes[bunPath] = handler
-          }
-        }
-      }
-
-      bunServer.addRoutes(bunRoutes)
+      const handles = RouteHttp.treeHandles(tree)
+      bunServer.addRoutes(handles as BunRoute.BunRoutes)
     }),
   )
 }

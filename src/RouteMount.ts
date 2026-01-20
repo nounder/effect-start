@@ -1,5 +1,6 @@
 import * as Function from "effect/Function"
 import * as Types from "effect/Types"
+import * as Http from "./Http.ts"
 import * as Route from "./Route.ts"
 
 const RouteSetTypeId: unique symbol = Symbol.for("effect-start/RouteSet")
@@ -91,11 +92,7 @@ function make<
   )
 }
 
-type Method<V extends RouteMount.HttpMethod> = {
-  method: V
-}
-
-function makeMethodDescriber<M extends RouteMount.HttpMethod>(
+function makeMethodDescriber<M extends RouteMount.Method>(
   method: M,
 ): RouteMount.Describer<M> {
   function describeMethod(
@@ -106,7 +103,7 @@ function makeMethodDescriber<M extends RouteMount.HttpMethod>(
       ? Route.items(this)
       : [] as const
 
-    const methodSet = Route.set<Method<M>, []>([], { method })
+    const methodSet = Route.set<{ method: M }, []>([], { method })
     const f = Function.flow(
       ...fs as [(_: Route.RouteSet.Any) => Route.RouteSet.Any],
     )
@@ -147,18 +144,12 @@ function makeMethodDescriber<M extends RouteMount.HttpMethod>(
 }
 
 export namespace RouteMount {
-  export type HttpMethod =
+  export type Method =
     | "*"
-    | "GET"
-    | "POST"
-    | "PUT"
-    | "DELETE"
-    | "PATCH"
-    | "HEAD"
-    | "OPTIONS"
+    | Http.Method
 
   export type MountSet = Route.RouteSet.RouteSet<
-    Method<HttpMethod>,
+    { method: Method },
     {},
     Route.RouteSet.Tuple
   >
@@ -171,10 +162,10 @@ export namespace RouteMount {
   }
 
   export type EmptySet<
-    M extends HttpMethod,
+    M extends Method,
     B = {},
   > = Route.RouteSet.RouteSet<
-    Method<M>,
+    { method: M },
     B,
     []
   >
@@ -185,12 +176,11 @@ export namespace RouteMount {
     ? Types.Simplify<B & WildcardBindings<I>>
     : {}
 
-  type WildcardBindingsItem<T> = T extends
-    Route.RouteSet.RouteSet<
-      Method<"*">,
-      any,
-      infer IAny extends Route.RouteSet.Tuple
-    > ? Route.ExtractBindings<IAny>
+  type WildcardBindingsItem<T> = T extends Route.RouteSet.RouteSet<
+    { method: "*" },
+    any,
+    infer IAny extends Route.RouteSet.Tuple
+  > ? Route.ExtractBindings<IAny>
     : {}
 
   type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends
@@ -204,7 +194,7 @@ export namespace RouteMount {
     >
 
   export type AccumulateBindings<
-    M extends HttpMethod,
+    M extends Method,
     Prev,
     New,
   > = M extends "*" ? Prev & New : Prev
@@ -267,7 +257,7 @@ export namespace RouteMount {
     >
   }
 
-  export interface Describer<M extends HttpMethod> {
+  export interface Describer<M extends Method> {
     <S extends Self, A extends Route.RouteSet.Any>(
       this: S,
       ab: (a: EmptySet<M, BuilderBindings<S>>) => A,
@@ -283,7 +273,7 @@ export namespace RouteMount {
       [
         ...Items<S>,
         Route.RouteSet.RouteSet<
-          Method<M>,
+          { method: M },
           BuilderBindings<S>,
           Route.RouteSet.Items<A>
         >,
@@ -310,7 +300,7 @@ export namespace RouteMount {
       [
         ...Items<S>,
         Route.RouteSet.RouteSet<
-          Method<M>,
+          { method: M },
           BuilderBindings<S>,
           Route.RouteSet.Items<B>
         >,
@@ -339,7 +329,7 @@ export namespace RouteMount {
       [
         ...Items<S>,
         Route.RouteSet.RouteSet<
-          Method<M>,
+          { method: M },
           BuilderBindings<S>,
           Route.RouteSet.Items<C>
         >,

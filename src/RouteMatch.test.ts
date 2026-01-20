@@ -1,7 +1,6 @@
 import * as test from "bun:test"
 import * as Route from "./Route.ts"
 import * as RouteMatch from "./RouteMatch.ts"
-import * as RouteMount from "./RouteMount.ts"
 
 test.describe(RouteMatch.match, () => {
   test.it("matches exact static path", () => {
