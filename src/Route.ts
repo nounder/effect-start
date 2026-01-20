@@ -194,9 +194,9 @@ export function set<
 }
 
 export function make<
-  D extends RouteDescriptor.Any = {},
-  B = {},
-  A = any,
+  D extends RouteDescriptor.Any,
+  B,
+  A,
   E = never,
   R = never,
 >(

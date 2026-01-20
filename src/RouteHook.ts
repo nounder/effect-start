@@ -42,9 +42,9 @@ export function filter<
       void,
       E,
       R
-    >((context: any, next) =>
+    >((context: BOut, next) =>
       Effect.gen(function*() {
-        const filterResult = yield* normalized(context)
+        const filterResult = yield* normalized(context as unknown as BIn)
 
         yield* next(
           filterResult

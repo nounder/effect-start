@@ -75,7 +75,7 @@ export function build<
     return function(
       self: Route.RouteSet.RouteSet<D, B, I>,
     ) {
-      const route = Route.make(
+      const route = Route.make<Format<F>, {}, A, E, R>(
         handle(handler) as any,
         descriptors,
       )
