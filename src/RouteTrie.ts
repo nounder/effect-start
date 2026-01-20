@@ -91,7 +91,7 @@ interface CollectedRoute {
 }
 
 function collectRoutes(
-  items: Route.RouteSet.Tuple,
+  items: Route.Route.Tuple,
   parentPath: string,
   parentMethod: string,
 ): CollectedRoute[] {

@@ -14,7 +14,7 @@ export function schemaHeaders<
 ): <
   D extends Route.RouteDescriptor.Any,
   SB extends {},
-  P extends Route.RouteSet.Tuple,
+  P extends Route.Route.Tuple,
 >(
   self: Route.RouteSet.RouteSet<D, SB, P>,
 ) => Route.RouteSet.RouteSet<

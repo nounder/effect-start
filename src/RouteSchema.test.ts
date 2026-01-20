@@ -37,7 +37,7 @@ test.describe(`${RouteSchema.schemaHeaders.name}()`, () => {
       )
 
     test
-      .expectTypeOf<Route.Route.Bindings<typeof route>>()
+      .expectTypeOf<Route.Route.Context<typeof route>>()
       .toExtend<{
         headers: ExpectedBindings
       }>()
@@ -75,7 +75,7 @@ test.describe(`${RouteSchema.schemaHeaders.name}()`, () => {
     )
 
     test
-      .expectTypeOf<Route.Route.Bindings<typeof route>>()
+      .expectTypeOf<Route.Route.Context<typeof route>>()
       .toExtend<ExpectedBindings>()
   })
 })

@@ -58,7 +58,7 @@ export function build<
   return function<
     D extends Route.RouteDescriptor.Any,
     B extends {},
-    I extends Route.RouteSet.Tuple,
+    I extends Route.Route.Tuple,
     A extends Value,
     E = never,
     R = never,

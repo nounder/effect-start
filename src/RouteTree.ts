@@ -10,7 +10,7 @@ export type RouteMap = {
   [path: PathPattern.PathPattern]: Route.RouteSet.RouteSet<
     {},
     {},
-    Route.RouteSet.Tuple<{
+    Route.Route.Tuple<{
       method: RouteMount.RouteMount.Method
       format?: string
     }>
@@ -106,7 +106,7 @@ export type WalkRoute = Route.Route.Route<
 
 function* flattenItems(
   path: PathPattern.PathPattern,
-  items: Route.RouteSet.Tuple,
+  items: Route.Route.Tuple,
   parentDescriptor: { method: string } & Route.RouteDescriptor.Any,
 ): Generator<WalkRoute> {
   for (const item of items) {

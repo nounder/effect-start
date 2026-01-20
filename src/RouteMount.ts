@@ -78,7 +78,9 @@ const Proto = Object.assign(
 
 function make<
   D extends {} = {},
-  I extends Route.RouteSet.Tuple<{ method: string; path?: string }> = [],
+  I extends Route.Route.Tuple<{
+    method: string
+  }> = [],
 >(
   items: I,
 ): RouteMount.Builder<D, I> {
@@ -109,16 +111,19 @@ function makeMethodDescriber<M extends RouteMount.Method>(
     const result = f(methodSet)
     const resultItems = Route.items(result)
 
-    // Flatten: merge method into each item's descriptor
+    // Items are already flat (only Routes), just merge method into each descriptor
     const flattenedItems = resultItems.map((item) => {
       const itemDescriptor = Route.descriptor(item)
       const newDescriptor = { method, ...itemDescriptor }
-      return Route.isRoute(item)
-        ? Route.make(
-          item.handler as Route.Route.Handler<any, any, any, any>,
-          newDescriptor,
-        )
-        : Route.set(Route.items(item), newDescriptor)
+      return Route.make(
+        (item as Route.Route.Route).handler as Route.Route.Handler<
+          any,
+          any,
+          any,
+          any
+        >,
+        newDescriptor,
+      )
     })
 
     return make(
@@ -139,12 +144,12 @@ export namespace RouteMount {
   export type MountSet = Route.RouteSet.RouteSet<
     { method: Method },
     {},
-    Route.RouteSet.Tuple
+    Route.Route.Tuple
   >
 
   export interface Builder<
     D extends {} = {},
-    I extends Route.RouteSet.Tuple = [],
+    I extends Route.Route.Tuple = [],
   > extends Route.RouteSet.RouteSet<D, {}, I>, Module {
   }
 
@@ -170,17 +175,12 @@ export namespace RouteMount {
     any,
     any
   > ? B
-    : T extends Route.RouteSet.RouteSet<
-        { method: "*" },
-        infer B,
-        any
-      > ? B
     : {}
 
   type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends
     (k: infer I) => void ? I : never
 
-  export type WildcardBindings<I extends Route.RouteSet.Tuple> =
+  export type WildcardBindings<I extends Route.Route.Tuple> =
     UnionToIntersection<
       {
         [K in keyof I]: WildcardBindingsItem<I[K]>
@@ -197,21 +197,14 @@ export namespace RouteMount {
         R
       >
     : Route.Route.Route<D & { path: Prefix }, B, A, E, R>
-    : T extends Route.RouteSet.RouteSet<infer D, infer B, infer Items>
-      ? D extends { path: infer P extends string } ? Route.RouteSet.RouteSet<
-          Omit<D, "path"> & { path: `${Prefix}${P}` },
-          B,
-          Items
-        >
-      : Route.RouteSet.RouteSet<D & { path: Prefix }, B, Items>
     : T
 
   export type PrefixPath<
     Prefix extends string,
-    I extends Route.RouteSet.Tuple,
+    I extends Route.Route.Tuple,
   > = {
     [K in keyof I]: PrefixPathItem<Prefix, I[K]>
-  } extends infer R extends Route.RouteSet.Tuple ? R : never
+  } extends infer R extends Route.Route.Tuple ? R : never
 
   export interface Add {
     <S extends Self, P extends string, R extends Route.RouteSet.Any>(
@@ -247,15 +240,14 @@ export namespace RouteMount {
   export type FlattenItems<
     M extends Method,
     B,
-    I extends Route.RouteSet.Tuple,
+    I extends Route.Route.Tuple,
   > = I extends [
     Route.Route.Route<infer D, infer RB, infer A, infer E, infer R>,
-    ...infer Tail extends Route.RouteSet.Tuple,
-  ]
-    ? [
-        Route.Route.Route<{ method: M } & D, B & RB, A, E, R>,
-        ...FlattenItems<M, B & RB, Tail>,
-      ]
+    ...infer Tail extends Route.Route.Tuple,
+  ] ? [
+      Route.Route.Route<{ method: M } & D, B & RB, A, E, R>,
+      ...FlattenItems<M, B & RB, Tail>,
+    ]
     : []
 
   export interface Describer<M extends Method> {

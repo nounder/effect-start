@@ -21,28 +21,22 @@ export namespace RouteDescriptor {
 }
 
 export namespace RouteSet {
-  export type Tuple<
-    _D extends RouteDescriptor.Any = {},
-  > = [
-    ...Route.Route<any, any, any, any, any>[],
-  ]
-
   export type RouteSet<
     D extends RouteDescriptor.Any = {},
     B = {},
-    M extends Tuple = [],
+    M extends Route.Tuple = [],
   > =
     & Data<D, B, M>
     & {
       [TypeId]: typeof TypeId
     }
     & Pipeable.Pipeable
-    & Iterable<RouteSet<{}, {}, Tuple>>
+    & Iterable<RouteSet<{}, {}, Route.Tuple>>
 
   export type Data<
     D extends RouteDescriptor.Any = {},
     B = {},
-    M extends Tuple = [],
+    M extends Route.Tuple = [],
   > = {
     [RouteItems]: M
     [RouteDescriptor]: D
@@ -51,12 +45,12 @@ export namespace RouteSet {
 
   export type Proto =
     & Pipeable.Pipeable
-    & Iterable<RouteSet<{}, {}, Tuple>>
+    & Iterable<RouteSet<{}, {}, Route.Tuple>>
     & {
       [TypeId]: typeof TypeId
     }
 
-  export type Any = RouteSet<{}, {}, Tuple>
+  export type Any = RouteSet<{}, {}, Route.Tuple>
 
   export type Infer<R> = R extends RouteSet<infer D, infer B, infer I>
     ? RouteSet<D, B, I>
@@ -85,16 +79,16 @@ export namespace Route {
     R = never,
   > extends
     RouteSet.RouteSet<D, {}, [
-      Route<D, B, A>,
+      Route<D, B, A, E, R>,
     ]>
   {
     readonly handler: Handler<B & D, A, E, R>
   }
 
   export type Tuple<
-    D extends RouteDescriptor.Any = {},
+    _D extends RouteDescriptor.Any = {},
   > = [
-    ...Route<D, {}, Tuple>[],
+    ...Route<any, any, any, any, any>[],
   ]
 
   export type Handler<B, A, E, R> = (
@@ -108,42 +102,53 @@ export namespace Route {
     next: () => Effect.Effect<A>,
   ) => Effect.Effect<A, E, R>
 
-  export type Bindings<T extends RouteSet.Any> =
-    & Omit<
-      RouteSet.Descriptor<T>,
-      keyof ExtractBindingsWithDescriptors<RouteSet.Items<T>>
-    >
-    & ExtractBindingsWithDescriptors<RouteSet.Items<T>>
-
-  // Extracts merged bindings from a RouteSet, including descriptors.
-  // Used by Route.Bindings to get the final shape of a completed route.
-  // We don't use intersection types here to avoid producing never, like in:
-  // { method: "*" } & { method: "GET" } = { method: never }
-  // For overlapping keys (like headers), we shallow merge them.
-  type ExtractBindingsWithDescriptors<
-    M extends RouteSet.Tuple,
+  /**
+   * Extracts only the bindings (B) from routes, excluding descriptors.
+   */
+  export type Bindings<
+    T extends RouteSet.Any,
+    M extends Tuple = RouteSet.Items<T>,
   > = M extends [
     infer Head,
-    ...infer Tail extends RouteSet.Tuple,
+    ...infer Tail extends Tuple,
+  ] ? (
+      Head extends Route<any, infer B, any, any, any>
+        ? ShallowMerge<B, Bindings<T, Tail>>
+        : Bindings<T, Tail>
+    )
+    : {}
+
+  /**
+   * Extracts the full handler context from a RouteSet.
+   * Merges descriptors and bindings from all routes, with later values
+   * taking precedence via ShallowMerge to avoid `never` from conflicting
+   * literal types (e.g. `{ method: "*" } & { method: "GET" }`).
+   */
+  export type Context<T extends RouteSet.Any> =
+    & Omit<
+      RouteSet.Descriptor<T>,
+      keyof ExtractContext<RouteSet.Items<T>>
+    >
+    & ExtractContext<RouteSet.Items<T>>
+
+  type ExtractContext<
+    M extends Tuple,
+  > = M extends [
+    infer Head,
+    ...infer Tail extends Tuple,
   ] ? (
       Head extends Route<
         infer D,
-        infer B
+        infer B,
+        any,
+        any,
+        any
       > ? ShallowMerge<
           & Omit<D, keyof B>
           & B,
-          ExtractBindingsWithDescriptors<Tail>
+          ExtractContext<Tail>
         >
-        : Head extends RouteSet.RouteSet<
-          infer D,
-          any,
-          infer Nested
-        > ? ShallowMerge<
-            & Omit<D, keyof ExtractBindingsWithDescriptors<Nested>>
-            & ExtractBindingsWithDescriptors<Nested>,
-            ExtractBindingsWithDescriptors<Tail>
-          >
-        : ExtractBindingsWithDescriptors<Tail>
+        : ExtractContext<Tail>
     )
     : {}
 }
@@ -174,7 +179,7 @@ export function isRoute(
 export function set<
   D extends RouteDescriptor.Any = {},
   B = {},
-  I extends RouteSet.Tuple = [],
+  I extends Route.Tuple = [],
 >(
   items: I = [] as unknown as I,
   descriptor: D = {} as D,
@@ -240,23 +245,18 @@ export function descriptor<
 }
 
 export type ExtractBindings<
-  M extends RouteSet.Tuple,
+  M extends Route.Tuple,
 > = M extends [
   infer Head,
-  ...infer Tail extends RouteSet.Tuple,
+  ...infer Tail extends Route.Tuple,
 ] ? (
     Head extends Route.Route<
       any,
-      infer B
+      infer B,
+      any,
+      any,
+      any
     > ? ShallowMerge<B, ExtractBindings<Tail>>
-      : Head extends RouteSet.RouteSet<
-        any,
-        infer B,
-        infer Nested
-      > ? ShallowMerge<
-          ShallowMerge<B, ExtractBindings<Nested>>,
-          ExtractBindings<Tail>
-        >
       : ExtractBindings<Tail>
   )
   : {}
@@ -270,7 +270,7 @@ type ShallowMerge<A, B> =
   }
 
 export type ExtractContext<
-  Items extends RouteSet.Tuple,
+  Items extends Route.Tuple,
   Descriptor extends RouteDescriptor.Any,
 > = ExtractBindings<Items> & Descriptor
 

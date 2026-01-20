@@ -52,8 +52,8 @@ test.it("uses GET method", async () => {
     .toHaveLength(1)
 
   test
-    .expectTypeOf<Route.Route.Bindings<typeof route>>()
-    .toMatchObjectType<{
+    .expectTypeOf<Route.Route.Context<typeof route>>()
+    .toMatchTypeOf<{
       method: "GET"
       format: "text"
     }>()
@@ -200,7 +200,14 @@ test.describe("use", () => {
 
     test
       .expectTypeOf<Route.Route.Bindings<Items[0]>>()
-      .toMatchObjectType<{ answer: number }>()
+      .toMatchTypeOf<{ answer: number }>()
+
+    test
+      .expectTypeOf<Route.Route.Context<Items[0]>>()
+      .toMatchTypeOf<{
+        method: "*"
+        answer: number
+      }>()
 
     // Second use() - adds doubledAnswer context, inherits answer binding (method flattened into Route descriptor)
     test
@@ -209,7 +216,15 @@ test.describe("use", () => {
 
     test
       .expectTypeOf<Route.Route.Bindings<Items[1]>>()
-      .toMatchObjectType<{
+      .toMatchTypeOf<{
+        answer: number
+        doubledAnswer: number
+      }>()
+
+    test
+      .expectTypeOf<Route.Route.Context<Items[1]>>()
+      .toMatchTypeOf<{
+        method: "*"
         answer: number
         doubledAnswer: number
       }>()
@@ -221,7 +236,16 @@ test.describe("use", () => {
 
     test
       .expectTypeOf<Route.Route.Bindings<Items[2]>>()
-      .toMatchObjectType<{
+      .toMatchTypeOf<{
+        answer: number
+        doubledAnswer: number
+        getter: boolean
+      }>()
+
+    test
+      .expectTypeOf<Route.Route.Context<Items[2]>>()
+      .toMatchTypeOf<{
+        method: "GET"
         answer: number
         doubledAnswer: number
         getter: boolean
@@ -237,7 +261,17 @@ test.describe("use", () => {
 
     test
       .expectTypeOf<Route.Route.Bindings<Items[3]>>()
-      .toMatchObjectType<{
+      .toMatchTypeOf<{
+        answer: number
+        doubledAnswer: number
+        getter: boolean
+      }>()
+
+    test
+      .expectTypeOf<Route.Route.Context<Items[3]>>()
+      .toMatchTypeOf<{
+        method: "GET"
+        format: "text"
         answer: number
         doubledAnswer: number
         getter: boolean
@@ -253,7 +287,16 @@ test.describe("use", () => {
 
     test
       .expectTypeOf<Route.Route.Bindings<Items[4]>>()
-      .toMatchObjectType<{
+      .toMatchTypeOf<{
+        answer: number
+        doubledAnswer: number
+      }>()
+
+    test
+      .expectTypeOf<Route.Route.Context<Items[4]>>()
+      .toMatchTypeOf<{
+        method: "POST"
+        format: "json"
         answer: number
         doubledAnswer: number
       }>()
@@ -332,7 +375,7 @@ test.it("schemaHeaders flattens method into route descriptor", () => {
 
   test
     .expect(Route.items(routes))
-    .toHaveLength(3)
+    .toHaveLength(5)
 
   // First use() - schemaHeaders with method "*"
   test
@@ -387,4 +430,39 @@ test.it("schemaHeaders flattens method into route descriptor", () => {
         any
       >
     >()
+
+  // POST filter route
+  test
+    .expectTypeOf<Items[3]>()
+    .toExtend<
+      Route.Route.Route<
+        { method: "POST" },
+        {
+          headers: {
+            hello: string
+          }
+          postOnly: string
+        },
+        void
+      >
+    >()
+
+  // POST text route - verify descriptor and bindings separately
+  test
+    .expectTypeOf<Route.RouteSet.Descriptor<Items[4]>>()
+    .toMatchObjectType<{
+      method: "POST"
+      format: "text"
+    }>()
+
+  test
+    .expectTypeOf<Route.Route.Context<Items[4]>>()
+    .toMatchTypeOf<{
+      method: "POST"
+      format: "text"
+      headers: {
+        readonly hello: string
+      }
+      postOnly: string
+    }>()
 })

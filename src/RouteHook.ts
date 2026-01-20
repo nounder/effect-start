@@ -19,7 +19,7 @@ export type FilterHandlerInput<BIn, BOut, E, R> =
 export function filter<
   D extends Route.RouteDescriptor.Any,
   SB extends {},
-  P extends Route.RouteSet.Tuple,
+  P extends Route.Route.Tuple,
   BOut extends {},
   E = never,
   R = never,
