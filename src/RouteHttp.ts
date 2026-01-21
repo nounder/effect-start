@@ -230,6 +230,8 @@ export const toWebHandlerRuntime = <R>(
       })
 
       const httpServerRequest = HttpServerRequest.fromWeb(request)
+      const url = new URL(request.url)
+      const parsedSearchParams = HttpServerRequest.searchParamsFromURL(url)
 
       return new Promise((resolve) => {
         const fiber = runFork(
@@ -238,6 +240,10 @@ export const toWebHandlerRuntime = <R>(
             Effect.provideService(
               HttpServerRequest.HttpServerRequest,
               httpServerRequest,
+            ),
+            Effect.provideService(
+              HttpServerRequest.ParsedSearchParams,
+              parsedSearchParams,
             ),
             Effect.catchAllCause((cause) =>
               Effect.succeed(
