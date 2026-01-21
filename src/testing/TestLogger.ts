@@ -1,3 +1,4 @@
+import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as FiberRef from "effect/FiberRef"
@@ -21,11 +22,14 @@ export function layer(): Layer.Layer<TestLogger> {
     Effect.gen(function*() {
       const messages = yield* Ref.make<Array<string>>([])
 
-      const customLogger = Logger.make(({ message, logLevel }) => {
+      const customLogger = Logger.make(({ message, logLevel, cause }) => {
+        const causeStr = !Cause.isEmpty(cause)
+          ? ` ${Cause.pretty(cause)}`
+          : ""
         Effect.runSync(
           Ref.update(
             messages,
-            (msgs) => [...msgs, `[${logLevel._tag}] ${String(message)}`],
+            (msgs) => [...msgs, `[${logLevel._tag}] ${String(message)}${causeStr}`],
           ),
         )
       })
