@@ -25,18 +25,21 @@ export function schemaHeaders<
     Route.Route.Route<
       {},
       { headers: A },
-      void,
+      any,
       ParseResult.ParseError,
       R | HttpServerRequest.HttpServerRequest
     >,
   ]
 > {
-  return RouteHook.filter((_ctx) =>
+  return RouteHook.filter((ctx: { headers?: {} }) =>
     Effect.map(
       HttpServerRequest.schemaHeaders(fields),
-      (headers) => ({
+      (parsed) => ({
         context: {
-          headers,
+          headers: {
+            ...ctx.headers,
+            ...parsed,
+          },
         },
       }),
     )

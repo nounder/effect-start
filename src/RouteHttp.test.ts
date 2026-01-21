@@ -500,12 +500,18 @@ test.describe("middleware chain", () => {
         })),
     )
 
-    const getResponse = await Http.fetch(handler, { path: "/test", method: "GET" })
+    const getResponse = await Http.fetch(handler, {
+      path: "/test",
+      method: "GET",
+    })
     test
       .expect(await getResponse.text())
       .toBe("GET:true")
 
-    const postResponse = await Http.fetch(handler, { path: "/test", method: "POST" })
+    const postResponse = await Http.fetch(handler, {
+      path: "/test",
+      method: "POST",
+    })
     test
       .expect(await postResponse.text())
       .toBe("POST:true")
@@ -559,12 +565,18 @@ test.describe("middleware chain", () => {
         })),
     )
 
-    const getResponse = await Http.fetch(handler, { path: "/test", method: "GET" })
+    const getResponse = await Http.fetch(handler, {
+      path: "/test",
+      method: "GET",
+    })
     test
       .expect(await getResponse.text())
       .toBe("GET:true")
 
-    const postResponse = await Http.fetch(handler, { path: "/test", method: "POST" })
+    const postResponse = await Http.fetch(handler, {
+      path: "/test",
+      method: "POST",
+    })
     test
       .expect(await postResponse.text())
       .toBe("POST:undefined")
@@ -573,7 +585,11 @@ test.describe("middleware chain", () => {
   test.it("schema headers parsing works with HttpServerRequest service", async () => {
     const handler = RouteHttp.toWebHandler(
       Route.get(
-        RouteSchema.schemaHeaders(Schema.Struct({ "x-test": Schema.String })),
+        RouteSchema.schemaHeaders(
+          Schema.Struct({
+            "x-test": Schema.String,
+          }),
+        ),
         Route.text(function*(ctx) {
           return `header=${ctx.headers["x-test"]}`
         }),
@@ -590,6 +606,43 @@ test.describe("middleware chain", () => {
     test
       .expect(await response.text())
       .toBe("header=test-value")
+  })
+
+  test.it("merges headers", async () => {
+    const handler = RouteHttp.toWebHandler(
+      Route
+        .use(RouteSchema.schemaHeaders(
+          Schema.Struct({
+            "x-shared": Schema.String,
+          }),
+        ))
+        .get(
+          RouteSchema.schemaHeaders(
+            Schema.Struct({
+              "x-get-only": Schema.String,
+            }),
+          ),
+          Route.text(function*(ctx) {
+            return `shared=${ctx.headers["x-shared"]},getOnly=${
+              ctx.headers["x-get-only"]
+            }`
+          }),
+        ),
+    )
+    const response = await Http.fetch(handler, {
+      path: "/test",
+      headers: {
+        "x-shared": "shared-value",
+        "x-get-only": "get-value",
+      },
+    })
+
+    test
+      .expect(response.status)
+      .toBe(200)
+    test
+      .expect(await response.text())
+      .toBe("shared=shared-value,getOnly=get-value")
   })
 })
 
