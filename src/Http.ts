@@ -7,7 +7,16 @@ export type Method =
   | "HEAD"
   | "OPTIONS"
 
-export type WebHandler = (request: Request) => Response | Promise<Response>
+type Respondable =
+  | Response
+  | Promise<Response>
+
+export type WebHandler = (request: Request) => Respondable
+
+export type WebMiddleware = (
+  request: Request,
+  next: WebHandler,
+) => Respondable
 
 export function cloneRequest<T extends object>(
   request: Request,
@@ -22,4 +31,20 @@ export function cloneRequest<T extends object>(
     ;(cloned as any)[key] = value
   }
   return cloned as Request & T
+}
+
+export function fetch(
+  handler: WebHandler,
+  init:
+    & RequestInit
+    & (
+      | { url: string }
+      | { path: `/${string}` }
+    ),
+): Promise<Response> {
+  const url = "path" in init
+    ? `http://localhost${init.path}`
+    : init.url
+  const request = new Request(url, init)
+  return Promise.resolve(handler(request))
 }

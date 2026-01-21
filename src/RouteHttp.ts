@@ -1,4 +1,4 @@
-import * as Array from "effect/Array"
+import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as Runtime from "effect/Runtime"
@@ -54,59 +54,30 @@ function getMediaType(format: string | undefined): string | undefined {
     : undefined
 }
 
-const defaultFormatPriority = ["json", "text", "html", "bytes"] as const
-
-function negotiateRoute(
-  routes: UnboundedRouteWithMethod[],
+function acceptsFormat(
   accept: string | null,
-): UnboundedRouteWithMethod | undefined {
-  if (routes.length === 1) {
-    if (!accept) return routes[0]
-    const format = Route.descriptor(routes[0]).format
-    const mediaType = getMediaType(format)
-    if (!mediaType) return routes[0]
-    const matched = ContentNegotiation.media(accept, [mediaType])
-    return matched.length > 0 ? routes[0] : undefined
-  }
-
-  const formatMap = new Map<string, UnboundedRouteWithMethod>()
-  const available: string[] = []
-  const mediaTypeMap = new Map<string, UnboundedRouteWithMethod>()
-
-  for (const route of routes) {
-    const format = Route.descriptor(route).format
-    if (format && !formatMap.has(format)) {
-      formatMap.set(format, route)
-    }
-    const mediaType = getMediaType(format)
-    if (format && mediaType && !mediaTypeMap.has(mediaType)) {
-      available.push(mediaType)
-      mediaTypeMap.set(mediaType, route)
-    }
-  }
-
-  if (!accept) {
-    for (const format of defaultFormatPriority) {
-      const route = formatMap.get(format)
-      if (route) return route
-    }
-    return routes[0]
-  }
-
-  if (available.length === 0) {
-    return routes[0]
-  }
-
-  const preferred = ContentNegotiation.media(accept, available)
-  if (preferred.length > 0) {
-    const best = mediaTypeMap.get(preferred[0])
-    if (best) {
-      return best
-    }
-  }
-
-  return undefined
+  format: string | undefined,
+): boolean {
+  if (!format) return true
+  const mediaType = getMediaType(format)
+  if (!mediaType) return true
+  if (!accept) return true
+  return ContentNegotiation.media(accept, [mediaType]).length > 0
 }
+
+type Handler = (
+  context: any,
+  next: (context: any) => Effect.Effect<any, any, any>,
+) => Effect.Effect<any, any, any>
+
+type Next = (context: any) => Effect.Effect<any, any, any>
+
+const composeHandlers = (handlers: Handler[]): Handler =>
+  (context, finalNext) =>
+    handlers.reduceRight<Next>(
+      (next, handler) => (ctx) => handler(ctx, next),
+      finalNext,
+    )(context)
 
 export const toWebHandlerRuntime = <R>(
   runtime: Runtime.Runtime<R>,
@@ -118,8 +89,8 @@ export const toWebHandlerRuntime = <R>(
       UnboundedRouteWithMethod
     >,
   ): Http.WebHandler => {
-    const grouped = Array.groupBy(
-      Array.fromIterable(routes),
+    const grouped = Object.groupBy(
+      routes,
       (route) => Route.descriptor(route).method?.toUpperCase() ?? "*",
     )
     const wildcards = grouped["*"] ?? []
@@ -137,42 +108,61 @@ export const toWebHandlerRuntime = <R>(
 
     for (const method in grouped) {
       if (method !== "*") {
-        methodGroups[method] = [...wildcards, ...grouped[method]]
+        methodGroups[method] = grouped[method]
       }
     }
 
     return (request) => {
       const method = request.method.toUpperCase()
       const accept = request.headers.get("accept")
-      const group = methodGroups[method]
+      const methodRoutes = methodGroups[method]
 
-      if (!group || group.length === 0) {
+      if (!methodRoutes || methodRoutes.length === 0) {
         return Promise.resolve(
           new Response("Method Not Allowed", { status: 405 }),
         )
       }
 
-      const route = negotiateRoute(group, accept)
-      if (!route) {
-        return Promise.resolve(
-          new Response("Not Acceptable", { status: 406 }),
-        )
-      }
-      const descriptor = Route.descriptor(route)
+      const wrapHandler = (route: UnboundedRouteWithMethod): Handler => {
+        const descriptor = Route.descriptor(route)
+        const format = descriptor.format
+        const handler = route.handler as Handler
 
-      const context = {
-        ...descriptor,
-        request,
+        return (context, next) => {
+          if (!acceptsFormat(accept, format)) {
+            return next(context)
+          }
+
+          const enrichedContext = { ...context, ...descriptor }
+          return Effect.map(
+            handler(enrichedContext, next),
+            (result) => toResponse(result, format),
+          )
+        }
       }
 
-      const effect = route.handler(
-        context as any,
+      const notAcceptableHandler: Handler = () =>
+        Effect.succeed(new Response("Not Acceptable", { status: 406 }))
+
+      const composedHandler = composeHandlers([
+        ...wildcards.map(wrapHandler),
+        ...methodRoutes.map(wrapHandler),
+        notAcceptableHandler,
+      ])
+
+      const effect = composedHandler(
+        { request } as any,
         () => Effect.succeed(undefined),
       )
 
+      const httpServerRequest = HttpServerRequest.fromWeb(request)
+
       return run(
         effect.pipe(
-          Effect.map((result) => toResponse(result, descriptor.format)),
+          Effect.provideService(
+            HttpServerRequest.HttpServerRequest,
+            httpServerRequest,
+          ),
           Effect.catchAllCause((cause) =>
             Effect.succeed(
               new Response(Cause.pretty(cause), { status: 500 }),
@@ -209,11 +199,4 @@ export function* walkHandles(
   }
 }
 
-export function fetch(
-  handle: Http.WebHandler,
-  init: RequestInit & ({ url: string } | { path: string }),
-): Promise<Response> {
-  const url = "path" in init ? `http://localhost${init.path}` : init.url
-  const request = new Request(url, init)
-  return Promise.resolve(handle(request))
-}
+

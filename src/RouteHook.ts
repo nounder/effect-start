@@ -34,19 +34,22 @@ export function filter<
   ): Route.RouteSet.RouteSet<
     D,
     SB,
-    [...P, Route.Route.Route<{}, BOut, void, E, R>]
+    [
+      ...P,
+      Route.Route.Route<{}, BOut, any, E, R>,
+    ]
   > {
     const route = Route.make<
       {},
       BOut,
-      void,
+      any,
       E,
       R
     >((context: BOut, next) =>
       Effect.gen(function*() {
         const filterResult = yield* normalized(context as unknown as BIn)
 
-        yield* next(
+        return yield* next(
           filterResult
             ? {
               ...context,
@@ -61,7 +64,7 @@ export function filter<
       [
         ...Route.items(self),
         route,
-      ] as [...P, Route.Route.Route<{}, BOut, void, E, R>],
+      ] as [...P, Route.Route.Route<{}, BOut, any, E, R>],
       Route.descriptor(self),
     )
   }
