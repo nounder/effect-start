@@ -2,6 +2,7 @@ import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as FiberId from "effect/FiberId"
 import * as HashSet from "effect/HashSet"
+import * as ParseResult from "effect/ParseResult"
 import * as Runtime from "effect/Runtime"
 import * as Stream from "effect/Stream"
 import * as ContentNegotiation from "./ContentNegotiation.ts"
@@ -9,6 +10,7 @@ import * as Http from "./Http.ts"
 import * as Route from "./Route.ts"
 import * as RouteBody from "./RouteBody.ts"
 import * as RouteMount from "./RouteMount.ts"
+import * as RouteSchema from "./RouteSchema.ts"
 import * as RouteTree from "./RouteTree.ts"
 import * as StreamExtra from "./StreamExtra.ts"
 
@@ -44,6 +46,21 @@ const isClientAbort = (cause: Cause.Cause<unknown>): boolean =>
     Cause.interruptors(cause),
     (id) => id === clientAbortFiberId,
   )
+
+const getStatusFromCause = (
+  cause: Cause.Cause<RouteSchema.RequestBodyError | ParseResult.ParseError>,
+): number => {
+  const failure = Cause.failureOption(cause)
+
+  if (failure._tag === "Some") {
+    const error = failure.value
+    if (error._tag === "ParseError" || error._tag === "RequestBodyError") {
+      return 400
+    }
+  }
+
+  return 500
+}
 
 function toResponse(result: unknown, format?: string): Response {
   if (result instanceof Response) {
@@ -238,9 +255,11 @@ export const toWebHandlerRuntime = <R>(
           effect.pipe(
             Effect.scoped,
             Effect.catchAllCause((cause) =>
-              Effect.succeed(
-                new Response(Cause.pretty(cause), { status: 500 }),
-              )
+              Effect.gen(function*() {
+                yield* Effect.logError(cause)
+                const status = getStatusFromCause(cause)
+                return new Response(Cause.pretty(cause), { status })
+              })
             ),
           ),
         )
@@ -259,7 +278,8 @@ export const toWebHandlerRuntime = <R>(
           } else if (isClientAbort(exit.cause)) {
             resolve(new Response(null, { status: 499 }))
           } else {
-            resolve(new Response(Cause.pretty(exit.cause), { status: 500 }))
+            const status = getStatusFromCause(exit.cause)
+            resolve(new Response(Cause.pretty(exit.cause), { status }))
           }
         })
       })
