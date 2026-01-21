@@ -2,6 +2,7 @@ import * as Effect from "effect/Effect"
 import type * as Stream from "effect/Stream"
 import type * as Utils from "effect/Utils"
 import * as Route from "./Route.ts"
+import type * as Values from "./Values.ts"
 
 export type Format =
   | "text"
@@ -14,7 +15,10 @@ type UnwrapStream<T> = T extends Stream.Stream<infer V, any, any> ? V : T
 export type HandlerInput<B, A, E, R> =
   | A
   | Effect.Effect<A, E, R>
-  | ((context: _Simplify<B>, next: () => Effect.Effect<UnwrapStream<A>>) =>
+  | ((
+    context: Values.Simplify<B>,
+    next: () => Effect.Effect<UnwrapStream<A>>,
+  ) =>
     | Effect.Effect<A, E, R>
     | Generator<Utils.YieldWrap<Effect.Effect<any, E, R>>, A, any>)
 
@@ -62,8 +66,7 @@ export function build<
     D extends Route.RouteDescriptor.Any,
     B extends {},
     I extends Route.Route.Tuple,
-    A extends F extends "json"
-      ? Value
+    A extends F extends "json" ? Value
       : Value | Stream.Stream<Value, any, any>,
     E = never,
     R = never,
@@ -101,11 +104,3 @@ export function build<
     }
   }
 }
-
-// used to simplify the context type passed to route handlers
-// for those who prefer to write code by hand :)
-type _Simplify<T> = {
-  -readonly [K in keyof T]: T[K] extends object
-    ? { -readonly [P in keyof T[K]]: T[K][P] }
-    : T[K]
-} extends infer U ? { [K in keyof U]: U[K] } : never

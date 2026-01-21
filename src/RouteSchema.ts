@@ -1,14 +1,34 @@
-import * as FileSystem from "@effect/platform/FileSystem"
-import type * as HttpServerError from "@effect/platform/HttpServerError"
-import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
-import * as Multipart from "@effect/platform/Multipart"
-import * as Path from "@effect/platform/Path"
 import * as Effect from "effect/Effect"
 import * as ParseResult from "effect/ParseResult"
 import * as Schema from "effect/Schema"
 import type * as Scope from "effect/Scope"
+import * as Http from "./Http.ts"
+import * as PathPattern from "./PathPattern.ts"
 import * as Route from "./Route.ts"
 import * as RouteHook from "./RouteHook.ts"
+
+export interface RequestBodyError {
+  readonly _tag: "RequestBodyError"
+  readonly reason:
+    | "JsonError"
+    | "UrlParamsError"
+    | "MultipartError"
+    | "FormDataError"
+  readonly cause: unknown
+}
+
+export const RequestBodyError = (
+  reason: RequestBodyError["reason"],
+  cause: unknown,
+): RequestBodyError => ({ _tag: "RequestBodyError", reason, cause })
+
+export const File = Schema.Struct({
+  _tag: Schema.Literal("File"),
+  key: Schema.String,
+  name: Schema.String,
+  contentType: Schema.String,
+  content: Schema.Uint8ArrayFromSelf,
+})
 
 export function schemaHeaders<
   A,
@@ -32,13 +52,14 @@ export function schemaHeaders<
       { headers: A },
       any,
       ParseResult.ParseError,
-      R | HttpServerRequest.HttpServerRequest
+      R
     >,
   ]
 > {
-  return RouteHook.filter((ctx: { headers?: {} }) =>
+  const decode = Schema.decodeUnknown(fields)
+  return RouteHook.filter((ctx: { request: Request; headers?: {} }) =>
     Effect.map(
-      HttpServerRequest.schemaHeaders(fields),
+      decode(Http.mapHeaders(ctx.request.headers)),
       (parsed) => ({
         context: {
           headers: {
@@ -73,13 +94,14 @@ export function schemaCookies<
       { cookies: A },
       any,
       ParseResult.ParseError,
-      R | HttpServerRequest.HttpServerRequest
+      R
     >,
   ]
 > {
-  return RouteHook.filter((ctx: { cookies?: {} }) =>
+  const decode = Schema.decodeUnknown(fields)
+  return RouteHook.filter((ctx: { request: Request; cookies?: {} }) =>
     Effect.map(
-      HttpServerRequest.schemaCookies(fields),
+      decode(Http.parseCookies(ctx.request.headers.get("cookie"))),
       (parsed) => ({
         context: {
           cookies: {
@@ -94,7 +116,9 @@ export function schemaCookies<
 
 export function schemaSearchParams<
   A,
-  I extends Readonly<Record<string, string | ReadonlyArray<string> | undefined>>,
+  I extends Readonly<
+    Record<string, string | ReadonlyArray<string> | undefined>
+  >,
   R,
 >(
   fields: Schema.Schema<A, I, R>,
@@ -114,13 +138,15 @@ export function schemaSearchParams<
       { searchParams: A },
       any,
       ParseResult.ParseError,
-      R | HttpServerRequest.ParsedSearchParams
+      R
     >,
   ]
 > {
-  return RouteHook.filter((ctx: { searchParams?: {} }) =>
-    Effect.map(
-      HttpServerRequest.schemaSearchParams(fields),
+  const decode = Schema.decodeUnknown(fields)
+  return RouteHook.filter((ctx: { request: Request; searchParams?: {} }) => {
+    const url = new URL(ctx.request.url)
+    return Effect.map(
+      decode(Http.mapUrlSearchParams(url.searchParams)),
       (parsed) => ({
         context: {
           searchParams: {
@@ -130,6 +156,53 @@ export function schemaSearchParams<
         },
       }),
     )
+  })
+}
+
+export function schemaPathParams<
+  A,
+  I extends Readonly<Record<string, string | undefined>>,
+  R,
+>(
+  fields: Schema.Schema<A, I, R>,
+): <
+  D extends Route.RouteDescriptor.Any,
+  SB extends {},
+  P extends Route.Route.Tuple,
+>(
+  self: Route.RouteSet.RouteSet<D, SB, P>,
+) => Route.RouteSet.RouteSet<
+  D,
+  SB,
+  [
+    ...P,
+    Route.Route.Route<
+      {},
+      { pathParams: A },
+      any,
+      ParseResult.ParseError,
+      R
+    >,
+  ]
+> {
+  const decode = Schema.decodeUnknown(fields)
+  return RouteHook.filter(
+    (ctx: { request: Request; path?: string; pathParams?: {} }) => {
+      const url = new URL(ctx.request.url)
+      const pattern = ctx.path ?? "/"
+      const params = PathPattern.match(pattern, url.pathname) ?? {}
+      return Effect.map(
+        decode(params),
+        (parsed) => ({
+          context: {
+            pathParams: {
+              ...ctx.pathParams,
+              ...parsed,
+            },
+          },
+        }),
+      )
+    },
   )
 }
 
@@ -154,29 +227,36 @@ export function schemaBodyJson<
       {},
       { body: A },
       any,
-      HttpServerError.RequestError | ParseResult.ParseError,
-      R | HttpServerRequest.HttpServerRequest
+      RequestBodyError | ParseResult.ParseError,
+      R
     >,
   ]
 > {
-  return RouteHook.filter((ctx: { body?: {} }) =>
-    Effect.map(
-      HttpServerRequest.schemaBodyJson(fields),
-      (parsed) => ({
+  const decode = Schema.decodeUnknown(fields)
+  return RouteHook.filter((ctx: { request: Request; body?: {} }) =>
+    Effect.gen(function*() {
+      const json = yield* Effect.tryPromise({
+        try: () => ctx.request.json(),
+        catch: (error) => RequestBodyError("JsonError", error),
+      })
+      const parsed = yield* decode(json)
+      return {
         context: {
           body: {
             ...ctx.body,
             ...parsed,
           },
         },
-      }),
-    )
+      }
+    })
   )
 }
 
 export function schemaBodyUrlParams<
   A,
-  I extends Readonly<Record<string, string | ReadonlyArray<string> | undefined>>,
+  I extends Readonly<
+    Record<string, string | ReadonlyArray<string> | undefined>
+  >,
   R,
 >(
   fields: Schema.Schema<A, I, R>,
@@ -195,29 +275,40 @@ export function schemaBodyUrlParams<
       {},
       { body: A },
       any,
-      HttpServerError.RequestError | ParseResult.ParseError,
-      R | HttpServerRequest.HttpServerRequest
+      RequestBodyError | ParseResult.ParseError,
+      R
     >,
   ]
 > {
-  return RouteHook.filter((ctx: { body?: {} }) =>
-    Effect.map(
-      HttpServerRequest.schemaBodyUrlParams(fields),
-      (parsed) => ({
+  const decode = Schema.decodeUnknown(fields)
+  return RouteHook.filter((ctx: { request: Request; body?: {} }) =>
+    Effect.gen(function*() {
+      const text = yield* Effect.tryPromise({
+        try: () => ctx.request.text(),
+        catch: (error) => RequestBodyError("UrlParamsError", error),
+      })
+      const params = new URLSearchParams(text)
+      const parsed = yield* decode(Http.mapUrlSearchParams(params))
+      return {
         context: {
           body: {
             ...ctx.body,
             ...parsed,
           },
         },
-      }),
-    )
+      }
+    })
   )
 }
 
 export function schemaBodyMultipart<
   A,
-  I extends Partial<Multipart.Persisted>,
+  I extends Partial<
+    Record<
+      string,
+      ReadonlyArray<Http.FilePart> | ReadonlyArray<string> | string
+    >
+  >,
   R,
 >(
   fields: Schema.Schema<A, I, R>,
@@ -236,33 +327,39 @@ export function schemaBodyMultipart<
       {},
       { body: A },
       any,
-      Multipart.MultipartError | ParseResult.ParseError,
-      | R
-      | HttpServerRequest.HttpServerRequest
-      | Scope.Scope
-      | FileSystem.FileSystem
-      | Path.Path
+      RequestBodyError | ParseResult.ParseError,
+      R | Scope.Scope
     >,
   ]
 > {
-  return RouteHook.filter((ctx: { body?: {} }) =>
-    Effect.map(
-      HttpServerRequest.schemaBodyMultipart(fields),
-      (parsed) => ({
+  const decode = Schema.decodeUnknown(fields)
+  return RouteHook.filter((ctx: { request: Request; body?: {} }) =>
+    Effect.gen(function*() {
+      const record = yield* Effect.tryPromise({
+        try: () => Http.parseFormData(ctx.request),
+        catch: (error) => RequestBodyError("MultipartError", error),
+      })
+      const parsed = yield* decode(record)
+      return {
         context: {
           body: {
             ...ctx.body,
             ...parsed,
           },
         },
-      }),
-    )
+      }
+    })
   )
 }
 
 export function schemaBodyForm<
   A,
-  I extends Partial<Multipart.Persisted>,
+  I extends Partial<
+    Record<
+      string,
+      ReadonlyArray<Http.FilePart> | ReadonlyArray<string> | string
+    >
+  >,
   R,
 >(
   fields: Schema.Schema<A, I, R>,
@@ -281,74 +378,47 @@ export function schemaBodyForm<
       {},
       { body: A },
       any,
-      | Multipart.MultipartError
-      | HttpServerError.RequestError
-      | ParseResult.ParseError,
-      | R
-      | HttpServerRequest.HttpServerRequest
-      | Scope.Scope
-      | FileSystem.FileSystem
-      | Path.Path
+      RequestBodyError | ParseResult.ParseError,
+      R | Scope.Scope
     >,
   ]
 > {
-  return RouteHook.filter((ctx: { body?: {} }) =>
-    Effect.map(
-      HttpServerRequest.schemaBodyForm(fields),
-      (parsed) => ({
-        context: {
-          body: {
-            ...ctx.body,
-            ...parsed,
-          },
-        },
-      }),
-    )
-  )
-}
+  const decode = Schema.decodeUnknown(fields)
+  return RouteHook.filter((ctx: { request: Request; body?: {} }) =>
+    Effect.gen(function*() {
+      const contentType = ctx.request.headers.get("content-type") ?? ""
 
-export function schemaBodyFormJson<
-  A,
-  I,
-  R,
->(
-  fields: Schema.Schema<A, I, R>,
-  field: string,
-): <
-  D extends Route.RouteDescriptor.Any,
-  SB extends {},
-  P extends Route.Route.Tuple,
->(
-  self: Route.RouteSet.RouteSet<D, SB, P>,
-) => Route.RouteSet.RouteSet<
-  D,
-  SB,
-  [
-    ...P,
-    Route.Route.Route<
-      {},
-      { body: A },
-      any,
-      HttpServerError.RequestError | ParseResult.ParseError,
-      | R
-      | HttpServerRequest.HttpServerRequest
-      | FileSystem.FileSystem
-      | Path.Path
-      | Scope.Scope
-    >,
-  ]
-> {
-  return RouteHook.filter((ctx: { body?: {} }) =>
-    Effect.map(
-      HttpServerRequest.schemaBodyFormJson(fields)(field),
-      (parsed) => ({
+      if (contentType.includes("application/x-www-form-urlencoded")) {
+        const text = yield* Effect.tryPromise({
+          try: () => ctx.request.text(),
+          catch: (error) => RequestBodyError("UrlParamsError", error),
+        })
+        const params = new URLSearchParams(text)
+        const record = Http.mapUrlSearchParams(params)
+        const parsed = yield* decode(record as I)
+        return {
+          context: {
+            body: {
+              ...ctx.body,
+              ...parsed,
+            },
+          },
+        }
+      }
+
+      const record = yield* Effect.tryPromise({
+        try: () => Http.parseFormData(ctx.request),
+        catch: (error) => RequestBodyError("FormDataError", error),
+      })
+      const parsed = yield* decode(record as I)
+      return {
         context: {
           body: {
             ...ctx.body,
             ...parsed,
           },
         },
-      }),
-    )
+      }
+    })
   )
 }

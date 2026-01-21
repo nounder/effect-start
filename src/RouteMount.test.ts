@@ -15,13 +15,14 @@ test.it("uses GET method", async () => {
           .toMatchObjectType<{
             method: "GET"
             format: "text"
+            request: Request
           }>()
         test
-          .expect(context)
-          .toEqual({
-            method: "GET",
-            format: "text",
-          })
+          .expect(context.method)
+          .toEqual("GET")
+        test
+          .expect(context.format)
+          .toEqual("text")
 
         return "Hello, World!"
       })
@@ -40,7 +41,7 @@ test.it("uses GET method", async () => {
               method: "GET"
               format: "text"
             },
-            {},
+            { request: Request },
             string
           >,
         ]
@@ -100,7 +101,7 @@ test.it("uses GET & POST method", async () => {
           method: "GET"
           format: "text"
         },
-        {},
+        { request: Request },
         string
       >
     >()
@@ -113,7 +114,7 @@ test.it("uses GET & POST method", async () => {
           method: "POST"
           format: "text"
         },
-        {},
+        { request: Request },
         string
       >
     >()
@@ -384,6 +385,7 @@ test.it("schemaHeaders flattens method into route descriptor", () => {
       Route.Route.Route<
         { method: "*" },
         {
+          request: Request
           headers: {
             readonly hello: string
           }
@@ -401,6 +403,7 @@ test.it("schemaHeaders flattens method into route descriptor", () => {
       Route.Route.Route<
         { method: "GET" },
         {
+          request: Request
           headers: {
             readonly hello: string
             readonly "x-custom-header": string
@@ -422,6 +425,7 @@ test.it("schemaHeaders flattens method into route descriptor", () => {
           format: "html"
         },
         {
+          request: Request
           headers: {
             readonly hello: string
             readonly "x-custom-header": string
@@ -438,6 +442,7 @@ test.it("schemaHeaders flattens method into route descriptor", () => {
       Route.Route.Route<
         { method: "POST" },
         {
+          request: Request
           headers: {
             hello: string
           }
@@ -465,4 +470,16 @@ test.it("schemaHeaders flattens method into route descriptor", () => {
       }
       postOnly: string
     }>()
+})
+
+test.it("provides request in default bindings", () => {
+  Route.get(
+    Route.text((ctx) => {
+      test
+        .expectTypeOf(ctx.request)
+        .toEqualTypeOf<Request>()
+
+      return Effect.succeed("ok")
+    }),
+  )
 })

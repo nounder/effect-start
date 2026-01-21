@@ -179,8 +179,8 @@ export namespace RouteMount {
   export type Items<S> = S extends Builder<any, infer I> ? I : []
 
   export type BuilderBindings<S> = S extends Builder<any, infer I>
-    ? Types.Simplify<WildcardBindings<I>>
-    : {}
+    ? Types.Simplify<WildcardBindings<I>> & { request: Request }
+    : { request: Request }
 
   type WildcardBindingsItem<T> = T extends Route.Route.Route<
     { method: "*" },

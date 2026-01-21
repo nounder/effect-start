@@ -477,7 +477,9 @@ export function toBun(path: string): PathPattern[] {
     : `:${optionalName}`
 
   const withOptionalSegments = [...before, requiredOptional, ...after]
-  const withOptionalPath: PathPattern = `/${withOptionalSegments.map(formatSegment).join("/")}`
+  const withOptionalPath: PathPattern = `/${
+    withOptionalSegments.map(formatSegment).join("/")
+  }`
 
   return [...toBun(basePath), ...toBun(withOptionalPath)]
 }

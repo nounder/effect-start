@@ -10,7 +10,9 @@ import {
 } from "effect/Stream"
 import type * as Stream from "effect/Stream"
 
-export const isStream = (u: unknown): u is Stream.Stream<unknown, unknown, unknown> =>
+export const isStream = (
+  u: unknown,
+): u is Stream.Stream<unknown, unknown, unknown> =>
   Predicate.hasProperty(u, StreamTypeId)
 
 /**

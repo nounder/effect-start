@@ -296,7 +296,7 @@ test.describe(`${RouteSchema.schemaBodyJson.name}()`, () => {
 
     test
       .expect(response.status)
-      .toBe(500)
+      .toBe(400)
   })
 })
 
@@ -410,33 +410,6 @@ test.describe(`${RouteSchema.schemaBodyForm.name}()`, () => {
       .expectTypeOf<Route.Route.Context<typeof route>>()
       .toExtend<{
         body: { email: string }
-      }>()
-  })
-})
-
-test.describe(`${RouteSchema.schemaBodyFormJson.name}()`, () => {
-  test.it("has correct type signature for form JSON body", () => {
-    const route = Route
-      .post(
-        RouteSchema.schemaBodyFormJson(
-          Schema.Struct({
-            data: Schema.String,
-          }),
-          "metadata",
-        ),
-        Route.json(function*(ctx) {
-          test
-            .expectTypeOf(ctx.body)
-            .toExtend<{ data: string }>()
-
-          return ctx.body
-        }),
-      )
-
-    test
-      .expectTypeOf<Route.Route.Context<typeof route>>()
-      .toExtend<{
-        body: { data: string }
       }>()
   })
 })

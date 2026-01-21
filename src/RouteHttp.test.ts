@@ -1,5 +1,6 @@
 import * as test from "bun:test"
 import * as Effect from "effect/Effect"
+import * as Ref from "effect/Ref"
 import * as Schedule from "effect/Schedule"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
@@ -8,6 +9,7 @@ import * as Route from "./Route.ts"
 import * as RouteHttp from "./RouteHttp.ts"
 import * as RouteSchema from "./RouteSchema.ts"
 import * as RouteTree from "./RouteTree.ts"
+import * as TestLogger from "./testing/TestLogger.ts"
 
 test.it("converts string to text/plain for Route.text", async () => {
   const handler = RouteHttp.toWebHandler(
@@ -160,6 +162,33 @@ test.it("includes descriptor properties in handler context", async () => {
   test
     .expect(capturedMethod)
     .toBe("GET")
+})
+
+test.it("includes request in handler context", async () => {
+  let capturedRequest: Request | undefined
+
+  const handler = RouteHttp.toWebHandler(
+    Route.get(
+      Route.text(function*(ctx) {
+        test
+          .expectTypeOf(ctx.request)
+          .toEqualTypeOf<Request>()
+        capturedRequest = ctx.request
+        return "ok"
+      }),
+    ),
+  )
+  await Http.fetch(handler, {
+    path: "/test",
+    headers: { "x-custom": "value" },
+  })
+
+  test
+    .expect(capturedRequest)
+    .toBeInstanceOf(Request)
+  test
+    .expect(capturedRequest?.headers.get("x-custom"))
+    .toBe("value")
 })
 
 test.it("returns 405 for wrong method", async () => {
@@ -326,19 +355,6 @@ test.it("returns 406 when Accept doesn't match any of multiple formats", async (
   test
     .expect(response.status)
     .toBe(406)
-})
-
-test.it("uses first defined format when no Accept header", async () => {
-  const handler = RouteHttp.toWebHandler(
-    Route
-      .get(Route.json({ type: "json" }))
-      .get(Route.text("plain")),
-  )
-  const response = await Http.fetch(handler, { path: "/data" })
-
-  test
-    .expect(response.headers.get("Content-Type"))
-    .toBe("application/json")
 })
 
 test.it("definition order determines priority when no Accept header", async () => {
@@ -980,6 +996,725 @@ test.describe("streaming responses", () => {
       .expect(response.text())
       .rejects
       .toThrow("stream error")
+  })
+})
+
+test.describe("schema handlers", () => {
+  test.it("parses headers, cookies, and search params together", async () => {
+    const handler = RouteHttp.toWebHandler(
+      Route.get(
+        RouteSchema.schemaHeaders(
+          Schema.Struct({
+            "x-api-key": Schema.String,
+          }),
+        ),
+        RouteSchema.schemaCookies(
+          Schema.Struct({
+            session: Schema.String,
+          }),
+        ),
+        RouteSchema.schemaSearchParams(
+          Schema.Struct({
+            page: Schema.NumberFromString,
+            limit: Schema.optional(Schema.NumberFromString),
+          }),
+        ),
+        Route.json(function*(ctx) {
+          return {
+            apiKey: ctx.headers["x-api-key"],
+            session: ctx.cookies.session,
+            page: ctx.searchParams.page,
+            limit: ctx.searchParams.limit,
+          }
+        }),
+      ),
+    )
+
+    const response = await Http.fetch(handler, {
+      path: "/test?page=2&limit=10",
+      headers: {
+        "x-api-key": "secret-key",
+        cookie: "session=abc123",
+      },
+    })
+
+    test
+      .expect(response.status)
+      .toBe(200)
+    test
+      .expect(await response.json())
+      .toEqual({
+        apiKey: "secret-key",
+        session: "abc123",
+        page: 2,
+        limit: 10,
+      })
+  })
+
+  test.it("parses JSON body with headers", async () => {
+    const handler = RouteHttp.toWebHandler(
+      Route.post(
+        RouteSchema.schemaHeaders(
+          Schema.Struct({
+            "content-type": Schema.String,
+          }),
+        ),
+        RouteSchema.schemaBodyJson(
+          Schema.Struct({
+            name: Schema.String,
+            age: Schema.Number,
+          }),
+        ),
+        Route.json(function*(ctx) {
+          return {
+            contentType: ctx.headers["content-type"],
+            name: ctx.body.name,
+            age: ctx.body.age,
+          }
+        }),
+      ),
+    )
+
+    const response = await Http.fetch(handler, {
+      path: "/users",
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "Alice", age: 30 }),
+    })
+
+    test
+      .expect(response.status)
+      .toBe(200)
+    test
+      .expect(await response.json())
+      .toEqual({
+        contentType: "application/json",
+        name: "Alice",
+        age: 30,
+      })
+  })
+
+  test.it("parses URL-encoded body", async () => {
+    const handler = RouteHttp.toWebHandler(
+      Route.post(
+        RouteSchema.schemaBodyUrlParams(
+          Schema.Struct({
+            username: Schema.String,
+            password: Schema.String,
+          }),
+        ),
+        Route.json(function*(ctx) {
+          return {
+            username: ctx.body.username,
+            hasPassword: ctx.body.password.length > 0,
+          }
+        }),
+      ),
+    )
+
+    const response = await Http.fetch(handler, {
+      path: "/login",
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: "username=alice&password=secret",
+    })
+
+    test
+      .expect(response.status)
+      .toBe(200)
+    test
+      .expect(await response.json())
+      .toEqual({
+        username: "alice",
+        hasPassword: true,
+      })
+  })
+
+  test.it("returns 400 on schema validation failure", async () => {
+    const handler = RouteHttp.toWebHandler(
+      Route.get(
+        RouteSchema.schemaSearchParams(
+          Schema.Struct({
+            count: Schema.NumberFromString,
+          }),
+        ),
+        Route.text("ok"),
+      ),
+    )
+
+    const response = await Http.fetch(handler, {
+      path: "/test?count=not-a-number",
+    })
+
+    test
+      .expect(response.status)
+      .toBe(400)
+  })
+
+  test.it("handles missing required fields", async () => {
+    const handler = RouteHttp.toWebHandler(
+      Route.get(
+        RouteSchema.schemaHeaders(
+          Schema.Struct({
+            "x-required": Schema.String,
+          }),
+        ),
+        Route.text("ok"),
+      ),
+    )
+
+    const response = await Http.fetch(handler, {
+      path: "/test",
+    })
+
+    test
+      .expect(response.status)
+      .toBe(400)
+  })
+
+  test.it("parses multipart form data with file", async () => {
+    const handler = RouteHttp.toWebHandler(
+      Route.post(
+        RouteSchema.schemaBodyMultipart(
+          Schema.Struct({
+            title: Schema.String,
+            file: Schema.Array(RouteSchema.File),
+          }),
+        ),
+        Route.json(function*(ctx) {
+          const file = ctx.body.file[0]
+          return {
+            title: ctx.body.title,
+            fileName: file.name,
+            contentType: file.contentType,
+            size: file.content.length,
+          }
+        }),
+      ),
+    )
+
+    const formData = new FormData()
+    formData.append("title", "My Upload")
+    formData.append(
+      "file",
+      new Blob(["hello world"], { type: "text/plain" }),
+      "test.txt",
+    )
+
+    const response = await Http.fetch(handler, {
+      path: "/upload",
+      method: "POST",
+      body: formData,
+    })
+
+    test
+      .expect(response.status)
+      .toBe(200)
+
+    const json = await response.json()
+    test
+      .expect(json.title)
+      .toBe("My Upload")
+    test
+      .expect(json.fileName)
+      .toBe("test.txt")
+    test
+      .expect(json.contentType)
+      .toContain("text/plain")
+    test
+      .expect(json.size)
+      .toBe(11)
+  })
+
+  test.it("handles multiple files with same field name", async () => {
+    const handler = RouteHttp.toWebHandler(
+      Route.post(
+        RouteSchema.schemaBodyMultipart(
+          Schema.Struct({
+            documents: Schema.Array(RouteSchema.File),
+          }),
+        ),
+        Route.json(function*(ctx) {
+          return {
+            count: ctx.body.documents.length,
+            names: ctx.body.documents.map((f) => f.name),
+            sizes: ctx.body.documents.map((f) => f.content.length),
+          }
+        }),
+      ),
+    )
+
+    const formData = new FormData()
+    formData.append(
+      "documents",
+      new Blob(["first file content"], { type: "text/plain" }),
+      "doc1.txt",
+    )
+    formData.append(
+      "documents",
+      new Blob(["second file content"], { type: "text/plain" }),
+      "doc2.txt",
+    )
+    formData.append(
+      "documents",
+      new Blob(["third file content"], { type: "text/plain" }),
+      "doc3.txt",
+    )
+
+    const response = await Http.fetch(handler, {
+      path: "/upload",
+      method: "POST",
+      body: formData,
+    })
+
+    test
+      .expect(response.status)
+      .toBe(200)
+
+    const json = await response.json()
+    test
+      .expect(json.count)
+      .toBe(3)
+    test
+      .expect(json.names)
+      .toEqual(["doc1.txt", "doc2.txt", "doc3.txt"])
+    test
+      .expect(json.sizes)
+      .toEqual([18, 19, 18])
+  })
+
+  test.it("handles single file upload", async () => {
+    const handler = RouteHttp.toWebHandler(
+      Route.post(
+        RouteSchema.schemaBodyMultipart(
+          Schema.Struct({
+            image: Schema.Array(RouteSchema.File),
+          }),
+        ),
+        Route.json(function*(ctx) {
+          const image = ctx.body.image[0]
+          return {
+            name: image.name,
+            type: image.contentType,
+            size: image.content.length,
+          }
+        }),
+      ),
+    )
+
+    const formData = new FormData()
+    formData.append(
+      "image",
+      new Blob(["fake image data"], { type: "image/png" }),
+      "avatar.png",
+    )
+
+    const response = await Http.fetch(handler, {
+      path: "/upload",
+      method: "POST",
+      body: formData,
+    })
+
+    test
+      .expect(response.status)
+      .toBe(200)
+
+    const json = await response.json()
+    test
+      .expect(json.name)
+      .toBe("avatar.png")
+    test
+      .expect(json.type)
+      .toContain("image/png")
+    test
+      .expect(json.size)
+      .toBe(15)
+  })
+
+  test.it("handles multiple string values for same field", async () => {
+    const handler = RouteHttp.toWebHandler(
+      Route.post(
+        RouteSchema.schemaBodyMultipart(
+          Schema.Struct({
+            tags: Schema.Array(Schema.String),
+            title: Schema.String,
+          }),
+        ),
+        Route.json(function*(ctx) {
+          return {
+            title: ctx.body.title,
+            // Schema returns readonly array, but Json type expects mutable array
+            tags: [...ctx.body.tags],
+          }
+        }),
+      ),
+    )
+
+    const formData = new FormData()
+    formData.append("title", "My Post")
+    formData.append("tags", "javascript")
+    formData.append("tags", "typescript")
+    formData.append("tags", "effect")
+
+    const response = await Http.fetch(handler, {
+      path: "/upload",
+      method: "POST",
+      body: formData,
+    })
+
+    test
+      .expect(response.status)
+      .toBe(200)
+
+    const json = await response.json()
+    test
+      .expect(json.title)
+      .toBe("My Post")
+    test
+      .expect(json.tags)
+      .toEqual(["javascript", "typescript", "effect"])
+  })
+
+  test.it("schema validation: single value with Schema.String succeeds", async () => {
+    const handler = RouteHttp.toWebHandler(
+      Route.post(
+        RouteSchema.schemaBodyMultipart(
+          Schema.Struct({
+            name: Schema.String,
+          }),
+        ),
+        Route.json(function*(ctx) {
+          return { name: ctx.body.name }
+        }),
+      ),
+    )
+
+    const formData = new FormData()
+    formData.append("name", "John")
+
+    const response = await Http.fetch(handler, {
+      path: "/test",
+      method: "POST",
+      body: formData,
+    })
+
+    test
+      .expect(response.status)
+      .toBe(200)
+
+    const json = await response.json()
+    test
+      .expect(json.name)
+      .toBe("John")
+  })
+
+  test.it("schema validation: multiple values with Schema.String fails with detailed error", async () => {
+    const handler = RouteHttp.toWebHandler(
+      Route.post(
+        RouteSchema.schemaBodyMultipart(
+          Schema.Struct({
+            name: Schema.String,
+          }),
+        ),
+        Route.json(function*(ctx) {
+          return { name: ctx.body.name }
+        }),
+      ),
+    )
+
+    const formData = new FormData()
+    formData.append("name", "John")
+    formData.append("name", "Jane")
+
+    const response = await Http.fetch(handler, {
+      path: "/test",
+      method: "POST",
+      body: formData,
+    })
+
+    test
+      .expect(response.status)
+      .toBe(400)
+
+    const body = await response.text()
+
+    test
+      .expect(body)
+      .toContain("ParseError")
+    test
+      .expect(body)
+      .toContain("Expected string, actual [\"John\",\"Jane\"]")
+  })
+
+  test.it("logs validation errors to console", () =>
+    Effect
+      .gen(function*() {
+        const testLogger = yield* TestLogger.TestLogger
+        const runtime = yield* Effect.runtime<TestLogger.TestLogger>()
+
+        const handler = RouteHttp.toWebHandlerRuntime(runtime)(
+          Route.post(
+            RouteSchema.schemaBodyMultipart(
+              Schema.Struct({
+                name: Schema.String,
+              }),
+            ),
+            Route.json(function*(ctx) {
+              return { name: ctx.body.name }
+            }),
+          ),
+        )
+
+        const formData = new FormData()
+        formData.append("name", "John")
+        formData.append("name", "Jane")
+
+        yield* Effect.promise(() =>
+          Http.fetch(handler, {
+            path: "/test",
+            method: "POST",
+            body: formData,
+          })
+        )
+
+        const messages = yield* Ref.get(testLogger.messages)
+        const errorLogs = messages.filter((msg) => msg.includes("[Error]"))
+
+        test
+          .expect(errorLogs.length)
+          .toBeGreaterThan(0)
+
+        test
+          .expect(errorLogs[0])
+          .toContain("ParseError")
+        test
+          .expect(errorLogs[0])
+          .toContain("Expected string, actual [\"John\",\"Jane\"]")
+      })
+      .pipe(Effect.provide(TestLogger.layer()), Effect.runPromise))
+
+  test.it("composes shared middleware with method-specific schema", async () => {
+    const handler = RouteHttp.toWebHandler(
+      Route
+        .use(RouteSchema.schemaHeaders(
+          Schema.Struct({
+            "x-api-version": Schema.String,
+          }),
+        ))
+        .post(
+          RouteSchema.schemaBodyJson(
+            Schema.Struct({
+              action: Schema.String,
+            }),
+          ),
+          Route.json(function*(ctx) {
+            return {
+              version: ctx.headers["x-api-version"],
+              action: ctx.body.action,
+            }
+          }),
+        )
+        .get(
+          RouteSchema.schemaSearchParams(
+            Schema.Struct({
+              id: Schema.String,
+            }),
+          ),
+          Route.json(function*(ctx) {
+            return {
+              version: ctx.headers["x-api-version"],
+              id: ctx.searchParams.id,
+            }
+          }),
+        ),
+    )
+
+    const postResponse = await Http.fetch(handler, {
+      path: "/api",
+      method: "POST",
+      headers: {
+        "x-api-version": "v2",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ action: "create" }),
+    })
+
+    test
+      .expect(await postResponse.json())
+      .toEqual({ version: "v2", action: "create" })
+
+    const getResponse = await Http.fetch(handler, {
+      path: "/api?id=123",
+      method: "GET",
+      headers: { "x-api-version": "v2" },
+    })
+
+    test
+      .expect(await getResponse.json())
+      .toEqual({ version: "v2", id: "123" })
+  })
+
+  test.it("handles cookies with equals sign in value", async () => {
+    const handler = RouteHttp.toWebHandler(
+      Route.get(
+        RouteSchema.schemaCookies(
+          Schema.Struct({
+            token: Schema.String,
+          }),
+        ),
+        Route.json(function*(ctx) {
+          return { token: ctx.cookies.token }
+        }),
+      ),
+    )
+
+    const response = await Http.fetch(handler, {
+      path: "/test",
+      headers: { cookie: "token=abc=123==" },
+    })
+
+    test
+      .expect(response.status)
+      .toBe(200)
+    test
+      .expect(await response.json())
+      .toEqual({ token: "abc=123==" })
+  })
+
+  test.it("handles multiple search params with same key", async () => {
+    const handler = RouteHttp.toWebHandler(
+      Route.get(
+        RouteSchema.schemaSearchParams(
+          Schema.Struct({
+            tags: Schema.Array(Schema.String),
+          }),
+        ),
+        Route.json(function*(ctx) {
+          return { tags: [...ctx.searchParams.tags] }
+        }),
+      ),
+    )
+
+    const response = await Http.fetch(handler, {
+      path: "/test?tags=one&tags=two&tags=three",
+    })
+
+    test
+      .expect(response.status)
+      .toBe(200)
+    test
+      .expect(await response.json())
+      .toEqual({ tags: ["one", "two", "three"] })
+  })
+
+  test.it("parses path params from RouteTree", async () => {
+    const tree = RouteTree.make({
+      "/folders/:folderId/files/:fileId": Route.get(
+        RouteSchema.schemaPathParams(
+          Schema.Struct({
+            folderId: Schema.String,
+            fileId: Schema.NumberFromString,
+          }),
+        ),
+        Route.json(function*(ctx) {
+          return {
+            folderId: ctx.pathParams.folderId,
+            fileId: ctx.pathParams.fileId,
+          }
+        }),
+      ),
+    })
+
+    const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
+    const handler = handles["/folders/:folderId/files/:fileId"]
+
+    const response = await Http.fetch(handler, {
+      path: "/folders/abc123/files/42",
+    })
+
+    test
+      .expect(response.status)
+      .toBe(200)
+    test
+      .expect(await response.json())
+      .toEqual({
+        folderId: "abc123",
+        fileId: 42,
+      })
+  })
+
+  test.it("path params validation fails on invalid input", async () => {
+    const tree = RouteTree.make({
+      "/users/:userId": Route.get(
+        RouteSchema.schemaPathParams(
+          Schema.Struct({
+            userId: Schema.NumberFromString,
+          }),
+        ),
+        Route.text("ok"),
+      ),
+    })
+
+    const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
+    const handler = handles["/users/:userId"]
+
+    const response = await Http.fetch(handler, {
+      path: "/users/not-a-number",
+    })
+
+    test
+      .expect(response.status)
+      .toBe(400)
+  })
+
+  test.it("combines path params with headers and body", async () => {
+    const tree = RouteTree.make({
+      "/projects/:projectId/tasks": Route.post(
+        RouteSchema.schemaPathParams(
+          Schema.Struct({
+            projectId: Schema.String,
+          }),
+        ),
+        RouteSchema.schemaHeaders(
+          Schema.Struct({
+            "x-api-key": Schema.String,
+          }),
+        ),
+        RouteSchema.schemaBodyJson(
+          Schema.Struct({
+            title: Schema.String,
+          }),
+        ),
+        Route.json(function*(ctx) {
+          return {
+            projectId: ctx.pathParams.projectId,
+            apiKey: ctx.headers["x-api-key"],
+            title: ctx.body.title,
+          }
+        }),
+      ),
+    })
+
+    const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
+    const handler = handles["/projects/:projectId/tasks"]
+
+    const response = await Http.fetch(handler, {
+      path: "/projects/proj-999/tasks",
+      method: "POST",
+      headers: { "x-api-key": "secret" },
+      body: { title: "New Task" },
+    })
+
+    test
+      .expect(response.status)
+      .toBe(200)
+    test
+      .expect(await response.json())
+      .toEqual({
+        projectId: "proj-999",
+        apiKey: "secret",
+        title: "New Task",
+      })
   })
 })
 

@@ -1,4 +1,3 @@
-import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as FiberId from "effect/FiberId"
@@ -31,8 +30,6 @@ const formatToContentType = {
   json: "application/json",
   bytes: "application/octet-stream",
 } as const
-
-
 
 /**
  * A synthetic fiber used to tag interruptions caused by client disconnects.
@@ -126,8 +123,10 @@ function determineSelectedFormat(
   const negotiated = ContentNegotiation.media(accept, mediaTypes)
   if (negotiated.length === 0) return undefined
 
-  return Object.entries(formatToMediaType)
-    .find(([_, mt]) => mt === negotiated[0])?.[0] as RouteBody.Format
+  return Object
+    .entries(formatToMediaType)
+    .find(([_, mt]) => mt === negotiated[0])
+    ?.[0] as RouteBody.Format
 }
 
 export const toWebHandlerRuntime = <R>(
@@ -175,13 +174,18 @@ export const toWebHandlerRuntime = <R>(
       const allRoutes = [...wildcards, ...methodRoutes]
       const selectedFormat = determineSelectedFormat(accept, allRoutes)
 
-      if (selectedFormat === undefined && allRoutes.some((r) => Route.descriptor(r).format)) {
+      if (
+        selectedFormat === undefined
+        && allRoutes.some((r) => Route.descriptor(r).format)
+      ) {
         return Promise.resolve(
           new Response("Not Acceptable", { status: 406 }),
         )
       }
 
-      const createChain = (initialContext: any): Effect.Effect<any, any, any> => {
+      const createChain = (
+        initialContext: any,
+      ): Effect.Effect<any, any, any> => {
         let index = 0
         let currentContext = initialContext
 
@@ -229,22 +233,10 @@ export const toWebHandlerRuntime = <R>(
         return toResponse(result, selectedFormat)
       })
 
-      const httpServerRequest = HttpServerRequest.fromWeb(request)
-      const url = new URL(request.url)
-      const parsedSearchParams = HttpServerRequest.searchParamsFromURL(url)
-
       return new Promise((resolve) => {
         const fiber = runFork(
           effect.pipe(
             Effect.scoped,
-            Effect.provideService(
-              HttpServerRequest.HttpServerRequest,
-              httpServerRequest,
-            ),
-            Effect.provideService(
-              HttpServerRequest.ParsedSearchParams,
-              parsedSearchParams,
-            ),
             Effect.catchAllCause((cause) =>
               Effect.succeed(
                 new Response(Cause.pretty(cause), { status: 500 }),
