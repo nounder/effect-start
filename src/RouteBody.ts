@@ -9,10 +9,12 @@ export type Format =
   | "json"
   | "bytes"
 
+type UnwrapStream<T> = T extends Stream.Stream<infer V, any, any> ? V : T
+
 export type HandlerInput<B, A, E, R> =
   | A
   | Effect.Effect<A, E, R>
-  | ((context: _Simplify<B>, next: () => Effect.Effect<A>) =>
+  | ((context: _Simplify<B>, next: () => Effect.Effect<UnwrapStream<A>>) =>
     | Effect.Effect<A, E, R>
     | Generator<Utils.YieldWrap<Effect.Effect<any, E, R>>, A, any>)
 

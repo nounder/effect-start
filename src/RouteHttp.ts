@@ -97,36 +97,38 @@ function streamToResponse(
   })
 }
 
-function getMediaType(format: string | undefined): string | undefined {
-  return format && format in formatToMediaType
-    ? formatToMediaType[format]
-    : undefined
-}
-
-function acceptsFormat(
-  accept: string | null,
-  format: string | undefined,
-): boolean {
-  if (!format) return true
-  const mediaType = getMediaType(format)
-  if (!mediaType) return true
-  if (!accept) return true
-  return ContentNegotiation.media(accept, [mediaType]).length > 0
-}
-
 type Handler = (
   context: any,
   next: (context: any) => Effect.Effect<any, any, any>,
 ) => Effect.Effect<any, any, any>
 
-type Next = (context: any) => Effect.Effect<any, any, any>
+function determineSelectedFormat(
+  accept: string | null,
+  routes: UnboundedRouteWithMethod[],
+): RouteBody.Format | undefined {
+  const formats = routes
+    .map((r) => Route.descriptor(r).format)
+    .filter(Boolean) as RouteBody.Format[]
 
-const composeHandlers =
-  (handlers: Handler[]): Handler => (context, finalNext) =>
-    handlers.reduceRight<Next>(
-      (next, handler) => (ctx) => handler(ctx, next),
-      finalNext,
-    )(context)
+  const uniqueFormats = [...new Set(formats)]
+  const mediaTypes = uniqueFormats
+    .map((f) => formatToMediaType[f])
+    .filter(Boolean)
+
+  if (mediaTypes.length === 0) {
+    return undefined
+  }
+
+  if (!accept) {
+    return uniqueFormats[0]
+  }
+
+  const negotiated = ContentNegotiation.media(accept, mediaTypes)
+  if (negotiated.length === 0) return undefined
+
+  return Object.entries(formatToMediaType)
+    .find(([_, mt]) => mt === negotiated[0])?.[0] as RouteBody.Format
+}
 
 export const toWebHandlerRuntime = <R>(
   runtime: Runtime.Runtime<R>,
@@ -134,9 +136,7 @@ export const toWebHandlerRuntime = <R>(
   const runFork = Runtime.runFork(runtime)
 
   return (
-    routes: Iterable<
-      UnboundedRouteWithMethod
-    >,
+    routes: Iterable<UnboundedRouteWithMethod>,
   ): Http.WebHandler => {
     const grouped = Object.groupBy(
       routes,
@@ -172,50 +172,62 @@ export const toWebHandlerRuntime = <R>(
         )
       }
 
-      const wrapHandler = (route: UnboundedRouteWithMethod): Handler => {
-        const descriptor = Route.descriptor(route)
-        const format = descriptor.format
-        const handler = route.handler as Handler
+      const allRoutes = [...wildcards, ...methodRoutes]
+      const selectedFormat = determineSelectedFormat(accept, allRoutes)
 
-        return (context, next) => {
-          if (!acceptsFormat(accept, format)) {
-            return next(context)
-          }
-
-          const enrichedContext = { ...context, ...descriptor }
-          return Effect.map(
-            handler(enrichedContext, next),
-            (result) => {
-              if (StreamExtra.isStream(result)) {
-                return streamToResponse(
-                  result as Stream.Stream<
-                    string | Uint8Array,
-                    unknown,
-                    unknown
-                  >,
-                  format,
-                  runtime,
-                )
-              }
-              return toResponse(result, format)
-            },
-          )
-        }
+      if (selectedFormat === undefined && allRoutes.some((r) => Route.descriptor(r).format)) {
+        return Promise.resolve(
+          new Response("Not Acceptable", { status: 406 }),
+        )
       }
 
-      const notAcceptableHandler: Handler = () =>
-        Effect.succeed(new Response("Not Acceptable", { status: 406 }))
+      const createChain = (initialContext: any): Effect.Effect<any, any, any> => {
+        let index = 0
+        let currentContext = initialContext
 
-      const composedHandler = composeHandlers([
-        ...wildcards.map(wrapHandler),
-        ...methodRoutes.map(wrapHandler),
-        notAcceptableHandler,
-      ])
+        const next = (passedContext?: any): Effect.Effect<any, any, any> => {
+          if (index >= allRoutes.length) {
+            return Effect.succeed(undefined)
+          }
 
-      const effect = composedHandler(
-        { request } as any,
-        () => Effect.succeed(undefined),
-      )
+          // Use passed context if provided, otherwise use current context
+          if (passedContext !== undefined) {
+            currentContext = passedContext
+          }
+
+          const route = allRoutes[index++]
+          const descriptor = Route.descriptor(route)
+          const format = descriptor.format
+          const handler = route.handler as unknown as Handler
+
+          if (format && format !== selectedFormat) {
+            return next()
+          }
+
+          currentContext = { ...currentContext, ...descriptor }
+          return handler(currentContext, next)
+        }
+
+        return next()
+      }
+
+      const effect = Effect.gen(function*() {
+        const result = yield* createChain({ request, selectedFormat })
+
+        if (result === undefined) {
+          return new Response("Not Acceptable", { status: 406 })
+        }
+
+        if (StreamExtra.isStream(result)) {
+          return streamToResponse(
+            result as Stream.Stream<string | Uint8Array, unknown, unknown>,
+            selectedFormat,
+            runtime,
+          )
+        }
+
+        return toResponse(result, selectedFormat)
+      })
 
       const httpServerRequest = HttpServerRequest.fromWeb(request)
 

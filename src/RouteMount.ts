@@ -309,5 +309,155 @@ export namespace RouteMount {
         ...FlattenItems<M, BuilderBindings<S>, Route.RouteSet.Items<C>>,
       ]
     >
+
+    <
+      S extends Self,
+      A extends Route.RouteSet.Any,
+      B extends Route.RouteSet.Any,
+      C extends Route.RouteSet.Any,
+      D extends Route.RouteSet.Any,
+    >(
+      this: S,
+      ab: (a: EmptySet<M, BuilderBindings<S>>) => A,
+      bc: (b: A) => B,
+      cd: (c: B) => C,
+      de: (d: C) => D,
+    ): Builder<
+      {},
+      [
+        ...Items<S>,
+        ...FlattenItems<M, BuilderBindings<S>, Route.RouteSet.Items<D>>,
+      ]
+    >
+
+    <
+      S extends Self,
+      A extends Route.RouteSet.Any,
+      B extends Route.RouteSet.Any,
+      C extends Route.RouteSet.Any,
+      D extends Route.RouteSet.Any,
+      E extends Route.RouteSet.Any,
+    >(
+      this: S,
+      ab: (a: EmptySet<M, BuilderBindings<S>>) => A,
+      bc: (b: A) => B,
+      cd: (c: B) => C,
+      de: (d: C) => D,
+      ef: (e: D) => E,
+    ): Builder<
+      {},
+      [
+        ...Items<S>,
+        ...FlattenItems<M, BuilderBindings<S>, Route.RouteSet.Items<E>>,
+      ]
+    >
+
+    <
+      S extends Self,
+      A extends Route.RouteSet.Any,
+      B extends Route.RouteSet.Any,
+      C extends Route.RouteSet.Any,
+      D extends Route.RouteSet.Any,
+      E extends Route.RouteSet.Any,
+      F extends Route.RouteSet.Any,
+    >(
+      this: S,
+      ab: (a: EmptySet<M, BuilderBindings<S>>) => A,
+      bc: (b: A) => B,
+      cd: (c: B) => C,
+      de: (d: C) => D,
+      ef: (e: D) => E,
+      fg: (f: E) => F,
+    ): Builder<
+      {},
+      [
+        ...Items<S>,
+        ...FlattenItems<M, BuilderBindings<S>, Route.RouteSet.Items<F>>,
+      ]
+    >
+
+    <
+      S extends Self,
+      A extends Route.RouteSet.Any,
+      B extends Route.RouteSet.Any,
+      C extends Route.RouteSet.Any,
+      D extends Route.RouteSet.Any,
+      E extends Route.RouteSet.Any,
+      F extends Route.RouteSet.Any,
+      G extends Route.RouteSet.Any,
+    >(
+      this: S,
+      ab: (a: EmptySet<M, BuilderBindings<S>>) => A,
+      bc: (b: A) => B,
+      cd: (c: B) => C,
+      de: (d: C) => D,
+      ef: (e: D) => E,
+      fg: (f: E) => F,
+      gh: (g: F) => G,
+    ): Builder<
+      {},
+      [
+        ...Items<S>,
+        ...FlattenItems<M, BuilderBindings<S>, Route.RouteSet.Items<G>>,
+      ]
+    >
+
+    <
+      S extends Self,
+      A extends Route.RouteSet.Any,
+      B extends Route.RouteSet.Any,
+      C extends Route.RouteSet.Any,
+      D extends Route.RouteSet.Any,
+      E extends Route.RouteSet.Any,
+      F extends Route.RouteSet.Any,
+      G extends Route.RouteSet.Any,
+      H extends Route.RouteSet.Any,
+    >(
+      this: S,
+      ab: (a: EmptySet<M, BuilderBindings<S>>) => A,
+      bc: (b: A) => B,
+      cd: (c: B) => C,
+      de: (d: C) => D,
+      ef: (e: D) => E,
+      fg: (f: E) => F,
+      gh: (g: F) => G,
+      hi: (h: G) => H,
+    ): Builder<
+      {},
+      [
+        ...Items<S>,
+        ...FlattenItems<M, BuilderBindings<S>, Route.RouteSet.Items<H>>,
+      ]
+    >
+
+    <
+      S extends Self,
+      A extends Route.RouteSet.Any,
+      B extends Route.RouteSet.Any,
+      C extends Route.RouteSet.Any,
+      D extends Route.RouteSet.Any,
+      E extends Route.RouteSet.Any,
+      F extends Route.RouteSet.Any,
+      G extends Route.RouteSet.Any,
+      H extends Route.RouteSet.Any,
+      I extends Route.RouteSet.Any,
+    >(
+      this: S,
+      ab: (a: EmptySet<M, BuilderBindings<S>>) => A,
+      bc: (b: A) => B,
+      cd: (c: B) => C,
+      de: (d: C) => D,
+      ef: (e: D) => E,
+      fg: (f: E) => F,
+      gh: (g: F) => G,
+      hi: (h: G) => H,
+      ij: (i: H) => I,
+    ): Builder<
+      {},
+      [
+        ...Items<S>,
+        ...FlattenItems<M, BuilderBindings<S>, Route.RouteSet.Items<I>>,
+      ]
+    >
   }
 }

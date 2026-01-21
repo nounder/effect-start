@@ -1,4 +1,4 @@
-import { Schema } from "effect"
+import { Effect, Schedule, Schema, Stream } from "effect"
 import { Route } from "effect-start"
 
 export default Route.tree({
@@ -16,4 +16,12 @@ export default Route.tree({
         }
       }),
     ),
+  "/events": Route.get(
+    Route.text(function*() {
+      return Stream.repeat(
+        Effect.sync(() => new Date().toISOString() + "\n"),
+        Schedule.fixed(100),
+      )
+    }),
+  ),
 })

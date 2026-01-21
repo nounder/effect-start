@@ -584,6 +584,233 @@ test.describe("middleware chain", () => {
       .toBe("POST:undefined")
   })
 
+  test.it("json middleware wraps json response content", async () => {
+    const handler = RouteHttp.toWebHandler(
+      Route
+        .use(
+          Route.json(function*(_ctx, next) {
+            const value = yield* next()
+            return { data: value }
+          }),
+        )
+        .get(
+          Route.json({ message: "hello", count: 42 }),
+        ),
+    )
+    const response = await Http.fetch(handler, { path: "/test" })
+
+    test
+      .expect(response.status)
+      .toBe(200)
+    test
+      .expect(response.headers.get("Content-Type"))
+      .toBe("application/json")
+    test
+      .expect(await response.json())
+      .toEqual({ data: { message: "hello", count: 42 } })
+  })
+
+  test.it("multiple json middlewares compose in order", async () => {
+    const handler = RouteHttp.toWebHandler(
+      Route
+        .use(
+          Route.json(function*(_ctx, next) {
+            const value = yield* next()
+            return { outer: value }
+          }),
+        )
+        .use(
+          Route.json(function*(_ctx, next) {
+            const value = yield* next()
+            return { inner: value }
+          }),
+        )
+        .get(
+          Route.json({ original: true }),
+        ),
+    )
+    const response = await Http.fetch(handler, { path: "/test" })
+
+    test
+      .expect(await response.json())
+      .toEqual({ outer: { inner: { original: true } } })
+  })
+
+  test.it("json middleware passes through non-json responses", async () => {
+    const handler = RouteHttp.toWebHandler(
+      Route
+        .use(
+          Route.json(function*(_ctx, next) {
+            const value = yield* next()
+            return { wrapped: value }
+          }),
+        )
+        .get(Route.json({ type: "json" }))
+        .get(Route.text("plain text")),
+    )
+
+    const textResponse = await Http.fetch(handler, {
+      path: "/test",
+      headers: { Accept: "text/plain" },
+    })
+    test
+      .expect(textResponse.headers.get("Content-Type"))
+      .toBe("text/plain; charset=utf-8")
+    test
+      .expect(await textResponse.text())
+      .toBe("plain text")
+
+    const jsonResponse = await Http.fetch(handler, {
+      path: "/test",
+      headers: { Accept: "application/json" },
+    })
+    test
+      .expect(await jsonResponse.json())
+      .toEqual({ wrapped: { type: "json" } })
+  })
+
+  test.it("text middleware wraps text response content", async () => {
+    const handler = RouteHttp.toWebHandler(
+      Route
+        .use(
+          Route.text(function*(_ctx, next) {
+            const value = yield* next()
+            return `wrapped: ${value}`
+          }),
+        )
+        .get(Route.text("hello")),
+    )
+    const response = await Http.fetch(handler, { path: "/test" })
+
+    test
+      .expect(response.headers.get("Content-Type"))
+      .toBe("text/plain; charset=utf-8")
+    test
+      .expect(await response.text())
+      .toBe("wrapped: hello")
+  })
+
+  test.it("html middleware wraps html response content", async () => {
+    const handler = RouteHttp.toWebHandler(
+      Route
+        .use(
+          Route.html(function*(_ctx, next) {
+            const value = yield* next()
+            return `<div>${value}</div>`
+          }),
+        )
+        .get(Route.html("<span>content</span>")),
+    )
+    const response = await Http.fetch(handler, { path: "/test" })
+
+    test
+      .expect(response.headers.get("Content-Type"))
+      .toBe("text/html; charset=utf-8")
+    test
+      .expect(await response.text())
+      .toBe("<div><span>content</span></div>")
+  })
+
+  test.it("bytes middleware wraps bytes response content", async () => {
+    const encoder = new TextEncoder()
+    const decoder = new TextDecoder()
+
+    const handler = RouteHttp.toWebHandler(
+      Route
+        .use(
+          Route.bytes(function*(_ctx, next) {
+            const value = yield* next()
+            const text = decoder.decode(value)
+            return encoder.encode(`wrapped:${text}`)
+          }),
+        )
+        .get(Route.bytes(encoder.encode("data"))),
+    )
+    const response = await Http.fetch(handler, { path: "/test" })
+
+    test
+      .expect(response.headers.get("Content-Type"))
+      .toBe("application/octet-stream")
+    test
+      .expect(await response.text())
+      .toBe("wrapped:data")
+  })
+
+  test.it("chains middlewares in order", async () => {
+    const calls: string[] = []
+
+    const handler = RouteHttp.toWebHandler(
+      Route
+        .use(
+          // always called
+          Route.filter({
+            context: {
+              name: "Johnny",
+            },
+          }),
+          // called 1st
+          // next is related handler with same format (here format="text" descriptor)
+          Route.text(function*(_ctx, next) {
+            calls.push("wildcard text 1")
+            return "1st layout: " + (yield* next())
+          }),
+          // never called because it's unrelated (different format descriptor)
+          Route.json(function*(_ctx, next) {
+            calls.push("wildcard json")
+            return { data: yield* next() }
+          }),
+          // called 2nd
+          // no other related handler in the same method,
+          // continue traversing RouteHttp middleware chain
+          Route.text(function*(_ctx, next) {
+            calls.push("wildcard text 2")
+            return "2nd layout: " + (yield* next())
+          }),
+        )
+        .get(
+          // never called because doesn't pass content negotiation check in RouteHttp middleware
+          Route.json(function*(_ctx) {
+            calls.push("method json")
+            return { ok: true }
+          }),
+          // called 3rd
+          Route.text(function*(_ctx, next) {
+            calls.push("method text 1")
+            return "Prefix: " + (yield* next())
+          }),
+          // called 4th - terminal, no next() call
+          Route.text(function*(ctx) {
+            calls.push("method text 2")
+            return `Hello, ${ctx.name}`
+          }),
+        ),
+    )
+
+    const response = await Http.fetch(handler, {
+      path: "/test",
+      headers: { Accept: "text/plain" },
+    })
+
+    test
+      .expect(calls)
+      .toEqual([
+        "wildcard text 1",
+        "wildcard text 2",
+        "method text 1",
+        "method text 2",
+      ])
+
+    test
+      .expect(response.status)
+      .toBe(200)
+    test
+      .expect(response.headers.get("Content-Type"))
+      .toBe("text/plain; charset=utf-8")
+    test
+      .expect(await response.text())
+      .toBe("1st layout: 2nd layout: Prefix: Hello, Johnny")
+  })
+
   test.it("schema headers parsing works with HttpServerRequest service", async () => {
     const handler = RouteHttp.toWebHandler(
       Route.get(
@@ -797,18 +1024,20 @@ test.describe("request abort handling", () => {
     const handler = RouteHttp.toWebHandler(
       Route.get(
         Route.text(
-          Effect.gen(function*() {
-            yield* Effect.sleep("10 seconds")
-            return "should not reach"
-          }).pipe(
-            Effect.onInterrupt((interruptors) =>
-              Effect.sync(() => {
-                for (const id of interruptors) {
-                  interruptedBy = String(id)
-                }
-              })
+          Effect
+            .gen(function*() {
+              yield* Effect.sleep("10 seconds")
+              return "should not reach"
+            })
+            .pipe(
+              Effect.onInterrupt((interruptors) =>
+                Effect.sync(() => {
+                  for (const id of interruptors) {
+                    interruptedBy = String(id)
+                  }
+                })
+              ),
             ),
-          ),
         ),
       ),
     )
