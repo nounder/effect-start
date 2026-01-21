@@ -48,3 +48,19 @@ export function fetch(
   const request = new Request(url, init)
   return Promise.resolve(handler(request))
 }
+
+export function createAbortableRequest(
+  init:
+    & Omit<RequestInit, "signal">
+    & (
+      | { url: string }
+      | { path: `/${string}` }
+    ),
+): { request: Request; abort: () => void } {
+  const url = "path" in init
+    ? `http://localhost${init.path}`
+    : init.url
+  const controller = new AbortController()
+  const request = new Request(url, { ...init, signal: controller.signal })
+  return { request, abort: () => controller.abort() }
+}

@@ -1,6 +1,8 @@
 import * as test from "bun:test"
 import * as Effect from "effect/Effect"
+import * as Schedule from "effect/Schedule"
 import * as Schema from "effect/Schema"
+import * as Stream from "effect/Stream"
 import * as Http from "./Http.ts"
 import * as Route from "./Route.ts"
 import * as RouteHttp from "./RouteHttp.ts"
@@ -669,5 +671,202 @@ test.describe("toWebHandler type constraints", () => {
     const mixed = [...withMethod, ...withoutMethod] as const
     // @ts-expect-error
     RouteHttp.toWebHandler(mixed)
+  })
+})
+
+test.describe("streaming responses", () => {
+  test.it("streams text response", async () => {
+    const handler = RouteHttp.toWebHandler(
+      Route.get(
+        Route.text(function*() {
+          return Stream.make("Hello", " ", "World")
+        }),
+      ),
+    )
+    const response = await Http.fetch(handler, { path: "/stream" })
+
+    test
+      .expect(response.headers.get("Content-Type"))
+      .toBe("text/plain; charset=utf-8")
+    test
+      .expect(await response.text())
+      .toBe("Hello World")
+  })
+
+  test.it("streams html response", async () => {
+    const handler = RouteHttp.toWebHandler(
+      Route.get(
+        Route.html(function*() {
+          return Stream.make("<div>", "content", "</div>")
+        }),
+      ),
+    )
+    const response = await Http.fetch(handler, { path: "/stream" })
+
+    test
+      .expect(response.headers.get("Content-Type"))
+      .toBe("text/html; charset=utf-8")
+    test
+      .expect(await response.text())
+      .toBe("<div>content</div>")
+  })
+
+  test.it("streams bytes response", async () => {
+    const encoder = new TextEncoder()
+    const handler = RouteHttp.toWebHandler(
+      Route.get(
+        Route.bytes(function*() {
+          return Stream.make(
+            encoder.encode("chunk1"),
+            encoder.encode("chunk2"),
+          )
+        }),
+      ),
+    )
+    const response = await Http.fetch(handler, { path: "/stream" })
+
+    test
+      .expect(response.headers.get("Content-Type"))
+      .toBe("application/octet-stream")
+    test
+      .expect(await response.text())
+      .toBe("chunk1chunk2")
+  })
+
+  test.it("handles stream errors gracefully", async () => {
+    const handler = RouteHttp.toWebHandler(
+      Route.get(
+        Route.text(function*() {
+          return Stream.make("start").pipe(
+            Stream.concat(Stream.fail(new Error("stream error"))),
+          )
+        }),
+      ),
+    )
+    const response = await Http.fetch(handler, { path: "/error" })
+
+    test
+      .expect(response.status)
+      .toBe(200)
+
+    await test
+      .expect(response.text())
+      .rejects
+      .toThrow("stream error")
+  })
+})
+
+test.describe("request abort handling", () => {
+  test.it("returns 499 and runs finalizers when request is aborted", async () => {
+    let finalizerRan = false
+
+    const handler = RouteHttp.toWebHandler(
+      Route.get(
+        Route.text(function*() {
+          yield* Effect.addFinalizer(() =>
+            Effect.sync(() => {
+              finalizerRan = true
+            })
+          )
+          yield* Effect.sleep("10 seconds")
+          return "should not reach"
+        }),
+      ),
+    )
+
+    const { request, abort } = Http.createAbortableRequest({ path: "/abort" })
+
+    const responsePromise = handler(request)
+
+    await Effect.runPromise(Effect.sleep("10 millis"))
+    abort()
+
+    const response = await responsePromise
+
+    test
+      .expect(response.status)
+      .toBe(499)
+    test
+      .expect(finalizerRan)
+      .toBe(true)
+  })
+
+  test.it("uses clientAbortFiberId to identify client disconnects", async () => {
+    let interruptedBy: string | undefined
+
+    const handler = RouteHttp.toWebHandler(
+      Route.get(
+        Route.text(
+          Effect.gen(function*() {
+            yield* Effect.sleep("10 seconds")
+            return "should not reach"
+          }).pipe(
+            Effect.onInterrupt((interruptors) =>
+              Effect.sync(() => {
+                for (const id of interruptors) {
+                  interruptedBy = String(id)
+                }
+              })
+            ),
+          ),
+        ),
+      ),
+    )
+
+    const { request, abort } = Http.createAbortableRequest({ path: "/abort" })
+
+    const responsePromise = handler(request)
+
+    await Effect.runPromise(Effect.sleep("10 millis"))
+    abort()
+
+    await responsePromise
+
+    test
+      .expect(interruptedBy)
+      .toContain("-499")
+  })
+
+  test.it("interrupts streaming response when request is aborted", async () => {
+    let finalizerRan = false
+
+    const handler = RouteHttp.toWebHandler(
+      Route.get(
+        Route.text(function*() {
+          yield* Effect.addFinalizer(() =>
+            Effect.sync(() => {
+              finalizerRan = true
+            })
+          )
+          return Stream.fromSchedule(Schedule.spaced("100 millis")).pipe(
+            Stream.map((n) => `event ${n}\n`),
+            Stream.take(100),
+          )
+        }),
+      ),
+    )
+
+    const { request, abort } = Http.createAbortableRequest({ path: "/stream" })
+
+    const response = await handler(request)
+
+    test
+      .expect(response.status)
+      .toBe(200)
+
+    const reader = response.body!.getReader()
+    const firstChunk = await reader.read()
+
+    test
+      .expect(firstChunk.done)
+      .toBe(false)
+
+    abort()
+
+    await Effect.runPromise(Effect.sleep("50 millis"))
+
+    test
+      .expect(finalizerRan)
+      .toBe(true)
   })
 })

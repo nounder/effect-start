@@ -1,4 +1,5 @@
 import * as Effect from "effect/Effect"
+import type * as Stream from "effect/Stream"
 import type * as Utils from "effect/Utils"
 import * as Route from "./Route.ts"
 
@@ -59,7 +60,9 @@ export function build<
     D extends Route.RouteDescriptor.Any,
     B extends {},
     I extends Route.Route.Tuple,
-    A extends Value,
+    A extends F extends "json"
+      ? Value
+      : Value | Stream.Stream<Value, any, any>,
     E = never,
     R = never,
   >(

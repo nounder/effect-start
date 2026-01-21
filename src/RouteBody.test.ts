@@ -1,5 +1,6 @@
 import * as test from "bun:test"
 import * as Effect from "effect/Effect"
+import * as Stream from "effect/Stream"
 import * as RouteBody from "./RouteBody.ts"
 import * as RouteMount from "./RouteMount.ts"
 
@@ -44,6 +45,53 @@ test.it("enforces result value", () => {
       return 1337
     })
   )
+})
+
+test.it("accepts text stream", () => {
+  RouteMount.get(
+    text((ctx) =>
+      Effect.gen(function*() {
+        test
+          .expectTypeOf(ctx)
+          .toExtend<{
+            method: "GET"
+            format: "text"
+          }>()
+
+        return Stream.make("Hello", " ", "world!")
+      })
+    ),
+  )
+})
+
+test.it("accepts Effect<Stream<string>> for html format", () => {
+  const html = RouteBody.build<string, "html">({ format: "html" })
+
+  RouteMount.get(
+    html(function*() {
+      return Stream.make("<div>", "content", "</div>")
+    }),
+  )
+})
+
+test.it("accepts Effect<Stream<Uint8Array>> for bytes format", () => {
+  const bytes = RouteBody.build<Uint8Array, "bytes">({ format: "bytes" })
+  const encoder = new TextEncoder()
+
+  RouteMount.get(
+    bytes(function*() {
+      return Stream.make(encoder.encode("chunk"))
+    }),
+  )
+})
+
+test.it("rejects Stream for json format", () => {
+  const json = RouteBody.build<{ msg: string }, "json">({ format: "json" })
+
+  // @ts-expect-error Stream not allowed for json format
+  json(function*() {
+    return Stream.make({ msg: "hello" })
+  })
 })
 
 test.it("accepts value directly", () => {

@@ -4,11 +4,14 @@ import * as Fiber from "effect/Fiber"
 import { dual } from "effect/Function"
 import * as Predicate from "effect/Predicate"
 import * as Runtime from "effect/Runtime"
-import * as Stream from "effect/Stream"
 import {
   runForEachChunk,
   StreamTypeId,
 } from "effect/Stream"
+import type * as Stream from "effect/Stream"
+
+export const isStream = (u: unknown): u is Stream.Stream<unknown, unknown, unknown> =>
+  Predicate.hasProperty(u, StreamTypeId)
 
 /**
  * Patched version of original Stream.toReadableStreamRuntime (v3.14.4) to
