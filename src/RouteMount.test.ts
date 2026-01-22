@@ -31,7 +31,7 @@ test.it("uses GET method", async () => {
 
   test
     .expectTypeOf(route)
-    .toExtend<
+    .toMatchTypeOf<
       Route.RouteSet.RouteSet<
         {},
         {},
@@ -41,7 +41,7 @@ test.it("uses GET method", async () => {
               method: "GET"
               format: "text"
             },
-            { request: Request },
+            {},
             string
           >,
         ]
@@ -101,7 +101,7 @@ test.it("uses GET & POST method", async () => {
           method: "GET"
           format: "text"
         },
-        { request: Request },
+        {},
         string
       >
     >()
@@ -114,7 +114,7 @@ test.it("uses GET & POST method", async () => {
           method: "POST"
           format: "text"
         },
-        { request: Request },
+        {},
         string
       >
     >()
@@ -385,7 +385,6 @@ test.it("schemaHeaders flattens method into route descriptor", () => {
       Route.Route.Route<
         { method: "*" },
         {
-          request: Request
           headers: {
             readonly hello: string
           }
@@ -403,7 +402,6 @@ test.it("schemaHeaders flattens method into route descriptor", () => {
       Route.Route.Route<
         { method: "GET" },
         {
-          request: Request
           headers: {
             readonly hello: string
             readonly "x-custom-header": string
@@ -425,7 +423,6 @@ test.it("schemaHeaders flattens method into route descriptor", () => {
           format: "html"
         },
         {
-          request: Request
           headers: {
             readonly hello: string
             readonly "x-custom-header": string
@@ -442,9 +439,8 @@ test.it("schemaHeaders flattens method into route descriptor", () => {
       Route.Route.Route<
         { method: "POST" },
         {
-          request: Request
           headers: {
-            hello: string
+            readonly hello: string
           }
           postOnly: string
         },
