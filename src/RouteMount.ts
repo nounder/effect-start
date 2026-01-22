@@ -251,6 +251,7 @@ export namespace RouteMount {
   }
 
   // Flatten items: merge method into descriptor and accumulate bindings through the chain
+  // `request` is omitted from bindings since it's implicit (always available)
   export type FlattenItems<
     M extends Method,
     B,
@@ -259,8 +260,14 @@ export namespace RouteMount {
     Route.Route.Route<infer D, infer RB, infer A, infer E, infer R>,
     ...infer Tail extends Route.Route.Tuple,
   ] ? [
-      Route.Route.Route<{ method: M } & D, B & RB, A, E, R>,
-      ...FlattenItems<M, B & RB, Tail>,
+      Route.Route.Route<
+        Types.Simplify<{ method: M } & D> & {},
+        Types.Simplify<Omit<B & RB, "request">>,
+        A,
+        E,
+        R
+      >,
+      ...FlattenItems<M, Types.Simplify<B & RB>, Tail>,
     ]
     : []
 

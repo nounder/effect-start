@@ -2189,3 +2189,226 @@ test.describe("tracing", () => {
       .toBe("/users/:id")
   })
 })
+
+test.describe("RouteTree layer routes", () => {
+  test.it("layer routes execute in order before path routes", async () => {
+    const calls: string[] = []
+
+    const tree = RouteTree.make({
+      "*": Route
+        .use(Route.filter(function*() {
+          calls.push("layer1")
+          return { context: {} }
+        }))
+        .use(Route.filter(function*() {
+          calls.push("layer2")
+          return { context: {} }
+        })),
+      "/test": Route.get(Route.text(function*() {
+        calls.push("handler")
+        return "ok"
+      })),
+    })
+
+    const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
+    const response = await Http.fetch(handles["/test"], { path: "/test" })
+
+    test
+      .expect(response.status)
+      .toBe(200)
+    test
+      .expect(calls)
+      .toEqual(["layer1", "layer2", "handler"])
+  })
+
+  test.it("layer routes apply to all paths in the tree", async () => {
+    const calls: string[] = []
+
+    const tree = RouteTree.make({
+      "*": Route.use(Route.filter(function*() {
+        calls.push("layer")
+        return { context: {} }
+      })),
+      "/users": Route.get(Route.text(function*() {
+        calls.push("users")
+        return "users"
+      })),
+      "/admin": Route.get(Route.text(function*() {
+        calls.push("admin")
+        return "admin"
+      })),
+    })
+
+    const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
+
+    calls.length = 0
+    await Http.fetch(handles["/users"], { path: "/users" })
+    test
+      .expect(calls)
+      .toEqual(["layer", "users"])
+
+    calls.length = 0
+    await Http.fetch(handles["/admin"], { path: "/admin" })
+    test
+      .expect(calls)
+      .toEqual(["layer", "admin"])
+  })
+
+  test.it("layer execution does not leak between requests", async () => {
+    let layerCallCount = 0
+
+    const tree = RouteTree.make({
+      "*": Route.use(Route.filter(function*() {
+        layerCallCount++
+        return { context: {} }
+      })),
+      "/test": Route.get(Route.text("ok")),
+    })
+
+    const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
+
+    layerCallCount = 0
+    await Http.fetch(handles["/test"], { path: "/test" })
+    test
+      .expect(layerCallCount)
+      .toBe(1)
+
+    await Http.fetch(handles["/test"], { path: "/test" })
+    test
+      .expect(layerCallCount)
+      .toBe(2)
+  })
+
+  test.it("nested tree inherits parent layer routes", async () => {
+    const calls: string[] = []
+
+    const apiTree = RouteTree.make({
+      "/users": Route.get(Route.text(function*() {
+        calls.push("users")
+        return "users"
+      })),
+    })
+
+    const tree = RouteTree.make({
+      "*": Route.use(Route.filter(function*() {
+        calls.push("root-layer")
+        return { context: {} }
+      })),
+      "/api": apiTree,
+    })
+
+    const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
+    await Http.fetch(handles["/api/users"], { path: "/api/users" })
+
+    test
+      .expect(calls)
+      .toEqual(["root-layer", "users"])
+  })
+
+  test.it("layer routes can short-circuit with error", () =>
+    Effect
+      .gen(function*() {
+        const runtime = yield* Effect.runtime<TestLogger.TestLogger>()
+        let handlerExecuted = false
+
+        const tree = RouteTree.make({
+          "*": Route.use(Route.filter(function*() {
+            return yield* Effect.fail(new Error("layer rejected"))
+          })),
+          "/test": Route.get(Route.text(function*() {
+            handlerExecuted = true
+            return "should not reach"
+          })),
+        })
+
+        const handles = Object.fromEntries(RouteHttp.walkHandles(tree, runtime))
+
+        const response = yield* Effect.promise(() =>
+          Http.fetch(handles["/test"], { path: "/test" })
+        )
+
+        test
+          .expect(response.status)
+          .toBe(500)
+
+        test
+          .expect(handlerExecuted)
+          .toBe(false)
+
+        const text = yield* Effect.promise(() => response.text())
+        test
+          .expect(text)
+          .toContain("layer rejected")
+
+        const messages = yield* TestLogger.messages
+        test
+          .expect(messages.some((m) => m.includes("layer rejected")))
+          .toBe(true)
+      })
+      .pipe(Effect.provide(TestLogger.layer()), Effect.runPromise))
+
+  test.it("layer middleware wraps response content with json", async () => {
+    const tree = RouteTree.make({
+      "*": Route.use(
+        Route.json(function*(_ctx, next) {
+          const value = yield* next()
+          return { wrapped: value }
+        }),
+      ),
+      "/data": Route.get(Route.json({ original: true })),
+    })
+
+    const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
+    const response = await Http.fetch(handles["/data"], { path: "/data" })
+
+    test
+      .expect(await response.json())
+      .toEqual({ wrapped: { original: true } })
+  })
+
+  test.it("layer middleware wraps response content with text", async () => {
+    const tree = RouteTree.make({
+      "*": Route.use(
+        Route.text(function*(_ctx, next) {
+          const value = yield* next()
+          return `Layout: ${value}`
+        }),
+      ),
+      "/page": Route.get(Route.text("Page Content")),
+    })
+
+    const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
+    const response = await Http.fetch(handles["/page"], { path: "/page" })
+
+    test
+      .expect(await response.text())
+      .toBe("Layout: Page Content")
+  })
+
+  test.it("multiple layers execute in definition order", async () => {
+    const calls: string[] = []
+
+    const tree = RouteTree.make({
+      "*": Route
+        .use(Route.filter(function*() {
+          calls.push("layer1")
+          return { context: {} }
+        }))
+        .use(Route.filter(function*() {
+          calls.push("layer2")
+          return { context: {} }
+        })),
+      "/test": Route.get(Route.text(function*() {
+        calls.push("handler")
+        return "ok"
+      })),
+    })
+
+    const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
+    await Http.fetch(handles["/test"], { path: "/test" })
+
+    test
+      .expect(calls)
+      .toEqual(["layer1", "layer2", "handler"])
+  })
+})

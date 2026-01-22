@@ -451,6 +451,7 @@ export const toWebHandler: (
 
 export function* walkHandles(
   tree: RouteTree.RouteTree,
+  runtime: Runtime.Runtime<never> = Runtime.defaultRuntime,
 ): Generator<[path: string, handler: Http.WebHandler]> {
   const pathGroups = new Map<string, RouteMount.MountedRoute[]>()
 
@@ -461,7 +462,8 @@ export function* walkHandles(
     pathGroups.set(path, group)
   }
 
+  const toHandler = toWebHandlerRuntime(runtime)
   for (const [path, routes] of pathGroups) {
-    yield [path, toWebHandler(routes as Iterable<UnboundedRouteWithMethod>)]
+    yield [path, toHandler(routes as Iterable<UnboundedRouteWithMethod>)]
   }
 }
