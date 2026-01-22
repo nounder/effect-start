@@ -1,11 +1,8 @@
-// @ts-nocheck
-import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
-import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
 import type * as Bun from "bun"
 import * as Array from "effect/Array"
+import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
-import * as Predicate from "effect/Predicate"
 import * as Hyper from "../hyper/Hyper.ts"
 import * as HyperHtml from "../hyper/HyperHtml.ts"
 import * as Random from "../Random.ts"
@@ -13,106 +10,148 @@ import * as Route from "../Route.ts"
 import * as RouterPattern from "../RouterPattern.ts"
 import * as BunHttpServer from "./BunHttpServer.ts"
 
-const BunHandlerTypeId: unique symbol = Symbol.for("effect-start/BunHandler")
-
 const INTERNAL_FETCH_HEADER = "x-effect-start-internal-fetch"
 
-export type BunHandler =
-  & Route.RouteHandler<string, Router.RouterError, BunHttpServer.BunHttpServer>
-  & {
-    [BunHandlerTypeId]: typeof BunHandlerTypeId
-    internalPathPrefix: string
-    load: () => Promise<Bun.HTMLBundle>
-  }
+export class BunRouteError extends Data.TaggedError("BunRouteError")<{
+  reason: "ProxyError" | "UnsupportedPattern"
+  pattern: string
+  message: string
+}> {}
 
-export function isBunHandler(input: unknown): input is BunHandler {
-  return typeof input === "function"
-    && Predicate.hasProperty(input, BunHandlerTypeId)
+export type BunDescriptors = {
+  bunPrefix: string
+  bunLoad: () => Promise<Bun.HTMLBundle>
+}
+
+export function descriptors(
+  route: Route.Route.Route,
+): BunDescriptors | undefined {
+  const descriptor = Route.descriptor(route) as Partial<BunDescriptors>
+  if (
+    typeof descriptor.bunPrefix === "string"
+    && typeof descriptor.bunLoad === "function"
+  ) {
+    return descriptor as BunDescriptors
+  }
+  return undefined
 }
 
 export function bundle(
   load: () => Promise<Bun.HTMLBundle | { default: Bun.HTMLBundle }>,
-): BunHandler {
-  const internalPathPrefix = `/.BunRoute-${Random.token(6)}`
+) {
+  const bunPrefix = `/.BunRoute-${Random.token(6)}`
+  const bunLoad = () => load().then(mod => "default" in mod ? mod.default : mod)
 
-  const handler = (context: Route.RouteContext, next: Route.RouteNext) =>
-    Effect.gen(function*() {
-      const request = yield* HttpServerRequest.HttpServerRequest
-      const originalRequest = request.source as Request
+  return function<
+    D extends Route.RouteDescriptor.Any,
+    B extends {},
+    I extends Route.Route.Tuple,
+  >(
+    self: Route.RouteSet.RouteSet<D, B, I>,
+  ): Route.RouteSet.RouteSet<
+    D,
+    B,
+    [
+      ...I,
+      Route.Route.Route<
+        BunDescriptors,
+        {},
+        string,
+        BunRouteError,
+        BunHttpServer.BunHttpServer
+      >,
+    ]
+  > {
+    const handler: Route.Route.Handler<
+      D & B & Route.ExtractBindings<I> & { request: Request },
+      string,
+      BunRouteError,
+      BunHttpServer.BunHttpServer
+    > = (context, next) =>
+      Effect.gen(function*() {
+        const originalRequest = context.request
 
-      if (
-        originalRequest.headers.get(INTERNAL_FETCH_HEADER) === "true"
-      ) {
-        return yield* Effect.fail(
-          new Router.RouterError({
-            reason: "ProxyError",
-            pattern: context.url.pathname,
-            message:
-              "Request to internal Bun server was caught by BunRoute handler. This should not happen. Please report a bug.",
-          }),
-        )
-      }
-
-      const bunServer = yield* BunHttpServer.BunHttpServer
-
-      const internalPath = `${internalPathPrefix}${context.url.pathname}`
-      const internalUrl = new URL(internalPath, bunServer.server.url)
-
-      const headers = new Headers(originalRequest.headers)
-      headers.set(INTERNAL_FETCH_HEADER, "true")
-
-      const proxyRequest = new Request(internalUrl, {
-        method: originalRequest.method,
-        headers,
-      })
-
-      const response = yield* Effect.tryPromise({
-        try: () => fetch(proxyRequest),
-        catch: (error) =>
-          new Router.RouterError({
-            reason: "ProxyError",
-            pattern: internalPath,
-            message: `Failed to fetch internal HTML bundle: ${String(error)}`,
-          }),
-      })
-
-      let html = yield* Effect.tryPromise({
-        try: () => response.text(),
-        catch: (error) =>
-          new Router.RouterError({
-            reason: "ProxyError",
-            pattern: internalPath,
-            message: String(error),
-          }),
-      })
-
-      const children = yield* next()
-      let childrenHtml = ""
-      if (children != null) {
-        if (HttpServerResponse.isServerResponse(children)) {
-          const webResponse = HttpServerResponse.toWeb(children)
-          childrenHtml = yield* Effect.promise(() => webResponse.text())
-        } else if (Hyper.isGenericJsxObject(children)) {
-          childrenHtml = HyperHtml.renderToString(children)
-        } else {
-          childrenHtml = String(children)
+        if (
+          originalRequest.headers.get(INTERNAL_FETCH_HEADER) === "true"
+        ) {
+          const url = new URL(originalRequest.url)
+          return yield* Effect.fail(
+            new BunRouteError({
+              reason: "ProxyError",
+              pattern: url.pathname,
+              message:
+                "Request to internal Bun server was caught by BunRoute handler. This should not happen. Please report a bug.",
+            }),
+          )
         }
-      }
 
-      html = html.replace(/%yield%/g, childrenHtml)
-      html = html.replace(
-        /%slots\.(\w+)%/g,
-        (_, name) => context.slots[name] ?? "",
-      )
+        const bunServer = yield* BunHttpServer.BunHttpServer
+        const url = new URL(originalRequest.url)
 
-      return html
-    })
+        const internalPath = `${bunPrefix}${url.pathname}`
+        const internalUrl = new URL(internalPath, bunServer.server.url)
 
-  return Object.assign(handler, {
-    [BunHandlerTypeId]: BunHandlerTypeId,
-    internalPathPrefix,
-    load: () => load().then(mod => "default" in mod ? mod.default : mod),
-  }) as BunHandler
+        const headers = new Headers(originalRequest.headers)
+        headers.set(INTERNAL_FETCH_HEADER, "true")
+
+        const proxyRequest = new Request(internalUrl, {
+          method: originalRequest.method,
+          headers,
+        })
+
+        const response = yield* Effect.tryPromise({
+          try: () => fetch(proxyRequest),
+          catch: (error) =>
+            new BunRouteError({
+              reason: "ProxyError",
+              pattern: internalPath,
+              message: `Failed to fetch internal HTML bundle: ${String(error)}`,
+            }),
+        })
+
+        let html = yield* Effect.tryPromise({
+          try: () => response.text(),
+          catch: (error) =>
+            new BunRouteError({
+              reason: "ProxyError",
+              pattern: internalPath,
+              message: String(error),
+            }),
+        })
+
+        const children = yield* next(context)
+
+        let childrenHtml = ""
+        if (children != null) {
+          if ((children as unknown) instanceof Response) {
+            childrenHtml = yield* Effect.promise(() =>
+              (children as unknown as Response).text()
+            )
+          } else if (Hyper.isGenericJsxObject(children)) {
+            childrenHtml = HyperHtml.renderToString(children)
+          } else {
+            childrenHtml = String(children)
+          }
+        }
+
+        html = html.replace(/%children%/g, childrenHtml)
+
+        return html
+      })
+
+    const route = Route.make<
+      BunDescriptors,
+      {},
+      string,
+      BunRouteError,
+      BunHttpServer.BunHttpServer
+    >(handler as any, { bunPrefix, bunLoad })
+
+    return Route.set(
+      [...Route.items(self), route] as any,
+      Route.descriptor(self),
+    )
+  }
 }
 
 type BunServerFetchHandler = (
@@ -126,14 +165,6 @@ type BunServerRouteHandler =
   | Partial<Record<Bun.Serve.HTTPMethod, BunServerFetchHandler>>
 
 export type BunRoutes = Record<string, BunServerRouteHandler>
-
-type MethodHandlers = Partial<
-  Record<Bun.Serve.HTTPMethod, BunServerFetchHandler>
->
-
-function isMethodHandlers(value: unknown): value is MethodHandlers {
-  return typeof value === "object" && value !== null && !("index" in value)
-}
 
 /**
  * Validates that a route pattern can be implemented with Bun.serve routes.
@@ -156,7 +187,7 @@ function isMethodHandlers(value: unknown): value is MethodHandlers {
 
 export function validateBunPattern(
   pattern: string,
-): Option.Option<Router.RouterError> {
+): Option.Option<BunRouteError> {
   const segments = RouterPattern.parse(pattern)
 
   const unsupported = Array.findFirst(segments, (seg) => {
@@ -169,7 +200,7 @@ export function validateBunPattern(
 
   if (Option.isSome(unsupported)) {
     return Option.some(
-      new Router.RouterError({
+      new BunRouteError({
         reason: "UnsupportedPattern",
         pattern,
         message:

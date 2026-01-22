@@ -267,9 +267,9 @@ export const toWebHandlerRuntime = <R>(
     return (request) => {
       const method = request.method.toUpperCase()
       const accept = request.headers.get("accept")
-      const methodRoutes = methodGroups[method]
+      const methodRoutes = methodGroups[method] ?? []
 
-      if (!methodRoutes || methodRoutes.length === 0) {
+      if (methodRoutes.length === 0 && wildcards.length === 0) {
         return Promise.resolve(
           new Response("Method Not Allowed", { status: 405 }),
         )
@@ -452,20 +452,16 @@ export const toWebHandler: (
 export function* walkHandles(
   tree: RouteTree.RouteTree,
 ): Generator<[path: string, handler: Http.WebHandler]> {
-  const pathGroups = new Map<
-    string,
-    Array<Route.Route.With<{ path: string; method: string }>>
-  >()
+  const pathGroups = new Map<string, RouteMount.MountedRoute[]>()
 
   for (const route of RouteTree.walk(tree)) {
-    const descriptor = Route.descriptor(route)
-    const path = descriptor.path
-    const routes = pathGroups.get(path) ?? []
-    routes.push(route)
-    pathGroups.set(path, routes)
+    const path = Route.descriptor(route).path
+    const group = pathGroups.get(path) ?? []
+    group.push(route)
+    pathGroups.set(path, group)
   }
 
   for (const [path, routes] of pathGroups) {
-    yield [path, toWebHandler(routes)]
+    yield [path, toWebHandler(routes as Iterable<UnboundedRouteWithMethod>)]
   }
 }

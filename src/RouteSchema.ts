@@ -22,8 +22,7 @@ export const RequestBodyError = (
   cause: unknown,
 ): RequestBodyError => ({ _tag: "RequestBodyError", reason, cause })
 
-export const File = Schema.Struct({
-  _tag: Schema.Literal("File"),
+export const File = Schema.TaggedStruct("File", {
   key: Schema.String,
   name: Schema.String,
   contentType: Schema.String,

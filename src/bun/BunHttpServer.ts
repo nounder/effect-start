@@ -201,17 +201,33 @@ export function layerRoutes(
   return Layer.effectDiscard(
     Effect.gen(function*() {
       const bunServer = yield* BunHttpServer
-      const routes: BunRoute.BunRoutes = {}
-      for (const [path, handler] of RouteHttp.walkHandles(tree)) {
+      const runtime = yield* Effect.runtime<BunHttpServer>()
+      const toWebHandler = RouteHttp.toWebHandlerRuntime(runtime)
+
+      const bunRoutes: BunRoute.BunRoutes = {}
+      const pathGroups = new Map<string, RouteMount.MountedRoute[]>()
+
+      for (const route of RouteTree.walk(tree)) {
+        const bunDescriptors = BunRoute.descriptors(route)
+        if (bunDescriptors) {
+          const htmlBundle = yield* Effect.promise(bunDescriptors.bunLoad)
+          bunRoutes[`${bunDescriptors.bunPrefix}/*`] = htmlBundle
+        }
+
+        const path = Route.descriptor(route).path
+        const group = pathGroups.get(path) ?? []
+        group.push(route)
+        pathGroups.set(path, group)
+      }
+
+      for (const [path, routes] of pathGroups) {
+        const handler = toWebHandler(routes)
         for (const bunPath of PathPattern.toBun(path)) {
-          routes[bunPath] = handler
+          bunRoutes[bunPath] = handler
         }
       }
 
-      // TODO: think how can we define routes upfront rather
-      // than add them after startup?
-      // now that we have Rooutes.Route thats should be possible
-      bunServer.addRoutes(routes)
+      bunServer.addRoutes(bunRoutes)
     }),
   )
 }
