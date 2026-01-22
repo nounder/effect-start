@@ -15,6 +15,22 @@ export const isStream = (
 ): u is Stream.Stream<unknown, unknown, unknown> =>
   Predicate.hasProperty(u, StreamTypeId)
 
+export type IsStream<T> = T extends Stream.Stream<infer _A, infer _E, infer _R>
+  ? true
+  : false
+
+export type Chunk<T> = T extends Stream.Stream<infer A, infer _E, infer _R>
+  ? A
+  : never
+
+export type StreamError<T> = T extends Stream.Stream<infer _A, infer E, infer _R>
+  ? E
+  : never
+
+export type Requirements<T> = T extends Stream.Stream<infer _A, infer _E, infer R>
+  ? R
+  : never
+
 /**
  * Patched version of original Stream.toReadableStreamRuntime (v3.14.4) to
  * fix an issue in Bun when native stream controller stops working when request

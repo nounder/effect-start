@@ -67,3 +67,10 @@ export type Simplify<T> = {
     ? { -readonly [P in keyof T[K]]: T[K][P] }
     : T[K]
 } extends infer U ? { [K in keyof U]: U[K] } : never
+
+export const concatBytes = (a: Uint8Array, b: Uint8Array): Uint8Array => {
+  const result = new Uint8Array(a.byteLength + b.byteLength)
+  result.set(a)
+  result.set(b, a.byteLength)
+  return result
+}
