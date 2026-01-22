@@ -1,6 +1,5 @@
 import * as test from "bun:test"
 import * as Effect from "effect/Effect"
-import * as Logger from "effect/Logger"
 import * as Ref from "effect/Ref"
 import * as TestLogger from "./TestLogger.ts"
 
@@ -9,12 +8,10 @@ test.it("TestLogger captures log messages", () =>
     .gen(function*() {
       const logger = yield* TestLogger.TestLogger
 
-      // Log some messages
       yield* Effect.logError("This is an error")
       yield* Effect.logWarning("This is a warning")
       yield* Effect.logInfo("This is info")
 
-      // Read captured messages
       const messages = yield* Ref.get(logger.messages)
 
       test

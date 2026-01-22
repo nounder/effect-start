@@ -8,6 +8,7 @@ import * as Route from "./Route.ts"
 import * as RouteHttp from "./RouteHttp.ts"
 import * as RouteMount from "./RouteMount.ts"
 import * as RouteSchema from "./RouteSchema.ts"
+import * as TestLogger from "./testing/TestLogger.ts"
 
 test.describe(`${RouteSchema.schemaHeaders.name}()`, () => {
   test.it(`${RouteSchema.schemaHeaders.name} merges`, () => {
@@ -271,33 +272,44 @@ test.describe(`${RouteSchema.schemaBodyJson.name}()`, () => {
       .toEqual({ name: "Alice", age: 30 })
   })
 
-  test.it("returns error for invalid JSON body", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route.post(
-        RouteSchema.schemaBodyJson(
-          Schema.Struct({
-            name: Schema.String,
-            age: Schema.Number,
-          }),
-        ),
-        Route.json(function*(ctx) {
-          return ctx.body
-        }),
-      ),
-    )
-    const response = await Http.fetch(handler, {
-      path: "/test",
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ name: "Alice", age: "not a number" }),
-    })
+  test.it("returns error for invalid JSON body", () =>
+    Effect
+      .gen(function*() {
+        const runtime = yield* Effect.runtime<TestLogger.TestLogger>()
+        const handler = RouteHttp.toWebHandlerRuntime(runtime)(
+          Route.post(
+            RouteSchema.schemaBodyJson(
+              Schema.Struct({
+                name: Schema.String,
+                age: Schema.Number,
+              }),
+            ),
+            Route.json(function*(ctx) {
+              return ctx.body
+            }),
+          ),
+        )
+        const response = yield* Effect.promise(() =>
+          Http.fetch(handler, {
+            path: "/test",
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ name: "Alice", age: "not a number" }),
+          })
+        )
 
-    test
-      .expect(response.status)
-      .toBe(400)
-  })
+        test
+          .expect(response.status)
+          .toBe(400)
+
+        const messages = yield* TestLogger.messages
+        test
+          .expect(messages.some((m) => m.includes("ParseError")))
+          .toBe(true)
+      })
+      .pipe(Effect.provide(TestLogger.layer()), Effect.runPromise))
 })
 
 test.describe(`${RouteSchema.schemaBodyUrlParams.name}()`, () => {

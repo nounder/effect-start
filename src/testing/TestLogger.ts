@@ -5,6 +5,7 @@ import * as FiberRef from "effect/FiberRef"
 import * as HashSet from "effect/HashSet"
 import * as Layer from "effect/Layer"
 import * as Logger from "effect/Logger"
+import * as MutableRef from "effect/MutableRef"
 import * as Ref from "effect/Ref"
 
 export type TestLoggerContext = {
@@ -21,16 +22,17 @@ export function layer(): Layer.Layer<TestLogger> {
     TestLogger,
     Effect.gen(function*() {
       const messages = yield* Ref.make<Array<string>>([])
+      const mutableRef = (messages as any).ref as MutableRef.MutableRef<
+        Array<string>
+      >
 
       const customLogger = Logger.make(({ message, logLevel, cause }) => {
         const causeStr = !Cause.isEmpty(cause)
           ? ` ${Cause.pretty(cause)}`
           : ""
-        Effect.runSync(
-          Ref.update(
-            messages,
-            (msgs) => [...msgs, `[${logLevel._tag}] ${String(message)}${causeStr}`],
-          ),
+        MutableRef.update(
+          mutableRef,
+          (msgs) => [...msgs, `[${logLevel._tag}] ${String(message)}${causeStr}`],
         )
       })
 
@@ -43,9 +45,7 @@ export function layer(): Layer.Layer<TestLogger> {
           ),
       )
 
-      return {
-        messages,
-      }
+      return { messages }
     }),
   )
 }

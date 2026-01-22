@@ -109,42 +109,64 @@ test.it("handles method-specific routes", async () => {
     .toBe("post resource")
 })
 
-test.it("handles errors by returning 500 response", async () => {
-  const handler = RouteHttp.toWebHandler(
-    Route.get(
-      Route.text(function*(): Generator<any, string, any> {
-        return yield* Effect.fail(new Error("Something went wrong"))
-      }),
-    ),
-  )
-  const response = await Http.fetch(handler, { path: "/error" })
+test.it("handles errors by returning 500 response", () =>
+  Effect
+    .gen(function*() {
+      const runtime = yield* Effect.runtime<TestLogger.TestLogger>()
+      const handler = RouteHttp.toWebHandlerRuntime(runtime)(
+        Route.get(
+          Route.text(function*(): Generator<any, string, any> {
+            return yield* Effect.fail(new Error("Something went wrong"))
+          }),
+        ),
+      )
+      const response = yield* Effect.promise(() =>
+        Http.fetch(handler, { path: "/error" })
+      )
 
-  test
-    .expect(response.status)
-    .toBe(500)
+      test
+        .expect(response.status)
+        .toBe(500)
 
-  const text = await response.text()
-  test
-    .expect(text)
-    .toContain("Something went wrong")
-})
+      const text = yield* Effect.promise(() => response.text())
+      test
+        .expect(text)
+        .toContain("Something went wrong")
 
-test.it("handles defects by returning 500 response", async () => {
-  const handler = RouteHttp.toWebHandler(
-    Route.get(
-      Route.text(function*() {
-        return yield* Effect.die("Unexpected error")
+      const messages = yield* TestLogger.messages
+      test
+        .expect(messages.some((m) => m.includes("Something went wrong")))
+        .toBe(true)
+    })
+    .pipe(Effect.provide(TestLogger.layer()), Effect.runPromise))
 
-        return "Hello"
-      }),
-    ),
-  )
-  const response = await Http.fetch(handler, { path: "/defect" })
+test.it("handles defects by returning 500 response", () =>
+  Effect
+    .gen(function*() {
+      const runtime = yield* Effect.runtime<TestLogger.TestLogger>()
+      const handler = RouteHttp.toWebHandlerRuntime(runtime)(
+        Route.get(
+          Route.text(function*() {
+            return yield* Effect.die("Unexpected error")
 
-  test
-    .expect(response.status)
-    .toBe(500)
-})
+            return "Hello"
+          }),
+        ),
+      )
+      const response = yield* Effect.promise(() =>
+        Http.fetch(handler, { path: "/defect" })
+      )
+
+      test
+        .expect(response.status)
+        .toBe(500)
+
+      const messages = yield* TestLogger.messages
+      test
+        .expect(messages.some((m) => m.includes("Unexpected error")))
+        .toBe(true)
+    })
+    .pipe(Effect.provide(TestLogger.layer()), Effect.runPromise))
 
 test.it("includes descriptor properties in handler context", async () => {
   let capturedMethod: string | undefined
@@ -488,23 +510,34 @@ test.describe("middleware chain", () => {
       .toBe("doubled=20")
   })
 
-  test.it("middleware error short-circuits chain", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route
-        .use(Route.filter(function*() {
-          return yield* Effect.fail(new Error("middleware failed"))
-        }))
-        .get(Route.text("should not reach")),
-    )
-    const response = await Http.fetch(handler, { path: "/test" })
+  test.it("middleware error short-circuits chain", () =>
+    Effect
+      .gen(function*() {
+        const runtime = yield* Effect.runtime<TestLogger.TestLogger>()
+        const handler = RouteHttp.toWebHandlerRuntime(runtime)(
+          Route
+            .use(Route.filter(function*() {
+              return yield* Effect.fail(new Error("middleware failed"))
+            }))
+            .get(Route.text("should not reach")),
+        )
+        const response = yield* Effect.promise(() =>
+          Http.fetch(handler, { path: "/test" })
+        )
 
-    test
-      .expect(response.status)
-      .toBe(500)
-    test
-      .expect(await response.text())
-      .toContain("middleware failed")
-  })
+        test
+          .expect(response.status)
+          .toBe(500)
+        test
+          .expect(yield* Effect.promise(() => response.text()))
+          .toContain("middleware failed")
+
+        const messages = yield* TestLogger.messages
+        test
+          .expect(messages.some((m) => m.includes("middleware failed")))
+          .toBe(true)
+      })
+      .pipe(Effect.provide(TestLogger.layer()), Effect.runPromise))
 
   test.it("applies middleware to all methods", async () => {
     const handler = RouteHttp.toWebHandler(
@@ -1130,47 +1163,65 @@ test.describe("schema handlers", () => {
       })
   })
 
-  test.it("returns 400 on schema validation failure", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route.get(
-        RouteSchema.schemaSearchParams(
-          Schema.Struct({
-            count: Schema.NumberFromString,
-          }),
-        ),
-        Route.text("ok"),
-      ),
-    )
+  test.it("returns 400 on schema validation failure", () =>
+    Effect
+      .gen(function*() {
+        const runtime = yield* Effect.runtime<TestLogger.TestLogger>()
+        const handler = RouteHttp.toWebHandlerRuntime(runtime)(
+          Route.get(
+            RouteSchema.schemaSearchParams(
+              Schema.Struct({
+                count: Schema.NumberFromString,
+              }),
+            ),
+            Route.text("ok"),
+          ),
+        )
 
-    const response = await Http.fetch(handler, {
-      path: "/test?count=not-a-number",
-    })
+        const response = yield* Effect.promise(() =>
+          Http.fetch(handler, { path: "/test?count=not-a-number" })
+        )
 
-    test
-      .expect(response.status)
-      .toBe(400)
-  })
+        test
+          .expect(response.status)
+          .toBe(400)
 
-  test.it("handles missing required fields", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route.get(
-        RouteSchema.schemaHeaders(
-          Schema.Struct({
-            "x-required": Schema.String,
-          }),
-        ),
-        Route.text("ok"),
-      ),
-    )
+        const messages = yield* TestLogger.messages
+        test
+          .expect(messages.some((m) => m.includes("ParseError")))
+          .toBe(true)
+      })
+      .pipe(Effect.provide(TestLogger.layer()), Effect.runPromise))
 
-    const response = await Http.fetch(handler, {
-      path: "/test",
-    })
+  test.it("handles missing required fields", () =>
+    Effect
+      .gen(function*() {
+        const runtime = yield* Effect.runtime<TestLogger.TestLogger>()
+        const handler = RouteHttp.toWebHandlerRuntime(runtime)(
+          Route.get(
+            RouteSchema.schemaHeaders(
+              Schema.Struct({
+                "x-required": Schema.String,
+              }),
+            ),
+            Route.text("ok"),
+          ),
+        )
 
-    test
-      .expect(response.status)
-      .toBe(400)
-  })
+        const response = yield* Effect.promise(() =>
+          Http.fetch(handler, { path: "/test" })
+        )
+
+        test
+          .expect(response.status)
+          .toBe(400)
+
+        const messages = yield* TestLogger.messages
+        test
+          .expect(messages.some((m) => m.includes("x-required")))
+          .toBe(true)
+      })
+      .pipe(Effect.provide(TestLogger.layer()), Effect.runPromise))
 
   test.it("parses multipart form data with file", async () => {
     const handler = RouteHttp.toWebHandler(
@@ -1408,43 +1459,54 @@ test.describe("schema handlers", () => {
       .toBe("John")
   })
 
-  test.it("schema validation: multiple values with Schema.String fails with detailed error", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route.post(
-        RouteSchema.schemaBodyMultipart(
-          Schema.Struct({
-            name: Schema.String,
-          }),
-        ),
-        Route.json(function*(ctx) {
-          return { name: ctx.body.name }
-        }),
-      ),
-    )
+  test.it("schema validation: multiple values with Schema.String fails with detailed error", () =>
+    Effect
+      .gen(function*() {
+        const runtime = yield* Effect.runtime<TestLogger.TestLogger>()
+        const handler = RouteHttp.toWebHandlerRuntime(runtime)(
+          Route.post(
+            RouteSchema.schemaBodyMultipart(
+              Schema.Struct({
+                name: Schema.String,
+              }),
+            ),
+            Route.json(function*(ctx) {
+              return { name: ctx.body.name }
+            }),
+          ),
+        )
 
-    const formData = new FormData()
-    formData.append("name", "John")
-    formData.append("name", "Jane")
+        const formData = new FormData()
+        formData.append("name", "John")
+        formData.append("name", "Jane")
 
-    const response = await Http.fetch(handler, {
-      path: "/test",
-      method: "POST",
-      body: formData,
-    })
+        const response = yield* Effect.promise(() =>
+          Http.fetch(handler, {
+            path: "/test",
+            method: "POST",
+            body: formData,
+          })
+        )
 
-    test
-      .expect(response.status)
-      .toBe(400)
+        test
+          .expect(response.status)
+          .toBe(400)
 
-    const body = await response.text()
+        const body = yield* Effect.promise(() => response.text())
 
-    test
-      .expect(body)
-      .toContain("ParseError")
-    test
-      .expect(body)
-      .toContain("Expected string, actual [\"John\",\"Jane\"]")
-  })
+        test
+          .expect(body)
+          .toContain("ParseError")
+        test
+          .expect(body)
+          .toContain("Expected string, actual [\"John\",\"Jane\"]")
+
+        const messages = yield* TestLogger.messages
+        test
+          .expect(messages.some((m) => m.includes("ParseError")))
+          .toBe(true)
+      })
+      .pipe(Effect.provide(TestLogger.layer()), Effect.runPromise))
 
   test.it("logs validation errors to console", () =>
     Effect
@@ -1643,29 +1705,35 @@ test.describe("schema handlers", () => {
       })
   })
 
-  test.it("path params validation fails on invalid input", async () => {
-    const tree = RouteTree.make({
-      "/users/:userId": Route.get(
-        RouteSchema.schemaPathParams(
-          Schema.Struct({
-            userId: Schema.NumberFromString,
-          }),
-        ),
-        Route.text("ok"),
-      ),
-    })
+  test.it("path params validation fails on invalid input", () =>
+    Effect
+      .gen(function*() {
+        const runtime = yield* Effect.runtime<TestLogger.TestLogger>()
+        const handler = RouteHttp.toWebHandlerRuntime(runtime)(
+          Route.get(
+            RouteSchema.schemaPathParams(
+              Schema.Struct({
+                userId: Schema.NumberFromString,
+              }),
+            ),
+            Route.text("ok"),
+          ),
+        )
 
-    const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
-    const handler = handles["/users/:userId"]
+        const response = yield* Effect.promise(() =>
+          Http.fetch(handler, { path: "/users/not-a-number" })
+        )
 
-    const response = await Http.fetch(handler, {
-      path: "/users/not-a-number",
-    })
+        test
+          .expect(response.status)
+          .toBe(400)
 
-    test
-      .expect(response.status)
-      .toBe(400)
-  })
+        const messages = yield* TestLogger.messages
+        test
+          .expect(messages.some((m) => m.includes("ParseError")))
+          .toBe(true)
+      })
+      .pipe(Effect.provide(TestLogger.layer()), Effect.runPromise))
 
   test.it("combines path params with headers and body", async () => {
     const tree = RouteTree.make({
