@@ -1,18 +1,107 @@
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as FiberId from "effect/FiberId"
+import * as FiberRef from "effect/FiberRef"
+import * as GlobalValue from "effect/GlobalValue"
 import * as HashSet from "effect/HashSet"
-import * as ParseResult from "effect/ParseResult"
+import * as Option from "effect/Option"
+import type * as Predicate from "effect/Predicate"
 import * as Runtime from "effect/Runtime"
 import * as Stream from "effect/Stream"
+import * as Tracer from "effect/Tracer"
 import * as ContentNegotiation from "./ContentNegotiation.ts"
 import * as Http from "./Http.ts"
 import * as Route from "./Route.ts"
 import * as RouteBody from "./RouteBody.ts"
 import * as RouteMount from "./RouteMount.ts"
-import * as RouteSchema from "./RouteSchema.ts"
 import * as RouteTree from "./RouteTree.ts"
 import * as StreamExtra from "./StreamExtra.ts"
+
+export const currentTracerDisabledWhen = GlobalValue.globalValue(
+  Symbol.for("effect-start/RouteHttp/tracerDisabledWhen"),
+  () => FiberRef.unsafeMake<Predicate.Predicate<Request>>(() => false),
+)
+
+export const withTracerDisabledWhen = <A, E, R>(
+  effect: Effect.Effect<A, E, R>,
+  predicate: Predicate.Predicate<Request>,
+): Effect.Effect<A, E, R> =>
+  Effect.locally(effect, currentTracerDisabledWhen, predicate)
+
+export const currentSpanNameGenerator = GlobalValue.globalValue(
+  Symbol.for("effect-start/RouteHttp/spanNameGenerator"),
+  () =>
+    FiberRef.unsafeMake<(request: Request) => string>(
+      (request) => `http.server ${request.method}`,
+    ),
+)
+
+export const withSpanNameGenerator = <A, E, R>(
+  effect: Effect.Effect<A, E, R>,
+  f: (request: Request) => string,
+): Effect.Effect<A, E, R> => Effect.locally(effect, currentSpanNameGenerator, f)
+
+const w3cTraceparent = (
+  headers: Headers,
+): Option.Option<Tracer.ExternalSpan> => {
+  const header = headers.get("traceparent")
+  if (header === null) return Option.none()
+
+  const parts = header.split("-")
+  if (parts.length < 4) return Option.none()
+
+  const [_version, traceId, spanId, flags] = parts
+  if (!traceId || !spanId) return Option.none()
+
+  return Option.some(Tracer.externalSpan({
+    spanId,
+    traceId,
+    sampled: flags === "01",
+  }))
+}
+
+const b3Single = (headers: Headers): Option.Option<Tracer.ExternalSpan> => {
+  const header = headers.get("b3")
+  if (header === null) return Option.none()
+
+  const parts = header.split("-")
+  if (parts.length < 2) return Option.none()
+
+  const [traceId, spanId, sampledStr] = parts
+  if (!traceId || !spanId) return Option.none()
+
+  return Option.some(Tracer.externalSpan({
+    spanId,
+    traceId,
+    sampled: sampledStr === "1",
+  }))
+}
+
+const xb3 = (headers: Headers): Option.Option<Tracer.ExternalSpan> => {
+  const traceId = headers.get("x-b3-traceid")
+  const spanId = headers.get("x-b3-spanid")
+  if (traceId === null || spanId === null) return Option.none()
+
+  const sampled = headers.get("x-b3-sampled")
+
+  return Option.some(Tracer.externalSpan({
+    spanId,
+    traceId,
+    sampled: sampled === "1",
+  }))
+}
+
+const parentSpanFromHeaders = (
+  headers: Headers,
+): Option.Option<Tracer.ExternalSpan> => {
+  let span = w3cTraceparent(headers)
+  if (span._tag === "Some") return span
+
+  span = b3Single(headers)
+  if (span._tag === "Some") return span
+
+  return xb3(headers)
+}
 
 type UnboundedRouteWithMethod = Route.Route.With<{
   method: RouteMount.RouteMount.Method
@@ -47,13 +136,11 @@ const isClientAbort = (cause: Cause.Cause<unknown>): boolean =>
     (id) => id === clientAbortFiberId,
   )
 
-const getStatusFromCause = (
-  cause: Cause.Cause<RouteSchema.RequestBodyError | ParseResult.ParseError>,
-): number => {
+const getStatusFromCause = (cause: Cause.Cause<unknown>): number => {
   const failure = Cause.failureOption(cause)
 
   if (failure._tag === "Some") {
-    const error = failure.value
+    const error = failure.value as { _tag?: string }
     if (error._tag === "ParseError" || error._tag === "RequestBodyError") {
       return 400
     }
@@ -205,6 +292,7 @@ export const toWebHandlerRuntime = <R>(
       ): Effect.Effect<any, any, any> => {
         let index = 0
         let currentContext = initialContext
+        let routePathSet = false
 
         const next = (passedContext?: any): Effect.Effect<any, any, any> => {
           if (index >= allRoutes.length) {
@@ -226,29 +314,99 @@ export const toWebHandlerRuntime = <R>(
           }
 
           currentContext = { ...currentContext, ...descriptor }
+
+          const routePath = descriptor["path"]
+          if (!routePathSet && routePath !== undefined) {
+            routePathSet = true
+            return Effect.flatMap(
+              Effect.currentSpan.pipe(Effect.option),
+              (spanOption) => {
+                if (Option.isSome(spanOption)) {
+                  spanOption.value.attribute("http.route", routePath)
+                }
+                return handler(currentContext, next)
+              },
+            )
+          }
+
           return handler(currentContext, next)
         }
 
         return next()
       }
 
-      const effect = Effect.gen(function*() {
-        const result = yield* createChain({ request, selectedFormat })
+      const effect = Effect.withFiberRuntime<Response, unknown, R>(
+        (fiber) => {
+          const tracerDisabled =
+            !fiber.getFiberRef(FiberRef.currentTracerEnabled)
+            || fiber.getFiberRef(currentTracerDisabledWhen)(request)
 
-        if (result === undefined) {
-          return new Response("Not Acceptable", { status: 406 })
-        }
+          const url = new URL(request.url)
 
-        if (StreamExtra.isStream(result)) {
-          return streamToResponse(
-            result as Stream.Stream<string | Uint8Array, unknown, unknown>,
-            selectedFormat,
-            runtime,
+          const innerEffect = Effect.gen(function*() {
+            const result = yield* createChain({ request, selectedFormat })
+
+            if (result === undefined) {
+              return new Response("Not Acceptable", { status: 406 })
+            }
+
+            if (StreamExtra.isStream(result)) {
+              return streamToResponse(
+                result as Stream.Stream<string | Uint8Array, unknown, unknown>,
+                selectedFormat,
+                runtime,
+              )
+            }
+
+            return toResponse(result, selectedFormat)
+          })
+
+          if (tracerDisabled) {
+            return innerEffect
+          }
+
+          const spanNameGenerator = fiber.getFiberRef(currentSpanNameGenerator)
+
+          return Effect.useSpan(
+            spanNameGenerator(request),
+            {
+              parent: Option.getOrUndefined(
+                parentSpanFromHeaders(request.headers),
+              ),
+              kind: "server",
+              captureStackTrace: false,
+            },
+            (span) => {
+              span.attribute("http.request.method", request.method)
+              span.attribute("url.full", url.toString())
+              span.attribute("url.path", url.pathname)
+              const query = url.search.slice(1)
+              if (query !== "") {
+                span.attribute("url.query", query)
+              }
+              span.attribute("url.scheme", url.protocol.slice(0, -1))
+
+              const userAgent = request.headers.get("user-agent")
+              if (userAgent !== null) {
+                span.attribute("user_agent.original", userAgent)
+              }
+
+              return Effect.flatMap(
+                Effect.exit(Effect.withParentSpan(innerEffect, span)),
+                (exit) => {
+                  if (exit._tag === "Success") {
+                    span.attribute(
+                      "http.response.status_code",
+                      exit.value.status,
+                    )
+                  }
+                  return exit
+                },
+              )
+            },
           )
-        }
-
-        return toResponse(result, selectedFormat)
-      })
+        },
+      )
 
       return new Promise((resolve) => {
         const fiber = runFork(
