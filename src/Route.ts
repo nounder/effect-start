@@ -246,8 +246,21 @@ export function descriptor<
   T extends RouteSet.Data<any, any, any>,
 >(
   self: T,
-): T[typeof RouteDescriptor] {
-  return self[RouteDescriptor]
+): T[typeof RouteDescriptor]
+export function descriptor<
+  T extends RouteSet.Data<any, any, any>,
+>(
+  self: Iterable<T>,
+): T[typeof RouteDescriptor][]
+export function descriptor(
+  self:
+    | RouteSet.Data<any, any, any>
+    | Iterable<RouteSet.Data<any, any, any>>,
+): RouteDescriptor.Any | RouteDescriptor.Any[] {
+  if (RouteDescriptor in self) {
+    return self[RouteDescriptor]
+  }
+  return [...self].map((r) => r[RouteDescriptor])
 }
 
 export type ExtractBindings<

@@ -2,6 +2,99 @@ import * as test from "bun:test"
 import * as Route from "./Route.ts"
 import * as RouteTree from "./RouteTree.ts"
 
+test.describe("layer route", () => {
+  test.it("merges LayerRoute into other routes", () => {
+    const tree = RouteTree.make({
+      "*": Route.use(Route.filter({ context: { authenticated: true } })),
+      "/users": Route.get(Route.text("users")),
+    })
+
+    type TreeRoutes = RouteTree.Routes<typeof tree>
+
+    test
+      .expectTypeOf<TreeRoutes>()
+      .toExtend<{
+        "/users": Route.Route.Tuple
+      }>()
+
+    // "*" key should not exist in the resulting type
+    test
+      .expectTypeOf<TreeRoutes>()
+      .not
+      .toHaveProperty("*")
+
+    // layer route should be first in the tuple (method: "*")
+    test
+      .expectTypeOf<TreeRoutes["/users"][0]>()
+      .toExtend<Route.Route.With<{ method: "*" }>>()
+
+    // actual route should be second (method: "GET")
+    test
+      .expectTypeOf<TreeRoutes["/users"][1]>()
+      .toExtend<Route.Route.With<{ method: "GET" }>>()
+  })
+
+  test.it("prepends LayerRoute to all other routes when walking", () => {
+    const tree = RouteTree.make({
+      "*": Route.use(Route.filter({ context: { layer: true } })),
+      "/users": Route.get(Route.text("users")),
+      "/admin": Route.post(Route.json({ ok: true })),
+    })
+
+    test.expect(Route.descriptor(RouteTree.walk(tree))).toEqual([
+      { path: "/admin", method: "*" },
+      { path: "/admin", method: "POST", format: "json" },
+      { path: "/users", method: "*" },
+      { path: "/users", method: "GET", format: "text" },
+    ])
+  })
+
+  test.it("prepends multiple LayerRoutes to all other routes", () => {
+    const tree = RouteTree.make({
+      "*": Route
+        .use(Route.filter({ context: { first: true } }))
+        .use(Route.filter({ context: { second: true } })),
+      "/users": Route.get(Route.text("users")),
+    })
+
+    test.expect(Route.descriptor(RouteTree.walk(tree))).toEqual([
+      { path: "/users", method: "*" },
+      { path: "/users", method: "*" },
+      { path: "/users", method: "GET", format: "text" },
+    ])
+  })
+
+  test.it("only allows method '*' routes under '*' key", () => {
+    const _tree = RouteTree.make({
+      // @ts-expect-error - LayerRoute must have method "*"
+      "*": Route.get(Route.text("invalid")),
+      "/users": Route.get(Route.text("users")),
+    })
+  })
+
+  test.it("lookup finds LayerRoute first", () => {
+    const tree = RouteTree.make({
+      "*": Route.use(Route.filter({ context: { layer: true } })),
+      "/users": Route.get(Route.text("users")),
+    })
+
+    const result = RouteTree.lookup(tree, "GET", "/users")
+    test.expect(result).not.toBeNull()
+    test.expect(Route.descriptor(result!.route).method).toBe("*")
+  })
+
+  test.it("works without LayerRoute (no '*' key)", () => {
+    const tree = RouteTree.make({
+      "/users": Route.get(Route.text("users")),
+      "/admin": Route.post(Route.json({ ok: true })),
+    })
+
+    test
+      .expect(Route.descriptor(RouteTree.walk(tree)).map((d) => d.path))
+      .toEqual(["/admin", "/users"])
+  })
+})
+
 test.describe(RouteTree.make, () => {
   test.it("makes", () => {
     const routes = RouteTree.make({
@@ -30,6 +123,114 @@ test.describe(RouteTree.make, () => {
         "/users": unknown
       }>()
   })
+
+  test.it("flattens nested route trees with prefixed paths", () => {
+    const apiTree = RouteTree.make({
+      "/users": Route.get(Route.json({ users: [] })),
+      "/posts": Route.get(Route.json({ posts: [] })),
+    })
+
+    const tree = RouteTree.make({
+      "/": Route.get(Route.text("home")),
+      "/api": apiTree,
+    })
+
+    type TreeRoutes = RouteTree.Routes<typeof tree>
+
+    test
+      .expectTypeOf<TreeRoutes["/"]>()
+      .toExtend<Route.Route.Tuple>()
+
+    test
+      .expectTypeOf<TreeRoutes["/"][0]>()
+      .toExtend<
+        Route.Route.With<
+          { method: "GET"; format: "text" }
+        >
+      >()
+
+    test
+      .expectTypeOf<TreeRoutes["/api/users"]>()
+      .toExtend<Route.Route.Tuple>()
+
+    test
+      .expectTypeOf<TreeRoutes["/api/users"][0]>()
+      .toExtend<
+        Route.Route.With<
+          { method: "GET"; format: "json" }
+        >
+      >()
+
+    test
+      .expectTypeOf<TreeRoutes["/api/posts"]>()
+      .toExtend<Route.Route.Tuple>()
+
+    test
+      .expectTypeOf<TreeRoutes["/api/posts"][0]>()
+      .toExtend<
+        Route.Route.With<
+          { method: "GET"; format: "json" }
+        >
+      >()
+  })
+
+  test.it("walks nested route trees with prefixed paths", () => {
+    const apiTree = RouteTree.make({
+      "/users": Route.get(Route.json({ users: [] })),
+      "/posts": Route.post(Route.json({ ok: true })),
+    })
+
+    const tree = RouteTree.make({
+      "/": Route.get(Route.text("home")),
+      "/api": apiTree,
+    })
+
+    test.expect(Route.descriptor(RouteTree.walk(tree))).toEqual([
+      { path: "/", method: "GET", format: "text" },
+      { path: "/api/posts", method: "POST", format: "json" },
+      { path: "/api/users", method: "GET", format: "json" },
+    ])
+  })
+
+  test.it("deeply nested route trees", () => {
+    const v1Tree = RouteTree.make({
+      "/health": Route.get(Route.text("ok")),
+    })
+
+    const apiTree = RouteTree.make({
+      "/v1": v1Tree,
+    })
+
+    const tree = RouteTree.make({
+      "/api": apiTree,
+    })
+
+    test
+      .expect(Route.descriptor(RouteTree.walk(tree)).map((d) => d.path))
+      .toEqual(["/api/v1/health"])
+  })
+
+  test.it("lookup works with nested trees", () => {
+    const apiTree = RouteTree.make({
+      "/users": Route.get(Route.json({ users: [] })),
+      "/users/:id": Route.get(Route.json({ user: null })),
+    })
+
+    const tree = RouteTree.make({
+      "/": Route.get(Route.text("home")),
+      "/api": apiTree,
+    })
+
+    const home = RouteTree.lookup(tree, "GET", "/")
+    test.expect(Route.descriptor(home!.route).path).toBe("/")
+
+    const users = RouteTree.lookup(tree, "GET", "/api/users")
+    test.expect(Route.descriptor(users!.route).path).toBe("/api/users")
+
+    const user = RouteTree.lookup(tree, "GET", "/api/users/123")
+    test.expect(Route.descriptor(user!.route).path).toBe("/api/users/:id")
+    test.expect(user!.params).toEqual({ id: "123" })
+  })
 })
 
 test.describe(RouteTree.walk, () => {
@@ -44,15 +245,12 @@ test.describe(RouteTree.walk, () => {
       "/admin": Route.use(Route.filter({ context: { admin: true } })),
     })
 
-    const nodes = [...RouteTree.walk(routes)]
-    const paths = nodes.map((n) => Route.descriptor(n).path)
-
     // expected order:
     // depth 0: /
     // depth 1: /admin, /users (alphabetical)
     // depth 2: /admin/stats, /admin/users, /users/:userId (static first, param last)
     test
-      .expect(paths)
+      .expect(Route.descriptor(RouteTree.walk(routes)).map((d) => d.path))
       .toEqual([
         "/",
         "/admin",
@@ -61,51 +259,6 @@ test.describe(RouteTree.walk, () => {
         "/admin/users",
         "/users/:userId",
       ])
-
-    test
-      .expect(nodes)
-      .toHaveLength(6)
-    test
-      .expect(Route.descriptor(nodes[0]))
-      .toEqual({
-        path: "/",
-        method: "GET",
-        format: "text",
-      })
-    test
-      .expect(Route.descriptor(nodes[1]))
-      .toEqual({
-        path: "/admin",
-        method: "*",
-      })
-    test
-      .expect(Route.descriptor(nodes[2]))
-      .toEqual({
-        path: "/users",
-        method: "GET",
-        format: "text",
-      })
-    test
-      .expect(Route.descriptor(nodes[3]))
-      .toEqual({
-        path: "/admin/stats",
-        method: "GET",
-        format: "html",
-      })
-    test
-      .expect(Route.descriptor(nodes[4]))
-      .toEqual({
-        path: "/admin/users",
-        method: "POST",
-        format: "json",
-      })
-    test
-      .expect(Route.descriptor(nodes[5]))
-      .toEqual({
-        path: "/users/:userId",
-        method: "GET",
-        format: "text",
-      })
   })
 
   test.it("static < :param < :param? < :param+ < :param*", () => {
@@ -117,16 +270,15 @@ test.describe(RouteTree.walk, () => {
       "/:page?": Route.get(Route.text("optional param")),
     })
 
-    const nodes = [...RouteTree.walk(routes)]
-    const paths = nodes.map((n) => Route.descriptor(n).path)
-
-    test.expect(paths).toEqual([
-      "/about",
-      "/:page",
-      "/:page?",
-      "/:path+",
-      "/:path*",
-    ])
+    test
+      .expect(Route.descriptor(RouteTree.walk(routes)).map((d) => d.path))
+      .toEqual([
+        "/about",
+        "/:page",
+        "/:page?",
+        "/:path+",
+        "/:path*",
+      ])
   })
 
   test.it("greedy routes come after all non-greedy across depth", () => {
@@ -137,16 +289,14 @@ test.describe(RouteTree.walk, () => {
       "/users/:id/posts/:postId": Route.get(Route.text("post detail")),
     })
 
-    const nodes = [...RouteTree.walk(routes)]
-    const paths = nodes.map((n) => Route.descriptor(n).path)
-
-    // all non-greedy first (by depth), then greedy
-    test.expect(paths).toEqual([
-      "/users",
-      "/users/:id",
-      "/users/:id/posts/:postId",
-      "/:path*",
-    ])
+    test
+      .expect(Route.descriptor(RouteTree.walk(routes)).map((d) => d.path))
+      .toEqual([
+        "/users",
+        "/users/:id",
+        "/users/:id/posts/:postId",
+        "/:path*",
+      ])
   })
 
   test.it("greedy routes sorted by greedy position", () => {
@@ -156,14 +306,13 @@ test.describe(RouteTree.walk, () => {
       "/api/v1/:rest*": Route.get(Route.text("api v1 catch all")),
     })
 
-    const nodes = [...RouteTree.walk(routes)]
-    const paths = nodes.map((n) => Route.descriptor(n).path)
-
-    test.expect(paths).toEqual([
-      "/api/v1/:rest*",
-      "/api/:rest*",
-      "/:path*",
-    ])
+    test
+      .expect(Route.descriptor(RouteTree.walk(routes)).map((d) => d.path))
+      .toEqual([
+        "/api/v1/:rest*",
+        "/api/:rest*",
+        "/:path*",
+      ])
   })
 
   test.it("greedy routes with same position sorted by prefix then type", () => {
@@ -173,15 +322,14 @@ test.describe(RouteTree.walk, () => {
       "/api/:rest*": Route.get(Route.text("api catch all")),
     })
 
-    const nodes = [...RouteTree.walk(routes)]
-    const paths = nodes.map((n) => Route.descriptor(n).path)
-
     // /api before /docs (alphabetical), then + before * for same prefix
-    test.expect(paths).toEqual([
-      "/api/:rest+",
-      "/api/:rest*",
-      "/docs/:path*",
-    ])
+    test
+      .expect(Route.descriptor(RouteTree.walk(routes)).map((d) => d.path))
+      .toEqual([
+        "/api/:rest+",
+        "/api/:rest*",
+        "/docs/:path*",
+      ])
   })
 })
 

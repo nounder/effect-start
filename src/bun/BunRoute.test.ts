@@ -76,8 +76,8 @@ test.describe("BunRoute.bundle", () => {
     const routes = Route.tree({
       "*": Route.use(
         BunRoute.bundle(() => import("../../static/LayoutSlots.html")),
-        Route.html("<section>Catch All</section>"),
       ),
+      "/:path*": Route.get(Route.html("<section>Catch All</section>")),
     })
 
     const response = await Effect.runPromise(

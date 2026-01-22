@@ -32,7 +32,9 @@ export function layer(): Layer.Layer<TestLogger> {
           : ""
         MutableRef.update(
           mutableRef,
-          (msgs) => [...msgs, `[${logLevel._tag}] ${String(message)}${causeStr}`],
+          (
+            msgs,
+          ) => [...msgs, `[${logLevel._tag}] ${String(message)}${causeStr}`],
         )
       })
 
