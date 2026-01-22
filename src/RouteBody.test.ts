@@ -1,16 +1,14 @@
 import * as test from "bun:test"
 import * as Effect from "effect/Effect"
 import * as Stream from "effect/Stream"
+import * as Entity from "./Entity.ts"
+import * as Route from "./Route.ts"
 import * as RouteBody from "./RouteBody.ts"
 import * as RouteMount from "./RouteMount.ts"
 
-const text = RouteBody.build<string, "text">({
-  format: "text",
-})
-
 test.it("infers parent descriptions", () => {
   RouteMount.get(
-    text((ctx) =>
+    Route.text((ctx) =>
       Effect.gen(function*() {
         test
           .expectTypeOf(ctx)
@@ -25,13 +23,12 @@ test.it("infers parent descriptions", () => {
   )
 })
 
-test.it("cannot modify context", () => {
-  text((ctx, next) =>
+test.it("next is function returning Entity", () => {
+  Route.text((ctx, next) =>
     Effect.gen(function*() {
       test
         .expectTypeOf(next)
-        .parameters
-        .toEqualTypeOf<[]>()
+        .toExtend<() => Entity.Entity<string>>()
 
       return "Hello, world!"
     })
@@ -40,7 +37,7 @@ test.it("cannot modify context", () => {
 
 test.it("enforces result value", () => {
   // @ts-expect-error must return string
-  text((ctx, next) =>
+  Route.text((ctx, next) =>
     Effect.gen(function*() {
       return 1337
     })
@@ -49,7 +46,7 @@ test.it("enforces result value", () => {
 
 test.it("accepts text stream", () => {
   RouteMount.get(
-    text((ctx) =>
+    Route.text((ctx) =>
       Effect.gen(function*() {
         test
           .expectTypeOf(ctx)
@@ -65,31 +62,26 @@ test.it("accepts text stream", () => {
 })
 
 test.it("accepts Effect<Stream<string>> for html format", () => {
-  const html = RouteBody.build<string, "html">({ format: "html" })
-
   RouteMount.get(
-    html(function*() {
+    Route.html(function*() {
       return Stream.make("<div>", "content", "</div>")
     }),
   )
 })
 
 test.it("accepts Effect<Stream<Uint8Array>> for bytes format", () => {
-  const bytes = RouteBody.build<Uint8Array, "bytes">({ format: "bytes" })
   const encoder = new TextEncoder()
 
   RouteMount.get(
-    bytes(function*() {
+    Route.bytes(function*() {
       return Stream.make(encoder.encode("chunk"))
     }),
   )
 })
 
 test.it("rejects Stream for json format", () => {
-  const json = RouteBody.build<{ msg: string }, "json">({ format: "json" })
-
   // @ts-expect-error Stream not allowed for json format
-  json(function*() {
+  Route.json(function*() {
     return Stream.make({ msg: "hello" })
   })
 })
@@ -98,13 +90,13 @@ test.it("accepts value directly", () => {
   const value = "Hello, world!"
 
   test
-    .expectTypeOf(text)
+    .expectTypeOf(Route.text)
     .toBeCallableWith(value)
 })
 
 test.describe(`${RouteBody.handle.name}()`, () => {
   const ctx = {}
-  const next = () => Effect.succeed("next" as const)
+  const next = () => Entity.effect(Effect.succeed(Entity.make("next")))
 
   test.it("accepts all HandlerInput variants", () => {
     test
@@ -121,11 +113,12 @@ test.describe(`${RouteBody.handle.name}()`, () => {
       .expectTypeOf(handler)
       .returns
       .toEqualTypeOf<
-        Effect.Effect<string, never, never>
+        Effect.Effect<Entity.Entity<string>, never, never>
       >()
 
     const result = await Effect.runPromise(handler(ctx, next))
-    test.expect(result).toBe("hello")
+    test.expect(result.body).toBe("hello")
+    test.expect(result.status).toBe(200)
   })
 
   test.it("handles Effect directly", async () => {
@@ -135,13 +128,13 @@ test.describe(`${RouteBody.handle.name}()`, () => {
       .expectTypeOf(handler)
       .returns
       .toEqualTypeOf<
-        Effect.Effect<string, never, never>
+        Effect.Effect<Entity.Entity<string>, never, never>
       >()
 
     const result = await Effect.runPromise(handler(ctx, next))
 
     test
-      .expect(result)
+      .expect(result.body)
       .toBe("from effect")
   })
 
@@ -152,7 +145,7 @@ test.describe(`${RouteBody.handle.name}()`, () => {
       .expectTypeOf(handler)
       .returns
       .toEqualTypeOf<
-        Effect.Effect<never, Error, never>
+        Effect.Effect<Entity.Entity<never>, Error, never>
       >()
   })
 
@@ -165,21 +158,27 @@ test.describe(`${RouteBody.handle.name}()`, () => {
       .expectTypeOf(handler)
       .parameters
       .toEqualTypeOf<
-        [{ id: number }, () => Effect.Effect<number>]
+        [
+          { id: number },
+          (
+            context?: Partial<{ id: number }> & Record<string, unknown>,
+          ) => Entity.Entity<number>,
+        ]
       >()
     test
       .expectTypeOf(handler)
       .returns
       .toEqualTypeOf<
-        Effect.Effect<number, never, never>
+        Effect.Effect<Entity.Entity<number>, never, never>
       >()
 
+    const numNext = () => Entity.effect(Effect.succeed(Entity.make(23)))
     const result = await Effect.runPromise(
-      handler({ id: 42 }, () => Effect.succeed(23)),
+      handler({ id: 42 }, numNext),
     )
 
     test
-      .expect(result)
+      .expect(result.body)
       .toBe(42)
   })
 
@@ -193,30 +192,35 @@ test.describe(`${RouteBody.handle.name}()`, () => {
       .expectTypeOf(handler)
       .parameters
       .toEqualTypeOf<
-        [{ id: number }, () => Effect.Effect<number>]
+        [
+          { id: number },
+          (
+            context?: Partial<{ id: number }> & Record<string, unknown>,
+          ) => Entity.Entity<number>,
+        ]
       >()
 
     test
       .expectTypeOf(handler)
       .returns
       .toEqualTypeOf<
-        Effect.Effect<number, never, never>
+        Effect.Effect<Entity.Entity<number>, never, never>
       >()
 
+    const numNext = () => Entity.effect(Effect.succeed(Entity.make(23)))
     const result = await Effect.runPromise(
-      // TODO: we should accept Effect.void in next here
-      handler({ id: 21 }, () => Effect.succeed(23)),
+      handler({ id: 21 }, numNext),
     )
 
     test
-      .expect(result)
+      .expect(result.body)
       .toBe(42)
   })
 
   test.it("generator can call next", async () => {
     const handler = RouteBody.handle(
-      function*(_ctx: {}, next: () => Effect.Effect<string>) {
-        const fromNext = yield* next()
+      function*(_ctx: {}, next: () => Entity.Entity<string>) {
+        const fromNext = yield* next().text
         return `got: ${fromNext}`
       },
     )
@@ -224,7 +228,7 @@ test.describe(`${RouteBody.handle.name}()`, () => {
     const result = await Effect.runPromise(handler(ctx, next))
 
     test
-      .expect(result)
+      .expect(result.body)
       .toBe("got: next")
   })
 })

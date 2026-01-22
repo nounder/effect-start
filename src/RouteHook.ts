@@ -1,5 +1,6 @@
 import * as Effect from "effect/Effect"
 import type * as Utils from "effect/Utils"
+import * as Entity from "./Entity.ts"
 import * as Route from "./Route.ts"
 
 export type FilterResult<BOut, E, R> =
@@ -11,9 +12,9 @@ export type FilterHandlerInput<BIn, BOut, E, R> =
   | ((context: BIn) =>
     | FilterResult<BOut, E, R>
     | Generator<
-      Utils.YieldWrap<Effect.Effect<any, E, R>>,
+      Utils.YieldWrap<Effect.Effect<unknown, E, R>>,
       { context: BOut },
-      any
+      unknown
     >)
 
 export function filter<
@@ -36,27 +37,24 @@ export function filter<
     SB,
     [
       ...P,
-      Route.Route.Route<{}, BOut, any, E, R>,
+      Route.Route.Route<{}, BOut, unknown, E, R>,
     ]
   > {
     const route = Route.make<
       {},
       BOut,
-      any,
+      unknown,
       E,
       R
-    >((context: BOut, next) =>
+    >((context: BOut, next: (ctx?: Partial<BOut>) => Entity.Entity<unknown>) =>
       Effect.gen(function*() {
         const filterResult = yield* normalized(context as unknown as BIn)
 
-        return yield* next(
-          filterResult
-            ? {
-              ...context,
-              ...filterResult.context,
-            }
-            : context,
-        )
+        const mergedContext = filterResult
+          ? { ...context, ...filterResult.context }
+          : context
+
+        return yield* Entity.resolve(next(mergedContext as Partial<BOut>))
       })
     )
 
@@ -64,7 +62,7 @@ export function filter<
       [
         ...Route.items(self),
         route,
-      ] as [...P, Route.Route.Route<{}, BOut, any, E, R>],
+      ] as [...P, Route.Route.Route<{}, BOut, unknown, E, R>],
       Route.descriptor(self),
     )
   }

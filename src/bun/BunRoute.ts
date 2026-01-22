@@ -3,6 +3,7 @@ import * as Array from "effect/Array"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
+import * as Entity from "../Entity.ts"
 import * as Hyper from "../hyper/Hyper.ts"
 import * as HyperHtml from "../hyper/HyperHtml.ts"
 import * as Random from "../Random.ts"
@@ -55,7 +56,7 @@ export function bundle(
       ...I,
       Route.Route.Route<
         BunDescriptors,
-        {},
+        { request: Request },
         string,
         BunRouteError,
         BunHttpServer.BunHttpServer
@@ -63,7 +64,7 @@ export function bundle(
     ]
   > {
     const handler: Route.Route.Handler<
-      D & B & Route.ExtractBindings<I> & { request: Request },
+      BunDescriptors & { request: Request },
       string,
       BunRouteError,
       BunHttpServer.BunHttpServer
@@ -119,7 +120,8 @@ export function bundle(
             }),
         })
 
-        const children = yield* next(context)
+        const childEntity = yield* Entity.resolve(next(context))
+        const children = childEntity?.body ?? childEntity
 
         let childrenHtml = ""
         if (children != null) {
@@ -136,16 +138,21 @@ export function bundle(
 
         html = html.replace(/%children%/g, childrenHtml)
 
-        return html
+        return Entity.make(html, {
+          status: response.status,
+          headers: {
+            "content-type": response.headers.get("content-type"),
+          },
+        })
       })
 
     const route = Route.make<
       BunDescriptors,
-      {},
+      { request: Request },
       string,
       BunRouteError,
       BunHttpServer.BunHttpServer
-    >(handler as any, { bunPrefix, bunLoad })
+    >(handler, { bunPrefix, bunLoad })
 
     return Route.set(
       [...Route.items(self), route] as any,

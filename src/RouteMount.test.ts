@@ -389,7 +389,7 @@ test.it("schemaHeaders flattens method into route descriptor", () => {
             readonly hello: string
           }
         },
-        void,
+        unknown,
         ParseResult.ParseError,
         HttpServerRequest.HttpServerRequest
       >
@@ -407,7 +407,7 @@ test.it("schemaHeaders flattens method into route descriptor", () => {
             readonly "x-custom-header": string
           }
         },
-        void,
+        unknown,
         ParseResult.ParseError,
         HttpServerRequest.HttpServerRequest
       >
@@ -444,7 +444,7 @@ test.it("schemaHeaders flattens method into route descriptor", () => {
           }
           postOnly: string
         },
-        void
+        unknown
       >
     >()
 

@@ -3,6 +3,7 @@ import type * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Pipeable from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
+import type * as Entity from "./Entity.ts"
 import * as RouteBody from "./RouteBody.ts"
 import * as RouteTree from "./RouteTree.ts"
 import * as Values from "./Values.ts"
@@ -99,14 +100,8 @@ export namespace Route {
 
   export type Handler<B, A, E, R> = (
     context: B,
-    next: (context: B) => Effect.Effect<A>,
-  ) => Effect.Effect<A, E, R>
-
-  // handler that cannot modify the context
-  export type HandlerImmutable<B, A, E, R> = (
-    context: B,
-    next: () => Effect.Effect<A>,
-  ) => Effect.Effect<A, E, R>
+    next: (context?: Partial<B> & Record<string, unknown>) => Entity.Entity<A>,
+  ) => Effect.Effect<Entity.Entity<A>, E, R>
 
   /**
    * Extracts only the bindings (B) from routes, excluding descriptors.

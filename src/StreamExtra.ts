@@ -19,15 +19,14 @@ export type IsStream<T> = T extends Stream.Stream<infer _A, infer _E, infer _R>
   ? true
   : false
 
-export type Chunk<T> = T extends Stream.Stream<infer A, infer _E, infer _R>
-  ? A
+export type Chunk<T> = T extends Stream.Stream<infer A, infer _E, infer _R> ? A
   : never
 
-export type StreamError<T> = T extends Stream.Stream<infer _A, infer E, infer _R>
-  ? E
+export type StreamError<T> = T extends
+  Stream.Stream<infer _A, infer E, infer _R> ? E
   : never
 
-export type Requirements<T> = T extends Stream.Stream<infer _A, infer _E, infer R>
+export type Context<T> = T extends Stream.Stream<infer _A, infer _E, infer R>
   ? R
   : never
 

@@ -640,7 +640,7 @@ test.describe("middleware chain", () => {
       Route
         .use(
           Route.json(function*(_ctx, next) {
-            const value = yield* next()
+            const value = yield* next().json
             return { data: value }
           }),
         )
@@ -666,13 +666,13 @@ test.describe("middleware chain", () => {
       Route
         .use(
           Route.json(function*(_ctx, next) {
-            const value = yield* next()
+            const value = yield* next().json
             return { outer: value }
           }),
         )
         .use(
           Route.json(function*(_ctx, next) {
-            const value = yield* next()
+            const value = yield* next().json
             return { inner: value }
           }),
         )
@@ -692,7 +692,7 @@ test.describe("middleware chain", () => {
       Route
         .use(
           Route.json(function*(_ctx, next) {
-            const value = yield* next()
+            const value = yield* next().json
             return { wrapped: value }
           }),
         )
@@ -725,7 +725,7 @@ test.describe("middleware chain", () => {
       Route
         .use(
           Route.text(function*(_ctx, next) {
-            const value = yield* next()
+            const value = yield* next().text
             return `wrapped: ${value}`
           }),
         )
@@ -746,7 +746,7 @@ test.describe("middleware chain", () => {
       Route
         .use(
           Route.html(function*(_ctx, next) {
-            const value = yield* next()
+            const value = yield* next().text
             return `<div>${value}</div>`
           }),
         )
@@ -770,7 +770,7 @@ test.describe("middleware chain", () => {
       Route
         .use(
           Route.bytes(function*(_ctx, next) {
-            const value = yield* next()
+            const value = yield* next().bytes
             const text = decoder.decode(value)
             return encoder.encode(`wrapped:${text}`)
           }),
@@ -803,19 +803,19 @@ test.describe("middleware chain", () => {
           // next is related handler with same format (here format="text" descriptor)
           Route.text(function*(_ctx, next) {
             calls.push("wildcard text 1")
-            return "1st layout: " + (yield* next())
+            return "1st layout: " + (yield* next().text)
           }),
           // never called because it's unrelated (different format descriptor)
           Route.json(function*(_ctx, next) {
             calls.push("wildcard json")
-            return { data: yield* next() }
+            return { data: yield* next().json }
           }),
           // called 2nd
           // no other related handler in the same method,
           // continue traversing RouteHttp middleware chain
           Route.text(function*(_ctx, next) {
             calls.push("wildcard text 2")
-            return "2nd layout: " + (yield* next())
+            return "2nd layout: " + (yield* next().text)
           }),
         )
         .get(
@@ -827,7 +827,7 @@ test.describe("middleware chain", () => {
           // called 3rd
           Route.text(function*(_ctx, next) {
             calls.push("method text 1")
-            return "Prefix: " + (yield* next())
+            return "Prefix: " + (yield* next().text)
           }),
           // called 4th - terminal, no next() call
           Route.text(function*(ctx) {
@@ -2351,7 +2351,7 @@ test.describe("RouteTree layer routes", () => {
     const tree = RouteTree.make({
       "*": Route.use(
         Route.json(function*(_ctx, next) {
-          const value = yield* next()
+          const value = yield* next().json
           return { wrapped: value }
         }),
       ),
@@ -2370,7 +2370,7 @@ test.describe("RouteTree layer routes", () => {
     const tree = RouteTree.make({
       "*": Route.use(
         Route.text(function*(_ctx, next) {
-          const value = yield* next()
+          const value = yield* next().text
           return `Layout: ${value}`
         }),
       ),

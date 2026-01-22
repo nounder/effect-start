@@ -49,7 +49,7 @@ export function schemaHeaders<
     Route.Route.Route<
       {},
       { headers: A },
-      any,
+      unknown,
       ParseResult.ParseError,
       R
     >,
@@ -91,7 +91,7 @@ export function schemaCookies<
     Route.Route.Route<
       {},
       { cookies: A },
-      any,
+      unknown,
       ParseResult.ParseError,
       R
     >,
@@ -135,7 +135,7 @@ export function schemaSearchParams<
     Route.Route.Route<
       {},
       { searchParams: A },
-      any,
+      unknown,
       ParseResult.ParseError,
       R
     >,
@@ -178,7 +178,7 @@ export function schemaPathParams<
     Route.Route.Route<
       {},
       { pathParams: A },
-      any,
+      unknown,
       ParseResult.ParseError,
       R
     >,
@@ -225,7 +225,7 @@ export function schemaBodyJson<
     Route.Route.Route<
       {},
       { body: A },
-      any,
+      unknown,
       RequestBodyError | ParseResult.ParseError,
       R
     >,
@@ -273,7 +273,7 @@ export function schemaBodyUrlParams<
     Route.Route.Route<
       {},
       { body: A },
-      any,
+      unknown,
       RequestBodyError | ParseResult.ParseError,
       R
     >,
@@ -325,7 +325,7 @@ export function schemaBodyMultipart<
     Route.Route.Route<
       {},
       { body: A },
-      any,
+      unknown,
       RequestBodyError | ParseResult.ParseError,
       R | Scope.Scope
     >,
@@ -376,7 +376,7 @@ export function schemaBodyForm<
     Route.Route.Route<
       {},
       { body: A },
-      any,
+      unknown,
       RequestBodyError | ParseResult.ParseError,
       R | Scope.Scope
     >,
