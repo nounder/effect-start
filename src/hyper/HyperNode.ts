@@ -13,6 +13,7 @@ export type Props = {
     | HyperNode
     | Iterable<Primitive | HyperNode>
     | Record<string, unknown>
+    | ((window: Window) => void)
 }
 
 export type HyperComponent = (

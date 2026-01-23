@@ -173,4 +173,25 @@ test.describe("HyperRoute.html", () => {
       "<div data-signals=\"{&quot;draft&quot;:&quot;&quot;,&quot;pendingDraft&quot;:&quot;&quot;,&quot;username&quot;:&quot;User123&quot;}\">Content</div>",
     )
   })
+
+  test.it("renders script with function child as IIFE", async () => {
+    const handler = RouteHttp.toWebHandler(
+      Route.get(
+        HyperRoute.html(
+          <script>
+            {(window) => {
+              console.log("Hello from", window.document.title)
+            }}
+          </script>,
+        ),
+      ),
+    )
+
+    const response = await Http.fetch(handler, { path: "/" })
+    const text = await response.text()
+
+    test.expect(text).toContain("<script>(")
+    test.expect(text).toContain(")(window)</script>")
+    test.expect(text).toContain("window.document.title")
+  })
 })

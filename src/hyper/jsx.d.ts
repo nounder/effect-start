@@ -1818,6 +1818,21 @@ export namespace JSX {
     event?: string | undefined
     /** @deprecated */
     language?: string | undefined
+
+    children?: Children
+  }
+
+  // Separate interface for script elements with function children.
+  // This enables TypeScript to infer the `window` parameter type.
+  //
+  // Using a union in a single interface (`children?: Function | Children`)
+  // doesn't work because TS can't infer callback parameter types from unions.
+  // By splitting into two interfaces, TS can discriminate based on children
+  interface ScriptHTMLAttributesWithHandler<T>
+    extends Omit<ScriptHTMLAttributes<T>, "children" | "type">
+  {
+    children: (window: Window) => void
+    type?: never
   }
   interface SelectHTMLAttributes<T> extends HTMLAttributes<T> {
     autocomplete?: HTMLAutocomplete | undefined

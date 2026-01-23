@@ -159,3 +159,51 @@ test.it("non-data attributes with object values are not JSON stringified", () =>
     .expect(html)
     .toBe("<div style=\"color: red\"></div>")
 })
+
+test.it("script with function child renders as IIFE", () => {
+  const handler = (window: Window) => {
+    console.log("Hello from", window.document.title)
+  }
+
+  const node = HyperNode.make("script", {
+    children: handler,
+  })
+
+  const html = HyperHtml.renderToString(node)
+
+  test
+    .expect(html)
+    .toBe(`<script>(${handler.toString()})(window)</script>`)
+})
+
+test.it("script with arrow function child renders as IIFE", () => {
+  const node = HyperNode.make("script", {
+    children: (window: Window) => {
+      window.alert("test")
+    },
+  })
+
+  const html = HyperHtml.renderToString(node)
+
+  test
+    .expect(html)
+    .toContain("<script>(")
+  test
+    .expect(html)
+    .toContain(")(window)</script>")
+  test
+    .expect(html)
+    .toContain("window.alert")
+})
+
+test.it("script with string child renders normally", () => {
+  const node = HyperNode.make("script", {
+    children: "console.log('hello')",
+  })
+
+  const html = HyperHtml.renderToString(node)
+
+  test
+    .expect(html)
+    .toBe("<script>console.log(&apos;hello&apos;)</script>")
+})

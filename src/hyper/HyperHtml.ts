@@ -144,7 +144,10 @@ export function renderToString(
           result += html
         } else {
           const children = props.children
-          if (Array.isArray(children)) {
+
+          if (type === "script" && typeof children === "function") {
+            result += `(${children.toString()})(window)`
+          } else if (Array.isArray(children)) {
             for (let i = children.length - 1; i >= 0; i--) {
               stack.push(children[i])
             }
