@@ -17,12 +17,17 @@ export interface SseEvent {
   retry?: number
 }
 
-export type SseTaggedEvent = { _tag: string } & Values.JsonObject
+export type SseTaggedEvent = {
+  readonly _tag: string
+}
 
-export type SseEventInput = SseEvent | SseTaggedEvent
+export type SseEventInput =
+  | SseEvent
+  | SseTaggedEvent
 
 function isTaggedEvent(event: SseEventInput): event is SseTaggedEvent {
-  return Object.hasOwn(event, "_tag") && typeof event["_tag"] === "string"
+  return Object.hasOwn(event, "_tag")
+    && typeof event["_tag"] === "string"
 }
 
 function formatSseEvent(event: SseEventInput): string {
@@ -89,14 +94,22 @@ export function sse<
       E,
       R
     > = (ctx, _next) => {
-      const getStream = (): Effect.Effect<Stream.Stream<SseEventInput, E, R>, E, R> => {
+      const getStream = (): Effect.Effect<
+        Stream.Stream<SseEventInput, E, R>,
+        E,
+        R
+      > => {
         if (typeof handler === "function") {
           const result = (handler as Function)(ctx, _next)
           if (StreamExtra.isStream(result)) {
             return Effect.succeed(result as Stream.Stream<SseEventInput, E, R>)
           }
           if (Effect.isEffect(result)) {
-            return result as Effect.Effect<Stream.Stream<SseEventInput, E, R>, E, R>
+            return result as Effect.Effect<
+              Stream.Stream<SseEventInput, E, R>,
+              E,
+              R
+            >
           }
           return Effect.gen(function*() {
             return yield* result
@@ -106,18 +119,26 @@ export function sse<
           return Effect.succeed(handler as Stream.Stream<SseEventInput, E, R>)
         }
         if (Effect.isEffect(handler)) {
-          return handler as Effect.Effect<Stream.Stream<SseEventInput, E, R>, E, R>
+          return handler as Effect.Effect<
+            Stream.Stream<SseEventInput, E, R>,
+            E,
+            R
+          >
         }
         return Effect.succeed(Stream.empty)
       }
 
       return Effect.map(getStream(), (eventStream) => {
         const formattedStream = Stream.map(eventStream, formatSseEvent)
-        const heartbeat = Stream.repeat(
-          Stream.succeed(HEARTBEAT),
-          Schedule.spaced(HEARTBEAT_INTERVAL),
-        ).pipe(Stream.drop(1))
-        const merged = Stream.merge(formattedStream, heartbeat, { haltStrategy: "left" })
+        const heartbeat = Stream
+          .repeat(
+            Stream.succeed(HEARTBEAT),
+            Schedule.spaced(HEARTBEAT_INTERVAL),
+          )
+          .pipe(Stream.drop(1))
+        const merged = Stream.merge(formattedStream, heartbeat, {
+          haltStrategy: "left",
+        })
         return Entity.make(merged, {
           headers: {
             "content-type": "text/event-stream",
@@ -128,12 +149,27 @@ export function sse<
       })
     }
 
-    const route = Route.make<{ format: "text" }, {}, Stream.Stream<string, E, R>, E, R>(
+    const route = Route.make<
+      { format: "text" },
+      {},
+      Stream.Stream<string, E, R>,
+      E,
+      R
+    >(
       sseHandler as any,
       { format: "text" },
     )
 
-    const items: [...I, Route.Route.Route<{ format: "text" }, {}, Stream.Stream<string, E, R>, E, R>] = [
+    const items: [
+      ...I,
+      Route.Route.Route<
+        { format: "text" },
+        {},
+        Stream.Stream<string, E, R>,
+        E,
+        R
+      >,
+    ] = [
       ...Route.items(self),
       route,
     ]
@@ -141,7 +177,16 @@ export function sse<
     return Route.set<
       D,
       B,
-      [...I, Route.Route.Route<{ format: "text" }, {}, Stream.Stream<string, E, R>, E, R>]
+      [
+        ...I,
+        Route.Route.Route<
+          { format: "text" },
+          {},
+          Stream.Stream<string, E, R>,
+          E,
+          R
+        >,
+      ]
     >(
       items,
       Route.descriptor(self),

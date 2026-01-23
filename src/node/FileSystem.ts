@@ -1,3 +1,6 @@
+/*
+ * Adapted from @effect/platform
+ */
 import { effectify } from "@effect/platform/Effectify"
 import * as Error from "@effect/platform/Error"
 import type {
@@ -714,6 +717,11 @@ const makeFileSystem = Effect.map(
 )
 
 export const layer = Layer.effect(FileSystem.FileSystem, makeFileSystem)
+
+export {
+  Error,
+  FileSystem,
+}
 
 export function handleErrnoException(
   module: SystemError["module"],

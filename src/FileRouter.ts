@@ -12,7 +12,7 @@ import * as NPath from "node:path"
 import * as NUrl from "node:url"
 import * as FileRouterCodegen from "./FileRouterCodegen.ts"
 import * as FileRouterPattern from "./FileRouterPattern.ts"
-import * as FileSystemExtra from "./FileSystemExtra.ts"
+import * as Development from "./Development.ts"
 
 export type RouteModule = {
   default: RouteSet.RouteSet.Default
@@ -161,7 +161,7 @@ export function layer(options: {
         yield* FileRouterCodegen.update(routesPath, manifestFilename)
 
         const stream = Function.pipe(
-          FileSystemExtra.watchSource({
+          Development.watchSource({
             path: routesPath,
             filter: (e) => !e.path.includes("node_modules"),
           }),
