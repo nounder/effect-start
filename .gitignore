@@ -6,5 +6,5 @@ node_modules/
 vendor/
 out/
 pad/
-dst/
+dist/
 .tree/

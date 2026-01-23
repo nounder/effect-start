@@ -4,25 +4,75 @@
   "type": "module",
   "license": "MIT",
   "exports": {
-    ".": "./src/index.ts",
-    "./StartApp": "./src/StartApp.ts",
-    "./bun": "./src/bun/index.ts",
-    "./client": "./src/client/index.ts",
-    "./testing": "./src/testing/index.ts",
-    "./x/*": "./src/x/*/index.ts",
-    "./x/tailwind/plugin": "./src/x/tailwind/plugin.ts",
-    "./middlewares": "./src/middlewares/index.ts",
-    "./experimental": "./src/experimental/index.ts",
+    ".": {
+      "bun": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./StartApp": {
+      "bun": "./src/StartApp.ts",
+      "types": "./dist/StartApp.d.ts",
+      "default": "./dist/StartApp.js"
+    },
+    "./bun": {
+      "bun": "./src/bun/index.ts",
+      "types": "./dist/bun/index.d.ts",
+      "default": "./dist/bun/index.js"
+    },
+    "./client": {
+      "bun": "./src/client/index.ts",
+      "types": "./dist/client/index.d.ts",
+      "default": "./dist/client/index.js"
+    },
+    "./testing": {
+      "bun": "./src/testing/index.ts",
+      "types": "./dist/testing/index.d.ts",
+      "default": "./dist/testing/index.js"
+    },
+    "./x/*": {
+      "bun": "./src/x/*/index.ts",
+      "types": "./dist/x/*/index.d.ts",
+      "default": "./dist/x/*/index.js"
+    },
+    "./x/tailwind/plugin": {
+      "bun": "./src/x/tailwind/plugin.ts",
+      "types": "./dist/x/tailwind/plugin.d.ts",
+      "default": "./dist/x/tailwind/plugin.js"
+    },
+    "./middlewares": {
+      "bun": "./src/middlewares/index.ts",
+      "types": "./dist/middlewares/index.d.ts",
+      "default": "./dist/middlewares/index.js"
+    },
+    "./experimental": {
+      "bun": "./src/experimental/index.ts",
+      "types": "./dist/experimental/index.d.ts",
+      "default": "./dist/experimental/index.js"
+    },
     "./client/assets.d.ts": "./src/assets.d.ts",
-    "./hyper": "./src/hyper/index.ts",
-    "./jsx-runtime": "./src/hyper/jsx-runtime.ts",
-    "./jsx-dev-runtime": "./src/hyper/jsx-runtime.ts",
+    "./hyper": {
+      "bun": "./src/hyper/index.ts",
+      "types": "./dist/hyper/index.d.ts",
+      "default": "./dist/hyper/index.js"
+    },
+    "./jsx-runtime": {
+      "bun": "./src/hyper/jsx-runtime.ts",
+      "types": "./dist/hyper/jsx-runtime.d.ts",
+      "default": "./dist/hyper/jsx-runtime.js"
+    },
+    "./jsx-dev-runtime": {
+      "bun": "./src/hyper/jsx-runtime.ts",
+      "types": "./dist/hyper/jsx-runtime.d.ts",
+      "default": "./dist/hyper/jsx-runtime.js"
+    },
     "./package.json": "./package.json"
   },
   "scripts": {
+    "build": "bunx --bun tsc -p tsconfig.build.json",
+    "prepare": "bun run build",
     "format": "bunx dprint fmt",
     "test": "bun test ./src/",
-    "deploy": "bunx npm publish --access public"
+    "deploy": "bunx --bun npm publish --access public"
   },
   "dependencies": {
     "effect": ">=3.19.15",
@@ -48,6 +98,8 @@
   },
   "files": [
     "src/",
+    "dist/",
+    "README.md",
     "package.json"
   ]
 }

@@ -88,13 +88,19 @@ async function ensureSourceDetectionRootExists(compiler: {
   }
 }
 
-export async function compileAst(ast: AstNode[], options: CompileOptions) {
+export async function compileAst(
+  ast: AstNode[],
+  options: CompileOptions,
+): ReturnType<typeof _compileAst> {
   let compiler = await _compileAst(ast, createCompileOptions(options))
   await ensureSourceDetectionRootExists(compiler)
   return compiler
 }
 
-export async function compile(css: string, options: CompileOptions) {
+export async function compile(
+  css: string,
+  options: CompileOptions,
+): ReturnType<typeof _compile> {
   let compiler = await _compile(css, createCompileOptions(options))
   await ensureSourceDetectionRootExists(compiler)
   return compiler
