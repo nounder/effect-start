@@ -2411,4 +2411,29 @@ test.describe("RouteTree layer routes", () => {
       .expect(calls)
       .toEqual(["layer1", "layer2", "handler"])
   })
+
+  test.it("format negotiation excludes middleware formats", async () => {
+    const tree = RouteTree.make({
+      "*": Route.use(
+        Route.json(function*(_ctx, next) {
+          const value = yield* next().json
+          return { wrapped: value }
+        }),
+      ),
+      "/": Route.get(Route.html("<h1>Hello</h1>")),
+    })
+
+    const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
+    const response = await Http.fetch(handles["/"], { path: "/" })
+
+    test
+      .expect(response.status)
+      .toBe(200)
+    test
+      .expect(response.headers.get("Content-Type"))
+      .toBe("text/html; charset=utf-8")
+    test
+      .expect(await response.text())
+      .toBe("<h1>Hello</h1>")
+  })
 })

@@ -148,6 +148,7 @@ function determineSelectedFormat(
   routes: UnboundedRouteWithMethod[],
 ): RouteBody.Format | undefined {
   const formats = routes
+    .filter((r) => Route.descriptor(r).method !== "*")
     .map((r) => Route.descriptor(r).format)
     .filter(Boolean) as RouteBody.Format[]
 
