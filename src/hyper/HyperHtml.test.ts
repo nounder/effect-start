@@ -88,3 +88,74 @@ test.it("mixed boolean and string attributes", () => {
     .expect(html)
     .toBe("<input type=\"checkbox\" checked name=\"test\" value=\"on\">")
 })
+
+test.it("data-* attributes with object values are JSON stringified", () => {
+  const node = HyperNode.make("div", {
+    "data-signals": {
+      draft: "",
+      pendingDraft: "",
+      username: "User123",
+    },
+  })
+
+  const html = HyperHtml.renderToString(node)
+
+  test
+    .expect(html)
+    .toBe(
+      "<div data-signals=\"{&quot;draft&quot;:&quot;&quot;,&quot;pendingDraft&quot;:&quot;&quot;,&quot;username&quot;:&quot;User123&quot;}\"></div>",
+    )
+})
+
+test.it("data-* attributes with array values are JSON stringified", () => {
+  const node = HyperNode.make("div", {
+    "data-items": [1, 2, 3],
+  })
+
+  const html = HyperHtml.renderToString(node)
+
+  test
+    .expect(html)
+    .toBe("<div data-items=\"[1,2,3]\"></div>")
+})
+
+test.it("data-* attributes with nested object values", () => {
+  const node = HyperNode.make("div", {
+    "data-config": {
+      user: { name: "John", active: true },
+      settings: { theme: "dark" },
+    },
+  })
+
+  const html = HyperHtml.renderToString(node)
+
+  test
+    .expect(html)
+    .toBe(
+      "<div data-config=\"{&quot;user&quot;:{&quot;name&quot;:&quot;John&quot;,&quot;active&quot;:true},&quot;settings&quot;:{&quot;theme&quot;:&quot;dark&quot;}}\"></div>",
+    )
+})
+
+test.it("data-* string values are not JSON stringified", () => {
+  const node = HyperNode.make("div", {
+    "data-value": "hello world",
+  })
+
+  const html = HyperHtml.renderToString(node)
+
+  test
+    .expect(html)
+    .toBe("<div data-value=\"hello world\"></div>")
+})
+
+test.it("non-data attributes with object values are not JSON stringified", () => {
+  const node = HyperNode.make("div", {
+    style: "color: red",
+  })
+
+  const html = HyperHtml.renderToString(node)
+
+  test
+    .expect(html)
+    .toBe("<div style=\"color: red\"></div>")
+})

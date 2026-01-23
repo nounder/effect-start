@@ -14,6 +14,7 @@
     "./middlewares": "./src/middlewares/index.ts",
     "./experimental": "./src/experimental/index.ts",
     "./client/assets.d.ts": "./src/assets.d.ts",
+    "./hyper": "./src/hyper/index.ts",
     "./jsx-runtime": "./src/hyper/jsx-runtime.ts",
     "./jsx-dev-runtime": "./src/hyper/jsx-runtime.ts",
     "./package.json": "./package.json"

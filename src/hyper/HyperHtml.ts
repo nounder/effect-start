@@ -120,8 +120,13 @@ export function renderToString(
             result += ` ${esc(key)}`
           } else {
             const resolvedKey = key === "className" ? "class" : key
+            const value = props[key]
 
-            result += ` ${esc(resolvedKey)}="${esc(props[key])}"`
+            if (key.startsWith("data-") && typeof value === "object") {
+              result += ` ${esc(resolvedKey)}="${esc(JSON.stringify(value))}"`
+            } else {
+              result += ` ${esc(resolvedKey)}="${esc(value)}"`
+            }
           }
         }
       }

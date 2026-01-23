@@ -8,6 +8,10 @@
     "moduleDetection": "force",
     "allowJs": true,
 
+    // JSX
+    "jsx": "react-jsx",
+    "jsxImportSource": "effect-start",
+
     // Bundler mode
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
