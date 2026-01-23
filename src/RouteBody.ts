@@ -12,6 +12,14 @@ export type Format =
   | "bytes"
   | "*"
 
+const formatToContentType: Record<Format, string | undefined> = {
+  text: "text/plain; charset=utf-8",
+  html: "text/html; charset=utf-8",
+  json: "application/json",
+  bytes: "application/octet-stream",
+  "*": undefined,
+}
+
 type UnwrapStream<T> = T extends Stream.Stream<infer V, any, any> ? V : T
 
 export type HandlerInput<B, A, E, R> =
@@ -31,24 +39,6 @@ export type HandlerInput<B, A, E, R> =
       unknown
     >)
 
-export function handle<B, A, E, R>(
-  handler: (
-    context: B,
-    next: (context?: Partial<B> & Record<string, unknown>) => Entity.Entity<A>,
-  ) =>
-    | Effect.Effect<A | Entity.Entity<A>, E, R>
-    | Generator<
-      Utils.YieldWrap<Effect.Effect<unknown, E, R>>,
-      A | Entity.Entity<A>,
-      unknown
-    >,
-): Route.Route.Handler<B, A, E, R>
-export function handle<A, E, R>(
-  handler: Effect.Effect<A | Entity.Entity<A>, E, R>,
-): Route.Route.Handler<{}, A, E, R>
-export function handle<A>(
-  handler: A | Entity.Entity<A>,
-): Route.Route.Handler<{}, A, never, never>
 export function handle<B, A, E, R>(
   handler: HandlerInput<B, A, E, R>,
 ): Route.Route.Handler<B, A, E, R> {
@@ -80,7 +70,7 @@ export function handle<B, A, E, R>(
     return (_context, _next) => Effect.succeed(handler as Entity.Entity<A>)
   }
   return (_context, _next) =>
-    Effect.succeed(Entity.make(handler as A, { status: 200 }))
+    Effect.succeed(normalizeToEntity(handler as A) as Entity.Entity<A>)
 }
 
 function normalizeToEntity<A>(value: A | Entity.Entity<A>): Entity.Entity<A> {
@@ -117,8 +107,25 @@ export function build<
     return function(
       self: Route.RouteSet.RouteSet<D, B, I>,
     ) {
+      const contentType = formatToContentType[descriptors.format]
+      const baseHandler = handle(handler)
+      const wrappedHandler: Route.Route.Handler<
+        D & B & Route.ExtractBindings<I> & { format: F },
+        A,
+        E,
+        R
+      > = (ctx, next) =>
+        Effect.map(baseHandler(ctx as any, next as any), (entity) =>
+          entity.headers["content-type"]
+            ? entity
+            : Entity.make(entity.body, {
+              status: entity.status,
+              url: entity.url,
+              headers: { ...entity.headers, "content-type": contentType },
+            }))
+
       const route = Route.make<{ format: F }, {}, A, E, R>(
-        handle(handler) as any,
+        wrappedHandler as any,
         descriptors,
       )
 

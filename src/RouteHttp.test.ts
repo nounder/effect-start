@@ -406,6 +406,57 @@ test.it("falls back to html when no Accept header and no json or text", async ()
     .toBe("text/html; charset=utf-8")
 })
 
+test.it("Route.text matches any text/* Accept header", async () => {
+  const handler = RouteHttp.toWebHandler(
+    Route.get(
+      Route.text(function*() {
+        return Entity.make("event: message\ndata: hello\n\n", {
+          headers: { "content-type": "text/event-stream" },
+        })
+      }),
+    ),
+  )
+
+  const response = await Http.fetch(handler, {
+    path: "/events",
+    headers: { Accept: "text/event-stream" },
+  })
+
+  test
+    .expect(response.status)
+    .toBe(200)
+  test
+    .expect(response.headers.get("Content-Type"))
+    .toBe("text/event-stream")
+  test
+    .expect(await response.text())
+    .toBe("event: message\ndata: hello\n\n")
+})
+
+test.it("Route.text matches text/markdown Accept header", async () => {
+  const handler = RouteHttp.toWebHandler(
+    Route.get(
+      Route.text(function*() {
+        return Entity.make("# Hello", {
+          headers: { "content-type": "text/markdown" },
+        })
+      }),
+    ),
+  )
+
+  const response = await Http.fetch(handler, {
+    path: "/doc",
+    headers: { Accept: "text/markdown" },
+  })
+
+  test
+    .expect(response.status)
+    .toBe(200)
+  test
+    .expect(response.headers.get("Content-Type"))
+    .toBe("text/markdown")
+})
+
 test.describe("walkHandles", () => {
   test.it("yields handlers for static routes", () => {
     const tree = RouteTree.make({

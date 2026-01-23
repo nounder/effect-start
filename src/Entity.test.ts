@@ -371,13 +371,14 @@ test.describe("bytes", () => {
 })
 
 test.describe("stream", () => {
-  test.it("returns Stream body directly", async () => {
-    const originalStream = Stream.make(new Uint8Array([1, 2, 3]))
-    const entity = Entity.make(originalStream)
+  test.it("returns Stream body content", async () => {
+    const bytes = new Uint8Array([1, 2, 3])
+    const entity = Entity.make(Stream.make(bytes))
+    const chunks = await Effect.runPromise(Stream.runCollect(entity.stream))
 
     test
-      .expect(entity.stream)
-      .toBe(originalStream)
+      .expect(Array.from(chunks))
+      .toEqual([bytes])
   })
 
   test.it("converts Uint8Array body to stream", async () => {

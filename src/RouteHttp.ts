@@ -30,18 +30,21 @@ type UnboundedRouteWithMethod = Route.Route.With<{
   format?: RouteBody.Format
 }>
 
+// Used to match Accept headers against available route formats.
+// text/* matches any text type (text/plain, text/event-stream, text/markdown, etc.)
 const formatToMediaType = {
-  text: "text/plain",
+  text: "text/*",
   html: "text/html",
   json: "application/json",
   bytes: "application/octet-stream",
 } as const
 
-const formatToContentType = {
-  text: "text/plain; charset=utf-8",
-  html: "text/html; charset=utf-8",
-  json: "application/json",
-  bytes: "application/octet-stream",
+// Used after content negotiation to determine which format was selected.
+const mediaTypeToFormat = {
+  "text/*": "text",
+  "text/html": "html",
+  "application/json": "json",
+  "application/octet-stream": "bytes",
 } as const
 
 /**
@@ -101,10 +104,7 @@ function toResponse(
   format: string | undefined,
   runtime: Runtime.Runtime<any>,
 ): Effect.Effect<Response, ParseResult.ParseError> {
-  const contentType = format && format in formatToContentType
-    ? formatToContentType[format as keyof typeof formatToContentType]
-    : Entity.type(entity) ?? "application/octet-stream"
-
+  const contentType = Entity.type(entity)
   const status = entity.status ?? 200
   const headers = { ...entity.headers, "content-type": contentType }
 
@@ -150,9 +150,7 @@ function determineSelectedFormat(
   const formats = routes
     .filter((r) => Route.descriptor(r).method !== "*")
     .map((r) => Route.descriptor(r).format)
-    .filter((f): f is Exclude<RouteBody.Format, "*"> =>
-      Boolean(f) && f !== "*"
-    )
+    .filter((f): f is Exclude<RouteBody.Format, "*"> => Boolean(f) && f !== "*")
 
   const uniqueFormats = [...new Set(formats)]
   const mediaTypes = uniqueFormats
@@ -168,12 +166,11 @@ function determineSelectedFormat(
   }
 
   const negotiated = ContentNegotiation.media(accept, mediaTypes)
-  if (negotiated.length === 0) return undefined
+  if (negotiated.length > 0) {
+    return mediaTypeToFormat[negotiated[0]]
+  }
 
-  return Object
-    .entries(formatToMediaType)
-    .find(([_, mt]) => mt === negotiated[0])
-    ?.[0] as RouteBody.Format
+  return undefined
 }
 
 export const toWebHandlerRuntime = <R>(
