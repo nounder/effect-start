@@ -17,11 +17,11 @@ const testLayer = (routes: ReturnType<typeof Route.tree>) =>
     layerServer,
   )
 
-test.describe("BunRoute.bundle", () => {
+test.describe(BunRoute.htmlBundle, () => {
   test.test("wraps child content with layout", async () => {
     const routes = Route.tree({
       "/": Route.get(
-        BunRoute.bundle(() => import("../../static/LayoutSlots.html")),
+        BunRoute.htmlBundle(() => import("../../static/LayoutSlots.html")),
         Route.html("<p>Hello World</p>"),
       ),
     })
@@ -49,7 +49,7 @@ test.describe("BunRoute.bundle", () => {
   test.test("replaces %yield% with child content", async () => {
     const routes = Route.tree({
       "/page": Route.get(
-        BunRoute.bundle(() => import("../../static/LayoutSlots.html")),
+        BunRoute.htmlBundle(() => import("../../static/LayoutSlots.html")),
         Route.html("<div>Page Content</div>"),
       ),
     })
@@ -75,7 +75,7 @@ test.describe("BunRoute.bundle", () => {
   test.test("works with use() for wildcard routes", async () => {
     const routes = Route.tree({
       "*": Route.use(
-        BunRoute.bundle(() => import("../../static/LayoutSlots.html")),
+        BunRoute.htmlBundle(() => import("../../static/LayoutSlots.html")),
       ),
       "/:path*": Route.get(Route.html("<section>Catch All</section>")),
     })
@@ -97,9 +97,35 @@ test.describe("BunRoute.bundle", () => {
     const html = await response.text()
     test.expect(html).toContain("<section>Catch All</section>")
   })
+
+  test.test("has format: html descriptor", async () => {
+    const routes = Route.tree({
+      "/": Route.get(
+        BunRoute.htmlBundle(() => import("../../static/LayoutSlots.html")),
+        Route.html("<p>content</p>"),
+      ),
+    })
+
+    const response = await Effect.runPromise(
+      Effect.scoped(
+        Effect
+          .gen(function*() {
+            const bunServer = yield* BunHttpServer.BunHttpServer
+            return yield* Effect.promise(() =>
+              fetch(`http://localhost:${bunServer.server.port}/`)
+            )
+          })
+          .pipe(Effect.provide(testLayer(routes))),
+      ),
+    )
+
+    test.expect(response.status).toBe(200)
+    const contentType = response.headers.get("content-type")
+    test.expect(contentType).toContain("text/html")
+  })
 })
 
-test.describe("BunRoute.validateBunPattern", () => {
+test.describe(BunRoute.validateBunPattern, () => {
   test.test("returns none for valid patterns", () => {
     test
       .expect(Option.isNone(BunRoute.validateBunPattern("/users")))
@@ -123,14 +149,14 @@ test.describe("BunRoute.validateBunPattern", () => {
   })
 })
 
-test.describe("BunRoute.isHTMLBundle", () => {
+test.describe(BunRoute.isHtmlBundle, () => {
   test.test("returns false for non-objects", () => {
-    test.expect(BunRoute.isHTMLBundle(null)).toBe(false)
-    test.expect(BunRoute.isHTMLBundle(undefined)).toBe(false)
-    test.expect(BunRoute.isHTMLBundle("string")).toBe(false)
+    test.expect(BunRoute.isHtmlBundle(null)).toBe(false)
+    test.expect(BunRoute.isHtmlBundle(undefined)).toBe(false)
+    test.expect(BunRoute.isHtmlBundle("string")).toBe(false)
   })
 
   test.test("returns true for object with index property", () => {
-    test.expect(BunRoute.isHTMLBundle({ index: "index.html" })).toBe(true)
+    test.expect(BunRoute.isHtmlBundle({ index: "index.html" })).toBe(true)
   })
 })

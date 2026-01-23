@@ -37,11 +37,12 @@ export function descriptors(
   return undefined
 }
 
-export function bundle(
+export function htmlBundle(
   load: () => Promise<Bun.HTMLBundle | { default: Bun.HTMLBundle }>,
 ) {
   const bunPrefix = `/.BunRoute-${Random.token(6)}`
   const bunLoad = () => load().then(mod => "default" in mod ? mod.default : mod)
+  const descriptors = { bunPrefix, bunLoad, format: "html" as const }
 
   return function<
     D extends Route.RouteDescriptor.Any,
@@ -55,7 +56,7 @@ export function bundle(
     [
       ...I,
       Route.Route.Route<
-        BunDescriptors,
+        BunDescriptors & { format: "html" },
         { request: Request },
         string,
         BunRouteError,
@@ -64,7 +65,7 @@ export function bundle(
     ]
   > {
     const handler: Route.Route.Handler<
-      BunDescriptors & { request: Request },
+      BunDescriptors & { format: "html" } & { request: Request },
       string,
       BunRouteError,
       BunHttpServer.BunHttpServer
@@ -147,12 +148,12 @@ export function bundle(
       })
 
     const route = Route.make<
-      BunDescriptors,
+      BunDescriptors & { format: "html" },
       { request: Request },
       string,
       BunRouteError,
       BunHttpServer.BunHttpServer
-    >(handler, { bunPrefix, bunLoad })
+    >(handler, descriptors)
 
     return Route.set(
       [...Route.items(self), route] as any,
@@ -160,6 +161,8 @@ export function bundle(
     )
   }
 }
+
+
 
 type BunServerFetchHandler = (
   request: Request,
@@ -220,7 +223,7 @@ export function validateBunPattern(
   return Option.none()
 }
 
-export const isHTMLBundle = (handle: any) => {
+export const isHtmlBundle = (handle: any) => {
   return (
     typeof handle === "object"
     && handle !== null
