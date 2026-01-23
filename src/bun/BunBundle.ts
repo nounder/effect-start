@@ -9,10 +9,7 @@ import {
   Iterable,
   Layer,
   pipe,
-  PubSub,
   Record,
-  Stream,
-  SynchronizedRef,
 } from "effect"
 import * as NPath from "node:path"
 import type {
@@ -20,7 +17,6 @@ import type {
   BundleManifest,
 } from "../bundler/Bundle.ts"
 import * as Bundle from "../bundler/Bundle.ts"
-import * as FileSystemExtra from "../FileSystemExtra.ts"
 import { BunImportTrackerPlugin } from "./index.ts"
 
 export type BuildOptions = Omit<
@@ -123,75 +119,6 @@ export function layer<T>(
   config: BuildOptions,
 ) {
   return Layer.effect(tag, build(config))
-}
-
-export function layerDev<T>(
-  tag: Context.Tag<T, BundleContext>,
-  config: BuildOptions,
-) {
-  return Layer.scoped(
-    tag,
-    Effect.gen(function*() {
-      const loadRefKey = "_loadRef"
-      const sharedBundle = yield* build(config)
-
-      const loadRef = yield* SynchronizedRef.make(null)
-      sharedBundle[loadRefKey] = loadRef
-      sharedBundle.events = yield* PubSub.unbounded<Bundle.BundleEvent>()
-
-      yield* Effect.fork(
-        pipe(
-          FileSystemExtra.watchSource({
-            filter: FileSystemExtra.filterSourceFiles,
-          }),
-          Stream.map(v =>
-            ({
-              _tag: "Change",
-              path: v.path,
-            }) as Bundle.BundleEvent
-          ),
-          Stream.onError(err =>
-            Effect.logError("Error while watching files", err)
-          ),
-          Stream.runForEach((v) =>
-            pipe(
-              Effect.gen(function*() {
-                yield* Effect.logDebug("Updating bundle: " + tag.key)
-
-                const newBundle = yield* build(config)
-
-                Object.assign(sharedBundle, newBundle)
-
-                // Clean old loaded bundle
-                yield* SynchronizedRef.update(loadRef, () => null)
-
-                // publish event after the built
-                if (sharedBundle.events) {
-                  yield* PubSub.publish(sharedBundle.events, v)
-                }
-              }),
-              Effect.catchAll(err =>
-                Effect.gen(function*() {
-                  yield* Effect.logError(
-                    "Error while updating bundle",
-                    err,
-                  )
-                  if (sharedBundle.events) {
-                    yield* PubSub.publish(sharedBundle.events, {
-                      _tag: "BuildError",
-                      error: String(err),
-                    })
-                  }
-                })
-              ),
-            )
-          ),
-        ),
-      )
-
-      return sharedBundle
-    }),
-  )
 }
 
 /**
