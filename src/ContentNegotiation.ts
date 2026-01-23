@@ -113,17 +113,24 @@ function specifyMediaType(
   let s = 0
 
   if (spec.type === type) {
-    s |= 4
+    s |= 4 // exact match: highest specificity
+  } else if (type === "*") {
+    s |= 0 // server offers wildcard (e.g. */*): matches any client type
   } else if (spec.type !== "*") {
+    // client is NOT requesting wildcard: no match
     return null
   }
 
+  // client requests wildcard (e.g. Accept: */*)
   if (spec.subtype === subtype) {
-    s |= 2
+    s |= 2 // // exact match: highest specificity
+  } else if (subtype === "*") {
+    s |= 1 // server offers wildcard (e.g. text/*)
   } else if (spec.subtype !== "*") {
-    return null
+    return null // client is NOT requesting wildcard
   }
 
+  // client requests wildcard (e.g. Accept: text/*): matches any server subtype
   const specParams = Object.keys(spec.params)
   if (specParams.length > 0) {
     if (

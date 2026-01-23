@@ -148,6 +148,109 @@ test.describe("ContentNegotiation.media", () => {
       .expect(result)
       .toEqual(["text/html", "application/json"])
   })
+
+  test.describe("wildcard in available types", () => {
+    test.it("text/* matches text/event-stream", () => {
+      const result = ContentNegotiation.media(
+        "text/event-stream",
+        ["text/*", "application/json"],
+      )
+      test
+        .expect(result)
+        .toEqual(["text/*"])
+    })
+
+    test.it("text/* matches text/markdown", () => {
+      const result = ContentNegotiation.media(
+        "text/markdown",
+        ["text/*"],
+      )
+      test
+        .expect(result)
+        .toEqual(["text/*"])
+    })
+
+    test.it("text/* matches text/plain", () => {
+      const result = ContentNegotiation.media(
+        "text/plain",
+        ["text/*"],
+      )
+      test
+        .expect(result)
+        .toEqual(["text/*"])
+    })
+
+    test.it("text/* does not match application/json", () => {
+      const result = ContentNegotiation.media(
+        "application/json",
+        ["text/*"],
+      )
+      test
+        .expect(result)
+        .toEqual([])
+    })
+
+    test.it("prefers exact match over wildcard available type", () => {
+      const result = ContentNegotiation.media(
+        "text/html",
+        ["text/*", "text/html"],
+      )
+      test
+        .expect(result)
+        .toEqual(["text/html", "text/*"])
+    })
+
+    test.it("text/* matches multiple text types in Accept", () => {
+      const result = ContentNegotiation.media(
+        "text/html, text/plain",
+        ["text/*"],
+      )
+      test
+        .expect(result)
+        .toEqual(["text/*"])
+    })
+
+    test.it("application/* matches application/xml", () => {
+      const result = ContentNegotiation.media(
+        "application/xml",
+        ["application/*", "text/html"],
+      )
+      test
+        .expect(result)
+        .toEqual(["application/*"])
+    })
+
+    test.it("*/* in available matches any type", () => {
+      const result = ContentNegotiation.media(
+        "image/png",
+        ["*/*"],
+      )
+      test
+        .expect(result)
+        .toEqual(["*/*"])
+    })
+
+    test.it("combines client and server wildcards", () => {
+      // Client wants text/*, server offers text/*
+      const result = ContentNegotiation.media(
+        "text/*",
+        ["text/*"],
+      )
+      test
+        .expect(result)
+        .toEqual(["text/*"])
+    })
+
+    test.it("quality values still apply with wildcard available", () => {
+      const result = ContentNegotiation.media(
+        "text/html;q=0.5, text/event-stream;q=0.9",
+        ["text/*"],
+      )
+      test
+        .expect(result)
+        .toEqual(["text/*"])
+    })
+  })
 })
 
 test.describe("ContentNegotiation.language", () => {
