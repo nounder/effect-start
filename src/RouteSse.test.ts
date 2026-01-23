@@ -206,4 +206,46 @@ test.describe("Route.sse()", () => {
 
     test.expect(text).toBe("data: from context\n\n")
   })
+
+  test.it("formats tagged struct as event with JSON data", async () => {
+    const handler = RouteHttp.toWebHandler(
+      Route.get(
+        Route.sse(() =>
+          Stream.make(
+            { _tag: "UserCreated", id: 123, name: "Alice" },
+            { _tag: "UserUpdated", id: 123, active: true },
+          )
+        ),
+      ),
+    )
+    const response = await Http.fetch(handler, { path: "/events" })
+
+    const text = await response.text()
+    test.expect(text).toBe(
+      `event: UserCreated\ndata: {"_tag":"UserCreated","id":123,"name":"Alice"}\n\n` +
+        `event: UserUpdated\ndata: {"_tag":"UserUpdated","id":123,"active":true}\n\n`,
+    )
+  })
+
+  test.it("handles mixed tagged and regular events", async () => {
+    const handler = RouteHttp.toWebHandler(
+      Route.get(
+        Route.sse(() =>
+          Stream.make(
+            { data: "plain message" },
+            { _tag: "Notification", text: "hello" },
+            { data: "another", event: "custom" },
+          )
+        ),
+      ),
+    )
+    const response = await Http.fetch(handler, { path: "/events" })
+
+    const text = await response.text()
+    test.expect(text).toBe(
+      `data: plain message\n\n` +
+        `event: Notification\ndata: {"_tag":"Notification","text":"hello"}\n\n` +
+        `event: custom\ndata: another\n\n`,
+    )
+  })
 })

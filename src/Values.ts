@@ -4,16 +4,18 @@ type JsonPrimitives =
   | boolean
   | null
 
+export type JsonObject = {
+  [key: string]:
+    | Json
+    // undefined won't be included in JSON objects but this will allow
+    // to use Json type in functions that return object of multiple shapes
+    | undefined
+}
+
 export type Json =
   | JsonPrimitives
   | Json[]
-  | {
-    [key: string]:
-      | Json
-      // undefined won't be included in JSON objects but this will allow
-      // to use Json type in functions that return object of multiple shapes
-      | undefined
-  }
+  | JsonObject
 
 export function isPlainObject(
   value: unknown,

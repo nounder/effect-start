@@ -1,4 +1,6 @@
+import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
+import * as Schedule from "effect/Schedule"
 import * as Stream from "effect/Stream"
 import type * as Utils from "effect/Utils"
 import * as Entity from "./Entity.ts"
@@ -6,24 +8,41 @@ import * as Route from "./Route.ts"
 import * as StreamExtra from "./StreamExtra.ts"
 import type * as Values from "./Values.ts"
 
+const HEARTBEAT_INTERVAL = Duration.seconds(5)
+const HEARTBEAT = ": <3\n\n"
+
 export interface SseEvent {
-  readonly data?: string | undefined
-  readonly event?: string
-  readonly retry?: number
+  data?: string | undefined
+  event?: string
+  retry?: number
 }
 
-function formatSseEvent(event: SseEvent): string {
-  let result = ""
-  if (event.event) {
-    result += `event: ${event.event}\n`
+export type SseTaggedEvent = { _tag: string } & Values.JsonObject
+
+export type SseEventInput = SseEvent | SseTaggedEvent
+
+function isTaggedEvent(event: SseEventInput): event is SseTaggedEvent {
+  return Object.hasOwn(event, "_tag") && typeof event["_tag"] === "string"
+}
+
+function formatSseEvent(event: SseEventInput): string {
+  if (isTaggedEvent(event)) {
+    const json = JSON.stringify(event)
+    return `event: ${event._tag}\ndata: ${json}\n\n`
   }
-  if (event.data != null) {
-    for (const line of event.data.split("\n")) {
+
+  const e = event as SseEvent
+  let result = ""
+  if (e.event) {
+    result += `event: ${e.event}\n`
+  }
+  if (typeof e.data === "string") {
+    for (const line of e.data.split("\n")) {
       result += `data: ${line}\n`
     }
   }
-  if (event.retry !== undefined) {
-    result += `retry: ${event.retry}\n`
+  if (e.retry !== undefined) {
+    result += `retry: ${e.retry}\n`
   }
   if (result === "") {
     return ""
@@ -32,19 +51,19 @@ function formatSseEvent(event: SseEvent): string {
 }
 
 export type SseHandlerInput<B, E, R> =
-  | Stream.Stream<SseEvent, E, R>
-  | Effect.Effect<Stream.Stream<SseEvent, E, R>, E, R>
+  | Stream.Stream<SseEventInput, E, R>
+  | Effect.Effect<Stream.Stream<SseEventInput, E, R>, E, R>
   | ((
     context: Values.Simplify<B>,
     next: (
       context?: Partial<B> & Record<string, unknown>,
     ) => Entity.Entity<string>,
   ) =>
-    | Stream.Stream<SseEvent, E, R>
-    | Effect.Effect<Stream.Stream<SseEvent, E, R>, E, R>
+    | Stream.Stream<SseEventInput, E, R>
+    | Effect.Effect<Stream.Stream<SseEventInput, E, R>, E, R>
     | Generator<
       Utils.YieldWrap<Effect.Effect<unknown, E, R>>,
-      Stream.Stream<SseEvent, E, R>,
+      Stream.Stream<SseEventInput, E, R>,
       unknown
     >)
 
@@ -70,31 +89,36 @@ export function sse<
       E,
       R
     > = (ctx, _next) => {
-      const getStream = (): Effect.Effect<Stream.Stream<SseEvent, E, R>, E, R> => {
+      const getStream = (): Effect.Effect<Stream.Stream<SseEventInput, E, R>, E, R> => {
         if (typeof handler === "function") {
           const result = (handler as Function)(ctx, _next)
           if (StreamExtra.isStream(result)) {
-            return Effect.succeed(result as Stream.Stream<SseEvent, E, R>)
+            return Effect.succeed(result as Stream.Stream<SseEventInput, E, R>)
           }
           if (Effect.isEffect(result)) {
-            return result as Effect.Effect<Stream.Stream<SseEvent, E, R>, E, R>
+            return result as Effect.Effect<Stream.Stream<SseEventInput, E, R>, E, R>
           }
           return Effect.gen(function*() {
             return yield* result
-          }) as Effect.Effect<Stream.Stream<SseEvent, E, R>, E, R>
+          }) as Effect.Effect<Stream.Stream<SseEventInput, E, R>, E, R>
         }
         if (StreamExtra.isStream(handler)) {
-          return Effect.succeed(handler as Stream.Stream<SseEvent, E, R>)
+          return Effect.succeed(handler as Stream.Stream<SseEventInput, E, R>)
         }
         if (Effect.isEffect(handler)) {
-          return handler as Effect.Effect<Stream.Stream<SseEvent, E, R>, E, R>
+          return handler as Effect.Effect<Stream.Stream<SseEventInput, E, R>, E, R>
         }
         return Effect.succeed(Stream.empty)
       }
 
       return Effect.map(getStream(), (eventStream) => {
         const formattedStream = Stream.map(eventStream, formatSseEvent)
-        return Entity.make(formattedStream, {
+        const heartbeat = Stream.repeat(
+          Stream.succeed(HEARTBEAT),
+          Schedule.spaced(HEARTBEAT_INTERVAL),
+        ).pipe(Stream.drop(1))
+        const merged = Stream.merge(formattedStream, heartbeat, { haltStrategy: "left" })
+        return Entity.make(merged, {
           headers: {
             "content-type": "text/event-stream",
             "cache-control": "no-cache",

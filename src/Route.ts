@@ -323,6 +323,10 @@ export {
   render,
 } from "./RouteBody.ts"
 
+export {
+  sse,
+} from "./RouteSse.ts"
+
 export class Routes extends Context.Tag("effect-start/Routes")<
   Routes,
   RouteTree.RouteTree
