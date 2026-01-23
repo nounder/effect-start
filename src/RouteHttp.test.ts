@@ -362,8 +362,8 @@ test.it("returns 406 when Accept doesn't match available formats", async () => {
     .expect(response.status)
     .toBe(406)
   test
-    .expect(await response.text())
-    .toBe("Not Acceptable")
+    .expect(await response.json())
+    .toEqual({ status: 406, message: "not acceptable" })
 })
 
 test.it("returns 406 when Accept doesn't match any of multiple formats", async () => {
@@ -1546,13 +1546,13 @@ test.describe("schema handlers", () => {
           .expect(response.status)
           .toBe(400)
 
-        const body = yield* Effect.promise(() => response.text())
+        const body = yield* Effect.promise(() => response.json())
 
         test
-          .expect(body)
+          .expect(body.message)
           .toContain("ParseError")
         test
-          .expect(body)
+          .expect(body.message)
           .toContain("Expected string, actual [\"John\",\"Jane\"]")
 
         const messages = yield* TestLogger.messages

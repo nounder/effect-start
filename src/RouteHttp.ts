@@ -211,7 +211,7 @@ export const toWebHandlerRuntime = <R>(
 
       if (methodRoutes.length === 0 && wildcards.length === 0) {
         return Promise.resolve(
-          new Response("Method Not Allowed", { status: 405 }),
+          Response.json({ status: 405, message: "method not allowed" }, { status: 405 }),
         )
       }
 
@@ -232,7 +232,7 @@ export const toWebHandlerRuntime = <R>(
         && !hasWildcardFormatRoutes
       ) {
         return Promise.resolve(
-          new Response("Not Acceptable", { status: 406 }),
+          Response.json({ status: 406, message: "not acceptable" }, { status: 406 }),
         )
       }
 
@@ -311,7 +311,7 @@ export const toWebHandlerRuntime = <R>(
               : Entity.make(result, { status: 200 })
 
             if (entity.status === 404 && entity.body === undefined) {
-              return new Response("Not Acceptable", { status: 406 })
+              return Response.json({ status: 406, message: "not acceptable" }, { status: 406 })
             }
 
             return yield* toResponse(entity, selectedFormat, runtime)
@@ -374,7 +374,7 @@ export const toWebHandlerRuntime = <R>(
               Effect.gen(function*() {
                 yield* Effect.logError(cause)
                 const status = getStatusFromCause(cause)
-                return new Response(Cause.pretty(cause), { status })
+                return Response.json({ status, message: Cause.pretty(cause) }, { status })
               })
             ),
           ),
@@ -392,10 +392,10 @@ export const toWebHandlerRuntime = <R>(
           if (exit._tag === "Success") {
             resolve(exit.value)
           } else if (isClientAbort(exit.cause)) {
-            resolve(new Response(null, { status: 499 }))
+            resolve(Response.json({ status: 499, message: "client closed request" }, { status: 499 }))
           } else {
             const status = getStatusFromCause(exit.cause)
-            resolve(new Response(Cause.pretty(exit.cause), { status }))
+            resolve(Response.json({ status, message: Cause.pretty(exit.cause) }, { status }))
           }
         })
       })
