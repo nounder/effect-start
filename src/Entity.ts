@@ -194,6 +194,10 @@ function getBytes(
   if (typeof v === "string") {
     return Effect.succeed(textEncoder.encode(v))
   }
+  // Allows entity.stream to work when body is a JSON object
+  if (typeof v === "object" && v !== null && !isBinary(v)) {
+    return Effect.succeed(textEncoder.encode(JSON.stringify(v)))
+  }
   return Effect.fail(mismatch(Schema.Uint8ArrayFromSelf, v))
 }
 

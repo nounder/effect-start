@@ -6,6 +6,7 @@ import * as Schedule from "effect/Schedule"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
 import * as Tracer from "effect/Tracer"
+import * as Entity from "./Entity.ts"
 import * as Http from "./Http.ts"
 import * as Route from "./Route.ts"
 import * as RouteHttp from "./RouteHttp.ts"
@@ -2435,5 +2436,420 @@ test.describe("RouteTree layer routes", () => {
     test
       .expect(await response.text())
       .toBe("<h1>Hello</h1>")
+  })
+})
+
+test.describe("Route.render (format=*)", () => {
+  test.it("accepts any Accept header", async () => {
+    const handler = RouteHttp.toWebHandler(
+      Route.get(
+        Route.render(function*() {
+          return Stream.make("event: message\ndata: hello\n\n")
+        }),
+      ),
+    )
+
+    const response = await Http.fetch(handler, {
+      path: "/events",
+      headers: { Accept: "text/event-stream" },
+    })
+
+    test
+      .expect(response.status)
+      .toBe(200)
+    test
+      .expect(await response.text())
+      .toBe("event: message\ndata: hello\n\n")
+  })
+
+  test.it("works without Accept header", async () => {
+    const handler = RouteHttp.toWebHandler(
+      Route.get(
+        Route.render(function*() {
+          return "raw response"
+        }),
+      ),
+    )
+
+    const response = await Http.fetch(handler, { path: "/raw" })
+
+    test
+      .expect(response.status)
+      .toBe(200)
+    test
+      .expect(await response.text())
+      .toBe("raw response")
+  })
+
+  test.it("does not participate in content negotiation", async () => {
+    const handler = RouteHttp.toWebHandler(
+      Route
+        .get(Route.json({ type: "json" }))
+        .get(Route.render(function*() {
+          return "fallback"
+        })),
+    )
+
+    const jsonResponse = await Http.fetch(handler, {
+      path: "/data",
+      headers: { Accept: "application/json" },
+    })
+    test
+      .expect(await jsonResponse.json())
+      .toEqual({ type: "json" })
+
+    const eventStreamResponse = await Http.fetch(handler, {
+      path: "/data",
+      headers: { Accept: "text/event-stream" },
+    })
+    test
+      .expect(eventStreamResponse.status)
+      .toBe(200)
+    test
+      .expect(await eventStreamResponse.text())
+      .toBe("fallback")
+  })
+
+  test.it("is always called regardless of Accept header when only handle routes exist", async () => {
+    const handler = RouteHttp.toWebHandler(
+      Route.get(
+        Route.render(function*() {
+          return "any format"
+        }),
+      ),
+    )
+
+    const responses = await Promise.all([
+      Http.fetch(handler, { path: "/", headers: { Accept: "text/event-stream" } }),
+      Http.fetch(handler, { path: "/", headers: { Accept: "image/png" } }),
+      Http.fetch(handler, { path: "/", headers: { Accept: "*/*" } }),
+      Http.fetch(handler, { path: "/" }),
+    ])
+
+    for (const response of responses) {
+      test
+        .expect(response.status)
+        .toBe(200)
+      test
+        .expect(await response.text())
+        .toBe("any format")
+    }
+  })
+
+  test.it("can return Entity with custom headers", async () => {
+    const handler = RouteHttp.toWebHandler(
+      Route.get(
+        Route.render(function*() {
+          return Entity.make(Stream.make("data: hello\n\n"), {
+            headers: {
+              "content-type": "text/event-stream",
+              "cache-control": "no-cache",
+            },
+          })
+        }),
+      ),
+    )
+
+    const response = await Http.fetch(handler, {
+      path: "/events",
+      headers: { Accept: "text/event-stream" },
+    })
+
+    test
+      .expect(response.status)
+      .toBe(200)
+    test
+      .expect(response.headers.get("content-type"))
+      .toBe("text/event-stream")
+    test
+      .expect(response.headers.get("cache-control"))
+      .toBe("no-cache")
+    test
+      .expect(await response.text())
+      .toBe("data: hello\n\n")
+  })
+
+  test.it("handle middleware wraps handle handler", async () => {
+    const handler = RouteHttp.toWebHandler(
+      Route
+        .use(
+          Route.render(function*(_ctx, next) {
+            const value = yield* next().text
+            return `wrapped: ${value}`
+          }),
+        )
+        .get(
+          Route.render(function*() {
+            return "inner"
+          }),
+        ),
+    )
+
+    const response = await Http.fetch(handler, {
+      path: "/",
+      headers: { Accept: "text/event-stream" },
+    })
+
+    test
+      .expect(response.status)
+      .toBe(200)
+    test
+      .expect(await response.text())
+      .toBe("wrapped: inner")
+  })
+
+  test.it("render middleware always runs even when specific format is selected", async () => {
+    const calls: string[] = []
+
+    const handler = RouteHttp.toWebHandler(
+      Route
+        .use(
+          Route.render(function*(_ctx, next) {
+            calls.push("render middleware")
+            return next().stream
+          }),
+        )
+        .get(
+          Route.json(function*() {
+            calls.push("json handler")
+            return { type: "json" }
+          }),
+        ),
+    )
+
+    const response = await Http.fetch(handler, {
+      path: "/",
+      headers: { Accept: "application/json" },
+    })
+
+    test
+      .expect(response.status)
+      .toBe(200)
+    test
+      .expect(calls)
+      .toEqual(["render middleware", "json handler"])
+    test
+      .expect(await response.json())
+      .toEqual({ type: "json" })
+  })
+
+  test.it("next() from render matches both render and selected format routes", async () => {
+    const calls: string[] = []
+
+    const handler = RouteHttp.toWebHandler(
+      Route
+        .use(
+          Route.render(function*(_ctx, next) {
+            calls.push("render middleware 1")
+            return next().stream
+          }),
+          Route.render(function*(_ctx, next) {
+            calls.push("render middleware 2")
+            return next().stream
+          }),
+          Route.json(function*(_ctx, next) {
+            calls.push("json middleware")
+            return yield* next().json
+          }),
+        )
+        .get(
+          Route.json(function*() {
+            calls.push("json handler")
+            return { type: "json" }
+          }),
+        ),
+    )
+
+    const response = await Http.fetch(handler, {
+      path: "/",
+      headers: { Accept: "application/json" },
+    })
+
+    test
+      .expect(response.status)
+      .toBe(200)
+    test
+      .expect(calls)
+      .toEqual([
+        "render middleware 1",
+        "render middleware 2",
+        "json middleware",
+        "json handler",
+      ])
+  })
+
+  test.it("render handler runs when no specific format matches", async () => {
+    const calls: string[] = []
+
+    const handler = RouteHttp.toWebHandler(
+      Route
+        .get(
+          Route.json(function*() {
+            calls.push("json")
+            return { type: "json" }
+          }),
+          Route.render(function*() {
+            calls.push("render")
+            return "render output"
+          }),
+        ),
+    )
+
+    const eventStreamResponse = await Http.fetch(handler, {
+      path: "/",
+      headers: { Accept: "text/event-stream" },
+    })
+
+    test
+      .expect(eventStreamResponse.status)
+      .toBe(200)
+    test
+      .expect(calls)
+      .toEqual(["render"])
+    test
+      .expect(await eventStreamResponse.text())
+      .toBe("render output")
+  })
+
+  test.it("render used as fallback when Accept doesn't match other formats", async () => {
+    const handler = RouteHttp.toWebHandler(
+      Route
+        .get(
+          Route.json({ type: "json" }),
+          Route.html("<h1>html</h1>"),
+          Route.render(function*() {
+            return "fallback for unknown accept"
+          }),
+        ),
+    )
+
+    const eventStreamResponse = await Http.fetch(handler, {
+      path: "/",
+      headers: { Accept: "text/event-stream" },
+    })
+
+    test
+      .expect(eventStreamResponse.status)
+      .toBe(200)
+    test
+      .expect(await eventStreamResponse.text())
+      .toBe("fallback for unknown accept")
+  })
+
+  test.it("handler context includes format=*", () => {
+    Route.get(
+      Route.render(function*(ctx) {
+        test
+          .expectTypeOf(ctx.format)
+          .toEqualTypeOf<"*">()
+        return "ok"
+      }),
+    )
+  })
+
+  test.it("streams work correctly with render", async () => {
+    const handler = RouteHttp.toWebHandler(
+      Route.get(
+        Route.render(function*() {
+          return Stream.make("chunk1", "chunk2", "chunk3")
+        }),
+      ),
+    )
+
+    const response = await Http.fetch(handler, {
+      path: "/stream",
+      headers: { Accept: "text/event-stream" },
+    })
+
+    test
+      .expect(response.status)
+      .toBe(200)
+    test
+      .expect(await response.text())
+      .toBe("chunk1chunk2chunk3")
+  })
+
+  test.it("multiple render middlewares chain correctly", async () => {
+    const handler = RouteHttp.toWebHandler(
+      Route
+        .use(
+          Route.render(function*(_ctx, next) {
+            const value = yield* next().text
+            return `outer(${value})`
+          }),
+          Route.render(function*(_ctx, next) {
+            const value = yield* next().text
+            return `inner(${value})`
+          }),
+        )
+        .get(
+          Route.render(function*() {
+            return "content"
+          }),
+        ),
+    )
+
+    const response = await Http.fetch(handler, { path: "/" })
+
+    test
+      .expect(response.status)
+      .toBe(200)
+    test
+      .expect(await response.text())
+      .toBe("outer(inner(content))")
+  })
+
+  test.it("render middleware can wrap text handler", async () => {
+    const handler = RouteHttp.toWebHandler(
+      Route
+        .use(
+          Route.render(function*(_ctx, next) {
+            const value = yield* next().text
+            return `[${value}]`
+          }),
+        )
+        .get(
+          Route.text("hello"),
+        ),
+    )
+
+    const response = await Http.fetch(handler, {
+      path: "/",
+      headers: { Accept: "text/plain" },
+    })
+
+    test
+      .expect(response.status)
+      .toBe(200)
+    test
+      .expect(await response.text())
+      .toBe("[hello]")
+  })
+
+  test.it("render middleware can wrap html handler", async () => {
+    const handler = RouteHttp.toWebHandler(
+      Route
+        .use(
+          Route.render(function*(_ctx, next) {
+            const value = yield* next().text
+            return `<!DOCTYPE html>${value}`
+          }),
+        )
+        .get(
+          Route.html("<body>content</body>"),
+        ),
+    )
+
+    const response = await Http.fetch(handler, {
+      path: "/",
+      headers: { Accept: "text/html" },
+    })
+
+    test
+      .expect(response.status)
+      .toBe(200)
+    test
+      .expect(await response.text())
+      .toBe("<!DOCTYPE html><body>content</body>")
   })
 })

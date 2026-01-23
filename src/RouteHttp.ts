@@ -150,7 +150,9 @@ function determineSelectedFormat(
   const formats = routes
     .filter((r) => Route.descriptor(r).method !== "*")
     .map((r) => Route.descriptor(r).format)
-    .filter(Boolean) as RouteBody.Format[]
+    .filter((f): f is Exclude<RouteBody.Format, "*"> =>
+      Boolean(f) && f !== "*"
+    )
 
   const uniqueFormats = [...new Set(formats)]
   const mediaTypes = uniqueFormats
@@ -219,9 +221,18 @@ export const toWebHandlerRuntime = <R>(
       const allRoutes = [...wildcards, ...methodRoutes]
       const selectedFormat = determineSelectedFormat(accept, allRoutes)
 
+      const hasSpecificFormatRoutes = allRoutes.some((r) => {
+        const format = Route.descriptor(r).format
+        return format && format !== "*"
+      })
+      const hasWildcardFormatRoutes = allRoutes.some((r) =>
+        Route.descriptor(r).format === "*"
+      )
+
       if (
         selectedFormat === undefined
-        && allRoutes.some((r) => Route.descriptor(r).format)
+        && hasSpecificFormatRoutes
+        && !hasWildcardFormatRoutes
       ) {
         return Promise.resolve(
           new Response("Not Acceptable", { status: 406 }),
@@ -256,7 +267,7 @@ export const toWebHandlerRuntime = <R>(
           const format = descriptor.format
           const handler = route.handler as unknown as Handler
 
-          if (format && format !== selectedFormat) {
+          if (format && format !== "*" && format !== selectedFormat) {
             return runNext()
           }
 

@@ -10,6 +10,7 @@ export type Format =
   | "html"
   | "json"
   | "bytes"
+  | "*"
 
 type UnwrapStream<T> = T extends Stream.Stream<infer V, any, any> ? V : T
 
@@ -135,5 +136,51 @@ export function build<
         Route.descriptor(self),
       )
     }
+  }
+}
+
+export type RenderValue =
+  | string
+  | Uint8Array
+  | Stream.Stream<string | Uint8Array, any, any>
+
+export function render<
+  D extends Route.RouteDescriptor.Any,
+  B extends {},
+  I extends Route.Route.Tuple,
+  A extends RenderValue,
+  E = never,
+  R = never,
+>(
+  handler: HandlerInput<
+    NoInfer<
+      D & B & Route.ExtractBindings<I> & { format: "*" }
+    >,
+    A,
+    E,
+    R
+  >,
+) {
+  return function(
+    self: Route.RouteSet.RouteSet<D, B, I>,
+  ) {
+    const route = Route.make<{ format: "*" }, {}, A, E, R>(
+      handle(handler) as any,
+      { format: "*" },
+    )
+
+    const items: [...I, Route.Route.Route<{ format: "*" }, {}, A, E, R>] = [
+      ...Route.items(self),
+      route,
+    ]
+
+    return Route.set<
+      D,
+      B,
+      [...I, Route.Route.Route<{ format: "*" }, {}, A, E, R>]
+    >(
+      items,
+      Route.descriptor(self),
+    )
   }
 }

@@ -319,6 +319,10 @@ export const bytes = RouteBody.build<Uint8Array, "bytes">({
   format: "bytes",
 })
 
+export {
+  render,
+} from "./RouteBody.ts"
+
 export class Routes extends Context.Tag("effect-start/Routes")<
   Routes,
   RouteTree.RouteTree

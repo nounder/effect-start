@@ -359,13 +359,14 @@ test.describe("bytes", () => {
       .toEqual(new Uint8Array([1, 2, 3, 4]))
   })
 
-  test.it("fails for unsupported body types", async () => {
+  test.it("serializes objects to JSON bytes", async () => {
     const entity = Entity.make({ key: "value" })
-    const result = await Effect.runPromiseExit(entity.bytes)
+    const result = await Effect.runPromise(entity.bytes)
+    const text = new TextDecoder().decode(result)
 
     test
-      .expect(result._tag)
-      .toBe("Failure")
+      .expect(text)
+      .toBe('{"key":"value"}')
   })
 })
 
