@@ -22,6 +22,21 @@ const formatToContentType: Record<Format, string | undefined> = {
 
 type UnwrapStream<T> = T extends Stream.Stream<infer V, any, any> ? V : T
 
+type YieldError<T> = T extends Utils.YieldWrap<Effect.Effect<any, infer E, any>>
+  ? E
+  : never
+
+type YieldContext<T> = T extends
+  Utils.YieldWrap<Effect.Effect<any, any, infer R>> ? R
+  : never
+
+export type GeneratorHandler<B, A, Y> = (
+  context: Values.Simplify<B>,
+  next: (
+    context?: Partial<B> & Record<string, unknown>,
+  ) => Entity.Entity<UnwrapStream<A>>,
+) => Generator<Y, A | Entity.Entity<A>, unknown>
+
 export type HandlerInput<B, A, E, R> =
   | A
   | Entity.Entity<A>
@@ -39,6 +54,16 @@ export type HandlerInput<B, A, E, R> =
       unknown
     >)
 
+export function handle<
+  B,
+  A,
+  Y extends Utils.YieldWrap<Effect.Effect<any, any, any>>,
+>(
+  handler: GeneratorHandler<B, A, Y>,
+): Route.Route.Handler<B, A, YieldError<Y>, YieldContext<Y>>
+export function handle<B, A, E, R>(
+  handler: HandlerInput<B, A, E, R>,
+): Route.Route.Handler<B, A, E, R>
 export function handle<B, A, E, R>(
   handler: HandlerInput<B, A, E, R>,
 ): Route.Route.Handler<B, A, E, R> {
@@ -80,13 +105,67 @@ function normalizeToEntity<A>(value: A | Entity.Entity<A>): Entity.Entity<A> {
   return Entity.make(value as A, { status: 200 })
 }
 
+export interface BuildReturn<
+  Value,
+  F extends Format,
+> {
+  <
+    D extends Route.RouteDescriptor.Any,
+    B,
+    I extends Route.Route.Tuple,
+    A extends F extends "json" ? Value
+      : Value | Stream.Stream<Value, any, any>,
+    Y extends Utils.YieldWrap<Effect.Effect<any, any, any>>,
+  >(
+    handler: GeneratorHandler<
+      NoInfer<D & B & Route.ExtractBindings<I> & { format: F }>,
+      A,
+      Y
+    >,
+  ): (
+    self: Route.RouteSet.RouteSet<D, B, I>,
+  ) => Route.RouteSet.RouteSet<
+    D,
+    B,
+    [
+      ...I,
+      Route.Route.Route<{ format: F }, {}, A, YieldError<Y>, YieldContext<Y>>,
+    ]
+  >
+
+  <
+    D extends Route.RouteDescriptor.Any,
+    B,
+    I extends Route.Route.Tuple,
+    A extends F extends "json" ? Value
+      : Value | Stream.Stream<Value, any, any>,
+    E = never,
+    R = never,
+  >(
+    handler: HandlerInput<
+      NoInfer<
+        D & B & Route.ExtractBindings<I> & { format: F }
+      >,
+      A,
+      E,
+      R
+    >,
+  ): (
+    self: Route.RouteSet.RouteSet<D, B, I>,
+  ) => Route.RouteSet.RouteSet<
+    D,
+    B,
+    [...I, Route.Route.Route<{ format: F }, {}, A, E, R>]
+  >
+}
+
 export function build<
   Value,
   F extends Format,
 >(
   descriptors: { format: F },
 ) {
-  return function<
+  return (function<
     D extends Route.RouteDescriptor.Any,
     B extends {},
     I extends Route.Route.Tuple,
@@ -146,7 +225,7 @@ export function build<
         Route.descriptor(self),
       )
     }
-  }
+  }) as unknown as BuildReturn<Value, F>
 }
 
 export type RenderValue =
@@ -154,6 +233,51 @@ export type RenderValue =
   | Uint8Array
   | Stream.Stream<string | Uint8Array, any, any>
 
+export function render<
+  D extends Route.RouteDescriptor.Any,
+  B extends {},
+  I extends Route.Route.Tuple,
+  A extends RenderValue,
+  Y extends Utils.YieldWrap<Effect.Effect<any, any, any>>,
+>(
+  handler: GeneratorHandler<
+    NoInfer<D & B & Route.ExtractBindings<I> & { format: "*" }>,
+    A,
+    Y
+  >,
+): (
+  self: Route.RouteSet.RouteSet<D, B, I>,
+) => Route.RouteSet.RouteSet<
+  D,
+  B,
+  [
+    ...I,
+    Route.Route.Route<{ format: "*" }, {}, A, YieldError<Y>, YieldContext<Y>>,
+  ]
+>
+export function render<
+  D extends Route.RouteDescriptor.Any,
+  B extends {},
+  I extends Route.Route.Tuple,
+  A extends RenderValue,
+  E = never,
+  R = never,
+>(
+  handler: HandlerInput<
+    NoInfer<
+      D & B & Route.ExtractBindings<I> & { format: "*" }
+    >,
+    A,
+    E,
+    R
+  >,
+): (
+  self: Route.RouteSet.RouteSet<D, B, I>,
+) => Route.RouteSet.RouteSet<
+  D,
+  B,
+  [...I, Route.Route.Route<{ format: "*" }, {}, A, E, R>]
+>
 export function render<
   D extends Route.RouteDescriptor.Any,
   B extends {},

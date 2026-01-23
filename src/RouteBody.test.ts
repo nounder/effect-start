@@ -1,4 +1,5 @@
 import * as test from "bun:test"
+import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as ParseResult from "effect/ParseResult"
 import * as Stream from "effect/Stream"
@@ -210,5 +211,22 @@ test.describe(`${RouteBody.handle.name}()`, () => {
     test
       .expect(result.body)
       .toBe("got: next")
+  })
+
+  test.it("generator type checks missing services", async () => {
+    interface ServiceA {
+      readonly _: unique symbol
+    }
+    const ServiceA = Context.GenericTag<ServiceA>("ServiceA")
+
+    const handler = RouteBody.handle(function*() {
+      yield* ServiceA
+      return "ok"
+    })
+
+    // This should fail type checking because ServiceA is not provided
+    // @ts-expect-error ServiceA is missing
+    const promise = Effect.runPromise(handler(ctx, next))
+    test.expect(promise).rejects.toThrow(/Service not found: ServiceA/)
   })
 })
