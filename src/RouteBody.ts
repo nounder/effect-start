@@ -115,14 +115,17 @@ export function build<
         E,
         R
       > = (ctx, next) =>
-        Effect.map(baseHandler(ctx as any, next as any), (entity) =>
-          entity.headers["content-type"]
-            ? entity
-            : Entity.make(entity.body, {
-              status: entity.status,
-              url: entity.url,
-              headers: { ...entity.headers, "content-type": contentType },
-            }))
+        Effect.map(
+          baseHandler(ctx as any, next as any),
+          (entity) =>
+            entity.headers["content-type"]
+              ? entity
+              : Entity.make(entity.body, {
+                status: entity.status,
+                url: entity.url,
+                headers: { ...entity.headers, "content-type": contentType },
+              }),
+        )
 
       const route = Route.make<{ format: F }, {}, A, E, R>(
         wrappedHandler as any,

@@ -366,7 +366,7 @@ test.describe("bytes", () => {
 
     test
       .expect(text)
-      .toBe('{"key":"value"}')
+      .toBe("{\"key\":\"value\"}")
   })
 })
 

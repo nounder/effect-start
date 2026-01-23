@@ -10,9 +10,9 @@ import * as Record from "effect/Record"
 import * as Stream from "effect/Stream"
 import * as NPath from "node:path"
 import * as NUrl from "node:url"
+import * as Development from "./Development.ts"
 import * as FileRouterCodegen from "./FileRouterCodegen.ts"
 import * as FileRouterPattern from "./FileRouterPattern.ts"
-import * as Development from "./Development.ts"
 
 export type RouteModule = {
   default: RouteSet.RouteSet.Default

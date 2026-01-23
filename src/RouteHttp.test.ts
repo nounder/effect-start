@@ -2571,7 +2571,10 @@ test.describe("Route.render (format=*)", () => {
     )
 
     const responses = await Promise.all([
-      Http.fetch(handler, { path: "/", headers: { Accept: "text/event-stream" } }),
+      Http.fetch(handler, {
+        path: "/",
+        headers: { Accept: "text/event-stream" },
+      }),
       Http.fetch(handler, { path: "/", headers: { Accept: "image/png" } }),
       Http.fetch(handler, { path: "/", headers: { Accept: "*/*" } }),
       Http.fetch(handler, { path: "/" }),

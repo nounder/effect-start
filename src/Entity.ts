@@ -39,11 +39,9 @@ export interface Entity<
    */
   readonly url: string | undefined
   readonly status: number | undefined
-  readonly text: T extends string
-    ? Effect.Effect<T, ParseResult.ParseError | E>
+  readonly text: T extends string ? Effect.Effect<T, ParseResult.ParseError | E>
     : Effect.Effect<string, ParseResult.ParseError | E>
-  readonly json: [T] extends [Effect.Effect<infer A, any, any>]
-    ? Effect.Effect<
+  readonly json: [T] extends [Effect.Effect<infer A, any, any>] ? Effect.Effect<
       A extends string | Uint8Array | ArrayBuffer ? unknown : A,
       ParseResult.ParseError | E
     >
@@ -51,8 +49,7 @@ export interface Entity<
       ? Effect.Effect<unknown, ParseResult.ParseError | E>
     : [T] extends [string | Uint8Array | ArrayBuffer]
       ? Effect.Effect<unknown, ParseResult.ParseError | E>
-    : [T] extends [Values.Json]
-      ? Effect.Effect<T, ParseResult.ParseError | E>
+    : [T] extends [Values.Json] ? Effect.Effect<T, ParseResult.ParseError | E>
     : Effect.Effect<unknown, ParseResult.ParseError | E>
   readonly bytes: Effect.Effect<Uint8Array, ParseResult.ParseError | E>
   readonly stream: T extends Stream.Stream<infer A, infer E1, any>

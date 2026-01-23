@@ -162,8 +162,6 @@ export function htmlBundle(
   }
 }
 
-
-
 type BunServerFetchHandler = (
   request: Request,
   server: Bun.Server<unknown>,
