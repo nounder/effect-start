@@ -1,9 +1,9 @@
 import {
+  Development,
   Entity,
   Route,
 } from "effect-start"
-
-import chat from "./chat.ts"
+import chat from "./chat.tsx"
 
 export default Route.tree({
   "/": Route.get(
@@ -25,4 +25,10 @@ export default Route.tree({
         }
       }),
     ),
+
+  "/dev": Route.get(
+    Route.sse(
+      Development.stream(),
+    ),
+  ),
 })

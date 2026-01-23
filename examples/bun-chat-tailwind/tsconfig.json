@@ -14,6 +14,7 @@
     "noEmit": true,
 
     "jsx": "react-jsx",
+    "jsxImportSource": "effect-start",
 
     // Best practices
     "strict": true,
@@ -31,9 +32,7 @@
       {
         "name": "@effect/language-service",
         "namespaceImportPackages": [
-          "effect",
-          "@effect/platform",
-          "@effect/platform-bun"
+          "effect"
         ]
       }
     ]
