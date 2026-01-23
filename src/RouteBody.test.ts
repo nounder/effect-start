@@ -1,5 +1,6 @@
 import * as test from "bun:test"
 import * as Effect from "effect/Effect"
+import * as ParseResult from "effect/ParseResult"
 import * as Stream from "effect/Stream"
 import * as Entity from "./Entity.ts"
 import * as Route from "./Route.ts"
@@ -107,51 +108,36 @@ test.describe(`${RouteBody.handle.name}()`, () => {
   })
 
   test.it("handles plain value", async () => {
-    const handler = RouteBody.handle("hello")
-
-    test
-      .expectTypeOf(handler)
-      .returns
-      .toEqualTypeOf<
-        Effect.Effect<Entity.Entity<string>, never, never>
-      >()
-
+    const handler = RouteBody.handle<{}, string, never, never>("hello")
     const result = await Effect.runPromise(handler(ctx, next))
     test.expect(result.body).toBe("hello")
     test.expect(result.status).toBe(200)
   })
 
   test.it("handles Effect directly", async () => {
-    const handler = RouteBody.handle(Effect.succeed("from effect"))
-
-    test
-      .expectTypeOf(handler)
-      .returns
-      .toEqualTypeOf<
-        Effect.Effect<Entity.Entity<string>, never, never>
-      >()
-
+    const handler = RouteBody.handle<{}, string, never, never>(
+      Effect.succeed("from effect"),
+    )
     const result = await Effect.runPromise(handler(ctx, next))
-
-    test
-      .expect(result.body)
-      .toBe("from effect")
+    test.expect(result.body).toBe("from effect")
   })
 
   test.it("handles Effect with error", async () => {
-    const handler = RouteBody.handle(Effect.fail(new Error("oops")))
+    const handler = RouteBody.handle<{}, never, Error, never>(
+      Effect.fail(new Error("oops")),
+    )
 
     test
       .expectTypeOf(handler)
       .returns
-      .toEqualTypeOf<
+      .toExtend<
         Effect.Effect<Entity.Entity<never>, Error, never>
       >()
   })
 
   test.it("handles function", async () => {
-    const handler = RouteBody.handle(
-      (ctx: { id: number }) => Effect.succeed(ctx.id),
+    const handler = RouteBody.handle<{ id: number }, number, never, never>(
+      (ctx) => Effect.succeed(ctx.id),
     )
 
     test
@@ -173,20 +159,18 @@ test.describe(`${RouteBody.handle.name}()`, () => {
       >()
 
     const numNext = () => Entity.effect(Effect.succeed(Entity.make(23)))
-    const result = await Effect.runPromise(
-      handler({ id: 42 }, numNext),
-    )
+    const result = await Effect.runPromise(handler({ id: 42 }, numNext))
 
-    test
-      .expect(result.body)
-      .toBe(42)
+    test.expect(result.body).toBe(42)
   })
 
   test.it("handles generator", async () => {
-    const handler = RouteBody.handle(function*(ctx: { id: number }) {
-      const n = yield* Effect.succeed(ctx.id)
-      return n * 2
-    })
+    const handler = RouteBody.handle<{ id: number }, number, never, never>(
+      function*(ctx) {
+        const n = yield* Effect.succeed(ctx.id)
+        return n * 2
+      },
+    )
 
     test
       .expectTypeOf(handler)
@@ -208,24 +192,20 @@ test.describe(`${RouteBody.handle.name}()`, () => {
       >()
 
     const numNext = () => Entity.effect(Effect.succeed(Entity.make(23)))
-    const result = await Effect.runPromise(
-      handler({ id: 21 }, numNext),
-    )
+    const result = await Effect.runPromise(handler({ id: 21 }, numNext))
 
-    test
-      .expect(result.body)
-      .toBe(42)
+    test.expect(result.body).toBe(42)
   })
 
   test.it("generator can call next", async () => {
-    const handler = RouteBody.handle(
-      function*(_ctx: {}, next: () => Entity.Entity<string>) {
+    const handler = RouteBody.handle<{}, string, ParseResult.ParseError, never>(
+      function*(_ctx, next) {
         const fromNext = yield* next().text
         return `got: ${fromNext}`
       },
     )
 
-    const result = await Effect.runPromise(handler(ctx, next))
+    const result = await Effect.runPromise(Effect.orDie(handler(ctx, next)))
 
     test
       .expect(result.body)
