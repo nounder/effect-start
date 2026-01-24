@@ -1,6 +1,6 @@
 {
   "name": "effect-start",
-  "version": "0.17.1",
+  "version": "0.17.2",
   "type": "module",
   "license": "MIT",
   "exports": {
@@ -75,8 +75,8 @@
     "deploy": "bunx --bun npm publish --access public"
   },
   "dependencies": {
-    "effect": ">=3.19.15",
-    "@effect/platform": "^0.93.6"
+    "effect": ">=3.19.0",
+    "@effect/platform": ">=0.93.0"
   },
   "peerDependencies": {
     "typescript": "^5.9.3"
