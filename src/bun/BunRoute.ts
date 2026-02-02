@@ -6,7 +6,7 @@ import * as Option from "effect/Option"
 import * as Entity from "../Entity.ts"
 import * as Hyper from "../hyper/Hyper.ts"
 import * as HyperHtml from "../hyper/HyperHtml.ts"
-import * as Random from "../Random.ts"
+import * as Unique from "../Unique.ts"
 import * as Route from "../Route.ts"
 import * as RouterPattern from "../RouterPattern.ts"
 import * as BunHttpServer from "./BunHttpServer.ts"
@@ -40,7 +40,7 @@ export function descriptors(
 export function htmlBundle(
   load: () => Promise<Bun.HTMLBundle | { default: Bun.HTMLBundle }>,
 ) {
-  const bunPrefix = `/.BunRoute-${Random.token(6)}`
+  const bunPrefix = `/.BunRoute-${Unique.token(10)}`
   const bunLoad = () => load().then(mod => "default" in mod ? mod.default : mod)
   const descriptors = { bunPrefix, bunLoad, format: "html" as const }
 

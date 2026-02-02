@@ -44,10 +44,10 @@
       "types": "./dist/middlewares/index.d.ts",
       "default": "./dist/middlewares/index.js"
     },
-    "./Random": {
-      "bun": "./src/Random.ts",
-      "types": "./dist/Random.d.ts",
-      "default": "./dist/Random.js"
+    "./Unique": {
+      "bun": "./src/Unique.ts",
+      "types": "./dist/Unique.d.ts",
+      "default": "./dist/Unique.js"
     },
     "./experimental": {
       "bun": "./src/experimental/index.ts",

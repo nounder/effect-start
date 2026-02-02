@@ -16,7 +16,7 @@ import * as Option from "effect/Option"
 import type * as Scope from "effect/Scope"
 import * as FileRouter from "../FileRouter.ts"
 import * as PathPattern from "../PathPattern.ts"
-import * as Random from "../Random.ts"
+import * as Unique from "../Unique.ts"
 import * as Route from "../Route.ts"
 import * as RouteHttp from "../RouteHttp.ts"
 import * as RouteTree from "../RouteTree.ts"
@@ -95,7 +95,7 @@ export const make = (
     // Bun HMR doesn't work on successive calls to `server.reload` if there are no routes
     // on server start. We workaround that by passing a dummy HTMLBundle [2025-11-26]
     // see: https://github.com/oven-sh/bun/issues/23564
-    currentRoutes[`/.BunEmptyHtml-${Random.token(6)}`] = EmptyHTML
+    currentRoutes[`/.BunEmptyHtml-${Unique.token(10)}`] = EmptyHTML
 
     const websocket: Bun.WebSocketHandler<WebSocketContext> = {
       open(ws) {
