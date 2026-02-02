@@ -380,9 +380,8 @@ export const toWebHandlerRuntime = <R>(
               Effect.gen(function*() {
                 yield* Effect.logError(cause)
                 const status = getStatusFromCause(cause)
-                return Response.json({ status, message: Cause.pretty(cause) }, {
-                  status,
-                })
+                const message = Cause.pretty(cause, { renderErrorCause: true })
+                return Response.json({ status, message }, { status })
               })
             ),
           ),
@@ -407,11 +406,8 @@ export const toWebHandlerRuntime = <R>(
             )
           } else {
             const status = getStatusFromCause(exit.cause)
-            resolve(
-              Response.json({ status, message: Cause.pretty(exit.cause) }, {
-                status,
-              }),
-            )
+            const message = Cause.pretty(exit.cause, { renderErrorCause: true })
+            resolve(Response.json({ status, message }, { status }))
           }
         })
       })

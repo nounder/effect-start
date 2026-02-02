@@ -28,7 +28,7 @@ export function layer(): Layer.Layer<TestLogger> {
 
       const customLogger = Logger.make(({ message, logLevel, cause }) => {
         const causeStr = !Cause.isEmpty(cause)
-          ? ` ${Cause.pretty(cause)}`
+          ? ` ${Cause.pretty(cause, { renderErrorCause: true })}`
           : ""
         MutableRef.update(
           mutableRef,

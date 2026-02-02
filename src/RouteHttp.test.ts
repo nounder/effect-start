@@ -171,6 +171,40 @@ test.it("handles defects by returning 500 response", () =>
     })
     .pipe(Effect.provide(TestLogger.layer()), Effect.runPromise))
 
+test.it("error response includes stack trace and cause chain", () =>
+  Effect
+    .gen(function*() {
+      const runtime = yield* Effect.runtime<TestLogger.TestLogger>()
+      const handler = RouteHttp.toWebHandlerRuntime(runtime)(
+        Route.get(
+          Route.text(function*(): Generator<any, string, any> {
+            const innerError = new Error("Database connection failed")
+            const outerError = new Error("Query failed", { cause: innerError })
+            return yield* Effect.fail(outerError)
+          }),
+        ),
+      )
+      const response = yield* Effect.promise(() =>
+        Http.fetch(handler, { path: "/error" })
+      )
+
+      test
+        .expect(response.status)
+        .toBe(500)
+
+      const body = yield* Effect.promise(() => response.json())
+      test
+        .expect(body.message)
+        .toMatch(/Error: Query failed[\s\S]+\[cause\]: Error: Database connection failed/)
+
+      const messages = yield* TestLogger.messages
+      const errorLog = messages.find((m) => m.startsWith("[Error]"))
+      test
+        .expect(errorLog)
+        .toMatch(/Error: Query failed[\s\S]+\[cause\]: Error: Database connection failed/)
+    })
+    .pipe(Effect.provide(TestLogger.layer()), Effect.runPromise))
+
 test.it("includes descriptor properties in handler context", async () => {
   let capturedMethod: string | undefined
 
