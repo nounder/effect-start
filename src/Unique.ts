@@ -1,24 +1,30 @@
 export function uuid(): string {
-  return base36(uuid4bytes())
+  return base32(uuid4bytes())
 }
 
 export function uuidSorted(): string {
-  return base36(uuid7bytes())
+  return base32(uuid7bytes())
 }
 
 export function token(length: number): string {
-  return base36(bytes(length))
+  return base32(bytes(length))
 }
 
-function base36(bytes: Uint8Array): string {
+const BASE32_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
+
+function base32(bytes: Uint8Array): string {
   if (bytes.length === 0) return ""
-  let zeros = 0
-  while (zeros < bytes.length && bytes[zeros] === 0) zeros++
 
   let n = 0n
-  for (let i = zeros; i < bytes.length; i++) n = (n << 8n) + BigInt(bytes[i])
+  for (let i = 0; i < bytes.length; i++) n = (n << 8n) + BigInt(bytes[i])
 
-  return "0".repeat(zeros) + (n === 0n ? "" : n.toString(36))
+  let result = ""
+  while (n > 0n) {
+    result = BASE32_ALPHABET[Number(n % 32n)] + result
+    n = n / 32n
+  }
+
+  return result || "0"
 }
 
 export function bytes(length: number): Uint8Array {
