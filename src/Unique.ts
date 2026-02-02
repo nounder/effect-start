@@ -10,6 +10,7 @@ export function token(length: number): string {
   return base32(bytes(length))
 }
 
+// Crockford's Base32
 const BASE32_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
 
 function base32(bytes: Uint8Array): string {
