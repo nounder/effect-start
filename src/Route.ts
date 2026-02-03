@@ -1,5 +1,5 @@
 import * as Context from "effect/Context"
-import type * as Effect from "effect/Effect"
+import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Pipeable from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
@@ -357,3 +357,20 @@ export function layer(routes: RouteTree.RouteMap | RouteTree.RouteTree) {
 export {
   make as tree,
 } from "./RouteTree.ts"
+
+export function lazy<T extends RouteSet.Any>(
+  load: () => Promise<{ default: T }>,
+): Effect.Effect<T, never, never> {
+  let cached: T | undefined
+  return Effect.suspend(() => {
+    if (cached !== undefined) {
+      return Effect.succeed(cached)
+    }
+    return Effect.promise(load).pipe(
+      Effect.map((mod) => {
+        cached = mod.default
+        return cached
+      }),
+    )
+  })
+}

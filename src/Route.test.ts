@@ -1,6 +1,9 @@
 import * as test from "bun:test"
-import type * as Entity from "./Entity.ts"
+import * as Effect from "effect/Effect"
+import * as Entity from "./Entity.ts"
+import * as Http from "./Http.ts"
 import * as Route from "./Route.ts"
+import * as RouteHttp from "./RouteHttp.ts"
 
 test.describe(Route.redirect, () => {
   test.it("creates redirect with default 302 status", () => {
@@ -42,5 +45,61 @@ test.describe(Route.redirect, () => {
     test
       .expectTypeOf(entity)
       .toEqualTypeOf<Entity.Entity<"">>()
+  })
+})
+
+test.describe(Route.lazy, () => {
+  test.it("loads module lazily and caches result", async () => {
+    let loadCount = 0
+
+    const lazyRoutes = Route.lazy(() => {
+      loadCount++
+      return Promise.resolve({
+        default: Route.get(Route.text("lazy loaded")),
+      })
+    })
+
+    test.expect(loadCount).toBe(0)
+
+    const routes1 = await Effect.runPromise(lazyRoutes)
+    test.expect(loadCount).toBe(1)
+    test.expect(Route.items(routes1)).toHaveLength(1)
+
+    const routes2 = await Effect.runPromise(lazyRoutes)
+    test.expect(loadCount).toBe(1)
+    test.expect(routes1).toBe(routes2)
+  })
+
+  test.it("works with RouteHttp.toWebHandler", async () => {
+    const lazyRoutes = Route.lazy(() =>
+      Promise.resolve({
+        default: Route.get(Route.text("lazy loaded")),
+      })
+    )
+
+    const routes = await Effect.runPromise(lazyRoutes)
+    const handler = RouteHttp.toWebHandler(routes)
+
+    const response = await Http.fetch(handler, { path: "/test" })
+    test.expect(response.status).toBe(200)
+    test.expect(await response.text()).toBe("lazy loaded")
+  })
+
+  test.it("preserves route types", async () => {
+    const lazyRoutes = Route.lazy(() =>
+      Promise.resolve({
+        default: Route
+          .use(Route.filter({ context: { injected: true } }))
+          .get(Route.json(function*(ctx) {
+            return { value: ctx.injected }
+          })),
+      })
+    )
+
+    const routes = await Effect.runPromise(lazyRoutes)
+    const handler = RouteHttp.toWebHandler(routes)
+
+    const response = await Http.fetch(handler, { path: "/test" })
+    test.expect(await response.json()).toEqual({ value: true })
   })
 })
