@@ -3,7 +3,7 @@ import type * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Pipeable from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
-import type * as Entity from "./Entity.ts"
+import * as Entity from "./Entity.ts"
 import * as RouteBody from "./RouteBody.ts"
 import * as RouteTree from "./RouteTree.ts"
 import * as Values from "./Values.ts"
@@ -326,6 +326,18 @@ export {
 export {
   sse,
 } from "./RouteSse.ts"
+
+export function redirect(
+  url: string | URL,
+  status: 301 | 302 | 303 | 307 | 308 = 302,
+): Entity.Entity<""> {
+  return Entity.make("", {
+    status,
+    headers: {
+      location: url instanceof URL ? url.href : url,
+    },
+  })
+}
 
 export class Routes extends Context.Tag("effect-start/Routes")<
   Routes,
