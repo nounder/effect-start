@@ -9,11 +9,6 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
-    "./StartApp": {
-      "bun": "./src/StartApp.ts",
-      "types": "./dist/StartApp.d.ts",
-      "default": "./dist/StartApp.js"
-    },
     "./bun": {
       "bun": "./src/bun/index.ts",
       "types": "./dist/bun/index.d.ts",

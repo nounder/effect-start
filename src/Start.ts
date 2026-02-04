@@ -3,7 +3,6 @@ import * as Function from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as BunHttpServer from "./bun/BunHttpServer.ts"
 import * as BunRuntime from "./bun/BunRuntime.ts"
-import * as StartApp from "./StartApp.ts"
 
 export function layer<
   Layers extends [
@@ -37,10 +36,7 @@ export function serve<ROut, E>(
   return Function.pipe(
     BunHttpServer.layerAuto(),
     Layer.provide(appLayer),
-    Layer.provide([
-      BunHttpServer.layer(),
-      StartApp.layer(),
-    ]),
+    Layer.provide(BunHttpServer.layer()),
     Layer.launch,
     BunRuntime.runMain,
   )
