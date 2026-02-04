@@ -1,8 +1,6 @@
 import * as FetchHttpClient from "@effect/platform/FetchHttpClient"
 import * as FileSystem from "@effect/platform/FileSystem"
 import * as HttpClient from "@effect/platform/HttpClient"
-import * as HttpRouter from "@effect/platform/HttpRouter"
-import * as HttpServer from "@effect/platform/HttpServer"
 import * as Effect from "effect/Effect"
 import * as Function from "effect/Function"
 import * as Layer from "effect/Layer"
@@ -29,9 +27,7 @@ export function serve<ROut, E>(
     default: Layer.Layer<
       ROut,
       E,
-      | HttpServer.HttpServer
       | HttpClient.HttpClient
-      | HttpRouter.Default
       | FileSystem.FileSystem
       | BunHttpServer.BunHttpServer
     >
@@ -46,11 +42,9 @@ export function serve<ROut, E>(
 
   return Function.pipe(
     BunHttpServer.layerAuto(),
-    HttpServer.withLogAddress,
     Layer.provide(appLayer),
     Layer.provide([
       FetchHttpClient.layer,
-      HttpRouter.Default.Live,
       BunHttpServer.layer(),
       NodeFileSystem.layer,
       StartApp.layer(),
