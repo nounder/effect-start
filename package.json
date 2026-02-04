@@ -101,6 +101,8 @@
   },
   "files": [
     "src/",
+    "!src/**/*.test.ts",
+    "!src/**/*.test.tsx",
     "dist/",
     "README.md",
     "package.json"
