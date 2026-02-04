@@ -3,11 +3,11 @@ import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Route from "../Route.ts"
-import * as BunHttpServer from "./BunHttpServer.ts"
+import * as BunServer from "./BunServer.ts"
 import * as BunRoute from "./BunRoute.ts"
 
 const testLayer = (routes: ReturnType<typeof Route.tree>) =>
-  BunHttpServer.layer({ port: 0 }).pipe(
+  BunServer.layer({ port: 0 }).pipe(
     Layer.provide(Route.layer(routes)),
   )
 
@@ -24,7 +24,7 @@ test.describe(BunRoute.htmlBundle, () => {
       Effect.scoped(
         Effect
           .gen(function*() {
-            const bunServer = yield* BunHttpServer.BunHttpServer
+            const bunServer = yield* BunServer.BunServer
             return yield* Effect.promise(() =>
               fetch(`http://localhost:${bunServer.server.port}/`)
             )
@@ -52,7 +52,7 @@ test.describe(BunRoute.htmlBundle, () => {
       Effect.scoped(
         Effect
           .gen(function*() {
-            const bunServer = yield* BunHttpServer.BunHttpServer
+            const bunServer = yield* BunServer.BunServer
             return yield* Effect.promise(() =>
               fetch(`http://localhost:${bunServer.server.port}/page`)
             )
@@ -78,7 +78,7 @@ test.describe(BunRoute.htmlBundle, () => {
       Effect.scoped(
         Effect
           .gen(function*() {
-            const bunServer = yield* BunHttpServer.BunHttpServer
+            const bunServer = yield* BunServer.BunServer
             return yield* Effect.promise(() =>
               fetch(`http://localhost:${bunServer.server.port}/any/path`)
             )
@@ -104,7 +104,7 @@ test.describe(BunRoute.htmlBundle, () => {
       Effect.scoped(
         Effect
           .gen(function*() {
-            const bunServer = yield* BunHttpServer.BunHttpServer
+            const bunServer = yield* BunServer.BunServer
             return yield* Effect.promise(() =>
               fetch(`http://localhost:${bunServer.server.port}/`)
             )

@@ -6,7 +6,7 @@ import type * as Bun from "bun"
 import * as Effect from "effect/Effect"
 import * as FiberSet from "effect/FiberSet"
 import type * as Scope from "effect/Scope"
-import * as BunHttpServer from "./BunHttpServer.ts"
+import * as BunServer from "./BunServer.ts"
 import * as BunServerRequest from "./BunServerRequest.ts"
 
 /**
@@ -17,9 +17,9 @@ import * as BunServerRequest from "./BunServerRequest.ts"
 export const make: Effect.Effect<
   HttpServer.HttpServer,
   never,
-  Scope.Scope | BunHttpServer.BunHttpServer
+  Scope.Scope | BunServer.BunServer
 > = Effect.gen(function*() {
-  const bunServer = yield* BunHttpServer.BunHttpServer
+  const bunServer = yield* BunServer.BunServer
 
   return HttpServer.make({
     address: {

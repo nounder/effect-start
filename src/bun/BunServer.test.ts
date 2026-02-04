@@ -2,7 +2,7 @@ import * as test from "bun:test"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Route from "../Route.ts"
-import * as BunHttpServer from "./BunHttpServer.ts"
+import * as BunServer from "./BunServer.ts"
 
 test.describe("smart port selection", () => {
   // Skip when running in TTY because the random port logic requires !isTTY && CLAUDECODE,
@@ -20,7 +20,7 @@ test.describe("smart port selection", () => {
         const port = await Effect.runPromise(
           Effect.scoped(
             Effect.gen(function*() {
-              const bunServer = yield* BunHttpServer.make({})
+              const bunServer = yield* BunServer.make({})
               return bunServer.server.port
             }),
           ),
@@ -56,7 +56,7 @@ test.describe("smart port selection", () => {
       const port = await Effect.runPromise(
         Effect.scoped(
           Effect.gen(function*() {
-            const bunServer = yield* BunHttpServer.make({})
+            const bunServer = yield* BunServer.make({})
             return bunServer.server.port
           }),
         ),
@@ -81,7 +81,7 @@ test.describe("smart port selection", () => {
 })
 
 const testLayer = (routes: ReturnType<typeof Route.tree>) =>
-  BunHttpServer.layer({ port: 0 }).pipe(
+  BunServer.layer({ port: 0 }).pipe(
     Layer.provide(Route.layer(routes)),
   )
 
@@ -95,7 +95,7 @@ test.describe("routes", () => {
       Effect.scoped(
         Effect
           .gen(function*() {
-            const bunServer = yield* BunHttpServer.BunHttpServer
+            const bunServer = yield* BunServer.BunServer
             return yield* Effect.promise(() =>
               fetch(`http://localhost:${bunServer.server.port}/`)
             )
@@ -117,7 +117,7 @@ test.describe("routes", () => {
       Effect.scoped(
         Effect
           .gen(function*() {
-            const bunServer = yield* BunHttpServer.BunHttpServer
+            const bunServer = yield* BunServer.BunServer
             return yield* Effect.promise(() =>
               fetch(`http://localhost:${bunServer.server.port}/api/data`)
             )
@@ -143,7 +143,7 @@ test.describe("routes", () => {
       Effect.scoped(
         Effect
           .gen(function*() {
-            const bunServer = yield* BunHttpServer.BunHttpServer
+            const bunServer = yield* BunServer.BunServer
             return yield* Effect.promise(() =>
               fetch(`http://localhost:${bunServer.server.port}/unknown`)
             )
@@ -166,7 +166,7 @@ test.describe("routes", () => {
       Effect.scoped(
         Effect
           .gen(function*() {
-            const bunServer = yield* BunHttpServer.BunHttpServer
+            const bunServer = yield* BunServer.BunServer
             const baseUrl = `http://localhost:${bunServer.server.port}`
 
             const json = yield* Effect.promise(() =>
@@ -207,7 +207,7 @@ test.describe("routes", () => {
       Effect.scoped(
         Effect
           .gen(function*() {
-            const bunServer = yield* BunHttpServer.BunHttpServer
+            const bunServer = yield* BunServer.BunServer
             return yield* Effect.promise(() =>
               fetch(`http://localhost:${bunServer.server.port}/data`, {
                 headers: { Accept: "image/png" },
@@ -230,7 +230,7 @@ test.describe("routes", () => {
       Effect.scoped(
         Effect
           .gen(function*() {
-            const bunServer = yield* BunHttpServer.BunHttpServer
+            const bunServer = yield* BunServer.BunServer
             return yield* Effect.promise(() =>
               fetch(`http://localhost:${bunServer.server.port}/users/123`)
             )

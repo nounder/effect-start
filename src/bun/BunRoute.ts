@@ -9,7 +9,7 @@ import * as HyperHtml from "../hyper/HyperHtml.ts"
 import * as Unique from "../Unique.ts"
 import * as Route from "../Route.ts"
 import * as RouterPattern from "../RouterPattern.ts"
-import * as BunHttpServer from "./BunHttpServer.ts"
+import * as BunServer from "./BunServer.ts"
 
 const INTERNAL_FETCH_HEADER = "x-effect-start-internal-fetch"
 
@@ -60,7 +60,7 @@ export function htmlBundle(
         { request: Request },
         string,
         BunRouteError,
-        BunHttpServer.BunHttpServer
+        BunServer.BunServer
       >,
     ]
   > {
@@ -68,7 +68,7 @@ export function htmlBundle(
       BunDescriptors & { format: "html" } & { request: Request },
       string,
       BunRouteError,
-      BunHttpServer.BunHttpServer
+      BunServer.BunServer
     > = (context, next) =>
       Effect.gen(function*() {
         const originalRequest = context.request
@@ -87,7 +87,7 @@ export function htmlBundle(
           )
         }
 
-        const bunServer = yield* BunHttpServer.BunHttpServer
+        const bunServer = yield* BunServer.BunServer
         const url = new URL(originalRequest.url)
 
         const internalPath = `${bunPrefix}${url.pathname}`
@@ -152,7 +152,7 @@ export function htmlBundle(
       { request: Request },
       string,
       BunRouteError,
-      BunHttpServer.BunHttpServer
+      BunServer.BunServer
     >(handler, descriptors)
 
     return Route.set(

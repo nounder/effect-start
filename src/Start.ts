@@ -1,7 +1,7 @@
 import * as Effect from "effect/Effect"
 import * as Function from "effect/Function"
 import * as Layer from "effect/Layer"
-import * as BunHttpServer from "./bun/BunHttpServer.ts"
+import * as BunServer from "./bun/BunServer.ts"
 import * as BunRuntime from "./bun/BunRuntime.ts"
 
 export function layer<
@@ -22,7 +22,7 @@ export function serve<ROut, E>(
     default: Layer.Layer<
       ROut,
       E,
-      BunHttpServer.BunHttpServer
+      BunServer.BunServer
     >
   }>,
 ) {
@@ -34,10 +34,10 @@ export function serve<ROut, E>(
   )
 
   return Function.pipe(
-    BunHttpServer.layer(),
-    BunHttpServer.withLogAddress,
+    BunServer.layer(),
+    BunServer.withLogAddress,
     Layer.provide(appLayer),
-    Layer.provide(BunHttpServer.layer()),
+    Layer.provide(BunServer.layer()),
     Layer.launch,
     BunRuntime.runMain,
   )

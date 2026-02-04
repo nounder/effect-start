@@ -38,20 +38,20 @@ interface BunServeOptions {
   readonly development?: boolean
 }
 
-export type BunHttpServer = {
+export type BunServer = {
   readonly server: Bun.Server<BunServerRequest.WebSocketContext>
   readonly pushHandler: (fetch: FetchHandler) => void
   readonly popHandler: () => void
 }
 
-export const BunHttpServer = Context.GenericTag<BunHttpServer>(
+export const BunServer = Context.GenericTag<BunServer>(
   "effect-start/BunServer",
 )
 
 export const make = (
   options: BunServeOptions,
 ): Effect.Effect<
-  BunHttpServer,
+  BunServer,
   never,
   Scope.Scope
 > =>
@@ -133,7 +133,7 @@ export const make = (
       })
     }
 
-    const bunHttpServer = BunHttpServer.of({
+    const bunServer = BunServer.of({
       server,
       pushHandler(fetch) {
         handlerStack.push(fetch)
@@ -147,23 +147,23 @@ export const make = (
 
     if (routes) {
       const walkedRoutes = yield* walkBunRoutes(routes).pipe(
-        Effect.provideService(BunHttpServer, bunHttpServer),
+        Effect.provideService(BunServer, bunServer),
       )
       Object.assign(currentRoutes, walkedRoutes)
       reload()
     }
 
-    return bunHttpServer
+    return bunServer
   })
 
 /**
- * Provides HttpServer using BunHttpServer under the hood.
+ * Provides HttpServer using BunServer under the hood.
  */
 export const layer = (
   options?: BunServeOptions,
-): Layer.Layer<BunHttpServer> =>
+): Layer.Layer<BunServer> =>
   Layer.scoped(
-    BunHttpServer,
+    BunServer,
     make(options ?? {}),
   )
 
@@ -172,7 +172,7 @@ export const withLogAddress = <A, E, R>(
 ) =>
   Layer
     .effectDiscard(
-      BunHttpServer.pipe(
+      BunServer.pipe(
         Effect.andThen(server =>
           Effect.log(
             `Listening on ${server.server.hostname}:${server.server.port}`,
