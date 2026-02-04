@@ -80,15 +80,9 @@ test.describe("smart port selection", () => {
   })
 })
 
-const BunHttpServerTest = Layer.scoped(
-  BunHttpServer.BunHttpServer,
-  BunHttpServer.make({ port: 0 }),
-)
-
 const testLayer = (routes: ReturnType<typeof Route.tree>) =>
-  Layer.provideMerge(
-    BunHttpServer.layerRoutes(routes),
-    BunHttpServerTest,
+  BunHttpServer.layer({ port: 0 }).pipe(
+    Layer.provide(Route.layer(routes)),
   )
 
 test.describe("routes", () => {

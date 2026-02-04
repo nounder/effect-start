@@ -6,15 +6,9 @@ import * as Route from "../Route.ts"
 import * as BunHttpServer from "./BunHttpServer.ts"
 import * as BunRoute from "./BunRoute.ts"
 
-const layerServer = Layer.scoped(
-  BunHttpServer.BunHttpServer,
-  BunHttpServer.make({ port: 0 }),
-)
-
 const testLayer = (routes: ReturnType<typeof Route.tree>) =>
-  Layer.provideMerge(
-    BunHttpServer.layerRoutes(routes),
-    layerServer,
+  BunHttpServer.layer({ port: 0 }).pipe(
+    Layer.provide(Route.layer(routes)),
   )
 
 test.describe(BunRoute.htmlBundle, () => {

@@ -1,7 +1,3 @@
-import * as HttpApp from "@effect/platform/HttpApp"
-import * as HttpServer from "@effect/platform/HttpServer"
-import * as HttpServerError from "@effect/platform/HttpServerError"
-import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
 import * as Socket from "@effect/platform/Socket"
 import * as Bun from "bun"
 import * as Config from "effect/Config"
@@ -9,7 +5,6 @@ import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
-import * as FiberSet from "effect/FiberSet"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import type * as Scope from "effect/Scope"
@@ -21,16 +16,12 @@ import * as RouteMount from "../RouteMount.ts"
 import * as RouteTree from "../RouteTree.ts"
 import * as Unique from "../Unique.ts"
 import EmptyHTML from "./_empty.html"
-import {
-  makeResponse,
-  ServerRequestImpl,
-  WebSocketContext,
-} from "./BunHttpServer_web.ts"
 import * as BunRoute from "./BunRoute.ts"
+import * as BunServerRequest from "./BunServerRequest.ts"
 
 type FetchHandler = (
   request: Request,
-  server: Bun.Server<WebSocketContext>,
+  server: Bun.Server<BunServerRequest.WebSocketContext>,
 ) => Response | Promise<Response>
 
 /**
@@ -38,7 +29,7 @@ type FetchHandler = (
  * TypeScript 5.9 cannot verify discriminated union types used in
  * {@link Bun.serve} so we need to define them explicitly.
  */
-interface ServeOptions {
+interface BunServeOptions {
   readonly port?: number
   readonly hostname?: string
   readonly reusePort?: boolean
@@ -48,9 +39,7 @@ interface ServeOptions {
 }
 
 export type BunHttpServer = {
-  readonly server: Bun.Server<WebSocketContext>
-  readonly addRoutes: (routes: BunRoute.BunRoutes) => void
-  // TODO: we probably don't want to expose these methods publicly
+  readonly server: Bun.Server<BunServerRequest.WebSocketContext>
   readonly pushHandler: (fetch: FetchHandler) => void
   readonly popHandler: () => void
 }
@@ -60,13 +49,17 @@ export const BunHttpServer = Context.GenericTag<BunHttpServer>(
 )
 
 export const make = (
-  options: ServeOptions,
+  options: BunServeOptions,
 ): Effect.Effect<
   BunHttpServer,
   never,
   Scope.Scope
 > =>
   Effect.gen(function*() {
+    const routes = yield* Effect.serviceOption(Route.Routes).pipe(
+      Effect.andThen(Option.getOrUndefined),
+    )
+
     const port = yield* Config.number("PORT").pipe(
       Effect.catchTag("ConfigError", () => {
         if (PlataformRuntime.isAgentHarness()) {
@@ -94,7 +87,7 @@ export const make = (
     // see: https://github.com/oven-sh/bun/issues/23564
     currentRoutes[`/.BunEmptyHtml-${Unique.token(10)}`] = EmptyHTML
 
-    const websocket: Bun.WebSocketHandler<WebSocketContext> = {
+    const websocket: Bun.WebSocketHandler<BunServerRequest.WebSocketContext> = {
       open(ws) {
         Deferred.unsafeDone(ws.data.deferred, Exit.succeed(ws))
       },
@@ -140,7 +133,7 @@ export const make = (
       })
     }
 
-    return BunHttpServer.of({
+    const bunHttpServer = BunHttpServer.of({
       server,
       pushHandler(fetch) {
         handlerStack.push(fetch)
@@ -150,154 +143,76 @@ export const make = (
         handlerStack.pop()
         reload()
       },
-      addRoutes(routes) {
-        currentRoutes = {
-          ...currentRoutes,
-          ...routes,
-        }
-        reload()
-      },
     })
+
+    if (routes) {
+      const walkedRoutes = yield* walkBunRoutes(routes).pipe(
+        Effect.provideService(BunHttpServer, bunHttpServer),
+      )
+      Object.assign(currentRoutes, walkedRoutes)
+      reload()
+    }
+
+    return bunHttpServer
   })
 
 /**
  * Provides HttpServer using BunHttpServer under the hood.
  */
 export const layer = (
-  options?: ServeOptions,
-): Layer.Layer<HttpServer.HttpServer | BunHttpServer> =>
-  Layer.provideMerge(
-    Layer.scoped(HttpServer.HttpServer, makeBunServer),
-    Layer.scoped(BunHttpServer, make(options ?? {})),
+  options?: BunServeOptions,
+): Layer.Layer<BunHttpServer> =>
+  Layer.scoped(
+    BunHttpServer,
+    make(options ?? {}),
   )
 
-/**
- * Registers routes provided via {@link Route.layer}
- */
-export function layerAuto() {
-  return Layer.unwrapEffect(
-    Effect.gen(function*() {
-      const bunServer = yield* BunHttpServer
-      const routes = yield* Effect.serviceOption(Route.Routes)
+export const withLogAddress = <A, E, R>(
+  layer: Layer.Layer<A, E, R>,
+) =>
+  Layer
+    .effectDiscard(
+      BunHttpServer.pipe(
+        Effect.andThen(server =>
+          Effect.log(
+            `Listening on ${server.server.hostname}:${server.server.port}`,
+          )
+        ),
+      ),
+    )
+    .pipe(
+      Layer.provideMerge(layer),
+    )
 
-      if (Option.isSome(routes)) {
-        return layerRoutes(routes.value)
-      } else {
-        return Layer.empty
-      }
-    }),
-  )
-}
-
-/**
- * Register routes in Bun.serve.
- */
-export function layerRoutes(
+function walkBunRoutes(
   tree: RouteTree.RouteTree,
-): Layer.Layer<never, never, BunHttpServer> {
-  return Layer.effectDiscard(
-    Effect.gen(function*() {
-      const bunServer = yield* BunHttpServer
-      const runtime = yield* Effect.runtime<BunHttpServer>()
-      const toWebHandler = RouteHttp.toWebHandlerRuntime(runtime)
+) {
+  return Effect.gen(function*() {
+    const runtime = yield* Effect.runtime()
+    const bunRoutes: BunRoute.BunRoutes = {}
+    const pathGroups = new Map<string, RouteMount.MountedRoute[]>()
+    const toWebHandler = RouteHttp.toWebHandlerRuntime(runtime)
 
-      const bunRoutes: BunRoute.BunRoutes = {}
-      const pathGroups = new Map<string, RouteMount.MountedRoute[]>()
-
-      for (const route of RouteTree.walk(tree)) {
-        const bunDescriptors = BunRoute.descriptors(route)
-        if (bunDescriptors) {
-          const htmlBundle = yield* Effect.promise(bunDescriptors.bunLoad)
-          bunRoutes[`${bunDescriptors.bunPrefix}/*`] = htmlBundle
-        }
-
-        const path = Route.descriptor(route).path
-        const group = pathGroups.get(path) ?? []
-        group.push(route)
-        pathGroups.set(path, group)
+    for (const route of RouteTree.walk(tree)) {
+      const bunDescriptors = BunRoute.descriptors(route)
+      if (bunDescriptors) {
+        const htmlBundle = yield* Effect.promise(bunDescriptors.bunLoad)
+        bunRoutes[`${bunDescriptors.bunPrefix}/*`] = htmlBundle
       }
 
-      for (const [path, routes] of pathGroups) {
-        const handler = toWebHandler(routes)
-        for (const bunPath of PathPattern.toBun(path)) {
-          bunRoutes[bunPath] = handler
-        }
+      const path = Route.descriptor(route).path
+      const group = pathGroups.get(path) ?? []
+      group.push(route)
+      pathGroups.set(path, group)
+    }
+
+    for (const [path, routes] of pathGroups) {
+      const handler = toWebHandler(routes)
+      for (const bunPath of PathPattern.toBun(path)) {
+        bunRoutes[bunPath] = handler
       }
+    }
 
-      bunServer.addRoutes(bunRoutes)
-    }),
-  )
-}
-
-const makeBunServer: Effect.Effect<
-  HttpServer.HttpServer,
-  never,
-  Scope.Scope | BunHttpServer
-> = Effect.gen(function*() {
-  const bunServer = yield* BunHttpServer
-
-  return HttpServer.make({
-    address: {
-      _tag: "TcpAddress",
-      port: bunServer.server.port!,
-      hostname: bunServer.server.hostname!,
-    },
-    serve(httpApp, middleware) {
-      return Effect.gen(function*() {
-        const runFork = yield* FiberSet.makeRuntime<never>()
-        const runtime = yield* Effect.runtime<never>()
-        const app = HttpApp.toHandled(
-          httpApp,
-          (request, response) =>
-            Effect.sync(() => {
-              ;(request as ServerRequestImpl).resolve(
-                makeResponse(request, response, runtime),
-              )
-            }),
-          middleware,
-        )
-
-        function handler(
-          request: Request,
-          server: Bun.Server<WebSocketContext>,
-        ) {
-          return new Promise<Response>((resolve, _reject) => {
-            const fiber = runFork(Effect.provideService(
-              app,
-              HttpServerRequest.HttpServerRequest,
-              new ServerRequestImpl(
-                request,
-                resolve,
-                removeHost(request.url),
-                server,
-              ),
-            ))
-            request.signal.addEventListener("abort", () => {
-              runFork(
-                fiber.interruptAsFork(HttpServerError.clientAbortFiberId),
-              )
-            }, { once: true })
-          })
-        }
-
-        yield* Effect.acquireRelease(
-          Effect.sync(() => {
-            bunServer.pushHandler(handler)
-          }),
-          () =>
-            Effect.sync(() => {
-              bunServer.popHandler()
-            }),
-        )
-      })
-    },
+    return bunRoutes
   })
-})
-
-const removeHost = (url: string) => {
-  if (url[0] === "/") {
-    return url
-  }
-  const index = url.indexOf("/", url.indexOf("//") + 2)
-  return index === -1 ? "/" : url.slice(index)
 }

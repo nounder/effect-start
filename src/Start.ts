@@ -34,7 +34,8 @@ export function serve<ROut, E>(
   )
 
   return Function.pipe(
-    BunHttpServer.layerAuto(),
+    BunHttpServer.layer(),
+    BunHttpServer.withLogAddress,
     Layer.provide(appLayer),
     Layer.provide(BunHttpServer.layer()),
     Layer.launch,
