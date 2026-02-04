@@ -9,9 +9,9 @@ const withRandomValues = <T>(values: Uint8Array, run: () => T): T => {
 
   crypto.getRandomValues = (buffer: RandomValuesInput) => {
     const view = new Uint8Array(
-      buffer.buffer,
-      buffer.byteOffset,
-      buffer.byteLength,
+      buffer!.buffer,
+      buffer!.byteOffset,
+      buffer!.byteLength,
     )
     const end = Math.min(offset + view.length, values.length)
     view.set(values.subarray(offset, end))
