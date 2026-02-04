@@ -7,7 +7,6 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as PubSub from "effect/PubSub"
 import * as Stream from "effect/Stream"
-import * as NodeFileSystem from "./node/FileSystem.ts"
 import * as Error from "./node/PlatformError.ts"
 
 export type DevelopmentEvent =
@@ -113,9 +112,6 @@ export const watch = (
 
       return { events: devState.pubsub! } satisfies DevelopmentService
     })
-    .pipe(
-      Effect.provide(NodeFileSystem.layer),
-    )
 
 export const layerWatch = (
   opts?: {

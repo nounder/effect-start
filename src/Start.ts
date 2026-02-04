@@ -1,8 +1,9 @@
 import * as Effect from "effect/Effect"
 import * as Function from "effect/Function"
 import * as Layer from "effect/Layer"
-import * as BunServer from "./bun/BunServer.ts"
 import * as BunRuntime from "./bun/BunRuntime.ts"
+import * as BunServer from "./bun/BunServer.ts"
+import * as NodeFileSystem from "./node/FileSystem.ts"
 
 export function layer<
   Layers extends [
@@ -36,6 +37,7 @@ export function serve<ROut, E>(
   return Function.pipe(
     BunServer.layer(),
     BunServer.withLogAddress,
+    Layer.provide(NodeFileSystem.layer),
     Layer.provide(appLayer),
     Layer.provide(BunServer.layer()),
     Layer.launch,
