@@ -5,7 +5,7 @@ import type * as Fiber from "effect/Fiber"
 import type * as FiberId from "effect/FiberId"
 import * as FiberRef from "effect/FiberRef"
 import * as FiberRefs from "effect/FiberRefs"
-import { dual } from "effect/Function"
+import * as Function from "effect/Function"
 import * as HashSet from "effect/HashSet"
 import * as Logger from "effect/Logger"
 
@@ -61,7 +61,7 @@ export const makeRunMain = (
     }
   ) => void,
 ): RunMain =>
-  dual((args) => Effect.isEffect(args[0]), (effect: Effect.Effect<any, any>, options?: {
+  Function.dual((args) => Effect.isEffect(args[0]), (effect: Effect.Effect<any, any>, options?: {
     readonly disableErrorReporting?: boolean | undefined
     readonly disablePrettyLogger?: boolean | undefined
     readonly teardown?: Teardown | undefined
