@@ -66,6 +66,12 @@ const getStatusFromCause = (cause: Cause.Cause<unknown>): number => {
   return 500
 }
 
+const respondError = (options: { status: number; message: string }): Response =>
+  new Response(JSON.stringify(options, null, 2), {
+    status: options.status,
+    headers: { "content-type": "application/json" },
+  })
+
 function streamResponse(
   stream: Stream.Stream<unknown, unknown, unknown>,
   headers: Record<string, string | null | undefined>,
@@ -203,9 +209,7 @@ export const toWebHandlerRuntime = <R>(
 
       if (methodRoutes.length === 0 && wildcards.length === 0) {
         return Promise.resolve(
-          Response.json({ status: 405, message: "method not allowed" }, {
-            status: 405,
-          }),
+          respondError({ status: 405, message: "method not allowed" }),
         )
       }
 
@@ -226,9 +230,7 @@ export const toWebHandlerRuntime = <R>(
         && !hasWildcardFormatRoutes
       ) {
         return Promise.resolve(
-          Response.json({ status: 406, message: "not acceptable" }, {
-            status: 406,
-          }),
+          respondError({ status: 406, message: "not acceptable" }),
         )
       }
 
@@ -307,9 +309,7 @@ export const toWebHandlerRuntime = <R>(
               : Entity.make(result, { status: 200 })
 
             if (entity.status === 404 && entity.body === undefined) {
-              return Response.json({ status: 406, message: "not acceptable" }, {
-                status: 406,
-              })
+              return respondError({ status: 406, message: "not acceptable" })
             }
 
             return yield* toResponse(entity, selectedFormat, runtime)
@@ -373,7 +373,7 @@ export const toWebHandlerRuntime = <R>(
                 yield* Effect.logError(cause)
                 const status = getStatusFromCause(cause)
                 const message = Cause.pretty(cause, { renderErrorCause: true })
-                return Response.json({ status, message }, { status })
+                return respondError({ status, message })
               })
             ),
           ),
@@ -391,15 +391,11 @@ export const toWebHandlerRuntime = <R>(
           if (exit._tag === "Success") {
             resolve(exit.value)
           } else if (isClientAbort(exit.cause)) {
-            resolve(
-              Response.json({ status: 499, message: "client closed request" }, {
-                status: 499,
-              }),
-            )
+            resolve(respondError({ status: 499, message: "client closed request" }))
           } else {
             const status = getStatusFromCause(exit.cause)
             const message = Cause.pretty(exit.cause, { renderErrorCause: true })
-            resolve(Response.json({ status, message }, { status }))
+            resolve(respondError({ status, message }))
           }
         })
       })
