@@ -25,7 +25,7 @@ export type BunDescriptors = {
 }
 
 export function descriptors(
-  route: Route.Route.Route,
+  route: Route.Route.Route<any, any, any, any, any>,
 ): BunDescriptors | undefined {
   const descriptor = Route.descriptor(route) as Partial<BunDescriptors>
   if (

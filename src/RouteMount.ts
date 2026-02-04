@@ -142,7 +142,7 @@ export type MountedRoute = Route.Route.Route<
   {
     method: RouteMount.Method
     path: PathPattern.PathPattern
-    format?: string
+    format?: RouteBody.Format
   },
   {},
   any,

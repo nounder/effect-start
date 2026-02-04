@@ -434,6 +434,6 @@ export function* walkHandles(
 
   const toHandler = toWebHandlerRuntime(runtime)
   for (const [path, routes] of pathGroups) {
-    yield [path, toHandler(routes as Iterable<UnboundedRouteWithMethod>)]
+    yield [path, toHandler(routes)]
   }
 }

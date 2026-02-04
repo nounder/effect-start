@@ -1,4 +1,3 @@
-// @ts-nocheck
 import * as HttpApp from "@effect/platform/HttpApp"
 import * as HttpServer from "@effect/platform/HttpServer"
 import * as HttpServerError from "@effect/platform/HttpServerError"
@@ -14,13 +13,13 @@ import * as FiberSet from "effect/FiberSet"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import type * as Scope from "effect/Scope"
-import * as FileRouter from "../FileRouter.ts"
 import * as PathPattern from "../PathPattern.ts"
-import * as Unique from "../Unique.ts"
 import * as PlataformRuntime from "../PlatformRuntime.ts"
 import * as Route from "../Route.ts"
 import * as RouteHttp from "../RouteHttp.ts"
+import * as RouteMount from "../RouteMount.ts"
 import * as RouteTree from "../RouteTree.ts"
+import * as Unique from "../Unique.ts"
 import EmptyHTML from "./_empty.html"
 import {
   makeResponse,
