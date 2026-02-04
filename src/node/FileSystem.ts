@@ -1,36 +1,29 @@
 /*
  * Adapted from @effect/platform
  */
-import { effectify } from "@effect/platform/Effectify"
-import * as Error from "@effect/platform/Error"
-import type {
-  PlatformError,
-  SystemErrorReason,
-} from "@effect/platform/Error"
-import { SystemError } from "@effect/platform/Error"
 import * as FileSystem from "@effect/platform/FileSystem"
 import type * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
-import { pipe } from "effect/Function"
+import * as Function from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Stream from "effect/Stream"
-import * as Crypto from "node:crypto"
+import * as NCrypto from "node:crypto"
 import * as NFS from "node:fs"
 import * as NOS from "node:os"
 import * as NPath from "node:path"
+import * as Effectify from "./Effectify.ts"
+import * as PlatformError from "./PlatformError.ts"
 
 const handleBadArgument = (method: string) => (cause: unknown) =>
-  new Error.BadArgument({
+  new PlatformError.BadArgument({
     module: "FileSystem",
     method,
     cause,
   })
 
-// == access
-
 const access = (() => {
-  const nodeAccess = effectify(
+  const nodeAccess = Effectify.effectify(
     NFS.access,
     handleErrnoException("FileSystem", "access"),
     handleBadArgument("access"),
@@ -47,10 +40,8 @@ const access = (() => {
   }
 })()
 
-// == copy
-
 const copy = (() => {
-  const nodeCp = effectify(
+  const nodeCp = Effectify.effectify(
     NFS.cp,
     handleErrnoException("FileSystem", "copy"),
     handleBadArgument("copy"),
@@ -63,10 +54,8 @@ const copy = (() => {
     })
 })()
 
-// == copyFile
-
 const copyFile = (() => {
-  const nodeCopyFile = effectify(
+  const nodeCopyFile = Effectify.effectify(
     NFS.copyFile,
     handleErrnoException("FileSystem", "copyFile"),
     handleBadArgument("copyFile"),
@@ -74,10 +63,8 @@ const copyFile = (() => {
   return (fromPath: string, toPath: string) => nodeCopyFile(fromPath, toPath)
 })()
 
-// == chmod
-
 const chmod = (() => {
-  const nodeChmod = effectify(
+  const nodeChmod = Effectify.effectify(
     NFS.chmod,
     handleErrnoException("FileSystem", "chmod"),
     handleBadArgument("chmod"),
@@ -85,10 +72,8 @@ const chmod = (() => {
   return (path: string, mode: number) => nodeChmod(path, mode)
 })()
 
-// == chown
-
 const chown = (() => {
-  const nodeChown = effectify(
+  const nodeChown = Effectify.effectify(
     NFS.chown,
     handleErrnoException("FileSystem", "chown"),
     handleBadArgument("chown"),
@@ -96,10 +81,8 @@ const chown = (() => {
   return (path: string, uid: number, gid: number) => nodeChown(path, uid, gid)
 })()
 
-// == link
-
 const link = (() => {
-  const nodeLink = effectify(
+  const nodeLink = Effectify.effectify(
     NFS.link,
     handleErrnoException("FileSystem", "link"),
     handleBadArgument("link"),
@@ -108,10 +91,8 @@ const link = (() => {
     nodeLink(existingPath, newPath)
 })()
 
-// == makeDirectory
-
 const makeDirectory = (() => {
-  const nodeMkdir = effectify(
+  const nodeMkdir = Effectify.effectify(
     NFS.mkdir,
     handleErrnoException("FileSystem", "makeDirectory"),
     handleBadArgument("makeDirectory"),
@@ -123,10 +104,8 @@ const makeDirectory = (() => {
     })
 })()
 
-// == makeTempDirectory
-
 const makeTempDirectoryFactory = (method: string) => {
-  const nodeMkdtemp = effectify(
+  const nodeMkdtemp = Effectify.effectify(
     NFS.mkdtemp,
     handleErrnoException("FileSystem", method),
     handleBadArgument(method),
@@ -145,10 +124,8 @@ const makeTempDirectoryFactory = (method: string) => {
 }
 const makeTempDirectory = makeTempDirectoryFactory("makeTempDirectory")
 
-// == remove
-
 const removeFactory = (method: string) => {
-  const nodeRm = effectify(
+  const nodeRm = Effectify.effectify(
     NFS.rm,
     handleErrnoException("FileSystem", method),
     handleBadArgument(method),
@@ -164,8 +141,6 @@ const removeFactory = (method: string) => {
 }
 const remove = removeFactory("remove")
 
-// == makeTempDirectoryScoped
-
 const makeTempDirectoryScoped = (() => {
   const makeDirectory = makeTempDirectoryFactory("makeTempDirectoryScoped")
   const removeDirectory = removeFactory("makeTempDirectoryScoped")
@@ -179,22 +154,20 @@ const makeTempDirectoryScoped = (() => {
     )
 })()
 
-// == open
-
 const openFactory = (method: string) => {
-  const nodeOpen = effectify(
+  const nodeOpen = Effectify.effectify(
     NFS.open,
     handleErrnoException("FileSystem", method),
     handleBadArgument(method),
   )
-  const nodeClose = effectify(
+  const nodeClose = Effectify.effectify(
     NFS.close,
     handleErrnoException("FileSystem", method),
     handleBadArgument(method),
   )
 
   return (path: string, options?: FileSystem.OpenFileOptions) =>
-    pipe(
+    Function.pipe(
       Effect.acquireRelease(
         nodeOpen(path, options?.flag ?? "r", options?.mode),
         (fd) => Effect.orDie(nodeClose(fd)),
@@ -211,32 +184,32 @@ const open = openFactory("open")
 
 const makeFile = (() => {
   const nodeReadFactory = (method: string) =>
-    effectify(
+    Effectify.effectify(
       NFS.read,
       handleErrnoException("FileSystem", method),
       handleBadArgument(method),
     )
   const nodeRead = nodeReadFactory("read")
   const nodeReadAlloc = nodeReadFactory("readAlloc")
-  const nodeStat = effectify(
+  const nodeStat = Effectify.effectify(
     NFS.fstat,
     handleErrnoException("FileSystem", "stat"),
     handleBadArgument("stat"),
   )
-  const nodeTruncate = effectify(
+  const nodeTruncate = Effectify.effectify(
     NFS.ftruncate,
     handleErrnoException("FileSystem", "truncate"),
     handleBadArgument("truncate"),
   )
 
-  const nodeSync = effectify(
+  const nodeSync = Effectify.effectify(
     NFS.fsync,
     handleErrnoException("FileSystem", "sync"),
     handleBadArgument("sync"),
   )
 
   const nodeWriteFactory = (method: string) =>
-    effectify(
+    Effectify.effectify(
       NFS.write,
       handleErrnoException("FileSystem", method),
       handleBadArgument(method),
@@ -372,7 +345,7 @@ const makeFile = (() => {
 
     private writeAllChunk(
       buffer: Uint8Array,
-    ): Effect.Effect<void, Error.PlatformError> {
+    ): Effect.Effect<void, PlatformError.PlatformError> {
       return Effect.flatMap(
         Effect.suspend(() =>
           nodeWriteAll(
@@ -386,7 +359,7 @@ const makeFile = (() => {
         (bytesWritten) => {
           if (bytesWritten === 0) {
             return Effect.fail(
-              new Error.SystemError({
+              new PlatformError.SystemError({
                 module: "FileSystem",
                 method: "writeAll",
                 reason: "WriteZero",
@@ -416,15 +389,13 @@ const makeFile = (() => {
     new FileImpl(fd, append)
 })()
 
-// == makeTempFile
-
 const makeTempFileFactory = (method: string) => {
   const makeDirectory = makeTempDirectoryFactory(method)
   const open = openFactory(method)
   const randomHexString = (bytes: number) =>
-    Effect.sync(() => Crypto.randomBytes(bytes).toString("hex"))
+    Effect.sync(() => NCrypto.randomBytes(bytes).toString("hex"))
   return (options?: FileSystem.MakeTempFileOptions) =>
-    pipe(
+    Function.pipe(
       Effect.zip(makeDirectory(options), randomHexString(6)),
       Effect.map(([directory, random]) =>
         NPath.join(directory, random + (options?.suffix ?? ""))
@@ -433,8 +404,6 @@ const makeTempFileFactory = (method: string) => {
     )
 }
 const makeTempFile = makeTempFileFactory("makeTempFile")
-
-// == makeTempFileScoped
 
 const makeTempFileScoped = (() => {
   const makeFile = makeTempFileFactory("makeTempFileScoped")
@@ -447,8 +416,6 @@ const makeTempFileScoped = (() => {
     )
 })()
 
-// == readDirectory
-
 const readDirectory = (
   path: string,
   options?: FileSystem.ReadDirectoryOptions,
@@ -459,10 +426,8 @@ const readDirectory = (
       handleErrnoException("FileSystem", "readDirectory")(err as any, [path]),
   })
 
-// == readFile
-
 const readFile = (path: string) =>
-  Effect.async<Uint8Array, Error.PlatformError>((resume, signal) => {
+  Effect.async<Uint8Array, PlatformError.PlatformError>((resume, signal) => {
     try {
       NFS.readFile(path, { signal }, (err, data) => {
         if (err) {
@@ -480,10 +445,8 @@ const readFile = (path: string) =>
     }
   })
 
-// == readLink
-
 const readLink = (() => {
-  const nodeReadLink = effectify(
+  const nodeReadLink = Effectify.effectify(
     NFS.readlink,
     handleErrnoException("FileSystem", "readLink"),
     handleBadArgument("readLink"),
@@ -491,10 +454,8 @@ const readLink = (() => {
   return (path: string) => nodeReadLink(path)
 })()
 
-// == realPath
-
 const realPath = (() => {
-  const nodeRealPath = effectify(
+  const nodeRealPath = Effectify.effectify(
     NFS.realpath,
     handleErrnoException("FileSystem", "realPath"),
     handleBadArgument("realPath"),
@@ -502,18 +463,14 @@ const realPath = (() => {
   return (path: string) => nodeRealPath(path)
 })()
 
-// == rename
-
 const rename = (() => {
-  const nodeRename = effectify(
+  const nodeRename = Effectify.effectify(
     NFS.rename,
     handleErrnoException("FileSystem", "rename"),
     handleBadArgument("rename"),
   )
   return (oldPath: string, newPath: string) => nodeRename(oldPath, newPath)
 })()
-
-// == stat
 
 const makeFileInfo = (stat: NFS.Stats): FileSystem.File.Info => ({
   type: stat.isFile()
@@ -546,7 +503,7 @@ const makeFileInfo = (stat: NFS.Stats): FileSystem.File.Info => ({
   blocks: Option.fromNullable(stat.blocks),
 })
 const stat = (() => {
-  const nodeStat = effectify(
+  const nodeStat = Effectify.effectify(
     NFS.stat,
     handleErrnoException("FileSystem", "stat"),
     handleBadArgument("stat"),
@@ -554,10 +511,8 @@ const stat = (() => {
   return (path: string) => Effect.map(nodeStat(path), makeFileInfo)
 })()
 
-// == symlink
-
 const symlink = (() => {
-  const nodeSymlink = effectify(
+  const nodeSymlink = Effectify.effectify(
     NFS.symlink,
     handleErrnoException("FileSystem", "symlink"),
     handleBadArgument("symlink"),
@@ -565,10 +520,8 @@ const symlink = (() => {
   return (target: string, path: string) => nodeSymlink(target, path)
 })()
 
-// == truncate
-
 const truncate = (() => {
-  const nodeTruncate = effectify(
+  const nodeTruncate = Effectify.effectify(
     NFS.truncate,
     handleErrnoException("FileSystem", "truncate"),
     handleBadArgument("truncate"),
@@ -577,10 +530,8 @@ const truncate = (() => {
     nodeTruncate(path, length !== undefined ? Number(length) : undefined)
 })()
 
-// == utimes
-
 const utimes = (() => {
-  const nodeUtimes = effectify(
+  const nodeUtimes = Effectify.effectify(
     NFS.utimes,
     handleErrnoException("FileSystem", "utime"),
     handleBadArgument("utime"),
@@ -589,10 +540,10 @@ const utimes = (() => {
     nodeUtimes(path, atime, mtime)
 })()
 
-// == watch
-
 const watchNode = (path: string, options?: FileSystem.WatchOptions) =>
-  Stream.asyncScoped<FileSystem.WatchEvent, Error.PlatformError>((emit) =>
+  Stream.asyncScoped<FileSystem.WatchEvent, PlatformError.PlatformError>((
+    emit,
+  ) =>
     Effect.acquireRelease(
       Effect.sync(() => {
         const watcher = NFS.watch(
@@ -621,7 +572,7 @@ const watchNode = (path: string, options?: FileSystem.WatchOptions) =>
         )
         watcher.on("error", (error) => {
           emit.fail(
-            new Error.SystemError({
+            new PlatformError.SystemError({
               module: "FileSystem",
               reason: "Unknown",
               method: "watch",
@@ -654,14 +605,12 @@ const watch = (
     Stream.unwrap,
   )
 
-// == writeFile
-
 const writeFile = (
   path: string,
   data: Uint8Array,
   options?: FileSystem.WriteFileOptions,
 ) =>
-  Effect.async<void, Error.PlatformError>((resume, signal) => {
+  Effect.async<void, PlatformError.PlatformError>((resume, signal) => {
     try {
       NFS.writeFile(path, data, {
         signal,
@@ -683,7 +632,7 @@ const writeFile = (
     }
   })
 
-const makeFileSystem = Effect.map(
+const make = Effect.map(
   Effect.serviceOption(FileSystem.WatchBackend),
   (backend) =>
     FileSystem.make({
@@ -716,22 +665,35 @@ const makeFileSystem = Effect.map(
     }),
 )
 
-export const layer = Layer.effect(FileSystem.FileSystem, makeFileSystem)
+export const layer = Layer.unwrapEffect(
+  Effect
+    .gen(function*() {
+      const mod = yield* Effect.tryPromise(() =>
+        import("@effect/platform/FileSystem")
+      )
+      return Layer.effect(mod.FileSystem, make)
+    })
+    .pipe(
+      Effect.catchAll(() =>
+        Effect.die(new globalThis.Error("@effect/platform is not installed"))
+      ),
+    ),
+)
 
 export {
-  Error,
   FileSystem,
+  PlatformError as Error,
 }
 
 export function handleErrnoException(
-  module: SystemError["module"],
+  module: PlatformError.SystemError["module"],
   method: string,
 ) {
   return function(
     err: NodeJS.ErrnoException,
     [path]: [path: NFS.PathLike | number, ...args: Array<any>],
-  ): PlatformError {
-    let reason: SystemErrorReason = "Unknown"
+  ): PlatformError.PlatformError {
+    let reason: PlatformError.SystemErrorReason = "Unknown"
 
     switch (err.code) {
       case "ENOENT":
@@ -763,7 +725,7 @@ export function handleErrnoException(
         break
     }
 
-    return new SystemError({
+    return new PlatformError.SystemError({
       reason,
       module,
       method,

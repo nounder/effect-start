@@ -1,18 +1,13 @@
-import {
-  Context,
-  Effect,
-  Function,
-  Layer,
-  Option,
-  pipe,
-  PubSub,
-  Stream,
-} from "effect"
-import { globalValue } from "effect/GlobalValue"
-import {
-  Error,
-  FileSystem,
-} from "./node/FileSystem.ts"
+import * as Context from "effect/Context"
+import * as Effect from "effect/Effect"
+import * as Function from "effect/Function"
+import * as GlobalValue from "effect/GlobalValue"
+import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
+import * as PubSub from "effect/PubSub"
+import * as Stream from "effect/Stream"
+import * as Error from "./node/PlatformError.ts"
+import * as FileSystem from "@effect/platform/FileSystem"
 
 export type DevelopmentEvent =
   | FileSystem.WatchEvent
@@ -20,7 +15,7 @@ export type DevelopmentEvent =
     readonly _tag: "Reload"
   }
 
-const devState = globalValue(
+const devState = GlobalValue.globalValue(
   Symbol.for("effect-start/Development"),
   () => ({
     count: 0,
@@ -99,7 +94,7 @@ export const watch = (
       const pubsub = yield* PubSub.unbounded<DevelopmentEvent>()
       devState.pubsub = pubsub
 
-      yield* pipe(
+      yield* Function.pipe(
         watchSource({
           path: opts?.path,
           recursive: opts?.recursive,
@@ -125,7 +120,7 @@ export const layerWatch = (
 
 export const stream = (): Stream.Stream<DevelopmentEvent> =>
   Stream.unwrap(
-    pipe(
+    Function.pipe(
       Effect.serviceOption(Development),
       Effect.map(
         Option.match({
