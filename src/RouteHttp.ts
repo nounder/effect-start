@@ -17,14 +17,6 @@ import * as RouteMount from "./RouteMount.ts"
 import * as RouteTree from "./RouteTree.ts"
 import * as StreamExtra from "./StreamExtra.ts"
 
-export {
-  currentSpanNameGenerator,
-  currentTracerDisabledWhen,
-  parentSpanFromHeaders,
-  withSpanNameGenerator,
-  withTracerDisabledWhen,
-} from "./RouteHttpTracer.ts"
-
 type UnboundedRouteWithMethod = Route.Route.With<{
   method: RouteMount.RouteMount.Method
   format?: RouteBody.Format
