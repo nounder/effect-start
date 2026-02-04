@@ -17,6 +17,7 @@ import type * as Scope from "effect/Scope"
 import * as FileRouter from "../FileRouter.ts"
 import * as PathPattern from "../PathPattern.ts"
 import * as Unique from "../Unique.ts"
+import * as PlataformRuntime from "../PlatformRuntime.ts"
 import * as Route from "../Route.ts"
 import * as RouteHttp from "../RouteHttp.ts"
 import * as RouteTree from "../RouteTree.ts"
@@ -69,11 +70,8 @@ export const make = (
   Effect.gen(function*() {
     const port = yield* Config.number("PORT").pipe(
       Effect.catchTag("ConfigError", () => {
-        if (
-          typeof process !== "undefined"
-          && !process.stdout.isTTY
-          && process.env.CLAUDECODE
-        ) {
+        if (PlataformRuntime.isAgentHarness()) {
+          // use random port
           return Effect.succeed(0)
         }
 
