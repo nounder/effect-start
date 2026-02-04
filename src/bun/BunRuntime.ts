@@ -1,4 +1,4 @@
-import { makeRunMain } from "@effect/platform/Runtime"
+import { makeRunMain } from "../PlatformRuntime.ts"
 import { constVoid } from "effect/Function"
 
 export const runMain = makeRunMain(({
