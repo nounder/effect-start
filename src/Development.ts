@@ -1,3 +1,4 @@
+import * as FileSystem from "@effect/platform/FileSystem"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Function from "effect/Function"
@@ -6,8 +7,8 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as PubSub from "effect/PubSub"
 import * as Stream from "effect/Stream"
+import * as NodeFileSystem from "./node/FileSystem.ts"
 import * as Error from "./node/PlatformError.ts"
-import * as FileSystem from "@effect/platform/FileSystem"
 
 export type DevelopmentEvent =
   | FileSystem.WatchEvent
@@ -87,28 +88,34 @@ export const watch = (
     filter?: (event: FileSystem.WatchEvent) => boolean
   },
 ) =>
-  Effect.gen(function*() {
-    devState.count++
+  Effect
+    .gen(function*() {
+      yield* Effect.log("hello")
+      yield* Effect.addFinalizer(() => Effect.log("bye"))
+      devState.count++
 
-    if (devState.count === 1) {
-      const pubsub = yield* PubSub.unbounded<DevelopmentEvent>()
-      devState.pubsub = pubsub
+      if (devState.count === 1) {
+        const pubsub = yield* PubSub.unbounded<DevelopmentEvent>()
+        devState.pubsub = pubsub
 
-      yield* Function.pipe(
-        watchSource({
-          path: opts?.path,
-          recursive: opts?.recursive,
-          filter: opts?.filter ?? filterSourceFiles,
-        }),
-        Stream.runForEach((event) => PubSub.publish(pubsub, event)),
-        Effect.fork,
-      )
-    } else {
-      yield* PubSub.publish(devState.pubsub!, { _tag: "Reload" })
-    }
+        yield* Function.pipe(
+          watchSource({
+            path: opts?.path,
+            recursive: opts?.recursive,
+            filter: opts?.filter ?? filterSourceFiles,
+          }),
+          Stream.runForEach((event) => PubSub.publish(pubsub, event)),
+          Effect.fork,
+        )
+      } else {
+        yield* PubSub.publish(devState.pubsub!, { _tag: "Reload" })
+      }
 
-    return { events: devState.pubsub! } satisfies DevelopmentService
-  })
+      return { events: devState.pubsub! } satisfies DevelopmentService
+    })
+    .pipe(
+      Effect.provide(NodeFileSystem.layer),
+    )
 
 export const layerWatch = (
   opts?: {
