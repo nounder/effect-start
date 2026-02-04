@@ -80,7 +80,9 @@ export const make = (
       },
     ]
 
-    let currentRoutes: BunRoute.BunRoutes = {}
+    let currentRoutes: BunRoute.BunRoutes = routes
+      ? yield* walkBunRoutes(routes)
+      : {}
 
     // Bun HMR doesn't work on successive calls to `server.reload` if there are no routes
     // on server start. We workaround that by passing a dummy HTMLBundle [2025-11-26]
@@ -119,6 +121,8 @@ export const make = (
       websocket,
     })
 
+    // this doesn't work really because right now every time on hot reload
+    // we recreate whole runtime
     yield* Effect.addFinalizer(() =>
       Effect.sync(() => {
         server.stop()
@@ -144,14 +148,6 @@ export const make = (
         reload()
       },
     })
-
-    if (routes) {
-      const walkedRoutes = yield* walkBunRoutes(routes).pipe(
-        Effect.provideService(BunServer, bunServer),
-      )
-      Object.assign(currentRoutes, walkedRoutes)
-      reload()
-    }
 
     return bunServer
   })
