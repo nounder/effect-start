@@ -15,8 +15,6 @@ import * as Route from "../Route.ts"
 import * as RouteHttp from "../RouteHttp.ts"
 import * as RouteMount from "../RouteMount.ts"
 import * as RouteTree from "../RouteTree.ts"
-import * as Unique from "../Unique.ts"
-import EmptyHTML from "./_empty.html"
 import * as BunRoute from "./BunRoute.ts"
 import * as BunServerRequest from "./BunServerRequest.ts"
 
@@ -63,12 +61,9 @@ export const make = (
 
     const port = yield* Config.number("PORT").pipe(
       Effect.catchTag("ConfigError", () => {
-        if (PlataformRuntime.isAgentHarness()) {
-          // use random port
-          return Effect.succeed(0)
-        }
-
-        return Effect.succeed(3000)
+        return PlataformRuntime.isAgentHarness()
+          ? Effect.succeed(0) // random port
+          : Effect.succeed(3000)
       }),
     )
     const hostname = yield* Config.string("HOSTNAME").pipe(
@@ -106,11 +101,6 @@ export const make = (
     let currentRoutes: BunRoute.BunRoutes = routes
       ? yield* walkBunRoutes(runtime, routes)
       : {}
-
-    // Bun HMR doesn't work on successive calls to `server.reload` if there are no routes
-    // on server start. We workaround that by passing a dummy HTMLBundle [2025-11-26]
-    // see: https://github.com/oven-sh/bun/issues/23564
-    currentRoutes[`/.BunEmptyHtml-${Unique.token(10)}`] = EmptyHTML
 
     const websocket: Bun.WebSocketHandler<BunServerRequest.WebSocketContext> = {
       open(ws) {
