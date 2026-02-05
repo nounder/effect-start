@@ -1,72 +1,71 @@
-// @ts-nocheck
-import type { PlatformError } from "@effect/platform/Error"
 import * as FileSystem from "@effect/platform/FileSystem"
-import * as Array from "effect/Array"
-import * as Context from "effect/Context"
+import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
+import * as Either from "effect/Either"
 import * as Function from "effect/Function"
 import * as Layer from "effect/Layer"
-import * as Record from "effect/Record"
 import * as Stream from "effect/Stream"
 import * as NPath from "node:path"
 import * as NUrl from "node:url"
 import * as Development from "./Development.ts"
+import * as FilePathPattern from "./FilePathPattern.ts"
 import * as FileRouterCodegen from "./FileRouterCodegen.ts"
-import * as FileRouterPattern from "./FileRouterPattern.ts"
+import * as NodeUtils from "./node/NodeUtils.ts"
+import type * as PathPattern from "./PathPattern.ts"
+import type * as PlatformError from "./PlatformError.ts"
+import * as Route from "./Route.ts"
+import * as RouteTree from "./RouteTree.ts"
+
+export class FileRouterError extends Data.TaggedError("FileRouterError")<{
+  reason:
+    | "Import"
+    | "Conflict"
+    | "FileSystem"
+  cause?: unknown
+  path?: string
+}> {}
 
 export type RouteModule = {
-  default: RouteSet.RouteSet.Default
+  default: Route.RouteSet.Any
 }
 
-export type LazyRoute = {
-  path: `/${string}`
-  load: () => Promise<RouteModule>
-  layers?: ReadonlyArray<() => Promise<unknown>>
+export type LazyRouteModule = () => Promise<RouteModule>
+
+export type FileRoutes = {
+  [path: PathPattern.PathPattern]: [
+    LazyRouteModule,
+    ...LazyRouteModule[],
+  ]
 }
 
-type Manifest = {
-  routes: readonly LazyRoute[]
-}
+export type Segment = FilePathPattern.Segment
 
-export class FileRouter extends Context.Tag("effect-start/FileRouter")<
-  FileRouter,
-  Manifest
->() {}
-
-export type GroupSegment<Name extends string = string> =
-  FileRouterPattern.GroupSegment<Name>
-
-export type Segment = FileRouterPattern.Segment
-
-export type RouteHandle = {
-  handle: "route" | "layer"
-  // eg. `about/route.tsx`, `users/[userId]/route.tsx`, `(admin)/users/route.tsx`
-  modulePath: string
+export type FileRoute = {
+  handle:
+    | "route"
+    | "layer"
+  // eg. `/about/route.tsx`, `/users/[userId]/route.tsx`, `/(admin)/users/route.tsx`
+  modulePath: `/${string}`
   // eg. `/about`, `/users/[userId]`, `/users` (groups stripped)
   routePath: `/${string}`
   segments: Segment[]
 }
 
 /**
- * Routes are sorted by depth, layers are first,
- * rest parameters are put at the end for each segment.
+ * Routes sorted by depth, with rest parameters at the end.
  * - layer.tsx
  * - users/route.tsx
  * - users/[userId]/route.tsx
- * - [[...rest]]/route.tsx
+ * - [[rest]]/route.tsx
  */
-export type OrderedRouteHandles = RouteHandle[]
+export type OrderedFileRoutes = FileRoute[]
 
 const ROUTE_PATH_REGEX = /^\/?(.*\/?)(?:route|layer)\.(jsx?|tsx?)$/
 
-export const parse = FileRouterPattern.parse
-export const formatSegment = FileRouterPattern.formatSegment
-export const format = FileRouterPattern.format
-
 export function parseRoute(
   path: string,
-): RouteHandle {
-  const segs = parse(path)
+): FileRoute | null {
+  const segs = FilePathPattern.segments(path)
 
   const lastSeg = segs.at(-1)
   const handleMatch = lastSeg?._tag === "LiteralSegment"
@@ -74,274 +73,198 @@ export function parseRoute(
   const handle = handleMatch ? handleMatch[1] as "route" | "layer" : null
 
   if (!handle) {
-    throw new Error(
-      `Invalid route path "${path}": must end with a valid handle (route or layer)`,
-    )
+    return null
   }
 
-  // rest segments must be the last segment before the handle
-  const pathSegments = segs.slice(0, -1) // All segments except the handle
-  const restIndex = pathSegments.findIndex(seg => seg._tag === "RestSegment")
+  const pathSegments = segs.slice(0, -1)
 
-  if (restIndex !== -1) {
-    // If there's a rest, it must be the last path segment
-    if (restIndex !== pathSegments.length - 1) {
-      throw new Error(
-        `Invalid route path "${path}": rest segment ([...rest] or [[...rest]]) must be the last path segment before the handle`,
-      )
-    }
+  const validated = FilePathPattern.validate(
+    FilePathPattern.format(pathSegments),
+  )
+  if (Either.isLeft(validated)) {
+    return null
+  }
 
-    // all segments before the rest must be literal, param, or group
-    for (let i = 0; i < restIndex; i++) {
-      const seg = pathSegments[i]
-      if (
-        seg._tag !== "LiteralSegment"
-        && seg._tag !== "ParamSegment"
-        && seg._tag !== "GroupSegment"
-      ) {
-        throw new Error(
-          `Invalid route path "${path}": segments before rest must be literal, param, or group segments`,
-        )
-      }
-    }
-  } else {
-    // No rest: all path segments are literal, param, or group
-    for (const seg of pathSegments) {
-      if (
-        seg._tag !== "LiteralSegment"
-        && seg._tag !== "ParamSegment"
-        && seg._tag !== "GroupSegment"
-      ) {
-        throw new Error(
-          `Invalid route path "${path}": path segments must be literal, param, or group segments`,
-        )
-      }
-    }
+  const restIndex = pathSegments.findIndex((seg) => seg._tag === "RestSegment")
+  if (restIndex !== -1 && restIndex !== pathSegments.length - 1) {
+    return null
   }
 
   const routePathSegments = pathSegments.filter(
-    seg => seg._tag !== "GroupSegment",
+    (seg) => seg._tag !== "GroupSegment",
   )
-  const routePath = FileRouterPattern.format(routePathSegments)
+  const routePath = FilePathPattern.format(routePathSegments)
 
   return {
     handle,
-    modulePath: path,
+    modulePath: `/${path}`,
     routePath,
     segments: pathSegments,
   }
 }
 
+function importModule<T>(
+  load: () => Promise<T>,
+): Effect.Effect<T, FileRouterError> {
+  return Effect.tryPromise({
+    try: () => load(),
+    catch: (cause) => new FileRouterError({ reason: "Import", cause }),
+  })
+}
+
 /**
- * Generates a manifest file that references all routes.
+ * Generates a tree file that references all routes.
  */
+export function layer(
+  load: () => Promise<{ default: FileRoutes }>,
+): Layer.Layer<Route.Routes, FileRouterError, FileSystem.FileSystem>
 export function layer(options: {
-  load: () => Promise<Manifest>
+  load: () => Promise<{ default: FileRoutes }>
   path: string
-}) {
-  let manifestPath = options.path
-  if (manifestPath.startsWith("file://")) {
-    manifestPath = NUrl.fileURLToPath(manifestPath)
+}): Layer.Layer<Route.Routes, FileRouterError, FileSystem.FileSystem>
+export function layer(
+  loadOrOptions:
+    | (() => Promise<{ default: FileRoutes }>)
+    | { load: () => Promise<{ default: FileRoutes }>; path: string },
+) {
+  const options = typeof loadOrOptions === "function"
+    ? {
+      load: loadOrOptions,
+      path: NPath.join(NodeUtils.getEntrypoint(), "routes"),
+    }
+    : loadOrOptions
+  let treePath = options.path
+  if (treePath.startsWith("file://")) {
+    treePath = NUrl.fileURLToPath(treePath)
   }
-  if (NPath.extname(manifestPath) === "") {
-    manifestPath = NPath.join(manifestPath, "index.ts")
+  if (NPath.extname(treePath) === "") {
+    treePath = NPath.join(treePath, "server.gen.ts")
   }
 
-  const routesPath = NPath.dirname(manifestPath)
-  const manifestFilename = NPath.basename(manifestPath)
-  const resolvedManifestPath = NPath.resolve(routesPath, manifestFilename)
+  const routesPath = NPath.dirname(treePath)
+  const treeFilename = NPath.basename(treePath)
+  const relativeRoutesPath = NPath.relative(process.cwd(), routesPath)
 
-  return Layer.provide(
-    Layer.effect(
-      FileRouter,
-      Effect.promise(() => options.load()),
-    ),
-    Layer.scopedDiscard(
-      Effect.gen(function*() {
-        yield* FileRouterCodegen.update(routesPath, manifestFilename)
+  return Layer.scoped(
+    Route.Routes,
+    Effect.gen(function*() {
+      // Generate routes file before loading
+      yield* FileRouterCodegen.update(routesPath, treeFilename)
 
-        const stream = Function.pipe(
-          Development.watchSource({
-            path: routesPath,
-            filter: (e) => !e.path.includes("node_modules"),
-          }),
-          Stream.onError((e) => Effect.logError(e)),
-        )
+      // Load and build route tree
+      const m = yield* importModule(options.load)
+      const routeTree = yield* fromFileRoutes(m.default)
 
-        yield* Function.pipe(
-          stream,
-          // filter out edits to gen file
-          Stream.filter(e => e.path !== resolvedManifestPath),
-          Stream.runForEach(() =>
-            FileRouterCodegen.update(routesPath, manifestFilename)
-          ),
-          Effect.fork,
-        )
-      }),
-    ),
+      // Watch for changes (only when Development service is available)
+      yield* Function.pipe(
+        Development.stream(),
+        Stream.filter(e =>
+          e._tag !== "Reload" && e.path.startsWith(relativeRoutesPath)
+        ),
+        Stream.runForEach(() =>
+          FileRouterCodegen.update(routesPath, treeFilename)
+        ),
+        Effect.fork,
+      )
+
+      return routeTree
+    }),
   )
 }
 
-export function fromManifest(
-  manifest: Manifest,
-): Effect.Effect<Router.Router.Any> {
+export function fromFileRoutes(
+  fileRoutes: FileRoutes,
+): Effect.Effect<RouteTree.RouteTree> {
   return Effect.gen(function*() {
-    const mounts: Record<`/${string}`, RouteSet.RouteSet.Default> = {}
+    const mounts: RouteTree.InputRouteMap = {}
 
-    yield* Effect.forEach(
-      manifest.routes,
-      (lazyRoute) =>
-        Effect.gen(function*() {
-          const routeModule = yield* Effect.promise(() => lazyRoute.load())
-          const layerModules = lazyRoute.layers
-            ? yield* Effect.forEach(
-              lazyRoute.layers,
-              (loadLayer) => Effect.promise(() => loadLayer()),
-            )
-            : []
+    for (const [path, loaders] of Object.entries(fileRoutes)) {
+      const modules = yield* Effect.forEach(
+        loaders,
+        (loader) => Effect.promise(() => loader()),
+      )
 
-          // Start with the route from the route module
-          let mergedRouteSet: RouteSet.RouteSet.Default = routeModule.default
+      const allRoutes: RouteTree.RouteTuple =
+        [] as unknown as RouteTree.RouteTuple
 
-          // Concatenate each layer's routes into the routeSet
-          for (const m of layerModules) {
-            const layerRouteSet = (m as any).default
-            if (RouteSet.isRouteSet(layerRouteSet)) {
-              mergedRouteSet = Route.merge(layerRouteSet, mergedRouteSet)
-            }
+      for (const m of modules) {
+        if (Route.isRouteSet(m.default)) {
+          for (const route of m.default) {
+            ;(allRoutes as any[]).push(route)
           }
+        }
+      }
 
-          mounts[lazyRoute.path] = mergedRouteSet
-        }),
-    )
+      mounts[path as `/${string}`] = allRoutes
+    }
 
-    return Router.make(mounts, RouteSet.make())
+    return RouteTree.make(mounts)
   })
 }
 
 export function walkRoutesDirectory(
   dir: string,
 ): Effect.Effect<
-  OrderedRouteHandles,
-  PlatformError,
+  OrderedFileRoutes,
+  PlatformError.PlatformError | FileRouterError,
   FileSystem.FileSystem
 > {
   return Effect.gen(function*() {
     const fs = yield* FileSystem.FileSystem
     const files = yield* fs.readDirectory(dir, { recursive: true })
 
-    return getRouteHandlesFromPaths(files)
+    return yield* getFileRoutes(files)
   })
 }
 
-/**
- * Given a list of paths, return a list of route handles.
- */
-export function getRouteHandlesFromPaths(
+export function getFileRoutes(
   paths: string[],
-): OrderedRouteHandles {
-  const handles = paths
-    .map(f => f.match(ROUTE_PATH_REGEX))
-    .filter(Boolean)
-    .map(v => {
-      const path = v![0]
-      try {
-        return parseRoute(path)
-      } catch {
-        return null
+): Effect.Effect<OrderedFileRoutes, FileRouterError> {
+  return Effect.gen(function*() {
+    const routes = paths
+      .map(f => f.match(ROUTE_PATH_REGEX))
+      .filter(Boolean)
+      .map(v => {
+        const path = v![0]
+        try {
+          return parseRoute(path)
+        } catch {
+          return null
+        }
+      })
+      .filter((route): route is FileRoute => route !== null)
+      .toSorted((a, b) => {
+        const aDepth = a.segments.length
+        const bDepth = b.segments.length
+        const aHasRest = a.segments.some((seg) => seg._tag === "RestSegment")
+        const bHasRest = b.segments.some((seg) => seg._tag === "RestSegment")
+
+        return (
+          // rest is a dominant factor (routes with rest come last)
+          (+aHasRest - +bHasRest) * 1000
+          // depth is reversed for rest
+          + (aDepth - bDepth) * (1 - 2 * +aHasRest)
+          // lexicographic comparison as tiebreaker
+          + a.modulePath.localeCompare(b.modulePath) * 0.001
+        )
+      })
+
+    // Detect conflicting routes at the same path
+    const routesByPath = new Map<string, FileRoute[]>()
+    for (const route of routes) {
+      const existing = routesByPath.get(route.routePath) || []
+      existing.push(route)
+      routesByPath.set(route.routePath, existing)
+    }
+
+    for (const [path, pathRoutes] of routesByPath) {
+      const routeHandles = pathRoutes.filter(h => h.handle === "route")
+
+      if (routeHandles.length > 1) {
+        yield* new FileRouterError({ reason: "Conflict", path })
       }
-    })
-    .filter((route): route is RouteHandle => route !== null)
-    .toSorted((a, b) => {
-      const aDepth = a.segments.length
-      const bDepth = b.segments.length
-      const aHasRest = a.segments.some(seg => seg._tag === "RestSegment")
-      const bHasRest = b.segments.some(seg => seg._tag === "RestSegment")
-
-      return (
-        // rest is a dominant factor (routes with rest come last)
-        (+aHasRest - +bHasRest) * 1000
-        // depth is reversed for rest
-        + (aDepth - bDepth) * (1 - 2 * +aHasRest)
-        // lexicographic comparison as tiebreaker
-        + a.modulePath.localeCompare(b.modulePath) * 0.001
-      )
-    })
-
-  // Detect conflicting routes at the same path
-  const routesByPath = new Map<string, RouteHandle[]>()
-  for (const handle of handles) {
-    const existing = routesByPath.get(handle.routePath) || []
-    existing.push(handle)
-    routesByPath.set(handle.routePath, existing)
-  }
-
-  for (const [path, pathHandles] of routesByPath) {
-    const routeHandles = pathHandles.filter(h => h.handle === "route")
-
-    if (routeHandles.length > 1) {
-      const modulePaths = routeHandles.map(h => h.modulePath).join(", ")
-      throw new Error(
-        `Conflicting routes detected at path ${path}: ${modulePaths}`,
-      )
-    }
-  }
-
-  return handles
-}
-
-type RouteTree = {
-  path: `/${string}`
-  handles: RouteHandle[]
-  children?: RouteTree[]
-}
-
-export function treeFromRouteHandles(
-  handles: RouteHandle[],
-): RouteTree {
-  const handlesByPath = Array.groupBy(handles, handle => handle.routePath)
-  const paths = Record.keys(handlesByPath)
-  const root: RouteTree = {
-    path: "/",
-    handles: handlesByPath["/"] || [],
-  }
-
-  const nodeMap = new Map<string, RouteTree>([["/", root]])
-
-  for (const absolutePath of paths) {
-    if (absolutePath === "/") continue
-
-    // Find parent path
-    const segments = absolutePath.split("/").filter(Boolean)
-    const parentPath = segments.length === 1
-      ? "/"
-      : "/" + segments.slice(0, -1).join("/")
-
-    const parent = nodeMap.get(parentPath)
-    if (!parent) {
-      continue // Skip orphaned paths
     }
 
-    // Create node with relative path
-    const relativePath = parent.path === "/"
-      ? absolutePath
-      : absolutePath.slice(parentPath.length)
-
-    const node: RouteTree = {
-      path: relativePath as `/${string}`,
-      handles: handlesByPath[absolutePath]!,
-    }
-
-    // Add to parent
-    if (!parent.children) {
-      parent.children = []
-    }
-
-    parent.children.push(node)
-
-    // Store for future children
-    nodeMap.set(absolutePath, node)
-  }
-
-  return root
+    return routes
+  })
 }

@@ -1,132 +1,61 @@
 import * as test from "bun:test"
+import * as Cause from "effect/Cause"
+import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
+import * as Option from "effect/Option"
 import * as FileRouter from "./FileRouter.ts"
 
-test.it("tree with root only", () => {
-  const handles = [
-    "route.tsx",
-    "layer.tsx",
+test.it("fails on overlapping routes from groups", async () => {
+  const routes = [
+    "(admin)/users/route.tsx",
+    "users/route.tsx",
   ]
     .map(FileRouter.parseRoute)
-  const tree = FileRouter.treeFromRouteHandles(handles)
+    .filter((h): h is FileRouter.FileRoute => h !== null)
 
-  test
-    .expect(tree)
-    .toEqual({
-      path: "/",
-      handles: [
-        test.expect.objectContaining({
-          handle: "route",
-        }),
-        test.expect.objectContaining({
-          handle: "layer",
-        }),
-      ],
-    })
+  const exit = await FileRouter
+    .getFileRoutes(routes.map((h) => h.modulePath))
+    .pipe(Effect.runPromiseExit)
+
+  test.expect(Exit.isFailure(exit)).toBe(true)
+  if (Exit.isFailure(exit)) {
+    const error = Option.getOrThrow(Cause.failureOption(exit.cause))
+    test.expect(error.reason).toBe("Conflict")
+    test.expect(error.path).toBe("/users")
+  }
 })
 
-test.it("tree without root", () => {
-  const handles = []
+test.it("fails on overlapping routes with same path", async () => {
+  const routes = [
+    "about/route.tsx",
+    "about/route.ts",
+  ]
     .map(FileRouter.parseRoute)
-  const tree = FileRouter.treeFromRouteHandles(handles)
+    .filter((h): h is FileRouter.FileRoute => h !== null)
 
-  test
-    .expect(tree)
-    .toEqual({
-      path: "/",
-      handles: [],
-    })
+  const exit = await FileRouter
+    .getFileRoutes(routes.map((h) => h.modulePath))
+    .pipe(Effect.runPromiseExit)
+
+  test.expect(Exit.isFailure(exit)).toBe(true)
+  if (Exit.isFailure(exit)) {
+    const error = Option.getOrThrow(Cause.failureOption(exit.cause))
+    test.expect(error.reason).toBe("Conflict")
+    test.expect(error.path).toBe("/about")
+  }
 })
 
-test.it("deep tree", () => {
-  const handles = [
+test.it("allows route and layer at same path", async () => {
+  const routes = [
     "users/route.tsx",
     "users/layer.tsx",
-    "users/[userId]/route.tsx",
-    "layer.tsx",
   ]
     .map(FileRouter.parseRoute)
-  const tree = FileRouter.treeFromRouteHandles(handles)
+    .filter((h): h is FileRouter.FileRoute => h !== null)
 
-  test
-    .expect(tree)
-    .toEqual({
-      path: "/",
-      handles: [
-        test.expect.objectContaining({
-          handle: "layer",
-        }),
-      ],
-      children: [
-        {
-          path: "/users",
-          handles: [
-            test.expect.objectContaining({
-              handle: "route",
-            }),
-            test.expect.objectContaining({
-              handle: "layer",
-            }),
-          ],
-          children: [
-            {
-              path: "/[userId]",
-              handles: [
-                test.expect.objectContaining({
-                  handle: "route",
-                }),
-              ],
-            },
-          ],
-        },
-      ],
-    })
-})
+  const exit = await FileRouter
+    .getFileRoutes(routes.map((h) => h.modulePath))
+    .pipe(Effect.runPromiseExit)
 
-test.it("throws on overlapping routes from groups", () => {
-  test
-    .expect(() => {
-      const handles = [
-        "(admin)/users/route.tsx",
-        "users/route.tsx",
-      ]
-        .map(FileRouter.parseRoute)
-
-      FileRouter.getRouteHandlesFromPaths(
-        handles.map(h => h.modulePath),
-      )
-    })
-    .toThrow("Conflicting routes detected at path /users")
-})
-
-test.it("throws on overlapping routes with same path", () => {
-  test
-    .expect(() => {
-      const handles = [
-        "about/route.tsx",
-        "about/route.ts",
-      ]
-        .map(FileRouter.parseRoute)
-
-      FileRouter.getRouteHandlesFromPaths(
-        handles.map(h => h.modulePath),
-      )
-    })
-    .toThrow("Conflicting routes detected at path /about")
-})
-
-test.it("allows route and layer at same path", () => {
-  test
-    .expect(() => {
-      const handles = [
-        "users/route.tsx",
-        "users/layer.tsx",
-      ]
-        .map(FileRouter.parseRoute)
-
-      FileRouter.getRouteHandlesFromPaths(
-        handles.map(h => h.modulePath),
-      )
-    })
-    .not
-    .toThrow()
+  test.expect(Exit.isSuccess(exit)).toBe(true)
 })

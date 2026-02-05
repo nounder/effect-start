@@ -1,6 +1,8 @@
 import * as NFS from "node:fs/promises"
 import * as NPath from "node:path"
 
+export const getEntrypoint = () => NPath.dirname(process.argv[1])
+
 export const findClosestPackageJson = async (
   path: string,
 ): Promise<string | undefined> => {

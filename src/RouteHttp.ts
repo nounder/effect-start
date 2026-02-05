@@ -391,7 +391,9 @@ export const toWebHandlerRuntime = <R>(
           if (exit._tag === "Success") {
             resolve(exit.value)
           } else if (isClientAbort(exit.cause)) {
-            resolve(respondError({ status: 499, message: "client closed request" }))
+            resolve(
+              respondError({ status: 499, message: "client closed request" }),
+            )
           } else {
             const status = getStatusFromCause(exit.cause)
             const message = Cause.pretty(exit.cause, { renderErrorCause: true })

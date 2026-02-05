@@ -22,7 +22,9 @@ test.describe("HyperRoute.html", () => {
     const response = await Http.fetch(handler, { path: "/" })
 
     test.expect(response.status).toBe(200)
-    test.expect(response.headers.get("Content-Type")).toBe("text/html; charset=utf-8")
+    test.expect(response.headers.get("Content-Type")).toBe(
+      "text/html; charset=utf-8",
+    )
     test.expect(await response.text()).toBe("<div>Hello World</div>")
   })
 

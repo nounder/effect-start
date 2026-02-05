@@ -193,13 +193,17 @@ test.it("error response includes stack trace and cause chain", () =>
       const body = yield* Effect.promise(() => response.json())
       test
         .expect(body.message)
-        .toMatch(/Error: Query failed[\s\S]+\[cause\]: Error: Database connection failed/)
+        .toMatch(
+          /Error: Query failed[\s\S]+\[cause\]: Error: Database connection failed/,
+        )
 
       const messages = yield* TestLogger.messages
       const errorLog = messages.find((m) => m.startsWith("[Error]"))
       test
         .expect(errorLog)
-        .toMatch(/Error: Query failed[\s\S]+\[cause\]: Error: Database connection failed/)
+        .toMatch(
+          /Error: Query failed[\s\S]+\[cause\]: Error: Database connection failed/,
+        )
     })
     .pipe(Effect.provide(TestLogger.layer()), Effect.runPromise))
 

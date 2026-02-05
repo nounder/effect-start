@@ -1,12 +1,11 @@
 import {
   Development,
-  Route,
+  FileRouter,
   Start,
 } from "effect-start"
-import routes from "./routes.ts"
 
 export default Start.layer(
-  Route.layer(routes),
+  FileRouter.layer(() => import("./routes/routes.gen.ts")),
   Development.layerWatch(),
 )
 

@@ -44,6 +44,11 @@
       "types": "./dist/Unique.d.ts",
       "default": "./dist/Unique.js"
     },
+    "./FileRouter": {
+      "bun": "./src/FileRouter.ts",
+      "types": "./dist/FileRouter.d.ts",
+      "default": "./dist/FileRouter.js"
+    },
     "./experimental": {
       "bun": "./src/experimental/index.ts",
       "types": "./dist/experimental/index.d.ts",

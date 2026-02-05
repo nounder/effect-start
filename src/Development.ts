@@ -7,7 +7,7 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as PubSub from "effect/PubSub"
 import * as Stream from "effect/Stream"
-import * as Error from "./node/PlatformError.ts"
+import * as PlatformError from "./PlatformError.ts"
 
 export type DevelopmentEvent =
   | FileSystem.WatchEvent
@@ -56,7 +56,7 @@ export const watchSource = (
   },
 ): Stream.Stream<
   FileSystem.WatchEvent,
-  Error.PlatformError,
+  PlatformError.PlatformError,
   FileSystem.FileSystem
 > => {
   const baseDir = opts?.path ?? process.cwd()
@@ -89,8 +89,6 @@ export const watch = (
 ) =>
   Effect
     .gen(function*() {
-      yield* Effect.log("hello")
-      yield* Effect.addFinalizer(() => Effect.log("bye"))
       devState.count++
 
       if (devState.count === 1) {

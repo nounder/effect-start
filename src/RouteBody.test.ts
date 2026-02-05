@@ -257,8 +257,8 @@ test.describe(`${RouteBody.handle.name}()`, () => {
       }),
     )
 
-    type Items = typeof routes extends Route.RouteSet.RouteSet<any, any, infer I>
-      ? I
+    type Items = typeof routes extends
+      Route.RouteSet.RouteSet<any, any, infer I> ? I
       : never
 
     test

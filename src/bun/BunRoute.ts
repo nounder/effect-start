@@ -4,11 +4,11 @@ import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
 import * as Entity from "../Entity.ts"
+import * as FilePathPattern from "../FilePathPattern.ts"
 import * as Hyper from "../hyper/Hyper.ts"
 import * as HyperHtml from "../hyper/HyperHtml.ts"
-import * as Unique from "../Unique.ts"
 import * as Route from "../Route.ts"
-import * as RouterPattern from "../RouterPattern.ts"
+import * as Unique from "../Unique.ts"
 import * as BunServer from "./BunServer.ts"
 
 const INTERNAL_FETCH_HEADER = "x-effect-start-internal-fetch"
@@ -181,9 +181,7 @@ export type BunRoutes = Record<string, BunServerRouteHandler>
  * - /exact        - Exact match
  * - /users/:id    - Full-segment named param
  * - /path/*       - Directory wildcard
- * - /*            - Catch-all
- * - /[[id]]       - Optional param (implemented via `/` and `/:id`)
- * - /[[...rest]]  - Optional rest param (implemented via `/` and `/*`)
+ * - /[[404]]      - Catch-all / Rest
  *
  * Unsupported patterns (cannot be implemented in Bun):
  * - /pk_[id]   - Prefix before param
@@ -196,24 +194,16 @@ export type BunRoutes = Record<string, BunServerRouteHandler>
 export function validateBunPattern(
   pattern: string,
 ): Option.Option<BunRouteError> {
-  const segments = RouterPattern.parse(pattern)
+  const segs = FilePathPattern.segments(pattern)
 
-  const unsupported = Array.findFirst(segments, (seg) => {
-    if (seg._tag === "ParamSegment") {
-      return seg.prefix !== undefined || seg.suffix !== undefined
-    }
+  const invalid = Array.findFirst(segs, (seg) => seg._tag === "InvalidSegment")
 
-    return false
-  })
-
-  if (Option.isSome(unsupported)) {
+  if (Option.isSome(invalid)) {
     return Option.some(
       new BunRouteError({
         reason: "UnsupportedPattern",
         pattern,
-        message:
-          `Pattern "${pattern}" uses prefixed/suffixed params (prefix_[param] or [param]_suffix) `
-          + `which cannot be implemented in Bun.serve.`,
+        message: `Pattern "${pattern}" contains invalid segment.`,
       }),
     )
   }

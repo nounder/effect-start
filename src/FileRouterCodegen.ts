@@ -1,11 +1,10 @@
-import type { PlatformError } from "@effect/platform/Error"
 import * as FileSystem from "@effect/platform/FileSystem"
 import * as Effect from "effect/Effect"
-import * as Function from "effect/Function"
+import * as Either from "effect/Either"
 import * as Schema from "effect/Schema"
 import * as NPath from "node:path"
+import * as FilePathPattern from "./FilePathPattern.ts"
 import * as FileRouter from "./FileRouter.ts"
-import * as FileRouterPattern from "./FileRouterPattern.ts"
 import * as SchemaExtra from "./SchemaExtra.ts"
 
 export function validateRouteModule(
@@ -24,7 +23,7 @@ export function validateRouteModule(
 }
 
 export function generatePathParamsSchema(
-  segments: ReadonlyArray<FileRouterPattern.Segment>,
+  segments: ReadonlyArray<FilePathPattern.Segment>,
 ): Schema.Struct<any> | null {
   const fields: Record<
     PropertyKey,
@@ -32,13 +31,10 @@ export function generatePathParamsSchema(
   > = {}
 
   for (const segment of segments) {
-    if (
-      segment._tag === "ParamSegment"
-      || segment._tag === "RestSegment"
-    ) {
-      fields[segment.name] = segment.optional
-        ? Function.pipe(Schema.String, Schema.optional)
-        : Schema.String
+    if (segment._tag === "ParamSegment") {
+      fields[segment.name] = Schema.String
+    } else if (segment._tag === "RestSegment") {
+      fields[segment.name] = Schema.optional(Schema.String)
     }
   }
 
@@ -54,23 +50,33 @@ export function generatePathParamsSchema(
  */
 
 export function validateRouteModules(
-  routesPath: string,
-  handles: FileRouter.OrderedRouteHandles,
-): Effect.Effect<void, PlatformError, FileSystem.FileSystem> {
+  path: string,
+  routes: FileRouter.OrderedFileRoutes,
+): Effect.Effect<void, FileRouter.FileRouterError, FileSystem.FileSystem> {
   return Effect.gen(function*() {
     const fs = yield* FileSystem.FileSystem
-    const routeHandles = handles.filter(h => h.handle === "route")
+    const routeHandles = routes.filter(h => h.handle === "route")
 
     for (const handle of routeHandles) {
-      const routeModulePath = NPath.resolve(routesPath, handle.modulePath)
+      const routeModulePath = NPath.resolve(path, handle.modulePath)
       const expectedSchema = generatePathParamsSchema(handle.segments)
 
-      const fileExists = yield* fs.exists(routeModulePath)
+      const fileExists = yield* fs.exists(routeModulePath).pipe(
+        Effect.catchAll(() => Effect.succeed(false)),
+      )
       if (!fileExists) {
         continue
       }
 
-      const module = yield* Effect.promise(() => import(routeModulePath))
+      const module = yield* Effect.tryPromise({
+        try: () => import(routeModulePath),
+        catch: (cause) =>
+          new FileRouter.FileRouterError({
+            reason: "Import",
+            cause,
+            path: routeModulePath,
+          }),
+      })
 
       if (!validateRouteModule(module)) {
         yield* Effect.logWarning(
@@ -100,50 +106,42 @@ export function validateRouteModules(
 }
 
 export function generateCode(
-  handles: FileRouter.OrderedRouteHandles,
-): string {
-  const routerModuleId = "effect-start"
-
+  fileRoutes: FileRouter.OrderedFileRoutes,
+): string | null {
   // Group routes by path to find layers
   const routesByPath = new Map<string, {
-    route?: FileRouter.RouteHandle
-    layers: FileRouter.RouteHandle[]
+    route?: FileRouter.FileRoute
+    layers: FileRouter.FileRoute[]
   }>()
 
-  for (const handle of handles) {
-    const existing = routesByPath.get(handle.routePath) || { layers: [] }
-    if (handle.handle === "route") {
-      existing.route = handle
-    } else if (handle.handle === "layer") {
-      existing.layers.push(handle)
+  for (const fileRoute of fileRoutes) {
+    const existing = routesByPath.get(fileRoute.routePath) || { layers: [] }
+    if (fileRoute.handle === "route") {
+      existing.route = fileRoute
+    } else if (fileRoute.handle === "layer") {
+      existing.layers.push(fileRoute)
     }
-    routesByPath.set(handle.routePath, existing)
+    routesByPath.set(fileRoute.routePath, existing)
   }
-
-  // Generate route definitions
-  const routes: string[] = []
 
   // Helper to check if layer's path is an ancestor of route's path
   const layerMatchesRoute = (
-    layer: FileRouter.RouteHandle,
-    route: FileRouter.RouteHandle,
+    layer: FileRouter.FileRoute,
+    route: FileRouter.FileRoute,
   ): boolean => {
-    // Get the directory of the layer (strip the filename like layer.tsx)
-    const layerDir = layer.modulePath.replace(/\/?(layer)\.(tsx?|jsx?)$/, "")
-
-    // Layer at root (empty layerDir) applies to all routes
-    if (layerDir === "") return true
-
-    // Route's modulePath must start with the layer's directory
+    const layerDir = layer.modulePath.replace(/\/(layer)\.(tsx?|jsx?)$/, "")
+    if (layerDir === "/") return true
     return route.modulePath.startsWith(layerDir + "/")
   }
 
-  // Find layers for each route by walking up the path hierarchy
+  // Build entries for each route path
+  const entries: Array<{ path: string; loaders: string[] }> = []
+
   for (const [path, { route }] of routesByPath) {
-    if (!route) continue // Skip paths that only have layers
+    if (!route) continue
 
     // Collect all parent layers that match the route's groups
-    const allLayers: FileRouter.RouteHandle[] = []
+    const allLayers: FileRouter.FileRoute[] = []
     let currentPath = path
 
     while (true) {
@@ -157,97 +155,142 @@ export function generateCode(
 
       if (currentPath === "/") break
 
-      // Move to parent path
       const parentPath = currentPath.substring(0, currentPath.lastIndexOf("/"))
       currentPath = parentPath || "/"
     }
 
-    // Generate layers array
-    const layersCode = allLayers.length > 0
-      ? `\n    layers: [\n      ${
-        allLayers.map(layer => `() => import("./${layer.modulePath}")`).join(
-          ",\n      ",
-        )
-      },\n    ],`
-      : ""
+    // Convert file-style path to colon-style PathPattern
+    const pathPatternResult = FilePathPattern.toPathPattern(path)
+    if (Either.isLeft(pathPatternResult)) {
+      continue
+    }
+    const pathPattern = pathPatternResult.right
 
-    const routeCode = `  {
-    path: "${path}",
-    load: () => import("./${route.modulePath}"),${layersCode}
-  },`
+    // Order: route first, then layers from innermost to outermost
+    const loaders: string[] = [
+      `() => import(".${route.modulePath}")`,
+      ...allLayers.reverse().map(layer =>
+        `() => import(".${layer.modulePath}")`
+      ),
+    ]
 
-    routes.push(routeCode)
+    entries.push({ path: pathPattern, loaders })
   }
 
-  const header = `/**
+  // No routes found - don't create file
+  if (entries.length === 0) {
+    return null
+  }
+
+  const routeEntries = entries
+    .map(({ path, loaders }) => {
+      const loadersCode = loaders.join(",\n    ")
+      return `  "${path}": [\n    ${loadersCode},\n  ]`
+    })
+    .join(",\n")
+
+  return `/**
  * Auto-generated by effect-start.
- */`
+ */
 
-  const routesArray = routes.length > 0
-    ? `[\n${routes.join("\n")}\n]`
-    : "[]"
-
-  return `${header}
-
-export const routes = ${routesArray} as const
+export default {
+${routeEntries},
+} satisfies import("effect-start/FileRouter").FileRoutes
 `
 }
 
 /**
- * Updates the manifest file only if the generated content differs from the existing file.
+ * Updates the tree file only if the generated content differs from the existing file.
  * This prevents infinite loops when watching for file changes.
  */
 export function update(
   routesPath: string,
-  manifestPath = "manifest.ts",
-): Effect.Effect<void, PlatformError, FileSystem.FileSystem> {
+  treePath = "server.gen.ts",
+): Effect.Effect<void, FileRouter.FileRouterError, FileSystem.FileSystem> {
   return Effect.gen(function*() {
-    manifestPath = NPath.resolve(routesPath, manifestPath)
+    treePath = NPath.resolve(routesPath, treePath)
 
     const fs = yield* FileSystem.FileSystem
-    const files = yield* fs.readDirectory(routesPath, { recursive: true })
-    const handles = FileRouter.getRouteHandlesFromPaths(files)
+    const files = yield* fs.readDirectory(routesPath, { recursive: true }).pipe(
+      Effect.mapError((cause) =>
+        new FileRouter.FileRouterError({ reason: "FileSystem", cause, path: routesPath })
+      ),
+    )
+    const fileRoutes = yield* FileRouter.getFileRoutes(files)
 
     // Validate route modules
-    yield* validateRouteModules(routesPath, handles)
+    yield* validateRouteModules(routesPath, fileRoutes)
 
-    const newCode = generateCode(handles)
+    const newCode = generateCode(fileRoutes)
 
-    // Check if file exists and content differs
+    // Check if file exists (ok to fail - means file doesn't exist)
     const existingCode = yield* fs
-      .readFileString(manifestPath)
+      .readFileString(treePath)
       .pipe(Effect.catchAll(() => Effect.succeed(null)))
 
+    // No routes found
+    if (newCode === null) {
+      // If gen file exists, write empty export
+      if (existingCode !== null) {
+        const emptyCode = "export default {}\n"
+        if (existingCode !== emptyCode) {
+          yield* Effect.logDebug(`Clearing file routes tree: ${treePath}`)
+          yield* fs.writeFileString(treePath, emptyCode).pipe(
+            Effect.mapError((cause) =>
+              new FileRouter.FileRouterError({ reason: "FileSystem", cause, path: treePath })
+            ),
+          )
+        }
+      }
+      return
+    }
+
+    // Write if content differs
     if (existingCode !== newCode) {
-      yield* Effect.logDebug(`Updating file routes manifest: ${manifestPath}`)
-      yield* fs.writeFileString(manifestPath, newCode)
+      yield* Effect.logDebug(`Updating file routes tree: ${treePath}`)
+      yield* fs.writeFileString(treePath, newCode).pipe(
+        Effect.mapError((cause) =>
+          new FileRouter.FileRouterError({ reason: "FileSystem", cause, path: treePath })
+        ),
+      )
     } else {
-      yield* Effect.logDebug(`File routes manifest unchanged: ${manifestPath}`)
+      yield* Effect.logDebug(`File routes tree unchanged: ${treePath}`)
     }
   })
 }
 
 export function dump(
   routesPath: string,
-  manifestPath = "manifest.ts",
-): Effect.Effect<void, PlatformError, FileSystem.FileSystem> {
+  treePath = "server.gen.ts",
+): Effect.Effect<void, FileRouter.FileRouterError, FileSystem.FileSystem> {
   return Effect.gen(function*() {
-    manifestPath = NPath.resolve(routesPath, manifestPath)
+    treePath = NPath.resolve(routesPath, treePath)
 
     const fs = yield* FileSystem.FileSystem
-    const files = yield* fs.readDirectory(routesPath, { recursive: true })
-    const handles = FileRouter.getRouteHandlesFromPaths(files)
+    const files = yield* fs.readDirectory(routesPath, { recursive: true }).pipe(
+      Effect.mapError((cause) =>
+        new FileRouter.FileRouterError({ reason: "FileSystem", cause, path: routesPath })
+      ),
+    )
+    const fileRoutes = yield* FileRouter.getFileRoutes(files)
 
     // Validate route modules
-    yield* validateRouteModules(routesPath, handles)
+    yield* validateRouteModules(routesPath, fileRoutes)
 
-    const code = generateCode(handles)
+    const code = generateCode(fileRoutes)
 
-    yield* Effect.logDebug(`Generating file routes manifest: ${manifestPath}`)
+    // No routes found - don't create file
+    if (code === null) {
+      yield* Effect.logDebug(`No routes found, skipping: ${treePath}`)
+      return
+    }
 
-    yield* fs.writeFileString(
-      manifestPath,
-      code,
+    yield* Effect.logDebug(`Generating file routes tree: ${treePath}`)
+
+    yield* fs.writeFileString(treePath, code).pipe(
+      Effect.mapError((cause) =>
+        new FileRouter.FileRouterError({ reason: "FileSystem", cause, path: treePath })
+      ),
     )
   })
 }

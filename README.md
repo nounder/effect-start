@@ -21,8 +21,8 @@ import {
 
 export default Start.layer(
   FileRouter.layer({
-    load: () => import("./routes/manifest.ts"),
-    path: import.meta.resolve("./routes/manifest.ts"),
+    load: () => import("./routes/routes.gen.ts"),
+    path: import.meta.resolve("./routes/routes.gen.ts"),
   }),
 )
 
@@ -46,7 +46,7 @@ src/routes
 │   ├── layer.tsx
 │   └── route.tsx
 ├── layer.tsx
-├── manifest.ts
+├── routes.gen.ts
 └── route.tsx
 ```
 

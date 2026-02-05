@@ -12,8 +12,8 @@ import * as NCrypto from "node:crypto"
 import * as NFS from "node:fs"
 import * as NOS from "node:os"
 import * as NPath from "node:path"
+import * as PlatformError from "../PlatformError.ts"
 import * as Effectify from "./Effectify.ts"
-import * as PlatformError from "./PlatformError.ts"
 
 const handleBadArgument = (method: string) => (cause: unknown) =>
   new PlatformError.BadArgument({

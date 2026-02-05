@@ -7,7 +7,10 @@ interface Callback<E, A> {
   (err: E, a?: A): void
 }
 
-type ArgsWithCallback<Args extends Array<any>, E, A> = [...args: Args, cb: Callback<E, A>]
+type ArgsWithCallback<Args extends Array<any>, E, A> = [
+  ...args: Args,
+  cb: Callback<E, A>,
+]
 
 type WithoutNull<A> = unknown extends A ? void : Exclude<A, null | undefined>
 
@@ -231,7 +234,9 @@ type EffectifyError<T> = T extends {
   : never
 
 export const effectify: {
-  <F extends (...args: Array<any>) => any>(fn: F): Effectify<F, EffectifyError<F>>
+  <F extends (...args: Array<any>) => any>(
+    fn: F,
+  ): Effectify<F, EffectifyError<F>>
   <F extends (...args: Array<any>) => any, E>(
     fn: F,
     onError: (error: EffectifyError<F>, args: Parameters<F>) => E,
@@ -257,6 +262,8 @@ export const effectify: {
         }
       })
     } catch (err) {
-      resume(onSyncError ? Effect.fail(onSyncError(err, args)) : Effect.die(err))
+      resume(
+        onSyncError ? Effect.fail(onSyncError(err, args)) : Effect.die(err),
+      )
     }
   })) as any
