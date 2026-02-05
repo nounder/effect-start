@@ -5,7 +5,7 @@ import * as Function from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as BunRuntime from "./bun/BunRuntime.ts"
 import * as BunServer from "./bun/BunServer.ts"
-import * as NodeFileSystem from "./node/FileSystem.ts"
+import * as NodeFileSystem from "./node/NodeFileSystem.ts"
 
 export function layer<
   Layers extends [
@@ -84,7 +84,6 @@ export function serve<
     BunServer.withLogAddress,
     Layer.provide(appLayer),
     Layer.provide(NodeFileSystem.layer),
-    Layer.provide(BunServer.layer()),
   ) as Layer.Layer<BunServer.BunServer, never, never>
 
   return Function.pipe(
