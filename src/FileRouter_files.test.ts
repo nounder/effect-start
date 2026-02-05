@@ -6,7 +6,7 @@ import * as NFs from "node:fs"
 import * as NPath from "node:path"
 import * as FileRouter from "./FileRouter.ts"
 import * as FileRouterCodegen from "./FileRouterCodegen.ts"
-import * as NodeFileSystem from "./node/FileSystem.ts"
+import * as NodeFileSystem from "./node/NodeFileSystem.ts"
 import { effectFn } from "./testing"
 
 const Files = {
