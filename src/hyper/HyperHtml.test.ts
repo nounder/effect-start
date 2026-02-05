@@ -196,7 +196,7 @@ test.it("script with arrow function child renders as IIFE", () => {
     .toContain("window.alert")
 })
 
-test.it("script with string child renders normally", () => {
+test.it("script with string child renders without escaping", () => {
   const node = HyperNode.make("script", {
     children: "console.log('hello')",
   })
@@ -205,5 +205,54 @@ test.it("script with string child renders normally", () => {
 
   test
     .expect(html)
-    .toBe("<script>console.log(&apos;hello&apos;)</script>")
+    .toBe("<script>console.log('hello')</script>")
+})
+
+test.it("script with string child preserves ampersands and quotes", () => {
+  const node = HyperNode.make("script", {
+    children: "if (a && b) { console.log(\"yes\") }",
+  })
+
+  const html = HyperHtml.renderToString(node)
+
+  test
+    .expect(html)
+    .toBe("<script>if (a && b) { console.log(\"yes\") }</script>")
+})
+
+test.it("style tag content is not escaped", () => {
+  const node = HyperNode.make("style", {
+    children: ".foo > .bar { content: '&'; }",
+  })
+
+  const html = HyperHtml.renderToString(node)
+
+  test
+    .expect(html)
+    .toBe("<style>.foo > .bar { content: '&'; }</style>")
+})
+
+test.it("script with attributes and no children", () => {
+  const node = HyperNode.make("script", {
+    type: "module",
+    src: "https://example.com/app.js",
+  })
+
+  const html = HyperHtml.renderToString(node)
+
+  test
+    .expect(html)
+    .toBe('<script type="module" src="https://example.com/app.js"></script>')
+})
+
+test.it("normal tag string content is escaped", () => {
+  const node = HyperNode.make("div", {
+    children: "a && b",
+  })
+
+  const html = HyperHtml.renderToString(node)
+
+  test
+    .expect(html)
+    .toBe("<div>a &amp;&amp; b</div>")
 })

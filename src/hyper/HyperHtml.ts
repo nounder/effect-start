@@ -51,6 +51,8 @@ let map = {
   "'": "apos",
 }
 
+const RAW_TEXT_TAGS = ["script", "style"]
+
 export function renderToString(
   node: JSX.Children,
   hooks?: { onNode?: (node: HyperNode.HyperNode) => void },
@@ -147,6 +149,8 @@ export function renderToString(
 
           if (type === "script" && typeof children === "function") {
             result += `(${children.toString()})(window)`
+          } else if (RAW_TEXT_TAGS.includes(type) && children != null) {
+            result += Array.isArray(children) ? children.join("") : children
           } else if (Array.isArray(children)) {
             for (let i = children.length - 1; i >= 0; i--) {
               stack.push(children[i])
