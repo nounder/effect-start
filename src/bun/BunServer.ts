@@ -7,6 +7,7 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
+import * as Runtime from "effect/Runtime"
 import type * as Scope from "effect/Scope"
 import * as PathPattern from "../PathPattern.ts"
 import * as PlataformRuntime from "../PlatformRuntime.ts"
@@ -80,8 +81,30 @@ export const make = (
       },
     ]
 
+    const service = BunServer.of({
+      // During the construction we need to create a service imlpementation
+      // first so we can provide it in the runtime that will be used in web
+      // handlers. After we create the runtime, we set it below so it's always
+      // available at runtime.
+      // An alternative approach would be to use Bun.Server.reload but I prefer
+      // to avoid it since it's badly documented and has bunch of bugs.
+      server: undefined as any,
+      pushHandler(fetch) {
+        handlerStack.push(fetch)
+        reload()
+      },
+      popHandler() {
+        handlerStack.pop()
+        reload()
+      },
+    })
+
+    const runtime = yield* Effect.runtime().pipe(
+      Effect.andThen(Runtime.provideService(BunServer, service)),
+    )
+
     let currentRoutes: BunRoute.BunRoutes = routes
-      ? yield* walkBunRoutes(routes)
+      ? yield* walkBunRoutes(runtime, routes)
       : {}
 
     // Bun HMR doesn't work on successive calls to `server.reload` if there are no routes
@@ -121,8 +144,9 @@ export const make = (
       websocket,
     })
 
-    // this doesn't work really because right now every time on hot reload
-    // we recreate whole runtime
+    // @ts-expect-error
+    service.server = server
+
     yield* Effect.addFinalizer(() =>
       Effect.sync(() => {
         server.stop()
@@ -181,10 +205,10 @@ export const withLogAddress = <A, E, R>(
     )
 
 function walkBunRoutes(
+  runtime: Runtime.Runtime<BunServer>,
   tree: RouteTree.RouteTree,
 ) {
   return Effect.gen(function*() {
-    const runtime = yield* Effect.runtime()
     const bunRoutes: BunRoute.BunRoutes = {}
     const pathGroups = new Map<string, RouteMount.MountedRoute[]>()
     const toWebHandler = RouteHttp.toWebHandlerRuntime(runtime)

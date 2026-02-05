@@ -3,13 +3,17 @@ import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Route from "../Route.ts"
-import * as BunServer from "./BunServer.ts"
 import * as BunRoute from "./BunRoute.ts"
+import * as BunServer from "./BunServer.ts"
 
 const testLayer = (routes: ReturnType<typeof Route.tree>) =>
-  BunServer.layer({ port: 0 }).pipe(
-    Layer.provide(Route.layer(routes)),
-  )
+  BunServer
+    .layer({
+      port: 0,
+    })
+    .pipe(
+      Layer.provide(Route.layer(routes)),
+    )
 
 test.describe(BunRoute.htmlBundle, () => {
   test.test("wraps child content with layout", async () => {
@@ -21,20 +25,21 @@ test.describe(BunRoute.htmlBundle, () => {
     })
 
     const response = await Effect.runPromise(
-      Effect.scoped(
-        Effect
-          .gen(function*() {
-            const bunServer = yield* BunServer.BunServer
-            return yield* Effect.promise(() =>
-              fetch(`http://localhost:${bunServer.server.port}/`)
-            )
-          })
-          .pipe(Effect.provide(testLayer(routes))),
-      ),
+      Effect
+        .gen(function*() {
+          const bunServer = yield* BunServer.BunServer
+          return yield* Effect.promise(() =>
+            fetch(`http://localhost:${bunServer.server.port}/`)
+          )
+        })
+        .pipe(
+          Effect.provide(testLayer(routes)),
+        ),
     )
 
-    test.expect(response.status).toBe(200)
     const html = await response.text()
+
+    test.expect(response.status).toBe(200)
     test.expect(html).toContain("<p>Hello World</p>")
     test.expect(html).toContain("<body>")
     test.expect(html).toContain("</body>")
