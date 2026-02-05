@@ -1,3 +1,5 @@
+import * as FileSystem from "@effect/platform/FileSystem"
+import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Function from "effect/Function"
 import * as Layer from "effect/Layer"
@@ -18,13 +20,56 @@ export function layer<
   return Layer.mergeAll(...layers)
 }
 
-export function serve<ROut, E>(
+/**
+ * Bundles layers together, wiring their dependencies automatically.
+ *
+ * Equivalent to chaining `Layer.provide` calls, but more concise.
+ *
+ * **Ordering: dependents first, dependencies last.**
+ *
+ * @example
+ * ```ts
+ * // UserRepo needs Database, Database needs Logger
+ * const AppLayer = Start.pack(
+ *   UserRepoLive,   // needs Database, Logger
+ *   DatabaseLive,   // needs Logger
+ *   LoggerLive,     // no deps
+ * )
+ * // Result: Layer<UserRepo | Database | Logger, never, never>
+ * ```
+ *
+ * @since 1.0.0
+ * @category constructors
+ */
+export function pack<
+  const Layers extends readonly [Layer.Layer.Any, ...Array<Layer.Layer.Any>],
+>(
+  ...layers: Layers
+): Layer.Layer<
+  { [K in keyof Layers]: Layer.Layer.Success<Layers[K]> }[number],
+  { [K in keyof Layers]: Layer.Layer.Error<Layers[K]> }[number],
+  Exclude<
+    { [K in keyof Layers]: Layer.Layer.Context<Layers[K]> }[number],
+    { [K in keyof Layers]: Layer.Layer.Success<Layers[K]> }[number]
+  >
+> {
+  type AnyLayer = Layer.Layer<any, any, any>
+  const layerArray = layers as unknown as ReadonlyArray<AnyLayer>
+  const result: AnyLayer = layerArray.reduce(
+    (acc: AnyLayer, layer: AnyLayer) => Layer.provideMerge(acc, layer),
+    Layer.succeedContext(Context.empty()) as unknown as AnyLayer,
+  )
+
+  return result as AnyLayer
+}
+
+export function serve<
+  ROut,
+  E,
+  RIn extends BunServer.BunServer | FileSystem.FileSystem,
+>(
   load: () => Promise<{
-    default: Layer.Layer<
-      ROut,
-      E,
-      BunServer.BunServer
-    >
+    default: Layer.Layer<ROut, E, RIn>
   }>,
 ) {
   const appLayer = Function.pipe(
@@ -34,12 +79,16 @@ export function serve<ROut, E>(
     Layer.unwrapEffect,
   )
 
-  return Function.pipe(
+  const composed = Function.pipe(
     BunServer.layer(),
     BunServer.withLogAddress,
-    Layer.provide(NodeFileSystem.layer),
     Layer.provide(appLayer),
+    Layer.provide(NodeFileSystem.layer),
     Layer.provide(BunServer.layer()),
+  ) as Layer.Layer<BunServer.BunServer, never, never>
+
+  return Function.pipe(
+    composed,
     Layer.launch,
     BunRuntime.runMain,
   )

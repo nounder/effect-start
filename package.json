@@ -69,7 +69,6 @@
   },
   "scripts": {
     "build": "bunx --bun tsc -p tsconfig.build.json",
-    "prepare": "bun run build",
     "format": "bunx dprint fmt",
     "test": "bun test ./src/",
     "deploy": "bunx --bun npm publish --access public"
