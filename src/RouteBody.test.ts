@@ -1,5 +1,6 @@
 import * as test from "bun:test"
 import * as Context from "effect/Context"
+import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as ParseResult from "effect/ParseResult"
 import * as Stream from "effect/Stream"
@@ -228,5 +229,48 @@ test.describe(`${RouteBody.handle.name}()`, () => {
     // @ts-expect-error ServiceA is missing
     const promise = Effect.runPromise(handler(ctx, next))
     test.expect(promise).rejects.toThrow(/Service not found: ServiceA/)
+  })
+
+  test.it("generator infers error type from yielded effects", () => {
+    class CustomError extends Data.TaggedError("CustomError")<{}> {}
+
+    const handler = RouteBody.handle(function*() {
+      yield* Effect.fail(new CustomError())
+      return "ok"
+    })
+
+    test
+      .expectTypeOf(handler)
+      .returns
+      .toExtend<
+        Effect.Effect<Entity.Entity<string>, CustomError, never>
+      >()
+  })
+
+  test.it("Route.text infers error type from yielded effects", () => {
+    class MyError extends Data.TaggedError("MyError")<{}> {}
+
+    const routes = RouteMount.get(
+      Route.text(function*() {
+        yield* Effect.fail(new MyError())
+        return "error occurred"
+      }),
+    )
+
+    type Items = typeof routes extends Route.RouteSet.RouteSet<any, any, infer I>
+      ? I
+      : never
+
+    test
+      .expectTypeOf<Items[0]>()
+      .toExtend<
+        Route.Route.Route<
+          { method: "GET"; format: "text" },
+          {},
+          "error occurred",
+          MyError,
+          never
+        >
+      >()
   })
 })

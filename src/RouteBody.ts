@@ -35,7 +35,7 @@ export type GeneratorHandler<B, A, Y> = (
   next: (
     context?: Partial<B> & Record<string, unknown>,
   ) => Entity.Entity<UnwrapStream<A>>,
-) => Generator<Y, A | Entity.Entity<A>, unknown>
+) => Generator<Y, A | Entity.Entity<A>, never>
 
 export type HandlerInput<B, A, E, R> =
   | A
