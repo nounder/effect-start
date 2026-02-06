@@ -3,7 +3,6 @@
  * Based on {@link https://github.com/jshttp/negotiator}
  */
 
-import type * as Headers from "@effect/platform/Headers"
 
 interface ParsedSpec {
   value: string
@@ -506,37 +505,37 @@ export function charset(accept: string, available?: string[]): string[] {
 }
 
 export function headerMedia(
-  headers: Headers.Headers,
+  headers: Headers,
   available?: string[],
 ): string[] {
-  const accept = headers["accept"]
+  const accept = headers.get("accept")
   if (!accept) return []
   return media(accept, available)
 }
 
 export function headerLanguage(
-  headers: Headers.Headers,
+  headers: Headers,
   available?: string[],
 ): string[] {
-  const accept = headers["accept-language"]
+  const accept = headers.get("accept-language")
   if (!accept) return []
   return language(accept, available)
 }
 
 export function headerEncoding(
-  headers: Headers.Headers,
+  headers: Headers,
   available?: string[],
 ): string[] {
-  const accept = headers["accept-encoding"]
+  const accept = headers.get("accept-encoding")
   if (!accept) return []
   return encoding(accept, available)
 }
 
 export function headerCharset(
-  headers: Headers.Headers,
+  headers: Headers,
   available?: string[],
 ): string[] {
-  const accept = headers["accept-charset"]
+  const accept = headers.get("accept-charset")
   if (!accept) return []
   return charset(accept, available)
 }
