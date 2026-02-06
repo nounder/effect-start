@@ -63,13 +63,7 @@
     "no-unused-expressions": "off",
 
     // Enforce namespace imports for modules with capitalized base names
-    "effect-start/prefer-namespace-import": "error",
-
-    // Enforce namespace import for bun:test in test files
-    "effect-start/require-test-namespace-import": "error",
-
-    // Enforce newlines between chained test assertion methods
-    "effect-start/test-assertion-newline": "error"
+    "effect-start/prefer-namespace-import": "error"
   },
   "ignorePatterns": ["dist/", "node_modules/", "*.todo.ts"]
 }

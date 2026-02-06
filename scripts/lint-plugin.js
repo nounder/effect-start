@@ -1,6 +1,8 @@
 /**
  * @see https://oxc.rs/docs/guide/usage/linter/js-plugins.html#using-js-plugins
  */
+const forceNamespace = new Set(["bun:test"])
+
 export default {
   meta: {
     name: "effect-start",
@@ -11,7 +13,8 @@ export default {
       meta: {
         type: "suggestion",
         docs: {
-          description: "Enforce namespace imports for modules with capitalized base names",
+          description:
+            "Enforce namespace imports for modules with capitalized base names or specific forced modules",
         },
         fixable: "code",
         hasSuggestions: true,
@@ -28,7 +31,10 @@ export default {
             if (typeof source !== "string") return
 
             const baseName = getBaseName(source)
-            if (!baseName || !isCapitalized(baseName)) return
+            if (!baseName) return
+
+            const forced = forceNamespace.has(source)
+            if (!forced && !isCapitalized(baseName)) return
 
             // Already a namespace import (with or without type-only)
             if (
@@ -41,9 +47,11 @@ export default {
             // Skip if there are no specifiers (side-effect import)
             if (node.specifiers.length === 0) return
 
-            // Skip if it's only a default import
-            const hasNamedImports = node.specifiers.some((s) => s.type === "ImportSpecifier")
-            if (!hasNamedImports) return
+            // Skip if it's only a default import (not applicable for forced modules)
+            if (!forced) {
+              const hasNamedImports = node.specifiers.some((s) => s.type === "ImportSpecifier")
+              if (!hasNamedImports) return
+            }
 
             const typePrefix = node.importKind === "type" ? "type " : ""
 
@@ -58,47 +66,6 @@ export default {
                 )
               },
             })
-          },
-        }
-      },
-    },
-
-    "require-test-namespace-import": {
-      meta: {
-        type: "suggestion",
-        docs: {
-          description: 'Enforce namespace import for "bun:test" (import * as test from "bun:test")',
-        },
-        fixable: "code",
-        schema: [],
-        messages: {
-          requireNamespace: 'Import "bun:test" as a namespace: import * as test from "bun:test"',
-        },
-      },
-      create(context) {
-        return {
-          ImportDeclaration(node) {
-            const source = node.source.value
-            if (source !== "bun:test") return
-
-            // Already a namespace import
-            if (
-              node.specifiers.length === 1 &&
-              node.specifiers[0].type === "ImportNamespaceSpecifier"
-            ) {
-              return
-            }
-
-            // Has named imports - should use namespace
-            if (node.specifiers.length > 0) {
-              context.report({
-                node,
-                messageId: "requireNamespace",
-                fix(fixer) {
-                  return fixer.replaceText(node, 'import * as test from "bun:test"')
-                },
-              })
-            }
           },
         }
       },
@@ -286,9 +253,12 @@ export default {
 }
 
 function getBaseName(source) {
-  // Handle node: protocol
+  // Handle node: and bun: protocols
   if (source.startsWith("node:")) {
     return source.slice(5)
+  }
+  if (source.startsWith("bun:")) {
+    return source.slice(4)
   }
 
   // Get last path segment
