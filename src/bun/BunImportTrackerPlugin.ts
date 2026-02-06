@@ -4,7 +4,7 @@ import {
 } from "bun"
 import * as NPath from "node:path"
 
-export type ImportMap = ReadonlyMap<string, Import[]>
+export type ImportMap = ReadonlyMap<string, Array<Import>>
 
 /**
  * Tracks all imported modules.
@@ -17,7 +17,7 @@ export const make = (opts: {
 } = {}): BunPlugin & {
   state: ImportMap
 } => {
-  const foundImports: Map<string, Import[]> = new Map()
+  const foundImports: Map<string, Array<Import>> = new Map()
   const baseDir = opts.baseDir ?? process.cwd()
 
   return {

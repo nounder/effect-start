@@ -1,5 +1,4 @@
-import { watcher } from "../engine.ts"
-import { mergePatch } from "../engine.ts"
+import { mergePatch, watcher } from "../engine.ts"
 import { jsStrToObject } from "../utils.ts"
 
 watcher({

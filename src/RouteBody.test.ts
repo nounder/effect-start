@@ -2,7 +2,7 @@ import * as test from "bun:test"
 import * as Context from "effect/Context"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
-import * as ParseResult from "effect/ParseResult"
+import type * as ParseResult from "effect/ParseResult"
 import * as Stream from "effect/Stream"
 import * as Entity from "./Entity.ts"
 import * as Route from "./Route.ts"
@@ -112,8 +112,13 @@ test.describe(`${RouteBody.handle.name}()`, () => {
   test.it("handles plain value", async () => {
     const handler = RouteBody.handle<{}, string, never, never>("hello")
     const result = await Effect.runPromise(handler(ctx, next))
-    test.expect(result.body).toBe("hello")
-    test.expect(result.status).toBe(200)
+
+    test
+      .expect(result.body)
+      .toBe("hello")
+    test
+      .expect(result.status)
+      .toBe(200)
   })
 
   test.it("handles Effect directly", async () => {
@@ -121,7 +126,10 @@ test.describe(`${RouteBody.handle.name}()`, () => {
       Effect.succeed("from effect"),
     )
     const result = await Effect.runPromise(handler(ctx, next))
-    test.expect(result.body).toBe("from effect")
+
+    test
+      .expect(result.body)
+      .toBe("from effect")
   })
 
   test.it("handles Effect with error", async () => {
@@ -163,7 +171,9 @@ test.describe(`${RouteBody.handle.name}()`, () => {
     const numNext = () => Entity.effect(Effect.succeed(Entity.make(23)))
     const result = await Effect.runPromise(handler({ id: 42 }, numNext))
 
-    test.expect(result.body).toBe(42)
+    test
+      .expect(result.body)
+      .toBe(42)
   })
 
   test.it("handles generator", async () => {
@@ -196,7 +206,9 @@ test.describe(`${RouteBody.handle.name}()`, () => {
     const numNext = () => Entity.effect(Effect.succeed(Entity.make(23)))
     const result = await Effect.runPromise(handler({ id: 21 }, numNext))
 
-    test.expect(result.body).toBe(42)
+    test
+      .expect(result.body)
+      .toBe(42)
   })
 
   test.it("generator can call next", async () => {
@@ -228,7 +240,9 @@ test.describe(`${RouteBody.handle.name}()`, () => {
     // This should fail type checking because ServiceA is not provided
     // @ts-expect-error ServiceA is missing
     const promise = Effect.runPromise(handler(ctx, next))
-    test.expect(promise).rejects.toThrow(/Service not found: ServiceA/)
+
+    test.expect(promise).rejects
+      .toThrow(/Service not found: ServiceA/)
   })
 
   test.it("generator infers error type from yielded effects", () => {

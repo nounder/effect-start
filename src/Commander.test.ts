@@ -10,6 +10,7 @@ test.describe(`${Commander.make.name}`, () => {
       name: "test-app",
       description: "A test application",
     })
+
     test
       .expect(cmd.name)
       .toBe("test-app")
@@ -369,6 +370,7 @@ test.describe("BooleanFromString", () => {
     const result = await Effect.runPromise(
       Schema.decode(Schema.BooleanFromString)("true"),
     )
+
     test
       .expect(result)
       .toBe(true)
@@ -378,6 +380,7 @@ test.describe("BooleanFromString", () => {
     const result = await Effect.runPromise(
       Schema.decode(Schema.BooleanFromString)("false"),
     )
+
     test
       .expect(result)
       .toBe(false)
@@ -1446,6 +1449,7 @@ test.describe("error handling", () => {
     )
 
     assert.strictEqual(result._tag, "Left")
+
     test
       .expect(result.left.message)
       .toContain("Invalid value")

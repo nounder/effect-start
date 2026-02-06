@@ -18,7 +18,7 @@ export type Params<T extends string> = string extends T ? Record<string, string>
   : {}
 
 export type ValidateResult =
-  | { ok: true; segments: string[] }
+  | { ok: true; segments: Array<string> }
   | { ok: false; error: string }
 
 function isValidSegment(segment: string): boolean {
@@ -153,7 +153,7 @@ function getParamName(seg: string): string {
  * - `:param+` → `/*param`
  * - `:param*` → `/`, `/*param`
  */
-export function toExpress(path: string): string[] {
+export function toExpress(path: string): Array<string> {
   const segments = path.split("/").filter(Boolean)
   const optionalWildcardIndex = segments.findIndex(
     (s) => s.startsWith(":") && s.endsWith("*"),
@@ -207,7 +207,7 @@ export function toExpress(path: string): string[] {
  * - `:param+` → `:param+`
  * - `:param*` → `:param*`
  */
-export function toURLPattern(path: string): string[] {
+export function toURLPattern(path: string): Array<string> {
   const segments = path.split("/").filter(Boolean)
   const joined = segments
     .map((seg) => {
@@ -230,7 +230,7 @@ export function toURLPattern(path: string): string[] {
  * - `:param+` → `*` (splat, required)
  * - `:param*` → `/`, `/*` (splat, optional - two routes)
  */
-export function toReactRouter(path: string): string[] {
+export function toReactRouter(path: string): Array<string> {
   const segments = path.split("/").filter(Boolean)
   const optionalWildcardIndex = segments.findIndex(
     (s) => s.startsWith(":") && s.endsWith("*"),
@@ -361,7 +361,7 @@ export function toTanStack(path: string): string {
  * - `:param+` → `*` (unnamed, required)
  * - `:param*` → `/`, `/*` (unnamed, optional - two routes)
  */
-export function toHono(path: string): string[] {
+export function toHono(path: string): Array<string> {
   const segments = path.split("/").filter(Boolean)
   const optionalWildcardIndex = segments.findIndex(
     (s) => s.startsWith(":") && s.endsWith("*"),
@@ -413,7 +413,7 @@ export function toHono(path: string): string[] {
  * - `:param+` → `*` (unnamed)
  * - `:param*` → `/`, `/*` (two routes)
  */
-export function toEffect(path: string): string[] {
+export function toEffect(path: string): Array<string> {
   return toHono(path)
 }
 
@@ -430,7 +430,7 @@ export function toEffect(path: string): string[] {
  * - `:param+` → `/*`
  * - `:param*` → `/`, `/*` (two routes)
  */
-export function toBun(path: string): PathPattern[] {
+export function toBun(path: string): Array<PathPattern> {
   const segments = path.split("/").filter(Boolean)
 
   const optionalIndex = segments.findIndex(

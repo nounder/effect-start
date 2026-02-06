@@ -56,7 +56,7 @@ export function isPlainObject(
  * class instances or objects with methods.
  */
 type HasMethod<T> = {
-  [K in keyof T]: T[K] extends (...args: any[]) => any ? true : never
+  [K in keyof T]: T[K] extends (...args: Array<any>) => any ? true : never
 }[keyof T]
 
 export type IsPlainObject<T> = T extends object ? T extends Function ? false

@@ -144,9 +144,9 @@ export async function parseFormData(
     const first = values[0]
 
     if (typeof first === "string") {
-      result[key] = values.length === 1 ? first : (values as string[])
+      result[key] = values.length === 1 ? first : (values as Array<string>)
     } else {
-      const files: FilePart[] = []
+      const files: Array<FilePart> = []
       for (const value of values) {
         if (typeof value !== "string") {
           const content = new Uint8Array(await value.arrayBuffer())

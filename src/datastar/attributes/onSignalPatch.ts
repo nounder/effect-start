@@ -1,13 +1,11 @@
-import { DATASTAR_SIGNAL_PATCH_EVENT } from "../engine.ts"
-import { attribute } from "../engine.ts"
 import {
+  attribute,
   beginBatch,
+  DATASTAR_SIGNAL_PATCH_EVENT,
   endBatch,
   filtered,
-} from "../engine.ts"
-import type {
-  JSONPatch,
-  SignalFilterOptions,
+  type JSONPatch,
+  type SignalFilterOptions,
 } from "../engine.ts"
 import {
   aliasify,

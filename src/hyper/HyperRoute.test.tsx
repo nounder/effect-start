@@ -21,11 +21,17 @@ test.describe("HyperRoute.html", () => {
 
     const response = await Http.fetch(handler, { path: "/" })
 
-    test.expect(response.status).toBe(200)
-    test.expect(response.headers.get("Content-Type")).toBe(
+    test
+      .expect(response.status)
+      .toBe(200)
+    test
+      .expect(response.headers.get("Content-Type"))
+      .toBe(
       "text/html; charset=utf-8",
     )
-    test.expect(await response.text()).toBe("<div>Hello World</div>")
+    test
+      .expect(await response.text())
+      .toBe("<div>Hello World</div>")
   })
 
   test.it("renders nested JSX elements", async () => {
@@ -46,7 +52,9 @@ test.describe("HyperRoute.html", () => {
 
     const response = await Http.fetch(handler, { path: "/" })
 
-    test.expect(await response.text()).toBe(
+    test
+      .expect(await response.text())
+      .toBe(
       "<div class=\"container\"><h1>Title</h1><p>Paragraph</p></div>",
     )
   })
@@ -66,7 +74,9 @@ test.describe("HyperRoute.html", () => {
 
     const response = await Http.fetch(handler, { path: "/" })
 
-    test.expect(await response.text()).toBe("<span>From Effect</span>")
+    test
+      .expect(await response.text())
+      .toBe("<span>From Effect</span>")
   })
 
   test.it("renders JSX from generator function", async () => {
@@ -87,7 +97,9 @@ test.describe("HyperRoute.html", () => {
 
     const response = await Http.fetch(handler, { path: "/" })
 
-    test.expect(await response.text()).toBe("<div>Hello World</div>")
+    test
+      .expect(await response.text())
+      .toBe("<div>Hello World</div>")
   })
 
   test.it("renders JSX from handler function", async () => {
@@ -105,7 +117,9 @@ test.describe("HyperRoute.html", () => {
 
     const response = await Http.fetch(handler, { path: "/" })
 
-    test.expect(await response.text()).toBe("<div>Request received</div>")
+    test
+      .expect(await response.text())
+      .toBe("<div>Request received</div>")
   })
 
   test.it("renders JSX with dynamic content", async () => {
@@ -127,7 +141,9 @@ test.describe("HyperRoute.html", () => {
 
     const response = await Http.fetch(handler, { path: "/" })
 
-    test.expect(await response.text()).toBe(
+    test
+      .expect(await response.text())
+      .toBe(
       "<ul><li>Apple</li><li>Banana</li><li>Cherry</li></ul>",
     )
   })
@@ -148,8 +164,12 @@ test.describe("HyperRoute.html", () => {
 
     const response = await Http.fetch(handler, { path: "/" })
 
-    test.expect(response.status).toBe(201)
-    test.expect(await response.text()).toBe("<div>With Entity</div>")
+    test
+      .expect(response.status)
+      .toBe(201)
+    test
+      .expect(await response.text())
+      .toBe("<div>With Entity</div>")
   })
 
   test.it("renders data-* attributes with object values as JSON", async () => {
@@ -171,7 +191,9 @@ test.describe("HyperRoute.html", () => {
 
     const response = await Http.fetch(handler, { path: "/" })
 
-    test.expect(await response.text()).toBe(
+    test
+      .expect(await response.text())
+      .toBe(
       "<div data-signals=\"{&quot;draft&quot;:&quot;&quot;,&quot;pendingDraft&quot;:&quot;&quot;,&quot;username&quot;:&quot;User123&quot;}\">Content</div>",
     )
   })
@@ -192,8 +214,14 @@ test.describe("HyperRoute.html", () => {
     const response = await Http.fetch(handler, { path: "/" })
     const text = await response.text()
 
-    test.expect(text).toContain("<script>(")
-    test.expect(text).toContain(")(window)</script>")
-    test.expect(text).toContain("window.document.title")
+    test
+      .expect(text)
+      .toContain("<script>(")
+    test
+      .expect(text)
+      .toContain(")(window)</script>")
+    test
+      .expect(text)
+      .toContain("window.document.title")
   })
 })

@@ -59,7 +59,9 @@ test.it("handle files parsed as Literal", () => {
 
 test.it("parseRoute extracts handle from Literal", () => {
   const route = FileRouter.parseRoute("users/route.tsx")
-  test.expect(route).not.toBeNull()
+
+  test.expect(route).not
+    .toBeNull()
   test
     .expect(route!.handle)
     .toBe("route")
@@ -73,7 +75,9 @@ test.it("parseRoute extracts handle from Literal", () => {
     ])
 
   const layer = FileRouter.parseRoute("api/layer.ts")
-  test.expect(layer).not.toBeNull()
+
+  test.expect(layer).not
+    .toBeNull()
   test
     .expect(layer!.handle)
     .toBe("layer")
@@ -84,7 +88,9 @@ test.it("parseRoute extracts handle from Literal", () => {
 
 test.it("parseRoute with groups", () => {
   const route = FileRouter.parseRoute("(admin)/users/route.tsx")
-  test.expect(route).not.toBeNull()
+
+  test.expect(route).not
+    .toBeNull()
   test
     .expect(route!.handle)
     .toBe("route")
@@ -101,7 +107,9 @@ test.it("parseRoute with groups", () => {
 
 test.it("parseRoute with params and rest", () => {
   const route = FileRouter.parseRoute("users/[userId]/posts/route.tsx")
-  test.expect(route).not.toBeNull()
+
+  test.expect(route).not
+    .toBeNull()
   test
     .expect(route!.handle)
     .toBe("route")
@@ -117,7 +125,9 @@ test.it("parseRoute with params and rest", () => {
     ])
 
   const rest = FileRouter.parseRoute("api/[[path]]/route.ts")
-  test.expect(rest).not.toBeNull()
+
+  test.expect(rest).not
+    .toBeNull()
   test
     .expect(rest!.handle)
     .toBe("route")

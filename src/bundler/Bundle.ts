@@ -1,9 +1,10 @@
+import type {
+  PubSub} from "effect";
 import {
   Context,
   Data,
   Effect,
-  pipe,
-  PubSub,
+  pipe
 } from "effect"
 import * as Schema from "effect/Schema"
 

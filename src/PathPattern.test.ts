@@ -61,21 +61,36 @@ test.describe(PathPattern.validate, () => {
 
   test.it("returns error for invalid segments", () => {
     const result = PathPattern.validate("/foo bar")
-    test.expect(result.ok).toBe(false)
+
+    test
+      .expect(result.ok)
+      .toBe(false)
+
     if (!result.ok) {
-      test.expect(result.error).toContain("foo bar")
+      test
+        .expect(result.error)
+        .toContain("foo bar")
     }
   })
 
   test.it("returns error for empty param name", () => {
     const result = PathPattern.validate("/:")
-    test.expect(result.ok).toBe(false)
+
+    test
+      .expect(result.ok)
+      .toBe(false)
   })
 
   test.it("returns error for param with only modifier", () => {
-    test.expect(PathPattern.validate("/:?").ok).toBe(false)
-    test.expect(PathPattern.validate("/:*").ok).toBe(false)
-    test.expect(PathPattern.validate("/:+").ok).toBe(false)
+    test
+      .expect(PathPattern.validate("/:?").ok)
+      .toBe(false)
+    test
+      .expect(PathPattern.validate("/:*").ok)
+      .toBe(false)
+    test
+      .expect(PathPattern.validate("/:+").ok)
+      .toBe(false)
   })
 })
 
@@ -179,159 +194,287 @@ test.describe("Params", () => {
 test.describe(PathPattern.match, () => {
   test.it("matches static path", () => {
     const result = PathPattern.match("/users", "/users")
-    test.expect(result).toEqual({})
+
+    test
+      .expect(result)
+      .toEqual({})
   })
 
   test.it("returns null for non-matching static path", () => {
     const result = PathPattern.match("/users", "/posts")
-    test.expect(result).toBeNull()
+
+    test
+      .expect(result)
+      .toBeNull()
   })
 
   test.it("extracts required param", () => {
     const result = PathPattern.match("/users/:id", "/users/123")
-    test.expect(result).toEqual({ id: "123" })
+
+    test
+      .expect(result)
+      .toEqual({ id: "123" })
   })
 
   test.it("extracts optional param when present", () => {
     const result = PathPattern.match("/users/:id?", "/users/123")
-    test.expect(result).toEqual({ id: "123" })
+
+    test
+      .expect(result)
+      .toEqual({ id: "123" })
   })
 
   test.it("omits optional param when absent", () => {
     const result = PathPattern.match("/users/:id?", "/users")
-    test.expect(result).toEqual({})
+
+    test
+      .expect(result)
+      .toEqual({})
   })
 
   test.it("extracts optional wildcard when present", () => {
     const result = PathPattern.match("/docs/:path*", "/docs/api/users")
-    test.expect(result).toEqual({ path: "api/users" })
+
+    test
+      .expect(result)
+      .toEqual({ path: "api/users" })
   })
 
   test.it("omits optional wildcard when absent", () => {
     const result = PathPattern.match("/docs/:path*", "/docs")
-    test.expect(result).toEqual({})
+
+    test
+      .expect(result)
+      .toEqual({})
   })
 
   test.it("extracts required wildcard when present", () => {
     const result = PathPattern.match("/docs/:path+", "/docs/api/users")
-    test.expect(result).toEqual({ path: "api/users" })
+
+    test
+      .expect(result)
+      .toEqual({ path: "api/users" })
   })
 
   test.it("returns null for required wildcard when absent", () => {
     const result = PathPattern.match("/docs/:path+", "/docs")
-    test.expect(result).toBeNull()
+
+    test
+      .expect(result)
+      .toBeNull()
   })
 
   test.it("distinguishes optional from required wildcard", () => {
     const optionalMatch = PathPattern.match("/files/:path*", "/files")
     const requiredMatch = PathPattern.match("/files/:path+", "/files")
 
-    test.expect(optionalMatch).toEqual({})
-    test.expect(requiredMatch).toBeNull()
+    test
+      .expect(optionalMatch)
+      .toEqual({})
+    test
+      .expect(requiredMatch)
+      .toBeNull()
   })
 })
 
 test.describe(PathPattern.toRegex, () => {
   test.it("strips double slashes", () => {
     const regex = PathPattern.toRegex("//users//")
-    test.expect(regex.test("/users")).toBe(true)
-    test.expect(regex.test("/users/")).toBe(true)
+
+    test
+      .expect(regex.test("/users"))
+      .toBe(true)
+    test
+      .expect(regex.test("/users/"))
+      .toBe(true)
   })
 
   test.it("strips trailing slashes in pattern", () => {
     const regex = PathPattern.toRegex("/users/")
-    test.expect(regex.test("/users")).toBe(true)
-    test.expect(regex.test("/users/")).toBe(true)
+
+    test
+      .expect(regex.test("/users"))
+      .toBe(true)
+    test
+      .expect(regex.test("/users/"))
+      .toBe(true)
   })
 
   test.it("converts greedy params with +", () => {
     const regex = PathPattern.toRegex("/files/:path+")
-    test.expect(regex.test("/files/a/b/c")).toBe(true)
-    test.expect(regex.test("/files/")).toBe(true)
-    test.expect(regex.test("/files")).toBe(false)
+
+    test
+      .expect(regex.test("/files/a/b/c"))
+      .toBe(true)
+    test
+      .expect(regex.test("/files/"))
+      .toBe(true)
+    test
+      .expect(regex.test("/files"))
+      .toBe(false)
   })
 
   test.it("converts named params", () => {
     const regex = PathPattern.toRegex("/users/:id")
-    test.expect(regex.test("/users/123")).toBe(true)
+
+    test
+      .expect(regex.test("/users/123"))
+      .toBe(true)
+
     const match = "/users/123".match(regex)
-    test.expect(match?.groups).toEqual({ id: "123" })
+
+    test
+      .expect(match?.groups)
+      .toEqual({ id: "123" })
   })
 
   test.it("escapes dots", () => {
     const regex = PathPattern.toRegex("/file.json")
-    test.expect(regex.test("/file.json")).toBe(true)
-    test.expect(regex.test("/filexjson")).toBe(false)
+
+    test
+      .expect(regex.test("/file.json"))
+      .toBe(true)
+    test
+      .expect(regex.test("/filexjson"))
+      .toBe(false)
   })
 
   test.it("converts wildcards", () => {
     const regex = PathPattern.toRegex("/api/*")
-    test.expect(regex.test("/api")).toBe(true)
-    test.expect(regex.test("/api/")).toBe(true)
-    test.expect(regex.test("/api/users")).toBe(true)
-    test.expect(regex.test("/api/users/123")).toBe(true)
+
+    test
+      .expect(regex.test("/api"))
+      .toBe(true)
+    test
+      .expect(regex.test("/api/"))
+      .toBe(true)
+    test
+      .expect(regex.test("/api/users"))
+      .toBe(true)
+    test
+      .expect(regex.test("/api/users/123"))
+      .toBe(true)
   })
 
   test.it("matches static paths", () => {
     const regex = PathPattern.toRegex("/users")
-    test.expect(regex.test("/users")).toBe(true)
-    test.expect(regex.test("/users/")).toBe(true)
-    test.expect(regex.test("/posts")).toBe(false)
+
+    test
+      .expect(regex.test("/users"))
+      .toBe(true)
+    test
+      .expect(regex.test("/users/"))
+      .toBe(true)
+    test
+      .expect(regex.test("/posts"))
+      .toBe(false)
   })
 
   test.it("matches named params", () => {
     const regex = PathPattern.toRegex("/users/:id")
-    test.expect(regex.test("/users/123")).toBe(true)
-    test.expect(regex.test("/users/abc")).toBe(true)
-    test.expect(regex.test("/users")).toBe(false)
-    test.expect(regex.test("/users/123/posts")).toBe(false)
+
+    test
+      .expect(regex.test("/users/123"))
+      .toBe(true)
+    test
+      .expect(regex.test("/users/abc"))
+      .toBe(true)
+    test
+      .expect(regex.test("/users"))
+      .toBe(false)
+    test
+      .expect(regex.test("/users/123/posts"))
+      .toBe(false)
   })
 
   test.it("extracts named params", () => {
     const regex = PathPattern.toRegex("/users/:id")
     const match = "/users/123".match(regex)
-    test.expect(match?.groups).toEqual({ id: "123" })
+
+    test
+      .expect(match?.groups)
+      .toEqual({ id: "123" })
   })
 
   test.it("matches greedy params", () => {
     const regex = PathPattern.toRegex("/docs/:path+")
-    test.expect(regex.test("/docs/api/users")).toBe(true)
-    test.expect(regex.test("/docs/")).toBe(true)
+
+    test
+      .expect(regex.test("/docs/api/users"))
+      .toBe(true)
+    test
+      .expect(regex.test("/docs/"))
+      .toBe(true)
   })
 
   test.it("matches wildcards", () => {
     const regex = PathPattern.toRegex("/api/*")
-    test.expect(regex.test("/api")).toBe(true)
-    test.expect(regex.test("/api/")).toBe(true)
-    test.expect(regex.test("/api/users")).toBe(true)
-    test.expect(regex.test("/api/users/123")).toBe(true)
+
+    test
+      .expect(regex.test("/api"))
+      .toBe(true)
+    test
+      .expect(regex.test("/api/"))
+      .toBe(true)
+    test
+      .expect(regex.test("/api/users"))
+      .toBe(true)
+    test
+      .expect(regex.test("/api/users/123"))
+      .toBe(true)
   })
 
   test.it("matches complex patterns", () => {
     const regex = PathPattern.toRegex("/users/:userId/posts/:postId")
-    test.expect(regex.test("/users/42/posts/7")).toBe(true)
+
+    test
+      .expect(regex.test("/users/42/posts/7"))
+      .toBe(true)
+
     const match = "/users/42/posts/7".match(regex)
-    test.expect(match?.groups).toEqual({ userId: "42", postId: "7" })
+
+    test
+      .expect(match?.groups)
+      .toEqual({ userId: "42", postId: "7" })
   })
 
   test.it("handles dots in file extensions", () => {
     const regex = PathPattern.toRegex("/files/:name.json")
-    test.expect(regex.test("/files/data.json")).toBe(true)
-    test.expect(regex.test("/files/dataxjson")).toBe(false)
+
+    test
+      .expect(regex.test("/files/data.json"))
+      .toBe(true)
+    test
+      .expect(regex.test("/files/dataxjson"))
+      .toBe(false)
   })
 
   test.it("allows trailing slashes in matched path", () => {
     const regex = PathPattern.toRegex("/users/:id")
-    test.expect(regex.test("/users/123/")).toBe(true)
+
+    test
+      .expect(regex.test("/users/123/"))
+      .toBe(true)
   })
 
   test.it("matches optional wildcard params with :param*", () => {
     const regex = PathPattern.toRegex("/docs/:path*")
-    test.expect(regex.test("/docs")).toBe(true)
-    test.expect(regex.test("/docs/")).toBe(true)
-    test.expect(regex.test("/docs/api")).toBe(true)
-    test.expect(regex.test("/docs/api/users")).toBe(true)
-    test.expect(regex.test("/docs/api/users/create")).toBe(true)
+
+    test
+      .expect(regex.test("/docs"))
+      .toBe(true)
+    test
+      .expect(regex.test("/docs/"))
+      .toBe(true)
+    test
+      .expect(regex.test("/docs/api"))
+      .toBe(true)
+    test
+      .expect(regex.test("/docs/api/users"))
+      .toBe(true)
+    test
+      .expect(regex.test("/docs/api/users/create"))
+      .toBe(true)
   })
 
   test.it("extracts optional wildcard params with :param*", () => {
@@ -356,11 +499,19 @@ test.describe(PathPattern.toRegex, () => {
     const optionalRegex = PathPattern.toRegex("/files/:path*")
     const greedyRegex = PathPattern.toRegex("/files/:path+")
 
-    test.expect(optionalRegex.test("/files")).toBe(true)
-    test.expect(greedyRegex.test("/files")).toBe(false)
+    test
+      .expect(optionalRegex.test("/files"))
+      .toBe(true)
+    test
+      .expect(greedyRegex.test("/files"))
+      .toBe(false)
 
-    test.expect(optionalRegex.test("/files/a/b")).toBe(true)
-    test.expect(greedyRegex.test("/files/a/b")).toBe(true)
+    test
+      .expect(optionalRegex.test("/files/a/b"))
+      .toBe(true)
+    test
+      .expect(greedyRegex.test("/files/a/b"))
+      .toBe(true)
   })
 })
 

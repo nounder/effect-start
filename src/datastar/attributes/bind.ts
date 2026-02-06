@@ -1,10 +1,10 @@
-import { attribute } from "../engine.ts"
 import {
+  attribute,
   effect,
   getPath,
   mergePaths,
+  type Paths,
 } from "../engine.ts"
-import type { Paths } from "../engine.ts"
 import {
   aliasify,
   modifyCasing,
@@ -79,7 +79,7 @@ attribute({
         case "file": {
           const syncSignal = () => {
             const files = [...(el.files || [])]
-            const signalFiles: SignalFile[] = []
+            const signalFiles: Array<SignalFile> = []
             Promise
               .all(
                 files.map(
@@ -134,7 +134,7 @@ attribute({
               : +option.value
           })
 
-        set = (value: (string | number)[]) => {
+        set = (value: Array<string | number>) => {
           for (const option of el.options) {
             if (value.includes(option.value)) {
               typeMap.set(option.value, "string")

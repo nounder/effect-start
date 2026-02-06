@@ -112,7 +112,7 @@ function base64urlEncode(data: Uint8Array): string {
 }
 
 function decodeFromBase64Segments(
-  segments: string[],
+  segments: Array<string>,
 ): Effect.Effect<
   { ciphertext: Uint8Array; iv: Uint8Array; authTag: Uint8Array },
   EncryptedCookiesError
@@ -393,7 +393,7 @@ function deriveKeyMaterial(
 
 function deriveKey(
   keyMaterial: CryptoKey,
-  usage: KeyUsage[],
+  usage: Array<KeyUsage>,
 ): Effect.Effect<CryptoKey, EncryptedCookiesError> {
   return Effect.gen(function*() {
     const encoder = new TextEncoder()

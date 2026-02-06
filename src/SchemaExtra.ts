@@ -1,5 +1,5 @@
 import * as Function from "effect/Function"
-import * as Schema from "effect/Schema"
+import type * as Schema from "effect/Schema"
 import * as SchemaAST from "effect/SchemaAST"
 
 export function getBaseSchemaAST(schema: Schema.Schema.Any): SchemaAST.AST {
@@ -89,7 +89,7 @@ export function getSchemaTypeName(schema: Schema.Schema.Any): string {
 
 export function formatSchemaCode(schema: Schema.Struct<any>): string {
   const fields = schema.fields
-  const fieldStrings: string[] = []
+  const fieldStrings: Array<string> = []
 
   for (const [key, fieldSchema] of Object.entries(fields)) {
     const optional = isOptional(fieldSchema)

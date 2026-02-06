@@ -1,5 +1,5 @@
-import { attribute } from "../engine.ts"
 import {
+  attribute,
   beginBatch,
   endBatch,
 } from "../engine.ts"

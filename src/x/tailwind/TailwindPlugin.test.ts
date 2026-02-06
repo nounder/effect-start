@@ -1,5 +1,5 @@
 import * as test from "bun:test"
-import { extractClassNames } from "./TailwindPlugin.ts"
+import * as TailwindPlugin from "./TailwindPlugin.ts"
 
 // Keep the old broad implementation for comparison tests
 function extractClassNamesBroad(source: string): Set<string> {
@@ -16,10 +16,10 @@ function extractClassNamesBroad(source: string): Set<string> {
   )
 }
 
-test.describe(`${extractClassNames.name}`, () => {
+test.describe(`${TailwindPlugin.extractClassNames.name}`, () => {
   test.it("Basic HTML class attributes", () => {
     const source = `<div class="bg-red-500 text-white">Hello</div>`
-    const result = extractClassNames(source)
+    const result = TailwindPlugin.extractClassNames(source)
 
     test
       .expect([...result].sort())
@@ -29,7 +29,7 @@ test.describe(`${extractClassNames.name}`, () => {
   test.it("Basic JSX className attributes", () => {
     const source =
       `<div className="flex items-center justify-between">Content</div>`
-    const result = extractClassNames(source)
+    const result = TailwindPlugin.extractClassNames(source)
 
     test
       .expect([...result].sort())
@@ -38,7 +38,7 @@ test.describe(`${extractClassNames.name}`, () => {
 
   test.it("Single quotes", () => {
     const source = `<div class='bg-blue-500 hover:bg-blue-600'>Button</div>`
-    const result = extractClassNames(source)
+    const result = TailwindPlugin.extractClassNames(source)
 
     test
       .expect([...result].sort())
@@ -47,7 +47,7 @@ test.describe(`${extractClassNames.name}`, () => {
 
   test.it("Template literals in JSX", () => {
     const source = `<div className={\`bg-\${color} text-lg\`}>Dynamic</div>`
-    const result = extractClassNames(source)
+    const result = TailwindPlugin.extractClassNames(source)
 
     // Should extract valid static class names from template literals
     test
@@ -57,7 +57,7 @@ test.describe(`${extractClassNames.name}`, () => {
 
   test.it("JSX with quoted strings", () => {
     const source = `<div className={"p-4 m-2"}>Static in braces</div>`
-    const result = extractClassNames(source)
+    const result = TailwindPlugin.extractClassNames(source)
 
     test
       .expect([...result].sort())
@@ -72,7 +72,7 @@ test.describe(`${extractClassNames.name}`, () => {
         gap-4
       "
     >Grid</div>`
-    const result = extractClassNames(source)
+    const result = TailwindPlugin.extractClassNames(source)
 
     test
       .expect([...result].sort())
@@ -88,7 +88,7 @@ test.describe(`${extractClassNames.name}`, () => {
     ]
 
     for (const source of cases) {
-      const result = extractClassNames(source)
+      const result = TailwindPlugin.extractClassNames(source)
 
       test
         .expect(result.size)
@@ -99,7 +99,7 @@ test.describe(`${extractClassNames.name}`, () => {
   test.it("Arbitrary value classes", () => {
     const source =
       `<div className="w-[32px] bg-[#ff0000] text-[1.5rem]">Arbitrary</div>`
-    const result = extractClassNames(source)
+    const result = TailwindPlugin.extractClassNames(source)
 
     test
       .expect([...result].sort())
@@ -108,7 +108,7 @@ test.describe(`${extractClassNames.name}`, () => {
 
   test.it("Fraction classes", () => {
     const source = `<div className="w-1/2 h-3/4">Fractions</div>`
-    const result = extractClassNames(source)
+    const result = TailwindPlugin.extractClassNames(source)
 
     test
       .expect([...result].sort())
@@ -118,7 +118,7 @@ test.describe(`${extractClassNames.name}`, () => {
   test.it("Complex Tailwind classes", () => {
     const source =
       `<div className="sm:w-1/2 md:w-1/3 lg:w-1/4 hover:bg-gray-100 focus:ring-2">Responsive</div>`
-    const result = extractClassNames(source)
+    const result = TailwindPlugin.extractClassNames(source)
 
     test
       .expect([...result].sort())
@@ -134,7 +134,7 @@ test.describe(`${extractClassNames.name}`, () => {
   test.it("Should ignore similar attribute names", () => {
     const source =
       `<div data-class="should-ignore" myclass="also-ignore" class="keep-this">Test</div>`
-    const result = extractClassNames(source)
+    const result = TailwindPlugin.extractClassNames(source)
 
     test
       .expect([...result])
@@ -144,7 +144,7 @@ test.describe(`${extractClassNames.name}`, () => {
   test.it("Should handle case sensitivity", () => {
     const source =
       `<div Class="uppercase-class" class="lowercase-class">Mixed case</div>`
-    const result = extractClassNames(source)
+    const result = TailwindPlugin.extractClassNames(source)
 
     // Our current implementation only matches lowercase 'class'
     test
@@ -154,7 +154,7 @@ test.describe(`${extractClassNames.name}`, () => {
 
   test.it("Empty class attributes", () => {
     const source = `<div class="" className=''>Empty</div>`
-    const result = extractClassNames(source)
+    const result = TailwindPlugin.extractClassNames(source)
 
     test
       .expect(result.size)
@@ -164,7 +164,7 @@ test.describe(`${extractClassNames.name}`, () => {
   test.it("Classes with special characters", () => {
     const source =
       `<div className="group-hover:text-blue-500 peer-focus:ring-2">Special chars</div>`
-    const result = extractClassNames(source)
+    const result = TailwindPlugin.extractClassNames(source)
 
     test
       .expect([...result].sort())
@@ -176,7 +176,7 @@ test.describe(`${extractClassNames.name}`, () => {
       <!-- <div class="commented-out">Should not match</div> -->
       <div class="real-class">Should match</div>
     `
-    const result = extractClassNames(source)
+    const result = TailwindPlugin.extractClassNames(source)
 
     test
       .expect([...result])
@@ -188,7 +188,7 @@ test.describe(`${extractClassNames.name}`, () => {
       const message = "This class='fake-class' should not match";
       <div class="real-class">Real element</div>
     `
-    const result = extractClassNames(source)
+    const result = TailwindPlugin.extractClassNames(source)
 
     test
       .expect([...result])
@@ -202,7 +202,7 @@ test.describe(`${extractClassNames.name}`, () => {
       <div className={getClasses()}>Function call</div>
       <div className="static-class">Static</div>
     `
-    const result = extractClassNames(source)
+    const result = TailwindPlugin.extractClassNames(source)
 
     // Only the static class should match with our strict implementation
     test
@@ -216,7 +216,7 @@ test.describe(`${extractClassNames.name}`, () => {
       <div :class="['base', condition && 'active']">Vue array</div>
       <div class="static-vue-class">Static Vue</div>
     `
-    const result = extractClassNames(source)
+    const result = TailwindPlugin.extractClassNames(source)
 
     // Only static class should match
     test
@@ -229,7 +229,7 @@ test.describe(`${extractClassNames.name}`, () => {
       <div class:active={condition}>Svelte directive</div>
       <div class="static-svelte-class">Static Svelte</div>
     `
-    const result = extractClassNames(source)
+    const result = TailwindPlugin.extractClassNames(source)
 
     test
       .expect([...result])
@@ -239,7 +239,7 @@ test.describe(`${extractClassNames.name}`, () => {
   test.it("Escaped quotes should be handled", () => {
     const source =
       `<div class="text-sm before:content-['Hello']">Escaped quotes</div>`
-    const result = extractClassNames(source)
+    const result = TailwindPlugin.extractClassNames(source)
 
     test
       .expect([...result].sort())
@@ -254,7 +254,7 @@ test.describe(`${extractClassNames.name}`, () => {
     `
 
     const broadResult = extractClassNamesBroad(source)
-    const strictResult = extractClassNames(source)
+    const strictResult = TailwindPlugin.extractClassNames(source)
 
     // Broad should pick up more tokens
     test
@@ -269,7 +269,7 @@ test.describe(`${extractClassNames.name}`, () => {
   test.it("Component names with dots", () => {
     const source =
       `<Toast.Toast class="toast toast-top toast-center fixed top-8 z-10">Content</Toast.Toast>`
-    const result = extractClassNames(source)
+    const result = TailwindPlugin.extractClassNames(source)
 
     test
       .expect([...result].sort())
@@ -283,7 +283,7 @@ test.describe(`${extractClassNames.name}`, () => {
       <Component123 className="text-lg">Content</Component123>
       <namespace:element class="border-2">XML style</namespace:element>
     `
-    const result = extractClassNames(source)
+    const result = TailwindPlugin.extractClassNames(source)
 
     test
       .expect([...result].sort())
@@ -306,7 +306,7 @@ test.describe(`${extractClassNames.name}`, () => {
             </div>
           </Toast.Toast>
         )}`
-    const result = extractClassNames(source)
+    const result = TailwindPlugin.extractClassNames(source)
 
     test
       .expect([...result].sort())
@@ -324,7 +324,7 @@ test.describe(`${extractClassNames.name}`, () => {
 
   test.it("Template literals with expressions", () => {
     const source = `<div class={\`toast \${props.class ?? ""}\`}>Content</div>`
-    const result = extractClassNames(source)
+    const result = TailwindPlugin.extractClassNames(source)
 
     test
       .expect([...result].sort())

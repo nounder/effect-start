@@ -35,7 +35,9 @@ test.describe("watch", () => {
         test
           .expect(Chunk.size(events))
           .toBe(1)
+
         const first = Chunk.unsafeGet(events, 0)
+
         test
           .expect("path" in first && first.path)
           .toContain("test.ts")
@@ -88,7 +90,9 @@ test.describe("stream", () => {
         test
           .expect(Chunk.size(collected))
           .toBe(1)
+
         const first = Chunk.unsafeGet(collected, 0)
+
         test
           .expect("path" in first && first.path)
           .toContain("file.ts")

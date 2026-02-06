@@ -66,7 +66,7 @@ async function ensureSourceDetectionRootExists(compiler: {
   // Verify if the `source(…)` path exists (until the glob pattern starts)
   if (compiler.root && compiler.root !== "none") {
     let globSymbols = /[*{]/
-    let basePath: string[] = []
+    let basePath: Array<string> = []
     for (let segment of compiler.root.pattern.split("/")) {
       if (globSymbols.test(segment)) {
         break
@@ -89,7 +89,7 @@ async function ensureSourceDetectionRootExists(compiler: {
 }
 
 export async function compileAst(
-  ast: AstNode[],
+  ast: Array<AstNode>,
   options: CompileOptions,
 ): ReturnType<typeof _compileAst> {
   let compiler = await _compileAst(ast, createCompileOptions(options))
@@ -131,9 +131,7 @@ export async function loadModule(
     throw new Error(`Could not resolve '${id}' from '${base}'`)
   }
 
-  let [module] = await Promise.all([
-    importModule(pathToFileURL(resolvedPath).href + "?id=" + Date.now()),
-  ])
+  let module = await importModule(pathToFileURL(resolvedPath).href + "?id=" + Date.now())
 
   return {
     path: resolvedPath,

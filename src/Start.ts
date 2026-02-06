@@ -1,4 +1,4 @@
-import * as FileSystem from "./FileSystem.ts"
+import type * as FileSystem from "./FileSystem.ts"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Function from "effect/Function"

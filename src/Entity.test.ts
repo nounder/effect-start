@@ -422,10 +422,15 @@ test.describe("Effect body", () => {
       }),
     )
 
-    test.expect(count).toBe(0)
+    test
+      .expect(count)
+      .toBe(0)
 
     await Effect.runPromise(entity.text)
-    test.expect(count).toBe(1)
+
+    test
+      .expect(count)
+      .toBe(1)
   })
 
   test.it("propagates Effect errors", async () => {
@@ -543,16 +548,19 @@ test.describe("Proto getters", () => {
 test.describe("type inference", () => {
   test.it("infers correct body type from make()", () => {
     const stringEntity = Entity.make("hello")
+
     test
       .expectTypeOf(stringEntity.body)
       .toEqualTypeOf<string>()
 
     const objectEntity = Entity.make({ key: "value" })
+
     test
       .expectTypeOf(objectEntity.body)
       .toEqualTypeOf<{ key: string }>()
 
     const bytesEntity = Entity.make(new Uint8Array([1, 2, 3]))
+
     test
       .expect(bytesEntity.body instanceof Uint8Array)
       .toBe(true)

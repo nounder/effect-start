@@ -41,7 +41,9 @@ test.describe("layer route", () => {
       "/admin": Route.post(Route.json({ ok: true })),
     })
 
-    test.expect(Route.descriptor(RouteTree.walk(tree))).toEqual([
+    test
+      .expect(Route.descriptor(RouteTree.walk(tree)))
+      .toEqual([
       { path: "/admin", method: "*" },
       { path: "/admin", method: "POST", format: "json" },
       { path: "/users", method: "*" },
@@ -57,7 +59,9 @@ test.describe("layer route", () => {
       "/users": Route.get(Route.text("users")),
     })
 
-    test.expect(Route.descriptor(RouteTree.walk(tree))).toEqual([
+    test
+      .expect(Route.descriptor(RouteTree.walk(tree)))
+      .toEqual([
       { path: "/users", method: "*" },
       { path: "/users", method: "*" },
       { path: "/users", method: "GET", format: "text" },
@@ -79,8 +83,12 @@ test.describe("layer route", () => {
     })
 
     const result = RouteTree.lookup(tree, "GET", "/users")
-    test.expect(result).not.toBeNull()
-    test.expect(Route.descriptor(result!.route).method).toBe("*")
+
+    test.expect(result).not
+      .toBeNull()
+    test
+      .expect(Route.descriptor(result!.route).method)
+      .toBe("*")
   })
 
   test.it("works without LayerRoute (no '*' key)", () => {
@@ -185,7 +193,9 @@ test.describe(RouteTree.make, () => {
       "/api": apiTree,
     })
 
-    test.expect(Route.descriptor(RouteTree.walk(tree))).toEqual([
+    test
+      .expect(Route.descriptor(RouteTree.walk(tree)))
+      .toEqual([
       { path: "/", method: "GET", format: "text" },
       { path: "/api/posts", method: "POST", format: "json" },
       { path: "/api/users", method: "GET", format: "json" },
@@ -222,14 +232,25 @@ test.describe(RouteTree.make, () => {
     })
 
     const home = RouteTree.lookup(tree, "GET", "/")
-    test.expect(Route.descriptor(home!.route).path).toBe("/")
+
+    test
+      .expect(Route.descriptor(home!.route).path)
+      .toBe("/")
 
     const users = RouteTree.lookup(tree, "GET", "/api/users")
-    test.expect(Route.descriptor(users!.route).path).toBe("/api/users")
+
+    test
+      .expect(Route.descriptor(users!.route).path)
+      .toBe("/api/users")
 
     const user = RouteTree.lookup(tree, "GET", "/api/users/123")
-    test.expect(Route.descriptor(user!.route).path).toBe("/api/users/:id")
-    test.expect(user!.params).toEqual({ id: "123" })
+
+    test
+      .expect(Route.descriptor(user!.route).path)
+      .toBe("/api/users/:id")
+    test
+      .expect(user!.params)
+      .toEqual({ id: "123" })
   })
 })
 
@@ -341,9 +362,15 @@ test.describe(RouteTree.lookup, () => {
     })
 
     const result = RouteTree.lookup(tree, "GET", "/users")
-    test.expect(result).not.toBeNull()
-    test.expect(result!.params).toEqual({})
-    test.expect(Route.descriptor(result!.route).path).toBe("/users")
+
+    test.expect(result).not
+      .toBeNull()
+    test
+      .expect(result!.params)
+      .toEqual({})
+    test
+      .expect(Route.descriptor(result!.route).path)
+      .toBe("/users")
   })
 
   test.it("extracts path parameters", () => {
@@ -352,8 +379,12 @@ test.describe(RouteTree.lookup, () => {
     })
 
     const result = RouteTree.lookup(tree, "GET", "/users/123")
-    test.expect(result).not.toBeNull()
-    test.expect(result!.params).toEqual({ id: "123" })
+
+    test.expect(result).not
+      .toBeNull()
+    test
+      .expect(result!.params)
+      .toEqual({ id: "123" })
   })
 
   test.it("filters by HTTP method", () => {
@@ -363,13 +394,20 @@ test.describe(RouteTree.lookup, () => {
     })
 
     const getResult = RouteTree.lookup(tree, "GET", "/users")
-    test.expect(getResult).not.toBeNull()
+
+    test.expect(getResult).not
+      .toBeNull()
 
     const postOnGet = RouteTree.lookup(tree, "POST", "/users")
-    test.expect(postOnGet).toBeNull()
+
+    test
+      .expect(postOnGet)
+      .toBeNull()
 
     const postResult = RouteTree.lookup(tree, "POST", "/admin")
-    test.expect(postResult).not.toBeNull()
+
+    test.expect(postResult).not
+      .toBeNull()
   })
 
   test.it("wildcard method matches any method", () => {
@@ -378,13 +416,19 @@ test.describe(RouteTree.lookup, () => {
     })
 
     const getResult = RouteTree.lookup(tree, "GET", "/api")
-    test.expect(getResult).not.toBeNull()
+
+    test.expect(getResult).not
+      .toBeNull()
 
     const postResult = RouteTree.lookup(tree, "POST", "/api")
-    test.expect(postResult).not.toBeNull()
+
+    test.expect(postResult).not
+      .toBeNull()
 
     const deleteResult = RouteTree.lookup(tree, "DELETE", "/api")
-    test.expect(deleteResult).not.toBeNull()
+
+    test.expect(deleteResult).not
+      .toBeNull()
   })
 
   test.it("static routes take priority over param routes", () => {
@@ -394,9 +438,15 @@ test.describe(RouteTree.lookup, () => {
     })
 
     const result = RouteTree.lookup(tree, "GET", "/users/me")
-    test.expect(result).not.toBeNull()
-    test.expect(Route.descriptor(result!.route).path).toBe("/users/me")
-    test.expect(result!.params).toEqual({})
+
+    test.expect(result).not
+      .toBeNull()
+    test
+      .expect(Route.descriptor(result!.route).path)
+      .toBe("/users/me")
+    test
+      .expect(result!.params)
+      .toEqual({})
   })
 
   test.it("matches greedy params with +", () => {
@@ -405,11 +455,18 @@ test.describe(RouteTree.lookup, () => {
     })
 
     const result = RouteTree.lookup(tree, "GET", "/docs/api/v1/users")
-    test.expect(result).not.toBeNull()
-    test.expect(result!.params).toEqual({ path: "api/v1/users" })
+
+    test.expect(result).not
+      .toBeNull()
+    test
+      .expect(result!.params)
+      .toEqual({ path: "api/v1/users" })
 
     const noMatch = RouteTree.lookup(tree, "GET", "/docs")
-    test.expect(noMatch).toBeNull()
+
+    test
+      .expect(noMatch)
+      .toBeNull()
   })
 
   test.it("matches greedy params with *", () => {
@@ -418,12 +475,20 @@ test.describe(RouteTree.lookup, () => {
     })
 
     const withPath = RouteTree.lookup(tree, "GET", "/files/a/b/c")
-    test.expect(withPath).not.toBeNull()
-    test.expect(withPath!.params).toEqual({ path: "a/b/c" })
+
+    test.expect(withPath).not
+      .toBeNull()
+    test
+      .expect(withPath!.params)
+      .toEqual({ path: "a/b/c" })
 
     const withoutPath = RouteTree.lookup(tree, "GET", "/files")
-    test.expect(withoutPath).not.toBeNull()
-    test.expect(withoutPath!.params).toEqual({})
+
+    test.expect(withoutPath).not
+      .toBeNull()
+    test
+      .expect(withoutPath!.params)
+      .toEqual({})
   })
 
   test.it("returns null for no match", () => {
@@ -432,7 +497,10 @@ test.describe(RouteTree.lookup, () => {
     })
 
     const result = RouteTree.lookup(tree, "GET", "/not-found")
-    test.expect(result).toBeNull()
+
+    test
+      .expect(result)
+      .toBeNull()
   })
 
   test.it("matches optional params with ?", () => {
@@ -441,12 +509,20 @@ test.describe(RouteTree.lookup, () => {
     })
 
     const withParam = RouteTree.lookup(tree, "GET", "/files/readme")
-    test.expect(withParam).not.toBeNull()
-    test.expect(withParam!.params).toEqual({ name: "readme" })
+
+    test.expect(withParam).not
+      .toBeNull()
+    test
+      .expect(withParam!.params)
+      .toEqual({ name: "readme" })
 
     const withoutParam = RouteTree.lookup(tree, "GET", "/files")
-    test.expect(withoutParam).not.toBeNull()
-    test.expect(withoutParam!.params).toEqual({})
+
+    test.expect(withoutParam).not
+      .toBeNull()
+    test
+      .expect(withoutParam!.params)
+      .toEqual({})
   })
 
   test.it("respects route priority for complex trees", () => {
@@ -458,18 +534,34 @@ test.describe(RouteTree.lookup, () => {
     })
 
     const staticMatch = RouteTree.lookup(tree, "GET", "/api/users")
-    test.expect(Route.descriptor(staticMatch!.route).path).toBe("/api/users")
+
+    test
+      .expect(Route.descriptor(staticMatch!.route).path)
+      .toBe("/api/users")
 
     const paramMatch = RouteTree.lookup(tree, "GET", "/api/users/123")
-    test.expect(Route.descriptor(paramMatch!.route).path).toBe("/api/users/:id")
-    test.expect(paramMatch!.params).toEqual({ id: "123" })
+
+    test
+      .expect(Route.descriptor(paramMatch!.route).path)
+      .toBe("/api/users/:id")
+    test
+      .expect(paramMatch!.params)
+      .toEqual({ id: "123" })
 
     const greedyMatch = RouteTree.lookup(tree, "GET", "/api/something/else")
-    test.expect(Route.descriptor(greedyMatch!.route).path).toBe("/api/:rest+")
-    test.expect(greedyMatch!.params).toEqual({ rest: "something/else" })
+
+    test
+      .expect(Route.descriptor(greedyMatch!.route).path)
+      .toBe("/api/:rest+")
+    test
+      .expect(greedyMatch!.params)
+      .toEqual({ rest: "something/else" })
 
     const catchAll = RouteTree.lookup(tree, "GET", "/random/path")
-    test.expect(Route.descriptor(catchAll!.route).path).toBe("/:path*")
+
+    test
+      .expect(Route.descriptor(catchAll!.route).path)
+      .toBe("/:path*")
   })
 
   test.it("static routes take priority over optional param routes", () => {
@@ -479,16 +571,29 @@ test.describe(RouteTree.lookup, () => {
     })
 
     const staticMatch = RouteTree.lookup(tree, "GET", "/files/latest")
-    test.expect(Route.descriptor(staticMatch!.route).path).toBe("/files/latest")
+
+    test
+      .expect(Route.descriptor(staticMatch!.route).path)
+      .toBe("/files/latest")
 
     const optionalMatch = RouteTree.lookup(tree, "GET", "/files/other")
-    test.expect(Route.descriptor(optionalMatch!.route).path).toBe(
+
+    test
+      .expect(Route.descriptor(optionalMatch!.route).path)
+      .toBe(
       "/files/:name?",
     )
-    test.expect(optionalMatch!.params).toEqual({ name: "other" })
+    test
+      .expect(optionalMatch!.params)
+      .toEqual({ name: "other" })
 
     const noParam = RouteTree.lookup(tree, "GET", "/files")
-    test.expect(Route.descriptor(noParam!.route).path).toBe("/files/:name?")
-    test.expect(noParam!.params).toEqual({})
+
+    test
+      .expect(Route.descriptor(noParam!.route).path)
+      .toBe("/files/:name?")
+    test
+      .expect(noParam!.params)
+      .toEqual({})
   })
 })

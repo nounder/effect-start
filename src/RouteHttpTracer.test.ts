@@ -1,7 +1,7 @@
 import * as test from "bun:test"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
-import * as Tracer from "effect/Tracer"
+import type * as Tracer from "effect/Tracer"
 import * as Http from "./Http.ts"
 import * as Route from "./Route.ts"
 import * as RouteHttp from "./RouteHttp.ts"
@@ -123,6 +123,7 @@ test.describe("tracing", () => {
     const parent = Option.getOrUndefined(
       capturedSpan?.parent ?? Option.none(),
     ) as Tracer.AnySpan | undefined
+
     test
       .expect(parent?.traceId)
       .toBe("0af7651916cd43dd8448eb211c80319c")
@@ -158,6 +159,7 @@ test.describe("tracing", () => {
     const parent = Option.getOrUndefined(
       capturedSpan?.parent ?? Option.none(),
     ) as Tracer.AnySpan | undefined
+
     test
       .expect(parent?.traceId)
       .toBe("80f198ee56343ba864fe8b2a57d3eff7")
@@ -195,6 +197,7 @@ test.describe("tracing", () => {
     const parent = Option.getOrUndefined(
       capturedSpan?.parent ?? Option.none(),
     ) as Tracer.AnySpan | undefined
+
     test
       .expect(parent?.traceId)
       .toBe("463ac35c9f6413ad48485a3953bb6124")

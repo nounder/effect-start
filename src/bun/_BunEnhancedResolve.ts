@@ -35,9 +35,9 @@ interface ResolveContext {
 }
 
 interface ResolveOptions {
-  extensions?: string[]
-  mainFields?: (string | string[])[]
-  conditionNames?: string[]
+  extensions?: Array<string>
+  mainFields?: Array<string | string[]>
+  conditionNames?: Array<string>
   fileSystem?: unknown
   useSyncFileSystemCalls?: boolean
   modules?: string | string[]
@@ -100,9 +100,9 @@ export const ResolverFactory = {
 }
 
 interface ResolveInternalOptions {
-  extensions: string[]
-  mainFields: string[]
-  conditionNames: string[]
+  extensions: Array<string>
+  mainFields: Array<string>
+  conditionNames: Array<string>
 }
 
 function resolveSync(
@@ -169,7 +169,7 @@ function resolvePackagePath(id: string, base: string): string | undefined {
 function resolveExports(
   exports: unknown,
   packagePath: string,
-  conditionNames: string[],
+  conditionNames: Array<string>,
 ): string | undefined {
   if (typeof exports === "string") {
     return path.resolve(packagePath, exports)

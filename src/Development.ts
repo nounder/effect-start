@@ -7,7 +7,7 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as PubSub from "effect/PubSub"
 import * as Stream from "effect/Stream"
-import * as PlatformError from "./PlatformError.ts"
+import type * as PlatformError from "./PlatformError.ts"
 
 export type DevelopmentEvent =
   | FileSystem.WatchEvent

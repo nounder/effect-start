@@ -9,7 +9,7 @@ export interface Node {
   requiredWildcardName: string | null
   optionalWildcardChild: Node | null
   optionalWildcardName: string | null
-  routes: Route.Route.Route[]
+  routes: Array<Route.Route.Route>
 }
 
 export interface RouteTrie {
@@ -36,7 +36,7 @@ function createNode(): Node {
 
 function insertRoute(
   node: Node,
-  segments: string[],
+  segments: Array<string>,
   route: Route.Route.Route,
 ): void {
   if (segments.length === 0) {
@@ -94,8 +94,8 @@ function collectRoutes(
   items: Route.Route.Tuple,
   parentPath: string,
   parentMethod: string,
-): CollectedRoute[] {
-  const results: CollectedRoute[] = []
+): Array<CollectedRoute> {
+  const results: Array<CollectedRoute> = []
 
   for (const item of items) {
     const desc = Route.descriptor(item) as { path?: string; method?: string }
@@ -141,10 +141,10 @@ export function make(set: Route.RouteSet.Any): RouteTrie {
 
 function lookupNode(
   node: Node,
-  segments: string[],
+  segments: Array<string>,
   params: Record<string, string>,
-): LookupResult[] {
-  const results: LookupResult[] = []
+): Array<LookupResult> {
+  const results: Array<LookupResult> = []
 
   if (segments.length === 0) {
     for (const route of node.routes) {
@@ -208,9 +208,9 @@ export function lookup(
   trie: RouteTrie,
   method: string,
   path: string,
-): LookupResult[] {
+): Array<LookupResult> {
   const segments = path.split("/").filter(Boolean)
-  const results: LookupResult[] = []
+  const results: Array<LookupResult> = []
 
   if (trie.methods[method]) {
     results.push(...lookupNode(trie.methods[method], segments, {}))

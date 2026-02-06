@@ -39,10 +39,18 @@ test.describe(BunRoute.htmlBundle, () => {
 
     const html = await response.text()
 
-    test.expect(response.status).toBe(200)
-    test.expect(html).toContain("<p>Hello World</p>")
-    test.expect(html).toContain("<body>")
-    test.expect(html).toContain("</body>")
+    test
+      .expect(response.status)
+      .toBe(200)
+    test
+      .expect(html)
+      .toContain("<p>Hello World</p>")
+    test
+      .expect(html)
+      .toContain("<body>")
+    test
+      .expect(html)
+      .toContain("</body>")
   })
 
   test.test("replaces %yield% with child content", async () => {
@@ -67,8 +75,12 @@ test.describe(BunRoute.htmlBundle, () => {
     )
 
     const html = await response.text()
-    test.expect(html).toContain("<div>Page Content</div>")
-    test.expect(html).not.toContain("%children%")
+
+    test
+      .expect(html)
+      .toContain("<div>Page Content</div>")
+    test.expect(html).not
+      .toContain("%children%")
   })
 
   test.test("works with use() for wildcard routes", async () => {
@@ -92,9 +104,15 @@ test.describe(BunRoute.htmlBundle, () => {
       ),
     )
 
-    test.expect(response.status).toBe(200)
+    test
+      .expect(response.status)
+      .toBe(200)
+
     const html = await response.text()
-    test.expect(html).toContain("<section>Catch All</section>")
+
+    test
+      .expect(html)
+      .toContain("<section>Catch All</section>")
   })
 
   test.test("has format: html descriptor", async () => {
@@ -118,9 +136,15 @@ test.describe(BunRoute.htmlBundle, () => {
       ),
     )
 
-    test.expect(response.status).toBe(200)
+    test
+      .expect(response.status)
+      .toBe(200)
+
     const contentType = response.headers.get("content-type")
-    test.expect(contentType).toContain("text/html")
+
+    test
+      .expect(contentType)
+      .toContain("text/html")
   })
 })
 
@@ -139,23 +163,37 @@ test.describe(BunRoute.validateBunPattern, () => {
 
   test.test("returns error for prefixed params", () => {
     const result = BunRoute.validateBunPattern("/pk_[id]")
-    test.expect(Option.isSome(result)).toBe(true)
+
+    test
+      .expect(Option.isSome(result))
+      .toBe(true)
   })
 
   test.test("returns error for suffixed params", () => {
     const result = BunRoute.validateBunPattern("/[id]_suffix")
-    test.expect(Option.isSome(result)).toBe(true)
+
+    test
+      .expect(Option.isSome(result))
+      .toBe(true)
   })
 })
 
 test.describe(BunRoute.isHtmlBundle, () => {
   test.test("returns false for non-objects", () => {
-    test.expect(BunRoute.isHtmlBundle(null)).toBe(false)
-    test.expect(BunRoute.isHtmlBundle(undefined)).toBe(false)
-    test.expect(BunRoute.isHtmlBundle("string")).toBe(false)
+    test
+      .expect(BunRoute.isHtmlBundle(null))
+      .toBe(false)
+    test
+      .expect(BunRoute.isHtmlBundle(undefined))
+      .toBe(false)
+    test
+      .expect(BunRoute.isHtmlBundle("string"))
+      .toBe(false)
   })
 
   test.test("returns true for object with index property", () => {
-    test.expect(BunRoute.isHtmlBundle({ index: "index.html" })).toBe(true)
+    test
+      .expect(BunRoute.isHtmlBundle({ index: "index.html" }))
+      .toBe(true)
   })
 })

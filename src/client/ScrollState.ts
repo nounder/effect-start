@@ -7,7 +7,7 @@ type Anchor = {
 
 type ScrollState = {
   scrollY: number
-  anchors: Anchor[]
+  anchors: Array<Anchor>
 }
 
 /**
@@ -15,7 +15,7 @@ type ScrollState = {
  * Scroll state is saved relatively to visible elements.
  */
 export function persist() {
-  const anchors: Anchor[] = []
+  const anchors: Array<Anchor> = []
   const step = window.innerHeight / 4
 
   for (let i = 1; i <= 3; i++) {
@@ -103,7 +103,7 @@ function selectorFromElement(element: Element): string {
   if (element.id) {
     return `#${CSS.escape(element.id)}`
   }
-  const parts: string[] = []
+  const parts: Array<string> = []
   let current: Element | null = element
 
   while (current && current !== document.body) {

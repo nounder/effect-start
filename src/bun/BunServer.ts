@@ -14,7 +14,7 @@ import * as PathPattern from "../PathPattern.ts"
 import * as PlataformRuntime from "../PlatformRuntime.ts"
 import * as Route from "../Route.ts"
 import * as RouteHttp from "../RouteHttp.ts"
-import * as RouteMount from "../RouteMount.ts"
+import type * as RouteMount from "../RouteMount.ts"
 import * as RouteTree from "../RouteTree.ts"
 import * as BunRoute from "./BunRoute.ts"
 export interface WebSocketContext {
@@ -219,7 +219,7 @@ function walkBunRoutes(
 ) {
   return Effect.gen(function*() {
     const bunRoutes: BunRoute.BunRoutes = {}
-    const pathGroups = new Map<string, RouteMount.MountedRoute[]>()
+    const pathGroups = new Map<string, Array<RouteMount.MountedRoute>>()
     const toWebHandler = RouteHttp.toWebHandlerRuntime(runtime)
 
     for (const route of RouteTree.walk(tree)) {

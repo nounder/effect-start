@@ -1,10 +1,10 @@
 import * as Effect from "effect/Effect"
-import * as ParseResult from "effect/ParseResult"
+import type * as ParseResult from "effect/ParseResult"
 import * as Schema from "effect/Schema"
 import type * as Scope from "effect/Scope"
 import * as Http from "./Http.ts"
 import * as PathPattern from "./PathPattern.ts"
-import * as Route from "./Route.ts"
+import type * as Route from "./Route.ts"
 import * as RouteHook from "./RouteHook.ts"
 
 export interface RequestBodyError {

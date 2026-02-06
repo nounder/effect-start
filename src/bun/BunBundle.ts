@@ -4,7 +4,7 @@ import type {
 } from "bun"
 import {
   Array,
-  Context,
+  type Context,
   Effect,
   Iterable,
   Layer,
@@ -12,12 +12,8 @@ import {
   Record,
 } from "effect"
 import * as NPath from "node:path"
-import type {
-  BundleContext,
-  BundleManifest,
-} from "../bundler/Bundle.ts"
 import * as Bundle from "../bundler/Bundle.ts"
-import { BunImportTrackerPlugin } from "./index.ts"
+import type { BunImportTrackerPlugin } from "./index.ts"
 
 export type BuildOptions = Omit<
   BuildConfig,
@@ -84,7 +80,7 @@ export const buildServer = (
  */
 export function build(
   config: BuildOptions,
-): Effect.Effect<BundleContext, Bundle.BundleError> {
+): Effect.Effect<Bundle.BundleContext, Bundle.BundleError> {
   return Effect.gen(function*() {
     const output = yield* buildBun(config)
     const manifest = generateManifestfromBunBundle(
@@ -115,7 +111,7 @@ export function build(
 }
 
 export function layer<T>(
-  tag: Context.Tag<T, BundleContext>,
+  tag: Context.Tag<T, Bundle.BundleContext>,
   config: BuildOptions,
 ) {
   return Layer.effect(tag, build(config))
@@ -124,7 +120,7 @@ export function layer<T>(
 /**
  * Finds common path prefix across provided paths.
  */
-function getBaseDir(paths: string[]) {
+function getBaseDir(paths: Array<string>) {
   if (paths.length === 0) return ""
   if (paths.length === 1) return NPath.dirname(paths[0])
 
@@ -177,7 +173,7 @@ function generateManifestfromBunBundle(
   options: BuildOptions,
   output: BuildOutput,
   imports?: BunImportTrackerPlugin.ImportMap,
-): BundleManifest {
+): Bundle.BundleManifest {
   const entrypointArtifacts = joinBuildEntrypoints(options, output)
 
   return {

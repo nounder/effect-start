@@ -4,6 +4,7 @@ import * as ContentNegotiation from "./ContentNegotiation.ts"
 test.describe("ContentNegotiation.media", () => {
   test.it("returns empty array when no types provided", () => {
     const result = ContentNegotiation.media("text/html", [])
+
     test
       .expect(result)
       .toEqual([])
@@ -14,6 +15,7 @@ test.describe("ContentNegotiation.media", () => {
       "application/json",
       ["text/html", "application/json"],
     )
+
     test
       .expect(result)
       .toEqual(["application/json"])
@@ -24,6 +26,7 @@ test.describe("ContentNegotiation.media", () => {
       "text/html;q=0.5, application/json;q=0.9",
       ["text/html", "application/json"],
     )
+
     test
       .expect(result)
       .toEqual(["application/json", "text/html"])
@@ -34,6 +37,7 @@ test.describe("ContentNegotiation.media", () => {
       "text/plain",
       ["text/html", "application/json"],
     )
+
     test
       .expect(result)
       .toEqual([])
@@ -44,6 +48,7 @@ test.describe("ContentNegotiation.media", () => {
       "text/*",
       ["application/json", "text/html", "text/plain"],
     )
+
     test
       .expect(result)
       .toEqual(["text/html", "text/plain"])
@@ -54,6 +59,7 @@ test.describe("ContentNegotiation.media", () => {
       "text/*, text/html",
       ["text/plain", "text/html"],
     )
+
     test
       .expect(result)
       .toEqual(["text/html", "text/plain"])
@@ -64,6 +70,7 @@ test.describe("ContentNegotiation.media", () => {
       "text/html, application/*;q=0.2, image/jpeg;q=0.8",
       ["image/jpeg", "application/json", "text/html"],
     )
+
     test
       .expect(result)
       .toEqual(["text/html", "image/jpeg", "application/json"])
@@ -74,6 +81,7 @@ test.describe("ContentNegotiation.media", () => {
       "application/json",
       ["text/HTML", "Application/JSON"],
     )
+
     test
       .expect(result)
       .toEqual(["Application/JSON"])
@@ -84,6 +92,7 @@ test.describe("ContentNegotiation.media", () => {
       "*/*",
       ["text/html", "application/json"],
     )
+
     test
       .expect(result)
       .toEqual(["text/html", "application/json"])
@@ -94,6 +103,7 @@ test.describe("ContentNegotiation.media", () => {
       "invalid",
       ["text/html", "application/json"],
     )
+
     test
       .expect(result)
       .toEqual([])
@@ -103,6 +113,7 @@ test.describe("ContentNegotiation.media", () => {
     const result = ContentNegotiation.media(
       "text/html, application/json;q=0.9, text/plain;q=0.5",
     )
+
     test
       .expect(result)
       .toEqual(["text/html", "application/json", "text/plain"])
@@ -113,6 +124,7 @@ test.describe("ContentNegotiation.media", () => {
       "text/html",
       "application/json",
     ])
+
     test
       .expect(result)
       .toEqual([])
@@ -123,6 +135,7 @@ test.describe("ContentNegotiation.media", () => {
       "text/html, application/json;q=0",
       ["text/html", "application/json"],
     )
+
     test
       .expect(result)
       .toEqual(["text/html"])
@@ -133,6 +146,7 @@ test.describe("ContentNegotiation.media", () => {
       "text/html;level=1",
       ["text/html;level=1", "text/html;level=2", "text/html"],
     )
+
     test
       .expect(result)
       .toEqual(["text/html;level=1"])
@@ -143,6 +157,7 @@ test.describe("ContentNegotiation.media", () => {
       "text/*;q=0.5, */*;q=0.1",
       ["text/html", "application/json"],
     )
+
     test
       .expect(result)
       .toEqual(["text/html", "application/json"])
@@ -154,6 +169,7 @@ test.describe("ContentNegotiation.media", () => {
         "text/event-stream",
         ["text/*", "application/json"],
       )
+
       test
         .expect(result)
         .toEqual(["text/*"])
@@ -164,6 +180,7 @@ test.describe("ContentNegotiation.media", () => {
         "text/markdown",
         ["text/*"],
       )
+
       test
         .expect(result)
         .toEqual(["text/*"])
@@ -174,6 +191,7 @@ test.describe("ContentNegotiation.media", () => {
         "text/plain",
         ["text/*"],
       )
+
       test
         .expect(result)
         .toEqual(["text/*"])
@@ -184,6 +202,7 @@ test.describe("ContentNegotiation.media", () => {
         "application/json",
         ["text/*"],
       )
+
       test
         .expect(result)
         .toEqual([])
@@ -194,6 +213,7 @@ test.describe("ContentNegotiation.media", () => {
         "text/html",
         ["text/*", "text/html"],
       )
+
       test
         .expect(result)
         .toEqual(["text/html", "text/*"])
@@ -204,6 +224,7 @@ test.describe("ContentNegotiation.media", () => {
         "text/html, text/plain",
         ["text/*"],
       )
+
       test
         .expect(result)
         .toEqual(["text/*"])
@@ -214,6 +235,7 @@ test.describe("ContentNegotiation.media", () => {
         "application/xml",
         ["application/*", "text/html"],
       )
+
       test
         .expect(result)
         .toEqual(["application/*"])
@@ -224,6 +246,7 @@ test.describe("ContentNegotiation.media", () => {
         "image/png",
         ["*/*"],
       )
+
       test
         .expect(result)
         .toEqual(["*/*"])
@@ -235,6 +258,7 @@ test.describe("ContentNegotiation.media", () => {
         "text/*",
         ["text/*"],
       )
+
       test
         .expect(result)
         .toEqual(["text/*"])
@@ -245,6 +269,7 @@ test.describe("ContentNegotiation.media", () => {
         "text/html;q=0.5, text/event-stream;q=0.9",
         ["text/*"],
       )
+
       test
         .expect(result)
         .toEqual(["text/*"])
@@ -255,6 +280,7 @@ test.describe("ContentNegotiation.media", () => {
 test.describe("ContentNegotiation.language", () => {
   test.it("returns empty array when no languages provided", () => {
     const result = ContentNegotiation.language("en", [])
+
     test
       .expect(result)
       .toEqual([])
@@ -262,6 +288,7 @@ test.describe("ContentNegotiation.language", () => {
 
   test.it("returns matching language", () => {
     const result = ContentNegotiation.language("fr", ["en", "fr"])
+
     test
       .expect(result)
       .toEqual(["fr"])
@@ -272,6 +299,7 @@ test.describe("ContentNegotiation.language", () => {
       "en;q=0.5, fr;q=0.9",
       ["en", "fr"],
     )
+
     test
       .expect(result)
       .toEqual(["fr", "en"])
@@ -279,6 +307,7 @@ test.describe("ContentNegotiation.language", () => {
 
   test.it("returns empty array when no matching language", () => {
     const result = ContentNegotiation.language("de", ["en", "fr"])
+
     test
       .expect(result)
       .toEqual([])
@@ -286,6 +315,7 @@ test.describe("ContentNegotiation.language", () => {
 
   test.it("handles language prefix match", () => {
     const result = ContentNegotiation.language("en", ["en-US", "en-GB", "fr"])
+
     test
       .expect(result)
       .toEqual(["en-US", "en-GB"])
@@ -293,6 +323,7 @@ test.describe("ContentNegotiation.language", () => {
 
   test.it("handles language with region", () => {
     const result = ContentNegotiation.language("en-US", ["en", "en-US", "fr"])
+
     test
       .expect(result)
       .toEqual(["en-US"])
@@ -303,6 +334,7 @@ test.describe("ContentNegotiation.language", () => {
       "en-US, en;q=0.9",
       ["en", "en-US"],
     )
+
     test
       .expect(result)
       .toEqual(["en-US", "en"])
@@ -313,6 +345,7 @@ test.describe("ContentNegotiation.language", () => {
       "en;q=0.8, es, pt",
       ["en", "es", "pt"],
     )
+
     test
       .expect(result)
       .toEqual(["es", "pt", "en"])
@@ -320,6 +353,7 @@ test.describe("ContentNegotiation.language", () => {
 
   test.it("handles * wildcard", () => {
     const result = ContentNegotiation.language("*", ["en", "fr"])
+
     test
       .expect(result)
       .toEqual(["en", "fr"])
@@ -327,6 +361,7 @@ test.describe("ContentNegotiation.language", () => {
 
   test.it("returns all accepted languages when available not provided", () => {
     const result = ContentNegotiation.language("en-US, fr;q=0.8, de;q=0.5")
+
     test
       .expect(result)
       .toEqual(["en-us", "fr", "de"])
@@ -334,6 +369,7 @@ test.describe("ContentNegotiation.language", () => {
 
   test.it("returns empty array for empty accept-language header", () => {
     const result = ContentNegotiation.language("", ["en", "fr"])
+
     test
       .expect(result)
       .toEqual([])
@@ -341,6 +377,7 @@ test.describe("ContentNegotiation.language", () => {
 
   test.it("matches case-insensitively", () => {
     const result = ContentNegotiation.language("EN-US", ["en-us", "fr"])
+
     test
       .expect(result)
       .toEqual(["en-us"])
@@ -350,6 +387,7 @@ test.describe("ContentNegotiation.language", () => {
 test.describe("ContentNegotiation.encoding", () => {
   test.it("returns empty array when no encodings provided", () => {
     const result = ContentNegotiation.encoding("gzip", [])
+
     test
       .expect(result)
       .toEqual([])
@@ -357,6 +395,7 @@ test.describe("ContentNegotiation.encoding", () => {
 
   test.it("returns matching encoding", () => {
     const result = ContentNegotiation.encoding("deflate", ["gzip", "deflate"])
+
     test
       .expect(result)
       .toEqual(["deflate"])
@@ -367,6 +406,7 @@ test.describe("ContentNegotiation.encoding", () => {
       "gzip;q=0.5, deflate;q=0.9",
       ["gzip", "deflate"],
     )
+
     test
       .expect(result)
       .toEqual(["deflate", "gzip"])
@@ -376,6 +416,7 @@ test.describe("ContentNegotiation.encoding", () => {
     "returns empty array when no matching encoding (except identity)",
     () => {
       const result = ContentNegotiation.encoding("br", ["gzip", "deflate"])
+
       test
         .expect(result)
         .toEqual([])
@@ -384,6 +425,7 @@ test.describe("ContentNegotiation.encoding", () => {
 
   test.it("handles wildcard", () => {
     const result = ContentNegotiation.encoding("*", ["gzip", "deflate"])
+
     test
       .expect(result)
       .toEqual(["gzip", "deflate"])
@@ -391,6 +433,7 @@ test.describe("ContentNegotiation.encoding", () => {
 
   test.it("handles identity encoding as implicit fallback", () => {
     const result = ContentNegotiation.encoding("br", ["identity", "gzip"])
+
     test
       .expect(result)
       .toEqual(["identity"])
@@ -401,6 +444,7 @@ test.describe("ContentNegotiation.encoding", () => {
       "gzip;q=1.0, identity;q=0.5, *;q=0",
       ["deflate", "gzip", "identity"],
     )
+
     test
       .expect(result)
       .toEqual(["gzip", "identity"])
@@ -408,6 +452,7 @@ test.describe("ContentNegotiation.encoding", () => {
 
   test.it("returns all accepted encodings when available not provided", () => {
     const result = ContentNegotiation.encoding("gzip, deflate;q=0.8, br;q=0.5")
+
     test
       .expect(result)
       .toEqual(["gzip", "deflate", "br", "identity"])
@@ -415,6 +460,7 @@ test.describe("ContentNegotiation.encoding", () => {
 
   test.it("returns empty array for empty accept-encoding header", () => {
     const result = ContentNegotiation.encoding("", ["gzip", "deflate"])
+
     test
       .expect(result)
       .toEqual([])
@@ -425,6 +471,7 @@ test.describe("ContentNegotiation.encoding", () => {
       "gzip, identity;q=0",
       ["gzip", "identity"],
     )
+
     test
       .expect(result)
       .toEqual(["gzip"])
@@ -435,6 +482,7 @@ test.describe("ContentNegotiation.encoding", () => {
       "gzip, *;q=0",
       ["gzip", "deflate", "br"],
     )
+
     test
       .expect(result)
       .toEqual(["gzip"])
@@ -444,6 +492,7 @@ test.describe("ContentNegotiation.encoding", () => {
 test.describe("ContentNegotiation.charset", () => {
   test.it("returns empty array when no charsets provided", () => {
     const result = ContentNegotiation.charset("utf-8", [])
+
     test
       .expect(result)
       .toEqual([])
@@ -454,6 +503,7 @@ test.describe("ContentNegotiation.charset", () => {
       "iso-8859-1",
       ["utf-8", "iso-8859-1"],
     )
+
     test
       .expect(result)
       .toEqual(["iso-8859-1"])
@@ -464,6 +514,7 @@ test.describe("ContentNegotiation.charset", () => {
       "utf-8;q=0.5, iso-8859-1;q=0.9",
       ["utf-8", "iso-8859-1"],
     )
+
     test
       .expect(result)
       .toEqual(["iso-8859-1", "utf-8"])
@@ -474,6 +525,7 @@ test.describe("ContentNegotiation.charset", () => {
       "utf-16",
       ["utf-8", "iso-8859-1"],
     )
+
     test
       .expect(result)
       .toEqual([])
@@ -481,6 +533,7 @@ test.describe("ContentNegotiation.charset", () => {
 
   test.it("handles wildcard", () => {
     const result = ContentNegotiation.charset("*", ["utf-8", "iso-8859-1"])
+
     test
       .expect(result)
       .toEqual(["utf-8", "iso-8859-1"])
@@ -491,6 +544,7 @@ test.describe("ContentNegotiation.charset", () => {
       "utf-8, iso-8859-1;q=0.8, utf-7;q=0.2",
       ["utf-7", "iso-8859-1", "utf-8"],
     )
+
     test
       .expect(result)
       .toEqual(["utf-8", "iso-8859-1", "utf-7"])
@@ -500,6 +554,7 @@ test.describe("ContentNegotiation.charset", () => {
     const result = ContentNegotiation.charset(
       "utf-8, iso-8859-1;q=0.8, utf-7;q=0.2",
     )
+
     test
       .expect(result)
       .toEqual(["utf-8", "iso-8859-1", "utf-7"])
@@ -507,6 +562,7 @@ test.describe("ContentNegotiation.charset", () => {
 
   test.it("returns empty array for empty accept-charset header", () => {
     const result = ContentNegotiation.charset("", ["utf-8", "iso-8859-1"])
+
     test
       .expect(result)
       .toEqual([])
@@ -514,6 +570,7 @@ test.describe("ContentNegotiation.charset", () => {
 
   test.it("matches case-insensitively", () => {
     const result = ContentNegotiation.charset("UTF-8", ["utf-8", "iso-8859-1"])
+
     test
       .expect(result)
       .toEqual(["utf-8"])
@@ -527,6 +584,7 @@ test.describe("ContentNegotiation.headerMedia", () => {
       "text/html",
       "application/json",
     ])
+
     test
       .expect(result)
       .toEqual(["text/html", "application/json"])
@@ -535,6 +593,7 @@ test.describe("ContentNegotiation.headerMedia", () => {
   test.it("returns empty array when Accept header is missing", () => {
     const headers = new Headers({})
     const result = ContentNegotiation.headerMedia(headers, ["text/html"])
+
     test
       .expect(result)
       .toEqual([])
@@ -545,6 +604,7 @@ test.describe("ContentNegotiation.headerLanguage", () => {
   test.it("parses Accept-Language header from Headers object", () => {
     const headers = new Headers({ "accept-language": "en, fr;q=0.8" })
     const result = ContentNegotiation.headerLanguage(headers, ["en", "fr"])
+
     test
       .expect(result)
       .toEqual(["en", "fr"])
@@ -553,6 +613,7 @@ test.describe("ContentNegotiation.headerLanguage", () => {
   test.it("returns empty array when Accept-Language header is missing", () => {
     const headers = new Headers({})
     const result = ContentNegotiation.headerLanguage(headers, ["en"])
+
     test
       .expect(result)
       .toEqual([])
@@ -566,6 +627,7 @@ test.describe("ContentNegotiation.headerEncoding", () => {
       "gzip",
       "deflate",
     ])
+
     test
       .expect(result)
       .toEqual(["gzip", "deflate"])
@@ -574,6 +636,7 @@ test.describe("ContentNegotiation.headerEncoding", () => {
   test.it("returns empty array when Accept-Encoding header is missing", () => {
     const headers = new Headers({})
     const result = ContentNegotiation.headerEncoding(headers, ["gzip"])
+
     test
       .expect(result)
       .toEqual([])
@@ -587,6 +650,7 @@ test.describe("ContentNegotiation.headerCharset", () => {
       "utf-8",
       "iso-8859-1",
     ])
+
     test
       .expect(result)
       .toEqual(["utf-8", "iso-8859-1"])
@@ -595,6 +659,7 @@ test.describe("ContentNegotiation.headerCharset", () => {
   test.it("returns empty array when Accept-Charset header is missing", () => {
     const headers = new Headers({})
     const result = ContentNegotiation.headerCharset(headers, ["utf-8"])
+
     test
       .expect(result)
       .toEqual([])

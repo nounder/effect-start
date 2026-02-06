@@ -1,4 +1,4 @@
-import * as HyperNode from "../../hyper/HyperNode.ts"
+import type * as HyperNode from "../../hyper/HyperNode.ts"
 
 export const HyperHooks = {
   onNode,

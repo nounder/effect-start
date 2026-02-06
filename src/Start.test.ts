@@ -33,7 +33,9 @@ test.describe(Start.pack, () => {
       program.pipe(Effect.provide(AppLayer), Effect.provide(ExternalApiLive)),
     )
 
-    test.expect(result).toEqual({ rows: [] })
+    test
+      .expect(result)
+      .toEqual({ rows: [] })
   })
 
   test.test("should require services not in the pack", async () => {
@@ -65,7 +67,9 @@ test.describe(Start.pack, () => {
       program.pipe(Effect.provide(AppLayer), Effect.provide(ExternalApiLive)),
     )
 
-    test.expect(result).toEqual({ rows: [] })
+    test
+      .expect(result)
+      .toEqual({ rows: [] })
   })
 
   test.test("should allow accessing all provided services", async () => {
@@ -91,7 +95,9 @@ test.describe(Start.pack, () => {
       program.pipe(Effect.provide(AppLayer), Effect.provide(ExternalApiLive)),
     )
 
-    test.expect(result).toEqual("success")
+    test
+      .expect(result)
+      .toEqual("success")
   })
 
   test.test("should memoize layers (build each only once)", async () => {
@@ -143,8 +149,12 @@ test.describe(Start.pack, () => {
 
     await Effect.runPromise(program.pipe(Effect.provide(AppLayer)))
 
-    test.expect(loggerBuildCount).toEqual(1)
-    test.expect(databaseBuildCount).toEqual(1)
+    test
+      .expect(loggerBuildCount)
+      .toEqual(1)
+    test
+      .expect(databaseBuildCount)
+      .toEqual(1)
   })
 })
 
@@ -190,7 +200,9 @@ test.describe(Start.layer, () => {
       ),
     )
 
-    test.expect(port).toBe(customPort)
+    test
+      .expect(port)
+      .toBe(customPort)
   })
 
   test.test("user-provided BunServer serves routes", async () => {
@@ -223,9 +235,15 @@ test.describe(Start.layer, () => {
       ),
     )
 
-    test.expect(port).toBe(customPort)
-    test.expect(status).toBe(200)
-    test.expect(body).toBe("custom-server")
+    test
+      .expect(port)
+      .toBe(customPort)
+    test
+      .expect(status)
+      .toBe(200)
+    test
+      .expect(body)
+      .toBe("custom-server")
   })
 
   test.test("default BunServer is used when not provided", async () => {
@@ -256,8 +274,12 @@ test.describe(Start.layer, () => {
       ),
     )
 
-    test.expect(status).toBe(200)
-    test.expect(body).toBe("default-server")
+    test
+      .expect(status)
+      .toBe(200)
+    test
+      .expect(body)
+      .toBe("default-server")
   })
 })
 

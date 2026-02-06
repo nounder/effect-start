@@ -3,8 +3,8 @@ import * as Effect from "effect/Effect"
 import * as Function from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Logger from "effect/Logger"
-import * as Scope from "effect/Scope"
-import type { YieldWrap } from "effect/Utils"
+import type * as Scope from "effect/Scope"
+import type * as Utils from "effect/Utils"
 
 /**
  * Creates a scoped Effects and runs is asynchronously.
@@ -12,7 +12,7 @@ import type { YieldWrap } from "effect/Utils"
  */
 export const effectFn = <RL>(layer?: Layer.Layer<RL, any>) =>
 <
-  Eff extends YieldWrap<Effect.Effect<any, any, RE>>,
+  Eff extends Utils.YieldWrap<Effect.Effect<any, any, RE>>,
   AEff,
   RE extends RL | Scope.Scope,
 >(
@@ -40,7 +40,7 @@ export const effectFn = <RL>(layer?: Layer.Layer<RL, any>) =>
  * files that are then loaded into a runtime.
  */
 const clearStackTraces = (err: unknown) => {
-  const ExternalStackTraceLineRegexp = /\(.*\/node_modules\/[^\.]/
+  const ExternalStackTraceLineRegexp = /\(.*\/node_modules\/[^.]/
 
   const message = err instanceof Error
     ? err.message

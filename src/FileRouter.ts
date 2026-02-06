@@ -48,7 +48,7 @@ export type FileRoute = {
   modulePath: `/${string}`
   // eg. `/about`, `/users/[userId]`, `/users` (groups stripped)
   routePath: `/${string}`
-  segments: Segment[]
+  segments: Array<Segment>
 }
 
 /**
@@ -58,7 +58,7 @@ export type FileRoute = {
  * - users/[userId]/route.tsx
  * - [[rest]]/route.tsx
  */
-export type OrderedFileRoutes = FileRoute[]
+export type OrderedFileRoutes = Array<FileRoute>
 
 const ROUTE_PATH_REGEX = /^\/?(.*\/?)(?:route|layer)\.(jsx?|tsx?)$/
 
@@ -190,7 +190,7 @@ export function fromFileRoutes(
       for (const m of modules) {
         if (Route.isRouteSet(m.default)) {
           for (const route of m.default) {
-            ;(allRoutes as any[]).push(route)
+            ;(allRoutes as Array<any>).push(route)
           }
         }
       }
@@ -218,7 +218,7 @@ export function walkRoutesDirectory(
 }
 
 export function getFileRoutes(
-  paths: string[],
+  paths: Array<string>,
 ): Effect.Effect<OrderedFileRoutes, FileRouterError> {
   return Effect.gen(function*() {
     const routes = paths
@@ -250,7 +250,7 @@ export function getFileRoutes(
       })
 
     // Detect conflicting routes at the same path
-    const routesByPath = new Map<string, FileRoute[]>()
+    const routesByPath = new Map<string, Array<FileRoute>>()
     for (const route of routes) {
       const existing = routesByPath.get(route.routePath) || []
       existing.push(route)

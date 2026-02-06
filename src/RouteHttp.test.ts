@@ -97,6 +97,7 @@ test.it("handles method-specific routes", async () => {
     path: "/resource",
     method: "GET",
   })
+
   test
     .expect(await getResponse.text())
     .toBe("get resource")
@@ -105,6 +106,7 @@ test.it("handles method-specific routes", async () => {
     path: "/resource",
     method: "POST",
   })
+
   test
     .expect(await postResponse.text())
     .toBe("post resource")
@@ -130,11 +132,13 @@ test.it("handles errors by returning 500 response", () =>
         .toBe(500)
 
       const text = yield* Effect.promise(() => response.text())
+
       test
         .expect(text)
         .toContain("Something went wrong")
 
       const messages = yield* TestLogger.messages
+
       test
         .expect(messages.some((m) => m.includes("Something went wrong")))
         .toBe(true)
@@ -163,6 +167,7 @@ test.it("handles defects by returning 500 response", () =>
         .toBe(500)
 
       const messages = yield* TestLogger.messages
+
       test
         .expect(messages.some((m) => m.includes("Unexpected error")))
         .toBe(true)
@@ -191,6 +196,7 @@ test.it("error response includes stack trace and cause chain", () =>
         .toBe(500)
 
       const body = yield* Effect.promise(() => response.json())
+
       test
         .expect(body.message)
         .toMatch(
@@ -199,6 +205,7 @@ test.it("error response includes stack trace and cause chain", () =>
 
       const messages = yield* TestLogger.messages
       const errorLog = messages.find((m) => m.startsWith("[Error]"))
+
       test
         .expect(errorLog)
         .toMatch(
@@ -234,6 +241,7 @@ test.it("includes request in handler context", async () => {
         test
           .expectTypeOf(ctx.request)
           .toEqualTypeOf<Request>()
+
         capturedRequest = ctx.request
         return "ok"
       }),
@@ -623,6 +631,7 @@ test.describe("middleware chain", () => {
           .toContain("middleware failed")
 
         const messages = yield* TestLogger.messages
+
         test
           .expect(messages.some((m) => m.includes("middleware failed")))
           .toBe(true)
@@ -645,6 +654,7 @@ test.describe("middleware chain", () => {
       path: "/test",
       method: "GET",
     })
+
     test
       .expect(await getResponse.text())
       .toBe("GET:true")
@@ -653,6 +663,7 @@ test.describe("middleware chain", () => {
       path: "/test",
       method: "POST",
     })
+
     test
       .expect(await postResponse.text())
       .toBe("POST:true")
@@ -710,6 +721,7 @@ test.describe("middleware chain", () => {
       path: "/test",
       method: "GET",
     })
+
     test
       .expect(await getResponse.text())
       .toBe("GET:true")
@@ -718,6 +730,7 @@ test.describe("middleware chain", () => {
       path: "/test",
       method: "POST",
     })
+
     test
       .expect(await postResponse.text())
       .toBe("POST:undefined")
@@ -792,6 +805,7 @@ test.describe("middleware chain", () => {
       path: "/test",
       headers: { Accept: "text/plain" },
     })
+
     test
       .expect(textResponse.headers.get("Content-Type"))
       .toBe("text/plain; charset=utf-8")
@@ -803,6 +817,7 @@ test.describe("middleware chain", () => {
       path: "/test",
       headers: { Accept: "application/json" },
     })
+
     test
       .expect(await jsonResponse.json())
       .toEqual({ wrapped: { type: "json" } })
@@ -876,7 +891,7 @@ test.describe("middleware chain", () => {
   })
 
   test.it("chains middlewares in order", async () => {
-    const calls: string[] = []
+    const calls: Array<string> = []
 
     const handler = RouteHttp.toWebHandler(
       Route
@@ -1277,6 +1292,7 @@ test.describe("schema handlers", () => {
           .toBe(400)
 
         const messages = yield* TestLogger.messages
+
         test
           .expect(messages.some((m) => m.includes("ParseError")))
           .toBe(true)
@@ -1307,6 +1323,7 @@ test.describe("schema handlers", () => {
           .toBe(400)
 
         const messages = yield* TestLogger.messages
+
         test
           .expect(messages.some((m) => m.includes("x-required")))
           .toBe(true)
@@ -1353,6 +1370,7 @@ test.describe("schema handlers", () => {
       .toBe(200)
 
     const json = await response.json()
+
     test
       .expect(json.title)
       .toBe("My Upload")
@@ -1413,6 +1431,7 @@ test.describe("schema handlers", () => {
       .toBe(200)
 
     const json = await response.json()
+
     test
       .expect(json.count)
       .toBe(3)
@@ -1461,6 +1480,7 @@ test.describe("schema handlers", () => {
       .toBe(200)
 
     const json = await response.json()
+
     test
       .expect(json.name)
       .toBe("avatar.png")
@@ -1508,6 +1528,7 @@ test.describe("schema handlers", () => {
       .toBe(200)
 
     const json = await response.json()
+
     test
       .expect(json.title)
       .toBe("My Post")
@@ -1544,6 +1565,7 @@ test.describe("schema handlers", () => {
       .toBe(200)
 
     const json = await response.json()
+
     test
       .expect(json.name)
       .toBe("John")
@@ -1592,6 +1614,7 @@ test.describe("schema handlers", () => {
           .toContain("Expected string, actual [\"John\",\"Jane\"]")
 
         const messages = yield* TestLogger.messages
+
         test
           .expect(messages.some((m) => m.includes("ParseError")))
           .toBe(true)
@@ -1819,6 +1842,7 @@ test.describe("schema handlers", () => {
           .toBe(400)
 
         const messages = yield* TestLogger.messages
+
         test
           .expect(messages.some((m) => m.includes("ParseError")))
           .toBe(true)
@@ -1995,7 +2019,7 @@ test.describe("request abort handling", () => {
 
 test.describe("RouteTree layer routes", () => {
   test.it("layer routes execute in order before path routes", async () => {
-    const calls: string[] = []
+    const calls: Array<string> = []
 
     const tree = RouteTree.make({
       "*": Route
@@ -2025,7 +2049,7 @@ test.describe("RouteTree layer routes", () => {
   })
 
   test.it("layer routes apply to all paths in the tree", async () => {
-    const calls: string[] = []
+    const calls: Array<string> = []
 
     const tree = RouteTree.make({
       "*": Route.use(Route.filter(function*() {
@@ -2046,12 +2070,14 @@ test.describe("RouteTree layer routes", () => {
 
     calls.length = 0
     await Http.fetch(handles["/users"], { path: "/users" })
+
     test
       .expect(calls)
       .toEqual(["layer", "users"])
 
     calls.length = 0
     await Http.fetch(handles["/admin"], { path: "/admin" })
+
     test
       .expect(calls)
       .toEqual(["layer", "admin"])
@@ -2072,18 +2098,20 @@ test.describe("RouteTree layer routes", () => {
 
     layerCallCount = 0
     await Http.fetch(handles["/test"], { path: "/test" })
+
     test
       .expect(layerCallCount)
       .toBe(1)
 
     await Http.fetch(handles["/test"], { path: "/test" })
+
     test
       .expect(layerCallCount)
       .toBe(2)
   })
 
   test.it("nested tree inherits parent layer routes", async () => {
-    const calls: string[] = []
+    const calls: Array<string> = []
 
     const apiTree = RouteTree.make({
       "/users": Route.get(Route.text(function*() {
@@ -2139,11 +2167,13 @@ test.describe("RouteTree layer routes", () => {
           .toBe(false)
 
         const text = yield* Effect.promise(() => response.text())
+
         test
           .expect(text)
           .toContain("layer rejected")
 
         const messages = yield* TestLogger.messages
+
         test
           .expect(messages.some((m) => m.includes("layer rejected")))
           .toBe(true)
@@ -2189,7 +2219,7 @@ test.describe("RouteTree layer routes", () => {
   })
 
   test.it("multiple layers execute in definition order", async () => {
-    const calls: string[] = []
+    const calls: Array<string> = []
 
     const tree = RouteTree.make({
       "*": Route
@@ -2296,6 +2326,7 @@ test.describe("Route.render (format=*)", () => {
       path: "/data",
       headers: { Accept: "application/json" },
     })
+
     test
       .expect(await jsonResponse.json())
       .toEqual({ type: "json" })
@@ -2304,6 +2335,7 @@ test.describe("Route.render (format=*)", () => {
       path: "/data",
       headers: { Accept: "text/event-stream" },
     })
+
     test
       .expect(eventStreamResponse.status)
       .toBe(200)
@@ -2404,7 +2436,7 @@ test.describe("Route.render (format=*)", () => {
   })
 
   test.it("render middleware always runs even when specific format is selected", async () => {
-    const calls: string[] = []
+    const calls: Array<string> = []
 
     const handler = RouteHttp.toWebHandler(
       Route
@@ -2439,7 +2471,7 @@ test.describe("Route.render (format=*)", () => {
   })
 
   test.it("next() from render matches both render and selected format routes", async () => {
-    const calls: string[] = []
+    const calls: Array<string> = []
 
     const handler = RouteHttp.toWebHandler(
       Route
@@ -2484,7 +2516,7 @@ test.describe("Route.render (format=*)", () => {
   })
 
   test.it("render handler runs when no specific format matches", async () => {
-    const calls: string[] = []
+    const calls: Array<string> = []
 
     const handler = RouteHttp.toWebHandler(
       Route
@@ -2547,6 +2579,7 @@ test.describe("Route.render (format=*)", () => {
         test
           .expectTypeOf(ctx.format)
           .toEqualTypeOf<"*">()
+
         return "ok"
       }),
     )

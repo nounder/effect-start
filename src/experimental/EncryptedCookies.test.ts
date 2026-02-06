@@ -14,6 +14,7 @@ test.describe(`${EncryptedCookies.encrypt.name}`, () => {
 
     // Check format: three base64url segments separated by .
     const segments = result.split(".")
+
     test
       .expect(segments)
       .toHaveLength(3)
@@ -28,6 +29,7 @@ test.describe(`${EncryptedCookies.encrypt.name}`, () => {
       // Should be valid base64url that can be decoded
       const base64 = segment.replace(/-/g, "+").replace(/_/g, "/")
       const paddedBase64 = base64 + "=".repeat((4 - base64.length % 4) % 4)
+
       test
         .expect(() => atob(paddedBase64))
         .not

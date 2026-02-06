@@ -305,6 +305,7 @@ test.describe(`${RouteSchema.schemaBodyJson.name}()`, () => {
           .toBe(400)
 
         const messages = yield* TestLogger.messages
+
         test
           .expect(messages.some((m) => m.includes("ParseError")))
           .toBe(true)

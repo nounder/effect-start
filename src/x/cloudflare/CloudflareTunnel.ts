@@ -27,7 +27,7 @@ export const start = (opts: {
     const logPrefix = String.isString(opts.logPrefix)
       ? opts.logPrefix
       : "CloudflareTunnel: "
-    const args: string[] = [
+    const args: Array<string> = [
       "tunnel",
       "run",
       opts.tunnelUrl

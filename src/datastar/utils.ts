@@ -199,7 +199,7 @@ export const delay = (
   callback: EventCallbackHandler,
   wait: number,
 ): EventCallbackHandler => {
-  return (...args: any[]) => {
+  return (...args: Array<any>) => {
     setTimeout(() => {
       callback(...args)
     }, wait)
@@ -216,7 +216,7 @@ export const throttle = (
   let lastArgs: Parameters<EventCallbackHandler> | null = null
   let timer: any = 0
 
-  return (...args: any[]) => {
+  return (...args: Array<any>) => {
     if (leading && !timer) {
       callback(...args)
       lastArgs = null
@@ -278,7 +278,7 @@ export const modifyViewTransition = (
 ): EventCallbackHandler => {
   if (mods.has("viewtransition") && supportsViewTransitions) {
     const cb = callback
-    callback = (...args: any[]) =>
+    callback = (...args: Array<any>) =>
       document.startViewTransition(() => cb(...args))
   }
 

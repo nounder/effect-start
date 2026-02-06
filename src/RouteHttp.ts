@@ -4,16 +4,16 @@ import * as FiberId from "effect/FiberId"
 import * as FiberRef from "effect/FiberRef"
 import * as HashSet from "effect/HashSet"
 import * as Option from "effect/Option"
-import * as ParseResult from "effect/ParseResult"
+import type * as ParseResult from "effect/ParseResult"
 import * as Runtime from "effect/Runtime"
 import * as Stream from "effect/Stream"
 import * as ContentNegotiation from "./ContentNegotiation.ts"
 import * as Entity from "./Entity.ts"
-import * as Http from "./Http.ts"
+import type * as Http from "./Http.ts"
 import * as Route from "./Route.ts"
-import * as RouteBody from "./RouteBody.ts"
+import type * as RouteBody from "./RouteBody.ts"
 import * as RouteHttpTracer from "./RouteHttpTracer.ts"
-import * as RouteMount from "./RouteMount.ts"
+import type * as RouteMount from "./RouteMount.ts"
 import * as RouteTree from "./RouteTree.ts"
 import * as StreamExtra from "./StreamExtra.ts"
 
@@ -143,7 +143,7 @@ type Handler = (
 
 function determineSelectedFormat(
   accept: string | null,
-  routes: UnboundedRouteWithMethod[],
+  routes: Array<UnboundedRouteWithMethod>,
 ): RouteBody.Format | undefined {
   const formats = routes
     .filter((r) => Route.descriptor(r).method !== "*")
@@ -185,7 +185,7 @@ export const toWebHandlerRuntime = <R>(
     )
     const wildcards = grouped["*"] ?? []
     const methodGroups: {
-      [method in Http.Method]?: UnboundedRouteWithMethod[]
+      [method in Http.Method]?: Array<UnboundedRouteWithMethod>
     } = {
       GET: undefined,
       POST: undefined,
@@ -413,7 +413,7 @@ export function* walkHandles(
   tree: RouteTree.RouteTree,
   runtime: Runtime.Runtime<never> = Runtime.defaultRuntime,
 ): Generator<[path: string, handler: Http.WebHandler]> {
-  const pathGroups = new Map<string, RouteMount.MountedRoute[]>()
+  const pathGroups = new Map<string, Array<RouteMount.MountedRoute>>()
 
   for (const route of RouteTree.walk(tree)) {
     const path = Route.descriptor(route).path

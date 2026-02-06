@@ -1,9 +1,9 @@
-import { attribute } from "../engine.ts"
 import {
+  attribute,
   beginBatch,
   endBatch,
+  type HTMLOrSVG,
 } from "../engine.ts"
-import type { HTMLOrSVG } from "../engine.ts"
 import {
   clamp,
   modifyTiming,

@@ -1,5 +1,4 @@
-import { attribute } from "../engine.ts"
-import { effect } from "../engine.ts"
+import { attribute, effect } from "../engine.ts"
 import { modifyCasing } from "../utils.ts"
 
 attribute({

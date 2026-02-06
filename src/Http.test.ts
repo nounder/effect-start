@@ -226,14 +226,30 @@ test.describe("parseFormData", () => {
     const request = createFormDataRequest(formData)
     const result = await Http.parseFormData(request)
 
-    test.expect(result.document).toBeDefined()
+    test
+      .expect(result.document)
+      .toBeDefined()
+
     const files = result.document as ReadonlyArray<Http.FilePart>
-    test.expect(files).toHaveLength(1)
-    test.expect(files[0]._tag).toBe("File")
-    test.expect(files[0].key).toBe("document")
-    test.expect(files[0].name).toBe("test.txt")
-    test.expect(files[0].contentType.startsWith("text/plain")).toBe(true)
-    test.expect(files[0].content).toEqual(fileContent)
+
+    test
+      .expect(files)
+      .toHaveLength(1)
+    test
+      .expect(files[0]._tag)
+      .toBe("File")
+    test
+      .expect(files[0].key)
+      .toBe("document")
+    test
+      .expect(files[0].name)
+      .toBe("test.txt")
+    test
+      .expect(files[0].contentType.startsWith("text/plain"))
+      .toBe(true)
+    test
+      .expect(files[0].content)
+      .toEqual(fileContent)
   })
 
   test.it("parses multiple file uploads for same key", async () => {
@@ -251,11 +267,22 @@ test.describe("parseFormData", () => {
     const result = await Http.parseFormData(request)
 
     const files = result.files as ReadonlyArray<Http.FilePart>
-    test.expect(files).toHaveLength(2)
-    test.expect(files[0].name).toBe("file1.bin")
-    test.expect(files[0].content).toEqual(new Uint8Array([1, 2, 3]))
-    test.expect(files[1].name).toBe("file2.bin")
-    test.expect(files[1].content).toEqual(new Uint8Array([4, 5, 6]))
+
+    test
+      .expect(files)
+      .toHaveLength(2)
+    test
+      .expect(files[0].name)
+      .toBe("file1.bin")
+    test
+      .expect(files[0].content)
+      .toEqual(new Uint8Array([1, 2, 3]))
+    test
+      .expect(files[1].name)
+      .toBe("file2.bin")
+    test
+      .expect(files[1].content)
+      .toEqual(new Uint8Array([4, 5, 6]))
   })
 
   test.it("uses default content type for files without type", async () => {
@@ -269,7 +296,10 @@ test.describe("parseFormData", () => {
     const result = await Http.parseFormData(request)
 
     const files = result.upload as ReadonlyArray<Http.FilePart>
-    test.expect(files[0].contentType).toBe("application/octet-stream")
+
+    test
+      .expect(files[0].contentType)
+      .toBe("application/octet-stream")
   })
 
   test.it("parses mixed string fields and file uploads", async () => {
@@ -284,11 +314,21 @@ test.describe("parseFormData", () => {
     const request = createFormDataRequest(formData)
     const result = await Http.parseFormData(request)
 
-    test.expect(result.title).toBe("My Document")
-    test.expect(result.description).toBe("A test document")
+    test
+      .expect(result.title)
+      .toBe("My Document")
+    test
+      .expect(result.description)
+      .toBe("A test document")
+
     const files = result.attachment as ReadonlyArray<Http.FilePart>
-    test.expect(files).toHaveLength(1)
-    test.expect(files[0].name).toBe("doc.pdf")
+
+    test
+      .expect(files)
+      .toHaveLength(1)
+    test
+      .expect(files[0].name)
+      .toBe("doc.pdf")
   })
 
   test.it("returns empty record for empty form data", async () => {
@@ -311,9 +351,18 @@ test.describe("parseFormData", () => {
     const result = await Http.parseFormData(request)
 
     const files = result.image as ReadonlyArray<Http.FilePart>
-    test.expect(files).toHaveLength(1)
-    test.expect(files[0].name).toBe("image.png")
-    test.expect(files[0].contentType).toBe("image/png")
-    test.expect(files[0].content).toEqual(new Uint8Array([10, 20, 30]))
+
+    test
+      .expect(files)
+      .toHaveLength(1)
+    test
+      .expect(files[0].name)
+      .toBe("image.png")
+    test
+      .expect(files[0].contentType)
+      .toBe("image/png")
+    test
+      .expect(files[0].content)
+      .toEqual(new Uint8Array([10, 20, 30]))
   })
 })

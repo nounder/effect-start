@@ -5,23 +5,18 @@ import * as Function from "effect/Function"
 import * as Iterable from "effect/Iterable"
 import * as Record from "effect/Record"
 import * as S from "effect/Schema"
-import {
-  type BundleContext,
-  BundleError,
-  type BundleManifest,
-  BundleManifestSchema,
-} from "./Bundle.ts"
+import * as Bundle from "./Bundle.ts"
 
 /**
  * Exports a bundle to a file system under specified directory.
  */
 export const toFiles = (
-  context: BundleContext,
+  context: Bundle.BundleContext,
   outDir: string,
 ) => {
   return Effect.gen(function*() {
     const fs = yield* FileSystem.FileSystem
-    const manifest: BundleManifest = {
+    const manifest: Bundle.BundleManifest = {
       entrypoints: context.entrypoints,
       artifacts: context.artifacts,
     }
@@ -63,7 +58,7 @@ export const toFiles = (
         })
       } else {
         return yield* Effect.fail(
-          new BundleError({
+          new Bundle.BundleError({
             message: "Output directory is not empty",
           }),
         )
@@ -84,7 +79,7 @@ export const toFiles = (
             Effect.tryPromise({
               try: () => b.arrayBuffer(),
               catch: (e) =>
-                new BundleError({
+                new Bundle.BundleError({
                   message: "Failed to read an artifact as a buffer",
                   cause: e,
                 }),
@@ -104,15 +99,15 @@ export const toFiles = (
 }
 
 /**
- * Loads a bundle from a directory and returns a BundleContext.
+ * Loads a bundle from a directory and returns a Bundle.BundleContext.
  * Expects the directory to contain a manifest.json file and all the artifacts
  * referenced in the manifest.
  */
 export const fromFiles = (
   directory: string,
 ): Effect.Effect<
-  BundleContext,
-  BundleError,
+  Bundle.BundleContext,
+  Bundle.BundleError,
   FileSystem.FileSystem
 > => {
   return Effect.gen(function*() {
@@ -121,10 +116,10 @@ export const fromFiles = (
     const manifest = yield* Function.pipe(
       fs.readFileString(`${normalizedDir}/manifest.json`),
       Effect.andThen((v) => JSON.parse(v) as unknown),
-      Effect.andThen(S.decodeUnknownSync(BundleManifestSchema)),
+      Effect.andThen(S.decodeUnknownSync(Bundle.BundleManifestSchema)),
       Effect.catchAll((e) =>
         Effect.fail(
-          new BundleError({
+          new Bundle.BundleError({
             message: `Failed to read manifest.json from ${normalizedDir}`,
             cause: e,
           }),
@@ -137,7 +132,7 @@ export const fromFiles = (
       Iterable.map((path) => fs.readFile(`${normalizedDir}/${path}`)),
       Effect.all,
       Effect.catchAll((e) =>
-        new BundleError({
+        new Bundle.BundleError({
           message: `Failed to read an artifact from ${normalizedDir}`,
           cause: e,
         })
@@ -156,7 +151,7 @@ export const fromFiles = (
       Record.fromEntries,
     )
 
-    const bundleContext: BundleContext = {
+    const bundleContext: Bundle.BundleContext = {
       ...manifest,
       // TODO: support fullpath file:// urls
       // this will require having an access to base path of a build

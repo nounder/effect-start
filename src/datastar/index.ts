@@ -1,5 +1,3 @@
-export * from "./engine.ts"
-
 import "./actions/peek.ts"
 import "./actions/setAll.ts"
 import "./actions/toggleAll.ts"
@@ -23,3 +21,5 @@ import "./attributes/style.ts"
 import "./attributes/text.ts"
 import "./watchers/patchElements.ts"
 import "./watchers/patchSignals.ts"
+
+export * from "./engine.ts"

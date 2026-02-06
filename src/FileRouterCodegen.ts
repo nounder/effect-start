@@ -111,7 +111,7 @@ export function generateCode(
   // Group routes by path to find layers
   const routesByPath = new Map<string, {
     route?: FileRouter.FileRoute
-    layers: FileRouter.FileRoute[]
+    layers: Array<FileRouter.FileRoute>
   }>()
 
   for (const fileRoute of fileRoutes) {
@@ -135,13 +135,13 @@ export function generateCode(
   }
 
   // Build entries for each route path
-  const entries: Array<{ path: string; loaders: string[] }> = []
+  const entries: Array<{ path: string; loaders: Array<string> }> = []
 
   for (const [path, { route }] of routesByPath) {
     if (!route) continue
 
     // Collect all parent layers that match the route's groups
-    const allLayers: FileRouter.FileRoute[] = []
+    const allLayers: Array<FileRouter.FileRoute> = []
     let currentPath = path
 
     while (true) {
@@ -167,7 +167,7 @@ export function generateCode(
     const pathPattern = pathPatternResult.right
 
     // Order: route first, then layers from innermost to outermost
-    const loaders: string[] = [
+    const loaders: Array<string> = [
       `() => import(".${route.modulePath}")`,
       ...allLayers.reverse().map(layer =>
         `() => import(".${layer.modulePath}")`

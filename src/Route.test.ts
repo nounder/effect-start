@@ -1,6 +1,6 @@
 import * as test from "bun:test"
 import * as Effect from "effect/Effect"
-import * as Entity from "./Entity.ts"
+import type * as Entity from "./Entity.ts"
 import * as Http from "./Http.ts"
 import * as Route from "./Route.ts"
 import * as RouteHttp from "./RouteHttp.ts"
@@ -59,15 +59,27 @@ test.describe(Route.lazy, () => {
       })
     })
 
-    test.expect(loadCount).toBe(0)
+    test
+      .expect(loadCount)
+      .toBe(0)
 
     const routes1 = await Effect.runPromise(lazyRoutes)
-    test.expect(loadCount).toBe(1)
-    test.expect(Route.items(routes1)).toHaveLength(1)
+
+    test
+      .expect(loadCount)
+      .toBe(1)
+    test
+      .expect(Route.items(routes1))
+      .toHaveLength(1)
 
     const routes2 = await Effect.runPromise(lazyRoutes)
-    test.expect(loadCount).toBe(1)
-    test.expect(routes1).toBe(routes2)
+
+    test
+      .expect(loadCount)
+      .toBe(1)
+    test
+      .expect(routes1)
+      .toBe(routes2)
   })
 
   test.it("works with RouteHttp.toWebHandler", async () => {
@@ -81,8 +93,13 @@ test.describe(Route.lazy, () => {
     const handler = RouteHttp.toWebHandler(routes)
 
     const response = await Http.fetch(handler, { path: "/test" })
-    test.expect(response.status).toBe(200)
-    test.expect(await response.text()).toBe("lazy loaded")
+
+    test
+      .expect(response.status)
+      .toBe(200)
+    test
+      .expect(await response.text())
+      .toBe("lazy loaded")
   })
 
   test.it("preserves route types", async () => {
@@ -100,6 +117,9 @@ test.describe(Route.lazy, () => {
     const handler = RouteHttp.toWebHandler(routes)
 
     const response = await Http.fetch(handler, { path: "/test" })
-    test.expect(await response.json()).toEqual({ value: true })
+
+    test
+      .expect(await response.json())
+      .toEqual({ value: true })
   })
 })
