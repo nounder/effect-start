@@ -1,8 +1,5 @@
 import { attribute } from "../engine.ts"
-import {
-  effect,
-  filtered,
-} from "../engine.ts"
+import { effect, filtered } from "../engine.ts"
 import type { SignalFilterOptions } from "../engine.ts"
 import { jsStrToObject } from "../utils.ts"
 

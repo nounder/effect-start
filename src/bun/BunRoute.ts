@@ -29,8 +29,8 @@ export function descriptors(
 ): BunDescriptors | undefined {
   const descriptor = Route.descriptor(route) as Partial<BunDescriptors>
   if (
-    typeof descriptor.bunPrefix === "string"
-    && typeof descriptor.bunLoad === "function"
+    typeof descriptor.bunPrefix === "string" &&
+    typeof descriptor.bunLoad === "function"
   ) {
     return descriptor as BunDescriptors
   }
@@ -41,10 +41,11 @@ export function htmlBundle(
   load: () => Promise<Bun.HTMLBundle | { default: Bun.HTMLBundle }>,
 ) {
   const bunPrefix = `/.BunRoute-${Unique.token(10)}`
-  const bunLoad = () => load().then(mod => "default" in mod ? mod.default : mod)
+  const bunLoad = () =>
+    load().then((mod) => ("default" in mod ? mod.default : mod))
   const descriptors = { bunPrefix, bunLoad, format: "html" as const }
 
-  return function<
+  return function <
     D extends Route.RouteDescriptor.Any,
     B extends {},
     I extends Route.Route.Tuple,
@@ -70,12 +71,10 @@ export function htmlBundle(
       BunRouteError,
       BunServer.BunServer
     > = (context, next) =>
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const originalRequest = context.request
 
-        if (
-          originalRequest.headers.get(INTERNAL_FETCH_HEADER) === "true"
-        ) {
+        if (originalRequest.headers.get(INTERNAL_FETCH_HEADER) === "true") {
           const url = new URL(originalRequest.url)
           return yield* Effect.fail(
             new BunRouteError({
@@ -128,7 +127,7 @@ export function htmlBundle(
         if (children != null) {
           if ((children as unknown) instanceof Response) {
             childrenHtml = yield* Effect.promise(() =>
-              (children as unknown as Response).text()
+              (children as unknown as Response).text(),
             )
           } else if (Hyper.isGenericJsxObject(children)) {
             childrenHtml = HyperHtml.renderToString(children)
@@ -213,9 +212,9 @@ export function validateBunPattern(
 
 export const isHtmlBundle = (handle: any) => {
   return (
-    typeof handle === "object"
-    && handle !== null
-    && (handle.toString() === "[object HTMLBundle]"
-      || typeof handle.index === "string")
+    typeof handle === "object" &&
+    handle !== null &&
+    (handle.toString() === "[object HTMLBundle]" ||
+      typeof handle.index === "string")
   )
 }

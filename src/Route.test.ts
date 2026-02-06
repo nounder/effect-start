@@ -9,42 +9,28 @@ test.describe(Route.redirect, () => {
   test.it("creates redirect with default 302 status", () => {
     const entity = Route.redirect("/login")
 
-    test
-      .expect(entity.status)
-      .toBe(302)
-    test
-      .expect(entity.headers.location)
-      .toBe("/login")
-    test
-      .expect(entity.body)
-      .toBe("")
+    test.expect(entity.status).toBe(302)
+    test.expect(entity.headers.location).toBe("/login")
+    test.expect(entity.body).toBe("")
   })
 
   test.it("creates redirect with custom status", () => {
     const entity = Route.redirect("/new-url", 301)
 
-    test
-      .expect(entity.status)
-      .toBe(301)
-    test
-      .expect(entity.headers.location)
-      .toBe("/new-url")
+    test.expect(entity.status).toBe(301)
+    test.expect(entity.headers.location).toBe("/new-url")
   })
 
   test.it("accepts URL object", () => {
     const entity = Route.redirect(new URL("https://example.com/path"))
 
-    test
-      .expect(entity.headers.location)
-      .toBe("https://example.com/path")
+    test.expect(entity.headers.location).toBe("https://example.com/path")
   })
 
   test.it("returns Entity<string>", () => {
     const entity = Route.redirect("/login")
 
-    test
-      .expectTypeOf(entity)
-      .toEqualTypeOf<Entity.Entity<"">>()
+    test.expectTypeOf(entity).toEqualTypeOf<Entity.Entity<"">>()
   })
 })
 
@@ -74,7 +60,7 @@ test.describe(Route.lazy, () => {
     const lazyRoutes = Route.lazy(() =>
       Promise.resolve({
         default: Route.get(Route.text("lazy loaded")),
-      })
+      }),
     )
 
     const routes = await Effect.runPromise(lazyRoutes)
@@ -88,12 +74,12 @@ test.describe(Route.lazy, () => {
   test.it("preserves route types", async () => {
     const lazyRoutes = Route.lazy(() =>
       Promise.resolve({
-        default: Route
-          .use(Route.filter({ context: { injected: true } }))
-          .get(Route.json(function*(ctx) {
+        default: Route.use(Route.filter({ context: { injected: true } })).get(
+          Route.json(function* (ctx) {
             return { value: ctx.injected }
-          })),
-      })
+          }),
+        ),
+      }),
     )
 
     const routes = await Effect.runPromise(lazyRoutes)

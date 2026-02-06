@@ -8,11 +8,9 @@
 import fs from "node:fs"
 import path from "node:path"
 
-type ErrorWithDetail =
-  & Error
-  & {
-    details?: string
-  }
+type ErrorWithDetail = Error & {
+  details?: string
+}
 
 interface ResolveRequest {
   path: string | false
@@ -58,17 +56,14 @@ export interface Resolver {
 }
 
 export class CachedInputFileSystem {
-  constructor(
-    _fileSystem: unknown,
-    _duration: number,
-  ) {}
+  constructor(_fileSystem: unknown, _duration: number) {}
 }
 
 export const ResolverFactory = {
   createResolver(options: ResolveOptions): Resolver {
     const extensions = options.extensions ?? []
     const mainFields = (options.mainFields ?? []).flatMap((f) =>
-      Array.isArray(f) ? f : [f]
+      Array.isArray(f) ? f : [f],
     )
     const conditionNames = options.conditionNames ?? []
 

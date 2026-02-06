@@ -39,9 +39,7 @@ test.describe(PathPattern.validate, () => {
   })
 
   test.it("validates root path", () => {
-    test
-      .expect(PathPattern.validate("/"))
-      .toEqual({ ok: true, segments: [] })
+    test.expect(PathPattern.validate("/")).toEqual({ ok: true, segments: [] })
   })
 
   test.it("validates unicode segments", () => {
@@ -120,9 +118,7 @@ test.describe("Segments", () => {
   })
 
   test.it("handles root path", () => {
-    test
-      .expectTypeOf<PathPattern.Segments<"/">>()
-      .toEqualTypeOf<[]>()
+    test.expectTypeOf<PathPattern.Segments<"/">>().toEqualTypeOf<[]>()
   })
 })
 
@@ -158,9 +154,7 @@ test.describe("Params", () => {
   })
 
   test.it("returns empty for literal-only paths", () => {
-    test
-      .expectTypeOf<PathPattern.Params<"/users">>()
-      .toEqualTypeOf<{}>()
+    test.expectTypeOf<PathPattern.Params<"/users">>().toEqualTypeOf<{}>()
   })
 
   test.it("handles mixed params with optional wildcard", () => {
@@ -338,15 +332,9 @@ test.describe(PathPattern.toRegex, () => {
     const regex = PathPattern.toRegex("/docs/:path*")
     const emptyMatch = "/docs".match(regex)
 
-    test
-      .expect(emptyMatch?.groups)
-      .toHaveProperty("path")
-    test
-      .expect(emptyMatch?.groups?.path)
-      .toBeUndefined()
-    test
-      .expect("/docs/api".match(regex)?.groups)
-      .toEqual({ path: "api" })
+    test.expect(emptyMatch?.groups).toHaveProperty("path")
+    test.expect(emptyMatch?.groups?.path).toBeUndefined()
+    test.expect("/docs/api".match(regex)?.groups).toEqual({ path: "api" })
     test
       .expect("/docs/api/users/create".match(regex)?.groups)
       .toEqual({ path: "api/users/create" })
@@ -366,30 +354,20 @@ test.describe(PathPattern.toRegex, () => {
 
 test.describe(PathPattern.toExpress, () => {
   test.it("converts literal paths", () => {
-    test
-      .expect(PathPattern.toExpress("/users"))
-      .toEqual(["/users"])
-    test
-      .expect(PathPattern.toExpress("/users/posts"))
-      .toEqual(["/users/posts"])
+    test.expect(PathPattern.toExpress("/users")).toEqual(["/users"])
+    test.expect(PathPattern.toExpress("/users/posts")).toEqual(["/users/posts"])
   })
 
   test.it("converts required params", () => {
-    test
-      .expect(PathPattern.toExpress("/users/:id"))
-      .toEqual(["/users/:id"])
+    test.expect(PathPattern.toExpress("/users/:id")).toEqual(["/users/:id"])
   })
 
   test.it("converts optional params to brace syntax", () => {
-    test
-      .expect(PathPattern.toExpress("/users/:id?"))
-      .toEqual(["/users{/:id}"])
+    test.expect(PathPattern.toExpress("/users/:id?")).toEqual(["/users{/:id}"])
   })
 
   test.it("converts required wildcard", () => {
-    test
-      .expect(PathPattern.toExpress("/docs/:path+"))
-      .toEqual(["/docs/*path"])
+    test.expect(PathPattern.toExpress("/docs/:path+")).toEqual(["/docs/*path"])
   })
 
   test.it("converts optional wildcard to two routes", () => {
@@ -399,23 +377,17 @@ test.describe(PathPattern.toExpress, () => {
   })
 
   test.it("converts root path", () => {
-    test
-      .expect(PathPattern.toExpress("/"))
-      .toEqual(["/"])
+    test.expect(PathPattern.toExpress("/")).toEqual(["/"])
   })
 })
 
 test.describe(PathPattern.toURLPattern, () => {
   test.it("converts literal paths", () => {
-    test
-      .expect(PathPattern.toURLPattern("/users"))
-      .toEqual(["/users"])
+    test.expect(PathPattern.toURLPattern("/users")).toEqual(["/users"])
   })
 
   test.it("preserves param modifiers", () => {
-    test
-      .expect(PathPattern.toURLPattern("/users/:id"))
-      .toEqual(["/users/:id"])
+    test.expect(PathPattern.toURLPattern("/users/:id")).toEqual(["/users/:id"])
     test
       .expect(PathPattern.toURLPattern("/users/:id?"))
       .toEqual(["/users/:id?"])
@@ -428,23 +400,17 @@ test.describe(PathPattern.toURLPattern, () => {
   })
 
   test.it("converts root path", () => {
-    test
-      .expect(PathPattern.toURLPattern("/"))
-      .toEqual(["/"])
+    test.expect(PathPattern.toURLPattern("/")).toEqual(["/"])
   })
 })
 
 test.describe(PathPattern.toReactRouter, () => {
   test.it("converts literal paths", () => {
-    test
-      .expect(PathPattern.toReactRouter("/users"))
-      .toEqual(["/users"])
+    test.expect(PathPattern.toReactRouter("/users")).toEqual(["/users"])
   })
 
   test.it("converts required params", () => {
-    test
-      .expect(PathPattern.toReactRouter("/users/:id"))
-      .toEqual(["/users/:id"])
+    test.expect(PathPattern.toReactRouter("/users/:id")).toEqual(["/users/:id"])
   })
 
   test.it("converts optional params", () => {
@@ -454,9 +420,7 @@ test.describe(PathPattern.toReactRouter, () => {
   })
 
   test.it("converts required wildcard to splat", () => {
-    test
-      .expect(PathPattern.toReactRouter("/docs/:path+"))
-      .toEqual(["/docs/*"])
+    test.expect(PathPattern.toReactRouter("/docs/:path+")).toEqual(["/docs/*"])
   })
 
   test.it("converts optional wildcard to two routes", () => {
@@ -466,117 +430,79 @@ test.describe(PathPattern.toReactRouter, () => {
   })
 
   test.it("converts root path", () => {
-    test
-      .expect(PathPattern.toReactRouter("/"))
-      .toEqual(["/"])
+    test.expect(PathPattern.toReactRouter("/")).toEqual(["/"])
   })
 })
 
 test.describe(PathPattern.toRemixFile, () => {
   test.it("converts literal paths with dot separator", () => {
-    test
-      .expect(PathPattern.toRemixFile("/users"))
-      .toBe("users")
-    test
-      .expect(PathPattern.toRemixFile("/users/posts"))
-      .toBe("users.posts")
+    test.expect(PathPattern.toRemixFile("/users")).toBe("users")
+    test.expect(PathPattern.toRemixFile("/users/posts")).toBe("users.posts")
   })
 
   test.it("converts required params to $param", () => {
-    test
-      .expect(PathPattern.toRemixFile("/users/:id"))
-      .toBe("users.$id")
+    test.expect(PathPattern.toRemixFile("/users/:id")).toBe("users.$id")
   })
 
   test.it("converts optional params to ($param)", () => {
-    test
-      .expect(PathPattern.toRemixFile("/users/:id?"))
-      .toBe("users.($id)")
+    test.expect(PathPattern.toRemixFile("/users/:id?")).toBe("users.($id)")
   })
 
   test.it("converts required wildcard to $", () => {
-    test
-      .expect(PathPattern.toRemixFile("/docs/:path+"))
-      .toBe("docs.$")
+    test.expect(PathPattern.toRemixFile("/docs/:path+")).toBe("docs.$")
   })
 
   test.it("converts optional wildcard to ($)", () => {
-    test
-      .expect(PathPattern.toRemixFile("/docs/:path*"))
-      .toBe("docs.($)")
+    test.expect(PathPattern.toRemixFile("/docs/:path*")).toBe("docs.($)")
   })
 
   test.it("converts root path", () => {
-    test
-      .expect(PathPattern.toRemixFile("/"))
-      .toBe("")
+    test.expect(PathPattern.toRemixFile("/")).toBe("")
   })
 })
 
 test.describe(PathPattern.toTanStack, () => {
   test.it("converts literal paths with dot separator", () => {
-    test
-      .expect(PathPattern.toTanStack("/users"))
-      .toBe("users")
-    test
-      .expect(PathPattern.toTanStack("/users/posts"))
-      .toBe("users.posts")
+    test.expect(PathPattern.toTanStack("/users")).toBe("users")
+    test.expect(PathPattern.toTanStack("/users/posts")).toBe("users.posts")
   })
 
   test.it("converts required params to $param", () => {
-    test
-      .expect(PathPattern.toTanStack("/users/:id"))
-      .toBe("users.$id")
+    test.expect(PathPattern.toTanStack("/users/:id")).toBe("users.$id")
   })
 
   test.it("converts optional params to {-$param}", () => {
-    test
-      .expect(PathPattern.toTanStack("/users/:id?"))
-      .toBe("users.{-$id}")
+    test.expect(PathPattern.toTanStack("/users/:id?")).toBe("users.{-$id}")
   })
 
   test.it("converts required wildcard to $", () => {
-    test
-      .expect(PathPattern.toTanStack("/docs/:path+"))
-      .toBe("docs.$")
+    test.expect(PathPattern.toTanStack("/docs/:path+")).toBe("docs.$")
   })
 
   test.it("converts optional wildcard to $ (treated as required)", () => {
-    test
-      .expect(PathPattern.toTanStack("/docs/:path*"))
-      .toBe("docs.$")
+    test.expect(PathPattern.toTanStack("/docs/:path*")).toBe("docs.$")
   })
 
   test.it("converts root path", () => {
-    test
-      .expect(PathPattern.toTanStack("/"))
-      .toBe("")
+    test.expect(PathPattern.toTanStack("/")).toBe("")
   })
 })
 
 test.describe(PathPattern.toHono, () => {
   test.it("converts literal paths", () => {
-    test
-      .expect(PathPattern.toHono("/users"))
-      .toEqual(["/users"])
+    test.expect(PathPattern.toHono("/users")).toEqual(["/users"])
   })
 
   test.it("converts required params", () => {
-    test
-      .expect(PathPattern.toHono("/users/:id"))
-      .toEqual(["/users/:id"])
+    test.expect(PathPattern.toHono("/users/:id")).toEqual(["/users/:id"])
   })
 
   test.it("converts optional params", () => {
-    test
-      .expect(PathPattern.toHono("/users/:id?"))
-      .toEqual(["/users/:id?"])
+    test.expect(PathPattern.toHono("/users/:id?")).toEqual(["/users/:id?"])
   })
 
   test.it("converts required wildcard to unnamed *", () => {
-    test
-      .expect(PathPattern.toHono("/docs/:path+"))
-      .toEqual(["/docs/*"])
+    test.expect(PathPattern.toHono("/docs/:path+")).toEqual(["/docs/*"])
   })
 
   test.it("converts optional wildcard to two routes with unnamed *", () => {
@@ -586,9 +512,7 @@ test.describe(PathPattern.toHono, () => {
   })
 
   test.it("converts root path", () => {
-    test
-      .expect(PathPattern.toHono("/"))
-      .toEqual(["/"])
+    test.expect(PathPattern.toHono("/")).toEqual(["/"])
   })
 })
 
@@ -605,15 +529,11 @@ test.describe(PathPattern.toEffect, () => {
 
 test.describe(PathPattern.toBun, () => {
   test.it("converts literal paths", () => {
-    test
-      .expect(PathPattern.toBun("/users"))
-      .toEqual(["/users"])
+    test.expect(PathPattern.toBun("/users")).toEqual(["/users"])
   })
 
   test.it("converts required params", () => {
-    test
-      .expect(PathPattern.toBun("/users/:id"))
-      .toEqual(["/users/:id"])
+    test.expect(PathPattern.toBun("/users/:id")).toEqual(["/users/:id"])
   })
 
   test.it("expands optional params to two routes", () => {
@@ -623,21 +543,15 @@ test.describe(PathPattern.toBun, () => {
   })
 
   test.it("converts required wildcard to /*", () => {
-    test
-      .expect(PathPattern.toBun("/docs/:path+"))
-      .toEqual(["/docs/*"])
+    test.expect(PathPattern.toBun("/docs/:path+")).toEqual(["/docs/*"])
   })
 
   test.it("expands optional wildcard to two routes", () => {
-    test
-      .expect(PathPattern.toBun("/docs/:path*"))
-      .toEqual(["/docs", "/docs/*"])
+    test.expect(PathPattern.toBun("/docs/:path*")).toEqual(["/docs", "/docs/*"])
   })
 
   test.it("converts root path", () => {
-    test
-      .expect(PathPattern.toBun("/"))
-      .toEqual(["/"])
+    test.expect(PathPattern.toBun("/")).toEqual(["/"])
   })
 
   test.it("expands multiple optional params", () => {

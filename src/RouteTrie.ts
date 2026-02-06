@@ -99,9 +99,8 @@ function collectRoutes(
 
   for (const item of items) {
     const desc = Route.descriptor(item) as { path?: string; method?: string }
-    const currentPath = typeof desc?.path === "string"
-      ? parentPath + desc.path
-      : parentPath
+    const currentPath =
+      typeof desc?.path === "string" ? parentPath + desc.path : parentPath
     const currentMethod = desc?.method ?? parentMethod
 
     if (Route.isRoute(item)) {
@@ -151,8 +150,8 @@ function lookupNode(
       results.push({ route, params })
     }
     if (
-      node.optionalWildcardChild
-      && node.optionalWildcardChild.optionalWildcardName
+      node.optionalWildcardChild &&
+      node.optionalWildcardChild.optionalWildcardName
     ) {
       for (const route of node.optionalWildcardChild.routes) {
         results.push({ route, params })
@@ -174,8 +173,8 @@ function lookupNode(
   }
 
   if (
-    node.requiredWildcardChild
-    && node.requiredWildcardChild.requiredWildcardName
+    node.requiredWildcardChild &&
+    node.requiredWildcardChild.requiredWildcardName
   ) {
     const wildcardValue = segments.join("/")
     const newParams = {
@@ -188,8 +187,8 @@ function lookupNode(
   }
 
   if (
-    node.optionalWildcardChild
-    && node.optionalWildcardChild.optionalWildcardName
+    node.optionalWildcardChild &&
+    node.optionalWildcardChild.optionalWildcardName
   ) {
     const wildcardValue = segments.join("/")
     const newParams = {

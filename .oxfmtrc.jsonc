@@ -1,0 +1,17 @@
+{
+  // Matching previous dprint configuration as closely as possible:
+  // - indentWidth: 2 -> tabWidth: 2 (oxfmt default)
+  // - lineWidth: 80 -> printWidth: 80 (oxfmt defaults to 100)
+  // - newLineKind: "lf" -> endOfLine: "lf" (oxfmt default)
+  // - semiColons: "asi" -> semi: false
+  "printWidth": 80,
+  "tabWidth": 2,
+  "semi": false,
+  "endOfLine": "lf",
+  "ignorePatterns": [
+    "**/node_modules",
+    "**/*-lock.json",
+    "**/package.json",
+    "vscode/*.json",
+  ],
+}

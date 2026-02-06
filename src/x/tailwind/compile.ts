@@ -11,10 +11,7 @@ import * as BunEnhancedResolve from "../../bun/_BunEnhancedResolve"
 
 type AstNode = Parameters<typeof _compileAst>[0][number]
 
-export {
-  Features,
-  Polyfills,
-}
+export { Features, Polyfills }
 
 export type Resolver = (
   id: string,
@@ -231,7 +228,7 @@ async function resolveJsId(
   }
 
   return runResolver(esmResolver, id, base).catch(() =>
-    runResolver(cjsResolver, id, base)
+    runResolver(cjsResolver, id, base),
   )
 }
 
@@ -244,6 +241,6 @@ function runResolver(
     resolver.resolve({}, base, id, {}, (err, result) => {
       if (err) return reject(err)
       resolve(result)
-    })
+    }),
   )
 }

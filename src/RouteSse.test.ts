@@ -12,13 +12,11 @@ import * as RouteMount from "./RouteMount.ts"
 test.describe("Route.sse()", () => {
   test.it("infers format as text", () => {
     RouteMount.get(
-      Route.sse(function*(ctx) {
-        test
-          .expectTypeOf(ctx)
-          .toExtend<{
-            method: "GET"
-            format: "text"
-          }>()
+      Route.sse(function* (ctx) {
+        test.expectTypeOf(ctx).toExtend<{
+          method: "GET"
+          format: "text"
+        }>()
 
         return Stream.make({ data: "hello" })
       }),
@@ -27,12 +25,7 @@ test.describe("Route.sse()", () => {
 
   test.it("accepts object events with data only", () => {
     RouteMount.get(
-      Route.sse(() =>
-        Stream.make(
-          { data: "hello" },
-          { data: "world" },
-        )
-      ),
+      Route.sse(() => Stream.make({ data: "hello" }, { data: "world" })),
     )
   })
 
@@ -42,32 +35,22 @@ test.describe("Route.sse()", () => {
         Stream.make(
           { data: "hello", event: "message" },
           { data: "world", event: "update" },
-        )
+        ),
       ),
     )
   })
 
   test.it("accepts events with retry", () => {
-    RouteMount.get(
-      Route.sse(() =>
-        Stream.make(
-          { data: "hello", retry: 3000 },
-        )
-      ),
-    )
+    RouteMount.get(Route.sse(() => Stream.make({ data: "hello", retry: 3000 })))
   })
 
   test.it("accepts Effect returning Stream", () => {
-    RouteMount.get(
-      Route.sse(
-        Effect.succeed(Stream.make({ data: "hello" })),
-      ),
-    )
+    RouteMount.get(Route.sse(Effect.succeed(Stream.make({ data: "hello" }))))
   })
 
   test.it("accepts generator returning Stream", () => {
     RouteMount.get(
-      Route.sse(function*() {
+      Route.sse(function* () {
         const prefix = yield* Effect.succeed("msg: ")
         return Stream.make({ data: `${prefix}hello` })
       }),
@@ -104,9 +87,7 @@ test.describe("Route.sse()", () => {
 
   test.it("formats events with retry", async () => {
     const handler = RouteHttp.toWebHandler(
-      Route.get(
-        Route.sse(() => Stream.make({ data: "hello", retry: 5000 })),
-      ),
+      Route.get(Route.sse(() => Stream.make({ data: "hello", retry: 5000 }))),
     )
     const response = await Http.fetch(handler, { path: "/events" })
 
@@ -121,25 +102,21 @@ test.describe("Route.sse()", () => {
           Stream.make({
             event: "patch",
             data: "line1\nline2\nline3",
-          })
+          }),
         ),
       ),
     )
     const response = await Http.fetch(handler, { path: "/events" })
 
     const text = await response.text()
-    test.expect(text).toBe(
-      "event: patch\ndata: line1\ndata: line2\ndata: line3\n\n",
-    )
+    test
+      .expect(text)
+      .toBe("event: patch\ndata: line1\ndata: line2\ndata: line3\n\n")
   })
 
   test.it("accepts Stream directly", async () => {
     const handler = RouteHttp.toWebHandler(
-      Route.get(
-        Route.sse(
-          Stream.make({ data: "direct" }),
-        ),
-      ),
+      Route.get(Route.sse(Stream.make({ data: "direct" }))),
     )
     const response = await Http.fetch(handler, { path: "/events" })
 
@@ -156,14 +133,13 @@ test.describe("Route.sse()", () => {
       new MyError(),
     )
 
-    const route = Route.get(
-      Route.sse(stream),
-    )
+    const route = Route.get(Route.sse(stream))
 
     const routes = [...route]
-    type RouteError = (typeof routes)[0] extends
-      Route.Route.Route<any, any, any, infer E, any> ? E
-      : never
+    type RouteError =
+      (typeof routes)[0] extends Route.Route.Route<any, any, any, infer E, any>
+        ? E
+        : never
 
     test.expectTypeOf<RouteError>().toEqualTypeOf<MyError>()
   })
@@ -175,14 +151,13 @@ test.describe("Route.sse()", () => {
       Effect.map(Config, (cfg) => ({ data: cfg.url })),
     )
 
-    const route = Route.get(
-      Route.sse(stream),
-    )
+    const route = Route.get(Route.sse(stream))
 
     const routes = [...route]
-    type RouteContext = (typeof routes)[0] extends
-      Route.Route.Route<any, any, any, any, infer R> ? R
-      : never
+    type RouteContext =
+      (typeof routes)[0] extends Route.Route.Route<any, any, any, any, infer R>
+        ? R
+        : never
 
     test.expectTypeOf<RouteContext>().toEqualTypeOf<Config>()
   })
@@ -212,17 +187,19 @@ test.describe("Route.sse()", () => {
           Stream.make(
             { _tag: "UserCreated", id: 123, name: "Alice" },
             { _tag: "UserUpdated", id: 123, active: true },
-          )
+          ),
         ),
       ),
     )
     const response = await Http.fetch(handler, { path: "/events" })
 
     const text = await response.text()
-    test.expect(text).toBe(
-      `event: UserCreated\ndata: {"_tag":"UserCreated","id":123,"name":"Alice"}\n\n`
-        + `event: UserUpdated\ndata: {"_tag":"UserUpdated","id":123,"active":true}\n\n`,
-    )
+    test
+      .expect(text)
+      .toBe(
+        `event: UserCreated\ndata: {"_tag":"UserCreated","id":123,"name":"Alice"}\n\n` +
+          `event: UserUpdated\ndata: {"_tag":"UserUpdated","id":123,"active":true}\n\n`,
+      )
   })
 
   test.it("handles mixed tagged and regular events", async () => {
@@ -233,17 +210,19 @@ test.describe("Route.sse()", () => {
             { data: "plain message" },
             { _tag: "Notification", text: "hello" },
             { data: "another", event: "custom" },
-          )
+          ),
         ),
       ),
     )
     const response = await Http.fetch(handler, { path: "/events" })
 
     const text = await response.text()
-    test.expect(text).toBe(
-      `data: plain message\n\n`
-        + `event: Notification\ndata: {"_tag":"Notification","text":"hello"}\n\n`
-        + `event: custom\ndata: another\n\n`,
-    )
+    test
+      .expect(text)
+      .toBe(
+        `data: plain message\n\n` +
+          `event: Notification\ndata: {"_tag":"Notification","text":"hello"}\n\n` +
+          `event: custom\ndata: another\n\n`,
+      )
   })
 })

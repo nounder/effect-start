@@ -6,7 +6,8 @@ export function getBaseSchemaAST(schema: Schema.Schema.Any): SchemaAST.AST {
   let current = schema.ast
 
   while (
-    SchemaAST.isRefinement(current) || SchemaAST.isTransformation(current)
+    SchemaAST.isRefinement(current) ||
+    SchemaAST.isTransformation(current)
   ) {
     current = current.from
   }

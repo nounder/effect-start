@@ -50,35 +50,38 @@ export type RequirementType = "allowed" | "must" | "denied" | "exclusive"
 export type Requirement =
   | RequirementType
   | {
-    key: Exclude<RequirementType, "exclusive">
-    value?: Exclude<RequirementType, "exclusive">
-  }
+      key: Exclude<RequirementType, "exclusive">
+      value?: Exclude<RequirementType, "exclusive">
+    }
   | {
-    key?: Exclude<RequirementType, "exclusive">
-    value: Exclude<RequirementType, "exclusive">
-  }
+      key?: Exclude<RequirementType, "exclusive">
+      value: Exclude<RequirementType, "exclusive">
+    }
 
 type Rx<B extends boolean> = (...args: any[]) => B extends true ? unknown : void
 
 type ReqField<R, K extends "key" | "value", Return> = R extends
   | "must"
-  | { [P in K]: "must" } ? Return
-  : R extends "denied" | { [P in K]: "denied" } ? undefined
-  : R extends
-    | "allowed"
-    | { [P in K]: "allowed" }
-    | (K extends keyof R ? never : R) ? Return | undefined
-  : never
+  | { [P in K]: "must" }
+  ? Return
+  : R extends "denied" | { [P in K]: "denied" }
+    ? undefined
+    : R extends
+          | "allowed"
+          | { [P in K]: "allowed" }
+          | (K extends keyof R ? never : R)
+      ? Return | undefined
+      : never
 
 type ReqFields<R extends Requirement, B extends boolean> = R extends "exclusive"
   ?
-    | { key: string; value: undefined; rx: undefined }
-    | { key: undefined; value: string; rx: Rx<B> }
+      | { key: string; value: undefined; rx: undefined }
+      | { key: undefined; value: string; rx: Rx<B> }
   : {
-    key: ReqField<R, "key", string>
-    value: ReqField<R, "value", string>
-    rx: ReqField<R, "value", Rx<B>>
-  }
+      key: ReqField<R, "key", string>
+      value: ReqField<R, "value", string>
+      rx: ReqField<R, "value", Rx<B>>
+    }
 
 export type AttributeContext<
   R extends Requirement = Requirement,
@@ -181,7 +184,7 @@ const ReactiveFlags = {
   Dirty: 1 << 4,
   Pending: 1 << 5,
 } as const
-type ReactiveFlags = typeof ReactiveFlags[keyof typeof ReactiveFlags]
+type ReactiveFlags = (typeof ReactiveFlags)[keyof typeof ReactiveFlags]
 type ReactiveFlags_None = typeof ReactiveFlags.None
 type ReactiveFlags_Mutable = typeof ReactiveFlags.Mutable
 type ReactiveFlags_Watching = typeof ReactiveFlags.Watching
@@ -281,7 +284,7 @@ const flush = () => {
   while (notifyIndex < queuedEffectsLength) {
     const effect = queuedEffects[notifyIndex]!
     queuedEffects[notifyIndex++] = undefined
-    run(effect, effect.flags_ &= ~EffectFlags.Queued)
+    run(effect, (effect.flags_ &= ~EffectFlags.Queued))
   }
   notifyIndex = 0
   queuedEffectsLength = 0
@@ -326,8 +329,8 @@ const notify = (e: AlienEffect): void => {
 
 const run = (e: AlienEffect, flags: ReactiveFlags): void => {
   if (
-    flags & (16 satisfies ReactiveFlags_Dirty)
-    || (flags & (32 satisfies ReactiveFlags_Pending) && checkDirty(e.deps_!, e))
+    flags & (16 satisfies ReactiveFlags_Dirty) ||
+    (flags & (32 satisfies ReactiveFlags_Pending) && checkDirty(e.deps_!, e))
   ) {
     startPeeking(e)
     startTracking(e)
@@ -349,7 +352,7 @@ const run = (e: AlienEffect, flags: ReactiveFlags): void => {
     const dep = link.dep_
     const depFlags = dep.flags_
     if (depFlags & EffectFlags.Queued) {
-      run(dep as AlienEffect, dep.flags_ = depFlags & ~EffectFlags.Queued)
+      run(dep as AlienEffect, (dep.flags_ = depFlags & ~EffectFlags.Queued))
     }
     link = link.nextDep_
   }
@@ -388,8 +391,8 @@ const signalOper = <T>(s: AlienSignal<T>, ...value: [T]): T | boolean => {
 const computedOper = <T>(c: AlienComputed<T>): T => {
   const flags = c.flags_
   if (
-    flags & (16 satisfies ReactiveFlags_Dirty)
-    || (flags & (32 satisfies ReactiveFlags_Pending) && checkDirty(c.deps_!, c))
+    flags & (16 satisfies ReactiveFlags_Dirty) ||
+    (flags & (32 satisfies ReactiveFlags_Pending) && checkDirty(c.deps_!, c))
   ) {
     if (updateComputed(c)) {
       const subs = c.subs_
@@ -433,7 +436,8 @@ const link = (dep: ReactiveNode, sub: ReactiveNode): void => {
   if (prevSub && prevSub.version_ === version && prevSub.sub_ === sub) {
     return
   }
-  const newLink = (sub.depsTail_ =
+  const newLink =
+    (sub.depsTail_ =
     dep.subsTail_ =
       {
         version_: version,
@@ -508,8 +512,8 @@ const propagate = (link: Link): void => {
 
     if (
       !(
-        flags
-        & (60 as
+        flags &
+        (60 as
           | ReactiveFlags_RecursedCheck
           | ReactiveFlags_Recursed
           | ReactiveFlags_Dirty
@@ -522,14 +526,15 @@ const propagate = (link: Link): void => {
     ) {
       flags = 0 satisfies ReactiveFlags_None
     } else if (!(flags & (4 satisfies ReactiveFlags_RecursedCheck))) {
-      sub.flags_ = (flags & ~(8 satisfies ReactiveFlags_Recursed))
-        | (32 satisfies ReactiveFlags_Pending)
+      sub.flags_ =
+        (flags & ~(8 satisfies ReactiveFlags_Recursed)) |
+        (32 satisfies ReactiveFlags_Pending)
     } else if (
-      !(flags & (48 as ReactiveFlags_Dirty | ReactiveFlags_Pending))
-      && isValidLink(link, sub)
+      !(flags & (48 as ReactiveFlags_Dirty | ReactiveFlags_Pending)) &&
+      isValidLink(link, sub)
     ) {
-      sub.flags_ = flags
-        | (40 as ReactiveFlags_Recursed | ReactiveFlags_Pending)
+      sub.flags_ =
+        flags | (40 as ReactiveFlags_Recursed | ReactiveFlags_Pending)
       flags &= 1 satisfies ReactiveFlags_Mutable
     } else {
       flags = 0 satisfies ReactiveFlags_None
@@ -572,12 +577,13 @@ const propagate = (link: Link): void => {
 const startTracking = (sub: ReactiveNode): void => {
   version++
   sub.depsTail_ = undefined
-  sub.flags_ = (sub.flags_
-    & ~(56 as
-      | ReactiveFlags_Recursed
-      | ReactiveFlags_Dirty
-      | ReactiveFlags_Pending))
-    | (4 satisfies ReactiveFlags_RecursedCheck)
+  sub.flags_ =
+    (sub.flags_ &
+      ~(56 as
+        | ReactiveFlags_Recursed
+        | ReactiveFlags_Dirty
+        | ReactiveFlags_Pending)) |
+    (4 satisfies ReactiveFlags_RecursedCheck)
 }
 
 const endTracking = (sub: ReactiveNode): void => {
@@ -601,8 +607,8 @@ const checkDirty = (link: Link, sub: ReactiveNode): boolean => {
     if (sub.flags_ & (16 satisfies ReactiveFlags_Dirty)) {
       dirty = true
     } else if (
-      (flags & (17 as ReactiveFlags_Mutable | ReactiveFlags_Dirty))
-        === (17 as ReactiveFlags_Mutable | ReactiveFlags_Dirty)
+      (flags & (17 as ReactiveFlags_Mutable | ReactiveFlags_Dirty)) ===
+      (17 as ReactiveFlags_Mutable | ReactiveFlags_Dirty)
     ) {
       if (update(dep as AlienSignal | AlienComputed)) {
         const subs = dep.subs_!
@@ -612,8 +618,8 @@ const checkDirty = (link: Link, sub: ReactiveNode): boolean => {
         dirty = true
       }
     } else if (
-      (flags & (33 as ReactiveFlags_Mutable | ReactiveFlags_Pending))
-        === (33 as ReactiveFlags_Mutable | ReactiveFlags_Pending)
+      (flags & (33 as ReactiveFlags_Mutable | ReactiveFlags_Pending)) ===
+      (33 as ReactiveFlags_Mutable | ReactiveFlags_Pending)
     ) {
       if (link.nextSub_ || link.prevSub_) {
         stack = { value_: link, prev_: stack }
@@ -669,8 +675,8 @@ const shallowPropagate = (link: Link): void => {
     const sub = link.sub_
     const flags = sub.flags_
     if (
-      (flags & (48 as ReactiveFlags_Pending | ReactiveFlags_Dirty))
-        === (32 satisfies ReactiveFlags_Pending)
+      (flags & (48 as ReactiveFlags_Pending | ReactiveFlags_Dirty)) ===
+      (32 satisfies ReactiveFlags_Pending)
     ) {
       sub.flags_ = flags | (16 satisfies ReactiveFlags_Dirty)
       if (flags & (2 satisfies ReactiveFlags_Watching)) {
@@ -846,8 +852,8 @@ const mergeInner = (
   if (isPojo(patch)) {
     if (
       !(
-        hasOwn(targetParent, target)
-        && (isPojo(targetParent[target]) || Array.isArray(targetParent[target]))
+        hasOwn(targetParent, target) &&
+        (isPojo(targetParent[target]) || Array.isArray(targetParent[target]))
       )
     ) {
       targetParent[target] = {}
@@ -918,8 +924,7 @@ const error = (
   const r = snake(reason)
   const q = new URLSearchParams({
     metadata: JSON.stringify(metadata),
-  })
-    .toString()
+  }).toString()
   const c = JSON.stringify(metadata, null, 2)
   e.message = `${reason}\nMore info: ${url}/${r}?${q}\nContext: ${c}`
   return e
@@ -970,28 +975,25 @@ export const action = <T>(plugin: ActionPlugin<T>): void => {
   actionPlugins.set(plugin.name, plugin)
 }
 
-document.addEventListener(
-  DATASTAR_FETCH_EVENT,
-  ((
-    evt: CustomEvent<DatastarFetchEvent>,
-  ) => {
-    const plugin = watcherPlugins.get(evt.detail.type)
-    if (plugin) {
-      plugin.apply(
-        {
-          error: error.bind(0, {
-            plugin: { type: "watcher", name: plugin.name },
-            element: {
-              id: (evt.target as Element).id,
-              tag: (evt.target as Element).tagName,
-            },
-          }),
-        },
-        evt.detail.argsRaw,
-      )
-    }
-  }) as EventListener,
-)
+document.addEventListener(DATASTAR_FETCH_EVENT, ((
+  evt: CustomEvent<DatastarFetchEvent>,
+) => {
+  const plugin = watcherPlugins.get(evt.detail.type)
+  if (plugin) {
+    plugin.apply(
+      {
+        error: error.bind(0, {
+          plugin: { type: "watcher", name: plugin.name },
+          element: {
+            id: (evt.target as Element).id,
+            tag: (evt.target as Element).tagName,
+          },
+        }),
+      },
+      evt.detail.argsRaw,
+    )
+  }
+}) as EventListener)
 
 export const watcher = (plugin: WatcherPlugin): void => {
   watcherPlugins.set(plugin.name, plugin)
@@ -1031,15 +1033,13 @@ const applyEls = (els: Iterable<HTMLOrSVG>, onlyNew?: boolean): void => {
 }
 
 const observe = (mutations: MutationRecord[]) => {
-  for (
-    const {
-      target,
-      type,
-      attributeName,
-      addedNodes,
-      removedNodes,
-    } of mutations
-  ) {
+  for (const {
+    target,
+    type,
+    attributeName,
+    addedNodes,
+    removedNodes,
+  } of mutations) {
     if (type === "childList") {
       for (const node of removedNodes) {
         if (isHTMLOrSVG(node)) {
@@ -1055,10 +1055,10 @@ const observe = (mutations: MutationRecord[]) => {
         }
       }
     } else if (
-      type === "attributes"
-      && attributeName!.startsWith("data-")
-      && isHTMLOrSVG(target)
-      && !shouldIgnore(target)
+      type === "attributes" &&
+      attributeName!.startsWith("data-") &&
+      isHTMLOrSVG(target) &&
+      !shouldIgnore(target)
     ) {
       const key = attributeName!.slice(5)
       const value = target.getAttribute(attributeName!)
@@ -1151,16 +1151,18 @@ const applyAttributePlugin = (
       rx: undefined,
     } as AttributeContext
 
-    const keyReq = (plugin.requirement
-      && (typeof plugin.requirement === "string"
-        ? plugin.requirement
-        : plugin.requirement.key))
-      || "allowed"
-    const valueReq = (plugin.requirement
-      && (typeof plugin.requirement === "string"
-        ? plugin.requirement
-        : plugin.requirement.value))
-      || "allowed"
+    const keyReq =
+      (plugin.requirement &&
+        (typeof plugin.requirement === "string"
+          ? plugin.requirement
+          : plugin.requirement.key)) ||
+      "allowed"
+    const valueReq =
+      (plugin.requirement &&
+        (typeof plugin.requirement === "string"
+          ? plugin.requirement
+          : plugin.requirement.value)) ||
+      "allowed"
 
     const keyProvided = key !== undefined && key !== null && key !== ""
     const valueProvided = value !== undefined && value !== null && value !== ""
@@ -1274,9 +1276,10 @@ const genRx = (
     .replace(/\$([a-zA-Z_\d]\w*(?:[.-]\w+)*)/g, (_, signalName) =>
       signalName
         .split(".")
-        .reduce((acc: string, part: string) => `${acc}['${part}']`, "$"))
+        .reduce((acc: string, part: string) => `${acc}['${part}']`, "$"),
+    )
 
-  expr = expr.replaceAll(/@([A-Za-z_$][\w$]*)\(/g, "__action(\"$1\",evt,")
+  expr = expr.replaceAll(/@([A-Za-z_$][\w$]*)\(/g, '__action("$1",evt,')
 
   for (const [k, v] of escaped) {
     expr = expr.replace(k, v)

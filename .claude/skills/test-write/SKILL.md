@@ -32,17 +32,11 @@ Never use `test.test` - always use `test.it`.
 Put each method call on a new line with 2-space indentation:
 
 ```ts
-test
-  .expect(value)
-  .toBe(expected)
+test.expect(value).toBe(expected)
 
-test
-  .expect(result)
-  .toEqual({ foo: "bar" })
+test.expect(result).toEqual({ foo: "bar" })
 
-test
-  .expect(() => riskyOperation())
-  .toThrow("error message")
+test.expect(() => riskyOperation()).toThrow("error message")
 ```
 
 ## Type Assertions with expect-type
@@ -51,19 +45,13 @@ Use `expect-type` for compile-time type checking. Inline types directly - no typ
 
 ```ts
 // Check a value matches a type
-type
-  .expectTypeOf(someValue)
-  .toMatchObjectType<ExpectedType>()
+type.expectTypeOf(someValue).toMatchObjectType<ExpectedType>()
 
 // Check two types are exactly equal
-type
-  .expectTypeOf<ActualType>()
-  .toMatchObjectType<ExpectedType>()
+type.expectTypeOf<ActualType>().toMatchObjectType<ExpectedType>()
 
 // Check a type extends another (less strict)
-type
-  .expectTypeOf<SubType>()
-  .toExtend<SuperType>()
+type.expectTypeOf<SubType>().toExtend<SuperType>()
 ```
 
 ## Variable names

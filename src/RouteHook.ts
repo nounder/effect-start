@@ -9,13 +9,15 @@ export type FilterResult<BOut, E, R> =
 
 export type FilterHandlerInput<BIn, BOut, E, R> =
   | FilterResult<BOut, E, R>
-  | ((context: BIn) =>
-    | FilterResult<BOut, E, R>
-    | Generator<
-      Utils.YieldWrap<Effect.Effect<unknown, E, R>>,
-      { context: BOut },
-      unknown
-    >)
+  | ((
+      context: BIn,
+    ) =>
+      | FilterResult<BOut, E, R>
+      | Generator<
+          Utils.YieldWrap<Effect.Effect<unknown, E, R>>,
+          { context: BOut },
+          unknown
+        >)
 
 export function filter<
   D extends Route.RouteDescriptor.Any,
@@ -25,44 +27,34 @@ export function filter<
   E = never,
   R = never,
   BIn = D & SB & Route.ExtractBindings<P>,
->(
-  filterHandler: FilterHandlerInput<BIn, BOut, E, R>,
-) {
+>(filterHandler: FilterHandlerInput<BIn, BOut, E, R>) {
   const normalized = normalizeFilterHandler(filterHandler)
 
-  return function(
+  return function (
     self: Route.RouteSet.RouteSet<D, SB, P>,
   ): Route.RouteSet.RouteSet<
     D,
     SB,
-    [
-      ...P,
-      Route.Route.Route<{}, BOut, unknown, E, R>,
-    ]
+    [...P, Route.Route.Route<{}, BOut, unknown, E, R>]
   > {
-    const route = Route.make<
-      {},
-      BOut,
-      unknown,
-      E,
-      R
-    >((context: BOut, next: (ctx?: Partial<BOut>) => Entity.Entity<unknown>) =>
-      Effect.gen(function*() {
-        const filterResult = yield* normalized(context as unknown as BIn)
+    const route = Route.make<{}, BOut, unknown, E, R>(
+      (context: BOut, next: (ctx?: Partial<BOut>) => Entity.Entity<unknown>) =>
+        Effect.gen(function* () {
+          const filterResult = yield* normalized(context as unknown as BIn)
 
-        const mergedContext = filterResult
-          ? { ...context, ...filterResult.context }
-          : context
+          const mergedContext = filterResult
+            ? { ...context, ...filterResult.context }
+            : context
 
-        return yield* Entity.resolve(next(mergedContext as Partial<BOut>))
-      })
+          return yield* Entity.resolve(next(mergedContext as Partial<BOut>))
+        }),
     )
 
     return Route.set(
-      [
-        ...Route.items(self),
-        route,
-      ] as [...P, Route.Route.Route<{}, BOut, unknown, E, R>],
+      [...Route.items(self), route] as [
+        ...P,
+        Route.Route.Route<{}, BOut, unknown, E, R>,
+      ],
       Route.descriptor(self),
     )
   }
@@ -70,10 +62,10 @@ export function filter<
 
 function isGenerator(value: unknown): value is Generator {
   return (
-    typeof value === "object"
-    && value !== null
-    && Symbol.iterator in value
-    && typeof (value as Generator).next === "function"
+    typeof value === "object" &&
+    value !== null &&
+    Symbol.iterator in value &&
+    typeof (value as Generator).next === "function"
   )
 }
 
@@ -89,7 +81,7 @@ function normalizeFilterHandler<BIn, BOut, E, R>(
       }
 
       if (isGenerator(result)) {
-        return Effect.gen(function*() {
+        return Effect.gen(function* () {
           return yield* result
         }) as Effect.Effect<{ context: BOut }, E, R>
       }

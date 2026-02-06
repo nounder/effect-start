@@ -12,8 +12,8 @@ import * as PlatformError from "./PlatformError.ts"
 export type DevelopmentEvent =
   | FileSystem.WatchEvent
   | {
-    readonly _tag: "Reload"
-  }
+      readonly _tag: "Reload"
+    }
 
 const devState = GlobalValue.globalValue(
   Symbol.for("effect-start/Development"),
@@ -48,13 +48,11 @@ export const filterDirectory = (event: FileSystem.WatchEvent): boolean => {
   return event.path.endsWith("/")
 }
 
-export const watchSource = (
-  opts?: {
-    path?: string
-    recursive?: boolean
-    filter?: (event: FileSystem.WatchEvent) => boolean
-  },
-): Stream.Stream<
+export const watchSource = (opts?: {
+  path?: string
+  recursive?: boolean
+  filter?: (event: FileSystem.WatchEvent) => boolean
+}): Stream.Stream<
   FileSystem.WatchEvent,
   PlatformError.PlatformError,
   FileSystem.FileSystem
@@ -64,9 +62,8 @@ export const watchSource = (
 
   return Function.pipe(
     Stream.unwrap(
-      Effect.map(
-        FileSystem.FileSystem,
-        fs => fs.watch(baseDir, { recursive: opts?.recursive ?? true }),
+      Effect.map(FileSystem.FileSystem, (fs) =>
+        fs.watch(baseDir, { recursive: opts?.recursive ?? true }),
       ),
     ),
     customFilter ? Stream.filter(customFilter) : Function.identity,
@@ -80,44 +77,39 @@ export const watchSource = (
   )
 }
 
-export const watch = (
-  opts?: {
-    path?: string
-    recursive?: boolean
-    filter?: (event: FileSystem.WatchEvent) => boolean
-  },
-) =>
-  Effect
-    .gen(function*() {
-      devState.count++
+export const watch = (opts?: {
+  path?: string
+  recursive?: boolean
+  filter?: (event: FileSystem.WatchEvent) => boolean
+}) =>
+  Effect.gen(function* () {
+    devState.count++
 
-      if (devState.count === 1) {
-        const pubsub = yield* PubSub.unbounded<DevelopmentEvent>()
-        devState.pubsub = pubsub
+    if (devState.count === 1) {
+      const pubsub = yield* PubSub.unbounded<DevelopmentEvent>()
+      devState.pubsub = pubsub
 
-        yield* Function.pipe(
-          watchSource({
-            path: opts?.path,
-            recursive: opts?.recursive,
-            filter: opts?.filter ?? filterSourceFiles,
-          }),
-          Stream.runForEach((event) => PubSub.publish(pubsub, event)),
-          Effect.fork,
-        )
-      } else {
-        yield* PubSub.publish(devState.pubsub!, { _tag: "Reload" })
-      }
+      yield* Function.pipe(
+        watchSource({
+          path: opts?.path,
+          recursive: opts?.recursive,
+          filter: opts?.filter ?? filterSourceFiles,
+        }),
+        Stream.runForEach((event) => PubSub.publish(pubsub, event)),
+        Effect.fork,
+      )
+    } else {
+      yield* PubSub.publish(devState.pubsub!, { _tag: "Reload" })
+    }
 
-      return { events: devState.pubsub! } satisfies DevelopmentService
-    })
+    return { events: devState.pubsub! } satisfies DevelopmentService
+  })
 
-export const layerWatch = (
-  opts?: {
-    path?: string
-    recursive?: boolean
-    filter?: (event: FileSystem.WatchEvent) => boolean
-  },
-) => Layer.scoped(Development, watch(opts))
+export const layerWatch = (opts?: {
+  path?: string
+  recursive?: boolean
+  filter?: (event: FileSystem.WatchEvent) => boolean
+}) => Layer.scoped(Development, watch(opts))
 
 export const stream = (): Stream.Stream<DevelopmentEvent> =>
   Stream.unwrap(

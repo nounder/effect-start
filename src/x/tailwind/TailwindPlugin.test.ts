@@ -9,10 +9,9 @@ function extractClassNamesBroad(source: string): Set<string> {
     /\b[a-zA-Z][a-zA-Z0-9_:-]*(?:\[[^\]]*\])?(?:\/[0-9]+)?/g
 
   return new Set(
-    Array
-      .from(source.matchAll(classTokenRegex))
-      .map(match => match[0])
-      .filter(token => CLASS_NAME_REGEX.test(token)),
+    Array.from(source.matchAll(classTokenRegex))
+      .map((match) => match[0])
+      .filter((token) => CLASS_NAME_REGEX.test(token)),
   )
 }
 
@@ -21,14 +20,11 @@ test.describe(`${extractClassNames.name}`, () => {
     const source = `<div class="bg-red-500 text-white">Hello</div>`
     const result = extractClassNames(source)
 
-    test
-      .expect([...result].sort())
-      .toEqual(["bg-red-500", "text-white"])
+    test.expect([...result].sort()).toEqual(["bg-red-500", "text-white"])
   })
 
   test.it("Basic JSX className attributes", () => {
-    const source =
-      `<div className="flex items-center justify-between">Content</div>`
+    const source = `<div className="flex items-center justify-between">Content</div>`
     const result = extractClassNames(source)
 
     test
@@ -50,18 +46,14 @@ test.describe(`${extractClassNames.name}`, () => {
     const result = extractClassNames(source)
 
     // Should extract valid static class names from template literals
-    test
-      .expect([...result].sort())
-      .toEqual(["text-lg"])
+    test.expect([...result].sort()).toEqual(["text-lg"])
   })
 
   test.it("JSX with quoted strings", () => {
     const source = `<div className={"p-4 m-2"}>Static in braces</div>`
     const result = extractClassNames(source)
 
-    test
-      .expect([...result].sort())
-      .toEqual(["m-2", "p-4"])
+    test.expect([...result].sort()).toEqual(["m-2", "p-4"])
   })
 
   test.it("Multi-line attributes", () => {
@@ -74,9 +66,7 @@ test.describe(`${extractClassNames.name}`, () => {
     >Grid</div>`
     const result = extractClassNames(source)
 
-    test
-      .expect([...result].sort())
-      .toEqual(["gap-4", "grid", "grid-cols-3"])
+    test.expect([...result].sort()).toEqual(["gap-4", "grid", "grid-cols-3"])
   })
 
   test.it("Whitespace variations around equals", () => {
@@ -90,15 +80,12 @@ test.describe(`${extractClassNames.name}`, () => {
     for (const source of cases) {
       const result = extractClassNames(source)
 
-      test
-        .expect(result.size)
-        .toBe(1)
+      test.expect(result.size).toBe(1)
     }
   })
 
   test.it("Arbitrary value classes", () => {
-    const source =
-      `<div className="w-[32px] bg-[#ff0000] text-[1.5rem]">Arbitrary</div>`
+    const source = `<div className="w-[32px] bg-[#ff0000] text-[1.5rem]">Arbitrary</div>`
     const result = extractClassNames(source)
 
     test
@@ -110,14 +97,11 @@ test.describe(`${extractClassNames.name}`, () => {
     const source = `<div className="w-1/2 h-3/4">Fractions</div>`
     const result = extractClassNames(source)
 
-    test
-      .expect([...result].sort())
-      .toEqual(["h-3/4", "w-1/2"])
+    test.expect([...result].sort()).toEqual(["h-3/4", "w-1/2"])
   })
 
   test.it("Complex Tailwind classes", () => {
-    const source =
-      `<div className="sm:w-1/2 md:w-1/3 lg:w-1/4 hover:bg-gray-100 focus:ring-2">Responsive</div>`
+    const source = `<div className="sm:w-1/2 md:w-1/3 lg:w-1/4 hover:bg-gray-100 focus:ring-2">Responsive</div>`
     const result = extractClassNames(source)
 
     test
@@ -132,38 +116,29 @@ test.describe(`${extractClassNames.name}`, () => {
   })
 
   test.it("Should ignore similar attribute names", () => {
-    const source =
-      `<div data-class="should-ignore" myclass="also-ignore" class="keep-this">Test</div>`
+    const source = `<div data-class="should-ignore" myclass="also-ignore" class="keep-this">Test</div>`
     const result = extractClassNames(source)
 
-    test
-      .expect([...result])
-      .toEqual(["keep-this"])
+    test.expect([...result]).toEqual(["keep-this"])
   })
 
   test.it("Should handle case sensitivity", () => {
-    const source =
-      `<div Class="uppercase-class" class="lowercase-class">Mixed case</div>`
+    const source = `<div Class="uppercase-class" class="lowercase-class">Mixed case</div>`
     const result = extractClassNames(source)
 
     // Our current implementation only matches lowercase 'class'
-    test
-      .expect([...result])
-      .toEqual(["lowercase-class"])
+    test.expect([...result]).toEqual(["lowercase-class"])
   })
 
   test.it("Empty class attributes", () => {
     const source = `<div class="" className=''>Empty</div>`
     const result = extractClassNames(source)
 
-    test
-      .expect(result.size)
-      .toBe(0)
+    test.expect(result.size).toBe(0)
   })
 
   test.it("Classes with special characters", () => {
-    const source =
-      `<div className="group-hover:text-blue-500 peer-focus:ring-2">Special chars</div>`
+    const source = `<div className="group-hover:text-blue-500 peer-focus:ring-2">Special chars</div>`
     const result = extractClassNames(source)
 
     test
@@ -178,9 +153,7 @@ test.describe(`${extractClassNames.name}`, () => {
     `
     const result = extractClassNames(source)
 
-    test
-      .expect([...result])
-      .toEqual(["real-class"])
+    test.expect([...result]).toEqual(["real-class"])
   })
 
   test.it("Should not match classes in strings", () => {
@@ -190,9 +163,7 @@ test.describe(`${extractClassNames.name}`, () => {
     `
     const result = extractClassNames(source)
 
-    test
-      .expect([...result])
-      .toEqual(["real-class"])
+    test.expect([...result]).toEqual(["real-class"])
   })
 
   test.it("Complex JSX expressions should be ignored", () => {
@@ -205,9 +176,7 @@ test.describe(`${extractClassNames.name}`, () => {
     const result = extractClassNames(source)
 
     // Only the static class should match with our strict implementation
-    test
-      .expect([...result])
-      .toEqual(["static-class"])
+    test.expect([...result]).toEqual(["static-class"])
   })
 
   test.it("Vue.js class bindings should be ignored", () => {
@@ -219,9 +188,7 @@ test.describe(`${extractClassNames.name}`, () => {
     const result = extractClassNames(source)
 
     // Only static class should match
-    test
-      .expect([...result])
-      .toEqual(["static-vue-class"])
+    test.expect([...result]).toEqual(["static-vue-class"])
   })
 
   test.it("Svelte class directives should be ignored", () => {
@@ -231,14 +198,11 @@ test.describe(`${extractClassNames.name}`, () => {
     `
     const result = extractClassNames(source)
 
-    test
-      .expect([...result])
-      .toEqual(["static-svelte-class"])
+    test.expect([...result]).toEqual(["static-svelte-class"])
   })
 
   test.it("Escaped quotes should be handled", () => {
-    const source =
-      `<div class="text-sm before:content-['Hello']">Escaped quotes</div>`
+    const source = `<div class="text-sm before:content-['Hello']">Escaped quotes</div>`
     const result = extractClassNames(source)
 
     test
@@ -257,18 +221,13 @@ test.describe(`${extractClassNames.name}`, () => {
     const strictResult = extractClassNames(source)
 
     // Broad should pick up more tokens
-    test
-      .expect(broadResult.size)
-      .toBeGreaterThan(strictResult.size)
+    test.expect(broadResult.size).toBeGreaterThan(strictResult.size)
     // Strict should only have the actual class names
-    test
-      .expect([...strictResult].sort())
-      .toEqual(["bg-red-500", "text-white"])
+    test.expect([...strictResult].sort()).toEqual(["bg-red-500", "text-white"])
   })
 
   test.it("Component names with dots", () => {
-    const source =
-      `<Toast.Toast class="toast toast-top toast-center fixed top-8 z-10">Content</Toast.Toast>`
+    const source = `<Toast.Toast class="toast toast-top toast-center fixed top-8 z-10">Content</Toast.Toast>`
     const result = extractClassNames(source)
 
     test
@@ -287,13 +246,7 @@ test.describe(`${extractClassNames.name}`, () => {
 
     test
       .expect([...result].sort())
-      .toEqual([
-        "bg-red-500",
-        "border-2",
-        "flex",
-        "items-center",
-        "text-lg",
-      ])
+      .toEqual(["bg-red-500", "border-2", "flex", "items-center", "text-lg"])
   })
 
   test.it("Conditional JSX with Toast component", () => {
@@ -326,8 +279,6 @@ test.describe(`${extractClassNames.name}`, () => {
     const source = `<div class={\`toast \${props.class ?? ""}\`}>Content</div>`
     const result = extractClassNames(source)
 
-    test
-      .expect([...result].sort())
-      .toEqual(["toast"])
+    test.expect([...result].sort()).toEqual(["toast"])
   })
 })

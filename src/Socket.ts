@@ -4,7 +4,9 @@
 import * as Predicate from "effect/Predicate"
 import * as PlatformError from "./PlatformError.ts"
 
-export const SocketErrorTypeId: unique symbol = Symbol.for("@effect/platform/Socket/SocketError")
+export const SocketErrorTypeId: unique symbol = Symbol.for(
+  "@effect/platform/Socket/SocketError",
+)
 
 export type SocketErrorTypeId = typeof SocketErrorTypeId
 
@@ -13,7 +15,10 @@ export const isSocketError = (u: unknown): u is SocketError =>
 
 export type SocketError = SocketGenericError | SocketCloseError
 
-export class SocketGenericError extends PlatformError.TypeIdError(SocketErrorTypeId, "SocketError")<{
+export class SocketGenericError extends PlatformError.TypeIdError(
+  SocketErrorTypeId,
+  "SocketError",
+)<{
   readonly reason: "Write" | "Read" | "Open" | "OpenTimeout"
   readonly cause: unknown
 }> {
@@ -22,7 +27,10 @@ export class SocketGenericError extends PlatformError.TypeIdError(SocketErrorTyp
   }
 }
 
-export class SocketCloseError extends PlatformError.TypeIdError(SocketErrorTypeId, "SocketError")<{
+export class SocketCloseError extends PlatformError.TypeIdError(
+  SocketErrorTypeId,
+  "SocketError",
+)<{
   readonly reason: "Close"
   readonly code: number
   readonly closeReason?: string | undefined
@@ -32,7 +40,7 @@ export class SocketCloseError extends PlatformError.TypeIdError(SocketErrorTypeI
   }
 
   static isClean(isClean: (code: number) => boolean) {
-    return function(u: unknown): u is SocketCloseError {
+    return function (u: unknown): u is SocketCloseError {
       return SocketCloseError.is(u) && isClean(u.code)
     }
   }
@@ -45,4 +53,5 @@ export class SocketCloseError extends PlatformError.TypeIdError(SocketErrorTypeI
   }
 }
 
-export const defaultCloseCodeIsError = (code: number) => code !== 1000 && code !== 1006
+export const defaultCloseCodeIsError = (code: number) =>
+  code !== 1000 && code !== 1006

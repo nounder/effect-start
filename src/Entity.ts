@@ -24,10 +24,7 @@ export type Headers = {
   [header: string]: string | null | undefined
 }
 
-export interface Entity<
-  T = unknown,
-  E = never,
-> extends Pipeable.Pipeable {
+export interface Entity<T = unknown, E = never> extends Pipeable.Pipeable {
   readonly [TypeId]: TypeId
   readonly body: T
   readonly headers: Headers
@@ -39,18 +36,21 @@ export interface Entity<
    */
   readonly url: string | undefined
   readonly status: number | undefined
-  readonly text: T extends string ? Effect.Effect<T, ParseResult.ParseError | E>
+  readonly text: T extends string
+    ? Effect.Effect<T, ParseResult.ParseError | E>
     : Effect.Effect<string, ParseResult.ParseError | E>
-  readonly json: [T] extends [Effect.Effect<infer A, any, any>] ? Effect.Effect<
-      A extends string | Uint8Array | ArrayBuffer ? unknown : A,
-      ParseResult.ParseError | E
-    >
+  readonly json: [T] extends [Effect.Effect<infer A, any, any>]
+    ? Effect.Effect<
+        A extends string | Uint8Array | ArrayBuffer ? unknown : A,
+        ParseResult.ParseError | E
+      >
     : [T] extends [Stream.Stream<any, any, any>]
       ? Effect.Effect<unknown, ParseResult.ParseError | E>
-    : [T] extends [string | Uint8Array | ArrayBuffer]
-      ? Effect.Effect<unknown, ParseResult.ParseError | E>
-    : [T] extends [Values.Json] ? Effect.Effect<T, ParseResult.ParseError | E>
-    : Effect.Effect<unknown, ParseResult.ParseError | E>
+      : [T] extends [string | Uint8Array | ArrayBuffer]
+        ? Effect.Effect<unknown, ParseResult.ParseError | E>
+        : [T] extends [Values.Json]
+          ? Effect.Effect<T, ParseResult.ParseError | E>
+          : Effect.Effect<unknown, ParseResult.ParseError | E>
   readonly bytes: Effect.Effect<Uint8Array, ParseResult.ParseError | E>
   readonly stream: T extends Stream.Stream<infer A, infer E1, any>
     ? Stream.Stream<A, ParseResult.ParseError | E | E1>
@@ -213,51 +213,45 @@ function getStream(
   }
   if (Effect.isEffect(v)) {
     return Stream.unwrap(
-      Effect.map(
-        v as Effect.Effect<unknown, unknown, never>,
-        (inner) => {
-          if (isEntity(inner)) {
-            return inner.stream
-          }
-          return Stream.fromEffect(getBytes(make(inner)))
-        },
-      ),
+      Effect.map(v as Effect.Effect<unknown, unknown, never>, (inner) => {
+        if (isEntity(inner)) {
+          return inner.stream
+        }
+        return Stream.fromEffect(getBytes(make(inner)))
+      }),
     )
   }
   return Stream.fromEffect(getBytes(self))
 }
 
-const Proto: Proto = Object.defineProperties(
-  Object.create(null),
-  {
-    [TypeId]: { value: TypeId },
-    pipe: {
-      value: function(this: Entity) {
-        return Pipeable.pipeArguments(this, arguments)
-      },
-    },
-    text: {
-      get(this: Entity<unknown, unknown>) {
-        return getText(this)
-      },
-    },
-    json: {
-      get(this: Entity<unknown, unknown>) {
-        return getJson(this)
-      },
-    },
-    bytes: {
-      get(this: Entity<unknown, unknown>) {
-        return getBytes(this)
-      },
-    },
-    stream: {
-      get(this: Entity<unknown, unknown>) {
-        return getStream(this)
-      },
+const Proto: Proto = Object.defineProperties(Object.create(null), {
+  [TypeId]: { value: TypeId },
+  pipe: {
+    value: function (this: Entity) {
+      return Pipeable.pipeArguments(this, arguments)
     },
   },
-)
+  text: {
+    get(this: Entity<unknown, unknown>) {
+      return getText(this)
+    },
+  },
+  json: {
+    get(this: Entity<unknown, unknown>) {
+      return getJson(this)
+    },
+  },
+  bytes: {
+    get(this: Entity<unknown, unknown>) {
+      return getBytes(this)
+    },
+  },
+  stream: {
+    get(this: Entity<unknown, unknown>) {
+      return getStream(this)
+    },
+  },
+})
 
 export function isEntity(input: unknown): input is Entity {
   return Predicate.hasProperty(input, TypeId)
@@ -282,15 +276,12 @@ export function make(
   body: unknown,
   options?: Options,
 ): Entity<unknown, unknown> {
-  return Object.assign(
-    Object.create(Proto),
-    {
-      body,
-      headers: options?.headers ?? {},
-      url: options?.url,
-      status: options?.status,
-    },
-  )
+  return Object.assign(Object.create(Proto), {
+    body,
+    headers: options?.headers ?? {},
+    url: options?.url,
+    status: options?.status,
+  })
 }
 
 export function effect<A, E, R>(
@@ -304,16 +295,14 @@ export function resolve<A, E>(
 ): Effect.Effect<Entity<A, E>, E, never> {
   const body = entity.body
   if (Effect.isEffect(body)) {
-    return Effect.map(
-      body as Effect.Effect<Entity<A> | A, E, never>,
-      (inner) =>
-        isEntity(inner)
-          ? inner as Entity<A, E>
-          : make(inner as A, {
+    return Effect.map(body as Effect.Effect<Entity<A> | A, E, never>, (inner) =>
+      isEntity(inner)
+        ? (inner as Entity<A, E>)
+        : (make(inner as A, {
             status: entity.status,
             headers: entity.headers,
             url: entity.url,
-          }) as Entity<A, E>,
+          }) as Entity<A, E>),
     )
   }
   return Effect.succeed(entity)

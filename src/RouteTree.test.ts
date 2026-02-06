@@ -11,17 +11,12 @@ test.describe("layer route", () => {
 
     type TreeRoutes = RouteTree.Routes<typeof tree>
 
-    test
-      .expectTypeOf<TreeRoutes>()
-      .toExtend<{
-        "/users": Route.Route.Tuple
-      }>()
+    test.expectTypeOf<TreeRoutes>().toExtend<{
+      "/users": Route.Route.Tuple
+    }>()
 
     // "*" key should not exist in the resulting type
-    test
-      .expectTypeOf<TreeRoutes>()
-      .not
-      .toHaveProperty("*")
+    test.expectTypeOf<TreeRoutes>().not.toHaveProperty("*")
 
     // layer route should be first in the tuple (method: "*")
     test
@@ -51,9 +46,9 @@ test.describe("layer route", () => {
 
   test.it("prepends multiple LayerRoutes to all other routes", () => {
     const tree = RouteTree.make({
-      "*": Route
-        .use(Route.filter({ context: { first: true } }))
-        .use(Route.filter({ context: { second: true } })),
+      "*": Route.use(Route.filter({ context: { first: true } })).use(
+        Route.filter({ context: { second: true } }),
+      ),
       "/users": Route.get(Route.text("users")),
     })
 
@@ -98,30 +93,21 @@ test.describe("layer route", () => {
 test.describe(RouteTree.make, () => {
   test.it("makes", () => {
     const routes = RouteTree.make({
-      "/admin": Route
-        .use(
-          Route.filter({
-            context: {
-              isAdmin: true,
-            },
-          }),
-        )
-        .get(
-          Route.text("admin home"),
-        ),
+      "/admin": Route.use(
+        Route.filter({
+          context: {
+            isAdmin: true,
+          },
+        }),
+      ).get(Route.text("admin home")),
 
-      "/users": Route
-        .get(
-          Route.text("users list"),
-        ),
+      "/users": Route.get(Route.text("users list")),
     })
 
-    test
-      .expectTypeOf<RouteTree.Routes<typeof routes>>()
-      .toExtend<{
-        "/admin": unknown
-        "/users": unknown
-      }>()
+    test.expectTypeOf<RouteTree.Routes<typeof routes>>().toExtend<{
+      "/admin": unknown
+      "/users": unknown
+    }>()
   })
 
   test.it("flattens nested route trees with prefixed paths", () => {
@@ -137,41 +123,23 @@ test.describe(RouteTree.make, () => {
 
     type TreeRoutes = RouteTree.Routes<typeof tree>
 
-    test
-      .expectTypeOf<TreeRoutes["/"]>()
-      .toExtend<Route.Route.Tuple>()
+    test.expectTypeOf<TreeRoutes["/"]>().toExtend<Route.Route.Tuple>()
 
     test
       .expectTypeOf<TreeRoutes["/"][0]>()
-      .toExtend<
-        Route.Route.With<
-          { method: "GET"; format: "text" }
-        >
-      >()
+      .toExtend<Route.Route.With<{ method: "GET"; format: "text" }>>()
 
-    test
-      .expectTypeOf<TreeRoutes["/api/users"]>()
-      .toExtend<Route.Route.Tuple>()
+    test.expectTypeOf<TreeRoutes["/api/users"]>().toExtend<Route.Route.Tuple>()
 
     test
       .expectTypeOf<TreeRoutes["/api/users"][0]>()
-      .toExtend<
-        Route.Route.With<
-          { method: "GET"; format: "json" }
-        >
-      >()
+      .toExtend<Route.Route.With<{ method: "GET"; format: "json" }>>()
 
-    test
-      .expectTypeOf<TreeRoutes["/api/posts"]>()
-      .toExtend<Route.Route.Tuple>()
+    test.expectTypeOf<TreeRoutes["/api/posts"]>().toExtend<Route.Route.Tuple>()
 
     test
       .expectTypeOf<TreeRoutes["/api/posts"][0]>()
-      .toExtend<
-        Route.Route.With<
-          { method: "GET"; format: "json" }
-        >
-      >()
+      .toExtend<Route.Route.With<{ method: "GET"; format: "json" }>>()
   })
 
   test.it("walks nested route trees with prefixed paths", () => {
@@ -272,13 +240,7 @@ test.describe(RouteTree.walk, () => {
 
     test
       .expect(Route.descriptor(RouteTree.walk(routes)).map((d) => d.path))
-      .toEqual([
-        "/about",
-        "/:page",
-        "/:page?",
-        "/:path+",
-        "/:path*",
-      ])
+      .toEqual(["/about", "/:page", "/:page?", "/:path+", "/:path*"])
   })
 
   test.it("greedy routes come after all non-greedy across depth", () => {
@@ -291,12 +253,7 @@ test.describe(RouteTree.walk, () => {
 
     test
       .expect(Route.descriptor(RouteTree.walk(routes)).map((d) => d.path))
-      .toEqual([
-        "/users",
-        "/users/:id",
-        "/users/:id/posts/:postId",
-        "/:path*",
-      ])
+      .toEqual(["/users", "/users/:id", "/users/:id/posts/:postId", "/:path*"])
   })
 
   test.it("greedy routes sorted by greedy position", () => {
@@ -308,11 +265,7 @@ test.describe(RouteTree.walk, () => {
 
     test
       .expect(Route.descriptor(RouteTree.walk(routes)).map((d) => d.path))
-      .toEqual([
-        "/api/v1/:rest*",
-        "/api/:rest*",
-        "/:path*",
-      ])
+      .toEqual(["/api/v1/:rest*", "/api/:rest*", "/:path*"])
   })
 
   test.it("greedy routes with same position sorted by prefix then type", () => {
@@ -325,11 +278,7 @@ test.describe(RouteTree.walk, () => {
     // /api before /docs (alphabetical), then + before * for same prefix
     test
       .expect(Route.descriptor(RouteTree.walk(routes)).map((d) => d.path))
-      .toEqual([
-        "/api/:rest+",
-        "/api/:rest*",
-        "/docs/:path*",
-      ])
+      .toEqual(["/api/:rest+", "/api/:rest*", "/docs/:path*"])
   })
 })
 
@@ -482,9 +431,9 @@ test.describe(RouteTree.lookup, () => {
     test.expect(Route.descriptor(staticMatch!.route).path).toBe("/files/latest")
 
     const optionalMatch = RouteTree.lookup(tree, "GET", "/files/other")
-    test.expect(Route.descriptor(optionalMatch!.route).path).toBe(
-      "/files/:name?",
-    )
+    test
+      .expect(Route.descriptor(optionalMatch!.route).path)
+      .toBe("/files/:name?")
     test.expect(optionalMatch!.params).toEqual({ name: "other" })
 
     const noParam = RouteTree.lookup(tree, "GET", "/files")

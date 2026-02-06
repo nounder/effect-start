@@ -7,10 +7,7 @@
 /// <reference lib="dom" />
 /// <reference lib="dom.iterable" />
 
-import type {
-  BundleEvent,
-  BundleManifest,
-} from "../bundler/Bundle.ts"
+import type { BundleEvent, BundleManifest } from "../bundler/Bundle.ts"
 import { showBuildError } from "./Overlay.ts"
 import * as ScrollState from "./ScrollState.ts"
 
@@ -22,12 +19,12 @@ function reload() {
 }
 
 async function loadAllEntrypoints() {
-  const manifest: BundleManifest = await fetch(`/${BUNDLE_URL}/manifest.json`)
-    .then(v => v.json())
+  const manifest: BundleManifest = await fetch(
+    `/${BUNDLE_URL}/manifest.json`,
+  ).then((v) => v.json())
 
-  manifest
-    .artifacts
-    .filter(v => v.path.endsWith(".js"))
+  manifest.artifacts
+    .filter((v) => v.path.endsWith(".js"))
     .forEach((artifact) => {
       console.log(artifact.path)
       const script = document.createElement("script")
@@ -69,7 +66,7 @@ function listen() {
     }
   })
 
-  eventSource.addEventListener("error", error => {
+  eventSource.addEventListener("error", (error) => {
     console.error("SSE connection error:", error)
   })
 

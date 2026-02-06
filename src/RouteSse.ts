@@ -21,13 +21,10 @@ export type SseTaggedEvent = {
   readonly _tag: string
 }
 
-export type SseEventInput =
-  | SseEvent
-  | SseTaggedEvent
+export type SseEventInput = SseEvent | SseTaggedEvent
 
 function isTaggedEvent(event: SseEventInput): event is SseTaggedEvent {
-  return Object.hasOwn(event, "_tag")
-    && typeof event["_tag"] === "string"
+  return Object.hasOwn(event, "_tag") && typeof event["_tag"] === "string"
 }
 
 function formatSseEvent(event: SseEventInput): string {
@@ -59,18 +56,18 @@ export type SseHandlerInput<B, E, R> =
   | Stream.Stream<SseEventInput, E, R>
   | Effect.Effect<Stream.Stream<SseEventInput, E, R>, E, R>
   | ((
-    context: Values.Simplify<B>,
-    next: (
-      context?: Partial<B> & Record<string, unknown>,
-    ) => Entity.Entity<string>,
-  ) =>
-    | Stream.Stream<SseEventInput, E, R>
-    | Effect.Effect<Stream.Stream<SseEventInput, E, R>, E, R>
-    | Generator<
-      Utils.YieldWrap<Effect.Effect<unknown, E, R>>,
-      Stream.Stream<SseEventInput, E, R>,
-      unknown
-    >)
+      context: Values.Simplify<B>,
+      next: (
+        context?: Partial<B> & Record<string, unknown>,
+      ) => Entity.Entity<string>,
+    ) =>
+      | Stream.Stream<SseEventInput, E, R>
+      | Effect.Effect<Stream.Stream<SseEventInput, E, R>, E, R>
+      | Generator<
+          Utils.YieldWrap<Effect.Effect<unknown, E, R>>,
+          Stream.Stream<SseEventInput, E, R>,
+          unknown
+        >)
 
 export function sse<
   D extends Route.RouteDescriptor.Any,
@@ -85,9 +82,7 @@ export function sse<
     R
   >,
 ) {
-  return function(
-    self: Route.RouteSet.RouteSet<D, B, I>,
-  ) {
+  return function (self: Route.RouteSet.RouteSet<D, B, I>) {
     const sseHandler: Route.Route.Handler<
       D & B & Route.ExtractBindings<I> & { format: "text" },
       Stream.Stream<string, E, R>,
@@ -111,7 +106,7 @@ export function sse<
               R
             >
           }
-          return Effect.gen(function*() {
+          return Effect.gen(function* () {
             return yield* result
           }) as Effect.Effect<Stream.Stream<SseEventInput, E, R>, E, R>
         }
@@ -130,12 +125,10 @@ export function sse<
 
       return Effect.map(getStream(), (eventStream) => {
         const formattedStream = Stream.map(eventStream, formatSseEvent)
-        const heartbeat = Stream
-          .repeat(
-            Stream.succeed(HEARTBEAT),
-            Schedule.spaced(HEARTBEAT_INTERVAL),
-          )
-          .pipe(Stream.drop(1))
+        const heartbeat = Stream.repeat(
+          Stream.succeed(HEARTBEAT),
+          Schedule.spaced(HEARTBEAT_INTERVAL),
+        ).pipe(Stream.drop(1))
         const merged = Stream.merge(formattedStream, heartbeat, {
           haltStrategy: "left",
         })
@@ -143,7 +136,7 @@ export function sse<
           headers: {
             "content-type": "text/event-stream",
             "cache-control": "no-cache",
-            "connection": "keep-alive",
+            connection: "keep-alive",
           },
         })
       })
@@ -155,10 +148,7 @@ export function sse<
       Stream.Stream<string, E, R>,
       E,
       R
-    >(
-      sseHandler as any,
-      { format: "text" },
-    )
+    >(sseHandler as any, { format: "text" })
 
     const items: [
       ...I,
@@ -169,10 +159,7 @@ export function sse<
         E,
         R
       >,
-    ] = [
-      ...Route.items(self),
-      route,
-    ]
+    ] = [...Route.items(self), route]
 
     return Route.set<
       D,
@@ -187,9 +174,6 @@ export function sse<
           R
         >,
       ]
-    >(
-      items,
-      Route.descriptor(self),
-    )
+    >(items, Route.descriptor(self))
   }
 }

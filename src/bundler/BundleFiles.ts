@@ -15,11 +15,8 @@ import {
 /**
  * Exports a bundle to a file system under specified directory.
  */
-export const toFiles = (
-  context: BundleContext,
-  outDir: string,
-) => {
-  return Effect.gen(function*() {
+export const toFiles = (context: BundleContext, outDir: string) => {
+  return Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const manifest: BundleManifest = {
       entrypoints: context.entrypoints,
@@ -30,8 +27,9 @@ export const toFiles = (
 
     const bundleArtifacts = Function.pipe(
       manifest.artifacts,
-      Array.map((artifact) =>
-        [artifact.path, context.getArtifact(artifact.path)!] as const
+      Array.map(
+        (artifact) =>
+          [artifact.path, context.getArtifact(artifact.path)!] as const,
       ),
       Record.fromEntries,
     )
@@ -46,9 +44,9 @@ export const toFiles = (
       ...extraArtifacts,
     }
 
-    const existingOutDirFiles = yield* fs.readDirectory(normalizedOutDir).pipe(
-      Effect.catchAll(() => Effect.succeed(null)),
-    )
+    const existingOutDirFiles = yield* fs
+      .readDirectory(normalizedOutDir)
+      .pipe(Effect.catchAll(() => Effect.succeed(null)))
 
     // check if the output directory is empty. if it contains previous build,
     // remove it. Otherwise fail.
@@ -90,12 +88,9 @@ export const toFiles = (
                 }),
             }),
             Effect.andThen((b) =>
-              fs.writeFile(
-                `${normalizedOutDir}/${p}`,
-                new Uint8Array(b),
-              )
+              fs.writeFile(`${normalizedOutDir}/${p}`, new Uint8Array(b)),
             ),
-          )
+          ),
         ),
       ),
       { concurrency: 16 },
@@ -110,12 +105,8 @@ export const toFiles = (
  */
 export const fromFiles = (
   directory: string,
-): Effect.Effect<
-  BundleContext,
-  BundleError,
-  FileSystem.FileSystem
-> => {
-  return Effect.gen(function*() {
+): Effect.Effect<BundleContext, BundleError, FileSystem.FileSystem> => {
+  return Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const normalizedDir = directory.replace(/\/$/, "")
     const manifest = yield* Function.pipe(
@@ -128,7 +119,7 @@ export const fromFiles = (
             message: `Failed to read manifest.json from ${normalizedDir}`,
             cause: e,
           }),
-        )
+        ),
       ),
     )
     const artifactPaths = Array.map(manifest.artifacts, (a) => a.path)
@@ -136,23 +127,24 @@ export const fromFiles = (
       artifactPaths,
       Iterable.map((path) => fs.readFile(`${normalizedDir}/${path}`)),
       Effect.all,
-      Effect.catchAll((e) =>
-        new BundleError({
-          message: `Failed to read an artifact from ${normalizedDir}`,
-          cause: e,
-        })
+      Effect.catchAll(
+        (e) =>
+          new BundleError({
+            message: `Failed to read an artifact from ${normalizedDir}`,
+            cause: e,
+          }),
       ),
-      Effect.andThen(Iterable.map((v, i) =>
-        new Blob([v.slice(0)], {
-          type: manifest.artifacts[i].type,
-        })
-      )),
+      Effect.andThen(
+        Iterable.map(
+          (v, i) =>
+            new Blob([v.slice(0)], {
+              type: manifest.artifacts[i].type,
+            }),
+        ),
+      ),
     )
     const artifactsRecord = Function.pipe(
-      Iterable.zip(
-        artifactPaths,
-        artifactBlobs,
-      ),
+      Iterable.zip(artifactPaths, artifactBlobs),
       Record.fromEntries,
     )
 

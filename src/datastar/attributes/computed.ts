@@ -1,13 +1,6 @@
 import { attribute } from "../engine.ts"
-import {
-  computed,
-  mergePatch,
-  mergePaths,
-} from "../engine.ts"
-import {
-  modifyCasing,
-  updateLeaves,
-} from "../utils.ts"
+import { computed, mergePatch, mergePaths } from "../engine.ts"
+import { modifyCasing, updateLeaves } from "../utils.ts"
 
 attribute({
   name: "computed",

@@ -1,17 +1,7 @@
-import {
-  DATASTAR_FETCH_EVENT,
-  DATASTAR_SIGNAL_PATCH_EVENT,
-} from "../engine.ts"
+import { DATASTAR_FETCH_EVENT, DATASTAR_SIGNAL_PATCH_EVENT } from "../engine.ts"
 import { attribute } from "../engine.ts"
-import {
-  beginBatch,
-  endBatch,
-} from "../engine.ts"
-import {
-  modifyCasing,
-  modifyTiming,
-  modifyViewTransition,
-} from "../utils.ts"
+import { beginBatch, endBatch } from "../engine.ts"
+import { modifyCasing, modifyTiming, modifyViewTransition } from "../utils.ts"
 
 attribute({
   name: "on",
@@ -51,8 +41,8 @@ attribute({
     }
     const eventName = modifyCasing(key, mods, "kebab")
     if (
-      eventName === DATASTAR_FETCH_EVENT
-      || eventName === DATASTAR_SIGNAL_PATCH_EVENT
+      eventName === DATASTAR_FETCH_EVENT ||
+      eventName === DATASTAR_SIGNAL_PATCH_EVENT
     ) {
       target = document
     }

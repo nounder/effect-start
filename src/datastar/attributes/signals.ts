@@ -1,8 +1,5 @@
 import { attribute } from "../engine.ts"
-import {
-  mergePatch,
-  mergePaths,
-} from "../engine.ts"
+import { mergePatch, mergePaths } from "../engine.ts"
 import { modifyCasing } from "../utils.ts"
 
 attribute({

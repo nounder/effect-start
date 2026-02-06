@@ -1,14 +1,7 @@
 import { attribute } from "../engine.ts"
-import {
-  effect,
-  getPath,
-  mergePaths,
-} from "../engine.ts"
+import { effect, getPath, mergePaths } from "../engine.ts"
 import type { Paths } from "../engine.ts"
-import {
-  aliasify,
-  modifyCasing,
-} from "../utils.ts"
+import { aliasify, modifyCasing } from "../utils.ts"
 
 type SignalFile = {
   name: string
@@ -71,47 +64,44 @@ attribute({
           get = (el: HTMLInputElement, type: string) =>
             el.checked ? (type === "number" ? +el.value : el.value) : empty
           set = (value: string | number) => {
-            el.checked = value === (typeof value === "number"
-              ? +el.value
-              : el.value)
+            el.checked =
+              value === (typeof value === "number" ? +el.value : el.value)
           }
           break
         case "file": {
           const syncSignal = () => {
             const files = [...(el.files || [])]
             const signalFiles: SignalFile[] = []
-            Promise
-              .all(
-                files.map(
-                  (f) =>
-                    new Promise<void>((resolve) => {
-                      const reader = new FileReader()
-                      reader.onload = () => {
-                        if (typeof reader.result !== "string") {
-                          throw error("InvalidFileResultType", {
-                            resultType: typeof reader.result,
-                          })
-                        }
-                        const match = reader.result.match(dataURIRegex)
-                        if (!match?.groups) {
-                          throw error("InvalidDataUri", {
-                            result: reader.result,
-                          })
-                        }
-                        signalFiles.push({
-                          name: f.name,
-                          contents: match.groups.contents,
-                          mime: match.groups.mime,
+            Promise.all(
+              files.map(
+                (f) =>
+                  new Promise<void>((resolve) => {
+                    const reader = new FileReader()
+                    reader.onload = () => {
+                      if (typeof reader.result !== "string") {
+                        throw error("InvalidFileResultType", {
+                          resultType: typeof reader.result,
                         })
                       }
-                      reader.onloadend = () => resolve()
-                      reader.readAsDataURL(f)
-                    }),
-                ),
-              )
-              .then(() => {
-                mergePaths([[signalName, signalFiles]])
-              })
+                      const match = reader.result.match(dataURIRegex)
+                      if (!match?.groups) {
+                        throw error("InvalidDataUri", {
+                          result: reader.result,
+                        })
+                      }
+                      signalFiles.push({
+                        name: f.name,
+                        contents: match.groups.contents,
+                        mime: match.groups.mime,
+                      })
+                    }
+                    reader.onloadend = () => resolve()
+                    reader.readAsDataURL(f)
+                  }),
+              ),
+            ).then(() => {
+              mergePaths([[signalName, signalFiles]])
+            })
           }
 
           el.addEventListener("change", syncSignal)
@@ -152,7 +142,8 @@ attribute({
       // default case
     } else {
       // web component
-      get = (el: Element) => "value" in el ? el.value : el.getAttribute("value")
+      get = (el: Element) =>
+        "value" in el ? el.value : el.getAttribute("value")
       set = (value: any) => {
         if ("value" in el) {
           el.value = value
@@ -167,14 +158,14 @@ attribute({
 
     let path = signalName
     if (
-      Array.isArray(initialValue)
-      && !(el instanceof HTMLSelectElement && el.multiple)
+      Array.isArray(initialValue) &&
+      !(el instanceof HTMLSelectElement && el.multiple)
     ) {
       const signalNameKebab = key ? key : value!
       const inputs = document.querySelectorAll(
-        `[${aliasedBind}\\:${CSS.escape(signalNameKebab)}],[${aliasedBind}="${
-          CSS.escape(signalNameKebab)
-        }"]`,
+        `[${aliasedBind}\\:${CSS.escape(signalNameKebab)}],[${aliasedBind}="${CSS.escape(
+          signalNameKebab,
+        )}"]`,
       ) as NodeListOf<HTMLInputElement>
 
       const paths: Paths = []

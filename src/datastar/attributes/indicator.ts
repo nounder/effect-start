@@ -3,10 +3,7 @@ import { attribute } from "../engine.ts"
 import { mergePaths } from "../engine.ts"
 import type { DatastarFetchEvent } from "../engine.ts"
 import { modifyCasing } from "../utils.ts"
-import {
-  FINISHED,
-  STARTED,
-} from "../actions/fetch.ts"
+import { FINISHED, STARTED } from "../actions/fetch.ts"
 
 attribute({
   name: "indicator",

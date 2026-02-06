@@ -34,20 +34,12 @@
     "plugins": [
       {
         "name": "@effect/language-service",
-        "namespaceImportPackages": [
-          "*",
-          "effect",
-          "@effect/platform"
-        ],
+        "namespaceImportPackages": ["*", "effect", "@effect/platform"],
         "topLevelNamedReexports": "follow"
       }
     ]
   },
 
-  "include": [
-    "src"
-  ],
-  "exclude": [
-    "**/*.todo.ts"
-  ]
+  "include": ["src"],
+  "exclude": ["**/*.todo.ts"]
 }

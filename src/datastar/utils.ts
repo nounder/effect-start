@@ -9,9 +9,9 @@ import type {
  * dom.ts
  *********/
 export const isHTMLOrSVG = (el: Node): el is HTMLOrSVG =>
-  el instanceof HTMLElement
-  || el instanceof SVGElement
-  || el instanceof MathMLElement
+  el instanceof HTMLElement ||
+  el instanceof SVGElement ||
+  el instanceof MathMLElement
 
 /*********
  * math.ts
@@ -153,10 +153,10 @@ export const hasOwn: (obj: object, prop: PropertyKey) => boolean =
  * paths.ts
  *********/
 export const isPojo = (obj: any): obj is Record<string, any> =>
-  obj !== null
-  && typeof obj === "object"
-  && (Object.getPrototypeOf(obj) === Object.prototype
-    || Object.getPrototypeOf(obj) === null)
+  obj !== null &&
+  typeof obj === "object" &&
+  (Object.getPrototypeOf(obj) === Object.prototype ||
+    Object.getPrototypeOf(obj) === null)
 
 export const isEmpty = (obj: Record<string, any>): boolean => {
   for (const prop in obj) {

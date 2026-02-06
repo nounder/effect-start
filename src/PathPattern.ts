@@ -2,20 +2,27 @@ export type PathPattern = `/${string}`
 
 export type Segments<Path extends string> = Path extends `/${infer Rest}`
   ? Segments<Rest>
-  : Path extends `${infer Head}/${infer Tail}` ? [Head, ...Segments<Tail>]
-  : Path extends "" ? []
-  : [Path]
+  : Path extends `${infer Head}/${infer Tail}`
+    ? [Head, ...Segments<Tail>]
+    : Path extends ""
+      ? []
+      : [Path]
 
-export type Params<T extends string> = string extends T ? Record<string, string>
+export type Params<T extends string> = string extends T
+  ? Record<string, string>
   : T extends `${infer _Start}:${infer Param}?/${infer Rest}`
     ? { [K in Param]?: string } & Params<`/${Rest}`>
-  : T extends `${infer _Start}:${infer Param}/${infer Rest}`
-    ? { [K in Param]: string } & Params<`/${Rest}`>
-  : T extends `${infer _Start}:${infer Param}+` ? { [K in Param]: string }
-  : T extends `${infer _Start}:${infer Param}*` ? { [K in Param]?: string }
-  : T extends `${infer _Start}:${infer Param}?` ? { [K in Param]?: string }
-  : T extends `${infer _Start}:${infer Param}` ? { [K in Param]: string }
-  : {}
+    : T extends `${infer _Start}:${infer Param}/${infer Rest}`
+      ? { [K in Param]: string } & Params<`/${Rest}`>
+      : T extends `${infer _Start}:${infer Param}+`
+        ? { [K in Param]: string }
+        : T extends `${infer _Start}:${infer Param}*`
+          ? { [K in Param]?: string }
+          : T extends `${infer _Start}:${infer Param}?`
+            ? { [K in Param]?: string }
+            : T extends `${infer _Start}:${infer Param}`
+              ? { [K in Param]: string }
+              : {}
 
 export type ValidateResult =
   | { ok: true; segments: string[] }
@@ -472,14 +479,13 @@ export function toBun(path: string): PathPattern[] {
 
   const optionalModifier = getModifier(optional)
   const optionalName = getParamName(optional)
-  const requiredOptional = optionalModifier === "*"
-    ? `:${optionalName}+`
-    : `:${optionalName}`
+  const requiredOptional =
+    optionalModifier === "*" ? `:${optionalName}+` : `:${optionalName}`
 
   const withOptionalSegments = [...before, requiredOptional, ...after]
-  const withOptionalPath: PathPattern = `/${
-    withOptionalSegments.map(formatSegment).join("/")
-  }`
+  const withOptionalPath: PathPattern = `/${withOptionalSegments
+    .map(formatSegment)
+    .join("/")}`
 
   return [...toBun(basePath), ...toBun(withOptionalPath)]
 }

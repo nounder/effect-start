@@ -9,16 +9,19 @@ This directory provides reusable solutions and best practices for Effect TypeScr
 ### Core Development Patterns
 
 **[EffectLibraryDevelopment.md](./EffectLibraryDevelopment.md)**
+
 - **Use for:** New functions, Effect.gen composition, resource management, Layer patterns
 - **Contains:** Effect constructors, testing with TestClock, validation workflows
 - **Reference before:** Creating any new Effect-based function or service
 
 **[ErrorHandling.md](./ErrorHandling.md)**
+
 - **Use for:** Creating custom errors, error recovery, retry logic, error testing
 - **Contains:** Data.TaggedError patterns, catchTag/catchAll, error transformations
 - **Reference before:** Implementing error handling, validation, or failure recovery
 
 **[QuickReference.md](./QuickReference.md)**
+
 - **Use for:** Quick lookup of common patterns
 - **Contains:** One-page cheat sheet with dos/don'ts, common code snippets
 - **Reference when:** Need quick reminder of mandatory patterns
@@ -56,7 +59,7 @@ This directory provides reusable solutions and best practices for Effect TypeScr
 
 ### Mandatory Patterns (ALWAYS USE)
 
-- **return yield* for errors**: Makes termination explicit in generators
+- **return yield\* for errors**: Makes termination explicit in generators
 - **TestClock for time**: Use TestClock for any time-dependent tests
 - **Data.TaggedError**: Use for all custom error types
 

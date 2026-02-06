@@ -1,9 +1,4 @@
-import {
-  Effect,
-  GlobalValue,
-  PubSub,
-  Ref,
-} from "effect"
+import { Effect, GlobalValue, PubSub, Ref } from "effect"
 
 export interface ChatMessage {
   id: string
@@ -19,9 +14,7 @@ export const messagesRef = GlobalValue.globalValue(
 
 export const chatPubSub = Effect.runSync(PubSub.unbounded<ChatMessage>())
 
-export function Message(
-  props: { msg: ChatMessage; isNew?: boolean },
-) {
+export function Message(props: { msg: ChatMessage; isNew?: boolean }) {
   const time = new Date(props.msg.timestamp).toLocaleTimeString()
   const isUser = props.msg.user !== "Assistant"
   const animClass = props.isNew ? "msg-enter" : ""
@@ -34,12 +27,8 @@ export function Message(
       <div
         class={`py-3 px-4 rounded-lg max-w-[80%] ${animClass} bg-emerald-500 text-white ml-auto`}
       >
-        <p>
-          {props.msg.text}
-        </p>
-        <small class={timeClasses}>
-          {time}
-        </small>
+        <p>{props.msg.text}</p>
+        <small class={timeClasses}>{time}</small>
       </div>
     )
   }
@@ -47,12 +36,8 @@ export function Message(
     <div
       class={`py-3 px-4 rounded-lg max-w-[80%] ${animClass} bg-gray-100 mr-auto`}
     >
-      <p>
-        {props.msg.text}
-      </p>
-      <small class={timeClasses}>
-        {time}
-      </small>
+      <p>{props.msg.text}</p>
+      <small class={timeClasses}>{time}</small>
     </div>
   )
 }

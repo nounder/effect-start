@@ -129,16 +129,15 @@ export interface FileSystem {
   ) => Effect.Effect<void, PlatformError.PlatformError>
 }
 
-export const FileSystem: Context.Tag<FileSystem, FileSystem> = Context.GenericTag<FileSystem>(
-  "@effect/platform/FileSystem",
-)
+export const FileSystem: Context.Tag<FileSystem, FileSystem> =
+  Context.GenericTag<FileSystem>("@effect/platform/FileSystem")
 
 export type Size = Brand.Branded<bigint, "Size">
 
 export type SizeInput = bigint | number | Size
 
 export const Size = (bytes: SizeInput): Size =>
-  typeof bytes === "bigint" ? bytes as Size : BigInt(bytes) as Size
+  typeof bytes === "bigint" ? (bytes as Size) : (BigInt(bytes) as Size)
 
 export type OpenFlag =
   | "r"
@@ -218,7 +217,9 @@ export interface WatchOptions {
   readonly recursive?: boolean
 }
 
-export const FileTypeId: unique symbol = Symbol.for("@effect/platform/FileSystem/File")
+export const FileTypeId: unique symbol = Symbol.for(
+  "@effect/platform/FileSystem/File",
+)
 
 export type FileTypeId = typeof FileTypeId
 
@@ -228,11 +229,21 @@ export interface File {
   readonly stat: Effect.Effect<File.Info, PlatformError.PlatformError>
   readonly seek: (offset: SizeInput, from: SeekMode) => Effect.Effect<void>
   readonly sync: Effect.Effect<void, PlatformError.PlatformError>
-  readonly read: (buffer: Uint8Array) => Effect.Effect<Size, PlatformError.PlatformError>
-  readonly readAlloc: (size: SizeInput) => Effect.Effect<Option.Option<Uint8Array>, PlatformError.PlatformError>
-  readonly truncate: (length?: SizeInput) => Effect.Effect<void, PlatformError.PlatformError>
-  readonly write: (buffer: Uint8Array) => Effect.Effect<Size, PlatformError.PlatformError>
-  readonly writeAll: (buffer: Uint8Array) => Effect.Effect<void, PlatformError.PlatformError>
+  readonly read: (
+    buffer: Uint8Array,
+  ) => Effect.Effect<Size, PlatformError.PlatformError>
+  readonly readAlloc: (
+    size: SizeInput,
+  ) => Effect.Effect<Option.Option<Uint8Array>, PlatformError.PlatformError>
+  readonly truncate: (
+    length?: SizeInput,
+  ) => Effect.Effect<void, PlatformError.PlatformError>
+  readonly write: (
+    buffer: Uint8Array,
+  ) => Effect.Effect<Size, PlatformError.PlatformError>
+  readonly writeAll: (
+    buffer: Uint8Array,
+  ) => Effect.Effect<void, PlatformError.PlatformError>
 }
 
 export declare namespace File {
@@ -268,7 +279,10 @@ export declare namespace File {
 
 export const FileDescriptor = Brand.nominal<File.Descriptor>()
 
-export type WatchEvent = WatchEvent.Create | WatchEvent.Update | WatchEvent.Remove
+export type WatchEvent =
+  | WatchEvent.Create
+  | WatchEvent.Update
+  | WatchEvent.Remove
 
 export declare namespace WatchEvent {
   export interface Create {
@@ -287,19 +301,24 @@ export declare namespace WatchEvent {
   }
 }
 
-export const WatchEventCreate: Data.Case.Constructor<WatchEvent.Create, "_tag"> = Data.tagged<WatchEvent.Create>(
-  "Create",
-)
+export const WatchEventCreate: Data.Case.Constructor<
+  WatchEvent.Create,
+  "_tag"
+> = Data.tagged<WatchEvent.Create>("Create")
 
-export const WatchEventUpdate: Data.Case.Constructor<WatchEvent.Update, "_tag"> = Data.tagged<WatchEvent.Update>(
-  "Update",
-)
+export const WatchEventUpdate: Data.Case.Constructor<
+  WatchEvent.Update,
+  "_tag"
+> = Data.tagged<WatchEvent.Update>("Update")
 
-export const WatchEventRemove: Data.Case.Constructor<WatchEvent.Remove, "_tag"> = Data.tagged<WatchEvent.Remove>(
-  "Remove",
-)
+export const WatchEventRemove: Data.Case.Constructor<
+  WatchEvent.Remove,
+  "_tag"
+> = Data.tagged<WatchEvent.Remove>("Remove")
 
-export class WatchBackend extends Context.Tag("@effect/platform/FileSystem/WatchBackend")<
+export class WatchBackend extends Context.Tag(
+  "@effect/platform/FileSystem/WatchBackend",
+)<
   WatchBackend,
   {
     readonly register: (
@@ -311,7 +330,10 @@ export class WatchBackend extends Context.Tag("@effect/platform/FileSystem/Watch
 >() {}
 
 export const make = (
-  impl: Omit<FileSystem, "exists" | "readFileString" | "stream" | "sink" | "writeFileString">,
+  impl: Omit<
+    FileSystem,
+    "exists" | "readFileString" | "stream" | "sink" | "writeFileString"
+  >,
 ): FileSystem => {
   return FileSystem.of({
     ...impl,
@@ -319,7 +341,9 @@ export const make = (
       Function.pipe(
         impl.access(path),
         Effect.as(true),
-        Effect.catchTag("SystemError", (e) => e.reason === "NotFound" ? Effect.succeed(false) : Effect.fail(e)),
+        Effect.catchTag("SystemError", (e) =>
+          e.reason === "NotFound" ? Effect.succeed(false) : Effect.fail(e),
+        ),
       ),
     readFileString: (path, encoding) =>
       Effect.tryMap(impl.readFile(path), {
@@ -364,40 +388,50 @@ export const make = (
   })
 }
 
-const fileStream = (file: File, {
-  bufferSize = 16,
-  bytesToRead: bytesToRead_,
-  chunkSize: chunkSize_ = Size(64 * 1024),
-}: StreamOptions = {}) => {
-  const bytesToRead = bytesToRead_ !== undefined ? Size(bytesToRead_) : undefined
+const fileStream = (
+  file: File,
+  {
+    bufferSize = 16,
+    bytesToRead: bytesToRead_,
+    chunkSize: chunkSize_ = Size(64 * 1024),
+  }: StreamOptions = {},
+) => {
+  const bytesToRead =
+    bytesToRead_ !== undefined ? Size(bytesToRead_) : undefined
   const chunkSize = Size(chunkSize_)
 
   function loop(
     totalBytesRead: bigint,
-  ): Channel.Channel<Chunk.Chunk<Uint8Array>, unknown, PlatformError.PlatformError, unknown, void, unknown> {
+  ): Channel.Channel<
+    Chunk.Chunk<Uint8Array>,
+    unknown,
+    PlatformError.PlatformError,
+    unknown,
+    void,
+    unknown
+  > {
     if (bytesToRead !== undefined && bytesToRead <= totalBytesRead) {
       return Channel.void
     }
 
-    const toRead = bytesToRead !== undefined && (bytesToRead - totalBytesRead) < chunkSize
-      ? bytesToRead - totalBytesRead
-      : chunkSize
+    const toRead =
+      bytesToRead !== undefined && bytesToRead - totalBytesRead < chunkSize
+        ? bytesToRead - totalBytesRead
+        : chunkSize
 
     return Channel.flatMap(
       file.readAlloc(toRead),
       Option.match({
         onNone: () => Channel.void,
         onSome: (buf) =>
-          Channel.flatMap(
-            Channel.write(Chunk.of(buf)),
-            () => loop(totalBytesRead + BigInt(buf.length)),
+          Channel.flatMap(Channel.write(Chunk.of(buf)), () =>
+            loop(totalBytesRead + BigInt(buf.length)),
           ),
       }),
     )
   }
 
-  return Stream.bufferChunks(
-    Stream.fromChannel(loop(BigInt(0))),
-    { capacity: bufferSize },
-  )
+  return Stream.bufferChunks(Stream.fromChannel(loop(BigInt(0))), {
+    capacity: bufferSize,
+  })
 }

@@ -15,13 +15,13 @@ attribute({
     const apply = (prop: string, value: any) => {
       const initial = initialStyles.get(prop)
       if (!value && value !== 0) {
-        initial !== undefined
-          && (initial
+        initial !== undefined &&
+          (initial
             ? style.setProperty(prop, initial)
             : style.removeProperty(prop))
       } else {
-        initial === undefined
-          && initialStyles.set(prop, style.getPropertyValue(prop))
+        initial === undefined &&
+          initialStyles.set(prop, style.getPropertyValue(prop))
         style.setProperty(prop, String(value))
       }
     }
@@ -35,8 +35,8 @@ attribute({
         const styles = rx() as Record<string, any>
 
         for (const [prop, initial] of initialStyles) {
-          prop in styles
-            || (initial
+          prop in styles ||
+            (initial
               ? style.setProperty(prop, initial)
               : style.removeProperty(prop))
         }

@@ -14,7 +14,7 @@ test.it("data-signals object serialization", () => {
   test
     .expect(html)
     .toBe(
-      "<div data-signals=\"{&quot;foo&quot;:1,&quot;bar&quot;:{&quot;baz&quot;:&quot;hello&quot;}}\"></div>",
+      '<div data-signals="{&quot;foo&quot;:1,&quot;bar&quot;:{&quot;baz&quot;:&quot;hello&quot;}}"></div>',
     )
 })
 
@@ -25,9 +25,7 @@ test.it("data-signals string passthrough", () => {
 
   const html = HyperHtml.renderToString(node, Datastar.HyperHooks)
 
-  test
-    .expect(html)
-    .toBe("<div data-signals=\"$mySignal\"></div>")
+  test.expect(html).toBe('<div data-signals="$mySignal"></div>')
 })
 
 test.it("data-signals-* object serialization", () => {
@@ -40,7 +38,7 @@ test.it("data-signals-* object serialization", () => {
   test
     .expect(html)
     .toBe(
-      "<div data-signals-user=\"{&quot;name&quot;:&quot;John&quot;,&quot;age&quot;:30}\"></div>",
+      '<div data-signals-user="{&quot;name&quot;:&quot;John&quot;,&quot;age&quot;:30}"></div>',
     )
 })
 
@@ -54,18 +52,10 @@ test.it("non-data attributes unchanged", () => {
 
   const html = HyperHtml.renderToString(node, Datastar.HyperHooks)
 
-  test
-    .expect(html)
-    .toContain("id=\"test\"")
-  test
-    .expect(html)
-    .toContain("class=\"my-class\"")
-  test
-    .expect(html)
-    .toContain("data-text=\"$count\"")
-  test
-    .expect(html)
-    .toContain("data-signals=\"{&quot;count&quot;:0}\"")
+  test.expect(html).toContain('id="test"')
+  test.expect(html).toContain('class="my-class"')
+  test.expect(html).toContain('data-text="$count"')
+  test.expect(html).toContain('data-signals="{&quot;count&quot;:0}"')
 })
 
 test.it("null and undefined values ignored", () => {
@@ -76,9 +66,7 @@ test.it("null and undefined values ignored", () => {
 
   const html = HyperHtml.renderToString(node, Datastar.HyperHooks)
 
-  test
-    .expect(html)
-    .toBe("<div></div>")
+  test.expect(html).toBe("<div></div>")
 })
 
 test.it("complex nested objects serialization", () => {
@@ -93,12 +81,8 @@ test.it("complex nested objects serialization", () => {
 
   const html = HyperHtml.renderToString(node, Datastar.HyperHooks)
 
-  test
-    .expect(html)
-    .toContain("data-signals=")
-  test
-    .expect(html)
-    .toContain("John Doe")
+  test.expect(html).toContain("data-signals=")
+  test.expect(html).toContain("John Doe")
 })
 
 test.it("non-signals data attributes serialized", () => {
@@ -114,19 +98,15 @@ test.it("non-signals data attributes serialized", () => {
   test
     .expect(html)
     .toContain(
-      "data-class=\"{&quot;hidden&quot;:true,&quot;visible&quot;:false}\"",
+      'data-class="{&quot;hidden&quot;:true,&quot;visible&quot;:false}"',
     )
   test
     .expect(html)
     .toContain(
-      "data-style=\"{&quot;color&quot;:&quot;red&quot;,&quot;display&quot;:&quot;none&quot;}\"",
+      'data-style="{&quot;color&quot;:&quot;red&quot;,&quot;display&quot;:&quot;none&quot;}"',
     )
-  test
-    .expect(html)
-    .toContain("data-show=\"true\"")
-  test
-    .expect(html)
-    .toContain("data-text=\"$count\"")
+  test.expect(html).toContain('data-show="true"')
+  test.expect(html).toContain('data-text="$count"')
 })
 
 test.it("data-attr object serialization", () => {
@@ -139,7 +119,7 @@ test.it("data-attr object serialization", () => {
   test
     .expect(html)
     .toBe(
-      "<div data-attr=\"{&quot;disabled&quot;:true,&quot;tabindex&quot;:0}\"></div>",
+      '<div data-attr="{&quot;disabled&quot;:true,&quot;tabindex&quot;:0}"></div>',
     )
 })
 
@@ -151,17 +131,9 @@ test.it("boolean attributes converted to strings", () => {
 
   const html = HyperHtml.renderToString(node, Datastar.HyperHooks)
 
-  test
-    .expect(html)
-    .not
-    .toContain("data-ignore=\"")
-  test
-    .expect(html)
-    .toContain("data-ignore-morph")
-  test
-    .expect(html)
-    .not
-    .toContain("data-ignore-morph=")
+  test.expect(html).not.toContain('data-ignore="')
+  test.expect(html).toContain("data-ignore-morph")
+  test.expect(html).not.toContain("data-ignore-morph=")
 })
 
 test.it("data-ignore attributes only present when true", () => {
@@ -176,17 +148,9 @@ test.it("data-ignore attributes only present when true", () => {
   const htmlTrue = HyperHtml.renderToString(nodeTrue, Datastar.HyperHooks)
   const htmlFalse = HyperHtml.renderToString(nodeFalse, Datastar.HyperHooks)
 
-  test
-    .expect(htmlTrue)
-    .toContain("data-ignore")
-  test
-    .expect(htmlTrue)
-    .not
-    .toContain("data-ignore=")
-  test
-    .expect(htmlFalse)
-    .not
-    .toContain("data-ignore")
+  test.expect(htmlTrue).toContain("data-ignore")
+  test.expect(htmlTrue).not.toContain("data-ignore=")
+  test.expect(htmlFalse).not.toContain("data-ignore")
 })
 
 test.it("dynamic attributes with suffixes", () => {
@@ -198,15 +162,9 @@ test.it("dynamic attributes with suffixes", () => {
 
   const html = HyperHtml.renderToString(node, Datastar.HyperHooks)
 
-  test
-    .expect(html)
-    .toContain("data-class-active=\"hidden\"")
-  test
-    .expect(html)
-    .toContain("data-attr-tabindex=\"5\"")
-  test
-    .expect(html)
-    .toContain("data-style-opacity=\"0.5\"")
+  test.expect(html).toContain('data-class-active="hidden"')
+  test.expect(html).toContain('data-attr-tabindex="5"')
+  test.expect(html).toContain('data-style-opacity="0.5"')
 })
 
 test.it("JSX with data-signals object", () => {
@@ -220,12 +178,9 @@ test.it("JSX with data-signals object", () => {
   test
     .expect(html)
     .toBe(
-      "<div data-signals=\"{&quot;isOpen&quot;:false,&quot;count&quot;:42}\">content</div>",
+      '<div data-signals="{&quot;isOpen&quot;:false,&quot;count&quot;:42}">content</div>',
     )
-  test
-    .expect(html)
-    .not
-    .toContain("[object Object]")
+  test.expect(html).not.toContain("[object Object]")
 })
 
 test.it("JSX component returning element with data-signals", () => {
@@ -243,12 +198,9 @@ test.it("JSX component returning element with data-signals", () => {
   test
     .expect(html)
     .toBe(
-      "<div data-signals=\"{&quot;isOpen&quot;:false}\"><span>nested content</span></div>",
+      '<div data-signals="{&quot;isOpen&quot;:false}"><span>nested content</span></div>',
     )
-  test
-    .expect(html)
-    .not
-    .toContain("[object Object]")
+  test.expect(html).not.toContain("[object Object]")
 })
 
 test.it("debug hook execution", () => {
@@ -259,8 +211,5 @@ test.it("debug hook execution", () => {
 
   const html = HyperHtml.renderToString(node, Datastar.HyperHooks)
 
-  test
-    .expect(html)
-    .not
-    .toContain("[object Object]")
+  test.expect(html).not.toContain("[object Object]")
 })

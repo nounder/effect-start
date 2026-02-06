@@ -1,20 +1,8 @@
 import { DATASTAR_SIGNAL_PATCH_EVENT } from "../engine.ts"
 import { attribute } from "../engine.ts"
-import {
-  beginBatch,
-  endBatch,
-  filtered,
-} from "../engine.ts"
-import type {
-  JSONPatch,
-  SignalFilterOptions,
-} from "../engine.ts"
-import {
-  aliasify,
-  isEmpty,
-  jsStrToObject,
-  modifyTiming,
-} from "../utils.ts"
+import { beginBatch, endBatch, filtered } from "../engine.ts"
+import type { JSONPatch, SignalFilterOptions } from "../engine.ts"
+import { aliasify, isEmpty, jsStrToObject, modifyTiming } from "../utils.ts"
 
 attribute({
   name: "on-signal-patch",

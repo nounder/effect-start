@@ -22,14 +22,10 @@ export const TypeIdError = <
 >(
   typeId: TypeId,
   tag: Tag,
-): new<A extends Record<string, any>>(
+): (new <A extends Record<string, any>>(
   args: Types.Simplify<A>,
-) =>
-  & Cause.YieldableError
-  & Record<TypeId, TypeId>
-  & { readonly _tag: Tag }
-  & Readonly<A> =>
-{
+) => Cause.YieldableError &
+  Record<TypeId, TypeId> & { readonly _tag: Tag } & Readonly<A>) => {
   class Base extends Data.Error<{}> {
     readonly _tag = tag
   }
@@ -48,17 +44,14 @@ export const Module = Schema.Literal(
   "Terminal",
 )
 
-export class BadArgument
-  extends Schema.TaggedError<BadArgument>("@effect/platform/Error/BadArgument")(
-    "BadArgument",
-    {
-      module: Module,
-      method: Schema.String,
-      description: Schema.optional(Schema.String),
-      cause: Schema.optional(Schema.Defect),
-    },
-  )
-{
+export class BadArgument extends Schema.TaggedError<BadArgument>(
+  "@effect/platform/Error/BadArgument",
+)("BadArgument", {
+  module: Module,
+  method: Schema.String,
+  description: Schema.optional(Schema.String),
+  cause: Schema.optional(Schema.Defect),
+}) {
   readonly [TypeId]: typeof TypeId = TypeId
 
   get message(): string {
@@ -84,22 +77,17 @@ export const SystemErrorReason = Schema.Literal(
 
 export type SystemErrorReason = typeof SystemErrorReason.Type
 
-export class SystemError
-  extends Schema.TaggedError<SystemError>("@effect/platform/Error/SystemError")(
-    "SystemError",
-    {
-      reason: SystemErrorReason,
-      module: Module,
-      method: Schema.String,
-      description: Schema.optional(Schema.String),
-      syscall: Schema.optional(Schema.String),
-      pathOrDescriptor: Schema.optional(
-        Schema.Union(Schema.String, Schema.Number),
-      ),
-      cause: Schema.optional(Schema.Defect),
-    },
-  )
-{
+export class SystemError extends Schema.TaggedError<SystemError>(
+  "@effect/platform/Error/SystemError",
+)("SystemError", {
+  reason: SystemErrorReason,
+  module: Module,
+  method: Schema.String,
+  description: Schema.optional(Schema.String),
+  syscall: Schema.optional(Schema.String),
+  pathOrDescriptor: Schema.optional(Schema.Union(Schema.String, Schema.Number)),
+  cause: Schema.optional(Schema.Defect),
+}) {
   readonly [TypeId]: typeof TypeId = TypeId
 
   get message(): string {
@@ -111,7 +99,6 @@ export class SystemError
 
 export type PlatformError = BadArgument | SystemError
 
-export const PlatformError: Schema.Union<[
-  typeof BadArgument,
-  typeof SystemError,
-]> = Schema.Union(BadArgument, SystemError)
+export const PlatformError: Schema.Union<
+  [typeof BadArgument, typeof SystemError]
+> = Schema.Union(BadArgument, SystemError)

@@ -50,17 +50,14 @@ function onNode(node: HyperNode.HyperNode) {
   // Handle dynamic attributes with suffixes
   for (const [key, value] of Object.entries(node.props)) {
     if (
-      key.startsWith("data-signals-")
-      && typeof value === "object"
-      && value !== null
+      key.startsWith("data-signals-") &&
+      typeof value === "object" &&
+      value !== null
     ) {
       node.props[key] = JSON.stringify(value)
     }
 
-    if (
-      key.startsWith("data-on-")
-      && typeof value === "function"
-    ) {
+    if (key.startsWith("data-on-") && typeof value === "function") {
       // @ts-ignore
       node.props[key] = `(${value.toString()})()`
     }

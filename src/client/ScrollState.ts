@@ -22,9 +22,7 @@ export function persist() {
     const y = step * i
     const element = document.elementFromPoint(0, y)
     if (!element) continue
-    const target = element.id
-      ? element
-      : element.closest("[id]") ?? element
+    const target = element.id ? element : (element.closest("[id]") ?? element)
 
     anchors.push({
       selector: selectorFromElement(target),
@@ -109,9 +107,7 @@ function selectorFromElement(element: Element): string {
   while (current && current !== document.body) {
     const parent = current.parentElement
     if (!parent) break
-    const index = Array
-      .from(parent.children)
-      .indexOf(current) + 1
+    const index = Array.from(parent.children).indexOf(current) + 1
     parts.unshift(`${current.tagName.toLowerCase()}:nth-child(${index})`)
     current = parent
   }

@@ -11,10 +11,7 @@ const mainFiber = GlobalValue.globalValue(
     ),
 )
 
-export const runMain = PlatformRuntime.makeRunMain(({
-  fiber,
-  teardown,
-}) => {
+export const runMain = PlatformRuntime.makeRunMain(({ fiber, teardown }) => {
   const prevFiber = MutableRef.get(mainFiber)
 
   MutableRef.set(mainFiber, fiber)

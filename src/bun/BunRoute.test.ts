@@ -7,13 +7,9 @@ import * as BunRoute from "./BunRoute.ts"
 import * as BunServer from "./BunServer.ts"
 
 const testLayer = (routes: ReturnType<typeof Route.tree>) =>
-  BunServer
-    .layer({
-      port: 0,
-    })
-    .pipe(
-      Layer.provide(Route.layer(routes)),
-    )
+  BunServer.layer({
+    port: 0,
+  }).pipe(Layer.provide(Route.layer(routes)))
 
 test.describe(BunRoute.htmlBundle, () => {
   test.test("wraps child content with layout", async () => {
@@ -25,16 +21,12 @@ test.describe(BunRoute.htmlBundle, () => {
     })
 
     const response = await Effect.runPromise(
-      Effect
-        .gen(function*() {
-          const bunServer = yield* BunServer.BunServer
-          return yield* Effect.promise(() =>
-            fetch(`http://localhost:${bunServer.server.port}/`)
-          )
-        })
-        .pipe(
-          Effect.provide(testLayer(routes)),
-        ),
+      Effect.gen(function* () {
+        const bunServer = yield* BunServer.BunServer
+        return yield* Effect.promise(() =>
+          fetch(`http://localhost:${bunServer.server.port}/`),
+        )
+      }).pipe(Effect.provide(testLayer(routes))),
     )
 
     const html = await response.text()
@@ -55,14 +47,12 @@ test.describe(BunRoute.htmlBundle, () => {
 
     const response = await Effect.runPromise(
       Effect.scoped(
-        Effect
-          .gen(function*() {
-            const bunServer = yield* BunServer.BunServer
-            return yield* Effect.promise(() =>
-              fetch(`http://localhost:${bunServer.server.port}/page`)
-            )
-          })
-          .pipe(Effect.provide(testLayer(routes))),
+        Effect.gen(function* () {
+          const bunServer = yield* BunServer.BunServer
+          return yield* Effect.promise(() =>
+            fetch(`http://localhost:${bunServer.server.port}/page`),
+          )
+        }).pipe(Effect.provide(testLayer(routes))),
       ),
     )
 
@@ -81,14 +71,12 @@ test.describe(BunRoute.htmlBundle, () => {
 
     const response = await Effect.runPromise(
       Effect.scoped(
-        Effect
-          .gen(function*() {
-            const bunServer = yield* BunServer.BunServer
-            return yield* Effect.promise(() =>
-              fetch(`http://localhost:${bunServer.server.port}/any/path`)
-            )
-          })
-          .pipe(Effect.provide(testLayer(routes))),
+        Effect.gen(function* () {
+          const bunServer = yield* BunServer.BunServer
+          return yield* Effect.promise(() =>
+            fetch(`http://localhost:${bunServer.server.port}/any/path`),
+          )
+        }).pipe(Effect.provide(testLayer(routes))),
       ),
     )
 
@@ -107,14 +95,12 @@ test.describe(BunRoute.htmlBundle, () => {
 
     const response = await Effect.runPromise(
       Effect.scoped(
-        Effect
-          .gen(function*() {
-            const bunServer = yield* BunServer.BunServer
-            return yield* Effect.promise(() =>
-              fetch(`http://localhost:${bunServer.server.port}/`)
-            )
-          })
-          .pipe(Effect.provide(testLayer(routes))),
+        Effect.gen(function* () {
+          const bunServer = yield* BunServer.BunServer
+          return yield* Effect.promise(() =>
+            fetch(`http://localhost:${bunServer.server.port}/`),
+          )
+        }).pipe(Effect.provide(testLayer(routes))),
       ),
     )
 
@@ -126,9 +112,7 @@ test.describe(BunRoute.htmlBundle, () => {
 
 test.describe(BunRoute.validateBunPattern, () => {
   test.test("returns none for valid patterns", () => {
-    test
-      .expect(Option.isNone(BunRoute.validateBunPattern("/users")))
-      .toBe(true)
+    test.expect(Option.isNone(BunRoute.validateBunPattern("/users"))).toBe(true)
     test
       .expect(Option.isNone(BunRoute.validateBunPattern("/users/[id]")))
       .toBe(true)

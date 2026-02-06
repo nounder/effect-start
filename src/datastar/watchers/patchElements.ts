@@ -1,10 +1,6 @@
 import { watcher } from "../engine.ts"
 import type { HTMLOrSVG, WatcherContext } from "../engine.ts"
-import {
-  aliasify,
-  isHTMLOrSVG,
-  supportsViewTransitions,
-} from "../utils.ts"
+import { aliasify, isHTMLOrSVG, supportsViewTransitions } from "../utils.ts"
 
 const isValidType = <T extends readonly string[]>(
   arr: T,
@@ -86,11 +82,8 @@ const onPatchElements = (
   const hasHead = /<\/head>/.test(elementsWithSvgsRemoved)
   const hasBody = /<\/body>/.test(elementsWithSvgsRemoved)
 
-  const wrapperTag = namespace === "svg"
-    ? "svg"
-    : namespace === "mathml"
-    ? "math"
-    : ""
+  const wrapperTag =
+    namespace === "svg" ? "svg" : namespace === "mathml" ? "math" : ""
   const wrappedEls = wrapperTag
     ? `<${wrapperTag}>${elements}</${wrapperTag}>`
     : elements
@@ -115,8 +108,7 @@ const onPatchElements = (
   } else if (wrapperTag) {
     const wrapperEl = newDocument
       .querySelector("template")!
-      .content
-      .querySelector(wrapperTag)!
+      .content.querySelector(wrapperTag)!
     for (const child of wrapperEl.childNodes) {
       newContent.appendChild(child)
     }
@@ -162,9 +154,10 @@ for (const script of document.querySelectorAll("script")) {
 }
 
 const execute = (target: Element): void => {
-  const elScripts = target instanceof HTMLScriptElement
-    ? [target]
-    : target.querySelectorAll("script")
+  const elScripts =
+    target instanceof HTMLScriptElement
+      ? [target]
+      : target.querySelectorAll("script")
   for (const old of elScripts) {
     if (!scripts.has(old)) {
       const script = document.createElement("script")
@@ -235,11 +228,11 @@ const morph = (
   mode: "outer" | "inner" = "outer",
 ): void => {
   if (
-    (isHTMLOrSVG(oldElt)
-      && isHTMLOrSVG(newContent)
-      && (oldElt as HTMLOrSVG).hasAttribute(aliasedIgnoreMorph)
-      && (newContent as HTMLOrSVG).hasAttribute(aliasedIgnoreMorph))
-    || oldElt.parentElement?.closest(aliasedIgnoreMorphAttr)
+    (isHTMLOrSVG(oldElt) &&
+      isHTMLOrSVG(newContent) &&
+      (oldElt as HTMLOrSVG).hasAttribute(aliasedIgnoreMorph) &&
+      (newContent as HTMLOrSVG).hasAttribute(aliasedIgnoreMorph)) ||
+    oldElt.parentElement?.closest(aliasedIgnoreMorphAttr)
   ) {
     return
   }
@@ -303,8 +296,8 @@ const morphChildren = (
   endPoint: Node | null = null,
 ): void => {
   if (
-    oldParent instanceof HTMLTemplateElement
-    && newParent instanceof HTMLTemplateElement
+    oldParent instanceof HTMLTemplateElement &&
+    newParent instanceof HTMLTemplateElement
   ) {
     oldParent = oldParent.content as unknown as Element
     newParent = newParent.content as unknown as Element
@@ -434,10 +427,10 @@ const findBestMatch = (
 }
 
 const isSoftMatch = (oldNode: Node, newNode: Node): boolean =>
-  oldNode.nodeType === newNode.nodeType
-  && (oldNode as Element).tagName === (newNode as Element).tagName
-  && (!(oldNode as Element).id
-    || (oldNode as Element).id === (newNode as Element).id)
+  oldNode.nodeType === newNode.nodeType &&
+  (oldNode as Element).tagName === (newNode as Element).tagName &&
+  (!(oldNode as Element).id ||
+    (oldNode as Element).id === (newNode as Element).id)
 
 const removeNode = (node: Node): void => {
   ctxIdMap.has(node)
@@ -451,10 +444,7 @@ const moveBefore: (parentNode: Node, node: Node, after: Node | null) => void =
 
 const aliasedPreserveAttr = aliasify("preserve-attr")
 
-const morphNode = (
-  oldNode: Node,
-  newNode: Node,
-): Node => {
+const morphNode = (oldNode: Node, newNode: Node): Node => {
   const type = newNode.nodeType
 
   if (type === 1) {
@@ -462,23 +452,23 @@ const morphNode = (
     const newElt = newNode as Element
     const shouldScopeChildren = oldElt.hasAttribute("data-scope-children")
     if (
-      oldElt.hasAttribute(aliasedIgnoreMorph)
-      && newElt.hasAttribute(aliasedIgnoreMorph)
+      oldElt.hasAttribute(aliasedIgnoreMorph) &&
+      newElt.hasAttribute(aliasedIgnoreMorph)
     ) {
       return oldNode
     }
 
     if (
-      oldElt instanceof HTMLInputElement
-      && newElt instanceof HTMLInputElement
-      && newElt.type !== "file"
+      oldElt instanceof HTMLInputElement &&
+      newElt instanceof HTMLInputElement &&
+      newElt.type !== "file"
     ) {
       if (newElt.getAttribute("value") !== oldElt.getAttribute("value")) {
         oldElt.value = newElt.getAttribute("value") ?? ""
       }
     } else if (
-      oldElt instanceof HTMLTextAreaElement
-      && newElt instanceof HTMLTextAreaElement
+      oldElt instanceof HTMLTextAreaElement &&
+      newElt instanceof HTMLTextAreaElement
     ) {
       if (newElt.value !== oldElt.value) {
         oldElt.value = newElt.value
@@ -490,13 +480,12 @@ const morphNode = (
 
     const preserveAttrs = (
       (newNode as HTMLElement).getAttribute(aliasedPreserveAttr) ?? ""
-    )
-      .split(" ")
+    ).split(" ")
 
     for (const { name, value } of newElt.attributes) {
       if (
-        oldElt.getAttribute(name) !== value
-        && !preserveAttrs.includes(name)
+        oldElt.getAttribute(name) !== value &&
+        !preserveAttrs.includes(name)
       ) {
         oldElt.setAttribute(name, value)
       }

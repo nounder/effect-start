@@ -12,61 +12,55 @@ import * as RouteMount from "./RouteMount.ts"
 test.it("infers parent descriptions", () => {
   RouteMount.get(
     Route.text((ctx) =>
-      Effect.gen(function*() {
-        test
-          .expectTypeOf(ctx)
-          .toExtend<{
-            method: "GET"
-            format: "text"
-          }>()
+      Effect.gen(function* () {
+        test.expectTypeOf(ctx).toExtend<{
+          method: "GET"
+          format: "text"
+        }>()
 
         return "Hello, world!"
-      })
+      }),
     ),
   )
 })
 
 test.it("next is function returning Entity", () => {
   Route.text((ctx, next) =>
-    Effect.gen(function*() {
-      test
-        .expectTypeOf(next)
-        .toExtend<() => Entity.Entity<string>>()
+    Effect.gen(function* () {
+      test.expectTypeOf(next).toExtend<() => Entity.Entity<string>>()
 
       return "Hello, world!"
-    })
+    }),
   )
 })
 
 test.it("enforces result value", () => {
   // @ts-expect-error must return string
   Route.text((ctx, next) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       return 1337
-    })
+    }),
   )
 })
 
 test.it("accepts text stream", () => {
   RouteMount.get(
     Route.text((ctx) =>
-      Effect.gen(function*() {
-        test
-          .expectTypeOf(ctx)
-          .toExtend<{
-            method: "GET"
-            format: "text"
-          }>()
+      Effect.gen(function* () {
+        test.expectTypeOf(ctx).toExtend<{
+          method: "GET"
+          format: "text"
+        }>()
 
         return Stream.make("Hello", " ", "world!")
-      })
+      }),
     ),
   )
 })
 
 test.it("accepts Effect<Stream<string>> for html format", () => {
   RouteMount.get(
-    Route.html(function*() {
+    Route.html(function* () {
       return Stream.make("<div>", "content", "</div>")
     }),
   )
@@ -76,7 +70,7 @@ test.it("accepts Effect<Stream<Uint8Array>> for bytes format", () => {
   const encoder = new TextEncoder()
 
   RouteMount.get(
-    Route.bytes(function*() {
+    Route.bytes(function* () {
       return Stream.make(encoder.encode("chunk"))
     }),
   )
@@ -84,7 +78,7 @@ test.it("accepts Effect<Stream<Uint8Array>> for bytes format", () => {
 
 test.it("rejects Stream for json format", () => {
   // @ts-expect-error Stream not allowed for json format
-  Route.json(function*() {
+  Route.json(function* () {
     return Stream.make({ msg: "hello" })
   })
 })
@@ -92,9 +86,7 @@ test.it("rejects Stream for json format", () => {
 test.it("accepts value directly", () => {
   const value = "Hello, world!"
 
-  test
-    .expectTypeOf(Route.text)
-    .toBeCallableWith(value)
+  test.expectTypeOf(Route.text).toBeCallableWith(value)
 })
 
 test.describe(`${RouteBody.handle.name}()`, () => {
@@ -131,10 +123,7 @@ test.describe(`${RouteBody.handle.name}()`, () => {
 
     test
       .expectTypeOf(handler)
-      .returns
-      .toExtend<
-        Effect.Effect<Entity.Entity<never>, Error, never>
-      >()
+      .returns.toExtend<Effect.Effect<Entity.Entity<never>, Error, never>>()
   })
 
   test.it("handles function", async () => {
@@ -144,8 +133,7 @@ test.describe(`${RouteBody.handle.name}()`, () => {
 
     test
       .expectTypeOf(handler)
-      .parameters
-      .toEqualTypeOf<
+      .parameters.toEqualTypeOf<
         [
           { id: number },
           (
@@ -155,8 +143,7 @@ test.describe(`${RouteBody.handle.name}()`, () => {
       >()
     test
       .expectTypeOf(handler)
-      .returns
-      .toEqualTypeOf<
+      .returns.toEqualTypeOf<
         Effect.Effect<Entity.Entity<number>, never, never>
       >()
 
@@ -168,7 +155,7 @@ test.describe(`${RouteBody.handle.name}()`, () => {
 
   test.it("handles generator", async () => {
     const handler = RouteBody.handle<{ id: number }, number, never, never>(
-      function*(ctx) {
+      function* (ctx) {
         const n = yield* Effect.succeed(ctx.id)
         return n * 2
       },
@@ -176,8 +163,7 @@ test.describe(`${RouteBody.handle.name}()`, () => {
 
     test
       .expectTypeOf(handler)
-      .parameters
-      .toEqualTypeOf<
+      .parameters.toEqualTypeOf<
         [
           { id: number },
           (
@@ -188,8 +174,7 @@ test.describe(`${RouteBody.handle.name}()`, () => {
 
     test
       .expectTypeOf(handler)
-      .returns
-      .toEqualTypeOf<
+      .returns.toEqualTypeOf<
         Effect.Effect<Entity.Entity<number>, never, never>
       >()
 
@@ -201,7 +186,7 @@ test.describe(`${RouteBody.handle.name}()`, () => {
 
   test.it("generator can call next", async () => {
     const handler = RouteBody.handle<{}, string, ParseResult.ParseError, never>(
-      function*(_ctx, next) {
+      function* (_ctx, next) {
         const fromNext = yield* next().text
         return `got: ${fromNext}`
       },
@@ -209,9 +194,7 @@ test.describe(`${RouteBody.handle.name}()`, () => {
 
     const result = await Effect.runPromise(Effect.orDie(handler(ctx, next)))
 
-    test
-      .expect(result.body)
-      .toBe("got: next")
+    test.expect(result.body).toBe("got: next")
   })
 
   test.it("generator type checks missing services", async () => {
@@ -220,7 +203,7 @@ test.describe(`${RouteBody.handle.name}()`, () => {
     }
     const ServiceA = Context.GenericTag<ServiceA>("ServiceA")
 
-    const handler = RouteBody.handle(function*() {
+    const handler = RouteBody.handle(function* () {
       yield* ServiceA
       return "ok"
     })
@@ -234,15 +217,14 @@ test.describe(`${RouteBody.handle.name}()`, () => {
   test.it("generator infers error type from yielded effects", () => {
     class CustomError extends Data.TaggedError("CustomError")<{}> {}
 
-    const handler = RouteBody.handle(function*() {
+    const handler = RouteBody.handle(function* () {
       yield* Effect.fail(new CustomError())
       return "ok"
     })
 
     test
       .expectTypeOf(handler)
-      .returns
-      .toExtend<
+      .returns.toExtend<
         Effect.Effect<Entity.Entity<string>, CustomError, never>
       >()
   })
@@ -251,15 +233,16 @@ test.describe(`${RouteBody.handle.name}()`, () => {
     class MyError extends Data.TaggedError("MyError")<{}> {}
 
     const routes = RouteMount.get(
-      Route.text(function*() {
+      Route.text(function* () {
         yield* Effect.fail(new MyError())
         return "error occurred"
       }),
     )
 
-    type Items = typeof routes extends
-      Route.RouteSet.RouteSet<any, any, infer I> ? I
-      : never
+    type Items =
+      typeof routes extends Route.RouteSet.RouteSet<any, any, infer I>
+        ? I
+        : never
 
     test
       .expectTypeOf<Items[0]>()

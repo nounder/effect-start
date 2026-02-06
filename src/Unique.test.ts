@@ -48,22 +48,8 @@ test.describe("Unique.formatUuid", () => {
       .expect(
         Unique.formatUuid(
           new Uint8Array([
-            0x00,
-            0x01,
-            0x02,
-            0x03,
-            0x04,
-            0x05,
-            0x06,
-            0x07,
-            0x08,
-            0x09,
-            0x0a,
-            0x0b,
-            0x0c,
-            0x0d,
-            0x0e,
-            0x0f,
+            0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a,
+            0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
           ]),
         ),
       )
@@ -77,22 +63,8 @@ test.describe("Unique.uuid4", () => {
       .expect(
         withRandomValues(
           new Uint8Array([
-            0x00,
-            0x01,
-            0x02,
-            0x03,
-            0x04,
-            0x05,
-            0x06,
-            0x07,
-            0x08,
-            0x09,
-            0x0a,
-            0x0b,
-            0x0c,
-            0x0d,
-            0x0e,
-            0x0f,
+            0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a,
+            0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
           ]),
           () => Unique.uuid4(),
         ),
@@ -105,24 +77,13 @@ test.describe("Unique.uuid7", () => {
   test.it("returns a canonical UUIDv7 string", () => {
     test
       .expect(
-        withNow(
-          0,
-          () =>
-            withRandomValues(
-              new Uint8Array([
-                0x12,
-                0x34,
-                0x56,
-                0x78,
-                0x9a,
-                0xbc,
-                0xde,
-                0xf0,
-                0x11,
-                0x22,
-              ]),
-              () => Unique.uuid7(),
-            ),
+        withNow(0, () =>
+          withRandomValues(
+            new Uint8Array([
+              0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0xde, 0xf0, 0x11, 0x22,
+            ]),
+            () => Unique.uuid7(),
+          ),
         ),
       )
       .toBe("00000000-0000-7234-9678-9abcdef01122")
@@ -135,16 +96,7 @@ test.describe("Unique.ulid", () => {
       .expect(
         withRandomValues(
           new Uint8Array([
-            0x06,
-            0x07,
-            0x08,
-            0x09,
-            0x0a,
-            0x0b,
-            0x0c,
-            0x0d,
-            0x0e,
-            0x0f,
+            0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
           ]),
           () => Unique.ulid(0x000102030405),
         ),
@@ -156,31 +108,13 @@ test.describe("Unique.ulid", () => {
     const time = 0x000102030405
     const ulidA = withRandomValues(
       new Uint8Array([
-        0x00,
-        0x00,
-        0x00,
-        0x00,
-        0x00,
-        0x00,
-        0x00,
-        0x00,
-        0x00,
-        0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
       ]),
       () => Unique.ulid(time),
     )
     const ulidB = withRandomValues(
       new Uint8Array([
-        0xe0,
-        0x00,
-        0x00,
-        0x00,
-        0x00,
-        0x00,
-        0x00,
-        0x00,
-        0x00,
-        0x00,
+        0xe0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
       ]),
       () => Unique.ulid(time),
     )
@@ -192,22 +126,8 @@ test.describe("Unique.ulid", () => {
 test.describe("Unique.toTimestamp", () => {
   test.it("decodes a 48-bit timestamp from bytes", () => {
     const bytes = new Uint8Array([
-      0x00,
-      0x01,
-      0x02,
-      0x03,
-      0x04,
-      0x05,
-      0x06,
-      0x07,
-      0x08,
-      0x09,
-      0x0a,
-      0x0b,
-      0x0c,
-      0x0d,
-      0x0e,
-      0x0f,
+      0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b,
+      0x0c, 0x0d, 0x0e, 0x0f,
     ])
 
     test.expect(Unique.toTimestamp(bytes)).toBe(0x000102030405)
@@ -218,17 +138,14 @@ test.describe("Unique.token", () => {
   test.it("returns a base32 token with the requested length", () => {
     test
       .expect(
-        withRandomValues(
-          new Uint8Array([0x00, 0x01, 0x02, 0x03]),
-          () => Unique.token(4),
+        withRandomValues(new Uint8Array([0x00, 0x01, 0x02, 0x03]), () =>
+          Unique.token(4),
         ),
       )
       .toBe("0123")
 
     test
-      .expect(
-        withRandomValues(new Uint8Array(128), () => Unique.token()),
-      )
+      .expect(withRandomValues(new Uint8Array(128), () => Unique.token()))
       .toBe("0".repeat(32))
   })
 })

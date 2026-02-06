@@ -3,7 +3,6 @@
  * Based on {@link https://github.com/jshttp/negotiator}
  */
 
-
 interface ParsedSpec {
   value: string
   q: number
@@ -25,9 +24,10 @@ function parseQuality(params: string | undefined): number {
   return isNaN(q) ? 1 : Math.min(Math.max(q, 0), 1)
 }
 
-function splitMediaTypeParams(
-  params: string,
-): { params: Record<string, string>; q: number } {
+function splitMediaTypeParams(params: string): {
+  params: Record<string, string>
+  q: number
+} {
   const result: Record<string, string> = {}
   let q = 1
 
@@ -40,7 +40,7 @@ function splitMediaTypeParams(
     const key = trimmed.slice(0, eqIndex).trim().toLowerCase()
     let value = trimmed.slice(eqIndex + 1).trim()
 
-    if (value.startsWith("\"") && value.endsWith("\"")) {
+    if (value.startsWith('"') && value.endsWith('"')) {
       value = value.slice(1, -1)
     }
 
@@ -56,17 +56,13 @@ function splitMediaTypeParams(
   return { params: result, q }
 }
 
-function parseAccept(
-  accept: string,
-): Array<
-  {
-    type: string
-    subtype: string
-    params: Record<string, string>
-    q: number
-    o: number
-  }
-> {
+function parseAccept(accept: string): Array<{
+  type: string
+  subtype: string
+  params: Record<string, string>
+  q: number
+  o: number
+}> {
   const specs: Array<{
     type: string
     subtype: string
@@ -149,15 +145,13 @@ function specifyMediaType(
 
 function getMediaTypePriority(
   mediaType: string,
-  accepted: Array<
-    {
-      type: string
-      subtype: string
-      params: Record<string, string>
-      q: number
-      o: number
-    }
-  >,
+  accepted: Array<{
+    type: string
+    subtype: string
+    params: Record<string, string>
+    q: number
+    o: number
+  }>,
   index: number,
 ): ParsedSpec {
   let best: { q: number; s: number; o: number } | null = null
@@ -169,18 +163,16 @@ function getMediaTypePriority(
 
   const type = match[1].toLowerCase()
   const subtype = match[2].toLowerCase()
-  const { params } = match[3]
-    ? splitMediaTypeParams(match[3])
-    : { params: {} }
+  const { params } = match[3] ? splitMediaTypeParams(match[3]) : { params: {} }
 
   for (const spec of accepted) {
     const result = specifyMediaType(type, subtype, params, spec)
     if (
-      result
-      && (best === null
-        || result.s > best.s
-        || (result.s === best.s && result.q > best.q)
-        || (result.s === best.s && result.q === best.q && result.o < best.o))
+      result &&
+      (best === null ||
+        result.s > best.s ||
+        (result.s === best.s && result.q > best.q) ||
+        (result.s === best.s && result.q === best.q && result.o < best.o))
     ) {
       best = result
     }
@@ -256,9 +248,12 @@ function specifyLanguage(
 
 function getLanguagePriority(
   language: string,
-  accepted: Array<
-    { prefix: string; suffix: string | undefined; q: number; o: number }
-  >,
+  accepted: Array<{
+    prefix: string
+    suffix: string | undefined
+    q: number
+    o: number
+  }>,
   index: number,
 ): ParsedSpec {
   let best: { q: number; s: number; o: number } | null = null
@@ -266,11 +261,11 @@ function getLanguagePriority(
   for (const spec of accepted) {
     const result = specifyLanguage(language, spec)
     if (
-      result
-      && (best === null
-        || result.s > best.s
-        || (result.s === best.s && result.q > best.q)
-        || (result.s === best.s && result.q === best.q && result.o < best.o))
+      result &&
+      (best === null ||
+        result.s > best.s ||
+        (result.s === best.s && result.q > best.q) ||
+        (result.s === best.s && result.q === best.q && result.o < best.o))
     ) {
       best = result
     }
@@ -341,11 +336,11 @@ function getEncodingPriority(
   for (const spec of accepted) {
     const result = specifyEncoding(encoding, spec)
     if (
-      result
-      && (best === null
-        || result.s > best.s
-        || (result.s === best.s && result.q > best.q)
-        || (result.s === best.s && result.q === best.q && result.o < best.o))
+      result &&
+      (best === null ||
+        result.s > best.s ||
+        (result.s === best.s && result.q > best.q) ||
+        (result.s === best.s && result.q === best.q && result.o < best.o))
     ) {
       best = result
     }
@@ -408,11 +403,11 @@ function getCharsetPriority(
   for (const spec of accepted) {
     const result = specifyCharset(charset, spec)
     if (
-      result
-      && (best === null
-        || result.s > best.s
-        || (result.s === best.s && result.q > best.q)
-        || (result.s === best.s && result.q === best.q && result.o < best.o))
+      result &&
+      (best === null ||
+        result.s > best.s ||
+        (result.s === best.s && result.q > best.q) ||
+        (result.s === best.s && result.q === best.q && result.o < best.o))
     ) {
       best = result
     }
@@ -428,12 +423,7 @@ function getCharsetPriority(
 }
 
 function compareSpecs(a: ParsedSpec, b: ParsedSpec): number {
-  return (
-    b.q - a.q
-    || b.s - a.s
-    || a.o - b.o
-    || a.i - b.i
-  )
+  return b.q - a.q || b.s - a.s || a.o - b.o || a.i - b.i
 }
 
 export function media(accept: string, available?: string[]): string[] {
@@ -443,9 +433,9 @@ export function media(accept: string, available?: string[]): string[] {
   }
 
   if (!available) {
-    return parsed.sort((a, b) => b.q - a.q || a.o - b.o).map((p) =>
-      `${p.type}/${p.subtype}`
-    )
+    return parsed
+      .sort((a, b) => b.q - a.q || a.o - b.o)
+      .map((p) => `${p.type}/${p.subtype}`)
   }
 
   const priorities = available.map((t, i) => getMediaTypePriority(t, parsed, i))
@@ -461,9 +451,9 @@ export function language(accept: string, available?: string[]): string[] {
   }
 
   if (!available) {
-    return parsed.sort((a, b) => b.q - a.q || a.o - b.o).map((p) =>
-      p.suffix ? `${p.prefix}-${p.suffix}` : p.prefix
-    )
+    return parsed
+      .sort((a, b) => b.q - a.q || a.o - b.o)
+      .map((p) => (p.suffix ? `${p.prefix}-${p.suffix}` : p.prefix))
   }
 
   const priorities = available.map((l, i) => getLanguagePriority(l, parsed, i))
@@ -504,10 +494,7 @@ export function charset(accept: string, available?: string[]): string[] {
   return sorted.map((p) => p.value)
 }
 
-export function headerMedia(
-  headers: Headers,
-  available?: string[],
-): string[] {
+export function headerMedia(headers: Headers, available?: string[]): string[] {
   const accept = headers.get("accept")
   if (!accept) return []
   return media(accept, available)

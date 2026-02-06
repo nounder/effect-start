@@ -1,13 +1,6 @@
 import { attribute } from "../engine.ts"
-import {
-  beginBatch,
-  endBatch,
-} from "../engine.ts"
-import {
-  delay,
-  modifyViewTransition,
-  tagToMs,
-} from "../utils.ts"
+import { beginBatch, endBatch } from "../engine.ts"
+import { delay, modifyViewTransition, tagToMs } from "../utils.ts"
 
 attribute({
   name: "init",

@@ -49,9 +49,7 @@ test.describe("generateCode", () => {
   })
 
   test.it("handles param segments", () => {
-    const routes = getRoutes([
-      "users/[userId]/route.tsx",
-    ])
+    const routes = getRoutes(["users/[userId]/route.tsx"])
 
     const code = FileRouterCodegen.generateCode(routes)
 
@@ -83,9 +81,7 @@ test.describe("generateCode", () => {
   })
 
   test.it("handles rest segments", () => {
-    const routes = getRoutes([
-      "docs/[[path]]/route.tsx",
-    ])
+    const routes = getRoutes(["docs/[[path]]/route.tsx"])
 
     const code = FileRouterCodegen.generateCode(routes)
 
@@ -95,10 +91,7 @@ test.describe("generateCode", () => {
   })
 
   test.it("handles root-level catch-all route", () => {
-    const routes = getRoutes([
-      "route.tsx",
-      "[[404]]/route.tsx",
-    ])
+    const routes = getRoutes(["route.tsx", "[[404]]/route.tsx"])
 
     const code = FileRouterCodegen.generateCode(routes)
 
@@ -111,9 +104,7 @@ test.describe("generateCode", () => {
   })
 
   test.it("strips groups from path pattern but keeps in module path", () => {
-    const routes = getRoutes([
-      "(admin)/users/route.tsx",
-    ])
+    const routes = getRoutes(["(admin)/users/route.tsx"])
 
     const code = FileRouterCodegen.generateCode(routes)
 
@@ -152,10 +143,7 @@ test.describe("generateCode", () => {
   })
 
   test.it("returns null for routes with only layers", () => {
-    const routes = getRoutes([
-      "layer.tsx",
-      "users/layer.tsx",
-    ])
+    const routes = getRoutes(["layer.tsx", "users/layer.tsx"])
 
     const code = FileRouterCodegen.generateCode(routes)
 
@@ -163,15 +151,13 @@ test.describe("generateCode", () => {
   })
 
   test.it("generates valid TypeScript with satisfies", () => {
-    const routes = getRoutes([
-      "route.tsx",
-    ])
+    const routes = getRoutes(["route.tsx"])
 
     const code = FileRouterCodegen.generateCode(routes)
 
-    test.expect(code).toContain(
-      `} satisfies import("effect-start/FileRouter").FileRoutes`,
-    )
+    test
+      .expect(code)
+      .toContain(`} satisfies import("effect-start/FileRouter").FileRoutes`)
   })
 
   test.it("multiple groups with layers only apply to their own routes", () => {
@@ -215,10 +201,7 @@ test.describe("generateCode", () => {
   })
 
   test.it("layer at group root applies to group root route", () => {
-    const routes = getRoutes([
-      "(admin)/layer.tsx",
-      "(admin)/route.tsx",
-    ])
+    const routes = getRoutes(["(admin)/layer.tsx", "(admin)/route.tsx"])
 
     const code = FileRouterCodegen.generateCode(routes)
 

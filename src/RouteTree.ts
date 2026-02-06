@@ -25,56 +25,48 @@ export type RouteMap = {
   [path: PathPattern.PathPattern]: Route.Route.Tuple
 }
 
-export type Routes<
-  T extends RouteTree,
-> = T[typeof RouteTreeRoutes]
+export type Routes<T extends RouteTree> = T[typeof RouteTreeRoutes]
 
-export interface RouteTree<
-  Routes extends RouteMap = RouteMap,
-> {
+export interface RouteTree<Routes extends RouteMap = RouteMap> {
   [TypeId]: typeof TypeId
   [RouteTreeRoutes]: Routes
 }
 
-function routes<
-  Routes extends RouteMap,
->(
-  tree: RouteTree<Routes>,
-): Routes {
+function routes<Routes extends RouteMap>(tree: RouteTree<Routes>): Routes {
   return tree[RouteTreeRoutes]
 }
 
 // segment priority: static (0) < :param (1) < :param? (2) < :param+ (3) < :param* (4)
 function sortScore(path: string): number {
   const segments = path.split("/")
-  const greedyIdx = segments.findIndex((s) =>
-    s.endsWith("*") || s.endsWith("+")
+  const greedyIdx = segments.findIndex(
+    (s) => s.endsWith("*") || s.endsWith("+"),
   )
   const maxPriority = Math.max(
     ...segments.map((s) =>
       !s.startsWith(":")
         ? 0
         : s.endsWith("*")
-        ? 4
-        : s.endsWith("+")
-        ? 3
-        : s.endsWith("?")
-        ? 2
-        : 1
+          ? 4
+          : s.endsWith("+")
+            ? 3
+            : s.endsWith("?")
+              ? 2
+              : 1,
     ),
     0,
   )
 
   return greedyIdx === -1
-    // non-greedy: sort by depth, then by max segment priority
-    ? (segments.length << 16) + (maxPriority << 8)
-    // greedy: sort after non-greedy, by greedy position (later = first), then priority
-    : (1 << 24) + ((16 - greedyIdx) << 16) + (maxPriority << 8)
+    ? // non-greedy: sort by depth, then by max segment priority
+      (segments.length << 16) + (maxPriority << 8)
+    : // greedy: sort after non-greedy, by greedy position (later = first), then priority
+      (1 << 24) + ((16 - greedyIdx) << 16) + (maxPriority << 8)
 }
 
 function sortRoutes(input: RouteMap): RouteMap {
-  const keys = Object.keys(input).sort((a, b) =>
-    sortScore(a) - sortScore(b) || a.localeCompare(b)
+  const keys = Object.keys(input).sort(
+    (a, b) => sortScore(a) - sortScore(b) || a.localeCompare(b),
   )
   const sorted: RouteMap = {}
   for (const key of keys) {
@@ -88,44 +80,36 @@ type PrefixKeys<T, Prefix extends string> = {
   [K in keyof T as K extends string ? `${Prefix}${K}` : never]: T[K]
 }
 
-type InferItems<T> = T extends Route.RouteSet.Data<any, any, infer M> ? M
-  : []
+type InferItems<T> = T extends Route.RouteSet.Data<any, any, infer M> ? M : []
 
 type LayerItems<T extends InputRouteMap> = "*" extends keyof T
   ? InferItems<T["*"]>
   : []
 
-type FlattenRouteMap<T extends InputRouteMap> =
-  & {
-    [K in Exclude<keyof T, "*"> as T[K] extends RouteTree ? never : K]: [
-      ...LayerItems<T>,
-      ...InferItems<T[K]>,
-    ]
-  }
-  & UnionToIntersection<FlattenNested<T, Exclude<keyof T, "*">, LayerItems<T>>>
+type FlattenRouteMap<T extends InputRouteMap> = {
+  [K in Exclude<keyof T, "*"> as T[K] extends RouteTree ? never : K]: [
+    ...LayerItems<T>,
+    ...InferItems<T[K]>,
+  ]
+} & UnionToIntersection<FlattenNested<T, Exclude<keyof T, "*">, LayerItems<T>>>
 
-type FlattenNested<
-  T,
-  K,
-  L extends Route.Route.Tuple,
-> = K extends keyof T
+type FlattenNested<T, K, L extends Route.Route.Tuple> = K extends keyof T
   ? T[K] extends RouteTree<infer R>
     ? PrefixKeys<PrependLayers<R, L>, K & string>
-  : {}
+    : {}
   : {}
 
 type PrependLayers<T extends RouteMap, L extends Route.Route.Tuple> = {
   [K in keyof T]: T[K] extends Route.Route.Tuple ? [...L, ...T[K]] : never
 }
 
-type UnionToIntersection<U> = (
-  U extends any ? (x: U) => void : never
-) extends (x: infer I) => void ? I
+type UnionToIntersection<U> = (U extends any ? (x: U) => void : never) extends (
+  x: infer I,
+) => void
+  ? I
   : never
 
-export function make<
-  const Routes extends InputRouteMap,
->(
+export function make<const Routes extends InputRouteMap>(
   input: Routes,
 ): RouteTree<FlattenRouteMap<Routes>> {
   const layerRoutes = [...(input[LayerKey] ?? [])]
@@ -179,9 +163,7 @@ function* flattenRoutes(
   }
 }
 
-export function* walk(
-  tree: RouteTree,
-): Generator<RouteMount.MountedRoute> {
+export function* walk(tree: RouteTree): Generator<RouteMount.MountedRoute> {
   const _routes = routes(tree) as RouteMap
 
   for (const path of Object.keys(_routes) as PathPattern.PathPattern[]) {
@@ -189,9 +171,7 @@ export function* walk(
   }
 }
 
-export function isRouteTree(
-  input: unknown,
-): input is RouteTree {
+export function isRouteTree(input: unknown): input is RouteTree {
   return Predicate.hasProperty(input, TypeId)
 }
 

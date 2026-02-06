@@ -1,13 +1,10 @@
 import { Ref } from "effect"
 import { Route } from "effect-start"
 import { HyperRoute } from "effect-start/hyper"
-import {
-  Message,
-  messagesRef,
-} from "../../Chat.tsx"
+import { Message, messagesRef } from "../../Chat.tsx"
 
 export default Route.get(
-  HyperRoute.html(function*() {
+  HyperRoute.html(function* () {
     const messages = yield* Ref.get(messagesRef)
 
     return (
@@ -23,7 +20,9 @@ export default Route.get(
           id="chat-messages"
           class="flex-1 overflow-y-auto p-4 flex flex-col gap-4"
         >
-          {messages.map((m) => <Message msg={m} />)}
+          {messages.map((m) => (
+            <Message msg={m} />
+          ))}
         </div>
 
         <form
@@ -56,9 +55,11 @@ export default Route.get(
 
             function checkIfAtBottom() {
               const threshold = 50
-              isAtBottom = scrollEl.scrollHeight - scrollEl
-                    .scrollTop - scrollEl
-                    .clientHeight < threshold
+              isAtBottom =
+                scrollEl.scrollHeight -
+                  scrollEl.scrollTop -
+                  scrollEl.clientHeight <
+                threshold
             }
 
             function scrollToBottom() {

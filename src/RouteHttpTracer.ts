@@ -41,11 +41,13 @@ const w3cTraceparent = (
   const [_version, traceId, spanId, flags] = parts
   if (!traceId || !spanId) return Option.none()
 
-  return Option.some(Tracer.externalSpan({
-    spanId,
-    traceId,
-    sampled: flags === "01",
-  }))
+  return Option.some(
+    Tracer.externalSpan({
+      spanId,
+      traceId,
+      sampled: flags === "01",
+    }),
+  )
 }
 
 const b3Single = (headers: Headers): Option.Option<Tracer.ExternalSpan> => {
@@ -58,11 +60,13 @@ const b3Single = (headers: Headers): Option.Option<Tracer.ExternalSpan> => {
   const [traceId, spanId, sampledStr] = parts
   if (!traceId || !spanId) return Option.none()
 
-  return Option.some(Tracer.externalSpan({
-    spanId,
-    traceId,
-    sampled: sampledStr === "1",
-  }))
+  return Option.some(
+    Tracer.externalSpan({
+      spanId,
+      traceId,
+      sampled: sampledStr === "1",
+    }),
+  )
 }
 
 const xb3 = (headers: Headers): Option.Option<Tracer.ExternalSpan> => {
@@ -72,11 +76,13 @@ const xb3 = (headers: Headers): Option.Option<Tracer.ExternalSpan> => {
 
   const sampled = headers.get("x-b3-sampled")
 
-  return Option.some(Tracer.externalSpan({
-    spanId,
-    traceId,
-    sampled: sampled === "1",
-  }))
+  return Option.some(
+    Tracer.externalSpan({
+      spanId,
+      traceId,
+      sampled: sampled === "1",
+    }),
+  )
 }
 
 export const parentSpanFromHeaders = (
