@@ -9,6 +9,7 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Runtime from "effect/Runtime"
 import type * as Scope from "effect/Scope"
+import * as NOs from "node:os"
 import * as PathPattern from "../PathPattern.ts"
 import * as PlataformRuntime from "../PlatformRuntime.ts"
 import * as Route from "../Route.ts"
@@ -66,8 +67,10 @@ export const make = (
           : Effect.succeed(3000)
       }),
     )
+    const hostFlag = process.argv.includes("--host")
     const hostname = yield* Config.string("HOSTNAME").pipe(
-      Effect.catchTag("ConfigError", () => Effect.succeed(undefined)),
+      Effect.catchTag("ConfigError", () =>
+        Effect.succeed(hostFlag ? "0.0.0.0" : undefined)),
     )
 
     const handlerStack: Array<FetchHandler> = [
@@ -76,27 +79,34 @@ export const make = (
       },
     ]
 
-    const service = BunServer.of({
-      // During the construction we need to create a service imlpementation
-      // first so we can provide it in the runtime that will be used in web
-      // handlers. After we create the runtime, we set it below so it's always
-      // available at runtime.
-      // An alternative approach would be to use Bun.Server.reload but I prefer
-      // to avoid it since it's badly documented and has bunch of bugs.
-      server: undefined as any,
-      pushHandler(fetch) {
-        handlerStack.push(fetch)
-        reload()
-      },
-      popHandler() {
-        handlerStack.pop()
-        reload()
-      },
-    })
+    const service = BunServer
+      .of({
+        // During the construction we need to create a service imlpementation
+        // first so we can provide it in the runtime that will be used in web
+        // handlers. After we create the runtime, we set it below so it's always
+        // available at runtime.
+        // An alternative approach would be to use Bun.Server.reload but I prefer
+        // to avoid it since it's badly documented and has bunch of bugs.
+        server: undefined as any,
+        pushHandler(fetch) {
+          handlerStack
+            .push(fetch)
+          reload()
+        },
+        popHandler() {
+          handlerStack
+            .pop()
+          reload()
+        },
+      })
 
-    const runtime = yield* Effect.runtime().pipe(
-      Effect.andThen(Runtime.provideService(BunServer, service)),
-    )
+    const runtime = yield* Effect
+      .runtime()
+      .pipe(
+        Effect
+          .andThen(Runtime
+            .provideService(BunServer, service)),
+      )
 
     let currentRoutes: BunRoute.BunRoutes = routes
       ? yield* walkBunRoutes(runtime, routes)
@@ -104,7 +114,8 @@ export const make = (
 
     const websocket: Bun.WebSocketHandler<BunServerRequest.WebSocketContext> = {
       open(ws) {
-        Deferred.unsafeDone(ws.data.deferred, Exit.succeed(ws))
+        Deferred
+          .unsafeDone(ws.data.deferred, Exit.succeed(ws))
       },
       message(ws, message) {
         ws.data.run(message)
@@ -183,11 +194,14 @@ export const withLogAddress = <A, E, R>(
   Layer
     .effectDiscard(
       BunServer.pipe(
-        Effect.andThen(server =>
-          Effect.log(
-            `Listening on ${server.server.hostname}:${server.server.port}`,
-          )
-        ),
+        Effect.andThen(server => {
+          const { hostname, port } = server.server
+          const addr = hostname === "0.0.0.0"
+            ? getLocalIp()
+            : "localhost"
+
+          return Effect.log(`Listening on http://${addr}:${port}`)
+        }),
       ),
     )
     .pipe(
@@ -225,4 +239,11 @@ function walkBunRoutes(
 
     return bunRoutes
   })
+}
+
+function getLocalIp(): string | undefined {
+  return Object.values(NOs.networkInterfaces())
+    .flatMap(addresses => addresses ?? [])
+    .find(addr => addr.family === "IPv4" && !addr.internal)
+    ?.address
 }
