@@ -1,4 +1,3 @@
-import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
 import * as test from "bun:test"
 import * as Effect from "effect/Effect"
 import * as ParseResult from "effect/ParseResult"
@@ -390,8 +389,7 @@ test.it("schemaHeaders flattens method into route descriptor", () => {
           }
         },
         unknown,
-        ParseResult.ParseError,
-        HttpServerRequest.HttpServerRequest
+        ParseResult.ParseError
       >
     >()
 
@@ -408,8 +406,7 @@ test.it("schemaHeaders flattens method into route descriptor", () => {
           }
         },
         unknown,
-        ParseResult.ParseError,
-        HttpServerRequest.HttpServerRequest
+        ParseResult.ParseError
       >
     >()
 

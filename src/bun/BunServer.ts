@@ -1,4 +1,4 @@
-import * as Socket from "@effect/platform/Socket"
+import * as Socket from "../Socket.ts"
 import * as Bun from "bun"
 import * as Config from "effect/Config"
 import * as Context from "effect/Context"
