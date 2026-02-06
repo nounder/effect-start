@@ -47,7 +47,7 @@ let map = {
   "&": "amp",
   "<": "lt",
   ">": "gt",
-  "\"": "quot",
+  '"': "quot",
   "'": "apos",
 }
 
@@ -112,11 +112,11 @@ export function renderToString(
 
       for (const key in props) {
         if (
-          key !== "children"
-          && key !== "innerHTML" // Solid-specific
-          && key !== "dangerouslySetInnerHTML" // React-specific
-          && props[key] !== false
-          && props[key] != null
+          key !== "children" &&
+          key !== "innerHTML" && // Solid-specific
+          key !== "dangerouslySetInnerHTML" && // React-specific
+          props[key] !== false &&
+          props[key] != null
         ) {
           if (props[key] === true) {
             result += ` ${esc(key)}`
@@ -139,8 +139,7 @@ export function renderToString(
         stack.push(`</${type}>`)
 
         // React-specific
-        const html = props.dangerouslySetInnerHTML?.__html
-          ?? props.innerHTML
+        const html = props.dangerouslySetInnerHTML?.__html ?? props.innerHTML
 
         if (html) {
           result += html

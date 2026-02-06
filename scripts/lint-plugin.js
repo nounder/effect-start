@@ -11,15 +11,14 @@ export default {
       meta: {
         type: "suggestion",
         docs: {
-          description:
-            "Enforce namespace imports for modules with capitalized base names",
+          description: "Enforce namespace imports for modules with capitalized base names",
         },
         fixable: "code",
         hasSuggestions: true,
         schema: [],
         messages: {
           preferNamespace:
-            "Use namespace import for module \"{{source}}\": import {{typePrefix}}* as {{baseName}} from \"{{source}}\"",
+            'Use namespace import for module "{{source}}": import {{typePrefix}}* as {{baseName}} from "{{source}}"',
         },
       },
       create(context) {
@@ -33,8 +32,8 @@ export default {
 
             // Already a namespace import (with or without type-only)
             if (
-              node.specifiers.length === 1
-              && node.specifiers[0].type === "ImportNamespaceSpecifier"
+              node.specifiers.length === 1 &&
+              node.specifiers[0].type === "ImportNamespaceSpecifier"
             ) {
               return
             }
@@ -43,9 +42,7 @@ export default {
             if (node.specifiers.length === 0) return
 
             // Skip if it's only a default import
-            const hasNamedImports = node.specifiers.some(
-              (s) => s.type === "ImportSpecifier",
-            )
+            const hasNamedImports = node.specifiers.some((s) => s.type === "ImportSpecifier")
             if (!hasNamedImports) return
 
             const typePrefix = node.importKind === "type" ? "type " : ""
@@ -70,14 +67,12 @@ export default {
       meta: {
         type: "suggestion",
         docs: {
-          description:
-            "Enforce namespace import for \"bun:test\" (import * as test from \"bun:test\")",
+          description: 'Enforce namespace import for "bun:test" (import * as test from "bun:test")',
         },
         fixable: "code",
         schema: [],
         messages: {
-          requireNamespace:
-            "Import \"bun:test\" as a namespace: import * as test from \"bun:test\"",
+          requireNamespace: 'Import "bun:test" as a namespace: import * as test from "bun:test"',
         },
       },
       create(context) {
@@ -88,8 +83,8 @@ export default {
 
             // Already a namespace import
             if (
-              node.specifiers.length === 1
-              && node.specifiers[0].type === "ImportNamespaceSpecifier"
+              node.specifiers.length === 1 &&
+              node.specifiers[0].type === "ImportNamespaceSpecifier"
             ) {
               return
             }
@@ -100,10 +95,7 @@ export default {
                 node,
                 messageId: "requireNamespace",
                 fix(fixer) {
-                  return fixer.replaceText(
-                    node,
-                    "import * as test from \"bun:test\"",
-                  )
+                  return fixer.replaceText(node, 'import * as test from "bun:test"')
                 },
               })
             }
@@ -122,8 +114,7 @@ export default {
         fixable: "whitespace",
         schema: [],
         messages: {
-          requireNewline:
-            "Each chained method in a test assertion should be on its own line",
+          requireNewline: "Each chained method in a test assertion should be on its own line",
           requireBlankBefore:
             "Test assertion should be preceded by an empty line (unless preceded by another assertion)",
           requireBlankAfter:
@@ -143,32 +134,29 @@ export default {
           let current = node
 
           while (current) {
-            if (
-              current.type === "CallExpression"
-              && current.callee.type === "MemberExpression"
-            ) {
+            if (current.type === "CallExpression" && current.callee.type === "MemberExpression") {
               const obj = current.callee.object
 
               // Check for test.expect(...) or test.expectTypeOf(...)
               if (
-                obj.type === "CallExpression"
-                && obj.callee.type === "MemberExpression"
-                && obj.callee.object.type === "Identifier"
-                && obj.callee.object.name === "test"
-                && obj.callee.property.type === "Identifier"
-                && (obj.callee.property.name === "expect"
-                  || obj.callee.property.name === "expectTypeOf")
+                obj.type === "CallExpression" &&
+                obj.callee.type === "MemberExpression" &&
+                obj.callee.object.type === "Identifier" &&
+                obj.callee.object.name === "test" &&
+                obj.callee.property.type === "Identifier" &&
+                (obj.callee.property.name === "expect" ||
+                  obj.callee.property.name === "expectTypeOf")
               ) {
                 return true
               }
 
               // Direct: test.expect(...) or test.expectTypeOf(...)
               if (
-                current.callee.object.type === "Identifier"
-                && current.callee.object.name === "test"
-                && current.callee.property.type === "Identifier"
-                && (current.callee.property.name === "expect"
-                  || current.callee.property.name === "expectTypeOf")
+                current.callee.object.type === "Identifier" &&
+                current.callee.object.name === "test" &&
+                current.callee.property.type === "Identifier" &&
+                (current.callee.property.name === "expect" ||
+                  current.callee.property.name === "expectTypeOf")
               ) {
                 return true
               }
@@ -197,10 +185,7 @@ export default {
           const members = []
           let current = node
 
-          while (
-            current.type === "CallExpression"
-            && current.callee.type === "MemberExpression"
-          ) {
+          while (current.type === "CallExpression" && current.callee.type === "MemberExpression") {
             members.push(current.callee)
             current = current.callee.object
           }
@@ -210,10 +195,10 @@ export default {
 
         function isAssertionStatement(stmt) {
           return (
-            stmt
-            && stmt.type === "ExpressionStatement"
-            && stmt.expression.type === "CallExpression"
-            && isTestAssertionChain(stmt.expression)
+            stmt &&
+            stmt.type === "ExpressionStatement" &&
+            stmt.expression.type === "CallExpression" &&
+            isTestAssertionChain(stmt.expression)
           )
         }
 
@@ -262,10 +247,7 @@ export default {
                   node,
                   messageId: "requireBlankBefore",
                   fix(fixer) {
-                    return fixer.insertTextAfter(
-                      sourceCode.getLastToken(prev),
-                      "\n",
-                    )
+                    return fixer.insertTextAfter(sourceCode.getLastToken(prev), "\n")
                   },
                 })
               }
@@ -277,10 +259,7 @@ export default {
                   node,
                   messageId: "requireBlankAfter",
                   fix(fixer) {
-                    return fixer.insertTextAfter(
-                      sourceCode.getLastToken(node),
-                      "\n",
-                    )
+                    return fixer.insertTextAfter(sourceCode.getLastToken(node), "\n")
                   },
                 })
               }

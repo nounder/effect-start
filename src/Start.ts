@@ -9,11 +9,10 @@ import * as BunServer from "./bun/BunServer.ts"
 import * as NodeFileSystem from "./node/NodeFileSystem.ts"
 
 export function layer<
-  Layers extends [
-    Layer.Layer<never, any, any>,
-    ...Array<Layer.Layer<never, any, any>>,
-  ],
->(...layers: Layers): Layer.Layer<
+  Layers extends [Layer.Layer<never, any, any>, ...Array<Layer.Layer<never, any, any>>],
+>(
+  ...layers: Layers
+): Layer.Layer<
   { [k in keyof Layers]: Layer.Layer.Success<Layers[k]> }[number],
   { [k in keyof Layers]: Layer.Layer.Error<Layers[k]> }[number],
   { [k in keyof Layers]: Layer.Layer.Context<Layers[k]> }[number]
@@ -42,9 +41,7 @@ export function layer<
  * @since 1.0.0
  * @category constructors
  */
-export function pack<
-  const Layers extends readonly [Layer.Layer.Any, ...Array<Layer.Layer.Any>],
->(
+export function pack<const Layers extends readonly [Layer.Layer.Any, ...Array<Layer.Layer.Any>]>(
   ...layers: Layers
 ): Layer.Layer<
   { [K in keyof Layers]: Layer.Layer.Success<Layers[K]> }[number],
@@ -64,25 +61,21 @@ export function pack<
   return result as AnyLayer
 }
 
-export function serve<
-  ROut,
-  E,
-  RIn extends BunServer.BunServer | FileSystem.FileSystem,
->(
+export function serve<ROut, E, RIn extends BunServer.BunServer | FileSystem.FileSystem>(
   load: () => Promise<{
     default: Layer.Layer<ROut, E, RIn>
   }>,
 ) {
   const appLayer = Function.pipe(
     Effect.tryPromise(load),
-    Effect.map(v => v.default),
+    Effect.map((v) => v.default),
     Effect.orDie,
     Layer.unwrapEffect,
   )
 
   const serverLayer = Layer.scoped(
     BunServer.BunServer,
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const existing = yield* Effect.serviceOption(BunServer.BunServer)
       if (Option.isSome(existing)) return existing.value
       return yield* BunServer.make({})
@@ -96,9 +89,5 @@ export function serve<
     Layer.provide(NodeFileSystem.layer),
   ) as Layer.Layer<BunServer.BunServer, never, never>
 
-  return Function.pipe(
-    composed,
-    Layer.launch,
-    BunRuntime.runMain,
-  )
+  return Function.pipe(composed, Layer.launch, BunRuntime.runMain)
 }

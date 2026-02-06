@@ -1,10 +1,3 @@
-import {
-  Development,
-  Route,
-} from "effect-start"
+import { Development, Route } from "effect-start"
 
-export default Route.get(
-  Route.sse(
-    Development.stream(),
-  ),
-)
+export default Route.get(Route.sse(Development.stream()))

@@ -2,24 +2,29 @@ export type PathPattern = `/${string}`
 
 export type Segments<Path extends string> = Path extends `/${infer Rest}`
   ? Segments<Rest>
-  : Path extends `${infer Head}/${infer Tail}` ? [Head, ...Segments<Tail>]
-  : Path extends "" ? []
-  : [Path]
+  : Path extends `${infer Head}/${infer Tail}`
+    ? [Head, ...Segments<Tail>]
+    : Path extends ""
+      ? []
+      : [Path]
 
-export type Params<T extends string> = string extends T ? Record<string, string>
+export type Params<T extends string> = string extends T
+  ? Record<string, string>
   : T extends `${infer _Start}:${infer Param}?/${infer Rest}`
     ? { [K in Param]?: string } & Params<`/${Rest}`>
-  : T extends `${infer _Start}:${infer Param}/${infer Rest}`
-    ? { [K in Param]: string } & Params<`/${Rest}`>
-  : T extends `${infer _Start}:${infer Param}+` ? { [K in Param]: string }
-  : T extends `${infer _Start}:${infer Param}*` ? { [K in Param]?: string }
-  : T extends `${infer _Start}:${infer Param}?` ? { [K in Param]?: string }
-  : T extends `${infer _Start}:${infer Param}` ? { [K in Param]: string }
-  : {}
+    : T extends `${infer _Start}:${infer Param}/${infer Rest}`
+      ? { [K in Param]: string } & Params<`/${Rest}`>
+      : T extends `${infer _Start}:${infer Param}+`
+        ? { [K in Param]: string }
+        : T extends `${infer _Start}:${infer Param}*`
+          ? { [K in Param]?: string }
+          : T extends `${infer _Start}:${infer Param}?`
+            ? { [K in Param]?: string }
+            : T extends `${infer _Start}:${infer Param}`
+              ? { [K in Param]: string }
+              : {}
 
-export type ValidateResult =
-  | { ok: true; segments: Array<string> }
-  | { ok: false; error: string }
+export type ValidateResult = { ok: true; segments: Array<string> } | { ok: false; error: string }
 
 function isValidSegment(segment: string): boolean {
   if (segment.startsWith(":")) {
@@ -46,10 +51,7 @@ export function validate(path: string): ValidateResult {
   return { ok: true, segments }
 }
 
-export function match(
-  pattern: string,
-  path: string,
-): Record<string, string> | null {
+export function match(pattern: string, path: string): Record<string, string> | null {
   const patternSegments = pattern.split("/").filter(Boolean)
   const pathSegments = path.split("/").filter(Boolean)
   const params: Record<string, string> = {}
@@ -155,9 +157,7 @@ function getParamName(seg: string): string {
  */
 export function toExpress(path: string): Array<string> {
   const segments = path.split("/").filter(Boolean)
-  const optionalWildcardIndex = segments.findIndex(
-    (s) => s.startsWith(":") && s.endsWith("*"),
-  )
+  const optionalWildcardIndex = segments.findIndex((s) => s.startsWith(":") && s.endsWith("*"))
 
   if (optionalWildcardIndex !== -1) {
     const before = segments.slice(0, optionalWildcardIndex)
@@ -232,9 +232,7 @@ export function toURLPattern(path: string): Array<string> {
  */
 export function toReactRouter(path: string): Array<string> {
   const segments = path.split("/").filter(Boolean)
-  const optionalWildcardIndex = segments.findIndex(
-    (s) => s.startsWith(":") && s.endsWith("*"),
-  )
+  const optionalWildcardIndex = segments.findIndex((s) => s.startsWith(":") && s.endsWith("*"))
 
   if (optionalWildcardIndex !== -1) {
     const before = segments.slice(0, optionalWildcardIndex)
@@ -363,9 +361,7 @@ export function toTanStack(path: string): string {
  */
 export function toHono(path: string): Array<string> {
   const segments = path.split("/").filter(Boolean)
-  const optionalWildcardIndex = segments.findIndex(
-    (s) => s.startsWith(":") && s.endsWith("*"),
-  )
+  const optionalWildcardIndex = segments.findIndex((s) => s.startsWith(":") && s.endsWith("*"))
 
   if (optionalWildcardIndex !== -1) {
     const before = segments.slice(0, optionalWildcardIndex)
@@ -472,14 +468,10 @@ export function toBun(path: string): Array<PathPattern> {
 
   const optionalModifier = getModifier(optional)
   const optionalName = getParamName(optional)
-  const requiredOptional = optionalModifier === "*"
-    ? `:${optionalName}+`
-    : `:${optionalName}`
+  const requiredOptional = optionalModifier === "*" ? `:${optionalName}+` : `:${optionalName}`
 
   const withOptionalSegments = [...before, requiredOptional, ...after]
-  const withOptionalPath: PathPattern = `/${
-    withOptionalSegments.map(formatSegment).join("/")
-  }`
+  const withOptionalPath: PathPattern = `/${withOptionalSegments.map(formatSegment).join("/")}`
 
   return [...toBun(basePath), ...toBun(withOptionalPath)]
 }

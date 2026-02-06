@@ -9,42 +9,28 @@ test.describe(Route.redirect, () => {
   test.it("creates redirect with default 302 status", () => {
     const entity = Route.redirect("/login")
 
-    test
-      .expect(entity.status)
-      .toBe(302)
-    test
-      .expect(entity.headers.location)
-      .toBe("/login")
-    test
-      .expect(entity.body)
-      .toBe("")
+    test.expect(entity.status).toBe(302)
+    test.expect(entity.headers.location).toBe("/login")
+    test.expect(entity.body).toBe("")
   })
 
   test.it("creates redirect with custom status", () => {
     const entity = Route.redirect("/new-url", 301)
 
-    test
-      .expect(entity.status)
-      .toBe(301)
-    test
-      .expect(entity.headers.location)
-      .toBe("/new-url")
+    test.expect(entity.status).toBe(301)
+    test.expect(entity.headers.location).toBe("/new-url")
   })
 
   test.it("accepts URL object", () => {
     const entity = Route.redirect(new URL("https://example.com/path"))
 
-    test
-      .expect(entity.headers.location)
-      .toBe("https://example.com/path")
+    test.expect(entity.headers.location).toBe("https://example.com/path")
   })
 
   test.it("returns Entity<string>", () => {
     const entity = Route.redirect("/login")
 
-    test
-      .expectTypeOf(entity)
-      .toEqualTypeOf<Entity.Entity<"">>()
+    test.expectTypeOf(entity).toEqualTypeOf<Entity.Entity<"">>()
   })
 })
 
@@ -59,34 +45,24 @@ test.describe(Route.lazy, () => {
       })
     })
 
-    test
-      .expect(loadCount)
-      .toBe(0)
+    test.expect(loadCount).toBe(0)
 
     const routes1 = await Effect.runPromise(lazyRoutes)
 
-    test
-      .expect(loadCount)
-      .toBe(1)
-    test
-      .expect(Route.items(routes1))
-      .toHaveLength(1)
+    test.expect(loadCount).toBe(1)
+    test.expect(Route.items(routes1)).toHaveLength(1)
 
     const routes2 = await Effect.runPromise(lazyRoutes)
 
-    test
-      .expect(loadCount)
-      .toBe(1)
-    test
-      .expect(routes1)
-      .toBe(routes2)
+    test.expect(loadCount).toBe(1)
+    test.expect(routes1).toBe(routes2)
   })
 
   test.it("works with RouteHttp.toWebHandler", async () => {
     const lazyRoutes = Route.lazy(() =>
       Promise.resolve({
         default: Route.get(Route.text("lazy loaded")),
-      })
+      }),
     )
 
     const routes = await Effect.runPromise(lazyRoutes)
@@ -94,23 +70,19 @@ test.describe(Route.lazy, () => {
 
     const response = await Http.fetch(handler, { path: "/test" })
 
-    test
-      .expect(response.status)
-      .toBe(200)
-    test
-      .expect(await response.text())
-      .toBe("lazy loaded")
+    test.expect(response.status).toBe(200)
+    test.expect(await response.text()).toBe("lazy loaded")
   })
 
   test.it("preserves route types", async () => {
     const lazyRoutes = Route.lazy(() =>
       Promise.resolve({
-        default: Route
-          .use(Route.filter({ context: { injected: true } }))
-          .get(Route.json(function*(ctx) {
+        default: Route.use(Route.filter({ context: { injected: true } })).get(
+          Route.json(function* (ctx) {
             return { value: ctx.injected }
-          })),
-      })
+          }),
+        ),
+      }),
     )
 
     const routes = await Effect.runPromise(lazyRoutes)
@@ -118,8 +90,6 @@ test.describe(Route.lazy, () => {
 
     const response = await Http.fetch(handler, { path: "/test" })
 
-    test
-      .expect(await response.json())
-      .toEqual({ value: true })
+    test.expect(await response.json()).toEqual({ value: true })
   })
 })

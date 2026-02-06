@@ -31,7 +31,7 @@ function normalizeToEffect<B, A, E, R>(
     if (Effect.isEffect(result)) {
       return result as Effect.Effect<A | Entity.Entity<A>, E, R>
     }
-    return Effect.gen(function*() {
+    return Effect.gen(function* () {
       return yield* result
     }) as Effect.Effect<A | Entity.Entity<A>, E, R>
   }
@@ -53,9 +53,6 @@ export function html<
   >,
 ) {
   return Route.html<D, B, I, string, E, R>((context, next) =>
-    Effect.map(
-      normalizeToEffect(handler, context, next as never),
-      renderValue,
-    )
+    Effect.map(normalizeToEffect(handler, context, next as never), renderValue),
   )
 }

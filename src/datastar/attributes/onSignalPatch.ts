@@ -7,12 +7,7 @@ import {
   type JSONPatch,
   type SignalFilterOptions,
 } from "../engine.ts"
-import {
-  aliasify,
-  isEmpty,
-  jsStrToObject,
-  modifyTiming,
-} from "../utils.ts"
+import { aliasify, isEmpty, jsStrToObject, modifyTiming } from "../utils.ts"
 
 attribute({
   name: "on-signal-patch",
@@ -35,23 +30,20 @@ attribute({
 
     let running = false
 
-    const callback: EventListener = modifyTiming(
-      (evt: CustomEvent<JSONPatch>) => {
-        if (running) return
-        const watched = filtered(filters, evt.detail)
-        if (!isEmpty(watched)) {
-          running = true
-          beginBatch()
-          try {
-            rx(watched)
-          } finally {
-            endBatch()
-            running = false
-          }
+    const callback: EventListener = modifyTiming((evt: CustomEvent<JSONPatch>) => {
+      if (running) return
+      const watched = filtered(filters, evt.detail)
+      if (!isEmpty(watched)) {
+        running = true
+        beginBatch()
+        try {
+          rx(watched)
+        } finally {
+          endBatch()
+          running = false
         }
-      },
-      mods,
-    )
+      }
+    }, mods)
 
     document.addEventListener(DATASTAR_SIGNAL_PATCH_EVENT, callback)
     return () => {

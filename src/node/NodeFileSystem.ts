@@ -87,8 +87,7 @@ const link = (() => {
     handleErrnoException("FileSystem", "link"),
     handleBadArgument("link"),
   )
-  return (existingPath: string, newPath: string) =>
-    nodeLink(existingPath, newPath)
+  return (existingPath: string, newPath: string) => nodeLink(existingPath, newPath)
 })()
 
 const makeDirectory = (() => {
@@ -113,13 +112,10 @@ const makeTempDirectoryFactory = (method: string) => {
   return (options?: FileSystem.MakeTempDirectoryOptions) =>
     Effect.suspend(() => {
       const prefix = options?.prefix ?? ""
-      const directory = typeof options?.directory === "string"
-        ? NPath.join(options.directory, ".")
-        : NOS.tmpdir()
+      const directory =
+        typeof options?.directory === "string" ? NPath.join(options.directory, ".") : NOS.tmpdir()
 
-      return nodeMkdtemp(
-        prefix ? NPath.join(directory, prefix) : directory + "/",
-      )
+      return nodeMkdtemp(prefix ? NPath.join(directory, prefix) : directory + "/")
     })
 }
 const makeTempDirectory = makeTempDirectoryFactory("makeTempDirectory")
@@ -131,26 +127,19 @@ const removeFactory = (method: string) => {
     handleBadArgument(method),
   )
   return (path: string, options?: FileSystem.RemoveOptions) =>
-    nodeRm(
-      path,
-      {
-        recursive: options?.recursive ?? false,
-        force: options?.force ?? false,
-      },
-    )
+    nodeRm(path, {
+      recursive: options?.recursive ?? false,
+      force: options?.force ?? false,
+    })
 }
 const remove = removeFactory("remove")
 
 const makeTempDirectoryScoped = (() => {
   const makeDirectory = makeTempDirectoryFactory("makeTempDirectoryScoped")
   const removeDirectory = removeFactory("makeTempDirectoryScoped")
-  return (
-    options?: FileSystem.MakeTempDirectoryOptions,
-  ) =>
-    Effect.acquireRelease(
-      makeDirectory(options),
-      (directory) =>
-        Effect.orDie(removeDirectory(directory, { recursive: true })),
+  return (options?: FileSystem.MakeTempDirectoryOptions) =>
+    Effect.acquireRelease(makeDirectory(options), (directory) =>
+      Effect.orDie(removeDirectory(directory, { recursive: true })),
     )
 })()
 
@@ -168,15 +157,11 @@ const openFactory = (method: string) => {
 
   return (path: string, options?: FileSystem.OpenFileOptions) =>
     Function.pipe(
-      Effect.acquireRelease(
-        nodeOpen(path, options?.flag ?? "r", options?.mode),
-        (fd) => Effect.orDie(nodeClose(fd)),
+      Effect.acquireRelease(nodeOpen(path, options?.flag ?? "r", options?.mode), (fd) =>
+        Effect.orDie(nodeClose(fd)),
       ),
       Effect.map((fd) =>
-        makeFile(
-          FileSystem.FileDescriptor(fd),
-          options?.flag?.startsWith("a") ?? false,
-        )
+        makeFile(FileSystem.FileDescriptor(fd), options?.flag?.startsWith("a") ?? false),
       ),
     )
 }
@@ -225,10 +210,7 @@ const makeFile = (() => {
     private readonly semaphore = Effect.unsafeMakeSemaphore(1)
     private position: bigint = 0n
 
-    constructor(
-      fd: FileSystem.File.Descriptor,
-      append: boolean,
-    ) {
+    constructor(fd: FileSystem.File.Descriptor, append: boolean) {
       this[FileSystem.FileTypeId] = FileSystem.FileTypeId
       this.fd = fd
       this.append = append
@@ -264,7 +246,7 @@ const makeFile = (() => {
             nodeRead(this.fd, {
               buffer,
               position: this.position,
-            })
+            }),
           ),
           (bytesRead) => {
             const sizeRead = FileSystem.Size(bytesRead)
@@ -277,45 +259,44 @@ const makeFile = (() => {
 
     readAlloc(size: FileSystem.SizeInput) {
       const sizeNumber = Number(size)
-      return this.semaphore.withPermits(1)(Effect.flatMap(
-        Effect.sync(() => Buffer.allocUnsafeSlow(sizeNumber)),
-        (buffer) =>
-          Effect.map(
-            nodeReadAlloc(this.fd, {
-              buffer,
-              position: this.position,
-            }),
-            (bytesRead): Option.Option<Buffer> => {
-              if (bytesRead === 0) {
-                return Option.none()
-              }
+      return this.semaphore.withPermits(1)(
+        Effect.flatMap(
+          Effect.sync(() => Buffer.allocUnsafeSlow(sizeNumber)),
+          (buffer) =>
+            Effect.map(
+              nodeReadAlloc(this.fd, {
+                buffer,
+                position: this.position,
+              }),
+              (bytesRead): Option.Option<Buffer> => {
+                if (bytesRead === 0) {
+                  return Option.none()
+                }
 
-              this.position = this.position + BigInt(bytesRead)
-              if (bytesRead === sizeNumber) {
-                return Option.some(buffer)
-              }
+                this.position = this.position + BigInt(bytesRead)
+                if (bytesRead === sizeNumber) {
+                  return Option.some(buffer)
+                }
 
-              const dst = Buffer.allocUnsafeSlow(bytesRead)
-              buffer.copy(dst, 0, 0, bytesRead)
-              return Option.some(dst)
-            },
-          ),
-      ))
+                const dst = Buffer.allocUnsafeSlow(bytesRead)
+                buffer.copy(dst, 0, 0, bytesRead)
+                return Option.some(dst)
+              },
+            ),
+        ),
+      )
     }
 
     truncate(length?: FileSystem.SizeInput) {
       return this.semaphore.withPermits(1)(
-        Effect.map(
-          nodeTruncate(this.fd, length ? Number(length) : undefined),
-          () => {
-            if (!this.append) {
-              const len = BigInt(length ?? 0)
-              if (this.position > len) {
-                this.position = len
-              }
+        Effect.map(nodeTruncate(this.fd, length ? Number(length) : undefined), () => {
+          if (!this.append) {
+            const len = BigInt(length ?? 0)
+            if (this.position > len) {
+              this.position = len
             }
-          },
-        ),
+          }
+        }),
       )
     }
 
@@ -329,7 +310,7 @@ const makeFile = (() => {
               undefined,
               undefined,
               this.append ? undefined : Number(this.position),
-            )
+            ),
           ),
           (bytesWritten) => {
             const sizeWritten = FileSystem.Size(bytesWritten)
@@ -343,9 +324,7 @@ const makeFile = (() => {
       )
     }
 
-    private writeAllChunk(
-      buffer: Uint8Array,
-    ): Effect.Effect<void, PlatformError.PlatformError> {
+    private writeAllChunk(buffer: Uint8Array): Effect.Effect<void, PlatformError.PlatformError> {
       return Effect.flatMap(
         Effect.suspend(() =>
           nodeWriteAll(
@@ -354,7 +333,7 @@ const makeFile = (() => {
             undefined,
             undefined,
             this.append ? undefined : Number(this.position),
-          )
+          ),
         ),
         (bytesWritten) => {
           if (bytesWritten === 0) {
@@ -397,9 +376,7 @@ const makeTempFileFactory = (method: string) => {
   return (options?: FileSystem.MakeTempFileOptions) =>
     Function.pipe(
       Effect.zip(makeDirectory(options), randomHexString(6)),
-      Effect.map(([directory, random]) =>
-        NPath.join(directory, random + (options?.suffix ?? ""))
-      ),
+      Effect.map(([directory, random]) => NPath.join(directory, random + (options?.suffix ?? ""))),
       Effect.tap((path) => Effect.scoped(open(path, { flag: "w+" }))),
     )
 }
@@ -409,21 +386,15 @@ const makeTempFileScoped = (() => {
   const makeFile = makeTempFileFactory("makeTempFileScoped")
   const removeDirectory = removeFactory("makeTempFileScoped")
   return (options?: FileSystem.MakeTempFileOptions) =>
-    Effect.acquireRelease(
-      makeFile(options),
-      (file) =>
-        Effect.orDie(removeDirectory(NPath.dirname(file), { recursive: true })),
+    Effect.acquireRelease(makeFile(options), (file) =>
+      Effect.orDie(removeDirectory(NPath.dirname(file), { recursive: true })),
     )
 })()
 
-const readDirectory = (
-  path: string,
-  options?: FileSystem.ReadDirectoryOptions,
-) =>
+const readDirectory = (path: string, options?: FileSystem.ReadDirectoryOptions) =>
   Effect.tryPromise({
     try: () => NFS.promises.readdir(path, options),
-    catch: (err) =>
-      handleErrnoException("FileSystem", "readDirectory")(err as any, [path]),
+    catch: (err) => handleErrnoException("FileSystem", "readDirectory")(err as any, [path]),
   })
 
 const readFile = (path: string) =>
@@ -431,11 +402,7 @@ const readFile = (path: string) =>
     try {
       NFS.readFile(path, { signal }, (err, data) => {
         if (err) {
-          resume(
-            Effect.fail(
-              handleErrnoException("FileSystem", "readFile")(err, [path]),
-            ),
-          )
+          resume(Effect.fail(handleErrnoException("FileSystem", "readFile")(err, [path])))
         } else {
           resume(Effect.succeed(data))
         }
@@ -476,18 +443,18 @@ const makeFileInfo = (stat: NFS.Stats): FileSystem.File.Info => ({
   type: stat.isFile()
     ? "File"
     : stat.isDirectory()
-    ? "Directory"
-    : stat.isSymbolicLink()
-    ? "SymbolicLink"
-    : stat.isBlockDevice()
-    ? "BlockDevice"
-    : stat.isCharacterDevice()
-    ? "CharacterDevice"
-    : stat.isFIFO()
-    ? "FIFO"
-    : stat.isSocket()
-    ? "Socket"
-    : "Unknown",
+      ? "Directory"
+      : stat.isSymbolicLink()
+        ? "SymbolicLink"
+        : stat.isBlockDevice()
+          ? "BlockDevice"
+          : stat.isCharacterDevice()
+            ? "CharacterDevice"
+            : stat.isFIFO()
+              ? "FIFO"
+              : stat.isSocket()
+                ? "Socket"
+                : "Unknown",
   mtime: Option.fromNullable(stat.mtime),
   atime: Option.fromNullable(stat.atime),
   birthtime: Option.fromNullable(stat.birthtime),
@@ -541,35 +508,30 @@ const utimes = (() => {
 })()
 
 const watchNode = (path: string, options?: FileSystem.WatchOptions) =>
-  Stream.asyncScoped<FileSystem.WatchEvent, PlatformError.PlatformError>((
-    emit,
-  ) =>
+  Stream.asyncScoped<FileSystem.WatchEvent, PlatformError.PlatformError>((emit) =>
     Effect.acquireRelease(
       Effect.sync(() => {
-        const watcher = NFS.watch(
-          path,
-          { recursive: options?.recursive },
-          (event, path) => {
-            if (!path) return
-            switch (event) {
-              case "rename": {
-                emit.fromEffect(Effect.matchEffect(stat(path), {
-                  onSuccess: (_) =>
-                    Effect.succeed(FileSystem.WatchEventCreate({ path })),
+        const watcher = NFS.watch(path, { recursive: options?.recursive }, (event, path) => {
+          if (!path) return
+          switch (event) {
+            case "rename": {
+              emit.fromEffect(
+                Effect.matchEffect(stat(path), {
+                  onSuccess: (_) => Effect.succeed(FileSystem.WatchEventCreate({ path })),
                   onFailure: (err) =>
                     err._tag === "SystemError" && err.reason === "NotFound"
                       ? Effect.succeed(FileSystem.WatchEventRemove({ path }))
                       : Effect.fail(err),
-                }))
-                return
-              }
-              case "change": {
-                emit.single(FileSystem.WatchEventUpdate({ path }))
-                return
-              }
+                }),
+              )
+              return
             }
-          },
-        )
+            case "change": {
+              emit.single(FileSystem.WatchEventUpdate({ path }))
+              return
+            }
+          }
+        })
         watcher.on("error", (error) => {
           emit.fail(
             new PlatformError.SystemError({
@@ -587,7 +549,7 @@ const watchNode = (path: string, options?: FileSystem.WatchOptions) =>
         return watcher
       }),
       (watcher) => Effect.sync(() => watcher.close()),
-    )
+    ),
   )
 
 const watch = (
@@ -600,82 +562,72 @@ const watch = (
       backend.pipe(
         Option.flatMap((_) => _.register(path, stat, options)),
         Option.getOrElse(() => watchNode(path, options)),
-      )
+      ),
     ),
     Stream.unwrap,
   )
 
-const writeFile = (
-  path: string,
-  data: Uint8Array,
-  options?: FileSystem.WriteFileOptions,
-) =>
+const writeFile = (path: string, data: Uint8Array, options?: FileSystem.WriteFileOptions) =>
   Effect.async<void, PlatformError.PlatformError>((resume, signal) => {
     try {
-      NFS.writeFile(path, data, {
-        signal,
-        flag: options?.flag,
-        mode: options?.mode,
-      }, (err) => {
-        if (err) {
-          resume(
-            Effect.fail(
-              handleErrnoException("FileSystem", "writeFile")(err, [path]),
-            ),
-          )
-        } else {
-          resume(Effect.void)
-        }
-      })
+      NFS.writeFile(
+        path,
+        data,
+        {
+          signal,
+          flag: options?.flag,
+          mode: options?.mode,
+        },
+        (err) => {
+          if (err) {
+            resume(Effect.fail(handleErrnoException("FileSystem", "writeFile")(err, [path])))
+          } else {
+            resume(Effect.void)
+          }
+        },
+      )
     } catch (err) {
       resume(Effect.fail(handleBadArgument("writeFile")(err)))
     }
   })
 
-const make = Effect.map(
-  Effect.serviceOption(FileSystem.WatchBackend),
-  (backend) =>
-    FileSystem.make({
-      access,
-      chmod,
-      chown,
-      copy,
-      copyFile,
-      link,
-      makeDirectory,
-      makeTempDirectory,
-      makeTempDirectoryScoped,
-      makeTempFile,
-      makeTempFileScoped,
-      open,
-      readDirectory,
-      readFile,
-      readLink,
-      realPath,
-      remove,
-      rename,
-      stat,
-      symlink,
-      truncate,
-      utimes,
-      watch(path, options) {
-        return watch(backend, path, options)
-      },
-      writeFile,
-    }),
+const make = Effect.map(Effect.serviceOption(FileSystem.WatchBackend), (backend) =>
+  FileSystem.make({
+    access,
+    chmod,
+    chown,
+    copy,
+    copyFile,
+    link,
+    makeDirectory,
+    makeTempDirectory,
+    makeTempDirectoryScoped,
+    makeTempFile,
+    makeTempFileScoped,
+    open,
+    readDirectory,
+    readFile,
+    readLink,
+    realPath,
+    remove,
+    rename,
+    stat,
+    symlink,
+    truncate,
+    utimes,
+    watch(path, options) {
+      return watch(backend, path, options)
+    },
+    writeFile,
+  }),
 )
 
 export const layer = Layer.effect(FileSystem.FileSystem, make)
 
-export {
-  PlatformError as Error,
-}
+export { PlatformError as Error }
 
-export function handleErrnoException(
-  module: PlatformError.SystemError["module"],
-  method: string,
-) {
-  return function(
+export function handleErrnoException(module: PlatformError.SystemError["module"], method: string) {
+  return function (
     err: NodeJS.ErrnoException,
     [path]: [path: NFS.PathLike | number, ...args: Array<any>],
   ): PlatformError.PlatformError {

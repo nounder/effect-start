@@ -14,10 +14,7 @@
     "import/no-duplicates": "error",
 
     // TypeScript rules (matching Effect's @typescript-eslint config)
-    "typescript/array-type": [
-      "error",
-      { "default": "generic", "readonly": "generic" }
-    ],
+    "typescript/array-type": ["error", { "default": "generic", "readonly": "generic" }],
     "typescript/consistent-type-imports": "warn",
 
     // -- Disabled rules that conflict with this project's style --
@@ -74,9 +71,5 @@
     // Enforce newlines between chained test assertion methods
     "effect-start/test-assertion-newline": "error"
   },
-  "ignorePatterns": [
-    "dist/",
-    "node_modules/",
-    "*.todo.ts"
-  ]
+  "ignorePatterns": ["dist/", "node_modules/", "*.todo.ts"]
 }

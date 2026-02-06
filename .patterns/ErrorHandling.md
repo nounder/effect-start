@@ -10,7 +10,7 @@ Comprehensive error handling patterns used throughout the Effect library, emphas
 
 ```typescript
 // ❌ WRONG - This breaks Effect semantics
-Effect.gen(function*() {
+Effect.gen(function* () {
   try {
     const result = yield* someEffect
     return result
@@ -21,7 +21,7 @@ Effect.gen(function*() {
 })
 
 // ✅ CORRECT - Use Effect's error handling
-Effect.gen(function*() {
+Effect.gen(function* () {
   const result = yield* Effect.result(someEffect)
   if (result._tag === "Failure") {
     // Handle error appropriately
@@ -31,11 +31,11 @@ Effect.gen(function*() {
 })
 ```
 
-### ✅ MANDATORY: return yield* Pattern
+### ✅ MANDATORY: return yield\* Pattern
 
 ```typescript
 // ✅ CORRECT - Always use return yield* for terminal effects
-Effect.gen(function*() {
+Effect.gen(function* () {
   if (invalidCondition) {
     return yield* Effect.fail("validation failed")
   }
@@ -208,20 +208,18 @@ For Promise-based operations:
 ```typescript
 // Network request with structured errors
 const fetchUser = (id: string) =>
-  Effect
-    .tryPromise({
-      try: () => fetch(`/api/users/${id}`),
-      catch: (error) =>
-        new NetworkError({
-          status: 0,
-          url: `/api/users/${id}`,
-          cause: error,
-        }),
-    })
-    .pipe(
-      Effect.flatMap(response =>
-        response.ok
-          ? Effect.tryPromise({
+  Effect.tryPromise({
+    try: () => fetch(`/api/users/${id}`),
+    catch: (error) =>
+      new NetworkError({
+        status: 0,
+        url: `/api/users/${id}`,
+        cause: error,
+      }),
+  }).pipe(
+    Effect.flatMap((response) =>
+      response.ok
+        ? Effect.tryPromise({
             try: () => response.json(),
             catch: (error) =>
               new ParseError({
@@ -229,19 +227,19 @@ const fetchUser = (id: string) =>
                 cause: error,
               }),
           })
-          : Effect.fail(
+        : Effect.fail(
             new NetworkError({
               status: response.status,
               url: response.url,
             }),
-          )
-      ),
-    )
+          ),
+    ),
+  )
 
 // File operations
 const readFile = (path: string) =>
   Effect.tryPromise({
-    try: () => import("fs/promises").then(fs => fs.readFile(path, "utf8")),
+    try: () => import("fs/promises").then((fs) => fs.readFile(path, "utf8")),
     catch: (error: NodeJS.ErrnoException) =>
       new SystemError({
         reason: mapErrnoToReason(error.code),
@@ -262,11 +260,11 @@ Handle all errors uniformly:
 ```typescript
 const robustOperation = (input: string) =>
   riskyOperation(input).pipe(
-    Effect.catchAll(error => {
+    Effect.catchAll((error) => {
       // Log error for debugging
-      Console.error(`Operation failed: ${error}`),
+      ;(Console.error(`Operation failed: ${error}`),
         // Provide fallback or re-throw
-        Effect.succeed("fallback value")
+        Effect.succeed("fallback value"))
     }),
   )
 ```
@@ -278,17 +276,15 @@ Handle specific error types:
 ```typescript
 const handleSpecificErrors = (input: string) =>
   complexOperation(input).pipe(
-    Effect.catchTag("ValidationError", error => {
+    Effect.catchTag("ValidationError", (error) => {
       // Handle validation errors specifically
       Console.log(`Validation failed for field: ${error.field}`)
       return Effect.succeed("default value")
     }),
-    Effect.catchTag("NetworkError", error => {
+    Effect.catchTag("NetworkError", (error) => {
       // Handle network errors with retry
       if (error.status >= 500) {
-        return complexOperation(input).pipe(
-          Effect.retry(Schedule.exponential("100 millis", 2.0)),
-        )
+        return complexOperation(input).pipe(Effect.retry(Schedule.exponential("100 millis", 2.0)))
       }
       return Effect.fail(error)
     }),
@@ -302,7 +298,7 @@ Selectively handle certain errors:
 ```typescript
 const handleRecoverableErrors = (input: string) =>
   operation(input).pipe(
-    Effect.catchSome(error => {
+    Effect.catchSome((error) => {
       if (error._tag === "NetworkError" && error.status < 500) {
         // Only handle client errors, not server errors
         return Option.some(Effect.succeed("recovered"))
@@ -317,22 +313,13 @@ const handleRecoverableErrors = (input: string) =>
 ### Using Effect.exit for Testing
 
 ```typescript
-import {
-  assert,
-  describe,
-  it,
-} from "@effect/vitest"
-import {
-  Effect,
-  Exit,
-} from "effect"
+import { assert, describe, it } from "@effect/vitest"
+import { Effect, Exit } from "effect"
 
 describe("error handling", () => {
   it.effect("should fail with specific error", () =>
-    Effect.gen(function*() {
-      const result = yield* Effect.exit(
-        operation("invalid input"),
-      )
+    Effect.gen(function* () {
+      const result = yield* Effect.exit(operation("invalid input"))
 
       if (result._tag === "Failure") {
         assert.isTrue(ValidationError.isValidationError(result.cause))
@@ -341,14 +328,15 @@ describe("error handling", () => {
       } else {
         assert.fail("Expected operation to fail")
       }
-    }))
+    }),
+  )
 
   it.effect("should handle errors with catchTag", () =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       let errorHandled = false
 
       const result = yield* operation("invalid").pipe(
-        Effect.catchTag("ValidationError", error => {
+        Effect.catchTag("ValidationError", (error) => {
           errorHandled = true
           return Effect.succeed("handled")
         }),
@@ -356,7 +344,8 @@ describe("error handling", () => {
 
       assert.strictEqual(result, "handled")
       assert.isTrue(errorHandled)
-    }))
+    }),
+  )
 })
 ```
 
@@ -364,18 +353,17 @@ describe("error handling", () => {
 
 ```typescript
 it.effect("should transform errors correctly", () =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const result = yield* Effect.exit(
-      Effect.fail("string error").pipe(
-        Effect.mapError(msg => new CustomError({ message: msg })),
-      ),
+      Effect.fail("string error").pipe(Effect.mapError((msg) => new CustomError({ message: msg }))),
     )
 
     assert.isTrue(Exit.isFailure(result))
     if (Exit.isFailure(result)) {
       assert.isTrue(CustomError.isCustomError(result.cause))
     }
-  }))
+  }),
+)
 ```
 
 ## 🔧 ERROR UTILITY PATTERNS
@@ -396,9 +384,7 @@ const mapFileSystemError = (error: SystemError): DomainError => {
 }
 
 // Error aggregation for multiple operations
-const aggregateErrors = <E>(
-  errors: ReadonlyArray<E>,
-): E | AggregateError<E> => {
+const aggregateErrors = <E>(errors: ReadonlyArray<E>): E | AggregateError<E> => {
   if (errors.length === 1) {
     return errors[0]!
   }
@@ -414,10 +400,8 @@ const withErrorLogging = <A, E, R>(
   effect: Effect.Effect<A, E, R>,
 ): Effect.Effect<A, E, R> =>
   effect.pipe(
-    Effect.tapError(error => Console.error(`${name} failed:`, error)),
-    Effect.tapErrorCause(cause =>
-      Console.error(`${name} cause:`, Cause.pretty(cause))
-    ),
+    Effect.tapError((error) => Console.error(`${name} failed:`, error)),
+    Effect.tapErrorCause((cause) => Console.error(`${name} cause:`, Cause.pretty(cause))),
   )
 ```
 
@@ -460,10 +444,7 @@ const withFallbacks = <A, E, R>(
   primary: Effect.Effect<A, E, R>,
   fallbacks: ReadonlyArray<Effect.Effect<A, E, R>>,
 ): Effect.Effect<A, E, R> =>
-  fallbacks.reduce(
-    (acc, fallback) => acc.pipe(Effect.orElse(() => fallback)),
-    primary,
-  )
+  fallbacks.reduce((acc, fallback) => acc.pipe(Effect.orElse(() => fallback)), primary)
 ```
 
 ## 📝 SUCCESS CRITERIA
@@ -475,7 +456,7 @@ const withFallbacks = <A, E, R>(
 - [ ] Custom error messages are informative
 - [ ] Error reasons are standardized and consistent
 - [ ] No try-catch blocks in Effect.gen generators
-- [ ] Always use return yield* for error termination
+- [ ] Always use return yield\* for error termination
 - [ ] Specific error handling with catchTag
 - [ ] Proper error testing with Effect.exit
 - [ ] Error recovery strategies implemented where appropriate

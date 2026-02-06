@@ -1,25 +1,14 @@
 import fsPromises from "node:fs/promises"
 import path from "node:path"
 import { pathToFileURL } from "node:url"
-import {
-  compile as _compile,
-  compileAst as _compileAst,
-  Features,
-  Polyfills,
-} from "tailwindcss"
+import { compile as _compile, compileAst as _compileAst, Features, Polyfills } from "tailwindcss"
 import * as BunEnhancedResolve from "../../bun/_BunEnhancedResolve"
 
 type AstNode = Parameters<typeof _compileAst>[0][number]
 
-export {
-  Features,
-  Polyfills,
-}
+export { Features, Polyfills }
 
-export type Resolver = (
-  id: string,
-  base: string,
-) => Promise<string | false | undefined>
+export type Resolver = (id: string, base: string) => Promise<string | false | undefined>
 
 export interface CompileOptions {
   base: string
@@ -48,12 +37,7 @@ function createCompileOptions({
       return loadModule(id, base, onDependency, customJsResolver)
     },
     async loadStylesheet(id: string, sheetBase: string) {
-      let sheet = await loadStylesheet(
-        id,
-        sheetBase,
-        onDependency,
-        customCssResolver,
-      )
+      let sheet = await loadStylesheet(id, sheetBase, onDependency, customCssResolver)
 
       return sheet
     },
@@ -97,10 +81,7 @@ export async function compileAst(
   return compiler
 }
 
-export async function compile(
-  css: string,
-  options: CompileOptions,
-): ReturnType<typeof _compile> {
+export async function compile(css: string, options: CompileOptions): ReturnType<typeof _compile> {
   let compiler = await _compile(css, createCompileOptions(options))
   await ensureSourceDetectionRootExists(compiler)
   return compiler
@@ -228,9 +209,7 @@ async function resolveJsId(
     }
   }
 
-  return runResolver(esmResolver, id, base).catch(() =>
-    runResolver(cjsResolver, id, base)
-  )
+  return runResolver(esmResolver, id, base).catch(() => runResolver(cjsResolver, id, base))
 }
 
 function runResolver(
@@ -242,6 +221,6 @@ function runResolver(
     resolver.resolve({}, base, id, {}, (err, result) => {
       if (err) return reject(err)
       resolve(result)
-    })
+    }),
   )
 }

@@ -21,13 +21,11 @@ export const defaultTeardown: Teardown = <E, A>(
 }
 
 export interface RunMain {
-  (
-    options?: {
-      readonly disableErrorReporting?: boolean | undefined
-      readonly disablePrettyLogger?: boolean | undefined
-      readonly teardown?: Teardown | undefined
-    },
-  ): <E, A>(effect: Effect.Effect<A, E>) => void
+  (options?: {
+    readonly disableErrorReporting?: boolean | undefined
+    readonly disablePrettyLogger?: boolean | undefined
+    readonly teardown?: Teardown | undefined
+  }): <E, A>(effect: Effect.Effect<A, E>) => void
   <E, A>(
     effect: Effect.Effect<A, E>,
     options?: {
@@ -38,10 +36,7 @@ export interface RunMain {
   ): void
 }
 
-const addPrettyLogger = (
-  refs: FiberRefs.FiberRefs,
-  fiberId: FiberId.Runtime,
-) => {
+const addPrettyLogger = (refs: FiberRefs.FiberRefs, fiberId: FiberId.Runtime) => {
   const loggers = FiberRefs.getOrDefault(refs, FiberRef.currentLoggers)
   if (!HashSet.has(loggers, Logger.defaultLogger)) {
     return refs
@@ -57,39 +52,37 @@ const addPrettyLogger = (
 }
 
 export const makeRunMain = (
-  f: <E, A>(
-    options: {
-      readonly fiber: Fiber.RuntimeFiber<A, E>
-      readonly teardown: Teardown
-    },
-  ) => void,
+  f: <E, A>(options: {
+    readonly fiber: Fiber.RuntimeFiber<A, E>
+    readonly teardown: Teardown
+  }) => void,
 ): RunMain =>
   Function.dual(
     (args) => Effect.isEffect(args[0]),
-    (effect: Effect.Effect<any, any>, options?: {
-      readonly disableErrorReporting?: boolean | undefined
-      readonly disablePrettyLogger?: boolean | undefined
-      readonly teardown?: Teardown | undefined
-    }) => {
-      const fiber = options?.disableErrorReporting === true
-        ? Effect.runFork(effect, {
-          updateRefs: options?.disablePrettyLogger === true
-            ? undefined
-            : addPrettyLogger,
-        })
-        : Effect.runFork(
-          Effect.tapErrorCause(effect, (cause) => {
-            if (Cause.isInterruptedOnly(cause)) {
-              return Effect.void
-            }
-            return Effect.logError(cause)
-          }),
-          {
-            updateRefs: options?.disablePrettyLogger === true
-              ? undefined
-              : addPrettyLogger,
-          },
-        )
+    (
+      effect: Effect.Effect<any, any>,
+      options?: {
+        readonly disableErrorReporting?: boolean | undefined
+        readonly disablePrettyLogger?: boolean | undefined
+        readonly teardown?: Teardown | undefined
+      },
+    ) => {
+      const fiber =
+        options?.disableErrorReporting === true
+          ? Effect.runFork(effect, {
+              updateRefs: options?.disablePrettyLogger === true ? undefined : addPrettyLogger,
+            })
+          : Effect.runFork(
+              Effect.tapErrorCause(effect, (cause) => {
+                if (Cause.isInterruptedOnly(cause)) {
+                  return Effect.void
+                }
+                return Effect.logError(cause)
+              }),
+              {
+                updateRefs: options?.disablePrettyLogger === true ? undefined : addPrettyLogger,
+              },
+            )
       const teardown = options?.teardown ?? defaultTeardown
       return f({ fiber, teardown })
     },
@@ -99,10 +92,9 @@ export const makeRunMain = (
  * Are we running within an agent harness, like Claude Code?
  */
 export function isAgentHarness() {
-  return typeof process !== "undefined"
-    && !process.stdout.isTTY
-    && (
-      process.env.CLAUDECODE
-      || process.env.CURSOR_AGENT
-    )
+  return (
+    typeof process !== "undefined" &&
+    !process.stdout.isTTY &&
+    (process.env.CLAUDECODE || process.env.CURSOR_AGENT)
+  )
 }

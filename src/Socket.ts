@@ -13,7 +13,10 @@ export const isSocketError = (u: unknown): u is SocketError =>
 
 export type SocketError = SocketGenericError | SocketCloseError
 
-export class SocketGenericError extends PlatformError.TypeIdError(SocketErrorTypeId, "SocketError")<{
+export class SocketGenericError extends PlatformError.TypeIdError(
+  SocketErrorTypeId,
+  "SocketError",
+)<{
   readonly reason: "Write" | "Read" | "Open" | "OpenTimeout"
   readonly cause: unknown
 }> {
@@ -32,7 +35,7 @@ export class SocketCloseError extends PlatformError.TypeIdError(SocketErrorTypeI
   }
 
   static isClean(isClean: (code: number) => boolean) {
-    return function(u: unknown): u is SocketCloseError {
+    return function (u: unknown): u is SocketCloseError {
       return SocketCloseError.is(u) && isClean(u.code)
     }
   }

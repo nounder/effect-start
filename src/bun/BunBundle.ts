@@ -1,28 +1,12 @@
-import type {
-  BuildConfig,
-  BuildOutput,
-} from "bun"
-import {
-  Array,
-  type Context,
-  Effect,
-  Iterable,
-  Layer,
-  pipe,
-  Record,
-} from "effect"
+import type { BuildConfig, BuildOutput } from "bun"
+import { Array, type Context, Effect, Iterable, Layer, pipe, Record } from "effect"
 import * as NPath from "node:path"
 import * as Bundle from "../bundler/Bundle.ts"
 import type { BunImportTrackerPlugin } from "./index.ts"
 
-export type BuildOptions = Omit<
-  BuildConfig,
-  "outdir"
->
+export type BuildOptions = Omit<BuildConfig, "outdir">
 
-export const buildClient = (
-  config: BuildOptions | string,
-) => {
+export const buildClient = (config: BuildOptions | string) => {
   if (typeof config === "string") {
     config = {
       entrypoints: [config],
@@ -48,9 +32,7 @@ export const buildClient = (
   return build(resolvedConfig)
 }
 
-export const buildServer = (
-  config: BuildOptions | string,
-) => {
+export const buildServer = (config: BuildOptions | string) => {
   if (typeof config === "string") {
     config = {
       entrypoints: [config],
@@ -81,25 +63,17 @@ export const buildServer = (
 export function build(
   config: BuildOptions,
 ): Effect.Effect<Bundle.BundleContext, Bundle.BundleError> {
-  return Effect.gen(function*() {
+  return Effect.gen(function* () {
     const output = yield* buildBun(config)
-    const manifest = generateManifestfromBunBundle(
-      config,
-      output,
-    )
-    const artifactsMap = Record.fromIterableBy(
-      output.outputs,
-      (v) => v.path.replace(/^\.\//, ""),
-    )
+    const manifest = generateManifestfromBunBundle(config, output)
+    const artifactsMap = Record.fromIterableBy(output.outputs, (v) => v.path.replace(/^\.\//, ""))
 
     const resolve = (path: string) => {
       return manifest.entrypoints[path] ?? null
     }
 
     const getArtifact = (path: string): Blob | null => {
-      return artifactsMap[resolve(path)]
-        ?? artifactsMap[path]
-        ?? null
+      return artifactsMap[resolve(path)] ?? artifactsMap[path] ?? null
     }
 
     return {
@@ -110,10 +84,7 @@ export function build(
   })
 }
 
-export function layer<T>(
-  tag: Context.Tag<T, Bundle.BundleContext>,
-  config: BuildOptions,
-) {
+export function layer<T>(tag: Context.Tag<T, Bundle.BundleContext>, config: BuildOptions) {
   return Layer.effect(tag, build(config))
 }
 
@@ -124,23 +95,20 @@ function getBaseDir(paths: Array<string>) {
   if (paths.length === 0) return ""
   if (paths.length === 1) return NPath.dirname(paths[0])
 
-  const segmentsList = paths.map((path) =>
-    NPath.dirname(path).split("/").filter(Boolean)
-  )
+  const segmentsList = paths.map((path) => NPath.dirname(path).split("/").filter(Boolean))
 
-  return segmentsList[0]
-    .filter((segment, i) => segmentsList.every((segs) => segs[i] === segment))
-    .reduce((path, seg) => `${path}/${seg}`, "") ?? ""
+  return (
+    segmentsList[0]
+      .filter((segment, i) => segmentsList.every((segs) => segs[i] === segment))
+      .reduce((path, seg) => `${path}/${seg}`, "") ?? ""
+  )
 }
 
 /**
  * Maps entrypoints to their respective build artifacts.
  * Entrypoint key is trimmed to remove common path prefix.
  */
-function joinBuildEntrypoints(
-  options: BuildOptions,
-  output: BuildOutput,
-) {
+function joinBuildEntrypoints(options: BuildOptions, output: BuildOutput) {
   const commonPathPrefix = getBaseDir(options.entrypoints) + "/"
 
   return pipe(
@@ -149,9 +117,8 @@ function joinBuildEntrypoints(
       pipe(
         output.outputs,
         // Filter out source maps to properly map artifacts to entrypoints.
-        Iterable.filter((v) =>
-          v.kind !== "sourcemap"
-          && !(v.loader === "html" && v.path.endsWith(".js"))
+        Iterable.filter(
+          (v) => v.kind !== "sourcemap" && !(v.loader === "html" && v.path.endsWith(".js")),
         ),
       ),
     ),
@@ -179,12 +146,7 @@ function generateManifestfromBunBundle(
   return {
     entrypoints: pipe(
       entrypointArtifacts,
-      Iterable.map((v) =>
-        [
-          v.shortPath,
-          v.artifact.path.replace(/^\.\//, ""),
-        ] as const
-      ),
+      Iterable.map((v) => [v.shortPath, v.artifact.path.replace(/^\.\//, "")] as const),
       Record.fromEntries,
     ),
 
@@ -207,17 +169,13 @@ function generateManifestfromBunBundle(
   }
 }
 
-function buildBun(
-  config: BuildOptions,
-): Effect.Effect<BuildOutput, Bundle.BundleError, never> {
+function buildBun(config: BuildOptions): Effect.Effect<BuildOutput, Bundle.BundleError, never> {
   return Object.assign(
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const buildOutput: BuildOutput = yield* Effect.tryPromise({
         try: () => Bun.build(config),
         catch: (err: AggregateError | unknown) => {
-          const cause = err instanceof AggregateError
-            ? err.errors?.[0] ?? err
-            : err
+          const cause = err instanceof AggregateError ? (err.errors?.[0] ?? err) : err
 
           return new Bundle.BundleError({
             message: "Failed to Bun.build: " + cause,

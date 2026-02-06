@@ -46,12 +46,12 @@ export const make = (opts?: {
 
       const prepopulateCandidates = opts?.scanPath
         ? async () => {
-          const candidates = await scanFiles(opts.scanPath!)
+            const candidates = await scanFiles(opts.scanPath!)
 
-          scannedCandidates.clear()
+            scannedCandidates.clear()
 
-          candidates.forEach(candidate => scannedCandidates.add(candidate))
-        }
+            candidates.forEach((candidate) => scannedCandidates.add(candidate))
+          }
         : null
 
       // Track import relationships when dynamically scanning
@@ -60,122 +60,129 @@ export const make = (opts?: {
       // Better to pass scanPath explicitly.
       // @see https://github.com/oven-sh/bun/issues/20877
       if (!prepopulateCandidates) {
-        builder.onResolve({
-          filter: /.*/,
-        }, (args) => {
-          const fullPath = Bun.resolveSync(args.path, args.resolveDir)
-          const importer = args.importer
-
-          if (fullPath.includes("/node_modules/")) {
-            return undefined
-          }
-
-          /**
-           * Register every visited module.
-           */
+        builder.onResolve(
           {
-            if (!importAncestors.has(fullPath)) {
-              importAncestors.set(fullPath, new Set())
+            filter: /.*/,
+          },
+          (args) => {
+            const fullPath = Bun.resolveSync(args.path, args.resolveDir)
+            const importer = args.importer
+
+            if (fullPath.includes("/node_modules/")) {
+              return undefined
             }
 
-            if (!importDescendants.has(fullPath)) {
-              importDescendants.set(fullPath, new Set())
+            /**
+             * Register every visited module.
+             */
+            {
+              if (!importAncestors.has(fullPath)) {
+                importAncestors.set(fullPath, new Set())
+              }
+
+              if (!importDescendants.has(fullPath)) {
+                importDescendants.set(fullPath, new Set())
+              }
+
+              if (!importAncestors.has(importer)) {
+                importAncestors.set(args.importer, new Set())
+              }
+
+              if (!importDescendants.has(importer)) {
+                importDescendants.set(importer, new Set())
+              }
             }
 
-            if (!importAncestors.has(importer)) {
-              importAncestors.set(args.importer, new Set())
-            }
+            importAncestors.get(fullPath)!.add(importer)
+            importDescendants.get(importer)!.add(fullPath)
 
-            if (!importDescendants.has(importer)) {
-              importDescendants.set(importer, new Set())
-            }
-          }
-
-          importAncestors.get(fullPath)!.add(importer)
-          importDescendants.get(importer)!.add(fullPath)
-
-          return undefined
-        })
+            return undefined
+          },
+        )
       }
 
       /**
        * Scan for class name candidates in component files.
        */
-      builder.onLoad({
-        filter: filesPattern,
-      }, async (args) => {
-        const contents = await Bun.file(args.path).text()
-        const classNames = extractClassNames(contents)
+      builder.onLoad(
+        {
+          filter: filesPattern,
+        },
+        async (args) => {
+          const contents = await Bun.file(args.path).text()
+          const classNames = extractClassNames(contents)
 
-        if (classNames.size > 0) {
-          classNameCandidates.set(args.path, classNames)
-        }
+          if (classNames.size > 0) {
+            classNameCandidates.set(args.path, classNames)
+          }
 
-        return undefined
-      })
+          return undefined
+        },
+      )
 
       /**
        * Compile tailwind entrypoints.
        */
-      builder.onLoad({
-        filter: cssPattern,
-      }, async (args) => {
-        const source = await Bun.file(args.path).text()
+      builder.onLoad(
+        {
+          filter: cssPattern,
+        },
+        async (args) => {
+          const source = await Bun.file(args.path).text()
 
-        if (!hasCssImport(source, "tailwindcss")) {
-          return undefined
-        }
-
-        const compiler = await Tailwind.compile(source, {
-          base: NPath.dirname(args.path),
-          onDependency: (path) => {},
-        })
-
-        await prepopulateCandidates?.()
-
-        // wait for other files to be loaded so we can collect class name candidates
-        await args.defer()
-
-        const candidates = new Set<string>(scannedCandidates)
-
-        // when we scan a path, we don't need to track candidate tree
-        if (!prepopulateCandidates) {
-          const pendingModules = [
-            // get class name candidates from all modules that import this one
-            ...(importAncestors.get(args.path) ?? []),
-          ]
-          const visitedModules = new Set<string>()
-
-          while (pendingModules.length > 0) {
-            const currentPath = pendingModules.shift()!
-
-            if (visitedModules.has(currentPath)) {
-              continue
-            }
-
-            const moduleImports = importDescendants.get(currentPath)
-
-            moduleImports?.forEach(moduleImport => {
-              const moduleCandidates = classNameCandidates.get(moduleImport)
-
-              moduleCandidates?.forEach(candidate => candidates.add(candidate))
-
-              pendingModules.push(moduleImport)
-            })
-
-            visitedModules.add(currentPath)
+          if (!hasCssImport(source, "tailwindcss")) {
+            return undefined
           }
-        }
 
-        const contents = compiler.build([
-          ...candidates,
-        ])
+          const compiler = await Tailwind.compile(source, {
+            base: NPath.dirname(args.path),
+            onDependency: (path) => {},
+          })
 
-        return {
-          contents,
-          loader: "css",
-        }
-      })
+          await prepopulateCandidates?.()
+
+          // wait for other files to be loaded so we can collect class name candidates
+          await args.defer()
+
+          const candidates = new Set<string>(scannedCandidates)
+
+          // when we scan a path, we don't need to track candidate tree
+          if (!prepopulateCandidates) {
+            const pendingModules = [
+              // get class name candidates from all modules that import this one
+              ...(importAncestors.get(args.path) ?? []),
+            ]
+            const visitedModules = new Set<string>()
+
+            while (pendingModules.length > 0) {
+              const currentPath = pendingModules.shift()!
+
+              if (visitedModules.has(currentPath)) {
+                continue
+              }
+
+              const moduleImports = importDescendants.get(currentPath)
+
+              moduleImports?.forEach((moduleImport) => {
+                const moduleCandidates = classNameCandidates.get(moduleImport)
+
+                moduleCandidates?.forEach((candidate) => candidates.add(candidate))
+
+                pendingModules.push(moduleImport)
+              })
+
+              visitedModules.add(currentPath)
+            }
+          }
+
+          const contents = compiler.build([...candidates])
+
+          return {
+            contents,
+            loader: "css",
+          }
+        },
+      )
     },
   }
 }
@@ -186,19 +193,19 @@ const TEMPLATE_EXPRESSION_REGEX = /\$\{[^}]*\}/g
 const TAILWIND_CLASS_REGEX = /^[a-zA-Z0-9_:-]+(\[[^\]]*\])?$/
 const CLASS_NAME_PATTERNS = [
   // HTML class attributes with double quotes: <div class="bg-blue-500 text-white">
-  "<[^>]*?\\sclass\\s*=\\s*\"([^\"]+)\"",
+  '<[^>]*?\\sclass\\s*=\\s*"([^"]+)"',
 
   // HTML class attributes with single quotes: <div class='bg-blue-500 text-white'>
   "<[^>]*?\\sclass\\s*=\\s*'([^']+)'",
 
   // JSX className attributes with double quotes: <div className="bg-blue-500 text-white">
-  "<[^>]*?\\sclassName\\s*=\\s*\"([^\"]+)\"",
+  '<[^>]*?\\sclassName\\s*=\\s*"([^"]+)"',
 
   // JSX className attributes with single quotes: <div className='bg-blue-500 text-white'>
   "<[^>]*?\\sclassName\\s*=\\s*'([^']+)'",
 
   // JSX className with braces and double quotes: <div className={"bg-blue-500 text-white"}>
-  "<[^>]*?\\sclassName\\s*=\\s*\\{\\s*\"([^\"]+)\"\\s*\\}",
+  '<[^>]*?\\sclassName\\s*=\\s*\\{\\s*"([^"]+)"\\s*\\}',
 
   // JSX className with braces and single quotes: <div className={'bg-blue-500 text-white'}>
   "<[^>]*?\\sclassName\\s*=\\s*\\{\\s*'([^']+)'\\s*\\}",
@@ -210,19 +217,19 @@ const CLASS_NAME_PATTERNS = [
   "<[^>]*?\\sclass\\s*=\\s*\\{\\s*`([^`]*)`\\s*\\}",
 
   // HTML class at start of tag with double quotes: <div class="bg-blue-500">
-  "<\\w+\\s+class\\s*=\\s*\"([^\"]+)\"",
+  '<\\w+\\s+class\\s*=\\s*"([^"]+)"',
 
   // HTML class at start of tag with single quotes: <div class='bg-blue-500'>
   "<\\w+\\s+class\\s*=\\s*'([^']+)'",
 
   // JSX className at start of tag with double quotes: <div className="bg-blue-500">
-  "<\\w+\\s+className\\s*=\\s*\"([^\"]+)\"",
+  '<\\w+\\s+className\\s*=\\s*"([^"]+)"',
 
   // JSX className at start of tag with single quotes: <div className='bg-blue-500'>
   "<\\w+\\s+className\\s*=\\s*'([^']+)'",
 
   // JSX className at start with braces and double quotes: <div className={"bg-blue-500"}>
-  "<\\w+\\s+className\\s*=\\s*\\{\\s*\"([^\"]+)\"\\s*\\}",
+  '<\\w+\\s+className\\s*=\\s*\\{\\s*"([^"]+)"\\s*\\}',
 
   // JSX className at start with braces and single quotes: <div className={'bg-blue-500'}>
   "<\\w+\\s+className\\s*=\\s*\\{\\s*'([^']+)'\\s*\\}",
@@ -235,7 +242,7 @@ const CLASS_NAME_PATTERNS = [
 ]
 
 const CLASS_NAME_REGEX = new RegExp(
-  CLASS_NAME_PATTERNS.map(pattern => `(?:${pattern})`).join("|"),
+  CLASS_NAME_PATTERNS.map((pattern) => `(?:${pattern})`).join("|"),
   "g",
 )
 
@@ -244,8 +251,7 @@ function hasCssImport(css: string, specifier?: string): boolean {
 
   if (!importPath) return false
 
-  return specifier === undefined
-    || importPath.includes(specifier)
+  return specifier === undefined || importPath.includes(specifier)
 }
 
 export function extractClassNames(source: string): Set<string> {
@@ -270,17 +276,20 @@ export function extractClassNames(source: string): Set<string> {
       const staticParts = classString.split(TEMPLATE_EXPRESSION_REGEX)
 
       for (const part of staticParts) {
-        const names = part.trim().split(/\s+/).filter(name => {
-          if (name.length === 0) return false
-          if (name.endsWith("-") || name.startsWith("-")) return false
-          return TAILWIND_CLASS_REGEX.test(name)
-        })
-        names.forEach(name => candidates.add(name))
+        const names = part
+          .trim()
+          .split(/\s+/)
+          .filter((name) => {
+            if (name.length === 0) return false
+            if (name.endsWith("-") || name.startsWith("-")) return false
+            return TAILWIND_CLASS_REGEX.test(name)
+          })
+        names.forEach((name) => candidates.add(name))
       }
     } else {
       // Simple case: regular class string without expressions
-      const names = classString.split(/\s+/).filter(name => name.length > 0)
-      names.forEach(name => candidates.add(name))
+      const names = classString.split(/\s+/).filter((name) => name.length > 0)
+      names.forEach((name) => candidates.add(name))
     }
   }
 
@@ -291,12 +300,10 @@ async function scanFiles(dir: string): Promise<Set<string>> {
   const candidates = new Set<string>()
   const glob = new Bun.Glob("**/*.{js,jsx,ts,tsx,html,vue,svelte,astro}")
 
-  for await (
-    const filePath of glob.scan({
-      cwd: dir,
-      absolute: true,
-    })
-  ) {
+  for await (const filePath of glob.scan({
+    cwd: dir,
+    absolute: true,
+  })) {
     if (filePath.includes("/node_modules/")) {
       continue
     }

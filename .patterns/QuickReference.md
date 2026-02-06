@@ -4,17 +4,19 @@
 
 ```ts
 // ❌ try-catch in Effect.gen - breaks Effect semantics
-Effect.gen(function*() {
+Effect.gen(function* () {
   try {
     const result = yield* someEffect
-  } catch (error) { /* never reached */ }
+  } catch (error) {
+    /* never reached */
+  }
 })
 
 // ❌ Type assertions - hide real errors
 const value = something as any
 
 // ❌ Missing return before error yield
-Effect.gen(function*() {
+Effect.gen(function* () {
   if (error) yield* Effect.fail("error") // Missing return!
 })
 ```
@@ -23,16 +25,16 @@ Effect.gen(function*() {
 
 ```ts
 // ✅ return yield* for errors/interrupts
-Effect.gen(function*() {
+Effect.gen(function* () {
   if (error) return yield* Effect.fail("error")
   const result = yield* someEffect
   return result
 })
 
 // ✅ TestClock for time-dependent tests
-const fiber = yield* Effect.fork(Effect.sleep("1 second"))
-yield* TestClock.adjust("1 second")
-const result = yield* Effect.Fiber.join(fiber)
+const fiber = yield * Effect.fork(Effect.sleep("1 second"))
+yield * TestClock.adjust("1 second")
+const result = yield * Effect.Fiber.join(fiber)
 
 // ✅ Data.TaggedError for custom errors
 class ValidationError extends Data.TaggedError("ValidationError")<{
@@ -47,14 +49,14 @@ class ValidationError extends Data.TaggedError("ValidationError")<{
 
 ```ts
 export const myFunction = (input: string) =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     // Validate
     if (!input) return yield* Effect.fail("empty input")
 
     // Process
     const result = yield* Effect.try({
       try: () => JSON.parse(input),
-      catch: (error) => `Parse error: ${error}`
+      catch: (error) => `Parse error: ${error}`,
     })
 
     return result
@@ -65,12 +67,8 @@ export const myFunction = (input: string) =>
 
 ```ts
 operation(input).pipe(
-  Effect.catchTag("ValidationError", error =>
-    Effect.succeed("fallback value")
-  ),
-  Effect.catchTag("NetworkError", error =>
-    Effect.retry(Schedule.exponential("100 millis"))
-  )
+  Effect.catchTag("ValidationError", (error) => Effect.succeed("fallback value")),
+  Effect.catchTag("NetworkError", (error) => Effect.retry(Schedule.exponential("100 millis"))),
 )
 ```
 
@@ -78,29 +76,27 @@ operation(input).pipe(
 
 ```ts
 operation(input).pipe(
-  Effect.catchAll(error => {
+  Effect.catchAll((error) => {
     Console.error(`Failed: ${error}`)
     return Effect.succeed("default")
-  })
+  }),
 )
 ```
 
 ### Resource Management
 
 ```ts
-const withResource = <A, E>(
-  operation: (resource: Resource) => Effect.Effect<A, E>
-) =>
+const withResource = <A, E>(operation: (resource: Resource) => Effect.Effect<A, E>) =>
   Effect.acquireUseRelease(
     // Acquire
     Effect.tryPromise({
       try: () => createResource(),
-      catch: (error) => new ResourceError({ cause: error })
+      catch: (error) => new ResourceError({ cause: error }),
     }),
     // Use
     operation,
     // Release (always runs)
-    (resource) => Effect.promise(() => resource.close())
+    (resource) => Effect.promise(() => resource.close()),
   )
 ```
 
@@ -110,12 +106,12 @@ const withResource = <A, E>(
 import * as TestClock from "effect/TestClock"
 
 test.it("should handle delay", async () => {
-  const program = Effect.gen(function*() {
+  const program = Effect.gen(function* () {
     const fiber = yield* Effect.fork(
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         yield* Effect.sleep("5 seconds")
         return "completed"
-      })
+      }),
     )
 
     // Advance test clock (not wall clock)
@@ -144,20 +140,20 @@ class UserService extends Context.Tag("UserService")<
 // Implement as layer
 const UserServiceLive = Layer.effect(
   UserService,
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const db = yield* DatabaseService
 
     return UserService.of({
       getUser: (id) =>
-        Effect.gen(function*() {
+        Effect.gen(function* () {
           const rows = yield* db.query(`SELECT * FROM users WHERE id = ?`, [id])
           if (rows.length === 0) {
             return yield* Effect.fail(new UserError({ message: "Not found" }))
           }
           return rows[0] as User
-        })
+        }),
     })
-  })
+  }),
 )
 ```
 
@@ -165,7 +161,7 @@ const UserServiceLive = Layer.effect(
 
 ```ts
 test.it("should fail with ValidationError", async () => {
-  const program = Effect.gen(function*() {
+  const program = Effect.gen(function* () {
     const result = yield* Effect.exit(operation("invalid"))
 
     if (result._tag === "Failure") {

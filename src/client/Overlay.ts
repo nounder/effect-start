@@ -27,8 +27,7 @@ export function getOverlay() {
 
 export function showBuildError(message: string) {
   const overlay = getOverlay()
-  const atBottom =
-    overlay.scrollTop + overlay.clientHeight >= overlay.scrollHeight - 1
+  const atBottom = overlay.scrollTop + overlay.clientHeight >= overlay.scrollHeight - 1
   overlay.textContent += message + "\n"
   if (atBottom) overlay.scrollTop = overlay.scrollHeight
 }

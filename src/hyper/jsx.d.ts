@@ -18,22 +18,12 @@ type DOMElement = never
 
 export namespace JSX {
   type Element = HyperNode.HyperNode
-  type Child =
-    | Element
-    | string
-    | number
-    | bigint
-  type Children =
-    | Child
-    | SilentChild
-    | Iterable<Children>
+  type Child = Element | string | number | bigint
+  type Children = Child | SilentChild | Iterable<Children>
 
   // a child that is not rendered and is often a result
   // of conditional rendering, like: `{condition && <div>...</div>}`
-  type SilentChild =
-    | boolean
-    | null
-    | undefined
+  type SilentChild = boolean | null | undefined
 
   interface ElementClass {
     // empty, libs can define requirements downstream
@@ -70,11 +60,8 @@ export namespace JSX {
     EHandler extends EventHandler<T, any> = EventHandler<T, E>,
   > = EHandler | BoundEventHandler<T, E, EHandler>
 
-  interface EventHandlerWithOptions<
-    T,
-    E extends Event,
-    EHandler = EventHandler<T, E>,
-  > extends AddEventListenerOptions, EventListenerOptions {
+  interface EventHandlerWithOptions<T, E extends Event, EHandler = EventHandler<T, E>>
+    extends AddEventListenerOptions, EventListenerOptions {
     handleEvent: EHandler
   }
 
@@ -88,10 +75,8 @@ export namespace JSX {
     (
       e: E & {
         currentTarget: T
-        target: T extends
-          | HTMLInputElement
-          | HTMLSelectElement
-          | HTMLTextAreaElement ? T
+        target: T extends HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+          ? T
           : DOMElement
       },
     ): void
@@ -106,10 +91,8 @@ export namespace JSX {
     (
       e: E & {
         currentTarget: T
-        target: T extends
-          | HTMLInputElement
-          | HTMLSelectElement
-          | HTMLTextAreaElement ? T
+        target: T extends HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+          ? T
           : DOMElement
       },
     ): void
@@ -124,10 +107,8 @@ export namespace JSX {
     (
       e: E & {
         currentTarget: T
-        target: T extends
-          | HTMLInputElement
-          | HTMLSelectElement
-          | HTMLTextAreaElement ? T
+        target: T extends HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+          ? T
           : DOMElement
       },
     ): void
@@ -153,8 +134,8 @@ export namespace JSX {
     children?: Children
     classList?:
       | {
-        [k: string]: boolean | undefined
-      }
+          [k: string]: boolean | undefined
+        }
       | undefined
   }
   type Accessor<T> = () => T
@@ -172,18 +153,20 @@ export namespace JSX {
     [Key in keyof Directives as `use:${Key}`]?: Directives[Key]
   }
   type DirectiveFunctionAttributes<T> = {
-    [
-      K in keyof DirectiveFunctions as string extends K ? never
-        : `use:${K}`
-    ]?: DirectiveFunctions[K] extends (
+    [K in keyof DirectiveFunctions as string extends K
+      ? never
+      : `use:${K}`]?: DirectiveFunctions[K] extends (
       el: infer E, // will be unknown if not provided
-      ...rest: infer R // use rest so that we can check whether it's provided or not
-    ) => void ? T extends E // everything extends unknown if E is unknown
+      ...rest: infer R
+    ) // use rest so that we can check whether it's provided or not
+    => void
+      ? T extends E // everything extends unknown if E is unknown
         ? R extends [infer A] // check if has accessor provided
-          ? A extends Accessor<infer V> ? V // it's an accessor
-          : never // it isn't, type error
-        : true // no accessor provided
-      : never // T is the wrong element
+          ? A extends Accessor<infer V>
+            ? V // it's an accessor
+            : never // it isn't, type error
+          : true // no accessor provided
+        : never // T is the wrong element
       : never // it isn't a function
   }
   type PropAttributes = {
@@ -193,14 +176,10 @@ export namespace JSX {
     [Key in keyof ExplicitAttributes as `attr:${Key}`]?: ExplicitAttributes[Key]
   }
   type BoolAttributes = {
-    [Key in keyof ExplicitBoolAttributes as `bool:${Key}`]?:
-      ExplicitBoolAttributes[Key]
+    [Key in keyof ExplicitBoolAttributes as `bool:${Key}`]?: ExplicitBoolAttributes[Key]
   }
   type OnAttributes<T> = {
-    [Key in keyof CustomEvents as `on:${Key}`]?: EventHandlerWithOptionsUnion<
-      T,
-      CustomEvents[Key]
-    >
+    [Key in keyof CustomEvents as `on:${Key}`]?: EventHandlerWithOptionsUnion<T, CustomEvents[Key]>
   }
   type OnCaptureAttributes<T> = {
     [Key in keyof CustomCaptureEvents as `oncapture:${Key}`]?: EventHandler<
@@ -237,9 +216,7 @@ export namespace JSX {
     onPopstate?: EventHandlerUnion<T, PopStateEvent> | undefined
     onRejectionHandled?: EventHandlerUnion<T, PromiseRejectionEvent> | undefined
     onStorage?: EventHandlerUnion<T, StorageEvent> | undefined
-    onUnhandledRejection?:
-      | EventHandlerUnion<T, PromiseRejectionEvent>
-      | undefined
+    onUnhandledRejection?: EventHandlerUnion<T, PromiseRejectionEvent> | undefined
     onUnload?: EventHandlerUnion<T, Event> | undefined
 
     onafterprint?: EventHandlerUnion<T, Event> | undefined
@@ -262,50 +239,30 @@ export namespace JSX {
     onpopstate?: EventHandlerUnion<T, PopStateEvent> | undefined
     onrejectionhandled?: EventHandlerUnion<T, PromiseRejectionEvent> | undefined
     onstorage?: EventHandlerUnion<T, StorageEvent> | undefined
-    onunhandledrejection?:
-      | EventHandlerUnion<T, PromiseRejectionEvent>
-      | undefined
+    onunhandledrejection?: EventHandlerUnion<T, PromiseRejectionEvent> | undefined
     onunload?: EventHandlerUnion<T, Event> | undefined
 
     "on:afterprint"?: EventHandlerWithOptionsUnion<T, Event> | undefined
     "on:beforeprint"?: EventHandlerWithOptionsUnion<T, Event> | undefined
-    "on:beforeunload"?:
-      | EventHandlerWithOptionsUnion<T, BeforeUnloadEvent>
-      | undefined
-    "on:gamepadconnected"?:
-      | EventHandlerWithOptionsUnion<T, GamepadEvent>
-      | undefined
-    "on:gamepaddisconnected"?:
-      | EventHandlerWithOptionsUnion<T, GamepadEvent>
-      | undefined
-    "on:hashchange"?:
-      | EventHandlerWithOptionsUnion<T, HashChangeEvent>
-      | undefined
+    "on:beforeunload"?: EventHandlerWithOptionsUnion<T, BeforeUnloadEvent> | undefined
+    "on:gamepadconnected"?: EventHandlerWithOptionsUnion<T, GamepadEvent> | undefined
+    "on:gamepaddisconnected"?: EventHandlerWithOptionsUnion<T, GamepadEvent> | undefined
+    "on:hashchange"?: EventHandlerWithOptionsUnion<T, HashChangeEvent> | undefined
     "on:languagechange"?: EventHandlerWithOptionsUnion<T, Event> | undefined
     "on:message"?: EventHandlerWithOptionsUnion<T, MessageEvent> | undefined
-    "on:messageerror"?:
-      | EventHandlerWithOptionsUnion<T, MessageEvent>
-      | undefined
+    "on:messageerror"?: EventHandlerWithOptionsUnion<T, MessageEvent> | undefined
     "on:offline"?: EventHandlerWithOptionsUnion<T, Event> | undefined
     "on:online"?: EventHandlerWithOptionsUnion<T, Event> | undefined
-    "on:pagehide"?:
-      | EventHandlerWithOptionsUnion<T, PageTransitionEvent>
-      | undefined
+    "on:pagehide"?: EventHandlerWithOptionsUnion<T, PageTransitionEvent> | undefined
     // TODO `PageRevealEvent` is currently undefined in TS
     "on:pagereveal"?: EventHandlerWithOptionsUnion<T, Event> | undefined
-    "on:pageshow"?:
-      | EventHandlerWithOptionsUnion<T, PageTransitionEvent>
-      | undefined
+    "on:pageshow"?: EventHandlerWithOptionsUnion<T, PageTransitionEvent> | undefined
     // TODO `PageSwapEvent` is currently undefined in TS
     "on:pageswap"?: EventHandlerWithOptionsUnion<T, Event> | undefined
     "on:popstate"?: EventHandlerWithOptionsUnion<T, PopStateEvent> | undefined
-    "on:rejectionhandled"?:
-      | EventHandlerWithOptionsUnion<T, PromiseRejectionEvent>
-      | undefined
+    "on:rejectionhandled"?: EventHandlerWithOptionsUnion<T, PromiseRejectionEvent> | undefined
     "on:storage"?: EventHandlerWithOptionsUnion<T, StorageEvent> | undefined
-    "on:unhandledrejection"?:
-      | EventHandlerWithOptionsUnion<T, PromiseRejectionEvent>
-      | undefined
+    "on:unhandledrejection"?: EventHandlerWithOptionsUnion<T, PromiseRejectionEvent> | undefined
     "on:unload"?: EventHandlerWithOptionsUnion<T, Event> | undefined
   }
 
@@ -412,9 +369,7 @@ export namespace JSX {
     onScrollSnapChange?: EventHandlerUnion<T, Event> | undefined
     // todo `SnapEvent` is currently undefined in TS
     onScrollSnapChanging?: EventHandlerUnion<T, Event> | undefined
-    onSecurityPolicyViolation?:
-      | EventHandlerUnion<T, SecurityPolicyViolationEvent>
-      | undefined
+    onSecurityPolicyViolation?: EventHandlerUnion<T, SecurityPolicyViolationEvent> | undefined
     onSeeked?: EventHandlerUnion<T, Event> | undefined
     onSeeking?: EventHandlerUnion<T, Event> | undefined
     onSelect?: EventHandlerUnion<T, Event> | undefined
@@ -465,9 +420,7 @@ export namespace JSX {
     oncompositionend?: string | undefined
     oncompositionstart?: string | undefined
     oncompositionupdate?: string | undefined
-    oncontentvisibilityautostatechange?:
-      | string
-      | undefined
+    oncontentvisibilityautostatechange?: string | undefined
     oncontextlost?: string | undefined
     oncontextmenu?: string | undefined
     oncontextrestored?: string | undefined
@@ -534,9 +487,7 @@ export namespace JSX {
     onscrollsnapchange?: string | undefined
     // todo `SnapEvent` is currently undefined in TS
     onscrollsnapchanging?: string | undefined
-    onsecuritypolicyviolation?:
-      | string
-      | undefined
+    onsecuritypolicyviolation?: string | undefined
     onseeked?: string | undefined
     onseeking?: string | undefined
     onselect?: string | undefined
@@ -581,8 +532,7 @@ export namespace JSX {
       CustomEventHandlersCamelCase<T>,
       CustomEventHandlersLowerCase<T>,
       AriaAttributes,
-      DatastarAttributes
-  {
+      DatastarAttributes {
     // [key: ClassKeys]: boolean;
 
     // properties
@@ -602,13 +552,7 @@ export namespace JSX {
     tabIndex?: number | string | undefined
   }
 
-  type HTMLAutocapitalize =
-    | "off"
-    | "none"
-    | "on"
-    | "sentences"
-    | "words"
-    | "characters"
+  type HTMLAutocapitalize = "off" | "none" | "on" | "sentences" | "words" | "characters"
   type HTMLAutocomplete =
     | "additional-name"
     | "address-level1"
@@ -674,10 +618,7 @@ export namespace JSX {
     | "work"
     | (string & {})
   type HTMLDir = "ltr" | "rtl" | "auto"
-  type HTMLFormEncType =
-    | "application/x-www-form-urlencoded"
-    | "multipart/form-data"
-    | "text/plain"
+  type HTMLFormEncType = "application/x-www-form-urlencoded" | "multipart/form-data" | "text/plain"
   type HTMLFormMethod = "post" | "get" | "dialog"
   type HTMLCrossorigin = "anonymous" | "use-credentials" | ""
   type HTMLReferrerPolicy =
@@ -843,14 +784,7 @@ export namespace JSX {
      *
      * @deprecated In ARIA 1.1
      */
-    "aria-dropeffect"?:
-      | "none"
-      | "copy"
-      | "execute"
-      | "link"
-      | "move"
-      | "popup"
-      | undefined
+    "aria-dropeffect"?: "none" | "copy" | "execute" | "link" | "move" | "popup" | undefined
     /**
      * Identifies the element that provides an error message for the object.
      *
@@ -899,13 +833,7 @@ export namespace JSX {
      *
      * @see aria-errormessage.
      */
-    "aria-invalid"?:
-      | boolean
-      | "false"
-      | "true"
-      | "grammar"
-      | "spelling"
-      | undefined
+    "aria-invalid"?: boolean | "false" | "true" | "grammar" | "spelling" | undefined
     /**
      * Indicates keyboard shortcuts that an author has implemented to activate or give focus to an
      * element.
@@ -1123,24 +1051,10 @@ export namespace JSX {
     accesskey?: string | undefined
     autocapitalize?: HTMLAutocapitalize | undefined
     autocorrect?: "on" | "off" | undefined
-    contenteditable?:
-      | "true"
-      | "false"
-      | boolean
-      | "plaintext-only"
-      | "inherit"
-      | undefined
+    contenteditable?: "true" | "false" | boolean | "plaintext-only" | "inherit" | undefined
     dir?: HTMLDir | undefined
     draggable?: boolean | "false" | "true" | undefined
-    enterkeyhint?:
-      | "enter"
-      | "done"
-      | "go"
-      | "next"
-      | "previous"
-      | "search"
-      | "send"
-      | undefined
+    enterkeyhint?: "enter" | "done" | "go" | "next" | "previous" | "search" | "send" | undefined
     exportparts?: string | undefined
     hidden?: boolean | "hidden" | "until-found" | undefined
     inert?: boolean | undefined
@@ -1264,9 +1178,7 @@ export namespace JSX {
   interface BlockquoteHTMLAttributes<T> extends HTMLAttributes<T> {
     cite?: string | undefined
   }
-  interface BodyHTMLAttributes<T>
-    extends HTMLAttributes<T>, WindowEventMap<T>
-  {}
+  interface BodyHTMLAttributes<T> extends HTMLAttributes<T>, WindowEventMap<T> {}
   interface ButtonHTMLAttributes<T> extends HTMLAttributes<T> {
     disabled?: boolean | undefined
     form?: string | undefined
@@ -1274,13 +1186,7 @@ export namespace JSX {
     formenctype?: HTMLFormEncType | undefined
     formmethod?: HTMLFormMethod | undefined
     formnovalidate?: boolean | undefined
-    formtarget?:
-      | "_self"
-      | "_blank"
-      | "_parent"
-      | "_top"
-      | (string & {})
-      | undefined
+    formtarget?: "_self" | "_blank" | "_parent" | "_top" | (string & {}) | undefined
     name?: string | undefined
     popovertarget?: string | undefined
     popovertargetaction?: "hide" | "show" | "toggle" | undefined
@@ -1660,9 +1566,7 @@ export namespace JSX {
     src?: string | undefined
 
     onEncrypted?: EventHandlerUnion<T, MediaEncryptedEvent> | undefined
-    "on:encrypted"?:
-      | EventHandlerWithOptionsUnion<T, MediaEncryptedEvent>
-      | undefined
+    "on:encrypted"?: EventHandlerWithOptionsUnion<T, MediaEncryptedEvent> | undefined
     onencrypted?: EventHandlerUnion<T, MediaEncryptedEvent> | undefined
 
     onWaitingForKey?: EventHandlerUnion<T, Event> | undefined
@@ -1798,12 +1702,7 @@ export namespace JSX {
     nomodule?: boolean | undefined
     referrerpolicy?: HTMLReferrerPolicy | undefined
     src?: string | undefined
-    type?:
-      | "importmap"
-      | "module"
-      | "speculationrules"
-      | (string & {})
-      | undefined
+    type?: "importmap" | "module" | "speculationrules" | (string & {}) | undefined
 
     /** @experimental */
     attributionsrc?: string | undefined
@@ -1828,9 +1727,10 @@ export namespace JSX {
   // Using a union in a single interface (`children?: Function | Children`)
   // doesn't work because TS can't infer callback parameter types from unions.
   // By splitting into two interfaces, TS can discriminate based on children
-  interface ScriptHTMLAttributesWithHandler<T>
-    extends Omit<ScriptHTMLAttributes<T>, "children" | "type">
-  {
+  interface ScriptHTMLAttributesWithHandler<T> extends Omit<
+    ScriptHTMLAttributes<T>,
+    "children" | "type"
+  > {
     children: (window: Window) => void
     type?: never
   }
@@ -1988,25 +1888,13 @@ export namespace JSX {
     poster?: string | undefined
     width?: number | string | undefined
 
-    onEnterPictureInPicture?:
-      | EventHandlerUnion<T, PictureInPictureEvent>
-      | undefined
-    "on:enterpictureinpicture"?:
-      | EventHandlerWithOptionsUnion<T, PictureInPictureEvent>
-      | undefined
-    onenterpictureinpicture?:
-      | EventHandlerUnion<T, PictureInPictureEvent>
-      | undefined
+    onEnterPictureInPicture?: EventHandlerUnion<T, PictureInPictureEvent> | undefined
+    "on:enterpictureinpicture"?: EventHandlerWithOptionsUnion<T, PictureInPictureEvent> | undefined
+    onenterpictureinpicture?: EventHandlerUnion<T, PictureInPictureEvent> | undefined
 
-    onLeavePictureInPicture?:
-      | EventHandlerUnion<T, PictureInPictureEvent>
-      | undefined
-    "on:leavepictureinpicture"?:
-      | EventHandlerWithOptionsUnion<T, PictureInPictureEvent>
-      | undefined
-    onleavepictureinpicture?:
-      | EventHandlerUnion<T, PictureInPictureEvent>
-      | undefined
+    onLeavePictureInPicture?: EventHandlerUnion<T, PictureInPictureEvent> | undefined
+    "on:leavepictureinpicture"?: EventHandlerWithOptionsUnion<T, PictureInPictureEvent> | undefined
+    onleavepictureinpicture?: EventHandlerUnion<T, PictureInPictureEvent> | undefined
   }
 
   interface WebViewHTMLAttributes<T> extends HTMLAttributes<T> {
@@ -2170,25 +2058,10 @@ export namespace JSX {
     "baseline-shift"?: number | string | undefined
     "clip-path"?: string | undefined
     "clip-rule"?: "nonzero" | "evenodd" | "inherit" | undefined
-    "color-interpolation"?:
-      | "auto"
-      | "sRGB"
-      | "linearRGB"
-      | "inherit"
-      | undefined
-    "color-interpolation-filters"?:
-      | "auto"
-      | "sRGB"
-      | "linearRGB"
-      | "inherit"
-      | undefined
+    "color-interpolation"?: "auto" | "sRGB" | "linearRGB" | "inherit" | undefined
+    "color-interpolation-filters"?: "auto" | "sRGB" | "linearRGB" | "inherit" | undefined
     "color-profile"?: string | undefined
-    "color-rendering"?:
-      | "auto"
-      | "optimizeSpeed"
-      | "optimizeQuality"
-      | "inherit"
-      | undefined
+    "color-rendering"?: "auto" | "optimizeSpeed" | "optimizeQuality" | "inherit" | undefined
     "dominant-baseline"?:
       | "auto"
       | "text-bottom"
@@ -2215,12 +2088,7 @@ export namespace JSX {
     "font-weight"?: number | string | undefined
     "glyph-orientation-horizontal"?: string | undefined
     "glyph-orientation-vertical"?: string | undefined
-    "image-rendering"?:
-      | "auto"
-      | "optimizeQuality"
-      | "optimizeSpeed"
-      | "inherit"
-      | undefined
+    "image-rendering"?: "auto" | "optimizeQuality" | "optimizeSpeed" | "inherit" | undefined
     "letter-spacing"?: number | string | undefined
     "lighting-color"?: string | undefined
     "marker-end"?: string | undefined
@@ -2252,14 +2120,7 @@ export namespace JSX {
     "stroke-dasharray"?: string | undefined
     "stroke-dashoffset"?: number | string | undefined
     "stroke-linecap"?: "butt" | "round" | "square" | "inherit" | undefined
-    "stroke-linejoin"?:
-      | "arcs"
-      | "bevel"
-      | "miter"
-      | "miter-clip"
-      | "round"
-      | "inherit"
-      | undefined
+    "stroke-linejoin"?: "arcs" | "bevel" | "miter" | "miter-clip" | "round" | "inherit" | undefined
     "stroke-miterlimit"?: number | string | "inherit" | undefined
     "stroke-opacity"?: number | string | "inherit" | undefined
     "stroke-width"?: number | string | undefined
@@ -2281,15 +2142,7 @@ export namespace JSX {
       | undefined
     "unicode-bidi"?: string | undefined
     "word-spacing"?: number | string | undefined
-    "writing-mode"?:
-      | "lr-tb"
-      | "rl-tb"
-      | "tb-rl"
-      | "lr"
-      | "rl"
-      | "tb"
-      | "inherit"
-      | undefined
+    "writing-mode"?: "lr-tb" | "rl-tb" | "tb-rl" | "lr" | "rl" | "tb" | "inherit" | undefined
     clip?: string | undefined
     color?: string | undefined
     cursor?: string | undefined
@@ -2309,8 +2162,7 @@ export namespace JSX {
     extends
       CoreSVGAttributes<T>,
       ExternalResourceSVGAttributes,
-      ConditionalProcessingSVGAttributes
-  {
+      ConditionalProcessingSVGAttributes {
     // TODO TimeEvent is currently undefined on TS
     onBegin?: EventHandlerUnion<T, Event> | undefined
     onbegin?: EventHandlerUnion<T, Event> | undefined
@@ -2341,13 +2193,9 @@ export namespace JSX {
         | "enable-background"
         | "color-interpolation"
         | "color-rendering"
-      >
-  {}
+      > {}
   interface FilterPrimitiveElementSVGAttributes<T>
-    extends
-      CoreSVGAttributes<T>,
-      Pick<PresentationSVGAttributes, "color-interpolation-filters">
-  {
+    extends CoreSVGAttributes<T>, Pick<PresentationSVGAttributes, "color-interpolation-filters"> {
     height?: number | string | undefined
     result?: string | undefined
     width?: number | string | undefined
@@ -2366,60 +2214,53 @@ export namespace JSX {
     viewBox?: string | undefined
   }
   interface GradientElementSVGAttributes<T>
-    extends
-      CoreSVGAttributes<T>,
-      ExternalResourceSVGAttributes,
-      StylableSVGAttributes
-  {
+    extends CoreSVGAttributes<T>, ExternalResourceSVGAttributes, StylableSVGAttributes {
     gradientTransform?: string | undefined
     gradientUnits?: SVGUnits | undefined
     href?: string | undefined
     spreadMethod?: "pad" | "reflect" | "repeat" | undefined
   }
-  interface GraphicsElementSVGAttributes<T> extends
-    CoreSVGAttributes<T>,
-    Pick<
-      PresentationSVGAttributes,
-      | "clip-rule"
-      | "mask"
-      | "pointer-events"
-      | "cursor"
-      | "opacity"
-      | "filter"
-      | "display"
-      | "visibility"
-      | "color-interpolation"
-      | "color-rendering"
-    >
-  {}
-  interface LightSourceElementSVGAttributes<T> extends CoreSVGAttributes<T> {}
-  interface NewViewportSVGAttributes<T>
+  interface GraphicsElementSVGAttributes<T>
     extends
       CoreSVGAttributes<T>,
-      Pick<PresentationSVGAttributes, "overflow" | "clip">
-  {
+      Pick<
+        PresentationSVGAttributes,
+        | "clip-rule"
+        | "mask"
+        | "pointer-events"
+        | "cursor"
+        | "opacity"
+        | "filter"
+        | "display"
+        | "visibility"
+        | "color-interpolation"
+        | "color-rendering"
+      > {}
+  interface LightSourceElementSVGAttributes<T> extends CoreSVGAttributes<T> {}
+  interface NewViewportSVGAttributes<T>
+    extends CoreSVGAttributes<T>, Pick<PresentationSVGAttributes, "overflow" | "clip"> {
     viewBox?: string | undefined
   }
-  interface ShapeElementSVGAttributes<T> extends
-    CoreSVGAttributes<T>,
-    Pick<
-      PresentationSVGAttributes,
-      | "color"
-      | "fill"
-      | "fill-rule"
-      | "fill-opacity"
-      | "stroke"
-      | "stroke-width"
-      | "stroke-linecap"
-      | "stroke-linejoin"
-      | "stroke-miterlimit"
-      | "stroke-dasharray"
-      | "stroke-dashoffset"
-      | "stroke-opacity"
-      | "shape-rendering"
-      | "pathLength"
-    >
-  {}
+  interface ShapeElementSVGAttributes<T>
+    extends
+      CoreSVGAttributes<T>,
+      Pick<
+        PresentationSVGAttributes,
+        | "color"
+        | "fill"
+        | "fill-rule"
+        | "fill-opacity"
+        | "stroke"
+        | "stroke-width"
+        | "stroke-linecap"
+        | "stroke-linejoin"
+        | "stroke-miterlimit"
+        | "stroke-dasharray"
+        | "stroke-dashoffset"
+        | "stroke-opacity"
+        | "shape-rendering"
+        | "pathLength"
+      > {}
   interface TextContentElementSVGAttributes<T>
     extends
       CoreSVGAttributes<T>,
@@ -2454,8 +2295,7 @@ export namespace JSX {
         | "stroke-dasharray"
         | "stroke-dashoffset"
         | "stroke-opacity"
-      >
-  {}
+      > {}
   interface ZoomAndPanSVGAttributes {
     /**
      * @deprecated
@@ -2470,18 +2310,13 @@ export namespace JSX {
       AnimationTimingSVGAttributes,
       AnimationValueSVGAttributes,
       AnimationAdditionSVGAttributes,
-      Pick<
-        PresentationSVGAttributes,
-        "color-interpolation" | "color-rendering"
-      >
-  {}
+      Pick<PresentationSVGAttributes, "color-interpolation" | "color-rendering"> {}
   interface AnimateMotionSVGAttributes<T>
     extends
       AnimationElementSVGAttributes<T>,
       AnimationTimingSVGAttributes,
       AnimationValueSVGAttributes,
-      AnimationAdditionSVGAttributes
-  {
+      AnimationAdditionSVGAttributes {
     keyPoints?: string | undefined
     origin?: "default" | undefined
     path?: string | undefined
@@ -2493,8 +2328,7 @@ export namespace JSX {
       AnimationAttributeTargetSVGAttributes,
       AnimationTimingSVGAttributes,
       AnimationValueSVGAttributes,
-      AnimationAdditionSVGAttributes
-  {
+      AnimationAdditionSVGAttributes {
     type?: "translate" | "scale" | "rotate" | "skewX" | "skewY" | undefined
   }
   interface CircleSVGAttributes<T>
@@ -2504,8 +2338,7 @@ export namespace JSX {
       ConditionalProcessingSVGAttributes,
       StylableSVGAttributes,
       TransformableSVGAttributes,
-      Pick<PresentationSVGAttributes, "clip-path">
-  {
+      Pick<PresentationSVGAttributes, "clip-path"> {
     cx?: number | string | undefined
     cy?: number | string | undefined
     r?: number | string | undefined
@@ -2517,8 +2350,7 @@ export namespace JSX {
       ExternalResourceSVGAttributes,
       StylableSVGAttributes,
       TransformableSVGAttributes,
-      Pick<PresentationSVGAttributes, "clip-path">
-  {
+      Pick<PresentationSVGAttributes, "clip-path"> {
     clipPathUnits?: SVGUnits | undefined
   }
   interface DefsSVGAttributes<T>
@@ -2527,11 +2359,8 @@ export namespace JSX {
       ConditionalProcessingSVGAttributes,
       ExternalResourceSVGAttributes,
       StylableSVGAttributes,
-      TransformableSVGAttributes
-  {}
-  interface DescSVGAttributes<T>
-    extends CoreSVGAttributes<T>, StylableSVGAttributes
-  {}
+      TransformableSVGAttributes {}
+  interface DescSVGAttributes<T> extends CoreSVGAttributes<T>, StylableSVGAttributes {}
   interface EllipseSVGAttributes<T>
     extends
       GraphicsElementSVGAttributes<T>,
@@ -2540,8 +2369,7 @@ export namespace JSX {
       ExternalResourceSVGAttributes,
       StylableSVGAttributes,
       TransformableSVGAttributes,
-      Pick<PresentationSVGAttributes, "clip-path">
-  {
+      Pick<PresentationSVGAttributes, "clip-path"> {
     cx?: number | string | undefined
     cy?: number | string | undefined
     rx?: number | string | undefined
@@ -2551,16 +2379,14 @@ export namespace JSX {
     extends
       FilterPrimitiveElementSVGAttributes<T>,
       DoubleInputFilterSVGAttributes,
-      StylableSVGAttributes
-  {
+      StylableSVGAttributes {
     mode?: "normal" | "multiply" | "screen" | "darken" | "lighten" | undefined
   }
   interface FeColorMatrixSVGAttributes<T>
     extends
       FilterPrimitiveElementSVGAttributes<T>,
       SingleInputFilterSVGAttributes,
-      StylableSVGAttributes
-  {
+      StylableSVGAttributes {
     type?: "matrix" | "saturate" | "hueRotate" | "luminanceToAlpha" | undefined
     values?: string | undefined
   }
@@ -2568,14 +2394,12 @@ export namespace JSX {
     extends
       FilterPrimitiveElementSVGAttributes<T>,
       SingleInputFilterSVGAttributes,
-      StylableSVGAttributes
-  {}
+      StylableSVGAttributes {}
   interface FeCompositeSVGAttributes<T>
     extends
       FilterPrimitiveElementSVGAttributes<T>,
       DoubleInputFilterSVGAttributes,
-      StylableSVGAttributes
-  {
+      StylableSVGAttributes {
     k1?: number | string | undefined
     k2?: number | string | undefined
     k3?: number | string | undefined
@@ -2586,8 +2410,7 @@ export namespace JSX {
     extends
       FilterPrimitiveElementSVGAttributes<T>,
       SingleInputFilterSVGAttributes,
-      StylableSVGAttributes
-  {
+      StylableSVGAttributes {
     bias?: number | string | undefined
     divisor?: number | string | undefined
     edgeMode?: "duplicate" | "wrap" | "none" | undefined
@@ -2603,8 +2426,7 @@ export namespace JSX {
       FilterPrimitiveElementSVGAttributes<T>,
       SingleInputFilterSVGAttributes,
       StylableSVGAttributes,
-      Pick<PresentationSVGAttributes, "color" | "lighting-color">
-  {
+      Pick<PresentationSVGAttributes, "color" | "lighting-color"> {
     diffuseConstant?: number | string | undefined
     kernelUnitLength?: number | string | undefined
     surfaceScale?: number | string | undefined
@@ -2613,15 +2435,12 @@ export namespace JSX {
     extends
       FilterPrimitiveElementSVGAttributes<T>,
       DoubleInputFilterSVGAttributes,
-      StylableSVGAttributes
-  {
+      StylableSVGAttributes {
     scale?: number | string | undefined
     xChannelSelector?: "R" | "G" | "B" | "A" | undefined
     yChannelSelector?: "R" | "G" | "B" | "A" | undefined
   }
-  interface FeDistantLightSVGAttributes<T>
-    extends LightSourceElementSVGAttributes<T>
-  {
+  interface FeDistantLightSVGAttributes<T> extends LightSourceElementSVGAttributes<T> {
     azimuth?: number | string | undefined
     elevation?: number | string | undefined
   }
@@ -2630,11 +2449,7 @@ export namespace JSX {
       CoreSVGAttributes<T>,
       FilterPrimitiveElementSVGAttributes<T>,
       StylableSVGAttributes,
-      Pick<
-        PresentationSVGAttributes,
-        "color" | "flood-color" | "flood-opacity"
-      >
-  {
+      Pick<PresentationSVGAttributes, "color" | "flood-color" | "flood-opacity"> {
     dx?: number | string | undefined
     dy?: number | string | undefined
     stdDeviation?: number | string | undefined
@@ -2643,11 +2458,7 @@ export namespace JSX {
     extends
       FilterPrimitiveElementSVGAttributes<T>,
       StylableSVGAttributes,
-      Pick<
-        PresentationSVGAttributes,
-        "color" | "flood-color" | "flood-opacity"
-      >
-  {}
+      Pick<PresentationSVGAttributes, "color" | "flood-color" | "flood-opacity"> {}
   interface FeFuncSVGAttributes<T> extends CoreSVGAttributes<T> {
     amplitude?: number | string | undefined
     exponent?: number | string | undefined
@@ -2661,31 +2472,26 @@ export namespace JSX {
     extends
       FilterPrimitiveElementSVGAttributes<T>,
       SingleInputFilterSVGAttributes,
-      StylableSVGAttributes
-  {
+      StylableSVGAttributes {
     stdDeviation?: number | string | undefined
   }
   interface FeImageSVGAttributes<T>
     extends
       FilterPrimitiveElementSVGAttributes<T>,
       ExternalResourceSVGAttributes,
-      StylableSVGAttributes
-  {
+      StylableSVGAttributes {
     href?: string | undefined
     preserveAspectRatio?: SVGPreserveAspectRatio | undefined
   }
   interface FeMergeSVGAttributes<T>
-    extends FilterPrimitiveElementSVGAttributes<T>, StylableSVGAttributes
-  {}
+    extends FilterPrimitiveElementSVGAttributes<T>, StylableSVGAttributes {}
   interface FeMergeNodeSVGAttributes<T>
-    extends CoreSVGAttributes<T>, SingleInputFilterSVGAttributes
-  {}
+    extends CoreSVGAttributes<T>, SingleInputFilterSVGAttributes {}
   interface FeMorphologySVGAttributes<T>
     extends
       FilterPrimitiveElementSVGAttributes<T>,
       SingleInputFilterSVGAttributes,
-      StylableSVGAttributes
-  {
+      StylableSVGAttributes {
     operator?: "erode" | "dilate" | undefined
     radius?: number | string | undefined
   }
@@ -2693,14 +2499,11 @@ export namespace JSX {
     extends
       FilterPrimitiveElementSVGAttributes<T>,
       SingleInputFilterSVGAttributes,
-      StylableSVGAttributes
-  {
+      StylableSVGAttributes {
     dx?: number | string | undefined
     dy?: number | string | undefined
   }
-  interface FePointLightSVGAttributes<T>
-    extends LightSourceElementSVGAttributes<T>
-  {
+  interface FePointLightSVGAttributes<T> extends LightSourceElementSVGAttributes<T> {
     x?: number | string | undefined
     y?: number | string | undefined
     z?: number | string | undefined
@@ -2710,16 +2513,13 @@ export namespace JSX {
       FilterPrimitiveElementSVGAttributes<T>,
       SingleInputFilterSVGAttributes,
       StylableSVGAttributes,
-      Pick<PresentationSVGAttributes, "color" | "lighting-color">
-  {
+      Pick<PresentationSVGAttributes, "color" | "lighting-color"> {
     kernelUnitLength?: number | string | undefined
     specularConstant?: string | undefined
     specularExponent?: string | undefined
     surfaceScale?: string | undefined
   }
-  interface FeSpotLightSVGAttributes<T>
-    extends LightSourceElementSVGAttributes<T>
-  {
+  interface FeSpotLightSVGAttributes<T> extends LightSourceElementSVGAttributes<T> {
     limitingConeAngle?: number | string | undefined
     pointsAtX?: number | string | undefined
     pointsAtY?: number | string | undefined
@@ -2733,11 +2533,9 @@ export namespace JSX {
     extends
       FilterPrimitiveElementSVGAttributes<T>,
       SingleInputFilterSVGAttributes,
-      StylableSVGAttributes
-  {}
+      StylableSVGAttributes {}
   interface FeTurbulanceSVGAttributes<T>
-    extends FilterPrimitiveElementSVGAttributes<T>, StylableSVGAttributes
-  {
+    extends FilterPrimitiveElementSVGAttributes<T>, StylableSVGAttributes {
     baseFrequency?: number | string | undefined
     numOctaves?: number | string | undefined
     seed?: number | string | undefined
@@ -2745,11 +2543,7 @@ export namespace JSX {
     type?: "fractalNoise" | "turbulence" | undefined
   }
   interface FilterSVGAttributes<T>
-    extends
-      CoreSVGAttributes<T>,
-      ExternalResourceSVGAttributes,
-      StylableSVGAttributes
-  {
+    extends CoreSVGAttributes<T>, ExternalResourceSVGAttributes, StylableSVGAttributes {
     filterRes?: number | string | undefined
     filterUnits?: SVGUnits | undefined
     height?: number | string | undefined
@@ -2765,8 +2559,7 @@ export namespace JSX {
       ExternalResourceSVGAttributes,
       StylableSVGAttributes,
       TransformableSVGAttributes,
-      Pick<PresentationSVGAttributes, "display" | "visibility">
-  {
+      Pick<PresentationSVGAttributes, "display" | "visibility"> {
     height?: number | string | undefined
     width?: number | string | undefined
     x?: number | string | undefined
@@ -2779,8 +2572,7 @@ export namespace JSX {
       ExternalResourceSVGAttributes,
       StylableSVGAttributes,
       TransformableSVGAttributes,
-      Pick<PresentationSVGAttributes, "clip-path" | "display" | "visibility">
-  {}
+      Pick<PresentationSVGAttributes, "clip-path" | "display" | "visibility"> {}
   interface ImageSVGAttributes<T>
     extends
       NewViewportSVGAttributes<T>,
@@ -2788,11 +2580,7 @@ export namespace JSX {
       ConditionalProcessingSVGAttributes,
       StylableSVGAttributes,
       TransformableSVGAttributes,
-      Pick<
-        PresentationSVGAttributes,
-        "clip-path" | "color-profile" | "image-rendering"
-      >
-  {
+      Pick<PresentationSVGAttributes, "clip-path" | "color-profile" | "image-rendering"> {
     height?: number | string | undefined
     href?: string | undefined
     preserveAspectRatio?: ImagePreserveAspectRatio | undefined
@@ -2808,19 +2596,13 @@ export namespace JSX {
       ExternalResourceSVGAttributes,
       StylableSVGAttributes,
       TransformableSVGAttributes,
-      Pick<
-        PresentationSVGAttributes,
-        "clip-path" | "marker-start" | "marker-mid" | "marker-end"
-      >
-  {
+      Pick<PresentationSVGAttributes, "clip-path" | "marker-start" | "marker-mid" | "marker-end"> {
     x1?: number | string | undefined
     x2?: number | string | undefined
     y1?: number | string | undefined
     y2?: number | string | undefined
   }
-  interface LinearGradientSVGAttributes<T>
-    extends GradientElementSVGAttributes<T>
-  {
+  interface LinearGradientSVGAttributes<T> extends GradientElementSVGAttributes<T> {
     x1?: number | string | undefined
     x2?: number | string | undefined
     y1?: number | string | undefined
@@ -2832,8 +2614,7 @@ export namespace JSX {
       ExternalResourceSVGAttributes,
       StylableSVGAttributes,
       FitToViewBoxSVGAttributes,
-      Pick<PresentationSVGAttributes, "clip-path" | "overflow" | "clip">
-  {
+      Pick<PresentationSVGAttributes, "clip-path" | "overflow" | "clip"> {
     markerHeight?: number | string | undefined
     markerUnits?: "strokeWidth" | "userSpaceOnUse" | undefined
     markerWidth?: number | string | undefined
@@ -2847,8 +2628,7 @@ export namespace JSX {
       ConditionalProcessingSVGAttributes,
       ExternalResourceSVGAttributes,
       StylableSVGAttributes,
-      Pick<PresentationSVGAttributes, "clip-path">
-  {
+      Pick<PresentationSVGAttributes, "clip-path"> {
     height?: number | string | undefined
     maskContentUnits?: SVGUnits | undefined
     maskUnits?: SVGUnits | undefined
@@ -2866,11 +2646,7 @@ export namespace JSX {
       ExternalResourceSVGAttributes,
       StylableSVGAttributes,
       TransformableSVGAttributes,
-      Pick<
-        PresentationSVGAttributes,
-        "clip-path" | "marker-start" | "marker-mid" | "marker-end"
-      >
-  {
+      Pick<PresentationSVGAttributes, "clip-path" | "marker-start" | "marker-mid" | "marker-end"> {
     d?: string | undefined
     pathLength?: number | string | undefined
   }
@@ -2881,8 +2657,7 @@ export namespace JSX {
       ExternalResourceSVGAttributes,
       StylableSVGAttributes,
       FitToViewBoxSVGAttributes,
-      Pick<PresentationSVGAttributes, "clip-path" | "overflow" | "clip">
-  {
+      Pick<PresentationSVGAttributes, "clip-path" | "overflow" | "clip"> {
     height?: number | string | undefined
     href?: string | undefined
     patternContentUnits?: SVGUnits | undefined
@@ -2900,11 +2675,7 @@ export namespace JSX {
       ExternalResourceSVGAttributes,
       StylableSVGAttributes,
       TransformableSVGAttributes,
-      Pick<
-        PresentationSVGAttributes,
-        "clip-path" | "marker-start" | "marker-mid" | "marker-end"
-      >
-  {
+      Pick<PresentationSVGAttributes, "clip-path" | "marker-start" | "marker-mid" | "marker-end"> {
     points?: string | undefined
   }
   interface PolylineSVGAttributes<T>
@@ -2915,16 +2686,10 @@ export namespace JSX {
       ExternalResourceSVGAttributes,
       StylableSVGAttributes,
       TransformableSVGAttributes,
-      Pick<
-        PresentationSVGAttributes,
-        "clip-path" | "marker-start" | "marker-mid" | "marker-end"
-      >
-  {
+      Pick<PresentationSVGAttributes, "clip-path" | "marker-start" | "marker-mid" | "marker-end"> {
     points?: string | undefined
   }
-  interface RadialGradientSVGAttributes<T>
-    extends GradientElementSVGAttributes<T>
-  {
+  interface RadialGradientSVGAttributes<T> extends GradientElementSVGAttributes<T> {
     cx?: number | string | undefined
     cy?: number | string | undefined
     fx?: number | string | undefined
@@ -2939,8 +2704,7 @@ export namespace JSX {
       ExternalResourceSVGAttributes,
       StylableSVGAttributes,
       TransformableSVGAttributes,
-      Pick<PresentationSVGAttributes, "clip-path">
-  {
+      Pick<PresentationSVGAttributes, "clip-path"> {
     height?: number | string | undefined
     rx?: number | string | undefined
     ry?: number | string | undefined
@@ -2949,17 +2713,12 @@ export namespace JSX {
     y?: number | string | undefined
   }
   interface SetSVGAttributes<T>
-    extends
-      AnimationElementSVGAttributes<T>,
-      StylableSVGAttributes,
-      AnimationTimingSVGAttributes
-  {}
+    extends AnimationElementSVGAttributes<T>, StylableSVGAttributes, AnimationTimingSVGAttributes {}
   interface StopSVGAttributes<T>
     extends
       CoreSVGAttributes<T>,
       StylableSVGAttributes,
-      Pick<PresentationSVGAttributes, "color" | "stop-color" | "stop-opacity">
-  {
+      Pick<PresentationSVGAttributes, "color" | "stop-color" | "stop-opacity"> {
     offset?: number | string | undefined
   }
   interface SvgSVGAttributes<T>
@@ -2972,8 +2731,7 @@ export namespace JSX {
       FitToViewBoxSVGAttributes,
       ZoomAndPanSVGAttributes,
       PresentationSVGAttributes,
-      WindowEventMap<T>
-  {
+      WindowEventMap<T> {
     "xmlns:xlink"?: string | undefined
     [`xmlns:${string}`]?: string | undefined
     contentScriptType?: string | undefined
@@ -2996,8 +2754,7 @@ export namespace JSX {
       ExternalResourceSVGAttributes,
       StylableSVGAttributes,
       TransformableSVGAttributes,
-      Pick<PresentationSVGAttributes, "display" | "visibility">
-  {}
+      Pick<PresentationSVGAttributes, "display" | "visibility"> {}
   interface SymbolSVGAttributes<T>
     extends
       ContainerElementSVGAttributes<T>,
@@ -3005,8 +2762,7 @@ export namespace JSX {
       ExternalResourceSVGAttributes,
       StylableSVGAttributes,
       FitToViewBoxSVGAttributes,
-      Pick<PresentationSVGAttributes, "clip-path">
-  {
+      Pick<PresentationSVGAttributes, "clip-path"> {
     height?: number | string | undefined
     preserveAspectRatio?: SVGPreserveAspectRatio | undefined
     refX?: number | string | undefined
@@ -3024,11 +2780,7 @@ export namespace JSX {
       ExternalResourceSVGAttributes,
       StylableSVGAttributes,
       TransformableSVGAttributes,
-      Pick<
-        PresentationSVGAttributes,
-        "clip-path" | "writing-mode" | "text-rendering"
-      >
-  {
+      Pick<PresentationSVGAttributes, "clip-path" | "writing-mode" | "text-rendering"> {
     dx?: number | string | undefined
     dy?: number | string | undefined
     lengthAdjust?: "spacing" | "spacingAndGlyphs" | undefined
@@ -3046,8 +2798,7 @@ export namespace JSX {
       Pick<
         PresentationSVGAttributes,
         "alignment-baseline" | "baseline-shift" | "display" | "visibility"
-      >
-  {
+      > {
     href?: string | undefined
     method?: "align" | "stretch" | undefined
     spacing?: "auto" | "exact" | undefined
@@ -3062,8 +2813,7 @@ export namespace JSX {
       Pick<
         PresentationSVGAttributes,
         "alignment-baseline" | "baseline-shift" | "display" | "visibility"
-      >
-  {
+      > {
     dx?: number | string | undefined
     dy?: number | string | undefined
     lengthAdjust?: "spacing" | "spacingAndGlyphs" | undefined
@@ -3081,8 +2831,7 @@ export namespace JSX {
       GraphicsElementSVGAttributes<T>,
       PresentationSVGAttributes,
       ExternalResourceSVGAttributes,
-      TransformableSVGAttributes
-  {
+      TransformableSVGAttributes {
     height?: number | string | undefined
     href?: string | undefined
     width?: number | string | undefined
@@ -3094,8 +2843,7 @@ export namespace JSX {
       CoreSVGAttributes<T>,
       ExternalResourceSVGAttributes,
       FitToViewBoxSVGAttributes,
-      ZoomAndPanSVGAttributes
-  {
+      ZoomAndPanSVGAttributes {
     viewTarget?: string | undefined
   }
 
@@ -3124,9 +2872,7 @@ export namespace JSX {
     /** @deprecated */
     src?: string | undefined
   }
-  interface MathMLAnnotationXmlElementAttributes<T>
-    extends MathMLAttributes<T>
-  {
+  interface MathMLAnnotationXmlElementAttributes<T> extends MathMLAttributes<T> {
     encoding?: string | undefined
 
     /** @deprecated */
@@ -3166,9 +2912,7 @@ export namespace JSX {
     mathvariant?: "normal" | undefined
   }
 
-  interface MathMLMmultiscriptsElementAttributes<T>
-    extends MathMLAttributes<T>
-  {
+  interface MathMLMmultiscriptsElementAttributes<T> extends MathMLAttributes<T> {
     /**
      * @deprecated
      * @non-standard
@@ -3987,9 +3731,7 @@ export namespace JSX {
      * @url https://developer.mozilla.org/en-US/docs/Web/SVG/Element/feComponentTransfer
      * @url https://developer.mozilla.org/en-US/docs/Web/API/SVGFEComponentTransferElemen
      */
-    feComponentTransfer: FeComponentTransferSVGAttributes<
-      SVGFEComponentTransferElement
-    >
+    feComponentTransfer: FeComponentTransferSVGAttributes<SVGFEComponentTransferElement>
     /**
      * @url https://developer.mozilla.org/en-US/docs/Web/SVG/Element/feComposite
      * @url https://developer.mozilla.org/en-US/docs/Web/API/SVGFECompositeElement
@@ -4004,16 +3746,12 @@ export namespace JSX {
      * @url https://developer.mozilla.org/en-US/docs/Web/SVG/Element/feDiffuseLighting
      * @url https://developer.mozilla.org/en-US/docs/Web/API/SVGFEDiffuseLightingElement
      */
-    feDiffuseLighting: FeDiffuseLightingSVGAttributes<
-      SVGFEDiffuseLightingElement
-    >
+    feDiffuseLighting: FeDiffuseLightingSVGAttributes<SVGFEDiffuseLightingElement>
     /**
      * @url https://developer.mozilla.org/en-US/docs/Web/SVG/Element/feDisplacementMap
      * @url https://developer.mozilla.org/en-US/docs/Web/API/SVGFEDisplacementMapElement
      */
-    feDisplacementMap: FeDisplacementMapSVGAttributes<
-      SVGFEDisplacementMapElement
-    >
+    feDisplacementMap: FeDisplacementMapSVGAttributes<SVGFEDisplacementMapElement>
     /**
      * @url https://developer.mozilla.org/en-US/docs/Web/SVG/Element/feDistantLight
      * @url https://developer.mozilla.org/en-US/docs/Web/API/SVGFEDistantLightElement
@@ -4088,9 +3826,7 @@ export namespace JSX {
      * @url https://developer.mozilla.org/en-US/docs/Web/SVG/Element/feSpecularLighting
      * @url https://developer.mozilla.org/en-US/docs/Web/API/SVGFESpecularLightingElement
      */
-    feSpecularLighting: FeSpecularLightingSVGAttributes<
-      SVGFESpecularLightingElement
-    >
+    feSpecularLighting: FeSpecularLightingSVGAttributes<SVGFESpecularLightingElement>
     /**
      * @url https://developer.mozilla.org/en-US/docs/Web/SVG/Element/feSpotLight
      * @url https://developer.mozilla.org/en-US/docs/Web/API/SVGFESpotLightElement
@@ -4406,12 +4142,7 @@ export namespace JSX {
   }
 
   export interface IntrinsicElements
-    extends
-      HTMLElementTags,
-      HTMLElementDeprecatedTags,
-      SVGElementTags,
-      MathMLElementTags
-  {
+    extends HTMLElementTags, HTMLElementDeprecatedTags, SVGElementTags, MathMLElementTags {
     [elemName: string]: DOMAttributes<HTMLElement>
   }
 }

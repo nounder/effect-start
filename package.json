@@ -1,106 +1,7 @@
 {
   "name": "effect-start",
   "version": "0.21.0",
-  "type": "module",
   "license": "MIT",
-  "exports": {
-    ".": {
-      "bun": "./src/index.ts",
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
-    },
-    "./bun": {
-      "bun": "./src/bun/index.ts",
-      "types": "./dist/bun/index.d.ts",
-      "default": "./dist/bun/index.js"
-    },
-    "./client": {
-      "bun": "./src/client/index.ts",
-      "types": "./dist/client/index.d.ts",
-      "default": "./dist/client/index.js"
-    },
-    "./testing": {
-      "bun": "./src/testing/index.ts",
-      "types": "./dist/testing/index.d.ts",
-      "default": "./dist/testing/index.js"
-    },
-    "./x/*": {
-      "bun": "./src/x/*/index.ts",
-      "types": "./dist/x/*/index.d.ts",
-      "default": "./dist/x/*/index.js"
-    },
-    "./x/tailwind/plugin": {
-      "bun": "./src/x/tailwind/plugin.ts",
-      "types": "./dist/x/tailwind/plugin.d.ts",
-      "default": "./dist/x/tailwind/plugin.js"
-    },
-    "./Unique": {
-      "bun": "./src/Unique.ts",
-      "types": "./dist/Unique.d.ts",
-      "default": "./dist/Unique.js"
-    },
-    "./FileRouter": {
-      "bun": "./src/FileRouter.ts",
-      "types": "./dist/FileRouter.d.ts",
-      "default": "./dist/FileRouter.js"
-    },
-    "./FileSystem": {
-      "bun": "./src/FileSystem.ts",
-      "types": "./dist/FileSystem.d.ts",
-      "default": "./dist/FileSystem.js"
-    },
-    "./experimental": {
-      "bun": "./src/experimental/index.ts",
-      "types": "./dist/experimental/index.d.ts",
-      "default": "./dist/experimental/index.js"
-    },
-    "./client/assets.d.ts": "./src/assets.d.ts",
-    "./hyper": {
-      "bun": "./src/hyper/index.ts",
-      "types": "./dist/hyper/index.d.ts",
-      "default": "./dist/hyper/index.js"
-    },
-    "./jsx-runtime": {
-      "bun": "./src/hyper/jsx-runtime.ts",
-      "types": "./dist/hyper/jsx-runtime.d.ts",
-      "default": "./dist/hyper/jsx-runtime.js"
-    },
-    "./jsx-dev-runtime": {
-      "bun": "./src/hyper/jsx-runtime.ts",
-      "types": "./dist/hyper/jsx-runtime.d.ts",
-      "default": "./dist/hyper/jsx-runtime.js"
-    },
-    "./datastar": {
-      "bun": "./src/datastar/index.ts",
-      "types": "./dist/datastar/index.d.ts",
-      "default": "./dist/datastar/index.js"
-    },
-    "./package.json": "./package.json"
-  },
-  "scripts": {
-    "build": "bunx --bun tsc -p tsconfig.build.json",
-    "format": "bunx dprint fmt",
-    "lint": "oxlint --import-plugin --tsconfig tsconfig.json src/",
-    "test": "bun test ./src/",
-    "deploy": "bunx --bun npm publish --access public"
-  },
-  "peerDependencies": {
-    "effect": ">=3.19.0",
-    "@effect/platform": ">=0.93.0"
-  },
-  "devDependencies": {
-    "typescript": "^5.9.3",
-    "@effect/language-service": "^0.62.3",
-    "@types/bun": "^1.3.4",
-    "@types/react": "^19.2.7",
-    "@types/react-dom": "^19.2.3",
-    "oxfmt": "latest",
-    "effect-memfs": "^0.8.0",
-    "expect-type": "^1.3.0",
-    "oxlint": "^1.43.0",
-    "tailwindcss": "^4.1.18",
-    "ts-namespace-import": "nounder/ts-namespace-import#140c405"
-  },
   "files": [
     "src/",
     "!src/**/*.test.ts",
@@ -108,5 +9,104 @@
     "dist/",
     "README.md",
     "package.json"
-  ]
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "bun": "./src/index.ts",
+      "default": "./dist/index.js"
+    },
+    "./bun": {
+      "types": "./dist/bun/index.d.ts",
+      "bun": "./src/bun/index.ts",
+      "default": "./dist/bun/index.js"
+    },
+    "./client": {
+      "types": "./dist/client/index.d.ts",
+      "bun": "./src/client/index.ts",
+      "default": "./dist/client/index.js"
+    },
+    "./testing": {
+      "types": "./dist/testing/index.d.ts",
+      "bun": "./src/testing/index.ts",
+      "default": "./dist/testing/index.js"
+    },
+    "./x/*": {
+      "types": "./dist/x/*/index.d.ts",
+      "bun": "./src/x/*/index.ts",
+      "default": "./dist/x/*/index.js"
+    },
+    "./x/tailwind/plugin": {
+      "types": "./dist/x/tailwind/plugin.d.ts",
+      "bun": "./src/x/tailwind/plugin.ts",
+      "default": "./dist/x/tailwind/plugin.js"
+    },
+    "./Unique": {
+      "types": "./dist/Unique.d.ts",
+      "bun": "./src/Unique.ts",
+      "default": "./dist/Unique.js"
+    },
+    "./FileRouter": {
+      "types": "./dist/FileRouter.d.ts",
+      "bun": "./src/FileRouter.ts",
+      "default": "./dist/FileRouter.js"
+    },
+    "./FileSystem": {
+      "types": "./dist/FileSystem.d.ts",
+      "bun": "./src/FileSystem.ts",
+      "default": "./dist/FileSystem.js"
+    },
+    "./experimental": {
+      "types": "./dist/experimental/index.d.ts",
+      "bun": "./src/experimental/index.ts",
+      "default": "./dist/experimental/index.js"
+    },
+    "./client/assets.d.ts": "./src/assets.d.ts",
+    "./hyper": {
+      "types": "./dist/hyper/index.d.ts",
+      "bun": "./src/hyper/index.ts",
+      "default": "./dist/hyper/index.js"
+    },
+    "./jsx-runtime": {
+      "types": "./dist/hyper/jsx-runtime.d.ts",
+      "bun": "./src/hyper/jsx-runtime.ts",
+      "default": "./dist/hyper/jsx-runtime.js"
+    },
+    "./jsx-dev-runtime": {
+      "types": "./dist/hyper/jsx-runtime.d.ts",
+      "bun": "./src/hyper/jsx-runtime.ts",
+      "default": "./dist/hyper/jsx-runtime.js"
+    },
+    "./datastar": {
+      "types": "./dist/datastar/index.d.ts",
+      "bun": "./src/datastar/index.ts",
+      "default": "./dist/datastar/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "bunx --bun tsc -p tsconfig.build.json",
+    "format": "bunx oxfmt",
+    "lint": "oxlint --import-plugin --tsconfig tsconfig.json src/",
+    "test": "bun test ./src/",
+    "deploy": "bunx --bun npm publish --access public"
+  },
+  "devDependencies": {
+    "@effect/language-service": "^0.62.3",
+    "@types/bun": "^1.3.4",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "effect-memfs": "^0.8.0",
+    "expect-type": "^1.3.0",
+    "oxfmt": "latest",
+    "oxlint": "^1.43.0",
+    "tailwindcss": "^4.1.18",
+    "ts-namespace-import": "nounder/ts-namespace-import#140c405",
+    "typescript": "^5.9.3"
+  },
+  "peerDependencies": {
+    "@effect/platform": ">=0.93.0",
+    "effect": ">=3.19.0"
+  }
 }

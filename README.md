@@ -14,10 +14,7 @@ by checking out `examples/` directory.
 It exports a layer that applies configuration and changes the behavior of the server:
 
 ```typescript
-import {
-  FileRouter,
-  Start,
-} from "effect-start"
+import { FileRouter, Start } from "effect-start"
 
 export default Start.layer(
   FileRouter.layer({

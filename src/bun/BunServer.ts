@@ -49,18 +49,10 @@ export type BunServer = {
   readonly popHandler: () => void
 }
 
-export const BunServer = Context.GenericTag<BunServer>(
-  "effect-start/BunServer",
-)
+export const BunServer = Context.GenericTag<BunServer>("effect-start/BunServer")
 
-export const make = (
-  options: BunServeOptions,
-): Effect.Effect<
-  BunServer,
-  never,
-  Scope.Scope
-> =>
-  Effect.gen(function*() {
+export const make = (options: BunServeOptions): Effect.Effect<BunServer, never, Scope.Scope> =>
+  Effect.gen(function* () {
     const routes = yield* Effect.serviceOption(Route.Routes).pipe(
       Effect.andThen(Option.getOrUndefined),
     )
@@ -74,53 +66,42 @@ export const make = (
     )
     const hostFlag = process.argv.includes("--host")
     const hostname = yield* Config.string("HOSTNAME").pipe(
-      Effect.catchTag("ConfigError", () =>
-        Effect.succeed(hostFlag ? "0.0.0.0" : undefined)),
+      Effect.catchTag("ConfigError", () => Effect.succeed(hostFlag ? "0.0.0.0" : undefined)),
     )
 
     const handlerStack: Array<FetchHandler> = [
-      function(_request, _server) {
+      function (_request, _server) {
         return new Response("not found", { status: 404 })
       },
     ]
 
-    const service = BunServer
-      .of({
-        // During the construction we need to create a service imlpementation
-        // first so we can provide it in the runtime that will be used in web
-        // handlers. After we create the runtime, we set it below so it's always
-        // available at runtime.
-        // An alternative approach would be to use Bun.Server.reload but I prefer
-        // to avoid it since it's badly documented and has bunch of bugs.
-        server: undefined as any,
-        pushHandler(fetch) {
-          handlerStack
-            .push(fetch)
-          reload()
-        },
-        popHandler() {
-          handlerStack
-            .pop()
-          reload()
-        },
-      })
+    const service = BunServer.of({
+      // During the construction we need to create a service imlpementation
+      // first so we can provide it in the runtime that will be used in web
+      // handlers. After we create the runtime, we set it below so it's always
+      // available at runtime.
+      // An alternative approach would be to use Bun.Server.reload but I prefer
+      // to avoid it since it's badly documented and has bunch of bugs.
+      server: undefined as any,
+      pushHandler(fetch) {
+        handlerStack.push(fetch)
+        reload()
+      },
+      popHandler() {
+        handlerStack.pop()
+        reload()
+      },
+    })
 
-    const runtime = yield* Effect
-      .runtime()
-      .pipe(
-        Effect
-          .andThen(Runtime
-            .provideService(BunServer, service)),
-      )
+    const runtime = yield* Effect.runtime().pipe(
+      Effect.andThen(Runtime.provideService(BunServer, service)),
+    )
 
-    let currentRoutes: BunRoute.BunRoutes = routes
-      ? yield* walkBunRoutes(runtime, routes)
-      : {}
+    let currentRoutes: BunRoute.BunRoutes = routes ? yield* walkBunRoutes(runtime, routes) : {}
 
     const websocket: Bun.WebSocketHandler<WebSocketContext> = {
       open(ws) {
-        Deferred
-          .unsafeDone(ws.data.deferred, Exit.succeed(ws))
+        Deferred.unsafeDone(ws.data.deferred, Exit.succeed(ws))
       },
       message(ws, message) {
         ws.data.run(message)
@@ -130,12 +111,12 @@ export const make = (
           ws.data.closeDeferred,
           Socket.defaultCloseCodeIsError(code)
             ? Exit.fail(
-              new Socket.SocketCloseError({
-                reason: "Close",
-                code,
-                closeReason,
-              }),
-            )
+                new Socket.SocketCloseError({
+                  reason: "Close",
+                  code,
+                  closeReason,
+                }),
+              )
             : Exit.void,
         )
       },
@@ -156,7 +137,7 @@ export const make = (
     yield* Effect.addFinalizer(() =>
       Effect.sync(() => {
         server.stop()
-      })
+      }),
     )
 
     const reload = () => {
@@ -185,39 +166,23 @@ export const make = (
 /**
  * Provides HttpServer using BunServer under the hood.
  */
-export const layer = (
-  options?: BunServeOptions,
-): Layer.Layer<BunServer> =>
-  Layer.scoped(
-    BunServer,
-    make(options ?? {}),
-  )
+export const layer = (options?: BunServeOptions): Layer.Layer<BunServer> =>
+  Layer.scoped(BunServer, make(options ?? {}))
 
-export const withLogAddress = <A, E, R>(
-  layer: Layer.Layer<A, E, R>,
-) =>
-  Layer
-    .effectDiscard(
-      BunServer.pipe(
-        Effect.andThen(server => {
-          const { hostname, port } = server.server
-          const addr = hostname === "0.0.0.0"
-            ? getLocalIp()
-            : "localhost"
+export const withLogAddress = <A, E, R>(layer: Layer.Layer<A, E, R>) =>
+  Layer.effectDiscard(
+    BunServer.pipe(
+      Effect.andThen((server) => {
+        const { hostname, port } = server.server
+        const addr = hostname === "0.0.0.0" ? getLocalIp() : "localhost"
 
-          return Effect.log(`Listening on http://${addr}:${port}`)
-        }),
-      ),
-    )
-    .pipe(
-      Layer.provideMerge(layer),
-    )
+        return Effect.log(`Listening on http://${addr}:${port}`)
+      }),
+    ),
+  ).pipe(Layer.provideMerge(layer))
 
-function walkBunRoutes(
-  runtime: Runtime.Runtime<BunServer>,
-  tree: RouteTree.RouteTree,
-) {
-  return Effect.gen(function*() {
+function walkBunRoutes(runtime: Runtime.Runtime<BunServer>, tree: RouteTree.RouteTree) {
+  return Effect.gen(function* () {
     const bunRoutes: BunRoute.BunRoutes = {}
     const pathGroups = new Map<string, Array<RouteMount.MountedRoute>>()
     const toWebHandler = RouteHttp.toWebHandlerRuntime(runtime)
@@ -248,7 +213,6 @@ function walkBunRoutes(
 
 function getLocalIp(): string | undefined {
   return Object.values(NOs.networkInterfaces())
-    .flatMap(addresses => addresses ?? [])
-    .find(addr => addr.family === "IPv4" && !addr.internal)
-    ?.address
+    .flatMap((addresses) => addresses ?? [])
+    .find((addr) => addr.family === "IPv4" && !addr.internal)?.address
 }

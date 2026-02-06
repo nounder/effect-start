@@ -7,9 +7,7 @@ import * as FilePathPattern from "./FilePathPattern.ts"
 import * as FileRouter from "./FileRouter.ts"
 import * as SchemaExtra from "./SchemaExtra.ts"
 
-export function validateRouteModule(
-  module: unknown,
-): module is FileRouter.RouteModule {
+export function validateRouteModule(module: unknown): module is FileRouter.RouteModule {
   if (typeof module !== "object" || module === null) {
     return false
   }
@@ -25,10 +23,7 @@ export function validateRouteModule(
 export function generatePathParamsSchema(
   segments: ReadonlyArray<FilePathPattern.Segment>,
 ): Schema.Struct<any> | null {
-  const fields: Record<
-    PropertyKey,
-    Schema.Schema.Any | Schema.PropertySignature.All
-  > = {}
+  const fields: Record<PropertyKey, Schema.Schema.Any | Schema.PropertySignature.All> = {}
 
   for (const segment of segments) {
     if (segment._tag === "ParamSegment") {
@@ -53,17 +48,17 @@ export function validateRouteModules(
   path: string,
   routes: FileRouter.OrderedFileRoutes,
 ): Effect.Effect<void, FileRouter.FileRouterError, FileSystem.FileSystem> {
-  return Effect.gen(function*() {
+  return Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
-    const routeHandles = routes.filter(h => h.handle === "route")
+    const routeHandles = routes.filter((h) => h.handle === "route")
 
     for (const handle of routeHandles) {
       const routeModulePath = NPath.resolve(path, handle.modulePath)
       const expectedSchema = generatePathParamsSchema(handle.segments)
 
-      const fileExists = yield* fs.exists(routeModulePath).pipe(
-        Effect.catchAll(() => Effect.succeed(false)),
-      )
+      const fileExists = yield* fs
+        .exists(routeModulePath)
+        .pipe(Effect.catchAll(() => Effect.succeed(false)))
       if (!fileExists) {
         continue
       }
@@ -79,9 +74,7 @@ export function validateRouteModules(
       })
 
       if (!validateRouteModule(module)) {
-        yield* Effect.logWarning(
-          `Route module ${routeModulePath} should export default Route`,
-        )
+        yield* Effect.logWarning(`Route module ${routeModulePath} should export default Route`)
         continue
       }
 
@@ -89,30 +82,27 @@ export function validateRouteModules(
       // extract user schema
       const userSchema = undefined
 
-      if (
-        expectedSchema
-        && userSchema
-        && !SchemaExtra.schemaEqual(userSchema, expectedSchema)
-      ) {
+      if (expectedSchema && userSchema && !SchemaExtra.schemaEqual(userSchema, expectedSchema)) {
         const relativeFilePath = NPath.relative(process.cwd(), routeModulePath)
         yield* Effect.logError(
-          `Route '${relativeFilePath}' has incorrect PathParams schema, expected schemaPathParams(${
-            SchemaExtra.formatSchemaCode(expectedSchema)
-          })`,
+          `Route '${relativeFilePath}' has incorrect PathParams schema, expected schemaPathParams(${SchemaExtra.formatSchemaCode(
+            expectedSchema,
+          )})`,
         )
       }
     }
   })
 }
 
-export function generateCode(
-  fileRoutes: FileRouter.OrderedFileRoutes,
-): string | null {
+export function generateCode(fileRoutes: FileRouter.OrderedFileRoutes): string | null {
   // Group routes by path to find layers
-  const routesByPath = new Map<string, {
-    route?: FileRouter.FileRoute
-    layers: Array<FileRouter.FileRoute>
-  }>()
+  const routesByPath = new Map<
+    string,
+    {
+      route?: FileRouter.FileRoute
+      layers: Array<FileRouter.FileRoute>
+    }
+  >()
 
   for (const fileRoute of fileRoutes) {
     const existing = routesByPath.get(fileRoute.routePath) || { layers: [] }
@@ -125,10 +115,7 @@ export function generateCode(
   }
 
   // Helper to check if layer's path is an ancestor of route's path
-  const layerMatchesRoute = (
-    layer: FileRouter.FileRoute,
-    route: FileRouter.FileRoute,
-  ): boolean => {
+  const layerMatchesRoute = (layer: FileRouter.FileRoute, route: FileRouter.FileRoute): boolean => {
     const layerDir = layer.modulePath.replace(/\/(layer)\.(tsx?|jsx?)$/, "")
     if (layerDir === "/") return true
     return route.modulePath.startsWith(layerDir + "/")
@@ -147,9 +134,7 @@ export function generateCode(
     while (true) {
       const pathData = routesByPath.get(currentPath)
       if (pathData?.layers) {
-        const matchingLayers = pathData.layers.filter(layer =>
-          layerMatchesRoute(layer, route)
-        )
+        const matchingLayers = pathData.layers.filter((layer) => layerMatchesRoute(layer, route))
         allLayers.unshift(...matchingLayers)
       }
 
@@ -169,9 +154,7 @@ export function generateCode(
     // Order: route first, then layers from innermost to outermost
     const loaders: Array<string> = [
       `() => import(".${route.modulePath}")`,
-      ...allLayers.reverse().map(layer =>
-        `() => import(".${layer.modulePath}")`
-      ),
+      ...allLayers.reverse().map((layer) => `() => import(".${layer.modulePath}")`),
     ]
 
     entries.push({ path: pathPattern, loaders })
@@ -207,13 +190,18 @@ export function update(
   routesPath: string,
   treePath = "server.gen.ts",
 ): Effect.Effect<void, FileRouter.FileRouterError, FileSystem.FileSystem> {
-  return Effect.gen(function*() {
+  return Effect.gen(function* () {
     treePath = NPath.resolve(routesPath, treePath)
 
     const fs = yield* FileSystem.FileSystem
     const files = yield* fs.readDirectory(routesPath, { recursive: true }).pipe(
-      Effect.mapError((cause) =>
-        new FileRouter.FileRouterError({ reason: "FileSystem", cause, path: routesPath })
+      Effect.mapError(
+        (cause) =>
+          new FileRouter.FileRouterError({
+            reason: "FileSystem",
+            cause,
+            path: routesPath,
+          }),
       ),
     )
     const fileRoutes = yield* FileRouter.getFileRoutes(files)
@@ -236,8 +224,13 @@ export function update(
         if (existingCode !== emptyCode) {
           yield* Effect.logDebug(`Clearing file routes tree: ${treePath}`)
           yield* fs.writeFileString(treePath, emptyCode).pipe(
-            Effect.mapError((cause) =>
-              new FileRouter.FileRouterError({ reason: "FileSystem", cause, path: treePath })
+            Effect.mapError(
+              (cause) =>
+                new FileRouter.FileRouterError({
+                  reason: "FileSystem",
+                  cause,
+                  path: treePath,
+                }),
             ),
           )
         }
@@ -249,8 +242,13 @@ export function update(
     if (existingCode !== newCode) {
       yield* Effect.logDebug(`Updating file routes tree: ${treePath}`)
       yield* fs.writeFileString(treePath, newCode).pipe(
-        Effect.mapError((cause) =>
-          new FileRouter.FileRouterError({ reason: "FileSystem", cause, path: treePath })
+        Effect.mapError(
+          (cause) =>
+            new FileRouter.FileRouterError({
+              reason: "FileSystem",
+              cause,
+              path: treePath,
+            }),
         ),
       )
     } else {
@@ -263,13 +261,18 @@ export function dump(
   routesPath: string,
   treePath = "server.gen.ts",
 ): Effect.Effect<void, FileRouter.FileRouterError, FileSystem.FileSystem> {
-  return Effect.gen(function*() {
+  return Effect.gen(function* () {
     treePath = NPath.resolve(routesPath, treePath)
 
     const fs = yield* FileSystem.FileSystem
     const files = yield* fs.readDirectory(routesPath, { recursive: true }).pipe(
-      Effect.mapError((cause) =>
-        new FileRouter.FileRouterError({ reason: "FileSystem", cause, path: routesPath })
+      Effect.mapError(
+        (cause) =>
+          new FileRouter.FileRouterError({
+            reason: "FileSystem",
+            cause,
+            path: routesPath,
+          }),
       ),
     )
     const fileRoutes = yield* FileRouter.getFileRoutes(files)
@@ -288,8 +291,13 @@ export function dump(
     yield* Effect.logDebug(`Generating file routes tree: ${treePath}`)
 
     yield* fs.writeFileString(treePath, code).pipe(
-      Effect.mapError((cause) =>
-        new FileRouter.FileRouterError({ reason: "FileSystem", cause, path: treePath })
+      Effect.mapError(
+        (cause) =>
+          new FileRouter.FileRouterError({
+            reason: "FileSystem",
+            cause,
+            path: treePath,
+          }),
       ),
     )
   })

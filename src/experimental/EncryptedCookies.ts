@@ -12,43 +12,33 @@ type CookieValue =
   | null
   | undefined
   | {
-    [key: string]:
-      | CookieValue
-      // some libraries, like XState, contain unknown in type
-      // that is serializable
-      | unknown
-  }
+      [key: string]:
+        | CookieValue
+        // some libraries, like XState, contain unknown in type
+        // that is serializable
+        | unknown
+    }
   | CookieValue[]
 
-export class EncryptedCookiesError
-  extends Data.TaggedError("EncryptedCookiesError")<{
-    cause: unknown
-    cookie?: Cookies.Cookie
-  }>
-{}
+export class EncryptedCookiesError extends Data.TaggedError("EncryptedCookiesError")<{
+  cause: unknown
+  cookie?: Cookies.Cookie
+}> {}
 
 export class EncryptedCookies extends Context.Tag("EncryptedCookies")<
   EncryptedCookies,
   {
-    encrypt: (
-      value: CookieValue,
-    ) => Effect.Effect<string, EncryptedCookiesError>
-    decrypt: (
-      encryptedValue: string,
-    ) => Effect.Effect<CookieValue, EncryptedCookiesError>
-    encryptCookie: (
-      cookie: Cookies.Cookie,
-    ) => Effect.Effect<Cookies.Cookie, EncryptedCookiesError>
-    decryptCookie: (
-      cookie: Cookies.Cookie,
-    ) => Effect.Effect<Cookies.Cookie, EncryptedCookiesError>
+    encrypt: (value: CookieValue) => Effect.Effect<string, EncryptedCookiesError>
+    decrypt: (encryptedValue: string) => Effect.Effect<CookieValue, EncryptedCookiesError>
+    encryptCookie: (cookie: Cookies.Cookie) => Effect.Effect<Cookies.Cookie, EncryptedCookiesError>
+    decryptCookie: (cookie: Cookies.Cookie) => Effect.Effect<Cookies.Cookie, EncryptedCookiesError>
   }
 >() {}
 
 export function layer(options: { secret: string }) {
   return Layer.effect(
     EncryptedCookies,
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const keyMaterial = yield* deriveKeyMaterial(options.secret)
 
       // Pre-derive both keys once
@@ -56,38 +46,28 @@ export function layer(options: { secret: string }) {
       const decryptKey = yield* deriveKey(keyMaterial, ["decrypt"])
 
       return EncryptedCookies.of({
-        encrypt: (value: CookieValue) =>
-          encryptWithDerivedKey(value, encryptKey),
-        decrypt: (encryptedValue: string) =>
-          decryptWithDerivedKey(encryptedValue, decryptKey),
-        encryptCookie: (cookie: Cookies.Cookie) =>
-          encryptCookieWithDerivedKey(cookie, encryptKey),
-        decryptCookie: (cookie: Cookies.Cookie) =>
-          decryptCookieWithDerivedKey(cookie, decryptKey),
+        encrypt: (value: CookieValue) => encryptWithDerivedKey(value, encryptKey),
+        decrypt: (encryptedValue: string) => decryptWithDerivedKey(encryptedValue, decryptKey),
+        encryptCookie: (cookie: Cookies.Cookie) => encryptCookieWithDerivedKey(cookie, encryptKey),
+        decryptCookie: (cookie: Cookies.Cookie) => decryptCookieWithDerivedKey(cookie, decryptKey),
       })
     }),
   )
 }
 
 export function layerConfig(name = "SECRET_KEY_BASE") {
-  return Effect
-    .gen(function*() {
-      const secret = yield* Config.nonEmptyString(name).pipe(
-        Effect.flatMap((value) => {
-          return (value.length < 40)
-            ? Effect.fail(new Error("ba"))
-            : Effect.succeed(value)
-        }),
-        Effect.catchAll((err) => {
-          return Effect.dieMessage(
-            "SECRET_KEY_BASE must be at least 40 characters",
-          )
-        }),
-      )
+  return Effect.gen(function* () {
+    const secret = yield* Config.nonEmptyString(name).pipe(
+      Effect.flatMap((value) => {
+        return value.length < 40 ? Effect.fail(new Error("ba")) : Effect.succeed(value)
+      }),
+      Effect.catchAll((err) => {
+        return Effect.dieMessage("SECRET_KEY_BASE must be at least 40 characters")
+      }),
+    )
 
-      return layer({ secret })
-    })
-    .pipe(Layer.unwrapEffect)
+    return layer({ secret })
+  }).pipe(Layer.unwrapEffect)
 }
 
 function encodeToBase64Segments(
@@ -95,20 +75,12 @@ function encodeToBase64Segments(
   iv: Uint8Array,
   authTag: Uint8Array,
 ): string {
-  return [
-    base64urlEncode(ciphertext),
-    base64urlEncode(iv),
-    base64urlEncode(authTag),
-  ]
-    .join(".")
+  return [base64urlEncode(ciphertext), base64urlEncode(iv), base64urlEncode(authTag)].join(".")
 }
 
 function base64urlEncode(data: Uint8Array): string {
   const base64 = btoa(String.fromCharCode(...data))
-  return base64
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=/g, "")
+  return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "")
 }
 
 function decodeFromBase64Segments(
@@ -117,7 +89,7 @@ function decodeFromBase64Segments(
   { ciphertext: Uint8Array; iv: Uint8Array; authTag: Uint8Array },
   EncryptedCookiesError
 > {
-  return Effect.gen(function*() {
+  return Effect.gen(function* () {
     const [ciphertextB64, ivB64, authTagB64] = segments
 
     const ciphertext = yield* Effect.try({
@@ -141,16 +113,14 @@ function decodeFromBase64Segments(
 
 function base64urlDecode(data: string): Uint8Array {
   // Convert base64url back to standard base64
-  let base64 = data
-    .replace(/-/g, "+")
-    .replace(/_/g, "/")
+  let base64 = data.replace(/-/g, "+").replace(/_/g, "/")
 
   // Add padding if needed
   while (base64.length % 4) {
     base64 += "="
   }
 
-  return Uint8Array.from(atob(base64), c => c.charCodeAt(0))
+  return Uint8Array.from(atob(base64), (c) => c.charCodeAt(0))
 }
 
 /**
@@ -160,7 +130,7 @@ function encryptWithDerivedKey(
   value: CookieValue,
   derivedKey: CryptoKey,
 ): Effect.Effect<string, EncryptedCookiesError> {
-  return Effect.gen(function*() {
+  return Effect.gen(function* () {
     if (value === null || value === undefined) {
       return yield* Effect.fail(
         new EncryptedCookiesError({
@@ -173,12 +143,7 @@ function encryptWithDerivedKey(
     const data = new TextEncoder().encode(JSON.stringify(value))
 
     const encrypted = yield* Effect.tryPromise({
-      try: () =>
-        crypto.subtle.encrypt(
-          { name: "AES-GCM", iv },
-          derivedKey,
-          data,
-        ),
+      try: () => crypto.subtle.encrypt({ name: "AES-GCM", iv }, derivedKey, data),
       catch: (error) => new EncryptedCookiesError({ cause: error }),
     })
 
@@ -195,7 +160,7 @@ export function encrypt(
   value: CookieValue,
   options: { key: CryptoKey } | { secret: string },
 ): Effect.Effect<string, EncryptedCookiesError> {
-  return Effect.gen(function*() {
+  return Effect.gen(function* () {
     if ("key" in options) {
       return yield* encryptWithDerivedKey(value, options.key)
     }
@@ -210,10 +175,8 @@ function decryptWithDerivedKey(
   encryptedValue: string,
   derivedKey: CryptoKey,
 ): Effect.Effect<CookieValue, EncryptedCookiesError> {
-  return Effect.gen(function*() {
-    if (
-      !encryptedValue || encryptedValue === null || encryptedValue === undefined
-    ) {
+  return Effect.gen(function* () {
+    if (!encryptedValue || encryptedValue === null || encryptedValue === undefined) {
       return yield* Effect.fail(
         new EncryptedCookiesError({
           cause: "Cannot decrypt null, undefined, or empty value",
@@ -230,9 +193,7 @@ function decryptWithDerivedKey(
       )
     }
 
-    const { ciphertext, iv, authTag } = yield* decodeFromBase64Segments(
-      segments,
-    )
+    const { ciphertext, iv, authTag } = yield* decodeFromBase64Segments(segments)
 
     const encryptedData = new Uint8Array(ciphertext.length + authTag.length)
     encryptedData.set(ciphertext)
@@ -240,11 +201,7 @@ function decryptWithDerivedKey(
 
     const decrypted = yield* Effect.tryPromise({
       try: () =>
-        crypto.subtle.decrypt(
-          { name: "AES-GCM", iv: iv.slice(0) },
-          derivedKey,
-          encryptedData,
-        ),
+        crypto.subtle.decrypt({ name: "AES-GCM", iv: iv.slice(0) }, derivedKey, encryptedData),
       catch: (error) => new EncryptedCookiesError({ cause: error }),
     })
 
@@ -261,19 +218,16 @@ function encryptCookieWithDerivedKey(
   cookie: Cookies.Cookie,
   derivedKey: CryptoKey,
 ): Effect.Effect<Cookies.Cookie, EncryptedCookiesError> {
-  return Effect.gen(function*() {
-    const encryptedValue = yield* encryptWithDerivedKey(
-      cookie.value,
-      derivedKey,
-    )
-      .pipe(
-        Effect.mapError(error =>
+  return Effect.gen(function* () {
+    const encryptedValue = yield* encryptWithDerivedKey(cookie.value, derivedKey).pipe(
+      Effect.mapError(
+        (error) =>
           new EncryptedCookiesError({
             cause: error.cause,
             cookie,
-          })
-        ),
-      )
+          }),
+      ),
+    )
     return Cookies.unsafeMakeCookie(cookie.name, encryptedValue, cookie.options)
   })
 }
@@ -281,24 +235,17 @@ function decryptCookieWithDerivedKey(
   cookie: Cookies.Cookie,
   derivedKey: CryptoKey,
 ): Effect.Effect<Cookies.Cookie, EncryptedCookiesError> {
-  return Effect.gen(function*() {
-    const decryptedValue = yield* decryptWithDerivedKey(
-      cookie.value,
-      derivedKey,
-    )
-      .pipe(
-        Effect.mapError(error =>
+  return Effect.gen(function* () {
+    const decryptedValue = yield* decryptWithDerivedKey(cookie.value, derivedKey).pipe(
+      Effect.mapError(
+        (error) =>
           new EncryptedCookiesError({
             cause: error.cause,
             cookie,
-          })
-        ),
-      )
-    return Cookies.unsafeMakeCookie(
-      cookie.name,
-      JSON.stringify(decryptedValue),
-      cookie.options,
+          }),
+      ),
     )
+    return Cookies.unsafeMakeCookie(cookie.name, JSON.stringify(decryptedValue), cookie.options)
   })
 }
 
@@ -306,22 +253,22 @@ export function encryptCookie(
   cookie: Cookies.Cookie,
   options: { key: CryptoKey } | { secret: string },
 ): Effect.Effect<Cookies.Cookie, EncryptedCookiesError> {
-  return Effect.gen(function*() {
+  return Effect.gen(function* () {
     if ("key" in options) {
       return yield* encryptCookieWithDerivedKey(cookie, options.key)
     }
 
     const encryptedValue = yield* encrypt(cookie.value, {
       secret: options.secret,
-    })
-      .pipe(
-        Effect.mapError(error =>
+    }).pipe(
+      Effect.mapError(
+        (error) =>
           new EncryptedCookiesError({
             cause: error.cause,
             cookie,
-          })
-        ),
-      )
+          }),
+      ),
+    )
     return Cookies.unsafeMakeCookie(cookie.name, encryptedValue, cookie.options)
   })
 }
@@ -330,27 +277,23 @@ export function decryptCookie(
   cookie: Cookies.Cookie,
   options: { key: CryptoKey } | { secret: string },
 ): Effect.Effect<Cookies.Cookie, EncryptedCookiesError> {
-  return Effect.gen(function*() {
+  return Effect.gen(function* () {
     if ("key" in options) {
       return yield* decryptCookieWithDerivedKey(cookie, options.key)
     }
 
     const decryptedValue = yield* decrypt(cookie.value, {
       secret: options.secret,
-    })
-      .pipe(
-        Effect.mapError(error =>
+    }).pipe(
+      Effect.mapError(
+        (error) =>
           new EncryptedCookiesError({
             cause: error.cause,
             cookie,
-          })
-        ),
-      )
-    return Cookies.unsafeMakeCookie(
-      cookie.name,
-      JSON.stringify(decryptedValue),
-      cookie.options,
+          }),
+      ),
     )
+    return Cookies.unsafeMakeCookie(cookie.name, JSON.stringify(decryptedValue), cookie.options)
   })
 }
 
@@ -358,7 +301,7 @@ export function decrypt(
   encryptedValue: string,
   options: { key: CryptoKey } | { secret: string },
 ): Effect.Effect<CookieValue, EncryptedCookiesError> {
-  return Effect.gen(function*() {
+  return Effect.gen(function* () {
     if ("key" in options) {
       return yield* decryptWithDerivedKey(encryptedValue, options.key)
     }
@@ -369,21 +312,15 @@ export function decrypt(
   })
 }
 
-function deriveKeyMaterial(
-  secret: string,
-): Effect.Effect<CryptoKey, EncryptedCookiesError> {
-  return Effect.gen(function*() {
+function deriveKeyMaterial(secret: string): Effect.Effect<CryptoKey, EncryptedCookiesError> {
+  return Effect.gen(function* () {
     const encoder = new TextEncoder()
 
     const keyMaterial = yield* Effect.tryPromise({
       try: () =>
-        crypto.subtle.importKey(
-          "raw",
-          encoder.encode(secret),
-          { name: "HKDF" },
-          false,
-          ["deriveKey"],
-        ),
+        crypto.subtle.importKey("raw", encoder.encode(secret), { name: "HKDF" }, false, [
+          "deriveKey",
+        ]),
       catch: (error) => new EncryptedCookiesError({ cause: error }),
     })
 
@@ -395,7 +332,7 @@ function deriveKey(
   keyMaterial: CryptoKey,
   usage: Array<KeyUsage>,
 ): Effect.Effect<CryptoKey, EncryptedCookiesError> {
-  return Effect.gen(function*() {
+  return Effect.gen(function* () {
     const encoder = new TextEncoder()
 
     const key = yield* Effect.tryPromise({

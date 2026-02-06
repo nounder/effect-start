@@ -28,27 +28,18 @@ export function descriptors(
   route: Route.Route.Route<any, any, any, any, any>,
 ): BunDescriptors | undefined {
   const descriptor = Route.descriptor(route) as Partial<BunDescriptors>
-  if (
-    typeof descriptor.bunPrefix === "string"
-    && typeof descriptor.bunLoad === "function"
-  ) {
+  if (typeof descriptor.bunPrefix === "string" && typeof descriptor.bunLoad === "function") {
     return descriptor as BunDescriptors
   }
   return undefined
 }
 
-export function htmlBundle(
-  load: () => Promise<Bun.HTMLBundle | { default: Bun.HTMLBundle }>,
-) {
+export function htmlBundle(load: () => Promise<Bun.HTMLBundle | { default: Bun.HTMLBundle }>) {
   const bunPrefix = `/.BunRoute-${Unique.token(10)}`
-  const bunLoad = () => load().then(mod => "default" in mod ? mod.default : mod)
+  const bunLoad = () => load().then((mod) => ("default" in mod ? mod.default : mod))
   const descriptors = { bunPrefix, bunLoad, format: "html" as const }
 
-  return function<
-    D extends Route.RouteDescriptor.Any,
-    B extends {},
-    I extends Route.Route.Tuple,
-  >(
+  return function <D extends Route.RouteDescriptor.Any, B extends {}, I extends Route.Route.Tuple>(
     self: Route.RouteSet.RouteSet<D, B, I>,
   ): Route.RouteSet.RouteSet<
     D,
@@ -70,12 +61,10 @@ export function htmlBundle(
       BunRouteError,
       BunServer.BunServer
     > = (context, next) =>
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const originalRequest = context.request
 
-        if (
-          originalRequest.headers.get(INTERNAL_FETCH_HEADER) === "true"
-        ) {
+        if (originalRequest.headers.get(INTERNAL_FETCH_HEADER) === "true") {
           const url = new URL(originalRequest.url)
           return yield* Effect.fail(
             new BunRouteError({
@@ -127,9 +116,7 @@ export function htmlBundle(
         let childrenHtml = ""
         if (children != null) {
           if ((children as unknown) instanceof Response) {
-            childrenHtml = yield* Effect.promise(() =>
-              (children as unknown as Response).text()
-            )
+            childrenHtml = yield* Effect.promise(() => (children as unknown as Response).text())
           } else if (Hyper.isGenericJsxObject(children)) {
             childrenHtml = HyperHtml.renderToString(children)
           } else {
@@ -155,10 +142,7 @@ export function htmlBundle(
       BunServer.BunServer
     >(handler, descriptors)
 
-    return Route.set(
-      [...Route.items(self), route] as any,
-      Route.descriptor(self),
-    )
+    return Route.set([...Route.items(self), route] as any, Route.descriptor(self))
   }
 }
 
@@ -191,9 +175,7 @@ export type BunRoutes = Record<string, BunServerRouteHandler>
  * - /hello-*   - Inline prefix wildcard
  */
 
-export function validateBunPattern(
-  pattern: string,
-): Option.Option<BunRouteError> {
+export function validateBunPattern(pattern: string): Option.Option<BunRouteError> {
   const segs = FilePathPattern.segments(pattern)
 
   const invalid = Array.findFirst(segs, (seg) => seg._tag === "InvalidSegment")
@@ -213,9 +195,8 @@ export function validateBunPattern(
 
 export const isHtmlBundle = (handle: any) => {
   return (
-    typeof handle === "object"
-    && handle !== null
-    && (handle.toString() === "[object HTMLBundle]"
-      || typeof handle.index === "string")
+    typeof handle === "object" &&
+    handle !== null &&
+    (handle.toString() === "[object HTMLBundle]" || typeof handle.index === "string")
   )
 }

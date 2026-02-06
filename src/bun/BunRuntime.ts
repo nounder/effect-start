@@ -3,18 +3,11 @@ import * as GlobalValue from "effect/GlobalValue"
 import * as MutableRef from "effect/MutableRef"
 import * as PlatformRuntime from "../PlatformRuntime.ts"
 
-const mainFiber = GlobalValue.globalValue(
-  Symbol.for("effect-start/BunRuntime/existingFiber"),
-  () =>
-    MutableRef.make<Fiber.RuntimeFiber<unknown, unknown> | undefined>(
-      undefined,
-    ),
+const mainFiber = GlobalValue.globalValue(Symbol.for("effect-start/BunRuntime/existingFiber"), () =>
+  MutableRef.make<Fiber.RuntimeFiber<unknown, unknown> | undefined>(undefined),
 )
 
-export const runMain = PlatformRuntime.makeRunMain(({
-  fiber,
-  teardown,
-}) => {
+export const runMain = PlatformRuntime.makeRunMain(({ fiber, teardown }) => {
   const prevFiber = MutableRef.get(mainFiber)
 
   MutableRef.set(mainFiber, fiber)

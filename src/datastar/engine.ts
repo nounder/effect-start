@@ -1,11 +1,4 @@
-import {
-  aliasify,
-  hasOwn,
-  isHTMLOrSVG,
-  isPojo,
-  pathToObj,
-  snake,
-} from "./utils.ts"
+import { aliasify, hasOwn, isHTMLOrSVG, isPojo, pathToObj, snake } from "./utils.ts"
 
 /*********
  * consts.ts
@@ -50,35 +43,31 @@ export type RequirementType = "allowed" | "must" | "denied" | "exclusive"
 export type Requirement =
   | RequirementType
   | {
-    key: Exclude<RequirementType, "exclusive">
-    value?: Exclude<RequirementType, "exclusive">
-  }
+      key: Exclude<RequirementType, "exclusive">
+      value?: Exclude<RequirementType, "exclusive">
+    }
   | {
-    key?: Exclude<RequirementType, "exclusive">
-    value: Exclude<RequirementType, "exclusive">
-  }
+      key?: Exclude<RequirementType, "exclusive">
+      value: Exclude<RequirementType, "exclusive">
+    }
 
 type Rx<B extends boolean> = (...args: Array<any>) => B extends true ? unknown : void
 
-type ReqField<R, K extends "key" | "value", Return> = R extends
-  | "must"
-  | { [P in K]: "must" } ? Return
-  : R extends "denied" | { [P in K]: "denied" } ? undefined
-  : R extends
-    | "allowed"
-    | { [P in K]: "allowed" }
-    | (K extends keyof R ? never : R) ? Return | undefined
-  : never
+type ReqField<R, K extends "key" | "value", Return> = R extends "must" | { [P in K]: "must" }
+  ? Return
+  : R extends "denied" | { [P in K]: "denied" }
+    ? undefined
+    : R extends "allowed" | { [P in K]: "allowed" } | (K extends keyof R ? never : R)
+      ? Return | undefined
+      : never
 
 type ReqFields<R extends Requirement, B extends boolean> = R extends "exclusive"
-  ?
-    | { key: string; value: undefined; rx: undefined }
-    | { key: undefined; value: string; rx: Rx<B> }
+  ? { key: string; value: undefined; rx: undefined } | { key: undefined; value: string; rx: Rx<B> }
   : {
-    key: ReqField<R, "key", string>
-    value: ReqField<R, "value", string>
-    rx: ReqField<R, "value", Rx<B>>
-  }
+      key: ReqField<R, "key", string>
+      value: ReqField<R, "value", string>
+      rx: ReqField<R, "value", Rx<B>>
+    }
 
 export type AttributeContext<
   R extends Requirement = Requirement,
@@ -181,7 +170,7 @@ const ReactiveFlags = {
   Dirty: 1 << 4,
   Pending: 1 << 5,
 } as const
-type ReactiveFlags = typeof ReactiveFlags[keyof typeof ReactiveFlags]
+type ReactiveFlags = (typeof ReactiveFlags)[keyof typeof ReactiveFlags]
 type ReactiveFlags_None = typeof ReactiveFlags.None
 type ReactiveFlags_Mutable = typeof ReactiveFlags.Mutable
 type ReactiveFlags_Watching = typeof ReactiveFlags.Watching
@@ -281,7 +270,7 @@ const flush = () => {
   while (notifyIndex < queuedEffectsLength) {
     const effect = queuedEffects[notifyIndex]!
     queuedEffects[notifyIndex++] = undefined
-    run(effect, effect.flags_ &= ~EffectFlags.Queued)
+    run(effect, (effect.flags_ &= ~EffectFlags.Queued))
   }
   notifyIndex = 0
   queuedEffectsLength = 0
@@ -326,8 +315,8 @@ const notify = (e: AlienEffect): void => {
 
 const run = (e: AlienEffect, flags: ReactiveFlags): void => {
   if (
-    flags & (16 satisfies ReactiveFlags_Dirty)
-    || (flags & (32 satisfies ReactiveFlags_Pending) && checkDirty(e.deps_!, e))
+    flags & (16 satisfies ReactiveFlags_Dirty) ||
+    (flags & (32 satisfies ReactiveFlags_Pending) && checkDirty(e.deps_!, e))
   ) {
     startPeeking(e)
     startTracking(e)
@@ -349,7 +338,7 @@ const run = (e: AlienEffect, flags: ReactiveFlags): void => {
     const dep = link.dep_
     const depFlags = dep.flags_
     if (depFlags & EffectFlags.Queued) {
-      run(dep as AlienEffect, dep.flags_ = depFlags & ~EffectFlags.Queued)
+      run(dep as AlienEffect, (dep.flags_ = depFlags & ~EffectFlags.Queued))
     }
     link = link.nextDep_
   }
@@ -388,8 +377,8 @@ const signalOper = <T>(s: AlienSignal<T>, ...value: [T]): T | boolean => {
 const computedOper = <T>(c: AlienComputed<T>): T => {
   const flags = c.flags_
   if (
-    flags & (16 satisfies ReactiveFlags_Dirty)
-    || (flags & (32 satisfies ReactiveFlags_Pending) && checkDirty(c.deps_!, c))
+    flags & (16 satisfies ReactiveFlags_Dirty) ||
+    (flags & (32 satisfies ReactiveFlags_Pending) && checkDirty(c.deps_!, c))
   ) {
     if (updateComputed(c)) {
       const subs = c.subs_
@@ -433,7 +422,8 @@ const link = (dep: ReactiveNode, sub: ReactiveNode): void => {
   if (prevSub && prevSub.version_ === version && prevSub.sub_ === sub) {
     return
   }
-  const newLink = (sub.depsTail_ =
+  const newLink =
+    (sub.depsTail_ =
     dep.subsTail_ =
       {
         version_: version,
@@ -508,8 +498,8 @@ const propagate = (link: Link): void => {
 
     if (
       !(
-        flags
-        & (60 as
+        flags &
+        (60 as
           | ReactiveFlags_RecursedCheck
           | ReactiveFlags_Recursed
           | ReactiveFlags_Dirty
@@ -517,19 +507,16 @@ const propagate = (link: Link): void => {
       )
     ) {
       sub.flags_ = flags | (32 satisfies ReactiveFlags_Pending)
-    } else if (
-      !(flags & (12 as ReactiveFlags_RecursedCheck | ReactiveFlags_Recursed))
-    ) {
+    } else if (!(flags & (12 as ReactiveFlags_RecursedCheck | ReactiveFlags_Recursed))) {
       flags = 0 satisfies ReactiveFlags_None
     } else if (!(flags & (4 satisfies ReactiveFlags_RecursedCheck))) {
-      sub.flags_ = (flags & ~(8 satisfies ReactiveFlags_Recursed))
-        | (32 satisfies ReactiveFlags_Pending)
+      sub.flags_ =
+        (flags & ~(8 satisfies ReactiveFlags_Recursed)) | (32 satisfies ReactiveFlags_Pending)
     } else if (
-      !(flags & (48 as ReactiveFlags_Dirty | ReactiveFlags_Pending))
-      && isValidLink(link, sub)
+      !(flags & (48 as ReactiveFlags_Dirty | ReactiveFlags_Pending)) &&
+      isValidLink(link, sub)
     ) {
-      sub.flags_ = flags
-        | (40 as ReactiveFlags_Recursed | ReactiveFlags_Pending)
+      sub.flags_ = flags | (40 as ReactiveFlags_Recursed | ReactiveFlags_Pending)
       flags &= 1 satisfies ReactiveFlags_Mutable
     } else {
       flags = 0 satisfies ReactiveFlags_None
@@ -572,12 +559,9 @@ const propagate = (link: Link): void => {
 const startTracking = (sub: ReactiveNode): void => {
   version++
   sub.depsTail_ = undefined
-  sub.flags_ = (sub.flags_
-    & ~(56 as
-      | ReactiveFlags_Recursed
-      | ReactiveFlags_Dirty
-      | ReactiveFlags_Pending))
-    | (4 satisfies ReactiveFlags_RecursedCheck)
+  sub.flags_ =
+    (sub.flags_ & ~(56 as ReactiveFlags_Recursed | ReactiveFlags_Dirty | ReactiveFlags_Pending)) |
+    (4 satisfies ReactiveFlags_RecursedCheck)
 }
 
 const endTracking = (sub: ReactiveNode): void => {
@@ -601,8 +585,8 @@ const checkDirty = (link: Link, sub: ReactiveNode): boolean => {
     if (sub.flags_ & (16 satisfies ReactiveFlags_Dirty)) {
       dirty = true
     } else if (
-      (flags & (17 as ReactiveFlags_Mutable | ReactiveFlags_Dirty))
-        === (17 as ReactiveFlags_Mutable | ReactiveFlags_Dirty)
+      (flags & (17 as ReactiveFlags_Mutable | ReactiveFlags_Dirty)) ===
+      (17 as ReactiveFlags_Mutable | ReactiveFlags_Dirty)
     ) {
       if (update(dep as AlienSignal | AlienComputed)) {
         const subs = dep.subs_!
@@ -612,8 +596,8 @@ const checkDirty = (link: Link, sub: ReactiveNode): boolean => {
         dirty = true
       }
     } else if (
-      (flags & (33 as ReactiveFlags_Mutable | ReactiveFlags_Pending))
-        === (33 as ReactiveFlags_Mutable | ReactiveFlags_Pending)
+      (flags & (33 as ReactiveFlags_Mutable | ReactiveFlags_Pending)) ===
+      (33 as ReactiveFlags_Mutable | ReactiveFlags_Pending)
     ) {
       if (link.nextSub_ || link.prevSub_) {
         stack = { value_: link, prev_: stack }
@@ -669,8 +653,8 @@ const shallowPropagate = (link: Link): void => {
     const sub = link.sub_
     const flags = sub.flags_
     if (
-      (flags & (48 as ReactiveFlags_Pending | ReactiveFlags_Dirty))
-        === (32 satisfies ReactiveFlags_Pending)
+      (flags & (48 as ReactiveFlags_Pending | ReactiveFlags_Dirty)) ===
+      (32 satisfies ReactiveFlags_Pending)
     ) {
       sub.flags_ = flags | (16 satisfies ReactiveFlags_Dirty)
       if (flags & (2 satisfies ReactiveFlags_Watching)) {
@@ -708,9 +692,7 @@ const deep = (value: any, prefix = ""): any => {
   if (isArr || isPojo(value)) {
     const deepObj = (isArr ? [] : {}) as Record<string, Signal<any>>
     for (const key in value) {
-      deepObj[key] = signal(
-        deep((value as Record<string, Signal<any>>)[key], `${prefix + key}.`),
-      )
+      deepObj[key] = signal(deep((value as Record<string, Signal<any>>)[key], `${prefix + key}.`))
     }
     const keys = signal(0)
     return new Proxy(deepObj, {
@@ -816,10 +798,7 @@ const dispatch = (path?: string, value?: any) => {
   }
 }
 
-export const mergePatch = (
-  patch: JSONPatch,
-  { ifMissing }: MergePatchArgs = {},
-): void => {
+export const mergePatch = (patch: JSONPatch, { ifMissing }: MergePatchArgs = {}): void => {
   beginBatch()
   for (const key in patch) {
     if (patch[key] == null) {
@@ -846,8 +825,8 @@ const mergeInner = (
   if (isPojo(patch)) {
     if (
       !(
-        hasOwn(targetParent, target)
-        && (isPojo(targetParent[target]) || Array.isArray(targetParent[target]))
+        hasOwn(targetParent, target) &&
+        (isPojo(targetParent[target]) || Array.isArray(targetParent[target]))
       )
     ) {
       targetParent[target] = {}
@@ -859,13 +838,7 @@ const mergeInner = (
           delete targetParent[target][key]
         }
       } else {
-        mergeInner(
-          patch[key],
-          key,
-          targetParent[target],
-          `${prefix + target}.`,
-          ifMissing,
-        )
+        mergeInner(patch[key], key, targetParent[target], `${prefix + target}.`, ifMissing)
       }
     }
   } else if (!(ifMissing && hasOwn(targetParent, target))) {
@@ -908,18 +881,13 @@ export const root: Record<string, any> = deep({})
  *********/
 const url = "https://data-star.dev/errors"
 
-const error = (
-  ctx: Record<string, any>,
-  reason: string,
-  metadata: Record<string, any> = {},
-) => {
+const error = (ctx: Record<string, any>, reason: string, metadata: Record<string, any> = {}) => {
   Object.assign(metadata, ctx)
   const e = new Error()
   const r = snake(reason)
   const q = new URLSearchParams({
     metadata: JSON.stringify(metadata),
-  })
-    .toString()
+  }).toString()
   const c = JSON.stringify(metadata, null, 2)
   e.message = `${reason}\nMore info: ${url}/${r}?${q}\nContext: ${c}`
   return e
@@ -929,10 +897,7 @@ const actionPlugins: Map<string, ActionPlugin> = new Map()
 const attributePlugins: Map<string, AttributePlugin> = new Map()
 const watcherPlugins: Map<string, WatcherPlugin> = new Map()
 
-export const actions: Record<
-  string,
-  (ctx: ActionContext, ...args: Array<any>) => any
-> = new Proxy(
+export const actions: Record<string, (ctx: ActionContext, ...args: Array<any>) => any> = new Proxy(
   {},
   {
     get: (_, prop: string) => actionPlugins.get(prop)?.apply,
@@ -970,28 +935,23 @@ export const action = <T>(plugin: ActionPlugin<T>): void => {
   actionPlugins.set(plugin.name, plugin)
 }
 
-document.addEventListener(
-  DATASTAR_FETCH_EVENT,
-  ((
-    evt: CustomEvent<DatastarFetchEvent>,
-  ) => {
-    const plugin = watcherPlugins.get(evt.detail.type)
-    if (plugin) {
-      plugin.apply(
-        {
-          error: error.bind(0, {
-            plugin: { type: "watcher", name: plugin.name },
-            element: {
-              id: (evt.target as Element).id,
-              tag: (evt.target as Element).tagName,
-            },
-          }),
-        },
-        evt.detail.argsRaw,
-      )
-    }
-  }) as EventListener,
-)
+document.addEventListener(DATASTAR_FETCH_EVENT, ((evt: CustomEvent<DatastarFetchEvent>) => {
+  const plugin = watcherPlugins.get(evt.detail.type)
+  if (plugin) {
+    plugin.apply(
+      {
+        error: error.bind(0, {
+          plugin: { type: "watcher", name: plugin.name },
+          element: {
+            id: (evt.target as Element).id,
+            tag: (evt.target as Element).tagName,
+          },
+        }),
+      },
+      evt.detail.argsRaw,
+    )
+  }
+}) as EventListener)
 
 export const watcher = (plugin: WatcherPlugin): void => {
   watcherPlugins.set(plugin.name, plugin)
@@ -1031,15 +991,7 @@ const applyEls = (els: Iterable<HTMLOrSVG>, onlyNew?: boolean): void => {
 }
 
 const observe = (mutations: Array<MutationRecord>) => {
-  for (
-    const {
-      target,
-      type,
-      attributeName,
-      addedNodes,
-      removedNodes,
-    } of mutations
-  ) {
+  for (const { target, type, attributeName, addedNodes, removedNodes } of mutations) {
     if (type === "childList") {
       for (const node of removedNodes) {
         if (isHTMLOrSVG(node)) {
@@ -1055,10 +1007,10 @@ const observe = (mutations: Array<MutationRecord>) => {
         }
       }
     } else if (
-      type === "attributes"
-      && attributeName!.startsWith("data-")
-      && isHTMLOrSVG(target)
-      && !shouldIgnore(target)
+      type === "attributes" &&
+      attributeName!.startsWith("data-") &&
+      isHTMLOrSVG(target) &&
+      !shouldIgnore(target)
     ) {
       const key = attributeName!.slice(5)
       const value = target.getAttribute(attributeName!)
@@ -1101,8 +1053,7 @@ export const parseAttributeKey = (
   return { pluginName, key, mods }
 }
 
-export const isDocumentObserverActive = () =>
-  observedRoots.has(document.documentElement)
+export const isDocumentObserverActive = () => observedRoots.has(document.documentElement)
 
 export const apply = (
   root: HTMLOrSVG | ShadowRoot = document.documentElement,
@@ -1151,16 +1102,14 @@ const applyAttributePlugin = (
       rx: undefined,
     } as AttributeContext
 
-    const keyReq = (plugin.requirement
-      && (typeof plugin.requirement === "string"
-        ? plugin.requirement
-        : plugin.requirement.key))
-      || "allowed"
-    const valueReq = (plugin.requirement
-      && (typeof plugin.requirement === "string"
-        ? plugin.requirement
-        : plugin.requirement.value))
-      || "allowed"
+    const keyReq =
+      (plugin.requirement &&
+        (typeof plugin.requirement === "string" ? plugin.requirement : plugin.requirement.key)) ||
+      "allowed"
+    const valueReq =
+      (plugin.requirement &&
+        (typeof plugin.requirement === "string" ? plugin.requirement : plugin.requirement.value)) ||
+      "allowed"
 
     const keyProvided = key !== undefined && key !== null && key !== ""
     const valueProvided = value !== undefined && value !== null && value !== ""
@@ -1236,11 +1185,7 @@ type GenRxFn = <T>(el: HTMLOrSVG, ...args: Array<any>) => T
 
 const genRx = (
   value: string,
-  {
-    returnsValue = false,
-    argNames = [],
-    cleanups = new Map(),
-  }: GenRxOptions = {},
+  { returnsValue = false, argNames = [], cleanups = new Map() }: GenRxOptions = {},
 ): GenRxFn => {
   let expr = ""
   if (returnsValue) {
@@ -1272,11 +1217,10 @@ const genRx = (
   expr = expr
     .replace(/\$\['([a-zA-Z_$\d][\w$]*)'\]/g, "$$$1")
     .replace(/\$([a-zA-Z_\d]\w*(?:[.-]\w+)*)/g, (_, signalName) =>
-      signalName
-        .split(".")
-        .reduce((acc: string, part: string) => `${acc}['${part}']`, "$"))
+      signalName.split(".").reduce((acc: string, part: string) => `${acc}['${part}']`, "$"),
+    )
 
-  expr = expr.replaceAll(/@([A-Za-z_$][\w$]*)\(/g, "__action(\"$1\",evt,")
+  expr = expr.replaceAll(/@([A-Za-z_$][\w$]*)\(/g, '__action("$1",evt,')
 
   for (const [k, v] of escaped) {
     expr = expr.replace(k, v)

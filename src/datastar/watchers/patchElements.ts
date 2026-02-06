@@ -1,14 +1,8 @@
 import { watcher, type HTMLOrSVG, type WatcherContext } from "../engine.ts"
-import {
-  aliasify,
-  isHTMLOrSVG,
-  supportsViewTransitions,
-} from "../utils.ts"
+import { aliasify, isHTMLOrSVG, supportsViewTransitions } from "../utils.ts"
 
-const isValidType = <T extends readonly string[]>(
-  arr: T,
-  value: string,
-): value is T[number] => (arr as ReadonlyArray<string>).includes(value)
+const isValidType = <T extends readonly string[]>(arr: T, value: string): value is T[number] =>
+  (arr as ReadonlyArray<string>).includes(value)
 
 const PATCH_MODES = [
   "remove",
@@ -37,13 +31,7 @@ watcher({
   name: "datastar-patch-elements",
   apply(
     ctx,
-    {
-      selector = "",
-      mode = "outer",
-      namespace = "html",
-      useViewTransition = "",
-      elements = "",
-    },
+    { selector = "", mode = "outer", namespace = "html", useViewTransition = "", elements = "" },
   ) {
     if (!isValidType(PATCH_MODES, mode)) {
       throw ctx.error("PatchElementsInvalidMode", { mode })
@@ -77,27 +65,16 @@ const onPatchElements = (
   { error }: WatcherContext,
   { selector, mode, namespace, elements }: PatchElementsArgs,
 ) => {
-  const elementsWithSvgsRemoved = elements.replace(
-    /<svg(\s[^>]*>|>)([\s\S]*?)<\/svg>/gim,
-    "",
-  )
+  const elementsWithSvgsRemoved = elements.replace(/<svg(\s[^>]*>|>)([\s\S]*?)<\/svg>/gim, "")
   const hasHtml = /<\/html>/.test(elementsWithSvgsRemoved)
   const hasHead = /<\/head>/.test(elementsWithSvgsRemoved)
   const hasBody = /<\/body>/.test(elementsWithSvgsRemoved)
 
-  const wrapperTag = namespace === "svg"
-    ? "svg"
-    : namespace === "mathml"
-    ? "math"
-    : ""
-  const wrappedEls = wrapperTag
-    ? `<${wrapperTag}>${elements}</${wrapperTag}>`
-    : elements
+  const wrapperTag = namespace === "svg" ? "svg" : namespace === "mathml" ? "math" : ""
+  const wrappedEls = wrapperTag ? `<${wrapperTag}>${elements}</${wrapperTag}>` : elements
 
   const newDocument = new DOMParser().parseFromString(
-    hasHtml || hasHead || hasBody
-      ? elements
-      : `<body><template>${wrappedEls}</template></body>`,
+    hasHtml || hasHead || hasBody ? elements : `<body><template>${wrappedEls}</template></body>`,
     "text/html",
   )
 
@@ -112,10 +89,7 @@ const onPatchElements = (
   } else if (hasBody) {
     newContent.appendChild(newDocument.body)
   } else if (wrapperTag) {
-    const wrapperEl = newDocument
-      .querySelector("template")!
-      .content
-      .querySelector(wrapperTag)!
+    const wrapperEl = newDocument.querySelector("template")!.content.querySelector(wrapperTag)!
     for (const child of wrapperEl.childNodes) {
       newContent.appendChild(child)
     }
@@ -161,9 +135,8 @@ for (const script of document.querySelectorAll("script")) {
 }
 
 const execute = (target: Element): void => {
-  const elScripts = target instanceof HTMLScriptElement
-    ? [target]
-    : target.querySelectorAll("script")
+  const elScripts =
+    target instanceof HTMLScriptElement ? [target] : target.querySelectorAll("script")
   for (const old of elScripts) {
     if (!scripts.has(old)) {
       const script = document.createElement("script")
@@ -234,11 +207,11 @@ const morph = (
   mode: "outer" | "inner" = "outer",
 ): void => {
   if (
-    (isHTMLOrSVG(oldElt)
-      && isHTMLOrSVG(newContent)
-      && (oldElt as HTMLOrSVG).hasAttribute(aliasedIgnoreMorph)
-      && (newContent as HTMLOrSVG).hasAttribute(aliasedIgnoreMorph))
-    || oldElt.parentElement?.closest(aliasedIgnoreMorphAttr)
+    (isHTMLOrSVG(oldElt) &&
+      isHTMLOrSVG(newContent) &&
+      (oldElt as HTMLOrSVG).hasAttribute(aliasedIgnoreMorph) &&
+      (newContent as HTMLOrSVG).hasAttribute(aliasedIgnoreMorph)) ||
+    oldElt.parentElement?.closest(aliasedIgnoreMorphAttr)
   ) {
     return
   }
@@ -285,12 +258,7 @@ const morph = (
   populateIdMapWithTree(parent, oldIdElements)
   populateIdMapWithTree(normalizedElt, newIdElements)
 
-  morphChildren(
-    parent,
-    normalizedElt,
-    mode === "outer" ? oldElt : null,
-    oldElt.nextSibling,
-  )
+  morphChildren(parent, normalizedElt, mode === "outer" ? oldElt : null, oldElt.nextSibling)
 
   ctxPantry.remove()
 }
@@ -301,10 +269,7 @@ const morphChildren = (
   insertionPoint: Node | null = null,
   endPoint: Node | null = null,
 ): void => {
-  if (
-    oldParent instanceof HTMLTemplateElement
-    && newParent instanceof HTMLTemplateElement
-  ) {
+  if (oldParent instanceof HTMLTemplateElement && newParent instanceof HTMLTemplateElement) {
     oldParent = oldParent.content as unknown as Element
     newParent = newParent.content as unknown as Element
   }
@@ -372,11 +337,7 @@ const morphChildren = (
   }
 }
 
-const findBestMatch = (
-  node: Node,
-  startPoint: Node | null,
-  endPoint: Node | null,
-): Node | null => {
+const findBestMatch = (node: Node, startPoint: Node | null, endPoint: Node | null): Node | null => {
   let bestMatch: Node | null | undefined = null
   let nextSibling = node.nextSibling
   let siblingSoftMatchCount = 0
@@ -433,15 +394,12 @@ const findBestMatch = (
 }
 
 const isSoftMatch = (oldNode: Node, newNode: Node): boolean =>
-  oldNode.nodeType === newNode.nodeType
-  && (oldNode as Element).tagName === (newNode as Element).tagName
-  && (!(oldNode as Element).id
-    || (oldNode as Element).id === (newNode as Element).id)
+  oldNode.nodeType === newNode.nodeType &&
+  (oldNode as Element).tagName === (newNode as Element).tagName &&
+  (!(oldNode as Element).id || (oldNode as Element).id === (newNode as Element).id)
 
 const removeNode = (node: Node): void => {
-  ctxIdMap.has(node)
-    ? moveBefore(ctxPantry, node, null)
-    : node.parentNode?.removeChild(node)
+  ctxIdMap.has(node) ? moveBefore(ctxPantry, node, null) : node.parentNode?.removeChild(node)
 }
 
 const moveBefore: (parentNode: Node, node: Node, after: Node | null) => void =
@@ -450,35 +408,26 @@ const moveBefore: (parentNode: Node, node: Node, after: Node | null) => void =
 
 const aliasedPreserveAttr = aliasify("preserve-attr")
 
-const morphNode = (
-  oldNode: Node,
-  newNode: Node,
-): Node => {
+const morphNode = (oldNode: Node, newNode: Node): Node => {
   const type = newNode.nodeType
 
   if (type === 1) {
     const oldElt = oldNode as Element
     const newElt = newNode as Element
     const shouldScopeChildren = oldElt.hasAttribute("data-scope-children")
-    if (
-      oldElt.hasAttribute(aliasedIgnoreMorph)
-      && newElt.hasAttribute(aliasedIgnoreMorph)
-    ) {
+    if (oldElt.hasAttribute(aliasedIgnoreMorph) && newElt.hasAttribute(aliasedIgnoreMorph)) {
       return oldNode
     }
 
     if (
-      oldElt instanceof HTMLInputElement
-      && newElt instanceof HTMLInputElement
-      && newElt.type !== "file"
+      oldElt instanceof HTMLInputElement &&
+      newElt instanceof HTMLInputElement &&
+      newElt.type !== "file"
     ) {
       if (newElt.getAttribute("value") !== oldElt.getAttribute("value")) {
         oldElt.value = newElt.getAttribute("value") ?? ""
       }
-    } else if (
-      oldElt instanceof HTMLTextAreaElement
-      && newElt instanceof HTMLTextAreaElement
-    ) {
+    } else if (oldElt instanceof HTMLTextAreaElement && newElt instanceof HTMLTextAreaElement) {
       if (newElt.value !== oldElt.value) {
         oldElt.value = newElt.value
       }
@@ -487,16 +436,12 @@ const morphNode = (
       }
     }
 
-    const preserveAttrs = (
-      (newNode as HTMLElement).getAttribute(aliasedPreserveAttr) ?? ""
+    const preserveAttrs = ((newNode as HTMLElement).getAttribute(aliasedPreserveAttr) ?? "").split(
+      " ",
     )
-      .split(" ")
 
     for (const { name, value } of newElt.attributes) {
-      if (
-        oldElt.getAttribute(name) !== value
-        && !preserveAttrs.includes(name)
-      ) {
+      if (oldElt.getAttribute(name) !== value && !preserveAttrs.includes(name)) {
         oldElt.setAttribute(name, value)
       }
     }
@@ -517,9 +462,7 @@ const morphNode = (
     }
 
     if (shouldScopeChildren) {
-      oldElt.dispatchEvent(
-        new CustomEvent("datastar:scope-children", { bubbles: false }),
-      )
+      oldElt.dispatchEvent(new CustomEvent("datastar:scope-children", { bubbles: false }))
     }
   }
 

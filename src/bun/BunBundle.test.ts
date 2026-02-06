@@ -7,9 +7,7 @@ import * as BunBundle from "./BunBundle.ts"
 
 test.describe("BunBundle manifest structure", () => {
   test.it("should generate manifest with inputs and outputs arrays", async () => {
-    const tmpDir = await NFS.mkdtemp(
-      NPath.join(NOS.tmpdir(), "effect-start-test-"),
-    )
+    const tmpDir = await NFS.mkdtemp(NPath.join(NOS.tmpdir(), "effect-start-test-"))
 
     try {
       const htmlContent = `<!DOCTYPE html>
@@ -36,43 +34,23 @@ export const greeting = "Hello World";`
         }),
       )
 
-      test
-        .expect(bundle.entrypoints)
-        .toBeObject()
-      test
-        .expect(bundle.artifacts)
-        .toBeArray()
-      test
-        .expect(Object.keys(bundle.entrypoints).length)
-        .toBe(1)
-      test
-        .expect(bundle.artifacts.length)
-        .toBe(3)
+      test.expect(bundle.entrypoints).toBeObject()
+      test.expect(bundle.artifacts).toBeArray()
+      test.expect(Object.keys(bundle.entrypoints).length).toBe(1)
+      test.expect(bundle.artifacts.length).toBe(3)
 
       const entrypointKeys = Object.keys(bundle.entrypoints)
       const firstEntrypoint = entrypointKeys[0]
 
-      test
-        .expect(firstEntrypoint)
-        .toBeString()
-      test
-        .expect(bundle.entrypoints[firstEntrypoint])
-        .toBeString()
+      test.expect(firstEntrypoint).toBeString()
+      test.expect(bundle.entrypoints[firstEntrypoint]).toBeString()
 
       const firstArtifact = bundle.artifacts[0]
 
-      test
-        .expect(firstArtifact)
-        .toHaveProperty("path")
-      test
-        .expect(firstArtifact)
-        .toHaveProperty("type")
-      test
-        .expect(firstArtifact)
-        .toHaveProperty("size")
-      test
-        .expect(firstArtifact.size)
-        .toBeGreaterThan(0)
+      test.expect(firstArtifact).toHaveProperty("path")
+      test.expect(firstArtifact).toHaveProperty("type")
+      test.expect(firstArtifact).toHaveProperty("size")
+      test.expect(firstArtifact.size).toBeGreaterThan(0)
     } finally {
       await NFS.rm(tmpDir, {
         recursive: true,
@@ -82,9 +60,7 @@ export const greeting = "Hello World";`
   })
 
   test.it("should resolve entrypoints to artifacts correctly", async () => {
-    const tmpDir = await NFS.mkdtemp(
-      NPath.join(NOS.tmpdir(), "effect-start-test-"),
-    )
+    const tmpDir = await NFS.mkdtemp(NPath.join(NOS.tmpdir(), "effect-start-test-"))
 
     try {
       const htmlContent = `<!DOCTYPE html>
@@ -105,19 +81,12 @@ export const greeting = "Hello World";`
       const expectedOutput = bundle.entrypoints[firstEntrypoint]
       const resolvedOutput = bundle.resolve(firstEntrypoint)
 
-      test
-        .expect(resolvedOutput)
-        .toBe(expectedOutput)
+      test.expect(resolvedOutput).toBe(expectedOutput)
 
       const artifact = bundle.getArtifact(resolvedOutput!)
 
-      test
-        .expect(artifact)
-        .not
-        .toBeNull()
-      test
-        .expect(artifact)
-        .toBeTruthy()
+      test.expect(artifact).not.toBeNull()
+      test.expect(artifact).toBeTruthy()
     } finally {
       await NFS.rm(tmpDir, {
         recursive: true,
@@ -127,9 +96,7 @@ export const greeting = "Hello World";`
   })
 
   test.it("should include all artifact metadata", async () => {
-    const tmpDir = await NFS.mkdtemp(
-      NPath.join(NOS.tmpdir(), "effect-start-test-"),
-    )
+    const tmpDir = await NFS.mkdtemp(NPath.join(NOS.tmpdir(), "effect-start-test-"))
 
     try {
       const jsContent = `export const value = 42;`
@@ -145,18 +112,10 @@ export const greeting = "Hello World";`
 
       const artifact = bundle.artifacts[0]
 
-      test
-        .expect(artifact.path)
-        .toBeString()
-      test
-        .expect(artifact.type)
-        .toBeString()
-      test
-        .expect(artifact.size)
-        .toBeNumber()
-      test
-        .expect(artifact.type)
-        .toContain("javascript")
+      test.expect(artifact.path).toBeString()
+      test.expect(artifact.type).toBeString()
+      test.expect(artifact.size).toBeNumber()
+      test.expect(artifact.type).toContain("javascript")
     } finally {
       await NFS.rm(tmpDir, {
         recursive: true,

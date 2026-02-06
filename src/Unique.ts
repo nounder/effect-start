@@ -66,12 +66,12 @@ export function toTimestamp(bytes: Uint8Array): number {
   if (bytes.length < 6) return 0
 
   return (
-    bytes[0] * 0x10000000000
-    + bytes[1] * 0x100000000
-    + bytes[2] * 0x1000000
-    + bytes[3] * 0x10000
-    + bytes[4] * 0x100
-    + bytes[5]
+    bytes[0] * 0x10000000000 +
+    bytes[1] * 0x100000000 +
+    bytes[2] * 0x1000000 +
+    bytes[3] * 0x10000 +
+    bytes[4] * 0x100 +
+    bytes[5]
   )
 }
 
@@ -178,10 +178,7 @@ function toSafeTime(time: number): number {
  * It's qt lil opt from the times where web developers
  * were competing to have the smallest possible bundle size.
  */
-export function nanoid(
-  size = 21,
-  alphabet = ALPHABET_BASE64_URL,
-): string {
+export function nanoid(size = 21, alphabet = ALPHABET_BASE64_URL): string {
   if (size <= 0 || alphabet.length === 0) return ""
 
   const length = alphabet.length
@@ -201,10 +198,7 @@ export function nanoid(
   return id
 }
 
-function toBase32(
-  bytes: Uint8Array,
-  alphabet = ALPHABET_BASE32_CROCKFORD,
-): string {
+function toBase32(bytes: Uint8Array, alphabet = ALPHABET_BASE32_CROCKFORD): string {
   if (bytes.length === 0) return ""
 
   let result = ""

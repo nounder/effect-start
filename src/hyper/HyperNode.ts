@@ -16,19 +16,14 @@ export type Props = {
     | ((window: Window) => void)
 }
 
-export type HyperComponent = (
-  props: Props,
-) => HyperNode | Primitive
+export type HyperComponent = (props: Props) => HyperNode | Primitive
 
 export interface HyperNode {
   type: Type
   props: Props
 }
 
-export function make(
-  type: Type,
-  props: Props,
-): HyperNode {
+export function make(type: Type, props: Props): HyperNode {
   return {
     type,
     props: {

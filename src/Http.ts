@@ -1,38 +1,21 @@
 import * as Values from "./Values.ts"
 
-export type Method =
-  | "GET"
-  | "POST"
-  | "PUT"
-  | "DELETE"
-  | "PATCH"
-  | "HEAD"
-  | "OPTIONS"
+export type Method = "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "HEAD" | "OPTIONS"
 
-type Respondable =
-  | Response
-  | Promise<Response>
+type Respondable = Response | Promise<Response>
 
 export type WebHandler = (request: Request) => Respondable
 
-export type WebMiddleware = (
-  request: Request,
-  next: WebHandler,
-) => Respondable
+export type WebMiddleware = (request: Request, next: WebHandler) => Respondable
 
 export function fetch(
   handler: WebHandler,
-  init:
-    & Omit<RequestInit, "body">
-    & (
-      | { url: string }
-      | { path: `/${string}` }
-    )
-    & { body?: RequestInit["body"] | Record<string, unknown> },
+  init: Omit<RequestInit, "body"> &
+    ({ url: string } | { path: `/${string}` }) & {
+      body?: RequestInit["body"] | Record<string, unknown>
+    },
 ): Promise<Response> {
-  const url = "path" in init
-    ? `http://localhost${init.path}`
-    : init.url
+  const url = "path" in init ? `http://localhost${init.path}` : init.url
 
   const isPlain = Values.isPlainObject(init.body)
 
@@ -52,24 +35,15 @@ export function fetch(
 }
 
 export function createAbortableRequest(
-  init:
-    & Omit<RequestInit, "signal">
-    & (
-      | { url: string }
-      | { path: `/${string}` }
-    ),
+  init: Omit<RequestInit, "signal"> & ({ url: string } | { path: `/${string}` }),
 ): { request: Request; abort: () => void } {
-  const url = "path" in init
-    ? `http://localhost${init.path}`
-    : init.url
+  const url = "path" in init ? `http://localhost${init.path}` : init.url
   const controller = new AbortController()
   const request = new Request(url, { ...init, signal: controller.signal })
   return { request, abort: () => controller.abort() }
 }
 
-export function mapHeaders(
-  headers: Headers,
-): Record<string, string | undefined> {
+export function mapHeaders(headers: Headers): Record<string, string | undefined> {
   const result: Record<string, string | undefined> = {}
   headers.forEach((value, key) => {
     result[key.toLowerCase()] = value
@@ -77,9 +51,7 @@ export function mapHeaders(
   return result
 }
 
-export function parseCookies(
-  cookieHeader: string | null,
-): Record<string, string | undefined> {
+export function parseCookies(cookieHeader: string | null): Record<string, string | undefined> {
   if (!cookieHeader) return {}
   const result: Record<string, string | undefined> = {}
   for (const part of cookieHeader.split(";")) {
@@ -130,14 +102,9 @@ export type MultipartPart = FilePart | FieldPart
 
 export async function parseFormData(
   request: Request,
-): Promise<
-  Record<string, ReadonlyArray<FilePart> | ReadonlyArray<string> | string>
-> {
+): Promise<Record<string, ReadonlyArray<FilePart> | ReadonlyArray<string> | string>> {
   const formData = await request.formData()
-  const result: Record<
-    string,
-    ReadonlyArray<FilePart> | ReadonlyArray<string> | string
-  > = {}
+  const result: Record<string, ReadonlyArray<FilePart> | ReadonlyArray<string> | string> = {}
 
   for (const key of new Set(formData.keys())) {
     const values = formData.getAll(key)

@@ -130,11 +130,7 @@ function collectEdits(sourceFile: SourceFile): Edit[] {
   return edits
 }
 
-function handleImportDeclaration(
-  decl: Node,
-  edits: Edit[],
-  text: string,
-): void {
+function handleImportDeclaration(decl: Node, edits: Edit[], text: string): void {
   if (!Node.isImportDeclaration(decl)) return
 
   if (decl.isTypeOnly()) {
@@ -207,11 +203,7 @@ function removeNamedImportSpecifier(
   edits.push({ kind: "remove", start, end })
 }
 
-function handleExportDeclaration(
-  decl: Node,
-  edits: Edit[],
-  text: string,
-): void {
+function handleExportDeclaration(decl: Node, edits: Edit[], text: string): void {
   if (!Node.isExportDeclaration(decl)) return
 
   if (decl.isTypeOnly()) {
@@ -246,11 +238,7 @@ function handleExportDeclaration(
   }
 }
 
-function handleFunctionDeclaration(
-  func: FunctionDeclaration,
-  edits: Edit[],
-  text: string,
-): void {
+function handleFunctionDeclaration(func: FunctionDeclaration, edits: Edit[], text: string): void {
   if (!func.getName()) return
   if (!isImplementationSignature(func)) return
 
@@ -262,11 +250,7 @@ function handleFunctionDeclaration(
   stripFunctionTypes(func, edits, text)
 }
 
-function stripFunctionTypes(
-  func: FunctionDeclaration,
-  edits: Edit[],
-  text: string,
-): void {
+function stripFunctionTypes(func: FunctionDeclaration, edits: Edit[], text: string): void {
   stripTypeParameters(func.getTypeParameters(), edits, text)
 
   const returnType = func.getReturnTypeNode()
@@ -287,11 +271,7 @@ function stripFunctionTypes(
   }
 }
 
-function stripTypeParameters(
-  typeParams: readonly Node[],
-  edits: Edit[],
-  text: string,
-): void {
+function stripTypeParameters(typeParams: readonly Node[], edits: Edit[], text: string): void {
   if (typeParams.length === 0) return
   const first = typeParams[0]
   const last = typeParams[typeParams.length - 1]
@@ -302,11 +282,7 @@ function stripTypeParameters(
   }
 }
 
-function stripParameterTypes(
-  param: ParameterDeclaration,
-  edits: Edit[],
-  text: string,
-): void {
+function stripParameterTypes(param: ParameterDeclaration, edits: Edit[], text: string): void {
   if (isThisParam(param)) {
     removeThisParam(param, edits, text)
     return
@@ -314,7 +290,11 @@ function stripParameterTypes(
 
   const questionToken = param.getQuestionTokenNode()
   if (questionToken) {
-    edits.push({ kind: "remove", start: questionToken.getStart(), end: questionToken.getEnd() })
+    edits.push({
+      kind: "remove",
+      start: questionToken.getStart(),
+      end: questionToken.getEnd(),
+    })
   }
 
   const typeNode = param.getTypeNode()
@@ -331,11 +311,7 @@ function stripParameterTypes(
   }
 }
 
-function removeThisParam(
-  param: ParameterDeclaration,
-  edits: Edit[],
-  text: string,
-): void {
+function removeThisParam(param: ParameterDeclaration, edits: Edit[], text: string): void {
   const start = param.getStart()
   let end = param.getEnd()
 
@@ -348,11 +324,7 @@ function removeThisParam(
   edits.push({ kind: "remove", start, end })
 }
 
-function handleVariableStatement(
-  stmt: VariableStatement,
-  edits: Edit[],
-  text: string,
-): void {
+function handleVariableStatement(stmt: VariableStatement, edits: Edit[], text: string): void {
   for (const decl of stmt.getDeclarations()) {
     const typeNode = decl.getTypeNode()
     const initializer = decl.getInitializer()
@@ -370,11 +342,7 @@ function handleVariableStatement(
   }
 }
 
-function handleClassDeclaration(
-  cls: ClassDeclaration,
-  edits: Edit[],
-  text: string,
-): void {
+function handleClassDeclaration(cls: ClassDeclaration, edits: Edit[], text: string): void {
   stripTypeParameters(cls.getTypeParameters(), edits, text)
 
   const extendsClause = cls.getExtends()
@@ -409,7 +377,11 @@ function handleClassDeclaration(
       if (returnType) {
         const colonPos = text.lastIndexOf(":", returnType.getStart())
         if (colonPos !== -1) {
-          edits.push({ kind: "remove", start: colonPos, end: returnType.getEnd() })
+          edits.push({
+            kind: "remove",
+            start: colonPos,
+            end: returnType.getEnd(),
+          })
         }
       }
       const body = member.getBody()
@@ -421,7 +393,11 @@ function handleClassDeclaration(
       if (returnType) {
         const colonPos = text.lastIndexOf(":", returnType.getStart())
         if (colonPos !== -1) {
-          edits.push({ kind: "remove", start: colonPos, end: returnType.getEnd() })
+          edits.push({
+            kind: "remove",
+            start: colonPos,
+            end: returnType.getEnd(),
+          })
         }
       }
       for (const param of member.getParameters()) {
@@ -435,11 +411,7 @@ function handleClassDeclaration(
   }
 }
 
-function handleExtendsExpression(
-  extendsExpr: Node,
-  edits: Edit[],
-  text: string,
-): void {
+function handleExtendsExpression(extendsExpr: Node, edits: Edit[], text: string): void {
   if (Node.isExpressionWithTypeArguments(extendsExpr)) {
     const typeArgs = extendsExpr.getTypeArguments()
     if (typeArgs.length > 0) {
@@ -457,14 +429,17 @@ function handleExtendsExpression(
   })
 }
 
-function handleClassProperty(
-  prop: Node,
-  edits: Edit[],
-  text: string,
-): void {
+function handleClassProperty(prop: Node, edits: Edit[], text: string): void {
   if (!Node.isPropertyDeclaration(prop)) return
 
-  for (const kind of [SyntaxKind.ReadonlyKeyword, SyntaxKind.PrivateKeyword, SyntaxKind.ProtectedKeyword, SyntaxKind.OverrideKeyword, SyntaxKind.AbstractKeyword, SyntaxKind.DeclareKeyword]) {
+  for (const kind of [
+    SyntaxKind.ReadonlyKeyword,
+    SyntaxKind.PrivateKeyword,
+    SyntaxKind.ProtectedKeyword,
+    SyntaxKind.OverrideKeyword,
+    SyntaxKind.AbstractKeyword,
+    SyntaxKind.DeclareKeyword,
+  ]) {
     const modifier = prop.getModifiers().find((m) => m.getKind() === kind)
     if (modifier) {
       let end = modifier.getEnd()
@@ -487,14 +462,15 @@ function handleClassProperty(
   }
 }
 
-function handleClassMethod(
-  method: Node,
-  edits: Edit[],
-  text: string,
-): void {
+function handleClassMethod(method: Node, edits: Edit[], text: string): void {
   if (!Node.isMethodDeclaration(method)) return
 
-  for (const kind of [SyntaxKind.PrivateKeyword, SyntaxKind.ProtectedKeyword, SyntaxKind.OverrideKeyword, SyntaxKind.AbstractKeyword]) {
+  for (const kind of [
+    SyntaxKind.PrivateKeyword,
+    SyntaxKind.ProtectedKeyword,
+    SyntaxKind.OverrideKeyword,
+    SyntaxKind.AbstractKeyword,
+  ]) {
     const modifier = method.getModifiers().find((m) => m.getKind() === kind)
     if (modifier) {
       let end = modifier.getEnd()
@@ -534,7 +510,11 @@ function handleExpression(expr: Node, edits: Edit[], text: string): void {
       if (typeText === "const") {
         const asKeywordPos = text.lastIndexOf(" as ", expr.getEnd())
         if (asKeywordPos !== -1 && asKeywordPos >= expr.getExpression().getEnd()) {
-          edits.push({ kind: "remove", start: asKeywordPos, end: expr.getEnd() })
+          edits.push({
+            kind: "remove",
+            start: asKeywordPos,
+            end: expr.getEnd(),
+          })
           edits.push({
             kind: "insertBefore",
             position: expr.getStart(),
@@ -614,7 +594,11 @@ function handleExpression(expr: Node, edits: Edit[], text: string): void {
         if (returnType) {
           const colonPos = text.lastIndexOf(":", returnType.getStart())
           if (colonPos !== -1) {
-            edits.push({ kind: "remove", start: colonPos, end: returnType.getEnd() })
+            edits.push({
+              kind: "remove",
+              start: colonPos,
+              end: returnType.getEnd(),
+            })
           }
         }
         for (const param of prop.getParameters()) {
@@ -719,24 +703,20 @@ function handleExpression(expr: Node, edits: Edit[], text: string): void {
   }
 }
 
-function stripTypeArguments(
-  parent: Node,
-  edits: Edit[],
-  _text: string,
-): void {
+function stripTypeArguments(parent: Node, edits: Edit[], _text: string): void {
   const children = parent.getChildren()
   const ltToken = children.find((c) => c.getKind() === SyntaxKind.LessThanToken)
   const gtToken = children.find((c) => c.getKind() === SyntaxKind.GreaterThanToken)
   if (ltToken && gtToken) {
-    edits.push({ kind: "remove", start: ltToken.getStart(), end: gtToken.getEnd() })
+    edits.push({
+      kind: "remove",
+      start: ltToken.getStart(),
+      end: gtToken.getEnd(),
+    })
   }
 }
 
-function handleArrowFunction(
-  arrow: Node,
-  edits: Edit[],
-  text: string,
-): void {
+function handleArrowFunction(arrow: Node, edits: Edit[], text: string): void {
   if (!Node.isArrowFunction(arrow)) return
 
   stripTypeParameters(arrow.getTypeParameters(), edits, text)
@@ -745,9 +725,7 @@ function handleArrowFunction(
   if (returnType) {
     const colonPos = text.lastIndexOf(":", returnType.getStart())
     const params = arrow.getParameters()
-    const parenEnd = params.length > 0
-      ? params[params.length - 1].getEnd()
-      : arrow.getStart()
+    const parenEnd = params.length > 0 ? params[params.length - 1].getEnd() : arrow.getStart()
     if (colonPos !== -1 && colonPos > parenEnd) {
       edits.push({ kind: "remove", start: colonPos, end: returnType.getEnd() })
     }
@@ -765,11 +743,7 @@ function handleArrowFunction(
   }
 }
 
-function handleFunctionExpression(
-  func: Node,
-  edits: Edit[],
-  text: string,
-): void {
+function handleFunctionExpression(func: Node, edits: Edit[], text: string): void {
   if (!Node.isFunctionExpression(func)) return
 
   stripTypeParameters(func.getTypeParameters(), edits, text)
@@ -830,7 +804,11 @@ function walkExpressions(block: Node, edits: Edit[], text: string): void {
       if (typeNode) {
         const colonPos = text.lastIndexOf(":", typeNode.getStart())
         if (colonPos !== -1 && colonPos >= node.getNameNode().getEnd()) {
-          edits.push({ kind: "remove", start: colonPos, end: typeNode.getEnd() })
+          edits.push({
+            kind: "remove",
+            start: colonPos,
+            end: typeNode.getEnd(),
+          })
         }
       }
       return
@@ -924,8 +902,7 @@ function applyEdits(source: string, edits: Edit[]): string {
         result = result.slice(0, edit.start) + edit.text + result.slice(edit.end)
         break
       case "insertBefore":
-        result =
-          result.slice(0, edit.position) + edit.text + result.slice(edit.position)
+        result = result.slice(0, edit.position) + edit.text + result.slice(edit.position)
         break
     }
   }
@@ -945,9 +922,7 @@ function isTypeOnlyFile(sourceFile: SourceFile): boolean {
   return true
 }
 
-function transformFile(
-  sourceFile: SourceFile,
-): { path: string; content: string } | null {
+function transformFile(sourceFile: SourceFile): { path: string; content: string } | null {
   if (isTypeOnlyFile(sourceFile)) return null
 
   const edits = collectEdits(sourceFile)
@@ -964,12 +939,7 @@ function transformFile(
   return { path: jsPath, content }
 }
 
-const EXCLUDE_PATTERNS = [
-  "*.test.ts",
-  "*.test.tsx",
-  "*.d.ts",
-  "*.todo.ts",
-]
+const EXCLUDE_PATTERNS = ["*.test.ts", "*.test.tsx", "*.d.ts", "*.todo.ts"]
 
 function shouldExclude(filePath: string): boolean {
   const basename = NPath.basename(filePath)
@@ -986,8 +956,9 @@ async function processGlob(args: Args): Promise<void> {
   })
 
   const glob = new Bun.Glob(args.glob)
-  const files = Array.from(glob.scanSync({ cwd: process.cwd(), absolute: true }))
-    .filter((f) => f.endsWith(".ts") && !shouldExclude(f))
+  const files = Array.from(glob.scanSync({ cwd: process.cwd(), absolute: true })).filter(
+    (f) => f.endsWith(".ts") && !shouldExclude(f),
+  )
 
   if (files.length === 0) {
     console.log("No matching .ts files found")

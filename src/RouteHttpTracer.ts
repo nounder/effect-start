@@ -13,15 +13,12 @@ export const currentTracerDisabledWhen = GlobalValue.globalValue(
 export const withTracerDisabledWhen = <A, E, R>(
   effect: Effect.Effect<A, E, R>,
   predicate: Predicate.Predicate<Request>,
-): Effect.Effect<A, E, R> =>
-  Effect.locally(effect, currentTracerDisabledWhen, predicate)
+): Effect.Effect<A, E, R> => Effect.locally(effect, currentTracerDisabledWhen, predicate)
 
 export const currentSpanNameGenerator = GlobalValue.globalValue(
   Symbol.for("effect-start/RouteHttp/spanNameGenerator"),
   () =>
-    FiberRef.unsafeMake<(request: Request) => string>(
-      (request) => `http.server ${request.method}`,
-    ),
+    FiberRef.unsafeMake<(request: Request) => string>((request) => `http.server ${request.method}`),
 )
 
 export const withSpanNameGenerator = <A, E, R>(
@@ -29,9 +26,7 @@ export const withSpanNameGenerator = <A, E, R>(
   f: (request: Request) => string,
 ): Effect.Effect<A, E, R> => Effect.locally(effect, currentSpanNameGenerator, f)
 
-const w3cTraceparent = (
-  headers: Headers,
-): Option.Option<Tracer.ExternalSpan> => {
+const w3cTraceparent = (headers: Headers): Option.Option<Tracer.ExternalSpan> => {
   const header = headers.get("traceparent")
   if (header === null) return Option.none()
 
@@ -41,11 +36,13 @@ const w3cTraceparent = (
   const [_version, traceId, spanId, flags] = parts
   if (!traceId || !spanId) return Option.none()
 
-  return Option.some(Tracer.externalSpan({
-    spanId,
-    traceId,
-    sampled: flags === "01",
-  }))
+  return Option.some(
+    Tracer.externalSpan({
+      spanId,
+      traceId,
+      sampled: flags === "01",
+    }),
+  )
 }
 
 const b3Single = (headers: Headers): Option.Option<Tracer.ExternalSpan> => {
@@ -58,11 +55,13 @@ const b3Single = (headers: Headers): Option.Option<Tracer.ExternalSpan> => {
   const [traceId, spanId, sampledStr] = parts
   if (!traceId || !spanId) return Option.none()
 
-  return Option.some(Tracer.externalSpan({
-    spanId,
-    traceId,
-    sampled: sampledStr === "1",
-  }))
+  return Option.some(
+    Tracer.externalSpan({
+      spanId,
+      traceId,
+      sampled: sampledStr === "1",
+    }),
+  )
 }
 
 const xb3 = (headers: Headers): Option.Option<Tracer.ExternalSpan> => {
@@ -72,16 +71,16 @@ const xb3 = (headers: Headers): Option.Option<Tracer.ExternalSpan> => {
 
   const sampled = headers.get("x-b3-sampled")
 
-  return Option.some(Tracer.externalSpan({
-    spanId,
-    traceId,
-    sampled: sampled === "1",
-  }))
+  return Option.some(
+    Tracer.externalSpan({
+      spanId,
+      traceId,
+      sampled: sampled === "1",
+    }),
+  )
 }
 
-export const parentSpanFromHeaders = (
-  headers: Headers,
-): Option.Option<Tracer.ExternalSpan> => {
+export const parentSpanFromHeaders = (headers: Headers): Option.Option<Tracer.ExternalSpan> => {
   let span = w3cTraceparent(headers)
   if (span._tag === "Some") return span
 

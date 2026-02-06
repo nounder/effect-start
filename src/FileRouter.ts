@@ -17,10 +17,7 @@ import * as Route from "./Route.ts"
 import * as RouteTree from "./RouteTree.ts"
 
 export class FileRouterError extends Data.TaggedError("FileRouterError")<{
-  reason:
-    | "Import"
-    | "Conflict"
-    | "FileSystem"
+  reason: "Import" | "Conflict" | "FileSystem"
   cause?: unknown
   path?: string
 }> {}
@@ -32,18 +29,13 @@ export type RouteModule = {
 export type LazyRouteModule = () => Promise<RouteModule>
 
 export type FileRoutes = {
-  [path: PathPattern.PathPattern]: [
-    LazyRouteModule,
-    ...LazyRouteModule[],
-  ]
+  [path: PathPattern.PathPattern]: [LazyRouteModule, ...LazyRouteModule[]]
 }
 
 export type Segment = FilePathPattern.Segment
 
 export type FileRoute = {
-  handle:
-    | "route"
-    | "layer"
+  handle: "route" | "layer"
   // eg. `/about/route.tsx`, `/users/[userId]/route.tsx`, `/(admin)/users/route.tsx`
   modulePath: `/${string}`
   // eg. `/about`, `/users/[userId]`, `/users` (groups stripped)
@@ -62,15 +54,13 @@ export type OrderedFileRoutes = Array<FileRoute>
 
 const ROUTE_PATH_REGEX = /^\/?(.*\/?)(?:route|layer)\.(jsx?|tsx?)$/
 
-export function parseRoute(
-  path: string,
-): FileRoute | null {
+export function parseRoute(path: string): FileRoute | null {
   const segs = FilePathPattern.segments(path)
 
   const lastSeg = segs.at(-1)
-  const handleMatch = lastSeg?._tag === "LiteralSegment"
-    && lastSeg.value.match(/^(route|layer)\.(tsx?|jsx?)$/)
-  const handle = handleMatch ? handleMatch[1] as "route" | "layer" : null
+  const handleMatch =
+    lastSeg?._tag === "LiteralSegment" && lastSeg.value.match(/^(route|layer)\.(tsx?|jsx?)$/)
+  const handle = handleMatch ? (handleMatch[1] as "route" | "layer") : null
 
   if (!handle) {
     return null
@@ -78,9 +68,7 @@ export function parseRoute(
 
   const pathSegments = segs.slice(0, -1)
 
-  const validated = FilePathPattern.validate(
-    FilePathPattern.format(pathSegments),
-  )
+  const validated = FilePathPattern.validate(FilePathPattern.format(pathSegments))
   if (Either.isLeft(validated)) {
     return null
   }
@@ -90,9 +78,7 @@ export function parseRoute(
     return null
   }
 
-  const routePathSegments = pathSegments.filter(
-    (seg) => seg._tag !== "GroupSegment",
-  )
+  const routePathSegments = pathSegments.filter((seg) => seg._tag !== "GroupSegment")
   const routePath = FilePathPattern.format(routePathSegments)
 
   return {
@@ -103,9 +89,7 @@ export function parseRoute(
   }
 }
 
-function importModule<T>(
-  load: () => Promise<T>,
-): Effect.Effect<T, FileRouterError> {
+function importModule<T>(load: () => Promise<T>): Effect.Effect<T, FileRouterError> {
   return Effect.tryPromise({
     try: () => load(),
     catch: (cause) => new FileRouterError({ reason: "Import", cause }),
@@ -127,12 +111,13 @@ export function layer(
     | (() => Promise<{ default: FileRoutes }>)
     | { load: () => Promise<{ default: FileRoutes }>; path: string },
 ) {
-  const options = typeof loadOrOptions === "function"
-    ? {
-      load: loadOrOptions,
-      path: NPath.join(NodeUtils.getEntrypoint(), "routes"),
-    }
-    : loadOrOptions
+  const options =
+    typeof loadOrOptions === "function"
+      ? {
+          load: loadOrOptions,
+          path: NPath.join(NodeUtils.getEntrypoint(), "routes"),
+        }
+      : loadOrOptions
   let treePath = options.path
   if (treePath.startsWith("file://")) {
     treePath = NUrl.fileURLToPath(treePath)
@@ -147,7 +132,7 @@ export function layer(
 
   return Layer.scoped(
     Route.Routes,
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       // Generate routes file before loading
       yield* FileRouterCodegen.update(routesPath, treeFilename)
 
@@ -158,12 +143,8 @@ export function layer(
       // Watch for changes (only when Development service is available)
       yield* Function.pipe(
         Development.stream(),
-        Stream.filter(e =>
-          e._tag !== "Reload" && e.path.startsWith(relativeRoutesPath)
-        ),
-        Stream.runForEach(() =>
-          FileRouterCodegen.update(routesPath, treeFilename)
-        ),
+        Stream.filter((e) => e._tag !== "Reload" && e.path.startsWith(relativeRoutesPath)),
+        Stream.runForEach(() => FileRouterCodegen.update(routesPath, treeFilename)),
         Effect.fork,
       )
 
@@ -172,20 +153,14 @@ export function layer(
   )
 }
 
-export function fromFileRoutes(
-  fileRoutes: FileRoutes,
-): Effect.Effect<RouteTree.RouteTree> {
-  return Effect.gen(function*() {
+export function fromFileRoutes(fileRoutes: FileRoutes): Effect.Effect<RouteTree.RouteTree> {
+  return Effect.gen(function* () {
     const mounts: RouteTree.InputRouteMap = {}
 
     for (const [path, loaders] of Object.entries(fileRoutes)) {
-      const modules = yield* Effect.forEach(
-        loaders,
-        (loader) => Effect.promise(() => loader()),
-      )
+      const modules = yield* Effect.forEach(loaders, (loader) => Effect.promise(() => loader()))
 
-      const allRoutes: RouteTree.RouteTuple =
-        [] as unknown as RouteTree.RouteTuple
+      const allRoutes: RouteTree.RouteTuple = [] as unknown as RouteTree.RouteTuple
 
       for (const m of modules) {
         if (Route.isRouteSet(m.default)) {
@@ -209,7 +184,7 @@ export function walkRoutesDirectory(
   PlatformError.PlatformError | FileRouterError,
   FileSystem.FileSystem
 > {
-  return Effect.gen(function*() {
+  return Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const files = yield* fs.readDirectory(dir, { recursive: true })
 
@@ -220,11 +195,11 @@ export function walkRoutesDirectory(
 export function getFileRoutes(
   paths: Array<string>,
 ): Effect.Effect<OrderedFileRoutes, FileRouterError> {
-  return Effect.gen(function*() {
+  return Effect.gen(function* () {
     const routes = paths
-      .map(f => f.match(ROUTE_PATH_REGEX))
+      .map((f) => f.match(ROUTE_PATH_REGEX))
       .filter(Boolean)
-      .map(v => {
+      .map((v) => {
         const path = v![0]
         try {
           return parseRoute(path)
@@ -241,11 +216,11 @@ export function getFileRoutes(
 
         return (
           // rest is a dominant factor (routes with rest come last)
-          (+aHasRest - +bHasRest) * 1000
+          (+aHasRest - +bHasRest) * 1000 +
           // depth is reversed for rest
-          + (aDepth - bDepth) * (1 - 2 * +aHasRest)
+          (aDepth - bDepth) * (1 - 2 * +aHasRest) +
           // lexicographic comparison as tiebreaker
-          + a.modulePath.localeCompare(b.modulePath) * 0.001
+          a.modulePath.localeCompare(b.modulePath) * 0.001
         )
       })
 
@@ -258,7 +233,7 @@ export function getFileRoutes(
     }
 
     for (const [path, pathRoutes] of routesByPath) {
-      const routeHandles = pathRoutes.filter(h => h.handle === "route")
+      const routeHandles = pathRoutes.filter((h) => h.handle === "route")
 
       if (routeHandles.length > 1) {
         yield* new FileRouterError({ reason: "Conflict", path })

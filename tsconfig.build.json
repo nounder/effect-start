@@ -8,11 +8,6 @@
     "allowImportingTsExtensions": false,
     "rewriteRelativeImportExtensions": true
   },
-  "include": [
-    "src"
-  ],
-  "exclude": [
-    "**/*.test.ts",
-    "**/*.todo.ts"
-  ]
+  "include": ["src"],
+  "exclude": ["**/*.test.ts", "**/*.todo.ts"]
 }

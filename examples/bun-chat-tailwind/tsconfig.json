@@ -31,14 +31,9 @@
     "plugins": [
       {
         "name": "@effect/language-service",
-        "namespaceImportPackages": [
-          "effect"
-        ]
+        "namespaceImportPackages": ["effect"]
       }
     ]
   },
-  "include": [
-    "src/**/*.ts",
-    "src/**/*.tsx"
-  ]
+  "include": ["src/**/*.ts", "src/**/*.tsx"]
 }

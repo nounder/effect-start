@@ -34,44 +34,36 @@ test.it("virtual import", async () => {
 
   await Bun.build({
     target: "bun",
-    entrypoints: [
-      import.meta.path,
-    ],
-    plugins: [
-      trackerPlugin,
-    ],
+    entrypoints: [import.meta.path],
+    plugins: [trackerPlugin],
   })
 
-  test
-    .expect(
-      [...trackerPlugin.state.entries()],
-    )
-    .toEqual([
+  test.expect([...trackerPlugin.state.entries()]).toEqual([
+    [
+      "src/bun/BunImportTrackerPlugin.test.ts",
       [
-        "src/bun/BunImportTrackerPlugin.test.ts",
-        [
-          {
-            kind: "import-statement",
-            path: "bun:test",
-          },
-          {
-            kind: "import-statement",
-            path: "src/bun/BunImportTrackerPlugin.ts",
-          },
-          {
-            kind: "import-statement",
-            path: "src/bun/BunVirtualFilesPlugin.ts",
-          },
-        ],
+        {
+          kind: "import-statement",
+          path: "bun:test",
+        },
+        {
+          kind: "import-statement",
+          path: "src/bun/BunImportTrackerPlugin.ts",
+        },
+        {
+          kind: "import-statement",
+          path: "src/bun/BunVirtualFilesPlugin.ts",
+        },
       ],
+    ],
+    [
+      "src/bun/BunImportTrackerPlugin.ts",
       [
-        "src/bun/BunImportTrackerPlugin.ts",
-        [
-          {
-            kind: "import-statement",
-            path: "node:path",
-          },
-        ],
+        {
+          kind: "import-statement",
+          path: "node:path",
+        },
       ],
-    ])
+    ],
+  ])
 })

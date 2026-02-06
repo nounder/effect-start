@@ -1,14 +1,5 @@
-import {
-  attribute,
-  beginBatch,
-  endBatch,
-  type HTMLOrSVG,
-} from "../engine.ts"
-import {
-  clamp,
-  modifyTiming,
-  modifyViewTransition,
-} from "../utils.ts"
+import { attribute, beginBatch, endBatch, type HTMLOrSVG } from "../engine.ts"
+import { clamp, modifyTiming, modifyViewTransition } from "../utils.ts"
 
 const once = new WeakSet<HTMLOrSVG>()
 
@@ -35,19 +26,16 @@ attribute({
       options.threshold = clamp(Number(mods.get("threshold")), 0, 100) / 100
     }
     const exit = mods.has("exit")
-    let observer: IntersectionObserver | null = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting !== exit) {
-            callback()
-            if (observer && once.has(el)) {
-              observer.disconnect()
-            }
+    let observer: IntersectionObserver | null = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.isIntersecting !== exit) {
+          callback()
+          if (observer && once.has(el)) {
+            observer.disconnect()
           }
         }
-      },
-      options,
-    )
+      }
+    }, options)
     observer.observe(el)
     if (mods.has("once")) {
       once.add(el)

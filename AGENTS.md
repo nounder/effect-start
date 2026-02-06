@@ -55,35 +55,20 @@ Write tests:
 import * as test from "bun:test"
 
 // use test.expect when testing runtime
-test
-  .expect(routes)
-  .toEqual([
-    {
-      type: "Literal",
-    },
-    {
-      type: "Param",
-    },
-  ])
-
-
+test.expect(routes).toEqual([
+  {
+    type: "Literal",
+  },
+  {
+    type: "Param",
+  },
+])
 
 // use test.expectTypeOf when testing types
-test
-  .expectTypeOf(context)
-  .toMatchObjectType<{
-    method: "GET"
-  }>()
+test.expectTypeOf(context).toMatchObjectType<{
+  method: "GET"
+}>()
 
 // put each generic and property in new line for readability
-test
-  .expectTypeOf<Items[3]>()
-  .toExtend<
-    Route<
-      { method: "POST" },
-      [
-        Format<Json>
-      ]
-    >
-  >()
+test.expectTypeOf<Items[3]>().toExtend<Route<{ method: "POST" }, [Format<Json>]>>()
 ```

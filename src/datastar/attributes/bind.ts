@@ -1,14 +1,5 @@
-import {
-  attribute,
-  effect,
-  getPath,
-  mergePaths,
-  type Paths,
-} from "../engine.ts"
-import {
-  aliasify,
-  modifyCasing,
-} from "../utils.ts"
+import { attribute, effect, getPath, mergePaths, type Paths } from "../engine.ts"
+import { aliasify, modifyCasing } from "../utils.ts"
 
 type SignalFile = {
   name: string
@@ -27,8 +18,7 @@ attribute({
   apply({ el, key, mods, value, error }) {
     const signalName = key != null ? modifyCasing(key, mods) : value
 
-    let get = (el: any, type: string) =>
-      type === "number" ? +el.value : el.value
+    let get = (el: any, type: string) => (type === "number" ? +el.value : el.value)
 
     let set = (value: any) => {
       ;(el as HTMLInputElement).value = `${value}`
@@ -38,8 +28,7 @@ attribute({
       switch (el.type) {
         case "range":
         case "number":
-          get = (el: any, type: string) =>
-            type === "string" ? el.value : +el.value
+          get = (el: any, type: string) => (type === "string" ? el.value : +el.value)
           break
 
         case "checkbox":
@@ -71,47 +60,43 @@ attribute({
           get = (el: HTMLInputElement, type: string) =>
             el.checked ? (type === "number" ? +el.value : el.value) : empty
           set = (value: string | number) => {
-            el.checked = value === (typeof value === "number"
-              ? +el.value
-              : el.value)
+            el.checked = value === (typeof value === "number" ? +el.value : el.value)
           }
           break
         case "file": {
           const syncSignal = () => {
             const files = [...(el.files || [])]
             const signalFiles: Array<SignalFile> = []
-            Promise
-              .all(
-                files.map(
-                  (f) =>
-                    new Promise<void>((resolve) => {
-                      const reader = new FileReader()
-                      reader.onload = () => {
-                        if (typeof reader.result !== "string") {
-                          throw error("InvalidFileResultType", {
-                            resultType: typeof reader.result,
-                          })
-                        }
-                        const match = reader.result.match(dataURIRegex)
-                        if (!match?.groups) {
-                          throw error("InvalidDataUri", {
-                            result: reader.result,
-                          })
-                        }
-                        signalFiles.push({
-                          name: f.name,
-                          contents: match.groups.contents,
-                          mime: match.groups.mime,
+            Promise.all(
+              files.map(
+                (f) =>
+                  new Promise<void>((resolve) => {
+                    const reader = new FileReader()
+                    reader.onload = () => {
+                      if (typeof reader.result !== "string") {
+                        throw error("InvalidFileResultType", {
+                          resultType: typeof reader.result,
                         })
                       }
-                      reader.onloadend = () => resolve()
-                      reader.readAsDataURL(f)
-                    }),
-                ),
-              )
-              .then(() => {
-                mergePaths([[signalName, signalFiles]])
-              })
+                      const match = reader.result.match(dataURIRegex)
+                      if (!match?.groups) {
+                        throw error("InvalidDataUri", {
+                          result: reader.result,
+                        })
+                      }
+                      signalFiles.push({
+                        name: f.name,
+                        contents: match.groups.contents,
+                        mime: match.groups.mime,
+                      })
+                    }
+                    reader.onloadend = () => resolve()
+                    reader.readAsDataURL(f)
+                  }),
+              ),
+            ).then(() => {
+              mergePaths([[signalName, signalFiles]])
+            })
           }
 
           el.addEventListener("change", syncSignal)
@@ -129,9 +114,7 @@ attribute({
         get = (el: HTMLSelectElement) =>
           [...el.selectedOptions].map((option) => {
             const type = typeMap.get(option.value)
-            return type === "string" || type == null
-              ? option.value
-              : +option.value
+            return type === "string" || type == null ? option.value : +option.value
           })
 
         set = (value: Array<string | number>) => {
@@ -152,7 +135,7 @@ attribute({
       // default case
     } else {
       // web component
-      get = (el: Element) => "value" in el ? el.value : el.getAttribute("value")
+      get = (el: Element) => ("value" in el ? el.value : el.getAttribute("value"))
       set = (value: any) => {
         if ("value" in el) {
           el.value = value
@@ -166,15 +149,12 @@ attribute({
     const type = typeof initialValue
 
     let path = signalName
-    if (
-      Array.isArray(initialValue)
-      && !(el instanceof HTMLSelectElement && el.multiple)
-    ) {
+    if (Array.isArray(initialValue) && !(el instanceof HTMLSelectElement && el.multiple)) {
       const signalNameKebab = key ? key : value!
       const inputs = document.querySelectorAll(
-        `[${aliasedBind}\\:${CSS.escape(signalNameKebab)}],[${aliasedBind}="${
-          CSS.escape(signalNameKebab)
-        }"]`,
+        `[${aliasedBind}\\:${CSS.escape(signalNameKebab)}],[${aliasedBind}="${CSS.escape(
+          signalNameKebab,
+        )}"]`,
       ) as NodeListOf<HTMLInputElement>
 
       const paths: Paths = []

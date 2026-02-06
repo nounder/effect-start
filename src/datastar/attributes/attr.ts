@@ -19,24 +19,24 @@ attribute({
 
     const update = key
       ? () => {
-        observer.disconnect()
-        const val = rx() as string
-        syncAttr(key, val)
-        observer.observe(el, {
-          attributeFilter: [key],
-        })
-      }
-      : () => {
-        observer.disconnect()
-        const obj = rx() as Record<string, any>
-        const attributeFilter = Object.keys(obj)
-        for (const key of attributeFilter) {
-          syncAttr(key, obj[key])
+          observer.disconnect()
+          const val = rx() as string
+          syncAttr(key, val)
+          observer.observe(el, {
+            attributeFilter: [key],
+          })
         }
-        observer.observe(el, {
-          attributeFilter,
-        })
-      }
+      : () => {
+          observer.disconnect()
+          const obj = rx() as Record<string, any>
+          const attributeFilter = Object.keys(obj)
+          for (const key of attributeFilter) {
+            syncAttr(key, obj[key])
+          }
+          observer.observe(el, {
+            attributeFilter,
+          })
+        }
 
     const observer = new MutationObserver(update)
     const cleanup = effect(update)

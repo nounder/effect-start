@@ -1,13 +1,5 @@
-import {
-  attribute,
-  beginBatch,
-  endBatch,
-} from "../engine.ts"
-import {
-  modifyViewTransition,
-  tagHas,
-  tagToMs,
-} from "../utils.ts"
+import { attribute, beginBatch, endBatch } from "../engine.ts"
+import { modifyViewTransition, tagHas, tagToMs } from "../utils.ts"
 
 attribute({
   name: "on-interval",

@@ -15,25 +15,17 @@ test.describe(`${EncryptedCookies.encrypt.name}`, () => {
     // Check format: three base64url segments separated by .
     const segments = result.split(".")
 
-    test
-      .expect(segments)
-      .toHaveLength(3)
+    test.expect(segments).toHaveLength(3)
 
     // Each segment should be base64url (no +, /, or = characters
     // so cookie values are not escaped)
     segments.forEach((segment: string) => {
-      test
-        .expect(segment)
-        .not
-        .toMatch(/[+/=]/)
+      test.expect(segment).not.toMatch(/[+/=]/)
       // Should be valid base64url that can be decoded
       const base64 = segment.replace(/-/g, "+").replace(/_/g, "/")
-      const paddedBase64 = base64 + "=".repeat((4 - base64.length % 4) % 4)
+      const paddedBase64 = base64 + "=".repeat((4 - (base64.length % 4)) % 4)
 
-      test
-        .expect(() => atob(paddedBase64))
-        .not
-        .toThrow()
+      test.expect(() => atob(paddedBase64)).not.toThrow()
     })
   })
 
@@ -47,18 +39,11 @@ test.describe(`${EncryptedCookies.encrypt.name}`, () => {
       EncryptedCookies.encrypt(value, { secret: "test-secret" }),
     )
 
-    test
-      .expect(result1)
-      .not
-      .toBe(result2)
+    test.expect(result1).not.toBe(result2)
 
     // But both should have correct format
-    test
-      .expect(result1.split("."))
-      .toHaveLength(3)
-    test
-      .expect(result2.split("."))
-      .toHaveLength(3)
+    test.expect(result1.split(".")).toHaveLength(3)
+    test.expect(result2.split(".")).toHaveLength(3)
   })
 
   test.test("handle empty string", async () => {
@@ -68,9 +53,7 @@ test.describe(`${EncryptedCookies.encrypt.name}`, () => {
       EncryptedCookies.encrypt(value, { secret: "test-secret" }),
     )
 
-    test
-      .expect(result.split("."))
-      .toHaveLength(3)
+    test.expect(result.split(".")).toHaveLength(3)
   })
 
   test.test("handle special characters", async () => {
@@ -80,9 +63,7 @@ test.describe(`${EncryptedCookies.encrypt.name}`, () => {
       EncryptedCookies.encrypt(value, { secret: "test-secret" }),
     )
 
-    test
-      .expect(result.split("."))
-      .toHaveLength(3)
+    test.expect(result.split(".")).toHaveLength(3)
   })
 
   test.test("handle object with undefined properties", async () => {
@@ -96,9 +77,7 @@ test.describe(`${EncryptedCookies.encrypt.name}`, () => {
     )
 
     // JSON.stringify removes undefined properties
-    test
-      .expect(decrypted)
-      .toEqual({ id: "some" })
+    test.expect(decrypted).toEqual({ id: "some" })
   })
 })
 
@@ -113,9 +92,7 @@ test.describe(`${EncryptedCookies.decrypt.name}`, () => {
       EncryptedCookies.decrypt(encrypted, { secret: "test-secret" }),
     )
 
-    test
-      .expect(decrypted)
-      .toBe(originalValue)
+    test.expect(decrypted).toBe(originalValue)
   })
 
   test.test("handle empty string round-trip", async () => {
@@ -128,9 +105,7 @@ test.describe(`${EncryptedCookies.decrypt.name}`, () => {
       EncryptedCookies.decrypt(encrypted, { secret: "test-secret" }),
     )
 
-    test
-      .expect(decrypted)
-      .toBe(originalValue)
+    test.expect(decrypted).toBe(originalValue)
   })
 
   test.test("handle special characters round-trip", async () => {
@@ -143,81 +118,49 @@ test.describe(`${EncryptedCookies.decrypt.name}`, () => {
       EncryptedCookies.decrypt(encrypted, { secret: "test-secret" }),
     )
 
-    test
-      .expect(decrypted)
-      .toBe(originalValue)
+    test.expect(decrypted).toBe(originalValue)
   })
 
   test.test("fail with invalid format", () => {
     const invalidValue = "not-encrypted"
 
     test
-      .expect(
-        Effect.runPromise(
-          EncryptedCookies.decrypt(invalidValue, { secret: "test-secret" }),
-        ),
-      )
-      .rejects
-      .toThrow()
+      .expect(Effect.runPromise(EncryptedCookies.decrypt(invalidValue, { secret: "test-secret" })))
+      .rejects.toThrow()
   })
 
   test.test("fail with wrong number of segments", () => {
     const invalidValue = "one.two"
 
     test
-      .expect(
-        Effect.runPromise(
-          EncryptedCookies.decrypt(invalidValue, { secret: "test-secret" }),
-        ),
-      )
-      .rejects
-      .toThrow()
+      .expect(Effect.runPromise(EncryptedCookies.decrypt(invalidValue, { secret: "test-secret" })))
+      .rejects.toThrow()
   })
 
   test.test("fail with invalid base64", () => {
     const invalidValue = "invalid.base64.data"
 
     test
-      .expect(
-        Effect.runPromise(
-          EncryptedCookies.decrypt(invalidValue, { secret: "test-secret" }),
-        ),
-      )
-      .rejects
-      .toThrow()
+      .expect(Effect.runPromise(EncryptedCookies.decrypt(invalidValue, { secret: "test-secret" })))
+      .rejects.toThrow()
   })
 
   test.test("fail with null value", () => {
     test
-      .expect(
-        Effect.runPromise(
-          EncryptedCookies.encrypt(null, { secret: "test-secret" }),
-        ),
-      )
-      .rejects
-      .toThrow()
+      .expect(Effect.runPromise(EncryptedCookies.encrypt(null, { secret: "test-secret" })))
+      .rejects.toThrow()
   })
 
   test.test("fail with undefined value", () => {
     test
-      .expect(
-        Effect.runPromise(
-          EncryptedCookies.encrypt(undefined, { secret: "test-secret" }),
-        ),
-      )
-      .rejects
-      .toThrow()
+      .expect(Effect.runPromise(EncryptedCookies.encrypt(undefined, { secret: "test-secret" })))
+      .rejects.toThrow()
   })
 
   test.test("fail with empty encrypted value", () => {
     test
-      .expect(
-        Effect.runPromise(
-          EncryptedCookies.decrypt("", { secret: "test-secret" }),
-        ),
-      )
-      .rejects
-      .toThrow()
+      .expect(Effect.runPromise(EncryptedCookies.decrypt("", { secret: "test-secret" })))
+      .rejects.toThrow()
   })
 })
 
@@ -230,20 +173,13 @@ test.describe(`${EncryptedCookies.encryptCookie.name}`, () => {
     )
 
     // Cookie properties should be preserved
-    test
-      .expect(result.name)
-      .toBe("test")
+    test.expect(result.name).toBe("test")
 
     // Value should be encrypted (different from original)
-    test
-      .expect(result.value)
-      .not
-      .toBe("hello world")
+    test.expect(result.value).not.toBe("hello world")
 
     // Should be in encrypted format
-    test
-      .expect(result.value.split("."))
-      .toHaveLength(3)
+    test.expect(result.value.split(".")).toHaveLength(3)
   })
 })
 
@@ -259,14 +195,10 @@ test.describe(`${EncryptedCookies.decryptCookie.name}`, () => {
     )
 
     // Cookie properties should be preserved
-    test
-      .expect(decrypted.name)
-      .toBe("test")
+    test.expect(decrypted.name).toBe("test")
 
     // Value should be JSON stringified (string values are now always serialized)
-    test
-      .expect(decrypted.value)
-      .toBe("\"hello world\"")
+    test.expect(decrypted.value).toBe('"hello world"')
   })
 })
 
@@ -275,7 +207,7 @@ test.describe("service", () => {
     const testSecret = "test-secret-key"
     const testValue = "hello world"
 
-    const program = Effect.gen(function*() {
+    const program = Effect.gen(function* () {
       const service = yield* EncryptedCookies.EncryptedCookies
 
       const encrypted = yield* service.encrypt(testValue)
@@ -285,28 +217,19 @@ test.describe("service", () => {
     })
 
     const result = await Effect.runPromise(
-      program.pipe(
-        Effect.provide(EncryptedCookies.layer({ secret: testSecret })),
-      ),
+      program.pipe(Effect.provide(EncryptedCookies.layer({ secret: testSecret }))),
     )
 
-    test
-      .expect(result.decrypted)
-      .toBe(testValue)
-    test
-      .expect(result.encrypted)
-      .not
-      .toBe(testValue)
-    test
-      .expect(result.encrypted.split("."))
-      .toHaveLength(3)
+    test.expect(result.decrypted).toBe(testValue)
+    test.expect(result.encrypted).not.toBe(testValue)
+    test.expect(result.encrypted.split(".")).toHaveLength(3)
   })
 
   test.test("service cookie functions work with pre-calculated key", async () => {
     const testSecret = "test-secret-key"
     const originalCookie = Cookies.unsafeMakeCookie("test", "hello world")
 
-    const program = Effect.gen(function*() {
+    const program = Effect.gen(function* () {
       const service = yield* EncryptedCookies.EncryptedCookies
 
       const encrypted = yield* service.encryptCookie(originalCookie)
@@ -316,21 +239,12 @@ test.describe("service", () => {
     })
 
     const result = await Effect.runPromise(
-      program.pipe(
-        Effect.provide(EncryptedCookies.layer({ secret: testSecret })),
-      ),
+      program.pipe(Effect.provide(EncryptedCookies.layer({ secret: testSecret }))),
     )
 
-    test
-      .expect(result.decrypted.name)
-      .toBe("test")
-    test
-      .expect(result.decrypted.value)
-      .toBe("\"hello world\"")
-    test
-      .expect(result.encrypted.value)
-      .not
-      .toBe("hello world")
+    test.expect(result.decrypted.name).toBe("test")
+    test.expect(result.decrypted.value).toBe('"hello world"')
+    test.expect(result.encrypted.value).not.toBe("hello world")
   })
 
   test.test("functions work with pre-derived keys passed as options", async () => {
@@ -338,7 +252,7 @@ test.describe("service", () => {
     const testValue = "hello world"
 
     // Pre-derive keys manually
-    const program = Effect.gen(function*() {
+    const program = Effect.gen(function* () {
       const keyMaterial = yield* Effect.tryPromise({
         try: () =>
           crypto.subtle.importKey(
@@ -398,16 +312,9 @@ test.describe("service", () => {
 
     const result = await Effect.runPromise(program)
 
-    test
-      .expect(result.decrypted)
-      .toBe(testValue)
-    test
-      .expect(result.encrypted)
-      .not
-      .toBe(testValue)
-    test
-      .expect(result.encrypted.split("."))
-      .toHaveLength(3)
+    test.expect(result.decrypted).toBe(testValue)
+    test.expect(result.encrypted).not.toBe(testValue)
+    test.expect(result.encrypted.split(".")).toHaveLength(3)
   })
 })
 
@@ -415,7 +322,7 @@ test.describe("layerConfig", () => {
   test.test("succeed with valid SECRET_KEY_BASE", async () => {
     const validSecret = "a".repeat(40)
 
-    const program = Effect.gen(function*() {
+    const program = Effect.gen(function* () {
       const service = yield* EncryptedCookies.EncryptedCookies
       const encrypted = yield* service.encrypt("test")
       const decrypted = yield* service.decrypt(encrypted)
@@ -424,26 +331,20 @@ test.describe("layerConfig", () => {
 
     const result = await Effect.runPromise(
       program.pipe(
-        Effect.provide(
-          EncryptedCookies.layerConfig("SECRET_KEY_BASE"),
-        ),
+        Effect.provide(EncryptedCookies.layerConfig("SECRET_KEY_BASE")),
         Effect.withConfigProvider(
-          ConfigProvider.fromMap(
-            new Map([["SECRET_KEY_BASE", validSecret]]),
-          ),
+          ConfigProvider.fromMap(new Map([["SECRET_KEY_BASE", validSecret]])),
         ),
       ),
     )
 
-    test
-      .expect(result)
-      .toBe("test")
+    test.expect(result).toBe("test")
   })
 
   test.test("fail with short SECRET_KEY_BASE", async () => {
     const shortSecret = "short"
 
-    const program = Effect.gen(function*() {
+    const program = Effect.gen(function* () {
       const service = yield* EncryptedCookies.EncryptedCookies
       return yield* service.encrypt("test")
     })
@@ -452,23 +353,18 @@ test.describe("layerConfig", () => {
       .expect(
         Effect.runPromise(
           program.pipe(
-            Effect.provide(
-              EncryptedCookies.layerConfig("SECRET_KEY_BASE"),
-            ),
+            Effect.provide(EncryptedCookies.layerConfig("SECRET_KEY_BASE")),
             Effect.withConfigProvider(
-              ConfigProvider.fromMap(
-                new Map([["SECRET_KEY_BASE", shortSecret]]),
-              ),
+              ConfigProvider.fromMap(new Map([["SECRET_KEY_BASE", shortSecret]])),
             ),
           ),
         ),
       )
-      .rejects
-      .toThrow("SECRET_KEY_BASE must be at least 40 characters")
+      .rejects.toThrow("SECRET_KEY_BASE must be at least 40 characters")
   })
 
   test.test("fail with missing SECRET_KEY_BASE", async () => {
-    const program = Effect.gen(function*() {
+    const program = Effect.gen(function* () {
       const service = yield* EncryptedCookies.EncryptedCookies
       return yield* service.encrypt("test")
     })
@@ -477,14 +373,11 @@ test.describe("layerConfig", () => {
       .expect(
         Effect.runPromise(
           program.pipe(
-            Effect.provide(
-              EncryptedCookies.layerConfig("SECRET_KEY_BASE"),
-            ),
+            Effect.provide(EncryptedCookies.layerConfig("SECRET_KEY_BASE")),
             Effect.withConfigProvider(ConfigProvider.fromMap(new Map())),
           ),
         ),
       )
-      .rejects
-      .toThrow("SECRET_KEY_BASE must be at least 40 characters")
+      .rejects.toThrow("SECRET_KEY_BASE must be at least 40 characters")
   })
 })

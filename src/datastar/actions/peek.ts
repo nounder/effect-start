@@ -1,8 +1,4 @@
-import {
-  action,
-  startPeeking,
-  stopPeeking,
-} from "../engine.ts"
+import { action, startPeeking, stopPeeking } from "../engine.ts"
 
 action({
   name: "peek",

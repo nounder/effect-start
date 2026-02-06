@@ -9,23 +9,18 @@ import * as Pipeable from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import type * as Types from "effect/Types"
 
-export const TypeId: unique symbol = Symbol.for(
-  "effect-start/Cookies",
-)
+export const TypeId: unique symbol = Symbol.for("effect-start/Cookies")
 
 export type TypeId = typeof TypeId
 
-export const isCookies = (u: unknown): u is Cookies =>
-  Predicate.hasProperty(u, TypeId)
+export const isCookies = (u: unknown): u is Cookies => Predicate.hasProperty(u, TypeId)
 
 export interface Cookies extends Pipeable.Pipeable, Inspectable.Inspectable {
   readonly [TypeId]: TypeId
   readonly cookies: Record<string, Cookie>
 }
 
-export const CookieTypeId: unique symbol = Symbol.for(
-  "effect-start/Cookies/Cookie",
-)
+export const CookieTypeId: unique symbol = Symbol.for("effect-start/Cookies/Cookie")
 
 export type CookieTypeId = typeof CookieTypeId
 
@@ -34,24 +29,26 @@ export interface Cookie extends Inspectable.Inspectable {
   readonly name: string
   readonly value: string
   readonly valueEncoded: string
-  readonly options?: {
-    readonly domain?: string | undefined
-    readonly expires?: Date | undefined
-    readonly maxAge?: Duration.DurationInput | undefined
-    readonly path?: string | undefined
-    readonly priority?: "low" | "medium" | "high" | undefined
-    readonly httpOnly?: boolean | undefined
-    readonly secure?: boolean | undefined
-    readonly partitioned?: boolean | undefined
-    readonly sameSite?:
-      // send with top-level navigations and GET requests from third-party sites
-      | "lax"
-      // only send with same-site requests
-      | "strict"
-      // send with all requests (requires Secure)
-      | "none"
-      | undefined
-  } | undefined
+  readonly options?:
+    | {
+        readonly domain?: string | undefined
+        readonly expires?: Date | undefined
+        readonly maxAge?: Duration.DurationInput | undefined
+        readonly path?: string | undefined
+        readonly priority?: "low" | "medium" | "high" | undefined
+        readonly httpOnly?: boolean | undefined
+        readonly secure?: boolean | undefined
+        readonly partitioned?: boolean | undefined
+        readonly sameSite?:
+          // send with top-level navigations and GET requests from third-party sites
+          | "lax"
+          // only send with same-site requests
+          | "strict"
+          // send with all requests (requires Secure)
+          | "none"
+          | undefined
+      }
+    | undefined
 }
 
 const CookiesProto: Omit<Cookies, "cookies"> = {
@@ -60,9 +57,7 @@ const CookiesProto: Omit<Cookies, "cookies"> = {
   toJSON(this: Cookies) {
     return {
       _id: "effect-start/Cookies",
-      cookies: Object.fromEntries(
-        Object.entries(this.cookies).map(([k, v]) => [k, v.toJSON()]),
-      ),
+      cookies: Object.fromEntries(Object.entries(this.cookies).map(([k, v]) => [k, v.toJSON()])),
     }
   },
   pipe() {
@@ -83,9 +78,7 @@ const CookieProto = {
   },
 }
 
-const makeCookiesFromRecord = (
-  cookies: Record<string, Cookie>,
-): Cookies => {
+const makeCookiesFromRecord = (cookies: Record<string, Cookie>): Cookies => {
   const self = Object.create(CookiesProto)
   self.cookies = cookies
   return self
@@ -114,9 +107,7 @@ export const fromIterable = (cookies: Iterable<Cookie>): Cookies => {
   return makeCookiesFromRecord(record)
 }
 
-export const fromSetCookie = (
-  headers: Iterable<string> | string,
-): Cookies => {
+export const fromSetCookie = (headers: Iterable<string> | string): Cookies => {
   const arrayHeaders = typeof headers === "string" ? [headers] : headers
   const cookies: Array<Cookie> = []
   for (const header of arrayHeaders) {
@@ -139,16 +130,10 @@ export const isEmpty = (self: Cookies): boolean => {
   return true
 }
 
-export const get = (
-  self: Cookies,
-  name: string,
-): Option.Option<Cookie> =>
+export const get = (self: Cookies, name: string): Option.Option<Cookie> =>
   name in self.cookies ? Option.some(self.cookies[name]) : Option.none()
 
-export const getValue = (
-  self: Cookies,
-  name: string,
-): Option.Option<string> =>
+export const getValue = (self: Cookies, name: string): Option.Option<string> =>
   Option.map(get(self, name), (cookie) => cookie.value)
 
 export const setCookie = (self: Cookies, cookie: Cookie): Cookies =>
@@ -163,9 +148,7 @@ export const unsafeSet = (
 
 export const unsafeSetAll = (
   self: Cookies,
-  cookies: Iterable<
-    readonly [name: string, value: string, options?: Cookie["options"]]
-  >,
+  cookies: Iterable<readonly [name: string, value: string, options?: Cookie["options"]]>,
 ): Cookies => {
   const record: Record<string, Cookie> = { ...self.cookies }
   for (const [name, value, options] of cookies) {
@@ -251,8 +234,7 @@ export function serializeCookie(self: Cookie): string {
 }
 
 export const toCookieHeader = (self: Cookies): string =>
-  Object
-    .values(self.cookies)
+  Object.values(self.cookies)
     .map((cookie) => `${cookie.name}=${cookie.valueEncoded}`)
     .join("; ")
 
@@ -288,13 +270,12 @@ export function parseHeader(header: string): Record<string, string> {
 
     const key = header.substring(pos, eqIdx++).trim()
     if (result[key] === undefined) {
-      const val = header.charCodeAt(eqIdx) === 0x22
-        ? header.substring(eqIdx + 1, terminatorPos - 1).trim()
-        : header.substring(eqIdx, terminatorPos).trim()
+      const val =
+        header.charCodeAt(eqIdx) === 0x22
+          ? header.substring(eqIdx + 1, terminatorPos - 1).trim()
+          : header.substring(eqIdx, terminatorPos).trim()
 
-      result[key] = !(val.indexOf("%") === -1)
-        ? tryDecodeURIComponent(val)
-        : val
+      result[key] = !(val.indexOf("%") === -1) ? tryDecodeURIComponent(val) : val
     }
 
     pos = terminatorPos + 1
@@ -337,9 +318,7 @@ function parseSetCookie(header: string): Option.Option<Cookie> {
     const part = parts[i]
     const equalIndex = part.indexOf("=")
     const key = equalIndex === -1 ? part : part.slice(0, equalIndex).trim()
-    const value = equalIndex === -1
-      ? undefined
-      : part.slice(equalIndex + 1).trim()
+    const value = equalIndex === -1 ? undefined : part.slice(equalIndex + 1).trim()
 
     switch (key.toLowerCase()) {
       case "domain": {

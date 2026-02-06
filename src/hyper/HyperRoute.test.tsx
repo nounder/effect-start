@@ -9,29 +9,13 @@ import * as HyperRoute from "./HyperRoute.ts"
 
 test.describe("HyperRoute.html", () => {
   test.it("renders JSX to HTML string", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route.get(
-        HyperRoute.html(
-          <div>
-            Hello World
-          </div>,
-        ),
-      ),
-    )
+    const handler = RouteHttp.toWebHandler(Route.get(HyperRoute.html(<div>Hello World</div>)))
 
     const response = await Http.fetch(handler, { path: "/" })
 
-    test
-      .expect(response.status)
-      .toBe(200)
-    test
-      .expect(response.headers.get("Content-Type"))
-      .toBe(
-      "text/html; charset=utf-8",
-    )
-    test
-      .expect(await response.text())
-      .toBe("<div>Hello World</div>")
+    test.expect(response.status).toBe(200)
+    test.expect(response.headers.get("Content-Type")).toBe("text/html; charset=utf-8")
+    test.expect(await response.text()).toBe("<div>Hello World</div>")
   })
 
   test.it("renders nested JSX elements", async () => {
@@ -39,12 +23,8 @@ test.describe("HyperRoute.html", () => {
       Route.get(
         HyperRoute.html(
           <div class="container">
-            <h1>
-              Title
-            </h1>
-            <p>
-              Paragraph
-            </p>
+            <h1>Title</h1>
+            <p>Paragraph</p>
           </div>,
         ),
       ),
@@ -54,42 +34,26 @@ test.describe("HyperRoute.html", () => {
 
     test
       .expect(await response.text())
-      .toBe(
-      "<div class=\"container\"><h1>Title</h1><p>Paragraph</p></div>",
-    )
+      .toBe('<div class="container"><h1>Title</h1><p>Paragraph</p></div>')
   })
 
   test.it("renders JSX from Effect", async () => {
     const handler = RouteHttp.toWebHandler(
-      Route.get(
-        HyperRoute.html(
-          Effect.succeed(
-            <span>
-              From Effect
-            </span>,
-          ),
-        ),
-      ),
+      Route.get(HyperRoute.html(Effect.succeed(<span>From Effect</span>))),
     )
 
     const response = await Http.fetch(handler, { path: "/" })
 
-    test
-      .expect(await response.text())
-      .toBe("<span>From Effect</span>")
+    test.expect(await response.text()).toBe("<span>From Effect</span>")
   })
 
   test.it("renders JSX from generator function", async () => {
     const handler = RouteHttp.toWebHandler(
       Route.get(
         HyperRoute.html(
-          Effect.gen(function*() {
+          Effect.gen(function* () {
             const name = yield* Effect.succeed("World")
-            return (
-              <div>
-                Hello {name}
-              </div>
-            )
+            return <div>Hello {name}</div>
           }),
         ),
       ),
@@ -97,29 +61,17 @@ test.describe("HyperRoute.html", () => {
 
     const response = await Http.fetch(handler, { path: "/" })
 
-    test
-      .expect(await response.text())
-      .toBe("<div>Hello World</div>")
+    test.expect(await response.text()).toBe("<div>Hello World</div>")
   })
 
   test.it("renders JSX from handler function", async () => {
     const handler = RouteHttp.toWebHandler(
-      Route.get(
-        HyperRoute.html((context) =>
-          Effect.succeed(
-            <div>
-              Request received
-            </div>,
-          )
-        ),
-      ),
+      Route.get(HyperRoute.html((context) => Effect.succeed(<div>Request received</div>))),
     )
 
     const response = await Http.fetch(handler, { path: "/" })
 
-    test
-      .expect(await response.text())
-      .toBe("<div>Request received</div>")
+    test.expect(await response.text()).toBe("<div>Request received</div>")
   })
 
   test.it("renders JSX with dynamic content", async () => {
@@ -130,9 +82,7 @@ test.describe("HyperRoute.html", () => {
         HyperRoute.html(
           <ul>
             {items.map((item) => (
-              <li>
-                {item}
-              </li>
+              <li>{item}</li>
             ))}
           </ul>,
         ),
@@ -141,35 +91,18 @@ test.describe("HyperRoute.html", () => {
 
     const response = await Http.fetch(handler, { path: "/" })
 
-    test
-      .expect(await response.text())
-      .toBe(
-      "<ul><li>Apple</li><li>Banana</li><li>Cherry</li></ul>",
-    )
+    test.expect(await response.text()).toBe("<ul><li>Apple</li><li>Banana</li><li>Cherry</li></ul>")
   })
 
   test.it("handles Entity with JSX body", async () => {
     const handler = RouteHttp.toWebHandler(
-      Route.get(
-        HyperRoute.html(
-          Entity.make(
-            <div>
-              With Entity
-            </div>,
-            { status: 201 },
-          ),
-        ),
-      ),
+      Route.get(HyperRoute.html(Entity.make(<div>With Entity</div>, { status: 201 }))),
     )
 
     const response = await Http.fetch(handler, { path: "/" })
 
-    test
-      .expect(response.status)
-      .toBe(201)
-    test
-      .expect(await response.text())
-      .toBe("<div>With Entity</div>")
+    test.expect(response.status).toBe(201)
+    test.expect(await response.text()).toBe("<div>With Entity</div>")
   })
 
   test.it("renders data-* attributes with object values as JSON", async () => {
@@ -194,8 +127,8 @@ test.describe("HyperRoute.html", () => {
     test
       .expect(await response.text())
       .toBe(
-      "<div data-signals=\"{&quot;draft&quot;:&quot;&quot;,&quot;pendingDraft&quot;:&quot;&quot;,&quot;username&quot;:&quot;User123&quot;}\">Content</div>",
-    )
+        '<div data-signals="{&quot;draft&quot;:&quot;&quot;,&quot;pendingDraft&quot;:&quot;&quot;,&quot;username&quot;:&quot;User123&quot;}">Content</div>',
+      )
   })
 
   test.it("renders script with function child as IIFE", async () => {
@@ -214,14 +147,8 @@ test.describe("HyperRoute.html", () => {
     const response = await Http.fetch(handler, { path: "/" })
     const text = await response.text()
 
-    test
-      .expect(text)
-      .toContain("<script>(")
-    test
-      .expect(text)
-      .toContain(")(window)</script>")
-    test
-      .expect(text)
-      .toContain("window.document.title")
+    test.expect(text).toContain("<script>(")
+    test.expect(text).toContain(")(window)</script>")
+    test.expect(text).toContain("window.document.title")
   })
 })

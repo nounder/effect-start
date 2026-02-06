@@ -2,10 +2,7 @@
 type DatastarSignalsObject = Record<string, any>
 type DatastarClassObject = Record<string, boolean | string>
 type DatastarAttrObject = Record<string, string | boolean | number>
-type DatastarStyleObject = Record<
-  string,
-  string | number | boolean | null | undefined
->
+type DatastarStyleObject = Record<string, string | number | boolean | null | undefined>
 
 /**
  * Datastar attributes for reactive web applications

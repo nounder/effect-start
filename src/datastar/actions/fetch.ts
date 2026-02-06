@@ -35,9 +35,8 @@ const createHttpMethod = (
         retryMaxCount = 10,
       }: FetchArgs = {},
     ) => {
-      const controller = requestCancellation instanceof AbortController
-        ? requestCancellation
-        : new AbortController()
+      const controller =
+        requestCancellation instanceof AbortController ? requestCancellation : new AbortController()
       if (requestCancellation === "auto") {
         cleanups.get(`@${name}`)?.()
         cleanups.set(`@${name}`, async () => {
@@ -111,9 +110,7 @@ const createHttpMethod = (
 
         if (contentType === "json") {
           startPeeking()
-          payload = payload !== undefined
-            ? payload
-            : filtered({ include, exclude })
+          payload = payload !== undefined ? payload : filtered({ include, exclude })
           stopPeeking()
           const body = JSON.stringify(payload)
           if (method === "GET") {
@@ -152,8 +149,7 @@ const createHttpMethod = (
             if (name) formData.append(name, submitter.value)
           }
 
-          const multipart = formEl
-            .getAttribute("enctype") === "multipart/form-data"
+          const multipart = formEl.getAttribute("enctype") === "multipart/form-data"
           if (!multipart) {
             headers["Content-Type"] = "application/x-www-form-urlencoded"
           }
@@ -202,11 +198,7 @@ export const ERROR = "error"
 export const RETRYING = "retrying"
 export const RETRIES_FAILED = "retries-failed"
 
-const dispatchFetch = (
-  type: string,
-  el: HTMLOrSVG,
-  argsRaw: Record<string, string>,
-) =>
+const dispatchFetch = (type: string, el: HTMLOrSVG, argsRaw: Record<string, string>) =>
   document.dispatchEvent(
     new CustomEvent<DatastarFetchEvent>(DATASTAR_FETCH_EVENT, {
       detail: { type, el, argsRaw },
@@ -217,14 +209,14 @@ const isWrongContent = (err: any) => `${err}`.includes("text/event-stream")
 
 type ResponseOverrides =
   | {
-    selector?: string
-    mode?: string
-    namespace?: string
-    useViewTransition?: boolean
-  }
+      selector?: string
+      mode?: string
+      namespace?: string
+      useViewTransition?: boolean
+    }
   | {
-    onlyIfMissing?: boolean
-  }
+      onlyIfMissing?: boolean
+    }
 
 export type FetchArgs = {
   selector?: string
@@ -321,7 +313,7 @@ const getMessages = (
   onId: (id: string) => void,
   onRetry: (retry: number) => void,
   onMessage?: (msg: EventSourceMessage) => void,
-): (line: Uint8Array, fieldLength: number) => void => {
+): ((line: Uint8Array, fieldLength: number) => void) => {
   let message = newMessage()
   const decoder = new TextDecoder()
 
@@ -342,12 +334,12 @@ const getMessages = (
           message.event = value
           break
         case "id":
-          onId(message.id = value)
+          onId((message.id = value))
           break
         case "retry": {
           const retry = +value
           if (!Number.isNaN(retry)) {
-            onRetry(message.retry = retry)
+            onRetry((message.retry = retry))
           }
           break
         }
@@ -483,10 +475,10 @@ const fetchEventSource = (
         if (status !== 200) {
           onclose?.()
           if (
-            retry !== "never"
-            && !isNoContentStatus
-            && !isRedirectStatus
-            && (retry === "always" || (retry === "error" && isErrorStatus))
+            retry !== "never" &&
+            !isNoContentStatus &&
+            !isRedirectStatus &&
+            (retry === "always" || (retry === "error" && isErrorStatus))
           ) {
             clearTimeout(retryTimer)
             retryTimer = setTimeout(create, retryInterval)
@@ -527,16 +519,10 @@ const fetchEventSource = (
 
         if (ct?.includes("text/javascript")) {
           const script = document.createElement("script")
-          const scriptAttributesHeader = response.headers.get(
-            "datastar-script-attributes",
-          )
+          const scriptAttributesHeader = response.headers.get("datastar-script-attributes")
 
           if (scriptAttributesHeader) {
-            for (
-              const [name, value] of Object.entries(
-                JSON.parse(scriptAttributesHeader),
-              )
-            ) {
+            for (const [name, value] of Object.entries(JSON.parse(scriptAttributesHeader))) {
               script.setAttribute(name, value as string)
             }
           }
@@ -581,10 +567,7 @@ const fetchEventSource = (
             const interval: any = onerror?.(err) || retryInterval
             clearTimeout(retryTimer)
             retryTimer = setTimeout(create, interval)
-            retryInterval = Math.min(
-              retryInterval * retryScaler,
-              retryMaxWaitMs,
-            )
+            retryInterval = Math.min(retryInterval * retryScaler, retryMaxWaitMs)
             if (++retries >= retryMaxCount) {
               dispatchFetch(RETRIES_FAILED, el, {})
               dispose()

@@ -19,12 +19,12 @@ function reload() {
 }
 
 async function loadAllEntrypoints() {
-  const manifest: Bundle.BundleManifest = await fetch(`/${BUNDLE_URL}/manifest.json`)
-    .then(v => v.json())
+  const manifest: Bundle.BundleManifest = await fetch(`/${BUNDLE_URL}/manifest.json`).then((v) =>
+    v.json(),
+  )
 
-  manifest
-    .artifacts
-    .filter(v => v.path.endsWith(".js"))
+  manifest.artifacts
+    .filter((v) => v.path.endsWith(".js"))
     .forEach((artifact) => {
       console.log(artifact.path)
       const script = document.createElement("script")
@@ -66,7 +66,7 @@ function listen() {
     }
   })
 
-  eventSource.addEventListener("error", error => {
+  eventSource.addEventListener("error", (error) => {
     console.error("SSE connection error:", error)
   })
 

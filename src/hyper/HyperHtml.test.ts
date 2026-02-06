@@ -11,9 +11,7 @@ test.it("boolean true attributes render without value (React-like)", () => {
 
   const html = HyperHtml.renderToString(node)
 
-  test
-    .expect(html)
-    .toBe("<div hidden disabled data-active></div>")
+  test.expect(html).toBe("<div hidden disabled data-active></div>")
 })
 
 test.it("boolean false attributes are omitted", () => {
@@ -25,9 +23,7 @@ test.it("boolean false attributes are omitted", () => {
 
   const html = HyperHtml.renderToString(node)
 
-  test
-    .expect(html)
-    .toBe("<div></div>")
+  test.expect(html).toBe("<div></div>")
 })
 
 test.it("string attributes render with values", () => {
@@ -39,9 +35,7 @@ test.it("string attributes render with values", () => {
 
   const html = HyperHtml.renderToString(node)
 
-  test
-    .expect(html)
-    .toBe("<div id=\"test\" class=\"my-class\" data-value=\"hello\"></div>")
+  test.expect(html).toBe('<div id="test" class="my-class" data-value="hello"></div>')
 })
 
 test.it("number attributes render with values", () => {
@@ -54,9 +48,7 @@ test.it("number attributes render with values", () => {
 
   const html = HyperHtml.renderToString(node)
 
-  test
-    .expect(html)
-    .toBe("<input type=\"number\" min=\"0\" max=\"100\" value=\"50\">")
+  test.expect(html).toBe('<input type="number" min="0" max="100" value="50">')
 })
 
 test.it("null and undefined attributes are omitted", () => {
@@ -68,9 +60,7 @@ test.it("null and undefined attributes are omitted", () => {
 
   const html = HyperHtml.renderToString(node)
 
-  test
-    .expect(html)
-    .toBe("<div data-test=\"value\"></div>")
+  test.expect(html).toBe('<div data-test="value"></div>')
 })
 
 test.it("mixed boolean and string attributes", () => {
@@ -84,9 +74,7 @@ test.it("mixed boolean and string attributes", () => {
 
   const html = HyperHtml.renderToString(node)
 
-  test
-    .expect(html)
-    .toBe("<input type=\"checkbox\" checked name=\"test\" value=\"on\">")
+  test.expect(html).toBe('<input type="checkbox" checked name="test" value="on">')
 })
 
 test.it("data-* attributes with object values are JSON stringified", () => {
@@ -103,7 +91,7 @@ test.it("data-* attributes with object values are JSON stringified", () => {
   test
     .expect(html)
     .toBe(
-      "<div data-signals=\"{&quot;draft&quot;:&quot;&quot;,&quot;pendingDraft&quot;:&quot;&quot;,&quot;username&quot;:&quot;User123&quot;}\"></div>",
+      '<div data-signals="{&quot;draft&quot;:&quot;&quot;,&quot;pendingDraft&quot;:&quot;&quot;,&quot;username&quot;:&quot;User123&quot;}"></div>',
     )
 })
 
@@ -114,9 +102,7 @@ test.it("data-* attributes with array values are JSON stringified", () => {
 
   const html = HyperHtml.renderToString(node)
 
-  test
-    .expect(html)
-    .toBe("<div data-items=\"[1,2,3]\"></div>")
+  test.expect(html).toBe('<div data-items="[1,2,3]"></div>')
 })
 
 test.it("data-* attributes with nested object values", () => {
@@ -132,7 +118,7 @@ test.it("data-* attributes with nested object values", () => {
   test
     .expect(html)
     .toBe(
-      "<div data-config=\"{&quot;user&quot;:{&quot;name&quot;:&quot;John&quot;,&quot;active&quot;:true},&quot;settings&quot;:{&quot;theme&quot;:&quot;dark&quot;}}\"></div>",
+      '<div data-config="{&quot;user&quot;:{&quot;name&quot;:&quot;John&quot;,&quot;active&quot;:true},&quot;settings&quot;:{&quot;theme&quot;:&quot;dark&quot;}}"></div>',
     )
 })
 
@@ -143,9 +129,7 @@ test.it("data-* string values are not JSON stringified", () => {
 
   const html = HyperHtml.renderToString(node)
 
-  test
-    .expect(html)
-    .toBe("<div data-value=\"hello world\"></div>")
+  test.expect(html).toBe('<div data-value="hello world"></div>')
 })
 
 test.it("non-data attributes with object values are not JSON stringified", () => {
@@ -155,9 +139,7 @@ test.it("non-data attributes with object values are not JSON stringified", () =>
 
   const html = HyperHtml.renderToString(node)
 
-  test
-    .expect(html)
-    .toBe("<div style=\"color: red\"></div>")
+  test.expect(html).toBe('<div style="color: red"></div>')
 })
 
 test.it("script with function child renders as IIFE", () => {
@@ -171,9 +153,7 @@ test.it("script with function child renders as IIFE", () => {
 
   const html = HyperHtml.renderToString(node)
 
-  test
-    .expect(html)
-    .toBe(`<script>(${handler.toString()})(window)</script>`)
+  test.expect(html).toBe(`<script>(${handler.toString()})(window)</script>`)
 })
 
 test.it("script with arrow function child renders as IIFE", () => {
@@ -185,15 +165,9 @@ test.it("script with arrow function child renders as IIFE", () => {
 
   const html = HyperHtml.renderToString(node)
 
-  test
-    .expect(html)
-    .toContain("<script>(")
-  test
-    .expect(html)
-    .toContain(")(window)</script>")
-  test
-    .expect(html)
-    .toContain("window.alert")
+  test.expect(html).toContain("<script>(")
+  test.expect(html).toContain(")(window)</script>")
+  test.expect(html).toContain("window.alert")
 })
 
 test.it("script with string child renders without escaping", () => {
@@ -203,21 +177,17 @@ test.it("script with string child renders without escaping", () => {
 
   const html = HyperHtml.renderToString(node)
 
-  test
-    .expect(html)
-    .toBe("<script>console.log('hello')</script>")
+  test.expect(html).toBe("<script>console.log('hello')</script>")
 })
 
 test.it("script with string child preserves ampersands and quotes", () => {
   const node = HyperNode.make("script", {
-    children: "if (a && b) { console.log(\"yes\") }",
+    children: 'if (a && b) { console.log("yes") }',
   })
 
   const html = HyperHtml.renderToString(node)
 
-  test
-    .expect(html)
-    .toBe("<script>if (a && b) { console.log(\"yes\") }</script>")
+  test.expect(html).toBe('<script>if (a && b) { console.log("yes") }</script>')
 })
 
 test.it("style tag content is not escaped", () => {
@@ -227,9 +197,7 @@ test.it("style tag content is not escaped", () => {
 
   const html = HyperHtml.renderToString(node)
 
-  test
-    .expect(html)
-    .toBe("<style>.foo > .bar { content: '&'; }</style>")
+  test.expect(html).toBe("<style>.foo > .bar { content: '&'; }</style>")
 })
 
 test.it("script with attributes and no children", () => {
@@ -240,9 +208,7 @@ test.it("script with attributes and no children", () => {
 
   const html = HyperHtml.renderToString(node)
 
-  test
-    .expect(html)
-    .toBe('<script type="module" src="https://example.com/app.js"></script>')
+  test.expect(html).toBe('<script type="module" src="https://example.com/app.js"></script>')
 })
 
 test.it("normal tag string content is escaped", () => {
@@ -252,7 +218,5 @@ test.it("normal tag string content is escaped", () => {
 
   const html = HyperHtml.renderToString(node)
 
-  test
-    .expect(html)
-    .toBe("<div>a &amp;&amp; b</div>")
+  test.expect(html).toBe("<div>a &amp;&amp; b</div>")
 })

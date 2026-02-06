@@ -12,7 +12,7 @@ Fundamental patterns for developing high-quality, type-safe code within the Effe
 
 ```typescript
 // ❌ WRONG - This will cause runtime errors
-Effect.gen(function*() {
+Effect.gen(function* () {
   try {
     const result = yield* someEffect
     return result
@@ -23,7 +23,7 @@ Effect.gen(function*() {
 })
 
 // ✅ CORRECT - Use Effect's built-in error handling
-Effect.gen(function*() {
+Effect.gen(function* () {
   const result = yield* Effect.result(someEffect)
   if (result._tag === "Failure") {
     // Handle error case properly
@@ -56,13 +56,13 @@ const safeValue = Effect.try(() => JSON.parse(jsonString))
 
 ## ✅ MANDATORY PATTERNS
 
-### 🔄 return yield* Pattern for Errors
+### 🔄 return yield\* Pattern for Errors
 
 **CRITICAL**: Always use `return yield*` when yielding terminal effects.
 
 ```typescript
 // ✅ CORRECT - Makes termination explicit
-Effect.gen(function*() {
+Effect.gen(function* () {
   if (invalidCondition) {
     return yield* Effect.fail("Validation failed")
   }
@@ -77,7 +77,7 @@ Effect.gen(function*() {
 })
 
 // ❌ WRONG - Missing return keyword leads to unreachable code
-Effect.gen(function*() {
+Effect.gen(function* () {
   if (invalidCondition) {
     yield* Effect.fail("Validation failed") // Missing return!
     // Unreachable code after error!
@@ -92,13 +92,10 @@ Effect.gen(function*() {
 Use `Effect.gen` for sequential operations with proper error propagation:
 
 ```typescript
-import {
-  Console,
-  Effect,
-} from "effect"
+import { Console, Effect } from "effect"
 
 const processData = (input: string) =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     // Validate input
     if (input.length === 0) {
       return yield* Effect.fail("Input cannot be empty")
@@ -122,10 +119,7 @@ const processData = (input: string) =>
 Create structured, typed errors using `Data.TaggedError`:
 
 ```typescript
-import {
-  Data,
-  Effect,
-} from "effect"
+import { Data, Effect } from "effect"
 
 // Define custom error types
 class ValidationError extends Data.TaggedError("ValidationError")<{
@@ -140,7 +134,7 @@ class NetworkError extends Data.TaggedError("NetworkError")<{
 
 // Use in operations
 const validateAndFetch = (url: string) =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     if (!url.startsWith("https://")) {
       return yield* Effect.fail(
         new ValidationError({
@@ -173,10 +167,7 @@ const validateAndFetch = (url: string) =>
 Use `Effect.acquireUseRelease` for automatic resource cleanup:
 
 ```typescript
-import {
-  Console,
-  Effect,
-} from "effect"
+import { Console, Effect } from "effect"
 
 // Resource acquisition pattern
 const withDatabase = <A, E>(
@@ -197,7 +188,7 @@ const withDatabase = <A, E>(
 // Usage
 const queryUser = (id: string) =>
   withDatabase((db) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const user = yield* Effect.tryPromise({
         try: () => db.query("SELECT * FROM users WHERE id = ?", [id]),
         catch: (error) => new QueryError({ query: "users", cause: error }),
@@ -205,7 +196,7 @@ const queryUser = (id: string) =>
 
       yield* Console.log(`Found user: ${user.name}`)
       return user
-    })
+    }),
   )
 ```
 
@@ -214,19 +205,13 @@ const queryUser = (id: string) =>
 Build applications using layered architecture:
 
 ```typescript
-import {
-  Context,
-  Effect,
-  Layer,
-} from "effect"
+import { Context, Effect, Layer } from "effect"
 
 // Define service interfaces
 class DatabaseService extends Context.Tag("DatabaseService")<
   DatabaseService,
   {
-    readonly query: (
-      sql: string,
-    ) => Effect.Effect<unknown[], DatabaseError, never>
+    readonly query: (sql: string) => Effect.Effect<unknown[], DatabaseError, never>
   }
 >() {}
 
@@ -251,17 +236,15 @@ const DatabaseServiceLive = Layer.succeed(
 
 const UserServiceLive = Layer.effect(
   UserService,
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const db = yield* DatabaseService
 
     return UserService.of({
       getUser: (id) =>
-        Effect.gen(function*() {
+        Effect.gen(function* () {
           const rows = yield* db.query(`SELECT * FROM users WHERE id = '${id}'`)
           if (rows.length === 0) {
-            return yield* Effect.fail(
-              new UserError({ message: "User not found" }),
-            )
+            return yield* Effect.fail(new UserError({ message: "User not found" }))
           }
           return rows[0] as User
         }),
@@ -270,9 +253,7 @@ const UserServiceLive = Layer.effect(
 )
 
 // Compose layers
-const AppLayer = UserServiceLive.pipe(
-  Layer.provide(DatabaseServiceLive),
-)
+const AppLayer = UserServiceLive.pipe(Layer.provide(DatabaseServiceLive))
 ```
 
 ## 🔧 DEVELOPMENT WORKFLOW PATTERNS
@@ -305,7 +286,7 @@ interface FeatureConfig {
 
 // Step 2: Core implementation
 const createFeature = (config: FeatureConfig) =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     // Basic implementation
     yield* Console.log("Feature created")
     return { config }
@@ -313,7 +294,7 @@ const createFeature = (config: FeatureConfig) =>
 
 // Step 3: Add error handling
 const createFeatureWithValidation = (config: FeatureConfig) =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     if (config.option2 < 0) {
       return yield* Effect.fail("Option2 must be positive")
     }
@@ -356,7 +337,7 @@ t.it("string attributes render with values", () => {
 
   const html = HyperHtml.renderToString(node)
 
-  t.expect(html).toBe("<div id=\"test\" class=\"my-class\"></div>")
+  t.expect(html).toBe('<div id="test" class="my-class"></div>')
 })
 ```
 
@@ -372,14 +353,11 @@ import * as Schema from "effect/Schema"
 import * as Route from "./Route.ts"
 
 t.it("types default routes", () => {
-  const routes = Route
-    .text(Effect.succeed("hello"))
-    .html(Effect.succeed("<div>world</div>"))
+  const routes = Route.text(Effect.succeed("hello")).html(Effect.succeed("<div>world</div>"))
 
-  type Expected = Route.RouteSet<[
-    Route.Route<"GET", "text/plain">,
-    Route.Route<"GET", "text/html">,
-  ]>
+  type Expected = Route.RouteSet<
+    [Route.Route<"GET", "text/plain">, Route.Route<"GET", "text/html">]
+  >
 
   Function.satisfies<Expected>()(routes)
 })
@@ -389,12 +367,10 @@ t.it("context is typed with schemas", () => {
     id: Schema.String,
   })
 
-  Route
-    .schemaPathParams(PathSchema)
-    .text((context) => {
-      Function.satisfies<string>()(context.pathParams.id)
-      return Effect.succeed("hello")
-    })
+  Route.schemaPathParams(PathSchema).text((context) => {
+    Function.satisfies<string>()(context.pathParams.id)
+    return Effect.succeed("hello")
+  })
 })
 ```
 

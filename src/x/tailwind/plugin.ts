@@ -8,8 +8,8 @@ const packageJson = await NodeUtils.findClosestPackageJson(process.cwd())
 const scanPath = dirParam
   ? NPath.resolve(process.cwd(), dirParam)
   : packageJson
-  ? NPath.dirname(packageJson)
-  : process.cwd()
+    ? NPath.dirname(packageJson)
+    : process.cwd()
 
 // Export as default to be used in bunfig.toml
 export default TailwindPlugin.make({

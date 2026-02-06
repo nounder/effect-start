@@ -9,11 +9,7 @@ import * as RouteHook from "./RouteHook.ts"
 
 export interface RequestBodyError {
   readonly _tag: "RequestBodyError"
-  readonly reason:
-    | "JsonError"
-    | "UrlParamsError"
-    | "MultipartError"
-    | "FormDataError"
+  readonly reason: "JsonError" | "UrlParamsError" | "MultipartError" | "FormDataError"
   readonly cause: unknown
 }
 
@@ -29,211 +25,114 @@ export const File = Schema.TaggedStruct("File", {
   content: Schema.Uint8ArrayFromSelf,
 })
 
-export function schemaHeaders<
-  A,
-  I extends Readonly<Record<string, string | undefined>>,
-  R,
->(
+export function schemaHeaders<A, I extends Readonly<Record<string, string | undefined>>, R>(
   fields: Schema.Schema<A, I, R>,
-): <
-  D extends Route.RouteDescriptor.Any,
-  SB extends {},
-  P extends Route.Route.Tuple,
->(
+): <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
   self: Route.RouteSet.RouteSet<D, SB, P>,
 ) => Route.RouteSet.RouteSet<
   D,
   SB,
-  [
-    ...P,
-    Route.Route.Route<
-      {},
-      { headers: A },
-      unknown,
-      ParseResult.ParseError,
-      R
-    >,
-  ]
+  [...P, Route.Route.Route<{}, { headers: A }, unknown, ParseResult.ParseError, R>]
 > {
   const decode = Schema.decodeUnknown(fields)
   return RouteHook.filter((ctx: { request: Request; headers?: {} }) =>
-    Effect.map(
-      decode(Http.mapHeaders(ctx.request.headers)),
-      (parsed) => ({
-        context: {
-          headers: {
-            ...ctx.headers,
-            ...parsed,
-          },
+    Effect.map(decode(Http.mapHeaders(ctx.request.headers)), (parsed) => ({
+      context: {
+        headers: {
+          ...ctx.headers,
+          ...parsed,
         },
-      }),
-    )
+      },
+    })),
   )
 }
 
-export function schemaCookies<
-  A,
-  I extends Readonly<Record<string, string | undefined>>,
-  R,
->(
+export function schemaCookies<A, I extends Readonly<Record<string, string | undefined>>, R>(
   fields: Schema.Schema<A, I, R>,
-): <
-  D extends Route.RouteDescriptor.Any,
-  SB extends {},
-  P extends Route.Route.Tuple,
->(
+): <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
   self: Route.RouteSet.RouteSet<D, SB, P>,
 ) => Route.RouteSet.RouteSet<
   D,
   SB,
-  [
-    ...P,
-    Route.Route.Route<
-      {},
-      { cookies: A },
-      unknown,
-      ParseResult.ParseError,
-      R
-    >,
-  ]
+  [...P, Route.Route.Route<{}, { cookies: A }, unknown, ParseResult.ParseError, R>]
 > {
   const decode = Schema.decodeUnknown(fields)
   return RouteHook.filter((ctx: { request: Request; cookies?: {} }) =>
-    Effect.map(
-      decode(Http.parseCookies(ctx.request.headers.get("cookie"))),
-      (parsed) => ({
-        context: {
-          cookies: {
-            ...ctx.cookies,
-            ...parsed,
-          },
+    Effect.map(decode(Http.parseCookies(ctx.request.headers.get("cookie"))), (parsed) => ({
+      context: {
+        cookies: {
+          ...ctx.cookies,
+          ...parsed,
         },
-      }),
-    )
+      },
+    })),
   )
 }
 
 export function schemaSearchParams<
   A,
-  I extends Readonly<
-    Record<string, string | ReadonlyArray<string> | undefined>
-  >,
+  I extends Readonly<Record<string, string | ReadonlyArray<string> | undefined>>,
   R,
 >(
   fields: Schema.Schema<A, I, R>,
-): <
-  D extends Route.RouteDescriptor.Any,
-  SB extends {},
-  P extends Route.Route.Tuple,
->(
+): <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
   self: Route.RouteSet.RouteSet<D, SB, P>,
 ) => Route.RouteSet.RouteSet<
   D,
   SB,
-  [
-    ...P,
-    Route.Route.Route<
-      {},
-      { searchParams: A },
-      unknown,
-      ParseResult.ParseError,
-      R
-    >,
-  ]
+  [...P, Route.Route.Route<{}, { searchParams: A }, unknown, ParseResult.ParseError, R>]
 > {
   const decode = Schema.decodeUnknown(fields)
   return RouteHook.filter((ctx: { request: Request; searchParams?: {} }) => {
     const url = new URL(ctx.request.url)
-    return Effect.map(
-      decode(Http.mapUrlSearchParams(url.searchParams)),
-      (parsed) => ({
-        context: {
-          searchParams: {
-            ...ctx.searchParams,
-            ...parsed,
-          },
+    return Effect.map(decode(Http.mapUrlSearchParams(url.searchParams)), (parsed) => ({
+      context: {
+        searchParams: {
+          ...ctx.searchParams,
+          ...parsed,
         },
-      }),
-    )
+      },
+    }))
   })
 }
 
-export function schemaPathParams<
-  A,
-  I extends Readonly<Record<string, string | undefined>>,
-  R,
->(
+export function schemaPathParams<A, I extends Readonly<Record<string, string | undefined>>, R>(
   fields: Schema.Schema<A, I, R>,
-): <
-  D extends Route.RouteDescriptor.Any,
-  SB extends {},
-  P extends Route.Route.Tuple,
->(
+): <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
   self: Route.RouteSet.RouteSet<D, SB, P>,
 ) => Route.RouteSet.RouteSet<
   D,
   SB,
-  [
-    ...P,
-    Route.Route.Route<
-      {},
-      { pathParams: A },
-      unknown,
-      ParseResult.ParseError,
-      R
-    >,
-  ]
+  [...P, Route.Route.Route<{}, { pathParams: A }, unknown, ParseResult.ParseError, R>]
 > {
   const decode = Schema.decodeUnknown(fields)
-  return RouteHook.filter(
-    (ctx: { request: Request; path?: string; pathParams?: {} }) => {
-      const url = new URL(ctx.request.url)
-      const pattern = ctx.path ?? "/"
-      const params = PathPattern.match(pattern, url.pathname) ?? {}
-      return Effect.map(
-        decode(params),
-        (parsed) => ({
-          context: {
-            pathParams: {
-              ...ctx.pathParams,
-              ...parsed,
-            },
-          },
-        }),
-      )
-    },
-  )
+  return RouteHook.filter((ctx: { request: Request; path?: string; pathParams?: {} }) => {
+    const url = new URL(ctx.request.url)
+    const pattern = ctx.path ?? "/"
+    const params = PathPattern.match(pattern, url.pathname) ?? {}
+    return Effect.map(decode(params), (parsed) => ({
+      context: {
+        pathParams: {
+          ...ctx.pathParams,
+          ...parsed,
+        },
+      },
+    }))
+  })
 }
 
-export function schemaBodyJson<
-  A,
-  I,
-  R,
->(
+export function schemaBodyJson<A, I, R>(
   fields: Schema.Schema<A, I, R>,
-): <
-  D extends Route.RouteDescriptor.Any,
-  SB extends {},
-  P extends Route.Route.Tuple,
->(
+): <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
   self: Route.RouteSet.RouteSet<D, SB, P>,
 ) => Route.RouteSet.RouteSet<
   D,
   SB,
-  [
-    ...P,
-    Route.Route.Route<
-      {},
-      { body: A },
-      unknown,
-      RequestBodyError | ParseResult.ParseError,
-      R
-    >,
-  ]
+  [...P, Route.Route.Route<{}, { body: A }, unknown, RequestBodyError | ParseResult.ParseError, R>]
 > {
   const decode = Schema.decodeUnknown(fields)
   return RouteHook.filter((ctx: { request: Request; body?: {} }) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const json = yield* Effect.tryPromise({
         try: () => ctx.request.json(),
         catch: (error) => RequestBodyError("JsonError", error),
@@ -247,41 +146,26 @@ export function schemaBodyJson<
           },
         },
       }
-    })
+    }),
   )
 }
 
 export function schemaBodyUrlParams<
   A,
-  I extends Readonly<
-    Record<string, string | ReadonlyArray<string> | undefined>
-  >,
+  I extends Readonly<Record<string, string | ReadonlyArray<string> | undefined>>,
   R,
 >(
   fields: Schema.Schema<A, I, R>,
-): <
-  D extends Route.RouteDescriptor.Any,
-  SB extends {},
-  P extends Route.Route.Tuple,
->(
+): <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
   self: Route.RouteSet.RouteSet<D, SB, P>,
 ) => Route.RouteSet.RouteSet<
   D,
   SB,
-  [
-    ...P,
-    Route.Route.Route<
-      {},
-      { body: A },
-      unknown,
-      RequestBodyError | ParseResult.ParseError,
-      R
-    >,
-  ]
+  [...P, Route.Route.Route<{}, { body: A }, unknown, RequestBodyError | ParseResult.ParseError, R>]
 > {
   const decode = Schema.decodeUnknown(fields)
   return RouteHook.filter((ctx: { request: Request; body?: {} }) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const text = yield* Effect.tryPromise({
         try: () => ctx.request.text(),
         catch: (error) => RequestBodyError("UrlParamsError", error),
@@ -296,26 +180,17 @@ export function schemaBodyUrlParams<
           },
         },
       }
-    })
+    }),
   )
 }
 
 export function schemaBodyMultipart<
   A,
-  I extends Partial<
-    Record<
-      string,
-      ReadonlyArray<Http.FilePart> | ReadonlyArray<string> | string
-    >
-  >,
+  I extends Partial<Record<string, ReadonlyArray<Http.FilePart> | ReadonlyArray<string> | string>>,
   R,
 >(
   fields: Schema.Schema<A, I, R>,
-): <
-  D extends Route.RouteDescriptor.Any,
-  SB extends {},
-  P extends Route.Route.Tuple,
->(
+): <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
   self: Route.RouteSet.RouteSet<D, SB, P>,
 ) => Route.RouteSet.RouteSet<
   D,
@@ -333,7 +208,7 @@ export function schemaBodyMultipart<
 > {
   const decode = Schema.decodeUnknown(fields)
   return RouteHook.filter((ctx: { request: Request; body?: {} }) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const record = yield* Effect.tryPromise({
         try: () => Http.parseFormData(ctx.request),
         catch: (error) => RequestBodyError("MultipartError", error),
@@ -347,26 +222,17 @@ export function schemaBodyMultipart<
           },
         },
       }
-    })
+    }),
   )
 }
 
 export function schemaBodyForm<
   A,
-  I extends Partial<
-    Record<
-      string,
-      ReadonlyArray<Http.FilePart> | ReadonlyArray<string> | string
-    >
-  >,
+  I extends Partial<Record<string, ReadonlyArray<Http.FilePart> | ReadonlyArray<string> | string>>,
   R,
 >(
   fields: Schema.Schema<A, I, R>,
-): <
-  D extends Route.RouteDescriptor.Any,
-  SB extends {},
-  P extends Route.Route.Tuple,
->(
+): <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
   self: Route.RouteSet.RouteSet<D, SB, P>,
 ) => Route.RouteSet.RouteSet<
   D,
@@ -384,7 +250,7 @@ export function schemaBodyForm<
 > {
   const decode = Schema.decodeUnknown(fields)
   return RouteHook.filter((ctx: { request: Request; body?: {} }) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const contentType = ctx.request.headers.get("content-type") ?? ""
 
       if (contentType.includes("application/x-www-form-urlencoded")) {
@@ -418,6 +284,6 @@ export function schemaBodyForm<
           },
         },
       }
-    })
+    }),
   )
 }
