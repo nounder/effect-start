@@ -1,14 +1,12 @@
-import { DATASTAR_FETCH_EVENT } from "../engine.ts"
-import { action } from "../engine.ts"
 import {
+  action,
+  DATASTAR_FETCH_EVENT,
   filtered,
   startPeeking,
   stopPeeking,
-} from "../engine.ts"
-import type {
-  DatastarFetchEvent,
-  HTMLOrSVG,
-  SignalFilterOptions,
+  type DatastarFetchEvent,
+  type HTMLOrSVG,
+  type SignalFilterOptions,
 } from "../engine.ts"
 import { kebab } from "../utils.ts"
 
@@ -82,7 +80,7 @@ const createHttpMethod = (
           onmessage: (evt) => {
             if (!evt.event.startsWith("datastar")) return
             const type = evt.event
-            const argsRawLines: Record<string, string[]> = {}
+            const argsRawLines: Record<string, Array<string>> = {}
 
             for (const line of evt.data.split("\n")) {
               const i = line.indexOf(" ")
@@ -458,7 +456,7 @@ const fetchEventSource = (
           response: Response,
           name: string,
           responseOverrides?: ResponseOverrides,
-          ...argNames: string[]
+          ...argNames: Array<string>
         ) => {
           const argsRaw: Record<string, string> = {
             [name]: await response.text(),

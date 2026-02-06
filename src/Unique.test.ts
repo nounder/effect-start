@@ -185,7 +185,9 @@ test.describe("Unique.ulid", () => {
       () => Unique.ulid(time),
     )
 
-    test.expect(ulidA.slice(0, 10)).toBe(ulidB.slice(0, 10))
+    test
+      .expect(ulidA.slice(0, 10))
+      .toBe(ulidB.slice(0, 10))
   })
 })
 
@@ -210,7 +212,9 @@ test.describe("Unique.toTimestamp", () => {
       0x0f,
     ])
 
-    test.expect(Unique.toTimestamp(bytes)).toBe(0x000102030405)
+    test
+      .expect(Unique.toTimestamp(bytes))
+      .toBe(0x000102030405)
   })
 })
 

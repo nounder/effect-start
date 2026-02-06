@@ -1,7 +1,9 @@
-import { DATASTAR_FETCH_EVENT } from "../engine.ts"
-import { attribute } from "../engine.ts"
-import { mergePaths } from "../engine.ts"
-import type { DatastarFetchEvent } from "../engine.ts"
+import {
+  attribute,
+  DATASTAR_FETCH_EVENT,
+  mergePaths,
+  type DatastarFetchEvent,
+} from "../engine.ts"
 import { modifyCasing } from "../utils.ts"
 import {
   FINISHED,

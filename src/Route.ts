@@ -6,7 +6,7 @@ import * as Predicate from "effect/Predicate"
 import * as Entity from "./Entity.ts"
 import * as RouteBody from "./RouteBody.ts"
 import * as RouteTree from "./RouteTree.ts"
-import * as Values from "./Values.ts"
+import type * as Values from "./Values.ts"
 
 export const RouteItems: unique symbol = Symbol()
 export const RouteDescriptor: unique symbol = Symbol()
@@ -246,7 +246,7 @@ export function descriptor<
   T extends RouteSet.Data<any, any, any>,
 >(
   self: Iterable<T>,
-): T[typeof RouteDescriptor][]
+): Array<T[typeof RouteDescriptor]>
 export function descriptor(
   self:
     | RouteSet.Data<any, any, any>

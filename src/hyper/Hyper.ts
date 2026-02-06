@@ -2,7 +2,7 @@ import * as Context from "effect/Context"
 import * as Fiber from "effect/Fiber"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
-import { HyperHooks } from "../x/datastar/index.ts"
+import type { HyperHooks } from "../x/datastar/index.ts"
 import type { JSX } from "./jsx.d.ts"
 
 type Elements = JSX.IntrinsicElements

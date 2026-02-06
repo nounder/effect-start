@@ -1,9 +1,9 @@
 import * as test from "bun:test"
 import * as Effect from "effect/Effect"
-import * as ParseResult from "effect/ParseResult"
+import type * as ParseResult from "effect/ParseResult"
 import * as Schema from "effect/Schema"
 import * as Route from "./Route.ts"
-import * as RouteMount from "./RouteMount.ts"
+import type * as RouteMount from "./RouteMount.ts"
 
 test.it("uses GET method", async () => {
   const route = Route.get(

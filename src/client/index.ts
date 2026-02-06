@@ -7,11 +7,8 @@
 /// <reference lib="dom" />
 /// <reference lib="dom.iterable" />
 
-import type {
-  BundleEvent,
-  BundleManifest,
-} from "../bundler/Bundle.ts"
-import { showBuildError } from "./Overlay.ts"
+import type * as Bundle from "../bundler/Bundle.ts"
+import * as Overlay from "./Overlay.ts"
 import * as ScrollState from "./ScrollState.ts"
 
 const BUNDLE_URL = globalThis._BUNDLE_URL ?? "/_bundle"
@@ -22,7 +19,7 @@ function reload() {
 }
 
 async function loadAllEntrypoints() {
-  const manifest: BundleManifest = await fetch(`/${BUNDLE_URL}/manifest.json`)
+  const manifest: Bundle.BundleManifest = await fetch(`/${BUNDLE_URL}/manifest.json`)
     .then(v => v.json())
 
   manifest
@@ -40,14 +37,14 @@ async function loadAllEntrypoints() {
     })
 }
 
-function handleBundleEvent(event: BundleEvent) {
+function handleBundleEvent(event: Bundle.BundleEvent) {
   switch (event._tag) {
     case "Change":
       console.debug("Bundle change detected...")
       reload()
       break
     case "BuildError":
-      showBuildError(event.error)
+      Overlay.showBuildError(event.error)
       break
   }
 }

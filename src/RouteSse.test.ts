@@ -82,12 +82,20 @@ test.describe("Route.sse()", () => {
     )
     const response = await Http.fetch(handler, { path: "/events" })
 
-    test.expect(response.headers.get("content-type")).toBe("text/event-stream")
-    test.expect(response.headers.get("cache-control")).toBe("no-cache")
-    test.expect(response.headers.get("connection")).toBe("keep-alive")
+    test
+      .expect(response.headers.get("content-type"))
+      .toBe("text/event-stream")
+    test
+      .expect(response.headers.get("cache-control"))
+      .toBe("no-cache")
+    test
+      .expect(response.headers.get("connection"))
+      .toBe("keep-alive")
 
     const text = await response.text()
-    test.expect(text).toBe("data: hello\n\ndata: world\n\n")
+    test
+      .expect(text)
+      .toBe("data: hello\n\ndata: world\n\n")
   })
 
   test.it("formats events with event field", async () => {
@@ -99,7 +107,9 @@ test.describe("Route.sse()", () => {
     const response = await Http.fetch(handler, { path: "/events" })
 
     const text = await response.text()
-    test.expect(text).toBe("event: custom\ndata: payload\n\n")
+    test
+      .expect(text)
+      .toBe("event: custom\ndata: payload\n\n")
   })
 
   test.it("formats events with retry", async () => {
@@ -111,7 +121,9 @@ test.describe("Route.sse()", () => {
     const response = await Http.fetch(handler, { path: "/events" })
 
     const text = await response.text()
-    test.expect(text).toBe("data: hello\nretry: 5000\n\n")
+    test
+      .expect(text)
+      .toBe("data: hello\nretry: 5000\n\n")
   })
 
   test.it("formats multi-line data with multiple data fields", async () => {
@@ -128,7 +140,9 @@ test.describe("Route.sse()", () => {
     const response = await Http.fetch(handler, { path: "/events" })
 
     const text = await response.text()
-    test.expect(text).toBe(
+    test
+      .expect(text)
+      .toBe(
       "event: patch\ndata: line1\ndata: line2\ndata: line3\n\n",
     )
   })
@@ -144,7 +158,9 @@ test.describe("Route.sse()", () => {
     const response = await Http.fetch(handler, { path: "/events" })
 
     const text = await response.text()
-    test.expect(text).toBe("data: direct\n\n")
+    test
+      .expect(text)
+      .toBe("data: direct\n\n")
   })
 
   test.it("infers error type from Stream", () => {
@@ -165,7 +181,9 @@ test.describe("Route.sse()", () => {
       Route.Route.Route<any, any, any, infer E, any> ? E
       : never
 
-    test.expectTypeOf<RouteError>().toEqualTypeOf<MyError>()
+    test
+      .expectTypeOf<RouteError>()
+      .toEqualTypeOf<MyError>()
   })
 
   test.it("infers context type from Stream", () => {
@@ -184,7 +202,9 @@ test.describe("Route.sse()", () => {
       Route.Route.Route<any, any, any, any, infer R> ? R
       : never
 
-    test.expectTypeOf<RouteContext>().toEqualTypeOf<Config>()
+    test
+      .expectTypeOf<RouteContext>()
+      .toEqualTypeOf<Config>()
   })
 
   test.it("works with context at runtime", async () => {
@@ -202,7 +222,9 @@ test.describe("Route.sse()", () => {
     const response = await Http.fetch(handler, { path: "/events" })
     const text = await response.text()
 
-    test.expect(text).toBe("data: from context\n\n")
+    test
+      .expect(text)
+      .toBe("data: from context\n\n")
   })
 
   test.it("formats tagged struct as event with JSON data", async () => {
@@ -219,7 +241,9 @@ test.describe("Route.sse()", () => {
     const response = await Http.fetch(handler, { path: "/events" })
 
     const text = await response.text()
-    test.expect(text).toBe(
+    test
+      .expect(text)
+      .toBe(
       `event: UserCreated\ndata: {"_tag":"UserCreated","id":123,"name":"Alice"}\n\n`
         + `event: UserUpdated\ndata: {"_tag":"UserUpdated","id":123,"active":true}\n\n`,
     )
@@ -240,7 +264,9 @@ test.describe("Route.sse()", () => {
     const response = await Http.fetch(handler, { path: "/events" })
 
     const text = await response.text()
-    test.expect(text).toBe(
+    test
+      .expect(text)
+      .toBe(
       `data: plain message\n\n`
         + `event: Notification\ndata: {"_tag":"Notification","text":"hello"}\n\n`
         + `event: custom\ndata: another\n\n`,

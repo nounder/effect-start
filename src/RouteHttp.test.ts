@@ -876,7 +876,7 @@ test.describe("middleware chain", () => {
   })
 
   test.it("chains middlewares in order", async () => {
-    const calls: string[] = []
+    const calls: Array<string> = []
 
     const handler = RouteHttp.toWebHandler(
       Route
@@ -1995,7 +1995,7 @@ test.describe("request abort handling", () => {
 
 test.describe("RouteTree layer routes", () => {
   test.it("layer routes execute in order before path routes", async () => {
-    const calls: string[] = []
+    const calls: Array<string> = []
 
     const tree = RouteTree.make({
       "*": Route
@@ -2025,7 +2025,7 @@ test.describe("RouteTree layer routes", () => {
   })
 
   test.it("layer routes apply to all paths in the tree", async () => {
-    const calls: string[] = []
+    const calls: Array<string> = []
 
     const tree = RouteTree.make({
       "*": Route.use(Route.filter(function*() {
@@ -2083,7 +2083,7 @@ test.describe("RouteTree layer routes", () => {
   })
 
   test.it("nested tree inherits parent layer routes", async () => {
-    const calls: string[] = []
+    const calls: Array<string> = []
 
     const apiTree = RouteTree.make({
       "/users": Route.get(Route.text(function*() {
@@ -2189,7 +2189,7 @@ test.describe("RouteTree layer routes", () => {
   })
 
   test.it("multiple layers execute in definition order", async () => {
-    const calls: string[] = []
+    const calls: Array<string> = []
 
     const tree = RouteTree.make({
       "*": Route
@@ -2404,7 +2404,7 @@ test.describe("Route.render (format=*)", () => {
   })
 
   test.it("render middleware always runs even when specific format is selected", async () => {
-    const calls: string[] = []
+    const calls: Array<string> = []
 
     const handler = RouteHttp.toWebHandler(
       Route
@@ -2439,7 +2439,7 @@ test.describe("Route.render (format=*)", () => {
   })
 
   test.it("next() from render matches both render and selected format routes", async () => {
-    const calls: string[] = []
+    const calls: Array<string> = []
 
     const handler = RouteHttp.toWebHandler(
       Route
@@ -2484,7 +2484,7 @@ test.describe("Route.render (format=*)", () => {
   })
 
   test.it("render handler runs when no specific format matches", async () => {
-    const calls: string[] = []
+    const calls: Array<string> = []
 
     const handler = RouteHttp.toWebHandler(
       Route

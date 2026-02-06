@@ -17,11 +17,17 @@ test.it("fails on overlapping routes from groups", async () => {
     .getFileRoutes(routes.map((h) => h.modulePath))
     .pipe(Effect.runPromiseExit)
 
-  test.expect(Exit.isFailure(exit)).toBe(true)
+  test
+    .expect(Exit.isFailure(exit))
+    .toBe(true)
   if (Exit.isFailure(exit)) {
     const error = Option.getOrThrow(Cause.failureOption(exit.cause))
-    test.expect(error.reason).toBe("Conflict")
-    test.expect(error.path).toBe("/users")
+    test
+      .expect(error.reason)
+      .toBe("Conflict")
+    test
+      .expect(error.path)
+      .toBe("/users")
   }
 })
 
@@ -37,11 +43,17 @@ test.it("fails on overlapping routes with same path", async () => {
     .getFileRoutes(routes.map((h) => h.modulePath))
     .pipe(Effect.runPromiseExit)
 
-  test.expect(Exit.isFailure(exit)).toBe(true)
+  test
+    .expect(Exit.isFailure(exit))
+    .toBe(true)
   if (Exit.isFailure(exit)) {
     const error = Option.getOrThrow(Cause.failureOption(exit.cause))
-    test.expect(error.reason).toBe("Conflict")
-    test.expect(error.path).toBe("/about")
+    test
+      .expect(error.reason)
+      .toBe("Conflict")
+    test
+      .expect(error.path)
+      .toBe("/about")
   }
 })
 
@@ -57,5 +69,7 @@ test.it("allows route and layer at same path", async () => {
     .getFileRoutes(routes.map((h) => h.modulePath))
     .pipe(Effect.runPromiseExit)
 
-  test.expect(Exit.isSuccess(exit)).toBe(true)
+  test
+    .expect(Exit.isSuccess(exit))
+    .toBe(true)
 })

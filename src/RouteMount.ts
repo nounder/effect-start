@@ -1,12 +1,13 @@
 import * as Function from "effect/Function"
-import * as Types from "effect/Types"
-import * as Http from "./Http.ts"
-import * as PathPattern from "./PathPattern.ts"
+import type * as Types from "effect/Types"
+import type * as Http from "./Http.ts"
+import type * as PathPattern from "./PathPattern.ts"
 import * as Route from "./Route.ts"
-import * as RouteBody from "./RouteBody.ts"
+import type * as RouteBody from "./RouteBody.ts"
 
 const RouteSetTypeId: unique symbol = Symbol.for("effect-start/RouteSet")
 
+// oxlint-disable-next-line import/first, typescript/consistent-type-imports -- typeof import() is not an import statement
 type Module = typeof import("./RouteMount.ts")
 
 export type Self =
@@ -100,7 +101,7 @@ function makeMethodDescriber<M extends RouteMount.Method>(
 ): RouteMount.Describer<M> {
   function describeMethod(
     this: Self,
-    ...fs: ((self: Route.RouteSet.Any) => Route.RouteSet.Any)[]
+    ...fs: Array<(self: Route.RouteSet.Any) => Route.RouteSet.Any>
   ): Route.RouteSet.Any {
     const baseItems = Route.isRouteSet(this)
       ? Route.items(this)

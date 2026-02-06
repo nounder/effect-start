@@ -104,8 +104,12 @@ test.describe("routes", () => {
       ),
     )
 
-    test.expect(response.status).toBe(200)
-    test.expect(await response.text()).toBe("Hello, World!")
+    test
+      .expect(response.status)
+      .toBe(200)
+    test
+      .expect(await response.text())
+      .toBe("Hello, World!")
   })
 
   test.test("serves JSON route", async () => {
@@ -126,9 +130,15 @@ test.describe("routes", () => {
       ),
     )
 
-    test.expect(response.status).toBe(200)
-    test.expect(response.headers.get("Content-Type")).toBe("application/json")
-    test.expect(await response.json()).toEqual({
+    test
+      .expect(response.status)
+      .toBe(200)
+    test
+      .expect(response.headers.get("Content-Type"))
+      .toBe("application/json")
+    test
+      .expect(await response.json())
+      .toEqual({
       message: "success",
       value: 42,
     })
@@ -152,7 +162,9 @@ test.describe("routes", () => {
       ),
     )
 
-    test.expect(response.status).toBe(404)
+    test
+      .expect(response.status)
+      .toBe(404)
   })
 
   test.test("handles content negotiation", async () => {
@@ -187,15 +199,23 @@ test.describe("routes", () => {
       ),
     )
 
-    test.expect(jsonResponse.headers.get("Content-Type")).toBe(
+    test
+      .expect(jsonResponse.headers.get("Content-Type"))
+      .toBe(
       "application/json",
     )
-    test.expect(await jsonResponse.json()).toEqual({ type: "json" })
+    test
+      .expect(await jsonResponse.json())
+      .toEqual({ type: "json" })
 
-    test.expect(htmlResponse.headers.get("Content-Type")).toBe(
+    test
+      .expect(htmlResponse.headers.get("Content-Type"))
+      .toBe(
       "text/html; charset=utf-8",
     )
-    test.expect(await htmlResponse.text()).toBe("<div>html</div>")
+    test
+      .expect(await htmlResponse.text())
+      .toBe("<div>html</div>")
   })
 
   test.test("returns 406 for unacceptable content type", async () => {
@@ -218,7 +238,9 @@ test.describe("routes", () => {
       ),
     )
 
-    test.expect(response.status).toBe(406)
+    test
+      .expect(response.status)
+      .toBe(406)
   })
 
   test.test("handles parameterized routes", async () => {
@@ -239,7 +261,11 @@ test.describe("routes", () => {
       ),
     )
 
-    test.expect(response.status).toBe(200)
-    test.expect(await response.text()).toBe("user")
+    test
+      .expect(response.status)
+      .toBe(200)
+    test
+      .expect(await response.text())
+      .toBe("user")
   })
 })

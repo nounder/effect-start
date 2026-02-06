@@ -1,5 +1,4 @@
-import { watcher } from "../engine.ts"
-import type { HTMLOrSVG, WatcherContext } from "../engine.ts"
+import { watcher, type HTMLOrSVG, type WatcherContext } from "../engine.ts"
 import {
   aliasify,
   isHTMLOrSVG,
@@ -9,7 +8,7 @@ import {
 const isValidType = <T extends readonly string[]>(
   arr: T,
   value: string,
-): value is T[number] => (arr as readonly string[]).includes(value)
+): value is T[number] => (arr as ReadonlyArray<string>).includes(value)
 
 const PATCH_MODES = [
   "remove",

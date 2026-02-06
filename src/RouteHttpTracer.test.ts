@@ -1,7 +1,7 @@
 import * as test from "bun:test"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
-import * as Tracer from "effect/Tracer"
+import type * as Tracer from "effect/Tracer"
 import * as Http from "./Http.ts"
 import * as Route from "./Route.ts"
 import * as RouteHttp from "./RouteHttp.ts"

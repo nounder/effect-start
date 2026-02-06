@@ -422,10 +422,14 @@ test.describe("Effect body", () => {
       }),
     )
 
-    test.expect(count).toBe(0)
+    test
+      .expect(count)
+      .toBe(0)
 
     await Effect.runPromise(entity.text)
-    test.expect(count).toBe(1)
+    test
+      .expect(count)
+      .toBe(1)
   })
 
   test.it("propagates Effect errors", async () => {

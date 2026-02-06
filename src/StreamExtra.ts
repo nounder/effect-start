@@ -1,19 +1,15 @@
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
-import { dual } from "effect/Function"
+import * as Function from "effect/Function"
 import * as Predicate from "effect/Predicate"
 import * as Runtime from "effect/Runtime"
-import {
-  runForEachChunk,
-  StreamTypeId,
-} from "effect/Stream"
-import type * as Stream from "effect/Stream"
+import * as Stream from "effect/Stream"
 
 export const isStream = (
   u: unknown,
 ): u is Stream.Stream<unknown, unknown, unknown> =>
-  Predicate.hasProperty(u, StreamTypeId)
+  Predicate.hasProperty(u, Stream.StreamTypeId)
 
 export type IsStream<T> = T extends Stream.Stream<infer _A, infer _E, infer _R>
   ? true
@@ -41,7 +37,7 @@ export type Context<T> = T extends Stream.Stream<infer _A, infer _E, infer R>
  * https://github.com/Effect-TS/effect/issues/4538
  * https://github.com/oven-sh/bun/issues/17837
  */
-export const toReadableStreamRuntimePatched = dual<
+export const toReadableStreamRuntimePatched = Function.dual<
   <A, XR>(
     runtime: Runtime.Runtime<XR>,
     options?: { readonly strategy?: QueuingStrategy<A> | undefined },
@@ -53,7 +49,7 @@ export const toReadableStreamRuntimePatched = dual<
   ) => ReadableStream<A>
 >(
   (args) =>
-    Predicate.hasProperty(args[0], StreamTypeId) || Effect.isEffect(args[0]),
+    Predicate.hasProperty(args[0], Stream.StreamTypeId) || Effect.isEffect(args[0]),
   <A, E, XR, R extends XR>(
     self: Stream.Stream<A, E, R>,
     runtime: Runtime.Runtime<XR>,
@@ -67,7 +63,7 @@ export const toReadableStreamRuntimePatched = dual<
     return new ReadableStream<A>({
       start(controller) {
         fiber = runFork(
-          runForEachChunk(self, (chunk) =>
+          Stream.runForEachChunk(self, (chunk) =>
             latch.whenOpen(Effect.sync(() => {
               latch.unsafeClose()
               try {
@@ -106,7 +102,7 @@ export const toReadableStreamRuntimePatched = dual<
   },
 )
 
-export const toReadableStreamRuntimePatched2 = dual<
+export const toReadableStreamRuntimePatched2 = Function.dual<
   <A, XR>(
     runtime: Runtime.Runtime<XR>,
     options?: { readonly strategy?: QueuingStrategy<A> | undefined },
@@ -118,7 +114,7 @@ export const toReadableStreamRuntimePatched2 = dual<
   ) => ReadableStream<A>
 >(
   (args) =>
-    Predicate.hasProperty(args[0], StreamTypeId) || Effect.isEffect(args[0]),
+    Predicate.hasProperty(args[0], Stream.StreamTypeId) || Effect.isEffect(args[0]),
   <A, E, XR, R extends XR>(
     self: Stream.Stream<A, E, R>,
     runtime: Runtime.Runtime<XR>,
@@ -133,7 +129,7 @@ export const toReadableStreamRuntimePatched2 = dual<
     return new ReadableStream<A>({
       start(controller) {
         fiber = runFork(
-          runForEachChunk(self, (chunk) =>
+          Stream.runForEachChunk(self, (chunk) =>
             latch.whenOpen(Effect.sync(() => {
               latch.unsafeClose()
               for (const item of chunk) {

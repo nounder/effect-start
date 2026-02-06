@@ -1,7 +1,7 @@
 import * as Predicate from "effect/Predicate"
 import * as PathPattern from "./PathPattern.ts"
 import * as Route from "./Route.ts"
-import * as RouteMount from "./RouteMount.ts"
+import type * as RouteMount from "./RouteMount.ts"
 
 const TypeId: unique symbol = Symbol.for("effect-start/RouteTree")
 const RouteTreeRoutes: unique symbol = Symbol()
@@ -134,7 +134,7 @@ export function make<
   function flatten(
     map: InputRouteMap,
     prefix: string,
-    layers: MethodRoute[],
+    layers: Array<MethodRoute>,
   ): void {
     for (const key of Object.keys(map)) {
       if (key === LayerKey) continue
@@ -184,7 +184,7 @@ export function* walk(
 ): Generator<RouteMount.MountedRoute> {
   const _routes = routes(tree) as RouteMap
 
-  for (const path of Object.keys(_routes) as PathPattern.PathPattern[]) {
+  for (const path of Object.keys(_routes) as Array<PathPattern.PathPattern>) {
     yield* flattenRoutes(path, _routes[path])
   }
 }

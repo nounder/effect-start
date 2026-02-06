@@ -12,7 +12,7 @@ interface ParsedSpec {
   i: number
 }
 
-const simpleMediaTypeRegExp = /^\s*([^\s\/;]+)\/([^;\s]+)\s*(?:;(.*))?$/
+const simpleMediaTypeRegExp = /^\s*([^\s/;]+)\/([^;\s]+)\s*(?:;(.*))?$/
 const simpleLanguageRegExp = /^\s*([^\s\-;]+)(?:-([^\s;]+))?\s*(?:;(.*))?$/
 const simpleEncodingRegExp = /^\s*([^\s;]+)\s*(?:;(.*))?$/
 const simpleCharsetRegExp = /^\s*([^\s;]+)\s*(?:;(.*))?$/
@@ -436,7 +436,7 @@ function compareSpecs(a: ParsedSpec, b: ParsedSpec): number {
   )
 }
 
-export function media(accept: string, available?: string[]): string[] {
+export function media(accept: string, available?: Array<string>): Array<string> {
   const parsed = parseAccept(accept)
   if (parsed.length === 0) {
     return []
@@ -454,7 +454,7 @@ export function media(accept: string, available?: string[]): string[] {
   return sorted.map((p) => p.value)
 }
 
-export function language(accept: string, available?: string[]): string[] {
+export function language(accept: string, available?: Array<string>): Array<string> {
   const parsed = parseAcceptLanguage(accept)
   if (parsed.length === 0) {
     return []
@@ -472,7 +472,7 @@ export function language(accept: string, available?: string[]): string[] {
   return sorted.map((p) => p.value)
 }
 
-export function encoding(accept: string, available?: string[]): string[] {
+export function encoding(accept: string, available?: Array<string>): Array<string> {
   const parsed = parseAcceptEncoding(accept)
   if (parsed.length === 0) {
     return []
@@ -488,7 +488,7 @@ export function encoding(accept: string, available?: string[]): string[] {
   return sorted.map((p) => p.value)
 }
 
-export function charset(accept: string, available?: string[]): string[] {
+export function charset(accept: string, available?: Array<string>): Array<string> {
   const parsed = parseAcceptCharset(accept)
   if (parsed.length === 0) {
     return []
@@ -506,8 +506,8 @@ export function charset(accept: string, available?: string[]): string[] {
 
 export function headerMedia(
   headers: Headers,
-  available?: string[],
-): string[] {
+  available?: Array<string>,
+): Array<string> {
   const accept = headers.get("accept")
   if (!accept) return []
   return media(accept, available)
@@ -515,8 +515,8 @@ export function headerMedia(
 
 export function headerLanguage(
   headers: Headers,
-  available?: string[],
-): string[] {
+  available?: Array<string>,
+): Array<string> {
   const accept = headers.get("accept-language")
   if (!accept) return []
   return language(accept, available)
@@ -524,8 +524,8 @@ export function headerLanguage(
 
 export function headerEncoding(
   headers: Headers,
-  available?: string[],
-): string[] {
+  available?: Array<string>,
+): Array<string> {
   const accept = headers.get("accept-encoding")
   if (!accept) return []
   return encoding(accept, available)
@@ -533,8 +533,8 @@ export function headerEncoding(
 
 export function headerCharset(
   headers: Headers,
-  available?: string[],
-): string[] {
+  available?: Array<string>,
+): Array<string> {
   const accept = headers.get("accept-charset")
   if (!accept) return []
   return charset(accept, available)

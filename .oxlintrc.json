@@ -1,6 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/oxc-project/oxc/main/npm/oxlint/configuration_schema.json",
   "plugins": ["typescript", "import", "unicorn", "oxc"],
+  "jsPlugins": ["./eslint-plugin-effect-start"],
   "categories": {
     "correctness": "error"
   },
@@ -61,7 +62,16 @@
     "import/namespace": "off",
 
     // Effect patterns use unused expressions for type-level assertions
-    "no-unused-expressions": "off"
+    "no-unused-expressions": "off",
+
+    // Enforce namespace imports for modules with capitalized base names
+    "effect-start/prefer-namespace-import": "error",
+
+    // Enforce namespace import for bun:test in test files
+    "effect-start/require-test-namespace-import": "error",
+
+    // Enforce newlines between chained test assertion methods
+    "effect-start/test-assertion-newline": "error"
   },
   "ignorePatterns": [
     "dist/",

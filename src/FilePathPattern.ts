@@ -10,9 +10,9 @@ export type Segment =
   | { _tag: "LiteralSegment"; value: string }
   | { _tag: "InvalidSegment"; value: string }
 
-export function segments(pattern: string): Segment[] {
+export function segments(pattern: string): Array<Segment> {
   const parts = pattern.split("/").filter(Boolean)
-  const result: Segment[] = []
+  const result: Array<Segment> = []
 
   for (const part of parts) {
     if (/^\(\w+\)$/.test(part)) {
@@ -37,7 +37,7 @@ export type ValidationError = {
   message: string
 }
 
-export type ValidationResult = Either.Either<Segment[], ValidationError>
+export type ValidationResult = Either.Either<Array<Segment>, ValidationError>
 
 export function validate(pattern: string): ValidationResult {
   const segs = segments(pattern)
@@ -63,7 +63,7 @@ export function validate(pattern: string): ValidationResult {
   return Either.right(segs)
 }
 
-export function format(segs: Segment[]): `/${string}` {
+export function format(segs: Array<Segment>): `/${string}` {
   const parts = segs.map((seg) => {
     switch (seg._tag) {
       case "GroupSegment":
@@ -92,7 +92,7 @@ export function toPathPattern(
   }
 
   const segs = result.right
-  const pathParts: string[] = []
+  const pathParts: Array<string> = []
 
   for (const seg of segs) {
     switch (seg._tag) {

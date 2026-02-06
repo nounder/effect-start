@@ -1,5 +1,5 @@
-import { attribute } from "../engine.ts"
 import {
+  attribute,
   computed,
   mergePatch,
   mergePaths,

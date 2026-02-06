@@ -18,7 +18,7 @@
  */
 
 import type * as Hyper from "./Hyper.ts"
-import * as HyperNode from "./HyperNode.ts"
+import type * as HyperNode from "./HyperNode.ts"
 import type * as JsxRuntime from "./jsx-runtime.ts"
 import type { JSX } from "./jsx.d.ts"
 
@@ -57,7 +57,7 @@ export function renderToString(
   node: JSX.Children,
   hooks?: { onNode?: (node: HyperNode.HyperNode) => void },
 ): string {
-  const stack: any[] = [node]
+  const stack: Array<any> = [node]
   let result = ""
 
   while (stack.length > 0) {

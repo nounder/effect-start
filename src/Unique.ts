@@ -153,7 +153,7 @@ function formatUlid(bytes: Uint8Array): string {
 
 function encodeUlidTime(time: number): string {
   let value = BigInt(time)
-  const result = new Array<string>(10)
+  const result = Array.from<string>({ length: 10 })
 
   for (let i = 9; i >= 0; i--) {
     result[i] = ALPHABET_BASE32_CROCKFORD[Number(value & 31n)]

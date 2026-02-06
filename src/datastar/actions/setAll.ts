@@ -1,11 +1,11 @@
-import { action } from "../engine.ts"
 import {
+  action,
   filtered,
   mergePatch,
   startPeeking,
   stopPeeking,
+  type SignalFilterOptions,
 } from "../engine.ts"
-import type { SignalFilterOptions } from "../engine.ts"
 import { updateLeaves } from "../utils.ts"
 
 action({

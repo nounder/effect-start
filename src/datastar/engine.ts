@@ -20,7 +20,7 @@ export const DATASTAR_SIGNAL_PATCH_EVENT = "datastar-signal-patch"
  * types.ts
  *********/
 export type JSONPatch = Record<string, any> & { length?: never }
-export type Paths = [string, any][]
+export type Paths = Array<[string, any]>
 
 export type DatastarFetchEvent = {
   type: string
@@ -58,7 +58,7 @@ export type Requirement =
     value: Exclude<RequirementType, "exclusive">
   }
 
-type Rx<B extends boolean> = (...args: any[]) => B extends true ? unknown : void
+type Rx<B extends boolean> = (...args: Array<any>) => B extends true ? unknown : void
 
 type ReqField<R, K extends "key" | "value", Return> = R extends
   | "must"
@@ -103,7 +103,7 @@ export type AttributePlugin<
   apply: (ctx: AttributeContext<R, RxReturn>) => void | (() => void)
   requirement?: R
   returnsValue?: RxReturn
-  argNames?: string[]
+  argNames?: Array<string>
 }
 
 export type WatcherContext = {
@@ -119,7 +119,7 @@ export type ActionPlugins = Record<string, ActionPlugin>
 
 export type ActionPlugin<T = any> = {
   name: string
-  apply: (ctx: ActionContext, ...args: any[]) => T
+  apply: (ctx: ActionContext, ...args: Array<any>) => T
 }
 
 export type MergePatchArgs = {
@@ -129,7 +129,7 @@ export type MergePatchArgs = {
 export type HTMLOrSVG = HTMLElement | SVGElement | MathMLElement
 export type Modifiers = Map<string, Set<string>>
 
-export type EventCallbackHandler = (...args: any[]) => void
+export type EventCallbackHandler = (...args: Array<any>) => void
 
 export type SignalFilter = RegExp
 export type SignalFilterOptions = {
@@ -210,7 +210,7 @@ interface AlienSignal<T = unknown> extends ReactiveNode {
 }
 
 const currentPatch: Paths = []
-const queuedEffects: (AlienEffect | undefined)[] = []
+const queuedEffects: Array<AlienEffect | undefined> = []
 let batchDepth = 0
 let notifyIndex = 0
 let queuedEffectsLength = 0
@@ -883,7 +883,7 @@ export const filtered = (
   const includeRe = toRegExp(include)
   const excludeRe = toRegExp(exclude)
   const paths: Paths = []
-  const stack: [any, string][] = [[obj, ""]]
+  const stack: Array<[any, string]> = [[obj, ""]]
 
   while (stack.length) {
     const [node, prefix] = stack.pop()!
@@ -931,7 +931,7 @@ const watcherPlugins: Map<string, WatcherPlugin> = new Map()
 
 export const actions: Record<
   string,
-  (ctx: ActionContext, ...args: any[]) => any
+  (ctx: ActionContext, ...args: Array<any>) => any
 > = new Proxy(
   {},
   {
@@ -945,7 +945,7 @@ export const actions: Record<
 
 const removals = new Map<HTMLOrSVG, Map<string, Map<string, () => void>>>()
 
-const queuedAttributes: AttributePlugin[] = []
+const queuedAttributes: Array<AttributePlugin> = []
 const queuedAttributeNames = new Set<string>()
 const observedRoots = new WeakSet<Node>()
 export const attribute = <R extends Requirement, B extends boolean>(
@@ -1030,7 +1030,7 @@ const applyEls = (els: Iterable<HTMLOrSVG>, onlyNew?: boolean): void => {
   }
 }
 
-const observe = (mutations: MutationRecord[]) => {
+const observe = (mutations: Array<MutationRecord>) => {
   for (
     const {
       target,
@@ -1193,7 +1193,7 @@ const applyAttributePlugin = (
     const cleanups = new Map<string, () => void>()
     if (valueProvided) {
       let cachedRx: GenRxFn
-      ctx.rx = (...args: any[]) => {
+      ctx.rx = (...args: Array<any>) => {
         if (!cachedRx) {
           cachedRx = genRx(value, {
             returnsValue: plugin.returnsValue,
@@ -1228,11 +1228,11 @@ const applyAttributePlugin = (
 
 type GenRxOptions = {
   returnsValue?: boolean
-  argNames?: string[]
+  argNames?: Array<string>
   cleanups?: Map<string, () => void>
 }
 
-type GenRxFn = <T>(el: HTMLOrSVG, ...args: any[]) => T
+type GenRxFn = <T>(el: HTMLOrSVG, ...args: Array<any>) => T
 
 const genRx = (
   value: string,
@@ -1284,8 +1284,8 @@ const genRx = (
 
   try {
     const fn = Function("el", "$", "__action", "evt", ...argNames, expr)
-    return (el: HTMLOrSVG, ...args: any[]) => {
-      const action = (name: string, evt: Event | undefined, ...args: any[]) => {
+    return (el: HTMLOrSVG, ...args: Array<any>) => {
+      const action = (name: string, evt: Event | undefined, ...args: Array<any>) => {
         const err = error.bind(0, {
           plugin: { type: "action", name },
           element: { id: el.id, tag: el.tagName },
