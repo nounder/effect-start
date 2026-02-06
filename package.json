@@ -107,7 +107,6 @@
     "typescript": "^5.9.3"
   },
   "peerDependencies": {
-    "@effect/platform": ">=0.93.0",
     "effect": ">=3.19.0"
   }
 }
