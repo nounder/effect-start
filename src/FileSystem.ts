@@ -12,7 +12,6 @@ import * as Option from "effect/Option"
 import * as Sink from "effect/Sink"
 import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
-import { FileTypeId as FileTypeId_ } from "@effect/platform/FileSystem"
 import * as PlatformError from "./PlatformError.ts"
 
 export interface FileSystem {
@@ -219,7 +218,7 @@ export interface WatchOptions {
   readonly recursive?: boolean
 }
 
-export const FileTypeId: typeof FileTypeId_ = FileTypeId_
+export const FileTypeId: unique symbol = Symbol.for("@effect/platform/FileSystem/File")
 
 export type FileTypeId = typeof FileTypeId
 
