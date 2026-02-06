@@ -1,4 +1,4 @@
-import * as Cookies from "@effect/platform/Cookies"
+import * as Cookies from "../Cookies.ts"
 import * as test from "bun:test"
 import * as ConfigProvider from "effect/ConfigProvider"
 import * as Effect from "effect/Effect"

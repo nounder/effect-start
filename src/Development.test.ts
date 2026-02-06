@@ -1,4 +1,3 @@
-import * as FileSystem from "@effect/platform/FileSystem"
 import * as test from "bun:test"
 import { MemoryFileSystem } from "effect-memfs"
 import * as Chunk from "effect/Chunk"
@@ -7,6 +6,7 @@ import * as Fiber from "effect/Fiber"
 import * as Layer from "effect/Layer"
 import * as Stream from "effect/Stream"
 import * as Development from "./Development.ts"
+import * as FileSystem from "./FileSystem.ts"
 
 test.beforeEach(() => {
   Development._resetForTesting()
@@ -43,7 +43,7 @@ test.describe("watch", () => {
       .pipe(
         Effect.scoped,
         Effect.provide(
-          MemoryFileSystem.layerWith({ "/dev-watch/.gitkeep": "" }),
+          memfsLayer({ "/dev-watch/.gitkeep": "" }),
         ),
         Effect.runPromise,
       ))
@@ -63,7 +63,7 @@ test.describe("layerWatch", () => {
         Effect.scoped,
         Effect.provide(Development.layerWatch({ path: "/layer-test" })),
         Effect.provide(
-          MemoryFileSystem.layerWith({ "/layer-test/.gitkeep": "" }),
+          memfsLayer({ "/layer-test/.gitkeep": "" }),
         ),
         Effect.runPromise,
       ))
@@ -97,7 +97,7 @@ test.describe("stream", () => {
         Effect.scoped,
         Effect.provide(Development.layerWatch({ path: "/events-test" })),
         Effect.provide(
-          MemoryFileSystem.layerWith({ "/events-test/.gitkeep": "" }),
+          memfsLayer({ "/events-test/.gitkeep": "" }),
         ),
         Effect.runPromise,
       ))
@@ -117,3 +117,6 @@ test.describe("stream", () => {
         Effect.runPromise,
       ))
 })
+
+const memfsLayer = (contents: MemoryFileSystem.Contents) =>
+  MemoryFileSystem.layerWith(contents) as unknown as Layer.Layer<FileSystem.FileSystem>
