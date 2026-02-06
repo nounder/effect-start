@@ -34,12 +34,7 @@
       "types": "./dist/x/tailwind/plugin.d.ts",
       "default": "./dist/x/tailwind/plugin.js"
     },
-    "./middlewares": {
-      "bun": "./src/middlewares/index.ts",
-      "types": "./dist/middlewares/index.d.ts",
-      "default": "./dist/middlewares/index.js"
-    },
-    "./Unique": {
+"./Unique": {
       "bun": "./src/Unique.ts",
       "types": "./dist/Unique.d.ts",
       "default": "./dist/Unique.js"
