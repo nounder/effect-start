@@ -1,6 +1,6 @@
 {
   "name": "effect-start",
-  "version": "0.20.1",
+  "version": "0.21.0",
   "type": "module",
   "license": "MIT",
   "exports": {
@@ -34,7 +34,7 @@
       "types": "./dist/x/tailwind/plugin.d.ts",
       "default": "./dist/x/tailwind/plugin.js"
     },
-"./Unique": {
+    "./Unique": {
       "bun": "./src/Unique.ts",
       "types": "./dist/Unique.d.ts",
       "default": "./dist/Unique.js"
