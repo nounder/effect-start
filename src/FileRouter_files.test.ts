@@ -1,4 +1,4 @@
-import * as FileSystem from "@effect/platform/FileSystem"
+import * as FileSystem from "./FileSystem.ts"
 import * as test from "bun:test"
 import { MemoryFileSystem } from "effect-memfs"
 import * as Effect from "effect/Effect"
