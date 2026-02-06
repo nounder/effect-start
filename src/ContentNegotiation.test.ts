@@ -1,4 +1,3 @@
-import * as Headers from "@effect/platform/Headers"
 import * as test from "bun:test"
 import * as ContentNegotiation from "./ContentNegotiation.ts"
 
@@ -523,7 +522,7 @@ test.describe("ContentNegotiation.charset", () => {
 
 test.describe("ContentNegotiation.headerMedia", () => {
   test.it("parses Accept header from Headers object", () => {
-    const headers = Headers.fromInput({ accept: "text/html, application/json" })
+    const headers = new Headers({ accept: "text/html, application/json" })
     const result = ContentNegotiation.headerMedia(headers, [
       "text/html",
       "application/json",
@@ -534,7 +533,7 @@ test.describe("ContentNegotiation.headerMedia", () => {
   })
 
   test.it("returns empty array when Accept header is missing", () => {
-    const headers = Headers.fromInput({})
+    const headers = new Headers({})
     const result = ContentNegotiation.headerMedia(headers, ["text/html"])
     test
       .expect(result)
@@ -544,7 +543,7 @@ test.describe("ContentNegotiation.headerMedia", () => {
 
 test.describe("ContentNegotiation.headerLanguage", () => {
   test.it("parses Accept-Language header from Headers object", () => {
-    const headers = Headers.fromInput({ "accept-language": "en, fr;q=0.8" })
+    const headers = new Headers({ "accept-language": "en, fr;q=0.8" })
     const result = ContentNegotiation.headerLanguage(headers, ["en", "fr"])
     test
       .expect(result)
@@ -552,7 +551,7 @@ test.describe("ContentNegotiation.headerLanguage", () => {
   })
 
   test.it("returns empty array when Accept-Language header is missing", () => {
-    const headers = Headers.fromInput({})
+    const headers = new Headers({})
     const result = ContentNegotiation.headerLanguage(headers, ["en"])
     test
       .expect(result)
@@ -562,7 +561,7 @@ test.describe("ContentNegotiation.headerLanguage", () => {
 
 test.describe("ContentNegotiation.headerEncoding", () => {
   test.it("parses Accept-Encoding header from Headers object", () => {
-    const headers = Headers.fromInput({ "accept-encoding": "gzip, deflate" })
+    const headers = new Headers({ "accept-encoding": "gzip, deflate" })
     const result = ContentNegotiation.headerEncoding(headers, [
       "gzip",
       "deflate",
@@ -573,7 +572,7 @@ test.describe("ContentNegotiation.headerEncoding", () => {
   })
 
   test.it("returns empty array when Accept-Encoding header is missing", () => {
-    const headers = Headers.fromInput({})
+    const headers = new Headers({})
     const result = ContentNegotiation.headerEncoding(headers, ["gzip"])
     test
       .expect(result)
@@ -583,7 +582,7 @@ test.describe("ContentNegotiation.headerEncoding", () => {
 
 test.describe("ContentNegotiation.headerCharset", () => {
   test.it("parses Accept-Charset header from Headers object", () => {
-    const headers = Headers.fromInput({ "accept-charset": "utf-8, iso-8859-1" })
+    const headers = new Headers({ "accept-charset": "utf-8, iso-8859-1" })
     const result = ContentNegotiation.headerCharset(headers, [
       "utf-8",
       "iso-8859-1",
@@ -594,7 +593,7 @@ test.describe("ContentNegotiation.headerCharset", () => {
   })
 
   test.it("returns empty array when Accept-Charset header is missing", () => {
-    const headers = Headers.fromInput({})
+    const headers = new Headers({})
     const result = ContentNegotiation.headerCharset(headers, ["utf-8"])
     test
       .expect(result)
