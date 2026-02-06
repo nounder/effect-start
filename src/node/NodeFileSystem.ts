@@ -1,12 +1,12 @@
 /*
  * Adapted from @effect/platform
  */
-import * as FileSystem from "@effect/platform/FileSystem"
 import type * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Function from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
+import * as FileSystem from "../FileSystem.ts"
 import * as Stream from "effect/Stream"
 import * as NCrypto from "node:crypto"
 import * as NFS from "node:fs"
@@ -665,23 +665,9 @@ const make = Effect.map(
     }),
 )
 
-export const layer = Layer.unwrapEffect(
-  Effect
-    .gen(function*() {
-      const mod = yield* Effect.tryPromise(() =>
-        import("@effect/platform/FileSystem")
-      )
-      return Layer.effect(mod.FileSystem, make)
-    })
-    .pipe(
-      Effect.catchAll(() =>
-        Effect.die(new globalThis.Error("@effect/platform is not installed"))
-      ),
-    ),
-)
+export const layer = Layer.effect(FileSystem.FileSystem, make)
 
 export {
-  FileSystem,
   PlatformError as Error,
 }
 

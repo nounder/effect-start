@@ -1,5 +1,5 @@
 import * as Cookies from "@effect/platform/Cookies"
-import type * as FileSystem from "@effect/platform/FileSystem"
+import type * as FileSystem from "../FileSystem.ts"
 import * as Headers from "@effect/platform/Headers"
 import * as HttpApp from "@effect/platform/HttpApp"
 import * as HttpIncomingMessage from "@effect/platform/HttpIncomingMessage"

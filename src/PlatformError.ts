@@ -7,9 +7,9 @@ import * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
 import type * as Types from "effect/Types"
 
-import { TypeId as TypeId_ } from "@effect/platform/Error"
-
-export const TypeId: typeof TypeId_ = TypeId_
+export const TypeId: unique symbol = Symbol.for(
+  "@effect/platform/Error/PlatformError",
+)
 
 export type TypeId = typeof TypeId
 

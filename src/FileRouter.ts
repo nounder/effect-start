@@ -1,4 +1,4 @@
-import * as FileSystem from "@effect/platform/FileSystem"
+import * as FileSystem from "./FileSystem.ts"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"

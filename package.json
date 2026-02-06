@@ -49,6 +49,11 @@
       "types": "./dist/FileRouter.d.ts",
       "default": "./dist/FileRouter.js"
     },
+    "./FileSystem": {
+      "bun": "./src/FileSystem.ts",
+      "types": "./dist/FileSystem.d.ts",
+      "default": "./dist/FileSystem.js"
+    },
     "./experimental": {
       "bun": "./src/experimental/index.ts",
       "types": "./dist/experimental/index.d.ts",
