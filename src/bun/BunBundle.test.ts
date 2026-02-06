@@ -1,13 +1,8 @@
-import * as HttpRouter from "@effect/platform/HttpRouter"
 import * as test from "bun:test"
 import * as Effect from "effect/Effect"
-import * as Layer from "effect/Layer"
 import * as NFS from "node:fs/promises"
 import * as NOS from "node:os"
 import * as NPath from "node:path"
-import * as Bundle from "../bundler/Bundle.ts"
-import * as BundleHttp from "../bundler/BundleHttp.ts"
-import * as TestHttpClient from "../testing/TestHttpClient.ts"
 import * as BunBundle from "./BunBundle.ts"
 
 test.describe("BunBundle manifest structure", () => {
@@ -78,102 +73,6 @@ export const greeting = "Hello World";`
       test
         .expect(firstArtifact.size)
         .toBeGreaterThan(0)
-    } finally {
-      await NFS.rm(tmpDir, {
-        recursive: true,
-        force: true,
-      })
-    }
-  })
-
-  test.it("should serve manifest via HTTP with correct structure", async () => {
-    const tmpDir = await NFS.mkdtemp(
-      NPath.join(NOS.tmpdir(), "effect-start-test-"),
-    )
-
-    try {
-      const htmlContent = `<!DOCTYPE html>
-<html>
-<head><title>Test App</title></head>
-<body><h1>Test</h1></body>
-</html>`
-
-      const htmlPath = NPath.join(tmpDir, "app.html")
-
-      await NFS.writeFile(htmlPath, htmlContent)
-
-      const testLayer = Layer.effect(
-        Bundle.ClientBundle,
-        BunBundle.buildClient({
-          entrypoints: [htmlPath],
-        }),
-      )
-
-      const result = await Effect.runPromise(
-        Effect
-          .scoped(
-            Effect.gen(function*() {
-              const App = HttpRouter.empty.pipe(
-                HttpRouter.mountApp(
-                  "/_bundle",
-                  BundleHttp.httpApp(),
-                ),
-              )
-
-              const Client = TestHttpClient.make(App)
-
-              const response = yield* Client.get("/_bundle/manifest.json")
-
-              const manifestText = yield* response.text
-
-              return JSON.parse(manifestText)
-            }),
-          )
-          .pipe(
-            Effect.provide(testLayer),
-          ),
-      )
-
-      test
-        .expect(result)
-        .toHaveProperty("entrypoints")
-      test
-        .expect(result)
-        .toHaveProperty("artifacts")
-      test
-        .expect(result.entrypoints)
-        .toBeObject()
-      test
-        .expect(result.artifacts)
-        .toBeArray()
-      test
-        .expect(Object.keys(result.entrypoints).length)
-        .toBe(1)
-      test
-        .expect(result.artifacts.length)
-        .toBe(3)
-
-      const entrypointKeys = Object.keys(result.entrypoints)
-      const firstKey = entrypointKeys[0]
-
-      test
-        .expect(firstKey)
-        .toBeString()
-      test
-        .expect(result.entrypoints[firstKey])
-        .toBeString()
-
-      const artifact = result.artifacts[0]
-
-      test
-        .expect(artifact)
-        .toHaveProperty("path")
-      test
-        .expect(artifact)
-        .toHaveProperty("type")
-      test
-        .expect(artifact)
-        .toHaveProperty("size")
     } finally {
       await NFS.rm(tmpDir, {
         recursive: true,

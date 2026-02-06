@@ -1,8 +1,8 @@
 /**
  * This file tests `@effect/platform/HttpRouter`, not our code.
- * Since Platform code is still unstable and we relay heavily on its
- * chaining/fallback behavior in `BundleHttp`
- * We want to ensure the behavior doesn't change across versions.
+ * Since Platform code is still unstable and we rely heavily on its
+ * chaining/fallback behavior, we want to ensure the behavior
+ * doesn't change across versions.
  */
 import * as HttpRouter from "@effect/platform/HttpRouter"
 import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
