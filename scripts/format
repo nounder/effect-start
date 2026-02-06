@@ -1,7 +1,0 @@
-#!/usr/bin/env bun
-
-import { ClaudeCodeHooks } from "dprint-cli/x/claude"
-
-if (import.meta.main) {
-  await ClaudeCodeHooks.runMain()
-}
