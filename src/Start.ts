@@ -3,6 +3,7 @@ import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Function from "effect/Function"
 import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
 import * as BunRuntime from "./bun/BunRuntime.ts"
 import * as BunServer from "./bun/BunServer.ts"
 import * as NodeFileSystem from "./node/NodeFileSystem.ts"
@@ -79,8 +80,17 @@ export function serve<
     Layer.unwrapEffect,
   )
 
+  const serverLayer = Layer.scoped(
+    BunServer.BunServer,
+    Effect.gen(function*() {
+      const existing = yield* Effect.serviceOption(BunServer.BunServer)
+      if (Option.isSome(existing)) return existing.value
+      return yield* BunServer.make({})
+    }),
+  )
+
   const composed = Function.pipe(
-    BunServer.layer(),
+    serverLayer,
     BunServer.withLogAddress,
     Layer.provide(appLayer),
     Layer.provide(NodeFileSystem.layer),
