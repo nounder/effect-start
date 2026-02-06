@@ -83,6 +83,7 @@
       "bun": "./src/datastar/index.ts",
       "default": "./dist/datastar/index.js"
     },
+    "./lint/plugin": "./src/lint/plugin.js",
     "./package.json": "./package.json"
   },
   "scripts": {
