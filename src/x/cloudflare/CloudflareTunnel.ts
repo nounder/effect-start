@@ -1,9 +1,6 @@
 import {
-  Command,
-  HttpServer,
-} from "@effect/platform"
-import {
   Config,
+  Data,
   Effect,
   identity,
   Layer,
@@ -14,9 +11,10 @@ import {
   String,
 } from "effect"
 
-/**
- * Starts Cloudflare tunnel using cloudflared cli.
- */
+export class CloudflareTunnelSpawnError extends Data.TaggedError(
+  "CloudflareTunnelSpawnError",
+)<{ cause: unknown }> {}
+
 export const start = (opts: {
   command?: string
   tunnelName: string
@@ -42,21 +40,31 @@ export const start = (opts: {
     ]
       .flatMap(v => v)
 
-    const process = yield* pipe(
-      Command.make(opts.command ?? "cloudflared", ...args),
-      Command.start,
+    const proc = yield* Effect.try({
+      try: () =>
+        Bun.spawn(
+          [opts.command ?? "cloudflared", ...args],
+          { stderr: "pipe", stdout: "pipe" },
+        ),
+      catch: (err) => new CloudflareTunnelSpawnError({ cause: err }),
+    })
+
+    yield* Effect.addFinalizer(() =>
+      Effect.sync(() => {
+        proc.kill()
+      })
     )
 
     yield* Effect.logInfo(
-      `Cloudflare tunnel started name=${opts.tunnelName} pid=${process.pid} tunnelUrl=${
+      `Cloudflare tunnel started name=${opts.tunnelName} pid=${proc.pid} tunnelUrl=${
         opts.tunnelUrl ?? "<empty>"
       }`,
     )
 
     yield* pipe(
       Stream.merge(
-        process.stdout,
-        process.stderr,
+        Stream.fromReadableStream(() => proc.stdout, identity),
+        Stream.fromReadableStream(() => proc.stderr, identity),
       ),
       Stream.decodeText("utf-8"),
       Stream.splitLines,
@@ -95,16 +103,13 @@ export const layer = () =>
 
     yield* Effect
       .forkScoped(
-        pipe(
-          start({
-            tunnelName,
-            tunnelUrl,
-          }),
-        ),
-      )
-      .pipe(
-        Effect.catchAll(err =>
-          Effect.logError("Cloudflare tunnel failed", err)
+        start({
+          tunnelName,
+          tunnelUrl,
+        }).pipe(
+          Effect.catchAll(err =>
+            Effect.logError("Cloudflare tunnel failed", err)
+          ),
         ),
       )
   }))
