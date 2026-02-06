@@ -1,15 +1,8 @@
-import {
-  Cookies,
-  HttpApp,
-  HttpServerResponse,
-} from "@effect/platform"
-import {
-  Effect,
-  pipe,
-} from "effect"
+import * as Cookies from "@effect/platform/Cookies"
 import * as Config from "effect/Config"
 import * as Context from "effect/Context"
 import * as Data from "effect/Data"
+import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 
 type CookieValue =
@@ -79,8 +72,7 @@ export function layer(options: { secret: string }) {
 export function layerConfig(name = "SECRET_KEY_BASE") {
   return Effect
     .gen(function*() {
-      const secret = yield* pipe(
-        Config.nonEmptyString(name),
+      const secret = yield* Config.nonEmptyString(name).pipe(
         Effect.flatMap((value) => {
           return (value.length < 40)
             ? Effect.fail(new Error("ba"))
@@ -425,27 +417,4 @@ function deriveKey(
 
     return key
   })
-}
-
-// TODO something si wrong with return type
-export function handleError<E>(
-  app: HttpApp.Default<E | EncryptedCookiesError>,
-) {
-  return Effect.gen(function*() {
-    const res = yield* app.pipe(
-      Effect.catchTag("EncryptedCookiesError", (error) => {
-        return HttpServerResponse.empty()
-      }),
-    )
-
-    return res
-  })
-}
-
-function generateFriendlyKey(bits = 128) {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-  const length = Math.ceil(bits / Math.log2(chars.length))
-  const bytes = crypto.getRandomValues(new Uint8Array(length))
-
-  return Array.from(bytes, b => chars[b % chars.length]).join("")
 }
