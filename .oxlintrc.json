@@ -1,0 +1,82 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oxc-project/oxc/main/npm/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "import", "unicorn", "oxc"],
+  "jsPlugins": ["./scripts/lint-plugin.js"],
+  "categories": {
+    "correctness": "error"
+  },
+  "rules": {
+    // Enforce object shorthand
+    "object-shorthand": "error",
+
+    // Import rules (matching Effect's import plugin usage)
+    "import/first": "error",
+    "import/no-duplicates": "error",
+
+    // TypeScript rules (matching Effect's @typescript-eslint config)
+    "typescript/array-type": [
+      "error",
+      { "default": "generic", "readonly": "generic" }
+    ],
+    "typescript/consistent-type-imports": "warn",
+
+    // -- Disabled rules that conflict with this project's style --
+
+    // The project uses ASI (no semicolons)
+    "no-extra-semi": "off",
+
+    // Don't flag unused vars (project has noUnusedLocals: false)
+    "typescript/no-unused-vars": "off",
+
+    // Allow non-null assertions (Effect-TS style allows this)
+    "typescript/no-non-null-assertion": "off",
+
+    // Allow explicit any (project has noImplicitAny: false)
+    "typescript/no-explicit-any": "off",
+
+    // Allow namespace declarations (Effect uses these)
+    "typescript/no-namespace": "off",
+
+    // Allow empty interfaces/types used for structural typing
+    "typescript/no-empty-interface": "off",
+
+    // Allow require imports in specific contexts
+    "typescript/no-require-imports": "off",
+
+    // Disable rules that conflict with the project patterns
+    "no-control-regex": "off",
+    "no-prototype-builtins": "off",
+    "no-case-declarations": "off",
+    "no-empty": "off",
+    "unicorn/no-nested-ternary": "off",
+
+    // Allow bitwise operators (used in some Effect patterns)
+    "no-bitwise": "off",
+
+    // Allow empty pattern
+    "no-empty-pattern": "off",
+
+    // Effect uses generator functions for effectful computation (yield is implicit)
+    "require-yield": "off",
+
+    // False positives with Effect's re-export module structure
+    "import/namespace": "off",
+
+    // Effect patterns use unused expressions for type-level assertions
+    "no-unused-expressions": "off",
+
+    // Enforce namespace imports for modules with capitalized base names
+    "effect-start/prefer-namespace-import": "error",
+
+    // Enforce namespace import for bun:test in test files
+    "effect-start/require-test-namespace-import": "error",
+
+    // Enforce newlines between chained test assertion methods
+    "effect-start/test-assertion-newline": "error"
+  },
+  "ignorePatterns": [
+    "dist/",
+    "node_modules/",
+    "*.todo.ts"
+  ]
+}

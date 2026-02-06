@@ -80,6 +80,7 @@
   "scripts": {
     "build": "bunx --bun tsc -p tsconfig.build.json",
     "format": "bunx dprint fmt",
+    "lint": "oxlint --import-plugin --tsconfig tsconfig.json src/",
     "test": "bun test ./src/",
     "deploy": "bunx --bun npm publish --access public"
   },
@@ -88,7 +89,6 @@
     "@effect/platform": ">=0.93.0"
   },
   "devDependencies": {
-    "typescript": "^5.9.3",
     "@dprint/json": "^0.21.0",
     "@dprint/markdown": "^0.20.0",
     "@dprint/typescript": "^0.95.13",
@@ -100,8 +100,10 @@
     "dprint-markup": "nounder/dprint-markup",
     "effect-memfs": "^0.8.0",
     "expect-type": "^1.3.0",
+    "oxlint": "^1.43.0",
     "tailwindcss": "^4.1.18",
-    "ts-namespace-import": "nounder/ts-namespace-import#140c405"
+    "ts-namespace-import": "nounder/ts-namespace-import#140c405",
+    "typescript": "^5.9.3"
   },
   "files": [
     "src/",
