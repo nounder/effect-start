@@ -17,11 +17,16 @@ import * as RouteHttp from "../RouteHttp.ts"
 import * as RouteMount from "../RouteMount.ts"
 import * as RouteTree from "../RouteTree.ts"
 import * as BunRoute from "./BunRoute.ts"
-import * as BunServerRequest from "./BunServerRequest.ts"
+export interface WebSocketContext {
+  readonly deferred: Deferred.Deferred<Bun.ServerWebSocket<WebSocketContext>>
+  readonly closeDeferred: Deferred.Deferred<void, Socket.SocketError>
+  readonly buffer: Array<Uint8Array | string>
+  run: (_: Uint8Array | string) => void
+}
 
 type FetchHandler = (
   request: Request,
-  server: Bun.Server<BunServerRequest.WebSocketContext>,
+  server: Bun.Server<WebSocketContext>,
 ) => Response | Promise<Response>
 
 /**
@@ -39,7 +44,7 @@ interface BunServeOptions {
 }
 
 export type BunServer = {
-  readonly server: Bun.Server<BunServerRequest.WebSocketContext>
+  readonly server: Bun.Server<WebSocketContext>
   readonly pushHandler: (fetch: FetchHandler) => void
   readonly popHandler: () => void
 }
@@ -112,7 +117,7 @@ export const make = (
       ? yield* walkBunRoutes(runtime, routes)
       : {}
 
-    const websocket: Bun.WebSocketHandler<BunServerRequest.WebSocketContext> = {
+    const websocket: Bun.WebSocketHandler<WebSocketContext> = {
       open(ws) {
         Deferred
           .unsafeDone(ws.data.deferred, Exit.succeed(ws))
