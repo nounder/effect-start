@@ -1,4 +1,4 @@
-import * as Cookies from "@effect/platform/Cookies"
+import * as Cookies from "../Cookies.ts"
 import * as Config from "effect/Config"
 import * as Context from "effect/Context"
 import * as Data from "effect/Data"
