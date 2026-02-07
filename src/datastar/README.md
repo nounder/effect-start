@@ -6,7 +6,7 @@ We experimentally place it inside Effect Start to have tighter integration with 
 great out-of-the-box experience. After cleaning up the code, we're at around ~90kb of source code.
 We can probably cut it down by another ~10kb if we remove DataStar expression and use JS functions directly.
 
-Based on `812cbe9` (2025-02-05) following changes were made:
+We made following changes:
 
 - Path aliases converted to relative imports: `@engine/*` → `./engine/*`, etc.
 - Flattened `plugins/` directory: `plugins/actions/` → `actions/`, etc.
@@ -16,4 +16,8 @@ Based on `812cbe9` (2025-02-05) following changes were made:
 - Updated type declaration to conform to `erasableSyntaxOnly`:
   - Converted `enum ReactiveFlags` and `enum EffectFlags` to `const` objects with `as const`
   - Added type aliases `ReactiveFlags_X` to replace `ReactiveFlags.X` namespace types
-- `842b9b7` extends expressions with function form handled by `genRx`
+- Extends expressions with function form handled by `genRx`
+- `data-on` supports function form with optional config object:
+  - Function form: `data-on:click="(e) => { e.signals.count.value++ }"`
+  - Function form with config: `data-on:click="(e) => {...}, { debounce: 500, prevent: true }"`
+  - !! `__` attribute modifiers are no longer parsed by `on.ts` (now removed from imports)
