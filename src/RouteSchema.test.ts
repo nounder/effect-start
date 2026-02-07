@@ -4,6 +4,7 @@ import * as Http from "./Http.ts"
 import * as Route from "./Route.ts"
 import * as RouteHttp from "./RouteHttp.ts"
 import * as RouteMount from "./RouteMount.ts"
+import * as RouteError from "./RouteError.ts"
 import * as RouteSchema from "./RouteSchema.ts"
 import * as TestLogger from "./testing/TestLogger.ts"
 
@@ -448,5 +449,159 @@ test.describe(`${RouteSchema.schemaSuccess.name}()`, () => {
 
     test.expect(response.status).toBe(200)
     test.expect(await response.json()).toEqual({ createdAt: "2025-01-01T00:00:00.000Z" })
+  })
+})
+
+test.describe(`${RouteSchema.schemaError.name}()`, () => {
+  class NotFound extends Schema.TaggedError<NotFound>()("NotFound", {
+    message: Schema.String,
+  }) {}
+
+  class Unauthorized extends Schema.TaggedError<Unauthorized>()("Unauthorized", {
+    message: Schema.String,
+  }) {}
+
+  test.it("catches matching error and returns structured response", async () => {
+    const handler = RouteHttp.toWebHandler(
+      Route.get(
+        RouteSchema.schemaError(NotFound, { status: 404 }),
+        Route.json(function* () {
+          const found = false as boolean
+          if (!found) return yield* new NotFound({ message: "User not found" })
+          return { name: "Alice" }
+        }),
+      ),
+    )
+    const response = await Http.fetch(handler, { path: "/test" })
+
+    test.expect(response.status).toBe(404)
+    test.expect(await response.json()).toEqual({
+      _tag: "NotFound",
+      message: "User not found",
+    })
+  })
+
+  test.it("passes through unmatched errors", () =>
+    Effect.gen(function* () {
+      const runtime = yield* Effect.runtime<TestLogger.TestLogger>()
+      const handler = RouteHttp.toWebHandlerRuntime(runtime)(
+        Route.get(
+          RouteSchema.schemaError(NotFound, { status: 404 }),
+          Route.json(function* () {
+            const ok = false as boolean
+            if (!ok) return yield* new Unauthorized({ message: "No access" })
+            return { name: "Alice" }
+          }),
+        ),
+      )
+      const response = yield* Effect.promise(() =>
+        Http.fetch(handler, { path: "/test" }),
+      )
+
+      test.expect(response.status).toBe(500)
+    }).pipe(Effect.provide(TestLogger.layer()), Effect.runPromise),
+  )
+
+  test.it("chains multiple schemaError pipes", async () => {
+    const handler = RouteHttp.toWebHandler(
+      Route.get(
+        RouteSchema.schemaError(NotFound, { status: 404 }),
+        RouteSchema.schemaError(Unauthorized, { status: 401 }),
+        Route.json(function* () {
+          const ok = false as boolean
+          if (!ok) return yield* new Unauthorized({ message: "Denied" })
+          return { name: "Alice" }
+        }),
+      ),
+    )
+    const response = await Http.fetch(handler, { path: "/test" })
+
+    test.expect(response.status).toBe(401)
+    test.expect(await response.json()).toEqual({
+      _tag: "Unauthorized",
+      message: "Denied",
+    })
+  })
+
+  test.it("success responses pass through unchanged", async () => {
+    const handler = RouteHttp.toWebHandler(
+      Route.get(
+        RouteSchema.schemaError(NotFound, { status: 404 }),
+        Route.json(function* () {
+          return { name: "Alice" }
+        }),
+      ),
+    )
+    const response = await Http.fetch(handler, { path: "/test" })
+
+    test.expect(response.status).toBe(200)
+    test.expect(await response.json()).toEqual({ name: "Alice" })
+  })
+
+  test.it("schemaError route has E=never", () => {
+    const routeSet = RouteSchema.schemaError(NotFound, { status: 404 })(Route.empty)
+
+    type Items = Route.RouteSet.Items<typeof routeSet>
+    type ErrorRoute = Items[0]
+    type E = ErrorRoute extends Route.Route.Route<any, any, any, infer _E, any> ? _E : "fail"
+
+    true satisfies ([E] extends [never] ? true : false)
+  })
+
+  test.it("infers status from static property on schema", async () => {
+    const handler = RouteHttp.toWebHandler(
+      Route.get(
+        RouteSchema.schemaError(RouteError.NotFound),
+        Route.json(function* () {
+          const found = false as boolean
+          if (!found) return yield* new RouteError.NotFound({ message: "Gone" })
+          return { name: "Alice" }
+        }),
+      ),
+    )
+    const response = await Http.fetch(handler, { path: "/test" })
+
+    test.expect(response.status).toBe(404)
+    test.expect(await response.json()).toEqual({
+      _tag: "NotFound",
+      message: "Gone",
+    })
+  })
+
+  test.it("explicit status overrides static property", async () => {
+    const handler = RouteHttp.toWebHandler(
+      Route.get(
+        RouteSchema.schemaError(RouteError.NotFound, { status: 410 }),
+        Route.json(function* () {
+          const found = false as boolean
+          if (!found) return yield* new RouteError.NotFound({ message: "Gone forever" })
+          return { name: "Alice" }
+        }),
+      ),
+    )
+    const response = await Http.fetch(handler, { path: "/test" })
+
+    test.expect(response.status).toBe(410)
+  })
+
+  test.it("pre-built errors work with multiple chained schemaError", async () => {
+    const handler = RouteHttp.toWebHandler(
+      Route.get(
+        RouteSchema.schemaError(RouteError.NotFound),
+        RouteSchema.schemaError(RouteError.Unauthorized),
+        Route.json(function* () {
+          const ok = false as boolean
+          if (!ok) return yield* new RouteError.Unauthorized({ message: "No token" })
+          return { name: "Alice" }
+        }),
+      ),
+    )
+    const response = await Http.fetch(handler, { path: "/test" })
+
+    test.expect(response.status).toBe(401)
+    test.expect(await response.json()).toEqual({
+      _tag: "Unauthorized",
+      message: "No token",
+    })
   })
 })
