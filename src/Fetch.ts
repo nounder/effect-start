@@ -1,6 +1,7 @@
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Predicate from "effect/Predicate"
+import * as Schedule from "effect/Schedule"
 import type * as Utils from "effect/Utils"
 import * as Entity from "./Entity.ts"
 
@@ -51,7 +52,17 @@ export class DecodeError extends Data.TaggedError("DecodeError")<{
   }
 }
 
-export type FetchErrorReason = TransportError | DecodeError
+export class StatusError extends Data.TaggedError("StatusError")<{
+  readonly request: Request
+  readonly status: number
+  readonly description?: string
+}> {
+  override get message() {
+    return formatMessage("Status", this.description, `${this.status} ${methodAndUrl(this.request)}`)
+  }
+}
+
+export type FetchErrorReason = TransportError | DecodeError | StatusError
 
 // ---------------------------------------------------------------------------
 // Types
@@ -197,12 +208,75 @@ export function timeout(ms: number): Middleware {
     Effect.timeout(next(request), ms) as Effect.Effect<Entity.Entity<Uint8Array>, FetchError>
 }
 
-export function retry(options: { times: number; delay?: number }): Middleware {
+export function retry(
+  options:
+    | { times: number; delay?: number }
+    | { schedule: Schedule.Schedule<unknown, FetchError> },
+): Middleware {
+  return (request, next) => {
+    const schedule =
+      "schedule" in options
+        ? options.schedule
+        : options.delay != null
+          ? Schedule.intersect(Schedule.recurs(options.times), Schedule.spaced(options.delay))
+          : Schedule.recurs(options.times)
+    return Effect.retry(Effect.suspend(() => next(request)), schedule) as Effect.Effect<
+      Entity.Entity<Uint8Array>,
+      FetchError
+    >
+  }
+}
+
+export function filterStatus(
+  f: (status: number) => boolean,
+  options?: { description?: string },
+): Middleware {
   return (request, next) =>
-    Effect.retry(next(request), {
-      times: options.times,
-      ...(options.delay != null ? { schedule: Effect.scheduleSpaced(options.delay) } : {}),
-    }) as Effect.Effect<Entity.Entity<Uint8Array>, FetchError>
+    Effect.flatMap(next(request), (entity) => {
+      if (f(entity.status!)) {
+        return Effect.succeed(entity)
+      }
+      return Effect.fail(
+        new FetchError({
+          reason: new StatusError({
+            request,
+            status: entity.status!,
+            description: options?.description,
+          }),
+        }),
+      )
+    })
+}
+
+export function filterStatusOk(): Middleware {
+  return filterStatus((s) => s >= 200 && s < 300)
+}
+
+export function followRedirects(options?: { maxRedirects?: number }): Middleware {
+  const max = options?.maxRedirects ?? 10
+  return (request, next) => {
+    const go = (
+      req: Request,
+      remaining: number,
+    ): Effect.Effect<Entity.Entity<Uint8Array>, FetchError> =>
+      Effect.flatMap(next(new Request(req, { redirect: "manual" })), (entity) => {
+        const status = entity.status!
+        if (status < 300 || status >= 400 || remaining <= 0) {
+          return Effect.succeed(entity)
+        }
+        const location = entity.headers["location"]
+        if (!location) {
+          return Effect.succeed(entity)
+        }
+        const url = new URL(location, req.url)
+        const redirectReq =
+          status === 303
+            ? new Request(url, { method: "GET", headers: req.headers })
+            : new Request(url, req)
+        return go(redirectReq, remaining - 1)
+      })
+    return go(request, max)
+  }
 }
 
 export function tap(

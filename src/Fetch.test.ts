@@ -142,6 +142,151 @@ test.describe("Fetch.tap", () => {
   })
 })
 
+test.describe("Fetch.filterStatus", () => {
+  test.it("passes when predicate matches", async () => {
+    const client = Fetch.make(Fetch.filterStatus((s) => s === 200))
+    const entity = await Effect.runPromise(
+      client.execute(new Request("https://httpbin.org/get")),
+    )
+
+    test.expect(entity.status).toBe(200)
+  })
+
+  test.it("fails with StatusError when predicate rejects", async () => {
+    const client = Fetch.make(Fetch.filterStatus((s) => s === 201))
+    const exit = await Effect.runPromiseExit(
+      client.execute(new Request("https://httpbin.org/get")),
+    )
+
+    test.expect(exit._tag).toBe("Failure")
+    if (exit._tag === "Failure") {
+      const error = Cause.failureOption(exit.cause).pipe(
+        (opt) => (opt as any).value as Fetch.FetchError,
+      )
+      test.expect(error.reason._tag).toBe("StatusError")
+      if (error.reason._tag === "StatusError") {
+        test.expect(error.reason.status).toBe(200)
+      }
+    }
+  })
+
+  test.it("includes description in StatusError message", () => {
+    const err = new Fetch.FetchError({
+      reason: new Fetch.StatusError({
+        request: new Request("http://example.com/api"),
+        status: 404,
+        description: "not found",
+      }),
+    })
+
+    test.expect(err.message).toBe("Status: not found (404 GET http://example.com/api)")
+  })
+})
+
+test.describe("Fetch.filterStatusOk", () => {
+  test.it("passes for 2xx status codes", async () => {
+    const client = Fetch.make(Fetch.filterStatusOk())
+    const entity = await Effect.runPromise(
+      client.execute(new Request("https://httpbin.org/get")),
+    )
+
+    test.expect(entity.status).toBe(200)
+  })
+
+  test.it("fails for non-2xx status codes", async () => {
+    const client = Fetch.make(Fetch.filterStatusOk())
+    const exit = await Effect.runPromiseExit(
+      client.execute(new Request("https://httpbin.org/status/404")),
+    )
+
+    test.expect(exit._tag).toBe("Failure")
+    if (exit._tag === "Failure") {
+      const error = Cause.failureOption(exit.cause).pipe(
+        (opt) => (opt as any).value as Fetch.FetchError,
+      )
+      test.expect(error.reason._tag).toBe("StatusError")
+      if (error.reason._tag === "StatusError") {
+        test.expect(error.reason.status).toBe(404)
+      }
+    }
+  })
+})
+
+test.describe("Fetch.followRedirects", () => {
+  test.it("follows 302 redirect to final URL", async () => {
+    const client = Fetch.make(Fetch.followRedirects())
+    const entity = await Effect.runPromise(
+      client.execute(new Request("https://httpbin.org/redirect-to?url=/get&status_code=302")),
+    )
+
+    test.expect(entity.status).toBe(200)
+    const json = (await Effect.runPromise(entity.json)) as { url: string }
+    test.expect(json.url).toBe("https://httpbin.org/get")
+  })
+
+  test.it("follows chained redirects", async () => {
+    const client = Fetch.make(Fetch.followRedirects())
+    const entity = await Effect.runPromise(
+      client.execute(new Request("https://httpbin.org/redirect/2")),
+    )
+
+    test.expect(entity.status).toBe(200)
+  })
+
+  test.it("stops after maxRedirects", async () => {
+    const client = Fetch.make(Fetch.followRedirects({ maxRedirects: 1 }))
+    const entity = await Effect.runPromise(
+      client.execute(new Request("https://httpbin.org/redirect/3")),
+    )
+
+    // Should stop following and return the redirect response
+    test.expect(entity.status).toBeGreaterThanOrEqual(300)
+    test.expect(entity.status).toBeLessThan(400)
+  })
+})
+
+test.describe("Fetch.retry", () => {
+  test.it("retries on transport error", async () => {
+    let attempts = 0
+    const countingMiddleware: Fetch.Middleware = (request, next) => {
+      attempts++
+      return next(request)
+    }
+
+    const client = Fetch.make(
+      Fetch.retry({ times: 2 }),
+      countingMiddleware,
+    )
+
+    const exit = await Effect.runPromiseExit(
+      client.execute(new Request("http://localhost:1")),
+    )
+
+    // Should have tried 3 times (initial + 2 retries)
+    test.expect(attempts).toBe(3)
+    test.expect(exit._tag).toBe("Failure")
+  })
+
+  test.it("succeeds without retrying on success", async () => {
+    let attempts = 0
+    const countingMiddleware: Fetch.Middleware = (request, next) => {
+      attempts++
+      return next(request)
+    }
+
+    const client = Fetch.make(
+      Fetch.retry({ times: 3 }),
+      countingMiddleware,
+    )
+
+    await Effect.runPromise(
+      client.execute(new Request("https://httpbin.org/get")),
+    )
+
+    test.expect(attempts).toBe(1)
+  })
+})
+
 test.describe("FetchError", () => {
   test.it("wraps TransportError with formatted message", () => {
     const request = new Request("http://example.com/api")
