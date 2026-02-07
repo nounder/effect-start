@@ -66,6 +66,13 @@ export type Simplify<T> = {
   ? { [K in keyof U]: U[K] }
   : never
 
+export const firstValue = <T>(record: Record<string, T>): T | undefined => {
+  for (const key in record) {
+    return record[key]
+  }
+  return undefined
+}
+
 export const concatBytes = (a: Uint8Array, b: Uint8Array): Uint8Array => {
   const result = new Uint8Array(a.byteLength + b.byteLength)
   result.set(a)

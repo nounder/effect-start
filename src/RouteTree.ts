@@ -147,6 +147,18 @@ export function* walk(tree: RouteTree): Generator<RouteMount.MountedRoute> {
   }
 }
 
+export function merge(a: RouteTree, b: RouteTree): RouteTree {
+  const combined: RouteMap = { ...routes(a) }
+  for (const [path, items] of Object.entries(routes(b))) {
+    const key = path as PathPattern.PathPattern
+    combined[key] = combined[key] ? [...combined[key], ...items] : items
+  }
+  return {
+    [TypeId]: TypeId,
+    [RouteTreeRoutes]: sortRoutes(combined),
+  } as RouteTree
+}
+
 export function isRouteTree(input: unknown): input is RouteTree {
   return Predicate.hasProperty(input, TypeId)
 }
