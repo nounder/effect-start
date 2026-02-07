@@ -1,3 +1,4 @@
+/** @jsxImportSource effect-start */
 import * as test from "bun:test"
 import * as HyperHtml from "./HyperHtml.ts"
 import * as HyperNode from "./HyperNode.ts"
@@ -238,3 +239,40 @@ test.it("normal tag string content is escaped", () => {
   test.expect(html).toBe("<div>a &amp;&amp; b</div>")
 })
 
+test.it("data-* function values are serialized with toString", () => {
+  const node = HyperNode.make("div", {
+    "data-on-click": () => console.log("clicked"),
+  })
+
+  const html = HyperHtml.renderToString(node)
+
+  test.expect(html).toContain("data-on-click=")
+  test.expect(html).toContain("console.log")
+})
+
+test.it("data-* object values don't render as [object Object]", () => {
+  const html = HyperHtml.renderToString(
+    <div data-signals={{ isOpen: false, count: 42 }}>content</div>,
+  )
+
+  test
+    .expect(html)
+    .toBe(`<div data-signals='{"isOpen":false,"count":42}'>content</div>`)
+  test.expect(html).not.toContain("[object Object]")
+})
+
+test.it("JSX component with data-* object values", () => {
+  function TestComponent() {
+    return (
+      <div data-signals={{ isOpen: false }}>
+        <span>nested</span>
+      </div>
+    )
+  }
+
+  const html = HyperHtml.renderToString(<TestComponent />)
+
+  test
+    .expect(html)
+    .toBe(`<div data-signals='{"isOpen":false}'><span>nested</span></div>`)
+})

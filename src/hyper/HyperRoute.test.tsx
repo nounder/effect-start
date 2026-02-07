@@ -128,7 +128,7 @@ test.describe("HyperRoute.html", () => {
     test
       .expect(await response.text())
       .toBe(
-        '<div data-signals="{&quot;draft&quot;:&quot;&quot;,&quot;pendingDraft&quot;:&quot;&quot;,&quot;username&quot;:&quot;User123&quot;}">Content</div>',
+        `<div data-signals='{"draft":"","pendingDraft":"","username":"User123"}'>Content</div>`,
       )
   })
 

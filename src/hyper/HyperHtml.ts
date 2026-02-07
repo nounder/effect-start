@@ -41,14 +41,14 @@ const EMPTY_TAGS = [
   "wbr",
 ]
 
-// escape an attribute
 let esc = (str: any) => String(str).replace(/[&<>"']/g, (s) => `&${map[s]};`)
+let escSQ = (str: any) => String(str).replace(/[&<>']/g, (s) => `&${map[s]};`)
 let map = {
   "&": "amp",
   "<": "lt",
   ">": "gt",
   '"': "quot",
-  "'": "apos",
+  "'": "#39",
 }
 
 const RAW_TEXT_TAGS = ["script", "style"]
@@ -127,7 +127,7 @@ export function renderToString(
             if (key.startsWith("data-") && typeof value === "function") {
               result += ` ${esc(resolvedKey)}="${esc(value.toString())}"`
             } else if (key.startsWith("data-") && typeof value === "object") {
-              result += ` ${esc(resolvedKey)}="${esc(JSON.stringify(value))}"`
+              result += ` ${esc(resolvedKey)}='${escSQ(JSON.stringify(value))}'`
             } else {
               result += ` ${esc(resolvedKey)}="${esc(value)}"`
             }
