@@ -3,13 +3,13 @@ import * as Effect from "effect/Effect"
 import * as Fetch from "./Fetch.ts"
 
 test.describe("Fetch.fetch", () => {
-  test.it("fetches a URL and returns an Entity with string body", async () => {
+  test.it("fetches a URL and returns an Entity with Uint8Array body", async () => {
     const entity = await Effect.runPromise(
       Fetch.fetch("https://httpbin.org/get"),
     )
 
     test.expect(entity.status).toBe(200)
-    test.expect(typeof entity.body).toBe("string")
+    test.expect(entity.body).toBeInstanceOf(Uint8Array)
     test.expect(entity.headers["content-type"]).toContain("application/json")
   })
 
@@ -36,7 +36,7 @@ test.describe("Fetch.fetch", () => {
     )
 
     test.expect(entity.status).toBe(204)
-    test.expect(entity.body).toBe("")
+    test.expect(entity.body).toEqual(new Uint8Array(0))
   })
 })
 

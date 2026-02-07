@@ -23,8 +23,8 @@ export function FetchError(
 
 export type Middleware<E = never, R = never> = (
   request: Request,
-  next: (request: Request) => Effect.Effect<Entity.Entity<string>, FetchError>,
-) => Effect.Effect<Entity.Entity<string>, FetchError | E, R>
+  next: (request: Request) => Effect.Effect<Entity.Entity<Uint8Array>, FetchError>,
+) => Effect.Effect<Entity.Entity<Uint8Array>, FetchError | E, R>
 
 type YieldError<T> = T extends Utils.YieldWrap<Effect.Effect<any, infer E, any>> ? E : never
 
@@ -34,7 +34,7 @@ type YieldContext<T> = T extends Utils.YieldWrap<Effect.Effect<any, any, infer R
 // Core
 // ---------------------------------------------------------------------------
 
-function executeRequest(request: Request): Effect.Effect<Entity.Entity<string>, FetchError> {
+function executeRequest(request: Request): Effect.Effect<Entity.Entity<Uint8Array>, FetchError> {
   return Effect.tryPromise({
     try: (signal) => globalThis.fetch(request, { signal }),
     catch: (cause) => FetchError(request, "Transport", cause),
@@ -46,12 +46,12 @@ function executeRequest(request: Request): Effect.Effect<Entity.Entity<string>, 
       })
       const opts = { status: response.status, url: response.url, headers }
       if (response.status === 204 || response.status === 304 || response.body === null) {
-        return Effect.succeed(Entity.make("", opts))
+        return Effect.succeed(Entity.make(new Uint8Array(0), opts))
       }
       return Effect.tryPromise({
-        try: () => response.text(),
+        try: () => response.arrayBuffer(),
         catch: (cause) => FetchError(request, "Decode", cause),
-      }).pipe(Effect.map((text) => Entity.make(text, opts)))
+      }).pipe(Effect.map((buf) => Entity.make(new Uint8Array(buf), opts)))
     }),
   )
 }
@@ -61,7 +61,7 @@ function executeRequest(request: Request): Effect.Effect<Entity.Entity<string>, 
 // ---------------------------------------------------------------------------
 
 export interface Client {
-  readonly execute: (request: Request) => Effect.Effect<Entity.Entity<string>, FetchError>
+  readonly execute: (request: Request) => Effect.Effect<Entity.Entity<Uint8Array>, FetchError>
 }
 
 export function make(...middlewares: Array<Middleware<any, any>>): Client {
@@ -76,13 +76,13 @@ function runChain(
   request: Request,
   middlewares: Array<Middleware<any, any>>,
   index: number,
-): Effect.Effect<Entity.Entity<string>, FetchError> {
+): Effect.Effect<Entity.Entity<Uint8Array>, FetchError> {
   if (index >= middlewares.length) {
     return executeRequest(request)
   }
   const mw = middlewares[index]
   return mw(request, (req) => runChain(req, middlewares, index + 1)) as Effect.Effect<
-    Entity.Entity<string>,
+    Entity.Entity<Uint8Array>,
     FetchError
   >
 }
@@ -100,7 +100,7 @@ export const client: Client = make()
 export function fetch(
   input: string | URL | Request,
   init?: RequestInit,
-): Effect.Effect<Entity.Entity<string>, FetchError> {
+): Effect.Effect<Entity.Entity<Uint8Array>, FetchError> {
   const request = input instanceof Request ? input : new Request(input, init)
   return executeRequest(request)
 }
@@ -112,8 +112,8 @@ export function fetch(
 export function middleware<Y extends Utils.YieldWrap<Effect.Effect<any, any, any>>>(
   handler: (
     request: Request,
-    next: (request: Request) => Effect.Effect<Entity.Entity<string>, FetchError>,
-  ) => Generator<Y, Entity.Entity<string>, never>,
+    next: (request: Request) => Effect.Effect<Entity.Entity<Uint8Array>, FetchError>,
+  ) => Generator<Y, Entity.Entity<Uint8Array>, never>,
 ): Middleware<YieldError<Y>, YieldContext<Y>> {
   return (request, next) => {
     const gen = handler(request, next)
@@ -158,7 +158,7 @@ export function bearerToken(token: string): Middleware {
 
 export function timeout(ms: number): Middleware {
   return (request, next) =>
-    Effect.timeout(next(request), ms) as Effect.Effect<Entity.Entity<string>, FetchError>
+    Effect.timeout(next(request), ms) as Effect.Effect<Entity.Entity<Uint8Array>, FetchError>
 }
 
 export function retry(options: { times: number; delay?: number }): Middleware {
@@ -166,11 +166,11 @@ export function retry(options: { times: number; delay?: number }): Middleware {
     Effect.retry(next(request), {
       times: options.times,
       ...(options.delay != null ? { schedule: Effect.scheduleSpaced(options.delay) } : {}),
-    }) as Effect.Effect<Entity.Entity<string>, FetchError>
+    }) as Effect.Effect<Entity.Entity<Uint8Array>, FetchError>
 }
 
 export function tap(
-  f: (entity: Entity.Entity<string>) => void | Effect.Effect<void, never, never>,
+  f: (entity: Entity.Entity<Uint8Array>) => void | Effect.Effect<void, never, never>,
 ): Middleware {
   return (request, next) =>
     Effect.tap(next(request), (entity) => {
