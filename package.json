@@ -74,12 +74,12 @@
       "default": "./dist/hyper/index.js"
     },
     "./jsx-runtime": {
-      "types": "./dist/hyper/jsx-runtime.d.ts",
+      "types": "./src/hyper/jsx-runtime.ts",
       "bun": "./src/hyper/jsx-runtime.ts",
       "default": "./dist/hyper/jsx-runtime.js"
     },
     "./jsx-dev-runtime": {
-      "types": "./dist/hyper/jsx-runtime.d.ts",
+      "types": "./src/hyper/jsx-runtime.ts",
       "bun": "./src/hyper/jsx-runtime.ts",
       "default": "./dist/hyper/jsx-runtime.js"
     },
