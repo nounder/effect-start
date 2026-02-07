@@ -1,5 +1,6 @@
 import * as test from "bun:test"
 import * as Effect from "effect/Effect"
+import type * as Tracer from "effect/Tracer"
 import * as Fetch from "./Fetch.ts"
 
 test.describe("fromResponse", () => {
@@ -21,7 +22,6 @@ test.describe("fromResponse", () => {
     const request = new Request("https://example.com/path")
     const entity = Fetch.fromResponse(response, request)
 
-    // Response constructor does not set .url; only fetch()-returned responses have it
     test.expect(entity.url).toBeUndefined()
   })
 
@@ -105,8 +105,23 @@ test.describe("fetch", () => {
   })
 })
 
-test.describe("make", () => {
-  test.it("creates client with Effect middleware", async () => {
+test.describe("FetchClient", () => {
+  test.it("make() creates client that fetches without middleware", async () => {
+    const original = globalThis.fetch
+    globalThis.fetch = async () => new Response("bare", { status: 200 })
+
+    try {
+      const client = Fetch.make()
+      const entity = await Effect.runPromise(client.fetch("https://example.com"))
+      test.expect(entity.status).toBe(200)
+      const text = await Effect.runPromise(entity.text)
+      test.expect(text).toBe("bare")
+    } finally {
+      globalThis.fetch = original
+    }
+  })
+
+  test.it("use() adds Effect middleware", async () => {
     const original = globalThis.fetch
     let capturedUrl = ""
     globalThis.fetch = async (input: string | URL | Request) => {
@@ -115,30 +130,30 @@ test.describe("make", () => {
     }
 
     try {
-      const client = Fetch.make((request, next) => {
+      const client = Fetch.make().use((request, next) => {
         const url = new URL(request.url)
         url.searchParams.set("token", "abc")
         return next(new Request(url.toString(), request))
       })
 
-      await Effect.runPromise(client("https://example.com/api"))
+      await Effect.runPromise(client.fetch("https://example.com/api"))
       test.expect(capturedUrl).toBe("https://example.com/api?token=abc")
     } finally {
       globalThis.fetch = original
     }
   })
 
-  test.it("supports generator middleware", async () => {
+  test.it("use() supports generator middleware", async () => {
     const original = globalThis.fetch
     globalThis.fetch = async () => new Response("original")
 
     try {
-      const client = Fetch.make(function* (request, next) {
+      const client = Fetch.make().use(function* (request, next) {
         const entity = yield* next(request)
         return entity
       })
 
-      const entity = await Effect.runPromise(client("https://example.com"))
+      const entity = await Effect.runPromise(client.fetch("https://example.com"))
       const text = await Effect.runPromise(entity.text)
       test.expect(text).toBe("original")
     } finally {
@@ -155,22 +170,21 @@ test.describe("make", () => {
     }
 
     try {
-      const client = Fetch.make(
-        function* (request, next) {
+      const client = Fetch.make()
+        .use(function* (request, next) {
           order.push("mw1-before")
           const entity = yield* next(request)
           order.push("mw1-after")
           return entity
-        },
-        function* (request, next) {
+        })
+        .use(function* (request, next) {
           order.push("mw2-before")
           const entity = yield* next(request)
           order.push("mw2-after")
           return entity
-        },
-      )
+        })
 
-      await Effect.runPromise(client("https://example.com"))
+      await Effect.runPromise(client.fetch("https://example.com"))
       test.expect(order).toEqual(["mw1-before", "mw2-before", "fetch", "mw2-after", "mw1-after"])
     } finally {
       globalThis.fetch = original
@@ -186,13 +200,13 @@ test.describe("make", () => {
     }
 
     try {
-      const client = Fetch.make(function* (request, next) {
+      const client = Fetch.make().use(function* (request, next) {
         const headers = new Headers(request.headers)
         headers.set("x-request-id", "123")
         return yield* next(new Request(request.url, { method: request.method, headers }))
       })
 
-      await Effect.runPromise(client("https://example.com"))
+      await Effect.runPromise(client.fetch("https://example.com"))
       test.expect(captured!.headers.get("x-request-id")).toBe("123")
     } finally {
       globalThis.fetch = original
@@ -208,12 +222,12 @@ test.describe("make", () => {
     }
 
     try {
-      const client = Fetch.make((_request, _next) => {
+      const client = Fetch.make().use((_request, _next) => {
         const cached = new Response("from-cache", { status: 200 })
         return Effect.succeed(Fetch.fromResponse(cached, _request))
       })
 
-      const entity = await Effect.runPromise(client("https://example.com"))
+      const entity = await Effect.runPromise(client.fetch("https://example.com"))
       const text = await Effect.runPromise(entity.text)
       test.expect(text).toBe("from-cache")
       test.expect(fetchCalled).toBe(false)
@@ -222,16 +236,159 @@ test.describe("make", () => {
     }
   })
 
-  test.it("with no middleware behaves like bare fetch", async () => {
+  test.it("use() returns new client without mutating original", async () => {
     const original = globalThis.fetch
-    globalThis.fetch = async () => new Response("bare", { status: 200 })
+    let headerSeen = false
+    globalThis.fetch = async (input: string | URL | Request) => {
+      headerSeen = (input as Request).headers.has("x-added")
+      return new Response("ok")
+    }
 
     try {
-      const client = Fetch.make()
-      const entity = await Effect.runPromise(client("https://example.com"))
-      test.expect(entity.status).toBe(200)
-      const text = await Effect.runPromise(entity.text)
-      test.expect(text).toBe("bare")
+      const base = Fetch.make()
+      const withHeader = base.use(function* (request, next) {
+        const headers = new Headers(request.headers)
+        headers.set("x-added", "yes")
+        return yield* next(new Request(request.url, { headers }))
+      })
+
+      await Effect.runPromise(base.fetch("https://example.com"))
+      test.expect(headerSeen).toBe(false)
+
+      await Effect.runPromise(withHeader.fetch("https://example.com"))
+      test.expect(headerSeen).toBe(true)
+    } finally {
+      globalThis.fetch = original
+    }
+  })
+
+  test.it("use() accepts multiple middleware at once", async () => {
+    const order: Array<string> = []
+    const original = globalThis.fetch
+    globalThis.fetch = async () => {
+      order.push("fetch")
+      return new Response("ok")
+    }
+
+    try {
+      const client = Fetch.make().use(
+        function* (request, next) {
+          order.push("a")
+          return yield* next(request)
+        },
+        function* (request, next) {
+          order.push("b")
+          return yield* next(request)
+        },
+      )
+
+      await Effect.runPromise(client.fetch("https://example.com"))
+      test.expect(order).toEqual(["a", "b", "fetch"])
+    } finally {
+      globalThis.fetch = original
+    }
+  })
+})
+
+test.describe("tracing", () => {
+  test.it("creates span with correct name and kind", async () => {
+    let capturedSpan: Tracer.Span | undefined
+    const original = globalThis.fetch
+    globalThis.fetch = async () => new Response("ok")
+
+    try {
+      const client = Fetch.make().use(function* (request, next) {
+        capturedSpan = yield* Effect.currentSpan
+        return yield* next(request)
+      })
+
+      await Effect.runPromise(client.fetch("https://example.com"))
+
+      test.expect(capturedSpan).toBeDefined()
+      test.expect(capturedSpan?.name).toBe("http.client GET")
+      test.expect(capturedSpan?.kind).toBe("client")
+    } finally {
+      globalThis.fetch = original
+    }
+  })
+
+  test.it("span name includes HTTP method", async () => {
+    let capturedSpan: Tracer.Span | undefined
+    const original = globalThis.fetch
+    globalThis.fetch = async () => new Response("ok")
+
+    try {
+      const client = Fetch.make().use(function* (request, next) {
+        capturedSpan = yield* Effect.currentSpan
+        return yield* next(request)
+      })
+
+      await Effect.runPromise(client.fetch("https://example.com", { method: "POST" }))
+
+      test.expect(capturedSpan?.name).toBe("http.client POST")
+    } finally {
+      globalThis.fetch = original
+    }
+  })
+
+  test.it("adds request attributes to span", async () => {
+    let capturedSpan: Tracer.Span | undefined
+    const original = globalThis.fetch
+    globalThis.fetch = async () => new Response("ok")
+
+    try {
+      const client = Fetch.make().use(function* (request, next) {
+        capturedSpan = yield* Effect.currentSpan
+        return yield* next(request)
+      })
+
+      await Effect.runPromise(client.fetch("https://example.com/users?page=1&limit=10"))
+
+      test.expect(capturedSpan?.attributes.get("http.request.method")).toBe("GET")
+      test.expect(capturedSpan?.attributes.get("url.path")).toBe("/users")
+      test.expect(capturedSpan?.attributes.get("url.query")).toBe("page=1&limit=10")
+      test.expect(capturedSpan?.attributes.get("url.scheme")).toBe("https")
+      test.expect(capturedSpan?.attributes.get("url.full")).toBe(
+        "https://example.com/users?page=1&limit=10",
+      )
+    } finally {
+      globalThis.fetch = original
+    }
+  })
+
+  test.it("adds response status code to span", async () => {
+    let capturedSpan: Tracer.Span | undefined
+    const original = globalThis.fetch
+    globalThis.fetch = async () => new Response("created", { status: 201 })
+
+    try {
+      const client = Fetch.make().use(function* (request, next) {
+        capturedSpan = yield* Effect.currentSpan
+        return yield* next(request)
+      })
+
+      await Effect.runPromise(client.fetch("https://example.com"))
+
+      test.expect(capturedSpan?.attributes.get("http.response.status_code")).toBe(201)
+    } finally {
+      globalThis.fetch = original
+    }
+  })
+
+  test.it("omits url.query when no query string", async () => {
+    let capturedSpan: Tracer.Span | undefined
+    const original = globalThis.fetch
+    globalThis.fetch = async () => new Response("ok")
+
+    try {
+      const client = Fetch.make().use(function* (request, next) {
+        capturedSpan = yield* Effect.currentSpan
+        return yield* next(request)
+      })
+
+      await Effect.runPromise(client.fetch("https://example.com/users"))
+
+      test.expect(capturedSpan?.attributes.has("url.query")).toBe(false)
     } finally {
       globalThis.fetch = original
     }

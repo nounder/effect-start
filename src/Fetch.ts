@@ -26,10 +26,7 @@ export type Middleware<E = never, R = never> = (
   | Effect.Effect<FetchEntity, FetchError | E, R>
   | Generator<Utils.YieldWrap<Effect.Effect<unknown, FetchError | E, R>>, FetchEntity, unknown>
 
-export function fromResponse(
-  response: Response,
-  request: Request,
-): FetchEntity {
+export function fromResponse(response: Response, request: Request): FetchEntity {
   return Entity.make(
     Effect.tryPromise({
       try: () => response.arrayBuffer().then((buf) => new Uint8Array(buf)),
@@ -43,7 +40,7 @@ export function fromResponse(
   )
 }
 
-function baseFetch(request: Request): Effect.Effect<FetchEntity, FetchError> {
+function innerFetch(request: Request): Effect.Effect<FetchEntity, FetchError> {
   return Effect.map(
     Effect.tryPromise({
       try: () => globalThis.fetch(request),
@@ -53,11 +50,46 @@ function baseFetch(request: Request): Effect.Effect<FetchEntity, FetchError> {
   )
 }
 
+function withTrace<E, R>(
+  request: Request,
+  effect: Effect.Effect<FetchEntity, E, R>,
+): Effect.Effect<FetchEntity, E, R> {
+  const url = new URL(request.url)
+
+  return Effect.useSpan(
+    `http.client ${request.method}`,
+    { kind: "client", captureStackTrace: false },
+    (span) => {
+      span.attribute("http.request.method", request.method)
+      span.attribute("url.full", url.toString())
+      span.attribute("url.path", url.pathname)
+      const query = url.search.slice(1)
+      if (query !== "") {
+        span.attribute("url.query", query)
+      }
+      span.attribute("url.scheme", url.protocol.slice(0, -1))
+
+      return Effect.flatMap(
+        Effect.exit(Effect.withParentSpan(effect, span)),
+        (exit) => {
+          if (exit._tag === "Success") {
+            span.attribute("http.response.status_code", exit.value.status ?? 0)
+          }
+          return exit
+        },
+      )
+    },
+  )
+}
+
 export function fetch(
   input: string | URL | Request,
   init?: RequestInit,
 ): Effect.Effect<FetchEntity, FetchError> {
-  return Effect.suspend(() => baseFetch(new Request(input, init)))
+  return Effect.suspend(() => {
+    const request = new Request(input, init)
+    return withTrace(request, innerFetch(request))
+  })
 }
 
 function isGenerator(value: unknown): value is Generator {
@@ -69,9 +101,12 @@ function isGenerator(value: unknown): value is Generator {
   )
 }
 
-function normalizeMiddleware<E, R>(
-  mw: Middleware<E, R>,
-): (request: Request, next: Next) => Effect.Effect<FetchEntity, FetchError | E, R> {
+type NormalizedMiddleware = (
+  request: Request,
+  next: Next,
+) => Effect.Effect<FetchEntity, any, any>
+
+function normalizeMiddleware<E, R>(mw: Middleware<E, R>): NormalizedMiddleware {
   return (request, next) => {
     const result = mw(request, next)
     if (Effect.isEffect(result)) {
@@ -86,22 +121,39 @@ function normalizeMiddleware<E, R>(
   }
 }
 
-export function make(
-  ...middleware: ReadonlyArray<Middleware<any, any>>
-): (input: string | URL | Request, init?: RequestInit) => Effect.Effect<FetchEntity, any, any> {
-  const normalized = middleware.map(normalizeMiddleware)
+export interface FetchClient {
+  readonly fetch: (
+    input: string | URL | Request,
+    init?: RequestInit,
+  ) => Effect.Effect<FetchEntity, any, any>
+  readonly use: (...middleware: ReadonlyArray<Middleware<any, any>>) => FetchClient
+}
 
-  return (input, init?) =>
-    Effect.suspend(() => {
-      const request = new Request(input, init)
+function buildChain(
+  stack: ReadonlyArray<NormalizedMiddleware>,
+): (request: Request) => Effect.Effect<FetchEntity, any, any> {
+  let handler: (req: Request) => Effect.Effect<FetchEntity, any, any> = innerFetch
+  for (let i = stack.length - 1; i >= 0; i--) {
+    const mw = stack[i]
+    const next = handler
+    handler = (req) => mw(req, next as Next)
+  }
+  return handler
+}
 
-      let handler: (req: Request) => Effect.Effect<FetchEntity, any, any> = baseFetch
-      for (let i = normalized.length - 1; i >= 0; i--) {
-        const mw = normalized[i]
-        const next = handler
-        handler = (req) => mw(req, next as Next)
-      }
+function createClient(stack: ReadonlyArray<NormalizedMiddleware>): FetchClient {
+  const handler = buildChain(stack)
 
-      return handler(request)
-    })
+  return {
+    fetch: (input, init?) =>
+      Effect.suspend(() => {
+        const request = new Request(input, init)
+        return withTrace(request, handler(request))
+      }),
+    use: (...middleware) => createClient([...stack, ...middleware.map(normalizeMiddleware)]),
+  }
+}
+
+export function make(): FetchClient {
+  return createClient([])
 }
