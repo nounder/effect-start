@@ -124,7 +124,9 @@ export function renderToString(
             const resolvedKey = key === "className" ? "class" : key
             const value = props[key]
 
-            if (key.startsWith("data-") && typeof value === "object") {
+            if (key.startsWith("data-") && typeof value === "function") {
+              result += ` ${esc(resolvedKey)}="${esc(value.toString())}"`
+            } else if (key.startsWith("data-") && typeof value === "object") {
               result += ` ${esc(resolvedKey)}="${esc(JSON.stringify(value))}"`
             } else {
               result += ` ${esc(resolvedKey)}="${esc(value)}"`

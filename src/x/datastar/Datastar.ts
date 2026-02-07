@@ -20,22 +20,26 @@ function onNode(node: HyperNode.HyperNode) {
   }
 
   if (typeof dataClass === "function") {
-    node.props["data-class"] = `(${dataClass.toString()})()`
+    node.props["data-class"] = dataClass.toString()
   } else if (typeof dataClass === "object" && dataClass !== null) {
     node.props["data-class"] = JSON.stringify(dataClass)
   }
 
-  if (typeof dataAttr === "object" && dataAttr !== null) {
+  if (typeof dataAttr === "function") {
+    node.props["data-attr"] = dataAttr.toString()
+  } else if (typeof dataAttr === "object" && dataAttr !== null) {
     node.props["data-attr"] = JSON.stringify(dataAttr)
   }
 
   if (typeof dataStyle === "function") {
-    node.props["data-style"] = `(${dataStyle.toString()})()`
+    node.props["data-style"] = dataStyle.toString()
   } else if (typeof dataStyle === "object" && dataStyle !== null) {
     node.props["data-style"] = JSON.stringify(dataStyle)
   }
 
-  if (typeof dataShow === "boolean") {
+  if (typeof dataShow === "function") {
+    node.props["data-show"] = dataShow.toString()
+  } else if (typeof dataShow === "boolean") {
     node.props["data-show"] = dataShow.toString()
   }
 
@@ -47,15 +51,13 @@ function onNode(node: HyperNode.HyperNode) {
     delete node.props["data-ignore-morph"]
   }
 
-  // Handle dynamic attributes with suffixes
   for (const [key, value] of Object.entries(node.props)) {
     if (key.startsWith("data-signals-") && typeof value === "object" && value !== null) {
       node.props[key] = JSON.stringify(value)
     }
 
-    if (key.startsWith("data-on-") && typeof value === "function") {
-      // @ts-ignore
-      node.props[key] = `(${value.toString()})()`
+    if (key.startsWith("data-") && key !== "data-signals" && typeof value === "function") {
+      node.props[key] = value.toString()
     }
   }
 }

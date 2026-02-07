@@ -116,6 +116,14 @@ export type MergePatchArgs = {
 }
 
 export type HTMLOrSVG = HTMLElement | SVGElement | MathMLElement
+
+export type DataEvent = Event & {
+  signals: Record<string, any>
+  actions: Record<string, (...args: any[]) => any>
+  target: HTMLOrSVG
+  window: Window & typeof globalThis
+}
+
 export type Modifiers = Map<string, Set<string>>
 
 export type EventCallbackHandler = (...args: Array<any>) => void
@@ -1187,6 +1195,47 @@ const genRx = (
   value: string,
   { returnsValue = false, argNames = [], cleanups = new Map() }: GenRxOptions = {},
 ): GenRxFn => {
+  if (/^\s*(?:async\s+)?(?:\(.*?\)\s*=>|[\w$]+\s*=>|function\s*[\w$]*\s*\()/.test(value)) {
+    const userFn = Function(`return (${value.trim()})`)()
+
+    return (el: HTMLOrSVG, ...args: Array<any>) => {
+      const actionsProxy = new Proxy({} as Record<string, any>, {
+        get: (_, name: string) => (...actionArgs: any[]) => {
+          const err = error.bind(0, {
+            plugin: { type: "action", name },
+            element: { id: el.id, tag: el.tagName },
+            expression: { fnContent: value, value },
+          })
+          const fn = actions[name]
+          if (fn) return fn({ el, evt: undefined, error: err, cleanups }, ...actionArgs)
+          throw err("UndefinedAction")
+        },
+      })
+
+      const dataEvt = args[0] instanceof Event ? args[0] : new Event("datastar:expression")
+      Object.defineProperties(dataEvt, {
+        target: { value: el },
+        signals: { value: root },
+        actions: { value: actionsProxy },
+        window: { value: window },
+      })
+
+      try {
+        return userFn(dataEvt)
+      } catch (e: any) {
+        console.error(e)
+        throw error(
+          {
+            element: { id: el.id, tag: el.tagName },
+            expression: { fnContent: value, value },
+            error: e.message,
+          },
+          "ExecuteExpression",
+        )
+      }
+    }
+  }
+
   let expr = ""
   if (returnsValue) {
     const statementRe =

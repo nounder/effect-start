@@ -1,5 +1,6 @@
 /** @jsxImportSource effect-start */
 import * as test from "bun:test"
+import type * as Engine from "../datastar/engine.ts"
 import * as Effect from "effect/Effect"
 import * as Entity from "../Entity.ts"
 import * as Http from "../Http.ts"
@@ -129,6 +130,18 @@ test.describe("HyperRoute.html", () => {
       .toBe(
         '<div data-signals="{&quot;draft&quot;:&quot;&quot;,&quot;pendingDraft&quot;:&quot;&quot;,&quot;username&quot;:&quot;User123&quot;}">Content</div>',
       )
+  })
+
+  test.it("data-on-click function argument is typed as DataEvent", () => {
+    const node = (
+      <button
+        data-on-click={(e) => {
+          test.expectTypeOf(e).toEqualTypeOf<Engine.DataEvent>()
+          test.expectTypeOf(e.window).toEqualTypeOf<Window & typeof globalThis>()
+        }}
+      />
+    )
+    test.expect(node).toBeDefined()
   })
 
   test.it("renders script with function child as IIFE", async () => {

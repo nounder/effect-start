@@ -16,3 +16,4 @@ Based on `812cbe9` (2025-02-05) following changes were made:
 - Updated type declaration to conform to `erasableSyntaxOnly`:
   - Converted `enum ReactiveFlags` and `enum EffectFlags` to `const` objects with `as const`
   - Added type aliases `ReactiveFlags_X` to replace `ReactiveFlags.X` namespace types
+- `842b9b7` extends expressions with function form handled by `genRx`

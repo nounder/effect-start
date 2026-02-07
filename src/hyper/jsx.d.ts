@@ -3499,7 +3499,9 @@ export namespace JSX {
      * @url https://developer.mozilla.org/en-US/docs/Web/HTML/Element/script
      * @url https://developer.mozilla.org/en-US/docs/Web/API/HTMLScriptElement
      */
-    script: ScriptHTMLAttributes<HTMLScriptElement>
+    script:
+      | ScriptHTMLAttributes<HTMLScriptElement>
+      | ScriptHTMLAttributesWithHandler<HTMLScriptElement>
     /**
      * @url https://developer.mozilla.org/en-US/docs/Web/HTML/Element/search
      * @url https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement
