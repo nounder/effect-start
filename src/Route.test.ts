@@ -15,7 +15,7 @@ test.describe(Route.redirect, () => {
   })
 
   test.it("creates redirect with custom status", () => {
-    const entity = Route.redirect("/new-url", 301)
+    const entity = Route.redirect("/new-url", { status: 301 })
 
     test.expect(entity.status).toBe(301)
     test.expect(entity.headers.location).toBe("/new-url")

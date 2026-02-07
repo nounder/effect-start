@@ -221,10 +221,10 @@ export { sse } from "./RouteSse.ts"
 
 export function redirect(
   url: string | URL,
-  status: 301 | 302 | 303 | 307 | 308 = 302,
+  options?: { status?: 301 | 302 | 303 | 307 | 308 },
 ): Entity.Entity<""> {
   return Entity.make("", {
-    status,
+    status: options?.status ?? 302,
     headers: {
       location: url instanceof URL ? url.href : url,
     },
