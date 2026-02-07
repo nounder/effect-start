@@ -2,9 +2,10 @@ import * as Effect from "effect/Effect"
 import type * as ParseResult from "effect/ParseResult"
 import * as Schema from "effect/Schema"
 import type * as Scope from "effect/Scope"
+import * as Entity from "./Entity.ts"
 import * as Http from "./Http.ts"
 import * as PathPattern from "./PathPattern.ts"
-import type * as Route from "./Route.ts"
+import * as Route from "./Route.ts"
 import * as RouteHook from "./RouteHook.ts"
 
 export interface RequestBodyError {
@@ -286,4 +287,43 @@ export function schemaBodyForm<
       }
     }),
   )
+}
+
+export function schemaSuccess<A, I, R>(
+  schema: Schema.Schema<A, I, R>,
+): <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
+  self: Route.RouteSet.RouteSet<D, SB, P>,
+) => Route.RouteSet.RouteSet<
+  D,
+  SB,
+  [...P, Route.Route.Route<{}, {}, I, ParseResult.ParseError, R>]
+> {
+  const encode = Schema.encodeUnknown(schema)
+  return function <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
+    self: Route.RouteSet.RouteSet<D, SB, P>,
+  ): Route.RouteSet.RouteSet<
+    D,
+    SB,
+    [...P, Route.Route.Route<{}, {}, I, ParseResult.ParseError, R>]
+  > {
+    const route = Route.make<{}, {}, I, ParseResult.ParseError, R>(
+      (_context, next) =>
+        Effect.flatMap(Entity.resolve(next()), (entity) =>
+          Effect.map(encode(entity.body), (encoded) =>
+            Entity.make(encoded, {
+              status: entity.status,
+              headers: entity.headers,
+              url: entity.url,
+            }),
+          ),
+        ),
+    )
+
+    const items: [...P, Route.Route.Route<{}, {}, I, ParseResult.ParseError, R>] = [
+      ...Route.items(self),
+      route,
+    ]
+
+    return Route.set(items, Route.descriptor(self))
+  }
 }

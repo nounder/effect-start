@@ -358,3 +358,95 @@ test.describe(`${RouteSchema.schemaBodyForm.name}()`, () => {
     }>()
   })
 })
+
+test.describe(`${RouteSchema.schemaSuccess.name}()`, () => {
+  test.it("encodes response body through schema", async () => {
+    const UserResponse = Schema.Struct({
+      name: Schema.String,
+      age: Schema.Number,
+    })
+
+    const handler = RouteHttp.toWebHandler(
+      Route.get(
+        RouteSchema.schemaSuccess(UserResponse),
+        Route.json(function* () {
+          return { name: "Alice", age: 30 }
+        }),
+      ),
+    )
+    const response = await Http.fetch(handler, { path: "/test" })
+
+    test.expect(response.status).toBe(200)
+    test.expect(await response.json()).toEqual({ name: "Alice", age: 30 })
+  })
+
+  test.it("returns error when response body does not match schema", () =>
+    Effect.gen(function* () {
+      const StrictResponse = Schema.Struct({
+        name: Schema.String,
+        age: Schema.Number,
+      })
+
+      const runtime = yield* Effect.runtime<TestLogger.TestLogger>()
+      const handler = RouteHttp.toWebHandlerRuntime(runtime)(
+        Route.get(
+          RouteSchema.schemaSuccess(StrictResponse),
+          Route.json(function* () {
+            return { name: "Alice", age: "not a number" }
+          }),
+        ),
+      )
+      const response = yield* Effect.promise(() =>
+        Http.fetch(handler, { path: "/test" }),
+      )
+
+      test.expect(response.status).toBe(400)
+
+      const messages = yield* TestLogger.messages
+
+      test.expect(messages.some((m) => m.includes("ParseError"))).toBe(true)
+    }).pipe(Effect.provide(TestLogger.layer()), Effect.runPromise),
+  )
+
+  test.it("strips extra fields via schema encode", async () => {
+    const StrictResponse = Schema.Struct({
+      id: Schema.Number,
+      name: Schema.String,
+    })
+
+    const handler = RouteHttp.toWebHandler(
+      Route.get(
+        RouteSchema.schemaSuccess(StrictResponse),
+        Route.json(function* () {
+          return { id: 1, name: "Alice", secret: "should-be-stripped" }
+        }),
+      ),
+    )
+    const response = await Http.fetch(handler, { path: "/test" })
+
+    test.expect(response.status).toBe(200)
+    const body = await response.json()
+    test.expect(body).toEqual({ id: 1, name: "Alice" })
+    test.expect(body).not.toHaveProperty("secret")
+  })
+
+  test.it("works with schema transforms", async () => {
+    const DateResponse = Schema.Struct({
+      createdAt: Schema.DateFromString,
+    })
+
+    const handler = RouteHttp.toWebHandler(
+      Route.get(
+        RouteSchema.schemaSuccess(DateResponse),
+        // @ts-expect-error Date is not Json, but schemaSuccess encodes it to string
+        Route.json(function* () {
+          return { createdAt: new Date("2025-01-01") }
+        }),
+      ),
+    )
+    const response = await Http.fetch(handler, { path: "/test" })
+
+    test.expect(response.status).toBe(200)
+    test.expect(await response.json()).toEqual({ createdAt: "2025-01-01T00:00:00.000Z" })
+  })
+})
