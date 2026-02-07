@@ -42,6 +42,11 @@
       "bun": "./src/x/tailwind/plugin.ts",
       "default": "./dist/x/tailwind/plugin.js"
     },
+    "./ChildProcess": {
+      "types": "./dist/ChildProcess.d.ts",
+      "bun": "./src/ChildProcess.ts",
+      "default": "./dist/ChildProcess.js"
+    },
     "./Unique": {
       "types": "./dist/Unique.d.ts",
       "bun": "./src/Unique.ts",
@@ -107,6 +112,6 @@
     "typescript": "^5.9.3"
   },
   "peerDependencies": {
-    "effect": ">=3.19.0"
+    "effect": "^3.19.11"
   }
 }

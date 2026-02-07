@@ -1,4 +1,5 @@
 export * as Bundle from "./bundler/Bundle.ts"
+export * as ChildProcess from "./ChildProcess.ts"
 export * as Development from "./Development.ts"
 export * as Entity from "./Entity.ts"
 export * as FileRouter from "./FileRouter.ts"

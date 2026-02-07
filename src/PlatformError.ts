@@ -4,7 +4,6 @@
 import type * as Cause from "effect/Cause"
 import * as Data from "effect/Data"
 import * as Predicate from "effect/Predicate"
-import * as Schema from "effect/Schema"
 import type * as Types from "effect/Types"
 
 export const TypeId: unique symbol = Symbol.for("@effect/platform/Error/PlatformError")
@@ -27,24 +26,25 @@ export const TypeIdError = <const TypeId extends symbol, const Tag extends strin
   return Base as any
 }
 
-export const Module = Schema.Literal(
-  "Clipboard",
-  "Command",
-  "FileSystem",
-  "KeyValueStore",
-  "Path",
-  "Stream",
-  "Terminal",
-)
+export type SystemErrorReason =
+  | "AlreadyExists"
+  | "BadResource"
+  | "Busy"
+  | "InvalidData"
+  | "NotFound"
+  | "PermissionDenied"
+  | "TimedOut"
+  | "UnexpectedEof"
+  | "Unknown"
+  | "WouldBlock"
+  | "WriteZero"
 
-export class BadArgument extends Schema.TaggedError<BadArgument>(
-  "@effect/platform/Error/BadArgument",
-)("BadArgument", {
-  module: Module,
-  method: Schema.String,
-  description: Schema.optional(Schema.String),
-  cause: Schema.optional(Schema.Defect),
-}) {
+export class BadArgument extends Data.TaggedError("BadArgument")<{
+  module: string
+  method: string
+  description?: string | undefined
+  cause?: unknown
+}> {
   readonly [TypeId]: typeof TypeId = TypeId
 
   get message(): string {
@@ -52,33 +52,15 @@ export class BadArgument extends Schema.TaggedError<BadArgument>(
   }
 }
 
-export const SystemErrorReason = Schema.Literal(
-  "AlreadyExists",
-  "BadResource",
-  "Busy",
-  "InvalidData",
-  "NotFound",
-  "PermissionDenied",
-  "TimedOut",
-  "UnexpectedEof",
-  "Unknown",
-  "WouldBlock",
-  "WriteZero",
-)
-
-export type SystemErrorReason = typeof SystemErrorReason.Type
-
-export class SystemError extends Schema.TaggedError<SystemError>(
-  "@effect/platform/Error/SystemError",
-)("SystemError", {
-  reason: SystemErrorReason,
-  module: Module,
-  method: Schema.String,
-  description: Schema.optional(Schema.String),
-  syscall: Schema.optional(Schema.String),
-  pathOrDescriptor: Schema.optional(Schema.Union(Schema.String, Schema.Number)),
-  cause: Schema.optional(Schema.Defect),
-}) {
+export class SystemError extends Data.TaggedError("SystemError")<{
+  reason: SystemErrorReason
+  module: string
+  method: string
+  description?: string | undefined
+  syscall?: string | undefined
+  pathOrDescriptor?: string | number | undefined
+  cause?: unknown
+}> {
   readonly [TypeId]: typeof TypeId = TypeId
 
   get message(): string {
@@ -89,8 +71,3 @@ export class SystemError extends Schema.TaggedError<SystemError>(
 }
 
 export type PlatformError = BadArgument | SystemError
-
-export const PlatformError: Schema.Union<[typeof BadArgument, typeof SystemError]> = Schema.Union(
-  BadArgument,
-  SystemError,
-)

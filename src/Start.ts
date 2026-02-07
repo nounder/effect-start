@@ -4,9 +4,11 @@ import * as Effect from "effect/Effect"
 import * as Function from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
+import type * as ChildProcess from "./ChildProcess.ts"
 import * as BunRuntime from "./bun/BunRuntime.ts"
 import * as BunServer from "./bun/BunServer.ts"
 import * as NodeFileSystem from "./node/NodeFileSystem.ts"
+import * as BunChildProcessSpawner from "./bun/BunChildProcessSpawner.ts"
 
 export function layer<
   Layers extends [Layer.Layer<never, any, any>, ...Array<Layer.Layer<never, any, any>>],
@@ -61,7 +63,11 @@ export function pack<const Layers extends readonly [Layer.Layer.Any, ...Array<La
   return result as AnyLayer
 }
 
-export function serve<ROut, E, RIn extends BunServer.BunServer | FileSystem.FileSystem>(
+export function serve<
+  ROut,
+  E,
+  RIn extends BunServer.BunServer | FileSystem.FileSystem | ChildProcess.ChildProcessSpawner,
+>(
   load: () => Promise<{
     default: Layer.Layer<ROut, E, RIn>
   }>,
@@ -87,6 +93,7 @@ export function serve<ROut, E, RIn extends BunServer.BunServer | FileSystem.File
     BunServer.withLogAddress,
     Layer.provide(appLayer),
     Layer.provide(NodeFileSystem.layer),
+    Layer.provide(BunChildProcessSpawner.layer),
   ) as Layer.Layer<BunServer.BunServer, never, never>
 
   return Function.pipe(composed, Layer.launch, BunRuntime.runMain)
