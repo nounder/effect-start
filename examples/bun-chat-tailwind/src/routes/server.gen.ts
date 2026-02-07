@@ -19,6 +19,10 @@ export default {
     () => import("./dev/route.ts"),
     () => import("./layer.tsx"),
   ],
+  "/chat/about": [
+    () => import("./chat/about/route.tsx"),
+    () => import("./layer.tsx"),
+  ],
   "/chat/send": [
     () => import("./chat/send/route.tsx"),
     () => import("./layer.tsx"),

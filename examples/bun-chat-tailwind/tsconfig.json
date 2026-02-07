@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     // Enable latest features
-    "lib": ["ESNext"],
+    "lib": ["ESNext", "DOM"],
     "target": "ESNext",
     "module": "ESNext",
     "moduleDetection": "force",
@@ -26,14 +26,7 @@
     // Some stricter flags (disabled by default)
     "noUnusedLocals": false,
     "noUnusedParameters": false,
-    "noPropertyAccessFromIndexSignature": false,
-
-    "plugins": [
-      {
-        "name": "@effect/language-service",
-        "namespaceImportPackages": ["effect"]
-      }
-    ]
+    "noPropertyAccessFromIndexSignature": false
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"]
 }
