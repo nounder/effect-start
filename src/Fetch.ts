@@ -1,25 +1,61 @@
+import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
+import * as Predicate from "effect/Predicate"
 import type * as Utils from "effect/Utils"
 import * as Entity from "./Entity.ts"
 
 // ---------------------------------------------------------------------------
-// Types
+// Errors
 // ---------------------------------------------------------------------------
 
-export interface FetchError {
-  readonly _tag: "FetchError"
-  readonly request: Request
-  readonly reason: "Transport" | "Decode"
-  readonly cause: unknown
+const TypeId: unique symbol = Symbol.for("effect-start/FetchError")
+
+export const isFetchError = (u: unknown): u is FetchError => Predicate.hasProperty(u, TypeId)
+
+export class FetchError extends Data.TaggedError("FetchError")<{
+  readonly reason: FetchErrorReason
+}> {
+  readonly [TypeId] = TypeId
+
+  get request(): Request {
+    return this.reason.request
+  }
+
+  override get message(): string {
+    return this.reason.message
+  }
 }
 
-export function FetchError(
-  request: Request,
-  reason: FetchError["reason"],
-  cause: unknown,
-): FetchError {
-  return { _tag: "FetchError", request, reason, cause }
+const methodAndUrl = (request: Request) => `${request.method} ${request.url}`
+
+const formatMessage = (tag: string, description: string | undefined, info: string) =>
+  description ? `${tag}: ${description} (${info})` : `${tag} (${info})`
+
+export class TransportError extends Data.TaggedError("TransportError")<{
+  readonly request: Request
+  readonly cause?: unknown
+  readonly description?: string
+}> {
+  override get message() {
+    return formatMessage("Transport", this.description, methodAndUrl(this.request))
+  }
 }
+
+export class DecodeError extends Data.TaggedError("DecodeError")<{
+  readonly request: Request
+  readonly cause?: unknown
+  readonly description?: string
+}> {
+  override get message() {
+    return formatMessage("Decode", this.description, methodAndUrl(this.request))
+  }
+}
+
+export type FetchErrorReason = TransportError | DecodeError
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
 export type Middleware<E = never, R = never> = (
   request: Request,
@@ -37,7 +73,7 @@ type YieldContext<T> = T extends Utils.YieldWrap<Effect.Effect<any, any, infer R
 function executeRequest(request: Request): Effect.Effect<Entity.Entity<Uint8Array>, FetchError> {
   return Effect.tryPromise({
     try: (signal) => globalThis.fetch(request, { signal }),
-    catch: (cause) => FetchError(request, "Transport", cause),
+    catch: (cause) => new FetchError({ reason: new TransportError({ request, cause }) }),
   }).pipe(
     Effect.flatMap((response) => {
       const headers: Entity.Headers = {}
@@ -50,7 +86,7 @@ function executeRequest(request: Request): Effect.Effect<Entity.Entity<Uint8Arra
       }
       return Effect.tryPromise({
         try: () => response.arrayBuffer(),
-        catch: (cause) => FetchError(request, "Decode", cause),
+        catch: (cause) => new FetchError({ reason: new DecodeError({ request, cause }) }),
       }).pipe(Effect.map((buf) => Entity.make(new Uint8Array(buf), opts)))
     }),
   )
@@ -178,4 +214,3 @@ export function tap(
       return Effect.isEffect(result) ? result : Effect.void
     })
 }
-

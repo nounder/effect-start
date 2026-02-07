@@ -1,4 +1,5 @@
 import * as test from "bun:test"
+import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as Fetch from "./Fetch.ts"
 
@@ -22,12 +23,22 @@ test.describe("Fetch.fetch", () => {
     test.expect(json.url).toBe("https://httpbin.org/get")
   })
 
-  test.it("returns FetchError for unreachable host", async () => {
+  test.it("returns FetchError with TransportError for unreachable host", async () => {
     const exit = await Effect.runPromiseExit(
       Fetch.fetch("http://localhost:1"),
     )
 
     test.expect(exit._tag).toBe("Failure")
+    if (exit._tag === "Failure") {
+      const error = Cause.failureOption(exit.cause).pipe(
+        (opt) => (opt as any).value as Fetch.FetchError,
+      )
+      test.expect(error._tag).toBe("FetchError")
+      test.expect(error.reason._tag).toBe("TransportError")
+      test.expect(error.request.url).toBe("http://localhost:1/")
+      test.expect(error.message).toContain("Transport")
+      test.expect(Fetch.isFetchError(error)).toBe(true)
+    }
   })
 
   test.it("handles empty-body responses", async () => {
@@ -132,14 +143,41 @@ test.describe("Fetch.tap", () => {
 })
 
 test.describe("FetchError", () => {
-  test.it("has correct _tag", () => {
-    const err = Fetch.FetchError(
-      new Request("http://example.com"),
-      "Transport",
-      new Error("fail"),
-    )
+  test.it("wraps TransportError with formatted message", () => {
+    const request = new Request("http://example.com/api")
+    const err = new Fetch.FetchError({
+      reason: new Fetch.TransportError({ request, cause: new Error("ECONNREFUSED") }),
+    })
 
     test.expect(err._tag).toBe("FetchError")
-    test.expect(err.reason).toBe("Transport")
+    test.expect(err.reason._tag).toBe("TransportError")
+    test.expect(err.request).toBe(request)
+    test.expect(err.message).toBe("Transport (GET http://example.com/api)")
+  })
+
+  test.it("wraps DecodeError with formatted message", () => {
+    const request = new Request("http://example.com/data", { method: "POST" })
+    const err = new Fetch.FetchError({
+      reason: new Fetch.DecodeError({
+        request,
+        description: "invalid body encoding",
+      }),
+    })
+
+    test.expect(err._tag).toBe("FetchError")
+    test.expect(err.reason._tag).toBe("DecodeError")
+    test.expect(err.message).toBe("Decode: invalid body encoding (POST http://example.com/data)")
+  })
+
+  test.it("isFetchError type guard works", () => {
+    const err = new Fetch.FetchError({
+      reason: new Fetch.TransportError({
+        request: new Request("http://example.com"),
+      }),
+    })
+
+    test.expect(Fetch.isFetchError(err)).toBe(true)
+    test.expect(Fetch.isFetchError(new Error("nope"))).toBe(false)
+    test.expect(Fetch.isFetchError(null)).toBe(false)
   })
 })
