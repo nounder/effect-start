@@ -1,8 +1,6 @@
 import * as Context from "effect/Context"
 import * as Fiber from "effect/Fiber"
-import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
-import type { HyperHooks } from "../x/datastar/index.ts"
 import type { JSX } from "./jsx.d.ts"
 
 type Elements = JSX.IntrinsicElements
@@ -13,18 +11,8 @@ export type { Children, Elements, JSX }
 
 export class Hyper extends Context.Tag("Hyper")<
   Hyper,
-  {
-    hooks: typeof HyperHooks | undefined
-  }
+  {}
 >() {}
-
-export function layer(opts: { hooks: typeof HyperHooks }) {
-  return Layer.sync(Hyper, () => {
-    return {
-      hooks: opts.hooks,
-    }
-  })
-}
 
 const NoChildren: ReadonlyArray<never> = Object.freeze([])
 

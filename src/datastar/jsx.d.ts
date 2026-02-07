@@ -1,4 +1,4 @@
-import type { DataEvent } from "../../datastar/engine.ts"
+import type { DataEvent } from "./engine.ts"
 
 // Datastar object types for specific attributes
 type DatastarSignalsObject = Record<string, any>
