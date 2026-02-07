@@ -19,10 +19,7 @@ type DatastarOnConfig = {
   outside?: boolean
   window?: boolean
   viewTransition?: boolean
-} & (
-  | { debounce?: number; throttle?: never }
-  | { debounce?: never; throttle?: number }
-)
+} & ({ debounce?: number; throttle?: never } | { debounce?: never; throttle?: number })
 
 type DatastarOnFn = DatastarFn | [handler: DatastarFn, config: DatastarOnConfig]
 

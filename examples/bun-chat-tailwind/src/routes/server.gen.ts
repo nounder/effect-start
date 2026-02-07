@@ -3,32 +3,10 @@
  */
 
 export default {
-  "/": [
-    () => import("./route.tsx"),
-    () => import("./layer.tsx"),
-  ],
-  "/chat": [
-    () => import("./chat/route.tsx"),
-    () => import("./layer.tsx"),
-  ],
-  "/data.json": [
-    () => import("./data.json/route.ts"),
-    () => import("./layer.tsx"),
-  ],
-  "/dev": [
-    () => import("./dev/route.ts"),
-    () => import("./layer.tsx"),
-  ],
-  "/chat/about": [
-    () => import("./chat/about/route.tsx"),
-    () => import("./layer.tsx"),
-  ],
-  "/chat/send": [
-    () => import("./chat/send/route.tsx"),
-    () => import("./layer.tsx"),
-  ],
-  "/chat/stream": [
-    () => import("./chat/stream/route.tsx"),
-    () => import("./layer.tsx"),
-  ],
+  "/": [() => import("./route.tsx"), () => import("./layer.tsx")],
+  "/chat": [() => import("./chat/route.tsx"), () => import("./layer.tsx")],
+  "/data.json": [() => import("./data.json/route.ts"), () => import("./layer.tsx")],
+  "/dev": [() => import("./dev/route.ts"), () => import("./layer.tsx")],
+  "/chat/send": [() => import("./chat/send/route.tsx"), () => import("./layer.tsx")],
+  "/chat/stream": [() => import("./chat/stream/route.tsx"), () => import("./layer.tsx")],
 } satisfies import("effect-start/FileRouter").FileRoutes

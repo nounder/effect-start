@@ -9,10 +9,7 @@ type Children = JSX.Children
 
 export type { Children, Elements, JSX }
 
-export class Hyper extends Context.Tag("Hyper")<
-  Hyper,
-  {}
->() {}
+export class Hyper extends Context.Tag("Hyper")<Hyper, {}>() {}
 
 const NoChildren: ReadonlyArray<never> = Object.freeze([])
 

@@ -127,9 +127,7 @@ test.describe("HyperRoute.html", () => {
 
     test
       .expect(await response.text())
-      .toBe(
-        `<div data-signals='{"draft":"","pendingDraft":"","username":"User123"}'>Content</div>`,
-      )
+      .toBe(`<div data-signals='{"draft":"","pendingDraft":"","username":"User123"}'>Content</div>`)
   })
 
   test.it("data-on-click function argument is typed as DataEvent", () => {

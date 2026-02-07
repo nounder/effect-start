@@ -1200,16 +1200,18 @@ const genRx = (
 
     return (el: HTMLOrSVG, ...args: Array<any>) => {
       const actionsProxy = new Proxy({} as Record<string, any>, {
-        get: (_, name: string) => (...actionArgs: any[]) => {
-          const err = error.bind(0, {
-            plugin: { type: "action", name },
-            element: { id: el.id, tag: el.tagName },
-            expression: { fnContent: value, value },
-          })
-          const fn = actions[name]
-          if (fn) return fn({ el, evt: undefined, error: err, cleanups }, ...actionArgs)
-          throw err("UndefinedAction")
-        },
+        get:
+          (_, name: string) =>
+          (...actionArgs: any[]) => {
+            const err = error.bind(0, {
+              plugin: { type: "action", name },
+              element: { id: el.id, tag: el.tagName },
+              expression: { fnContent: value, value },
+            })
+            const fn = actions[name]
+            if (fn) return fn({ el, evt: undefined, error: err, cleanups }, ...actionArgs)
+            throw err("UndefinedAction")
+          },
       })
 
       const dataEvt = args[0] instanceof Event ? args[0] : new Event("datastar:expression")

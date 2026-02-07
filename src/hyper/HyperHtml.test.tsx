@@ -91,9 +91,7 @@ test.it("data-* attributes with object values use single-quoted JSON", () => {
 
   test
     .expect(html)
-    .toBe(
-      `<div data-signals='{"draft":"","pendingDraft":"","username":"User123"}'></div>`,
-    )
+    .toBe(`<div data-signals='{"draft":"","pendingDraft":"","username":"User123"}'></div>`)
 })
 
 test.it("data-* attributes with array values use single-quoted JSON", () => {
@@ -135,9 +133,7 @@ test.it("data-* object values with single quotes in values are escaped", () => {
 
   test
     .expect(html)
-    .toBe(
-      `<div data-signals='{"message":"it&#39;s a test","name":"O&#39;Brien"}'></div>`,
-    )
+    .toBe(`<div data-signals='{"message":"it&#39;s a test","name":"O&#39;Brien"}'></div>`)
 })
 
 test.it("data-* string values are not JSON stringified", () => {
@@ -255,9 +251,7 @@ test.it("data-* object values don't render as [object Object]", () => {
     <div data-signals={{ isOpen: false, count: 42 }}>content</div>,
   )
 
-  test
-    .expect(html)
-    .toBe(`<div data-signals='{"isOpen":false,"count":42}'>content</div>`)
+  test.expect(html).toBe(`<div data-signals='{"isOpen":false,"count":42}'>content</div>`)
   test.expect(html).not.toContain("[object Object]")
 })
 
@@ -272,7 +266,5 @@ test.it("JSX component with data-* object values", () => {
 
   const html = HyperHtml.renderToString(<TestComponent />)
 
-  test
-    .expect(html)
-    .toBe(`<div data-signals='{"isOpen":false}'><span>nested</span></div>`)
+  test.expect(html).toBe(`<div data-signals='{"isOpen":false}'><span>nested</span></div>`)
 })

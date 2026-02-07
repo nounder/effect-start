@@ -397,9 +397,7 @@ test.describe(`${RouteSchema.schemaSuccess.name}()`, () => {
           }),
         ),
       )
-      const response = yield* Effect.promise(() =>
-        Http.fetch(handler, { path: "/test" }),
-      )
+      const response = yield* Effect.promise(() => Http.fetch(handler, { path: "/test" }))
 
       test.expect(response.status).toBe(400)
 
@@ -494,9 +492,7 @@ test.describe(`${RouteSchema.schemaError.name}()`, () => {
           }),
         ),
       )
-      const response = yield* Effect.promise(() =>
-        Http.fetch(handler, { path: "/test" }),
-      )
+      const response = yield* Effect.promise(() => Http.fetch(handler, { path: "/test" }))
 
       test.expect(response.status).toBe(500)
     }).pipe(Effect.provide(TestLogger.layer()), Effect.runPromise),
@@ -545,7 +541,7 @@ test.describe(`${RouteSchema.schemaError.name}()`, () => {
     type ErrorRoute = Items[0]
     type E = ErrorRoute extends Route.Route.Route<any, any, any, infer _E, any> ? _E : "fail"
 
-    true satisfies ([E] extends [never] ? true : false)
+    true satisfies [E] extends [never] ? true : false
   })
 
   test.it("infers status from static property on schema", async () => {
