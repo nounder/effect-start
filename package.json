@@ -42,10 +42,10 @@
       "bun": "./src/x/tailwind/plugin.ts",
       "default": "./dist/x/tailwind/plugin.js"
     },
-    "./ChildProcess": {
-      "types": "./dist/ChildProcess.d.ts",
-      "bun": "./src/ChildProcess.ts",
-      "default": "./dist/ChildProcess.js"
+    "./System": {
+      "types": "./dist/System.d.ts",
+      "bun": "./src/System.ts",
+      "default": "./dist/System.js"
     },
     "./Unique": {
       "types": "./dist/Unique.d.ts",
