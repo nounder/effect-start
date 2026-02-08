@@ -10,6 +10,7 @@ import * as Option from "effect/Option"
 import * as Runtime from "effect/Runtime"
 import type * as Scope from "effect/Scope"
 import * as NOs from "node:os"
+import * as NPath from "node:path"
 import * as PathPattern from "../PathPattern.ts"
 import * as PlataformRuntime from "../PlatformRuntime.ts"
 import * as Route from "../Route.ts"
@@ -191,7 +192,11 @@ function walkBunRoutes(runtime: Runtime.Runtime<BunServer>, tree: RouteTree.Rout
       const bunDescriptors = BunRoute.descriptors(route)
       if (bunDescriptors) {
         const htmlBundle = yield* Effect.promise(bunDescriptors.bunLoad)
-        bunRoutes[`${bunDescriptors.bunPrefix}/*`] = htmlBundle
+        if (htmlBundle.files) {
+          registerPrebuiltBundle(bunDescriptors.bunPrefix, htmlBundle, bunRoutes)
+        } else {
+          bunRoutes[`${bunDescriptors.bunPrefix}/*`] = htmlBundle
+        }
       }
 
       const path = Route.descriptor(route).path
@@ -209,6 +214,22 @@ function walkBunRoutes(runtime: Runtime.Runtime<BunServer>, tree: RouteTree.Rout
 
     return bunRoutes
   })
+}
+
+function registerPrebuiltBundle(prefix: string, bundle: any, bunRoutes: BunRoute.BunRoutes) {
+  const mainDir = NPath.dirname(Bun.main)
+  const indexPath = NPath.resolve(mainDir, bundle.index)
+
+  bunRoutes[`${prefix}/*`] = () =>
+    new Response(Bun.file(indexPath), { headers: { "content-type": "text/html;charset=utf-8" } })
+
+  for (const file of bundle.files ?? []) {
+    if (file.loader === "html") continue
+    const absPath = NPath.resolve(mainDir, file.path)
+    const basename = NPath.basename(file.path)
+    bunRoutes[`/${basename}`] = () =>
+      new Response(Bun.file(absPath), { headers: file.headers ?? {} })
+  }
 }
 
 function getLocalIp(): string | undefined {

@@ -34,9 +34,12 @@ export function descriptors(
   return undefined
 }
 
-export function htmlBundle(load: () => Promise<Bun.HTMLBundle | { default: Bun.HTMLBundle }>) {
+type HTMLBundleModule = Bun.HTMLBundle | { default: Bun.HTMLBundle }
+
+export function htmlBundle(load: () => HTMLBundleModule | Promise<HTMLBundleModule>) {
   const bunPrefix = `/.BunRoute-${Unique.token(10)}`
-  const bunLoad = () => load().then((mod) => ("default" in mod ? mod.default : mod))
+  const bunLoad = () =>
+    Promise.resolve(load()).then((mod) => ("default" in mod ? mod.default : mod))
   const descriptors = { bunPrefix, bunLoad, format: "html" as const }
 
   return function <D extends Route.RouteDescriptor.Any, B extends {}, I extends Route.Route.Tuple>(

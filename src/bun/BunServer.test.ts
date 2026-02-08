@@ -1,8 +1,12 @@
 import * as test from "bun:test"
+import * as NPath from "node:path"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Route from "../Route.ts"
+import * as BunRoute from "./BunRoute.ts"
 import * as BunServer from "./BunServer.ts"
+
+const staticDir = NPath.resolve(import.meta.dir, "../../static")
 
 test.describe("smart port selection", () => {
   // Skip when running in TTY because the random port logic requires !isTTY && CLAUDECODE,
@@ -214,5 +218,98 @@ test.describe("routes", () => {
 
     test.expect(response.status).toBe(200)
     test.expect(await response.text()).toBe("user")
+  })
+})
+
+test.describe("prebuilt htmlBundle", () => {
+  const prebuiltBundle: Bun.HTMLBundle = {
+    index: `${staticDir}/LayoutSlots.html`,
+    files: [
+      {
+        input: "LayoutSlots.html",
+        path: `${staticDir}/LayoutSlots.html`,
+        loader: "html",
+        isEntry: true,
+        headers: {
+          etag: "test-etag-html",
+          "content-type": "text/html;charset=utf-8",
+        },
+      },
+      {
+        input: "test-asset.css",
+        path: `${staticDir}/test-asset.css`,
+        loader: "css",
+        isEntry: true,
+        headers: {
+          etag: "test-etag-css",
+          "content-type": "text/css;charset=utf-8",
+        },
+      },
+    ],
+  }
+
+  test.test("serves HTML when loader returns sync prebuilt bundle", async () => {
+    const routes = Route.tree({
+      "/": Route.get(
+        BunRoute.htmlBundle(() => prebuiltBundle),
+        Route.html("<p>Prebuilt Content</p>"),
+      ),
+    })
+
+    const response = await Effect.runPromise(
+      Effect.gen(function* () {
+        const bunServer = yield* BunServer.BunServer
+        return yield* Effect.promise(() => fetch(`http://localhost:${bunServer.server.port}/`))
+      }).pipe(Effect.provide(testLayer(routes))),
+    )
+
+    const html = await response.text()
+
+    test.expect(response.status).toBe(200)
+    test.expect(html).toContain("<p>Prebuilt Content</p>")
+    test.expect(html).not.toContain("%children%")
+  })
+
+  test.test("serves CSS assets at top-level routes", async () => {
+    const routes = Route.tree({
+      "/": Route.get(
+        BunRoute.htmlBundle(() => prebuiltBundle),
+        Route.html("<p>content</p>"),
+      ),
+    })
+
+    const response = await Effect.runPromise(
+      Effect.gen(function* () {
+        const bunServer = yield* BunServer.BunServer
+        return yield* Effect.promise(() =>
+          fetch(`http://localhost:${bunServer.server.port}/test-asset.css`),
+        )
+      }).pipe(Effect.provide(testLayer(routes))),
+    )
+
+    const css = await response.text()
+
+    test.expect(response.status).toBe(200)
+    test.expect(css).toContain("color: red")
+    test.expect(response.headers.get("content-type")).toBe("text/css;charset=utf-8")
+  })
+
+  test.test("serves prebuilt HTML with correct content-type", async () => {
+    const routes = Route.tree({
+      "/": Route.get(
+        BunRoute.htmlBundle(() => prebuiltBundle),
+        Route.html("<p>typed</p>"),
+      ),
+    })
+
+    const response = await Effect.runPromise(
+      Effect.gen(function* () {
+        const bunServer = yield* BunServer.BunServer
+        return yield* Effect.promise(() => fetch(`http://localhost:${bunServer.server.port}/`))
+      }).pipe(Effect.provide(testLayer(routes))),
+    )
+
+    test.expect(response.status).toBe(200)
+    test.expect(response.headers.get("content-type")).toContain("text/html")
   })
 })
