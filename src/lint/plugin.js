@@ -148,6 +148,40 @@ export default {
       },
     },
 
+    // this doens't work reliably and may cause runtime errors
+    "export-default-before-functions": {
+      meta: {
+        type: "suggestion",
+        docs: {
+          description: "Enforce export default appears before any function declarations",
+        },
+        schema: [],
+        messages: {
+          defaultAfterFunction: "export default should appear before function declarations",
+        },
+      },
+      create(context) {
+        return {
+          Program(node) {
+            let seenFunction = false
+
+            for (const stmt of node.body) {
+              if (!seenFunction && isFunction(stmt)) {
+                seenFunction = true
+              }
+
+              if (seenFunction && stmt.type === "ExportDefaultDeclaration") {
+                context.report({
+                  node: stmt,
+                  messageId: "defaultAfterFunction",
+                })
+              }
+            }
+          },
+        }
+      },
+    },
+
     "test-assertion-newline": {
       meta: {
         type: "layout",
@@ -350,4 +384,22 @@ function getBaseName(source) {
 
 function isCapitalized(name) {
   return name.length > 0 && name[0] >= "A" && name[0] <= "Z"
+}
+
+function isFunction(stmt) {
+  const decl = stmt.type === "ExportNamedDeclaration" && stmt.declaration ? stmt.declaration : stmt
+
+  if (decl.type === "FunctionDeclaration") return true
+
+  if (
+    decl.type === "VariableDeclaration" &&
+    decl.declarations.length > 0 &&
+    decl.declarations[0].init &&
+    (decl.declarations[0].init.type === "ArrowFunctionExpression" ||
+      decl.declarations[0].init.type === "FunctionExpression")
+  ) {
+    return true
+  }
+
+  return false
 }

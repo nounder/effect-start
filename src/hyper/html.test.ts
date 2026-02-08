@@ -3,7 +3,17 @@ import { html } from "./html.ts"
 
 test.describe("html", () => {
   test.test("plain template", () => {
-    test.expect(html`<div>hello</div>`.value).toBe("<div>hello</div>")
+    const expected = `
+          <div>hello</div>
+        `
+
+    test
+      .expect(
+        html`
+          <div>hello</div>
+        `.value,
+      )
+      .toBe(expected)
   })
 
   test.test("strings pass through raw", () => {
@@ -25,9 +35,12 @@ test.describe("html", () => {
   })
 
   test.test("nested html templates compose", () => {
-    const inner = html`<em>bold</em>`
+    const inner = html`
+      <em>bold</em>
+    `
+    const expected = `<div>${inner.value}</div>`
 
-    test.expect(html`<div>${inner}</div>`.value).toBe("<div><em>bold</em></div>")
+    test.expect(html`<div>${inner}</div>`.value).toBe(expected)
   })
 
   test.test("arrays are joined", () => {

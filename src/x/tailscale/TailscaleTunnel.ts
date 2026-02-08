@@ -85,9 +85,7 @@ export const start = (opts: {
     yield* serve({ ...opts, command, dnsName })
   })
 
-export const layer = (opts?: {
-  public?: boolean
-}) =>
+export const layer = (opts?: { public?: boolean }) =>
   Layer.scopedDiscard(
     Effect.gen(function* () {
       const { server } = yield* BunServer.BunServer

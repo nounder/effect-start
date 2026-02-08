@@ -2,7 +2,7 @@ import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
-
+import type * as BunTypes from "bun"
 import * as ChildProcess from "../ChildProcess.ts"
 import * as PlatformError from "../PlatformError.ts"
 
@@ -91,7 +91,7 @@ export const layer: Layer.Layer<ChildProcess.ChildProcessSpawner> = Layer.succee
           stdin: Sink.forEach((chunk: Uint8Array) =>
             Effect.try({
               try: () => {
-                const sink = proc.stdin as unknown as import("bun").FileSink
+                const sink = proc.stdin as unknown as BunTypes.FileSink
                 sink.write(chunk)
               },
               catch: (err) =>
@@ -106,7 +106,7 @@ export const layer: Layer.Layer<ChildProcess.ChildProcessSpawner> = Layer.succee
           ).pipe(
             Sink.ensuring(
               Effect.promise(async () => {
-                const sink = proc.stdin as unknown as import("bun").FileSink
+                const sink = proc.stdin as unknown as BunTypes.FileSink
                 await sink.end()
               }),
             ),

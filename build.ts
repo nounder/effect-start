@@ -71,8 +71,8 @@ function isImplementationSignature(func: FunctionDeclaration): boolean {
   return func.hasBody()
 }
 
-function collectEdits(sourceFile: SourceFile): Edit[] {
-  const edits: Edit[] = []
+function collectEdits(sourceFile: SourceFile): Array<Edit> {
+  const edits: Array<Edit> = []
   const text = sourceFile.getFullText()
 
   for (const stmt of sourceFile.getStatements()) {
@@ -130,7 +130,7 @@ function collectEdits(sourceFile: SourceFile): Edit[] {
   return edits
 }
 
-function handleImportDeclaration(decl: Node, edits: Edit[], text: string): void {
+function handleImportDeclaration(decl: Node, edits: Array<Edit>, text: string): void {
   if (!Node.isImportDeclaration(decl)) return
 
   if (decl.isTypeOnly()) {
@@ -168,8 +168,8 @@ function handleImportDeclaration(decl: Node, edits: Edit[], text: string): void 
 
 function removeNamedImportSpecifier(
   specifier: Node,
-  allSpecifiers: Node[],
-  edits: Edit[],
+  allSpecifiers: Array<Node>,
+  edits: Array<Edit>,
   text: string,
 ): void {
   const idx = allSpecifiers.indexOf(specifier)
@@ -203,7 +203,7 @@ function removeNamedImportSpecifier(
   edits.push({ kind: "remove", start, end })
 }
 
-function handleExportDeclaration(decl: Node, edits: Edit[], text: string): void {
+function handleExportDeclaration(decl: Node, edits: Array<Edit>, text: string): void {
   if (!Node.isExportDeclaration(decl)) return
 
   if (decl.isTypeOnly()) {
@@ -238,7 +238,11 @@ function handleExportDeclaration(decl: Node, edits: Edit[], text: string): void 
   }
 }
 
-function handleFunctionDeclaration(func: FunctionDeclaration, edits: Edit[], text: string): void {
+function handleFunctionDeclaration(
+  func: FunctionDeclaration,
+  edits: Array<Edit>,
+  text: string,
+): void {
   if (!func.getName()) return
   if (!isImplementationSignature(func)) return
 
@@ -250,7 +254,7 @@ function handleFunctionDeclaration(func: FunctionDeclaration, edits: Edit[], tex
   stripFunctionTypes(func, edits, text)
 }
 
-function stripFunctionTypes(func: FunctionDeclaration, edits: Edit[], text: string): void {
+function stripFunctionTypes(func: FunctionDeclaration, edits: Array<Edit>, text: string): void {
   stripTypeParameters(func.getTypeParameters(), edits, text)
 
   const returnType = func.getReturnTypeNode()
@@ -271,7 +275,11 @@ function stripFunctionTypes(func: FunctionDeclaration, edits: Edit[], text: stri
   }
 }
 
-function stripTypeParameters(typeParams: readonly Node[], edits: Edit[], text: string): void {
+function stripTypeParameters(
+  typeParams: ReadonlyArray<Node>,
+  edits: Array<Edit>,
+  text: string,
+): void {
   if (typeParams.length === 0) return
   const first = typeParams[0]
   const last = typeParams[typeParams.length - 1]
@@ -282,7 +290,7 @@ function stripTypeParameters(typeParams: readonly Node[], edits: Edit[], text: s
   }
 }
 
-function stripParameterTypes(param: ParameterDeclaration, edits: Edit[], text: string): void {
+function stripParameterTypes(param: ParameterDeclaration, edits: Array<Edit>, text: string): void {
   if (isThisParam(param)) {
     removeThisParam(param, edits, text)
     return
@@ -311,7 +319,7 @@ function stripParameterTypes(param: ParameterDeclaration, edits: Edit[], text: s
   }
 }
 
-function removeThisParam(param: ParameterDeclaration, edits: Edit[], text: string): void {
+function removeThisParam(param: ParameterDeclaration, edits: Array<Edit>, text: string): void {
   const start = param.getStart()
   let end = param.getEnd()
 
@@ -324,7 +332,7 @@ function removeThisParam(param: ParameterDeclaration, edits: Edit[], text: strin
   edits.push({ kind: "remove", start, end })
 }
 
-function handleVariableStatement(stmt: VariableStatement, edits: Edit[], text: string): void {
+function handleVariableStatement(stmt: VariableStatement, edits: Array<Edit>, text: string): void {
   for (const decl of stmt.getDeclarations()) {
     const typeNode = decl.getTypeNode()
     const initializer = decl.getInitializer()
@@ -342,7 +350,7 @@ function handleVariableStatement(stmt: VariableStatement, edits: Edit[], text: s
   }
 }
 
-function handleClassDeclaration(cls: ClassDeclaration, edits: Edit[], text: string): void {
+function handleClassDeclaration(cls: ClassDeclaration, edits: Array<Edit>, text: string): void {
   stripTypeParameters(cls.getTypeParameters(), edits, text)
 
   const extendsClause = cls.getExtends()
@@ -411,7 +419,7 @@ function handleClassDeclaration(cls: ClassDeclaration, edits: Edit[], text: stri
   }
 }
 
-function handleExtendsExpression(extendsExpr: Node, edits: Edit[], text: string): void {
+function handleExtendsExpression(extendsExpr: Node, edits: Array<Edit>, text: string): void {
   if (Node.isExpressionWithTypeArguments(extendsExpr)) {
     const typeArgs = extendsExpr.getTypeArguments()
     if (typeArgs.length > 0) {
@@ -429,7 +437,7 @@ function handleExtendsExpression(extendsExpr: Node, edits: Edit[], text: string)
   })
 }
 
-function handleClassProperty(prop: Node, edits: Edit[], text: string): void {
+function handleClassProperty(prop: Node, edits: Array<Edit>, text: string): void {
   if (!Node.isPropertyDeclaration(prop)) return
 
   for (const kind of [
@@ -462,7 +470,7 @@ function handleClassProperty(prop: Node, edits: Edit[], text: string): void {
   }
 }
 
-function handleClassMethod(method: Node, edits: Edit[], text: string): void {
+function handleClassMethod(method: Node, edits: Array<Edit>, text: string): void {
   if (!Node.isMethodDeclaration(method)) return
 
   for (const kind of [
@@ -499,7 +507,7 @@ function handleClassMethod(method: Node, edits: Edit[], text: string): void {
   }
 }
 
-function handleExpression(expr: Node, edits: Edit[], text: string): void {
+function handleExpression(expr: Node, edits: Array<Edit>, text: string): void {
   if (!expr) return
 
   // `as const` → `/** @type {const} */`
@@ -703,7 +711,7 @@ function handleExpression(expr: Node, edits: Edit[], text: string): void {
   }
 }
 
-function stripTypeArguments(parent: Node, edits: Edit[], _text: string): void {
+function stripTypeArguments(parent: Node, edits: Array<Edit>, _text: string): void {
   const children = parent.getChildren()
   const ltToken = children.find((c) => c.getKind() === SyntaxKind.LessThanToken)
   const gtToken = children.find((c) => c.getKind() === SyntaxKind.GreaterThanToken)
@@ -716,7 +724,7 @@ function stripTypeArguments(parent: Node, edits: Edit[], _text: string): void {
   }
 }
 
-function handleArrowFunction(arrow: Node, edits: Edit[], text: string): void {
+function handleArrowFunction(arrow: Node, edits: Array<Edit>, text: string): void {
   if (!Node.isArrowFunction(arrow)) return
 
   stripTypeParameters(arrow.getTypeParameters(), edits, text)
@@ -743,7 +751,7 @@ function handleArrowFunction(arrow: Node, edits: Edit[], text: string): void {
   }
 }
 
-function handleFunctionExpression(func: Node, edits: Edit[], text: string): void {
+function handleFunctionExpression(func: Node, edits: Array<Edit>, text: string): void {
   if (!Node.isFunctionExpression(func)) return
 
   stripTypeParameters(func.getTypeParameters(), edits, text)
@@ -766,7 +774,7 @@ function handleFunctionExpression(func: Node, edits: Edit[], text: string): void
   }
 }
 
-function walkExpressions(block: Node, edits: Edit[], text: string): void {
+function walkExpressions(block: Node, edits: Array<Edit>, text: string): void {
   block.forEachDescendant((node, traversal) => {
     if (Node.isTypeAliasDeclaration(node) || Node.isInterfaceDeclaration(node)) {
       removeStatement(node, edits, text)
@@ -852,7 +860,7 @@ function walkExpressions(block: Node, edits: Edit[], text: string): void {
   })
 }
 
-function removeStatement(node: Node, edits: Edit[], text: string): void {
+function removeStatement(node: Node, edits: Array<Edit>, text: string): void {
   let start = node.getStart()
   let end = node.getEnd()
 
@@ -870,9 +878,9 @@ function removeStatement(node: Node, edits: Edit[], text: string): void {
   edits.push({ kind: "remove", start, end })
 }
 
-function applyEdits(source: string, edits: Edit[]): string {
+function applyEdits(source: string, edits: Array<Edit>): string {
   const seen = new Set<string>()
-  const unique: Edit[] = []
+  const unique: Array<Edit> = []
   for (const edit of edits) {
     const pos = edit.kind === "insertBefore" ? edit.position : edit.start
     const end = edit.kind === "insertBefore" ? edit.position : edit.end
