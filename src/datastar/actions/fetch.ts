@@ -285,7 +285,6 @@ const getLines = (onLine: (line: Uint8Array, fieldLength: number) => void) => {
             }
             break
           // @ts-expect-error:7029
-          // biome-ignore lint/suspicious/noFallthroughSwitchClause: intentional fallthrough for CR to LF
           case 13:
             discardTrailingNewline = true
           case 10:

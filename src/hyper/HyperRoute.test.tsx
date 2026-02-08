@@ -133,12 +133,13 @@ test.describe("HyperRoute.html", () => {
   test.it("data-on-click function argument is typed as DataEvent", () => {
     const node = (
       <button
-        data-on-click={(e) => {
+        data-on:click={(e) => {
           test.expectTypeOf(e).toEqualTypeOf<Engine.DataEvent>()
           test.expectTypeOf(e.window).toEqualTypeOf<Window & typeof globalThis>()
         }}
       />
     )
+
     test.expect(node).toBeDefined()
   })
 
