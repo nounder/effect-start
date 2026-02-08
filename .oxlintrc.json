@@ -63,7 +63,10 @@
     "no-unused-expressions": "off",
 
     // Enforce namespace imports for modules with capitalized base names
-    "effect-start/prefer-namespace-import": "error"
+    "effect-start/prefer-namespace-import": "error",
+
+    // Enforce blank lines around test calls
+    "effect-start/test-space-around": "warn"
   },
   "ignorePatterns": ["dist/", "node_modules/", "*.todo.ts"]
 }

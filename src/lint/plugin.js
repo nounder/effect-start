@@ -71,6 +71,83 @@ export default {
       },
     },
 
+    "test-space-around": {
+      meta: {
+        type: "layout",
+        docs: {
+          description: "Enforce blank lines around test calls (test.describe, test.it, etc.)",
+        },
+        fixable: "whitespace",
+        schema: [],
+        messages: {
+          requireBlankBefore: "Test call should be preceded by a blank line",
+          requireBlankAfter: "Test call should be followed by a blank line",
+        },
+      },
+      create(context) {
+        const filename = context.filename || context.getFilename()
+        if (!filename.endsWith(".test.ts") && !filename.endsWith(".test.tsx")) {
+          return {}
+        }
+
+        function isTestCall(node) {
+          return (
+            node &&
+            node.type === "ExpressionStatement" &&
+            node.expression.type === "CallExpression" &&
+            node.expression.callee.type === "MemberExpression" &&
+            node.expression.callee.object.type === "Identifier" &&
+            node.expression.callee.object.name === "test"
+          )
+        }
+
+        function checkBlankLines(siblings) {
+          const sourceCode = context.sourceCode || context.getSourceCode()
+
+          for (let i = 0; i < siblings.length; i++) {
+            const node = siblings[i]
+            if (!isTestCall(node)) continue
+
+            const prev = siblings[i - 1]
+            const next = siblings[i + 1]
+
+            if (prev) {
+              if (node.loc.start.line - prev.loc.end.line < 2) {
+                context.report({
+                  node,
+                  messageId: "requireBlankBefore",
+                  fix(fixer) {
+                    return fixer.insertTextAfter(sourceCode.getLastToken(prev), "\n")
+                  },
+                })
+              }
+            }
+
+            if (next) {
+              if (next.loc.start.line - node.loc.end.line < 2) {
+                context.report({
+                  node,
+                  messageId: "requireBlankAfter",
+                  fix(fixer) {
+                    return fixer.insertTextAfter(sourceCode.getLastToken(node), "\n")
+                  },
+                })
+              }
+            }
+          }
+        }
+
+        return {
+          Program(node) {
+            checkBlankLines(node.body)
+          },
+          BlockStatement(node) {
+            checkBlankLines(node.body)
+          },
+        }
+      },
+    },
+
     "test-assertion-newline": {
       meta: {
         type: "layout",
