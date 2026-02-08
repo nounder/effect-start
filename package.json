@@ -101,6 +101,7 @@
   "devDependencies": {
     "@effect/language-service": "^0.62.3",
     "@types/bun": "^1.3.4",
+    "@types/jsdom": "^27.0.0",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "effect-memfs": "^0.8.0",

@@ -60,10 +60,10 @@ Avoid variable names that shadow imports. Use descriptive suffixes:
 
 ```ts
 // Bad - shadows `test` import
-const test = Commander.make({ name: "test" })
+const test = Route.add("/test", Route.get(Route.text("test")))
 
 // Good
-const testCmd = Commander.make({ name: "test" })
+const testRoute = Route.add("/test", Route.get(Route.text("test")))
 ```
 
 ## describe() block

@@ -6,9 +6,15 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Sql from "../../Sql.ts"
 
+const errorCode = (error: unknown): string => {
+  const e = error as any
+  if (typeof e?.errno === "string") return e.errno
+  return e?.code ?? "UNKNOWN"
+}
+
 const wrapError = (error: unknown): Sql.SqlError =>
   new Sql.SqlError({
-    code: (error as any)?.code ?? "UNKNOWN",
+    code: errorCode(error),
     message: error instanceof Error ? error.message : String(error),
     cause: error,
   })

@@ -1,5 +1,4 @@
 import * as BunServer from "../../bun/BunServer.ts"
-import type * as ChildProcess from "../../ChildProcess.ts"
 import * as PlatformError from "../../PlatformError.ts"
 import * as System from "../../System.ts"
 import * as Deferred from "effect/Deferred"
@@ -62,7 +61,7 @@ const serve = (opts: {
 
     const proc = yield* System.spawn(opts.command, args)
 
-    yield* pipe(
+    yield* Function.pipe(
       Stream.merge(proc.stdout, proc.stderr),
       Stream.decodeText("utf-8"),
       Stream.splitLines,
@@ -88,7 +87,7 @@ export const start = (opts: {
 
 export const layer = (opts?: {
   public?: boolean
-}): Layer.Layer<never, never, BunServer.BunServer | ChildProcess.ChildProcessSpawner> =>
+}) =>
   Layer.scopedDiscard(
     Effect.gen(function* () {
       const { server } = yield* BunServer.BunServer
