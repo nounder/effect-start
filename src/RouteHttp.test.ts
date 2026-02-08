@@ -308,6 +308,40 @@ test.it("definition order determines priority when no Accept header", async () =
   test.expect(response.headers.get("Content-Type")).toBe("text/plain; charset=utf-8")
 })
 
+test.it("sets Vary: Accept when multiple formats exist", async () => {
+  const handler = RouteHttp.toWebHandler(
+    Route.get(Route.json({ type: "json" })).get(Route.html("<div>html</div>")),
+  )
+  const response = await Http.fetch(handler, {
+    path: "/data",
+    headers: { Accept: "application/json" },
+  })
+
+  test.expect(response.status).toBe(200)
+  test.expect(response.headers.get("vary")).toBe("Accept")
+})
+
+test.it("does not set Vary: Accept when only one format exists", async () => {
+  const handler = RouteHttp.toWebHandler(Route.get(Route.json({ type: "json" })))
+  const response = await Http.fetch(handler, {
+    path: "/data",
+    headers: { Accept: "application/json" },
+  })
+
+  test.expect(response.status).toBe(200)
+  test.expect(response.headers.get("vary")).toBeNull()
+})
+
+test.it("sets Vary: Accept when no Accept header but multiple formats", async () => {
+  const handler = RouteHttp.toWebHandler(
+    Route.get(Route.json({ type: "json" })).get(Route.text("plain")),
+  )
+  const response = await Http.fetch(handler, { path: "/data" })
+
+  test.expect(response.status).toBe(200)
+  test.expect(response.headers.get("vary")).toBe("Accept")
+})
+
 test.it("falls back to html when no Accept header and no json or text", async () => {
   const handler = RouteHttp.toWebHandler(Route.get(Route.html("<div>html</div>")))
   const response = await Http.fetch(handler, { path: "/data" })

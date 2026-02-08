@@ -200,11 +200,15 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
       const allRoutes = [...wildcards, ...methodRoutes]
       const selectedFormat = determineSelectedFormat(accept, allRoutes)
 
-      const hasSpecificFormatRoutes = allRoutes.some((r) => {
+      const specificFormats = new Set<string>()
+      let hasWildcardFormatRoutes = false
+      for (const r of allRoutes) {
         const format = Route.descriptor(r).format
-        return format && format !== "*"
-      })
-      const hasWildcardFormatRoutes = allRoutes.some((r) => Route.descriptor(r).format === "*")
+        if (format === "*") hasWildcardFormatRoutes = true
+        else if (format) specificFormats.add(format)
+      }
+      const hasSpecificFormatRoutes = specificFormats.size > 0
+      const varyAccept = specificFormats.size > 1
 
       if (selectedFormat === undefined && hasSpecificFormatRoutes && !hasWildcardFormatRoutes) {
         return Promise.resolve(respondError({ status: 406, message: "not acceptable" }))
@@ -272,7 +276,11 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
             return respondError({ status: 406, message: "not acceptable" })
           }
 
-          return yield* toResponse(entity, selectedFormat, runtime)
+          const response = yield* toResponse(entity, selectedFormat, runtime)
+          if (varyAccept) {
+            response.headers.set("vary", "Accept")
+          }
+          return response
         })
 
         if (tracerDisabled) {
