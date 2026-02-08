@@ -1,8 +1,7 @@
+import * as System from "../../System.ts"
 import {
   Config,
-  Data,
   Effect,
-  identity,
   Layer,
   LogLevel,
   Option,
@@ -10,10 +9,6 @@ import {
   Stream,
   String,
 } from "effect"
-
-export class CloudflareTunnelSpawnError extends Data.TaggedError("CloudflareTunnelSpawnError")<{
-  cause: unknown
-}> {}
 
 export const start = (opts: {
   command?: string
@@ -24,6 +19,8 @@ export const start = (opts: {
   logPrefix?: string
 }) =>
   Effect.gen(function* () {
+    const command = opts.command ?? "cloudflared"
+    yield* System.which(command)
     const logPrefix = String.isString(opts.logPrefix) ? opts.logPrefix : "CloudflareTunnel: "
     const args: Array<string> = [
       "tunnel",
@@ -32,20 +29,7 @@ export const start = (opts: {
       opts.tunnelName,
     ].flatMap((v) => v)
 
-    const proc = yield* Effect.try({
-      try: () =>
-        Bun.spawn([opts.command ?? "cloudflared", ...args], {
-          stderr: "pipe",
-          stdout: "pipe",
-        }),
-      catch: (err) => new CloudflareTunnelSpawnError({ cause: err }),
-    })
-
-    yield* Effect.addFinalizer(() =>
-      Effect.sync(() => {
-        proc.kill()
-      }),
-    )
+    const proc = yield* System.spawn(command, args)
 
     yield* Effect.logInfo(
       `Cloudflare tunnel started name=${opts.tunnelName} pid=${proc.pid} tunnelUrl=${
@@ -54,16 +38,13 @@ export const start = (opts: {
     )
 
     yield* pipe(
-      Stream.merge(
-        Stream.fromReadableStream(() => proc.stdout, identity),
-        Stream.fromReadableStream(() => proc.stderr, identity),
-      ),
+      Stream.merge(proc.stdout, proc.stderr),
       Stream.decodeText("utf-8"),
       Stream.splitLines,
       (opts.cleanLogs ?? true)
         ? Stream.map((v) => v.replace(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\s\w+\s/, ""))
-        : identity,
-      logPrefix ? Stream.map((v) => logPrefix + v) : identity,
+        : (s) => s,
+      logPrefix ? Stream.map((v) => logPrefix + v) : (s) => s,
       Stream.runForEach((v) => Effect.logWithLevel(opts.logLevel ?? LogLevel.Debug, v)),
     )
   })
