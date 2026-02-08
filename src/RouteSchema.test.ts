@@ -424,7 +424,9 @@ test.describe(`${RouteSchema.schemaSuccess.name}()`, () => {
     const response = await Http.fetch(handler, { path: "/test" })
 
     test.expect(response.status).toBe(200)
+
     const body = await response.json()
+
     test.expect(body).toEqual({ id: 1, name: "Alice" })
     test.expect(body).not.toHaveProperty("secret")
   })

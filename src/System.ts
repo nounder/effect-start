@@ -6,9 +6,7 @@ import * as PlatformError from "./PlatformError.ts"
 
 export const cwd: Effect.Effect<string> = Effect.sync(() => process.cwd())
 
-export const which = (
-  name: string,
-): Effect.Effect<string, PlatformError.SystemError> =>
+export const which = (name: string): Effect.Effect<string, PlatformError.SystemError> =>
   Effect.flatMap(
     Effect.try({
       try: () => Bun.which(name),

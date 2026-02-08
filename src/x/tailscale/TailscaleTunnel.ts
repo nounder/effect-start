@@ -8,7 +8,7 @@ import * as Fiber from "effect/Fiber"
 import * as Layer from "effect/Layer"
 import * as LogLevel from "effect/LogLevel"
 import * as Stream from "effect/Stream"
-import { pipe } from "effect/Function"
+import * as Function from "effect/Function"
 
 interface TailscaleStatus {
   readonly BackendState: string

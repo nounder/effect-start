@@ -13,22 +13,26 @@ const run = <A, E>(effect: Effect.Effect<A, E, ChildProcess.ChildProcessSpawner 
 test.describe("ChildProcess.make", () => {
   test.it("creates a command", () => {
     const cmd = ChildProcess.make("echo", ["hello"])
+
     test.expect(cmd.command).toBe("echo")
     test.expect(cmd.args).toEqual(["hello"])
   })
 
   test.it("creates with options", () => {
     const cmd = ChildProcess.make("echo", ["hello"], { cwd: "/tmp" })
+
     test.expect(cmd.cwd).toBe("/tmp")
   })
 
   test.it("defaults args to empty array", () => {
     const cmd = ChildProcess.make("echo")
+
     test.expect(cmd.args).toEqual([])
   })
 
   test.it("isCommand", () => {
     const cmd = ChildProcess.make("echo")
+
     test.expect(ChildProcess.isCommand(cmd)).toBe(true)
     test.expect(ChildProcess.isCommand({})).toBe(false)
   })
@@ -36,6 +40,7 @@ test.describe("ChildProcess.make", () => {
   test.it("is pipeable", () => {
     const cmd = ChildProcess.make("echo", ["hello"])
     const result = cmd.pipe((c) => c.command)
+
     test.expect(result).toBe("echo")
   })
 })
@@ -48,6 +53,7 @@ test.describe("spawn + stdout", () => {
         return yield* handle.stdout.pipe(Stream.decodeText("utf-8"), Stream.mkString)
       }),
     )
+
     test.expect(result).toBe("hello\n")
   })
 
@@ -58,6 +64,7 @@ test.describe("spawn + stdout", () => {
         return yield* handle.stdout.pipe(Stream.decodeText("utf-8"), Stream.mkString)
       }),
     )
+
     test.expect(result).toBe("hello\n")
   })
 
@@ -74,6 +81,7 @@ test.describe("spawn + stdout", () => {
         )
       }),
     )
+
     test.expect(Array.from(result)).toEqual(["line1", "line2", "line3"])
   })
 })
@@ -86,6 +94,7 @@ test.describe("spawn + exitCode", () => {
         return yield* handle.exitCode
       }),
     )
+
     test.expect(code).toBe(0)
   })
 
@@ -96,6 +105,7 @@ test.describe("spawn + exitCode", () => {
         return yield* handle.exitCode
       }),
     )
+
     test.expect(code).toBe(1)
   })
 })
@@ -108,6 +118,7 @@ test.describe("spawn + pid", () => {
         return handle.pid
       }),
     )
+
     test.expect(pid).toBeGreaterThan(0)
   })
 })
@@ -122,6 +133,7 @@ test.describe("spawn + isRunning", () => {
         return running
       }),
     )
+
     test.expect(result).toBe(true)
   })
 })
@@ -136,6 +148,7 @@ test.describe("spawn + kill", () => {
         return yield* handle.isRunning
       }),
     )
+
     test.expect(result).toBe(false)
   })
 })
@@ -148,6 +161,7 @@ test.describe("spawn + stderr", () => {
         return yield* handle.stderr.pipe(Stream.decodeText("utf-8"), Stream.mkString)
       }),
     )
+
     test.expect(result).toBe("error\n")
   })
 })
@@ -162,6 +176,7 @@ test.describe("spawn + stdin", () => {
         return yield* handle.stdout.pipe(Stream.decodeText("utf-8"), Stream.mkString)
       }),
     )
+
     test.expect(result).toBe("hello from stdin")
   })
 })
@@ -174,6 +189,7 @@ test.describe("spawn + options", () => {
         return yield* handle.stdout.pipe(Stream.decodeText("utf-8"), Stream.mkString)
       }),
     )
+
     test.expect(result.trim()).toMatch(/\/tmp/)
   })
 
@@ -186,6 +202,7 @@ test.describe("spawn + options", () => {
         return yield* handle.stdout.pipe(Stream.decodeText("utf-8"), Stream.mkString)
       }),
     )
+
     test.expect(result.trim()).toBe("hello123")
   })
 })
@@ -200,6 +217,7 @@ test.describe("spawn errors", () => {
         ),
       ),
     )
+
     test.expect(PlatformError.isPlatformError(error)).toBe(true)
     test.expect((error as PlatformError.SystemError).module).toBe("ChildProcess")
     test.expect((error as PlatformError.SystemError).method).toBe("spawn")
