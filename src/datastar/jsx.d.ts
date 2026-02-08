@@ -67,13 +67,13 @@ export interface DatastarAttributes {
   "data-view-transition"?: string | undefined
 
   // Dynamic attributes with suffixes
-  [key: `data-signals-${string}`]: string | undefined
-  [key: `data-class-${string}`]: string | DatastarFn | undefined
-  [key: `data-attr-${string}`]: string | DatastarFn | undefined
-  [key: `data-style-${string}`]: string | DatastarFn | undefined
-  [key: `data-bind-${string}`]: string | undefined
-  [key: `data-computed-${string}`]: string | DatastarFn | undefined
-  [key: `data-indicator-${string}`]: string | undefined
-  [key: `data-ref-${string}`]: string | undefined
-  [key: `data-on-${string}`]: string | DatastarOnFn | undefined
+  [key: `data-signals:${string}`]: string | undefined
+  [key: `data-class:${string}`]: string | DatastarFn | undefined
+  [key: `data-attr:${string}`]: string | DatastarFn | undefined
+  [key: `data-style:${string}`]: string | DatastarFn | undefined
+  [key: `data-bind:${string}`]: string | undefined
+  [key: `data-computed:${string}`]: string | DatastarFn | undefined
+  [key: `data-indicator:${string}`]: string | undefined
+  [key: `data-ref:${string}`]: string | undefined
+  [key: `data-on:${string}`]: string | DatastarOnFn | undefined
 }
