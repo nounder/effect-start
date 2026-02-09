@@ -1,9 +1,7 @@
 import * as BunServer from "../../bun/BunServer.ts"
 import * as PlatformError from "../../PlatformError.ts"
 import * as System from "../../System.ts"
-import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
-import * as Fiber from "effect/Fiber"
 import * as Layer from "effect/Layer"
 import * as LogLevel from "effect/LogLevel"
 import * as Stream from "effect/Stream"
@@ -91,9 +89,8 @@ export const layer = (opts?: { public?: boolean }) =>
       const { server } = yield* BunServer.BunServer
       const port = server.port!
       const command = "tailscale"
-      const ready = yield* Deferred.make<void>()
 
-      const fiber = yield* Effect.forkScoped(
+      yield* Effect.forkScoped(
         Effect.gen(function* () {
           yield* System.which(command)
           const status = yield* getStatus(command)
@@ -103,7 +100,6 @@ export const layer = (opts?: { public?: boolean }) =>
           yield* Effect.logInfo(
             `Tailscale ${opts?.public ? "funnel" : "serve"}${serveUrl ? ` url=${serveUrl}` : ""}`,
           )
-          yield* Deferred.succeed(ready, void 0)
 
           yield* serve({
             command,
@@ -111,9 +107,7 @@ export const layer = (opts?: { public?: boolean }) =>
             dnsName,
             public: opts?.public,
           })
-        }).pipe(Effect.orDie),
+        }).pipe(Effect.tapError((e) => Effect.logError(`Tailscale: ${e.description}`))),
       )
-
-      yield* Fiber.join(fiber).pipe(Effect.raceFirst(Deferred.await(ready)))
     }),
   )
