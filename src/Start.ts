@@ -88,12 +88,17 @@ export function serve<
     }),
   )
 
+  const appLayerResolved = Function.pipe(
+    appLayer,
+    Layer.provide(serverLayer),
+    Layer.provide(NodeFileSystem.layer),
+    Layer.provide(BunChildProcessSpawner.layer),
+  )
+
   const composed = Function.pipe(
     serverLayer,
     BunServer.withLogAddress,
-    Layer.provide(appLayer),
-    Layer.provide(NodeFileSystem.layer),
-    Layer.provide(BunChildProcessSpawner.layer),
+    Layer.provide(appLayerResolved),
   ) as Layer.Layer<BunServer.BunServer, never, never>
 
   return Function.pipe(composed, Layer.launch, BunRuntime.runMain)
