@@ -1,5 +1,5 @@
 import * as Context from "effect/Context"
-import * as Deferred from "effect/Deferred"
+import type * as Deferred from "effect/Deferred"
 import type * as BunServer from "./bun/BunServer.ts"
 
 export namespace StartApp {

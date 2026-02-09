@@ -150,9 +150,7 @@ test.describe("StartApp.server", () => {
       Effect.gen(function* () {
         const app = yield* StartApp.StartApp
         return yield* Deferred.await(app.server)
-      }).pipe(
-        Effect.provide(Layer.succeed(StartApp.StartApp, { server: deferred })),
-      ),
+      }).pipe(Effect.provide(Layer.succeed(StartApp.StartApp, { server: deferred }))),
     )
 
     await Effect.runPromise(Deferred.succeed(deferred, fakeServer))

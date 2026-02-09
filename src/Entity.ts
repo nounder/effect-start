@@ -325,6 +325,23 @@ export function length(self: Entity): number | undefined {
   return undefined
 }
 
+export function fromResponse(
+  response: Response,
+  request?: Request,
+): Entity<Effect.Effect<Uint8Array, Error, never>, Error> {
+  return make(
+    Effect.tryPromise({
+      try: () => response.arrayBuffer().then((buf) => new Uint8Array(buf)),
+      catch: (e) => (e instanceof Error ? e : new Error(String(e))),
+    }),
+    {
+      headers: Object.fromEntries(response.headers.entries()),
+      status: response.status,
+      url: response.url || request?.url,
+    },
+  )
+}
+
 function mismatch(expected: Schema.Schema.Any, actual: unknown): ParseResult.ParseError {
   return new ParseResult.ParseError({
     issue: new ParseResult.Type(expected.ast, actual),
