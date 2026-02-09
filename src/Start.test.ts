@@ -1,11 +1,13 @@
 import * as test from "bun:test"
 import * as Context from "effect/Context"
+import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as BunServer from "./bun/BunServer.ts"
 import * as Route from "./Route.ts"
 import * as Start from "./Start.ts"
+import * as StartApp from "./StartApp.ts"
 
 test.describe(Start.pack, () => {
   test.test("should resolve internal dependencies automatically", async () => {
@@ -134,6 +136,32 @@ test.describe(Start.pack, () => {
   })
 })
 
+test.describe("StartApp.server", () => {
+  test.test("waits for server ready deferred in StartApp", async () => {
+    const deferred = await Effect.runPromise(Deferred.make<BunServer.BunServer>())
+
+    const fakeServer = {
+      server: { port: 1234 } as any,
+      pushHandler: (_fetch: Parameters<BunServer.BunServer["pushHandler"]>[0]) => {},
+      popHandler: () => {},
+    } satisfies BunServer.BunServer
+
+    const resultPromise = Effect.runPromise(
+      Effect.gen(function* () {
+        const app = yield* StartApp.StartApp
+        return yield* Deferred.await(app.server)
+      }).pipe(
+        Effect.provide(Layer.succeed(StartApp.StartApp, { server: deferred })),
+      ),
+    )
+
+    await Effect.runPromise(Deferred.succeed(deferred, fakeServer))
+    const result = await resultPromise
+
+    test.expect(result).toBe(fakeServer)
+  })
+})
+
 test.describe(Start.layer, () => {
   const layerWithDefault = Layer.scoped(
     BunServer.BunServer,
@@ -142,7 +170,8 @@ test.describe(Start.layer, () => {
       if (Option.isSome(existing)) {
         return existing.value
       }
-      return yield* BunServer.make({ port: 0 })
+      const routes = yield* Route.Routes
+      return yield* BunServer.make({ port: 0 }, routes)
     }),
   )
 
@@ -156,7 +185,7 @@ test.describe(Start.layer, () => {
       "/": Route.get(Route.text("hello")),
     })
 
-    const appLayer = Start.pack(BunServer.layer({ port: customPort }), Route.layer(routes))
+    const appLayer = Start.pack(BunServer.layerRoutes({ port: customPort }), Route.layer(routes))
 
     const composed = testCompose(appLayer)
 
@@ -177,7 +206,7 @@ test.describe(Start.layer, () => {
       "/": Route.get(Route.text("custom-server")),
     })
 
-    const appLayer = Start.pack(BunServer.layer({ port: customPort }), Route.layer(routes))
+    const appLayer = Start.pack(BunServer.layerRoutes({ port: customPort }), Route.layer(routes))
 
     const composed = testCompose(appLayer)
 

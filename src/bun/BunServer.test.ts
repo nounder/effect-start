@@ -1,6 +1,7 @@
 import * as test from "bun:test"
 import * as NPath from "node:path"
 import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
 import * as Layer from "effect/Layer"
 import * as Route from "../Route.ts"
 import * as BunRoute from "./BunRoute.ts"
@@ -80,7 +81,7 @@ test.describe("smart port selection", () => {
 })
 
 const testLayer = (routes: ReturnType<typeof Route.tree>) =>
-  BunServer.layer({ port: 0 }).pipe(Layer.provide(Route.layer(routes)))
+  BunServer.layerRoutes({ port: 0 }).pipe(Layer.provide(Route.layer(routes)))
 
 test.describe("routes", () => {
   test.test("serves static text route", async () => {
@@ -218,6 +219,96 @@ test.describe("routes", () => {
 
     test.expect(response.status).toBe(200)
     test.expect(await response.text()).toBe("user")
+  })
+})
+
+test.describe("Start.serve composition", () => {
+  test.test("routes resolve when server layer requires Route.Routes", async () => {
+    const appLayer = Route.layer(
+      Route.tree({
+        "/hello": Route.get(Route.text("world")),
+      }),
+    )
+
+    const serverLayer = BunServer.layerRoutes({ port: 0 })
+    const composed = Layer.provide(BunServer.withLogAddress(serverLayer), appLayer)
+
+    const response = await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          const bunServer = yield* BunServer.BunServer
+          return yield* Effect.promise(() =>
+            fetch(`http://localhost:${bunServer.server.port}/hello`),
+          )
+        }).pipe(Effect.provide(composed)),
+      ),
+    )
+
+    test.expect(response.status).toBe(200)
+    test.expect(await response.text()).toBe("world")
+  })
+
+  test.test("route-agnostic layer starts with fallback handler", async () => {
+    const routeLayer = Route.layer(
+      Route.tree({
+        "/hello": Route.get(Route.text("world")),
+      }),
+    )
+
+    const composed = Layer.provide(
+      BunServer.withLogAddress(BunServer.layer({ port: 0 })),
+      routeLayer,
+    )
+
+    const response = await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          const bunServer = yield* BunServer.BunServer
+          return yield* Effect.promise(() =>
+            fetch(`http://localhost:${bunServer.server.port}/hello`),
+          )
+        }).pipe(Effect.provide(composed)),
+      ),
+    )
+
+    test.expect(response.status).toBe(404)
+  })
+
+  test.test("route-aware layer fails without Route.Routes", async () => {
+    const program = Effect.scoped(
+      Effect.gen(function* () {
+        yield* BunServer.BunServer
+      }).pipe(Effect.provide(BunServer.layerRoutes({ port: 0 }))),
+    ) as Effect.Effect<void, never, never>
+
+    const exit = await Effect.runPromiseExit(program)
+
+    test.expect(Exit.isFailure(exit)).toBe(true)
+    if (Exit.isFailure(exit)) {
+      test.expect(String(exit.cause)).toContain("effect-start/Routes")
+    }
+  })
+})
+
+test.describe("make", () => {
+  test.test("accepts explicit routes", async () => {
+    const routes = Route.tree({
+      "/hello": Route.get(Route.text("world")),
+    })
+
+    const response = await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          const bunServer = yield* BunServer.make({ port: 0 }, routes)
+          return yield* Effect.promise(() =>
+            fetch(`http://localhost:${bunServer.server.port}/hello`),
+          )
+        }),
+      ),
+    )
+
+    test.expect(response.status).toBe(200)
+    test.expect(await response.text()).toBe("world")
   })
 })
 

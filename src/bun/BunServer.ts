@@ -15,6 +15,7 @@ import * as PathPattern from "../PathPattern.ts"
 import * as PlataformRuntime from "../PlatformRuntime.ts"
 import * as Route from "../Route.ts"
 import * as RouteHttp from "../RouteHttp.ts"
+import * as StartApp from "../StartApp.ts"
 import type * as RouteMount from "../RouteMount.ts"
 import * as RouteTree from "../RouteTree.ts"
 import * as BunRoute from "./BunRoute.ts"
@@ -52,12 +53,11 @@ export type BunServer = {
 
 export const BunServer = Context.GenericTag<BunServer>("effect-start/BunServer")
 
-export const make = (options: BunServeOptions): Effect.Effect<BunServer, never, Scope.Scope> =>
+export const make = (
+  options: BunServeOptions,
+  tree?: RouteTree.RouteTree,
+): Effect.Effect<BunServer, never, Scope.Scope> =>
   Effect.gen(function* () {
-    const routes = yield* Effect.serviceOption(Route.Routes).pipe(
-      Effect.andThen(Option.getOrUndefined),
-    )
-
     const port = yield* Config.number("PORT").pipe(
       Effect.catchTag("ConfigError", () => {
         return PlataformRuntime.isAgentHarness()
@@ -98,7 +98,7 @@ export const make = (options: BunServeOptions): Effect.Effect<BunServer, never, 
       Effect.andThen(Runtime.provideService(BunServer, service)),
     )
 
-    let currentRoutes: BunRoute.BunRoutes = routes ? yield* walkBunRoutes(runtime, routes) : {}
+    let currentRoutes: BunRoute.BunRoutes = tree ? yield* walkBunRoutes(runtime, tree) : {}
 
     const websocket: Bun.WebSocketHandler<WebSocketContext> = {
       open(ws) {
@@ -169,6 +169,47 @@ export const make = (options: BunServeOptions): Effect.Effect<BunServer, never, 
  */
 export const layer = (options?: BunServeOptions): Layer.Layer<BunServer> =>
   Layer.scoped(BunServer, make(options ?? {}))
+
+export const layerRoutes = (
+  options?: BunServeOptions,
+): Layer.Layer<BunServer, never, Route.Routes> =>
+  Layer.scoped(
+    BunServer,
+    Effect.gen(function* () {
+      const routes = yield* Route.Routes
+      return yield* make(options ?? {}, routes)
+    }),
+  )
+
+/**
+ * Resolves the Bun server in one place for Start.serve so routes are available:
+ * 1) Reuse a user-provided BunServer when one already exists in context.
+ * 2) Otherwise create the server from Route.Routes when routes are available.
+ * 3) Otherwise create a fallback server with the default 404 handler.
+ */
+export const layerStart = (
+  options?: BunServeOptions,
+): Layer.Layer<BunServer, never, StartApp.StartApp> =>
+  Layer.scoped(
+    BunServer,
+    Effect.gen(function* () {
+      const app = yield* StartApp.StartApp
+      const existing = yield* Effect.serviceOption(BunServer)
+      if (Option.isSome(existing)) {
+        yield* Deferred.succeed(app.server, existing.value)
+        return existing.value
+      }
+      const routes = yield* Effect.serviceOption(Route.Routes)
+      if (Option.isSome(routes)) {
+        const server = yield* make(options ?? {}, routes.value)
+        yield* Deferred.succeed(app.server, server)
+        return server
+      }
+      const server = yield* make(options ?? {})
+      yield* Deferred.succeed(app.server, server)
+      return server
+    }),
+  )
 
 export const withLogAddress = <A, E, R>(layer: Layer.Layer<A, E, R>) =>
   Layer.effectDiscard(

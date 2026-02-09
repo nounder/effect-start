@@ -1,6 +1,7 @@
-import * as BunServer from "../../bun/BunServer.ts"
 import * as PlatformError from "../../PlatformError.ts"
+import * as StartApp from "../../StartApp.ts"
 import * as System from "../../System.ts"
+import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as LogLevel from "effect/LogLevel"
@@ -86,12 +87,13 @@ export const start = (opts: {
 export const layer = (opts?: { public?: boolean }) =>
   Layer.scopedDiscard(
     Effect.gen(function* () {
-      const { server } = yield* BunServer.BunServer
-      const port = server.port!
-      const command = "tailscale"
-
       yield* Effect.forkScoped(
         Effect.gen(function* () {
+          const app = yield* StartApp.StartApp
+          const { server } = yield* Deferred.await(app.server)
+          const port = server.port!
+          const command = "tailscale"
+
           yield* System.which(command)
           const status = yield* getStatus(command)
           const dnsName = status.Self?.DNSName?.replace(/\.$/, "")

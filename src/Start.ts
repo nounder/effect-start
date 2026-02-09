@@ -1,14 +1,15 @@
 import type * as FileSystem from "./FileSystem.ts"
 import * as Context from "effect/Context"
+import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Function from "effect/Function"
 import * as Layer from "effect/Layer"
-import * as Option from "effect/Option"
 import type * as ChildProcess from "./ChildProcess.ts"
 import * as BunRuntime from "./bun/BunRuntime.ts"
 import * as BunServer from "./bun/BunServer.ts"
 import * as NodeFileSystem from "./node/NodeFileSystem.ts"
 import * as BunChildProcessSpawner from "./bun/BunChildProcessSpawner.ts"
+import * as StartApp from "./StartApp.ts"
 
 export function layer<
   Layers extends [Layer.Layer<never, any, any>, ...Array<Layer.Layer<never, any, any>>],
@@ -66,12 +67,25 @@ export function pack<const Layers extends readonly [Layer.Layer.Any, ...Array<La
 export function serve<
   ROut,
   E,
-  RIn extends BunServer.BunServer | FileSystem.FileSystem | ChildProcess.ChildProcessSpawner,
+  RIn extends
+    | BunServer.BunServer
+    | FileSystem.FileSystem
+    | ChildProcess.ChildProcessSpawner
+    | StartApp.StartApp,
 >(
   load: () => Promise<{
     default: Layer.Layer<ROut, E, RIn>
   }>,
 ) {
+  const startAppLayer = Layer.effect(
+    StartApp.StartApp,
+    Deferred.make<BunServer.BunServer>().pipe(
+      Effect.map((server) => ({
+        server,
+      })),
+    ),
+  )
+
   const appLayer = Function.pipe(
     Effect.tryPromise(load),
     Effect.map((v) => v.default),
@@ -79,24 +93,15 @@ export function serve<
     Layer.unwrapEffect,
   )
 
-  const serverLayer = Layer.scoped(
-    BunServer.BunServer,
-    Effect.gen(function* () {
-      const existing = yield* Effect.serviceOption(BunServer.BunServer)
-      if (Option.isSome(existing)) return existing.value
-      return yield* BunServer.make({})
-    }),
-  )
-
   const appLayerResolved = Function.pipe(
     appLayer,
-    Layer.provide(serverLayer),
     Layer.provide(NodeFileSystem.layer),
     Layer.provide(BunChildProcessSpawner.layer),
+    Layer.provideMerge(startAppLayer),
   )
 
   const composed = Function.pipe(
-    serverLayer,
+    BunServer.layerStart(),
     BunServer.withLogAddress,
     Layer.provide(appLayerResolved),
   ) as Layer.Layer<BunServer.BunServer, never, never>

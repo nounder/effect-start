@@ -7,7 +7,7 @@ import * as BunRoute from "./BunRoute.ts"
 import * as BunServer from "./BunServer.ts"
 
 const testLayer = (routes: ReturnType<typeof Route.tree>) =>
-  BunServer.layer({
+  BunServer.layerRoutes({
     port: 0,
   }).pipe(Layer.provide(Route.layer(routes)))
 
