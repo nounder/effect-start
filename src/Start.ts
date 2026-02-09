@@ -64,28 +64,32 @@ export function pack<const Layers extends readonly [Layer.Layer.Any, ...Array<La
   return result as AnyLayer
 }
 
-export function serve<
-  ROut,
-  E,
-  RIn extends
-    | BunServer.BunServer
-    | FileSystem.FileSystem
-    | ChildProcess.ChildProcessSpawner
-    | StartApp.StartApp,
->(
+export type PlatformServices =
+  | BunServer.BunServer
+  | FileSystem.FileSystem
+  | ChildProcess.ChildProcessSpawner
+  | StartApp.StartApp
+
+export const Live: Layer.Layer<
+  Exclude<PlatformServices, BunServer.BunServer>,
+  never,
+  never
+> = Layer.mergeAll(
+  NodeFileSystem.layer,
+  BunChildProcessSpawner.layer,
+  Layer.effect(
+    StartApp.StartApp,
+    Deferred.make<BunServer.BunServer>().pipe(
+      Effect.map((server) => ({ server })),
+    ),
+  ),
+)
+
+export function serve<ROut, E, RIn extends PlatformServices>(
   load: () => Promise<{
     default: Layer.Layer<ROut, E, RIn>
   }>,
 ) {
-  const startAppLayer = Layer.effect(
-    StartApp.StartApp,
-    Deferred.make<BunServer.BunServer>().pipe(
-      Effect.map((server) => ({
-        server,
-      })),
-    ),
-  )
-
   const appLayer = Function.pipe(
     Effect.tryPromise(load),
     Effect.map((v) => v.default),
@@ -95,9 +99,7 @@ export function serve<
 
   const appLayerResolved = Function.pipe(
     appLayer,
-    Layer.provide(NodeFileSystem.layer),
-    Layer.provide(BunChildProcessSpawner.layer),
-    Layer.provideMerge(startAppLayer),
+    Layer.provideMerge(Live),
   )
 
   const composed = Function.pipe(
