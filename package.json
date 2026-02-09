@@ -1,6 +1,6 @@
 {
   "name": "effect-start",
-  "version": "0.22.1",
+  "version": "0.23.0",
   "license": "MIT",
   "files": [
     "src/",
@@ -31,6 +31,16 @@
       "types": "./dist/testing/index.d.ts",
       "bun": "./src/testing/index.ts",
       "default": "./dist/testing/index.js"
+    },
+    "./console": {
+      "types": "./dist/console/index.d.ts",
+      "bun": "./src/console/index.ts",
+      "default": "./dist/console/index.js"
+    },
+    "./sql/*": {
+      "types": "./dist/sql/*/index.d.ts",
+      "bun": "./src/sql/*/index.ts",
+      "default": "./dist/sql/*/index.js"
     },
     "./x/*": {
       "types": "./dist/x/*/index.d.ts",
@@ -96,6 +106,7 @@
     "format": "bunx oxfmt",
     "lint": "oxlint --import-plugin --tsconfig tsconfig.json src/",
     "test": "bun test ./src/",
+    "test-sql": "bun add --no-save mssql @types/mssql postgres && TEST_SQL=1 bun test ./src/sql/",
     "deploy": "bunx --bun npm publish --access public"
   },
   "devDependencies": {
