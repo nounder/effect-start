@@ -1,4 +1,6 @@
 import * as test from "bun:test"
+import * as NFs from "node:fs"
+import * as NOs from "node:os"
 import * as NPath from "node:path"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
@@ -402,5 +404,104 @@ test.describe("prebuilt htmlBundle", () => {
 
     test.expect(response.status).toBe(200)
     test.expect(response.headers.get("content-type")).toContain("text/html")
+  })
+})
+
+test.describe("prebuilt htmlBundle rewrites relative asset paths", () => {
+  let tmpDir: string
+  let bundle: Bun.HTMLBundle
+
+  test.beforeAll(async () => {
+    tmpDir = NFs.mkdtempSync(NPath.join(NOs.tmpdir(), "effect-start-test-"))
+    const srcDir = NPath.join(tmpDir, "src")
+    const outDir = NPath.join(tmpDir, "out")
+    NFs.mkdirSync(srcDir)
+
+    NFs.writeFileSync(
+      NPath.join(srcDir, "index.html"),
+      `<!doctype html>
+<html>
+  <head>
+    <link rel="stylesheet" href="./style.css">
+  </head>
+  <body>%children%</body>
+</html>`,
+    )
+    NFs.writeFileSync(NPath.join(srcDir, "style.css"), "body { color: blue; }")
+    NFs.writeFileSync(
+      NPath.join(srcDir, "server.ts"),
+      `import html from "./index.html"\nexport default html`,
+    )
+
+    const result = await Bun.build({
+      entrypoints: [NPath.join(srcDir, "server.ts")],
+      outdir: outDir,
+      target: "bun",
+    })
+    if (!result.success) throw new Error("Bun.build failed")
+
+    const mod = await import(NPath.join(outDir, "server.js"))
+    const raw = mod.default as Bun.HTMLBundle
+
+    // Bun.build produces relative paths (e.g. ./index.html, ./chunk-xxx.css).
+    // registerPrebuiltBundle resolves them against Bun.main, which in tests is
+    // the test runner — not the output directory. Resolve them to absolute paths.
+    bundle = {
+      index: NPath.resolve(outDir, raw.index),
+      files: raw.files!.map((f) => ({ ...f, path: NPath.resolve(outDir, f.path) })),
+    }
+  })
+
+  test.afterAll(() => {
+    NFs.rmSync(tmpDir, { recursive: true, force: true })
+  })
+
+  test.test("rewrites relative paths to absolute in HTML served at nested route", async () => {
+    const routes = Route.tree({
+      "/notes/:id": Route.get(
+        BunRoute.htmlBundle(() => bundle),
+        Route.html("<p>note content</p>"),
+      ),
+    })
+
+    const html = await Effect.runPromise(
+      Effect.gen(function* () {
+        const bunServer = yield* BunServer.BunServer
+        const response = yield* Effect.promise(() =>
+          fetch(`http://localhost:${bunServer.server.port}/notes/hello`),
+        )
+        return yield* Effect.promise(() => response.text())
+      }).pipe(Effect.provide(testLayer(routes))),
+    )
+
+    test.expect(html).not.toContain('href="./')
+    test.expect(html).not.toContain('src="./')
+
+    const cssFile = bundle.files!.find((f) => f.loader === "css")!
+    const cssBasename = NPath.basename(cssFile.path)
+    test.expect(html).toContain(`href="/${cssBasename}"`)
+  })
+
+  test.test("CSS asset is accessible at top-level path", async () => {
+    const routes = Route.tree({
+      "/notes/:id": Route.get(
+        BunRoute.htmlBundle(() => bundle),
+        Route.html("<p>note content</p>"),
+      ),
+    })
+
+    const cssFile = bundle.files!.find((f) => f.loader === "css")!
+    const cssBasename = NPath.basename(cssFile.path)
+
+    await Effect.runPromise(
+      Effect.gen(function* () {
+        const bunServer = yield* BunServer.BunServer
+        const response = yield* Effect.promise(() =>
+          fetch(`http://localhost:${bunServer.server.port}/${cssBasename}`),
+        )
+        test.expect(response.status).toBe(200)
+        test.expect(response.headers.get("content-type")).toBe("text/css;charset=utf-8")
+      }).pipe(Effect.provide(testLayer(routes))),
+    )
   })
 })

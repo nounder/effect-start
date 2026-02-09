@@ -261,8 +261,12 @@ function registerPrebuiltBundle(prefix: string, bundle: any, bunRoutes: BunRoute
   const mainDir = NPath.dirname(Bun.main)
   const indexPath = NPath.resolve(mainDir, bundle.index)
 
-  bunRoutes[`${prefix}/*`] = () =>
-    new Response(Bun.file(indexPath), { headers: { "content-type": "text/html;charset=utf-8" } })
+  const htmlPromise = rewriteRelativeAssetPaths(
+    Bun.file(indexPath).text(),
+  )
+
+  bunRoutes[`${prefix}/*`] = async () =>
+    new Response(await htmlPromise, { headers: { "content-type": "text/html;charset=utf-8" } })
 
   for (const file of bundle.files ?? []) {
     if (file.loader === "html") continue
@@ -271,6 +275,39 @@ function registerPrebuiltBundle(prefix: string, bundle: any, bunRoutes: BunRoute
     bunRoutes[`/${basename}`] = () =>
       new Response(Bun.file(absPath), { headers: file.headers ?? {} })
   }
+}
+
+function rewriteRelativeAssetPaths(html: string | Promise<string>): Promise<string> {
+  const rewriter = new HTMLRewriter()
+    .on("link[href]", {
+      element(el) {
+        const href = el.getAttribute("href")
+        if (href && isRelativePath(href)) {
+          el.setAttribute("href", "/" + assetBasename(href))
+        }
+      },
+    })
+    .on("script[src]", {
+      element(el) {
+        const src = el.getAttribute("src")
+        if (src && isRelativePath(src)) {
+          el.setAttribute("src", "/" + assetBasename(src))
+        }
+      },
+    })
+
+  return Promise.resolve(html).then(
+    (h) => rewriter.transform(new Response(h)).text(),
+  )
+}
+
+function isRelativePath(path: string): boolean {
+  return path.startsWith("./") || path.startsWith("../")
+}
+
+function assetBasename(path: string): string {
+  const i = path.lastIndexOf("/")
+  return i === -1 ? path : path.slice(i + 1)
 }
 
 function getLocalIp(): string | undefined {
