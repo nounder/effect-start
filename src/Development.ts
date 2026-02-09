@@ -104,10 +104,12 @@ export const layerWatch = (opts?: {
   filter?: (event: FileSystem.WatchEvent) => boolean
 }) => Layer.scoped(Development, watch(opts))
 
+export const option = Effect.serviceOption(Development)
+
 export const stream = (): Stream.Stream<DevelopmentEvent> =>
   Stream.unwrap(
     Function.pipe(
-      Effect.serviceOption(Development),
+      option,
       Effect.map(
         Option.match({
           onNone: () => Stream.empty,

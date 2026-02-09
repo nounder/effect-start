@@ -9,6 +9,7 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Runtime from "effect/Runtime"
 import type * as Scope from "effect/Scope"
+import * as Development from "../Development.ts"
 import * as NOs from "node:os"
 import * as NPath from "node:path"
 import * as PathPattern from "../PathPattern.ts"
@@ -66,7 +67,7 @@ export const make = (
       }),
     )
     const hostFlag = process.argv.includes("--host")
-    const hostname = yield* Config.string("HOSTNAME").pipe(
+    const hostname = yield* Config.string("HOST").pipe(
       Effect.catchTag("ConfigError", () => Effect.succeed(hostFlag ? "0.0.0.0" : undefined)),
     )
 
@@ -213,14 +214,19 @@ export const layerStart = (
 
 export const withLogAddress = <A, E, R>(layer: Layer.Layer<A, E, R>) =>
   Layer.effectDiscard(
-    BunServer.pipe(
-      Effect.andThen((server) => {
-        const { hostname, port } = server.server
-        const addr = hostname === "0.0.0.0" ? getLocalIp() : "localhost"
+    Effect.gen(function* () {
+      const { server } = yield* BunServer
+      const { hostname, port } = server
+      const addr = hostname === "0.0.0.0" ? getLocalIp() : "localhost"
 
-        return Effect.log(`Listening on http://${addr}:${port}`)
-      }),
-    ),
+      yield* Effect.log(`Listening on http://${addr}:${port}`)
+      if (Option.isSome(yield* Development.option)) {
+        const localIp = getLocalIp()
+        if (localIp && addr !== localIp) {
+          yield* Effect.log(`Network:  http://${localIp}:${port}`)
+        }
+      }
+    }),
   ).pipe(Layer.provideMerge(layer))
 
 function walkBunRoutes(runtime: Runtime.Runtime<BunServer>, tree: RouteTree.RouteTree) {
