@@ -1,6 +1,6 @@
 {
   "name": "effect-start",
-  "version": "0.23.1",
+  "version": "0.25.0",
   "license": "MIT",
   "files": [
     "src/",
@@ -12,92 +12,24 @@
   ],
   "type": "module",
   "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "bun": "./src/index.ts",
-      "default": "./dist/index.js"
-    },
-    "./bun": {
-      "types": "./dist/bun/index.d.ts",
-      "bun": "./src/bun/index.ts",
-      "default": "./dist/bun/index.js"
-    },
-    "./client": {
-      "types": "./dist/client/index.d.ts",
-      "bun": "./src/client/index.ts",
-      "default": "./dist/client/index.js"
-    },
-    "./testing": {
-      "types": "./dist/testing/index.d.ts",
-      "bun": "./src/testing/index.ts",
-      "default": "./dist/testing/index.js"
-    },
-    "./console": {
-      "types": "./dist/console/index.d.ts",
-      "bun": "./src/console/index.ts",
-      "default": "./dist/console/index.js"
-    },
-    "./sql/*": {
-      "types": "./dist/sql/*/index.d.ts",
-      "bun": "./src/sql/*/index.ts",
-      "default": "./dist/sql/*/index.js"
-    },
-    "./x/*": {
-      "types": "./dist/x/*/index.d.ts",
-      "bun": "./src/x/*/index.ts",
-      "default": "./dist/x/*/index.js"
-    },
-    "./x/tailwind/plugin": {
-      "types": "./dist/x/tailwind/plugin.d.ts",
-      "bun": "./src/x/tailwind/plugin.ts",
-      "default": "./dist/x/tailwind/plugin.js"
-    },
-    "./System": {
-      "types": "./dist/System.d.ts",
-      "bun": "./src/System.ts",
-      "default": "./dist/System.js"
-    },
-    "./Unique": {
-      "types": "./dist/Unique.d.ts",
-      "bun": "./src/Unique.ts",
-      "default": "./dist/Unique.js"
-    },
-    "./FileRouter": {
-      "types": "./dist/FileRouter.d.ts",
-      "bun": "./src/FileRouter.ts",
-      "default": "./dist/FileRouter.js"
-    },
-    "./FileSystem": {
-      "types": "./dist/FileSystem.d.ts",
-      "bun": "./src/FileSystem.ts",
-      "default": "./dist/FileSystem.js"
-    },
-    "./experimental": {
-      "types": "./dist/experimental/index.d.ts",
-      "bun": "./src/experimental/index.ts",
-      "default": "./dist/experimental/index.js"
-    },
+    ".": "./src/index.ts",
+    "./bun": "./src/bun/index.ts",
+    "./client": "./src/client/index.ts",
+    "./testing": "./src/testing/index.ts",
+    "./console": "./src/console/index.ts",
+    "./sql/*": "./src/sql/*/index.ts",
+    "./x/*": "./src/x/*/index.ts",
+    "./x/tailwind/plugin": "./src/x/tailwind/plugin.ts",
+    "./System": "./src/System.ts",
+    "./Unique": "./src/Unique.ts",
+    "./FileRouter": "./src/FileRouter.ts",
+    "./FileSystem": "./src/FileSystem.ts",
+    "./experimental": "./src/experimental/index.ts",
     "./client/assets.d.ts": "./src/assets.d.ts",
-    "./hyper": {
-      "types": "./dist/hyper/index.d.ts",
-      "bun": "./src/hyper/index.ts",
-      "default": "./dist/hyper/index.js"
-    },
-    "./jsx-runtime": {
-      "types": "./src/hyper/jsx-runtime.ts",
-      "bun": "./src/hyper/jsx-runtime.ts",
-      "default": "./dist/hyper/jsx-runtime.js"
-    },
-    "./jsx-dev-runtime": {
-      "types": "./src/hyper/jsx-runtime.ts",
-      "bun": "./src/hyper/jsx-runtime.ts",
-      "default": "./dist/hyper/jsx-runtime.js"
-    },
-    "./datastar": {
-      "types": "./dist/datastar/index.d.ts",
-      "bun": "./src/datastar/index.ts",
-      "default": "./dist/datastar/index.js"
-    },
+    "./hyper": "./src/hyper/index.ts",
+    "./jsx-runtime": "./src/hyper/jsx-runtime.ts",
+    "./jsx-dev-runtime": "./src/hyper/jsx-runtime.ts",
+    "./datastar": "./src/datastar/index.ts",
     "./lint/plugin": "./src/lint/plugin.js",
     "./package.json": "./package.json"
   },
