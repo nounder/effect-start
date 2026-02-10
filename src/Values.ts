@@ -73,6 +73,9 @@ export const firstValue = <T>(record: Record<string, T>): T | undefined => {
   return undefined
 }
 
+export const isTemplateStringsArray = (value: unknown): value is TemplateStringsArray =>
+  Array.isArray(value) && "raw" in value
+
 export const concatBytes = (a: Uint8Array, b: Uint8Array): Uint8Array => {
   const result = new Uint8Array(a.byteLength + b.byteLength)
   result.set(a)

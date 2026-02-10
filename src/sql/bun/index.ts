@@ -64,12 +64,6 @@ const makeTaggedTemplate = (
         run<ReadonlyArray<ReadonlyArray<unknown>>>((conn) =>
           conn(strings, ...values).values(),
         ),
-      raw: () =>
-        run<ReadonlyArray<ReadonlyArray<Uint8Array>>>((conn) =>
-          conn(strings, ...values).raw(),
-        ),
-      simple: () =>
-        run<ReadonlyArray<T>>((conn) => conn(strings, ...values).simple()),
     })
   }
 }
@@ -153,10 +147,10 @@ export const layer = (
           const unsafeFn: Sql.SqlQuery["unsafe"] = <T = any>(query: string, values?: Array<unknown>) =>
             run<ReadonlyArray<T>>((conn) => conn.unsafe(query, values))
           const taggedTemplate = makeTaggedTemplate(run, dialect)
-          const use: Sql.SqlClient["use"] = (fn) =>
+          const use: Sql.Service["use"] = (fn) =>
             Effect.tryPromise({ try: () => Promise.resolve(fn(bunSql)), catch: wrapError })
 
-          return Object.assign(Sql.dispatchCallable(taggedTemplate), {
+          return Sql.of(taggedTemplate, {
             unsafe: unsafeFn,
             withTransaction: makeWithTransaction(bunSql),
             reserve: Effect.acquireRelease(
@@ -172,10 +166,7 @@ export const layer = (
             close: (options?: { readonly timeout?: number }) =>
               use((bunSql) => bunSql.close(options)),
             use,
-            array: (values: ReadonlyArray<unknown>): Sql.SqlFragment =>
-              Sql.SqlFragment.arrayLiteral(values),
-            file: Sql.makeFile(unsafeFn),
-          }) as unknown as Sql.SqlClient
+          })
         },
         catch: wrapError,
       }),

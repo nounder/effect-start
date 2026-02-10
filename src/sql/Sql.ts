@@ -1,7 +1,9 @@
 import * as Context from "effect/Context"
 import * as Data from "effect/Data"
+import * as Effectable from "effect/Effectable"
 import * as Effect from "effect/Effect"
 import type * as Scope from "effect/Scope"
+import { isTemplateStringsArray } from "../Values.ts"
 
 export class SqlError extends Data.TaggedError("SqlError")<{
   readonly code: string
@@ -19,11 +21,18 @@ export type SqlFragment =
       readonly columns: ReadonlyArray<string>
     }
   | { readonly [SqlFragmentTag]: "List"; readonly items: ReadonlyArray<unknown> }
-  | { readonly [SqlFragmentTag]: "ArrayLiteral"; readonly items: ReadonlyArray<unknown> }
   | { readonly [SqlFragmentTag]: "Literal"; readonly sql: string }
 
 export const SqlFragment = {
+  // sql`SELECT * FROM ${sql.identifier("users")}`
   identifier: (name: string): SqlFragment => ({ [SqlFragmentTag]: "Identifier", name }),
+
+  // sql`INSERT INTO users ${sql.values({ name: "Alice", age: 25 })}`
+  //  -> INSERT INTO users ("name", "age") VALUES ($1, $2)
+  // sql`INSERT INTO users ${sql.values(user, "name")}`
+  //  -> INSERT INTO users ("name") VALUES ($1)
+  // sql`INSERT INTO users ${sql.values([user1, user2])}`
+  //  -> INSERT INTO users ("name", "age") VALUES ($1, $2), ($3, $4)
   values: <T extends Record<string, unknown>>(
     obj: T | ReadonlyArray<T>,
     ...columns: Array<keyof T & string>
@@ -32,37 +41,41 @@ export const SqlFragment = {
     const cols = columns.length > 0 ? columns : (Object.keys(items[0]) as Array<string>)
     return { [SqlFragmentTag]: "Values", value: items, columns: cols }
   },
+
+  // sql`SELECT * FROM users WHERE id IN ${sql.list([1, 2, 3])}`
   list: (items: ReadonlyArray<unknown>): SqlFragment => ({ [SqlFragmentTag]: "List", items }),
-  arrayLiteral: (items: ReadonlyArray<unknown>): SqlFragment => ({
-    [SqlFragmentTag]: "ArrayLiteral",
-    items,
-  }),
+
+  // sql`SELECT * FROM users ${sql.literal("ORDER BY id DESC")}`
   literal: (sql: string): SqlFragment => ({ [SqlFragmentTag]: "Literal", sql }),
 } as const
 
-const isSqlFragment = (value: unknown): value is SqlFragment =>
-  value !== null && typeof value === "object" && SqlFragmentTag in value
+const sqlFragment = (value: unknown): SqlFragment | undefined =>
+  value !== null && typeof value === "object" && SqlFragmentTag in value ? value as SqlFragment : undefined
 
 export interface SqlStatement<T> extends Effect.Effect<ReadonlyArray<T>, SqlError> {
   readonly values: () => Effect.Effect<ReadonlyArray<ReadonlyArray<unknown>>, SqlError>
-  readonly raw: () => Effect.Effect<ReadonlyArray<ReadonlyArray<Uint8Array>>, SqlError>
-  readonly simple: () => Effect.Effect<ReadonlyArray<T>, SqlError>
+}
+
+const SqlStatementProto = {
+  ...Effectable.CommitPrototype,
+  commit(this: any) {
+    return Effect.suspend(() => this.effect)
+  },
+  values(this: any) {
+    return Effect.suspend(() => this._values())
+  },
 }
 
 export const makeSqlStatement = <T>(
   effect: Effect.Effect<ReadonlyArray<T>, SqlError>,
   options?: {
     readonly values?: () => Effect.Effect<ReadonlyArray<ReadonlyArray<unknown>>, SqlError>
-    readonly raw?: () => Effect.Effect<ReadonlyArray<ReadonlyArray<Uint8Array>>, SqlError>
-    readonly simple?: () => Effect.Effect<ReadonlyArray<T>, SqlError>
   },
 ): SqlStatement<T> => {
-  const suspended = Effect.suspend(() => effect)
-  return Object.assign(suspended, {
-    values: options?.values ?? (() => Effect.die("values() not supported")),
-    raw: options?.raw ?? (() => Effect.die("raw() not supported")),
-    simple: options?.simple ?? (() => Effect.die("simple() not supported")),
-  }) as unknown as SqlStatement<T>
+  return Object.assign(Object.create(SqlStatementProto), {
+    effect,
+    _values: options?.values ?? (() => Effect.fail(new SqlError({ code: "NOT_SUPPORTED", message: "values() not supported" }))),
+  })
 }
 
 export interface DialectConfig {
@@ -87,47 +100,27 @@ export const compileQuery = (
 
   parts.push(strings[0])
   for (let i = 0; i < interpolations.length; i++) {
-    const v = interpolations[i]
-    if (isSqlFragment(v)) {
-      const tag = v[SqlFragmentTag]
-      if (tag === "Identifier") parts.push(dialect.identifier(v.name))
-      else if (tag === "Literal") parts.push(v.sql)
-      else if (tag === "List") parts.push(`(${pushItems(v.items)})`)
-      else if (tag === "ArrayLiteral") parts.push(`ARRAY[${pushItems(v.items)}]`)
+    const frag = sqlFragment(interpolations[i])
+    if (frag) {
+      const tag = frag[SqlFragmentTag]
+      if (tag === "Identifier") parts.push(dialect.identifier(frag.name))
+      else if (tag === "Literal") parts.push(frag.sql)
+      else if (tag === "List") parts.push(`(${pushItems(frag.items)})`)
       else if (tag === "Values") {
-        const cols = v.columns.map((c) => dialect.identifier(c as string)).join(", ")
-        const rows = v.value.map((row) => `(${pushItems(v.columns.map((c) => row[c as string]))})`).join(", ")
+        const cols = frag.columns.map((c) => dialect.identifier(c as string)).join(", ")
+        const rows = frag.value.map((row) => `(${pushItems(frag.columns.map((c) => row[c as string]))})`).join(", ")
         parts.push(`(${cols}) VALUES ${rows}`)
       }
     } else {
       parts.push(dialect.placeholder(pi++))
-      values.push(v)
+      values.push(interpolations[i])
     }
     parts.push(strings[i + 1])
   }
   return { sql: parts.join(""), values }
 }
 
-const hasFragments = (values: Array<unknown>): boolean => values.some(isSqlFragment)
-
-export const makeFile =
-  (unsafe: <T>(query: string, values?: Array<unknown>) => Effect.Effect<ReadonlyArray<T>, SqlError>) =>
-  <T = any>(filename: string, values?: Array<unknown>): Effect.Effect<ReadonlyArray<T>, SqlError> =>
-    Effect.flatMap(
-      Effect.tryPromise({
-        try: () => Bun.file(filename).text(),
-        catch: (error) =>
-          new SqlError({
-            code: "FILE_READ_ERROR",
-            message: error instanceof Error ? error.message : String(error),
-            cause: error,
-          }),
-      }),
-      (text) => unsafe<T>(text, values),
-    )
-
-export const isTemplateStringsArray = (value: unknown): value is TemplateStringsArray =>
-  Array.isArray(value) && "raw" in value
+const hasFragments = (values: Array<unknown>): boolean => values.some((v) => sqlFragment(v) !== undefined)
 
 export interface SqlQuery {
   <T = any>(strings: TemplateStringsArray, ...values: Array<unknown>): SqlStatement<T>
@@ -145,7 +138,7 @@ export interface SqlQuery {
   ) => Effect.Effect<ReadonlyArray<T>, SqlError>
 }
 
-export interface SqlClient extends SqlQuery {
+export interface Service extends SqlQuery {
   readonly withTransaction: <A, E, R>(
     self: Effect.Effect<A, E, R>,
   ) => Effect.Effect<A, SqlError | E, R>
@@ -156,17 +149,50 @@ export interface SqlClient extends SqlQuery {
 
   readonly use: <T>(fn: (driver: any) => Promise<T> | T) => Effect.Effect<T, SqlError>
 
-  readonly array: (values: ReadonlyArray<unknown>) => SqlFragment
-
   readonly file: <T = any>(
     filename: string,
     values?: Array<unknown>,
   ) => Effect.Effect<ReadonlyArray<T>, SqlError>
 }
 
-export const SqlClient: Context.Tag<SqlClient, SqlClient> = Context.GenericTag<SqlClient>(
-  "effect-start/Sql/SqlClient",
-)
+export class SqlClient extends Context.Tag("effect-start/Sql/SqlClient")<SqlClient, Service>() {}
+
+const makeFile =
+  (unsafe: SqlQuery["unsafe"]) =>
+  <T = any>(filename: string, values?: Array<unknown>): Effect.Effect<ReadonlyArray<T>, SqlError> =>
+    Effect.flatMap(
+      Effect.tryPromise({
+        try: () => Bun.file(filename).text(),
+        catch: (error) =>
+          new SqlError({
+            code: "FILE_READ_ERROR",
+            message: error instanceof Error ? error.message : String(error),
+            cause: error,
+          }),
+      }),
+      (text) => unsafe<T>(text, values),
+    )
+
+export type ServiceConfig = Omit<Service, "file" | keyof SqlQuery> & {
+  readonly unsafe: SqlQuery["unsafe"]
+  readonly file?: Service["file"]
+}
+
+export const of = (
+  taggedTemplate: (strings: TemplateStringsArray, ...values: Array<unknown>) => SqlStatement<any>,
+  config: ServiceConfig,
+): Service => {
+  const callable = dispatchCallable(taggedTemplate)
+  const file = config.file ?? makeFile(config.unsafe)
+  return Object.assign(callable, {
+    unsafe: config.unsafe,
+    withTransaction: config.withTransaction,
+    reserve: config.reserve,
+    close: config.close,
+    use: config.use,
+    file,
+  }) as unknown as Service
+}
 
 export const dispatchCallable = (
   taggedTemplate: (strings: TemplateStringsArray, ...values: Array<unknown>) => any,

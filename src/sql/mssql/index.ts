@@ -123,7 +123,6 @@ const makeTaggedTemplate = (pool: Mssql.ConnectionPool) => {
     for (let i = 0; i < values.length; i++) text += `@p${i + 1}` + strings[i + 1]
     return Sql.makeSqlStatement<T>(executeQuery<T>(pool, text, values), {
       values: () => executeQueryValues(pool, text, values),
-      simple: () => executeQuery<T>(pool, text, values),
     })
   }
 }
@@ -209,10 +208,10 @@ export const layer = (config: MssqlConfig): Layer.Layer<Sql.SqlClient, Sql.SqlEr
           const taggedTemplate = makeTaggedTemplate(pool)
           const unsafeFn: Sql.SqlQuery["unsafe"] = <T = any>(query: string, values?: Array<unknown>) =>
             runUnsafe<T>(pool, query, values)
-          const use: Sql.SqlClient["use"] = (fn) =>
+          const use: Sql.Service["use"] = (fn) =>
             Effect.tryPromise({ try: () => Promise.resolve(fn(pool)), catch: wrapError })
 
-          return Object.assign(Sql.dispatchCallable(taggedTemplate), {
+          return Sql.of(taggedTemplate, {
             unsafe: unsafeFn,
             withTransaction: makeWithTransaction(pool),
             reserve: Effect.acquireRelease(
@@ -234,11 +233,7 @@ export const layer = (config: MssqlConfig): Layer.Layer<Sql.SqlClient, Sql.SqlEr
             ),
             close: () => use((pool) => pool.close()),
             use,
-            array: (): Sql.SqlFragment => {
-              throw new Error("array() not supported by mssql driver")
-            },
-            file: Sql.makeFile(unsafeFn),
-          }) as unknown as Sql.SqlClient
+          })
         }),
       ),
       (client) => client.close().pipe(Effect.orDie),
