@@ -52,3 +52,7 @@ test.expectTypeOf(context).toMatchObjectType<{
   method: "GET"
 }>()
 ```
+
+# Misc
+
+Do NOT use section header comments (like `// -----------------------`)
