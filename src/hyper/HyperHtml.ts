@@ -140,7 +140,6 @@ export function renderToString(
       if (!EMPTY_TAGS.includes(type)) {
         stack.push(`</${type}>`)
 
-        // React-specific
         const html = props.dangerouslySetInnerHTML?.__html ?? props.innerHTML
 
         if (html) {

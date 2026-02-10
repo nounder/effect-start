@@ -267,9 +267,7 @@ function registerPrebuiltBundle(prefix: string, bundle: any, bunRoutes: BunRoute
   const mainDir = NPath.dirname(Bun.main)
   const indexPath = NPath.resolve(mainDir, bundle.index)
 
-  const htmlPromise = rewriteRelativeAssetPaths(
-    Bun.file(indexPath).text(),
-  )
+  const htmlPromise = rewriteRelativeAssetPaths(Bun.file(indexPath).text())
 
   bunRoutes[`${prefix}/*`] = async () =>
     new Response(await htmlPromise, { headers: { "content-type": "text/html;charset=utf-8" } })
@@ -302,9 +300,7 @@ function rewriteRelativeAssetPaths(html: string | Promise<string>): Promise<stri
       },
     })
 
-  return Promise.resolve(html).then(
-    (h) => rewriter.transform(new Response(h)).text(),
-  )
+  return Promise.resolve(html).then((h) => rewriter.transform(new Response(h)).text())
 }
 
 function isRelativePath(path: string): boolean {

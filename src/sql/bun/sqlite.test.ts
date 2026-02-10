@@ -1,7 +1,7 @@
 import * as test from "bun:test"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
-import * as Sql from "../../Sql.ts"
+import * as Sql from "../Sql.ts"
 import * as BunSql from "./index.ts"
 
 const runSql = <A, E>(effect: Effect.Effect<A, E, Sql.SqlClient>) =>

@@ -79,9 +79,7 @@ export const Live: Layer.Layer<
   BunChildProcessSpawner.layer,
   Layer.effect(
     StartApp.StartApp,
-    Deferred.make<BunServer.BunServer>().pipe(
-      Effect.map((server) => ({ server })),
-    ),
+    Deferred.make<BunServer.BunServer>().pipe(Effect.map((server) => ({ server }))),
   ),
 )
 
@@ -97,10 +95,7 @@ export function serve<ROut, E, RIn extends PlatformServices>(
     Layer.unwrapEffect,
   )
 
-  const appLayerResolved = Function.pipe(
-    appLayer,
-    Layer.provideMerge(Live),
-  )
+  const appLayerResolved = Function.pipe(appLayer, Layer.provideMerge(Live))
 
   const composed = Function.pipe(
     BunServer.layerStart(),

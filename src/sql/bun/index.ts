@@ -4,7 +4,7 @@ import * as FiberRef from "effect/FiberRef"
 import * as GlobalValue from "effect/GlobalValue"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
-import * as Sql from "../../Sql.ts"
+import * as Sql from "../Sql.ts"
 
 const errorCode = (error: unknown): string => {
   const e = error as any
