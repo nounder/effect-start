@@ -9,7 +9,6 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Runtime from "effect/Runtime"
 import type * as Scope from "effect/Scope"
-import * as Development from "../Development.ts"
 import * as NOs from "node:os"
 import * as NPath from "node:path"
 import * as PathPattern from "../PathPattern.ts"
@@ -220,12 +219,6 @@ export const withLogAddress = <A, E, R>(layer: Layer.Layer<A, E, R>) =>
       const addr = hostname === "0.0.0.0" ? getLocalIp() : "localhost"
 
       yield* Effect.log(`Listening on http://${addr}:${port}`)
-      if (Option.isSome(yield* Development.option)) {
-        const localIp = getLocalIp()
-        if (localIp && addr !== localIp) {
-          yield* Effect.log(`Network:  http://${localIp}:${port}`)
-        }
-      }
     }),
   ).pipe(Layer.provideMerge(layer))
 
