@@ -391,41 +391,42 @@ test.describe("BunSql", () => {
     )
   })
 
-  test.describe("values helper", () => {
-    test.it("should create helper with all columns", () =>
+  test.describe("fragments", () => {
+    test.it("should dispatch callable overloads", () =>
       runSql(
         Effect.gen(function* () {
           const sql = yield* Sql.SqlClient
-          const helper = sql.values({ name: "Charlie", age: 30 })
-
-          test.expect(helper.value).toEqual([{ name: "Charlie", age: 30 }])
-          test.expect(helper.columns).toEqual(["name", "age"])
+          test.expect(sql("users")).toEqual(Sql.SqlFragment.identifier("users"))
+          test.expect(sql([1, 2, 3])).toEqual(Sql.SqlFragment.list([1, 2, 3]))
+          test.expect(sql({ name: "Alice" })).toEqual(Sql.SqlFragment.values({ name: "Alice" }))
         }),
       ),
     )
 
-    test.it("should pick specific columns", () =>
+    test.it("should interpolate identifier, list, and values fragments", () =>
       runSql(
         Effect.gen(function* () {
           const sql = yield* Sql.SqlClient
-          const helper = sql.values({ name: "Charlie", age: 30, email: "c@d.com" }, "name", "age")
+          yield* sql`CREATE TABLE frag_test (id INTEGER PRIMARY KEY, name TEXT, age INTEGER)`
+          yield* sql`INSERT INTO frag_test ${sql([{ name: "Alice", age: 25 }, { name: "Bob", age: 30 }])}`
 
-          test.expect(helper.columns).toEqual(["name", "age"])
+          const table = sql("frag_test")
+          const rows = yield* sql<{ name: string }>`SELECT name FROM ${table} WHERE name IN ${sql(["Alice"])} ORDER BY name`
+          test.expect(rows).toEqual([{ name: "Alice" }])
         }),
       ),
     )
+  })
 
-    test.it("should handle arrays of objects", () =>
+  test.describe("SqlStatement", () => {
+    test.it("should support .values()", () =>
       runSql(
         Effect.gen(function* () {
           const sql = yield* Sql.SqlClient
-          const helper = sql.values([
-            { name: "Alice", age: 25 },
-            { name: "Bob", age: 30 },
-          ])
-
-          test.expect(helper.value).toHaveLength(2)
-          test.expect(helper.columns).toEqual(["name", "age"])
+          yield* sql`CREATE TABLE stmt_vals (id INTEGER PRIMARY KEY, name TEXT)`
+          yield* sql`INSERT INTO stmt_vals (name) VALUES (${"Alice"})`
+          const rows = yield* sql`SELECT id, name FROM stmt_vals`.values()
+          test.expect(rows).toEqual([[1, "Alice"]])
         }),
       ),
     )

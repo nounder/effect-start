@@ -458,41 +458,18 @@ test.describe.skipIf(!process.env.TEST_SQL)("Mssql", () => {
     )
   })
 
-  test.describe("values helper", () => {
-    test.it("should create helper with all columns", () =>
+  test.describe("fragments", () => {
+    test.it("should interpolate identifier, list, and values fragments", () =>
       runSql(
         Effect.gen(function* () {
           const sql = yield* Sql.SqlClient
-          const helper = sql.values({ name: "Charlie", age: 30 })
+          yield* sql.unsafe("DROP TABLE IF EXISTS mssql_frag_test")
+          yield* sql`CREATE TABLE mssql_frag_test (id INT IDENTITY(1,1) PRIMARY KEY, name NVARCHAR(255), age INT)`
+          yield* sql`INSERT INTO mssql_frag_test ${sql([{ name: "Alice", age: 25 }, { name: "Bob", age: 30 }])}`
 
-          test.expect(helper.value).toEqual([{ name: "Charlie", age: 30 }])
-          test.expect(helper.columns).toEqual(["name", "age"])
-        }),
-      ),
-    )
-
-    test.it("should pick specific columns", () =>
-      runSql(
-        Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
-          const helper = sql.values({ name: "Charlie", age: 30, email: "c@d.com" }, "name", "age")
-
-          test.expect(helper.columns).toEqual(["name", "age"])
-        }),
-      ),
-    )
-
-    test.it("should handle arrays of objects", () =>
-      runSql(
-        Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
-          const helper = sql.values([
-            { name: "Alice", age: 25 },
-            { name: "Bob", age: 30 },
-          ])
-
-          test.expect(helper.value).toHaveLength(2)
-          test.expect(helper.columns).toEqual(["name", "age"])
+          const table = sql("mssql_frag_test")
+          const rows = yield* sql<{ name: string }>`SELECT name FROM ${table} WHERE name IN ${sql(["Alice"])} ORDER BY name`
+          test.expect(rows).toEqual([{ name: "Alice" }])
         }),
       ),
     )

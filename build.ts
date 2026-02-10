@@ -160,47 +160,56 @@ function handleImportDeclaration(decl: Node, edits: Array<Edit>, text: string): 
       }
     }
 
-    for (const specifier of typeOnlySpecifiers) {
-      removeNamedImportSpecifier(specifier, namedImports, edits, text)
-    }
+    removeTypeOnlySpecifiers(typeOnlySpecifiers, namedImports, edits, text)
   }
 }
 
-function removeNamedImportSpecifier(
-  specifier: Node,
+function removeTypeOnlySpecifiers(
+  typeOnly: Array<Node>,
   allSpecifiers: Array<Node>,
   edits: Array<Edit>,
   text: string,
 ): void {
-  const idx = allSpecifiers.indexOf(specifier)
-  let start = specifier.getStart()
-  let end = specifier.getEnd()
+  const removing = new Set(typeOnly)
 
-  if (allSpecifiers.length === 1) {
-    const parent = specifier.getParent()
-    if (parent) {
-      start = parent.getStart()
-      end = parent.getEnd()
-      const prevText = text.slice(Math.max(0, start - 3), start)
-      if (prevText.trimEnd().endsWith(",")) {
-        start = start - prevText.length + prevText.lastIndexOf(",")
+  for (const specifier of typeOnly) {
+    const idx = allSpecifiers.indexOf(specifier)
+    let start = specifier.getStart()
+    let end = specifier.getEnd()
+
+    if (allSpecifiers.length === 1) {
+      const parent = specifier.getParent()
+      if (parent) {
+        start = parent.getStart()
+        end = parent.getEnd()
+        const prevText = text.slice(Math.max(0, start - 3), start)
+        if (prevText.trimEnd().endsWith(",")) {
+          start = start - prevText.length + prevText.lastIndexOf(",")
+        }
       }
-    }
-  } else {
-    if (idx < allSpecifiers.length - 1) {
+    } else if (idx < allSpecifiers.length - 1 && !removing.has(allSpecifiers[idx + 1])) {
+      // Next specifier exists and will remain — extend to eat trailing comma/whitespace
       const nextStart = allSpecifiers[idx + 1].getStart()
       end = nextStart
+    } else if (idx < allSpecifiers.length - 1) {
+      // Next specifier also being removed — skip, it will be covered by a later edit
+      continue
     } else {
-      const prevEnd = allSpecifiers[idx - 1].getEnd()
-      const between = text.slice(prevEnd, start)
+      // Last specifier — find the nearest preceding specifier that will remain
+      let prevIdx = idx - 1
+      while (prevIdx >= 0 && removing.has(allSpecifiers[prevIdx])) {
+        prevIdx--
+      }
+      const anchorEnd = prevIdx >= 0 ? allSpecifiers[prevIdx].getEnd() : allSpecifiers[0].getStart()
+      const between = text.slice(anchorEnd, start)
       const commaIdx = between.indexOf(",")
       if (commaIdx !== -1) {
-        start = prevEnd + commaIdx
+        start = anchorEnd + commaIdx
       }
     }
-  }
 
-  edits.push({ kind: "remove", start, end })
+    edits.push({ kind: "remove", start, end })
+  }
 }
 
 function handleExportDeclaration(decl: Node, edits: Array<Edit>, text: string): void {
@@ -232,9 +241,7 @@ function handleExportDeclaration(decl: Node, edits: Array<Edit>, text: string): 
       removeStatement(decl, edits, text)
       return
     }
-    for (const specifier of typeOnlySpecifiers) {
-      removeNamedImportSpecifier(specifier, namedExports, edits, text)
-    }
+    removeTypeOnlySpecifiers(typeOnlySpecifiers, namedExports, edits, text)
   }
 }
 
