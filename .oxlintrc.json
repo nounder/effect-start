@@ -71,5 +71,13 @@
     // Disallow destructuring objects in function parameters
     "effect-start/no-destructured-params": "warn"
   },
+  "overrides": [
+    {
+      "files": ["src/datastar/**"],
+      "rules": {
+        "effect-start/no-destructured-params": "off"
+      }
+    }
+  ],
   "ignorePatterns": ["dist/", "node_modules/", "*.todo.ts"]
 }
