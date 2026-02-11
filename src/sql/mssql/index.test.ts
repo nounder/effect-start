@@ -2,10 +2,11 @@ import * as test from "bun:test"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import * as Sql from "../SqlClient.ts"
+import type * as MssqlTypes from "mssql"
 import * as Mssql from "./index.ts"
 import * as MssqlDocker from "./docker.ts"
 
-const testConfig: Mssql.MssqlConfig = {
+const testConfig: MssqlTypes.config = {
   server: "localhost",
   user: "sa",
   password: "TestPass123",

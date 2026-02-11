@@ -7,25 +7,6 @@ import * as Option from "effect/Option"
 import type * as Mssql from "mssql"
 import * as Sql from "../SqlClient.ts"
 
-export interface MssqlConfig {
-  readonly server: string
-  readonly database?: string
-  readonly user?: string
-  readonly password?: string
-  readonly port?: number
-  readonly pool?: {
-    readonly max?: number
-    readonly min?: number
-    readonly idleTimeoutMillis?: number
-  }
-  readonly options?: {
-    readonly encrypt?: boolean
-    readonly trustServerCertificate?: boolean
-    readonly requestTimeout?: number
-    readonly connectionTimeout?: number
-  }
-}
-
 const wrapError = (error: unknown): Sql.SqlError =>
   new Sql.SqlError({
     code:
@@ -174,7 +155,7 @@ const makeWithTransaction =
       }),
     )
 
-export const layer = (config: MssqlConfig): Layer.Layer<Sql.SqlClient, Sql.SqlError> =>
+export const layer = (config: Mssql.config): Layer.Layer<Sql.SqlClient, Sql.SqlError> =>
   Layer.scoped(
     Sql.SqlClient,
     Effect.map(
@@ -182,7 +163,7 @@ export const layer = (config: MssqlConfig): Layer.Layer<Sql.SqlClient, Sql.SqlEr
         Effect.tryPromise({
           try: async () => {
             const mssql = await loadMssql()
-            const pool = await new mssql.ConnectionPool(config as Mssql.config).connect()
+            const pool = await new mssql.ConnectionPool(config).connect()
             return { mssql, pool }
           },
           catch: wrapError,
@@ -207,7 +188,7 @@ export const layer = (config: MssqlConfig): Layer.Layer<Sql.SqlClient, Sql.SqlEr
                       new options.mssql.ConnectionPool({
                         ...config,
                         pool: { max: 1, min: 1 },
-                      } as Mssql.config).connect(),
+                      }).connect(),
                     catch: wrapError,
                   }),
                   (reserved: Mssql.ConnectionPool) =>

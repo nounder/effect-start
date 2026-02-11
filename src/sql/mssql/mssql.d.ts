@@ -1,3 +1,4 @@
+// types from @types/mssql@9.1.9
 declare module "mssql" {
   export interface config {
     readonly server: string
