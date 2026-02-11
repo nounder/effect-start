@@ -261,6 +261,12 @@ test.describe.skipIf(!process.env.TEST_LINT)("no-destructured-params", () => {
     )
   })
 
+  test.it("does not auto-fix when properties have defaults", () => {
+    const code = `const fn = ({ x = 1, y }: any) => x + y\nfn\n`
+    const fixed = lintFix(code)
+    test.expect(fixed).toBe(code)
+  })
+
   test.it("avoids shadowing existing variable with suffix", () => {
     const code = [
       "const options = 1",

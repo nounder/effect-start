@@ -261,10 +261,16 @@ export default {
             const outerScope = sourceCode.getScope(node).upper || sourceCode.getScope(node)
             const name = findUnusedName(outerScope, baseName)
 
+            const hasPropertyDefaults = pattern.properties.some(
+              (prop) =>
+                prop.type !== "RestElement" &&
+                prop.value.type === "AssignmentPattern",
+            )
+
             context.report({
               node: pattern,
               messageId: "noDestructuredParam",
-              fix(fixer) {
+              fix: hasPropertyDefaults ? undefined : (fixer) => {
                 const fixes = []
 
                 const typeAnnotation = pattern.typeAnnotation
