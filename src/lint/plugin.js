@@ -214,6 +214,7 @@ export default {
         docs: {
           description: "Disallow destructuring objects in function parameters",
         },
+        fixable: "code",
         schema: [],
         messages: {
           noDestructuredParam:
@@ -221,16 +222,105 @@ export default {
         },
       },
       create(context) {
+        const sourceCode = context.sourceCode || context.getSourceCode()
+
+        function findUnusedName(scope, base) {
+          const names = new Set()
+          let current = scope
+          while (current) {
+            for (const v of current.variables) names.add(v.name)
+            current = current.upper
+          }
+          if (!names.has(base)) return base
+          for (let i = 2; ; i++) {
+            const candidate = base + i
+            if (!names.has(candidate)) return candidate
+          }
+        }
+
         function checkParams(node) {
           for (const param of node.params) {
             const pattern =
               param.type === "AssignmentPattern" ? param.left : param
-            if (pattern.type === "ObjectPattern") {
-              context.report({
-                node: pattern,
-                messageId: "noDestructuredParam",
-              })
-            }
+            if (pattern.type !== "ObjectPattern") continue
+
+            const outerScope = sourceCode.getScope(node).upper || sourceCode.getScope(node)
+            const name = findUnusedName(outerScope, "options")
+
+            context.report({
+              node: pattern,
+              messageId: "noDestructuredParam",
+              fix(fixer) {
+                const fixes = []
+
+                const typeAnnotation = pattern.typeAnnotation
+                  ? sourceCode.getText(pattern.typeAnnotation)
+                  : ""
+                const hasDefault = param.type === "AssignmentPattern"
+                const defaultValue = hasDefault
+                  ? " = " + sourceCode.getText(param.right)
+                  : ""
+
+                fixes.push(
+                  fixer.replaceTextRange(
+                    param.range,
+                    name + typeAnnotation + defaultValue,
+                  ),
+                )
+
+                const fnScope = sourceCode.getScope(node)
+                const localToKey = new Map()
+                for (const prop of pattern.properties) {
+                  if (prop.type === "RestElement") continue
+                  const keyName =
+                    prop.key.type === "Identifier"
+                      ? prop.key.name
+                      : sourceCode.getText(prop.key)
+                  const localNode =
+                    prop.value.type === "AssignmentPattern"
+                      ? prop.value.left
+                      : prop.value
+                  if (localNode.type === "Identifier") {
+                    localToKey.set(localNode.name, keyName)
+                  }
+                }
+
+                for (const variable of fnScope.variables) {
+                  const keyName = localToKey.get(variable.name)
+                  if (keyName === undefined) continue
+
+                  for (const ref of variable.references) {
+                    if (ref.identifier.range[0] >= pattern.range[0] &&
+                        ref.identifier.range[1] <= pattern.range[1]) continue
+
+                    const ancestors = sourceCode.getAncestors(ref.identifier)
+                    const parent = ancestors[ancestors.length - 1]
+                    if (
+                      parent &&
+                      parent.type === "Property" &&
+                      parent.shorthand &&
+                      parent.value === ref.identifier
+                    ) {
+                      fixes.push(
+                        fixer.replaceTextRange(
+                          parent.range,
+                          keyName + ": " + name + "." + keyName,
+                        ),
+                      )
+                    } else {
+                      fixes.push(
+                        fixer.replaceTextRange(
+                          ref.identifier.range,
+                          name + "." + keyName,
+                        ),
+                      )
+                    }
+                  }
+                }
+
+                return fixes
+              },
+            })
           }
         }
 
