@@ -173,3 +173,33 @@ test.describe("Simplify", () => {
     test.expectTypeOf<Result["response"]>().toEqualTypeOf<Response>()
   })
 })
+
+test.describe("compact", () => {
+  test.it("removes undefined values", () => {
+    test.expect(
+      Values.compact({
+        a: 1,
+        b: undefined,
+        c: "ok",
+      }),
+    ).toEqual({
+      a: 1,
+      c: "ok",
+    })
+  })
+
+  test.it("preserves null and false", () => {
+    test.expect(
+      Values.compact({
+        a: null,
+        b: false,
+        c: 0,
+        d: undefined,
+      }),
+    ).toEqual({
+      a: null,
+      b: false,
+      c: 0,
+    })
+  })
+})

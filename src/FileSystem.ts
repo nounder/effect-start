@@ -347,7 +347,7 @@ const fileStream = (
   options: StreamOptions = {},
 ) => {
   const bytesToRead = options.bytesToRead !== undefined ? Size(options.bytesToRead) : undefined
-  const chunkSize = Size(options.chunkSize)
+  const chunkSize = Size(options.chunkSize ?? 64 * 1024)
 
   function loop(
     totalBytesRead: bigint,
@@ -381,6 +381,6 @@ const fileStream = (
   }
 
   return Stream.bufferChunks(Stream.fromChannel(loop(BigInt(0))), {
-    capacity: options.bufferSize,
+    capacity: options.bufferSize ?? 16,
   })
 }

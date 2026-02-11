@@ -1,12 +1,90 @@
 import * as test from "bun:test"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
+import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
+import * as Tracer from "effect/Tracer"
 import * as Sql from "../SqlClient.ts"
 import * as BunSql from "./index.ts"
 
 const runSql = <A, E>(effect: Effect.Effect<A, E, Sql.SqlClient>) =>
   Effect.runPromise(
     Effect.provide(effect, BunSql.layer({ adapter: "sqlite", filename: ":memory:" })),
+  )
+
+const tracerLayer = (
+  capturedSpans: Array<{
+    readonly name: string
+    readonly kind: Tracer.SpanKind
+    readonly attributes: Record<string, unknown>
+    readonly events: Array<{ readonly name: string; readonly attributes?: Record<string, unknown> }>
+  }>,
+): Layer.Layer<never> =>
+  Layer.setTracer(
+    Tracer.make({
+      span(name, parent, context, links, startTime, kind, options) {
+        const spanLinks = [...links]
+        const attrs = new Map<string, unknown>(Object.entries(options?.attributes ?? {}))
+        const captured = {
+          name,
+          kind,
+          attributes: Object.fromEntries(attrs.entries()),
+          events: [] as Array<{ readonly name: string; readonly attributes?: Record<string, unknown> }>,
+        }
+        capturedSpans.push(captured)
+        let status: Tracer.SpanStatus = { _tag: "Started", startTime }
+
+        return {
+          _tag: "Span",
+          name,
+          spanId: Math.random().toString(36).slice(2),
+          traceId: Option.isSome(parent)
+            ? parent.value.traceId
+            : Math.random().toString(36).slice(2),
+          parent,
+          context,
+          get status() {
+            return status
+          },
+          attributes: attrs,
+          links: spanLinks,
+          sampled: true,
+          kind,
+          end(endTime, exit) {
+            status = { _tag: "Ended", startTime, endTime, exit }
+          },
+          attribute(key, value) {
+            attrs.set(key, value)
+            captured.attributes[key] = value
+          },
+          event(eventName, _startTime, attributes) {
+            captured.events.push({ name: eventName, attributes })
+          },
+          addLinks(newLinks) {
+            spanLinks.push(...newLinks)
+          },
+        }
+      },
+      context(f) {
+        return f()
+      },
+    }),
+  )
+
+const runSqlTraced = <A, E>(
+  effect: Effect.Effect<A, E, Sql.SqlClient>,
+  capturedSpans: Array<{
+    readonly name: string
+    readonly kind: Tracer.SpanKind
+    readonly attributes: Record<string, unknown>
+    readonly events: Array<{ readonly name: string; readonly attributes?: Record<string, unknown> }>
+  }>,
+) =>
+  Effect.runPromise(
+    Effect.provide(
+      effect,
+      Layer.mergeAll(BunSql.layer({ adapter: "sqlite", filename: ":memory:" }), tracerLayer(capturedSpans)),
+    ),
   )
 
 test.describe("BunSql", () => {
@@ -488,5 +566,94 @@ test.describe("BunSql", () => {
         }),
       ),
     )
+  })
+
+  test.describe("tracing", () => {
+    test.it("adds sql.execute span attributes for template and unsafe queries", async () => {
+      const capturedSpans: Array<{
+        readonly name: string
+        readonly kind: Tracer.SpanKind
+        readonly attributes: Record<string, unknown>
+        readonly events: Array<{ readonly name: string; readonly attributes?: Record<string, unknown> }>
+      }> = []
+
+      await runSqlTraced(
+        Effect.gen(function* () {
+          const sql = yield* Sql.SqlClient
+          yield* sql`SELECT ${1} as n`
+          yield* sql.unsafe("SELECT 2 as n")
+        }),
+        capturedSpans,
+      )
+
+      const executeTemplate = capturedSpans.find(
+        (span) =>
+          span.name === "sql.execute" &&
+          span.attributes["db.operation.name"] === "execute" &&
+          span.attributes["db.query.text"] === "SELECT ? as n",
+      )
+      const executeRaw = capturedSpans.find(
+        (span) =>
+          span.name === "sql.execute" &&
+          span.attributes["db.operation.name"] === "executeRaw" &&
+          span.attributes["db.query.text"] === "SELECT 2 as n",
+      )
+
+      test.expect(executeTemplate).toBeDefined()
+      test.expect(executeTemplate?.kind).toBe("client")
+      test.expect(executeTemplate?.attributes["db.system.name"]).toBe("sqlite")
+
+      test.expect(executeRaw).toBeDefined()
+      test.expect(executeRaw?.kind).toBe("client")
+      test.expect(executeRaw?.attributes["db.system.name"]).toBe("sqlite")
+    })
+
+    test.it("adds transaction span events for commit, savepoint, and rollback", async () => {
+      const capturedSpans: Array<{
+        readonly name: string
+        readonly kind: Tracer.SpanKind
+        readonly attributes: Record<string, unknown>
+        readonly events: Array<{ readonly name: string; readonly attributes?: Record<string, unknown> }>
+      }> = []
+
+      await runSqlTraced(
+        Effect.gen(function* () {
+          const sql = yield* Sql.SqlClient
+          yield* sql.withTransaction(
+            Effect.gen(function* () {
+              yield* sql`SELECT 1 as n`
+              yield* sql.withTransaction(sql`SELECT 2 as n`)
+            }),
+          )
+
+          yield* sql
+            .withTransaction(
+              Effect.gen(function* () {
+                return yield* Effect.fail(new Sql.SqlError({ code: "TEST", message: "boom" }))
+              }),
+            )
+            .pipe(Effect.either)
+        }),
+        capturedSpans,
+      )
+
+      const spans = capturedSpans.filter((span) => span.name === "sql.transaction")
+
+      const commitSpan = spans.find((span) => span.events.some((event) => event.name === "db.transaction.commit"))
+      const savepointSpan = spans.find((span) =>
+        span.events.some((event) => event.name === "db.transaction.savepoint"),
+      )
+      const rollbackSpan = spans.find((span) =>
+        span.events.some((event) => event.name === "db.transaction.rollback"),
+      )
+
+      test.expect(commitSpan).toBeDefined()
+      test.expect(commitSpan?.kind).toBe("client")
+      test.expect(savepointSpan).toBeDefined()
+      test.expect(rollbackSpan).toBeDefined()
+      test.expect(commitSpan?.attributes["db.system.name"]).toBe("sqlite")
+      test.expect(savepointSpan?.attributes["db.system.name"]).toBe("sqlite")
+      test.expect(rollbackSpan?.attributes["db.system.name"]).toBe("sqlite")
+    })
   })
 })

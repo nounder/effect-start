@@ -82,3 +82,11 @@ export const concatBytes = (a: Uint8Array, b: Uint8Array): Uint8Array => {
   result.set(b, a.byteLength)
   return result
 }
+
+export const compact = (record: Record<string, unknown | undefined>): Record<string, unknown> => {
+  const out: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(record)) {
+    if (value !== undefined) out[key] = value
+  }
+  return out
+}

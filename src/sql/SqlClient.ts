@@ -1,6 +1,10 @@
+import * as Clock from "effect/Clock"
 import * as Context from "effect/Context"
 import * as Data from "effect/Data"
-import type * as Effect from "effect/Effect"
+import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
+import * as FiberRef from "effect/FiberRef"
+import * as GlobalValue from "effect/GlobalValue"
 import type * as Scope from "effect/Scope"
 import * as Values from "../Values.ts"
 
@@ -82,20 +86,42 @@ export type TaggedQuery = <A extends object = SqlRow>(
   ...values: Array<unknown>
 ) => Effect.Effect<ReadonlyArray<A>, SqlError>
 
-export interface Implementation {
+export interface MakeOptions {
   readonly withTransaction: SqlClient["withTransaction"]
   readonly reserve: SqlClient["reserve"]
   readonly use: SqlClient["use"]
   readonly unsafe: Connection["unsafe"]
   readonly query: TaggedQuery
+  readonly spanAttributes: ReadonlyArray<readonly [string, unknown]>
+  readonly dialect: DialectConfig
 }
 
-export function client(impl: Implementation): SqlClient {
-  return Object.assign(dispatchCallable(impl.query), impl) as unknown as SqlClient
+export function make(options: MakeOptions): SqlClient {
+  const trace = makeTraceOptions(options.spanAttributes, options.dialect)
+  const query = withExecuteSpan(options.query, trace)
+  const unsafe = withUnsafeExecuteSpan(options.unsafe, trace)
+  const withTransaction = withTransactionSpan(options.withTransaction, trace.spanAttributes)
+
+  return Object.assign(dispatchCallable(query), {
+    ...options,
+    query,
+    unsafe,
+    withTransaction,
+  }) as unknown as SqlClient
 }
 
-export function connection(query: TaggedQuery, unsafe: Connection["unsafe"]): Connection {
-  return Object.assign(dispatchCallable(query), { unsafe }) as unknown as Connection
+export function connection(
+  query: TaggedQuery,
+  unsafe: Connection["unsafe"],
+  options?: {
+    readonly spanAttributes?: ReadonlyArray<readonly [string, unknown]>
+    readonly dialect?: DialectConfig
+  },
+): Connection {
+  const trace = makeTraceOptions(options?.spanAttributes, options?.dialect)
+  const tracedQuery = withExecuteSpan(query, trace)
+  const tracedUnsafe = withUnsafeExecuteSpan(unsafe, trace)
+  return Object.assign(dispatchCallable(tracedQuery), { unsafe: tracedUnsafe }) as unknown as Connection
 }
 
 function dispatchCallable(query: TaggedQuery) {
@@ -205,3 +231,128 @@ const isSqlFragment = (value: unknown): SqlFragment | undefined =>
   value !== null && typeof value === "object" && SqlFragmentTag in value
     ? (value as SqlFragment)
     : undefined
+
+const currentTransactionDepth = GlobalValue.globalValue(
+  Symbol.for("effect-start/sql/currentTransactionDepth"),
+  () => FiberRef.unsafeMake(0),
+)
+
+const withExecuteSpan =
+  (
+    query: TaggedQuery,
+    options: {
+      readonly spanAttributes: Record<string, unknown>
+      readonly dialect: DialectConfig
+    },
+  ): TaggedQuery =>
+  <A extends object = SqlRow>(
+    strings: TemplateStringsArray,
+    ...values: Array<unknown>
+  ): Effect.Effect<ReadonlyArray<A>, SqlError> =>
+    query<A>(strings, ...values).pipe(
+      Effect.withSpan("sql.execute", {
+        kind: "client",
+        attributes: {
+          ...options.spanAttributes,
+          "db.operation.name": "execute",
+          "db.query.text": renderTemplateSql(options.dialect, strings, values),
+        },
+        captureStackTrace: false,
+      }),
+    )
+
+const withUnsafeExecuteSpan =
+  (
+    unsafe: Connection["unsafe"],
+    options: {
+      readonly spanAttributes: Record<string, unknown>
+    },
+  ): Connection["unsafe"] =>
+  <A extends object = SqlRow>(
+    query: string,
+    values?: Array<unknown>,
+  ): Effect.Effect<ReadonlyArray<A>, SqlError> =>
+    unsafe<A>(query, values).pipe(
+      Effect.withSpan("sql.execute", {
+        kind: "client",
+        attributes: {
+          ...options.spanAttributes,
+          "db.operation.name": "executeRaw",
+          "db.query.text": query,
+        },
+        captureStackTrace: false,
+      }),
+    )
+
+const withTransactionSpan =
+  (
+    withTransaction: SqlClient["withTransaction"],
+    spanAttributes: Record<string, unknown>,
+  ): SqlClient["withTransaction"] =>
+  <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, SqlError | E, R> =>
+    Effect.flatMap(FiberRef.get(currentTransactionDepth), (depth) =>
+      Effect.useSpan(
+        "sql.transaction",
+        {
+          kind: "client",
+          attributes: spanAttributes,
+          captureStackTrace: false,
+        },
+        (span) =>
+          Effect.flatMap(
+            Effect.exit(
+              Effect.withParentSpan(
+                Effect.locally(
+                  withTransaction(self),
+                  currentTransactionDepth,
+                  depth + 1,
+                ),
+                span,
+              ),
+            ),
+            (exit) =>
+              Effect.flatMap(Clock.currentTimeNanos, (timestamp) =>
+                Effect.zipRight(
+                  Effect.sync(() =>
+                    span.event(
+                      Exit.isSuccess(exit)
+                        ? depth === 0
+                          ? "db.transaction.commit"
+                          : "db.transaction.savepoint"
+                        : "db.transaction.rollback",
+                      timestamp,
+                    ),
+                  ),
+                  exit,
+                ),
+              ),
+          ),
+      ),
+    )
+
+const makeTraceOptions = (
+  spanAttributes: ReadonlyArray<readonly [string, unknown]> | undefined,
+  dialect: DialectConfig | undefined,
+): {
+  readonly spanAttributes: Record<string, unknown>
+  readonly dialect: DialectConfig
+} => ({
+  spanAttributes: spanAttributes ? Object.fromEntries(spanAttributes) : {},
+  dialect: dialect ?? sqliteDialect,
+})
+
+const renderTemplateSql = (
+  dialect: DialectConfig,
+  strings: TemplateStringsArray,
+  values: Array<unknown>,
+): string => {
+  if (hasFragments(values)) {
+    return interpolate(dialect, strings, values).sql
+  }
+
+  let sql = strings[0]
+  for (let i = 0; i < values.length; i++) {
+    sql += dialect.placeholder(i + 1) + strings[i + 1]
+  }
+  return sql
+}

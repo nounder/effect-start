@@ -6,6 +6,7 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import type * as Mssql from "mssql"
 import * as Sql from "../SqlClient.ts"
+import * as Values from "../../Values.ts"
 
 const wrapError = (error: unknown): Sql.SqlError =>
   new Sql.SqlError({
@@ -17,6 +18,18 @@ const wrapError = (error: unknown): Sql.SqlError =>
   })
 
 const dialect = Sql.mssqlDialect
+const makeSpanAttributes = (
+  config: Mssql.config & {
+    readonly spanAttributes?: Record<string, unknown>
+  },
+): Record<string, unknown> =>
+  Values.compact({
+    ...(config.spanAttributes ?? {}),
+    "db.system.name": "microsoft.sql_server",
+    "db.namespace": config.database,
+    "server.address": config.server,
+    "server.port": config.port,
+  })
 
 const addInputs = (request: Mssql.Request, values: Array<unknown>) => {
   for (let i = 0; i < values.length; i++) {
@@ -93,11 +106,14 @@ const makeTaggedTemplate = (pool: Mssql.ConnectionPool) => {
   }
 }
 
-const makeQuery = (pool: Mssql.ConnectionPool): Sql.Connection => {
+const makeQuery = (
+  pool: Mssql.ConnectionPool,
+  spanAttributes: ReadonlyArray<readonly [string, unknown]>,
+): Sql.Connection => {
   const query = makeTaggedTemplate(pool)
   const unsafe: Sql.Connection["unsafe"] = <T = any>(query: string, values?: Array<unknown>) =>
     runUnsafe<T>(pool, query, values)
-  return Sql.connection(query, unsafe)
+  return Sql.connection(query, unsafe, { spanAttributes, dialect })
 }
 
 const makeWithTransaction =
@@ -155,7 +171,11 @@ const makeWithTransaction =
       }),
     )
 
-export const layer = (config: Mssql.config): Layer.Layer<Sql.SqlClient, Sql.SqlError> =>
+export const layer = (
+  config: Mssql.config & {
+    readonly spanAttributes?: Record<string, unknown>
+  },
+): Layer.Layer<Sql.SqlClient, Sql.SqlError> =>
   Layer.scoped(
     Sql.SqlClient,
     Effect.map(
@@ -163,12 +183,17 @@ export const layer = (config: Mssql.config): Layer.Layer<Sql.SqlClient, Sql.SqlE
         Effect.tryPromise({
           try: async () => {
             const mssql = await loadMssql()
-            const pool = await new mssql.ConnectionPool(config).connect()
+            const driverConfig = { ...config } as Record<string, unknown>
+            delete driverConfig.spanAttributes
+            const pool = await new mssql.ConnectionPool(driverConfig as unknown as Mssql.config).connect()
             return { mssql, pool }
           },
           catch: wrapError,
         }).pipe(
           Effect.map((options) => {
+            const driverConfig = { ...config } as Record<string, unknown>
+            delete driverConfig.spanAttributes
+            const spanAttributes = Object.entries(makeSpanAttributes(config))
             const query = makeTaggedTemplate(options.pool)
             const unsafeFn: Sql.Connection["unsafe"] = <T = any>(
               query: string,
@@ -178,17 +203,19 @@ export const layer = (config: Mssql.config): Layer.Layer<Sql.SqlClient, Sql.SqlE
               Effect.tryPromise({ try: () => Promise.resolve(fn(options.pool)), catch: wrapError })
 
             return {
-              client: Sql.client({
+              client: Sql.make({
                 query,
                 unsafe: unsafeFn,
                 withTransaction: makeWithTransaction(options.pool),
+                spanAttributes,
+                dialect,
                 reserve: Effect.acquireRelease(
                   Effect.tryPromise({
                     try: () =>
                       new options.mssql.ConnectionPool({
-                        ...config,
+                        ...driverConfig,
                         pool: { max: 1, min: 1 },
-                      }).connect(),
+                      } as unknown as Mssql.config).connect(),
                     catch: wrapError,
                   }),
                   (reserved: Mssql.ConnectionPool) =>
@@ -196,7 +223,9 @@ export const layer = (config: Mssql.config): Layer.Layer<Sql.SqlClient, Sql.SqlE
                       Effect.asVoid,
                       Effect.orDie,
                     ),
-                ).pipe(Effect.map((reserved): Sql.Connection => makeQuery(reserved))),
+                ).pipe(
+                  Effect.map((reserved): Sql.Connection => makeQuery(reserved, spanAttributes)),
+                ),
                 use,
               }),
               close: use((pool) => pool.close()),

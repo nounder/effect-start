@@ -5,6 +5,7 @@ import * as GlobalValue from "effect/GlobalValue"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Sql from "../SqlClient.ts"
+import * as Values from "../../Values.ts"
 
 const errorCode = (error: unknown): string => {
   const e = error as any
@@ -45,6 +46,25 @@ const detectDialect = (bunSql: any): Sql.DialectConfig => {
   return Sql.postgresDialect
 }
 
+const makeSpanAttributes = (config: ConstructorParameters<typeof Bun.SQL>[0]): Record<string, unknown> => {
+  const c = config as Record<string, unknown>
+  const adapter = c.adapter
+  if (adapter === "sqlite") {
+    return Values.compact({
+      ...(c.spanAttributes as Record<string, unknown> | undefined),
+      "db.system.name": "sqlite",
+    })
+  }
+
+  return Values.compact({
+    ...(c.spanAttributes as Record<string, unknown> | undefined),
+    "db.system.name": "postgresql",
+    "db.namespace": c.database as string | undefined,
+    "server.address": (c.hostname ?? c.host) as string | undefined,
+    "server.port": c.port as number | undefined,
+  })
+}
+
 const makeTaggedTemplate = (
   run: <T>(fn: (conn: any) => PromiseLike<T>) => Effect.Effect<T, Sql.SqlError>,
   dialect: Sql.DialectConfig,
@@ -67,11 +87,12 @@ const makeTaggedTemplate = (
 const makeQuery = (
   run: <T>(fn: (conn: any) => PromiseLike<T>) => Effect.Effect<T, Sql.SqlError>,
   dialect: Sql.DialectConfig,
+  spanAttributes: ReadonlyArray<readonly [string, unknown]>,
 ): Sql.Connection => {
   const query = makeTaggedTemplate(run, dialect)
   const unsafe: Sql.Connection["unsafe"] = <T = any>(query: string, values?: Array<unknown>) =>
     run<ReadonlyArray<T>>((conn) => conn.unsafe(query, values))
-  return Sql.connection(query, unsafe)
+  return Sql.connection(query, unsafe, { spanAttributes, dialect })
 }
 
 const makeWithTransaction =
@@ -127,7 +148,9 @@ const makeWithTransaction =
     )
 
 export const layer = (
-  config: ConstructorParameters<typeof Bun.SQL>[0],
+  config: ConstructorParameters<typeof Bun.SQL>[0] & {
+    readonly spanAttributes?: Record<string, unknown>
+  },
 ): Layer.Layer<Sql.SqlClient, Sql.SqlError> =>
   Layer.scoped(
     Sql.SqlClient,
@@ -135,9 +158,12 @@ export const layer = (
       Effect.acquireRelease(
         Effect.try({
           try: () => {
-            const bunSql = new Bun.SQL(config as any)
+            const driverConfig = { ...config } as Record<string, unknown>
+            delete driverConfig.spanAttributes
+            const bunSql = new Bun.SQL(driverConfig as any)
             const run = makeRun(bunSql)
             const dialect = detectDialect(bunSql)
+            const spanAttributes = Object.entries(makeSpanAttributes(config))
             const unsafeFn: Sql.Connection["unsafe"] = <T = any>(
               query: string,
               values?: Array<unknown>,
@@ -147,10 +173,12 @@ export const layer = (
               Effect.tryPromise({ try: () => Promise.resolve(fn(bunSql)), catch: wrapError })
 
             return {
-              client: Sql.client({
+              client: Sql.make({
                 query,
                 unsafe: unsafeFn,
                 withTransaction: makeWithTransaction(bunSql),
+                spanAttributes,
+                dialect,
                 reserve: Effect.acquireRelease(
                   wrap(() => bunSql.reserve()),
                   (reserved: any) => Effect.sync(() => reserved.release()),
@@ -158,7 +186,7 @@ export const layer = (
                   Effect.map((reserved: any): Sql.Connection => {
                     const reservedRun = <T>(fn: (conn: any) => PromiseLike<T>) =>
                       wrap<T>(() => fn(reserved))
-                    return makeQuery(reservedRun, dialect)
+                    return makeQuery(reservedRun, dialect, spanAttributes)
                   }),
                 ),
                 use,
