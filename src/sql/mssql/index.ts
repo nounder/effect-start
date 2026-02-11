@@ -20,16 +20,30 @@ const wrapError = (error: unknown): Sql.SqlError =>
 const dialect = Sql.mssqlDialect
 const makeSpanAttributes = (
   config: Mssql.config & {
+    readonly url?: string
     readonly spanAttributes?: Record<string, unknown>
   },
 ): Record<string, unknown> =>
-  Values.compact({
-    ...(config.spanAttributes ?? {}),
-    "db.system.name": "microsoft.sql_server",
-    "db.namespace": config.database,
-    "server.address": config.server,
-    "server.port": config.port,
-  })
+  {
+    const parsed = (() => {
+      if (typeof config.url !== "string") return undefined
+      try {
+        return new URL(config.url)
+      } catch {
+        return undefined
+      }
+    })()
+    const dbFromPath = parsed?.pathname.replace(/^\/+/, "") || undefined
+    const parsedPort = parsed?.port ? Number(parsed.port) : undefined
+
+    return Values.compact({
+      ...(config.spanAttributes ?? {}),
+      "db.system.name": "microsoft.sql_server",
+      "db.namespace": config.database ?? dbFromPath,
+      "server.address": config.server ?? parsed?.hostname,
+      "server.port": config.port ?? parsedPort,
+    })
+  }
 
 const addInputs = (request: Mssql.Request, values: Array<unknown>) => {
   for (let i = 0; i < values.length; i++) {
@@ -173,6 +187,7 @@ const makeWithTransaction =
 
 export const layer = (
   config: Mssql.config & {
+    readonly url?: string
     readonly spanAttributes?: Record<string, unknown>
   },
 ): Layer.Layer<Sql.SqlClient, Sql.SqlError> =>
@@ -185,6 +200,7 @@ export const layer = (
             const mssql = await loadMssql()
             const driverConfig = { ...config } as Record<string, unknown>
             delete driverConfig.spanAttributes
+            delete driverConfig.url
             const pool = await new mssql.ConnectionPool(driverConfig as unknown as Mssql.config).connect()
             return { mssql, pool }
           },
@@ -193,6 +209,7 @@ export const layer = (
           Effect.map((options) => {
             const driverConfig = { ...config } as Record<string, unknown>
             delete driverConfig.spanAttributes
+            delete driverConfig.url
             const spanAttributes = Object.entries(makeSpanAttributes(config))
             const query = makeTaggedTemplate(options.pool)
             const unsafeFn: Sql.Connection["unsafe"] = <T = any>(

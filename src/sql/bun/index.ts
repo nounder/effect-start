@@ -56,12 +56,23 @@ const makeSpanAttributes = (config: ConstructorParameters<typeof Bun.SQL>[0]): R
     })
   }
 
+  const parsed = (() => {
+    if (typeof c.url !== "string") return undefined
+    try {
+      return new URL(c.url)
+    } catch {
+      return undefined
+    }
+  })()
+  const dbFromPath = parsed?.pathname.replace(/^\/+/, "") || undefined
+  const parsedPort = parsed?.port ? Number(parsed.port) : undefined
+
   return Values.compact({
     ...(c.spanAttributes as Record<string, unknown> | undefined),
     "db.system.name": "postgresql",
-    "db.namespace": c.database as string | undefined,
-    "server.address": (c.hostname ?? c.host) as string | undefined,
-    "server.port": c.port as number | undefined,
+    "db.namespace": (c.database as string | undefined) ?? dbFromPath,
+    "server.address": ((c.hostname ?? c.host) as string | undefined) ?? parsed?.hostname,
+    "server.port": (c.port as number | undefined) ?? parsedPort,
   })
 }
 
