@@ -55,15 +55,41 @@ export default {
 
             const typePrefix = node.importKind === "type" ? "type " : ""
 
+            const sourceCode = context.sourceCode || context.getSourceCode()
+
             context.report({
               node,
               messageId: "preferNamespace",
               data: { source, baseName, typePrefix },
               fix(fixer) {
-                return fixer.replaceText(
-                  node,
-                  `import ${typePrefix}* as ${baseName} from "${source}"`,
-                )
+                const fixes = [
+                  fixer.replaceText(
+                    node,
+                    `import ${typePrefix}* as ${baseName} from "${source}"`,
+                  ),
+                ]
+
+                for (const specifier of node.specifiers) {
+                  if (specifier.type !== "ImportSpecifier") continue
+                  const localName = specifier.local.name
+                  const importedName = specifier.imported.name
+
+                  for (const variable of sourceCode.getDeclaredVariables(specifier)) {
+                    for (const ref of variable.references) {
+                      if (ref.identifier.range[0] === specifier.local.range[0]) continue
+                      fixes.push(
+                        fixer.replaceTextRange(
+                          ref.identifier.range,
+                          localName !== importedName
+                            ? `${baseName}.${importedName}`
+                            : `${baseName}.${localName}`,
+                        ),
+                      )
+                    }
+                  }
+                }
+
+                return fixes
               },
             })
           },
@@ -178,6 +204,40 @@ export default {
               }
             }
           },
+        }
+      },
+    },
+
+    "no-destructured-params": {
+      meta: {
+        type: "suggestion",
+        docs: {
+          description: "Disallow destructuring objects in function parameters",
+        },
+        schema: [],
+        messages: {
+          noDestructuredParam:
+            "Avoid destructuring objects in function parameters. Use a single parameter and access properties on it instead.",
+        },
+      },
+      create(context) {
+        function checkParams(node) {
+          for (const param of node.params) {
+            const pattern =
+              param.type === "AssignmentPattern" ? param.left : param
+            if (pattern.type === "ObjectPattern") {
+              context.report({
+                node: pattern,
+                messageId: "noDestructuredParam",
+              })
+            }
+          }
+        }
+
+        return {
+          FunctionDeclaration: checkParams,
+          FunctionExpression: checkParams,
+          ArrowFunctionExpression: checkParams,
         }
       },
     },

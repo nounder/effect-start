@@ -66,7 +66,10 @@
     "effect-start/prefer-namespace-import": "error",
 
     // Enforce blank lines around test calls
-    "effect-start/test-space-around": "warn"
+    "effect-start/test-space-around": "warn",
+
+    // Disallow destructuring objects in function parameters
+    "effect-start/no-destructured-params": "warn"
   },
   "ignorePatterns": ["dist/", "node_modules/", "*.todo.ts"]
 }
