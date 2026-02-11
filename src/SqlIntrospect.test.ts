@@ -1,7 +1,7 @@
 import * as test from "bun:test"
 import * as Effect from "effect/Effect"
 import * as Schema from "effect/Schema"
-import * as Sql from "./sql/Sql.ts"
+import * as Sql from "./sql/SqlClient.ts"
 import * as SqlIntrospect from "./SqlIntrospect.ts"
 import * as BunSql from "./sql/bun/index.ts"
 

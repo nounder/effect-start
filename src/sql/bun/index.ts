@@ -4,7 +4,7 @@ import * as FiberRef from "effect/FiberRef"
 import * as GlobalValue from "effect/GlobalValue"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
-import * as Sql from "../Sql.ts"
+import * as Sql from "../SqlClient.ts"
 
 const errorCode = (error: unknown): string => {
   const e = error as any
@@ -22,14 +22,14 @@ const wrapError = (error: unknown): Sql.SqlError =>
 const wrap = <T>(fn: () => PromiseLike<T>): Effect.Effect<T, Sql.SqlError> =>
   Effect.tryPromise({ try: () => Promise.resolve(fn()), catch: wrapError })
 
-interface TxState {
+interface TransactionConnection {
   readonly conn: any
   readonly depth: number
 }
 
 const currentTransaction = GlobalValue.globalValue(
   Symbol.for("effect-start/sql/bun/currentTransaction"),
-  () => FiberRef.unsafeMake<Option.Option<TxState>>(Option.none()),
+  () => FiberRef.unsafeMake<Option.Option<TransactionConnection>>(Option.none()),
 )
 
 const makeRun =
@@ -52,33 +52,26 @@ const makeTaggedTemplate = (
   const unsafeFn = <T = any>(query: string, values?: Array<unknown>) =>
     run<ReadonlyArray<T>>((conn) => conn.unsafe(query, values))
 
-  return <T = any>(strings: TemplateStringsArray, ...values: Array<unknown>): Sql.SqlStatement<T> => {
+  return <T = any>(
+    strings: TemplateStringsArray,
+    ...values: Array<unknown>
+  ): Effect.Effect<ReadonlyArray<T>, Sql.SqlError> => {
     if (Sql.hasFragments(values)) {
-      const compiled = Sql.compileQuery(dialect, strings, values)
-      return Sql.makeSqlStatement<T>(unsafeFn<T>(compiled.sql, compiled.values))
+      const compiled = Sql.interpolate(dialect, strings, values)
+      return unsafeFn<T>(compiled.sql, compiled.parameters)
     }
-
-    const effect = run<ReadonlyArray<T>>((conn) => conn(strings, ...values))
-    return Sql.makeSqlStatement<T>(effect, {
-      values: () =>
-        run<ReadonlyArray<ReadonlyArray<unknown>>>((conn) =>
-          conn(strings, ...values).values(),
-        ),
-    })
+    return run<ReadonlyArray<T>>((conn) => conn(strings, ...values))
   }
 }
 
 const makeQuery = (
   run: <T>(fn: (conn: any) => PromiseLike<T>) => Effect.Effect<T, Sql.SqlError>,
   dialect: Sql.DialectConfig,
-): Sql.SqlQuery => {
-  const taggedTemplate = makeTaggedTemplate(run, dialect)
-  const unsafeFn: Sql.SqlQuery["unsafe"] = <T = any>(query: string, values?: Array<unknown>) =>
+): Sql.Connection => {
+  const query = makeTaggedTemplate(run, dialect)
+  const unsafe: Sql.Connection["unsafe"] = <T = any>(query: string, values?: Array<unknown>) =>
     run<ReadonlyArray<T>>((conn) => conn.unsafe(query, values))
-
-  return Object.assign(Sql.dispatchCallable(taggedTemplate), {
-    unsafe: unsafeFn,
-  }) as unknown as Sql.SqlQuery
+  return Sql.connection(query, unsafe)
 }
 
 const makeWithTransaction =
@@ -138,38 +131,45 @@ export const layer = (
 ): Layer.Layer<Sql.SqlClient, Sql.SqlError> =>
   Layer.scoped(
     Sql.SqlClient,
-    Effect.acquireRelease(
-      Effect.try({
-        try: () => {
-          const bunSql = new Bun.SQL(config as any)
-          const run = makeRun(bunSql)
-          const dialect = detectDialect(bunSql)
-          const unsafeFn: Sql.SqlQuery["unsafe"] = <T = any>(query: string, values?: Array<unknown>) =>
-            run<ReadonlyArray<T>>((conn) => conn.unsafe(query, values))
-          const taggedTemplate = makeTaggedTemplate(run, dialect)
-          const use: Sql.Service["use"] = (fn) =>
-            Effect.tryPromise({ try: () => Promise.resolve(fn(bunSql)), catch: wrapError })
+    Effect.map(
+      Effect.acquireRelease(
+        Effect.try({
+          try: () => {
+            const bunSql = new Bun.SQL(config as any)
+            const run = makeRun(bunSql)
+            const dialect = detectDialect(bunSql)
+            const unsafeFn: Sql.Connection["unsafe"] = <T = any>(
+              query: string,
+              values?: Array<unknown>,
+            ) => run<ReadonlyArray<T>>((conn) => conn.unsafe(query, values))
+            const query = makeTaggedTemplate(run, dialect)
+            const use: Sql.SqlClient["use"] = (fn) =>
+              Effect.tryPromise({ try: () => Promise.resolve(fn(bunSql)), catch: wrapError })
 
-          return Sql.of(taggedTemplate, {
-            unsafe: unsafeFn,
-            withTransaction: makeWithTransaction(bunSql),
-            reserve: Effect.acquireRelease(
-              wrap(() => bunSql.reserve()),
-              (reserved: any) => Effect.sync(() => reserved.release()),
-            ).pipe(
-              Effect.map((reserved: any): Sql.SqlQuery => {
-                const reservedRun = <T>(fn: (conn: any) => PromiseLike<T>) =>
-                  wrap<T>(() => fn(reserved))
-                return makeQuery(reservedRun, dialect)
+            return {
+              client: Sql.client({
+                query,
+                unsafe: unsafeFn,
+                withTransaction: makeWithTransaction(bunSql),
+                reserve: Effect.acquireRelease(
+                  wrap(() => bunSql.reserve()),
+                  (reserved: any) => Effect.sync(() => reserved.release()),
+                ).pipe(
+                  Effect.map((reserved: any): Sql.Connection => {
+                    const reservedRun = <T>(fn: (conn: any) => PromiseLike<T>) =>
+                      wrap<T>(() => fn(reserved))
+                    return makeQuery(reservedRun, dialect)
+                  }),
+                ),
+                use,
               }),
-            ),
-            close: (options?: { readonly timeout?: number }) =>
-              use((bunSql) => bunSql.close(options)),
-            use,
-          })
-        },
-        catch: wrapError,
-      }),
-      (client) => client.close().pipe(Effect.orDie),
+              close: use((bunSql) => bunSql.close()),
+            }
+          },
+          catch: wrapError,
+        }),
+        (handle) => handle.close.pipe(Effect.orDie),
+      ),
+      (handle) => handle.client,
     ),
   )

@@ -1,7 +1,7 @@
 import * as test from "bun:test"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
-import * as Sql from "../Sql.ts"
+import * as Sql from "../SqlClient.ts"
 import * as BunSql from "./index.ts"
 
 const runSql = <A, E>(effect: Effect.Effect<A, E, Sql.SqlClient>) =>
@@ -392,41 +392,21 @@ test.describe("BunSql", () => {
   })
 
   test.describe("fragments", () => {
-    test.it("should dispatch callable overloads", () =>
-      runSql(
-        Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
-          test.expect(sql("users")).toEqual(Sql.SqlFragment.identifier("users"))
-          test.expect(sql([1, 2, 3])).toEqual(Sql.SqlFragment.list([1, 2, 3]))
-          test.expect(sql({ name: "Alice" })).toEqual(Sql.SqlFragment.values({ name: "Alice" }))
-        }),
-      ),
-    )
-
     test.it("should interpolate identifier, list, and values fragments", () =>
       runSql(
         Effect.gen(function* () {
           const sql = yield* Sql.SqlClient
           yield* sql`CREATE TABLE frag_test (id INTEGER PRIMARY KEY, name TEXT, age INTEGER)`
-          yield* sql`INSERT INTO frag_test ${sql([{ name: "Alice", age: 25 }, { name: "Bob", age: 30 }])}`
+          yield* sql`INSERT INTO frag_test ${sql([
+            { name: "Alice", age: 25 },
+            { name: "Bob", age: 30 },
+          ])}`
 
           const table = sql("frag_test")
-          const rows = yield* sql<{ name: string }>`SELECT name FROM ${table} WHERE name IN ${sql(["Alice"])} ORDER BY name`
+          const rows = yield* sql<{
+            name: string
+          }>`SELECT name FROM ${table} WHERE name IN ${sql(["Alice"])} ORDER BY name`
           test.expect(rows).toEqual([{ name: "Alice" }])
-        }),
-      ),
-    )
-  })
-
-  test.describe("SqlStatement", () => {
-    test.it("should support .values()", () =>
-      runSql(
-        Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
-          yield* sql`CREATE TABLE stmt_vals (id INTEGER PRIMARY KEY, name TEXT)`
-          yield* sql`INSERT INTO stmt_vals (name) VALUES (${"Alice"})`
-          const rows = yield* sql`SELECT id, name FROM stmt_vals`.values()
-          test.expect(rows).toEqual([[1, "Alice"]])
         }),
       ),
     )

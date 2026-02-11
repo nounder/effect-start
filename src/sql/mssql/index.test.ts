@@ -1,7 +1,7 @@
 import * as test from "bun:test"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
-import * as Sql from "../Sql.ts"
+import * as Sql from "../SqlClient.ts"
 import * as Mssql from "./index.ts"
 import * as MssqlDocker from "./docker.ts"
 
@@ -465,10 +465,15 @@ test.describe.skipIf(!process.env.TEST_SQL)("Mssql", () => {
           const sql = yield* Sql.SqlClient
           yield* sql.unsafe("DROP TABLE IF EXISTS mssql_frag_test")
           yield* sql`CREATE TABLE mssql_frag_test (id INT IDENTITY(1,1) PRIMARY KEY, name NVARCHAR(255), age INT)`
-          yield* sql`INSERT INTO mssql_frag_test ${sql([{ name: "Alice", age: 25 }, { name: "Bob", age: 30 }])}`
+          yield* sql`INSERT INTO mssql_frag_test ${sql([
+            { name: "Alice", age: 25 },
+            { name: "Bob", age: 30 },
+          ])}`
 
           const table = sql("mssql_frag_test")
-          const rows = yield* sql<{ name: string }>`SELECT name FROM ${table} WHERE name IN ${sql(["Alice"])} ORDER BY name`
+          const rows = yield* sql<{
+            name: string
+          }>`SELECT name FROM ${table} WHERE name IN ${sql(["Alice"])} ORDER BY name`
           test.expect(rows).toEqual([{ name: "Alice" }])
         }),
       ),

@@ -5,7 +5,7 @@ import * as GlobalValue from "effect/GlobalValue"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import type * as Mssql from "mssql"
-import * as Sql from "../Sql.ts"
+import * as Sql from "../SqlClient.ts"
 
 export interface MssqlConfig {
   readonly server: string
@@ -43,7 +43,7 @@ const addInputs = (request: Mssql.Request, values: Array<unknown>) => {
   }
 }
 
-interface TxState {
+interface TransactionConnection {
   readonly transaction: Mssql.Transaction
   readonly depth: number
 }
@@ -56,12 +56,12 @@ const loadMssql = () => import("mssql") as Promise<MssqlModule>
 
 const currentTransaction = GlobalValue.globalValue(
   Symbol.for("effect-start/sql/mssql/currentTransaction"),
-  () => FiberRef.unsafeMake<Option.Option<TxState>>(Option.none()),
+  () => FiberRef.unsafeMake<Option.Option<TransactionConnection>>(Option.none()),
 )
 
 const makeRequest = (
   pool: Mssql.ConnectionPool,
-  txOpt: Option.Option<TxState>,
+  txOpt: Option.Option<TransactionConnection>,
   values: Array<unknown>,
 ): Mssql.Request => {
   const request = Option.isSome(txOpt) ? txOpt.value.transaction.request() : pool.request()
@@ -81,22 +81,6 @@ const executeQuery = <T>(
     }).pipe(Effect.map((result) => result.recordset ?? [])),
   )
 
-const executeQueryValues = (
-  pool: Mssql.ConnectionPool,
-  text: string,
-  values: Array<unknown>,
-): Effect.Effect<ReadonlyArray<ReadonlyArray<unknown>>, Sql.SqlError> =>
-  Effect.flatMap(FiberRef.get(currentTransaction), (txOpt) =>
-    Effect.tryPromise({
-      try: () => makeRequest(pool, txOpt, values).query(text),
-      catch: wrapError,
-    }).pipe(
-      Effect.map((result) =>
-        (result.recordset ?? []).map((row: any) => Object.values(row)),
-      ),
-    ),
-  )
-
 const runUnsafe = <T>(
   pool: Mssql.ConnectionPool,
   query: string,
@@ -113,28 +97,26 @@ const makeTaggedTemplate = (pool: Mssql.ConnectionPool) => {
   const unsafeFn = <T = any>(query: string, values?: Array<unknown>) =>
     runUnsafe<T>(pool, query, values)
 
-  return <T = any>(strings: TemplateStringsArray, ...values: Array<unknown>): Sql.SqlStatement<T> => {
+  return <T = any>(
+    strings: TemplateStringsArray,
+    ...values: Array<unknown>
+  ): Effect.Effect<ReadonlyArray<T>, Sql.SqlError> => {
     if (Sql.hasFragments(values)) {
-      const compiled = Sql.compileQuery(dialect, strings, values)
-      return Sql.makeSqlStatement<T>(unsafeFn<T>(compiled.sql, compiled.values))
+      const compiled = Sql.interpolate(dialect, strings, values)
+      return unsafeFn<T>(compiled.sql, compiled.parameters)
     }
 
     let text = strings[0]
     for (let i = 0; i < values.length; i++) text += `@p${i + 1}` + strings[i + 1]
-    return Sql.makeSqlStatement<T>(executeQuery<T>(pool, text, values), {
-      values: () => executeQueryValues(pool, text, values),
-    })
+    return executeQuery<T>(pool, text, values)
   }
 }
 
-const makeQuery = (pool: Mssql.ConnectionPool): Sql.SqlQuery => {
-  const taggedTemplate = makeTaggedTemplate(pool)
-  const unsafeFn: Sql.SqlQuery["unsafe"] = <T = any>(query: string, values?: Array<unknown>) =>
+const makeQuery = (pool: Mssql.ConnectionPool): Sql.Connection => {
+  const query = makeTaggedTemplate(pool)
+  const unsafe: Sql.Connection["unsafe"] = <T = any>(query: string, values?: Array<unknown>) =>
     runUnsafe<T>(pool, query, values)
-
-  return Object.assign(Sql.dispatchCallable(taggedTemplate), {
-    unsafe: unsafeFn,
-  }) as unknown as Sql.SqlQuery
+  return Sql.connection(query, unsafe)
 }
 
 const makeWithTransaction =
@@ -195,47 +177,53 @@ const makeWithTransaction =
 export const layer = (config: MssqlConfig): Layer.Layer<Sql.SqlClient, Sql.SqlError> =>
   Layer.scoped(
     Sql.SqlClient,
-    Effect.acquireRelease(
-      Effect.tryPromise({
-        try: async () => {
-          const mssql = await loadMssql()
-          const pool = await new mssql.ConnectionPool(config as Mssql.config).connect()
-          return { mssql, pool }
-        },
-        catch: wrapError,
-      }).pipe(
-        Effect.map(({ mssql, pool }) => {
-          const taggedTemplate = makeTaggedTemplate(pool)
-          const unsafeFn: Sql.SqlQuery["unsafe"] = <T = any>(query: string, values?: Array<unknown>) =>
-            runUnsafe<T>(pool, query, values)
-          const use: Sql.Service["use"] = (fn) =>
-            Effect.tryPromise({ try: () => Promise.resolve(fn(pool)), catch: wrapError })
+    Effect.map(
+      Effect.acquireRelease(
+        Effect.tryPromise({
+          try: async () => {
+            const mssql = await loadMssql()
+            const pool = await new mssql.ConnectionPool(config as Mssql.config).connect()
+            return { mssql, pool }
+          },
+          catch: wrapError,
+        }).pipe(
+          Effect.map((options) => {
+            const query = makeTaggedTemplate(options.pool)
+            const unsafeFn: Sql.Connection["unsafe"] = <T = any>(
+              query: string,
+              values?: Array<unknown>,
+            ) => runUnsafe<T>(options.pool, query, values)
+            const use: Sql.SqlClient["use"] = (fn) =>
+              Effect.tryPromise({ try: () => Promise.resolve(fn(options.pool)), catch: wrapError })
 
-          return Sql.of(taggedTemplate, {
-            unsafe: unsafeFn,
-            withTransaction: makeWithTransaction(pool),
-            reserve: Effect.acquireRelease(
-              Effect.tryPromise({
-                try: () =>
-                  new mssql.ConnectionPool({
-                    ...config,
-                    pool: { max: 1, min: 1 },
-                  } as Mssql.config).connect(),
-                catch: wrapError,
+            return {
+              client: Sql.client({
+                query,
+                unsafe: unsafeFn,
+                withTransaction: makeWithTransaction(options.pool),
+                reserve: Effect.acquireRelease(
+                  Effect.tryPromise({
+                    try: () =>
+                      new options.mssql.ConnectionPool({
+                        ...config,
+                        pool: { max: 1, min: 1 },
+                      } as Mssql.config).connect(),
+                    catch: wrapError,
+                  }),
+                  (reserved: Mssql.ConnectionPool) =>
+                    Effect.tryPromise({ try: () => reserved.close(), catch: () => void 0 }).pipe(
+                      Effect.asVoid,
+                      Effect.orDie,
+                    ),
+                ).pipe(Effect.map((reserved): Sql.Connection => makeQuery(reserved))),
+                use,
               }),
-              (reserved: Mssql.ConnectionPool) =>
-                Effect.tryPromise({ try: () => reserved.close(), catch: () => void 0 }).pipe(
-                  Effect.asVoid,
-                  Effect.orDie,
-                ),
-            ).pipe(
-              Effect.map((reserved): Sql.SqlQuery => makeQuery(reserved)),
-            ),
-            close: () => use((pool) => pool.close()),
-            use,
-          })
-        }),
+              close: use((pool) => pool.close()),
+            }
+          }),
+        ),
+        (handle) => handle.close.pipe(Effect.orDie),
       ),
-      (client) => client.close().pipe(Effect.orDie),
+      (handle) => handle.client,
     ),
   )

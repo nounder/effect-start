@@ -1,6 +1,6 @@
 import * as Effect from "effect/Effect"
 import * as Schema from "effect/Schema"
-import * as Sql from "./sql/Sql.ts"
+import * as Sql from "./sql/SqlClient.ts"
 
 export interface Column {
   readonly tableSchema: string
@@ -496,7 +496,7 @@ export interface DatabaseReader {
 const escapeIdentifier = (id: string): string => `"${id.replace(/"/g, '""')}"`
 
 const concatSql = (
-  sql: Sql.SqlQuery,
+  sql: Sql.Connection,
   fragments: Array<{ strings: ReadonlyArray<string>; values: Array<unknown> }>,
 ): Effect.Effect<ReadonlyArray<unknown>, Sql.SqlError> => {
   const strings: Array<string> = []

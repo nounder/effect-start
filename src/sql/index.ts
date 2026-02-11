@@ -1,1 +1,1 @@
-export * as Sql from "./Sql.ts"
+export * as SqlClient from "./SqlClient.ts"
