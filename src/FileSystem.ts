@@ -344,14 +344,10 @@ export const make = (
 
 const fileStream = (
   file: File,
-  {
-    bufferSize = 16,
-    bytesToRead: bytesToRead_,
-    chunkSize: chunkSize_ = Size(64 * 1024),
-  }: StreamOptions = {},
+  options: StreamOptions = {},
 ) => {
-  const bytesToRead = bytesToRead_ !== undefined ? Size(bytesToRead_) : undefined
-  const chunkSize = Size(chunkSize_)
+  const bytesToRead = options.bytesToRead !== undefined ? Size(options.bytesToRead) : undefined
+  const chunkSize = Size(options.chunkSize)
 
   function loop(
     totalBytesRead: bigint,
@@ -385,6 +381,6 @@ const fileStream = (
   }
 
   return Stream.bufferChunks(Stream.fromChannel(loop(BigInt(0))), {
-    capacity: bufferSize,
+    capacity: options.bufferSize,
   })
 }

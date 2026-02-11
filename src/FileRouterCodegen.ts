@@ -166,9 +166,9 @@ export function generateCode(fileRoutes: FileRouter.OrderedFileRoutes): string |
   }
 
   const routeEntries = entries
-    .map(({ path, loaders }) => {
-      const loadersCode = loaders.join(",\n    ")
-      return `  "${path}": [\n    ${loadersCode},\n  ]`
+    .map((v) => {
+      const loadersCode = v.loaders.join(",\n    ")
+      return `  "${v.path}": [\n    ${loadersCode},\n  ]`
     })
     .join(",\n")
 

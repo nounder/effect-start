@@ -20,24 +20,16 @@ export interface CompileOptions {
   customJsResolver?: Resolver
 }
 
-function createCompileOptions({
-  base,
-  from,
-  polyfills,
-  onDependency,
-
-  customCssResolver,
-  customJsResolver,
-}: CompileOptions) {
+function createCompileOptions(options: CompileOptions) {
   return {
-    base,
-    polyfills,
-    from,
+    base: options.base,
+    polyfills: options.polyfills,
+    from: options.from,
     async loadModule(id: string, base: string) {
-      return loadModule(id, base, onDependency, customJsResolver)
+      return loadModule(id, base, options.onDependency, options.customJsResolver)
     },
     async loadStylesheet(id: string, sheetBase: string) {
-      let sheet = await loadStylesheet(id, sheetBase, onDependency, customCssResolver)
+      let sheet = await loadStylesheet(id, sheetBase, options.onDependency, options.customCssResolver)
 
       return sheet
     },

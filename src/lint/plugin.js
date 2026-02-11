@@ -238,14 +238,28 @@ export default {
           }
         }
 
+        function isDefinition(node) {
+          if (node.type === "FunctionDeclaration") return true
+          const ancestors = sourceCode.getAncestors(node)
+          const parent = ancestors[ancestors.length - 1]
+          if (!parent) return false
+          if (parent.type === "MethodDefinition" || parent.type === "Property" && parent.method) return true
+          if (
+            parent.type === "VariableDeclarator" &&
+            parent.init === node
+          ) return true
+          return false
+        }
+
         function checkParams(node) {
           for (const param of node.params) {
             const pattern =
               param.type === "AssignmentPattern" ? param.left : param
             if (pattern.type !== "ObjectPattern") continue
 
+            const baseName = isDefinition(node) ? "options" : "v"
             const outerScope = sourceCode.getScope(node).upper || sourceCode.getScope(node)
-            const name = findUnusedName(outerScope, "options")
+            const name = findUnusedName(outerScope, baseName)
 
             context.report({
               node: pattern,

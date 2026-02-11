@@ -7,19 +7,19 @@ const mainFiber = GlobalValue.globalValue(Symbol.for("effect-start/BunRuntime/ex
   MutableRef.make<Fiber.RuntimeFiber<unknown, unknown> | undefined>(undefined),
 )
 
-export const runMain = PlatformRuntime.makeRunMain(({ fiber, teardown }) => {
+export const runMain = PlatformRuntime.makeRunMain((options) => {
   const prevFiber = MutableRef.get(mainFiber)
 
-  MutableRef.set(mainFiber, fiber)
+  MutableRef.set(mainFiber, options.fiber)
 
   let receivedSignal = false
 
-  fiber.addObserver((exit) => {
+  options.fiber.addObserver((exit) => {
     if (!receivedSignal) {
       process.removeListener("SIGINT", onSigint)
       process.removeListener("SIGTERM", onSigint)
     }
-    teardown(exit, (code) => {
+    options.teardown(exit, (code) => {
       if (receivedSignal || code !== 0) {
         process.exit(code)
       }
@@ -30,7 +30,7 @@ export const runMain = PlatformRuntime.makeRunMain(({ fiber, teardown }) => {
     receivedSignal = true
     process.removeListener("SIGINT", onSigint)
     process.removeListener("SIGTERM", onSigint)
-    fiber.unsafeInterruptAsFork(fiber.id())
+    options.fiber.unsafeInterruptAsFork(options.fiber.id())
   }
 
   process.on("SIGINT", onSigint)
