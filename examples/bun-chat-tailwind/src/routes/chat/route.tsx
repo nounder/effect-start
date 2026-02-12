@@ -63,7 +63,7 @@ export default Route.get(
             scrollEl.addEventListener("scroll", checkIfAtBottom)
             scrollToBottom()
 
-            const observer = new window.MutationObserver(() => {
+            const observer = new MutationObserver(() => {
               if (isAtBottom) {
                 window.requestAnimationFrame(scrollToBottom)
               }

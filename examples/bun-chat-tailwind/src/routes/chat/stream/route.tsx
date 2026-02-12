@@ -6,7 +6,7 @@ import { type ChatMessage, chatPubSub, Message } from "../../../Chat.tsx"
 const chatPatchMessage = (msg: ChatMessage) => {
   const html = HyperHtml.renderToString(<Message msg={msg} isNew />).replace(/\n/g, "")
   return {
-    event: "datastar-patch-elements",
+    type: "datastar-patch-elements",
     data: `selector #chat-messages\nmode append\nelements ${html}`,
   }
 }

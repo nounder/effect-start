@@ -13,7 +13,7 @@ const HEARTBEAT = ": <3\n\n"
 
 export interface SseEvent {
   data?: string | undefined
-  event?: string
+  type?: string
   retry?: number
 }
 
@@ -35,8 +35,8 @@ function formatSseEvent(event: SseEventInput): string {
 
   const e = event as SseEvent
   let result = ""
-  if (e.event) {
-    result += `event: ${e.event}\n`
+  if (e.type) {
+    result += `event: ${e.type}\n`
   }
   if (typeof e.data === "string") {
     for (const line of e.data.split("\n")) {
