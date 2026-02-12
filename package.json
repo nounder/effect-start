@@ -6,6 +6,7 @@
     "src/",
     "!src/**/*.test.ts",
     "!src/**/*.test.tsx",
+    "!src/tower",
     "dist/",
     "README.md",
     "package.json"
@@ -16,7 +17,8 @@
     "./bun": "./src/bun/index.ts",
     "./client": "./src/client/index.ts",
     "./testing": "./src/testing/index.ts",
-    "./console": "./src/console/index.ts",
+    "./tower": "./src/tower/index.ts",
+    "./sql": "./src/sql/index.ts",
     "./sql/*": "./src/sql/*/index.ts",
     "./x/*": "./src/x/*/index.ts",
     "./x/tailwind/plugin": "./src/x/tailwind/plugin.ts",
