@@ -34,15 +34,12 @@ export interface Connection {
    */
   (name: string): unknown
   /**
-   * Build a VALUES clause from an object or array of objects
-   */
-  <T extends Record<string, unknown>>(obj: T | ReadonlyArray<T>): unknown
-  /**
-   * Build a VALUES clause from an object, picking specific columns
+   * Build a VALUES clause from an object or array of objects,
+   * optionally picking specific columns
    */
   <T extends Record<string, unknown>, K extends keyof T>(
     obj: T | ReadonlyArray<T>,
-    ...columns: [K, ...Array<K>]
+    columns?: [K, ...Array<K>],
   ): unknown
   /**
    * Build an IN-list from an array of primitive values
@@ -133,7 +130,7 @@ function dispatchCallable(query: TaggedQuery) {
       (first.length === 0 || typeof first[0] !== "object" || first[0] === null)
     )
       return makeList(first)
-    return makeValues(first, ...rest)
+    return makeValues(first, rest[0])
   }
 }
 
@@ -215,10 +212,10 @@ const makeIdentifier = (name: string): SqlFragment => ({ [SqlFragmentTag]: "Iden
 
 const makeValues = <T extends Record<string, unknown>>(
   obj: T | ReadonlyArray<T>,
-  ...columns: Array<keyof T & string>
+  columns?: Array<keyof T & string>,
 ): SqlFragment => {
   const items = Array.isArray(obj) ? obj : [obj]
-  const cols = columns.length > 0 ? columns : (Object.keys(items[0]) as Array<string>)
+  const cols = columns && columns.length > 0 ? columns : (Object.keys(items[0]) as Array<string>)
   return { [SqlFragmentTag]: "Values", value: items, columns: cols }
 }
 
