@@ -536,7 +536,7 @@ export namespace JSX {
     // [key: ClassKeys]: boolean;
 
     // properties
-    innerHTML?: string
+    dangerouslySetInnerHTML?: { __html: string }
     textContent?: string | number
 
     // attributes

@@ -116,8 +116,7 @@ export function renderToString(
       for (const key in props) {
         if (
           key !== "children" &&
-          key !== "innerHTML" && // Solid-specific
-          key !== "dangerouslySetInnerHTML" && // React-specific
+          key !== "dangerouslySetInnerHTML" &&
           props[key] !== false &&
           props[key] != null
         ) {
@@ -144,7 +143,7 @@ export function renderToString(
         stack.push(`</${type}>`)
 
         const isRawText = RAW_TEXT_TAGS.includes(type)
-        const html = props.dangerouslySetInnerHTML?.__html ?? props.innerHTML
+        const html = props.dangerouslySetInnerHTML?.__html
 
         if (html) {
           result += isRawText ? escapeRawText(html) : html

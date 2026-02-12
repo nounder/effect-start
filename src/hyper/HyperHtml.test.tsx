@@ -189,9 +189,9 @@ test.describe("raw text escaping", () => {
     test.expect(html).not.toContain("</style><")
   })
 
-  test.it("script innerHTML escapes closing tag", () => {
+  test.it("script dangerouslySetInnerHTML escapes closing tag", () => {
     const node = HyperNode.make("script", {
-      innerHTML: 'console.log("</script>")',
+      dangerouslySetInnerHTML: { __html: 'console.log("</script>")' },
     })
 
     const html = HyperHtml.renderToString(node)
@@ -233,10 +233,10 @@ test.describe("raw text escaping", () => {
     test.expect(html).not.toMatch(/<\/style.*<script/i)
   })
 
-  test.it("XSS via script injection in innerHTML", () => {
+  test.it("XSS via script injection in dangerouslySetInnerHTML", () => {
     const userInput = '</script><script>alert("xss")</script>'
     const node = HyperNode.make("script", {
-      innerHTML: `var data = "${userInput}"`,
+      dangerouslySetInnerHTML: { __html: `var data = "${userInput}"` },
     })
 
     const html = HyperHtml.renderToString(node)
@@ -284,9 +284,9 @@ test.describe("raw text escaping", () => {
     test.expect(html).toBe('<script>x = "<\\/" + "script>"</script>')
   })
 
-  test.it("style innerHTML escapes closing tag", () => {
+  test.it("style dangerouslySetInnerHTML escapes closing tag", () => {
     const node = HyperNode.make("style", {
-      innerHTML: 'div::after { content: "</style>" }',
+      dangerouslySetInnerHTML: { __html: 'div::after { content: "</style>" }' },
     })
 
     const html = HyperHtml.renderToString(node)
@@ -388,6 +388,14 @@ test.it("data-* object values don't render as [object Object]", () => {
 
   test.expect(html).toBe(`<div data-signals='{"isOpen":false,"count":42}'>content</div>`)
   test.expect(html).not.toContain("[object Object]")
+})
+
+test.it("dangerouslySetInnerHTML injects html without escaping", () => {
+  const html = HyperHtml.renderToString(
+    <div dangerouslySetInnerHTML={{ __html: '<span class="bold">hello & world</span>' }} />,
+  )
+
+  test.expect(html).toBe('<div><span class="bold">hello & world</span></div>')
 })
 
 test.it("JSX component with data-* object values", () => {
