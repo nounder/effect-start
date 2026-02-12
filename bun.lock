@@ -15,11 +15,13 @@
         "typescript": "^5.9.3",
       },
       "peerDependencies": {
-        "@libsql/client": "",
+        "@libsql/client": ">=0.17.0",
         "effect": "^3.19.11",
+        "mssql": ">=12.2.0",
       },
       "optionalPeers": [
         "@libsql/client",
+        "mssql",
       ],
     },
   },
