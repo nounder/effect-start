@@ -40,6 +40,14 @@ test.describe(Start.pack, () => {
       .toEqualTypeOf<Logger | ExternalApi>()
   })
 
+  test.test("should reject wrong layer ordering", () => {
+    // @ts-expect-error LoggerLive first means DatabaseLive can't find Logger
+    Start.pack(LoggerLive, DatabaseLive, UserRepoLive)
+
+    // @ts-expect-error DatabaseLive before LoggerLive, UserRepoLive last but needs Database
+    Start.pack(DatabaseLive, LoggerLive, UserRepoLive)
+  })
+
   test.test("should work with dependents-first order", async () => {
     const AppLayer = Start.pack(UserRepoLive, DatabaseLive, LoggerLive)
 
@@ -252,6 +260,117 @@ test.describe(Start.layer, () => {
 
     test.expect(status).toBe(200)
     test.expect(body).toBe("default-server")
+  })
+})
+
+test.describe(Start.build, () => {
+  test.test("should resolve dependencies in any order", async () => {
+    const AppLayer = Start.build(LoggerLive, DatabaseLive, UserRepoLive)
+
+    test.expectTypeOf<Layer.Layer.Context<typeof AppLayer>>().toEqualTypeOf<ExternalApi>()
+
+    const ExternalApiLive = Layer.succeed(ExternalApi, {
+      call: () => Effect.void,
+    })
+
+    const program = Effect.gen(function* () {
+      const userRepo = yield* UserRepo
+      return yield* userRepo.findUser("123")
+    })
+
+    const result = await Effect.runPromise(
+      program.pipe(Effect.provide(AppLayer), Effect.provide(ExternalApiLive)),
+    )
+
+    test.expect(result).toEqual({ rows: [] })
+  })
+
+  test.test("should resolve dependencies in correct order too", async () => {
+    const AppLayer = Start.build(UserRepoLive, DatabaseLive, LoggerLive)
+
+    test.expectTypeOf<Layer.Layer.Context<typeof AppLayer>>().toEqualTypeOf<ExternalApi>()
+
+    const ExternalApiLive = Layer.succeed(ExternalApi, {
+      call: () => Effect.void,
+    })
+
+    const program = Effect.gen(function* () {
+      const userRepo = yield* UserRepo
+      return yield* userRepo.findUser("456")
+    })
+
+    const result = await Effect.runPromise(
+      program.pipe(Effect.provide(AppLayer), Effect.provide(ExternalApiLive)),
+    )
+
+    test.expect(result).toEqual({ rows: [] })
+  })
+
+  test.test("should require external services", async () => {
+    const PartialPack = Start.build(UserRepoLive, DatabaseLive)
+
+    test
+      .expectTypeOf<Layer.Layer.Context<typeof PartialPack>>()
+      .toEqualTypeOf<Logger | ExternalApi>()
+  })
+
+  test.test("should memoize layers", async () => {
+    let loggerBuildCount = 0
+    let databaseBuildCount = 0
+
+    const LoggerLiveWithCounter = Layer.effect(
+      Logger,
+      Effect.sync(() => {
+        loggerBuildCount++
+        return { log: (msg) => Effect.log(msg) }
+      }),
+    )
+
+    const DatabaseLiveWithCounter = Layer.effect(
+      Database,
+      Effect.gen(function* () {
+        const logger = yield* Logger
+        databaseBuildCount++
+        yield* logger.log("DB init")
+        return { query: (sql) => Effect.succeed({ rows: [] }) }
+      }),
+    )
+
+    const UserRepoLiveWithCounter = Layer.effect(
+      UserRepo,
+      Effect.gen(function* () {
+        const db = yield* Database
+        const logger = yield* Logger
+        yield* logger.log("UserRepo init")
+        return {
+          findUser: (id) => db.query(`SELECT * FROM users WHERE id = ${id}`),
+        }
+      }),
+    )
+
+    const ExternalApiLive = Layer.succeed(ExternalApi, {
+      call: () => Effect.void,
+    })
+
+    const AppLayer = Start.build(
+      UserRepoLiveWithCounter,
+      DatabaseLiveWithCounter,
+      LoggerLiveWithCounter,
+    )
+
+    const program = Effect.gen(function* () {
+      yield* UserRepo
+      yield* Database
+      yield* Logger
+      return "done"
+    })
+
+    await Effect.runPromise(
+      program.pipe(Effect.provide(AppLayer), Effect.provide(ExternalApiLive)),
+    )
+
+    test.expect(loggerBuildCount).toEqual(1)
+    test.expect(databaseBuildCount).toEqual(1)
   })
 })
 
