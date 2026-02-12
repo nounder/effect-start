@@ -113,7 +113,7 @@ export function htmlBundle(load: () => HTMLBundleModule | Promise<HTMLBundleModu
             }),
         })
 
-        const childEntity = yield* Entity.resolve(next(context))
+        const childEntity = yield* next(context)
         const children = childEntity?.body ?? childEntity
 
         let childrenHtml = ""

@@ -1,6 +1,6 @@
+import * as Effectable from "effect/Effectable"
 import * as Effect from "effect/Effect"
 import * as ParseResult from "effect/ParseResult"
-import * as Pipeable from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
@@ -24,7 +24,7 @@ export type Headers = {
   [header: string]: string | null | undefined
 }
 
-export interface Entity<T = unknown, E = never> extends Pipeable.Pipeable {
+export interface Entity<T = unknown, E = never> extends Effect.Effect<Entity<T, E>, E> {
   readonly [TypeId]: TypeId
   readonly body: T
   readonly headers: Headers
@@ -57,7 +57,7 @@ export interface Entity<T = unknown, E = never> extends Pipeable.Pipeable {
     : Stream.Stream<Uint8Array, ParseResult.ParseError | E>
 }
 
-export interface Proto extends Pipeable.Pipeable {
+export interface Proto extends Effect.Effect<Entity, never> {
   readonly [TypeId]: TypeId
 }
 
@@ -218,11 +218,11 @@ function getStream(self: Entity<unknown, unknown>): Stream.Stream<unknown, unkno
   return Stream.fromEffect(getBytes(self))
 }
 
-const Proto: Proto = Object.defineProperties(Object.create(null), {
+const Proto: Proto = Object.defineProperties(Object.create(Effectable.CommitPrototype), {
   [TypeId]: { value: TypeId },
-  pipe: {
+  commit: {
     value: function (this: Entity) {
-      return Pipeable.pipeArguments(this, arguments)
+      return resolve(this)
     },
   },
   text: {

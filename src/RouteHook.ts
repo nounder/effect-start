@@ -34,7 +34,7 @@ export function filter<
 
           const mergedContext = filterResult ? { ...context, ...filterResult.context } : context
 
-          return yield* Entity.resolve(next(mergedContext as Partial<BOut>))
+          return yield* next(mergedContext as Partial<BOut>)
         }),
     )
 
