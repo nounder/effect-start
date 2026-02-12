@@ -53,6 +53,9 @@ let map = {
 
 const RAW_TEXT_TAGS = ["script", "style"]
 
+// Prevents closing html tags in embedded css/js source
+const escapeRawText = (text: string) => text.replaceAll("</", "<\\/")
+
 export function renderToString(
   node: JSX.Children,
   hooks?: { onNode?: (node: HyperNode.HyperNode) => void },
@@ -140,17 +143,19 @@ export function renderToString(
       if (!EMPTY_TAGS.includes(type)) {
         stack.push(`</${type}>`)
 
+        const isRawText = RAW_TEXT_TAGS.includes(type)
         const html = props.dangerouslySetInnerHTML?.__html ?? props.innerHTML
 
         if (html) {
-          result += html
+          result += isRawText ? escapeRawText(html) : html
         } else {
           const children = props.children
 
           if (type === "script" && typeof children === "function") {
-            result += `(${children.toString()})(window)`
-          } else if (RAW_TEXT_TAGS.includes(type) && children != null) {
-            result += Array.isArray(children) ? children.join("") : children
+            result += escapeRawText(`(${children.toString()})(window)`)
+          } else if (isRawText && children != null) {
+            const raw = Array.isArray(children) ? children.join("") : String(children)
+            result += escapeRawText(raw)
           } else if (Array.isArray(children)) {
             for (let i = children.length - 1; i >= 0; i--) {
               stack.push(children[i])
