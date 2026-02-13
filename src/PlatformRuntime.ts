@@ -95,6 +95,6 @@ export function isAgentHarness() {
   return (
     typeof process !== "undefined" &&
     !process.stdout.isTTY &&
-    (process.env.CLAUDECODE || process.env.CURSOR_AGENT)
+    (process.env.CLAUDECODE || process.env.CURSOR_AGENT || process.env.CODEX_THREAD_ID)
   )
 }
