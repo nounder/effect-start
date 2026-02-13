@@ -11,15 +11,23 @@ import * as TowerStore from "./TowerStore.ts"
 const publish = (store: TowerStore.TowerStoreShape, event: TowerStore.TowerEvent) =>
   Effect.runSync(PubSub.publish(store.events, event))
 
+const fromTracerId = (id: string): bigint | undefined => {
+  try {
+    return BigInt(id)
+  } catch {
+    return undefined
+  }
+}
+
 const make = (store: TowerStore.TowerStoreShape): Tracer.Tracer =>
   Tracer.make({
     span(name, parent, context, links, startTime, kind, options) {
-      const parentSpanId =
-        Option.isSome(parent) && parent.value._tag === "Span" ? parent.value.spanId : undefined
-      const traceId = Option.isSome(parent)
-        ? parent.value.traceId
-        : Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2)
-      const spanId = Math.random().toString(36).slice(2)
+      const parentSpanId = Option.isSome(parent) && parent.value._tag === "Span"
+        ? fromTracerId(parent.value.spanId)
+        : undefined
+      const parentTraceId = Option.isSome(parent) ? fromTracerId(parent.value.traceId) : undefined
+      const traceId = parentTraceId ?? TowerStore.nextTraceId()
+      const spanId = TowerStore.nextSpanId()
 
       const attributes: Record<string, unknown> = {}
       const currentFiber = Fiber.getCurrentFiber()
@@ -65,8 +73,8 @@ const make = (store: TowerStore.TowerStoreShape): Tracer.Tracer =>
       const span: Tracer.Span = {
         _tag: "Span",
         name,
-        spanId,
-        traceId,
+        spanId: String(spanId),
+        traceId: String(traceId),
         parent,
         context,
         get status(): Tracer.SpanStatus {

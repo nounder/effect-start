@@ -9,7 +9,17 @@ import * as Traces from "../ui/Traces.tsx"
 export default Route.get(
   RouteSchema.schemaPathParams(Schema.Struct({ id: Schema.String })),
   HyperRoute.html(function* (ctx) {
-    const spans = yield* TowerStore.spansByTraceId(TowerStore.store.sql, ctx.pathParams.id)
+    let traceId: bigint
+    try {
+      traceId = BigInt(ctx.pathParams.id)
+    } catch {
+      return (
+        <Shell.Shell prefix={TowerStore.store.prefix} active="traces">
+          <div class="empty">Trace not found</div>
+        </Shell.Shell>
+      )
+    }
+    const spans = yield* TowerStore.spansByTraceId(TowerStore.store.sql, traceId)
 
     return (
       <Shell.Shell prefix={TowerStore.store.prefix} active="traces">

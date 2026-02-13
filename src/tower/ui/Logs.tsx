@@ -1,3 +1,4 @@
+import * as Unique from "../../Unique.ts"
 import * as TowerStore from "../TowerStore.ts"
 
 function levelColor(level: string): string {
@@ -11,7 +12,7 @@ function levelColor(level: string): string {
 
 export function LogLine(options: { log: TowerStore.TowerLog }) {
   const color = levelColor(options.log.level)
-  const time = options.log.date.toLocaleTimeString("en", {
+  const time = new Date(Number(Unique.snowflake.timestamp(options.log.id))).toLocaleTimeString("en", {
     hour12: false,
     hour: "2-digit",
     minute: "2-digit",

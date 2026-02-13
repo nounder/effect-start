@@ -4,6 +4,56 @@ export const ALPHABET_BASE64_URL =
   "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
 export const ALPHABET_HEX = "0123456789abcdef"
 
+interface SnowflakeState {
+  timestampMs: bigint
+  sequence: bigint
+}
+
+interface Snowflake {
+  (): bigint
+  readonly state: SnowflakeState
+  readonly timestamp: (id: bigint) => bigint
+}
+
+function buildSnowflake(): {
+  (): bigint
+  readonly state: SnowflakeState
+  readonly timestamp: (id: bigint) => bigint
+} {
+  const timestampBits = 48n
+  const seqBits = 16n
+  const seqMax = (1n << seqBits) - 1n
+  const timestampMask = (1n << timestampBits) - 1n
+
+  const fn = Object.assign(
+    () => {
+      const nowMs = BigInt(Date.now())
+      const timestampMs = nowMs > fn.state.timestampMs ? nowMs : fn.state.timestampMs
+
+      if (timestampMs > fn.state.timestampMs) {
+        fn.state.timestampMs = timestampMs
+        fn.state.sequence = 0n
+      } else {
+        fn.state.sequence += 1n
+        if (fn.state.sequence > seqMax) {
+          fn.state.timestampMs += 1n
+          fn.state.sequence = 0n
+        }
+      }
+
+      return ((fn.state.timestampMs & timestampMask) << seqBits) | fn.state.sequence
+    },
+    {
+      state: {
+        timestampMs: 0n,
+        sequence: -1n,
+      },
+      timestamp: (id: bigint): bigint => id >> seqBits,
+    },
+  )
+  return fn
+}
+
 /**
  * Generate a random string for ids, session tokens, and API keys.
  * It uses human-friendly crockford base32 encoding (5 bit of entropy per char)
@@ -168,6 +218,15 @@ function toSafeTime(time: number): number {
 
   return Math.max(0, Math.trunc(time))
 }
+
+/**
+ * Monotonic Snowflake variant:
+ * - 48-bit unix timestamp (ms)
+ * - 16-bit sequence
+ * - sequence resets on timestamp increment
+ * - over-capacity sequence carries into next millisecond
+ */
+export const snowflake = buildSnowflake()
 
 /**
  * Generate a nanoid-style random string.

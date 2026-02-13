@@ -5,6 +5,7 @@ import * as Layer from "effect/Layer"
 import * as MutableRef from "effect/MutableRef"
 import * as PubSub from "effect/PubSub"
 import * as Schema from "effect/Schema"
+import * as Unique from "../Unique.ts"
 import * as Sql from "../sql/SqlClient.ts"
 
 export let store: TowerStoreShape = GlobalValue.globalValue(
@@ -21,13 +22,23 @@ export let store: TowerStoreShape = GlobalValue.globalValue(
   }),
 )
 
+const nextPackedId = (): bigint => Unique.snowflake()
+
+export const nextLogId = () => nextPackedId()
+
+export const nextErrorId = () => nextPackedId()
+
+export const nextSpanId = () => nextPackedId()
+
+export const nextTraceId = () => nextPackedId()
+
 export interface TowerSpan {
-  readonly spanId: string
-  readonly traceId: string
+  readonly spanId: bigint
+  readonly traceId: bigint
   readonly fiberId: string | undefined
   readonly name: string
   readonly kind: string
-  readonly parentSpanId: string | undefined
+  readonly parentSpanId: bigint | undefined
   startTime: bigint
   endTime: bigint | undefined
   durationMs: number | undefined
@@ -37,8 +48,7 @@ export interface TowerSpan {
 }
 
 export interface TowerLog {
-  readonly id: string
-  readonly date: Date
+  readonly id: bigint
   readonly level: "DEBUG" | "INFO" | "WARNING" | "ERROR" | "FATAL"
   readonly message: string
   readonly fiberId: string
@@ -86,8 +96,7 @@ export interface TowerErrorDetail {
 }
 
 export interface TowerError {
-  readonly id: string
-  readonly date: Date
+  readonly id: bigint
   readonly fiberId: string
   readonly interrupted: boolean
   readonly prettyPrint: string
@@ -112,7 +121,7 @@ export type TowerEvent =
 
 export interface FiberContext {
   readonly spanName: string | undefined
-  readonly traceId: string | undefined
+  readonly traceId: bigint | undefined
   readonly annotations: Record<string, unknown>
 }
 
@@ -147,12 +156,12 @@ export interface TowerStoreOptions {
 
 const DDL = [
   `CREATE TABLE IF NOT EXISTS Span (
-    spanId TEXT PRIMARY KEY,
-    traceId TEXT NOT NULL,
+    spanId INTEGER PRIMARY KEY,
+    traceId INTEGER NOT NULL,
     fiberId TEXT,
     name TEXT NOT NULL,
     kind TEXT NOT NULL,
-    parentSpanId TEXT,
+    parentSpanId INTEGER,
     startTime TEXT NOT NULL,
     endTime TEXT,
     durationMs REAL,
@@ -161,8 +170,7 @@ const DDL = [
     events TEXT NOT NULL
   )`,
   `CREATE TABLE IF NOT EXISTS Log (
-    id TEXT PRIMARY KEY,
-    date TEXT NOT NULL,
+    id INTEGER PRIMARY KEY,
     level TEXT NOT NULL,
     message TEXT NOT NULL,
     fiberId TEXT NOT NULL,
@@ -171,8 +179,7 @@ const DDL = [
     annotations TEXT NOT NULL
   )`,
   `CREATE TABLE IF NOT EXISTS Error (
-    id TEXT PRIMARY KEY,
-    date TEXT NOT NULL,
+    id INTEGER PRIMARY KEY,
     fiberId TEXT NOT NULL,
     interrupted INTEGER NOT NULL,
     prettyPrint TEXT NOT NULL,
@@ -182,7 +189,7 @@ const DDL = [
     id TEXT PRIMARY KEY,
     parentId TEXT,
     spanName TEXT,
-    traceId TEXT,
+    traceId INTEGER,
     annotations TEXT NOT NULL
   )`,
 ]
@@ -234,12 +241,12 @@ function reviveBigint(value: unknown): unknown {
 }
 
 export const SpanRow = Schema.Struct({
-  spanId: Schema.String,
-  traceId: Schema.String,
+  spanId: Schema.Number,
+  traceId: Schema.Number,
   fiberId: Schema.NullOr(Schema.String),
   name: Schema.String,
   kind: Schema.String,
-  parentSpanId: Schema.NullOr(Schema.String),
+  parentSpanId: Schema.NullOr(Schema.Number),
   startTime: Schema.String,
   endTime: Schema.NullOr(Schema.String),
   durationMs: Schema.NullOr(Schema.Number),
@@ -250,8 +257,7 @@ export const SpanRow = Schema.Struct({
 type SpanRow = typeof SpanRow.Type
 
 export const LogRow = Schema.Struct({
-  id: Schema.String,
-  date: Schema.String,
+  id: Schema.Number,
   level: Schema.String,
   message: Schema.String,
   fiberId: Schema.String,
@@ -262,8 +268,7 @@ export const LogRow = Schema.Struct({
 type LogRow = typeof LogRow.Type
 
 export const ErrorRow = Schema.Struct({
-  id: Schema.String,
-  date: Schema.String,
+  id: Schema.Number,
   fiberId: Schema.String,
   interrupted: Schema.Number,
   prettyPrint: Schema.String,
@@ -275,7 +280,7 @@ export const FiberRow = Schema.Struct({
   id: Schema.String,
   parentId: Schema.NullOr(Schema.String),
   spanName: Schema.NullOr(Schema.String),
-  traceId: Schema.NullOr(Schema.String),
+  traceId: Schema.NullOr(Schema.Number),
   annotations: Schema.String,
 })
 type FiberRow = typeof FiberRow.Type
@@ -283,12 +288,12 @@ type FiberRow = typeof FiberRow.Type
 function deserializeSpan(row: SpanRow): TowerSpan {
   const events = reviveBigint(JSON.parse(row.events)) as TowerSpan["events"]
   return {
-    spanId: row.spanId,
-    traceId: row.traceId,
+    spanId: BigInt(row.spanId),
+    traceId: BigInt(row.traceId),
     fiberId: row.fiberId ?? undefined,
     name: row.name,
     kind: row.kind,
-    parentSpanId: row.parentSpanId ?? undefined,
+    parentSpanId: row.parentSpanId != null ? BigInt(row.parentSpanId) : undefined,
     startTime: BigInt(row.startTime),
     endTime: row.endTime ? BigInt(row.endTime) : undefined,
     durationMs: row.durationMs ?? undefined,
@@ -300,8 +305,7 @@ function deserializeSpan(row: SpanRow): TowerSpan {
 
 function deserializeLog(row: LogRow): TowerLog {
   return {
-    id: row.id,
-    date: new Date(row.date),
+    id: BigInt(row.id),
     level: row.level as TowerLog["level"],
     message: row.message,
     fiberId: row.fiberId,
@@ -313,8 +317,7 @@ function deserializeLog(row: LogRow): TowerLog {
 
 function deserializeError(row: ErrorRow): TowerError {
   return {
-    id: row.id,
-    date: new Date(row.date),
+    id: BigInt(row.id),
     fiberId: row.fiberId,
     interrupted: row.interrupted === 1,
     prettyPrint: row.prettyPrint,
@@ -352,7 +355,6 @@ export function updateSpan(sql: Sql.SqlClient, span: TowerSpan) {
 export function insertLog(sql: Sql.SqlClient, log: TowerLog) {
   return sql`INSERT INTO Log ${sql({
     id: log.id,
-    date: log.date.toISOString(),
     level: log.level,
     message: log.message,
     fiberId: log.fiberId,
@@ -365,7 +367,6 @@ export function insertLog(sql: Sql.SqlClient, log: TowerLog) {
 export function insertError(sql: Sql.SqlClient, error: TowerError) {
   return sql`INSERT INTO Error ${sql({
     id: error.id,
-    date: error.date.toISOString(),
     fiberId: error.fiberId,
     interrupted: error.interrupted ? 1 : 0,
     prettyPrint: error.prettyPrint,
@@ -378,7 +379,7 @@ export function upsertFiber(
   id: string,
   parentId: string | undefined,
   spanName: string | undefined,
-  traceId: string | undefined,
+  traceId: bigint | undefined,
   annotations: Record<string, unknown>,
 ) {
   return sql`INSERT OR REPLACE INTO Fiber ${sql({
@@ -432,7 +433,7 @@ export function allErrors(sql: Sql.SqlClient) {
   ))
 }
 
-export function spansByTraceId(sql: Sql.SqlClient, traceId: string) {
+export function spansByTraceId(sql: Sql.SqlClient, traceId: bigint) {
   return noTrace(Effect.map(
     sql<SpanRow>`SELECT * FROM Span WHERE traceId = ${traceId} ORDER BY rowid`,
     (rows) => rows.map(deserializeSpan),
@@ -485,7 +486,7 @@ export function getFiberContext(sql: Sql.SqlClient, fiberId: string) {
       rows.length > 0
         ? {
             spanName: rows[0].spanName ?? undefined,
-            traceId: rows[0].traceId ?? undefined,
+            traceId: rows[0].traceId != null ? BigInt(rows[0].traceId) : undefined,
             annotations: JSON.parse(rows[0].annotations),
           }
         : undefined,

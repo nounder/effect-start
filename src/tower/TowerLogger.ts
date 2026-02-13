@@ -31,8 +31,7 @@ const towerLogger = Logger.make((options) => {
     })
 
     const log: TowerStore.TowerLog = {
-      id: crypto.randomUUID(),
-      date: options.date,
+      id: TowerStore.nextLogId(),
       level,
       message: String(options.message),
       fiberId: FiberId.threadName(options.fiberId),

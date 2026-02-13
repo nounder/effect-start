@@ -13,12 +13,12 @@ function statusColor(status: string): string {
   return "#eab308"
 }
 
-function KeyValue(options: { label: string; value: string | undefined | null }) {
+function KeyValue(options: { label: string; value: string | number | bigint | undefined | null }) {
   if (options.value == null) return null
   return (
     <div style="display:flex;gap:8px;padding:4px 0;border-bottom:1px solid #1e293b;font-size:12px">
       <span style="color:#64748b;min-width:120px">{options.label}</span>
-      <span style="color:#e2e8f0;font-family:monospace;word-break:break-all">{options.value}</span>
+      <span style="color:#e2e8f0;font-family:monospace;word-break:break-all">{String(options.value)}</span>
     </div>
   )
 }
@@ -44,8 +44,8 @@ interface TreeSpan {
 }
 
 function buildSpanTree(spans: Array<TowerStore.TowerSpan>): Array<TreeSpan> {
-  const byId = new Map<string, TowerStore.TowerSpan>()
-  const childrenOf = new Map<string, Array<TowerStore.TowerSpan>>()
+  const byId = new Map<bigint, TowerStore.TowerSpan>()
+  const childrenOf = new Map<bigint, Array<TowerStore.TowerSpan>>()
 
   for (const s of spans) {
     byId.set(s.spanId, s)
@@ -208,8 +208,8 @@ function MiniWaterfall(options: {
 
 export function groupByTraceId(
   spans: Array<TowerStore.TowerSpan>,
-): Map<string, Array<TowerStore.TowerSpan>> {
-  const groups = new Map<string, Array<TowerStore.TowerSpan>>()
+): Map<bigint, Array<TowerStore.TowerSpan>> {
+  const groups = new Map<bigint, Array<TowerStore.TowerSpan>>()
   for (const span of spans) {
     let group = groups.get(span.traceId)
     if (!group) {
@@ -241,7 +241,7 @@ export function TraceGroup(options: { spans: Array<TowerStore.TowerSpan> }) {
         <span class="tl-cell tl-cell-name">{root.name}</span>
         <span class="tl-cell tl-cell-spans">{options.spans.length}</span>
         <span class="tl-cell tl-cell-dur">{formatDuration(totalMs)}</span>
-        <span class="tl-cell tl-cell-id">{traceId.slice(0, 12)}</span>
+        <span class="tl-cell tl-cell-id">{String(traceId).slice(0, 12)}</span>
       </summary>
       <div class="tl-body">
         <div style="display:flex;gap:12px;align-items:center;margin-bottom:8px">

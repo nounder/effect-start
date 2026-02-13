@@ -1,7 +1,8 @@
+import * as Unique from "../../Unique.ts"
 import * as TowerStore from "../TowerStore.ts"
 
 export function ErrorLine(options: { error: TowerStore.TowerError }) {
-  const time = options.error.date.toLocaleTimeString("en", {
+  const time = new Date(Number(Unique.snowflake.timestamp(options.error.id))).toLocaleTimeString("en", {
     hour12: false,
     hour: "2-digit",
     minute: "2-digit",

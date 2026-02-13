@@ -1,3 +1,4 @@
+import * as Unique from "../../Unique.ts"
 import * as TowerStore from "../TowerStore.ts"
 import * as Logs from "./Logs.tsx"
 
@@ -8,12 +9,12 @@ function formatDuration(ms: number | undefined): string {
   return `${(ms / 1000).toFixed(2)}s`
 }
 
-function KeyValue(options: { label: string; value: string | undefined | null }) {
+function KeyValue(options: { label: string; value: string | number | bigint | undefined | null }) {
   if (options.value == null) return null
   return (
     <div style="display:flex;gap:8px;padding:4px 0;border-bottom:1px solid #1e293b;font-size:12px">
       <span style="color:#64748b;min-width:120px">{options.label}</span>
-      <span style="color:#e2e8f0;font-family:monospace;word-break:break-all">{options.value}</span>
+      <span style="color:#e2e8f0;font-family:monospace;word-break:break-all">{String(options.value)}</span>
     </div>
   )
 }
@@ -32,7 +33,7 @@ export interface FiberSummary {
   readonly id: string
   logCount: number
   spanCount: number
-  lastSeen: Date | undefined
+  lastSeen: number | undefined
   alive: "alive" | "dead" | "unknown"
   readonly levels: Set<string>
 }
@@ -72,8 +73,9 @@ export function collectFibers(
     }
     fiber.logCount++
     fiber.levels.add(log.level)
-    if (!fiber.lastSeen || log.date > fiber.lastSeen) {
-      fiber.lastSeen = log.date
+    const logTimestamp = Number(Unique.snowflake.timestamp(log.id))
+    if (!fiber.lastSeen || logTimestamp > fiber.lastSeen) {
+      fiber.lastSeen = logTimestamp
     }
   }
 
@@ -98,7 +100,7 @@ export function collectFibers(
   for (const fiber of map.values()) {
     const num = parseInt(fiber.id.replace("#", ""), 10)
     if (!isNaN(num)) {
-      if (fiber.lastSeen && now - fiber.lastSeen.getTime() < 5000) {
+      if (fiber.lastSeen && now - fiber.lastSeen < 5000) {
         fiber.alive = "alive"
       } else if (num < counter) {
         fiber.alive = "dead"
@@ -119,7 +121,7 @@ function FiberRow(options: { fiber: FiberSummary; prefix: string }) {
   const aliveBg =
     options.fiber.alive === "alive" ? "#166534" : options.fiber.alive === "dead" ? "#7f1d1d" : "#334155"
   const lastSeen = options.fiber.lastSeen
-    ? options.fiber.lastSeen.toLocaleTimeString("en", {
+    ? new Date(options.fiber.lastSeen).toLocaleTimeString("en", {
         hour12: false,
         hour: "2-digit",
         minute: "2-digit",

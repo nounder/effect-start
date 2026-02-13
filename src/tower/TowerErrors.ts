@@ -13,8 +13,6 @@ import type * as Fiber from "effect/Fiber"
 import * as Supervisor from "effect/Supervisor"
 import * as TowerStore from "./TowerStore.ts"
 
-let errorId = 0
-
 function safeSerialize(value: unknown, depth = 0): unknown {
   if (depth > 4) return "<deep>"
   if (value === null || value === undefined) return value
@@ -168,6 +166,15 @@ function make(store: TowerStore.TowerStoreShape): Supervisor.Supervisor<void> {
         : undefined
 
       const span = fiber.currentSpan
+      const traceId = span
+        ? (() => {
+            try {
+              return BigInt(span.traceId)
+            } catch {
+              return undefined
+            }
+          })()
+        : undefined
       const annotations: Record<string, unknown> = {}
       const spanAnnotations = fiber.getFiberRef(FiberRef.currentTracerSpanAnnotations)
       HashMap.forEach(spanAnnotations, (value, key) => {
@@ -183,7 +190,7 @@ function make(store: TowerStore.TowerStoreShape): Supervisor.Supervisor<void> {
         childId,
         parentId !== childId ? parentId : undefined,
         span?._tag === "Span" ? span.name : undefined,
-        span ? span.traceId : undefined,
+        traceId,
         annotations,
       ))
     }
@@ -191,8 +198,7 @@ function make(store: TowerStore.TowerStoreShape): Supervisor.Supervisor<void> {
     onEnd<A, E>(exit: Exit.Exit<A, E>, fiber: Fiber.RuntimeFiber<A, E>) {
       if (Exit.isFailure(exit) && !Cause.isInterruptedOnly(exit.cause)) {
         const error: TowerStore.TowerError = {
-          id: String(++errorId),
-          date: new Date(),
+          id: TowerStore.nextErrorId(),
           fiberId: FiberId.threadName(fiber.id()),
           interrupted: Cause.isInterrupted(exit.cause),
           prettyPrint: Cause.pretty(exit.cause, { renderErrorCause: true }),
