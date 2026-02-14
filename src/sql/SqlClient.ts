@@ -118,7 +118,9 @@ export function connection(
   const trace = makeTraceOptions(options?.spanAttributes, options?.dialect)
   const tracedQuery = withExecuteSpan(query, trace)
   const tracedUnsafe = withUnsafeExecuteSpan(unsafe, trace)
-  return Object.assign(dispatchCallable(tracedQuery), { unsafe: tracedUnsafe }) as unknown as Connection
+  return Object.assign(dispatchCallable(tracedQuery), {
+    unsafe: tracedUnsafe,
+  }) as unknown as Connection
 }
 
 function dispatchCallable(query: TaggedQuery) {
@@ -299,11 +301,7 @@ const withTransactionSpan =
           Effect.flatMap(
             Effect.exit(
               Effect.withParentSpan(
-                Effect.locally(
-                  withTransaction(self),
-                  currentTransactionDepth,
-                  depth + 1,
-                ),
+                Effect.locally(withTransaction(self), currentTransactionDepth, depth + 1),
                 span,
               ),
             ),

@@ -63,10 +63,7 @@ export default {
               data: { source, baseName, typePrefix },
               fix(fixer) {
                 const fixes = [
-                  fixer.replaceText(
-                    node,
-                    `import ${typePrefix}* as ${baseName} from "${source}"`,
-                  ),
+                  fixer.replaceText(node, `import ${typePrefix}* as ${baseName} from "${source}"`),
                 ]
 
                 for (const specifier of node.specifiers) {
@@ -243,18 +240,15 @@ export default {
           const ancestors = sourceCode.getAncestors(node)
           const parent = ancestors[ancestors.length - 1]
           if (!parent) return false
-          if (parent.type === "MethodDefinition" || parent.type === "Property" && parent.method) return true
-          if (
-            parent.type === "VariableDeclarator" &&
-            parent.init === node
-          ) return true
+          if (parent.type === "MethodDefinition" || (parent.type === "Property" && parent.method))
+            return true
+          if (parent.type === "VariableDeclarator" && parent.init === node) return true
           return false
         }
 
         function checkParams(node) {
           for (const param of node.params) {
-            const pattern =
-              param.type === "AssignmentPattern" ? param.left : param
+            const pattern = param.type === "AssignmentPattern" ? param.left : param
             if (pattern.type !== "ObjectPattern") continue
 
             const baseName = isDefinition(node) ? "options" : "v"
@@ -262,84 +256,77 @@ export default {
             const name = findUnusedName(outerScope, baseName)
 
             const hasPropertyDefaults = pattern.properties.some(
-              (prop) =>
-                prop.type !== "RestElement" &&
-                prop.value.type === "AssignmentPattern",
+              (prop) => prop.type !== "RestElement" && prop.value.type === "AssignmentPattern",
             )
 
             context.report({
               node: pattern,
               messageId: "noDestructuredParam",
-              fix: hasPropertyDefaults ? undefined : (fixer) => {
-                const fixes = []
+              fix: hasPropertyDefaults
+                ? undefined
+                : (fixer) => {
+                    const fixes = []
 
-                const typeAnnotation = pattern.typeAnnotation
-                  ? sourceCode.getText(pattern.typeAnnotation)
-                  : ""
-                const hasDefault = param.type === "AssignmentPattern"
-                const defaultValue = hasDefault
-                  ? " = " + sourceCode.getText(param.right)
-                  : ""
+                    const typeAnnotation = pattern.typeAnnotation
+                      ? sourceCode.getText(pattern.typeAnnotation)
+                      : ""
+                    const hasDefault = param.type === "AssignmentPattern"
+                    const defaultValue = hasDefault ? " = " + sourceCode.getText(param.right) : ""
 
-                fixes.push(
-                  fixer.replaceTextRange(
-                    param.range,
-                    name + typeAnnotation + defaultValue,
-                  ),
-                )
+                    fixes.push(
+                      fixer.replaceTextRange(param.range, name + typeAnnotation + defaultValue),
+                    )
 
-                const fnScope = sourceCode.getScope(node)
-                const localToKey = new Map()
-                for (const prop of pattern.properties) {
-                  if (prop.type === "RestElement") continue
-                  const keyName =
-                    prop.key.type === "Identifier"
-                      ? prop.key.name
-                      : sourceCode.getText(prop.key)
-                  const localNode =
-                    prop.value.type === "AssignmentPattern"
-                      ? prop.value.left
-                      : prop.value
-                  if (localNode.type === "Identifier") {
-                    localToKey.set(localNode.name, keyName)
-                  }
-                }
-
-                for (const variable of fnScope.variables) {
-                  const keyName = localToKey.get(variable.name)
-                  if (keyName === undefined) continue
-
-                  for (const ref of variable.references) {
-                    if (ref.identifier.range[0] >= pattern.range[0] &&
-                        ref.identifier.range[1] <= pattern.range[1]) continue
-
-                    const ancestors = sourceCode.getAncestors(ref.identifier)
-                    const parent = ancestors[ancestors.length - 1]
-                    if (
-                      parent &&
-                      parent.type === "Property" &&
-                      parent.shorthand &&
-                      parent.value === ref.identifier
-                    ) {
-                      fixes.push(
-                        fixer.replaceTextRange(
-                          parent.range,
-                          keyName + ": " + name + "." + keyName,
-                        ),
-                      )
-                    } else {
-                      fixes.push(
-                        fixer.replaceTextRange(
-                          ref.identifier.range,
-                          name + "." + keyName,
-                        ),
-                      )
+                    const fnScope = sourceCode.getScope(node)
+                    const localToKey = new Map()
+                    for (const prop of pattern.properties) {
+                      if (prop.type === "RestElement") continue
+                      const keyName =
+                        prop.key.type === "Identifier"
+                          ? prop.key.name
+                          : sourceCode.getText(prop.key)
+                      const localNode =
+                        prop.value.type === "AssignmentPattern" ? prop.value.left : prop.value
+                      if (localNode.type === "Identifier") {
+                        localToKey.set(localNode.name, keyName)
+                      }
                     }
-                  }
-                }
 
-                return fixes
-              },
+                    for (const variable of fnScope.variables) {
+                      const keyName = localToKey.get(variable.name)
+                      if (keyName === undefined) continue
+
+                      for (const ref of variable.references) {
+                        if (
+                          ref.identifier.range[0] >= pattern.range[0] &&
+                          ref.identifier.range[1] <= pattern.range[1]
+                        )
+                          continue
+
+                        const ancestors = sourceCode.getAncestors(ref.identifier)
+                        const parent = ancestors[ancestors.length - 1]
+                        if (
+                          parent &&
+                          parent.type === "Property" &&
+                          parent.shorthand &&
+                          parent.value === ref.identifier
+                        ) {
+                          fixes.push(
+                            fixer.replaceTextRange(
+                              parent.range,
+                              keyName + ": " + name + "." + keyName,
+                            ),
+                          )
+                        } else {
+                          fixes.push(
+                            fixer.replaceTextRange(ref.identifier.range, name + "." + keyName),
+                          )
+                        }
+                      }
+                    }
+
+                    return fixes
+                  },
             })
           }
         }

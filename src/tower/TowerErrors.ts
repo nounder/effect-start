@@ -161,9 +161,7 @@ function make(store: TowerStore.TowerStoreShape): Supervisor.Supervisor<void> {
       fiber: Fiber.RuntimeFiber<A, E>,
     ) {
       const childId = FiberId.threadName(fiber.id())
-      const parentId = Option.isSome(parent)
-        ? FiberId.threadName(parent.value.id())
-        : undefined
+      const parentId = Option.isSome(parent) ? FiberId.threadName(parent.value.id()) : undefined
 
       const span = fiber.currentSpan
       const traceId = span
@@ -185,14 +183,16 @@ function make(store: TowerStore.TowerStoreShape): Supervisor.Supervisor<void> {
         annotations[key] = value
       })
 
-      TowerStore.runWrite(TowerStore.upsertFiber(
-        store.sql,
-        childId,
-        parentId !== childId ? parentId : undefined,
-        span?._tag === "Span" ? span.name : undefined,
-        traceId,
-        annotations,
-      ))
+      TowerStore.runWrite(
+        TowerStore.upsertFiber(
+          store.sql,
+          childId,
+          parentId !== childId ? parentId : undefined,
+          span?._tag === "Span" ? span.name : undefined,
+          traceId,
+          annotations,
+        ),
+      )
     }
 
     onEnd<A, E>(exit: Exit.Exit<A, E>, fiber: Fiber.RuntimeFiber<A, E>) {

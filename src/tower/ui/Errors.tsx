@@ -2,12 +2,15 @@ import * as Unique from "../../Unique.ts"
 import * as TowerStore from "../TowerStore.ts"
 
 export function ErrorLine(options: { error: TowerStore.TowerError }) {
-  const time = new Date(Number(Unique.snowflake.timestamp(options.error.id))).toLocaleTimeString("en", {
-    hour12: false,
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  })
+  const time = new Date(Number(Unique.snowflake.timestamp(options.error.id))).toLocaleTimeString(
+    "en",
+    {
+      hour12: false,
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    },
+  )
   const firstLine = options.error.prettyPrint.split("\n")[0] ?? ""
   const tags = options.error.details.map((d) => d.tag).filter(Boolean)
 

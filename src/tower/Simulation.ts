@@ -110,50 +110,50 @@ const errorMessages = [
 class DatabaseError extends Data.TaggedError("DatabaseError")<{
   readonly query: string
   readonly reason: string
-}> { }
+}> {}
 
 class AuthenticationError extends Data.TaggedError("AuthenticationError")<{
   readonly reason: string
   readonly userId?: string
-}> { }
+}> {}
 
 class ExternalServiceError extends Data.TaggedError("ExternalServiceError")<{
   readonly service: string
   readonly statusCode: number
   readonly reason: string
-}> { }
+}> {}
 
 class TimeoutError extends Data.TaggedError("TimeoutError")<{
   readonly operation: string
   readonly durationMs: number
-}> { }
+}> {}
 
 class ValidationError extends Data.TaggedError("ValidationError")<{
   readonly field: string
   readonly message: string
-}> { }
+}> {}
 
 class TaskError extends Data.TaggedError("TaskError")<{
   readonly task: string
   readonly reason: string
-}> { }
+}> {}
 
 class HttpError extends Data.TaggedError("HttpError")<{
   readonly method: string
   readonly path: string
   readonly statusCode: number
   readonly message: string
-}> { }
+}> {}
 
 class RateLimitError extends Data.TaggedError("RateLimitError")<{
   readonly clientIp: string
   readonly limit: number
-}> { }
+}> {}
 
 class CircuitBreakerError extends Data.TaggedError("CircuitBreakerError")<{
   readonly service: string
   readonly failureCount: number
-}> { }
+}> {}
 
 const simulateDnsResolve = Effect.gen(function* () {
   const hosts = [
@@ -771,6 +771,6 @@ export function layer() {
       yield* Effect.forkScoped(requestLoop)
       yield* Effect.forkScoped(backgroundLoop)
       yield* Effect.logInfo("simulation layer ready")
-    })
+    }),
   )
 }

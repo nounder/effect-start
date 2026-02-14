@@ -22,9 +22,10 @@ const fromTracerId = (id: string): bigint | undefined => {
 const make = (store: TowerStore.TowerStoreShape): Tracer.Tracer =>
   Tracer.make({
     span(name, parent, context, links, startTime, kind, options) {
-      const parentSpanId = Option.isSome(parent) && parent.value._tag === "Span"
-        ? fromTracerId(parent.value.spanId)
-        : undefined
+      const parentSpanId =
+        Option.isSome(parent) && parent.value._tag === "Span"
+          ? fromTracerId(parent.value.spanId)
+          : undefined
       const parentTraceId = Option.isSome(parent) ? fromTracerId(parent.value.traceId) : undefined
       const traceId = parentTraceId ?? TowerStore.nextTraceId()
       const spanId = TowerStore.nextSpanId()

@@ -29,7 +29,10 @@ const tracerLayer = (
           name,
           kind,
           attributes: Object.fromEntries(attrs.entries()),
-          events: [] as Array<{ readonly name: string; readonly attributes?: Record<string, unknown> }>,
+          events: [] as Array<{
+            readonly name: string
+            readonly attributes?: Record<string, unknown>
+          }>,
         }
         capturedSpans.push(captured)
         let status: Tracer.SpanStatus = { _tag: "Started", startTime }
@@ -83,7 +86,10 @@ const runSqlTraced = <A, E>(
   Effect.runPromise(
     Effect.provide(
       effect,
-      Layer.mergeAll(BunSql.layer({ adapter: "sqlite", filename: ":memory:" }), tracerLayer(capturedSpans)),
+      Layer.mergeAll(
+        BunSql.layer({ adapter: "sqlite", filename: ":memory:" }),
+        tracerLayer(capturedSpans),
+      ),
     ),
   )
 
@@ -574,7 +580,10 @@ test.describe("BunSql", () => {
         readonly name: string
         readonly kind: Tracer.SpanKind
         readonly attributes: Record<string, unknown>
-        readonly events: Array<{ readonly name: string; readonly attributes?: Record<string, unknown> }>
+        readonly events: Array<{
+          readonly name: string
+          readonly attributes?: Record<string, unknown>
+        }>
       }> = []
 
       await runSqlTraced(
@@ -613,7 +622,10 @@ test.describe("BunSql", () => {
         readonly name: string
         readonly kind: Tracer.SpanKind
         readonly attributes: Record<string, unknown>
-        readonly events: Array<{ readonly name: string; readonly attributes?: Record<string, unknown> }>
+        readonly events: Array<{
+          readonly name: string
+          readonly attributes?: Record<string, unknown>
+        }>
       }> = []
 
       await runSqlTraced(
@@ -639,7 +651,9 @@ test.describe("BunSql", () => {
 
       const spans = capturedSpans.filter((span) => span.name === "sql.transaction")
 
-      const commitSpan = spans.find((span) => span.events.some((event) => event.name === "db.transaction.commit"))
+      const commitSpan = spans.find((span) =>
+        span.events.some((event) => event.name === "db.transaction.commit"),
+      )
       const savepointSpan = spans.find((span) =>
         span.events.some((event) => event.name === "db.transaction.savepoint"),
       )

@@ -14,14 +14,18 @@ function KeyValue(options: { label: string; value: string | number | bigint | un
   return (
     <div style="display:flex;gap:8px;padding:4px 0;border-bottom:1px solid #1e293b;font-size:12px">
       <span style="color:#64748b;min-width:120px">{options.label}</span>
-      <span style="color:#e2e8f0;font-family:monospace;word-break:break-all">{String(options.value)}</span>
+      <span style="color:#e2e8f0;font-family:monospace;word-break:break-all">
+        {String(options.value)}
+      </span>
     </div>
   )
 }
 
 function StatusBadge(options: { status: string }) {
-  const bg = options.status === "ok" ? "#166534" : options.status === "error" ? "#7f1d1d" : "#713f12"
-  const fg = options.status === "ok" ? "#4ade80" : options.status === "error" ? "#fca5a5" : "#fde047"
+  const bg =
+    options.status === "ok" ? "#166534" : options.status === "error" ? "#7f1d1d" : "#713f12"
+  const fg =
+    options.status === "ok" ? "#4ade80" : options.status === "error" ? "#fca5a5" : "#fde047"
   return (
     <span style={`font-size:11px;padding:2px 8px;border-radius:4px;background:${bg};color:${fg}`}>
       {options.status}
@@ -117,9 +121,17 @@ export function collectFibers(
 
 function FiberRow(options: { fiber: FiberSummary; prefix: string }) {
   const aliveColor =
-    options.fiber.alive === "alive" ? "#4ade80" : options.fiber.alive === "dead" ? "#ef4444" : "#94a3b8"
+    options.fiber.alive === "alive"
+      ? "#4ade80"
+      : options.fiber.alive === "dead"
+        ? "#ef4444"
+        : "#94a3b8"
   const aliveBg =
-    options.fiber.alive === "alive" ? "#166534" : options.fiber.alive === "dead" ? "#7f1d1d" : "#334155"
+    options.fiber.alive === "alive"
+      ? "#166534"
+      : options.fiber.alive === "dead"
+        ? "#7f1d1d"
+        : "#334155"
   const lastSeen = options.fiber.lastSeen
     ? new Date(options.fiber.lastSeen).toLocaleTimeString("en", {
         hour12: false,
@@ -189,14 +201,19 @@ export function FiberDetail(options: {
   parents: Array<string>
   context: TowerStore.FiberContext | undefined
 }) {
-  const aliveColor = options.alive === "alive" ? "#4ade80" : options.alive === "dead" ? "#ef4444" : "#94a3b8"
-  const aliveBg = options.alive === "alive" ? "#166534" : options.alive === "dead" ? "#7f1d1d" : "#334155"
+  const aliveColor =
+    options.alive === "alive" ? "#4ade80" : options.alive === "dead" ? "#ef4444" : "#94a3b8"
+  const aliveBg =
+    options.alive === "alive" ? "#166534" : options.alive === "dead" ? "#7f1d1d" : "#334155"
 
   return (
     <>
       <div class="tab-header">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-          <a href={`${options.prefix}/fibers`} style="color:#64748b;text-decoration:none;font-size:12px">
+          <a
+            href={`${options.prefix}/fibers`}
+            style="color:#64748b;text-decoration:none;font-size:12px"
+          >
             Fibers
           </a>
           <span style="color:#475569">/</span>
@@ -236,13 +253,17 @@ export function FiberDetail(options: {
         )}
 
         {options.context &&
-          (options.context.spanName || options.context.traceId || Object.keys(options.context.annotations).length > 0) && (
+          (options.context.spanName ||
+            options.context.traceId ||
+            Object.keys(options.context.annotations).length > 0) && (
             <div style="padding:8px 16px">
               <div style="color:#94a3b8;font-size:12px;font-weight:600;margin-bottom:8px">
                 Context
               </div>
               <div style="background:#111827;border:1px solid #1e293b;border-radius:6px;padding:8px 12px">
-                {options.context.spanName && <KeyValue label="Span" value={options.context.spanName} />}
+                {options.context.spanName && (
+                  <KeyValue label="Span" value={options.context.spanName} />
+                )}
                 {options.context.traceId && (
                   <div style="display:flex;gap:8px;padding:4px 0;border-bottom:1px solid #1e293b;font-size:12px">
                     <span style="color:#64748b;min-width:120px">Trace</span>

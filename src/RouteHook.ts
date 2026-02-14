@@ -1,6 +1,6 @@
 import * as Effect from "effect/Effect"
 import type * as Utils from "effect/Utils"
-import * as Entity from "./Entity.ts"
+import type * as Entity from "./Entity.ts"
 import * as Route from "./Route.ts"
 
 export type FilterResult<BOut, E, R> = { context: BOut } | Effect.Effect<{ context: BOut }, E, R>

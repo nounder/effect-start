@@ -17,7 +17,8 @@ export function layer(
     readonly sqlLayer?: Layer.Layer<Sql.SqlClient, Sql.SqlError>
   },
 ): Layer.Layer<TowerStore.TowerStore> {
-  const sqlLayer = options?.sqlLayer ?? sqlBun.layer({ adapter: "sqlite", filename: ":memory:" } as any)
+  const sqlLayer =
+    options?.sqlLayer ?? sqlBun.layer({ adapter: "sqlite", filename: ":memory:" } as any)
   const store = TowerStore.layer(options).pipe(Layer.provide(sqlLayer), Layer.orDie)
   const features = Layer.mergeAll(
     TowerTracer.layer,
@@ -29,9 +30,7 @@ export function layer(
   return Layer.merge(store, features)
 }
 
-export function layerRoutes(options?: {
-  prefix?: string
-}) {
+export function layerRoutes(options?: { prefix?: string }) {
   const prefix = options?.prefix ?? "/tower"
 
   return Layer.effect(

@@ -18,14 +18,18 @@ function KeyValue(options: { label: string; value: string | number | bigint | un
   return (
     <div style="display:flex;gap:8px;padding:4px 0;border-bottom:1px solid #1e293b;font-size:12px">
       <span style="color:#64748b;min-width:120px">{options.label}</span>
-      <span style="color:#e2e8f0;font-family:monospace;word-break:break-all">{String(options.value)}</span>
+      <span style="color:#e2e8f0;font-family:monospace;word-break:break-all">
+        {String(options.value)}
+      </span>
     </div>
   )
 }
 
 function StatusBadge(options: { status: string }) {
-  const bg = options.status === "ok" ? "#166534" : options.status === "error" ? "#7f1d1d" : "#713f12"
-  const fg = options.status === "ok" ? "#4ade80" : options.status === "error" ? "#fca5a5" : "#fde047"
+  const bg =
+    options.status === "ok" ? "#166534" : options.status === "error" ? "#7f1d1d" : "#713f12"
+  const fg =
+    options.status === "ok" ? "#4ade80" : options.status === "error" ? "#fca5a5" : "#fde047"
   return (
     <span style={`font-size:11px;padding:2px 8px;border-radius:4px;background:${bg};color:${fg}`}>
       {options.status}
@@ -121,7 +125,9 @@ function TreeConnectors(options: { tree: TreeSpan }) {
     elements.push(<div class="wf-vline" style={`left:${(options.tree.depth - 1) * 20 + 6}px`} />)
   }
 
-  elements.push(<div class="wf-hline" style={`left:${(options.tree.depth - 1) * 20 + 6}px;top:50%`} />)
+  elements.push(
+    <div class="wf-hline" style={`left:${(options.tree.depth - 1) * 20 + 6}px;top:50%`} />,
+  )
 
   return (
     <div class="wf-tree" style={`width:${indent}px;position:relative`}>
@@ -148,17 +154,15 @@ function TimeAxis(options: { totalMs: number }) {
   )
 }
 
-function WaterfallRow(options: {
-  tree: TreeSpan
-  totalMs: number
-  rootStart: bigint
-}) {
+function WaterfallRow(options: { tree: TreeSpan; totalMs: number; rootStart: bigint }) {
   const s = options.tree.span
   const offsetMs = Number(s.startTime - options.rootStart) / 1_000_000
   const durMs = s.durationMs ?? 0
   const leftPct = options.totalMs > 0 ? Math.min(100, (offsetMs / options.totalMs) * 100) : 0
   const widthPct =
-    options.totalMs > 0 ? Math.max(0.5, Math.min(100 - leftPct, (durMs / options.totalMs) * 100)) : 100
+    options.totalMs > 0
+      ? Math.max(0.5, Math.min(100 - leftPct, (durMs / options.totalMs) * 100))
+      : 100
   const color = statusColor(s.status)
 
   const durLabelLeft = leftPct + widthPct + 0.5
@@ -316,10 +320,7 @@ export function TraceGroups(options: { spans: Array<TowerStore.TowerSpan> }) {
   )
 }
 
-export function TraceDetail(options: {
-  prefix: string
-  spans: Array<TowerStore.TowerSpan>
-}) {
+export function TraceDetail(options: { prefix: string; spans: Array<TowerStore.TowerSpan> }) {
   if (options.spans.length === 0) {
     return <div class="empty">Trace not found</div>
   }
@@ -334,7 +335,10 @@ export function TraceDetail(options: {
     <>
       <div style="padding:12px 16px;border-bottom:1px solid #1e293b">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-          <a href={`${options.prefix}/traces`} style="color:#64748b;text-decoration:none;font-size:12px">
+          <a
+            href={`${options.prefix}/traces`}
+            style="color:#64748b;text-decoration:none;font-size:12px"
+          >
             Traces
           </a>
           <span style="color:#475569">/</span>

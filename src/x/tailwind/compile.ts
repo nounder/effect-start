@@ -29,7 +29,12 @@ function createCompileOptions(options: CompileOptions) {
       return loadModule(id, base, options.onDependency, options.customJsResolver)
     },
     async loadStylesheet(id: string, sheetBase: string) {
-      let sheet = await loadStylesheet(id, sheetBase, options.onDependency, options.customCssResolver)
+      let sheet = await loadStylesheet(
+        id,
+        sheetBase,
+        options.onDependency,
+        options.customCssResolver,
+      )
 
       return sheet
     },

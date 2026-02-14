@@ -24,7 +24,9 @@ export default Route.get(
       else alive = "unknown"
     }
     if (fiberLogs.length > 0 || fiberSpans.length > 0) {
-      const hasRecent = fiberLogs.some((l) => Date.now() - Number(Unique.snowflake.timestamp(l.id)) < 5000)
+      const hasRecent = fiberLogs.some(
+        (l) => Date.now() - Number(Unique.snowflake.timestamp(l.id)) < 5000,
+      )
       if (hasRecent) alive = "alive"
       else if (fiberNum < counter) alive = "dead"
     }

@@ -46,7 +46,9 @@ const detectDialect = (bunSql: any): Sql.DialectConfig => {
   return Sql.postgresDialect
 }
 
-const makeSpanAttributes = (config: ConstructorParameters<typeof Bun.SQL>[0]): Record<string, unknown> => {
+const makeSpanAttributes = (
+  config: ConstructorParameters<typeof Bun.SQL>[0],
+): Record<string, unknown> => {
   const c = config as Record<string, unknown>
   const adapter = c.adapter
   if (adapter === "sqlite") {

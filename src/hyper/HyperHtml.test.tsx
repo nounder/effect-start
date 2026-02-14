@@ -172,18 +172,14 @@ test.it("script with function child renders as IIFE", () => {
 
 test.describe("raw text escaping", () => {
   test.it("script children escapes closing tag", () => {
-    const html = HyperHtml.renderToString(
-      <script>{'console.log("</script>")'}</script>,
-    )
+    const html = HyperHtml.renderToString(<script>{'console.log("</script>")'}</script>)
 
     test.expect(html).toBe('<script>console.log("<\\/script>")</script>')
     test.expect(html).not.toContain("</script><")
   })
 
   test.it("style children escapes closing tag", () => {
-    const html = HyperHtml.renderToString(
-      <style>{'div::after { content: "</style>" }'}</style>,
-    )
+    const html = HyperHtml.renderToString(<style>{'div::after { content: "</style>" }'}</style>)
 
     test.expect(html).toBe('<style>div::after { content: "<\\/style>" }</style>')
     test.expect(html).not.toContain("</style><")
@@ -200,35 +196,27 @@ test.describe("raw text escaping", () => {
   })
 
   test.it("case-insensitive closing tags are escaped", () => {
-    const html = HyperHtml.renderToString(
-      <script>{'x = "</Script></SCRIPT></sCrIpT>"'}</script>,
-    )
+    const html = HyperHtml.renderToString(<script>{'x = "</Script></SCRIPT></sCrIpT>"'}</script>)
 
     test.expect(html).toBe('<script>x = "<\\/Script><\\/SCRIPT><\\/sCrIpT>"</script>')
   })
 
   test.it("closing tag with whitespace is escaped", () => {
-    const html = HyperHtml.renderToString(
-      <script>{'x = "</script >"'}</script>,
-    )
+    const html = HyperHtml.renderToString(<script>{'x = "</script >"'}</script>)
 
     test.expect(html).toBe('<script>x = "<\\/script >"</script>')
   })
 
   test.it("XSS via script injection in script children", () => {
     const userInput = '</script><script>alert("xss")</script>'
-    const html = HyperHtml.renderToString(
-      <script>{`var data = "${userInput}"`}</script>,
-    )
+    const html = HyperHtml.renderToString(<script>{`var data = "${userInput}"`}</script>)
 
     test.expect(html).not.toMatch(/<\/script.*<script/i)
   })
 
   test.it("XSS via script injection in style children", () => {
     const userInput = '</style><script>alert("xss")</script>'
-    const html = HyperHtml.renderToString(
-      <style>{`div::after { content: "${userInput}" }`}</style>,
-    )
+    const html = HyperHtml.renderToString(<style>{`div::after { content: "${userInput}" }`}</style>)
 
     test.expect(html).not.toMatch(/<\/style.*<script/i)
   })
@@ -269,17 +257,13 @@ test.describe("raw text escaping", () => {
   })
 
   test.it("multiple closing tags in one string", () => {
-    const html = HyperHtml.renderToString(
-      <script>{'a = "</script>"; b = "</script>"'}</script>,
-    )
+    const html = HyperHtml.renderToString(<script>{'a = "</script>"; b = "</script>"'}</script>)
 
     test.expect(html).toBe('<script>a = "<\\/script>"; b = "<\\/script>"</script>')
   })
 
   test.it("partial closing tag sequences are escaped", () => {
-    const html = HyperHtml.renderToString(
-      <script>{'x = "</" + "script>"'}</script>,
-    )
+    const html = HyperHtml.renderToString(<script>{'x = "</" + "script>"'}</script>)
 
     test.expect(html).toBe('<script>x = "<\\/" + "script>"</script>')
   })
@@ -295,9 +279,7 @@ test.describe("raw text escaping", () => {
   })
 
   test.it("escaped output is still valid JS", () => {
-    const html = HyperHtml.renderToString(
-      <script>{'var x = "</script>"'}</script>,
-    )
+    const html = HyperHtml.renderToString(<script>{'var x = "</script>"'}</script>)
 
     const content = html.replace("<script>", "").replace("</script>", "")
     const fn = new Function(content)

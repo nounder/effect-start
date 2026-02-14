@@ -365,9 +365,7 @@ test.describe(Start.build, () => {
       return "done"
     })
 
-    await Effect.runPromise(
-      program.pipe(Effect.provide(AppLayer), Effect.provide(ExternalApiLive)),
-    )
+    await Effect.runPromise(program.pipe(Effect.provide(AppLayer), Effect.provide(ExternalApiLive)))
 
     test.expect(loggerBuildCount).toEqual(1)
     test.expect(databaseBuildCount).toEqual(1)

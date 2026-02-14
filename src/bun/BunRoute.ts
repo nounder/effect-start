@@ -156,6 +156,7 @@ type BunServerFetchHandler = (
 
 type BunServerRouteHandler =
   | Bun.HTMLBundle
+  | Bun.BunFile
   | BunServerFetchHandler
   | Partial<Record<Bun.Serve.HTTPMethod, BunServerFetchHandler>>
 

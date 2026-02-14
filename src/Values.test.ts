@@ -176,30 +176,34 @@ test.describe("Simplify", () => {
 
 test.describe("compact", () => {
   test.it("removes undefined values", () => {
-    test.expect(
-      Values.compact({
+    test
+      .expect(
+        Values.compact({
+          a: 1,
+          b: undefined,
+          c: "ok",
+        }),
+      )
+      .toEqual({
         a: 1,
-        b: undefined,
         c: "ok",
-      }),
-    ).toEqual({
-      a: 1,
-      c: "ok",
-    })
+      })
   })
 
   test.it("preserves null and false", () => {
-    test.expect(
-      Values.compact({
+    test
+      .expect(
+        Values.compact({
+          a: null,
+          b: false,
+          c: 0,
+          d: undefined,
+        }),
+      )
+      .toEqual({
         a: null,
         b: false,
         c: 0,
-        d: undefined,
-      }),
-    ).toEqual({
-      a: null,
-      b: false,
-      c: 0,
-    })
+      })
   })
 })

@@ -22,7 +22,9 @@ function StatCard(options: { label: string; value: string; sub?: string }) {
   return (
     <div style="background:#111827;border:1px solid #374151;border-radius:6px;padding:12px;min-width:180px">
       <div style="color:#9ca3af;font-size:11px;margin-bottom:4px">{options.label}</div>
-      <div style="color:#f3f4f6;font-size:22px;font-weight:700;font-family:monospace">{options.value}</div>
+      <div style="color:#f3f4f6;font-size:22px;font-weight:700;font-family:monospace">
+        {options.value}
+      </div>
       {options.sub && <div style="color:#6b7280;font-size:10px;margin-top:2px">{options.sub}</div>}
     </div>
   )
@@ -74,7 +76,11 @@ export function SystemStatsView(options: { stats: TowerStore.ProcessStats }) {
         />
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;padding:0 12px 12px">
-        <BarMeter label="Heap Memory" used={options.stats.memory.heapUsed} total={options.stats.memory.heapTotal} />
+        <BarMeter
+          label="Heap Memory"
+          used={options.stats.memory.heapUsed}
+          total={options.stats.memory.heapTotal}
+        />
         <BarMeter
           label="System Memory"
           used={options.stats.system.totalmem - options.stats.system.freemem}
@@ -105,11 +111,15 @@ export function SystemStatsView(options: { stats: TowerStore.ProcessStats }) {
             </div>
             <div style="display:flex;justify-content:space-between;font-size:12px">
               <span style="color:#6b7280">FS Reads</span>
-              <span style="color:#e5e7eb;font-family:monospace">{options.stats.resourceUsage.fsRead}</span>
+              <span style="color:#e5e7eb;font-family:monospace">
+                {options.stats.resourceUsage.fsRead}
+              </span>
             </div>
             <div style="display:flex;justify-content:space-between;font-size:12px">
               <span style="color:#6b7280">FS Writes</span>
-              <span style="color:#e5e7eb;font-family:monospace">{options.stats.resourceUsage.fsWrite}</span>
+              <span style="color:#e5e7eb;font-family:monospace">
+                {options.stats.resourceUsage.fsWrite}
+              </span>
             </div>
             <div style="display:flex;justify-content:space-between;font-size:12px">
               <span style="color:#6b7280">Context Switches (vol)</span>

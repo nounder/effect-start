@@ -269,16 +269,13 @@ export const effectify: {
   (...args: Array<any>) =>
     Effect.async<any, any>((resume) => {
       try {
-        fn(
-          ...args,
-          (err: any, result: any) => {
-            if (err) {
-              resume(Effect.fail(onError ? onError(err, args) : err))
-            } else {
-              resume(Effect.succeed(result))
-            }
-          },
-        )
+        fn(...args, (err: any, result: any) => {
+          if (err) {
+            resume(Effect.fail(onError ? onError(err, args) : err))
+          } else {
+            resume(Effect.succeed(result))
+          }
+        })
       } catch (err) {
         resume(onSyncError ? Effect.fail(onSyncError(err, args)) : Effect.die(err))
       }

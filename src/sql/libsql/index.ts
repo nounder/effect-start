@@ -60,7 +60,7 @@ const makeSpanAttributes = (config: ResolvedConfig): ReadonlyArray<readonly [str
 
   return Object.entries(
     Values.compact({
-      ...(config.spanAttributes ?? {}),
+      ...config.spanAttributes,
       "db.system.name": "sqlite",
       "db.namespace": dbFromPath,
       "server.address": parsed?.hostname,

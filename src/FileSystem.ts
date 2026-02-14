@@ -342,10 +342,7 @@ export const make = (
   })
 }
 
-const fileStream = (
-  file: File,
-  options: StreamOptions = {},
-) => {
+const fileStream = (file: File, options: StreamOptions = {}) => {
   const bytesToRead = options.bytesToRead !== undefined ? Size(options.bytesToRead) : undefined
   const chunkSize = Size(options.chunkSize ?? 64 * 1024)
 

@@ -23,27 +23,26 @@ const makeSpanAttributes = (
     readonly url?: string
     readonly spanAttributes?: Record<string, unknown>
   },
-): Record<string, unknown> =>
-  {
-    const parsed = (() => {
-      if (typeof config.url !== "string") return undefined
-      try {
-        return new URL(config.url)
-      } catch {
-        return undefined
-      }
-    })()
-    const dbFromPath = parsed?.pathname.replace(/^\/+/, "") || undefined
-    const parsedPort = parsed?.port ? Number(parsed.port) : undefined
+): Record<string, unknown> => {
+  const parsed = (() => {
+    if (typeof config.url !== "string") return undefined
+    try {
+      return new URL(config.url)
+    } catch {
+      return undefined
+    }
+  })()
+  const dbFromPath = parsed?.pathname.replace(/^\/+/, "") || undefined
+  const parsedPort = parsed?.port ? Number(parsed.port) : undefined
 
-    return Values.compact({
-      ...(config.spanAttributes ?? {}),
-      "db.system.name": "microsoft.sql_server",
-      "db.namespace": config.database ?? dbFromPath,
-      "server.address": config.server ?? parsed?.hostname,
-      "server.port": config.port ?? parsedPort,
-    })
-  }
+  return Values.compact({
+    ...config.spanAttributes,
+    "db.system.name": "microsoft.sql_server",
+    "db.namespace": config.database ?? dbFromPath,
+    "server.address": config.server ?? parsed?.hostname,
+    "server.port": config.port ?? parsedPort,
+  })
+}
 
 const addInputs = (request: Mssql.Request, values: Array<unknown>) => {
   for (let i = 0; i < values.length; i++) {
@@ -201,7 +200,9 @@ export const layer = (
             const driverConfig = { ...config } as Record<string, unknown>
             delete driverConfig.spanAttributes
             delete driverConfig.url
-            const pool = await new mssql.ConnectionPool(driverConfig as unknown as Mssql.config).connect()
+            const pool = await new mssql.ConnectionPool(
+              driverConfig as unknown as Mssql.config,
+            ).connect()
             return { mssql, pool }
           },
           catch: wrapError,

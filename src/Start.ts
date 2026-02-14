@@ -48,9 +48,7 @@ export function layer<
  * @since 1.0.0
  * @category constructors
  */
-export function pack<
-  const Layers extends readonly [Layer.Layer.Any, ...Array<Layer.Layer.Any>],
->(
+export function pack<const Layers extends readonly [Layer.Layer.Any, ...Array<Layer.Layer.Any>]>(
   ...layers: Layers & OrderedPack<NoInfer<Layers>, NoInfer<Layers>>
 ): Layer.Layer<
   { [K in keyof Layers]: Layer.Layer.Success<Layers[K]> }[number],
@@ -70,8 +68,7 @@ export function pack<
   return result as AnyLayer
 }
 
-type Unsatisfied<Unmet, Success> =
-  Unmet extends Success ? Unmet : never
+type Unsatisfied<Unmet, Success> = Unmet extends Success ? Unmet : never
 
 type OrderedPack<
   Layers extends readonly Layer.Layer.Any[],
@@ -81,16 +78,19 @@ type OrderedPack<
   ...infer Tail extends Layer.Layer.Any[],
 ]
   ? [
-    [
-      Unsatisfied<
-        Exclude<Layer.Layer.Context<Head>, { [K in keyof Tail]: Layer.Layer.Success<Tail[K]> }[number]>,
-        { [K in keyof All]: Layer.Layer.Success<All[K]> }[number]
-      >,
-    ] extends [never]
-    ? Head
-    : never,
-    ...OrderedPack<Tail, All>,
-  ]
+      [
+        Unsatisfied<
+          Exclude<
+            Layer.Layer.Context<Head>,
+            { [K in keyof Tail]: Layer.Layer.Success<Tail[K]> }[number]
+          >,
+          { [K in keyof All]: Layer.Layer.Success<All[K]> }[number]
+        >,
+      ] extends [never]
+        ? Head
+        : never,
+      ...OrderedPack<Tail, All>,
+    ]
   : []
 
 /**
@@ -105,9 +105,7 @@ type OrderedPack<
  * @since 1.0.0
  * @category constructors
  */
-export function build<
-  const Layers extends readonly [Layer.Layer.Any, ...Array<Layer.Layer.Any>],
->(
+export function build<const Layers extends readonly [Layer.Layer.Any, ...Array<Layer.Layer.Any>]>(
   ...layers: Layers
 ): Layer.Layer<
   { [K in keyof Layers]: Layer.Layer.Success<Layers[K]> }[number],

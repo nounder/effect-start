@@ -194,7 +194,9 @@ const DDL = [
   )`,
 ]
 
-export function layer(options?: TowerStoreOptions): Layer.Layer<TowerStore, Sql.SqlError, Sql.SqlClient> {
+export function layer(
+  options?: TowerStoreOptions,
+): Layer.Layer<TowerStore, Sql.SqlError, Sql.SqlClient> {
   return Layer.effect(
     TowerStore,
     Effect.gen(function* () {
@@ -413,82 +415,91 @@ const noTrace = <A, E>(effect: Effect.Effect<A, E>): Effect.Effect<A, E> =>
   Effect.withTracerEnabled(effect, false)
 
 export function allSpans(sql: Sql.SqlClient) {
-  return noTrace(Effect.map(
-    sql<SpanRow>`SELECT * FROM Span ORDER BY rowid`,
-    (rows) => rows.map(deserializeSpan),
-  ))
+  return noTrace(
+    Effect.map(sql<SpanRow>`SELECT * FROM Span ORDER BY rowid`, (rows) =>
+      rows.map(deserializeSpan),
+    ),
+  )
 }
 
 export function allLogs(sql: Sql.SqlClient) {
-  return noTrace(Effect.map(
-    sql<LogRow>`SELECT * FROM Log ORDER BY rowid`,
-    (rows) => rows.map(deserializeLog),
-  ))
+  return noTrace(
+    Effect.map(sql<LogRow>`SELECT * FROM Log ORDER BY rowid`, (rows) => rows.map(deserializeLog)),
+  )
 }
 
 export function allErrors(sql: Sql.SqlClient) {
-  return noTrace(Effect.map(
-    sql<ErrorRow>`SELECT * FROM Error ORDER BY rowid`,
-    (rows) => rows.map(deserializeError),
-  ))
+  return noTrace(
+    Effect.map(sql<ErrorRow>`SELECT * FROM Error ORDER BY rowid`, (rows) =>
+      rows.map(deserializeError),
+    ),
+  )
 }
 
 export function spansByTraceId(sql: Sql.SqlClient, traceId: bigint) {
-  return noTrace(Effect.map(
-    sql<SpanRow>`SELECT * FROM Span WHERE traceId = ${traceId} ORDER BY rowid`,
-    (rows) => rows.map(deserializeSpan),
-  ))
+  return noTrace(
+    Effect.map(sql<SpanRow>`SELECT * FROM Span WHERE traceId = ${traceId} ORDER BY rowid`, (rows) =>
+      rows.map(deserializeSpan),
+    ),
+  )
 }
 
 export function spansByFiberId(sql: Sql.SqlClient, fiberId: string) {
-  return noTrace(Effect.map(
-    sql<SpanRow>`SELECT * FROM Span WHERE fiberId = ${fiberId} ORDER BY rowid`,
-    (rows) => rows.map(deserializeSpan),
-  ))
+  return noTrace(
+    Effect.map(sql<SpanRow>`SELECT * FROM Span WHERE fiberId = ${fiberId} ORDER BY rowid`, (rows) =>
+      rows.map(deserializeSpan),
+    ),
+  )
 }
 
 export function logsByFiberId(sql: Sql.SqlClient, fiberId: string) {
-  return noTrace(Effect.map(
-    sql<LogRow>`SELECT * FROM Log WHERE fiberId = ${fiberId} ORDER BY rowid`,
-    (rows) => rows.map(deserializeLog),
-  ))
+  return noTrace(
+    Effect.map(sql<LogRow>`SELECT * FROM Log WHERE fiberId = ${fiberId} ORDER BY rowid`, (rows) =>
+      rows.map(deserializeLog),
+    ),
+  )
 }
 
 export function getFiber(sql: Sql.SqlClient, fiberId: string) {
-  return noTrace(Effect.map(
-    sql<FiberRow>`SELECT * FROM Fiber WHERE id = ${fiberId}`,
-    (rows) => rows.length > 0 ? rows[0] : undefined,
-  ))
+  return noTrace(
+    Effect.map(sql<FiberRow>`SELECT * FROM Fiber WHERE id = ${fiberId}`, (rows) =>
+      rows.length > 0 ? rows[0] : undefined,
+    ),
+  )
 }
 
 export function getParentChain(sql: Sql.SqlClient, fiberId: string) {
-  return noTrace(Effect.gen(function* () {
-    const chain: Array<string> = []
-    const visited = new Set<string>()
-    let current = fiberId
-    while (true) {
-      const rows = yield* sql<FiberRow>`SELECT * FROM Fiber WHERE id = ${current}`
-      if (rows.length === 0 || !rows[0].parentId) break
-      const parentId = rows[0].parentId
-      if (visited.has(parentId)) break
-      chain.push(parentId)
-      visited.add(parentId)
-      current = parentId
-    }
-    return chain.reverse()
-  }))
+  return noTrace(
+    Effect.gen(function* () {
+      const chain: Array<string> = []
+      const visited = new Set<string>()
+      let current = fiberId
+      while (true) {
+        const rows = yield* sql<FiberRow>`SELECT * FROM Fiber WHERE id = ${current}`
+        if (rows.length === 0 || !rows[0].parentId) break
+        const parentId = rows[0].parentId
+        if (visited.has(parentId)) break
+        chain.push(parentId)
+        visited.add(parentId)
+        current = parentId
+      }
+      return chain.reverse()
+    }),
+  )
 }
 
 export function getFiberContext(sql: Sql.SqlClient, fiberId: string) {
-  return noTrace(Effect.map(
-    sql<FiberRow>`SELECT * FROM Fiber WHERE id = ${fiberId}`,
-    (rows): FiberContext | undefined =>
-      rows.length > 0
-        ? {
-            spanName: rows[0].spanName ?? undefined,
-            traceId: rows[0].traceId != null ? BigInt(rows[0].traceId) : undefined,
-            annotations: JSON.parse(rows[0].annotations),
-          }
-        : undefined,
-  ))
+  return noTrace(
+    Effect.map(
+      sql<FiberRow>`SELECT * FROM Fiber WHERE id = ${fiberId}`,
+      (rows): FiberContext | undefined =>
+        rows.length > 0
+          ? {
+              spanName: rows[0].spanName ?? undefined,
+              traceId: rows[0].traceId != null ? BigInt(rows[0].traceId) : undefined,
+              annotations: JSON.parse(rows[0].annotations),
+            }
+          : undefined,
+    ),
+  )
 }

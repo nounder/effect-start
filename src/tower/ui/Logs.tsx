@@ -12,12 +12,15 @@ function levelColor(level: string): string {
 
 export function LogLine(options: { log: TowerStore.TowerLog }) {
   const color = levelColor(options.log.level)
-  const time = new Date(Number(Unique.snowflake.timestamp(options.log.id))).toLocaleTimeString("en", {
-    hour12: false,
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  })
+  const time = new Date(Number(Unique.snowflake.timestamp(options.log.id))).toLocaleTimeString(
+    "en",
+    {
+      hour12: false,
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    },
+  )
 
   return (
     <div
