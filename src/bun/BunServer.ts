@@ -228,11 +228,14 @@ function walkBunRoutes(runtime: Runtime.Runtime<BunServer>, tree: RouteTree.Rout
     const pathGroups = new Map<string, Array<RouteMount.MountedRoute>>()
     const toWebHandler = RouteHttp.toWebHandlerRuntime(runtime)
 
+    let hasPrebuiltBundles = false
+
     for (const route of RouteTree.walk(tree)) {
       const bunDescriptors = BunRoute.descriptors(route)
       if (bunDescriptors) {
         const htmlBundle = yield* Effect.promise(bunDescriptors.bunLoad)
         if (htmlBundle.files) {
+          hasPrebuiltBundles = true
           registerPrebuiltBundle(bunDescriptors.bunPrefix, htmlBundle, bunRoutes)
         } else {
           bunRoutes[`${bunDescriptors.bunPrefix}/*`] = htmlBundle
@@ -249,6 +252,15 @@ function walkBunRoutes(runtime: Runtime.Runtime<BunServer>, tree: RouteTree.Rout
       const handler = toWebHandler(routes)
       for (const bunPath of PathPattern.toBun(path)) {
         bunRoutes[bunPath] = handler
+      }
+    }
+
+    if (hasPrebuiltBundles) {
+      const mainDir = NPath.dirname(Bun.main)
+      for (const output of discoverStaticOutputs(mainDir)) {
+        const routePath = `/${NPath.basename(output.path)}`
+        if (routePath in bunRoutes) continue
+        bunRoutes[routePath] = Bun.file(output.path)
       }
     }
 
@@ -274,6 +286,38 @@ function registerPrebuiltBundle(prefix: string, bundle: any, bunRoutes: BunRoute
   }
 }
 
+type StaticOutput = Pick<Bun.BuildArtifact, "path" | "loader" | "kind">
+
+function discoverStaticOutputs(dir: string): Array<StaticOutput> {
+  const loaderByExt: Record<string, Bun.Loader> = {
+    ".js": "js",
+    ".mjs": "js",
+    ".cjs": "js",
+    ".jsx": "jsx",
+    ".tsx": "tsx",
+    ".ts": "ts",
+    ".css": "css",
+    ".html": "html",
+    ".json": "json",
+    ".jsonc": "jsonc",
+    ".toml": "toml",
+    ".yaml": "yaml",
+    ".wasm": "wasm",
+    ".txt": "text",
+  }
+
+  const outputs: Array<StaticOutput> = []
+  for (const entry of new Bun.Glob("*").scanSync({ cwd: dir, onlyFiles: true })) {
+    const ext = NPath.extname(entry).toLowerCase()
+    outputs.push({
+      path: NPath.resolve(dir, entry),
+      loader: loaderByExt[ext] ?? "file",
+      kind: "asset",
+    })
+  }
+  return outputs
+}
+
 function rewriteRelativeAssetPaths(html: string | Promise<string>): Promise<string> {
   const rewriter = new HTMLRewriter()
     .on("link[href]", {
@@ -285,6 +329,14 @@ function rewriteRelativeAssetPaths(html: string | Promise<string>): Promise<stri
       },
     })
     .on("script[src]", {
+      element(el) {
+        const src = el.getAttribute("src")
+        if (src && isRelativePath(src)) {
+          el.setAttribute("src", "/" + assetBasename(src))
+        }
+      },
+    })
+    .on("img[src]", {
       element(el) {
         const src = el.getAttribute("src")
         if (src && isRelativePath(src)) {

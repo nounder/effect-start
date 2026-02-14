@@ -505,3 +505,190 @@ test.describe("prebuilt htmlBundle rewrites relative asset paths", () => {
     )
   })
 })
+
+test.describe("prebuilt htmlBundle with images", () => {
+  let tmpDir: string
+  let outDir: string
+  let bundle: Bun.HTMLBundle
+
+  test.beforeAll(async () => {
+    tmpDir = NFs.mkdtempSync(NPath.join(NOs.tmpdir(), "effect-start-img-test-"))
+    const srcDir = NPath.join(tmpDir, "src")
+    outDir = NPath.join(tmpDir, "out")
+
+    await Bun.write(NPath.join(srcDir, "pixel.gif"), Bun.file(NPath.join(staticDir, "pixel.gif")))
+    await Bun.write(NPath.join(srcDir, "icon.svg"), Bun.file(NPath.join(staticDir, "icon.svg")))
+
+    await Bun.write(
+      NPath.join(srcDir, "index.html"),
+      `<!doctype html>
+<html>
+  <head>
+    <link rel="stylesheet" href="./style.css">
+  </head>
+  <body>
+    <img src="./pixel.gif" alt="Pixel">
+    <img src="./icon.svg" alt="Icon">
+    %children%
+  </body>
+</html>`,
+    )
+    await Bun.write(NPath.join(srcDir, "style.css"), "body { margin: 0; }")
+    await Bun.write(
+      NPath.join(srcDir, "server.ts"),
+      `import html from "./index.html"\nexport default html`,
+    )
+
+    const result = await Bun.build({
+      entrypoints: [NPath.join(srcDir, "server.ts")],
+      outdir: outDir,
+      target: "bun",
+    })
+    if (!result.success) throw new Error("Bun.build failed")
+
+    const mod = await import(NPath.join(outDir, "server.js"))
+    const raw = mod.default as Bun.HTMLBundle
+
+    bundle = {
+      index: NPath.resolve(outDir, raw.index),
+      files: raw.files!.map((f) => ({ ...f, path: NPath.resolve(outDir, f.path) })),
+    }
+  })
+
+  test.afterAll(async () => {
+    await Bun.$`rm -rf ${tmpDir}`.quiet()
+  })
+
+  function findOutputFile(name: string): string {
+    const stem = name.replace(/\.[^.]+$/, "")
+    const files = [...new Bun.Glob("*").scanSync({ cwd: outDir, onlyFiles: true })]
+    const match = files.find((f) => f.startsWith(stem) && !f.endsWith(".js"))
+    if (!match) throw new Error(`No output file found for ${name}`)
+    return match
+  }
+
+  test.test("rewrites img src to absolute paths", async () => {
+    const routes = Route.tree({
+      "/bio": Route.get(
+        BunRoute.htmlBundle(() => bundle),
+        Route.html("<p>bio</p>"),
+      ),
+    })
+
+    const html = await Effect.runPromise(
+      Effect.gen(function* () {
+        const bunServer = yield* BunServer.BunServer
+        const response = yield* Effect.promise(() =>
+          fetch(`http://localhost:${bunServer.server.port}/bio`),
+        )
+        return yield* Effect.promise(() => response.text())
+      }).pipe(Effect.provide(testLayer(routes))),
+    )
+
+    test.expect(html).not.toContain('src="./')
+    test.expect(html).not.toContain('src="../')
+
+    const gifFile = findOutputFile("pixel.gif")
+    test.expect(html).toContain(`src="/${gifFile}"`)
+
+    const svgFile = findOutputFile("icon.svg")
+    test.expect(html).toContain(`src="/${svgFile}"`)
+  })
+
+  test.test("rewrites img src at deeply nested route", async () => {
+    const routes = Route.tree({
+      "/users/:id/profile": Route.get(
+        BunRoute.htmlBundle(() => bundle),
+        Route.html("<p>profile</p>"),
+      ),
+    })
+
+    const html = await Effect.runPromise(
+      Effect.gen(function* () {
+        const bunServer = yield* BunServer.BunServer
+        const response = yield* Effect.promise(() =>
+          fetch(`http://localhost:${bunServer.server.port}/users/42/profile`),
+        )
+        return yield* Effect.promise(() => response.text())
+      }).pipe(Effect.provide(testLayer(routes))),
+    )
+
+    const gifFile = findOutputFile("pixel.gif")
+    test.expect(html).toContain(`src="/${gifFile}"`)
+  })
+
+  test.test("bundler does not include images in bundle.files", async () => {
+    const gifFile = findOutputFile("pixel.gif")
+    const bundledPaths = (bundle.files ?? []).map((f) => NPath.basename(f.path))
+
+    test.expect(bundledPaths).not.toContain(gifFile)
+  })
+})
+
+test.describe("static file routes", () => {
+  test.test("serves static files with correct content-type via Bun.file", async () => {
+    const gifPath = NPath.join(staticDir, "pixel.gif")
+    const svgPath = NPath.join(staticDir, "icon.svg")
+
+    await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          const bunServer = yield* BunServer.make({
+            port: 0,
+          })
+
+          bunServer.server.reload({
+            routes: {
+              "/pixel.gif": Bun.file(gifPath),
+              "/icon.svg": Bun.file(svgPath),
+            },
+            fetch: () => new Response("not found", { status: 404 }),
+          })
+
+          const base = `http://localhost:${bunServer.server.port}`
+
+          const gifResponse = yield* Effect.promise(() => fetch(`${base}/pixel.gif`))
+          test.expect(gifResponse.status).toBe(200)
+          test.expect(gifResponse.headers.get("content-type")).toBe("image/gif")
+
+          const svgResponse = yield* Effect.promise(() => fetch(`${base}/icon.svg`))
+          test.expect(svgResponse.status).toBe(200)
+          test.expect(svgResponse.headers.get("content-type")).toBe("image/svg+xml")
+        }),
+      ),
+    )
+  })
+
+  test.test("HEAD request returns headers without body for Bun.file routes", async () => {
+    const gifPath = NPath.join(staticDir, "pixel.gif")
+
+    await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          const bunServer = yield* BunServer.make({
+            port: 0,
+          })
+
+          bunServer.server.reload({
+            routes: {
+              "/pixel.gif": Bun.file(gifPath),
+            },
+            fetch: () => new Response("not found", { status: 404 }),
+          })
+
+          const base = `http://localhost:${bunServer.server.port}`
+
+          const headResponse = yield* Effect.promise(() =>
+            fetch(`${base}/pixel.gif`, { method: "HEAD" }),
+          )
+          test.expect(headResponse.status).toBe(200)
+          test.expect(headResponse.headers.get("content-type")).toBe("image/gif")
+          test.expect(Number(headResponse.headers.get("content-length"))).toBeGreaterThan(0)
+
+          const body = yield* Effect.promise(() => headResponse.text())
+          test.expect(body).toBe("")
+        }),
+      ),
+    )
+  })
+})
