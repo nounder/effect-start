@@ -2,6 +2,7 @@ import type * as FileSystem from "./FileSystem.ts"
 import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
+import * as FiberId from "effect/FiberId"
 import * as ExecutionStrategy from "effect/ExecutionStrategy"
 import * as Exit from "effect/Exit"
 import * as Function from "effect/Function"
@@ -9,10 +10,12 @@ import * as Layer from "effect/Layer"
 import * as Scope from "effect/Scope"
 import * as SynchronizedRef from "effect/SynchronizedRef"
 import type * as ChildProcess from "./ChildProcess.ts"
+import * as MutableRef from "effect/MutableRef"
 import * as BunRuntime from "./bun/BunRuntime.ts"
 import * as BunServer from "./bun/BunServer.ts"
 import * as NodeFileSystem from "./node/NodeFileSystem.ts"
 import * as BunChildProcessSpawner from "./bun/BunChildProcessSpawner.ts"
+import * as PlatformRuntime from "./PlatformRuntime.ts"
 import * as StartApp from "./StartApp.ts"
 
 export function layer<
@@ -208,3 +211,8 @@ export function serve<ROut, E, RIn extends PlatformServices>(
 
   return Function.pipe(composed, Layer.launch, BunRuntime.runMain)
 }
+
+export const mainFiberId: Effect.Effect<FiberId.FiberId> = Effect.sync(() => {
+  const fiber = MutableRef.get(PlatformRuntime.mainFiber)
+  return fiber ? fiber.id() : FiberId.none
+})
