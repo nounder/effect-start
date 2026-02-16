@@ -237,7 +237,9 @@ export const layer = (config: PgConfig): Layer.Layer<SqlClient.SqlClient, SqlCli
                 reserve: Effect.acquireRelease(
                   Effect.tryPromise({ try: () => pg.reserve(), catch: wrapError }),
                   (reserved: Postgres.ReservedSql) => Effect.sync(() => reserved.release()),
-                ).pipe(Effect.map((reserved): SqlClient.Connection => makeReservedConnection(reserved))),
+                ).pipe(
+                  Effect.map((reserved): SqlClient.Connection => makeReservedConnection(reserved)),
+                ),
                 use,
               }),
               close: use((driver) => (driver as Postgres.Sql).end({ timeout: 0 })),

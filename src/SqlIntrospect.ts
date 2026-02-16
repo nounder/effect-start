@@ -482,7 +482,9 @@ export interface TableReader {
   readonly findAll: (
     options?: FindAllOptions,
   ) => Effect.Effect<ReadonlyArray<unknown>, SqlClient.SqlError, SqlClient.SqlClient>
-  readonly findById: (id: unknown) => Effect.Effect<unknown | null, SqlClient.SqlError, SqlClient.SqlClient>
+  readonly findById: (
+    id: unknown,
+  ) => Effect.Effect<unknown | null, SqlClient.SqlError, SqlClient.SqlClient>
   readonly count: (options?: {
     readonly filters?: ReadonlyArray<Filter>
   }) => Effect.Effect<number, SqlClient.SqlError, SqlClient.SqlClient>

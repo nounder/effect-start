@@ -11,8 +11,9 @@ import * as HashSet from "effect/HashSet"
 import * as Logger from "effect/Logger"
 import * as MutableRef from "effect/MutableRef"
 
-export const mainFiber = GlobalValue.globalValue(Symbol.for("effect-start/PlatformRuntime/mainFiber"), () =>
-  MutableRef.make<Fiber.RuntimeFiber<unknown, unknown> | undefined>(undefined),
+export const mainFiber = GlobalValue.globalValue(
+  Symbol.for("effect-start/PlatformRuntime/mainFiber"),
+  () => MutableRef.make<Fiber.RuntimeFiber<unknown, unknown> | undefined>(undefined),
 )
 
 export interface Teardown {

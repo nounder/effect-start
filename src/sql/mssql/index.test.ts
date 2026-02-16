@@ -57,7 +57,8 @@ const SqlLayer = (() => {
 
 const runtime = ManagedRuntime.make(SqlLayer.pipe(Layer.provide(BunChildProcessSpawner.layer)))
 
-const runSql = <A, E>(effect: Effect.Effect<A, E, SqlClient.SqlClient>) => runtime.runPromise(effect)
+const runSql = <A, E>(effect: Effect.Effect<A, E, SqlClient.SqlClient>) =>
+  runtime.runPromise(effect)
 
 test.describe.skipIf(!process.env.TEST_SQL)("Mssql", () => {
   test.beforeAll(() => runtime.runPromise(Effect.void), 120_000)

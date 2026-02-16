@@ -574,6 +574,45 @@ test.describe("BunSql", () => {
     )
   })
 
+  test.describe("SqlEffect", () => {
+    test.it("tagged template attaches sql and parameters", () =>
+      runSql(
+        Effect.gen(function* () {
+          const sql = yield* SqlClient.SqlClient
+          yield* sql`CREATE TABLE meta_test (id INTEGER PRIMARY KEY, name TEXT)`
+          const effect = sql<{ id: number }>`SELECT * FROM meta_test WHERE name = ${"Alice"}`
+          test.expect(effect.sql).toBe("SELECT * FROM meta_test WHERE name = ?")
+          test.expect(effect.parameters).toEqual(["Alice"])
+          yield* effect
+        }),
+      ),
+    )
+
+    test.it("unsafe attaches sql and parameters", () =>
+      runSql(
+        Effect.gen(function* () {
+          const sql = yield* SqlClient.SqlClient
+          yield* sql`CREATE TABLE meta_unsafe (id INTEGER PRIMARY KEY)`
+          const effect = sql.unsafe("SELECT * FROM meta_unsafe WHERE id = ?", [42])
+          test.expect(effect.sql).toBe("SELECT * FROM meta_unsafe WHERE id = ?")
+          test.expect(effect.parameters).toEqual([42])
+          yield* effect
+        }),
+      ),
+    )
+
+    test.it("unsafe without values has empty parameters", () =>
+      runSql(
+        Effect.gen(function* () {
+          const sql = yield* SqlClient.SqlClient
+          const effect = sql.unsafe("SELECT 1")
+          test.expect(effect.sql).toBe("SELECT 1")
+          test.expect(effect.parameters).toEqual([])
+        }),
+      ),
+    )
+  })
+
   test.describe("tracing", () => {
     test.it("adds sql.execute span attributes for template and unsafe queries", async () => {
       const capturedSpans: Array<{

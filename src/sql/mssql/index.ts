@@ -235,7 +235,9 @@ export const layer = (
                       Effect.orDie,
                     ),
                 ).pipe(
-                  Effect.map((reserved): SqlClient.Connection => makeQuery(reserved, spanAttributes)),
+                  Effect.map(
+                    (reserved): SqlClient.Connection => makeQuery(reserved, spanAttributes),
+                  ),
                 ),
                 use,
               }),

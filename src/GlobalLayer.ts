@@ -16,9 +16,8 @@ interface CacheEntry {
   readonly fiber: Fiber.RuntimeFiber<void>
 }
 
-const cache = GlobalValue.globalValue(
-  Symbol.for("effect-start/GlobalLayer/cache"),
-  () => MutableRef.make(HashMap.empty<string, CacheEntry>()),
+const cache = GlobalValue.globalValue(Symbol.for("effect-start/GlobalLayer/cache"), () =>
+  MutableRef.make(HashMap.empty<string, CacheEntry>()),
 )
 
 export const globalLayer =
