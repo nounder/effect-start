@@ -1,4 +1,4 @@
-import type * as Context from "effect/Context"
+import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import type * as Fiber from "effect/Fiber"
@@ -7,6 +7,7 @@ import * as HashMap from "effect/HashMap"
 import * as Layer from "effect/Layer"
 import * as MutableRef from "effect/MutableRef"
 import * as Option from "effect/Option"
+import * as Runtime from "effect/Runtime"
 
 import * as ChildProcess from "./ChildProcess.ts"
 
@@ -40,7 +41,21 @@ export const globalLayer =
         const spawner = yield* Effect.serviceOption(ChildProcess.ChildProcessSpawner)
         const deferred = yield* Deferred.make<Context.Context<A>, E>()
 
-        const fiber = Effect.runFork(
+        const parentRuntime = yield* Effect.runtime<never>()
+
+        const defaultRuntime = Runtime.make({
+          // Empty service context — no custom services leak into the forked fiber
+          context: Context.empty(),
+
+          // Bit flags for runtime behavior (interruption, cooperative yielding, etc.)
+          runtimeFlags: parentRuntime.runtimeFlags,
+
+          // Per-fiber state like logger config, tracer settings, span annotations.
+          // Default services are wired through FiberRefs, not the service context.
+          fiberRefs: parentRuntime.fiberRefs,
+        })
+
+        const fiber = Runtime.runFork(defaultRuntime)(
           Effect.scoped(
             Effect.gen(function* () {
               const scope = yield* Effect.scope
