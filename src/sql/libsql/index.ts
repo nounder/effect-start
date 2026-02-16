@@ -125,7 +125,7 @@ const makeQuery = (
   spanAttributes: ReadonlyArray<readonly [string, unknown]>,
 ): SqlClient.Connection => {
   const query = makeTaggedTemplate(client)
-  const unsafe: SqlClient.Connection["unsafe"] = <T = any>(query: string, values?: Array<unknown>) =>
+  const unsafe: SqlClient.UnsafeQuery = <T = any>(query: string, values?: Array<unknown>) =>
     executeQuery<T>(client, query, values ?? [])
   return SqlClient.connection(query, unsafe, { spanAttributes, dialect })
 }
@@ -193,7 +193,7 @@ export const layer = (config?: LibsqlConfig) =>
             const client = libsql.createClient(resolved)
             const spanAttributes = makeSpanAttributes(resolved)
             const query = makeTaggedTemplate(client)
-            const unsafeFn: SqlClient.Connection["unsafe"] = <T = any>(
+            const unsafeFn: SqlClient.UnsafeQuery = <T = any>(
               query: string,
               values?: Array<unknown>,
             ) => executeQuery<T>(client, query, values ?? [])

@@ -103,7 +103,7 @@ const makeQuery = (
   spanAttributes: ReadonlyArray<readonly [string, unknown]>,
 ): SqlClient.Connection => {
   const query = makeTaggedTemplate(run, dialect)
-  const unsafe: SqlClient.Connection["unsafe"] = <T = any>(query: string, values?: Array<unknown>) =>
+  const unsafe: SqlClient.UnsafeQuery = <T = any>(query: string, values?: Array<unknown>) =>
     run<ReadonlyArray<T>>((conn) => conn.unsafe(query, values))
   return SqlClient.connection(query, unsafe, { spanAttributes, dialect })
 }
@@ -177,7 +177,7 @@ export const layer = (
             const run = makeRun(bunSql)
             const dialect = detectDialect(bunSql)
             const spanAttributes = Object.entries(makeSpanAttributes(config))
-            const unsafeFn: SqlClient.Connection["unsafe"] = <T = any>(
+            const unsafeFn: SqlClient.UnsafeQuery = <T = any>(
               query: string,
               values?: Array<unknown>,
             ) => run<ReadonlyArray<T>>((conn) => conn.unsafe(query, values))

@@ -159,7 +159,7 @@ const dialect = SqlClient.postgresDialect
 const spanAttributes: ReadonlyArray<readonly [string, unknown]> = [["db.system.name", "postgresql"]]
 
 const makeTaggedTemplate = (pg: Postgres.Sql) => {
-  const unsafeFn: SqlClient.Connection["unsafe"] = <T extends object = SqlClient.SqlRow>(
+  const unsafeFn: SqlClient.UnsafeQuery = <T extends object = SqlClient.SqlRow>(
     query: string,
     values?: Array<unknown>,
   ) => runUnsafe<T>(pg, query, values)
@@ -194,7 +194,7 @@ const makeReservedConnection = (reserved: Postgres.ReservedSql): SqlClient.Conne
       catch: wrapError,
     })
 
-  const unsafe: SqlClient.Connection["unsafe"] = <T extends object = SqlClient.SqlRow>(
+  const unsafe: SqlClient.UnsafeQuery = <T extends object = SqlClient.SqlRow>(
     queryText: string,
     values?: Array<unknown>,
   ): Effect.Effect<ReadonlyArray<T>, SqlClient.SqlError> =>

@@ -4,7 +4,7 @@ import * as FiberRef from "effect/FiberRef"
 import * as GlobalValue from "effect/GlobalValue"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
-import type * as Mssql from "mssql"
+import * as Mssql from "mssql"
 import * as SqlClient from "../SqlClient.ts"
 import * as Values from "../../Values.ts"
 
@@ -54,12 +54,6 @@ interface TransactionConnection {
   readonly transaction: Mssql.Transaction
   readonly depth: number
 }
-
-type MssqlModule = {
-  ConnectionPool: new (config: Mssql.config) => Mssql.ConnectionPool
-}
-
-const loadMssql = () => import("mssql") as Promise<MssqlModule>
 
 const currentTransaction = GlobalValue.globalValue(
   Symbol.for("effect-start/sql/mssql/currentTransaction"),
@@ -124,7 +118,7 @@ const makeQuery = (
   spanAttributes: ReadonlyArray<readonly [string, unknown]>,
 ): SqlClient.Connection => {
   const query = makeTaggedTemplate(pool)
-  const unsafe: SqlClient.Connection["unsafe"] = <T = any>(query: string, values?: Array<unknown>) =>
+  const unsafe: SqlClient.UnsafeQuery = <T = any>(query: string, values?: Array<unknown>) =>
     runUnsafe<T>(pool, query, values)
   return SqlClient.connection(query, unsafe, { spanAttributes, dialect })
 }
@@ -196,41 +190,40 @@ export const layer = (
       Effect.acquireRelease(
         Effect.tryPromise({
           try: async () => {
-            const mssql = await loadMssql()
             const driverConfig = { ...config } as Record<string, unknown>
             delete driverConfig.spanAttributes
             delete driverConfig.url
-            const pool = await new mssql.ConnectionPool(
+            const pool = await new Mssql.ConnectionPool(
               driverConfig as unknown as Mssql.config,
             ).connect()
-            return { mssql, pool }
+            return pool
           },
           catch: wrapError,
         }).pipe(
-          Effect.map((options) => {
+          Effect.map((pool) => {
             const driverConfig = { ...config } as Record<string, unknown>
             delete driverConfig.spanAttributes
             delete driverConfig.url
             const spanAttributes = Object.entries(makeSpanAttributes(config))
-            const query = makeTaggedTemplate(options.pool)
-            const unsafeFn: SqlClient.Connection["unsafe"] = <T = any>(
+            const query = makeTaggedTemplate(pool)
+            const unsafeFn: SqlClient.UnsafeQuery = <T = any>(
               query: string,
               values?: Array<unknown>,
-            ) => runUnsafe<T>(options.pool, query, values)
+            ) => runUnsafe<T>(pool, query, values)
             const use: SqlClient.SqlClient["use"] = (fn) =>
-              Effect.tryPromise({ try: () => Promise.resolve(fn(options.pool)), catch: wrapError })
+              Effect.tryPromise({ try: () => Promise.resolve(fn(pool)), catch: wrapError })
 
             return {
               client: SqlClient.make({
                 query,
                 unsafe: unsafeFn,
-                withTransaction: makeWithTransaction(options.pool),
+                withTransaction: makeWithTransaction(pool),
                 spanAttributes,
                 dialect,
                 reserve: Effect.acquireRelease(
                   Effect.tryPromise({
                     try: () =>
-                      new options.mssql.ConnectionPool({
+                      new Mssql.ConnectionPool({
                         ...driverConfig,
                         pool: { max: 1, min: 1 },
                       } as unknown as Mssql.config).connect(),
@@ -246,7 +239,7 @@ export const layer = (
                 ),
                 use,
               }),
-              close: use((pool) => pool.close()),
+              close: use((p) => p.close()),
             }
           }),
         ),

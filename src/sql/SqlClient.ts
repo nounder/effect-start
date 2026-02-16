@@ -21,6 +21,11 @@ export interface DialectConfig {
 
 export type SqlRow = Record<string, unknown>
 
+export type SqlEffect<A extends object = SqlRow> = Effect.Effect<ReadonlyArray<A>, SqlError> & {
+  readonly sql: string
+  readonly parameters: ReadonlyArray<unknown>
+}
+
 export interface Connection {
   /**
    * Execute a parameterized query via tagged template literal
@@ -28,7 +33,7 @@ export interface Connection {
   <A extends object = SqlRow>(
     strings: TemplateStringsArray,
     ...values: Array<unknown>
-  ): Effect.Effect<ReadonlyArray<A>, SqlError>
+  ): SqlEffect<A>
   /**
    * Create a safely-escaped SQL identifier from a string
    */
@@ -52,8 +57,13 @@ export interface Connection {
   readonly unsafe: <A extends object = SqlRow>(
     query: string,
     values?: Array<unknown>,
-  ) => Effect.Effect<ReadonlyArray<A>, SqlError>
+  ) => SqlEffect<A>
 }
+
+export type UnsafeQuery = <A extends object = SqlRow>(
+  query: string,
+  values?: Array<unknown>,
+) => Effect.Effect<ReadonlyArray<A>, SqlError>
 
 export interface SqlClient extends Connection {
   /**
@@ -87,7 +97,7 @@ export interface MakeOptions {
   readonly withTransaction: SqlClient["withTransaction"]
   readonly reserve: SqlClient["reserve"]
   readonly use: SqlClient["use"]
-  readonly unsafe: Connection["unsafe"]
+  readonly unsafe: UnsafeQuery
   readonly query: TaggedQuery
   readonly spanAttributes: ReadonlyArray<readonly [string, unknown]>
   readonly dialect: DialectConfig
@@ -95,9 +105,27 @@ export interface MakeOptions {
 
 export function make(options: MakeOptions): SqlClient {
   const trace = makeTraceOptions(options.spanAttributes, options.dialect)
-  const query = withExecuteSpan(options.query, trace)
-  const unsafe = withUnsafeExecuteSpan(options.unsafe, trace)
+  const baseQuery = withExecuteSpan(options.query, trace)
+  const baseUnsafe = withUnsafeExecuteSpan(options.unsafe, trace)
   const withTransaction = withTransactionSpan(options.withTransaction, trace.spanAttributes)
+
+  const query: TaggedQuery = <A extends object = SqlRow>(
+    strings: TemplateStringsArray,
+    ...values: Array<unknown>
+  ): SqlEffect<A> =>
+    Object.assign(baseQuery<A>(strings, ...values), {
+      sql: renderTemplateSql(trace.dialect, strings, values),
+      parameters: values,
+    }) as SqlEffect<A>
+
+  const unsafe: Connection["unsafe"] = <A extends object = SqlRow>(
+    queryStr: string,
+    values?: Array<unknown>,
+  ): SqlEffect<A> =>
+    Object.assign(baseUnsafe<A>(queryStr, values), {
+      sql: queryStr,
+      parameters: values ?? [],
+    }) as SqlEffect<A>
 
   return Object.assign(dispatchCallable(query), {
     ...options,
@@ -109,7 +137,7 @@ export function make(options: MakeOptions): SqlClient {
 
 export function connection(
   query: TaggedQuery,
-  unsafe: Connection["unsafe"],
+  unsafe: UnsafeQuery,
   options?: {
     readonly spanAttributes?: ReadonlyArray<readonly [string, unknown]>
     readonly dialect?: DialectConfig
@@ -118,8 +146,27 @@ export function connection(
   const trace = makeTraceOptions(options?.spanAttributes, options?.dialect)
   const tracedQuery = withExecuteSpan(query, trace)
   const tracedUnsafe = withUnsafeExecuteSpan(unsafe, trace)
-  return Object.assign(dispatchCallable(tracedQuery), {
-    unsafe: tracedUnsafe,
+
+  const wrappedQuery: TaggedQuery = <A extends object = SqlRow>(
+    strings: TemplateStringsArray,
+    ...values: Array<unknown>
+  ): SqlEffect<A> =>
+    Object.assign(tracedQuery<A>(strings, ...values), {
+      sql: renderTemplateSql(trace.dialect, strings, values),
+      parameters: values,
+    }) as SqlEffect<A>
+
+  const wrappedUnsafe: Connection["unsafe"] = <A extends object = SqlRow>(
+    query: string,
+    values?: Array<unknown>,
+  ): SqlEffect<A> =>
+    Object.assign(tracedUnsafe<A>(query, values), {
+      sql: query,
+      parameters: values ?? [],
+    }) as SqlEffect<A>
+
+  return Object.assign(dispatchCallable(wrappedQuery), {
+    unsafe: wrappedUnsafe,
   }) as unknown as Connection
 }
 
@@ -262,11 +309,11 @@ const withExecuteSpan =
 
 const withUnsafeExecuteSpan =
   (
-    unsafe: Connection["unsafe"],
+    unsafe: UnsafeQuery,
     options: {
       readonly spanAttributes: Record<string, unknown>
     },
-  ): Connection["unsafe"] =>
+  ): UnsafeQuery =>
   <A extends object = SqlRow>(
     query: string,
     values?: Array<unknown>,
