@@ -287,10 +287,7 @@ test.describe.skipIf(!process.env.TEST_LINT)("namespace-import-mismatch", () => 
   })
 
   test.it("ignores package imports", () => {
-    const diags = lintRule(
-      `import * as S from "effect/Schema"\nS\n`,
-      "namespace-import-mismatch",
-    )
+    const diags = lintRule(`import * as S from "effect/Schema"\nS\n`, "namespace-import-mismatch")
     test.expect(diags).toHaveLength(0)
   })
 
@@ -304,7 +301,9 @@ test.describe.skipIf(!process.env.TEST_LINT)("namespace-import-mismatch", () => 
 
   test.it("fixes alias to match basename", () => {
     const fixed = lintFix(`import * as Sql from "../SqlClient.ts"\nconsole.log(Sql)\n`)
-    test.expect(fixed).toBe(`import * as SqlClient from "../SqlClient.ts"\nconsole.log(SqlClient)\n`)
+    test
+      .expect(fixed)
+      .toBe(`import * as SqlClient from "../SqlClient.ts"\nconsole.log(SqlClient)\n`)
   })
 
   test.it("fixes all references to the alias", () => {
@@ -315,14 +314,16 @@ test.describe.skipIf(!process.env.TEST_LINT)("namespace-import-mismatch", () => 
       "",
     ].join("\n")
     const fixed = lintFix(code)
-    test.expect(fixed).toBe(
-      [
-        'import * as SqlClient from "../SqlClient.ts"',
-        "const a = SqlClient.make()",
-        "const b = SqlClient.query(a)",
-        "",
-      ].join("\n"),
-    )
+    test
+      .expect(fixed)
+      .toBe(
+        [
+          'import * as SqlClient from "../SqlClient.ts"',
+          "const a = SqlClient.make()",
+          "const b = SqlClient.query(a)",
+          "",
+        ].join("\n"),
+      )
   })
 
   test.it("fixes type-only namespace import", () => {
@@ -333,10 +334,7 @@ test.describe.skipIf(!process.env.TEST_LINT)("namespace-import-mismatch", () => 
   })
 
   test.it("ignores node: protocol imports", () => {
-    const diags = lintRule(
-      `import * as FS from "node:fs"\nFS\n`,
-      "namespace-import-mismatch",
-    )
+    const diags = lintRule(`import * as FS from "node:fs"\nFS\n`, "namespace-import-mismatch")
     test.expect(diags).toHaveLength(0)
   })
 

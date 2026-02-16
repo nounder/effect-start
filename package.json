@@ -44,12 +44,15 @@
     "deploy": "bunx --bun npm publish --access public"
   },
   "devDependencies": {
+    "@libsql/client": "^0.17.0",
     "@types/bun": "^1.3.4",
     "@types/jsdom": "^27.0.0",
     "effect-memfs": "^0.8.0",
     "jsdom": "^28.0.0",
+    "mssql": "^12.2.0",
     "oxfmt": "latest",
     "oxlint": "^1.43.0",
+    "postgres": "^3.4.8",
     "tailwindcss": "^4.1.18",
     "typescript": "^5.9.3"
   },

@@ -1,26 +1,68 @@
 import * as test from "bun:test"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
+import * as Layer from "effect/Layer"
+import * as Schedule from "effect/Schedule"
+import * as ManagedRuntime from "effect/ManagedRuntime"
 import * as Sql from "../SqlClient.ts"
-import type * as MssqlTypes from "mssql"
-import * as Mssql from "./index.ts"
-import * as MssqlDocker from "./docker.ts"
+import * as MssqlSql from "./index.ts"
+import * as BunChildProcessSpawner from "../../bun/BunChildProcessSpawner.ts"
+import * as Docker from "../../Docker.ts"
+import * as System from "../../System.ts"
 
-const testConfig: MssqlTypes.config = {
-  server: "localhost",
-  user: "sa",
-  password: "TestPass123",
-  port: 1433,
-  options: { encrypt: true, trustServerCertificate: true },
-}
+const PASSWORD = "TestPass123"
+let PORT = 0
 
-const runSql = <A, E>(effect: Effect.Effect<A, E, Sql.SqlClient>) =>
-  Effect.runPromise(Effect.provide(effect, Mssql.layer(testConfig)))
+const SqlLayer = (() => {
+  const container = Effect.map(System.randomFreePort, (port) =>
+    Docker.layerContainer({
+      image: "mcr.microsoft.com/azure-sql-edge",
+      name: "effect-start-mssql",
+      detach: true,
+      env: {
+        ACCEPT_EULA: "Y",
+        MSSQL_SA_PASSWORD: PASSWORD,
+      },
+      ports: [[port, 1433]],
+    }),
+  ).pipe(Layer.unwrapEffect, Layer.provideMerge(Docker.layer))
+
+  const ready = Layer.effectDiscard(
+    Effect.flatMap(Docker.DockerContainer, (c) =>
+      c.exec(["bash", "-c", "echo > /dev/tcp/localhost/1433"]).pipe(
+        Effect.filterOrFail((r) => r.exitCode === 0),
+        Effect.retry(Schedule.spaced("2 seconds")),
+        Effect.timeoutFail({
+          duration: "60 seconds",
+          onTimeout: () => new Docker.DockerError({ message: "Timed out waiting for MSSQL" }),
+        }),
+        Effect.asVoid,
+      ),
+    ),
+  ).pipe(Layer.provide(container))
+
+  return Effect.map(Docker.DockerContainer, (c) => {
+    const port = c.ports?.[0]?.[0]
+    if (!port) throw new Error("No port mapping found")
+    PORT = port
+    return MssqlSql.layer({
+      server: "localhost",
+      user: "sa",
+      password: PASSWORD,
+      port,
+      options: { encrypt: true, trustServerCertificate: true },
+    })
+  }).pipe(Layer.unwrapEffect, Layer.provide(Layer.merge(container, ready)))
+})()
+
+const runtime = ManagedRuntime.make(SqlLayer.pipe(Layer.provide(BunChildProcessSpawner.layer)))
+
+const runSql = <A, E>(effect: Effect.Effect<A, E, Sql.SqlClient>) => runtime.runPromise(effect)
 
 test.describe.skipIf(!process.env.TEST_SQL)("Mssql", () => {
-  test.beforeAll(() => MssqlDocker.start(), 120_000)
+  test.beforeAll(() => runtime.runPromise(Effect.void), 120_000)
 
-  test.afterAll(() => MssqlDocker.stop())
+  test.afterAll(() => runtime.dispose())
 
   test.describe("basic queries", () => {
     test.it("should create table and insert rows", () =>
@@ -364,11 +406,11 @@ test.describe.skipIf(!process.env.TEST_SQL)("Mssql", () => {
     )
 
     test.it("should produce SqlError on connection failure", () => {
-      const badLayer = Mssql.layer({
+      const badLayer = MssqlSql.layer({
         server: "localhost",
         user: "sa",
         password: "wrong",
-        port: 1433,
+        port: PORT,
         options: { encrypt: true, trustServerCertificate: true },
       })
       return Effect.runPromise(

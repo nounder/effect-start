@@ -6,20 +6,34 @@ import * as FiberRef from "effect/FiberRef"
 import * as GlobalValue from "effect/GlobalValue"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
-import * as Sql from "../../Sql.ts"
+import * as Sql from "../SqlClient.ts"
+
+type PgConfig = string | Postgres.Options<Record<string, Postgres.PostgresType>>
+
+const toPgTemplateValues = (values: Array<unknown>): Array<Postgres.ParameterOrFragment<never>> =>
+  values as unknown as Array<Postgres.ParameterOrFragment<never>>
+
+const toPgUnsafeValues = (
+  values?: Array<unknown>,
+): Array<Postgres.ParameterOrJSON<never>> | undefined =>
+  values === undefined ? undefined : (values as unknown as Array<Postgres.ParameterOrJSON<never>>)
+
+const getErrorCode = (error: unknown): string => {
+  if (error !== null && typeof error === "object" && "code" in error) {
+    const code = (error as { readonly code: unknown }).code
+    if (typeof code === "string") {
+      return code
+    }
+  }
+  return "UNKNOWN"
+}
 
 const wrapError = (error: unknown): Sql.SqlError =>
   new Sql.SqlError({
-    code: (error as any)?.code ?? "UNKNOWN",
+    code: getErrorCode(error),
     message: error instanceof Error ? error.message : String(error),
     cause: error,
   })
-
-const makeValues: Sql.SqlQuery["values"] = (obj: any, ...columns: Array<string>) => {
-  const items = Array.isArray(obj) ? obj : [obj]
-  const cols = columns.length > 0 ? columns : Object.keys(items[0])
-  return { value: items, columns: cols }
-}
 
 interface TxState {
   readonly conn: Postgres.ReservedSql
@@ -31,15 +45,47 @@ const currentTransaction = GlobalValue.globalValue(
   () => FiberRef.unsafeMake<Option.Option<TxState>>(Option.none()),
 )
 
-const makeRun =
-  (pg: Postgres.Sql) =>
-  <T>(fn: (conn: any) => PromiseLike<T>): Effect.Effect<T, Sql.SqlError> =>
-    Effect.flatMap(FiberRef.get(currentTransaction), (txOpt) =>
-      Effect.tryPromise({
-        try: () => Promise.resolve(fn(Option.isSome(txOpt) ? txOpt.value.conn : pg)),
-        catch: wrapError,
-      }),
-    )
+const runTemplate = <T extends object = Sql.SqlRow>(
+  pg: Postgres.Sql,
+  strings: TemplateStringsArray,
+  values: Array<unknown>,
+): Effect.Effect<ReadonlyArray<T>, Sql.SqlError> =>
+  Effect.flatMap(FiberRef.get(currentTransaction), (txOpt) =>
+    Effect.tryPromise({
+      try: () => {
+        const args = toPgTemplateValues(values)
+        if (Option.isSome(txOpt)) {
+          return Promise.resolve(
+            txOpt.value.conn<ReadonlyArray<T>>(strings, ...args) as unknown as ReadonlyArray<T>,
+          )
+        }
+        return Promise.resolve(
+          pg<ReadonlyArray<T>>(strings, ...args) as unknown as ReadonlyArray<T>,
+        )
+      },
+      catch: wrapError,
+    }),
+  )
+
+const runUnsafe = <T extends object = Sql.SqlRow>(
+  pg: Postgres.Sql,
+  query: string,
+  values?: Array<unknown>,
+): Effect.Effect<ReadonlyArray<T>, Sql.SqlError> =>
+  Effect.flatMap(FiberRef.get(currentTransaction), (txOpt) =>
+    Effect.tryPromise({
+      try: () => {
+        const args = toPgUnsafeValues(values)
+        if (Option.isSome(txOpt)) {
+          return Promise.resolve(
+            txOpt.value.conn.unsafe<Array<T>>(query, args) as unknown as ReadonlyArray<T>,
+          )
+        }
+        return Promise.resolve(pg.unsafe<Array<T>>(query, args) as unknown as ReadonlyArray<T>)
+      },
+      catch: wrapError,
+    }),
+  )
 
 const makeWithTransaction =
   (pg: Postgres.Sql) =>
@@ -109,63 +155,98 @@ const makeWithTransaction =
       }),
     )
 
-export const layer = (
-  config: Postgres.Options<{}> | string,
-): Layer.Layer<Sql.SqlClient, Sql.SqlError> =>
+const dialect = Sql.postgresDialect
+const spanAttributes: ReadonlyArray<readonly [string, unknown]> = [["db.system.name", "postgresql"]]
+
+const makeTaggedTemplate = (pg: Postgres.Sql) => {
+  const unsafeFn: Sql.Connection["unsafe"] = <T extends object = Sql.SqlRow>(
+    query: string,
+    values?: Array<unknown>,
+  ) => runUnsafe<T>(pg, query, values)
+
+  const query = <T extends object = Sql.SqlRow>(
+    strings: TemplateStringsArray,
+    ...values: Array<unknown>
+  ): Effect.Effect<ReadonlyArray<T>, Sql.SqlError> => {
+    if (Sql.hasFragments(values)) {
+      const compiled = Sql.interpolate(dialect, strings, values)
+      return unsafeFn<T>(compiled.sql, compiled.parameters)
+    }
+    return runTemplate<T>(pg, strings, values)
+  }
+
+  return { query, unsafeFn }
+}
+
+const makeReservedConnection = (reserved: Postgres.ReservedSql): Sql.Connection => {
+  const query = <T extends object = Sql.SqlRow>(
+    strings: TemplateStringsArray,
+    ...values: Array<unknown>
+  ): Effect.Effect<ReadonlyArray<T>, Sql.SqlError> =>
+    Effect.tryPromise({
+      try: () =>
+        Promise.resolve(
+          reserved<ReadonlyArray<T>>(
+            strings,
+            ...toPgTemplateValues(values),
+          ) as unknown as ReadonlyArray<T>,
+        ),
+      catch: wrapError,
+    })
+
+  const unsafe: Sql.Connection["unsafe"] = <T extends object = Sql.SqlRow>(
+    queryText: string,
+    values?: Array<unknown>,
+  ): Effect.Effect<ReadonlyArray<T>, Sql.SqlError> =>
+    Effect.tryPromise({
+      try: () =>
+        Promise.resolve(
+          reserved.unsafe<Array<T>>(
+            queryText,
+            toPgUnsafeValues(values),
+          ) as unknown as ReadonlyArray<T>,
+        ),
+      catch: wrapError,
+    })
+
+  return Sql.connection(query, unsafe, { spanAttributes, dialect })
+}
+
+export const layer = (config: PgConfig): Layer.Layer<Sql.SqlClient, Sql.SqlError> =>
   Layer.scoped(
     Sql.SqlClient,
-    Effect.acquireRelease(
-      Effect.try({
-        try: () => {
-          const pg = postgres(config as any)
-          const run = makeRun(pg)
-          const use: Sql.SqlClient["use"] = (fn) =>
-            Effect.tryPromise({ try: () => Promise.resolve(fn(pg)), catch: wrapError })
-          return Object.assign(
-            <T = any>(strings: TemplateStringsArray, ...values: Array<unknown>) =>
-              run<ReadonlyArray<T>>((conn) => conn(strings, ...(values as any))),
-            {
-              unsafe: <T = any>(query: string, values?: Array<unknown>) =>
-                run<ReadonlyArray<T>>((conn) => conn.unsafe(query, values as any)),
-              values: makeValues,
-              withTransaction: makeWithTransaction(pg),
-              reserve: Effect.acquireRelease(
-                Effect.tryPromise({ try: () => pg.reserve(), catch: wrapError }),
-                (reserved: Postgres.ReservedSql) => Effect.sync(() => reserved.release()),
-              ).pipe(
-                Effect.map(
-                  (reserved): Sql.SqlQuery =>
-                    Object.assign(
-                      <T = any>(
-                        strings: TemplateStringsArray,
-                        ...values: Array<unknown>
-                      ): Effect.Effect<ReadonlyArray<T>, Sql.SqlError> =>
-                        Effect.tryPromise({
-                          try: () => reserved(strings, ...(values as any)) as any,
-                          catch: wrapError,
-                        }),
-                      {
-                        unsafe: <T = any>(
-                          query: string,
-                          values?: Array<unknown>,
-                        ): Effect.Effect<ReadonlyArray<T>, Sql.SqlError> =>
-                          Effect.tryPromise({
-                            try: () => reserved.unsafe(query, values as any) as any,
-                            catch: wrapError,
-                          }),
-                        values: makeValues,
-                      },
-                    ),
-                ),
-              ),
-              close: (options?: { readonly timeout?: number }) =>
-                use((pg) => (pg as Postgres.Sql).end({ timeout: options?.timeout ?? 0 })),
-              use,
-            },
-          ) satisfies Sql.SqlClient
-        },
-        catch: wrapError,
-      }),
-      (client) => client.close().pipe(Effect.orDie),
+    Effect.map(
+      Effect.acquireRelease(
+        Effect.try({
+          try: () => {
+            const pg =
+              typeof config === "string"
+                ? postgres(config)
+                : postgres(config as Postgres.Options<Record<string, Postgres.PostgresType>>)
+            const tagged = makeTaggedTemplate(pg)
+            const use: Sql.SqlClient["use"] = (fn) =>
+              Effect.tryPromise({ try: () => Promise.resolve(fn(pg)), catch: wrapError })
+
+            return {
+              client: Sql.make({
+                query: tagged.query,
+                unsafe: tagged.unsafeFn,
+                withTransaction: makeWithTransaction(pg),
+                spanAttributes,
+                dialect,
+                reserve: Effect.acquireRelease(
+                  Effect.tryPromise({ try: () => pg.reserve(), catch: wrapError }),
+                  (reserved: Postgres.ReservedSql) => Effect.sync(() => reserved.release()),
+                ).pipe(Effect.map((reserved): Sql.Connection => makeReservedConnection(reserved))),
+                use,
+              }),
+              close: use((driver) => (driver as Postgres.Sql).end({ timeout: 0 })),
+            }
+          },
+          catch: wrapError,
+        }),
+        (handle) => handle.close.pipe(Effect.orDie),
+      ),
+      (handle) => handle.client,
     ),
   )

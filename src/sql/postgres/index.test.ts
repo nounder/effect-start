@@ -3,33 +3,65 @@ import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import * as Fiber from "effect/Fiber"
+import * as Layer from "effect/Layer"
 import * as ManagedRuntime from "effect/ManagedRuntime"
 import * as PubSub from "effect/PubSub"
+import * as Schedule from "effect/Schedule"
 import * as Runtime from "effect/Runtime"
 import * as Stream from "effect/Stream"
-import * as Sql from "../../Sql.ts"
+import * as BunChildProcessSpawner from "../../bun/BunChildProcessSpawner.ts"
+import * as Docker from "../../Docker.ts"
+import * as System from "../../System.ts"
+import * as Sql from "../SqlClient.ts"
 import * as PgSql from "./index.ts"
-import * as PgDocker from "./docker.ts"
 
-const PgLayer = PgSql.layer({
-  host: "localhost",
-  port: 5433,
-  user: "postgres",
-  password: "test",
-  database: "test",
-})
+const PASSWORD = "test"
 
-const runtime = ManagedRuntime.make(PgLayer)
+const SqlLayer = (() => {
+  const container = Effect.map(System.randomFreePort, (port) =>
+    Docker.layerContainer({
+      image: "postgres:17-alpine",
+      detach: true,
+      env: { POSTGRES_PASSWORD: PASSWORD, POSTGRES_DB: "test" },
+      ports: [[port, 5432]],
+    }),
+  ).pipe(Layer.unwrapEffect, Layer.provideMerge(Docker.layer))
+
+  const ready = Layer.effectDiscard(
+    Effect.flatMap(Docker.DockerContainer, (c) =>
+      c.exec(["psql", "-U", "postgres", "-d", "test", "-c", "SELECT 1"]).pipe(
+        Effect.filterOrFail((r) => r.exitCode === 0),
+        Effect.retry(Schedule.spaced("500 millis")),
+        Effect.timeoutFail({
+          duration: "30 seconds",
+          onTimeout: () => new Docker.DockerError({ message: "Timed out waiting for PostgreSQL" }),
+        }),
+        Effect.asVoid,
+      ),
+    ),
+  ).pipe(Layer.provide(container))
+
+  return Effect.map(Docker.DockerContainer, (c) => {
+    const port = c.ports?.[0]?.[0]
+    if (!port) throw new Error("No port mapping found")
+    return PgSql.layer({
+      host: "localhost",
+      user: "postgres",
+      password: PASSWORD,
+      database: "test",
+      port,
+    })
+  }).pipe(Layer.unwrapEffect, Layer.provide(Layer.merge(container, ready)))
+})()
+
+const runtime = ManagedRuntime.make(SqlLayer.pipe(Layer.provide(BunChildProcessSpawner.layer)))
 
 const runSql = <A, E>(effect: Effect.Effect<A, E, Sql.SqlClient>) => runtime.runPromise(effect)
 
 test.describe.skipIf(!process.env.TEST_SQL)("PgSql", () => {
-  test.beforeAll(() => PgDocker.start(), 60_000)
+  test.beforeAll(() => runtime.runPromise(Effect.void), 60_000)
 
-  test.afterAll(async () => {
-    await runtime.dispose()
-    await PgDocker.stop()
-  })
+  test.afterAll(() => runtime.dispose())
 
   test.describe("basic queries", () => {
     test.it("should create table and insert rows", () =>
@@ -460,10 +492,18 @@ test.describe.skipIf(!process.env.TEST_SQL)("PgSql", () => {
       runSql(
         Effect.gen(function* () {
           const sql = yield* Sql.SqlClient
-          const helper = sql.values({ name: "Charlie", age: 30 })
+          yield* sql`DROP TABLE IF EXISTS values_helper`
+          yield* sql`CREATE TABLE values_helper (id SERIAL PRIMARY KEY, name TEXT, age INTEGER)`
+          const helper = sql({ name: "Charlie", age: 30 })
+          yield* sql`INSERT INTO values_helper ${helper}`
+          const rows = yield* sql<{
+            name: string
+            age: number
+          }>`SELECT name, age FROM values_helper`
 
-          test.expect(helper.value).toEqual([{ name: "Charlie", age: 30 }])
-          test.expect(helper.columns).toEqual(["name", "age"])
+          test.expect(rows).toEqual([{ name: "Charlie", age: 30 }])
+
+          yield* sql`DROP TABLE values_helper`
         }),
       ),
     )
@@ -472,9 +512,19 @@ test.describe.skipIf(!process.env.TEST_SQL)("PgSql", () => {
       runSql(
         Effect.gen(function* () {
           const sql = yield* Sql.SqlClient
-          const helper = sql.values({ name: "Charlie", age: 30, email: "c@d.com" }, "name", "age")
+          yield* sql`DROP TABLE IF EXISTS values_helper_cols`
+          yield* sql`CREATE TABLE values_helper_cols (id SERIAL PRIMARY KEY, name TEXT, age INTEGER, email TEXT)`
+          const helper = sql({ name: "Charlie", age: 30, email: "c@d.com" }, ["name", "age"])
+          yield* sql`INSERT INTO values_helper_cols ${helper}`
+          const rows = yield* sql<{
+            name: string
+            age: number
+            email: string | null
+          }>`SELECT name, age, email FROM values_helper_cols`
 
-          test.expect(helper.columns).toEqual(["name", "age"])
+          test.expect(rows).toEqual([{ name: "Charlie", age: 30, email: null }])
+
+          yield* sql`DROP TABLE values_helper_cols`
         }),
       ),
     )
@@ -483,13 +533,24 @@ test.describe.skipIf(!process.env.TEST_SQL)("PgSql", () => {
       runSql(
         Effect.gen(function* () {
           const sql = yield* Sql.SqlClient
-          const helper = sql.values([
+          yield* sql`DROP TABLE IF EXISTS values_helper_many`
+          yield* sql`CREATE TABLE values_helper_many (id SERIAL PRIMARY KEY, name TEXT, age INTEGER)`
+          const helper = sql([
+            { name: "Alice", age: 25 },
+            { name: "Bob", age: 30 },
+          ])
+          yield* sql`INSERT INTO values_helper_many ${helper}`
+          const rows = yield* sql<{
+            name: string
+            age: number
+          }>`SELECT name, age FROM values_helper_many ORDER BY name`
+
+          test.expect(rows).toEqual([
             { name: "Alice", age: 25 },
             { name: "Bob", age: 30 },
           ])
 
-          test.expect(helper.value).toHaveLength(2)
-          test.expect(helper.columns).toEqual(["name", "age"])
+          yield* sql`DROP TABLE values_helper_many`
         }),
       ),
     )
@@ -619,10 +680,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("PgSql", () => {
       runSql(
         Effect.gen(function* () {
           const sql = yield* Sql.SqlClient
-          const rows = yield* sql.use(async (pg) => {
-            const result = await pg`SELECT 1 + 1 as sum`
-            return result
-          })
+          const rows = yield* sql.use((pg) => pg`SELECT 1 + 1 as sum`)
 
           test.expect(rows).toHaveLength(1)
           test.expect((rows as ReadonlyArray<{ sum: number }>)[0].sum).toBe(2)
@@ -638,11 +696,11 @@ test.describe.skipIf(!process.env.TEST_SQL)("PgSql", () => {
           const rt = yield* Effect.runtime<never>()
           const runFork = Runtime.runFork(rt)
 
-          yield* sql.use(async (pg) => {
-            await pg.listen("stream_chan", (payload: string) => {
+          yield* sql.use((pg) =>
+            pg.listen("stream_chan", (payload: string) => {
               runFork(PubSub.publish(pubsub, payload))
-            })
-          })
+            }),
+          )
 
           const fiber = yield* Stream.fromPubSub(pubsub).pipe(
             Stream.take(3),
@@ -658,9 +716,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("PgSql", () => {
 
           test.expect(Chunk.toReadonlyArray(result)).toEqual(["a", "b", "c"])
 
-          yield* sql.use(async (pg) => {
-            await pg.unsafe("UNLISTEN stream_chan")
-          })
+          yield* sql.use((pg) => pg.unsafe("UNLISTEN stream_chan"))
         }),
       ),
     )
@@ -670,9 +726,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("PgSql", () => {
         Effect.gen(function* () {
           const sql = yield* Sql.SqlClient
           const result = yield* sql
-            .use(async (pg) => {
-              await pg`SELECT * FROM use_nonexistent_table`
-            })
+            .use((pg) => pg`SELECT * FROM use_nonexistent_table`)
             .pipe(Effect.either)
 
           test.expect(Either.isLeft(result)).toBe(true)
