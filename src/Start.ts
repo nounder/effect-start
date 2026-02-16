@@ -105,16 +105,22 @@ type OrderedPack<
  * @since 1.0.0
  * @category constructors
  */
+type BuildSuccess<Layers extends readonly Layer.Layer.Any[]> = {
+  [K in keyof Layers]: Layer.Layer.Success<Layers[K]>
+}[number]
+
+type BuildError<Layers extends readonly Layer.Layer.Any[]> = {
+  [K in keyof Layers]: Layer.Layer.Error<Layers[K]>
+}[number]
+
+type BuildContext<Layers extends readonly Layer.Layer.Any[]> = Exclude<
+  { [K in keyof Layers]: Layer.Layer.Context<Layers[K]> }[number],
+  { [K in keyof Layers]: Layer.Layer.Success<Layers[K]> }[number]
+>
+
 export function build<const Layers extends readonly [Layer.Layer.Any, ...Array<Layer.Layer.Any>]>(
   ...layers: Layers
-): Layer.Layer<
-  { [K in keyof Layers]: Layer.Layer.Success<Layers[K]> }[number],
-  { [K in keyof Layers]: Layer.Layer.Error<Layers[K]> }[number],
-  Exclude<
-    { [K in keyof Layers]: Layer.Layer.Context<Layers[K]> }[number],
-    { [K in keyof Layers]: Layer.Layer.Success<Layers[K]> }[number]
-  >
-> {
+): Layer.Layer<BuildSuccess<Layers>, BuildError<Layers>, BuildContext<Layers>> {
   type AnyLayer = Layer.Layer<any, any, any>
   const layerArray = layers as unknown as ReadonlyArray<AnyLayer>
 
@@ -127,7 +133,7 @@ export function build<const Layers extends readonly [Layer.Layer.Any, ...Array<L
       const pending = new Set<AnyLayer>(layerArray)
 
       for (let pass = 0; pass < layerArray.length && pending.size > 0; pass++) {
-        for (const layer of [...pending]) {
+        for (const layer of pending) {
           const childScope = yield* Scope.fork(scope, ExecutionStrategy.sequential)
           const exit = yield* layer.pipe(
             Layer.buildWithMemoMap(memoMap, childScope),
@@ -158,8 +164,7 @@ export function build<const Layers extends readonly [Layer.Layer.Any, ...Array<L
 
       return ctx
     }),
-    // TODO: not sure how to properly type it yet
-  ) as any
+  )
 }
 
 export type PlatformServices =
