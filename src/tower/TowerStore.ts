@@ -6,13 +6,13 @@ import * as MutableRef from "effect/MutableRef"
 import * as PubSub from "effect/PubSub"
 import * as Schema from "effect/Schema"
 import * as Unique from "../Unique.ts"
-import * as Sql from "../sql/SqlClient.ts"
+import * as SqlClient from "../sql/SqlClient.ts"
 
 export let store: TowerStoreShape = GlobalValue.globalValue(
   Symbol.for("effect-start/TowerStore"),
   () => ({
     prefix: "/tower",
-    sql: undefined as unknown as Sql.SqlClient,
+    sql: undefined as unknown as SqlClient.SqlClient,
     events: Effect.runSync(PubSub.unbounded<TowerEvent>()),
     spanCapacity: 1000,
     logCapacity: 5000,
@@ -127,7 +127,7 @@ export interface FiberContext {
 
 export interface TowerStoreShape {
   prefix: string
-  readonly sql: Sql.SqlClient
+  readonly sql: SqlClient.SqlClient
   readonly events: PubSub.PubSub<TowerEvent>
   readonly spanCapacity: number
   readonly logCapacity: number
@@ -196,11 +196,11 @@ const DDL = [
 
 export function layer(
   options?: TowerStoreOptions,
-): Layer.Layer<TowerStore, Sql.SqlError, Sql.SqlClient> {
+): Layer.Layer<TowerStore, SqlClient.SqlError, SqlClient.SqlClient> {
   return Layer.effect(
     TowerStore,
     Effect.gen(function* () {
-      const sql = yield* Sql.SqlClient
+      const sql = yield* SqlClient.SqlClient
       for (const ddl of DDL) {
         yield* sql.unsafe(ddl)
       }
@@ -327,7 +327,7 @@ function deserializeError(row: ErrorRow): TowerError {
   }
 }
 
-export function insertSpan(sql: Sql.SqlClient, span: TowerSpan) {
+export function insertSpan(sql: SqlClient.SqlClient, span: TowerSpan) {
   return sql`INSERT INTO Span ${sql({
     spanId: span.spanId,
     traceId: span.traceId,
@@ -344,7 +344,7 @@ export function insertSpan(sql: Sql.SqlClient, span: TowerSpan) {
   })}`
 }
 
-export function updateSpan(sql: Sql.SqlClient, span: TowerSpan) {
+export function updateSpan(sql: SqlClient.SqlClient, span: TowerSpan) {
   return sql`UPDATE Span SET
     endTime = ${span.endTime?.toString() ?? null},
     durationMs = ${span.durationMs ?? null},
@@ -354,7 +354,7 @@ export function updateSpan(sql: Sql.SqlClient, span: TowerSpan) {
     WHERE spanId = ${span.spanId}`
 }
 
-export function insertLog(sql: Sql.SqlClient, log: TowerLog) {
+export function insertLog(sql: SqlClient.SqlClient, log: TowerLog) {
   return sql`INSERT INTO Log ${sql({
     id: log.id,
     level: log.level,
@@ -366,7 +366,7 @@ export function insertLog(sql: Sql.SqlClient, log: TowerLog) {
   })}`
 }
 
-export function insertError(sql: Sql.SqlClient, error: TowerError) {
+export function insertError(sql: SqlClient.SqlClient, error: TowerError) {
   return sql`INSERT INTO Error ${sql({
     id: error.id,
     fiberId: error.fiberId,
@@ -377,7 +377,7 @@ export function insertError(sql: Sql.SqlClient, error: TowerError) {
 }
 
 export function upsertFiber(
-  sql: Sql.SqlClient,
+  sql: SqlClient.SqlClient,
   id: string,
   parentId: string | undefined,
   spanName: string | undefined,
@@ -393,7 +393,7 @@ export function upsertFiber(
   })}`
 }
 
-export function evict(sql: Sql.SqlClient, table: string, capacity: number) {
+export function evict(sql: SqlClient.SqlClient, table: string, capacity: number) {
   return Effect.gen(function* () {
     const [{ cnt }] = yield* sql<{ cnt: number }>`SELECT count(*) as cnt FROM ${sql(table)}`
     if (cnt > capacity) {
@@ -403,7 +403,7 @@ export function evict(sql: Sql.SqlClient, table: string, capacity: number) {
   })
 }
 
-export function runWrite(effect: Effect.Effect<unknown, Sql.SqlError>) {
+export function runWrite(effect: Effect.Effect<unknown, SqlClient.SqlError>) {
   writeQueue = writeQueue
     .then(() => Effect.runPromise(Effect.withTracerEnabled(effect, false)).then(() => undefined))
     .catch(() => undefined)
@@ -414,7 +414,7 @@ let writeQueue = Promise.resolve<void>(undefined)
 const noTrace = <A, E>(effect: Effect.Effect<A, E>): Effect.Effect<A, E> =>
   Effect.withTracerEnabled(effect, false)
 
-export function allSpans(sql: Sql.SqlClient) {
+export function allSpans(sql: SqlClient.SqlClient) {
   return noTrace(
     Effect.map(sql<SpanRow>`SELECT * FROM Span ORDER BY rowid`, (rows) =>
       rows.map(deserializeSpan),
@@ -422,13 +422,13 @@ export function allSpans(sql: Sql.SqlClient) {
   )
 }
 
-export function allLogs(sql: Sql.SqlClient) {
+export function allLogs(sql: SqlClient.SqlClient) {
   return noTrace(
     Effect.map(sql<LogRow>`SELECT * FROM Log ORDER BY rowid`, (rows) => rows.map(deserializeLog)),
   )
 }
 
-export function allErrors(sql: Sql.SqlClient) {
+export function allErrors(sql: SqlClient.SqlClient) {
   return noTrace(
     Effect.map(sql<ErrorRow>`SELECT * FROM Error ORDER BY rowid`, (rows) =>
       rows.map(deserializeError),
@@ -436,7 +436,7 @@ export function allErrors(sql: Sql.SqlClient) {
   )
 }
 
-export function spansByTraceId(sql: Sql.SqlClient, traceId: bigint) {
+export function spansByTraceId(sql: SqlClient.SqlClient, traceId: bigint) {
   return noTrace(
     Effect.map(sql<SpanRow>`SELECT * FROM Span WHERE traceId = ${traceId} ORDER BY rowid`, (rows) =>
       rows.map(deserializeSpan),
@@ -444,7 +444,7 @@ export function spansByTraceId(sql: Sql.SqlClient, traceId: bigint) {
   )
 }
 
-export function spansByFiberId(sql: Sql.SqlClient, fiberId: string) {
+export function spansByFiberId(sql: SqlClient.SqlClient, fiberId: string) {
   return noTrace(
     Effect.map(sql<SpanRow>`SELECT * FROM Span WHERE fiberId = ${fiberId} ORDER BY rowid`, (rows) =>
       rows.map(deserializeSpan),
@@ -452,7 +452,7 @@ export function spansByFiberId(sql: Sql.SqlClient, fiberId: string) {
   )
 }
 
-export function logsByFiberId(sql: Sql.SqlClient, fiberId: string) {
+export function logsByFiberId(sql: SqlClient.SqlClient, fiberId: string) {
   return noTrace(
     Effect.map(sql<LogRow>`SELECT * FROM Log WHERE fiberId = ${fiberId} ORDER BY rowid`, (rows) =>
       rows.map(deserializeLog),
@@ -460,7 +460,7 @@ export function logsByFiberId(sql: Sql.SqlClient, fiberId: string) {
   )
 }
 
-export function getFiber(sql: Sql.SqlClient, fiberId: string) {
+export function getFiber(sql: SqlClient.SqlClient, fiberId: string) {
   return noTrace(
     Effect.map(sql<FiberRow>`SELECT * FROM Fiber WHERE id = ${fiberId}`, (rows) =>
       rows.length > 0 ? rows[0] : undefined,
@@ -468,7 +468,7 @@ export function getFiber(sql: Sql.SqlClient, fiberId: string) {
   )
 }
 
-export function getParentChain(sql: Sql.SqlClient, fiberId: string) {
+export function getParentChain(sql: SqlClient.SqlClient, fiberId: string) {
   return noTrace(
     Effect.gen(function* () {
       const chain: Array<string> = []
@@ -488,7 +488,7 @@ export function getParentChain(sql: Sql.SqlClient, fiberId: string) {
   )
 }
 
-export function getFiberContext(sql: Sql.SqlClient, fiberId: string) {
+export function getFiberContext(sql: SqlClient.SqlClient, fiberId: string) {
   return noTrace(
     Effect.map(
       sql<FiberRow>`SELECT * FROM Fiber WHERE id = ${fiberId}`,

@@ -12,7 +12,7 @@ import type * as Scope from "effect/Scope"
 import * as NOs from "node:os"
 import * as NPath from "node:path"
 import * as PathPattern from "../PathPattern.ts"
-import * as PlataformRuntime from "../PlatformRuntime.ts"
+import * as PlatformRuntime from "../PlatformRuntime.ts"
 import * as Route from "../Route.ts"
 import * as RouteHttp from "../RouteHttp.ts"
 import * as StartApp from "../StartApp.ts"
@@ -60,7 +60,7 @@ export const make = (
   Effect.gen(function* () {
     const port = yield* Config.number("PORT").pipe(
       Effect.catchTag("ConfigError", () => {
-        return PlataformRuntime.isAgentHarness()
+        return PlatformRuntime.isAgentHarness()
           ? Effect.succeed(0) // random port
           : Effect.succeed(3000)
       }),

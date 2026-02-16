@@ -1,6 +1,6 @@
 import * as Effect from "effect/Effect"
 import * as Schema from "effect/Schema"
-import * as Sql from "./sql/SqlClient.ts"
+import * as SqlClient from "./sql/SqlClient.ts"
 
 export interface Column {
   readonly tableSchema: string
@@ -336,9 +336,9 @@ const normalizeBooleans = (columns: ReadonlyArray<Column>): ReadonlyArray<Column
 export const introspect = (
   dialect: Dialect,
   options?: IntrospectOptions,
-): Effect.Effect<DatabaseSchema, Sql.SqlError, Sql.SqlClient> =>
+): Effect.Effect<DatabaseSchema, SqlClient.SqlError, SqlClient.SqlClient> =>
   Effect.gen(function* () {
-    const sql = yield* Sql.SqlClient
+    const sql = yield* SqlClient.SqlClient
     const q = dialectQueries[dialect]
     const columns = normalizeBooleans(yield* sql.unsafe<Column>(q.columns))
     const foreignKeys =
@@ -481,11 +481,11 @@ export interface TableReader {
   readonly sortableColumns: ReadonlyArray<string>
   readonly findAll: (
     options?: FindAllOptions,
-  ) => Effect.Effect<ReadonlyArray<unknown>, Sql.SqlError, Sql.SqlClient>
-  readonly findById: (id: unknown) => Effect.Effect<unknown | null, Sql.SqlError, Sql.SqlClient>
+  ) => Effect.Effect<ReadonlyArray<unknown>, SqlClient.SqlError, SqlClient.SqlClient>
+  readonly findById: (id: unknown) => Effect.Effect<unknown | null, SqlClient.SqlError, SqlClient.SqlClient>
   readonly count: (options?: {
     readonly filters?: ReadonlyArray<Filter>
-  }) => Effect.Effect<number, Sql.SqlError, Sql.SqlClient>
+  }) => Effect.Effect<number, SqlClient.SqlError, SqlClient.SqlClient>
 }
 
 export interface DatabaseReader {
@@ -496,9 +496,9 @@ export interface DatabaseReader {
 const escapeIdentifier = (id: string): string => `"${id.replace(/"/g, '""')}"`
 
 const concatSql = (
-  sql: Sql.Connection,
+  sql: SqlClient.Connection,
   fragments: Array<{ strings: ReadonlyArray<string>; values: Array<unknown> }>,
-): Effect.Effect<ReadonlyArray<unknown>, Sql.SqlError> => {
+): Effect.Effect<ReadonlyArray<unknown>, SqlClient.SqlError> => {
   const strings: Array<string> = []
   const values: Array<unknown> = []
   for (let i = 0; i < fragments.length; i++) {
@@ -559,7 +559,7 @@ const makeTableReader = (ts: TableSchema): TableReader => {
     sortableColumns: Array.from(sortableSet),
     findAll: (options) =>
       Effect.gen(function* () {
-        const sql = yield* Sql.SqlClient
+        const sql = yield* SqlClient.SqlClient
         const fragments: Array<{ strings: ReadonlyArray<string>; values: Array<unknown> }> = [
           literal(`SELECT ${selectCols} FROM ${qualifiedName}`),
         ]
@@ -581,7 +581,7 @@ const makeTableReader = (ts: TableSchema): TableReader => {
     findById: (id) =>
       Effect.gen(function* () {
         if (!primaryKey) return null
-        const sql = yield* Sql.SqlClient
+        const sql = yield* SqlClient.SqlClient
         const pkCol = escapeIdentifier(primaryKey.columnName)
         const rows = yield* concatSql(sql, [
           literal(`SELECT ${selectCols} FROM ${qualifiedName} WHERE ${pkCol} = `),
@@ -591,7 +591,7 @@ const makeTableReader = (ts: TableSchema): TableReader => {
       }),
     count: (options) =>
       Effect.gen(function* () {
-        const sql = yield* Sql.SqlClient
+        const sql = yield* SqlClient.SqlClient
         const fragments: Array<{ strings: ReadonlyArray<string>; values: Array<unknown> }> = [
           literal(`SELECT COUNT(*) as count FROM ${qualifiedName}`),
         ]

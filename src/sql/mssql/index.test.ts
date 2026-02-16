@@ -4,7 +4,7 @@ import * as Either from "effect/Either"
 import * as Layer from "effect/Layer"
 import * as Schedule from "effect/Schedule"
 import * as ManagedRuntime from "effect/ManagedRuntime"
-import * as Sql from "../SqlClient.ts"
+import * as SqlClient from "../SqlClient.ts"
 import * as MssqlSql from "./index.ts"
 import * as BunChildProcessSpawner from "../../bun/BunChildProcessSpawner.ts"
 import * as Docker from "../../Docker.ts"
@@ -57,7 +57,7 @@ const SqlLayer = (() => {
 
 const runtime = ManagedRuntime.make(SqlLayer.pipe(Layer.provide(BunChildProcessSpawner.layer)))
 
-const runSql = <A, E>(effect: Effect.Effect<A, E, Sql.SqlClient>) => runtime.runPromise(effect)
+const runSql = <A, E>(effect: Effect.Effect<A, E, SqlClient.SqlClient>) => runtime.runPromise(effect)
 
 test.describe.skipIf(!process.env.TEST_SQL)("Mssql", () => {
   test.beforeAll(() => runtime.runPromise(Effect.void), 120_000)
@@ -68,7 +68,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("Mssql", () => {
     test.it("should create table and insert rows", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql.unsafe("DROP TABLE IF EXISTS mssql_users")
           yield* sql`CREATE TABLE mssql_users (id INT IDENTITY(1,1) PRIMARY KEY, name NVARCHAR(255))`
           yield* sql`INSERT INTO mssql_users (name) VALUES (${"Alice"})`
@@ -88,7 +88,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("Mssql", () => {
     test.it("should return empty array for no results", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql.unsafe("DROP TABLE IF EXISTS mssql_empty_test")
           yield* sql`CREATE TABLE mssql_empty_test (id INT IDENTITY(1,1) PRIMARY KEY)`
           const rows = yield* sql`SELECT * FROM mssql_empty_test`
@@ -101,7 +101,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("Mssql", () => {
     test.it("should handle parameterized queries", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql.unsafe("DROP TABLE IF EXISTS mssql_params")
           yield* sql`CREATE TABLE mssql_params (id INT IDENTITY(1,1) PRIMARY KEY, value NVARCHAR(255), count INT)`
           yield* sql`INSERT INTO mssql_params (value, count) VALUES (${"hello"}, ${42})`
@@ -121,7 +121,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("Mssql", () => {
     test.it("should execute raw SQL strings", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql.unsafe("DROP TABLE IF EXISTS mssql_raw_test")
           yield* sql.unsafe(
             "CREATE TABLE mssql_raw_test (id INT IDENTITY(1,1) PRIMARY KEY, name NVARCHAR(255))",
@@ -140,7 +140,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("Mssql", () => {
     test.it("should execute unsafe with parameter values", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql.unsafe("DROP TABLE IF EXISTS mssql_unsafe_params")
           yield* sql.unsafe(
             "CREATE TABLE mssql_unsafe_params (id INT IDENTITY(1,1) PRIMARY KEY, name NVARCHAR(255), age INT)",
@@ -163,7 +163,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("Mssql", () => {
     test.it("should execute unsafe inside a transaction", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql.unsafe("DROP TABLE IF EXISTS mssql_unsafe_tx")
           yield* sql.unsafe(
             "CREATE TABLE mssql_unsafe_tx (id INT IDENTITY(1,1) PRIMARY KEY, name NVARCHAR(255))",
@@ -191,7 +191,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("Mssql", () => {
     test.it("should commit on success", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql.unsafe("DROP TABLE IF EXISTS mssql_tx_test")
           yield* sql`CREATE TABLE mssql_tx_test (id INT IDENTITY(1,1) PRIMARY KEY, name NVARCHAR(255))`
           yield* sql.withTransaction(sql`INSERT INTO mssql_tx_test (name) VALUES (${"in_tx"})`)
@@ -205,7 +205,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("Mssql", () => {
     test.it("should rollback on failure", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql.unsafe("DROP TABLE IF EXISTS mssql_tx_rollback")
           yield* sql`CREATE TABLE mssql_tx_rollback (id INT IDENTITY(1,1) PRIMARY KEY, name NVARCHAR(255))`
           yield* sql`INSERT INTO mssql_tx_rollback (name) VALUES (${"before"})`
@@ -215,7 +215,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("Mssql", () => {
               Effect.gen(function* () {
                 yield* sql`INSERT INTO mssql_tx_rollback (name) VALUES (${"should_rollback"})`
                 return yield* Effect.fail(
-                  new Sql.SqlError({ code: "TEST", message: "intentional" }),
+                  new SqlClient.SqlError({ code: "TEST", message: "intentional" }),
                 )
               }),
             )
@@ -234,7 +234,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("Mssql", () => {
     test.it("should support savepoints", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql.unsafe("DROP TABLE IF EXISTS mssql_sp_test")
           yield* sql`CREATE TABLE mssql_sp_test (id INT IDENTITY(1,1) PRIMARY KEY, name NVARCHAR(255))`
 
@@ -246,7 +246,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("Mssql", () => {
                   Effect.gen(function* () {
                     yield* sql`INSERT INTO mssql_sp_test (name) VALUES (${"inner"})`
                     return yield* Effect.fail(
-                      new Sql.SqlError({ code: "TEST", message: "rollback sp" }),
+                      new SqlClient.SqlError({ code: "TEST", message: "rollback sp" }),
                     )
                   }),
                 )
@@ -267,7 +267,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("Mssql", () => {
     test.it("should commit nested savepoints on success", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql.unsafe("DROP TABLE IF EXISTS mssql_sp_commit")
           yield* sql`CREATE TABLE mssql_sp_commit (id INT IDENTITY(1,1) PRIMARY KEY, name NVARCHAR(255))`
 
@@ -292,7 +292,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("Mssql", () => {
     test.it("should see writes within same transaction", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql.unsafe("DROP TABLE IF EXISTS mssql_tx_visibility")
           yield* sql`CREATE TABLE mssql_tx_visibility (id INT IDENTITY(1,1) PRIMARY KEY, name NVARCHAR(255))`
 
@@ -316,7 +316,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("Mssql", () => {
     test.it("should support deeply nested savepoints", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql.unsafe("DROP TABLE IF EXISTS mssql_deep_sp")
           yield* sql`CREATE TABLE mssql_deep_sp (id INT IDENTITY(1,1) PRIMARY KEY, name NVARCHAR(255))`
 
@@ -331,7 +331,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("Mssql", () => {
                       Effect.gen(function* () {
                         yield* sql`INSERT INTO mssql_deep_sp (name) VALUES (${"level_3_rollback"})`
                         return yield* Effect.fail(
-                          new Sql.SqlError({ code: "TEST", message: "deep rollback" }),
+                          new SqlClient.SqlError({ code: "TEST", message: "deep rollback" }),
                         )
                       }),
                     )
@@ -357,7 +357,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("Mssql", () => {
     test.it("should produce SqlError for invalid queries", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           const result = yield* sql`SELECT * FROM mssql_nonexistent_table`.pipe(Effect.either)
 
           test.expect(Either.isLeft(result)).toBe(true)
@@ -372,7 +372,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("Mssql", () => {
     test.it("should produce SqlError for constraint violations", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql.unsafe("DROP TABLE IF EXISTS mssql_unique_test")
           yield* sql`CREATE TABLE mssql_unique_test (id INT IDENTITY(1,1) PRIMARY KEY, email NVARCHAR(255) UNIQUE)`
           yield* sql`INSERT INTO mssql_unique_test (email) VALUES (${"a@b.com"})`
@@ -393,7 +393,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("Mssql", () => {
     test.it("should include original error as cause", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           const result = yield* sql.unsafe("INVALID SQL SYNTAX").pipe(Effect.either)
 
           test.expect(Either.isLeft(result)).toBe(true)
@@ -417,7 +417,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("Mssql", () => {
         Effect.gen(function* () {
           const result = yield* Effect.provide(
             Effect.gen(function* () {
-              const sql = yield* Sql.SqlClient
+              const sql = yield* SqlClient.SqlClient
               return yield* sql`SELECT 1 AS val`
             }),
             badLayer,
@@ -436,7 +436,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("Mssql", () => {
     test.it("should rollback transaction on SQL error inside", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql.unsafe("DROP TABLE IF EXISTS mssql_tx_sqlerr")
           yield* sql`CREATE TABLE mssql_tx_sqlerr (id INT IDENTITY(1,1) PRIMARY KEY, name NVARCHAR(255))`
           yield* sql`INSERT INTO mssql_tx_sqlerr (name) VALUES (${"before"})`
@@ -467,7 +467,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("Mssql", () => {
     test.it("should rollback savepoint on SQL error inside nested transaction", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql.unsafe("DROP TABLE IF EXISTS mssql_sp_sqlerr")
           yield* sql`CREATE TABLE mssql_sp_sqlerr (id INT IDENTITY(1,1) PRIMARY KEY, name NVARCHAR(255))`
 
@@ -505,7 +505,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("Mssql", () => {
     test.it("should interpolate identifier, list, and values fragments", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql.unsafe("DROP TABLE IF EXISTS mssql_frag_test")
           yield* sql`CREATE TABLE mssql_frag_test (id INT IDENTITY(1,1) PRIMARY KEY, name NVARCHAR(255), age INT)`
           yield* sql`INSERT INTO mssql_frag_test ${sql([
@@ -527,7 +527,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("Mssql", () => {
     test.it("should handle various MSSQL types", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql.unsafe("DROP TABLE IF EXISTS mssql_types_test")
           yield* sql`CREATE TABLE mssql_types_test (
             int_val INT,
@@ -559,7 +559,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("Mssql", () => {
     test.it("should close without error", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql.unsafe("SELECT 1 AS val")
         }),
       ),

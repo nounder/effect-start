@@ -12,7 +12,7 @@ import * as Stream from "effect/Stream"
 import * as BunChildProcessSpawner from "../../bun/BunChildProcessSpawner.ts"
 import * as Docker from "../../Docker.ts"
 import * as System from "../../System.ts"
-import * as Sql from "../SqlClient.ts"
+import * as SqlClient from "../SqlClient.ts"
 import * as PgSql from "./index.ts"
 
 const PASSWORD = "test"
@@ -56,7 +56,7 @@ const SqlLayer = (() => {
 
 const runtime = ManagedRuntime.make(SqlLayer.pipe(Layer.provide(BunChildProcessSpawner.layer)))
 
-const runSql = <A, E>(effect: Effect.Effect<A, E, Sql.SqlClient>) => runtime.runPromise(effect)
+const runSql = <A, E>(effect: Effect.Effect<A, E, SqlClient.SqlClient>) => runtime.runPromise(effect)
 
 test.describe.skipIf(!process.env.TEST_SQL)("PgSql", () => {
   test.beforeAll(() => runtime.runPromise(Effect.void), 60_000)
@@ -67,7 +67,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("PgSql", () => {
     test.it("should create table and insert rows", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql`DROP TABLE IF EXISTS users`
           yield* sql`CREATE TABLE users (id SERIAL PRIMARY KEY, name TEXT)`
           yield* sql`INSERT INTO users (name) VALUES (${"Alice"})`
@@ -86,7 +86,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("PgSql", () => {
     test.it("should return empty array for no results", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql`DROP TABLE IF EXISTS empty_test`
           yield* sql`CREATE TABLE empty_test (id SERIAL PRIMARY KEY)`
           const rows = yield* sql`SELECT * FROM empty_test`
@@ -101,7 +101,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("PgSql", () => {
     test.it("should handle parameterized queries", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql`DROP TABLE IF EXISTS params`
           yield* sql`CREATE TABLE params (id SERIAL PRIMARY KEY, value TEXT, count INTEGER)`
           yield* sql`INSERT INTO params (value, count) VALUES (${"hello"}, ${42})`
@@ -123,7 +123,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("PgSql", () => {
     test.it("should execute raw SQL strings", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql.unsafe("DROP TABLE IF EXISTS raw_test")
           yield* sql.unsafe("CREATE TABLE raw_test (id SERIAL PRIMARY KEY, name TEXT)")
           yield* sql.unsafe("INSERT INTO raw_test (name) VALUES ('test')")
@@ -140,7 +140,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("PgSql", () => {
     test.it("should execute unsafe with parameter values", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql.unsafe("DROP TABLE IF EXISTS unsafe_params")
           yield* sql.unsafe(
             "CREATE TABLE unsafe_params (id SERIAL PRIMARY KEY, name TEXT, age INT)",
@@ -162,7 +162,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("PgSql", () => {
     test.it("should execute unsafe inside a transaction", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql.unsafe("DROP TABLE IF EXISTS unsafe_tx")
           yield* sql.unsafe("CREATE TABLE unsafe_tx (id SERIAL PRIMARY KEY, name TEXT)")
 
@@ -190,7 +190,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("PgSql", () => {
     test.it("should commit on success", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql`DROP TABLE IF EXISTS tx_test`
           yield* sql`CREATE TABLE tx_test (id SERIAL PRIMARY KEY, name TEXT)`
           yield* sql.withTransaction(sql`INSERT INTO tx_test (name) VALUES (${"in_tx"})`)
@@ -206,7 +206,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("PgSql", () => {
     test.it("should rollback on failure", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql`DROP TABLE IF EXISTS tx_rollback`
           yield* sql`CREATE TABLE tx_rollback (id SERIAL PRIMARY KEY, name TEXT)`
           yield* sql`INSERT INTO tx_rollback (name) VALUES (${"before"})`
@@ -216,7 +216,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("PgSql", () => {
               Effect.gen(function* () {
                 yield* sql`INSERT INTO tx_rollback (name) VALUES (${"should_rollback"})`
                 return yield* Effect.fail(
-                  new Sql.SqlError({ code: "TEST", message: "intentional" }),
+                  new SqlClient.SqlError({ code: "TEST", message: "intentional" }),
                 )
               }),
             )
@@ -237,7 +237,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("PgSql", () => {
     test.it("should support savepoints", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql`DROP TABLE IF EXISTS sp_test`
           yield* sql`CREATE TABLE sp_test (id SERIAL PRIMARY KEY, name TEXT)`
 
@@ -249,7 +249,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("PgSql", () => {
                   Effect.gen(function* () {
                     yield* sql`Insert INTO sp_test (name) VALUES (${"inner"})`
                     return yield* Effect.fail(
-                      new Sql.SqlError({ code: "TEST", message: "rollback sp" }),
+                      new SqlClient.SqlError({ code: "TEST", message: "rollback sp" }),
                     )
                   }),
                 )
@@ -272,7 +272,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("PgSql", () => {
     test.it("should commit nested savepoints on success", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql`DROP TABLE IF EXISTS sp_commit`
           yield* sql`CREATE TABLE sp_commit (id SERIAL PRIMARY KEY, name TEXT)`
 
@@ -297,7 +297,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("PgSql", () => {
     test.it("should see writes within same transaction", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql`DROP TABLE IF EXISTS tx_visibility`
           yield* sql`CREATE TABLE tx_visibility (id SERIAL PRIMARY KEY, name TEXT)`
 
@@ -322,7 +322,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("PgSql", () => {
     test.it("should support deeply nested savepoints", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql`DROP TABLE IF EXISTS deep_sp`
           yield* sql`CREATE TABLE deep_sp (id SERIAL PRIMARY KEY, name TEXT)`
 
@@ -337,7 +337,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("PgSql", () => {
                       Effect.gen(function* () {
                         yield* sql`INSERT INTO deep_sp (name) VALUES (${"level_3_rollback"})`
                         return yield* Effect.fail(
-                          new Sql.SqlError({ code: "TEST", message: "deep rollback" }),
+                          new SqlClient.SqlError({ code: "TEST", message: "deep rollback" }),
                         )
                       }),
                     )
@@ -365,7 +365,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("PgSql", () => {
     test.it("should produce SqlError for invalid queries", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           const result = yield* sql`SELECT * FROM nonexistent_table_xyz`.pipe(Effect.either)
 
           test.expect(Either.isLeft(result)).toBe(true)
@@ -381,7 +381,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("PgSql", () => {
     test.it("should produce SqlError for constraint violations", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql`DROP TABLE IF EXISTS unique_test`
           yield* sql`CREATE TABLE unique_test (id SERIAL PRIMARY KEY, email TEXT UNIQUE)`
           yield* sql`INSERT INTO unique_test (email) VALUES (${"a@b.com"})`
@@ -403,7 +403,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("PgSql", () => {
     test.it("should include original error as cause", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           const result = yield* sql`INVALID SQL SYNTAX`.pipe(Effect.either)
 
           test.expect(Either.isLeft(result)).toBe(true)
@@ -418,7 +418,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("PgSql", () => {
     test.it("should rollback transaction on SQL error inside", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql`DROP TABLE IF EXISTS tx_sqlerr`
           yield* sql`CREATE TABLE tx_sqlerr (id SERIAL PRIMARY KEY, name TEXT)`
           yield* sql`INSERT INTO tx_sqlerr (name) VALUES (${"before"})`
@@ -451,7 +451,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("PgSql", () => {
     test.it("should rollback savepoint on SQL error inside nested transaction", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql`DROP TABLE IF EXISTS sp_sqlerr`
           yield* sql`CREATE TABLE sp_sqlerr (id SERIAL PRIMARY KEY, name TEXT)`
 
@@ -491,7 +491,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("PgSql", () => {
     test.it("should create helper with all columns", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql`DROP TABLE IF EXISTS values_helper`
           yield* sql`CREATE TABLE values_helper (id SERIAL PRIMARY KEY, name TEXT, age INTEGER)`
           const helper = sql({ name: "Charlie", age: 30 })
@@ -511,7 +511,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("PgSql", () => {
     test.it("should pick specific columns", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql`DROP TABLE IF EXISTS values_helper_cols`
           yield* sql`CREATE TABLE values_helper_cols (id SERIAL PRIMARY KEY, name TEXT, age INTEGER, email TEXT)`
           const helper = sql({ name: "Charlie", age: 30, email: "c@d.com" }, ["name", "age"])
@@ -532,7 +532,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("PgSql", () => {
     test.it("should handle arrays of objects", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql`DROP TABLE IF EXISTS values_helper_many`
           yield* sql`CREATE TABLE values_helper_many (id SERIAL PRIMARY KEY, name TEXT, age INTEGER)`
           const helper = sql([
@@ -560,7 +560,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("PgSql", () => {
     test.it("should handle various Postgres types", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql`DROP TABLE IF EXISTS types_test`
           yield* sql`CREATE TABLE types_test (
             int_val INTEGER,
@@ -595,7 +595,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("PgSql", () => {
     test.it("should send NOTIFY via unsafe", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql.unsafe("NOTIFY test_chan, 'hello'")
         }),
       ),
@@ -604,7 +604,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("PgSql", () => {
     test.it("should send NOTIFY via pg_notify", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           const rows = yield* sql`SELECT pg_notify(${"test_chan"}, ${"payload"})`
 
           test.expect(rows).toHaveLength(1)
@@ -615,7 +615,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("PgSql", () => {
     test.it("should send NOTIFY inside a transaction", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql.withTransaction(
             Effect.gen(function* () {
               yield* sql.unsafe("NOTIFY tx_chan, 'from_tx'")
@@ -632,7 +632,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("PgSql", () => {
       runSql(
         Effect.scoped(
           Effect.gen(function* () {
-            const sql = yield* Sql.SqlClient
+            const sql = yield* SqlClient.SqlClient
             const reserved = yield* sql.reserve
             yield* reserved.unsafe("DROP TABLE IF EXISTS reserve_test")
             yield* reserved.unsafe("CREATE TABLE reserve_test (id SERIAL PRIMARY KEY, name TEXT)")
@@ -652,7 +652,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("PgSql", () => {
       runSql(
         Effect.scoped(
           Effect.gen(function* () {
-            const sql = yield* Sql.SqlClient
+            const sql = yield* SqlClient.SqlClient
             const reserved = yield* sql.reserve
             yield* reserved.unsafe("DROP TABLE IF EXISTS reserve_iso")
             yield* reserved.unsafe("CREATE TABLE reserve_iso (id SERIAL PRIMARY KEY, val INT)")
@@ -679,7 +679,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("PgSql", () => {
     test.it("should expose the raw postgres.js driver", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           const rows = yield* sql.use((pg) => pg`SELECT 1 + 1 as sum`)
 
           test.expect(rows).toHaveLength(1)
@@ -691,7 +691,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("PgSql", () => {
     test.it("should stream notifications via PubSub", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           const pubsub = yield* PubSub.unbounded<string>()
           const rt = yield* Effect.runtime<never>()
           const runFork = Runtime.runFork(rt)
@@ -724,7 +724,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("PgSql", () => {
     test.it("should wrap driver errors as SqlError", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           const result = yield* sql
             .use((pg) => pg`SELECT * FROM use_nonexistent_table`)
             .pipe(Effect.either)
@@ -743,7 +743,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("PgSql", () => {
     test.it("should close without error", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql`SELECT 1`
         }),
       ),

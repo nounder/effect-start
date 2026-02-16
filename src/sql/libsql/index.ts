@@ -6,7 +6,7 @@ import * as GlobalValue from "effect/GlobalValue"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import type * as Libsql from "@libsql/client"
-import * as Sql from "../SqlClient.ts"
+import * as SqlClient from "../SqlClient.ts"
 import * as Values from "../../Values.ts"
 
 type ConfigOrValue<T> = T | Config.Config<T>
@@ -36,17 +36,17 @@ const resolveField = <T>(value: ConfigOrValue<T> | undefined) =>
       ? Effect.map(value, (v): T | undefined => v)
       : Effect.succeed(value as T | undefined)
 
-const wrapError = (error: unknown): Sql.SqlError =>
-  new Sql.SqlError({
+const wrapError = (error: unknown): SqlClient.SqlError =>
+  new SqlClient.SqlError({
     code: (error as any)?.code ?? "UNKNOWN",
     message: error instanceof Error ? error.message : String(error),
     cause: error,
   })
 
-const wrap = <T>(fn: () => PromiseLike<T>): Effect.Effect<T, Sql.SqlError> =>
+const wrap = <T>(fn: () => PromiseLike<T>): Effect.Effect<T, SqlClient.SqlError> =>
   Effect.tryPromise({ try: () => Promise.resolve(fn()), catch: wrapError })
 
-const dialect = Sql.sqliteDialect
+const dialect = SqlClient.sqliteDialect
 const makeSpanAttributes = (config: ResolvedConfig): ReadonlyArray<readonly [string, unknown]> => {
   const parsed = (() => {
     try {
@@ -81,7 +81,7 @@ const executeQuery = <T>(
   client: Libsql.Client,
   sql: string,
   args: Array<unknown>,
-): Effect.Effect<ReadonlyArray<T>, Sql.SqlError> =>
+): Effect.Effect<ReadonlyArray<T>, SqlClient.SqlError> =>
   wrap(() => client.execute({ sql, args })).pipe(Effect.map(resultSetToRows<T>))
 
 interface TransactionConnection {
@@ -108,9 +108,9 @@ const makeTaggedTemplate = (client: Libsql.Client) => {
   return <T = any>(
     strings: TemplateStringsArray,
     ...values: Array<unknown>
-  ): Effect.Effect<ReadonlyArray<T>, Sql.SqlError> => {
-    if (Sql.hasFragments(values)) {
-      const compiled = Sql.interpolate(dialect, strings, values)
+  ): Effect.Effect<ReadonlyArray<T>, SqlClient.SqlError> => {
+    if (SqlClient.hasFragments(values)) {
+      const compiled = SqlClient.interpolate(dialect, strings, values)
       return unsafeFn<T>(compiled.sql, compiled.parameters)
     }
 
@@ -123,16 +123,16 @@ const makeTaggedTemplate = (client: Libsql.Client) => {
 const makeQuery = (
   client: Libsql.Client,
   spanAttributes: ReadonlyArray<readonly [string, unknown]>,
-): Sql.Connection => {
+): SqlClient.Connection => {
   const query = makeTaggedTemplate(client)
-  const unsafe: Sql.Connection["unsafe"] = <T = any>(query: string, values?: Array<unknown>) =>
+  const unsafe: SqlClient.Connection["unsafe"] = <T = any>(query: string, values?: Array<unknown>) =>
     executeQuery<T>(client, query, values ?? [])
-  return Sql.connection(query, unsafe, { spanAttributes, dialect })
+  return SqlClient.connection(query, unsafe, { spanAttributes, dialect })
 }
 
 const makeWithTransaction =
   (client: Libsql.Client) =>
-  <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, Sql.SqlError | E, R> =>
+  <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, SqlClient.SqlError | E, R> =>
     Effect.uninterruptibleMask((restore) =>
       Effect.flatMap(FiberRef.get(currentTransaction), (txOpt) => {
         if (Option.isSome(txOpt)) {
@@ -169,7 +169,7 @@ const makeWithTransaction =
 
 export const layer = (config?: LibsqlConfig) =>
   Layer.scoped(
-    Sql.SqlClient,
+    SqlClient.SqlClient,
     Effect.gen(function* () {
       const envUrl = Option.getOrUndefined(
         yield* Config.option(Config.string("TURSO_DATABASE_URL")),
@@ -193,15 +193,15 @@ export const layer = (config?: LibsqlConfig) =>
             const client = libsql.createClient(resolved)
             const spanAttributes = makeSpanAttributes(resolved)
             const query = makeTaggedTemplate(client)
-            const unsafeFn: Sql.Connection["unsafe"] = <T = any>(
+            const unsafeFn: SqlClient.Connection["unsafe"] = <T = any>(
               query: string,
               values?: Array<unknown>,
             ) => executeQuery<T>(client, query, values ?? [])
-            const use: Sql.SqlClient["use"] = (fn) =>
+            const use: SqlClient.SqlClient["use"] = (fn) =>
               Effect.tryPromise({ try: () => Promise.resolve(fn(client)), catch: wrapError })
 
             return {
-              client: Sql.make({
+              client: SqlClient.make({
                 query,
                 unsafe: unsafeFn,
                 withTransaction: makeWithTransaction(client),

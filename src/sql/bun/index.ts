@@ -4,7 +4,7 @@ import * as FiberRef from "effect/FiberRef"
 import * as GlobalValue from "effect/GlobalValue"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
-import * as Sql from "../SqlClient.ts"
+import * as SqlClient from "../SqlClient.ts"
 import * as Values from "../../Values.ts"
 
 const errorCode = (error: unknown): string => {
@@ -13,14 +13,14 @@ const errorCode = (error: unknown): string => {
   return e?.code ?? "UNKNOWN"
 }
 
-const wrapError = (error: unknown): Sql.SqlError =>
-  new Sql.SqlError({
+const wrapError = (error: unknown): SqlClient.SqlError =>
+  new SqlClient.SqlError({
     code: errorCode(error),
     message: error instanceof Error ? error.message : String(error),
     cause: error,
   })
 
-const wrap = <T>(fn: () => PromiseLike<T>): Effect.Effect<T, Sql.SqlError> =>
+const wrap = <T>(fn: () => PromiseLike<T>): Effect.Effect<T, SqlClient.SqlError> =>
   Effect.tryPromise({ try: () => Promise.resolve(fn()), catch: wrapError })
 
 interface TransactionConnection {
@@ -35,15 +35,15 @@ const currentTransaction = GlobalValue.globalValue(
 
 const makeRun =
   (bunSql: any) =>
-  <T>(fn: (conn: any) => PromiseLike<T>): Effect.Effect<T, Sql.SqlError> =>
+  <T>(fn: (conn: any) => PromiseLike<T>): Effect.Effect<T, SqlClient.SqlError> =>
     Effect.flatMap(FiberRef.get(currentTransaction), (txOpt) =>
       wrap(() => fn(Option.isSome(txOpt) ? txOpt.value.conn : bunSql)),
     )
 
-const detectDialect = (bunSql: any): Sql.DialectConfig => {
+const detectDialect = (bunSql: any): SqlClient.DialectConfig => {
   const adapter = bunSql?.options?.adapter ?? bunSql?.adapter
-  if (adapter === "sqlite") return Sql.sqliteDialect
-  return Sql.postgresDialect
+  if (adapter === "sqlite") return SqlClient.sqliteDialect
+  return SqlClient.postgresDialect
 }
 
 const makeSpanAttributes = (
@@ -79,8 +79,8 @@ const makeSpanAttributes = (
 }
 
 const makeTaggedTemplate = (
-  run: <T>(fn: (conn: any) => PromiseLike<T>) => Effect.Effect<T, Sql.SqlError>,
-  dialect: Sql.DialectConfig,
+  run: <T>(fn: (conn: any) => PromiseLike<T>) => Effect.Effect<T, SqlClient.SqlError>,
+  dialect: SqlClient.DialectConfig,
 ) => {
   const unsafeFn = <T = any>(query: string, values?: Array<unknown>) =>
     run<ReadonlyArray<T>>((conn) => conn.unsafe(query, values))
@@ -88,9 +88,9 @@ const makeTaggedTemplate = (
   return <T = any>(
     strings: TemplateStringsArray,
     ...values: Array<unknown>
-  ): Effect.Effect<ReadonlyArray<T>, Sql.SqlError> => {
-    if (Sql.hasFragments(values)) {
-      const compiled = Sql.interpolate(dialect, strings, values)
+  ): Effect.Effect<ReadonlyArray<T>, SqlClient.SqlError> => {
+    if (SqlClient.hasFragments(values)) {
+      const compiled = SqlClient.interpolate(dialect, strings, values)
       return unsafeFn<T>(compiled.sql, compiled.parameters)
     }
     return run<ReadonlyArray<T>>((conn) => conn(strings, ...values))
@@ -98,19 +98,19 @@ const makeTaggedTemplate = (
 }
 
 const makeQuery = (
-  run: <T>(fn: (conn: any) => PromiseLike<T>) => Effect.Effect<T, Sql.SqlError>,
-  dialect: Sql.DialectConfig,
+  run: <T>(fn: (conn: any) => PromiseLike<T>) => Effect.Effect<T, SqlClient.SqlError>,
+  dialect: SqlClient.DialectConfig,
   spanAttributes: ReadonlyArray<readonly [string, unknown]>,
-): Sql.Connection => {
+): SqlClient.Connection => {
   const query = makeTaggedTemplate(run, dialect)
-  const unsafe: Sql.Connection["unsafe"] = <T = any>(query: string, values?: Array<unknown>) =>
+  const unsafe: SqlClient.Connection["unsafe"] = <T = any>(query: string, values?: Array<unknown>) =>
     run<ReadonlyArray<T>>((conn) => conn.unsafe(query, values))
-  return Sql.connection(query, unsafe, { spanAttributes, dialect })
+  return SqlClient.connection(query, unsafe, { spanAttributes, dialect })
 }
 
 const makeWithTransaction =
   (bunSql: any) =>
-  <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, Sql.SqlError | E, R> =>
+  <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, SqlClient.SqlError | E, R> =>
     Effect.uninterruptibleMask((restore) =>
       Effect.flatMap(FiberRef.get(currentTransaction), (txOpt) => {
         if (Option.isSome(txOpt)) {
@@ -164,9 +164,9 @@ export const layer = (
   config: ConstructorParameters<typeof Bun.SQL>[0] & {
     readonly spanAttributes?: Record<string, unknown>
   },
-): Layer.Layer<Sql.SqlClient, Sql.SqlError> =>
+): Layer.Layer<SqlClient.SqlClient, SqlClient.SqlError> =>
   Layer.scoped(
-    Sql.SqlClient,
+    SqlClient.SqlClient,
     Effect.map(
       Effect.acquireRelease(
         Effect.try({
@@ -177,16 +177,16 @@ export const layer = (
             const run = makeRun(bunSql)
             const dialect = detectDialect(bunSql)
             const spanAttributes = Object.entries(makeSpanAttributes(config))
-            const unsafeFn: Sql.Connection["unsafe"] = <T = any>(
+            const unsafeFn: SqlClient.Connection["unsafe"] = <T = any>(
               query: string,
               values?: Array<unknown>,
             ) => run<ReadonlyArray<T>>((conn) => conn.unsafe(query, values))
             const query = makeTaggedTemplate(run, dialect)
-            const use: Sql.SqlClient["use"] = (fn) =>
+            const use: SqlClient.SqlClient["use"] = (fn) =>
               Effect.tryPromise({ try: () => Promise.resolve(fn(bunSql)), catch: wrapError })
 
             return {
-              client: Sql.make({
+              client: SqlClient.make({
                 query,
                 unsafe: unsafeFn,
                 withTransaction: makeWithTransaction(bunSql),
@@ -196,7 +196,7 @@ export const layer = (
                   wrap(() => bunSql.reserve()),
                   (reserved: any) => Effect.sync(() => reserved.release()),
                 ).pipe(
-                  Effect.map((reserved: any): Sql.Connection => {
+                  Effect.map((reserved: any): SqlClient.Connection => {
                     const reservedRun = <T>(fn: (conn: any) => PromiseLike<T>) =>
                       wrap<T>(() => fn(reserved))
                     return makeQuery(reservedRun, dialect, spanAttributes)

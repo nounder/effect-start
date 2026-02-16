@@ -7,7 +7,7 @@ import * as ManagedRuntime from "effect/ManagedRuntime"
 import * as BunChildProcessSpawner from "../../bun/BunChildProcessSpawner.ts"
 import * as Docker from "../../Docker.ts"
 import * as System from "../../System.ts"
-import * as Sql from "../SqlClient.ts"
+import * as SqlClient from "../SqlClient.ts"
 import * as BunSql from "./index.ts"
 
 const PASSWORD = "test"
@@ -47,7 +47,7 @@ const SqlLayer = (() => {
 
 const runtime = ManagedRuntime.make(SqlLayer.pipe(Layer.provide(BunChildProcessSpawner.layer)))
 
-const runSql = <A, E>(effect: Effect.Effect<A, E, Sql.SqlClient>) => runtime.runPromise(effect)
+const runSql = <A, E>(effect: Effect.Effect<A, E, SqlClient.SqlClient>) => runtime.runPromise(effect)
 
 test.describe.skipIf(!process.env.TEST_SQL)("BunSql (postgres)", () => {
   test.beforeAll(() => runtime.runPromise(Effect.void), 120_000)
@@ -58,7 +58,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("BunSql (postgres)", () => {
     test.it("should execute unsafe with $N parameter placeholders", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql.unsafe("DROP TABLE IF EXISTS unsafe_params")
           yield* sql.unsafe(
             "CREATE TABLE unsafe_params (id SERIAL PRIMARY KEY, name TEXT, age INT)",
@@ -82,7 +82,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("BunSql (postgres)", () => {
     test.it("should send NOTIFY via unsafe", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql.unsafe("NOTIFY test_chan, 'hello'")
         }),
       ),
@@ -91,7 +91,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("BunSql (postgres)", () => {
     test.it("should send NOTIFY via pg_notify", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           const rows = yield* sql`SELECT pg_notify(${"test_chan"}, ${"payload"})`
 
           test.expect(rows).toHaveLength(1)
@@ -102,7 +102,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("BunSql (postgres)", () => {
     test.it("should send NOTIFY inside a transaction", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql.withTransaction(
             Effect.gen(function* () {
               yield* sql.unsafe("NOTIFY tx_chan, 'from_tx'")
@@ -119,7 +119,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("BunSql (postgres)", () => {
       runSql(
         Effect.scoped(
           Effect.gen(function* () {
-            const sql = yield* Sql.SqlClient
+            const sql = yield* SqlClient.SqlClient
             const reserved = yield* sql.reserve
             yield* reserved.unsafe("DROP TABLE IF EXISTS reserve_test")
             yield* reserved.unsafe("CREATE TABLE reserve_test (id SERIAL PRIMARY KEY, name TEXT)")
@@ -139,7 +139,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("BunSql (postgres)", () => {
       runSql(
         Effect.scoped(
           Effect.gen(function* () {
-            const sql = yield* Sql.SqlClient
+            const sql = yield* SqlClient.SqlClient
             const reserved = yield* sql.reserve
             yield* reserved.unsafe("DROP TABLE IF EXISTS reserve_iso")
             yield* reserved.unsafe("CREATE TABLE reserve_iso (id SERIAL PRIMARY KEY, val INT)")
@@ -165,7 +165,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("BunSql (postgres)", () => {
     test.it("should interpolate identifier, list, and values fragments", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql`DROP TABLE IF EXISTS frag_test`
           yield* sql`CREATE TABLE frag_test (id SERIAL PRIMARY KEY, name TEXT, age INTEGER)`
           yield* sql`INSERT INTO frag_test ${sql([
@@ -189,7 +189,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("BunSql (postgres)", () => {
     test.it("should run native begin transaction via driver", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql`DROP TABLE IF EXISTS use_tx`
           yield* sql`CREATE TABLE use_tx (id SERIAL PRIMARY KEY, name TEXT)`
           yield* sql.use((bunSql) =>
@@ -210,7 +210,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("BunSql (postgres)", () => {
     test.it("should produce SqlError with code for invalid queries", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           const result = yield* sql`SELECT * FROM nonexistent_table_xyz`.pipe(Effect.either)
 
           test.expect(Either.isLeft(result)).toBe(true)
@@ -226,7 +226,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("BunSql (postgres)", () => {
     test.it("should produce SqlError with code for constraint violations", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql`DROP TABLE IF EXISTS unique_test`
           yield* sql`CREATE TABLE unique_test (id SERIAL PRIMARY KEY, email TEXT UNIQUE)`
           yield* sql`INSERT INTO unique_test (email) VALUES (${"a@b.com"})`
@@ -251,7 +251,7 @@ test.describe.skipIf(!process.env.TEST_SQL)("BunSql (postgres)", () => {
     test.it("should handle Postgres-specific types", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql`DROP TABLE IF EXISTS pg_types`
           yield* sql`CREATE TABLE pg_types (
             bool_val BOOLEAN,

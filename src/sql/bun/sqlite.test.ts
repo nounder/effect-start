@@ -4,10 +4,10 @@ import * as Either from "effect/Either"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Tracer from "effect/Tracer"
-import * as Sql from "../SqlClient.ts"
+import * as SqlClient from "../SqlClient.ts"
 import * as BunSql from "./index.ts"
 
-const runSql = <A, E>(effect: Effect.Effect<A, E, Sql.SqlClient>) =>
+const runSql = <A, E>(effect: Effect.Effect<A, E, SqlClient.SqlClient>) =>
   Effect.runPromise(
     Effect.provide(effect, BunSql.layer({ adapter: "sqlite", filename: ":memory:" })),
   )
@@ -75,7 +75,7 @@ const tracerLayer = (
   )
 
 const runSqlTraced = <A, E>(
-  effect: Effect.Effect<A, E, Sql.SqlClient>,
+  effect: Effect.Effect<A, E, SqlClient.SqlClient>,
   capturedSpans: Array<{
     readonly name: string
     readonly kind: Tracer.SpanKind
@@ -98,7 +98,7 @@ test.describe("BunSql", () => {
     test.it("should create table and insert rows", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql`CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT)`
           yield* sql`INSERT INTO users (name) VALUES (${"Alice"})`
           yield* sql`INSERT INTO users (name) VALUES (${"Bob"})`
@@ -114,7 +114,7 @@ test.describe("BunSql", () => {
     test.it("should return empty array for no results", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql`CREATE TABLE empty_test (id INTEGER PRIMARY KEY)`
           const rows = yield* sql`SELECT * FROM empty_test`
 
@@ -126,7 +126,7 @@ test.describe("BunSql", () => {
     test.it("should handle parameterized queries", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql`CREATE TABLE params (id INTEGER PRIMARY KEY, value TEXT, count INTEGER)`
           yield* sql`INSERT INTO params (value, count) VALUES (${"hello"}, ${42})`
           const rows = yield* sql<{
@@ -145,7 +145,7 @@ test.describe("BunSql", () => {
     test.it("should execute raw SQL strings", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql.unsafe("CREATE TABLE raw_test (id INTEGER PRIMARY KEY, name TEXT)")
           yield* sql.unsafe("INSERT INTO raw_test (name) VALUES ('test')")
           const rows = yield* sql.unsafe<{ id: number; name: string }>("SELECT * FROM raw_test")
@@ -159,7 +159,7 @@ test.describe("BunSql", () => {
     test.it("should execute unsafe with parameter values", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql.unsafe(
             "CREATE TABLE unsafe_params (id INTEGER PRIMARY KEY, name TEXT, age INT)",
           )
@@ -178,7 +178,7 @@ test.describe("BunSql", () => {
     test.it("should execute unsafe inside a transaction", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql.unsafe("CREATE TABLE unsafe_tx (id INTEGER PRIMARY KEY, name TEXT)")
 
           yield* sql.withTransaction(
@@ -203,7 +203,7 @@ test.describe("BunSql", () => {
     test.it("should commit on success", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql`CREATE TABLE tx_test (id INTEGER PRIMARY KEY, name TEXT)`
           yield* sql.withTransaction(sql`INSERT INTO tx_test (name) VALUES (${"in_tx"})`)
           const rows = yield* sql`SELECT * FROM tx_test`
@@ -216,7 +216,7 @@ test.describe("BunSql", () => {
     test.it("should rollback on failure", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql`CREATE TABLE tx_rollback (id INTEGER PRIMARY KEY, name TEXT)`
           yield* sql`INSERT INTO tx_rollback (name) VALUES (${"before"})`
 
@@ -225,7 +225,7 @@ test.describe("BunSql", () => {
               Effect.gen(function* () {
                 yield* sql`INSERT INTO tx_rollback (name) VALUES (${"should_rollback"})`
                 return yield* Effect.fail(
-                  new Sql.SqlError({ code: "TEST", message: "intentional" }),
+                  new SqlClient.SqlError({ code: "TEST", message: "intentional" }),
                 )
               }),
             )
@@ -244,7 +244,7 @@ test.describe("BunSql", () => {
     test.it("should support savepoints", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql`CREATE TABLE sp_test (id INTEGER PRIMARY KEY, name TEXT)`
 
           yield* sql.withTransaction(
@@ -255,7 +255,7 @@ test.describe("BunSql", () => {
                   Effect.gen(function* () {
                     yield* sql`Insert INTO sp_test (name) VALUES (${"inner"})`
                     return yield* Effect.fail(
-                      new Sql.SqlError({ code: "TEST", message: "rollback sp" }),
+                      new SqlClient.SqlError({ code: "TEST", message: "rollback sp" }),
                     )
                   }),
                 )
@@ -276,7 +276,7 @@ test.describe("BunSql", () => {
     test.it("should support deeply nested savepoints", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql`CREATE TABLE deep_sp (id INTEGER PRIMARY KEY, name TEXT)`
 
           yield* sql.withTransaction(
@@ -290,7 +290,7 @@ test.describe("BunSql", () => {
                       Effect.gen(function* () {
                         yield* sql`INSERT INTO deep_sp (name) VALUES (${"level_3_rollback"})`
                         return yield* Effect.fail(
-                          new Sql.SqlError({ code: "TEST", message: "deep rollback" }),
+                          new SqlClient.SqlError({ code: "TEST", message: "deep rollback" }),
                         )
                       }),
                     )
@@ -314,7 +314,7 @@ test.describe("BunSql", () => {
     test.it("should commit nested savepoints on success", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql`CREATE TABLE sp_commit (id INTEGER PRIMARY KEY, name TEXT)`
 
           yield* sql.withTransaction(
@@ -336,7 +336,7 @@ test.describe("BunSql", () => {
     test.it("should see writes within same transaction", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql`CREATE TABLE tx_visibility (id INTEGER PRIMARY KEY, name TEXT)`
 
           yield* sql.withTransaction(
@@ -361,7 +361,7 @@ test.describe("BunSql", () => {
     test.it("should produce SqlError for invalid queries", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           const result = yield* sql`SELECT * FROM nonexistent_table`.pipe(Effect.either)
 
           test.expect(Either.isLeft(result)).toBe(true)
@@ -377,7 +377,7 @@ test.describe("BunSql", () => {
     test.it("should produce SqlError for constraint violations", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql`CREATE TABLE unique_test (id INTEGER PRIMARY KEY, email TEXT UNIQUE)`
           yield* sql`INSERT INTO unique_test (email) VALUES (${"a@b.com"})`
           const result = yield* sql`INSERT INTO unique_test (email) VALUES (${"a@b.com"})`.pipe(
@@ -397,7 +397,7 @@ test.describe("BunSql", () => {
     test.it("should include original error as cause", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           const result = yield* sql`INVALID SQL SYNTAX`.pipe(Effect.either)
 
           test.expect(Either.isLeft(result)).toBe(true)
@@ -412,7 +412,7 @@ test.describe("BunSql", () => {
     test.it("should rollback transaction on SQL error inside", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql`CREATE TABLE tx_sqlerr (id INTEGER PRIMARY KEY, name TEXT)`
           yield* sql`INSERT INTO tx_sqlerr (name) VALUES (${"before"})`
 
@@ -442,7 +442,7 @@ test.describe("BunSql", () => {
     test.it("should rollback savepoint on SQL error inside nested transaction", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql`CREATE TABLE sp_sqlerr (id INTEGER PRIMARY KEY, name TEXT)`
 
           yield* sql.withTransaction(
@@ -479,7 +479,7 @@ test.describe("BunSql", () => {
     test.it("should interpolate identifier, list, and values fragments", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql`CREATE TABLE frag_test (id INTEGER PRIMARY KEY, name TEXT, age INTEGER)`
           yield* sql`INSERT INTO frag_test ${sql([
             { name: "Alice", age: 25 },
@@ -500,7 +500,7 @@ test.describe("BunSql", () => {
     test.it("should handle various SQLite types", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql`CREATE TABLE types_test (
             int_val INTEGER,
             real_val REAL,
@@ -531,7 +531,7 @@ test.describe("BunSql", () => {
     test.it("should expose the raw Bun.SQL driver", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           const rows = yield* sql.use(async (bunSql) => {
             const result = await bunSql`SELECT 1 + 1 as sum`
             return result
@@ -546,7 +546,7 @@ test.describe("BunSql", () => {
     test.it("should wrap driver errors as SqlError", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           const result = yield* sql
             .use(async (bunSql) => {
               await bunSql`SELECT * FROM use_nonexistent_table`
@@ -567,7 +567,7 @@ test.describe("BunSql", () => {
     test.it("should close without error", () =>
       runSql(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql`SELECT 1`
         }),
       ),
@@ -588,7 +588,7 @@ test.describe("BunSql", () => {
 
       await runSqlTraced(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql`SELECT ${1} as n`
           yield* sql.unsafe("SELECT 2 as n")
         }),
@@ -630,7 +630,7 @@ test.describe("BunSql", () => {
 
       await runSqlTraced(
         Effect.gen(function* () {
-          const sql = yield* Sql.SqlClient
+          const sql = yield* SqlClient.SqlClient
           yield* sql.withTransaction(
             Effect.gen(function* () {
               yield* sql`SELECT 1 as n`
@@ -641,7 +641,7 @@ test.describe("BunSql", () => {
           yield* sql
             .withTransaction(
               Effect.gen(function* () {
-                return yield* Effect.fail(new Sql.SqlError({ code: "TEST", message: "boom" }))
+                return yield* Effect.fail(new SqlClient.SqlError({ code: "TEST", message: "boom" }))
               }),
             )
             .pipe(Effect.either)

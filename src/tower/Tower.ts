@@ -3,7 +3,7 @@ import * as Layer from "effect/Layer"
 import * as Route from "../Route.ts"
 import * as RouteTree from "../RouteTree.ts"
 import * as sqlBun from "effect-start/sql/bun"
-import type * as Sql from "../sql/SqlClient.ts"
+import type * as SqlClient from "../sql/SqlClient.ts"
 import * as TowerErrors from "./TowerErrors.ts"
 import * as TowerLogger from "./TowerLogger.ts"
 import * as TowerMetrics from "./TowerMetrics.ts"
@@ -14,7 +14,7 @@ import consoleRoutes from "./routes/tree.ts"
 
 export function layer(
   options?: TowerStore.TowerStoreOptions & {
-    readonly sqlLayer?: Layer.Layer<Sql.SqlClient, Sql.SqlError>
+    readonly sqlLayer?: Layer.Layer<SqlClient.SqlClient, SqlClient.SqlError>
   },
 ): Layer.Layer<TowerStore.TowerStore> {
   const sqlLayer =
