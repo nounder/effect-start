@@ -339,6 +339,80 @@ export default {
       },
     },
 
+    "namespace-import-mismatch": {
+      meta: {
+        type: "suggestion",
+        docs: {
+          description:
+            "Warn when a namespace import alias doesn't match the basename of the module path",
+        },
+        fixable: "code",
+        schema: [],
+        messages: {
+          mismatch:
+            'Namespace import alias "{{alias}}" does not match module basename "{{baseName}}"',
+        },
+      },
+      create(context) {
+        const importNames = new Set()
+
+        return {
+          ImportDeclaration(node) {
+            for (const spec of node.specifiers) {
+              importNames.add(spec.local.name)
+            }
+
+            const source = node.source.value
+            if (typeof source !== "string") return
+
+            if (
+              node.specifiers.length !== 1 ||
+              node.specifiers[0].type !== "ImportNamespaceSpecifier"
+            ) {
+              return
+            }
+
+            if (!isLocalImport(source)) return
+
+            const baseName = getBaseName(source)
+            if (!baseName) return
+            if (!isCapitalized(baseName)) return
+
+            const alias = node.specifiers[0].local.name
+            if (alias === baseName) return
+
+            const hasCollision = importNames.has(baseName) && alias !== baseName
+            const sourceCode = context.sourceCode || context.getSourceCode()
+
+            context.report({
+              node,
+              messageId: "mismatch",
+              data: { alias, baseName },
+              fix: hasCollision
+                ? undefined
+                : (fixer) => {
+                    const fixes = [
+                      fixer.replaceText(
+                        node,
+                        `import ${node.importKind === "type" ? "type " : ""}* as ${baseName} from "${source}"`,
+                      ),
+                    ]
+
+                    for (const variable of sourceCode.getDeclaredVariables(node.specifiers[0])) {
+                      for (const ref of variable.references) {
+                        if (ref.identifier.range[0] === node.specifiers[0].local.range[0]) continue
+                        fixes.push(fixer.replaceTextRange(ref.identifier.range, baseName))
+                      }
+                    }
+
+                    return fixes
+                  },
+            })
+          },
+        }
+      },
+    },
+
     "test-assertion-newline": {
       meta: {
         type: "layout",
@@ -537,6 +611,10 @@ function getBaseName(source) {
   last = last.replace(/\.(ts|tsx|js|jsx|mjs|cjs)$/, "")
 
   return last
+}
+
+function isLocalImport(source) {
+  return source.startsWith(".") || source.startsWith("/")
 }
 
 function isCapitalized(name) {

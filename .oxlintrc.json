@@ -69,7 +69,10 @@
     "effect-start/test-space-around": "warn",
 
     // Disallow destructuring objects in function parameters
-    "effect-start/no-destructured-params": "warn"
+    "effect-start/no-destructured-params": "warn",
+
+    // Warn when namespace import alias doesn't match module basename
+    "effect-start/namespace-import-mismatch": "warn"
   },
   "overrides": [
     {
