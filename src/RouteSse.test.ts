@@ -27,10 +27,10 @@ test.describe("Route.sse()", () => {
     RouteMount.get(Route.sse(() => Stream.make({ data: "hello" }, { data: "world" })))
   })
 
-  test.it("accepts object events with data and event", () => {
+  test.it("accepts object events with data and type", () => {
     RouteMount.get(
       Route.sse(() =>
-        Stream.make({ data: "hello", event: "message" }, { data: "world", event: "update" }),
+        Stream.make({ data: "hello", type: "message" }, { data: "world", type: "update" }),
       ),
     )
   })
@@ -67,9 +67,9 @@ test.describe("Route.sse()", () => {
     test.expect(text).toBe("data: hello\n\ndata: world\n\n")
   })
 
-  test.it("formats events with event field", async () => {
+  test.it("formats events with type field", async () => {
     const handler = RouteHttp.toWebHandler(
-      Route.get(Route.sse(() => Stream.make({ data: "payload", event: "custom" }))),
+      Route.get(Route.sse(() => Stream.make({ data: "payload", type: "custom" }))),
     )
     const response = await Http.fetch(handler, { path: "/events" })
 
@@ -94,7 +94,7 @@ test.describe("Route.sse()", () => {
       Route.get(
         Route.sse(() =>
           Stream.make({
-            event: "patch",
+            type: "patch",
             data: "line1\nline2\nline3",
           }),
         ),
@@ -192,7 +192,7 @@ test.describe("Route.sse()", () => {
           Stream.make(
             { data: "plain message" },
             { _tag: "Notification", text: "hello" },
-            { data: "another", event: "custom" },
+            { data: "another", type: "custom" },
           ),
         ),
       ),
