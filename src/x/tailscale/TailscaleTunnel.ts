@@ -18,7 +18,7 @@ interface TailscaleStatus {
 
 const getStatus = (command: string) =>
   Effect.gen(function* () {
-    const proc = yield* System.spawn(command, ["status", "--json"])
+    const proc = yield* System.spawn([command, "status", "--json"])
     const exitCode = yield* proc.exitCode
 
     if (exitCode !== 0) {
@@ -56,9 +56,9 @@ const serve = (opts: {
 }) =>
   Effect.gen(function* () {
     const logPrefix = opts.logPrefix ?? "TailscaleTunnel: "
-    const args = [opts.public ? "funnel" : "serve", String(opts.port)]
+    const subcommand = opts.public ? "funnel" : "serve"
 
-    const proc = yield* System.spawn(opts.command, args)
+    const proc = yield* System.spawn([opts.command, subcommand, String(opts.port)])
 
     yield* Function.pipe(
       Stream.merge(proc.stdout, proc.stderr),

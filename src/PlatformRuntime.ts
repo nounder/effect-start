@@ -6,8 +6,14 @@ import type * as FiberId from "effect/FiberId"
 import * as FiberRef from "effect/FiberRef"
 import * as FiberRefs from "effect/FiberRefs"
 import * as Function from "effect/Function"
+import * as GlobalValue from "effect/GlobalValue"
 import * as HashSet from "effect/HashSet"
 import * as Logger from "effect/Logger"
+import * as MutableRef from "effect/MutableRef"
+
+export const mainFiber = GlobalValue.globalValue(Symbol.for("effect-start/PlatformRuntime/mainFiber"), () =>
+  MutableRef.make<Fiber.RuntimeFiber<unknown, unknown> | undefined>(undefined),
+)
 
 export interface Teardown {
   <E, A>(exit: Exit.Exit<E, A>, onExit: (code: number) => void): void

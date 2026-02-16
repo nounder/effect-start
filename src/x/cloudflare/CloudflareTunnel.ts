@@ -20,7 +20,7 @@ export const start = (opts: {
       opts.tunnelName,
     ].flatMap((v) => v)
 
-    const proc = yield* System.spawn(command, args)
+    const proc = yield* System.spawn([command, ...args])
 
     yield* Effect.logInfo(
       `Cloudflare tunnel started name=${opts.tunnelName} pid=${proc.pid} tunnelUrl=${

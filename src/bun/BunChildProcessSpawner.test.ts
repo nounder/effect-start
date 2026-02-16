@@ -12,36 +12,29 @@ const run = <A, E>(effect: Effect.Effect<A, E, ChildProcess.ChildProcessSpawner 
 
 test.describe("ChildProcess.make", () => {
   test.it("creates a command", () => {
-    const cmd = ChildProcess.make("echo", ["hello"])
+    const cmd = ChildProcess.make(["echo", "hello"])
 
-    test.expect(cmd.command).toBe("echo")
-    test.expect(cmd.args).toEqual(["hello"])
+    test.expect(cmd.cmd).toEqual(["echo", "hello"])
   })
 
   test.it("creates with options", () => {
-    const cmd = ChildProcess.make("echo", ["hello"], { cwd: "/tmp" })
+    const cmd = ChildProcess.make(["echo", "hello"], { cwd: "/tmp" })
 
     test.expect(cmd.cwd).toBe("/tmp")
   })
 
-  test.it("defaults args to empty array", () => {
-    const cmd = ChildProcess.make("echo")
-
-    test.expect(cmd.args).toEqual([])
-  })
-
   test.it("isCommand", () => {
-    const cmd = ChildProcess.make("echo")
+    const cmd = ChildProcess.make(["echo"])
 
     test.expect(ChildProcess.isCommand(cmd)).toBe(true)
     test.expect(ChildProcess.isCommand({})).toBe(false)
   })
 
   test.it("is pipeable", () => {
-    const cmd = ChildProcess.make("echo", ["hello"])
-    const result = cmd.pipe((c) => c.command)
+    const cmd = ChildProcess.make(["echo", "hello"])
+    const result = cmd.pipe((c) => c.cmd)
 
-    test.expect(result).toBe("echo")
+    test.expect(result).toEqual(["echo", "hello"])
   })
 })
 
@@ -49,7 +42,7 @@ test.describe("spawn + stdout", () => {
   test.it("reads stdout", async () => {
     const result = await run(
       Effect.gen(function* () {
-        const handle = yield* ChildProcess.spawn(ChildProcess.make("echo", ["hello"]))
+        const handle = yield* ChildProcess.spawn(ChildProcess.make(["echo", "hello"]))
         return yield* handle.stdout.pipe(Stream.decodeText("utf-8"), Stream.mkString)
       }),
     )
@@ -60,7 +53,7 @@ test.describe("spawn + stdout", () => {
   test.it("command is yieldable", async () => {
     const result = await run(
       Effect.gen(function* () {
-        const handle = yield* ChildProcess.make("echo", ["hello"])
+        const handle = yield* ChildProcess.make(["echo", "hello"])
         return yield* handle.stdout.pipe(Stream.decodeText("utf-8"), Stream.mkString)
       }),
     )
@@ -72,7 +65,7 @@ test.describe("spawn + stdout", () => {
     const result = await run(
       Effect.gen(function* () {
         const handle = yield* ChildProcess.spawn(
-          ChildProcess.make("printf", ["line1\nline2\nline3"]),
+          ChildProcess.make(["printf", "line1\nline2\nline3"]),
         )
         return yield* handle.stdout.pipe(
           Stream.decodeText("utf-8"),
@@ -90,7 +83,7 @@ test.describe("spawn + exitCode", () => {
   test.it("returns 0 for success", async () => {
     const code = await run(
       Effect.gen(function* () {
-        const handle = yield* ChildProcess.spawn(ChildProcess.make("true"))
+        const handle = yield* ChildProcess.spawn(ChildProcess.make(["true"]))
         return yield* handle.exitCode
       }),
     )
@@ -101,7 +94,7 @@ test.describe("spawn + exitCode", () => {
   test.it("returns non-zero exit code", async () => {
     const code = await run(
       Effect.gen(function* () {
-        const handle = yield* ChildProcess.spawn(ChildProcess.make("false"))
+        const handle = yield* ChildProcess.spawn(ChildProcess.make(["false"]))
         return yield* handle.exitCode
       }),
     )
@@ -114,7 +107,7 @@ test.describe("spawn + pid", () => {
   test.it("provides pid", async () => {
     const pid = await run(
       Effect.gen(function* () {
-        const handle = yield* ChildProcess.spawn(ChildProcess.make("echo", ["hello"]))
+        const handle = yield* ChildProcess.spawn(ChildProcess.make(["echo", "hello"]))
         return handle.pid
       }),
     )
@@ -127,7 +120,7 @@ test.describe("spawn + isRunning", () => {
   test.it("reports running state", async () => {
     const result = await run(
       Effect.gen(function* () {
-        const handle = yield* ChildProcess.spawn(ChildProcess.make("sleep", ["10"]))
+        const handle = yield* ChildProcess.spawn(ChildProcess.make(["sleep", "10"]))
         const running = yield* handle.isRunning
         yield* handle.kill()
         return running
@@ -142,7 +135,7 @@ test.describe("spawn + kill", () => {
   test.it("kills a running process", async () => {
     const result = await run(
       Effect.gen(function* () {
-        const handle = yield* ChildProcess.spawn(ChildProcess.make("sleep", ["10"]))
+        const handle = yield* ChildProcess.spawn(ChildProcess.make(["sleep", "10"]))
         yield* handle.kill()
         yield* Effect.sleep("50 millis")
         return yield* handle.isRunning
@@ -157,7 +150,7 @@ test.describe("spawn + stderr", () => {
   test.it("reads stderr", async () => {
     const result = await run(
       Effect.gen(function* () {
-        const handle = yield* ChildProcess.spawn(ChildProcess.make("sh", ["-c", "echo error >&2"]))
+        const handle = yield* ChildProcess.spawn(ChildProcess.make(["sh", "-c", "echo error >&2"]))
         return yield* handle.stderr.pipe(Stream.decodeText("utf-8"), Stream.mkString)
       }),
     )
@@ -170,7 +163,7 @@ test.describe("spawn + stdin", () => {
   test.it("writes to stdin via sink", async () => {
     const result = await run(
       Effect.gen(function* () {
-        const handle = yield* ChildProcess.spawn(ChildProcess.make("cat", [], { stdin: "pipe" }))
+        const handle = yield* ChildProcess.spawn(ChildProcess.make(["cat"], { stdin: "pipe" }))
         const input = new TextEncoder().encode("hello from stdin")
         yield* Stream.make(input).pipe(Stream.run(handle.stdin))
         return yield* handle.stdout.pipe(Stream.decodeText("utf-8"), Stream.mkString)
@@ -185,7 +178,7 @@ test.describe("spawn + options", () => {
   test.it("applies cwd", async () => {
     const result = await run(
       Effect.gen(function* () {
-        const handle = yield* ChildProcess.spawn(ChildProcess.make("pwd", [], { cwd: "/tmp" }))
+        const handle = yield* ChildProcess.spawn(ChildProcess.make(["pwd"], { cwd: "/tmp" }))
         return yield* handle.stdout.pipe(Stream.decodeText("utf-8"), Stream.mkString)
       }),
     )
@@ -197,7 +190,7 @@ test.describe("spawn + options", () => {
     const result = await run(
       Effect.gen(function* () {
         const handle = yield* ChildProcess.spawn(
-          ChildProcess.make("printenv", ["MY_TEST_VAR"], { env: { MY_TEST_VAR: "hello123" } }),
+          ChildProcess.make(["printenv", "MY_TEST_VAR"], { env: { MY_TEST_VAR: "hello123" } }),
         )
         return yield* handle.stdout.pipe(Stream.decodeText("utf-8"), Stream.mkString)
       }),
@@ -211,7 +204,7 @@ test.describe("spawn errors", () => {
   test.it("fails for non-existent command", async () => {
     const error = await Effect.runPromise(
       Effect.scoped(
-        ChildProcess.spawn(ChildProcess.make("__nonexistent_command_xyz__")).pipe(
+        ChildProcess.spawn(ChildProcess.make(["__nonexistent_command_xyz__"])).pipe(
           Effect.flip,
           Effect.provide(BunChildProcessSpawner.layer),
         ),

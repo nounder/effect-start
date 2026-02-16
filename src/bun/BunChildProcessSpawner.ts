@@ -6,21 +6,14 @@ import type * as BunTypes from "bun"
 import * as ChildProcess from "../ChildProcess.ts"
 import * as PlatformError from "../PlatformError.ts"
 
-const toCmd = (command: ChildProcess.Command): ReadonlyArray<string> => [
-  command.command,
-  ...command.args,
-]
-
 export const layer: Layer.Layer<ChildProcess.ChildProcessSpawner> = Layer.succeed(
   ChildProcess.ChildProcessSpawner,
   {
     spawn: (command) =>
       Effect.gen(function* () {
-        const cmd = toCmd(command)
-
         const proc = yield* Effect.try({
           try: () =>
-            Bun.spawn(cmd as Array<string>, {
+            Bun.spawn([...command.cmd], {
               cwd: command.cwd,
               env: command.env,
               stdin: command.stdin ?? "ignore",

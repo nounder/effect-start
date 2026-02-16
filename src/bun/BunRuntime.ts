@@ -1,16 +1,10 @@
-import type * as Fiber from "effect/Fiber"
-import * as GlobalValue from "effect/GlobalValue"
 import * as MutableRef from "effect/MutableRef"
 import * as PlatformRuntime from "../PlatformRuntime.ts"
 
-const mainFiber = GlobalValue.globalValue(Symbol.for("effect-start/BunRuntime/existingFiber"), () =>
-  MutableRef.make<Fiber.RuntimeFiber<unknown, unknown> | undefined>(undefined),
-)
-
 export const runMain = PlatformRuntime.makeRunMain((options) => {
-  const prevFiber = MutableRef.get(mainFiber)
+  const prevFiber = MutableRef.get(PlatformRuntime.mainFiber)
 
-  MutableRef.set(mainFiber, options.fiber)
+  MutableRef.set(PlatformRuntime.mainFiber, options.fiber)
 
   let receivedSignal = false
 

@@ -63,7 +63,7 @@ export class DockerContainer extends Context.Tag("effect-start/DockerContainer")
 const dockerExec = (...args: ReadonlyArray<string>) =>
   Effect.scoped(
     Effect.gen(function* () {
-      const handle = yield* System.spawn("docker", args, {
+      const handle = yield* System.spawn(["docker", ...args], {
         stdout: "ignore",
         stderr: "inherit",
       })
@@ -74,7 +74,7 @@ const dockerExec = (...args: ReadonlyArray<string>) =>
 const dockerExecStdout = (...args: ReadonlyArray<string>) =>
   Effect.scoped(
     Effect.gen(function* () {
-      const handle = yield* System.spawn("docker", args, {
+      const handle = yield* System.spawn(["docker", ...args], {
         stdout: "pipe",
         stderr: "inherit",
       })

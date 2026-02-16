@@ -23,8 +23,7 @@ type Stdio = "pipe" | "inherit" | "ignore"
 
 export interface Command extends Pipeable.Pipeable {
   readonly [TypeId]: TypeId
-  readonly command: string
-  readonly args: ReadonlyArray<string>
+  readonly cmd: readonly [string, ...Array<string>]
   readonly cwd?: string
   readonly env?: Record<string, string>
   readonly stdin?: Stdio
@@ -64,13 +63,11 @@ const CommandProto = {
 export const isCommand = (u: unknown): u is Command => Predicate.hasProperty(u, TypeId)
 
 export const make = (
-  command: string,
-  args?: ReadonlyArray<string>,
+  cmd: readonly [string, ...Array<string>],
   options?: Command.Options,
 ): Command =>
   Object.assign(Object.create(CommandProto), {
-    command,
-    args: args ?? [],
+    cmd,
     ...options,
   })
 
