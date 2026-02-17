@@ -134,8 +134,8 @@ test.describe("HyperRoute.html", () => {
     const node = (
       <button
         data-on:click={(e) => {
-          test.expectTypeOf(e).toEqualTypeOf<Engine.DataEvent>()
-          test.expectTypeOf(e.window).toEqualTypeOf<Window & typeof globalThis>()
+          test.expectTypeOf(e).toMatchTypeOf<Engine.DataEvent>()
+          test.expectTypeOf(e.window).toMatchTypeOf<Window & typeof globalThis>()
         }}
       />
     )

@@ -403,7 +403,6 @@ const removeNode = (node: Node): void => {
 }
 
 const moveBefore: (parentNode: Node, node: Node, after: Node | null) => void =
-  // @ts-expect-error
   removeNode.call.bind(ctxPantry.moveBefore ?? ctxPantry.insertBefore)
 
 const aliasedPreserveAttr = aliasify("preserve-attr")
