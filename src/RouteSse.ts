@@ -11,40 +11,31 @@ import type * as Values from "./Values.ts"
 const HEARTBEAT_INTERVAL = Duration.seconds(5)
 const HEARTBEAT = ": <3\n\n"
 
-export interface SseEvent {
-  data?: string | undefined
-  type?: string
-  retry?: number
+interface SseEvent {
+  readonly [key: string]: unknown
+  readonly _tag?: string
+  readonly data?: string | undefined
+  readonly type?: string
+  readonly retry?: number
 }
 
-export type SseTaggedEvent = {
-  readonly _tag: string
-}
-
-export type SseEventInput = SseEvent | SseTaggedEvent
-
-function isTaggedEvent(event: SseEventInput): event is SseTaggedEvent {
-  return Object.hasOwn(event, "_tag") && typeof event["_tag"] === "string"
-}
-
-function formatSseEvent(event: SseEventInput): string {
-  if (isTaggedEvent(event)) {
+function formatSseEvent(event: SseEvent): string {
+  if (event._tag) {
     const json = JSON.stringify(event)
     return `event: ${event._tag}\ndata: ${json}\n\n`
   }
 
-  const e = event as SseEvent
   let result = ""
-  if (e.type) {
-    result += `event: ${e.type}\n`
+  if (event.type) {
+    result += `event: ${event.type}\n`
   }
-  if (typeof e.data === "string") {
-    for (const line of e.data.split("\n")) {
+  if (typeof event.data === "string") {
+    for (const line of event.data.split("\n")) {
       result += `data: ${line}\n`
     }
   }
-  if (e.retry !== undefined) {
-    result += `retry: ${e.retry}\n`
+  if (event.retry !== undefined) {
+    result += `retry: ${event.retry}\n`
   }
   if (result === "") {
     return ""
@@ -52,18 +43,18 @@ function formatSseEvent(event: SseEventInput): string {
   return result + "\n"
 }
 
-export type SseHandlerInput<B, E, R> =
-  | Stream.Stream<SseEventInput, E, R>
-  | Effect.Effect<Stream.Stream<SseEventInput, E, R>, E, R>
+type SseHandlerInput<B, E, R> =
+  | Stream.Stream<SseEvent, E, R>
+  | Effect.Effect<Stream.Stream<SseEvent, E, R>, E, R>
   | ((
       context: Values.Simplify<B>,
       next: (context?: Partial<B> & Record<string, unknown>) => Entity.Entity<string>,
     ) =>
-      | Stream.Stream<SseEventInput, E, R>
-      | Effect.Effect<Stream.Stream<SseEventInput, E, R>, E, R>
+      | Stream.Stream<SseEvent, E, R>
+      | Effect.Effect<Stream.Stream<SseEvent, E, R>, E, R>
       | Generator<
           Utils.YieldWrap<Effect.Effect<unknown, E, R>>,
-          Stream.Stream<SseEventInput, E, R>,
+          Stream.Stream<SseEvent, E, R>,
           unknown
         >)
 
@@ -81,24 +72,24 @@ export function sse<
       E,
       R
     > = (ctx, _next) => {
-      const getStream = (): Effect.Effect<Stream.Stream<SseEventInput, E, R>, E, R> => {
+      const getStream = (): Effect.Effect<Stream.Stream<SseEvent, E, R>, E, R> => {
         if (typeof handler === "function") {
           const result = (handler as Function)(ctx, _next)
           if (StreamExtra.isStream(result)) {
-            return Effect.succeed(result as Stream.Stream<SseEventInput, E, R>)
+            return Effect.succeed(result as Stream.Stream<SseEvent, E, R>)
           }
           if (Effect.isEffect(result)) {
-            return result as Effect.Effect<Stream.Stream<SseEventInput, E, R>, E, R>
+            return result as Effect.Effect<Stream.Stream<SseEvent, E, R>, E, R>
           }
           return Effect.gen(function* () {
             return yield* result
-          }) as Effect.Effect<Stream.Stream<SseEventInput, E, R>, E, R>
+          }) as Effect.Effect<Stream.Stream<SseEvent, E, R>, E, R>
         }
         if (StreamExtra.isStream(handler)) {
-          return Effect.succeed(handler as Stream.Stream<SseEventInput, E, R>)
+          return Effect.succeed(handler as Stream.Stream<SseEvent, E, R>)
         }
         if (Effect.isEffect(handler)) {
-          return handler as Effect.Effect<Stream.Stream<SseEventInput, E, R>, E, R>
+          return handler as Effect.Effect<Stream.Stream<SseEvent, E, R>, E, R>
         }
         return Effect.succeed(Stream.empty)
       }
