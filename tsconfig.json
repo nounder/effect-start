@@ -1,14 +1,13 @@
 {
   "$schema": "http://json.schemastore.org/tsconfig",
   "compilerOptions": {
-    // Enable latest features
     "lib": ["ESNext", "DOM"],
     "target": "ESNext",
     "module": "ESNext",
     "moduleDetection": "force",
     "allowJs": true,
-
-    // JSX
+    // Use incremental builds with project references.
+    "incremental": true,
     "jsx": "react-jsx",
     "jsxImportSource": "effect-start",
 

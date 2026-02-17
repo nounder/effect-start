@@ -2,7 +2,11 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "noEmit": false,
+    // Emit .d.ts files so consumers get package types from dist.
     "declaration": true,
+    // Emit .d.ts.map so editors can jump from declarations to source.
+    "declarationMap": true,
+    "sourceMap": true,
     "rootDir": "src",
     "outDir": "dist",
     "allowImportingTsExtensions": false,
