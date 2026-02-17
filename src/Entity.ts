@@ -328,18 +328,24 @@ export function length(self: Entity): number | undefined {
 export function fromResponse(
   response: Response,
   request?: Request,
-): Entity<Effect.Effect<Uint8Array, Error, never>, Error> {
-  return make(
-    Effect.tryPromise({
-      try: () => response.arrayBuffer().then((buf) => new Uint8Array(buf)),
-      catch: (e) => (e instanceof Error ? e : new Error(String(e))),
-    }),
-    {
-      headers: Object.fromEntries(response.headers.entries()),
-      status: response.status,
-      url: response.url || request?.url,
-    },
-  )
+): Entity<Stream.Stream<Uint8Array, Error, never>, Error> {
+  const body: Stream.Stream<Uint8Array, Error, never> = response.body
+    ? Stream.fromReadableStream(
+        () => response.body!,
+        (e) => (e instanceof Error ? e : new Error(String(e))),
+      )
+    : Stream.fromEffect(
+        Effect.tryPromise({
+          try: () => response.arrayBuffer().then((buf) => new Uint8Array(buf)),
+          catch: (e) => (e instanceof Error ? e : new Error(String(e))),
+        }),
+      )
+
+  return make(body, {
+    headers: Object.fromEntries(response.headers.entries()),
+    status: response.status,
+    url: response.url || request?.url,
+  })
 }
 
 function mismatch(expected: Schema.Schema.Any, actual: unknown): ParseResult.ParseError {

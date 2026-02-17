@@ -1,12 +1,13 @@
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Schedule from "effect/Schedule"
+import * as Stream from "effect/Stream"
 import * as Entity from "./Entity.ts"
 
 const TypeId: unique symbol = Symbol.for("effect-start/FetchClient")
 type TypeId = typeof TypeId
 
-export type FetchEntity = Entity.Entity<Effect.Effect<Uint8Array, FetchError, never>, FetchError>
+export type FetchEntity = Entity.Entity<Stream.Stream<Uint8Array, FetchError, never>, FetchError>
 
 export class FetchError extends Data.TaggedError("FetchError")<{
   readonly reason: "Network" | "Status"
@@ -268,4 +269,86 @@ export function retry(options: {
       Schedule.intersect(Schedule.recurs(times), Schedule.exponential(delay)),
     )
   }) as Middleware
+}
+
+interface SseEvent {
+  data?: string | undefined
+  type?: string
+  retry?: number
+  id?: string
+}
+
+export function sse(_options?: {
+  readonly retry?: Schedule.Schedule<any, any, any>
+}): (entity: FetchEntity) => Stream.Stream<SseEvent, FetchError> {
+  return (entity) => {
+    const contentType = entity.headers["content-type"] ?? ""
+    if (!contentType.includes("text/event-stream")) {
+      return Stream.fail(
+        new FetchError({
+          reason: "Status",
+          cause: new Error(`Expected content-type text/event-stream, got: ${contentType}`),
+          response: entity,
+        }),
+      )
+    }
+
+    const byteStream = entity.body as Stream.Stream<Uint8Array, FetchError, never>
+    const decoder = new TextDecoder()
+    const empty = {
+      partial: "",
+      eventType: undefined as string | undefined,
+      dataLines: [] as Array<string>,
+      retryMs: undefined as number | undefined,
+      lastEventId: undefined as string | undefined,
+    }
+    type Acc = typeof empty
+
+    return byteStream.pipe(
+      Stream.mapAccum(empty, (acc, chunk: Uint8Array): [Acc, Array<string>] => {
+        const text = acc.partial + decoder.decode(chunk, { stream: true })
+        const parts = text.split("\n")
+        const partial = parts.pop()!
+        const lines = parts.map((l) => (l.endsWith("\r") ? l.slice(0, -1) : l))
+        return [{ ...acc, partial }, lines]
+      }),
+      Stream.flatMap(Stream.fromIterable),
+      Stream.mapAccum(empty, (acc, line: string): [Acc, SseEvent | undefined] => {
+        if (line === "") {
+          if (acc.dataLines.length > 0) {
+            const event: SseEvent = { data: acc.dataLines.join("\n") }
+            if (acc.eventType !== undefined) event.type = acc.eventType
+            if (acc.retryMs !== undefined) event.retry = acc.retryMs
+            if (acc.lastEventId !== undefined) event.id = acc.lastEventId
+            return [{ ...empty, lastEventId: acc.lastEventId }, event]
+          }
+          return [{ ...empty, lastEventId: acc.lastEventId }, undefined]
+        }
+
+        if (line.startsWith(":")) return [acc, undefined]
+
+        const colonIdx = line.indexOf(":")
+        const field = colonIdx === -1 ? line : line.slice(0, colonIdx)
+        let value = colonIdx === -1 ? "" : line.slice(colonIdx + 1)
+        if (value.startsWith(" ")) value = value.slice(1)
+
+        switch (field) {
+          case "event":
+            return [{ ...acc, eventType: value }, undefined]
+          case "data":
+            return [{ ...acc, dataLines: [...acc.dataLines, value] }, undefined]
+          case "retry": {
+            const n = parseInt(value, 10)
+            if (!isNaN(n)) return [{ ...acc, retryMs: n }, undefined]
+            return [acc, undefined]
+          }
+          case "id":
+            return [{ ...acc, lastEventId: value }, undefined]
+          default:
+            return [acc, undefined]
+        }
+      }),
+      Stream.filter((event): event is SseEvent => event !== undefined),
+    )
+  }
 }
