@@ -256,6 +256,69 @@ test.describe("FetchClient", () => {
   )
 })
 
+test.describe("fromHandler", () => {
+  test.it("creates a client from a WebHandler", () =>
+    Effect.gen(function* () {
+      const handler = (_request: Request) => new Response("from handler", { status: 200 })
+      const client = Fetch.fromHandler(handler)
+
+      const entity = yield* client.fetch("http://localhost/test")
+      test.expect(entity.status).toBe(200)
+      const text = yield* entity.text
+      test.expect(text).toBe("from handler")
+    }).pipe(Effect.runPromise),
+  )
+
+  test.it("passes request to handler", () =>
+    Effect.gen(function* () {
+      let capturedMethod = ""
+      let capturedPath = ""
+      const handler = (request: Request) => {
+        capturedMethod = request.method
+        capturedPath = new URL(request.url).pathname
+        return new Response("ok")
+      }
+      const client = Fetch.fromHandler(handler)
+
+      yield* client.post("http://localhost/users")
+      test.expect(capturedMethod).toBe("POST")
+      test.expect(capturedPath).toBe("/users")
+    }).pipe(Effect.runPromise),
+  )
+
+  test.it("supports middleware on handler-backed client", () =>
+    Effect.gen(function* () {
+      const handler = (_request: Request) =>
+        new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        })
+
+      const client = Fetch.fromHandler(handler).use(
+        Fetch.filterStatusOk(),
+      )
+
+      const entity = yield* client.fetch("http://localhost/api")
+      const json = yield* entity.json
+      test.expect(json).toEqual({ ok: true })
+    }).pipe(Effect.runPromise),
+  )
+
+  test.it("handles async WebHandler", () =>
+    Effect.gen(function* () {
+      const handler = async (_request: Request) => {
+        return new Response("async result", { status: 201 })
+      }
+      const client = Fetch.fromHandler(handler)
+
+      const entity = yield* client.fetch("http://localhost/test")
+      test.expect(entity.status).toBe(201)
+      const text = yield* entity.text
+      test.expect(text).toBe("async result")
+    }).pipe(Effect.runPromise),
+  )
+})
+
 test.describe("type tests", () => {
   test.it("FetchClient tracks error channel from middleware", () => {
     class CustomError extends Error {

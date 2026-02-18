@@ -173,6 +173,22 @@ const ClientProto: any = {
   use,
 }
 
+type WebHandler = (request: Request) => Response | Promise<Response>
+
+export function fromHandler(handler: WebHandler): FetchClient {
+  const transport: Middleware = (request) =>
+    Effect.map(
+      Effect.tryPromise({
+        try: () => Promise.resolve(handler(request)),
+        catch: (e) => new FetchError({ reason: "Network", cause: e, request }),
+      }),
+      (response) => Entity.fromResponse(response, request) as FetchEntity,
+    )
+  return Object.create(ClientProto, {
+    middleware: { value: [transport] },
+  }) as FetchClient
+}
+
 export function filterStatus(
   predicate: (status: number) => boolean,
   options?: {
