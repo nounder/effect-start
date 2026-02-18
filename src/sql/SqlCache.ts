@@ -9,10 +9,23 @@ type SqlCacheInstance = Cache.Cache<string, ReadonlyArray<any>>
 
 export class SqlCache extends Context.Tag("effect-start/SqlCache")<SqlCache, SqlCacheInstance>() {}
 
+export function layer(cache: SqlCacheInstance): Layer.Layer<SqlCache>
 export function layer(options: {
   readonly capacity: number
   readonly timeToLive: Duration.DurationInput
-}): Layer.Layer<SqlCache> {
+}): Layer.Layer<SqlCache>
+export function layer(
+  cacheOrOptions:
+    | SqlCacheInstance
+    | { readonly capacity: number; readonly timeToLive: Duration.DurationInput },
+): Layer.Layer<SqlCache> {
+  if (Cache.CacheTypeId in cacheOrOptions) {
+    return Layer.succeed(SqlCache, cacheOrOptions as SqlCacheInstance)
+  }
+  const options = cacheOrOptions as {
+    readonly capacity: number
+    readonly timeToLive: Duration.DurationInput
+  }
   return Layer.effect(
     SqlCache,
     Cache.make<string, ReadonlyArray<any>>({
