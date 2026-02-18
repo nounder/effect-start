@@ -63,10 +63,13 @@ const getStatusFromCause = (cause: Cause.Cause<unknown>): number => {
   return 500
 }
 
-const respondError = (options: { status: number; message: string }): Response =>
+const respondError = (
+  options: { status: number; message: string },
+  headers?: Record<string, string>,
+): Response =>
   new Response(JSON.stringify(options, null, 2), {
     status: options.status,
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", ...headers },
   })
 
 function streamResponse(
@@ -188,140 +191,158 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
       }
     }
 
-    return (request) => {
-      const method = request.method.toUpperCase()
-      const accept = request.headers.get("accept")
-      const methodRoutes = methodGroups[method] ?? []
+    const allowedMethods = Object.keys(methodGroups)
+      .filter((m) => methodGroups[m] !== undefined && methodGroups[m]!.length > 0)
+      .join(", ")
 
-      if (methodRoutes.length === 0 && wildcards.length === 0) {
-        return Promise.resolve(respondError({ status: 405, message: "method not allowed" }))
-      }
+    return (request) =>
+      new Promise((resolve) => {
+        const method = request.method.toUpperCase()
+        const accept = request.headers.get("accept")
+        const methodRoutes = methodGroups[method] ?? []
 
-      const allRoutes = [...wildcards, ...methodRoutes]
-      const selectedFormat = determineSelectedFormat(accept, allRoutes)
-
-      const specificFormats = new Set<string>()
-      let hasWildcardFormatRoutes = false
-      for (const r of allRoutes) {
-        const format = Route.descriptor(r).format
-        if (format === "*") hasWildcardFormatRoutes = true
-        else if (format) specificFormats.add(format)
-      }
-      const hasSpecificFormatRoutes = specificFormats.size > 0
-      const varyAccept = specificFormats.size > 1
-
-      if (selectedFormat === undefined && hasSpecificFormatRoutes && !hasWildcardFormatRoutes) {
-        return Promise.resolve(respondError({ status: 406, message: "not acceptable" }))
-      }
-
-      const createChain = (initialContext: any): Effect.Effect<Entity.Entity<any>, any, any> => {
-        let index = 0
-        let currentContext = initialContext
-        let routePathSet = false
-
-        const runNext = (passedContext?: any): Effect.Effect<Entity.Entity<any>, any, any> => {
-          if (passedContext !== undefined) {
-            currentContext = passedContext
-          }
-
-          if (index >= allRoutes.length) {
-            return Effect.succeed(
-              Entity.make({ status: 404, message: "route not found" }, { status: 404 }),
-            )
-          }
-
-          const route = allRoutes[index++]
-          const descriptor = Route.descriptor(route)
-          const format = descriptor.format
-          const handler = route.handler as unknown as Handler
-
-          if (format && format !== "*" && format !== selectedFormat) {
-            return runNext()
-          }
-
-          currentContext = { ...currentContext, ...descriptor }
-
-          const nextArg = (ctx?: any) => Entity.effect(Effect.suspend(() => runNext(ctx)))
-
-          const routePath = descriptor["path"]
-          if (!routePathSet && routePath !== undefined) {
-            routePathSet = true
-            return Effect.flatMap(Effect.currentSpan.pipe(Effect.option), (spanOption) => {
-              if (Option.isSome(spanOption)) {
-                spanOption.value.attribute("http.route", routePath)
-              }
-              return handler(currentContext, nextArg)
-            })
-          }
-
-          return handler(currentContext, nextArg)
+        if (method === "OPTIONS" && methodRoutes.length === 0 && wildcards.length === 0) {
+          return resolve(
+            new Response(null, {
+              status: 204,
+              headers: { allow: allowedMethods },
+            }),
+          )
         }
 
-        return runNext()
-      }
+        if (methodRoutes.length === 0 && wildcards.length === 0) {
+          return resolve(
+            respondError({ status: 405, message: "method not allowed" }, { allow: allowedMethods }),
+          )
+        }
 
-      const effect = Effect.withFiberRuntime<Response, unknown, R>((fiber) => {
-        const tracerDisabled =
-          !fiber.getFiberRef(FiberRef.currentTracerEnabled) ||
-          fiber.getFiberRef(RouteHttpTracer.currentTracerDisabledWhen)(request)
+        const allRoutes = [...wildcards, ...methodRoutes]
+        const selectedFormat = determineSelectedFormat(accept, allRoutes)
 
-        const url = new URL(request.url)
+        const specificFormats = new Set<string>()
+        let hasWildcardFormatRoutes = false
+        for (const r of allRoutes) {
+          const format = Route.descriptor(r).format
+          if (format === "*") hasWildcardFormatRoutes = true
+          else if (format) specificFormats.add(format)
+        }
+        const hasSpecificFormatRoutes = specificFormats.size > 0
+        const varyAccept = specificFormats.size > 1
 
-        const innerEffect = Effect.gen(function* () {
-          const result = yield* createChain({ request, selectedFormat })
+        if (selectedFormat === undefined && hasSpecificFormatRoutes && !hasWildcardFormatRoutes) {
+          return resolve(respondError({ status: 406, message: "not acceptable" }))
+        }
 
-          const entity = Entity.isEntity(result) ? result : Entity.make(result, { status: 200 })
+        const createChain = (initialContext: any): Effect.Effect<Entity.Entity<any>, any, any> => {
+          let index = 0
+          let currentContext = initialContext
+          let routePathSet = false
 
-          if (entity.status === 404 && entity.body === undefined) {
-            return respondError({ status: 406, message: "not acceptable" })
+          const runNext = (passedContext?: any): Effect.Effect<Entity.Entity<any>, any, any> => {
+            if (passedContext !== undefined) {
+              currentContext = passedContext
+            }
+
+            if (index >= allRoutes.length) {
+              return Effect.succeed(
+                Entity.make({ status: 404, message: "route not found" }, { status: 404 }),
+              )
+            }
+
+            const route = allRoutes[index++]
+            const descriptor = Route.descriptor(route)
+            const format = descriptor.format
+            const handler = route.handler as unknown as Handler
+
+            if (format && format !== "*" && format !== selectedFormat) {
+              return runNext()
+            }
+
+            currentContext = { ...currentContext, ...descriptor }
+
+            const nextArg = (ctx?: any) => Entity.effect(Effect.suspend(() => runNext(ctx)))
+
+            const routePath = descriptor["path"]
+            if (!routePathSet && routePath !== undefined) {
+              routePathSet = true
+              return Effect.flatMap(Effect.currentSpan.pipe(Effect.option), (spanOption) => {
+                if (Option.isSome(spanOption)) {
+                  spanOption.value.attribute("http.route", routePath)
+                }
+                return handler(currentContext, nextArg)
+              })
+            }
+
+            return handler(currentContext, nextArg)
           }
 
-          const response = yield* toResponse(entity, selectedFormat, runtime)
-          if (varyAccept) {
-            response.headers.set("vary", "Accept")
+          return runNext()
+        }
+
+        const effect = Effect.withFiberRuntime<Response, unknown, R>((fiber) => {
+          const tracerDisabled =
+            !fiber.getFiberRef(FiberRef.currentTracerEnabled) ||
+            fiber.getFiberRef(RouteHttpTracer.currentTracerDisabledWhen)(request)
+
+          const url = new URL(request.url)
+
+          const innerEffect = Effect.gen(function* () {
+            const result = yield* createChain({ request, selectedFormat })
+
+            const entity = Entity.isEntity(result) ? result : Entity.make(result, { status: 200 })
+
+            if (entity.status === 404 && entity.body === undefined) {
+              return respondError({ status: 406, message: "not acceptable" })
+            }
+
+            const response = yield* toResponse(entity, selectedFormat, runtime)
+            if (varyAccept) {
+              response.headers.set("vary", "Accept")
+            }
+            return response
+          })
+
+          if (tracerDisabled) {
+            return innerEffect
           }
-          return response
+
+          const spanNameGenerator = fiber.getFiberRef(RouteHttpTracer.currentSpanNameGenerator)
+
+          return Effect.useSpan(
+            spanNameGenerator(request),
+            {
+              parent: Option.getOrUndefined(RouteHttpTracer.parentSpanFromHeaders(request.headers)),
+              kind: "server",
+              captureStackTrace: false,
+            },
+            (span) => {
+              span.attribute("http.request.method", request.method)
+              span.attribute("url.full", url.toString())
+              span.attribute("url.path", url.pathname)
+              const query = url.search.slice(1)
+              if (query !== "") {
+                span.attribute("url.query", query)
+              }
+              span.attribute("url.scheme", url.protocol.slice(0, -1))
+
+              const userAgent = request.headers.get("user-agent")
+              if (userAgent !== null) {
+                span.attribute("user_agent.original", userAgent)
+              }
+
+              return Effect.flatMap(
+                Effect.exit(Effect.withParentSpan(innerEffect, span)),
+                (exit) => {
+                  if (exit._tag === "Success") {
+                    span.attribute("http.response.status_code", exit.value.status)
+                  }
+                  return exit
+                },
+              )
+            },
+          )
         })
 
-        if (tracerDisabled) {
-          return innerEffect
-        }
-
-        const spanNameGenerator = fiber.getFiberRef(RouteHttpTracer.currentSpanNameGenerator)
-
-        return Effect.useSpan(
-          spanNameGenerator(request),
-          {
-            parent: Option.getOrUndefined(RouteHttpTracer.parentSpanFromHeaders(request.headers)),
-            kind: "server",
-            captureStackTrace: false,
-          },
-          (span) => {
-            span.attribute("http.request.method", request.method)
-            span.attribute("url.full", url.toString())
-            span.attribute("url.path", url.pathname)
-            const query = url.search.slice(1)
-            if (query !== "") {
-              span.attribute("url.query", query)
-            }
-            span.attribute("url.scheme", url.protocol.slice(0, -1))
-
-            const userAgent = request.headers.get("user-agent")
-            if (userAgent !== null) {
-              span.attribute("user_agent.original", userAgent)
-            }
-
-            return Effect.flatMap(Effect.exit(Effect.withParentSpan(innerEffect, span)), (exit) => {
-              if (exit._tag === "Success") {
-                span.attribute("http.response.status_code", exit.value.status)
-              }
-              return exit
-            })
-          },
-        )
-      })
-
-      return new Promise((resolve) => {
         const fiber = runFork(
           effect.pipe(
             Effect.scoped,
@@ -356,7 +377,6 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
           }
         })
       })
-    }
   }
 }
 

@@ -183,14 +183,26 @@ test.it("includes request in handler context", async () => {
   test.expect(capturedRequest?.headers.get("x-custom")).toBe("value")
 })
 
-test.it("returns 405 for wrong method", async () => {
-  const handler = RouteHttp.toWebHandler(Route.get(Route.text("users")))
-  const response = await Http.fetch(handler, {
-    path: "/users",
-    method: "POST",
-  })
+test.it("returns Allow header on 405 and OPTIONS responses", async () => {
+  const handler = RouteHttp.toWebHandler(Route.get(Route.text("users")).post(Route.text("created")))
 
-  test.expect(response.status).toBe(405)
+  const notAllowed = await Http.fetch(handler, { path: "/users", method: "DELETE" })
+  test.expect(notAllowed.status).toBe(405)
+  test.expect(notAllowed.headers.get("allow")).toBe("GET, POST")
+
+  const options = await Http.fetch(handler, { path: "/users", method: "OPTIONS" })
+  test.expect(options.status).toBe(204)
+  test.expect(options.headers.get("allow")).toBe("GET, POST")
+})
+
+test.it("uses explicit OPTIONS handler when registered", async () => {
+  const handler = RouteHttp.toWebHandler(
+    Route.get(Route.text("users")).options(Route.json({ cors: true })),
+  )
+  const response = await Http.fetch(handler, { path: "/users", method: "OPTIONS" })
+
+  test.expect(response.status).toBe(200)
+  test.expect(await response.json()).toEqual({ cors: true })
 })
 
 test.it("supports POST method", async () => {
