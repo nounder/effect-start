@@ -4,6 +4,9 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Option from "effect/Option"
 import * as FileRouter from "./FileRouter.ts"
+import * as Route from "./Route.ts"
+import * as RouteTree from "./RouteTree.ts"
+import * as TestLogger from "./testing/TestLogger.ts"
 
 test.it("fails on overlapping routes from groups", async () => {
   const routes = ["(admin)/users/route.tsx", "users/route.tsx"]
@@ -54,3 +57,29 @@ test.it("allows route and layer at same path", async () => {
 
   test.expect(Exit.isSuccess(exit)).toBe(true)
 })
+
+test.it("fromFileRoutes continues when a module fails to import", () =>
+  Effect.gen(function* () {
+    const goodRoute = Route.get(Route.text("ok"))
+
+    const fileRoutes: FileRouter.FileRoutes = {
+      "/good": [() => Promise.resolve({ default: goodRoute })],
+      "/bad": [
+        () => {
+          throw new Error("Cannot find module './missing.ts'")
+        },
+      ],
+    }
+
+    const tree = yield* FileRouter.fromFileRoutes(fileRoutes)
+    const routes = [...RouteTree.walk(tree)]
+
+    test.expect(routes.length).toBeGreaterThan(0)
+
+    const paths = routes.map((r) => Route.descriptor(r).path)
+    test.expect(paths).toContain("/good")
+
+    const messages = yield* TestLogger.messages
+    test.expect(messages.some((m) => m.includes("Failed to import route module"))).toBe(true)
+  }).pipe(Effect.provide(TestLogger.layer()), Effect.runPromise),
+)

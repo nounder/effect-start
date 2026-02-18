@@ -1,4 +1,5 @@
 import * as FileSystem from "./FileSystem.ts"
+import * as Cause from "effect/Cause"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
@@ -158,12 +159,26 @@ export function fromFileRoutes(fileRoutes: FileRoutes): Effect.Effect<RouteTree.
     const mounts: RouteTree.InputRouteMap = {}
 
     for (const [path, loaders] of Object.entries(fileRoutes)) {
-      const modules = yield* Effect.forEach(loaders, (loader) => Effect.promise(() => loader()))
+      const modules = yield* Effect.forEach(
+        loaders,
+        (loader) =>
+          Effect.tryPromise({
+            try: () => loader(),
+            catch: (cause) => new FileRouterError({ reason: "Import", cause, path }),
+          }).pipe(
+            Effect.catchAll((error) =>
+              Effect.as(
+                Effect.logWarning(`Failed to import route module at ${path}`, Cause.fail(error)),
+                undefined,
+              ),
+            ),
+          ),
+      )
 
       const allRoutes: RouteTree.RouteTuple = [] as unknown as RouteTree.RouteTuple
 
       for (const m of modules) {
-        if (Route.isRouteSet(m.default)) {
+        if (m && Route.isRouteSet(m.default)) {
           for (const route of m.default) {
             ;(allRoutes as Array<any>).push(route)
           }
