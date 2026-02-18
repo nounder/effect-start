@@ -6,8 +6,6 @@
     "module": "ESNext",
     "moduleDetection": "force",
     "allowJs": true,
-    // Use incremental builds with project references.
-    "incremental": true,
     "jsx": "react-jsx",
     "jsxImportSource": "effect-start",
 
