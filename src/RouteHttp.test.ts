@@ -2256,3 +2256,76 @@ test.describe("Route.render (format=*)", () => {
     test.expect(await response.text()).toBe("<!DOCTYPE html><body>content</body>")
   })
 })
+
+test.describe("params merging", () => {
+  test.it("params merges searchParams and pathParams", async () => {
+    const tree = RouteTree.make({
+      "/users/:id": Route.get(
+        RouteSchema.schemaPathParams(
+          Schema.Struct({ id: Schema.String }),
+        ),
+        RouteSchema.schemaSearchParams(
+          Schema.Struct({ tab: Schema.String }),
+        ),
+        Route.json(function* (ctx) {
+          return { params: (ctx as any).params }
+        }),
+      ),
+    })
+
+    const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
+    const handler = handles["/users/:id"]
+
+    const response = await Http.fetch(handler, {
+      path: "/users/42?tab=settings",
+    })
+
+    test.expect(response.status).toBe(200)
+    test.expect(await response.json()).toEqual({
+      params: { id: "42", tab: "settings" },
+    })
+  })
+
+  test.it("pathParams take precedence over searchParams in params", async () => {
+    const tree = RouteTree.make({
+      "/items/:name": Route.get(
+        RouteSchema.schemaPathParams(
+          Schema.Struct({ name: Schema.String }),
+        ),
+        RouteSchema.schemaSearchParams(
+          Schema.Struct({ name: Schema.optional(Schema.String) }),
+        ),
+        Route.json(function* (ctx) {
+          return { params: (ctx as any).params }
+        }),
+      ),
+    })
+
+    const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
+    const handler = handles["/items/:name"]
+
+    const response = await Http.fetch(handler, {
+      path: "/items/from-path?name=from-query",
+    })
+
+    test.expect(response.status).toBe(200)
+    test.expect(await response.json()).toEqual({
+      params: { name: "from-path" },
+    })
+  })
+
+  test.it("params works without schema hooks", async () => {
+    const handler = RouteHttp.toWebHandler(
+      Route.get(
+        Route.json(function* (ctx) {
+          return { params: (ctx as any).params }
+        }),
+      ),
+    )
+
+    const response = await Http.fetch(handler, { path: "/test" })
+
+    test.expect(response.status).toBe(200)
+    test.expect(await response.json()).toEqual({ params: {} })
+  })
+})

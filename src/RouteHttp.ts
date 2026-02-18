@@ -136,6 +136,16 @@ type Handler = (
   next: (context?: Record<string, unknown>) => Entity.Entity<any, any>,
 ) => Effect.Effect<Entity.Entity<any>, any, any>
 
+function defineParams(context: any): void {
+  Object.defineProperty(context, "params", {
+    configurable: true,
+    enumerable: true,
+    get() {
+      return { ...this.searchParams, ...this.pathParams }
+    },
+  })
+}
+
 function determineSelectedFormat(
   accept: string | null,
   routes: Array<UnboundedRouteWithMethod>,
@@ -241,6 +251,7 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
           const runNext = (passedContext?: any): Effect.Effect<Entity.Entity<any>, any, any> => {
             if (passedContext !== undefined) {
               currentContext = passedContext
+              defineParams(currentContext)
             }
 
             if (index >= allRoutes.length) {
@@ -259,6 +270,7 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
             }
 
             currentContext = { ...currentContext, ...descriptor }
+            defineParams(currentContext)
 
             const nextArg = (ctx?: any) => Entity.effect(Effect.suspend(() => runNext(ctx)))
 
@@ -287,7 +299,9 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
           const url = new URL(request.url)
 
           const innerEffect = Effect.gen(function* () {
-            const result = yield* createChain({ request, selectedFormat })
+            const initialContext = { request, selectedFormat }
+            defineParams(initialContext)
+            const result = yield* createChain(initialContext)
 
             const entity = Entity.isEntity(result) ? result : Entity.make(result, { status: 200 })
 
