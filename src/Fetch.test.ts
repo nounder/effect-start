@@ -22,18 +22,14 @@ function patchFetch(fn: (input: RequestInfo | URL, init?: RequestInit) => Promis
 
 test.describe("fetch", () => {
   test.it("performs basic fetch", async () => {
-    await Effect.runPromise(
-      Effect.scoped(
-        Effect.gen(function* () {
-          yield* patchFetch(async () => new Response("result", { status: 200 }))
+    await Effect.gen(function* () {
+      yield* patchFetch(async () => new Response("result", { status: 200 }))
 
-          const entity = yield* Fetch.fetch("https://example.com")
-          test.expect(entity.status).toBe(200)
-          const text = yield* entity.text
-          test.expect(text).toBe("result")
-        }),
-      ),
-    )
+      const entity = yield* Fetch.fetch("https://example.com")
+      test.expect(entity.status).toBe(200)
+      const text = yield* entity.text
+      test.expect(text).toBe("result")
+    }).pipe(Effect.scoped, Effect.runPromise)
   })
 
   test.it("accepts Request object", async () => {
@@ -46,7 +42,7 @@ test.describe("fetch", () => {
       test.expect(text).toBe("ok")
     })
 
-    await Effect.runPromise(Effect.scoped(program))
+    await program.pipe(Effect.scoped, Effect.runPromise)
   })
 
   test.it("accepts URL object", async () => {
@@ -59,7 +55,7 @@ test.describe("fetch", () => {
       test.expect(text).toBe("ok")
     })
 
-    await Effect.runPromise(Effect.scoped(program))
+    await program.pipe(Effect.scoped, Effect.runPromise)
   })
 
   test.it("accepts RequestInit options", async () => {
@@ -74,7 +70,7 @@ test.describe("fetch", () => {
       test.expect(capturedMethod).toBe("DELETE")
     })
 
-    await Effect.runPromise(Effect.scoped(program))
+    await program.pipe(Effect.scoped, Effect.runPromise)
   })
 
   test.it("wraps fetch errors in FetchError", async () => {
@@ -96,7 +92,7 @@ test.describe("fetch", () => {
       }
     })
 
-    await Effect.runPromise(Effect.scoped(program))
+    await program.pipe(Effect.scoped, Effect.runPromise)
   })
 
   test.it("get() sets method to GET", async () => {
@@ -111,7 +107,7 @@ test.describe("fetch", () => {
       test.expect(capturedMethod).toBe("GET")
     })
 
-    await Effect.runPromise(Effect.scoped(program))
+    await program.pipe(Effect.scoped, Effect.runPromise)
   })
 
   test.it("post() sets method to POST", async () => {
@@ -126,7 +122,7 @@ test.describe("fetch", () => {
       test.expect(capturedMethod).toBe("POST")
     })
 
-    await Effect.runPromise(Effect.scoped(program))
+    await program.pipe(Effect.scoped, Effect.runPromise)
   })
 })
 
@@ -149,7 +145,7 @@ test.describe("FetchClient", () => {
       test.expect(capturedUrl).toBe("https://example.com/api?token=abc")
     })
 
-    await Effect.runPromise(Effect.scoped(program))
+    await program.pipe(Effect.scoped, Effect.runPromise)
   })
 
   test.it("chains middleware in application order", async () => {
@@ -180,7 +176,7 @@ test.describe("FetchClient", () => {
       test.expect(order).toEqual(["mw1-before", "mw2-before", "fetch", "mw2-after", "mw1-after"])
     })
 
-    await Effect.runPromise(Effect.scoped(program))
+    await program.pipe(Effect.scoped, Effect.runPromise)
   })
 
   test.it("middleware can modify request", async () => {
@@ -203,7 +199,7 @@ test.describe("FetchClient", () => {
       test.expect(sawHeader).toBe(true)
     })
 
-    await Effect.runPromise(Effect.scoped(program))
+    await program.pipe(Effect.scoped, Effect.runPromise)
   })
 
   test.it("middleware can short-circuit with cached response", async () => {
@@ -225,7 +221,7 @@ test.describe("FetchClient", () => {
       test.expect(fetchCalled).toBe(false)
     })
 
-    await Effect.runPromise(Effect.scoped(program))
+    await program.pipe(Effect.scoped, Effect.runPromise)
   })
 
   test.it("use() returns new client without mutating original", async () => {
@@ -252,7 +248,7 @@ test.describe("FetchClient", () => {
       test.expect(headerSeen).toBe(true)
     })
 
-    await Effect.runPromise(Effect.scoped(program))
+    await program.pipe(Effect.scoped, Effect.runPromise)
   })
 
   test.it("use() accepts multiple middleware at once", async () => {
@@ -280,7 +276,7 @@ test.describe("FetchClient", () => {
       test.expect(order).toEqual(["a", "b", "fetch"])
     })
 
-    await Effect.runPromise(Effect.scoped(program))
+    await program.pipe(Effect.scoped, Effect.runPromise)
   })
 })
 

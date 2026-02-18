@@ -2,6 +2,7 @@ import * as test from "bun:test"
 import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
+import * as Fiber from "effect/Fiber"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as BunServer from "./bun/BunServer.ts"
@@ -10,7 +11,7 @@ import * as Start from "./Start.ts"
 import * as StartApp from "./StartApp.ts"
 
 test.describe(Start.pack, () => {
-  test.test("should resolve internal dependencies automatically", async () => {
+  test.test("should resolve internal dependencies automatically", () => {
     const AppLayer = Start.pack(UserRepoLive, DatabaseLive, LoggerLive)
 
     test.expectTypeOf<Layer.Layer.Context<typeof AppLayer>>().toEqualTypeOf<ExternalApi>()
@@ -19,17 +20,12 @@ test.describe(Start.pack, () => {
       call: () => Effect.void,
     })
 
-    const program = Effect.gen(function* () {
+    return Effect.gen(function* () {
       const userRepo = yield* UserRepo
       const result = yield* userRepo.findUser("123")
-      return result
-    })
 
-    const result = await Effect.runPromise(
-      program.pipe(Effect.provide(AppLayer), Effect.provide(ExternalApiLive)),
-    )
-
-    test.expect(result).toEqual({ rows: [] })
+      test.expect(result).toEqual({ rows: [] })
+    }).pipe(Effect.provide(AppLayer), Effect.provide(ExternalApiLive), Effect.runPromise)
   })
 
   test.test("should require services not in the pack", async () => {
@@ -48,46 +44,34 @@ test.describe(Start.pack, () => {
     Start.pack(DatabaseLive, LoggerLive, UserRepoLive)
   })
 
-  test.test("should work with dependents-first order", async () => {
+  test.test("should work with dependents-first order", () => {
     const AppLayer = Start.pack(UserRepoLive, DatabaseLive, LoggerLive)
 
     const ExternalApiLive = Layer.succeed(ExternalApi, {
       call: () => Effect.void,
     })
 
-    const program = Effect.gen(function* () {
+    return Effect.gen(function* () {
       const userRepo = yield* UserRepo
       const result = yield* userRepo.findUser("456")
-      return result
-    })
 
-    const result = await Effect.runPromise(
-      program.pipe(Effect.provide(AppLayer), Effect.provide(ExternalApiLive)),
-    )
-
-    test.expect(result).toEqual({ rows: [] })
+      test.expect(result).toEqual({ rows: [] })
+    }).pipe(Effect.provide(AppLayer), Effect.provide(ExternalApiLive), Effect.runPromise)
   })
 
-  test.test("should allow accessing all provided services", async () => {
+  test.test("should allow accessing all provided services", () => {
     const AppLayer = Start.pack(UserRepoLive, DatabaseLive, LoggerLive)
 
     const ExternalApiLive = Layer.succeed(ExternalApi, {
       call: () => Effect.void,
     })
 
-    const program = Effect.gen(function* () {
+    return Effect.gen(function* () {
       yield* UserRepo
       yield* Database
       const logger = yield* Logger
       yield* logger.log("All services available!")
-      return "success"
-    })
-
-    const result = await Effect.runPromise(
-      program.pipe(Effect.provide(AppLayer), Effect.provide(ExternalApiLive)),
-    )
-
-    test.expect(result).toEqual("success")
+    }).pipe(Effect.provide(AppLayer), Effect.provide(ExternalApiLive), Effect.runPromise)
   })
 
   test.test("should memoize layers (build each only once)", async () => {
@@ -137,7 +121,7 @@ test.describe(Start.pack, () => {
       return "done"
     })
 
-    await Effect.runPromise(program.pipe(Effect.provide(AppLayer)))
+    await program.pipe(Effect.provide(AppLayer), Effect.runPromise)
 
     test.expect(loggerBuildCount).toEqual(1)
     test.expect(databaseBuildCount).toEqual(1)
@@ -145,27 +129,27 @@ test.describe(Start.pack, () => {
 })
 
 test.describe("StartApp.server", () => {
-  test.test("waits for server ready deferred in StartApp", async () => {
-    const deferred = await Effect.runPromise(Deferred.make<BunServer.BunServer>())
+  test.test("waits for server ready deferred in StartApp", () =>
+    Effect.gen(function* () {
+      const deferred = yield* Deferred.make<BunServer.BunServer>()
 
-    const fakeServer = {
-      server: { port: 1234 } as any,
-      pushHandler: (_fetch: Parameters<BunServer.BunServer["pushHandler"]>[0]) => {},
-      popHandler: () => {},
-    } satisfies BunServer.BunServer
+      const fakeServer = {
+        server: { port: 1234 } as any,
+        pushHandler: (_fetch: Parameters<BunServer.BunServer["pushHandler"]>[0]) => {},
+        popHandler: () => {},
+      } satisfies BunServer.BunServer
 
-    const resultPromise = Effect.runPromise(
-      Effect.gen(function* () {
+      const resultFiber = yield* Effect.gen(function* () {
         const app = yield* StartApp.StartApp
         return yield* Deferred.await(app.server)
-      }).pipe(Effect.provide(Layer.succeed(StartApp.StartApp, { server: deferred }))),
-    )
+      }).pipe(Effect.provide(Layer.succeed(StartApp.StartApp, { server: deferred })), Effect.fork)
 
-    await Effect.runPromise(Deferred.succeed(deferred, fakeServer))
-    const result = await resultPromise
+      yield* Deferred.succeed(deferred, fakeServer)
+      const result = yield* Fiber.join(resultFiber)
 
-    test.expect(result).toBe(fakeServer)
-  })
+      test.expect(result).toBe(fakeServer)
+    }).pipe(Effect.runPromise),
+  )
 })
 
 test.describe(Start.layer, () => {
@@ -195,14 +179,10 @@ test.describe(Start.layer, () => {
 
     const composed = testCompose(appLayer)
 
-    const port = await Effect.runPromise(
-      Effect.scoped(
-        Effect.gen(function* () {
-          const bunServer = yield* BunServer.BunServer
-          return bunServer.server.port
-        }).pipe(Effect.provide(composed)),
-      ),
-    )
+    const port = await Effect.gen(function* () {
+      const bunServer = yield* BunServer.BunServer
+      return bunServer.server.port
+    }).pipe(Effect.provide(composed), Effect.scoped, Effect.runPromise)
 
     test.expect(port).toBe(customPort)
   })
@@ -216,21 +196,17 @@ test.describe(Start.layer, () => {
 
     const composed = testCompose(appLayer)
 
-    const [status, body, port] = await Effect.runPromise(
-      Effect.scoped(
-        Effect.gen(function* () {
-          const bunServer = yield* BunServer.BunServer
-          const response = yield* Effect.promise(() =>
-            fetch(`http://localhost:${bunServer.server.port}/`),
-          )
-          return [
-            response.status,
-            yield* Effect.promise(() => response.text()),
-            bunServer.server.port,
-          ] as const
-        }).pipe(Effect.provide(composed)),
-      ),
-    )
+    const [status, body, port] = await Effect.gen(function* () {
+      const bunServer = yield* BunServer.BunServer
+      const response = yield* Effect.promise(() =>
+        fetch(`http://localhost:${bunServer.server.port}/`),
+      )
+      return [
+        response.status,
+        yield* Effect.promise(() => response.text()),
+        bunServer.server.port,
+      ] as const
+    }).pipe(Effect.provide(composed), Effect.scoped, Effect.runPromise)
 
     test.expect(port).toBe(customPort)
     test.expect(status).toBe(200)
@@ -246,17 +222,13 @@ test.describe(Start.layer, () => {
 
     const composed = testCompose(appLayer)
 
-    const [status, body] = await Effect.runPromise(
-      Effect.scoped(
-        Effect.gen(function* () {
-          const bunServer = yield* BunServer.BunServer
-          const response = yield* Effect.promise(() =>
-            fetch(`http://localhost:${bunServer.server.port}/`),
-          )
-          return [response.status, yield* Effect.promise(() => response.text())] as const
-        }).pipe(Effect.provide(composed)),
-      ),
-    )
+    const [status, body] = await Effect.gen(function* () {
+      const bunServer = yield* BunServer.BunServer
+      const response = yield* Effect.promise(() =>
+        fetch(`http://localhost:${bunServer.server.port}/`),
+      )
+      return [response.status, yield* Effect.promise(() => response.text())] as const
+    }).pipe(Effect.provide(composed), Effect.scoped, Effect.runPromise)
 
     test.expect(status).toBe(200)
     test.expect(body).toBe("default-server")
@@ -264,7 +236,7 @@ test.describe(Start.layer, () => {
 })
 
 test.describe(Start.build, () => {
-  test.test("should resolve dependencies in any order", async () => {
+  test.test("should resolve dependencies in any order", () => {
     const AppLayer = Start.build(LoggerLive, DatabaseLive, UserRepoLive)
 
     test.expectTypeOf<Layer.Layer.Context<typeof AppLayer>>().toEqualTypeOf<ExternalApi>()
@@ -273,19 +245,15 @@ test.describe(Start.build, () => {
       call: () => Effect.void,
     })
 
-    const program = Effect.gen(function* () {
+    return Effect.gen(function* () {
       const userRepo = yield* UserRepo
-      return yield* userRepo.findUser("123")
-    })
+      const result = yield* userRepo.findUser("123")
 
-    const result = await Effect.runPromise(
-      program.pipe(Effect.provide(AppLayer), Effect.provide(ExternalApiLive)),
-    )
-
-    test.expect(result).toEqual({ rows: [] })
+      test.expect(result).toEqual({ rows: [] })
+    }).pipe(Effect.provide(AppLayer), Effect.provide(ExternalApiLive), Effect.runPromise)
   })
 
-  test.test("should resolve dependencies in correct order too", async () => {
+  test.test("should resolve dependencies in correct order too", () => {
     const AppLayer = Start.build(UserRepoLive, DatabaseLive, LoggerLive)
 
     test.expectTypeOf<Layer.Layer.Context<typeof AppLayer>>().toEqualTypeOf<ExternalApi>()
@@ -294,16 +262,12 @@ test.describe(Start.build, () => {
       call: () => Effect.void,
     })
 
-    const program = Effect.gen(function* () {
+    return Effect.gen(function* () {
       const userRepo = yield* UserRepo
-      return yield* userRepo.findUser("456")
-    })
+      const result = yield* userRepo.findUser("456")
 
-    const result = await Effect.runPromise(
-      program.pipe(Effect.provide(AppLayer), Effect.provide(ExternalApiLive)),
-    )
-
-    test.expect(result).toEqual({ rows: [] })
+      test.expect(result).toEqual({ rows: [] })
+    }).pipe(Effect.provide(AppLayer), Effect.provide(ExternalApiLive), Effect.runPromise)
   })
 
   test.test("should require external services", async () => {
@@ -314,7 +278,7 @@ test.describe(Start.build, () => {
       .toEqualTypeOf<Logger | ExternalApi>()
   })
 
-  test.test("should memoize layers", async () => {
+  test.test("should memoize layers", () => {
     let loggerBuildCount = 0
     let databaseBuildCount = 0
 
@@ -358,17 +322,14 @@ test.describe(Start.build, () => {
       LoggerLiveWithCounter,
     )
 
-    const program = Effect.gen(function* () {
+    return Effect.gen(function* () {
       yield* UserRepo
       yield* Database
       yield* Logger
-      return "done"
-    })
 
-    await Effect.runPromise(program.pipe(Effect.provide(AppLayer), Effect.provide(ExternalApiLive)))
-
-    test.expect(loggerBuildCount).toEqual(1)
-    test.expect(databaseBuildCount).toEqual(1)
+      test.expect(loggerBuildCount).toEqual(1)
+      test.expect(databaseBuildCount).toEqual(1)
+    }).pipe(Effect.provide(AppLayer), Effect.provide(ExternalApiLive), Effect.runPromise)
   })
 })
 

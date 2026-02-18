@@ -12,7 +12,7 @@ const testLayer = (routes: ReturnType<typeof Route.tree>) =>
   }).pipe(Layer.provide(Route.layer(routes)))
 
 test.describe(BunRoute.htmlBundle, () => {
-  test.test("wraps child content with layout", async () => {
+  test.test("wraps child content with layout", () => {
     const routes = Route.tree({
       "/": Route.get(
         BunRoute.htmlBundle(() => import("../../static/LayoutSlots.html")),
@@ -20,22 +20,21 @@ test.describe(BunRoute.htmlBundle, () => {
       ),
     })
 
-    const response = await Effect.runPromise(
-      Effect.gen(function* () {
-        const bunServer = yield* BunServer.BunServer
-        return yield* Effect.promise(() => fetch(`http://localhost:${bunServer.server.port}/`))
-      }).pipe(Effect.provide(testLayer(routes))),
-    )
+    return Effect.gen(function* () {
+      const bunServer = yield* BunServer.BunServer
+      const response = yield* Effect.promise(() =>
+        fetch(`http://localhost:${bunServer.server.port}/`),
+      )
+      const html = yield* Effect.promise(() => response.text())
 
-    const html = await response.text()
-
-    test.expect(response.status).toBe(200)
-    test.expect(html).toContain("<p>Hello World</p>")
-    test.expect(html).toContain("<body>")
-    test.expect(html).toContain("</body>")
+      test.expect(response.status).toBe(200)
+      test.expect(html).toContain("<p>Hello World</p>")
+      test.expect(html).toContain("<body>")
+      test.expect(html).toContain("</body>")
+    }).pipe(Effect.provide(testLayer(routes)), Effect.runPromise)
   })
 
-  test.test("replaces %yield% with child content", async () => {
+  test.test("replaces %yield% with child content", () => {
     const routes = Route.tree({
       "/page": Route.get(
         BunRoute.htmlBundle(() => import("../../static/LayoutSlots.html")),
@@ -43,48 +42,39 @@ test.describe(BunRoute.htmlBundle, () => {
       ),
     })
 
-    const response = await Effect.runPromise(
-      Effect.scoped(
-        Effect.gen(function* () {
-          const bunServer = yield* BunServer.BunServer
-          return yield* Effect.promise(() =>
-            fetch(`http://localhost:${bunServer.server.port}/page`),
-          )
-        }).pipe(Effect.provide(testLayer(routes))),
-      ),
-    )
+    return Effect.gen(function* () {
+      const bunServer = yield* BunServer.BunServer
+      const response = yield* Effect.promise(() =>
+        fetch(`http://localhost:${bunServer.server.port}/page`),
+      )
+      const html = yield* Effect.promise(() => response.text())
 
-    const html = await response.text()
-
-    test.expect(html).toContain("<div>Page Content</div>")
-    test.expect(html).not.toContain("%children%")
+      test.expect(html).toContain("<div>Page Content</div>")
+      test.expect(html).not.toContain("%children%")
+    }).pipe(Effect.provide(testLayer(routes)), Effect.scoped, Effect.runPromise)
   })
 
-  test.test("works with use() for wildcard routes", async () => {
+  test.test("works with use() for wildcard routes", () => {
     const routes = Route.tree({
       "*": Route.use(BunRoute.htmlBundle(() => import("../../static/LayoutSlots.html"))),
       "/:path*": Route.get(Route.html("<section>Catch All</section>")),
     })
 
-    const response = await Effect.runPromise(
-      Effect.scoped(
-        Effect.gen(function* () {
-          const bunServer = yield* BunServer.BunServer
-          return yield* Effect.promise(() =>
-            fetch(`http://localhost:${bunServer.server.port}/any/path`),
-          )
-        }).pipe(Effect.provide(testLayer(routes))),
-      ),
-    )
+    return Effect.gen(function* () {
+      const bunServer = yield* BunServer.BunServer
+      const response = yield* Effect.promise(() =>
+        fetch(`http://localhost:${bunServer.server.port}/any/path`),
+      )
 
-    test.expect(response.status).toBe(200)
+      test.expect(response.status).toBe(200)
 
-    const html = await response.text()
+      const html = yield* Effect.promise(() => response.text())
 
-    test.expect(html).toContain("<section>Catch All</section>")
+      test.expect(html).toContain("<section>Catch All</section>")
+    }).pipe(Effect.provide(testLayer(routes)), Effect.scoped, Effect.runPromise)
   })
 
-  test.test("has format: html descriptor", async () => {
+  test.test("has format: html descriptor", () => {
     const routes = Route.tree({
       "/": Route.get(
         BunRoute.htmlBundle(() => import("../../static/LayoutSlots.html")),
@@ -92,20 +82,15 @@ test.describe(BunRoute.htmlBundle, () => {
       ),
     })
 
-    const response = await Effect.runPromise(
-      Effect.scoped(
-        Effect.gen(function* () {
-          const bunServer = yield* BunServer.BunServer
-          return yield* Effect.promise(() => fetch(`http://localhost:${bunServer.server.port}/`))
-        }).pipe(Effect.provide(testLayer(routes))),
-      ),
-    )
+    return Effect.gen(function* () {
+      const bunServer = yield* BunServer.BunServer
+      const response = yield* Effect.promise(() =>
+        fetch(`http://localhost:${bunServer.server.port}/`),
+      )
 
-    test.expect(response.status).toBe(200)
-
-    const contentType = response.headers.get("content-type")
-
-    test.expect(contentType).toContain("text/html")
+      test.expect(response.status).toBe(200)
+      test.expect(response.headers.get("content-type")).toContain("text/html")
+    }).pipe(Effect.provide(testLayer(routes)), Effect.scoped, Effect.runPromise)
   })
 })
 

@@ -35,61 +35,67 @@ test.describe(Route.redirect, () => {
 })
 
 test.describe(Route.lazy, () => {
-  test.it("loads module lazily and caches result", async () => {
-    let loadCount = 0
+  test.it("loads module lazily and caches result", () =>
+    Effect.gen(function* () {
+      let loadCount = 0
 
-    const lazyRoutes = Route.lazy(() => {
-      loadCount++
-      return Promise.resolve({
-        default: Route.get(Route.text("lazy loaded")),
+      const lazyRoutes = Route.lazy(() => {
+        loadCount++
+        return Promise.resolve({
+          default: Route.get(Route.text("lazy loaded")),
+        })
       })
-    })
 
-    test.expect(loadCount).toBe(0)
+      test.expect(loadCount).toBe(0)
 
-    const routes1 = await Effect.runPromise(lazyRoutes)
+      const routes1 = yield* lazyRoutes
 
-    test.expect(loadCount).toBe(1)
-    test.expect(Route.items(routes1)).toHaveLength(1)
+      test.expect(loadCount).toBe(1)
+      test.expect(Route.items(routes1)).toHaveLength(1)
 
-    const routes2 = await Effect.runPromise(lazyRoutes)
+      const routes2 = yield* lazyRoutes
 
-    test.expect(loadCount).toBe(1)
-    test.expect(routes1).toBe(routes2)
-  })
+      test.expect(loadCount).toBe(1)
+      test.expect(routes1).toBe(routes2)
+    }).pipe(Effect.runPromise),
+  )
 
-  test.it("works with RouteHttp.toWebHandler", async () => {
-    const lazyRoutes = Route.lazy(() =>
-      Promise.resolve({
-        default: Route.get(Route.text("lazy loaded")),
-      }),
-    )
+  test.it("works with RouteHttp.toWebHandler", () =>
+    Effect.gen(function* () {
+      const lazyRoutes = Route.lazy(() =>
+        Promise.resolve({
+          default: Route.get(Route.text("lazy loaded")),
+        }),
+      )
 
-    const routes = await Effect.runPromise(lazyRoutes)
-    const handler = RouteHttp.toWebHandler(routes)
+      const routes = yield* lazyRoutes
+      const handler = RouteHttp.toWebHandler(routes)
 
-    const response = await Http.fetch(handler, { path: "/test" })
+      const response = yield* Effect.promise(() => Http.fetch(handler, { path: "/test" }))
 
-    test.expect(response.status).toBe(200)
-    test.expect(await response.text()).toBe("lazy loaded")
-  })
+      test.expect(response.status).toBe(200)
+      test.expect(yield* Effect.promise(() => response.text())).toBe("lazy loaded")
+    }).pipe(Effect.runPromise),
+  )
 
-  test.it("preserves route types", async () => {
-    const lazyRoutes = Route.lazy(() =>
-      Promise.resolve({
-        default: Route.use(Route.filter({ context: { injected: true } })).get(
-          Route.json(function* (ctx) {
-            return { value: ctx.injected }
-          }),
-        ),
-      }),
-    )
+  test.it("preserves route types", () =>
+    Effect.gen(function* () {
+      const lazyRoutes = Route.lazy(() =>
+        Promise.resolve({
+          default: Route.use(Route.filter({ context: { injected: true } })).get(
+            Route.json(function* (ctx) {
+              return { value: ctx.injected }
+            }),
+          ),
+        }),
+      )
 
-    const routes = await Effect.runPromise(lazyRoutes)
-    const handler = RouteHttp.toWebHandler(routes)
+      const routes = yield* lazyRoutes
+      const handler = RouteHttp.toWebHandler(routes)
 
-    const response = await Http.fetch(handler, { path: "/test" })
+      const response = yield* Effect.promise(() => Http.fetch(handler, { path: "/test" }))
 
-    test.expect(await response.json()).toEqual({ value: true })
-  })
+      test.expect(yield* Effect.promise(() => response.json())).toEqual({ value: true })
+    }).pipe(Effect.runPromise),
+  )
 })

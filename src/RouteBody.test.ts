@@ -99,20 +99,24 @@ test.describe(`${RouteBody.handle.name}()`, () => {
       .toExtend<Parameters<typeof RouteBody.handle>[0]>()
   })
 
-  test.it("handles plain value", async () => {
-    const handler = RouteBody.handle<{}, string, never, never>("hello")
-    const result = await Effect.runPromise(handler(ctx, next))
+  test.it("handles plain value", () =>
+    Effect.gen(function* () {
+      const handler = RouteBody.handle<{}, string, never, never>("hello")
+      const result = yield* handler(ctx, next)
 
-    test.expect(result.body).toBe("hello")
-    test.expect(result.status).toBe(200)
-  })
+      test.expect(result.body).toBe("hello")
+      test.expect(result.status).toBe(200)
+    }).pipe(Effect.runPromise),
+  )
 
-  test.it("handles Effect directly", async () => {
-    const handler = RouteBody.handle<{}, string, never, never>(Effect.succeed("from effect"))
-    const result = await Effect.runPromise(handler(ctx, next))
+  test.it("handles Effect directly", () =>
+    Effect.gen(function* () {
+      const handler = RouteBody.handle<{}, string, never, never>(Effect.succeed("from effect"))
+      const result = yield* handler(ctx, next)
 
-    test.expect(result.body).toBe("from effect")
-  })
+      test.expect(result.body).toBe("from effect")
+    }).pipe(Effect.runPromise),
+  )
 
   test.it("handles Effect with error", async () => {
     const handler = RouteBody.handle<{}, never, Error, never>(Effect.fail(new Error("oops")))
@@ -120,66 +124,72 @@ test.describe(`${RouteBody.handle.name}()`, () => {
     test.expectTypeOf(handler).returns.toExtend<Effect.Effect<Entity.Entity<never>, Error, never>>()
   })
 
-  test.it("handles function", async () => {
-    const handler = RouteBody.handle<{ id: number }, number, never, never>((ctx) =>
-      Effect.succeed(ctx.id),
-    )
+  test.it("handles function", () =>
+    Effect.gen(function* () {
+      const handler = RouteBody.handle<{ id: number }, number, never, never>((ctx) =>
+        Effect.succeed(ctx.id),
+      )
 
-    test
-      .expectTypeOf(handler)
-      .parameters.toEqualTypeOf<
-        [
-          { id: number },
-          (context?: Partial<{ id: number }> & Record<string, unknown>) => Entity.Entity<number>,
-        ]
-      >()
-    test
-      .expectTypeOf(handler)
-      .returns.toEqualTypeOf<Effect.Effect<Entity.Entity<number>, never, never>>()
+      test
+        .expectTypeOf(handler)
+        .parameters.toEqualTypeOf<
+          [
+            { id: number },
+            (context?: Partial<{ id: number }> & Record<string, unknown>) => Entity.Entity<number>,
+          ]
+        >()
+      test
+        .expectTypeOf(handler)
+        .returns.toEqualTypeOf<Effect.Effect<Entity.Entity<number>, never, never>>()
 
-    const numNext = () => Entity.effect(Effect.succeed(Entity.make(23)))
-    const result = await Effect.runPromise(handler({ id: 42 }, numNext))
+      const numNext = () => Entity.effect(Effect.succeed(Entity.make(23)))
+      const result = yield* handler({ id: 42 }, numNext)
 
-    test.expect(result.body).toBe(42)
-  })
+      test.expect(result.body).toBe(42)
+    }).pipe(Effect.runPromise),
+  )
 
-  test.it("handles generator", async () => {
-    const handler = RouteBody.handle<{ id: number }, number, never, never>(function* (ctx) {
-      const n = yield* Effect.succeed(ctx.id)
-      return n * 2
-    })
+  test.it("handles generator", () =>
+    Effect.gen(function* () {
+      const handler = RouteBody.handle<{ id: number }, number, never, never>(function* (ctx) {
+        const n = yield* Effect.succeed(ctx.id)
+        return n * 2
+      })
 
-    test
-      .expectTypeOf(handler)
-      .parameters.toEqualTypeOf<
-        [
-          { id: number },
-          (context?: Partial<{ id: number }> & Record<string, unknown>) => Entity.Entity<number>,
-        ]
-      >()
+      test
+        .expectTypeOf(handler)
+        .parameters.toEqualTypeOf<
+          [
+            { id: number },
+            (context?: Partial<{ id: number }> & Record<string, unknown>) => Entity.Entity<number>,
+          ]
+        >()
 
-    test
-      .expectTypeOf(handler)
-      .returns.toEqualTypeOf<Effect.Effect<Entity.Entity<number>, never, never>>()
+      test
+        .expectTypeOf(handler)
+        .returns.toEqualTypeOf<Effect.Effect<Entity.Entity<number>, never, never>>()
 
-    const numNext = () => Entity.effect(Effect.succeed(Entity.make(23)))
-    const result = await Effect.runPromise(handler({ id: 21 }, numNext))
+      const numNext = () => Entity.effect(Effect.succeed(Entity.make(23)))
+      const result = yield* handler({ id: 21 }, numNext)
 
-    test.expect(result.body).toBe(42)
-  })
+      test.expect(result.body).toBe(42)
+    }).pipe(Effect.runPromise),
+  )
 
-  test.it("generator can call next", async () => {
-    const handler = RouteBody.handle<{}, string, ParseResult.ParseError, never>(
-      function* (_ctx, next) {
-        const fromNext = yield* next().text
-        return `got: ${fromNext}`
-      },
-    )
+  test.it("generator can call next", () =>
+    Effect.gen(function* () {
+      const handler = RouteBody.handle<{}, string, ParseResult.ParseError, never>(
+        function* (_ctx, next) {
+          const fromNext = yield* next().text
+          return `got: ${fromNext}`
+        },
+      )
 
-    const result = await Effect.runPromise(Effect.orDie(handler(ctx, next)))
+      const result = yield* Effect.orDie(handler(ctx, next))
 
-    test.expect(result.body).toBe("got: next")
-  })
+      test.expect(result.body).toBe("got: next")
+    }).pipe(Effect.runPromise),
+  )
 
   test.it("generator type checks missing services", async () => {
     interface ServiceA {

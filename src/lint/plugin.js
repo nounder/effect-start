@@ -413,6 +413,93 @@ export default {
       },
     },
 
+    "test-effects": {
+      meta: {
+        type: "suggestion",
+        docs: {
+          description:
+            "Disallow await Effect.runPromise(...) in test callbacks. Use Effect.gen(...).pipe(Effect.runPromise) as the return value instead.",
+        },
+        schema: [],
+        messages: {
+          noAwaitRunPromise:
+            'Avoid Effect.runPromise in async test callbacks. Use () => Effect.gen(function*() { ... }).pipe(Effect.runPromise) instead.',
+          scopedWrapping: "Use .pipe(Effect.scoped) instead of Effect.scoped(...) wrapping.",
+        },
+      },
+      create(context) {
+        const filename = context.filename || context.getFilename()
+        if (!filename.endsWith(".test.ts") && !filename.endsWith(".test.tsx")) {
+          return {}
+        }
+
+        function isTestCallback(node) {
+          const sourceCode = context.sourceCode || context.getSourceCode()
+          const ancestors = sourceCode.getAncestors(node)
+          const parent = ancestors[ancestors.length - 1]
+          if (!parent || parent.type !== "CallExpression") return false
+          const callee = parent.callee
+          return (
+            callee.type === "MemberExpression" &&
+            callee.object.type === "Identifier" &&
+            callee.object.name === "test" &&
+            callee.property.type === "Identifier" &&
+            (callee.property.name === "it" || callee.property.name === "test")
+          )
+        }
+
+        function isEffectRunPromise(node) {
+          return (
+            node.type === "CallExpression" &&
+            node.callee.type === "MemberExpression" &&
+            node.callee.object.type === "Identifier" &&
+            node.callee.object.name === "Effect" &&
+            node.callee.property.type === "Identifier" &&
+            node.callee.property.name === "runPromise"
+          )
+        }
+
+        function findEnclosingTestCallback(node) {
+          const sourceCode = context.sourceCode || context.getSourceCode()
+          const ancestors = sourceCode.getAncestors(node)
+          for (let i = ancestors.length - 1; i >= 0; i--) {
+            const ancestor = ancestors[i]
+            if (
+              (ancestor.type === "ArrowFunctionExpression" ||
+                ancestor.type === "FunctionExpression") &&
+              ancestor.async
+            ) {
+              return isTestCallback(ancestor) ? ancestor : undefined
+            }
+          }
+        }
+
+        return {
+          CallExpression(node) {
+            if (
+              node.callee.type === "MemberExpression" &&
+              node.callee.object.type === "Identifier" &&
+              node.callee.object.name === "Effect" &&
+              node.callee.property.type === "Identifier" &&
+              node.callee.property.name === "scoped" &&
+              node.arguments.length === 1
+            ) {
+              context.report({
+                node,
+                messageId: "scopedWrapping",
+              })
+            }
+            if (isEffectRunPromise(node) && findEnclosingTestCallback(node)) {
+              context.report({
+                node,
+                messageId: "noAwaitRunPromise",
+              })
+            }
+          },
+        }
+      },
+    },
+
     "test-assertion-newline": {
       meta: {
         type: "layout",

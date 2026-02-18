@@ -72,7 +72,10 @@
     "effect-start/no-destructured-params": "warn",
 
     // Warn when namespace import alias doesn't match module basename
-    "effect-start/namespace-import-mismatch": "warn"
+    "effect-start/namespace-import-mismatch": "warn",
+
+    // Disallow await Effect.runPromise in test callbacks
+    "effect-start/test-effects": "warn"
   },
   "overrides": [
     {

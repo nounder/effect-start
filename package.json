@@ -6,7 +6,6 @@
     "src/",
     "!src/**/*.test.ts",
     "!src/**/*.test.tsx",
-    "!src/tower",
     "dist/",
     "README.md",
     "package.json"

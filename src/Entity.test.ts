@@ -139,39 +139,47 @@ test.describe(Entity.length, () => {
 })
 
 test.describe("text", () => {
-  test.it("returns string body directly", async () => {
-    const entity = Entity.make("hello world")
-    const result = await Effect.runPromise(entity.text)
+  test.it("returns string body directly", () =>
+    Effect.gen(function* () {
+      const entity = Entity.make("hello world")
+      const result = yield* entity.text
 
-    test.expect(result).toBe("hello world")
-  })
+      test.expect(result).toBe("hello world")
+    }).pipe(Effect.runPromise),
+  )
 
-  test.it("decodes Uint8Array body to string", async () => {
-    const bytes = new TextEncoder().encode("hello world")
-    const entity = Entity.make(bytes)
-    const result = await Effect.runPromise(entity.text)
+  test.it("decodes Uint8Array body to string", () =>
+    Effect.gen(function* () {
+      const bytes = new TextEncoder().encode("hello world")
+      const entity = Entity.make(bytes)
+      const result = yield* entity.text
 
-    test.expect(result).toBe("hello world")
-  })
+      test.expect(result).toBe("hello world")
+    }).pipe(Effect.runPromise),
+  )
 
-  test.it("decodes ArrayBuffer body to string", async () => {
-    const bytes = new TextEncoder().encode("hello world")
-    const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)
-    const entity = Entity.make(buffer)
-    const result = await Effect.runPromise(entity.text)
+  test.it("decodes ArrayBuffer body to string", () =>
+    Effect.gen(function* () {
+      const bytes = new TextEncoder().encode("hello world")
+      const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)
+      const entity = Entity.make(buffer)
+      const result = yield* entity.text
 
-    test.expect(result).toBe("hello world")
-  })
+      test.expect(result).toBe("hello world")
+    }).pipe(Effect.runPromise),
+  )
 
-  test.it("decodes Stream body to string", async () => {
-    const bytes1 = new TextEncoder().encode("hello ")
-    const bytes2 = new TextEncoder().encode("world")
-    const stream = Stream.make(bytes1, bytes2)
-    const entity = Entity.make(stream)
-    const result = await Effect.runPromise(entity.text)
+  test.it("decodes Stream body to string", () =>
+    Effect.gen(function* () {
+      const bytes1 = new TextEncoder().encode("hello ")
+      const bytes2 = new TextEncoder().encode("world")
+      const stream = Stream.make(bytes1, bytes2)
+      const entity = Entity.make(stream)
+      const result = yield* entity.text
 
-    test.expect(result).toBe("hello world")
-  })
+      test.expect(result).toBe("hello world")
+    }).pipe(Effect.runPromise),
+  )
 
   test.it("fails for unsupported body types", async () => {
     const entity = Entity.make(42 as any)
@@ -182,46 +190,56 @@ test.describe("text", () => {
 })
 
 test.describe("json", () => {
-  test.it("returns object body directly", async () => {
-    const data = { key: "value", num: 42 }
-    const entity = Entity.make(data)
-    const result = await Effect.runPromise(entity.json)
+  test.it("returns object body directly", () =>
+    Effect.gen(function* () {
+      const data = { key: "value", num: 42 }
+      const entity = Entity.make(data)
+      const result = yield* entity.json
 
-    test.expect(result).toEqual(data)
-  })
+      test.expect(result).toEqual(data)
+    }).pipe(Effect.runPromise),
+  )
 
-  test.it("parses string body as JSON", async () => {
-    const entity = Entity.make('{"key":"value"}')
-    const result = await Effect.runPromise(entity.json)
+  test.it("parses string body as JSON", () =>
+    Effect.gen(function* () {
+      const entity = Entity.make('{"key":"value"}')
+      const result = yield* entity.json
 
-    test.expect(result).toEqual({ key: "value" })
-  })
+      test.expect(result).toEqual({ key: "value" })
+    }).pipe(Effect.runPromise),
+  )
 
-  test.it("parses Uint8Array body as JSON", async () => {
-    const bytes = new TextEncoder().encode('{"key":"value"}')
-    const entity = Entity.make(bytes)
-    const result = await Effect.runPromise(entity.json)
+  test.it("parses Uint8Array body as JSON", () =>
+    Effect.gen(function* () {
+      const bytes = new TextEncoder().encode('{"key":"value"}')
+      const entity = Entity.make(bytes)
+      const result = yield* entity.json
 
-    test.expect(result).toEqual({ key: "value" })
-  })
+      test.expect(result).toEqual({ key: "value" })
+    }).pipe(Effect.runPromise),
+  )
 
-  test.it("parses ArrayBuffer body as JSON", async () => {
-    const bytes = new TextEncoder().encode('{"key":"value"}')
-    const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)
-    const entity = Entity.make(buffer)
-    const result = await Effect.runPromise(entity.json)
+  test.it("parses ArrayBuffer body as JSON", () =>
+    Effect.gen(function* () {
+      const bytes = new TextEncoder().encode('{"key":"value"}')
+      const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)
+      const entity = Entity.make(buffer)
+      const result = yield* entity.json
 
-    test.expect(result).toEqual({ key: "value" })
-  })
+      test.expect(result).toEqual({ key: "value" })
+    }).pipe(Effect.runPromise),
+  )
 
-  test.it("parses Stream body as JSON", async () => {
-    const bytes = new TextEncoder().encode('{"key":"value"}')
-    const stream = Stream.make(bytes)
-    const entity = Entity.make(stream)
-    const result = await Effect.runPromise(entity.json)
+  test.it("parses Stream body as JSON", () =>
+    Effect.gen(function* () {
+      const bytes = new TextEncoder().encode('{"key":"value"}')
+      const stream = Stream.make(bytes)
+      const entity = Entity.make(stream)
+      const result = yield* entity.json
 
-    test.expect(result).toEqual({ key: "value" })
-  })
+      test.expect(result).toEqual({ key: "value" })
+    }).pipe(Effect.runPromise),
+  )
 
   test.it("fails for invalid JSON string", async () => {
     const entity = Entity.make("not valid json")
@@ -239,99 +257,117 @@ test.describe("json", () => {
 })
 
 test.describe("bytes", () => {
-  test.it("returns Uint8Array body directly", async () => {
-    const bytes = new Uint8Array([1, 2, 3])
-    const entity = Entity.make(bytes)
-    const result = await Effect.runPromise(entity.bytes)
+  test.it("returns Uint8Array body directly", () =>
+    Effect.gen(function* () {
+      const bytes = new Uint8Array([1, 2, 3])
+      const entity = Entity.make(bytes)
+      const result = yield* entity.bytes
 
-    test.expect(result).toBe(bytes)
-  })
+      test.expect(result).toBe(bytes)
+    }).pipe(Effect.runPromise),
+  )
 
-  test.it("converts ArrayBuffer body to Uint8Array", async () => {
-    const buffer = new ArrayBuffer(4)
-    new Uint8Array(buffer).set([1, 2, 3, 4])
-    const entity = Entity.make(buffer)
-    const result = await Effect.runPromise(entity.bytes)
+  test.it("converts ArrayBuffer body to Uint8Array", () =>
+    Effect.gen(function* () {
+      const buffer = new ArrayBuffer(4)
+      new Uint8Array(buffer).set([1, 2, 3, 4])
+      const entity = Entity.make(buffer)
+      const result = yield* entity.bytes
 
-    test.expect(result).toEqual(new Uint8Array([1, 2, 3, 4]))
-  })
+      test.expect(result).toEqual(new Uint8Array([1, 2, 3, 4]))
+    }).pipe(Effect.runPromise),
+  )
 
-  test.it("encodes string body to Uint8Array", async () => {
-    const entity = Entity.make("hello")
-    const result = await Effect.runPromise(entity.bytes)
+  test.it("encodes string body to Uint8Array", () =>
+    Effect.gen(function* () {
+      const entity = Entity.make("hello")
+      const result = yield* entity.bytes
 
-    test.expect(result).toEqual(new TextEncoder().encode("hello"))
-  })
+      test.expect(result).toEqual(new TextEncoder().encode("hello"))
+    }).pipe(Effect.runPromise),
+  )
 
-  test.it("collects Stream body to Uint8Array", async () => {
-    const chunk1 = new Uint8Array([1, 2])
-    const chunk2 = new Uint8Array([3, 4])
-    const stream = Stream.make(chunk1, chunk2)
-    const entity = Entity.make(stream)
-    const result = await Effect.runPromise(entity.bytes)
+  test.it("collects Stream body to Uint8Array", () =>
+    Effect.gen(function* () {
+      const chunk1 = new Uint8Array([1, 2])
+      const chunk2 = new Uint8Array([3, 4])
+      const stream = Stream.make(chunk1, chunk2)
+      const entity = Entity.make(stream)
+      const result = yield* entity.bytes
 
-    test.expect(result).toEqual(new Uint8Array([1, 2, 3, 4]))
-  })
+      test.expect(result).toEqual(new Uint8Array([1, 2, 3, 4]))
+    }).pipe(Effect.runPromise),
+  )
 
-  test.it("serializes objects to JSON bytes", async () => {
-    const entity = Entity.make({ key: "value" })
-    const result = await Effect.runPromise(entity.bytes)
-    const text = new TextDecoder().decode(result)
+  test.it("serializes objects to JSON bytes", () =>
+    Effect.gen(function* () {
+      const entity = Entity.make({ key: "value" })
+      const result = yield* entity.bytes
+      const text = new TextDecoder().decode(result)
 
-    test.expect(text).toBe('{"key":"value"}')
-  })
+      test.expect(text).toBe('{"key":"value"}')
+    }).pipe(Effect.runPromise),
+  )
 })
 
 test.describe("stream", () => {
-  test.it("returns Stream body content", async () => {
-    const bytes = new Uint8Array([1, 2, 3])
-    const entity = Entity.make(Stream.make(bytes))
-    const chunks = await Effect.runPromise(Stream.runCollect(entity.stream))
+  test.it("returns Stream body content", () =>
+    Effect.gen(function* () {
+      const bytes = new Uint8Array([1, 2, 3])
+      const entity = Entity.make(Stream.make(bytes))
+      const chunks = yield* Stream.runCollect(entity.stream)
 
-    test.expect(Array.from(chunks)).toEqual([bytes])
-  })
+      test.expect(Array.from(chunks)).toEqual([bytes])
+    }).pipe(Effect.runPromise),
+  )
 
-  test.it("converts Uint8Array body to stream", async () => {
-    const bytes = new Uint8Array([1, 2, 3])
-    const entity = Entity.make(bytes)
-    const chunks = await Effect.runPromise(Stream.runCollect(entity.stream))
+  test.it("converts Uint8Array body to stream", () =>
+    Effect.gen(function* () {
+      const bytes = new Uint8Array([1, 2, 3])
+      const entity = Entity.make(bytes)
+      const chunks = yield* Stream.runCollect(entity.stream)
 
-    test.expect(Array.from(chunks)).toEqual([bytes])
-  })
+      test.expect(Array.from(chunks)).toEqual([bytes])
+    }).pipe(Effect.runPromise),
+  )
 
-  test.it("converts ArrayBuffer body to stream", async () => {
-    const buffer = new ArrayBuffer(3)
-    new Uint8Array(buffer).set([1, 2, 3])
-    const entity = Entity.make(buffer)
-    const chunks = await Effect.runPromise(Stream.runCollect(entity.stream))
+  test.it("converts ArrayBuffer body to stream", () =>
+    Effect.gen(function* () {
+      const buffer = new ArrayBuffer(3)
+      new Uint8Array(buffer).set([1, 2, 3])
+      const entity = Entity.make(buffer)
+      const chunks = yield* Stream.runCollect(entity.stream)
 
-    test.expect(Array.from(chunks)).toEqual([new Uint8Array([1, 2, 3])])
-  })
+      test.expect(Array.from(chunks)).toEqual([new Uint8Array([1, 2, 3])])
+    }).pipe(Effect.runPromise),
+  )
 
-  test.it("converts string body to stream", async () => {
-    const entity = Entity.make("hello")
-    const chunks = await Effect.runPromise(Stream.runCollect(entity.stream))
+  test.it("converts string body to stream", () =>
+    Effect.gen(function* () {
+      const entity = Entity.make("hello")
+      const chunks = yield* Stream.runCollect(entity.stream)
 
-    test.expect(Array.from(chunks)).toEqual([new TextEncoder().encode("hello")])
-  })
+      test.expect(Array.from(chunks)).toEqual([new TextEncoder().encode("hello")])
+    }).pipe(Effect.runPromise),
+  )
 })
 
 test.describe("Effect body", () => {
-  test.it("executes lazily on accessor access", async () => {
-    let count = 0
-    const entity = Entity.make(
-      Effect.sync(() => {
-        count++
-        return "hello"
-      }),
-    )
+  test.it("executes lazily on accessor access", () =>
+    Effect.gen(function* () {
+      let count = 0
+      const entity = Entity.make(
+        Effect.sync(() => {
+          count++
+          return "hello"
+        }),
+      )
 
-    test.expect(count).toBe(0)
-
-    await Effect.runPromise(entity.text)
-
-    test.expect(count).toBe(1)
-  })
+      test.expect(count).toBe(0)
+      yield* entity.text
+      test.expect(count).toBe(1)
+    }).pipe(Effect.runPromise),
+  )
 
   test.it("propagates Effect errors", async () => {
     const error = new ParseResult.ParseError({
@@ -356,30 +392,33 @@ test.describe("Effect body", () => {
       .toEqualTypeOf<true>()
   })
 
-  test.it("text decodes Effect<Uint8Array> to string", async () => {
-    const bytes = new TextEncoder().encode("hello world")
-    const effect = Effect.succeed(bytes)
-    const entity = Entity.make(effect)
-    const result = await Effect.runPromise(entity.text)
+  test.it("text decodes Effect<Uint8Array> to string", () =>
+    Effect.gen(function* () {
+      const bytes = new TextEncoder().encode("hello world")
+      const entity = Entity.make(Effect.succeed(bytes))
+      const result = yield* entity.text
 
-    test.expect(result).toBe("hello world")
-  })
+      test.expect(result).toBe("hello world")
+    }).pipe(Effect.runPromise),
+  )
 
-  test.it("json parses Effect<string> as JSON", async () => {
-    const effect = Effect.succeed('{"key":"value"}')
-    const entity = Entity.make(effect)
-    const result = await Effect.runPromise(entity.json)
+  test.it("json parses Effect<string> as JSON", () =>
+    Effect.gen(function* () {
+      const entity = Entity.make(Effect.succeed('{"key":"value"}'))
+      const result = yield* entity.json
 
-    test.expect(result).toEqual({ key: "value" })
-  })
+      test.expect(result).toEqual({ key: "value" })
+    }).pipe(Effect.runPromise),
+  )
 
-  test.it("bytes encodes Effect<string> to Uint8Array", async () => {
-    const effect = Effect.succeed("hello")
-    const entity = Entity.make(effect)
-    const result = await Effect.runPromise(entity.bytes)
+  test.it("bytes encodes Effect<string> to Uint8Array", () =>
+    Effect.gen(function* () {
+      const entity = Entity.make(Effect.succeed("hello"))
+      const result = yield* entity.bytes
 
-    test.expect(result).toEqual(new TextEncoder().encode("hello"))
-  })
+      test.expect(result).toEqual(new TextEncoder().encode("hello"))
+    }).pipe(Effect.runPromise),
+  )
 })
 
 test.describe("Pipeable interface", () => {
@@ -392,36 +431,44 @@ test.describe("Pipeable interface", () => {
 })
 
 test.describe("Proto getters", () => {
-  test.it("entity.text returns text", async () => {
-    const entity = Entity.make("hello")
-    const result = await Effect.runPromise(entity.text)
+  test.it("entity.text returns text", () =>
+    Effect.gen(function* () {
+      const entity = Entity.make("hello")
+      const result = yield* entity.text
 
-    test.expect(result).toBe("hello")
-  })
+      test.expect(result).toBe("hello")
+    }).pipe(Effect.runPromise),
+  )
 
-  test.it("entity.json returns json", async () => {
-    const data = { key: "value" }
-    const entity = Entity.make(data)
-    const result = await Effect.runPromise(entity.json)
+  test.it("entity.json returns json", () =>
+    Effect.gen(function* () {
+      const data = { key: "value" }
+      const entity = Entity.make(data)
+      const result = yield* entity.json
 
-    test.expect(result).toEqual(data)
-  })
+      test.expect(result).toEqual(data)
+    }).pipe(Effect.runPromise),
+  )
 
-  test.it("entity.bytes returns bytes", async () => {
-    const bytes = new Uint8Array([1, 2, 3])
-    const entity = Entity.make(bytes)
-    const result = await Effect.runPromise(entity.bytes)
+  test.it("entity.bytes returns bytes", () =>
+    Effect.gen(function* () {
+      const bytes = new Uint8Array([1, 2, 3])
+      const entity = Entity.make(bytes)
+      const result = yield* entity.bytes
 
-    test.expect(result).toBe(bytes)
-  })
+      test.expect(result).toBe(bytes)
+    }).pipe(Effect.runPromise),
+  )
 
-  test.it("entity.stream returns stream", async () => {
-    const bytes = new Uint8Array([1, 2, 3])
-    const entity = Entity.make(bytes)
-    const chunks = await Effect.runPromise(Stream.runCollect(entity.stream))
+  test.it("entity.stream returns stream", () =>
+    Effect.gen(function* () {
+      const bytes = new Uint8Array([1, 2, 3])
+      const entity = Entity.make(bytes)
+      const chunks = yield* Stream.runCollect(entity.stream)
 
-    test.expect(Array.from(chunks)).toEqual([bytes])
-  })
+      test.expect(Array.from(chunks)).toEqual([bytes])
+    }).pipe(Effect.runPromise),
+  )
 })
 
 test.describe("type inference", () => {

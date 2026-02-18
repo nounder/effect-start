@@ -54,27 +54,26 @@ test.describe("tracing", () => {
     test.expect(capturedSpan?.attributes.get("user_agent.original")).toBe("test-agent")
   })
 
-  test.it("adds response status code to span", async () => {
-    let capturedSpan: Tracer.Span | undefined
+  test.it("adds response status code to span", () =>
+    Effect.gen(function* () {
+      let capturedSpan: Tracer.Span | undefined
 
-    const handler = RouteHttp.toWebHandler(
-      Route.get(
-        Route.text(function* () {
-          const span = yield* Effect.currentSpan
-          capturedSpan = span
-          return "ok"
-        }),
-      ),
-    )
+      const handler = RouteHttp.toWebHandler(
+        Route.get(
+          Route.text(function* () {
+            const span = yield* Effect.currentSpan
+            capturedSpan = span
+            return "ok"
+          }),
+        ),
+      )
 
-    const response = await Http.fetch(handler, { path: "/test" })
-
-    test.expect(response.status).toBe(200)
-
-    await Effect.runPromise(Effect.sleep("10 millis"))
-
-    test.expect(capturedSpan?.attributes.get("http.response.status_code")).toBe(200)
-  })
+      const response = yield* Effect.promise(() => Http.fetch(handler, { path: "/test" }))
+      test.expect(response.status).toBe(200)
+      yield* Effect.sleep("10 millis")
+      test.expect(capturedSpan?.attributes.get("http.response.status_code")).toBe(200)
+    }).pipe(Effect.runPromise),
+  )
 
   test.it("parses W3C traceparent header for parent span", async () => {
     let capturedSpan: Tracer.Span | undefined

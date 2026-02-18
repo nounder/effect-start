@@ -8,7 +8,7 @@ import * as PlatformError from "../PlatformError.ts"
 import * as BunChildProcessSpawner from "./BunChildProcessSpawner.ts"
 
 const run = <A, E>(effect: Effect.Effect<A, E, ChildProcess.ChildProcessSpawner | Scope.Scope>) =>
-  Effect.runPromise(Effect.scoped(Effect.provide(effect, BunChildProcessSpawner.layer)))
+  Effect.provide(effect, BunChildProcessSpawner.layer).pipe(Effect.scoped, Effect.runPromise)
 
 test.describe("ChildProcess.make", () => {
   test.it("creates a command", () => {
@@ -202,13 +202,11 @@ test.describe("spawn + options", () => {
 
 test.describe("spawn errors", () => {
   test.it("fails for non-existent command", async () => {
-    const error = await Effect.runPromise(
-      Effect.scoped(
-        ChildProcess.spawn(ChildProcess.make(["__nonexistent_command_xyz__"])).pipe(
-          Effect.flip,
-          Effect.provide(BunChildProcessSpawner.layer),
-        ),
-      ),
+    const error = await ChildProcess.spawn(ChildProcess.make(["__nonexistent_command_xyz__"])).pipe(
+      Effect.flip,
+      Effect.provide(BunChildProcessSpawner.layer),
+      Effect.scoped,
+      Effect.runPromise,
     )
 
     test.expect(PlatformError.isPlatformError(error)).toBe(true)

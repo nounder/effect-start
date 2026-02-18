@@ -20,25 +20,30 @@ test.describe("Fetch.sse", () => {
         Effect.flatMap(Stream.runCollect),
       )
 
-      test.expect(Array.from(events)).toEqual([
-        { data: "hello" },
-        { data: "world", type: "custom" },
-        { data: "retry-test", retry: 3000 },
-      ])
+      test
+        .expect(Array.from(events))
+        .toEqual([
+          { data: "hello" },
+          { data: "world", type: "custom" },
+          { data: "retry-test", retry: 3000 },
+        ])
     }).pipe(
-      Effect.provide(testLayer({
-        "/events": Route.get(
-          Route.sse(() =>
-            Stream.make(
-              { data: "hello" },
-              { data: "world", type: "custom" },
-              { data: "retry-test", retry: 3000 },
+      Effect.provide(
+        testLayer({
+          "/events": Route.get(
+            Route.sse(() =>
+              Stream.make(
+                { data: "hello" },
+                { data: "world", type: "custom" },
+                { data: "retry-test", retry: 3000 },
+              ),
             ),
           ),
-        ),
-      })),
+        }),
+      ),
       Effect.runPromise,
-    ))
+    ),
+  )
 
   test.it("fails on non-SSE content-type", () =>
     Effect.gen(function* () {
@@ -57,11 +62,14 @@ test.describe("Fetch.sse", () => {
         test.expect(exit.cause.error.reason).toBe("Status")
       }
     }).pipe(
-      Effect.provide(testLayer({
-        "/json": Route.get(Route.json({ ok: true })),
-      })),
+      Effect.provide(
+        testLayer({
+          "/json": Route.get(Route.json({ ok: true })),
+        }),
+      ),
       Effect.runPromise,
-    ))
+    ),
+  )
 
   test.it("parses multi-line data events", () =>
     Effect.gen(function* () {
@@ -75,13 +83,14 @@ test.describe("Fetch.sse", () => {
 
       test.expect(Array.from(events)).toEqual([{ data: "line1\nline2\nline3" }])
     }).pipe(
-      Effect.provide(testLayer({
-        "/events": Route.get(
-          Route.sse(() => Stream.make({ data: "line1\nline2\nline3" })),
-        ),
-      })),
+      Effect.provide(
+        testLayer({
+          "/events": Route.get(Route.sse(() => Stream.make({ data: "line1\nline2\nline3" }))),
+        }),
+      ),
       Effect.runPromise,
-    ))
+    ),
+  )
 
   test.it("parses tagged struct events", () =>
     Effect.gen(function* () {
@@ -100,17 +109,16 @@ test.describe("Fetch.sse", () => {
         },
       ])
     }).pipe(
-      Effect.provide(testLayer({
-        "/events": Route.get(
-          Route.sse(() =>
-            Stream.make(
-              { _tag: "UserCreated", id: 1, name: "Alice" },
-            ),
+      Effect.provide(
+        testLayer({
+          "/events": Route.get(
+            Route.sse(() => Stream.make({ _tag: "UserCreated", id: 1, name: "Alice" })),
           ),
-        ),
-      })),
+        }),
+      ),
       Effect.runPromise,
-    ))
+    ),
+  )
 
   test.it("handles stream timeout", () =>
     Effect.gen(function* () {
@@ -130,16 +138,14 @@ test.describe("Fetch.sse", () => {
       test.expect(Array.from(events).length).toBeGreaterThanOrEqual(1)
       test.expect(Array.from(events)[0]).toEqual({ data: "first" })
     }).pipe(
-      Effect.provide(testLayer({
-        "/events": Route.get(
-          Route.sse(() =>
-            Stream.concat(
-              Stream.make({ data: "first" }),
-              Stream.never,
-            ),
+      Effect.provide(
+        testLayer({
+          "/events": Route.get(
+            Route.sse(() => Stream.concat(Stream.make({ data: "first" }), Stream.never)),
           ),
-        ),
-      })),
+        }),
+      ),
       Effect.runPromise,
-    ))
+    ),
+  )
 })

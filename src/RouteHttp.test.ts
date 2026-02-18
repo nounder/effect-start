@@ -1573,106 +1573,112 @@ test.describe("schema handlers", () => {
 })
 
 test.describe("request abort handling", () => {
-  test.it("returns 499 and runs finalizers when request is aborted", async () => {
-    let finalizerRan = false
+  test.it("returns 499 and runs finalizers when request is aborted", () =>
+    Effect.gen(function* () {
+      let finalizerRan = false
 
-    const handler = RouteHttp.toWebHandler(
-      Route.get(
-        Route.text(function* () {
-          yield* Effect.addFinalizer(() =>
-            Effect.sync(() => {
-              finalizerRan = true
-            }),
-          )
-          yield* Effect.sleep("10 seconds")
-          return "should not reach"
-        }),
-      ),
-    )
-
-    const { request, abort } = Http.createAbortableRequest({ path: "/abort" })
-
-    const responsePromise = handler(request)
-
-    await Effect.runPromise(Effect.sleep("10 millis"))
-    abort()
-
-    const response = await responsePromise
-
-    test.expect(response.status).toBe(499)
-    test.expect(finalizerRan).toBe(true)
-  })
-
-  test.it("uses clientAbortFiberId to identify client disconnects", async () => {
-    let interruptedBy: string | undefined
-
-    const handler = RouteHttp.toWebHandler(
-      Route.get(
-        Route.text(
-          Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.get(
+          Route.text(function* () {
+            yield* Effect.addFinalizer(() =>
+              Effect.sync(() => {
+                finalizerRan = true
+              }),
+            )
             yield* Effect.sleep("10 seconds")
             return "should not reach"
-          }).pipe(
-            Effect.onInterrupt((interruptors) =>
-              Effect.sync(() => {
-                for (const id of interruptors) {
-                  interruptedBy = String(id)
-                }
-              }),
+          }),
+        ),
+      )
+
+      const { request, abort } = Http.createAbortableRequest({ path: "/abort" })
+
+      const responsePromise = handler(request)
+
+      yield* Effect.sleep("10 millis")
+      abort()
+
+      const response = yield* Effect.promise(() => Promise.resolve(responsePromise))
+
+      test.expect(response.status).toBe(499)
+      test.expect(finalizerRan).toBe(true)
+    }).pipe(Effect.runPromise),
+  )
+
+  test.it("uses clientAbortFiberId to identify client disconnects", () =>
+    Effect.gen(function* () {
+      let interruptedBy: string | undefined
+
+      const handler = RouteHttp.toWebHandler(
+        Route.get(
+          Route.text(
+            Effect.gen(function* () {
+              yield* Effect.sleep("10 seconds")
+              return "should not reach"
+            }).pipe(
+              Effect.onInterrupt((interruptors) =>
+                Effect.sync(() => {
+                  for (const id of interruptors) {
+                    interruptedBy = String(id)
+                  }
+                }),
+              ),
             ),
           ),
         ),
-      ),
-    )
+      )
 
-    const { request, abort } = Http.createAbortableRequest({ path: "/abort" })
+      const { request, abort } = Http.createAbortableRequest({ path: "/abort" })
 
-    const responsePromise = handler(request)
+      const responsePromise = handler(request)
 
-    await Effect.runPromise(Effect.sleep("10 millis"))
-    abort()
+      yield* Effect.sleep("10 millis")
+      abort()
 
-    await responsePromise
+      yield* Effect.promise(() => Promise.resolve(responsePromise))
 
-    test.expect(interruptedBy).toContain("-499")
-  })
+      test.expect(interruptedBy).toContain("-499")
+    }).pipe(Effect.runPromise),
+  )
 
-  test.it("interrupts streaming response when request is aborted", async () => {
-    let finalizerRan = false
+  test.it("interrupts streaming response when request is aborted", () =>
+    Effect.gen(function* () {
+      let finalizerRan = false
 
-    const handler = RouteHttp.toWebHandler(
-      Route.get(
-        Route.text(function* () {
-          yield* Effect.addFinalizer(() =>
-            Effect.sync(() => {
-              finalizerRan = true
-            }),
-          )
-          return Stream.fromSchedule(Schedule.spaced("100 millis")).pipe(
-            Stream.map((n) => `event ${n}\n`),
-            Stream.take(100),
-          )
-        }),
-      ),
-    )
+      const handler = RouteHttp.toWebHandler(
+        Route.get(
+          Route.text(function* () {
+            yield* Effect.addFinalizer(() =>
+              Effect.sync(() => {
+                finalizerRan = true
+              }),
+            )
+            return Stream.fromSchedule(Schedule.spaced("100 millis")).pipe(
+              Stream.map((n) => `event ${n}\n`),
+              Stream.take(100),
+            )
+          }),
+        ),
+      )
 
-    const { request, abort } = Http.createAbortableRequest({ path: "/stream" })
+      const { request, abort } = Http.createAbortableRequest({ path: "/stream" })
 
-    const response = await handler(request)
+      const response = yield* Effect.promise(() => Promise.resolve(handler(request)))
 
-    test.expect(response.status).toBe(200)
+      test.expect(response.status).toBe(200)
 
-    const reader = response.body!.getReader()
-    const firstChunk = await reader.read()
+      const reader = response.body!.getReader()
+      const firstChunk = yield* Effect.promise(() => reader.read())
 
-    test.expect(firstChunk.done).toBe(false)
+      test.expect(firstChunk.done).toBe(false)
 
-    abort()
+      abort()
 
-    await Effect.runPromise(Effect.sleep("50 millis"))
+      yield* Effect.sleep("50 millis")
 
-    test.expect(finalizerRan).toBe(true)
-  })
+      test.expect(finalizerRan).toBe(true)
+    }).pipe(Effect.runPromise),
+  )
 })
 
 test.describe("RouteTree layer routes", () => {

@@ -53,6 +53,28 @@ test.expectTypeOf(context).toMatchObjectType<{
 }>()
 ```
 
+When a test runs Effects, wrap the entire test body in
+`Effect.gen(...).pipe(Effect.runPromise)` instead of using `async`/`await`.
+Use `yield*` for effects and `Effect.promise` for plain promises.
+
+```ts
+// good
+test.it("does something", () =>
+  Effect.gen(function* () {
+    yield* Commander.parse(cmd, args)
+    test.expect(executed).toBe(false)
+  }).pipe(Effect.runPromise),
+)
+
+// bad
+test.it("does something", async () => {
+  await Effect.runPromise(Commander.parse(cmd, args))
+  test.expect(executed).toBe(false)
+})
+```
+
+Always use `.pipe(Effect.scoped)` instead of `Effect.scoped(...)` wrapping.
+
 # Misc
 
 Do NOT use section header comments (like `// -----------------------`)

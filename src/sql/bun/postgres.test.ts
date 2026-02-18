@@ -118,46 +118,42 @@ test.describe.skipIf(!process.env.TEST_SQL)("BunSql (postgres)", () => {
   test.describe("reserve", () => {
     test.it("should run queries on a reserved connection", () =>
       runSql(
-        Effect.scoped(
-          Effect.gen(function* () {
-            const sql = yield* SqlClient.SqlClient
-            const reserved = yield* sql.reserve
-            yield* reserved.unsafe("DROP TABLE IF EXISTS reserve_test")
-            yield* reserved.unsafe("CREATE TABLE reserve_test (id SERIAL PRIMARY KEY, name TEXT)")
-            yield* reserved.unsafe("INSERT INTO reserve_test (name) VALUES ('reserved')")
-            const rows = yield* reserved<{ name: string }>`SELECT name FROM reserve_test`
+        Effect.gen(function* () {
+          const sql = yield* SqlClient.SqlClient
+          const reserved = yield* sql.reserve
+          yield* reserved.unsafe("DROP TABLE IF EXISTS reserve_test")
+          yield* reserved.unsafe("CREATE TABLE reserve_test (id SERIAL PRIMARY KEY, name TEXT)")
+          yield* reserved.unsafe("INSERT INTO reserve_test (name) VALUES ('reserved')")
+          const rows = yield* reserved<{ name: string }>`SELECT name FROM reserve_test`
 
-            test.expect(rows).toHaveLength(1)
-            test.expect(rows[0].name).toBe("reserved")
+          test.expect(rows).toHaveLength(1)
+          test.expect(rows[0].name).toBe("reserved")
 
-            yield* reserved.unsafe("DROP TABLE reserve_test")
-          }),
-        ),
+          yield* reserved.unsafe("DROP TABLE reserve_test")
+        }).pipe(Effect.scoped),
       ),
     )
 
     test.it("should isolate reserved connection from pool", () =>
       runSql(
-        Effect.scoped(
-          Effect.gen(function* () {
-            const sql = yield* SqlClient.SqlClient
-            const reserved = yield* sql.reserve
-            yield* reserved.unsafe("DROP TABLE IF EXISTS reserve_iso")
-            yield* reserved.unsafe("CREATE TABLE reserve_iso (id SERIAL PRIMARY KEY, val INT)")
-            yield* reserved.unsafe("BEGIN")
-            yield* reserved.unsafe("INSERT INTO reserve_iso (val) VALUES (1)")
-            const poolRows = yield* sql`SELECT * FROM reserve_iso`
+        Effect.gen(function* () {
+          const sql = yield* SqlClient.SqlClient
+          const reserved = yield* sql.reserve
+          yield* reserved.unsafe("DROP TABLE IF EXISTS reserve_iso")
+          yield* reserved.unsafe("CREATE TABLE reserve_iso (id SERIAL PRIMARY KEY, val INT)")
+          yield* reserved.unsafe("BEGIN")
+          yield* reserved.unsafe("INSERT INTO reserve_iso (val) VALUES (1)")
+          const poolRows = yield* sql`SELECT * FROM reserve_iso`
 
-            test.expect(poolRows).toHaveLength(0)
+          test.expect(poolRows).toHaveLength(0)
 
-            yield* reserved.unsafe("COMMIT")
-            const afterRows = yield* sql`SELECT * FROM reserve_iso`
+          yield* reserved.unsafe("COMMIT")
+          const afterRows = yield* sql`SELECT * FROM reserve_iso`
 
-            test.expect(afterRows).toHaveLength(1)
+          test.expect(afterRows).toHaveLength(1)
 
-            yield* reserved.unsafe("DROP TABLE reserve_iso")
-          }),
-        ),
+          yield* reserved.unsafe("DROP TABLE reserve_iso")
+        }).pipe(Effect.scoped),
       ),
     )
   })
