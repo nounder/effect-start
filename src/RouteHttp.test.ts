@@ -2256,3 +2256,25 @@ test.describe("Route.render (format=*)", () => {
     test.expect(await response.text()).toBe("<!DOCTYPE html><body>content</body>")
   })
 })
+
+test.it("Route.html handler can return redirect", async () => {
+  const handler = RouteHttp.toWebHandler(
+    Route.post(
+      Route.html(function* () {
+        yield* Effect.void
+        return Entity.make("", {
+          status: 302,
+          headers: { location: "/redirected" },
+        })
+      }),
+    ),
+  )
+  const response = await Http.fetch(handler, {
+    path: "/form",
+    method: "POST",
+  })
+
+  test.expect(response.status).toBe(302)
+  test.expect(response.headers.get("location")).toBe("/redirected")
+  test.expect(response.headers.get("content-type")).not.toContain("text/html")
+})

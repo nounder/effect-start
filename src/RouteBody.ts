@@ -126,15 +126,17 @@ export function build<Value, F extends Format>(descriptors: { format: F }) {
         E,
         R
       > = (ctx, next) =>
-        Effect.map(baseHandler(ctx as any, next as any), (entity) =>
-          entity.headers["content-type"]
-            ? entity
-            : Entity.make(entity.body, {
-                status: entity.status,
-                url: entity.url,
-                headers: { ...entity.headers, "content-type": contentType },
-              }),
-        )
+        Effect.map(baseHandler(ctx as any, next as any), (entity) => {
+          const status = entity.status ?? 200
+          if (entity.headers["content-type"] || (status >= 300 && status < 400)) {
+            return entity
+          }
+          return Entity.make(entity.body, {
+            status: entity.status,
+            url: entity.url,
+            headers: { ...entity.headers, "content-type": contentType },
+          })
+        })
 
       const route = Route.make<{ format: F }, {}, A, E, R>(wrappedHandler as any, descriptors)
 
