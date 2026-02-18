@@ -2,6 +2,7 @@ import * as test from "bun:test"
 import * as NFs from "node:fs"
 import * as NOs from "node:os"
 import * as NPath from "node:path"
+import * as ConfigProvider from "effect/ConfigProvider"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Layer from "effect/Layer"
@@ -11,189 +12,183 @@ import * as BunServer from "./BunServer.ts"
 
 const staticDir = NPath.resolve(import.meta.dir, "../../static")
 
-test.describe("smart port selection", () => {
-  // Skip when running in TTY because the random port logic requires !isTTY && CLAUDECODE,
-  // and process.stdout.isTTY cannot be mocked
-  test.test.skipIf(process.stdout.isTTY)(
-    "uses random port when PORT not set, isTTY=false, CLAUDECODE set",
-    async () => {
-      const originalPort = process.env.PORT
-      const originalClaudeCode = process.env.CLAUDECODE
-
-      try {
-        delete process.env.PORT
-        process.env.CLAUDECODE = "1"
-
-        const port = await Effect.gen(function* () {
-          const bunServer = yield* BunServer.make({})
-          return bunServer.server.port
-        }).pipe(Effect.scoped, Effect.runPromise)
-
-        test.expect(port).not.toBe(3000)
-      } finally {
-        if (originalPort !== undefined) {
-          process.env.PORT = originalPort
+const withEnv = (env: Record<string, string | undefined>) =>
+  Effect.acquireRelease(
+    Effect.sync(() => {
+      const original: Record<string, string | undefined> = {}
+      for (const key of Object.keys(env)) {
+        original[key] = process.env[key]
+        if (env[key] === undefined) {
+          delete process.env[key]
         } else {
-          delete process.env.PORT
-        }
-        if (originalClaudeCode !== undefined) {
-          process.env.CLAUDECODE = originalClaudeCode
-        } else {
-          delete process.env.CLAUDECODE
+          process.env[key] = env[key]
         }
       }
-    },
+      return original
+    }),
+    (original) =>
+      Effect.sync(() => {
+        for (const key of Object.keys(original)) {
+          if (original[key] === undefined) {
+            delete process.env[key]
+          } else {
+            process.env[key] = original[key]
+          }
+        }
+      }),
   )
 
-  test.test("uses explicit PORT even when CLAUDECODE is set", async () => {
-    const originalPort = process.env.PORT
-    const originalClaudeCode = process.env.CLAUDECODE
-
-    try {
-      process.env.PORT = "5678"
-      process.env.CLAUDECODE = "1"
-
-      const port = await Effect.gen(function* () {
+test.describe("smart port selection", () => {
+  test.test.skipIf(process.stdout.isTTY)(
+    "uses random port when PORT not set, isTTY=false, CLAUDECODE set",
+    () =>
+      Effect.gen(function* () {
+        yield* withEnv({ CLAUDECODE: "1" })
         const bunServer = yield* BunServer.make({})
-        return bunServer.server.port
-      }).pipe(Effect.scoped, Effect.runPromise)
 
-      test.expect(port).toBe(5678)
-    } finally {
-      if (originalPort !== undefined) {
-        process.env.PORT = originalPort
-      } else {
-        delete process.env.PORT
-      }
-      if (originalClaudeCode !== undefined) {
-        process.env.CLAUDECODE = originalClaudeCode
-      } else {
-        delete process.env.CLAUDECODE
-      }
-    }
-  })
+        test.expect(bunServer.server.port).not.toBe(3000)
+      }).pipe(
+        Effect.withConfigProvider(ConfigProvider.fromJson({})),
+        Effect.scoped,
+        Effect.runPromise,
+      ),
+  )
+
+  test.test("uses explicit PORT even when CLAUDECODE is set", () =>
+    Effect.gen(function* () {
+      yield* withEnv({ CLAUDECODE: "1" })
+      const bunServer = yield* BunServer.make({})
+
+      test.expect(bunServer.server.port).toBe(5678)
+    }).pipe(
+      Effect.withConfigProvider(ConfigProvider.fromJson({ PORT: "5678" })),
+      Effect.scoped,
+      Effect.runPromise,
+    ),
+  )
 })
 
 const testLayer = (routes: ReturnType<typeof Route.tree>) =>
   BunServer.layerRoutes({ port: 0 }).pipe(Layer.provide(Route.layer(routes)))
 
 test.describe("routes", () => {
-  test.test("serves static text route", async () => {
+  test.test("serves static text route", () => {
     const routes = Route.tree({
       "/": Route.get(Route.text("Hello, World!")),
     })
 
-    const response = await Effect.gen(function* () {
+    return Effect.gen(function* () {
       const bunServer = yield* BunServer.BunServer
-      return yield* Effect.promise(() => fetch(`http://localhost:${bunServer.server.port}/`))
-    }).pipe(Effect.provide(testLayer(routes)), Effect.scoped, Effect.runPromise)
+      const response = yield* Effect.promise(() =>
+        fetch(`http://localhost:${bunServer.server.port}/`),
+      )
+      const text = yield* Effect.promise(() => response.text())
 
-    test.expect(response.status).toBe(200)
-    test.expect(await response.text()).toBe("Hello, World!")
+      test.expect(response.status).toBe(200)
+      test.expect(text).toBe("Hello, World!")
+    }).pipe(Effect.provide(testLayer(routes)), Effect.scoped, Effect.runPromise)
   })
 
-  test.test("serves JSON route", async () => {
+  test.test("serves JSON route", () => {
     const routes = Route.tree({
       "/api/data": Route.get(Route.json({ message: "success", value: 42 })),
     })
 
-    const response = await Effect.gen(function* () {
+    return Effect.gen(function* () {
       const bunServer = yield* BunServer.BunServer
-      return yield* Effect.promise(() =>
+      const response = yield* Effect.promise(() =>
         fetch(`http://localhost:${bunServer.server.port}/api/data`),
       )
-    }).pipe(Effect.provide(testLayer(routes)), Effect.scoped, Effect.runPromise)
+      const json = yield* Effect.promise(() => response.json())
 
-    test.expect(response.status).toBe(200)
-    test.expect(response.headers.get("Content-Type")).toBe("application/json")
-    test.expect(await response.json()).toEqual({
-      message: "success",
-      value: 42,
-    })
+      test.expect(response.status).toBe(200)
+      test.expect(response.headers.get("Content-Type")).toBe("application/json")
+      test.expect(json).toEqual({ message: "success", value: 42 })
+    }).pipe(Effect.provide(testLayer(routes)), Effect.scoped, Effect.runPromise)
   })
 
-  test.test("returns 404 for unknown routes", async () => {
+  test.test("returns 404 for unknown routes", () => {
     const routes = Route.tree({
       "/": Route.get(Route.text("Home")),
     })
 
-    const response = await Effect.gen(function* () {
+    return Effect.gen(function* () {
       const bunServer = yield* BunServer.BunServer
-      return yield* Effect.promise(() =>
+      const response = yield* Effect.promise(() =>
         fetch(`http://localhost:${bunServer.server.port}/unknown`),
       )
-    }).pipe(Effect.provide(testLayer(routes)), Effect.scoped, Effect.runPromise)
 
-    test.expect(response.status).toBe(404)
+      test.expect(response.status).toBe(404)
+    }).pipe(Effect.provide(testLayer(routes)), Effect.scoped, Effect.runPromise)
   })
 
-  test.test("handles content negotiation", async () => {
+  test.test("handles content negotiation", () => {
     const routes = Route.tree({
       "/data": Route.get(Route.json({ type: "json" })).get(Route.html("<div>html</div>")),
     })
 
-    const [jsonResponse, htmlResponse] = await Effect.gen(function* () {
+    return Effect.gen(function* () {
       const bunServer = yield* BunServer.BunServer
       const baseUrl = `http://localhost:${bunServer.server.port}`
 
-      const json = yield* Effect.promise(() =>
+      const jsonResponse = yield* Effect.promise(() =>
         fetch(`${baseUrl}/data`, {
           headers: { Accept: "application/json" },
         }),
       )
+      const jsonBody = yield* Effect.promise(() => jsonResponse.json())
 
-      const html = yield* Effect.promise(() =>
+      const htmlResponse = yield* Effect.promise(() =>
         fetch(`${baseUrl}/data`, {
           headers: { Accept: "text/html" },
         }),
       )
+      const htmlBody = yield* Effect.promise(() => htmlResponse.text())
 
-      return [json, html] as const
+      test.expect(jsonResponse.headers.get("Content-Type")).toBe("application/json")
+      test.expect(jsonBody).toEqual({ type: "json" })
+      test.expect(htmlResponse.headers.get("Content-Type")).toBe("text/html; charset=utf-8")
+      test.expect(htmlBody).toBe("<div>html</div>")
     }).pipe(Effect.provide(testLayer(routes)), Effect.scoped, Effect.runPromise)
-
-    test.expect(jsonResponse.headers.get("Content-Type")).toBe("application/json")
-    test.expect(await jsonResponse.json()).toEqual({ type: "json" })
-
-    test.expect(htmlResponse.headers.get("Content-Type")).toBe("text/html; charset=utf-8")
-    test.expect(await htmlResponse.text()).toBe("<div>html</div>")
   })
 
-  test.test("returns 406 for unacceptable content type", async () => {
+  test.test("returns 406 for unacceptable content type", () => {
     const routes = Route.tree({
       "/data": Route.get(Route.json({ type: "json" })),
     })
 
-    const response = await Effect.gen(function* () {
+    return Effect.gen(function* () {
       const bunServer = yield* BunServer.BunServer
-      return yield* Effect.promise(() =>
+      const response = yield* Effect.promise(() =>
         fetch(`http://localhost:${bunServer.server.port}/data`, {
           headers: { Accept: "image/png" },
         }),
       )
-    }).pipe(Effect.provide(testLayer(routes)), Effect.scoped, Effect.runPromise)
 
-    test.expect(response.status).toBe(406)
+      test.expect(response.status).toBe(406)
+    }).pipe(Effect.provide(testLayer(routes)), Effect.scoped, Effect.runPromise)
   })
 
-  test.test("handles parameterized routes", async () => {
+  test.test("handles parameterized routes", () => {
     const routes = Route.tree({
       "/users/:id": Route.get(Route.text("user")),
     })
 
-    const response = await Effect.gen(function* () {
+    return Effect.gen(function* () {
       const bunServer = yield* BunServer.BunServer
-      return yield* Effect.promise(() =>
+      const response = yield* Effect.promise(() =>
         fetch(`http://localhost:${bunServer.server.port}/users/123`),
       )
-    }).pipe(Effect.provide(testLayer(routes)), Effect.scoped, Effect.runPromise)
+      const text = yield* Effect.promise(() => response.text())
 
-    test.expect(response.status).toBe(200)
-    test.expect(await response.text()).toBe("user")
+      test.expect(response.status).toBe(200)
+      test.expect(text).toBe("user")
+    }).pipe(Effect.provide(testLayer(routes)), Effect.scoped, Effect.runPromise)
   })
 })
 
 test.describe("Start.serve composition", () => {
-  test.test("routes resolve when server layer requires Route.Routes", async () => {
+  test.test("routes resolve when server layer requires Route.Routes", () => {
     const appLayer = Route.layer(
       Route.tree({
         "/hello": Route.get(Route.text("world")),
@@ -203,18 +198,19 @@ test.describe("Start.serve composition", () => {
     const serverLayer = BunServer.layerRoutes({ port: 0 })
     const composed = Layer.provide(BunServer.withLogAddress(serverLayer), appLayer)
 
-    const response = await Effect.gen(function* () {
+    return Effect.gen(function* () {
       const bunServer = yield* BunServer.BunServer
-      return yield* Effect.promise(() =>
+      const response = yield* Effect.promise(() =>
         fetch(`http://localhost:${bunServer.server.port}/hello`),
       )
-    }).pipe(Effect.provide(composed), Effect.scoped, Effect.runPromise)
+      const text = yield* Effect.promise(() => response.text())
 
-    test.expect(response.status).toBe(200)
-    test.expect(await response.text()).toBe("world")
+      test.expect(response.status).toBe(200)
+      test.expect(text).toBe("world")
+    }).pipe(Effect.provide(composed), Effect.scoped, Effect.runPromise)
   })
 
-  test.test("route-agnostic layer starts with fallback handler", async () => {
+  test.test("route-agnostic layer starts with fallback handler", () => {
     const routeLayer = Route.layer(
       Route.tree({
         "/hello": Route.get(Route.text("world")),
@@ -226,14 +222,14 @@ test.describe("Start.serve composition", () => {
       routeLayer,
     )
 
-    const response = await Effect.gen(function* () {
+    return Effect.gen(function* () {
       const bunServer = yield* BunServer.BunServer
-      return yield* Effect.promise(() =>
+      const response = yield* Effect.promise(() =>
         fetch(`http://localhost:${bunServer.server.port}/hello`),
       )
-    }).pipe(Effect.provide(composed), Effect.scoped, Effect.runPromise)
 
-    test.expect(response.status).toBe(404)
+      test.expect(response.status).toBe(404)
+    }).pipe(Effect.provide(composed), Effect.scoped, Effect.runPromise)
   })
 
   test.test("route-aware layer fails without Route.Routes", async () => {
@@ -251,20 +247,21 @@ test.describe("Start.serve composition", () => {
 })
 
 test.describe("make", () => {
-  test.test("accepts explicit routes", async () => {
+  test.test("accepts explicit routes", () => {
     const routes = Route.tree({
       "/hello": Route.get(Route.text("world")),
     })
 
-    const response = await Effect.gen(function* () {
+    return Effect.gen(function* () {
       const bunServer = yield* BunServer.make({ port: 0 }, routes)
-      return yield* Effect.promise(() =>
+      const response = yield* Effect.promise(() =>
         fetch(`http://localhost:${bunServer.server.port}/hello`),
       )
-    }).pipe(Effect.scoped, Effect.runPromise)
+      const text = yield* Effect.promise(() => response.text())
 
-    test.expect(response.status).toBe(200)
-    test.expect(await response.text()).toBe("world")
+      test.expect(response.status).toBe(200)
+      test.expect(text).toBe("world")
+    }).pipe(Effect.scoped, Effect.runPromise)
   })
 })
 
@@ -430,7 +427,7 @@ test.describe("prebuilt htmlBundle rewrites relative asset paths", () => {
     }).pipe(Effect.provide(testLayer(routes)), Effect.runPromise)
   })
 
-  test.test("CSS asset is accessible at top-level path", async () => {
+  test.test("CSS asset is accessible at top-level path", () => {
     const routes = Route.tree({
       "/notes/:id": Route.get(
         BunRoute.htmlBundle(() => bundle),
@@ -441,7 +438,7 @@ test.describe("prebuilt htmlBundle rewrites relative asset paths", () => {
     const cssFile = bundle.files!.find((f) => f.loader === "css")!
     const cssBasename = NPath.basename(cssFile.path)
 
-    await Effect.gen(function* () {
+    return Effect.gen(function* () {
       const bunServer = yield* BunServer.BunServer
       const response = yield* Effect.promise(() =>
         fetch(`http://localhost:${bunServer.server.port}/${cssBasename}`),

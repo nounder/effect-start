@@ -74,7 +74,7 @@ test.describe(Start.pack, () => {
     }).pipe(Effect.provide(AppLayer), Effect.provide(ExternalApiLive), Effect.runPromise)
   })
 
-  test.test("should memoize layers (build each only once)", async () => {
+  test.test("should memoize layers (build each only once)", () => {
     let loggerBuildCount = 0
     let databaseBuildCount = 0
 
@@ -121,10 +121,12 @@ test.describe(Start.pack, () => {
       return "done"
     })
 
-    await program.pipe(Effect.provide(AppLayer), Effect.runPromise)
+    return Effect.gen(function* () {
+      yield* program
 
-    test.expect(loggerBuildCount).toEqual(1)
-    test.expect(databaseBuildCount).toEqual(1)
+      test.expect(loggerBuildCount).toEqual(1)
+      test.expect(databaseBuildCount).toEqual(1)
+    }).pipe(Effect.provide(AppLayer), Effect.runPromise)
   })
 })
 
@@ -170,7 +172,7 @@ test.describe(Start.layer, () => {
 
   const customPort = 49152 + Math.floor(Math.random() * 1000)
 
-  test.test("user-provided BunServer takes precedence", async () => {
+  test.test("user-provided BunServer takes precedence", () => {
     const routes = Route.tree({
       "/": Route.get(Route.text("hello")),
     })
@@ -179,15 +181,14 @@ test.describe(Start.layer, () => {
 
     const composed = testCompose(appLayer)
 
-    const port = await Effect.gen(function* () {
+    return Effect.gen(function* () {
       const bunServer = yield* BunServer.BunServer
-      return bunServer.server.port
-    }).pipe(Effect.provide(composed), Effect.scoped, Effect.runPromise)
 
-    test.expect(port).toBe(customPort)
+      test.expect(bunServer.server.port).toBe(customPort)
+    }).pipe(Effect.provide(composed), Effect.scoped, Effect.runPromise)
   })
 
-  test.test("user-provided BunServer serves routes", async () => {
+  test.test("user-provided BunServer serves routes", () => {
     const routes = Route.tree({
       "/": Route.get(Route.text("custom-server")),
     })
@@ -196,24 +197,20 @@ test.describe(Start.layer, () => {
 
     const composed = testCompose(appLayer)
 
-    const [status, body, port] = await Effect.gen(function* () {
+    return Effect.gen(function* () {
       const bunServer = yield* BunServer.BunServer
       const response = yield* Effect.promise(() =>
         fetch(`http://localhost:${bunServer.server.port}/`),
       )
-      return [
-        response.status,
-        yield* Effect.promise(() => response.text()),
-        bunServer.server.port,
-      ] as const
-    }).pipe(Effect.provide(composed), Effect.scoped, Effect.runPromise)
+      const body = yield* Effect.promise(() => response.text())
 
-    test.expect(port).toBe(customPort)
-    test.expect(status).toBe(200)
-    test.expect(body).toBe("custom-server")
+      test.expect(bunServer.server.port).toBe(customPort)
+      test.expect(response.status).toBe(200)
+      test.expect(body).toBe("custom-server")
+    }).pipe(Effect.provide(composed), Effect.scoped, Effect.runPromise)
   })
 
-  test.test("default BunServer is used when not provided", async () => {
+  test.test("default BunServer is used when not provided", () => {
     const routes = Route.tree({
       "/": Route.get(Route.text("default-server")),
     })
@@ -222,16 +219,16 @@ test.describe(Start.layer, () => {
 
     const composed = testCompose(appLayer)
 
-    const [status, body] = await Effect.gen(function* () {
+    return Effect.gen(function* () {
       const bunServer = yield* BunServer.BunServer
       const response = yield* Effect.promise(() =>
         fetch(`http://localhost:${bunServer.server.port}/`),
       )
-      return [response.status, yield* Effect.promise(() => response.text())] as const
-    }).pipe(Effect.provide(composed), Effect.scoped, Effect.runPromise)
+      const body = yield* Effect.promise(() => response.text())
 
-    test.expect(status).toBe(200)
-    test.expect(body).toBe("default-server")
+      test.expect(response.status).toBe(200)
+      test.expect(body).toBe("default-server")
+    }).pipe(Effect.provide(composed), Effect.scoped, Effect.runPromise)
   })
 })
 

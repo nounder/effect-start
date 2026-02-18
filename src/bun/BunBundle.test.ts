@@ -1,15 +1,18 @@
 import * as test from "bun:test"
 import * as Effect from "effect/Effect"
-import * as NFS from "node:fs/promises"
-import * as NOS from "node:os"
 import * as NPath from "node:path"
+import * as FileSystem from "../FileSystem.ts"
+import * as NodeFileSystem from "../node/NodeFileSystem.ts"
 import * as BunBundle from "./BunBundle.ts"
 
-test.describe("BunBundle manifest structure", () => {
-  test.it("should generate manifest with inputs and outputs arrays", async () => {
-    const tmpDir = await NFS.mkdtemp(NPath.join(NOS.tmpdir(), "effect-start-test-"))
+const layer = NodeFileSystem.layer
 
-    try {
+test.describe("BunBundle manifest structure", () => {
+  test.it("should generate manifest with inputs and outputs arrays", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem
+      const tmpDir = yield* fs.makeTempDirectoryScoped()
+
       const htmlContent = `<!DOCTYPE html>
 <html>
 <head><title>Test</title></head>
@@ -25,14 +28,12 @@ export const greeting = "Hello World";`
       const htmlPath = NPath.join(tmpDir, "index.html")
       const jsPath = NPath.join(tmpDir, "index.ts")
 
-      await NFS.writeFile(htmlPath, htmlContent)
-      await NFS.writeFile(jsPath, jsContent)
+      yield* fs.writeFileString(htmlPath, htmlContent)
+      yield* fs.writeFileString(jsPath, jsContent)
 
-      const bundle = await Effect.runPromise(
-        BunBundle.buildClient({
-          entrypoints: [htmlPath],
-        }),
-      )
+      const bundle = yield* BunBundle.buildClient({
+        entrypoints: [htmlPath],
+      })
 
       test.expect(bundle.entrypoints).toBeObject()
       test.expect(bundle.artifacts).toBeArray()
@@ -51,30 +52,24 @@ export const greeting = "Hello World";`
       test.expect(firstArtifact).toHaveProperty("type")
       test.expect(firstArtifact).toHaveProperty("size")
       test.expect(firstArtifact.size).toBeGreaterThan(0)
-    } finally {
-      await NFS.rm(tmpDir, {
-        recursive: true,
-        force: true,
-      })
-    }
-  })
+    }).pipe(Effect.scoped, Effect.provide(layer), Effect.runPromise),
+  )
 
-  test.it("should resolve entrypoints to artifacts correctly", async () => {
-    const tmpDir = await NFS.mkdtemp(NPath.join(NOS.tmpdir(), "effect-start-test-"))
+  test.it("should resolve entrypoints to artifacts correctly", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem
+      const tmpDir = yield* fs.makeTempDirectoryScoped()
 
-    try {
       const htmlContent = `<!DOCTYPE html>
 <html><body>Test</body></html>`
 
       const htmlPath = NPath.join(tmpDir, "test.html")
 
-      await NFS.writeFile(htmlPath, htmlContent)
+      yield* fs.writeFileString(htmlPath, htmlContent)
 
-      const bundle = await Effect.runPromise(
-        BunBundle.buildClient({
-          entrypoints: [htmlPath],
-        }),
-      )
+      const bundle = yield* BunBundle.buildClient({
+        entrypoints: [htmlPath],
+      })
 
       const entrypointKeys = Object.keys(bundle.entrypoints)
       const firstEntrypoint = entrypointKeys[0]
@@ -87,28 +82,22 @@ export const greeting = "Hello World";`
 
       test.expect(artifact).not.toBeNull()
       test.expect(artifact).toBeTruthy()
-    } finally {
-      await NFS.rm(tmpDir, {
-        recursive: true,
-        force: true,
-      })
-    }
-  })
+    }).pipe(Effect.scoped, Effect.provide(layer), Effect.runPromise),
+  )
 
-  test.it("should include all artifact metadata", async () => {
-    const tmpDir = await NFS.mkdtemp(NPath.join(NOS.tmpdir(), "effect-start-test-"))
+  test.it("should include all artifact metadata", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem
+      const tmpDir = yield* fs.makeTempDirectoryScoped()
 
-    try {
       const jsContent = `export const value = 42;`
       const jsPath = NPath.join(tmpDir, "module.ts")
 
-      await NFS.writeFile(jsPath, jsContent)
+      yield* fs.writeFileString(jsPath, jsContent)
 
-      const bundle = await Effect.runPromise(
-        BunBundle.buildClient({
-          entrypoints: [jsPath],
-        }),
-      )
+      const bundle = yield* BunBundle.buildClient({
+        entrypoints: [jsPath],
+      })
 
       const artifact = bundle.artifacts[0]
 
@@ -116,11 +105,6 @@ export const greeting = "Hello World";`
       test.expect(artifact.type).toBeString()
       test.expect(artifact.size).toBeNumber()
       test.expect(artifact.type).toContain("javascript")
-    } finally {
-      await NFS.rm(tmpDir, {
-        recursive: true,
-        force: true,
-      })
-    }
-  })
+    }).pipe(Effect.scoped, Effect.provide(layer), Effect.runPromise),
+  )
 })

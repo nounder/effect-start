@@ -448,18 +448,7 @@ export default {
           )
         }
 
-        function isEffectRunPromise(node) {
-          return (
-            node.type === "CallExpression" &&
-            node.callee.type === "MemberExpression" &&
-            node.callee.object.type === "Identifier" &&
-            node.callee.object.name === "Effect" &&
-            node.callee.property.type === "Identifier" &&
-            node.callee.property.name === "runPromise"
-          )
-        }
-
-        function findEnclosingTestCallback(node) {
+        function findEnclosingAsyncTestCallback(node) {
           const sourceCode = context.sourceCode || context.getSourceCode()
           const ancestors = sourceCode.getAncestors(node)
           for (let i = ancestors.length - 1; i >= 0; i--) {
@@ -489,7 +478,15 @@ export default {
                 messageId: "scopedWrapping",
               })
             }
-            if (isEffectRunPromise(node) && findEnclosingTestCallback(node)) {
+          },
+          MemberExpression(node) {
+            if (
+              node.object.type === "Identifier" &&
+              node.object.name === "Effect" &&
+              node.property.type === "Identifier" &&
+              node.property.name === "runPromise" &&
+              findEnclosingAsyncTestCallback(node)
+            ) {
               context.report({
                 node,
                 messageId: "noAwaitRunPromise",

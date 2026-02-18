@@ -308,49 +308,47 @@ test.describe("layerConfig", () => {
     }).pipe(
       Effect.provide(EncryptedCookies.layerConfig("SECRET_KEY_BASE")),
       Effect.withConfigProvider(
-        ConfigProvider.fromMap(new Map([["SECRET_KEY_BASE", validSecret]])),
+        ConfigProvider.fromJson({ SECRET_KEY_BASE: validSecret }),
       ),
       Effect.runPromise,
     )
   })
 
-  test.test("fail with short SECRET_KEY_BASE", async () => {
-    const shortSecret = "short"
-
-    const program = Effect.gen(function* () {
+  test.test("fail with short SECRET_KEY_BASE", () =>
+    Effect.gen(function* () {
       const service = yield* EncryptedCookies.EncryptedCookies
       return yield* service.encrypt("test")
-    })
+    }).pipe(
+      Effect.provide(EncryptedCookies.layerConfig("SECRET_KEY_BASE")),
+      Effect.withConfigProvider(
+        ConfigProvider.fromJson({ SECRET_KEY_BASE: "short" }),
+      ),
+      Effect.exit,
+      Effect.flatMap((exit) =>
+        Effect.sync(() => {
+          test.expect(exit._tag).toBe("Failure")
+          test.expect(String(exit)).toContain("SECRET_KEY_BASE must be at least 40 characters")
+        }),
+      ),
+      Effect.runPromise,
+    ),
+  )
 
-    test
-      .expect(
-        Effect.runPromise(
-          program.pipe(
-            Effect.provide(EncryptedCookies.layerConfig("SECRET_KEY_BASE")),
-            Effect.withConfigProvider(
-              ConfigProvider.fromMap(new Map([["SECRET_KEY_BASE", shortSecret]])),
-            ),
-          ),
-        ),
-      )
-      .rejects.toThrow("SECRET_KEY_BASE must be at least 40 characters")
-  })
-
-  test.test("fail with missing SECRET_KEY_BASE", async () => {
-    const program = Effect.gen(function* () {
+  test.test("fail with missing SECRET_KEY_BASE", () =>
+    Effect.gen(function* () {
       const service = yield* EncryptedCookies.EncryptedCookies
       return yield* service.encrypt("test")
-    })
-
-    test
-      .expect(
-        Effect.runPromise(
-          program.pipe(
-            Effect.provide(EncryptedCookies.layerConfig("SECRET_KEY_BASE")),
-            Effect.withConfigProvider(ConfigProvider.fromMap(new Map())),
-          ),
-        ),
-      )
-      .rejects.toThrow("SECRET_KEY_BASE must be at least 40 characters")
-  })
+    }).pipe(
+      Effect.provide(EncryptedCookies.layerConfig("SECRET_KEY_BASE")),
+      Effect.withConfigProvider(ConfigProvider.fromJson({})),
+      Effect.exit,
+      Effect.flatMap((exit) =>
+        Effect.sync(() => {
+          test.expect(exit._tag).toBe("Failure")
+          test.expect(String(exit)).toContain("SECRET_KEY_BASE must be at least 40 characters")
+        }),
+      ),
+      Effect.runPromise,
+    ),
+  )
 })

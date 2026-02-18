@@ -201,16 +201,15 @@ test.describe("spawn + options", () => {
 })
 
 test.describe("spawn errors", () => {
-  test.it("fails for non-existent command", async () => {
-    const error = await ChildProcess.spawn(ChildProcess.make(["__nonexistent_command_xyz__"])).pipe(
-      Effect.flip,
-      Effect.provide(BunChildProcessSpawner.layer),
-      Effect.scoped,
-      Effect.runPromise,
-    )
+  test.it("fails for non-existent command", () =>
+    Effect.gen(function* () {
+      const error = yield* ChildProcess.spawn(
+        ChildProcess.make(["__nonexistent_command_xyz__"]),
+      ).pipe(Effect.flip)
 
-    test.expect(PlatformError.isPlatformError(error)).toBe(true)
-    test.expect((error as PlatformError.SystemError).module).toBe("ChildProcess")
-    test.expect((error as PlatformError.SystemError).method).toBe("spawn")
-  })
+      test.expect(PlatformError.isPlatformError(error)).toBe(true)
+      test.expect((error as PlatformError.SystemError).module).toBe("ChildProcess")
+      test.expect((error as PlatformError.SystemError).method).toBe("spawn")
+    }).pipe(Effect.provide(BunChildProcessSpawner.layer), Effect.scoped, Effect.runPromise),
+  )
 })

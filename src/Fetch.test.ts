@@ -21,45 +21,41 @@ function patchFetch(fn: (input: RequestInfo | URL, init?: RequestInit) => Promis
 }
 
 test.describe("fetch", () => {
-  test.it("performs basic fetch", async () => {
-    await Effect.gen(function* () {
+  test.it("performs basic fetch", () =>
+    Effect.gen(function* () {
       yield* patchFetch(async () => new Response("result", { status: 200 }))
 
       const entity = yield* Fetch.fetch("https://example.com")
       test.expect(entity.status).toBe(200)
       const text = yield* entity.text
       test.expect(text).toBe("result")
-    }).pipe(Effect.scoped, Effect.runPromise)
-  })
+    }).pipe(Effect.scoped, Effect.runPromise),
+  )
 
-  test.it("accepts Request object", async () => {
-    const program = Effect.gen(function* () {
+  test.it("accepts Request object", () =>
+    Effect.gen(function* () {
       yield* patchFetch(async () => new Response("ok"))
 
       const request = new Request("https://example.com", { method: "POST" })
       const entity = yield* Fetch.fetch(request)
       const text = yield* entity.text
       test.expect(text).toBe("ok")
-    })
+    }).pipe(Effect.scoped, Effect.runPromise),
+  )
 
-    await program.pipe(Effect.scoped, Effect.runPromise)
-  })
-
-  test.it("accepts URL object", async () => {
-    const program = Effect.gen(function* () {
+  test.it("accepts URL object", () =>
+    Effect.gen(function* () {
       yield* patchFetch(async () => new Response("ok"))
 
       const url = new URL("https://example.com/path")
       const entity = yield* Fetch.fetch(url)
       const text = yield* entity.text
       test.expect(text).toBe("ok")
-    })
+    }).pipe(Effect.scoped, Effect.runPromise),
+  )
 
-    await program.pipe(Effect.scoped, Effect.runPromise)
-  })
-
-  test.it("accepts RequestInit options", async () => {
-    const program = Effect.gen(function* () {
+  test.it("accepts RequestInit options", () =>
+    Effect.gen(function* () {
       let capturedMethod = ""
       yield* patchFetch(async (input: string | URL | Request) => {
         capturedMethod = (input as Request).method
@@ -68,13 +64,11 @@ test.describe("fetch", () => {
 
       yield* Fetch.fetch("https://example.com", { method: "DELETE" })
       test.expect(capturedMethod).toBe("DELETE")
-    })
+    }).pipe(Effect.scoped, Effect.runPromise),
+  )
 
-    await program.pipe(Effect.scoped, Effect.runPromise)
-  })
-
-  test.it("wraps fetch errors in FetchError", async () => {
-    const program = Effect.gen(function* () {
+  test.it("wraps fetch errors in FetchError", () =>
+    Effect.gen(function* () {
       yield* patchFetch(async () => {
         throw new Error("network error")
       })
@@ -90,13 +84,11 @@ test.describe("fetch", () => {
           test.expect(error.request?.url).toBe("https://example.com/")
         }
       }
-    })
+    }).pipe(Effect.scoped, Effect.runPromise),
+  )
 
-    await program.pipe(Effect.scoped, Effect.runPromise)
-  })
-
-  test.it("get() sets method to GET", async () => {
-    const program = Effect.gen(function* () {
+  test.it("get() sets method to GET", () =>
+    Effect.gen(function* () {
       let capturedMethod = ""
       yield* patchFetch(async (input: string | URL | Request) => {
         capturedMethod = (input as Request).method
@@ -105,13 +97,11 @@ test.describe("fetch", () => {
 
       yield* Fetch.get("https://example.com")
       test.expect(capturedMethod).toBe("GET")
-    })
+    }).pipe(Effect.scoped, Effect.runPromise),
+  )
 
-    await program.pipe(Effect.scoped, Effect.runPromise)
-  })
-
-  test.it("post() sets method to POST", async () => {
-    const program = Effect.gen(function* () {
+  test.it("post() sets method to POST", () =>
+    Effect.gen(function* () {
       let capturedMethod = ""
       yield* patchFetch(async (input: string | URL | Request) => {
         capturedMethod = (input as Request).method
@@ -120,15 +110,13 @@ test.describe("fetch", () => {
 
       yield* Fetch.post("https://example.com")
       test.expect(capturedMethod).toBe("POST")
-    })
-
-    await program.pipe(Effect.scoped, Effect.runPromise)
-  })
+    }).pipe(Effect.scoped, Effect.runPromise),
+  )
 })
 
 test.describe("FetchClient", () => {
-  test.it("use() adds middleware", async () => {
-    const program = Effect.gen(function* () {
+  test.it("use() adds middleware", () =>
+    Effect.gen(function* () {
       let capturedUrl = ""
       yield* patchFetch(async (input: string | URL | Request) => {
         capturedUrl = (input as Request).url
@@ -143,13 +131,11 @@ test.describe("FetchClient", () => {
 
       yield* client.fetch("https://example.com/api")
       test.expect(capturedUrl).toBe("https://example.com/api?token=abc")
-    })
+    }).pipe(Effect.scoped, Effect.runPromise),
+  )
 
-    await program.pipe(Effect.scoped, Effect.runPromise)
-  })
-
-  test.it("chains middleware in application order", async () => {
-    const program = Effect.gen(function* () {
+  test.it("chains middleware in application order", () =>
+    Effect.gen(function* () {
       const order: Array<string> = []
       yield* patchFetch(async () => {
         order.push("fetch")
@@ -174,13 +160,11 @@ test.describe("FetchClient", () => {
 
       yield* client.fetch("https://example.com")
       test.expect(order).toEqual(["mw1-before", "mw2-before", "fetch", "mw2-after", "mw1-after"])
-    })
+    }).pipe(Effect.scoped, Effect.runPromise),
+  )
 
-    await program.pipe(Effect.scoped, Effect.runPromise)
-  })
-
-  test.it("middleware can modify request", async () => {
-    const program = Effect.gen(function* () {
+  test.it("middleware can modify request", () =>
+    Effect.gen(function* () {
       let sawHeader = false
       yield* patchFetch(async (input: string | URL | Request) => {
         sawHeader = (input as Request).headers.has("x-custom")
@@ -197,13 +181,11 @@ test.describe("FetchClient", () => {
 
       yield* client.fetch("https://example.com")
       test.expect(sawHeader).toBe(true)
-    })
+    }).pipe(Effect.scoped, Effect.runPromise),
+  )
 
-    await program.pipe(Effect.scoped, Effect.runPromise)
-  })
-
-  test.it("middleware can short-circuit with cached response", async () => {
-    const program = Effect.gen(function* () {
+  test.it("middleware can short-circuit with cached response", () =>
+    Effect.gen(function* () {
       let fetchCalled = false
       yield* patchFetch(async () => {
         fetchCalled = true
@@ -219,13 +201,11 @@ test.describe("FetchClient", () => {
       const text = yield* entity.text
       test.expect(text).toBe("from-cache")
       test.expect(fetchCalled).toBe(false)
-    })
+    }).pipe(Effect.scoped, Effect.runPromise),
+  )
 
-    await program.pipe(Effect.scoped, Effect.runPromise)
-  })
-
-  test.it("use() returns new client without mutating original", async () => {
-    const program = Effect.gen(function* () {
+  test.it("use() returns new client without mutating original", () =>
+    Effect.gen(function* () {
       let headerSeen = false
       yield* patchFetch(async (input: string | URL | Request) => {
         headerSeen = (input as Request).headers.has("x-added")
@@ -246,13 +226,11 @@ test.describe("FetchClient", () => {
 
       yield* withHeader.fetch("https://example.com")
       test.expect(headerSeen).toBe(true)
-    })
+    }).pipe(Effect.scoped, Effect.runPromise),
+  )
 
-    await program.pipe(Effect.scoped, Effect.runPromise)
-  })
-
-  test.it("use() accepts multiple middleware at once", async () => {
-    const program = Effect.gen(function* () {
+  test.it("use() accepts multiple middleware at once", () =>
+    Effect.gen(function* () {
       const order: Array<string> = []
       yield* patchFetch(async () => {
         order.push("fetch")
@@ -274,10 +252,8 @@ test.describe("FetchClient", () => {
 
       yield* client.fetch("https://example.com")
       test.expect(order).toEqual(["a", "b", "fetch"])
-    })
-
-    await program.pipe(Effect.scoped, Effect.runPromise)
-  })
+    }).pipe(Effect.scoped, Effect.runPromise),
+  )
 })
 
 test.describe("type tests", () => {

@@ -1,7 +1,9 @@
 import * as test from "bun:test"
+import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
 import type * as ParseResult from "effect/ParseResult"
 import * as Stream from "effect/Stream"
 import * as Entity from "./Entity.ts"
@@ -191,7 +193,7 @@ test.describe(`${RouteBody.handle.name}()`, () => {
     }).pipe(Effect.runPromise),
   )
 
-  test.it("generator type checks missing services", async () => {
+  test.it("generator type checks missing services", () => {
     interface ServiceA {
       readonly _: unique symbol
     }
@@ -202,11 +204,20 @@ test.describe(`${RouteBody.handle.name}()`, () => {
       return "ok"
     })
 
-    // This should fail type checking because ServiceA is not provided
-    // @ts-expect-error ServiceA is missing
-    const promise = Effect.runPromise(handler(ctx, next))
+    test.expectTypeOf(handler(ctx, next)).toMatchTypeOf<Effect.Effect<unknown, unknown, ServiceA>>()
 
-    test.expect(promise).rejects.toThrow(/Service not found: ServiceA/)
+    return (handler(ctx, next) as Effect.Effect<unknown>).pipe(
+      Effect.exit,
+      Effect.flatMap((exit) =>
+        Effect.sync(() => {
+          test.expect(Exit.isFailure(exit)).toBe(true)
+          if (Exit.isFailure(exit)) {
+            test.expect(Cause.pretty(exit.cause)).toMatch(/Service not found: ServiceA/)
+          }
+        }),
+      ),
+      Effect.runPromise,
+    )
   })
 
   test.it("generator infers error type from yielded effects", () => {
