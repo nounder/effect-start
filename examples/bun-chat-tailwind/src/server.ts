@@ -1,12 +1,12 @@
 import { Development, FileRouter, Start } from "effect-start"
-import { Simulation, Tower } from "effect-start/tower"
+import { Simulation, Studio } from "effect-start/studio"
 import { TailscaleTunnel } from "effect-start/x/tailscale"
 
 export default Start.pack(
-  Tower.layerRoutes(),
+  Studio.layerRoutes(),
   Simulation.layer(),
   TailscaleTunnel.layer(),
-  Tower.layer(),
+  Studio.layer(),
   Development.layerWatch(),
   FileRouter.layer(() => import("./routes/server.gen.ts")),
 )

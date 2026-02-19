@@ -63,9 +63,9 @@
       "source": "./src/testing/index.ts",
       "default": "./dist/testing/index.js"
     },
-    "./tower": {
-      "source": "./src/tower/index.ts",
-      "default": "./dist/tower/index.js"
+    "./studio": {
+      "source": "./src/studio/index.ts",
+      "default": "./dist/studio/index.js"
     },
     "./*": {
       "source": "./src/*.ts",
