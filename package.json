@@ -59,6 +59,10 @@
       "source": "./src/hyper/index.ts",
       "default": "./dist/hyper/index.js"
     },
+    "./sql/*": {
+      "source": "./src/sql/*/index.ts",
+      "default": "./dist/sql/*/index.js"
+    },
     "./sql": {
       "source": "./src/sql/index.ts",
       "default": "./dist/sql/index.js"
@@ -79,7 +83,7 @@
     "./package.json": "./package.json"
   },
   "scripts": {
-    "build": "tsgo -p tsconfig.build.json",
+    "build": "tsc -p tsconfig.build.json && cd src && find . -name '*.html' -exec rsync -R {} ../dist/ \\;",
     "format": "bunx oxfmt",
     "lint": "oxlint --import-plugin --tsconfig tsconfig.json src/",
     "test": "bun test ./test/",
@@ -92,7 +96,6 @@
     "@libsql/client": "^0.17.0",
     "@types/bun": "^1.3.4",
     "@types/jsdom": "^27.0.0",
-    "@typescript/native-preview": "^7.0.0-dev.20260217.1",
     "effect-memfs": "^0.8.0",
     "jsdom": "^28.0.0",
     "mssql": "^12.2.0",
