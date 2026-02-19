@@ -28,7 +28,7 @@ const tryFetch: Middleware = (request) =>
       try: () => globalThis.fetch(request),
       catch: (e) => new FetchError({ reason: "Network", cause: e, request }),
     }),
-    (response) => Entity.fromResponse(response, request) as FetchEntity,
+    (response) => Entity.fromResponse<FetchError>(response, request),
   )
 
 const defaultMiddleware: ReadonlyArray<Middleware> = [tryFetch]
@@ -170,6 +170,20 @@ const ClientProto: any = {
   get,
   post,
   use,
+}
+
+type WebHandler = (request: Request) => Response | Promise<Response>
+
+export function fromHandler(handler: WebHandler): FetchClient {
+  const transport: Middleware = (request) =>
+    Effect.map(
+      Effect.tryPromise({
+        try: () => Promise.resolve(handler(request)),
+        catch: (e) => new FetchError({ reason: "Network", cause: e, request }),
+      }),
+      (response) => Entity.fromResponse<FetchError>(response, request),
+    )
+  return use(transport)
 }
 
 export function filterStatus(

@@ -158,14 +158,27 @@ export function fromFileRoutes(fileRoutes: FileRoutes): Effect.Effect<RouteTree.
     const mounts: RouteTree.InputRouteMap = {}
 
     for (const [path, loaders] of Object.entries(fileRoutes)) {
-      const modules = yield* Effect.forEach(loaders, (loader) => Effect.promise(() => loader()))
-
       const allRoutes: RouteTree.RouteTuple = [] as unknown as RouteTree.RouteTuple
 
-      for (const m of modules) {
-        if (Route.isRouteSet(m.default)) {
-          for (const route of m.default) {
+      for (const loader of loaders) {
+        const result = yield* Effect.either(
+          Effect.tryPromise({
+            try: () => loader(),
+            catch: (cause) => new FileRouterError({ reason: "Import", cause, path }),
+          }),
+        )
+
+        if (Either.isLeft(result)) {
+          const error = result.left
+          for (const route of Route.use(Route.render((): Effect.Effect<string, FileRouterError> => Effect.fail(error)))) {
             ;(allRoutes as Array<any>).push(route)
+          }
+        } else {
+          const m = result.right
+          if (Route.isRouteSet(m.default)) {
+            for (const route of m.default) {
+              ;(allRoutes as Array<any>).push(route)
+            }
           }
         }
       }

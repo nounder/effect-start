@@ -324,19 +324,19 @@ export function length(self: Entity): number | undefined {
   return undefined
 }
 
-export function fromResponse(
+export function fromResponse<E extends Error = Error>(
   response: Response,
   request?: Request,
-): Entity<Stream.Stream<Uint8Array, Error, never>, Error> {
-  const body: Stream.Stream<Uint8Array, Error, never> = response.body
+): Entity<Stream.Stream<Uint8Array, E, never>, E> {
+  const body = response.body
     ? Stream.fromReadableStream(
         () => response.body!,
-        (e) => (e instanceof Error ? e : new Error(String(e))),
+        (e) => (e instanceof Error ? e : new Error(String(e))) as E,
       )
     : Stream.fromEffect(
         Effect.tryPromise({
           try: () => response.arrayBuffer().then((buf) => new Uint8Array(buf)),
-          catch: (e) => (e instanceof Error ? e : new Error(String(e))),
+          catch: (e) => (e instanceof Error ? e : new Error(String(e))) as E,
         }),
       )
 
