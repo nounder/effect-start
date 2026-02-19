@@ -37,15 +37,11 @@ export class Development extends Context.Tag("effect-start/Development")<
 
 const SOURCE_FILENAME = /\.(tsx?|jsx?|html?|css|json)$/
 
-export const filterSourceFiles = (event: FileSystem.WatchEvent): boolean => {
+const filterSourceFiles = (event: FileSystem.WatchEvent): boolean => {
   return SOURCE_FILENAME.test(event.path)
 }
 
-export const filterDirectory = (event: FileSystem.WatchEvent): boolean => {
-  return event.path.endsWith("/")
-}
-
-export const watchSource = (opts?: {
+const watchSource = (opts?: {
   path?: string
   recursive?: boolean
   filter?: (event: FileSystem.WatchEvent) => boolean
@@ -70,7 +66,7 @@ export const watchSource = (opts?: {
   )
 }
 
-export const watch = (opts?: {
+const watch = (opts?: {
   path?: string
   recursive?: boolean
   filter?: (event: FileSystem.WatchEvent) => boolean
@@ -98,7 +94,7 @@ export const watch = (opts?: {
     return { events: devState.pubsub! } satisfies DevelopmentService
   })
 
-export const layerWatch = (opts?: {
+export const layer = (opts?: {
   path?: string
   recursive?: boolean
   filter?: (event: FileSystem.WatchEvent) => boolean
@@ -106,15 +102,14 @@ export const layerWatch = (opts?: {
 
 export const option = Effect.serviceOption(Development)
 
-export const stream = (): Stream.Stream<DevelopmentEvent> =>
-  Stream.unwrap(
-    Function.pipe(
-      option,
-      Effect.map(
-        Option.match({
-          onNone: () => Stream.empty,
-          onSome: (dev) => Stream.fromPubSub(dev.events),
-        }),
-      ),
+export const events: Stream.Stream<DevelopmentEvent> = Stream.unwrap(
+  Function.pipe(
+    option,
+    Effect.map(
+      Option.match({
+        onNone: () => Stream.empty,
+        onSome: (dev) => Stream.fromPubSub(dev.events),
+      }),
     ),
-  )
+  ),
+)

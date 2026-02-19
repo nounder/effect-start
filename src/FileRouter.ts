@@ -124,7 +124,7 @@ export function layer(
 
       // Watch for changes (only when Development service is available)
       yield* Function.pipe(
-        Development.stream(),
+        Development.events,
         Stream.filter((e) => e._tag !== "Reload" && e.path.startsWith(relativeRoutesPath)),
         Stream.runForEach(() => FileRouterCodegen.update(routesPath, treeFilename)),
         Effect.fork,

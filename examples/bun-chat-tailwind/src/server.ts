@@ -7,7 +7,7 @@ export default Start.pack(
   Simulation.layer(),
   TailscaleTunnel.layer(),
   Studio.layer(),
-  Development.layerWatch(),
+  Development.layer(),
   FileRouter.layer(() => import("./routes/server.gen.ts")),
 )
 
