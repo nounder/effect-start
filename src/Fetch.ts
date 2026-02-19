@@ -4,8 +4,7 @@ import * as Schedule from "effect/Schedule"
 import * as Stream from "effect/Stream"
 import * as Entity from "./Entity.ts"
 
-const TypeId: unique symbol = Symbol.for("effect-start/FetchClient")
-type TypeId = typeof TypeId
+const TypeId = "~effect-start/FetchClient" as const
 
 export type FetchEntity = Entity.Entity<Stream.Stream<Uint8Array, FetchError, never>, FetchError>
 
@@ -65,7 +64,7 @@ function withTrace<E, R>(
 }
 
 export interface FetchClient<E = never, R = never> {
-  readonly [TypeId]: TypeId
+  readonly [TypeId]: typeof TypeId
   readonly middleware: ReadonlyArray<Middleware<any, any>>
   readonly fetch: (
     input: string | URL | Request,

@@ -3,7 +3,7 @@ import * as PathPattern from "./PathPattern.ts"
 import * as Route from "./Route.ts"
 import type * as RouteMount from "./RouteMount.ts"
 
-const TypeId: unique symbol = Symbol.for("effect-start/RouteTree")
+const TypeId = "~effect-start/RouteTree" as const
 const RouteTreeRoutes: unique symbol = Symbol()
 
 type MethodRoute = Route.Route.With<{ method: string }>

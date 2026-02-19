@@ -5,7 +5,7 @@ import type * as PathPattern from "./PathPattern.ts"
 import * as Route from "./Route.ts"
 import type * as RouteBody from "./RouteBody.ts"
 
-const RouteSetTypeId: unique symbol = Symbol.for("effect-start/RouteSet")
+const RouteSetTypeId = "~effect-start/RouteSet" as const
 
 // oxlint-disable-next-line import/first, typescript/consistent-type-imports -- typeof import() is not an import statement
 type Module = typeof import("./RouteMount.ts")

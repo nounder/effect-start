@@ -7,8 +7,7 @@ import * as Stream from "effect/Stream"
 import * as StreamExtra from "./StreamExtra.ts"
 import * as Values from "./Values.ts"
 
-export const TypeId: unique symbol = Symbol.for("effect-start/Entity")
-export type TypeId = typeof TypeId
+export const TypeId = "~effect-start/Entity" as const
 
 const textDecoder = new TextDecoder()
 const textEncoder = new TextEncoder()
@@ -25,7 +24,7 @@ export type Headers = {
 }
 
 export interface Entity<T = unknown, E = never> extends Effect.Effect<Entity<T, E>, E> {
-  readonly [TypeId]: TypeId
+  readonly [TypeId]: typeof TypeId
   readonly body: T
   readonly headers: Headers
   /**
@@ -58,7 +57,7 @@ export interface Entity<T = unknown, E = never> extends Effect.Effect<Entity<T, 
 }
 
 export interface Proto extends Effect.Effect<Entity, never> {
-  readonly [TypeId]: TypeId
+  readonly [TypeId]: typeof TypeId
 }
 
 function parseJson(s: string): Effect.Effect<unknown, ParseResult.ParseError> {

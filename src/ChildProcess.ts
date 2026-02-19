@@ -15,14 +15,12 @@ import * as Utils from "effect/Utils"
 
 import type * as PlatformError from "./PlatformError.ts"
 
-const TypeId: unique symbol = Symbol.for("effect-start/ChildProcess/Command")
-
-type TypeId = typeof TypeId
+const TypeId = "~effect-start/ChildProcess/Command" as const
 
 type Stdio = "pipe" | "inherit" | "ignore"
 
 export interface Command extends Pipeable.Pipeable {
-  readonly [TypeId]: TypeId
+  readonly [TypeId]: typeof TypeId
   readonly cmd: readonly [string, ...Array<string>]
   readonly cwd?: string
   readonly env?: Record<string, string>

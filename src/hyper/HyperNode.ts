@@ -1,5 +1,4 @@
-export const TypeId = Symbol.for("effect-start/HyperNode")
-export type TypeId = typeof TypeId
+export const TypeId = "~effect-start/HyperNode" as const
 
 const NoChildren: ReadonlyArray<never> = Object.freeze([])
 

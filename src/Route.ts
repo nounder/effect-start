@@ -13,7 +13,7 @@ export const RouteDescriptor: unique symbol = Symbol()
 // only for structural type matching
 export const RouteBindings: unique symbol = Symbol()
 
-export const TypeId: unique symbol = Symbol.for("effect-start/RouteSet")
+export const TypeId = "~effect-start/RouteSet" as const
 
 export namespace RouteDescriptor {
   export type Any = {

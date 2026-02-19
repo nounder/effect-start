@@ -9,23 +9,19 @@ import * as Pipeable from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import type * as Types from "effect/Types"
 
-export const TypeId: unique symbol = Symbol.for("effect-start/Cookies")
-
-export type TypeId = typeof TypeId
+export const TypeId = "~effect-start/Cookies" as const
 
 export const isCookies = (u: unknown): u is Cookies => Predicate.hasProperty(u, TypeId)
 
 export interface Cookies extends Pipeable.Pipeable, Inspectable.Inspectable {
-  readonly [TypeId]: TypeId
+  readonly [TypeId]: typeof TypeId
   readonly cookies: Record<string, Cookie>
 }
 
-export const CookieTypeId: unique symbol = Symbol.for("effect-start/Cookies/Cookie")
-
-export type CookieTypeId = typeof CookieTypeId
+export const CookieTypeId = "~effect-start/Cookies/Cookie" as const
 
 export interface Cookie extends Inspectable.Inspectable {
-  readonly [CookieTypeId]: CookieTypeId
+  readonly [CookieTypeId]: typeof CookieTypeId
   readonly name: string
   readonly value: string
   readonly valueEncoded: string
