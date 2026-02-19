@@ -8,7 +8,7 @@ export default Start.pack(
   TailscaleTunnel.layer(),
   Studio.layer(),
   Development.layer(),
-  FileRouter.layer(() => import("./routes/server.gen.ts")),
+  FileRouter.layer(() => import("./routes/.server.ts")),
 )
 
 if (import.meta.main) {

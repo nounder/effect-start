@@ -174,7 +174,7 @@ ${routeEntries},
  */
 export function update(
   routesPath: string,
-  treePath = "server.gen.ts",
+  treePath = ".server.ts",
 ): Effect.Effect<void, FileRouter.FileRouterError, FileSystem.FileSystem> {
   return Effect.gen(function* () {
     treePath = NPath.resolve(routesPath, treePath)
@@ -245,7 +245,7 @@ export function update(
 
 export function dump(
   routesPath: string,
-  treePath = "server.gen.ts",
+  treePath = ".server.ts",
 ): Effect.Effect<void, FileRouter.FileRouterError, FileSystem.FileSystem> {
   return Effect.gen(function* () {
     treePath = NPath.resolve(routesPath, treePath)

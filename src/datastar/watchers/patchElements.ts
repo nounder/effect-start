@@ -403,6 +403,7 @@ const removeNode = (node: Node): void => {
 }
 
 const moveBefore: (parentNode: Node, node: Node, after: Node | null) => void = removeNode.call.bind(
+  // @ts-expect-error
   ctxPantry.moveBefore ?? ctxPantry.insertBefore,
 )
 

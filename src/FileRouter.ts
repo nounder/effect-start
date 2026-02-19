@@ -105,7 +105,7 @@ export function layer(
     treePath = NUrl.fileURLToPath(treePath)
   }
   if (NPath.extname(treePath) === "") {
-    treePath = NPath.join(treePath, "server.gen.ts")
+    treePath = NPath.join(treePath, ".server.ts")
   }
 
   const routesPath = NPath.dirname(treePath)
