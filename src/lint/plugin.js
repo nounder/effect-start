@@ -658,6 +658,9 @@ function getBaseName(source) {
   // Strip file extension (.ts, .tsx, .js, .jsx, .mjs, .cjs)
   last = last.replace(/\.(ts|tsx|js|jsx|mjs|cjs)$/, "")
 
+  // Strip leading underscores (private module convention)
+  last = last.replace(/^_+/, "")
+
   return last
 }
 
