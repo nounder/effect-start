@@ -4,8 +4,6 @@
   "license": "MIT",
   "files": [
     "src/",
-    "!src/**/*.test.ts",
-    "!src/**/*.test.tsx",
     "dist/",
     "README.md",
     "package.json"
@@ -16,13 +14,50 @@
       "source": "./src/index.ts",
       "default": "./dist/index.js"
     },
+    "./client/assets.d.ts": "./src/assets.d.ts",
+    "./jsx-runtime": {
+      "source": "./src/hyper/jsx-runtime.ts",
+      "default": "./dist/hyper/jsx-runtime.js"
+    },
+    "./jsx-dev-runtime": {
+      "source": "./src/hyper/jsx-runtime.ts",
+      "default": "./dist/hyper/jsx-runtime.js"
+    },
+    "./lint/plugin": {
+      "source": "./src/lint/plugin.js",
+      "default": "./dist/lint/plugin.js"
+    },
+    "./x/tailwind/plugin": {
+      "source": "./src/x/tailwind/plugin.ts",
+      "default": "./dist/x/tailwind/plugin.js"
+    },
     "./bun": {
       "source": "./src/bun/index.ts",
       "default": "./dist/bun/index.js"
     },
+    "./cli": {
+      "source": "./src/cli/index.ts",
+      "default": "./dist/cli/index.js"
+    },
     "./client": {
       "source": "./src/client/index.ts",
       "default": "./dist/client/index.js"
+    },
+    "./datastar": {
+      "source": "./src/datastar/index.ts",
+      "default": "./dist/datastar/index.js"
+    },
+    "./experimental": {
+      "source": "./src/experimental/index.ts",
+      "default": "./dist/experimental/index.js"
+    },
+    "./hyper": {
+      "source": "./src/hyper/index.ts",
+      "default": "./dist/hyper/index.js"
+    },
+    "./sql": {
+      "source": "./src/sql/index.ts",
+      "default": "./dist/sql/index.js"
     },
     "./testing": {
       "source": "./src/testing/index.ts",
@@ -32,70 +67,9 @@
       "source": "./src/tower/index.ts",
       "default": "./dist/tower/index.js"
     },
-    "./sql": {
-      "source": "./src/sql/index.ts",
-      "default": "./dist/sql/index.js"
-    },
-    "./sql/*": {
-      "source": "./src/sql/*/index.ts",
-      "default": "./dist/sql/*/index.js"
-    },
-    "./x/*": {
-      "source": "./src/x/*/index.ts",
-      "default": "./dist/x/*/index.js"
-    },
-    "./x/tailwind/plugin": {
-      "source": "./src/x/tailwind/plugin.ts",
-      "default": "./dist/x/tailwind/plugin.js"
-    },
-    "./System": {
-      "source": "./src/System.ts",
-      "default": "./dist/System.js"
-    },
-    "./Unique": {
-      "source": "./src/Unique.ts",
-      "default": "./dist/Unique.js"
-    },
-    "./FileRouter": {
-      "source": "./src/FileRouter.ts",
-      "default": "./dist/FileRouter.js"
-    },
-    "./GlobalLayer": {
-      "source": "./src/GlobalLayer.ts",
-      "default": "./dist/GlobalLayer.js"
-    },
-    "./FileSystem": {
-      "source": "./src/FileSystem.ts",
-      "default": "./dist/FileSystem.js"
-    },
-    "./ChildProcess": {
-      "source": "./src/ChildProcess.ts",
-      "default": "./dist/ChildProcess.js"
-    },
-    "./experimental": {
-      "source": "./src/experimental/index.ts",
-      "default": "./dist/experimental/index.js"
-    },
-    "./client/assets.d.ts": "./src/assets.d.ts",
-    "./hyper": {
-      "source": "./src/hyper/index.ts",
-      "default": "./dist/hyper/index.js"
-    },
-    "./jsx-runtime": {
-      "source": "./src/hyper/jsx-runtime.ts",
-      "default": "./dist/hyper/jsx-runtime.js"
-    },
-    "./jsx-dev-runtime": {
-      "source": "./src/hyper/jsx-runtime.ts",
-      "default": "./dist/hyper/jsx-runtime.js"
-    },
-    "./datastar": {
-      "source": "./src/datastar/index.ts",
-      "default": "./dist/datastar/index.js"
-    },
-    "./lint/plugin": {
-      "source": "./src/lint/plugin.js",
-      "default": "./dist/lint/plugin.js"
+    "./*": {
+      "source": "./src/*.ts",
+      "default": "./dist/*.js"
     },
     "./package.json": "./package.json"
   },
@@ -103,7 +77,7 @@
     "build": "tsgo -p tsconfig.build.json",
     "format": "bunx oxfmt",
     "lint": "oxlint --import-plugin --tsconfig tsconfig.json src/",
-    "test": "bun test ./src/",
+    "test": "bun test ./test/",
     "test-sql": "bun add --no-save mssql @types/mssql postgres && TEST_SQL=1 bun test ./src/sql/",
     "bump": "bun scripts/bump",
     "prepublishOnly": "bun run build",

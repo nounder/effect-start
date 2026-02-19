@@ -1,0 +1,10 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "effect-start": ["../src/index.ts"],
+      "effect-start/*": ["../src/*", "../src/*/index.ts"]
+    }
+  },
+  "include": ["."]
+}
