@@ -6,7 +6,7 @@ import * as Predicate from "effect/Predicate"
 import * as Entity from "./Entity.ts"
 import * as RouteBody from "./RouteBody.ts"
 import * as RouteTree from "./RouteTree.ts"
-import type * as Values from "./Values.ts"
+import type * as Values from "./_Values.ts"
 
 export const RouteItems: unique symbol = Symbol()
 export const RouteDescriptor: unique symbol = Symbol()

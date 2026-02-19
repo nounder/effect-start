@@ -6,7 +6,7 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Mssql from "mssql"
 import * as SqlClient from "../SqlClient.ts"
-import * as Values from "../../Values.ts"
+import * as Values from "../../_Values.ts"
 
 const wrapError = (error: unknown): SqlClient.SqlError =>
   new SqlClient.SqlError({

@@ -3,6 +3,7 @@ import * as Effect from "effect/Effect"
 import * as Schedule from "effect/Schedule"
 import * as Stream from "effect/Stream"
 import * as Entity from "./Entity.ts"
+import { isPlainObject } from "./_Values.ts"
 
 const TypeId = "~effect-start/FetchClient" as const
 
@@ -174,16 +175,42 @@ const ClientProto: any = {
 
 type WebHandler = (request: Request) => Response | Promise<Response>
 
-export function fromHandler(handler: WebHandler): FetchClient {
-  const transport: Middleware = (request) =>
-    Effect.map(
-      Effect.tryPromise({
-        try: () => Promise.resolve(handler(request)),
-        catch: (e) => new FetchError({ reason: "Network", cause: e, request }),
-      }),
-      (response) => Entity.fromResponse<FetchError>(response, request),
-    )
-  return use(transport)
+type FromHandlerInit = Omit<RequestInit, "body"> &
+  ({ url: string } | { path: `/${string}` }) & {
+    body?: RequestInit["body"] | Record<string, unknown>
+  }
+
+export function fromHandler(handler: WebHandler): FetchClient
+export function fromHandler(handler: WebHandler, init: FromHandlerInit): Promise<Response>
+export function fromHandler(
+  handler: WebHandler,
+  init?: FromHandlerInit,
+): FetchClient | Promise<Response> {
+  if (init === undefined) {
+    const transport: Middleware = (request) =>
+      Effect.map(
+        Effect.tryPromise({
+          try: () => Promise.resolve(handler(request)),
+          catch: (e) => new FetchError({ reason: "Network", cause: e, request }),
+        }),
+        (response) => Entity.fromResponse<FetchError>(response, request),
+      )
+    return use(transport)
+  }
+
+  const url = "path" in init ? `http://localhost${init.path}` : init.url
+  const isPlain = isPlainObject(init.body)
+  const headers = new Headers(init.headers)
+  if (isPlain && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json")
+  }
+  const body = isPlain ? JSON.stringify(init.body) : init.body
+  const request = new Request(url, {
+    ...init,
+    headers,
+    body: body as BodyInit,
+  })
+  return Promise.resolve(handler(request))
 }
 
 export function filterStatus(

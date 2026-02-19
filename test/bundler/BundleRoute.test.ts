@@ -3,7 +3,7 @@ import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Bundle from "../../src/bundler/Bundle.ts"
 import * as BundleRoute from "../../src/bundler/BundleRoute.ts"
-import * as Http from "effect-start/Http"
+import * as Fetch from "effect-start/Fetch"
 import * as RouteHttp from "effect-start/RouteHttp"
 import * as RouteTree from "effect-start/RouteTree"
 
@@ -38,7 +38,7 @@ test.it("serves a JS artifact", () =>
     const handler = handles["/_bundle/:path+"]
 
     const response = yield* Effect.promise(() =>
-      Http.fetch(handler, { path: "/_bundle/app-abc123.js" }),
+      Fetch.fromHandler(handler, { path: "/_bundle/app-abc123.js" }),
     )
 
     test.expect(response.status).toBe(200)
@@ -57,7 +57,7 @@ test.it("serves a CSS artifact", () =>
     const handler = handles["/_bundle/:path+"]
 
     const response = yield* Effect.promise(() =>
-      Http.fetch(handler, { path: "/_bundle/style-def456.css" }),
+      Fetch.fromHandler(handler, { path: "/_bundle/style-def456.css" }),
     )
 
     test.expect(response.status).toBe(200)
@@ -75,7 +75,7 @@ test.it("returns 404 for missing artifact", () =>
     const handler = handles["/_bundle/:path+"]
 
     const response = yield* Effect.promise(() =>
-      Http.fetch(handler, { path: "/_bundle/nonexistent.js" }),
+      Fetch.fromHandler(handler, { path: "/_bundle/nonexistent.js" }),
     )
 
     test.expect(response.status).toBe(404)
@@ -91,7 +91,7 @@ test.it("supports custom mount path", () =>
     const handler = handles["/assets/:path+"]
 
     const response = yield* Effect.promise(() =>
-      Http.fetch(handler, { path: "/assets/app-abc123.js" }),
+      Fetch.fromHandler(handler, { path: "/assets/app-abc123.js" }),
     )
 
     test.expect(response.status).toBe(200)

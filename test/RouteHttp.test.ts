@@ -5,7 +5,8 @@ import * as Schedule from "effect/Schedule"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
 import * as Entity from "effect-start/Entity"
-import * as Http from "effect-start/Http"
+import * as Fetch from "effect-start/Fetch"
+import * as Http from "../src/_Http.ts"
 import * as Route from "effect-start/Route"
 import * as RouteHttp from "effect-start/RouteHttp"
 import * as RouteSchema from "effect-start/RouteSchema"
@@ -14,7 +15,7 @@ import { TestLogger } from "effect-start/testing"
 
 test.it("converts string to text/plain for Route.text", async () => {
   const handler = RouteHttp.toWebHandler(Route.get(Route.text("Hello World")))
-  const response = await Http.fetch(handler, { path: "/text" })
+  const response = await Fetch.fromHandler(handler, { path: "/text" })
 
   test.expect(response.status).toBe(200)
   test.expect(response.headers.get("Content-Type")).toBe("text/plain; charset=utf-8")
@@ -23,7 +24,7 @@ test.it("converts string to text/plain for Route.text", async () => {
 
 test.it("converts string to text/html for Route.html", async () => {
   const handler = RouteHttp.toWebHandler(Route.get(Route.html("<h1>Hello</h1>")))
-  const response = await Http.fetch(handler, { path: "/html" })
+  const response = await Fetch.fromHandler(handler, { path: "/html" })
 
   test.expect(response.status).toBe(200)
   test.expect(response.headers.get("Content-Type")).toBe("text/html; charset=utf-8")
@@ -32,7 +33,7 @@ test.it("converts string to text/html for Route.html", async () => {
 
 test.it("converts object to JSON for Route.json", async () => {
   const handler = RouteHttp.toWebHandler(Route.get(Route.json({ message: "hello", count: 42 })))
-  const response = await Http.fetch(handler, { path: "/json" })
+  const response = await Fetch.fromHandler(handler, { path: "/json" })
 
   test.expect(response.status).toBe(200)
   test.expect(response.headers.get("Content-Type")).toBe("application/json")
@@ -41,7 +42,7 @@ test.it("converts object to JSON for Route.json", async () => {
 
 test.it("converts array to JSON for Route.json", async () => {
   const handler = RouteHttp.toWebHandler(Route.get(Route.json([1, 2, 3])))
-  const response = await Http.fetch(handler, { path: "/array" })
+  const response = await Fetch.fromHandler(handler, { path: "/array" })
 
   test.expect(response.status).toBe(200)
   test.expect(response.headers.get("Content-Type")).toBe("application/json")
@@ -53,14 +54,14 @@ test.it("handles method-specific routes", async () => {
     Route.get(Route.text("get resource")).post(Route.text("post resource")),
   )
 
-  const getResponse = await Http.fetch(handler, {
+  const getResponse = await Fetch.fromHandler(handler, {
     path: "/resource",
     method: "GET",
   })
 
   test.expect(await getResponse.text()).toBe("get resource")
 
-  const postResponse = await Http.fetch(handler, {
+  const postResponse = await Fetch.fromHandler(handler, {
     path: "/resource",
     method: "POST",
   })
@@ -78,7 +79,7 @@ test.it("handles errors by returning 500 response", () =>
         }),
       ),
     )
-    const response = yield* Effect.promise(() => Http.fetch(handler, { path: "/error" }))
+    const response = yield* Effect.promise(() => Fetch.fromHandler(handler, { path: "/error" }))
 
     test.expect(response.status).toBe(500)
 
@@ -104,7 +105,7 @@ test.it("handles defects by returning 500 response", () =>
         }),
       ),
     )
-    const response = yield* Effect.promise(() => Http.fetch(handler, { path: "/defect" }))
+    const response = yield* Effect.promise(() => Fetch.fromHandler(handler, { path: "/defect" }))
 
     test.expect(response.status).toBe(500)
 
@@ -126,7 +127,7 @@ test.it("error response includes stack trace and cause chain", () =>
         }),
       ),
     )
-    const response = yield* Effect.promise(() => Http.fetch(handler, { path: "/error" }))
+    const response = yield* Effect.promise(() => Fetch.fromHandler(handler, { path: "/error" }))
 
     test.expect(response.status).toBe(500)
 
@@ -156,7 +157,7 @@ test.it("includes descriptor properties in handler context", async () => {
       }),
     ),
   )
-  await Http.fetch(handler, { path: "/test" })
+  await Fetch.fromHandler(handler, { path: "/test" })
 
   test.expect(capturedMethod).toBe("GET")
 })
@@ -174,7 +175,7 @@ test.it("includes request in handler context", async () => {
       }),
     ),
   )
-  await Http.fetch(handler, {
+  await Fetch.fromHandler(handler, {
     path: "/test",
     headers: { "x-custom": "value" },
   })
@@ -186,11 +187,11 @@ test.it("includes request in handler context", async () => {
 test.it("returns Allow header on 405 and OPTIONS responses", async () => {
   const handler = RouteHttp.toWebHandler(Route.get(Route.text("users")).post(Route.text("created")))
 
-  const notAllowed = await Http.fetch(handler, { path: "/users", method: "DELETE" })
+  const notAllowed = await Fetch.fromHandler(handler, { path: "/users", method: "DELETE" })
   test.expect(notAllowed.status).toBe(405)
   test.expect(notAllowed.headers.get("allow")).toBe("GET, POST")
 
-  const options = await Http.fetch(handler, { path: "/users", method: "OPTIONS" })
+  const options = await Fetch.fromHandler(handler, { path: "/users", method: "OPTIONS" })
   test.expect(options.status).toBe(204)
   test.expect(options.headers.get("allow")).toBe("GET, POST")
 })
@@ -199,7 +200,7 @@ test.it("uses explicit OPTIONS handler when registered", async () => {
   const handler = RouteHttp.toWebHandler(
     Route.get(Route.text("users")).options(Route.json({ cors: true })),
   )
-  const response = await Http.fetch(handler, { path: "/users", method: "OPTIONS" })
+  const response = await Fetch.fromHandler(handler, { path: "/users", method: "OPTIONS" })
 
   test.expect(response.status).toBe(200)
   test.expect(await response.json()).toEqual({ cors: true })
@@ -207,7 +208,7 @@ test.it("uses explicit OPTIONS handler when registered", async () => {
 
 test.it("supports POST method", async () => {
   const handler = RouteHttp.toWebHandler(Route.post(Route.text("created")))
-  const response = await Http.fetch(handler, {
+  const response = await Fetch.fromHandler(handler, {
     path: "/users",
     method: "POST",
   })
@@ -220,7 +221,7 @@ test.it("selects json when Accept prefers application/json", async () => {
   const handler = RouteHttp.toWebHandler(
     Route.get(Route.json({ type: "json" })).get(Route.html("<div>html</div>")),
   )
-  const response = await Http.fetch(handler, {
+  const response = await Fetch.fromHandler(handler, {
     path: "/data",
     headers: { Accept: "application/json" },
   })
@@ -233,7 +234,7 @@ test.it("selects html when Accept prefers text/html", async () => {
   const handler = RouteHttp.toWebHandler(
     Route.get(Route.json({ type: "json" })).get(Route.html("<div>html</div>")),
   )
-  const response = await Http.fetch(handler, {
+  const response = await Fetch.fromHandler(handler, {
     path: "/data",
     headers: { Accept: "text/html" },
   })
@@ -246,7 +247,7 @@ test.it("selects text/plain when Accept prefers it", async () => {
   const handler = RouteHttp.toWebHandler(
     Route.get(Route.text("plain text")).get(Route.json({ type: "json" })),
   )
-  const response = await Http.fetch(handler, {
+  const response = await Fetch.fromHandler(handler, {
     path: "/data",
     headers: { Accept: "text/plain" },
   })
@@ -259,7 +260,7 @@ test.it("returns first candidate when no Accept header", async () => {
   const handler = RouteHttp.toWebHandler(
     Route.get(Route.json({ type: "json" })).get(Route.html("<div>html</div>")),
   )
-  const response = await Http.fetch(handler, { path: "/data" })
+  const response = await Fetch.fromHandler(handler, { path: "/data" })
 
   test.expect(response.headers.get("Content-Type")).toBe("application/json")
 })
@@ -268,7 +269,7 @@ test.it("handles Accept with quality values", async () => {
   const handler = RouteHttp.toWebHandler(
     Route.get(Route.json({ type: "json" })).get(Route.html("<div>html</div>")),
   )
-  const response = await Http.fetch(handler, {
+  const response = await Fetch.fromHandler(handler, {
     path: "/data",
     headers: { Accept: "text/html;q=0.9, application/json;q=1.0" },
   })
@@ -280,7 +281,7 @@ test.it("handles Accept: */*", async () => {
   const handler = RouteHttp.toWebHandler(
     Route.get(Route.json({ type: "json" })).get(Route.html("<div>html</div>")),
   )
-  const response = await Http.fetch(handler, {
+  const response = await Fetch.fromHandler(handler, {
     path: "/data",
     headers: { Accept: "*/*" },
   })
@@ -290,7 +291,7 @@ test.it("handles Accept: */*", async () => {
 
 test.it("returns 406 when Accept doesn't match available formats", async () => {
   const handler = RouteHttp.toWebHandler(Route.get(Route.json({ type: "json" })))
-  const response = await Http.fetch(handler, {
+  const response = await Fetch.fromHandler(handler, {
     path: "/data",
     headers: { Accept: "text/html" },
   })
@@ -303,7 +304,7 @@ test.it("returns 406 when Accept doesn't match any of multiple formats", async (
   const handler = RouteHttp.toWebHandler(
     Route.get(Route.json({ type: "json" })).get(Route.html("<div>html</div>")),
   )
-  const response = await Http.fetch(handler, {
+  const response = await Fetch.fromHandler(handler, {
     path: "/data",
     headers: { Accept: "image/png" },
   })
@@ -315,7 +316,7 @@ test.it("definition order determines priority when no Accept header", async () =
   const handler = RouteHttp.toWebHandler(
     Route.get(Route.text("plain")).get(Route.html("<div>html</div>")),
   )
-  const response = await Http.fetch(handler, { path: "/data" })
+  const response = await Fetch.fromHandler(handler, { path: "/data" })
 
   test.expect(response.headers.get("Content-Type")).toBe("text/plain; charset=utf-8")
 })
@@ -324,7 +325,7 @@ test.it("sets Vary: Accept when multiple formats exist", async () => {
   const handler = RouteHttp.toWebHandler(
     Route.get(Route.json({ type: "json" })).get(Route.html("<div>html</div>")),
   )
-  const response = await Http.fetch(handler, {
+  const response = await Fetch.fromHandler(handler, {
     path: "/data",
     headers: { Accept: "application/json" },
   })
@@ -335,7 +336,7 @@ test.it("sets Vary: Accept when multiple formats exist", async () => {
 
 test.it("does not set Vary: Accept when only one format exists", async () => {
   const handler = RouteHttp.toWebHandler(Route.get(Route.json({ type: "json" })))
-  const response = await Http.fetch(handler, {
+  const response = await Fetch.fromHandler(handler, {
     path: "/data",
     headers: { Accept: "application/json" },
   })
@@ -348,7 +349,7 @@ test.it("sets Vary: Accept when no Accept header but multiple formats", async ()
   const handler = RouteHttp.toWebHandler(
     Route.get(Route.json({ type: "json" })).get(Route.text("plain")),
   )
-  const response = await Http.fetch(handler, { path: "/data" })
+  const response = await Fetch.fromHandler(handler, { path: "/data" })
 
   test.expect(response.status).toBe(200)
   test.expect(response.headers.get("vary")).toBe("Accept")
@@ -356,7 +357,7 @@ test.it("sets Vary: Accept when no Accept header but multiple formats", async ()
 
 test.it("falls back to html when no Accept header and no json or text", async () => {
   const handler = RouteHttp.toWebHandler(Route.get(Route.html("<div>html</div>")))
-  const response = await Http.fetch(handler, { path: "/data" })
+  const response = await Fetch.fromHandler(handler, { path: "/data" })
 
   test.expect(response.headers.get("Content-Type")).toBe("text/html; charset=utf-8")
 })
@@ -372,7 +373,7 @@ test.it("Route.text matches any text/* Accept header", async () => {
     ),
   )
 
-  const response = await Http.fetch(handler, {
+  const response = await Fetch.fromHandler(handler, {
     path: "/events",
     headers: { Accept: "text/event-stream" },
   })
@@ -393,7 +394,7 @@ test.it("Route.text matches text/markdown Accept header", async () => {
     ),
   )
 
-  const response = await Http.fetch(handler, {
+  const response = await Fetch.fromHandler(handler, {
     path: "/doc",
     headers: { Accept: "text/markdown" },
   })
@@ -455,7 +456,7 @@ test.describe("middleware chain", () => {
         }),
       ),
     )
-    const response = await Http.fetch(handler, { path: "/test" })
+    const response = await Fetch.fromHandler(handler, { path: "/test" })
 
     test.expect(response.status).toBe(200)
     test.expect(await response.text()).toBe("The answer is 42")
@@ -471,7 +472,7 @@ test.describe("middleware chain", () => {
           }),
         ),
     )
-    const response = await Http.fetch(handler, { path: "/test" })
+    const response = await Fetch.fromHandler(handler, { path: "/test" })
 
     test.expect(await response.text()).toBe("a=1,b=2")
   })
@@ -490,7 +491,7 @@ test.describe("middleware chain", () => {
           }),
         ),
     )
-    const response = await Http.fetch(handler, { path: "/test" })
+    const response = await Fetch.fromHandler(handler, { path: "/test" })
 
     test.expect(await response.text()).toBe("doubled=20")
   })
@@ -505,7 +506,7 @@ test.describe("middleware chain", () => {
           }),
         ).get(Route.text("should not reach")),
       )
-      const response = yield* Effect.promise(() => Http.fetch(handler, { path: "/test" }))
+      const response = yield* Effect.promise(() => Fetch.fromHandler(handler, { path: "/test" }))
 
       test.expect(response.status).toBe(500)
       test.expect(yield* Effect.promise(() => response.text())).toContain("middleware failed")
@@ -531,14 +532,14 @@ test.describe("middleware chain", () => {
         ),
     )
 
-    const getResponse = await Http.fetch(handler, {
+    const getResponse = await Fetch.fromHandler(handler, {
       path: "/test",
       method: "GET",
     })
 
     test.expect(await getResponse.text()).toBe("GET:true")
 
-    const postResponse = await Http.fetch(handler, {
+    const postResponse = await Fetch.fromHandler(handler, {
       path: "/test",
       method: "POST",
     })
@@ -555,7 +556,7 @@ test.describe("middleware chain", () => {
         }),
       ),
     )
-    const response = await Http.fetch(handler, { path: "/test" })
+    const response = await Fetch.fromHandler(handler, { path: "/test" })
 
     test.expect(await response.text()).toBe("methodSpecific=true")
   })
@@ -569,7 +570,7 @@ test.describe("middleware chain", () => {
         }),
       ),
     )
-    const response = await Http.fetch(handler, { path: "/test" })
+    const response = await Fetch.fromHandler(handler, { path: "/test" })
 
     test.expect(await response.text()).toBe("a=1,b=2")
   })
@@ -588,14 +589,14 @@ test.describe("middleware chain", () => {
       ),
     )
 
-    const getResponse = await Http.fetch(handler, {
+    const getResponse = await Fetch.fromHandler(handler, {
       path: "/test",
       method: "GET",
     })
 
     test.expect(await getResponse.text()).toBe("GET:true")
 
-    const postResponse = await Http.fetch(handler, {
+    const postResponse = await Fetch.fromHandler(handler, {
       path: "/test",
       method: "POST",
     })
@@ -612,7 +613,7 @@ test.describe("middleware chain", () => {
         }),
       ).get(Route.json({ message: "hello", count: 42 })),
     )
-    const response = await Http.fetch(handler, { path: "/test" })
+    const response = await Fetch.fromHandler(handler, { path: "/test" })
 
     test.expect(response.status).toBe(200)
     test.expect(response.headers.get("Content-Type")).toBe("application/json")
@@ -635,7 +636,7 @@ test.describe("middleware chain", () => {
         )
         .get(Route.json({ original: true })),
     )
-    const response = await Http.fetch(handler, { path: "/test" })
+    const response = await Fetch.fromHandler(handler, { path: "/test" })
 
     test.expect(await response.json()).toEqual({ outer: { inner: { original: true } } })
   })
@@ -652,7 +653,7 @@ test.describe("middleware chain", () => {
         .get(Route.text("plain text")),
     )
 
-    const textResponse = await Http.fetch(handler, {
+    const textResponse = await Fetch.fromHandler(handler, {
       path: "/test",
       headers: { Accept: "text/plain" },
     })
@@ -660,7 +661,7 @@ test.describe("middleware chain", () => {
     test.expect(textResponse.headers.get("Content-Type")).toBe("text/plain; charset=utf-8")
     test.expect(await textResponse.text()).toBe("plain text")
 
-    const jsonResponse = await Http.fetch(handler, {
+    const jsonResponse = await Fetch.fromHandler(handler, {
       path: "/test",
       headers: { Accept: "application/json" },
     })
@@ -677,7 +678,7 @@ test.describe("middleware chain", () => {
         }),
       ).get(Route.text("hello")),
     )
-    const response = await Http.fetch(handler, { path: "/test" })
+    const response = await Fetch.fromHandler(handler, { path: "/test" })
 
     test.expect(response.headers.get("Content-Type")).toBe("text/plain; charset=utf-8")
     test.expect(await response.text()).toBe("wrapped: hello")
@@ -692,7 +693,7 @@ test.describe("middleware chain", () => {
         }),
       ).get(Route.html("<span>content</span>")),
     )
-    const response = await Http.fetch(handler, { path: "/test" })
+    const response = await Fetch.fromHandler(handler, { path: "/test" })
 
     test.expect(response.headers.get("Content-Type")).toBe("text/html; charset=utf-8")
     test.expect(await response.text()).toBe("<div><span>content</span></div>")
@@ -711,7 +712,7 @@ test.describe("middleware chain", () => {
         }),
       ).get(Route.bytes(encoder.encode("data"))),
     )
-    const response = await Http.fetch(handler, { path: "/test" })
+    const response = await Fetch.fromHandler(handler, { path: "/test" })
 
     test.expect(response.headers.get("Content-Type")).toBe("application/octet-stream")
     test.expect(await response.text()).toBe("wrapped:data")
@@ -765,7 +766,7 @@ test.describe("middleware chain", () => {
       ),
     )
 
-    const response = await Http.fetch(handler, {
+    const response = await Fetch.fromHandler(handler, {
       path: "/test",
       headers: { Accept: "text/plain" },
     })
@@ -792,7 +793,7 @@ test.describe("middleware chain", () => {
         }),
       ),
     )
-    const response = await Http.fetch(handler, {
+    const response = await Fetch.fromHandler(handler, {
       path: "/test",
       headers: { "x-test": "test-value" },
     })
@@ -820,7 +821,7 @@ test.describe("middleware chain", () => {
         }),
       ),
     )
-    const response = await Http.fetch(handler, {
+    const response = await Fetch.fromHandler(handler, {
       path: "/test",
       headers: {
         "x-shared": "shared-value",
@@ -866,7 +867,7 @@ test.describe("streaming responses", () => {
         }),
       ),
     )
-    const response = await Http.fetch(handler, { path: "/stream" })
+    const response = await Fetch.fromHandler(handler, { path: "/stream" })
 
     test.expect(response.headers.get("Content-Type")).toBe("text/plain; charset=utf-8")
     test.expect(await response.text()).toBe("Hello World")
@@ -880,7 +881,7 @@ test.describe("streaming responses", () => {
         }),
       ),
     )
-    const response = await Http.fetch(handler, { path: "/stream" })
+    const response = await Fetch.fromHandler(handler, { path: "/stream" })
 
     test.expect(response.headers.get("Content-Type")).toBe("text/html; charset=utf-8")
     test.expect(await response.text()).toBe("<div>content</div>")
@@ -895,7 +896,7 @@ test.describe("streaming responses", () => {
         }),
       ),
     )
-    const response = await Http.fetch(handler, { path: "/stream" })
+    const response = await Fetch.fromHandler(handler, { path: "/stream" })
 
     test.expect(response.headers.get("Content-Type")).toBe("application/octet-stream")
     test.expect(await response.text()).toBe("chunk1chunk2")
@@ -909,7 +910,7 @@ test.describe("streaming responses", () => {
         }),
       ),
     )
-    const response = await Http.fetch(handler, { path: "/error" })
+    const response = await Fetch.fromHandler(handler, { path: "/error" })
 
     test.expect(response.status).toBe(200)
 
@@ -948,7 +949,7 @@ test.describe("schema handlers", () => {
       ),
     )
 
-    const response = await Http.fetch(handler, {
+    const response = await Fetch.fromHandler(handler, {
       path: "/test?page=2&limit=10",
       headers: {
         "x-api-key": "secret-key",
@@ -989,7 +990,7 @@ test.describe("schema handlers", () => {
       ),
     )
 
-    const response = await Http.fetch(handler, {
+    const response = await Fetch.fromHandler(handler, {
       path: "/users",
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -1022,7 +1023,7 @@ test.describe("schema handlers", () => {
       ),
     )
 
-    const response = await Http.fetch(handler, {
+    const response = await Fetch.fromHandler(handler, {
       path: "/login",
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -1051,7 +1052,7 @@ test.describe("schema handlers", () => {
       )
 
       const response = yield* Effect.promise(() =>
-        Http.fetch(handler, { path: "/test?count=not-a-number" }),
+        Fetch.fromHandler(handler, { path: "/test?count=not-a-number" }),
       )
 
       test.expect(response.status).toBe(400)
@@ -1076,7 +1077,7 @@ test.describe("schema handlers", () => {
         ),
       )
 
-      const response = yield* Effect.promise(() => Http.fetch(handler, { path: "/test" }))
+      const response = yield* Effect.promise(() => Fetch.fromHandler(handler, { path: "/test" }))
 
       test.expect(response.status).toBe(400)
 
@@ -1111,7 +1112,7 @@ test.describe("schema handlers", () => {
     formData.append("title", "My Upload")
     formData.append("file", new Blob(["hello world"], { type: "text/plain" }), "test.txt")
 
-    const response = await Http.fetch(handler, {
+    const response = await Fetch.fromHandler(handler, {
       path: "/upload",
       method: "POST",
       body: formData,
@@ -1162,7 +1163,7 @@ test.describe("schema handlers", () => {
       "doc3.txt",
     )
 
-    const response = await Http.fetch(handler, {
+    const response = await Fetch.fromHandler(handler, {
       path: "/upload",
       method: "POST",
       body: formData,
@@ -1199,7 +1200,7 @@ test.describe("schema handlers", () => {
     const formData = new FormData()
     formData.append("image", new Blob(["fake image data"], { type: "image/png" }), "avatar.png")
 
-    const response = await Http.fetch(handler, {
+    const response = await Fetch.fromHandler(handler, {
       path: "/upload",
       method: "POST",
       body: formData,
@@ -1239,7 +1240,7 @@ test.describe("schema handlers", () => {
     formData.append("tags", "typescript")
     formData.append("tags", "effect")
 
-    const response = await Http.fetch(handler, {
+    const response = await Fetch.fromHandler(handler, {
       path: "/upload",
       method: "POST",
       body: formData,
@@ -1270,7 +1271,7 @@ test.describe("schema handlers", () => {
     const formData = new FormData()
     formData.append("name", "John")
 
-    const response = await Http.fetch(handler, {
+    const response = await Fetch.fromHandler(handler, {
       path: "/test",
       method: "POST",
       body: formData,
@@ -1304,7 +1305,7 @@ test.describe("schema handlers", () => {
       formData.append("name", "Jane")
 
       const response = yield* Effect.promise(() =>
-        Http.fetch(handler, {
+        Fetch.fromHandler(handler, {
           path: "/test",
           method: "POST",
           body: formData,
@@ -1347,7 +1348,7 @@ test.describe("schema handlers", () => {
       formData.append("name", "Jane")
 
       yield* Effect.promise(() =>
-        Http.fetch(handler, {
+        Fetch.fromHandler(handler, {
           path: "/test",
           method: "POST",
           body: formData,
@@ -1401,7 +1402,7 @@ test.describe("schema handlers", () => {
         ),
     )
 
-    const postResponse = await Http.fetch(handler, {
+    const postResponse = await Fetch.fromHandler(handler, {
       path: "/api",
       method: "POST",
       headers: {
@@ -1413,7 +1414,7 @@ test.describe("schema handlers", () => {
 
     test.expect(await postResponse.json()).toEqual({ version: "v2", action: "create" })
 
-    const getResponse = await Http.fetch(handler, {
+    const getResponse = await Fetch.fromHandler(handler, {
       path: "/api?id=123",
       method: "GET",
       headers: { "x-api-version": "v2" },
@@ -1436,7 +1437,7 @@ test.describe("schema handlers", () => {
       ),
     )
 
-    const response = await Http.fetch(handler, {
+    const response = await Fetch.fromHandler(handler, {
       path: "/test",
       headers: { cookie: "token=abc=123==" },
     })
@@ -1459,7 +1460,7 @@ test.describe("schema handlers", () => {
       ),
     )
 
-    const response = await Http.fetch(handler, {
+    const response = await Fetch.fromHandler(handler, {
       path: "/test?tags=one&tags=two&tags=three",
     })
 
@@ -1488,7 +1489,7 @@ test.describe("schema handlers", () => {
     const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
     const handler = handles["/folders/:folderId/files/:fileId"]
 
-    const response = await Http.fetch(handler, {
+    const response = await Fetch.fromHandler(handler, {
       path: "/folders/abc123/files/42",
     })
 
@@ -1514,7 +1515,7 @@ test.describe("schema handlers", () => {
       )
 
       const response = yield* Effect.promise(() =>
-        Http.fetch(handler, { path: "/users/not-a-number" }),
+        Fetch.fromHandler(handler, { path: "/users/not-a-number" }),
       )
 
       test.expect(response.status).toBe(400)
@@ -1556,7 +1557,7 @@ test.describe("schema handlers", () => {
     const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
     const handler = handles["/projects/:projectId/tasks"]
 
-    const response = await Http.fetch(handler, {
+    const response = await Fetch.fromHandler(handler, {
       path: "/projects/proj-999/tasks",
       method: "POST",
       headers: { "x-api-key": "secret" },
@@ -1706,7 +1707,7 @@ test.describe("RouteTree layer routes", () => {
     })
 
     const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
-    const response = await Http.fetch(handles["/test"], { path: "/test" })
+    const response = await Fetch.fromHandler(handles["/test"], { path: "/test" })
 
     test.expect(response.status).toBe(200)
     test.expect(calls).toEqual(["layer1", "layer2", "handler"])
@@ -1739,12 +1740,12 @@ test.describe("RouteTree layer routes", () => {
     const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
 
     calls.length = 0
-    await Http.fetch(handles["/users"], { path: "/users" })
+    await Fetch.fromHandler(handles["/users"], { path: "/users" })
 
     test.expect(calls).toEqual(["layer", "users"])
 
     calls.length = 0
-    await Http.fetch(handles["/admin"], { path: "/admin" })
+    await Fetch.fromHandler(handles["/admin"], { path: "/admin" })
 
     test.expect(calls).toEqual(["layer", "admin"])
   })
@@ -1765,11 +1766,11 @@ test.describe("RouteTree layer routes", () => {
     const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
 
     layerCallCount = 0
-    await Http.fetch(handles["/test"], { path: "/test" })
+    await Fetch.fromHandler(handles["/test"], { path: "/test" })
 
     test.expect(layerCallCount).toBe(1)
 
-    await Http.fetch(handles["/test"], { path: "/test" })
+    await Fetch.fromHandler(handles["/test"], { path: "/test" })
 
     test.expect(layerCallCount).toBe(2)
   })
@@ -1797,7 +1798,7 @@ test.describe("RouteTree layer routes", () => {
     })
 
     const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
-    await Http.fetch(handles["/api/users"], { path: "/api/users" })
+    await Fetch.fromHandler(handles["/api/users"], { path: "/api/users" })
 
     test.expect(calls).toEqual(["root-layer", "users"])
   })
@@ -1823,7 +1824,7 @@ test.describe("RouteTree layer routes", () => {
 
       const handles = Object.fromEntries(RouteHttp.walkHandles(tree, runtime))
 
-      const response = yield* Effect.promise(() => Http.fetch(handles["/test"], { path: "/test" }))
+      const response = yield* Effect.promise(() => Fetch.fromHandler(handles["/test"], { path: "/test" }))
 
       test.expect(response.status).toBe(500)
 
@@ -1851,7 +1852,7 @@ test.describe("RouteTree layer routes", () => {
     })
 
     const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
-    const response = await Http.fetch(handles["/data"], { path: "/data" })
+    const response = await Fetch.fromHandler(handles["/data"], { path: "/data" })
 
     test.expect(await response.json()).toEqual({ wrapped: { original: true } })
   })
@@ -1868,7 +1869,7 @@ test.describe("RouteTree layer routes", () => {
     })
 
     const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
-    const response = await Http.fetch(handles["/page"], { path: "/page" })
+    const response = await Fetch.fromHandler(handles["/page"], { path: "/page" })
 
     test.expect(await response.text()).toBe("Layout: Page Content")
   })
@@ -1897,7 +1898,7 @@ test.describe("RouteTree layer routes", () => {
     })
 
     const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
-    await Http.fetch(handles["/test"], { path: "/test" })
+    await Fetch.fromHandler(handles["/test"], { path: "/test" })
 
     test.expect(calls).toEqual(["layer1", "layer2", "handler"])
   })
@@ -1914,7 +1915,7 @@ test.describe("RouteTree layer routes", () => {
     })
 
     const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
-    const response = await Http.fetch(handles["/"], { path: "/" })
+    const response = await Fetch.fromHandler(handles["/"], { path: "/" })
 
     test.expect(response.status).toBe(200)
     test.expect(response.headers.get("Content-Type")).toBe("text/html; charset=utf-8")
@@ -1932,7 +1933,7 @@ test.describe("Route.render (format=*)", () => {
       ),
     )
 
-    const response = await Http.fetch(handler, {
+    const response = await Fetch.fromHandler(handler, {
       path: "/events",
       headers: { Accept: "text/event-stream" },
     })
@@ -1950,7 +1951,7 @@ test.describe("Route.render (format=*)", () => {
       ),
     )
 
-    const response = await Http.fetch(handler, { path: "/raw" })
+    const response = await Fetch.fromHandler(handler, { path: "/raw" })
 
     test.expect(response.status).toBe(200)
     test.expect(await response.text()).toBe("raw response")
@@ -1965,14 +1966,14 @@ test.describe("Route.render (format=*)", () => {
       ),
     )
 
-    const jsonResponse = await Http.fetch(handler, {
+    const jsonResponse = await Fetch.fromHandler(handler, {
       path: "/data",
       headers: { Accept: "application/json" },
     })
 
     test.expect(await jsonResponse.json()).toEqual({ type: "json" })
 
-    const eventStreamResponse = await Http.fetch(handler, {
+    const eventStreamResponse = await Fetch.fromHandler(handler, {
       path: "/data",
       headers: { Accept: "text/event-stream" },
     })
@@ -1993,13 +1994,13 @@ test.describe("Route.render (format=*)", () => {
       )
 
       const responses = await Promise.all([
-        Http.fetch(handler, {
+        Fetch.fromHandler(handler, {
           path: "/",
           headers: { Accept: "text/event-stream" },
         }),
-        Http.fetch(handler, { path: "/", headers: { Accept: "image/png" } }),
-        Http.fetch(handler, { path: "/", headers: { Accept: "*/*" } }),
-        Http.fetch(handler, { path: "/" }),
+        Fetch.fromHandler(handler, { path: "/", headers: { Accept: "image/png" } }),
+        Fetch.fromHandler(handler, { path: "/", headers: { Accept: "*/*" } }),
+        Fetch.fromHandler(handler, { path: "/" }),
       ])
 
       for (const response of responses) {
@@ -2023,7 +2024,7 @@ test.describe("Route.render (format=*)", () => {
       ),
     )
 
-    const response = await Http.fetch(handler, {
+    const response = await Fetch.fromHandler(handler, {
       path: "/events",
       headers: { Accept: "text/event-stream" },
     })
@@ -2048,7 +2049,7 @@ test.describe("Route.render (format=*)", () => {
       ),
     )
 
-    const response = await Http.fetch(handler, {
+    const response = await Fetch.fromHandler(handler, {
       path: "/",
       headers: { Accept: "text/event-stream" },
     })
@@ -2074,7 +2075,7 @@ test.describe("Route.render (format=*)", () => {
       ),
     )
 
-    const response = await Http.fetch(handler, {
+    const response = await Fetch.fromHandler(handler, {
       path: "/",
       headers: { Accept: "application/json" },
     })
@@ -2109,7 +2110,7 @@ test.describe("Route.render (format=*)", () => {
       ),
     )
 
-    const response = await Http.fetch(handler, {
+    const response = await Fetch.fromHandler(handler, {
       path: "/",
       headers: { Accept: "application/json" },
     })
@@ -2136,7 +2137,7 @@ test.describe("Route.render (format=*)", () => {
       ),
     )
 
-    const eventStreamResponse = await Http.fetch(handler, {
+    const eventStreamResponse = await Fetch.fromHandler(handler, {
       path: "/",
       headers: { Accept: "text/event-stream" },
     })
@@ -2157,7 +2158,7 @@ test.describe("Route.render (format=*)", () => {
       ),
     )
 
-    const eventStreamResponse = await Http.fetch(handler, {
+    const eventStreamResponse = await Fetch.fromHandler(handler, {
       path: "/",
       headers: { Accept: "text/event-stream" },
     })
@@ -2185,7 +2186,7 @@ test.describe("Route.render (format=*)", () => {
       ),
     )
 
-    const response = await Http.fetch(handler, {
+    const response = await Fetch.fromHandler(handler, {
       path: "/stream",
       headers: { Accept: "text/event-stream" },
     })
@@ -2212,7 +2213,7 @@ test.describe("Route.render (format=*)", () => {
       ),
     )
 
-    const response = await Http.fetch(handler, { path: "/" })
+    const response = await Fetch.fromHandler(handler, { path: "/" })
 
     test.expect(response.status).toBe(200)
     test.expect(await response.text()).toBe("outer(inner(content))")
@@ -2228,7 +2229,7 @@ test.describe("Route.render (format=*)", () => {
       ).get(Route.text("hello")),
     )
 
-    const response = await Http.fetch(handler, {
+    const response = await Fetch.fromHandler(handler, {
       path: "/",
       headers: { Accept: "text/plain" },
     })
@@ -2247,7 +2248,7 @@ test.describe("Route.render (format=*)", () => {
       ).get(Route.html("<body>content</body>")),
     )
 
-    const response = await Http.fetch(handler, {
+    const response = await Fetch.fromHandler(handler, {
       path: "/",
       headers: { Accept: "text/html" },
     })

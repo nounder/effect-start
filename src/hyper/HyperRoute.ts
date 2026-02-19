@@ -2,7 +2,7 @@ import * as Effect from "effect/Effect"
 import * as Entity from "../Entity.ts"
 import * as Route from "../Route.ts"
 import type * as RouteBody from "../RouteBody.ts"
-import type * as Values from "../Values.ts"
+import type * as Values from "../_Values.ts"
 import * as HyperHtml from "./HyperHtml.ts"
 import type { JSX } from "./jsx.d.ts"
 

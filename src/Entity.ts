@@ -5,7 +5,7 @@ import * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
 import * as StreamExtra from "./StreamExtra.ts"
-import * as Values from "./Values.ts"
+import * as Values from "./_Values.ts"
 
 export const TypeId = "~effect-start/Entity" as const
 

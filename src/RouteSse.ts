@@ -6,7 +6,7 @@ import type * as Utils from "effect/Utils"
 import * as Entity from "./Entity.ts"
 import * as Route from "./Route.ts"
 import * as StreamExtra from "./StreamExtra.ts"
-import type * as Values from "./Values.ts"
+import type * as Values from "./_Values.ts"
 
 const HEARTBEAT_INTERVAL = Duration.seconds(5)
 const HEARTBEAT = ": <3\n\n"

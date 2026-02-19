@@ -4,7 +4,7 @@ import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Runtime from "effect/Runtime"
 import * as Stream from "effect/Stream"
-import * as Http from "effect-start/Http"
+import * as Fetch from "effect-start/Fetch"
 import * as Route from "effect-start/Route"
 import * as RouteHttp from "effect-start/RouteHttp"
 import * as RouteMount from "effect-start/RouteMount"
@@ -56,7 +56,7 @@ test.describe("Route.sse()", () => {
     const handler = RouteHttp.toWebHandler(
       Route.get(Route.sse(() => Stream.make({ data: "hello" }, { data: "world" }))),
     )
-    const response = await Http.fetch(handler, { path: "/events" })
+    const response = await Fetch.fromHandler(handler, { path: "/events" })
 
     test.expect(response.headers.get("content-type")).toBe("text/event-stream")
     test.expect(response.headers.get("cache-control")).toBe("no-cache")
@@ -71,7 +71,7 @@ test.describe("Route.sse()", () => {
     const handler = RouteHttp.toWebHandler(
       Route.get(Route.sse(() => Stream.make({ data: "payload", type: "custom" }))),
     )
-    const response = await Http.fetch(handler, { path: "/events" })
+    const response = await Fetch.fromHandler(handler, { path: "/events" })
 
     const text = await response.text()
 
@@ -82,7 +82,7 @@ test.describe("Route.sse()", () => {
     const handler = RouteHttp.toWebHandler(
       Route.get(Route.sse(() => Stream.make({ data: "hello", retry: 5000 }))),
     )
-    const response = await Http.fetch(handler, { path: "/events" })
+    const response = await Fetch.fromHandler(handler, { path: "/events" })
 
     const text = await response.text()
 
@@ -100,7 +100,7 @@ test.describe("Route.sse()", () => {
         ),
       ),
     )
-    const response = await Http.fetch(handler, { path: "/events" })
+    const response = await Fetch.fromHandler(handler, { path: "/events" })
 
     const text = await response.text()
 
@@ -109,7 +109,7 @@ test.describe("Route.sse()", () => {
 
   test.it("accepts Stream directly", async () => {
     const handler = RouteHttp.toWebHandler(Route.get(Route.sse(Stream.make({ data: "direct" }))))
-    const response = await Http.fetch(handler, { path: "/events" })
+    const response = await Fetch.fromHandler(handler, { path: "/events" })
 
     const text = await response.text()
 
@@ -156,7 +156,7 @@ test.describe("Route.sse()", () => {
     const runtime = Effect.runSync(Layer.toRuntime(layer).pipe(Effect.scoped))
     const handler = RouteHttp.toWebHandlerRuntime(runtime)(route)
 
-    const response = await Http.fetch(handler, { path: "/events" })
+    const response = await Fetch.fromHandler(handler, { path: "/events" })
     const text = await response.text()
 
     test.expect(text).toBe("data: from context\n\n")
@@ -173,7 +173,7 @@ test.describe("Route.sse()", () => {
         ),
       ),
     )
-    const response = await Http.fetch(handler, { path: "/events" })
+    const response = await Fetch.fromHandler(handler, { path: "/events" })
 
     const text = await response.text()
 
@@ -197,7 +197,7 @@ test.describe("Route.sse()", () => {
         ),
       ),
     )
-    const response = await Http.fetch(handler, { path: "/events" })
+    const response = await Fetch.fromHandler(handler, { path: "/events" })
 
     const text = await response.text()
 

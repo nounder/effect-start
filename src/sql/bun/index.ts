@@ -5,7 +5,7 @@ import * as GlobalValue from "effect/GlobalValue"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as SqlClient from "../SqlClient.ts"
-import * as Values from "../../Values.ts"
+import * as Values from "../../_Values.ts"
 
 const errorCode = (error: unknown): string => {
   const e = error as any

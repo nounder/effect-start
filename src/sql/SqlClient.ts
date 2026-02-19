@@ -6,7 +6,7 @@ import * as Exit from "effect/Exit"
 import * as FiberRef from "effect/FiberRef"
 import * as GlobalValue from "effect/GlobalValue"
 import type * as Scope from "effect/Scope"
-import * as Values from "../Values.ts"
+import * as Values from "../_Values.ts"
 
 export class SqlError extends Data.TaggedError("SqlError")<{
   readonly code: string

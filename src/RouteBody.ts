@@ -3,7 +3,7 @@ import type * as Stream from "effect/Stream"
 import type * as Utils from "effect/Utils"
 import * as Entity from "./Entity.ts"
 import * as Route from "./Route.ts"
-import type * as Values from "./Values.ts"
+import type * as Values from "./_Values.ts"
 
 export type Format = "text" | "html" | "json" | "bytes" | "*"
 

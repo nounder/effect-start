@@ -1,6 +1,6 @@
 import * as test from "bun:test"
 import { Effect, Schema } from "effect"
-import * as Http from "effect-start/Http"
+import * as Fetch from "effect-start/Fetch"
 import * as Route from "effect-start/Route"
 import * as RouteHttp from "effect-start/RouteHttp"
 import * as RouteMount from "effect-start/RouteMount"
@@ -112,7 +112,7 @@ test.describe(`${RouteSchema.schemaCookies.name}()`, () => {
         }),
       ),
     )
-    const response = await Http.fetch(handler, {
+    const response = await Fetch.fromHandler(handler, {
       path: "/test",
       headers: {
         Cookie: "session=abc123",
@@ -168,7 +168,7 @@ test.describe(`${RouteSchema.schemaSearchParams.name}()`, () => {
         }),
       ),
     )
-    const response = await Http.fetch(handler, {
+    const response = await Fetch.fromHandler(handler, {
       path: "/test?page=2&limit=10",
     })
 
@@ -216,7 +216,7 @@ test.describe(`${RouteSchema.schemaBodyJson.name}()`, () => {
         }),
       ),
     )
-    const response = await Http.fetch(handler, {
+    const response = await Fetch.fromHandler(handler, {
       path: "/test",
       method: "POST",
       headers: {
@@ -246,7 +246,7 @@ test.describe(`${RouteSchema.schemaBodyJson.name}()`, () => {
         ),
       )
       const response = yield* Effect.promise(() =>
-        Http.fetch(handler, {
+        Fetch.fromHandler(handler, {
           path: "/test",
           method: "POST",
           headers: {
@@ -304,7 +304,7 @@ test.describe(`${RouteSchema.schemaBodyUrlParams.name}()`, () => {
         }),
       ),
     )
-    const response = await Http.fetch(handler, {
+    const response = await Fetch.fromHandler(handler, {
       path: "/test",
       method: "POST",
       headers: {
@@ -375,7 +375,7 @@ test.describe(`${RouteSchema.schemaSuccess.name}()`, () => {
         }),
       ),
     )
-    const response = await Http.fetch(handler, { path: "/test" })
+    const response = await Fetch.fromHandler(handler, { path: "/test" })
 
     test.expect(response.status).toBe(200)
     test.expect(await response.json()).toEqual({ name: "Alice", age: 30 })
@@ -397,7 +397,7 @@ test.describe(`${RouteSchema.schemaSuccess.name}()`, () => {
           }),
         ),
       )
-      const response = yield* Effect.promise(() => Http.fetch(handler, { path: "/test" }))
+      const response = yield* Effect.promise(() => Fetch.fromHandler(handler, { path: "/test" }))
 
       test.expect(response.status).toBe(400)
 
@@ -421,7 +421,7 @@ test.describe(`${RouteSchema.schemaSuccess.name}()`, () => {
         }),
       ),
     )
-    const response = await Http.fetch(handler, { path: "/test" })
+    const response = await Fetch.fromHandler(handler, { path: "/test" })
 
     test.expect(response.status).toBe(200)
 
@@ -445,7 +445,7 @@ test.describe(`${RouteSchema.schemaSuccess.name}()`, () => {
         }),
       ),
     )
-    const response = await Http.fetch(handler, { path: "/test" })
+    const response = await Fetch.fromHandler(handler, { path: "/test" })
 
     test.expect(response.status).toBe(200)
     test.expect(await response.json()).toEqual({ createdAt: "2025-01-01T00:00:00.000Z" })
@@ -472,7 +472,7 @@ test.describe(`${RouteSchema.schemaError.name}()`, () => {
         }),
       ),
     )
-    const response = await Http.fetch(handler, { path: "/test" })
+    const response = await Fetch.fromHandler(handler, { path: "/test" })
 
     test.expect(response.status).toBe(404)
     test.expect(await response.json()).toEqual({
@@ -494,7 +494,7 @@ test.describe(`${RouteSchema.schemaError.name}()`, () => {
           }),
         ),
       )
-      const response = yield* Effect.promise(() => Http.fetch(handler, { path: "/test" }))
+      const response = yield* Effect.promise(() => Fetch.fromHandler(handler, { path: "/test" }))
 
       test.expect(response.status).toBe(500)
     }).pipe(Effect.provide(TestLogger.layer()), Effect.runPromise),
@@ -512,7 +512,7 @@ test.describe(`${RouteSchema.schemaError.name}()`, () => {
         }),
       ),
     )
-    const response = await Http.fetch(handler, { path: "/test" })
+    const response = await Fetch.fromHandler(handler, { path: "/test" })
 
     test.expect(response.status).toBe(401)
     test.expect(await response.json()).toEqual({
@@ -530,7 +530,7 @@ test.describe(`${RouteSchema.schemaError.name}()`, () => {
         }),
       ),
     )
-    const response = await Http.fetch(handler, { path: "/test" })
+    const response = await Fetch.fromHandler(handler, { path: "/test" })
 
     test.expect(response.status).toBe(200)
     test.expect(await response.json()).toEqual({ name: "Alice" })
@@ -557,7 +557,7 @@ test.describe(`${RouteSchema.schemaError.name}()`, () => {
         }),
       ),
     )
-    const response = await Http.fetch(handler, { path: "/test" })
+    const response = await Fetch.fromHandler(handler, { path: "/test" })
 
     test.expect(response.status).toBe(404)
     test.expect(await response.json()).toEqual({
@@ -577,7 +577,7 @@ test.describe(`${RouteSchema.schemaError.name}()`, () => {
         }),
       ),
     )
-    const response = await Http.fetch(handler, { path: "/test" })
+    const response = await Fetch.fromHandler(handler, { path: "/test" })
 
     test.expect(response.status).toBe(410)
   })
@@ -594,7 +594,7 @@ test.describe(`${RouteSchema.schemaError.name}()`, () => {
         }),
       ),
     )
-    const response = await Http.fetch(handler, { path: "/test" })
+    const response = await Fetch.fromHandler(handler, { path: "/test" })
 
     test.expect(response.status).toBe(401)
     test.expect(await response.json()).toEqual({

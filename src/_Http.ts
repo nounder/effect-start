@@ -1,5 +1,3 @@
-import * as Values from "./Values.ts"
-
 export type Method = "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "HEAD" | "OPTIONS"
 
 type Respondable = Response | Promise<Response>
@@ -7,32 +5,6 @@ type Respondable = Response | Promise<Response>
 export type WebHandler = (request: Request) => Respondable
 
 export type WebMiddleware = (request: Request, next: WebHandler) => Respondable
-
-export function fetch(
-  handler: WebHandler,
-  init: Omit<RequestInit, "body"> &
-    ({ url: string } | { path: `/${string}` }) & {
-      body?: RequestInit["body"] | Record<string, unknown>
-    },
-): Promise<Response> {
-  const url = "path" in init ? `http://localhost${init.path}` : init.url
-
-  const isPlain = Values.isPlainObject(init.body)
-
-  const headers = new Headers(init.headers)
-  if (isPlain && !headers.has("Content-Type")) {
-    headers.set("Content-Type", "application/json")
-  }
-
-  const body = isPlain ? JSON.stringify(init.body) : init.body
-
-  const request = new Request(url, {
-    ...init,
-    headers,
-    body: body as BodyInit,
-  })
-  return Promise.resolve(handler(request))
-}
 
 export function createAbortableRequest(
   init: Omit<RequestInit, "signal"> & ({ url: string } | { path: `/${string}` }),

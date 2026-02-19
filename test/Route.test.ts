@@ -1,7 +1,7 @@
 import * as test from "bun:test"
 import * as Effect from "effect/Effect"
 import type * as Entity from "effect-start/Entity"
-import * as Http from "effect-start/Http"
+import * as Fetch from "effect-start/Fetch"
 import * as Route from "effect-start/Route"
 import * as RouteHttp from "effect-start/RouteHttp"
 
@@ -71,7 +71,7 @@ test.describe(Route.lazy, () => {
       const routes = yield* lazyRoutes
       const handler = RouteHttp.toWebHandler(routes)
 
-      const response = yield* Effect.promise(() => Http.fetch(handler, { path: "/test" }))
+      const response = yield* Effect.promise(() => Fetch.fromHandler(handler, { path: "/test" }))
 
       test.expect(response.status).toBe(200)
       test.expect(yield* Effect.promise(() => response.text())).toBe("lazy loaded")
@@ -93,7 +93,7 @@ test.describe(Route.lazy, () => {
       const routes = yield* lazyRoutes
       const handler = RouteHttp.toWebHandler(routes)
 
-      const response = yield* Effect.promise(() => Http.fetch(handler, { path: "/test" }))
+      const response = yield* Effect.promise(() => Fetch.fromHandler(handler, { path: "/test" }))
 
       test.expect(yield* Effect.promise(() => response.json())).toEqual({ value: true })
     }).pipe(Effect.runPromise),

@@ -7,7 +7,7 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import type * as Libsql from "@libsql/client"
 import * as SqlClient from "../SqlClient.ts"
-import * as Values from "../../Values.ts"
+import * as Values from "../../_Values.ts"
 
 type ConfigOrValue<T> = T | Config.Config<T>
 

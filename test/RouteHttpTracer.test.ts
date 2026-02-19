@@ -2,7 +2,7 @@ import * as test from "bun:test"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
 import type * as Tracer from "effect/Tracer"
-import * as Http from "effect-start/Http"
+import * as Fetch from "effect-start/Fetch"
 import * as Route from "effect-start/Route"
 import * as RouteHttp from "effect-start/RouteHttp"
 import * as RouteHttpTracer from "effect-start/RouteHttpTracer"
@@ -22,7 +22,7 @@ test.describe("tracing", () => {
       ),
     )
 
-    await Http.fetch(handler, { path: "/test" })
+    await Fetch.fromHandler(handler, { path: "/test" })
 
     test.expect(capturedSpan).toBeDefined()
     test.expect(capturedSpan?.name).toBe("http.server GET")
@@ -42,7 +42,7 @@ test.describe("tracing", () => {
       ),
     )
 
-    await Http.fetch(handler, {
+    await Fetch.fromHandler(handler, {
       path: "/users?page=1&limit=10",
       headers: { "user-agent": "test-agent" },
     })
@@ -68,7 +68,7 @@ test.describe("tracing", () => {
         ),
       )
 
-      const response = yield* Effect.promise(() => Http.fetch(handler, { path: "/test" }))
+      const response = yield* Effect.promise(() => Fetch.fromHandler(handler, { path: "/test" }))
       test.expect(response.status).toBe(200)
       yield* Effect.sleep("10 millis")
       test.expect(capturedSpan?.attributes.get("http.response.status_code")).toBe(200)
@@ -88,7 +88,7 @@ test.describe("tracing", () => {
       ),
     )
 
-    await Http.fetch(handler, {
+    await Fetch.fromHandler(handler, {
       path: "/test",
       headers: {
         traceparent: "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01",
@@ -118,7 +118,7 @@ test.describe("tracing", () => {
       ),
     )
 
-    await Http.fetch(handler, {
+    await Fetch.fromHandler(handler, {
       path: "/test",
       headers: {
         b3: "80f198ee56343ba864fe8b2a57d3eff7-e457b5a2e4d86bd1-1",
@@ -148,7 +148,7 @@ test.describe("tracing", () => {
       ),
     )
 
-    await Http.fetch(handler, {
+    await Fetch.fromHandler(handler, {
       path: "/test",
       headers: {
         "x-b3-traceid": "463ac35c9f6413ad48485a3953bb6124",
@@ -190,8 +190,8 @@ test.describe("tracing", () => {
         ),
       )
 
-      yield* Effect.promise(() => Http.fetch(handler, { path: "/health" }))
-      yield* Effect.promise(() => Http.fetch(handler, { path: "/users" }))
+      yield* Effect.promise(() => Fetch.fromHandler(handler, { path: "/health" }))
+      yield* Effect.promise(() => Fetch.fromHandler(handler, { path: "/users" }))
 
       test.expect(spanCapturedOnHealth).toBe(false)
       test.expect(spanCapturedOnUsers).toBe(true)
@@ -219,7 +219,7 @@ test.describe("tracing", () => {
         ),
       )
 
-      yield* Effect.promise(() => Http.fetch(handler, { path: "/users" }))
+      yield* Effect.promise(() => Fetch.fromHandler(handler, { path: "/users" }))
 
       test.expect(capturedSpan?.name).toBe("GET /users")
     }).pipe(Effect.runPromise),
@@ -241,7 +241,7 @@ test.describe("tracing", () => {
     const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
     const handler = handles["/users/:id"]
 
-    await Http.fetch(handler, { path: "/users/123" })
+    await Fetch.fromHandler(handler, { path: "/users/123" })
 
     test.expect(capturedSpan?.attributes.get("http.route")).toBe("/users/:id")
   })

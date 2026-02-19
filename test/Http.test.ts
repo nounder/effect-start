@@ -1,5 +1,5 @@
 import * as test from "bun:test"
-import * as Http from "effect-start/Http"
+import * as Http from "../src/_Http.ts"
 
 test.describe("mapHeaders", () => {
   test.it("converts Headers to record with lowercase keys", () => {

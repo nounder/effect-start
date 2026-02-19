@@ -71,6 +71,7 @@
       "source": "./src/*.ts",
       "default": "./dist/*.js"
     },
+    "./_*": null,
     "./package.json": "./package.json"
   },
   "scripts": {

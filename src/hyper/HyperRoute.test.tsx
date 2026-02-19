@@ -3,7 +3,7 @@ import * as test from "bun:test"
 import type * as Engine from "../datastar/engine.ts"
 import * as Effect from "effect/Effect"
 import * as Entity from "../Entity.ts"
-import * as Http from "../Http.ts"
+import * as Fetch from "../Fetch.ts"
 import * as Route from "../Route.ts"
 import * as RouteHttp from "../RouteHttp.ts"
 import * as HyperRoute from "./HyperRoute.ts"
@@ -12,7 +12,7 @@ test.describe("HyperRoute.html", () => {
   test.it("renders JSX to HTML string", async () => {
     const handler = RouteHttp.toWebHandler(Route.get(HyperRoute.html(<div>Hello World</div>)))
 
-    const response = await Http.fetch(handler, { path: "/" })
+    const response = await Fetch.fromHandler(handler, { path: "/" })
 
     test.expect(response.status).toBe(200)
     test.expect(response.headers.get("Content-Type")).toBe("text/html; charset=utf-8")
@@ -31,7 +31,7 @@ test.describe("HyperRoute.html", () => {
       ),
     )
 
-    const response = await Http.fetch(handler, { path: "/" })
+    const response = await Fetch.fromHandler(handler, { path: "/" })
 
     test
       .expect(await response.text())
@@ -43,7 +43,7 @@ test.describe("HyperRoute.html", () => {
       Route.get(HyperRoute.html(Effect.succeed(<span>From Effect</span>))),
     )
 
-    const response = await Http.fetch(handler, { path: "/" })
+    const response = await Fetch.fromHandler(handler, { path: "/" })
 
     test.expect(await response.text()).toBe("<span>From Effect</span>")
   })
@@ -60,7 +60,7 @@ test.describe("HyperRoute.html", () => {
       ),
     )
 
-    const response = await Http.fetch(handler, { path: "/" })
+    const response = await Fetch.fromHandler(handler, { path: "/" })
 
     test.expect(await response.text()).toBe("<div>Hello World</div>")
   })
@@ -70,7 +70,7 @@ test.describe("HyperRoute.html", () => {
       Route.get(HyperRoute.html((context) => Effect.succeed(<div>Request received</div>))),
     )
 
-    const response = await Http.fetch(handler, { path: "/" })
+    const response = await Fetch.fromHandler(handler, { path: "/" })
 
     test.expect(await response.text()).toBe("<div>Request received</div>")
   })
@@ -90,7 +90,7 @@ test.describe("HyperRoute.html", () => {
       ),
     )
 
-    const response = await Http.fetch(handler, { path: "/" })
+    const response = await Fetch.fromHandler(handler, { path: "/" })
 
     test.expect(await response.text()).toBe("<ul><li>Apple</li><li>Banana</li><li>Cherry</li></ul>")
   })
@@ -100,7 +100,7 @@ test.describe("HyperRoute.html", () => {
       Route.get(HyperRoute.html(Entity.make(<div>With Entity</div>, { status: 201 }))),
     )
 
-    const response = await Http.fetch(handler, { path: "/" })
+    const response = await Fetch.fromHandler(handler, { path: "/" })
 
     test.expect(response.status).toBe(201)
     test.expect(await response.text()).toBe("<div>With Entity</div>")
@@ -123,7 +123,7 @@ test.describe("HyperRoute.html", () => {
       ),
     )
 
-    const response = await Http.fetch(handler, { path: "/" })
+    const response = await Fetch.fromHandler(handler, { path: "/" })
 
     test
       .expect(await response.text())
@@ -156,7 +156,7 @@ test.describe("HyperRoute.html", () => {
       ),
     )
 
-    const response = await Http.fetch(handler, { path: "/" })
+    const response = await Fetch.fromHandler(handler, { path: "/" })
     const text = await response.text()
 
     test.expect(text).toContain("<script>(")
