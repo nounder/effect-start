@@ -1,4 +1,3 @@
-import * as PlatformError from "../../PlatformError.ts"
 import * as StartApp from "../../StartApp.ts"
 import * as System from "../../System.ts"
 import * as Deferred from "effect/Deferred"
@@ -23,7 +22,7 @@ const getStatus = (command: string) =>
 
     if (exitCode !== 0) {
       const stderr = yield* proc.stderr.pipe(Stream.decodeText("utf-8"), Stream.mkString)
-      return yield* new PlatformError.SystemError({
+      return yield* new System.SystemError({
         reason: "Unknown",
         module: "TailscaleTunnel",
         method: "getStatus",
@@ -35,7 +34,7 @@ const getStatus = (command: string) =>
     const json: TailscaleStatus = JSON.parse(stdout)
 
     if (json.BackendState !== "Running") {
-      return yield* new PlatformError.SystemError({
+      return yield* new System.SystemError({
         reason: "Unknown",
         module: "TailscaleTunnel",
         method: "getStatus",

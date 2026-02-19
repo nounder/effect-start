@@ -4,7 +4,7 @@ import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 
 import * as ChildProcess from "effect-start/ChildProcess"
-import * as PlatformError from "effect-start/PlatformError"
+import * as System from "effect-start/System"
 import { BunChildProcessSpawner } from "effect-start/bun"
 
 const run = <A, E>(effect: Effect.Effect<A, E, ChildProcess.ChildProcessSpawner | Scope.Scope>) =>
@@ -207,9 +207,9 @@ test.describe("spawn errors", () => {
         ChildProcess.make(["__nonexistent_command_xyz__"]),
       ).pipe(Effect.flip)
 
-      test.expect(PlatformError.isPlatformError(error)).toBe(true)
-      test.expect((error as PlatformError.SystemError).module).toBe("ChildProcess")
-      test.expect((error as PlatformError.SystemError).method).toBe("spawn")
+      test.expect(System.isPlatformError(error)).toBe(true)
+      test.expect((error as System.SystemError).module).toBe("ChildProcess")
+      test.expect((error as System.SystemError).method).toBe("spawn")
     }).pipe(Effect.provide(BunChildProcessSpawner.layer), Effect.scoped, Effect.runPromise),
   )
 })

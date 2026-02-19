@@ -13,7 +13,7 @@ import type * as Sink from "effect/Sink"
 import type * as Stream from "effect/Stream"
 import * as Utils from "effect/Utils"
 
-import type * as PlatformError from "./PlatformError.ts"
+import type * as System from "./System.ts"
 
 const TypeId = "~effect-start/ChildProcess/Command" as const
 
@@ -31,7 +31,7 @@ export interface Command extends Pipeable.Pipeable {
   [Symbol.iterator](): Effect.EffectGenerator<
     Effect.Effect<
       ChildProcessHandle,
-      PlatformError.PlatformError,
+      System.PlatformError,
       ChildProcessSpawner | Scope.Scope
     >
   >
@@ -114,12 +114,12 @@ export interface KillOptions {
 
 export interface ChildProcessHandle {
   readonly pid: number
-  readonly exitCode: Effect.Effect<number, PlatformError.PlatformError>
-  readonly isRunning: Effect.Effect<boolean, PlatformError.PlatformError>
-  readonly kill: (options?: KillOptions) => Effect.Effect<void, PlatformError.PlatformError>
-  readonly stdin: Sink.Sink<void, Uint8Array, never, PlatformError.PlatformError>
-  readonly stdout: Stream.Stream<Uint8Array, PlatformError.PlatformError>
-  readonly stderr: Stream.Stream<Uint8Array, PlatformError.PlatformError>
+  readonly exitCode: Effect.Effect<number, System.PlatformError>
+  readonly isRunning: Effect.Effect<boolean, System.PlatformError>
+  readonly kill: (options?: KillOptions) => Effect.Effect<void, System.PlatformError>
+  readonly stdin: Sink.Sink<void, Uint8Array, never, System.PlatformError>
+  readonly stdout: Stream.Stream<Uint8Array, System.PlatformError>
+  readonly stderr: Stream.Stream<Uint8Array, System.PlatformError>
 }
 
 export class ChildProcessSpawner extends Context.Tag("effect-start/ChildProcessSpawner")<
@@ -127,7 +127,7 @@ export class ChildProcessSpawner extends Context.Tag("effect-start/ChildProcessS
   {
     readonly spawn: (
       command: Command,
-    ) => Effect.Effect<ChildProcessHandle, PlatformError.PlatformError, Scope.Scope>
+    ) => Effect.Effect<ChildProcessHandle, System.PlatformError, Scope.Scope>
   }
 >() {}
 
@@ -135,6 +135,6 @@ export const spawn = (
   command: Command,
 ): Effect.Effect<
   ChildProcessHandle,
-  PlatformError.PlatformError,
+  System.PlatformError,
   ChildProcessSpawner | Scope.Scope
 > => Effect.flatMap(ChildProcessSpawner, (spawner) => spawner.spawn(command))

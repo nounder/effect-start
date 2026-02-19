@@ -1,22 +1,78 @@
+/*
+ * Adapted from @effect/platform
+ */
+import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
+import * as Predicate from "effect/Predicate"
 import type * as Scope from "effect/Scope"
 import * as NNet from "node:net"
 
 import * as ChildProcess from "./ChildProcess.ts"
-import * as PlatformError from "./PlatformError.ts"
+
+export const TypeId: unique symbol = Symbol.for("@effect/platform/Error/PlatformError")
+
+export type TypeId = typeof TypeId
+
+export const isPlatformError = (u: unknown): u is PlatformError => Predicate.hasProperty(u, TypeId)
+
+export type SystemErrorReason =
+  | "AlreadyExists"
+  | "BadResource"
+  | "Busy"
+  | "InvalidData"
+  | "NotFound"
+  | "PermissionDenied"
+  | "TimedOut"
+  | "UnexpectedEof"
+  | "Unknown"
+  | "WouldBlock"
+  | "WriteZero"
+
+export class BadArgument extends Data.TaggedError("BadArgument")<{
+  module: string
+  method: string
+  description?: string | undefined
+  cause?: unknown
+}> {
+  readonly [TypeId]: typeof TypeId = TypeId
+
+  get message(): string {
+    return `${this.module}.${this.method}${this.description ? `: ${this.description}` : ""}`
+  }
+}
+
+export class SystemError extends Data.TaggedError("SystemError")<{
+  reason: SystemErrorReason
+  module: string
+  method: string
+  description?: string | undefined
+  syscall?: string | undefined
+  pathOrDescriptor?: string | number | undefined
+  cause?: unknown
+}> {
+  readonly [TypeId]: typeof TypeId = TypeId
+
+  get message(): string {
+    return `${this.reason}: ${this.module}.${this.method}${
+      this.pathOrDescriptor !== undefined ? ` (${this.pathOrDescriptor})` : ""
+    }${this.description ? `: ${this.description}` : ""}`
+  }
+}
+
+export type PlatformError = BadArgument | SystemError
 
 export const cwd: Effect.Effect<string> = Effect.sync(() => process.cwd())
 
-export const randomFreePort: Effect.Effect<number, PlatformError.SystemError> = Effect.async<
+export const randomFreePort: Effect.Effect<number, SystemError> = Effect.async<
   number,
-  PlatformError.SystemError
+  SystemError
 >((resume) => {
   const server = NNet.createServer()
   server.unref()
   server.on("error", (err) =>
     resume(
       Effect.fail(
-        new PlatformError.SystemError({
+        new SystemError({
           reason: "Unknown",
           module: "System",
           method: "randomFreePort",
@@ -32,7 +88,7 @@ export const randomFreePort: Effect.Effect<number, PlatformError.SystemError> = 
       server.close(() =>
         resume(
           Effect.fail(
-            new PlatformError.SystemError({
+            new SystemError({
               reason: "Unknown",
               module: "System",
               method: "randomFreePort",
@@ -48,7 +104,7 @@ export const randomFreePort: Effect.Effect<number, PlatformError.SystemError> = 
       if (err) {
         resume(
           Effect.fail(
-            new PlatformError.SystemError({
+            new SystemError({
               reason: "Unknown",
               module: "System",
               method: "randomFreePort",
@@ -64,12 +120,12 @@ export const randomFreePort: Effect.Effect<number, PlatformError.SystemError> = 
   })
 })
 
-export const which = (name: string): Effect.Effect<string, PlatformError.SystemError> =>
+export const which = (name: string): Effect.Effect<string, SystemError> =>
   Effect.flatMap(
     Effect.try({
       try: () => Bun.which(name),
       catch: (err) =>
-        new PlatformError.SystemError({
+        new SystemError({
           reason: "Unknown",
           module: "System",
           method: "which",
@@ -80,7 +136,7 @@ export const which = (name: string): Effect.Effect<string, PlatformError.SystemE
     (path) =>
       path === null
         ? Effect.fail(
-            new PlatformError.SystemError({
+            new SystemError({
               reason: "NotFound",
               module: "System",
               method: "which",
@@ -95,6 +151,6 @@ export const spawn = (
   options?: ChildProcess.Command.Options,
 ): Effect.Effect<
   ChildProcess.ChildProcessHandle,
-  PlatformError.PlatformError,
+  PlatformError,
   ChildProcess.ChildProcessSpawner | Scope.Scope
 > => ChildProcess.spawn(ChildProcess.make(cmd, options))

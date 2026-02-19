@@ -4,7 +4,7 @@ import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
 import type * as BunTypes from "bun"
 import * as ChildProcess from "../ChildProcess.ts"
-import * as PlatformError from "../PlatformError.ts"
+import * as System from "../System.ts"
 
 export const layer: Layer.Layer<ChildProcess.ChildProcessSpawner> = Layer.succeed(
   ChildProcess.ChildProcessSpawner,
@@ -22,7 +22,7 @@ export const layer: Layer.Layer<ChildProcess.ChildProcessSpawner> = Layer.succee
               detached: command.detached,
             }),
           catch: (err) =>
-            new PlatformError.SystemError({
+            new System.SystemError({
               reason: "Unknown",
               module: "ChildProcess",
               method: "spawn",
@@ -45,7 +45,7 @@ export const layer: Layer.Layer<ChildProcess.ChildProcessSpawner> = Layer.succee
           exitCode: Effect.tryPromise({
             try: () => proc.exited,
             catch: (err) =>
-              new PlatformError.SystemError({
+              new System.SystemError({
                 reason: "Unknown",
                 module: "ChildProcess",
                 method: "exitCode",
@@ -57,7 +57,7 @@ export const layer: Layer.Layer<ChildProcess.ChildProcessSpawner> = Layer.succee
           isRunning: Effect.try({
             try: () => !proc.killed && proc.exitCode === null,
             catch: (err) =>
-              new PlatformError.SystemError({
+              new System.SystemError({
                 reason: "BadResource",
                 module: "ChildProcess",
                 method: "isRunning",
@@ -72,7 +72,7 @@ export const layer: Layer.Layer<ChildProcess.ChildProcessSpawner> = Layer.succee
                 proc.kill(options?.killSignal)
               },
               catch: (err) =>
-                new PlatformError.SystemError({
+                new System.SystemError({
                   reason: "BadResource",
                   module: "ChildProcess",
                   method: "kill",
@@ -88,7 +88,7 @@ export const layer: Layer.Layer<ChildProcess.ChildProcessSpawner> = Layer.succee
                 sink.write(chunk)
               },
               catch: (err) =>
-                new PlatformError.SystemError({
+                new System.SystemError({
                   reason: "Unknown",
                   module: "ChildProcess",
                   method: "fromWritable(stdin)",
@@ -108,7 +108,7 @@ export const layer: Layer.Layer<ChildProcess.ChildProcessSpawner> = Layer.succee
           stdout: Stream.fromReadableStream(
             () => proc.stdout as ReadableStream<Uint8Array>,
             (err) =>
-              new PlatformError.SystemError({
+              new System.SystemError({
                 reason: "Unknown",
                 module: "ChildProcess",
                 method: "fromReadable(stdout)",
@@ -120,7 +120,7 @@ export const layer: Layer.Layer<ChildProcess.ChildProcessSpawner> = Layer.succee
           stderr: Stream.fromReadableStream(
             () => proc.stderr as ReadableStream<Uint8Array>,
             (err) =>
-              new PlatformError.SystemError({
+              new System.SystemError({
                 reason: "Unknown",
                 module: "ChildProcess",
                 method: "fromReadable(stderr)",

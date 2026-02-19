@@ -12,11 +12,11 @@ import * as NCrypto from "node:crypto"
 import * as NFS from "node:fs"
 import * as NOS from "node:os"
 import * as NPath from "node:path"
-import * as PlatformError from "../PlatformError.ts"
+import * as System from "../System.ts"
 import * as Effectify from "../Effectify.ts"
 
 const handleBadArgument = (method: string) => (cause: unknown) =>
-  new PlatformError.BadArgument({
+  new System.BadArgument({
     module: "FileSystem",
     method,
     cause,
@@ -324,7 +324,7 @@ const makeFile = (() => {
       )
     }
 
-    private writeAllChunk(buffer: Uint8Array): Effect.Effect<void, PlatformError.PlatformError> {
+    private writeAllChunk(buffer: Uint8Array): Effect.Effect<void, System.PlatformError> {
       return Effect.flatMap(
         Effect.suspend(() =>
           nodeWriteAll(
@@ -338,7 +338,7 @@ const makeFile = (() => {
         (bytesWritten) => {
           if (bytesWritten === 0) {
             return Effect.fail(
-              new PlatformError.SystemError({
+              new System.SystemError({
                 module: "FileSystem",
                 method: "writeAll",
                 reason: "WriteZero",
@@ -398,7 +398,7 @@ const readDirectory = (path: string, options?: FileSystem.ReadDirectoryOptions) 
   })
 
 const readFile = (path: string) =>
-  Effect.async<Uint8Array, PlatformError.PlatformError>((resume, signal) => {
+  Effect.async<Uint8Array, System.PlatformError>((resume, signal) => {
     try {
       NFS.readFile(path, { signal }, (err, data) => {
         if (err) {
@@ -508,7 +508,7 @@ const utimes = (() => {
 })()
 
 const watchNode = (path: string, options?: FileSystem.WatchOptions) =>
-  Stream.asyncScoped<FileSystem.WatchEvent, PlatformError.PlatformError>((emit) =>
+  Stream.asyncScoped<FileSystem.WatchEvent, System.PlatformError>((emit) =>
     Effect.acquireRelease(
       Effect.sync(() => {
         const watcher = NFS.watch(path, { recursive: options?.recursive }, (event, path) => {
@@ -534,7 +534,7 @@ const watchNode = (path: string, options?: FileSystem.WatchOptions) =>
         })
         watcher.on("error", (error) => {
           emit.fail(
-            new PlatformError.SystemError({
+            new System.SystemError({
               module: "FileSystem",
               reason: "Unknown",
               method: "watch",
@@ -568,7 +568,7 @@ const watch = (
   )
 
 const writeFile = (path: string, data: Uint8Array, options?: FileSystem.WriteFileOptions) =>
-  Effect.async<void, PlatformError.PlatformError>((resume, signal) => {
+  Effect.async<void, System.PlatformError>((resume, signal) => {
     try {
       NFS.writeFile(
         path,
@@ -624,14 +624,14 @@ const make = Effect.map(Effect.serviceOption(FileSystem.WatchBackend), (backend)
 
 export const layer = Layer.effect(FileSystem.FileSystem, make)
 
-export { PlatformError as Error }
+export { System as Error }
 
-export function handleErrnoException(module: PlatformError.SystemError["module"], method: string) {
+export function handleErrnoException(module: System.SystemError["module"], method: string) {
   return function (
     err: NodeJS.ErrnoException,
     [path]: [path: NFS.PathLike | number, ...args: Array<any>],
-  ): PlatformError.PlatformError {
-    let reason: PlatformError.SystemErrorReason = "Unknown"
+  ): System.PlatformError {
+    let reason: System.SystemErrorReason = "Unknown"
 
     switch (err.code) {
       case "ENOENT":
@@ -663,7 +663,7 @@ export function handleErrnoException(module: PlatformError.SystemError["module"]
         break
     }
 
-    return new PlatformError.SystemError({
+    return new System.SystemError({
       reason,
       module,
       method,

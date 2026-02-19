@@ -7,7 +7,7 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as PubSub from "effect/PubSub"
 import * as Stream from "effect/Stream"
-import type * as PlatformError from "./PlatformError.ts"
+import type * as System from "./System.ts"
 
 export type DevelopmentEvent =
   | FileSystem.WatchEvent
@@ -49,7 +49,7 @@ export const watchSource = (opts?: {
   path?: string
   recursive?: boolean
   filter?: (event: FileSystem.WatchEvent) => boolean
-}): Stream.Stream<FileSystem.WatchEvent, PlatformError.PlatformError, FileSystem.FileSystem> => {
+}): Stream.Stream<FileSystem.WatchEvent, System.PlatformError, FileSystem.FileSystem> => {
   const baseDir = opts?.path ?? process.cwd()
   const customFilter = opts?.filter
 

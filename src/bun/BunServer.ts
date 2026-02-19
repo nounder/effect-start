@@ -112,7 +112,7 @@ export const make = (
           ws.data.closeDeferred,
           Socket.defaultCloseCodeIsError(code)
             ? Exit.fail(
-                new Socket.SocketCloseError({
+                new Socket.SocketError({
                   reason: "Close",
                   code,
                   closeReason,

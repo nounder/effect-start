@@ -12,7 +12,7 @@ import * as FilePathPattern from "./FilePathPattern.ts"
 import * as FileRouterCodegen from "./FileRouterCodegen.ts"
 import * as NodeUtils from "./node/NodeUtils.ts"
 import type * as PathPattern from "./PathPattern.ts"
-import type * as PlatformError from "./PlatformError.ts"
+import type * as System from "./System.ts"
 import * as Route from "./Route.ts"
 import * as RouteTree from "./RouteTree.ts"
 
@@ -194,7 +194,7 @@ export function walkRoutesDirectory(
   dir: string,
 ): Effect.Effect<
   OrderedFileRoutes,
-  PlatformError.PlatformError | FileRouterError,
+  System.PlatformError | FileRouterError,
   FileSystem.FileSystem
 > {
   return Effect.gen(function* () {

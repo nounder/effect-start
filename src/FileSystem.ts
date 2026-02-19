@@ -12,108 +12,108 @@ import * as Option from "effect/Option"
 import * as Sink from "effect/Sink"
 import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
-import * as PlatformError from "./PlatformError.ts"
+import * as System from "./System.ts"
 
 export interface FileSystem {
   readonly access: (
     path: string,
     options?: AccessFileOptions,
-  ) => Effect.Effect<void, PlatformError.PlatformError>
+  ) => Effect.Effect<void, System.PlatformError>
   readonly copy: (
     fromPath: string,
     toPath: string,
     options?: CopyOptions,
-  ) => Effect.Effect<void, PlatformError.PlatformError>
+  ) => Effect.Effect<void, System.PlatformError>
   readonly copyFile: (
     fromPath: string,
     toPath: string,
-  ) => Effect.Effect<void, PlatformError.PlatformError>
-  readonly chmod: (path: string, mode: number) => Effect.Effect<void, PlatformError.PlatformError>
+  ) => Effect.Effect<void, System.PlatformError>
+  readonly chmod: (path: string, mode: number) => Effect.Effect<void, System.PlatformError>
   readonly chown: (
     path: string,
     uid: number,
     gid: number,
-  ) => Effect.Effect<void, PlatformError.PlatformError>
-  readonly exists: (path: string) => Effect.Effect<boolean, PlatformError.PlatformError>
+  ) => Effect.Effect<void, System.PlatformError>
+  readonly exists: (path: string) => Effect.Effect<boolean, System.PlatformError>
   readonly link: (
     fromPath: string,
     toPath: string,
-  ) => Effect.Effect<void, PlatformError.PlatformError>
+  ) => Effect.Effect<void, System.PlatformError>
   readonly makeDirectory: (
     path: string,
     options?: MakeDirectoryOptions,
-  ) => Effect.Effect<void, PlatformError.PlatformError>
+  ) => Effect.Effect<void, System.PlatformError>
   readonly makeTempDirectory: (
     options?: MakeTempDirectoryOptions,
-  ) => Effect.Effect<string, PlatformError.PlatformError>
+  ) => Effect.Effect<string, System.PlatformError>
   readonly makeTempDirectoryScoped: (
     options?: MakeTempDirectoryOptions,
-  ) => Effect.Effect<string, PlatformError.PlatformError, Scope.Scope>
+  ) => Effect.Effect<string, System.PlatformError, Scope.Scope>
   readonly makeTempFile: (
     options?: MakeTempFileOptions,
-  ) => Effect.Effect<string, PlatformError.PlatformError>
+  ) => Effect.Effect<string, System.PlatformError>
   readonly makeTempFileScoped: (
     options?: MakeTempFileOptions,
-  ) => Effect.Effect<string, PlatformError.PlatformError, Scope.Scope>
+  ) => Effect.Effect<string, System.PlatformError, Scope.Scope>
   readonly open: (
     path: string,
     options?: OpenFileOptions,
-  ) => Effect.Effect<File, PlatformError.PlatformError, Scope.Scope>
+  ) => Effect.Effect<File, System.PlatformError, Scope.Scope>
   readonly readDirectory: (
     path: string,
     options?: ReadDirectoryOptions,
-  ) => Effect.Effect<Array<string>, PlatformError.PlatformError>
-  readonly readFile: (path: string) => Effect.Effect<Uint8Array, PlatformError.PlatformError>
+  ) => Effect.Effect<Array<string>, System.PlatformError>
+  readonly readFile: (path: string) => Effect.Effect<Uint8Array, System.PlatformError>
   readonly readFileString: (
     path: string,
     encoding?: string,
-  ) => Effect.Effect<string, PlatformError.PlatformError>
-  readonly readLink: (path: string) => Effect.Effect<string, PlatformError.PlatformError>
-  readonly realPath: (path: string) => Effect.Effect<string, PlatformError.PlatformError>
+  ) => Effect.Effect<string, System.PlatformError>
+  readonly readLink: (path: string) => Effect.Effect<string, System.PlatformError>
+  readonly realPath: (path: string) => Effect.Effect<string, System.PlatformError>
   readonly remove: (
     path: string,
     options?: RemoveOptions,
-  ) => Effect.Effect<void, PlatformError.PlatformError>
+  ) => Effect.Effect<void, System.PlatformError>
   readonly rename: (
     oldPath: string,
     newPath: string,
-  ) => Effect.Effect<void, PlatformError.PlatformError>
+  ) => Effect.Effect<void, System.PlatformError>
   readonly sink: (
     path: string,
     options?: SinkOptions,
-  ) => Sink.Sink<void, Uint8Array, never, PlatformError.PlatformError>
-  readonly stat: (path: string) => Effect.Effect<File.Info, PlatformError.PlatformError>
+  ) => Sink.Sink<void, Uint8Array, never, System.PlatformError>
+  readonly stat: (path: string) => Effect.Effect<File.Info, System.PlatformError>
   readonly stream: (
     path: string,
     options?: StreamOptions,
-  ) => Stream.Stream<Uint8Array, PlatformError.PlatformError>
+  ) => Stream.Stream<Uint8Array, System.PlatformError>
   readonly symlink: (
     fromPath: string,
     toPath: string,
-  ) => Effect.Effect<void, PlatformError.PlatformError>
+  ) => Effect.Effect<void, System.PlatformError>
   readonly truncate: (
     path: string,
     length?: SizeInput,
-  ) => Effect.Effect<void, PlatformError.PlatformError>
+  ) => Effect.Effect<void, System.PlatformError>
   readonly utimes: (
     path: string,
     atime: Date | number,
     mtime: Date | number,
-  ) => Effect.Effect<void, PlatformError.PlatformError>
+  ) => Effect.Effect<void, System.PlatformError>
   readonly watch: (
     path: string,
     options?: WatchOptions,
-  ) => Stream.Stream<WatchEvent, PlatformError.PlatformError>
+  ) => Stream.Stream<WatchEvent, System.PlatformError>
   readonly writeFile: (
     path: string,
     data: Uint8Array,
     options?: WriteFileOptions,
-  ) => Effect.Effect<void, PlatformError.PlatformError>
+  ) => Effect.Effect<void, System.PlatformError>
   readonly writeFileString: (
     path: string,
     data: string,
     options?: WriteFileStringOptions,
-  ) => Effect.Effect<void, PlatformError.PlatformError>
+  ) => Effect.Effect<void, System.PlatformError>
 }
 
 export const FileSystem: Context.Tag<FileSystem, FileSystem> = Context.GenericTag<FileSystem>(
@@ -202,16 +202,16 @@ export type FileTypeId = typeof FileTypeId
 export interface File {
   readonly [FileTypeId]: FileTypeId
   readonly fd: File.Descriptor
-  readonly stat: Effect.Effect<File.Info, PlatformError.PlatformError>
+  readonly stat: Effect.Effect<File.Info, System.PlatformError>
   readonly seek: (offset: SizeInput, from: SeekMode) => Effect.Effect<void>
-  readonly sync: Effect.Effect<void, PlatformError.PlatformError>
-  readonly read: (buffer: Uint8Array) => Effect.Effect<Size, PlatformError.PlatformError>
+  readonly sync: Effect.Effect<void, System.PlatformError>
+  readonly read: (buffer: Uint8Array) => Effect.Effect<Size, System.PlatformError>
   readonly readAlloc: (
     size: SizeInput,
-  ) => Effect.Effect<Option.Option<Uint8Array>, PlatformError.PlatformError>
-  readonly truncate: (length?: SizeInput) => Effect.Effect<void, PlatformError.PlatformError>
-  readonly write: (buffer: Uint8Array) => Effect.Effect<Size, PlatformError.PlatformError>
-  readonly writeAll: (buffer: Uint8Array) => Effect.Effect<void, PlatformError.PlatformError>
+  ) => Effect.Effect<Option.Option<Uint8Array>, System.PlatformError>
+  readonly truncate: (length?: SizeInput) => Effect.Effect<void, System.PlatformError>
+  readonly write: (buffer: Uint8Array) => Effect.Effect<Size, System.PlatformError>
+  readonly writeAll: (buffer: Uint8Array) => Effect.Effect<void, System.PlatformError>
 }
 
 export declare namespace File {
@@ -282,7 +282,7 @@ export class WatchBackend extends Context.Tag("@effect/platform/FileSystem/Watch
       path: string,
       stat: File.Info,
       options?: WatchOptions,
-    ) => Option.Option<Stream.Stream<WatchEvent, PlatformError.PlatformError>>
+    ) => Option.Option<Stream.Stream<WatchEvent, System.PlatformError>>
   }
 >() {}
 
@@ -303,7 +303,7 @@ export const make = (
       Effect.tryMap(impl.readFile(path), {
         try: (_) => new TextDecoder(encoding).decode(_),
         catch: (cause) =>
-          new PlatformError.BadArgument({
+          new System.BadArgument({
             module: "FileSystem",
             method: "readFileString",
             description: "invalid encoding",
@@ -330,7 +330,7 @@ export const make = (
         Effect.try({
           try: () => new TextEncoder().encode(data),
           catch: (cause) =>
-            new PlatformError.BadArgument({
+            new System.BadArgument({
               module: "FileSystem",
               method: "writeFileString",
               description: "could not encode string",
@@ -351,7 +351,7 @@ const fileStream = (file: File, options: StreamOptions = {}) => {
   ): Channel.Channel<
     Chunk.Chunk<Uint8Array>,
     unknown,
-    PlatformError.PlatformError,
+    System.PlatformError,
     unknown,
     void,
     unknown
