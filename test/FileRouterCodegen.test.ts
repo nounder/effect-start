@@ -1,7 +1,7 @@
 import * as test from "bun:test"
 import * as Effect from "effect/Effect"
-import * as FileRouter from "effect-start/FileRouter"
-import * as FileRouterCodegen from "effect-start/FileRouterCodegen"
+import * as FileRouter from "../src/FileRouter.ts"
+import * as FileRouterCodegen from "../src/FileRouterCodegen.ts"
 
 const getRoutes = (paths: Array<string>) => Effect.runSync(FileRouter.getFileRoutes(paths))
 

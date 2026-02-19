@@ -1,12 +1,12 @@
 import type * as Bun from "bun"
-import * as Array from "effect/Array"
 import * as Data from "effect/Data"
+import * as Either from "effect/Either"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
 import * as Entity from "../Entity.ts"
-import * as FilePathPattern from "../FilePathPattern.ts"
 import * as Hyper from "../hyper/Hyper.ts"
 import * as HyperHtml from "../hyper/HyperHtml.ts"
+import * as PathPattern from "../PathPattern.ts"
 import * as Route from "../Route.ts"
 import * as Unique from "../Unique.ts"
 import * as BunServer from "./BunServer.ts"
@@ -180,16 +180,13 @@ export type BunRoutes = Record<string, BunServerRouteHandler>
  */
 
 export function validateBunPattern(pattern: string): Option.Option<BunRouteError> {
-  const segs = FilePathPattern.segments(pattern)
-
-  const invalid = Array.findFirst(segs, (seg) => seg._tag === "InvalidSegment")
-
-  if (Option.isSome(invalid)) {
+  const parsed = PathPattern.fromFilePath(pattern)
+  if (Either.isLeft(parsed)) {
     return Option.some(
       new BunRouteError({
         reason: "UnsupportedPattern",
         pattern,
-        message: `Pattern "${pattern}" contains invalid segment.`,
+        message: parsed.left.message,
       }),
     )
   }

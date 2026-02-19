@@ -8,10 +8,9 @@ import * as Stream from "effect/Stream"
 import * as NPath from "node:path"
 import * as NUrl from "node:url"
 import * as Development from "./Development.ts"
-import * as FilePathPattern from "./FilePathPattern.ts"
 import * as FileRouterCodegen from "./FileRouterCodegen.ts"
 import * as NodeUtils from "./node/NodeUtils.ts"
-import type * as PathPattern from "./PathPattern.ts"
+import * as PathPattern from "./PathPattern.ts"
 import type * as System from "./System.ts"
 import * as Route from "./Route.ts"
 import * as RouteTree from "./RouteTree.ts"
@@ -32,15 +31,12 @@ export type FileRoutes = {
   [path: PathPattern.PathPattern]: [LazyRouteModule, ...LazyRouteModule[]]
 }
 
-export type Segment = FilePathPattern.Segment
-
 export type FileRoute = {
   handle: "route" | "layer"
   // eg. `/about/route.tsx`, `/users/[userId]/route.tsx`, `/(admin)/users/route.tsx`
   modulePath: `/${string}`
-  // eg. `/about`, `/users/[userId]`, `/users` (groups stripped)
-  routePath: `/${string}`
-  segments: Array<Segment>
+  // eg. `/about`, `/users/:userId`, `/users` (groups stripped)
+  routePath: PathPattern.PathPattern
 }
 
 /**
@@ -52,40 +48,26 @@ export type FileRoute = {
  */
 export type OrderedFileRoutes = Array<FileRoute>
 
-const ROUTE_PATH_REGEX = /^\/?(.*\/?)(?:route|layer)\.(jsx?|tsx?)$/
+const ROUTE_PATH_REGEX = /^(.*\/)?(route|layer)\.(jsx?|tsx?)$/
 
 export function parseRoute(path: string): FileRoute | null {
-  const segs = FilePathPattern.segments(path)
-
-  const lastSeg = segs.at(-1)
-  const handleMatch =
-    lastSeg?._tag === "LiteralSegment" && lastSeg.value.match(/^(route|layer)\.(tsx?|jsx?)$/)
-  const handle = handleMatch ? (handleMatch[1] as "route" | "layer") : null
-
-  if (!handle) {
+  const normalizedPath = path.replace(/^\/+/, "")
+  const matched = normalizedPath.match(ROUTE_PATH_REGEX)
+  if (!matched) {
     return null
   }
 
-  const pathSegments = segs.slice(0, -1)
-
-  const validated = FilePathPattern.validate(FilePathPattern.format(pathSegments))
-  if (Either.isLeft(validated)) {
+  const routeDir = matched[1]?.replace(/\/$/, "") ?? ""
+  const handle = matched[2] as "route" | "layer"
+  const routePathResult = PathPattern.fromFilePath(routeDir)
+  if (Either.isLeft(routePathResult)) {
     return null
   }
-
-  const restIndex = pathSegments.findIndex((seg) => seg._tag === "RestSegment")
-  if (restIndex !== -1 && restIndex !== pathSegments.length - 1) {
-    return null
-  }
-
-  const routePathSegments = pathSegments.filter((seg) => seg._tag !== "GroupSegment")
-  const routePath = FilePathPattern.format(routePathSegments)
 
   return {
     handle,
-    modulePath: `/${path}`,
-    routePath,
-    segments: pathSegments,
+    modulePath: `/${normalizedPath}`,
+    routePath: routePathResult.right,
   }
 }
 
@@ -222,10 +204,10 @@ export function getFileRoutes(
       })
       .filter((route): route is FileRoute => route !== null)
       .toSorted((a, b) => {
-        const aDepth = a.segments.length
-        const bDepth = b.segments.length
-        const aHasRest = a.segments.some((seg) => seg._tag === "RestSegment")
-        const bHasRest = b.segments.some((seg) => seg._tag === "RestSegment")
+        const aDepth = a.modulePath.split("/").filter(Boolean).length - 1
+        const bDepth = b.modulePath.split("/").filter(Boolean).length - 1
+        const aHasRest = a.routePath.split("/").some((seg) => seg.startsWith(":") && seg.endsWith("*"))
+        const bHasRest = b.routePath.split("/").some((seg) => seg.startsWith(":") && seg.endsWith("*"))
 
         return (
           // rest is a dominant factor (routes with rest come last)

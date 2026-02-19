@@ -1,10 +1,9 @@
 import * as FileSystem from "./FileSystem.ts"
 import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
 import * as Schema from "effect/Schema"
 import * as NPath from "node:path"
-import * as FilePathPattern from "./FilePathPattern.ts"
 import * as FileRouter from "./FileRouter.ts"
+import * as PathPattern from "./PathPattern.ts"
 import * as SchemaExtra from "./SchemaExtra.ts"
 
 export function validateRouteModule(module: unknown): module is FileRouter.RouteModule {
@@ -21,16 +20,12 @@ export function validateRouteModule(module: unknown): module is FileRouter.Route
 }
 
 export function generatePathParamsSchema(
-  segments: ReadonlyArray<FilePathPattern.Segment>,
+  path: PathPattern.PathPattern,
 ): Schema.Struct<any> | null {
   const fields: Record<PropertyKey, Schema.Schema.Any | Schema.PropertySignature.All> = {}
 
-  for (const segment of segments) {
-    if (segment._tag === "ParamSegment") {
-      fields[segment.name] = Schema.String
-    } else if (segment._tag === "RestSegment") {
-      fields[segment.name] = Schema.optional(Schema.String)
-    }
+  for (const param of PathPattern.params(path)) {
+    fields[param.name] = param.optional ? Schema.optional(Schema.String) : Schema.String
   }
 
   if (Object.keys(fields).length === 0) {
@@ -54,7 +49,7 @@ export function validateRouteModules(
 
     for (const handle of routeHandles) {
       const routeModulePath = NPath.resolve(path, handle.modulePath)
-      const expectedSchema = generatePathParamsSchema(handle.segments)
+      const expectedSchema = generatePathParamsSchema(handle.routePath)
 
       const fileExists = yield* fs
         .exists(routeModulePath)
@@ -144,20 +139,13 @@ export function generateCode(fileRoutes: FileRouter.OrderedFileRoutes): string |
       currentPath = parentPath || "/"
     }
 
-    // Convert file-style path to colon-style PathPattern
-    const pathPatternResult = FilePathPattern.toPathPattern(path)
-    if (Either.isLeft(pathPatternResult)) {
-      continue
-    }
-    const pathPattern = pathPatternResult.right
-
     // Order: route first, then layers from innermost to outermost
     const loaders: Array<string> = [
       `() => import(".${route.modulePath}")`,
       ...allLayers.reverse().map((layer) => `() => import(".${layer.modulePath}")`),
     ]
 
-    entries.push({ path: pathPattern, loaders })
+    entries.push({ path, loaders })
   }
 
   // No routes found - don't create file

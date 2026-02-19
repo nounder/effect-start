@@ -1,3 +1,5 @@
+import * as Either from "effect/Either"
+
 export type PathPattern = `/${string}`
 
 export type Segments<Path extends string> = Path extends `/${infer Rest}`
@@ -26,6 +28,16 @@ export type Params<T extends string> = string extends T
 
 export type ValidateResult = { ok: true; segments: Array<string> } | { ok: false; error: string }
 
+export type PathPatternError = {
+  _tag: "PathPatternError"
+  pattern: string
+  message: string
+}
+
+function isValidFileParamName(name: string): boolean {
+  return name.length > 0 && /^[a-zA-Z0-9_]+$/.test(name)
+}
+
 function isValidSegment(segment: string): boolean {
   if (segment.startsWith(":")) {
     const rest = segment.slice(1)
@@ -49,6 +61,101 @@ export function validate(path: string): ValidateResult {
     }
   }
   return { ok: true, segments }
+}
+
+export function fromFilePath(
+  filePath: string,
+): Either.Either<PathPattern, PathPatternError> {
+  const parts = filePath.split("/").filter(Boolean)
+  const pathParts: Array<string> = []
+  let sawRest = false
+
+  for (let index = 0; index < parts.length; index++) {
+    const part = parts[index]
+
+    if (/^\(\w+\)$/.test(part)) {
+      continue
+    }
+
+    if (part.startsWith("[[") && part.endsWith("]]")) {
+      const name = part.slice(2, -2)
+      if (!isValidFileParamName(name)) {
+        return Either.left({
+          _tag: "PathPatternError",
+          pattern: filePath,
+          message: `Invalid segment: "${part}"`,
+        })
+      }
+      if (index !== parts.length - 1) {
+        return Either.left({
+          _tag: "PathPatternError",
+          pattern: filePath,
+          message: "Rest segment must be the last segment",
+        })
+      }
+      pathParts.push(`:${name}*`)
+      sawRest = true
+      continue
+    }
+
+    if (part.startsWith("[") && part.endsWith("]")) {
+      const name = part.slice(1, -1)
+      if (!isValidFileParamName(name)) {
+        return Either.left({
+          _tag: "PathPatternError",
+          pattern: filePath,
+          message: `Invalid segment: "${part}"`,
+        })
+      }
+      if (sawRest) {
+        return Either.left({
+          _tag: "PathPatternError",
+          pattern: filePath,
+          message: "Rest segment must be the last segment",
+        })
+      }
+      pathParts.push(`:${name}`)
+      continue
+    }
+
+    if (/^[\p{L}\p{N}._~-]+$/u.test(part)) {
+      if (sawRest) {
+        return Either.left({
+          _tag: "PathPatternError",
+          pattern: filePath,
+          message: "Rest segment must be the last segment",
+        })
+      }
+      pathParts.push(part)
+      continue
+    }
+
+    return Either.left({
+      _tag: "PathPatternError",
+      pattern: filePath,
+      message: `Invalid segment: "${part}"`,
+    })
+  }
+
+  const path = (pathParts.length > 0 ? `/${pathParts.join("/")}` : "/") as PathPattern
+  return Either.right(path)
+}
+
+export function params(path: string): Array<{ name: string; optional: boolean }> {
+  const segments = path.split("/").filter(Boolean)
+  const result: Array<{ name: string; optional: boolean }> = []
+
+  for (const segment of segments) {
+    if (!segment.startsWith(":")) {
+      continue
+    }
+
+    const modifier = getModifier(segment)
+    const name = getParamName(segment)
+    result.push({ name, optional: modifier === "?" || modifier === "*" })
+  }
+
+  return result
 }
 
 export function match(pattern: string, path: string): Record<string, string> | null {

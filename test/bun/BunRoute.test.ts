@@ -2,8 +2,8 @@ import * as test from "bun:test"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
-import * as Route from "effect-start/Route"
-import { BunRoute, BunServer } from "effect-start/bun"
+import * as Route from "../../src/Route.ts"
+import { BunRoute, BunServer } from "../../src/bun/index.ts"
 
 const testLayer = (routes: ReturnType<typeof Route.tree>) =>
   BunServer.layerRoutes({
@@ -97,7 +97,7 @@ test.describe(BunRoute.validateBunPattern, () => {
   test.test("returns none for valid patterns", () => {
     test.expect(Option.isNone(BunRoute.validateBunPattern("/users"))).toBe(true)
     test.expect(Option.isNone(BunRoute.validateBunPattern("/users/[id]"))).toBe(true)
-    test.expect(Option.isNone(BunRoute.validateBunPattern("/[...rest]"))).toBe(true)
+    test.expect(Option.isNone(BunRoute.validateBunPattern("/[[rest]]"))).toBe(true)
   })
 
   test.test("returns error for prefixed params", () => {
