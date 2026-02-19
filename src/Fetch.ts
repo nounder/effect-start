@@ -3,7 +3,7 @@ import * as Effect from "effect/Effect"
 import * as Schedule from "effect/Schedule"
 import * as Stream from "effect/Stream"
 import * as Entity from "./Entity.ts"
-import { isPlainObject } from "./_Values.ts"
+import * as Values from "./_Values.ts"
 
 const TypeId = "~effect-start/FetchClient" as const
 
@@ -199,7 +199,7 @@ export function fromHandler(
   }
 
   const url = "path" in init ? `http://localhost${init.path}` : init.url
-  const isPlain = isPlainObject(init.body)
+  const isPlain = Values.isPlainObject(init.body)
   const headers = new Headers(init.headers)
   if (isPlain && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json")

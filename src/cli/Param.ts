@@ -1,14 +1,14 @@
 import * as Effect from "effect/Effect"
-import { dual } from "effect/Function"
+import * as Function from "effect/Function"
 import * as Option from "effect/Option"
-import { type Pipeable, pipeArguments } from "effect/Pipeable"
+import * as Pipeable from "effect/Pipeable"
 import * as Schema from "effect/Schema"
-import { CliError } from "./CliError.ts"
+import * as CliError from "./CliError.ts"
 import * as Primitive from "./Primitive.ts"
 
 export type ParamKind = "argument" | "flag"
 
-export interface Param<Kind extends ParamKind, out A> extends Pipeable {
+export interface Param<Kind extends ParamKind, out A> extends Pipeable.Pipeable {
   readonly _tag: string
   readonly kind: Kind
   readonly parse: ParamParse<A>
@@ -16,7 +16,7 @@ export interface Param<Kind extends ParamKind, out A> extends Pipeable {
 
 export type ParamParse<A> = (args: ParsedArgs) => Effect.Effect<
   readonly [leftover: ReadonlyArray<string>, value: A],
-  CliError
+  CliError.CliError
 >
 
 export interface ParsedArgs {
@@ -34,7 +34,7 @@ export interface SingleParam<Kind extends ParamKind, out A> extends Param<Kind, 
 }
 
 const ParamProto = {
-  pipe() { return pipeArguments(this, arguments) },
+  pipe() { return Pipeable.pipeArguments(this, arguments) },
 }
 
 export const isParam = (u: unknown): u is Param<any, any> =>
@@ -111,12 +111,12 @@ const parsePositional = <A>(
   name: string,
   prim: Primitive.Primitive<A>,
   args: ParsedArgs,
-): Effect.Effect<readonly [ReadonlyArray<string>, A], CliError> =>
+): Effect.Effect<readonly [ReadonlyArray<string>, A], CliError.CliError> =>
   Effect.gen(function*() {
-    if (args.arguments.length === 0) return yield* Effect.fail(new CliError({ reason: "MissingArgument", argument: name }))
+    if (args.arguments.length === 0) return yield* Effect.fail(new CliError.CliError({ reason: "MissingArgument", argument: name }))
     const value = yield* Effect.mapError(
       prim.parse(args.arguments[0]),
-      (error) => new CliError({ reason: "InvalidValue", option: name, value: args.arguments[0], expected: error, kind: "argument" }),
+      (error) => new CliError.CliError({ reason: "InvalidValue", option: name, value: args.arguments[0], expected: error, kind: "argument" }),
     )
     return [args.arguments.slice(1), value] as const
   })
@@ -125,16 +125,16 @@ const parseFlag = <A>(
   name: string,
   prim: Primitive.Primitive<A>,
   args: ParsedArgs,
-): Effect.Effect<readonly [ReadonlyArray<string>, A], CliError> =>
+): Effect.Effect<readonly [ReadonlyArray<string>, A], CliError.CliError> =>
   Effect.gen(function*() {
     const values = args.flags[name]
     if (!values || values.length === 0) {
       if (Primitive.isBoolean(prim)) return [args.arguments, false as any] as const
-      return yield* Effect.fail(new CliError({ reason: "MissingOption", option: name }))
+      return yield* Effect.fail(new CliError.CliError({ reason: "MissingOption", option: name }))
     }
     const value = yield* Effect.mapError(
       prim.parse(values[0]),
-      (error) => new CliError({ reason: "InvalidValue", option: name, value: values[0], expected: error, kind: "flag" }),
+      (error) => new CliError.CliError({ reason: "InvalidValue", option: name, value: values[0], expected: error, kind: "flag" }),
     )
     return [args.arguments, value] as const
   })
@@ -153,7 +153,7 @@ export const paramTransform = <K extends ParamKind, A, B>(
 
 export const paramMapEffect = <K extends ParamKind, A, B>(
   self: Param<K, A>,
-  f: (a: A) => Effect.Effect<B, CliError>,
+  f: (a: A) => Effect.Effect<B, CliError.CliError>,
 ): Param<K, B> =>
   paramTransform(self, (parse) => (args) =>
     Effect.flatMap(parse(args), ([l, a]) => Effect.map(f(a), (b) => [l, b] as const)))
@@ -192,7 +192,7 @@ const parsePositionalVariadic = <K extends ParamKind, A>(
   single: SingleParam<K, A>,
   args: ParsedArgs,
   options?: { min?: number; max?: number },
-): Effect.Effect<readonly [ReadonlyArray<string>, ReadonlyArray<A>], CliError> =>
+): Effect.Effect<readonly [ReadonlyArray<string>, ReadonlyArray<A>], CliError.CliError> =>
   Effect.gen(function*() {
     const results: Array<A> = []
     const min = options?.min ?? 0
@@ -204,7 +204,7 @@ const parsePositionalVariadic = <K extends ParamKind, A>(
       current = remaining
     }
     if (results.length < min) {
-      return yield* Effect.fail(new CliError({ reason: "InvalidValue",
+      return yield* Effect.fail(new CliError.CliError({ reason: "InvalidValue",
         option: single.name, value: `${results.length} values`,
         expected: `at least ${min} value${min === 1 ? "" : "s"}`, kind: single.kind,
       }))
@@ -217,21 +217,21 @@ const parseOptionVariadic = <K extends ParamKind, A>(
   single: SingleParam<K, A>,
   args: ParsedArgs,
   options?: { min?: number; max?: number },
-): Effect.Effect<readonly [ReadonlyArray<string>, ReadonlyArray<A>], CliError> =>
+): Effect.Effect<readonly [ReadonlyArray<string>, ReadonlyArray<A>], CliError.CliError> =>
   Effect.gen(function*() {
     const names = [single.name, ...single.aliases]
     const values = names.flatMap((n) => args.flags[n] ?? [])
     const count = values.length
     if (options?.min !== undefined && count < options.min) {
       return yield* count === 0
-        ? Effect.fail(new CliError({ reason: "MissingOption", option: single.name }))
-        : Effect.fail(new CliError({ reason: "InvalidValue",
+        ? Effect.fail(new CliError.CliError({ reason: "MissingOption", option: single.name }))
+        : Effect.fail(new CliError.CliError({ reason: "InvalidValue",
           option: single.name, value: `${count} occurrences`,
           expected: `at least ${options.min} value${options.min === 1 ? "" : "s"}`, kind: single.kind,
         }))
     }
     if (options?.max !== undefined && count > options.max) {
-      return yield* Effect.fail(new CliError({ reason: "InvalidValue",
+      return yield* Effect.fail(new CliError.CliError({ reason: "InvalidValue",
         option: single.name, value: `${count} occurrences`,
         expected: `at most ${options.max} value${options.max === 1 ? "" : "s"}`, kind: single.kind,
       }))
@@ -257,29 +257,29 @@ export const paramWithMetavar = <K extends ParamKind, A>(self: Param<K, A>, meta
 
 export const makeParamCombinators = <K extends ParamKind>(_kind: K) => ({
   optional: <A>(self: Param<K, A>): Param<K, Option.Option<A>> => paramOptional(self),
-  withDefault: dual(2, <A, B>(self: Param<K, A>, value: B): Param<K, A | B> => paramWithDefault(self, value)),
-  withDescription: dual(2, <A>(self: Param<K, A>, desc: string): Param<K, A> => paramWithDescription(self, desc)),
-  withMetavar: dual(2, <A>(self: Param<K, A>, metavar: string): Param<K, A> => paramWithMetavar(self, metavar)),
-  map: dual(2, <A, B>(self: Param<K, A>, f: (a: A) => B): Param<K, B> => paramMap(self, f)),
-  mapEffect: dual(2, <A, B>(self: Param<K, A>, f: (a: A) => Effect.Effect<B, CliError>): Param<K, B> =>
+  withDefault: Function.dual(2, <A, B>(self: Param<K, A>, value: B): Param<K, A | B> => paramWithDefault(self, value)),
+  withDescription: Function.dual(2, <A>(self: Param<K, A>, desc: string): Param<K, A> => paramWithDescription(self, desc)),
+  withMetavar: Function.dual(2, <A>(self: Param<K, A>, metavar: string): Param<K, A> => paramWithMetavar(self, metavar)),
+  map: Function.dual(2, <A, B>(self: Param<K, A>, f: (a: A) => B): Param<K, B> => paramMap(self, f)),
+  mapEffect: Function.dual(2, <A, B>(self: Param<K, A>, f: (a: A) => Effect.Effect<B, CliError.CliError>): Param<K, B> =>
     paramMapEffect(self, f)),
-  variadic: dual(2, <A>(self: Param<K, A>, options?: { min?: number; max?: number }): Param<K, ReadonlyArray<A>> =>
+  variadic: Function.dual(2, <A>(self: Param<K, A>, options?: { min?: number; max?: number }): Param<K, ReadonlyArray<A>> =>
     paramVariadic(self, options)),
-  filter: dual(3, <A>(self: Param<K, A>, pred: (a: A) => boolean, onFalse: (a: A) => string): Param<K, A> =>
+  filter: Function.dual(3, <A>(self: Param<K, A>, pred: (a: A) => boolean, onFalse: (a: A) => string): Param<K, A> =>
     paramMapEffect(self, (a) => {
       if (pred(a)) return Effect.succeed(a)
       const s = getUnderlyingSingle(self)
-      return Effect.fail(new CliError({ reason: "InvalidValue", option: s.name, value: String(a), expected: onFalse(a), kind: s.kind }))
+      return Effect.fail(new CliError.CliError({ reason: "InvalidValue", option: s.name, value: String(a), expected: onFalse(a), kind: s.kind }))
     })),
-  withSchema: dual(2, <A, B>(self: Param<K, A>, schema: Schema.Schema<B, A>): Param<K, B> => {
+  withSchema: Function.dual(2, <A, B>(self: Param<K, A>, schema: Schema.Schema<B, A>): Param<K, B> => {
     const decode = Schema.decodeUnknown(schema)
     return paramMapEffect(self, (v) =>
       Effect.mapError(decode(v), (err) => {
         const s = getUnderlyingSingle(self)
-        return new CliError({ reason: "InvalidValue", option: s.name, value: String(v), expected: `Schema validation failed: ${err.message}`, kind: s.kind })
+        return new CliError.CliError({ reason: "InvalidValue", option: s.name, value: String(v), expected: `Schema validation failed: ${err.message}`, kind: s.kind })
       }))
   }),
-  orElse: dual(2, <A, B>(self: Param<K, A>, that: () => Param<K, B>): Param<K, A | B> =>
+  orElse: Function.dual(2, <A, B>(self: Param<K, A>, that: () => Param<K, B>): Param<K, A | B> =>
     paramTransform<K, A, A | B>(self, (parse) => (args) => Effect.catchAll(parse(args), () => that().parse(args)))),
 })
 

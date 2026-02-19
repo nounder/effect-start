@@ -16,25 +16,17 @@ export default {
           description:
             "Enforce namespace imports with matching aliases for capitalized modules and specific forced modules",
         },
-        fixable: "code",
-        hasSuggestions: true,
         schema: [],
         messages: {
           preferNamespace:
-            'Use namespace import for module "{{source}}": import {{typePrefix}}* as {{baseName}} from "{{source}}"',
+            'Use namespace import for module "{{source}}": import * as {{baseName}} from "{{source}}"',
           mismatch:
             'Namespace import alias "{{alias}}" does not match module basename "{{baseName}}"',
         },
       },
       create(context) {
-        const importNames = new Set()
-
         return {
           ImportDeclaration(node) {
-            for (const spec of node.specifiers) {
-              importNames.add(spec.local.name)
-            }
-
             const source = node.source.value
             if (typeof source !== "string") return
 
@@ -50,37 +42,13 @@ export default {
 
             if (isNamespace) {
               if (!isLocalImport(source)) return
-
               const alias = node.specifiers[0].local.name
               if (alias === baseName) return
-
-              const hasCollision = importNames.has(baseName) && alias !== baseName
-              const sourceCode = context.sourceCode || context.getSourceCode()
 
               context.report({
                 node,
                 messageId: "mismatch",
                 data: { alias, baseName },
-                fix: hasCollision
-                  ? undefined
-                  : (fixer) => {
-                      const fixes = [
-                        fixer.replaceText(
-                          node,
-                          `import ${node.importKind === "type" ? "type " : ""}* as ${baseName} from "${source}"`,
-                        ),
-                      ]
-
-                      for (const variable of sourceCode.getDeclaredVariables(node.specifiers[0])) {
-                        for (const ref of variable.references) {
-                          if (ref.identifier.range[0] === node.specifiers[0].local.range[0])
-                            continue
-                          fixes.push(fixer.replaceTextRange(ref.identifier.range, baseName))
-                        }
-                      }
-
-                      return fixes
-                    },
               })
               return
             }
@@ -92,40 +60,10 @@ export default {
               if (!hasNamedImports) return
             }
 
-            const typePrefix = node.importKind === "type" ? "type " : ""
-            const sourceCode = context.sourceCode || context.getSourceCode()
-
             context.report({
               node,
               messageId: "preferNamespace",
-              data: { source, baseName, typePrefix },
-              fix(fixer) {
-                const fixes = [
-                  fixer.replaceText(node, `import ${typePrefix}* as ${baseName} from "${source}"`),
-                ]
-
-                for (const specifier of node.specifiers) {
-                  if (specifier.type !== "ImportSpecifier") continue
-                  const localName = specifier.local.name
-                  const importedName = specifier.imported.name
-
-                  for (const variable of sourceCode.getDeclaredVariables(specifier)) {
-                    for (const ref of variable.references) {
-                      if (ref.identifier.range[0] === specifier.local.range[0]) continue
-                      fixes.push(
-                        fixer.replaceTextRange(
-                          ref.identifier.range,
-                          localName !== importedName
-                            ? `${baseName}.${importedName}`
-                            : `${baseName}.${localName}`,
-                        ),
-                      )
-                    }
-                  }
-                }
-
-                return fixes
-              },
+              data: { source, baseName },
             })
           },
         }

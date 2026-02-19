@@ -44,18 +44,12 @@ function lintFix(code: string, filename = "test.ts") {
 
 test.describe.skipIf(!process.env.TEST_LINT)("namespace-import", () => {
   test.it("flags named import from capitalized module", () => {
-    const diags = lintRule(
-      `import { Schema } from "effect/Schema"\nSchema\n`,
-      "namespace-import",
-    )
+    const diags = lintRule(`import { Schema } from "effect/Schema"\nSchema\n`, "namespace-import")
     test.expect(diags).toHaveLength(1)
   })
 
   test.it("allows namespace import from capitalized module", () => {
-    const diags = lintRule(
-      `import * as Schema from "effect/Schema"\nSchema\n`,
-      "namespace-import",
-    )
+    const diags = lintRule(`import * as Schema from "effect/Schema"\nSchema\n`, "namespace-import")
     test.expect(diags).toHaveLength(0)
   })
 
@@ -72,7 +66,7 @@ test.describe.skipIf(!process.env.TEST_LINT)("namespace-import", () => {
     test.expect(diags).toHaveLength(0)
   })
 
-  test.it("flags named import from _-prefixed capitalized module", () => {
+  test.it("flags named import from private capitalized module", () => {
     const diags = lintRule(
       `import { mapHeaders } from "../src/_Http.ts"\nmapHeaders\n`,
       "namespace-import",
@@ -80,19 +74,18 @@ test.describe.skipIf(!process.env.TEST_LINT)("namespace-import", () => {
     test.expect(diags).toHaveLength(1)
   })
 
-  test.it("allows namespace import from _-prefixed capitalized module", () => {
-    const diags = lintRule(
-      `import * as _Http from "../src/_Http.ts"\n_Http\n`,
-      "namespace-import",
-    )
+  test.it("flags private module with underscore in alias", () => {
+    const diags = lintRule(`import * as _Http from "../src/_Http.ts"\n_Http\n`, "namespace-import")
+    test.expect(diags).toHaveLength(1)
+  })
+
+  test.it("allows private module with stripped alias", () => {
+    const diags = lintRule(`import * as Http from "../src/_Http.ts"\nHttp\n`, "namespace-import")
     test.expect(diags).toHaveLength(0)
   })
 
   test.it("flags alias that doesn't match basename (local import)", () => {
-    const diags = lintRule(
-      `import * as Sql from "./SqlClient.ts"\nSql\n`,
-      "namespace-import",
-    )
+    const diags = lintRule(`import * as Sql from "./SqlClient.ts"\nSql\n`, "namespace-import")
     test.expect(diags).toHaveLength(1)
   })
 
@@ -109,40 +102,6 @@ test.describe.skipIf(!process.env.TEST_LINT)("namespace-import", () => {
     test.expect(diags).toHaveLength(0)
   })
 
-  test.it("fixes alias to match basename", () => {
-    const fixed = lintFix(`import * as Sql from "./SqlClient.ts"\nconsole.log(Sql)\n`)
-    test
-      .expect(fixed)
-      .toBe(`import * as SqlClient from "./SqlClient.ts"\nconsole.log(SqlClient)\n`)
-  })
-
-  test.it("fixes all references to the alias", () => {
-    const code = [
-      'import * as Sql from "./SqlClient.ts"',
-      "const a = Sql.make()",
-      "const b = Sql.query(a)",
-      "",
-    ].join("\n")
-    const fixed = lintFix(code)
-    test
-      .expect(fixed)
-      .toBe(
-        [
-          'import * as SqlClient from "./SqlClient.ts"',
-          "const a = SqlClient.make()",
-          "const b = SqlClient.query(a)",
-          "",
-        ].join("\n"),
-      )
-  })
-
-  test.it("fixes type-only namespace import", () => {
-    const fixed = lintFix(`import type * as Sql from "./SqlClient.ts"\ntype X = Sql.Client\n`)
-    test
-      .expect(fixed)
-      .toBe(`import type * as SqlClient from "./SqlClient.ts"\ntype X = SqlClient.Client\n`)
-  })
-
   test.it("strips file extension for basename comparison", () => {
     const diags = lintRule(
       `import * as Http from "../../src/HttpClient.js"\nHttp\n`,
@@ -151,19 +110,7 @@ test.describe.skipIf(!process.env.TEST_LINT)("namespace-import", () => {
     test.expect(diags).toHaveLength(1)
   })
 
-  test.it("does not auto-fix when basename collides with another import", () => {
-    const code = [
-      'import * as SqlClient from "./SqlClient.ts"',
-      'import * as Sql from "./other/SqlClient.ts"',
-      "Sql.make()",
-      "SqlClient.make()",
-      "",
-    ].join("\n")
-    const fixed = lintFix(code)
-    test.expect(fixed).toBe(code)
-  })
-
-  test.it("flags _-prefixed module with mismatched alias", () => {
+  test.it("flags private module with mismatched alias", () => {
     const diags = lintRule(
       `import * as Helpers from "../src/_Values.ts"\nHelpers\n`,
       "namespace-import",
@@ -171,12 +118,25 @@ test.describe.skipIf(!process.env.TEST_LINT)("namespace-import", () => {
     test.expect(diags).toHaveLength(1)
   })
 
-  test.it("allows _-prefixed module with matching alias", () => {
+  test.it("allows private module with stripped alias", () => {
     const diags = lintRule(
-      `import * as _Values from "../src/_Values.ts"\n_Values\n`,
+      `import * as Values from "../src/_Values.ts"\nValues\n`,
       "namespace-import",
     )
     test.expect(diags).toHaveLength(0)
+  })
+
+  test.it("flags both duplicate imports from same module", () => {
+    const diags = lintRule(
+      [
+        'import type { Param } from "./Param.ts"',
+        'import { isParam } from "./Param.ts"',
+        "const a: Param = isParam(1)",
+        "",
+      ].join("\n"),
+      "namespace-import",
+    )
+    test.expect(diags).toHaveLength(2)
   })
 })
 
@@ -309,9 +269,9 @@ test.describe.skipIf(!process.env.TEST_LINT)("no-destructured-params", () => {
       .expect(fixed)
       .toBe(
         [
-          "const runMain = makeRunMain((options) => {",
-          "  const prev = options.fiber",
-          "  options.teardown(prev)",
+          "const runMain = makeRunMain((v) => {",
+          "  const prev = v.fiber",
+          "  v.teardown(prev)",
           "})",
           "",
         ].join("\n"),
@@ -331,9 +291,9 @@ test.describe.skipIf(!process.env.TEST_LINT)("no-destructured-params", () => {
       .expect(fixed)
       .toBe(
         [
-          "const x = Effect.map((options) => {",
-          "  const q = makeTemplate(options.pool)",
-          "  return { mssql: options.mssql, q }",
+          "const x = Effect.map((v) => {",
+          "  const q = makeTemplate(v.pool)",
+          "  return { mssql: v.mssql, q }",
           "})",
           "",
         ].join("\n"),
@@ -367,4 +327,3 @@ test.describe.skipIf(!process.env.TEST_LINT)("no-destructured-params", () => {
       )
   })
 })
-

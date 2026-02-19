@@ -14,7 +14,7 @@
     "import/no-duplicates": "error",
 
     // TypeScript rules (matching Effect's @typescript-eslint config)
-    "typescript/array-type": ["error", { "default": "generic", "readonly": "generic" }],
+    "typescript/array-type": "off",
     "typescript/consistent-type-imports": "warn",
 
     // -- Disabled rules that conflict with this project's style --
@@ -52,6 +52,7 @@
 
     // Allow empty pattern
     "no-empty-pattern": "off",
+    "unicorn/no-new-array": "off",
 
     // Effect uses generator functions for effectful computation (yield is implicit)
     "require-yield": "off",

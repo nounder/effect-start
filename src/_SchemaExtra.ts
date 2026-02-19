@@ -1,8 +1,7 @@
-import * as Function from "effect/Function"
 import type * as Schema from "effect/Schema"
 import * as SchemaAST from "effect/SchemaAST"
 
-export function getBaseSchemaAST(schema: Schema.Schema.Any): SchemaAST.AST {
+function getBaseSchemaAST(schema: Schema.Schema.Any): SchemaAST.AST {
   let current = schema.ast
 
   while (SchemaAST.isRefinement(current) || SchemaAST.isTransformation(current)) {
@@ -12,7 +11,7 @@ export function getBaseSchemaAST(schema: Schema.Schema.Any): SchemaAST.AST {
   return current
 }
 
-export function isOptional(schema: Schema.Schema.Any): boolean {
+function isOptional(schema: Schema.Schema.Any): boolean {
   const ast = schema.ast
 
   if (ast._tag === "Union") {
@@ -71,7 +70,7 @@ export function schemaEqual(
   return true
 }
 
-export function getSchemaTypeName(schema: Schema.Schema.Any): string {
+function getSchemaTypeName(schema: Schema.Schema.Any): string {
   const baseAST = getBaseSchemaAST(schema)
   switch (baseAST._tag) {
     case "StringKeyword":
