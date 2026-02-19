@@ -15,6 +15,11 @@
     "verbatimModuleSyntax": false,
     "noEmit": true,
 
+    "paths": {
+      "effect-start/jsx-runtime": ["./src/hyper/jsx-runtime.ts"],
+      "effect-start/jsx-dev-runtime": ["./src/hyper/jsx-runtime.ts"]
+    },
+
     // Best practices
     "strict": true,
     "skipLibCheck": true,
@@ -30,5 +35,5 @@
   },
 
   "include": ["src"],
-  "exclude": ["**/*.todo.ts"]
+  "exclude": ["examples"]
 }
