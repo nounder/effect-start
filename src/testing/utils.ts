@@ -5,6 +5,8 @@ import * as Layer from "effect/Layer"
 import * as Logger from "effect/Logger"
 import type * as Scope from "effect/Scope"
 import type * as Utils from "effect/Utils"
+import * as NNet from "node:net"
+import * as System from "../System.ts"
 
 /**
  * Creates a scoped Effects and runs is asynchronously.
@@ -36,6 +38,63 @@ export const effectFn =
  * some tools, like effect-start, use it to generate temporary
  * files that are then loaded into a runtime.
  */
+export const randomFreePort: Effect.Effect<number, System.SystemError> = Effect.async<
+  number,
+  System.SystemError
+>((resume) => {
+  const server = NNet.createServer()
+  server.unref()
+  server.on("error", (err) =>
+    resume(
+      Effect.fail(
+        new System.SystemError({
+          reason: "Unknown",
+          module: "System",
+          method: "randomFreePort",
+          description: err.message,
+          cause: err,
+        }),
+      ),
+    ),
+  )
+  server.listen(0, "127.0.0.1", () => {
+    const address = server.address()
+    if (!address || typeof address === "string") {
+      server.close(() =>
+        resume(
+          Effect.fail(
+            new System.SystemError({
+              reason: "Unknown",
+              module: "System",
+              method: "randomFreePort",
+              description: "Failed to allocate a free port",
+            }),
+          ),
+        ),
+      )
+      return
+    }
+    const port = address.port
+    server.close((err) => {
+      if (err) {
+        resume(
+          Effect.fail(
+            new System.SystemError({
+              reason: "Unknown",
+              module: "System",
+              method: "randomFreePort",
+              description: err.message,
+              cause: err,
+            }),
+          ),
+        )
+        return
+      }
+      resume(Effect.succeed(port))
+    })
+  })
+})
+
 const clearStackTraces = (err: unknown) => {
   const ExternalStackTraceLineRegexp = /\(.*\/node_modules\/[^.]/
 

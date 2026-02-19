@@ -1,8 +1,7 @@
 import * as test from "bun:test"
 import * as Effect from "effect/Effect"
 import * as Schema from "effect/Schema"
-import { SqlClient } from "effect-start/sql"
-import * as SqlIntrospect from "effect-start/SqlIntrospect"
+import { SqlClient, SqlIntrospect } from "effect-start/sql"
 import * as BunSql from "../src/sql/bun/index.ts"
 
 const runSql = <A, E>(effect: Effect.Effect<A, E, SqlClient.SqlClient>) =>

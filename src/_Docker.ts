@@ -5,7 +5,7 @@ import * as Layer from "effect/Layer"
 import * as Ref from "effect/Ref"
 import * as Stream from "effect/Stream"
 
-import type * as ChildProcess from "./ChildProcess.ts"
+import type * as ChildProcess from "./_ChildProcess.ts"
 import * as System from "./System.ts"
 
 export class DockerError extends Data.TaggedError("DockerError")<{

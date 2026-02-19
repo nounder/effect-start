@@ -3,7 +3,7 @@ import * as Layer from "effect/Layer"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
 import type * as BunTypes from "bun"
-import * as ChildProcess from "../ChildProcess.ts"
+import * as ChildProcess from "../_ChildProcess.ts"
 import * as System from "../System.ts"
 
 export const layer: Layer.Layer<ChildProcess.ChildProcessSpawner> = Layer.succeed(

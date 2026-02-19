@@ -176,7 +176,7 @@ export function walkRoutesDirectory(
   dir: string,
 ): Effect.Effect<
   OrderedFileRoutes,
-  System.PlatformError | FileRouterError,
+  System.SystemError | FileRouterError,
   FileSystem.FileSystem
 > {
   return Effect.gen(function* () {

@@ -9,26 +9,14 @@ import * as Function from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Scope from "effect/Scope"
 import * as SynchronizedRef from "effect/SynchronizedRef"
-import type * as ChildProcess from "./ChildProcess.ts"
+import type * as ChildProcess from "./_ChildProcess.ts"
 import * as MutableRef from "effect/MutableRef"
 import * as BunRuntime from "./bun/BunRuntime.ts"
 import * as BunServer from "./bun/BunServer.ts"
 import * as NodeFileSystem from "./node/NodeFileSystem.ts"
 import * as BunChildProcessSpawner from "./bun/BunChildProcessSpawner.ts"
 import * as PlatformRuntime from "./PlatformRuntime.ts"
-import * as StartApp from "./StartApp.ts"
-
-export function layer<
-  Layers extends [Layer.Layer<never, any, any>, ...Array<Layer.Layer<never, any, any>>],
->(
-  ...layers: Layers
-): Layer.Layer<
-  { [k in keyof Layers]: Layer.Layer.Success<Layers[k]> }[number],
-  { [k in keyof Layers]: Layer.Layer.Error<Layers[k]> }[number],
-  { [k in keyof Layers]: Layer.Layer.Context<Layers[k]> }[number]
-> {
-  return Layer.mergeAll(...layers)
-}
+import * as StartApp from "./_StartApp.ts"
 
 /**
  * Bundles layers together, wiring their dependencies automatically.
@@ -96,18 +84,6 @@ type OrderedPack<
     ]
   : []
 
-/**
- * Like `pack`, but accepts layers in any order.
- *
- * ```ts
- * // These all produce the same result:
- * Start.build(LoggerLive, DatabaseLive, UserRepoLive)
- * Start.build(UserRepoLive, DatabaseLive, LoggerLive)
- * ```
- *
- * @since 1.0.0
- * @category constructors
- */
 type BuildSuccess<Layers extends readonly Layer.Layer.Any[]> = {
   [K in keyof Layers]: Layer.Layer.Success<Layers[K]>
 }[number]
@@ -121,6 +97,18 @@ type BuildContext<Layers extends readonly Layer.Layer.Any[]> = Exclude<
   { [K in keyof Layers]: Layer.Layer.Success<Layers[K]> }[number]
 >
 
+/**
+ * Like `pack`, but accepts layers in any order.
+ *
+ * ```ts
+ * // These all produce the same result:
+ * Start.build(LoggerLive, DatabaseLive, UserRepoLive)
+ * Start.build(UserRepoLive, DatabaseLive, LoggerLive)
+ * ```
+ *
+ * @since 1.0.0
+ * @category constructors
+ */
 export function build<const Layers extends readonly [Layer.Layer.Any, ...Array<Layer.Layer.Any>]>(
   ...layers: Layers
 ): Layer.Layer<BuildSuccess<Layers>, BuildError<Layers>, BuildContext<Layers>> {
@@ -170,26 +158,19 @@ export function build<const Layers extends readonly [Layer.Layer.Any, ...Array<L
   )
 }
 
-export type PlatformServices =
-  | BunServer.BunServer
-  | FileSystem.FileSystem
-  | ChildProcess.ChildProcessSpawner
-  | StartApp.StartApp
+export function layerDev() {
+  return Layer.mergeAll(NodeFileSystem.layer, BunChildProcessSpawner.layer)
+}
 
-export const Live: Layer.Layer<
-  Exclude<PlatformServices, BunServer.BunServer>,
-  never,
-  never
-> = Layer.mergeAll(
-  NodeFileSystem.layer,
-  BunChildProcessSpawner.layer,
-  Layer.effect(
-    StartApp.StartApp,
-    Deferred.make<BunServer.BunServer>().pipe(Effect.map((server) => ({ server }))),
-  ),
-)
-
-export function serve<ROut, E, RIn extends PlatformServices>(
+export function serve<
+  ROut,
+  E,
+  RIn extends
+    | BunServer.BunServer
+    | FileSystem.FileSystem
+    | ChildProcess.ChildProcessSpawner
+    | StartApp.StartApp,
+>(
   load: () => Promise<{
     default: Layer.Layer<ROut, E, RIn>
   }>,
@@ -201,7 +182,18 @@ export function serve<ROut, E, RIn extends PlatformServices>(
     Layer.unwrapEffect,
   )
 
-  const appLayerResolved = Function.pipe(appLayer, Layer.provideMerge(Live))
+  const appLayerResolved = Function.pipe(
+    appLayer,
+    Layer.provideMerge(
+      Layer.mergeAll(
+        layerDev(),
+        Layer.effect(
+          StartApp.StartApp,
+          Deferred.make<BunServer.BunServer>().pipe(Effect.map((server) => ({ server }))),
+        ),
+      ),
+    ),
+  )
 
   const composed = Function.pipe(
     BunServer.layerStart(),

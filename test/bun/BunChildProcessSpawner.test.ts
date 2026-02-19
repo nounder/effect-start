@@ -3,7 +3,7 @@ import * as Effect from "effect/Effect"
 import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 
-import * as ChildProcess from "effect-start/ChildProcess"
+import * as ChildProcess from "../../src/_ChildProcess.ts"
 import * as System from "effect-start/System"
 import { BunChildProcessSpawner } from "effect-start/bun"
 

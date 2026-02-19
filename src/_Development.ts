@@ -45,7 +45,7 @@ const watchSource = (opts?: {
   path?: string
   recursive?: boolean
   filter?: (event: FileSystem.WatchEvent) => boolean
-}): Stream.Stream<FileSystem.WatchEvent, System.PlatformError, FileSystem.FileSystem> => {
+}): Stream.Stream<FileSystem.WatchEvent, System.SystemError, FileSystem.FileSystem> => {
   const baseDir = opts?.path ?? process.cwd()
   const customFilter = opts?.filter
 

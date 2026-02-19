@@ -31,7 +31,7 @@ export interface Command extends Pipeable.Pipeable {
   [Symbol.iterator](): Effect.EffectGenerator<
     Effect.Effect<
       ChildProcessHandle,
-      System.PlatformError,
+      System.SystemError,
       ChildProcessSpawner | Scope.Scope
     >
   >
@@ -114,12 +114,12 @@ export interface KillOptions {
 
 export interface ChildProcessHandle {
   readonly pid: number
-  readonly exitCode: Effect.Effect<number, System.PlatformError>
-  readonly isRunning: Effect.Effect<boolean, System.PlatformError>
-  readonly kill: (options?: KillOptions) => Effect.Effect<void, System.PlatformError>
-  readonly stdin: Sink.Sink<void, Uint8Array, never, System.PlatformError>
-  readonly stdout: Stream.Stream<Uint8Array, System.PlatformError>
-  readonly stderr: Stream.Stream<Uint8Array, System.PlatformError>
+  readonly exitCode: Effect.Effect<number, System.SystemError>
+  readonly isRunning: Effect.Effect<boolean, System.SystemError>
+  readonly kill: (options?: KillOptions) => Effect.Effect<void, System.SystemError>
+  readonly stdin: Sink.Sink<void, Uint8Array, never, System.SystemError>
+  readonly stdout: Stream.Stream<Uint8Array, System.SystemError>
+  readonly stderr: Stream.Stream<Uint8Array, System.SystemError>
 }
 
 export class ChildProcessSpawner extends Context.Tag("effect-start/ChildProcessSpawner")<
@@ -127,7 +127,7 @@ export class ChildProcessSpawner extends Context.Tag("effect-start/ChildProcessS
   {
     readonly spawn: (
       command: Command,
-    ) => Effect.Effect<ChildProcessHandle, System.PlatformError, Scope.Scope>
+    ) => Effect.Effect<ChildProcessHandle, System.SystemError, Scope.Scope>
   }
 >() {}
 
@@ -135,6 +135,6 @@ export const spawn = (
   command: Command,
 ): Effect.Effect<
   ChildProcessHandle,
-  System.PlatformError,
+  System.SystemError,
   ChildProcessSpawner | Scope.Scope
 > => Effect.flatMap(ChildProcessSpawner, (spawner) => spawner.spawn(command))

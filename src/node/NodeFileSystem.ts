@@ -16,7 +16,8 @@ import * as System from "../System.ts"
 import * as Effectify from "../_Effectify.ts"
 
 const handleBadArgument = (method: string) => (cause: unknown) =>
-  new System.BadArgument({
+  new System.SystemError({
+    reason: "BadArgument",
     module: "FileSystem",
     method,
     cause,
@@ -324,7 +325,7 @@ const makeFile = (() => {
       )
     }
 
-    private writeAllChunk(buffer: Uint8Array): Effect.Effect<void, System.PlatformError> {
+    private writeAllChunk(buffer: Uint8Array): Effect.Effect<void, System.SystemError> {
       return Effect.flatMap(
         Effect.suspend(() =>
           nodeWriteAll(
@@ -398,7 +399,7 @@ const readDirectory = (path: string, options?: FileSystem.ReadDirectoryOptions) 
   })
 
 const readFile = (path: string) =>
-  Effect.async<Uint8Array, System.PlatformError>((resume, signal) => {
+  Effect.async<Uint8Array, System.SystemError>((resume, signal) => {
     try {
       NFS.readFile(path, { signal }, (err, data) => {
         if (err) {
@@ -508,7 +509,7 @@ const utimes = (() => {
 })()
 
 const watchNode = (path: string, options?: FileSystem.WatchOptions) =>
-  Stream.asyncScoped<FileSystem.WatchEvent, System.PlatformError>((emit) =>
+  Stream.asyncScoped<FileSystem.WatchEvent, System.SystemError>((emit) =>
     Effect.acquireRelease(
       Effect.sync(() => {
         const watcher = NFS.watch(path, { recursive: options?.recursive }, (event, path) => {
@@ -568,7 +569,7 @@ const watch = (
   )
 
 const writeFile = (path: string, data: Uint8Array, options?: FileSystem.WriteFileOptions) =>
-  Effect.async<void, System.PlatformError>((resume, signal) => {
+  Effect.async<void, System.SystemError>((resume, signal) => {
     try {
       NFS.writeFile(
         path,
@@ -630,7 +631,7 @@ export function handleErrnoException(module: System.SystemError["module"], metho
   return function (
     err: NodeJS.ErrnoException,
     [path]: [path: NFS.PathLike | number, ...args: Array<any>],
-  ): System.PlatformError {
+  ): System.SystemError {
     let reason: System.SystemErrorReason = "Unknown"
 
     switch (err.code) {

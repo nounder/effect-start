@@ -9,7 +9,7 @@ import * as MutableRef from "effect/MutableRef"
 import * as Option from "effect/Option"
 import * as Runtime from "effect/Runtime"
 
-import * as ChildProcess from "./ChildProcess.ts"
+import * as ChildProcess from "./_ChildProcess.ts"
 
 interface CacheEntry {
   readonly context: Context.Context<any>

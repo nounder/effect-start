@@ -1,6 +1,6 @@
 import * as Effect from "effect/Effect"
 import * as Schema from "effect/Schema"
-import * as SqlClient from "./sql/SqlClient.ts"
+import * as SqlClient from "./SqlClient.ts"
 
 export interface Column {
   readonly tableSchema: string
