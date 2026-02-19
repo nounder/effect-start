@@ -1,5 +1,5 @@
 import * as test from "bun:test"
-import * as ContentNegotiation from "effect-start/ContentNegotiation"
+import * as ContentNegotiation from "../src/_ContentNegotiation.ts"
 
 test.describe("ContentNegotiation.media", () => {
   test.it("returns empty array when no types provided", () => {

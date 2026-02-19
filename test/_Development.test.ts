@@ -5,7 +5,7 @@ import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
 import * as Layer from "effect/Layer"
 import * as Stream from "effect/Stream"
-import * as Development from "effect-start/Development"
+import * as Development from "../src/_Development.ts"
 import * as FileSystem from "effect-start/FileSystem"
 
 test.beforeEach(() => {

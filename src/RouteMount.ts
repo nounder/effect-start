@@ -1,7 +1,7 @@
 import * as Function from "effect/Function"
 import type * as Types from "effect/Types"
 import type * as Http from "./_Http.ts"
-import type * as PathPattern from "./PathPattern.ts"
+import type * as PathPattern from "./_PathPattern.ts"
 import * as Route from "./Route.ts"
 import type * as RouteBody from "./RouteBody.ts"
 

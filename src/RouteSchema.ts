@@ -4,7 +4,7 @@ import * as Schema from "effect/Schema"
 import type * as Scope from "effect/Scope"
 import * as Entity from "./Entity.ts"
 import * as Http from "./_Http.ts"
-import * as PathPattern from "./PathPattern.ts"
+import * as PathPattern from "./_PathPattern.ts"
 import * as Route from "./Route.ts"
 import * as RouteHook from "./RouteHook.ts"
 

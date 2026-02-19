@@ -1,5 +1,5 @@
 import * as test from "bun:test"
-import * as PathPattern from "effect-start/PathPattern"
+import * as PathPattern from "../src/_PathPattern.ts"
 
 test.describe(PathPattern.validate, () => {
   test.it("validates simple paths", () => {

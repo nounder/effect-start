@@ -1,7 +1,7 @@
 import * as test from "bun:test"
 import * as Either from "effect/Either"
 import * as FileRouter from "../src/FileRouter.ts"
-import * as PathPattern from "../src/PathPattern.ts"
+import * as PathPattern from "../src/_PathPattern.ts"
 
 test.it("converts empty file paths", () => {
   test.expect(PathPattern.fromFilePath("")).toEqual(Either.right("/"))

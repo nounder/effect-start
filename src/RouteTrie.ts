@@ -1,4 +1,4 @@
-import * as PathPattern from "./PathPattern.ts"
+import * as PathPattern from "./_PathPattern.ts"
 import * as Route from "./Route.ts"
 
 export interface Node {

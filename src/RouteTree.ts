@@ -1,5 +1,5 @@
 import * as Predicate from "effect/Predicate"
-import * as PathPattern from "./PathPattern.ts"
+import * as PathPattern from "./_PathPattern.ts"
 import * as Route from "./Route.ts"
 import type * as RouteMount from "./RouteMount.ts"
 

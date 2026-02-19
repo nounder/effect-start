@@ -13,7 +13,7 @@ import * as NFS from "node:fs"
 import * as NOS from "node:os"
 import * as NPath from "node:path"
 import * as System from "../System.ts"
-import * as Effectify from "../Effectify.ts"
+import * as Effectify from "../_Effectify.ts"
 
 const handleBadArgument = (method: string) => (cause: unknown) =>
   new System.BadArgument({
