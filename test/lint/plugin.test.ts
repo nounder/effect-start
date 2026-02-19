@@ -42,11 +42,11 @@ function lintFix(code: string, filename = "test.ts") {
   }
 }
 
-test.describe.skipIf(!process.env.TEST_LINT)("prefer-namespace-import", () => {
+test.describe.skipIf(!process.env.TEST_LINT)("namespace-import", () => {
   test.it("flags named import from capitalized module", () => {
     const diags = lintRule(
       `import { Schema } from "effect/Schema"\nSchema\n`,
-      "prefer-namespace-import",
+      "namespace-import",
     )
     test.expect(diags).toHaveLength(1)
   })
@@ -54,20 +54,127 @@ test.describe.skipIf(!process.env.TEST_LINT)("prefer-namespace-import", () => {
   test.it("allows namespace import from capitalized module", () => {
     const diags = lintRule(
       `import * as Schema from "effect/Schema"\nSchema\n`,
-      "prefer-namespace-import",
+      "namespace-import",
     )
     test.expect(diags).toHaveLength(0)
   })
 
   test.it("flags named import from bun:test", () => {
-    const diags = lintRule(`import { expect } from "bun:test"\nexpect\n`, "prefer-namespace-import")
+    const diags = lintRule(`import { expect } from "bun:test"\nexpect\n`, "namespace-import")
     test.expect(diags).toHaveLength(1)
   })
 
   test.it("ignores lowercase modules", () => {
     const diags = lintRule(
       `import { start } from "effect-start/lint/server"\nstart\n`,
-      "prefer-namespace-import",
+      "namespace-import",
+    )
+    test.expect(diags).toHaveLength(0)
+  })
+
+  test.it("flags named import from _-prefixed capitalized module", () => {
+    const diags = lintRule(
+      `import { mapHeaders } from "../src/_Http.ts"\nmapHeaders\n`,
+      "namespace-import",
+    )
+    test.expect(diags).toHaveLength(1)
+  })
+
+  test.it("allows namespace import from _-prefixed capitalized module", () => {
+    const diags = lintRule(
+      `import * as _Http from "../src/_Http.ts"\n_Http\n`,
+      "namespace-import",
+    )
+    test.expect(diags).toHaveLength(0)
+  })
+
+  test.it("flags alias that doesn't match basename (local import)", () => {
+    const diags = lintRule(
+      `import * as Sql from "./SqlClient.ts"\nSql\n`,
+      "namespace-import",
+    )
+    test.expect(diags).toHaveLength(1)
+  })
+
+  test.it("allows matching alias and basename", () => {
+    const diags = lintRule(
+      `import * as SqlClient from "./SqlClient.ts"\nSqlClient\n`,
+      "namespace-import",
+    )
+    test.expect(diags).toHaveLength(0)
+  })
+
+  test.it("ignores mismatched alias for package imports", () => {
+    const diags = lintRule(`import * as S from "effect/Schema"\nS\n`, "namespace-import")
+    test.expect(diags).toHaveLength(0)
+  })
+
+  test.it("fixes alias to match basename", () => {
+    const fixed = lintFix(`import * as Sql from "./SqlClient.ts"\nconsole.log(Sql)\n`)
+    test
+      .expect(fixed)
+      .toBe(`import * as SqlClient from "./SqlClient.ts"\nconsole.log(SqlClient)\n`)
+  })
+
+  test.it("fixes all references to the alias", () => {
+    const code = [
+      'import * as Sql from "./SqlClient.ts"',
+      "const a = Sql.make()",
+      "const b = Sql.query(a)",
+      "",
+    ].join("\n")
+    const fixed = lintFix(code)
+    test
+      .expect(fixed)
+      .toBe(
+        [
+          'import * as SqlClient from "./SqlClient.ts"',
+          "const a = SqlClient.make()",
+          "const b = SqlClient.query(a)",
+          "",
+        ].join("\n"),
+      )
+  })
+
+  test.it("fixes type-only namespace import", () => {
+    const fixed = lintFix(`import type * as Sql from "./SqlClient.ts"\ntype X = Sql.Client\n`)
+    test
+      .expect(fixed)
+      .toBe(`import type * as SqlClient from "./SqlClient.ts"\ntype X = SqlClient.Client\n`)
+  })
+
+  test.it("strips file extension for basename comparison", () => {
+    const diags = lintRule(
+      `import * as Http from "../../src/HttpClient.js"\nHttp\n`,
+      "namespace-import",
+    )
+    test.expect(diags).toHaveLength(1)
+  })
+
+  test.it("does not auto-fix when basename collides with another import", () => {
+    const code = [
+      'import * as SqlClient from "./SqlClient.ts"',
+      'import * as Sql from "./other/SqlClient.ts"',
+      "Sql.make()",
+      "SqlClient.make()",
+      "",
+    ].join("\n")
+    const fixed = lintFix(code)
+    test.expect(fixed).toBe(code)
+  })
+
+  test.it("flags _-prefixed module with mismatched alias", () => {
+    const diags = lintRule(
+      `import * as Helpers from "../src/_Values.ts"\nHelpers\n`,
+      "namespace-import",
+    )
+    test.expect(diags).toHaveLength(1)
+  })
+
+  test.it("allows _-prefixed module with matching alias", () => {
+    const diags = lintRule(
+      `import * as _Values from "../src/_Values.ts"\n_Values\n`,
+      "namespace-import",
     )
     test.expect(diags).toHaveLength(0)
   })
@@ -261,112 +368,3 @@ test.describe.skipIf(!process.env.TEST_LINT)("no-destructured-params", () => {
   })
 })
 
-test.describe.skipIf(!process.env.TEST_LINT)("namespace-import-mismatch", () => {
-  test.it("flags alias that doesn't match basename", () => {
-    const diags = lintRule(
-      `import * as Sql from "effect-start/SqlClient"\nSql\n`,
-      "namespace-import-mismatch",
-    )
-    test.expect(diags).toHaveLength(1)
-  })
-
-  test.it("allows matching alias and basename", () => {
-    const diags = lintRule(
-      `import * as SqlClient from "effect-start/SqlClient"\nSqlClient\n`,
-      "namespace-import-mismatch",
-    )
-    test.expect(diags).toHaveLength(0)
-  })
-
-  test.it("ignores lowercase modules", () => {
-    const diags = lintRule(
-      `import * as utils from "effect-start/helpers.ts"\nutils\n`,
-      "namespace-import-mismatch",
-    )
-    test.expect(diags).toHaveLength(0)
-  })
-
-  test.it("ignores package imports", () => {
-    const diags = lintRule(`import * as S from "effect/Schema"\nS\n`, "namespace-import-mismatch")
-    test.expect(diags).toHaveLength(0)
-  })
-
-  test.it("ignores non-namespace imports", () => {
-    const diags = lintRule(
-      `import { SqlClient } from "effect-start/SqlClient"\nSqlClient\n`,
-      "namespace-import-mismatch",
-    )
-    test.expect(diags).toHaveLength(0)
-  })
-
-  test.it("fixes alias to match basename", () => {
-    const fixed = lintFix(`import * as Sql from "effect-start/SqlClient"\nconsole.log(Sql)\n`)
-    test
-      .expect(fixed)
-      .toBe(`import * as SqlClient from "effect-start/SqlClient"\nconsole.log(SqlClient)\n`)
-  })
-
-  test.it("fixes all references to the alias", () => {
-    const code = [
-      'import * as Sql from "effect-start/SqlClient"',
-      "const a = Sql.make()",
-      "const b = Sql.query(a)",
-      "",
-    ].join("\n")
-    const fixed = lintFix(code)
-    test
-      .expect(fixed)
-      .toBe(
-        [
-          'import * as SqlClient from "effect-start/SqlClient"',
-          "const a = SqlClient.make()",
-          "const b = SqlClient.query(a)",
-          "",
-        ].join("\n"),
-      )
-  })
-
-  test.it("fixes type-only namespace import", () => {
-    const fixed = lintFix(`import type * as Sql from "effect-start/SqlClient"\ntype X = Sql.Client\n`)
-    test
-      .expect(fixed)
-      .toBe(`import type * as SqlClient from "effect-start/SqlClient"\ntype X = SqlClient.Client\n`)
-  })
-
-  test.it("ignores node: protocol imports", () => {
-    const diags = lintRule(`import * as FS from "node:fs"\nFS\n`, "namespace-import-mismatch")
-    test.expect(diags).toHaveLength(0)
-  })
-
-  test.it("strips file extension for basename comparison", () => {
-    const diags = lintRule(
-      `import * as Http from "../../src/HttpClient.js"\nHttp\n`,
-      "namespace-import-mismatch",
-    )
-    test.expect(diags).toHaveLength(1)
-  })
-
-  test.it("does not auto-fix when basename collides with another import", () => {
-    const code = [
-      'import * as SqlClient from "effect/SqlClient"',
-      'import * as Sql from "effect-start/SqlClient"',
-      "Sql.make()",
-      "SqlClient.make()",
-      "",
-    ].join("\n")
-    const fixed = lintFix(code)
-    test.expect(fixed).toBe(code)
-  })
-
-  test.it("still reports when basename collides", () => {
-    const code = [
-      'import * as SqlClient from "effect/SqlClient"',
-      'import * as Sql from "effect-start/SqlClient"',
-      "Sql.make()",
-      "SqlClient.make()",
-      "",
-    ].join("\n")
-    const diags = lintRule(code, "namespace-import-mismatch")
-    test.expect(diags).toHaveLength(1)
-  })
-})

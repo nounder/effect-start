@@ -9,12 +9,12 @@ export default {
     version: "0.1.0",
   },
   rules: {
-    "prefer-namespace-import": {
+    "namespace-import": {
       meta: {
         type: "suggestion",
         docs: {
           description:
-            "Enforce namespace imports for modules with capitalized base names or specific forced modules",
+            "Enforce namespace imports with matching aliases for capitalized modules and specific forced modules",
         },
         fixable: "code",
         hasSuggestions: true,
@@ -22,11 +22,19 @@ export default {
         messages: {
           preferNamespace:
             'Use namespace import for module "{{source}}": import {{typePrefix}}* as {{baseName}} from "{{source}}"',
+          mismatch:
+            'Namespace import alias "{{alias}}" does not match module basename "{{baseName}}"',
         },
       },
       create(context) {
+        const importNames = new Set()
+
         return {
           ImportDeclaration(node) {
+            for (const spec of node.specifiers) {
+              importNames.add(spec.local.name)
+            }
+
             const source = node.source.value
             if (typeof source !== "string") return
 
@@ -36,25 +44,55 @@ export default {
             const forced = forceNamespace.has(source)
             if (!forced && !isCapitalized(baseName)) return
 
-            // Already a namespace import (with or without type-only)
-            if (
+            const isNamespace =
               node.specifiers.length === 1 &&
               node.specifiers[0].type === "ImportNamespaceSpecifier"
-            ) {
+
+            if (isNamespace) {
+              if (!isLocalImport(source)) return
+
+              const alias = node.specifiers[0].local.name
+              if (alias === baseName) return
+
+              const hasCollision = importNames.has(baseName) && alias !== baseName
+              const sourceCode = context.sourceCode || context.getSourceCode()
+
+              context.report({
+                node,
+                messageId: "mismatch",
+                data: { alias, baseName },
+                fix: hasCollision
+                  ? undefined
+                  : (fixer) => {
+                      const fixes = [
+                        fixer.replaceText(
+                          node,
+                          `import ${node.importKind === "type" ? "type " : ""}* as ${baseName} from "${source}"`,
+                        ),
+                      ]
+
+                      for (const variable of sourceCode.getDeclaredVariables(node.specifiers[0])) {
+                        for (const ref of variable.references) {
+                          if (ref.identifier.range[0] === node.specifiers[0].local.range[0])
+                            continue
+                          fixes.push(fixer.replaceTextRange(ref.identifier.range, baseName))
+                        }
+                      }
+
+                      return fixes
+                    },
+              })
               return
             }
 
-            // Skip if there are no specifiers (side-effect import)
             if (node.specifiers.length === 0) return
 
-            // Skip if it's only a default import (not applicable for forced modules)
             if (!forced) {
               const hasNamedImports = node.specifiers.some((s) => s.type === "ImportSpecifier")
               if (!hasNamedImports) return
             }
 
             const typePrefix = node.importKind === "type" ? "type " : ""
-
             const sourceCode = context.sourceCode || context.getSourceCode()
 
             context.report({
@@ -335,80 +373,6 @@ export default {
           FunctionDeclaration: checkParams,
           FunctionExpression: checkParams,
           ArrowFunctionExpression: checkParams,
-        }
-      },
-    },
-
-    "namespace-import-mismatch": {
-      meta: {
-        type: "suggestion",
-        docs: {
-          description:
-            "Warn when a namespace import alias doesn't match the basename of the module path",
-        },
-        fixable: "code",
-        schema: [],
-        messages: {
-          mismatch:
-            'Namespace import alias "{{alias}}" does not match module basename "{{baseName}}"',
-        },
-      },
-      create(context) {
-        const importNames = new Set()
-
-        return {
-          ImportDeclaration(node) {
-            for (const spec of node.specifiers) {
-              importNames.add(spec.local.name)
-            }
-
-            const source = node.source.value
-            if (typeof source !== "string") return
-
-            if (
-              node.specifiers.length !== 1 ||
-              node.specifiers[0].type !== "ImportNamespaceSpecifier"
-            ) {
-              return
-            }
-
-            if (!isLocalImport(source)) return
-
-            const baseName = getBaseName(source)
-            if (!baseName) return
-            if (!isCapitalized(baseName)) return
-
-            const alias = node.specifiers[0].local.name
-            if (alias === baseName) return
-
-            const hasCollision = importNames.has(baseName) && alias !== baseName
-            const sourceCode = context.sourceCode || context.getSourceCode()
-
-            context.report({
-              node,
-              messageId: "mismatch",
-              data: { alias, baseName },
-              fix: hasCollision
-                ? undefined
-                : (fixer) => {
-                    const fixes = [
-                      fixer.replaceText(
-                        node,
-                        `import ${node.importKind === "type" ? "type " : ""}* as ${baseName} from "${source}"`,
-                      ),
-                    ]
-
-                    for (const variable of sourceCode.getDeclaredVariables(node.specifiers[0])) {
-                      for (const ref of variable.references) {
-                        if (ref.identifier.range[0] === node.specifiers[0].local.range[0]) continue
-                        fixes.push(fixer.replaceTextRange(ref.identifier.range, baseName))
-                      }
-                    }
-
-                    return fixes
-                  },
-            })
-          },
         }
       },
     },
@@ -702,6 +666,7 @@ function isLocalImport(source) {
 }
 
 function isCapitalized(name) {
+  if (name.length > 0 && name[0] === "_") return isCapitalized(name.slice(1))
   return name.length > 0 && name[0] >= "A" && name[0] <= "Z"
 }
 

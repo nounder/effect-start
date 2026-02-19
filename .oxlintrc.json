@@ -62,17 +62,14 @@
     // Effect patterns use unused expressions for type-level assertions
     "no-unused-expressions": "off",
 
-    // Enforce namespace imports for modules with capitalized base names
-    "effect-start/prefer-namespace-import": "error",
+    // Enforce namespace imports with matching aliases for capitalized modules
+    "effect-start/namespace-import": "error",
 
     // Enforce blank lines around test calls
     "effect-start/test-space-around": "warn",
 
     // Disallow destructuring objects in function parameters
     "effect-start/no-destructured-params": "warn",
-
-    // Warn when namespace import alias doesn't match module basename
-    "effect-start/namespace-import-mismatch": "warn",
 
     // Disallow await Effect.runPromise in test callbacks
     "effect-start/test-effects": "warn"
