@@ -15,7 +15,7 @@ import type * as RouteBody from "./RouteBody.ts"
 import * as RouteHttpTracer from "./RouteHttpTracer.ts"
 import type * as RouteMount from "./RouteMount.ts"
 import * as RouteTree from "./RouteTree.ts"
-import * as StreamExtra from "./StreamExtra.ts"
+import * as StreamExtra from "./_StreamExtra.ts"
 
 type UnboundedRouteWithMethod = Route.Route.With<{
   method: RouteMount.RouteMount.Method

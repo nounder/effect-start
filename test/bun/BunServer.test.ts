@@ -234,7 +234,11 @@ test.describe("Start.serve composition", () => {
   test.test("route-aware layer fails without Route.Routes", async () => {
     const program = Effect.gen(function* () {
       yield* BunServer.BunServer
-    }).pipe(Effect.provide(BunServer.layerRoutes({ port: 0 })), Effect.scoped) as Effect.Effect<void, never, never>
+    }).pipe(Effect.provide(BunServer.layerRoutes({ port: 0 })), Effect.scoped) as Effect.Effect<
+      void,
+      never,
+      never
+    >
 
     const exit = await Effect.runPromiseExit(program)
 

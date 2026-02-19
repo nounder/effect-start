@@ -10,12 +10,27 @@ export const string = (name: string): Argument<string> => argMake(name, Primitiv
 export const integer = (name: string): Argument<number> => argMake(name, Primitive.integer)
 export const float = (name: string): Argument<number> => argMake(name, Primitive.float)
 export const date = (name: string): Argument<Date> => argMake(name, Primitive.date)
-export const redacted = (name: string): Argument<Redacted.Redacted<string>> => argMake(name, Primitive.redacted)
-export const choice = <const C extends ReadonlyArray<string>>(name: string, choices: C): Argument<C[number]> =>
-  Param.makeSingleParam({ kind: "argument", name, primitiveType: Primitive.choice(choices.map((v) => [v, v] as const)) })
-export const choiceWithValue = <const C extends ReadonlyArray<readonly [string, any]>>(name: string, choices: C): Argument<C[number][1]> =>
+export const redacted = (name: string): Argument<Redacted.Redacted<string>> =>
+  argMake(name, Primitive.redacted)
+export const choice = <const C extends ReadonlyArray<string>>(
+  name: string,
+  choices: C,
+): Argument<C[number]> =>
+  Param.makeSingleParam({
+    kind: "argument",
+    name,
+    primitiveType: Primitive.choice(choices.map((v) => [v, v] as const)),
+  })
+export const choiceWithValue = <const C extends ReadonlyArray<readonly [string, any]>>(
+  name: string,
+  choices: C,
+): Argument<C[number][1]> =>
   Param.makeSingleParam({ kind: "argument", name, primitiveType: Primitive.choice(choices) })
-export const none: Argument<never> = Param.makeSingleParam({ kind: "argument", name: "__none__", primitiveType: Primitive.none }) as Argument<never>
+export const none: Argument<never> = Param.makeSingleParam({
+  kind: "argument",
+  name: "__none__",
+  primitiveType: Primitive.none,
+}) as Argument<never>
 
 const combinators = Param.makeParamCombinators("argument")
 export const optional = combinators.optional

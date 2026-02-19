@@ -402,9 +402,9 @@ const removeNode = (node: Node): void => {
   ctxIdMap.has(node) ? moveBefore(ctxPantry, node, null) : node.parentNode?.removeChild(node)
 }
 
-const moveBefore: (parentNode: Node, node: Node, after: Node | null) => void =
-  // @ts-expect-error
-  removeNode.call.bind(ctxPantry.moveBefore ?? ctxPantry.insertBefore)
+const moveBefore: (parentNode: Node, node: Node, after: Node | null) => void = removeNode.call.bind(
+  ctxPantry.moveBefore ?? ctxPantry.insertBefore,
+)
 
 const aliasedPreserveAttr = aliasify("preserve-attr")
 

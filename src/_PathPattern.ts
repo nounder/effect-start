@@ -63,9 +63,7 @@ export function validate(path: string): ValidateResult {
   return { ok: true, segments }
 }
 
-export function fromFilePath(
-  filePath: string,
-): Either.Either<PathPattern, PathPatternError> {
+export function fromFilePath(filePath: string): Either.Either<PathPattern, PathPatternError> {
   const parts = filePath.split("/").filter(Boolean)
   const pathParts: Array<string> = []
   let sawRest = false

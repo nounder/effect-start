@@ -29,8 +29,14 @@ export interface ArgDoc {
 
 export const formatHelpDoc = (doc: HelpDoc): string => {
   const sections: Array<string> = []
-  if (doc.description) { sections.push("DESCRIPTION"); sections.push(`  ${doc.description}`); sections.push("") }
-  sections.push("USAGE"); sections.push(`  ${doc.usage}`); sections.push("")
+  if (doc.description) {
+    sections.push("DESCRIPTION")
+    sections.push(`  ${doc.description}`)
+    sections.push("")
+  }
+  sections.push("USAGE")
+  sections.push(`  ${doc.usage}`)
+  sections.push("")
   if (doc.args && doc.args.length > 0) {
     sections.push("ARGUMENTS")
     for (const a of doc.args) {

@@ -24,10 +24,7 @@ export interface FileSystem {
     toPath: string,
     options?: CopyOptions,
   ) => Effect.Effect<void, System.SystemError>
-  readonly copyFile: (
-    fromPath: string,
-    toPath: string,
-  ) => Effect.Effect<void, System.SystemError>
+  readonly copyFile: (fromPath: string, toPath: string) => Effect.Effect<void, System.SystemError>
   readonly chmod: (path: string, mode: number) => Effect.Effect<void, System.SystemError>
   readonly chown: (
     path: string,
@@ -35,10 +32,7 @@ export interface FileSystem {
     gid: number,
   ) => Effect.Effect<void, System.SystemError>
   readonly exists: (path: string) => Effect.Effect<boolean, System.SystemError>
-  readonly link: (
-    fromPath: string,
-    toPath: string,
-  ) => Effect.Effect<void, System.SystemError>
+  readonly link: (fromPath: string, toPath: string) => Effect.Effect<void, System.SystemError>
   readonly makeDirectory: (
     path: string,
     options?: MakeDirectoryOptions,
@@ -74,10 +68,7 @@ export interface FileSystem {
     path: string,
     options?: RemoveOptions,
   ) => Effect.Effect<void, System.SystemError>
-  readonly rename: (
-    oldPath: string,
-    newPath: string,
-  ) => Effect.Effect<void, System.SystemError>
+  readonly rename: (oldPath: string, newPath: string) => Effect.Effect<void, System.SystemError>
   readonly sink: (
     path: string,
     options?: SinkOptions,
@@ -87,14 +78,8 @@ export interface FileSystem {
     path: string,
     options?: StreamOptions,
   ) => Stream.Stream<Uint8Array, System.SystemError>
-  readonly symlink: (
-    fromPath: string,
-    toPath: string,
-  ) => Effect.Effect<void, System.SystemError>
-  readonly truncate: (
-    path: string,
-    length?: SizeInput,
-  ) => Effect.Effect<void, System.SystemError>
+  readonly symlink: (fromPath: string, toPath: string) => Effect.Effect<void, System.SystemError>
+  readonly truncate: (path: string, length?: SizeInput) => Effect.Effect<void, System.SystemError>
   readonly utimes: (
     path: string,
     atime: Date | number,
@@ -350,14 +335,7 @@ const fileStream = (file: File, options: StreamOptions = {}) => {
 
   function loop(
     totalBytesRead: bigint,
-  ): Channel.Channel<
-    Chunk.Chunk<Uint8Array>,
-    unknown,
-    System.SystemError,
-    unknown,
-    void,
-    unknown
-  > {
+  ): Channel.Channel<Chunk.Chunk<Uint8Array>, unknown, System.SystemError, unknown, void, unknown> {
     if (bytesToRead !== undefined && bytesToRead <= totalBytesRead) {
       return Channel.void
     }

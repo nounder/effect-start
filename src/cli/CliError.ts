@@ -5,8 +5,14 @@ const CliErrorTypeId = "~effect-start/Cli/CliError"
 export const isCliError = (u: unknown): u is CliError => Predicate.hasProperty(u, CliErrorTypeId)
 
 export type CliErrorReason =
-  | "UnrecognizedOption" | "DuplicateOption" | "MissingOption" | "MissingArgument"
-  | "InvalidValue" | "UnknownSubcommand" | "ShowHelp" | "UserError"
+  | "UnrecognizedOption"
+  | "DuplicateOption"
+  | "MissingOption"
+  | "MissingArgument"
+  | "InvalidValue"
+  | "UnknownSubcommand"
+  | "ShowHelp"
+  | "UserError"
 
 const suggestText = (suggestions: ReadonlyArray<string>) =>
   suggestions.length > 0 ? `\n\n  Did you mean this?\n    ${suggestions.join("\n    ")}` : ""
@@ -35,8 +41,10 @@ const formatMessage = (reason: CliErrorReason, props: Record<string, any>): stri
         : `Unknown subcommand "${props.subcommand}"`
       return base + suggestText(props.suggestions ?? [])
     }
-    case "ShowHelp": return "Help requested"
-    case "UserError": return String(props.cause)
+    case "ShowHelp":
+      return "Help requested"
+    case "UserError":
+      return String(props.cause)
   }
 }
 
@@ -48,7 +56,9 @@ export class CliError {
     this.reason = props.reason
     Object.assign(this, props)
   }
-  get message(): string { return formatMessage(this.reason, this as any) }
+  get message(): string {
+    return formatMessage(this.reason, this as any)
+  }
 }
 
 export const formatErrors = (errors: ReadonlyArray<CliError>): string => {

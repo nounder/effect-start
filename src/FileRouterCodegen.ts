@@ -19,9 +19,7 @@ export function validateRouteModule(module: unknown): module is FileRouter.Route
   return true
 }
 
-export function generatePathParamsSchema(
-  path: PathPattern.PathPattern,
-): Schema.Struct<any> | null {
+export function generatePathParamsSchema(path: PathPattern.PathPattern): Schema.Struct<any> | null {
   const fields: Record<PropertyKey, Schema.Schema.Any | Schema.PropertySignature.All> = {}
 
   for (const param of PathPattern.params(path)) {

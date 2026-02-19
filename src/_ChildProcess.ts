@@ -29,11 +29,7 @@ export interface Command extends Pipeable.Pipeable {
   readonly stderr?: Stdio
   readonly detached?: boolean
   [Symbol.iterator](): Effect.EffectGenerator<
-    Effect.Effect<
-      ChildProcessHandle,
-      System.SystemError,
-      ChildProcessSpawner | Scope.Scope
-    >
+    Effect.Effect<ChildProcessHandle, System.SystemError, ChildProcessSpawner | Scope.Scope>
   >
 }
 
@@ -133,8 +129,5 @@ export class ChildProcessSpawner extends Context.Tag("effect-start/ChildProcessS
 
 export const spawn = (
   command: Command,
-): Effect.Effect<
-  ChildProcessHandle,
-  System.SystemError,
-  ChildProcessSpawner | Scope.Scope
-> => Effect.flatMap(ChildProcessSpawner, (spawner) => spawner.spawn(command))
+): Effect.Effect<ChildProcessHandle, System.SystemError, ChildProcessSpawner | Scope.Scope> =>
+  Effect.flatMap(ChildProcessSpawner, (spawner) => spawner.spawn(command))

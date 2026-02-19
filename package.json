@@ -27,6 +27,10 @@
       "source": "./src/lint/plugin.js",
       "default": "./dist/lint/plugin.js"
     },
+    "./x/*": {
+      "source": "./src/x/*/index.ts",
+      "default": "./dist/x/*/index.js"
+    },
     "./x/tailwind/plugin": {
       "source": "./src/x/tailwind/plugin.ts",
       "default": "./dist/x/tailwind/plugin.js"

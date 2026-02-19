@@ -152,7 +152,9 @@ export function fromFileRoutes(fileRoutes: FileRoutes): Effect.Effect<RouteTree.
 
         if (Either.isLeft(result)) {
           const error = result.left
-          for (const route of Route.use(Route.render((): Effect.Effect<string, FileRouterError> => Effect.fail(error)))) {
+          for (const route of Route.use(
+            Route.render((): Effect.Effect<string, FileRouterError> => Effect.fail(error)),
+          )) {
             ;(allRoutes as Array<any>).push(route)
           }
         } else {
@@ -174,11 +176,7 @@ export function fromFileRoutes(fileRoutes: FileRoutes): Effect.Effect<RouteTree.
 
 export function walkRoutesDirectory(
   dir: string,
-): Effect.Effect<
-  OrderedFileRoutes,
-  System.SystemError | FileRouterError,
-  FileSystem.FileSystem
-> {
+): Effect.Effect<OrderedFileRoutes, System.SystemError | FileRouterError, FileSystem.FileSystem> {
   return Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const files = yield* fs.readDirectory(dir, { recursive: true })
@@ -206,8 +204,12 @@ export function getFileRoutes(
       .toSorted((a, b) => {
         const aDepth = a.modulePath.split("/").filter(Boolean).length - 1
         const bDepth = b.modulePath.split("/").filter(Boolean).length - 1
-        const aHasRest = a.routePath.split("/").some((seg) => seg.startsWith(":") && seg.endsWith("*"))
-        const bHasRest = b.routePath.split("/").some((seg) => seg.startsWith(":") && seg.endsWith("*"))
+        const aHasRest = a.routePath
+          .split("/")
+          .some((seg) => seg.startsWith(":") && seg.endsWith("*"))
+        const bHasRest = b.routePath
+          .split("/")
+          .some((seg) => seg.startsWith(":") && seg.endsWith("*"))
 
         return (
           // rest is a dominant factor (routes with rest come last)

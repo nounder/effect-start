@@ -294,9 +294,7 @@ test.describe("fromHandler", () => {
           headers: { "content-type": "application/json" },
         })
 
-      const client = Fetch.fromHandler(handler).use(
-        Fetch.filterStatusOk(),
-      )
+      const client = Fetch.fromHandler(handler).use(Fetch.filterStatusOk())
 
       const entity = yield* client.fetch("http://localhost/api")
       const json = yield* entity.json

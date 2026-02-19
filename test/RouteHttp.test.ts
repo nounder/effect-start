@@ -1824,7 +1824,9 @@ test.describe("RouteTree layer routes", () => {
 
       const handles = Object.fromEntries(RouteHttp.walkHandles(tree, runtime))
 
-      const response = yield* Effect.promise(() => Fetch.fromHandler(handles["/test"], { path: "/test" }))
+      const response = yield* Effect.promise(() =>
+        Fetch.fromHandler(handles["/test"], { path: "/test" }),
+      )
 
       test.expect(response.status).toBe(500)
 

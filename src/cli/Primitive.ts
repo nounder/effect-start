@@ -12,7 +12,8 @@ export const make = <A>(
 ): Primitive<A> => ({ _tag: tag, parse })
 
 export const isTrueValue = (v: string) => ["true", "1", "y", "yes", "on"].includes(v.toLowerCase())
-export const isFalseValue = (v: string) => ["false", "0", "n", "no", "off"].includes(v.toLowerCase())
+export const isFalseValue = (v: string) =>
+  ["false", "0", "n", "no", "off"].includes(v.toLowerCase())
 export const isBooleanLiteral = (v: string) => isTrueValue(v) || isFalseValue(v)
 export const isBoolean = (p: Primitive<unknown>): p is Primitive<boolean> => p._tag === "Boolean"
 
@@ -42,20 +43,16 @@ export const date: Primitive<Date> = make("Date", (value) => {
   return Effect.succeed(d)
 })
 
-export const redacted: Primitive<Redacted.Redacted<string>> = make(
-  "Redacted",
-  (value) => Effect.succeed(Redacted.make(value)),
+export const redacted: Primitive<Redacted.Redacted<string>> = make("Redacted", (value) =>
+  Effect.succeed(Redacted.make(value)),
 )
 
-export const keyValuePair: Primitive<Record<string, string>> = make(
-  "KeyValuePair",
-  (value) => {
-    const idx = value.indexOf("=")
-    if (idx <= 0 || idx === value.length - 1)
-      return Effect.fail(`Expected key=value format, got "${value}"`)
-    return Effect.succeed({ [value.slice(0, idx)]: value.slice(idx + 1) })
-  },
-)
+export const keyValuePair: Primitive<Record<string, string>> = make("KeyValuePair", (value) => {
+  const idx = value.indexOf("=")
+  if (idx <= 0 || idx === value.length - 1)
+    return Effect.fail(`Expected key=value format, got "${value}"`)
+  return Effect.succeed({ [value.slice(0, idx)]: value.slice(idx + 1) })
+})
 
 export const choice = <A>(choices: ReadonlyArray<readonly [string, A]>): Primitive<A> => {
   const map = new Map(choices)
@@ -63,23 +60,35 @@ export const choice = <A>(choices: ReadonlyArray<readonly [string, A]>): Primiti
   return make("Choice", (value) =>
     map.has(value)
       ? Effect.succeed(map.get(value)!)
-      : Effect.fail(`Expected ${valid}, got "${value}"`))
+      : Effect.fail(`Expected ${valid}, got "${value}"`),
+  )
 }
 
 export const none: Primitive<never> = make("None", () =>
-  Effect.fail("This option does not accept values"))
+  Effect.fail("This option does not accept values"),
+)
 
 export const getTypeName = <A>(p: Primitive<A>): string => {
   switch (p._tag) {
-    case "Boolean": return "boolean"
-    case "String": return "string"
-    case "Integer": return "integer"
-    case "Float": return "number"
-    case "Date": return "date"
-    case "Choice": return "choice"
-    case "Redacted": return "string"
-    case "KeyValuePair": return "key=value"
-    case "None": return "none"
-    default: return "value"
+    case "Boolean":
+      return "boolean"
+    case "String":
+      return "string"
+    case "Integer":
+      return "integer"
+    case "Float":
+      return "number"
+    case "Date":
+      return "date"
+    case "Choice":
+      return "choice"
+    case "Redacted":
+      return "string"
+    case "KeyValuePair":
+      return "key=value"
+    case "None":
+      return "none"
+    default:
+      return "value"
   }
 }

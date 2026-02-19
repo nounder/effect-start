@@ -33,9 +33,7 @@ test.describe("stream", () => {
       const fs = yield* FileSystem.FileSystem
       const watchDir = "/events-test"
 
-      const collectFiber = yield* Effect.fork(
-        Stream.runCollect(Stream.take(Development.events, 1)),
-      )
+      const collectFiber = yield* Effect.fork(Stream.runCollect(Stream.take(Development.events, 1)))
 
       yield* Effect.sleep(1)
       yield* fs.writeFileString(`${watchDir}/file.ts`, "content")

@@ -37,8 +37,7 @@ export default {
             if (!forced && !isCapitalized(baseName)) return
 
             const isNamespace =
-              node.specifiers.length === 1 &&
-              node.specifiers[0].type === "ImportNamespaceSpecifier"
+              node.specifiers.length === 1 && node.specifiers[0].type === "ImportNamespaceSpecifier"
 
             if (isNamespace) {
               if (!isLocalImport(source)) return
@@ -325,7 +324,7 @@ export default {
         schema: [],
         messages: {
           noAwaitRunPromise:
-            'Avoid Effect.runPromise in async test callbacks. Use () => Effect.gen(function*() { ... }).pipe(Effect.runPromise) instead.',
+            "Avoid Effect.runPromise in async test callbacks. Use () => Effect.gen(function*() { ... }).pipe(Effect.runPromise) instead.",
           scopedWrapping: "Use .pipe(Effect.scoped) instead of Effect.scoped(...) wrapping.",
         },
       },

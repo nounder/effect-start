@@ -11,15 +11,13 @@ test.it("converts empty file paths", () => {
 test.it("strips groups during conversion", () => {
   test.expect(PathPattern.fromFilePath("(admin)")).toEqual(Either.right("/"))
   test.expect(PathPattern.fromFilePath("/(admin)/users")).toEqual(Either.right("/users"))
-  test.expect(PathPattern.fromFilePath("(auth)/login/(step1)")).toEqual(
-    Either.right("/login"),
-  )
+  test.expect(PathPattern.fromFilePath("(auth)/login/(step1)")).toEqual(Either.right("/login"))
 })
 
 test.it("converts params and rest segments", () => {
-  test.expect(PathPattern.fromFilePath("users/[userId]/posts")).toEqual(
-    Either.right("/users/:userId/posts"),
-  )
+  test
+    .expect(PathPattern.fromFilePath("users/[userId]/posts"))
+    .toEqual(Either.right("/users/:userId/posts"))
   test.expect(PathPattern.fromFilePath("api/[[path]]")).toEqual(Either.right("/api/:path*"))
 })
 
