@@ -8,9 +8,9 @@ import * as Route from "../Route.ts"
 import * as RouteHttp from "../RouteHttp.ts"
 import * as HyperRoute from "./HyperRoute.ts"
 
-test.describe("HyperRoute.html", () => {
+test.describe("Route.html with JSX", () => {
   test.it("renders JSX to HTML string", async () => {
-    const handler = RouteHttp.toWebHandler(Route.get(HyperRoute.html(<div>Hello World</div>)))
+    const handler = RouteHttp.toWebHandler(Route.get(Route.html(<div>Hello World</div>)))
 
     const response = await Fetch.fromHandler(handler, { path: "/" })
 
@@ -22,7 +22,7 @@ test.describe("HyperRoute.html", () => {
   test.it("renders nested JSX elements", async () => {
     const handler = RouteHttp.toWebHandler(
       Route.get(
-        HyperRoute.html(
+        Route.html(
           <div class="container">
             <h1>Title</h1>
             <p>Paragraph</p>
@@ -40,7 +40,7 @@ test.describe("HyperRoute.html", () => {
 
   test.it("renders JSX from Effect", async () => {
     const handler = RouteHttp.toWebHandler(
-      Route.get(HyperRoute.html(Effect.succeed(<span>From Effect</span>))),
+      Route.get(Route.html(Effect.succeed(<span>From Effect</span>))),
     )
 
     const response = await Fetch.fromHandler(handler, { path: "/" })
@@ -51,7 +51,7 @@ test.describe("HyperRoute.html", () => {
   test.it("renders JSX from generator function", async () => {
     const handler = RouteHttp.toWebHandler(
       Route.get(
-        HyperRoute.html(
+        Route.html(
           Effect.gen(function* () {
             const name = yield* Effect.succeed("World")
             return <div>Hello {name}</div>
@@ -67,7 +67,7 @@ test.describe("HyperRoute.html", () => {
 
   test.it("renders JSX from handler function", async () => {
     const handler = RouteHttp.toWebHandler(
-      Route.get(HyperRoute.html((context) => Effect.succeed(<div>Request received</div>))),
+      Route.get(Route.html((context) => Effect.succeed(<div>Request received</div>))),
     )
 
     const response = await Fetch.fromHandler(handler, { path: "/" })
@@ -80,7 +80,7 @@ test.describe("HyperRoute.html", () => {
 
     const handler = RouteHttp.toWebHandler(
       Route.get(
-        HyperRoute.html(
+        Route.html(
           <ul>
             {items.map((item) => (
               <li>{item}</li>
@@ -97,7 +97,7 @@ test.describe("HyperRoute.html", () => {
 
   test.it("handles Entity with JSX body", async () => {
     const handler = RouteHttp.toWebHandler(
-      Route.get(HyperRoute.html(Entity.make(<div>With Entity</div>, { status: 201 }))),
+      Route.get(Route.html(Entity.make(<div>With Entity</div>, { status: 201 }))),
     )
 
     const response = await Fetch.fromHandler(handler, { path: "/" })
@@ -109,7 +109,7 @@ test.describe("HyperRoute.html", () => {
   test.it("renders data-* attributes with object values as JSON", async () => {
     const handler = RouteHttp.toWebHandler(
       Route.get(
-        HyperRoute.html(
+        Route.html(
           <div
             data-signals={{
               draft: "",
@@ -146,7 +146,7 @@ test.describe("HyperRoute.html", () => {
   test.it("renders script with function child as IIFE", async () => {
     const handler = RouteHttp.toWebHandler(
       Route.get(
-        HyperRoute.html(
+        Route.html(
           <script>
             {(window) => {
               console.log("Hello from", window.document.title)
@@ -162,5 +162,26 @@ test.describe("HyperRoute.html", () => {
     test.expect(text).toContain("<script>(")
     test.expect(text).toContain(")(window)</script>")
     test.expect(text).toContain("window.document.title")
+  })
+
+  test.it("still renders plain strings", async () => {
+    const handler = RouteHttp.toWebHandler(Route.get(Route.html("<h1>Hello</h1>")))
+
+    const response = await Fetch.fromHandler(handler, { path: "/" })
+
+    test.expect(response.status).toBe(200)
+    test.expect(response.headers.get("Content-Type")).toBe("text/html; charset=utf-8")
+    test.expect(await response.text()).toBe("<h1>Hello</h1>")
+  })
+})
+
+test.describe("HyperRoute.html (re-export)", () => {
+  test.it("renders JSX to HTML string via HyperRoute", async () => {
+    const handler = RouteHttp.toWebHandler(Route.get(HyperRoute.html(<div>Hello World</div>)))
+
+    const response = await Fetch.fromHandler(handler, { path: "/" })
+
+    test.expect(response.status).toBe(200)
+    test.expect(await response.text()).toBe("<div>Hello World</div>")
   })
 })

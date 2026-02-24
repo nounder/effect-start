@@ -3,10 +3,14 @@ import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Pipeable from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
+import type * as Stream from "effect/Stream"
+import type * as Utils from "effect/Utils"
 import * as Entity from "./Entity.ts"
 import * as RouteBody from "./RouteBody.ts"
 import * as RouteTree from "./RouteTree.ts"
 import type * as Values from "./_Values.ts"
+import * as HyperHtml from "./hyper/HyperHtml.ts"
+import type { JSX } from "./hyper/jsx.d.ts"
 
 export const RouteItems: unique symbol = Symbol()
 export const RouteDescriptor: unique symbol = Symbol()
@@ -203,9 +207,89 @@ export const text = RouteBody.build<string, "text">({
   format: "text",
 })
 
-export const html = RouteBody.build<string, "html">({
+type HtmlHandlerValue = string | JSX.Children
+
+type YieldError<T> = T extends Utils.YieldWrap<Effect.Effect<any, infer E, any>> ? E : never
+type YieldContext<T> = T extends Utils.YieldWrap<Effect.Effect<any, any, infer R>> ? R : never
+
+interface HtmlReturn {
+  <
+    D extends RouteDescriptor.Any,
+    B,
+    I extends Route.Tuple,
+    A extends HtmlHandlerValue | Stream.Stream<HtmlHandlerValue, any, any>,
+    Y extends Utils.YieldWrap<Effect.Effect<any, any, any>>,
+  >(
+    handler: RouteBody.GeneratorHandler<
+      NoInfer<D & B & ExtractBindings<I> & { format: "html" }>,
+      A,
+      Y
+    >,
+  ): (
+    self: RouteSet.RouteSet<D, B, I>,
+  ) => RouteSet.RouteSet<
+    D,
+    B,
+    [...I, Route.Route<{ format: "html" }, {}, string, YieldError<Y>, YieldContext<Y>>]
+  >
+
+  <
+    D extends RouteDescriptor.Any,
+    B,
+    I extends Route.Tuple,
+    A extends HtmlHandlerValue | Stream.Stream<HtmlHandlerValue, any, any>,
+    E = never,
+    R = never,
+  >(
+    handler: RouteBody.HandlerInput<
+      NoInfer<D & B & ExtractBindings<I> & { format: "html" }>,
+      A,
+      E,
+      R
+    >,
+  ): (
+    self: RouteSet.RouteSet<D, B, I>,
+  ) => RouteSet.RouteSet<D, B, [...I, Route.Route<{ format: "html" }, {}, string, E, R>]>
+}
+
+const _htmlBase = RouteBody.build<string, "html">({
   format: "html",
 })
+
+function htmlNormalizeToEffect(
+  handler: any,
+  context: any,
+  next: any,
+): Effect.Effect<any, any, any> {
+  if (Effect.isEffect(handler)) return handler
+  if (Entity.isEntity(handler)) return Effect.succeed(handler)
+  if (typeof handler === "function") {
+    const result = (handler as Function)(context, next)
+    if (Effect.isEffect(result)) return result
+    return Effect.gen(function* () {
+      return yield* result
+    })
+  }
+  return Effect.succeed(handler)
+}
+
+function htmlNormalizeResult(value: any): any {
+  if (Entity.isEntity(value)) {
+    if (typeof value.body === "string") return value
+    return Entity.make(HyperHtml.renderToString(value.body as JSX.Children), {
+      status: value.status,
+      url: value.url,
+      headers: value.headers,
+    })
+  }
+  if (typeof value === "string") return value
+  return HyperHtml.renderToString(value as JSX.Children)
+}
+
+export const html: HtmlReturn = ((handler: any) =>
+  _htmlBase((context: any, next: any) =>
+    Effect.map(htmlNormalizeToEffect(handler, context, next), htmlNormalizeResult),
+  )) as HtmlReturn
 
 export const json = RouteBody.build<Values.Json, "json">({
   format: "json",
