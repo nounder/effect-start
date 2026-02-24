@@ -108,7 +108,11 @@ export interface BuildReturn<Value, F extends Format> {
   ) => Route.RouteSet.RouteSet<D, B, [...I, Route.Route.Route<{ format: F }, {}, A, E, R>]>
 }
 
-export function build<Value, F extends Format>(descriptors: { format: F }) {
+export function build<Value, F extends Format>(options: {
+  format: F
+  normalizeBody?: (body: any) => Value
+}) {
+  const { normalizeBody, ...descriptors } = options
   return function <
     D extends Route.RouteDescriptor.Any,
     B extends {},
@@ -126,15 +130,17 @@ export function build<Value, F extends Format>(descriptors: { format: F }) {
         E,
         R
       > = (ctx, next) =>
-        Effect.map(baseHandler(ctx as any, next as any), (entity) =>
-          entity.headers["content-type"]
-            ? entity
-            : Entity.make(entity.body, {
-                status: entity.status,
-                url: entity.url,
-                headers: { ...entity.headers, "content-type": contentType },
-              }),
-        )
+        Effect.map(baseHandler(ctx as any, next as any), (entity) => {
+          const body = normalizeBody ? normalizeBody(entity.body) : entity.body
+          if (body === entity.body && entity.headers["content-type"]) return entity
+          return Entity.make(body as A, {
+            status: entity.status,
+            url: entity.url,
+            headers: entity.headers["content-type"]
+              ? entity.headers
+              : { ...entity.headers, "content-type": contentType },
+          })
+        })
 
       const route = Route.make<{ format: F }, {}, A, E, R>(wrappedHandler as any, descriptors)
 

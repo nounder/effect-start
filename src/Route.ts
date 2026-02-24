@@ -252,44 +252,11 @@ interface HtmlReturn {
   ) => RouteSet.RouteSet<D, B, [...I, Route.Route<{ format: "html" }, {}, string, E, R>]>
 }
 
-const _htmlBase = RouteBody.build<string, "html">({
+export const html: HtmlReturn = RouteBody.build<string, "html">({
   format: "html",
-})
-
-function htmlNormalizeToEffect(
-  handler: any,
-  context: any,
-  next: any,
-): Effect.Effect<any, any, any> {
-  if (Effect.isEffect(handler)) return handler
-  if (Entity.isEntity(handler)) return Effect.succeed(handler)
-  if (typeof handler === "function") {
-    const result = (handler as Function)(context, next)
-    if (Effect.isEffect(result)) return result
-    return Effect.gen(function* () {
-      return yield* result
-    })
-  }
-  return Effect.succeed(handler)
-}
-
-function htmlNormalizeResult(value: any): any {
-  if (Entity.isEntity(value)) {
-    if (typeof value.body === "string") return value
-    return Entity.make(HyperHtml.renderToString(value.body as JSX.Children), {
-      status: value.status,
-      url: value.url,
-      headers: value.headers,
-    })
-  }
-  if (typeof value === "string") return value
-  return HyperHtml.renderToString(value as JSX.Children)
-}
-
-export const html: HtmlReturn = ((handler: any) =>
-  _htmlBase((context: any, next: any) =>
-    Effect.map(htmlNormalizeToEffect(handler, context, next), htmlNormalizeResult),
-  )) as HtmlReturn
+  normalizeBody: (body) =>
+    typeof body === "string" ? body : HyperHtml.renderToString(body as JSX.Children),
+}) as unknown as HtmlReturn
 
 export const json = RouteBody.build<Values.Json, "json">({
   format: "json",
