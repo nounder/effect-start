@@ -37,6 +37,16 @@ export type HandlerInput<B, A, E, R> =
       | Effect.Effect<A | Entity.Entity<A>, E, R>
       | Generator<Utils.YieldWrap<Effect.Effect<unknown, E, R>>, A | Entity.Entity<A>, unknown>)
 
+// Loosened callable signature for use inside handle().
+// Uses B directly (instead of Simplify<B>) and Entity<A> (instead of Entity<UnwrapStream<A>>)
+// since the Handler type that handle() returns doesn't distinguish these.
+type HandlerCallable<B, A, E, R> = (
+  context: B,
+  next: (context?: Partial<B> & Record<string, unknown>) => Entity.Entity<A>,
+) =>
+  | Effect.Effect<A | Entity.Entity<A>, E, R>
+  | Generator<Utils.YieldWrap<Effect.Effect<unknown, E, R>>, A | Entity.Entity<A>, unknown>
+
 export function handle<B, A, Y extends Utils.YieldWrap<Effect.Effect<any, any, any>>>(
   handler: GeneratorHandler<B, A, Y>,
 ): Route.Route.Handler<B, A, YieldError<Y>, YieldContext<Y>>
@@ -47,27 +57,26 @@ export function handle<B, A, E, R>(
   handler: HandlerInput<B, A, E, R>,
 ): Route.Route.Handler<B, A, E, R> {
   if (typeof handler === "function") {
+    const fn = handler as HandlerCallable<B, A, E, R>
     return (
       context: B,
       next: (context?: Partial<B> & Record<string, unknown>) => Entity.Entity<A>,
     ): Effect.Effect<Entity.Entity<A>, E, R> => {
-      const result = (handler as Function)(context, next)
-      const effect = Effect.isEffect(result)
-        ? (result as Effect.Effect<A | Entity.Entity<A>, E, R>)
-        : (Effect.gen(function* () {
-            return yield* result
-          }) as Effect.Effect<A | Entity.Entity<A>, E, R>)
+      const result = fn(context, next)
+      const effect = (
+        Effect.isEffect(result) ? result : Effect.gen(function* () { return yield* result })
+      ) as Effect.Effect<A | Entity.Entity<A>, E, R>
       return Effect.map(effect, normalizeToEntity)
     }
   }
   if (Effect.isEffect(handler)) {
-    return (_context, _next) =>
-      Effect.map(handler, normalizeToEntity) as Effect.Effect<Entity.Entity<A>, E, R>
+    const effect = handler as Effect.Effect<A | Entity.Entity<A>, E, R>
+    return () => Effect.map(effect, normalizeToEntity) as Effect.Effect<Entity.Entity<A>, E, R>
   }
   if (Entity.isEntity(handler)) {
-    return (_context, _next) => Effect.succeed(handler as Entity.Entity<A>)
+    return () => Effect.succeed(handler as Entity.Entity<A>)
   }
-  return (_context, _next) => Effect.succeed(normalizeToEntity(handler as A) as Entity.Entity<A>)
+  return () => Effect.succeed(normalizeToEntity(handler as A))
 }
 
 function normalizeToEntity<A>(value: A | Entity.Entity<A>): Entity.Entity<A> {
@@ -119,14 +128,19 @@ export function build<Value, F extends Format>(descriptors: { format: F }) {
   >(handler: HandlerInput<NoInfer<D & B & Route.ExtractBindings<I> & { format: F }>, A, E, R>) {
     return function (self: Route.RouteSet.RouteSet<D, B, I>) {
       const contentType = formatToContentType[descriptors.format]
-      const baseHandler = handle(handler)
+      const baseHandler = handle(handler) as Route.Route.Handler<
+        D & B & Route.ExtractBindings<I> & { format: F },
+        A,
+        E,
+        R
+      >
       const wrappedHandler: Route.Route.Handler<
         D & B & Route.ExtractBindings<I> & { format: F },
         A,
         E,
         R
       > = (ctx, next) =>
-        Effect.map(baseHandler(ctx as any, next as any), (entity) =>
+        Effect.map(baseHandler(ctx, next), (entity) =>
           entity.headers["content-type"]
             ? entity
             : Entity.make(entity.body, {
@@ -136,7 +150,10 @@ export function build<Value, F extends Format>(descriptors: { format: F }) {
               }),
         )
 
-      const route = Route.make<{ format: F }, {}, A, E, R>(wrappedHandler as any, descriptors)
+      const route = Route.make<{ format: F }, {}, A, E, R>(
+        wrappedHandler as Route.Route.Handler<{ format: F }, A, E, R>,
+        descriptors,
+      )
 
       const items: [...I, Route.Route.Route<{ format: F }, {}, A, E, R>] = [
         ...Route.items(self),
@@ -189,7 +206,10 @@ export function render<
   R = never,
 >(handler: HandlerInput<NoInfer<D & B & Route.ExtractBindings<I> & { format: "*" }>, A, E, R>) {
   return function (self: Route.RouteSet.RouteSet<D, B, I>) {
-    const route = Route.make<{ format: "*" }, {}, A, E, R>(handle(handler) as any, { format: "*" })
+    const route = Route.make<{ format: "*" }, {}, A, E, R>(
+      handle(handler) as Route.Route.Handler<{ format: "*" }, A, E, R>,
+      { format: "*" },
+    )
 
     const items: [...I, Route.Route.Route<{ format: "*" }, {}, A, E, R>] = [
       ...Route.items(self),
