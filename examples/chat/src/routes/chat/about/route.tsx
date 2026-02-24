@@ -1,5 +1,5 @@
 import { Route } from "effect-start"
-import { HyperRoute, HyperHtml } from "effect-start/hyper"
+import { HyperHtml } from "effect-start/hyper"
 
 export default Route.get(
   Route.html(function* () {

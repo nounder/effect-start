@@ -1,13 +1,12 @@
 import * as Stream from "effect/Stream"
 import * as Route from "../../../Route.ts"
 import * as HyperHtml from "../../../hyper/HyperHtml.ts"
-import * as HyperRoute from "../../../hyper/HyperRoute.ts"
 import * as StudioStore from "../../StudioStore.ts"
 import * as System from "../../ui/System.tsx"
 import * as Shell from "../../ui/Shell.tsx"
 
 export default Route.get(
-  HyperRoute.html(function* () {
+  Route.html(function* () {
     const stats = StudioStore.store.process
     return (
       <Shell.Shell prefix={StudioStore.store.prefix} active="system">

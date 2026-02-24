@@ -1,12 +1,11 @@
 import * as Route from "../../../Route.ts"
 import * as RouteTree from "../../../RouteTree.ts"
-import * as HyperRoute from "../../../hyper/HyperRoute.ts"
 import * as StudioStore from "../../StudioStore.ts"
 import * as Routes from "../../ui/Routes.tsx"
 import * as Shell from "../../ui/Shell.tsx"
 
 export default Route.get(
-  HyperRoute.html(function* () {
+  Route.html(function* () {
     const tree = yield* Route.Routes
     const routes: Array<Routes.RouteInfo> = []
     for (const route of RouteTree.walk(tree)) {

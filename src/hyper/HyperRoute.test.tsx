@@ -6,7 +6,6 @@ import * as Entity from "../Entity.ts"
 import * as Fetch from "../Fetch.ts"
 import * as Route from "../Route.ts"
 import * as RouteHttp from "../RouteHttp.ts"
-import * as HyperRoute from "./HyperRoute.ts"
 
 test.describe("Route.html with JSX", () => {
   test.it("renders JSX to HTML string", async () => {
@@ -164,7 +163,7 @@ test.describe("Route.html with JSX", () => {
     test.expect(text).toContain("window.document.title")
   })
 
-  test.it("still renders plain strings", async () => {
+  test.it("renders plain strings", async () => {
     const handler = RouteHttp.toWebHandler(Route.get(Route.html("<h1>Hello</h1>")))
 
     const response = await Fetch.fromHandler(handler, { path: "/" })
@@ -172,16 +171,5 @@ test.describe("Route.html with JSX", () => {
     test.expect(response.status).toBe(200)
     test.expect(response.headers.get("Content-Type")).toBe("text/html; charset=utf-8")
     test.expect(await response.text()).toBe("<h1>Hello</h1>")
-  })
-})
-
-test.describe("HyperRoute.html (re-export)", () => {
-  test.it("renders JSX to HTML string via HyperRoute", async () => {
-    const handler = RouteHttp.toWebHandler(Route.get(HyperRoute.html(<div>Hello World</div>)))
-
-    const response = await Fetch.fromHandler(handler, { path: "/" })
-
-    test.expect(response.status).toBe(200)
-    test.expect(await response.text()).toBe("<div>Hello World</div>")
   })
 })

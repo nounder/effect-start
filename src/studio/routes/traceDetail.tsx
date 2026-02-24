@@ -1,14 +1,13 @@
 import * as Schema from "effect/Schema"
 import * as Route from "../../Route.ts"
 import * as RouteSchema from "../../RouteSchema.ts"
-import * as HyperRoute from "../../hyper/HyperRoute.ts"
 import * as StudioStore from "../StudioStore.ts"
 import * as Shell from "../ui/Shell.tsx"
 import * as Traces from "../ui/Traces.tsx"
 
 export default Route.get(
   RouteSchema.schemaPathParams(Schema.Struct({ id: Schema.String })),
-  HyperRoute.html(function* (ctx) {
+  Route.html(function* (ctx) {
     let traceId: bigint
     try {
       traceId = BigInt(ctx.pathParams.id)

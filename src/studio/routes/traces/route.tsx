@@ -2,7 +2,6 @@ import * as Effect from "effect/Effect"
 import * as Stream from "effect/Stream"
 import * as Route from "../../../Route.ts"
 import * as HyperHtml from "../../../hyper/HyperHtml.ts"
-import * as HyperRoute from "../../../hyper/HyperRoute.ts"
 import * as StudioStore from "../../StudioStore.ts"
 import * as Shell from "../../ui/Shell.tsx"
 import * as Traces from "../../ui/Traces.tsx"
@@ -10,7 +9,7 @@ import * as Traces from "../../ui/Traces.tsx"
 const prefix = StudioStore.store.prefix
 
 export default Route.get(
-  HyperRoute.html(function* (ctx) {
+  Route.html(function* (ctx) {
     const url = new URL(ctx.request.url)
     const search = url.searchParams.get("traceSearch") || ""
     const allSpans = yield* StudioStore.allSpans(StudioStore.store.sql)

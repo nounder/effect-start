@@ -1,7 +1,6 @@
 import * as Stream from "effect/Stream"
 import * as Route from "../../../Route.ts"
 import * as HyperHtml from "../../../hyper/HyperHtml.ts"
-import * as HyperRoute from "../../../hyper/HyperRoute.ts"
 import * as StudioStore from "../../StudioStore.ts"
 import * as Logs from "../../ui/Logs.tsx"
 import * as Shell from "../../ui/Shell.tsx"
@@ -9,7 +8,7 @@ import * as Shell from "../../ui/Shell.tsx"
 const prefix = StudioStore.store.prefix
 
 export default Route.get(
-  HyperRoute.html(function* (ctx) {
+  Route.html(function* (ctx) {
     const url = new URL(ctx.request.url)
     const level = url.searchParams.get("logLevel") || ""
     const search = url.searchParams.get("logSearch") || ""
