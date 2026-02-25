@@ -1,2 +1,2 @@
 [serve.static]
-plugins = ["effect-start/x/tailwind/plugin"]
+plugins = ["effect-start/tailwind"]

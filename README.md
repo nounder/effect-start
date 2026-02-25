@@ -62,7 +62,7 @@ Then, register a plugin in `bunfig.toml`:
 
 ```toml
 [serve.static]
-plugins = ["effect-start/x/tailwind/plugin"]
+plugins = ["effect-start/tailwind"]
 ```
 
 Finally, include it in your `src/app.css`:

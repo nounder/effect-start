@@ -1,4 +1,4 @@
-import * as System from "../../System.ts"
+import * as System from "../System.ts"
 import { Config, Effect, Layer, LogLevel, Option, pipe, Stream, String } from "effect"
 
 export const start = (opts: {

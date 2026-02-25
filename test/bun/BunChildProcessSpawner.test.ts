@@ -207,7 +207,7 @@ test.describe("spawn errors", () => {
         ChildProcess.make(["__nonexistent_command_xyz__"]),
       ).pipe(Effect.flip)
 
-      test.expect(System.isPlatformError(error)).toBe(true)
+      test.expect(error).toBeInstanceOf(System.SystemError)
       test.expect((error as System.SystemError).module).toBe("ChildProcess")
       test.expect((error as System.SystemError).method).toBe("spawn")
     }).pipe(Effect.provide(BunChildProcessSpawner.layer), Effect.scoped, Effect.runPromise),

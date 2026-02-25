@@ -27,14 +27,6 @@
       "source": "./src/lint/plugin.js",
       "default": "./dist/lint/plugin.js"
     },
-    "./x/*": {
-      "source": "./src/x/*/index.ts",
-      "default": "./dist/x/*/index.js"
-    },
-    "./x/tailwind/plugin": {
-      "source": "./src/x/tailwind/plugin.ts",
-      "default": "./dist/x/tailwind/plugin.js"
-    },
     "./bun": {
       "source": "./src/bun/index.ts",
       "default": "./dist/bun/index.js"
@@ -46,6 +38,10 @@
     "./client": {
       "source": "./src/client/index.ts",
       "default": "./dist/client/index.js"
+    },
+    "./cloudflare": {
+      "source": "./src/cloudflare/index.ts",
+      "default": "./dist/cloudflare/index.js"
     },
     "./datastar": {
       "source": "./src/datastar/index.ts",
@@ -59,21 +55,29 @@
       "source": "./src/hyper/index.ts",
       "default": "./dist/hyper/index.js"
     },
-    "./sql/*": {
-      "source": "./src/sql/*/index.ts",
-      "default": "./dist/sql/*/index.js"
-    },
     "./sql": {
       "source": "./src/sql/index.ts",
       "default": "./dist/sql/index.js"
     },
-    "./testing": {
-      "source": "./src/testing/index.ts",
-      "default": "./dist/testing/index.js"
+    "./sql/*": {
+      "source": "./src/sql/*/index.ts",
+      "default": "./dist/sql/*/index.js"
     },
     "./studio": {
       "source": "./src/studio/index.ts",
       "default": "./dist/studio/index.js"
+    },
+    "./tailscale": {
+      "source": "./src/tailscale/index.ts",
+      "default": "./dist/tailscale/index.js"
+    },
+    "./tailwind": {
+      "source": "./src/tailwind/index.ts",
+      "default": "./dist/tailwind/index.js"
+    },
+    "./testing": {
+      "source": "./src/testing/index.ts",
+      "default": "./dist/testing/index.js"
     },
     "./*": {
       "source": "./src/*.ts",
