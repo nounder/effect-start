@@ -83,7 +83,7 @@ function makeMethodDescriber<M extends RouteMount.Method>(method: M): RouteMount
     const result = f(methodSet)
     const resultItems = Route.items(result)
 
-    // Items are already flat (only Routes), just merge method into each descriptor
+    // Items are already flat (only Routes), merge method into each descriptor
     const flattenedItems = resultItems.map((item) => {
       const itemDescriptor = Route.descriptor(item)
       const newDescriptor = { method, ...itemDescriptor }
