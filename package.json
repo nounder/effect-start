@@ -11,77 +11,77 @@
   "type": "module",
   "exports": {
     ".": {
-      "source": "./src/index.ts",
+      "bun": "./src/index.ts",
       "default": "./dist/index.js"
     },
     "./*": {
-      "source": "./src/*.ts",
+      "bun": "./src/*.ts",
       "default": "./dist/*.js"
     },
     "./_*": null,
     "./client/assets.d.ts": "./src/assets.d.ts",
     "./jsx-runtime": {
-      "source": "./src/hyper/jsx-runtime.ts",
+      "bun": "./src/hyper/jsx-runtime.ts",
       "default": "./dist/hyper/jsx-runtime.js"
     },
     "./jsx-dev-runtime": {
-      "source": "./src/hyper/jsx-runtime.ts",
+      "bun": "./src/hyper/jsx-runtime.ts",
       "default": "./dist/hyper/jsx-runtime.js"
     },
     "./lint/plugin": {
-      "source": "./src/lint/plugin.js",
+      "bun": "./src/lint/plugin.js",
       "default": "./dist/lint/plugin.js"
     },
     "./bun": {
-      "source": "./src/bun/index.ts",
+      "bun": "./src/bun/index.ts",
       "default": "./dist/bun/index.js"
     },
     "./cli": {
-      "source": "./src/cli/index.ts",
+      "bun": "./src/cli/index.ts",
       "default": "./dist/cli/index.js"
     },
     "./client": {
-      "source": "./src/client/index.ts",
+      "bun": "./src/client/index.ts",
       "default": "./dist/client/index.js"
     },
     "./cloudflare": {
-      "source": "./src/cloudflare/index.ts",
+      "bun": "./src/cloudflare/index.ts",
       "default": "./dist/cloudflare/index.js"
     },
     "./datastar": {
-      "source": "./src/datastar/index.ts",
+      "bun": "./src/datastar/index.ts",
       "default": "./dist/datastar/index.js"
     },
     "./experimental": {
-      "source": "./src/experimental/index.ts",
+      "bun": "./src/experimental/index.ts",
       "default": "./dist/experimental/index.js"
     },
     "./hyper": {
-      "source": "./src/hyper/index.ts",
+      "bun": "./src/hyper/index.ts",
       "default": "./dist/hyper/index.js"
     },
     "./sql": {
-      "source": "./src/sql/index.ts",
+      "bun": "./src/sql/index.ts",
       "default": "./dist/sql/index.js"
     },
     "./sql/*": {
-      "source": "./src/sql/*/index.ts",
+      "bun": "./src/sql/*/index.ts",
       "default": "./dist/sql/*/index.js"
     },
     "./studio": {
-      "source": "./src/studio/index.ts",
+      "bun": "./src/studio/index.ts",
       "default": "./dist/studio/index.js"
     },
     "./tailscale": {
-      "source": "./src/tailscale/index.ts",
+      "bun": "./src/tailscale/index.ts",
       "default": "./dist/tailscale/index.js"
     },
     "./tailwind": {
-      "source": "./src/tailwind/index.ts",
+      "bun": "./src/tailwind/index.ts",
       "default": "./dist/tailwind/index.js"
     },
     "./testing": {
-      "source": "./src/testing/index.ts",
+      "bun": "./src/testing/index.ts",
       "default": "./dist/testing/index.js"
     },
     "./package.json": "./package.json"
