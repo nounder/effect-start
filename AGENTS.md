@@ -1,6 +1,11 @@
 # Environment
 
-- Use Bun runtime and package manager.
+Use Bun runtime and package manager:
+
+```
+bun install
+bunx tsc
+```
 
 # Code
 
