@@ -9,9 +9,8 @@ import * as Entity from "./Entity.ts"
 import * as RouteBody from "./RouteBody.ts"
 import * as RouteTree from "./RouteTree.ts"
 import type * as Values from "./_Values.ts"
-import { render } from "./RouteBody.ts"
 
-export { render }
+export const render = RouteBody.render
 
 export const RouteItems: unique symbol = Symbol()
 export const RouteDescriptor: unique symbol = Symbol()

@@ -1,7 +1,7 @@
 import * as test from "bun:test"
 import * as Development from "effect-start/Development"
 import * as Effect from "effect/Effect"
-import * as EntityRuntime from "effect-start/Entity"
+import * as Entity from "effect-start/Entity"
 import * as Fetch from "effect-start/Fetch"
 import * as Route from "effect-start/Route"
 import * as RouteHttp from "effect-start/RouteHttp"
@@ -178,7 +178,7 @@ test.describe(Route.devOnly, () => {
 
       const entity = yield* developmentRoute.handler(context, () => {
         nextCalled = true
-        return EntityRuntime.make("next")
+        return Entity.make("next")
       })
 
       test.expect(entity.status).toBe(404)
@@ -200,7 +200,7 @@ test.describe(Route.devOnly, () => {
       const entity = yield* developmentRoute.handler(context, (context) => {
         nextCalled = true
         receivedContext = context
-        return EntityRuntime.make("next")
+        return Entity.make("next")
       })
 
       test.expect(entity.body).toBe("next")
