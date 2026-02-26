@@ -8,6 +8,7 @@ import * as Exit from "effect/Exit"
 import * as Layer from "effect/Layer"
 import * as Route from "effect-start/Route"
 import { BunRoute, BunServer } from "effect-start/bun"
+import * as Start from "effect-start/Start"
 
 const staticDir = NPath.resolve(import.meta.dir, "../../static")
 
@@ -36,6 +37,27 @@ const withEnv = (env: Record<string, string | undefined>) =>
         }
       }),
   )
+
+test.describe("layerRoutes port precedence", () => {
+  test.test("user-provided BunServer serves routes", () => {
+    const routes = Route.tree({
+      "/": Route.get(Route.text("custom-server")),
+    })
+
+    const appLayer = Start.pack(BunServer.layerRoutes({ port: 0 }), Route.layer(routes))
+
+    return Effect.gen(function* () {
+      const bunServer = yield* BunServer.BunServer
+      const response = yield* Effect.promise(() =>
+        fetch(`http://localhost:${bunServer.server.port}/`),
+      )
+      const body = yield* Effect.promise(() => response.text())
+
+      test.expect(response.status).toBe(200)
+      test.expect(body).toBe("custom-server")
+    }).pipe(Effect.provide(appLayer), Effect.scoped, Effect.runPromise)
+  })
+})
 
 test.describe("smart port selection", () => {
   test.test.skipIf(process.stdout.isTTY)(

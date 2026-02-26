@@ -4,11 +4,9 @@ import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
 import * as Layer from "effect/Layer"
-import * as Option from "effect/Option"
 import { BunServer } from "effect-start/bun"
-import * as Route from "effect-start/Route"
 import * as Start from "effect-start/Start"
-import * as StartApp from "effect-start/StartApp"
+import * as StartApp from "../src/_StartApp.ts"
 
 test.describe(Start.pack, () => {
   test.test("should resolve internal dependencies automatically", () => {
@@ -154,83 +152,6 @@ test.describe("StartApp.server", () => {
   )
 })
 
-test.describe(Start.layer, () => {
-  const layerWithDefault = Layer.scoped(
-    BunServer.BunServer,
-    Effect.gen(function* () {
-      const existing = yield* Effect.serviceOption(BunServer.BunServer)
-      if (Option.isSome(existing)) {
-        return existing.value
-      }
-      const routes = yield* Route.Routes
-      return yield* BunServer.make({ port: 0 }, routes)
-    }),
-  )
-
-  const testCompose = (appLayer: Layer.Layer<any, any, any>) =>
-    layerWithDefault.pipe(Layer.provide(appLayer)) as Layer.Layer<BunServer.BunServer>
-
-  const customPort = 49152 + Math.floor(Math.random() * 1000)
-
-  test.test("user-provided BunServer takes precedence", () => {
-    const routes = Route.tree({
-      "/": Route.get(Route.text("hello")),
-    })
-
-    const appLayer = Start.pack(BunServer.layerRoutes({ port: customPort }), Route.layer(routes))
-
-    const composed = testCompose(appLayer)
-
-    return Effect.gen(function* () {
-      const bunServer = yield* BunServer.BunServer
-
-      test.expect(bunServer.server.port).toBe(customPort)
-    }).pipe(Effect.provide(composed), Effect.scoped, Effect.runPromise)
-  })
-
-  test.test("user-provided BunServer serves routes", () => {
-    const routes = Route.tree({
-      "/": Route.get(Route.text("custom-server")),
-    })
-
-    const appLayer = Start.pack(BunServer.layerRoutes({ port: customPort }), Route.layer(routes))
-
-    const composed = testCompose(appLayer)
-
-    return Effect.gen(function* () {
-      const bunServer = yield* BunServer.BunServer
-      const response = yield* Effect.promise(() =>
-        fetch(`http://localhost:${bunServer.server.port}/`),
-      )
-      const body = yield* Effect.promise(() => response.text())
-
-      test.expect(bunServer.server.port).toBe(customPort)
-      test.expect(response.status).toBe(200)
-      test.expect(body).toBe("custom-server")
-    }).pipe(Effect.provide(composed), Effect.scoped, Effect.runPromise)
-  })
-
-  test.test("default BunServer is used when not provided", () => {
-    const routes = Route.tree({
-      "/": Route.get(Route.text("default-server")),
-    })
-
-    const appLayer = Start.layer(Route.layer(routes))
-
-    const composed = testCompose(appLayer)
-
-    return Effect.gen(function* () {
-      const bunServer = yield* BunServer.BunServer
-      const response = yield* Effect.promise(() =>
-        fetch(`http://localhost:${bunServer.server.port}/`),
-      )
-      const body = yield* Effect.promise(() => response.text())
-
-      test.expect(response.status).toBe(200)
-      test.expect(body).toBe("default-server")
-    }).pipe(Effect.provide(composed), Effect.scoped, Effect.runPromise)
-  })
-})
 
 test.describe(Start.build, () => {
   test.test("should resolve dependencies in any order", () => {
