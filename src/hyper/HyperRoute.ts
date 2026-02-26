@@ -25,7 +25,7 @@ function normalizeToEffect<B, A, E, R>(
   next: (context?: Partial<B> & Record<string, unknown>) => Entity.Entity<A>,
 ): Effect.Effect<A | Entity.Entity<A>, E, R> {
   if (Effect.isEffect(handler)) {
-    return handler
+    return handler as Effect.Effect<A | Entity.Entity<A>, E, R>
   }
   if (typeof handler === "function") {
     const result = (handler as Function)(context, next)

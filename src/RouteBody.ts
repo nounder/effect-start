@@ -23,22 +23,27 @@ type YieldContext<T> = T extends Utils.YieldWrap<Effect.Effect<any, any, infer R
 
 type Next<B, A> = (context?: Partial<B> & Record<string, unknown>) => Entity.Entity<UnwrapStream<A>>
 
+type HandlerReturn<A> =
+  | A
+  | Entity.Entity<A>
+  | ((self: Route.RouteSet.Any) => Route.RouteSet.Any)
+
 type HandlerFunction<B, A, E, R> = (
   context: Values.Simplify<B>,
   next: Next<B, A>,
 ) =>
-  | Effect.Effect<A | Entity.Entity<A>, E, R>
-  | Generator<Utils.YieldWrap<Effect.Effect<unknown, E, R>>, A | Entity.Entity<A>, unknown>
+  | Effect.Effect<HandlerReturn<A>, E, R>
+  | Generator<Utils.YieldWrap<Effect.Effect<unknown, E, R>>, HandlerReturn<A>, unknown>
 
 export type GeneratorHandler<B, A, Y> = (
   context: Values.Simplify<B>,
   next: Next<B, A>,
-) => Generator<Y, A | Entity.Entity<A>, never>
+) => Generator<Y, HandlerReturn<A>, never>
 
 export type HandlerInput<B, A, E, R> =
   | A
   | Entity.Entity<A>
-  | Effect.Effect<A | Entity.Entity<A>, E, R>
+  | Effect.Effect<HandlerReturn<A>, E, R>
   | HandlerFunction<B, A, E, R>
 
 function isHandlerFunction<B, A, E, R>(
@@ -57,30 +62,40 @@ export function handle<B, A, E, R>(
   handler: HandlerInput<B, A, E, R>,
 ): Route.Route.Handler<B, A, E, R> {
   if (isHandlerFunction(handler)) {
-    return (context, next) => {
-      const result = handler(context as Values.Simplify<B>, next as Next<B, A>)
-      const effect: Effect.Effect<A | Entity.Entity<A>, E, R> = Effect.isEffect(result)
+    return ((context: any, next: any) => {
+      const result = handler(context, next)
+      const effect = Effect.isEffect(result)
         ? result
         : Effect.gen(function* () {
             return yield* result
           })
-      return effect.pipe(Effect.map((value) => normalizeToEntity(value)))
-    }
+      return Effect.flatMap(effect, normalizeToEntity)
+    }) as Route.Route.Handler<B, A, E, R>
   }
   if (Effect.isEffect(handler)) {
-    return (_context, _next) => Effect.map(handler, (value) => normalizeToEntity(value))
+    return ((_context: any, _next: any) =>
+      Effect.flatMap(handler, normalizeToEntity)) as Route.Route.Handler<B, A, E, R>
   }
   if (Entity.isEntity(handler)) {
     return (_context, _next) => Effect.succeed(handler as Entity.Entity<A>)
   }
-  return (_context, _next) => Effect.succeed(normalizeToEntity(handler))
+  return ((_context: any, _next: any) =>
+    normalizeToEntity(handler)) as Route.Route.Handler<B, A, E, R>
 }
 
-function normalizeToEntity<A>(value: A | Entity.Entity<A>): Entity.Entity<A> {
-  if (Entity.isEntity(value)) {
-    return value
+function normalizeToEntity(value: unknown): Effect.Effect<Entity.Entity<any>> {
+  if (typeof value === "function") {
+    const result = (value as (self: Route.RouteSet.Any) => Route.RouteSet.Any)(Route.empty)
+    const routes = Route.items(result)
+    const route = routes[0]
+    if (route) {
+      return route.handler({}, () => Entity.make("")) as Effect.Effect<Entity.Entity<any>>
+    }
   }
-  return Entity.make(value, { status: 200 })
+  if (Entity.isEntity(value)) {
+    return Effect.succeed(value)
+  }
+  return Effect.succeed(Entity.make(value, { status: 200 }))
 }
 
 export interface BuildReturn<Value, F extends Format> {
