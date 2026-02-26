@@ -1,5 +1,5 @@
-import type * as HyperNode from "./HyperNode.ts"
-import type { DatastarAttributes } from "../datastar/jsx.d.ts"
+import type * as Html from "./Html.ts"
+import type { DatastarAttributes } from "./datastar/jsx.d.ts"
 
 /**
  * Based on JSX types for Surplus, Inferno, and dom-expressions.
@@ -17,7 +17,7 @@ import type { DatastarAttributes } from "../datastar/jsx.d.ts"
 type DOMElement = never
 
 export namespace JSX {
-  type Element = HyperNode.HyperNode
+  type Element = Html.Element
   type Child = Element | string | number | bigint
   type Children = Child | SilentChild | Iterable<Children>
 

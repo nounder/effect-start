@@ -6,8 +6,7 @@ import * as Effect from "effect/Effect"
 import * as FiberRef from "effect/FiberRef"
 import * as Option from "effect/Option"
 import * as Entity from "../Entity.ts"
-import * as Hyper from "../hyper/Hyper.ts"
-import * as HyperHtml from "../hyper/HyperHtml.ts"
+import * as Html from "../Html.ts"
 import * as PathPattern from "../_PathPattern.ts"
 import * as Route from "../Route.ts"
 import * as Unique from "../Unique.ts"
@@ -146,8 +145,8 @@ export function htmlBundle(load: () => HTMLBundleModule | Promise<HTMLBundleModu
         if (children != null) {
           if ((children as unknown) instanceof Response) {
             childrenHtml = yield* Effect.promise(() => (children as unknown as Response).text())
-          } else if (Hyper.isGenericJsxObject(children)) {
-            childrenHtml = HyperHtml.renderToString(children)
+          } else if (Html.isGenericJsxObject(children)) {
+            childrenHtml = Html.renderToString(children)
           } else {
             childrenHtml = String(children)
           }

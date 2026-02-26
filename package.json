@@ -21,12 +21,12 @@
     "./_*": null,
     "./client/assets.d.ts": "./src/assets.d.ts",
     "./jsx-runtime": {
-      "bun": "./src/hyper/jsx-runtime.ts",
-      "default": "./dist/hyper/jsx-runtime.js"
+      "bun": "./src/jsx-runtime.ts",
+      "default": "./dist/jsx-runtime.js"
     },
     "./jsx-dev-runtime": {
-      "bun": "./src/hyper/jsx-runtime.ts",
-      "default": "./dist/hyper/jsx-runtime.js"
+      "bun": "./src/jsx-runtime.ts",
+      "default": "./dist/jsx-runtime.js"
     },
     "./lint/plugin": {
       "bun": "./src/lint/plugin.js",
@@ -56,11 +56,7 @@
       "bun": "./src/experimental/index.ts",
       "default": "./dist/experimental/index.js"
     },
-    "./hyper": {
-      "bun": "./src/hyper/index.ts",
-      "default": "./dist/hyper/index.js"
-    },
-    "./sql": {
+"./sql": {
       "bun": "./src/sql/index.ts",
       "default": "./dist/sql/index.js"
     },

@@ -1,7 +1,6 @@
 import * as Stream from "effect/Stream"
 import * as Route from "../../../Route.ts"
-import * as HyperHtml from "../../../hyper/HyperHtml.ts"
-import * as HyperRoute from "../../../hyper/HyperRoute.ts"
+import * as Html from "../../../Html.ts"
 import * as StudioStore from "../../StudioStore.ts"
 import * as Errors from "../../ui/Errors.tsx"
 import * as Shell from "../../ui/Shell.tsx"
@@ -9,7 +8,7 @@ import * as Shell from "../../ui/Shell.tsx"
 const prefix = StudioStore.store.prefix
 
 export default Route.get(
-  HyperRoute.html(function* (ctx) {
+  Route.html(function* (ctx) {
     const url = new URL(ctx.request.url)
     const search = url.searchParams.get("errorSearch") || ""
     const tag = url.searchParams.get("errorTag") || ""
@@ -76,7 +75,7 @@ export default Route.get(
     Stream.fromPubSub(StudioStore.store.events).pipe(
       Stream.filter((e) => e._tag === "Error"),
       Stream.map((e) => {
-        const html = HyperHtml.renderToString(<Errors.ErrorLine error={e.error} />).replace(
+        const html = Html.renderToString(<Errors.ErrorLine error={e.error} />).replace(
           /\n/g,
           "",
         )

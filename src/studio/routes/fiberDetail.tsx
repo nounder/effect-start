@@ -2,14 +2,13 @@ import * as Schema from "effect/Schema"
 import * as Route from "../../Route.ts"
 import * as RouteSchema from "../../RouteSchema.ts"
 import * as Unique from "../../Unique.ts"
-import * as HyperRoute from "../../hyper/HyperRoute.ts"
 import * as StudioStore from "../StudioStore.ts"
 import * as Fibers from "../ui/Fibers.tsx"
 import * as Shell from "../ui/Shell.tsx"
 
 export default Route.get(
   RouteSchema.schemaPathParams(Schema.Struct({ id: Schema.String })),
-  HyperRoute.html(function* (ctx) {
+  Route.html(function* (ctx) {
     const fiberId = ctx.pathParams.id
     const fiberName = fiberId.startsWith("#") ? fiberId : `#${fiberId}`
 

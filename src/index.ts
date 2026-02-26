@@ -1,6 +1,8 @@
 export * as Bundle from "./bundler/Bundle.ts"
 export * as Development from "./Development.ts"
 export * as Entity from "./Entity.ts"
+export { html } from "./Html.ts"
+export * as Html from "./Html.ts"
 export * as FileRouter from "./FileRouter.ts"
 export * as Route from "./Route.ts"
 export * as Start from "./Start.ts"

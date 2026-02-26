@@ -1,26 +1,45 @@
-/**
- * Renders Hyper JSX nodes to HTML.
- *
- * Effect Start comes with {@link Hyper} and {@link JsxRuntime} to enable
- * JSX support. The advantage of using JSX over HTML strings or templates
- * is type safety and better editor support.
- *
- * JSX nodes are compatible with React's and Solid's.
-
- * You can enable JSX support by updating `tsconfig.json`:
- *
- * {
- *   compilerOptions: {
- *     jsx: "react-jsx",
- *     jsxImportSource: "effect-start" | "react" | "praect" // etc.
- *   }
- * }
- */
-
-import type * as Hyper from "./Hyper.ts"
-import type * as HyperNode from "./HyperNode.ts"
-import type * as JsxRuntime from "./jsx-runtime.ts"
 import type { JSX } from "./jsx.d.ts"
+
+export const TypeId = "~effect-start/HyperNode" as const
+
+const NoChildren: ReadonlyArray<never> = Object.freeze([])
+
+type Primitive = string | number | boolean | null | undefined
+
+export type ElementType = string | Component
+
+export type ElemenetProps = {
+  [key: string]:
+    | Primitive
+    | Element
+    | Iterable<Primitive | Element>
+    | Record<string, unknown>
+    | ((window: Window) => void)
+}
+
+export type Component = (props: ElemenetProps) => Element | Primitive
+
+export interface Element {
+  type: ElementType
+  props: ElemenetProps
+}
+
+export function make(type: ElementType, props: ElemenetProps): Element {
+  return {
+    type,
+    props: {
+      ...props,
+      children: props.children ?? NoChildren,
+    },
+  }
+}
+
+export function isGenericJsxObject(value: unknown): value is {
+  type: any
+  props: any
+} {
+  return typeof value === "object" && value !== null && "type" in value && "props" in value
+}
 
 const EMPTY_TAGS = [
   "area",
@@ -53,12 +72,11 @@ let map = {
 
 const RAW_TEXT_TAGS = ["script", "style"]
 
-// Prevents closing html tags in embedded css/js source
 const escapeRawText = (text: string) => text.replaceAll("</", "<\\/")
 
 export function renderToString(
   node: JSX.Children,
-  hooks?: { onNode?: (node: HyperNode.HyperNode) => void },
+  hooks?: { onNode?: (node: Element) => void },
 ): string {
   const stack: Array<any> = [node]
   let result = ""
@@ -68,7 +86,6 @@ export function renderToString(
 
     if (typeof current === "string") {
       if (current.startsWith("<") && current.endsWith(">")) {
-        // This is a closing tag, don't escape it
         result += current
       } else {
         result += esc(current)
@@ -82,17 +99,14 @@ export function renderToString(
     }
 
     if (typeof current === "boolean") {
-      // React-like behavior: booleans render nothing
       continue
     }
 
     if (current === null || current === undefined) {
-      // React-like behavior: null/undefined render nothing
       continue
     }
 
     if (Array.isArray(current)) {
-      // Handle arrays by pushing all items to stack in reverse order
       for (let i = current.length - 1; i >= 0; i--) {
         stack.push(current[i])
       }
@@ -165,10 +179,56 @@ export function renderToString(
         }
       }
     } else if (current && typeof current === "object") {
-      // Handle objects without type property - convert to string or ignore
-      // This prevents [object Object] from appearing
       continue
     }
   }
   return result
 }
+
+const HtmlStringSymbol = Symbol.for("HtmlString")
+
+export interface HtmlString {
+  readonly [HtmlStringSymbol]: true
+  readonly value: string
+}
+
+const makeHtmlString = (value: string): HtmlString => ({
+  [HtmlStringSymbol]: true,
+  value,
+})
+
+const isHtmlString = (value: unknown): value is HtmlString =>
+  typeof value === "object" && value !== null && HtmlStringSymbol in value
+
+type HtmlValue =
+  | string
+  | number
+  | bigint
+  | boolean
+  | null
+  | undefined
+  | HtmlString
+  | Function
+  | Record<string, unknown>
+  | ReadonlyArray<HtmlValue>
+
+const resolveValue = (value: HtmlValue): string => {
+  if (value === null || value === undefined || value === false || value === true) return ""
+  if (isHtmlString(value)) return value.value
+  if (Array.isArray(value)) return (value as Array<HtmlValue>).map(resolveValue).join("")
+  if (typeof value === "function") return value.toString()
+  if (typeof value === "object") return JSON.stringify(value)
+  if (typeof value === "string") return value
+  return String(value)
+}
+
+export const html = (strings: TemplateStringsArray, ...values: Array<HtmlValue>): HtmlString => {
+  let result = strings[0]
+  for (let i = 0; i < values.length; i++) {
+    result += resolveValue(values[i])
+    result += strings[i + 1]
+  }
+  return makeHtmlString(result)
+}
+
+html.raw = (value: string): HtmlString => makeHtmlString(value)

@@ -3,6 +3,7 @@ import type * as Stream from "effect/Stream"
 import type * as Utils from "effect/Utils"
 import * as Entity from "./Entity.ts"
 import * as Route from "./Route.ts"
+import * as StreamExtra from "./_StreamExtra.ts"
 import type * as Values from "./_Values.ts"
 
 export type Format = "text" | "html" | "json" | "bytes" | "*"
@@ -98,7 +99,7 @@ function normalizeToEntity(value: unknown): Effect.Effect<Entity.Entity<any>> {
   return Effect.succeed(Entity.make(value, { status: 200 }))
 }
 
-export interface BuildReturn<Value, F extends Format> {
+export interface BuildReturn<Value, F extends Format, Body = never> {
   <
     D extends Route.RouteDescriptor.Any,
     B,
@@ -112,7 +113,7 @@ export interface BuildReturn<Value, F extends Format> {
   ) => Route.RouteSet.RouteSet<
     D,
     B,
-    [...I, Route.Route.Route<{ format: F }, {}, A, YieldError<Y>, YieldContext<Y>>]
+    [...I, Route.Route.Route<{ format: F }, {}, [Body] extends [never] ? A : Body, YieldError<Y>, YieldContext<Y>>]
   >
 
   <
@@ -126,10 +127,19 @@ export interface BuildReturn<Value, F extends Format> {
     handler: HandlerInput<NoInfer<D & B & Route.ExtractBindings<I> & { format: F }>, A, E, R>,
   ): (
     self: Route.RouteSet.RouteSet<D, B, I>,
-  ) => Route.RouteSet.RouteSet<D, B, [...I, Route.Route.Route<{ format: F }, {}, A, E, R>]>
+  ) => Route.RouteSet.RouteSet<D, B, [...I, Route.Route.Route<{ format: F }, {}, [Body] extends [never] ? A : Body, E, R>]>
 }
 
-export function build<Value, F extends Format>(descriptors: { format: F }): BuildReturn<Value, F> {
+export function build<Value, F extends Format>(options: { format: F }): BuildReturn<Value, F>
+export function build<Value, Body, F extends Format>(options: {
+  format: F
+  handle: (body: Value) => Body
+}): BuildReturn<Value, F, Body>
+export function build<Value, F extends Format>(options: {
+  format: F
+  handle?: (body: any) => any
+}): any {
+  const { handle: handleBody, ...descriptors } = options
   return function <
     D extends Route.RouteDescriptor.Any,
     B,
@@ -143,15 +153,18 @@ export function build<Value, F extends Format>(descriptors: { format: F }): Buil
       const baseHandler = handle(handler)
       const wrappedHandler: Route.Route.Handler<{ format: F }, A, E, R> = (ctx, next) =>
         baseHandler(ctx as D & B & Route.ExtractBindings<I> & { format: F }, next).pipe(
-          Effect.map((entity) =>
-            entity.headers["content-type"] || contentType === undefined
-              ? entity
-              : Entity.make(entity.body, {
-                  status: entity.status,
-                  url: entity.url,
-                  headers: { ...entity.headers, "content-type": contentType },
-                }),
-          ),
+          Effect.map((entity) => {
+            const body = handleBody && !StreamExtra.isStream(entity.body) ? handleBody(entity.body) : entity.body
+            if (body === entity.body && (entity.headers["content-type"] || contentType === undefined))
+              return entity
+            return Entity.make(body as A, {
+              status: entity.status,
+              url: entity.url,
+              headers: entity.headers["content-type"] || contentType === undefined
+                ? entity.headers
+                : { ...entity.headers, "content-type": contentType },
+            })
+          }),
         )
 
       const route = Route.make<{ format: F }, {}, A, E, R>(wrappedHandler, descriptors)

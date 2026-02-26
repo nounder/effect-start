@@ -1,7 +1,7 @@
 import { JSDOM } from "jsdom"
 import * as test from "bun:test"
-import { html } from "effect-start/hyper"
-import type { HtmlString } from "effect-start/hyper"
+import { html } from "effect-start/Html"
+import type { HtmlString } from "effect-start/Html"
 
 const dom = new JSDOM("<!DOCTYPE html><html><body></body></html>", { url: "http://localhost" })
 const _window = dom.window

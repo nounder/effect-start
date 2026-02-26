@@ -1,5 +1,5 @@
 import * as test from "bun:test"
-import { html } from "effect-start/hyper"
+import { html } from "effect-start/Html"
 
 test.describe("html", () => {
   test.test("plain template", () => {

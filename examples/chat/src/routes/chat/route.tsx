@@ -1,10 +1,9 @@
 import { Ref } from "effect"
 import { Route } from "effect-start"
-import { HyperRoute } from "effect-start/hyper"
 import { Message, messagesRef } from "../../Chat.tsx"
 
 export default Route.get(
-  HyperRoute.html(function* () {
+  Route.html(function* () {
     const messages = yield* Ref.get(messagesRef)
 
     return (

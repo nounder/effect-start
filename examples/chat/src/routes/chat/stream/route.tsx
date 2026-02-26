@@ -1,10 +1,10 @@
 import { Stream } from "effect"
 import { Route } from "effect-start"
-import { HyperHtml } from "effect-start/hyper"
+import * as Html from "effect-start/Html"
 import { type ChatMessage, chatPubSub, Message } from "../../../Chat.tsx"
 
 const chatPatchMessage = (msg: ChatMessage) => {
-  const html = HyperHtml.renderToString(<Message msg={msg} isNew />).replace(/\n/g, "")
+  const html = Html.renderToString(<Message msg={msg} isNew />).replace(/\n/g, "")
   return {
     type: "datastar-patch-elements",
     data: `selector #chat-messages\nmode append\nelements ${html}`,

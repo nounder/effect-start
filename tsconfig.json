@@ -16,8 +16,8 @@
     "noEmit": true,
 
     "paths": {
-      "effect-start/jsx-runtime": ["./src/hyper/jsx-runtime.ts"],
-      "effect-start/jsx-dev-runtime": ["./src/hyper/jsx-runtime.ts"]
+      "effect-start/jsx-runtime": ["./src/jsx-runtime.ts"],
+      "effect-start/jsx-dev-runtime": ["./src/jsx-runtime.ts"]
     },
 
     // Best practices
