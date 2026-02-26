@@ -1,4 +1,5 @@
 import * as test from "bun:test"
+import * as Development from "effect-start/Development"
 import * as Effect from "effect/Effect"
 import * as Ref from "effect/Ref"
 import * as Schedule from "effect/Schedule"
@@ -445,6 +446,150 @@ test.describe("walkHandles", () => {
 
     test.expect("/docs/:path*" in handles).toBe(true)
   })
+})
+
+test.describe(Route.devOnly, () => {
+  test.it("halts the route chain outside dev", () =>
+    Effect.gen(function* () {
+      const calls: Array<string> = []
+      const handler = RouteHttp.toWebHandler(
+        Route.get(
+          Route.devOnly,
+          Route.text(function* () {
+            calls.push("public")
+            return "public"
+          }),
+        ),
+      )
+
+      const response = yield* Effect.promise(() => Fetch.fromHandler(handler, { path: "/test" }))
+
+      test.expect(response.status).toBe(404)
+      test.expect(calls).toEqual([])
+    }).pipe(Effect.runPromise),
+  )
+
+  test.it("falls through in dev", () =>
+    Effect.gen(function* () {
+      const runtime = yield* Effect.runtime<Development.Development>()
+      const calls: Array<string> = []
+      const handler = RouteHttp.toWebHandlerRuntime(runtime)(
+        Route.get(
+          Route.devOnly,
+          Route.text(function* () {
+            calls.push("public")
+            return "public"
+          }),
+        ),
+      )
+
+      const response = yield* Effect.promise(() => Fetch.fromHandler(handler, { path: "/test" }))
+
+      test.expect(response.status).toBe(200)
+      test.expect(yield* Effect.promise(() => response.text())).toBe("public")
+      test.expect(calls).toEqual(["public"])
+    }).pipe(Effect.provide(Development.layerTest), Effect.runPromise),
+  )
+
+  test.it("propagates through use() to all methods in dev", () =>
+    Effect.gen(function* () {
+      const runtime = yield* Effect.runtime<Development.Development>()
+      const handler = RouteHttp.toWebHandlerRuntime(runtime)(
+        Route.use(
+          Route.filter(function* () {
+            return { context: { shared: true as const } }
+          }),
+        )
+          .use(Route.devOnly)
+          .get(
+            Route.text(function* (ctx) {
+              return `${ctx.shared}:get`
+            }),
+          )
+          .post(
+            Route.text(function* (ctx) {
+              return `${ctx.shared}:post`
+            }),
+          ),
+      )
+
+      const getResponse = yield* Effect.promise(() =>
+        Fetch.fromHandler(handler, { path: "/test", method: "GET" }),
+      )
+
+      test.expect(getResponse.status).toBe(200)
+      test.expect(yield* Effect.promise(() => getResponse.text())).toBe("true:get")
+
+      const postResponse = yield* Effect.promise(() =>
+        Fetch.fromHandler(handler, { path: "/test", method: "POST" }),
+      )
+
+      test.expect(postResponse.status).toBe(200)
+      test.expect(yield* Effect.promise(() => postResponse.text())).toBe("true:post")
+    }).pipe(Effect.provide(Development.layerTest), Effect.runPromise),
+  )
+
+  test.it("walkHandles excludes development routes from web handlers", () =>
+    Effect.gen(function* () {
+      const runtime = yield* Effect.runtime<Development.Development>()
+      const tree = RouteTree.make({
+        "/development-only": Route.use(Route.devOnly),
+        "/mixed": Route.get(Route.devOnly, Route.text("public")),
+      })
+
+      const handles = Object.fromEntries(RouteHttp.walkHandles(tree, runtime))
+
+      test.expect(handles).not.toHaveProperty("/development-only")
+      test.expect(handles).toHaveProperty("/mixed")
+
+      const response = yield* Effect.promise(() =>
+        Fetch.fromHandler(handles["/mixed"], {
+          path: "/mixed",
+          method: "GET",
+        }),
+      )
+
+      test.expect(response.status).toBe(200)
+      test.expect(yield* Effect.promise(() => response.text())).toBe("public")
+    }).pipe(Effect.provide(Development.layerTest), Effect.runPromise),
+  )
+
+  test.it(
+    "walkHandles with Route.tree wildcard development layer excludes routes outside dev",
+    () => {
+      const tree = Route.tree({
+        "*": Route.use(Route.devOnly),
+        "/public": Route.get(Route.text("public")),
+      })
+      const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
+
+      test.expect(handles).not.toHaveProperty("/public")
+    },
+  )
+
+  test.it("walkHandles with Route.tree wildcard development layer keeps routes in dev", () =>
+    Effect.gen(function* () {
+      const runtime = yield* Effect.runtime<Development.Development>()
+      const tree = Route.tree({
+        "*": Route.use(Route.devOnly),
+        "/public": Route.get(Route.text("public")),
+      })
+
+      const handles = Object.fromEntries(RouteHttp.walkHandles(tree, runtime))
+
+      test.expect(handles).toHaveProperty("/public")
+
+      const response = yield* Effect.promise(() =>
+        Fetch.fromHandler(handles["/public"], {
+          path: "/public",
+          method: "GET",
+        }),
+      )
+
+      test.expect(response.status).toBe(200)
+      test.expect(yield* Effect.promise(() => response.text())).toBe("public")
+    }).pipe(Effect.provide(Development.layerTest), Effect.runPromise),
+  )
 })
 
 test.describe("middleware chain", () => {

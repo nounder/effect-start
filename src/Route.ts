@@ -1,8 +1,10 @@
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
 import * as Pipeable from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
+import * as Development from "./Development.ts"
 import * as Entity from "./Entity.ts"
 import * as RouteBody from "./RouteBody.ts"
 import * as RouteTree from "./RouteTree.ts"
@@ -162,6 +164,7 @@ export function items<T extends RouteSet.Data<any, any, any>>(self: T): RouteSet
 export function descriptor<T extends RouteSet.Data<any, any, any>>(
   self: T,
 ): T[typeof RouteDescriptor]
+export function descriptor<E extends RouteDescriptor.Any>(self: RouteSet.Data<any, any, any>): E
 export function descriptor<T extends RouteSet.Data<any, any, any>>(
   self: Iterable<T>,
 ): Array<T[typeof RouteDescriptor]>
@@ -236,6 +239,44 @@ export class Routes extends Context.Tag("effect-start/Routes")<Routes, RouteTree
 export function layer(routes: RouteTree.RouteMap | RouteTree.RouteTree) {
   return Layer.sync(Routes, () => (RouteTree.isRouteTree(routes) ? routes : RouteTree.make(routes)))
 }
+
+/**
+ * Creates a route that short-curcits in development.
+ *
+ * Note that when we convert the routes to web handles in {@link import("./RouteHttp.ts")},
+ * we exclude them altogeteher in development.
+ */
+export function devOnly<D extends RouteDescriptor.Any, B, I extends Route.Tuple>(
+  self: RouteSet.RouteSet<D, B, I>,
+): RouteSet.RouteSet<D, B, [...I, Route.Route<{ dev: true }, { dev: true }, unknown, any, any>]> {
+  const route: Route.Route<{ dev: true }, { dev: true }, unknown, any, any> = make<
+    { dev: true },
+    { dev: true },
+    unknown,
+    any,
+    any
+  >(
+    (context, next) =>
+      Effect.flatMap(Development.option, (developmentOption) =>
+        Option.isSome(developmentOption)
+          ? Effect.succeed(next({ ...context, dev: true }))
+          : Effect.succeed(Entity.make("", { status: 404 })),
+      ),
+    { dev: true },
+  )
+
+  const nextItems: [...I, Route.Route<{ dev: true }, { dev: true }, unknown, any, any>] = [
+    ...items(self),
+    route,
+  ]
+
+  return set<D, B, [...I, Route.Route<{ dev: true }, { dev: true }, unknown, any, any>]>(
+    nextItems,
+    descriptor(self),
+  )
+}
+
+export const development = devOnly
 
 export { make as tree } from "./RouteTree.ts"
 

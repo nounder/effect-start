@@ -100,6 +100,11 @@ export const layer = (opts?: {
   filter?: (event: FileSystem.WatchEvent) => boolean
 }) => Layer.scoped(Development, watch(opts))
 
+export const layerTest = Layer.effect(
+  Development,
+  Effect.map(PubSub.unbounded<DevelopmentEvent>(), (events) => ({ events })),
+)
+
 export const option = Effect.serviceOption(Development)
 
 export const events: Stream.Stream<DevelopmentEvent> = Stream.unwrap(
