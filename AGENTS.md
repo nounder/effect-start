@@ -1,10 +1,17 @@
 # Environment
 
-- Use Bun runtime.
+- Use Bun runtime and package manager.
 
 # Code
 
-Follow these import rules:
+- Do NOT use section header comments (like `// -----------------------`)
+
+## Module structure
+
+- Module designed to be used should have no side-effects and no default export (only named exports).
+- Private, or internal, modules must start with an underscore, like: \_ContentNegotiation, and \_Docker.
+
+## Import rules
 
 ```ts
 // when importing Node modules name them like such:
@@ -16,13 +23,15 @@ import * as Schema from "effect/Schema"
 // Always use extension in local module imports:
 import type * as Files from "./Files.ts"
 // When import module is lowercase, prefer named imports:
-import { start } from "./server.ts"
+import { server } from "./server.ts"
 ```
+
+## Comments
 
 Do not write obvious comments that restate what the code is doing
 without adding meaningful context.
 
-# Tests
+## Running tests
 
 Always run test when making final changes:
 
@@ -33,11 +42,11 @@ bun test
 # run specific test
 bun test routing.test.ts
 
-# run type system tests
+# type check
 tsgo
 ```
 
-Write tests:
+## Writing tests
 
 ```ts
 // use test.expect when testing runtime
@@ -63,7 +72,7 @@ test.it("does something", () =>
   Effect.gen(function* () {
     yield* Commander.parse(cmd, args)
     test.expect(executed).toBe(false)
-  }).pipe(Effect.runPromise),
+  }).pipe(Effect.scoped, Effect.runPromise),
 )
 
 // bad
@@ -73,8 +82,20 @@ test.it("does something", async () => {
 })
 ```
 
-Always use `.pipe(Effect.scoped)` instead of `Effect.scoped(...)` wrapping.
+# Effect
 
-# Misc
+## Promises
 
-Do NOT use section header comments (like `// -----------------------`)
+```ts
+// Always use tryPromise() and map to TaggedError
+Effect.tryPromise({
+  try: () => fetch(`https://example.com`),
+  // remap the error
+  catch: (cause) => new FetchError({ reason: "Network", cause }),
+})
+
+class FetchError extends Data.TaggedError("FetchError")<{
+  readonly reason: "Network" | "Status"
+  readonly cause?: unknown
+}> {}
+```

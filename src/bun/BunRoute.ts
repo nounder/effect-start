@@ -1,7 +1,9 @@
-import type * as Bun from "bun"
+import * as Bun from "bun"
+import * as NPath from "node:path"
 import * as Data from "effect/Data"
 import * as Either from "effect/Either"
 import * as Effect from "effect/Effect"
+import * as FiberRef from "effect/FiberRef"
 import * as Option from "effect/Option"
 import * as Entity from "../Entity.ts"
 import * as Hyper from "../hyper/Hyper.ts"
@@ -36,6 +38,8 @@ export function descriptors(
 
 type HTMLBundleModule = Bun.HTMLBundle | { default: Bun.HTMLBundle }
 
+const bundleDepthRef = FiberRef.unsafeMake(0)
+
 export function htmlBundle(load: () => HTMLBundleModule | Promise<HTMLBundleModule>) {
   const bunPrefix = `/.BunRoute-${Unique.token(10)}`
   const bunLoad = () =>
@@ -66,6 +70,7 @@ export function htmlBundle(load: () => HTMLBundleModule | Promise<HTMLBundleModu
     > = (context, next) =>
       Effect.gen(function* () {
         const originalRequest = context.request
+        const bundleDepth = yield* FiberRef.get(bundleDepthRef)
 
         if (originalRequest.headers.get(INTERNAL_FETCH_HEADER) === "true") {
           const url = new URL(originalRequest.url)
@@ -79,41 +84,62 @@ export function htmlBundle(load: () => HTMLBundleModule | Promise<HTMLBundleModu
           )
         }
 
-        const bunServer = yield* BunServer.BunServer
-        const url = new URL(originalRequest.url)
+        let html = ""
+        let status = 200
+        let contentType = "text/html;charset=utf-8"
 
-        const internalPath = `${bunPrefix}${url.pathname}`
-        const internalUrl = new URL(internalPath, bunServer.server.url)
+        if (bundleDepth === 0) {
+          const bunServer = yield* BunServer.BunServer
+          const url = new URL(originalRequest.url)
 
-        const headers = new Headers(originalRequest.headers)
-        headers.set(INTERNAL_FETCH_HEADER, "true")
+          const internalPath = `${bunPrefix}${url.pathname}`
+          const internalUrl = new URL(internalPath, bunServer.server.url)
 
-        const proxyRequest = new Request(internalUrl, {
-          method: originalRequest.method,
-          headers,
-        })
+          const headers = new Headers(originalRequest.headers)
+          headers.set(INTERNAL_FETCH_HEADER, "true")
 
-        const response = yield* Effect.tryPromise({
-          try: () => fetch(proxyRequest),
-          catch: (error) =>
-            new BunRouteError({
-              reason: "ProxyError",
-              pattern: internalPath,
-              message: `Failed to fetch internal HTML bundle: ${String(error)}`,
-            }),
-        })
+          const proxyRequest = new Request(internalUrl, {
+            method: originalRequest.method,
+            headers,
+          })
 
-        let html = yield* Effect.tryPromise({
-          try: () => response.text(),
-          catch: (error) =>
-            new BunRouteError({
-              reason: "ProxyError",
-              pattern: internalPath,
-              message: String(error),
-            }),
-        })
+          const response = yield* Effect.tryPromise({
+            try: () => fetch(proxyRequest),
+            catch: (error) =>
+              new BunRouteError({
+                reason: "ProxyError",
+                pattern: internalPath,
+                message: `Failed to fetch internal HTML bundle: ${String(error)}`,
+              }),
+          })
 
-        const childEntity = yield* next(context)
+          html = yield* Effect.tryPromise({
+            try: () => response.text(),
+            catch: (error) =>
+              new BunRouteError({
+                reason: "ProxyError",
+                pattern: internalPath,
+                message: String(error),
+              }),
+          })
+          status = response.status
+          contentType = response.headers.get("content-type") ?? contentType
+        } else {
+          html = yield* readBundleHtml(bunLoad).pipe(
+            Effect.mapError(
+              (error) =>
+                new BunRouteError({
+                  reason: "ProxyError",
+                  pattern: bunPrefix,
+                  message: `Failed to load nested HTML bundle: ${String(error)}`,
+                }),
+            ),
+          )
+        }
+
+        const childEntity = yield* next(context).pipe(
+          Effect.locally(bundleDepthRef, bundleDepth + 1),
+        )
         const children = childEntity?.body ?? childEntity
 
         let childrenHtml = ""
@@ -127,12 +153,14 @@ export function htmlBundle(load: () => HTMLBundleModule | Promise<HTMLBundleModu
           }
         }
 
-        html = html.replace(/%children%/g, childrenHtml)
+        childrenHtml = yield* stripInjectedBunScripts(childrenHtml)
+
+        html = html.replaceAll("%children%", childrenHtml)
 
         return Entity.make(html, {
-          status: response.status,
+          status,
           headers: {
-            "content-type": response.headers.get("content-type"),
+            "content-type": contentType,
           },
         })
       })
@@ -147,6 +175,67 @@ export function htmlBundle(load: () => HTMLBundleModule | Promise<HTMLBundleModu
 
     return Route.set([...Route.items(self), route] as any, Route.descriptor(self))
   }
+}
+
+function stripInjectedBunScripts(html: string) {
+  let removeNextInlineScript = false
+  const rewriter = new HTMLRewriter().on("script", {
+    element(element) {
+      const src = element.getAttribute("src")
+      const hasDevAttribute = element.getAttribute("data-bun-dev-server-script") !== null
+
+      if (hasDevAttribute || (src !== null && src.startsWith("/_bun/client/"))) {
+        element.remove()
+        removeNextInlineScript = true
+        return
+      }
+
+      if (removeNextInlineScript && src === null) {
+        element.remove()
+        removeNextInlineScript = false
+        return
+      }
+
+      removeNextInlineScript = false
+    },
+  })
+
+  return Effect.tryPromise({
+    try: () => rewriter.transform(new Response(html)).text(),
+    catch: (error) =>
+      new BunRouteError({
+        reason: "ProxyError",
+        pattern: "stripInjectedBunScripts",
+        message: String(error),
+      }),
+  })
+}
+
+function readBundleHtml(bunLoad: () => Promise<Bun.HTMLBundle>) {
+  return Effect.tryPromise({
+    try: () => bunLoad(),
+    catch: (error) =>
+      new BunRouteError({
+        reason: "ProxyError",
+        pattern: "readBundleHtml",
+        message: String(error),
+      }),
+  }).pipe(
+    Effect.andThen((bundle) => {
+      const indexPath = NPath.isAbsolute(bundle.index)
+        ? bundle.index
+        : NPath.resolve(NPath.dirname(Bun.main), bundle.index)
+      return Effect.tryPromise({
+        try: () => Bun.file(indexPath).text(),
+        catch: (error) =>
+          new BunRouteError({
+            reason: "ProxyError",
+            pattern: indexPath,
+            message: String(error),
+          }),
+      })
+    }),
+  )
 }
 
 type BunServerFetchHandler = (

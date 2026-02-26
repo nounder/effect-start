@@ -11,75 +11,79 @@
   "type": "module",
   "exports": {
     ".": {
-      "source": "./src/index.ts",
+      "bun": "./src/index.ts",
       "default": "./dist/index.js"
     },
-    "./client/assets.d.ts": "./src/assets.d.ts",
-    "./jsx-runtime": {
-      "source": "./src/hyper/jsx-runtime.ts",
-      "default": "./dist/hyper/jsx-runtime.js"
-    },
-    "./jsx-dev-runtime": {
-      "source": "./src/hyper/jsx-runtime.ts",
-      "default": "./dist/hyper/jsx-runtime.js"
-    },
-    "./lint/plugin": {
-      "source": "./src/lint/plugin.js",
-      "default": "./dist/lint/plugin.js"
-    },
-    "./x/*": {
-      "source": "./src/x/*/index.ts",
-      "default": "./dist/x/*/index.js"
-    },
-    "./x/tailwind/plugin": {
-      "source": "./src/x/tailwind/plugin.ts",
-      "default": "./dist/x/tailwind/plugin.js"
-    },
-    "./bun": {
-      "source": "./src/bun/index.ts",
-      "default": "./dist/bun/index.js"
-    },
-    "./cli": {
-      "source": "./src/cli/index.ts",
-      "default": "./dist/cli/index.js"
-    },
-    "./client": {
-      "source": "./src/client/index.ts",
-      "default": "./dist/client/index.js"
-    },
-    "./datastar": {
-      "source": "./src/datastar/index.ts",
-      "default": "./dist/datastar/index.js"
-    },
-    "./experimental": {
-      "source": "./src/experimental/index.ts",
-      "default": "./dist/experimental/index.js"
-    },
-    "./hyper": {
-      "source": "./src/hyper/index.ts",
-      "default": "./dist/hyper/index.js"
-    },
-    "./sql/*": {
-      "source": "./src/sql/*/index.ts",
-      "default": "./dist/sql/*/index.js"
-    },
-    "./sql": {
-      "source": "./src/sql/index.ts",
-      "default": "./dist/sql/index.js"
-    },
-    "./testing": {
-      "source": "./src/testing/index.ts",
-      "default": "./dist/testing/index.js"
-    },
-    "./studio": {
-      "source": "./src/studio/index.ts",
-      "default": "./dist/studio/index.js"
-    },
     "./*": {
-      "source": "./src/*.ts",
+      "bun": "./src/*.ts",
       "default": "./dist/*.js"
     },
     "./_*": null,
+    "./client/assets.d.ts": "./src/assets.d.ts",
+    "./jsx-runtime": {
+      "bun": "./src/hyper/jsx-runtime.ts",
+      "default": "./dist/hyper/jsx-runtime.js"
+    },
+    "./jsx-dev-runtime": {
+      "bun": "./src/hyper/jsx-runtime.ts",
+      "default": "./dist/hyper/jsx-runtime.js"
+    },
+    "./lint/plugin": {
+      "bun": "./src/lint/plugin.js",
+      "default": "./dist/lint/plugin.js"
+    },
+    "./bun": {
+      "bun": "./src/bun/index.ts",
+      "default": "./dist/bun/index.js"
+    },
+    "./cli": {
+      "bun": "./src/cli/index.ts",
+      "default": "./dist/cli/index.js"
+    },
+    "./client": {
+      "bun": "./src/client/index.ts",
+      "default": "./dist/client/index.js"
+    },
+    "./cloudflare": {
+      "bun": "./src/cloudflare/index.ts",
+      "default": "./dist/cloudflare/index.js"
+    },
+    "./datastar": {
+      "bun": "./src/datastar/index.ts",
+      "default": "./dist/datastar/index.js"
+    },
+    "./experimental": {
+      "bun": "./src/experimental/index.ts",
+      "default": "./dist/experimental/index.js"
+    },
+    "./hyper": {
+      "bun": "./src/hyper/index.ts",
+      "default": "./dist/hyper/index.js"
+    },
+    "./sql": {
+      "bun": "./src/sql/index.ts",
+      "default": "./dist/sql/index.js"
+    },
+    "./sql/*": {
+      "bun": "./src/sql/*/index.ts",
+      "default": "./dist/sql/*/index.js"
+    },
+    "./studio": {
+      "bun": "./src/studio/index.ts",
+      "default": "./dist/studio/index.js"
+    },
+    "./tailscale": {
+      "bun": "./src/tailscale/index.ts",
+      "default": "./dist/tailscale/index.js"
+    },
+    "./tailwind": {
+      "bun": "./src/tailwind/index.ts",
+      "default": "./dist/tailwind/index.js"
+    },
+    "./testing": {
+      "bun": "./src/testing/index.ts",
+      "default": "./dist/testing/index.js"
+    },
     "./package.json": "./package.json"
   },
   "scripts": {

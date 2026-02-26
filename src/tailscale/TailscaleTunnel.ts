@@ -1,5 +1,5 @@
-import * as StartApp from "../../_StartApp.ts"
-import * as System from "../../System.ts"
+import * as StartApp from "../_StartApp.ts"
+import * as System from "../System.ts"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"

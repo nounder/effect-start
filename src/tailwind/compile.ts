@@ -2,7 +2,7 @@ import fsPromises from "node:fs/promises"
 import path from "node:path"
 import { pathToFileURL } from "node:url"
 import { compile as _compile, compileAst as _compileAst, Features, Polyfills } from "tailwindcss"
-import * as BunEnhancedResolve from "../../bun/_BunEnhancedResolve"
+import * as BunEnhancedResolve from "../bun/_BunEnhancedResolve"
 
 type AstNode = Parameters<typeof _compileAst>[0][number]
 

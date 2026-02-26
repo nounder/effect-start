@@ -1,6 +1,8 @@
 import * as test from "bun:test"
+import * as Development from "effect-start/Development"
 import * as Effect from "effect/Effect"
 import type * as Entity from "effect-start/Entity"
+import * as EntityRuntime from "effect-start/Entity"
 import * as Fetch from "effect-start/Fetch"
 import * as Route from "effect-start/Route"
 import * as RouteHttp from "effect-start/RouteHttp"
@@ -97,5 +99,91 @@ test.describe(Route.lazy, () => {
 
       test.expect(yield* Effect.promise(() => response.json())).toEqual({ value: true })
     }).pipe(Effect.runPromise),
+  )
+})
+
+test.describe(Route.devOnly, () => {
+  test.it("marks development route descriptors with dev=true", () => {
+    const routes = Route.get(Route.devOnly, Route.text("public"))
+    const routeItems = Route.items(routes)
+    const descriptors = Route.descriptor(routeItems)
+
+    test.expect(descriptors[0]).toMatchObject({
+      method: "GET",
+      dev: true,
+    })
+  })
+
+  test.it("provides dev context to subsequent routes", () =>
+    Effect.gen(function* () {
+      const runtime = yield* Effect.runtime<Development.Development>()
+      const handler = RouteHttp.toWebHandlerRuntime(runtime)(
+        Route.get(
+          Route.devOnly,
+          Route.filter(function* (ctx) {
+            return { context: { fromFilter: ctx.dev } }
+          }),
+          Route.text(function* (ctx) {
+            test.expectTypeOf(ctx).toMatchObjectType<{
+              dev: true
+              fromFilter: true
+            }>()
+
+            return `${ctx.dev}:${ctx.fromFilter}`
+          }),
+        ),
+      )
+
+      const response = yield* Effect.promise(() => Fetch.fromHandler(handler, { path: "/test" }))
+
+      test.expect(response.status).toBe(200)
+      test.expect(yield* Effect.promise(() => response.text())).toBe("true:true")
+    }).pipe(Effect.provide(Development.layerTest), Effect.runPromise),
+  )
+
+  test.it("development handler halts outside dev", () =>
+    Effect.gen(function* () {
+      const routes = Route.get(Route.devOnly, Route.text("public"))
+      const developmentRoute = Route.items(routes)[0]
+      const context: Parameters<typeof developmentRoute.handler>[0] = {
+        dev: true,
+        method: "GET",
+      }
+      let nextCalled = false
+
+      const entity = yield* developmentRoute.handler(context, () => {
+        nextCalled = true
+        return EntityRuntime.make("next")
+      })
+
+      test.expect(entity.status).toBe(404)
+      test.expect(nextCalled).toBe(false)
+    }).pipe(Effect.runPromise),
+  )
+
+  test.it("development handler falls through in dev with dev context", () =>
+    Effect.gen(function* () {
+      const routes = Route.get(Route.devOnly, Route.text("public"))
+      const developmentRoute = Route.items(routes)[0]
+      const context: Parameters<typeof developmentRoute.handler>[0] = {
+        dev: true,
+        method: "GET",
+      }
+      let nextCalled = false
+      let receivedContext: Record<string, unknown> | undefined
+
+      const entity = yield* developmentRoute.handler(context, (context) => {
+        nextCalled = true
+        receivedContext = context
+        return EntityRuntime.make("next")
+      })
+
+      test.expect(entity.body).toBe("next")
+      test.expect(nextCalled).toBe(true)
+      test.expect(receivedContext).toMatchObject({
+        method: "GET",
+        dev: true,
+      })
+    }).pipe(Effect.provide(Development.layerTest), Effect.runPromise),
   )
 })

@@ -8,6 +8,7 @@ import type * as ParseResult from "effect/ParseResult"
 import * as Runtime from "effect/Runtime"
 import * as Stream from "effect/Stream"
 import * as ContentNegotiation from "./_ContentNegotiation.ts"
+import * as Development from "./Development.ts"
 import * as Entity from "./Entity.ts"
 import type * as Http from "./_Http.ts"
 import * as Route from "./Route.ts"
@@ -388,9 +389,26 @@ export function* walkHandles(
   runtime: Runtime.Runtime<never> = Runtime.defaultRuntime,
 ): Generator<[path: string, handler: Http.WebHandler]> {
   const pathGroups = new Map<string, Array<RouteMount.MountedRoute>>()
+  const runSync = Runtime.runSync(runtime)
+  const inDevelopment = Option.isSome(runSync(Development.option))
+  const developmentPaths = new Set<string>()
 
   for (const route of RouteTree.walk(tree)) {
-    const path = Route.descriptor(route).path
+    const descriptor = Route.descriptor<{ path: string; dev?: boolean }>(route)
+    if (descriptor.dev === true) {
+      developmentPaths.add(descriptor.path)
+    }
+  }
+
+  for (const route of RouteTree.walk(tree)) {
+    const descriptor = Route.descriptor<{ path: string; dev?: boolean }>(route)
+    if (descriptor.dev === true) {
+      continue
+    }
+    const path = descriptor.path
+    if (!inDevelopment && developmentPaths.has(path)) {
+      continue
+    }
     const group = pathGroups.get(path) ?? []
     group.push(route)
     pathGroups.set(path, group)
