@@ -1,4 +1,4 @@
-import type * as Bun from "bun"
+import * as Bun from "bun"
 import * as NPath from "node:path"
 import * as Data from "effect/Data"
 import * as Either from "effect/Either"

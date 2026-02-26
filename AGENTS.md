@@ -6,6 +6,11 @@
 
 - Do NOT use section header comments (like `// -----------------------`)
 
+## Module structure
+
+- Module designed to be used should have no side-effects and no default export (only named exports).
+- Private, or internal, modules must start with an underscore, like: \_ContentNegotiation, and \_Docker.
+
 ## Import rules
 
 ```ts
