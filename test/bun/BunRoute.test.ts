@@ -16,14 +16,18 @@ const testLayer = (
     ...options,
   }).pipe(Layer.provide(Route.layer(routes)))
 
-
 const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 
 const countScriptsBySrc = (html: string, targetSrc: string) =>
-  (html.match(new RegExp(`<script[^>]*src=["']${escapeRegExp(targetSrc)}["'][^>]*>`, "g")) ?? []).length
+  (html.match(new RegExp(`<script[^>]*src=["']${escapeRegExp(targetSrc)}["'][^>]*>`, "g")) ?? [])
+    .length
 
 const countBunDevScripts = (html: string) =>
-  (html.match(/<script[^>]*(?:data-bun-dev-server-script|src=["']\/_bun\/client\/[^"']*)[^>]*>/g) ?? []).length
+  (
+    html.match(
+      /<script[^>]*(?:data-bun-dev-server-script|src=["']\/_bun\/client\/[^"']*)[^>]*>/g,
+    ) ?? []
+  ).length
 
 test.describe(BunRoute.htmlBundle, () => {
   test.test("wraps child content with layout", () => {
@@ -115,8 +119,8 @@ test.describe(BunRoute.htmlBundle, () => {
       ),
       Effect.scoped,
       Effect.runPromise,
-    ))
-
+    ),
+  )
 
   test.test("preserves non-Bun child scripts while de-duplicating Bun scripts", () =>
     Effect.gen(function* () {
@@ -147,8 +151,8 @@ test.describe(BunRoute.htmlBundle, () => {
       ),
       Effect.scoped,
       Effect.runPromise,
-    ))
-
+    ),
+  )
 
   test.test("preserves linked layout script without duplicating it", () =>
     Effect.gen(function* () {
@@ -168,7 +172,9 @@ test.describe(BunRoute.htmlBundle, () => {
       Effect.provide(
         testLayer(
           Route.tree({
-            "*": Route.use(BunRoute.htmlBundle(() => import("../../static/LayoutSlotsOuterScripts.html"))),
+            "*": Route.use(
+              BunRoute.htmlBundle(() => import("../../static/LayoutSlotsOuterScripts.html")),
+            ),
             "/:path*": Route.get(
               BunRoute.htmlBundle(() => import("../../static/LayoutSlotsInnerScripts.html")),
               Route.html("<section>Catch All</section>"),
@@ -178,7 +184,8 @@ test.describe(BunRoute.htmlBundle, () => {
       ),
       Effect.scoped,
       Effect.runPromise,
-    ))
+    ),
+  )
 
   test.test("does not include Bun dev scripts when development is false", () =>
     Effect.gen(function* () {
@@ -206,7 +213,8 @@ test.describe(BunRoute.htmlBundle, () => {
       ),
       Effect.scoped,
       Effect.runPromise,
-    ))
+    ),
+  )
 
   test.test("includes Bun dev scripts when development is true", () =>
     Effect.gen(function* () {
@@ -234,7 +242,8 @@ test.describe(BunRoute.htmlBundle, () => {
       ),
       Effect.scoped,
       Effect.runPromise,
-    ))
+    ),
+  )
 
   test.test("has format: html descriptor", () => {
     const routes = Route.tree({

@@ -648,4 +648,3 @@ test.describe("static file routes", () => {
     }).pipe(Effect.scoped, Effect.runPromise)
   })
 })
-

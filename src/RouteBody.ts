@@ -21,9 +21,7 @@ type YieldError<T> = T extends Utils.YieldWrap<Effect.Effect<any, infer E, any>>
 
 type YieldContext<T> = T extends Utils.YieldWrap<Effect.Effect<any, any, infer R>> ? R : never
 
-type Next<B, A> = (
-  context?: Partial<B> & Record<string, unknown>,
-) => Entity.Entity<UnwrapStream<A>>
+type Next<B, A> = (context?: Partial<B> & Record<string, unknown>) => Entity.Entity<UnwrapStream<A>>
 
 type HandlerFunction<B, A, E, R> = (
   context: Values.Simplify<B>,

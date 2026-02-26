@@ -137,7 +137,9 @@ export function htmlBundle(load: () => HTMLBundleModule | Promise<HTMLBundleModu
           )
         }
 
-        const childEntity = yield* next(context).pipe(Effect.locally(bundleDepthRef, bundleDepth + 1))
+        const childEntity = yield* next(context).pipe(
+          Effect.locally(bundleDepthRef, bundleDepth + 1),
+        )
         const children = childEntity?.body ?? childEntity
 
         let childrenHtml = ""
@@ -174,7 +176,6 @@ export function htmlBundle(load: () => HTMLBundleModule | Promise<HTMLBundleModu
     return Route.set([...Route.items(self), route] as any, Route.descriptor(self))
   }
 }
-
 
 function stripInjectedBunScripts(html: string) {
   let removeNextInlineScript = false
