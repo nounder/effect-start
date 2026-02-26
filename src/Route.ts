@@ -4,8 +4,6 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Pipeable from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
-import type * as Stream from "effect/Stream"
-import type * as Utils from "effect/Utils"
 import * as Development from "./Development.ts"
 import * as Entity from "./Entity.ts"
 import * as RouteBody from "./RouteBody.ts"
@@ -212,56 +210,11 @@ export const text = RouteBody.build<string, "text">({
   format: "text",
 })
 
-type HtmlHandlerValue = string | JSX.Children
-
-type YieldError<T> = T extends Utils.YieldWrap<Effect.Effect<any, infer E, any>> ? E : never
-type YieldContext<T> = T extends Utils.YieldWrap<Effect.Effect<any, any, infer R>> ? R : never
-
-interface HtmlReturn {
-  <
-    D extends RouteDescriptor.Any,
-    B,
-    I extends Route.Tuple,
-    A extends HtmlHandlerValue | Stream.Stream<HtmlHandlerValue, any, any>,
-    Y extends Utils.YieldWrap<Effect.Effect<any, any, any>>,
-  >(
-    handler: RouteBody.GeneratorHandler<
-      NoInfer<D & B & ExtractBindings<I> & { format: "html" }>,
-      A,
-      Y
-    >,
-  ): (
-    self: RouteSet.RouteSet<D, B, I>,
-  ) => RouteSet.RouteSet<
-    D,
-    B,
-    [...I, Route.Route<{ format: "html" }, {}, string, YieldError<Y>, YieldContext<Y>>]
-  >
-
-  <
-    D extends RouteDescriptor.Any,
-    B,
-    I extends Route.Tuple,
-    A extends HtmlHandlerValue | Stream.Stream<HtmlHandlerValue, any, any>,
-    E = never,
-    R = never,
-  >(
-    handler: RouteBody.HandlerInput<
-      NoInfer<D & B & ExtractBindings<I> & { format: "html" }>,
-      A,
-      E,
-      R
-    >,
-  ): (
-    self: RouteSet.RouteSet<D, B, I>,
-  ) => RouteSet.RouteSet<D, B, [...I, Route.Route<{ format: "html" }, {}, string, E, R>]>
-}
-
-export const html: HtmlReturn = RouteBody.build<string, "html">({
+export const html = RouteBody.build<string | JSX.Children, string, "html">({
   format: "html",
-  normalizeBody: (body) =>
+  handle: (body) =>
     typeof body === "string" ? body : HyperHtml.renderToString(body as JSX.Children),
-}) as unknown as HtmlReturn
+})
 
 export const json = RouteBody.build<Values.Json, "json">({
   format: "json",

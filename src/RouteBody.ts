@@ -98,7 +98,7 @@ function normalizeToEntity(value: unknown): Effect.Effect<Entity.Entity<any>> {
   return Effect.succeed(Entity.make(value, { status: 200 }))
 }
 
-export interface BuildReturn<Value, F extends Format> {
+export interface BuildReturn<Value, F extends Format, Body = never> {
   <
     D extends Route.RouteDescriptor.Any,
     B,
@@ -112,7 +112,7 @@ export interface BuildReturn<Value, F extends Format> {
   ) => Route.RouteSet.RouteSet<
     D,
     B,
-    [...I, Route.Route.Route<{ format: F }, {}, A, YieldError<Y>, YieldContext<Y>>]
+    [...I, Route.Route.Route<{ format: F }, {}, [Body] extends [never] ? A : Body, YieldError<Y>, YieldContext<Y>>]
   >
 
   <
@@ -126,14 +126,19 @@ export interface BuildReturn<Value, F extends Format> {
     handler: HandlerInput<NoInfer<D & B & Route.ExtractBindings<I> & { format: F }>, A, E, R>,
   ): (
     self: Route.RouteSet.RouteSet<D, B, I>,
-  ) => Route.RouteSet.RouteSet<D, B, [...I, Route.Route.Route<{ format: F }, {}, A, E, R>]>
+  ) => Route.RouteSet.RouteSet<D, B, [...I, Route.Route.Route<{ format: F }, {}, [Body] extends [never] ? A : Body, E, R>]>
 }
 
+export function build<Value, F extends Format>(options: { format: F }): BuildReturn<Value, F>
+export function build<Value, Body, F extends Format>(options: {
+  format: F
+  handle: (body: Value) => Body
+}): BuildReturn<Value, F, Body>
 export function build<Value, F extends Format>(options: {
   format: F
-  normalizeBody?: (body: any) => Value
-}): BuildReturn<Value, F> {
-  const { normalizeBody, ...descriptors } = options
+  handle?: (body: any) => any
+}): any {
+  const { handle: handleBody, ...descriptors } = options
   return function <
     D extends Route.RouteDescriptor.Any,
     B,
@@ -148,7 +153,7 @@ export function build<Value, F extends Format>(options: {
       const wrappedHandler: Route.Route.Handler<{ format: F }, A, E, R> = (ctx, next) =>
         baseHandler(ctx as D & B & Route.ExtractBindings<I> & { format: F }, next).pipe(
           Effect.map((entity) => {
-            const body = normalizeBody ? normalizeBody(entity.body) : entity.body
+            const body = handleBody ? handleBody(entity.body) : entity.body
             if (body === entity.body && (entity.headers["content-type"] || contentType === undefined))
               return entity
             return Entity.make(body as A, {
