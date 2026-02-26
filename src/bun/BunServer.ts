@@ -11,7 +11,6 @@ import * as Runtime from "effect/Runtime"
 import type * as Scope from "effect/Scope"
 import * as NOs from "node:os"
 import * as NPath from "node:path"
-import * as _Development from "../Development.ts"
 import * as PathPattern from "../_PathPattern.ts"
 import * as PlatformRuntime from "../PlatformRuntime.ts"
 import * as Route from "../Route.ts"
@@ -20,6 +19,7 @@ import * as StartApp from "../_StartApp.ts"
 import type * as RouteMount from "../RouteMount.ts"
 import * as RouteTree from "../RouteTree.ts"
 import * as BunRoute from "./BunRoute.ts"
+
 export interface WebSocketContext {
   readonly deferred: Deferred.Deferred<Bun.ServerWebSocket<WebSocketContext>>
   readonly closeDeferred: Deferred.Deferred<void, Socket.SocketError>

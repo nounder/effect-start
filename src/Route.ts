@@ -14,6 +14,8 @@ import type * as Values from "./_Values.ts"
 import * as HyperHtml from "./hyper/HyperHtml.ts"
 import type { JSX } from "./hyper/jsx.d.ts"
 
+export const render = RouteBody.render
+
 export const RouteItems: unique symbol = Symbol()
 export const RouteDescriptor: unique symbol = Symbol()
 // only for structural type matching
@@ -269,20 +271,31 @@ export const bytes = RouteBody.build<Uint8Array, "bytes">({
   format: "bytes",
 })
 
-export { render } from "./RouteBody.ts"
-
 export { sse } from "./RouteSse.ts"
 
-export function redirect(
+export function redirect<D extends RouteDescriptor.Any, B, I extends Route.Tuple>(
   url: string | URL,
   options?: { status?: 301 | 302 | 303 | 307 | 308 },
-): Entity.Entity<""> {
-  return Entity.make("", {
-    status: options?.status ?? 302,
-    headers: {
-      location: url instanceof URL ? url.href : url,
-    },
-  })
+): (
+  self: RouteSet.RouteSet<D, B, I>,
+) => RouteSet.RouteSet<D, B, [...I, Route.Route<{}, {}, "", never, never>]> {
+  const route = make<{}, {}, "">(
+    () =>
+      Effect.succeed(
+        Entity.make("", {
+          status: options?.status ?? 302,
+          headers: {
+            location: url instanceof URL ? url.href : url,
+          },
+        }),
+      ),
+  )
+
+  return (self) =>
+    set<D, B, [...I, Route.Route<{}, {}, "", never, never>]>(
+      [...items(self), route],
+      descriptor(self),
+    )
 }
 
 export class Routes extends Context.Tag("effect-start/Routes")<Routes, RouteTree.RouteTree>() {}
@@ -326,8 +339,6 @@ export function devOnly<D extends RouteDescriptor.Any, B, I extends Route.Tuple>
     descriptor(self),
   )
 }
-
-export const development = devOnly
 
 export { make as tree } from "./RouteTree.ts"
 

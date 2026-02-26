@@ -1,39 +1,64 @@
 import * as test from "bun:test"
 import * as Development from "effect-start/Development"
 import * as Effect from "effect/Effect"
-import type * as Entity from "effect-start/Entity"
-import * as EntityRuntime from "effect-start/Entity"
+import * as Entity from "effect-start/Entity"
 import * as Fetch from "effect-start/Fetch"
 import * as Route from "effect-start/Route"
 import * as RouteHttp from "effect-start/RouteHttp"
 
 test.describe(Route.redirect, () => {
-  test.it("creates redirect with default 302 status", () => {
-    const entity = Route.redirect("/login")
+  test.it("composes with Route.get", () =>
+    Effect.gen(function* () {
+      const routes = Route.get(Route.redirect("/dashboard"))
+      const handler = RouteHttp.toWebHandler(routes)
 
-    test.expect(entity.status).toBe(302)
-    test.expect(entity.headers.location).toBe("/login")
-    test.expect(entity.body).toBe("")
-  })
+      const response = yield* Effect.promise(() => Fetch.fromHandler(handler, { path: "/test" }))
 
-  test.it("creates redirect with custom status", () => {
-    const entity = Route.redirect("/new-url", { status: 301 })
+      test.expect(response.status).toBe(302)
+      test.expect(response.headers.get("location")).toBe("/dashboard")
+    }).pipe(Effect.runPromise),
+  )
 
-    test.expect(entity.status).toBe(301)
-    test.expect(entity.headers.location).toBe("/new-url")
-  })
+  test.it("supports custom status", () =>
+    Effect.gen(function* () {
+      const routes = Route.get(Route.redirect("/new-url", { status: 301 }))
+      const handler = RouteHttp.toWebHandler(routes)
 
-  test.it("accepts URL object", () => {
-    const entity = Route.redirect(new URL("https://example.com/path"))
+      const response = yield* Effect.promise(() => Fetch.fromHandler(handler, { path: "/test" }))
 
-    test.expect(entity.headers.location).toBe("https://example.com/path")
-  })
+      test.expect(response.status).toBe(301)
+      test.expect(response.headers.get("location")).toBe("/new-url")
+    }).pipe(Effect.runPromise),
+  )
 
-  test.it("returns Entity<string>", () => {
-    const entity = Route.redirect("/login")
+  test.it("accepts URL object", () =>
+    Effect.gen(function* () {
+      const routes = Route.get(Route.redirect(new URL("https://example.com/path")))
+      const handler = RouteHttp.toWebHandler(routes)
 
-    test.expectTypeOf(entity).toEqualTypeOf<Entity.Entity<"">>()
-  })
+      const response = yield* Effect.promise(() => Fetch.fromHandler(handler, { path: "/test" }))
+
+      test.expect(response.headers.get("location")).toBe("https://example.com/path")
+    }).pipe(Effect.runPromise),
+  )
+
+  test.it("works as return value from render handler", () =>
+    Effect.gen(function* () {
+      const routes = Route.post(
+        Route.render(function* () {
+          return Route.redirect("/posts/123")
+        }),
+      )
+      const handler = RouteHttp.toWebHandler(routes)
+
+      const response = yield* Effect.promise(() =>
+        Fetch.fromHandler(handler, { path: "/test", method: "POST" }),
+      )
+
+      test.expect(response.status).toBe(302)
+      test.expect(response.headers.get("location")).toBe("/posts/123")
+    }).pipe(Effect.runPromise),
+  )
 })
 
 test.describe(Route.lazy, () => {
@@ -153,7 +178,7 @@ test.describe(Route.devOnly, () => {
 
       const entity = yield* developmentRoute.handler(context, () => {
         nextCalled = true
-        return EntityRuntime.make("next")
+        return Entity.make("next")
       })
 
       test.expect(entity.status).toBe(404)
@@ -175,7 +200,7 @@ test.describe(Route.devOnly, () => {
       const entity = yield* developmentRoute.handler(context, (context) => {
         nextCalled = true
         receivedContext = context
-        return EntityRuntime.make("next")
+        return Entity.make("next")
       })
 
       test.expect(entity.body).toBe("next")
