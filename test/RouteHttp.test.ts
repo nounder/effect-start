@@ -14,61 +14,68 @@ import * as RouteSchema from "effect-start/RouteSchema"
 import * as RouteTree from "effect-start/RouteTree"
 import { TestLogger } from "effect-start/testing"
 
-test.it("converts string to text/plain for Route.text", async () => {
-  const handler = RouteHttp.toWebHandler(Route.get(Route.text("Hello World")))
-  const response = await Fetch.fromHandler(handler, { path: "/text" })
+test.it("converts string to text/plain for Route.text", () =>
+  Effect.gen(function* () {
+    const handler = RouteHttp.toWebHandler(Route.get(Route.text("Hello World")))
+    const client = Fetch.fromHandler(handler)
+    const entity = yield* client.get("http://localhost/text")
 
-  test.expect(response.status).toBe(200)
-  test.expect(response.headers.get("Content-Type")).toBe("text/plain; charset=utf-8")
-  test.expect(await response.text()).toBe("Hello World")
-})
+    test.expect(entity.status).toBe(200)
+    test.expect(entity.headers["content-type"]).toBe("text/plain; charset=utf-8")
+    test.expect(yield* entity.text).toBe("Hello World")
+  }).pipe(Effect.runPromise),
+)
 
-test.it("converts string to text/html for Route.html", async () => {
-  const handler = RouteHttp.toWebHandler(Route.get(Route.html("<h1>Hello</h1>")))
-  const response = await Fetch.fromHandler(handler, { path: "/html" })
+test.it("converts string to text/html for Route.html", () =>
+  Effect.gen(function* () {
+    const handler = RouteHttp.toWebHandler(Route.get(Route.html("<h1>Hello</h1>")))
+    const client = Fetch.fromHandler(handler)
+    const entity = yield* client.get("http://localhost/html")
 
-  test.expect(response.status).toBe(200)
-  test.expect(response.headers.get("Content-Type")).toBe("text/html; charset=utf-8")
-  test.expect(await response.text()).toBe("<h1>Hello</h1>")
-})
+    test.expect(entity.status).toBe(200)
+    test.expect(entity.headers["content-type"]).toBe("text/html; charset=utf-8")
+    test.expect(yield* entity.text).toBe("<h1>Hello</h1>")
+  }).pipe(Effect.runPromise),
+)
 
-test.it("converts object to JSON for Route.json", async () => {
-  const handler = RouteHttp.toWebHandler(Route.get(Route.json({ message: "hello", count: 42 })))
-  const response = await Fetch.fromHandler(handler, { path: "/json" })
+test.it("converts object to JSON for Route.json", () =>
+  Effect.gen(function* () {
+    const handler = RouteHttp.toWebHandler(Route.get(Route.json({ message: "hello", count: 42 })))
+    const client = Fetch.fromHandler(handler)
+    const entity = yield* client.get("http://localhost/json")
 
-  test.expect(response.status).toBe(200)
-  test.expect(response.headers.get("Content-Type")).toBe("application/json")
-  test.expect(await response.json()).toEqual({ message: "hello", count: 42 })
-})
+    test.expect(entity.status).toBe(200)
+    test.expect(entity.headers["content-type"]).toBe("application/json")
+    test.expect(yield* entity.json).toEqual({ message: "hello", count: 42 })
+  }).pipe(Effect.runPromise),
+)
 
-test.it("converts array to JSON for Route.json", async () => {
-  const handler = RouteHttp.toWebHandler(Route.get(Route.json([1, 2, 3])))
-  const response = await Fetch.fromHandler(handler, { path: "/array" })
+test.it("converts array to JSON for Route.json", () =>
+  Effect.gen(function* () {
+    const handler = RouteHttp.toWebHandler(Route.get(Route.json([1, 2, 3])))
+    const client = Fetch.fromHandler(handler)
+    const entity = yield* client.get("http://localhost/array")
 
-  test.expect(response.status).toBe(200)
-  test.expect(response.headers.get("Content-Type")).toBe("application/json")
-  test.expect(await response.json()).toEqual([1, 2, 3])
-})
+    test.expect(entity.status).toBe(200)
+    test.expect(entity.headers["content-type"]).toBe("application/json")
+    test.expect(yield* entity.json).toEqual([1, 2, 3])
+  }).pipe(Effect.runPromise),
+)
 
-test.it("handles method-specific routes", async () => {
-  const handler = RouteHttp.toWebHandler(
-    Route.get(Route.text("get resource")).post(Route.text("post resource")),
-  )
+test.it("handles method-specific routes", () =>
+  Effect.gen(function* () {
+    const handler = RouteHttp.toWebHandler(
+      Route.get(Route.text("get resource")).post(Route.text("post resource")),
+    )
+    const client = Fetch.fromHandler(handler)
 
-  const getResponse = await Fetch.fromHandler(handler, {
-    path: "/resource",
-    method: "GET",
-  })
+    const getEntity = yield* client.get("http://localhost/resource")
+    test.expect(yield* getEntity.text).toBe("get resource")
 
-  test.expect(await getResponse.text()).toBe("get resource")
-
-  const postResponse = await Fetch.fromHandler(handler, {
-    path: "/resource",
-    method: "POST",
-  })
-
-  test.expect(await postResponse.text()).toBe("post resource")
-})
+    const postEntity = yield* client.post("http://localhost/resource")
+    test.expect(yield* postEntity.text).toBe("post resource")
+  }).pipe(Effect.runPromise),
+)
 
 test.it("handles errors by returning 500 response", () =>
   Effect.gen(function* () {
@@ -80,11 +87,12 @@ test.it("handles errors by returning 500 response", () =>
         }),
       ),
     )
-    const response = yield* Effect.promise(() => Fetch.fromHandler(handler, { path: "/error" }))
+    const client = Fetch.fromHandler(handler)
+    const entity = yield* client.get("http://localhost/error")
 
-    test.expect(response.status).toBe(500)
+    test.expect(entity.status).toBe(500)
 
-    const text = yield* Effect.promise(() => response.text())
+    const text = yield* entity.text
 
     test.expect(text).toContain("Something went wrong")
 
@@ -106,9 +114,10 @@ test.it("handles defects by returning 500 response", () =>
         }),
       ),
     )
-    const response = yield* Effect.promise(() => Fetch.fromHandler(handler, { path: "/defect" }))
+    const client = Fetch.fromHandler(handler)
+    const entity = yield* client.get("http://localhost/defect")
 
-    test.expect(response.status).toBe(500)
+    test.expect(entity.status).toBe(500)
 
     const messages = yield* TestLogger.messages
 
@@ -128,11 +137,12 @@ test.it("error response includes stack trace and cause chain", () =>
         }),
       ),
     )
-    const response = yield* Effect.promise(() => Fetch.fromHandler(handler, { path: "/error" }))
+    const client = Fetch.fromHandler(handler)
+    const entity = yield* client.get("http://localhost/error")
 
-    test.expect(response.status).toBe(500)
+    test.expect(entity.status).toBe(500)
 
-    const body = yield* Effect.promise(() => response.json())
+    const body = (yield* entity.json) as any
 
     test
       .expect(body.message)
@@ -147,262 +157,305 @@ test.it("error response includes stack trace and cause chain", () =>
   }).pipe(Effect.provide(TestLogger.layer()), Effect.runPromise),
 )
 
-test.it("includes descriptor properties in handler context", async () => {
-  let capturedMethod: string | undefined
+test.it("includes descriptor properties in handler context", () =>
+  Effect.gen(function* () {
+    let capturedMethod: string | undefined
 
-  const handler = RouteHttp.toWebHandler(
-    Route.get(
-      Route.text(function* (ctx) {
-        capturedMethod = ctx.method
-        return "ok"
-      }),
-    ),
-  )
-  await Fetch.fromHandler(handler, { path: "/test" })
+    const handler = RouteHttp.toWebHandler(
+      Route.get(
+        Route.text(function* (ctx) {
+          capturedMethod = ctx.method
+          return "ok"
+        }),
+      ),
+    )
+    const client = Fetch.fromHandler(handler)
+    yield* client.get("http://localhost/test")
 
-  test.expect(capturedMethod).toBe("GET")
-})
+    test.expect(capturedMethod).toBe("GET")
+  }).pipe(Effect.runPromise),
+)
 
-test.it("includes request in handler context", async () => {
-  let capturedRequest: Request | undefined
+test.it("includes request in handler context", () =>
+  Effect.gen(function* () {
+    let capturedRequest: Request | undefined
 
-  const handler = RouteHttp.toWebHandler(
-    Route.get(
-      Route.text(function* (ctx) {
-        test.expectTypeOf(ctx.request).toEqualTypeOf<Request>()
+    const handler = RouteHttp.toWebHandler(
+      Route.get(
+        Route.text(function* (ctx) {
+          test.expectTypeOf(ctx.request).toEqualTypeOf<Request>()
 
-        capturedRequest = ctx.request
-        return "ok"
-      }),
-    ),
-  )
-  await Fetch.fromHandler(handler, {
-    path: "/test",
-    headers: { "x-custom": "value" },
-  })
+          capturedRequest = ctx.request
+          return "ok"
+        }),
+      ),
+    )
+    const client = Fetch.fromHandler(handler)
+    yield* client.get("http://localhost/test", {
+      headers: { "x-custom": "value" },
+    })
 
-  test.expect(capturedRequest).toBeInstanceOf(Request)
-  test.expect(capturedRequest?.headers.get("x-custom")).toBe("value")
-})
+    test.expect(capturedRequest).toBeInstanceOf(Request)
+    test.expect(capturedRequest?.headers.get("x-custom")).toBe("value")
+  }).pipe(Effect.runPromise),
+)
 
-test.it("returns Allow header on 405 and OPTIONS responses", async () => {
-  const handler = RouteHttp.toWebHandler(Route.get(Route.text("users")).post(Route.text("created")))
+test.it("returns Allow header on 405 and OPTIONS responses", () =>
+  Effect.gen(function* () {
+    const handler = RouteHttp.toWebHandler(Route.get(Route.text("users")).post(Route.text("created")))
+    const client = Fetch.fromHandler(handler)
 
-  const notAllowed = await Fetch.fromHandler(handler, { path: "/users", method: "DELETE" })
-  test.expect(notAllowed.status).toBe(405)
-  test.expect(notAllowed.headers.get("allow")).toBe("GET, POST")
+    const notAllowed = yield* client.fetch("http://localhost/users", { method: "DELETE" })
+    test.expect(notAllowed.status).toBe(405)
+    test.expect(notAllowed.headers["allow"]).toBe("GET, POST")
 
-  const options = await Fetch.fromHandler(handler, { path: "/users", method: "OPTIONS" })
-  test.expect(options.status).toBe(204)
-  test.expect(options.headers.get("allow")).toBe("GET, POST")
-})
+    const options = yield* client.fetch("http://localhost/users", { method: "OPTIONS" })
+    test.expect(options.status).toBe(204)
+    test.expect(options.headers["allow"]).toBe("GET, POST")
+  }).pipe(Effect.runPromise),
+)
 
-test.it("uses explicit OPTIONS handler when registered", async () => {
-  const handler = RouteHttp.toWebHandler(
-    Route.get(Route.text("users")).options(Route.json({ cors: true })),
-  )
-  const response = await Fetch.fromHandler(handler, { path: "/users", method: "OPTIONS" })
+test.it("uses explicit OPTIONS handler when registered", () =>
+  Effect.gen(function* () {
+    const handler = RouteHttp.toWebHandler(
+      Route.get(Route.text("users")).options(Route.json({ cors: true })),
+    )
+    const client = Fetch.fromHandler(handler)
+    const entity = yield* client.fetch("http://localhost/users", { method: "OPTIONS" })
 
-  test.expect(response.status).toBe(200)
-  test.expect(await response.json()).toEqual({ cors: true })
-})
+    test.expect(entity.status).toBe(200)
+    test.expect(yield* entity.json).toEqual({ cors: true })
+  }).pipe(Effect.runPromise),
+)
 
-test.it("supports POST method", async () => {
-  const handler = RouteHttp.toWebHandler(Route.post(Route.text("created")))
-  const response = await Fetch.fromHandler(handler, {
-    path: "/users",
-    method: "POST",
-  })
+test.it("supports POST method", () =>
+  Effect.gen(function* () {
+    const handler = RouteHttp.toWebHandler(Route.post(Route.text("created")))
+    const client = Fetch.fromHandler(handler)
+    const entity = yield* client.post("http://localhost/users")
 
-  test.expect(response.status).toBe(200)
-  test.expect(await response.text()).toBe("created")
-})
+    test.expect(entity.status).toBe(200)
+    test.expect(yield* entity.text).toBe("created")
+  }).pipe(Effect.runPromise),
+)
 
-test.it("selects json when Accept prefers application/json", async () => {
-  const handler = RouteHttp.toWebHandler(
-    Route.get(Route.json({ type: "json" })).get(Route.html("<div>html</div>")),
-  )
-  const response = await Fetch.fromHandler(handler, {
-    path: "/data",
-    headers: { Accept: "application/json" },
-  })
+test.it("selects json when Accept prefers application/json", () =>
+  Effect.gen(function* () {
+    const handler = RouteHttp.toWebHandler(
+      Route.get(Route.json({ type: "json" })).get(Route.html("<div>html</div>")),
+    )
+    const client = Fetch.fromHandler(handler)
+    const entity = yield* client.get("http://localhost/data", {
+      headers: { Accept: "application/json" },
+    })
 
-  test.expect(response.headers.get("Content-Type")).toBe("application/json")
-  test.expect(await response.json()).toEqual({ type: "json" })
-})
+    test.expect(entity.headers["content-type"]).toBe("application/json")
+    test.expect(yield* entity.json).toEqual({ type: "json" })
+  }).pipe(Effect.runPromise),
+)
 
-test.it("selects html when Accept prefers text/html", async () => {
-  const handler = RouteHttp.toWebHandler(
-    Route.get(Route.json({ type: "json" })).get(Route.html("<div>html</div>")),
-  )
-  const response = await Fetch.fromHandler(handler, {
-    path: "/data",
-    headers: { Accept: "text/html" },
-  })
+test.it("selects html when Accept prefers text/html", () =>
+  Effect.gen(function* () {
+    const handler = RouteHttp.toWebHandler(
+      Route.get(Route.json({ type: "json" })).get(Route.html("<div>html</div>")),
+    )
+    const client = Fetch.fromHandler(handler)
+    const entity = yield* client.get("http://localhost/data", {
+      headers: { Accept: "text/html" },
+    })
 
-  test.expect(response.headers.get("Content-Type")).toBe("text/html; charset=utf-8")
-  test.expect(await response.text()).toBe("<div>html</div>")
-})
+    test.expect(entity.headers["content-type"]).toBe("text/html; charset=utf-8")
+    test.expect(yield* entity.text).toBe("<div>html</div>")
+  }).pipe(Effect.runPromise),
+)
 
-test.it("selects text/plain when Accept prefers it", async () => {
-  const handler = RouteHttp.toWebHandler(
-    Route.get(Route.text("plain text")).get(Route.json({ type: "json" })),
-  )
-  const response = await Fetch.fromHandler(handler, {
-    path: "/data",
-    headers: { Accept: "text/plain" },
-  })
+test.it("selects text/plain when Accept prefers it", () =>
+  Effect.gen(function* () {
+    const handler = RouteHttp.toWebHandler(
+      Route.get(Route.text("plain text")).get(Route.json({ type: "json" })),
+    )
+    const client = Fetch.fromHandler(handler)
+    const entity = yield* client.get("http://localhost/data", {
+      headers: { Accept: "text/plain" },
+    })
 
-  test.expect(response.headers.get("Content-Type")).toBe("text/plain; charset=utf-8")
-  test.expect(await response.text()).toBe("plain text")
-})
+    test.expect(entity.headers["content-type"]).toBe("text/plain; charset=utf-8")
+    test.expect(yield* entity.text).toBe("plain text")
+  }).pipe(Effect.runPromise),
+)
 
-test.it("returns first candidate when no Accept header", async () => {
-  const handler = RouteHttp.toWebHandler(
-    Route.get(Route.json({ type: "json" })).get(Route.html("<div>html</div>")),
-  )
-  const response = await Fetch.fromHandler(handler, { path: "/data" })
+test.it("returns first candidate when no Accept header", () =>
+  Effect.gen(function* () {
+    const handler = RouteHttp.toWebHandler(
+      Route.get(Route.json({ type: "json" })).get(Route.html("<div>html</div>")),
+    )
+    const client = Fetch.fromHandler(handler)
+    const entity = yield* client.get("http://localhost/data")
 
-  test.expect(response.headers.get("Content-Type")).toBe("application/json")
-})
+    test.expect(entity.headers["content-type"]).toBe("application/json")
+  }).pipe(Effect.runPromise),
+)
 
-test.it("handles Accept with quality values", async () => {
-  const handler = RouteHttp.toWebHandler(
-    Route.get(Route.json({ type: "json" })).get(Route.html("<div>html</div>")),
-  )
-  const response = await Fetch.fromHandler(handler, {
-    path: "/data",
-    headers: { Accept: "text/html;q=0.9, application/json;q=1.0" },
-  })
+test.it("handles Accept with quality values", () =>
+  Effect.gen(function* () {
+    const handler = RouteHttp.toWebHandler(
+      Route.get(Route.json({ type: "json" })).get(Route.html("<div>html</div>")),
+    )
+    const client = Fetch.fromHandler(handler)
+    const entity = yield* client.get("http://localhost/data", {
+      headers: { Accept: "text/html;q=0.9, application/json;q=1.0" },
+    })
 
-  test.expect(response.headers.get("Content-Type")).toBe("application/json")
-})
+    test.expect(entity.headers["content-type"]).toBe("application/json")
+  }).pipe(Effect.runPromise),
+)
 
-test.it("handles Accept: */*", async () => {
-  const handler = RouteHttp.toWebHandler(
-    Route.get(Route.json({ type: "json" })).get(Route.html("<div>html</div>")),
-  )
-  const response = await Fetch.fromHandler(handler, {
-    path: "/data",
-    headers: { Accept: "*/*" },
-  })
+test.it("handles Accept: */*", () =>
+  Effect.gen(function* () {
+    const handler = RouteHttp.toWebHandler(
+      Route.get(Route.json({ type: "json" })).get(Route.html("<div>html</div>")),
+    )
+    const client = Fetch.fromHandler(handler)
+    const entity = yield* client.get("http://localhost/data", {
+      headers: { Accept: "*/*" },
+    })
 
-  test.expect(response.headers.get("Content-Type")).toBe("application/json")
-})
+    test.expect(entity.headers["content-type"]).toBe("application/json")
+  }).pipe(Effect.runPromise),
+)
 
-test.it("returns 406 when Accept doesn't match available formats", async () => {
-  const handler = RouteHttp.toWebHandler(Route.get(Route.json({ type: "json" })))
-  const response = await Fetch.fromHandler(handler, {
-    path: "/data",
-    headers: { Accept: "text/html" },
-  })
+test.it("returns 406 when Accept doesn't match available formats", () =>
+  Effect.gen(function* () {
+    const handler = RouteHttp.toWebHandler(Route.get(Route.json({ type: "json" })))
+    const client = Fetch.fromHandler(handler)
+    const entity = yield* client.get("http://localhost/data", {
+      headers: { Accept: "text/html" },
+    })
 
-  test.expect(response.status).toBe(406)
-  test.expect(await response.json()).toEqual({ status: 406, message: "not acceptable" })
-})
+    test.expect(entity.status).toBe(406)
+    test.expect(yield* entity.json).toEqual({ status: 406, message: "not acceptable" })
+  }).pipe(Effect.runPromise),
+)
 
-test.it("returns 406 when Accept doesn't match any of multiple formats", async () => {
-  const handler = RouteHttp.toWebHandler(
-    Route.get(Route.json({ type: "json" })).get(Route.html("<div>html</div>")),
-  )
-  const response = await Fetch.fromHandler(handler, {
-    path: "/data",
-    headers: { Accept: "image/png" },
-  })
+test.it("returns 406 when Accept doesn't match any of multiple formats", () =>
+  Effect.gen(function* () {
+    const handler = RouteHttp.toWebHandler(
+      Route.get(Route.json({ type: "json" })).get(Route.html("<div>html</div>")),
+    )
+    const client = Fetch.fromHandler(handler)
+    const entity = yield* client.get("http://localhost/data", {
+      headers: { Accept: "image/png" },
+    })
 
-  test.expect(response.status).toBe(406)
-})
+    test.expect(entity.status).toBe(406)
+  }).pipe(Effect.runPromise),
+)
 
-test.it("definition order determines priority when no Accept header", async () => {
-  const handler = RouteHttp.toWebHandler(
-    Route.get(Route.text("plain")).get(Route.html("<div>html</div>")),
-  )
-  const response = await Fetch.fromHandler(handler, { path: "/data" })
+test.it("definition order determines priority when no Accept header", () =>
+  Effect.gen(function* () {
+    const handler = RouteHttp.toWebHandler(
+      Route.get(Route.text("plain")).get(Route.html("<div>html</div>")),
+    )
+    const client = Fetch.fromHandler(handler)
+    const entity = yield* client.get("http://localhost/data")
 
-  test.expect(response.headers.get("Content-Type")).toBe("text/plain; charset=utf-8")
-})
+    test.expect(entity.headers["content-type"]).toBe("text/plain; charset=utf-8")
+  }).pipe(Effect.runPromise),
+)
 
-test.it("sets Vary: Accept when multiple formats exist", async () => {
-  const handler = RouteHttp.toWebHandler(
-    Route.get(Route.json({ type: "json" })).get(Route.html("<div>html</div>")),
-  )
-  const response = await Fetch.fromHandler(handler, {
-    path: "/data",
-    headers: { Accept: "application/json" },
-  })
+test.it("sets Vary: Accept when multiple formats exist", () =>
+  Effect.gen(function* () {
+    const handler = RouteHttp.toWebHandler(
+      Route.get(Route.json({ type: "json" })).get(Route.html("<div>html</div>")),
+    )
+    const client = Fetch.fromHandler(handler)
+    const entity = yield* client.get("http://localhost/data", {
+      headers: { Accept: "application/json" },
+    })
 
-  test.expect(response.status).toBe(200)
-  test.expect(response.headers.get("vary")).toBe("Accept")
-})
+    test.expect(entity.status).toBe(200)
+    test.expect(entity.headers["vary"]).toBe("Accept")
+  }).pipe(Effect.runPromise),
+)
 
-test.it("does not set Vary: Accept when only one format exists", async () => {
-  const handler = RouteHttp.toWebHandler(Route.get(Route.json({ type: "json" })))
-  const response = await Fetch.fromHandler(handler, {
-    path: "/data",
-    headers: { Accept: "application/json" },
-  })
+test.it("does not set Vary: Accept when only one format exists", () =>
+  Effect.gen(function* () {
+    const handler = RouteHttp.toWebHandler(Route.get(Route.json({ type: "json" })))
+    const client = Fetch.fromHandler(handler)
+    const entity = yield* client.get("http://localhost/data", {
+      headers: { Accept: "application/json" },
+    })
 
-  test.expect(response.status).toBe(200)
-  test.expect(response.headers.get("vary")).toBeNull()
-})
+    test.expect(entity.status).toBe(200)
+    test.expect(entity.headers["vary"]).toBeUndefined()
+  }).pipe(Effect.runPromise),
+)
 
-test.it("sets Vary: Accept when no Accept header but multiple formats", async () => {
-  const handler = RouteHttp.toWebHandler(
-    Route.get(Route.json({ type: "json" })).get(Route.text("plain")),
-  )
-  const response = await Fetch.fromHandler(handler, { path: "/data" })
+test.it("sets Vary: Accept when no Accept header but multiple formats", () =>
+  Effect.gen(function* () {
+    const handler = RouteHttp.toWebHandler(
+      Route.get(Route.json({ type: "json" })).get(Route.text("plain")),
+    )
+    const client = Fetch.fromHandler(handler)
+    const entity = yield* client.get("http://localhost/data")
 
-  test.expect(response.status).toBe(200)
-  test.expect(response.headers.get("vary")).toBe("Accept")
-})
+    test.expect(entity.status).toBe(200)
+    test.expect(entity.headers["vary"]).toBe("Accept")
+  }).pipe(Effect.runPromise),
+)
 
-test.it("falls back to html when no Accept header and no json or text", async () => {
-  const handler = RouteHttp.toWebHandler(Route.get(Route.html("<div>html</div>")))
-  const response = await Fetch.fromHandler(handler, { path: "/data" })
+test.it("falls back to html when no Accept header and no json or text", () =>
+  Effect.gen(function* () {
+    const handler = RouteHttp.toWebHandler(Route.get(Route.html("<div>html</div>")))
+    const client = Fetch.fromHandler(handler)
+    const entity = yield* client.get("http://localhost/data")
 
-  test.expect(response.headers.get("Content-Type")).toBe("text/html; charset=utf-8")
-})
+    test.expect(entity.headers["content-type"]).toBe("text/html; charset=utf-8")
+  }).pipe(Effect.runPromise),
+)
 
-test.it("Route.text matches any text/* Accept header", async () => {
-  const handler = RouteHttp.toWebHandler(
-    Route.get(
-      Route.text(function* () {
-        return Entity.make("event: message\ndata: hello\n\n", {
-          headers: { "content-type": "text/event-stream" },
-        })
-      }),
-    ),
-  )
+test.it("Route.text matches any text/* Accept header", () =>
+  Effect.gen(function* () {
+    const handler = RouteHttp.toWebHandler(
+      Route.get(
+        Route.text(function* () {
+          return Entity.make("event: message\ndata: hello\n\n", {
+            headers: { "content-type": "text/event-stream" },
+          })
+        }),
+      ),
+    )
+    const client = Fetch.fromHandler(handler)
+    const entity = yield* client.get("http://localhost/events", {
+      headers: { Accept: "text/event-stream" },
+    })
 
-  const response = await Fetch.fromHandler(handler, {
-    path: "/events",
-    headers: { Accept: "text/event-stream" },
-  })
+    test.expect(entity.status).toBe(200)
+    test.expect(entity.headers["content-type"]).toBe("text/event-stream")
+    test.expect(yield* entity.text).toBe("event: message\ndata: hello\n\n")
+  }).pipe(Effect.runPromise),
+)
 
-  test.expect(response.status).toBe(200)
-  test.expect(response.headers.get("Content-Type")).toBe("text/event-stream")
-  test.expect(await response.text()).toBe("event: message\ndata: hello\n\n")
-})
+test.it("Route.text matches text/markdown Accept header", () =>
+  Effect.gen(function* () {
+    const handler = RouteHttp.toWebHandler(
+      Route.get(
+        Route.text(function* () {
+          return Entity.make("# Hello", {
+            headers: { "content-type": "text/markdown" },
+          })
+        }),
+      ),
+    )
+    const client = Fetch.fromHandler(handler)
+    const entity = yield* client.get("http://localhost/doc", {
+      headers: { Accept: "text/markdown" },
+    })
 
-test.it("Route.text matches text/markdown Accept header", async () => {
-  const handler = RouteHttp.toWebHandler(
-    Route.get(
-      Route.text(function* () {
-        return Entity.make("# Hello", {
-          headers: { "content-type": "text/markdown" },
-        })
-      }),
-    ),
-  )
-
-  const response = await Fetch.fromHandler(handler, {
-    path: "/doc",
-    headers: { Accept: "text/markdown" },
-  })
-
-  test.expect(response.status).toBe(200)
-  test.expect(response.headers.get("Content-Type")).toBe("text/markdown")
-})
+    test.expect(entity.status).toBe(200)
+    test.expect(entity.headers["content-type"]).toBe("text/markdown")
+  }).pipe(Effect.runPromise),
+)
 
 test.describe("walkHandles", () => {
   test.it("yields handlers for static routes", () => {
@@ -461,10 +514,10 @@ test.describe(Route.devOnly, () => {
           }),
         ),
       )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/test")
 
-      const response = yield* Effect.promise(() => Fetch.fromHandler(handler, { path: "/test" }))
-
-      test.expect(response.status).toBe(404)
+      test.expect(entity.status).toBe(404)
       test.expect(calls).toEqual([])
     }).pipe(Effect.runPromise),
   )
@@ -482,11 +535,11 @@ test.describe(Route.devOnly, () => {
           }),
         ),
       )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/test")
 
-      const response = yield* Effect.promise(() => Fetch.fromHandler(handler, { path: "/test" }))
-
-      test.expect(response.status).toBe(200)
-      test.expect(yield* Effect.promise(() => response.text())).toBe("public")
+      test.expect(entity.status).toBe(200)
+      test.expect(yield* entity.text).toBe("public")
       test.expect(calls).toEqual(["public"])
     }).pipe(Effect.provide(Development.layerTest), Effect.runPromise),
   )
@@ -512,20 +565,17 @@ test.describe(Route.devOnly, () => {
             }),
           ),
       )
+      const client = Fetch.fromHandler(handler)
 
-      const getResponse = yield* Effect.promise(() =>
-        Fetch.fromHandler(handler, { path: "/test", method: "GET" }),
-      )
+      const getEntity = yield* client.get("http://localhost/test")
 
-      test.expect(getResponse.status).toBe(200)
-      test.expect(yield* Effect.promise(() => getResponse.text())).toBe("true:get")
+      test.expect(getEntity.status).toBe(200)
+      test.expect(yield* getEntity.text).toBe("true:get")
 
-      const postResponse = yield* Effect.promise(() =>
-        Fetch.fromHandler(handler, { path: "/test", method: "POST" }),
-      )
+      const postEntity = yield* client.post("http://localhost/test")
 
-      test.expect(postResponse.status).toBe(200)
-      test.expect(yield* Effect.promise(() => postResponse.text())).toBe("true:post")
+      test.expect(postEntity.status).toBe(200)
+      test.expect(yield* postEntity.text).toBe("true:post")
     }).pipe(Effect.provide(Development.layerTest), Effect.runPromise),
   )
 
@@ -542,15 +592,11 @@ test.describe(Route.devOnly, () => {
       test.expect(handles).not.toHaveProperty("/development-only")
       test.expect(handles).toHaveProperty("/mixed")
 
-      const response = yield* Effect.promise(() =>
-        Fetch.fromHandler(handles["/mixed"], {
-          path: "/mixed",
-          method: "GET",
-        }),
-      )
+      const client = Fetch.fromHandler(handles["/mixed"])
+      const entity = yield* client.get("http://localhost/mixed")
 
-      test.expect(response.status).toBe(200)
-      test.expect(yield* Effect.promise(() => response.text())).toBe("public")
+      test.expect(entity.status).toBe(200)
+      test.expect(yield* entity.text).toBe("public")
     }).pipe(Effect.provide(Development.layerTest), Effect.runPromise),
   )
 
@@ -579,67 +625,72 @@ test.describe(Route.devOnly, () => {
 
       test.expect(handles).toHaveProperty("/public")
 
-      const response = yield* Effect.promise(() =>
-        Fetch.fromHandler(handles["/public"], {
-          path: "/public",
-          method: "GET",
-        }),
-      )
+      const client = Fetch.fromHandler(handles["/public"])
+      const entity = yield* client.get("http://localhost/public")
 
-      test.expect(response.status).toBe(200)
-      test.expect(yield* Effect.promise(() => response.text())).toBe("public")
+      test.expect(entity.status).toBe(200)
+      test.expect(yield* entity.text).toBe("public")
     }).pipe(Effect.provide(Development.layerTest), Effect.runPromise),
   )
 })
 
 test.describe("middleware chain", () => {
-  test.it("passes enriched context to handler", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route.use(Route.filter({ context: { answer: 42 } })).get(
-        Route.text(function* (ctx) {
-          return `The answer is ${ctx.answer}`
-        }),
-      ),
-    )
-    const response = await Fetch.fromHandler(handler, { path: "/test" })
-
-    test.expect(response.status).toBe(200)
-    test.expect(await response.text()).toBe("The answer is 42")
-  })
-
-  test.it("composes multiple middlewares with cumulative context", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route.use(Route.filter({ context: { a: 1 } }))
-        .use(Route.filter({ context: { b: 2 } }))
-        .get(
+  test.it("passes enriched context to handler", () =>
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.use(Route.filter({ context: { answer: 42 } })).get(
           Route.text(function* (ctx) {
-            return `a=${ctx.a},b=${ctx.b}`
+            return `The answer is ${ctx.answer}`
           }),
         ),
-    )
-    const response = await Fetch.fromHandler(handler, { path: "/test" })
+      )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/test")
 
-    test.expect(await response.text()).toBe("a=1,b=2")
-  })
+      test.expect(entity.status).toBe(200)
+      test.expect(yield* entity.text).toBe("The answer is 42")
+    }).pipe(Effect.runPromise),
+  )
 
-  test.it("later middleware can access earlier context", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route.use(Route.filter({ context: { x: 10 } }))
-        .use(
-          Route.filter(function* (ctx) {
-            return { context: { doubled: ctx.x * 2 } }
-          }),
-        )
-        .get(
-          Route.text(function* (ctx) {
-            return `doubled=${ctx.doubled}`
-          }),
-        ),
-    )
-    const response = await Fetch.fromHandler(handler, { path: "/test" })
+  test.it("composes multiple middlewares with cumulative context", () =>
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.use(Route.filter({ context: { a: 1 } }))
+          .use(Route.filter({ context: { b: 2 } }))
+          .get(
+            Route.text(function* (ctx) {
+              return `a=${ctx.a},b=${ctx.b}`
+            }),
+          ),
+      )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/test")
 
-    test.expect(await response.text()).toBe("doubled=20")
-  })
+      test.expect(yield* entity.text).toBe("a=1,b=2")
+    }).pipe(Effect.runPromise),
+  )
+
+  test.it("later middleware can access earlier context", () =>
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.use(Route.filter({ context: { x: 10 } }))
+          .use(
+            Route.filter(function* (ctx) {
+              return { context: { doubled: ctx.x * 2 } }
+            }),
+          )
+          .get(
+            Route.text(function* (ctx) {
+              return `doubled=${ctx.doubled}`
+            }),
+          ),
+      )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/test")
+
+      test.expect(yield* entity.text).toBe("doubled=20")
+    }).pipe(Effect.runPromise),
+  )
 
   test.it("middleware error short-circuits chain", () =>
     Effect.gen(function* () {
@@ -651,10 +702,11 @@ test.describe("middleware chain", () => {
           }),
         ).get(Route.text("should not reach")),
       )
-      const response = yield* Effect.promise(() => Fetch.fromHandler(handler, { path: "/test" }))
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/test")
 
-      test.expect(response.status).toBe(500)
-      test.expect(yield* Effect.promise(() => response.text())).toContain("middleware failed")
+      test.expect(entity.status).toBe(500)
+      test.expect(yield* entity.text).toContain("middleware failed")
 
       const messages = yield* TestLogger.messages
 
@@ -662,321 +714,328 @@ test.describe("middleware chain", () => {
     }).pipe(Effect.provide(TestLogger.layer()), Effect.runPromise),
   )
 
-  test.it("applies middleware to all methods", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route.use(Route.filter({ context: { shared: true } }))
-        .get(
+  test.it("applies middleware to all methods", () =>
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.use(Route.filter({ context: { shared: true } }))
+          .get(
+            Route.text(function* (ctx) {
+              return `GET:${ctx.shared}`
+            }),
+          )
+          .post(
+            Route.text(function* (ctx) {
+              return `POST:${ctx.shared}`
+            }),
+          ),
+      )
+      const client = Fetch.fromHandler(handler)
+
+      const getEntity = yield* client.get("http://localhost/test")
+      test.expect(yield* getEntity.text).toBe("GET:true")
+
+      const postEntity = yield* client.post("http://localhost/test")
+      test.expect(yield* postEntity.text).toBe("POST:true")
+    }).pipe(Effect.runPromise),
+  )
+
+  test.it("method-specific middleware enriches context for that method", () =>
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.get(
+          Route.filter({ context: { methodSpecific: true } }),
           Route.text(function* (ctx) {
-            return `GET:${ctx.shared}`
-          }),
-        )
-        .post(
-          Route.text(function* (ctx) {
-            return `POST:${ctx.shared}`
+            return `methodSpecific=${ctx.methodSpecific}`
           }),
         ),
-    )
-
-    const getResponse = await Fetch.fromHandler(handler, {
-      path: "/test",
-      method: "GET",
-    })
-
-    test.expect(await getResponse.text()).toBe("GET:true")
-
-    const postResponse = await Fetch.fromHandler(handler, {
-      path: "/test",
-      method: "POST",
-    })
-
-    test.expect(await postResponse.text()).toBe("POST:true")
-  })
-
-  test.it("method-specific middleware enriches context for that method", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route.get(
-        Route.filter({ context: { methodSpecific: true } }),
-        Route.text(function* (ctx) {
-          return `methodSpecific=${ctx.methodSpecific}`
-        }),
-      ),
-    )
-    const response = await Fetch.fromHandler(handler, { path: "/test" })
-
-    test.expect(await response.text()).toBe("methodSpecific=true")
-  })
-
-  test.it("wildcard and method-specific middlewares compose in order", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route.use(Route.filter({ context: { a: 1 } })).get(
-        Route.filter({ context: { b: 2 } }),
-        Route.text(function* (ctx) {
-          return `a=${ctx.a},b=${ctx.b}`
-        }),
-      ),
-    )
-    const response = await Fetch.fromHandler(handler, { path: "/test" })
-
-    test.expect(await response.text()).toBe("a=1,b=2")
-  })
-
-  test.it("method-specific middleware only affects its method", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route.get(
-        Route.filter({ context: { getOnly: true } }),
-        Route.text(function* (ctx) {
-          return `GET:${ctx.getOnly}`
-        }),
-      ).post(
-        Route.text(function* (ctx) {
-          return `POST:${(ctx as any).getOnly}`
-        }),
-      ),
-    )
-
-    const getResponse = await Fetch.fromHandler(handler, {
-      path: "/test",
-      method: "GET",
-    })
-
-    test.expect(await getResponse.text()).toBe("GET:true")
-
-    const postResponse = await Fetch.fromHandler(handler, {
-      path: "/test",
-      method: "POST",
-    })
-
-    test.expect(await postResponse.text()).toBe("POST:undefined")
-  })
-
-  test.it("json middleware wraps json response content", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route.use(
-        Route.json(function* (_ctx, next) {
-          const value = yield* next().json
-          return { data: value }
-        }),
-      ).get(Route.json({ message: "hello", count: 42 })),
-    )
-    const response = await Fetch.fromHandler(handler, { path: "/test" })
-
-    test.expect(response.status).toBe(200)
-    test.expect(response.headers.get("Content-Type")).toBe("application/json")
-    test.expect(await response.json()).toEqual({ data: { message: "hello", count: 42 } })
-  })
-
-  test.it("multiple json middlewares compose in order", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route.use(
-        Route.json(function* (_ctx, next) {
-          const value = yield* next().json
-          return { outer: value }
-        }),
       )
-        .use(
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/test")
+
+      test.expect(yield* entity.text).toBe("methodSpecific=true")
+    }).pipe(Effect.runPromise),
+  )
+
+  test.it("wildcard and method-specific middlewares compose in order", () =>
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.use(Route.filter({ context: { a: 1 } })).get(
+          Route.filter({ context: { b: 2 } }),
+          Route.text(function* (ctx) {
+            return `a=${ctx.a},b=${ctx.b}`
+          }),
+        ),
+      )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/test")
+
+      test.expect(yield* entity.text).toBe("a=1,b=2")
+    }).pipe(Effect.runPromise),
+  )
+
+  test.it("method-specific middleware only affects its method", () =>
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.get(
+          Route.filter({ context: { getOnly: true } }),
+          Route.text(function* (ctx) {
+            return `GET:${ctx.getOnly}`
+          }),
+        ).post(
+          Route.text(function* (ctx) {
+            return `POST:${(ctx as any).getOnly}`
+          }),
+        ),
+      )
+      const client = Fetch.fromHandler(handler)
+
+      const getEntity = yield* client.get("http://localhost/test")
+      test.expect(yield* getEntity.text).toBe("GET:true")
+
+      const postEntity = yield* client.post("http://localhost/test")
+      test.expect(yield* postEntity.text).toBe("POST:undefined")
+    }).pipe(Effect.runPromise),
+  )
+
+  test.it("json middleware wraps json response content", () =>
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.use(
           Route.json(function* (_ctx, next) {
             const value = yield* next().json
-            return { inner: value }
+            return { data: value }
+          }),
+        ).get(Route.json({ message: "hello", count: 42 })),
+      )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/test")
+
+      test.expect(entity.status).toBe(200)
+      test.expect(entity.headers["content-type"]).toBe("application/json")
+      test.expect(yield* entity.json).toEqual({ data: { message: "hello", count: 42 } })
+    }).pipe(Effect.runPromise),
+  )
+
+  test.it("multiple json middlewares compose in order", () =>
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.use(
+          Route.json(function* (_ctx, next) {
+            const value = yield* next().json
+            return { outer: value }
           }),
         )
-        .get(Route.json({ original: true })),
-    )
-    const response = await Fetch.fromHandler(handler, { path: "/test" })
-
-    test.expect(await response.json()).toEqual({ outer: { inner: { original: true } } })
-  })
-
-  test.it("json middleware passes through non-json responses", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route.use(
-        Route.json(function* (_ctx, next) {
-          const value = yield* next().json
-          return { wrapped: value }
-        }),
+          .use(
+            Route.json(function* (_ctx, next) {
+              const value = yield* next().json
+              return { inner: value }
+            }),
+          )
+          .get(Route.json({ original: true })),
       )
-        .get(Route.json({ type: "json" }))
-        .get(Route.text("plain text")),
-    )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/test")
 
-    const textResponse = await Fetch.fromHandler(handler, {
-      path: "/test",
-      headers: { Accept: "text/plain" },
-    })
+      test.expect(yield* entity.json).toEqual({ outer: { inner: { original: true } } })
+    }).pipe(Effect.runPromise),
+  )
 
-    test.expect(textResponse.headers.get("Content-Type")).toBe("text/plain; charset=utf-8")
-    test.expect(await textResponse.text()).toBe("plain text")
+  test.it("json middleware passes through non-json responses", () =>
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.use(
+          Route.json(function* (_ctx, next) {
+            const value = yield* next().json
+            return { wrapped: value }
+          }),
+        )
+          .get(Route.json({ type: "json" }))
+          .get(Route.text("plain text")),
+      )
+      const client = Fetch.fromHandler(handler)
 
-    const jsonResponse = await Fetch.fromHandler(handler, {
-      path: "/test",
-      headers: { Accept: "application/json" },
-    })
+      const textEntity = yield* client.get("http://localhost/test", {
+        headers: { Accept: "text/plain" },
+      })
 
-    test.expect(await jsonResponse.json()).toEqual({ wrapped: { type: "json" } })
-  })
+      test.expect(textEntity.headers["content-type"]).toBe("text/plain; charset=utf-8")
+      test.expect(yield* textEntity.text).toBe("plain text")
 
-  test.it("text middleware wraps text response content", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route.use(
-        Route.text(function* (_ctx, next) {
-          const value = yield* next().text
-          return `wrapped: ${value}`
-        }),
-      ).get(Route.text("hello")),
-    )
-    const response = await Fetch.fromHandler(handler, { path: "/test" })
+      const jsonEntity = yield* client.get("http://localhost/test", {
+        headers: { Accept: "application/json" },
+      })
 
-    test.expect(response.headers.get("Content-Type")).toBe("text/plain; charset=utf-8")
-    test.expect(await response.text()).toBe("wrapped: hello")
-  })
+      test.expect(yield* jsonEntity.json).toEqual({ wrapped: { type: "json" } })
+    }).pipe(Effect.runPromise),
+  )
 
-  test.it("html middleware wraps html response content", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route.use(
-        Route.html(function* (_ctx, next) {
-          const value = yield* next().text
-          return `<div>${value}</div>`
-        }),
-      ).get(Route.html("<span>content</span>")),
-    )
-    const response = await Fetch.fromHandler(handler, { path: "/test" })
+  test.it("text middleware wraps text response content", () =>
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.use(
+          Route.text(function* (_ctx, next) {
+            const value = yield* next().text
+            return `wrapped: ${value}`
+          }),
+        ).get(Route.text("hello")),
+      )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/test")
 
-    test.expect(response.headers.get("Content-Type")).toBe("text/html; charset=utf-8")
-    test.expect(await response.text()).toBe("<div><span>content</span></div>")
-  })
+      test.expect(entity.headers["content-type"]).toBe("text/plain; charset=utf-8")
+      test.expect(yield* entity.text).toBe("wrapped: hello")
+    }).pipe(Effect.runPromise),
+  )
 
-  test.it("bytes middleware wraps bytes response content", async () => {
-    const encoder = new TextEncoder()
-    const decoder = new TextDecoder()
+  test.it("html middleware wraps html response content", () =>
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.use(
+          Route.html(function* (_ctx, next) {
+            const value = yield* next().text
+            return `<div>${value}</div>`
+          }),
+        ).get(Route.html("<span>content</span>")),
+      )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/test")
 
-    const handler = RouteHttp.toWebHandler(
-      Route.use(
-        Route.bytes(function* (_ctx, next) {
-          const value = yield* next().bytes
-          const text = decoder.decode(value)
-          return encoder.encode(`wrapped:${text}`)
-        }),
-      ).get(Route.bytes(encoder.encode("data"))),
-    )
-    const response = await Fetch.fromHandler(handler, { path: "/test" })
+      test.expect(entity.headers["content-type"]).toBe("text/html; charset=utf-8")
+      test.expect(yield* entity.text).toBe("<div><span>content</span></div>")
+    }).pipe(Effect.runPromise),
+  )
 
-    test.expect(response.headers.get("Content-Type")).toBe("application/octet-stream")
-    test.expect(await response.text()).toBe("wrapped:data")
-  })
+  test.it("bytes middleware wraps bytes response content", () =>
+    Effect.gen(function* () {
+      const encoder = new TextEncoder()
+      const decoder = new TextDecoder()
 
-  test.it("chains middlewares in order", async () => {
-    const calls: Array<string> = []
+      const handler = RouteHttp.toWebHandler(
+        Route.use(
+          Route.bytes(function* (_ctx, next) {
+            const value = yield* next().bytes
+            const text = decoder.decode(value)
+            return encoder.encode(`wrapped:${text}`)
+          }),
+        ).get(Route.bytes(encoder.encode("data"))),
+      )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/test")
 
-    const handler = RouteHttp.toWebHandler(
-      Route.use(
-        // always called
-        Route.filter({
-          context: {
-            name: "Johnny",
-          },
-        }),
-        // called 1st
-        // next is related handler with same format (here format="text" descriptor)
-        Route.text(function* (_ctx, next) {
-          calls.push("wildcard text 1")
-          return "1st layout: " + (yield* next().text)
-        }),
-        // never called because it's unrelated (different format descriptor)
-        Route.json(function* (_ctx, next) {
-          calls.push("wildcard json")
-          return { data: yield* next().json }
-        }),
-        // called 2nd
-        // no other related handler in the same method,
-        // continue traversing RouteHttp middleware chain
-        Route.text(function* (_ctx, next) {
-          calls.push("wildcard text 2")
-          return "2nd layout: " + (yield* next().text)
-        }),
-      ).get(
-        // never called because doesn't pass content negotiation check in RouteHttp middleware
-        Route.json(function* (_ctx) {
-          calls.push("method json")
-          return { ok: true }
-        }),
-        // called 3rd
-        Route.text(function* (_ctx, next) {
-          calls.push("method text 1")
-          return "Prefix: " + (yield* next().text)
-        }),
-        // called 4th - terminal, no next() call
-        Route.text(function* (ctx) {
-          calls.push("method text 2")
-          return `Hello, ${ctx.name}`
-        }),
-      ),
-    )
+      test.expect(entity.headers["content-type"]).toBe("application/octet-stream")
+      test.expect(yield* entity.text).toBe("wrapped:data")
+    }).pipe(Effect.runPromise),
+  )
 
-    const response = await Fetch.fromHandler(handler, {
-      path: "/test",
-      headers: { Accept: "text/plain" },
-    })
+  test.it("chains middlewares in order", () =>
+    Effect.gen(function* () {
+      const calls: Array<string> = []
 
-    test
-      .expect(calls)
-      .toEqual(["wildcard text 1", "wildcard text 2", "method text 1", "method text 2"])
-
-    test.expect(response.status).toBe(200)
-    test.expect(response.headers.get("Content-Type")).toBe("text/plain; charset=utf-8")
-    test.expect(await response.text()).toBe("1st layout: 2nd layout: Prefix: Hello, Johnny")
-  })
-
-  test.it("schema headers parsing works with HttpServerRequest service", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route.get(
-        RouteSchema.schemaHeaders(
-          Schema.Struct({
-            "x-test": Schema.String,
+      const handler = RouteHttp.toWebHandler(
+        Route.use(
+          Route.filter({
+            context: {
+              name: "Johnny",
+            },
+          }),
+          Route.text(function* (_ctx, next) {
+            calls.push("wildcard text 1")
+            return "1st layout: " + (yield* next().text)
+          }),
+          Route.json(function* (_ctx, next) {
+            calls.push("wildcard json")
+            return { data: yield* next().json }
+          }),
+          Route.text(function* (_ctx, next) {
+            calls.push("wildcard text 2")
+            return "2nd layout: " + (yield* next().text)
+          }),
+        ).get(
+          Route.json(function* (_ctx) {
+            calls.push("method json")
+            return { ok: true }
+          }),
+          Route.text(function* (_ctx, next) {
+            calls.push("method text 1")
+            return "Prefix: " + (yield* next().text)
+          }),
+          Route.text(function* (ctx) {
+            calls.push("method text 2")
+            return `Hello, ${ctx.name}`
           }),
         ),
-        Route.text(function* (ctx) {
-          return `header=${ctx.headers["x-test"]}`
-        }),
-      ),
-    )
-    const response = await Fetch.fromHandler(handler, {
-      path: "/test",
-      headers: { "x-test": "test-value" },
-    })
+      )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/test", {
+        headers: { Accept: "text/plain" },
+      })
 
-    test.expect(response.status).toBe(200)
-    test.expect(await response.text()).toBe("header=test-value")
-  })
+      test
+        .expect(calls)
+        .toEqual(["wildcard text 1", "wildcard text 2", "method text 1", "method text 2"])
 
-  test.it("merges headers", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route.use(
-        RouteSchema.schemaHeaders(
-          Schema.Struct({
-            "x-shared": Schema.String,
+      test.expect(entity.status).toBe(200)
+      test.expect(entity.headers["content-type"]).toBe("text/plain; charset=utf-8")
+      test.expect(yield* entity.text).toBe("1st layout: 2nd layout: Prefix: Hello, Johnny")
+    }).pipe(Effect.runPromise),
+  )
+
+  test.it("schema headers parsing works with HttpServerRequest service", () =>
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.get(
+          RouteSchema.schemaHeaders(
+            Schema.Struct({
+              "x-test": Schema.String,
+            }),
+          ),
+          Route.text(function* (ctx) {
+            return `header=${ctx.headers["x-test"]}`
           }),
         ),
-      ).get(
-        RouteSchema.schemaHeaders(
-          Schema.Struct({
-            "x-get-only": Schema.String,
+      )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/test", {
+        headers: { "x-test": "test-value" },
+      })
+
+      test.expect(entity.status).toBe(200)
+      test.expect(yield* entity.text).toBe("header=test-value")
+    }).pipe(Effect.runPromise),
+  )
+
+  test.it("merges headers", () =>
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.use(
+          RouteSchema.schemaHeaders(
+            Schema.Struct({
+              "x-shared": Schema.String,
+            }),
+          ),
+        ).get(
+          RouteSchema.schemaHeaders(
+            Schema.Struct({
+              "x-get-only": Schema.String,
+            }),
+          ),
+          Route.text(function* (ctx) {
+            return `shared=${ctx.headers["x-shared"]},getOnly=${ctx.headers["x-get-only"]}`
           }),
         ),
-        Route.text(function* (ctx) {
-          return `shared=${ctx.headers["x-shared"]},getOnly=${ctx.headers["x-get-only"]}`
-        }),
-      ),
-    )
-    const response = await Fetch.fromHandler(handler, {
-      path: "/test",
-      headers: {
-        "x-shared": "shared-value",
-        "x-get-only": "get-value",
-      },
-    })
+      )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/test", {
+        headers: {
+          "x-shared": "shared-value",
+          "x-get-only": "get-value",
+        },
+      })
 
-    test.expect(response.status).toBe(200)
-    test.expect(await response.text()).toBe("shared=shared-value,getOnly=get-value")
-  })
+      test.expect(entity.status).toBe(200)
+      test.expect(yield* entity.text).toBe("shared=shared-value,getOnly=get-value")
+    }).pipe(Effect.runPromise),
+  )
 })
 
 test.describe("toWebHandler type constraints", () => {
@@ -1004,183 +1063,197 @@ test.describe("toWebHandler type constraints", () => {
 })
 
 test.describe("streaming responses", () => {
-  test.it("streams text response", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route.get(
-        Route.text(function* () {
-          return Stream.make("Hello", " ", "World")
-        }),
-      ),
-    )
-    const response = await Fetch.fromHandler(handler, { path: "/stream" })
+  test.it("streams text response", () =>
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.get(
+          Route.text(function* () {
+            return Stream.make("Hello", " ", "World")
+          }),
+        ),
+      )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/stream")
 
-    test.expect(response.headers.get("Content-Type")).toBe("text/plain; charset=utf-8")
-    test.expect(await response.text()).toBe("Hello World")
-  })
+      test.expect(entity.headers["content-type"]).toBe("text/plain; charset=utf-8")
+      test.expect(yield* entity.text).toBe("Hello World")
+    }).pipe(Effect.runPromise),
+  )
 
-  test.it("streams html response", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route.get(
-        Route.html(function* () {
-          return Stream.make("<div>", "content", "</div>")
-        }),
-      ),
-    )
-    const response = await Fetch.fromHandler(handler, { path: "/stream" })
+  test.it("streams html response", () =>
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.get(
+          Route.html(function* () {
+            return Stream.make("<div>", "content", "</div>")
+          }),
+        ),
+      )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/stream")
 
-    test.expect(response.headers.get("Content-Type")).toBe("text/html; charset=utf-8")
-    test.expect(await response.text()).toBe("<div>content</div>")
-  })
+      test.expect(entity.headers["content-type"]).toBe("text/html; charset=utf-8")
+      test.expect(yield* entity.text).toBe("<div>content</div>")
+    }).pipe(Effect.runPromise),
+  )
 
-  test.it("streams bytes response", async () => {
-    const encoder = new TextEncoder()
-    const handler = RouteHttp.toWebHandler(
-      Route.get(
-        Route.bytes(function* () {
-          return Stream.make(encoder.encode("chunk1"), encoder.encode("chunk2"))
-        }),
-      ),
-    )
-    const response = await Fetch.fromHandler(handler, { path: "/stream" })
+  test.it("streams bytes response", () =>
+    Effect.gen(function* () {
+      const encoder = new TextEncoder()
+      const handler = RouteHttp.toWebHandler(
+        Route.get(
+          Route.bytes(function* () {
+            return Stream.make(encoder.encode("chunk1"), encoder.encode("chunk2"))
+          }),
+        ),
+      )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/stream")
 
-    test.expect(response.headers.get("Content-Type")).toBe("application/octet-stream")
-    test.expect(await response.text()).toBe("chunk1chunk2")
-  })
+      test.expect(entity.headers["content-type"]).toBe("application/octet-stream")
+      test.expect(yield* entity.text).toBe("chunk1chunk2")
+    }).pipe(Effect.runPromise),
+  )
 
-  test.it("handles stream errors gracefully", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route.get(
-        Route.text(function* () {
-          return Stream.make("start").pipe(Stream.concat(Stream.fail(new Error("stream error"))))
-        }),
-      ),
-    )
-    const response = await Fetch.fromHandler(handler, { path: "/error" })
+  test.it("handles stream errors gracefully", () =>
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.get(
+          Route.text(function* () {
+            return Stream.make("start").pipe(Stream.concat(Stream.fail(new Error("stream error"))))
+          }),
+        ),
+      )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/error")
 
-    test.expect(response.status).toBe(200)
+      test.expect(entity.status).toBe(200)
 
-    await test.expect(response.text()).rejects.toThrow("stream error")
-  })
+      const exit = yield* entity.text.pipe(Effect.exit)
+      test.expect(exit._tag).toBe("Failure")
+    }).pipe(Effect.runPromise),
+  )
 })
 
 test.describe("schema handlers", () => {
-  test.it("parses headers, cookies, and search params together", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route.get(
-        RouteSchema.schemaHeaders(
-          Schema.Struct({
-            "x-api-key": Schema.String,
+  test.it("parses headers, cookies, and search params together", () =>
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.get(
+          RouteSchema.schemaHeaders(
+            Schema.Struct({
+              "x-api-key": Schema.String,
+            }),
+          ),
+          RouteSchema.schemaCookies(
+            Schema.Struct({
+              session: Schema.String,
+            }),
+          ),
+          RouteSchema.schemaSearchParams(
+            Schema.Struct({
+              page: Schema.NumberFromString,
+              limit: Schema.optional(Schema.NumberFromString),
+            }),
+          ),
+          Route.json(function* (ctx) {
+            return {
+              apiKey: ctx.headers["x-api-key"],
+              session: ctx.cookies.session,
+              page: ctx.searchParams.page,
+              limit: ctx.searchParams.limit,
+            }
           }),
         ),
-        RouteSchema.schemaCookies(
-          Schema.Struct({
-            session: Schema.String,
+      )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/test?page=2&limit=10", {
+        headers: {
+          "x-api-key": "secret-key",
+          cookie: "session=abc123",
+        },
+      })
+
+      test.expect(entity.status).toBe(200)
+      test.expect(yield* entity.json).toEqual({
+        apiKey: "secret-key",
+        session: "abc123",
+        page: 2,
+        limit: 10,
+      })
+    }).pipe(Effect.runPromise),
+  )
+
+  test.it("parses JSON body with headers", () =>
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.post(
+          RouteSchema.schemaHeaders(
+            Schema.Struct({
+              "content-type": Schema.String,
+            }),
+          ),
+          RouteSchema.schemaBodyJson(
+            Schema.Struct({
+              name: Schema.String,
+              age: Schema.Number,
+            }),
+          ),
+          Route.json(function* (ctx) {
+            return {
+              contentType: ctx.headers["content-type"],
+              name: ctx.body.name,
+              age: ctx.body.age,
+            }
           }),
         ),
-        RouteSchema.schemaSearchParams(
-          Schema.Struct({
-            page: Schema.NumberFromString,
-            limit: Schema.optional(Schema.NumberFromString),
+      )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.post("http://localhost/users", {
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Alice", age: 30 }),
+      })
+
+      test.expect(entity.status).toBe(200)
+      test.expect(yield* entity.json).toEqual({
+        contentType: "application/json",
+        name: "Alice",
+        age: 30,
+      })
+    }).pipe(Effect.runPromise),
+  )
+
+  test.it("parses URL-encoded body", () =>
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.post(
+          RouteSchema.schemaBodyUrlParams(
+            Schema.Struct({
+              username: Schema.String,
+              password: Schema.String,
+            }),
+          ),
+          Route.json(function* (ctx) {
+            return {
+              username: ctx.body.username,
+              hasPassword: ctx.body.password.length > 0,
+            }
           }),
         ),
-        Route.json(function* (ctx) {
-          return {
-            apiKey: ctx.headers["x-api-key"],
-            session: ctx.cookies.session,
-            page: ctx.searchParams.page,
-            limit: ctx.searchParams.limit,
-          }
-        }),
-      ),
-    )
+      )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.post("http://localhost/login", {
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: "username=alice&password=secret",
+      })
 
-    const response = await Fetch.fromHandler(handler, {
-      path: "/test?page=2&limit=10",
-      headers: {
-        "x-api-key": "secret-key",
-        cookie: "session=abc123",
-      },
-    })
-
-    test.expect(response.status).toBe(200)
-    test.expect(await response.json()).toEqual({
-      apiKey: "secret-key",
-      session: "abc123",
-      page: 2,
-      limit: 10,
-    })
-  })
-
-  test.it("parses JSON body with headers", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route.post(
-        RouteSchema.schemaHeaders(
-          Schema.Struct({
-            "content-type": Schema.String,
-          }),
-        ),
-        RouteSchema.schemaBodyJson(
-          Schema.Struct({
-            name: Schema.String,
-            age: Schema.Number,
-          }),
-        ),
-        Route.json(function* (ctx) {
-          return {
-            contentType: ctx.headers["content-type"],
-            name: ctx.body.name,
-            age: ctx.body.age,
-          }
-        }),
-      ),
-    )
-
-    const response = await Fetch.fromHandler(handler, {
-      path: "/users",
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: "Alice", age: 30 }),
-    })
-
-    test.expect(response.status).toBe(200)
-    test.expect(await response.json()).toEqual({
-      contentType: "application/json",
-      name: "Alice",
-      age: 30,
-    })
-  })
-
-  test.it("parses URL-encoded body", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route.post(
-        RouteSchema.schemaBodyUrlParams(
-          Schema.Struct({
-            username: Schema.String,
-            password: Schema.String,
-          }),
-        ),
-        Route.json(function* (ctx) {
-          return {
-            username: ctx.body.username,
-            hasPassword: ctx.body.password.length > 0,
-          }
-        }),
-      ),
-    )
-
-    const response = await Fetch.fromHandler(handler, {
-      path: "/login",
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: "username=alice&password=secret",
-    })
-
-    test.expect(response.status).toBe(200)
-    test.expect(await response.json()).toEqual({
-      username: "alice",
-      hasPassword: true,
-    })
-  })
+      test.expect(entity.status).toBe(200)
+      test.expect(yield* entity.json).toEqual({
+        username: "alice",
+        hasPassword: true,
+      })
+    }).pipe(Effect.runPromise),
+  )
 
   test.it("returns 400 on schema validation failure", () =>
     Effect.gen(function* () {
@@ -1195,12 +1268,10 @@ test.describe("schema handlers", () => {
           Route.text("ok"),
         ),
       )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/test?count=not-a-number")
 
-      const response = yield* Effect.promise(() =>
-        Fetch.fromHandler(handler, { path: "/test?count=not-a-number" }),
-      )
-
-      test.expect(response.status).toBe(400)
+      test.expect(entity.status).toBe(400)
 
       const messages = yield* TestLogger.messages
 
@@ -1221,10 +1292,10 @@ test.describe("schema handlers", () => {
           Route.text("ok"),
         ),
       )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/test")
 
-      const response = yield* Effect.promise(() => Fetch.fromHandler(handler, { path: "/test" }))
-
-      test.expect(response.status).toBe(400)
+      test.expect(entity.status).toBe(400)
 
       const messages = yield* TestLogger.messages
 
@@ -1232,202 +1303,206 @@ test.describe("schema handlers", () => {
     }).pipe(Effect.provide(TestLogger.layer()), Effect.runPromise),
   )
 
-  test.it("parses multipart form data with file", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route.post(
-        RouteSchema.schemaBodyMultipart(
-          Schema.Struct({
-            title: Schema.String,
-            file: Schema.Array(RouteSchema.File),
+  test.it("parses multipart form data with file", () =>
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.post(
+          RouteSchema.schemaBodyMultipart(
+            Schema.Struct({
+              title: Schema.String,
+              file: Schema.Array(RouteSchema.File),
+            }),
+          ),
+          Route.json(function* (ctx) {
+            const file = ctx.body.file[0]
+            return {
+              title: ctx.body.title,
+              fileName: file.name,
+              contentType: file.contentType,
+              size: file.content.length,
+            }
           }),
         ),
-        Route.json(function* (ctx) {
-          const file = ctx.body.file[0]
-          return {
-            title: ctx.body.title,
-            fileName: file.name,
-            contentType: file.contentType,
-            size: file.content.length,
-          }
-        }),
-      ),
-    )
+      )
 
-    const formData = new FormData()
-    formData.append("title", "My Upload")
-    formData.append("file", new Blob(["hello world"], { type: "text/plain" }), "test.txt")
+      const formData = new FormData()
+      formData.append("title", "My Upload")
+      formData.append("file", new Blob(["hello world"], { type: "text/plain" }), "test.txt")
 
-    const response = await Fetch.fromHandler(handler, {
-      path: "/upload",
-      method: "POST",
-      body: formData,
-    })
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.post("http://localhost/upload", {
+        body: formData,
+      })
 
-    test.expect(response.status).toBe(200)
+      test.expect(entity.status).toBe(200)
 
-    const json = await response.json()
+      const json = (yield* entity.json) as any
 
-    test.expect(json.title).toBe("My Upload")
-    test.expect(json.fileName).toBe("test.txt")
-    test.expect(json.contentType).toContain("text/plain")
-    test.expect(json.size).toBe(11)
-  })
+      test.expect(json.title).toBe("My Upload")
+      test.expect(json.fileName).toBe("test.txt")
+      test.expect(json.contentType).toContain("text/plain")
+      test.expect(json.size).toBe(11)
+    }).pipe(Effect.runPromise),
+  )
 
-  test.it("handles multiple files with same field name", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route.post(
-        RouteSchema.schemaBodyMultipart(
-          Schema.Struct({
-            documents: Schema.Array(RouteSchema.File),
+  test.it("handles multiple files with same field name", () =>
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.post(
+          RouteSchema.schemaBodyMultipart(
+            Schema.Struct({
+              documents: Schema.Array(RouteSchema.File),
+            }),
+          ),
+          Route.json(function* (ctx) {
+            return {
+              count: ctx.body.documents.length,
+              names: ctx.body.documents.map((f) => f.name),
+              sizes: ctx.body.documents.map((f) => f.content.length),
+            }
           }),
         ),
-        Route.json(function* (ctx) {
-          return {
-            count: ctx.body.documents.length,
-            names: ctx.body.documents.map((f) => f.name),
-            sizes: ctx.body.documents.map((f) => f.content.length),
-          }
-        }),
-      ),
-    )
+      )
 
-    const formData = new FormData()
-    formData.append(
-      "documents",
-      new Blob(["first file content"], { type: "text/plain" }),
-      "doc1.txt",
-    )
-    formData.append(
-      "documents",
-      new Blob(["second file content"], { type: "text/plain" }),
-      "doc2.txt",
-    )
-    formData.append(
-      "documents",
-      new Blob(["third file content"], { type: "text/plain" }),
-      "doc3.txt",
-    )
+      const formData = new FormData()
+      formData.append(
+        "documents",
+        new Blob(["first file content"], { type: "text/plain" }),
+        "doc1.txt",
+      )
+      formData.append(
+        "documents",
+        new Blob(["second file content"], { type: "text/plain" }),
+        "doc2.txt",
+      )
+      formData.append(
+        "documents",
+        new Blob(["third file content"], { type: "text/plain" }),
+        "doc3.txt",
+      )
 
-    const response = await Fetch.fromHandler(handler, {
-      path: "/upload",
-      method: "POST",
-      body: formData,
-    })
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.post("http://localhost/upload", {
+        body: formData,
+      })
 
-    test.expect(response.status).toBe(200)
+      test.expect(entity.status).toBe(200)
 
-    const json = await response.json()
+      const json = (yield* entity.json) as any
 
-    test.expect(json.count).toBe(3)
-    test.expect(json.names).toEqual(["doc1.txt", "doc2.txt", "doc3.txt"])
-    test.expect(json.sizes).toEqual([18, 19, 18])
-  })
+      test.expect(json.count).toBe(3)
+      test.expect(json.names).toEqual(["doc1.txt", "doc2.txt", "doc3.txt"])
+      test.expect(json.sizes).toEqual([18, 19, 18])
+    }).pipe(Effect.runPromise),
+  )
 
-  test.it("handles single file upload", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route.post(
-        RouteSchema.schemaBodyMultipart(
-          Schema.Struct({
-            image: Schema.Array(RouteSchema.File),
+  test.it("handles single file upload", () =>
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.post(
+          RouteSchema.schemaBodyMultipart(
+            Schema.Struct({
+              image: Schema.Array(RouteSchema.File),
+            }),
+          ),
+          Route.json(function* (ctx) {
+            const image = ctx.body.image[0]
+            return {
+              name: image.name,
+              type: image.contentType,
+              size: image.content.length,
+            }
           }),
         ),
-        Route.json(function* (ctx) {
-          const image = ctx.body.image[0]
-          return {
-            name: image.name,
-            type: image.contentType,
-            size: image.content.length,
-          }
-        }),
-      ),
-    )
+      )
 
-    const formData = new FormData()
-    formData.append("image", new Blob(["fake image data"], { type: "image/png" }), "avatar.png")
+      const formData = new FormData()
+      formData.append("image", new Blob(["fake image data"], { type: "image/png" }), "avatar.png")
 
-    const response = await Fetch.fromHandler(handler, {
-      path: "/upload",
-      method: "POST",
-      body: formData,
-    })
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.post("http://localhost/upload", {
+        body: formData,
+      })
 
-    test.expect(response.status).toBe(200)
+      test.expect(entity.status).toBe(200)
 
-    const json = await response.json()
+      const json = (yield* entity.json) as any
 
-    test.expect(json.name).toBe("avatar.png")
-    test.expect(json.type).toContain("image/png")
-    test.expect(json.size).toBe(15)
-  })
+      test.expect(json.name).toBe("avatar.png")
+      test.expect(json.type).toContain("image/png")
+      test.expect(json.size).toBe(15)
+    }).pipe(Effect.runPromise),
+  )
 
-  test.it("handles multiple string values for same field", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route.post(
-        RouteSchema.schemaBodyMultipart(
-          Schema.Struct({
-            tags: Schema.Array(Schema.String),
-            title: Schema.String,
+  test.it("handles multiple string values for same field", () =>
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.post(
+          RouteSchema.schemaBodyMultipart(
+            Schema.Struct({
+              tags: Schema.Array(Schema.String),
+              title: Schema.String,
+            }),
+          ),
+          Route.json(function* (ctx) {
+            return {
+              title: ctx.body.title,
+              tags: [...ctx.body.tags],
+            }
           }),
         ),
-        Route.json(function* (ctx) {
-          return {
-            title: ctx.body.title,
-            // Schema returns readonly array, but Json type expects mutable array
-            tags: [...ctx.body.tags],
-          }
-        }),
-      ),
-    )
+      )
 
-    const formData = new FormData()
-    formData.append("title", "My Post")
-    formData.append("tags", "javascript")
-    formData.append("tags", "typescript")
-    formData.append("tags", "effect")
+      const formData = new FormData()
+      formData.append("title", "My Post")
+      formData.append("tags", "javascript")
+      formData.append("tags", "typescript")
+      formData.append("tags", "effect")
 
-    const response = await Fetch.fromHandler(handler, {
-      path: "/upload",
-      method: "POST",
-      body: formData,
-    })
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.post("http://localhost/upload", {
+        body: formData,
+      })
 
-    test.expect(response.status).toBe(200)
+      test.expect(entity.status).toBe(200)
 
-    const json = await response.json()
+      const json = (yield* entity.json) as any
 
-    test.expect(json.title).toBe("My Post")
-    test.expect(json.tags).toEqual(["javascript", "typescript", "effect"])
-  })
+      test.expect(json.title).toBe("My Post")
+      test.expect(json.tags).toEqual(["javascript", "typescript", "effect"])
+    }).pipe(Effect.runPromise),
+  )
 
-  test.it("schema validation: single value with Schema.String succeeds", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route.post(
-        RouteSchema.schemaBodyMultipart(
-          Schema.Struct({
-            name: Schema.String,
+  test.it("schema validation: single value with Schema.String succeeds", () =>
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.post(
+          RouteSchema.schemaBodyMultipart(
+            Schema.Struct({
+              name: Schema.String,
+            }),
+          ),
+          Route.json(function* (ctx) {
+            return { name: ctx.body.name }
           }),
         ),
-        Route.json(function* (ctx) {
-          return { name: ctx.body.name }
-        }),
-      ),
-    )
+      )
 
-    const formData = new FormData()
-    formData.append("name", "John")
+      const formData = new FormData()
+      formData.append("name", "John")
 
-    const response = await Fetch.fromHandler(handler, {
-      path: "/test",
-      method: "POST",
-      body: formData,
-    })
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.post("http://localhost/test", {
+        body: formData,
+      })
 
-    test.expect(response.status).toBe(200)
+      test.expect(entity.status).toBe(200)
 
-    const json = await response.json()
+      const json = (yield* entity.json) as any
 
-    test.expect(json.name).toBe("John")
-  })
+      test.expect(json.name).toBe("John")
+    }).pipe(Effect.runPromise),
+  )
 
   test.it("schema validation: multiple values with Schema.String fails with detailed error", () =>
     Effect.gen(function* () {
@@ -1449,17 +1524,14 @@ test.describe("schema handlers", () => {
       formData.append("name", "John")
       formData.append("name", "Jane")
 
-      const response = yield* Effect.promise(() =>
-        Fetch.fromHandler(handler, {
-          path: "/test",
-          method: "POST",
-          body: formData,
-        }),
-      )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.post("http://localhost/test", {
+        body: formData,
+      })
 
-      test.expect(response.status).toBe(400)
+      test.expect(entity.status).toBe(400)
 
-      const body = yield* Effect.promise(() => response.json())
+      const body = (yield* entity.json) as any
 
       test.expect(body.message).toContain("ParseError")
       test.expect(body.message).toContain('Expected string, actual ["John","Jane"]')
@@ -1492,13 +1564,10 @@ test.describe("schema handlers", () => {
       formData.append("name", "John")
       formData.append("name", "Jane")
 
-      yield* Effect.promise(() =>
-        Fetch.fromHandler(handler, {
-          path: "/test",
-          method: "POST",
-          body: formData,
-        }),
-      )
+      const client = Fetch.fromHandler(handler)
+      yield* client.post("http://localhost/test", {
+        body: formData,
+      })
 
       const messages = yield* Ref.get(testLogger.messages)
       const errorLogs = messages.filter((msg) => msg.includes("[Error]"))
@@ -1510,140 +1579,140 @@ test.describe("schema handlers", () => {
     }).pipe(Effect.provide(TestLogger.layer()), Effect.runPromise),
   )
 
-  test.it("composes shared middleware with method-specific schema", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route.use(
-        RouteSchema.schemaHeaders(
-          Schema.Struct({
-            "x-api-version": Schema.String,
+  test.it("composes shared middleware with method-specific schema", () =>
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.use(
+          RouteSchema.schemaHeaders(
+            Schema.Struct({
+              "x-api-version": Schema.String,
+            }),
+          ),
+        )
+          .post(
+            RouteSchema.schemaBodyJson(
+              Schema.Struct({
+                action: Schema.String,
+              }),
+            ),
+            Route.json(function* (ctx) {
+              return {
+                version: ctx.headers["x-api-version"],
+                action: ctx.body.action,
+              }
+            }),
+          )
+          .get(
+            RouteSchema.schemaSearchParams(
+              Schema.Struct({
+                id: Schema.String,
+              }),
+            ),
+            Route.json(function* (ctx) {
+              return {
+                version: ctx.headers["x-api-version"],
+                id: ctx.searchParams.id,
+              }
+            }),
+          ),
+      )
+      const client = Fetch.fromHandler(handler)
+
+      const postEntity = yield* client.post("http://localhost/api", {
+        headers: {
+          "x-api-version": "v2",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ action: "create" }),
+      })
+
+      test.expect(yield* postEntity.json).toEqual({ version: "v2", action: "create" })
+
+      const getEntity = yield* client.get("http://localhost/api?id=123", {
+        headers: { "x-api-version": "v2" },
+      })
+
+      test.expect(yield* getEntity.json).toEqual({ version: "v2", id: "123" })
+    }).pipe(Effect.runPromise),
+  )
+
+  test.it("handles cookies with equals sign in value", () =>
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.get(
+          RouteSchema.schemaCookies(
+            Schema.Struct({
+              token: Schema.String,
+            }),
+          ),
+          Route.json(function* (ctx) {
+            return { token: ctx.cookies.token }
           }),
         ),
       )
-        .post(
-          RouteSchema.schemaBodyJson(
-            Schema.Struct({
-              action: Schema.String,
-            }),
-          ),
-          Route.json(function* (ctx) {
-            return {
-              version: ctx.headers["x-api-version"],
-              action: ctx.body.action,
-            }
-          }),
-        )
-        .get(
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/test", {
+        headers: { cookie: "token=abc=123==" },
+      })
+
+      test.expect(entity.status).toBe(200)
+      test.expect(yield* entity.json).toEqual({ token: "abc=123==" })
+    }).pipe(Effect.runPromise),
+  )
+
+  test.it("handles multiple search params with same key", () =>
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.get(
           RouteSchema.schemaSearchParams(
             Schema.Struct({
-              id: Schema.String,
+              tags: Schema.Array(Schema.String),
+            }),
+          ),
+          Route.json(function* (ctx) {
+            return { tags: [...ctx.searchParams.tags] }
+          }),
+        ),
+      )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/test?tags=one&tags=two&tags=three")
+
+      test.expect(entity.status).toBe(200)
+      test.expect(yield* entity.json).toEqual({ tags: ["one", "two", "three"] })
+    }).pipe(Effect.runPromise),
+  )
+
+  test.it("parses path params from RouteTree", () =>
+    Effect.gen(function* () {
+      const tree = RouteTree.make({
+        "/folders/:folderId/files/:fileId": Route.get(
+          RouteSchema.schemaPathParams(
+            Schema.Struct({
+              folderId: Schema.String,
+              fileId: Schema.NumberFromString,
             }),
           ),
           Route.json(function* (ctx) {
             return {
-              version: ctx.headers["x-api-version"],
-              id: ctx.searchParams.id,
+              folderId: ctx.pathParams.folderId,
+              fileId: ctx.pathParams.fileId,
             }
           }),
         ),
-    )
+      })
 
-    const postResponse = await Fetch.fromHandler(handler, {
-      path: "/api",
-      method: "POST",
-      headers: {
-        "x-api-version": "v2",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ action: "create" }),
-    })
+      const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
+      const handler = handles["/folders/:folderId/files/:fileId"]
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/folders/abc123/files/42")
 
-    test.expect(await postResponse.json()).toEqual({ version: "v2", action: "create" })
-
-    const getResponse = await Fetch.fromHandler(handler, {
-      path: "/api?id=123",
-      method: "GET",
-      headers: { "x-api-version": "v2" },
-    })
-
-    test.expect(await getResponse.json()).toEqual({ version: "v2", id: "123" })
-  })
-
-  test.it("handles cookies with equals sign in value", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route.get(
-        RouteSchema.schemaCookies(
-          Schema.Struct({
-            token: Schema.String,
-          }),
-        ),
-        Route.json(function* (ctx) {
-          return { token: ctx.cookies.token }
-        }),
-      ),
-    )
-
-    const response = await Fetch.fromHandler(handler, {
-      path: "/test",
-      headers: { cookie: "token=abc=123==" },
-    })
-
-    test.expect(response.status).toBe(200)
-    test.expect(await response.json()).toEqual({ token: "abc=123==" })
-  })
-
-  test.it("handles multiple search params with same key", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route.get(
-        RouteSchema.schemaSearchParams(
-          Schema.Struct({
-            tags: Schema.Array(Schema.String),
-          }),
-        ),
-        Route.json(function* (ctx) {
-          return { tags: [...ctx.searchParams.tags] }
-        }),
-      ),
-    )
-
-    const response = await Fetch.fromHandler(handler, {
-      path: "/test?tags=one&tags=two&tags=three",
-    })
-
-    test.expect(response.status).toBe(200)
-    test.expect(await response.json()).toEqual({ tags: ["one", "two", "three"] })
-  })
-
-  test.it("parses path params from RouteTree", async () => {
-    const tree = RouteTree.make({
-      "/folders/:folderId/files/:fileId": Route.get(
-        RouteSchema.schemaPathParams(
-          Schema.Struct({
-            folderId: Schema.String,
-            fileId: Schema.NumberFromString,
-          }),
-        ),
-        Route.json(function* (ctx) {
-          return {
-            folderId: ctx.pathParams.folderId,
-            fileId: ctx.pathParams.fileId,
-          }
-        }),
-      ),
-    })
-
-    const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
-    const handler = handles["/folders/:folderId/files/:fileId"]
-
-    const response = await Fetch.fromHandler(handler, {
-      path: "/folders/abc123/files/42",
-    })
-
-    test.expect(response.status).toBe(200)
-    test.expect(await response.json()).toEqual({
-      folderId: "abc123",
-      fileId: 42,
-    })
-  })
+      test.expect(entity.status).toBe(200)
+      test.expect(yield* entity.json).toEqual({
+        folderId: "abc123",
+        fileId: 42,
+      })
+    }).pipe(Effect.runPromise),
+  )
 
   test.it("path params validation fails on invalid input", () =>
     Effect.gen(function* () {
@@ -1658,12 +1727,10 @@ test.describe("schema handlers", () => {
           Route.text("ok"),
         ),
       )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/users/not-a-number")
 
-      const response = yield* Effect.promise(() =>
-        Fetch.fromHandler(handler, { path: "/users/not-a-number" }),
-      )
-
-      test.expect(response.status).toBe(400)
+      test.expect(entity.status).toBe(400)
 
       const messages = yield* TestLogger.messages
 
@@ -1671,51 +1738,51 @@ test.describe("schema handlers", () => {
     }).pipe(Effect.provide(TestLogger.layer()), Effect.runPromise),
   )
 
-  test.it("combines path params with headers and body", async () => {
-    const tree = RouteTree.make({
-      "/projects/:projectId/tasks": Route.post(
-        RouteSchema.schemaPathParams(
-          Schema.Struct({
-            projectId: Schema.String,
+  test.it("combines path params with headers and body", () =>
+    Effect.gen(function* () {
+      const tree = RouteTree.make({
+        "/projects/:projectId/tasks": Route.post(
+          RouteSchema.schemaPathParams(
+            Schema.Struct({
+              projectId: Schema.String,
+            }),
+          ),
+          RouteSchema.schemaHeaders(
+            Schema.Struct({
+              "x-api-key": Schema.String,
+            }),
+          ),
+          RouteSchema.schemaBodyJson(
+            Schema.Struct({
+              title: Schema.String,
+            }),
+          ),
+          Route.json(function* (ctx) {
+            return {
+              projectId: ctx.pathParams.projectId,
+              apiKey: ctx.headers["x-api-key"],
+              title: ctx.body.title,
+            }
           }),
         ),
-        RouteSchema.schemaHeaders(
-          Schema.Struct({
-            "x-api-key": Schema.String,
-          }),
-        ),
-        RouteSchema.schemaBodyJson(
-          Schema.Struct({
-            title: Schema.String,
-          }),
-        ),
-        Route.json(function* (ctx) {
-          return {
-            projectId: ctx.pathParams.projectId,
-            apiKey: ctx.headers["x-api-key"],
-            title: ctx.body.title,
-          }
-        }),
-      ),
-    })
+      })
 
-    const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
-    const handler = handles["/projects/:projectId/tasks"]
+      const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
+      const handler = handles["/projects/:projectId/tasks"]
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.post("http://localhost/projects/proj-999/tasks", {
+        headers: { "x-api-key": "secret" },
+        body: JSON.stringify({ title: "New Task" }),
+      })
 
-    const response = await Fetch.fromHandler(handler, {
-      path: "/projects/proj-999/tasks",
-      method: "POST",
-      headers: { "x-api-key": "secret" },
-      body: { title: "New Task" },
-    })
-
-    test.expect(response.status).toBe(200)
-    test.expect(await response.json()).toEqual({
-      projectId: "proj-999",
-      apiKey: "secret",
-      title: "New Task",
-    })
-  })
+      test.expect(entity.status).toBe(200)
+      test.expect(yield* entity.json).toEqual({
+        projectId: "proj-999",
+        apiKey: "secret",
+        title: "New Task",
+      })
+    }).pipe(Effect.runPromise),
+  )
 })
 
 test.describe("request abort handling", () => {
@@ -1828,125 +1895,139 @@ test.describe("request abort handling", () => {
 })
 
 test.describe("RouteTree layer routes", () => {
-  test.it("layer routes execute in order before path routes", async () => {
-    const calls: Array<string> = []
+  test.it("layer routes execute in order before path routes", () =>
+    Effect.gen(function* () {
+      const calls: Array<string> = []
 
-    const tree = RouteTree.make({
-      "*": Route.use(
-        Route.filter(function* () {
-          calls.push("layer1")
-          return { context: {} }
-        }),
-      ).use(
-        Route.filter(function* () {
-          calls.push("layer2")
-          return { context: {} }
-        }),
-      ),
-      "/test": Route.get(
-        Route.text(function* () {
-          calls.push("handler")
-          return "ok"
-        }),
-      ),
-    })
+      const tree = RouteTree.make({
+        "*": Route.use(
+          Route.filter(function* () {
+            calls.push("layer1")
+            return { context: {} }
+          }),
+        ).use(
+          Route.filter(function* () {
+            calls.push("layer2")
+            return { context: {} }
+          }),
+        ),
+        "/test": Route.get(
+          Route.text(function* () {
+            calls.push("handler")
+            return "ok"
+          }),
+        ),
+      })
 
-    const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
-    const response = await Fetch.fromHandler(handles["/test"], { path: "/test" })
+      const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
+      const client = Fetch.fromHandler(handles["/test"])
+      const entity = yield* client.get("http://localhost/test")
 
-    test.expect(response.status).toBe(200)
-    test.expect(calls).toEqual(["layer1", "layer2", "handler"])
-  })
+      test.expect(entity.status).toBe(200)
+      test.expect(calls).toEqual(["layer1", "layer2", "handler"])
+    }).pipe(Effect.runPromise),
+  )
 
-  test.it("layer routes apply to all paths in the tree", async () => {
-    const calls: Array<string> = []
+  test.it("layer routes apply to all paths in the tree", () =>
+    Effect.gen(function* () {
+      const calls: Array<string> = []
 
-    const tree = RouteTree.make({
-      "*": Route.use(
-        Route.filter(function* () {
-          calls.push("layer")
-          return { context: {} }
-        }),
-      ),
-      "/users": Route.get(
-        Route.text(function* () {
-          calls.push("users")
-          return "users"
-        }),
-      ),
-      "/admin": Route.get(
-        Route.text(function* () {
-          calls.push("admin")
-          return "admin"
-        }),
-      ),
-    })
+      const tree = RouteTree.make({
+        "*": Route.use(
+          Route.filter(function* () {
+            calls.push("layer")
+            return { context: {} }
+          }),
+        ),
+        "/users": Route.get(
+          Route.text(function* () {
+            calls.push("users")
+            return "users"
+          }),
+        ),
+        "/admin": Route.get(
+          Route.text(function* () {
+            calls.push("admin")
+            return "admin"
+          }),
+        ),
+      })
 
-    const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
+      const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
 
-    calls.length = 0
-    await Fetch.fromHandler(handles["/users"], { path: "/users" })
+      const usersClient = Fetch.fromHandler(handles["/users"])
+      const adminClient = Fetch.fromHandler(handles["/admin"])
 
-    test.expect(calls).toEqual(["layer", "users"])
+      calls.length = 0
+      yield* usersClient.get("http://localhost/users")
 
-    calls.length = 0
-    await Fetch.fromHandler(handles["/admin"], { path: "/admin" })
+      test.expect(calls).toEqual(["layer", "users"])
 
-    test.expect(calls).toEqual(["layer", "admin"])
-  })
+      calls.length = 0
+      yield* adminClient.get("http://localhost/admin")
 
-  test.it("layer execution does not leak between requests", async () => {
-    let layerCallCount = 0
+      test.expect(calls).toEqual(["layer", "admin"])
+    }).pipe(Effect.runPromise),
+  )
 
-    const tree = RouteTree.make({
-      "*": Route.use(
-        Route.filter(function* () {
-          layerCallCount++
-          return { context: {} }
-        }),
-      ),
-      "/test": Route.get(Route.text("ok")),
-    })
+  test.it("layer execution does not leak between requests", () =>
+    Effect.gen(function* () {
+      let layerCallCount = 0
 
-    const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
+      const tree = RouteTree.make({
+        "*": Route.use(
+          Route.filter(function* () {
+            layerCallCount++
+            return { context: {} }
+          }),
+        ),
+        "/test": Route.get(Route.text("ok")),
+      })
 
-    layerCallCount = 0
-    await Fetch.fromHandler(handles["/test"], { path: "/test" })
+      const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
+      const client = Fetch.fromHandler(handles["/test"])
 
-    test.expect(layerCallCount).toBe(1)
+      layerCallCount = 0
+      yield* client.get("http://localhost/test")
 
-    await Fetch.fromHandler(handles["/test"], { path: "/test" })
+      test.expect(layerCallCount).toBe(1)
 
-    test.expect(layerCallCount).toBe(2)
-  })
+      yield* client.get("http://localhost/test")
 
-  test.it("nested tree inherits parent layer routes", async () => {
-    const calls: Array<string> = []
+      test.expect(layerCallCount).toBe(2)
+    }).pipe(Effect.runPromise),
+  )
 
-    const apiTree = RouteTree.make({
-      "/users": Route.get(
-        Route.text(function* () {
-          calls.push("users")
-          return "users"
-        }),
-      ),
-    })
+  test.it("nested tree inherits parent layer routes", () =>
+    Effect.gen(function* () {
+      const calls: Array<string> = []
 
-    const tree = RouteTree.make({
-      "*": Route.use(
-        Route.filter(function* () {
-          calls.push("root-layer")
-          return { context: {} }
-        }),
-      ),
-      "/api": apiTree,
-    })
+      const apiTree = RouteTree.make({
+        "/users": Route.get(
+          Route.text(function* () {
+            calls.push("users")
+            return "users"
+          }),
+        ),
+      })
 
-    const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
-    await Fetch.fromHandler(handles["/api/users"], { path: "/api/users" })
+      const tree = RouteTree.make({
+        "*": Route.use(
+          Route.filter(function* () {
+            calls.push("root-layer")
+            return { context: {} }
+          }),
+        ),
+        "/api": apiTree,
+      })
 
-    test.expect(calls).toEqual(["root-layer", "users"])
-  })
+      const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
+      const client = Fetch.fromHandler(handles["/api/users"])
+      yield* client.get("http://localhost/api/users")
+
+      test.expect(calls).toEqual(["root-layer", "users"])
+    }).pipe(Effect.runPromise),
+  )
 
   test.it("layer routes can short-circuit with error", () =>
     Effect.gen(function* () {
@@ -1968,16 +2049,14 @@ test.describe("RouteTree layer routes", () => {
       })
 
       const handles = Object.fromEntries(RouteHttp.walkHandles(tree, runtime))
+      const client = Fetch.fromHandler(handles["/test"])
+      const entity = yield* client.get("http://localhost/test")
 
-      const response = yield* Effect.promise(() =>
-        Fetch.fromHandler(handles["/test"], { path: "/test" }),
-      )
-
-      test.expect(response.status).toBe(500)
+      test.expect(entity.status).toBe(500)
 
       test.expect(handlerExecuted).toBe(false)
 
-      const text = yield* Effect.promise(() => response.text())
+      const text = yield* entity.text
 
       test.expect(text).toContain("layer rejected")
 
@@ -1987,332 +2066,357 @@ test.describe("RouteTree layer routes", () => {
     }).pipe(Effect.provide(TestLogger.layer()), Effect.runPromise),
   )
 
-  test.it("layer middleware wraps response content with json", async () => {
-    const tree = RouteTree.make({
-      "*": Route.use(
-        Route.json(function* (_ctx, next) {
-          const value = yield* next().json
-          return { wrapped: value }
-        }),
-      ),
-      "/data": Route.get(Route.json({ original: true })),
-    })
+  test.it("layer middleware wraps response content with json", () =>
+    Effect.gen(function* () {
+      const tree = RouteTree.make({
+        "*": Route.use(
+          Route.json(function* (_ctx, next) {
+            const value = yield* next().json
+            return { wrapped: value }
+          }),
+        ),
+        "/data": Route.get(Route.json({ original: true })),
+      })
 
-    const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
-    const response = await Fetch.fromHandler(handles["/data"], { path: "/data" })
+      const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
+      const client = Fetch.fromHandler(handles["/data"])
+      const entity = yield* client.get("http://localhost/data")
 
-    test.expect(await response.json()).toEqual({ wrapped: { original: true } })
-  })
+      test.expect(yield* entity.json).toEqual({ wrapped: { original: true } })
+    }).pipe(Effect.runPromise),
+  )
 
-  test.it("layer middleware wraps response content with text", async () => {
-    const tree = RouteTree.make({
-      "*": Route.use(
-        Route.text(function* (_ctx, next) {
-          const value = yield* next().text
-          return `Layout: ${value}`
-        }),
-      ),
-      "/page": Route.get(Route.text("Page Content")),
-    })
+  test.it("layer middleware wraps response content with text", () =>
+    Effect.gen(function* () {
+      const tree = RouteTree.make({
+        "*": Route.use(
+          Route.text(function* (_ctx, next) {
+            const value = yield* next().text
+            return `Layout: ${value}`
+          }),
+        ),
+        "/page": Route.get(Route.text("Page Content")),
+      })
 
-    const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
-    const response = await Fetch.fromHandler(handles["/page"], { path: "/page" })
+      const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
+      const client = Fetch.fromHandler(handles["/page"])
+      const entity = yield* client.get("http://localhost/page")
 
-    test.expect(await response.text()).toBe("Layout: Page Content")
-  })
+      test.expect(yield* entity.text).toBe("Layout: Page Content")
+    }).pipe(Effect.runPromise),
+  )
 
-  test.it("multiple layers execute in definition order", async () => {
-    const calls: Array<string> = []
+  test.it("multiple layers execute in definition order", () =>
+    Effect.gen(function* () {
+      const calls: Array<string> = []
 
-    const tree = RouteTree.make({
-      "*": Route.use(
-        Route.filter(function* () {
-          calls.push("layer1")
-          return { context: {} }
-        }),
-      ).use(
-        Route.filter(function* () {
-          calls.push("layer2")
-          return { context: {} }
-        }),
-      ),
-      "/test": Route.get(
-        Route.text(function* () {
-          calls.push("handler")
-          return "ok"
-        }),
-      ),
-    })
+      const tree = RouteTree.make({
+        "*": Route.use(
+          Route.filter(function* () {
+            calls.push("layer1")
+            return { context: {} }
+          }),
+        ).use(
+          Route.filter(function* () {
+            calls.push("layer2")
+            return { context: {} }
+          }),
+        ),
+        "/test": Route.get(
+          Route.text(function* () {
+            calls.push("handler")
+            return "ok"
+          }),
+        ),
+      })
 
-    const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
-    await Fetch.fromHandler(handles["/test"], { path: "/test" })
+      const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
+      const client = Fetch.fromHandler(handles["/test"])
+      yield* client.get("http://localhost/test")
 
-    test.expect(calls).toEqual(["layer1", "layer2", "handler"])
-  })
+      test.expect(calls).toEqual(["layer1", "layer2", "handler"])
+    }).pipe(Effect.runPromise),
+  )
 
-  test.it("format negotiation excludes middleware formats", async () => {
-    const tree = RouteTree.make({
-      "*": Route.use(
-        Route.json(function* (_ctx, next) {
-          const value = yield* next().json
-          return { wrapped: value }
-        }),
-      ),
-      "/": Route.get(Route.html("<h1>Hello</h1>")),
-    })
+  test.it("format negotiation excludes middleware formats", () =>
+    Effect.gen(function* () {
+      const tree = RouteTree.make({
+        "*": Route.use(
+          Route.json(function* (_ctx, next) {
+            const value = yield* next().json
+            return { wrapped: value }
+          }),
+        ),
+        "/": Route.get(Route.html("<h1>Hello</h1>")),
+      })
 
-    const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
-    const response = await Fetch.fromHandler(handles["/"], { path: "/" })
+      const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
+      const client = Fetch.fromHandler(handles["/"])
+      const entity = yield* client.get("http://localhost/")
 
-    test.expect(response.status).toBe(200)
-    test.expect(response.headers.get("Content-Type")).toBe("text/html; charset=utf-8")
-    test.expect(await response.text()).toBe("<h1>Hello</h1>")
-  })
+      test.expect(entity.status).toBe(200)
+      test.expect(entity.headers["content-type"]).toBe("text/html; charset=utf-8")
+      test.expect(yield* entity.text).toBe("<h1>Hello</h1>")
+    }).pipe(Effect.runPromise),
+  )
 })
 
 test.describe("Route.render (format=*)", () => {
-  test.it("accepts any Accept header", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route.get(
-        Route.render(function* () {
-          return Stream.make("event: message\ndata: hello\n\n")
-        }),
-      ),
-    )
-
-    const response = await Fetch.fromHandler(handler, {
-      path: "/events",
-      headers: { Accept: "text/event-stream" },
-    })
-
-    test.expect(response.status).toBe(200)
-    test.expect(await response.text()).toBe("event: message\ndata: hello\n\n")
-  })
-
-  test.it("works without Accept header", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route.get(
-        Route.render(function* () {
-          return "raw response"
-        }),
-      ),
-    )
-
-    const response = await Fetch.fromHandler(handler, { path: "/raw" })
-
-    test.expect(response.status).toBe(200)
-    test.expect(await response.text()).toBe("raw response")
-  })
-
-  test.it("does not participate in content negotiation", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route.get(Route.json({ type: "json" })).get(
-        Route.render(function* () {
-          return "fallback"
-        }),
-      ),
-    )
-
-    const jsonResponse = await Fetch.fromHandler(handler, {
-      path: "/data",
-      headers: { Accept: "application/json" },
-    })
-
-    test.expect(await jsonResponse.json()).toEqual({ type: "json" })
-
-    const eventStreamResponse = await Fetch.fromHandler(handler, {
-      path: "/data",
-      headers: { Accept: "text/event-stream" },
-    })
-
-    test.expect(eventStreamResponse.status).toBe(200)
-    test.expect(await eventStreamResponse.text()).toBe("fallback")
-  })
-
-  test.it(
-    "is always called regardless of Accept header when only handle routes exist",
-    async () => {
+  test.it("accepts any Accept header", () =>
+    Effect.gen(function* () {
       const handler = RouteHttp.toWebHandler(
         Route.get(
           Route.render(function* () {
-            return "any format"
+            return Stream.make("event: message\ndata: hello\n\n")
           }),
         ),
       )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/events", {
+        headers: { Accept: "text/event-stream" },
+      })
 
-      const responses = await Promise.all([
-        Fetch.fromHandler(handler, {
-          path: "/",
-          headers: { Accept: "text/event-stream" },
-        }),
-        Fetch.fromHandler(handler, { path: "/", headers: { Accept: "image/png" } }),
-        Fetch.fromHandler(handler, { path: "/", headers: { Accept: "*/*" } }),
-        Fetch.fromHandler(handler, { path: "/" }),
-      ])
-
-      for (const response of responses) {
-        test.expect(response.status).toBe(200)
-        test.expect(await response.text()).toBe("any format")
-      }
-    },
+      test.expect(entity.status).toBe(200)
+      test.expect(yield* entity.text).toBe("event: message\ndata: hello\n\n")
+    }).pipe(Effect.runPromise),
   )
 
-  test.it("can return Entity with custom headers", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route.get(
-        Route.render(function* () {
-          return Entity.make(Stream.make("data: hello\n\n"), {
-            headers: {
-              "content-type": "text/event-stream",
-              "cache-control": "no-cache",
-            },
-          })
-        }),
-      ),
-    )
+  test.it("works without Accept header", () =>
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.get(
+          Route.render(function* () {
+            return "raw response"
+          }),
+        ),
+      )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/raw")
 
-    const response = await Fetch.fromHandler(handler, {
-      path: "/events",
-      headers: { Accept: "text/event-stream" },
-    })
+      test.expect(entity.status).toBe(200)
+      test.expect(yield* entity.text).toBe("raw response")
+    }).pipe(Effect.runPromise),
+  )
 
-    test.expect(response.status).toBe(200)
-    test.expect(response.headers.get("content-type")).toBe("text/event-stream")
-    test.expect(response.headers.get("cache-control")).toBe("no-cache")
-    test.expect(await response.text()).toBe("data: hello\n\n")
-  })
+  test.it("does not participate in content negotiation", () =>
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.get(Route.json({ type: "json" })).get(
+          Route.render(function* () {
+            return "fallback"
+          }),
+        ),
+      )
+      const client = Fetch.fromHandler(handler)
 
-  test.it("handle middleware wraps handle handler", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route.use(
-        Route.render(function* (_ctx, next) {
-          const value = yield* next().text
-          return `wrapped: ${value}`
-        }),
-      ).get(
-        Route.render(function* () {
-          return "inner"
-        }),
-      ),
-    )
+      const jsonEntity = yield* client.get("http://localhost/data", {
+        headers: { Accept: "application/json" },
+      })
 
-    const response = await Fetch.fromHandler(handler, {
-      path: "/",
-      headers: { Accept: "text/event-stream" },
-    })
+      test.expect(yield* jsonEntity.json).toEqual({ type: "json" })
 
-    test.expect(response.status).toBe(200)
-    test.expect(await response.text()).toBe("wrapped: inner")
-  })
+      const eventStreamEntity = yield* client.get("http://localhost/data", {
+        headers: { Accept: "text/event-stream" },
+      })
 
-  test.it("render middleware always runs even when specific format is selected", async () => {
-    const calls: Array<string> = []
+      test.expect(eventStreamEntity.status).toBe(200)
+      test.expect(yield* eventStreamEntity.text).toBe("fallback")
+    }).pipe(Effect.runPromise),
+  )
 
-    const handler = RouteHttp.toWebHandler(
-      Route.use(
-        Route.render(function* (_ctx, next) {
-          calls.push("render middleware")
-          return next().stream
-        }),
-      ).get(
-        Route.json(function* () {
-          calls.push("json handler")
-          return { type: "json" }
-        }),
-      ),
-    )
+  test.it(
+    "is always called regardless of Accept header when only handle routes exist",
+    () =>
+      Effect.gen(function* () {
+        const handler = RouteHttp.toWebHandler(
+          Route.get(
+            Route.render(function* () {
+              return "any format"
+            }),
+          ),
+        )
+        const client = Fetch.fromHandler(handler)
 
-    const response = await Fetch.fromHandler(handler, {
-      path: "/",
-      headers: { Accept: "application/json" },
-    })
+        const entities = [
+          yield* client.get("http://localhost/", {
+            headers: { Accept: "text/event-stream" },
+          }),
+          yield* client.get("http://localhost/", { headers: { Accept: "image/png" } }),
+          yield* client.get("http://localhost/", { headers: { Accept: "*/*" } }),
+          yield* client.get("http://localhost/"),
+        ]
 
-    test.expect(response.status).toBe(200)
-    test.expect(calls).toEqual(["render middleware", "json handler"])
-    test.expect(await response.json()).toEqual({ type: "json" })
-  })
+        for (const entity of entities) {
+          test.expect(entity.status).toBe(200)
+          test.expect(yield* entity.text).toBe("any format")
+        }
+      }).pipe(Effect.runPromise),
+  )
 
-  test.it("next() from render matches both render and selected format routes", async () => {
-    const calls: Array<string> = []
+  test.it("can return Entity with custom headers", () =>
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.get(
+          Route.render(function* () {
+            return Entity.make(Stream.make("data: hello\n\n"), {
+              headers: {
+                "content-type": "text/event-stream",
+                "cache-control": "no-cache",
+              },
+            })
+          }),
+        ),
+      )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/events", {
+        headers: { Accept: "text/event-stream" },
+      })
 
-    const handler = RouteHttp.toWebHandler(
-      Route.use(
-        Route.render(function* (_ctx, next) {
-          calls.push("render middleware 1")
-          return next().stream
-        }),
-        Route.render(function* (_ctx, next) {
-          calls.push("render middleware 2")
-          return next().stream
-        }),
-        Route.json(function* (_ctx, next) {
-          calls.push("json middleware")
-          return yield* next().json
-        }),
-      ).get(
-        Route.json(function* () {
-          calls.push("json handler")
-          return { type: "json" }
-        }),
-      ),
-    )
+      test.expect(entity.status).toBe(200)
+      test.expect(entity.headers).toMatchObject({
+        "content-type": "text/event-stream",
+        "cache-control": "no-cache",
+      })
+      test.expect(yield* entity.text).toBe("data: hello\n\n")
+    }).pipe(Effect.runPromise),
+  )
 
-    const response = await Fetch.fromHandler(handler, {
-      path: "/",
-      headers: { Accept: "application/json" },
-    })
+  test.it("handle middleware wraps handle handler", () =>
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.use(
+          Route.render(function* (_ctx, next) {
+            const value = yield* next().text
+            return `wrapped: ${value}`
+          }),
+        ).get(
+          Route.render(function* () {
+            return "inner"
+          }),
+        ),
+      )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/", {
+        headers: { Accept: "text/event-stream" },
+      })
 
-    test.expect(response.status).toBe(200)
-    test
-      .expect(calls)
-      .toEqual(["render middleware 1", "render middleware 2", "json middleware", "json handler"])
-  })
+      test.expect(entity.status).toBe(200)
+      test.expect(yield* entity.text).toBe("wrapped: inner")
+    }).pipe(Effect.runPromise),
+  )
 
-  test.it("render handler runs when no specific format matches", async () => {
-    const calls: Array<string> = []
+  test.it("render middleware always runs even when specific format is selected", () =>
+    Effect.gen(function* () {
+      const calls: Array<string> = []
 
-    const handler = RouteHttp.toWebHandler(
-      Route.get(
-        Route.json(function* () {
-          calls.push("json")
-          return { type: "json" }
-        }),
-        Route.render(function* () {
-          calls.push("render")
-          return "render output"
-        }),
-      ),
-    )
+      const handler = RouteHttp.toWebHandler(
+        Route.use(
+          Route.render(function* (_ctx, next) {
+            calls.push("render middleware")
+            return next().stream
+          }),
+        ).get(
+          Route.json(function* () {
+            calls.push("json handler")
+            return { type: "json" }
+          }),
+        ),
+      )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/", {
+        headers: { Accept: "application/json" },
+      })
 
-    const eventStreamResponse = await Fetch.fromHandler(handler, {
-      path: "/",
-      headers: { Accept: "text/event-stream" },
-    })
+      test.expect(entity.status).toBe(200)
+      test.expect(calls).toEqual(["render middleware", "json handler"])
+      test.expect(yield* entity.json).toEqual({ type: "json" })
+    }).pipe(Effect.runPromise),
+  )
 
-    test.expect(eventStreamResponse.status).toBe(200)
-    test.expect(calls).toEqual(["render"])
-    test.expect(await eventStreamResponse.text()).toBe("render output")
-  })
+  test.it("next() from render matches both render and selected format routes", () =>
+    Effect.gen(function* () {
+      const calls: Array<string> = []
 
-  test.it("render used as fallback when Accept doesn't match other formats", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route.get(
-        Route.json({ type: "json" }),
-        Route.html("<h1>html</h1>"),
-        Route.render(function* () {
-          return "fallback for unknown accept"
-        }),
-      ),
-    )
+      const handler = RouteHttp.toWebHandler(
+        Route.use(
+          Route.render(function* (_ctx, next) {
+            calls.push("render middleware 1")
+            return next().stream
+          }),
+          Route.render(function* (_ctx, next) {
+            calls.push("render middleware 2")
+            return next().stream
+          }),
+          Route.json(function* (_ctx, next) {
+            calls.push("json middleware")
+            return yield* next().json
+          }),
+        ).get(
+          Route.json(function* () {
+            calls.push("json handler")
+            return { type: "json" }
+          }),
+        ),
+      )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/", {
+        headers: { Accept: "application/json" },
+      })
 
-    const eventStreamResponse = await Fetch.fromHandler(handler, {
-      path: "/",
-      headers: { Accept: "text/event-stream" },
-    })
+      test.expect(entity.status).toBe(200)
+      test
+        .expect(calls)
+        .toEqual(["render middleware 1", "render middleware 2", "json middleware", "json handler"])
+    }).pipe(Effect.runPromise),
+  )
 
-    test.expect(eventStreamResponse.status).toBe(200)
-    test.expect(await eventStreamResponse.text()).toBe("fallback for unknown accept")
-  })
+  test.it("render handler runs when no specific format matches", () =>
+    Effect.gen(function* () {
+      const calls: Array<string> = []
+
+      const handler = RouteHttp.toWebHandler(
+        Route.get(
+          Route.json(function* () {
+            calls.push("json")
+            return { type: "json" }
+          }),
+          Route.render(function* () {
+            calls.push("render")
+            return "render output"
+          }),
+        ),
+      )
+      const client = Fetch.fromHandler(handler)
+      const eventStreamEntity = yield* client.get("http://localhost/", {
+        headers: { Accept: "text/event-stream" },
+      })
+
+      test.expect(eventStreamEntity.status).toBe(200)
+      test.expect(calls).toEqual(["render"])
+      test.expect(yield* eventStreamEntity.text).toBe("render output")
+    }).pipe(Effect.runPromise),
+  )
+
+  test.it("render used as fallback when Accept doesn't match other formats", () =>
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.get(
+          Route.json({ type: "json" }),
+          Route.html("<h1>html</h1>"),
+          Route.render(function* () {
+            return "fallback for unknown accept"
+          }),
+        ),
+      )
+      const client = Fetch.fromHandler(handler)
+      const eventStreamEntity = yield* client.get("http://localhost/", {
+        headers: { Accept: "text/event-stream" },
+      })
+
+      test.expect(eventStreamEntity.status).toBe(200)
+      test.expect(yield* eventStreamEntity.text).toBe("fallback for unknown accept")
+    }).pipe(Effect.runPromise),
+  )
 
   test.it("handler context includes format=*", () => {
     Route.get(
@@ -2324,83 +2428,88 @@ test.describe("Route.render (format=*)", () => {
     )
   })
 
-  test.it("streams work correctly with render", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route.get(
-        Route.render(function* () {
-          return Stream.make("chunk1", "chunk2", "chunk3")
-        }),
-      ),
-    )
+  test.it("streams work correctly with render", () =>
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.get(
+          Route.render(function* () {
+            return Stream.make("chunk1", "chunk2", "chunk3")
+          }),
+        ),
+      )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/stream", {
+        headers: { Accept: "text/event-stream" },
+      })
 
-    const response = await Fetch.fromHandler(handler, {
-      path: "/stream",
-      headers: { Accept: "text/event-stream" },
-    })
+      test.expect(entity.status).toBe(200)
+      test.expect(yield* entity.text).toBe("chunk1chunk2chunk3")
+    }).pipe(Effect.runPromise),
+  )
 
-    test.expect(response.status).toBe(200)
-    test.expect(await response.text()).toBe("chunk1chunk2chunk3")
-  })
+  test.it("multiple render middlewares chain correctly", () =>
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.use(
+          Route.render(function* (_ctx, next) {
+            const value = yield* next().text
+            return `outer(${value})`
+          }),
+          Route.render(function* (_ctx, next) {
+            const value = yield* next().text
+            return `inner(${value})`
+          }),
+        ).get(
+          Route.render(function* () {
+            return "content"
+          }),
+        ),
+      )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/")
 
-  test.it("multiple render middlewares chain correctly", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route.use(
-        Route.render(function* (_ctx, next) {
-          const value = yield* next().text
-          return `outer(${value})`
-        }),
-        Route.render(function* (_ctx, next) {
-          const value = yield* next().text
-          return `inner(${value})`
-        }),
-      ).get(
-        Route.render(function* () {
-          return "content"
-        }),
-      ),
-    )
+      test.expect(entity.status).toBe(200)
+      test.expect(yield* entity.text).toBe("outer(inner(content))")
+    }).pipe(Effect.runPromise),
+  )
 
-    const response = await Fetch.fromHandler(handler, { path: "/" })
+  test.it("render middleware can wrap text handler", () =>
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.use(
+          Route.render(function* (_ctx, next) {
+            const value = yield* next().text
+            return `[${value}]`
+          }),
+        ).get(Route.text("hello")),
+      )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/", {
+        headers: { Accept: "text/plain" },
+      })
 
-    test.expect(response.status).toBe(200)
-    test.expect(await response.text()).toBe("outer(inner(content))")
-  })
+      test.expect(entity.status).toBe(200)
+      test.expect(yield* entity.text).toBe("[hello]")
+    }).pipe(Effect.runPromise),
+  )
 
-  test.it("render middleware can wrap text handler", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route.use(
-        Route.render(function* (_ctx, next) {
-          const value = yield* next().text
-          return `[${value}]`
-        }),
-      ).get(Route.text("hello")),
-    )
+  test.it("render middleware can wrap html handler", () =>
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.use(
+          Route.render(function* (_ctx, next) {
+            const value = yield* next().text
+            return `<!DOCTYPE html>${value}`
+          }),
+        ).get(Route.html("<body>content</body>")),
+      )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/", {
+        headers: { Accept: "text/html" },
+      })
 
-    const response = await Fetch.fromHandler(handler, {
-      path: "/",
-      headers: { Accept: "text/plain" },
-    })
-
-    test.expect(response.status).toBe(200)
-    test.expect(await response.text()).toBe("[hello]")
-  })
-
-  test.it("render middleware can wrap html handler", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route.use(
-        Route.render(function* (_ctx, next) {
-          const value = yield* next().text
-          return `<!DOCTYPE html>${value}`
-        }),
-      ).get(Route.html("<body>content</body>")),
-    )
-
-    const response = await Fetch.fromHandler(handler, {
-      path: "/",
-      headers: { Accept: "text/html" },
-    })
-
-    test.expect(response.status).toBe(200)
-    test.expect(await response.text()).toBe("<!DOCTYPE html><body>content</body>")
-  })
+      test.expect(entity.status).toBe(200)
+      test.expect(yield* entity.text).toBe("<!DOCTYPE html><body>content</body>")
+    }).pipe(Effect.runPromise),
+  )
 })

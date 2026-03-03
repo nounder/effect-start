@@ -9,50 +9,55 @@ import * as RouteHttpTracer from "effect-start/RouteHttpTracer"
 import * as RouteTree from "effect-start/RouteTree"
 
 test.describe("tracing", () => {
-  test.it("creates span with correct name and kind", async () => {
-    let capturedSpan: Tracer.Span | undefined
+  test.it("creates span with correct name and kind", () =>
+    Effect.gen(function* () {
+      let capturedSpan: Tracer.Span | undefined
 
-    const handler = RouteHttp.toWebHandler(
-      Route.get(
-        Route.text(function* () {
-          const span = yield* Effect.currentSpan
-          capturedSpan = span
-          return "ok"
-        }),
-      ),
-    )
+      const handler = RouteHttp.toWebHandler(
+        Route.get(
+          Route.text(function* () {
+            const span = yield* Effect.currentSpan
+            capturedSpan = span
+            return "ok"
+          }),
+        ),
+      )
 
-    await Fetch.fromHandler(handler, { path: "/test" })
+      const client = Fetch.fromHandler(handler)
+      yield* client.get("http://localhost/test")
 
-    test.expect(capturedSpan).toBeDefined()
-    test.expect(capturedSpan?.name).toBe("http.server GET")
-    test.expect(capturedSpan?.kind).toBe("server")
-  })
+      test.expect(capturedSpan).toBeDefined()
+      test.expect(capturedSpan?.name).toBe("http.server GET")
+      test.expect(capturedSpan?.kind).toBe("server")
+    }).pipe(Effect.runPromise),
+  )
 
-  test.it("adds request attributes to span", async () => {
-    let capturedSpan: Tracer.Span | undefined
+  test.it("adds request attributes to span", () =>
+    Effect.gen(function* () {
+      let capturedSpan: Tracer.Span | undefined
 
-    const handler = RouteHttp.toWebHandler(
-      Route.get(
-        Route.text(function* () {
-          const span = yield* Effect.currentSpan
-          capturedSpan = span
-          return "ok"
-        }),
-      ),
-    )
+      const handler = RouteHttp.toWebHandler(
+        Route.get(
+          Route.text(function* () {
+            const span = yield* Effect.currentSpan
+            capturedSpan = span
+            return "ok"
+          }),
+        ),
+      )
 
-    await Fetch.fromHandler(handler, {
-      path: "/users?page=1&limit=10",
-      headers: { "user-agent": "test-agent" },
-    })
+      const client = Fetch.fromHandler(handler)
+      yield* client.get("http://localhost/users?page=1&limit=10", {
+        headers: { "user-agent": "test-agent" },
+      })
 
-    test.expect(capturedSpan?.attributes.get("http.request.method")).toBe("GET")
-    test.expect(capturedSpan?.attributes.get("url.path")).toBe("/users")
-    test.expect(capturedSpan?.attributes.get("url.query")).toBe("page=1&limit=10")
-    test.expect(capturedSpan?.attributes.get("url.scheme")).toBe("http")
-    test.expect(capturedSpan?.attributes.get("user_agent.original")).toBe("test-agent")
-  })
+      test.expect(capturedSpan?.attributes.get("http.request.method")).toBe("GET")
+      test.expect(capturedSpan?.attributes.get("url.path")).toBe("/users")
+      test.expect(capturedSpan?.attributes.get("url.query")).toBe("page=1&limit=10")
+      test.expect(capturedSpan?.attributes.get("url.scheme")).toBe("http")
+      test.expect(capturedSpan?.attributes.get("user_agent.original")).toBe("test-agent")
+    }).pipe(Effect.runPromise),
+  )
 
   test.it("adds response status code to span", () =>
     Effect.gen(function* () {
@@ -68,104 +73,111 @@ test.describe("tracing", () => {
         ),
       )
 
-      const response = yield* Effect.promise(() => Fetch.fromHandler(handler, { path: "/test" }))
-      test.expect(response.status).toBe(200)
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/test")
+      test.expect(entity.status).toBe(200)
       yield* Effect.sleep("10 millis")
       test.expect(capturedSpan?.attributes.get("http.response.status_code")).toBe(200)
     }).pipe(Effect.runPromise),
   )
 
-  test.it("parses W3C traceparent header for parent span", async () => {
-    let capturedSpan: Tracer.Span | undefined
+  test.it("parses W3C traceparent header for parent span", () =>
+    Effect.gen(function* () {
+      let capturedSpan: Tracer.Span | undefined
 
-    const handler = RouteHttp.toWebHandler(
-      Route.get(
-        Route.text(function* () {
-          const span = yield* Effect.currentSpan
-          capturedSpan = span
-          return "ok"
-        }),
-      ),
-    )
+      const handler = RouteHttp.toWebHandler(
+        Route.get(
+          Route.text(function* () {
+            const span = yield* Effect.currentSpan
+            capturedSpan = span
+            return "ok"
+          }),
+        ),
+      )
 
-    await Fetch.fromHandler(handler, {
-      path: "/test",
-      headers: {
-        traceparent: "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01",
-      },
-    })
+      const client = Fetch.fromHandler(handler)
+      yield* client.get("http://localhost/test", {
+        headers: {
+          traceparent: "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01",
+        },
+      })
 
-    test.expect(capturedSpan?.parent).toBeDefined()
+      test.expect(capturedSpan?.parent).toBeDefined()
 
-    const parent = Option.getOrUndefined(capturedSpan?.parent ?? Option.none()) as
-      | Tracer.AnySpan
-      | undefined
+      const parent = Option.getOrUndefined(capturedSpan?.parent ?? Option.none()) as
+        | Tracer.AnySpan
+        | undefined
 
-    test.expect(parent?.traceId).toBe("0af7651916cd43dd8448eb211c80319c")
-    test.expect(parent?.spanId).toBe("b7ad6b7169203331")
-  })
+      test.expect(parent?.traceId).toBe("0af7651916cd43dd8448eb211c80319c")
+      test.expect(parent?.spanId).toBe("b7ad6b7169203331")
+    }).pipe(Effect.runPromise),
+  )
 
-  test.it("parses B3 single header for parent span", async () => {
-    let capturedSpan: Tracer.Span | undefined
+  test.it("parses B3 single header for parent span", () =>
+    Effect.gen(function* () {
+      let capturedSpan: Tracer.Span | undefined
 
-    const handler = RouteHttp.toWebHandler(
-      Route.get(
-        Route.text(function* () {
-          const span = yield* Effect.currentSpan
-          capturedSpan = span
-          return "ok"
-        }),
-      ),
-    )
+      const handler = RouteHttp.toWebHandler(
+        Route.get(
+          Route.text(function* () {
+            const span = yield* Effect.currentSpan
+            capturedSpan = span
+            return "ok"
+          }),
+        ),
+      )
 
-    await Fetch.fromHandler(handler, {
-      path: "/test",
-      headers: {
-        b3: "80f198ee56343ba864fe8b2a57d3eff7-e457b5a2e4d86bd1-1",
-      },
-    })
+      const client = Fetch.fromHandler(handler)
+      yield* client.get("http://localhost/test", {
+        headers: {
+          b3: "80f198ee56343ba864fe8b2a57d3eff7-e457b5a2e4d86bd1-1",
+        },
+      })
 
-    test.expect(capturedSpan?.parent).toBeDefined()
+      test.expect(capturedSpan?.parent).toBeDefined()
 
-    const parent = Option.getOrUndefined(capturedSpan?.parent ?? Option.none()) as
-      | Tracer.AnySpan
-      | undefined
+      const parent = Option.getOrUndefined(capturedSpan?.parent ?? Option.none()) as
+        | Tracer.AnySpan
+        | undefined
 
-    test.expect(parent?.traceId).toBe("80f198ee56343ba864fe8b2a57d3eff7")
-    test.expect(parent?.spanId).toBe("e457b5a2e4d86bd1")
-  })
+      test.expect(parent?.traceId).toBe("80f198ee56343ba864fe8b2a57d3eff7")
+      test.expect(parent?.spanId).toBe("e457b5a2e4d86bd1")
+    }).pipe(Effect.runPromise),
+  )
 
-  test.it("parses X-B3 multi headers for parent span", async () => {
-    let capturedSpan: Tracer.Span | undefined
+  test.it("parses X-B3 multi headers for parent span", () =>
+    Effect.gen(function* () {
+      let capturedSpan: Tracer.Span | undefined
 
-    const handler = RouteHttp.toWebHandler(
-      Route.get(
-        Route.text(function* () {
-          const span = yield* Effect.currentSpan
-          capturedSpan = span
-          return "ok"
-        }),
-      ),
-    )
+      const handler = RouteHttp.toWebHandler(
+        Route.get(
+          Route.text(function* () {
+            const span = yield* Effect.currentSpan
+            capturedSpan = span
+            return "ok"
+          }),
+        ),
+      )
 
-    await Fetch.fromHandler(handler, {
-      path: "/test",
-      headers: {
-        "x-b3-traceid": "463ac35c9f6413ad48485a3953bb6124",
-        "x-b3-spanid": "0020000000000001",
-        "x-b3-sampled": "1",
-      },
-    })
+      const client = Fetch.fromHandler(handler)
+      yield* client.get("http://localhost/test", {
+        headers: {
+          "x-b3-traceid": "463ac35c9f6413ad48485a3953bb6124",
+          "x-b3-spanid": "0020000000000001",
+          "x-b3-sampled": "1",
+        },
+      })
 
-    test.expect(capturedSpan?.parent).toBeDefined()
+      test.expect(capturedSpan?.parent).toBeDefined()
 
-    const parent = Option.getOrUndefined(capturedSpan?.parent ?? Option.none()) as
-      | Tracer.AnySpan
-      | undefined
+      const parent = Option.getOrUndefined(capturedSpan?.parent ?? Option.none()) as
+        | Tracer.AnySpan
+        | undefined
 
-    test.expect(parent?.traceId).toBe("463ac35c9f6413ad48485a3953bb6124")
-    test.expect(parent?.spanId).toBe("0020000000000001")
-  })
+      test.expect(parent?.traceId).toBe("463ac35c9f6413ad48485a3953bb6124")
+      test.expect(parent?.spanId).toBe("0020000000000001")
+    }).pipe(Effect.runPromise),
+  )
 
   test.it("withTracerDisabledWhen disables tracing for matching requests", () =>
     Effect.gen(function* () {
@@ -190,8 +202,9 @@ test.describe("tracing", () => {
         ),
       )
 
-      yield* Effect.promise(() => Fetch.fromHandler(handler, { path: "/health" }))
-      yield* Effect.promise(() => Fetch.fromHandler(handler, { path: "/users" }))
+      const client = Fetch.fromHandler(handler)
+      yield* client.get("http://localhost/health")
+      yield* client.get("http://localhost/users")
 
       test.expect(spanCapturedOnHealth).toBe(false)
       test.expect(spanCapturedOnUsers).toBe(true)
@@ -219,30 +232,34 @@ test.describe("tracing", () => {
         ),
       )
 
-      yield* Effect.promise(() => Fetch.fromHandler(handler, { path: "/users" }))
+      const client = Fetch.fromHandler(handler)
+      yield* client.get("http://localhost/users")
 
       test.expect(capturedSpan?.name).toBe("GET /users")
     }).pipe(Effect.runPromise),
   )
 
-  test.it("adds http.route attribute when route has path", async () => {
-    let capturedSpan: Tracer.Span | undefined
+  test.it("adds http.route attribute when route has path", () =>
+    Effect.gen(function* () {
+      let capturedSpan: Tracer.Span | undefined
 
-    const tree = RouteTree.make({
-      "/users/:id": Route.get(
-        Route.text(function* () {
-          const span = yield* Effect.currentSpan
-          capturedSpan = span
-          return "ok"
-        }),
-      ),
-    })
+      const tree = RouteTree.make({
+        "/users/:id": Route.get(
+          Route.text(function* () {
+            const span = yield* Effect.currentSpan
+            capturedSpan = span
+            return "ok"
+          }),
+        ),
+      })
 
-    const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
-    const handler = handles["/users/:id"]
+      const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
+      const handler = handles["/users/:id"]
 
-    await Fetch.fromHandler(handler, { path: "/users/123" })
+      const client = Fetch.fromHandler(handler)
+      yield* client.get("http://localhost/users/123")
 
-    test.expect(capturedSpan?.attributes.get("http.route")).toBe("/users/:id")
-  })
+      test.expect(capturedSpan?.attributes.get("http.route")).toBe("/users/:id")
+    }).pipe(Effect.runPromise),
+  )
 })

@@ -9,126 +9,142 @@ import * as Route from "effect-start/Route"
 import * as RouteHttp from "effect-start/RouteHttp"
 
 test.describe("Route.html with JSX", () => {
-  test.it("renders JSX to HTML string", async () => {
-    const handler = RouteHttp.toWebHandler(Route.get(Route.html(<div>Hello World</div>)))
+  test.it("renders JSX to HTML string", () =>
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(Route.get(Route.html(<div>Hello World</div>)))
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/")
 
-    const response = await Fetch.fromHandler(handler, { path: "/" })
+      test.expect(entity.status).toBe(200)
+      test.expect(entity.headers["content-type"]).toBe("text/html; charset=utf-8")
+      test.expect(yield* entity.text).toBe("<div>Hello World</div>")
+    }).pipe(Effect.runPromise),
+  )
 
-    test.expect(response.status).toBe(200)
-    test.expect(response.headers.get("Content-Type")).toBe("text/html; charset=utf-8")
-    test.expect(await response.text()).toBe("<div>Hello World</div>")
-  })
-
-  test.it("renders nested JSX elements", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route.get(
-        Route.html(
-          <div class="container">
-            <h1>Title</h1>
-            <p>Paragraph</p>
-          </div>,
+  test.it("renders nested JSX elements", () =>
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.get(
+          Route.html(
+            <div class="container">
+              <h1>Title</h1>
+              <p>Paragraph</p>
+            </div>,
+          ),
         ),
-      ),
-    )
+      )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/")
 
-    const response = await Fetch.fromHandler(handler, { path: "/" })
+      test
+        .expect(yield* entity.text)
+        .toBe('<div class="container"><h1>Title</h1><p>Paragraph</p></div>')
+    }).pipe(Effect.runPromise),
+  )
 
-    test
-      .expect(await response.text())
-      .toBe('<div class="container"><h1>Title</h1><p>Paragraph</p></div>')
-  })
+  test.it("renders JSX from Effect", () =>
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.get(Route.html(Effect.succeed(<span>From Effect</span>))),
+      )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/")
 
-  test.it("renders JSX from Effect", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route.get(Route.html(Effect.succeed(<span>From Effect</span>))),
-    )
+      test.expect(yield* entity.text).toBe("<span>From Effect</span>")
+    }).pipe(Effect.runPromise),
+  )
 
-    const response = await Fetch.fromHandler(handler, { path: "/" })
-
-    test.expect(await response.text()).toBe("<span>From Effect</span>")
-  })
-
-  test.it("renders JSX from generator function", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route.get(
-        Route.html(
-          Effect.gen(function* () {
-            const name = yield* Effect.succeed("World")
-            return <div>Hello {name}</div>
-          }),
+  test.it("renders JSX from generator function", () =>
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.get(
+          Route.html(
+            Effect.gen(function* () {
+              const name = yield* Effect.succeed("World")
+              return <div>Hello {name}</div>
+            }),
+          ),
         ),
-      ),
-    )
+      )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/")
 
-    const response = await Fetch.fromHandler(handler, { path: "/" })
+      test.expect(yield* entity.text).toBe("<div>Hello World</div>")
+    }).pipe(Effect.runPromise),
+  )
 
-    test.expect(await response.text()).toBe("<div>Hello World</div>")
-  })
+  test.it("renders JSX from handler function", () =>
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.get(Route.html((context) => Effect.succeed(<div>Request received</div>))),
+      )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/")
 
-  test.it("renders JSX from handler function", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route.get(Route.html((context) => Effect.succeed(<div>Request received</div>))),
-    )
+      test.expect(yield* entity.text).toBe("<div>Request received</div>")
+    }).pipe(Effect.runPromise),
+  )
 
-    const response = await Fetch.fromHandler(handler, { path: "/" })
+  test.it("renders JSX with dynamic content", () =>
+    Effect.gen(function* () {
+      const items = ["Apple", "Banana", "Cherry"]
 
-    test.expect(await response.text()).toBe("<div>Request received</div>")
-  })
-
-  test.it("renders JSX with dynamic content", async () => {
-    const items = ["Apple", "Banana", "Cherry"]
-
-    const handler = RouteHttp.toWebHandler(
-      Route.get(
-        Route.html(
-          <ul>
-            {items.map((item) => (
-              <li>{item}</li>
-            ))}
-          </ul>,
+      const handler = RouteHttp.toWebHandler(
+        Route.get(
+          Route.html(
+            <ul>
+              {items.map((item) => (
+                <li>{item}</li>
+              ))}
+            </ul>,
+          ),
         ),
-      ),
-    )
+      )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/")
 
-    const response = await Fetch.fromHandler(handler, { path: "/" })
+      test.expect(yield* entity.text).toBe("<ul><li>Apple</li><li>Banana</li><li>Cherry</li></ul>")
+    }).pipe(Effect.runPromise),
+  )
 
-    test.expect(await response.text()).toBe("<ul><li>Apple</li><li>Banana</li><li>Cherry</li></ul>")
-  })
+  test.it("handles Entity with JSX body", () =>
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.get(Route.html(Entity.make(<div>With Entity</div>, { status: 201 }))),
+      )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/")
 
-  test.it("handles Entity with JSX body", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route.get(Route.html(Entity.make(<div>With Entity</div>, { status: 201 }))),
-    )
+      test.expect(entity.status).toBe(201)
+      test.expect(yield* entity.text).toBe("<div>With Entity</div>")
+    }).pipe(Effect.runPromise),
+  )
 
-    const response = await Fetch.fromHandler(handler, { path: "/" })
-
-    test.expect(response.status).toBe(201)
-    test.expect(await response.text()).toBe("<div>With Entity</div>")
-  })
-
-  test.it("renders data-* attributes with object values as JSON", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route.get(
-        Route.html(
-          <div
-            data-signals={{
-              draft: "",
-              pendingDraft: "",
-              username: "User123",
-            }}
-          >
-            Content
-          </div>,
+  test.it("renders data-* attributes with object values as JSON", () =>
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.get(
+          Route.html(
+            <div
+              data-signals={{
+                draft: "",
+                pendingDraft: "",
+                username: "User123",
+              }}
+            >
+              Content
+            </div>,
+          ),
         ),
-      ),
-    )
+      )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/")
 
-    const response = await Fetch.fromHandler(handler, { path: "/" })
-
-    test
-      .expect(await response.text())
-      .toBe(`<div data-signals='{"draft":"","pendingDraft":"","username":"User123"}'>Content</div>`)
-  })
+      test
+        .expect(yield* entity.text)
+        .toBe(`<div data-signals='{"draft":"","pendingDraft":"","username":"User123"}'>Content</div>`)
+    }).pipe(Effect.runPromise),
+  )
 
   test.it("data-on-click function argument is typed as DataEvent", () => {
     const node = (
@@ -143,36 +159,40 @@ test.describe("Route.html with JSX", () => {
     test.expect(node).toBeDefined()
   })
 
-  test.it("renders script with function child as IIFE", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route.get(
-        Route.html(
-          <script>
-            {(window) => {
-              console.log("Hello from", window.document.title)
-            }}
-          </script>,
+  test.it("renders script with function child as IIFE", () =>
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.get(
+          Route.html(
+            <script>
+              {(window) => {
+                console.log("Hello from", window.document.title)
+              }}
+            </script>,
+          ),
         ),
-      ),
-    )
+      )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/")
+      const text = yield* entity.text
 
-    const response = await Fetch.fromHandler(handler, { path: "/" })
-    const text = await response.text()
+      test.expect(text).toContain("<script>(")
+      test.expect(text).toContain(")(window)</script>")
+      test.expect(text).toContain("window.document.title")
+    }).pipe(Effect.runPromise),
+  )
 
-    test.expect(text).toContain("<script>(")
-    test.expect(text).toContain(")(window)</script>")
-    test.expect(text).toContain("window.document.title")
-  })
+  test.it("renders plain strings", () =>
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(Route.get(Route.html("<h1>Hello</h1>")))
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/")
 
-  test.it("renders plain strings", async () => {
-    const handler = RouteHttp.toWebHandler(Route.get(Route.html("<h1>Hello</h1>")))
-
-    const response = await Fetch.fromHandler(handler, { path: "/" })
-
-    test.expect(response.status).toBe(200)
-    test.expect(response.headers.get("Content-Type")).toBe("text/html; charset=utf-8")
-    test.expect(await response.text()).toBe("<h1>Hello</h1>")
-  })
+      test.expect(entity.status).toBe(200)
+      test.expect(entity.headers["content-type"]).toBe("text/html; charset=utf-8")
+      test.expect(yield* entity.text).toBe("<h1>Hello</h1>")
+    }).pipe(Effect.runPromise),
+  )
 })
 
 test.describe(Route.redirect, () => {
@@ -180,11 +200,12 @@ test.describe(Route.redirect, () => {
     Effect.gen(function* () {
       const routes = Route.get(Route.redirect("/dashboard"))
       const handler = RouteHttp.toWebHandler(routes)
+      const client = Fetch.fromHandler(handler)
 
-      const response = yield* Effect.promise(() => Fetch.fromHandler(handler, { path: "/test" }))
+      const entity = yield* client.get("http://localhost/test")
 
-      test.expect(response.status).toBe(302)
-      test.expect(response.headers.get("location")).toBe("/dashboard")
+      test.expect(entity.status).toBe(302)
+      test.expect(entity.headers["location"]).toBe("/dashboard")
     }).pipe(Effect.runPromise),
   )
 
@@ -192,11 +213,12 @@ test.describe(Route.redirect, () => {
     Effect.gen(function* () {
       const routes = Route.get(Route.redirect("/new-url", { status: 301 }))
       const handler = RouteHttp.toWebHandler(routes)
+      const client = Fetch.fromHandler(handler)
 
-      const response = yield* Effect.promise(() => Fetch.fromHandler(handler, { path: "/test" }))
+      const entity = yield* client.get("http://localhost/test")
 
-      test.expect(response.status).toBe(301)
-      test.expect(response.headers.get("location")).toBe("/new-url")
+      test.expect(entity.status).toBe(301)
+      test.expect(entity.headers["location"]).toBe("/new-url")
     }).pipe(Effect.runPromise),
   )
 
@@ -204,10 +226,11 @@ test.describe(Route.redirect, () => {
     Effect.gen(function* () {
       const routes = Route.get(Route.redirect(new URL("https://example.com/path")))
       const handler = RouteHttp.toWebHandler(routes)
+      const client = Fetch.fromHandler(handler)
 
-      const response = yield* Effect.promise(() => Fetch.fromHandler(handler, { path: "/test" }))
+      const entity = yield* client.get("http://localhost/test")
 
-      test.expect(response.headers.get("location")).toBe("https://example.com/path")
+      test.expect(entity.headers["location"]).toBe("https://example.com/path")
     }).pipe(Effect.runPromise),
   )
 
@@ -219,13 +242,12 @@ test.describe(Route.redirect, () => {
         }),
       )
       const handler = RouteHttp.toWebHandler(routes)
+      const client = Fetch.fromHandler(handler)
 
-      const response = yield* Effect.promise(() =>
-        Fetch.fromHandler(handler, { path: "/test", method: "POST" }),
-      )
+      const entity = yield* client.post("http://localhost/test")
 
-      test.expect(response.status).toBe(302)
-      test.expect(response.headers.get("location")).toBe("/posts/123")
+      test.expect(entity.status).toBe(302)
+      test.expect(entity.headers["location"]).toBe("/posts/123")
     }).pipe(Effect.runPromise),
   )
 })
@@ -267,10 +289,11 @@ test.describe(Route.lazy, () => {
       const routes = yield* lazyRoutes
       const handler = RouteHttp.toWebHandler(routes)
 
-      const response = yield* Effect.promise(() => Fetch.fromHandler(handler, { path: "/test" }))
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/test")
 
-      test.expect(response.status).toBe(200)
-      test.expect(yield* Effect.promise(() => response.text())).toBe("lazy loaded")
+      test.expect(entity.status).toBe(200)
+      test.expect(yield* entity.text).toBe("lazy loaded")
     }).pipe(Effect.runPromise),
   )
 
@@ -289,9 +312,10 @@ test.describe(Route.lazy, () => {
       const routes = yield* lazyRoutes
       const handler = RouteHttp.toWebHandler(routes)
 
-      const response = yield* Effect.promise(() => Fetch.fromHandler(handler, { path: "/test" }))
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/test")
 
-      test.expect(yield* Effect.promise(() => response.json())).toEqual({ value: true })
+      test.expect(yield* entity.json).toEqual({ value: true })
     }).pipe(Effect.runPromise),
   )
 })
@@ -328,10 +352,11 @@ test.describe(Route.devOnly, () => {
         ),
       )
 
-      const response = yield* Effect.promise(() => Fetch.fromHandler(handler, { path: "/test" }))
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/test")
 
-      test.expect(response.status).toBe(200)
-      test.expect(yield* Effect.promise(() => response.text())).toBe("true:true")
+      test.expect(entity.status).toBe(200)
+      test.expect(yield* entity.text).toBe("true:true")
     }).pipe(Effect.provide(Development.layerTest), Effect.runPromise),
   )
 

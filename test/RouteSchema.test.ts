@@ -99,29 +99,31 @@ test.describe(`${RouteSchema.schemaCookies.name}()`, () => {
     }>()
   })
 
-  test.it("parses cookies from request", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route.get(
-        RouteSchema.schemaCookies(
-          Schema.Struct({
-            session: Schema.String,
+  test.it("parses cookies from request", () =>
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.get(
+          RouteSchema.schemaCookies(
+            Schema.Struct({
+              session: Schema.String,
+            }),
+          ),
+          Route.text(function* (ctx) {
+            return `session=${ctx.cookies.session}`
           }),
         ),
-        Route.text(function* (ctx) {
-          return `session=${ctx.cookies.session}`
-        }),
-      ),
-    )
-    const response = await Fetch.fromHandler(handler, {
-      path: "/test",
-      headers: {
-        Cookie: "session=abc123",
-      },
-    })
+      )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/test", {
+        headers: {
+          Cookie: "session=abc123",
+        },
+      })
 
-    test.expect(response.status).toBe(200)
-    test.expect(await response.text()).toBe("session=abc123")
-  })
+      test.expect(entity.status).toBe(200)
+      test.expect(yield* entity.text).toBe("session=abc123")
+    }).pipe(Effect.runPromise),
+  )
 })
 
 test.describe(`${RouteSchema.schemaSearchParams.name}()`, () => {
@@ -154,27 +156,28 @@ test.describe(`${RouteSchema.schemaSearchParams.name}()`, () => {
     }>()
   })
 
-  test.it("parses search params from request", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route.get(
-        RouteSchema.schemaSearchParams(
-          Schema.Struct({
-            page: Schema.NumberFromString,
-            limit: Schema.NumberFromString,
+  test.it("parses search params from request", () =>
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.get(
+          RouteSchema.schemaSearchParams(
+            Schema.Struct({
+              page: Schema.NumberFromString,
+              limit: Schema.NumberFromString,
+            }),
+          ),
+          Route.text(function* (ctx) {
+            return `page=${ctx.searchParams.page},limit=${ctx.searchParams.limit}`
           }),
         ),
-        Route.text(function* (ctx) {
-          return `page=${ctx.searchParams.page},limit=${ctx.searchParams.limit}`
-        }),
-      ),
-    )
-    const response = await Fetch.fromHandler(handler, {
-      path: "/test?page=2&limit=10",
-    })
+      )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/test?page=2&limit=10")
 
-    test.expect(response.status).toBe(200)
-    test.expect(await response.text()).toBe("page=2,limit=10")
-  })
+      test.expect(entity.status).toBe(200)
+      test.expect(yield* entity.text).toBe("page=2,limit=10")
+    }).pipe(Effect.runPromise),
+  )
 })
 
 test.describe(`${RouteSchema.schemaBodyJson.name}()`, () => {
@@ -202,32 +205,33 @@ test.describe(`${RouteSchema.schemaBodyJson.name}()`, () => {
     }>()
   })
 
-  test.it("parses JSON body from request", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route.post(
-        RouteSchema.schemaBodyJson(
-          Schema.Struct({
-            name: Schema.String,
-            age: Schema.Number,
+  test.it("parses JSON body from request", () =>
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.post(
+          RouteSchema.schemaBodyJson(
+            Schema.Struct({
+              name: Schema.String,
+              age: Schema.Number,
+            }),
+          ),
+          Route.json(function* (ctx) {
+            return { name: ctx.body.name, age: ctx.body.age }
           }),
         ),
-        Route.json(function* (ctx) {
-          return { name: ctx.body.name, age: ctx.body.age }
-        }),
-      ),
-    )
-    const response = await Fetch.fromHandler(handler, {
-      path: "/test",
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ name: "Alice", age: 30 }),
-    })
+      )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.post("http://localhost/test", {
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name: "Alice", age: 30 }),
+      })
 
-    test.expect(response.status).toBe(200)
-    test.expect(await response.json()).toEqual({ name: "Alice", age: 30 })
-  })
+      test.expect(entity.status).toBe(200)
+      test.expect(yield* entity.json).toEqual({ name: "Alice", age: 30 })
+    }).pipe(Effect.runPromise),
+  )
 
   test.it("returns error for invalid JSON body", () =>
     Effect.gen(function* () {
@@ -245,18 +249,15 @@ test.describe(`${RouteSchema.schemaBodyJson.name}()`, () => {
           }),
         ),
       )
-      const response = yield* Effect.promise(() =>
-        Fetch.fromHandler(handler, {
-          path: "/test",
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ name: "Alice", age: "not a number" }),
-        }),
-      )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.post("http://localhost/test", {
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name: "Alice", age: "not a number" }),
+      })
 
-      test.expect(response.status).toBe(400)
+      test.expect(entity.status).toBe(400)
 
       const messages = yield* TestLogger.messages
 
@@ -290,32 +291,33 @@ test.describe(`${RouteSchema.schemaBodyUrlParams.name}()`, () => {
     }>()
   })
 
-  test.it("parses URL-encoded body from request", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route.post(
-        RouteSchema.schemaBodyUrlParams(
-          Schema.Struct({
-            username: Schema.String,
-            password: Schema.String,
+  test.it("parses URL-encoded body from request", () =>
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.post(
+          RouteSchema.schemaBodyUrlParams(
+            Schema.Struct({
+              username: Schema.String,
+              password: Schema.String,
+            }),
+          ),
+          Route.json(function* (ctx) {
+            return { username: ctx.body.username, password: ctx.body.password }
           }),
         ),
-        Route.json(function* (ctx) {
-          return { username: ctx.body.username, password: ctx.body.password }
-        }),
-      ),
-    )
-    const response = await Fetch.fromHandler(handler, {
-      path: "/test",
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: "username=alice&password=secret123",
-    })
+      )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.post("http://localhost/test", {
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: "username=alice&password=secret123",
+      })
 
-    test.expect(response.status).toBe(200)
-    test.expect(await response.json()).toEqual({ username: "alice", password: "secret123" })
-  })
+      test.expect(entity.status).toBe(200)
+      test.expect(yield* entity.json).toEqual({ username: "alice", password: "secret123" })
+    }).pipe(Effect.runPromise),
+  )
 })
 
 test.describe(`${RouteSchema.schemaBodyMultipart.name}()`, () => {
@@ -361,25 +363,28 @@ test.describe(`${RouteSchema.schemaBodyForm.name}()`, () => {
 })
 
 test.describe(`${RouteSchema.schemaSuccess.name}()`, () => {
-  test.it("encodes response body through schema", async () => {
-    const UserResponse = Schema.Struct({
-      name: Schema.String,
-      age: Schema.Number,
-    })
+  test.it("encodes response body through schema", () =>
+    Effect.gen(function* () {
+      const UserResponse = Schema.Struct({
+        name: Schema.String,
+        age: Schema.Number,
+      })
 
-    const handler = RouteHttp.toWebHandler(
-      Route.get(
-        RouteSchema.schemaSuccess(UserResponse),
-        Route.json(function* () {
-          return { name: "Alice", age: 30 }
-        }),
-      ),
-    )
-    const response = await Fetch.fromHandler(handler, { path: "/test" })
+      const handler = RouteHttp.toWebHandler(
+        Route.get(
+          RouteSchema.schemaSuccess(UserResponse),
+          Route.json(function* () {
+            return { name: "Alice", age: 30 }
+          }),
+        ),
+      )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/test")
 
-    test.expect(response.status).toBe(200)
-    test.expect(await response.json()).toEqual({ name: "Alice", age: 30 })
-  })
+      test.expect(entity.status).toBe(200)
+      test.expect(yield* entity.json).toEqual({ name: "Alice", age: 30 })
+    }).pipe(Effect.runPromise),
+  )
 
   test.it("returns error when response body does not match schema", () =>
     Effect.gen(function* () {
@@ -397,9 +402,10 @@ test.describe(`${RouteSchema.schemaSuccess.name}()`, () => {
           }),
         ),
       )
-      const response = yield* Effect.promise(() => Fetch.fromHandler(handler, { path: "/test" }))
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/test")
 
-      test.expect(response.status).toBe(400)
+      test.expect(entity.status).toBe(400)
 
       const messages = yield* TestLogger.messages
 
@@ -407,49 +413,55 @@ test.describe(`${RouteSchema.schemaSuccess.name}()`, () => {
     }).pipe(Effect.provide(TestLogger.layer()), Effect.runPromise),
   )
 
-  test.it("strips extra fields via schema encode", async () => {
-    const StrictResponse = Schema.Struct({
-      id: Schema.Number,
-      name: Schema.String,
-    })
+  test.it("strips extra fields via schema encode", () =>
+    Effect.gen(function* () {
+      const StrictResponse = Schema.Struct({
+        id: Schema.Number,
+        name: Schema.String,
+      })
 
-    const handler = RouteHttp.toWebHandler(
-      Route.get(
-        RouteSchema.schemaSuccess(StrictResponse),
-        Route.json(function* () {
-          return { id: 1, name: "Alice", secret: "should-be-stripped" }
-        }),
-      ),
-    )
-    const response = await Fetch.fromHandler(handler, { path: "/test" })
+      const handler = RouteHttp.toWebHandler(
+        Route.get(
+          RouteSchema.schemaSuccess(StrictResponse),
+          Route.json(function* () {
+            return { id: 1, name: "Alice", secret: "should-be-stripped" }
+          }),
+        ),
+      )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/test")
 
-    test.expect(response.status).toBe(200)
+      test.expect(entity.status).toBe(200)
 
-    const body = await response.json()
+      const body = yield* entity.json
 
-    test.expect(body).toEqual({ id: 1, name: "Alice" })
-    test.expect(body).not.toHaveProperty("secret")
-  })
+      test.expect(body).toEqual({ id: 1, name: "Alice" })
+      test.expect(body).not.toHaveProperty("secret")
+    }).pipe(Effect.runPromise),
+  )
 
-  test.it("works with schema transforms", async () => {
-    const DateResponse = Schema.Struct({
-      createdAt: Schema.DateFromString,
-    })
+  test.it("works with schema transforms", () =>
+    Effect.gen(function* () {
+      const DateResponse = Schema.Struct({
+        createdAt: Schema.DateFromString,
+      })
 
-    const handler = RouteHttp.toWebHandler(
-      Route.get(
-        RouteSchema.schemaSuccess(DateResponse),
-        // @ts-expect-error Date is not Json, but schemaSuccess encodes it to string
-        Route.json(function* () {
-          return { createdAt: new Date("2025-01-01") }
-        }),
-      ),
-    )
-    const response = await Fetch.fromHandler(handler, { path: "/test" })
+      const handler = RouteHttp.toWebHandler(
+        Route.get(
+          RouteSchema.schemaSuccess(DateResponse),
+          // @ts-expect-error Date is not Json, but schemaSuccess encodes it to string
+          Route.json(function* () {
+            return { createdAt: new Date("2025-01-01") }
+          }),
+        ),
+      )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/test")
 
-    test.expect(response.status).toBe(200)
-    test.expect(await response.json()).toEqual({ createdAt: "2025-01-01T00:00:00.000Z" })
-  })
+      test.expect(entity.status).toBe(200)
+      test.expect(yield* entity.json).toEqual({ createdAt: "2025-01-01T00:00:00.000Z" })
+    }).pipe(Effect.runPromise),
+  )
 })
 
 test.describe(`${RouteSchema.schemaError.name}()`, () => {
@@ -461,25 +473,28 @@ test.describe(`${RouteSchema.schemaError.name}()`, () => {
     message: Schema.String,
   }) {}
 
-  test.it("catches matching error and returns structured response", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route.get(
-        RouteSchema.schemaError(NotFound, { status: 404 }),
-        Route.json(function* () {
-          const found = false as boolean
-          if (!found) return yield* new NotFound({ message: "User not found" })
-          return { name: "Alice" }
-        }),
-      ),
-    )
-    const response = await Fetch.fromHandler(handler, { path: "/test" })
+  test.it("catches matching error and returns structured response", () =>
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.get(
+          RouteSchema.schemaError(NotFound, { status: 404 }),
+          Route.json(function* () {
+            const found = false as boolean
+            if (!found) return yield* new NotFound({ message: "User not found" })
+            return { name: "Alice" }
+          }),
+        ),
+      )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/test")
 
-    test.expect(response.status).toBe(404)
-    test.expect(await response.json()).toEqual({
-      _tag: "NotFound",
-      message: "User not found",
-    })
-  })
+      test.expect(entity.status).toBe(404)
+      test.expect(yield* entity.json).toEqual({
+        _tag: "NotFound",
+        message: "User not found",
+      })
+    }).pipe(Effect.runPromise),
+  )
 
   test.it("passes through unmatched errors", () =>
     Effect.gen(function* () {
@@ -494,47 +509,54 @@ test.describe(`${RouteSchema.schemaError.name}()`, () => {
           }),
         ),
       )
-      const response = yield* Effect.promise(() => Fetch.fromHandler(handler, { path: "/test" }))
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/test")
 
-      test.expect(response.status).toBe(500)
+      test.expect(entity.status).toBe(500)
     }).pipe(Effect.provide(TestLogger.layer()), Effect.runPromise),
   )
 
-  test.it("chains multiple schemaError pipes", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route.get(
-        RouteSchema.schemaError(NotFound, { status: 404 }),
-        RouteSchema.schemaError(Unauthorized, { status: 401 }),
-        Route.json(function* () {
-          const ok = false as boolean
-          if (!ok) return yield* new Unauthorized({ message: "Denied" })
-          return { name: "Alice" }
-        }),
-      ),
-    )
-    const response = await Fetch.fromHandler(handler, { path: "/test" })
+  test.it("chains multiple schemaError pipes", () =>
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.get(
+          RouteSchema.schemaError(NotFound, { status: 404 }),
+          RouteSchema.schemaError(Unauthorized, { status: 401 }),
+          Route.json(function* () {
+            const ok = false as boolean
+            if (!ok) return yield* new Unauthorized({ message: "Denied" })
+            return { name: "Alice" }
+          }),
+        ),
+      )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/test")
 
-    test.expect(response.status).toBe(401)
-    test.expect(await response.json()).toEqual({
-      _tag: "Unauthorized",
-      message: "Denied",
-    })
-  })
+      test.expect(entity.status).toBe(401)
+      test.expect(yield* entity.json).toEqual({
+        _tag: "Unauthorized",
+        message: "Denied",
+      })
+    }).pipe(Effect.runPromise),
+  )
 
-  test.it("success responses pass through unchanged", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route.get(
-        RouteSchema.schemaError(NotFound, { status: 404 }),
-        Route.json(function* () {
-          return { name: "Alice" }
-        }),
-      ),
-    )
-    const response = await Fetch.fromHandler(handler, { path: "/test" })
+  test.it("success responses pass through unchanged", () =>
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.get(
+          RouteSchema.schemaError(NotFound, { status: 404 }),
+          Route.json(function* () {
+            return { name: "Alice" }
+          }),
+        ),
+      )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/test")
 
-    test.expect(response.status).toBe(200)
-    test.expect(await response.json()).toEqual({ name: "Alice" })
-  })
+      test.expect(entity.status).toBe(200)
+      test.expect(yield* entity.json).toEqual({ name: "Alice" })
+    }).pipe(Effect.runPromise),
+  )
 
   test.it("schemaError route has E=never", () => {
     const routeSet = RouteSchema.schemaError(NotFound, { status: 404 })(Route.empty)
@@ -546,60 +568,69 @@ test.describe(`${RouteSchema.schemaError.name}()`, () => {
     true satisfies [E] extends [never] ? true : false
   })
 
-  test.it("infers status from static property on schema", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route.get(
-        RouteSchema.schemaError(RouteError.NotFound),
-        Route.json(function* () {
-          const found = false as boolean
-          if (!found) return yield* new RouteError.NotFound({ message: "Gone" })
-          return { name: "Alice" }
-        }),
-      ),
-    )
-    const response = await Fetch.fromHandler(handler, { path: "/test" })
+  test.it("infers status from static property on schema", () =>
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.get(
+          RouteSchema.schemaError(RouteError.NotFound),
+          Route.json(function* () {
+            const found = false as boolean
+            if (!found) return yield* new RouteError.NotFound({ message: "Gone" })
+            return { name: "Alice" }
+          }),
+        ),
+      )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/test")
 
-    test.expect(response.status).toBe(404)
-    test.expect(await response.json()).toEqual({
-      _tag: "NotFound",
-      message: "Gone",
-    })
-  })
+      test.expect(entity.status).toBe(404)
+      test.expect(yield* entity.json).toEqual({
+        _tag: "NotFound",
+        message: "Gone",
+      })
+    }).pipe(Effect.runPromise),
+  )
 
-  test.it("explicit status overrides static property", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route.get(
-        RouteSchema.schemaError(RouteError.NotFound, { status: 410 }),
-        Route.json(function* () {
-          const found = false as boolean
-          if (!found) return yield* new RouteError.NotFound({ message: "Gone forever" })
-          return { name: "Alice" }
-        }),
-      ),
-    )
-    const response = await Fetch.fromHandler(handler, { path: "/test" })
+  test.it("explicit status overrides static property", () =>
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.get(
+          RouteSchema.schemaError(RouteError.NotFound, { status: 410 }),
+          Route.json(function* () {
+            const found = false as boolean
+            if (!found) return yield* new RouteError.NotFound({ message: "Gone forever" })
+            return { name: "Alice" }
+          }),
+        ),
+      )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/test")
 
-    test.expect(response.status).toBe(410)
-  })
+      test.expect(entity.status).toBe(410)
+    }).pipe(Effect.runPromise),
+  )
 
-  test.it("pre-built errors work with multiple chained schemaError", async () => {
-    const handler = RouteHttp.toWebHandler(
-      Route.get(
-        RouteSchema.schemaError(RouteError.NotFound),
-        RouteSchema.schemaError(RouteError.Unauthorized),
-        Route.json(function* () {
-          const ok = false as boolean
-          if (!ok) return yield* new RouteError.Unauthorized({ message: "No token" })
-          return { name: "Alice" }
-        }),
-      ),
-    )
-    const response = await Fetch.fromHandler(handler, { path: "/test" })
+  test.it("pre-built errors work with multiple chained schemaError", () =>
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.get(
+          RouteSchema.schemaError(RouteError.NotFound),
+          RouteSchema.schemaError(RouteError.Unauthorized),
+          Route.json(function* () {
+            const ok = false as boolean
+            if (!ok) return yield* new RouteError.Unauthorized({ message: "No token" })
+            return { name: "Alice" }
+          }),
+        ),
+      )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/test")
 
-    test.expect(response.status).toBe(401)
-    test.expect(await response.json()).toEqual({
-      _tag: "Unauthorized",
-      message: "No token",
-    })
-  })
+      test.expect(entity.status).toBe(401)
+      test.expect(yield* entity.json).toEqual({
+        _tag: "Unauthorized",
+        message: "No token",
+      })
+    }).pipe(Effect.runPromise),
+  )
 })

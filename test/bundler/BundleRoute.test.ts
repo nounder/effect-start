@@ -37,14 +37,15 @@ test.it("serves a JS artifact", () =>
     const handles = Object.fromEntries(RouteHttp.walkHandles(tree, runtime))
     const handler = handles["/_bundle/:path+"]
 
-    const response = yield* Effect.promise(() =>
-      Fetch.fromHandler(handler, { path: "/_bundle/app-abc123.js" }),
-    )
+    const client = Fetch.fromHandler(handler)
+    const entity = yield* client.get("http://localhost/_bundle/app-abc123.js")
 
-    test.expect(response.status).toBe(200)
-    test.expect(response.headers.get("content-type")).toContain("javascript")
-    test.expect(response.headers.get("cache-control")).toBe("public, max-age=31536000, immutable")
-    test.expect(yield* Effect.promise(() => response.text())).toBe("console.log('hello')")
+    test.expect(entity.status).toBe(200)
+    test.expect(entity.headers).toMatchObject({
+      "content-type": test.expect.stringContaining("javascript"),
+      "cache-control": "public, max-age=31536000, immutable",
+    })
+    test.expect(yield* entity.text).toBe("console.log('hello')")
   }).pipe(Effect.provide(testLayer), Effect.runPromise),
 )
 
@@ -56,13 +57,12 @@ test.it("serves a CSS artifact", () =>
     const handles = Object.fromEntries(RouteHttp.walkHandles(tree, runtime))
     const handler = handles["/_bundle/:path+"]
 
-    const response = yield* Effect.promise(() =>
-      Fetch.fromHandler(handler, { path: "/_bundle/style-def456.css" }),
-    )
+    const client = Fetch.fromHandler(handler)
+    const entity = yield* client.get("http://localhost/_bundle/style-def456.css")
 
-    test.expect(response.status).toBe(200)
-    test.expect(response.headers.get("content-type")).toStartWith("text/css")
-    test.expect(yield* Effect.promise(() => response.text())).toBe("body{color:red}")
+    test.expect(entity.status).toBe(200)
+    test.expect(entity.headers["content-type"]).toStartWith("text/css")
+    test.expect(yield* entity.text).toBe("body{color:red}")
   }).pipe(Effect.provide(testLayer), Effect.runPromise),
 )
 
@@ -74,11 +74,10 @@ test.it("returns 404 for missing artifact", () =>
     const handles = Object.fromEntries(RouteHttp.walkHandles(tree, runtime))
     const handler = handles["/_bundle/:path+"]
 
-    const response = yield* Effect.promise(() =>
-      Fetch.fromHandler(handler, { path: "/_bundle/nonexistent.js" }),
-    )
+    const client = Fetch.fromHandler(handler)
+    const entity = yield* client.get("http://localhost/_bundle/nonexistent.js")
 
-    test.expect(response.status).toBe(404)
+    test.expect(entity.status).toBe(404)
   }).pipe(Effect.provide(testLayer), Effect.runPromise),
 )
 
@@ -90,11 +89,10 @@ test.it("supports custom mount path", () =>
     const handles = Object.fromEntries(RouteHttp.walkHandles(tree, runtime))
     const handler = handles["/assets/:path+"]
 
-    const response = yield* Effect.promise(() =>
-      Fetch.fromHandler(handler, { path: "/assets/app-abc123.js" }),
-    )
+    const client = Fetch.fromHandler(handler)
+    const entity = yield* client.get("http://localhost/assets/app-abc123.js")
 
-    test.expect(response.status).toBe(200)
-    test.expect(yield* Effect.promise(() => response.text())).toBe("console.log('hello')")
+    test.expect(entity.status).toBe(200)
+    test.expect(yield* entity.text).toBe("console.log('hello')")
   }).pipe(Effect.provide(testLayer), Effect.runPromise),
 )
