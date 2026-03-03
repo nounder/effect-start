@@ -67,7 +67,7 @@ export const which = (name: string): Effect.Effect<string, SystemError> =>
   )
 
 export const spawn = (
-  cmd: readonly [string, ...Array<string>],
+  cmd: [string, ...Array<string>] | string[],
   options?: ChildProcess.Command.Options,
 ): Effect.Effect<
   ChildProcess.ChildProcessHandle,

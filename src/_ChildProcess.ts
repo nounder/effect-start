@@ -57,7 +57,7 @@ const CommandProto = {
 export const isCommand = (u: unknown): u is Command => Predicate.hasProperty(u, TypeId)
 
 export const make = (
-  cmd: readonly [string, ...Array<string>],
+  cmd: [string, ...Array<string>] | string[],
   options?: Command.Options,
 ): Command =>
   Object.assign(Object.create(CommandProto), {
