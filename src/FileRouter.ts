@@ -190,6 +190,7 @@ export function getFileRoutes(
 ): Effect.Effect<OrderedFileRoutes, FileRouterError> {
   return Effect.gen(function* () {
     const routes = paths
+      .map((f) => f.replaceAll("\\", "/"))
       .map((f) => f.match(ROUTE_PATH_REGEX))
       .filter(Boolean)
       .map((v) => {
