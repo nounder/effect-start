@@ -16,10 +16,12 @@ test.describe("html", () => {
       .toBe(expected)
   })
 
-  test.test("strings pass through raw", () => {
+  test.test("strings are escaped", () => {
     const input = '<script>alert("xss")</script>'
 
-    test.expect(html`<div>${input}</div>`.value).toBe('<div><script>alert("xss")</script></div>')
+    test
+      .expect(html`<div>${input}</div>`.value)
+      .toBe("<div>&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;</div>")
   })
 
   test.test("interpolates numbers", () => {
@@ -69,5 +71,37 @@ test.describe("html", () => {
     const fn = (window: Window) => window.alert("hi")
 
     test.expect(html`${fn}`.value).toBe('(window) => window.alert("hi")')
+  })
+
+  test.test("strings with & are escaped", () => {
+    test.expect(html`<div>${"a & b"}</div>`.value).toBe("<div>a &amp; b</div>")
+  })
+
+  test.test("strings with single quotes are escaped", () => {
+    test
+      .expect(html`<div>${"it's"}</div>`.value)
+      .toBe("<div>it&#39;s</div>")
+  })
+
+  test.test("objects with single quotes are escaped", () => {
+    const data = { name: "it's" }
+
+    test
+      .expect(html`<div data-signals='${data}'></div>`.value)
+      .toBe('<div data-signals=\'{"name":"it&#39;s"}\'></div>')
+  })
+
+  test.test("nested html does not double-escape", () => {
+    const inner = html`${"<b>"}`
+
+    test
+      .expect(html`<div>${inner}</div>`.value)
+      .toBe("<div>&lt;b&gt;</div>")
+  })
+
+  test.test("array of strings escapes each item", () => {
+    test
+      .expect(html`${["<a>", "<b>"]as any}`.value)
+      .toBe("&lt;a&gt;&lt;b&gt;")
   })
 })

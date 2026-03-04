@@ -217,9 +217,9 @@ const resolveValue = (value: HtmlValue): string => {
   if (isHtmlString(value)) return value.value
   if (Array.isArray(value)) return (value as Array<HtmlValue>).map(resolveValue).join("")
   if (typeof value === "function") return value.toString()
-  if (typeof value === "object") return JSON.stringify(value)
-  if (typeof value === "string") return value
-  return String(value)
+  if (typeof value === "object") return escSQ(JSON.stringify(value))
+  if (typeof value === "string") return esc(value)
+  return esc(String(value))
 }
 
 export const html = (strings: TemplateStringsArray, ...values: Array<HtmlValue>): HtmlString => {
