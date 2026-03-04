@@ -192,6 +192,10 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
       }
     }
 
+    if (methodGroups["GET"] !== undefined && methodGroups["HEAD"] === undefined) {
+      methodGroups["HEAD"] = methodGroups["GET"]
+    }
+
     const allowedMethods = Object.keys(methodGroups)
       .filter((m) => methodGroups[m] !== undefined && methodGroups[m]!.length > 0)
       .join(", ")
@@ -366,9 +370,15 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
           { once: true },
         )
 
+        const resolveForMethod =
+          method === "HEAD"
+            ? (response: Response) =>
+                resolve(new Response(null, { status: response.status, headers: response.headers }))
+            : resolve
+
         fiber.addObserver((exit) => {
           if (exit._tag === "Success") {
-            resolve(exit.value)
+            resolveForMethod(exit.value)
           } else if (isClientAbort(exit.cause)) {
             resolve(respondError({ status: 499, message: "client closed request" }))
           } else {

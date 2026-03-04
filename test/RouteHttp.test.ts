@@ -207,11 +207,11 @@ test.it("returns Allow header on 405 and OPTIONS responses", () =>
 
     const notAllowed = yield* client.fetch("http://localhost/users", { method: "DELETE" })
     test.expect(notAllowed.status).toBe(405)
-    test.expect(notAllowed.headers["allow"]).toBe("GET, POST")
+    test.expect(notAllowed.headers["allow"]).toBe("GET, POST, HEAD")
 
     const options = yield* client.fetch("http://localhost/users", { method: "OPTIONS" })
     test.expect(options.status).toBe(204)
-    test.expect(options.headers["allow"]).toBe("GET, POST")
+    test.expect(options.headers["allow"]).toBe("GET, POST, HEAD")
   }).pipe(Effect.runPromise),
 )
 
@@ -225,6 +225,43 @@ test.it("uses explicit OPTIONS handler when registered", () =>
 
     test.expect(entity.status).toBe(200)
     test.expect(yield* entity.json).toEqual({ cors: true })
+  }).pipe(Effect.runPromise),
+)
+
+test.it("HEAD request to GET route returns 200 with no body", () =>
+  Effect.gen(function* () {
+    const handler = RouteHttp.toWebHandler(Route.get(Route.text("Hello World")))
+    const client = Fetch.fromHandler(handler)
+    const entity = yield* client.fetch("http://localhost/text", { method: "HEAD" })
+
+    test.expect(entity.status).toBe(200)
+    test.expect(entity.headers["content-type"]).toBe("text/plain; charset=utf-8")
+    test.expect(yield* entity.text).toBe("")
+  }).pipe(Effect.runPromise),
+)
+
+test.it("HEAD is included in Allow header when GET routes exist", () =>
+  Effect.gen(function* () {
+    const handler = RouteHttp.toWebHandler(Route.get(Route.text("users")).post(Route.text("created")))
+    const client = Fetch.fromHandler(handler)
+
+    const notAllowed = yield* client.fetch("http://localhost/users", { method: "DELETE" })
+    test.expect(notAllowed.headers["allow"]).toContain("HEAD")
+
+    const options = yield* client.fetch("http://localhost/users", { method: "OPTIONS" })
+    test.expect(options.headers["allow"]).toContain("HEAD")
+  }).pipe(Effect.runPromise),
+)
+
+test.it("explicit HEAD route takes precedence over GET fallback", () =>
+  Effect.gen(function* () {
+    const handler = RouteHttp.toWebHandler(
+      Route.get(Route.text("from GET")).head(Route.text("from HEAD")),
+    )
+    const client = Fetch.fromHandler(handler)
+    const entity = yield* client.fetch("http://localhost/text", { method: "HEAD" })
+
+    test.expect(entity.status).toBe(200)
   }).pipe(Effect.runPromise),
 )
 
