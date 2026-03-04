@@ -454,4 +454,105 @@ test.describe(RouteTree.lookup, () => {
     test.expect(Route.descriptor(noParam!.route).path).toBe("/files/:name?")
     test.expect(noParam!.params).toEqual({})
   })
+
+  test.it("handles dots in path segments", () => {
+    const tree = RouteTree.make({
+      "/api/v1.0/users": Route.get(Route.text("users")),
+    })
+
+    const result = RouteTree.lookup(tree, "GET", "/api/v1.0/users")
+
+    test.expect(result).not.toBeNull()
+    test.expect(result!.params).toEqual({})
+  })
+
+  test.it("does not match dots as regex wildcards", () => {
+    const tree = RouteTree.make({
+      "/a.b": Route.get(Route.text("dotted")),
+    })
+
+    test.expect(RouteTree.lookup(tree, "GET", "/a.b")).not.toBeNull()
+    test.expect(RouteTree.lookup(tree, "GET", "/aXb")).toBeNull()
+  })
+
+  test.it("handles trailing slashes", () => {
+    const tree = RouteTree.make({
+      "/users": Route.get(Route.text("users")),
+    })
+
+    test.expect(RouteTree.lookup(tree, "GET", "/users/")).not.toBeNull()
+    test.expect(RouteTree.lookup(tree, "GET", "/users///")).not.toBeNull()
+  })
+
+  test.it("multiple params in one path", () => {
+    const tree = RouteTree.make({
+      "/users/:userId/posts/:postId": Route.get(Route.text("post")),
+    })
+
+    const result = RouteTree.lookup(tree, "GET", "/users/42/posts/99")
+
+    test.expect(result).not.toBeNull()
+    test.expect(result!.params).toEqual({ userId: "42", postId: "99" })
+  })
+
+  test.it("same path different methods", () => {
+    const tree = RouteTree.make({
+      "/users": Route.get(Route.text("get users")).post(Route.text("create user")),
+    })
+
+    const getResult = RouteTree.lookup(tree, "GET", "/users")
+
+    test.expect(getResult).not.toBeNull()
+    test.expect(Route.descriptor(getResult!.route).method).toBe("GET")
+
+    const postResult = RouteTree.lookup(tree, "POST", "/users")
+
+    test.expect(postResult).not.toBeNull()
+    test.expect(Route.descriptor(postResult!.route).method).toBe("POST")
+
+    test.expect(RouteTree.lookup(tree, "DELETE", "/users")).toBeNull()
+  })
+
+  test.it("root path matches", () => {
+    const tree = RouteTree.make({
+      "/": Route.get(Route.text("home")),
+    })
+
+    test.expect(RouteTree.lookup(tree, "GET", "/")).not.toBeNull()
+  })
+
+  test.it("lookup works after merge", () => {
+    const a = RouteTree.make({
+      "/users": Route.get(Route.text("users")),
+    })
+    const b = RouteTree.make({
+      "/posts": Route.get(Route.text("posts")),
+    })
+    const merged = RouteTree.merge(a, b)
+
+    test.expect(RouteTree.lookup(merged, "GET", "/users")).not.toBeNull()
+    test.expect(RouteTree.lookup(merged, "GET", "/posts")).not.toBeNull()
+    test.expect(RouteTree.lookup(merged, "GET", "/other")).toBeNull()
+  })
+
+  test.it("param values with special characters", () => {
+    const tree = RouteTree.make({
+      "/files/:name": Route.get(Route.text("file")),
+    })
+
+    const result = RouteTree.lookup(tree, "GET", "/files/my-file_v2.txt")
+
+    test.expect(result).not.toBeNull()
+    test.expect(result!.params).toEqual({ name: "my-file_v2.txt" })
+  })
+
+  test.it("greedy param captures slashes", () => {
+    const tree = RouteTree.make({
+      "/api/:rest+": Route.get(Route.text("api")),
+    })
+
+    const result = RouteTree.lookup(tree, "GET", "/api/a/b/c")
+
+    test.expect(result!.params).toEqual({ rest: "a/b/c" })
+  })
 })

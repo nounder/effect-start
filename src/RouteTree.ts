@@ -5,6 +5,7 @@ import type * as RouteMount from "./RouteMount.ts"
 
 const TypeId = "~effect-start/RouteTree" as const
 const RouteTreeRoutes: unique symbol = Symbol()
+const CompiledRoutesKey: unique symbol = Symbol()
 
 type MethodRoute = Route.Route.With<{ method: string }>
 
@@ -27,9 +28,138 @@ export type RouteMap = {
 
 export type Routes<T extends RouteTree> = T[typeof RouteTreeRoutes]
 
+interface CompiledMethod {
+  regex: RegExp
+  table: Array<{
+    path: PathPattern.PathPattern
+    routes: Array<RouteMount.MountedRoute>
+    paramNames: Array<string>
+    paramGroupIndices: Array<number>
+    sentinelIndex: number
+  }>
+}
+
+interface CompiledRoutes {
+  methods: Record<string, CompiledMethod>
+}
+
 export interface RouteTree<Routes extends RouteMap = RouteMap> {
   [TypeId]: typeof TypeId
   [RouteTreeRoutes]: Routes
+  [CompiledRoutesKey]?: CompiledRoutes
+}
+
+type PrefixKeys<T, Prefix extends string> = {
+  [K in keyof T as K extends string ? `${Prefix}${K}` : never]: T[K]
+}
+
+type InferItems<T> = T extends Route.RouteSet.Data<any, any, infer M> ? M : []
+
+type LayerItems<T extends InputRouteMap> = "*" extends keyof T ? InferItems<T["*"]> : []
+
+type FlattenRouteMap<T extends InputRouteMap> = {
+  [K in Exclude<keyof T, "*"> as T[K] extends RouteTree ? never : K]: [
+    ...LayerItems<T>,
+    ...InferItems<T[K]>,
+  ]
+} & UnionToIntersection<FlattenNested<T, Exclude<keyof T, "*">, LayerItems<T>>>
+
+type FlattenNested<T, K, L extends Route.Route.Tuple> = K extends keyof T
+  ? T[K] extends RouteTree<infer R>
+    ? PrefixKeys<PrependLayers<R, L>, K & string>
+    : {}
+  : {}
+
+type PrependLayers<T extends RouteMap, L extends Route.Route.Tuple> = {
+  [K in keyof T]: T[K] extends Route.Route.Tuple ? [...L, ...T[K]] : never
+}
+
+type UnionToIntersection<U> = (U extends any ? (x: U) => void : never) extends (x: infer I) => void
+  ? I
+  : never
+
+export type WalkDescriptor = {
+  path: PathPattern.PathPattern
+  method: string
+} & Route.RouteDescriptor.Any
+
+export interface LookupResult {
+  route: RouteMount.MountedRoute
+  params: Record<string, string>
+}
+
+export function make<const Routes extends InputRouteMap>(
+  input: Routes,
+): RouteTree<FlattenRouteMap<Routes>> {
+  const layerRoutes = [...(input[LayerKey] ?? [])]
+  const merged: RouteMap = {}
+
+  function flatten(map: InputRouteMap, prefix: string, layers: Array<MethodRoute>): void {
+    for (const key of Object.keys(map)) {
+      if (key === LayerKey) continue
+      const path = key as PathPattern.PathPattern
+      const entry = map[path]
+      const fullPath = `${prefix}${path}` as PathPattern.PathPattern
+
+      if (isRouteTree(entry)) {
+        flatten(routes(entry), fullPath, layers)
+      } else {
+        merged[fullPath] = [...layers, ...(entry as RouteTuple)]
+      }
+    }
+  }
+
+  flatten(input, "", layerRoutes)
+
+  const sorted = sortRoutes(merged)
+  return {
+    [TypeId]: TypeId,
+    [RouteTreeRoutes]: sorted,
+  } as RouteTree<FlattenRouteMap<Routes>>
+}
+
+export function* walk(tree: RouteTree): Generator<RouteMount.MountedRoute> {
+  const _routes = routes(tree) as RouteMap
+
+  for (const path of Object.keys(_routes) as Array<PathPattern.PathPattern>) {
+    yield* flattenRoutes(path, _routes[path])
+  }
+}
+
+export function merge(a: RouteTree, b: RouteTree): RouteTree {
+  const combined: RouteMap = { ...routes(a) }
+  for (const [path, items] of Object.entries(routes(b))) {
+    const key = path as PathPattern.PathPattern
+    combined[key] = combined[key] ? [...combined[key], ...items] : items
+  }
+  const sorted = sortRoutes(combined)
+  return {
+    [TypeId]: TypeId,
+    [RouteTreeRoutes]: sorted,
+  } as RouteTree
+}
+
+export function isRouteTree(input: unknown): input is RouteTree {
+  return Predicate.hasProperty(input, TypeId)
+}
+
+export function lookup(tree: RouteTree, method: string, path: string): LookupResult | null {
+  tree[CompiledRoutesKey] ??= compileRoutes(routes(tree))
+  const { methods } = tree[CompiledRoutesKey]
+
+  const wildcard = methods["*"]
+  if (wildcard) {
+    const result = execCompiled(wildcard, path)
+    if (result) return result
+  }
+
+  const specific = methods[method]
+  if (specific) {
+    const result = execCompiled(specific, path)
+    if (result) return result
+  }
+
+  return null
 }
 
 function routes<Routes extends RouteMap>(tree: RouteTree<Routes>): Routes {
@@ -63,69 +193,6 @@ function sortRoutes(input: RouteMap): RouteMap {
   return sorted
 }
 
-type PrefixKeys<T, Prefix extends string> = {
-  [K in keyof T as K extends string ? `${Prefix}${K}` : never]: T[K]
-}
-
-type InferItems<T> = T extends Route.RouteSet.Data<any, any, infer M> ? M : []
-
-type LayerItems<T extends InputRouteMap> = "*" extends keyof T ? InferItems<T["*"]> : []
-
-type FlattenRouteMap<T extends InputRouteMap> = {
-  [K in Exclude<keyof T, "*"> as T[K] extends RouteTree ? never : K]: [
-    ...LayerItems<T>,
-    ...InferItems<T[K]>,
-  ]
-} & UnionToIntersection<FlattenNested<T, Exclude<keyof T, "*">, LayerItems<T>>>
-
-type FlattenNested<T, K, L extends Route.Route.Tuple> = K extends keyof T
-  ? T[K] extends RouteTree<infer R>
-    ? PrefixKeys<PrependLayers<R, L>, K & string>
-    : {}
-  : {}
-
-type PrependLayers<T extends RouteMap, L extends Route.Route.Tuple> = {
-  [K in keyof T]: T[K] extends Route.Route.Tuple ? [...L, ...T[K]] : never
-}
-
-type UnionToIntersection<U> = (U extends any ? (x: U) => void : never) extends (x: infer I) => void
-  ? I
-  : never
-
-export function make<const Routes extends InputRouteMap>(
-  input: Routes,
-): RouteTree<FlattenRouteMap<Routes>> {
-  const layerRoutes = [...(input[LayerKey] ?? [])]
-  const merged: RouteMap = {}
-
-  function flatten(map: InputRouteMap, prefix: string, layers: Array<MethodRoute>): void {
-    for (const key of Object.keys(map)) {
-      if (key === LayerKey) continue
-      const path = key as PathPattern.PathPattern
-      const entry = map[path]
-      const fullPath = `${prefix}${path}` as PathPattern.PathPattern
-
-      if (isRouteTree(entry)) {
-        flatten(routes(entry), fullPath, layers)
-      } else {
-        merged[fullPath] = [...layers, ...(entry as RouteTuple)]
-      }
-    }
-  }
-
-  flatten(input, "", layerRoutes)
-
-  return {
-    [TypeId]: TypeId,
-    [RouteTreeRoutes]: sortRoutes(merged),
-  } as RouteTree<FlattenRouteMap<Routes>>
-}
-
-export type WalkDescriptor = {
-  path: PathPattern.PathPattern
-  method: string
-} & Route.RouteDescriptor.Any
-
 function* flattenRoutes(
   path: PathPattern.PathPattern,
   routes: Iterable<MethodRoute>,
@@ -139,45 +206,153 @@ function* flattenRoutes(
   }
 }
 
-export function* walk(tree: RouteTree): Generator<RouteMount.MountedRoute> {
-  const _routes = routes(tree) as RouteMap
-
-  for (const path of Object.keys(_routes) as Array<PathPattern.PathPattern>) {
-    yield* flattenRoutes(path, _routes[path])
-  }
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 }
 
-export function merge(a: RouteTree, b: RouteTree): RouteTree {
-  const combined: RouteMap = { ...routes(a) }
-  for (const [path, items] of Object.entries(routes(b))) {
-    const key = path as PathPattern.PathPattern
-    combined[key] = combined[key] ? [...combined[key], ...items] : items
-  }
-  return {
-    [TypeId]: TypeId,
-    [RouteTreeRoutes]: sortRoutes(combined),
-  } as RouteTree
-}
+function patternToRegex(pattern: string): { fragment: string; paramNames: Array<string>; groupCount: number } {
+  const segments = pattern.split("/").filter(Boolean)
+  const paramNames: Array<string> = []
+  let fragment = ""
+  let groupCount = 0
 
-export function isRouteTree(input: unknown): input is RouteTree {
-  return Predicate.hasProperty(input, TypeId)
-}
+  for (let i = 0; i < segments.length; i++) {
+    const seg = segments[i]
 
-export interface LookupResult {
-  route: RouteMount.MountedRoute
-  params: Record<string, string>
-}
-
-export function lookup(tree: RouteTree, method: string, path: string): LookupResult | null {
-  for (const route of walk(tree)) {
-    const descriptor = Route.descriptor(route)
-
-    if (descriptor.method !== "*" && descriptor.method !== method) continue
-
-    const params = PathPattern.match(descriptor.path, path)
-    if (params !== null) {
-      return { route, params }
+    if (seg.startsWith(":")) {
+      const last = seg[seg.length - 1]
+      if (last === "+") {
+        const name = seg.slice(1, -1)
+        paramNames.push(name)
+        fragment += "\\/(.+)"
+        groupCount++
+      } else if (last === "*") {
+        const name = seg.slice(1, -1)
+        paramNames.push(name)
+        fragment += "(?:\\/(.+))?"
+        groupCount++
+      } else if (last === "?") {
+        const name = seg.slice(1, -1)
+        paramNames.push(name)
+        fragment += "(?:\\/([^\\/]+))?"
+        groupCount++
+      } else {
+        const name = seg.slice(1)
+        paramNames.push(name)
+        fragment += "\\/([^\\/]+)"
+        groupCount++
+      }
+    } else {
+      fragment += "\\/" + escapeRegex(seg)
     }
   }
+
+  return { fragment, paramNames, groupCount }
+}
+
+function compileRoutes(sortedRoutes: RouteMap): CompiledRoutes {
+  const methodGroups: Record<string, Array<{
+    path: PathPattern.PathPattern
+    route: RouteMount.MountedRoute
+  }>> = {}
+
+  for (const path of Object.keys(sortedRoutes) as Array<PathPattern.PathPattern>) {
+    for (const routeData of sortedRoutes[path]) {
+      const descriptor = {
+        ...routeData[Route.RouteDescriptor],
+        path,
+      }
+      const mounted = Route.make(routeData.handler as any, descriptor) as RouteMount.MountedRoute
+      const method = (descriptor as { method: string }).method
+
+      if (!methodGroups[method]) methodGroups[method] = []
+      methodGroups[method].push({ path, route: mounted })
+    }
+  }
+
+  const pathRoutesByMethod: Record<string, Map<string, {
+    path: PathPattern.PathPattern
+    routes: Array<RouteMount.MountedRoute>
+  }>> = {}
+
+  for (const method of Object.keys(methodGroups)) {
+    const map = new Map<string, {
+      path: PathPattern.PathPattern
+      routes: Array<RouteMount.MountedRoute>
+    }>()
+    for (const { path, route } of methodGroups[method]) {
+      let entry = map.get(path)
+      if (!entry) {
+        entry = { path, routes: [] }
+        map.set(path, entry)
+      }
+      entry.routes.push(route)
+    }
+    pathRoutesByMethod[method] = map
+  }
+
+  const methods: Record<string, CompiledMethod> = {}
+
+  for (const method of Object.keys(pathRoutesByMethod)) {
+    const pathMap = pathRoutesByMethod[method]
+    const sortedPaths = Object.keys(sortedRoutes) as Array<PathPattern.PathPattern>
+    const orderedPaths = sortedPaths.filter((p) => pathMap.has(p))
+
+    const branches: Array<string> = []
+    const table: CompiledMethod["table"] = []
+    let groupOffset = 1
+
+    for (const path of orderedPaths) {
+      const entry = pathMap.get(path)!
+      const { fragment, paramNames, groupCount } = patternToRegex(path)
+
+      const paramGroupIndices: Array<number> = []
+      for (let i = 0; i < groupCount; i++) {
+        paramGroupIndices.push(groupOffset + i)
+      }
+
+      const sentinelIndex = groupOffset + groupCount
+      branches.push(fragment + "()")
+      groupOffset += groupCount + 1
+
+      table.push({
+        path: entry.path,
+        routes: entry.routes,
+        paramNames,
+        paramGroupIndices,
+        sentinelIndex,
+      })
+    }
+
+    if (branches.length === 0) continue
+
+    const pattern = "^(?:" + branches.join("|") + ")\\/*$"
+    methods[method] = {
+      regex: new RegExp(pattern),
+      table,
+    }
+  }
+
+  return { methods }
+}
+
+function execCompiled(compiled: CompiledMethod, path: string): LookupResult | null {
+  const match = compiled.regex.exec(path)
+  if (!match) return null
+
+  for (const entry of compiled.table) {
+    if (match[entry.sentinelIndex] === undefined) continue
+
+    const params: Record<string, string> = {}
+    for (let i = 0; i < entry.paramNames.length; i++) {
+      const val = match[entry.paramGroupIndices[i]]
+      if (val !== undefined) {
+        params[entry.paramNames[i]] = val
+      }
+    }
+
+    return { route: entry.routes[0], params }
+  }
+
   return null
 }
