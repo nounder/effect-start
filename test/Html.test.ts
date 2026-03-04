@@ -1,4 +1,5 @@
 import * as test from "bun:test"
+import * as Html from "../src/Html.ts"
 import { html } from "effect-start/Html"
 
 test.describe("html", () => {
@@ -104,4 +105,33 @@ test.describe("html", () => {
       .expect(html`${["<a>", "<b>"]as any}`.value)
       .toBe("&lt;a&gt;&lt;b&gt;")
   })
+})
+
+test.it("script function child infers window as Window", () => {
+  const handler = (window: Window) => {
+    const doc = window.document.documentElement
+    window.scrollTo(0, doc.scrollHeight)
+
+    const chatPage = window.document.getElementById("chat-page")!
+    const observer = new MutationObserver(() => {
+      window.requestAnimationFrame(() => {
+        window.scrollTo(0, doc.scrollHeight)
+      })
+    })
+    observer.observe(chatPage, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+    })
+  }
+
+  test.expectTypeOf(handler).toExtend<Html.ElemenetProps[string]>()
+
+  const node = Html.make("script", { children: handler })
+  const html_ = Html.renderToString(node)
+
+  test.expect(html_).toContain("<script>(")
+  test.expect(html_).toContain(")(window)</script>")
+  test.expect(html_).toContain("scrollTo")
+  test.expect(html_).toContain("MutationObserver")
 })
