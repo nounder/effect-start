@@ -200,6 +200,30 @@ test.describe(PathPattern.match, () => {
     test.expect(result).toBeNull()
   })
 
+  test.it("decodes URL-encoded required param", () => {
+    const result = PathPattern.match("/users/:id", "/users/hello%20world")
+
+    test.expect(result).toEqual({ id: "hello world" })
+  })
+
+  test.it("decodes URL-encoded optional param", () => {
+    const result = PathPattern.match("/users/:id?", "/users/caf%C3%A9")
+
+    test.expect(result).toEqual({ id: "café" })
+  })
+
+  test.it("decodes URL-encoded required wildcard segments", () => {
+    const result = PathPattern.match("/docs/:path+", "/docs/my%20folder/my%20file")
+
+    test.expect(result).toEqual({ path: "my folder/my file" })
+  })
+
+  test.it("decodes URL-encoded optional wildcard segments", () => {
+    const result = PathPattern.match("/docs/:path*", "/docs/a%20b/c%20d")
+
+    test.expect(result).toEqual({ path: "a b/c d" })
+  })
+
   test.it("distinguishes optional from required wildcard", () => {
     const optionalMatch = PathPattern.match("/files/:path*", "/files")
     const requiredMatch = PathPattern.match("/files/:path+", "/files")

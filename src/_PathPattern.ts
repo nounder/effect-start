@@ -175,7 +175,7 @@ export function match(pattern: string, path: string): Record<string, string> | n
         if (remaining.length === 0) {
           return null
         }
-        params[name] = remaining.join("/")
+        params[name] = remaining.map(decodeURIComponent).join("/")
         return params
       }
 
@@ -183,7 +183,7 @@ export function match(pattern: string, path: string): Record<string, string> | n
         const name = rest.slice(0, -1)
         const remaining = pathSegments.slice(pathIndex)
         if (remaining.length > 0) {
-          params[name] = remaining.join("/")
+          params[name] = remaining.map(decodeURIComponent).join("/")
         }
         return params
       }
@@ -191,7 +191,7 @@ export function match(pattern: string, path: string): Record<string, string> | n
       if (rest.endsWith("?")) {
         const name = rest.slice(0, -1)
         if (pathIndex < pathSegments.length) {
-          params[name] = pathSegments[pathIndex]
+          params[name] = decodeURIComponent(pathSegments[pathIndex])
           pathIndex++
         }
         patternIndex++
@@ -202,7 +202,7 @@ export function match(pattern: string, path: string): Record<string, string> | n
         return null
       }
 
-      params[rest] = pathSegments[pathIndex]
+      params[rest] = decodeURIComponent(pathSegments[pathIndex])
       pathIndex++
       patternIndex++
       continue
