@@ -50,6 +50,7 @@ export type BunServer = {
   readonly server: Bun.Server<WebSocketContext>
   readonly pushHandler: (fetch: FetchHandler) => void
   readonly popHandler: () => void
+  readonly setRoutes: (tree: RouteTree.RouteTree) => Effect.Effect<void>
 }
 
 export const BunServer = Context.GenericTag<BunServer>("effect-start/BunServer")
@@ -77,6 +78,8 @@ export const make = (
       },
     ]
 
+    const setRoutesDeferred = yield* Deferred.make<(tree: RouteTree.RouteTree) => Effect.Effect<void>>()
+
     const service = BunServer.of({
       // During the construction we need to create a service imlpementation
       // first so we can provide it in the runtime that will be used in web
@@ -92,6 +95,9 @@ export const make = (
       popHandler() {
         handlerStack.pop()
         reload()
+      },
+      setRoutes(tree) {
+        return Deferred.await(setRoutesDeferred).pipe(Effect.flatMap((applyRoutes) => applyRoutes(tree)))
       },
     })
 
@@ -150,6 +156,18 @@ export const make = (
       })
     }
 
+    yield* Deferred.succeed(setRoutesDeferred, (tree) =>
+      walkBunRoutes(runtime, tree).pipe(
+        Effect.tap((bunRoutes) =>
+          Effect.sync(() => {
+            currentRoutes = bunRoutes
+            reload()
+          }),
+        ),
+        Effect.asVoid,
+      ),
+    )
+
     const bunServer = BunServer.of({
       server,
       pushHandler(fetch) {
@@ -159,6 +177,9 @@ export const make = (
       popHandler() {
         handlerStack.pop()
         reload()
+      },
+      setRoutes(tree) {
+        return Deferred.await(setRoutesDeferred).pipe(Effect.flatMap((applyRoutes) => applyRoutes(tree)))
       },
     })
 
@@ -185,6 +206,7 @@ export const layerRoutes = (
 /**
  * Resolves the Bun server in one place for Start.serve so routes are available:
  * 1) Reuse a user-provided BunServer when one already exists in context.
+ *    If Route.Routes are available, upgrade the existing server with them.
  * 2) Otherwise create the server from Route.Routes when routes are available.
  * 3) Otherwise create a fallback server with the default 404 handler.
  */
@@ -195,18 +217,17 @@ export const layerStart = (
     BunServer,
     Effect.gen(function* () {
       const app = yield* StartApp.StartApp
+      const routes = yield* Effect.serviceOption(Route.Routes)
+      const routeTree = Option.getOrNull(routes)
       const existing = yield* Effect.serviceOption(BunServer)
       if (Option.isSome(existing)) {
+        if (routeTree !== null) {
+          yield* existing.value.setRoutes(routeTree)
+        }
         yield* Deferred.succeed(app.server, existing.value)
         return existing.value
       }
-      const routes = yield* Effect.serviceOption(Route.Routes)
-      if (Option.isSome(routes)) {
-        const server = yield* make(options ?? {}, routes.value)
-        yield* Deferred.succeed(app.server, server)
-        return server
-      }
-      const server = yield* make(options ?? {})
+      const server = yield* make(options ?? {}, routeTree ?? undefined)
       yield* Deferred.succeed(app.server, server)
       return server
     }),

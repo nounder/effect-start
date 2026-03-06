@@ -137,6 +137,7 @@ test.describe("StartApp.server", () => {
         server: { port: 1234 } as any,
         pushHandler: (_fetch: Parameters<BunServer.BunServer["pushHandler"]>[0]) => {},
         popHandler: () => {},
+        setRoutes: () => Effect.void,
       } satisfies BunServer.BunServer
 
       const resultFiber = yield* Effect.gen(function* () {

@@ -3,12 +3,14 @@ import * as NFs from "node:fs"
 import * as NOs from "node:os"
 import * as NPath from "node:path"
 import * as ConfigProvider from "effect/ConfigProvider"
+import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Layer from "effect/Layer"
 import * as Route from "effect-start/Route"
 import { BunRoute, BunServer } from "effect-start/bun"
 import * as Start from "effect-start/Start"
+import * as StartApp from "../../src/_StartApp.ts"
 
 const staticDir = NPath.resolve(import.meta.dir, "../../static")
 
@@ -209,6 +211,48 @@ test.describe("routes", () => {
 })
 
 test.describe("Start.serve composition", () => {
+  test.test("Start.build keeps routes when BunServer.layerRoutes is provided", () => {
+    const appLayer = Start.build(
+      Route.layer(
+        Route.tree({
+          "/hello": Route.get(Route.text("world")),
+        }),
+      ),
+      BunServer.layerRoutes({ port: 0 }),
+    )
+
+    return Effect.gen(function* () {
+      const bunServer = yield* BunServer.BunServer
+      const response = yield* Effect.promise(() =>
+        fetch(`http://localhost:${bunServer.server.port}/hello`),
+      )
+      const text = yield* Effect.promise(() => response.text())
+
+      test.expect(response.status).toBe(200)
+      test.expect(text).toBe("world")
+    }).pipe(Effect.provide(appLayer), Effect.scoped, Effect.runPromise)
+  })
+
+  test.test("Start.build keeps fallback handler when BunServer.layer is provided", () => {
+    const appLayer = Start.build(
+      Route.layer(
+        Route.tree({
+          "/hello": Route.get(Route.text("world")),
+        }),
+      ),
+      BunServer.layer({ port: 0 }),
+    )
+
+    return Effect.gen(function* () {
+      const bunServer = yield* BunServer.BunServer
+      const response = yield* Effect.promise(() =>
+        fetch(`http://localhost:${bunServer.server.port}/hello`),
+      )
+
+      test.expect(response.status).toBe(404)
+    }).pipe(Effect.provide(appLayer), Effect.scoped, Effect.runPromise)
+  })
+
   test.test("routes resolve when server layer requires Route.Routes", () => {
     const appLayer = Route.layer(
       Route.tree({
@@ -218,6 +262,38 @@ test.describe("Start.serve composition", () => {
 
     const serverLayer = BunServer.layerRoutes({ port: 0 })
     const composed = Layer.provide(BunServer.withLogAddress(serverLayer), appLayer)
+
+    return Effect.gen(function* () {
+      const bunServer = yield* BunServer.BunServer
+      const response = yield* Effect.promise(() =>
+        fetch(`http://localhost:${bunServer.server.port}/hello`),
+      )
+      const text = yield* Effect.promise(() => response.text())
+
+      test.expect(response.status).toBe(200)
+      test.expect(text).toBe("world")
+    }).pipe(Effect.provide(composed), Effect.scoped, Effect.runPromise)
+  })
+
+  test.test("existing BunServer is upgraded with routes by layerStart", () => {
+    const routeLayer = Route.layer(
+      Route.tree({
+        "/hello": Route.get(Route.text("world")),
+      }),
+    )
+
+    const startAppLayer = Layer.effect(
+      StartApp.StartApp,
+      Deferred.make<BunServer.BunServer>().pipe(Effect.map((server) => ({ server }))),
+    )
+
+    const appLayer = Start.build(
+      startAppLayer,
+      routeLayer,
+      BunServer.layer({ port: 0 }),
+    )
+
+    const composed = Layer.provide(BunServer.withLogAddress(BunServer.layerStart()), appLayer)
 
     return Effect.gen(function* () {
       const bunServer = yield* BunServer.BunServer
