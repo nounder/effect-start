@@ -56,10 +56,7 @@ export default Route.get(
       Stream.mapEffect(() =>
         Effect.gen(function* () {
           const spans = yield* StudioStore.allSpans(StudioStore.store.sql)
-          const html = Html.renderToString(<Traces.TraceGroups spans={spans} />).replace(
-            /\n/g,
-            "",
-          )
+          const html = Html.renderToString(<Traces.TraceGroups spans={spans} />).replace(/\n/g, "")
           return {
             event: "datastar-patch-elements",
             data: `selector #traces-container\nmode inner\nelements ${html}`,

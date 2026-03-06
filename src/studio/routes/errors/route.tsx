@@ -75,10 +75,7 @@ export default Route.get(
     Stream.fromPubSub(StudioStore.store.events).pipe(
       Stream.filter((e) => e._tag === "Error"),
       Stream.map((e) => {
-        const html = Html.renderToString(<Errors.ErrorLine error={e.error} />).replace(
-          /\n/g,
-          "",
-        )
+        const html = Html.renderToString(<Errors.ErrorLine error={e.error} />).replace(/\n/g, "")
         return {
           event: "datastar-patch-elements",
           data: `selector #errors-list\nmode prepend\nelements ${html}`,

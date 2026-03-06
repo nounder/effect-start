@@ -26,7 +26,8 @@ export default Route.get(
         <Layout>
           <div class="pt-6 pb-4">
             <h2 class="text-xl font-semibold mb-4">
-              <span class="text-[#8b949e]">{Github.num(results.total_count)} users matching</span> "{q}"
+              <span class="text-[#8b949e]">{Github.num(results.total_count)} users matching</span> "
+              {q}"
             </h2>
             <SearchTabs q={q} active="users" />
           </div>
@@ -46,7 +47,8 @@ export default Route.get(
       <Layout>
         <div class="pt-6 pb-4">
           <h2 class="text-xl font-semibold mb-4">
-            <span class="text-[#8b949e]">{Github.num(results.total_count)} results matching</span> "{q}"
+            <span class="text-[#8b949e]">{Github.num(results.total_count)} results matching</span> "
+            {q}"
           </h2>
           <SearchTabs q={q} active="repositories" />
         </div>
@@ -63,7 +65,9 @@ export default Route.get(
             />
           ))}
         </div>
-        {repos.length === 0 && <EmptyState title="No results" description={`Nothing matched "${q}"`} />}
+        {repos.length === 0 && (
+          <EmptyState title="No results" description={`Nothing matched "${q}"`} />
+        )}
         {repos.length === 30 && <Pagination q={q} type={type} page={page} />}
       </Layout>
     )

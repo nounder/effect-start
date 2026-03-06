@@ -1,5 +1,5 @@
 import * as Predicate from "effect/Predicate"
-import * as PathPattern from "./_PathPattern.ts"
+import type * as PathPattern from "./_PathPattern.ts"
 import * as Route from "./Route.ts"
 import type * as RouteMount from "./RouteMount.ts"
 
@@ -210,7 +210,11 @@ function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 }
 
-function patternToRegex(pattern: string): { fragment: string; paramNames: Array<string>; groupCount: number } {
+function patternToRegex(pattern: string): {
+  fragment: string
+  paramNames: Array<string>
+  groupCount: number
+} {
   const segments = pattern.split("/").filter(Boolean)
   const paramNames: Array<string> = []
   let fragment = ""
@@ -251,10 +255,13 @@ function patternToRegex(pattern: string): { fragment: string; paramNames: Array<
 }
 
 function compileRoutes(sortedRoutes: RouteMap): CompiledRoutes {
-  const methodGroups: Record<string, Array<{
-    path: PathPattern.PathPattern
-    route: RouteMount.MountedRoute
-  }>> = {}
+  const methodGroups: Record<
+    string,
+    Array<{
+      path: PathPattern.PathPattern
+      route: RouteMount.MountedRoute
+    }>
+  > = {}
 
   for (const path of Object.keys(sortedRoutes) as Array<PathPattern.PathPattern>) {
     for (const routeData of sortedRoutes[path]) {
@@ -270,16 +277,25 @@ function compileRoutes(sortedRoutes: RouteMap): CompiledRoutes {
     }
   }
 
-  const pathRoutesByMethod: Record<string, Map<string, {
-    path: PathPattern.PathPattern
-    routes: Array<RouteMount.MountedRoute>
-  }>> = {}
+  const pathRoutesByMethod: Record<
+    string,
+    Map<
+      string,
+      {
+        path: PathPattern.PathPattern
+        routes: Array<RouteMount.MountedRoute>
+      }
+    >
+  > = {}
 
   for (const method of Object.keys(methodGroups)) {
-    const map = new Map<string, {
-      path: PathPattern.PathPattern
-      routes: Array<RouteMount.MountedRoute>
-    }>()
+    const map = new Map<
+      string,
+      {
+        path: PathPattern.PathPattern
+        routes: Array<RouteMount.MountedRoute>
+      }
+    >()
     for (const { path, route } of methodGroups[method]) {
       let entry = map.get(path)
       if (!entry) {

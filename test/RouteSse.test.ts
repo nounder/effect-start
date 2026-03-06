@@ -108,7 +108,9 @@ test.describe("Route.sse()", () => {
       const client = Fetch.fromHandler(handler)
       const entity = yield* client.get("http://localhost/events")
 
-      test.expect(yield* entity.text).toBe("event: patch\ndata: line1\ndata: line2\ndata: line3\n\n")
+      test
+        .expect(yield* entity.text)
+        .toBe("event: patch\ndata: line1\ndata: line2\ndata: line3\n\n")
     }).pipe(Effect.runPromise),
   )
 

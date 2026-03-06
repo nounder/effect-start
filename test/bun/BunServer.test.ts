@@ -287,11 +287,7 @@ test.describe("Start.serve composition", () => {
       Deferred.make<BunServer.BunServer>().pipe(Effect.map((server) => ({ server }))),
     )
 
-    const appLayer = Start.build(
-      startAppLayer,
-      routeLayer,
-      BunServer.layer({ port: 0 }),
-    )
+    const appLayer = Start.build(startAppLayer, routeLayer, BunServer.layer({ port: 0 }))
 
     const composed = Layer.provide(BunServer.withLogAddress(BunServer.layerStart()), appLayer)
 

@@ -3,26 +3,11 @@
  */
 
 export default {
-  "/": [
-    () => import("./route.tsx"),
-    () => import("./layer.tsx"),
-  ],
-  "/:owner": [
-    () => import("./[owner]/route.tsx"),
-    () => import("./layer.tsx"),
-  ],
-  "/search": [
-    () => import("./search/route.tsx"),
-    () => import("./layer.tsx"),
-  ],
-  "/:owner/:repo": [
-    () => import("./[owner]/[repo]/route.tsx"),
-    () => import("./layer.tsx"),
-  ],
-  "/orgs/:org": [
-    () => import("./orgs/[org]/route.tsx"),
-    () => import("./layer.tsx"),
-  ],
+  "/": [() => import("./route.tsx"), () => import("./layer.tsx")],
+  "/:owner": [() => import("./[owner]/route.tsx"), () => import("./layer.tsx")],
+  "/search": [() => import("./search/route.tsx"), () => import("./layer.tsx")],
+  "/:owner/:repo": [() => import("./[owner]/[repo]/route.tsx"), () => import("./layer.tsx")],
+  "/orgs/:org": [() => import("./orgs/[org]/route.tsx"), () => import("./layer.tsx")],
   "/:owner/:repo/commits": [
     () => import("./[owner]/[repo]/commits/route.tsx"),
     () => import("./layer.tsx"),

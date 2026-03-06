@@ -65,10 +65,9 @@ test.describe("GlobalLayer", () => {
   test.it("propagates layer build errors", () =>
     Effect.gen(function* () {
       const key = freshKey()
-      const layer = Layer.effect(
-        TestService,
-        Effect.fail("build failed" as const),
-      ).pipe(GlobalLayer.globalLayer(key))
+      const layer = Layer.effect(TestService, Effect.fail("build failed" as const)).pipe(
+        GlobalLayer.globalLayer(key),
+      )
 
       const exit = yield* Layer.build(layer).pipe(Effect.scoped, Effect.exit)
       test.expect(Exit.isFailure(exit)).toBe(true)
@@ -78,10 +77,9 @@ test.describe("GlobalLayer", () => {
   test.it("propagates layer build defects", () =>
     Effect.gen(function* () {
       const key = freshKey()
-      const layer = Layer.effect(
-        TestService,
-        Effect.die(new Error("fatal")),
-      ).pipe(GlobalLayer.globalLayer(key))
+      const layer = Layer.effect(TestService, Effect.die(new Error("fatal"))).pipe(
+        GlobalLayer.globalLayer(key),
+      )
 
       const exit = yield* Layer.build(layer).pipe(Effect.scoped, Effect.exit)
       test.expect(Exit.isFailure(exit)).toBe(true)
@@ -91,10 +89,9 @@ test.describe("GlobalLayer", () => {
   test.it("propagates timeout from layer build", () =>
     Effect.gen(function* () {
       const key = freshKey()
-      const layer = Layer.effect(
-        TestService,
-        Effect.never.pipe(Effect.timeout("100 millis")),
-      ).pipe(GlobalLayer.globalLayer(key))
+      const layer = Layer.effect(TestService, Effect.never.pipe(Effect.timeout("100 millis"))).pipe(
+        GlobalLayer.globalLayer(key),
+      )
 
       const exit = yield* Layer.build(layer).pipe(Effect.scoped, Effect.exit)
       test.expect(Exit.isFailure(exit)).toBe(true)

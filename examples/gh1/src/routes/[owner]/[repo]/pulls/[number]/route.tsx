@@ -5,7 +5,9 @@ import * as Github from "../../../../../Github.ts"
 import { Layout, Tabs } from "../../../../../Ui.tsx"
 
 export default Route.get(
-  Route.schemaPathParams(Schema.Struct({ owner: Schema.String, repo: Schema.String, number: Schema.NumberFromString })),
+  Route.schemaPathParams(
+    Schema.Struct({ owner: Schema.String, repo: Schema.String, number: Schema.NumberFromString }),
+  ),
   Route.html(function* (ctx) {
     const { owner, repo, number } = ctx.pathParams
     const path = `${owner}/${repo}`
@@ -22,13 +24,15 @@ export default Route.get(
       <Layout>
         <div class="pt-4">
           <RepoHeader owner={owner} repo={repo} />
-          <Tabs items={[
-            { label: "Code", href: `/${path}` },
-            { label: "Issues", href: `/${path}/issues` },
-            { label: "Pull requests", href: `/${path}/pulls`, active: true },
-            { label: "Commits", href: `/${path}/commits` },
-            { label: "Contributors", href: `/${path}/contributors` },
-          ]} />
+          <Tabs
+            items={[
+              { label: "Code", href: `/${path}` },
+              { label: "Issues", href: `/${path}/issues` },
+              { label: "Pull requests", href: `/${path}/pulls`, active: true },
+              { label: "Commits", href: `/${path}/commits` },
+              { label: "Contributors", href: `/${path}/contributors` },
+            ]}
+          />
 
           <div class="max-w-[960px]">
             <h1 class="text-2xl font-normal mb-2">
@@ -37,19 +41,32 @@ export default Route.get(
             </h1>
 
             <div class="flex items-center gap-2 mb-6 pb-4 border-b border-[#21262d]">
-              <span class={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium ${
-                isMerged
-                  ? "bg-[#8957e5] text-white"
-                  : isOpen
-                    ? "bg-[#238636] text-white"
-                    : "bg-[#da3633] text-white"
-              }`}>
+              <span
+                class={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium ${
+                  isMerged
+                    ? "bg-[#8957e5] text-white"
+                    : isOpen
+                      ? "bg-[#238636] text-white"
+                      : "bg-[#da3633] text-white"
+                }`}
+              >
                 {isMerged ? "Merged" : isOpen ? "Open" : "Closed"}
               </span>
               <span class="text-sm text-[#8b949e]">
-                <a href={`/${pr.user?.login}`} class="font-semibold text-[#e6edf3] hover:text-[#58a6ff]">{pr.user?.login}</a>
-                {" "}wants to merge into <code class="px-1.5 py-0.5 bg-[#388bfd1a] text-[#58a6ff] rounded text-xs">{pr.base?.label}</code>
-                {" "}from <code class="px-1.5 py-0.5 bg-[#388bfd1a] text-[#58a6ff] rounded text-xs">{pr.head?.label}</code>
+                <a
+                  href={`/${pr.user?.login}`}
+                  class="font-semibold text-[#e6edf3] hover:text-[#58a6ff]"
+                >
+                  {pr.user?.login}
+                </a>{" "}
+                wants to merge into{" "}
+                <code class="px-1.5 py-0.5 bg-[#388bfd1a] text-[#58a6ff] rounded text-xs">
+                  {pr.base?.label}
+                </code>{" "}
+                from{" "}
+                <code class="px-1.5 py-0.5 bg-[#388bfd1a] text-[#58a6ff] rounded text-xs">
+                  {pr.head?.label}
+                </code>
               </span>
             </div>
 
@@ -96,16 +113,29 @@ export default Route.get(
   }),
 )
 
-function Comment(props: { login: string; avatar: string; date: string; body?: string | null; isAuthor?: boolean }) {
+function Comment(props: {
+  login: string
+  avatar: string
+  date: string
+  body?: string | null
+  isAuthor?: boolean
+}) {
   return (
     <div class="mb-4">
       <div class="border border-[#21262d] rounded-md">
         <div class="flex items-center gap-2 px-4 py-2 bg-[#161b22] border-b border-[#21262d] rounded-t-md">
           <img src={props.avatar} class="w-5 h-5 rounded-full" />
-          <a href={`/${props.login}`} class="text-sm font-semibold text-[#e6edf3] hover:text-[#58a6ff]">{props.login}</a>
+          <a
+            href={`/${props.login}`}
+            class="text-sm font-semibold text-[#e6edf3] hover:text-[#58a6ff]"
+          >
+            {props.login}
+          </a>
           <span class="text-xs text-[#8b949e]">commented {Github.timeAgo(props.date)}</span>
           {props.isAuthor && (
-            <span class="text-xs border border-[#30363d] rounded-full px-2 py-0.5 text-[#8b949e]">Author</span>
+            <span class="text-xs border border-[#30363d] rounded-full px-2 py-0.5 text-[#8b949e]">
+              Author
+            </span>
           )}
         </div>
         <div class="p-4 markdown-body text-sm">
@@ -123,10 +153,16 @@ function Comment(props: { login: string; avatar: string; date: string; body?: st
 function RepoHeader(props: { owner: string; repo: string }) {
   return (
     <div class="flex items-center gap-2 text-xl mb-4">
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="#8b949e"><path d="M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5Zm10.5-1h-8a1 1 0 0 0-1 1v6.708A2.486 2.486 0 0 1 4.5 9h8ZM5 12.25a.25.25 0 0 1 .25-.25h3.5a.25.25 0 0 1 .25.25v3.25a.25.25 0 0 1-.4.2l-1.45-1.087a.249.249 0 0 0-.3 0L5.4 15.7a.25.25 0 0 1-.4-.2Z" /></svg>
-      <a href={`/${props.owner}`} class="text-[#58a6ff] hover:underline">{props.owner}</a>
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="#8b949e">
+        <path d="M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5Zm10.5-1h-8a1 1 0 0 0-1 1v6.708A2.486 2.486 0 0 1 4.5 9h8ZM5 12.25a.25.25 0 0 1 .25-.25h3.5a.25.25 0 0 1 .25.25v3.25a.25.25 0 0 1-.4.2l-1.45-1.087a.249.249 0 0 0-.3 0L5.4 15.7a.25.25 0 0 1-.4-.2Z" />
+      </svg>
+      <a href={`/${props.owner}`} class="text-[#58a6ff] hover:underline">
+        {props.owner}
+      </a>
       <span class="text-[#8b949e]">/</span>
-      <a href={`/${props.owner}/${props.repo}`} class="text-[#58a6ff] font-bold hover:underline">{props.repo}</a>
+      <a href={`/${props.owner}/${props.repo}`} class="text-[#58a6ff] font-bold hover:underline">
+        {props.repo}
+      </a>
     </div>
   )
 }

@@ -26,13 +26,15 @@ export default Route.get(
       <Layout>
         <div class="pt-4">
           <RepoHeader owner={owner} repo={repo} />
-          <Tabs items={[
-            { label: "Code", href: `/${path}` },
-            { label: "Issues", href: `/${path}/issues` },
-            { label: "Pull requests", href: `/${path}/pulls` },
-            { label: "Commits", href: `/${path}/commits`, active: true },
-            { label: "Contributors", href: `/${path}/contributors` },
-          ]} />
+          <Tabs
+            items={[
+              { label: "Code", href: `/${path}` },
+              { label: "Issues", href: `/${path}/issues` },
+              { label: "Pull requests", href: `/${path}/pulls` },
+              { label: "Commits", href: `/${path}/commits`, active: true },
+              { label: "Contributors", href: `/${path}/contributors` },
+            ]}
+          />
 
           {commits.length === 0 ? (
             <EmptyState title="No commits" description="This repository has no commits" />
@@ -41,7 +43,9 @@ export default Route.get(
               {Object.entries(grouped).map(([date, dayCommits]) => (
                 <div class="mb-4">
                   <h3 class="text-sm font-semibold text-[#8b949e] mb-2 flex items-center gap-2">
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M11.93 8.5a4.002 4.002 0 0 1-7.86 0H.75a.75.75 0 0 1 0-1.5h3.32a4.002 4.002 0 0 1 7.86 0h3.32a.75.75 0 0 1 0 1.5Zm-1.43-.75a2.5 2.5 0 1 0-5 0 2.5 2.5 0 0 0 5 0Z" /></svg>
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                      <path d="M11.93 8.5a4.002 4.002 0 0 1-7.86 0H.75a.75.75 0 0 1 0-1.5h3.32a4.002 4.002 0 0 1 7.86 0h3.32a.75.75 0 0 1 0 1.5Zm-1.43-.75a2.5 2.5 0 1 0-5 0 2.5 2.5 0 0 0 5 0Z" />
+                    </svg>
                     Commits on {date}
                   </h3>
                   <div class="border border-[#21262d] rounded-md divide-y divide-[#21262d]">
@@ -69,10 +73,16 @@ export default Route.get(
 function RepoHeader(props: { owner: string; repo: string }) {
   return (
     <div class="flex items-center gap-2 text-xl mb-4">
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="#8b949e"><path d="M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5Zm10.5-1h-8a1 1 0 0 0-1 1v6.708A2.486 2.486 0 0 1 4.5 9h8ZM5 12.25a.25.25 0 0 1 .25-.25h3.5a.25.25 0 0 1 .25.25v3.25a.25.25 0 0 1-.4.2l-1.45-1.087a.249.249 0 0 0-.3 0L5.4 15.7a.25.25 0 0 1-.4-.2Z" /></svg>
-      <a href={`/${props.owner}`} class="text-[#58a6ff] hover:underline">{props.owner}</a>
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="#8b949e">
+        <path d="M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5Zm10.5-1h-8a1 1 0 0 0-1 1v6.708A2.486 2.486 0 0 1 4.5 9h8ZM5 12.25a.25.25 0 0 1 .25-.25h3.5a.25.25 0 0 1 .25.25v3.25a.25.25 0 0 1-.4.2l-1.45-1.087a.249.249 0 0 0-.3 0L5.4 15.7a.25.25 0 0 1-.4-.2Z" />
+      </svg>
+      <a href={`/${props.owner}`} class="text-[#58a6ff] hover:underline">
+        {props.owner}
+      </a>
       <span class="text-[#8b949e]">/</span>
-      <a href={`/${props.owner}/${props.repo}`} class="text-[#58a6ff] font-bold hover:underline">{props.repo}</a>
+      <a href={`/${props.owner}/${props.repo}`} class="text-[#58a6ff] font-bold hover:underline">
+        {props.repo}
+      </a>
     </div>
   )
 }

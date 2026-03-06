@@ -79,9 +79,7 @@ test.describe("html", () => {
   })
 
   test.test("strings with single quotes are escaped", () => {
-    test
-      .expect(html`<div>${"it's"}</div>`.value)
-      .toBe("<div>it&#39;s</div>")
+    test.expect(html`<div>${"it's"}</div>`.value).toBe("<div>it&#39;s</div>")
   })
 
   test.test("objects with single quotes are escaped", () => {
@@ -95,15 +93,11 @@ test.describe("html", () => {
   test.test("nested html does not double-escape", () => {
     const inner = html`${"<b>"}`
 
-    test
-      .expect(html`<div>${inner}</div>`.value)
-      .toBe("<div>&lt;b&gt;</div>")
+    test.expect(html`<div>${inner}</div>`.value).toBe("<div>&lt;b&gt;</div>")
   })
 
   test.test("array of strings escapes each item", () => {
-    test
-      .expect(html`${["<a>", "<b>"]as any}`.value)
-      .toBe("&lt;a&gt;&lt;b&gt;")
+    test.expect(html`${["<a>", "<b>"] as any}`.value).toBe("&lt;a&gt;&lt;b&gt;")
   })
 })
 

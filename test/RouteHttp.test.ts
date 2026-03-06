@@ -202,7 +202,9 @@ test.it("includes request in handler context", () =>
 
 test.it("returns Allow header on 405 and OPTIONS responses", () =>
   Effect.gen(function* () {
-    const handler = RouteHttp.toWebHandler(Route.get(Route.text("users")).post(Route.text("created")))
+    const handler = RouteHttp.toWebHandler(
+      Route.get(Route.text("users")).post(Route.text("created")),
+    )
     const client = Fetch.fromHandler(handler)
 
     const notAllowed = yield* client.fetch("http://localhost/users", { method: "DELETE" })
@@ -242,7 +244,9 @@ test.it("HEAD request to GET route returns 200 with no body", () =>
 
 test.it("HEAD is included in Allow header when GET routes exist", () =>
   Effect.gen(function* () {
-    const handler = RouteHttp.toWebHandler(Route.get(Route.text("users")).post(Route.text("created")))
+    const handler = RouteHttp.toWebHandler(
+      Route.get(Route.text("users")).post(Route.text("created")),
+    )
     const client = Fetch.fromHandler(handler)
 
     const notAllowed = yield* client.fetch("http://localhost/users", { method: "DELETE" })
@@ -2261,33 +2265,31 @@ test.describe("Route.render (format=*)", () => {
     }).pipe(Effect.runPromise),
   )
 
-  test.it(
-    "is always called regardless of Accept header when only handle routes exist",
-    () =>
-      Effect.gen(function* () {
-        const handler = RouteHttp.toWebHandler(
-          Route.get(
-            Route.render(function* () {
-              return "any format"
-            }),
-          ),
-        )
-        const client = Fetch.fromHandler(handler)
-
-        const entities = [
-          yield* client.get("http://localhost/", {
-            headers: { Accept: "text/event-stream" },
+  test.it("is always called regardless of Accept header when only handle routes exist", () =>
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.get(
+          Route.render(function* () {
+            return "any format"
           }),
-          yield* client.get("http://localhost/", { headers: { Accept: "image/png" } }),
-          yield* client.get("http://localhost/", { headers: { Accept: "*/*" } }),
-          yield* client.get("http://localhost/"),
-        ]
+        ),
+      )
+      const client = Fetch.fromHandler(handler)
 
-        for (const entity of entities) {
-          test.expect(entity.status).toBe(200)
-          test.expect(yield* entity.text).toBe("any format")
-        }
-      }).pipe(Effect.runPromise),
+      const entities = [
+        yield* client.get("http://localhost/", {
+          headers: { Accept: "text/event-stream" },
+        }),
+        yield* client.get("http://localhost/", { headers: { Accept: "image/png" } }),
+        yield* client.get("http://localhost/", { headers: { Accept: "*/*" } }),
+        yield* client.get("http://localhost/"),
+      ]
+
+      for (const entity of entities) {
+        test.expect(entity.status).toBe(200)
+        test.expect(yield* entity.text).toBe("any format")
+      }
+    }).pipe(Effect.runPromise),
   )
 
   test.it("can return Entity with custom headers", () =>

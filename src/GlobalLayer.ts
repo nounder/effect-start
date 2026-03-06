@@ -67,9 +67,7 @@ export const globalLayer =
               )
               yield* Deferred.succeed(deferred, ctx)
               yield* Effect.never
-            }).pipe(
-              Effect.catchAllCause((cause) => Deferred.failCause(deferred, cause)),
-            ),
+            }).pipe(Effect.catchAllCause((cause) => Deferred.failCause(deferred, cause))),
           ),
         ) as Fiber.RuntimeFiber<void>
 

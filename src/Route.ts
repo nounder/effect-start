@@ -212,8 +212,7 @@ export const text = RouteBody.build<string, "text">({
 
 export const html = RouteBody.build<string | JSX.Children, string, "html">({
   format: "html",
-  handle: (body) =>
-    typeof body === "string" ? body : Html.renderToString(body as JSX.Children),
+  handle: (body) => (typeof body === "string" ? body : Html.renderToString(body as JSX.Children)),
 })
 
 export const json = RouteBody.build<Values.Json, "json">({
@@ -232,16 +231,15 @@ export function redirect<D extends RouteDescriptor.Any, B, I extends Route.Tuple
 ): (
   self: RouteSet.RouteSet<D, B, I>,
 ) => RouteSet.RouteSet<D, B, [...I, Route.Route<{}, {}, "", never, never>]> {
-  const route = make<{}, {}, "">(
-    () =>
-      Effect.succeed(
-        Entity.make("", {
-          status: options?.status ?? 302,
-          headers: {
-            location: url instanceof URL ? url.href : url,
-          },
-        }),
-      ),
+  const route = make<{}, {}, "">(() =>
+    Effect.succeed(
+      Entity.make("", {
+        status: options?.status ?? 302,
+        headers: {
+          location: url instanceof URL ? url.href : url,
+        },
+      }),
+    ),
   )
 
   return (self) =>

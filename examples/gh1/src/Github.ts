@@ -9,13 +9,15 @@ const client = Fetch.use((request, next) =>
   Effect.gen(function* () {
     const token = yield* Config.string("GITHUB_TOKEN")
     const accept = request.headers.get("Accept") ?? "application/vnd.github+json"
-    return yield* next(new Request(request, {
-      headers: {
-        Accept: accept,
-        "X-GitHub-Api-Version": "2022-11-28",
-        Authorization: `Bearer ${token}`,
-      },
-    }))
+    return yield* next(
+      new Request(request, {
+        headers: {
+          Accept: accept,
+          "X-GitHub-Api-Version": "2022-11-28",
+          Authorization: `Bearer ${token}`,
+        },
+      }),
+    )
   }),
 ).use(Fetch.filterStatusOk())
 
@@ -29,7 +31,11 @@ function buildUrl(path: string, params?: Record<string, string | number | undefi
   return url.toString()
 }
 
-function request<A, I>(schema: Schema.Schema<A, I>, path: string, params?: Record<string, string | number | undefined>) {
+function request<A, I>(
+  schema: Schema.Schema<A, I>,
+  path: string,
+  params?: Record<string, string | number | undefined>,
+) {
   const url = buildUrl(path, params)
   return Effect.flatMap(
     Effect.flatMap(client.get(url), (entity) => entity.json),
@@ -175,18 +181,24 @@ const Commit = Schema.Struct({
   committer: Schema.NullOr(GithubOwner),
   html_url: Schema.String,
   parents: Schema.Array(Schema.Struct({ sha: Schema.String })),
-  stats: Schema.optional(Schema.Struct({
-    additions: Schema.Number,
-    deletions: Schema.Number,
-    total: Schema.Number,
-  })),
-  files: Schema.optional(Schema.Array(Schema.Struct({
-    filename: Schema.String,
-    status: Schema.String,
-    additions: Schema.Number,
-    deletions: Schema.Number,
-    patch: Schema.optional(Schema.String),
-  }))),
+  stats: Schema.optional(
+    Schema.Struct({
+      additions: Schema.Number,
+      deletions: Schema.Number,
+      total: Schema.Number,
+    }),
+  ),
+  files: Schema.optional(
+    Schema.Array(
+      Schema.Struct({
+        filename: Schema.String,
+        status: Schema.String,
+        additions: Schema.Number,
+        deletions: Schema.Number,
+        patch: Schema.optional(Schema.String),
+      }),
+    ),
+  ),
 })
 export type Commit = typeof Commit.Type
 
@@ -251,10 +263,12 @@ const OrgMember = Schema.Struct({
 
 const Languages = Schema.Record({ key: Schema.String, value: Schema.Number })
 
-export const getUser = (username: string) =>
-  request(User, `/users/${username}`)
+export const getUser = (username: string) => request(User, `/users/${username}`)
 
-export const getUserRepos = (username: string, opts?: { sort?: string; per_page?: number; page?: number }) =>
+export const getUserRepos = (
+  username: string,
+  opts?: { sort?: string; per_page?: number; page?: number },
+) =>
   request(Schema.Array(Repo), `/users/${username}/repos`, {
     sort: opts?.sort ?? "updated",
     per_page: opts?.per_page ?? 30,
@@ -262,31 +276,46 @@ export const getUserRepos = (username: string, opts?: { sort?: string; per_page?
     type: "owner",
   })
 
-export const getRepo = (owner: string, repo: string) =>
-  request(Repo, `/repos/${owner}/${repo}`)
+export const getRepo = (owner: string, repo: string) => request(Repo, `/repos/${owner}/${repo}`)
 
-export const getRepoIssues = (owner: string, repo: string, opts?: { state?: string; per_page?: number; page?: number }) =>
+export const getRepoIssues = (
+  owner: string,
+  repo: string,
+  opts?: { state?: string; per_page?: number; page?: number },
+) =>
   request(Schema.Array(Issue), `/repos/${owner}/${repo}/issues`, {
     state: opts?.state ?? "open",
     per_page: opts?.per_page ?? 30,
     page: opts?.page,
   })
 
-export const getRepoPulls = (owner: string, repo: string, opts?: { state?: string; per_page?: number; page?: number }) =>
+export const getRepoPulls = (
+  owner: string,
+  repo: string,
+  opts?: { state?: string; per_page?: number; page?: number },
+) =>
   request(Schema.Array(PullRequest), `/repos/${owner}/${repo}/pulls`, {
     state: opts?.state ?? "open",
     per_page: opts?.per_page ?? 30,
     page: opts?.page,
   })
 
-export const getRepoCommits = (owner: string, repo: string, opts?: { per_page?: number; page?: number; sha?: string }) =>
+export const getRepoCommits = (
+  owner: string,
+  repo: string,
+  opts?: { per_page?: number; page?: number; sha?: string },
+) =>
   request(Schema.Array(Commit), `/repos/${owner}/${repo}/commits`, {
     per_page: opts?.per_page ?? 30,
     page: opts?.page,
     sha: opts?.sha,
   })
 
-export const getRepoContributors = (owner: string, repo: string, opts?: { per_page?: number; page?: number }) =>
+export const getRepoContributors = (
+  owner: string,
+  repo: string,
+  opts?: { per_page?: number; page?: number },
+) =>
   request(Schema.Array(Contributor), `/repos/${owner}/${repo}/contributors`, {
     per_page: opts?.per_page ?? 100,
     page: opts?.page,
@@ -295,8 +324,15 @@ export const getRepoContributors = (owner: string, repo: string, opts?: { per_pa
 export const getIssue = (owner: string, repo: string, number: number) =>
   request(Issue, `/repos/${owner}/${repo}/issues/${number}`)
 
-export const getIssueComments = (owner: string, repo: string, number: number, opts?: { per_page?: number }) =>
-  request(Schema.Array(IssueComment), `/repos/${owner}/${repo}/issues/${number}/comments`, { per_page: opts?.per_page ?? 50 })
+export const getIssueComments = (
+  owner: string,
+  repo: string,
+  number: number,
+  opts?: { per_page?: number },
+) =>
+  request(Schema.Array(IssueComment), `/repos/${owner}/${repo}/issues/${number}/comments`, {
+    per_page: opts?.per_page ?? 50,
+  })
 
 export const getPull = (owner: string, repo: string, number: number) =>
   request(PullRequest, `/repos/${owner}/${repo}/pulls/${number}`)
@@ -310,7 +346,10 @@ export const getRepoReadme = (owner: string, repo: string) =>
 export const getRepoLanguages = (owner: string, repo: string) =>
   request(Languages, `/repos/${owner}/${repo}/languages`)
 
-export const searchRepos = (q: string, opts?: { sort?: string; order?: string; per_page?: number; page?: number }) =>
+export const searchRepos = (
+  q: string,
+  opts?: { sort?: string; order?: string; per_page?: number; page?: number },
+) =>
   request(SearchResult(Repo), "/search/repositories", {
     q,
     sort: opts?.sort ?? "stars",
@@ -319,7 +358,10 @@ export const searchRepos = (q: string, opts?: { sort?: string; order?: string; p
     page: opts?.page,
   })
 
-export const searchUsers = (q: string, opts?: { sort?: string; per_page?: number; page?: number }) =>
+export const searchUsers = (
+  q: string,
+  opts?: { sort?: string; per_page?: number; page?: number },
+) =>
   request(SearchResult(SearchUser), "/search/users", {
     q,
     sort: opts?.sort,
@@ -327,10 +369,12 @@ export const searchUsers = (q: string, opts?: { sort?: string; per_page?: number
     page: opts?.page,
   })
 
-export const getOrg = (org: string) =>
-  request(Org, `/orgs/${org}`)
+export const getOrg = (org: string) => request(Org, `/orgs/${org}`)
 
-export const getOrgRepos = (org: string, opts?: { sort?: string; per_page?: number; page?: number }) =>
+export const getOrgRepos = (
+  org: string,
+  opts?: { sort?: string; per_page?: number; page?: number },
+) =>
   request(Schema.Array(Repo), `/orgs/${org}/repos`, {
     sort: opts?.sort ?? "updated",
     per_page: opts?.per_page ?? 30,
@@ -344,28 +388,41 @@ export const getOrgMembers = (org: string, opts?: { per_page?: number; page?: nu
     page: opts?.page,
   })
 
-export const getUserStarred = (username: string, opts?: { per_page?: number; page?: number; sort?: string }) =>
+export const getUserStarred = (
+  username: string,
+  opts?: { per_page?: number; page?: number; sort?: string },
+) =>
   request(Schema.Array(Repo), `/users/${username}/starred`, {
     per_page: opts?.per_page ?? 30,
     page: opts?.page,
     sort: opts?.sort ?? "created",
   })
 
-export const getRepoReleases = (owner: string, repo: string, opts?: { per_page?: number; page?: number }) =>
-  request(Schema.Array(Schema.Struct({
-    id: Schema.Number,
-    tag_name: Schema.String,
-    name: Schema.NullOr(Schema.String),
-    body: Schema.NullOr(Schema.String),
-    draft: Schema.Boolean,
-    prerelease: Schema.Boolean,
-    created_at: Schema.String,
-    published_at: Schema.NullOr(Schema.String),
-    author: GithubOwner,
-  })), `/repos/${owner}/${repo}/releases`, {
-    per_page: opts?.per_page ?? 10,
-    page: opts?.page,
-  })
+export const getRepoReleases = (
+  owner: string,
+  repo: string,
+  opts?: { per_page?: number; page?: number },
+) =>
+  request(
+    Schema.Array(
+      Schema.Struct({
+        id: Schema.Number,
+        tag_name: Schema.String,
+        name: Schema.NullOr(Schema.String),
+        body: Schema.NullOr(Schema.String),
+        draft: Schema.Boolean,
+        prerelease: Schema.Boolean,
+        created_at: Schema.String,
+        published_at: Schema.NullOr(Schema.String),
+        author: GithubOwner,
+      }),
+    ),
+    `/repos/${owner}/${repo}/releases`,
+    {
+      per_page: opts?.per_page ?? 10,
+      page: opts?.page,
+    },
+  )
 
 export const getTrending = (opts?: { language?: string; since?: string }) => {
   const days = opts?.since === "monthly" ? 30 : opts?.since === "weekly" ? 7 : 1

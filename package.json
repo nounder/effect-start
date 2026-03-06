@@ -56,7 +56,7 @@
       "bun": "./src/experimental/index.ts",
       "default": "./dist/experimental/index.js"
     },
-"./sql": {
+    "./sql": {
       "bun": "./src/sql/index.ts",
       "default": "./dist/sql/index.js"
     },

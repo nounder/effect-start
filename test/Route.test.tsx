@@ -142,7 +142,9 @@ test.describe("Route.html with JSX", () => {
 
       test
         .expect(yield* entity.text)
-        .toBe(`<div data-signals='{"draft":"","pendingDraft":"","username":"User123"}'>Content</div>`)
+        .toBe(
+          `<div data-signals='{"draft":"","pendingDraft":"","username":"User123"}'>Content</div>`,
+        )
     }).pipe(Effect.runPromise),
   )
 

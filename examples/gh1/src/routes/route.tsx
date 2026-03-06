@@ -15,9 +15,21 @@ export default Route.get(
         </div>
 
         <div class="flex gap-2 mb-6 text-sm">
-          <a href="/" class="px-3 py-1 rounded-md bg-[#21262d] text-[#e6edf3] font-medium">Weekly</a>
-          <a href="/?since=daily" class="px-3 py-1 rounded-md text-[#8b949e] hover:text-[#e6edf3] hover:bg-[#21262d]">Daily</a>
-          <a href="/?since=monthly" class="px-3 py-1 rounded-md text-[#8b949e] hover:text-[#e6edf3] hover:bg-[#21262d]">Monthly</a>
+          <a href="/" class="px-3 py-1 rounded-md bg-[#21262d] text-[#e6edf3] font-medium">
+            Weekly
+          </a>
+          <a
+            href="/?since=daily"
+            class="px-3 py-1 rounded-md text-[#8b949e] hover:text-[#e6edf3] hover:bg-[#21262d]"
+          >
+            Daily
+          </a>
+          <a
+            href="/?since=monthly"
+            class="px-3 py-1 rounded-md text-[#8b949e] hover:text-[#e6edf3] hover:bg-[#21262d]"
+          >
+            Monthly
+          </a>
         </div>
 
         <div>

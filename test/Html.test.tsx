@@ -363,9 +363,7 @@ test.it("data-* function values are serialized with toString", () => {
 })
 
 test.it("data-* object values don't render as [object Object]", () => {
-  const html = Html.renderToString(
-    <div data-signals={{ isOpen: false, count: 42 }}>content</div>,
-  )
+  const html = Html.renderToString(<div data-signals={{ isOpen: false, count: 42 }}>content</div>)
 
   test.expect(html).toBe(`<div data-signals='{"isOpen":false,"count":42}'>content</div>`)
   test.expect(html).not.toContain("[object Object]")

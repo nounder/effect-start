@@ -78,7 +78,8 @@ export const make = (
       },
     ]
 
-    const setRoutesDeferred = yield* Deferred.make<(tree: RouteTree.RouteTree) => Effect.Effect<void>>()
+    const setRoutesDeferred =
+      yield* Deferred.make<(tree: RouteTree.RouteTree) => Effect.Effect<void>>()
 
     const service = BunServer.of({
       // During the construction we need to create a service imlpementation
@@ -97,7 +98,9 @@ export const make = (
         reload()
       },
       setRoutes(tree) {
-        return Deferred.await(setRoutesDeferred).pipe(Effect.flatMap((applyRoutes) => applyRoutes(tree)))
+        return Deferred.await(setRoutesDeferred).pipe(
+          Effect.flatMap((applyRoutes) => applyRoutes(tree)),
+        )
       },
     })
 
@@ -179,7 +182,9 @@ export const make = (
         reload()
       },
       setRoutes(tree) {
-        return Deferred.await(setRoutesDeferred).pipe(Effect.flatMap((applyRoutes) => applyRoutes(tree)))
+        return Deferred.await(setRoutesDeferred).pipe(
+          Effect.flatMap((applyRoutes) => applyRoutes(tree)),
+        )
       },
     })
 
