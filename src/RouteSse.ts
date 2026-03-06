@@ -64,10 +64,10 @@ export function sse<
   I extends Route.Route.Tuple,
   E = never,
   R = never,
->(handler: SseHandlerInput<NoInfer<D & B & Route.ExtractBindings<I> & { format: "text" }>, E, R>) {
+>(handler: SseHandlerInput<NoInfer<D & B & Route.ExtractBindings<I> & { format: "sse" }>, E, R>) {
   return function (self: Route.RouteSet.RouteSet<D, B, I>) {
     const sseHandler: Route.Route.Handler<
-      D & B & Route.ExtractBindings<I> & { format: "text" },
+      D & B & Route.ExtractBindings<I> & { format: "sse" },
       Stream.Stream<string, E, R>,
       E,
       R
@@ -113,20 +113,20 @@ export function sse<
       })
     }
 
-    const route = Route.make<{ format: "text" }, {}, Stream.Stream<string, E, R>, E, R>(
+    const route = Route.make<{ format: "sse" }, {}, Stream.Stream<string, E, R>, E, R>(
       sseHandler as any,
-      { format: "text" },
+      { format: "sse" },
     )
 
     const items: [
       ...I,
-      Route.Route.Route<{ format: "text" }, {}, Stream.Stream<string, E, R>, E, R>,
+      Route.Route.Route<{ format: "sse" }, {}, Stream.Stream<string, E, R>, E, R>,
     ] = [...Route.items(self), route]
 
     return Route.set<
       D,
       B,
-      [...I, Route.Route.Route<{ format: "text" }, {}, Stream.Stream<string, E, R>, E, R>]
+      [...I, Route.Route.Route<{ format: "sse" }, {}, Stream.Stream<string, E, R>, E, R>]
     >(items, Route.descriptor(self))
   }
 }

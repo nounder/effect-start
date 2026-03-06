@@ -6,13 +6,14 @@ import * as Route from "./Route.ts"
 import * as StreamExtra from "./_StreamExtra.ts"
 import type * as Values from "./_Values.ts"
 
-export type Format = "text" | "html" | "json" | "bytes" | "*"
+export type Format = "text" | "html" | "json" | "bytes" | "sse" | "*"
 
 const formatToContentType: Record<Format, string | undefined> = {
   text: "text/plain; charset=utf-8",
   html: "text/html; charset=utf-8",
   json: "application/json",
   bytes: "application/octet-stream",
+  sse: "text/event-stream",
   "*": undefined,
 }
 

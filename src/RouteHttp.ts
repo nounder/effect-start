@@ -24,12 +24,12 @@ type UnboundedRouteWithMethod = Route.Route.With<{
 }>
 
 // Used to match Accept headers against available route formats.
-// text/* matches any text type (text/plain, text/event-stream, text/markdown, etc.)
 const formatToMediaType = {
   text: "text/*",
   html: "text/html",
   json: "application/json",
   bytes: "application/octet-stream",
+  sse: "text/event-stream",
 } as const
 
 // Used after content negotiation to determine which format was selected.
@@ -38,6 +38,7 @@ const mediaTypeToFormat = {
   "text/html": "html",
   "application/json": "json",
   "application/octet-stream": "bytes",
+  "text/event-stream": "sse",
 } as const
 
 /**
@@ -115,7 +116,7 @@ function toResponse(
     )
   }
 
-  if (format === "text" || format === "html") {
+  if (format === "text" || format === "html" || format === "sse") {
     return Effect.map(
       entity.text as Effect.Effect<string, ParseResult.ParseError>,
       (text) => new Response(text, { status, headers }),
