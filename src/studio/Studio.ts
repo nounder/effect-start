@@ -10,7 +10,7 @@ import * as StudioMetrics from "./StudioMetrics.ts"
 import * as StudioProcess from "./StudioProcess.ts"
 import * as StudioStore from "./StudioStore.ts"
 import * as StudioTracer from "./StudioTracer.ts"
-import consoleRoutes from "./routes/tree.ts"
+import routes from "./routes/tree.ts"
 
 export function layer(
   options?: StudioStore.StudioStoreOptions & {
@@ -39,7 +39,7 @@ export function layerRoutes(options?: { prefix?: string }) {
       const existing = yield* Route.Routes
       StudioStore.store.prefix = prefix
       const tree = Route.tree({
-        [prefix as "/"]: consoleRoutes,
+        [prefix as "/"]: routes,
       })
       return RouteTree.merge(existing, tree)
     }),

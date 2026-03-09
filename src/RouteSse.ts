@@ -12,10 +12,9 @@ const HEARTBEAT_INTERVAL = Duration.seconds(5)
 const HEARTBEAT = ": <3\n\n"
 
 interface SseEvent {
-  readonly [key: string]: unknown
   readonly _tag?: string
   readonly data?: string | undefined
-  readonly type?: string
+  readonly event?: string
   readonly retry?: number
 }
 
@@ -26,8 +25,8 @@ function formatSseEvent(event: SseEvent): string {
   }
 
   let result = ""
-  if (event.type) {
-    result += `event: ${event.type}\n`
+  if (event.event) {
+    result += `event: ${event.event}\n`
   }
   if (typeof event.data === "string") {
     for (const line of event.data.split("\n")) {
@@ -48,6 +47,7 @@ type SseHandlerInput<B, E, R> =
   | Effect.Effect<Stream.Stream<SseEvent, E, R>, E, R>
   | ((
       context: Values.Simplify<B>,
+      // TODO: typing is super loose here
       next: (context?: Partial<B> & Record<string, unknown>) => Entity.Entity<string>,
     ) =>
       | Stream.Stream<SseEvent, E, R>

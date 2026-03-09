@@ -78,7 +78,6 @@ export const toReadableStreamRuntimePatched = Function.dual<
               ),
             ),
           )
-          // --- CHANGES HERE ---
           // In original code, we had fiber.addObserver here that called
           // error() or close() on controller. This patched version removes it.
         },

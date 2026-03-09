@@ -29,7 +29,7 @@ test.describe("Route.sse()", () => {
   test.it("accepts object events with data and type", () => {
     RouteMount.get(
       Route.sse(() =>
-        Stream.make({ data: "hello", type: "message" }, { data: "world", type: "update" }),
+        Stream.make({ data: "hello", event: "message" }, { data: "world", event: "update" }),
       ),
     )
   })
@@ -69,10 +69,10 @@ test.describe("Route.sse()", () => {
     }).pipe(Effect.runPromise),
   )
 
-  test.it("formats events with type field", () =>
+  test.it("formats events with event field", () =>
     Effect.gen(function* () {
       const handler = RouteHttp.toWebHandler(
-        Route.get(Route.sse(() => Stream.make({ data: "payload", type: "custom" }))),
+        Route.get(Route.sse(() => Stream.make({ data: "payload", event: "custom" }))),
       )
       const client = Fetch.fromHandler(handler)
       const entity = yield* client.get("http://localhost/events")
@@ -99,7 +99,7 @@ test.describe("Route.sse()", () => {
         Route.get(
           Route.sse(() =>
             Stream.make({
-              type: "patch",
+              event: "patch",
               data: "line1\nline2\nline3",
             }),
           ),
@@ -204,7 +204,7 @@ test.describe("Route.sse()", () => {
             Stream.make(
               { data: "plain message" },
               { _tag: "Notification", text: "hello" },
-              { data: "another", type: "custom" },
+              { data: "another", event: "custom" },
             ),
           ),
         ),

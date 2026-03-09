@@ -286,7 +286,7 @@ export function retry(options: {
 
 interface SseEvent {
   data?: string | undefined
-  type?: string
+  event?: string
   retry?: number
   id?: string
 }
@@ -330,7 +330,7 @@ export function sse(_options?: {
         if (line === "") {
           if (acc.dataLines.length > 0) {
             const event: SseEvent = { data: acc.dataLines.join("\n") }
-            if (acc.eventType !== undefined) event.type = acc.eventType
+            if (acc.eventType !== undefined) event.event = acc.eventType
             if (acc.retryMs !== undefined) event.retry = acc.retryMs
             if (acc.lastEventId !== undefined) event.id = acc.lastEventId
             return [{ ...empty, lastEventId: acc.lastEventId }, event]

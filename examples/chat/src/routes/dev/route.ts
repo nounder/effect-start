@@ -1,3 +1,13 @@
+import * as Stream from "effect/Stream"
 import { Development, Route } from "effect-start"
 
-export default Route.get(Route.sse(Development.stream()))
+export default Route.get(
+  Route.sse(
+    Development.events.pipe(
+      Stream.map((event) => ({
+        type: event._tag,
+        event: JSON.stringify(event),
+      })),
+    ),
+  ),
+)

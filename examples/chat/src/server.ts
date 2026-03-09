@@ -5,7 +5,6 @@ import { TailscaleTunnel } from "effect-start/tailscale"
 export default Start.pack(
   Studio.layerRoutes(),
   Simulation.layer(),
-  TailscaleTunnel.layer(),
   Studio.layer(),
   Development.layer(),
   FileRouter.layer(() => import("./routes/.server.ts")),

@@ -24,7 +24,7 @@ test.describe("Fetch.sse", () => {
         .expect(Array.from(events))
         .toEqual([
           { data: "hello" },
-          { data: "world", type: "custom" },
+          { data: "world", event: "custom" },
           { data: "retry-test", retry: 3000 },
         ])
     }).pipe(
@@ -34,7 +34,7 @@ test.describe("Fetch.sse", () => {
             Route.sse(() =>
               Stream.make(
                 { data: "hello" },
-                { data: "world", type: "custom" },
+                { data: "world", event: "custom" },
                 { data: "retry-test", retry: 3000 },
               ),
             ),
@@ -105,7 +105,7 @@ test.describe("Fetch.sse", () => {
       test.expect(Array.from(events)).toEqual([
         {
           data: '{"_tag":"UserCreated","id":1,"name":"Alice"}',
-          type: "UserCreated",
+          event: "UserCreated",
         },
       ])
     }).pipe(

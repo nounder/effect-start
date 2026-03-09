@@ -251,8 +251,6 @@ test.describe(Start.build, () => {
   })
 })
 
-// --- Test services for Start.pack tests ---
-
 class Logger extends Context.Tag("Logger")<
   Logger,
   { log: (msg: string) => Effect.Effect<void> }
