@@ -32,6 +32,24 @@ export const nextSpanId = () => nextPackedId()
 
 export const nextTraceId = () => nextPackedId()
 
+export const studioTraceAttribute = "effect-start.studio.internal"
+
+export function isStudioTrace(spans: Array<StudioSpan>): boolean {
+  return spans.some((span) => span.attributes[studioTraceAttribute] === true)
+}
+
+export function filterOutStudioSpans(spans: Array<StudioSpan>): Array<StudioSpan> {
+  const hiddenTraceIds = new Set<bigint>()
+
+  for (const span of spans) {
+    if (span.attributes[studioTraceAttribute] === true) {
+      hiddenTraceIds.add(span.traceId)
+    }
+  }
+
+  return spans.filter((span) => !hiddenTraceIds.has(span.traceId))
+}
+
 export interface StudioSpan {
   readonly spanId: bigint
   readonly traceId: bigint

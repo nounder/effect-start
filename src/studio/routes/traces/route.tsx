@@ -12,7 +12,7 @@ export default Route.get(
   Route.html(function* (ctx) {
     const url = new URL(ctx.request.url)
     const search = url.searchParams.get("traceSearch") || ""
-    const allSpans = yield* StudioStore.allSpans()
+    const allSpans = StudioStore.filterOutStudioSpans(yield* StudioStore.allSpans())
     const names = Array.from(new Set(allSpans.map((s) => s.name))).sort()
     let spans = allSpans
     if (search) {
@@ -56,6 +56,9 @@ export default Route.get(
       Stream.mapEffect((e) =>
         Effect.gen(function* () {
           const traceSpans = yield* StudioStore.spansByTraceId(e.traceId)
+          if (StudioStore.isStudioTrace(traceSpans)) {
+            return undefined
+          }
           const traceHtml = Html.renderToString(
             <Traces.TraceGroup id={e.traceId} spans={traceSpans} />,
           )
@@ -66,6 +69,7 @@ export default Route.get(
           }
         }),
       ),
+      Stream.filter((event): event is { event: string; data: string } => event !== undefined),
     ),
   ),
 )
