@@ -1,6 +1,7 @@
 import * as Unique from "../../Unique.ts"
 import * as StudioStore from "../StudioStore.ts"
 import * as Logs from "./Logs.tsx"
+import * as PrettyValue from "./_PrettyValue.tsx"
 
 function formatDuration(ms: number | undefined): string {
   if (ms == null) return "..."
@@ -9,14 +10,20 @@ function formatDuration(ms: number | undefined): string {
   return `${(ms / 1000).toFixed(2)}s`
 }
 
-function KeyValue(options: { label: string; value: string | number | bigint | undefined | null }) {
+function KeyValue(options: { label: string; value: unknown }) {
   if (options.value == null) return null
   return (
-    <div style="display:flex;gap:8px;padding:4px 0;border-bottom:1px solid #1e293b;font-size:12px">
+    <div
+      style="display:flex;align-items:flex-start;gap:8px;padding:4px 0;border-bottom:1px solid #1e293b;font-size:12px"
+    >
       <span style="color:#64748b;min-width:120px">{options.label}</span>
-      <span style="color:#e2e8f0;font-family:monospace;word-break:break-all">
-        {String(options.value)}
-      </span>
+      <div style="flex:1;min-width:0">
+        <PrettyValue.PrettyValue
+          value={options.value}
+          style="color:#e2e8f0;font-family:monospace;word-break:break-all"
+          preStyle="color:#e2e8f0;font-family:monospace;word-break:break-all;white-space:pre-wrap;margin:0"
+        />
+      </div>
     </div>
   )
 }
@@ -276,10 +283,7 @@ export function FiberDetail(options: {
                   </div>
                 )}
                 {Object.entries(options.context.annotations).map(([k, v]) => (
-                  <KeyValue
-                    label={k}
-                    value={typeof v === "object" ? JSON.stringify(v) : String(v)}
-                  />
+                  <KeyValue label={k} value={v} />
                 ))}
               </div>
             </div>
@@ -310,7 +314,7 @@ export function FiberDetail(options: {
                   {Object.entries(s.attributes)
                     .filter(([k]) => k !== "code.stacktrace")
                     .map(([k, v]) => (
-                      <KeyValue label={k} value={String(v)} />
+                      <KeyValue label={k} value={v} />
                     ))}
                 </div>
               )

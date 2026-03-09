@@ -5,6 +5,7 @@ import * as HashMap from "effect/HashMap"
 import * as List from "effect/List"
 import * as Logger from "effect/Logger"
 import * as PubSub from "effect/PubSub"
+import * as Pretty from "./_Pretty.ts"
 import * as StudioStore from "./StudioStore.ts"
 
 const studioLogger = Logger.make((options) => {
@@ -32,7 +33,7 @@ const studioLogger = Logger.make((options) => {
     const log: StudioStore.StudioLog = {
       id: StudioStore.nextLogId(),
       level,
-      message: String(options.message),
+      message: Pretty.formatLogMessage(options.message),
       fiberId: FiberId.threadName(options.fiberId),
       cause: causeStr,
       spans: spanNames,
