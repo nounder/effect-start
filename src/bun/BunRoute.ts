@@ -139,6 +139,16 @@ export function htmlBundle(load: () => HTMLBundleModule | Promise<HTMLBundleModu
         const childEntity = yield* next(context).pipe(
           Effect.locally(bundleDepthRef, bundleDepth + 1),
         )
+
+        if (
+          Entity.isEntity(childEntity) &&
+          childEntity.status &&
+          childEntity.status >= 300 &&
+          childEntity.status < 400
+        ) {
+          return childEntity
+        }
+
         const children = childEntity?.body ?? childEntity
 
         let childrenHtml = ""

@@ -1755,6 +1755,35 @@ test.describe("schema handlers", () => {
     }).pipe(Effect.runPromise),
   )
 
+  test.it("parses wildcard path params", () =>
+    Effect.gen(function* () {
+      const tree = RouteTree.make({
+        "/files/:path+": Route.get(
+          RouteSchema.schemaPathParams(
+            Schema.Struct({
+              path: Schema.String,
+            }),
+          ),
+          Route.json(function* (ctx) {
+            return {
+              path: ctx.pathParams.path,
+            }
+          }),
+        ),
+      })
+
+      const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
+      const handler = handles["/files/:path+"]
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/files/nested/hello.txt")
+
+      test.expect(entity.status).toBe(200)
+      test.expect(yield* entity.json).toEqual({
+        path: "nested/hello.txt",
+      })
+    }).pipe(Effect.runPromise),
+  )
+
   test.it("path params validation fails on invalid input", () =>
     Effect.gen(function* () {
       const runtime = yield* Effect.runtime<TestLogger.TestLogger>()
