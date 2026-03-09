@@ -8,8 +8,8 @@ import * as Shell from "../../ui/Shell.tsx"
 
 export default Route.get(
   Route.html(function* () {
-    const logs = yield* StudioStore.allLogs(StudioStore.store.sql)
-    const spans = yield* StudioStore.allSpans(StudioStore.store.sql)
+    const logs = yield* StudioStore.allLogs()
+    const spans = yield* StudioStore.allSpans()
     const fibers = Fibers.collectFibers(logs, spans)
     return (
       <Shell.Shell prefix={StudioStore.store.prefix} active="fibers">
@@ -28,8 +28,8 @@ export default Route.get(
       Stream.filter((e) => e._tag === "SpanStart" || e._tag === "SpanEnd" || e._tag === "Log"),
       Stream.mapEffect(() =>
         Effect.gen(function* () {
-          const logs = yield* StudioStore.allLogs(StudioStore.store.sql)
-          const spans = yield* StudioStore.allSpans(StudioStore.store.sql)
+          const logs = yield* StudioStore.allLogs()
+          const spans = yield* StudioStore.allSpans()
           const fibers = Fibers.collectFibers(logs, spans)
           const html = Html.renderToString(
             <Fibers.FiberList fibers={fibers} prefix={StudioStore.store.prefix} />,

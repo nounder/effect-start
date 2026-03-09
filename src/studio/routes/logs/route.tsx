@@ -12,7 +12,7 @@ export default Route.get(
     const url = new URL(ctx.request.url)
     const level = url.searchParams.get("logLevel") || ""
     const search = url.searchParams.get("logSearch") || ""
-    let logs = yield* StudioStore.allLogs(StudioStore.store.sql)
+    let logs = yield* StudioStore.allLogs()
     if (level) logs = logs.filter((l) => l.level === level)
     if (search) {
       const lower = search.toLowerCase()
@@ -53,6 +53,8 @@ export default Route.get(
               <Logs.LogLine log={l} />
             ))}
           </div>
+
+          <div data-init={`@get('${prefix}/logs')`} />
         </form>
       </Shell.Shell>
     )

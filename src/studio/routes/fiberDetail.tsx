@@ -12,8 +12,8 @@ export default Route.get(
     const fiberId = ctx.pathParams.id
     const fiberName = fiberId.startsWith("#") ? fiberId : `#${fiberId}`
 
-    const fiberLogs = yield* StudioStore.logsByFiberId(StudioStore.store.sql, fiberName)
-    const fiberSpans = yield* StudioStore.spansByFiberId(StudioStore.store.sql, fiberName)
+    const fiberLogs = yield* StudioStore.logsByFiberId(fiberName)
+    const fiberSpans = yield* StudioStore.spansByFiberId(fiberName)
 
     const fiberNum = parseInt(fiberName.slice(1), 10)
     const counter = StudioStore.fiberIdCounter()
@@ -30,8 +30,8 @@ export default Route.get(
       else if (fiberNum < counter) alive = "dead"
     }
 
-    const parents = yield* StudioStore.getParentChain(StudioStore.store.sql, fiberName)
-    const fiberContext = yield* StudioStore.getFiberContext(StudioStore.store.sql, fiberName)
+    const parents = yield* StudioStore.getParentChain(fiberName)
+    const fiberContext = yield* StudioStore.getFiberContext(fiberName)
 
     return (
       <Shell.Shell prefix={StudioStore.store.prefix} active="fibers">

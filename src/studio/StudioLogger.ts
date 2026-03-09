@@ -9,7 +9,6 @@ import * as StudioStore from "./StudioStore.ts"
 
 const studioLogger = Logger.make((options) => {
   const store = StudioStore.store
-  if (!store.sql) return
 
   try {
     const levelMap: Record<string, StudioStore.StudioLog["level"]> = {
@@ -41,8 +40,8 @@ const studioLogger = Logger.make((options) => {
     }
     StudioStore.runWrite(
       Effect.zipRight(
-        StudioStore.insertLog(store.sql, log),
-        StudioStore.evict(store.sql, "Log", store.logCapacity),
+        StudioStore.insertLog(log),
+        StudioStore.evict("Log", store.logCapacity),
       ),
     )
     Effect.runSync(PubSub.publish(store.events, { _tag: "Log", log }))

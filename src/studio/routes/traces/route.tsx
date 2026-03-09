@@ -12,7 +12,7 @@ export default Route.get(
   Route.html(function* (ctx) {
     const url = new URL(ctx.request.url)
     const search = url.searchParams.get("traceSearch") || ""
-    const allSpans = yield* StudioStore.allSpans(StudioStore.store.sql)
+    const allSpans = yield* StudioStore.allSpans()
     const names = Array.from(new Set(allSpans.map((s) => s.name))).sort()
     let spans = allSpans
     if (search) {
@@ -52,14 +52,17 @@ export default Route.get(
   }),
   Route.sse(
     Stream.fromPubSub(StudioStore.store.events).pipe(
-      Stream.filter((e) => e._tag === "SpanStart" || e._tag === "SpanEnd"),
-      Stream.mapEffect(() =>
+      Stream.filter((e) => e._tag === "TraceEnd"),
+      Stream.mapEffect((e) =>
         Effect.gen(function* () {
-          const spans = yield* StudioStore.allSpans(StudioStore.store.sql)
-          const html = Html.renderToString(<Traces.TraceGroups spans={spans} />).replace(/\n/g, "")
+          const traceSpans = yield* StudioStore.spansByTraceId(e.traceId)
+          const traceHtml = Html.renderToString(
+            <Traces.TraceGroup id={e.traceId} spans={traceSpans} />,
+          )
+
           return {
             event: "datastar-patch-elements",
-            data: `selector #traces-container\nmode inner\nelements ${html}`,
+            data: `selector .tl-header\nmode after\nelements ${traceHtml}`,
           }
         }),
       ),

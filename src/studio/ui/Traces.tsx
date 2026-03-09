@@ -47,6 +47,20 @@ interface TreeSpan {
   ancestorHasNextSibling: Array<boolean>
 }
 
+function sortByStartTime(a: StudioStore.StudioSpan, b: StudioStore.StudioSpan): number {
+  if (a.startTime < b.startTime) return -1
+  if (a.startTime > b.startTime) return 1
+  return 0
+}
+
+function pickRootSpan(spans: Array<StudioStore.StudioSpan>): StudioStore.StudioSpan {
+  const spanIds = new Set(spans.map((span) => span.spanId))
+  return (
+    spans.find((span) => !span.parentSpanId || !spanIds.has(span.parentSpanId)) ??
+    spans.slice().sort(sortByStartTime)[0]
+  )
+}
+
 function buildSpanTree(spans: Array<StudioStore.StudioSpan>): Array<TreeSpan> {
   const byId = new Map<bigint, StudioStore.StudioSpan>()
   const childrenOf = new Map<bigint, Array<StudioStore.StudioSpan>>()
@@ -69,23 +83,31 @@ function buildSpanTree(spans: Array<StudioStore.StudioSpan>): Array<TreeSpan> {
     }
   }
 
-  const sortByStart = (a: StudioStore.StudioSpan, b: StudioStore.StudioSpan) =>
-    Number(a.startTime - b.startTime)
-
-  roots.sort(sortByStart)
+  roots.sort(sortByStartTime)
   for (const children of childrenOf.values()) {
-    children.sort(sortByStart)
+    children.sort(sortByStartTime)
   }
 
   const result: Array<TreeSpan> = []
+  const visited = new Set<bigint>()
 
   function walk(
     span: StudioStore.StudioSpan,
     depth: number,
     isLast: boolean,
     ancestors: Array<boolean>,
+    lineage: Set<bigint>,
   ) {
-    const children = childrenOf.get(span.spanId) ?? []
+    if (lineage.has(span.spanId) || visited.has(span.spanId)) return
+
+    const nextLineage = new Set(lineage)
+    nextLineage.add(span.spanId)
+
+    const children = (childrenOf.get(span.spanId) ?? []).filter(
+      (child) => !nextLineage.has(child.spanId) && !visited.has(child.spanId),
+    )
+
+    visited.add(span.spanId)
     result.push({
       span,
       depth,
@@ -94,12 +116,18 @@ function buildSpanTree(spans: Array<StudioStore.StudioSpan>): Array<TreeSpan> {
       ancestorHasNextSibling: [...ancestors],
     })
     for (let i = 0; i < children.length; i++) {
-      walk(children[i], depth + 1, i === children.length - 1, [...ancestors, !isLast])
+      walk(children[i], depth + 1, i === children.length - 1, [...ancestors, !isLast], nextLineage)
     }
   }
 
   for (let i = 0; i < roots.length; i++) {
-    walk(roots[i], 0, i === roots.length - 1, [])
+    walk(roots[i], 0, i === roots.length - 1, [], new Set())
+  }
+
+  const remaining = spans.filter((span) => !visited.has(span.spanId)).sort(sortByStartTime)
+
+  for (let i = 0; i < remaining.length; i++) {
+    walk(remaining[i], 0, i === remaining.length - 1, [], new Set())
   }
 
   return result
@@ -225,17 +253,17 @@ export function groupByTraceId(
   return groups
 }
 
-export function TraceGroup(options: { spans: Array<StudioStore.StudioSpan> }) {
+export function TraceGroup(options: { id?: bigint; spans: Array<StudioStore.StudioSpan> }) {
   if (options.spans.length === 0) return null
-  const root = options.spans.find((s) => !s.parentSpanId) ?? options.spans[0]
-  const traceId = root.traceId
+  const root = pickRootSpan(options.spans)
+  const traceId = options.id ?? root.traceId
   const totalMs = root.durationMs ?? 0
   const rootStart = root.startTime
   const hasError = options.spans.some((s) => s.status === "error")
   const status = hasError ? "error" : root.status
 
   return (
-    <details class="tl-row">
+    <details id={`trace-${traceId}`} class="tl-row">
       <summary class="tl-summary tl-cols">
         <span class="tl-cell tl-cell-status">
           <span
@@ -324,7 +352,7 @@ export function TraceDetail(options: { prefix: string; spans: Array<StudioStore.
   if (options.spans.length === 0) {
     return <div class="empty">Trace not found</div>
   }
-  const root = options.spans.find((s) => !s.parentSpanId) ?? options.spans[0]
+  const root = pickRootSpan(options.spans)
   const traceId = root.traceId
   const totalMs = root.durationMs ?? 0
   const rootStart = root.startTime

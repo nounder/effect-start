@@ -12,7 +12,7 @@ export default Route.get(
     const url = new URL(ctx.request.url)
     const search = url.searchParams.get("errorSearch") || ""
     const tag = url.searchParams.get("errorTag") || ""
-    const allErrors = yield* StudioStore.allErrors(StudioStore.store.sql)
+    const allErrors = yield* StudioStore.allErrors()
     const tagSet = new Set<string>()
     for (const error of allErrors) {
       for (const d of error.details) {
@@ -67,6 +67,8 @@ export default Route.get(
               <Errors.ErrorLine error={e} />
             ))}
           </div>
+
+          <div data-init={`@get('${prefix}/errors')`} />
         </form>
       </Shell.Shell>
     )

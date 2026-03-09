@@ -114,6 +114,8 @@ export interface StudioMetricSnapshot {
 export type StudioEvent =
   | { readonly _tag: "SpanStart"; readonly span: StudioSpan }
   | { readonly _tag: "SpanEnd"; readonly span: StudioSpan }
+  | { readonly _tag: "TraceStart"; readonly traceId: bigint }
+  | { readonly _tag: "TraceEnd"; readonly traceId: bigint }
   | { readonly _tag: "Log"; readonly log: StudioLog }
   | { readonly _tag: "Error"; readonly error: StudioError }
   | { readonly _tag: "MetricsSnapshot"; readonly metrics: Array<StudioMetricSnapshot> }
@@ -327,179 +329,221 @@ function deserializeError(row: ErrorRow): StudioError {
   }
 }
 
-export function insertSpan(sql: SqlClient.SqlClient, span: StudioSpan) {
-  return sql`INSERT INTO Span ${sql({
-    spanId: span.spanId,
-    traceId: span.traceId,
-    fiberId: span.fiberId ?? null,
-    name: span.name,
-    kind: span.kind,
-    parentSpanId: span.parentSpanId ?? null,
-    startTime: span.startTime.toString(),
-    endTime: span.endTime?.toString() ?? null,
-    durationMs: span.durationMs ?? null,
-    status: span.status,
-    attributes: JSON.stringify(span.attributes),
-    events: JSON.stringify(serializeBigint(span.events)),
-  })}`
+const withSql = <A, E>(
+  f: (sql: SqlClient.SqlClient) => Effect.Effect<A, E>,
+): Effect.Effect<A, E, SqlClient.SqlClient> => Effect.flatMap(SqlClient.SqlClient, f)
+
+export function insertSpan(span: StudioSpan) {
+  return withSql((sql) =>
+    sql`INSERT INTO Span ${sql({
+      spanId: span.spanId,
+      traceId: span.traceId,
+      fiberId: span.fiberId ?? null,
+      name: span.name,
+      kind: span.kind,
+      parentSpanId: span.parentSpanId ?? null,
+      startTime: span.startTime.toString(),
+      endTime: span.endTime?.toString() ?? null,
+      durationMs: span.durationMs ?? null,
+      status: span.status,
+      attributes: JSON.stringify(span.attributes),
+      events: JSON.stringify(serializeBigint(span.events)),
+    })}`,
+  )
 }
 
-export function updateSpan(sql: SqlClient.SqlClient, span: StudioSpan) {
-  return sql`UPDATE Span SET
-    endTime = ${span.endTime?.toString() ?? null},
-    durationMs = ${span.durationMs ?? null},
-    status = ${span.status},
-    attributes = ${JSON.stringify(span.attributes)},
-    events = ${JSON.stringify(serializeBigint(span.events))}
-    WHERE spanId = ${span.spanId}`
+export function updateSpan(span: StudioSpan) {
+  return withSql(
+    (sql) => sql`UPDATE Span SET
+      endTime = ${span.endTime?.toString() ?? null},
+      durationMs = ${span.durationMs ?? null},
+      status = ${span.status},
+      attributes = ${JSON.stringify(span.attributes)},
+      events = ${JSON.stringify(serializeBigint(span.events))}
+      WHERE spanId = ${span.spanId}`,
+  )
 }
 
-export function insertLog(sql: SqlClient.SqlClient, log: StudioLog) {
-  return sql`INSERT INTO Log ${sql({
-    id: log.id,
-    level: log.level,
-    message: log.message,
-    fiberId: log.fiberId,
-    cause: log.cause ?? null,
-    spans: JSON.stringify(log.spans),
-    annotations: JSON.stringify(log.annotations),
-  })}`
+export function insertLog(log: StudioLog) {
+  return withSql((sql) =>
+    sql`INSERT INTO Log ${sql({
+      id: log.id,
+      level: log.level,
+      message: log.message,
+      fiberId: log.fiberId,
+      cause: log.cause ?? null,
+      spans: JSON.stringify(log.spans),
+      annotations: JSON.stringify(log.annotations),
+    })}`,
+  )
 }
 
-export function insertError(sql: SqlClient.SqlClient, error: StudioError) {
-  return sql`INSERT INTO Error ${sql({
-    id: error.id,
-    fiberId: error.fiberId,
-    interrupted: error.interrupted ? 1 : 0,
-    prettyPrint: error.prettyPrint,
-    details: JSON.stringify(error.details),
-  })}`
+export function insertError(error: StudioError) {
+  return withSql((sql) =>
+    sql`INSERT INTO Error ${sql({
+      id: error.id,
+      fiberId: error.fiberId,
+      interrupted: error.interrupted ? 1 : 0,
+      prettyPrint: error.prettyPrint,
+      details: JSON.stringify(error.details),
+    })}`,
+  )
 }
 
 export function upsertFiber(
-  sql: SqlClient.SqlClient,
   id: string,
   parentId: string | undefined,
   spanName: string | undefined,
   traceId: bigint | undefined,
   annotations: Record<string, unknown>,
 ) {
-  return sql`INSERT OR REPLACE INTO Fiber ${sql({
-    id,
-    parentId: parentId ?? null,
-    spanName: spanName ?? null,
-    traceId: traceId ?? null,
-    annotations: JSON.stringify(annotations),
-  })}`
+  return withSql((sql) =>
+    sql`INSERT OR REPLACE INTO Fiber ${sql({
+      id,
+      parentId: parentId ?? null,
+      spanName: spanName ?? null,
+      traceId: traceId ?? null,
+      annotations: JSON.stringify(annotations),
+    })}`,
+  )
 }
 
-export function evict(sql: SqlClient.SqlClient, table: string, capacity: number) {
-  return Effect.gen(function* () {
-    const [{ cnt }] = yield* sql<{ cnt: number }>`SELECT count(*) as cnt FROM ${sql(table)}`
-    if (cnt > capacity) {
-      const excess = cnt - capacity
-      yield* sql`DELETE FROM ${sql(table)} WHERE rowid IN (SELECT rowid FROM ${sql(table)} ORDER BY rowid LIMIT ${excess})`
-    }
-  })
+export function evict(table: string, capacity: number) {
+  return withSql((sql) =>
+    Effect.gen(function* () {
+      const [{ cnt }] = yield* sql<{ cnt: number }>`SELECT count(*) as cnt FROM ${sql(table)}`
+      if (cnt > capacity) {
+        const excess = cnt - capacity
+        yield* sql`DELETE FROM ${sql(table)} WHERE rowid IN (SELECT rowid FROM ${sql(table)} ORDER BY rowid LIMIT ${excess})`
+      }
+    }),
+  )
 }
 
-export function runWrite(effect: Effect.Effect<unknown, SqlClient.SqlError>) {
+export function runWrite(effect: Effect.Effect<unknown, SqlClient.SqlError, SqlClient.SqlClient>) {
+  const sql = store.sql
+  if (!sql) return
   writeQueue = writeQueue
-    .then(() => Effect.runPromise(Effect.withTracerEnabled(effect, false)).then(() => undefined))
+    .then(() =>
+      Effect.runPromise(
+        Effect.withTracerEnabled(
+          Effect.provideService(effect, SqlClient.SqlClient, sql),
+          false,
+        ),
+      ).then(() => undefined),
+    )
     .catch(() => undefined)
 }
 
 let writeQueue = Promise.resolve<void>(undefined)
 
-const noTrace = <A, E>(effect: Effect.Effect<A, E>): Effect.Effect<A, E> =>
+const noTrace = <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
   Effect.withTracerEnabled(effect, false)
 
-export function allSpans(sql: SqlClient.SqlClient) {
+export function allSpans() {
   return noTrace(
-    Effect.map(sql<SpanRow>`SELECT * FROM Span ORDER BY rowid`, (rows) =>
-      rows.map(deserializeSpan),
+    withSql((sql) =>
+      Effect.map(sql<SpanRow>`SELECT * FROM Span ORDER BY rowid`, (rows) =>
+        rows.map(deserializeSpan),
+      ),
     ),
   )
 }
 
-export function allLogs(sql: SqlClient.SqlClient) {
+export function allLogs() {
   return noTrace(
-    Effect.map(sql<LogRow>`SELECT * FROM Log ORDER BY rowid`, (rows) => rows.map(deserializeLog)),
-  )
-}
-
-export function allErrors(sql: SqlClient.SqlClient) {
-  return noTrace(
-    Effect.map(sql<ErrorRow>`SELECT * FROM Error ORDER BY rowid`, (rows) =>
-      rows.map(deserializeError),
+    withSql((sql) =>
+      Effect.map(sql<LogRow>`SELECT * FROM Log ORDER BY rowid`, (rows) => rows.map(deserializeLog)),
     ),
   )
 }
 
-export function spansByTraceId(sql: SqlClient.SqlClient, traceId: bigint) {
+export function allErrors() {
   return noTrace(
-    Effect.map(sql<SpanRow>`SELECT * FROM Span WHERE traceId = ${traceId} ORDER BY rowid`, (rows) =>
-      rows.map(deserializeSpan),
+    withSql((sql) =>
+      Effect.map(sql<ErrorRow>`SELECT * FROM Error ORDER BY rowid`, (rows) =>
+        rows.map(deserializeError),
+      ),
     ),
   )
 }
 
-export function spansByFiberId(sql: SqlClient.SqlClient, fiberId: string) {
+export function spansByTraceId(traceId: bigint) {
   return noTrace(
-    Effect.map(sql<SpanRow>`SELECT * FROM Span WHERE fiberId = ${fiberId} ORDER BY rowid`, (rows) =>
-      rows.map(deserializeSpan),
+    withSql((sql) =>
+      Effect.map(sql<SpanRow>`SELECT * FROM Span WHERE traceId = ${traceId} ORDER BY rowid`, (rows) =>
+        rows.map(deserializeSpan),
+      ),
     ),
   )
 }
 
-export function logsByFiberId(sql: SqlClient.SqlClient, fiberId: string) {
+export function spansByFiberId(fiberId: string) {
   return noTrace(
-    Effect.map(sql<LogRow>`SELECT * FROM Log WHERE fiberId = ${fiberId} ORDER BY rowid`, (rows) =>
-      rows.map(deserializeLog),
+    withSql((sql) =>
+      Effect.map(sql<SpanRow>`SELECT * FROM Span WHERE fiberId = ${fiberId} ORDER BY rowid`, (rows) =>
+        rows.map(deserializeSpan),
+      ),
     ),
   )
 }
 
-export function getFiber(sql: SqlClient.SqlClient, fiberId: string) {
+export function logsByFiberId(fiberId: string) {
   return noTrace(
-    Effect.map(sql<FiberRow>`SELECT * FROM Fiber WHERE id = ${fiberId}`, (rows) =>
-      rows.length > 0 ? rows[0] : undefined,
+    withSql((sql) =>
+      Effect.map(sql<LogRow>`SELECT * FROM Log WHERE fiberId = ${fiberId} ORDER BY rowid`, (rows) =>
+        rows.map(deserializeLog),
+      ),
     ),
   )
 }
 
-export function getParentChain(sql: SqlClient.SqlClient, fiberId: string) {
+export function getFiber(fiberId: string) {
   return noTrace(
-    Effect.gen(function* () {
-      const chain: Array<string> = []
-      const visited = new Set<string>()
-      let current = fiberId
-      while (true) {
-        const rows = yield* sql<FiberRow>`SELECT * FROM Fiber WHERE id = ${current}`
-        if (rows.length === 0 || !rows[0].parentId) break
-        const parentId = rows[0].parentId
-        if (visited.has(parentId)) break
-        chain.push(parentId)
-        visited.add(parentId)
-        current = parentId
-      }
-      return chain.reverse()
-    }),
+    withSql((sql) =>
+      Effect.map(sql<FiberRow>`SELECT * FROM Fiber WHERE id = ${fiberId}`, (rows) =>
+        rows.length > 0 ? rows[0] : undefined,
+      ),
+    ),
   )
 }
 
-export function getFiberContext(sql: SqlClient.SqlClient, fiberId: string) {
+export function getParentChain(fiberId: string) {
   return noTrace(
-    Effect.map(
-      sql<FiberRow>`SELECT * FROM Fiber WHERE id = ${fiberId}`,
-      (rows): FiberContext | undefined =>
-        rows.length > 0
-          ? {
-              spanName: rows[0].spanName ?? undefined,
-              traceId: rows[0].traceId != null ? BigInt(rows[0].traceId) : undefined,
-              annotations: JSON.parse(rows[0].annotations),
-            }
-          : undefined,
+    withSql((sql) =>
+      Effect.gen(function* () {
+        const chain: Array<string> = []
+        const visited = new Set<string>()
+        let current = fiberId
+        while (true) {
+          const rows = yield* sql<FiberRow>`SELECT * FROM Fiber WHERE id = ${current}`
+          if (rows.length === 0 || !rows[0].parentId) break
+          const parentId = rows[0].parentId
+          if (visited.has(parentId)) break
+          chain.push(parentId)
+          visited.add(parentId)
+          current = parentId
+        }
+        return chain.reverse()
+      }),
+    ),
+  )
+}
+
+export function getFiberContext(fiberId: string) {
+  return noTrace(
+    withSql((sql) =>
+      Effect.map(
+        sql<FiberRow>`SELECT * FROM Fiber WHERE id = ${fiberId}`,
+        (rows): FiberContext | undefined =>
+          rows.length > 0
+            ? {
+                spanName: rows[0].spanName ?? undefined,
+                traceId: rows[0].traceId != null ? BigInt(rows[0].traceId) : undefined,
+                annotations: JSON.parse(rows[0].annotations),
+              }
+            : undefined,
+      ),
     ),
   )
 }

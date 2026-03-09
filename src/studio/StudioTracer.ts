@@ -62,11 +62,14 @@ const make = (store: StudioStore.StudioStoreShape): Tracer.Tracer =>
 
       StudioStore.runWrite(
         Effect.zipRight(
-          StudioStore.insertSpan(store.sql, studioSpan),
-          StudioStore.evict(store.sql, "Span", store.spanCapacity),
+          StudioStore.insertSpan(studioSpan),
+          StudioStore.evict("Span", store.spanCapacity),
         ),
       )
       publish(store, { _tag: "SpanStart", span: studioSpan })
+      if (parentSpanId === undefined) {
+        publish(store, { _tag: "TraceStart", traceId })
+      }
 
       const attrs = new Map<string, unknown>(Object.entries(attributes))
       const spanLinks = [...links]
@@ -97,17 +100,20 @@ const make = (store: StudioStore.StudioStoreShape): Tracer.Tracer =>
           studioSpan.endTime = endTime
           studioSpan.durationMs = Number(endTime - studioSpan.startTime) / 1_000_000
           studioSpan.status = Exit.isSuccess(exit) ? "ok" : "error"
-          StudioStore.runWrite(StudioStore.updateSpan(store.sql, studioSpan))
+          StudioStore.runWrite(StudioStore.updateSpan(studioSpan))
           publish(store, { _tag: "SpanEnd", span: studioSpan })
+          if (parentSpanId === undefined) {
+            publish(store, { _tag: "TraceEnd", traceId })
+          }
         },
         attribute(key, value) {
           attrs.set(key, value)
           ;(studioSpan.attributes as Record<string, unknown>)[key] = value
-          StudioStore.runWrite(StudioStore.updateSpan(store.sql, studioSpan))
+          StudioStore.runWrite(StudioStore.updateSpan(studioSpan))
         },
         event(name, startTime, attributes) {
           studioSpan.events.push({ name, startTime, attributes })
-          StudioStore.runWrite(StudioStore.updateSpan(store.sql, studioSpan))
+          StudioStore.runWrite(StudioStore.updateSpan(studioSpan))
         },
         addLinks(newLinks) {
           spanLinks.push(...newLinks)

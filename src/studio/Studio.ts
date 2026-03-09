@@ -16,10 +16,11 @@ export function layer(
   options?: StudioStore.StudioStoreOptions & {
     readonly sqlLayer?: Layer.Layer<SqlClient.SqlClient, SqlClient.SqlError>
   },
-): Layer.Layer<StudioStore.StudioStore> {
+): Layer.Layer<StudioStore.StudioStore | SqlClient.SqlClient> {
   const sqlLayer =
     options?.sqlLayer ?? sqlBun.layer({ adapter: "sqlite" as const, filename: ":memory:" })
-  const store = StudioStore.layer(options).pipe(Layer.provide(sqlLayer), Layer.orDie)
+  const providedSqlLayer = sqlLayer.pipe(Layer.orDie)
+  const store = StudioStore.layer(options).pipe(Layer.provide(providedSqlLayer), Layer.orDie)
   const features = Layer.mergeAll(
     StudioTracer.layer,
     StudioLogger.layer,
@@ -27,7 +28,7 @@ export function layer(
     StudioErrors.layer,
     StudioProcess.layer,
   ).pipe(Layer.provide(store))
-  return Layer.merge(store, features)
+  return Layer.mergeAll(providedSqlLayer, store, features)
 }
 
 export function layerRoutes(options?: { prefix?: string }) {

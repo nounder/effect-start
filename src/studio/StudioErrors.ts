@@ -185,7 +185,6 @@ function make(store: StudioStore.StudioStoreShape): Supervisor.Supervisor<void> 
 
       StudioStore.runWrite(
         StudioStore.upsertFiber(
-          store.sql,
           childId,
           parentId !== childId ? parentId : undefined,
           span?._tag === "Span" ? span.name : undefined,
@@ -206,8 +205,8 @@ function make(store: StudioStore.StudioStoreShape): Supervisor.Supervisor<void> 
         }
         StudioStore.runWrite(
           Effect.zipRight(
-            StudioStore.insertError(store.sql, error),
-            StudioStore.evict(store.sql, "Error", store.errorCapacity),
+            StudioStore.insertError(error),
+            StudioStore.evict("Error", store.errorCapacity),
           ),
         )
         Effect.runSync(PubSub.publish(store.events, { _tag: "Error", error }))

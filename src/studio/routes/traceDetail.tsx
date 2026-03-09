@@ -18,7 +18,7 @@ export default Route.get(
         </Shell.Shell>
       )
     }
-    const spans = yield* StudioStore.spansByTraceId(StudioStore.store.sql, traceId)
+    const spans = yield* StudioStore.spansByTraceId(traceId)
 
     return (
       <Shell.Shell prefix={StudioStore.store.prefix} active="traces">
