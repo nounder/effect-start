@@ -10,7 +10,7 @@ import * as RouteBody from "./RouteBody.ts"
 import * as RouteTree from "./RouteTree.ts"
 import type * as Values from "./_Values.ts"
 import * as Html from "./Html.ts"
-import type { JSX } from "./jsx.d.ts"
+import type { JSX } from "../src/jsx.d.ts"
 
 export const render = RouteBody.render
 

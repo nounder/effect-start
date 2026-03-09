@@ -1,4 +1,4 @@
-import type { JSX } from "./jsx.d.ts"
+import type { JSX } from "../src/jsx.d.ts"
 
 export const TypeId = "~effect-start/HyperNode" as const
 
