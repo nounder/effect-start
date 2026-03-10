@@ -14,9 +14,113 @@
       "bun": "./src/index.ts",
       "default": "./dist/index.js"
     },
-    "./*": {
-      "bun": "./src/*.ts",
-      "default": "./dist/*.js"
+    "./Cookies": {
+      "bun": "./src/Cookies.ts",
+      "default": "./dist/Cookies.js"
+    },
+    "./Development": {
+      "bun": "./src/Development.ts",
+      "default": "./dist/Development.js"
+    },
+    "./Entity": {
+      "bun": "./src/Entity.ts",
+      "default": "./dist/Entity.js"
+    },
+    "./Fetch": {
+      "bun": "./src/Fetch.ts",
+      "default": "./dist/Fetch.js"
+    },
+    "./FileRouter": {
+      "bun": "./src/FileRouter.ts",
+      "default": "./dist/FileRouter.js"
+    },
+    "./FileRouterCodegen": {
+      "bun": "./src/FileRouterCodegen.ts",
+      "default": "./dist/FileRouterCodegen.js"
+    },
+    "./FileSystem": {
+      "bun": "./src/FileSystem.ts",
+      "default": "./dist/FileSystem.js"
+    },
+    "./GlobalLayer": {
+      "bun": "./src/GlobalLayer.ts",
+      "default": "./dist/GlobalLayer.js"
+    },
+    "./Html": {
+      "bun": "./src/Html.ts",
+      "default": "./dist/Html.js"
+    },
+    "./Password": {
+      "bun": "./src/Password.ts",
+      "default": "./dist/Password.js"
+    },
+    "./PlatformRuntime": {
+      "bun": "./src/PlatformRuntime.ts",
+      "default": "./dist/PlatformRuntime.js"
+    },
+    "./Route": {
+      "bun": "./src/Route.ts",
+      "default": "./dist/Route.js"
+    },
+    "./RouteBody": {
+      "bun": "./src/RouteBody.ts",
+      "default": "./dist/RouteBody.js"
+    },
+    "./RouteError": {
+      "bun": "./src/RouteError.ts",
+      "default": "./dist/RouteError.js"
+    },
+    "./RouteHook": {
+      "bun": "./src/RouteHook.ts",
+      "default": "./dist/RouteHook.js"
+    },
+    "./RouteHttp": {
+      "bun": "./src/RouteHttp.ts",
+      "default": "./dist/RouteHttp.js"
+    },
+    "./RouteHttpTracer": {
+      "bun": "./src/RouteHttpTracer.ts",
+      "default": "./dist/RouteHttpTracer.js"
+    },
+    "./RouteMount": {
+      "bun": "./src/RouteMount.ts",
+      "default": "./dist/RouteMount.js"
+    },
+    "./RouteSchema": {
+      "bun": "./src/RouteSchema.ts",
+      "default": "./dist/RouteSchema.js"
+    },
+    "./RouteSse": {
+      "bun": "./src/RouteSse.ts",
+      "default": "./dist/RouteSse.js"
+    },
+    "./RouteTree": {
+      "bun": "./src/RouteTree.ts",
+      "default": "./dist/RouteTree.js"
+    },
+    "./RouteTrie": {
+      "bun": "./src/RouteTrie.ts",
+      "default": "./dist/RouteTrie.js"
+    },
+    "./Socket": {
+      "bun": "./src/Socket.ts",
+      "default": "./dist/Socket.js"
+    },
+    "./Start": {
+      "bun": "./src/Start.ts",
+      "default": "./dist/Start.js"
+    },
+    "./StaticFiles": {
+      "bun": "./src/StaticFiles.ts",
+      "default": "./dist/StaticFiles.js"
+    },
+    "./System": {
+      "bun": "./src/System.ts",
+      "default": "./dist/System.js"
+    },
+    "./Unique": {
+      "bun": "./src/Unique.ts",
+      "default": "./dist/Unique.js"
     },
     "./_*": null,
     "./client/assets.d.ts": "./src/assets.d.ts",
