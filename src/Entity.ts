@@ -48,8 +48,11 @@ export interface Entity<T = unknown, E = never> extends Effect.Effect<Entity<T, 
       : [T] extends [string | Uint8Array | ArrayBuffer]
         ? Effect.Effect<unknown, ParseResult.ParseError | E>
         : [T] extends [Values.Json]
-          ? Effect.Effect<T, ParseResult.ParseError | E>
-          : Effect.Effect<unknown, ParseResult.ParseError | E>
+        ? Effect.Effect<T, ParseResult.ParseError | E>
+        : Effect.Effect<unknown, ParseResult.ParseError | E>
+  readonly schemaJson: <A, I, R>(
+    schema: Schema.Schema<A, I, R>,
+  ) => Effect.Effect<A, ParseResult.ParseError | E, R>
   readonly bytes: Effect.Effect<Uint8Array, ParseResult.ParseError | E>
   readonly stream: T extends Stream.Stream<infer A, infer E1, any>
     ? Stream.Stream<A, ParseResult.ParseError | E | E1>
@@ -74,6 +77,16 @@ function parseJson(s: string): Effect.Effect<unknown, ParseResult.ParseError> {
       }),
     )
   }
+}
+
+function isDirectJson(value: unknown): value is Exclude<Values.Json, string> {
+  return (
+    value === null ||
+    typeof value === "number" ||
+    typeof value === "boolean" ||
+    Array.isArray(value) ||
+    Values.isPlainObject(value)
+  )
 }
 
 function getText(
@@ -123,7 +136,7 @@ function getJson(
         if (isEntity(inner)) {
           return inner.json
         }
-        if (typeof inner === "object" && inner !== null && !isBinary(inner)) {
+        if (isDirectJson(inner)) {
           return Effect.succeed(inner)
         }
         if (typeof inner === "string") {
@@ -136,7 +149,7 @@ function getJson(
       },
     )
   }
-  if (typeof v === "object" && v !== null && !isBinary(v)) {
+  if (isDirectJson(v)) {
     return Effect.succeed(v)
   }
   if (typeof v === "string") {
@@ -188,11 +201,18 @@ function getBytes(
   if (typeof v === "string") {
     return Effect.succeed(textEncoder.encode(v))
   }
-  // Allows entity.stream to work when body is a JSON object
-  if (typeof v === "object" && v !== null && !isBinary(v)) {
+  // Allows entity.stream to work when body is a JSON value.
+  if (isDirectJson(v)) {
     return Effect.succeed(textEncoder.encode(JSON.stringify(v)))
   }
   return Effect.fail(mismatch(Schema.Uint8ArrayFromSelf, v))
+}
+
+export function schemaJson<T, E, A, I, R>(
+  self: Entity<T, E>,
+  schema: Schema.Schema<A, I, R>,
+): Effect.Effect<A, ParseResult.ParseError | E, R> {
+  return Effect.flatMap(self.json, Schema.decodeUnknown(schema))
 }
 
 function getStream<A, E1, E2>(
@@ -232,6 +252,11 @@ const Proto: Proto = Object.defineProperties(Object.create(Effectable.CommitProt
   json: {
     get(this: Entity<unknown, unknown>) {
       return getJson(this)
+    },
+  },
+  schemaJson: {
+    value(this: Entity<unknown, unknown>, schema: Schema.Schema.Any) {
+      return schemaJson(this, schema)
     },
   },
   bytes: {
@@ -303,7 +328,7 @@ export function type(self: Entity): string {
   if (typeof v === "string") {
     return "text/plain"
   }
-  if (typeof v === "object" && v !== null && !isBinary(v)) {
+  if (isDirectJson(v)) {
     return "application/json"
   }
   return "application/octet-stream"

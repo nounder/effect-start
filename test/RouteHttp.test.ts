@@ -62,6 +62,18 @@ test.it("converts array to JSON for Route.json", () =>
   }).pipe(Effect.runPromise),
 )
 
+test.it("converts JSON primitives for Route.json", () =>
+  Effect.gen(function* () {
+    const handler = RouteHttp.toWebHandler(Route.get(Route.json(true)))
+    const client = Fetch.fromHandler(handler)
+    const entity = yield* client.get("http://localhost/primitive")
+
+    test.expect(entity.status).toBe(200)
+    test.expect(entity.headers["content-type"]).toBe("application/json")
+    test.expect(yield* entity.json).toBe(true)
+  }).pipe(Effect.runPromise),
+)
+
 test.it("handles method-specific routes", () =>
   Effect.gen(function* () {
     const handler = RouteHttp.toWebHandler(

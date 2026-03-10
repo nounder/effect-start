@@ -91,8 +91,26 @@ test.describe(Entity.type, () => {
     test.expect(Entity.type(entity)).toBe("application/json")
   })
 
+  test.it("infers application/json for array body", () => {
+    const entity = Entity.make([1, 2, 3])
+
+    test.expect(Entity.type(entity)).toBe("application/json")
+  })
+
+  test.it("infers application/json for JSON primitive bodies", () => {
+    test.expect(Entity.type(Entity.make(true))).toBe("application/json")
+    test.expect(Entity.type(Entity.make(42))).toBe("application/json")
+    test.expect(Entity.type(Entity.make(null))).toBe("application/json")
+  })
+
+  test.it("returns application/octet-stream for non-plain object bodies", () => {
+    const entity = Entity.make(new Date("2024-01-01T00:00:00.000Z"))
+
+    test.expect(Entity.type(entity)).toBe("application/octet-stream")
+  })
+
   test.it("returns application/octet-stream for unknown body types", () => {
-    const entity = Entity.make(null as any)
+    const entity = Entity.make(Symbol.for("unknown") as any)
 
     test.expect(Entity.type(entity)).toBe("application/octet-stream")
   })
@@ -241,6 +259,24 @@ test.describe("json", () => {
     }).pipe(Effect.runPromise),
   )
 
+  test.it("returns JSON primitive bodies directly", () =>
+    Effect.gen(function* () {
+      test.expect(yield* Entity.make(true).json).toBe(true)
+      test.expect(yield* Entity.make(42).json).toBe(42)
+      test.expect(yield* Entity.make(null).json).toBeNull()
+    }).pipe(Effect.runPromise),
+  )
+
+  test.it("returns array bodies directly", () =>
+    Effect.gen(function* () {
+      const data = [1, { key: "value" }, true]
+      const entity = Entity.make(data)
+      const result = yield* entity.json
+
+      test.expect(result).toEqual(data)
+    }).pipe(Effect.runPromise),
+  )
+
   test.it("fails for invalid JSON string", async () => {
     const entity = Entity.make("not valid json")
     const result = await Effect.runPromiseExit(entity.json)
@@ -249,11 +285,20 @@ test.describe("json", () => {
   })
 
   test.it("fails for unsupported body types", async () => {
-    const entity = Entity.make(42 as any)
+    const entity = Entity.make(Symbol.for("unsupported") as any)
     const result = await Effect.runPromiseExit(entity.json)
 
     test.expect(result._tag).toBe("Failure")
   })
+
+  test.it("fails for non-plain object bodies", () =>
+    Effect.gen(function* () {
+      const entity = Entity.make(new Date("2024-01-01T00:00:00.000Z"))
+      const result = yield* Effect.exit(entity.json)
+
+      test.expect(result._tag).toBe("Failure")
+    }).pipe(Effect.runPromise),
+  )
 })
 
 test.describe("bytes", () => {
@@ -306,6 +351,16 @@ test.describe("bytes", () => {
       const text = new TextDecoder().decode(result)
 
       test.expect(text).toBe('{"key":"value"}')
+    }).pipe(Effect.runPromise),
+  )
+
+  test.it("serializes JSON primitive bodies to bytes", () =>
+    Effect.gen(function* () {
+      const entity = Entity.make(false)
+      const result = yield* entity.bytes
+      const text = new TextDecoder().decode(result)
+
+      test.expect(text).toBe("false")
     }).pipe(Effect.runPromise),
   )
 })
@@ -430,6 +485,50 @@ test.describe("Pipeable interface", () => {
   })
 })
 
+test.describe("schemaJson", () => {
+  test.it("parses JSON text and decodes with schema", () =>
+    Effect.gen(function* () {
+      const entity = Entity.make('{"name":"Alice","age":30}')
+      const result = yield* entity.schemaJson(
+        Schema.Struct({
+          name: Schema.String,
+          age: Schema.Number,
+        }),
+      )
+
+      test.expect(result).toEqual({ name: "Alice", age: 30 })
+    }).pipe(Effect.runPromise),
+  )
+
+  test.it("decodes direct JSON bodies with schema", () =>
+    Effect.gen(function* () {
+      const entity = Entity.make({ active: true })
+      const result = yield* entity.schemaJson(
+        Schema.Struct({
+          active: Schema.Boolean,
+        }),
+      )
+
+      test.expect(result).toEqual({ active: true })
+    }).pipe(Effect.runPromise),
+  )
+
+  test.it("fails when the JSON payload does not match the schema", () =>
+    Effect.gen(function* () {
+      const entity = Entity.make('{"age":"wrong"}')
+      const result = yield* entity
+        .schemaJson(
+          Schema.Struct({
+            age: Schema.Number,
+          }),
+        )
+        .pipe(Effect.exit)
+
+      test.expect(result._tag).toBe("Failure")
+    }).pipe(Effect.runPromise),
+  )
+})
+
 test.describe("Proto getters", () => {
   test.it("entity.text returns text", () =>
     Effect.gen(function* () {
@@ -496,6 +595,16 @@ test.describe("type inference", () => {
     const entity = Entity.make({ key: "value" })
 
     test.expectTypeOf<Effect.Effect.Success<typeof entity.json>>().toEqualTypeOf<{ key: string }>()
+  })
+
+  test.it("schemaJson returns the schema output type", () => {
+    const entity = Entity.make('{"key":"value"}')
+    const schema = Schema.Struct({ key: Schema.String })
+    const parsed = entity.schemaJson(schema)
+
+    test.expectTypeOf(parsed).toEqualTypeOf<
+      Effect.Effect<{ key: string }, ParseResult.ParseError, never>
+    >()
   })
 
   test.it("bytes returns Uint8Array for string body", () => {
