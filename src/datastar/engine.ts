@@ -1092,6 +1092,7 @@ const applyAttributePlugin = (
   const { pluginName, key, mods } = parseAttributeKey(rawKey)
   const plugin = attributePlugins.get(pluginName)
   if ((!onlyNew || queuedAttributeNames.has(pluginName)) && plugin) {
+    const cleanups = new Map<string, () => void>()
     const ctx = {
       el,
       rawKey,
@@ -1147,7 +1148,6 @@ const applyAttributePlugin = (
       }
     }
 
-    const cleanups = new Map<string, () => void>()
     if (valueProvided) {
       let cachedRx: GenRxFn
       ctx.rx = (...args: Array<any>) => {

@@ -9,15 +9,24 @@ We can probably cut it down by another ~10kb if we remove DataStar expression an
 We made following changes:
 
 - Path aliases converted to relative imports: `@engine/*` → `./engine/*`, etc.
-- Flattened `plugins/` directory: `plugins/actions/` → `actions/`, etc.
-- Deleted the `ALIAS` type declaration: removed `globals.d.ts`,
-  no alias conditional in `utils/text.ts` & `applyAttributePlugin` in `engine.ts`.
+- Flattened and merged the source tree:
+  - `plugins/actions|attributes|watchers` → `actions|attributes|watchers`
+  - `engine/{consts,types,signals,engine}.ts` → `engine.ts`
+  - `utils/{dom,math,paths,polyfills,tags,text,timing,view-transitions}.ts` → `utils.ts`
+- Replaced upstream `bundles/` entrypoints with local `index.ts`:
+  - Registers all plugins as side effects
+  - Re-exports all of `engine.ts` instead of upstream's narrower bundle export surface
+- Removed alias build support:
+  - Deleted `globals.d.ts`
+  - `aliasify()` always produces `data-${name}`
+  - `applyAttributePlugin` no longer accepts aliased `data-${ALIAS}-*` attributes
 - Removed plugin header comments.
 - Updated type declaration to conform to `erasableSyntaxOnly`:
   - Converted `enum ReactiveFlags` and `enum EffectFlags` to `const` objects with `as const`
   - Added type aliases `ReactiveFlags_X` to replace `ReactiveFlags.X` namespace types
-- Extends expressions with function form handled by `genRx`
-- `data-on` supports function form with optional config object:
-  - Function form: `data-on:click="(e) => { e.signals.count.value++ }"`
-  - Function form with config: `data-on:click="(e) => {...}, { debounce: 500, prevent: true }"`
-  - !! `__` attribute modifiers are no longer parsed by `on.ts` (now removed from imports)
+- Extended expressions with function form handled by `genRx`:
+  - Function expressions are evaluated directly instead of compiled through Datastar's string-expression transform
+  - Function expressions receive a `DataEvent` object with `signals`, `actions`, `target`, and `window`
+- `data-on` supports function form:
+  - Function form: `data-on:click="(e) => { e.signals.count = e.signals.count + 1 }"`
+  - Event names are used literally from the attribute key; upstream `modifyCasing(..., "kebab")` normalization is no longer applied

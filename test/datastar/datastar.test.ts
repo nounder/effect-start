@@ -546,6 +546,20 @@ test.describe("on", () => {
     delete (globalThis as any).__testClick
   })
 
+  test.it("passes signals to function form handlers", async () => {
+    const c = await mount(html`
+      <div data-signals="{clicks: 0}">
+        <button data-on:click="(e) => { e.signals.clicks = e.signals.clicks + 1 }"></button>
+        <span data-text="$clicks"></span>
+      </div>
+    `)
+    const btn = c.querySelector("button")!
+    btn.click()
+    btn.click()
+
+    test.expect(c.querySelector("span")!.textContent).toBe("2")
+  })
+
   test.it("prevent modifier prevents default", async () => {
     const c = await mount(html`
       <div data-signals="{submitted: false}">
@@ -613,25 +627,6 @@ test.describe("on", () => {
     window.dispatchEvent(new Event("custom-evt"))
 
     test.expect(c.querySelector("span")!.textContent).toBe("true")
-  })
-
-  test.it("function form with config object (once)", async () => {
-    let count = 0
-    ;(globalThis as any).__testFnOnce = () => {
-      count++
-    }
-    const c = await mount(
-      html`
-        <button data-on:click="() => __testFnOnce(), { once: true }"></button>
-      `,
-    )
-    const btn = c.querySelector("button")!
-    btn.click()
-    btn.click()
-
-    test.expect(count).toBe(1)
-
-    delete (globalThis as any).__testFnOnce
   })
 
   test.it("debounce modifier delays handler", async () => {

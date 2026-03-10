@@ -8,21 +8,6 @@ type DatastarStyleObject = Record<string, string | number | boolean | null | und
 
 type DatastarFn = (e: DataEvent) => any
 
-// TODO: support leading/trailing options
-// e.g. { debounce: { ms: 500, leading: true, noTrailing: true } }
-type DatastarOnConfig = {
-  prevent?: boolean
-  stop?: boolean
-  capture?: boolean
-  passive?: boolean
-  once?: boolean
-  outside?: boolean
-  window?: boolean
-  viewTransition?: boolean
-} & ({ debounce?: number; throttle?: never } | { debounce?: never; throttle?: number })
-
-type DatastarOnFn = DatastarFn | [handler: DatastarFn, config: DatastarOnConfig]
-
 /**
  * Datastar attributes for reactive web applications
  * @see https://data-star.dev/reference/attributes
@@ -45,11 +30,11 @@ export interface DatastarAttributes {
   "data-effect"?: string | DatastarFn | undefined
   "data-indicator"?: string | undefined
   "data-json-signals"?: string | undefined
-  "data-on"?: string | DatastarOnFn | undefined
-  "data-on-intersect"?: string | DatastarOnFn | undefined
-  "data-on-interval"?: string | DatastarOnFn | undefined
-  "data-on-load"?: string | DatastarOnFn | undefined
-  "data-on-signal-patch"?: string | DatastarOnFn | undefined
+  "data-on"?: string | DatastarFn | undefined
+  "data-on-intersect"?: string | DatastarFn | undefined
+  "data-on-interval"?: string | DatastarFn | undefined
+  "data-on-load"?: string | DatastarFn | undefined
+  "data-on-signal-patch"?: string | DatastarFn | undefined
   "data-on-signal-patch-filter"?: string | undefined
   "data-preserve-attr"?: string | undefined
   "data-ref"?: string | undefined
@@ -58,8 +43,8 @@ export interface DatastarAttributes {
   // Pro attributes
   "data-animate"?: string | undefined
   "data-custom-validity"?: string | DatastarFn | undefined
-  "data-on-raf"?: string | DatastarOnFn | undefined
-  "data-on-resize"?: string | DatastarOnFn | undefined
+  "data-on-raf"?: string | DatastarFn | undefined
+  "data-on-resize"?: string | DatastarFn | undefined
   "data-persist"?: string | undefined
   "data-query-string"?: string | undefined
   "data-replace-url"?: string | undefined
@@ -75,5 +60,5 @@ export interface DatastarAttributes {
   [key: `data-computed:${string}`]: string | DatastarFn | undefined
   [key: `data-indicator:${string}`]: string | undefined
   [key: `data-ref:${string}`]: string | undefined
-  [key: `data-on:${string}`]: string | DatastarOnFn | undefined
+  [key: `data-on:${string}`]: string | DatastarFn | undefined
 }

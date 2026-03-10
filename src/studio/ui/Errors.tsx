@@ -31,7 +31,7 @@ export function ErrorLine(options: { error: StudioStore.StudioError }) {
                 <span style="color:#64748b">tag </span>
                 <span
                   style="color:#fca5a5;text-decoration:underline;cursor:copy"
-                  data-on:click={`(e) => { e.signals.errorTag.value = '${t}'; e.actions.get(location.href, { contentType: 'form' }) }`}
+                  data-on:click={`(e) => { e.signals.errorTag = '${t}'; e.actions.get(location.href, { contentType: 'form' }) }`}
                 >
                   {t}
                 </span>
