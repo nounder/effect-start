@@ -29,6 +29,9 @@ const countBunDevScripts = (html: string) =>
     ) ?? []
   ).length
 
+const extractScriptSrcs = (html: string) =>
+  [...html.matchAll(/<script[^>]*src=["']([^"']+)["'][^>]*>/g)].map((match) => match[1])
+
 test.describe(BunRoute.htmlBundle, () => {
   test.test("wraps child content with layout", () => {
     const routes = Route.tree({
@@ -154,7 +157,7 @@ test.describe(BunRoute.htmlBundle, () => {
     ),
   )
 
-  test.test("preserves linked layout script without duplicating it", () =>
+  test.test("preserves linked layout script while keeping distinct bundle entry scripts", () =>
     Effect.gen(function* () {
       const bunServer = yield* BunServer.BunServer
       const response = yield* Effect.promise(() =>
@@ -165,7 +168,7 @@ test.describe(BunRoute.htmlBundle, () => {
       const linkedScriptCount = countScriptsBySrc(html, "https://example.com/layout-shared.js")
 
       test.expect(response.status).toBe(200)
-      test.expect(bunScriptCount).toBe(1)
+      test.expect(bunScriptCount).toBe(2)
       test.expect(linkedScriptCount).toBe(1)
       test.expect(html).toContain("https://example.com/layout-shared.js")
     }).pipe(
@@ -177,6 +180,50 @@ test.describe(BunRoute.htmlBundle, () => {
             ),
             "/:path*": Route.get(
               BunRoute.htmlBundle(() => import("../../static/LayoutSlotsInnerScripts.html")),
+              Route.html("<section>Catch All</section>"),
+            ),
+          }),
+        ),
+      ),
+      Effect.scoped,
+      Effect.runPromise,
+    ),
+  )
+
+  test.test("preserves nested bundle entry scripts for distinct html bundles", () =>
+    Effect.gen(function* () {
+      const bunServer = yield* BunServer.BunServer
+      const baseUrl = `http://localhost:${bunServer.server.port}/any/path`
+      const response = yield* Effect.promise(() => fetch(baseUrl))
+      const html = yield* Effect.promise(() => response.text())
+      const scriptSrcs = extractScriptSrcs(html)
+      const bundleScriptSrc = scriptSrcs.find((src) =>
+        src.includes("/_bun/client/NestedBundleWithScript-"),
+      )
+
+      test.expect(response.status).toBe(200)
+      test.expect(html).toContain('<div data-layout="outer">')
+      test.expect(html).toContain('<div data-layout="inner">')
+      test.expect(html).toContain("<section>Catch All</section>")
+      test.expect(html).not.toContain("./NestedBundleWithScriptClient.ts")
+      test.expect(bundleScriptSrc).toBeDefined()
+
+      const scriptResponse = yield* Effect.promise(() =>
+        fetch(new URL(bundleScriptSrc!, baseUrl)),
+      )
+      const script = yield* Effect.promise(() => scriptResponse.text())
+
+      test.expect(scriptResponse.status).toBe(200)
+      test.expect(script).toContain("nested-bundle-with-script-loaded")
+    }).pipe(
+      Effect.provide(
+        testLayer(
+          Route.tree({
+            "*": Route.use(
+              BunRoute.htmlBundle(() => import("../../static/LayoutSlotsOuterScripts.html")),
+            ),
+            "/:path*": Route.get(
+              BunRoute.htmlBundle(() => import("../../static/NestedBundleWithScript.html")),
               Route.html("<section>Catch All</section>"),
             ),
           }),
