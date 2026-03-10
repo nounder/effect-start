@@ -191,58 +191,19 @@ const CSS_IMPORT_REGEX = /@import\s+(?:url\()?["']?([^"')]+)["']?\)?\s*[^;]*;/
 const HTML_COMMENT_REGEX = /<!--[\s\S]*?-->/g
 const TEMPLATE_EXPRESSION_REGEX = /\$\{[^}]*\}/g
 const TAILWIND_CLASS_REGEX = /^[a-zA-Z0-9_:-]+(\[[^\]]*\])?$/
-const CLASS_NAME_PATTERNS = [
-  // HTML class attributes with double quotes: <div class="bg-blue-500 text-white">
-  '<[^>]*?\\sclass\\s*=\\s*"([^"]+)"',
-
-  // HTML class attributes with single quotes: <div class='bg-blue-500 text-white'>
-  "<[^>]*?\\sclass\\s*=\\s*'([^']+)'",
-
-  // JSX className attributes with double quotes: <div className="bg-blue-500 text-white">
-  '<[^>]*?\\sclassName\\s*=\\s*"([^"]+)"',
-
-  // JSX className attributes with single quotes: <div className='bg-blue-500 text-white'>
-  "<[^>]*?\\sclassName\\s*=\\s*'([^']+)'",
-
-  // JSX className with braces and double quotes: <div className={"bg-blue-500 text-white"}>
-  '<[^>]*?\\sclassName\\s*=\\s*\\{\\s*"([^"]+)"\\s*\\}',
-
-  // JSX className with braces and single quotes: <div className={'bg-blue-500 text-white'}>
-  "<[^>]*?\\sclassName\\s*=\\s*\\{\\s*'([^']+)'\\s*\\}",
-
-  // JSX className with template literals: <div className={`bg-blue-500 ${variable}`}>
-  "<[^>]*?\\sclassName\\s*=\\s*\\{\\s*`([^`]*)`\\s*\\}",
-
-  // HTML class with template literals: <div class={`bg-blue-500 ${variable}`}>
-  "<[^>]*?\\sclass\\s*=\\s*\\{\\s*`([^`]*)`\\s*\\}",
-
-  // HTML class at start of tag with double quotes: <div class="bg-blue-500">
-  '<\\w+\\s+class\\s*=\\s*"([^"]+)"',
-
-  // HTML class at start of tag with single quotes: <div class='bg-blue-500'>
-  "<\\w+\\s+class\\s*=\\s*'([^']+)'",
-
-  // JSX className at start of tag with double quotes: <div className="bg-blue-500">
-  '<\\w+\\s+className\\s*=\\s*"([^"]+)"',
-
-  // JSX className at start of tag with single quotes: <div className='bg-blue-500'>
-  "<\\w+\\s+className\\s*=\\s*'([^']+)'",
-
-  // JSX className at start with braces and double quotes: <div className={"bg-blue-500"}>
-  '<\\w+\\s+className\\s*=\\s*\\{\\s*"([^"]+)"\\s*\\}',
-
-  // JSX className at start with braces and single quotes: <div className={'bg-blue-500'}>
-  "<\\w+\\s+className\\s*=\\s*\\{\\s*'([^']+)'\\s*\\}",
-
-  // JSX className at start with template literals: <div className={`bg-blue-500 ${variable}`}>
-  "<\\w+\\s+className\\s*=\\s*\\{\\s*`([^`]*)`\\s*\\}",
-
-  // HTML class at start with template literals: <div class={`bg-blue-500 ${variable}`}>
-  "<\\w+\\s+class\\s*=\\s*\\{\\s*`([^`]*)`\\s*\\}",
+const CLASS_ATTRIBUTE_PATTERNS = [
+  '\\sclass\\s*=\\s*"([^"]+)"',
+  "\\sclass\\s*=\\s*'([^']+)'",
+  '\\sclassName\\s*=\\s*"([^"]+)"',
+  "\\sclassName\\s*=\\s*'([^']+)'",
+  '\\sclassName\\s*=\\s*\\{\\s*"([^"]+)"\\s*\\}',
+  "\\sclassName\\s*=\\s*\\{\\s*'([^']+)'\\s*\\}",
+  "\\sclassName\\s*=\\s*\\{\\s*`([^`]*)`\\s*\\}",
+  "\\sclass\\s*=\\s*\\{\\s*`([^`]*)`\\s*\\}",
 ]
 
-const CLASS_NAME_REGEX = new RegExp(
-  CLASS_NAME_PATTERNS.map((pattern) => `(?:${pattern})`).join("|"),
+const CLASS_ATTRIBUTE_REGEX = new RegExp(
+  CLASS_ATTRIBUTE_PATTERNS.map((pattern) => `(?:${pattern})`).join("|"),
   "g",
 )
 
@@ -258,42 +219,106 @@ export function extractClassNames(source: string): Set<string> {
   const candidates = new Set<string>()
   const sourceWithoutComments = source.replace(HTML_COMMENT_REGEX, "")
 
-  for (const match of sourceWithoutComments.matchAll(CLASS_NAME_REGEX)) {
-    // Find the first non-undefined capture group (skip match[0] which is full match)
-    let classString = ""
-    for (let i = 1; i < match.length; i++) {
-      if (match[i] !== undefined) {
-        classString = match[i]
-        break
+  for (const tag of extractTagLikeSegments(sourceWithoutComments)) {
+    for (const match of tag.matchAll(CLASS_ATTRIBUTE_REGEX)) {
+      let classString = ""
+      for (let i = 1; i < match.length; i++) {
+        if (match[i] !== undefined) {
+          classString = match[i]
+          break
+        }
       }
-    }
 
-    if (!classString) {
-      continue
-    }
+      if (!classString) {
+        continue
+      }
 
-    if (classString.includes("${")) {
-      const staticParts = classString.split(TEMPLATE_EXPRESSION_REGEX)
+      if (classString.includes("${")) {
+        const staticParts = classString.split(TEMPLATE_EXPRESSION_REGEX)
 
-      for (const part of staticParts) {
-        const names = part
-          .trim()
-          .split(/\s+/)
-          .filter((name) => {
-            if (name.length === 0) return false
-            if (name.endsWith("-") || name.startsWith("-")) return false
-            return TAILWIND_CLASS_REGEX.test(name)
-          })
+        for (const part of staticParts) {
+          const names = part
+            .trim()
+            .split(/\s+/)
+            .filter((name) => {
+              if (name.length === 0) return false
+              if (name.endsWith("-") || name.startsWith("-")) return false
+              return TAILWIND_CLASS_REGEX.test(name)
+            })
+          names.forEach((name) => candidates.add(name))
+        }
+      } else {
+        const names = classString.split(/\s+/).filter((name) => name.length > 0)
         names.forEach((name) => candidates.add(name))
       }
-    } else {
-      // Simple case: regular class string without expressions
-      const names = classString.split(/\s+/).filter((name) => name.length > 0)
-      names.forEach((name) => candidates.add(name))
     }
   }
 
   return candidates
+}
+
+function extractTagLikeSegments(source: string): Array<string> {
+  const tags: Array<string> = []
+
+  for (let i = 0; i < source.length; i++) {
+    if (source[i] !== "<") {
+      continue
+    }
+
+    const next = source[i + 1]
+    if (!next || next === "/" || next === "!" || /\s/.test(next)) {
+      continue
+    }
+
+    let quote: '"' | "'" | "`" | null = null
+    let escaped = false
+    let braceDepth = 0
+
+    for (let j = i + 1; j < source.length; j++) {
+      const char = source[j]
+
+      if (quote !== null) {
+        if (escaped) {
+          escaped = false
+          continue
+        }
+
+        if (char === "\\") {
+          escaped = true
+          continue
+        }
+
+        if (char === quote) {
+          quote = null
+        }
+
+        continue
+      }
+
+      if (char === '"' || char === "'" || char === "`") {
+        quote = char
+        continue
+      }
+
+      if (char === "{") {
+        braceDepth++
+        continue
+      }
+
+      if (char === "}" && braceDepth > 0) {
+        braceDepth--
+        continue
+      }
+
+      if (char === ">" && braceDepth === 0) {
+        tags.push(source.slice(i, j + 1))
+        i = j
+        break
+      }
+    }
+  }
+
+  return tags
 }
 
 async function scanFiles(dir: string): Promise<Set<string>> {

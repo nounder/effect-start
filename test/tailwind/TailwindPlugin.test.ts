@@ -264,4 +264,26 @@ test.describe(`${TailwindPlugin.extractClassNames.name}`, () => {
 
     test.expect([...result].sort()).toEqual(["toast"])
   })
+
+  test.it("Handles class after JSX arrow-function attributes", () => {
+    const source = `
+      <button
+        id="mic-btn"
+        type="button"
+        data-on:click={(e) => {
+          if (!e.signals.listening) {
+            e.window?.["__startListening"]()
+            e.signals.listening = true
+          }
+        }}
+        class="btn btn-outline"
+        data-attr:class="$listening ? 'hidden' : 'btn btn-outline'"
+      >
+        Start listening
+      </button>
+    `
+    const result = TailwindPlugin.extractClassNames(source)
+
+    test.expect([...result].sort()).toEqual(["btn", "btn-outline"])
+  })
 })
