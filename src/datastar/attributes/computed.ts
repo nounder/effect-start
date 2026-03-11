@@ -1,4 +1,4 @@
-import { attribute, computed, mergePatch, mergePaths } from "../engine.ts"
+import { attribute, computed, createDataEvent, mergePatch, mergePaths } from "../engine.ts"
 import { modifyCasing, updateLeaves } from "../utils.ts"
 
 attribute({
@@ -7,14 +7,14 @@ attribute({
     value: "must",
   },
   returnsValue: true,
-  apply({ key, mods, rx, error }) {
+  apply({ el, key, mods, rx, error }) {
     if (key) {
       mergePaths([[modifyCasing(key, mods), computed(rx)]])
     } else {
       const patch = Object.assign({}, rx() as Record<string, () => any>)
       updateLeaves(patch, (old) => {
         if (typeof old === "function") {
-          return computed(old)
+          return computed(() => old(createDataEvent({ el, cleanups: new Map(), error: () => error })))
         } else {
           throw error("ComputedExpectedFunction")
         }

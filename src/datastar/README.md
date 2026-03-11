@@ -27,6 +27,13 @@ We made following changes:
 - Extended expressions with function form handled by `genRx`:
   - Function expressions are evaluated directly instead of compiled through Datastar's string-expression transform
   - Function expressions receive a `DataEvent` object with `signals`, `actions`, `target`, and `window`
+  - Shared expression-event setup is centralized in `createDataEvent()` and reused by both `genRx` and `data-computed`
+  - Value-returning object literals are compiled as `return ({...});` so block-bodied arrow functions inside object expressions still parse
+- `data-computed` supports object values with function leaves:
+  - String/object-literal form still works: `data-computed="{statusText: (e) => e.signals.state}"`
+  - JSX object form also works: `data-computed={{ statusText: (e) => e.signals.state }}`
+  - Object values only accept functions at the leaves
+  - JSX typing allows `data-computed` object values
 - `data-on` supports function form:
   - Function form: `data-on:click="(e) => { e.signals.count = e.signals.count + 1 }"`
   - Event names are used literally from the attribute key; upstream `modifyCasing(..., "kebab")` normalization is no longer applied

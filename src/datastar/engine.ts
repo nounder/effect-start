@@ -124,6 +124,41 @@ export type DataEvent = Event & {
   window: Window & typeof globalThis
 }
 
+export const createDataEvent = ({
+  el,
+  evt,
+  cleanups,
+  error,
+}: {
+  el: HTMLOrSVG
+  evt?: Event
+  cleanups: Map<string, () => void>
+  error: (actionName: string) => ErrorFn
+}): DataEvent => {
+  const actionsProxy = new Proxy({} as Record<string, any>, {
+    get:
+      (_, name: string) =>
+      (...actionArgs: Array<any>) => {
+        const err = error(name)
+        const fn = actions[name]
+        if (fn) {
+          return fn({ el, evt: undefined, error: err, cleanups }, ...actionArgs)
+        }
+        throw err("UndefinedAction")
+      },
+  })
+
+  const dataEvt = (evt instanceof Event ? evt : new Event("datastar:expression")) as DataEvent
+  Object.defineProperties(dataEvt, {
+    target: { value: el },
+    signals: { value: root },
+    actions: { value: actionsProxy },
+    window: { value: window },
+  })
+
+  return dataEvt
+}
+
 export type Modifiers = Map<string, Set<string>>
 
 export type EventCallbackHandler = (...args: Array<any>) => void
@@ -1199,27 +1234,16 @@ const genRx = (
     const userFn = Function(`return (${value.trim()})`)()
 
     return (el: HTMLOrSVG, ...args: Array<any>) => {
-      const actionsProxy = new Proxy({} as Record<string, any>, {
-        get:
-          (_, name: string) =>
-          (...actionArgs: Array<any>) => {
-            const err = error.bind(0, {
-              plugin: { type: "action", name },
-              element: { id: el.id, tag: el.tagName },
-              expression: { fnContent: value, value },
-            })
-            const fn = actions[name]
-            if (fn) return fn({ el, evt: undefined, error: err, cleanups }, ...actionArgs)
-            throw err("UndefinedAction")
-          },
-      })
-
-      const dataEvt = args[0] instanceof Event ? args[0] : new Event("datastar:expression")
-      Object.defineProperties(dataEvt, {
-        target: { value: el },
-        signals: { value: root },
-        actions: { value: actionsProxy },
-        window: { value: window },
+      const dataEvt = createDataEvent({
+        el,
+        evt: args[0],
+        cleanups,
+        error: (name) =>
+          error.bind(0, {
+            plugin: { type: "action", name },
+            element: { id: el.id, tag: el.tagName },
+            expression: { fnContent: value, value },
+          }),
       })
 
       try {
@@ -1240,16 +1264,21 @@ const genRx = (
 
   let expr = ""
   if (returnsValue) {
-    const statementRe =
-      /(\/(\\\/|[^/])*\/|"(\\"|[^"])*"|'(\\'|[^'])*'|`(\\`|[^`])*`|\(\s*((function)\s*\(\s*\)|(\(\s*\))\s*=>)\s*(?:\{[\s\S]*?\}|[^;){]*)\s*\)\s*\(\s*\)|[^;])+/gm
-    const statements = value.trim().match(statementRe)
-    if (statements) {
-      const lastIdx = statements.length - 1
-      const last = statements[lastIdx].trim()
-      if (!last.startsWith("return")) {
-        statements[lastIdx] = `return (${last});`
+    const trimmed = value.trim()
+    if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+      expr = `return (${trimmed});`
+    } else {
+      const statementRe =
+        /(\/(\\\/|[^/])*\/|"(\\"|[^"])*"|'(\\'|[^'])*'|`(\\`|[^`])*`|\(\s*((function)\s*\(\s*\)|(\(\s*\))\s*=>)\s*(?:\{[\s\S]*?\}|[^;){]*)\s*\)\s*\(\s*\)|[^;])+/gm
+      const statements = trimmed.match(statementRe)
+      if (statements) {
+        const lastIdx = statements.length - 1
+        const last = statements[lastIdx].trim()
+        if (!last.startsWith("return")) {
+          statements[lastIdx] = `return (${last});`
+        }
+        expr = statements.join(";\n")
       }
-      expr = statements.join(";\n")
     }
   } else {
     expr = value.trim()

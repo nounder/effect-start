@@ -74,6 +74,27 @@ const RAW_TEXT_TAGS = ["script", "style"]
 
 const escapeRawText = (text: string) => text.replaceAll("</", "<\\/")
 
+const serializeObjectProperty = (value: unknown): string | undefined => {
+  if (value === undefined) return undefined
+  if (typeof value === "function") return value.toString()
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => serializeObjectProperty(item) ?? "null").join(",")}]`
+  }
+  if (value && typeof value === "object") {
+    const props = Object.entries(value)
+      .flatMap(([key, prop]) => {
+        const serialized = serializeObjectProperty(prop)
+        return serialized === undefined ? [] : [`${JSON.stringify(key)}:${serialized}`]
+      })
+      .join(",")
+    return `{${props}}`
+  }
+  return JSON.stringify(value)
+}
+
+const serializeDataAttributeObject = (key: string, value: Record<string, unknown>): string =>
+  key === "data-computed" ? serializeObjectProperty(value)! : JSON.stringify(value)
+
 export function renderToString(
   node: JSX.Children,
   hooks?: { onNode?: (node: Element) => void },
@@ -143,7 +164,7 @@ export function renderToString(
             if (key.startsWith("data-") && typeof value === "function") {
               result += ` ${esc(resolvedKey)}="${esc(value.toString())}"`
             } else if (key.startsWith("data-") && typeof value === "object") {
-              result += ` ${esc(resolvedKey)}='${escSQ(JSON.stringify(value))}'`
+              result += ` ${esc(resolvedKey)}='${escSQ(serializeDataAttributeObject(key, value))}'`
             } else {
               result += ` ${esc(resolvedKey)}="${esc(value)}"`
             }

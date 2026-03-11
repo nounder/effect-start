@@ -369,6 +369,31 @@ test.it("data-* object values don't render as [object Object]", () => {
   test.expect(html).not.toContain("[object Object]")
 })
 
+test.it("data-computed object values preserve function leaves", () => {
+  const html = Html.renderToString(
+    <div
+      data-computed={{
+        listening: (e) => e.signals.speechState !== "idle",
+        statusText: (e) => {
+          return (
+            {
+              idle: "Idle",
+              listening: "Listening",
+            }[e.signals.speechState] ?? "Idle"
+          )
+        },
+      }}
+    >
+      content
+    </div>,
+  )
+
+  test.expect(html).toContain("data-computed='")
+  test.expect(html).toContain('"listening":')
+  test.expect(html).toContain("e.signals.speechState")
+  test.expect(html).not.toContain(`data-computed='{}'`)
+})
+
 test.it("dangerouslySetInnerHTML injects html without escaping", () => {
   const html = Html.renderToString(
     <div dangerouslySetInnerHTML={{ __html: '<span class="bold">hello & world</span>' }} />,

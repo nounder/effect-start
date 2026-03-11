@@ -26,7 +26,7 @@ export interface DatastarAttributes {
 
   // Attributes that accept function expressions
   "data-bind"?: string | undefined
-  "data-computed"?: string | DatastarFn | undefined
+  "data-computed"?: string | DatastarFn | Record<string, DatastarFn | Record<string, DatastarFn>> | undefined
   "data-effect"?: string | DatastarFn | undefined
   "data-indicator"?: string | undefined
   "data-json-signals"?: true | string | undefined

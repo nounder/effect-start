@@ -1,6 +1,6 @@
 import { JSDOM } from "jsdom"
 import * as test from "bun:test"
-import { html } from "effect-start/Html"
+import { html, make, renderToString } from "effect-start/Html"
 import type { HtmlString } from "effect-start/Html"
 
 const dom = new JSDOM("<!DOCTYPE html><html><body></body></html>", { url: "http://localhost" })
@@ -363,9 +363,7 @@ test.describe("computed", () => {
     test.expect(c.querySelector("span")!.textContent).toBe("8")
   })
 
-  // TODO: object form doesn't pass event context to functions,
-  // so (e) => e.signals.x doesn't work — only $x shorthand works
-  test.it.skip("object form works with e.signals syntax", async () => {
+  test.it("object form works with e.signals syntax", async () => {
     const c = await mount(html`
       <div data-signals="{compQ: 4}">
         <div data-computed="{compCubed: (e) => e.signals.compQ ** 3}"></div>
@@ -378,6 +376,45 @@ test.describe("computed", () => {
     await setSignals({ compQ: 2 })
 
     test.expect(c.querySelector("span")!.textContent).toBe("8")
+  })
+
+  test.it("rendered object value works with function leaves", async () => {
+    const c = await mount(
+      renderToString(
+        make("div", {
+          "data-signals": { speechState: "idle" },
+          children: [
+            make("div", {
+              "data-computed": {
+                listening: (e: any) => e.signals.speechState !== "idle",
+                statusText: (e: any) => {
+                  return (
+                    (
+                      {
+                        idle: "Idle",
+                        listening: "Listening",
+                        speaking: "Speaking",
+                        paused: "Paused",
+                      } as Record<string, string>
+                    )[e.signals.speechState] ?? "Idle"
+                  )
+                },
+              },
+            }),
+            make("span", { id: "listening", "data-text": "$listening" }),
+            make("span", { id: "status", "data-text": "$statusText" }),
+          ],
+        }),
+      ),
+    )
+
+    test.expect(c.querySelector("#listening")!.textContent).toBe("false")
+    test.expect(c.querySelector("#status")!.textContent).toBe("Idle")
+
+    await setSignals({ speechState: "speaking" })
+
+    test.expect(c.querySelector("#listening")!.textContent).toBe("true")
+    test.expect(c.querySelector("#status")!.textContent).toBe("Speaking")
   })
 })
 
