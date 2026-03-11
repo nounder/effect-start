@@ -6,6 +6,7 @@ import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Layer from "effect/Layer"
+import * as MutableRef from "effect/MutableRef"
 import * as Option from "effect/Option"
 import * as Runtime from "effect/Runtime"
 import type * as Scope from "effect/Scope"
@@ -145,9 +146,15 @@ export const make = (
     // @ts-expect-error
     service.server = server
 
+    const myFiber = MutableRef.get(PlatformRuntime.mainFiber)
     yield* Effect.addFinalizer(() =>
       Effect.sync(() => {
-        server.stop()
+        // Only stop the server on real shutdown; and not on hot reloads
+        // when Bun.serve automatically swaps routes without restarting the server
+        const currentMain = MutableRef.get(PlatformRuntime.mainFiber)
+        if (currentMain === myFiber) {
+          server.stop()
+        }
       }),
     )
 
