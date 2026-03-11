@@ -29,7 +29,7 @@ export interface DatastarAttributes {
   "data-computed"?: string | DatastarFn | undefined
   "data-effect"?: string | DatastarFn | undefined
   "data-indicator"?: string | undefined
-  "data-json-signals"?: string | undefined
+  "data-json-signals"?: true | string | undefined
   "data-on"?: string | DatastarFn | undefined
   "data-on-intersect"?: string | DatastarFn | undefined
   "data-on-interval"?: string | DatastarFn | undefined
