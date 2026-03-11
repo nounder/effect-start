@@ -43,7 +43,7 @@ interface BunServeOptions {
   readonly reusePort?: boolean
   readonly ipv6Only?: boolean
   readonly idleTimeout?: number
-  readonly development?: boolean
+  readonly development?: Bun.Serve.Development
 }
 
 export type BunServer = {
