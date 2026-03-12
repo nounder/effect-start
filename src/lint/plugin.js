@@ -146,40 +146,6 @@ export default {
       },
     },
 
-    // this doens't work reliably and may cause runtime errors
-    "export-default-before-functions": {
-      meta: {
-        type: "suggestion",
-        docs: {
-          description: "Enforce export default appears before any function declarations",
-        },
-        schema: [],
-        messages: {
-          defaultAfterFunction: "export default should appear before function declarations",
-        },
-      },
-      create(context) {
-        return {
-          Program(node) {
-            let seenFunction = false
-
-            for (const stmt of node.body) {
-              if (!seenFunction && isFunction(stmt)) {
-                seenFunction = true
-              }
-
-              if (seenFunction && stmt.type === "ExportDefaultDeclaration") {
-                context.report({
-                  node: stmt,
-                  messageId: "defaultAfterFunction",
-                })
-              }
-            }
-          },
-        }
-      },
-    },
-
     "no-destructured-params": {
       meta: {
         type: "suggestion",

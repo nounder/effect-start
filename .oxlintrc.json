@@ -73,7 +73,10 @@
     "effect-start/no-destructured-params": "warn",
 
     // Disallow await Effect.runPromise in test callbacks
-    "effect-start/test-effects": "warn"
+    "effect-start/test-effects": "warn",
+
+    // Prefer typeof User.Type over Schema.Schema.Type<typeof User>
+    "effect-start/schema-type-helpers": "warn"
   },
   "overrides": [
     {
