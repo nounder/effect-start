@@ -123,7 +123,7 @@
       "default": "./dist/Unique.js"
     },
     "./_*": null,
-    "./client/assets.d.ts": "./src/assets.d.ts",
+    "./assets.d.ts": "./src/assets.d.ts",
     "./jsx-runtime": {
       "bun": "./src/jsx-runtime.ts",
       "default": "./dist/jsx-runtime.js"
@@ -140,6 +140,7 @@
       "bun": "./src/bun/index.ts",
       "default": "./dist/bun/index.js"
     },
+    "./ts/import-plugin": "./src/ts/import-plugin.cjs",
     "./cli": {
       "bun": "./src/cli/index.ts",
       "default": "./dist/cli/index.js"

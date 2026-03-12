@@ -408,3 +408,32 @@ test.describe(Route.devOnly, () => {
     }).pipe(Effect.provide(Development.layerTest), Effect.runPromise),
   )
 })
+
+test.describe("Route generator handler must not allow returning an Effect", () => {
+  test.it("returning an Effect from html generator is a type error", () => {
+    Route.get(
+      // @ts-expect-error - returning an Effect instead of yielding it
+      Route.html(function* () {
+        return Effect.succeed(<div>oops</div>)
+      }),
+    )
+  })
+
+  test.it("returning an Effect from text generator is a type error", () => {
+    Route.get(
+      // @ts-expect-error - returning an Effect instead of yielding it
+      Route.text(function* () {
+        return Effect.succeed("oops")
+      }),
+    )
+  })
+
+  test.it("yielding then returning the value is ok", () => {
+    Route.get(
+      Route.html(function* () {
+        const name = yield* Effect.succeed("World")
+        return <div>Hello {name}</div>
+      }),
+    )
+  })
+})
