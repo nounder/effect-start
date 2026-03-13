@@ -286,4 +286,39 @@ test.describe(`${TailwindPlugin.extractClassNames.name}`, () => {
 
     test.expect([...result].sort()).toEqual(["btn", "btn-outline"])
   })
+
+  test.it("data-class: extracts class name from attribute name", () => {
+    const source = `<div data-class:underline="$active">Link</div>`
+    const result = TailwindPlugin.extractClassNames(source)
+
+    test.expect([...result]).toEqual(["underline"])
+  })
+
+  test.it("data-class: extracts multiple classes from separate attributes", () => {
+    const source = `<div data-class:underline="$active" data-class:font-bold="$important">Text</div>`
+    const result = TailwindPlugin.extractClassNames(source)
+
+    test.expect([...result].sort()).toEqual(["font-bold", "underline"])
+  })
+
+  test.it("data-class: handles modifier prefixes", () => {
+    const source = `<div data-class:hover:text-blue-500="$hovered">Hover me</div>`
+    const result = TailwindPlugin.extractClassNames(source)
+
+    test.expect([...result]).toEqual(["hover:text-blue-500"])
+  })
+
+  test.it("data-class: handles arbitrary values", () => {
+    const source = `<div data-class:w-[200px]="$wide">Wide</div>`
+    const result = TailwindPlugin.extractClassNames(source)
+
+    test.expect([...result]).toEqual(["w-[200px]"])
+  })
+
+  test.it("data-class: combined with regular class attribute", () => {
+    const source = `<div class="flex items-center" data-class:hidden="$isHidden">Content</div>`
+    const result = TailwindPlugin.extractClassNames(source)
+
+    test.expect([...result].sort()).toEqual(["flex", "hidden", "items-center"])
+  })
 })

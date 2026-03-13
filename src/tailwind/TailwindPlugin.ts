@@ -200,6 +200,7 @@ const CLASS_ATTRIBUTE_PATTERNS = [
   "\\sclassName\\s*=\\s*\\{\\s*'([^']+)'\\s*\\}",
   "\\sclassName\\s*=\\s*\\{\\s*`([^`]*)`\\s*\\}",
   "\\sclass\\s*=\\s*\\{\\s*`([^`]*)`\\s*\\}",
+  "\\sdata-class:([a-zA-Z0-9_:\\-]+(?:\\[[^\\]]*\\])?)\\s*=",
 ]
 
 const CLASS_ATTRIBUTE_REGEX = new RegExp(
@@ -252,6 +253,7 @@ export function extractClassNames(source: string): Set<string> {
         names.forEach((name) => candidates.add(name))
       }
     }
+
   }
 
   return candidates
