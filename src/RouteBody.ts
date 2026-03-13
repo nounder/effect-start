@@ -25,7 +25,7 @@ type YieldContext<T> = T extends Utils.YieldWrap<Effect.Effect<any, any, infer R
 
 type Next<B, A> = (context?: Partial<B> & Record<string, unknown>) => Entity.Entity<UnwrapStream<A>>
 
-type HandlerReturn<A> = A | Entity.Entity<A> | ((self: Route.RouteSet.Any) => Route.RouteSet.Any)
+type HandlerReturn<A> = A | Entity.Entity<A, any> | ((self: Route.RouteSet.Any) => Route.RouteSet.Any)
 
 type HandlerFunction<B, A, E, R> = (
   context: Values.Simplify<B>,
@@ -41,7 +41,7 @@ export type GeneratorHandler<B, A, Y> = (
 
 export type HandlerInput<B, A, E, R> =
   | A
-  | Entity.Entity<A>
+  | Entity.Entity<A, any>
   | Effect.Effect<HandlerReturn<A>, E, R>
   | HandlerFunction<B, A, E, R>
 
