@@ -2,6 +2,8 @@ import { JSDOM } from "jsdom"
 import * as test from "bun:test"
 import { html, make, renderToString } from "effect-start/Html"
 import type { HtmlString } from "effect-start/Html"
+import type * as Engine from "../../src/datastar/index.ts"
+import type { JSX } from "../../src/jsx-runtime.ts"
 
 const dom = new JSDOM("<!DOCTYPE html><html><body></body></html>", { url: "http://localhost" })
 const _window = dom.window
@@ -74,6 +76,19 @@ const mount = async (markup: string | HtmlString) => {
 const cleanup = () => {
   document.body.innerHTML = ""
 }
+
+test.describe("datastar jsx", () => {
+  test.it("data-init function argument is typed as DataEvent", () => {
+    const props: JSX.IntrinsicElements["div"] = {
+      "data-init": (e) => {
+        test.expectTypeOf(e).toMatchTypeOf<Engine.DataEvent>()
+        test.expectTypeOf(e.target).toMatchTypeOf<Engine.HTMLOrSVG>()
+      },
+    }
+
+    test.expect(props).toBeDefined()
+  })
+})
 
 test.describe("signals", () => {
   test.beforeEach(cleanup)
