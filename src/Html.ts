@@ -1,28 +1,14 @@
-import type { JSX } from "../src/jsx.d.ts"
+import type { JSX, HtmlElement, HtmlElemenetProps, HtmlElementType, HtmlComponent } from "../src/jsx.d.ts"
+
+export type ElementType = HtmlElementType
+export type ElemenetProps = HtmlElemenetProps
+export type Component = HtmlComponent
+export type Element = HtmlElement
 
 export const TypeId = "~effect-start/HyperNode" as const
 
 const NoChildren: ReadonlyArray<never> = Object.freeze([])
 
-type Primitive = string | number | boolean | null | undefined
-
-export type ElementType = string | Component
-
-export type ElemenetProps = {
-  [key: string]:
-    | Primitive
-    | Element
-    | Iterable<Primitive | Element>
-    | Record<string, unknown>
-    | ((window: Window) => void)
-}
-
-export type Component = (props: ElemenetProps) => Element | Primitive
-
-export interface Element {
-  type: ElementType
-  props: ElemenetProps
-}
 
 export function make(type: ElementType, props: ElemenetProps): Element {
   return {

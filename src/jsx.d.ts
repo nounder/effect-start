@@ -1,4 +1,3 @@
-import type * as Html from "./Html.ts"
 import type { DatastarAttributes } from "./datastar/jsx.d.ts"
 
 /**
@@ -16,8 +15,24 @@ import type { DatastarAttributes } from "./datastar/jsx.d.ts"
  */
 type DOMElement = never
 
+type HtmlPrimitive = string | number | boolean | null | undefined
+export type HtmlElementType = string | HtmlComponent
+export type HtmlElemenetProps = {
+  [key: string]:
+    | HtmlPrimitive
+    | HtmlElement
+    | Iterable<HtmlPrimitive | HtmlElement>
+    | Record<string, unknown>
+    | ((window: Window) => void)
+}
+export type HtmlComponent = (props: HtmlElemenetProps) => HtmlElement | HtmlPrimitive
+export interface HtmlElement {
+  type: HtmlElementType
+  props: HtmlElemenetProps
+}
+
 export namespace JSX {
-  type Element = Html.Element
+  type Element = HtmlElement
   type Child = Element | string | number | bigint
   type Children = Child | SilentChild | Iterable<Children>
 

@@ -1,3 +1,4 @@
+import type { DataEvent as _DataEvent, HTMLOrSVG as _HTMLOrSVG } from "./types.d.ts"
 import { aliasify, hasOwn, isHTMLOrSVG, isPojo, pathToObj, snake } from "./utils.ts"
 
 /*********
@@ -115,14 +116,8 @@ export type MergePatchArgs = {
   ifMissing?: boolean
 }
 
-export type HTMLOrSVG = HTMLElement | SVGElement | MathMLElement
-
-export type DataEvent = Event & {
-  signals: Record<string, any>
-  actions: Record<string, (...args: Array<any>) => any>
-  target: HTMLOrSVG
-  window: Window & typeof globalThis
-}
+export type HTMLOrSVG = _HTMLOrSVG
+export type DataEvent = _DataEvent
 
 export const createDataEvent = ({
   el,
