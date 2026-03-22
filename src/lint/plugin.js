@@ -146,6 +146,44 @@ export default {
       },
     },
 
+    "schema-type-helpers": {
+      meta: {
+        type: "suggestion",
+        docs: {
+          description:
+            "Prefer `typeof User.Type` over `Schema.Schema.Type<typeof User>`",
+        },
+        fixable: "code",
+        schema: [],
+        messages: {
+          preferTypeof:
+            'Use `typeof {{name}}.Type` instead of `Schema.Schema.Type<typeof {{name}}>`',
+        },
+      },
+      create(context) {
+        function walk(node) {
+          if (!node || typeof node !== "object") return
+          if (Array.isArray(node)) {
+            for (const child of node) walk(child)
+            return
+          }
+          if (node.type === "TSTypeReference") {
+            checkTypeRef(context, node)
+            return
+          }
+          for (const key of Object.keys(node)) {
+            if (key === "parent") continue
+            walk(node[key])
+          }
+        }
+        return {
+          TSTypeAliasDeclaration(node) {
+            walk(node.typeAnnotation)
+          },
+        }
+      },
+    },
+
     "no-destructured-params": {
       meta: {
         type: "suggestion",
@@ -543,6 +581,37 @@ export default {
       },
     },
   },
+}
+
+function checkTypeRef(context, node) {
+  const typeName = node.typeName
+  if (typeName.type !== "TSQualifiedName") return
+  if (typeName.right.type !== "Identifier" || typeName.right.name !== "Type") return
+
+  const mid = typeName.left
+  if (mid.type !== "TSQualifiedName") return
+  if (mid.right.type !== "Identifier" || mid.right.name !== "Schema") return
+  if (mid.left.type !== "Identifier" || mid.left.name !== "Schema") return
+
+  const args = node.typeArguments
+  if (!args || args.params.length !== 1) return
+
+  const param = args.params[0]
+  if (param.type !== "TSTypeQuery") return
+
+  const exprName = param.exprName
+  if (exprName.type !== "Identifier") return
+
+  const name = exprName.name
+
+  context.report({
+    node,
+    messageId: "preferTypeof",
+    data: { name },
+    fix(fixer) {
+      return fixer.replaceTextRange(node.range, "typeof " + name + ".Type")
+    },
+  })
 }
 
 function getBaseName(source) {

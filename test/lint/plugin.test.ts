@@ -189,6 +189,72 @@ test.describe.skipIf(!process.env.TEST_LINT)("test-space-around", () => {
   })
 })
 
+test.describe.skipIf(!process.env.TEST_LINT)("schema-type-helpers", () => {
+  test.it("flags Schema.Schema.Type<typeof User>", () => {
+    const code = [
+      'import * as Schema from "effect/Schema"',
+      "const User = Schema.Struct({ name: Schema.String })",
+      "type User = Schema.Schema.Type<typeof User>",
+      "",
+    ].join("\n")
+    const diags = lintRule(code, "schema-type-helpers")
+    test.expect(diags).toHaveLength(1)
+  })
+
+  test.it("allows typeof User.Type", () => {
+    const code = [
+      'import * as Schema from "effect/Schema"',
+      "const User = Schema.Struct({ name: Schema.String })",
+      "type User = typeof User.Type",
+      "",
+    ].join("\n")
+    const diags = lintRule(code, "schema-type-helpers")
+    test.expect(diags).toHaveLength(0)
+  })
+
+  test.it("flags in export type alias", () => {
+    const code = [
+      'import * as Schema from "effect/Schema"',
+      "const Person = Schema.Struct({ age: Schema.Number })",
+      "export type Person = Schema.Schema.Type<typeof Person>",
+      "",
+    ].join("\n")
+    const diags = lintRule(code, "schema-type-helpers")
+    test.expect(diags).toHaveLength(1)
+  })
+
+  test.it("ignores Schema.Schema.Type with non-typeof param", () => {
+    const code = [
+      'import * as Schema from "effect/Schema"',
+      "type User = Schema.Schema.Type<any>",
+      "",
+    ].join("\n")
+    const diags = lintRule(code, "schema-type-helpers")
+    test.expect(diags).toHaveLength(0)
+  })
+
+  test.it("ignores Schema.Schema.Type with multiple type params", () => {
+    const code = [
+      'import * as Schema from "effect/Schema"',
+      "type User = Schema.Schema.Type<typeof User, typeof User>",
+      "",
+    ].join("\n")
+    const diags = lintRule(code, "schema-type-helpers")
+    test.expect(diags).toHaveLength(0)
+  })
+
+  test.it("fixes to typeof X.Type", () => {
+    const code = [
+      'import * as Schema from "effect/Schema"',
+      "const User = Schema.Struct({ name: Schema.String })",
+      "type User = Schema.Schema.Type<typeof User>",
+      "",
+    ].join("\n")
+    const fixed = lintFix(code)
+    test.expect(fixed).toContain("type User = typeof User.Type")
+  })
+})
+
 test.describe.skipIf(!process.env.TEST_LINT)("no-destructured-params", () => {
   test.it("flags arrow function with destructured param", () => {
     const diags = lintRule(`const fn = ({ client }: any) => client\nfn\n`, "no-destructured-params")
