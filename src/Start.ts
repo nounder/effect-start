@@ -1,4 +1,5 @@
 import type * as FileSystem from "./FileSystem.ts"
+import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
@@ -140,6 +141,9 @@ export function build<const Layers extends readonly [Layer.Layer.Any, ...Array<L
               map.delete(layer)
               return map
             })
+            if (Cause.isDie(exit.cause) || Cause.isInterruptedOnly(exit.cause)) {
+              return yield* exit
+            }
           }
         }
       }
