@@ -204,7 +204,7 @@ export type ExtractContext<
 export * from "./RouteHook.ts"
 export * from "./RouteSchema.ts"
 
-export { add, del, get, head, options, patch, post, put, use } from "./RouteMount.ts"
+export { del, get, head, options, patch, post, put, use } from "./RouteMount.ts"
 
 export const text = RouteBody.build<string, "text">({
   format: "text",

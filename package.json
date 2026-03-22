@@ -98,10 +98,6 @@
       "bun": "./src/RouteTree.ts",
       "default": "./dist/RouteTree.js"
     },
-    "./RouteTrie": {
-      "bun": "./src/RouteTrie.ts",
-      "default": "./dist/RouteTrie.js"
-    },
     "./Socket": {
       "bun": "./src/Socket.ts",
       "default": "./dist/Socket.js"
