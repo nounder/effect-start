@@ -153,9 +153,9 @@
       "bun": "./src/datastar/index.ts",
       "default": "./dist/datastar/index.js"
     },
-    "./experimental": {
-      "bun": "./src/experimental/index.ts",
-      "default": "./dist/experimental/index.js"
+    "./experimental/*": {
+      "bun": "./src/experimental/*.ts",
+      "default": "./dist/experimental/*.js"
     },
     "./sql": {
       "bun": "./src/sql/index.ts",

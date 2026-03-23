@@ -2,7 +2,8 @@ import * as test from "bun:test"
 import * as Cache from "effect/Cache"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import { SqlCache, SqlClient } from "effect-start/sql"
+import * as SqlCache from "effect-start/experimental/SqlCache"
+import { SqlClient } from "effect-start/sql"
 import * as BunSql from "../../src/sql/bun/index.ts"
 
 const sqlLayer = BunSql.layer({ adapter: "sqlite", filename: ":memory:" })

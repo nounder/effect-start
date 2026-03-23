@@ -3,7 +3,7 @@ import * as Context from "effect/Context"
 import type * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import type * as SqlClient from "./SqlClient.ts"
+import type * as SqlClient from "../sql/SqlClient.ts"
 
 type SqlCacheInstance = Cache.Cache<string, ReadonlyArray<any>>
 

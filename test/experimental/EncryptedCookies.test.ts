@@ -2,7 +2,7 @@ import * as Cookies from "effect-start/Cookies"
 import * as test from "bun:test"
 import * as ConfigProvider from "effect/ConfigProvider"
 import * as Effect from "effect/Effect"
-import { EncryptedCookies } from "effect-start/experimental"
+import * as EncryptedCookies from "effect-start/experimental/EncryptedCookies"
 
 test.describe(`${EncryptedCookies.encrypt.name}`, () => {
   test.test("return encrypted string in correct format", () =>
