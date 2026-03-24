@@ -437,3 +437,35 @@ test.describe("Route generator handler must not allow returning an Effect", () =
     )
   })
 })
+
+test.describe("Route.use is not available after method-specific builders", () => {
+  test.it("use() after get() is a type error", () => {
+    const result = Route.get(Route.html(() => "hello"))
+    // @ts-expect-error - use() should not be available after get()
+    result.use
+  })
+
+  test.it("use() after post() is a type error", () => {
+    const result = Route.post(Route.render(() => "hello"))
+    // @ts-expect-error - use() should not be available after post()
+    result.use
+  })
+
+  test.it("use() after get().post() is a type error", () => {
+    const result = Route.get(Route.html(() => "hello")).post(Route.render(() => "ok"))
+    // @ts-expect-error - use() should not be available after post()
+    result.use
+  })
+
+  test.it("use() after use() is allowed", () => {
+    const result = Route.use(Route.render((_ctx, next) => next()))
+    test.expect(result.use).toBeDefined()
+  })
+
+  test.it("get() after use() is allowed", () => {
+    const result = Route.use(Route.render((_ctx, next) => next())).get(
+      Route.html(() => "hello"),
+    )
+    test.expect(result).toBeDefined()
+  })
+})

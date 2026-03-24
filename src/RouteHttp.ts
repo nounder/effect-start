@@ -187,64 +187,45 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
   const runFork = Runtime.runFork(runtime)
 
   return (routes: Iterable<UnboundedRouteWithMethod>): Http.WebHandler => {
-    const grouped = Object.groupBy(
-      routes,
-      (route) => Route.descriptor(route).method?.toUpperCase() ?? "*",
-    )
-    const wildcards = grouped["*"] ?? []
-    const methodGroups: {
-      [method in Http.Method]?: Array<UnboundedRouteWithMethod>
-    } = {
-      GET: undefined,
-      POST: undefined,
-      PUT: undefined,
-      PATCH: undefined,
-      DELETE: undefined,
-      HEAD: undefined,
-      OPTIONS: undefined,
+    const allRoutes = Array.from(routes)
+    const methods = new Set<string>()
+    for (const route of allRoutes) {
+      const m = Route.descriptor(route).method?.toUpperCase()
+      if (m && m !== "*") methods.add(m)
     }
-
-    for (const method in grouped) {
-      if (method !== "*") {
-        methodGroups[method] = grouped[method]
-      }
+    if (methods.has("GET") && !methods.has("HEAD")) {
+      methods.add("HEAD")
     }
-
-    if (methodGroups["GET"] !== undefined && methodGroups["HEAD"] === undefined) {
-      methodGroups["HEAD"] = methodGroups["GET"]
-    }
-
-    const allowedMethods = Object.keys(methodGroups)
-      .filter((m) => methodGroups[m] !== undefined && methodGroups[m]!.length > 0)
-      .join(", ")
+    const allowedMethods = Array.from(methods).join(", ")
 
     return (request) =>
       new Promise((resolve) => {
         const method = request.method.toUpperCase()
         const accept = request.headers.get("accept")
-        const methodRoutes = methodGroups[method] ?? []
+        const matchingRoutes = allRoutes.filter((route) => {
+          const m = Route.descriptor(route).method?.toUpperCase()
+          return m === "*" || m === method || (method === "HEAD" && m === "GET")
+        })
 
-        if (method === "OPTIONS" && methodRoutes.length === 0 && wildcards.length === 0) {
-          return resolve(
-            new Response(null, {
-              status: 204,
-              headers: { allow: allowedMethods },
-            }),
-          )
-        }
+        if (matchingRoutes.length === 0) {
+          if (method === "OPTIONS" || methods.size === 0) {
+            return resolve(
+              new Response(null, {
+                status: 204,
+                headers: { allow: allowedMethods },
+              }),
+            )
+          }
 
-        if (methodRoutes.length === 0 && wildcards.length === 0) {
           return resolve(
             respondError({ status: 405, message: "method not allowed" }, { allow: allowedMethods }),
           )
         }
-
-        const allRoutes = [...wildcards, ...methodRoutes]
-        const selectedFormat = determineSelectedFormat(accept, allRoutes)
+        const selectedFormat = determineSelectedFormat(accept, matchingRoutes)
 
         const specificFormats = new Set<string>()
         let hasWildcardFormatRoutes = false
-        for (const r of allRoutes) {
+        for (const r of matchingRoutes) {
           const format = Route.descriptor(r).format
           if (format === "*") hasWildcardFormatRoutes = true
           else if (format) specificFormats.add(format)
@@ -266,13 +247,13 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
               currentContext = passedContext
             }
 
-            if (index >= allRoutes.length) {
+            if (index >= matchingRoutes.length) {
               return Effect.succeed(
                 Entity.make({ status: 404, message: "route not found" }, { status: 404 }),
               )
             }
 
-            const route = allRoutes[index++]
+            const route = matchingRoutes[index++]
             const descriptor = Route.descriptor(route)
             const format = descriptor.format
             const handler = route.handler as unknown as Handler

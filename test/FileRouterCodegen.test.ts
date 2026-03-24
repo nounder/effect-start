@@ -28,13 +28,13 @@ test.describe("generateCode", () => {
     const code = FileRouterCodegen.generateCode(routes)
 
     test.expect(code).toContain(`  "/about": [
-    () => import("./about/route.tsx"),
     () => import("./layer.tsx"),
+    () => import("./about/route.tsx"),
   ]`)
     test.expect(code).toContain(`  "/users": [
-    () => import("./users/route.tsx"),
-    () => import("./users/layer.tsx"),
     () => import("./layer.tsx"),
+    () => import("./users/layer.tsx"),
+    () => import("./users/route.tsx"),
   ]`)
   })
 
@@ -59,14 +59,14 @@ test.describe("generateCode", () => {
     const code = FileRouterCodegen.generateCode(routes)
 
     test.expect(code).toContain(`  "/users": [
-    () => import("./users/route.tsx"),
-    () => import("./users/layer.tsx"),
     () => import("./layer.tsx"),
+    () => import("./users/layer.tsx"),
+    () => import("./users/route.tsx"),
   ]`)
     test.expect(code).toContain(`  "/users/:userId": [
-    () => import("./users/[userId]/route.tsx"),
-    () => import("./users/layer.tsx"),
     () => import("./layer.tsx"),
+    () => import("./users/layer.tsx"),
+    () => import("./users/[userId]/route.tsx"),
   ]`)
   })
 
@@ -119,8 +119,8 @@ test.describe("generateCode", () => {
 
     // /users/manage should inherit (admin)/layer.tsx
     test.expect(code).toContain(`  "/users/manage": [
-    () => import("./(admin)/users/manage/route.tsx"),
     () => import("./(admin)/layer.tsx"),
+    () => import("./(admin)/users/manage/route.tsx"),
   ]`)
   })
 
@@ -160,14 +160,14 @@ test.describe("generateCode", () => {
 
     // /users should only get (admin)/layer.tsx
     test.expect(code).toContain(`  "/users": [
-    () => import("./(admin)/users/route.tsx"),
     () => import("./(admin)/layer.tsx"),
+    () => import("./(admin)/users/route.tsx"),
   ]`)
 
     // /home should only get (public)/layer.tsx
     test.expect(code).toContain(`  "/home": [
-    () => import("./(public)/home/route.tsx"),
     () => import("./(public)/layer.tsx"),
+    () => import("./(public)/home/route.tsx"),
   ]`)
   })
 
@@ -180,11 +180,11 @@ test.describe("generateCode", () => {
 
     const code = FileRouterCodegen.generateCode(routes)
 
-    // Should get both layers, inner first then outer
+    // Should get both layers, outer first then inner
     test.expect(code).toContain(`  "/users": [
-    () => import("./(admin)/(internal)/users/route.tsx"),
-    () => import("./(admin)/(internal)/layer.tsx"),
     () => import("./(admin)/layer.tsx"),
+    () => import("./(admin)/(internal)/layer.tsx"),
+    () => import("./(admin)/(internal)/users/route.tsx"),
   ]`)
   })
 
@@ -194,8 +194,8 @@ test.describe("generateCode", () => {
     const code = FileRouterCodegen.generateCode(routes)
 
     test.expect(code).toContain(`  "/": [
-    () => import("./(admin)/route.tsx"),
     () => import("./(admin)/layer.tsx"),
+    () => import("./(admin)/route.tsx"),
   ]`)
   })
 

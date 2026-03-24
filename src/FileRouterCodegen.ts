@@ -137,10 +137,10 @@ export function generateCode(fileRoutes: FileRouter.OrderedFileRoutes): string |
       currentPath = parentPath || "/"
     }
 
-    // Order: route first, then layers from innermost to outermost
+    // Order: layers from outermost to innermost, then route
     const loaders: Array<string> = [
+      ...allLayers.map((layer) => `() => import(".${layer.modulePath}")`),
       `() => import(".${route.modulePath}")`,
-      ...allLayers.reverse().map((layer) => `() => import(".${layer.modulePath}")`),
     ]
 
     entries.push({ path, loaders })

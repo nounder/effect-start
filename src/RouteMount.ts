@@ -10,7 +10,7 @@ const RouteSetTypeId = "~effect-start/RouteSet" as const
 // oxlint-disable-next-line import/first, typescript/consistent-type-imports -- typeof import() is not an import statement
 type Module = typeof import("./RouteMount.ts")
 
-export type Self = RouteMount.Builder | Module
+export type Self = RouteMount.Builder<any, any> | Omit<RouteMount.Builder<any, any>, "use"> | Module
 
 export const use = makeMethodDescriber("*")
 export const get = makeMethodDescriber("GET")
@@ -93,7 +93,19 @@ export namespace RouteMount {
   export type MountSet = Route.RouteSet.RouteSet<{ method: Method }, {}, Route.Route.Tuple>
 
   export interface Builder<D extends {} = {}, I extends Route.Route.Tuple = []>
-    extends Route.RouteSet.RouteSet<D, {}, I>, Module {}
+    extends Route.RouteSet.RouteSet<D, {}, I> {
+    use: Describer<"*">
+    get: Describer<"GET">
+    post: Describer<"POST">
+    put: Describer<"PUT">
+    del: Describer<"DELETE">
+    patch: Describer<"PATCH">
+    head: Describer<"HEAD">
+    options: Describer<"OPTIONS">
+  }
+
+  export type BuilderAfter<M extends Method, I extends Route.Route.Tuple> =
+    M extends "*" ? Builder<{}, I> : Omit<Builder<{}, I>, "use">
 
   export type EmptySet<M extends Method, B = {}> = Route.RouteSet.RouteSet<{ method: M }, B, []>
 
@@ -141,13 +153,13 @@ export namespace RouteMount {
     <S extends Self, A extends Route.RouteSet.Any>(
       this: S,
       ab: (a: EmptySet<M, BuilderBindings<S>>) => A,
-    ): Builder<{}, [...Items<S>, ...FlattenItems<M, BuilderBindings<S>, Route.RouteSet.Items<A>>]>
+    ): BuilderAfter<M, [...Items<S>, ...FlattenItems<M, BuilderBindings<S>, Route.RouteSet.Items<A>>]>
 
     <S extends Self, A extends Route.RouteSet.Any, B extends Route.RouteSet.Any>(
       this: S,
       ab: (a: EmptySet<M, BuilderBindings<S>>) => A,
       bc: (b: A) => B,
-    ): Builder<{}, [...Items<S>, ...FlattenItems<M, BuilderBindings<S>, Route.RouteSet.Items<B>>]>
+    ): BuilderAfter<M, [...Items<S>, ...FlattenItems<M, BuilderBindings<S>, Route.RouteSet.Items<B>>]>
 
     <
       S extends Self,
@@ -159,7 +171,7 @@ export namespace RouteMount {
       ab: (a: EmptySet<M, BuilderBindings<S>>) => A,
       bc: (b: A) => B,
       cd: (c: B) => C,
-    ): Builder<{}, [...Items<S>, ...FlattenItems<M, BuilderBindings<S>, Route.RouteSet.Items<C>>]>
+    ): BuilderAfter<M, [...Items<S>, ...FlattenItems<M, BuilderBindings<S>, Route.RouteSet.Items<C>>]>
 
     <
       S extends Self,
@@ -173,7 +185,7 @@ export namespace RouteMount {
       bc: (b: A) => B,
       cd: (c: B) => C,
       de: (d: C) => D,
-    ): Builder<{}, [...Items<S>, ...FlattenItems<M, BuilderBindings<S>, Route.RouteSet.Items<D>>]>
+    ): BuilderAfter<M, [...Items<S>, ...FlattenItems<M, BuilderBindings<S>, Route.RouteSet.Items<D>>]>
 
     <
       S extends Self,
@@ -189,7 +201,7 @@ export namespace RouteMount {
       cd: (c: B) => C,
       de: (d: C) => D,
       ef: (e: D) => E,
-    ): Builder<{}, [...Items<S>, ...FlattenItems<M, BuilderBindings<S>, Route.RouteSet.Items<E>>]>
+    ): BuilderAfter<M, [...Items<S>, ...FlattenItems<M, BuilderBindings<S>, Route.RouteSet.Items<E>>]>
 
     <
       S extends Self,
@@ -207,7 +219,7 @@ export namespace RouteMount {
       de: (d: C) => D,
       ef: (e: D) => E,
       fg: (f: E) => F,
-    ): Builder<{}, [...Items<S>, ...FlattenItems<M, BuilderBindings<S>, Route.RouteSet.Items<F>>]>
+    ): BuilderAfter<M, [...Items<S>, ...FlattenItems<M, BuilderBindings<S>, Route.RouteSet.Items<F>>]>
 
     <
       S extends Self,
@@ -227,7 +239,7 @@ export namespace RouteMount {
       ef: (e: D) => E,
       fg: (f: E) => F,
       gh: (g: F) => G,
-    ): Builder<{}, [...Items<S>, ...FlattenItems<M, BuilderBindings<S>, Route.RouteSet.Items<G>>]>
+    ): BuilderAfter<M, [...Items<S>, ...FlattenItems<M, BuilderBindings<S>, Route.RouteSet.Items<G>>]>
 
     <
       S extends Self,
@@ -249,7 +261,7 @@ export namespace RouteMount {
       fg: (f: E) => F,
       gh: (g: F) => G,
       hi: (h: G) => H,
-    ): Builder<{}, [...Items<S>, ...FlattenItems<M, BuilderBindings<S>, Route.RouteSet.Items<H>>]>
+    ): BuilderAfter<M, [...Items<S>, ...FlattenItems<M, BuilderBindings<S>, Route.RouteSet.Items<H>>]>
 
     <
       S extends Self,
@@ -273,6 +285,6 @@ export namespace RouteMount {
       gh: (g: F) => G,
       hi: (h: G) => H,
       ij: (i: H) => I,
-    ): Builder<{}, [...Items<S>, ...FlattenItems<M, BuilderBindings<S>, Route.RouteSet.Items<I>>]>
+    ): BuilderAfter<M, [...Items<S>, ...FlattenItems<M, BuilderBindings<S>, Route.RouteSet.Items<I>>]>
   }
 }
