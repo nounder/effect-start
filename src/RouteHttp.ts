@@ -76,7 +76,7 @@ const respondError = (
 
 function streamResponse(
   stream: Stream.Stream<unknown, unknown, unknown>,
-  headers: Record<string, string | null | undefined>,
+  headers: globalThis.Headers,
   status: number,
   runtime: Runtime.Runtime<any>,
 ): Response {
@@ -92,8 +92,25 @@ function streamResponse(
   )
   return new Response(Stream.toReadableStreamRuntime(byteStream, runtime), {
     status,
-    headers: headers as Record<string, string>,
+    headers,
   })
+}
+
+function toHeaders(entityHeaders: Entity.Headers, contentType: string): globalThis.Headers {
+  const headers = new Headers()
+  for (const key in entityHeaders) {
+    const value = entityHeaders[key]
+    if (value == null) continue
+    if (typeof value === "string") {
+      headers.set(key, value)
+    } else {
+      for (const v of value) headers.append(key, v)
+    }
+  }
+  if (!headers.has("content-type")) {
+    headers.set("content-type", contentType)
+  }
+  return headers
 }
 
 function toResponse(
@@ -103,7 +120,7 @@ function toResponse(
 ): Effect.Effect<Response, ParseResult.ParseError> {
   const contentType = Entity.type(entity)
   const status = entity.status ?? 200
-  const headers = { ...entity.headers, "content-type": contentType }
+  const headers = toHeaders(entity.headers, contentType)
 
   if (StreamExtra.isStream(entity.body)) {
     return Effect.succeed(streamResponse(entity.body, headers, status, runtime))

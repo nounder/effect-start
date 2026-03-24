@@ -232,7 +232,7 @@ export function followRedirects(options?: { readonly maxRedirects?: number }): M
             return entity
           }
 
-          const location = entity.headers["location"]
+          const location = entity.headers["location"] as string | undefined
           if (!location) {
             return entity
           }

@@ -41,17 +41,14 @@ export const make = (directory: string) =>
         return emptyNotFound
       }
 
-      const headers: Entity.Headers = {
-        "content-length": String(info.size),
-        "content-type": Mime.fromPath(relativePath),
-      }
-
-      if (Option.isSome(info.mtime)) {
-        headers["last-modified"] = info.mtime.value.toUTCString()
-      }
-
       const bytes = yield* fs.readFile(absolutePath)
-      return Entity.make(bytes, { headers })
+      return Entity.make(bytes, {
+        headers: {
+          "content-length": String(info.size),
+          "content-type": Mime.fromPath(relativePath),
+          ...(Option.isSome(info.mtime) ? { "last-modified": info.mtime.value.toUTCString() } : {}),
+        },
+      })
     }),
   )
 

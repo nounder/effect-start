@@ -619,3 +619,98 @@ test.describe("type inference", () => {
     test.expectTypeOf<Stream.Stream.Success<typeof entity.stream>>().toEqualTypeOf<Uint8Array>()
   })
 })
+
+test.describe(Entity.merge, () => {
+  test.it("merges headers", () => {
+    const entity = Entity.make("hello", { headers: { "x-a": "1" } })
+    const merged = Entity.merge(entity, { headers: { "x-b": "2" } })
+
+    test.expect(merged.headers).toEqual({ "x-a": "1", "x-b": "2" })
+    test.expect(merged.body).toBe("hello")
+  })
+
+  test.it("overrides status", () => {
+    const entity = Entity.make("hello", { status: 200 })
+    const merged = Entity.merge(entity, { status: 201 })
+
+    test.expect(merged.status).toBe(201)
+  })
+
+  test.it("keeps original status if not provided", () => {
+    const entity = Entity.make("hello", { status: 200 })
+    const merged = Entity.merge(entity, { headers: { "x-a": "1" } })
+
+    test.expect(merged.status).toBe(200)
+  })
+
+  test.it("appends set-cookie string to existing string", () => {
+    const entity = Entity.make("ok", {
+      headers: { "set-cookie": "a=1; Path=/" },
+    })
+    const merged = Entity.merge(entity, {
+      headers: { "set-cookie": "b=2; Path=/" },
+    })
+
+    test.expect(merged.headers["set-cookie"]).toEqual([
+      "a=1; Path=/",
+      "b=2; Path=/",
+    ])
+  })
+
+  test.it("appends set-cookie string to existing array", () => {
+    const entity = Entity.make("ok", {
+      headers: { "set-cookie": ["a=1; Path=/", "b=2; Path=/"] },
+    })
+    const merged = Entity.merge(entity, {
+      headers: { "set-cookie": "c=3; Path=/" },
+    })
+
+    test.expect(merged.headers["set-cookie"]).toEqual([
+      "a=1; Path=/",
+      "b=2; Path=/",
+      "c=3; Path=/",
+    ])
+  })
+
+  test.it("appends set-cookie array to existing string", () => {
+    const entity = Entity.make("ok", {
+      headers: { "set-cookie": "a=1; Path=/" },
+    })
+    const merged = Entity.merge(entity, {
+      headers: { "set-cookie": ["b=2; Path=/", "c=3; Path=/"] },
+    })
+
+    test.expect(merged.headers["set-cookie"]).toEqual([
+      "a=1; Path=/",
+      "b=2; Path=/",
+      "c=3; Path=/",
+    ])
+  })
+
+  test.it("sets set-cookie when entity has none", () => {
+    const entity = Entity.make("ok")
+    const merged = Entity.merge(entity, {
+      headers: { "set-cookie": "a=1; Path=/" },
+    })
+
+    test.expect(merged.headers["set-cookie"]).toBe("a=1; Path=/")
+  })
+
+  test.it("keeps existing set-cookie when merge has none", () => {
+    const entity = Entity.make("ok", {
+      headers: { "set-cookie": "a=1; Path=/" },
+    })
+    const merged = Entity.merge(entity, { headers: { "x-other": "val" } })
+
+    test.expect(merged.headers["set-cookie"]).toBe("a=1; Path=/")
+  })
+
+  test.it("does not mutate the original entity", () => {
+    const entity = Entity.make("ok", {
+      headers: { "set-cookie": "a=1; Path=/" },
+    })
+    Entity.merge(entity, { headers: { "set-cookie": "b=2; Path=/" } })
+
+    test.expect(entity.headers["set-cookie"]).toBe("a=1; Path=/")
+  })
+})

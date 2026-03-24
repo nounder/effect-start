@@ -20,7 +20,10 @@ function isBinary(v: unknown): v is Uint8Array | ArrayBuffer {
  * Header keys are guaranteed to be lowercase.
  */
 export type Headers = {
-  [header: string]: string | null | undefined
+  // `set-cookie` is the only header that supports multiple values (as an array),
+  // since it requires separate `Set-Cookie` headers per cookie (RFC 6265).
+  readonly "set-cookie"?: string | ReadonlyArray<string> | null
+  readonly [header: string]: string | ReadonlyArray<string> | null | undefined
 }
 
 export interface Entity<T = unknown, E = never> extends Effect.Effect<Entity<T, E>, E> {
@@ -48,8 +51,8 @@ export interface Entity<T = unknown, E = never> extends Effect.Effect<Entity<T, 
       : [T] extends [string | Uint8Array | ArrayBuffer]
         ? Effect.Effect<unknown, ParseResult.ParseError | E>
         : [T] extends [Values.Json]
-        ? Effect.Effect<T, ParseResult.ParseError | E>
-        : Effect.Effect<unknown, ParseResult.ParseError | E>
+          ? Effect.Effect<T, ParseResult.ParseError | E>
+          : Effect.Effect<unknown, ParseResult.ParseError | E>
   readonly schemaJson: <A, I, R>(
     schema: Schema.Schema<A, I, R>,
   ) => Effect.Effect<A, ParseResult.ParseError | E, R>
@@ -303,6 +306,32 @@ export function effect<A, E, R>(body: Effect.Effect<Entity<A> | A, E, R>): Entit
   return make(body) as unknown as Entity<A, E>
 }
 
+function mergeSetCookie(
+  existing: string | ReadonlyArray<string> | null | undefined,
+  incoming: string | ReadonlyArray<string> | null | undefined,
+): string | ReadonlyArray<string> | undefined {
+  if (incoming == null) return existing ?? undefined
+  if (existing == null) return incoming
+  const a = Array.isArray(existing) ? existing : [existing]
+  const b = Array.isArray(incoming) ? incoming : [incoming]
+  return [...a, ...b]
+}
+
+export function merge<T, E>(entity: Entity<T, E>, options: Options): Entity<T, E> {
+  const headers: Headers = options.headers
+    ? {
+        ...entity.headers,
+        ...options.headers,
+        "set-cookie": mergeSetCookie(entity.headers["set-cookie"], options.headers["set-cookie"]),
+      }
+    : entity.headers
+  return make(entity.body, {
+    headers,
+    status: options.status ?? entity.status,
+    url: options.url ?? entity.url,
+  }) as Entity<T, E>
+}
+
 export function resolve<A, E>(entity: Entity<A, E>): Effect.Effect<Entity<A, E>, E, never> {
   const body = entity.body
   if (Effect.isEffect(body)) {
@@ -322,7 +351,7 @@ export function resolve<A, E>(entity: Entity<A, E>): Effect.Effect<Entity<A, E>,
 export function type(self: Entity): string {
   const h = self.headers
   if (h["content-type"]) {
-    return h["content-type"]
+    return h["content-type"] as string
   }
   const v = self.body
   if (typeof v === "string") {
@@ -337,7 +366,7 @@ export function type(self: Entity): string {
 export function length(self: Entity): number | undefined {
   const h = self.headers
   if (h["content-length"]) {
-    return parseInt(h["content-length"], 10)
+    return parseInt(h["content-length"] as string, 10)
   }
   const v = self.body
   if (typeof v === "string") {

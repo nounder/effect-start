@@ -2593,3 +2593,47 @@ test.describe("Route.render (format=*)", () => {
     }).pipe(Effect.runPromise),
   )
 })
+
+test.it("set-cookie array produces separate headers", async () => {
+  const handler = RouteHttp.toWebHandler(
+    Route.get(
+      Route.render(
+        Entity.make("ok", {
+          status: 200,
+          headers: {
+            "set-cookie": [
+              "a=1; Path=/; HttpOnly",
+              "b=2; Path=/; Max-Age=60",
+            ],
+          },
+        }),
+      ),
+    ),
+  )
+
+  const response = await handler(new Request("http://localhost/"))
+  const cookies = response.headers.getSetCookie()
+  test.expect(cookies).toEqual([
+    "a=1; Path=/; HttpOnly",
+    "b=2; Path=/; Max-Age=60",
+  ])
+})
+
+test.it("set-cookie string still works", async () => {
+  const handler = RouteHttp.toWebHandler(
+    Route.get(
+      Route.render(
+        Entity.make("ok", {
+          status: 200,
+          headers: {
+            "set-cookie": "a=1; Path=/",
+          },
+        }),
+      ),
+    ),
+  )
+
+  const response = await handler(new Request("http://localhost/"))
+  const cookies = response.headers.getSetCookie()
+  test.expect(cookies).toEqual(["a=1; Path=/"])
+})
