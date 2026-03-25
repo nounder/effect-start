@@ -379,6 +379,40 @@ test.describe.skipIf(!process.env.TEST_LINT)("no-destructured-params", () => {
     test.expect(fixed).toBe(code)
   })
 
+  test.it("flags destructured second param in callback", () => {
+    const code = [
+      "const fn = (job: any, { id, priority, attempts }: any) => {",
+      "  console.log(id, priority, attempts, job)",
+      "}",
+      "fn",
+      "",
+    ].join("\n")
+    const diags = lintRule(code, "no-destructured-params")
+    test.expect(diags).toHaveLength(1)
+  })
+
+  test.it("fixes destructured second param in callback", () => {
+    const code = [
+      "const fn = (job: any, { id, priority, attempts }: any) => {",
+      "  console.log(id, priority, attempts, job)",
+      "}",
+      "fn",
+      "",
+    ].join("\n")
+    const fixed = lintFix(code)
+    test
+      .expect(fixed)
+      .toBe(
+        [
+          "const fn = (job: any, options: any) => {",
+          "  console.log(options.id, options.priority, options.attempts, job)",
+          "}",
+          "fn",
+          "",
+        ].join("\n"),
+      )
+  })
+
   test.it("avoids shadowing existing variable with suffix", () => {
     const code = ["const options = 1", "const fn = ({ a }: any) => a + options", "fn", ""].join(
       "\n",
