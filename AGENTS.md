@@ -89,7 +89,7 @@ test.it("does something", async () => {
 
 # Effect
 
-The Effect code is in `./node_modules/effect` for reference.
+The Effect source code is in `./vendor/effect/src` for reference.
 Use this to explore APIs, find usage examples, and understand implementation
 details when the documentation isn't enough.
 

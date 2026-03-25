@@ -1,0 +1,27 @@
+#!/usr/bin/env bun
+
+import * as NFs from "node:fs/promises"
+
+const pkg = await Bun.file("package.json").json()
+const version = pkg.peerDependencies.effect.replace(/^[\^~>=<\s]+/, "")
+const prefix = "packages/effect/"
+
+console.log(`Fetching effect@${version}`)
+
+const response = await fetch(
+  `https://api.github.com/repos/Effect-TS/effect/tarball/effect@${version}`,
+)
+const files = await new Bun.Archive(new Uint8Array(await response.arrayBuffer())).files()
+
+await NFs.rm("vendor/effect", { recursive: true, force: true })
+
+await Promise.all(
+  files
+    .entries()
+    .map(([path, blob]) => [path.split("/").slice(1).join("/"), blob] as const)
+    .filter(([rel]) => rel.startsWith(prefix))
+    .map(([rel, blob]) => Bun.write(`vendor/effect/${rel.slice(prefix.length)}`, blob))
+    .toArray(),
+)
+
+console.log(`Vendored effect@${version}`)
