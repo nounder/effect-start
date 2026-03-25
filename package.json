@@ -209,7 +209,7 @@
   },
   "peerDependencies": {
     "@libsql/client": ">=0.17.0",
-    "effect": "^3.19.11",
+    "effect": "^3.21.0",
     "mssql": ">=12.2.0"
   },
   "peerDependenciesMeta": {

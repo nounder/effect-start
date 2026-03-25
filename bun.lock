@@ -20,7 +20,7 @@
       },
       "peerDependencies": {
         "@libsql/client": ">=0.17.0",
-        "effect": "^3.19.11",
+        "effect": "^3.21.0",
         "mssql": ">=12.2.0",
       },
       "optionalPeers": [
@@ -306,7 +306,7 @@
 
     "ecdsa-sig-formatter": ["ecdsa-sig-formatter@1.0.11", "", { "dependencies": { "safe-buffer": "^5.0.1" } }, "sha512-nagl3RYrbNv6kQkeJIpt6NJZy8twLB/2vtz6yN9Z4vRKHN4/QZJIEbqohALSgwKdnksuY3k5Addp5lg8sVoVcQ=="],
 
-    "effect": ["effect@3.19.16", "", { "dependencies": { "@standard-schema/spec": "^1.0.0", "fast-check": "^3.23.1" } }, "sha512-7+XC3vGrbAhCHd8LTFHvnZjRpZKZ8YHRZqJTkpNoxcJ2mCyNs2SwI+6VkV/ij8Y3YW7wfBN4EbU06/F5+m/wkQ=="],
+    "effect": ["effect@3.21.0", "", { "dependencies": { "@standard-schema/spec": "^1.0.0", "fast-check": "^3.23.1" } }, "sha512-PPN80qRokCd1f015IANNhrwOnLO7GrrMQfk4/lnZRE/8j7UPWrNNjPV0uBrZutI/nHzernbW+J0hdqQysHiSnQ=="],
 
     "effect-memfs": ["effect-memfs@0.8.0", "", { "dependencies": { "memfs": "^4.17.2" }, "peerDependencies": { "@effect/platform": ">=0.82", "effect": ">=3.15", "typescript": ">=5" } }, "sha512-WcZTchZh9RDAwIBHceZxB2wzLwyK1R6J8NzkJz3Jd22m8fN6n8kRUNr9pFfcLyOcGz5TfR7qRRRns4aprdO4UQ=="],
 
