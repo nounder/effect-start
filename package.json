@@ -205,7 +205,7 @@
     "postgres": "^3.4.8",
     "tailwindcss": "^4.1.18",
     "ts-morph": "^27.0.2",
-    "typescript": "^5.9.3"
+    "typescript": "^6.0.2"
   },
   "peerDependencies": {
     "@libsql/client": ">=0.17.0",
