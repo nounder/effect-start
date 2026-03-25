@@ -141,7 +141,7 @@ export function build<const Layers extends readonly [Layer.Layer.Any, ...Array<L
               map.delete(layer)
               return map
             })
-            if (Cause.isDie(exit.cause) || Cause.isInterruptedOnly(exit.cause)) {
+            if (Cause.isInterruptedOnly(exit.cause)) {
               return yield* exit
             }
           }
