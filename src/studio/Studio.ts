@@ -1,7 +1,5 @@
-import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Route from "../Route.ts"
-import * as RouteTree from "../RouteTree.ts"
 import * as sqlBun from "../sql/bun/index.ts"
 import type * as SqlClient from "../sql/SqlClient.ts"
 import * as StudioErrors from "./StudioErrors.ts"
@@ -33,16 +31,8 @@ export function layer(
 
 export function layerRoutes(options?: { prefix?: string }) {
   const prefix = options?.prefix ?? "/studio"
-
-  return Layer.effect(
-    Route.Routes,
-    Effect.gen(function* () {
-      const existing = yield* Route.Routes
-      StudioStore.store.prefix = prefix
-      const tree = Route.tree({
-        [prefix as "/"]: routes,
-      })
-      return RouteTree.merge(existing, tree)
-    }),
-  )
+  StudioStore.store.prefix = prefix
+  return Route.layerMerge({
+    [prefix as "/"]: routes,
+  })
 }

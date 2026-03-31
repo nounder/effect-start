@@ -1,15 +1,12 @@
 import * as Effect from "effect/Effect"
-import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
 import * as Entity from "./Entity.ts"
 import * as FileSystem from "./FileSystem.ts"
-import * as PathPattern from "./_PathPattern.ts"
+import type * as PathPattern from "./_PathPattern.ts"
 import * as Mime from "./_Mime.ts"
 import * as Route from "./Route.ts"
 import * as RouteSchema from "./RouteSchema.ts"
-import * as RouteTree from "./RouteTree.ts"
-import * as System from "./System.ts"
 
 const defaultMountPath = "/assets"
 const PathParamsSchema = Schema.Struct({
@@ -55,26 +52,15 @@ export const make = (directory: string) =>
 export const layer = (options: {
   directory: string
   path?: string
-}) =>
-  Layer.effect(
-    Route.Routes,
-    Effect.gen(function* () {
-      const existing = yield* Effect.serviceOption(Route.Routes).pipe(
-        Effect.andThen(Option.getOrUndefined),
-      )
-      const trimmedMountPath = (options.path ?? defaultMountPath).trim().replace(/^\/+|\/+$/g, "")
-      const mountPattern = (
-        trimmedMountPath.length > 0 ? `/${trimmedMountPath}/:path+` : "/:path+"
-      ) as PathPattern.PathPattern
-      const staticFilesTree = Route.tree({
-        [mountPattern]: make(options.directory),
-      })
-      if (!existing) {
-        return staticFilesTree
-      }
-      return RouteTree.merge(existing, staticFilesTree)
-    }),
-  )
+}) => {
+  const trimmedMountPath = (options.path ?? defaultMountPath).trim().replace(/^\/+|\/+$/g, "")
+  const mountPattern = (
+    trimmedMountPath.length > 0 ? `/${trimmedMountPath}/:path+` : "/:path+"
+  ) as PathPattern.PathPattern
+  return Route.layerMerge({
+    [mountPattern]: make(options.directory),
+  })
+}
 
 function normalizeRelativePath(path: string): string | null {
   if (path.length === 0 || path.startsWith("/") || path.startsWith("\\")) {

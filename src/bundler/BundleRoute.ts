@@ -1,11 +1,8 @@
 import type * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
-import * as Layer from "effect/Layer"
-import * as Option from "effect/Option"
 import * as Entity from "../Entity.ts"
 import * as PathPattern from "../_PathPattern.ts"
 import * as Route from "../Route.ts"
-import * as RouteTree from "../RouteTree.ts"
 import * as Values from "../_Values.ts"
 import * as Bundle from "./Bundle.ts"
 
@@ -49,18 +46,9 @@ export const client = () => make(Bundle.ClientBundle)
 export const layer = (options?: {
   bundle?: Context.Tag<any, Bundle.BundleContext>
   path?: PathPattern.PathPattern
-}) =>
-  Layer.effect(
-    Route.Routes,
-    Effect.gen(function* () {
-      const existing = yield* Effect.serviceOption(Route.Routes).pipe(
-        Effect.andThen(Option.getOrUndefined),
-      )
-      const path = options?.path ?? "/_bundle/:path+"
-      const bundleTree = Route.tree({
-        [path]: make(options?.bundle ?? Bundle.ClientBundle),
-      })
-      if (!existing) return bundleTree
-      return RouteTree.merge(existing, bundleTree)
-    }),
-  )
+}) => {
+  const path = options?.path ?? "/_bundle/:path+"
+  return Route.layerMerge({
+    [path]: make(options?.bundle ?? Bundle.ClientBundle),
+  })
+}

@@ -255,6 +255,20 @@ export function layer(routes: RouteTree.RouteMap | RouteTree.RouteTree) {
   return Layer.sync(Routes, () => (RouteTree.isRouteTree(routes) ? routes : RouteTree.make(routes)))
 }
 
+export function layerMerge(routes: RouteTree.InputRouteMap | RouteTree.RouteTree) {
+  return Layer.effect(
+    Routes,
+    Effect.gen(function* () {
+      const existing = yield* Effect.serviceOption(Routes).pipe(
+        Effect.andThen(Option.getOrUndefined),
+      )
+      const tree = RouteTree.isRouteTree(routes) ? routes : RouteTree.make(routes)
+      if (!existing) return tree
+      return RouteTree.merge(existing, tree)
+    }),
+  )
+}
+
 /**
  * Creates a route that short-curcits in development.
  *
