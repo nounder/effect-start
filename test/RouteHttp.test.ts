@@ -89,12 +89,12 @@ test.it("handles method-specific routes", () =>
   }).pipe(Effect.runPromise),
 )
 
-test.it("handles errors by returning 500 response", () =>
+test.it("handles errors by returning 500 response with generic message in production", () =>
   Effect.gen(function* () {
     const runtime = yield* Effect.runtime<TestLogger.TestLogger>()
     const handler = RouteHttp.toWebHandlerRuntime(runtime)(
       Route.get(
-        Route.text(function* (): Generator<any, string, any> {
+        Route.text(function* () {
           return yield* Effect.fail(new Error("Something went wrong"))
         }),
       ),
@@ -104,9 +104,10 @@ test.it("handles errors by returning 500 response", () =>
 
     test.expect(entity.status).toBe(500)
 
-    const text = yield* entity.text
+    const body = (yield* entity.json) as any
 
-    test.expect(text).toContain("Something went wrong")
+    test.expect(body.message).toBe("Internal Server Error")
+    test.expect(body.message).not.toContain("Something went wrong")
 
     const messages = yield* TestLogger.messages
 
@@ -137,12 +138,44 @@ test.it("handles defects by returning 500 response", () =>
   }).pipe(Effect.provide(TestLogger.layer()), Effect.runPromise),
 )
 
-test.it("error response includes stack trace and cause chain", () =>
+test.it("error response hides stack trace and cause chain in production", () =>
   Effect.gen(function* () {
     const runtime = yield* Effect.runtime<TestLogger.TestLogger>()
     const handler = RouteHttp.toWebHandlerRuntime(runtime)(
       Route.get(
-        Route.text(function* (): Generator<any, string, any> {
+        Route.text(function* () {
+          const innerError = new Error("Database connection failed")
+          const outerError = new Error("Query failed", { cause: innerError })
+          return yield* Effect.fail(outerError)
+        }),
+      ),
+    )
+    const client = Fetch.fromHandler(handler)
+    const entity = yield* client.get("http://localhost/error")
+
+    test.expect(entity.status).toBe(500)
+
+    const body = (yield* entity.json) as any
+
+    test.expect(body.message).toBe("Internal Server Error")
+    test.expect(body.message).not.toContain("Query failed")
+    test.expect(body.message).not.toContain("Database connection failed")
+
+    const messages = yield* TestLogger.messages
+    const errorLog = messages.find((m) => m.startsWith("[Error]"))
+
+    test
+      .expect(errorLog)
+      .toMatch(/Error: Query failed[\s\S]+\[cause\]: Error: Database connection failed/)
+  }).pipe(Effect.provide(TestLogger.layer()), Effect.runPromise),
+)
+
+test.it("error response includes stack trace in development", () =>
+  Effect.gen(function* () {
+    const runtime = yield* Effect.runtime<TestLogger.TestLogger | Development.Development>()
+    const handler = RouteHttp.toWebHandlerRuntime(runtime)(
+      Route.get(
+        Route.text(function* () {
           const innerError = new Error("Database connection failed")
           const outerError = new Error("Query failed", { cause: innerError })
           return yield* Effect.fail(outerError)
@@ -159,14 +192,28 @@ test.it("error response includes stack trace and cause chain", () =>
     test
       .expect(body.message)
       .toMatch(/Error: Query failed[\s\S]+\[cause\]: Error: Database connection failed/)
+  }).pipe(Effect.provide(TestLogger.layer()), Effect.provide(Development.layerTest), Effect.runPromise),
+)
 
-    const messages = yield* TestLogger.messages
-    const errorLog = messages.find((m) => m.startsWith("[Error]"))
+test.it("handles errors with verbose details in development", () =>
+  Effect.gen(function* () {
+    const runtime = yield* Effect.runtime<TestLogger.TestLogger | Development.Development>()
+    const handler = RouteHttp.toWebHandlerRuntime(runtime)(
+      Route.get(
+        Route.text(function* () {
+          return yield* Effect.fail(new Error("Something went wrong"))
+        }),
+      ),
+    )
+    const client = Fetch.fromHandler(handler)
+    const entity = yield* client.get("http://localhost/error")
 
-    test
-      .expect(errorLog)
-      .toMatch(/Error: Query failed[\s\S]+\[cause\]: Error: Database connection failed/)
-  }).pipe(Effect.provide(TestLogger.layer()), Effect.runPromise),
+    test.expect(entity.status).toBe(500)
+
+    const body = (yield* entity.json) as any
+
+    test.expect(body.message).toContain("Something went wrong")
+  }).pipe(Effect.provide(TestLogger.layer()), Effect.provide(Development.layerTest), Effect.runPromise),
 )
 
 test.it("includes descriptor properties in handler context", () =>
@@ -759,7 +806,8 @@ test.describe("middleware chain", () => {
       const entity = yield* client.get("http://localhost/test")
 
       test.expect(entity.status).toBe(500)
-      test.expect(yield* entity.text).toContain("middleware failed")
+      const body = (yield* entity.json) as any
+      test.expect(body.message).toBe("Internal Server Error")
 
       const messages = yield* TestLogger.messages
 
@@ -1557,7 +1605,7 @@ test.describe("schema handlers", () => {
     }).pipe(Effect.runPromise),
   )
 
-  test.it("schema validation: multiple values with Schema.String fails with detailed error", () =>
+  test.it("schema validation: multiple values with Schema.String fails with generic error in production", () =>
     Effect.gen(function* () {
       const runtime = yield* Effect.runtime<TestLogger.TestLogger>()
       const handler = RouteHttp.toWebHandlerRuntime(runtime)(
@@ -1586,8 +1634,7 @@ test.describe("schema handlers", () => {
 
       const body = (yield* entity.json) as any
 
-      test.expect(body.message).toContain("ParseError")
-      test.expect(body.message).toContain('Expected string, actual ["John","Jane"]')
+      test.expect(body.message).toBe("Internal Server Error")
 
       const messages = yield* TestLogger.messages
 
@@ -2138,9 +2185,9 @@ test.describe("RouteTree layer routes", () => {
 
       test.expect(handlerExecuted).toBe(false)
 
-      const text = yield* entity.text
+      const body = (yield* entity.json) as any
 
-      test.expect(text).toContain("layer rejected")
+      test.expect(body.message).toBe("Internal Server Error")
 
       const messages = yield* TestLogger.messages
 

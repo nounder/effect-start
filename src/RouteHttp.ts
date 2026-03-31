@@ -185,6 +185,8 @@ function determineSelectedFormat(
 
 export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
   const runFork = Runtime.runFork(runtime)
+  const runSync = Runtime.runSync(runtime)
+  const inDevelopment = Option.isSome(runSync(Development.option))
 
   return (routes: Iterable<UnboundedRouteWithMethod>): Http.WebHandler => {
     const allRoutes = Array.from(routes)
@@ -354,7 +356,9 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
               Effect.gen(function* () {
                 yield* Effect.logError(cause)
                 const status = getStatusFromCause(cause)
-                const message = Cause.pretty(cause, { renderErrorCause: true })
+                const message = inDevelopment
+                  ? Cause.pretty(cause, { renderErrorCause: true })
+                  : "Internal Server Error"
                 return respondError({ status, message })
               }),
             ),
@@ -382,7 +386,9 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
             resolve(respondError({ status: 499, message: "client closed request" }))
           } else {
             const status = getStatusFromCause(exit.cause)
-            const message = Cause.pretty(exit.cause, { renderErrorCause: true })
+            const message = inDevelopment
+              ? Cause.pretty(exit.cause, { renderErrorCause: true })
+              : "Internal Server Error"
             resolve(respondError({ status, message }))
           }
         })
