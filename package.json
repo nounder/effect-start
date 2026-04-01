@@ -118,6 +118,7 @@
       "bun": "./src/Unique.ts",
       "default": "./dist/Unique.js"
     },
+    "./dev": "./src/dev.d.ts",
     "./_*": null,
     "./assets.d.ts": "./src/assets.d.ts",
     "./jsx-runtime": {

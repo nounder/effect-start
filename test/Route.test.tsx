@@ -469,3 +469,55 @@ test.describe("Route.use is not available after method-specific builders", () =>
     test.expect(result).toBeDefined()
   })
 })
+
+test.describe("Route.link", () => {
+  test.it("static path", () => {
+    test.expect(Route.link("/hello")).toBe("/hello")
+  })
+
+  test.it("single param", () => {
+    test.expect(Route.link("/users/:id", { id: 23 })).toBe("/users/23")
+  })
+
+  test.it("multiple params", () => {
+    test.expect(Route.link("/users/:userId/posts/:postId", { userId: "abc", postId: 42 })).toBe(
+      "/users/abc/posts/42",
+    )
+  })
+
+  test.it("optional param provided", () => {
+    test.expect(Route.link("/users/:id?", { id: 5 })).toBe("/users/5")
+  })
+
+  test.it("optional param omitted", () => {
+    test.expect(Route.link("/users/:id?")).toBe("/users")
+  })
+
+  test.it("encodes param values", () => {
+    test.expect(Route.link("/search/:query", { query: "hello world" })).toBe(
+      "/search/hello%20world",
+    )
+  })
+
+  test.it("no params arg needed for static path", () => {
+    const result: string = Route.link("/about")
+    test.expect(result).toBe("/about")
+  })
+
+  test.it("root path", () => {
+    test.expect(Route.link("/")).toBe("/")
+  })
+
+  test.it("type: requires params for required param", () => {
+    // @ts-expect-error - missing required params
+    Route.link("/users/:id")
+  })
+
+  test.it("type: does not require params for static path", () => {
+    Route.link("/about")
+  })
+
+  test.it("type: allows omitting params for all-optional", () => {
+    Route.link("/users/:id?")
+  })
+})
