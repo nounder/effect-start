@@ -6,10 +6,10 @@ import { Layout, RepoCard, Tabs, UserCard } from "../../../Ui.tsx"
 
 export default Route.get(
   Route.schemaPathParams(Schema.Struct({ org: Schema.String })),
+  Route.schemaSearchParams(Schema.Struct({ tab: Schema.String })),
   Route.html(function* (ctx) {
     const { org } = ctx.pathParams
-    const url = new URL(ctx.request.url)
-    const tab = url.searchParams.get("tab") ?? "repositories"
+    const { tab } = ctx.searchParams
 
     const [orgInfo, repos, members] = yield* Effect.all([
       Github.getOrg(org),
@@ -58,11 +58,11 @@ export default Route.get(
             items={[
               {
                 label: "Repositories",
-                href: `/orgs/${org}`,
+                href: Route.link("/orgs/:org", { org }),
                 count: orgInfo.public_repos,
                 active: tab === "repositories",
               },
-              { label: "People", href: `/orgs/${org}?tab=people`, active: tab === "people" },
+              { label: "People", href: Route.link("/orgs/:org", { org, tab: "people" }), active: tab === "people" },
             ]}
           />
 
@@ -76,8 +76,8 @@ export default Route.get(
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               {repos.map((r: any) => (
                 <RepoCard
+                  owner={r.owner.login}
                   name={r.name}
-                  fullName={r.full_name}
                   description={r.description}
                   language={r.language}
                   stars={r.stargazers_count}

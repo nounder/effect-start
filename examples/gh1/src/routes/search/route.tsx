@@ -55,7 +55,8 @@ export default Route.get(
         <div>
           {repos.map((r) => (
             <RepoListItem
-              fullName={r.full_name}
+              owner={r.owner.login}
+              repo={r.name}
               description={r.description}
               language={r.language}
               stars={r.stargazers_count}

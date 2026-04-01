@@ -1,3 +1,4 @@
+import { Route } from "effect-start"
 import * as Github from "./Github.ts"
 
 export function ErrorPage(props: {
@@ -73,8 +74,8 @@ export function Nav() {
 }
 
 export function RepoCard(props: {
+  owner: string
   name: string
-  fullName: string
   description?: string | null
   language?: string | null
   stars: number
@@ -82,12 +83,13 @@ export function RepoCard(props: {
   updated?: string | null
   topics?: readonly string[]
 }) {
+  const r = { owner: props.owner, repo: props.name }
   return (
     <div class="border border-[#21262d] rounded-md p-4 hover:border-[#30363d] transition-colors">
       <div class="flex items-start justify-between gap-2 mb-1">
         <h3 class="text-[#58a6ff] font-semibold text-sm truncate">
-          <a href={`/${props.fullName}`} class="hover:underline">
-            {props.fullName}
+          <a href={Route.link("/:owner/:repo", r)} class="hover:underline">
+            {props.owner}/{props.name}
           </a>
         </h3>
         <span class="text-[#8b949e] border border-[#30363d] rounded-full text-xs px-2 py-0.5 shrink-0">
@@ -120,7 +122,7 @@ export function RepoCard(props: {
           </span>
         )}
         {props.stars > 0 && (
-          <a href={`/${props.fullName}`} class="flex items-center gap-1 hover:text-[#58a6ff]">
+          <a href={Route.link("/:owner/:repo", r)} class="flex items-center gap-1 hover:text-[#58a6ff]">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
               <path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z" />
             </svg>
@@ -128,7 +130,7 @@ export function RepoCard(props: {
           </a>
         )}
         {props.forks > 0 && (
-          <a href={`/${props.fullName}`} class="flex items-center gap-1 hover:text-[#58a6ff]">
+          <a href={Route.link("/:owner/:repo", r)} class="flex items-center gap-1 hover:text-[#58a6ff]">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
               <path d="M5 5.372v.878c0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75v-.878a2.25 2.25 0 1 0-1.5 0v.878H6.75v-.878a2.25 2.25 0 1 0-1.5 0ZM8 14.25a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5Z" />
             </svg>
@@ -142,7 +144,8 @@ export function RepoCard(props: {
 }
 
 export function RepoListItem(props: {
-  fullName: string
+  owner: string
+  repo: string
   description?: string | null
   language?: string | null
   stars: number
@@ -150,13 +153,14 @@ export function RepoListItem(props: {
   updated?: string | null
   topics?: readonly string[]
 }) {
+  const r = { owner: props.owner, repo: props.repo }
   return (
     <div class="py-6 border-b border-[#21262d]">
       <div class="flex items-start justify-between gap-4">
         <div class="flex-1 min-w-0">
           <h3 class="text-xl mb-1">
-            <a href={`/${props.fullName}`} class="text-[#58a6ff] font-semibold hover:underline">
-              {props.fullName}
+            <a href={Route.link("/:owner/:repo", r)} class="text-[#58a6ff] font-semibold hover:underline">
+              {props.owner}/{props.repo}
             </a>
           </h3>
           {props.description && (
@@ -229,7 +233,9 @@ export function UserCard(props: {
   bio?: string
   type?: string
 }) {
-  const href = props.type === "Organization" ? `/orgs/${props.login}` : `/${props.login}`
+  const href = props.type === "Organization"
+    ? Route.link("/orgs/:org", { org: props.login })
+    : Route.link("/:owner", { owner: props.login })
   return (
     <a
       href={href}
@@ -257,7 +263,8 @@ export function IssueRow(props: {
   created: string
   labels?: ReadonlyArray<{ readonly name: string; readonly color: string }>
   isPr?: boolean
-  repoPath: string
+  owner: string
+  repo: string
 }) {
   const isOpen = props.state === "open"
   const icon = props.isPr
@@ -273,7 +280,7 @@ export function IssueRow(props: {
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-2 flex-wrap">
           <a
-            href={`/${props.repoPath}/issues/${props.number}`}
+            href={Route.link("/:owner/:repo/issues/:number", { owner: props.owner, repo: props.repo, number: props.number })}
             class="text-sm font-semibold text-[#e6edf3] hover:text-[#58a6ff]"
           >
             {props.title}
@@ -309,7 +316,8 @@ export function CommitRow(props: {
   author: string
   avatar?: string
   date: string
-  repoPath: string
+  owner: string
+  repo: string
 }) {
   const shortSha = props.sha.slice(0, 7)
   const firstLine = props.message.split("\n")[0]
@@ -318,7 +326,7 @@ export function CommitRow(props: {
       {props.avatar && <img src={props.avatar} class="w-5 h-5 rounded-full shrink-0" />}
       <div class="flex-1 min-w-0">
         <a
-          href={`/${props.repoPath}/commit/${props.sha}`}
+          href={Route.link("/:owner/:repo/commit/:sha", { owner: props.owner, repo: props.repo, sha: props.sha })}
           class="text-sm text-[#e6edf3] font-medium hover:text-[#58a6ff] truncate block"
         >
           {firstLine}
@@ -338,7 +346,7 @@ export function CommitRow(props: {
 export function ContributorCard(props: { login: string; avatar: string; contributions: number }) {
   return (
     <a
-      href={`/${props.login}`}
+      href={Route.link("/:owner", { owner: props.login })}
       class="flex items-center gap-2 p-2 rounded hover:bg-[#161b22] transition-colors"
     >
       <img src={props.avatar} class="w-8 h-8 rounded-full bg-[#21262d]" />
@@ -434,13 +442,14 @@ export function LanguageBar(props: { languages: { readonly [key: string]: number
 
 export function StateFilter(props: {
   current: string
-  base: string
+  openHref: string
+  closedHref: string
   counts?: { open?: number; closed?: number }
 }) {
   return (
     <div class="flex gap-2 mb-4 text-sm">
       <a
-        href={`${props.base}?state=open`}
+        href={props.openHref}
         class={`flex items-center gap-1 ${props.current === "open" ? "text-[#e6edf3] font-semibold" : "text-[#8b949e] hover:text-[#e6edf3]"}`}
       >
         <svg width="16" height="16" viewBox="0 0 16 16" fill="#3fb950">
@@ -450,7 +459,7 @@ export function StateFilter(props: {
         {props.counts?.open !== undefined ? `${Github.num(props.counts.open)} Open` : "Open"}
       </a>
       <a
-        href={`${props.base}?state=closed`}
+        href={props.closedHref}
         class={`flex items-center gap-1 ${props.current === "closed" ? "text-[#e6edf3] font-semibold" : "text-[#8b949e] hover:text-[#e6edf3]"}`}
       >
         <svg width="16" height="16" viewBox="0 0 16 16" fill="#a371f7">

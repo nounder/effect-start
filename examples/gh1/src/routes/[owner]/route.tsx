@@ -5,10 +5,10 @@ import { Layout, RepoCard, Tabs } from "../../Ui.tsx"
 
 export default Route.get(
   Route.schemaPathParams(Schema.Struct({ owner: Schema.String })),
+  Route.schemaSearchParams(Schema.Struct({ tab: Schema.String })),
   Route.html(function* (ctx) {
     const { owner } = ctx.pathParams
-    const url = new URL(ctx.request.url)
-    const tab = url.searchParams.get("tab") ?? "repositories"
+    const { tab } = ctx.searchParams
 
     const user = yield* Github.getUser(owner)
     const isOrg = user.type === "Organization"
@@ -38,12 +38,12 @@ export default Route.get(
               <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
                 <path d="M2 5.5a3.5 3.5 0 1 1 5.898 2.549 5.508 5.508 0 0 1 3.034 4.084.75.75 0 1 1-1.482.235 4.001 4.001 0 0 0-6.9 0 .75.75 0 0 1-1.482-.236A5.507 5.507 0 0 1 3.102 8.05 3.493 3.493 0 0 1 2 5.5ZM11 4a.75.75 0 1 0 0 1.5 1.5 1.5 0 0 1 .666 2.844.75.75 0 0 0-.416.672v.352a.75.75 0 0 0 .574.73c1.2.289 2.162 1.2 2.522 2.372a.75.75 0 1 0 1.434-.44 5.01 5.01 0 0 0-2.56-3.012A3 3 0 0 0 11 4Z" />
               </svg>
-              <a href={`/${owner}?tab=followers`} class="hover:text-[#58a6ff]">
+              <a href={Route.link("/:owner", { owner, tab: "followers" })} class="hover:text-[#58a6ff]">
                 <span class="font-semibold text-[#e6edf3]">{Github.num(user.followers)}</span>{" "}
                 followers
               </a>
               <span>·</span>
-              <a href={`/${owner}?tab=following`} class="hover:text-[#58a6ff]">
+              <a href={Route.link("/:owner", { owner, tab: "following" })} class="hover:text-[#58a6ff]">
                 <span class="font-semibold text-[#e6edf3]">{Github.num(user.following)}</span>{" "}
                 following
               </a>
@@ -100,19 +100,19 @@ export default Route.get(
               items={[
                 {
                   label: "Repositories",
-                  href: `/${owner}`,
+                  href: Route.link("/:owner", { owner }),
                   count: user.public_repos,
                   active: tab === "repositories",
                 },
-                { label: "Stars", href: `/${owner}?tab=stars`, active: tab === "stars" },
+                { label: "Stars", href: Route.link("/:owner", { owner, tab: "stars" }), active: tab === "stars" },
               ]}
             />
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               {[...displayRepos].map((r) => (
                 <RepoCard
+                  owner={r.owner.login}
                   name={r.name}
-                  fullName={r.full_name}
                   description={r.description}
                   language={r.language}
                   stars={r.stargazers_count}
@@ -157,7 +157,7 @@ function renderOrg(org: Github.User, repos: readonly Github.Repo[]) {
           items={[
             {
               label: "Repositories",
-              href: `/orgs/${org.login}`,
+              href: Route.link("/orgs/:org", { org: org.login }),
               count: org.public_repos,
               active: true,
             },
@@ -167,8 +167,8 @@ function renderOrg(org: Github.User, repos: readonly Github.Repo[]) {
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           {repos.map((r) => (
             <RepoCard
+              owner={r.owner.login}
               name={r.name}
-              fullName={r.full_name}
               description={r.description}
               language={r.language}
               stars={r.stargazers_count}

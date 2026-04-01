@@ -8,7 +8,7 @@ export default Route.get(
   Route.schemaPathParams(Schema.Struct({ owner: Schema.String, repo: Schema.String })),
   Route.html(function* (ctx) {
     const { owner, repo } = ctx.pathParams
-    const path = `${owner}/${repo}`
+    const r = { owner, repo }
 
     const [repoInfo, readme, languages] = yield* Effect.all([
       Github.getRepo(owner, repo),
@@ -23,11 +23,11 @@ export default Route.get(
             <svg width="16" height="16" viewBox="0 0 16 16" fill="#8b949e">
               <path d="M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5Zm10.5-1h-8a1 1 0 0 0-1 1v6.708A2.486 2.486 0 0 1 4.5 9h8ZM5 12.25a.25.25 0 0 1 .25-.25h3.5a.25.25 0 0 1 .25.25v3.25a.25.25 0 0 1-.4.2l-1.45-1.087a.249.249 0 0 0-.3 0L5.4 15.7a.25.25 0 0 1-.4-.2Z" />
             </svg>
-            <a href={`/${owner}`} class="text-[#58a6ff] hover:underline">
+            <a href={Route.link("/:owner", { owner })} class="text-[#58a6ff] hover:underline">
               {owner}
             </a>
             <span class="text-[#8b949e]">/</span>
-            <a href={`/${path}`} class="text-[#58a6ff] font-bold hover:underline">
+            <a href={Route.link("/:owner/:repo", r)} class="text-[#58a6ff] font-bold hover:underline">
               {repo}
             </a>
             <span class="text-[#8b949e] border border-[#30363d] rounded-full text-xs px-2 py-0.5 ml-1">
@@ -90,11 +90,11 @@ export default Route.get(
 
           <Tabs
             items={[
-              { label: "Code", href: `/${path}`, active: true },
-              { label: "Issues", href: `/${path}/issues`, count: repoInfo.open_issues_count },
-              { label: "Pull requests", href: `/${path}/pulls` },
-              { label: "Commits", href: `/${path}/commits` },
-              { label: "Contributors", href: `/${path}/contributors` },
+              { label: "Code", href: Route.link("/:owner/:repo", r), active: true },
+              { label: "Issues", href: Route.link("/:owner/:repo/issues", r), count: repoInfo.open_issues_count },
+              { label: "Pull requests", href: Route.link("/:owner/:repo/pulls", r) },
+              { label: "Commits", href: Route.link("/:owner/:repo/commits", r) },
+              { label: "Contributors", href: Route.link("/:owner/:repo/contributors", r) },
             ]}
           />
 
@@ -154,7 +154,7 @@ export default Route.get(
 
               <div class="text-sm text-[#8b949e] space-y-2">
                 {repoInfo.has_issues && (
-                  <a href={`/${path}/issues`} class="flex items-center gap-2 hover:text-[#58a6ff]">
+                  <a href={Route.link("/:owner/:repo/issues", r)} class="flex items-center gap-2 hover:text-[#58a6ff]">
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
                       <path d="M8 9.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z" />
                       <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0ZM1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0Z" />

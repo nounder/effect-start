@@ -38,7 +38,8 @@ export default Route.get(
               <span class="text-[#8b949e] text-sm mt-7 w-6 text-right shrink-0">{i + 1}</span>
               <div class="flex-1">
                 <RepoListItem
-                  fullName={r.full_name}
+                  owner={r.owner.login}
+                  repo={r.name}
                   description={r.description}
                   language={r.language}
                   stars={r.stargazers_count}
