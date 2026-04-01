@@ -1,3 +1,3 @@
 declare module "effect-start/dev" {
-  export const routes: {}
+  export interface Routes {}
 }

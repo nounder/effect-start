@@ -169,7 +169,7 @@ ${routeEntries},
 export default routes
 
 declare module "effect-start/dev" {
-  export const routes: typeof import("./.server.ts").default
+  export interface Routes extends Omit<typeof import("./.server.ts").default, never> {}
 }
 `
 }

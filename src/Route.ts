@@ -9,8 +9,6 @@ import * as Entity from "./Entity.ts"
 import * as RouteBody from "./RouteBody.ts"
 import * as RouteTree from "./RouteTree.ts"
 import type * as Values from "./_Values.ts"
-import type * as PathPattern from "./_PathPattern.ts"
-import type { routes as devRoutes } from "effect-start/dev"
 import * as Html from "./Html.ts"
 import type { JSX } from "../src/jsx.d.ts"
 
@@ -326,26 +324,4 @@ export function lazy<T extends RouteSet.Any>(
   })
 }
 
-type LinkPath =
-  keyof typeof devRoutes extends never ? PathPattern.PathPattern
-  : keyof typeof devRoutes & PathPattern.PathPattern
-
-type LinkParams<P extends string> = { [K in keyof PathPattern.Params<P>]: string | number }
-
-type LinkArgs<P extends string> =
-  keyof PathPattern.Params<P> extends never ? [path: P]
-  : {} extends PathPattern.Params<P> ? [path: P, params?: LinkParams<P>]
-  : [path: P, params: LinkParams<P>]
-
-export function link<P extends LinkPath>(...args: LinkArgs<P>): string {
-  const [path, params] = args as [string, Record<string, string | number> | undefined]
-
-  return path.replace(/\/:(\w+)([?*+])?/g, (_, name: string, modifier: string | undefined) => {
-    const value = params?.[name]
-    if (value == null) {
-      if (modifier === "?" || modifier === "*") return ""
-      return "/"
-    }
-    return "/" + encodeURIComponent(String(value))
-  })
-}
+export { link } from "./RouteLink.ts"

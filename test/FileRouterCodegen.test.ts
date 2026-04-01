@@ -154,7 +154,7 @@ test.describe("generateCode", () => {
     const code = FileRouterCodegen.generateCode(routes)
 
     test.expect(code).toContain(`declare module "effect-start/dev"`)
-    test.expect(code).toContain(`export const routes: typeof import("./.server.ts").default`)
+    test.expect(code).toContain(`export interface Routes extends Omit<typeof import("./.server.ts").default, never> {}`)
   })
 
   test.it("multiple groups with layers only apply to their own routes", () => {
@@ -232,7 +232,7 @@ const routes = {
 export default routes
 
 declare module "effect-start/dev" {
-  export const routes: typeof import("./.server.ts").default
+  export interface Routes extends Omit<typeof import("./.server.ts").default, never> {}
 }
 `)
   })

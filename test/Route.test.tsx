@@ -7,6 +7,7 @@ import * as Entity from "effect-start/Entity"
 import * as Fetch from "effect-start/Fetch"
 import * as Route from "effect-start/Route"
 import * as RouteHttp from "effect-start/RouteHttp"
+import * as Schema from "effect/Schema"
 
 test.describe("Route.html with JSX", () => {
   test.it("renders JSX to HTML string", () =>
@@ -519,5 +520,99 @@ test.describe("Route.link", () => {
 
   test.it("type: allows omitting params for all-optional", () => {
     Route.link("/users/:id?")
+  })
+
+  test.it("extra params become search params", () => {
+    const routes = Route.get(
+      Route.schemaPathParams(Schema.Struct({ id: Schema.String })),
+      Route.schemaSearchParams(Schema.Struct({ tab: Schema.String, page: Schema.String })),
+      Route.html(""),
+    )
+
+    type R = { "/users/:id": [() => Promise<{ default: typeof routes }>] }
+
+    test.expect(Route.link<R>("/users/:id", { id: "5", tab: "posts", page: "2" })).toBe(
+      "/users/5?tab=posts&page=2",
+    )
+  })
+
+  test.it("search params are encoded", () => {
+    const routes = Route.get(
+      Route.schemaSearchParams(Schema.Struct({ q: Schema.String })),
+      Route.html(""),
+    )
+
+    type R = { "/search": [() => Promise<{ default: typeof routes }>] }
+
+    test.expect(Route.link<R>("/search", { q: "hello world" })).toBe("/search?q=hello+world")
+  })
+
+  test.it("null/undefined search params are omitted", () => {
+    const routes = Route.get(
+      Route.schemaPathParams(Schema.Struct({ id: Schema.String })),
+      Route.schemaSearchParams(Schema.Struct({ tab: Schema.String })),
+      Route.html(""),
+    )
+
+    type R = { "/users/:id": [() => Promise<{ default: typeof routes }>] }
+
+    test.expect(Route.link<R>("/users/:id", { id: "1", tab: undefined })).toBe("/users/1")
+  })
+
+  test.it("type: search params are optional", () => {
+    const routes = Route.get(
+      Route.schemaSearchParams(Schema.Struct({ tab: Schema.String })),
+      Route.html(""),
+    )
+
+    type R = { "/foo": [() => Promise<{ default: typeof routes }>] }
+
+    Route.link<R>("/foo")
+    Route.link<R>("/foo", { tab: "bar" })
+  })
+
+  test.it("type: path params preserve schema types", () => {
+    const routes = Route.get(
+      Route.schemaPathParams(Schema.Struct({ owner: Schema.String, repo: Schema.String })),
+      Route.html(""),
+    )
+
+    type R = { "/:owner/:repo": [() => Promise<{ default: typeof routes }>] }
+
+    Route.link<R>("/:owner/:repo", { owner: "a", repo: "b" })
+
+    // @ts-expect-error - owner should be string, not number
+    Route.link<R>("/:owner/:repo", { owner: 123, repo: "b" })
+  })
+
+  test.it("type: search params preserve schema types", () => {
+    const routes = Route.get(
+      Route.schemaPathParams(Schema.Struct({ owner: Schema.String, repo: Schema.String })),
+      Route.schemaSearchParams(Schema.Struct({ state: Schema.String })),
+      Route.html(""),
+    )
+
+    type R = { "/:owner/:repo/issues": [() => Promise<{ default: typeof routes }>] }
+
+    Route.link<R>("/:owner/:repo/issues", { owner: "a", repo: "b", state: "open" })
+
+    // @ts-expect-error - state should be string, not number
+    Route.link<R>("/:owner/:repo/issues", { owner: "a", repo: "b", state: 123 })
+  })
+
+  test.it("type: optional search params from schema", () => {
+    const routes = Route.get(
+      Route.schemaSearchParams(Schema.Struct({ tab: Schema.optional(Schema.String) })),
+      Route.html(""),
+    )
+
+    type R = { "/foo": [() => Promise<{ default: typeof routes }>] }
+
+    Route.link<R>("/foo")
+    Route.link<R>("/foo", { tab: "bar" })
+    Route.link<R>("/foo", { tab: undefined })
+
+    // @ts-expect-error - tab should be string, not number
+    Route.link<R>("/foo", { tab: 123 })
   })
 })
