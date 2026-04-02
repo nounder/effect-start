@@ -27,6 +27,21 @@ export const File = Schema.TaggedStruct("File", {
   content: Schema.Uint8ArrayFromSelf,
 })
 
+type SchemaOrFields = Schema.Schema.All | Schema.Struct.Fields
+
+function toSchema(input: SchemaOrFields): Schema.Schema<any, any, any> {
+  return (Schema.isSchema(input) ? input : Schema.Struct(input as any)) as any
+}
+
+function makeSchemaFilter(
+  handler: (ctx: any, decode: (input: unknown) => Effect.Effect<any, any, any>) => Effect.Effect<any, any, any>,
+) {
+  return (fields: SchemaOrFields): any => {
+    const decode = Schema.decodeUnknown(toSchema(fields))
+    return RouteHook.filter((ctx: any) => handler(ctx, decode))
+  }
+}
+
 export function schemaHeaders<F extends Schema.Struct.Fields>(
   fields: F,
 ): <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
@@ -54,25 +69,14 @@ export function schemaHeaders<A, I extends Readonly<Record<string, string | unde
   SB,
   [...P, Route.Route<{}, { headers: A }, unknown, ParseResult.ParseError, R | Route.Request>]
 >
-export function schemaHeaders(
-  fields: Schema.Schema.All | Schema.Struct.Fields,
-) {
-  const schema = Schema.isSchema(fields) ? fields : Schema.Struct(fields as any)
-  const decode = Schema.decodeUnknown(schema)
-  return RouteHook.filter((ctx: { headers?: {} }) =>
+export function schemaHeaders(fields: SchemaOrFields) {
+  return makeSchemaFilter((ctx, decode) =>
     Effect.gen(function* () {
       const request = yield* Route.Request
       const parsed = yield* decode(Http.mapHeaders(request.headers))
-      return {
-        context: {
-          headers: {
-            ...ctx.headers,
-            ...parsed,
-          },
-        },
-      }
+      return { context: { headers: { ...ctx.headers, ...parsed } } }
     }),
-  )
+  )(fields)
 }
 
 export function schemaCookies<F extends Schema.Struct.Fields>(
@@ -102,25 +106,14 @@ export function schemaCookies<A, I extends Readonly<Record<string, string | unde
   SB,
   [...P, Route.Route<{}, { cookies: A }, unknown, ParseResult.ParseError, R | Route.Request>]
 >
-export function schemaCookies(
-  fields: Schema.Schema.All | Schema.Struct.Fields,
-) {
-  const schema = Schema.isSchema(fields) ? fields : Schema.Struct(fields as any)
-  const decode = Schema.decodeUnknown(schema)
-  return RouteHook.filter((ctx: { cookies?: {} }) =>
+export function schemaCookies(fields: SchemaOrFields) {
+  return makeSchemaFilter((ctx, decode) =>
     Effect.gen(function* () {
       const request = yield* Route.Request
       const parsed = yield* decode(Http.parseCookies(request.headers.get("cookie")))
-      return {
-        context: {
-          cookies: {
-            ...ctx.cookies,
-            ...parsed,
-          },
-        },
-      }
+      return { context: { cookies: { ...ctx.cookies, ...parsed } } }
     }),
-  )
+  )(fields)
 }
 
 export function schemaSearchParams<F extends Schema.Struct.Fields>(
@@ -154,26 +147,15 @@ export function schemaSearchParams<
   SB,
   [...P, Route.Route<{}, { searchParams: A }, unknown, ParseResult.ParseError, R | Route.Request>]
 >
-export function schemaSearchParams(
-  fields: Schema.Schema.All | Schema.Struct.Fields,
-) {
-  const schema = Schema.isSchema(fields) ? fields : Schema.Struct(fields as any)
-  const decode = Schema.decodeUnknown(schema)
-  return RouteHook.filter((ctx: { searchParams?: {} }) =>
+export function schemaSearchParams(fields: SchemaOrFields) {
+  return makeSchemaFilter((ctx, decode) =>
     Effect.gen(function* () {
       const request = yield* Route.Request
       const url = new URL(request.url)
       const parsed = yield* decode(Http.mapUrlSearchParams(url.searchParams))
-      return {
-        context: {
-          searchParams: {
-            ...ctx.searchParams,
-            ...parsed,
-          },
-        },
-      }
+      return { context: { searchParams: { ...ctx.searchParams, ...parsed } } }
     }),
-  )
+  )(fields)
 }
 
 export function schemaPathParams<F extends Schema.Struct.Fields>(
@@ -203,28 +185,17 @@ export function schemaPathParams<A, I extends Readonly<Record<string, string | u
   SB,
   [...P, Route.Route<{}, { pathParams: A }, unknown, ParseResult.ParseError, R | Route.Request>]
 >
-export function schemaPathParams(
-  fields: Schema.Schema.All | Schema.Struct.Fields,
-) {
-  const schema = Schema.isSchema(fields) ? fields : Schema.Struct(fields as any)
-  const decode = Schema.decodeUnknown(schema)
-  return RouteHook.filter((ctx: { path?: string; pathParams?: {} }) =>
+export function schemaPathParams(fields: SchemaOrFields) {
+  return makeSchemaFilter((ctx, decode) =>
     Effect.gen(function* () {
       const request = yield* Route.Request
       const url = new URL(request.url)
       const pattern = ctx.path ?? "/"
       const params = PathPattern.match(pattern, url.pathname) ?? {}
       const parsed = yield* decode(params)
-      return {
-        context: {
-          pathParams: {
-            ...ctx.pathParams,
-            ...parsed,
-          },
-        },
-      }
+      return { context: { pathParams: { ...ctx.pathParams, ...parsed } } }
     }),
-  )
+  )(fields)
 }
 
 export function schemaBodyJson<F extends Schema.Struct.Fields>(
@@ -254,12 +225,8 @@ export function schemaBodyJson<A, I, R>(
   SB,
   [...P, Route.Route<{}, { body: A }, unknown, RequestBodyError | ParseResult.ParseError, R | Route.Request>]
 >
-export function schemaBodyJson(
-  fields: Schema.Schema.All | Schema.Struct.Fields,
-) {
-  const schema = Schema.isSchema(fields) ? fields : Schema.Struct(fields as any)
-  const decode = Schema.decodeUnknown(schema)
-  return RouteHook.filter((ctx: { body?: {} }) =>
+export function schemaBodyJson(fields: SchemaOrFields) {
+  return makeSchemaFilter((ctx, decode) =>
     Effect.gen(function* () {
       const request = yield* Route.Request
       const json = yield* Effect.tryPromise({
@@ -267,16 +234,9 @@ export function schemaBodyJson(
         catch: (error) => RequestBodyError("JsonError", error),
       })
       const parsed = yield* decode(json)
-      return {
-        context: {
-          body: {
-            ...ctx.body,
-            ...parsed,
-          },
-        },
-      }
+      return { context: { body: { ...ctx.body, ...parsed } } }
     }),
-  )
+  )(fields)
 }
 
 export function schemaBodyUrlParams<F extends Schema.Struct.Fields>(
@@ -310,12 +270,8 @@ export function schemaBodyUrlParams<
   SB,
   [...P, Route.Route<{}, { body: A }, unknown, RequestBodyError | ParseResult.ParseError, R | Route.Request>]
 >
-export function schemaBodyUrlParams(
-  fields: Schema.Schema.All | Schema.Struct.Fields,
-) {
-  const schema = Schema.isSchema(fields) ? fields : Schema.Struct(fields as any)
-  const decode = Schema.decodeUnknown(schema)
-  return RouteHook.filter((ctx: { body?: {} }) =>
+export function schemaBodyUrlParams(fields: SchemaOrFields) {
+  return makeSchemaFilter((ctx, decode) =>
     Effect.gen(function* () {
       const request = yield* Route.Request
       const text = yield* Effect.tryPromise({
@@ -324,16 +280,9 @@ export function schemaBodyUrlParams(
       })
       const params = new URLSearchParams(text)
       const parsed = yield* decode(Http.mapUrlSearchParams(params))
-      return {
-        context: {
-          body: {
-            ...ctx.body,
-            ...parsed,
-          },
-        },
-      }
+      return { context: { body: { ...ctx.body, ...parsed } } }
     }),
-  )
+  )(fields)
 }
 
 export function schemaBodyMultipart<F extends Schema.Struct.Fields>(
@@ -376,12 +325,8 @@ export function schemaBodyMultipart<
     >,
   ]
 >
-export function schemaBodyMultipart(
-  fields: Schema.Schema.All | Schema.Struct.Fields,
-) {
-  const schema = Schema.isSchema(fields) ? fields : Schema.Struct(fields as any)
-  const decode = Schema.decodeUnknown(schema)
-  return RouteHook.filter((ctx: { body?: {} }) =>
+export function schemaBodyMultipart(fields: SchemaOrFields) {
+  return makeSchemaFilter((ctx, decode) =>
     Effect.gen(function* () {
       const request = yield* Route.Request
       const record = yield* Effect.tryPromise({
@@ -389,16 +334,9 @@ export function schemaBodyMultipart(
         catch: (error) => RequestBodyError("MultipartError", error),
       })
       const parsed = yield* decode(record)
-      return {
-        context: {
-          body: {
-            ...ctx.body,
-            ...parsed,
-          },
-        },
-      }
+      return { context: { body: { ...ctx.body, ...parsed } } }
     }),
-  )
+  )(fields)
 }
 
 export function schemaBodyForm<F extends Schema.Struct.Fields>(
@@ -441,12 +379,8 @@ export function schemaBodyForm<
     >,
   ]
 >
-export function schemaBodyForm(
-  fields: Schema.Schema.All | Schema.Struct.Fields,
-) {
-  const schema = Schema.isSchema(fields) ? fields : Schema.Struct(fields as any)
-  const decode = Schema.decodeUnknown(schema)
-  return RouteHook.filter((ctx: { body?: {} }) =>
+export function schemaBodyForm(fields: SchemaOrFields) {
+  return makeSchemaFilter((ctx, decode) =>
     Effect.gen(function* () {
       const request = yield* Route.Request
       const contentType = request.headers.get("content-type") ?? ""
@@ -459,14 +393,7 @@ export function schemaBodyForm(
         const params = new URLSearchParams(text)
         const record = Http.mapUrlSearchParams(params)
         const parsed = yield* decode(record as any)
-        return {
-          context: {
-            body: {
-              ...ctx.body,
-              ...parsed,
-            },
-          },
-        }
+        return { context: { body: { ...ctx.body, ...parsed } } }
       }
 
       const record = yield* Effect.tryPromise({
@@ -474,16 +401,9 @@ export function schemaBodyForm(
         catch: (error) => RequestBodyError("FormDataError", error),
       })
       const parsed = yield* decode(record as any)
-      return {
-        context: {
-          body: {
-            ...ctx.body,
-            ...parsed,
-          },
-        },
-      }
+      return { context: { body: { ...ctx.body, ...parsed } } }
     }),
-  )
+  )(fields)
 }
 
 /**
@@ -570,9 +490,9 @@ export function schemaSuccess<A, I, R>(
   [...P, Route.Route<{}, {}, I, ParseResult.ParseError, R>]
 >
 export function schemaSuccess(
-  schema: Schema.Schema.All | Schema.Struct.Fields,
+  schema: SchemaOrFields,
 ): any {
-  const s = Schema.isSchema(schema) ? schema : Schema.Struct(schema as any)
+  const s = toSchema(schema)
   const encode = Schema.encodeUnknown(s)
   return function(self: Route.RouteSet<any, any, any>) {
     const route = Route.make((_context: any, next: any) =>
