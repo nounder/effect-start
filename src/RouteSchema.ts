@@ -2,6 +2,7 @@ import * as Effect from "effect/Effect"
 import type * as ParseResult from "effect/ParseResult"
 import * as Schema from "effect/Schema"
 import type * as Scope from "effect/Scope"
+import type * as Types from "effect/Types"
 import * as Entity from "./Entity.ts"
 import * as Http from "./_Http.ts"
 import * as PathPattern from "./_PathPattern.ts"
@@ -26,6 +27,24 @@ export const File = Schema.TaggedStruct("File", {
   content: Schema.Uint8ArrayFromSelf,
 })
 
+export function schemaHeaders<F extends Schema.Struct.Fields>(
+  fields: F,
+): <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
+  self: Route.RouteSet<D, SB, P>,
+) => Route.RouteSet<
+  D,
+  SB,
+  [
+    ...P,
+    Route.Route<
+      {},
+      { headers: Types.Simplify<Schema.Struct.Type<F>> },
+      unknown,
+      ParseResult.ParseError,
+      Schema.Struct.Context<F> | Route.Request
+    >,
+  ]
+>
 export function schemaHeaders<A, I extends Readonly<Record<string, string | undefined>>, R>(
   fields: Schema.Schema<A, I, R>,
 ): <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
@@ -34,8 +53,12 @@ export function schemaHeaders<A, I extends Readonly<Record<string, string | unde
   D,
   SB,
   [...P, Route.Route<{}, { headers: A }, unknown, ParseResult.ParseError, R | Route.Request>]
-> {
-  const decode = Schema.decodeUnknown(fields)
+>
+export function schemaHeaders(
+  fields: Schema.Schema.All | Schema.Struct.Fields,
+) {
+  const schema = Schema.isSchema(fields) ? fields : Schema.Struct(fields as any)
+  const decode = Schema.decodeUnknown(schema)
   return RouteHook.filter((ctx: { headers?: {} }) =>
     Effect.gen(function* () {
       const request = yield* Route.Request
@@ -52,6 +75,24 @@ export function schemaHeaders<A, I extends Readonly<Record<string, string | unde
   )
 }
 
+export function schemaCookies<F extends Schema.Struct.Fields>(
+  fields: F,
+): <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
+  self: Route.RouteSet<D, SB, P>,
+) => Route.RouteSet<
+  D,
+  SB,
+  [
+    ...P,
+    Route.Route<
+      {},
+      { cookies: Types.Simplify<Schema.Struct.Type<F>> },
+      unknown,
+      ParseResult.ParseError,
+      Schema.Struct.Context<F> | Route.Request
+    >,
+  ]
+>
 export function schemaCookies<A, I extends Readonly<Record<string, string | undefined>>, R>(
   fields: Schema.Schema<A, I, R>,
 ): <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
@@ -60,8 +101,12 @@ export function schemaCookies<A, I extends Readonly<Record<string, string | unde
   D,
   SB,
   [...P, Route.Route<{}, { cookies: A }, unknown, ParseResult.ParseError, R | Route.Request>]
-> {
-  const decode = Schema.decodeUnknown(fields)
+>
+export function schemaCookies(
+  fields: Schema.Schema.All | Schema.Struct.Fields,
+) {
+  const schema = Schema.isSchema(fields) ? fields : Schema.Struct(fields as any)
+  const decode = Schema.decodeUnknown(schema)
   return RouteHook.filter((ctx: { cookies?: {} }) =>
     Effect.gen(function* () {
       const request = yield* Route.Request
@@ -78,6 +123,24 @@ export function schemaCookies<A, I extends Readonly<Record<string, string | unde
   )
 }
 
+export function schemaSearchParams<F extends Schema.Struct.Fields>(
+  fields: F,
+): <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
+  self: Route.RouteSet<D, SB, P>,
+) => Route.RouteSet<
+  D,
+  SB,
+  [
+    ...P,
+    Route.Route<
+      {},
+      { searchParams: Types.Simplify<Schema.Struct.Type<F>> },
+      unknown,
+      ParseResult.ParseError,
+      Schema.Struct.Context<F> | Route.Request
+    >,
+  ]
+>
 export function schemaSearchParams<
   A,
   I extends Readonly<Record<string, string | ReadonlyArray<string> | undefined>>,
@@ -90,8 +153,12 @@ export function schemaSearchParams<
   D,
   SB,
   [...P, Route.Route<{}, { searchParams: A }, unknown, ParseResult.ParseError, R | Route.Request>]
-> {
-  const decode = Schema.decodeUnknown(fields)
+>
+export function schemaSearchParams(
+  fields: Schema.Schema.All | Schema.Struct.Fields,
+) {
+  const schema = Schema.isSchema(fields) ? fields : Schema.Struct(fields as any)
+  const decode = Schema.decodeUnknown(schema)
   return RouteHook.filter((ctx: { searchParams?: {} }) =>
     Effect.gen(function* () {
       const request = yield* Route.Request
@@ -109,6 +176,24 @@ export function schemaSearchParams<
   )
 }
 
+export function schemaPathParams<F extends Schema.Struct.Fields>(
+  fields: F,
+): <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
+  self: Route.RouteSet<D, SB, P>,
+) => Route.RouteSet<
+  D,
+  SB,
+  [
+    ...P,
+    Route.Route<
+      {},
+      { pathParams: Types.Simplify<Schema.Struct.Type<F>> },
+      unknown,
+      ParseResult.ParseError,
+      Schema.Struct.Context<F> | Route.Request
+    >,
+  ]
+>
 export function schemaPathParams<A, I extends Readonly<Record<string, string | undefined>>, R>(
   fields: Schema.Schema<A, I, R>,
 ): <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
@@ -117,8 +202,12 @@ export function schemaPathParams<A, I extends Readonly<Record<string, string | u
   D,
   SB,
   [...P, Route.Route<{}, { pathParams: A }, unknown, ParseResult.ParseError, R | Route.Request>]
-> {
-  const decode = Schema.decodeUnknown(fields)
+>
+export function schemaPathParams(
+  fields: Schema.Schema.All | Schema.Struct.Fields,
+) {
+  const schema = Schema.isSchema(fields) ? fields : Schema.Struct(fields as any)
+  const decode = Schema.decodeUnknown(schema)
   return RouteHook.filter((ctx: { path?: string; pathParams?: {} }) =>
     Effect.gen(function* () {
       const request = yield* Route.Request
@@ -138,6 +227,24 @@ export function schemaPathParams<A, I extends Readonly<Record<string, string | u
   )
 }
 
+export function schemaBodyJson<F extends Schema.Struct.Fields>(
+  fields: F,
+): <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
+  self: Route.RouteSet<D, SB, P>,
+) => Route.RouteSet<
+  D,
+  SB,
+  [
+    ...P,
+    Route.Route<
+      {},
+      { body: Types.Simplify<Schema.Struct.Type<F>> },
+      unknown,
+      RequestBodyError | ParseResult.ParseError,
+      Schema.Struct.Context<F> | Route.Request
+    >,
+  ]
+>
 export function schemaBodyJson<A, I, R>(
   fields: Schema.Schema<A, I, R>,
 ): <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
@@ -146,8 +253,12 @@ export function schemaBodyJson<A, I, R>(
   D,
   SB,
   [...P, Route.Route<{}, { body: A }, unknown, RequestBodyError | ParseResult.ParseError, R | Route.Request>]
-> {
-  const decode = Schema.decodeUnknown(fields)
+>
+export function schemaBodyJson(
+  fields: Schema.Schema.All | Schema.Struct.Fields,
+) {
+  const schema = Schema.isSchema(fields) ? fields : Schema.Struct(fields as any)
+  const decode = Schema.decodeUnknown(schema)
   return RouteHook.filter((ctx: { body?: {} }) =>
     Effect.gen(function* () {
       const request = yield* Route.Request
@@ -168,6 +279,24 @@ export function schemaBodyJson<A, I, R>(
   )
 }
 
+export function schemaBodyUrlParams<F extends Schema.Struct.Fields>(
+  fields: F,
+): <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
+  self: Route.RouteSet<D, SB, P>,
+) => Route.RouteSet<
+  D,
+  SB,
+  [
+    ...P,
+    Route.Route<
+      {},
+      { body: Types.Simplify<Schema.Struct.Type<F>> },
+      unknown,
+      RequestBodyError | ParseResult.ParseError,
+      Schema.Struct.Context<F> | Route.Request
+    >,
+  ]
+>
 export function schemaBodyUrlParams<
   A,
   I extends Readonly<Record<string, string | ReadonlyArray<string> | undefined>>,
@@ -180,8 +309,12 @@ export function schemaBodyUrlParams<
   D,
   SB,
   [...P, Route.Route<{}, { body: A }, unknown, RequestBodyError | ParseResult.ParseError, R | Route.Request>]
-> {
-  const decode = Schema.decodeUnknown(fields)
+>
+export function schemaBodyUrlParams(
+  fields: Schema.Schema.All | Schema.Struct.Fields,
+) {
+  const schema = Schema.isSchema(fields) ? fields : Schema.Struct(fields as any)
+  const decode = Schema.decodeUnknown(schema)
   return RouteHook.filter((ctx: { body?: {} }) =>
     Effect.gen(function* () {
       const request = yield* Route.Request
@@ -203,6 +336,24 @@ export function schemaBodyUrlParams<
   )
 }
 
+export function schemaBodyMultipart<F extends Schema.Struct.Fields>(
+  fields: F,
+): <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
+  self: Route.RouteSet<D, SB, P>,
+) => Route.RouteSet<
+  D,
+  SB,
+  [
+    ...P,
+    Route.Route<
+      {},
+      { body: Types.Simplify<Schema.Struct.Type<F>> },
+      unknown,
+      RequestBodyError | ParseResult.ParseError,
+      Schema.Struct.Context<F> | Route.Request | Scope.Scope
+    >,
+  ]
+>
 export function schemaBodyMultipart<
   A,
   I extends Partial<Record<string, ReadonlyArray<Http.FilePart> | ReadonlyArray<string> | string>>,
@@ -224,8 +375,12 @@ export function schemaBodyMultipart<
       R | Route.Request | Scope.Scope
     >,
   ]
-> {
-  const decode = Schema.decodeUnknown(fields)
+>
+export function schemaBodyMultipart(
+  fields: Schema.Schema.All | Schema.Struct.Fields,
+) {
+  const schema = Schema.isSchema(fields) ? fields : Schema.Struct(fields as any)
+  const decode = Schema.decodeUnknown(schema)
   return RouteHook.filter((ctx: { body?: {} }) =>
     Effect.gen(function* () {
       const request = yield* Route.Request
@@ -246,6 +401,24 @@ export function schemaBodyMultipart<
   )
 }
 
+export function schemaBodyForm<F extends Schema.Struct.Fields>(
+  fields: F,
+): <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
+  self: Route.RouteSet<D, SB, P>,
+) => Route.RouteSet<
+  D,
+  SB,
+  [
+    ...P,
+    Route.Route<
+      {},
+      { body: Types.Simplify<Schema.Struct.Type<F>> },
+      unknown,
+      RequestBodyError | ParseResult.ParseError,
+      Schema.Struct.Context<F> | Route.Request | Scope.Scope
+    >,
+  ]
+>
 export function schemaBodyForm<
   A,
   I extends Partial<Record<string, ReadonlyArray<Http.FilePart> | ReadonlyArray<string> | string>>,
@@ -267,8 +440,12 @@ export function schemaBodyForm<
       R | Route.Request | Scope.Scope
     >,
   ]
-> {
-  const decode = Schema.decodeUnknown(fields)
+>
+export function schemaBodyForm(
+  fields: Schema.Schema.All | Schema.Struct.Fields,
+) {
+  const schema = Schema.isSchema(fields) ? fields : Schema.Struct(fields as any)
+  const decode = Schema.decodeUnknown(schema)
   return RouteHook.filter((ctx: { body?: {} }) =>
     Effect.gen(function* () {
       const request = yield* Route.Request
@@ -281,7 +458,7 @@ export function schemaBodyForm<
         })
         const params = new URLSearchParams(text)
         const record = Http.mapUrlSearchParams(params)
-        const parsed = yield* decode(record as I)
+        const parsed = yield* decode(record as any)
         return {
           context: {
             body: {
@@ -296,7 +473,7 @@ export function schemaBodyForm<
         try: () => Http.parseFormData(request),
         catch: (error) => RequestBodyError("FormDataError", error),
       })
-      const parsed = yield* decode(record as I)
+      const parsed = yield* decode(record as any)
       return {
         context: {
           body: {
@@ -365,6 +542,24 @@ export function schemaError<A, I, R>(
   }
 }
 
+export function schemaSuccess<F extends Schema.Struct.Fields>(
+  fields: F,
+): <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
+  self: Route.RouteSet<D, SB, P>,
+) => Route.RouteSet<
+  D,
+  SB,
+  [
+    ...P,
+    Route.Route<
+      {},
+      {},
+      Types.Simplify<Schema.Struct.Encoded<F>>,
+      ParseResult.ParseError,
+      Schema.Struct.Context<F>
+    >,
+  ]
+>
 export function schemaSuccess<A, I, R>(
   schema: Schema.Schema<A, I, R>,
 ): <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
@@ -373,16 +568,14 @@ export function schemaSuccess<A, I, R>(
   D,
   SB,
   [...P, Route.Route<{}, {}, I, ParseResult.ParseError, R>]
-> {
-  const encode = Schema.encodeUnknown(schema)
-  return function <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
-    self: Route.RouteSet<D, SB, P>,
-  ): Route.RouteSet<
-    D,
-    SB,
-    [...P, Route.Route<{}, {}, I, ParseResult.ParseError, R>]
-  > {
-    const route = Route.make<{}, {}, I, ParseResult.ParseError, R>((_context, next) =>
+>
+export function schemaSuccess(
+  schema: Schema.Schema.All | Schema.Struct.Fields,
+): any {
+  const s = Schema.isSchema(schema) ? schema : Schema.Struct(schema as any)
+  const encode = Schema.encodeUnknown(s)
+  return function(self: Route.RouteSet<any, any, any>) {
+    const route = Route.make((_context: any, next: any) =>
       Effect.flatMap(Entity.resolve(next()), (entity) =>
         Effect.map(encode(entity.body), (encoded) =>
           Entity.make(encoded, {
@@ -394,11 +587,11 @@ export function schemaSuccess<A, I, R>(
       ),
     )
 
-    const items: [...P, Route.Route<{}, {}, I, ParseResult.ParseError, R>] = [
+    const items = [
       ...Route.items(self),
       route,
     ]
 
-    return Route.set(items, Route.descriptor(self))
+    return Route.set(items as any, Route.descriptor(self))
   }
 }
