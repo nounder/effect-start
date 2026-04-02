@@ -243,12 +243,12 @@ test.describe(`${RouteBody.handle.name}()`, () => {
       }),
     )
 
-    type Items = typeof routes extends Route.RouteSet.RouteSet<any, any, infer I> ? I : never
+    type Items = typeof routes extends Route.RouteSet<any, any, infer I> ? I : never
 
     test
       .expectTypeOf<Items[0]>()
       .toExtend<
-        Route.Route.Route<{ method: "GET"; format: "text" }, {}, "error occurred", MyError, never>
+        Route.Route<{ method: "GET"; format: "text" }, {}, "error occurred", MyError, never>
       >()
   })
 })

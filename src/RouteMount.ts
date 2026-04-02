@@ -4,11 +4,9 @@ import type * as Http from "./_Http.ts"
 import type * as PathPattern from "./_PathPattern.ts"
 import * as Route from "./Route.ts"
 import type * as RouteBody from "./RouteBody.ts"
+import type * as Module from "./RouteMount.ts"
 
 const RouteSetTypeId = "~effect-start/RouteSet" as const
-
-// oxlint-disable-next-line import/first, typescript/consistent-type-imports -- typeof import() is not an import statement
-type Module = typeof import("./RouteMount.ts")
 
 export type Self = RouteMount.Builder<any, any> | Module
 
@@ -65,7 +63,7 @@ function makeMethodDescriber<M extends RouteMount.Method>(method: M): RouteMount
       const itemDescriptor = Route.descriptor(item)
       const newDescriptor = { method, ...itemDescriptor }
       return Route.make(
-        (item as Route.Route.Route).handler as Route.Route.Handler<any, any, any, any>,
+        (item as Route.Route).handler as Route.Route.Handler<any, any, any, any>,
         newDescriptor,
       )
     })
@@ -75,7 +73,7 @@ function makeMethodDescriber<M extends RouteMount.Method>(method: M): RouteMount
   return describeMethod as RouteMount.Describer<M>
 }
 
-export type MountedRoute = Route.Route.Route<
+export type MountedRoute = Route.Route<
   {
     method: RouteMount.Method
     path: PathPattern.PathPattern
@@ -90,37 +88,42 @@ export type MountedRoute = Route.Route.Route<
 export namespace RouteMount {
   export type Method = "*" | Http.Method
 
-  export type MountSet = Route.RouteSet.RouteSet<{ method: Method }, {}, Route.Route.Tuple>
+  export type MountSet = Route.RouteSet<{ method: Method }, {}, Route.Route.Tuple>
 
-  export type Builder<D extends {} = {}, I extends Route.Route.Tuple = []> =
-    Route.RouteSet.RouteSet<D, {}, I> &
-      (HasMethod<I> extends true ? {} : { use: Describer<"*"> }) & {
-        get: Describer<"GET">
-        post: Describer<"POST">
-        put: Describer<"PUT">
-        del: Describer<"DELETE">
-        patch: Describer<"PATCH">
-        head: Describer<"HEAD">
-        options: Describer<"OPTIONS">
-      }
+  export type Builder<
+    D extends {} = {},
+    I extends Route.Route.Tuple = [],
+  > = Route.RouteSet<D, {}, I> &
+    (HasMethod<I> extends true ? {} : { use: Describer<"*"> }) & {
+      get: Describer<"GET">
+      post: Describer<"POST">
+      put: Describer<"PUT">
+      del: Describer<"DELETE">
+      patch: Describer<"PATCH">
+      head: Describer<"HEAD">
+      options: Describer<"OPTIONS">
+    }
 
-  type HasMethod<I extends Route.Route.Tuple> = I extends [infer Head, ...infer Tail extends Route.Route.Tuple]
-    ? Head extends Route.Route.Route<{ method: infer M }, any, any, any, any>
-      ? M extends Http.Method ? true : HasMethod<Tail>
+  type HasMethod<I extends Route.Route.Tuple> = I extends [
+    infer Head,
+    ...infer Tail extends Route.Route.Tuple,
+  ]
+    ? Head extends Route.Route<{ method: infer M }, any, any, any, any>
+      ? M extends Http.Method
+        ? true
+        : HasMethod<Tail>
       : HasMethod<Tail>
     : false
 
-  export type EmptySet<M extends Method, B = {}> = Route.RouteSet.RouteSet<{ method: M }, B, []>
+  export type EmptySet<M extends Method, B = {}> = Route.RouteSet<{ method: M }, B, []>
 
   export type Items<S> = S extends Builder<any, infer I> ? I : []
 
   export type BuilderBindings<S> =
-    S extends Builder<any, infer I>
-      ? Types.Simplify<WildcardBindings<I>>
-      : {}
+    S extends Builder<any, infer I> ? Types.Simplify<WildcardBindings<I>> : {}
 
   type WildcardBindingsItem<T> =
-    T extends Route.Route.Route<{ method: "*" }, infer B, any, any, any> ? B : {}
+    T extends Route.Route<{ method: "*" }, infer B, any, any, any> ? B : {}
 
   type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (
     k: infer I,
@@ -135,19 +138,10 @@ export namespace RouteMount {
   >
 
   export type FlattenItems<M extends Method, I extends Route.Route.Tuple> = I extends [
-    Route.Route.Route<infer D, infer RB, infer A, infer E, infer R>,
+    Route.Route<infer D, infer RB, infer A, infer E, infer R>,
     ...infer Tail extends Route.Route.Tuple,
   ]
-    ? [
-        Route.Route.Route<
-          Types.Simplify<{ method: M } & D> & {},
-          RB,
-          A,
-          E,
-          R
-        >,
-        ...FlattenItems<M, Tail>,
-      ]
+    ? [Route.Route<Types.Simplify<{ method: M } & D> & {}, RB, A, E, R>, ...FlattenItems<M, Tail>]
     : []
 
   export interface Describer<M extends Method> {

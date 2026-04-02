@@ -29,11 +29,11 @@ export const File = Schema.TaggedStruct("File", {
 export function schemaHeaders<A, I extends Readonly<Record<string, string | undefined>>, R>(
   fields: Schema.Schema<A, I, R>,
 ): <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
-  self: Route.RouteSet.RouteSet<D, SB, P>,
-) => Route.RouteSet.RouteSet<
+  self: Route.RouteSet<D, SB, P>,
+) => Route.RouteSet<
   D,
   SB,
-  [...P, Route.Route.Route<{}, { headers: A }, unknown, ParseResult.ParseError, R | Route.Request>]
+  [...P, Route.Route<{}, { headers: A }, unknown, ParseResult.ParseError, R | Route.Request>]
 > {
   const decode = Schema.decodeUnknown(fields)
   return RouteHook.filter((ctx: { headers?: {} }) =>
@@ -55,11 +55,11 @@ export function schemaHeaders<A, I extends Readonly<Record<string, string | unde
 export function schemaCookies<A, I extends Readonly<Record<string, string | undefined>>, R>(
   fields: Schema.Schema<A, I, R>,
 ): <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
-  self: Route.RouteSet.RouteSet<D, SB, P>,
-) => Route.RouteSet.RouteSet<
+  self: Route.RouteSet<D, SB, P>,
+) => Route.RouteSet<
   D,
   SB,
-  [...P, Route.Route.Route<{}, { cookies: A }, unknown, ParseResult.ParseError, R | Route.Request>]
+  [...P, Route.Route<{}, { cookies: A }, unknown, ParseResult.ParseError, R | Route.Request>]
 > {
   const decode = Schema.decodeUnknown(fields)
   return RouteHook.filter((ctx: { cookies?: {} }) =>
@@ -85,11 +85,11 @@ export function schemaSearchParams<
 >(
   fields: Schema.Schema<A, I, R>,
 ): <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
-  self: Route.RouteSet.RouteSet<D, SB, P>,
-) => Route.RouteSet.RouteSet<
+  self: Route.RouteSet<D, SB, P>,
+) => Route.RouteSet<
   D,
   SB,
-  [...P, Route.Route.Route<{}, { searchParams: A }, unknown, ParseResult.ParseError, R | Route.Request>]
+  [...P, Route.Route<{}, { searchParams: A }, unknown, ParseResult.ParseError, R | Route.Request>]
 > {
   const decode = Schema.decodeUnknown(fields)
   return RouteHook.filter((ctx: { searchParams?: {} }) =>
@@ -112,11 +112,11 @@ export function schemaSearchParams<
 export function schemaPathParams<A, I extends Readonly<Record<string, string | undefined>>, R>(
   fields: Schema.Schema<A, I, R>,
 ): <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
-  self: Route.RouteSet.RouteSet<D, SB, P>,
-) => Route.RouteSet.RouteSet<
+  self: Route.RouteSet<D, SB, P>,
+) => Route.RouteSet<
   D,
   SB,
-  [...P, Route.Route.Route<{}, { pathParams: A }, unknown, ParseResult.ParseError, R | Route.Request>]
+  [...P, Route.Route<{}, { pathParams: A }, unknown, ParseResult.ParseError, R | Route.Request>]
 > {
   const decode = Schema.decodeUnknown(fields)
   return RouteHook.filter((ctx: { path?: string; pathParams?: {} }) =>
@@ -141,11 +141,11 @@ export function schemaPathParams<A, I extends Readonly<Record<string, string | u
 export function schemaBodyJson<A, I, R>(
   fields: Schema.Schema<A, I, R>,
 ): <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
-  self: Route.RouteSet.RouteSet<D, SB, P>,
-) => Route.RouteSet.RouteSet<
+  self: Route.RouteSet<D, SB, P>,
+) => Route.RouteSet<
   D,
   SB,
-  [...P, Route.Route.Route<{}, { body: A }, unknown, RequestBodyError | ParseResult.ParseError, R | Route.Request>]
+  [...P, Route.Route<{}, { body: A }, unknown, RequestBodyError | ParseResult.ParseError, R | Route.Request>]
 > {
   const decode = Schema.decodeUnknown(fields)
   return RouteHook.filter((ctx: { body?: {} }) =>
@@ -175,11 +175,11 @@ export function schemaBodyUrlParams<
 >(
   fields: Schema.Schema<A, I, R>,
 ): <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
-  self: Route.RouteSet.RouteSet<D, SB, P>,
-) => Route.RouteSet.RouteSet<
+  self: Route.RouteSet<D, SB, P>,
+) => Route.RouteSet<
   D,
   SB,
-  [...P, Route.Route.Route<{}, { body: A }, unknown, RequestBodyError | ParseResult.ParseError, R | Route.Request>]
+  [...P, Route.Route<{}, { body: A }, unknown, RequestBodyError | ParseResult.ParseError, R | Route.Request>]
 > {
   const decode = Schema.decodeUnknown(fields)
   return RouteHook.filter((ctx: { body?: {} }) =>
@@ -210,13 +210,13 @@ export function schemaBodyMultipart<
 >(
   fields: Schema.Schema<A, I, R>,
 ): <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
-  self: Route.RouteSet.RouteSet<D, SB, P>,
-) => Route.RouteSet.RouteSet<
+  self: Route.RouteSet<D, SB, P>,
+) => Route.RouteSet<
   D,
   SB,
   [
     ...P,
-    Route.Route.Route<
+    Route.Route<
       {},
       { body: A },
       unknown,
@@ -253,13 +253,13 @@ export function schemaBodyForm<
 >(
   fields: Schema.Schema<A, I, R>,
 ): <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
-  self: Route.RouteSet.RouteSet<D, SB, P>,
-) => Route.RouteSet.RouteSet<
+  self: Route.RouteSet<D, SB, P>,
+) => Route.RouteSet<
   D,
   SB,
   [
     ...P,
-    Route.Route.Route<
+    Route.Route<
       {},
       { body: A },
       unknown,
@@ -323,20 +323,20 @@ export function schemaBodyForm<
 export function schemaError<A, I, R>(
   schema: Schema.Schema<A, I, R> & { readonly status: number },
 ): <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
-  self: Route.RouteSet.RouteSet<D, SB, P>,
-) => Route.RouteSet.RouteSet<D, SB, [...P, Route.Route.Route<{}, {}, unknown, never, R>]>
+  self: Route.RouteSet<D, SB, P>,
+) => Route.RouteSet<D, SB, [...P, Route.Route<{}, {}, unknown, never, R>]>
 export function schemaError<A, I, R>(
   schema: Schema.Schema<A, I, R>,
   options: { readonly status: number },
 ): <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
-  self: Route.RouteSet.RouteSet<D, SB, P>,
-) => Route.RouteSet.RouteSet<D, SB, [...P, Route.Route.Route<{}, {}, unknown, never, R>]>
+  self: Route.RouteSet<D, SB, P>,
+) => Route.RouteSet<D, SB, [...P, Route.Route<{}, {}, unknown, never, R>]>
 export function schemaError<A, I, R>(
   schema: Schema.Schema<A, I, R> & { readonly status?: number },
   options?: { readonly status: number },
 ): <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
-  self: Route.RouteSet.RouteSet<D, SB, P>,
-) => Route.RouteSet.RouteSet<D, SB, [...P, Route.Route.Route<{}, {}, unknown, never, R>]> {
+  self: Route.RouteSet<D, SB, P>,
+) => Route.RouteSet<D, SB, [...P, Route.Route<{}, {}, unknown, never, R>]> {
   const status = options?.status ?? (schema as any).status
   if (typeof status !== "number") {
     throw new Error(
@@ -346,8 +346,8 @@ export function schemaError<A, I, R>(
   const encode = Schema.encode(schema)
   const is = Schema.is(schema)
   return function <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
-    self: Route.RouteSet.RouteSet<D, SB, P>,
-  ): Route.RouteSet.RouteSet<D, SB, [...P, Route.Route.Route<{}, {}, unknown, never, R>]> {
+    self: Route.RouteSet<D, SB, P>,
+  ): Route.RouteSet<D, SB, [...P, Route.Route<{}, {}, unknown, never, R>]> {
     const route = Route.make<{}, {}, unknown, never, R>((_context, next) =>
       Entity.resolve(next()).pipe(
         Effect.catchIf(is, (error) =>
@@ -356,7 +356,7 @@ export function schemaError<A, I, R>(
       ),
     )
 
-    const items: [...P, Route.Route.Route<{}, {}, unknown, never, R>] = [
+    const items: [...P, Route.Route<{}, {}, unknown, never, R>] = [
       ...Route.items(self),
       route,
     ]
@@ -368,19 +368,19 @@ export function schemaError<A, I, R>(
 export function schemaSuccess<A, I, R>(
   schema: Schema.Schema<A, I, R>,
 ): <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
-  self: Route.RouteSet.RouteSet<D, SB, P>,
-) => Route.RouteSet.RouteSet<
+  self: Route.RouteSet<D, SB, P>,
+) => Route.RouteSet<
   D,
   SB,
-  [...P, Route.Route.Route<{}, {}, I, ParseResult.ParseError, R>]
+  [...P, Route.Route<{}, {}, I, ParseResult.ParseError, R>]
 > {
   const encode = Schema.encodeUnknown(schema)
   return function <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
-    self: Route.RouteSet.RouteSet<D, SB, P>,
-  ): Route.RouteSet.RouteSet<
+    self: Route.RouteSet<D, SB, P>,
+  ): Route.RouteSet<
     D,
     SB,
-    [...P, Route.Route.Route<{}, {}, I, ParseResult.ParseError, R>]
+    [...P, Route.Route<{}, {}, I, ParseResult.ParseError, R>]
   > {
     const route = Route.make<{}, {}, I, ParseResult.ParseError, R>((_context, next) =>
       Effect.flatMap(Entity.resolve(next()), (entity) =>
@@ -394,7 +394,7 @@ export function schemaSuccess<A, I, R>(
       ),
     )
 
-    const items: [...P, Route.Route.Route<{}, {}, I, ParseResult.ParseError, R>] = [
+    const items: [...P, Route.Route<{}, {}, I, ParseResult.ParseError, R>] = [
       ...Route.items(self),
       route,
     ]

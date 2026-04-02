@@ -111,13 +111,13 @@ export interface BuildReturn<Value, F extends Format, Body = never> {
   >(
     handler: GeneratorHandler<NoInfer<D & B & Route.ExtractBindings<I> & { format: F }>, A, Y>,
   ): (
-    self: Route.RouteSet.RouteSet<D, B, I>,
-  ) => Route.RouteSet.RouteSet<
+    self: Route.RouteSet<D, B, I>,
+  ) => Route.RouteSet<
     D,
     B,
     [
       ...I,
-      Route.Route.Route<
+      Route.Route<
         { format: F },
         {},
         [Body] extends [never] ? A : Body,
@@ -137,11 +137,11 @@ export interface BuildReturn<Value, F extends Format, Body = never> {
   >(
     handler: HandlerInput<NoInfer<D & B & Route.ExtractBindings<I> & { format: F }>, A, E, R>,
   ): (
-    self: Route.RouteSet.RouteSet<D, B, I>,
-  ) => Route.RouteSet.RouteSet<
+    self: Route.RouteSet<D, B, I>,
+  ) => Route.RouteSet<
     D,
     B,
-    [...I, Route.Route.Route<{ format: F }, {}, [Body] extends [never] ? A : Body, E, R>]
+    [...I, Route.Route<{ format: F }, {}, [Body] extends [never] ? A : Body, E, R>]
   >
 }
 
@@ -163,7 +163,7 @@ export function build<Value, F extends Format>(options: {
     E = never,
     R = never,
   >(handler: HandlerInput<NoInfer<D & B & Route.ExtractBindings<I> & { format: F }>, A, E, R>) {
-    return (self: Route.RouteSet.RouteSet<D, B, I>) => {
+    return (self: Route.RouteSet<D, B, I>) => {
       const contentType = formatToContentType[descriptors.format]
       const baseHandler = handle(handler)
       const wrappedHandler: Route.Route.Handler<{ format: F }, A, E, R> = (ctx, next) =>
@@ -191,7 +191,7 @@ export function build<Value, F extends Format>(options: {
 
       const route = Route.make<{ format: F }, {}, A, E, R>(wrappedHandler, descriptors)
 
-      return Route.set<D, B, [...I, Route.Route.Route<{ format: F }, {}, A, E, R>]>(
+      return Route.set<D, B, [...I, Route.Route<{ format: F }, {}, A, E, R>]>(
         [...Route.items(self), route],
         Route.descriptor(self),
       )
@@ -210,11 +210,11 @@ export function render<
 >(
   handler: GeneratorHandler<NoInfer<D & B & Route.ExtractBindings<I> & { format: "*" }>, A, Y>,
 ): (
-  self: Route.RouteSet.RouteSet<D, B, I>,
-) => Route.RouteSet.RouteSet<
+  self: Route.RouteSet<D, B, I>,
+) => Route.RouteSet<
   D,
   B,
-  [...I, Route.Route.Route<{ format: "*" }, {}, A, YieldError<Y>, YieldContext<Y>>]
+  [...I, Route.Route<{ format: "*" }, {}, A, YieldError<Y>, YieldContext<Y>>]
 >
 export function render<
   D extends Route.RouteDescriptor.Any,
@@ -226,8 +226,8 @@ export function render<
 >(
   handler: HandlerInput<NoInfer<D & B & Route.ExtractBindings<I> & { format: "*" }>, A, E, R>,
 ): (
-  self: Route.RouteSet.RouteSet<D, B, I>,
-) => Route.RouteSet.RouteSet<D, B, [...I, Route.Route.Route<{ format: "*" }, {}, A, E, R>]>
+  self: Route.RouteSet<D, B, I>,
+) => Route.RouteSet<D, B, [...I, Route.Route<{ format: "*" }, {}, A, E, R>]>
 export function render<
   D extends Route.RouteDescriptor.Any,
   B extends {},
@@ -236,14 +236,14 @@ export function render<
   E = never,
   R = never,
 >(handler: HandlerInput<NoInfer<D & B & Route.ExtractBindings<I> & { format: "*" }>, A, E, R>) {
-  return (self: Route.RouteSet.RouteSet<D, B, I>) => {
+  return (self: Route.RouteSet<D, B, I>) => {
     const baseHandler = handle(handler)
     const route = Route.make<{ format: "*" }, {}, A, E, R>(
       (ctx, next) => baseHandler(ctx as D & B & Route.ExtractBindings<I> & { format: "*" }, next),
       { format: "*" },
     )
 
-    return Route.set<D, B, [...I, Route.Route.Route<{ format: "*" }, {}, A, E, R>]>(
+    return Route.set<D, B, [...I, Route.Route<{ format: "*" }, {}, A, E, R>]>(
       [...Route.items(self), route],
       Route.descriptor(self),
     )

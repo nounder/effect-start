@@ -135,7 +135,7 @@ test.describe("Route.sse()", () => {
 
     const routes = [...route]
     type RouteError =
-      (typeof routes)[0] extends Route.Route.Route<any, any, any, infer E, any> ? E : never
+      (typeof routes)[0] extends Route.Route<any, any, any, infer E, any> ? E : never
 
     test.expectTypeOf<RouteError>().toEqualTypeOf<MyError>()
   })
@@ -149,7 +149,7 @@ test.describe("Route.sse()", () => {
 
     const routes = [...route]
     type RouteContext =
-      (typeof routes)[0] extends Route.Route.Route<any, any, any, any, infer R> ? R : never
+      (typeof routes)[0] extends Route.Route<any, any, any, any, infer R> ? R : never
 
     test.expectTypeOf<RouteContext>().toEqualTypeOf<Config>()
   })

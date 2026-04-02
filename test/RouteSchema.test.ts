@@ -563,7 +563,7 @@ test.describe(`${RouteSchema.schemaError.name}()`, () => {
 
     type Items = Route.RouteSet.Items<typeof routeSet>
     type ErrorRoute = Items[0]
-    type E = ErrorRoute extends Route.Route.Route<any, any, any, infer _E, any> ? _E : "fail"
+    type E = ErrorRoute extends Route.Route<any, any, any, infer _E, any> ? _E : "fail"
 
     true satisfies [E] extends [never] ? true : false
   })

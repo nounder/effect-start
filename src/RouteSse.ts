@@ -65,7 +65,7 @@ export function sse<
   E = never,
   R = never,
 >(handler: SseHandlerInput<NoInfer<D & B & Route.ExtractBindings<I> & { format: "sse" }>, E, R>) {
-  return function (self: Route.RouteSet.RouteSet<D, B, I>) {
+  return function (self: Route.RouteSet<D, B, I>) {
     const sseHandler: Route.Route.Handler<
       D & B & Route.ExtractBindings<I> & { format: "sse" },
       Stream.Stream<string, E, R>,
@@ -120,13 +120,13 @@ export function sse<
 
     const items: [
       ...I,
-      Route.Route.Route<{ format: "sse" }, {}, Stream.Stream<string, E, R>, E, R>,
+      Route.Route<{ format: "sse" }, {}, Stream.Stream<string, E, R>, E, R>,
     ] = [...Route.items(self), route]
 
     return Route.set<
       D,
       B,
-      [...I, Route.Route.Route<{ format: "sse" }, {}, Stream.Stream<string, E, R>, E, R>]
+      [...I, Route.Route<{ format: "sse" }, {}, Stream.Stream<string, E, R>, E, R>]
     >(items, Route.descriptor(self))
   }
 }

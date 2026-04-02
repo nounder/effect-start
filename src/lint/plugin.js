@@ -43,6 +43,8 @@ export default {
               if (!isLocalImport(source)) return
               const alias = node.specifiers[0].local.name
               if (alias === baseName) return
+              if (alias === "_" + baseName) return
+              if (node.importKind === "type") return
 
               context.report({
                 node,

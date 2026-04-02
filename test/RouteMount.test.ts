@@ -22,11 +22,11 @@ test.it("uses GET method", async () => {
   )
 
   test.expectTypeOf(route).toMatchTypeOf<
-    Route.RouteSet.RouteSet<
+    Route.RouteSet<
       {},
       {},
       [
-        Route.Route.Route<
+        Route.Route<
           {
             method: "GET"
             format: "text"
@@ -68,7 +68,7 @@ test.it("uses GET & POST method", async () => {
   type Items = Route.RouteSet.Items<typeof route>
 
   test.expectTypeOf<Items[0]>().toExtend<
-    Route.Route.Route<
+    Route.Route<
       {
         method: "GET"
         format: "text"
@@ -79,7 +79,7 @@ test.it("uses GET & POST method", async () => {
   >()
 
   test.expectTypeOf<Items[1]>().toExtend<
-    Route.Route.Route<
+    Route.Route<
       {
         method: "POST"
         format: "text"
@@ -152,7 +152,7 @@ test.describe("use", () => {
 
     test.expect(Route.items(routes)).toHaveLength(5)
 
-    // First use() - adds answer context (method flattened into Route descriptor)
+    // First use() - adds answer context
     test.expectTypeOf<Route.RouteSet.Descriptor<Items[0]>>().toMatchObjectType<{ method: "*" }>()
 
     test.expectTypeOf<Route.Route.Bindings<Items[0]>>().toMatchTypeOf<{ answer: number }>()
@@ -162,72 +162,54 @@ test.describe("use", () => {
       answer: number
     }>()
 
-    // Second use() - adds doubledAnswer context, inherits answer binding (method flattened into Route descriptor)
+    // Second use() - adds doubledAnswer context (own binding only)
     test.expectTypeOf<Route.RouteSet.Descriptor<Items[1]>>().toMatchObjectType<{ method: "*" }>()
 
     test.expectTypeOf<Route.Route.Bindings<Items[1]>>().toMatchTypeOf<{
-      answer: number
       doubledAnswer: number
     }>()
 
     test.expectTypeOf<Route.Route.Context<Items[1]>>().toMatchTypeOf<{
       method: "*"
-      answer: number
       doubledAnswer: number
     }>()
 
-    // GET filter route
+    // GET filter route (own binding only)
     test.expectTypeOf<Route.RouteSet.Descriptor<Items[2]>>().toMatchObjectType<{ method: "GET" }>()
 
     test.expectTypeOf<Route.Route.Bindings<Items[2]>>().toMatchTypeOf<{
-      answer: number
-      doubledAnswer: number
       getter: boolean
     }>()
 
     test.expectTypeOf<Route.Route.Context<Items[2]>>().toMatchTypeOf<{
       method: "GET"
-      answer: number
-      doubledAnswer: number
       getter: boolean
     }>()
 
-    // GET text route
+    // GET text route (no own bindings)
     test.expectTypeOf<Route.RouteSet.Descriptor<Items[3]>>().toMatchObjectType<{
       method: "GET"
       format: "text"
     }>()
 
-    test.expectTypeOf<Route.Route.Bindings<Items[3]>>().toMatchTypeOf<{
-      answer: number
-      doubledAnswer: number
-      getter: boolean
-    }>()
+    test.expectTypeOf<Route.Route.Bindings<Items[3]>>().toMatchTypeOf<{}>()
 
     test.expectTypeOf<Route.Route.Context<Items[3]>>().toMatchTypeOf<{
       method: "GET"
       format: "text"
-      answer: number
-      doubledAnswer: number
-      getter: boolean
     }>()
 
-    // POST route - inherits answer/doubledAnswer only (no getter since that was in GET branch)
+    // POST route (no own bindings)
     test.expectTypeOf<Route.RouteSet.Descriptor<Items[4]>>().toMatchObjectType<{
       method: "POST"
       format: "json"
     }>()
 
-    test.expectTypeOf<Route.Route.Bindings<Items[4]>>().toMatchTypeOf<{
-      answer: number
-      doubledAnswer: number
-    }>()
+    test.expectTypeOf<Route.Route.Bindings<Items[4]>>().toMatchTypeOf<{}>()
 
     test.expectTypeOf<Route.Route.Context<Items[4]>>().toMatchTypeOf<{
       method: "POST"
       format: "json"
-      answer: number
-      doubledAnswer: number
     }>()
   })
 })
@@ -241,7 +223,7 @@ test.it("Builder extends RouteSet", () => {
 
   test.expectTypeOf(builder).toExtend<Route.RouteSet.Any>()
 
-  test.expectTypeOf(builder).toExtend<Route.RouteSet.RouteSet<any, any, any>>()
+  test.expectTypeOf(builder).toExtend<Route.RouteSet<any, any, any>>()
 
   // Verify it has the TypeId
   test.expect(builder[Route.TypeId]).toBe(Route.TypeId)
@@ -288,7 +270,7 @@ test.it("schemaHeaders flattens method into route descriptor", () => {
 
   // First use() - schemaHeaders with method "*"
   test.expectTypeOf<Items[0]>().toExtend<
-    Route.Route.Route<
+    Route.Route<
       { method: "*" },
       {
         headers: {
@@ -296,57 +278,50 @@ test.it("schemaHeaders flattens method into route descriptor", () => {
         }
       },
       unknown,
-      ParseResult.ParseError
+      ParseResult.ParseError,
+      Route.Request
     >
   >()
 
-  // GET schemaHeaders
+  // GET schemaHeaders (own binding only)
   test.expectTypeOf<Items[1]>().toExtend<
-    Route.Route.Route<
+    Route.Route<
       { method: "GET" },
       {
         headers: {
-          readonly hello: string
           readonly "x-custom-header": string
         }
       },
       unknown,
-      ParseResult.ParseError
+      ParseResult.ParseError,
+      Route.Request
     >
   >()
 
-  // GET html route
+  // GET html route (no own bindings)
   test.expectTypeOf<Items[2]>().toExtend<
-    Route.Route.Route<
+    Route.Route<
       {
         method: "GET"
         format: "html"
       },
-      {
-        headers: {
-          readonly hello: string
-          readonly "x-custom-header": string
-        }
-      },
+      {},
       any
     >
   >()
 
-  // POST filter route
+  // POST filter route (own binding only)
   test.expectTypeOf<Items[3]>().toExtend<
-    Route.Route.Route<
+    Route.Route<
       { method: "POST" },
       {
-        headers: {
-          readonly hello: string
-        }
         postOnly: string
       },
       unknown
     >
   >()
 
-  // POST text route - verify descriptor and bindings separately
+  // POST text route (no own bindings)
   test.expectTypeOf<Route.RouteSet.Descriptor<Items[4]>>().toMatchObjectType<{
     method: "POST"
     format: "text"
@@ -355,10 +330,6 @@ test.it("schemaHeaders flattens method into route descriptor", () => {
   test.expectTypeOf<Route.Route.Context<Items[4]>>().toMatchTypeOf<{
     method: "POST"
     format: "text"
-    headers: {
-      readonly hello: string
-    }
-    postOnly: string
   }>()
 })
 

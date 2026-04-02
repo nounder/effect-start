@@ -24,12 +24,12 @@ test.it("passes bindings", () => {
   test
     .expectTypeOf(routes)
     .toExtend<
-      Route.RouteSet.RouteSet<
+      Route.RouteSet<
         {},
         {},
         [
-          Route.Route.Route<{}, typeof filterResult.context, any>,
-          Route.Route.Route<{ format: "text" }, {}, string>,
+          Route.Route<{}, typeof filterResult.context, any>,
+          Route.Route<{ format: "text" }, {}, string>,
         ]
       >
     >()

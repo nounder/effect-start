@@ -25,7 +25,7 @@ export type BunDescriptors = {
 }
 
 export function descriptors(
-  route: Route.Route.Route<any, any, any, any, any>,
+  route: Route.Route<any, any, any, any, any>,
 ): BunDescriptors | undefined {
   const descriptor = Route.descriptor(route) as Partial<BunDescriptors>
   if (typeof descriptor.bunPrefix === "string" && typeof descriptor.bunLoad === "function") {
@@ -45,13 +45,13 @@ export function htmlBundle(load: () => HTMLBundleModule | Promise<HTMLBundleModu
   const descriptors = { bunPrefix, bunLoad, format: "html" as const }
 
   return function <D extends Route.RouteDescriptor.Any, B extends {}, I extends Route.Route.Tuple>(
-    self: Route.RouteSet.RouteSet<D, B, I>,
-  ): Route.RouteSet.RouteSet<
+    self: Route.RouteSet<D, B, I>,
+  ): Route.RouteSet<
     D,
     B,
     [
       ...I,
-      Route.Route.Route<
+      Route.Route<
         BunDescriptors & { format: "html" },
         {},
         string,

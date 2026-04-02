@@ -25,8 +25,8 @@ export function filter<
   const normalized = normalizeFilterHandler(filterHandler)
 
   return function (
-    self: Route.RouteSet.RouteSet<D, SB, P>,
-  ): Route.RouteSet.RouteSet<D, SB, [...P, Route.Route.Route<{}, BOut, unknown, E, R>]> {
+    self: Route.RouteSet<D, SB, P>,
+  ): Route.RouteSet<D, SB, [...P, Route.Route<{}, BOut, unknown, E, R>]> {
     const route = Route.make<{}, BOut, unknown, E, R>(
       (context: BOut, next: (ctx?: Partial<BOut>) => Entity.Entity<unknown>) =>
         Effect.gen(function* () {
@@ -39,7 +39,7 @@ export function filter<
     )
 
     return Route.set(
-      [...Route.items(self), route] as [...P, Route.Route.Route<{}, BOut, unknown, E, R>],
+      [...Route.items(self), route] as [...P, Route.Route<{}, BOut, unknown, E, R>],
       Route.descriptor(self),
     )
   }

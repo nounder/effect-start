@@ -27,16 +27,16 @@ export namespace RouteDescriptor {
   }
 }
 
-export namespace RouteSet {
-  export type RouteSet<
-    D extends RouteDescriptor.Any = {},
-    B = {},
-    M extends Route.Tuple = [],
-  > = Data<D, B, M> & {
-    [TypeId]: typeof TypeId
-  } & Pipeable.Pipeable &
-    Iterable<M[number]>
+export type RouteSet<
+  D extends RouteDescriptor.Any = {},
+  B = {},
+  M extends Route.Tuple = [],
+> = RouteSet.Data<D, B, M> & {
+  [TypeId]: typeof TypeId
+} & Pipeable.Pipeable &
+  Iterable<M[number]>
 
+export namespace RouteSet {
   export type Data<D extends RouteDescriptor.Any = {}, B = {}, M extends Route.Tuple = []> = {
     [RouteItems]: M
     [RouteDescriptor]: D
@@ -44,7 +44,7 @@ export namespace RouteSet {
   }
 
   export type Proto = Pipeable.Pipeable &
-    Iterable<Route.Route<any, any, any, any, any>> & {
+    Iterable<Route<any, any, any, any, any>> & {
       [TypeId]: typeof TypeId
     }
 
@@ -58,17 +58,17 @@ export namespace RouteSet {
     T extends Data<infer D, any, any> ? D : never
 }
 
-export namespace Route {
-  export interface Route<
-    D extends RouteDescriptor.Any = {},
-    B = {},
-    A = any,
-    E = never,
-    R = never,
-  > extends RouteSet.RouteSet<D, {}, [Route<D, B, A, E, R>]> {
-    readonly handler: Handler<B & D, A, E, R>
-  }
+export interface Route<
+  D extends RouteDescriptor.Any = {},
+  B = {},
+  A = any,
+  E = never,
+  R = never,
+> extends RouteSet<D, {}, [Route<D, B, A, E, R>]> {
+  readonly handler: Route.Handler<B & D, A, E, R>
+}
 
+export namespace Route {
   export type With<D extends RouteDescriptor.Any> = Route<any, any, any, any, any> & {
     [RouteDescriptor]: D
   }
@@ -125,26 +125,26 @@ export function isRouteSet(input: unknown): input is RouteSet.Any {
   return Predicate.hasProperty(input, TypeId)
 }
 
-export function isRoute(input: unknown): input is Route.Route {
+export function isRoute(input: unknown): input is Route {
   return isRouteSet(input) && Predicate.hasProperty(input, "handler")
 }
 
 export function set<D extends RouteDescriptor.Any = {}, B = {}, I extends Route.Tuple = []>(
   items: I = [] as unknown as I,
   descriptor: D = {} as D,
-): RouteSet.RouteSet<D, B, I> {
+): RouteSet<D, B, I> {
   return Object.assign(Object.create(Proto), {
     [RouteItems]: items,
     [RouteDescriptor]: descriptor,
-  }) as RouteSet.RouteSet<D, B, I>
+  }) as RouteSet<D, B, I>
 }
 
 export function make<D extends RouteDescriptor.Any, B, A, E = never, R = never>(
   handler: Route.Handler<B & D, A, E, R>,
   descriptor?: D,
-): Route.Route<D, B, A, E, R> {
+): Route<D, B, A, E, R> {
   const items: any = []
-  const route: Route.Route<D, B, A, E, R> = Object.assign(Object.create(Proto), {
+  const route: Route<D, B, A, E, R> = Object.assign(Object.create(Proto), {
     [RouteItems]: items,
     [RouteDescriptor]: descriptor,
     handler,
@@ -185,7 +185,7 @@ export type ExtractBindings<M extends Route.Tuple> = M extends [
   infer Head,
   ...infer Tail extends Route.Tuple,
 ]
-  ? Head extends Route.Route<any, infer B, any, any, any>
+  ? Head extends Route<any, infer B, any, any, any>
     ? ShallowMerge<B, ExtractBindings<Tail>>
     : ExtractBindings<Tail>
   : {}
@@ -234,8 +234,8 @@ export function redirect<D extends RouteDescriptor.Any, B, I extends Route.Tuple
   url: string | URL,
   options?: { status?: 301 | 302 | 303 | 307 | 308 },
 ): (
-  self: RouteSet.RouteSet<D, B, I>,
-) => RouteSet.RouteSet<D, B, [...I, Route.Route<{}, {}, "", never, never>]> {
+  self: RouteSet<D, B, I>,
+) => RouteSet<D, B, [...I, Route<{}, {}, "", never, never>]> {
   const route = make<{}, {}, "">(() =>
     Effect.succeed(
       Entity.make("", {
@@ -248,7 +248,7 @@ export function redirect<D extends RouteDescriptor.Any, B, I extends Route.Tuple
   )
 
   return (self) =>
-    set<D, B, [...I, Route.Route<{}, {}, "", never, never>]>(
+    set<D, B, [...I, Route<{}, {}, "", never, never>]>(
       [...items(self), route],
       descriptor(self),
     )
@@ -281,9 +281,9 @@ export function layerMerge(routes: RouteTree.InputRouteMap | RouteTree.RouteTree
  * we exclude them altogeteher in development.
  */
 export function devOnly<D extends RouteDescriptor.Any, B, I extends Route.Tuple>(
-  self: RouteSet.RouteSet<D, B, I>,
-): RouteSet.RouteSet<D, B, [...I, Route.Route<{ dev: true }, { dev: true }, unknown, any, any>]> {
-  const route: Route.Route<{ dev: true }, { dev: true }, unknown, any, any> = make<
+  self: RouteSet<D, B, I>,
+): RouteSet<D, B, [...I, Route<{ dev: true }, { dev: true }, unknown, any, any>]> {
+  const route: Route<{ dev: true }, { dev: true }, unknown, any, any> = make<
     { dev: true },
     { dev: true },
     unknown,
@@ -299,12 +299,12 @@ export function devOnly<D extends RouteDescriptor.Any, B, I extends Route.Tuple>
     { dev: true },
   )
 
-  const nextItems: [...I, Route.Route<{ dev: true }, { dev: true }, unknown, any, any>] = [
+  const nextItems: [...I, Route<{ dev: true }, { dev: true }, unknown, any, any>] = [
     ...items(self),
     route,
   ]
 
-  return set<D, B, [...I, Route.Route<{ dev: true }, { dev: true }, unknown, any, any>]>(
+  return set<D, B, [...I, Route<{ dev: true }, { dev: true }, unknown, any, any>]>(
     nextItems,
     descriptor(self),
   )

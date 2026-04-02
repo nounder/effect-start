@@ -15,7 +15,7 @@
 
     // TypeScript rules (matching Effect's @typescript-eslint config)
     "typescript/array-type": "off",
-    "typescript/consistent-type-imports": "warn",
+    "typescript/consistent-type-imports": "off",
 
     // -- Disabled rules that conflict with this project's style --
 
