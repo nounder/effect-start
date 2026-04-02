@@ -5,8 +5,8 @@ import * as Github from "../../../Github.ts"
 import { Layout, RepoCard, Tabs, UserCard } from "../../../Ui.tsx"
 
 export default Route.get(
-  Route.schemaPathParams(Schema.Struct({ org: Schema.String })),
-  Route.schemaSearchParams(Schema.Struct({ tab: Schema.String })),
+  Route.schemaPathParams({ org: Schema.String }),
+  Route.schemaSearchParams({ tab: Schema.String }),
   Route.html(function* (ctx) {
     const { org } = ctx.pathParams
     const { tab } = ctx.searchParams

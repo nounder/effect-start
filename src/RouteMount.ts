@@ -4,11 +4,10 @@ import type * as Http from "./_Http.ts"
 import type * as PathPattern from "./_PathPattern.ts"
 import * as Route from "./Route.ts"
 import type * as RouteBody from "./RouteBody.ts"
-import type * as Module from "./RouteMount.ts"
 
 const RouteSetTypeId = "~effect-start/RouteSet" as const
 
-export type Self = RouteMount.Builder<any, any> | Module
+export type Self = RouteMount.Builder<any, any> | typeof import("./RouteMount.ts")
 
 export const use = makeMethodDescriber("*")
 export const get = makeMethodDescriber("GET")
@@ -90,10 +89,11 @@ export namespace RouteMount {
 
   export type MountSet = Route.RouteSet<{ method: Method }, {}, Route.Route.Tuple>
 
-  export type Builder<
-    D extends {} = {},
-    I extends Route.Route.Tuple = [],
-  > = Route.RouteSet<D, {}, I> &
+  export type Builder<D extends {} = {}, I extends Route.Route.Tuple = []> = Route.RouteSet<
+    D,
+    {},
+    I
+  > &
     (HasMethod<I> extends true ? {} : { use: Describer<"*"> }) & {
       get: Describer<"GET">
       post: Describer<"POST">

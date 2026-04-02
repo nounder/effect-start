@@ -4,8 +4,8 @@ import * as Github from "../../../../Github.ts"
 import { Layout, Tabs, IssueRow, StateFilter, EmptyState } from "../../../../Ui.tsx"
 
 export default Route.get(
-  Route.schemaPathParams(Schema.Struct({ owner: Schema.String, repo: Schema.String })),
-  Route.schemaSearchParams(Schema.Struct({ state: Schema.String })),
+  Route.schemaPathParams({ owner: Schema.String, repo: Schema.String }),
+  Route.schemaSearchParams({ state: Schema.String }),
   Route.html(function* (ctx) {
     const { owner, repo } = ctx.pathParams
     const { state } = ctx.searchParams

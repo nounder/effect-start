@@ -5,9 +5,7 @@ import * as Github from "../../../../../Github.ts"
 import { Layout, Tabs } from "../../../../../Ui.tsx"
 
 export default Route.get(
-  Route.schemaPathParams(
-    Schema.Struct({ owner: Schema.String, repo: Schema.String, number: Schema.NumberFromString }),
-  ),
+  Route.schemaPathParams({ owner: Schema.String, repo: Schema.String, number: Schema.NumberFromString }),
   Route.html(function* (ctx) {
     const { owner, repo, number } = ctx.pathParams
 
