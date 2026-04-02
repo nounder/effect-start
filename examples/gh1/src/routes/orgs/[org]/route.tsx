@@ -1,5 +1,4 @@
-import * as Effect from "effect/Effect"
-import * as Schema from "effect/Schema"
+import { Effect, Schema } from "effect"
 import { Route } from "effect-start"
 import * as Github from "../../../Github.ts"
 import { Layout, RepoCard, Tabs, UserCard } from "../../../Ui.tsx"
@@ -62,7 +61,11 @@ export default Route.get(
                 count: orgInfo.public_repos,
                 active: tab === "repositories",
               },
-              { label: "People", href: Route.link("/orgs/:org", { org, tab: "people" }), active: tab === "people" },
+              {
+                label: "People",
+                href: Route.link("/orgs/:org", { org, tab: "people" }),
+                active: tab === "people",
+              },
             ]}
           />
 

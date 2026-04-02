@@ -1,6 +1,4 @@
-import * as Config from "effect/Config"
-import * as Effect from "effect/Effect"
-import * as Schema from "effect/Schema"
+import { Config, Effect, Schema } from "effect"
 import * as Fetch from "effect-start/Fetch"
 
 const API = "https://api.github.com"

@@ -1,5 +1,4 @@
-import * as Effect from "effect/Effect"
-import * as Schema from "effect/Schema"
+import { Effect, Schema } from "effect"
 import { Route } from "effect-start"
 import * as Github from "../../../Github.ts"
 import { Layout, Tabs, LanguageBar } from "../../../Ui.tsx"

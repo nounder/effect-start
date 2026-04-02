@@ -1,4 +1,4 @@
-import * as Stream from "effect/Stream"
+import { Stream } from "effect"
 import { Development, Route } from "effect-start"
 
 export default Route.get(

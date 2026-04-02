@@ -3,8 +3,9 @@ import { Route } from "effect-start"
 import { type ChatMessage, chatPubSub, messagesRef } from "../../../Chat.tsx"
 
 export default Route.post(
-  Route.text(function* (ctx) {
-    const body = yield* Effect.tryPromise(() => ctx.request.json())
+  Route.text(function* () {
+    const request = yield* Route.Request
+    const body = yield* Effect.tryPromise(() => request.json())
     const { pendingDraft, username } = body as {
       pendingDraft: string
       username: string

@@ -3,8 +3,9 @@ import * as Github from "../../Github.ts"
 import { Layout, RepoListItem, UserCard, EmptyState } from "../../Ui.tsx"
 
 export default Route.get(
-  Route.html(function* (ctx) {
-    const url = new URL(ctx.request.url)
+  Route.html(function* () {
+    const request = yield* Route.Request
+    const url = new URL(request.url)
     const q = url.searchParams.get("q") ?? ""
     const type = url.searchParams.get("type") ?? "repositories"
     const page = parseInt(url.searchParams.get("page") ?? "1", 10)
