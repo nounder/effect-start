@@ -33,18 +33,22 @@ export function schemaHeaders<A, I extends Readonly<Record<string, string | unde
 ) => Route.RouteSet.RouteSet<
   D,
   SB,
-  [...P, Route.Route.Route<{}, { headers: A }, unknown, ParseResult.ParseError, R>]
+  [...P, Route.Route.Route<{}, { headers: A }, unknown, ParseResult.ParseError, R | Route.Request>]
 > {
   const decode = Schema.decodeUnknown(fields)
-  return RouteHook.filter((ctx: { request: Request; headers?: {} }) =>
-    Effect.map(decode(Http.mapHeaders(ctx.request.headers)), (parsed) => ({
-      context: {
-        headers: {
-          ...ctx.headers,
-          ...parsed,
+  return RouteHook.filter((ctx: { headers?: {} }) =>
+    Effect.gen(function* () {
+      const request = yield* Route.Request
+      const parsed = yield* decode(Http.mapHeaders(request.headers))
+      return {
+        context: {
+          headers: {
+            ...ctx.headers,
+            ...parsed,
+          },
         },
-      },
-    })),
+      }
+    }),
   )
 }
 
@@ -55,18 +59,22 @@ export function schemaCookies<A, I extends Readonly<Record<string, string | unde
 ) => Route.RouteSet.RouteSet<
   D,
   SB,
-  [...P, Route.Route.Route<{}, { cookies: A }, unknown, ParseResult.ParseError, R>]
+  [...P, Route.Route.Route<{}, { cookies: A }, unknown, ParseResult.ParseError, R | Route.Request>]
 > {
   const decode = Schema.decodeUnknown(fields)
-  return RouteHook.filter((ctx: { request: Request; cookies?: {} }) =>
-    Effect.map(decode(Http.parseCookies(ctx.request.headers.get("cookie"))), (parsed) => ({
-      context: {
-        cookies: {
-          ...ctx.cookies,
-          ...parsed,
+  return RouteHook.filter((ctx: { cookies?: {} }) =>
+    Effect.gen(function* () {
+      const request = yield* Route.Request
+      const parsed = yield* decode(Http.parseCookies(request.headers.get("cookie")))
+      return {
+        context: {
+          cookies: {
+            ...ctx.cookies,
+            ...parsed,
+          },
         },
-      },
-    })),
+      }
+    }),
   )
 }
 
@@ -81,20 +89,24 @@ export function schemaSearchParams<
 ) => Route.RouteSet.RouteSet<
   D,
   SB,
-  [...P, Route.Route.Route<{}, { searchParams: A }, unknown, ParseResult.ParseError, R>]
+  [...P, Route.Route.Route<{}, { searchParams: A }, unknown, ParseResult.ParseError, R | Route.Request>]
 > {
   const decode = Schema.decodeUnknown(fields)
-  return RouteHook.filter((ctx: { request: Request; searchParams?: {} }) => {
-    const url = new URL(ctx.request.url)
-    return Effect.map(decode(Http.mapUrlSearchParams(url.searchParams)), (parsed) => ({
-      context: {
-        searchParams: {
-          ...ctx.searchParams,
-          ...parsed,
+  return RouteHook.filter((ctx: { searchParams?: {} }) =>
+    Effect.gen(function* () {
+      const request = yield* Route.Request
+      const url = new URL(request.url)
+      const parsed = yield* decode(Http.mapUrlSearchParams(url.searchParams))
+      return {
+        context: {
+          searchParams: {
+            ...ctx.searchParams,
+            ...parsed,
+          },
         },
-      },
-    }))
-  })
+      }
+    }),
+  )
 }
 
 export function schemaPathParams<A, I extends Readonly<Record<string, string | undefined>>, R>(
@@ -104,22 +116,26 @@ export function schemaPathParams<A, I extends Readonly<Record<string, string | u
 ) => Route.RouteSet.RouteSet<
   D,
   SB,
-  [...P, Route.Route.Route<{}, { pathParams: A }, unknown, ParseResult.ParseError, R>]
+  [...P, Route.Route.Route<{}, { pathParams: A }, unknown, ParseResult.ParseError, R | Route.Request>]
 > {
   const decode = Schema.decodeUnknown(fields)
-  return RouteHook.filter((ctx: { request: Request; path?: string; pathParams?: {} }) => {
-    const url = new URL(ctx.request.url)
-    const pattern = ctx.path ?? "/"
-    const params = PathPattern.match(pattern, url.pathname) ?? {}
-    return Effect.map(decode(params), (parsed) => ({
-      context: {
-        pathParams: {
-          ...ctx.pathParams,
-          ...parsed,
+  return RouteHook.filter((ctx: { path?: string; pathParams?: {} }) =>
+    Effect.gen(function* () {
+      const request = yield* Route.Request
+      const url = new URL(request.url)
+      const pattern = ctx.path ?? "/"
+      const params = PathPattern.match(pattern, url.pathname) ?? {}
+      const parsed = yield* decode(params)
+      return {
+        context: {
+          pathParams: {
+            ...ctx.pathParams,
+            ...parsed,
+          },
         },
-      },
-    }))
-  })
+      }
+    }),
+  )
 }
 
 export function schemaBodyJson<A, I, R>(
@@ -129,13 +145,14 @@ export function schemaBodyJson<A, I, R>(
 ) => Route.RouteSet.RouteSet<
   D,
   SB,
-  [...P, Route.Route.Route<{}, { body: A }, unknown, RequestBodyError | ParseResult.ParseError, R>]
+  [...P, Route.Route.Route<{}, { body: A }, unknown, RequestBodyError | ParseResult.ParseError, R | Route.Request>]
 > {
   const decode = Schema.decodeUnknown(fields)
-  return RouteHook.filter((ctx: { request: Request; body?: {} }) =>
+  return RouteHook.filter((ctx: { body?: {} }) =>
     Effect.gen(function* () {
+      const request = yield* Route.Request
       const json = yield* Effect.tryPromise({
-        try: () => ctx.request.json(),
+        try: () => request.json(),
         catch: (error) => RequestBodyError("JsonError", error),
       })
       const parsed = yield* decode(json)
@@ -162,13 +179,14 @@ export function schemaBodyUrlParams<
 ) => Route.RouteSet.RouteSet<
   D,
   SB,
-  [...P, Route.Route.Route<{}, { body: A }, unknown, RequestBodyError | ParseResult.ParseError, R>]
+  [...P, Route.Route.Route<{}, { body: A }, unknown, RequestBodyError | ParseResult.ParseError, R | Route.Request>]
 > {
   const decode = Schema.decodeUnknown(fields)
-  return RouteHook.filter((ctx: { request: Request; body?: {} }) =>
+  return RouteHook.filter((ctx: { body?: {} }) =>
     Effect.gen(function* () {
+      const request = yield* Route.Request
       const text = yield* Effect.tryPromise({
-        try: () => ctx.request.text(),
+        try: () => request.text(),
         catch: (error) => RequestBodyError("UrlParamsError", error),
       })
       const params = new URLSearchParams(text)
@@ -203,15 +221,16 @@ export function schemaBodyMultipart<
       { body: A },
       unknown,
       RequestBodyError | ParseResult.ParseError,
-      R | Scope.Scope
+      R | Route.Request | Scope.Scope
     >,
   ]
 > {
   const decode = Schema.decodeUnknown(fields)
-  return RouteHook.filter((ctx: { request: Request; body?: {} }) =>
+  return RouteHook.filter((ctx: { body?: {} }) =>
     Effect.gen(function* () {
+      const request = yield* Route.Request
       const record = yield* Effect.tryPromise({
-        try: () => Http.parseFormData(ctx.request),
+        try: () => Http.parseFormData(request),
         catch: (error) => RequestBodyError("MultipartError", error),
       })
       const parsed = yield* decode(record)
@@ -245,18 +264,19 @@ export function schemaBodyForm<
       { body: A },
       unknown,
       RequestBodyError | ParseResult.ParseError,
-      R | Scope.Scope
+      R | Route.Request | Scope.Scope
     >,
   ]
 > {
   const decode = Schema.decodeUnknown(fields)
-  return RouteHook.filter((ctx: { request: Request; body?: {} }) =>
+  return RouteHook.filter((ctx: { body?: {} }) =>
     Effect.gen(function* () {
-      const contentType = ctx.request.headers.get("content-type") ?? ""
+      const request = yield* Route.Request
+      const contentType = request.headers.get("content-type") ?? ""
 
       if (contentType.includes("application/x-www-form-urlencoded")) {
         const text = yield* Effect.tryPromise({
-          try: () => ctx.request.text(),
+          try: () => request.text(),
           catch: (error) => RequestBodyError("UrlParamsError", error),
         })
         const params = new URLSearchParams(text)
@@ -273,7 +293,7 @@ export function schemaBodyForm<
       }
 
       const record = yield* Effect.tryPromise({
-        try: () => Http.parseFormData(ctx.request),
+        try: () => Http.parseFormData(request),
         catch: (error) => RequestBodyError("FormDataError", error),
       })
       const parsed = yield* decode(record as I)

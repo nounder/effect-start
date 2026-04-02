@@ -292,7 +292,7 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
 
           const url = new URL(request.url)
 
-          const innerEffect = Effect.gen(function* () {
+          const innerEffect = Effect.provideService(Effect.gen(function* () {
             const result = yield* createChain({ request, selectedFormat })
 
             const entity = Entity.isEntity(result) ? result : Entity.make(result, { status: 200 })
@@ -306,7 +306,7 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
               response.headers.set("vary", "Accept")
             }
             return response
-          })
+          }), Route.Request, request)
 
           if (tracerDisabled) {
             return innerEffect

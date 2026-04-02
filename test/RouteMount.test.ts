@@ -12,7 +12,6 @@ test.it("uses GET method", async () => {
         test.expectTypeOf(context).toMatchObjectType<{
           method: "GET"
           format: "text"
-          request: Request
         }>()
         test.expect(context.method).toEqual("GET")
         test.expect(context.format).toEqual("text")
@@ -363,12 +362,12 @@ test.it("schemaHeaders flattens method into route descriptor", () => {
   }>()
 })
 
-test.it("provides request in default bindings", () => {
-  Route.get(
-    Route.text((ctx) => {
-      test.expectTypeOf(ctx.request).toEqualTypeOf<Request>()
-
-      return Effect.succeed("ok")
-    }),
-  )
-})
+test.it("provides request via Route.Request service", () =>
+  Effect.gen(function* () {
+    const request = yield* Route.Request
+    test.expectTypeOf(request).toEqualTypeOf<Request>()
+  }).pipe(
+    Effect.provideService(Route.Request, new Request("http://localhost")),
+    Effect.runPromise,
+  ),
+)

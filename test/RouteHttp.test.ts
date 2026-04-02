@@ -1843,6 +1843,55 @@ test.describe("schema handlers", () => {
     }).pipe(Effect.runPromise),
   )
 
+  test.it("schemaPathParams extracts params when path descriptor is set by RouteTree", () =>
+    Effect.gen(function* () {
+      const tree = RouteTree.make({
+        "/users/:id": Route.get(
+          RouteSchema.schemaPathParams(
+            Schema.Struct({ id: Schema.String }),
+          ),
+          Route.json(function* (ctx) {
+            return { id: ctx.pathParams.id, path: ctx.path }
+          }),
+        ),
+      })
+
+      const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
+      const handler = handles["/users/:id"]
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/users/abc")
+
+      test.expect(entity.status).toBe(200)
+      test.expect(yield* entity.json).toEqual({
+        id: "abc",
+        path: "/users/:id",
+      })
+    }).pipe(Effect.runPromise),
+  )
+
+  test.it("schemaPathParams cannot extract params without RouteTree (no path descriptor)", () =>
+    Effect.gen(function* () {
+      const runtime = yield* Effect.runtime<TestLogger.TestLogger>()
+      const handler = RouteHttp.toWebHandlerRuntime(runtime)(
+        Route.get(
+          RouteSchema.schemaPathParams(
+            Schema.Struct({ id: Schema.String }),
+          ),
+          Route.json(function* (ctx) {
+            return { id: ctx.pathParams.id }
+          }),
+        ),
+      )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/users/abc")
+
+      // Without RouteTree, ctx.path is undefined, falls back to "/",
+      // so PathPattern.match("/", "/users/abc") returns no params
+      // and schema validation fails with ParseError -> 400
+      test.expect(entity.status).toBe(400)
+    }).pipe(Effect.provide(TestLogger.layer()), Effect.runPromise),
+  )
+
   test.it("path params validation fails on invalid input", () =>
     Effect.gen(function* () {
       const runtime = yield* Effect.runtime<TestLogger.TestLogger>()

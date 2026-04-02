@@ -116,8 +116,8 @@ export namespace RouteMount {
 
   export type BuilderBindings<S> =
     S extends Builder<any, infer I>
-      ? Types.Simplify<WildcardBindings<I>> & { request: Request }
-      : { request: Request }
+      ? Types.Simplify<WildcardBindings<I>>
+      : {}
 
   type WildcardBindingsItem<T> =
     T extends Route.Route.Route<{ method: "*" }, infer B, any, any, any> ? B : {}
@@ -134,8 +134,6 @@ export namespace RouteMount {
     }[number]
   >
 
-  // Flatten items: merge method into descriptor and accumulate bindings through the chain
-  // `request` is omitted from bindings since it's implicit (always available)
   export type FlattenItems<M extends Method, B, I extends Route.Route.Tuple> = I extends [
     Route.Route.Route<infer D, infer RB, infer A, infer E, infer R>,
     ...infer Tail extends Route.Route.Tuple,
@@ -143,7 +141,7 @@ export namespace RouteMount {
     ? [
         Route.Route.Route<
           Types.Simplify<{ method: M } & D> & {},
-          Types.Simplify<Omit<B & RB, "request">>,
+          Types.Simplify<B & RB>,
           A,
           E,
           R

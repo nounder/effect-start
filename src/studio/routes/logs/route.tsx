@@ -8,8 +8,9 @@ import * as Shell from "../../ui/Shell.tsx"
 const prefix = StudioStore.store.prefix
 
 export default Route.get(
-  Route.html(function* (ctx) {
-    const url = new URL(ctx.request.url)
+  Route.html(function* (_ctx) {
+    const request = yield* Route.Request
+    const url = new URL(request.url)
     const level = url.searchParams.get("logLevel") || ""
     const search = url.searchParams.get("logSearch") || ""
     let logs = yield* StudioStore.allLogs()

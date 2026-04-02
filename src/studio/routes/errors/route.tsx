@@ -8,8 +8,9 @@ import * as Shell from "../../ui/Shell.tsx"
 const prefix = StudioStore.store.prefix
 
 export default Route.get(
-  Route.html(function* (ctx) {
-    const url = new URL(ctx.request.url)
+  Route.html(function* (_ctx) {
+    const request = yield* Route.Request
+    const url = new URL(request.url)
     const search = url.searchParams.get("errorSearch") || ""
     const tag = url.searchParams.get("errorTag") || ""
     const allErrors = yield* StudioStore.allErrors()

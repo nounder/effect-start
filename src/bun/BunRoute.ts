@@ -53,21 +53,21 @@ export function htmlBundle(load: () => HTMLBundleModule | Promise<HTMLBundleModu
       ...I,
       Route.Route.Route<
         BunDescriptors & { format: "html" },
-        { request: Request },
+        {},
         string,
         BunRouteError,
-        BunServer.BunServer
+        BunServer.BunServer | Route.Request
       >,
     ]
   > {
     const handler: Route.Route.Handler<
-      BunDescriptors & { format: "html" } & { request: Request },
+      BunDescriptors & { format: "html" },
       string,
       BunRouteError,
-      BunServer.BunServer
+      BunServer.BunServer | Route.Request
     > = (context, next) =>
       Effect.gen(function* () {
-        const originalRequest = context.request
+        const originalRequest = yield* Route.Request
         const bundleDepth = yield* FiberRef.get(bundleDepthRef)
 
         if (originalRequest.headers.get(INTERNAL_FETCH_HEADER) === "true") {
@@ -142,10 +142,10 @@ export function htmlBundle(load: () => HTMLBundleModule | Promise<HTMLBundleModu
 
     const route = Route.make<
       BunDescriptors & { format: "html" },
-      { request: Request },
+      {},
       string,
       BunRouteError,
-      BunServer.BunServer
+      BunServer.BunServer | Route.Request
     >(handler, descriptors)
 
     return Route.set([...Route.items(self), route] as any, Route.descriptor(self))

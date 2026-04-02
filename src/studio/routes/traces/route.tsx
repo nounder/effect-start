@@ -9,8 +9,9 @@ import * as Traces from "../../ui/Traces.tsx"
 const prefix = StudioStore.store.prefix
 
 export default Route.get(
-  Route.html(function* (ctx) {
-    const url = new URL(ctx.request.url)
+  Route.html(function* (_ctx) {
+    const request = yield* Route.Request
+    const url = new URL(request.url)
     const search = url.searchParams.get("traceSearch") || ""
     const allSpans = StudioStore.filterOutStudioSpans(yield* StudioStore.allSpans())
     const names = Array.from(new Set(allSpans.map((s) => s.name))).sort()

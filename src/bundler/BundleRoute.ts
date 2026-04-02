@@ -20,7 +20,8 @@ export const make = <Tag extends Context.Tag<any, Bundle.BundleContext>>(tag: Ta
   Route.get(
     Route.render(function* (ctx) {
       const bundle = yield* tag
-      const url = new URL(ctx.request.url)
+      const request = yield* Route.Request
+      const url = new URL(request.url)
       const mountPath = (ctx as unknown as { path?: string }).path ?? "/"
       const params = PathPattern.match(mountPath, url.pathname)
       const artifactPath = params ? Values.firstValue(params) : undefined

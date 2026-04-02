@@ -206,6 +206,11 @@ export * from "./RouteSchema.ts"
 
 export { del, get, head, options, patch, post, put, use } from "./RouteMount.ts"
 
+export class Request extends Context.Tag("effect-start/Route/Request")<
+  Request,
+  globalThis.Request
+>() {}
+
 export const text = RouteBody.build<string, "text">({
   format: "text",
 })
