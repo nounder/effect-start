@@ -134,19 +134,19 @@ export namespace RouteMount {
     }[number]
   >
 
-  export type FlattenItems<M extends Method, B, I extends Route.Route.Tuple> = I extends [
+  export type FlattenItems<M extends Method, I extends Route.Route.Tuple> = I extends [
     Route.Route.Route<infer D, infer RB, infer A, infer E, infer R>,
     ...infer Tail extends Route.Route.Tuple,
   ]
     ? [
         Route.Route.Route<
           Types.Simplify<{ method: M } & D> & {},
-          Types.Simplify<B & RB>,
+          RB,
           A,
           E,
           R
         >,
-        ...FlattenItems<M, Types.Simplify<B & RB>, Tail>,
+        ...FlattenItems<M, Tail>,
       ]
     : []
 
@@ -154,13 +154,13 @@ export namespace RouteMount {
     <S extends Self, A extends Route.RouteSet.Any>(
       this: S,
       ab: (a: EmptySet<M, BuilderBindings<S>>) => A,
-    ): Builder<{}, [...Items<S>, ...FlattenItems<M, BuilderBindings<S>, Route.RouteSet.Items<A>>]>
+    ): Builder<{}, [...Items<S>, ...FlattenItems<M, Route.RouteSet.Items<A>>]>
 
     <S extends Self, A extends Route.RouteSet.Any, B extends Route.RouteSet.Any>(
       this: S,
       ab: (a: EmptySet<M, BuilderBindings<S>>) => A,
       bc: (b: A) => B,
-    ): Builder<{}, [...Items<S>, ...FlattenItems<M, BuilderBindings<S>, Route.RouteSet.Items<B>>]>
+    ): Builder<{}, [...Items<S>, ...FlattenItems<M, Route.RouteSet.Items<B>>]>
 
     <
       S extends Self,
@@ -172,7 +172,7 @@ export namespace RouteMount {
       ab: (a: EmptySet<M, BuilderBindings<S>>) => A,
       bc: (b: A) => B,
       cd: (c: B) => C,
-    ): Builder<{}, [...Items<S>, ...FlattenItems<M, BuilderBindings<S>, Route.RouteSet.Items<C>>]>
+    ): Builder<{}, [...Items<S>, ...FlattenItems<M, Route.RouteSet.Items<C>>]>
 
     <
       S extends Self,
@@ -186,7 +186,7 @@ export namespace RouteMount {
       bc: (b: A) => B,
       cd: (c: B) => C,
       de: (d: C) => D,
-    ): Builder<{}, [...Items<S>, ...FlattenItems<M, BuilderBindings<S>, Route.RouteSet.Items<D>>]>
+    ): Builder<{}, [...Items<S>, ...FlattenItems<M, Route.RouteSet.Items<D>>]>
 
     <
       S extends Self,
@@ -202,7 +202,7 @@ export namespace RouteMount {
       cd: (c: B) => C,
       de: (d: C) => D,
       ef: (e: D) => E,
-    ): Builder<{}, [...Items<S>, ...FlattenItems<M, BuilderBindings<S>, Route.RouteSet.Items<E>>]>
+    ): Builder<{}, [...Items<S>, ...FlattenItems<M, Route.RouteSet.Items<E>>]>
 
     <
       S extends Self,
@@ -220,7 +220,7 @@ export namespace RouteMount {
       de: (d: C) => D,
       ef: (e: D) => E,
       fg: (f: E) => F,
-    ): Builder<{}, [...Items<S>, ...FlattenItems<M, BuilderBindings<S>, Route.RouteSet.Items<F>>]>
+    ): Builder<{}, [...Items<S>, ...FlattenItems<M, Route.RouteSet.Items<F>>]>
 
     <
       S extends Self,
@@ -240,7 +240,7 @@ export namespace RouteMount {
       ef: (e: D) => E,
       fg: (f: E) => F,
       gh: (g: F) => G,
-    ): Builder<{}, [...Items<S>, ...FlattenItems<M, BuilderBindings<S>, Route.RouteSet.Items<G>>]>
+    ): Builder<{}, [...Items<S>, ...FlattenItems<M, Route.RouteSet.Items<G>>]>
 
     <
       S extends Self,
@@ -262,7 +262,7 @@ export namespace RouteMount {
       fg: (f: E) => F,
       gh: (g: F) => G,
       hi: (h: G) => H,
-    ): Builder<{}, [...Items<S>, ...FlattenItems<M, BuilderBindings<S>, Route.RouteSet.Items<H>>]>
+    ): Builder<{}, [...Items<S>, ...FlattenItems<M, Route.RouteSet.Items<H>>]>
 
     <
       S extends Self,
@@ -286,6 +286,6 @@ export namespace RouteMount {
       gh: (g: F) => G,
       hi: (h: G) => H,
       ij: (i: H) => I,
-    ): Builder<{}, [...Items<S>, ...FlattenItems<M, BuilderBindings<S>, Route.RouteSet.Items<I>>]>
+    ): Builder<{}, [...Items<S>, ...FlattenItems<M, Route.RouteSet.Items<I>>]>
   }
 }
