@@ -61,7 +61,7 @@ export const layer = (options?: {
   bundle?: Context.Tag<any, Bundle.BundleContext>
   path?: PathPattern.PathPattern
 }) => {
-  const path = options?.path ?? "/_bundle/:path+"
+  const path = options?.path ?? "/_bundle/:path*"
 
   if (options?.bundle) {
     return Route.layerMerge({
