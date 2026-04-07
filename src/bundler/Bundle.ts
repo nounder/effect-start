@@ -72,11 +72,9 @@ export type BundleId = `${typeof IdPrefix}${BundleKey}`
  * imports within the bundle.
  */
 export type BundleContext = BundleManifest & {
-  // TODO: consider removing resolve: way of resolving URL should be
-  // the same regardless of underlying bundler since we have access
-  // to all artifacts already.
   resolve: (url: string) => string | null
   getArtifact: (path: string) => Blob | null
+  rebuild?: () => Effect.Effect<BundleContext, BundleError>
   events?: PubSub.PubSub<BundleEvent>
 }
 
@@ -114,3 +112,43 @@ export type Tag = Context.Tag<BundleId, BundleContext>
 
 export class ClientBundle extends Tag("ClientBundle")<ClientBundle>() {}
 export class ServerBundle extends Tag("ServerBundle")<ServerBundle>() {}
+
+const isLocalPath = (path: string) =>
+  path.startsWith("./") || path.startsWith("/") || path.startsWith("file:///")
+
+/**
+ * Resolves a path against a bundle's entrypoints map.
+ *
+ * Module identifiers (e.g. `"effect-start/datastar"`) are matched exactly.
+ * Local paths (starting with `./`, `/`, or `file:///`) are matched by
+ * comparing path segments from the end, picking the most specific match.
+ *
+ * For example, given entrypoints `{"./src/app.css": "app-abc123.css"}`,
+ * `resolve(entrypoints, "app.css")` matches because `["app.css"]` is a
+ * suffix of `[".", "src", "app.css"]`.
+ */
+export const resolve = (
+  entrypoints: Record<string, string>,
+  path: string,
+): string | null => {
+  const exact = entrypoints[path]
+  if (exact !== undefined) return exact
+
+  const needle = path.split("/").filter(Boolean)
+  let bestKey: string | undefined
+  let bestLength = 0
+
+  for (const key of Object.keys(entrypoints)) {
+    if (!isLocalPath(key)) continue
+    const segments = key.split("/").filter(Boolean)
+    if (segments.length < needle.length) continue
+
+    const tail = segments.slice(segments.length - needle.length)
+    if (tail.every((seg, i) => seg === needle[i]) && segments.length > bestLength) {
+      bestKey = key
+      bestLength = segments.length
+    }
+  }
+
+  return bestKey !== undefined ? entrypoints[bestKey] : null
+}

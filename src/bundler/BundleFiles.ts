@@ -138,11 +138,8 @@ export const fromFiles = (
 
     const bundleContext: Bundle.BundleContext = {
       ...manifest,
-      // TODO: support fullpath file:// urls
-      // this will require having an access to base path of a build
-      // and maybe problematic because bundlers transform urls on build
       resolve: (url: string) => {
-        return manifest.entrypoints[url] ?? null
+        return Bundle.resolve(manifest.entrypoints, url)
       },
       getArtifact: (path: string) => {
         return artifactsRecord[path] ?? null

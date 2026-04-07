@@ -13,6 +13,7 @@ import * as SynchronizedRef from "effect/SynchronizedRef"
 import type * as ChildProcess from "./_ChildProcess.ts"
 import * as MutableRef from "effect/MutableRef"
 import * as BunRuntime from "./bun/BunRuntime.ts"
+import * as BundleRoute from "./bundler/BundleRoute.ts"
 import * as BunServer from "./bun/BunServer.ts"
 import * as NodeFileSystem from "./node/NodeFileSystem.ts"
 import * as BunChildProcessSpawner from "./bun/BunChildProcessSpawner.ts"
@@ -202,7 +203,7 @@ export function serve<
   const composed = Function.pipe(
     BunServer.layerStart(),
     BunServer.withLogAddress,
-    Layer.provide(appLayerResolved),
+    Layer.provide(Function.pipe(BundleRoute.layer(), Layer.provideMerge(appLayerResolved))),
   ) as Layer.Layer<BunServer.BunServer, never, never>
 
   return Function.pipe(composed, Layer.launch, BunRuntime.runMain)

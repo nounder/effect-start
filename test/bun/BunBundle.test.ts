@@ -76,9 +76,9 @@ export const greeting = "Hello World";`
       const expectedOutput = bundle.entrypoints[firstEntrypoint]
       const resolvedOutput = bundle.resolve(firstEntrypoint)
 
-      test.expect(resolvedOutput).toBe(expectedOutput)
+      test.expect(resolvedOutput).toBe("/_bundle/" + expectedOutput)
 
-      const artifact = bundle.getArtifact(resolvedOutput!)
+      const artifact = bundle.getArtifact(firstEntrypoint)
 
       test.expect(artifact).not.toBeNull()
       test.expect(artifact).toBeTruthy()
