@@ -80,6 +80,13 @@ test.describe("parse", () => {
     test.expect(els[1].tagName).toBe("link")
   })
 
+  test.it("ignores closing-tag lookalikes inside raw text", () => {
+    const els = [...HtmlScanner.parse(`<script src="/app.js">const x = "</scriptx>";</script><link rel="stylesheet" href="/style.css">`)]
+    test.expect(els).toHaveLength(2)
+    test.expect(els[0].tagName).toBe("script")
+    test.expect(els[1].tagName).toBe("link")
+  })
+
   test.it("skips content inside style tags", () => {
     const els = [...HtmlScanner.parse(`<link rel="stylesheet" href="/a.css"><style>body { background: url("<link href=trap>") }</style><script src="/app.js"></script>`)]
     const tags = els.map((e) => e.tagName)

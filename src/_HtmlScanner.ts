@@ -1,3 +1,10 @@
+/**
+ * Lightweight HTML scanner for finding and rewriting, intended to find assets
+ * in code rendered by the routes.
+ *
+ * Handles most common, modern HTML5 without foreign content (mathml, svg),
+ * templates, and possibly many more.
+ */
 const TEXT = 0
 const TAG_OPEN = 1
 const TAG_NAME = 2
@@ -55,8 +62,31 @@ function* tokenize(html: string): Generator<TokenizedElement> {
     const rawTag = emit()
     state = TEXT
     if (rawTag) {
+      const lowerHtml = html.toLowerCase()
       const needle = `</${rawTag}`
-      const idx = html.toLowerCase().indexOf(needle, i)
+      let idx = i
+      while (true) {
+        idx = lowerHtml.indexOf(needle, idx)
+        if (idx === -1) {
+          break
+        }
+
+        const next = lowerHtml[idx + needle.length]
+        if (
+          next === undefined ||
+          next === ">" ||
+          next === "/" ||
+          next === " " ||
+          next === "\t" ||
+          next === "\n" ||
+          next === "\r" ||
+          next === "\f"
+        ) {
+          break
+        }
+
+        idx += needle.length
+      }
       if (idx === -1) {
         i = len
       } else {
@@ -71,9 +101,10 @@ function* tokenize(html: string): Generator<TokenizedElement> {
       attrs.set(attrName.toLowerCase(), {
         value: attrValue,
         nameSpan: { start: attrNameStart, end: attrNameStart + attrName.length },
-        valueSpan: attrValueStart > 0
-          ? { start: attrValueStart, end: attrValueStart + attrValue.length }
-          : undefined,
+        valueSpan:
+          attrValueStart > 0
+            ? { start: attrValueStart, end: attrValueStart + attrValue.length }
+            : undefined,
       })
       attrName = ""
       attrValue = ""
@@ -362,9 +393,7 @@ class MutableElement {
     if (!attr || attr.nameSpan.start === -1) return this
 
     let start = attr.nameSpan.start
-    const end = attr.valueSpan
-      ? attr.valueSpan.end + 1
-      : attr.nameSpan.end
+    const end = attr.valueSpan ? attr.valueSpan.end + 1 : attr.nameSpan.end
 
     while (start > 0 && " \t\n\r\f".includes(this._html[start - 1])) {
       start--
@@ -405,9 +434,7 @@ export const rewrite = (html: string): RewriteResult => {
       let result = html
       for (const edit of edits) {
         result =
-          result.slice(0, edit.offset) +
-          edit.insert +
-          result.slice(edit.offset + edit.deleteCount)
+          result.slice(0, edit.offset) + edit.insert + result.slice(edit.offset + edit.deleteCount)
       }
       return result
     },
