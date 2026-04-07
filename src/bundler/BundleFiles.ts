@@ -138,9 +138,7 @@ export const fromFiles = (
 
     const bundleContext: Bundle.BundleContext = {
       ...manifest,
-      resolve: (url: string) => {
-        return Bundle.resolve(manifest.entrypoints, url)
-      },
+      resolve: Bundle.makeResolver(manifest.entrypoints),
       getArtifact: (path: string) => {
         return artifactsRecord[path]
       },

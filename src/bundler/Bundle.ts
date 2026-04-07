@@ -117,38 +117,39 @@ const isLocalPath = (path: string) =>
   path.startsWith("./") || path.startsWith("/") || path.startsWith("file:///")
 
 /**
- * Resolves a path against a bundle's entrypoints map.
+ * Rsolver for a bundle's entrypoints map.
  *
  * Module identifiers (e.g. `"effect-start/datastar"`) are matched exactly.
  * Local paths (starting with `./`, `/`, or `file:///`) are matched by
  * comparing path segments from the end, picking the most specific match.
- *
- * For example, given entrypoints `{"./src/app.css": "app-abc123.css"}`,
- * `resolve(entrypoints, "app.css")` matches because `["app.css"]` is a
- * suffix of `[".", "src", "app.css"]`.
  */
-export const resolve = (
+export const makeResolver = (
   entrypoints: Record<string, string>,
-  path: string,
-): string | undefined => {
-  const exact = entrypoints[path]
-  if (exact !== undefined) return exact
+): ((path: string) => string | undefined) => {
+  const cache: Record<string, string | undefined> = Object.create(null)
 
-  const needle = path.split("/").filter(Boolean)
-  let bestKey: string | undefined
-  let bestLength = 0
+  return (path: string): string | undefined => {
+    if (path in cache) return cache[path]
 
-  for (const key of Object.keys(entrypoints)) {
-    if (!isLocalPath(key)) continue
-    const segments = key.split("/").filter(Boolean)
-    if (segments.length < needle.length) continue
+    const exact = entrypoints[path]
+    if (exact !== undefined) return (cache[path] = exact)
 
-    const tail = segments.slice(segments.length - needle.length)
-    if (tail.every((seg, i) => seg === needle[i]) && segments.length > bestLength) {
-      bestKey = key
-      bestLength = segments.length
+    const needle = path.split("/").filter(Boolean)
+    let bestKey: string | undefined
+    let bestLength = 0
+
+    for (const key of Object.keys(entrypoints)) {
+      if (!isLocalPath(key)) continue
+      const segments = key.split("/").filter(Boolean)
+      if (segments.length < needle.length) continue
+
+      const tail = segments.slice(segments.length - needle.length)
+      if (tail.every((seg, i) => seg === needle[i]) && segments.length > bestLength) {
+        bestKey = key
+        bestLength = segments.length
+      }
     }
-  }
 
-  return bestKey !== undefined ? entrypoints[bestKey] : undefined
+    return (cache[path] = bestKey !== undefined ? entrypoints[bestKey] : undefined)
+  }
 }

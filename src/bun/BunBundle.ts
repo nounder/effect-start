@@ -86,7 +86,7 @@ export function build(
     const artifactsMap = Record.fromIterableBy(output.outputs, (v) => v.path.replace(/^\.\//, ""))
     const publicPath = typeof config.publicPath === "string" ? config.publicPath : ""
 
-    const resolveRaw = (path: string) => Bundle.resolve(manifest.entrypoints, path)
+    const resolveRaw = Bundle.makeResolver(manifest.entrypoints)
 
     return {
       ...manifest,
