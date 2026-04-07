@@ -25,7 +25,11 @@ type YieldContext<T> = T extends Utils.YieldWrap<Effect.Effect<any, any, infer R
 
 type Next<B, A> = (context?: Partial<B> & Record<string, unknown>) => Entity.Entity<UnwrapStream<A>>
 
-type HandlerReturn<A> = A | Entity.Entity<A, any> | ((self: Route.RouteSet.Any) => Route.RouteSet.Any)
+type HandlerReturn<A> =
+  | A
+  | Entity.Entity<A, any>
+  | Entity.Entity<Uint8Array, any>
+  | ((self: Route.RouteSet.Any) => Route.RouteSet.Any)
 
 type HandlerFunction<B, A, E, R> = (
   context: Values.Simplify<B>,

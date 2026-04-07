@@ -32,11 +32,11 @@ export const make = <Tag extends Context.Tag<any, Bundle.BundleContext>>(tag: Ta
       const params = PathPattern.match(mountPath, url.pathname)
       const artifactPath = params ? Values.firstValue(params) : undefined
       if (!artifactPath) {
-        return Entity.make(new Uint8Array(0), { status: 404, headers: { "content-type": "text/plain" } })
+        return Entity.make("Not Found", { status: 404 })
       }
       const blob = bundle.getArtifact(artifactPath)
       if (!blob) {
-        return Entity.make(new Uint8Array(0), { status: 404, headers: { "content-type": "text/plain" } })
+        return Entity.make("Not Found", { status: 404 })
       }
       const bytes = new Uint8Array(yield* Effect.promise(() => blob.arrayBuffer()))
       return Entity.make(bytes, {
