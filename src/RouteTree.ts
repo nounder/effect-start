@@ -184,6 +184,20 @@ function sortScore(path: string): number {
       (1 << 24) + ((16 - greedyIdx) << 16) + (maxPriority << 8)
 }
 
+function matchScore(path: string): number {
+  const segments = path.split("/").filter(Boolean)
+  const staticCount = segments.filter((s) => !s.startsWith(":")).length
+  const maxPriority = Math.max(
+    ...segments.map((s) =>
+      !s.startsWith(":") ? 0 : s.endsWith("*") ? 4 : s.endsWith("+") ? 3 : s.endsWith("?") ? 2 : 1,
+    ),
+    0,
+  )
+  // more static segments = more specific = lower score = matched first.
+  // for same static count: lower maxPriority (more static) wins.
+  return ((16 - staticCount) << 16) + (maxPriority << 8)
+}
+
 function sortRoutes(input: RouteMap): RouteMap {
   const keys = Object.keys(input).sort((a, b) => sortScore(a) - sortScore(b) || a.localeCompare(b))
   const sorted: RouteMap = {}
@@ -311,8 +325,9 @@ function compileRoutes(sortedRoutes: RouteMap): CompiledRoutes {
 
   for (const method of Object.keys(pathRoutesByMethod)) {
     const pathMap = pathRoutesByMethod[method]
-    const sortedPaths = Object.keys(sortedRoutes) as Array<PathPattern.PathPattern>
-    const orderedPaths = sortedPaths.filter((p) => pathMap.has(p))
+    const orderedPaths = (Object.keys(sortedRoutes) as Array<PathPattern.PathPattern>)
+      .filter((p) => pathMap.has(p))
+      .sort((a, b) => matchScore(a) - matchScore(b) || a.localeCompare(b))
 
     const branches: Array<string> = []
     const table: CompiledMethod["table"] = []

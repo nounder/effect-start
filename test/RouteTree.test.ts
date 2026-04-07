@@ -555,4 +555,29 @@ test.describe(RouteTree.lookup, () => {
 
     test.expect(result!.params).toEqual({ rest: "a/b/c" })
   })
+
+  test.it("literal-prefix greedy route takes priority over param route", () => {
+    const tree = RouteTree.make({
+      "/:owner": Route.get(Route.text("owner")),
+      "/pages/:path*": Route.get(Route.text("pages")),
+    })
+
+    const match = RouteTree.lookup(tree, "GET", "/pages")
+
+    test.expect(match).not.toBeNull()
+    test.expect(Route.descriptor(match!.route).path).toBe("/pages/:path*")
+    test.expect(match!.params).toEqual({})
+
+    const matchWithPath = RouteTree.lookup(tree, "GET", "/pages/app.js")
+
+    test.expect(matchWithPath).not.toBeNull()
+    test.expect(Route.descriptor(matchWithPath!.route).path).toBe("/pages/:path*")
+    test.expect(matchWithPath!.params).toEqual({ path: "app.js" })
+
+    const owner = RouteTree.lookup(tree, "GET", "/someone")
+
+    test.expect(owner).not.toBeNull()
+    test.expect(Route.descriptor(owner!.route).path).toBe("/:owner")
+    test.expect(owner!.params).toEqual({ owner: "someone" })
+  })
 })
