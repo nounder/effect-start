@@ -15,7 +15,7 @@ const testBundle: Bundle.BundleContext = {
     { path: "app-abc123.js", type: "application/javascript", size: 20 },
     { path: "style-def456.css", type: "text/css", size: 10 },
   ],
-  resolve: (url) => (url === "app.ts" ? "app-abc123.js" : null),
+  resolve: (url) => (url === "app.ts" ? "app-abc123.js" : undefined),
   getArtifact: (path) => {
     if (path === "app-abc123.js") {
       return new Blob(["console.log('hello')"], { type: "application/javascript" })
@@ -23,7 +23,7 @@ const testBundle: Bundle.BundleContext = {
     if (path === "style-def456.css") {
       return new Blob(["body{color:red}"], { type: "text/css" })
     }
-    return null
+    return undefined
   },
 }
 

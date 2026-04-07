@@ -72,8 +72,8 @@ export type BundleId = `${typeof IdPrefix}${BundleKey}`
  * imports within the bundle.
  */
 export type BundleContext = BundleManifest & {
-  resolve: (url: string) => string | null
-  getArtifact: (path: string) => Blob | null
+  resolve: (url: string) => string | undefined
+  getArtifact: (path: string) => Blob | undefined
   rebuild?: () => Effect.Effect<BundleContext, BundleError>
   events?: PubSub.PubSub<BundleEvent>
 }
@@ -86,8 +86,8 @@ export class BundleError extends Data.TaggedError("BundleError")<{
 export const emptyBundleContext: BundleContext = {
   entrypoints: {},
   artifacts: [],
-  resolve: () => null,
-  getArtifact: () => null,
+  resolve: () => undefined,
+  getArtifact: () => undefined,
 }
 
 export const handleBundleErrorSilently = (
@@ -130,7 +130,7 @@ const isLocalPath = (path: string) =>
 export const resolve = (
   entrypoints: Record<string, string>,
   path: string,
-): string | null => {
+): string | undefined => {
   const exact = entrypoints[path]
   if (exact !== undefined) return exact
 
@@ -150,5 +150,5 @@ export const resolve = (
     }
   }
 
-  return bestKey !== undefined ? entrypoints[bestKey] : null
+  return bestKey !== undefined ? entrypoints[bestKey] : undefined
 }

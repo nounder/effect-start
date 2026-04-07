@@ -92,11 +92,11 @@ export function build(
       ...manifest,
       resolve: (path: string) => {
         const resolved = resolveRaw(path)
-        return resolved ? publicPath + resolved : null
+        return resolved ? publicPath + resolved : undefined
       },
-      getArtifact: (path: string): Blob | null => {
+      getArtifact: (path: string) => {
         const resolved = resolveRaw(path)
-        return (resolved ? artifactsMap[resolved] : undefined) ?? artifactsMap[path] ?? null
+        return (resolved ? artifactsMap[resolved] : undefined) ?? artifactsMap[path]
       },
     }
   })

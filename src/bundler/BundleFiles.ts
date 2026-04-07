@@ -142,7 +142,7 @@ export const fromFiles = (
         return Bundle.resolve(manifest.entrypoints, url)
       },
       getArtifact: (path: string) => {
-        return artifactsRecord[path] ?? null
+        return artifactsRecord[path]
       },
     }
 
