@@ -13,10 +13,7 @@ import * as Bundle from "./Bundle.ts"
 export const toFiles = (context: Bundle.BundleContext, outDir: string) => {
   return Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
-    const manifest: Bundle.BundleManifest = {
-      entrypoints: context.entrypoints,
-      artifacts: context.artifacts,
-    }
+    const manifest = context.manifest
 
     const normalizedOutDir = outDir.replace(/\/$/, "")
 
@@ -137,7 +134,7 @@ export const fromFiles = (
     )
 
     const bundleContext: Bundle.BundleContext = {
-      ...manifest,
+      manifest,
       resolve: Bundle.makeResolver(manifest.entrypoints),
       getArtifact: (path: string) => {
         return artifactsRecord[path]

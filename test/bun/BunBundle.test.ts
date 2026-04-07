@@ -35,18 +35,18 @@ export const greeting = "Hello World";`
         entrypoints: [htmlPath],
       })
 
-      test.expect(bundle.entrypoints).toBeObject()
-      test.expect(bundle.artifacts).toBeArray()
-      test.expect(Object.keys(bundle.entrypoints).length).toBe(1)
-      test.expect(bundle.artifacts.length).toBe(3)
+      test.expect(bundle.manifest.entrypoints).toBeObject()
+      test.expect(bundle.manifest.artifacts).toBeArray()
+      test.expect(Object.keys(bundle.manifest.entrypoints).length).toBe(1)
+      test.expect(bundle.manifest.artifacts.length).toBe(3)
 
-      const entrypointKeys = Object.keys(bundle.entrypoints)
+      const entrypointKeys = Object.keys(bundle.manifest.entrypoints)
       const firstEntrypoint = entrypointKeys[0]
 
       test.expect(firstEntrypoint).toBeString()
-      test.expect(bundle.entrypoints[firstEntrypoint]).toBeString()
+      test.expect(bundle.manifest.entrypoints[firstEntrypoint]).toBeString()
 
-      const firstArtifact = bundle.artifacts[0]
+      const firstArtifact = bundle.manifest.artifacts[0]
 
       test.expect(firstArtifact).toHaveProperty("path")
       test.expect(firstArtifact).toHaveProperty("type")
@@ -71,9 +71,9 @@ export const greeting = "Hello World";`
         entrypoints: [htmlPath],
       })
 
-      const entrypointKeys = Object.keys(bundle.entrypoints)
+      const entrypointKeys = Object.keys(bundle.manifest.entrypoints)
       const firstEntrypoint = entrypointKeys[0]
-      const expectedOutput = bundle.entrypoints[firstEntrypoint]
+      const expectedOutput = bundle.manifest.entrypoints[firstEntrypoint]
       const resolvedOutput = bundle.resolve(firstEntrypoint)
 
       test.expect(resolvedOutput).toBe("/_bundle/" + expectedOutput)
@@ -99,7 +99,7 @@ export const greeting = "Hello World";`
         entrypoints: [jsPath],
       })
 
-      const artifact = bundle.artifacts[0]
+      const artifact = bundle.manifest.artifacts[0]
 
       test.expect(artifact.path).toBeString()
       test.expect(artifact.type).toBeString()

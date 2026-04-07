@@ -89,7 +89,7 @@ export function build(
     const resolveRaw = Bundle.makeResolver(manifest.entrypoints)
 
     return {
-      ...manifest,
+      manifest,
       resolve: (path: string) => {
         const resolved = resolveRaw(path)
         return resolved ? publicPath + resolved : undefined
@@ -121,11 +121,8 @@ function mutableContext(
       })
 
     return {
-      get entrypoints() {
-        return current.entrypoints
-      },
-      get artifacts() {
-        return current.artifacts
+      get manifest() {
+        return current.manifest
       },
       resolve: (url: string) => current.resolve(url),
       getArtifact: (path: string) => current.getArtifact(path),

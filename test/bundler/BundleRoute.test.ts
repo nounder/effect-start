@@ -8,13 +8,15 @@ import * as RouteHttp from "effect-start/RouteHttp"
 import * as RouteTree from "effect-start/RouteTree"
 
 const testBundle: Bundle.BundleContext = {
-  entrypoints: {
-    "app.ts": "app-abc123.js",
+  manifest: {
+    entrypoints: {
+      "app.ts": "app-abc123.js",
+    },
+    artifacts: [
+      { path: "app-abc123.js", type: "application/javascript", size: 20 },
+      { path: "style-def456.css", type: "text/css", size: 10 },
+    ],
   },
-  artifacts: [
-    { path: "app-abc123.js", type: "application/javascript", size: 20 },
-    { path: "style-def456.css", type: "text/css", size: 10 },
-  ],
   resolve: (url) => (url === "app.ts" ? "app-abc123.js" : undefined),
   getArtifact: (path) => {
     if (path === "app-abc123.js") {

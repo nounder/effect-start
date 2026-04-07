@@ -71,7 +71,8 @@ export type BundleId = `${typeof IdPrefix}${BundleKey}`
  * Used to expose artifacts via HTTP server and properly resolve
  * imports within the bundle.
  */
-export type BundleContext = BundleManifest & {
+export type BundleContext = {
+  manifest: BundleManifest
   resolve: (url: string) => string | undefined
   getArtifact: (path: string) => Blob | undefined
   rebuild?: () => Effect.Effect<BundleContext, BundleError>
@@ -84,8 +85,7 @@ export class BundleError extends Data.TaggedError("BundleError")<{
 }> {}
 
 export const emptyBundleContext: BundleContext = {
-  entrypoints: {},
-  artifacts: [],
+  manifest: { entrypoints: {}, artifacts: [] },
   resolve: () => undefined,
   getArtifact: () => undefined,
 }
