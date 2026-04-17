@@ -10,24 +10,20 @@ interface SnowflakeState {
 }
 
 interface Snowflake {
-  (): bigint
+  (time?: number): bigint
   readonly state: SnowflakeState
   readonly timestamp: (id: bigint) => bigint
 }
 
-function buildSnowflake(): {
-  (): bigint
-  readonly state: SnowflakeState
-  readonly timestamp: (id: bigint) => bigint
-} {
+function buildSnowflake(): Snowflake {
   const timestampBits = 48n
   const seqBits = 16n
   const seqMax = (1n << seqBits) - 1n
   const timestampMask = (1n << timestampBits) - 1n
 
   const fn = Object.assign(
-    () => {
-      const nowMs = BigInt(Date.now())
+    (time: number = Date.now()) => {
+      const nowMs = BigInt(toSafeTime(time))
       const timestampMs = nowMs > fn.state.timestampMs ? nowMs : fn.state.timestampMs
 
       if (timestampMs > fn.state.timestampMs) {
