@@ -6,10 +6,7 @@ import * as GlobalValue from "effect/GlobalValue"
 import * as HashMap from "effect/HashMap"
 import * as Layer from "effect/Layer"
 import * as MutableRef from "effect/MutableRef"
-import * as Option from "effect/Option"
 import * as Runtime from "effect/Runtime"
-
-import * as ChildProcess from "./_ChildProcess.ts"
 
 interface CacheEntry {
   readonly context: Context.Context<any>
@@ -22,12 +19,10 @@ const cache = GlobalValue.globalValue(Symbol.for("effect-start/GlobalLayer/cache
 
 export const globalLayer =
   (key: string) =>
-  <A, E>(
-    layer: Layer.Layer<A, E> | Layer.Layer<A, E, ChildProcess.ChildProcessSpawner>,
-  ): Layer.Layer<A, E> => {
+  <A, E, R>(layer: Layer.Layer<A, E, R>): Layer.Layer<A, E, R> => {
     const existing = HashMap.get(MutableRef.get(cache), key)
     if (existing._tag === "Some") {
-      return Layer.succeedContext(existing.value.context) as Layer.Layer<A, E>
+      return Layer.succeedContext(existing.value.context) as Layer.Layer<A, E, R>
     }
 
     return Layer.scopedContext(
@@ -37,7 +32,7 @@ export const globalLayer =
           return cached.value.context as Context.Context<A>
         }
 
-        const spawner = yield* Effect.serviceOption(ChildProcess.ChildProcessSpawner)
+        const parentContext = yield* Effect.context<R>()
         const deferred = yield* Deferred.make<Context.Context<A>, E>()
 
         const parentRuntime = yield* Effect.runtime<never>()
@@ -59,11 +54,9 @@ export const globalLayer =
             Effect.gen(function* () {
               const scope = yield* Effect.scope
               const memoMap = yield* Layer.makeMemoMap
-              const ctx = yield* (layer as Layer.Layer<A, E>).pipe(
+              const ctx = yield* layer.pipe(
                 Layer.buildWithMemoMap(memoMap, scope),
-                Option.isSome(spawner)
-                  ? Effect.provideService(ChildProcess.ChildProcessSpawner, spawner.value)
-                  : (a) => a,
+                Effect.provide(parentContext),
               )
               yield* Deferred.succeed(deferred, ctx)
               yield* Effect.never
