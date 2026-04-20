@@ -1,7 +1,7 @@
 import * as Console from "effect/Console"
 import * as Effect from "effect/Effect"
 import * as Function from "effect/Function"
-import type * as Option from "effect/Option"
+import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import type * as Types from "effect/Types"
 import * as CliError from "./CliError.ts"
@@ -280,8 +280,7 @@ const parseArgs = (
             n.length === 1 ? `-${n}` : `--${n}`,
           )
           errors.push(
-            new CliError.CliError({
-              reason: "UnrecognizedOption",
+            new CliError.UnrecognizedOption({
               option: t._tag === "LongOption" ? `--${t.name}` : `-${t.flag}`,
               suggestions: sug,
               command: newPath,
@@ -316,8 +315,7 @@ const parseArgs = (
               command.subcommands.map((s: any) => s.name),
             )
             errors.push(
-              new CliError.CliError({
-                reason: "UnknownSubcommand",
+              new CliError.UnknownSubcommand({
                 subcommand: t.value,
                 parent: newPath,
                 suggestions: sug,
@@ -419,7 +417,7 @@ const makeCommandInternal = <N extends string, I, E, R>(opts: {
   ): Effect.Effect<void, E | CliError.CliError, R> =>
     opts.handle
       ? opts.handle(input, path)
-      : (Effect.fail(new CliError.CliError({ reason: "ShowHelp", commandPath: path })) as any)
+      : (Effect.fail(new CliError.ShowHelp({ commandPath: path })) as any)
 
   const parse =
     opts.parse ??
@@ -448,7 +446,7 @@ const makeCommandInternal = <N extends string, I, E, R>(opts: {
         argDocs.push({
           name: s.name,
           type: s.typeName ?? Primitive.getTypeName(s.primitiveType),
-          description: s.description,
+          description: Option.fromNullable(s.description),
           required: !meta.isOptional,
           variadic: meta.isVariadic,
         })
@@ -472,19 +470,22 @@ const makeCommandInternal = <N extends string, I, E, R>(opts: {
           name: s.name,
           aliases: s.aliases.map((a) => (a.length === 1 ? `-${a}` : `--${a}`)),
           type: s.typeName ?? Primitive.getTypeName(s.primitiveType),
-          description: s.description,
+          description: Option.fromNullable(s.description),
           required: s.primitiveType._tag !== "Boolean",
         })
       }
     }
 
     return {
-      description: opts.description ?? "",
+      description: Option.fromNullable(opts.description),
       usage,
       flags: flagDocs,
       ...(argDocs.length > 0 && { args: argDocs }),
       ...(subs.length > 0 && {
-        subcommands: subs.map((s) => ({ name: s.name, description: s.description ?? "" })),
+        subcommands: subs.map((s) => ({
+          name: s.name,
+          description: Option.fromNullable(s.description),
+        })),
       }),
     }
   }
@@ -521,8 +522,7 @@ const checkForDuplicateFlags = (parent: Command.Any, subs: ReadonlyArray<Command
     for (const f of toImpl(sub).config.flags)
       for (const s of Param.extractSingleParams(f))
         if (parentNames.has(s.name))
-          throw new CliError.CliError({
-            reason: "DuplicateOption",
+          throw new CliError.DuplicateOption({
             option: s.name,
             parentCommand: parent.name,
             childCommand: sub.name,
@@ -530,13 +530,15 @@ const checkForDuplicateFlags = (parent: Command.Any, subs: ReadonlyArray<Command
 }
 
 export const make: {
-  <Name extends string>(
+  <Name extends string, const Cfg extends Command.Config, R, E>(
     name: Name,
-    options?: {
+    options: {
+      config: Cfg
       description?: string
       subcommands?: ReadonlyArray<Command<any, any, any, any>>
+      handler: (config: Command.Config.Infer<Cfg>) => Effect.Effect<void, E, R>
     },
-  ): Command<Name, {}, never, never>
+  ): Command<Name, Command.Config.Infer<Cfg>, E, R>
   <Name extends string, const Cfg extends Command.Config>(
     name: Name,
     options: {
@@ -553,15 +555,13 @@ export const make: {
       handler: (config: {}) => Effect.Effect<void, E, R>
     },
   ): Command<Name, {}, E, R>
-  <Name extends string, const Cfg extends Command.Config, R, E>(
+  <Name extends string>(
     name: Name,
-    options: {
-      config: Cfg
+    options?: {
       description?: string
       subcommands?: ReadonlyArray<Command<any, any, any, any>>
-      handler: (config: Command.Config.Infer<Cfg>) => Effect.Effect<void, E, R>
     },
-  ): Command<Name, Command.Config.Infer<Cfg>, E, R>
+  ): Command<Name, {}, never, never>
 } = (<Name extends string>(
   name: Name,
   options?: {
@@ -601,7 +601,7 @@ export const make: {
         const child = byName.get(input._subcommand.name)
         if (!child)
           return yield* Effect.fail(
-            new CliError.CliError({ reason: "ShowHelp", commandPath: path }),
+            new CliError.ShowHelp({ commandPath: path }),
           )
         return yield* child.handle(input._subcommand.result, [...path, child.name])
       }

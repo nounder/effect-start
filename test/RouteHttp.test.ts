@@ -241,10 +241,11 @@ test.it("includes request in handler context", () =>
 
     const handler = RouteHttp.toWebHandler(
       Route.get(
-        Route.text(function* (ctx) {
-          test.expectTypeOf(ctx.request).toEqualTypeOf<Request>()
+        Route.text(function* () {
+          const request = yield* Route.Request
+          test.expectTypeOf(request).toEqualTypeOf<Request>()
 
-          capturedRequest = ctx.request
+          capturedRequest = request
           return "ok"
         }),
       ),
@@ -1851,7 +1852,7 @@ test.describe("schema handlers", () => {
             Schema.Struct({ id: Schema.String }),
           ),
           Route.json(function* (ctx) {
-            return { id: ctx.pathParams.id, path: ctx.path }
+            return { id: ctx.pathParams.id }
           }),
         ),
       })
@@ -1864,7 +1865,6 @@ test.describe("schema handlers", () => {
       test.expect(entity.status).toBe(200)
       test.expect(yield* entity.json).toEqual({
         id: "abc",
-        path: "/users/:id",
       })
     }).pipe(Effect.runPromise),
   )

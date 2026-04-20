@@ -77,7 +77,7 @@ export namespace Route {
 
   export type Handler<B, A, E, R> = (
     context: B,
-    next: (context?: Partial<B> & Record<string, unknown>) => Entity.Entity<A>,
+    next: (context?: Partial<B> & Record<string, unknown>) => Entity.Entity<any>,
   ) => Effect.Effect<Entity.Entity<A>, E, R>
 
   /**

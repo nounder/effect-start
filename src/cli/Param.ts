@@ -120,14 +120,11 @@ const parsePositional = <A>(
 ): Effect.Effect<readonly [ReadonlyArray<string>, A], CliError.CliError> =>
   Effect.gen(function* () {
     if (args.arguments.length === 0)
-      return yield* Effect.fail(
-        new CliError.CliError({ reason: "MissingArgument", argument: name }),
-      )
+      return yield* Effect.fail(new CliError.MissingArgument({ argument: name }))
     const value = yield* Effect.mapError(
       prim.parse(args.arguments[0]),
       (error) =>
-        new CliError.CliError({
-          reason: "InvalidValue",
+        new CliError.InvalidValue({
           option: name,
           value: args.arguments[0],
           expected: error,
@@ -146,13 +143,12 @@ const parseFlag = <A>(
     const values = args.flags[name]
     if (!values || values.length === 0) {
       if (Primitive.isBoolean(prim)) return [args.arguments, false as any] as const
-      return yield* Effect.fail(new CliError.CliError({ reason: "MissingOption", option: name }))
+      return yield* Effect.fail(new CliError.MissingOption({ option: name }))
     }
     const value = yield* Effect.mapError(
       prim.parse(values[0]),
       (error) =>
-        new CliError.CliError({
-          reason: "InvalidValue",
+        new CliError.InvalidValue({
           option: name,
           value: values[0],
           expected: error,
@@ -206,7 +202,7 @@ export const paramOptional = <K extends ParamKind, A>(
     p.parse(args).pipe(
       Effect.map(([l, v]) => [l, Option.some(v)] as const),
       Effect.catchAll((e) =>
-        e.reason === "MissingOption" || e.reason === "MissingArgument"
+        e._tag === "MissingOption" || e._tag === "MissingArgument"
           ? Effect.succeed([args.arguments, Option.none()] as const)
           : Effect.fail(e),
       ),
@@ -265,8 +261,7 @@ const parsePositionalVariadic = <K extends ParamKind, A>(
     }
     if (results.length < min) {
       return yield* Effect.fail(
-        new CliError.CliError({
-          reason: "InvalidValue",
+        new CliError.InvalidValue({
           option: single.name,
           value: `${results.length} values`,
           expected: `at least ${min} value${min === 1 ? "" : "s"}`,
@@ -289,10 +284,9 @@ const parseOptionVariadic = <K extends ParamKind, A>(
     const count = values.length
     if (options?.min !== undefined && count < options.min) {
       return yield* count === 0
-        ? Effect.fail(new CliError.CliError({ reason: "MissingOption", option: single.name }))
+        ? Effect.fail(new CliError.MissingOption({ option: single.name }))
         : Effect.fail(
-            new CliError.CliError({
-              reason: "InvalidValue",
+            new CliError.InvalidValue({
               option: single.name,
               value: `${count} occurrences`,
               expected: `at least ${options.min} value${options.min === 1 ? "" : "s"}`,
@@ -302,8 +296,7 @@ const parseOptionVariadic = <K extends ParamKind, A>(
     }
     if (options?.max !== undefined && count > options.max) {
       return yield* Effect.fail(
-        new CliError.CliError({
-          reason: "InvalidValue",
+        new CliError.InvalidValue({
           option: single.name,
           value: `${count} occurrences`,
           expected: `at most ${options.max} value${options.max === 1 ? "" : "s"}`,
@@ -374,8 +367,7 @@ export const makeParamCombinators = <K extends ParamKind>(_kind: K) => ({
         if (pred(a)) return Effect.succeed(a)
         const s = getUnderlyingSingle(self)
         return Effect.fail(
-          new CliError.CliError({
-            reason: "InvalidValue",
+          new CliError.InvalidValue({
             option: s.name,
             value: String(a),
             expected: onFalse(a),
@@ -391,8 +383,7 @@ export const makeParamCombinators = <K extends ParamKind>(_kind: K) => ({
       return paramMapEffect(self, (v) =>
         Effect.mapError(decode(v), (err) => {
           const s = getUnderlyingSingle(self)
-          return new CliError.CliError({
-            reason: "InvalidValue",
+          return new CliError.InvalidValue({
             option: s.name,
             value: String(v),
             expected: `Schema validation failed: ${err.message}`,

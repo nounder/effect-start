@@ -1,5 +1,7 @@
+import * as Option from "effect/Option"
+
 export interface HelpDoc {
-  readonly description: string
+  readonly description: Option.Option<string>
   readonly usage: string
   readonly flags: ReadonlyArray<FlagDoc>
   readonly args?: ReadonlyArray<ArgDoc>
@@ -10,28 +12,28 @@ export interface FlagDoc {
   readonly name: string
   readonly aliases: ReadonlyArray<string>
   readonly type: string
-  readonly description: string | undefined
+  readonly description: Option.Option<string>
   readonly required: boolean
 }
 
 export interface SubcommandDoc {
   readonly name: string
-  readonly description: string
+  readonly description: Option.Option<string>
 }
 
 export interface ArgDoc {
   readonly name: string
   readonly type: string
-  readonly description: string | undefined
+  readonly description: Option.Option<string>
   readonly required: boolean
   readonly variadic: boolean
 }
 
 export const formatHelpDoc = (doc: HelpDoc): string => {
   const sections: Array<string> = []
-  if (doc.description) {
+  if (Option.isSome(doc.description)) {
     sections.push("DESCRIPTION")
-    sections.push(`  ${doc.description}`)
+    sections.push(`  ${doc.description.value}`)
     sections.push("")
   }
   sections.push("USAGE")
@@ -40,9 +42,10 @@ export const formatHelpDoc = (doc: HelpDoc): string => {
   if (doc.args && doc.args.length > 0) {
     sections.push("ARGUMENTS")
     for (const a of doc.args) {
-      let n = a.name + (a.variadic ? "..." : "")
+      const n = a.name + (a.variadic ? "..." : "")
       const opt = a.required ? "" : " (optional)"
-      sections.push(`  ${n} ${a.type}    ${(a.description ?? "") + opt}`)
+      const desc = Option.getOrElse(a.description, () => "")
+      sections.push(`  ${n} ${a.type}    ${desc + opt}`)
     }
     sections.push("")
   }
@@ -51,13 +54,17 @@ export const formatHelpDoc = (doc: HelpDoc): string => {
     for (const f of doc.flags) {
       const names = [`--${f.name}`, ...f.aliases].join(", ")
       const tp = f.type !== "boolean" ? ` ${f.type}` : ""
-      sections.push(`  ${names}${tp}    ${f.description ?? ""}`)
+      const desc = Option.getOrElse(f.description, () => "")
+      sections.push(`  ${names}${tp}    ${desc}`)
     }
     sections.push("")
   }
   if (doc.subcommands && doc.subcommands.length > 0) {
     sections.push("SUBCOMMANDS")
-    for (const s of doc.subcommands) sections.push(`  ${s.name}    ${s.description}`)
+    for (const s of doc.subcommands) {
+      const desc = Option.getOrElse(s.description, () => "")
+      sections.push(`  ${s.name}    ${desc}`)
+    }
     sections.push("")
   }
   if (sections[sections.length - 1] === "") sections.pop()

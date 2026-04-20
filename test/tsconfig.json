@@ -6,5 +6,5 @@
       "effect-start/*": ["../src/*", "../src/*/index.ts"]
     }
   },
-  "include": ["."]
+  "include": [".", "../src"]
 }

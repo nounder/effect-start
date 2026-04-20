@@ -9,12 +9,12 @@ import * as RouteHttp from "effect-start/RouteHttp"
 import * as RouteMount from "effect-start/RouteMount"
 
 test.describe("Route.sse()", () => {
-  test.it("infers format as text", () => {
+  test.it("infers format as sse", () => {
     RouteMount.get(
       Route.sse(function* (ctx) {
         test.expectTypeOf(ctx).toExtend<{
           method: "GET"
-          format: "text"
+          format: "sse"
         }>()
 
         return Stream.make({ data: "hello" })

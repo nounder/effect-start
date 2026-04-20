@@ -11,14 +11,14 @@ import * as Runtime from "effect/Runtime"
 import * as Stream from "effect/Stream"
 import { BunChildProcessSpawner } from "effect-start/bun"
 import * as Docker from "../../../src/_Docker.ts"
-import * as System from "effect-start/System"
+import { randomFreePort } from "effect-start/testing"
 import { SqlClient } from "effect-start/sql"
 import * as PgSql from "../../../src/sql/postgres/index.ts"
 
 const PASSWORD = "test"
 
 const SqlLayer = (() => {
-  const container = Effect.map(System.randomFreePort, (port) =>
+  const container = Effect.map(randomFreePort, (port) =>
     Docker.layerContainer({
       image: "postgres:17-alpine",
       detach: true,

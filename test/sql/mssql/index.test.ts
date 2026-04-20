@@ -8,13 +8,13 @@ import { SqlClient } from "effect-start/sql"
 import * as MssqlSql from "../../../src/sql/mssql/index.ts"
 import { BunChildProcessSpawner } from "effect-start/bun"
 import * as Docker from "../../../src/_Docker.ts"
-import * as System from "effect-start/System"
+import { randomFreePort } from "effect-start/testing"
 
 const PASSWORD = "TestPass123"
 let PORT = 0
 
 const SqlLayer = (() => {
-  const container = Effect.map(System.randomFreePort, (port) =>
+  const container = Effect.map(randomFreePort, (port) =>
     Docker.layerContainer({
       image: "mcr.microsoft.com/azure-sql-edge",
       name: "effect-start-mssql",

@@ -6,14 +6,14 @@ import * as Schedule from "effect/Schedule"
 import * as ManagedRuntime from "effect/ManagedRuntime"
 import { BunChildProcessSpawner } from "effect-start/bun"
 import * as Docker from "../../../src/_Docker.ts"
-import * as System from "effect-start/System"
+import { randomFreePort } from "effect-start/testing"
 import { SqlClient } from "effect-start/sql"
 import * as BunSql from "../../../src/sql/bun/index.ts"
 
 const PASSWORD = "test"
 
 const SqlLayer = (() => {
-  const container = Effect.map(System.randomFreePort, (port) =>
+  const container = Effect.map(randomFreePort, (port) =>
     Docker.layerContainer({
       image: "postgres:17-alpine",
       detach: true,

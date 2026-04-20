@@ -77,12 +77,17 @@ const resultSetToRows = <T>(result: Libsql.ResultSet): ReadonlyArray<T> => {
   })
 }
 
+type InStatement = Parameters<Libsql.Client["execute"]>[0]
+type InArgs = Exclude<InStatement, string> extends { args?: infer A } ? A : never
+
 const executeQuery = <T>(
   client: Libsql.Client,
   sql: string,
   args: Array<unknown>,
 ): Effect.Effect<ReadonlyArray<T>, SqlClient.SqlError> =>
-  wrap(() => client.execute({ sql, args })).pipe(Effect.map(resultSetToRows<T>))
+  wrap(() => client.execute({ sql, args: args as InArgs })).pipe(
+    Effect.map(resultSetToRows<T>),
+  )
 
 interface TransactionConnection {
   readonly depth: number

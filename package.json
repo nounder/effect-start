@@ -189,6 +189,7 @@
     "format": "bunx oxfmt",
     "lint": "oxlint --import-plugin --tsconfig tsconfig.json src/",
     "test": "bun test ./test/",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p test/tsconfig.json",
     "test-sql": "bun add --no-save mssql @types/mssql postgres && TEST_SQL=1 bun test ./src/sql/",
     "bump": "bun scripts/bump",
     "prepublishOnly": "bun run build",

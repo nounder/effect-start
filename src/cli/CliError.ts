@@ -1,63 +1,154 @@
 import * as Predicate from "effect/Predicate"
 
-const CliErrorTypeId = "~effect-start/Cli/CliError"
+const TypeId = "~effect-start/Cli/CliError"
 
-export const isCliError = (u: unknown): u is CliError => Predicate.hasProperty(u, CliErrorTypeId)
+export const isCliError = (u: unknown): u is CliError => Predicate.hasProperty(u, TypeId)
 
-export type CliErrorReason =
-  | "UnrecognizedOption"
-  | "DuplicateOption"
-  | "MissingOption"
-  | "MissingArgument"
-  | "InvalidValue"
-  | "UnknownSubcommand"
-  | "ShowHelp"
-  | "UserError"
+export type CliError =
+  | UnrecognizedOption
+  | DuplicateOption
+  | MissingOption
+  | MissingArgument
+  | InvalidValue
+  | UnknownSubcommand
+  | ShowHelp
+  | UserError
 
 const suggestText = (suggestions: ReadonlyArray<string>) =>
   suggestions.length > 0 ? `\n\n  Did you mean this?\n    ${suggestions.join("\n    ")}` : ""
 
-const formatMessage = (reason: CliErrorReason, props: Record<string, any>): string => {
-  switch (reason) {
-    case "UnrecognizedOption": {
-      const base = props.command
-        ? `Unrecognized flag: ${props.option} in command ${props.command.join(" ")}`
-        : `Unrecognized flag: ${props.option}`
-      return base + suggestText(props.suggestions ?? [])
-    }
-    case "DuplicateOption":
-      return `Duplicate flag "${props.option}" in parent "${props.parentCommand}" and subcommand "${props.childCommand}".`
-    case "MissingOption":
-      return `Missing required flag: --${props.option}`
-    case "MissingArgument":
-      return `Missing required argument: ${props.argument}`
-    case "InvalidValue":
-      return props.kind === "argument"
-        ? `Invalid value for argument <${props.option}>: "${props.value}". Expected: ${props.expected}`
-        : `Invalid value for flag --${props.option}: "${props.value}". Expected: ${props.expected}`
-    case "UnknownSubcommand": {
-      const base = props.parent
-        ? `Unknown subcommand "${props.subcommand}" for "${props.parent.join(" ")}"`
-        : `Unknown subcommand "${props.subcommand}"`
-      return base + suggestText(props.suggestions ?? [])
-    }
-    case "ShowHelp":
-      return "Help requested"
-    case "UserError":
-      return String(props.cause)
+export class UnrecognizedOption {
+  readonly _tag = "UnrecognizedOption"
+  readonly [TypeId] = TypeId
+  readonly option: string
+  readonly command: ReadonlyArray<string> | undefined
+  readonly suggestions: ReadonlyArray<string>
+  constructor(props: {
+    option: string
+    command?: ReadonlyArray<string>
+    suggestions?: ReadonlyArray<string>
+  }) {
+    this.option = props.option
+    this.command = props.command
+    this.suggestions = props.suggestions ?? []
+  }
+  get message(): string {
+    const base = this.command
+      ? `Unrecognized flag: ${this.option} in command ${this.command.join(" ")}`
+      : `Unrecognized flag: ${this.option}`
+    return base + suggestText(this.suggestions)
   }
 }
 
-export class CliError {
-  readonly _tag = "CliError"
-  readonly [CliErrorTypeId] = CliErrorTypeId
-  readonly reason: CliErrorReason
-  constructor(props: { reason: CliErrorReason } & Record<string, any>) {
-    this.reason = props.reason
-    Object.assign(this, props)
+export class DuplicateOption {
+  readonly _tag = "DuplicateOption"
+  readonly [TypeId] = TypeId
+  readonly option: string
+  readonly parentCommand: string
+  readonly childCommand: string
+  constructor(props: { option: string; parentCommand: string; childCommand: string }) {
+    this.option = props.option
+    this.parentCommand = props.parentCommand
+    this.childCommand = props.childCommand
   }
   get message(): string {
-    return formatMessage(this.reason, this as any)
+    return `Duplicate flag "${this.option}" in parent "${this.parentCommand}" and subcommand "${this.childCommand}".`
+  }
+}
+
+export class MissingOption {
+  readonly _tag = "MissingOption"
+  readonly [TypeId] = TypeId
+  readonly option: string
+  constructor(props: { option: string }) {
+    this.option = props.option
+  }
+  get message(): string {
+    return `Missing required flag: --${this.option}`
+  }
+}
+
+export class MissingArgument {
+  readonly _tag = "MissingArgument"
+  readonly [TypeId] = TypeId
+  readonly argument: string
+  constructor(props: { argument: string }) {
+    this.argument = props.argument
+  }
+  get message(): string {
+    return `Missing required argument: ${this.argument}`
+  }
+}
+
+export class InvalidValue {
+  readonly _tag = "InvalidValue"
+  readonly [TypeId] = TypeId
+  readonly option: string
+  readonly value: string
+  readonly expected: string
+  readonly kind: "argument" | "flag"
+  constructor(props: {
+    option: string
+    value: string
+    expected: string
+    kind: "argument" | "flag"
+  }) {
+    this.option = props.option
+    this.value = props.value
+    this.expected = props.expected
+    this.kind = props.kind
+  }
+  get message(): string {
+    return this.kind === "argument"
+      ? `Invalid value for argument <${this.option}>: "${this.value}". Expected: ${this.expected}`
+      : `Invalid value for flag --${this.option}: "${this.value}". Expected: ${this.expected}`
+  }
+}
+
+export class UnknownSubcommand {
+  readonly _tag = "UnknownSubcommand"
+  readonly [TypeId] = TypeId
+  readonly subcommand: string
+  readonly parent: ReadonlyArray<string> | undefined
+  readonly suggestions: ReadonlyArray<string>
+  constructor(props: {
+    subcommand: string
+    parent?: ReadonlyArray<string>
+    suggestions?: ReadonlyArray<string>
+  }) {
+    this.subcommand = props.subcommand
+    this.parent = props.parent
+    this.suggestions = props.suggestions ?? []
+  }
+  get message(): string {
+    const base = this.parent
+      ? `Unknown subcommand "${this.subcommand}" for "${this.parent.join(" ")}"`
+      : `Unknown subcommand "${this.subcommand}"`
+    return base + suggestText(this.suggestions)
+  }
+}
+
+export class ShowHelp {
+  readonly _tag = "ShowHelp"
+  readonly [TypeId] = TypeId
+  readonly commandPath: ReadonlyArray<string>
+  constructor(props: { commandPath: ReadonlyArray<string> }) {
+    this.commandPath = props.commandPath
+  }
+  get message(): string {
+    return "Help requested"
+  }
+}
+
+export class UserError {
+  readonly _tag = "UserError"
+  readonly [TypeId] = TypeId
+  readonly cause: unknown
+  constructor(props: { cause: unknown }) {
+    this.cause = props.cause
+  }
+  get message(): string {
+    return String(this.cause)
   }
 }
 

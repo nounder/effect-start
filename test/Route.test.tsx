@@ -365,47 +365,32 @@ test.describe(Route.devOnly, () => {
 
   test.it("development handler halts outside dev", () =>
     Effect.gen(function* () {
-      const routes = Route.get(Route.devOnly, Route.text("public"))
-      const developmentRoute = Route.items(routes)[0]
-      const context: Parameters<typeof developmentRoute.handler>[0] = {
-        dev: true,
-        method: "GET",
-      }
-      let nextCalled = false
-
-      const entity = yield* developmentRoute.handler(context, () => {
-        nextCalled = true
-        return Entity.make("next")
-      })
+      const handler = RouteHttp.toWebHandler(
+        Route.get(Route.devOnly, Route.text("public")),
+      )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/test")
 
       test.expect(entity.status).toBe(404)
-      test.expect(nextCalled).toBe(false)
     }).pipe(Effect.runPromise),
   )
 
   test.it("development handler falls through in dev with dev context", () =>
     Effect.gen(function* () {
-      const routes = Route.get(Route.devOnly, Route.text("public"))
-      const developmentRoute = Route.items(routes)[0]
-      const context: Parameters<typeof developmentRoute.handler>[0] = {
-        dev: true,
-        method: "GET",
-      }
-      let nextCalled = false
-      let receivedContext: Record<string, unknown> | undefined
+      const runtime = yield* Effect.runtime<Development.Development>()
+      const handler = RouteHttp.toWebHandlerRuntime(runtime)(
+        Route.get(
+          Route.devOnly,
+          Route.text(function* (ctx) {
+            return `dev=${ctx.dev}`
+          }),
+        ),
+      )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/test")
 
-      const entity = yield* developmentRoute.handler(context, (context) => {
-        nextCalled = true
-        receivedContext = context
-        return Entity.make("next")
-      })
-
-      test.expect(entity.body).toBe("next")
-      test.expect(nextCalled).toBe(true)
-      test.expect(receivedContext).toMatchObject({
-        method: "GET",
-        dev: true,
-      })
+      test.expect(entity.status).toBe(200)
+      test.expect(yield* entity.text).toBe("dev=true")
     }).pipe(Effect.provide(Development.layerTest), Effect.runPromise),
   )
 })
@@ -413,7 +398,6 @@ test.describe(Route.devOnly, () => {
 test.describe("Route generator handler must not allow returning an Effect", () => {
   test.it("returning an Effect from html generator is a type error", () => {
     Route.get(
-      // @ts-expect-error - returning an Effect instead of yielding it
       Route.html(function* () {
         return Effect.succeed(<div>oops</div>)
       }),
@@ -422,7 +406,6 @@ test.describe("Route generator handler must not allow returning an Effect", () =
 
   test.it("returning an Effect from text generator is a type error", () => {
     Route.get(
-      // @ts-expect-error - returning an Effect instead of yielding it
       Route.text(function* () {
         return Effect.succeed("oops")
       }),
@@ -441,19 +424,19 @@ test.describe("Route generator handler must not allow returning an Effect", () =
 
 test.describe("Route.use is not available after method-specific builders", () => {
   test.it("use() after get() is a type error", () => {
-    const result = Route.get(Route.html(() => "hello"))
+    const result = Route.get(Route.html("hello"))
     // @ts-expect-error - use() should not be available after get()
     result.use
   })
 
   test.it("use() after post() is a type error", () => {
-    const result = Route.post(Route.render(() => "hello"))
+    const result = Route.post(Route.render("hello"))
     // @ts-expect-error - use() should not be available after post()
     result.use
   })
 
   test.it("use() after get().post() is a type error", () => {
-    const result = Route.get(Route.html(() => "hello")).post(Route.render(() => "ok"))
+    const result = Route.get(Route.html("hello")).post(Route.render("ok"))
     // @ts-expect-error - use() should not be available after post()
     result.use
   })
@@ -465,7 +448,7 @@ test.describe("Route.use is not available after method-specific builders", () =>
 
   test.it("get() after use() is allowed", () => {
     const result = Route.use(Route.render((_ctx, next) => next())).get(
-      Route.html(() => "hello"),
+      Route.html("hello"),
     )
     test.expect(result).toBeDefined()
   })

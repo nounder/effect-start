@@ -603,7 +603,7 @@ test.describe("type inference", () => {
     const parsed = entity.schemaJson(schema)
 
     test.expectTypeOf(parsed).toEqualTypeOf<
-      Effect.Effect<{ key: string }, ParseResult.ParseError, never>
+      Effect.Effect<{ readonly key: string }, ParseResult.ParseError, never>
     >()
   })
 
