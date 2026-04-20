@@ -230,7 +230,7 @@ export const bytes = RouteBody.build<Uint8Array, "bytes">({
 
 export { sse } from "./RouteSse.ts"
 
-export function redirect<D extends RouteDescriptor.Any, B, I extends Route.Tuple>(
+export function redirect<D extends RouteDescriptor.Any, B extends {}, I extends Route.Tuple>(
   url: string | URL,
   options?: { status?: 301 | 302 | 303 | 307 | 308 },
 ): (

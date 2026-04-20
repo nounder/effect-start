@@ -7,7 +7,7 @@ import type * as RouteBody from "./RouteBody.ts"
 
 const RouteSetTypeId = "~effect-start/RouteSet" as const
 
-export type Self = RouteMount.Builder<any, any> | typeof import("./RouteMount.ts")
+export type Self = Route.RouteSet.Any | typeof import("./RouteMount.ts")
 
 export const use = makeMethodDescriber("*")
 export const get = makeMethodDescriber("GET")

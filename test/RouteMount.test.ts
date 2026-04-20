@@ -90,6 +90,26 @@ test.it("uses GET & POST method", async () => {
   >()
 })
 
+test.it("chains GET then POST with schemaBodyUrlParams", () => {
+  const route = Route.get(
+    Route.html(function* () {
+      return "<form />"
+    }),
+  ).post(
+    Route.schemaBodyUrlParams(
+      Schema.Struct({
+        email: Schema.String,
+      }),
+    ),
+    Route.render(function* (ctx) {
+      test.expectTypeOf(ctx.body).toMatchObjectType<{ email: string }>()
+      return Route.redirect("/done")
+    }),
+  )
+
+  test.expect(Route.items(route)).toHaveLength(3)
+})
+
 test.describe("use", () => {
   test.it(`infers context`, () => {
     const routes = Route.use(
