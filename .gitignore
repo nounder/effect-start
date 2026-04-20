@@ -8,3 +8,4 @@ out/
 pad/
 dist/
 .tree/
+.npmrc
