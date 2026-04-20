@@ -65,7 +65,7 @@ export interface Route<
   E = never,
   R = never,
 > extends RouteSet<D, {}, [Route<D, B, A, E, R>]> {
-  readonly handler: Route.Handler<B & D, A, E, R>
+  readonly handler: Route.OpaqueHandler<B & D, A, E, R>
 }
 
 export namespace Route {
@@ -77,7 +77,20 @@ export namespace Route {
 
   export type Handler<B, A, E, R> = (
     context: B,
-    next: (context?: Partial<B> & Record<string, unknown>) => Entity.Entity<any>,
+    next: (context?: Partial<B> & Record<string, unknown>) => Entity.Entity<A>,
+  ) => Effect.Effect<Entity.Entity<A>, E, R>
+
+  /**
+   * OpaqueHandler is identical to `Handler`, except `next`
+   * returns `Entity<unknown>` instead of `Entity<A>`.
+   * This keeps `Route<..., A, ...>` assignable within the
+   * heterogeneous `Route.Tuple` regardless of `A` (including `A = never`).
+   *
+   * This is only needed to allow typed A in next() middlewares. I'm considering if we really need it.
+   */
+  export type OpaqueHandler<B, A, E, R> = (
+    context: B,
+    next: (context?: Partial<B> & Record<string, unknown>) => Entity.Entity<unknown>,
   ) => Effect.Effect<Entity.Entity<A>, E, R>
 
   /**
@@ -147,7 +160,7 @@ export function make<D extends RouteDescriptor.Any, B, A, E = never, R = never>(
   const route: Route<D, B, A, E, R> = Object.assign(Object.create(Proto), {
     [RouteItems]: items,
     [RouteDescriptor]: descriptor,
-    handler,
+    handler: handler as Route.OpaqueHandler<B & D, A, E, R>,
   })
 
   items.push(route)
@@ -233,9 +246,7 @@ export { sse } from "./RouteSse.ts"
 export function redirect<D extends RouteDescriptor.Any, B extends {}, I extends Route.Tuple>(
   url: string | URL,
   options?: { status?: 301 | 302 | 303 | 307 | 308 },
-): (
-  self: RouteSet<D, B, I>,
-) => RouteSet<D, B, [...I, Route<{}, {}, "", never, never>]> {
+): (self: RouteSet<D, B, I>) => RouteSet<D, B, [...I, Route<{}, {}, "", never, never>]> {
   const route = make<{}, {}, "">(() =>
     Effect.succeed(
       Entity.make("", {
@@ -248,10 +259,7 @@ export function redirect<D extends RouteDescriptor.Any, B extends {}, I extends 
   )
 
   return (self) =>
-    set<D, B, [...I, Route<{}, {}, "", never, never>]>(
-      [...items(self), route],
-      descriptor(self),
-    )
+    set<D, B, [...I, Route<{}, {}, "", never, never>]>([...items(self), route], descriptor(self))
 }
 
 export class Routes extends Context.Tag("effect-start/Routes")<Routes, RouteTree.RouteTree>() {}
