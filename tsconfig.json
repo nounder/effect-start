@@ -17,7 +17,9 @@
 
     "paths": {
       "effect-start/jsx-runtime": ["./src/jsx-runtime.ts"],
-      "effect-start/jsx-dev-runtime": ["./src/jsx-runtime.ts"]
+      "effect-start/jsx-dev-runtime": ["./src/jsx-runtime.ts"],
+      "effect-start": ["./src/index.ts"],
+      "effect-start/*": ["./src/*", "./src/*/index.ts"]
     },
 
     // Best practices
@@ -34,6 +36,6 @@
     "noPropertyAccessFromIndexSignature": false
   },
 
-  "include": ["src"],
+  "include": ["src", "test"],
   "exclude": ["examples"]
 }
