@@ -325,7 +325,7 @@ export function TraceDetail(options: { prefix: string; spans: Array<StudioStore.
   const tree = buildSpanTree(options.spans)
 
   return (
-    <>
+    <div class="tab-body">
       <div style="padding:12px 16px;border-bottom:1px solid #1e293b">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
           <a
@@ -414,6 +414,6 @@ export function TraceDetail(options: { prefix: string; spans: Array<StudioStore.
           )
         })}
       </div>
-    </>
+    </div>
   )
 }
