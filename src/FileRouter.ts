@@ -115,14 +115,11 @@ export function layer(
   return Layer.scoped(
     Route.Routes,
     Effect.gen(function* () {
-      // Generate routes file before loading
       yield* FileRouterCodegen.update(routesPath, treeFilename)
 
-      // Load and build route tree
       const m = yield* importModule(options.load)
       const routeTree = yield* fromFileRoutes(m.default)
 
-      // Watch for changes (only when Development service is available)
       yield* Function.pipe(
         Development.events,
         Stream.filter((e) => e._tag !== "Reload" && e.path.startsWith(relativeRoutesPath)),
@@ -130,7 +127,8 @@ export function layer(
         Effect.fork,
       )
 
-      return routeTree
+      const existing = yield* Effect.serviceOption(Route.Routes)
+      return existing._tag === "Some" ? RouteTree.merge(existing.value, routeTree) : routeTree
     }),
   )
 }
