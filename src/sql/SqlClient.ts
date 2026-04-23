@@ -294,18 +294,21 @@ const withExecuteSpan =
   <A extends object = SqlRow>(
     strings: TemplateStringsArray,
     ...values: Array<unknown>
-  ): Effect.Effect<ReadonlyArray<A>, SqlError> =>
-    query<A>(strings, ...values).pipe(
+  ): Effect.Effect<ReadonlyArray<A>, SqlError> => {
+    const rendered = renderTemplate(options.dialect, strings, values)
+    return query<A>(strings, ...values).pipe(
       Effect.withSpan("sql.execute", {
         kind: "client",
         attributes: {
           ...options.spanAttributes,
+          ...parameterAttributes(rendered.parameters),
           "db.operation.name": "execute",
-          "db.query.text": renderTemplateSql(options.dialect, strings, values),
+          "db.query.text": rendered.sql,
         },
         captureStackTrace: false,
       }),
     )
+  }
 
 const withUnsafeExecuteSpan =
   (
@@ -323,6 +326,7 @@ const withUnsafeExecuteSpan =
         kind: "client",
         attributes: {
           ...options.spanAttributes,
+          ...parameterAttributes(values ?? []),
           "db.operation.name": "executeRaw",
           "db.query.text": query,
         },
@@ -383,18 +387,44 @@ const makeTraceOptions = (
   dialect: dialect ?? sqliteDialect,
 })
 
-const renderTemplateSql = (
+const renderTemplate = (
   dialect: DialectConfig,
   strings: TemplateStringsArray,
   values: Array<unknown>,
-): string => {
+): { readonly sql: string; readonly parameters: ReadonlyArray<unknown> } => {
   if (hasFragments(values)) {
-    return interpolate(dialect, strings, values).sql
+    return interpolate(dialect, strings, values)
   }
 
   let sql = strings[0]
   for (let i = 0; i < values.length; i++) {
     sql += dialect.placeholder(i + 1) + strings[i + 1]
   }
-  return sql
+  return { sql, parameters: values }
+}
+
+const renderTemplateSql = (
+  dialect: DialectConfig,
+  strings: TemplateStringsArray,
+  values: Array<unknown>,
+): string => renderTemplate(dialect, strings, values).sql
+
+const parameterAttributes = (values: ReadonlyArray<unknown>): Record<string, unknown> => {
+  const attrs: Record<string, unknown> = {}
+  for (let i = 0; i < values.length; i++) {
+    attrs[`db.query.parameter.${i}`] = renderParameter(values[i])
+  }
+  return attrs
+}
+
+const renderParameter = (value: unknown): unknown => {
+  if (value === null || value === undefined) return value
+  const t = typeof value
+  if (t === "string" || t === "number" || t === "boolean") return value
+  if (t === "bigint") return (value as bigint).toString()
+  try {
+    return JSON.stringify(value)
+  } catch {
+    return String(value)
+  }
 }
