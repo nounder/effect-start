@@ -190,6 +190,43 @@ function TimeAxis(options: { totalMs: number }) {
   )
 }
 
+function SpanDetailBody(options: { span: StudioStore.StudioSpan }) {
+  const s = options.span
+  const stacktrace = s.attributes["code.stacktrace"] as string | undefined
+  const customAttrs = Object.entries(s.attributes).filter(([k]) => k !== "code.stacktrace")
+  return (
+    <div class="wf-detail">
+      <KeyValue label="Span ID" value={s.spanId} />
+      <KeyValue label="Kind" value={s.kind} />
+      {s.parentSpanId && <KeyValue label="Parent" value={s.parentSpanId} />}
+      {stacktrace && <KeyValue label="Source" value={stacktrace} />}
+      {customAttrs.map(([k, v]) => (
+        <KeyValue label={k} value={v} />
+      ))}
+      {s.events.length > 0 && (
+        <div style="margin-top:4px">
+          <span style="color:#64748b;font-size:11px">Events:</span>
+          {s.events.map((ev) => (
+            <div
+              style="display:flex;align-items:flex-start;gap:8px;padding:4px 0;font-size:11px;color:#94a3b8;font-family:monospace"
+            >
+              <span>{ev.name}</span>
+              {ev.attributes && (
+                <div style="flex:1;min-width:0">
+                  <PrettyValue.PreformattedText
+                    text={Pretty.prettyPrintJson(ev.attributes)}
+                    style="color:#64748b;white-space:pre-wrap;word-break:break-all;margin:0;font:inherit"
+                  />
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function WaterfallRow(options: { tree: TreeSpan; totalMs: number; rootStart: bigint }) {
   const s = options.tree.span
   const offsetMs = Number(s.startTime - options.rootStart) / 1_000_000
@@ -204,19 +241,22 @@ function WaterfallRow(options: { tree: TreeSpan; totalMs: number; rootStart: big
   const durLabelLeft = leftPct + widthPct + 0.5
 
   return (
-    <div class="wf-row">
-      <div class="wf-name">
-        <TreeConnectors tree={options.tree} />
-        <span style="overflow:hidden;text-overflow:ellipsis">{s.name}</span>
-        {options.tree.childCount > 0 && <span class="wf-badge">{options.tree.childCount}</span>}
-      </div>
-      <div class="wf-bar-cell">
-        <div class="wf-bar" style={`left:${leftPct}%;width:${widthPct}%;background:${color}`} />
-        <div class="wf-dur" style={`left:${durLabelLeft}%`}>
-          {formatDuration(s.durationMs)}
+    <details class="wf-row">
+      <summary>
+        <div class="wf-name">
+          <TreeConnectors tree={options.tree} />
+          <span style="overflow:hidden;text-overflow:ellipsis">{s.name}</span>
+          {options.tree.childCount > 0 && <span class="wf-badge">{options.tree.childCount}</span>}
         </div>
-      </div>
-    </div>
+        <div class="wf-bar-cell">
+          <div class="wf-bar" style={`left:${leftPct}%;width:${widthPct}%;background:${color}`} />
+          <div class="wf-dur" style={`left:${durLabelLeft}%`}>
+            {formatDuration(s.durationMs)}
+          </div>
+        </div>
+      </summary>
+      <SpanDetailBody span={s} />
+    </details>
   )
 }
 
@@ -352,67 +392,13 @@ export function TraceDetail(options: { prefix: string; spans: Array<StudioStore.
         <MiniWaterfall spans={options.spans} totalMs={totalMs} rootStart={rootStart} />
       </div>
 
-      <div style="padding:0 8px">
+      <div style="padding:0 8px 8px">
         <TimeAxis totalMs={totalMs} />
         <div class="wf-grid">
           {tree.map((t) => (
             <WaterfallRow tree={t} totalMs={totalMs} rootStart={rootStart} />
           ))}
         </div>
-      </div>
-
-      <div style="padding:8px">
-        {tree.map((t) => {
-          const s = t.span
-          const stacktrace = s.attributes["code.stacktrace"] as string | undefined
-          const customAttrs = Object.entries(s.attributes).filter(([k]) => k !== "code.stacktrace")
-
-          return (
-            <details class="span-panel" style="margin-bottom:4px" open>
-              <summary class="span-panel-header">
-                <span
-                  style={`width:8px;height:8px;border-radius:50%;background:${statusColor(s.status)};flex-shrink:0`}
-                />
-                <span style="color:#e2e8f0;font-family:monospace;font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">
-                  {s.name}
-                </span>
-                <StatusBadge status={s.status} />
-                <span style="color:#64748b;font-size:11px;font-family:monospace;margin-left:auto">
-                  {formatDuration(s.durationMs)}
-                </span>
-              </summary>
-              <div class="span-panel-body">
-                <KeyValue label="Span ID" value={s.spanId} />
-                <KeyValue label="Kind" value={s.kind} />
-                {s.parentSpanId && <KeyValue label="Parent" value={s.parentSpanId} />}
-                {stacktrace && <KeyValue label="Source" value={stacktrace} />}
-                {customAttrs.map(([k, v]) => (
-                  <KeyValue label={k} value={v} />
-                ))}
-                {s.events.length > 0 && (
-                  <div style="margin-top:4px">
-                    <span style="color:#64748b;font-size:11px">Events:</span>
-                    {s.events.map((ev) => (
-                      <div
-                        style="display:flex;align-items:flex-start;gap:8px;padding:4px 0;font-size:11px;color:#94a3b8;font-family:monospace"
-                      >
-                        <span>{ev.name}</span>
-                        {ev.attributes && (
-                          <div style="flex:1;min-width:0">
-                            <PrettyValue.PreformattedText
-                              text={Pretty.prettyPrintJson(ev.attributes)}
-                              style="color:#64748b;white-space:pre-wrap;word-break:break-all;margin:0;font:inherit"
-                            />
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </details>
-          )
-        })}
       </div>
     </div>
   )

@@ -102,16 +102,49 @@
 
       /* Waterfall grid */
       .wf-grid {
-        display: grid;
-        grid-template-columns: minmax(200px, 30%) 1fr;
+        display: flex;
+        flex-direction: column;
         font-size: 12px;
       }
       .wf-row {
-        display: contents;
+        display: block;
+        width: 100%;
       }
-      .wf-row:hover > .wf-name,
-      .wf-row:hover > .wf-bar-cell {
+      .wf-row > summary {
+        display: grid;
+        grid-template-columns: minmax(200px, 30%) 1fr;
+        cursor: pointer;
+        list-style: none;
+        position: relative;
+      }
+      .wf-row > summary::-webkit-details-marker {
+        display: none;
+      }
+      .wf-row > summary::after {
+        content: "▸";
+        position: absolute;
+        right: 8px;
+        bottom: 2px;
+        color: #64748b;
+        font-size: 10px;
+        transition: transform 0.15s;
+        pointer-events: none;
+      }
+      .wf-row[open] > summary::after {
+        transform: rotate(90deg);
+      }
+      .wf-row:hover > summary > .wf-name,
+      .wf-row:hover > summary > .wf-bar-cell {
         background: #1e293b;
+      }
+      .wf-row[open] > summary > .wf-name,
+      .wf-row[open] > summary > .wf-bar-cell {
+        background: #1e293b;
+      }
+      .wf-detail {
+        padding: 8px 12px;
+        border-bottom: 1px solid #1e293b;
+        background: #0b1220;
       }
       .wf-name {
         padding: 4px 8px;
