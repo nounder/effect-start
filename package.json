@@ -178,6 +178,10 @@
       "bun": "./src/tailwind/index.ts",
       "default": "./dist/tailwind/index.js"
     },
+    "./tailwind/plugin": {
+      "bun": "./src/tailwind/plugin.ts",
+      "default": "./dist/tailwind/plugin.js"
+    },
     "./testing": {
       "bun": "./src/testing/index.ts",
       "default": "./dist/testing/index.js"
