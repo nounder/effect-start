@@ -1,8 +1,8 @@
 import * as Unique from "../../Unique.ts"
 import * as StudioStore from "../StudioStore.ts"
 
-export function ErrorLine(options: { error: StudioStore.StudioError }) {
-  const time = new Date(Number(Unique.snowflake.timestamp(options.error.id))).toLocaleTimeString(
+export function ErrorLine(props: { prefix: string; error: StudioStore.StudioError }) {
+  const time = new Date(Number(Unique.snowflake.timestamp(props.error.id))).toLocaleTimeString(
     "en",
     {
       hour12: false,
@@ -11,11 +11,11 @@ export function ErrorLine(options: { error: StudioStore.StudioError }) {
       second: "2-digit",
     },
   )
-  const firstLine = options.error.prettyPrint.split("\n")[0] ?? ""
-  const tags = options.error.details.map((d) => d.tag).filter(Boolean)
+  const firstLine = props.error.prettyPrint.split("\n")[0] ?? ""
+  const tags = props.error.details.map((d) => d.tag).filter(Boolean)
 
-  const allSpans = options.error.details.map((d) => d.span).filter(Boolean)
-  const allProps = options.error.details.flatMap((d) => Object.entries(d.properties))
+  const allSpans = props.error.details.map((d) => d.span).filter(Boolean)
+  const allProps = props.error.details.flatMap((d) => Object.entries(d.properties))
 
   return (
     <details style="border-bottom:1px solid #1e293b">
@@ -65,14 +65,14 @@ export function ErrorLine(options: { error: StudioStore.StudioError }) {
         <div style="margin-bottom:6px">
           <span style="color:#64748b">fiber </span>
           <a
-            href={`${StudioStore.store.prefix}/fibers/${options.error.fiberId.replace("#", "")}`}
+            href={`${props.prefix}/fibers/${props.error.fiberId.replace("#", "")}`}
             style="color:#9ca3af;text-decoration:none"
           >
-            {options.error.fiberId}
+            {props.error.fiberId}
           </a>
         </div>
         <pre style="color:#9ca3af;font-size:11px;padding:0;margin:0;white-space:pre-wrap;word-break:break-all">
-          {options.error.prettyPrint}
+          {props.error.prettyPrint}
         </pre>
       </div>
     </details>

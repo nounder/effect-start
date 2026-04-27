@@ -16,19 +16,19 @@ function toPreHtml(text: string): string {
   return escapeHtml(text).replaceAll("\n", "&#10;")
 }
 
-export function PreformattedText(options: { text: string; style?: string }) {
-  return <pre style={options.style} dangerouslySetInnerHTML={{ __html: toPreHtml(options.text) }} />
+export function PreformattedText(props: { text: string; style?: string }) {
+  return <pre style={props.style} dangerouslySetInnerHTML={{ __html: toPreHtml(props.text) }} />
 }
 
-export function PrettyValue(options: { value: unknown; style?: string; preStyle?: string }) {
-  if (options.value == null) return null
-  if (Pretty.isStructuredValue(options.value)) {
+export function PrettyValue(props: { value: unknown; style?: string; preStyle?: string }) {
+  if (props.value == null) return null
+  if (Pretty.isStructuredValue(props.value)) {
     return (
       <PreformattedText
-        text={Pretty.prettyPrintJson(options.value)}
-        style={options.preStyle}
+        text={Pretty.prettyPrintJson(props.value)}
+        style={props.preStyle}
       />
     )
   }
-  return <span style={options.style}>{String(options.value)}</span>
+  return <span style={props.style}>{String(props.value)}</span>
 }

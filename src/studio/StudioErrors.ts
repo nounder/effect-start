@@ -11,6 +11,7 @@ import * as PubSub from "effect/PubSub"
 import type * as Context from "effect/Context"
 import type * as Fiber from "effect/Fiber"
 import * as Supervisor from "effect/Supervisor"
+import * as SqlClient from "../sql/SqlClient.ts"
 import * as StudioStore from "./StudioStore.ts"
 
 function safeSerialize(value: unknown, depth = 0): unknown {
@@ -150,7 +151,10 @@ function extractDetails(cause: Cause.Cause<unknown>): Array<StudioStore.StudioEr
   return details
 }
 
-function make(store: StudioStore.StudioStoreShape): Supervisor.Supervisor<void> {
+function make(
+  store: StudioStore.StudioStoreShape,
+  sql: SqlClient.SqlClient,
+): Supervisor.Supervisor<void> {
   return new (class extends Supervisor.AbstractSupervisor<void> {
     value = Effect.void
 
@@ -183,7 +187,7 @@ function make(store: StudioStore.StudioStoreShape): Supervisor.Supervisor<void> 
         annotations[key] = value
       })
 
-      StudioStore.runWrite(
+      StudioStore.runWrite(sql,
         StudioStore.upsertFiber(
           childId,
           parentId !== childId ? parentId : undefined,
@@ -203,7 +207,7 @@ function make(store: StudioStore.StudioStoreShape): Supervisor.Supervisor<void> 
           prettyPrint: Cause.pretty(exit.cause, { renderErrorCause: true }),
           details: extractDetails(exit.cause),
         }
-        StudioStore.runWrite(
+        StudioStore.runWrite(sql,
           Effect.zipRight(
             StudioStore.insertError(error),
             StudioStore.evict("Error", store.errorCapacity),
@@ -215,9 +219,14 @@ function make(store: StudioStore.StudioStoreShape): Supervisor.Supervisor<void> 
   })()
 }
 
-export const layer: Layer.Layer<never, never, StudioStore.StudioStore> = Layer.unwrapEffect(
+export const layer: Layer.Layer<
+  never,
+  never,
+  StudioStore.StudioStore | SqlClient.SqlClient
+> = Layer.unwrapEffect(
   Effect.gen(function* () {
     const store = yield* StudioStore.StudioStore
-    return Supervisor.addSupervisor(make(store))
+    const sql = yield* SqlClient.SqlClient
+    return Supervisor.addSupervisor(make(store, sql))
   }),
 )

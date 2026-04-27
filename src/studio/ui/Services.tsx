@@ -173,8 +173,8 @@ function kindColor(kind: string): { bg: string; fg: string } {
   return { bg: "#1e3a5f", fg: "#60a5fa" }
 }
 
-function ServiceRow(options: { entry: ServiceEntry }) {
-  const colors = kindColor(options.entry.type)
+function ServiceRow(props: { entry: ServiceEntry }) {
+  const colors = kindColor(props.entry.type)
   return (
     <details class="tl-row">
       <summary class="tl-summary tl-cols">
@@ -183,19 +183,19 @@ function ServiceRow(options: { entry: ServiceEntry }) {
             style={`width:8px;height:8px;border-radius:50%;background:${colors.fg};display:block`}
           />
         </span>
-        <span class="tl-cell tl-cell-name">{options.entry.key}</span>
+        <span class="tl-cell tl-cell-name">{props.entry.key}</span>
         <span class="tl-cell tl-cell-dur">
           <span
             style={`font-size:10px;padding:1px 6px;border-radius:4px;background:${colors.bg};color:${colors.fg}`}
           >
-            {options.entry.kind}
+            {props.entry.kind}
           </span>
         </span>
       </summary>
       <div class="tl-body">
-        {options.entry.display ? (
+        {props.entry.display ? (
           <pre style="color:#e2e8f0;font-family:monospace;font-size:12px;margin:0;padding:8px;white-space:pre-wrap;word-break:break-all">
-            {options.entry.display}
+            {props.entry.display}
           </pre>
         ) : (
           <div style="padding:4px 8px;color:#64748b;font-size:12px">No inspectable values</div>
@@ -205,8 +205,8 @@ function ServiceRow(options: { entry: ServiceEntry }) {
   )
 }
 
-export function ServiceList(options: { services: Array<ServiceEntry> }) {
-  if (options.services.length === 0) {
+export function ServiceList(props: { services: Array<ServiceEntry> }) {
+  if (props.services.length === 0) {
     return <div class="empty">No services registered</div>
   }
   return (
@@ -216,7 +216,7 @@ export function ServiceList(options: { services: Array<ServiceEntry> }) {
         <span class="tl-cell tl-cell-name">Service</span>
         <span class="tl-cell tl-cell-dur">Kind</span>
       </div>
-      {options.services.map((s) => (
+      {props.services.map((s) => (
         <ServiceRow entry={s} />
       ))}
     </div>

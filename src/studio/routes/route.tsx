@@ -1,8 +1,9 @@
 import * as Route from "../../Route.ts"
-import * as StudioStore from "../StudioStore.ts"
+import * as Studio from "../Studio.ts"
 
 export default Route.get(
   Route.render(function* () {
-    return Route.redirect(`${StudioStore.store.prefix}/traces`)
+    const studio = yield* Studio.Studio
+    return Route.redirect(`${studio.prefix}/traces`)
   }),
 )

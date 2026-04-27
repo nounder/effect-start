@@ -41,26 +41,26 @@ function methodBg(method: string): string {
 
 const methodOrder = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "*"]
 
-function MethodBadge(options: { method: string }) {
+function MethodBadge(props: { method: string }) {
   return (
     <span
-      style={`font-size:10px;font-weight:700;font-family:monospace;padding:2px 6px;border-radius:3px;background:${methodBg(options.method)};color:${methodColor(options.method)};min-width:48px;text-align:center;display:inline-block`}
+      style={`font-size:10px;font-weight:700;font-family:monospace;padding:2px 6px;border-radius:3px;background:${methodBg(props.method)};color:${methodColor(props.method)};min-width:48px;text-align:center;display:inline-block`}
     >
-      {options.method}
+      {props.method}
     </span>
   )
 }
 
-function FormatBadge(options: { format: string }) {
+function FormatBadge(props: { format: string }) {
   return (
     <span style="font-size:10px;padding:1px 6px;border-radius:3px;background:#1e3a5f;color:#60a5fa">
-      {options.format}
+      {props.format}
     </span>
   )
 }
 
-function ColoredPath(options: { path: string }) {
-  const segments = options.path.split("/").filter(Boolean)
+function ColoredPath(props: { path: string }) {
+  const segments = props.path.split("/").filter(Boolean)
   return (
     <span style="font-family:monospace;font-size:13px">
       {segments.length === 0 ? (
@@ -80,14 +80,14 @@ function ColoredPath(options: { path: string }) {
   )
 }
 
-function PathGroup(options: { path: string; routes: Array<RouteInfo> }) {
+function PathGroup(props: { path: string; routes: Array<RouteInfo> }) {
   return (
     <div style="padding:8px 12px;border-bottom:1px solid #1e293b">
       <div style="margin-bottom:4px">
-        <ColoredPath path={options.path} />
+        <ColoredPath path={props.path} />
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:4px">
-        {options.routes.map((r) => (
+        {props.routes.map((r) => (
           <div style="display:flex;align-items:center;gap:6px">
             <MethodBadge method={r.method} />
             {r.format && <FormatBadge format={r.format} />}
@@ -98,13 +98,13 @@ function PathGroup(options: { path: string; routes: Array<RouteInfo> }) {
   )
 }
 
-export function RouteList(options: { routes: Array<RouteInfo> }) {
-  if (options.routes.length === 0) {
+export function RouteList(props: { routes: Array<RouteInfo> }) {
+  if (props.routes.length === 0) {
     return <div class="empty">No routes registered</div>
   }
 
-  const groups = groupByPath(options.routes)
-  const routeCount = options.routes.length
+  const groups = groupByPath(props.routes)
+  const routeCount = props.routes.length
   const pathCount = groups.length
 
   return (

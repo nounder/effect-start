@@ -1,14 +1,15 @@
+import * as Effect from "effect/Effect"
 import * as Stream from "effect/Stream"
 import * as Route from "../../../Route.ts"
 import * as Html from "../../../Html.ts"
+import * as Studio from "../../Studio.ts"
 import * as StudioStore from "../../StudioStore.ts"
 import * as Errors from "../../ui/Errors.tsx"
 import * as Shell from "../../ui/Shell.tsx"
 
-const prefix = StudioStore.store.prefix
-
 export default Route.get(
   Route.html(function* (_ctx) {
+    const studio = yield* Studio.Studio
     const request = yield* Route.Request
     const url = new URL(request.url)
     const search = url.searchParams.get("errorSearch") || ""
@@ -35,7 +36,7 @@ export default Route.get(
     errors = errors.reverse()
 
     return (
-      <Shell.Shell prefix={prefix} active="errors">
+      <Shell.Shell prefix={studio.prefix} active="errors">
         <form
           data-signals={{ errorSearch: "", errorTag: "" }}
           style="display:flex;flex-direction:column;flex:1;overflow:hidden"
@@ -65,25 +66,30 @@ export default Route.get(
           </div>
           <div id="errors-list" class="tab-body">
             {errors.map((e) => (
-              <Errors.ErrorLine error={e} />
+              <Errors.ErrorLine prefix={studio.prefix} error={e} />
             ))}
           </div>
 
-          <div data-init={`@get('${prefix}/errors')`} />
+          <div data-init={`@get('${studio.prefix}/errors')`} />
         </form>
       </Shell.Shell>
     )
   }),
   Route.sse(
-    Stream.fromPubSub(StudioStore.store.events).pipe(
-      Stream.filter((e) => e._tag === "Error"),
-      Stream.map((e) => {
-        const html = Html.renderToString(<Errors.ErrorLine error={e.error} />).replace(/\n/g, "")
-        return {
-          event: "datastar-patch-elements",
-          data: `selector #errors-list\nmode prepend\nelements ${html}`,
-        }
-      }),
-    ),
+    Effect.gen(function* () {
+      const studio = yield* Studio.Studio
+      return Stream.fromPubSub(studio.store.events).pipe(
+        Stream.filter((e) => e._tag === "Error"),
+        Stream.map((e) => {
+          const html = Html.renderToString(
+            <Errors.ErrorLine prefix={studio.prefix} error={e.error} />,
+          ).replace(/\n/g, "")
+          return {
+            event: "datastar-patch-elements",
+            data: `selector #errors-list\nmode prepend\nelements ${html}`,
+          }
+        }),
+      )
+    }),
   ),
 )

@@ -8,20 +8,6 @@ import * as Schema from "effect/Schema"
 import * as Unique from "../Unique.ts"
 import * as SqlClient from "../sql/SqlClient.ts"
 
-export let store: StudioStoreShape = GlobalValue.globalValue(
-  Symbol.for("effect-start/StudioStore"),
-  () => ({
-    prefix: "/studio",
-    sql: undefined as unknown as SqlClient.SqlClient,
-    events: Effect.runSync(PubSub.unbounded<StudioEvent>()),
-    spanCapacity: 1000,
-    logCapacity: 5000,
-    errorCapacity: 1000,
-    metrics: [] as Array<StudioMetricSnapshot>,
-    process: undefined as ProcessStats | undefined,
-  }),
-)
-
 const nextPackedId = (): bigint => Unique.snowflake()
 
 export const nextLogId = () => nextPackedId()
@@ -146,7 +132,6 @@ export interface FiberContext {
 }
 
 export interface StudioStoreShape {
-  prefix: string
   readonly sql: SqlClient.SqlClient
   readonly events: PubSub.PubSub<StudioEvent>
   readonly spanCapacity: number
@@ -224,14 +209,15 @@ export function layer(
       for (const ddl of DDL) {
         yield* sql.unsafe(ddl)
       }
-      store = {
-        ...store,
+      return {
         sql,
+        events: yield* PubSub.unbounded<StudioEvent>(),
         spanCapacity: options?.spanCapacity ?? 1000,
         logCapacity: options?.logCapacity ?? 5000,
         errorCapacity: options?.errorCapacity ?? 1000,
+        metrics: [] as Array<StudioMetricSnapshot>,
+        process: undefined,
       }
-      return store
     }),
   )
 }
@@ -438,9 +424,10 @@ export function evict(table: string, capacity: number) {
   )
 }
 
-export function runWrite(effect: Effect.Effect<unknown, SqlClient.SqlError, SqlClient.SqlClient>) {
-  const sql = store.sql
-  if (!sql) return
+export function runWrite(
+  sql: SqlClient.SqlClient,
+  effect: Effect.Effect<unknown, SqlClient.SqlError, SqlClient.SqlClient>,
+) {
   writeQueue = writeQueue
     .then(() =>
       Effect.runPromise(

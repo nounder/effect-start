@@ -2,51 +2,60 @@ import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as FiberId from "effect/FiberId"
 import * as HashMap from "effect/HashMap"
+import * as Layer from "effect/Layer"
 import * as List from "effect/List"
 import * as Logger from "effect/Logger"
 import * as PubSub from "effect/PubSub"
+import * as SqlClient from "../sql/SqlClient.ts"
 import * as Pretty from "./_Pretty.ts"
 import * as StudioStore from "./StudioStore.ts"
 
-const studioLogger = Logger.make((options) => {
-  const store = StudioStore.store
+const make = (store: StudioStore.StudioStoreShape, sql: SqlClient.SqlClient) =>
+  Logger.make((logOptions) => {
+    try {
+      const levelMap: Record<string, StudioStore.StudioLog["level"]> = {
+        Debug: "DEBUG",
+        Info: "INFO",
+        Warning: "WARNING",
+        Error: "ERROR",
+        Fatal: "FATAL",
+      }
+      const level = levelMap[logOptions.logLevel._tag] ?? "INFO"
+      const causeStr = !Cause.isEmpty(logOptions.cause)
+        ? Cause.pretty(logOptions.cause, { renderErrorCause: true })
+        : undefined
+      const spanNames: Array<string> = []
+      List.forEach(logOptions.spans, (s) => spanNames.push(s.label))
+      const ann: Record<string, unknown> = {}
+      HashMap.forEach(logOptions.annotations, (v, k) => {
+        ann[k] = v
+      })
 
-  try {
-    const levelMap: Record<string, StudioStore.StudioLog["level"]> = {
-      Debug: "DEBUG",
-      Info: "INFO",
-      Warning: "WARNING",
-      Error: "ERROR",
-      Fatal: "FATAL",
-    }
-    const level = levelMap[options.logLevel._tag] ?? "INFO"
-    const causeStr = !Cause.isEmpty(options.cause)
-      ? Cause.pretty(options.cause, { renderErrorCause: true })
-      : undefined
-    const spanNames: Array<string> = []
-    List.forEach(options.spans, (s) => spanNames.push(s.label))
-    const ann: Record<string, unknown> = {}
-    HashMap.forEach(options.annotations, (v, k) => {
-      ann[k] = v
-    })
+      const log: StudioStore.StudioLog = {
+        id: StudioStore.nextLogId(),
+        level,
+        message: Pretty.formatLogMessage(logOptions.message),
+        fiberId: FiberId.threadName(logOptions.fiberId),
+        cause: causeStr,
+        spans: spanNames,
+        annotations: ann,
+      }
+      StudioStore.runWrite(
+        sql,
+        Effect.zipRight(StudioStore.insertLog(log), StudioStore.evict("Log", store.logCapacity)),
+      )
+      Effect.runSync(PubSub.publish(store.events, { _tag: "Log", log }))
+    } catch (_) {}
+  })
 
-    const log: StudioStore.StudioLog = {
-      id: StudioStore.nextLogId(),
-      level,
-      message: Pretty.formatLogMessage(options.message),
-      fiberId: FiberId.threadName(options.fiberId),
-      cause: causeStr,
-      spans: spanNames,
-      annotations: ann,
-    }
-    StudioStore.runWrite(
-      Effect.zipRight(
-        StudioStore.insertLog(log),
-        StudioStore.evict("Log", store.logCapacity),
-      ),
-    )
-    Effect.runSync(PubSub.publish(store.events, { _tag: "Log", log }))
-  } catch (_) {}
-})
-
-export const layer = Logger.add(studioLogger)
+export const layer: Layer.Layer<
+  never,
+  never,
+  StudioStore.StudioStore | SqlClient.SqlClient
+> = Layer.unwrapEffect(
+  Effect.gen(function* () {
+    const store = yield* StudioStore.StudioStore
+    const sql = yield* SqlClient.SqlClient
+    return Logger.add(make(store, sql))
+  }),
+)

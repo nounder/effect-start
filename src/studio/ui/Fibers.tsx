@@ -10,16 +10,16 @@ function formatDuration(ms: number | undefined): string {
   return `${(ms / 1000).toFixed(2)}s`
 }
 
-function KeyValue(options: { label: string; value: unknown }) {
-  if (options.value == null) return null
+function KeyValue(props: { label: string; value: unknown }) {
+  if (props.value == null) return null
   return (
     <div
       style="display:flex;align-items:flex-start;gap:8px;padding:4px 0;border-bottom:1px solid #1e293b;font-size:12px"
     >
-      <span style="color:#64748b;min-width:120px">{options.label}</span>
+      <span style="color:#64748b;min-width:120px">{props.label}</span>
       <div style="flex:1;min-width:0">
         <PrettyValue.PrettyValue
-          value={options.value}
+          value={props.value}
           style="color:#e2e8f0;font-family:monospace;word-break:break-all"
           preStyle="color:#e2e8f0;font-family:monospace;word-break:break-all;white-space:pre-wrap;margin:0"
         />
@@ -28,14 +28,14 @@ function KeyValue(options: { label: string; value: unknown }) {
   )
 }
 
-function StatusBadge(options: { status: string }) {
+function StatusBadge(props: { status: string }) {
   const bg =
-    options.status === "ok" ? "#166534" : options.status === "error" ? "#7f1d1d" : "#713f12"
+    props.status === "ok" ? "#166534" : props.status === "error" ? "#7f1d1d" : "#713f12"
   const fg =
-    options.status === "ok" ? "#4ade80" : options.status === "error" ? "#fca5a5" : "#fde047"
+    props.status === "ok" ? "#4ade80" : props.status === "error" ? "#fca5a5" : "#fde047"
   return (
     <span style={`font-size:11px;padding:2px 8px;border-radius:4px;background:${bg};color:${fg}`}>
-      {options.status}
+      {props.status}
     </span>
   )
 }
@@ -126,21 +126,21 @@ export function collectFibers(
   })
 }
 
-function FiberRow(options: { fiber: FiberSummary; prefix: string }) {
+function FiberRow(props: { fiber: FiberSummary; prefix: string }) {
   const aliveColor =
-    options.fiber.alive === "alive"
+    props.fiber.alive === "alive"
       ? "#4ade80"
-      : options.fiber.alive === "dead"
+      : props.fiber.alive === "dead"
         ? "#ef4444"
         : "#94a3b8"
   const aliveBg =
-    options.fiber.alive === "alive"
+    props.fiber.alive === "alive"
       ? "#166534"
-      : options.fiber.alive === "dead"
+      : props.fiber.alive === "dead"
         ? "#7f1d1d"
         : "#334155"
-  const lastSeen = options.fiber.lastSeen
-    ? new Date(options.fiber.lastSeen).toLocaleTimeString("en", {
+  const lastSeen = props.fiber.lastSeen
+    ? new Date(props.fiber.lastSeen).toLocaleTimeString("en", {
         hour12: false,
         hour: "2-digit",
         minute: "2-digit",
@@ -150,31 +150,31 @@ function FiberRow(options: { fiber: FiberSummary; prefix: string }) {
 
   return (
     <a
-      href={`${options.prefix}/fibers/${options.fiber.id.replace("#", "")}`}
+      href={`${props.prefix}/fibers/${props.fiber.id.replace("#", "")}`}
       style="display:flex;align-items:center;gap:12px;padding:8px 12px;border-bottom:1px solid #1e293b;text-decoration:none;transition:background .1s"
       onmouseover="this.style.background='#1e293b'"
       onmouseout="this.style.background='transparent'"
     >
       <span style="color:#e2e8f0;font-family:monospace;font-size:13px;font-weight:600;min-width:60px">
-        {options.fiber.id}
+        {props.fiber.id}
       </span>
       <span
         style={`font-size:10px;padding:2px 8px;border-radius:4px;background:${aliveBg};color:${aliveColor}`}
       >
-        {options.fiber.alive}
+        {props.fiber.alive}
       </span>
       <span style="color:#94a3b8;font-size:12px">
-        {options.fiber.spanCount} span{options.fiber.spanCount !== 1 ? "s" : ""}
+        {props.fiber.spanCount} span{props.fiber.spanCount !== 1 ? "s" : ""}
       </span>
       <span style="color:#94a3b8;font-size:12px">
-        {options.fiber.logCount} log{options.fiber.logCount !== 1 ? "s" : ""}
+        {props.fiber.logCount} log{props.fiber.logCount !== 1 ? "s" : ""}
       </span>
-      {options.fiber.levels.has("ERROR") && (
+      {props.fiber.levels.has("ERROR") && (
         <span style="font-size:10px;padding:1px 6px;border-radius:4px;background:#7f1d1d;color:#fca5a5">
           ERROR
         </span>
       )}
-      {options.fiber.levels.has("WARNING") && (
+      {props.fiber.levels.has("WARNING") && (
         <span style="font-size:10px;padding:1px 6px;border-radius:4px;background:#713f12;color:#fde047">
           WARN
         </span>
@@ -186,20 +186,20 @@ function FiberRow(options: { fiber: FiberSummary; prefix: string }) {
   )
 }
 
-export function FiberList(options: { fibers: Array<FiberSummary>; prefix: string }) {
-  if (options.fibers.length === 0) {
+export function FiberList(props: { fibers: Array<FiberSummary>; prefix: string }) {
+  if (props.fibers.length === 0) {
     return <div class="empty">Waiting for fibers...</div>
   }
   return (
     <>
-      {options.fibers.map((f) => (
-        <FiberRow fiber={f} prefix={options.prefix} />
+      {props.fibers.map((f) => (
+        <FiberRow fiber={f} prefix={props.prefix} />
       ))}
     </>
   )
 }
 
-export function FiberDetail(options: {
+export function FiberDetail(props: {
   prefix: string
   fiberId: string
   logs: Array<StudioStore.StudioLog>
@@ -209,47 +209,47 @@ export function FiberDetail(options: {
   context: StudioStore.FiberContext | undefined
 }) {
   const aliveColor =
-    options.alive === "alive" ? "#4ade80" : options.alive === "dead" ? "#ef4444" : "#94a3b8"
+    props.alive === "alive" ? "#4ade80" : props.alive === "dead" ? "#ef4444" : "#94a3b8"
   const aliveBg =
-    options.alive === "alive" ? "#166534" : options.alive === "dead" ? "#7f1d1d" : "#334155"
+    props.alive === "alive" ? "#166534" : props.alive === "dead" ? "#7f1d1d" : "#334155"
 
   return (
     <>
       <div class="tab-header">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
           <a
-            href={`${options.prefix}/fibers`}
+            href={`${props.prefix}/fibers`}
             style="color:#64748b;text-decoration:none;font-size:12px"
           >
             Fibers
           </a>
           <span style="color:#475569">/</span>
-          <span style="color:#e2e8f0;font-size:13px;font-family:monospace">{options.fiberId}</span>
+          <span style="color:#e2e8f0;font-size:13px;font-family:monospace">{props.fiberId}</span>
           <span
             style={`font-size:11px;padding:2px 8px;border-radius:4px;background:${aliveBg};color:${aliveColor}`}
           >
-            {options.alive}
+            {props.alive}
           </span>
         </div>
         <div style="display:flex;gap:16px;font-size:12px;color:#94a3b8">
           <span>
-            {options.logs.length} log{options.logs.length !== 1 ? "s" : ""}
+            {props.logs.length} log{props.logs.length !== 1 ? "s" : ""}
           </span>
           <span>
-            {options.spans.length} span{options.spans.length !== 1 ? "s" : ""}
+            {props.spans.length} span{props.spans.length !== 1 ? "s" : ""}
           </span>
         </div>
       </div>
       <div class="tab-body">
-        {options.parents.length > 0 && (
+        {props.parents.length > 0 && (
           <div style="padding:8px 16px">
             <div style="color:#94a3b8;font-size:12px;font-weight:600;margin-bottom:8px">
               Parents
             </div>
             <div style="display:flex;gap:6px;flex-wrap:wrap">
-              {options.parents.map((id) => (
+              {props.parents.map((id) => (
                 <a
-                  href={`${options.prefix}/fibers/${id.replace("#", "")}`}
+                  href={`${props.prefix}/fibers/${id.replace("#", "")}`}
                   style="color:#38bdf8;font-family:monospace;font-size:13px;text-decoration:none;padding:4px 10px;background:#111827;border:1px solid #1e293b;border-radius:6px"
                 >
                   {id}
@@ -259,46 +259,46 @@ export function FiberDetail(options: {
           </div>
         )}
 
-        {options.context &&
-          (options.context.spanName ||
-            options.context.traceId ||
-            Object.keys(options.context.annotations).length > 0) && (
+        {props.context &&
+          (props.context.spanName ||
+            props.context.traceId ||
+            Object.keys(props.context.annotations).length > 0) && (
             <div style="padding:8px 16px">
               <div style="color:#94a3b8;font-size:12px;font-weight:600;margin-bottom:8px">
                 Context
               </div>
               <div style="background:#111827;border:1px solid #1e293b;border-radius:6px;padding:8px 12px">
-                {options.context.spanName && (
-                  <KeyValue label="Span" value={options.context.spanName} />
+                {props.context.spanName && (
+                  <KeyValue label="Span" value={props.context.spanName} />
                 )}
-                {options.context.traceId && (
+                {props.context.traceId && (
                   <div style="display:flex;gap:8px;padding:4px 0;border-bottom:1px solid #1e293b;font-size:12px">
                     <span style="color:#64748b;min-width:120px">Trace</span>
                     <a
-                      href={`${options.prefix}/traces/${options.context.traceId}`}
+                      href={`${props.prefix}/traces/${props.context.traceId}`}
                       style="color:#38bdf8;font-family:monospace;word-break:break-all;text-decoration:none"
                     >
-                      {options.context.traceId}
+                      {props.context.traceId}
                     </a>
                   </div>
                 )}
-                {Object.entries(options.context.annotations).map(([k, v]) => (
+                {Object.entries(props.context.annotations).map(([k, v]) => (
                   <KeyValue label={k} value={v} />
                 ))}
               </div>
             </div>
           )}
 
-        {options.spans.length > 0 && (
+        {props.spans.length > 0 && (
           <div style="padding:8px 16px">
             <div style="color:#94a3b8;font-size:12px;font-weight:600;margin-bottom:8px">Spans</div>
-            {options.spans.map((s) => {
+            {props.spans.map((s) => {
               const stacktrace = s.attributes["code.stacktrace"] as string | undefined
               return (
                 <div style="margin-bottom:6px;background:#111827;border:1px solid #1e293b;border-radius:6px;padding:8px 12px">
                   <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
                     <a
-                      href={`${options.prefix}/traces/${s.traceId}`}
+                      href={`${props.prefix}/traces/${s.traceId}`}
                       style="color:#38bdf8;font-family:monospace;font-size:13px;text-decoration:none"
                     >
                       {s.name}
@@ -322,17 +322,17 @@ export function FiberDetail(options: {
           </div>
         )}
 
-        {options.logs.length > 0 && (
+        {props.logs.length > 0 && (
           <div style="padding:8px 16px">
             <div style="color:#94a3b8;font-size:12px;font-weight:600;margin-bottom:8px">Logs</div>
-            {options.logs.map((l) => (
-              <Logs.LogLine log={l} />
+            {props.logs.map((l) => (
+              <Logs.LogLine prefix={props.prefix} log={l} />
             ))}
           </div>
         )}
 
-        {options.logs.length === 0 && options.spans.length === 0 && (
-          <div class="empty">No data found for fiber {options.fiberId}</div>
+        {props.logs.length === 0 && props.spans.length === 0 && (
+          <div class="empty">No data found for fiber {props.fiberId}</div>
         )}
       </div>
     </>

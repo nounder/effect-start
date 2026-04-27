@@ -11,9 +11,9 @@ function levelColor(level: string): string {
   return "#e5e7eb"
 }
 
-export function LogLine(options: { log: StudioStore.StudioLog }) {
-  const color = levelColor(options.log.level)
-  const time = new Date(Number(Unique.snowflake.timestamp(options.log.id))).toLocaleTimeString(
+export function LogLine(props: { prefix: string; log: StudioStore.StudioLog }) {
+  const color = levelColor(props.log.level)
+  const time = new Date(Number(Unique.snowflake.timestamp(props.log.id))).toLocaleTimeString(
     "en",
     {
       hour12: false,
@@ -25,30 +25,30 @@ export function LogLine(options: { log: StudioStore.StudioLog }) {
 
   return (
     <div
-      id={`log-${options.log.id}`}
+      id={`log-${props.log.id}`}
       style="padding:6px 8px;border-bottom:1px solid #1f2937;font-family:monospace;font-size:12px;display:flex;align-items:flex-start;gap:8px"
     >
       <span style="color:#6b7280;white-space:nowrap">{time}</span>
       <span style={`color:${color};font-weight:600;width:56px;text-align:center;flex-shrink:0`}>
-        {options.log.level}
+        {props.log.level}
       </span>
       <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
         <PrettyValue.PreformattedText
-          text={options.log.message}
+          text={props.log.message}
           style="color:#e5e7eb;margin:0;white-space:pre-wrap;word-break:break-word;font:inherit"
         />
-        {options.log.cause && (
+        {props.log.cause && (
           <PrettyValue.PreformattedText
-            text={options.log.cause}
+            text={props.log.cause}
             style="color:#ef4444;font-size:11px;margin:0;white-space:pre-wrap;word-break:break-word;font:inherit"
           />
         )}
       </div>
       <a
-        href={`${StudioStore.store.prefix}/fibers/${options.log.fiberId.replace("#", "")}`}
+        href={`${props.prefix}/fibers/${props.log.fiberId.replace("#", "")}`}
         style="color:#6b7280;white-space:nowrap;text-decoration:none;flex-shrink:0"
       >
-        {options.log.fiberId}
+        {props.log.fiberId}
       </a>
     </div>
   )

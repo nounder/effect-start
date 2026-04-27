@@ -1,14 +1,15 @@
+import * as Effect from "effect/Effect"
 import * as Stream from "effect/Stream"
 import * as Route from "../../../Route.ts"
 import * as Html from "../../../Html.ts"
+import * as Studio from "../../Studio.ts"
 import * as StudioStore from "../../StudioStore.ts"
 import * as Logs from "../../ui/Logs.tsx"
 import * as Shell from "../../ui/Shell.tsx"
 
-const prefix = StudioStore.store.prefix
-
 export default Route.get(
   Route.html(function* (_ctx) {
+    const studio = yield* Studio.Studio
     const request = yield* Route.Request
     const url = new URL(request.url)
     const level = url.searchParams.get("logLevel") || ""
@@ -22,7 +23,7 @@ export default Route.get(
     logs = logs.reverse()
 
     return (
-      <Shell.Shell prefix={prefix} active="logs">
+      <Shell.Shell prefix={studio.prefix} active="logs">
         <form
           data-signals={{ logLevel: "", logSearch: "" }}
           style="display:flex;flex-direction:column;flex:1;overflow:hidden"
@@ -51,25 +52,30 @@ export default Route.get(
           </div>
           <div id="logs-container" class="tab-body">
             {logs.map((l) => (
-              <Logs.LogLine log={l} />
+              <Logs.LogLine prefix={studio.prefix} log={l} />
             ))}
           </div>
 
-          <div data-init={`@get('${prefix}/logs')`} />
+          <div data-init={`@get('${studio.prefix}/logs')`} />
         </form>
       </Shell.Shell>
     )
   }),
   Route.sse(
-    Stream.fromPubSub(StudioStore.store.events).pipe(
-      Stream.filter((e) => e._tag === "Log"),
-      Stream.map((e) => {
-        const html = Html.renderToString(<Logs.LogLine log={e.log} />).replace(/\n/g, "")
-        return {
-          event: "datastar-patch-elements",
-          data: `selector #logs-container\nmode prepend\nelements ${html}`,
-        }
-      }),
-    ),
+    Effect.gen(function* () {
+      const studio = yield* Studio.Studio
+      return Stream.fromPubSub(studio.store.events).pipe(
+        Stream.filter((e) => e._tag === "Log"),
+        Stream.map((e) => {
+          const html = Html.renderToString(
+            <Logs.LogLine prefix={studio.prefix} log={e.log} />,
+          ).replace(/\n/g, "")
+          return {
+            event: "datastar-patch-elements",
+            data: `selector #logs-container\nmode prepend\nelements ${html}`,
+          }
+        }),
+      )
+    }),
   ),
 )
