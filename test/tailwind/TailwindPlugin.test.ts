@@ -1,17 +1,23 @@
 import * as test from "bun:test"
 import * as TailwindPlugin from "../../src/tailwind/TailwindPlugin.ts"
 
-// Keep the old broad implementation for comparison tests
-function extractClassNamesBroad(source: string): Set<string> {
-  // Old broad implementation
-  const CLASS_NAME_REGEX = /^[^"'`\s]+$/
-  const classTokenRegex = /\b[a-zA-Z][a-zA-Z0-9_:-]*(?:\[[^\]]*\])?(?:\/[0-9]+)?/g
+/**
+ * Tailwind v4 scans source files as plain text and extracts every token that
+ * looks like a candidate. The compiler later discards tokens that don't map
+ * to a real utility, so over-matching here is expected. These tests verify
+ * that intended class names ARE present in the result; we don't assert exact
+ * equality because incidental tokens (attribute names, identifiers, words in
+ * comments, etc.) will also be picked up by design.
+ *
+ * @see https://tailwindcss.com/docs/detecting-classes-in-source-files
+ */
 
-  return new Set(
-    Array.from(source.matchAll(classTokenRegex))
-      .map((match) => match[0])
-      .filter((token) => CLASS_NAME_REGEX.test(token)),
-  )
+const containsAll = (set: Set<string>, names: ReadonlyArray<string>) => {
+  for (const name of names) test.expect(set.has(name)).toBe(true)
+}
+
+const containsNone = (set: Set<string>, names: ReadonlyArray<string>) => {
+  for (const name of names) test.expect(set.has(name)).toBe(false)
 }
 
 test.describe(`${TailwindPlugin.extractClassNames.name}`, () => {
@@ -19,36 +25,37 @@ test.describe(`${TailwindPlugin.extractClassNames.name}`, () => {
     const source = `<div class="bg-red-500 text-white">Hello</div>`
     const result = TailwindPlugin.extractClassNames(source)
 
-    test.expect([...result].sort()).toEqual(["bg-red-500", "text-white"])
+    containsAll(result, ["bg-red-500", "text-white"])
   })
 
   test.it("Basic JSX className attributes", () => {
     const source = `<div className="flex items-center justify-between">Content</div>`
     const result = TailwindPlugin.extractClassNames(source)
 
-    test.expect([...result].sort()).toEqual(["flex", "items-center", "justify-between"])
+    containsAll(result, ["flex", "items-center", "justify-between"])
   })
 
   test.it("Single quotes", () => {
     const source = `<div class='bg-blue-500 hover:bg-blue-600'>Button</div>`
     const result = TailwindPlugin.extractClassNames(source)
 
-    test.expect([...result].sort()).toEqual(["bg-blue-500", "hover:bg-blue-600"])
+    containsAll(result, ["bg-blue-500", "hover:bg-blue-600"])
   })
 
   test.it("Template literals in JSX", () => {
     const source = `<div className={\`bg-\${color} text-lg\`}>Dynamic</div>`
     const result = TailwindPlugin.extractClassNames(source)
 
-    // Should extract valid static class names from template literals
-    test.expect([...result].sort()).toEqual(["text-lg"])
+    containsAll(result, ["text-lg"])
+    // The "bg-" prefix is broken by ${} so it must NOT survive as a token.
+    containsNone(result, ["bg-"])
   })
 
   test.it("JSX with quoted strings", () => {
     const source = `<div className={"p-4 m-2"}>Static in braces</div>`
     const result = TailwindPlugin.extractClassNames(source)
 
-    test.expect([...result].sort()).toEqual(["m-2", "p-4"])
+    containsAll(result, ["p-4", "m-2"])
   })
 
   test.it("Multi-line attributes", () => {
@@ -61,21 +68,20 @@ test.describe(`${TailwindPlugin.extractClassNames.name}`, () => {
     >Grid</div>`
     const result = TailwindPlugin.extractClassNames(source)
 
-    test.expect([...result].sort()).toEqual(["gap-4", "grid", "grid-cols-3"])
+    containsAll(result, ["grid", "grid-cols-3", "gap-4"])
   })
 
   test.it("Whitespace variations around equals", () => {
-    const cases = [
-      `<div class="text-sm">Normal</div>`,
-      `<div class ="text-md">Space before</div>`,
-      `<div class= "text-lg">Space after</div>`,
-      `<div class = "text-xl">Spaces both</div>`,
+    const cases: Array<readonly [string, string]> = [
+      [`<div class="text-sm">Normal</div>`, "text-sm"],
+      [`<div class ="text-md">Space before</div>`, "text-md"],
+      [`<div class= "text-lg">Space after</div>`, "text-lg"],
+      [`<div class = "text-xl">Spaces both</div>`, "text-xl"],
     ]
 
-    for (const source of cases) {
+    for (const [source, expected] of cases) {
       const result = TailwindPlugin.extractClassNames(source)
-
-      test.expect(result.size).toBe(1)
+      test.expect(result.has(expected)).toBe(true)
     }
   })
 
@@ -83,75 +89,117 @@ test.describe(`${TailwindPlugin.extractClassNames.name}`, () => {
     const source = `<div className="w-[32px] bg-[#ff0000] text-[1.5rem]">Arbitrary</div>`
     const result = TailwindPlugin.extractClassNames(source)
 
-    test.expect([...result].sort()).toEqual(["bg-[#ff0000]", "text-[1.5rem]", "w-[32px]"])
+    containsAll(result, ["w-[32px]", "bg-[#ff0000]", "text-[1.5rem]"])
   })
 
   test.it("Fraction classes", () => {
     const source = `<div className="w-1/2 h-3/4">Fractions</div>`
     const result = TailwindPlugin.extractClassNames(source)
 
-    test.expect([...result].sort()).toEqual(["h-3/4", "w-1/2"])
+    containsAll(result, ["w-1/2", "h-3/4"])
   })
 
   test.it("Complex Tailwind classes", () => {
     const source = `<div className="sm:w-1/2 md:w-1/3 lg:w-1/4 hover:bg-gray-100 focus:ring-2">Responsive</div>`
     const result = TailwindPlugin.extractClassNames(source)
 
-    test
-      .expect([...result].sort())
-      .toEqual(["focus:ring-2", "hover:bg-gray-100", "lg:w-1/4", "md:w-1/3", "sm:w-1/2"])
+    containsAll(result, [
+      "sm:w-1/2",
+      "md:w-1/3",
+      "lg:w-1/4",
+      "hover:bg-gray-100",
+      "focus:ring-2",
+    ])
   })
 
-  test.it("Should ignore similar attribute names", () => {
-    const source = `<div data-class="should-ignore" myclass="also-ignore" class="keep-this">Test</div>`
+  test.it("Negative utilities", () => {
+    const source = `<div class="-mt-4 -inset-x-2">Negative</div>`
     const result = TailwindPlugin.extractClassNames(source)
 
-    test.expect([...result]).toEqual(["keep-this"])
+    containsAll(result, ["-mt-4", "-inset-x-2"])
   })
 
-  test.it("Should handle case sensitivity", () => {
-    const source = `<div Class="uppercase-class" class="lowercase-class">Mixed case</div>`
+  test.it("Important prefix and suffix", () => {
+    const source = `<div class="!flex bg-red-500! [color:red]!">Important</div>`
     const result = TailwindPlugin.extractClassNames(source)
 
-    // Our current implementation only matches lowercase 'class'
-    test.expect([...result]).toEqual(["lowercase-class"])
+    containsAll(result, ["!flex", "bg-red-500!", "[color:red]!"])
+  })
+
+  test.it("Child variants * and **", () => {
+    const source = `<div class="*:flex **:underline">Children</div>`
+    const result = TailwindPlugin.extractClassNames(source)
+
+    containsAll(result, ["*:flex", "**:underline"])
+  })
+
+  test.it("Arbitrary variants with selectors", () => {
+    const source = `<div class="[&>div]:flex [&[data-state=open]]:hidden">Arbitrary variants</div>`
+    const result = TailwindPlugin.extractClassNames(source)
+
+    containsAll(result, ["[&>div]:flex", "[&[data-state=open]]:hidden"])
+  })
+
+  test.it("Container queries with @", () => {
+    const source = `<div class="@container @lg:flex @max-md:hidden">Container</div>`
+    const result = TailwindPlugin.extractClassNames(source)
+
+    containsAll(result, ["@container", "@lg:flex", "@max-md:hidden"])
+  })
+
+  test.it("Modifiers with /", () => {
+    const source = `<div class="bg-red-500/20 bg-red-500/[20%] bg-red-500/(--opacity)">Modifiers</div>`
+    const result = TailwindPlugin.extractClassNames(source)
+
+    containsAll(result, ["bg-red-500/20", "bg-red-500/[20%]", "bg-red-500/(--opacity)"])
+  })
+
+  test.it("CSS variable arbitrary values", () => {
+    const source = `<div class="bg-(--my-color) text-(--text,red,blue)">Vars</div>`
+    const result = TailwindPlugin.extractClassNames(source)
+
+    containsAll(result, ["bg-(--my-color)", "text-(--text,red,blue)"])
   })
 
   test.it("Empty class attributes", () => {
     const source = `<div class="" className=''>Empty</div>`
     const result = TailwindPlugin.extractClassNames(source)
 
-    test.expect(result.size).toBe(0)
+    // No utility candidates inside the empty quotes; words like "Empty" are
+    // outside any class-y context but still get scanned. Just verify nothing
+    // pretends the empty value produced a real candidate.
+    containsNone(result, [""])
   })
 
   test.it("Classes with special characters", () => {
     const source = `<div className="group-hover:text-blue-500 peer-focus:ring-2">Special chars</div>`
     const result = TailwindPlugin.extractClassNames(source)
 
-    test.expect([...result].sort()).toEqual(["group-hover:text-blue-500", "peer-focus:ring-2"])
+    containsAll(result, ["group-hover:text-blue-500", "peer-focus:ring-2"])
   })
 
-  test.it("Should not match classes in comments", () => {
+  test.it("Classes inside HTML comments are extracted (v4 plain-text scan)", () => {
     const source = `
-      <!-- <div class="commented-out">Should not match</div> -->
+      <!-- <div class="commented-out">Should still be scanned</div> -->
       <div class="real-class">Should match</div>
     `
     const result = TailwindPlugin.extractClassNames(source)
 
-    test.expect([...result]).toEqual(["real-class"])
+    // Tailwind v4 doesn't strip comments — both names appear.
+    containsAll(result, ["commented-out", "real-class"])
   })
 
-  test.it("Should not match classes in strings", () => {
+  test.it("Classes inside JS string literals are extracted (v4 plain-text scan)", () => {
     const source = `
-      const message = "This class='fake-class' should not match";
+      const message = "This class='fake-class' should be picked up";
       <div class="real-class">Real element</div>
     `
     const result = TailwindPlugin.extractClassNames(source)
 
-    test.expect([...result]).toEqual(["real-class"])
+    containsAll(result, ["fake-class", "real-class"])
   })
 
-  test.it("Complex JSX expressions should be ignored", () => {
+  test.it("Conditional JSX expressions are scanned", () => {
     const source = `
       <div className={condition ? "conditional-class" : "other-class"}>Conditional</div>
       <div className={\`template-\${variable}\`}>Template</div>
@@ -160,11 +208,12 @@ test.describe(`${TailwindPlugin.extractClassNames.name}`, () => {
     `
     const result = TailwindPlugin.extractClassNames(source)
 
-    // Only the static class should match with our strict implementation
-    test.expect([...result]).toEqual(["static-class"])
+    containsAll(result, ["conditional-class", "other-class", "static-class"])
+    // Template literal interpolation breaks the prefix.
+    containsNone(result, ["template-"])
   })
 
-  test.it("Vue.js class bindings should be ignored", () => {
+  test.it("Vue.js bindings are scanned as plain text", () => {
     const source = `
       <div :class="{ 'active': isActive }">Vue object</div>
       <div :class="['base', condition && 'active']">Vue array</div>
@@ -172,50 +221,31 @@ test.describe(`${TailwindPlugin.extractClassNames.name}`, () => {
     `
     const result = TailwindPlugin.extractClassNames(source)
 
-    // Only static class should match
-    test.expect([...result]).toEqual(["static-vue-class"])
+    containsAll(result, ["active", "base", "static-vue-class"])
   })
 
-  test.it("Svelte class directives should be ignored", () => {
+  test.it("Svelte directives are scanned as plain text", () => {
     const source = `
       <div class:active={condition}>Svelte directive</div>
       <div class="static-svelte-class">Static Svelte</div>
     `
     const result = TailwindPlugin.extractClassNames(source)
 
-    test.expect([...result]).toEqual(["static-svelte-class"])
+    containsAll(result, ["static-svelte-class"])
   })
 
-  test.it("Escaped quotes should be handled", () => {
+  test.it("Escaped quotes inside arbitrary values", () => {
     const source = `<div class="text-sm before:content-['Hello']">Escaped quotes</div>`
     const result = TailwindPlugin.extractClassNames(source)
 
-    test.expect([...result].sort()).toEqual(["before:content-['Hello']", "text-sm"])
-  })
-
-  test.it("Current broad implementation comparison", () => {
-    const source = `
-      <div class="bg-red-500 text-white">Element</div>
-      <p>Some random-text-with-hyphens in content</p>
-      const variable = "some-string";
-    `
-
-    const broadResult = extractClassNamesBroad(source)
-    const strictResult = TailwindPlugin.extractClassNames(source)
-
-    // Broad should pick up more tokens
-    test.expect(broadResult.size).toBeGreaterThan(strictResult.size)
-    // Strict should only have the actual class names
-    test.expect([...strictResult].sort()).toEqual(["bg-red-500", "text-white"])
+    containsAll(result, ["text-sm", "before:content-['Hello']"])
   })
 
   test.it("Component names with dots", () => {
     const source = `<Toast.Toast class="toast toast-top toast-center fixed top-8 z-10">Content</Toast.Toast>`
     const result = TailwindPlugin.extractClassNames(source)
 
-    test
-      .expect([...result].sort())
-      .toEqual(["fixed", "toast", "toast-center", "toast-top", "top-8", "z-10"])
+    containsAll(result, ["toast", "toast-top", "toast-center", "fixed", "top-8", "z-10"])
   })
 
   test.it("Complex component names and attributes", () => {
@@ -227,9 +257,7 @@ test.describe(`${TailwindPlugin.extractClassNames.name}`, () => {
     `
     const result = TailwindPlugin.extractClassNames(source)
 
-    test
-      .expect([...result].sort())
-      .toEqual(["bg-red-500", "border-2", "flex", "items-center", "text-lg"])
+    containsAll(result, ["flex", "items-center", "bg-red-500", "text-lg", "border-2"])
   })
 
   test.it("Conditional JSX with Toast component", () => {
@@ -244,25 +272,23 @@ test.describe(`${TailwindPlugin.extractClassNames.name}`, () => {
         )}`
     const result = TailwindPlugin.extractClassNames(source)
 
-    test
-      .expect([...result].sort())
-      .toEqual([
-        "alert",
-        "alert-success",
-        "fixed",
-        "toast",
-        "toast-center",
-        "toast-top",
-        "top-8",
-        "z-10",
-      ])
+    containsAll(result, [
+      "toast",
+      "toast-top",
+      "toast-center",
+      "fixed",
+      "top-8",
+      "z-10",
+      "alert",
+      "alert-success",
+    ])
   })
 
   test.it("Template literals with expressions", () => {
     const source = `<div class={\`toast \${props.class ?? ""}\`}>Content</div>`
     const result = TailwindPlugin.extractClassNames(source)
 
-    test.expect([...result].sort()).toEqual(["toast"])
+    containsAll(result, ["toast"])
   })
 
   test.it("Handles class after JSX arrow-function attributes", () => {
@@ -284,41 +310,49 @@ test.describe(`${TailwindPlugin.extractClassNames.name}`, () => {
     `
     const result = TailwindPlugin.extractClassNames(source)
 
-    test.expect([...result].sort()).toEqual(["btn", "btn-outline"])
+    containsAll(result, ["btn", "btn-outline"])
   })
 
-  test.it("data-class: extracts class name from attribute name", () => {
+  test.it("data-class: extracts the utility part of the attribute name", () => {
     const source = `<div data-class:underline="$active">Link</div>`
     const result = TailwindPlugin.extractClassNames(source)
 
-    test.expect([...result]).toEqual(["underline"])
+    test.expect(result.has("underline")).toBe(true)
   })
 
-  test.it("data-class: extracts multiple classes from separate attributes", () => {
+  test.it("data-class: extracts multiple utilities from separate attributes", () => {
     const source = `<div data-class:underline="$active" data-class:font-bold="$important">Text</div>`
     const result = TailwindPlugin.extractClassNames(source)
 
-    test.expect([...result].sort()).toEqual(["font-bold", "underline"])
+    containsAll(result, ["underline", "font-bold"])
   })
 
   test.it("data-class: handles modifier prefixes", () => {
     const source = `<div data-class:hover:text-blue-500="$hovered">Hover me</div>`
     const result = TailwindPlugin.extractClassNames(source)
 
-    test.expect([...result]).toEqual(["hover:text-blue-500"])
+    test.expect(result.has("hover:text-blue-500")).toBe(true)
   })
 
   test.it("data-class: handles arbitrary values", () => {
     const source = `<div data-class:w-[200px]="$wide">Wide</div>`
     const result = TailwindPlugin.extractClassNames(source)
 
-    test.expect([...result]).toEqual(["w-[200px]"])
+    test.expect(result.has("w-[200px]")).toBe(true)
   })
 
   test.it("data-class: combined with regular class attribute", () => {
     const source = `<div class="flex items-center" data-class:hidden="$isHidden">Content</div>`
     const result = TailwindPlugin.extractClassNames(source)
 
-    test.expect([...result].sort()).toEqual(["flex", "hidden", "items-center"])
+    containsAll(result, ["flex", "items-center", "hidden"])
+  })
+
+  test.it("Template-literal interpolation invalidates surrounding bracket content", () => {
+    const source = `<div class={\`bg-[\${color}]\`}>Bad</div>`
+    const result = TailwindPlugin.extractClassNames(source)
+
+    // bg-[${color}] has a $ inside the brackets, which v4 treats as invalid.
+    containsNone(result, ["bg-[${color}]"])
   })
 })

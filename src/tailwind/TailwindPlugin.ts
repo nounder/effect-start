@@ -188,25 +188,6 @@ export const make = (opts?: {
 }
 
 const CSS_IMPORT_REGEX = /@import\s+(?:url\()?["']?([^"')]+)["']?\)?\s*[^;]*;/
-const HTML_COMMENT_REGEX = /<!--[\s\S]*?-->/g
-const TEMPLATE_EXPRESSION_REGEX = /\$\{[^}]*\}/g
-const TAILWIND_CLASS_REGEX = /^[a-zA-Z0-9_:-]+(\[[^\]]*\])?$/
-const CLASS_ATTRIBUTE_PATTERNS = [
-  '\\sclass\\s*=\\s*"([^"]+)"',
-  "\\sclass\\s*=\\s*'([^']+)'",
-  '\\sclassName\\s*=\\s*"([^"]+)"',
-  "\\sclassName\\s*=\\s*'([^']+)'",
-  '\\sclassName\\s*=\\s*\\{\\s*"([^"]+)"\\s*\\}',
-  "\\sclassName\\s*=\\s*\\{\\s*'([^']+)'\\s*\\}",
-  "\\sclassName\\s*=\\s*\\{\\s*`([^`]*)`\\s*\\}",
-  "\\sclass\\s*=\\s*\\{\\s*`([^`]*)`\\s*\\}",
-  "\\sdata-class:([a-zA-Z0-9_:\\-]+(?:\\[[^\\]]*\\])?)\\s*=",
-]
-
-const CLASS_ATTRIBUTE_REGEX = new RegExp(
-  CLASS_ATTRIBUTE_PATTERNS.map((pattern) => `(?:${pattern})`).join("|"),
-  "g",
-)
 
 function hasCssImport(css: string, specifier?: string): boolean {
   const [, importPath] = css.match(CSS_IMPORT_REGEX) ?? []
@@ -216,111 +197,341 @@ function hasCssImport(css: string, specifier?: string): boolean {
   return specifier === undefined || importPath.includes(specifier)
 }
 
+/**
+ * Extract Tailwind candidate class names from arbitrary source text.
+ *
+ * Mirrors Tailwind v4's plain-text scanning rules: the whole file is treated
+ * as text, tokens are split on Tailwind's boundary characters, and any token
+ * shaped like a candidate is emitted. The Tailwind compiler discards tokens
+ * that don't map to known utilities, so over-matching here is expected.
+ *
+ * @see https://tailwindcss.com/docs/detecting-classes-in-source-files
+ * @see https://github.com/tailwindlabs/tailwindcss/blob/main/crates/oxide/src/extractor/boundary.rs
+ */
 export function extractClassNames(source: string): Set<string> {
   const candidates = new Set<string>()
-  const sourceWithoutComments = source.replace(HTML_COMMENT_REGEX, "")
+  const len = source.length
+  let i = 0
 
-  for (const tag of extractTagLikeSegments(sourceWithoutComments)) {
-    for (const match of tag.matchAll(CLASS_ATTRIBUTE_REGEX)) {
-      let classString = ""
-      for (let i = 1; i < match.length; i++) {
-        if (match[i] !== undefined) {
-          classString = match[i]
-          break
-        }
-      }
-
-      if (!classString) {
-        continue
-      }
-
-      if (classString.includes("${")) {
-        const staticParts = classString.split(TEMPLATE_EXPRESSION_REGEX)
-
-        for (const part of staticParts) {
-          const names = part
-            .trim()
-            .split(/\s+/)
-            .filter((name) => {
-              if (name.length === 0) return false
-              if (name.endsWith("-") || name.startsWith("-")) return false
-              return TAILWIND_CLASS_REGEX.test(name)
-            })
-          names.forEach((name) => candidates.add(name))
-        }
-      } else {
-        const names = classString.split(/\s+/).filter((name) => name.length > 0)
-        names.forEach((name) => candidates.add(name))
-      }
+  while (i < len) {
+    if (!isBeforeBoundary(i === 0 ? "\0" : source[i - 1])) {
+      i++
+      continue
     }
 
+    const token = readCandidate(source, i)
+
+    if (token === null) {
+      i++
+      continue
+    }
+
+    const after = token.end >= len ? "\0" : source[token.end]
+    if (!isAfterBoundary(after)) {
+      i = token.end
+      continue
+    }
+
+    candidates.add(token.value)
+
+    // Datastar convention: data-class:<utility>="..." conditionally applies <utility>.
+    // The plain-text token is "data-class:<utility>"; surface the utility part too.
+    if (token.value.startsWith("data-class:")) {
+      const inner = token.value.slice("data-class:".length)
+      if (inner.length > 0) candidates.add(inner)
+    }
+
+    i = token.end
   }
 
   return candidates
 }
 
-function extractTagLikeSegments(source: string): Array<string> {
-  const tags: Array<string> = []
+const BOUNDARY_COMMON = new Set([" ", "\t", "\n", "\r", "\f", '"', "'", "`", "\0"])
+const BOUNDARY_BEFORE_ONLY = new Set([".", "}", ">"])
+const BOUNDARY_AFTER_ONLY = new Set(["]", "{", "=", "\\", "<"])
 
-  for (let i = 0; i < source.length; i++) {
-    if (source[i] !== "<") {
-      continue
-    }
+function isBeforeBoundary(ch: string): boolean {
+  return BOUNDARY_COMMON.has(ch) || BOUNDARY_BEFORE_ONLY.has(ch)
+}
 
-    const next = source[i + 1]
-    if (!next || next === "/" || next === "!" || /\s/.test(next)) {
-      continue
-    }
+function isAfterBoundary(ch: string): boolean {
+  return BOUNDARY_COMMON.has(ch) || BOUNDARY_AFTER_ONLY.has(ch)
+}
 
-    let quote: '"' | "'" | "`" | null = null
-    let escaped = false
-    let braceDepth = 0
+function isLower(ch: string): boolean {
+  return ch >= "a" && ch <= "z"
+}
 
-    for (let j = i + 1; j < source.length; j++) {
-      const char = source[j]
+function isAlpha(ch: string): boolean {
+  return (ch >= "a" && ch <= "z") || (ch >= "A" && ch <= "Z")
+}
 
-      if (quote !== null) {
-        if (escaped) {
-          escaped = false
-          continue
-        }
+function isAlphaNum(ch: string): boolean {
+  return isAlpha(ch) || (ch >= "0" && ch <= "9")
+}
 
-        if (char === "\\") {
-          escaped = true
-          continue
-        }
+function isDigit(ch: string): boolean {
+  return ch >= "0" && ch <= "9"
+}
 
-        if (char === quote) {
-          quote = null
-        }
+interface ReadResult {
+  value: string
+  end: number
+}
 
-        continue
-      }
+/**
+ * Read a single Tailwind candidate starting at `start`. Returns null when the
+ * position cannot begin a valid candidate. The returned `end` is the index
+ * one past the last consumed character.
+ */
+function readCandidate(source: string, start: number): ReadResult | null {
+  const len = source.length
+  let i = start
 
-      if (char === '"' || char === "'" || char === "`") {
-        quote = char
-        continue
-      }
-
-      if (char === "{") {
-        braceDepth++
-        continue
-      }
-
-      if (char === "}" && braceDepth > 0) {
-        braceDepth--
-        continue
-      }
-
-      if (char === ">" && braceDepth === 0) {
-        tags.push(source.slice(i, j + 1))
-        i = j
-        break
-      }
-    }
+  // Optional leading "!" (legacy important).
+  let importantPrefix = false
+  if (source[i] === "!") {
+    importantPrefix = true
+    i++
+    if (i >= len) return null
   }
 
-  return tags
+  // Read variant chain: <variant>:<variant>:...:<utility>
+  // Each variant ends in ":". A variant can be a name (with same shape as a
+  // utility minus arbitrary value), an arbitrary "[...]" expression, or the
+  // child selectors "*" / "**".
+  while (true) {
+    const variantStart = i
+    const variantEnd = readVariantOrUtility(source, i)
+    if (variantEnd === null) {
+      return i === start || (importantPrefix && i === start + 1) ? null : null
+    }
+    if (source[variantEnd] === ":") {
+      // Consumed a variant; loop for the next segment.
+      i = variantEnd + 1
+      if (i >= len) return null
+      continue
+    }
+    // No trailing ":" — this segment is the utility. We're done with the body.
+    i = variantEnd
+    // Re-check: a variant that's just "*"/"**" without ":" is not a utility.
+    if (variantStart === start && !importantPrefix) {
+      const head = source[start]
+      if (head === "*") return null
+    }
+    break
+  }
+
+  // Optional "/modifier".
+  if (source[i] === "/") {
+    const modEnd = readModifier(source, i + 1)
+    if (modEnd !== null) i = modEnd
+  }
+
+  // Optional trailing "!" (modern important). Cannot combine with leading "!".
+  if (!importantPrefix && source[i] === "!") {
+    i++
+  }
+
+  if (i === start || (importantPrefix && i === start + 1)) return null
+
+  return { value: source.slice(start, i), end: i }
+}
+
+/**
+ * Read either a variant or a utility body starting at `i`. Returns the end
+ * index, or null if nothing valid was consumed. The caller decides whether
+ * the next char (":") promotes this to a variant.
+ */
+function readVariantOrUtility(source: string, start: number): number | null {
+  const len = source.length
+  let i = start
+  if (i >= len) return null
+  const head = source[i]
+
+  // Arbitrary property/variant: "[...]"
+  if (head === "[") {
+    const end = skipBracketed(source, i, "[", "]")
+    return end === null ? null : end
+  }
+
+  // Child variants "*" and "**"
+  if (head === "*") {
+    i++
+    if (source[i] === "*") i++
+    return i
+  }
+
+  // "@" container queries (e.g. @container, @lg, @max-md)
+  if (head === "@") {
+    i++
+    return readNameBody(source, i)
+  }
+
+  // Negative utility: "-<lower>..."
+  if (head === "-") {
+    if (!source[i + 1] || !isLower(source[i + 1])) return null
+    i++
+    return readNameBody(source, i)
+  }
+
+  // Normal utility: must start with a lowercase letter.
+  if (!isLower(head)) return null
+  return readNameBody(source, i)
+}
+
+/**
+ * Read a utility name body starting at `start`. The first char is assumed to
+ * already be valid for starting (lowercase letter, or has been consumed). We
+ * accept letters / digits / "_" / "-" / "." (positional rules) plus embedded
+ * "[...]" and "(...)" runs. Returns the end index.
+ */
+function readNameBody(source: string, start: number): number {
+  const len = source.length
+  let i = start
+
+  while (i < len) {
+    const ch = source[i]
+    if (isAlphaNum(ch) || ch === "_") {
+      i++
+      continue
+    }
+    if (ch === "-") {
+      const next = source[i + 1]
+      // "-" must be followed by alnum, "-", "[", or "(" to remain in the name.
+      if (next === undefined) break
+      if (isAlphaNum(next) || next === "-" || next === "[" || next === "(") {
+        i++
+        continue
+      }
+      break
+    }
+    if (ch === ".") {
+      // "." valid only between digits.
+      const prev = source[i - 1]
+      const next = source[i + 1]
+      if (isDigit(prev) && isDigit(next)) {
+        i++
+        continue
+      }
+      break
+    }
+    if (ch === "%") {
+      // "%" valid only directly after a digit; ends the name.
+      const prev = source[i - 1]
+      if (isDigit(prev)) {
+        i++
+      }
+      break
+    }
+    if (ch === "[") {
+      const end = skipBracketed(source, i, "[", "]")
+      if (end === null) break
+      i = end
+      continue
+    }
+    if (ch === "(") {
+      const end = skipBracketed(source, i, "(", ")")
+      if (end === null) break
+      i = end
+      continue
+    }
+    break
+  }
+
+  // Disallow trailing "-" / "_" / ".".
+  while (i > start) {
+    const last = source[i - 1]
+    if (last === "-" || last === "_" || last === ".") {
+      i--
+      continue
+    }
+    break
+  }
+
+  return i
+}
+
+/**
+ * Consume a bracketed run starting at `start` (which must be `open`). Tracks
+ * nested brackets (mixing of "[]" and "()" both supported via stack). Returns
+ * the index one past the matching close, or null if unmatched / contains a
+ * disallowed boundary char (raw whitespace breaks the candidate; Tailwind
+ * uses "_" as the in-bracket space).
+ */
+function skipBracketed(source: string, start: number, open: string, close: string): number | null {
+  const len = source.length
+  if (source[start] !== open) return null
+  const stack: Array<string> = [close]
+  let i = start + 1
+  while (i < len) {
+    const ch = source[i]
+    if (ch === "[") {
+      stack.push("]")
+      i++
+      continue
+    }
+    if (ch === "(") {
+      stack.push(")")
+      i++
+      continue
+    }
+    if (ch === "]" || ch === ")") {
+      const expected = stack[stack.length - 1]
+      if (ch !== expected) return null
+      stack.pop()
+      i++
+      if (stack.length === 0) return i
+      continue
+    }
+    // Raw whitespace, "$", "`", "{", "}" break a candidate. Tailwind v4 uses
+    // "_" as the in-bracket space placeholder, and template-literal "${...}"
+    // interpolation invalidates the surrounding arbitrary value.
+    if (
+      ch === " " ||
+      ch === "\t" ||
+      ch === "\n" ||
+      ch === "\r" ||
+      ch === "\f" ||
+      ch === "$" ||
+      ch === "`" ||
+      ch === "{" ||
+      ch === "}"
+    ) {
+      return null
+    }
+    i++
+  }
+  return null
+}
+
+/**
+ * Read a "/modifier" body. The modifier can be a name (alnum/_/-) optionally
+ * ending with "%", an arbitrary "[...]", or a CSS variable "(...)". Returns
+ * the end index (one past the modifier) or null if empty.
+ */
+function readModifier(source: string, start: number): number | null {
+  const len = source.length
+  if (start >= len) return null
+  const head = source[start]
+  if (head === "[") return skipBracketed(source, start, "[", "]")
+  if (head === "(") return skipBracketed(source, start, "(", ")")
+
+  let i = start
+  while (i < len) {
+    const ch = source[i]
+    if (isAlphaNum(ch) || ch === "_" || ch === "-" || ch === ".") {
+      i++
+      continue
+    }
+    if (ch === "%") {
+      i++
+      break
+    }
+    break
+  }
+  return i === start ? null : i
 }
 
 async function scanFiles(dir: string): Promise<Set<string>> {
