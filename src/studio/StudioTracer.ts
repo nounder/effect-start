@@ -7,6 +7,7 @@ import * as Option from "effect/Option"
 import * as PubSub from "effect/PubSub"
 import * as Tracer from "effect/Tracer"
 import * as SqlClient from "../sql/SqlClient.ts"
+import * as Studio from "./Studio.ts"
 import * as StudioStore from "./StudioStore.ts"
 
 const publish = (store: StudioStore.StudioStoreShape, event: StudioStore.StudioEvent) =>
@@ -130,11 +131,11 @@ const make = (store: StudioStore.StudioStoreShape, sql: SqlClient.SqlClient): Tr
 export const layer: Layer.Layer<
   never,
   never,
-  StudioStore.StudioStore | SqlClient.SqlClient
+  Studio.Studio | SqlClient.SqlClient
 > = Layer.unwrapEffect(
   Effect.gen(function* () {
-    const store = yield* StudioStore.StudioStore
+    const studio = yield* Studio.Studio
     const sql = yield* SqlClient.SqlClient
-    return Layer.setTracer(make(store, sql))
+    return Layer.setTracer(make(studio.store, sql))
   }),
 )

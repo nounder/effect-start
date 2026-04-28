@@ -1,7 +1,5 @@
-import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as GlobalValue from "effect/GlobalValue"
-import * as Layer from "effect/Layer"
 import * as MutableRef from "effect/MutableRef"
 import * as PubSub from "effect/PubSub"
 import * as Schema from "effect/Schema"
@@ -132,7 +130,6 @@ export interface FiberContext {
 }
 
 export interface StudioStoreShape {
-  readonly sql: SqlClient.SqlClient
   readonly events: PubSub.PubSub<StudioEvent>
   readonly spanCapacity: number
   readonly logCapacity: number
@@ -146,17 +143,6 @@ export function fiberIdCounter(): number {
     MutableRef.make(0),
   )
   return MutableRef.get(counter)
-}
-
-export class StudioStore extends Context.Tag("effect-start/StudioStore")<
-  StudioStore,
-  StudioStoreShape
->() {}
-
-export interface StudioStoreOptions {
-  readonly spanCapacity?: number
-  readonly logCapacity?: number
-  readonly errorCapacity?: number
 }
 
 const DDL = [
@@ -199,28 +185,12 @@ const DDL = [
   )`,
 ]
 
-export function layer(
-  options?: StudioStoreOptions,
-): Layer.Layer<StudioStore, SqlClient.SqlError, SqlClient.SqlClient> {
-  return Layer.effect(
-    StudioStore,
-    Effect.gen(function* () {
-      const sql = yield* SqlClient.SqlClient
-      for (const ddl of DDL) {
-        yield* sql.unsafe(ddl)
-      }
-      return {
-        sql,
-        events: yield* PubSub.unbounded<StudioEvent>(),
-        spanCapacity: options?.spanCapacity ?? 1000,
-        logCapacity: options?.logCapacity ?? 5000,
-        errorCapacity: options?.errorCapacity ?? 1000,
-        metrics: [] as Array<StudioMetricSnapshot>,
-        process: undefined,
-      }
-    }),
-  )
-}
+export const setupDatabase = Effect.gen(function* () {
+  const sql = yield* SqlClient.SqlClient
+  for (const ddl of DDL) {
+    yield* sql.unsafe(ddl)
+  }
+})
 
 function serializeBigint(value: unknown): unknown {
   if (typeof value === "bigint") return `__bigint__${value}`

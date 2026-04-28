@@ -1,9 +1,9 @@
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
+import * as PubSub from "effect/PubSub"
 import * as Route from "../Route.ts"
 import * as sqlBun from "../sql/bun/index.ts"
-import type * as SqlClient from "../sql/SqlClient.ts"
 import * as StudioErrors from "./StudioErrors.ts"
 import * as StudioLogger from "./StudioLogger.ts"
 import * as StudioMetrics from "./StudioMetrics.ts"
@@ -11,44 +11,65 @@ import * as StudioProcess from "./StudioProcess.ts"
 import * as StudioStore from "./StudioStore.ts"
 import * as StudioTracer from "./StudioTracer.ts"
 import routes from "./routes/tree.ts"
+import * as PathPattern from "../_PathPattern.ts"
 
-type StudioAuth = {
+type AuthOptions = {
   readonly type: "basic"
   readonly username: string
   readonly password: string
 }
 
-export interface StudioService {
-  readonly prefix: string
-  readonly auth: StudioAuth | undefined
-  readonly store: StudioStore.StudioStoreShape
+export class Studio extends Context.Tag("effect-start/Studio")<
+  Studio,
+  {
+    readonly prefix: string
+    readonly auth: AuthOptions | undefined
+    readonly store: StudioStore.StudioStoreShape
+  }
+>() {}
+
+interface Options {
+  readonly prefix?: PathPattern.PathPattern
+  auth?: AuthOptions
+  readonly spanCapacity?: number
+  readonly logCapacity?: number
+  readonly errorCapacity?: number
 }
 
-export class Studio extends Context.Tag("effect-start/Studio")<Studio, StudioService>() {}
-
-export interface StudioOptions extends StudioStore.StudioStoreOptions {
-  readonly prefix?: string
-  readonly auth?: StudioAuth
-  readonly sqlLayer?: Layer.Layer<SqlClient.SqlClient, SqlClient.SqlError>
+export function layer(options?: Options) {
+  const sqlLayer = sqlBun
+    .layer({ adapter: "sqlite" as const, filename: ":memory:" })
+    .pipe(Layer.orDie)
+  const prefix = options?.prefix ?? "/studio"
+  const studio = layerStudio(options)
+  return Layer.mergeAll(
+    studio,
+    layerTracking().pipe(Layer.provide(studio)),
+    layerRoutes(prefix),
+    sqlLayer,
+  ).pipe(Layer.provide(sqlLayer))
 }
 
-function layerStore(options?: StudioOptions) {
-  const sqlLayer =
-    options?.sqlLayer ?? sqlBun.layer({ adapter: "sqlite" as const, filename: ":memory:" })
-  const providedSqlLayer = sqlLayer.pipe(Layer.orDie)
-  const storeLayer = StudioStore.layer(options).pipe(Layer.provide(providedSqlLayer), Layer.orDie)
-  const studioLayer = Layer.effect(
+function layerStudio(options?: Options) {
+  return Layer.effect(
     Studio,
     Effect.gen(function* () {
-      const store = yield* StudioStore.StudioStore
+      yield* StudioStore.setupDatabase
+      const store: StudioStore.StudioStoreShape = {
+        events: yield* PubSub.unbounded<StudioStore.StudioEvent>(),
+        spanCapacity: options?.spanCapacity ?? 1000,
+        logCapacity: options?.logCapacity ?? 5000,
+        errorCapacity: options?.errorCapacity ?? 1000,
+        metrics: [] as Array<StudioStore.StudioMetricSnapshot>,
+        process: undefined,
+      }
       return {
         prefix: options?.prefix ?? "/studio",
         auth: options?.auth,
         store,
       }
     }),
-  ).pipe(Layer.provide(storeLayer))
-  return Layer.mergeAll(providedSqlLayer, storeLayer, studioLayer)
+  ).pipe(Layer.orDie)
 }
 
 function layerTracking() {
@@ -65,10 +86,4 @@ function layerRoutes(prefix: string) {
   return Route.layerMerge({
     [prefix as "/"]: routes,
   })
-}
-
-export function layer(options?: StudioOptions) {
-  const prefix = options?.prefix ?? "/studio"
-  const store = layerStore(options)
-  return Layer.mergeAll(store, layerTracking().pipe(Layer.provide(store)), layerRoutes(prefix))
 }

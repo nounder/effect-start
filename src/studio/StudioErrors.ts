@@ -12,6 +12,7 @@ import type * as Context from "effect/Context"
 import type * as Fiber from "effect/Fiber"
 import * as Supervisor from "effect/Supervisor"
 import * as SqlClient from "../sql/SqlClient.ts"
+import * as Studio from "./Studio.ts"
 import * as StudioStore from "./StudioStore.ts"
 
 function safeSerialize(value: unknown, depth = 0): unknown {
@@ -222,11 +223,11 @@ function make(
 export const layer: Layer.Layer<
   never,
   never,
-  StudioStore.StudioStore | SqlClient.SqlClient
+  Studio.Studio | SqlClient.SqlClient
 > = Layer.unwrapEffect(
   Effect.gen(function* () {
-    const store = yield* StudioStore.StudioStore
+    const studio = yield* Studio.Studio
     const sql = yield* SqlClient.SqlClient
-    return Supervisor.addSupervisor(make(store, sql))
+    return Supervisor.addSupervisor(make(studio.store, sql))
   }),
 )

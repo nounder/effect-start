@@ -8,6 +8,7 @@ import * as Logger from "effect/Logger"
 import * as PubSub from "effect/PubSub"
 import * as SqlClient from "../sql/SqlClient.ts"
 import * as Pretty from "./_Pretty.ts"
+import * as Studio from "./Studio.ts"
 import * as StudioStore from "./StudioStore.ts"
 
 const make = (store: StudioStore.StudioStoreShape, sql: SqlClient.SqlClient) =>
@@ -51,11 +52,11 @@ const make = (store: StudioStore.StudioStoreShape, sql: SqlClient.SqlClient) =>
 export const layer: Layer.Layer<
   never,
   never,
-  StudioStore.StudioStore | SqlClient.SqlClient
+  Studio.Studio | SqlClient.SqlClient
 > = Layer.unwrapEffect(
   Effect.gen(function* () {
-    const store = yield* StudioStore.StudioStore
+    const studio = yield* Studio.Studio
     const sql = yield* SqlClient.SqlClient
-    return Logger.add(make(store, sql))
+    return Logger.add(make(studio.store, sql))
   }),
 )

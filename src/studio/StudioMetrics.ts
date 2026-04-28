@@ -4,11 +4,12 @@ import * as Metric from "effect/Metric"
 import * as MetricKeyType from "effect/MetricKeyType"
 import * as PubSub from "effect/PubSub"
 import * as Schedule from "effect/Schedule"
+import * as Studio from "./Studio.ts"
 import * as StudioStore from "./StudioStore.ts"
 
-export const layer: Layer.Layer<never, never, StudioStore.StudioStore> = Layer.scopedDiscard(
+export const layer: Layer.Layer<never, never, Studio.Studio> = Layer.scopedDiscard(
   Effect.gen(function* () {
-    const store = yield* StudioStore.StudioStore
+    const { store } = yield* Studio.Studio
 
     yield* Effect.forkScoped(
       Effect.schedule(
