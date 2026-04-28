@@ -13,17 +13,6 @@ export const make = (opts?: {
    */
   cssPattern?: RegExp
 
-  /**
-   * Scan a path for candidates.
-   * By default, only class names found in files that are part of the import graph
-   * that imports tailwind are considered.
-   *
-   * This option scans the provided path and ensures that class names found under this path
-   * are includedd, even if they are not part of the import graph.
-   * Useful when we want to scan clientside code which is not imported directly on serverside.
-   */
-  scanPath?: string
-
   target?: "browser" | "bun" | "node"
 }): BunPlugin => {
   const {
@@ -36,7 +25,6 @@ export const make = (opts?: {
     name: "Tailwind.css plugin",
     target,
     async setup(builder) {
-      const scannedCandidates = new Set<string>()
       // (file) -> (class names)
       const classNameCandidates = new Map<string, Set<string>>()
       // (importer path) -> (imported paths)
@@ -44,62 +32,48 @@ export const make = (opts?: {
       // (imported path) -> (importer paths)
       const importDescendants = new Map<string, Set<string>>()
 
-      const prepopulateCandidates = opts?.scanPath
-        ? async () => {
-            const candidates = await scanFiles(opts.scanPath!)
-
-            scannedCandidates.clear()
-
-            candidates.forEach((candidate) => scannedCandidates.add(candidate))
-          }
-        : null
-
-      // Track import relationships when dynamically scanning
-      // from tailwind entrypoints.
+      // Track import relationships from tailwind entrypoints.
       // As of Bun 1.3 this pathway break for Bun Full-Stack server.
-      // Better to pass scanPath explicitly.
       // @see https://github.com/oven-sh/bun/issues/20877
-      if (!prepopulateCandidates) {
-        builder.onResolve(
-          {
-            filter: /.*/,
-          },
-          (args) => {
-            const fullPath = Bun.resolveSync(args.path, args.resolveDir)
-            const importer = args.importer
+      builder.onResolve(
+        {
+          filter: /.*/,
+        },
+        (args) => {
+          const fullPath = Bun.resolveSync(args.path, args.resolveDir)
+          const importer = args.importer
 
-            if (fullPath.includes("/node_modules/")) {
-              return undefined
-            }
-
-            /**
-             * Register every visited module.
-             */
-            {
-              if (!importAncestors.has(fullPath)) {
-                importAncestors.set(fullPath, new Set())
-              }
-
-              if (!importDescendants.has(fullPath)) {
-                importDescendants.set(fullPath, new Set())
-              }
-
-              if (!importAncestors.has(importer)) {
-                importAncestors.set(args.importer, new Set())
-              }
-
-              if (!importDescendants.has(importer)) {
-                importDescendants.set(importer, new Set())
-              }
-            }
-
-            importAncestors.get(fullPath)!.add(importer)
-            importDescendants.get(importer)!.add(fullPath)
-
+          if (fullPath.includes("/node_modules/")) {
             return undefined
-          },
-        )
-      }
+          }
+
+          /**
+           * Register every visited module.
+           */
+          {
+            if (!importAncestors.has(fullPath)) {
+              importAncestors.set(fullPath, new Set())
+            }
+
+            if (!importDescendants.has(fullPath)) {
+              importDescendants.set(fullPath, new Set())
+            }
+
+            if (!importAncestors.has(importer)) {
+              importAncestors.set(args.importer, new Set())
+            }
+
+            if (!importDescendants.has(importer)) {
+              importDescendants.set(importer, new Set())
+            }
+          }
+
+          importAncestors.get(fullPath)!.add(importer)
+          importDescendants.get(importer)!.add(fullPath)
+
+          return undefined
+        },
+      )
 
       /**
        * Scan for class name candidates in component files.
@@ -136,42 +110,61 @@ export const make = (opts?: {
 
           const compiler = await Tailwind.compile(source, {
             base: NPath.dirname(args.path),
-            onDependency: (path) => {},
+            onDependency: () => {},
           })
-
-          await prepopulateCandidates?.()
 
           // wait for other files to be loaded so we can collect class name candidates
           await args.defer()
 
-          const candidates = new Set<string>(scannedCandidates)
+          const candidates = new Set<string>()
 
-          // when we scan a path, we don't need to track candidate tree
-          if (!prepopulateCandidates) {
-            const pendingModules = [
-              // get class name candidates from all modules that import this one
-              ...(importAncestors.get(args.path) ?? []),
-            ]
-            const visitedModules = new Set<string>()
+          // Walk the import graph: collect candidates from every module
+          // transitively imported by this CSS entrypoint's importers.
+          const pendingModules = [...(importAncestors.get(args.path) ?? [])]
+          const visitedModules = new Set<string>()
 
-            while (pendingModules.length > 0) {
-              const currentPath = pendingModules.shift()!
+          while (pendingModules.length > 0) {
+            const currentPath = pendingModules.shift()!
 
-              if (visitedModules.has(currentPath)) {
+            if (visitedModules.has(currentPath)) continue
+
+            const moduleImports = importDescendants.get(currentPath)
+
+            moduleImports?.forEach((moduleImport) => {
+              classNameCandidates.get(moduleImport)?.forEach((c) => candidates.add(c))
+              pendingModules.push(moduleImport)
+            })
+
+            visitedModules.add(currentPath)
+          }
+
+          // Honor `@source` directives parsed by Tailwind from the CSS:
+          // `compiler.root` is the implicit @source (`source(...)` on @import),
+          // `compiler.sources` is every explicit `@source "..."` directive.
+          // When neither is present, default to scanning the CWD — this matches
+          // the documented behavior of Tailwind's official integrations
+          // (@tailwindcss/oxide), which `compile()` itself doesn't replicate
+          // (it leaves `root` as `null`, deferring the decision to the host).
+          const rootPattern =
+            compiler.root === "none"
+              ? null
+              : (compiler.root ?? { base: process.cwd(), pattern: "." })
+          const sourcePatterns = [
+            ...(rootPattern ? [rootPattern] : []),
+            ...compiler.sources.filter((s) => !s.negated),
+          ]
+          for (const { base, pattern } of sourcePatterns) {
+            const resolved = await resolveSourcePattern(base, pattern)
+            const glob = new Bun.Glob(resolved.pattern)
+            for await (const filePath of glob.scan({ cwd: resolved.base, absolute: true })) {
+              if (filePath.includes("/node_modules/")) continue
+              const cached = classNameCandidates.get(filePath)
+              if (cached) {
+                cached.forEach((c) => candidates.add(c))
                 continue
               }
-
-              const moduleImports = importDescendants.get(currentPath)
-
-              moduleImports?.forEach((moduleImport) => {
-                const moduleCandidates = classNameCandidates.get(moduleImport)
-
-                moduleCandidates?.forEach((candidate) => candidates.add(candidate))
-
-                pendingModules.push(moduleImport)
-              })
-
-              visitedModules.add(currentPath)
+              const text = await Bun.file(filePath).text()
+              extractClassNames(text).forEach((c) => candidates.add(c))
             }
           }
 
@@ -188,6 +181,31 @@ export const make = (opts?: {
 }
 
 const CSS_IMPORT_REGEX = /@import\s+(?:url\()?["']?([^"')]+)["']?\)?\s*[^;]*;/
+
+const SOURCE_FILE_GLOB = "**/*.{js,jsx,ts,tsx,html,vue,svelte,astro}"
+
+/**
+ * Tailwind's `source(...)` and `@source "..."` directives accept either a
+ * directory or a glob pattern. When the pattern resolves to a directory,
+ * scan it with the standard component-file extensions; otherwise treat the
+ * pattern as a literal glob.
+ */
+async function resolveSourcePattern(
+  base: string,
+  pattern: string,
+): Promise<{ base: string; pattern: string }> {
+  const NPath = await import("node:path")
+  const fs = await import("node:fs/promises")
+  const trimmed = pattern.replace(/\/+$/, "")
+  const candidate = NPath.isAbsolute(trimmed) ? trimmed : NPath.resolve(base, trimmed || ".")
+  try {
+    const stat = await fs.stat(candidate)
+    if (stat.isDirectory()) {
+      return { base: candidate, pattern: SOURCE_FILE_GLOB }
+    }
+  } catch {}
+  return { base, pattern }
+}
 
 function hasCssImport(css: string, specifier?: string): boolean {
   const [, importPath] = css.match(CSS_IMPORT_REGEX) ?? []
@@ -534,23 +552,3 @@ function readModifier(source: string, start: number): number | null {
   return i === start ? null : i
 }
 
-async function scanFiles(dir: string): Promise<Set<string>> {
-  const candidates = new Set<string>()
-  const glob = new Bun.Glob("**/*.{js,jsx,ts,tsx,html,vue,svelte,astro}")
-
-  for await (const filePath of glob.scan({
-    cwd: dir,
-    absolute: true,
-  })) {
-    if (filePath.includes("/node_modules/")) {
-      continue
-    }
-
-    const contents = await Bun.file(filePath).text()
-    const classNames = extractClassNames(contents)
-
-    classNames.forEach((className) => candidates.add(className))
-  }
-
-  return candidates
-}
