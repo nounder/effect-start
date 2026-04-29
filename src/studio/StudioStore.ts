@@ -49,7 +49,7 @@ export interface StudioSpan {
   readonly events: Array<{ name: string; startTime: bigint; attributes?: Record<string, unknown> }>
 }
 
-export interface StudioLog {
+export interface LogEntry {
   readonly id: bigint
   readonly level: "DEBUG" | "INFO" | "WARNING" | "ERROR" | "FATAL"
   readonly message: string
@@ -89,7 +89,7 @@ export interface ProcessStats {
   }
 }
 
-export interface StudioErrorDetail {
+export interface ErrorDetail {
   readonly kind: "fail" | "die"
   readonly tag: string | undefined
   readonly message: string
@@ -97,15 +97,15 @@ export interface StudioErrorDetail {
   readonly span: string | undefined
 }
 
-export interface StudioError {
+export interface ErrorEntry {
   readonly id: bigint
   readonly fiberId: string
   readonly interrupted: boolean
   readonly prettyPrint: string
-  readonly details: Array<StudioErrorDetail>
+  readonly details: Array<ErrorDetail>
 }
 
-export interface StudioMetricSnapshot {
+export interface MetricSnapshot {
   readonly name: string
   readonly type: "counter" | "gauge" | "histogram" | "summary" | "frequency"
   readonly value: unknown
@@ -118,9 +118,9 @@ export type StudioEvent =
   | { readonly _tag: "SpanEnd"; readonly span: StudioSpan }
   | { readonly _tag: "TraceStart"; readonly traceId: bigint }
   | { readonly _tag: "TraceEnd"; readonly traceId: bigint }
-  | { readonly _tag: "Log"; readonly log: StudioLog }
-  | { readonly _tag: "Error"; readonly error: StudioError }
-  | { readonly _tag: "MetricsSnapshot"; readonly metrics: Array<StudioMetricSnapshot> }
+  | { readonly _tag: "Log"; readonly log: LogEntry }
+  | { readonly _tag: "Error"; readonly error: ErrorEntry }
+  | { readonly _tag: "MetricsSnapshot"; readonly metrics: Array<MetricSnapshot> }
   | { readonly _tag: "ProcessSnapshot"; readonly stats: ProcessStats }
 
 export interface FiberContext {
@@ -129,16 +129,17 @@ export interface FiberContext {
   readonly annotations: Record<string, unknown>
 }
 
-export interface StudioStoreShape {
+export interface State {
   readonly events: PubSub.PubSub<StudioEvent>
   readonly spanCapacity: number
   readonly logCapacity: number
   readonly errorCapacity: number
-  metrics: Array<StudioMetricSnapshot>
+  metrics: Array<MetricSnapshot>
   process: ProcessStats | undefined
 }
 
 export function fiberIdCounter(): number {
+  // TODO is there more reliable way to get the fiber id?
   const counter = GlobalValue.globalValue(Symbol.for("effect/Fiber/Id/_fiberCounter"), () =>
     MutableRef.make(0),
   )
@@ -232,6 +233,7 @@ export const SpanRow = Schema.Struct({
   attributes: Schema.String,
   events: Schema.String,
 })
+// remove those typeof X.Type in this file
 type SpanRow = typeof SpanRow.Type
 
 export const LogRow = Schema.Struct({
@@ -263,6 +265,7 @@ export const FiberRow = Schema.Struct({
 })
 type FiberRow = typeof FiberRow.Type
 
+// TODO: do we need to dserialize? why not store it directly?
 function deserializeSpan(row: SpanRow): StudioSpan {
   const events = reviveBigint(JSON.parse(row.events)) as StudioSpan["events"]
   return {
@@ -281,10 +284,10 @@ function deserializeSpan(row: SpanRow): StudioSpan {
   }
 }
 
-function deserializeLog(row: LogRow): StudioLog {
+function deserializeLog(row: LogRow): LogEntry {
   return {
     id: BigInt(row.id),
-    level: row.level as StudioLog["level"],
+    level: row.level as LogEntry["level"],
     message: row.message,
     fiberId: row.fiberId,
     cause: row.cause ?? undefined,
@@ -293,7 +296,7 @@ function deserializeLog(row: LogRow): StudioLog {
   }
 }
 
-function deserializeError(row: ErrorRow): StudioError {
+function deserializeError(row: ErrorRow): ErrorEntry {
   return {
     id: BigInt(row.id),
     fiberId: row.fiberId,
@@ -303,26 +306,28 @@ function deserializeError(row: ErrorRow): StudioError {
   }
 }
 
+// TODO:
 const withSql = <A, E>(
   f: (sql: SqlClient.SqlClient) => Effect.Effect<A, E>,
 ): Effect.Effect<A, E, SqlClient.SqlClient> => Effect.flatMap(SqlClient.SqlClient, f)
 
 export function insertSpan(span: StudioSpan) {
-  return withSql((sql) =>
-    sql`INSERT INTO Span ${sql({
-      spanId: span.spanId,
-      traceId: span.traceId,
-      fiberId: span.fiberId ?? null,
-      name: span.name,
-      kind: span.kind,
-      parentSpanId: span.parentSpanId ?? null,
-      startTime: span.startTime.toString(),
-      endTime: span.endTime?.toString() ?? null,
-      durationMs: span.durationMs ?? null,
-      status: span.status,
-      attributes: JSON.stringify(span.attributes),
-      events: JSON.stringify(serializeBigint(span.events)),
-    })}`,
+  return withSql(
+    (sql) =>
+      sql`INSERT INTO Span ${sql({
+        spanId: span.spanId,
+        traceId: span.traceId,
+        fiberId: span.fiberId ?? null,
+        name: span.name,
+        kind: span.kind,
+        parentSpanId: span.parentSpanId ?? null,
+        startTime: span.startTime.toString(),
+        endTime: span.endTime?.toString() ?? null,
+        durationMs: span.durationMs ?? null,
+        status: span.status,
+        attributes: JSON.stringify(span.attributes),
+        events: JSON.stringify(serializeBigint(span.events)),
+      })}`,
   )
 }
 
@@ -338,29 +343,31 @@ export function updateSpan(span: StudioSpan) {
   )
 }
 
-export function insertLog(log: StudioLog) {
-  return withSql((sql) =>
-    sql`INSERT INTO Log ${sql({
-      id: log.id,
-      level: log.level,
-      message: log.message,
-      fiberId: log.fiberId,
-      cause: log.cause ?? null,
-      spans: JSON.stringify(log.spans),
-      annotations: JSON.stringify(log.annotations),
-    })}`,
+export function insertLog(log: LogEntry) {
+  return withSql(
+    (sql) =>
+      sql`INSERT INTO Log ${sql({
+        id: log.id,
+        level: log.level,
+        message: log.message,
+        fiberId: log.fiberId,
+        cause: log.cause ?? null,
+        spans: JSON.stringify(log.spans),
+        annotations: JSON.stringify(log.annotations),
+      })}`,
   )
 }
 
-export function insertError(error: StudioError) {
-  return withSql((sql) =>
-    sql`INSERT INTO Error ${sql({
-      id: error.id,
-      fiberId: error.fiberId,
-      interrupted: error.interrupted ? 1 : 0,
-      prettyPrint: error.prettyPrint,
-      details: JSON.stringify(error.details),
-    })}`,
+export function insertError(error: ErrorEntry) {
+  return withSql(
+    (sql) =>
+      sql`INSERT INTO Error ${sql({
+        id: error.id,
+        fiberId: error.fiberId,
+        interrupted: error.interrupted ? 1 : 0,
+        prettyPrint: error.prettyPrint,
+        details: JSON.stringify(error.details),
+      })}`,
   )
 }
 
@@ -371,18 +378,22 @@ export function upsertFiber(
   traceId: bigint | undefined,
   annotations: Record<string, unknown>,
 ) {
-  return withSql((sql) =>
-    sql`INSERT OR REPLACE INTO Fiber ${sql({
-      id,
-      parentId: parentId ?? null,
-      spanName: spanName ?? null,
-      traceId: traceId ?? null,
-      annotations: JSON.stringify(annotations),
-    })}`,
+  return withSql(
+    (sql) =>
+      sql`INSERT OR REPLACE INTO Fiber ${sql({
+        id,
+        parentId: parentId ?? null,
+        spanName: spanName ?? null,
+        traceId: traceId ?? null,
+        annotations: JSON.stringify(annotations),
+      })}`,
   )
 }
 
+// TODO: properly type table baesd on the Studio DDL
+// TODO is there a beter way to clean up the database, maybe without the need to send two queries
 export function evict(table: string, capacity: number) {
+  // TODO: I don't think withSql is useful here, we use Effect.gen, might as well yield* SqlClient. find othe similar ones
   return withSql((sql) =>
     Effect.gen(function* () {
       const [{ cnt }] = yield* sql<{ cnt: number }>`SELECT count(*) as cnt FROM ${sql(table)}`
@@ -394,6 +405,9 @@ export function evict(table: string, capacity: number) {
   )
 }
 
+// TODO: this seem overly complex. understand how we use it and suggest the alternatives
+// if we NEED to do things outside of Effect context, maybe we can create a studio runtime
+// that contains sql, etc
 export function runWrite(
   sql: SqlClient.SqlClient,
   effect: Effect.Effect<unknown, SqlClient.SqlError, SqlClient.SqlClient>,
@@ -401,10 +415,7 @@ export function runWrite(
   writeQueue = writeQueue
     .then(() =>
       Effect.runPromise(
-        Effect.withTracerEnabled(
-          Effect.provideService(effect, SqlClient.SqlClient, sql),
-          false,
-        ),
+        Effect.withTracerEnabled(Effect.provideService(effect, SqlClient.SqlClient, sql), false),
       ).then(() => undefined),
     )
     .catch(() => undefined)
@@ -446,8 +457,9 @@ export function allErrors() {
 export function spansByTraceId(traceId: bigint) {
   return noTrace(
     withSql((sql) =>
-      Effect.map(sql<SpanRow>`SELECT * FROM Span WHERE traceId = ${traceId} ORDER BY rowid`, (rows) =>
-        rows.map(deserializeSpan),
+      Effect.map(
+        sql<SpanRow>`SELECT * FROM Span WHERE traceId = ${traceId} ORDER BY rowid`,
+        (rows) => rows.map(deserializeSpan),
       ),
     ),
   )
@@ -456,8 +468,9 @@ export function spansByTraceId(traceId: bigint) {
 export function spansByFiberId(fiberId: string) {
   return noTrace(
     withSql((sql) =>
-      Effect.map(sql<SpanRow>`SELECT * FROM Span WHERE fiberId = ${fiberId} ORDER BY rowid`, (rows) =>
-        rows.map(deserializeSpan),
+      Effect.map(
+        sql<SpanRow>`SELECT * FROM Span WHERE fiberId = ${fiberId} ORDER BY rowid`,
+        (rows) => rows.map(deserializeSpan),
       ),
     ),
   )

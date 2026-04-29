@@ -22,15 +22,16 @@ type AuthOptions = {
 export class Studio extends Context.Tag("effect-start/Studio")<
   Studio,
   {
+    // TODO: change prefix to path (same for options)
     readonly prefix: string
     readonly auth: AuthOptions | undefined
-    readonly store: StudioStore.StudioStoreShape
+    readonly store: StudioStore.State
   }
 >() {}
 
 interface Options {
   readonly prefix?: PathPattern.PathPattern
-  auth?: AuthOptions
+  readonly auth?: AuthOptions
   readonly spanCapacity?: number
   readonly logCapacity?: number
   readonly errorCapacity?: number
@@ -55,7 +56,7 @@ function layerStudio(options?: Options) {
     Studio,
     Effect.gen(function* () {
       yield* StudioStore.setupDatabase
-      const store: StudioStore.StudioStoreShape = {
+      const store: StudioStore.State = {
         events: yield* PubSub.unbounded<StudioStore.StudioEvent>(),
         spanCapacity: options?.spanCapacity ?? 1000,
         logCapacity: options?.logCapacity ?? 5000,

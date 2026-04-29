@@ -124,8 +124,8 @@ function extractSpanName(error: unknown): string | undefined {
   return undefined
 }
 
-function extractDetails(cause: Cause.Cause<unknown>): Array<StudioStore.StudioErrorDetail> {
-  const details: Array<StudioStore.StudioErrorDetail> = []
+function extractDetails(cause: Cause.Cause<unknown>): Array<StudioStore.ErrorDetail> {
+  const details: Array<StudioStore.ErrorDetail> = []
 
   const failures = Chunk.toArray(Cause.failures(cause))
   for (const error of failures) {
@@ -152,10 +152,7 @@ function extractDetails(cause: Cause.Cause<unknown>): Array<StudioStore.StudioEr
   return details
 }
 
-function make(
-  store: StudioStore.StudioStoreShape,
-  sql: SqlClient.SqlClient,
-): Supervisor.Supervisor<void> {
+function make(store: StudioStore.State, sql: SqlClient.SqlClient): Supervisor.Supervisor<void> {
   return new (class extends Supervisor.AbstractSupervisor<void> {
     value = Effect.void
 
@@ -188,7 +185,8 @@ function make(
         annotations[key] = value
       })
 
-      StudioStore.runWrite(sql,
+      StudioStore.runWrite(
+        sql,
         StudioStore.upsertFiber(
           childId,
           parentId !== childId ? parentId : undefined,
@@ -201,14 +199,15 @@ function make(
 
     onEnd<A, E>(exit: Exit.Exit<A, E>, fiber: Fiber.RuntimeFiber<A, E>) {
       if (Exit.isFailure(exit) && !Cause.isInterruptedOnly(exit.cause)) {
-        const error: StudioStore.StudioError = {
+        const error: StudioStore.ErrorEntry = {
           id: StudioStore.nextErrorId(),
           fiberId: FiberId.threadName(fiber.id()),
           interrupted: Cause.isInterrupted(exit.cause),
           prettyPrint: Cause.pretty(exit.cause, { renderErrorCause: true }),
           details: extractDetails(exit.cause),
         }
-        StudioStore.runWrite(sql,
+        StudioStore.runWrite(
+          sql,
           Effect.zipRight(
             StudioStore.insertError(error),
             StudioStore.evict("Error", store.errorCapacity),
@@ -220,14 +219,11 @@ function make(
   })()
 }
 
-export const layer: Layer.Layer<
-  never,
-  never,
-  Studio.Studio | SqlClient.SqlClient
-> = Layer.unwrapEffect(
-  Effect.gen(function* () {
-    const studio = yield* Studio.Studio
-    const sql = yield* SqlClient.SqlClient
-    return Supervisor.addSupervisor(make(studio.store, sql))
-  }),
-)
+export const layer: Layer.Layer<never, never, Studio.Studio | SqlClient.SqlClient> =
+  Layer.unwrapEffect(
+    Effect.gen(function* () {
+      const studio = yield* Studio.Studio
+      const sql = yield* SqlClient.SqlClient
+      return Supervisor.addSupervisor(make(studio.store, sql))
+    }),
+  )
