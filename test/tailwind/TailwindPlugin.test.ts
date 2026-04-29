@@ -348,6 +348,17 @@ test.describe(`${TailwindPlugin.extractClassNames.name}`, () => {
     containsAll(result, ["flex", "items-center", "hidden"])
   })
 
+  test.it("Named group/peer designators on variants", () => {
+    const source = `<div class="group-hover/carousel:text-blue-500 peer-focus/form:ring-2 group-data-[x]/sidebar:hidden">Named groups</div>`
+    const result = TailwindPlugin.extractClassNames(source)
+
+    containsAll(result, [
+      "group-hover/carousel:text-blue-500",
+      "peer-focus/form:ring-2",
+      "group-data-[x]/sidebar:hidden",
+    ])
+  })
+
   test.it("Template-literal interpolation invalidates surrounding bracket content", () => {
     const source = `<div class={\`bg-[\${color}]\`}>Bad</div>`
     const result = TailwindPlugin.extractClassNames(source)

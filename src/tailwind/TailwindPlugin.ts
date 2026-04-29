@@ -138,19 +138,13 @@ export const make = (opts?: {
             visitedModules.add(currentPath)
           }
 
-          // Honor `@source` directives parsed by Tailwind from the CSS:
-          // `compiler.root` is the implicit @source (`source(...)` on @import),
-          // `compiler.sources` is every explicit `@source "..."` directive.
-          // When neither is present, default to scanning the CWD — this matches
-          // the documented behavior of Tailwind's official integrations
-          // (@tailwindcss/oxide), which `compile()` itself doesn't replicate
-          // (it leaves `root` as `null`, deferring the decision to the host).
-          const rootPattern =
-            compiler.root === "none"
-              ? null
-              : (compiler.root ?? { base: process.cwd(), pattern: "." })
+          // Honor explicit source configuration:
+          // - `@import "tailwindcss" source(".")` → `compiler.root`
+          // - `@source "..."` directives → `compiler.sources`
+          // Unlike Tailwind's official integrations, we don't default to cwd.
+          // Instead, we use module graph.
           const sourcePatterns = [
-            ...(rootPattern ? [rootPattern] : []),
+            ...(compiler.root && compiler.root !== "none" ? [compiler.root] : []),
             ...compiler.sources.filter((s) => !s.negated),
           ]
           for (const { base, pattern } of sourcePatterns) {
@@ -318,16 +312,24 @@ function readCandidate(source: string, start: number): ReadResult | null {
   // Read variant chain: <variant>:<variant>:...:<utility>
   // Each variant ends in ":". A variant can be a name (with same shape as a
   // utility minus arbitrary value), an arbitrary "[...]" expression, or the
-  // child selectors "*" / "**".
+  // child selectors "*" / "**". Variants may carry a "/name" group/peer
+  // designator (e.g. "group-data-[x]/carousel:") before the trailing ":".
   while (true) {
     const variantStart = i
     const variantEnd = readVariantOrUtility(source, i)
     if (variantEnd === null) {
       return i === start || (importantPrefix && i === start + 1) ? null : null
     }
-    if (source[variantEnd] === ":") {
+    let afterEnd = variantEnd
+    if (source[afterEnd] === "/") {
+      const modEnd = readModifier(source, afterEnd + 1)
+      if (modEnd !== null && source[modEnd] === ":") {
+        afterEnd = modEnd
+      }
+    }
+    if (source[afterEnd] === ":") {
       // Consumed a variant; loop for the next segment.
-      i = variantEnd + 1
+      i = afterEnd + 1
       if (i >= len) return null
       continue
     }
@@ -551,4 +553,3 @@ function readModifier(source: string, start: number): number | null {
   }
   return i === start ? null : i
 }
-
