@@ -20,8 +20,7 @@ function isBinary(v: unknown): v is Uint8Array | ArrayBuffer {
  * Header keys are guaranteed to be lowercase.
  */
 export type Headers = {
-  // `set-cookie` is the only header that supports multiple values (as an array),
-  // since it requires separate `Set-Cookie` headers per cookie (RFC 6265).
+  // `set-cookie` is the only header that supports multiple values, per RFC 6265
   readonly "set-cookie"?: string | ReadonlyArray<string> | null
   readonly [header: string]: string | ReadonlyArray<string> | null | undefined
 }
@@ -31,10 +30,9 @@ export interface Entity<T = unknown, E = never> extends Effect.Effect<Entity<T, 
   readonly body: T
   readonly headers: Headers
   /**
-   * Accepts any valid URI (Uniform Resource Identifier), including URLs
-   * (http://, https://, file://), URNs (urn:isbn:...), S3 URIs (s3://bucket/key),
-   * data URIs, and other schemes. While commonly called "URL" in many APIs,
-   * this property handles URIs as the correct superset term per RFC 3986.
+   * Accepts any valid URI, including URLs (http://, https://, file://),
+   * URNs (urn:isbn:...), S3 URIs (s3://bucket/key), and other schemes.
+   * While commonly called 'URL' in many APIs, this property handles URIs,
    */
   readonly url: string | undefined
   readonly status: number | undefined
@@ -82,6 +80,7 @@ function parseJson(s: string): Effect.Effect<unknown, ParseResult.ParseError> {
   }
 }
 
+// TODO: could we use Values module here? or move it to there?
 function isDirectJson(value: unknown): value is Exclude<Values.Json, string> {
   return (
     value === null ||
@@ -125,6 +124,8 @@ function getText(
   return Effect.fail(mismatch(Schema.String, v))
 }
 
+// TODO: could we use getText here without noticable performance penelty? json is already a text.
+// maybe text could use getBytes, tto osince we need to decode it.
 function getJson(
   self: Entity<unknown, unknown>,
 ): Effect.Effect<unknown, ParseResult.ParseError | unknown> {
@@ -211,13 +212,6 @@ function getBytes(
   return Effect.fail(mismatch(Schema.Uint8ArrayFromSelf, v))
 }
 
-export function schemaJson<T, E, A, I, R>(
-  self: Entity<T, E>,
-  schema: Schema.Schema<A, I, R>,
-): Effect.Effect<A, ParseResult.ParseError | E, R> {
-  return Effect.flatMap(self.json, Schema.decodeUnknown(schema))
-}
-
 function getStream<A, E1, E2>(
   self: Entity<Stream.Stream<A, E1, never>, E2>,
 ): Stream.Stream<A, ParseResult.ParseError | E1 | E2>
@@ -273,6 +267,13 @@ const Proto: Proto = Object.defineProperties(Object.create(Effectable.CommitProt
     },
   },
 })
+
+export function schemaJson<T, E, A, I, R>(
+  self: Entity<T, E>,
+  schema: Schema.Schema<A, I, R>,
+): Effect.Effect<A, ParseResult.ParseError | E, R> {
+  return Effect.flatMap(self.json, Schema.decodeUnknown(schema))
+}
 
 export function isEntity(input: unknown): input is Entity {
   return Predicate.hasProperty(input, TypeId)

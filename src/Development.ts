@@ -21,18 +21,16 @@ const devState = GlobalValue.globalValue(Symbol.for("effect-start/Development"),
 }))
 
 /** @internal */
-export const _resetForTesting = () => {
+export const _testResetState = () => {
   devState.count = 0
   devState.pubsub = null
 }
 
-export type DevelopmentService = {
-  events: PubSub.PubSub<DevelopmentEvent>
-}
-
 export class Development extends Context.Tag("effect-start/Development")<
   Development,
-  DevelopmentService
+  {
+    events: PubSub.PubSub<DevelopmentEvent>
+  }
 >() {}
 
 const SOURCE_FILENAME = /\.(tsx?|jsx?|html?|css|json)$/
@@ -91,7 +89,7 @@ const watch = (opts?: {
       yield* PubSub.publish(devState.pubsub!, { _tag: "Reload" })
     }
 
-    return { events: devState.pubsub! } satisfies DevelopmentService
+    return Development.of({ events: devState.pubsub! })
   })
 
 export const layer = (opts?: {

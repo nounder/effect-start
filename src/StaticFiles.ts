@@ -15,6 +15,7 @@ const PathParamsSchema = Schema.Struct({
 
 const emptyNotFound = Entity.make(new Uint8Array(0), { status: 404 })
 
+// TODO : write tests for StaticFiles
 export const make = (directory: string) =>
   Route.get(
     RouteSchema.schemaPathParams(PathParamsSchema),
@@ -28,11 +29,13 @@ export const make = (directory: string) =>
       }
 
       const absolutePath = `${directory.replace(/[\\/]+$/, "")}/${relativePath}`
-      const info = yield* fs.stat(absolutePath).pipe(
-        Effect.catchAll((error) =>
-          isNotFound(error) ? Effect.succeed(null) : Effect.fail(error),
-        ),
-      )
+      const info = yield* fs
+        .stat(absolutePath)
+        .pipe(
+          Effect.catchAll((error) =>
+            isNotFound(error) ? Effect.succeed(null) : Effect.fail(error),
+          ),
+        )
 
       if (info === null || info.type !== "File") {
         return emptyNotFound
@@ -49,10 +52,7 @@ export const make = (directory: string) =>
     }),
   )
 
-export const layer = (options: {
-  directory: string
-  path?: string
-}) => {
+export const layer = (options: { directory: string; path?: string }) => {
   const trimmedMountPath = (options.path ?? defaultMountPath).trim().replace(/^\/+|\/+$/g, "")
   const mountPattern = (
     trimmedMountPath.length > 0 ? `/${trimmedMountPath}/:path+` : "/:path+"

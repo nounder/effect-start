@@ -9,7 +9,7 @@ import * as Development from "effect-start/Development"
 import * as FileSystem from "effect-start/FileSystem"
 
 test.beforeEach(() => {
-  Development._resetForTesting()
+  Development._testResetState()
 })
 
 test.describe("layer", () => {
