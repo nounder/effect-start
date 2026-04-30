@@ -62,7 +62,7 @@ export function getParentChain(fiberId: string, fiberParents: Map<string, string
 }
 
 export function collectFibers(
-  logs: Array<StudioStore.StudioLog>,
+  logs: Array<StudioStore.LogEntry>,
   spans: Array<StudioStore.StudioSpan>,
 ): Array<FiberSummary> {
   const map = new Map<string, FiberSummary>()
@@ -188,7 +188,7 @@ export function FiberList(props: { fibers: Array<FiberSummary>; prefix: string }
 export function FiberDetail(props: {
   prefix: string
   fiberId: string
-  logs: Array<StudioStore.StudioLog>
+  logs: Array<StudioStore.LogEntry>
   spans: Array<StudioStore.StudioSpan>
   status: "alive" | "dead"
   parents: Array<string>

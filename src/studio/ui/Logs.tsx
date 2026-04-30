@@ -11,7 +11,7 @@ function levelColor(level: string): string {
   return "#e5e7eb"
 }
 
-export function LogLine(props: { prefix: string; log: StudioStore.StudioLog }) {
+export function LogLine(props: { prefix: string; log: StudioStore.LogEntry }) {
   const color = levelColor(props.log.level)
   const time = new Date(Number(Unique.snowflake.timestamp(props.log.id))).toLocaleTimeString(
     "en",

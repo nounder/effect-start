@@ -10,7 +10,7 @@ import * as SqlClient from "../sql/SqlClient.ts"
 import * as Studio from "./Studio.ts"
 import * as StudioStore from "./StudioStore.ts"
 
-const publish = (store: StudioStore.StudioStoreShape, event: StudioStore.StudioEvent) =>
+const publish = (store: StudioStore.State, event: StudioStore.StudioEvent) =>
   Effect.runSync(PubSub.publish(store.events, event))
 
 const fromTracerId = (id: string): bigint | undefined => {
@@ -21,7 +21,7 @@ const fromTracerId = (id: string): bigint | undefined => {
   }
 }
 
-const make = (store: StudioStore.StudioStoreShape, sql: SqlClient.SqlClient): Tracer.Tracer =>
+const make = (store: StudioStore.State, sql: SqlClient.SqlClient): Tracer.Tracer =>
   Tracer.make({
     span(name, parent, context, links, startTime, kind, options) {
       const parentSpanId =

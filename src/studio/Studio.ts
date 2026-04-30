@@ -60,7 +60,7 @@ function layerStudio(options?: Options) {
         spanCapacity: options?.spanCapacity ?? 1000,
         logCapacity: options?.logCapacity ?? 5000,
         errorCapacity: options?.errorCapacity ?? 1000,
-        metrics: [] as Array<StudioStore.StudioMetricSnapshot>,
+        metrics: [] as Array<StudioStore.MetricSnapshot>,
         process: undefined,
       }
       return {

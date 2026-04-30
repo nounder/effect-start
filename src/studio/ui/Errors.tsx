@@ -1,7 +1,7 @@
 import * as Unique from "../../Unique.ts"
 import * as StudioStore from "../StudioStore.ts"
 
-export function ErrorLine(props: { prefix: string; error: StudioStore.StudioError }) {
+export function ErrorLine(props: { prefix: string; error: StudioStore.ErrorEntry }) {
   const time = new Date(Number(Unique.snowflake.timestamp(props.error.id))).toLocaleTimeString(
     "en",
     {

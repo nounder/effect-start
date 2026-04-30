@@ -15,12 +15,12 @@ export const layer: Layer.Layer<never, never, Studio.Studio> = Layer.scopedDisca
       Effect.schedule(
         Effect.sync(() => {
           const pairs = Metric.unsafeSnapshot()
-          const snapshots: Array<StudioStore.StudioMetricSnapshot> = []
+          const snapshots: Array<StudioStore.MetricSnapshot> = []
 
           for (const pair of pairs) {
             const key = pair.metricKey
             const state = pair.metricState as any
-            let type: StudioStore.StudioMetricSnapshot["type"] = "counter"
+            let type: StudioStore.MetricSnapshot["type"] = "counter"
             let value: unknown = 0
 
             if (MetricKeyType.CounterKeyTypeTypeId in key.keyType) {

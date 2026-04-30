@@ -1,6 +1,6 @@
 import type * as StudioStore from "../StudioStore.ts"
 
-function MetricValue(props: { metric: StudioStore.StudioMetricSnapshot }) {
+function MetricValue(props: { metric: StudioStore.MetricSnapshot }) {
   if (props.metric.type === "counter" || props.metric.type === "gauge") {
     return (
       <div style="font-size:32px;font-weight:700;color:#e5e7eb;font-family:monospace;line-height:1.1">
@@ -45,7 +45,7 @@ function MetricValue(props: { metric: StudioStore.StudioMetricSnapshot }) {
   )
 }
 
-function MetricCard(props: { metric: StudioStore.StudioMetricSnapshot }) {
+function MetricCard(props: { metric: StudioStore.MetricSnapshot }) {
   return (
     <div style="background:#111827;border:1px solid #374151;border-radius:6px;padding:12px;min-width:200px">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
@@ -64,7 +64,7 @@ function MetricCard(props: { metric: StudioStore.StudioMetricSnapshot }) {
   )
 }
 
-export function MetricsGrid(props: { metrics: Array<StudioStore.StudioMetricSnapshot> }) {
+export function MetricsGrid(props: { metrics: Array<StudioStore.MetricSnapshot> }) {
   if (props.metrics.length === 0) {
     return <div class="empty">Waiting for metrics...</div>
   }

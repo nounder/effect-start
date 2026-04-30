@@ -11,10 +11,10 @@ import * as Pretty from "./_Pretty.ts"
 import * as Studio from "./Studio.ts"
 import * as StudioStore from "./StudioStore.ts"
 
-const make = (store: StudioStore.StudioStoreShape, sql: SqlClient.SqlClient) =>
+const make = (store: StudioStore.State, sql: SqlClient.SqlClient) =>
   Logger.make((logOptions) => {
     try {
-      const levelMap: Record<string, StudioStore.StudioLog["level"]> = {
+      const levelMap: Record<string, StudioStore.LogEntry["level"]> = {
         Debug: "DEBUG",
         Info: "INFO",
         Warning: "WARNING",
@@ -32,7 +32,7 @@ const make = (store: StudioStore.StudioStoreShape, sql: SqlClient.SqlClient) =>
         ann[k] = v
       })
 
-      const log: StudioStore.StudioLog = {
+      const log: StudioStore.LogEntry = {
         id: StudioStore.nextLogId(),
         level,
         message: Pretty.formatLogMessage(logOptions.message),
