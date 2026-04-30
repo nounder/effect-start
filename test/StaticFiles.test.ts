@@ -97,6 +97,51 @@ test.it("supports mounting through StaticFiles.layer", () =>
   }).pipe(Effect.scoped, Effect.provide(NodeFileSystem.layer), Effect.runPromise),
 )
 
+test.it("returns 404 when the path resolves to a directory", () =>
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    const directory = yield* fs.makeTempDirectoryScoped()
+
+    yield* fs.makeDirectory(NPath.join(directory, "nested"))
+    yield* fs.writeFileString(NPath.join(directory, "nested", "hello.txt"), "hello")
+
+    const runtime = yield* Effect.runtime<FileSystem.FileSystem>()
+    const routes = StaticFiles.make(directory)
+    const tree = RouteTree.make({ "/assets/:path+": routes })
+    const handles = Object.fromEntries(RouteHttp.walkHandles(tree, runtime))
+    const handler = handles["/assets/:path+"]
+    const client = Fetch.fromHandler(handler)
+    const entity = yield* client.get("http://localhost/assets/nested")
+
+    test.expect(entity.status).toBe(404)
+  }).pipe(Effect.scoped, Effect.provide(NodeFileSystem.layer), Effect.runPromise),
+)
+
+test.it("decodes URL-encoded characters in path params", () =>
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    const directory = yield* fs.makeTempDirectoryScoped()
+
+    yield* fs.writeFileString(NPath.join(directory, "hello world.txt"), "spaced")
+    yield* fs.writeFileString(NPath.join(directory, "café.txt"), "unicode")
+
+    const runtime = yield* Effect.runtime<FileSystem.FileSystem>()
+    const routes = StaticFiles.make(directory)
+    const tree = RouteTree.make({ "/assets/:path+": routes })
+    const handles = Object.fromEntries(RouteHttp.walkHandles(tree, runtime))
+    const handler = handles["/assets/:path+"]
+    const client = Fetch.fromHandler(handler)
+
+    const spaced = yield* client.get("http://localhost/assets/hello%20world.txt")
+    const unicode = yield* client.get("http://localhost/assets/caf%C3%A9.txt")
+
+    test.expect(spaced.status).toBe(200)
+    test.expect(yield* spaced.text).toBe("spaced")
+    test.expect(unicode.status).toBe(200)
+    test.expect(yield* unicode.text).toBe("unicode")
+  }).pipe(Effect.scoped, Effect.provide(NodeFileSystem.layer), Effect.runPromise),
+)
+
 test.it("detects javascript and source map content types", () =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem

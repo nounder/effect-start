@@ -15,7 +15,6 @@ const PathParamsSchema = Schema.Struct({
 
 const emptyNotFound = Entity.make(new Uint8Array(0), { status: 404 })
 
-// TODO : write tests for StaticFiles
 export const make = (directory: string) =>
   Route.get(
     RouteSchema.schemaPathParams(PathParamsSchema),
