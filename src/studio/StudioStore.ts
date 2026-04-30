@@ -1,6 +1,4 @@
 import * as Effect from "effect/Effect"
-import * as GlobalValue from "effect/GlobalValue"
-import * as MutableRef from "effect/MutableRef"
 import * as PubSub from "effect/PubSub"
 import * as Schema from "effect/Schema"
 import * as Unique from "../Unique.ts"
@@ -136,14 +134,6 @@ export interface State {
   readonly errorCapacity: number
   metrics: Array<MetricSnapshot>
   process: ProcessStats | undefined
-}
-
-export function fiberIdCounter(): number {
-  // TODO is there more reliable way to get the fiber id?
-  const counter = GlobalValue.globalValue(Symbol.for("effect/Fiber/Id/_fiberCounter"), () =>
-    MutableRef.make(0),
-  )
-  return MutableRef.get(counter)
 }
 
 const DDL = [

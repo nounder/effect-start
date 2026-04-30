@@ -19,7 +19,7 @@ export default Route.get(
     }
 
     return (
-      <Shell.Shell prefix={studio.prefix} active="routes">
+      <Shell.Shell prefix={studio.path} active="routes">
         <div class="tab-header">Routes</div>
         <div class="tab-body">
           <Routes.RouteList routes={routes} />

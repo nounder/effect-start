@@ -10,7 +10,7 @@ export default Route.get(
     const ctx = yield* Effect.context<never>()
     const services = Services.collectServices(ctx.unsafeMap)
     return (
-      <Shell.Shell prefix={studio.prefix} active="services">
+      <Shell.Shell prefix={studio.path} active="services">
         <div class="tab-header">Services ({services.length})</div>
         <div class="tab-body">
           <Services.ServiceList services={services} />

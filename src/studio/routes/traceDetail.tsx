@@ -15,7 +15,7 @@ export default Route.get(
       traceId = BigInt(ctx.pathParams.id)
     } catch {
       return (
-        <Shell.Shell prefix={studio.prefix} active="traces">
+        <Shell.Shell prefix={studio.path} active="traces">
           <div class="empty">Trace not found</div>
         </Shell.Shell>
       )
@@ -23,8 +23,8 @@ export default Route.get(
     const spans = yield* StudioStore.spansByTraceId(traceId)
 
     return (
-      <Shell.Shell prefix={studio.prefix} active="traces">
-        <Traces.TraceDetail prefix={studio.prefix} spans={spans} />
+      <Shell.Shell prefix={studio.path} active="traces">
+        <Traces.TraceDetail prefix={studio.path} spans={spans} />
       </Shell.Shell>
     )
   }),

@@ -45,7 +45,7 @@ export interface FiberSummary {
   logCount: number
   spanCount: number
   lastSeen: number | undefined
-  alive: "alive" | "dead" | "unknown"
+  status: "alive" | "dead"
   readonly levels: Set<string>
 }
 
@@ -66,7 +66,6 @@ export function collectFibers(
   spans: Array<StudioStore.StudioSpan>,
 ): Array<FiberSummary> {
   const map = new Map<string, FiberSummary>()
-  const counter = StudioStore.fiberIdCounter()
   const now = Date.now()
 
   for (const log of logs) {
@@ -77,7 +76,7 @@ export function collectFibers(
         logCount: 0,
         spanCount: 0,
         lastSeen: undefined,
-        alive: "unknown",
+        status: "dead",
         levels: new Set(),
       }
       map.set(log.fiberId, fiber)
@@ -100,7 +99,7 @@ export function collectFibers(
         logCount: 0,
         spanCount: 0,
         lastSeen: undefined,
-        alive: "unknown",
+        status: "dead",
         levels: new Set(),
       }
       map.set(fiberId, fiber)
@@ -109,13 +108,10 @@ export function collectFibers(
   }
 
   for (const fiber of map.values()) {
-    const num = parseInt(fiber.id.replace("#", ""), 10)
-    if (!isNaN(num)) {
-      if (fiber.lastSeen && now - fiber.lastSeen < 5000) {
-        fiber.alive = "alive"
-      } else if (num < counter) {
-        fiber.alive = "dead"
-      }
+    if (fiber.lastSeen && now - fiber.lastSeen < 5000) {
+      fiber.status = "alive"
+    } else {
+      fiber.status = "dead"
     }
   }
 
@@ -127,18 +123,8 @@ export function collectFibers(
 }
 
 function FiberRow(props: { fiber: FiberSummary; prefix: string }) {
-  const aliveColor =
-    props.fiber.alive === "alive"
-      ? "#4ade80"
-      : props.fiber.alive === "dead"
-        ? "#ef4444"
-        : "#94a3b8"
-  const aliveBg =
-    props.fiber.alive === "alive"
-      ? "#166534"
-      : props.fiber.alive === "dead"
-        ? "#7f1d1d"
-        : "#334155"
+  const statusColor = props.fiber.status === "alive" ? "#4ade80" : "#ef4444"
+  const statusBg = props.fiber.status === "alive" ? "#166534" : "#7f1d1d"
   const lastSeen = props.fiber.lastSeen
     ? new Date(props.fiber.lastSeen).toLocaleTimeString("en", {
         hour12: false,
@@ -159,9 +145,9 @@ function FiberRow(props: { fiber: FiberSummary; prefix: string }) {
         {props.fiber.id}
       </span>
       <span
-        style={`font-size:10px;padding:2px 8px;border-radius:4px;background:${aliveBg};color:${aliveColor}`}
+        style={`font-size:10px;padding:2px 8px;border-radius:4px;background:${statusBg};color:${statusColor}`}
       >
-        {props.fiber.alive}
+        {props.fiber.status}
       </span>
       <span style="color:#94a3b8;font-size:12px">
         {props.fiber.spanCount} span{props.fiber.spanCount !== 1 ? "s" : ""}
@@ -204,14 +190,12 @@ export function FiberDetail(props: {
   fiberId: string
   logs: Array<StudioStore.StudioLog>
   spans: Array<StudioStore.StudioSpan>
-  alive: "alive" | "dead" | "unknown"
+  status: "alive" | "dead"
   parents: Array<string>
   context: StudioStore.FiberContext | undefined
 }) {
-  const aliveColor =
-    props.alive === "alive" ? "#4ade80" : props.alive === "dead" ? "#ef4444" : "#94a3b8"
-  const aliveBg =
-    props.alive === "alive" ? "#166534" : props.alive === "dead" ? "#7f1d1d" : "#334155"
+  const statusColor = props.status === "alive" ? "#4ade80" : "#ef4444"
+  const statusBg = props.status === "alive" ? "#166534" : "#7f1d1d"
 
   return (
     <>
@@ -226,9 +210,9 @@ export function FiberDetail(props: {
           <span style="color:#475569">/</span>
           <span style="color:#e2e8f0;font-size:13px;font-family:monospace">{props.fiberId}</span>
           <span
-            style={`font-size:11px;padding:2px 8px;border-radius:4px;background:${aliveBg};color:${aliveColor}`}
+            style={`font-size:11px;padding:2px 8px;border-radius:4px;background:${statusBg};color:${statusColor}`}
           >
-            {props.alive}
+            {props.status}
           </span>
         </div>
         <div style="display:flex;gap:16px;font-size:12px;color:#94a3b8">

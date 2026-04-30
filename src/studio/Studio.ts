@@ -22,15 +22,14 @@ type AuthOptions = {
 export class Studio extends Context.Tag("effect-start/Studio")<
   Studio,
   {
-    // TODO: change prefix to path (same for options)
-    readonly prefix: string
+    readonly path: string
     readonly auth: AuthOptions | undefined
     readonly store: StudioStore.State
   }
 >() {}
 
 interface Options {
-  readonly prefix?: PathPattern.PathPattern
+  readonly path?: PathPattern.PathPattern
   readonly auth?: AuthOptions
   readonly spanCapacity?: number
   readonly logCapacity?: number
@@ -41,12 +40,12 @@ export function layer(options?: Options) {
   const sqlLayer = sqlBun
     .layer({ adapter: "sqlite" as const, filename: ":memory:" })
     .pipe(Layer.orDie)
-  const prefix = options?.prefix ?? "/studio"
+  const path = options?.path ?? "/studio"
   const studio = layerStudio(options)
   return Layer.mergeAll(
     studio,
     layerTracking().pipe(Layer.provide(studio)),
-    layerRoutes(prefix),
+    layerRoutes(path),
     sqlLayer,
   ).pipe(Layer.provide(sqlLayer))
 }
@@ -65,7 +64,7 @@ function layerStudio(options?: Options) {
         process: undefined,
       }
       return {
-        prefix: options?.prefix ?? "/studio",
+        path: options?.path ?? "/studio",
         auth: options?.auth,
         store,
       }
@@ -83,8 +82,8 @@ function layerTracking() {
   )
 }
 
-function layerRoutes(prefix: string) {
+function layerRoutes(path: string) {
   return Route.layerMerge({
-    [prefix as "/"]: routes,
+    [path as "/"]: routes,
   })
 }

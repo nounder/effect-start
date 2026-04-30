@@ -23,7 +23,7 @@ export default Route.get(
     }
 
     return (
-      <Shell.Shell prefix={studio.prefix} active="traces">
+      <Shell.Shell prefix={studio.path} active="traces">
         <form
           data-signals={{ traceSearch: "" }}
           style="display:flex;flex-direction:column;flex:1;overflow:hidden"
@@ -45,10 +45,10 @@ export default Route.get(
             </datalist>
           </div>
           <div id="traces-container" class="tab-body">
-            <Traces.TraceGroups prefix={studio.prefix} spans={spans} />
+            <Traces.TraceGroups prefix={studio.path} spans={spans} />
           </div>
         </form>
-        <div data-init={`@get('${studio.prefix}/traces')`} />
+        <div data-init={(c) => c.actions.get(`${studio.path}/traces`)} />
       </Shell.Shell>
     )
   }),
@@ -65,7 +65,7 @@ export default Route.get(
               return undefined
             }
             const traceHtml = Html.renderToString(
-              <Traces.TraceGroup prefix={studio.prefix} id={e.traceId} spans={traceSpans} />,
+              <Traces.TraceGroup prefix={studio.path} id={e.traceId} spans={traceSpans} />,
             )
 
             return {

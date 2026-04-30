@@ -11,7 +11,7 @@ export default Route.get(
     const studio = yield* Studio.Studio
     const stats = studio.store.process
     return (
-      <Shell.Shell prefix={studio.prefix} active="system">
+      <Shell.Shell prefix={studio.path} active="system">
         <div style="display:flex;flex-direction:column;flex:1;overflow:hidden">
           <div class="tab-header">System</div>
           <div id="system-container" class="tab-body">
@@ -21,7 +21,7 @@ export default Route.get(
               <div class="empty">Waiting for system data...</div>
             )}
           </div>
-          <div data-init={`@get('${studio.prefix}/system')`} />
+          <div data-init={(c) => c.actions.get(`${studio.path}/system`)} />
         </div>
       </Shell.Shell>
     )

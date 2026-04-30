@@ -10,12 +10,12 @@ export default Route.get(
   Route.html(function* () {
     const studio = yield* Studio.Studio
     return (
-      <Shell.Shell prefix={studio.prefix} active="metrics">
+      <Shell.Shell prefix={studio.path} active="metrics">
         <div class="tab-header">Metrics</div>
         <div id="metrics-container" class="tab-body metrics-grid">
           <Metrics.MetricsGrid metrics={studio.store.metrics} />
         </div>
-        <div data-init={`@get('${studio.prefix}/metrics')`} />
+        <div data-init={(c) => c.actions.get(`${studio.path}/metrics`)} />
       </Shell.Shell>
     )
   }),

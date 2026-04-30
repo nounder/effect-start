@@ -23,7 +23,7 @@ export default Route.get(
     logs = logs.reverse()
 
     return (
-      <Shell.Shell prefix={studio.prefix} active="logs">
+      <Shell.Shell prefix={studio.path} active="logs">
         <form
           data-signals={{ logLevel: "", logSearch: "" }}
           style="display:flex;flex-direction:column;flex:1;overflow:hidden"
@@ -52,11 +52,11 @@ export default Route.get(
           </div>
           <div id="logs-container" class="tab-body">
             {logs.map((l) => (
-              <Logs.LogLine prefix={studio.prefix} log={l} />
+              <Logs.LogLine prefix={studio.path} log={l} />
             ))}
           </div>
 
-          <div data-init={`@get('${studio.prefix}/logs')`} />
+          <div data-init={(c) => c.actions.get(`${studio.path}/logs`)} />
         </form>
       </Shell.Shell>
     )
@@ -68,7 +68,7 @@ export default Route.get(
         Stream.filter((e) => e._tag === "Log"),
         Stream.map((e) => {
           const html = Html.renderToString(
-            <Logs.LogLine prefix={studio.prefix} log={e.log} />,
+            <Logs.LogLine prefix={studio.path} log={e.log} />,
           ).replace(/\n/g, "")
           return {
             event: "datastar-patch-elements",

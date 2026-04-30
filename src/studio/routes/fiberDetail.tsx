@@ -17,32 +17,22 @@ export default Route.get(
     const fiberLogs = yield* StudioStore.logsByFiberId(fiberName)
     const fiberSpans = yield* StudioStore.spansByFiberId(fiberName)
 
-    const fiberNum = parseInt(fiberName.slice(1), 10)
-    const counter = StudioStore.fiberIdCounter()
-    let alive: "alive" | "dead" | "unknown" = "unknown"
-    if (!isNaN(fiberNum)) {
-      if (fiberNum < counter) alive = "dead"
-      else alive = "unknown"
-    }
-    if (fiberLogs.length > 0 || fiberSpans.length > 0) {
-      const hasRecent = fiberLogs.some(
-        (l) => Date.now() - Number(Unique.snowflake.timestamp(l.id)) < 5000,
-      )
-      if (hasRecent) alive = "alive"
-      else if (fiberNum < counter) alive = "dead"
-    }
+    const hasRecent = fiberLogs.some(
+      (l) => Date.now() - Number(Unique.snowflake.timestamp(l.id)) < 5000,
+    )
+    const status: "alive" | "dead" = hasRecent ? "alive" : "dead"
 
     const parents = yield* StudioStore.getParentChain(fiberName)
     const fiberContext = yield* StudioStore.getFiberContext(fiberName)
 
     return (
-      <Shell.Shell prefix={studio.prefix} active="fibers">
+      <Shell.Shell prefix={studio.path} active="fibers">
         <Fibers.FiberDetail
-          prefix={studio.prefix}
+          prefix={studio.path}
           fiberId={fiberName}
           logs={fiberLogs}
           spans={fiberSpans}
-          alive={alive}
+          status={status}
           parents={parents}
           context={fiberContext}
         />

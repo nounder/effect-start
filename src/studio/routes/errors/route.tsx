@@ -36,7 +36,7 @@ export default Route.get(
     errors = errors.reverse()
 
     return (
-      <Shell.Shell prefix={studio.prefix} active="errors">
+      <Shell.Shell prefix={studio.path} active="errors">
         <form
           data-signals={{ errorSearch: "", errorTag: "" }}
           style="display:flex;flex-direction:column;flex:1;overflow:hidden"
@@ -66,11 +66,11 @@ export default Route.get(
           </div>
           <div id="errors-list" class="tab-body">
             {errors.map((e) => (
-              <Errors.ErrorLine prefix={studio.prefix} error={e} />
+              <Errors.ErrorLine prefix={studio.path} error={e} />
             ))}
           </div>
 
-          <div data-init={`@get('${studio.prefix}/errors')`} />
+          <div data-init={(c) => c.actions.get(`${studio.path}/errors`)} />
         </form>
       </Shell.Shell>
     )
@@ -82,7 +82,7 @@ export default Route.get(
         Stream.filter((e) => e._tag === "Error"),
         Stream.map((e) => {
           const html = Html.renderToString(
-            <Errors.ErrorLine prefix={studio.prefix} error={e.error} />,
+            <Errors.ErrorLine prefix={studio.path} error={e.error} />,
           ).replace(/\n/g, "")
           return {
             event: "datastar-patch-elements",

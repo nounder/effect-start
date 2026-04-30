@@ -15,13 +15,13 @@ export default Route.get(
     const spans = yield* StudioStore.allSpans()
     const fibers = Fibers.collectFibers(logs, spans)
     return (
-      <Shell.Shell prefix={studio.prefix} active="fibers">
+      <Shell.Shell prefix={studio.path} active="fibers">
         <div style="display:flex;flex-direction:column;flex:1;overflow:hidden">
           <div class="tab-header">Fibers</div>
           <div id="fibers-container" class="tab-body">
-            <Fibers.FiberList fibers={fibers} prefix={studio.prefix} />
+            <Fibers.FiberList fibers={fibers} prefix={studio.path} />
           </div>
-          <div data-init={`@get('${studio.prefix}/fibers')`} />
+          <div data-init={(c) => c.actions.get(`${studio.path}/fibers`)} />
         </div>
       </Shell.Shell>
     )
@@ -38,7 +38,7 @@ export default Route.get(
             const spans = yield* StudioStore.allSpans()
             const fibers = Fibers.collectFibers(logs, spans)
             const html = Html.renderToString(
-              <Fibers.FiberList fibers={fibers} prefix={studio.prefix} />,
+              <Fibers.FiberList fibers={fibers} prefix={studio.path} />,
             ).replace(/\n/g, "")
             return {
               event: "datastar-patch-elements",
