@@ -13,7 +13,7 @@ import type * as Sink from "effect/Sink"
 import type * as Stream from "effect/Stream"
 import * as Utils from "effect/Utils"
 
-import type * as System from "../System.ts"
+import type * as System from "./System.ts"
 
 const TypeId = "~effect-start/ChildProcess/Command" as const
 

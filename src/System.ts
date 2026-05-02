@@ -4,9 +4,7 @@
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import type * as Scope from "effect/Scope"
-import * as ChildProcess from "./internal/ChildProcess.ts"
-
-export type Spawner = ChildProcess.ChildProcessSpawner
+import * as ChildProcess from "./ChildProcess.ts"
 
 export type SystemErrorReason =
   | "AlreadyExists"
