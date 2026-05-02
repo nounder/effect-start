@@ -143,10 +143,6 @@
       "bun": "./src/cli/index.ts",
       "default": "./dist/cli/index.js"
     },
-    "./client": {
-      "bun": "./src/client/index.ts",
-      "default": "./dist/client/index.js"
-    },
     "./cloudflare": {
       "bun": "./src/cloudflare/index.ts",
       "default": "./dist/cloudflare/index.js"

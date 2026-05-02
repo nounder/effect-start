@@ -2,12 +2,6 @@ import type { PubSub } from "effect"
 import { Context, Data, Effect, pipe } from "effect"
 import * as Schema from "effect/Schema"
 
-export const BundleEntrypointMetaKey: unique symbol = Symbol.for(
-  "effect-start/BundleEntrypointMetaKey",
-)
-
-export type BundleOutputMetaValue = {}
-
 /**
  * Generic shape describing a bundle across multiple bundlers
  * (like bun, esbuild & vite)
@@ -56,9 +50,7 @@ const BundleEventBuildError = Schema.TaggedStruct("BuildError", {
   error: Schema.String,
 })
 
-export const BundleEvent = Schema.Union(BundleEventChange, BundleEventBuildError)
-
-export type BundleEvent = typeof BundleEvent.Type
+const BundleEvent = Schema.Union(BundleEventChange, BundleEventBuildError)
 
 const IdPrefix = "effect-start/tags/"
 
@@ -76,7 +68,7 @@ export type BundleContext = {
   resolve: (url: string) => string | undefined
   getArtifact: (path: string) => Blob | undefined
   rebuild?: () => Effect.Effect<BundleContext, BundleError>
-  events?: PubSub.PubSub<BundleEvent>
+  events?: PubSub.PubSub<typeof BundleEvent.Encoded>
 }
 
 export class BundleError extends Data.TaggedError("BundleError")<{
@@ -89,19 +81,6 @@ export const emptyBundleContext: BundleContext = {
   resolve: () => undefined,
   getArtifact: () => undefined,
 }
-
-export const handleBundleErrorSilently = (
-  effect: Effect.Effect<BundleContext, BundleError>,
-): Effect.Effect<BundleContext, never> =>
-  pipe(
-    effect,
-    Effect.catchTag("BundleError", (error) =>
-      Effect.gen(function* () {
-        yield* Effect.logError("Bundle build failed", error)
-        return emptyBundleContext
-      }),
-    ),
-  )
 
 export const Tag =
   <const T extends BundleKey>(name: T) =>
