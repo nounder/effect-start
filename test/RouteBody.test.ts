@@ -137,7 +137,9 @@ test.describe(`${RouteBody.handle.name}()`, () => {
         .parameters.toEqualTypeOf<
           [
             { id: number },
-            (context?: Partial<{ id: number }> & Record<string, unknown>) => Entity.Entity<number>,
+            <NE = never>(
+              context?: Partial<{ id: number }> & Record<string, unknown>,
+            ) => Entity.Entity<number, NE>,
           ]
         >()
       test
@@ -163,7 +165,9 @@ test.describe(`${RouteBody.handle.name}()`, () => {
         .parameters.toEqualTypeOf<
           [
             { id: number },
-            (context?: Partial<{ id: number }> & Record<string, unknown>) => Entity.Entity<number>,
+            <NE = never>(
+              context?: Partial<{ id: number }> & Record<string, unknown>,
+            ) => Entity.Entity<number, NE>,
           ]
         >()
 
