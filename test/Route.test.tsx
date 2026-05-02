@@ -253,6 +253,19 @@ test.describe(Route.redirect, () => {
       test.expect(entity.headers["location"]).toBe("/posts/123")
     }).pipe(Effect.runPromise),
   )
+
+  test.it("composes under a wildcard format layout", () =>
+    Effect.gen(function* () {
+      const routes = Route.use(Route.html(<div />)).get(Route.redirect("/time"))
+      const handler = RouteHttp.toWebHandler(routes)
+      const client = Fetch.fromHandler(handler)
+
+      const entity = yield* client.get("http://localhost/")
+
+      test.expect(entity.status).toBe(302)
+      test.expect(entity.headers["location"]).toBe("/time")
+    }).pipe(Effect.runPromise),
+  )
 })
 
 test.describe(Route.lazy, () => {

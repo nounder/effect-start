@@ -247,15 +247,17 @@ export function redirect<D extends RouteDescriptor.Any, B extends {}, I extends 
   url: string | URL,
   options?: { status?: 301 | 302 | 303 | 307 | 308 },
 ): (self: RouteSet<D, B, I>) => RouteSet<D, B, [...I, Route<{}, {}, "", never, never>]> {
-  const route = make<{}, {}, "">(() =>
-    Effect.succeed(
-      Entity.make("", {
-        status: options?.status ?? 302,
-        headers: {
-          location: url instanceof URL ? url.href : url,
-        },
-      }),
-    ),
+  const route = make<{}, {}, "">(
+    () =>
+      Effect.succeed(
+        Entity.make("", {
+          status: options?.status ?? 302,
+          headers: {
+            location: url instanceof URL ? url.href : url,
+          },
+        }),
+      ),
+    { format: "*" },
   )
 
   return (self) =>
