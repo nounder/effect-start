@@ -167,25 +167,24 @@ export function layerDev() {
   return Layer.mergeAll(NodeFileSystem.layer, BunChildProcessSpawner.layer)
 }
 
-export function serve<
-  ROut,
-  E,
-  RIn extends
-    | BunServer.BunServer
-    | FileSystem.FileSystem
-    | ChildProcess.ChildProcessSpawner
-    | StartApp.StartApp,
->(
-  load: () => Promise<{
-    default: Layer.Layer<ROut, E, RIn>
-  }>,
+type AppRequirements =
+  | BunServer.BunServer
+  | FileSystem.FileSystem
+  | ChildProcess.ChildProcessSpawner
+  | StartApp.StartApp
+
+export function serve<ROut, E, RIn extends AppRequirements>(
+  app: Layer.Layer<ROut, E, RIn> | (() => Promise<{ default: Layer.Layer<ROut, E, RIn> }>),
 ) {
-  const appLayer = Function.pipe(
-    Effect.tryPromise(load),
-    Effect.map((v) => v.default),
-    Effect.orDie,
-    Layer.unwrapEffect,
-  )
+  const appLayer =
+    typeof app === "function"
+      ? Function.pipe(
+          Effect.tryPromise(app),
+          Effect.map((v) => v.default),
+          Effect.orDie,
+          Layer.unwrapEffect,
+        )
+      : app
 
   const appLayerResolved = Function.pipe(
     appLayer,
