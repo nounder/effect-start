@@ -7,7 +7,7 @@ import * as ManagedRuntime from "effect/ManagedRuntime"
 import { SqlClient } from "effect-start/sql"
 import * as MssqlSql from "../../../src/sql/mssql/index.ts"
 import { BunChildProcessSpawner } from "effect-start/bun"
-import * as Docker from "../../../src/_Docker.ts"
+import * as Docker from "../../../src/internal/Docker.ts"
 import { randomFreePort } from "effect-start/testing"
 
 const PASSWORD = "TestPass123"

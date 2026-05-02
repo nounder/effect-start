@@ -8,7 +8,7 @@ import * as Development from "./Development.ts"
 import * as Entity from "./Entity.ts"
 import * as RouteBody from "./RouteBody.ts"
 import * as RouteTree from "./RouteTree.ts"
-import type * as Values from "./_Values.ts"
+import type * as Values from "./internal/Values.ts"
 import * as Html from "./Html.ts"
 import type { JSX } from "../src/jsx.d.ts"
 

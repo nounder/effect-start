@@ -1,6 +1,6 @@
 import * as Unique from "../../Unique.ts"
 import * as StudioStore from "../StudioStore.ts"
-import * as PrettyValue from "./_PrettyValue.tsx"
+import * as PrettyValue from "./internal/PrettyValue.tsx"
 
 function levelColor(level: string): string {
   if (level === "DEBUG") return "#94a3b8"

@@ -1,7 +1,7 @@
 import * as Unique from "../../Unique.ts"
 import * as StudioStore from "../StudioStore.ts"
 import * as Logs from "./Logs.tsx"
-import * as PrettyValue from "./_PrettyValue.tsx"
+import * as PrettyValue from "./internal/PrettyValue.tsx"
 
 function formatDuration(ms: number | undefined): string {
   if (ms == null) return "..."

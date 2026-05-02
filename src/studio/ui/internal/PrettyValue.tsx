@@ -1,4 +1,4 @@
-import * as Pretty from "../_Pretty.ts"
+import * as Pretty from "../../internal/Pretty.ts"
 
 const htmlEscapeMap: Record<string, string> = {
   "&": "&amp;",

@@ -3,8 +3,8 @@ import * as Effect from "effect/Effect"
 import * as Schema from "effect/Schema"
 import * as NPath from "node:path"
 import * as FileRouter from "./FileRouter.ts"
-import * as PathPattern from "./_PathPattern.ts"
-import * as SchemaExtra from "./_SchemaExtra.ts"
+import * as PathPattern from "./internal/PathPattern.ts"
+import * as SchemaExtra from "./internal/SchemaExtra.ts"
 
 export function validateRouteModule(module: unknown): module is FileRouter.RouteModule {
   if (typeof module !== "object" || module === null) {

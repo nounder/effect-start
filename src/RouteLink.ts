@@ -1,4 +1,4 @@
-import type * as PathPattern from "./_PathPattern.ts"
+import type * as PathPattern from "./internal/PathPattern.ts"
 import type * as Route from "./Route.ts"
 import type { Routes as DevRoutes } from "effect-start/dev"
 

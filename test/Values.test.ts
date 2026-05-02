@@ -1,5 +1,5 @@
 import * as test from "bun:test"
-import * as Values from "../src/_Values.ts"
+import * as Values from "../src/internal/Values.ts"
 
 test.describe("isPlainObject", () => {
   test.it("returns true for plain objects", () => {

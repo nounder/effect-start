@@ -6,7 +6,7 @@ import * as Fiber from "effect/Fiber"
 import * as Layer from "effect/Layer"
 import { BunServer } from "effect-start/bun"
 import * as Start from "effect-start/Start"
-import * as StartApp from "../src/_StartApp.ts"
+import * as StartApp from "../src/internal/StartApp.ts"
 
 test.describe(Start.pack, () => {
   test.test("should resolve internal dependencies automatically", () => {

@@ -1,7 +1,7 @@
 import * as test from "bun:test"
-import * as Pretty from "../../src/studio/_Pretty.ts"
+import * as Pretty from "../../src/studio/internal/Pretty.ts"
 
-test.describe("_Pretty", () => {
+test.describe("Pretty", () => {
   test.it("formats structured log messages as pretty JSON blocks", () => {
     const message = Pretty.formatLogMessage([
       "[waitForStable]",

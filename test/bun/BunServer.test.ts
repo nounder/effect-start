@@ -10,7 +10,7 @@ import * as Layer from "effect/Layer"
 import * as Route from "effect-start/Route"
 import { BunRoute, BunServer } from "effect-start/bun"
 import * as Start from "effect-start/Start"
-import * as StartApp from "../../src/_StartApp.ts"
+import * as StartApp from "../../src/internal/StartApp.ts"
 
 const staticDir = NPath.resolve(import.meta.dir, "../../static")
 

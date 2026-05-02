@@ -1,6 +1,6 @@
-import * as Pretty from "../_Pretty.ts"
+import * as Pretty from "../internal/Pretty.ts"
 import * as StudioStore from "../StudioStore.ts"
-import * as PrettyValue from "./_PrettyValue.tsx"
+import * as PrettyValue from "./internal/PrettyValue.tsx"
 
 function formatDuration(ms: number | undefined): string {
   if (ms == null) return "..."

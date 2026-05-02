@@ -11,7 +11,7 @@ import * as StudioProcess from "./StudioProcess.ts"
 import * as StudioStore from "./StudioStore.ts"
 import * as StudioTracer from "./StudioTracer.ts"
 import routes from "./routes/tree.ts"
-import * as PathPattern from "../_PathPattern.ts"
+import * as PathPattern from "../internal/PathPattern.ts"
 
 type AuthOptions = {
   readonly type: "basic"

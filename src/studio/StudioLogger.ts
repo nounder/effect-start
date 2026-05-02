@@ -7,7 +7,7 @@ import * as List from "effect/List"
 import * as Logger from "effect/Logger"
 import * as PubSub from "effect/PubSub"
 import * as SqlClient from "../sql/SqlClient.ts"
-import * as Pretty from "./_Pretty.ts"
+import * as Pretty from "./internal/Pretty.ts"
 import * as Studio from "./Studio.ts"
 import * as StudioStore from "./StudioStore.ts"
 

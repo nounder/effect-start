@@ -380,9 +380,7 @@ export namespace JSX {
     onResize?: EventHandlerUnion<T, UIEvent> | undefined
     onScroll?: EventHandlerUnion<T, Event> | undefined
     onScrollEnd?: EventHandlerUnion<T, Event> | undefined
-    // todo `SnapEvent` is currently undefined in TS
     onScrollSnapChange?: EventHandlerUnion<T, Event> | undefined
-    // todo `SnapEvent` is currently undefined in TS
     onScrollSnapChanging?: EventHandlerUnion<T, Event> | undefined
     onSecurityPolicyViolation?: EventHandlerUnion<T, SecurityPolicyViolationEvent> | undefined
     onSeeked?: EventHandlerUnion<T, Event> | undefined
@@ -498,9 +496,7 @@ export namespace JSX {
     onresize?: string | undefined
     onscroll?: string | undefined
     onscrollend?: string | undefined
-    // todo `SnapEvent` is currently undefined in TS
     onscrollsnapchange?: string | undefined
-    // todo `SnapEvent` is currently undefined in TS
     onscrollsnapchanging?: string | undefined
     onsecuritypolicyviolation?: string | undefined
     onseeked?: string | undefined

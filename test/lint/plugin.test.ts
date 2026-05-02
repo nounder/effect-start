@@ -66,21 +66,19 @@ test.describe.skipIf(!process.env.TEST_LINT)("namespace-import", () => {
     test.expect(diags).toHaveLength(0)
   })
 
-  test.it("flags named import from private capitalized module", () => {
+  test.it("flags named import from internal capitalized module", () => {
     const diags = lintRule(
-      `import { mapHeaders } from "../src/_Http.ts"\nmapHeaders\n`,
+      `import { mapHeaders } from "../src/internal/Http.ts"\nmapHeaders\n`,
       "namespace-import",
     )
     test.expect(diags).toHaveLength(1)
   })
 
-  test.it("flags private module with underscore in alias", () => {
-    const diags = lintRule(`import * as _Http from "../src/_Http.ts"\n_Http\n`, "namespace-import")
-    test.expect(diags).toHaveLength(1)
-  })
-
-  test.it("allows private module with stripped alias", () => {
-    const diags = lintRule(`import * as Http from "../src/_Http.ts"\nHttp\n`, "namespace-import")
+  test.it("allows internal module with matching alias", () => {
+    const diags = lintRule(
+      `import * as Http from "../src/internal/Http.ts"\nHttp\n`,
+      "namespace-import",
+    )
     test.expect(diags).toHaveLength(0)
   })
 
@@ -110,17 +108,17 @@ test.describe.skipIf(!process.env.TEST_LINT)("namespace-import", () => {
     test.expect(diags).toHaveLength(1)
   })
 
-  test.it("flags private module with mismatched alias", () => {
+  test.it("flags internal module with mismatched alias", () => {
     const diags = lintRule(
-      `import * as Helpers from "../src/_Values.ts"\nHelpers\n`,
+      `import * as Helpers from "../src/internal/Values.ts"\nHelpers\n`,
       "namespace-import",
     )
     test.expect(diags).toHaveLength(1)
   })
 
-  test.it("allows private module with stripped alias", () => {
+  test.it("allows internal module with matching alias", () => {
     const diags = lintRule(
-      `import * as Values from "../src/_Values.ts"\nValues\n`,
+      `import * as Values from "../src/internal/Values.ts"\nValues\n`,
       "namespace-import",
     )
     test.expect(diags).toHaveLength(0)

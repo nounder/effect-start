@@ -43,7 +43,6 @@ export default {
               if (!isLocalImport(source)) return
               const alias = node.specifiers[0].local.name
               if (alias === baseName) return
-              if (alias === "_" + baseName) return
               if (node.importKind === "type") return
 
               context.report({
@@ -631,9 +630,6 @@ function getBaseName(source) {
 
   // Strip file extension (.ts, .tsx, .js, .jsx, .mjs, .cjs)
   last = last.replace(/\.(ts|tsx|js|jsx|mjs|cjs)$/, "")
-
-  // Strip leading underscores (private module convention)
-  last = last.replace(/^_+/, "")
 
   return last
 }

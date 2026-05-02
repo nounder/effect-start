@@ -1,5 +1,5 @@
 import * as test from "bun:test"
-import * as HtmlScanner from "../src/_HtmlScanner.ts"
+import * as HtmlScanner from "../src/internal/HtmlScanner.ts"
 
 test.describe("parse", () => {
   test.it("finds script tags with attributes", () => {
