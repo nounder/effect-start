@@ -1,4 +1,8 @@
-type JsonPrimitives = string | number | boolean | null
+type JsonPrimitive = string | number | boolean | null
+
+export type FlatObject = {
+  [key: string]: JsonPrimitive
+}
 
 export type JsonObject = {
   [key: string]:
@@ -8,7 +12,7 @@ export type JsonObject = {
     | undefined
 }
 
-export type Json = JsonPrimitives | Json[] | JsonObject
+export type Json = JsonPrimitive | Json[] | JsonObject
 
 export function isPlainObject(value: unknown): value is Record<string, unknown> {
   if (value === null || typeof value !== "object") {

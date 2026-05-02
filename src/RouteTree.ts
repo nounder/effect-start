@@ -1,5 +1,6 @@
 import * as Predicate from "effect/Predicate"
 import type * as PathPattern from "./internal/PathPattern.ts"
+import type * as Values from "./internal/Values.ts"
 import * as Route from "./Route.ts"
 import type * as RouteMount from "./RouteMount.ts"
 
@@ -81,7 +82,7 @@ type UnionToIntersection<U> = (U extends any ? (x: U) => void : never) extends (
 export type WalkDescriptor = {
   path: PathPattern.PathPattern
   method: string
-} & Route.RouteDescriptor.Any
+} & Values.FlatObject
 
 export interface LookupResult {
   route: RouteMount.MountedRoute

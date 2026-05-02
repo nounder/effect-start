@@ -44,7 +44,7 @@ function makeSchemaFilter(
 
 export function schemaHeaders<F extends Schema.Struct.Fields>(
   fields: F,
-): <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
+): <D, SB, P extends Route.Route.Tuple>(
   self: Route.RouteSet<D, SB, P>,
 ) => Route.RouteSet<
   D,
@@ -62,7 +62,7 @@ export function schemaHeaders<F extends Schema.Struct.Fields>(
 >
 export function schemaHeaders<A, I extends Readonly<Record<string, string | undefined>>, R>(
   fields: Schema.Schema<A, I, R>,
-): <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
+): <D, SB, P extends Route.Route.Tuple>(
   self: Route.RouteSet<D, SB, P>,
 ) => Route.RouteSet<
   D,
@@ -81,7 +81,7 @@ export function schemaHeaders(fields: SchemaOrFields) {
 
 export function schemaCookies<F extends Schema.Struct.Fields>(
   fields: F,
-): <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
+): <D, SB, P extends Route.Route.Tuple>(
   self: Route.RouteSet<D, SB, P>,
 ) => Route.RouteSet<
   D,
@@ -99,7 +99,7 @@ export function schemaCookies<F extends Schema.Struct.Fields>(
 >
 export function schemaCookies<A, I extends Readonly<Record<string, string | undefined>>, R>(
   fields: Schema.Schema<A, I, R>,
-): <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
+): <D, SB, P extends Route.Route.Tuple>(
   self: Route.RouteSet<D, SB, P>,
 ) => Route.RouteSet<
   D,
@@ -118,7 +118,7 @@ export function schemaCookies(fields: SchemaOrFields) {
 
 export function schemaSearchParams<F extends Schema.Struct.Fields>(
   fields: F,
-): <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
+): <D, SB, P extends Route.Route.Tuple>(
   self: Route.RouteSet<D, SB, P>,
 ) => Route.RouteSet<
   D,
@@ -140,7 +140,7 @@ export function schemaSearchParams<
   R,
 >(
   fields: Schema.Schema<A, I, R>,
-): <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
+): <D, SB, P extends Route.Route.Tuple>(
   self: Route.RouteSet<D, SB, P>,
 ) => Route.RouteSet<
   D,
@@ -160,7 +160,7 @@ export function schemaSearchParams(fields: SchemaOrFields) {
 
 export function schemaPathParams<F extends Schema.Struct.Fields>(
   fields: F,
-): <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
+): <D, SB, P extends Route.Route.Tuple>(
   self: Route.RouteSet<D, SB, P>,
 ) => Route.RouteSet<
   D,
@@ -178,7 +178,7 @@ export function schemaPathParams<F extends Schema.Struct.Fields>(
 >
 export function schemaPathParams<A, I extends Readonly<Record<string, string | undefined>>, R>(
   fields: Schema.Schema<A, I, R>,
-): <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
+): <D, SB, P extends Route.Route.Tuple>(
   self: Route.RouteSet<D, SB, P>,
 ) => Route.RouteSet<
   D,
@@ -200,7 +200,7 @@ export function schemaPathParams(fields: SchemaOrFields) {
 
 export function schemaBodyJson<F extends Schema.Struct.Fields>(
   fields: F,
-): <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
+): <D, SB, P extends Route.Route.Tuple>(
   self: Route.RouteSet<D, SB, P>,
 ) => Route.RouteSet<
   D,
@@ -218,7 +218,7 @@ export function schemaBodyJson<F extends Schema.Struct.Fields>(
 >
 export function schemaBodyJson<A, I, R>(
   fields: Schema.Schema<A, I, R>,
-): <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
+): <D, SB, P extends Route.Route.Tuple>(
   self: Route.RouteSet<D, SB, P>,
 ) => Route.RouteSet<
   D,
@@ -241,7 +241,7 @@ export function schemaBodyJson(fields: SchemaOrFields) {
 
 export function schemaBodyUrlParams<F extends Schema.Struct.Fields>(
   fields: F,
-): <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
+): <D, SB, P extends Route.Route.Tuple>(
   self: Route.RouteSet<D, SB, P>,
 ) => Route.RouteSet<
   D,
@@ -263,7 +263,7 @@ export function schemaBodyUrlParams<
   R,
 >(
   fields: Schema.Schema<A, I, R>,
-): <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
+): <D, SB, P extends Route.Route.Tuple>(
   self: Route.RouteSet<D, SB, P>,
 ) => Route.RouteSet<
   D,
@@ -287,7 +287,7 @@ export function schemaBodyUrlParams(fields: SchemaOrFields) {
 
 export function schemaBodyMultipart<F extends Schema.Struct.Fields>(
   fields: F,
-): <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
+): <D, SB, P extends Route.Route.Tuple>(
   self: Route.RouteSet<D, SB, P>,
 ) => Route.RouteSet<
   D,
@@ -309,7 +309,7 @@ export function schemaBodyMultipart<
   R,
 >(
   fields: Schema.Schema<A, I, R>,
-): <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
+): <D, SB, P extends Route.Route.Tuple>(
   self: Route.RouteSet<D, SB, P>,
 ) => Route.RouteSet<
   D,
@@ -341,7 +341,7 @@ export function schemaBodyMultipart(fields: SchemaOrFields) {
 
 export function schemaBodyForm<F extends Schema.Struct.Fields>(
   fields: F,
-): <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
+): <D, SB, P extends Route.Route.Tuple>(
   self: Route.RouteSet<D, SB, P>,
 ) => Route.RouteSet<
   D,
@@ -363,7 +363,7 @@ export function schemaBodyForm<
   R,
 >(
   fields: Schema.Schema<A, I, R>,
-): <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
+): <D, SB, P extends Route.Route.Tuple>(
   self: Route.RouteSet<D, SB, P>,
 ) => Route.RouteSet<
   D,
@@ -419,19 +419,19 @@ export function schemaBodyForm(fields: SchemaOrFields) {
  */
 export function schemaError<A, I, R>(
   schema: Schema.Schema<A, I, R> & { readonly status: number },
-): <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
+): <D, SB, P extends Route.Route.Tuple>(
   self: Route.RouteSet<D, SB, P>,
 ) => Route.RouteSet<D, SB, [...P, Route.Route<{}, {}, unknown, never, R>]>
 export function schemaError<A, I, R>(
   schema: Schema.Schema<A, I, R>,
   options: { readonly status: number },
-): <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
+): <D, SB, P extends Route.Route.Tuple>(
   self: Route.RouteSet<D, SB, P>,
 ) => Route.RouteSet<D, SB, [...P, Route.Route<{}, {}, unknown, never, R>]>
 export function schemaError<A, I, R>(
   schema: Schema.Schema<A, I, R> & { readonly status?: number },
   options?: { readonly status: number },
-): <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
+): <D, SB, P extends Route.Route.Tuple>(
   self: Route.RouteSet<D, SB, P>,
 ) => Route.RouteSet<D, SB, [...P, Route.Route<{}, {}, unknown, never, R>]> {
   const status = options?.status ?? (schema as any).status
@@ -442,7 +442,7 @@ export function schemaError<A, I, R>(
   }
   const encode = Schema.encode(schema)
   const is = Schema.is(schema)
-  return function <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
+  return function <D, SB, P extends Route.Route.Tuple>(
     self: Route.RouteSet<D, SB, P>,
   ): Route.RouteSet<D, SB, [...P, Route.Route<{}, {}, unknown, never, R>]> {
     const route = Route.make<{}, {}, unknown, never, R>((_context, next) =>
@@ -464,7 +464,7 @@ export function schemaError<A, I, R>(
 
 export function schemaSuccess<F extends Schema.Struct.Fields>(
   fields: F,
-): <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
+): <D, SB, P extends Route.Route.Tuple>(
   self: Route.RouteSet<D, SB, P>,
 ) => Route.RouteSet<
   D,
@@ -482,7 +482,7 @@ export function schemaSuccess<F extends Schema.Struct.Fields>(
 >
 export function schemaSuccess<A, I, R>(
   schema: Schema.Schema<A, I, R>,
-): <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
+): <D, SB, P extends Route.Route.Tuple>(
   self: Route.RouteSet<D, SB, P>,
 ) => Route.RouteSet<
   D,

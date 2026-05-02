@@ -60,13 +60,9 @@ type SseHandlerInput<B, E, R> =
           unknown
         >)
 
-export function sse<
-  D extends Route.RouteDescriptor.Any,
-  B extends {},
-  I extends Route.Route.Tuple,
-  E = never,
-  R = never,
->(handler: SseHandlerInput<NoInfer<D & B & Route.ExtractBindings<I> & { format: "sse" }>, E, R>) {
+export function sse<D, B, I extends Route.Route.Tuple, E = never, R = never>(
+  handler: SseHandlerInput<NoInfer<D & B & Route.ExtractBindings<I> & { format: "sse" }>, E, R>,
+) {
   return function (self: Route.RouteSet<D, B, I>) {
     const sseHandler: Route.Route.Handler<
       D & B & Route.ExtractBindings<I> & { format: "sse" },

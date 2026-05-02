@@ -21,23 +21,13 @@ export const RouteBindings: unique symbol = Symbol()
 
 export const TypeId = "~effect-start/RouteSet" as const
 
-export namespace RouteDescriptor {
-  export type Any = {
-    [key: string]: unknown
-  }
-}
-
-export type RouteSet<
-  D extends RouteDescriptor.Any = {},
-  B = {},
-  M extends Route.Tuple = [],
-> = RouteSet.Data<D, B, M> & {
+export type RouteSet<D = {}, B = {}, M extends Route.Tuple = []> = RouteSet.Data<D, B, M> & {
   [TypeId]: typeof TypeId
 } & Pipeable.Pipeable &
   Iterable<M[number]>
 
 export namespace RouteSet {
-  export type Data<D extends RouteDescriptor.Any = {}, B = {}, M extends Route.Tuple = []> = {
+  export type Data<D = {}, B = {}, M extends Route.Tuple = []> = {
     [RouteItems]: M
     [RouteDescriptor]: D
     [RouteBindings]: B
@@ -58,22 +48,17 @@ export namespace RouteSet {
     T extends Data<infer D, any, any> ? D : never
 }
 
-export interface Route<
-  D extends RouteDescriptor.Any = {},
-  B = {},
-  A = any,
-  E = never,
-  R = never,
-> extends RouteSet<D, {}, [Route<D, B, A, E, R>]> {
+export interface Route<D = {}, B = {}, A = any, E = never, R = never>
+  extends RouteSet<D, {}, [Route<D, B, A, E, R>]> {
   readonly handler: Route.OpaqueHandler<B & D, A, E, R>
 }
 
 export namespace Route {
-  export type With<D extends RouteDescriptor.Any> = Route<any, any, any, any, any> & {
+  export type With<D> = Route<any, any, any, any, any> & {
     [RouteDescriptor]: D
   }
 
-  export type Tuple<_D extends RouteDescriptor.Any = {}> = [...Route<any, any, any, any, any>[]]
+  export type Tuple = [...Route<any, any, any, any, any>[]]
 
   export type Handler<B, A, E, R> = (
     context: B,
@@ -144,7 +129,7 @@ export function isRoute(input: unknown): input is Route {
   return isRouteSet(input) && Predicate.hasProperty(input, "handler")
 }
 
-export function set<D extends RouteDescriptor.Any = {}, B = {}, I extends Route.Tuple = []>(
+export function set<D = {}, B = {}, I extends Route.Tuple = []>(
   items: I = [] as unknown as I,
   descriptor: D = {} as D,
 ): RouteSet<D, B, I> {
@@ -154,7 +139,7 @@ export function set<D extends RouteDescriptor.Any = {}, B = {}, I extends Route.
   }) as RouteSet<D, B, I>
 }
 
-export function make<D extends RouteDescriptor.Any, B, A, E = never, R = never>(
+export function make<D, B, A, E = never, R = never>(
   handler: Route.Handler<B & D, A, E, R>,
   descriptor?: D,
 ): Route<D, B, A, E, R> {
@@ -172,7 +157,7 @@ export function make<D extends RouteDescriptor.Any, B, A, E = never, R = never>(
 
 export const empty = set()
 
-export function describe<D extends RouteDescriptor.Any>(descriptor: D) {
+export function describe<D extends {} = {}>(descriptor: D) {
   return set([], descriptor)
 }
 
@@ -183,13 +168,13 @@ export function items<T extends RouteSet.Data<any, any, any>>(self: T): RouteSet
 export function descriptor<T extends RouteSet.Data<any, any, any>>(
   self: T,
 ): T[typeof RouteDescriptor]
-export function descriptor<E extends RouteDescriptor.Any>(self: RouteSet.Data<any, any, any>): E
+export function descriptor<E>(self: RouteSet.Data<any, any, any>): E
 export function descriptor<T extends RouteSet.Data<any, any, any>>(
   self: Iterable<T>,
 ): Array<T[typeof RouteDescriptor]>
 export function descriptor(
   self: RouteSet.Data<any, any, any> | Iterable<RouteSet.Data<any, any, any>>,
-): RouteDescriptor.Any | RouteDescriptor.Any[] {
+): object | object[] {
   if (RouteDescriptor in self) {
     return self[RouteDescriptor]
   }
@@ -211,10 +196,8 @@ type ShallowMerge<A, B> = Omit<A, keyof B> & {
   [K in keyof B]: K extends keyof A ? A[K] & B[K] : B[K]
 }
 
-export type ExtractContext<
-  Items extends Route.Tuple,
-  Descriptor extends RouteDescriptor.Any,
-> = ExtractBindings<Items> & Descriptor
+export type ExtractContext<Items extends Route.Tuple, Descriptor> = ExtractBindings<Items> &
+  Descriptor
 
 export * from "./RouteHook.ts"
 export * from "./RouteSchema.ts"
@@ -245,7 +228,7 @@ export const bytes = RouteBody.build<Uint8Array, "bytes">({
 
 export { sse } from "./RouteSse.ts"
 
-export function redirect<D extends RouteDescriptor.Any, B extends {}, I extends Route.Tuple>(
+export function redirect<D, B, I extends Route.Tuple>(
   url: string | URL,
   options?: { status?: 301 | 302 | 303 | 307 | 308 },
 ): (self: RouteSet<D, B, I>) => RouteSet<D, B, [...I, Route<{}, {}, "", never, never>]> {
@@ -292,7 +275,7 @@ export function layerMerge(routes: RouteTree.InputRouteMap | RouteTree.RouteTree
  * Note that when we convert the routes to web handles in {@link import("./RouteHttp.ts")},
  * we exclude them altogeteher in development.
  */
-export function devOnly<D extends RouteDescriptor.Any, B, I extends Route.Tuple>(
+export function devOnly<D, B, I extends Route.Tuple>(
   self: RouteSet<D, B, I>,
 ): RouteSet<D, B, [...I, Route<{ dev: true }, { dev: true }, unknown, any, any>]> {
   const route: Route<{ dev: true }, { dev: true }, unknown, any, any> = make<

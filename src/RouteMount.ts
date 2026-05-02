@@ -33,12 +33,9 @@ const Proto = Object.assign(Object.create(null), {
   options,
 })
 
-function make<
-  D extends {} = {},
-  I extends Route.Route.Tuple<{
-    method: string
-  }> = [],
->(items: I): RouteMount.Builder<D, I> {
+function make<D = {}, I extends Route.Route.Tuple = []>(
+  items: I,
+): RouteMount.Builder<D, I> {
   return Object.assign(Object.create(Proto), {
     [Route.RouteItems]: items,
     [Route.RouteDescriptor]: {},
@@ -89,7 +86,7 @@ export namespace RouteMount {
 
   export type MountSet = Route.RouteSet<{ method: Method }, {}, Route.Route.Tuple>
 
-  export type Builder<D extends {} = {}, I extends Route.Route.Tuple = []> = Route.RouteSet<
+  export type Builder<D = {}, I extends Route.Route.Tuple = []> = Route.RouteSet<
     D,
     {},
     I

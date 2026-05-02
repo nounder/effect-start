@@ -44,7 +44,7 @@ export function htmlBundle(load: () => HTMLBundleModule | Promise<HTMLBundleModu
     Promise.resolve(load()).then((mod) => ("default" in mod ? mod.default : mod))
   const descriptors = { bunPrefix, bunLoad, format: "html" as const }
 
-  return function <D extends Route.RouteDescriptor.Any, B extends {}, I extends Route.Route.Tuple>(
+  return function <D, B, I extends Route.Route.Tuple>(
     self: Route.RouteSet<D, B, I>,
   ): Route.RouteSet<
     D,

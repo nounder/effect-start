@@ -14,8 +14,8 @@ export type FilterHandlerInput<BIn, BOut, E, R> =
       | Generator<Utils.YieldWrap<Effect.Effect<unknown, E, R>>, { context: BOut }, unknown>)
 
 export function filter<
-  D extends Route.RouteDescriptor.Any,
-  SB extends {},
+  D,
+  SB,
   P extends Route.Route.Tuple,
   BOut extends {},
   E = never,

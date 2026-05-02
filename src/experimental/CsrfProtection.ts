@@ -96,7 +96,7 @@ export function make(options?: Options) {
     ? new Set(["same-origin", "same-site"])
     : new Set(["same-origin"])
 
-  return <D extends Route.RouteDescriptor.Any, SB extends {}, P extends Route.Route.Tuple>(
+  return <D, SB, P extends Route.Route.Tuple>(
     self: Route.RouteSet<D, SB, P>,
   ): Route.RouteSet<D, SB, [...P, Route.Route<{}, {}, unknown, never, Route.Request>]> => {
     const route = Route.make<{}, {}, unknown, never, Route.Request>((_context, next) =>

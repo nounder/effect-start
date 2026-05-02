@@ -109,7 +109,7 @@ function normalizeToEntity(value: unknown): Effect.Effect<Entity.Entity<any>> {
 
 export interface BuildReturn<Value, F extends Format, Body = never> {
   <
-    D extends Route.RouteDescriptor.Any,
+    D,
     B,
     I extends Route.Route.Tuple,
     A extends F extends "json" ? Value : Value | Stream.Stream<Value, any, any>,
@@ -134,7 +134,7 @@ export interface BuildReturn<Value, F extends Format, Body = never> {
   >
 
   <
-    D extends Route.RouteDescriptor.Any,
+    D,
     B,
     I extends Route.Route.Tuple,
     A extends F extends "json" ? Value : Value | Stream.Stream<Value, any, any>,
@@ -162,7 +162,7 @@ export function build<Value, F extends Format>(options: {
 }): any {
   const { handle: handleBody, ...descriptors } = options
   return function <
-    D extends Route.RouteDescriptor.Any,
+    D,
     B,
     I extends Route.Route.Tuple,
     A extends F extends "json" ? Value : Value | Stream.Stream<Value, any, any>,
@@ -208,7 +208,7 @@ export function build<Value, F extends Format>(options: {
 export type RenderValue = string | Uint8Array | Stream.Stream<string | Uint8Array, any, any>
 
 export function render<
-  D extends Route.RouteDescriptor.Any,
+  D extends {},
   B extends {},
   I extends Route.Route.Tuple,
   A extends RenderValue,
@@ -223,7 +223,7 @@ export function render<
   [...I, Route.Route<{ format: "*" }, {}, A, YieldError<Y>, YieldContext<Y>>]
 >
 export function render<
-  D extends Route.RouteDescriptor.Any,
+  D extends {},
   B extends {},
   I extends Route.Route.Tuple,
   A extends RenderValue,
@@ -235,7 +235,7 @@ export function render<
   self: Route.RouteSet<D, B, I>,
 ) => Route.RouteSet<D, B, [...I, Route.Route<{ format: "*" }, {}, A, E, R>]>
 export function render<
-  D extends Route.RouteDescriptor.Any,
+  D extends {},
   B extends {},
   I extends Route.Route.Tuple,
   A extends RenderValue,
