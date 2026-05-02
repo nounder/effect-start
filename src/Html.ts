@@ -86,6 +86,8 @@ const serializeObjectProperty = (value: unknown): string | undefined => {
 const serializeDataAttributeObject = (key: string, value: Record<string, unknown>): string =>
   key === "data-computed" ? serializeObjectProperty(value)! : JSON.stringify(value)
 
+export { renderToString as text }
+
 // TODO: think about other way to name it. maybe format or print? we'll also want stream version
 // initially name of this was inspired by react/preact but after using datastar for a while,
 // i realized that its quite verbose. Html.rende looks much nicer than Html.renderToString
