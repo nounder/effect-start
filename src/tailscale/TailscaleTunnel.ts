@@ -1,19 +1,28 @@
 import * as StartApp from "../_StartApp.ts"
 import * as System from "../System.ts"
+import * as Data from "effect/Data"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as LogLevel from "effect/LogLevel"
+import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
 import * as Function from "effect/Function"
 
-interface TailscaleStatus {
-  readonly BackendState: string
-  readonly Self?: {
-    readonly DNSName?: string
-    readonly TailscaleIPs?: ReadonlyArray<string>
-  }
-}
+export class TailscaleError extends Data.TaggedError("TailscaleError")<{
+  message: string
+  cause?: unknown
+}> {}
+
+const TailscaleStatus = Schema.Struct({
+  BackendState: Schema.String,
+  Self: Schema.optional(
+    Schema.Struct({
+      DNSName: Schema.optional(Schema.String),
+      TailscaleIPs: Schema.optional(Schema.Array(Schema.String)),
+    }),
+  ),
+})
 
 const getStatus = (command: string) =>
   Effect.gen(function* () {
@@ -31,7 +40,15 @@ const getStatus = (command: string) =>
     }
 
     const stdout = yield* proc.stdout.pipe(Stream.decodeText("utf-8"), Stream.mkString)
-    const json: TailscaleStatus = JSON.parse(stdout)
+    const json = yield* Schema.decodeUnknown(Schema.parseJson(TailscaleStatus))(stdout).pipe(
+      Effect.mapError(
+        (cause) =>
+          new TailscaleError({
+            message: `failed to parse tailscale status: ${cause}`,
+            cause,
+          }),
+      ),
+    )
 
     if (json.BackendState !== "Running") {
       return yield* new System.SystemError({
@@ -108,7 +125,7 @@ export const layer = (opts?: { public?: boolean }) =>
             dnsName,
             public: opts?.public,
           })
-        }).pipe(Effect.tapError((e) => Effect.logError(`Tailscale: ${e.description}`))),
+        }).pipe(Effect.tapError((e) => Effect.logError(`Tailscale: ${e.message}`))),
       )
     }),
   )
