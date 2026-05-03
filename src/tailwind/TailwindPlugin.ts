@@ -33,14 +33,20 @@ export const make = (opts?: {
       const importDescendants = new Map<string, Set<string>>()
 
       // Track import relationships from tailwind entrypoints.
-      // As of Bun 1.3 this pathway break for Bun Full-Stack server.
+      // Filter to relative/absolute paths only. Bare specifiers (eg. `effect-start/datastar`)
+      // As of Bun 1.3, when a a module is used in HTML bundle, and a plugin intercepts it, the server breaks.
       // @see https://github.com/oven-sh/bun/issues/20877
       builder.onResolve(
         {
-          filter: /.*/,
+          filter: /^[./]/,
         },
         (args) => {
-          const fullPath = Bun.resolveSync(args.path, args.resolveDir)
+          let fullPath: string
+          try {
+            fullPath = Bun.resolveSync(args.path, args.resolveDir)
+          } catch {
+            return undefined
+          }
           const importer = args.importer
 
           if (fullPath.includes("/node_modules/")) {
@@ -110,7 +116,7 @@ export const make = (opts?: {
 
           const compiler = await Tailwind.compile(source, {
             base: NPath.dirname(args.path),
-            onDependency: () => {},
+            onDependency: () => { },
           })
 
           // wait for other files to be loaded so we can collect class name candidates
@@ -197,7 +203,7 @@ async function resolveSourcePattern(
     if (stat.isDirectory()) {
       return { base: candidate, pattern: SOURCE_FILE_GLOB }
     }
-  } catch {}
+  } catch { }
   return { base, pattern }
 }
 
