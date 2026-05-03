@@ -17,7 +17,7 @@ export function filter<
   D,
   SB,
   P extends Route.Route.Tuple,
-  BOut extends {},
+  BOut extends Record<string, unknown>,
   E = never,
   R = never,
   BIn = D & SB & Route.ExtractBindings<P>,
