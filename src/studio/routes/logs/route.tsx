@@ -56,7 +56,7 @@ export default Route.get(
             ))}
           </div>
 
-          <div data-init={(c) => c.actions.get(`${studio.path}/logs`)} />
+          <div data-init={(c) => c.actions.get("logs")} />
         </form>
       </Shell.Shell>
     )

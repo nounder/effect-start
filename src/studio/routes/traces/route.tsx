@@ -48,7 +48,7 @@ export default Route.get(
             <Traces.TraceGroups prefix={studio.path} spans={spans} />
           </div>
         </form>
-        <div data-init={(c) => c.actions.get(`${studio.path}/traces`)} />
+        <div data-init={(c) => c.actions.get("traces")} />
       </Shell.Shell>
     )
   }),

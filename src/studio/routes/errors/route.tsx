@@ -70,7 +70,7 @@ export default Route.get(
             ))}
           </div>
 
-          <div data-init={(c) => c.actions.get(`${studio.path}/errors`)} />
+          <div data-init={(c) => c.actions.get("errors")} />
         </form>
       </Shell.Shell>
     )

@@ -21,7 +21,7 @@ export default Route.get(
               <div class="empty">Waiting for system data...</div>
             )}
           </div>
-          <div data-init={(c) => c.actions.get(`${studio.path}/system`)} />
+          <div data-init={(c) => c.actions.get("system")} />
         </div>
       </Shell.Shell>
     )

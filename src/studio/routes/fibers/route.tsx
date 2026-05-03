@@ -21,7 +21,7 @@ export default Route.get(
           <div id="fibers-container" class="tab-body">
             <Fibers.FiberList fibers={fibers} prefix={studio.path} />
           </div>
-          <div data-init={(c) => c.actions.get(`${studio.path}/fibers`)} />
+          <div data-init={(c) => c.actions.get("fibers")} />
         </div>
       </Shell.Shell>
     )

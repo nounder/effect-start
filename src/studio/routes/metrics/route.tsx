@@ -15,7 +15,7 @@ export default Route.get(
         <div id="metrics-container" class="tab-body metrics-grid">
           <Metrics.MetricsGrid metrics={studio.store.metrics} />
         </div>
-        <div data-init={(c) => c.actions.get(`${studio.path}/metrics`)} />
+        <div data-init={(c) => c.actions.get("metrics")} />
       </Shell.Shell>
     )
   }),
