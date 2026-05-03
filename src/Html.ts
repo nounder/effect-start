@@ -161,6 +161,8 @@ export function renderToString(
               result += ` ${esc(resolvedKey)}="${esc(value.toString())}"`
             } else if (key.startsWith("data-") && typeof value === "object") {
               result += ` ${esc(resolvedKey)}='${escSQ(serializeDataAttributeObject(key, value))}'`
+            } else if (key.startsWith("on") && typeof value === "function") {
+              result += ` ${esc(resolvedKey)}="(${esc(value.toString())}).call(this,event)"`
             } else {
               result += ` ${esc(resolvedKey)}="${esc(value)}"`
             }
