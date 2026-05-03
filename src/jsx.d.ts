@@ -13,8 +13,6 @@ import type { DatastarAttributes } from "./datastar/jsx.d.ts"
  * Checked against other frameworks via the following table:
  * https://potahtml.github.io/namespace-jsx-project/index.html
  */
-type DOMElement = never
-
 type HtmlPrimitive = string | number | boolean | null | undefined
 export type HtmlElementType = string | HtmlComponent
 export type HtmlElemenetProps = {
@@ -35,7 +33,6 @@ export namespace JSX {
   type Element = HtmlElement
   type Child = Element | string | number | bigint
   type Children = Child | SilentChild | Iterable<Children>
-
   // a child that is not rendered and is often a result
   // of conditional rendering, like: `{condition && <div>...</div>}`
   type SilentChild = boolean | null | undefined
@@ -52,60 +49,12 @@ export namespace JSX {
 
   type EventHandler<E extends Event> = string | ((event: E) => unknown)
 
-  const SERIALIZABLE: unique symbol
-  interface SerializableAttributeValue {
-    toString(): string
-    [SERIALIZABLE]: never
-  }
-
   interface IntrinsicAttributes {
     ref?: unknown | ((e: unknown) => void) | undefined
   }
   interface CustomAttributes<T> {
     ref?: T | ((el: T) => void) | undefined
     children?: Children
-    classList?:
-      | {
-          [k: string]: boolean | undefined
-        }
-      | undefined
-  }
-  type Accessor<T> = () => T
-  interface Directives {}
-  interface DirectiveFunctions {
-    [x: string]: (el: DOMElement, accessor: Accessor<any>) => void
-  }
-  interface ExplicitProperties {}
-  interface ExplicitAttributes {}
-  interface ExplicitBoolAttributes {}
-  type DirectiveAttributes = {
-    [Key in keyof Directives as `use:${Key}`]?: Directives[Key]
-  }
-  type DirectiveFunctionAttributes<T> = {
-    [K in keyof DirectiveFunctions as string extends K
-      ? never
-      : `use:${K}`]?: DirectiveFunctions[K] extends (
-      el: infer E, // will be unknown if not provided
-      ...rest: infer R
-    ) // use rest so that we can check whether it's provided or not
-    => void
-      ? T extends E // everything extends unknown if E is unknown
-        ? R extends [infer A] // check if has accessor provided
-          ? A extends Accessor<infer V>
-            ? V // it's an accessor
-            : never // it isn't, type error
-          : true // no accessor provided
-        : never // T is the wrong element
-      : never // it isn't a function
-  }
-  type PropAttributes = {
-    [Key in keyof ExplicitProperties as `prop:${Key}`]?: ExplicitProperties[Key]
-  }
-  type AttrAttributes = {
-    [Key in keyof ExplicitAttributes as `attr:${Key}`]?: ExplicitAttributes[Key]
-  }
-  type BoolAttributes = {
-    [Key in keyof ExplicitBoolAttributes as `bool:${Key}`]?: ExplicitBoolAttributes[Key]
   }
 
   // events
@@ -146,7 +95,6 @@ export namespace JSX {
    *
    * Includes events defined for the `Element` interface.
    */
-
   interface CustomEventHandlersLowerCase<T> {
     onabort?: EventHandler<Event> | undefined
     onanimationcancel?: EventHandler<AnimationEvent> | undefined
@@ -272,11 +220,6 @@ export namespace JSX {
   interface DOMAttributes<T>
     extends
       CustomAttributes<T>,
-      DirectiveAttributes,
-      DirectiveFunctionAttributes<T>,
-      PropAttributes,
-      AttrAttributes,
-      BoolAttributes,
       CustomEventHandlersLowerCase<T>,
       AriaAttributes,
       DatastarAttributes {
