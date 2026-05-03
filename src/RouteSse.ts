@@ -13,7 +13,7 @@ const HEARTBEAT = ": <3\n\n"
 
 interface SseEvent {
   readonly _tag?: string
-  readonly data?: string | undefined
+  readonly data?: string | ReadonlyArray<string> | undefined
   readonly event?: string
   readonly retry?: number
 }
@@ -30,6 +30,10 @@ function formatSseEvent(event: SseEvent): string {
   }
   if (typeof event.data === "string") {
     for (const line of event.data.split("\n")) {
+      result += `data: ${line}\n`
+    }
+  } else if (Array.isArray(event.data)) {
+    for (const line of event.data) {
       result += `data: ${line}\n`
     }
   }
