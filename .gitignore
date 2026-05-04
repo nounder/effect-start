@@ -9,3 +9,6 @@ pad/
 dist/
 .tree/
 .npmrc
+CLAUDE.local.md
+AGENTS.local.md
+.pi/
