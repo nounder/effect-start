@@ -26,7 +26,6 @@ ctxPantry.hidden = true
  * @param {Element | ShadowRoot} oldElt
  * @param {DocumentFragment | Element} newContent
  * @param {"outer" | "inner"} [mode]
- * @returns {void}
  */
 export const morph = (oldElt, newContent, mode = "outer") => {
   if (
@@ -91,7 +90,6 @@ export const morph = (oldElt, newContent, mode = "outer") => {
  * @param {Element} newParent
  * @param {Node | null} [insertionPoint]
  * @param {Node | null} [endPoint]
- * @returns {void}
  */
 const morphChildren = (oldParent, newParent, insertionPoint = null, endPoint = null) => {
   if (oldParent instanceof HTMLTemplateElement && newParent instanceof HTMLTemplateElement) {
@@ -236,7 +234,6 @@ const isSoftMatch = (oldNode, newNode) =>
 
 /**
  * @param {Node} node
- * @returns {void}
  */
 const removeNode = (node) => {
   ctxIdMap.has(node) ? moveBefore(ctxPantry, node, null) : node.parentNode?.removeChild(node)
@@ -246,7 +243,6 @@ const removeNode = (node) => {
  * @param {Node} parentNode
  * @param {Node} node
  * @param {Node | null} after
- * @returns {void}
  */
 const moveBefore = (parentNode, node, after) => {
   if ("moveBefore" in parentNode) {
@@ -358,7 +354,6 @@ const morphNode = (oldNode, newNode) => {
 /**
  * @param {Element | ShadowRoot | null} root
  * @param {Iterable<Element>} elements
- * @returns {void}
  */
 const populateIdMapWithTree = (root, elements) => {
   for (const elt of elements) {
