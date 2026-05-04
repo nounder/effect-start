@@ -168,8 +168,8 @@ test.describe("Route.html with JSX", () => {
         Route.get(
           Route.html(
             <script>
-              {(window) => {
-                console.log("Hello from", window.document.title)
+              {(e) => {
+                console.log("Hello from", e.window.document.title)
               }}
             </script>,
           ),
@@ -180,8 +180,7 @@ test.describe("Route.html with JSX", () => {
       const text = yield* entity.text
 
       test.expect(text).toContain("<script>(")
-      test.expect(text).toContain(")(window)</script>")
-      test.expect(text).toContain("window.document.title")
+      test.expect(text).toContain("e.window.document.title")
     }).pipe(Effect.runPromise),
   )
 

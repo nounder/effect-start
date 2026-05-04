@@ -156,8 +156,8 @@ test.it("non-data attributes with object values are not JSON stringified", () =>
 })
 
 test.it("script with function child renders as IIFE", () => {
-  const handler = (window: Window) => {
-    console.log("Hello from", window.document.title)
+  const handler = (e: { window: Window; target: HTMLScriptElement }) => {
+    console.log("Hello from", e.window.document.title, e.target)
   }
 
   const node = Html.make("script", {
@@ -166,7 +166,9 @@ test.it("script with function child renders as IIFE", () => {
 
   const html = Html.renderToString(node)
 
-  test.expect(html).toBe(`<script>(${handler.toString()})(window)</script>`)
+  test.expect(html).toBe(
+    `<script>(${handler.toString()})({window,target:document.currentScript})</script>`,
+  )
 })
 
 test.describe("raw text escaping", () => {
@@ -245,9 +247,9 @@ test.describe("raw text escaping", () => {
   test.it("function child with closing tag in string literal", () => {
     const html = Html.renderToString(
       <script>
-        {(window: Window) => {
+        {(e: { window: Window; target: HTMLScriptElement }) => {
           const x = "</script><script>alert(1)</script>"
-          window.document.title = x
+          e.window.document.title = x
         }}
       </script>,
     )
@@ -288,15 +290,14 @@ test.describe("raw text escaping", () => {
 
 test.it("script with arrow function child renders as IIFE", () => {
   const node = Html.make("script", {
-    children: (window: Window) => {
-      window.alert("test")
+    children: (e: { window: Window; target: HTMLScriptElement }) => {
+      e.window.alert("test")
     },
   })
 
   const html = Html.renderToString(node)
 
   test.expect(html).toContain("<script>(")
-  test.expect(html).toContain(")(window)</script>")
   test.expect(html).toContain("window.alert")
 })
 

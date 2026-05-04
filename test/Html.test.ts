@@ -101,15 +101,15 @@ test.describe("html", () => {
   })
 })
 
-test.it("script function child infers window as Window", () => {
-  const handler = (window: Window) => {
-    const doc = window.document.documentElement
-    window.scrollTo(0, doc.scrollHeight)
+test.it("script function child infers event with window and target", () => {
+  const handler = (e: { window: Window; target: HTMLScriptElement }) => {
+    const doc = e.window.document.documentElement
+    e.window.scrollTo(0, doc.scrollHeight)
 
-    const chatPage = window.document.getElementById("chat-page")!
+    const chatPage = e.target.parentElement!
     const observer = new MutationObserver(() => {
-      window.requestAnimationFrame(() => {
-        window.scrollTo(0, doc.scrollHeight)
+      e.window.requestAnimationFrame(() => {
+        e.window.scrollTo(0, doc.scrollHeight)
       })
     })
     observer.observe(chatPage, {
@@ -125,7 +125,6 @@ test.it("script function child infers window as Window", () => {
   const html_ = Html.renderToString(node)
 
   test.expect(html_).toContain("<script>(")
-  test.expect(html_).toContain(")(window)</script>")
   test.expect(html_).toContain("scrollTo")
   test.expect(html_).toContain("MutationObserver")
 })

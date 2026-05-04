@@ -184,7 +184,9 @@ export function renderToString(
           const children = props.children
 
           if (type === "script" && typeof children === "function") {
-            result += escapeRawText(`(${children.toString()})(window)`)
+            result += escapeRawText(
+              `(${children.toString()})({window,target:document.currentScript})`,
+            )
           } else if (isRawText && children != null) {
             const raw = Array.isArray(children) ? children.join("") : String(children)
             result += escapeRawText(raw)

@@ -21,7 +21,7 @@ export type HtmlElemenetProps = {
     | HtmlElement
     | Iterable<HtmlPrimitive | HtmlElement>
     | Record<string, unknown>
-    | ((window: Window) => void)
+    | ((e: { window: Window; target: HTMLScriptElement }) => void)
 }
 export type HtmlComponent = (props: HtmlElemenetProps) => HtmlElement | HtmlPrimitive
 export interface HtmlElement {
@@ -1418,7 +1418,7 @@ export namespace JSX {
     ScriptHTMLAttributes<T>,
     "children" | "type"
   > {
-    children: (window: Window) => void
+    children: (e: { window: Window; target: HTMLScriptElement }) => void
     type?: never
   }
   interface SelectHTMLAttributes<T> extends HTMLAttributes<T> {
