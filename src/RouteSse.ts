@@ -28,12 +28,9 @@ function formatSseEvent(event: SseEvent): string {
   if (event.event) {
     result += `event: ${event.event}\n`
   }
-  if (typeof event.data === "string") {
-    for (const line of event.data.split("\n")) {
-      result += `data: ${line}\n`
-    }
-  } else if (Array.isArray(event.data)) {
-    for (const line of event.data) {
+  const chunks = typeof event.data === "string" ? [event.data] : event.data
+  for (const chunk of chunks ?? []) {
+    for (const line of chunk.split("\n")) {
       result += `data: ${line}\n`
     }
   }
