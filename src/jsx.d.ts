@@ -47,7 +47,9 @@ export namespace JSX {
     children: {}
   }
 
-  type EventHandler<E extends Event> = string | ((event: E) => unknown)
+  type EventHandler<E extends Event, T = EventTarget> =
+    | string
+    | ((event: E & { readonly currentTarget: T }) => unknown)
 
   interface IntrinsicAttributes {
     ref?: unknown | ((e: unknown) => void) | undefined
@@ -65,26 +67,26 @@ export namespace JSX {
    * Excluding `Elements events` already defined as globals that all tags share, such as `onblur`.
    */
   interface WindowEventMap<T> {
-    onafterprint?: EventHandler<Event> | undefined
-    onbeforeprint?: EventHandler<Event> | undefined
-    onbeforeunload?: EventHandler<BeforeUnloadEvent> | undefined
-    ongamepadconnected?: EventHandler<GamepadEvent> | undefined
-    ongamepaddisconnected?: EventHandler<GamepadEvent> | undefined
-    onhashchange?: EventHandler<HashChangeEvent> | undefined
-    onlanguagechange?: EventHandler<Event> | undefined
-    onmessage?: EventHandler<MessageEvent> | undefined
-    onmessageerror?: EventHandler<MessageEvent> | undefined
-    onoffline?: EventHandler<Event> | undefined
-    ononline?: EventHandler<Event> | undefined
-    onpagehide?: EventHandler<PageTransitionEvent> | undefined
-    onpagereveal?: EventHandler<PageRevealEvent> | undefined
-    onpageshow?: EventHandler<PageTransitionEvent> | undefined
-    onpageswap?: EventHandler<PageSwapEvent> | undefined
-    onpopstate?: EventHandler<PopStateEvent> | undefined
-    onrejectionhandled?: EventHandler<PromiseRejectionEvent> | undefined
-    onstorage?: EventHandler<StorageEvent> | undefined
-    onunhandledrejection?: EventHandler<PromiseRejectionEvent> | undefined
-    onunload?: EventHandler<Event> | undefined
+    onafterprint?: EventHandler<Event, T> | undefined
+    onbeforeprint?: EventHandler<Event, T> | undefined
+    onbeforeunload?: EventHandler<BeforeUnloadEvent, T> | undefined
+    ongamepadconnected?: EventHandler<GamepadEvent, T> | undefined
+    ongamepaddisconnected?: EventHandler<GamepadEvent, T> | undefined
+    onhashchange?: EventHandler<HashChangeEvent, T> | undefined
+    onlanguagechange?: EventHandler<Event, T> | undefined
+    onmessage?: EventHandler<MessageEvent, T> | undefined
+    onmessageerror?: EventHandler<MessageEvent, T> | undefined
+    onoffline?: EventHandler<Event, T> | undefined
+    ononline?: EventHandler<Event, T> | undefined
+    onpagehide?: EventHandler<PageTransitionEvent, T> | undefined
+    onpagereveal?: EventHandler<PageRevealEvent, T> | undefined
+    onpageshow?: EventHandler<PageTransitionEvent, T> | undefined
+    onpageswap?: EventHandler<PageSwapEvent, T> | undefined
+    onpopstate?: EventHandler<PopStateEvent, T> | undefined
+    onrejectionhandled?: EventHandler<PromiseRejectionEvent, T> | undefined
+    onstorage?: EventHandler<StorageEvent, T> | undefined
+    onunhandledrejection?: EventHandler<PromiseRejectionEvent, T> | undefined
+    onunload?: EventHandler<Event, T> | undefined
   }
 
   /**
@@ -96,118 +98,118 @@ export namespace JSX {
    * Includes events defined for the `Element` interface.
    */
   interface CustomEventHandlersLowerCase<T> {
-    onabort?: EventHandler<Event> | undefined
-    onanimationcancel?: EventHandler<AnimationEvent> | undefined
-    onanimationend?: EventHandler<AnimationEvent> | undefined
-    onanimationiteration?: EventHandler<AnimationEvent> | undefined
-    onanimationstart?: EventHandler<AnimationEvent> | undefined
-    onauxclick?: EventHandler<MouseEvent> | undefined
-    onbeforecopy?: EventHandler<ClipboardEvent> | undefined
-    onbeforecut?: EventHandler<ClipboardEvent> | undefined
-    onbeforeinput?: EventHandler<InputEvent> | undefined
-    onbeforematch?: EventHandler<Event> | undefined
-    onbeforepaste?: EventHandler<ClipboardEvent> | undefined
-    onbeforetoggle?: EventHandler<Event> | undefined
-    onbeforexrselect?: EventHandler<Event> | undefined
-    onblur?: EventHandler<FocusEvent> | undefined
-    oncancel?: EventHandler<Event> | undefined
-    oncanplay?: EventHandler<Event> | undefined
-    oncanplaythrough?: EventHandler<Event> | undefined
-    onchange?: EventHandler<Event> | undefined
-    onclick?: EventHandler<MouseEvent> | undefined
-    onclose?: EventHandler<Event> | undefined
-    oncommand?: EventHandler<CommandEvent> | undefined
-    oncompositionend?: EventHandler<CompositionEvent> | undefined
-    oncompositionstart?: EventHandler<CompositionEvent> | undefined
-    oncompositionupdate?: EventHandler<CompositionEvent> | undefined
-    oncontentvisibilityautostatechange?: EventHandler<Event> | undefined
-    oncontextlost?: EventHandler<Event> | undefined
-    oncontextmenu?: EventHandler<MouseEvent> | undefined
-    oncontextrestored?: EventHandler<Event> | undefined
-    oncopy?: EventHandler<ClipboardEvent> | undefined
-    oncuechange?: EventHandler<Event> | undefined
-    oncut?: EventHandler<ClipboardEvent> | undefined
-    ondblclick?: EventHandler<MouseEvent> | undefined
-    ondrag?: EventHandler<DragEvent> | undefined
-    ondragend?: EventHandler<DragEvent> | undefined
-    ondragenter?: EventHandler<DragEvent> | undefined
-    ondragexit?: EventHandler<DragEvent> | undefined
-    ondragleave?: EventHandler<DragEvent> | undefined
-    ondragover?: EventHandler<DragEvent> | undefined
-    ondragstart?: EventHandler<DragEvent> | undefined
-    ondrop?: EventHandler<DragEvent> | undefined
-    ondurationchange?: EventHandler<Event> | undefined
-    onemptied?: EventHandler<Event> | undefined
-    onended?: EventHandler<Event> | undefined
-    onerror?: EventHandler<Event> | undefined
-    onfocus?: EventHandler<FocusEvent> | undefined
-    onfocusin?: EventHandler<FocusEvent> | undefined
-    onfocusout?: EventHandler<FocusEvent> | undefined
-    onformdata?: EventHandler<FormDataEvent> | undefined
-    onfullscreenchange?: EventHandler<Event> | undefined
-    onfullscreenerror?: EventHandler<Event> | undefined
-    ongotpointercapture?: EventHandler<PointerEvent> | undefined
-    oninput?: EventHandler<InputEvent> | undefined
-    oninvalid?: EventHandler<Event> | undefined
-    onkeydown?: EventHandler<KeyboardEvent> | undefined
-    onkeypress?: EventHandler<KeyboardEvent> | undefined
-    onkeyup?: EventHandler<KeyboardEvent> | undefined
-    onload?: EventHandler<Event> | undefined
-    onloadeddata?: EventHandler<Event> | undefined
-    onloadedmetadata?: EventHandler<Event> | undefined
-    onloadstart?: EventHandler<Event> | undefined
-    onlostpointercapture?: EventHandler<PointerEvent> | undefined
-    onmousedown?: EventHandler<MouseEvent> | undefined
-    onmouseenter?: EventHandler<MouseEvent> | undefined
-    onmouseleave?: EventHandler<MouseEvent> | undefined
-    onmousemove?: EventHandler<MouseEvent> | undefined
-    onmouseout?: EventHandler<MouseEvent> | undefined
-    onmouseover?: EventHandler<MouseEvent> | undefined
-    onmouseup?: EventHandler<MouseEvent> | undefined
-    onpaste?: EventHandler<ClipboardEvent> | undefined
-    onpause?: EventHandler<Event> | undefined
-    onplay?: EventHandler<Event> | undefined
-    onplaying?: EventHandler<Event> | undefined
-    onpointercancel?: EventHandler<PointerEvent> | undefined
-    onpointerdown?: EventHandler<PointerEvent> | undefined
-    onpointerenter?: EventHandler<PointerEvent> | undefined
-    onpointerleave?: EventHandler<PointerEvent> | undefined
-    onpointermove?: EventHandler<PointerEvent> | undefined
-    onpointerout?: EventHandler<PointerEvent> | undefined
-    onpointerover?: EventHandler<PointerEvent> | undefined
-    onpointerrawupdate?: EventHandler<PointerEvent> | undefined
-    onpointerup?: EventHandler<PointerEvent> | undefined
-    onprogress?: EventHandler<ProgressEvent> | undefined
-    onratechange?: EventHandler<Event> | undefined
-    onreset?: EventHandler<Event> | undefined
-    onresize?: EventHandler<UIEvent> | undefined
-    onscroll?: EventHandler<Event> | undefined
-    onscrollend?: EventHandler<Event> | undefined
-    onscrollsnapchange?: EventHandler<Event> | undefined
-    onscrollsnapchanging?: EventHandler<Event> | undefined
-    onsecuritypolicyviolation?: EventHandler<SecurityPolicyViolationEvent> | undefined
-    onseeked?: EventHandler<Event> | undefined
-    onseeking?: EventHandler<Event> | undefined
-    onselect?: EventHandler<Event> | undefined
-    onselectionchange?: EventHandler<Event> | undefined
-    onselectstart?: EventHandler<Event> | undefined
-    onslotchange?: EventHandler<Event> | undefined
-    onstalled?: EventHandler<Event> | undefined
-    onsubmit?: EventHandler<SubmitEvent> | undefined
-    onsuspend?: EventHandler<Event> | undefined
-    ontimeupdate?: EventHandler<Event> | undefined
-    ontoggle?: EventHandler<Event> | undefined
-    ontouchcancel?: EventHandler<TouchEvent> | undefined
-    ontouchend?: EventHandler<TouchEvent> | undefined
-    ontouchmove?: EventHandler<TouchEvent> | undefined
-    ontouchstart?: EventHandler<TouchEvent> | undefined
-    ontransitioncancel?: EventHandler<TransitionEvent> | undefined
-    ontransitionend?: EventHandler<TransitionEvent> | undefined
-    ontransitionrun?: EventHandler<TransitionEvent> | undefined
-    ontransitionstart?: EventHandler<TransitionEvent> | undefined
-    onvolumechange?: EventHandler<Event> | undefined
-    onwaiting?: EventHandler<Event> | undefined
-    onwheel?: EventHandler<WheelEvent> | undefined
+    onabort?: EventHandler<Event, T> | undefined
+    onanimationcancel?: EventHandler<AnimationEvent, T> | undefined
+    onanimationend?: EventHandler<AnimationEvent, T> | undefined
+    onanimationiteration?: EventHandler<AnimationEvent, T> | undefined
+    onanimationstart?: EventHandler<AnimationEvent, T> | undefined
+    onauxclick?: EventHandler<MouseEvent, T> | undefined
+    onbeforecopy?: EventHandler<ClipboardEvent, T> | undefined
+    onbeforecut?: EventHandler<ClipboardEvent, T> | undefined
+    onbeforeinput?: EventHandler<InputEvent, T> | undefined
+    onbeforematch?: EventHandler<Event, T> | undefined
+    onbeforepaste?: EventHandler<ClipboardEvent, T> | undefined
+    onbeforetoggle?: EventHandler<Event, T> | undefined
+    onbeforexrselect?: EventHandler<Event, T> | undefined
+    onblur?: EventHandler<FocusEvent, T> | undefined
+    oncancel?: EventHandler<Event, T> | undefined
+    oncanplay?: EventHandler<Event, T> | undefined
+    oncanplaythrough?: EventHandler<Event, T> | undefined
+    onchange?: EventHandler<Event, T> | undefined
+    onclick?: EventHandler<MouseEvent, T> | undefined
+    onclose?: EventHandler<Event, T> | undefined
+    oncommand?: EventHandler<CommandEvent, T> | undefined
+    oncompositionend?: EventHandler<CompositionEvent, T> | undefined
+    oncompositionstart?: EventHandler<CompositionEvent, T> | undefined
+    oncompositionupdate?: EventHandler<CompositionEvent, T> | undefined
+    oncontentvisibilityautostatechange?: EventHandler<Event, T> | undefined
+    oncontextlost?: EventHandler<Event, T> | undefined
+    oncontextmenu?: EventHandler<MouseEvent, T> | undefined
+    oncontextrestored?: EventHandler<Event, T> | undefined
+    oncopy?: EventHandler<ClipboardEvent, T> | undefined
+    oncuechange?: EventHandler<Event, T> | undefined
+    oncut?: EventHandler<ClipboardEvent, T> | undefined
+    ondblclick?: EventHandler<MouseEvent, T> | undefined
+    ondrag?: EventHandler<DragEvent, T> | undefined
+    ondragend?: EventHandler<DragEvent, T> | undefined
+    ondragenter?: EventHandler<DragEvent, T> | undefined
+    ondragexit?: EventHandler<DragEvent, T> | undefined
+    ondragleave?: EventHandler<DragEvent, T> | undefined
+    ondragover?: EventHandler<DragEvent, T> | undefined
+    ondragstart?: EventHandler<DragEvent, T> | undefined
+    ondrop?: EventHandler<DragEvent, T> | undefined
+    ondurationchange?: EventHandler<Event, T> | undefined
+    onemptied?: EventHandler<Event, T> | undefined
+    onended?: EventHandler<Event, T> | undefined
+    onerror?: EventHandler<Event, T> | undefined
+    onfocus?: EventHandler<FocusEvent, T> | undefined
+    onfocusin?: EventHandler<FocusEvent, T> | undefined
+    onfocusout?: EventHandler<FocusEvent, T> | undefined
+    onformdata?: EventHandler<FormDataEvent, T> | undefined
+    onfullscreenchange?: EventHandler<Event, T> | undefined
+    onfullscreenerror?: EventHandler<Event, T> | undefined
+    ongotpointercapture?: EventHandler<PointerEvent, T> | undefined
+    oninput?: EventHandler<InputEvent, T> | undefined
+    oninvalid?: EventHandler<Event, T> | undefined
+    onkeydown?: EventHandler<KeyboardEvent, T> | undefined
+    onkeypress?: EventHandler<KeyboardEvent, T> | undefined
+    onkeyup?: EventHandler<KeyboardEvent, T> | undefined
+    onload?: EventHandler<Event, T> | undefined
+    onloadeddata?: EventHandler<Event, T> | undefined
+    onloadedmetadata?: EventHandler<Event, T> | undefined
+    onloadstart?: EventHandler<Event, T> | undefined
+    onlostpointercapture?: EventHandler<PointerEvent, T> | undefined
+    onmousedown?: EventHandler<MouseEvent, T> | undefined
+    onmouseenter?: EventHandler<MouseEvent, T> | undefined
+    onmouseleave?: EventHandler<MouseEvent, T> | undefined
+    onmousemove?: EventHandler<MouseEvent, T> | undefined
+    onmouseout?: EventHandler<MouseEvent, T> | undefined
+    onmouseover?: EventHandler<MouseEvent, T> | undefined
+    onmouseup?: EventHandler<MouseEvent, T> | undefined
+    onpaste?: EventHandler<ClipboardEvent, T> | undefined
+    onpause?: EventHandler<Event, T> | undefined
+    onplay?: EventHandler<Event, T> | undefined
+    onplaying?: EventHandler<Event, T> | undefined
+    onpointercancel?: EventHandler<PointerEvent, T> | undefined
+    onpointerdown?: EventHandler<PointerEvent, T> | undefined
+    onpointerenter?: EventHandler<PointerEvent, T> | undefined
+    onpointerleave?: EventHandler<PointerEvent, T> | undefined
+    onpointermove?: EventHandler<PointerEvent, T> | undefined
+    onpointerout?: EventHandler<PointerEvent, T> | undefined
+    onpointerover?: EventHandler<PointerEvent, T> | undefined
+    onpointerrawupdate?: EventHandler<PointerEvent, T> | undefined
+    onpointerup?: EventHandler<PointerEvent, T> | undefined
+    onprogress?: EventHandler<ProgressEvent, T> | undefined
+    onratechange?: EventHandler<Event, T> | undefined
+    onreset?: EventHandler<Event, T> | undefined
+    onresize?: EventHandler<UIEvent, T> | undefined
+    onscroll?: EventHandler<Event, T> | undefined
+    onscrollend?: EventHandler<Event, T> | undefined
+    onscrollsnapchange?: EventHandler<Event, T> | undefined
+    onscrollsnapchanging?: EventHandler<Event, T> | undefined
+    onsecuritypolicyviolation?: EventHandler<SecurityPolicyViolationEvent, T> | undefined
+    onseeked?: EventHandler<Event, T> | undefined
+    onseeking?: EventHandler<Event, T> | undefined
+    onselect?: EventHandler<Event, T> | undefined
+    onselectionchange?: EventHandler<Event, T> | undefined
+    onselectstart?: EventHandler<Event, T> | undefined
+    onslotchange?: EventHandler<Event, T> | undefined
+    onstalled?: EventHandler<Event, T> | undefined
+    onsubmit?: EventHandler<SubmitEvent, T> | undefined
+    onsuspend?: EventHandler<Event, T> | undefined
+    ontimeupdate?: EventHandler<Event, T> | undefined
+    ontoggle?: EventHandler<Event, T> | undefined
+    ontouchcancel?: EventHandler<TouchEvent, T> | undefined
+    ontouchend?: EventHandler<TouchEvent, T> | undefined
+    ontouchmove?: EventHandler<TouchEvent, T> | undefined
+    ontouchstart?: EventHandler<TouchEvent, T> | undefined
+    ontransitioncancel?: EventHandler<TransitionEvent, T> | undefined
+    ontransitionend?: EventHandler<TransitionEvent, T> | undefined
+    ontransitionrun?: EventHandler<TransitionEvent, T> | undefined
+    ontransitionstart?: EventHandler<TransitionEvent, T> | undefined
+    onvolumechange?: EventHandler<Event, T> | undefined
+    onwaiting?: EventHandler<Event, T> | undefined
+    onwheel?: EventHandler<WheelEvent, T> | undefined
   }
 
   /**
@@ -1255,8 +1257,8 @@ export namespace JSX {
     preload?: "none" | "metadata" | "auto" | "" | undefined
     src?: string | undefined
 
-    onencrypted?: EventHandler<MediaEncryptedEvent> | undefined
-    onwaitingforkey?: EventHandler<Event> | undefined
+    onencrypted?: EventHandler<MediaEncryptedEvent, T> | undefined
+    onwaitingforkey?: EventHandler<Event, T> | undefined
 
     crossOrigin?: HTMLCrossorigin | undefined
 
@@ -1573,8 +1575,8 @@ export namespace JSX {
     poster?: string | undefined
     width?: number | string | undefined
 
-    onenterpictureinpicture?: EventHandler<PictureInPictureEvent> | undefined
-    onleavepictureinpicture?: EventHandler<PictureInPictureEvent> | undefined
+    onenterpictureinpicture?: EventHandler<PictureInPictureEvent, T> | undefined
+    onleavepictureinpicture?: EventHandler<PictureInPictureEvent, T> | undefined
   }
 
   interface WebViewHTMLAttributes<T> extends HTMLAttributes<T> {
@@ -1843,10 +1845,10 @@ export namespace JSX {
       CoreSVGAttributes<T>,
       ExternalResourceSVGAttributes,
       ConditionalProcessingSVGAttributes {
-    onbegin?: EventHandler<Event> | undefined
+    onbegin?: EventHandler<Event, T> | undefined
     // TODO TimeEvent is currently undefined in TS
-    onend?: EventHandler<Event> | undefined
-    onrepeat?: EventHandler<Event> | undefined
+    onend?: EventHandler<Event, T> | undefined
+    onrepeat?: EventHandler<Event, T> | undefined
   }
 
   interface ContainerElementSVGAttributes<T>
