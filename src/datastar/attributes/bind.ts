@@ -1,5 +1,12 @@
-import { attribute, effect, getPath, mergePaths, type Paths } from "../engine.ts"
-import { aliasify, modifyCasing } from "../utils.ts"
+import {
+  attribute,
+  DATASTAR_PROP_CHANGE_EVENT,
+  effect,
+  getPath,
+  mergePaths,
+  type Paths,
+} from "../engine.ts"
+import { aliasify, camel, hasOwn, modifyCasing } from "../utils.ts"
 
 type SignalFile = {
   name: string
@@ -7,10 +14,94 @@ type SignalFile = {
   mime: string
 }
 
+type BindAdapter = {
+  get: (el: any, type: string) => any
+  set: (el: any, value: any) => void
+  events: Array<string>
+}
+
+const propAdapter = (prop: string, ...events: Array<string>): BindAdapter => ({
+  get: (el: any) => el[prop],
+  set: (el: any, value: any) => {
+    el[prop] = value
+  },
+  events,
+})
+
+const attrAdapter = (attr: string, ...events: Array<string>): BindAdapter => ({
+  get: (el: Element) => el.getAttribute(attr),
+  set: (el: Element, value: any) => {
+    el.setAttribute(attr, `${value}`)
+  },
+  events,
+})
+
+const valueAdapter = (
+  treatUndefinedAsString = false,
+  ...events: Array<string>
+): BindAdapter => ({
+  get: (el: HTMLInputElement | HTMLSelectElement, type: string) =>
+    type === "string" || (treatUndefinedAsString && type === "undefined") ? el.value : +el.value,
+  set: (el: HTMLInputElement | HTMLSelectElement, value: string | number) => {
+    el.value = `${value}`
+  },
+  events,
+})
+
 const dataURIRegex = /^data:(?<mime>[^;]+);base64,(?<contents>.*)$/
 const empty = Symbol("empty")
 
 const aliasedBind = aliasify("bind")
+
+const boundPath = (
+  el: Element,
+  key: string | null | undefined,
+  value: string | null | undefined,
+  signalName: string,
+  adapter: BindAdapter,
+  initialValue: any,
+) => {
+  if (initialValue === undefined && el instanceof HTMLInputElement && el.type === "radio") {
+    const signalNameKebab = key ? key : value!
+    const checked = [
+      ...document.querySelectorAll(
+        `[${aliasedBind}\\:${CSS.escape(signalNameKebab)}],[${aliasedBind}="${CSS.escape(signalNameKebab)}"]`,
+      ),
+    ].find(
+      (input): input is HTMLInputElement => input instanceof HTMLInputElement && input.checked,
+    )
+    if (checked) {
+      mergePaths([[signalName, checked.value]], { ifMissing: true })
+    }
+  }
+
+  if (!Array.isArray(initialValue) || (el instanceof HTMLSelectElement && el.multiple)) {
+    mergePaths([[signalName, adapter.get(el, typeof initialValue)]], {
+      ifMissing: true,
+    })
+    return signalName
+  }
+
+  const signalNameKebab = key ? key : value!
+  const inputs = document.querySelectorAll(
+    `[${aliasedBind}\\:${CSS.escape(signalNameKebab)}],[${aliasedBind}="${CSS.escape(signalNameKebab)}"]`,
+  ) as NodeListOf<Element>
+
+  const paths: Paths = []
+  let i = 0
+  for (const input of inputs) {
+    paths.push([
+      `${signalName}.${i}`,
+      adapter.get(input, typeof (hasOwn(initialValue, i) ? initialValue[i] : undefined)),
+    ])
+    if (el === input) {
+      break
+    }
+    i++
+  }
+  mergePaths(paths, { ifMissing: true })
+  return `${signalName}.${i}`
+}
 
 attribute({
   name: "bind",
@@ -18,49 +109,41 @@ attribute({
   apply({ el, key, mods, value, error }) {
     const signalName = key != null ? modifyCasing(key, mods) : value
 
-    let get = (el: any, type: string) => (type === "number" ? +el.value : el.value)
-
-    let set = (value: any) => {
-      ;(el as HTMLInputElement).value = `${value}`
-    }
+    const props = mods.get("prop")
+    const events = mods.get("event")
+    let adapter: BindAdapter | null = null
 
     if (el instanceof HTMLInputElement) {
       switch (el.type) {
         case "range":
         case "number":
-          get = (el: any, type: string) => (type === "string" ? el.value : +el.value)
+          adapter = valueAdapter(false, "input")
           break
-
         case "checkbox":
-          get = (el: HTMLInputElement, type: string) => {
-            if (el.value !== "on") {
-              if (type === "boolean") {
-                return el.checked
-              } else {
-                return el.checked ? el.value : ""
+          adapter = {
+            get: (el: HTMLInputElement, type: string) => {
+              if (el.value !== "on") {
+                return type === "boolean" ? el.checked : el.checked ? el.value : ""
               }
-            } else {
-              if (type === "string") {
-                return el.checked ? el.value : ""
-              } else {
-                return el.checked
-              }
-            }
-          }
-          set = (value: string | boolean) => {
-            el.checked = typeof value === "string" ? value === el.value : value
+              return type === "string" ? (el.checked ? el.value : "") : el.checked
+            },
+            set: (el: HTMLInputElement, value: string | boolean) => {
+              el.checked = typeof value === "string" ? value === el.value : value
+            },
+            events: ["change"],
           }
           break
-
         case "radio":
           if (!el.getAttribute("name")?.length) {
             el.setAttribute("name", signalName)
           }
-
-          get = (el: HTMLInputElement, type: string) =>
-            el.checked ? (type === "number" ? +el.value : el.value) : empty
-          set = (value: string | number) => {
-            el.checked = value === (typeof value === "number" ? +el.value : el.value)
+          adapter = {
+            get: (el: HTMLInputElement, type: string) =>
+              el.checked ? (type === "number" ? +el.value : el.value) : empty,
+            set: (el: HTMLInputElement, value: string | number) => {
+              el.checked = value === (typeof value === "number" ? +el.value : el.value)
+            },
+            events: ["change"],
           }
           break
         case "file": {
@@ -100,24 +183,22 @@ attribute({
           }
 
           el.addEventListener("change", syncSignal)
-          el.addEventListener("input", syncSignal)
-
           return () => {
             el.removeEventListener("change", syncSignal)
-            el.removeEventListener("input", syncSignal)
           }
         }
+        default:
+          adapter = valueAdapter(true, "input")
       }
-    } else if (el instanceof HTMLSelectElement) {
-      if (el.multiple) {
-        const typeMap = new Map<string, string>()
-        get = (el: HTMLSelectElement) =>
+    } else if (el instanceof HTMLSelectElement && el.multiple) {
+      const typeMap = new Map<string, string>()
+      adapter = {
+        get: (el: HTMLSelectElement) =>
           [...el.selectedOptions].map((option) => {
             const type = typeMap.get(option.value)
             return type === "string" || type == null ? option.value : +option.value
-          })
-
-        set = (value: Array<string | number>) => {
+          }),
+        set: (el: HTMLSelectElement, value: Array<string | number>) => {
           for (const option of el.options) {
             if (value.includes(option.value)) {
               typeMap.set(option.value, "string")
@@ -129,72 +210,63 @@ attribute({
               option.selected = false
             }
           }
-        }
+        },
+        events: ["change"],
       }
+    } else if (el instanceof HTMLSelectElement) {
+      adapter = valueAdapter(true, "change")
     } else if (el instanceof HTMLTextAreaElement) {
-      // default case
+      adapter = propAdapter("value", "input")
+    } else if (el instanceof HTMLElement && el.tagName.includes("-")) {
+      adapter =
+        "value" in el
+          ? propAdapter("value", "input", "change")
+          : attrAdapter("value", "input", "change")
+    } else if (el instanceof HTMLElement && "value" in el) {
+      adapter = propAdapter("value", "change")
     } else {
-      // web component
-      get = (el: Element) => ("value" in el ? el.value : el.getAttribute("value"))
-      set = (value: any) => {
-        if ("value" in el) {
-          el.value = value
-        } else {
-          el.setAttribute("value", value)
-        }
-      }
+      adapter = attrAdapter("value", "change")
+    }
+    if (!adapter) {
+      throw error("InvalidBindAdapter")
+    }
+
+    const firstProp = props && [...props][0]
+    if (props && !firstProp) throw error("BindPropNameMissing")
+    if (firstProp) {
+      const prop = camel(firstProp)
+      adapter = propAdapter(prop, ...(events ? [...events] : adapter.events))
+    } else if (events) {
+      adapter.events = [...events]
     }
 
     const initialValue = getPath(signalName)
-    const type = typeof initialValue
-
-    let path = signalName
-    if (Array.isArray(initialValue) && !(el instanceof HTMLSelectElement && el.multiple)) {
-      const signalNameKebab = key ? key : value!
-      const inputs = document.querySelectorAll(
-        `[${aliasedBind}\\:${CSS.escape(signalNameKebab)}],[${aliasedBind}="${CSS.escape(
-          signalNameKebab,
-        )}"]`,
-      ) as NodeListOf<HTMLInputElement>
-
-      const paths: Paths = []
-      let i = 0
-      for (const input of inputs) {
-        paths.push([`${path}.${i}`, get(input, "none")])
-
-        if (el === input) {
-          break
-        }
-        i++
-      }
-      mergePaths(paths, { ifMissing: true })
-      path = `${path}.${i}`
-    } else {
-      mergePaths([[path, get(el, type)]], {
-        ifMissing: true,
-      })
-    }
+    const path = boundPath(el, key, value, signalName, adapter, initialValue)
 
     const syncSignal = () => {
       const signalValue = getPath(path)
       if (signalValue != null) {
-        const value = get(el, typeof signalValue)
+        const value = adapter.get(el, typeof signalValue)
         if (value !== empty) {
           mergePaths([[path, value]])
         }
       }
     }
 
-    el.addEventListener("input", syncSignal)
-    el.addEventListener("change", syncSignal)
+    for (const eventName of adapter.events) {
+      el.addEventListener(eventName, syncSignal)
+    }
+    el.addEventListener(DATASTAR_PROP_CHANGE_EVENT, syncSignal)
     const cleanup = effect(() => {
-      set(getPath(path))
+      adapter.set(el, getPath(path))
     })
 
     return () => {
       cleanup()
-      el.removeEventListener("input", syncSignal)
-      el.removeEventListener("change", syncSignal)
+      for (const eventName of adapter.events) {
+        el.removeEventListener(eventName, syncSignal)
+      }
+      el.removeEventListener(DATASTAR_PROP_CHANGE_EVENT, syncSignal)
     }
   },
 })

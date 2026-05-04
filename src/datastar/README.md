@@ -2,6 +2,8 @@
 
 This is a port of [Datastar](https://github.com/starfederation/datastar) of magnificent Star Federation.
 
+Upstream base: **v1.0.1** (commit `32be7fe`).
+
 We experimentally place it inside Effect Start to have tighter integration with it and provide
 great out-of-the-box experience. After cleaning up the code, we're at around ~90kb of source code.
 We can probably cut it down by another ~10kb if we remove DataStar expression and use JS functions directly.
@@ -37,3 +39,7 @@ We made following changes:
 - `data-on` supports function form:
   - Function form: `data-on:click="(e) => { e.signals.count = e.signals.count + 1 }"`
   - Event names are used literally from the attribute key; upstream `modifyCasing(..., "kebab")` normalization is no longer applied
+
+Intentionally not ported from upstream:
+
+- `jsStrToObject` does not accept the `reviveFunctionStrings` option. Upstream added it but does not call it internally, and the fork already supports JSX function form natively, so revived plain functions would not receive a `DataEvent` and would be redundant.

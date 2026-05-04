@@ -27,6 +27,7 @@ const globals = [
   "Text",
   "Comment",
   "HTMLInputElement",
+  "HTMLOptionElement",
   "HTMLSelectElement",
   "HTMLFormElement",
   "HTMLButtonElement",

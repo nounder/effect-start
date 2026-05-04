@@ -8,6 +8,9 @@ const lol = /🖕JS_DS🚀/.source
 export const DSP = lol.slice(0, 5)
 export const DSS = lol.slice(4)
 export const DATASTAR_FETCH_EVENT = "datastar-fetch"
+export const DATASTAR_PROP_CHANGE_EVENT = "datastar-prop-change"
+export const DATASTAR_READY_EVENT = "datastar-ready"
+export const DATASTAR_SCOPE_CHILDREN_EVENT = "datastar-scope-children"
 export const DATASTAR_SIGNAL_PATCH_EVENT = "datastar-signal-patch"
 
 /*********
@@ -16,10 +19,13 @@ export const DATASTAR_SIGNAL_PATCH_EVENT = "datastar-signal-patch"
 export type JSONPatch = Record<string, any> & { length?: never }
 export type Paths = Array<[string, any]>
 
+export type WatcherArgsValue = string | Element | DocumentFragment | undefined
+export type WatcherArgs = Record<string, WatcherArgsValue>
+
 export type DatastarFetchEvent = {
   type: string
   el: HTMLOrSVG
-  argsRaw: Record<string, string>
+  argsRaw: WatcherArgs
 }
 
 export type CustomEventMap = {
@@ -102,7 +108,7 @@ export type WatcherContext = {
 
 export type WatcherPlugin = {
   name: string
-  apply: (ctx: WatcherContext, args: Record<string, string | undefined>) => void
+  apply: (ctx: WatcherContext, args: WatcherArgs) => void
 }
 
 export type ActionPlugins = Record<string, ActionPlugin>
@@ -950,7 +956,8 @@ const removals = new Map<HTMLOrSVG, Map<string, Map<string, () => void>>>()
 
 const queuedAttributes: Array<AttributePlugin> = []
 const queuedAttributeNames = new Set<string>()
-const observedRoots = new WeakSet<Node>()
+const observedRoots = new Set<HTMLOrSVG | ShadowRoot>()
+let datastarReadyDispatched = false
 export const attribute = <R extends Requirement, B extends boolean>(
   plugin: AttributePlugin<R, B>,
 ): void => {
@@ -963,7 +970,10 @@ export const attribute = <R extends Requirement, B extends boolean>(
         attributePlugins.set(attribute.name, attribute)
       }
       queuedAttributes.length = 0
-      apply()
+      const roots = observedRoots.size ? [...observedRoots] : [document.documentElement]
+      for (const root of roots) {
+        applyQueued(root, !observedRoots.has(root))
+      }
       queuedAttributeNames.clear()
     })
   }
@@ -1016,13 +1026,17 @@ const shouldIgnore = (el: HTMLOrSVG) =>
 const applyEls = (els: Iterable<HTMLOrSVG>, onlyNew?: boolean): void => {
   for (const el of els) {
     if (!shouldIgnore(el)) {
+      const appliedKeys = new Set<string>()
       for (const key in el.dataset) {
-        applyAttributePlugin(
-          el,
-          key.replace(/[A-Z]/g, "-$&").toLowerCase(),
-          el.dataset[key]!,
-          onlyNew,
-        )
+        const attrKey = key.replace(/[A-Z]/g, "-$&").toLowerCase()
+        appliedKeys.add(attrKey)
+        applyAttributePlugin(el, attrKey, el.dataset[key]!, onlyNew)
+      }
+      for (const attr of Array.from(el.attributes)) {
+        if (!attr.name.startsWith("data-")) continue
+        const attrKey = attr.name.slice(5)
+        if (appliedKeys.has(attrKey)) continue
+        applyAttributePlugin(el, attrKey, attr.value, onlyNew)
       }
     }
   }
@@ -1093,7 +1107,13 @@ export const parseAttributeKey = (
 
 export const isDocumentObserverActive = () => observedRoots.has(document.documentElement)
 
-export const apply = (
+const dispatchDatastarReady = () => {
+  if (datastarReadyDispatched || !isDocumentObserverActive()) return
+  datastarReadyDispatched = true
+  document.dispatchEvent(new Event(DATASTAR_READY_EVENT))
+}
+
+const applyQueued = (
   root: HTMLOrSVG | ShadowRoot = document.documentElement,
   observeRoot = true,
 ): void => {
@@ -1109,7 +1129,32 @@ export const apply = (
       attributes: true,
     })
     observedRoots.add(root)
+    dispatchDatastarReady()
   }
+}
+
+export const apply = (
+  root: HTMLOrSVG | ShadowRoot = document.documentElement,
+  observeRoot = true,
+): void => {
+  if (isHTMLOrSVG(root)) {
+    applyEls([root])
+  }
+  applyEls(root.querySelectorAll<HTMLOrSVG>("*"))
+
+  if (observeRoot) {
+    mutationObserver.observe(root, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+    })
+    observedRoots.add(root)
+    dispatchDatastarReady()
+  }
+}
+
+export const applyElement = (el: HTMLOrSVG, onlyNew = false): void => {
+  applyEls([el], onlyNew)
 }
 
 const applyAttributePlugin = (
@@ -1289,11 +1334,24 @@ const genRx = (
     expr = expr.replace(DSP + k + DSS, v)
   }
 
-  expr = expr
-    .replace(/\$\['([a-zA-Z_$\d][\w$]*)'\]/g, "$$$1")
-    .replace(/\$([a-zA-Z_\d]\w*(?:[.-]\w+)*)/g, (_, signalName) =>
-      signalName.split(".").reduce((acc: string, part: string) => `${acc}['${part}']`, "$"),
-    )
+  expr = expr.replace(
+    /("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\$]|\$(?!\{))*`)|\$\{([^{}]*)\}|\$([a-zA-Z_\d]\w*(?:[.-]\w+)*)/g,
+    (match, quoted, interpolationExpr, signalName) => {
+      if (quoted) return match
+      if (interpolationExpr !== undefined) {
+        return `\${${interpolationExpr.replace(
+          /\$([a-zA-Z_\d]\w*(?:[.-]\w+)*)/g,
+          (_: string, innerSignalName: string) =>
+            innerSignalName
+              .split(".")
+              .reduce((acc: string, part: string) => `${acc}['${part}']`, "$"),
+        )}}`
+      }
+      return signalName
+        .split(".")
+        .reduce((acc: string, part: string) => `${acc}['${part}']`, "$")
+    },
+  )
 
   expr = expr.replaceAll(/@([A-Za-z_$][\w$]*)\(/g, '__action("$1",evt,')
 

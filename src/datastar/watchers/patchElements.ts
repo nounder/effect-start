@@ -1,8 +1,16 @@
-import { watcher, type HTMLOrSVG, type WatcherContext } from "../engine.ts"
+import {
+  DATASTAR_PROP_CHANGE_EVENT,
+  DATASTAR_SCOPE_CHILDREN_EVENT,
+  watcher,
+  type WatcherArgsValue,
+  type WatcherContext,
+} from "../engine.ts"
 import { aliasify, isHTMLOrSVG, supportsViewTransitions } from "../utils.ts"
 
-const isValidType = <T extends readonly string[]>(arr: T, value: string): value is T[number] =>
-  (arr as ReadonlyArray<string>).includes(value)
+const isValidType = <T extends ReadonlyArray<string>>(
+  arr: T,
+  value: string,
+): value is T[number] => (arr as ReadonlyArray<string>).includes(value)
 
 const PATCH_MODES = [
   "remove",
@@ -24,15 +32,19 @@ type PatchElementsArgs = {
   mode: PatchElementsMode
   namespace: Namespace
   useViewTransition: boolean
-  elements: string
+  elements: WatcherArgsValue
 }
 
 watcher({
   name: "datastar-patch-elements",
-  apply(
-    ctx,
-    { selector = "", mode = "outer", namespace = "html", useViewTransition = "", elements = "" },
-  ) {
+  apply(ctx, args) {
+    const selector = typeof args.selector === "string" ? args.selector : ""
+    const mode = typeof args.mode === "string" ? args.mode : "outer"
+    const namespace = typeof args.namespace === "string" ? args.namespace : "html"
+    const useViewTransitionRaw =
+      typeof args.useViewTransition === "string" ? args.useViewTransition : ""
+    const elements = args.elements
+
     if (!isValidType(PATCH_MODES, mode)) {
       throw ctx.error("PatchElementsInvalidMode", { mode })
     }
@@ -49,11 +61,11 @@ watcher({
       selector,
       mode,
       namespace,
-      useViewTransition: useViewTransition.trim() === "true",
+      useViewTransition: useViewTransitionRaw.trim() === "true",
       elements,
     }
 
-    if (supportsViewTransitions && useViewTransition) {
+    if (supportsViewTransitions && args2.useViewTransition) {
       document.startViewTransition(() => onPatchElements(ctx, args2))
     } else {
       onPatchElements(ctx, args2)
@@ -65,40 +77,51 @@ const onPatchElements = (
   { error }: WatcherContext,
   { selector, mode, namespace, elements }: PatchElementsArgs,
 ) => {
-  const elementsWithSvgsRemoved = elements.replace(/<svg(\s[^>]*>|>)([\s\S]*?)<\/svg>/gim, "")
-  const hasHtml = /<\/html>/.test(elementsWithSvgsRemoved)
-  const hasHead = /<\/head>/.test(elementsWithSvgsRemoved)
-  const hasBody = /<\/body>/.test(elementsWithSvgsRemoved)
-
-  const wrapperTag = namespace === "svg" ? "svg" : namespace === "mathml" ? "math" : ""
-  const wrappedEls = wrapperTag ? `<${wrapperTag}>${elements}</${wrapperTag}>` : elements
-
-  const newDocument = new DOMParser().parseFromString(
-    hasHtml || hasHead || hasBody ? elements : `<body><template>${wrappedEls}</template></body>`,
-    "text/html",
-  )
-
   let newContent = document.createDocumentFragment()
-  if (hasHtml) {
-    newContent.appendChild(newDocument.documentElement)
-  } else if (hasHead && hasBody) {
-    newContent.appendChild(newDocument.head)
-    newContent.appendChild(newDocument.body)
-  } else if (hasHead) {
-    newContent.appendChild(newDocument.head)
-  } else if (hasBody) {
-    newContent.appendChild(newDocument.body)
-  } else if (wrapperTag) {
-    const wrapperEl = newDocument.querySelector("template")!.content.querySelector(wrapperTag)!
-    for (const child of wrapperEl.childNodes) {
-      newContent.appendChild(child)
+  const consume = typeof elements !== "string" && !!elements
+
+  if (typeof elements === "string") {
+    const elementsWithSvgsRemoved = elements.replace(/<svg(\s[^>]*>|>)([\s\S]*?)<\/svg>/gim, "")
+    const hasHtml = /<\/html>/.test(elementsWithSvgsRemoved)
+    const hasHead = /<\/head>/.test(elementsWithSvgsRemoved)
+    const hasBody = /<\/body>/.test(elementsWithSvgsRemoved)
+
+    const wrapperTag = namespace === "svg" ? "svg" : namespace === "mathml" ? "math" : ""
+    const wrappedEls = wrapperTag ? `<${wrapperTag}>${elements}</${wrapperTag}>` : elements
+
+    const newDocument = new DOMParser().parseFromString(
+      hasHtml || hasHead || hasBody ? elements : `<body><template>${wrappedEls}</template></body>`,
+      "text/html",
+    )
+
+    if (hasHtml) {
+      newContent.appendChild(newDocument.documentElement)
+    } else if (hasHead && hasBody) {
+      newContent.appendChild(newDocument.head)
+      newContent.appendChild(newDocument.body)
+    } else if (hasHead) {
+      newContent.appendChild(newDocument.head)
+    } else if (hasBody) {
+      newContent.appendChild(newDocument.body)
+    } else if (wrapperTag) {
+      const wrapperEl = newDocument.querySelector("template")!.content.querySelector(wrapperTag)!
+      for (const child of wrapperEl.childNodes) {
+        newContent.appendChild(child)
+      }
+    } else {
+      newContent = newDocument.querySelector("template")!.content
     }
-  } else {
-    newContent = newDocument.querySelector("template")!.content
+  } else if (elements) {
+    if (elements instanceof DocumentFragment) {
+      newContent = elements
+    } else if (elements instanceof Element) {
+      newContent.appendChild(elements)
+    }
   }
 
   if (!selector && (mode === "outer" || mode === "replace")) {
-    for (const child of newContent.children) {
+    const children = Array.from(newContent.children)
+    for (const child of children) {
       let target: Element
       if (child instanceof HTMLHtmlElement) {
         target = document.documentElement
@@ -116,7 +139,7 @@ const onPatchElements = (
         }
       }
 
-      applyToTargets(mode as PatchElementsMode, child, [target])
+      applyToTargets(mode as PatchElementsMode, child, [target], consume)
     }
   } else {
     const targets = document.querySelectorAll(selector)
@@ -125,7 +148,8 @@ const onPatchElements = (
       return
     }
 
-    applyToTargets(mode as PatchElementsMode, newContent, targets)
+    const targetList = consume && mode !== "remove" ? [targets[0]!] : targets
+    applyToTargets(mode as PatchElementsMode, newContent, targetList, consume)
   }
 }
 
@@ -154,12 +178,17 @@ const applyPatchMode = (
   targets: Iterable<Element>,
   element: DocumentFragment | Element,
   action: string,
+  consume: boolean,
 ) => {
+  let used = false
   for (const target of targets) {
-    const cloned = element.cloneNode(true) as Element
-    execute(cloned)
-    // @ts-ignore
-    target[action](cloned)
+    if (consume && used) {
+      break
+    }
+    const nextNode = consume ? element : (element.cloneNode(true) as Element)
+    execute(nextNode as Element)
+    ;(target as any)[action](nextNode)
+    used = true
   }
 }
 
@@ -167,6 +196,7 @@ const applyToTargets = (
   mode: PatchElementsMode,
   element: DocumentFragment | Element,
   targets: Iterable<Element>,
+  consume: boolean,
 ) => {
   switch (mode) {
     case "remove":
@@ -175,20 +205,35 @@ const applyToTargets = (
       }
       break
     case "outer":
-    case "inner":
+    case "inner": {
+      let used = false
       for (const target of targets) {
-        morph(target, element.cloneNode(true) as Element, mode)
+        if (consume && used) {
+          break
+        }
+        const nextNode = consume ? element : (element.cloneNode(true) as Element)
+        morph(target, nextNode, mode)
         execute(target)
+        const scopeHost = target.closest("[data-scope-children]")
+        if (scopeHost) {
+          scopeHost.dispatchEvent(
+            new CustomEvent(DATASTAR_SCOPE_CHILDREN_EVENT, {
+              bubbles: false,
+            }),
+          )
+        }
+        used = true
       }
       break
+    }
     case "replace":
-      applyPatchMode(targets, element, "replaceWith")
+      applyPatchMode(targets, element, "replaceWith", consume)
       break
     case "prepend":
     case "append":
     case "before":
     case "after":
-      applyPatchMode(targets, element, mode)
+      applyPatchMode(targets, element, mode, consume)
   }
 }
 
@@ -201,7 +246,7 @@ ctxPantry.hidden = true
 
 const aliasedIgnoreMorph = aliasify("ignore-morph")
 const aliasedIgnoreMorphAttr = `[${aliasedIgnoreMorph}]`
-const morph = (
+export const morph = (
   oldElt: Element | ShadowRoot,
   newContent: DocumentFragment | Element,
   mode: "outer" | "inner" = "outer",
@@ -209,8 +254,8 @@ const morph = (
   if (
     (isHTMLOrSVG(oldElt) &&
       isHTMLOrSVG(newContent) &&
-      (oldElt as HTMLOrSVG).hasAttribute(aliasedIgnoreMorph) &&
-      (newContent as HTMLOrSVG).hasAttribute(aliasedIgnoreMorph)) ||
+      oldElt.hasAttribute(aliasedIgnoreMorph) &&
+      newContent.hasAttribute(aliasedIgnoreMorph)) ||
     oldElt.parentElement?.closest(aliasedIgnoreMorphAttr)
   ) {
     return
@@ -337,7 +382,11 @@ const morphChildren = (
   }
 }
 
-const findBestMatch = (node: Node, startPoint: Node | null, endPoint: Node | null): Node | null => {
+const findBestMatch = (
+  node: Node,
+  startPoint: Node | null,
+  endPoint: Node | null,
+): Node | null => {
   let bestMatch: Node | null | undefined = null
   let nextSibling = node.nextSibling
   let siblingSoftMatchCount = 0
@@ -402,10 +451,16 @@ const removeNode = (node: Node): void => {
   ctxIdMap.has(node) ? moveBefore(ctxPantry, node, null) : node.parentNode?.removeChild(node)
 }
 
-const moveBefore: (parentNode: Node, node: Node, after: Node | null) => void = removeNode.call.bind(
-  // @ts-ignore
-  ctxPantry.moveBefore ?? ctxPantry.insertBefore,
-)
+const moveBefore = (parentNode: Node, node: Node, after: Node | null): void => {
+  if ("moveBefore" in parentNode) {
+    const moveableParent = parentNode as Node & {
+      moveBefore: (node: Node, child: Node | null) => Node
+    }
+    moveableParent.moveBefore(node, after)
+    return
+  }
+  parentNode.insertBefore(node, after)
+}
 
 const aliasedPreserveAttr = aliasify("preserve-attr")
 
@@ -420,26 +475,43 @@ const morphNode = (oldNode: Node, newNode: Node): Node => {
       return oldNode
     }
 
+    const preserveAttrs = (
+      (newNode as HTMLElement).getAttribute(aliasedPreserveAttr) ?? ""
+    ).split(" ")
+
+    const updateElementProp = (oldElt: Element, newElt: Element, name: string): boolean => {
+      const newEltHasAttr = newElt.hasAttribute(name)
+      if (oldElt.hasAttribute(name) !== newEltHasAttr && !preserveAttrs.includes(name)) {
+        ;(oldElt as any)[name] = newEltHasAttr
+        return true
+      }
+      return false
+    }
+
+    let shouldDispatchPropChangeEvent = false
     if (
       oldElt instanceof HTMLInputElement &&
       newElt instanceof HTMLInputElement &&
       newElt.type !== "file"
     ) {
-      if (newElt.getAttribute("value") !== oldElt.getAttribute("value")) {
-        oldElt.value = newElt.getAttribute("value") ?? ""
+      const newValue = newElt.getAttribute("value")
+      if (oldElt.getAttribute("value") !== newValue && !preserveAttrs.includes("value")) {
+        oldElt.value = newValue ?? ""
+        shouldDispatchPropChangeEvent = true
       }
+      shouldDispatchPropChangeEvent =
+        updateElementProp(oldElt, newElt, "checked") || shouldDispatchPropChangeEvent
+      updateElementProp(oldElt, newElt, "disabled")
     } else if (oldElt instanceof HTMLTextAreaElement && newElt instanceof HTMLTextAreaElement) {
-      if (newElt.value !== oldElt.value) {
-        oldElt.value = newElt.value
+      const newValue = newElt.value
+      if (oldElt.defaultValue !== newValue) {
+        oldElt.value = newValue
+        shouldDispatchPropChangeEvent = true
       }
-      if (oldElt.firstChild && oldElt.firstChild.nodeValue !== newElt.value) {
-        oldElt.firstChild.nodeValue = newElt.value
-      }
+    } else if (oldElt instanceof HTMLOptionElement && newElt instanceof HTMLOptionElement) {
+      shouldDispatchPropChangeEvent =
+        updateElementProp(oldElt, newElt, "selected") || shouldDispatchPropChangeEvent
     }
-
-    const preserveAttrs = ((newNode as HTMLElement).getAttribute(aliasedPreserveAttr) ?? "").split(
-      " ",
-    )
 
     for (const { name, value } of newElt.attributes) {
       if (oldElt.getAttribute(name) !== value && !preserveAttrs.includes(name)) {
@@ -447,23 +519,29 @@ const morphNode = (oldNode: Node, newNode: Node): Node => {
       }
     }
 
-    for (let i = oldElt.attributes.length - 1; i >= 0; i--) {
-      const { name } = oldElt.attributes[i]!
+    for (const { name } of Array.from(oldElt.attributes)) {
       if (!newElt.hasAttribute(name) && !preserveAttrs.includes(name)) {
         oldElt.removeAttribute(name)
       }
+    }
+
+    if (shouldDispatchPropChangeEvent) {
+      const dispatchElt = oldElt instanceof HTMLOptionElement ? oldElt.closest("select") : oldElt
+      dispatchElt?.dispatchEvent(new Event(DATASTAR_PROP_CHANGE_EVENT, { bubbles: true }))
     }
 
     if (shouldScopeChildren && !oldElt.hasAttribute("data-scope-children")) {
       oldElt.setAttribute("data-scope-children", "")
     }
 
-    if (!oldElt.isEqualNode(newElt)) {
+    if (oldElt instanceof HTMLTemplateElement && newElt instanceof HTMLTemplateElement) {
+      oldElt.innerHTML = newElt.innerHTML
+    } else if (!oldElt.isEqualNode(newElt)) {
       morphChildren(oldElt, newElt)
     }
 
     if (shouldScopeChildren) {
-      oldElt.dispatchEvent(new CustomEvent("datastar:scope-children", { bubbles: false }))
+      oldElt.dispatchEvent(new CustomEvent(DATASTAR_SCOPE_CHILDREN_EVENT, { bubbles: false }))
     }
   }
 

@@ -9,7 +9,8 @@ attribute({
 
     if (key) {
       key = modifyCasing(key, mods)
-      mergePaths([[key, rx?.()]], { ifMissing })
+      const value = rx?.()
+      mergePaths([[key, value]], { ifMissing })
     } else {
       const patch = Object.assign({}, rx?.() as Record<string, any>)
       mergePatch(patch, { ifMissing })

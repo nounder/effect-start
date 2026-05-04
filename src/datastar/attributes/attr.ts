@@ -12,8 +12,13 @@ attribute({
         el.removeAttribute(key)
       } else if (typeof val === "string") {
         el.setAttribute(key, val)
+      } else if (typeof val === "function") {
+        el.setAttribute(key, val.toString())
       } else {
-        el.setAttribute(key, JSON.stringify(val))
+        el.setAttribute(
+          key,
+          JSON.stringify(val, (_k, v) => (typeof v === "function" ? v.toString() : v)),
+        )
       }
     }
 

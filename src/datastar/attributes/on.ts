@@ -13,18 +13,19 @@ attribute({
   argNames: ["evt"],
   apply({ el, key, mods, rx }) {
     let target: Element | Window | Document = el
-    if (mods.has("window")) target = window
+    if (mods.has("window")) {
+      target = window
+    } else if (mods.has("document")) {
+      target = document
+    }
     let callback = (evt?: Event) => {
-      if (evt) {
-        if (mods.has("prevent")) evt.preventDefault()
-        if (mods.has("stop")) evt.stopPropagation()
-      }
       beginBatch()
       rx(evt)
       endBatch()
     }
     callback = modifyViewTransition(callback, mods)
     callback = modifyTiming(callback, mods)
+    const eventName = key
     const evtListOpts: AddEventListenerOptions = {
       capture: mods.has("capture"),
       passive: mods.has("passive"),
@@ -37,20 +38,20 @@ attribute({
         if (!el.contains(evt?.target as HTMLElement)) cb(evt)
       }
     }
-    const eventName = key
     if (eventName === DATASTAR_FETCH_EVENT || eventName === DATASTAR_SIGNAL_PATCH_EVENT) {
       target = document
     }
-    if (el instanceof HTMLFormElement && eventName === "submit") {
-      const cb = callback
-      callback = (evt?: Event) => {
-        evt?.preventDefault()
-        cb(evt)
+    const listener = (evt?: Event) => {
+      if (evt) {
+        if (mods.has("prevent")) evt.preventDefault()
+        if (mods.has("stop")) evt.stopPropagation()
+        if (el instanceof HTMLFormElement && eventName === "submit") evt.preventDefault()
       }
+      callback(evt)
     }
-    target.addEventListener(eventName, callback, evtListOpts)
+    target.addEventListener(eventName, listener, evtListOpts)
     return () => {
-      target.removeEventListener(eventName, callback)
+      target.removeEventListener(eventName, listener, evtListOpts)
     }
   },
 })

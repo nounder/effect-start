@@ -1,5 +1,5 @@
 import { attribute, beginBatch, endBatch, type HTMLOrSVG } from "../engine.ts"
-import { clamp, modifyTiming, modifyViewTransition } from "../utils.ts"
+import { clamp, modifyTiming, modifyViewTransition, tagFirst } from "../utils.ts"
 
 const once = new WeakSet<HTMLOrSVG>()
 
@@ -22,8 +22,11 @@ attribute({
       options.threshold = 1
     } else if (mods.has("half")) {
       options.threshold = 0.5
-    } else if (mods.get("threshold")) {
-      options.threshold = clamp(Number(mods.get("threshold")), 0, 100) / 100
+    } else {
+      const threshold = mods.get("threshold")
+      if (threshold) {
+        options.threshold = clamp(Number(tagFirst(threshold)), 0, 100) / 100
+      }
     }
     const exit = mods.has("exit")
     let observer: IntersectionObserver | null = new IntersectionObserver((entries) => {
