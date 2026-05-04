@@ -36,6 +36,5 @@
     "noPropertyAccessFromIndexSignature": false
   },
 
-  "include": ["src", "test"],
-  "exclude": ["examples"]
+  "include": ["src/**/*", "test/**/*", "examples/*"]
 }
