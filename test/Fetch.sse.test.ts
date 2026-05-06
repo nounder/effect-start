@@ -4,10 +4,11 @@ import * as Layer from "effect/Layer"
 import * as Stream from "effect/Stream"
 import * as Fetch from "effect-start/Fetch"
 import * as Route from "effect-start/Route"
+import * as RouteMap from "effect-start/RouteMap"
 import { BunServer } from "effect-start/bun"
 
-const testLayer = (routes: Parameters<typeof Route.tree>[0]) =>
-  BunServer.layerRoutes({ port: 0 }).pipe(Layer.provide(Route.layer(Route.tree(routes))))
+const testLayer = (routes: RouteMap.RouteMapInput) =>
+  BunServer.layerRoutes({ port: 0 }).pipe(Layer.provide(Route.layer(Route.map(routes))))
 
 test.describe("Fetch.sse", () => {
   test.it("parses SSE events from a real server", () =>

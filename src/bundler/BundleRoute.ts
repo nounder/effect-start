@@ -5,7 +5,7 @@ import * as Option from "effect/Option"
 import * as Entity from "../Entity.ts"
 import * as PathPattern from "../internal/PathPattern.ts"
 import * as Route from "../Route.ts"
-import * as RouteTree from "../RouteTree.ts"
+import * as RouteMap from "../RouteMap.ts"
 import * as Values from "../internal/Values.ts"
 import * as Bundle from "./Bundle.ts"
 
@@ -14,7 +14,7 @@ import * as Bundle from "./Bundle.ts"
  * Mount at a path with a wildcard param (any name works).
  *
  * ```ts
- * RouteTree.make({
+ * RouteMap.make({
  *   "/_bundle/:path+": BundleRoute.make(Bundle.ClientBundle),
  * })
  * ```
@@ -77,10 +77,10 @@ export const layer = (options?: {
         Effect.andThen(Option.getOrUndefined),
       )
       if (Option.isNone(clientBundle)) {
-        return existing ?? RouteTree.make({})
+        return existing ?? RouteMap.make({})
       }
-      const bundleTree = RouteTree.make({ [path]: make(Bundle.ClientBundle) })
-      return existing ? RouteTree.merge(existing, bundleTree) : bundleTree
+      const bundleMap = RouteMap.make({ [path]: make(Bundle.ClientBundle) })
+      return existing ? RouteMap.merge(existing, bundleMap) : bundleMap
     }),
   )
 }

@@ -4,7 +4,6 @@ import * as Effect from "effect/Effect"
 import * as Fetch from "effect-start/Fetch"
 import * as Route from "effect-start/Route"
 import * as RouteHttp from "effect-start/RouteHttp"
-import * as RouteTree from "effect-start/RouteTree"
 import * as StaticFiles from "effect-start/StaticFiles"
 import * as FileSystem from "../src/FileSystem.ts"
 import * as NodeFileSystem from "../src/node/NodeFileSystem.ts"
@@ -19,7 +18,7 @@ test.it("serves files from the configured directory", () =>
 
     const runtime = yield* Effect.runtime<FileSystem.FileSystem>()
     const routes = StaticFiles.make(directory)
-    const tree = RouteTree.make({ "/assets/:path+": routes })
+    const tree = Route.map({ "/assets/:path+": routes })
     const handles = Object.fromEntries(RouteHttp.walkHandles(tree, runtime))
     const handler = handles["/assets/:path+"]
     const client = Fetch.fromHandler(handler)
@@ -39,7 +38,7 @@ test.it("returns 404 when the file does not exist", () =>
 
     const runtime = yield* Effect.runtime<FileSystem.FileSystem>()
     const routes = StaticFiles.make(directory)
-    const tree = RouteTree.make({ "/assets/:path+": routes })
+    const tree = Route.map({ "/assets/:path+": routes })
     const handles = Object.fromEntries(RouteHttp.walkHandles(tree, runtime))
     const handler = handles["/assets/:path+"]
     const client = Fetch.fromHandler(handler)
@@ -58,7 +57,7 @@ test.it("blocks directory traversal outside the configured directory", () =>
 
     const runtime = yield* Effect.runtime<FileSystem.FileSystem>()
     const routes = StaticFiles.make(NPath.join(directory, "public"))
-    const tree = RouteTree.make({ "/assets/:path+": routes })
+    const tree = Route.map({ "/assets/:path+": routes })
     const handles = Object.fromEntries(RouteHttp.walkHandles(tree, runtime))
     const handler = handles["/assets/:path+"]
     const client = Fetch.fromHandler(handler)
@@ -107,7 +106,7 @@ test.it("returns 404 when the path resolves to a directory", () =>
 
     const runtime = yield* Effect.runtime<FileSystem.FileSystem>()
     const routes = StaticFiles.make(directory)
-    const tree = RouteTree.make({ "/assets/:path+": routes })
+    const tree = Route.map({ "/assets/:path+": routes })
     const handles = Object.fromEntries(RouteHttp.walkHandles(tree, runtime))
     const handler = handles["/assets/:path+"]
     const client = Fetch.fromHandler(handler)
@@ -127,7 +126,7 @@ test.it("decodes URL-encoded characters in path params", () =>
 
     const runtime = yield* Effect.runtime<FileSystem.FileSystem>()
     const routes = StaticFiles.make(directory)
-    const tree = RouteTree.make({ "/assets/:path+": routes })
+    const tree = Route.map({ "/assets/:path+": routes })
     const handles = Object.fromEntries(RouteHttp.walkHandles(tree, runtime))
     const handler = handles["/assets/:path+"]
     const client = Fetch.fromHandler(handler)
@@ -152,7 +151,7 @@ test.it("detects javascript and source map content types", () =>
 
     const runtime = yield* Effect.runtime<FileSystem.FileSystem>()
     const routes = StaticFiles.make(directory)
-    const tree = RouteTree.make({ "/assets/:path+": routes })
+    const tree = Route.map({ "/assets/:path+": routes })
     const handles = Object.fromEntries(RouteHttp.walkHandles(tree, runtime))
     const handler = handles["/assets/:path+"]
     const client = Fetch.fromHandler(handler)

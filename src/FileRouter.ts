@@ -13,7 +13,7 @@ import * as NodeUtils from "./node/NodeUtils.ts"
 import * as PathPattern from "./internal/PathPattern.ts"
 import type * as System from "./System.ts"
 import * as Route from "./Route.ts"
-import * as RouteTree from "./RouteTree.ts"
+import * as RouteMap from "./RouteMap.ts"
 
 export class FileRouterError extends Data.TaggedError("FileRouterError")<{
   reason: "Import" | "Conflict" | "FileSystem"
@@ -118,7 +118,7 @@ export function layer(
       yield* FileRouterCodegen.update(routesPath, treeFilename)
 
       const m = yield* importModule(options.load)
-      const routeTree = yield* fromFileRoutes(m.default)
+      const routeMap = yield* fromFileRoutes(m.default)
 
       yield* Function.pipe(
         Development.events,
@@ -128,17 +128,17 @@ export function layer(
       )
 
       const existing = yield* Effect.serviceOption(Route.Routes)
-      return existing._tag === "Some" ? RouteTree.merge(existing.value, routeTree) : routeTree
+      return existing._tag === "Some" ? RouteMap.merge(existing.value, routeMap) : routeMap
     }),
   )
 }
 
-export function fromFileRoutes(fileRoutes: FileRoutes): Effect.Effect<RouteTree.RouteTree> {
+export function fromFileRoutes(fileRoutes: FileRoutes): Effect.Effect<RouteMap.RouteMap> {
   return Effect.gen(function* () {
-    const mounts: RouteTree.RouteTreeInput = {}
+    const mounts: RouteMap.RouteMapInput = {}
 
     for (const [path, loaders] of Object.entries(fileRoutes)) {
-      const allRoutes: RouteTree.RouteTuple = [] as unknown as RouteTree.RouteTuple
+      const allRoutes: Array<Route.Route.With<{ method: string }>> = []
 
       for (const loader of loaders) {
         const result = yield* Effect.either(
@@ -153,13 +153,13 @@ export function fromFileRoutes(fileRoutes: FileRoutes): Effect.Effect<RouteTree.
           for (const route of Route.use(
             Route.render((): Effect.Effect<string, FileRouterError> => Effect.fail(error)),
           )) {
-            ;(allRoutes as Array<any>).push(route)
+            allRoutes.push(route as Route.Route.With<{ method: string }>)
           }
         } else {
           const m = result.right
           if (Route.isRouteSet(m.default)) {
             for (const route of m.default) {
-              ;(allRoutes as Array<any>).push(route)
+              allRoutes.push(route as Route.Route.With<{ method: string }>)
             }
           }
         }
@@ -168,7 +168,7 @@ export function fromFileRoutes(fileRoutes: FileRoutes): Effect.Effect<RouteTree.
       mounts[path as `/${string}`] = allRoutes
     }
 
-    return RouteTree.make(mounts)
+    return RouteMap.make(mounts)
   })
 }
 

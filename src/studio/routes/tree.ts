@@ -12,7 +12,7 @@ import servicesRoute from "./services/route.tsx"
 import traceDetailRoute from "./traceDetail.tsx"
 import tracesRoute from "./traces/route.tsx"
 
-export default Route.tree({
+export default Route.map({
   "*": layout,
   "/": rootRoute,
   "/traces": tracesRoute,

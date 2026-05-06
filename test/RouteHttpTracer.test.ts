@@ -6,7 +6,6 @@ import * as Fetch from "effect-start/Fetch"
 import * as Route from "effect-start/Route"
 import * as RouteHttp from "effect-start/RouteHttp"
 import * as RouteHttpTracer from "effect-start/RouteHttpTracer"
-import * as RouteTree from "effect-start/RouteTree"
 
 test.describe("tracing", () => {
   test.it("creates span with correct name and kind", () =>
@@ -243,7 +242,7 @@ test.describe("tracing", () => {
     Effect.gen(function* () {
       let capturedSpan: Tracer.Span | undefined
 
-      const tree = RouteTree.make({
+      const tree = Route.map({
         "/users/:id": Route.get(
           Route.text(function* () {
             const span = yield* Effect.currentSpan

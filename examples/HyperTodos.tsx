@@ -17,7 +17,7 @@ class Store extends Context.Tag("Store")<
   }
 >() {}
 
-const routes = Route.tree({
+const routes = Route.map({
   "*": Route.use(
     Route.html(function* (_ctx, next) {
       return (

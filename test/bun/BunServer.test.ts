@@ -8,6 +8,7 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Layer from "effect/Layer"
 import * as Route from "effect-start/Route"
+import * as RouteMap from "effect-start/RouteMap"
 import { BunRoute, BunServer } from "effect-start/bun"
 import * as Start from "effect-start/Start"
 import * as StartApp from "../../src/internal/StartApp.ts"
@@ -42,7 +43,7 @@ const withEnv = (env: Record<string, string | undefined>) =>
 
 test.describe("layerRoutes port precedence", () => {
   test.test("user-provided BunServer serves routes", () => {
-    const routes = Route.tree({
+    const routes = Route.map({
       "/": Route.get(Route.text("custom-server")),
     })
 
@@ -91,12 +92,12 @@ test.describe("smart port selection", () => {
   )
 })
 
-const testLayer = (routes: ReturnType<typeof Route.tree>) =>
+const testLayer = (routes: RouteMap.RouteMap) =>
   BunServer.layerRoutes({ port: 0 }).pipe(Layer.provide(Route.layer(routes)))
 
 test.describe("routes", () => {
   test.test("serves static text route", () => {
-    const routes = Route.tree({
+    const routes = Route.map({
       "/": Route.get(Route.text("Hello, World!")),
     })
 
@@ -113,7 +114,7 @@ test.describe("routes", () => {
   })
 
   test.test("serves JSON route", () => {
-    const routes = Route.tree({
+    const routes = Route.map({
       "/api/data": Route.get(Route.json({ message: "success", value: 42 })),
     })
 
@@ -131,7 +132,7 @@ test.describe("routes", () => {
   })
 
   test.test("returns 404 for unknown routes", () => {
-    const routes = Route.tree({
+    const routes = Route.map({
       "/": Route.get(Route.text("Home")),
     })
 
@@ -146,7 +147,7 @@ test.describe("routes", () => {
   })
 
   test.test("handles content negotiation", () => {
-    const routes = Route.tree({
+    const routes = Route.map({
       "/data": Route.get(Route.json({ type: "json" })).get(Route.html("<div>html</div>")),
     })
 
@@ -176,7 +177,7 @@ test.describe("routes", () => {
   })
 
   test.test("returns 406 for unacceptable content type", () => {
-    const routes = Route.tree({
+    const routes = Route.map({
       "/data": Route.get(Route.json({ type: "json" })),
     })
 
@@ -193,7 +194,7 @@ test.describe("routes", () => {
   })
 
   test.test("handles parameterized routes", () => {
-    const routes = Route.tree({
+    const routes = Route.map({
       "/users/:id": Route.get(Route.text("user")),
     })
 
@@ -214,7 +215,7 @@ test.describe("Start.serve composition", () => {
   test.test("Start.build keeps routes when BunServer.layerRoutes is provided", () => {
     const appLayer = Start.build(
       Route.layer(
-        Route.tree({
+        Route.map({
           "/hello": Route.get(Route.text("world")),
         }),
       ),
@@ -236,7 +237,7 @@ test.describe("Start.serve composition", () => {
   test.test("Start.build keeps fallback handler when BunServer.layer is provided", () => {
     const appLayer = Start.build(
       Route.layer(
-        Route.tree({
+        Route.map({
           "/hello": Route.get(Route.text("world")),
         }),
       ),
@@ -255,7 +256,7 @@ test.describe("Start.serve composition", () => {
 
   test.test("routes resolve when server layer requires Route.Routes", () => {
     const appLayer = Route.layer(
-      Route.tree({
+      Route.map({
         "/hello": Route.get(Route.text("world")),
       }),
     )
@@ -277,7 +278,7 @@ test.describe("Start.serve composition", () => {
 
   test.test("existing BunServer is upgraded with routes by layerStart", () => {
     const routeLayer = Route.layer(
-      Route.tree({
+      Route.map({
         "/hello": Route.get(Route.text("world")),
       }),
     )
@@ -305,7 +306,7 @@ test.describe("Start.serve composition", () => {
 
   test.test("route-agnostic layer starts with fallback handler", () => {
     const routeLayer = Route.layer(
-      Route.tree({
+      Route.map({
         "/hello": Route.get(Route.text("world")),
       }),
     )
@@ -345,7 +346,7 @@ test.describe("Start.serve composition", () => {
 
 test.describe("make", () => {
   test.test("accepts explicit routes", () => {
-    const routes = Route.tree({
+    const routes = Route.map({
       "/hello": Route.get(Route.text("world")),
     })
 
@@ -390,7 +391,7 @@ test.describe("prebuilt htmlBundle", () => {
   }
 
   test.test("serves HTML when loader returns sync prebuilt bundle", () => {
-    const routes = Route.tree({
+    const routes = Route.map({
       "/": Route.get(
         BunRoute.htmlBundle(() => prebuiltBundle),
         Route.html("<p>Prebuilt Content</p>"),
@@ -411,7 +412,7 @@ test.describe("prebuilt htmlBundle", () => {
   })
 
   test.test("serves CSS assets at top-level routes", () => {
-    const routes = Route.tree({
+    const routes = Route.map({
       "/": Route.get(
         BunRoute.htmlBundle(() => prebuiltBundle),
         Route.html("<p>content</p>"),
@@ -432,7 +433,7 @@ test.describe("prebuilt htmlBundle", () => {
   })
 
   test.test("serves prebuilt HTML with correct content-type", () => {
-    const routes = Route.tree({
+    const routes = Route.map({
       "/": Route.get(
         BunRoute.htmlBundle(() => prebuiltBundle),
         Route.html("<p>typed</p>"),
@@ -501,7 +502,7 @@ test.describe("prebuilt htmlBundle rewrites relative asset paths", () => {
   })
 
   test.test("rewrites relative paths to absolute in HTML served at nested route", () => {
-    const routes = Route.tree({
+    const routes = Route.map({
       "/notes/:id": Route.get(
         BunRoute.htmlBundle(() => bundle),
         Route.html("<p>note content</p>"),
@@ -525,7 +526,7 @@ test.describe("prebuilt htmlBundle rewrites relative asset paths", () => {
   })
 
   test.test("CSS asset is accessible at top-level path", () => {
-    const routes = Route.tree({
+    const routes = Route.map({
       "/notes/:id": Route.get(
         BunRoute.htmlBundle(() => bundle),
         Route.html("<p>note content</p>"),
@@ -608,7 +609,7 @@ test.describe("prebuilt htmlBundle with images", () => {
   }
 
   test.test("rewrites img src to absolute paths", () => {
-    const routes = Route.tree({
+    const routes = Route.map({
       "/bio": Route.get(
         BunRoute.htmlBundle(() => bundle),
         Route.html("<p>bio</p>"),
@@ -634,7 +635,7 @@ test.describe("prebuilt htmlBundle with images", () => {
   })
 
   test.test("rewrites img src at deeply nested route", () => {
-    const routes = Route.tree({
+    const routes = Route.map({
       "/users/:id/profile": Route.get(
         BunRoute.htmlBundle(() => bundle),
         Route.html("<p>profile</p>"),

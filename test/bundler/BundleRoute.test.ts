@@ -4,8 +4,8 @@ import * as Layer from "effect/Layer"
 import * as Bundle from "../../src/bundler/Bundle.ts"
 import * as BundleRoute from "../../src/bundler/BundleRoute.ts"
 import * as Fetch from "effect-start/Fetch"
+import * as Route from "effect-start/Route"
 import * as RouteHttp from "effect-start/RouteHttp"
-import * as RouteTree from "effect-start/RouteTree"
 
 const testBundle: Bundle.BundleContext = {
   manifest: {
@@ -35,7 +35,7 @@ test.it("serves a JS artifact", () =>
   Effect.gen(function* () {
     const runtime = yield* Effect.runtime<Bundle.ClientBundle>()
     const routes = BundleRoute.make(Bundle.ClientBundle)
-    const tree = RouteTree.make({ "/_bundle/:path+": routes })
+    const tree = Route.map({ "/_bundle/:path+": routes })
     const handles = Object.fromEntries(RouteHttp.walkHandles(tree, runtime))
     const handler = handles["/_bundle/:path+"]
 
@@ -55,7 +55,7 @@ test.it("serves a CSS artifact", () =>
   Effect.gen(function* () {
     const runtime = yield* Effect.runtime<Bundle.ClientBundle>()
     const routes = BundleRoute.make(Bundle.ClientBundle)
-    const tree = RouteTree.make({ "/_bundle/:path+": routes })
+    const tree = Route.map({ "/_bundle/:path+": routes })
     const handles = Object.fromEntries(RouteHttp.walkHandles(tree, runtime))
     const handler = handles["/_bundle/:path+"]
 
@@ -72,7 +72,7 @@ test.it("returns 404 for missing artifact", () =>
   Effect.gen(function* () {
     const runtime = yield* Effect.runtime<Bundle.ClientBundle>()
     const routes = BundleRoute.make(Bundle.ClientBundle)
-    const tree = RouteTree.make({ "/_bundle/:path+": routes })
+    const tree = Route.map({ "/_bundle/:path+": routes })
     const handles = Object.fromEntries(RouteHttp.walkHandles(tree, runtime))
     const handler = handles["/_bundle/:path+"]
 
@@ -87,7 +87,7 @@ test.it("supports custom mount path", () =>
   Effect.gen(function* () {
     const runtime = yield* Effect.runtime<Bundle.ClientBundle>()
     const routes = BundleRoute.make(Bundle.ClientBundle)
-    const tree = RouteTree.make({ "/assets/:path+": routes })
+    const tree = Route.map({ "/assets/:path+": routes })
     const handles = Object.fromEntries(RouteHttp.walkHandles(tree, runtime))
     const handler = handles["/assets/:path+"]
 

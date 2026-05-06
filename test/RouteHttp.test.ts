@@ -11,7 +11,6 @@ import * as Http from "../src/internal/Http.ts"
 import * as Route from "effect-start/Route"
 import * as RouteHttp from "effect-start/RouteHttp"
 import * as RouteSchema from "effect-start/RouteSchema"
-import * as RouteTree from "effect-start/RouteTree"
 import { TestLogger } from "effect-start/testing"
 
 test.it("converts string to text/plain for Route.text", () =>
@@ -560,7 +559,7 @@ test.it("Route.text matches text/markdown Accept header", () =>
 
 test.describe("walkHandles", () => {
   test.it("yields handlers for static routes", () => {
-    const tree = RouteTree.make({
+    const tree = Route.map({
       "/users": Route.get(Route.text("users list")),
       "/admin": Route.get(Route.text("admin")),
     })
@@ -572,7 +571,7 @@ test.describe("walkHandles", () => {
   })
 
   test.it("yields handlers for parameterized routes", () => {
-    const tree = RouteTree.make({
+    const tree = Route.map({
       "/users/:id": Route.get(Route.text("user detail")),
     })
 
@@ -582,7 +581,7 @@ test.describe("walkHandles", () => {
   })
 
   test.it("preserves optional param syntax", () => {
-    const tree = RouteTree.make({
+    const tree = Route.map({
       "/files/:name?": Route.get(Route.text("files")),
     })
 
@@ -592,7 +591,7 @@ test.describe("walkHandles", () => {
   })
 
   test.it("preserves wildcard param syntax", () => {
-    const tree = RouteTree.make({
+    const tree = Route.map({
       "/docs/:path*": Route.get(Route.text("docs")),
     })
 
@@ -683,7 +682,7 @@ test.describe(Route.devOnly, () => {
   test.it("walkHandles excludes development routes from web handlers", () =>
     Effect.gen(function* () {
       const runtime = yield* Effect.runtime<Development.Development>()
-      const tree = RouteTree.make({
+      const tree = Route.map({
         "/development-only": Route.use(Route.devOnly),
         "/mixed": Route.get(Route.devOnly, Route.text("public")),
       })
@@ -702,9 +701,9 @@ test.describe(Route.devOnly, () => {
   )
 
   test.it(
-    "walkHandles with Route.tree wildcard development layer excludes routes outside dev",
+    "walkHandles with Route.map wildcard development layer excludes routes outside dev",
     () => {
-      const tree = Route.tree({
+      const tree = Route.map({
         "*": Route.use(Route.devOnly),
         "/public": Route.get(Route.text("public")),
       })
@@ -714,10 +713,10 @@ test.describe(Route.devOnly, () => {
     },
   )
 
-  test.it("walkHandles with Route.tree wildcard development layer keeps routes in dev", () =>
+  test.it("walkHandles with Route.map wildcard development layer keeps routes in dev", () =>
     Effect.gen(function* () {
       const runtime = yield* Effect.runtime<Development.Development>()
-      const tree = Route.tree({
+      const tree = Route.map({
         "*": Route.use(Route.devOnly),
         "/public": Route.get(Route.text("public")),
       })
@@ -1783,9 +1782,9 @@ test.describe("schema handlers", () => {
     }).pipe(Effect.runPromise),
   )
 
-  test.it("parses path params from RouteTree", () =>
+  test.it("parses path params from RouteMap", () =>
     Effect.gen(function* () {
-      const tree = RouteTree.make({
+      const tree = Route.map({
         "/folders/:folderId/files/:fileId": Route.get(
           RouteSchema.schemaPathParams(
             Schema.Struct({
@@ -1817,7 +1816,7 @@ test.describe("schema handlers", () => {
 
   test.it("parses wildcard path params", () =>
     Effect.gen(function* () {
-      const tree = RouteTree.make({
+      const tree = Route.map({
         "/files/:path+": Route.get(
           RouteSchema.schemaPathParams(
             Schema.Struct({
@@ -1844,9 +1843,9 @@ test.describe("schema handlers", () => {
     }).pipe(Effect.runPromise),
   )
 
-  test.it("schemaPathParams extracts params when path descriptor is set by RouteTree", () =>
+  test.it("schemaPathParams extracts params when path descriptor is set by RouteMap", () =>
     Effect.gen(function* () {
-      const tree = RouteTree.make({
+      const tree = Route.map({
         "/users/:id": Route.get(
           RouteSchema.schemaPathParams(
             Schema.Struct({ id: Schema.String }),
@@ -1869,7 +1868,7 @@ test.describe("schema handlers", () => {
     }).pipe(Effect.runPromise),
   )
 
-  test.it("schemaPathParams cannot extract params without RouteTree (no path descriptor)", () =>
+  test.it("schemaPathParams cannot extract params without RouteMap (no path descriptor)", () =>
     Effect.gen(function* () {
       const runtime = yield* Effect.runtime<TestLogger.TestLogger>()
       const handler = RouteHttp.toWebHandlerRuntime(runtime)(
@@ -1885,7 +1884,7 @@ test.describe("schema handlers", () => {
       const client = Fetch.fromHandler(handler)
       const entity = yield* client.get("http://localhost/users/abc")
 
-      // Without RouteTree, ctx.path is undefined, falls back to "/",
+      // Without RouteMap, ctx.path is undefined, falls back to "/",
       // so PathPattern.match("/", "/users/abc") returns no params
       // and schema validation fails with ParseError -> 400
       test.expect(entity.status).toBe(400)
@@ -1918,7 +1917,7 @@ test.describe("schema handlers", () => {
 
   test.it("combines path params with headers and body", () =>
     Effect.gen(function* () {
-      const tree = RouteTree.make({
+      const tree = Route.map({
         "/projects/:projectId/tasks": Route.post(
           RouteSchema.schemaPathParams(
             Schema.Struct({
@@ -2072,12 +2071,12 @@ test.describe("request abort handling", () => {
   )
 })
 
-test.describe("RouteTree layer routes", () => {
+test.describe("RouteMap layer routes", () => {
   test.it("layer routes execute in order before path routes", () =>
     Effect.gen(function* () {
       const calls: Array<string> = []
 
-      const tree = RouteTree.make({
+      const tree = Route.map({
         "*": Route.use(
           Route.filter(function* () {
             calls.push("layer1")
@@ -2110,7 +2109,7 @@ test.describe("RouteTree layer routes", () => {
     Effect.gen(function* () {
       const calls: Array<string> = []
 
-      const tree = RouteTree.make({
+      const tree = Route.map({
         "*": Route.use(
           Route.filter(function* () {
             calls.push("layer")
@@ -2152,7 +2151,7 @@ test.describe("RouteTree layer routes", () => {
     Effect.gen(function* () {
       let layerCallCount = 0
 
-      const tree = RouteTree.make({
+      const tree = Route.map({
         "*": Route.use(
           Route.filter(function* () {
             layerCallCount++
@@ -2180,7 +2179,7 @@ test.describe("RouteTree layer routes", () => {
     Effect.gen(function* () {
       const calls: Array<string> = []
 
-      const apiTree = RouteTree.make({
+      const apiTree = Route.map({
         "/users": Route.get(
           Route.text(function* () {
             calls.push("users")
@@ -2189,7 +2188,7 @@ test.describe("RouteTree layer routes", () => {
         ),
       })
 
-      const tree = RouteTree.make({
+      const tree = Route.map({
         "*": Route.use(
           Route.filter(function* () {
             calls.push("root-layer")
@@ -2212,7 +2211,7 @@ test.describe("RouteTree layer routes", () => {
       const runtime = yield* Effect.runtime<TestLogger.TestLogger>()
       let handlerExecuted = false
 
-      const tree = RouteTree.make({
+      const tree = Route.map({
         "*": Route.use(
           Route.filter(function* () {
             return yield* Effect.fail(new Error("layer rejected"))
@@ -2246,7 +2245,7 @@ test.describe("RouteTree layer routes", () => {
 
   test.it("layer middleware wraps response content with json", () =>
     Effect.gen(function* () {
-      const tree = RouteTree.make({
+      const tree = Route.map({
         "*": Route.use(
           Route.json(function* (_ctx, next) {
             const value = yield* next().json
@@ -2266,7 +2265,7 @@ test.describe("RouteTree layer routes", () => {
 
   test.it("layer middleware wraps response content with text", () =>
     Effect.gen(function* () {
-      const tree = RouteTree.make({
+      const tree = Route.map({
         "*": Route.use(
           Route.text(function* (_ctx, next) {
             const value = yield* next().text
@@ -2288,7 +2287,7 @@ test.describe("RouteTree layer routes", () => {
     Effect.gen(function* () {
       const calls: Array<string> = []
 
-      const tree = RouteTree.make({
+      const tree = Route.map({
         "*": Route.use(
           Route.filter(function* () {
             calls.push("layer1")
@@ -2318,7 +2317,7 @@ test.describe("RouteTree layer routes", () => {
 
   test.it("format negotiation excludes middleware formats", () =>
     Effect.gen(function* () {
-      const tree = RouteTree.make({
+      const tree = Route.map({
         "*": Route.use(
           Route.json(function* (_ctx, next) {
             const value = yield* next().json

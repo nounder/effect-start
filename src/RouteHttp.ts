@@ -15,7 +15,7 @@ import * as Route from "./Route.ts"
 import type * as RouteBody from "./RouteBody.ts"
 import * as RouteHttpTracer from "./RouteHttpTracer.ts"
 import type * as RouteMount from "./RouteMount.ts"
-import * as RouteTree from "./RouteTree.ts"
+import * as RouteMap from "./RouteMap.ts"
 import * as StreamExtra from "./internal/StreamExtra.ts"
 
 type UnboundedRouteWithMethod = Route.Route.With<{
@@ -400,7 +400,7 @@ export const toWebHandler: (routes: Iterable<UnboundedRouteWithMethod>) => Http.
   toWebHandlerRuntime(Runtime.defaultRuntime)
 
 export function* walkHandles(
-  tree: RouteTree.RouteTree,
+  map: RouteMap.RouteMap,
   runtime: Runtime.Runtime<never> = Runtime.defaultRuntime,
 ): Generator<[path: string, handler: Http.WebHandler]> {
   const pathGroups = new Map<string, Array<RouteMount.MountedRoute>>()
@@ -408,14 +408,14 @@ export function* walkHandles(
   const inDevelopment = Option.isSome(runSync(Development.option))
   const developmentPaths = new Set<string>()
 
-  for (const route of RouteTree.walk(tree)) {
+  for (const route of RouteMap.walk(map)) {
     const descriptor = Route.descriptor<{ path: string; dev?: boolean }>(route)
     if (descriptor.dev === true) {
       developmentPaths.add(descriptor.path)
     }
   }
 
-  for (const route of RouteTree.walk(tree)) {
+  for (const route of RouteMap.walk(map)) {
     const descriptor = Route.descriptor<{ path: string; dev?: boolean }>(route)
     if (descriptor.dev === true) {
       continue

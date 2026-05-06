@@ -3,6 +3,7 @@ import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
 import * as MutableRef from "effect/MutableRef"
 import * as Route from "effect-start/Route"
+import * as RouteMap from "effect-start/RouteMap"
 import * as Scope from "effect/Scope"
 import { BunServer } from "effect-start/bun"
 import * as PlatformRuntime from "../../src/PlatformRuntime.ts"
@@ -15,7 +16,7 @@ const withMainFiber = Effect.gen(function* () {
 })
 
 /** Create a BunServer in a standalone scope for manual lifecycle control. */
-const makeServerScoped = (routes?: ReturnType<typeof Route.tree>) =>
+const makeServerScoped = (routes?: RouteMap.RouteMap) =>
   Effect.gen(function* () {
     const scope = yield* Scope.make()
     const server = yield* BunServer.make({ port: 0 }, routes).pipe(
@@ -93,7 +94,7 @@ test.describe("BunServer hot reload", () => {
       Effect.gen(function* () {
         const fiber = yield* withMainFiber
         const { server, port } = yield* makeServerScoped(
-          Route.tree({ "/v": Route.get(Route.text("v1")) }),
+          Route.map({ "/v": Route.get(Route.text("v1")) }),
         )
 
         const text = (url: string) =>
@@ -102,7 +103,7 @@ test.describe("BunServer hot reload", () => {
         test.expect(yield* text(`http://localhost:${port}/v`)).toBe("v1")
 
         yield* server.setRoutes(
-          Route.tree({ "/v": Route.get(Route.text("v2")) }),
+          Route.map({ "/v": Route.get(Route.text("v2")) }),
         )
 
         test.expect(yield* text(`http://localhost:${port}/v`)).toBe("v2")

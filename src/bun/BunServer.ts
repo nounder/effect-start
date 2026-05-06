@@ -18,7 +18,7 @@ import * as Route from "../Route.ts"
 import * as RouteHttp from "../RouteHttp.ts"
 import * as StartApp from "../internal/StartApp.ts"
 import type * as RouteMount from "../RouteMount.ts"
-import * as RouteTree from "../RouteTree.ts"
+import * as RouteMap from "../RouteMap.ts"
 import * as BunRoute from "./BunRoute.ts"
 
 export interface WebSocketContext {
@@ -51,14 +51,14 @@ export type BunServer = {
   readonly server: Bun.Server<WebSocketContext>
   readonly pushHandler: (fetch: FetchHandler) => void
   readonly popHandler: () => void
-  readonly setRoutes: (tree: RouteTree.RouteTree) => Effect.Effect<void>
+  readonly setRoutes: (map: RouteMap.RouteMap) => Effect.Effect<void>
 }
 
 export const BunServer = Context.GenericTag<BunServer>("effect-start/BunServer")
 
 export const make = (
   options: BunServeOptions,
-  tree?: RouteTree.RouteTree,
+  map?: RouteMap.RouteMap,
 ): Effect.Effect<BunServer, never, Scope.Scope> =>
   Effect.gen(function* () {
     const port = yield* Config.number("PORT").pipe(
@@ -80,7 +80,7 @@ export const make = (
     ]
 
     const setRoutesDeferred =
-      yield* Deferred.make<(tree: RouteTree.RouteTree) => Effect.Effect<void>>()
+      yield* Deferred.make<(map: RouteMap.RouteMap) => Effect.Effect<void>>()
 
     const service = BunServer.of({
       // During the construction we need to create a service imlpementation
@@ -98,9 +98,9 @@ export const make = (
         handlerStack.pop()
         reload()
       },
-      setRoutes(tree) {
+      setRoutes(map) {
         return Deferred.await(setRoutesDeferred).pipe(
-          Effect.flatMap((applyRoutes) => applyRoutes(tree)),
+          Effect.flatMap((applyRoutes) => applyRoutes(map)),
         )
       },
     })
@@ -109,7 +109,7 @@ export const make = (
       Effect.andThen(Runtime.provideService(BunServer, service)),
     )
 
-    let currentRoutes: BunRoute.BunRoutes = tree ? yield* walkBunRoutes(runtime, tree) : {}
+    let currentRoutes: BunRoute.BunRoutes = map ? yield* walkBunRoutes(runtime, map) : {}
 
     const websocket: Bun.WebSocketHandler<WebSocketContext> = {
       open(ws) {
@@ -166,8 +166,8 @@ export const make = (
       })
     }
 
-    yield* Deferred.succeed(setRoutesDeferred, (tree) =>
-      walkBunRoutes(runtime, tree).pipe(
+    yield* Deferred.succeed(setRoutesDeferred, (map) =>
+      walkBunRoutes(runtime, map).pipe(
         Effect.tap((bunRoutes) =>
           Effect.sync(() => {
             currentRoutes = bunRoutes
@@ -188,9 +188,9 @@ export const make = (
         handlerStack.pop()
         reload()
       },
-      setRoutes(tree) {
+      setRoutes(map) {
         return Deferred.await(setRoutesDeferred).pipe(
-          Effect.flatMap((applyRoutes) => applyRoutes(tree)),
+          Effect.flatMap((applyRoutes) => applyRoutes(map)),
         )
       },
     })
@@ -230,16 +230,16 @@ export const layerStart = (
     Effect.gen(function* () {
       const app = yield* StartApp.StartApp
       const routes = yield* Effect.serviceOption(Route.Routes)
-      const routeTree = Option.getOrNull(routes)
+      const routeMap = Option.getOrNull(routes)
       const existing = yield* Effect.serviceOption(BunServer)
       if (Option.isSome(existing)) {
-        if (routeTree !== null) {
-          yield* existing.value.setRoutes(routeTree)
+        if (routeMap !== null) {
+          yield* existing.value.setRoutes(routeMap)
         }
         yield* Deferred.succeed(app.server, existing.value)
         return existing.value
       }
-      const server = yield* make(options ?? {}, routeTree ?? undefined)
+      const server = yield* make(options ?? {}, routeMap ?? undefined)
       yield* Deferred.succeed(app.server, server)
       return server
     }),
@@ -256,7 +256,7 @@ export const withLogAddress = <A, E, R>(layer: Layer.Layer<A, E, R>) =>
     }),
   ).pipe(Layer.provideMerge(layer))
 
-function walkBunRoutes(runtime: Runtime.Runtime<BunServer>, tree: RouteTree.RouteTree) {
+function walkBunRoutes(runtime: Runtime.Runtime<BunServer>, map: RouteMap.RouteMap) {
   return Effect.gen(function* () {
     const bunRoutes: BunRoute.BunRoutes = {}
     const pathGroups = new Map<string, Array<RouteMount.MountedRoute>>()
@@ -264,7 +264,7 @@ function walkBunRoutes(runtime: Runtime.Runtime<BunServer>, tree: RouteTree.Rout
 
     let hasPrebuiltBundles = false
 
-    for (const route of RouteTree.walk(tree)) {
+    for (const route of RouteMap.walk(map)) {
       const bunDescriptors = BunRoute.descriptors(route)
       if (bunDescriptors) {
         const htmlBundle = yield* Effect.promise(bunDescriptors.bunLoad)

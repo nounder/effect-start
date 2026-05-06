@@ -3,10 +3,11 @@ import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Route from "../../src/Route.ts"
+import * as RouteMap from "../../src/RouteMap.ts"
 import { BunRoute, BunServer } from "../../src/bun/index.ts"
 
 const testLayer = (
-  routes: ReturnType<typeof Route.tree>,
+  routes: RouteMap.RouteMap,
   options?: {
     development?: boolean
   },
@@ -34,7 +35,7 @@ const extractScriptSrcs = (html: string) =>
 
 test.describe(BunRoute.htmlBundle, () => {
   test.test("wraps child content with layout", () => {
-    const routes = Route.tree({
+    const routes = Route.map({
       "/": Route.get(
         BunRoute.htmlBundle(() => import("../../static/LayoutSlots.html")),
         Route.html("<p>Hello World</p>"),
@@ -56,7 +57,7 @@ test.describe(BunRoute.htmlBundle, () => {
   })
 
   test.test("replaces %yield% with child content", () => {
-    const routes = Route.tree({
+    const routes = Route.map({
       "/page": Route.get(
         BunRoute.htmlBundle(() => import("../../static/LayoutSlots.html")),
         Route.html("<div>Page Content</div>"),
@@ -76,7 +77,7 @@ test.describe(BunRoute.htmlBundle, () => {
   })
 
   test.test("works with use() for wildcard routes", () => {
-    const routes = Route.tree({
+    const routes = Route.map({
       "*": Route.use(BunRoute.htmlBundle(() => import("../../static/LayoutSlots.html"))),
       "/:path*": Route.get(Route.html("<section>Catch All</section>")),
     })
@@ -111,7 +112,7 @@ test.describe(BunRoute.htmlBundle, () => {
     }).pipe(
       Effect.provide(
         testLayer(
-          Route.tree({
+          Route.map({
             "*": Route.use(BunRoute.htmlBundle(() => import("../../static/LayoutSlots.html"))),
             "/:path*": Route.get(
               BunRoute.htmlBundle(() => import("../../static/LayoutSlots.html")),
@@ -141,7 +142,7 @@ test.describe(BunRoute.htmlBundle, () => {
     }).pipe(
       Effect.provide(
         testLayer(
-          Route.tree({
+          Route.map({
             "*": Route.use(BunRoute.htmlBundle(() => import("../../static/LayoutSlots.html"))),
             "/:path*": Route.get(
               BunRoute.htmlBundle(() => import("../../static/LayoutSlots.html")),
@@ -174,7 +175,7 @@ test.describe(BunRoute.htmlBundle, () => {
     }).pipe(
       Effect.provide(
         testLayer(
-          Route.tree({
+          Route.map({
             "*": Route.use(
               BunRoute.htmlBundle(() => import("../../static/LayoutSlotsOuterScripts.html")),
             ),
@@ -218,7 +219,7 @@ test.describe(BunRoute.htmlBundle, () => {
     }).pipe(
       Effect.provide(
         testLayer(
-          Route.tree({
+          Route.map({
             "*": Route.use(
               BunRoute.htmlBundle(() => import("../../static/LayoutSlotsOuterScripts.html")),
             ),
@@ -248,7 +249,7 @@ test.describe(BunRoute.htmlBundle, () => {
     }).pipe(
       Effect.provide(
         testLayer(
-          Route.tree({
+          Route.map({
             "*": Route.use(BunRoute.htmlBundle(() => import("../../static/LayoutSlots.html"))),
             "/:path*": Route.get(
               BunRoute.htmlBundle(() => import("../../static/LayoutSlots.html")),
@@ -277,7 +278,7 @@ test.describe(BunRoute.htmlBundle, () => {
     }).pipe(
       Effect.provide(
         testLayer(
-          Route.tree({
+          Route.map({
             "*": Route.use(BunRoute.htmlBundle(() => import("../../static/LayoutSlots.html"))),
             "/:path*": Route.get(
               BunRoute.htmlBundle(() => import("../../static/LayoutSlots.html")),
@@ -293,7 +294,7 @@ test.describe(BunRoute.htmlBundle, () => {
   )
 
   test.test("has format: html descriptor", () => {
-    const routes = Route.tree({
+    const routes = Route.map({
       "/": Route.get(
         BunRoute.htmlBundle(() => import("../../static/LayoutSlots.html")),
         Route.html("<p>content</p>"),

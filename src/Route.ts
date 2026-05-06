@@ -7,7 +7,7 @@ import * as Predicate from "effect/Predicate"
 import * as Development from "./Development.ts"
 import * as Entity from "./Entity.ts"
 import * as RouteBody from "./RouteBody.ts"
-import * as RouteTree from "./RouteTree.ts"
+import * as RouteMap from "./RouteMap.ts"
 import type * as Values from "./internal/Values.ts"
 import * as Html from "./Html.ts"
 import type { JSX } from "../src/jsx.d.ts"
@@ -250,22 +250,22 @@ export function redirect<D, B, I extends Route.Tuple>(
     set<D, B, [...I, Route<{}, {}, "", never, never>]>([...items(self), route], descriptor(self))
 }
 
-export class Routes extends Context.Tag("effect-start/Routes")<Routes, RouteTree.RouteTree>() {}
+export class Routes extends Context.Tag("effect-start/Routes")<Routes, RouteMap.RouteMap>() {}
 
-export function layer(routes: RouteTree.RouteMap | RouteTree.RouteTree) {
-  return Layer.sync(Routes, () => (RouteTree.isRouteTree(routes) ? routes : RouteTree.make(routes)))
+export function layer(routes: RouteMap.RouteMapInput) {
+  return Layer.sync(Routes, () => RouteMap.make(routes))
 }
 
-export function layerMerge(routes: RouteTree.RouteTreeInput | RouteTree.RouteTree) {
+export function layerMerge(routes: RouteMap.RouteMapInput) {
   return Layer.effect(
     Routes,
     Effect.gen(function* () {
       const existing = yield* Effect.serviceOption(Routes).pipe(
         Effect.andThen(Option.getOrUndefined),
       )
-      const tree = RouteTree.isRouteTree(routes) ? routes : RouteTree.make(routes)
-      if (!existing) return tree
-      return RouteTree.merge(existing, tree)
+      const map = RouteMap.make(routes)
+      if (!existing) return map
+      return RouteMap.merge(existing, map)
     }),
   )
 }
@@ -306,7 +306,7 @@ export function devOnly<D, B, I extends Route.Tuple>(
   )
 }
 
-export { make as tree } from "./RouteTree.ts"
+export { make as map } from "./RouteMap.ts"
 
 export function lazy<T extends RouteSet.Any>(
   load: () => Promise<{ default: T }>,
