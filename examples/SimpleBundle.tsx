@@ -1,5 +1,5 @@
 import { Context, Effect, Layer } from "effect"
-import { Start, Route, Bundle } from "effect-start"
+import { Start, Route, Bundle, FileSystem } from "effect-start"
 import { BunBundle } from "effect-start/bun"
 import { TailwindPlugin } from "effect-start/tailwind"
 
@@ -37,15 +37,8 @@ const routes = Route.map({
   ),
 })
 
-const cb = Layer.effectDiscard(
-  Effect.gen(function* () {
-    yield* Bundle.ServerBundle
-    return {}
-  }),
-)
-
 export default Start.pack(
-  // Layer.succeed(SomeService, {}),
+  Layer.succeed(SomeService, {}),
   BunBundle.layer({
     entrypoints: [import.meta.resolve("./client.js"), import.meta.resolve("./client.css")],
     plugins: [TailwindPlugin.make()],
@@ -54,4 +47,4 @@ export default Start.pack(
   Route.layer(routes),
 )
 
-Start.serve(() => import("./SimpleBundle.tsx"))
+Start.runMain(import.meta)
