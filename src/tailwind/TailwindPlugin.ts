@@ -1,6 +1,8 @@
 import type { BunPlugin } from "bun"
 import * as NPath from "node:path"
-import * as Tailwind from "./compile.ts"
+import * as IgnoreFile from "../internal/IgnoreFile.ts"
+import * as NodeUtils from "../node/NodeUtils.ts"
+import { compile } from "./compile.ts"
 
 export const make = (opts?: {
   /**
@@ -114,15 +116,16 @@ export const make = (opts?: {
             return undefined
           }
 
-          const compiler = await Tailwind.compile(source, {
+          const compiler = await compile(source, {
             base: NPath.dirname(args.path),
-            onDependency: () => { },
+            onDependency: () => {},
           })
 
           // wait for other files to be loaded so we can collect class name candidates
           await args.defer()
 
           const candidates = new Set<string>()
+          const pendingReads: Array<string> = []
 
           // Walk the import graph: collect candidates from every module
           // transitively imported by this CSS entrypoint's importers.
@@ -145,27 +148,35 @@ export const make = (opts?: {
           }
 
           // Honor explicit source configuration:
-          // - `@import "tailwindcss" source(".")` → `compiler.root`
+          // - `@import "tailwindcss" source("...")` → `compiler.root`
           // - `@source "..."` directives → `compiler.sources`
-          // Unlike Tailwind's official integrations, we don't default to cwd.
-          // Instead, we use module graph.
-          const sourcePatterns = [
-            ...(compiler.root && compiler.root !== "none" ? [compiler.root] : []),
-            ...compiler.sources.filter((s) => !s.negated),
+          // When `source(...)` is omitted, default to the project root. Only
+          // `source(none)` opts out and relies solely on the module graph.
+          const projectRoot =
+            compiler.root === undefined ? await NodeUtils.findProjectRoot(args.path) : undefined
+          const sourceRoots = [
+            ...(projectRoot ? [projectRoot] : []),
+            ...(compiler.root && compiler.root !== "none" ? [compiler.root.base] : []),
+            ...compiler.sources.filter((s) => !s.negated).map((s) => s.base),
           ]
-          for (const { base, pattern } of sourcePatterns) {
-            const resolved = await resolveSourcePattern(base, pattern)
-            const glob = new Bun.Glob(resolved.pattern)
-            for await (const filePath of glob.scan({ cwd: resolved.base, absolute: true })) {
-              if (filePath.includes("/node_modules/")) continue
-              const cached = classNameCandidates.get(filePath)
+          for (const root of sourceRoots) {
+            await IgnoreFile.walk(root, (item) => {
+              if (item.entry.isDirectory()) {
+                return item.entry.name === "node_modules" ? "pass" : undefined
+              }
+              if (!filesPattern.test(item.path)) return undefined
+              const cached = classNameCandidates.get(item.path)
               if (cached) {
                 cached.forEach((c) => candidates.add(c))
-                continue
+                return undefined
               }
-              const text = await Bun.file(filePath).text()
-              extractClassNames(text).forEach((c) => candidates.add(c))
-            }
+              pendingReads.push(item.path)
+              return undefined
+            })
+          }
+          for (const path of pendingReads) {
+            const text = await Bun.file(path).text()
+            extractClassNames(text).forEach((c) => candidates.add(c))
           }
 
           const contents = compiler.build([...candidates])
@@ -181,31 +192,6 @@ export const make = (opts?: {
 }
 
 const CSS_IMPORT_REGEX = /@import\s+(?:url\()?["']?([^"')]+)["']?\)?\s*[^;]*;/
-
-const SOURCE_FILE_GLOB = "**/*.{js,jsx,ts,tsx,html,vue,svelte,astro}"
-
-/**
- * Tailwind's `source(...)` and `@source "..."` directives accept either a
- * directory or a glob pattern. When the pattern resolves to a directory,
- * scan it with the standard component-file extensions; otherwise treat the
- * pattern as a literal glob.
- */
-async function resolveSourcePattern(
-  base: string,
-  pattern: string,
-): Promise<{ base: string; pattern: string }> {
-  const NPath = await import("node:path")
-  const fs = await import("node:fs/promises")
-  const trimmed = pattern.replace(/\/+$/, "")
-  const candidate = NPath.isAbsolute(trimmed) ? trimmed : NPath.resolve(base, trimmed || ".")
-  try {
-    const stat = await fs.stat(candidate)
-    if (stat.isDirectory()) {
-      return { base: candidate, pattern: SOURCE_FILE_GLOB }
-    }
-  } catch { }
-  return { base, pattern }
-}
 
 function hasCssImport(css: string, specifier?: string): boolean {
   const [, importPath] = css.match(CSS_IMPORT_REGEX) ?? []

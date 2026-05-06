@@ -21,3 +21,8 @@ export const findClosestPackageJson = async (path: string): Promise<string | und
 
   return undefined
 }
+
+export const findProjectRoot = async (from: string): Promise<string | undefined> => {
+  const pkgJson = await findClosestPackageJson(from)
+  return pkgJson ? NPath.dirname(pkgJson) : undefined
+}
