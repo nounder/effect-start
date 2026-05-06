@@ -3,7 +3,7 @@ import { BunBundle } from "effect-start/bun"
 import { Studio } from "effect-start/studio"
 import { TailwindPlugin } from "effect-start/tailwind"
 
-export default Start.pack(
+export default Start.build(
   Studio.layer(),
   Development.layer(),
   FileRouter.layer(() => import("./routes/.server.ts")),

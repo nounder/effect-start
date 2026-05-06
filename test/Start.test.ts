@@ -4,13 +4,14 @@ import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
 import * as Layer from "effect/Layer"
+import * as SynchronizedRef from "effect/SynchronizedRef"
 import { BunServer } from "effect-start/bun"
 import * as Start from "effect-start/Start"
 import * as StartApp from "../src/internal/StartApp.ts"
 
-test.describe(Start.pack, () => {
+test.describe(Start.build, () => {
   test.test("should resolve internal dependencies automatically", () => {
-    const AppLayer = Start.pack(UserRepoLive, DatabaseLive, LoggerLive)
+    const AppLayer = Start.build(UserRepoLive, DatabaseLive, LoggerLive)
 
     test.expectTypeOf<Layer.Layer.Context<typeof AppLayer>>().toEqualTypeOf<ExternalApi>()
 
@@ -27,7 +28,7 @@ test.describe(Start.pack, () => {
   })
 
   test.test("should require services not in the pack", async () => {
-    const PartialPack = Start.pack(UserRepoLive, DatabaseLive)
+    const PartialPack = Start.build(UserRepoLive, DatabaseLive)
 
     test
       .expectTypeOf<Layer.Layer.Context<typeof PartialPack>>()
@@ -36,14 +37,14 @@ test.describe(Start.pack, () => {
 
   test.test("should reject wrong layer ordering", () => {
     // @ts-expect-error LoggerLive first means DatabaseLive can't find Logger
-    Start.pack(LoggerLive, DatabaseLive, UserRepoLive)
+    Start.build(LoggerLive, DatabaseLive, UserRepoLive)
 
     // @ts-expect-error DatabaseLive before LoggerLive, UserRepoLive last but needs Database
-    Start.pack(DatabaseLive, LoggerLive, UserRepoLive)
+    Start.build(DatabaseLive, LoggerLive, UserRepoLive)
   })
 
   test.test("should work with dependents-first order", () => {
-    const AppLayer = Start.pack(UserRepoLive, DatabaseLive, LoggerLive)
+    const AppLayer = Start.build(UserRepoLive, DatabaseLive, LoggerLive)
 
     const ExternalApiLive = Layer.succeed(ExternalApi, {
       call: () => Effect.void,
@@ -58,7 +59,7 @@ test.describe(Start.pack, () => {
   })
 
   test.test("should allow accessing all provided services", () => {
-    const AppLayer = Start.pack(UserRepoLive, DatabaseLive, LoggerLive)
+    const AppLayer = Start.build(UserRepoLive, DatabaseLive, LoggerLive)
 
     const ExternalApiLive = Layer.succeed(ExternalApi, {
       call: () => Effect.void,
@@ -106,7 +107,7 @@ test.describe(Start.pack, () => {
       }),
     )
 
-    const AppLayer = Start.pack(
+    const AppLayer = Start.build(
       UserRepoLiveWithCounter,
       DatabaseLiveWithCounter,
       LoggerLiveWithCounter,
@@ -153,9 +154,9 @@ test.describe("StartApp.server", () => {
   )
 })
 
-test.describe(Start.build, () => {
+test.describe(Start.pack, () => {
   test.test("should resolve dependencies in any order", () => {
-    const AppLayer = Start.build(LoggerLive, DatabaseLive, UserRepoLive)
+    const AppLayer = Start.pack(LoggerLive, DatabaseLive, UserRepoLive)
 
     test.expectTypeOf<Layer.Layer.Context<typeof AppLayer>>().toEqualTypeOf<ExternalApi>()
 
@@ -172,7 +173,7 @@ test.describe(Start.build, () => {
   })
 
   test.test("should resolve dependencies in correct order too", () => {
-    const AppLayer = Start.build(UserRepoLive, DatabaseLive, LoggerLive)
+    const AppLayer = Start.pack(UserRepoLive, DatabaseLive, LoggerLive)
 
     test.expectTypeOf<Layer.Layer.Context<typeof AppLayer>>().toEqualTypeOf<ExternalApi>()
 
@@ -189,7 +190,7 @@ test.describe(Start.build, () => {
   })
 
   test.test("should require external services", async () => {
-    const PartialPack = Start.build(UserRepoLive, DatabaseLive)
+    const PartialPack = Start.pack(UserRepoLive, DatabaseLive)
 
     test
       .expectTypeOf<Layer.Layer.Context<typeof PartialPack>>()
@@ -234,7 +235,7 @@ test.describe(Start.build, () => {
       call: () => Effect.void,
     })
 
-    const AppLayer = Start.build(
+    const AppLayer = Start.pack(
       UserRepoLiveWithCounter,
       DatabaseLiveWithCounter,
       LoggerLiveWithCounter,
@@ -249,6 +250,55 @@ test.describe(Start.build, () => {
       test.expect(databaseBuildCount).toEqual(1)
     }).pipe(Effect.provide(AppLayer), Effect.provide(ExternalApiLive), Effect.runPromise)
   })
+
+  // Guard against Effect changing MemoMap internals. Start.pack reaches into
+  // `memoMap.ref` to invalidate failed-build entries so out-of-order layers
+  // can be retried once their dependencies become available.
+  test.test("MemoMap exposes a SynchronizedRef<Map> at .ref", () =>
+    Effect.gen(function* () {
+      const memoMap = yield* Layer.makeMemoMap
+      const ref = (memoMap as unknown as { ref?: unknown }).ref
+
+      test.expect(ref).toBeDefined()
+      test.expect(SynchronizedRef.SynchronizedRefTypeId in (ref as object)).toBe(true)
+
+      const map = yield* SynchronizedRef.get(ref as SynchronizedRef.SynchronizedRef<unknown>)
+      test.expect(map).toBeInstanceOf(Map)
+    }).pipe(Effect.runPromise),
+  )
+
+  // Pin the behavior we rely on: a layer that fails once during a build leaves
+  // a cached entry whose replay returns the same failure. Start.pack's retry
+  // loop only works because we invalidate that entry; if Effect ever stops
+  // persisting failures, our invalidation becomes dead code (not too bad), but if
+  // the replay shape changes, our invalidation may fail to clear it.
+  test.test("MemoMap caches failed builds and replays the same failure", () =>
+    Effect.gen(function* () {
+      const memoMap = yield* Layer.makeMemoMap
+      const failingLayer = Layer.effect(Logger, Effect.fail("boom" as const)) as Layer.Layer<
+        Logger,
+        "boom"
+      >
+
+      const first = yield* Layer.buildWithMemoMap(failingLayer, memoMap, yield* Effect.scope).pipe(
+        Effect.exit,
+      )
+      const second = yield* Layer.buildWithMemoMap(failingLayer, memoMap, yield* Effect.scope).pipe(
+        Effect.exit,
+      )
+
+      test.expect(first._tag).toBe("Failure")
+      test.expect(second._tag).toBe("Failure")
+
+      const ref = (
+        memoMap as unknown as {
+          ref: SynchronizedRef.SynchronizedRef<Map<unknown, unknown>>
+        }
+      ).ref
+      const map = yield* SynchronizedRef.get(ref)
+      test.expect(map.has(failingLayer)).toBe(true)
+    }).pipe(Effect.scoped, Effect.runPromise),
+  )
 })
 
 class Logger extends Context.Tag("Logger")<

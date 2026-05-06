@@ -21,7 +21,7 @@ import * as PlatformRuntime from "./PlatformRuntime.ts"
 import * as StartApp from "./internal/StartApp.ts"
 
 /**
- * Bundles layers together, wiring their dependencies automatically.
+ * Builds layers in the given order, wiring their dependencies automatically.
  *
  * Equivalent to chaining `Layer.provide` calls, but more concise.
  *
@@ -30,7 +30,7 @@ import * as StartApp from "./internal/StartApp.ts"
  * @example
  * ```ts
  * // UserRepo needs Database, Database needs Logger
- * const AppLayer = Start.pack(
+ * const AppLayer = Start.build(
  *   UserRepoLive,   // needs Database, Logger
  *   DatabaseLive,   // needs Logger
  *   LoggerLive,     // no deps
@@ -41,8 +41,8 @@ import * as StartApp from "./internal/StartApp.ts"
  * @since 1.0.0
  * @category constructors
  */
-export function pack<const Layers extends readonly [Layer.Layer.Any, ...Array<Layer.Layer.Any>]>(
-  ...layers: Layers & OrderedPack<NoInfer<Layers>, NoInfer<Layers>>
+export function build<const Layers extends readonly [Layer.Layer.Any, ...Array<Layer.Layer.Any>]>(
+  ...layers: Layers & OrderedBuild<NoInfer<Layers>, NoInfer<Layers>>
 ): Layer.Layer<
   { [K in keyof Layers]: Layer.Layer.Success<Layers[K]> }[number],
   { [K in keyof Layers]: Layer.Layer.Error<Layers[K]> }[number],
@@ -63,7 +63,7 @@ export function pack<const Layers extends readonly [Layer.Layer.Any, ...Array<La
 
 type Unsatisfied<Unmet, Success> = Unmet extends Success ? Unmet : never
 
-type OrderedPack<
+type OrderedBuild<
   Layers extends readonly Layer.Layer.Any[],
   All extends readonly Layer.Layer.Any[],
 > = Layers extends readonly [
@@ -82,38 +82,38 @@ type OrderedPack<
       ] extends [never]
         ? Head
         : never,
-      ...OrderedPack<Tail, All>,
+      ...OrderedBuild<Tail, All>,
     ]
   : []
 
-type BuildSuccess<Layers extends readonly Layer.Layer.Any[]> = {
+type PackSuccess<Layers extends readonly Layer.Layer.Any[]> = {
   [K in keyof Layers]: Layer.Layer.Success<Layers[K]>
 }[number]
 
-type BuildError<Layers extends readonly Layer.Layer.Any[]> = {
+type PackError<Layers extends readonly Layer.Layer.Any[]> = {
   [K in keyof Layers]: Layer.Layer.Error<Layers[K]>
 }[number]
 
-type BuildContext<Layers extends readonly Layer.Layer.Any[]> = Exclude<
+type PackContext<Layers extends readonly Layer.Layer.Any[]> = Exclude<
   { [K in keyof Layers]: Layer.Layer.Context<Layers[K]> }[number],
   { [K in keyof Layers]: Layer.Layer.Success<Layers[K]> }[number]
 >
 
 /**
- * Like `pack`, but accepts layers in any order.
+ * Like `build`, but accepts layers in any order.
  *
  * ```ts
  * // These all produce the same result:
- * Start.build(LoggerLive, DatabaseLive, UserRepoLive)
- * Start.build(UserRepoLive, DatabaseLive, LoggerLive)
+ * Start.pack(LoggerLive, DatabaseLive, UserRepoLive)
+ * Start.pack(UserRepoLive, DatabaseLive, LoggerLive)
  * ```
  *
  * @since 1.0.0
  * @category constructors
  */
-export function build<const Layers extends readonly [Layer.Layer.Any, ...Array<Layer.Layer.Any>]>(
+export function pack<const Layers extends readonly [Layer.Layer.Any, ...Array<Layer.Layer.Any>]>(
   ...layers: Layers
-): Layer.Layer<BuildSuccess<Layers>, BuildError<Layers>, BuildContext<Layers>> {
+): Layer.Layer<PackSuccess<Layers>, PackError<Layers>, PackContext<Layers>> {
   type AnyLayer = Layer.Layer<any, any, any>
   const layerArray = layers as unknown as ReadonlyArray<AnyLayer>
 
@@ -121,12 +121,14 @@ export function build<const Layers extends readonly [Layer.Layer.Any, ...Array<L
     Effect.gen(function* () {
       const scope = yield* Effect.scope
       const memoMap = yield* Layer.makeMemoMap
-      const memoMapRef = (memoMap as any).ref as SynchronizedRef.SynchronizedRef<Map<AnyLayer, any>>
       let ctx = yield* Effect.context<any>()
       const pending = new Set<AnyLayer>(layerArray)
 
-      for (let pass = 0; pass < layerArray.length && pending.size > 0; pass++) {
-        for (const layer of pending) {
+      while (pending.size > 0) {
+        let progressed = false
+        const failures: Array<Cause.Cause<unknown>> = []
+
+        for (const layer of [...pending]) {
           const childScope = yield* Scope.fork(scope, ExecutionStrategy.sequential)
           const exit = yield* layer.pipe(
             Layer.buildWithMemoMap(memoMap, childScope),
@@ -136,26 +138,38 @@ export function build<const Layers extends readonly [Layer.Layer.Any, ...Array<L
           if (Exit.isSuccess(exit)) {
             ctx = Context.merge(ctx, exit.value)
             pending.delete(layer)
+            progressed = true
           } else {
             yield* Scope.close(childScope, exit)
-            yield* SynchronizedRef.update(memoMapRef, (map) => {
-              map.delete(layer)
-              return map
-            })
+            // Drop the poisoned memo entry so the layer can be retried once its
+            // dependencies become available; otherwise the failed deferred
+            // would replay the same cause forever.
+            const ref = (memoMap as unknown as {
+              ref?: SynchronizedRef.SynchronizedRef<Map<AnyLayer, unknown>>
+            }).ref
+            if (ref) {
+              yield* SynchronizedRef.update(ref, (map) => {
+                map.delete(layer)
+                return map
+              })
+            }
+            failures.push(exit.cause)
             if (Cause.isInterruptedOnly(exit.cause)) {
               return yield* exit
             }
           }
         }
-      }
 
-      for (const layer of pending) {
-        const childScope = yield* Scope.fork(scope, ExecutionStrategy.sequential)
-        const built = yield* layer.pipe(
-          Layer.buildWithMemoMap(memoMap, childScope),
-          Effect.provide(ctx),
-        )
-        ctx = Context.merge(ctx, built)
+        if (!progressed) {
+          // No layer made progress this pass — remaining failures are real,
+          // not "dependency not built yet". Surface them all so the caller sees
+          // the actual root cause(s) rather than an arbitrary single error.
+          const combined = failures.reduce<Cause.Cause<unknown>>(
+            (acc, cause) => Cause.parallel(acc, cause),
+            Cause.empty,
+          )
+          return yield* Effect.failCause(combined)
+        }
       }
 
       return ctx

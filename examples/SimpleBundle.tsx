@@ -1,24 +1,31 @@
-import { Context, Effect, Layer, PubSub, Ref, Schema, Stream } from "effect"
-import { Start, Route, Html, Bundle } from "effect-start"
+import { Context, Effect, Layer } from "effect"
+import { Start, Route, Bundle } from "effect-start"
 import { BunBundle } from "effect-start/bun"
 import { TailwindPlugin } from "effect-start/tailwind"
 
-const routes = Route.tree({
+class SomeService extends Context.Tag("SomeService")<SomeService, {}>() {}
+
+const routes = Route.map({
   "*": Route.use(
     Route.html(function* (_ctx, next) {
       const bundle = yield* Bundle.ClientBundle
+      const service = yield* SomeService
 
       return (
-        <html>
-          <head>
-            <title>Hello</title>
-            <script src={bundle.resolve("client.js")}></script>
-            <link rel="stylesheet" href={bundle.resolve("client.css")} />
-          </head>
-          <body class="bg-black text-white">
-            <div>{yield* next().text}</div>
-          </body>
-        </html>
+        <>
+          {"<!DOCTYPE html>"}
+          <html>
+            <head>
+              <title>Hello</title>
+              <script src={bundle.resolve("client.js")}></script>
+              <link rel="stylesheet" href={bundle.resolve("client.css")} />
+            </head>
+            <body class="bg-black text-white">
+              {/* TODO: figure out better api */}
+              <div>{yield* next().text}</div>
+            </body>
+          </html>
+        </>
       )
     }),
   ),
@@ -30,14 +37,21 @@ const routes = Route.tree({
   ),
 })
 
-if (import.meta.main) {
-  const app = Start.build(
-    Route.layer(routes),
-    BunBundle.layer({
-      entrypoints: [import.meta.resolve("./client.js"), import.meta.resolve("./client.css")],
-      plugins: [TailwindPlugin.make()],
-    }),
-  )
+const cb = Layer.effectDiscard(
+  Effect.gen(function* () {
+    yield* Bundle.ServerBundle
+    return {}
+  }),
+)
 
-  Start.serve(app)
-}
+export default Start.pack(
+  // Layer.succeed(SomeService, {}),
+  BunBundle.layer({
+    entrypoints: [import.meta.resolve("./client.js"), import.meta.resolve("./client.css")],
+    plugins: [TailwindPlugin.make()],
+  }),
+
+  Route.layer(routes),
+)
+
+Start.serve(() => import("./SimpleBundle.tsx"))

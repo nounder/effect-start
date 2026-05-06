@@ -47,7 +47,7 @@ test.describe("layerRoutes port precedence", () => {
       "/": Route.get(Route.text("custom-server")),
     })
 
-    const appLayer = Start.pack(BunServer.layerRoutes({ port: 0 }), Route.layer(routes))
+    const appLayer = Start.build(BunServer.layerRoutes({ port: 0 }), Route.layer(routes))
 
     return Effect.gen(function* () {
       const bunServer = yield* BunServer.BunServer
@@ -212,8 +212,8 @@ test.describe("routes", () => {
 })
 
 test.describe("Start.serve composition", () => {
-  test.test("Start.build keeps routes when BunServer.layerRoutes is provided", () => {
-    const appLayer = Start.build(
+  test.test("Start.pack keeps routes when BunServer.layerRoutes is provided", () => {
+    const appLayer = Start.pack(
       Route.layer(
         Route.map({
           "/hello": Route.get(Route.text("world")),
@@ -234,8 +234,8 @@ test.describe("Start.serve composition", () => {
     }).pipe(Effect.provide(appLayer), Effect.scoped, Effect.runPromise)
   })
 
-  test.test("Start.build keeps fallback handler when BunServer.layer is provided", () => {
-    const appLayer = Start.build(
+  test.test("Start.pack keeps fallback handler when BunServer.layer is provided", () => {
+    const appLayer = Start.pack(
       Route.layer(
         Route.map({
           "/hello": Route.get(Route.text("world")),
@@ -288,7 +288,7 @@ test.describe("Start.serve composition", () => {
       Deferred.make<BunServer.BunServer>().pipe(Effect.map((server) => ({ server }))),
     )
 
-    const appLayer = Start.build(startAppLayer, routeLayer, BunServer.layer({ port: 0 }))
+    const appLayer = Start.pack(startAppLayer, routeLayer, BunServer.layer({ port: 0 }))
 
     const composed = Layer.provide(BunServer.withLogAddress(BunServer.layerStart()), appLayer)
 

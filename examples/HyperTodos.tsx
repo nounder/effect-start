@@ -176,7 +176,7 @@ function TimeItem(props: { id: string; text: string; done: boolean }) {
 }
 
 if (import.meta.main) {
-  const app = Start.build(Route.layer(routes), layerStore)
+  const app = Start.pack(Route.layer(routes), layerStore)
 
   Start.serve(app)
 }

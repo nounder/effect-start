@@ -2,7 +2,7 @@ import { Development, FileRouter, Start } from "effect-start"
 import { Simulation, Studio } from "effect-start/studio"
 import { TailscaleTunnel } from "effect-start/tailscale"
 
-export default Start.pack(
+export default Start.build(
   Simulation.layer(),
   Studio.layer(),
   Development.layer(),
