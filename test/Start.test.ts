@@ -40,20 +40,64 @@ test.describe(Start.build, () => {
 })
 
 test.describe(Start.pack, () => {
-  test.test("type signature: surfaces unsatisfied dependencies on R", () => {
-    const AppLayer = Start.pack(LoggerLive, DatabaseLive, UserRepoLive)
-    test.expectTypeOf<Layer.Layer.Context<typeof AppLayer>>().toEqualTypeOf<ExternalApi>()
+  test.test("type signature: rejects unsatisfied dependencies", () => {
+    // @ts-expect-error UserRepoLive needs ExternalApi which no layer provides
+    Start.pack(LoggerLive, DatabaseLive, UserRepoLive)
+  })
+
+  test.test("type signature: error scopes to the argument with the missing dep", () => {
+    Start.pack(
+      LoggerLive,
+      DatabaseLive,
+      // @ts-expect-error only this argument should be flagged — its R has unsatisfied ExternalApi
+      UserRepoLive,
+    )
+  })
+
+  test.test("type signature: a layer with no missing deps is not flagged", () => {
+    // DatabaseLive needs Logger which IS provided, so it should not error here.
+    // UserRepoLive needs ExternalApi which is NOT provided, so it errors instead.
+    Start.pack(
+      LoggerLive,
+      DatabaseLive,
+      // @ts-expect-error UserRepoLive is the only arg with an unsatisfied dep
+      UserRepoLive,
+    )
+  })
+
+  test.test("type signature: returns Layer with R = never when fully satisfied", () => {
+    const ExternalApiLive = Layer.succeed(ExternalApi, { call: () => Effect.void })
+    const AppLayer = Start.pack(LoggerLive, DatabaseLive, UserRepoLive, ExternalApiLive)
+    test.expectTypeOf<Layer.Layer.Context<typeof AppLayer>>().toEqualTypeOf<never>()
+  })
+
+  test.test("type signature: a layer with partial satisfaction is still flagged", () => {
+    // PartialNeedsLive needs Logger (satisfied) AND ExternalApi (unsatisfied) —
+    // the error should still flag this argument.
+    const PartialNeedsLive = Layer.effect(
+      UserRepo,
+      Effect.gen(function* () {
+        yield* Logger
+        yield* ExternalApi
+        return { findUser: () => Effect.succeed(null) }
+      }),
+    )
+    Start.pack(
+      LoggerLive,
+      // @ts-expect-error ExternalApi unsatisfied; Logger is satisfied and should not appear in the error
+      PartialNeedsLive,
+    )
   })
 
   test.test("smoke: produces a working layer regardless of order", () => {
-    const AppLayer = Start.pack(LoggerLive, DatabaseLive, UserRepoLive)
     const ExternalApiLive = Layer.succeed(ExternalApi, { call: () => Effect.void })
+    const AppLayer = Start.pack(LoggerLive, DatabaseLive, UserRepoLive, ExternalApiLive)
 
     return Effect.gen(function* () {
       const userRepo = yield* UserRepo
       const result = yield* userRepo.findUser("123")
       test.expect(result).toEqual({ rows: [] })
-    }).pipe(Effect.provide(AppLayer), Effect.provide(ExternalApiLive), Effect.runPromise)
+    }).pipe(Effect.provide(AppLayer), Effect.runPromise)
   })
 })
 

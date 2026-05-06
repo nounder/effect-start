@@ -36,9 +36,7 @@ import * as StartApp from "./internal/StartApp.ts"
  * @since 1.0.0
  * @category constructors
  */
-export function build<
-  const Layers extends readonly [Layer.Layer.Any, ...Array<Layer.Layer.Any>],
->(
+export function build<const Layers extends readonly [Layer.Layer.Any, ...Array<Layer.Layer.Any>]>(
   ...layers: Layers & LayerExtra.Ordered<NoInfer<Layers>, NoInfer<Layers>>
 ): Layer.Layer<
   LayerExtra.LayersSuccess<Layers>,
@@ -49,7 +47,8 @@ export function build<
 }
 
 /**
- * Like `build`, but accepts layers in any order.
+ * Like `build`, but accepts layers in any order. Every layer's dependencies
+ * must be satisfied by another layer.
  *
  * ```ts
  * // These all produce the same result:
@@ -61,9 +60,9 @@ export function build<
  * @category constructors
  */
 export function pack<const Layers extends readonly [Layer.Layer.Any, ...Array<Layer.Layer.Any>]>(
-  ...layers: Layers
-) {
-  return Layer.scopedContext(LayerExtra.buildUnordered(layers))
+  ...layers: LayerExtra.Unordered<Layers>
+): Layer.Layer<LayerExtra.LayersSuccess<Layers>, LayerExtra.LayersError<Layers>, never> {
+  return Layer.scopedContext(LayerExtra.buildUnordered(layers as unknown as Layers)) as any
 }
 
 export function layerDev() {

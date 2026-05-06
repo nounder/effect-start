@@ -45,6 +45,24 @@ export type Ordered<
     ]
   : []
 
+export type Unordered<Layers extends readonly Layer.Layer.Any[]> = {
+  [K in keyof Layers]: [
+    Exclude<
+      Layer.Layer.Context<Layers[K]>,
+      { [I in keyof Layers]: Layer.Layer.Success<Layers[I]> }[number]
+    >,
+  ] extends [never]
+    ? Layers[K]
+    : Layer.Layer<
+        Layer.Layer.Success<Layers[K]>,
+        Layer.Layer.Error<Layers[K]>,
+        Extract<
+          Layer.Layer.Context<Layers[K]>,
+          { [I in keyof Layers]: Layer.Layer.Success<Layers[I]> }[number]
+        >
+      >
+}
+
 /**
  * Composes layers via repeated `Layer.provideMerge`, dependents-first.
  *
