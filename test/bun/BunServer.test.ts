@@ -92,7 +92,7 @@ test.describe("smart port selection", () => {
   )
 })
 
-const testLayer = (routes: RouteMap.RouteMap) =>
+const testLayer = <const Input extends RouteMap.RouteMapInput>(routes: Input) =>
   BunServer.layerRoutes({ port: 0 }).pipe(Layer.provide(Route.layer(routes)))
 
 test.describe("routes", () => {

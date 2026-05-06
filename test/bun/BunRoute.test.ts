@@ -6,8 +6,8 @@ import * as Route from "../../src/Route.ts"
 import * as RouteMap from "../../src/RouteMap.ts"
 import { BunRoute, BunServer } from "../../src/bun/index.ts"
 
-const testLayer = (
-  routes: RouteMap.RouteMap,
+const testLayer = <const Input extends RouteMap.RouteMapInput>(
+  routes: Input,
   options?: {
     development?: boolean
   },

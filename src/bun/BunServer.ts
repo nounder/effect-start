@@ -48,6 +48,7 @@ interface BunServeOptions {
 }
 
 export type BunServer = {
+  readonly [Route.IntrinsicService]?: never
   readonly server: Bun.Server<WebSocketContext>
   readonly pushHandler: (fetch: FetchHandler) => void
   readonly popHandler: () => void

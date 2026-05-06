@@ -22,6 +22,22 @@ export type RouteMap = {
   [path: PathPattern.PathPattern]: Route.Route.Tuple
 }
 
+/**
+ * Extracts the union of `R` requirements from every route reachable in a
+ * {@link RouteMapInput} or {@link RouteMap}, including layer routes (`*`) and
+ * nested inputs. Excludes services marked with
+ * {@link Route.IntrinsicService} since they are provided automatically by
+ * the request runtime.
+ */
+export type Context<T> = Exclude<
+  {
+    [K in keyof T]: T[K] extends Iterable<Route.Route<any, any, any, any, infer R>>
+      ? R
+      : Context<T[K]>
+  }[keyof T],
+  { readonly [Route.IntrinsicService]?: any }
+>
+
 type PrefixKeys<T, Prefix extends string> = {
   [K in keyof T as K extends string ? `${Prefix}${K}` : never]: T[K]
 }

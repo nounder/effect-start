@@ -205,10 +205,20 @@ export * from "./RouteSchema.ts"
 
 export { del, get, head, options, patch, post, put, use } from "./RouteMount.ts"
 
+/**
+ * Phantom marker for services that are provided automatically.
+ * Routes may declare them as requirements, but they are stripped
+ * from the layer R since the user is not expected to provide them.
+ * @internal
+ */
+export declare const IntrinsicService: unique symbol
+
 export class Request extends Context.Tag("effect-start/Route/Request")<
   Request,
   globalThis.Request
->() {}
+>() {
+  declare readonly [IntrinsicService]: never
+}
 
 export const text = RouteBody.build<string, "text">({
   format: "text",
@@ -252,11 +262,19 @@ export function redirect<D, B, I extends Route.Tuple>(
 
 export class Routes extends Context.Tag("effect-start/Routes")<Routes, RouteMap.RouteMap>() {}
 
-export function layer(routes: RouteMap.RouteMapInput) {
-  return Layer.sync(Routes, () => RouteMap.make(routes))
+export function layer<const Input extends RouteMap.RouteMapInput>(
+  routes: Input,
+): Layer.Layer<Routes, never, RouteMap.Context<Input>> {
+  return Layer.sync(Routes, () => RouteMap.make(routes)) as Layer.Layer<
+    Routes,
+    never,
+    RouteMap.Context<Input>
+  >
 }
 
-export function layerMerge(routes: RouteMap.RouteMapInput) {
+export function layerMerge<const Input extends RouteMap.RouteMapInput>(
+  routes: Input,
+): Layer.Layer<Routes, never, RouteMap.Context<Input>> {
   return Layer.effect(
     Routes,
     Effect.gen(function* () {
@@ -267,14 +285,14 @@ export function layerMerge(routes: RouteMap.RouteMapInput) {
       if (!existing) return map
       return RouteMap.merge(existing, map)
     }),
-  )
+  ) as Layer.Layer<Routes, never, RouteMap.Context<Input>>
 }
 
 /**
  * Creates a route that short-curcits in development.
  *
  * Note that when we convert the routes to web handles in {@link import("./RouteHttp.ts")},
- * we exclude them altogeteher in development.
+ * we exclude them altogeteher in non-dev environments.
  */
 export function devOnly<D, B, I extends Route.Tuple>(
   self: RouteSet<D, B, I>,

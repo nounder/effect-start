@@ -1,10 +1,12 @@
 /** @jsxImportSource effect-start */
 import * as test from "bun:test"
+import * as Context from "effect/Context"
 import type * as Engine from "effect-start/datastar"
 import * as Development from "effect-start/Development"
 import * as Effect from "effect/Effect"
 import * as Entity from "effect-start/Entity"
 import * as Fetch from "effect-start/Fetch"
+import * as Layer from "effect/Layer"
 import * as Route from "effect-start/Route"
 import * as RouteHttp from "effect-start/RouteHttp"
 import * as Schema from "effect/Schema"
@@ -610,4 +612,58 @@ test.describe("Route.link", () => {
     // @ts-expect-error - tab should be string, not number
     Route.link<R>("/foo", { tab: 123 })
   })
+})
+
+test.describe("Route.layer / Route.layerMerge type inference", () => {
+  class SomeService extends Context.Tag("SomeService")<SomeService, { x: number }>() {}
+  class OtherService extends Context.Tag("OtherService")<OtherService, { y: number }>() {}
+
+  const flat = Route.map({
+    "/x": Route.get(
+      Route.html(function* () {
+        yield* SomeService
+        return "hi"
+      }),
+    ),
+  })
+  const flatLayer = Route.layer(flat)
+  const flatMerge = Route.layerMerge(flat)
+  test.expectTypeOf<Layer.Layer.Success<typeof flatLayer>>().toEqualTypeOf<Route.Routes>()
+  test.expectTypeOf<Layer.Layer.Error<typeof flatLayer>>().toEqualTypeOf<never>()
+  test.expectTypeOf<Layer.Layer.Context<typeof flatLayer>>().toEqualTypeOf<SomeService>()
+  test.expectTypeOf<Layer.Layer.Success<typeof flatMerge>>().toEqualTypeOf<Route.Routes>()
+  test.expectTypeOf<Layer.Layer.Error<typeof flatMerge>>().toEqualTypeOf<never>()
+  test.expectTypeOf<Layer.Layer.Context<typeof flatMerge>>().toEqualTypeOf<SomeService>()
+
+  const nested = Route.map({
+    "/api": {
+      "*": Route.use(
+        Route.html(function* () {
+          yield* OtherService
+          return "wrap"
+        }),
+      ),
+      "/users": Route.get(
+        Route.html(function* () {
+          yield* SomeService
+          return "users"
+        }),
+      ),
+    },
+  })
+  const nestedLayer = Route.layer(nested)
+  test
+    .expectTypeOf<Layer.Layer.Context<typeof nestedLayer>>()
+    .toEqualTypeOf<SomeService | OtherService>()
+
+  const withRequest = Route.map({
+    "/x": Route.get(
+      Route.html(function* () {
+        yield* Route.Request
+        return "hi"
+      }),
+    ),
+  })
+  const requestLayer = Route.layer(withRequest)
+  test.expectTypeOf<Layer.Layer.Context<typeof requestLayer>>().toEqualTypeOf<never>()
 })

@@ -1,4 +1,5 @@
 import * as test from "bun:test"
+import * as Context from "effect/Context"
 import * as Route from "effect-start/Route"
 import * as RouteMap from "effect-start/RouteMap"
 
@@ -283,4 +284,57 @@ test.describe(RouteMap.merge, () => {
       .expect(Route.descriptor(RouteMap.walk(merged)).map((d) => d.path))
       .toEqual(["/", "/users", "/users/:id"])
   })
+})
+
+test.describe("RouteMap.Context", () => {
+  class A extends Context.Tag("A")<A, { a: number }>() {}
+  class B extends Context.Tag("B")<B, { b: number }>() {}
+
+  const flat = {
+    "/x": Route.get(
+      Route.html(function* () {
+        yield* A
+        return "hi"
+      }),
+    ),
+  }
+  test.expectTypeOf<RouteMap.Context<typeof flat>>().toEqualTypeOf<A>()
+
+  const nested = {
+    "/api": {
+      "*": Route.use(
+        Route.html(function* () {
+          yield* B
+          return "wrap"
+        }),
+      ),
+      "/users": Route.get(
+        Route.html(function* () {
+          yield* A
+          return "users"
+        }),
+      ),
+    },
+  }
+  test.expectTypeOf<RouteMap.Context<typeof nested>>().toEqualTypeOf<A | B>()
+
+  const withRequest = {
+    "/x": Route.get(
+      Route.html(function* () {
+        yield* Route.Request
+        return "hi"
+      }),
+    ),
+  }
+  test.expectTypeOf<RouteMap.Context<typeof withRequest>>().toEqualTypeOf<never>()
+
+  const flattened = RouteMap.make({
+    "/x": Route.get(
+      Route.html(function* () {
+        yield* A
+        return "hi"
+      }),
+    ),
+  })
+  test.expectTypeOf<RouteMap.Context<typeof flattened>>().toEqualTypeOf<A>()
 })
