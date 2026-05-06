@@ -135,7 +135,7 @@ export function layer(
 
 export function fromFileRoutes(fileRoutes: FileRoutes): Effect.Effect<RouteTree.RouteTree> {
   return Effect.gen(function* () {
-    const mounts: RouteTree.InputRouteMap = {}
+    const mounts: RouteTree.RouteTreeInput = {}
 
     for (const [path, loaders] of Object.entries(fileRoutes)) {
       const allRoutes: RouteTree.RouteTuple = [] as unknown as RouteTree.RouteTuple

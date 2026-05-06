@@ -48,8 +48,11 @@ export namespace RouteSet {
     T extends Data<infer D, any, any> ? D : never
 }
 
-export interface Route<D = {}, B = {}, A = any, E = never, R = never>
-  extends RouteSet<D, {}, [Route<D, B, A, E, R>]> {
+export interface Route<D = {}, B = {}, A = any, E = never, R = never> extends RouteSet<
+  D,
+  {},
+  [Route<D, B, A, E, R>]
+> {
   readonly handler: Route.OpaqueHandler<B & D, A, E, R>
 }
 
@@ -62,9 +65,7 @@ export namespace Route {
 
   export type Handler<B, A, E, R> = (
     context: B,
-    next: <NE = never>(
-      context?: Partial<B> & Record<string, unknown>,
-    ) => Entity.Entity<A, NE>,
+    next: <NE = never>(context?: Partial<B> & Record<string, unknown>) => Entity.Entity<A, NE>,
   ) => Effect.Effect<Entity.Entity<A>, E, R>
 
   /**
@@ -255,7 +256,7 @@ export function layer(routes: RouteTree.RouteMap | RouteTree.RouteTree) {
   return Layer.sync(Routes, () => (RouteTree.isRouteTree(routes) ? routes : RouteTree.make(routes)))
 }
 
-export function layerMerge(routes: RouteTree.InputRouteMap | RouteTree.RouteTree) {
+export function layerMerge(routes: RouteTree.RouteTreeInput | RouteTree.RouteTree) {
   return Layer.effect(
     Routes,
     Effect.gen(function* () {

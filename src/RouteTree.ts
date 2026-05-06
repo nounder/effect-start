@@ -12,13 +12,10 @@ type MethodRoute = Route.Route.With<{ method: string }>
 
 export type RouteTuple = Iterable<MethodRoute>
 
-export type LayerRoute = Iterable<Route.Route.With<{ method: "*" }>>
+const LayerKey = "*"
 
-type LayerKey = "*"
-const LayerKey: LayerKey = "*"
-
-export type InputRouteMap = {
-  [LayerKey]?: LayerRoute
+export type RouteTreeInput = {
+  [LayerKey]?: Iterable<Route.Route.With<{ method: "*" }>>
 } & {
   [path: PathPattern.PathPattern]: RouteTuple | RouteTree
 }
@@ -56,9 +53,9 @@ type PrefixKeys<T, Prefix extends string> = {
 
 type InferItems<T> = T extends Route.RouteSet.Data<any, any, infer M> ? M : []
 
-type LayerItems<T extends InputRouteMap> = "*" extends keyof T ? InferItems<T["*"]> : []
+type LayerItems<T extends RouteTreeInput> = "*" extends keyof T ? InferItems<T["*"]> : []
 
-type FlattenRouteMap<T extends InputRouteMap> = {
+type FlattenRouteMap<T extends RouteTreeInput> = {
   [K in Exclude<keyof T, "*"> as T[K] extends RouteTree ? never : K]: [
     ...LayerItems<T>,
     ...InferItems<T[K]>,
@@ -89,13 +86,13 @@ export interface LookupResult {
   params: Record<string, string>
 }
 
-export function make<const Routes extends InputRouteMap>(
+export function make<const Routes extends RouteTreeInput>(
   input: Routes,
 ): RouteTree<FlattenRouteMap<Routes>> {
   const layerRoutes = [...(input[LayerKey] ?? [])]
   const merged: RouteMap = {}
 
-  function flatten(map: InputRouteMap, prefix: string, layers: Array<MethodRoute>): void {
+  function flatten(map: RouteTreeInput, prefix: string, layers: Array<MethodRoute>): void {
     for (const key of Object.keys(map)) {
       if (key === LayerKey) continue
       const path = key as PathPattern.PathPattern
