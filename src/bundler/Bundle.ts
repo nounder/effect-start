@@ -85,9 +85,12 @@ export const emptyBundleContext: BundleContext = {
 export const Tag =
   <const T extends BundleKey>(name: T) =>
   <Identifier>() =>
-    Context.Tag(`${IdPrefix}${name}` as BundleId)<Identifier, BundleContext>()
+    Context.Tag(`${IdPrefix}${name}` as `${typeof IdPrefix}${T}`)<Identifier, BundleContext>()
 
-export type Tag = Context.Tag<BundleId, BundleContext>
+export type Tag<T extends BundleKey = BundleKey> = Context.Tag<
+  `${typeof IdPrefix}${T}`,
+  BundleContext
+>
 
 export class ClientBundle extends Tag("ClientBundle")<ClientBundle>() {}
 export class ServerBundle extends Tag("ServerBundle")<ServerBundle>() {}
