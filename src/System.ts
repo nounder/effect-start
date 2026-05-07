@@ -66,9 +66,9 @@ export const which = (name: string): Effect.Effect<string, SystemError> =>
 
 export const spawn = (
   cmd: [string, ...Array<string>] | string[],
-  options?: ChildProcess.Command.Options,
+  options?: ChildProcess.CommandOptions,
 ): Effect.Effect<
   ChildProcess.ChildProcessHandle,
   SystemError,
   ChildProcess.ChildProcessSpawner | Scope.Scope
-> => ChildProcess.spawn(ChildProcess.make(cmd, options))
+> => ChildProcess.spawn(ChildProcess.make(cmd[0]!, cmd.slice(1), options))

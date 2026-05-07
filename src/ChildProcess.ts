@@ -21,27 +21,21 @@ type Stdio = "pipe" | "inherit" | "ignore"
 
 export interface Command extends Pipeable.Pipeable {
   readonly [TypeId]: typeof TypeId
-  readonly cmd: readonly [string, ...Array<string>]
+  readonly command: string
+  readonly args: ReadonlyArray<string>
+  readonly options: CommandOptions
+  [Symbol.iterator](): Effect.EffectGenerator<
+    Effect.Effect<ChildProcessHandle, System.SystemError, ChildProcessSpawner | Scope.Scope>
+  >
+}
+
+export interface CommandOptions {
   readonly cwd?: string
   readonly env?: Record<string, string>
   readonly stdin?: Stdio
   readonly stdout?: Stdio
   readonly stderr?: Stdio
   readonly detached?: boolean
-  [Symbol.iterator](): Effect.EffectGenerator<
-    Effect.Effect<ChildProcessHandle, System.SystemError, ChildProcessSpawner | Scope.Scope>
-  >
-}
-
-export namespace Command {
-  export interface Options {
-    readonly cwd?: string
-    readonly env?: Record<string, string>
-    readonly stdin?: Stdio
-    readonly stdout?: Stdio
-    readonly stderr?: Stdio
-    readonly detached?: boolean
-  }
 }
 
 const CommandProto = {
@@ -56,14 +50,24 @@ const CommandProto = {
 
 export const isCommand = (u: unknown): u is Command => Predicate.hasProperty(u, TypeId)
 
-export const make = (
-  cmd: [string, ...Array<string>] | string[],
-  options?: Command.Options,
-): Command =>
-  Object.assign(Object.create(CommandProto), {
-    cmd,
-    ...options,
+export const make: {
+  (command: string, options?: CommandOptions): Command
+  (command: string, args: ReadonlyArray<string>, options?: CommandOptions): Command
+} = (
+  command: string,
+  argsOrOptions?: ReadonlyArray<string> | CommandOptions,
+  maybeOptions?: CommandOptions,
+): Command => {
+  const args = Array.isArray(argsOrOptions) ? argsOrOptions : []
+  const options = Array.isArray(argsOrOptions)
+    ? maybeOptions ?? {}
+    : (argsOrOptions as CommandOptions | undefined) ?? {}
+  return Object.assign(Object.create(CommandProto), {
+    command,
+    args,
+    options,
   })
+}
 
 export type Signal =
   | "SIGABRT"

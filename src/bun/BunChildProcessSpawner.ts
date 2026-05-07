@@ -13,13 +13,13 @@ export const layer: Layer.Layer<ChildProcess.ChildProcessSpawner> = Layer.succee
       Effect.gen(function* () {
         const proc = yield* Effect.try({
           try: () =>
-            Bun.spawn([...command.cmd], {
-              cwd: command.cwd,
-              env: command.env,
-              stdin: command.stdin ?? "ignore",
-              stdout: command.stdout ?? "pipe",
-              stderr: command.stderr ?? "pipe",
-              detached: command.detached,
+            Bun.spawn([command.command, ...command.args], {
+              cwd: command.options.cwd,
+              env: command.options.env,
+              stdin: command.options.stdin ?? "ignore",
+              stdout: command.options.stdout ?? "pipe",
+              stderr: command.options.stderr ?? "pipe",
+              detached: command.options.detached,
             }),
           catch: (err) =>
             new System.SystemError({
