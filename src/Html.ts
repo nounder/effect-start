@@ -1,21 +1,8 @@
-import type {
-  JSX,
-  HtmlElement,
-  HtmlElemenetProps,
-  HtmlElementType,
-  HtmlComponent,
-} from "../src/jsx.d.ts"
-
-export type ElementType = HtmlElementType
-export type ElemenetProps = HtmlElemenetProps
-export type Component = HtmlComponent
-export type Element = HtmlElement
-
-export const TypeId = "~effect-start/HyperNode" as const
+import type { JSX, HtmlElement, HtmlElemenetProps, HtmlElementType } from "../src/jsx.d.ts"
 
 const NoChildren: ReadonlyArray<never> = Object.freeze([])
 
-export function make(type: ElementType, props: ElemenetProps): Element {
+export function make(type: HtmlElementType, props: HtmlElemenetProps): HtmlElement {
   return {
     type,
     props: {
@@ -86,14 +73,16 @@ const serializeObjectProperty = (value: unknown): string | undefined => {
 const serializeDataAttributeObject = (key: string, value: Record<string, unknown>): string =>
   key === "data-computed" ? serializeObjectProperty(value)! : JSON.stringify(value)
 
-export { renderToString as text }
+export function text(node: JSX.Children, hooks?: { onNode?: (node: HtmlElement) => void }): string {
+  return renderToString(node, hooks)
+}
 
-// TODO: think about other way to name it. maybe format or print? we'll also want stream version
-// initially name of this was inspired by react/preact but after using datastar for a while,
-// i realized that its quite verbose. Html.rende looks much nicer than Html.renderToString
+/**
+ * @deprecated use {@link text}
+ */
 export function renderToString(
   node: JSX.Children,
-  hooks?: { onNode?: (node: Element) => void },
+  hooks?: { onNode?: (node: HtmlElement) => void },
 ): string {
   const stack: Array<any> = [node]
   let result = ""
@@ -213,7 +202,7 @@ export interface HtmlString {
   readonly value: string
 }
 
-const makeHtmlString = (value: string): HtmlString => ({
+const raw = (value: string): HtmlString => ({
   [HtmlStringSymbol]: true,
   value,
 })
@@ -249,7 +238,7 @@ export const html = (strings: TemplateStringsArray, ...values: Array<HtmlValue>)
     result += resolveValue(values[i])
     result += strings[i + 1]
   }
-  return makeHtmlString(result)
+  return raw(result)
 }
 
-html.raw = (value: string): HtmlString => makeHtmlString(value)
+html.raw = raw

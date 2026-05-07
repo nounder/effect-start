@@ -1,6 +1,7 @@
 import * as test from "bun:test"
 import * as Html from "../src/Html.ts"
 import { html } from "effect-start/Html"
+import type { HtmlElemenetProps } from "../src/jsx.d.ts"
 
 test.describe("html", () => {
   test.test("plain template", () => {
@@ -119,7 +120,7 @@ test.it("script function child infers event with window and target", () => {
     })
   }
 
-  test.expectTypeOf(handler).toExtend<Html.ElemenetProps[string]>()
+  test.expectTypeOf(handler).toExtend<HtmlElemenetProps[string]>()
 
   const node = Html.make("script", { children: handler })
   const html_ = Html.renderToString(node)
