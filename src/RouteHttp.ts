@@ -241,7 +241,6 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
 
         const createChain = (): Effect.Effect<Entity.Entity<any>, any, any> => {
           let index = 0
-          let routePathSet = false
 
           const runNext = (): Effect.Effect<Entity.Entity<any>, any, any> => {
             if (index >= matchingRoutes.length) {
@@ -259,27 +258,19 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
               return runNext()
             }
 
-            return Effect.flatMap(Route.RouteContext, (ref) => {
+            return Effect.gen(function* () {
+              const ref = yield* Route.RouteContext
               ref.context = { ...ref.context, ...descriptor }
-              const mergedContext = ref.context
               const nextEntity = Entity.effect(Effect.suspend(runNext))
-              const invoke = handler(mergedContext, nextEntity)
-              if (!routePathSet && descriptor["path"] !== undefined) {
-                routePathSet = true
-                const routePath = descriptor["path"]
-                return Effect.flatMap(Effect.currentSpan.pipe(Effect.option), (spanOption) => {
-                  if (Option.isSome(spanOption)) {
-                    spanOption.value.attribute("http.route", routePath)
-                  }
-                  return invoke
-                })
-              }
-              return invoke
+              return yield* handler(ref.context, nextEntity)
             })
           }
 
           return runNext()
         }
+
+        // All routes in a chain share the same path (RouteMap groups them).
+        const routePath = Route.descriptor<{ path?: string }>(matchingRoutes[0]).path
 
         const effect = Effect.withFiberRuntime<Response, unknown, R>((fiber) => {
           const tracerDisabled =
@@ -324,6 +315,9 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
               span.attribute("http.request.method", request.method)
               span.attribute("url.full", url.toString())
               span.attribute("url.path", url.pathname)
+              if (routePath !== undefined) {
+                span.attribute("http.route", routePath)
+              }
               const query = url.search.slice(1)
               if (query !== "") {
                 span.attribute("url.query", query)
