@@ -74,16 +74,6 @@ const serializeDataAttributeObject = (key: string, value: Record<string, unknown
   key === "data-computed" ? serializeObjectProperty(value)! : JSON.stringify(value)
 
 export function text(node: JSX.Children, hooks?: { onNode?: (node: HtmlElement) => void }): string {
-  return renderToString(node, hooks)
-}
-
-/**
- * @deprecated use {@link text}
- */
-export function renderToString(
-  node: JSX.Children,
-  hooks?: { onNode?: (node: HtmlElement) => void },
-): string {
   const stack: Array<any> = [node]
   let result = ""
 

@@ -122,7 +122,7 @@ export function htmlBundle(load: () => HTMLBundleModule | Promise<HTMLBundleModu
           if ((children as unknown) instanceof Response) {
             childrenHtml = yield* Effect.promise(() => (children as unknown as Response).text())
           } else if (Html.isGenericJsxObject(children)) {
-            childrenHtml = Html.renderToString(children)
+            childrenHtml = Html.text(children)
           } else {
             childrenHtml = String(children)
           }

@@ -4,7 +4,7 @@ import * as PrettyValue from "../../src/studio/ui/internal/PrettyValue.tsx"
 
 test.describe("PrettyValue", () => {
   test.it("renders structured values inside pre blocks", () => {
-    const html = Html.renderToString(
+    const html = Html.text(
       <PrettyValue.PrettyValue
         value={{ nested: { ok: true } }}
         preStyle="margin:0;white-space:pre-wrap"

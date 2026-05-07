@@ -1,6 +1,6 @@
 import { JSDOM } from "jsdom"
 import * as test from "bun:test"
-import { html, make, renderToString } from "effect-start/Html"
+import { html, make, text } from "effect-start/Html"
 import type { HtmlString } from "effect-start/Html"
 import type * as Engine from "../../src/datastar/index.ts"
 import type { JSX } from "../../src/jsx-runtime.ts"
@@ -396,7 +396,7 @@ test.describe("computed", () => {
 
   test.it("rendered object value works with function leaves", async () => {
     const c = await mount(
-      renderToString(
+      text(
         make("div", {
           "data-signals": { speechState: "idle" },
           children: [

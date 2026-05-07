@@ -64,7 +64,7 @@ export default Route.get(
             if (StudioStore.isStudioTrace(traceSpans)) {
               return undefined
             }
-            const traceHtml = Html.renderToString(
+            const traceHtml = Html.text(
               <Traces.TraceGroup prefix={studio.path} id={e.traceId} spans={traceSpans} />,
             )
 

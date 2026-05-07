@@ -67,7 +67,7 @@ export default Route.get(
       return Stream.fromPubSub(studio.store.events).pipe(
         Stream.filter((e) => e._tag === "Log"),
         Stream.map((e) => {
-          const html = Html.renderToString(
+          const html = Html.text(
             <Logs.LogLine prefix={studio.path} log={e.log} />,
           ).replace(/\n/g, "")
           return {

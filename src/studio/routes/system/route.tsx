@@ -32,7 +32,7 @@ export default Route.get(
       return Stream.fromPubSub(studio.store.events).pipe(
         Stream.filter((e) => e._tag === "ProcessSnapshot"),
         Stream.map((e) => {
-          const html = Html.renderToString(<System.SystemStatsView stats={e.stats} />).replace(
+          const html = Html.text(<System.SystemStatsView stats={e.stats} />).replace(
             /\n/g,
             "",
           )

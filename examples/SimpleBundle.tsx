@@ -20,7 +20,7 @@ const routes = Route.map({
           </head>
           <body class="bg-black text-white">
             {/* TODO: figure out better api */}
-            <div>{yield* next.text}</div>
+            <div>{yield* next}</div>
           </body>
         </html>
       )

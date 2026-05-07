@@ -162,7 +162,7 @@ export const text = RouteBody.build<string, "text">({
 
 export const html = RouteBody.build<string | JSX.Children, string, "html">({
   format: "html",
-  handle: (body) => (typeof body === "string" ? body : Html.renderToString(body as JSX.Children)),
+  handle: (body) => (typeof body === "string" ? body : Html.text(body as JSX.Children)),
 })
 
 export const json = RouteBody.build<Values.Json, "json">({

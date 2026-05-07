@@ -81,7 +81,7 @@ export default Route.get(
       return Stream.fromPubSub(studio.store.events).pipe(
         Stream.filter((e) => e._tag === "Error"),
         Stream.map((e) => {
-          const html = Html.renderToString(
+          const html = Html.text(
             <Errors.ErrorLine prefix={studio.path} error={e.error} />,
           ).replace(/\n/g, "")
           return {

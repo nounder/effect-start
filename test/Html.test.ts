@@ -123,7 +123,7 @@ test.it("script function child infers event with window and target", () => {
   test.expectTypeOf(handler).toExtend<HtmlElemenetProps[string]>()
 
   const node = Html.make("script", { children: handler })
-  const html_ = Html.renderToString(node)
+  const html_ = Html.text(node)
 
   test.expect(html_).toContain("<script>(")
   test.expect(html_).toContain("scrollTo")

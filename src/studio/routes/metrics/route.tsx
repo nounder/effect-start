@@ -25,7 +25,7 @@ export default Route.get(
       return Stream.fromPubSub(studio.store.events).pipe(
         Stream.filter((e) => e._tag === "MetricsSnapshot"),
         Stream.map((e) => {
-          const html = Html.renderToString(<Metrics.MetricsGrid metrics={e.metrics} />).replace(
+          const html = Html.text(<Metrics.MetricsGrid metrics={e.metrics} />).replace(
             /\n/g,
             "",
           )

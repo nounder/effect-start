@@ -3,7 +3,7 @@ import * as Html from "effect-start/Html"
 
 export default Route.get(
   Route.html(function* () {
-    return Html.renderToString(
+    return Html.text(
       <div data-signals={{ a: 2 }}>
         <h1>hello</h1>
         <span data-text={() => "hello" + 23}></span>

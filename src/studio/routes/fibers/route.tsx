@@ -37,7 +37,7 @@ export default Route.get(
             const logs = yield* StudioStore.allLogs()
             const spans = yield* StudioStore.allSpans()
             const fibers = Fibers.collectFibers(logs, spans)
-            const html = Html.renderToString(
+            const html = Html.text(
               <Fibers.FiberList fibers={fibers} prefix={studio.path} />,
             ).replace(/\n/g, "")
             return {
