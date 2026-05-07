@@ -1,3 +1,59 @@
+/**
+ * Route defines HTTP endpoints with content negotiation, type-safe middlewares,
+ * and validated payloads (via schema* functions)
+ *
+ * @example
+ * ```ts
+ * import { Schema } from "effect"
+ * import { Start, Route } from "effect-start"
+ *
+ * // map routes to paths
+ * const routes = Route.map({
+ *   // wildcard paths accept a route layer (similar to middlewares)
+ *   // that applies to all routes underneath it.
+ *   "*": Route.use(
+ *     // only wraps HTML handlers
+ *     Route.html(function* (ctx, next) {
+ *       return (
+ *         <html>
+ *           <head>
+ *             <title>Todos</title>
+ *           </head>
+ *           <body>
+ *             <div>{yield* next().text}</div>
+ *           </body>
+ *         </html>
+ *       )
+ *     }),
+ *   ),
+ *   "/": Route.get(
+ *     Route.redirect("/todos")
+ *   ),
+ *   "/todos": Route
+ *     .get(
+ *       Route.html(function* () {
+ *         const todos = yield* sql`select * from todos`
+ *
+ *         return <ul>{todos.map(todo => <li>{todo.text}</li>)}</ul>
+ *       }),
+ *     )
+ *     .post(
+ *       // require a json payload
+ *       Route.schemaBodyJson({
+ *         text: Schema.String
+ *       }),
+ *       Route.json(function* (ctx) {
+ *         // request payloads are parsed and validated
+ *         yield* sql`insert into todos ${ctx.body}`
+ *       })
+ *     )
+ *   ),
+ * })
+ *
+ * // later, provide routes manually or use FileRouter for file-based router.
+ * Route.layer(rotues)
+ * ```
+ */
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
@@ -12,12 +68,10 @@ import type * as Values from "./internal/Values.ts"
 import * as Html from "./Html.ts"
 import type { JSX } from "../src/jsx.d.ts"
 
-export const render = RouteBody.render
-
 export const RouteItems: unique symbol = Symbol()
 export const RouteDescriptor: unique symbol = Symbol()
 // only for structural type matching
-export const RouteBindings: unique symbol = Symbol()
+declare const RouteBindings: unique symbol
 
 export const TypeId = "~effect-start/RouteSet" as const
 
@@ -112,6 +166,146 @@ export namespace Route {
     : {}
 }
 
+export const render = RouteBody.render
+
+export const text = RouteBody.build<string, "text">({
+  format: "text",
+})
+
+export const html = RouteBody.build<string | JSX.Children, string, "html">({
+  format: "html",
+  handle: (body) => (typeof body === "string" ? body : Html.renderToString(body as JSX.Children)),
+})
+
+export const json = RouteBody.build<Values.Json, "json">({
+  format: "json",
+})
+
+export const bytes = RouteBody.build<Uint8Array, "bytes">({
+  format: "bytes",
+})
+
+export function redirect<D, B, I extends Route.Tuple>(
+  url: string | URL,
+  options?: { status?: 301 | 302 | 303 | 307 | 308 },
+): (self: RouteSet<D, B, I>) => RouteSet<D, B, [...I, Route<{}, {}, "", never, never>]> {
+  const route = make<{}, {}, "">(
+    () =>
+      Effect.succeed(
+        Entity.make("", {
+          status: options?.status ?? 302,
+          headers: {
+            location: url instanceof URL ? url.href : url,
+          },
+        }),
+      ),
+    { format: "*" },
+  )
+
+  return (self) =>
+    set<D, B, [...I, Route<{}, {}, "", never, never>]>([...items(self), route], descriptor(self))
+}
+
+export { del, get, head, options, patch, post, put, use } from "./RouteMount.ts"
+export { sse } from "./RouteSse.ts"
+export { make as map } from "./RouteMap.ts"
+export { link } from "./RouteLink.ts"
+export { filter } from "./RouteHook.ts"
+export {
+  schemaBodyForm,
+  schemaBodyJson,
+  schemaBodyMultipart,
+  schemaBodyUrlParams,
+  schemaCookies,
+  schemaError,
+  schemaHeaders,
+  schemaPathParams,
+  schemaSearchParams,
+  schemaSuccess,
+  RequestBodyError,
+} from "./RouteSchema.ts"
+
+export class Routes extends Context.Tag("effect-start/Routes")<Routes, RouteMap.RouteMap>() {}
+
+export function layer<const Input extends RouteMap.RouteMapInput>(
+  routes: Input,
+): Layer.Layer<Routes, never, RouteMap.Context<Input>> {
+  return Layer.sync(Routes, () => RouteMap.make(routes)) as Layer.Layer<
+    Routes,
+    never,
+    RouteMap.Context<Input>
+  >
+}
+
+export function layerMerge<const Input extends RouteMap.RouteMapInput>(
+  routes: Input,
+): Layer.Layer<Routes, never, RouteMap.Context<Input>> {
+  return Layer.effect(
+    Routes,
+    Effect.gen(function* () {
+      const existing = yield* Effect.serviceOption(Routes).pipe(
+        Effect.andThen(Option.getOrUndefined),
+      )
+      const map = RouteMap.make(routes)
+      if (!existing) return map
+      return RouteMap.merge(existing, map)
+    }),
+  ) as Layer.Layer<Routes, never, RouteMap.Context<Input>>
+}
+
+/**
+ * Creates a route that short-curcits in development.
+ *
+ * Note that when we convert the routes to web handles in {@link import("./RouteHttp.ts")},
+ * we exclude them altogeteher in non-dev environments.
+ */
+export function devOnly<D, B, I extends Route.Tuple>(
+  self: RouteSet<D, B, I>,
+): RouteSet<D, B, [...I, Route<{ dev: true }, { dev: true }, unknown, any, any>]> {
+  const route: Route<{ dev: true }, { dev: true }, unknown, any, any> = make<
+    { dev: true },
+    { dev: true },
+    unknown,
+    any,
+    any
+  >(
+    (context, next) =>
+      Effect.flatMap(Development.option, (developmentOption) =>
+        Option.isSome(developmentOption)
+          ? Effect.succeed(next({ ...context, dev: true }))
+          : Effect.succeed(Entity.make("", { status: 404 })),
+      ),
+    { dev: true },
+  )
+
+  const nextItems: [...I, Route<{ dev: true }, { dev: true }, unknown, any, any>] = [
+    ...items(self),
+    route,
+  ]
+
+  return set<D, B, [...I, Route<{ dev: true }, { dev: true }, unknown, any, any>]>(
+    nextItems,
+    descriptor(self),
+  )
+}
+
+export function lazy<T extends RouteSet.Any>(
+  load: () => Promise<{ default: T }>,
+): Effect.Effect<T, never, never> {
+  let cached: T | undefined
+  return Effect.suspend(() => {
+    if (cached !== undefined) {
+      return Effect.succeed(cached)
+    }
+    return Effect.promise(load).pipe(
+      Effect.map((mod) => {
+        cached = mod.default
+        return cached
+      }),
+    )
+  })
+}
+
 const Proto: RouteSet.Proto = {
   [TypeId]: TypeId,
   pipe() {
@@ -200,15 +394,10 @@ type ShallowMerge<A, B> = Omit<A, keyof B> & {
 export type ExtractContext<Items extends Route.Tuple, Descriptor> = ExtractBindings<Items> &
   Descriptor
 
-export * from "./RouteHook.ts"
-export * from "./RouteSchema.ts"
-
-export { del, get, head, options, patch, post, put, use } from "./RouteMount.ts"
-
 /**
  * Phantom marker for services that are provided automatically.
  * Routes may declare them as requirements, but they are stripped
- * from the layer R since the user is not expected to provide them.
+ * from the R since they are provided by default when handling.
  * @internal
  */
 export declare const IntrinsicService: unique symbol
@@ -219,128 +408,3 @@ export class Request extends Context.Tag("effect-start/Route/Request")<
 >() {
   declare readonly [IntrinsicService]: never
 }
-
-export const text = RouteBody.build<string, "text">({
-  format: "text",
-})
-
-export const html = RouteBody.build<string | JSX.Children, string, "html">({
-  format: "html",
-  handle: (body) => (typeof body === "string" ? body : Html.renderToString(body as JSX.Children)),
-})
-
-export const json = RouteBody.build<Values.Json, "json">({
-  format: "json",
-})
-
-export const bytes = RouteBody.build<Uint8Array, "bytes">({
-  format: "bytes",
-})
-
-export { sse } from "./RouteSse.ts"
-
-export function redirect<D, B, I extends Route.Tuple>(
-  url: string | URL,
-  options?: { status?: 301 | 302 | 303 | 307 | 308 },
-): (self: RouteSet<D, B, I>) => RouteSet<D, B, [...I, Route<{}, {}, "", never, never>]> {
-  const route = make<{}, {}, "">(
-    () =>
-      Effect.succeed(
-        Entity.make("", {
-          status: options?.status ?? 302,
-          headers: {
-            location: url instanceof URL ? url.href : url,
-          },
-        }),
-      ),
-    { format: "*" },
-  )
-
-  return (self) =>
-    set<D, B, [...I, Route<{}, {}, "", never, never>]>([...items(self), route], descriptor(self))
-}
-
-export class Routes extends Context.Tag("effect-start/Routes")<Routes, RouteMap.RouteMap>() {}
-
-export function layer<const Input extends RouteMap.RouteMapInput>(
-  routes: Input,
-): Layer.Layer<Routes, never, RouteMap.Context<Input>> {
-  return Layer.sync(Routes, () => RouteMap.make(routes)) as Layer.Layer<
-    Routes,
-    never,
-    RouteMap.Context<Input>
-  >
-}
-
-export function layerMerge<const Input extends RouteMap.RouteMapInput>(
-  routes: Input,
-): Layer.Layer<Routes, never, RouteMap.Context<Input>> {
-  return Layer.effect(
-    Routes,
-    Effect.gen(function* () {
-      const existing = yield* Effect.serviceOption(Routes).pipe(
-        Effect.andThen(Option.getOrUndefined),
-      )
-      const map = RouteMap.make(routes)
-      if (!existing) return map
-      return RouteMap.merge(existing, map)
-    }),
-  ) as Layer.Layer<Routes, never, RouteMap.Context<Input>>
-}
-
-/**
- * Creates a route that short-curcits in development.
- *
- * Note that when we convert the routes to web handles in {@link import("./RouteHttp.ts")},
- * we exclude them altogeteher in non-dev environments.
- */
-export function devOnly<D, B, I extends Route.Tuple>(
-  self: RouteSet<D, B, I>,
-): RouteSet<D, B, [...I, Route<{ dev: true }, { dev: true }, unknown, any, any>]> {
-  const route: Route<{ dev: true }, { dev: true }, unknown, any, any> = make<
-    { dev: true },
-    { dev: true },
-    unknown,
-    any,
-    any
-  >(
-    (context, next) =>
-      Effect.flatMap(Development.option, (developmentOption) =>
-        Option.isSome(developmentOption)
-          ? Effect.succeed(next({ ...context, dev: true }))
-          : Effect.succeed(Entity.make("", { status: 404 })),
-      ),
-    { dev: true },
-  )
-
-  const nextItems: [...I, Route<{ dev: true }, { dev: true }, unknown, any, any>] = [
-    ...items(self),
-    route,
-  ]
-
-  return set<D, B, [...I, Route<{ dev: true }, { dev: true }, unknown, any, any>]>(
-    nextItems,
-    descriptor(self),
-  )
-}
-
-export { make as map } from "./RouteMap.ts"
-
-export function lazy<T extends RouteSet.Any>(
-  load: () => Promise<{ default: T }>,
-): Effect.Effect<T, never, never> {
-  let cached: T | undefined
-  return Effect.suspend(() => {
-    if (cached !== undefined) {
-      return Effect.succeed(cached)
-    }
-    return Effect.promise(load).pipe(
-      Effect.map((mod) => {
-        cached = mod.default
-        return cached
-      }),
-    )
-  })
-}
-
-export { link } from "./RouteLink.ts"

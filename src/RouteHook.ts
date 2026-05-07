@@ -3,9 +3,9 @@ import type * as Utils from "effect/Utils"
 import type * as Entity from "./Entity.ts"
 import * as Route from "./Route.ts"
 
-export type FilterResult<BOut, E, R> = { context: BOut } | Effect.Effect<{ context: BOut }, E, R>
+type FilterResult<BOut, E, R> = { context: BOut } | Effect.Effect<{ context: BOut }, E, R>
 
-export type FilterHandlerInput<BIn, BOut, E, R> =
+type FilterHandlerInput<BIn, BOut, E, R> =
   | FilterResult<BOut, E, R>
   | ((
       context: BIn,
