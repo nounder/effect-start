@@ -46,12 +46,11 @@
  *         // request payloads are parsed and validated
  *         yield* sql`insert into todos ${ctx.body}`
  *       })
- *     )
- *   ),
+ *     ),
  * })
  *
  * // later, provide routes manually or use FileRouter for file-based router.
- * Route.layer(rotues)
+ * Start.pack(Route.layer(routes))
  * ```
  */
 import * as Context from "effect/Context"
@@ -68,18 +67,22 @@ import type * as Values from "./internal/Values.ts"
 import * as Html from "./Html.ts"
 import type { JSX } from "../src/jsx.d.ts"
 
+/** @internal */
 export const RouteItems: unique symbol = Symbol()
+/** @internal */
 export const RouteDescriptor: unique symbol = Symbol()
 // only for structural type matching
 declare const RouteBindings: unique symbol
 
 export const TypeId = "~effect-start/RouteSet" as const
 
+/** @internal */
 export type RouteSet<D = {}, B = {}, M extends Route.Tuple = []> = RouteSet.Data<D, B, M> & {
   [TypeId]: typeof TypeId
 } & Pipeable.Pipeable &
   Iterable<M[number]>
 
+/** @internal */
 export namespace RouteSet {
   export type Data<D = {}, B = {}, M extends Route.Tuple = []> = {
     [RouteItems]: M
@@ -93,8 +96,6 @@ export namespace RouteSet {
     }
 
   export type Any = RouteSet<{}, {}, Route.Tuple>
-
-  export type Infer<R> = R extends RouteSet<infer D, infer B, infer I> ? RouteSet<D, B, I> : R
 
   export type Items<T extends Data<any, any, any>> = T extends Data<any, any, infer M> ? M : never
 
@@ -316,6 +317,7 @@ const Proto: RouteSet.Proto = {
   },
 }
 
+/** @internal */
 export function isRouteSet(input: unknown): input is RouteSet.Any {
   return Predicate.hasProperty(input, TypeId)
 }
@@ -324,6 +326,7 @@ export function isRoute(input: unknown): input is Route {
   return isRouteSet(input) && Predicate.hasProperty(input, "handler")
 }
 
+/** @internal */
 export function set<D = {}, B = {}, I extends Route.Tuple = []>(
   items: I = [] as unknown as I,
   descriptor: D = {} as D,
@@ -356,10 +359,12 @@ export function describe<D extends {} = {}>(descriptor: D) {
   return set([], descriptor)
 }
 
+/** @internal */
 export function items<T extends RouteSet.Data<any, any, any>>(self: T): RouteSet.Items<T> {
   return self[RouteItems]
 }
 
+/** @internal */
 export function descriptor<T extends RouteSet.Data<any, any, any>>(
   self: T,
 ): T[typeof RouteDescriptor]
