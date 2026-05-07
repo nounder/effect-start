@@ -26,10 +26,10 @@ test.it("infers parent descriptions", () => {
   )
 })
 
-test.it("next is function returning Entity", () => {
+test.it("next is an Entity", () => {
   Route.text((ctx, next) =>
     Effect.gen(function* () {
-      test.expectTypeOf(next).toExtend<() => Entity.Entity<string>>()
+      test.expectTypeOf(next).toExtend<Entity.Entity<string>>()
 
       return "Hello, world!"
     }),
@@ -93,7 +93,7 @@ test.it("accepts value directly", () => {
 
 test.describe(`${RouteBody.handle.name}()`, () => {
   const ctx = {}
-  const next = () => Entity.effect(Effect.succeed(Entity.make("next")))
+  const next = Entity.effect(Effect.succeed(Entity.make("next")))
 
   test.it("accepts all HandlerInput variants", () => {
     test
@@ -134,19 +134,12 @@ test.describe(`${RouteBody.handle.name}()`, () => {
 
       test
         .expectTypeOf(handler)
-        .parameters.toEqualTypeOf<
-          [
-            { id: number },
-            <NE = never>(
-              context?: Partial<{ id: number }> & Record<string, unknown>,
-            ) => Entity.Entity<number, NE>,
-          ]
-        >()
+        .parameters.toEqualTypeOf<[{ id: number }, Entity.Entity<number, never>]>()
       test
         .expectTypeOf(handler)
         .returns.toEqualTypeOf<Effect.Effect<Entity.Entity<number>, never, never>>()
 
-      const numNext = () => Entity.effect(Effect.succeed(Entity.make(23)))
+      const numNext = Entity.effect(Effect.succeed(Entity.make(23)))
       const result = yield* handler({ id: 42 }, numNext)
 
       test.expect(result.body).toBe(42)
@@ -162,20 +155,13 @@ test.describe(`${RouteBody.handle.name}()`, () => {
 
       test
         .expectTypeOf(handler)
-        .parameters.toEqualTypeOf<
-          [
-            { id: number },
-            <NE = never>(
-              context?: Partial<{ id: number }> & Record<string, unknown>,
-            ) => Entity.Entity<number, NE>,
-          ]
-        >()
+        .parameters.toEqualTypeOf<[{ id: number }, Entity.Entity<number, never>]>()
 
       test
         .expectTypeOf(handler)
         .returns.toEqualTypeOf<Effect.Effect<Entity.Entity<number>, never, never>>()
 
-      const numNext = () => Entity.effect(Effect.succeed(Entity.make(23)))
+      const numNext = Entity.effect(Effect.succeed(Entity.make(23)))
       const result = yield* handler({ id: 21 }, numNext)
 
       test.expect(result.body).toBe(42)
@@ -186,7 +172,7 @@ test.describe(`${RouteBody.handle.name}()`, () => {
     Effect.gen(function* () {
       const handler = RouteBody.handle<{}, string, ParseResult.ParseError, never>(
         function* (_ctx, next) {
-          const fromNext = yield* next().text
+          const fromNext = yield* next.text
           return `got: ${fromNext}`
         },
       )

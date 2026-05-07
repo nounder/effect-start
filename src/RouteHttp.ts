@@ -152,7 +152,7 @@ function toResponse(
 
 type Handler = (
   context: any,
-  next: (context?: Record<string, unknown>) => Entity.Entity<any, any>,
+  next: Entity.Entity<any, any>,
 ) => Effect.Effect<Entity.Entity<any>, any, any>
 
 function determineSelectedFormat(
@@ -239,16 +239,11 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
           return resolve(respondError({ status: 406, message: "not acceptable" }))
         }
 
-        const createChain = (initialContext: any): Effect.Effect<Entity.Entity<any>, any, any> => {
+        const createChain = (): Effect.Effect<Entity.Entity<any>, any, any> => {
           let index = 0
-          let currentContext = initialContext
           let routePathSet = false
 
-          const runNext = (passedContext?: any): Effect.Effect<Entity.Entity<any>, any, any> => {
-            if (passedContext !== undefined) {
-              currentContext = passedContext
-            }
-
+          const runNext = (): Effect.Effect<Entity.Entity<any>, any, any> => {
             if (index >= matchingRoutes.length) {
               return Effect.succeed(
                 Entity.make({ status: 404, message: "route not found" }, { status: 404 }),
@@ -258,28 +253,29 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
             const route = matchingRoutes[index++]
             const descriptor = Route.descriptor(route)
             const format = descriptor.format
-            const handler = route.handler as unknown as Handler
+            const handler = route.handler as Handler
 
             if (format && format !== "*" && format !== selectedFormat) {
               return runNext()
             }
 
-            currentContext = { ...currentContext, ...descriptor }
-
-            const nextArg = (ctx?: any) => Entity.effect(Effect.suspend(() => runNext(ctx)))
-
-            const routePath = descriptor["path"]
-            if (!routePathSet && routePath !== undefined) {
-              routePathSet = true
-              return Effect.flatMap(Effect.currentSpan.pipe(Effect.option), (spanOption) => {
-                if (Option.isSome(spanOption)) {
-                  spanOption.value.attribute("http.route", routePath)
-                }
-                return handler(currentContext, nextArg)
-              })
-            }
-
-            return handler(currentContext, nextArg)
+            return Effect.flatMap(Route.RouteContext, (ref) => {
+              ref.context = { ...ref.context, ...descriptor }
+              const mergedContext = ref.context
+              const nextEntity = Entity.effect(Effect.suspend(runNext))
+              const invoke = handler(mergedContext, nextEntity)
+              if (!routePathSet && descriptor["path"] !== undefined) {
+                routePathSet = true
+                const routePath = descriptor["path"]
+                return Effect.flatMap(Effect.currentSpan.pipe(Effect.option), (spanOption) => {
+                  if (Option.isSome(spanOption)) {
+                    spanOption.value.attribute("http.route", routePath)
+                  }
+                  return invoke
+                })
+              }
+              return invoke
+            })
           }
 
           return runNext()
@@ -292,8 +288,8 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
 
           const url = new URL(request.url)
 
-          const innerEffect = Effect.provideService(Effect.gen(function* () {
-            const result = yield* createChain({ request, selectedFormat })
+          const innerEffect = Effect.gen(function* () {
+            const result = yield* createChain()
 
             const entity = Entity.isEntity(result) ? result : Entity.make(result, { status: 200 })
 
@@ -306,7 +302,10 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
               response.headers.set("vary", "Accept")
             }
             return response
-          }), Route.Request, request)
+          }).pipe(
+            Effect.provideService(Route.Request, request),
+            Effect.provideService(Route.RouteContext, { context: {} }),
+          )
 
           if (tracerDisabled) {
             return innerEffect

@@ -58,10 +58,7 @@ function makeMethodDescriber<M extends RouteMount.Method>(method: M): RouteMount
     const flattenedItems = resultItems.map((item) => {
       const itemDescriptor = Route.descriptor(item)
       const newDescriptor = { method, ...itemDescriptor }
-      return Route.make(
-        (item as Route.Route).handler as Route.Route.Handler<any, any, any, any>,
-        newDescriptor,
-      )
+      return Route.make((item as Route.Route).handler, newDescriptor)
     })
 
     return make([...baseItems, ...flattenedItems] as any)

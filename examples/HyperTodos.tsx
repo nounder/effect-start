@@ -3,9 +3,7 @@ import { Context, Effect, Layer, PubSub, Ref, Schema, Stream } from "effect"
 import { Start, Route, Html } from "effect-start"
 
 type Todo = { id: string; text: string; done: boolean }
-type TodoEvent =
-  | { _tag: "Add"; todo: Todo }
-  | { _tag: "Update"; todo: Todo }
+type TodoEvent = { _tag: "Add"; todo: Todo } | { _tag: "Update"; todo: Todo }
 
 class Store extends Context.Tag("Store")<
   Store,
@@ -26,7 +24,7 @@ const routes = Route.map({
             <title>Hello</title>
           </head>
           <body class="bg-black text-white">
-            <div>{yield* next().text}</div>
+            <div>{yield* next.text}</div>
           </body>
         </html>
       )

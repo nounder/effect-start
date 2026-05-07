@@ -456,12 +456,12 @@ test.describe("Route.use is not available after method-specific builders", () =>
   })
 
   test.it("use() after use() is allowed", () => {
-    const result = Route.use(Route.render((_ctx, next) => next()))
+    const result = Route.use(Route.render((_ctx, next) => next))
     test.expect(result.use).toBeDefined()
   })
 
   test.it("get() after use() is allowed", () => {
-    const result = Route.use(Route.render((_ctx, next) => next())).get(
+    const result = Route.use(Route.render((_ctx, next) => next)).get(
       Route.html("hello"),
     )
     test.expect(result).toBeDefined()

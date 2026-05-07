@@ -20,7 +20,7 @@
  *             <title>Todos</title>
  *           </head>
  *           <body>
- *             <div>{yield* next().text}</div>
+ *             <div>{yield* next.text}</div>
  *           </body>
  *         </html>
  *       )
@@ -105,10 +105,10 @@ export namespace RouteSet {
 
 export interface Route<D = {}, B = {}, A = any, E = never, R = never> extends RouteSet<
   D,
-  {},
+  B,
   [Route<D, B, A, E, R>]
 > {
-  readonly handler: Route.OpaqueHandler<B & D, A, E, R>
+  readonly handler: Route.Handler<any, any, any, any>
 }
 
 export namespace Route {
@@ -120,20 +120,7 @@ export namespace Route {
 
   export type Handler<B, A, E, R> = (
     context: B,
-    next: <NE = never>(context?: Partial<B> & Record<string, unknown>) => Entity.Entity<A, NE>,
-  ) => Effect.Effect<Entity.Entity<A>, E, R>
-
-  /**
-   * OpaqueHandler is identical to `Handler`, except `next`
-   * returns `Entity<unknown>` instead of `Entity<A>`.
-   * This keeps `Route<..., A, ...>` assignable within the
-   * heterogeneous `Route.Tuple` regardless of `A` (including `A = never`).
-   *
-   * This is only needed to allow typed A in next() middlewares. I'm considering if we really need it.
-   */
-  export type OpaqueHandler<B, A, E, R> = (
-    context: B,
-    next: (context?: Partial<B> & Record<string, unknown>) => Entity.Entity<unknown>,
+    next: Entity.Entity<A, never>,
   ) => Effect.Effect<Entity.Entity<A>, E, R>
 
   /**
@@ -270,10 +257,10 @@ export function devOnly<D, B, I extends Route.Tuple>(
     any,
     any
   >(
-    (context, next) =>
+    (_context, next) =>
       Effect.flatMap(Development.option, (developmentOption) =>
         Option.isSome(developmentOption)
-          ? Effect.succeed(next({ ...context, dev: true }))
+          ? Effect.succeed(next)
           : Effect.succeed(Entity.make("", { status: 404 })),
       ),
     { dev: true },
@@ -345,7 +332,7 @@ export function make<D, B, A, E = never, R = never>(
   const route: Route<D, B, A, E, R> = Object.assign(Object.create(Proto), {
     [RouteItems]: items,
     [RouteDescriptor]: descriptor,
-    handler: handler as Route.OpaqueHandler<B & D, A, E, R>,
+    handler,
   })
 
   items.push(route)
@@ -413,3 +400,12 @@ export class Request extends Context.Tag("effect-start/Route/Request")<
 >() {
   declare readonly [IntrinsicService]: never
 }
+
+/**
+ * Context shared across handlers per request.
+ *
+ * @internal
+ */
+export class RouteContext extends Context.Reference<RouteContext>()("effect-start/RouteContext", {
+  defaultValue: () => ({ context: Object.freeze({}) as Record<string, unknown> }),
+}) {}

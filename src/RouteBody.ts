@@ -23,9 +23,7 @@ type YieldError<T> = T extends Utils.YieldWrap<Effect.Effect<any, infer E, any>>
 
 type YieldContext<T> = T extends Utils.YieldWrap<Effect.Effect<any, any, infer R>> ? R : never
 
-type Next<B, A> = <NE = never>(
-  context?: Partial<B> & Record<string, unknown>,
-) => Entity.Entity<UnwrapStream<A>, NE>
+type Next<A> = Entity.Entity<UnwrapStream<A>, never>
 
 type HandlerReturn<A> =
   | A
@@ -35,14 +33,14 @@ type HandlerReturn<A> =
 
 type HandlerFunction<B, A, E, R> = (
   context: Values.Simplify<B>,
-  next: Next<B, A>,
+  next: Next<A>,
 ) =>
   | Effect.Effect<HandlerReturn<A>, E, R>
   | Generator<Utils.YieldWrap<Effect.Effect<unknown, E, R>>, HandlerReturn<A>, unknown>
 
 export type GeneratorHandler<B, A, Y> = (
   context: Values.Simplify<B>,
-  next: Next<B, A>,
+  next: Next<A>,
 ) => Generator<Y, HandlerReturn<A>, never>
 
 export type HandlerInput<B, A, E, R> =
@@ -98,7 +96,7 @@ function normalizeToEntity(value: unknown): Effect.Effect<Entity.Entity<any>> {
     const routes = Route.items(result)
     const route = routes[0]
     if (route) {
-      return route.handler({}, () => Entity.make("")) as Effect.Effect<Entity.Entity<any>>
+      return route.handler({}, Entity.make("")) as Effect.Effect<Entity.Entity<any>>
     }
   }
   if (Entity.isEntity(value)) {

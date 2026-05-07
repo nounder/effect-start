@@ -65,7 +65,7 @@ export function htmlBundle(load: () => HTMLBundleModule | Promise<HTMLBundleModu
       string,
       BunRouteError,
       BunServer.BunServer | Route.Request
-    > = (context, next) =>
+    > = (_context, next) =>
       Effect.gen(function* () {
         const originalRequest = yield* Route.Request
         const bundleDepth = yield* FiberRef.get(bundleDepthRef)
@@ -102,7 +102,7 @@ export function htmlBundle(load: () => HTMLBundleModule | Promise<HTMLBundleModu
         status = response.status
         contentType = response.headers.get("content-type") ?? contentType
 
-        const childEntity = yield* next(context).pipe(
+        const childEntity = yield* next.pipe(
           Effect.locally(bundleDepthRef, bundleDepth + 1),
         )
 

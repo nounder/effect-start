@@ -903,7 +903,7 @@ test.describe("middleware chain", () => {
       const handler = RouteHttp.toWebHandler(
         Route.use(
           Route.json(function* (_ctx, next) {
-            const value = yield* next().json
+            const value = yield* next.json
             return { data: value }
           }),
         ).get(Route.json({ message: "hello", count: 42 })),
@@ -922,13 +922,13 @@ test.describe("middleware chain", () => {
       const handler = RouteHttp.toWebHandler(
         Route.use(
           Route.json(function* (_ctx, next) {
-            const value = yield* next().json
+            const value = yield* next.json
             return { outer: value }
           }),
         )
           .use(
             Route.json(function* (_ctx, next) {
-              const value = yield* next().json
+              const value = yield* next.json
               return { inner: value }
             }),
           )
@@ -946,7 +946,7 @@ test.describe("middleware chain", () => {
       const handler = RouteHttp.toWebHandler(
         Route.use(
           Route.json(function* (_ctx, next) {
-            const value = yield* next().json
+            const value = yield* next.json
             return { wrapped: value }
           }),
         )
@@ -975,7 +975,7 @@ test.describe("middleware chain", () => {
       const handler = RouteHttp.toWebHandler(
         Route.use(
           Route.text(function* (_ctx, next) {
-            const value = yield* next().text
+            const value = yield* next.text
             return `wrapped: ${value}`
           }),
         ).get(Route.text("hello")),
@@ -993,7 +993,7 @@ test.describe("middleware chain", () => {
       const handler = RouteHttp.toWebHandler(
         Route.use(
           Route.html(function* (_ctx, next) {
-            const value = yield* next().text
+            const value = yield* next.text
             return `<div>${value}</div>`
           }),
         ).get(Route.html("<span>content</span>")),
@@ -1014,7 +1014,7 @@ test.describe("middleware chain", () => {
       const handler = RouteHttp.toWebHandler(
         Route.use(
           Route.bytes(function* (_ctx, next) {
-            const value = yield* next().bytes
+            const value = yield* next.bytes
             const text = decoder.decode(value)
             return encoder.encode(`wrapped:${text}`)
           }),
@@ -1041,15 +1041,15 @@ test.describe("middleware chain", () => {
           }),
           Route.text(function* (_ctx, next) {
             calls.push("wildcard text 1")
-            return "1st layout: " + (yield* next().text)
+            return "1st layout: " + (yield* next.text)
           }),
           Route.json(function* (_ctx, next) {
             calls.push("wildcard json")
-            return { data: yield* next().json }
+            return { data: yield* next.json }
           }),
           Route.text(function* (_ctx, next) {
             calls.push("wildcard text 2")
-            return "2nd layout: " + (yield* next().text)
+            return "2nd layout: " + (yield* next.text)
           }),
         ).get(
           Route.json(function* (_ctx) {
@@ -1058,7 +1058,7 @@ test.describe("middleware chain", () => {
           }),
           Route.text(function* (_ctx, next) {
             calls.push("method text 1")
-            return "Prefix: " + (yield* next().text)
+            return "Prefix: " + (yield* next.text)
           }),
           Route.text(function* (ctx) {
             calls.push("method text 2")
@@ -2248,7 +2248,7 @@ test.describe("RouteMap layer routes", () => {
       const tree = Route.map({
         "*": Route.use(
           Route.json(function* (_ctx, next) {
-            const value = yield* next().json
+            const value = yield* next.json
             return { wrapped: value }
           }),
         ),
@@ -2268,7 +2268,7 @@ test.describe("RouteMap layer routes", () => {
       const tree = Route.map({
         "*": Route.use(
           Route.text(function* (_ctx, next) {
-            const value = yield* next().text
+            const value = yield* next.text
             return `Layout: ${value}`
           }),
         ),
@@ -2320,7 +2320,7 @@ test.describe("RouteMap layer routes", () => {
       const tree = Route.map({
         "*": Route.use(
           Route.json(function* (_ctx, next) {
-            const value = yield* next().json
+            const value = yield* next.json
             return { wrapped: value }
           }),
         ),
@@ -2461,7 +2461,7 @@ test.describe("Route.render (format=*)", () => {
       const handler = RouteHttp.toWebHandler(
         Route.use(
           Route.render(function* (_ctx, next) {
-            const value = yield* next().text
+            const value = yield* next.text
             return `wrapped: ${value}`
           }),
         ).get(
@@ -2488,7 +2488,7 @@ test.describe("Route.render (format=*)", () => {
         Route.use(
           Route.render(function* (_ctx, next) {
             calls.push("render middleware")
-            return next().stream
+            return next.stream
           }),
         ).get(
           Route.json(function* () {
@@ -2508,7 +2508,7 @@ test.describe("Route.render (format=*)", () => {
     }).pipe(Effect.runPromise),
   )
 
-  test.it("next() from render matches both render and selected format routes", () =>
+  test.it("next from render matches both render and selected format routes", () =>
     Effect.gen(function* () {
       const calls: Array<string> = []
 
@@ -2516,15 +2516,15 @@ test.describe("Route.render (format=*)", () => {
         Route.use(
           Route.render(function* (_ctx, next) {
             calls.push("render middleware 1")
-            return next().stream
+            return next.stream
           }),
           Route.render(function* (_ctx, next) {
             calls.push("render middleware 2")
-            return next().stream
+            return next.stream
           }),
           Route.json(function* (_ctx, next) {
             calls.push("json middleware")
-            return yield* next().json
+            return yield* next.json
           }),
         ).get(
           Route.json(function* () {
@@ -2627,11 +2627,11 @@ test.describe("Route.render (format=*)", () => {
       const handler = RouteHttp.toWebHandler(
         Route.use(
           Route.render(function* (_ctx, next) {
-            const value = yield* next().text
+            const value = yield* next.text
             return `outer(${value})`
           }),
           Route.render(function* (_ctx, next) {
-            const value = yield* next().text
+            const value = yield* next.text
             return `inner(${value})`
           }),
         ).get(
@@ -2653,7 +2653,7 @@ test.describe("Route.render (format=*)", () => {
       const handler = RouteHttp.toWebHandler(
         Route.use(
           Route.render(function* (_ctx, next) {
-            const value = yield* next().text
+            const value = yield* next.text
             return `[${value}]`
           }),
         ).get(Route.text("hello")),
@@ -2673,7 +2673,7 @@ test.describe("Route.render (format=*)", () => {
       const handler = RouteHttp.toWebHandler(
         Route.use(
           Route.render(function* (_ctx, next) {
-            const value = yield* next().text
+            const value = yield* next.text
             return `<!DOCTYPE html>${value}`
           }),
         ).get(Route.html("<body>content</body>")),

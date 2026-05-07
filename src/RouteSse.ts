@@ -48,10 +48,7 @@ type SseHandlerInput<B, E, R> =
   | Effect.Effect<Stream.Stream<SseEvent, E, R>, E, R>
   | ((
       context: Values.Simplify<B>,
-      // TODO: typing is super loose here
-      next: <NE = never>(
-        context?: Partial<B> & Record<string, unknown>,
-      ) => Entity.Entity<string, NE>,
+      next: Entity.Entity<string, never>,
     ) =>
       | Stream.Stream<SseEvent, E, R>
       | Effect.Effect<Stream.Stream<SseEvent, E, R>, E, R>

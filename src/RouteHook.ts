@@ -28,13 +28,13 @@ export function filter<
     self: Route.RouteSet<D, SB, P>,
   ): Route.RouteSet<D, SB, [...P, Route.Route<{}, BOut, unknown, E, R>]> {
     const route = Route.make<{}, BOut, unknown, E, R>(
-      (context: BOut, next: (ctx?: Partial<BOut>) => Entity.Entity<unknown>) =>
+      (context: BOut, next: Entity.Entity<unknown, never>) =>
         Effect.gen(function* () {
           const filterResult = yield* normalized(context as unknown as BIn)
-
-          const mergedContext = filterResult ? { ...context, ...filterResult.context } : context
-
-          return yield* next(mergedContext as Partial<BOut>)
+          if (!filterResult) return yield* next
+          const ref = yield* Route.RouteContext
+          ref.context = { ...context, ...filterResult.context }
+          return yield* next
         }),
     )
 

@@ -14,15 +14,15 @@ const unauthorized = Entity.make("Unauthorized", {
 })
 
 const basicAuthRoute = Route.make<{}, {}, unknown, never, Studio.Studio | Route.Request>(
-  (context, next) =>
+  (_context, next) =>
     Effect.gen(function* () {
       const studio = yield* Studio.Studio
-      if (!studio.auth || studio.auth.type !== "basic") return yield* next(context)
+      if (!studio.auth || studio.auth.type !== "basic") return yield* next
       const request = yield* Route.Request
       const header = request.headers.get("authorization")
       const expected = "Basic " + btoa(`${studio.auth.username}:${studio.auth.password}`)
       if (header !== expected) return unauthorized
-      return yield* next(context)
+      return yield* next
     }),
 )
 

@@ -14,7 +14,7 @@ export default Route.use(
         <script async type="module" src={bundle.resolve("effect-start/datastar")}></script>
 
         <body class="h-full bg-[#0d1117] text-[#e6edf3] font-sans antialiased">
-          {yield* next().text}
+          {yield* next.text}
         </body>
       </html>
     )

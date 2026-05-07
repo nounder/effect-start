@@ -446,7 +446,7 @@ export function schemaError<A, I, R>(
     self: Route.RouteSet<D, SB, P>,
   ): Route.RouteSet<D, SB, [...P, Route.Route<{}, {}, unknown, never, R>]> {
     const route = Route.make<{}, {}, unknown, never, R>((_context, next) =>
-      Entity.resolve(next()).pipe(
+      Entity.resolve(next).pipe(
         Effect.catchIf(is, (error) =>
           Effect.map(Effect.orDie(encode(error)), (encoded) => Entity.make(encoded, { status })),
         ),
@@ -496,7 +496,7 @@ export function schemaSuccess(
   const encode = Schema.encodeUnknown(s)
   return function(self: Route.RouteSet<any, any, any>) {
     const route = Route.make((_context: any, next: any) =>
-      Effect.flatMap(Entity.resolve(next()), (entity) =>
+      Effect.flatMap(Entity.resolve(next), (entity) =>
         Effect.map(encode(entity.body), (encoded) =>
           Entity.make(encoded, {
             status: entity.status,

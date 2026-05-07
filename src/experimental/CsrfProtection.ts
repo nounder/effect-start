@@ -105,13 +105,13 @@ export function make(options?: Options) {
         const method = request.method.toUpperCase()
 
         if (SAFE_METHODS.has(method)) {
-          return yield* next()
+          return yield* next
         }
 
         const secFetchSite = request.headers.get("sec-fetch-site")
 
         if (secFetchSite === null) {
-          return yield* next()
+          return yield* next
         }
 
         if (!originMatchesBase(request) && !originTrusted(request, trustedOrigins)) {
@@ -124,14 +124,14 @@ export function make(options?: Options) {
         const value = secFetchSite.toLowerCase()
 
         if (safeFetchSites.has(value)) {
-          const entity = yield* next()
+          const entity = yield* next
           return Entity.merge(entity, {
             headers: { vary: "Sec-Fetch-Site" },
           })
         }
 
         if (value === "cross-site" && originTrusted(request, trustedOrigins)) {
-          const entity = yield* next()
+          const entity = yield* next
           return Entity.merge(entity, {
             headers: { vary: "Sec-Fetch-Site" },
           })
