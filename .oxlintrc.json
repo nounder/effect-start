@@ -12,18 +12,40 @@
     // Import rules (matching Effect's import plugin usage)
     "import/first": "error",
     "import/no-duplicates": "error",
+    "import/no-self-import": "error",
+    "import/no-empty-named-blocks": "error",
 
     // TypeScript rules (matching Effect's @typescript-eslint config)
-    "typescript/array-type": "off",
-    "typescript/consistent-type-imports": "off",
+    "typescript/array-type": ["error", {
+      "default": "generic",
+      "readonly": "generic"
+    }],
+    "typescript/consistent-type-imports": ["error", {
+      "fixStyle": "inline-type-imports"
+    }],
+    "typescript/no-import-type-side-effects": "error",
+    "typescript/no-unnecessary-type-assertion": "error",
+    "typescript/no-unnecessary-type-constraint": "error",
+    "typescript/no-useless-empty-export": "error",
+
+    // Code quality
+    "eslint/no-console": "error",
+    "eslint/no-var": "error",
+    "eslint/no-useless-constructor": "error",
+    "eslint/no-unneeded-ternary": "error",
+    "eslint/no-useless-concat": "error",
+    "oxc/misrefactored-assign-op": "error",
+    "unicorn/prefer-array-flat-map": "error",
+    "unicorn/no-accessor-recursion": "error",
+    "unicorn/no-abusive-eslint-disable": "error",
 
     // -- Disabled rules that conflict with this project's style --
 
-    // The project uses ASI (no semicolons)
-    "no-extra-semi": "off",
-
-    // Don't flag unused vars (project has noUnusedLocals: false)
-    "typescript/no-unused-vars": "off",
+    // Allow unused vars/args prefixed with _
+    "typescript/no-unused-vars": ["error", {
+      "argsIgnorePattern": "^_",
+      "varsIgnorePattern": "^_"
+    }],
 
     // Allow non-null assertions (Effect-TS style allows this)
     "typescript/no-non-null-assertion": "off",
@@ -76,13 +98,22 @@
     "effect-start/test-effects": "warn",
 
     // Prefer typeof User.Type over Schema.Schema.Type<typeof User>
-    "effect-start/schema-type-helpers": "warn"
+    "effect-start/schema-type-helpers": "warn",
+
+    // Enforce newlines between chained test assertion methods
+    "effect-start/test-assertion-newline": "warn",
+
+    // Enforce each pipe(...) argument on its own line when 2+ args
+    "effect-start/pipe-args-newline": "warn"
   },
   "overrides": [
     {
       "files": ["src/datastar/**"],
       "rules": {
-        "effect-start/no-destructured-params": "off"
+        "effect-start/no-destructured-params": "off",
+        "eslint/no-console": "off",
+        "eslint/no-unused-vars": "off",
+        "typescript/no-unused-vars": "off"
       }
     }
   ],

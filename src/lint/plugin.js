@@ -19,9 +19,8 @@ export default {
         schema: [],
         messages: {
           preferNamespace:
-            'Use namespace import for module "{{source}}": import * as {{baseName}} from "{{source}}"',
-          mismatch:
-            'Namespace import alias "{{alias}}" does not match module basename "{{baseName}}"',
+            "Use namespace import for module \"{{source}}\": import * as {{baseName}} from \"{{source}}\"",
+          mismatch: "Namespace import alias \"{{alias}}\" does not match module basename \"{{baseName}}\"",
         },
       },
       create(context) {
@@ -36,8 +35,8 @@ export default {
             const forced = forceNamespace.has(source)
             if (!forced && !isCapitalized(baseName)) return
 
-            const isNamespace =
-              node.specifiers.length === 1 && node.specifiers[0].type === "ImportNamespaceSpecifier"
+            const isNamespace = node.specifiers.length === 1 &&
+              node.specifiers[0].type === "ImportNamespaceSpecifier"
 
             if (isNamespace) {
               if (!isLocalImport(source)) return
@@ -116,7 +115,10 @@ export default {
                   node,
                   messageId: "requireBlankBefore",
                   fix(fixer) {
-                    return fixer.insertTextAfter(sourceCode.getLastToken(prev), "\n")
+                    return fixer.insertTextAfter(
+                      sourceCode.getLastToken(prev),
+                      "\n",
+                    )
                   },
                 })
               }
@@ -128,7 +130,10 @@ export default {
                   node,
                   messageId: "requireBlankAfter",
                   fix(fixer) {
-                    return fixer.insertTextAfter(sourceCode.getLastToken(node), "\n")
+                    return fixer.insertTextAfter(
+                      sourceCode.getLastToken(node),
+                      "\n",
+                    )
                   },
                 })
               }
@@ -151,14 +156,12 @@ export default {
       meta: {
         type: "suggestion",
         docs: {
-          description:
-            "Prefer `typeof User.Type` over `Schema.Schema.Type<typeof User>`",
+          description: "Prefer `typeof User.Type` over `Schema.Schema.Type<typeof User>`",
         },
         fixable: "code",
         schema: [],
         messages: {
-          preferTypeof:
-            'Use `typeof {{name}}.Type` instead of `Schema.Schema.Type<typeof {{name}}>`',
+          preferTypeof: "Use `typeof {{name}}.Type` instead of `Schema.Schema.Type<typeof {{name}}>`",
         },
       },
       create(context) {
@@ -209,7 +212,7 @@ export default {
             current = current.upper
           }
           if (!names.has(base)) return base
-          for (let i = 2; ; i++) {
+          for (let i = 2;; i++) {
             const candidate = base + i
             if (!names.has(candidate)) return candidate
           }
@@ -220,23 +223,34 @@ export default {
           const ancestors = sourceCode.getAncestors(node)
           const parent = ancestors[ancestors.length - 1]
           if (!parent) return false
-          if (parent.type === "MethodDefinition" || (parent.type === "Property" && parent.method))
+          if (
+            parent.type === "MethodDefinition" ||
+            (parent.type === "Property" && parent.method)
+          ) {
             return true
-          if (parent.type === "VariableDeclarator" && parent.init === node) return true
+          }
+          if (parent.type === "VariableDeclarator" && parent.init === node) {
+            return true
+          }
           return false
         }
 
         function checkParams(node) {
           for (const param of node.params) {
-            const pattern = param.type === "AssignmentPattern" ? param.left : param
+            const pattern = param.type === "AssignmentPattern"
+              ? param.left
+              : param
             if (pattern.type !== "ObjectPattern") continue
 
             const baseName = isDefinition(node) ? "options" : "v"
-            const outerScope = sourceCode.getScope(node).upper || sourceCode.getScope(node)
+            const outerScope = sourceCode.getScope(node).upper ||
+              sourceCode.getScope(node)
             const name = findUnusedName(outerScope, baseName)
 
             const hasPropertyDefaults = pattern.properties.some(
-              (prop) => prop.type !== "RestElement" && prop.value.type === "AssignmentPattern",
+              (prop) =>
+                prop.type !== "RestElement" &&
+                prop.value.type === "AssignmentPattern",
             )
 
             context.report({
@@ -245,68 +259,77 @@ export default {
               fix: hasPropertyDefaults
                 ? undefined
                 : (fixer) => {
-                    const fixes = []
+                  const fixes = []
 
-                    const typeAnnotation = pattern.typeAnnotation
-                      ? sourceCode.getText(pattern.typeAnnotation)
-                      : ""
-                    const hasDefault = param.type === "AssignmentPattern"
-                    const defaultValue = hasDefault ? " = " + sourceCode.getText(param.right) : ""
+                  const typeAnnotation = pattern.typeAnnotation
+                    ? sourceCode.getText(pattern.typeAnnotation)
+                    : ""
+                  const hasDefault = param.type === "AssignmentPattern"
+                  const defaultValue = hasDefault
+                    ? " = " + sourceCode.getText(param.right)
+                    : ""
 
-                    fixes.push(
-                      fixer.replaceTextRange(param.range, name + typeAnnotation + defaultValue),
-                    )
+                  fixes.push(
+                    fixer.replaceTextRange(
+                      param.range,
+                      name + typeAnnotation + defaultValue,
+                    ),
+                  )
 
-                    const fnScope = sourceCode.getScope(node)
-                    const localToKey = new Map()
-                    for (const prop of pattern.properties) {
-                      if (prop.type === "RestElement") continue
-                      const keyName =
-                        prop.key.type === "Identifier"
-                          ? prop.key.name
-                          : sourceCode.getText(prop.key)
-                      const localNode =
-                        prop.value.type === "AssignmentPattern" ? prop.value.left : prop.value
-                      if (localNode.type === "Identifier") {
-                        localToKey.set(localNode.name, keyName)
-                      }
+                  const fnScope = sourceCode.getScope(node)
+                  const localToKey = new Map()
+                  for (const prop of pattern.properties) {
+                    if (prop.type === "RestElement") continue
+                    const keyName = prop.key.type === "Identifier"
+                      ? prop.key.name
+                      : sourceCode.getText(prop.key)
+                    const localNode = prop.value.type === "AssignmentPattern"
+                      ? prop.value.left
+                      : prop.value
+                    if (localNode.type === "Identifier") {
+                      localToKey.set(localNode.name, keyName)
                     }
+                  }
 
-                    for (const variable of fnScope.variables) {
-                      const keyName = localToKey.get(variable.name)
-                      if (keyName === undefined) continue
+                  for (const variable of fnScope.variables) {
+                    const keyName = localToKey.get(variable.name)
+                    if (keyName === undefined) continue
 
-                      for (const ref of variable.references) {
-                        if (
-                          ref.identifier.range[0] >= pattern.range[0] &&
-                          ref.identifier.range[1] <= pattern.range[1]
+                    for (const ref of variable.references) {
+                      if (
+                        ref.identifier.range[0] >= pattern.range[0] &&
+                        ref.identifier.range[1] <= pattern.range[1]
+                      ) {
+                        continue
+                      }
+
+                      const ancestors = sourceCode.getAncestors(ref.identifier)
+                      const parent = ancestors[ancestors.length - 1]
+                      if (
+                        parent &&
+                        parent.type === "Property" &&
+                        parent.shorthand &&
+                        parent.value === ref.identifier
+                      ) {
+                        fixes.push(
+                          fixer.replaceTextRange(
+                            parent.range,
+                            keyName + ": " + name + "." + keyName,
+                          ),
                         )
-                          continue
-
-                        const ancestors = sourceCode.getAncestors(ref.identifier)
-                        const parent = ancestors[ancestors.length - 1]
-                        if (
-                          parent &&
-                          parent.type === "Property" &&
-                          parent.shorthand &&
-                          parent.value === ref.identifier
-                        ) {
-                          fixes.push(
-                            fixer.replaceTextRange(
-                              parent.range,
-                              keyName + ": " + name + "." + keyName,
-                            ),
-                          )
-                        } else {
-                          fixes.push(
-                            fixer.replaceTextRange(ref.identifier.range, name + "." + keyName),
-                          )
-                        }
+                      } else {
+                        fixes.push(
+                          fixer.replaceTextRange(
+                            ref.identifier.range,
+                            name + "." + keyName,
+                          ),
+                        )
                       }
                     }
+                  }
 
-                    return fixes
-                  },
+                  return fixes
+                },
             })
           }
         }
@@ -403,12 +426,82 @@ export default {
       },
     },
 
-    "test-assertion-newline": {
+    "pipe-args-newline": {
       meta: {
         type: "layout",
         docs: {
           description:
-            "Enforce newlines between chained test assertion methods (test.expect().toBe())",
+            "Enforce each argument of .pipe(...) and Function.pipe(...) on its own line when there are 2+ arguments",
+        },
+        fixable: "whitespace",
+        schema: [],
+        messages: {
+          requireNewline: "Each argument of pipe(...) should be on its own line",
+        },
+      },
+      create(context) {
+        const sourceCode = context.sourceCode || context.getSourceCode()
+
+        function isPipeCall(node) {
+          const callee = node.callee
+          return (
+            callee.type === "MemberExpression" &&
+            !callee.computed &&
+            callee.property.type === "Identifier" &&
+            callee.property.name === "pipe"
+          )
+        }
+
+        return {
+          CallExpression(node) {
+            if (!isPipeCall(node)) return
+            if (node.arguments.length < 2) return
+
+            const args = node.arguments
+            const first = args[0]
+            const openParen = sourceCode.getTokenAfter(node.callee)
+            if (!openParen || openParen.value !== "(") return
+
+            const indent = " ".repeat(node.loc.start.column + 2)
+
+            if (openParen.loc.end.line === first.loc.start.line) {
+              context.report({
+                node: first,
+                messageId: "requireNewline",
+                fix: (fixer) =>
+                  fixer.replaceTextRange(
+                    [openParen.range[1], first.range[0]],
+                    "\n" + indent,
+                  ),
+              })
+            }
+
+            for (let i = 1; i < args.length; i++) {
+              const prev = args[i - 1]
+              const curr = args[i]
+              if (prev.loc.end.line !== curr.loc.start.line) continue
+              const comma = sourceCode.getTokenAfter(prev)
+              if (!comma || comma.value !== ",") continue
+              context.report({
+                node: curr,
+                messageId: "requireNewline",
+                fix: (fixer) =>
+                  fixer.replaceTextRange(
+                    [comma.range[1], curr.range[0]],
+                    "\n" + indent,
+                  ),
+              })
+            }
+          },
+        }
+      },
+    },
+
+    "test-assertion-newline": {
+      meta: {
+        type: "layout",
+        docs: {
+          description: "Enforce newlines between chained test assertion methods (test.expect().toBe())",
         },
         fixable: "whitespace",
         schema: [],
@@ -433,7 +526,10 @@ export default {
           let current = node
 
           while (current) {
-            if (current.type === "CallExpression" && current.callee.type === "MemberExpression") {
+            if (
+              current.type === "CallExpression" &&
+              current.callee.type === "MemberExpression"
+            ) {
               const obj = current.callee.object
 
               // Check for test.expect(...) or test.expectTypeOf(...)
@@ -484,7 +580,10 @@ export default {
           const members = []
           let current = node
 
-          while (current.type === "CallExpression" && current.callee.type === "MemberExpression") {
+          while (
+            current.type === "CallExpression" &&
+            current.callee.type === "MemberExpression"
+          ) {
             members.push(current.callee)
             current = current.callee.object
           }
@@ -547,7 +646,10 @@ export default {
                   node,
                   messageId: "requireBlankBefore",
                   fix(fixer) {
-                    return fixer.insertTextAfter(sourceCode.getLastToken(prev), "\n")
+                    return fixer.insertTextAfter(
+                      sourceCode.getLastToken(prev),
+                      "\n",
+                    )
                   },
                 })
               }
@@ -559,7 +661,10 @@ export default {
                   node,
                   messageId: "requireBlankAfter",
                   fix(fixer) {
-                    return fixer.insertTextAfter(sourceCode.getLastToken(node), "\n")
+                    return fixer.insertTextAfter(
+                      sourceCode.getLastToken(node),
+                      "\n",
+                    )
                   },
                 })
               }
@@ -588,7 +693,9 @@ export default {
 function checkTypeRef(context, node) {
   const typeName = node.typeName
   if (typeName.type !== "TSQualifiedName") return
-  if (typeName.right.type !== "Identifier" || typeName.right.name !== "Type") return
+  if (typeName.right.type !== "Identifier" || typeName.right.name !== "Type") {
+    return
+  }
 
   const mid = typeName.left
   if (mid.type !== "TSQualifiedName") return
@@ -642,22 +749,4 @@ function isLocalImport(source) {
 function isCapitalized(name) {
   if (name.length > 0 && name[0] === "_") return isCapitalized(name.slice(1))
   return name.length > 0 && name[0] >= "A" && name[0] <= "Z"
-}
-
-function isFunction(stmt) {
-  const decl = stmt.type === "ExportNamedDeclaration" && stmt.declaration ? stmt.declaration : stmt
-
-  if (decl.type === "FunctionDeclaration") return true
-
-  if (
-    decl.type === "VariableDeclaration" &&
-    decl.declarations.length > 0 &&
-    decl.declarations[0].init &&
-    (decl.declarations[0].init.type === "ArrowFunctionExpression" ||
-      decl.declarations[0].init.type === "FunctionExpression")
-  ) {
-    return true
-  }
-
-  return false
 }
