@@ -20,7 +20,7 @@ const routes = Route.map({
           </head>
           <body class="bg-black text-white">
             {/* TODO: figure out better api */}
-            <div>{yield* next}</div>
+            <div>{yield* next.html}</div>
           </body>
         </html>
       )
@@ -29,7 +29,11 @@ const routes = Route.map({
   "/": Route.get(Route.redirect("/todos")),
   "/todos": Route.get(
     Route.html(function* () {
-      return <p>hello</p>
+      return (
+        <p>
+          <b>h</b>ello
+        </p>
+      )
     }),
   ).post(
     Route.schemaBodyJson({

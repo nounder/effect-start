@@ -20,7 +20,7 @@
  *             <title>Todos</title>
  *           </head>
  *           <body>
- *             <div>{yield* next.text}</div>
+ *             <div>{yield* next.html}</div>
  *           </body>
  *         </html>
  *       )

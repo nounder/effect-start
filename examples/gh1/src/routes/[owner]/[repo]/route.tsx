@@ -1,5 +1,5 @@
 import { Effect, Schema } from "effect"
-import { Route } from "effect-start"
+import { Html, Route } from "effect-start"
 import * as Github from "../../../Github.ts"
 import { Layout, Tabs, LanguageBar } from "../../../Ui.tsx"
 
@@ -104,7 +104,7 @@ export default Route.get(
                   <div class="px-4 py-3 border-b border-[#21262d] bg-[#161b22] rounded-t-md">
                     <span class="text-sm font-semibold">README.md</span>
                   </div>
-                  <div class="p-6 markdown-body" dangerouslySetInnerHTML={{ __html: readme }} />
+                  <div class="p-6 markdown-body">{Html.unsafe(readme)}</div>
                 </div>
               )}
             </div>

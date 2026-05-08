@@ -81,16 +81,18 @@ export function text(node: JSX.Children, hooks?: { onNode?: (node: HtmlElement) 
     const current = stack.pop()!
 
     if (typeof current === "string") {
-      if (current.startsWith("<") && current.endsWith(">")) {
-        result += current
-      } else {
-        result += esc(current)
-      }
+      result += esc(current)
       continue
     }
 
     if (typeof current === "number") {
       result += esc(current)
+      continue
+    }
+
+    const trusted = current?.[TrustedHtmlSymbol]
+    if (typeof trusted === "string") {
+      result += trusted
       continue
     }
 
@@ -124,12 +126,7 @@ export function text(node: JSX.Children, hooks?: { onNode?: (node: HtmlElement) 
       result += `<${type}`
 
       for (const key in props) {
-        if (
-          key !== "children" &&
-          key !== "dangerouslySetInnerHTML" &&
-          props[key] !== false &&
-          props[key] != null
-        ) {
+        if (key !== "children" && props[key] !== false && props[key] != null) {
           if (props[key] === true) {
             result += ` ${esc(key)}`
           } else {
@@ -152,30 +149,28 @@ export function text(node: JSX.Children, hooks?: { onNode?: (node: HtmlElement) 
       result += ">"
 
       if (!EMPTY_TAGS.includes(type)) {
-        stack.push(`</${type}>`)
+        stack.push(unsafe(`</${type}>`))
 
         const isRawText = RAW_TEXT_TAGS.includes(type)
-        const html = props.dangerouslySetInnerHTML?.__html
+        const children = props.children
 
-        if (html) {
-          result += isRawText ? escapeRawText(html) : html
-        } else {
-          const children = props.children
-
-          if (type === "script" && typeof children === "function") {
-            result += escapeRawText(
-              `(${children.toString()})({window,target:document.currentScript})`,
-            )
-          } else if (isRawText && children != null) {
-            const raw = Array.isArray(children) ? children.join("") : String(children)
-            result += escapeRawText(raw)
-          } else if (Array.isArray(children)) {
-            for (let i = children.length - 1; i >= 0; i--) {
-              stack.push(children[i])
-            }
-          } else if (children != null) {
-            stack.push(children)
+        if (type === "script" && typeof children === "function") {
+          result += escapeRawText(
+            `(${children.toString()})({window,target:document.currentScript})`,
+          )
+        } else if (isRawText && children != null) {
+          const toRaw = (c: unknown) =>
+            typeof (c as any)?.[TrustedHtmlSymbol] === "string"
+              ? ((c as any)[TrustedHtmlSymbol] as string)
+              : String(c)
+          const rawText = Array.isArray(children) ? children.map(toRaw).join("") : toRaw(children)
+          result += escapeRawText(rawText)
+        } else if (Array.isArray(children)) {
+          for (let i = children.length - 1; i >= 0; i--) {
+            stack.push(children[i])
           }
+        } else if (children != null) {
+          stack.push(children)
         }
       }
     } else if (current && typeof current === "object") {
@@ -185,20 +180,25 @@ export function text(node: JSX.Children, hooks?: { onNode?: (node: HtmlElement) 
   return result
 }
 
-const HtmlStringSymbol = Symbol.for("HtmlString")
+const TrustedHtmlSymbol = Symbol.for("TrustedHtml")
 
-export interface HtmlString {
-  readonly [HtmlStringSymbol]: true
-  readonly value: string
+/**
+ * @internal
+ */
+export class TrustedHtml {
+  readonly [TrustedHtmlSymbol]: string
+  constructor(html: string) {
+    this[TrustedHtmlSymbol] = html
+  }
+  toString(): string {
+    return this[TrustedHtmlSymbol]
+  }
 }
 
-const raw = (value: string): HtmlString => ({
-  [HtmlStringSymbol]: true,
-  value,
-})
+export const unsafe = (html: string): TrustedHtml => new TrustedHtml(html)
 
-const isHtmlString = (value: unknown): value is HtmlString =>
-  typeof value === "object" && value !== null && HtmlStringSymbol in value
+export const isTrustedHtml = (value: unknown): value is TrustedHtml =>
+  typeof (value as any)?.[TrustedHtmlSymbol] === "string"
 
 type HtmlValue =
   | string
@@ -207,14 +207,14 @@ type HtmlValue =
   | boolean
   | null
   | undefined
-  | HtmlString
+  | TrustedHtml
   | Function
   | Record<string, unknown>
   | ReadonlyArray<HtmlValue>
 
 const resolveValue = (value: HtmlValue): string => {
   if (value === null || value === undefined || value === false || value === true) return ""
-  if (isHtmlString(value)) return value.value
+  if (isTrustedHtml(value)) return value.toString()
   if (Array.isArray(value)) return (value as Array<HtmlValue>).map(resolveValue).join("")
   if (typeof value === "function") return value.toString()
   if (typeof value === "object") return escSQ(JSON.stringify(value))
@@ -222,13 +222,13 @@ const resolveValue = (value: HtmlValue): string => {
   return esc(String(value))
 }
 
-export const html = (strings: TemplateStringsArray, ...values: Array<HtmlValue>): HtmlString => {
+export const html = (strings: TemplateStringsArray, ...values: Array<HtmlValue>): TrustedHtml => {
   let result = strings[0]
   for (let i = 0; i < values.length; i++) {
     result += resolveValue(values[i])
     result += strings[i + 1]
   }
-  return raw(result)
+  return unsafe(result)
 }
 
-html.raw = raw
+html.unsafe = unsafe

@@ -1,7 +1,7 @@
 import { JSDOM } from "jsdom"
 import * as test from "bun:test"
 import { html, make, text } from "effect-start/Html"
-import type { HtmlString } from "effect-start/Html"
+import type { TrustedHtml } from "effect-start/Html"
 import type * as Engine from "../../src/datastar/index.ts"
 import type { JSX } from "../../src/jsx-runtime.ts"
 
@@ -66,10 +66,10 @@ const setSignals = async (signals: Record<string, any>) => {
   await tick()
 }
 
-const mount = async (markup: string | HtmlString) => {
+const mount = async (markup: string | TrustedHtml) => {
   const container = document.createElement("div")
   document.body.appendChild(container)
-  container.innerHTML = typeof markup === "string" ? markup : markup.value
+  container.innerHTML = String(markup)
   await tick()
   return container
 }
@@ -918,12 +918,12 @@ test.describe("init", () => {
     test.jest.useFakeTimers()
     const container = document.createElement("div")
     document.body.appendChild(container)
-    container.innerHTML = html`
+    container.innerHTML = String(html`
       <div data-signals="{delayedInit: false}">
         <div data-init__delay.50ms="$delayedInit = true"></div>
         <span data-text="$delayedInit"></span>
       </div>
-    `.value
+    `)
     await Promise.resolve()
     test.jest.advanceTimersByTime(1)
 
@@ -944,12 +944,12 @@ test.describe("on-interval", () => {
     test.jest.useFakeTimers()
     const container = document.createElement("div")
     document.body.appendChild(container)
-    container.innerHTML = html`
+    container.innerHTML = String(html`
       <div data-signals="{ticks: 0}">
         <div data-on-interval__duration.50ms="$ticks = $ticks + 1"></div>
         <span data-text="$ticks"></span>
       </div>
-    `.value
+    `)
     await Promise.resolve()
     test.jest.advanceTimersByTime(1)
     test.jest.advanceTimersByTime(150)

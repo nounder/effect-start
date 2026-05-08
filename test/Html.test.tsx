@@ -186,12 +186,8 @@ test.describe("raw text escaping", () => {
     test.expect(html).not.toContain("</style><")
   })
 
-  test.it("script dangerouslySetInnerHTML escapes closing tag", () => {
-    const node = Html.make("script", {
-      dangerouslySetInnerHTML: { __html: 'console.log("</script>")' },
-    })
-
-    const html = Html.text(node)
+  test.it("script Html.unsafe child escapes closing tag", () => {
+    const html = Html.text(<script>{Html.unsafe('console.log("</script>")')}</script>)
 
     test.expect(html).toBe('<script>console.log("<\\/script>")</script>')
   })
@@ -222,24 +218,9 @@ test.describe("raw text escaping", () => {
     test.expect(html).not.toMatch(/<\/style.*<script/i)
   })
 
-  test.it("XSS via script injection in dangerouslySetInnerHTML", () => {
+  test.it("XSS via script injection in Html.unsafe child", () => {
     const userInput = '</script><script>alert("xss")</script>'
-    const node = Html.make("script", {
-      dangerouslySetInnerHTML: { __html: `var data = "${userInput}"` },
-    })
-
-    const html = Html.text(node)
-
-    test.expect(html).not.toMatch(/<\/script.*<script/i)
-  })
-
-  test.it("XSS via dangerouslySetInnerHTML", () => {
-    const userInput = '</script><script>alert("xss")</script>'
-    const node = Html.make("script", {
-      dangerouslySetInnerHTML: { __html: `var data = "${userInput}"` },
-    })
-
-    const html = Html.text(node)
+    const html = Html.text(<script>{Html.unsafe(`var data = "${userInput}"`)}</script>)
 
     test.expect(html).not.toMatch(/<\/script.*<script/i)
   })
@@ -269,12 +250,10 @@ test.describe("raw text escaping", () => {
     test.expect(html).toBe('<script>x = "<\\/" + "script>"</script>')
   })
 
-  test.it("style dangerouslySetInnerHTML escapes closing tag", () => {
-    const node = Html.make("style", {
-      dangerouslySetInnerHTML: { __html: 'div::after { content: "</style>" }' },
-    })
-
-    const html = Html.text(node)
+  test.it("style Html.unsafe child escapes closing tag", () => {
+    const html = Html.text(
+      <style>{Html.unsafe('div::after { content: "</style>" }')}</style>,
+    )
 
     test.expect(html).not.toMatch(/<\/style.*</)
   })
@@ -352,6 +331,22 @@ test.it("normal tag string content is escaped", () => {
   test.expect(html).toBe("<div>a &amp;&amp; b</div>")
 })
 
+test.it("string children that look like HTML are escaped", () => {
+  const html = Html.text(<div>{'<script>alert("xss")</script>'}</div>)
+
+  test.expect(html).toBe(
+    "<div>&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;</div>",
+  )
+})
+
+test.it("interpolated user input in JSX is escaped", () => {
+  const userInput = '<img src=x onerror="alert(1)">'
+  const html = Html.text(<p>{userInput}</p>)
+
+  test.expect(html).not.toContain("<img")
+  test.expect(html).toContain("&lt;img")
+})
+
 test.it("data-* function values are serialized with toString", () => {
   const node = Html.make("div", {
     "data-on-click": () => console.log("clicked"),
@@ -395,9 +390,9 @@ test.it("data-computed object values preserve function leaves", () => {
   test.expect(html).not.toContain(`data-computed='{}'`)
 })
 
-test.it("dangerouslySetInnerHTML injects html without escaping", () => {
+test.it("Html.unsafe child injects html without escaping", () => {
   const html = Html.text(
-    <div dangerouslySetInnerHTML={{ __html: '<span class="bold">hello & world</span>' }} />,
+    <div>{Html.unsafe('<span class="bold">hello & world</span>')}</div>,
   )
 
   test.expect(html).toBe('<div><span class="bold">hello & world</span></div>')

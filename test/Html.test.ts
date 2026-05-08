@@ -13,7 +13,7 @@ test.describe("html", () => {
       .expect(
         html`
           <div>hello</div>
-        `.value,
+        `.toString(),
       )
       .toBe(expected)
   })
@@ -22,83 +22,83 @@ test.describe("html", () => {
     const input = '<script>alert("xss")</script>'
 
     test
-      .expect(html`<div>${input}</div>`.value)
+      .expect(html`<div>${input}</div>`.toString())
       .toBe("<div>&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;</div>")
   })
 
   test.test("interpolates numbers", () => {
-    test.expect(html`<span>${42}</span>`.value).toBe("<span>42</span>")
+    test.expect(html`<span>${42}</span>`.toString()).toBe("<span>42</span>")
   })
 
   test.test("interpolates bigints", () => {
-    test.expect(html`<span>${100n}</span>`.value).toBe("<span>100</span>")
+    test.expect(html`<span>${100n}</span>`.toString()).toBe("<span>100</span>")
   })
 
   test.test("null/undefined/boolean render as empty", () => {
-    test.expect(html`${null}${undefined}${false}${true}`.value).toBe("")
+    test.expect(html`${null}${undefined}${false}${true}`.toString()).toBe("")
   })
 
   test.test("nested html templates compose", () => {
     const inner = html`
       <em>bold</em>
     `
-    const expected = `<div>${inner.value}</div>`
+    const expected = `<div>${inner.toString()}</div>`
 
-    test.expect(html`<div>${inner}</div>`.value).toBe(expected)
+    test.expect(html`<div>${inner}</div>`.toString()).toBe(expected)
   })
 
   test.test("arrays are joined", () => {
     const items = ["a", "b", "c"]
 
     test
-      .expect(html`<ul>${items.map((i) => html`<li>${i}</li>`)}</ul>`.value)
+      .expect(html`<ul>${items.map((i) => html`<li>${i}</li>`)}</ul>`.toString())
       .toBe("<ul><li>a</li><li>b</li><li>c</li></ul>")
   })
 
-  test.test("html.raw passes through", () => {
-    const raw = html.raw("<b>bold</b>")
+  test.test("html.unsafe passes through", () => {
+    const trusted = html.unsafe("<b>bold</b>")
 
-    test.expect(html`<div>${raw}</div>`.value).toBe("<div><b>bold</b></div>")
+    test.expect(html`<div>${trusted}</div>`.toString()).toBe("<div><b>bold</b></div>")
   })
 
   test.test("objects are JSON-serialized", () => {
     const data = { name: "bob", age: 30 }
 
     test
-      .expect(html`<div data-signals='${data}'></div>`.value)
+      .expect(html`<div data-signals='${data}'></div>`.toString())
       .toBe('<div data-signals=\'{"name":"bob","age":30}\'></div>')
   })
 
   test.test("functions are stringified", () => {
     const fn = (window: Window) => window.alert("hi")
 
-    test.expect(html`${fn}`.value).toBe('(window) => window.alert("hi")')
+    test.expect(html`${fn}`.toString()).toBe('(window) => window.alert("hi")')
   })
 
   test.test("strings with & are escaped", () => {
-    test.expect(html`<div>${"a & b"}</div>`.value).toBe("<div>a &amp; b</div>")
+    test.expect(html`<div>${"a & b"}</div>`.toString()).toBe("<div>a &amp; b</div>")
   })
 
   test.test("strings with single quotes are escaped", () => {
-    test.expect(html`<div>${"it's"}</div>`.value).toBe("<div>it&#39;s</div>")
+    test.expect(html`<div>${"it's"}</div>`.toString()).toBe("<div>it&#39;s</div>")
   })
 
   test.test("objects with single quotes are escaped", () => {
     const data = { name: "it's" }
 
     test
-      .expect(html`<div data-signals='${data}'></div>`.value)
+      .expect(html`<div data-signals='${data}'></div>`.toString())
       .toBe('<div data-signals=\'{"name":"it&#39;s"}\'></div>')
   })
 
   test.test("nested html does not double-escape", () => {
     const inner = html`${"<b>"}`
 
-    test.expect(html`<div>${inner}</div>`.value).toBe("<div>&lt;b&gt;</div>")
+    test.expect(html`<div>${inner}</div>`.toString()).toBe("<div>&lt;b&gt;</div>")
   })
 
   test.test("array of strings escapes each item", () => {
-    test.expect(html`${["<a>", "<b>"] as any}`.value).toBe("&lt;a&gt;&lt;b&gt;")
+    test.expect(html`${["<a>", "<b>"] as any}`.toString()).toBe("&lt;a&gt;&lt;b&gt;")
   })
 })
 

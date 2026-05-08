@@ -4,6 +4,7 @@ import * as ParseResult from "effect/ParseResult"
 import * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
+import * as Html from "./Html.ts"
 import * as StreamExtra from "./internal/StreamExtra.ts"
 import * as Values from "./internal/Values.ts"
 
@@ -39,6 +40,7 @@ export interface Entity<T = unknown, E = never> extends Effect.Effect<Entity<T, 
   readonly text: T extends string
     ? Effect.Effect<T, ParseResult.ParseError | E>
     : Effect.Effect<string, ParseResult.ParseError | E>
+  readonly html: Effect.Effect<Html.TrustedHtml, ParseResult.ParseError | E>
   readonly json: [T] extends [Effect.Effect<infer A, any, any>]
     ? Effect.Effect<
         A extends string | Uint8Array | ArrayBuffer ? unknown : A,
@@ -244,6 +246,11 @@ const Proto: Proto = Object.defineProperties(Object.create(Effectable.CommitProt
   text: {
     get(this: Entity<unknown, unknown>) {
       return getText(this)
+    },
+  },
+  html: {
+    get(this: Entity<unknown, unknown>) {
+      return Effect.map(getText(this), Html.unsafe)
     },
   },
   json: {

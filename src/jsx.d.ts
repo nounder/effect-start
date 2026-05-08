@@ -1,4 +1,5 @@
 import type { DatastarAttributes } from "./datastar/jsx.d.ts"
+import type { TrustedHtml } from "./Html.ts"
 
 /**
  * Based on JSX types for Surplus, Inferno, and dom-expressions.
@@ -31,7 +32,7 @@ export interface HtmlElement {
 
 export namespace JSX {
   type Element = HtmlElement
-  type Child = Element | string | number | bigint
+  type Child = Element | TrustedHtml | string | number | bigint
   type Children = Child | SilentChild | Iterable<Children>
   // a child that is not rendered and is often a result
   // of conditional rendering, like: `{condition && <div>...</div>}`
@@ -228,7 +229,6 @@ export namespace JSX {
     // [key: ClassKeys]: boolean;
 
     // properties
-    dangerouslySetInnerHTML?: { __html: string }
     textContent?: string | number
 
     // attributes

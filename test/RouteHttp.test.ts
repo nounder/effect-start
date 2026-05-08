@@ -993,7 +993,7 @@ test.describe("middleware chain", () => {
       const handler = RouteHttp.toWebHandler(
         Route.use(
           Route.html(function* (_ctx, next) {
-            const value = yield* next.text
+            const value = yield* next.html
             return `<div>${value}</div>`
           }),
         ).get(Route.html("<span>content</span>")),

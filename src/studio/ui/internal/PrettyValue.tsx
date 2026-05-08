@@ -1,3 +1,4 @@
+import * as Html from "../../../Html.ts"
 import * as Pretty from "../../internal/Pretty.ts"
 
 const htmlEscapeMap: Record<string, string> = {
@@ -17,7 +18,7 @@ function toPreHtml(text: string): string {
 }
 
 export function PreformattedText(props: { text: string; style?: string }) {
-  return <pre style={props.style} dangerouslySetInnerHTML={{ __html: toPreHtml(props.text) }} />
+  return <pre style={props.style}>{Html.unsafe(toPreHtml(props.text))}</pre>
 }
 
 export function PrettyValue(props: { value: unknown; style?: string; preStyle?: string }) {

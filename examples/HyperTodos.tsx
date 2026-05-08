@@ -24,7 +24,7 @@ const routes = Route.map({
             <title>Hello</title>
           </head>
           <body class="bg-black text-white">
-            <div>{yield* next.text}</div>
+            <div>{yield* next.html}</div>
           </body>
         </html>
       )

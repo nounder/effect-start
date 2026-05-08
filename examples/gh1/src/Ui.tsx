@@ -1,4 +1,4 @@
-import { Route } from "effect-start"
+import { Html, Route } from "effect-start"
 import * as Github from "./Github.ts"
 
 export function ErrorPage(props: {
@@ -276,7 +276,7 @@ export function IssueRow(props: {
       : `<svg width="16" height="16" viewBox="0 0 16 16" fill="#a371f7"><path d="M11.28 6.78a.75.75 0 0 0-1.06-1.06L8 7.94 5.78 5.72a.75.75 0 0 0-1.06 1.06L6.94 9l-2.22 2.22a.75.75 0 1 0 1.06 1.06L8 10.06l2.22 2.22a.75.75 0 1 0 1.06-1.06L9.06 9l2.22-2.22Z" /><path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0ZM1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0Z" /></svg>`
   return (
     <div class="flex items-start gap-2 py-2 px-3 hover:bg-[#161b22] rounded">
-      <span class="mt-1 shrink-0" dangerouslySetInnerHTML={{ __html: icon }} />
+      <span class="mt-1 shrink-0">{Html.unsafe(icon)}</span>
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-2 flex-wrap">
           <a
@@ -361,7 +361,7 @@ export function ContributorCard(props: { login: string; avatar: string; contribu
 export function Stat(props: { label: string; value: string | number; icon?: string }) {
   return (
     <div class="flex items-center gap-2 text-sm text-[#8b949e]">
-      {props.icon && <span dangerouslySetInnerHTML={{ __html: props.icon }} />}
+      {props.icon && <span>{Html.unsafe(props.icon)}</span>}
       <span class="font-medium text-[#e6edf3]">{props.value}</span>
       <span>{props.label}</span>
     </div>

@@ -17,13 +17,9 @@ const formatToContentType: Record<Format, string | undefined> = {
   "*": undefined,
 }
 
-type UnwrapStream<T> = T extends Stream.Stream<infer V, any, any> ? V : T
-
 type YieldError<T> = T extends Utils.YieldWrap<Effect.Effect<any, infer E, any>> ? E : never
 
 type YieldContext<T> = T extends Utils.YieldWrap<Effect.Effect<any, any, infer R>> ? R : never
-
-type Next<A> = Entity.Entity<UnwrapStream<A>, never>
 
 type HandlerReturn<A> =
   | A
@@ -33,14 +29,14 @@ type HandlerReturn<A> =
 
 type HandlerFunction<B, A, E, R> = (
   context: Values.Simplify<B>,
-  next: Next<A>,
+  next: Entity.Entity<A extends Stream.Stream<infer V, any, any> ? V : A, never>,
 ) =>
   | Effect.Effect<HandlerReturn<A>, E, R>
   | Generator<Utils.YieldWrap<Effect.Effect<unknown, E, R>>, HandlerReturn<A>, unknown>
 
 export type GeneratorHandler<B, A, Y> = (
   context: Values.Simplify<B>,
-  next: Next<A>,
+  next: Entity.Entity<A extends Stream.Stream<infer V, any, any> ? V : A, never>,
 ) => Generator<Y, HandlerReturn<A>, never>
 
 export type HandlerInput<B, A, E, R> =
