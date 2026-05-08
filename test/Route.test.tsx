@@ -151,7 +151,7 @@ test.describe("Route.html with JSX", () => {
     }).pipe(Effect.runPromise),
   )
 
-  test.it("data-on-click function argument is typed as DataEvent", () => {
+  test.it("data-on:click function argument is typed as DataEvent", () => {
     const node = (
       <button
         data-on:click={(e) => {

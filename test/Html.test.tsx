@@ -349,12 +349,12 @@ test.it("interpolated user input in JSX is escaped", () => {
 
 test.it("data-* function values are serialized with toString", () => {
   const node = Html.make("div", {
-    "data-on-click": () => console.log("clicked"),
+    "data-on:click": () => console.log("clicked"),
   })
 
   const html = Html.text(node)
 
-  test.expect(html).toContain("data-on-click=")
+  test.expect(html).toContain("data-on:click=")
   test.expect(html).toContain("console.log")
 })
 
