@@ -21,11 +21,17 @@ function formatUptime(seconds: number): string {
 function StatCard(props: { label: string; value: string; sub?: string }) {
   return (
     <div style="background:#111827;border:1px solid #374151;border-radius:6px;padding:12px;min-width:180px">
-      <div style="color:#9ca3af;font-size:11px;margin-bottom:4px">{props.label}</div>
+      <div style="color:#9ca3af;font-size:11px;margin-bottom:4px">
+        {props.label}
+      </div>
       <div style="color:#f3f4f6;font-size:22px;font-weight:700;font-family:monospace">
         {props.value}
       </div>
-      {props.sub && <div style="color:#6b7280;font-size:10px;margin-top:2px">{props.sub}</div>}
+      {props.sub && (
+        <div style="color:#6b7280;font-size:10px;margin-top:2px">
+          {props.sub}
+        </div>
+      )}
     </div>
   )
 }
@@ -36,14 +42,18 @@ function BarMeter(props: { label: string; used: number; total: number }) {
   return (
     <div style="background:#111827;border:1px solid #374151;border-radius:6px;padding:12px">
       <div style="display:flex;justify-content:space-between;margin-bottom:6px">
-        <span style="color:#9ca3af;font-size:11px">{props.label}</span>
+        <span style="color:#9ca3af;font-size:11px">
+          {props.label}
+        </span>
         <span style="color:#e5e7eb;font-size:11px;font-family:monospace">
           {formatBytes(props.used)} / {formatBytes(props.total)}
         </span>
       </div>
       <div style="height:8px;background:#1f2937;border-radius:4px;overflow:hidden">
         <div
-          style={`width:${pct.toFixed(1)}%;height:100%;background:${color};border-radius:4px;transition:width .3s`}
+          style={`width:${
+            pct.toFixed(1)
+          }%;height:100%;background:${color};border-radius:4px;transition:width .3s`}
         />
       </div>
       <div style="color:#6b7280;font-size:10px;margin-top:2px;text-align:right">
@@ -67,12 +77,18 @@ export function SystemStatsView(props: { stats: StudioStore.ProcessStats }) {
         <StatCard
           label="CPU Time"
           value={`${(cpuTotal / 1_000_000).toFixed(2)}s`}
-          sub={`user ${(props.stats.cpu.user / 1_000_000).toFixed(2)}s / sys ${(props.stats.cpu.system / 1_000_000).toFixed(2)}s`}
+          sub={`user ${(props.stats.cpu.user / 1_000_000).toFixed(2)}s / sys ${
+            (props.stats.cpu.system / 1_000_000).toFixed(2)
+          }s`}
         />
         <StatCard
           label="Load Average"
           value={props.stats.system.loadavg[0].toFixed(2)}
-          sub={`${props.stats.system.loadavg[0].toFixed(2)} / ${props.stats.system.loadavg[1].toFixed(2)} / ${props.stats.system.loadavg[2].toFixed(2)}  (${props.stats.system.cpuCount} cores)`}
+          sub={`${props.stats.system.loadavg[0].toFixed(2)} / ${
+            props.stats.system.loadavg[1].toFixed(2)
+          } / ${
+            props.stats.system.loadavg[2].toFixed(2)
+          }  (${props.stats.system.cpuCount} cores)`}
         />
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;padding:0 12px 12px">
@@ -89,46 +105,74 @@ export function SystemStatsView(props: { stats: StudioStore.ProcessStats }) {
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;padding:0 12px 12px">
         <StatCard label="RSS" value={formatBytes(props.stats.memory.rss)} />
-        <StatCard label="Peak RSS" value={formatBytes(props.stats.resourceUsage.maxRSS)} />
-        <StatCard label="External" value={formatBytes(props.stats.memory.external)} />
-        <StatCard label="Array Buffers" value={formatBytes(props.stats.memory.arrayBuffers)} />
+        <StatCard
+          label="Peak RSS"
+          value={formatBytes(
+            props
+              .stats
+              .resourceUsage
+              .maxRSS,
+          )}
+        />
+        <StatCard
+          label="External"
+          value={formatBytes(props.stats.memory.external)}
+        />
+        <StatCard
+          label="Array Buffers"
+          value={formatBytes(props.stats.memory.arrayBuffers)}
+        />
       </div>
       <div style="padding:0 12px 12px">
         <div style="background:#111827;border:1px solid #374151;border-radius:6px;padding:12px">
-          <div style="color:#9ca3af;font-size:11px;margin-bottom:8px">Resource Usage</div>
+          <div style="color:#9ca3af;font-size:11px;margin-bottom:8px">
+            Resource Usage
+          </div>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:4px">
             <div style="display:flex;justify-content:space-between;font-size:12px">
-              <span style="color:#6b7280">Page Faults (minor)</span>
+              <span style="color:#6b7280">
+                Page Faults (minor)
+              </span>
               <span style="color:#e5e7eb;font-family:monospace">
                 {props.stats.resourceUsage.minorPageFault}
               </span>
             </div>
             <div style="display:flex;justify-content:space-between;font-size:12px">
-              <span style="color:#6b7280">Page Faults (major)</span>
+              <span style="color:#6b7280">
+                Page Faults (major)
+              </span>
               <span style="color:#e5e7eb;font-family:monospace">
                 {props.stats.resourceUsage.majorPageFault}
               </span>
             </div>
             <div style="display:flex;justify-content:space-between;font-size:12px">
-              <span style="color:#6b7280">FS Reads</span>
+              <span style="color:#6b7280">
+                FS Reads
+              </span>
               <span style="color:#e5e7eb;font-family:monospace">
                 {props.stats.resourceUsage.fsRead}
               </span>
             </div>
             <div style="display:flex;justify-content:space-between;font-size:12px">
-              <span style="color:#6b7280">FS Writes</span>
+              <span style="color:#6b7280">
+                FS Writes
+              </span>
               <span style="color:#e5e7eb;font-family:monospace">
                 {props.stats.resourceUsage.fsWrite}
               </span>
             </div>
             <div style="display:flex;justify-content:space-between;font-size:12px">
-              <span style="color:#6b7280">Context Switches (vol)</span>
+              <span style="color:#6b7280">
+                Context Switches (vol)
+              </span>
               <span style="color:#e5e7eb;font-family:monospace">
                 {props.stats.resourceUsage.voluntaryContextSwitches}
               </span>
             </div>
             <div style="display:flex;justify-content:space-between;font-size:12px">
-              <span style="color:#6b7280">Context Switches (invol)</span>
+              <span style="color:#6b7280">
+                Context Switches (invol)
+              </span>
               <span style="color:#e5e7eb;font-family:monospace">
                 {props.stats.resourceUsage.involuntaryContextSwitches}
               </span>

@@ -1,11 +1,15 @@
 import { Effect, Schema } from "effect"
 import { Route } from "effect-start"
 import * as Github from "../../../../../Github.ts"
-import { Layout, Tabs } from "../../../../../Ui.tsx"
+import * as Ui from "../../../../../Ui.tsx"
 
 export default Route.get(
-  Route.schemaPathParams({ owner: Schema.String, repo: Schema.String, number: Schema.NumberFromString }),
-  Route.html(function* (ctx) {
+  Route.schemaPathParams({
+    owner: Schema.String,
+    repo: Schema.String,
+    number: Schema.NumberFromString,
+  }),
+  Route.html(function*(ctx) {
     const { owner, repo, number } = ctx.pathParams
 
     const [pr, comments] = yield* Effect.all([
@@ -17,19 +21,28 @@ export default Route.get(
     const isMerged = !!pr.merged_at
 
     return (
-      <Layout>
+      <Ui.Layout>
         <div class="pt-4">
           <RepoHeader owner={owner} repo={repo} />
-          <Tabs
+          <Ui.Tabs
             items={[
-              { label: "Code", href: Route.link("/:owner/:repo", { owner, repo }) },
-              { label: "Issues", href: Route.link("/:owner/:repo/issues", { owner, repo }) },
+              {
+                label: "Code",
+                href: Route.link("/:owner/:repo", { owner, repo }),
+              },
+              {
+                label: "Issues",
+                href: Route.link("/:owner/:repo/issues", { owner, repo }),
+              },
               {
                 label: "Pull requests",
                 href: Route.link("/:owner/:repo/pulls", { owner, repo }),
                 active: true,
               },
-              { label: "Commits", href: Route.link("/:owner/:repo/commits", { owner, repo }) },
+              {
+                label: "Commits",
+                href: Route.link("/:owner/:repo/commits", { owner, repo }),
+              },
               {
                 label: "Contributors",
                 href: Route.link("/:owner/:repo/contributors", { owner, repo }),
@@ -39,8 +52,12 @@ export default Route.get(
 
           <div class="max-w-[960px]">
             <h1 class="text-2xl font-normal mb-2">
-              <span>{pr.title}</span>
-              <span class="text-[#8b949e] font-light"> #{number}</span>
+              <span>
+                {pr.title}
+              </span>
+              <span class="text-[#8b949e] font-light">
+                #{number}
+              </span>
             </h1>
 
             <div class="flex items-center gap-2 mb-6 pb-4 border-b border-[#21262d]">
@@ -49,8 +66,8 @@ export default Route.get(
                   isMerged
                     ? "bg-[#8957e5] text-white"
                     : isOpen
-                      ? "bg-[#238636] text-white"
-                      : "bg-[#da3633] text-white"
+                    ? "bg-[#238636] text-white"
+                    : "bg-[#da3633] text-white"
                 }`}
               >
                 {isMerged ? "Merged" : isOpen ? "Open" : "Closed"}
@@ -63,8 +80,7 @@ export default Route.get(
                   >
                     {pr.user.login}
                   </a>
-                )}{" "}
-                wants to merge into{" "}
+                )} wants to merge into{" "}
                 <code class="px-1.5 py-0.5 bg-[#388bfd1a] text-[#58a6ff] rounded text-xs">
                   {pr.base?.label}
                 </code>{" "}
@@ -76,10 +92,26 @@ export default Route.get(
             </div>
 
             <div class="flex items-center gap-4 text-sm text-[#8b949e] mb-6">
-              {pr.commits !== undefined && <span>{pr.commits} commits</span>}
-              {pr.changed_files !== undefined && <span>{pr.changed_files} files changed</span>}
-              {pr.additions !== undefined && <span class="text-[#3fb950]">+{pr.additions}</span>}
-              {pr.deletions !== undefined && <span class="text-[#f85149]">-{pr.deletions}</span>}
+              {pr.commits !== undefined && (
+                <span>
+                  {pr.commits} commits
+                </span>
+              )}
+              {pr.changed_files !== undefined && (
+                <span>
+                  {pr.changed_files} files changed
+                </span>
+              )}
+              {pr.additions !== undefined && (
+                <span class="text-[#3fb950]">
+                  +{pr.additions}
+                </span>
+              )}
+              {pr.deletions !== undefined && (
+                <span class="text-[#f85149]">
+                  -{pr.deletions}
+                </span>
+              )}
             </div>
 
             {pr.labels.length > 0 && (
@@ -113,7 +145,7 @@ export default Route.get(
             ))}
           </div>
         </div>
-      </Layout>
+      </Ui.Layout>
     )
   }),
 )
@@ -136,7 +168,9 @@ function Comment(props: {
           >
             {props.login}
           </a>
-          <span class="text-xs text-[#8b949e]">commented {Github.timeAgo(props.date)}</span>
+          <span class="text-xs text-[#8b949e]">
+            commented {Github.timeAgo(props.date)}
+          </span>
           {props.isAuthor && (
             <span class="text-xs border border-[#30363d] rounded-full px-2 py-0.5 text-[#8b949e]">
               Author
@@ -144,11 +178,17 @@ function Comment(props: {
           )}
         </div>
         <div class="p-4 markdown-body text-sm">
-          {props.body ? (
-            <div style="white-space: pre-wrap; word-break: break-word;">{props.body}</div>
-          ) : (
-            <p class="text-[#8b949e] italic">No description provided.</p>
-          )}
+          {props.body ?
+            (
+              <div style="white-space: pre-wrap; word-break: break-word;">
+                {props.body}
+              </div>
+            ) :
+            (
+              <p class="text-[#8b949e] italic">
+                No description provided.
+              </p>
+            )}
         </div>
       </div>
     </div>
@@ -167,9 +207,14 @@ function RepoHeader(props: { owner: string; repo: string }) {
       >
         {props.owner}
       </a>
-      <span class="text-[#8b949e]">/</span>
+      <span class="text-[#8b949e]">
+        /
+      </span>
       <a
-        href={Route.link("/:owner/:repo", { owner: props.owner, repo: props.repo })}
+        href={Route.link("/:owner/:repo", {
+          owner: props.owner,
+          repo: props.repo,
+        })}
         class="text-[#58a6ff] font-bold hover:underline"
       >
         {props.repo}

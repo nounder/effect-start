@@ -40,7 +40,7 @@ function splitMediaTypeParams(params: string): {
     const key = trimmed.slice(0, eqIndex).trim().toLowerCase()
     let value = trimmed.slice(eqIndex + 1).trim()
 
-    if (value.startsWith('"') && value.endsWith('"')) {
+    if (value.startsWith("\"") && value.endsWith("\"")) {
       value = value.slice(1, -1)
     }
 
@@ -81,7 +81,9 @@ function parseAccept(accept: string): Array<{
 
     const type = match[1].toLowerCase()
     const subtype = match[2].toLowerCase()
-    const { params, q } = match[3] ? splitMediaTypeParams(match[3]) : { params: {}, q: 1 }
+    const { params, q } = match[3]
+      ? splitMediaTypeParams(match[3])
+      : { params: {}, q: 1 }
 
     if (q > 0) {
       specs.push({ type, subtype, params, q, o })
@@ -128,7 +130,8 @@ function specifyMediaType(
   if (specParams.length > 0) {
     if (
       specParams.every(
-        (key) => spec.params[key].toLowerCase() === (params[key] || "").toLowerCase(),
+        (key) =>
+          spec.params[key].toLowerCase() === (params[key] || "").toLowerCase(),
       )
     ) {
       s |= 1
@@ -277,7 +280,9 @@ function getLanguagePriority(
   }
 }
 
-function parseAcceptEncoding(accept: string): Array<{ encoding: string; q: number; o: number }> {
+function parseAcceptEncoding(
+  accept: string,
+): Array<{ encoding: string; q: number; o: number }> {
   const specs: Array<{ encoding: string; q: number; o: number }> = []
   const parts = accept.split(",")
   let hasIdentity = false
@@ -350,7 +355,9 @@ function getEncodingPriority(
   }
 }
 
-function parseAcceptCharset(accept: string): Array<{ charset: string; q: number; o: number }> {
+function parseAcceptCharset(
+  accept: string,
+): Array<{ charset: string; q: number; o: number }> {
   const specs: Array<{ charset: string; q: number; o: number }> = []
   const parts = accept.split(",")
 
@@ -419,14 +426,19 @@ function compareSpecs(a: ParsedSpec, b: ParsedSpec): number {
   return b.q - a.q || b.s - a.s || a.o - b.o || a.i - b.i
 }
 
-export function media(accept: string, available?: Array<string>): Array<string> {
+export function media(
+  accept: string,
+  available?: Array<string>,
+): Array<string> {
   const parsed = parseAccept(accept)
   if (parsed.length === 0) {
     return []
   }
 
   if (!available) {
-    return parsed.sort((a, b) => b.q - a.q || a.o - b.o).map((p) => `${p.type}/${p.subtype}`)
+    return parsed.sort((a, b) => b.q - a.q || a.o - b.o).map((p) =>
+      `${p.type}/${p.subtype}`
+    )
   }
 
   const priorities = available.map((t, i) => getMediaTypePriority(t, parsed, i))
@@ -435,7 +447,10 @@ export function media(accept: string, available?: Array<string>): Array<string> 
   return sorted.map((p) => p.value)
 }
 
-export function language(accept: string, available?: Array<string>): Array<string> {
+export function language(
+  accept: string,
+  available?: Array<string>,
+): Array<string> {
   const parsed = parseAcceptLanguage(accept)
   if (parsed.length === 0) {
     return []
@@ -453,7 +468,10 @@ export function language(accept: string, available?: Array<string>): Array<strin
   return sorted.map((p) => p.value)
 }
 
-export function encoding(accept: string, available?: Array<string>): Array<string> {
+export function encoding(
+  accept: string,
+  available?: Array<string>,
+): Array<string> {
   const parsed = parseAcceptEncoding(accept)
   if (parsed.length === 0) {
     return []
@@ -469,7 +487,10 @@ export function encoding(accept: string, available?: Array<string>): Array<strin
   return sorted.map((p) => p.value)
 }
 
-export function charset(accept: string, available?: Array<string>): Array<string> {
+export function charset(
+  accept: string,
+  available?: Array<string>,
+): Array<string> {
   const parsed = parseAcceptCharset(accept)
   if (parsed.length === 0) {
     return []
@@ -485,25 +506,37 @@ export function charset(accept: string, available?: Array<string>): Array<string
   return sorted.map((p) => p.value)
 }
 
-export function headerMedia(headers: Headers, available?: Array<string>): Array<string> {
+export function headerMedia(
+  headers: Headers,
+  available?: Array<string>,
+): Array<string> {
   const accept = headers.get("accept")
   if (!accept) return []
   return media(accept, available)
 }
 
-export function headerLanguage(headers: Headers, available?: Array<string>): Array<string> {
+export function headerLanguage(
+  headers: Headers,
+  available?: Array<string>,
+): Array<string> {
   const accept = headers.get("accept-language")
   if (!accept) return []
   return language(accept, available)
 }
 
-export function headerEncoding(headers: Headers, available?: Array<string>): Array<string> {
+export function headerEncoding(
+  headers: Headers,
+  available?: Array<string>,
+): Array<string> {
   const accept = headers.get("accept-encoding")
   if (!accept) return []
   return encoding(accept, available)
 }
 
-export function headerCharset(headers: Headers, available?: Array<string>): Array<string> {
+export function headerCharset(
+  headers: Headers,
+  available?: Array<string>,
+): Array<string> {
   const accept = headers.get("accept-charset")
   if (!accept) return []
   return charset(accept, available)

@@ -1,5 +1,5 @@
 import * as Pretty from "../internal/Pretty.ts"
-import * as StudioStore from "../StudioStore.ts"
+import type * as StudioStore from "../StudioStore.ts"
 import * as PrettyValue from "./internal/PrettyValue.tsx"
 
 function formatDuration(ms: number | undefined): string {
@@ -18,10 +18,10 @@ function statusColor(status: string): string {
 function KeyValue(props: { label: string; value: unknown }) {
   if (props.value == null) return null
   return (
-    <div
-      style="display:flex;align-items:flex-start;gap:8px;padding:4px 0;border-bottom:1px solid #1e293b;font-size:12px"
-    >
-      <span style="color:#64748b;min-width:120px">{props.label}</span>
+    <div style="display:flex;align-items:flex-start;gap:8px;padding:4px 0;border-bottom:1px solid #1e293b;font-size:12px">
+      <span style="color:#64748b;min-width:120px">
+        {props.label}
+      </span>
       <div style="flex:1;min-width:0">
         <PrettyValue.PrettyValue
           value={props.value}
@@ -34,12 +34,20 @@ function KeyValue(props: { label: string; value: unknown }) {
 }
 
 function StatusBadge(props: { status: string }) {
-  const bg =
-    props.status === "ok" ? "#166534" : props.status === "error" ? "#7f1d1d" : "#713f12"
-  const fg =
-    props.status === "ok" ? "#4ade80" : props.status === "error" ? "#fca5a5" : "#fde047"
+  const bg = props.status === "ok"
+    ? "#166534"
+    : props.status === "error"
+    ? "#7f1d1d"
+    : "#713f12"
+  const fg = props.status === "ok"
+    ? "#4ade80"
+    : props.status === "error"
+    ? "#fca5a5"
+    : "#fde047"
   return (
-    <span style={`font-size:11px;padding:2px 8px;border-radius:4px;background:${bg};color:${fg}`}>
+    <span
+      style={`font-size:11px;padding:2px 8px;border-radius:4px;background:${bg};color:${fg}`}
+    >
       {props.status}
     </span>
   )
@@ -55,17 +63,24 @@ interface TreeSpan {
   ancestorHasNextSibling: Array<boolean>
 }
 
-function sortByStartTime(a: StudioStore.StudioSpan, b: StudioStore.StudioSpan): number {
+function sortByStartTime(
+  a: StudioStore.StudioSpan,
+  b: StudioStore.StudioSpan,
+): number {
   if (a.startTime < b.startTime) return -1
   if (a.startTime > b.startTime) return 1
   return 0
 }
 
-function pickRootSpan(spans: Array<StudioStore.StudioSpan>): StudioStore.StudioSpan {
+function pickRootSpan(
+  spans: Array<StudioStore.StudioSpan>,
+): StudioStore.StudioSpan {
   const spanIds = new Set(spans.map((span) => span.spanId))
   return (
-    spans.find((span) => !span.parentSpanId || !spanIds.has(span.parentSpanId)) ??
-    spans.slice().sort(sortByStartTime)[0]
+    spans.find((span) =>
+      !span.parentSpanId || !spanIds.has(span.parentSpanId)
+    ) ??
+      spans.slice().sort(sortByStartTime)[0]
   )
 }
 
@@ -124,7 +139,10 @@ function buildSpanTree(spans: Array<StudioStore.StudioSpan>): Array<TreeSpan> {
       ancestorHasNextSibling: [...ancestors],
     })
     for (let i = 0; i < children.length; i++) {
-      walk(children[i], depth + 1, i === children.length - 1, [...ancestors, !isLast], nextLineage)
+      walk(children[i], depth + 1, i === children.length - 1, [
+        ...ancestors,
+        !isLast,
+      ], nextLineage)
     }
   }
 
@@ -132,7 +150,9 @@ function buildSpanTree(spans: Array<StudioStore.StudioSpan>): Array<TreeSpan> {
     walk(roots[i], 0, i === roots.length - 1, [], new Set())
   }
 
-  const remaining = spans.filter((span) => !visited.has(span.spanId)).sort(sortByStartTime)
+  const remaining = spans.filter((span) => !visited.has(span.spanId)).sort(
+    sortByStartTime,
+  )
 
   for (let i = 0; i < remaining.length; i++) {
     walk(remaining[i], 0, i === remaining.length - 1, [], new Set())
@@ -156,13 +176,26 @@ function TreeConnectors(props: { tree: TreeSpan }) {
   }
 
   if (props.tree.isLastChild) {
-    elements.push(<div class="wf-elbow" style={`left:${(props.tree.depth - 1) * 20 + 6}px`} />)
+    elements.push(
+      <div
+        class="wf-elbow"
+        style={`left:${(props.tree.depth - 1) * 20 + 6}px`}
+      />,
+    )
   } else {
-    elements.push(<div class="wf-vline" style={`left:${(props.tree.depth - 1) * 20 + 6}px`} />)
+    elements.push(
+      <div
+        class="wf-vline"
+        style={`left:${(props.tree.depth - 1) * 20 + 6}px`}
+      />,
+    )
   }
 
   elements.push(
-    <div class="wf-hline" style={`left:${(props.tree.depth - 1) * 20 + 6}px;top:50%`} />,
+    <div
+      class="wf-hline"
+      style={`left:${(props.tree.depth - 1) * 20 + 6}px;top:50%`}
+    />,
   )
 
   return (
@@ -180,10 +213,14 @@ function TimeAxis(props: { totalMs: number }) {
   }
   return (
     <div class="wf-axis">
-      <div style="padding:4px 8px;color:#64748b;font-size:11px">Span</div>
+      <div style="padding:4px 8px;color:#64748b;font-size:11px">
+        Span
+      </div>
       <div class="wf-axis-ticks">
         {labels.map((l) => (
-          <span>{l}</span>
+          <span>
+            {l}
+          </span>
         ))}
       </div>
     </div>
@@ -193,24 +230,26 @@ function TimeAxis(props: { totalMs: number }) {
 function SpanDetailBody(props: { span: StudioStore.StudioSpan }) {
   const s = props.span
   const stacktrace = s.attributes["code.stacktrace"] as string | undefined
-  const customAttrs = Object.entries(s.attributes).filter(([k]) => k !== "code.stacktrace")
+  const customAttrs = Object.entries(s.attributes).filter(([k]) =>
+    k !== "code.stacktrace"
+  )
   return (
     <div class="wf-detail">
       <KeyValue label="Span ID" value={s.spanId} />
       <KeyValue label="Kind" value={s.kind} />
       {s.parentSpanId && <KeyValue label="Parent" value={s.parentSpanId} />}
       {stacktrace && <KeyValue label="Source" value={stacktrace} />}
-      {customAttrs.map(([k, v]) => (
-        <KeyValue label={k} value={v} />
-      ))}
+      {customAttrs.map(([k, v]) => <KeyValue label={k} value={v} />)}
       {s.events.length > 0 && (
         <div style="margin-top:4px">
-          <span style="color:#64748b;font-size:11px">Events:</span>
+          <span style="color:#64748b;font-size:11px">
+            Events:
+          </span>
           {s.events.map((ev) => (
-            <div
-              style="display:flex;align-items:flex-start;gap:8px;padding:4px 0;font-size:11px;color:#94a3b8;font-family:monospace"
-            >
-              <span>{ev.name}</span>
+            <div style="display:flex;align-items:flex-start;gap:8px;padding:4px 0;font-size:11px;color:#94a3b8;font-family:monospace">
+              <span>
+                {ev.name}
+              </span>
               {ev.attributes && (
                 <div style="flex:1;min-width:0">
                   <PrettyValue.PreformattedText
@@ -227,15 +266,18 @@ function SpanDetailBody(props: { span: StudioStore.StudioSpan }) {
   )
 }
 
-function WaterfallRow(props: { tree: TreeSpan; totalMs: number; rootStart: bigint }) {
+function WaterfallRow(
+  props: { tree: TreeSpan; totalMs: number; rootStart: bigint },
+) {
   const s = props.tree.span
   const offsetMs = Number(s.startTime - props.rootStart) / 1_000_000
   const durMs = s.durationMs ?? 0
-  const leftPct = props.totalMs > 0 ? Math.min(100, (offsetMs / props.totalMs) * 100) : 0
-  const widthPct =
-    props.totalMs > 0
-      ? Math.max(0.5, Math.min(100 - leftPct, (durMs / props.totalMs) * 100))
-      : 100
+  const leftPct = props.totalMs > 0
+    ? Math.min(100, (offsetMs / props.totalMs) * 100)
+    : 0
+  const widthPct = props.totalMs > 0
+    ? Math.max(0.5, Math.min(100 - leftPct, (durMs / props.totalMs) * 100))
+    : 100
   const color = statusColor(s.status)
 
   const durLabelLeft = leftPct + widthPct + 0.5
@@ -245,11 +287,20 @@ function WaterfallRow(props: { tree: TreeSpan; totalMs: number; rootStart: bigin
       <summary>
         <div class="wf-name">
           <TreeConnectors tree={props.tree} />
-          <span style="overflow:hidden;text-overflow:ellipsis">{s.name}</span>
-          {props.tree.childCount > 0 && <span class="wf-badge">{props.tree.childCount}</span>}
+          <span style="overflow:hidden;text-overflow:ellipsis">
+            {s.name}
+          </span>
+          {props.tree.childCount > 0 && (
+            <span class="wf-badge">
+              {props.tree.childCount}
+            </span>
+          )}
         </div>
         <div class="wf-bar-cell">
-          <div class="wf-bar" style={`left:${leftPct}%;width:${widthPct}%;background:${color}`} />
+          <div
+            class="wf-bar"
+            style={`left:${leftPct}%;width:${widthPct}%;background:${color}`}
+          />
           <div class="wf-dur" style={`left:${durLabelLeft}%`}>
             {formatDuration(s.durationMs)}
           </div>
@@ -272,11 +323,16 @@ function MiniWaterfall(props: {
         const offsetMs = Number(s.startTime - props.rootStart) / 1_000_000
         const durMs = s.durationMs ?? 0
         const leftPct = Math.min(100, (offsetMs / props.totalMs) * 100)
-        const widthPct = Math.max(0.3, Math.min(100 - leftPct, (durMs / props.totalMs) * 100))
+        const widthPct = Math.max(
+          0.3,
+          Math.min(100 - leftPct, (durMs / props.totalMs) * 100),
+        )
         return (
           <div
             class="mini-wf-bar"
-            style={`left:${leftPct}%;width:${widthPct}%;background:${statusColor(s.status)}`}
+            style={`left:${leftPct}%;width:${widthPct}%;background:${
+              statusColor(s.status)
+            }`}
           />
         )
       })}
@@ -321,45 +377,77 @@ export function TraceGroup(props: {
     >
       <span class="tl-cell tl-cell-status">
         <span
-          style={`width:8px;height:8px;border-radius:50%;background:${statusColor(status)};display:block`}
+          style={`width:8px;height:8px;border-radius:50%;background:${
+            statusColor(status)
+          };display:block`}
         />
       </span>
-      <span class="tl-cell tl-cell-name">{root.name}</span>
-      <span class="tl-cell tl-cell-spans">{props.spans.length}</span>
-      <span class="tl-cell tl-cell-dur">{formatDuration(totalMs)}</span>
-      <span class="tl-cell tl-cell-id">{String(traceId).slice(0, 12)}</span>
+      <span class="tl-cell tl-cell-name">
+        {root.name}
+      </span>
+      <span class="tl-cell tl-cell-spans">
+        {props.spans.length}
+      </span>
+      <span class="tl-cell tl-cell-dur">
+        {formatDuration(totalMs)}
+      </span>
+      <span class="tl-cell tl-cell-id">
+        {String(traceId).slice(0, 12)}
+      </span>
     </a>
   )
 }
 
-export function TraceGroups(props: { prefix: string; spans: Array<StudioStore.StudioSpan> }) {
+export function TraceGroups(
+  props: { prefix: string; spans: Array<StudioStore.StudioSpan> },
+) {
   const groups = groupByTraceId(props.spans)
-  const sorted = Array.from(groups.values())
+  const sorted = Array
+    .from(groups.values())
     .sort((a, b) => Number(b[0].startTime) - Number(a[0].startTime))
     .slice(0, 50)
 
   if (sorted.length === 0) {
-    return <div class="empty">Waiting for traces...</div>
+    return (
+      <div class="empty">
+        Waiting for traces...
+      </div>
+    )
   }
   return (
     <div class="tl-grid">
       <div class="tl-header tl-cols">
         <span class="tl-cell tl-cell-status" />
-        <span class="tl-cell tl-cell-name">Name</span>
-        <span class="tl-cell tl-cell-spans">Spans</span>
-        <span class="tl-cell tl-cell-dur">Duration</span>
-        <span class="tl-cell tl-cell-id">Trace</span>
+        <span class="tl-cell tl-cell-name">
+          Name
+        </span>
+        <span class="tl-cell tl-cell-spans">
+          Spans
+        </span>
+        <span class="tl-cell tl-cell-dur">
+          Duration
+        </span>
+        <span class="tl-cell tl-cell-id">
+          Trace
+        </span>
       </div>
-      {sorted.map((group) => (
-        <TraceGroup prefix={props.prefix} spans={group} />
-      ))}
+      {sorted.map((group) => <TraceGroup
+        prefix={props.prefix}
+        spans={group}
+      />)}
     </div>
   )
 }
 
-export function TraceDetail(props: { prefix: string; spans: Array<StudioStore.StudioSpan> }) {
+export function TraceDetail(
+  props: { prefix: string; spans: Array<StudioStore.StudioSpan> },
+) {
   if (props.spans.length === 0) {
-    return <div class="empty">Trace not found</div>
+    return (
+      <div class="empty">
+        Trace not found
+      </div>
+    )
   }
   const root = pickRootSpan(props.spans)
   const traceId = root.traceId
@@ -378,22 +466,36 @@ export function TraceDetail(props: { prefix: string; spans: Array<StudioStore.St
           >
             Traces
           </a>
-          <span style="color:#475569">/</span>
-          <span style="color:#e2e8f0;font-size:13px;font-family:monospace">{root.name}</span>
+          <span style="color:#475569">
+            /
+          </span>
+          <span style="color:#e2e8f0;font-size:13px;font-family:monospace">
+            {root.name}
+          </span>
         </div>
         <div style="display:flex;gap:16px;font-size:12px;color:#94a3b8;align-items:center">
           <StatusBadge status={root.status} />
           <span>
             {props.spans.length} span{props.spans.length !== 1 ? "s" : ""}
           </span>
-          <span>{formatDuration(totalMs)}</span>
-          <span>{startDate.toLocaleTimeString("en", { hour12: false })}</span>
-          <span style="color:#475569;font-family:monospace;font-size:10px">{traceId}</span>
+          <span>
+            {formatDuration(totalMs)}
+          </span>
+          <span>
+            {startDate.toLocaleTimeString("en", { hour12: false })}
+          </span>
+          <span style="color:#475569;font-family:monospace;font-size:10px">
+            {traceId}
+          </span>
         </div>
       </div>
 
       <div style="padding:8px 16px">
-        <MiniWaterfall spans={props.spans} totalMs={totalMs} rootStart={rootStart} />
+        <MiniWaterfall
+          spans={props.spans}
+          totalMs={totalMs}
+          rootStart={rootStart}
+        />
       </div>
 
       <div style="padding:0 8px 8px">

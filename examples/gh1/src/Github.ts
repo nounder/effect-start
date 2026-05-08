@@ -3,23 +3,29 @@ import * as Fetch from "effect-start/Fetch"
 
 const API = "https://api.github.com"
 
-const client = Fetch.use((request, next) =>
-  Effect.gen(function* () {
-    const token = yield* Config.string("GITHUB_TOKEN")
-    const accept = request.headers.get("Accept") ?? "application/vnd.github+json"
-    return yield* next(
-      new Request(request, {
-        headers: {
-          Accept: accept,
-          "X-GitHub-Api-Version": "2022-11-28",
-          Authorization: `Bearer ${token}`,
-        },
-      }),
-    )
-  }),
-).use(Fetch.filterStatusOk())
+const client = Fetch
+  .use((request, next) =>
+    Effect.gen(function*() {
+      const token = yield* Config.string("GITHUB_TOKEN")
+      const accept = request.headers.get("Accept") ??
+        "application/vnd.github+json"
+      return yield* next(
+        new Request(request, {
+          headers: {
+            Accept: accept,
+            "X-GitHub-Api-Version": "2022-11-28",
+            Authorization: `Bearer ${token}`,
+          },
+        }),
+      )
+    })
+  )
+  .use(Fetch.filterStatusOk())
 
-function buildUrl(path: string, params?: Record<string, string | number | undefined>): string {
+function buildUrl(
+  path: string,
+  params?: Record<string, string | number | undefined>,
+): string {
   const url = new URL(`${API}${path}`)
   if (params) {
     for (const [k, v] of Object.entries(params)) {
@@ -45,7 +51,9 @@ function requestHtml(path: string) {
   const url = buildUrl(path)
   return Effect.catchAll(
     Effect.flatMap(
-      client.get(url, { headers: { Accept: "application/vnd.github.html+json" } }),
+      client.get(url, {
+        headers: { Accept: "application/vnd.github.html+json" },
+      }),
       (entity) => entity.text,
     ),
     () => Effect.succeed(""),
@@ -157,8 +165,12 @@ const PullRequest = Schema.Struct({
   created_at: Schema.String,
   updated_at: Schema.String,
   closed_at: Schema.NullOr(Schema.String),
-  base: Schema.optional(Schema.Struct({ label: Schema.optional(Schema.String) })),
-  head: Schema.optional(Schema.Struct({ label: Schema.optional(Schema.String) })),
+  base: Schema.optional(
+    Schema.Struct({ label: Schema.optional(Schema.String) }),
+  ),
+  head: Schema.optional(
+    Schema.Struct({ label: Schema.optional(Schema.String) }),
+  ),
 })
 export type PullRequest = typeof PullRequest.Type
 
@@ -274,7 +286,8 @@ export const getUserRepos = (
     type: "owner",
   })
 
-export const getRepo = (owner: string, repo: string) => request(Repo, `/repos/${owner}/${repo}`)
+export const getRepo = (owner: string, repo: string) =>
+  request(Repo, `/repos/${owner}/${repo}`)
 
 export const getRepoIssues = (
   owner: string,
@@ -328,9 +341,13 @@ export const getIssueComments = (
   number: number,
   opts?: { per_page?: number },
 ) =>
-  request(Schema.Array(IssueComment), `/repos/${owner}/${repo}/issues/${number}/comments`, {
-    per_page: opts?.per_page ?? 50,
-  })
+  request(
+    Schema.Array(IssueComment),
+    `/repos/${owner}/${repo}/issues/${number}/comments`,
+    {
+      per_page: opts?.per_page ?? 50,
+    },
+  )
 
 export const getPull = (owner: string, repo: string, number: number) =>
   request(PullRequest, `/repos/${owner}/${repo}/pulls/${number}`)
@@ -380,7 +397,10 @@ export const getOrgRepos = (
     type: "public",
   })
 
-export const getOrgMembers = (org: string, opts?: { per_page?: number; page?: number }) =>
+export const getOrgMembers = (
+  org: string,
+  opts?: { per_page?: number; page?: number },
+) =>
   request(Schema.Array(OrgMember), `/orgs/${org}/members`, {
     per_page: opts?.per_page ?? 100,
     page: opts?.page,

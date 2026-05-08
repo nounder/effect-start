@@ -47,25 +47,27 @@ export const which = (name: string): Effect.Effect<string, SystemError> =>
           reason: "Unknown",
           module: "System",
           method: "which",
-          description: err instanceof Error ? err.message : `Failed to look up "${name}"`,
+          description: err instanceof Error
+            ? err.message
+            : `Failed to look up "${name}"`,
           cause: err,
         }),
     }),
     (path) =>
       path === null
         ? Effect.fail(
-            new SystemError({
-              reason: "NotFound",
-              module: "System",
-              method: "which",
-              description: `Executable not found: "${name}"`,
-            }),
-          )
+          new SystemError({
+            reason: "NotFound",
+            module: "System",
+            method: "which",
+            description: `Executable not found: "${name}"`,
+          }),
+        )
         : Effect.succeed(path),
   )
 
 export const spawn = (
-  cmd: [string, ...Array<string>] | string[],
+  cmd: [string, ...Array<string>] | Array<string>,
   options?: ChildProcess.CommandOptions,
 ): Effect.Effect<
   ChildProcess.ChildProcessHandle,

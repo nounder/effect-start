@@ -20,9 +20,11 @@ export class TestLogger extends Context.Tag("effect-start/TestLogger")<
 export function layer(): Layer.Layer<TestLogger> {
   return Layer.effect(
     TestLogger,
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       const messages = yield* Ref.make<Array<string>>([])
-      const mutableRef = (messages as any).ref as MutableRef.MutableRef<Array<string>>
+      const mutableRef = (messages as any).ref as MutableRef.MutableRef<
+        Array<string>
+      >
 
       const customLogger = Logger.make((options) => {
         const causeStr = !Cause.isEmpty(options.cause)
@@ -34,8 +36,13 @@ export function layer(): Layer.Layer<TestLogger> {
         ])
       })
 
-      yield* FiberRef.update(FiberRef.currentLoggers, (loggers) =>
-        HashSet.add(HashSet.remove(loggers, Logger.defaultLogger), customLogger),
+      yield* FiberRef.update(
+        FiberRef.currentLoggers,
+        (loggers) =>
+          HashSet.add(
+            HashSet.remove(loggers, Logger.defaultLogger),
+            customLogger,
+          ),
       )
 
       return { messages }
@@ -43,7 +50,8 @@ export function layer(): Layer.Layer<TestLogger> {
   )
 }
 
-export const messages: Effect.Effect<Array<string>, never, TestLogger> = Effect.gen(function* () {
-  const logger = yield* TestLogger
-  return yield* Ref.get(logger.messages)
-})
+export const messages: Effect.Effect<Array<string>, never, TestLogger> = Effect
+  .gen(function*() {
+    const logger = yield* TestLogger
+    return yield* Ref.get(logger.messages)
+  })

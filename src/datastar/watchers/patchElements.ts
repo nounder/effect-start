@@ -40,9 +40,12 @@ watcher({
   apply(ctx, args) {
     const selector = typeof args.selector === "string" ? args.selector : ""
     const mode = typeof args.mode === "string" ? args.mode : "outer"
-    const namespace = typeof args.namespace === "string" ? args.namespace : "html"
-    const useViewTransitionRaw =
-      typeof args.useViewTransition === "string" ? args.useViewTransition : ""
+    const namespace = typeof args.namespace === "string"
+      ? args.namespace
+      : "html"
+    const useViewTransitionRaw = typeof args.useViewTransition === "string"
+      ? args.useViewTransition
+      : ""
     const elements = args.elements
 
     if (!isValidType(PATCH_MODES, mode)) {
@@ -81,16 +84,27 @@ const onPatchElements = (
   const consume = typeof elements !== "string" && !!elements
 
   if (typeof elements === "string") {
-    const elementsWithSvgsRemoved = elements.replace(/<svg(\s[^>]*>|>)([\s\S]*?)<\/svg>/gim, "")
+    const elementsWithSvgsRemoved = elements.replace(
+      /<svg(\s[^>]*>|>)([\s\S]*?)<\/svg>/gim,
+      "",
+    )
     const hasHtml = /<\/html>/.test(elementsWithSvgsRemoved)
     const hasHead = /<\/head>/.test(elementsWithSvgsRemoved)
     const hasBody = /<\/body>/.test(elementsWithSvgsRemoved)
 
-    const wrapperTag = namespace === "svg" ? "svg" : namespace === "mathml" ? "math" : ""
-    const wrappedEls = wrapperTag ? `<${wrapperTag}>${elements}</${wrapperTag}>` : elements
+    const wrapperTag = namespace === "svg"
+      ? "svg"
+      : namespace === "mathml"
+      ? "math"
+      : ""
+    const wrappedEls = wrapperTag
+      ? `<${wrapperTag}>${elements}</${wrapperTag}>`
+      : elements
 
     const newDocument = new DOMParser().parseFromString(
-      hasHtml || hasHead || hasBody ? elements : `<body><template>${wrappedEls}</template></body>`,
+      hasHtml || hasHead || hasBody
+        ? elements
+        : `<body><template>${wrappedEls}</template></body>`,
       "text/html",
     )
 
@@ -104,7 +118,9 @@ const onPatchElements = (
     } else if (hasBody) {
       newContent.appendChild(newDocument.body)
     } else if (wrapperTag) {
-      const wrapperEl = newDocument.querySelector("template")!.content.querySelector(wrapperTag)!
+      const wrapperEl = newDocument.querySelector("template")!
+        .content
+        .querySelector(wrapperTag)!
       for (const child of wrapperEl.childNodes) {
         newContent.appendChild(child)
       }
@@ -159,8 +175,9 @@ for (const script of document.querySelectorAll("script")) {
 }
 
 const execute = (target: Element): void => {
-  const elScripts =
-    target instanceof HTMLScriptElement ? [target] : target.querySelectorAll("script")
+  const elScripts = target instanceof HTMLScriptElement
+    ? [target]
+    : target.querySelectorAll("script")
   for (const old of elScripts) {
     if (!scripts.has(old)) {
       const script = document.createElement("script")
@@ -211,7 +228,9 @@ const applyToTargets = (
         if (consume && used) {
           break
         }
-        const nextNode = consume ? element : (element.cloneNode(true) as Element)
+        const nextNode = consume
+          ? element
+          : (element.cloneNode(true) as Element)
         morph(target, nextNode, mode)
         execute(target)
         const scopeHost = target.closest("[data-scope-children]")
@@ -303,7 +322,12 @@ export const morph = (
   populateIdMapWithTree(parent, oldIdElements)
   populateIdMapWithTree(normalizedElt, newIdElements)
 
-  morphChildren(parent, normalizedElt, mode === "outer" ? oldElt : null, oldElt.nextSibling)
+  morphChildren(
+    parent,
+    normalizedElt,
+    mode === "outer" ? oldElt : null,
+    oldElt.nextSibling,
+  )
 
   ctxPantry.remove()
 }
@@ -314,7 +338,10 @@ const morphChildren = (
   insertionPoint: Node | null = null,
   endPoint: Node | null = null,
 ): void => {
-  if (oldParent instanceof HTMLTemplateElement && newParent instanceof HTMLTemplateElement) {
+  if (
+    oldParent instanceof HTMLTemplateElement &&
+    newParent instanceof HTMLTemplateElement
+  ) {
     oldParent = oldParent.content as unknown as Element
     newParent = newParent.content as unknown as Element
   }
@@ -445,10 +472,13 @@ const findBestMatch = (
 const isSoftMatch = (oldNode: Node, newNode: Node): boolean =>
   oldNode.nodeType === newNode.nodeType &&
   (oldNode as Element).tagName === (newNode as Element).tagName &&
-  (!(oldNode as Element).id || (oldNode as Element).id === (newNode as Element).id)
+  (!(oldNode as Element).id ||
+    (oldNode as Element).id === (newNode as Element).id)
 
 const removeNode = (node: Node): void => {
-  ctxIdMap.has(node) ? moveBefore(ctxPantry, node, null) : node.parentNode?.removeChild(node)
+  ctxIdMap.has(node)
+    ? moveBefore(ctxPantry, node, null)
+    : node.parentNode?.removeChild(node)
 }
 
 const moveBefore = (parentNode: Node, node: Node, after: Node | null): void => {
@@ -471,17 +501,28 @@ const morphNode = (oldNode: Node, newNode: Node): Node => {
     const oldElt = oldNode as Element
     const newElt = newNode as Element
     const shouldScopeChildren = oldElt.hasAttribute("data-scope-children")
-    if (oldElt.hasAttribute(aliasedIgnoreMorph) && newElt.hasAttribute(aliasedIgnoreMorph)) {
+    if (
+      oldElt.hasAttribute(aliasedIgnoreMorph) &&
+      newElt.hasAttribute(aliasedIgnoreMorph)
+    ) {
       return oldNode
     }
 
     const preserveAttrs = (
       (newNode as HTMLElement).getAttribute(aliasedPreserveAttr) ?? ""
-    ).split(" ")
+    )
+      .split(" ")
 
-    const updateElementProp = (oldElt: Element, newElt: Element, name: string): boolean => {
+    const updateElementProp = (
+      oldElt: Element,
+      newElt: Element,
+      name: string,
+    ): boolean => {
       const newEltHasAttr = newElt.hasAttribute(name)
-      if (oldElt.hasAttribute(name) !== newEltHasAttr && !preserveAttrs.includes(name)) {
+      if (
+        oldElt.hasAttribute(name) !== newEltHasAttr &&
+        !preserveAttrs.includes(name)
+      ) {
         ;(oldElt as any)[name] = newEltHasAttr
         return true
       }
@@ -495,26 +536,38 @@ const morphNode = (oldNode: Node, newNode: Node): Node => {
       newElt.type !== "file"
     ) {
       const newValue = newElt.getAttribute("value")
-      if (oldElt.getAttribute("value") !== newValue && !preserveAttrs.includes("value")) {
+      if (
+        oldElt.getAttribute("value") !== newValue &&
+        !preserveAttrs.includes("value")
+      ) {
         oldElt.value = newValue ?? ""
         shouldDispatchPropChangeEvent = true
       }
       shouldDispatchPropChangeEvent =
-        updateElementProp(oldElt, newElt, "checked") || shouldDispatchPropChangeEvent
+        updateElementProp(oldElt, newElt, "checked") ||
+        shouldDispatchPropChangeEvent
       updateElementProp(oldElt, newElt, "disabled")
-    } else if (oldElt instanceof HTMLTextAreaElement && newElt instanceof HTMLTextAreaElement) {
+    } else if (
+      oldElt instanceof HTMLTextAreaElement &&
+      newElt instanceof HTMLTextAreaElement
+    ) {
       const newValue = newElt.value
       if (oldElt.defaultValue !== newValue) {
         oldElt.value = newValue
         shouldDispatchPropChangeEvent = true
       }
-    } else if (oldElt instanceof HTMLOptionElement && newElt instanceof HTMLOptionElement) {
+    } else if (
+      oldElt instanceof HTMLOptionElement && newElt instanceof HTMLOptionElement
+    ) {
       shouldDispatchPropChangeEvent =
-        updateElementProp(oldElt, newElt, "selected") || shouldDispatchPropChangeEvent
+        updateElementProp(oldElt, newElt, "selected") ||
+        shouldDispatchPropChangeEvent
     }
 
     for (const { name, value } of newElt.attributes) {
-      if (oldElt.getAttribute(name) !== value && !preserveAttrs.includes(name)) {
+      if (
+        oldElt.getAttribute(name) !== value && !preserveAttrs.includes(name)
+      ) {
         oldElt.setAttribute(name, value)
       }
     }
@@ -526,22 +579,31 @@ const morphNode = (oldNode: Node, newNode: Node): Node => {
     }
 
     if (shouldDispatchPropChangeEvent) {
-      const dispatchElt = oldElt instanceof HTMLOptionElement ? oldElt.closest("select") : oldElt
-      dispatchElt?.dispatchEvent(new Event(DATASTAR_PROP_CHANGE_EVENT, { bubbles: true }))
+      const dispatchElt = oldElt instanceof HTMLOptionElement
+        ? oldElt.closest("select")
+        : oldElt
+      dispatchElt?.dispatchEvent(
+        new Event(DATASTAR_PROP_CHANGE_EVENT, { bubbles: true }),
+      )
     }
 
     if (shouldScopeChildren && !oldElt.hasAttribute("data-scope-children")) {
       oldElt.setAttribute("data-scope-children", "")
     }
 
-    if (oldElt instanceof HTMLTemplateElement && newElt instanceof HTMLTemplateElement) {
+    if (
+      oldElt instanceof HTMLTemplateElement &&
+      newElt instanceof HTMLTemplateElement
+    ) {
       oldElt.innerHTML = newElt.innerHTML
     } else if (!oldElt.isEqualNode(newElt)) {
       morphChildren(oldElt, newElt)
     }
 
     if (shouldScopeChildren) {
-      oldElt.dispatchEvent(new CustomEvent(DATASTAR_SCOPE_CHILDREN_EVENT, { bubbles: false }))
+      oldElt.dispatchEvent(
+        new CustomEvent(DATASTAR_SCOPE_CHILDREN_EVENT, { bubbles: false }),
+      )
     }
   }
 

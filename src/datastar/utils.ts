@@ -1,10 +1,17 @@
-import type { EventCallbackHandler, HTMLOrSVG, Modifiers, Paths } from "./engine.ts"
+import type {
+  EventCallbackHandler,
+  HTMLOrSVG,
+  Modifiers,
+  Paths,
+} from "./engine.ts"
 
 /*********
  * dom.ts
  *********/
 export const isHTMLOrSVG = (el: Node): el is HTMLOrSVG =>
-  el instanceof HTMLElement || el instanceof SVGElement || el instanceof MathMLElement
+  el instanceof HTMLElement ||
+  el instanceof SVGElement ||
+  el instanceof MathMLElement
 
 /*********
  * math.ts
@@ -13,12 +20,22 @@ export const clamp = (value: number, min: number, max: number): number => {
   return Math.max(min, Math.min(max, value))
 }
 
-export const lerp = (min: number, max: number, t: number, clamped = true): number => {
+export const lerp = (
+  min: number,
+  max: number,
+  t: number,
+  clamped = true,
+): number => {
   const v = min + (max - min) * t
   return clamped ? clamp(v, min, max) : v
 }
 
-export const inverseLerp = (min: number, max: number, value: number, clamped = true): number => {
+export const inverseLerp = (
+  min: number,
+  max: number,
+  value: number,
+  clamped = true,
+): number => {
   if (value < min) return 0
   if (value > max) return 1
   const v = (value - min) / (max - min)
@@ -51,14 +68,16 @@ export const kebab = (str: string): string =>
     .replace(/[\s_]+/g, "-")
     .toLowerCase()
 
-export const camel = (str: string): string => kebab(str).replace(/-./g, (x) => x[1].toUpperCase())
+export const camel = (str: string): string =>
+  kebab(str).replace(/-./g, (x) => x[1].toUpperCase())
 
 export const snake = (str: string): string => kebab(str).replace(/-/g, "_")
 
 export const pascal = (str: string): string =>
   camel(str).replace(/(^.|(?<=\.).)/g, (x) => x[0].toUpperCase())
 
-export const title = (str: string): string => str.replace(/\b\w/g, (char) => char.toUpperCase())
+export const title = (str: string): string =>
+  str.replace(/\b\w/g, (char) => char.toUpperCase())
 
 export const jsStrToObject = (raw: string) => {
   try {
@@ -74,7 +93,11 @@ const caseFns: Record<string, (s: string) => string> = {
   pascal: (str) => str[0].toUpperCase() + caseFns.camel(str.slice(1)),
 }
 
-export const modifyCasing = (str: string, mods: Modifiers, defaultCase = "camel"): string => {
+export const modifyCasing = (
+  str: string,
+  mods: Modifiers,
+  defaultCase = "camel",
+): string => {
   for (const c of mods.get("case") || [defaultCase]) {
     str = caseFns[c]?.(str) || str
   }
@@ -102,7 +125,11 @@ export const tagToMs = (args: Set<string>) => {
   return 0
 }
 
-export const tagHas = (tags: Set<string>, tag: string, defaultValue = false) => {
+export const tagHas = (
+  tags: Set<string>,
+  tag: string,
+  defaultValue = false,
+) => {
   if (!tags) return defaultValue
   return tags.has(tag.toLowerCase())
 }
@@ -129,7 +156,8 @@ export const hasOwn: (obj: object, prop: PropertyKey) => boolean =
 export const isPojo = (obj: any): obj is Record<string, any> =>
   obj !== null &&
   typeof obj === "object" &&
-  (Object.getPrototypeOf(obj) === Object.prototype || Object.getPrototypeOf(obj) === null)
+  (Object.getPrototypeOf(obj) === Object.prototype ||
+    Object.getPrototypeOf(obj) === null)
 
 export const isEmpty = (obj: Record<string, any>): boolean => {
   for (const prop in obj) {
@@ -140,7 +168,10 @@ export const isEmpty = (obj: Record<string, any>): boolean => {
   return true
 }
 
-export const updateLeaves = (obj: Record<string, any>, fn: (oldValue: any) => any) => {
+export const updateLeaves = (
+  obj: Record<string, any>,
+  fn: (oldValue: any) => any,
+) => {
   for (const key in obj) {
     const val = obj[key]
     if (isPojo(val) || Array.isArray(val)) {
@@ -165,7 +196,10 @@ export const pathToObj = (paths: Paths): Record<string, any> => {
 /*********
  * timing.ts
  *********/
-export const delay = (callback: EventCallbackHandler, wait: number): EventCallbackHandler => {
+export const delay = (
+  callback: EventCallbackHandler,
+  wait: number,
+): EventCallbackHandler => {
   return (...args: Array<any>) => {
     setTimeout(() => {
       callback(...args)
@@ -245,7 +279,8 @@ export const modifyViewTransition = (
 ): EventCallbackHandler => {
   if (mods.has("viewtransition") && supportsViewTransitions) {
     const cb = callback
-    callback = (...args: Array<any>) => document.startViewTransition(() => cb(...args))
+    callback = (...args: Array<any>) =>
+      document.startViewTransition(() => cb(...args))
   }
 
   return callback

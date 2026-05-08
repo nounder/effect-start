@@ -21,10 +21,12 @@ export interface DialectConfig {
 
 export type SqlRow = Record<string, unknown>
 
-export type SqlEffect<A extends object = SqlRow> = Effect.Effect<ReadonlyArray<A>, SqlError> & {
-  readonly sql: string
-  readonly parameters: ReadonlyArray<unknown>
-}
+export type SqlEffect<A extends object = SqlRow> =
+  & Effect.Effect<ReadonlyArray<A>, SqlError>
+  & {
+    readonly sql: string
+    readonly parameters: ReadonlyArray<unknown>
+  }
 
 export interface Connection {
   /**
@@ -81,10 +83,14 @@ export interface SqlClient extends Connection {
   /**
    * Access the underlying database driver directly
    */
-  readonly use: <T>(fn: (driver: any) => Promise<T> | T) => Effect.Effect<T, SqlError>
+  readonly use: <T>(
+    fn: (driver: any) => Promise<T> | T,
+  ) => Effect.Effect<T, SqlError>
 }
 
-export const SqlClient: Context.Tag<SqlClient, SqlClient> = Context.GenericTag<SqlClient>(
+export const SqlClient: Context.Tag<SqlClient, SqlClient> = Context.GenericTag<
+  SqlClient
+>(
   "effect-start/Sql/SqlClient",
 )
 
@@ -107,7 +113,10 @@ export function make(options: MakeOptions): SqlClient {
   const trace = makeTraceOptions(options.spanAttributes, options.dialect)
   const baseQuery = withExecuteSpan(options.query, trace)
   const baseUnsafe = withUnsafeExecuteSpan(options.unsafe, trace)
-  const withTransaction = withTransactionSpan(options.withTransaction, trace.spanAttributes)
+  const withTransaction = withTransactionSpan(
+    options.withTransaction,
+    trace.spanAttributes,
+  )
 
   const query: TaggedQuery = <A extends object = SqlRow>(
     strings: TemplateStringsArray,
@@ -177,15 +186,16 @@ function dispatchCallable(query: TaggedQuery) {
     if (
       Array.isArray(first) &&
       (first.length === 0 || typeof first[0] !== "object" || first[0] === null)
-    )
+    ) {
       return makeList(first)
+    }
     return makeValues(first, rest[0])
   }
 }
 
 /**
  * Interpolate fragments into a SQL string and parameter array.
- **/
+ */
 export function interpolate(
   dialect: DialectConfig,
   strings: TemplateStringsArray,
@@ -212,9 +222,15 @@ export function interpolate(
       if (tag === "Identifier") parts.push(dialect.identifier(frag.name))
       else if (tag === "List") parts.push(`(${pushItems(frag.items)})`)
       else if (tag === "Values") {
-        const cols = frag.columns.map((c) => dialect.identifier(c as string)).join(", ")
-        const rows = frag.value
-          .map((row) => `(${pushItems(frag.columns.map((c) => row[c as string]))})`)
+        const cols = frag
+          .columns
+          .map((c) => dialect.identifier(c as string))
+          .join(", ")
+        const rows = frag
+          .value
+          .map((row) =>
+            `(${pushItems(frag.columns.map((c) => row[c as string]))})`
+          )
           .join(", ")
         parts.push(`(${cols}) VALUES ${rows}`)
       }
@@ -233,12 +249,12 @@ export function hasFragments(values: Array<unknown>): boolean {
 
 export const postgresDialect: DialectConfig = {
   placeholder: (i) => `$${i}`,
-  identifier: (name) => `"${name.replace(/"/g, '""')}"`,
+  identifier: (name) => `"${name.replace(/"/g, "\"\"")}"`,
 }
 
 export const sqliteDialect: DialectConfig = {
   placeholder: () => "?",
-  identifier: (name) => `"${name.replace(/"/g, '""')}"`,
+  identifier: (name) => `"${name.replace(/"/g, "\"\"")}"`,
 }
 
 export const mssqlDialect: DialectConfig = {
@@ -251,20 +267,28 @@ const SqlFragmentTag = Symbol.for("effect-start/Sql/SqlFragment")
 type SqlFragment =
   | { readonly [SqlFragmentTag]: "Identifier"; readonly name: string }
   | {
-      readonly [SqlFragmentTag]: "Values"
-      readonly value: ReadonlyArray<Record<string, unknown>>
-      readonly columns: ReadonlyArray<string>
-    }
-  | { readonly [SqlFragmentTag]: "List"; readonly items: ReadonlyArray<unknown> }
+    readonly [SqlFragmentTag]: "Values"
+    readonly value: ReadonlyArray<Record<string, unknown>>
+    readonly columns: ReadonlyArray<string>
+  }
+  | {
+    readonly [SqlFragmentTag]: "List"
+    readonly items: ReadonlyArray<unknown>
+  }
 
-const makeIdentifier = (name: string): SqlFragment => ({ [SqlFragmentTag]: "Identifier", name })
+const makeIdentifier = (name: string): SqlFragment => ({
+  [SqlFragmentTag]: "Identifier",
+  name,
+})
 
 const makeValues = <T extends Record<string, unknown>>(
   obj: T | ReadonlyArray<T>,
   columns?: Array<keyof T & string>,
 ): SqlFragment => {
   const items = Array.isArray(obj) ? obj : [obj]
-  const cols = columns && columns.length > 0 ? columns : (Object.keys(items[0]) as Array<string>)
+  const cols = columns && columns.length > 0
+    ? columns
+    : (Object.keys(items[0]) as Array<string>)
   return { [SqlFragmentTag]: "Values", value: items, columns: cols }
 }
 
@@ -283,64 +307,63 @@ const currentTransactionDepth = GlobalValue.globalValue(
   () => FiberRef.unsafeMake(0),
 )
 
-const withExecuteSpan =
-  (
-    query: TaggedQuery,
-    options: {
-      readonly spanAttributes: Record<string, unknown>
-      readonly dialect: DialectConfig
-    },
-  ): TaggedQuery =>
-  <A extends object = SqlRow>(
-    strings: TemplateStringsArray,
-    ...values: Array<unknown>
-  ): Effect.Effect<ReadonlyArray<A>, SqlError> => {
-    const rendered = renderTemplate(options.dialect, strings, values)
-    return query<A>(strings, ...values).pipe(
-      Effect.withSpan("sql.execute", {
-        kind: "client",
-        attributes: {
-          ...options.spanAttributes,
-          ...parameterAttributes(rendered.parameters),
-          "db.operation.name": "execute",
-          "db.query.text": rendered.sql,
-        },
-        captureStackTrace: false,
-      }),
-    )
-  }
+const withExecuteSpan = (
+  query: TaggedQuery,
+  options: {
+    readonly spanAttributes: Record<string, unknown>
+    readonly dialect: DialectConfig
+  },
+): TaggedQuery =>
+<A extends object = SqlRow>(
+  strings: TemplateStringsArray,
+  ...values: Array<unknown>
+): Effect.Effect<ReadonlyArray<A>, SqlError> => {
+  const rendered = renderTemplate(options.dialect, strings, values)
+  return query<A>(strings, ...values).pipe(
+    Effect.withSpan("sql.execute", {
+      kind: "client",
+      attributes: {
+        ...options.spanAttributes,
+        ...parameterAttributes(rendered.parameters),
+        "db.operation.name": "execute",
+        "db.query.text": rendered.sql,
+      },
+      captureStackTrace: false,
+    }),
+  )
+}
 
-const withUnsafeExecuteSpan =
-  (
-    unsafe: UnsafeQuery,
-    options: {
-      readonly spanAttributes: Record<string, unknown>
-    },
-  ): UnsafeQuery =>
-  <A extends object = SqlRow>(
-    query: string,
-    values?: Array<unknown>,
-  ): Effect.Effect<ReadonlyArray<A>, SqlError> =>
-    unsafe<A>(query, values).pipe(
-      Effect.withSpan("sql.execute", {
-        kind: "client",
-        attributes: {
-          ...options.spanAttributes,
-          ...parameterAttributes(values ?? []),
-          "db.operation.name": "executeRaw",
-          "db.query.text": query,
-        },
-        captureStackTrace: false,
-      }),
-    )
+const withUnsafeExecuteSpan = (
+  unsafe: UnsafeQuery,
+  options: {
+    readonly spanAttributes: Record<string, unknown>
+  },
+): UnsafeQuery =>
+<A extends object = SqlRow>(
+  query: string,
+  values?: Array<unknown>,
+): Effect.Effect<ReadonlyArray<A>, SqlError> =>
+  unsafe<A>(query, values).pipe(
+    Effect.withSpan("sql.execute", {
+      kind: "client",
+      attributes: {
+        ...options.spanAttributes,
+        ...parameterAttributes(values ?? []),
+        "db.operation.name": "executeRaw",
+        "db.query.text": query,
+      },
+      captureStackTrace: false,
+    }),
+  )
 
-const withTransactionSpan =
-  (
-    withTransaction: SqlClient["withTransaction"],
-    spanAttributes: Record<string, unknown>,
-  ): SqlClient["withTransaction"] =>
-  <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, SqlError | E, R> =>
-    Effect.flatMap(FiberRef.get(currentTransactionDepth), (depth) =>
+const withTransactionSpan = (
+  withTransaction: SqlClient["withTransaction"],
+  spanAttributes: Record<string, unknown>,
+): SqlClient["withTransaction"] =>
+<A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, SqlError | E, R> =>
+  Effect.flatMap(
+    FiberRef.get(currentTransactionDepth),
+    (depth) =>
       Effect.useSpan(
         "sql.transaction",
         {
@@ -352,7 +375,11 @@ const withTransactionSpan =
           Effect.flatMap(
             Effect.exit(
               Effect.withParentSpan(
-                Effect.locally(withTransaction(self), currentTransactionDepth, depth + 1),
+                Effect.locally(
+                  withTransaction(self),
+                  currentTransactionDepth,
+                  depth + 1,
+                ),
                 span,
               ),
             ),
@@ -367,14 +394,13 @@ const withTransactionSpan =
                           : "db.transaction.savepoint"
                         : "db.transaction.rollback",
                       timestamp,
-                    ),
+                    )
                   ),
                   exit,
-                ),
-              ),
+                )),
           ),
       ),
-    )
+  )
 
 const makeTraceOptions = (
   spanAttributes: ReadonlyArray<readonly [string, unknown]> | undefined,
@@ -409,7 +435,9 @@ const renderTemplateSql = (
   values: Array<unknown>,
 ): string => renderTemplate(dialect, strings, values).sql
 
-const parameterAttributes = (values: ReadonlyArray<unknown>): Record<string, unknown> => {
+const parameterAttributes = (
+  values: ReadonlyArray<unknown>,
+): Record<string, unknown> => {
   const attrs: Record<string, unknown> = {}
   for (let i = 0; i < values.length; i++) {
     attrs[`db.query.parameter.${i}`] = renderParameter(values[i])

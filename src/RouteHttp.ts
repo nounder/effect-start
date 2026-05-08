@@ -7,16 +7,16 @@ import * as Option from "effect/Option"
 import type * as ParseResult from "effect/ParseResult"
 import * as Runtime from "effect/Runtime"
 import * as Stream from "effect/Stream"
-import * as ContentNegotiation from "./internal/ContentNegotiation.ts"
 import * as Development from "./Development.ts"
 import * as Entity from "./Entity.ts"
+import * as ContentNegotiation from "./internal/ContentNegotiation.ts"
 import type * as Http from "./internal/Http.ts"
+import * as StreamExtra from "./internal/StreamExtra.ts"
 import * as Route from "./Route.ts"
 import type * as RouteBody from "./RouteBody.ts"
 import * as RouteHttpTracer from "./RouteHttpTracer.ts"
-import type * as RouteMount from "./RouteMount.ts"
 import * as RouteMap from "./RouteMap.ts"
-import * as StreamExtra from "./internal/StreamExtra.ts"
+import type * as RouteMount from "./RouteMount.ts"
 
 type UnboundedRouteWithMethod = Route.Route.With<{
   method: RouteMount.RouteMount.Method
@@ -84,10 +84,12 @@ function streamResponse(
   const byteStream = (stream as Stream.Stream<unknown, unknown, never>).pipe(
     Stream.map(
       (chunk): Uint8Array =>
-        typeof chunk === "string" ? encoder.encode(chunk) : (chunk as Uint8Array),
+        typeof chunk === "string"
+          ? encoder.encode(chunk)
+          : (chunk as Uint8Array),
     ),
     Stream.catchAll((error) =>
-      Stream.fail(error instanceof Error ? error : new Error(String(error))),
+      Stream.fail(error instanceof Error ? error : new Error(String(error)))
     ),
   )
   return new Response(Stream.toReadableStreamRuntime(byteStream, runtime), {
@@ -96,7 +98,10 @@ function streamResponse(
   })
 }
 
-function toHeaders(entityHeaders: Entity.Headers, contentType: string): globalThis.Headers {
+function toHeaders(
+  entityHeaders: Entity.Headers,
+  contentType: string,
+): globalThis.Headers {
   const headers = new Headers()
   for (const key in entityHeaders) {
     const value = entityHeaders[key]
@@ -165,7 +170,9 @@ function determineSelectedFormat(
     .filter((f): f is Exclude<RouteBody.Format, "*"> => Boolean(f) && f !== "*")
 
   const uniqueFormats = [...new Set(formats)]
-  const mediaTypes = uniqueFormats.map((f) => formatToMediaType[f]).filter(Boolean)
+  const mediaTypes = uniqueFormats.map((f) => formatToMediaType[f]).filter(
+    Boolean,
+  )
 
   if (mediaTypes.length === 0) {
     return undefined
@@ -220,7 +227,9 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
           }
 
           return resolve(
-            respondError({ status: 405, message: "method not allowed" }, { allow: allowedMethods }),
+            respondError({ status: 405, message: "method not allowed" }, {
+              allow: allowedMethods,
+            }),
           )
         }
         const selectedFormat = determineSelectedFormat(accept, matchingRoutes)
@@ -235,8 +244,14 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
         const hasSpecificFormatRoutes = specificFormats.size > 0
         const varyAccept = specificFormats.size > 1
 
-        if (selectedFormat === undefined && hasSpecificFormatRoutes && !hasWildcardFormatRoutes) {
-          return resolve(respondError({ status: 406, message: "not acceptable" }))
+        if (
+          selectedFormat === undefined &&
+          hasSpecificFormatRoutes &&
+          !hasWildcardFormatRoutes
+        ) {
+          return resolve(
+            respondError({ status: 406, message: "not acceptable" }),
+          )
         }
 
         const createChain = (): Effect.Effect<Entity.Entity<any>, any, any> => {
@@ -245,7 +260,9 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
           const runNext = (): Effect.Effect<Entity.Entity<any>, any, any> => {
             if (index >= matchingRoutes.length) {
               return Effect.succeed(
-                Entity.make({ status: 404, message: "route not found" }, { status: 404 }),
+                Entity.make({ status: 404, message: "route not found" }, {
+                  status: 404,
+                }),
               )
             }
 
@@ -258,7 +275,7 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
               return runNext()
             }
 
-            return Effect.gen(function* () {
+            return Effect.gen(function*() {
               const ref = yield* Route.RouteContext
               ref.context = { ...ref.context, ...descriptor }
               const nextEntity = Entity.effect(Effect.suspend(runNext))
@@ -270,90 +287,114 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
         }
 
         // All routes in a chain share the same path (RouteMap groups them).
-        const routePath = Route.descriptor<{ path?: string }>(matchingRoutes[0]).path
+        const routePath = Route
+          .descriptor<{ path?: string }>(matchingRoutes[0])
+          .path
 
-        const effect = Effect.withFiberRuntime<Response, unknown, R>((fiber) => {
-          const tracerDisabled =
-            !fiber.getFiberRef(FiberRef.currentTracerEnabled) ||
-            fiber.getFiberRef(RouteHttpTracer.currentTracerDisabledWhen)(request)
-
-          const url = new URL(request.url)
-
-          const innerEffect = Effect.gen(function* () {
-            const result = yield* createChain()
-
-            const entity = Entity.isEntity(result) ? result : Entity.make(result, { status: 200 })
-
-            if (entity.status === 404 && entity.body === undefined) {
-              return respondError({ status: 406, message: "not acceptable" })
-            }
-
-            const response = yield* toResponse(entity, selectedFormat, runtime)
-            if (varyAccept) {
-              response.headers.set("vary", "Accept")
-            }
-            return response
-          }).pipe(
-            Effect.provideService(Route.Request, request),
-            Effect.provideService(Route.RouteContext, { context: {} }),
-          )
-
-          if (tracerDisabled) {
-            return innerEffect
-          }
-
-          const spanNameGenerator = fiber.getFiberRef(RouteHttpTracer.currentSpanNameGenerator)
-
-          return Effect.useSpan(
-            spanNameGenerator(request),
-            {
-              parent: Option.getOrUndefined(RouteHttpTracer.parentSpanFromHeaders(request.headers)),
-              kind: "server",
-              captureStackTrace: false,
-            },
-            (span) => {
-              span.attribute("http.request.method", request.method)
-              span.attribute("url.full", url.toString())
-              span.attribute("url.path", url.pathname)
-              if (routePath !== undefined) {
-                span.attribute("http.route", routePath)
-              }
-              const query = url.search.slice(1)
-              if (query !== "") {
-                span.attribute("url.query", query)
-              }
-              span.attribute("url.scheme", url.protocol.slice(0, -1))
-
-              const userAgent = request.headers.get("user-agent")
-              if (userAgent !== null) {
-                span.attribute("user_agent.original", userAgent)
-              }
-
-              return Effect.flatMap(
-                Effect.exit(Effect.withParentSpan(innerEffect, span)),
-                (exit) => {
-                  if (exit._tag === "Success") {
-                    span.attribute("http.response.status_code", exit.value.status)
-                  }
-                  return exit
-                },
+        const effect = Effect.withFiberRuntime<Response, unknown, R>(
+          (fiber) => {
+            const tracerDisabled = !fiber
+              .getFiberRef(FiberRef.currentTracerEnabled) ||
+              fiber.getFiberRef(RouteHttpTracer.currentTracerDisabledWhen)(
+                request,
               )
-            },
-          )
-        })
+
+            const url = new URL(request.url)
+
+            const innerEffect = Effect
+              .gen(function*() {
+                const result = yield* createChain()
+
+                const entity = Entity.isEntity(result)
+                  ? result
+                  : Entity.make(result, { status: 200 })
+
+                if (entity.status === 404 && entity.body === undefined) {
+                  return respondError({
+                    status: 406,
+                    message: "not acceptable",
+                  })
+                }
+
+                const response = yield* toResponse(
+                  entity,
+                  selectedFormat,
+                  runtime,
+                )
+                if (varyAccept) {
+                  response.headers.set("vary", "Accept")
+                }
+                return response
+              })
+              .pipe(
+                Effect.provideService(Route.Request, request),
+                Effect.provideService(Route.RouteContext, { context: {} }),
+              )
+
+            if (tracerDisabled) {
+              return innerEffect
+            }
+
+            const spanNameGenerator = fiber.getFiberRef(
+              RouteHttpTracer.currentSpanNameGenerator,
+            )
+
+            return Effect.useSpan(
+              spanNameGenerator(request),
+              {
+                parent: Option.getOrUndefined(
+                  RouteHttpTracer.parentSpanFromHeaders(request.headers),
+                ),
+                kind: "server",
+                captureStackTrace: false,
+              },
+              (span) => {
+                span.attribute("http.request.method", request.method)
+                span.attribute("url.full", url.toString())
+                span.attribute("url.path", url.pathname)
+                if (routePath !== undefined) {
+                  span.attribute("http.route", routePath)
+                }
+                const query = url.search.slice(1)
+                if (query !== "") {
+                  span.attribute("url.query", query)
+                }
+                span.attribute("url.scheme", url.protocol.slice(0, -1))
+
+                const userAgent = request.headers.get("user-agent")
+                if (userAgent !== null) {
+                  span.attribute("user_agent.original", userAgent)
+                }
+
+                return Effect.flatMap(
+                  Effect.exit(Effect.withParentSpan(innerEffect, span)),
+                  (exit) => {
+                    if (exit._tag === "Success") {
+                      span.attribute(
+                        "http.response.status_code",
+                        exit.value.status,
+                      )
+                    }
+                    return exit
+                  },
+                )
+              },
+            )
+          },
+        )
 
         const fiber = runFork(
           effect.pipe(
             Effect.scoped,
             Effect.catchAllCause((cause) =>
-              Effect.gen(function* () {
+              Effect.gen(function*() {
                 yield* Effect.logError(cause)
                 const status = getStatusFromCause(cause)
                 const message = inDevelopment
                   ? Cause.pretty(cause, { renderErrorCause: true })
                   : "Internal Server Error"
                 return respondError({ status, message })
-              }),
+              })
             ),
           ),
         )
@@ -366,17 +407,23 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
           { once: true },
         )
 
-        const resolveForMethod =
-          method === "HEAD"
-            ? (response: Response) =>
-                resolve(new Response(null, { status: response.status, headers: response.headers }))
-            : resolve
+        const resolveForMethod = method === "HEAD"
+          ? (response: Response) =>
+            resolve(
+              new Response(null, {
+                status: response.status,
+                headers: response.headers,
+              }),
+            )
+          : resolve
 
         fiber.addObserver((exit) => {
           if (exit._tag === "Success") {
             resolveForMethod(exit.value)
           } else if (isClientAbort(exit.cause)) {
-            resolve(respondError({ status: 499, message: "client closed request" }))
+            resolve(
+              respondError({ status: 499, message: "client closed request" }),
+            )
           } else {
             const status = getStatusFromCause(exit.cause)
             const message = inDevelopment
@@ -389,8 +436,9 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
   }
 }
 
-export const toWebHandler: (routes: Iterable<UnboundedRouteWithMethod>) => Http.WebHandler =
-  toWebHandlerRuntime(Runtime.defaultRuntime)
+export const toWebHandler: (
+  routes: Iterable<UnboundedRouteWithMethod>,
+) => Http.WebHandler = toWebHandlerRuntime(Runtime.defaultRuntime)
 
 export function* walkHandles(
   map: RouteMap.RouteMap,

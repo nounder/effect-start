@@ -1,4 +1,4 @@
-import { type BunPlugin, type Import } from "bun"
+import type { BunPlugin, Import } from "bun"
 import * as NPath from "node:path"
 
 export type ImportMap = ReadonlyMap<string, Array<Import>>
@@ -33,7 +33,9 @@ export const make = (
           filter: /\.(ts|js)x?$/,
         },
         async (args) => {
-          if (!opts.includeNodeModules && args.path.includes("/node_modules/")) {
+          if (
+            !opts.includeNodeModules && args.path.includes("/node_modules/")
+          ) {
             return undefined
           }
 
@@ -55,8 +57,11 @@ export const make = (
                   : NPath.relative(baseDir, absoluteImportPath),
               }
             })
-            foundImports.set(NPath.relative(baseDir, args.path), resolvedImports)
-          } catch (e) {}
+            foundImports.set(
+              NPath.relative(baseDir, args.path),
+              resolvedImports,
+            )
+          } catch {}
 
           return undefined
         },
@@ -87,7 +92,9 @@ export const make = (
 
           // Emit JSON containing the stats of each import
           return {
-            contents: JSON.stringify(Object.fromEntries(foundImports.entries())),
+            contents: JSON.stringify(
+              Object.fromEntries(foundImports.entries()),
+            ),
             loader: "json",
           }
         },

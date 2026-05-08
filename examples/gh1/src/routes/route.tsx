@@ -1,21 +1,28 @@
 import { Route } from "effect-start"
 import * as Github from "../Github.ts"
-import { Layout, RepoListItem } from "../Ui.tsx"
+import * as Ui from "../Ui.tsx"
 
 export default Route.get(
-  Route.html(function* () {
+  Route.html(function*() {
     const trending = yield* Github.getTrending({ since: "weekly" })
     const repos = trending.items
 
     return (
-      <Layout>
+      <Ui.Layout>
         <div class="mb-8 pt-8 pb-4">
-          <h1 class="text-3xl font-bold mb-1">Explore</h1>
-          <p class="text-[#8b949e] text-base">Trending repositories this week</p>
+          <h1 class="text-3xl font-bold mb-1">
+            Explore
+          </h1>
+          <p class="text-[#8b949e] text-base">
+            Trending repositories this week
+          </p>
         </div>
 
         <div class="flex gap-2 mb-6 text-sm">
-          <a href="/" class="px-3 py-1 rounded-md bg-[#21262d] text-[#e6edf3] font-medium">
+          <a
+            href="/"
+            class="px-3 py-1 rounded-md bg-[#21262d] text-[#e6edf3] font-medium"
+          >
             Weekly
           </a>
           <a
@@ -35,9 +42,11 @@ export default Route.get(
         <div>
           {repos.map((r, i) => (
             <div class="flex items-start gap-3">
-              <span class="text-[#8b949e] text-sm mt-7 w-6 text-right shrink-0">{i + 1}</span>
+              <span class="text-[#8b949e] text-sm mt-7 w-6 text-right shrink-0">
+                {i + 1}
+              </span>
               <div class="flex-1">
-                <RepoListItem
+                <Ui.RepoListItem
                   owner={r.owner.login}
                   repo={r.name}
                   description={r.description}
@@ -51,7 +60,7 @@ export default Route.get(
             </div>
           ))}
         </div>
-      </Layout>
+      </Ui.Layout>
     )
   }),
 )

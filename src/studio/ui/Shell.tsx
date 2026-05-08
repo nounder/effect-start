@@ -11,7 +11,9 @@ export type NavTab =
 export function Sidebar(props: { prefix: string; active: NavTab }) {
   return (
     <div class="sidebar">
-      <div class="sidebar-title">Effect Studio</div>
+      <div class="sidebar-title">
+        Effect Studio
+      </div>
       <a
         href={`${props.prefix}/traces`}
         class={props.active === "traces" ? "nav-link active" : "nav-link"}
@@ -64,11 +66,15 @@ export function Sidebar(props: { prefix: string; active: NavTab }) {
   )
 }
 
-export function Shell(props: { prefix: string; active: NavTab; children: any }) {
+export function Shell(
+  props: { prefix: string; active: NavTab; children: any },
+) {
   return (
     <div class="shell">
       <Sidebar prefix={props.prefix} active={props.active} />
-      <div class="content">{props.children}</div>
+      <div class="content">
+        {props.children}
+      </div>
     </div>
   )
 }

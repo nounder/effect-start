@@ -25,7 +25,11 @@ export interface Command extends Pipeable.Pipeable {
   readonly args: ReadonlyArray<string>
   readonly options: CommandOptions
   [Symbol.iterator](): Effect.EffectGenerator<
-    Effect.Effect<ChildProcessHandle, System.SystemError, ChildProcessSpawner | Scope.Scope>
+    Effect.Effect<
+      ChildProcessHandle,
+      System.SystemError,
+      ChildProcessSpawner | Scope.Scope
+    >
   >
 }
 
@@ -48,11 +52,16 @@ const CommandProto = {
   },
 }
 
-export const isCommand = (u: unknown): u is Command => Predicate.hasProperty(u, TypeId)
+export const isCommand = (u: unknown): u is Command =>
+  Predicate.hasProperty(u, TypeId)
 
 export const make: {
   (command: string, options?: CommandOptions): Command
-  (command: string, args: ReadonlyArray<string>, options?: CommandOptions): Command
+  (
+    command: string,
+    args: ReadonlyArray<string>,
+    options?: CommandOptions,
+  ): Command
 } = (
   command: string,
   argsOrOptions?: ReadonlyArray<string> | CommandOptions,
@@ -116,22 +125,29 @@ export interface ChildProcessHandle {
   readonly pid: number
   readonly exitCode: Effect.Effect<number, System.SystemError>
   readonly isRunning: Effect.Effect<boolean, System.SystemError>
-  readonly kill: (options?: KillOptions) => Effect.Effect<void, System.SystemError>
+  readonly kill: (
+    options?: KillOptions,
+  ) => Effect.Effect<void, System.SystemError>
   readonly stdin: Sink.Sink<void, Uint8Array, never, System.SystemError>
   readonly stdout: Stream.Stream<Uint8Array, System.SystemError>
   readonly stderr: Stream.Stream<Uint8Array, System.SystemError>
 }
 
-export class ChildProcessSpawner extends Context.Tag("effect-start/ChildProcessSpawner")<
-  ChildProcessSpawner,
-  {
-    readonly spawn: (
-      command: Command,
-    ) => Effect.Effect<ChildProcessHandle, System.SystemError, Scope.Scope>
-  }
->() {}
+export class ChildProcessSpawner
+  extends Context.Tag("effect-start/ChildProcessSpawner")<
+    ChildProcessSpawner,
+    {
+      readonly spawn: (
+        command: Command,
+      ) => Effect.Effect<ChildProcessHandle, System.SystemError, Scope.Scope>
+    }
+  >()
+{}
 
 export const spawn = (
   command: Command,
-): Effect.Effect<ChildProcessHandle, System.SystemError, ChildProcessSpawner | Scope.Scope> =>
-  Effect.flatMap(ChildProcessSpawner, (spawner) => spawner.spawn(command))
+): Effect.Effect<
+  ChildProcessHandle,
+  System.SystemError,
+  ChildProcessSpawner | Scope.Scope
+> => Effect.flatMap(ChildProcessSpawner, (spawner) => spawner.spawn(command))

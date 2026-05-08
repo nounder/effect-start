@@ -1,15 +1,15 @@
 import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
+import type * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
+import type * as Fiber from "effect/Fiber"
 import * as FiberId from "effect/FiberId"
 import * as FiberRef from "effect/FiberRef"
 import * as HashMap from "effect/HashMap"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as PubSub from "effect/PubSub"
-import type * as Context from "effect/Context"
-import type * as Fiber from "effect/Fiber"
 import * as Supervisor from "effect/Supervisor"
 import * as SqlClient from "../sql/SqlClient.ts"
 import * as Studio from "./Studio.ts"
@@ -24,7 +24,9 @@ function safeSerialize(value: unknown, depth = 0): unknown {
   if (typeof value !== "object") return value
   if (value instanceof Date) return value.toISOString()
   if (value instanceof Error) return value.message
-  if (Array.isArray(value)) return value.slice(0, 20).map((v) => safeSerialize(v, depth + 1))
+  if (Array.isArray(value)) {
+    return value.slice(0, 20).map((v) => safeSerialize(v, depth + 1))
+  }
   const proto = Object.getPrototypeOf(value)
   if (proto !== null && proto !== Object.prototype) {
     if (typeof (value as any)._tag === "string") {
@@ -98,7 +100,9 @@ function extractMessage(error: unknown): string {
 }
 
 function extractProperties(error: unknown): Record<string, unknown> {
-  if (error === null || error === undefined || typeof error !== "object") return {}
+  if (error === null || error === undefined || typeof error !== "object") {
+    return {}
+  }
   const out: Record<string, unknown> = {}
   let count = 0
   for (const [k, v] of Object.entries(error)) {
@@ -124,7 +128,9 @@ function extractSpanName(error: unknown): string | undefined {
   return undefined
 }
 
-function extractDetails(cause: Cause.Cause<unknown>): Array<StudioStore.ErrorDetail> {
+function extractDetails(
+  cause: Cause.Cause<unknown>,
+): Array<StudioStore.ErrorDetail> {
   const details: Array<StudioStore.ErrorDetail> = []
 
   const failures = Chunk.toArray(Cause.failures(cause))
@@ -152,7 +158,10 @@ function extractDetails(cause: Cause.Cause<unknown>): Array<StudioStore.ErrorDet
   return details
 }
 
-function make(store: StudioStore.State, sql: SqlClient.SqlClient): Supervisor.Supervisor<void> {
+function make(
+  store: StudioStore.State,
+  sql: SqlClient.SqlClient,
+): Supervisor.Supervisor<void> {
   return new (class extends Supervisor.AbstractSupervisor<void> {
     value = Effect.void
 
@@ -163,20 +172,24 @@ function make(store: StudioStore.State, sql: SqlClient.SqlClient): Supervisor.Su
       fiber: Fiber.RuntimeFiber<A, E>,
     ) {
       const childId = FiberId.threadName(fiber.id())
-      const parentId = Option.isSome(parent) ? FiberId.threadName(parent.value.id()) : undefined
+      const parentId = Option.isSome(parent)
+        ? FiberId.threadName(parent.value.id())
+        : undefined
 
       const span = fiber.currentSpan
       const traceId = span
         ? (() => {
-            try {
-              return BigInt(span.traceId)
-            } catch {
-              return undefined
-            }
-          })()
+          try {
+            return BigInt(span.traceId)
+          } catch {
+            return undefined
+          }
+        })()
         : undefined
       const annotations: Record<string, unknown> = {}
-      const spanAnnotations = fiber.getFiberRef(FiberRef.currentTracerSpanAnnotations)
+      const spanAnnotations = fiber.getFiberRef(
+        FiberRef.currentTracerSpanAnnotations,
+      )
       HashMap.forEach(spanAnnotations, (value, key) => {
         annotations[key] = value
       })
@@ -219,11 +232,14 @@ function make(store: StudioStore.State, sql: SqlClient.SqlClient): Supervisor.Su
   })()
 }
 
-export const layer: Layer.Layer<never, never, Studio.Studio | SqlClient.SqlClient> =
-  Layer.unwrapEffect(
-    Effect.gen(function* () {
-      const studio = yield* Studio.Studio
-      const sql = yield* SqlClient.SqlClient
-      return Supervisor.addSupervisor(make(studio.store, sql))
-    }),
-  )
+export const layer: Layer.Layer<
+  never,
+  never,
+  Studio.Studio | SqlClient.SqlClient
+> = Layer.unwrapEffect(
+  Effect.gen(function*() {
+    const studio = yield* Studio.Studio
+    const sql = yield* SqlClient.SqlClient
+    return Supervisor.addSupervisor(make(studio.store, sql))
+  }),
+)

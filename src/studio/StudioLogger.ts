@@ -43,10 +43,13 @@ const make = (store: StudioStore.State, sql: SqlClient.SqlClient) =>
       }
       StudioStore.runWrite(
         sql,
-        Effect.zipRight(StudioStore.insertLog(log), StudioStore.evict("Log", store.logCapacity)),
+        Effect.zipRight(
+          StudioStore.insertLog(log),
+          StudioStore.evict("Log", store.logCapacity),
+        ),
       )
       Effect.runSync(PubSub.publish(store.events, { _tag: "Log", log }))
-    } catch (_) {}
+    } catch {}
   })
 
 export const layer: Layer.Layer<
@@ -54,7 +57,7 @@ export const layer: Layer.Layer<
   never,
   Studio.Studio | SqlClient.SqlClient
 > = Layer.unwrapEffect(
-  Effect.gen(function* () {
+  Effect.gen(function*() {
     const studio = yield* Studio.Studio
     const sql = yield* SqlClient.SqlClient
     return Logger.add(make(studio.store, sql))

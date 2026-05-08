@@ -7,7 +7,9 @@
  * @returns {el is HTMLElement | SVGElement | MathMLElement}
  */
 const isHTMLOrSVG = (el) =>
-  el instanceof HTMLElement || el instanceof SVGElement || el instanceof MathMLElement
+  el instanceof HTMLElement ||
+  el instanceof SVGElement ||
+  el instanceof MathMLElement
 
 const PROP_CHANGE_EVENT = "datastar-prop-change"
 const SCOPE_CHILDREN_EVENT = "datastar-scope-children"
@@ -80,7 +82,12 @@ export const morph = (oldElt, newContent, mode = "outer") => {
   populateIdMapWithTree(parent, oldIdElements)
   populateIdMapWithTree(normalizedElt, newIdElements)
 
-  morphChildren(parent, normalizedElt, mode === "outer" ? oldElt : null, oldElt.nextSibling)
+  morphChildren(
+    parent,
+    normalizedElt,
+    mode === "outer" ? oldElt : null,
+    oldElt.nextSibling,
+  )
 
   ctxPantry.remove()
 }
@@ -91,8 +98,16 @@ export const morph = (oldElt, newContent, mode = "outer") => {
  * @param {Node | null} [insertionPoint]
  * @param {Node | null} [endPoint]
  */
-const morphChildren = (oldParent, newParent, insertionPoint = null, endPoint = null) => {
-  if (oldParent instanceof HTMLTemplateElement && newParent instanceof HTMLTemplateElement) {
+const morphChildren = (
+  oldParent,
+  newParent,
+  insertionPoint = null,
+  endPoint = null,
+) => {
+  if (
+    oldParent instanceof HTMLTemplateElement &&
+    newParent instanceof HTMLTemplateElement
+  ) {
     oldParent = oldParent.content
     newParent = newParent.content
   }
@@ -236,7 +251,9 @@ const isSoftMatch = (oldNode, newNode) =>
  * @param {Node} node
  */
 const removeNode = (node) => {
-  ctxIdMap.has(node) ? moveBefore(ctxPantry, node, null) : node.parentNode?.removeChild(node)
+  ctxIdMap.has(node)
+    ? moveBefore(ctxPantry, node, null)
+    : node.parentNode?.removeChild(node)
 }
 
 /**
@@ -264,7 +281,10 @@ const morphNode = (oldNode, newNode) => {
     const oldElt = oldNode
     const newElt = newNode
     const shouldScopeChildren = oldElt.hasAttribute("data-scope-children")
-    if (oldElt.hasAttribute(IGNORE_MORPH_ATTR) && newElt.hasAttribute(IGNORE_MORPH_ATTR)) {
+    if (
+      oldElt.hasAttribute(IGNORE_MORPH_ATTR) &&
+      newElt.hasAttribute(IGNORE_MORPH_ATTR)
+    ) {
       return oldNode
     }
 
@@ -278,7 +298,10 @@ const morphNode = (oldNode, newNode) => {
      */
     const updateElementProp = (oldElt, newElt, name) => {
       const newEltHasAttr = newElt.hasAttribute(name)
-      if (oldElt.hasAttribute(name) !== newEltHasAttr && !preserveAttrs.includes(name)) {
+      if (
+        oldElt.hasAttribute(name) !== newEltHasAttr &&
+        !preserveAttrs.includes(name)
+      ) {
         oldElt[name] = newEltHasAttr
         return true
       }
@@ -292,26 +315,38 @@ const morphNode = (oldNode, newNode) => {
       newElt.type !== "file"
     ) {
       const newValue = newElt.getAttribute("value")
-      if (oldElt.getAttribute("value") !== newValue && !preserveAttrs.includes("value")) {
+      if (
+        oldElt.getAttribute("value") !== newValue &&
+        !preserveAttrs.includes("value")
+      ) {
         oldElt.value = newValue ?? ""
         shouldDispatchPropChangeEvent = true
       }
       shouldDispatchPropChangeEvent =
-        updateElementProp(oldElt, newElt, "checked") || shouldDispatchPropChangeEvent
+        updateElementProp(oldElt, newElt, "checked") ||
+        shouldDispatchPropChangeEvent
       updateElementProp(oldElt, newElt, "disabled")
-    } else if (oldElt instanceof HTMLTextAreaElement && newElt instanceof HTMLTextAreaElement) {
+    } else if (
+      oldElt instanceof HTMLTextAreaElement &&
+      newElt instanceof HTMLTextAreaElement
+    ) {
       const newValue = newElt.value
       if (oldElt.defaultValue !== newValue) {
         oldElt.value = newValue
         shouldDispatchPropChangeEvent = true
       }
-    } else if (oldElt instanceof HTMLOptionElement && newElt instanceof HTMLOptionElement) {
+    } else if (
+      oldElt instanceof HTMLOptionElement && newElt instanceof HTMLOptionElement
+    ) {
       shouldDispatchPropChangeEvent =
-        updateElementProp(oldElt, newElt, "selected") || shouldDispatchPropChangeEvent
+        updateElementProp(oldElt, newElt, "selected") ||
+        shouldDispatchPropChangeEvent
     }
 
     for (const { name, value } of newElt.attributes) {
-      if (oldElt.getAttribute(name) !== value && !preserveAttrs.includes(name)) {
+      if (
+        oldElt.getAttribute(name) !== value && !preserveAttrs.includes(name)
+      ) {
         oldElt.setAttribute(name, value)
       }
     }
@@ -323,22 +358,31 @@ const morphNode = (oldNode, newNode) => {
     }
 
     if (shouldDispatchPropChangeEvent) {
-      const dispatchElt = oldElt instanceof HTMLOptionElement ? oldElt.closest("select") : oldElt
-      dispatchElt?.dispatchEvent(new Event(PROP_CHANGE_EVENT, { bubbles: true }))
+      const dispatchElt = oldElt instanceof HTMLOptionElement
+        ? oldElt.closest("select")
+        : oldElt
+      dispatchElt?.dispatchEvent(
+        new Event(PROP_CHANGE_EVENT, { bubbles: true }),
+      )
     }
 
     if (shouldScopeChildren && !oldElt.hasAttribute("data-scope-children")) {
       oldElt.setAttribute("data-scope-children", "")
     }
 
-    if (oldElt instanceof HTMLTemplateElement && newElt instanceof HTMLTemplateElement) {
+    if (
+      oldElt instanceof HTMLTemplateElement &&
+      newElt instanceof HTMLTemplateElement
+    ) {
       oldElt.innerHTML = newElt.innerHTML
     } else if (!oldElt.isEqualNode(newElt)) {
       morphChildren(oldElt, newElt)
     }
 
     if (shouldScopeChildren) {
-      oldElt.dispatchEvent(new CustomEvent(SCOPE_CHILDREN_EVENT, { bubbles: false }))
+      oldElt.dispatchEvent(
+        new CustomEvent(SCOPE_CHILDREN_EVENT, { bubbles: false }),
+      )
     }
   }
 

@@ -1,16 +1,16 @@
 import * as test from "bun:test"
-import * as NFs from "node:fs"
-import * as NOs from "node:os"
-import * as NPath from "node:path"
+import { BunRoute, BunServer } from "effect-start/bun"
+import * as Route from "effect-start/Route"
+import type * as RouteMap from "effect-start/RouteMap"
+import * as Start from "effect-start/Start"
 import * as ConfigProvider from "effect/ConfigProvider"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Layer from "effect/Layer"
-import * as Route from "effect-start/Route"
-import * as RouteMap from "effect-start/RouteMap"
-import { BunRoute, BunServer } from "effect-start/bun"
-import * as Start from "effect-start/Start"
+import * as NFs from "node:fs"
+import * as NOs from "node:os"
+import * as NPath from "node:path"
 import * as StartApp from "../../src/internal/StartApp.ts"
 
 const staticDir = NPath.resolve(import.meta.dir, "../../static")
@@ -47,18 +47,29 @@ test.describe("layerRoutes port precedence", () => {
       "/": Route.get(Route.text("custom-server")),
     })
 
-    const appLayer = Start.build(BunServer.layerRoutes({ port: 0 }), Route.layer(routes))
+    const appLayer = Start.build(
+      BunServer.layerRoutes({ port: 0 }),
+      Route.layer(routes),
+    )
 
-    return Effect.gen(function* () {
-      const bunServer = yield* BunServer.BunServer
-      const response = yield* Effect.promise(() =>
-        fetch(`http://localhost:${bunServer.server.port}/`),
+    return Effect
+      .gen(function*() {
+        const bunServer = yield* BunServer.BunServer
+        const response = yield* Effect.promise(() => fetch(`http://localhost:${bunServer.server.port}/`))
+        const body = yield* Effect.promise(() => response.text())
+
+        test
+          .expect(response.status)
+          .toBe(200)
+        test
+          .expect(body)
+          .toBe("custom-server")
+      })
+      .pipe(
+        Effect.provide(appLayer),
+        Effect.scoped,
+        Effect.runPromise,
       )
-      const body = yield* Effect.promise(() => response.text())
-
-      test.expect(response.status).toBe(200)
-      test.expect(body).toBe("custom-server")
-    }).pipe(Effect.provide(appLayer), Effect.scoped, Effect.runPromise)
   })
 })
 
@@ -66,30 +77,38 @@ test.describe("smart port selection", () => {
   test.test.skipIf(process.stdout.isTTY)(
     "uses random port when PORT not set, isTTY=false, CLAUDECODE set",
     () =>
-      Effect.gen(function* () {
-        yield* withEnv({ CLAUDECODE: "1" })
-        const bunServer = yield* BunServer.make({})
+      Effect
+        .gen(function*() {
+          yield* withEnv({ CLAUDECODE: "1" })
+          const bunServer = yield* BunServer.make({})
 
-        test.expect(bunServer.server.port).not.toBe(3000)
-      }).pipe(
-        Effect.withConfigProvider(ConfigProvider.fromJson({})),
-        Effect.scoped,
-        Effect.runPromise,
-      ),
+          test
+            .expect(bunServer.server.port)
+            .not
+            .toBe(3000)
+        })
+        .pipe(
+          Effect.withConfigProvider(ConfigProvider.fromJson({})),
+          Effect.scoped,
+          Effect.runPromise,
+        ),
   )
 
   test.test("uses explicit PORT even when CLAUDECODE is set", () =>
-    Effect.gen(function* () {
-      yield* withEnv({ CLAUDECODE: "1" })
-      const bunServer = yield* BunServer.make({})
+    Effect
+      .gen(function*() {
+        yield* withEnv({ CLAUDECODE: "1" })
+        const bunServer = yield* BunServer.make({})
 
-      test.expect(bunServer.server.port).toBe(5678)
-    }).pipe(
-      Effect.withConfigProvider(ConfigProvider.fromJson({ PORT: "5678" })),
-      Effect.scoped,
-      Effect.runPromise,
-    ),
-  )
+        test
+          .expect(bunServer.server.port)
+          .toBe(5678)
+      })
+      .pipe(
+        Effect.withConfigProvider(ConfigProvider.fromJson({ PORT: "5678" })),
+        Effect.scoped,
+        Effect.runPromise,
+      ))
 })
 
 const testLayer = <const Input extends RouteMap.RouteMapInput>(routes: Input) =>
@@ -101,16 +120,24 @@ test.describe("routes", () => {
       "/": Route.get(Route.text("Hello, World!")),
     })
 
-    return Effect.gen(function* () {
-      const bunServer = yield* BunServer.BunServer
-      const response = yield* Effect.promise(() =>
-        fetch(`http://localhost:${bunServer.server.port}/`),
-      )
-      const text = yield* Effect.promise(() => response.text())
+    return Effect
+      .gen(function*() {
+        const bunServer = yield* BunServer.BunServer
+        const response = yield* Effect.promise(() => fetch(`http://localhost:${bunServer.server.port}/`))
+        const text = yield* Effect.promise(() => response.text())
 
-      test.expect(response.status).toBe(200)
-      test.expect(text).toBe("Hello, World!")
-    }).pipe(Effect.provide(testLayer(routes)), Effect.scoped, Effect.runPromise)
+        test
+          .expect(response.status)
+          .toBe(200)
+        test
+          .expect(text)
+          .toBe("Hello, World!")
+      })
+      .pipe(
+        Effect.provide(testLayer(routes)),
+        Effect.scoped,
+        Effect.runPromise,
+      )
   })
 
   test.test("serves JSON route", () => {
@@ -118,17 +145,29 @@ test.describe("routes", () => {
       "/api/data": Route.get(Route.json({ message: "success", value: 42 })),
     })
 
-    return Effect.gen(function* () {
-      const bunServer = yield* BunServer.BunServer
-      const response = yield* Effect.promise(() =>
-        fetch(`http://localhost:${bunServer.server.port}/api/data`),
-      )
-      const json = yield* Effect.promise(() => response.json())
+    return Effect
+      .gen(function*() {
+        const bunServer = yield* BunServer.BunServer
+        const response = yield* Effect.promise(() => fetch(`http://localhost:${bunServer.server.port}/api/data`))
+        const json = yield* Effect.promise(() => response.json())
 
-      test.expect(response.status).toBe(200)
-      test.expect(response.headers.get("Content-Type")).toBe("application/json")
-      test.expect(json).toEqual({ message: "success", value: 42 })
-    }).pipe(Effect.provide(testLayer(routes)), Effect.scoped, Effect.runPromise)
+        test
+          .expect(response.status)
+          .toBe(200)
+        test
+          .expect(response.headers.get("Content-Type"))
+          .toBe(
+            "application/json",
+          )
+        test
+          .expect(json)
+          .toEqual({ message: "success", value: 42 })
+      })
+      .pipe(
+        Effect.provide(testLayer(routes)),
+        Effect.scoped,
+        Effect.runPromise,
+      )
   })
 
   test.test("returns 404 for unknown routes", () => {
@@ -136,44 +175,70 @@ test.describe("routes", () => {
       "/": Route.get(Route.text("Home")),
     })
 
-    return Effect.gen(function* () {
-      const bunServer = yield* BunServer.BunServer
-      const response = yield* Effect.promise(() =>
-        fetch(`http://localhost:${bunServer.server.port}/unknown`),
-      )
+    return Effect
+      .gen(function*() {
+        const bunServer = yield* BunServer.BunServer
+        const response = yield* Effect.promise(() => fetch(`http://localhost:${bunServer.server.port}/unknown`))
 
-      test.expect(response.status).toBe(404)
-    }).pipe(Effect.provide(testLayer(routes)), Effect.scoped, Effect.runPromise)
+        test
+          .expect(response.status)
+          .toBe(404)
+      })
+      .pipe(
+        Effect.provide(testLayer(routes)),
+        Effect.scoped,
+        Effect.runPromise,
+      )
   })
 
   test.test("handles content negotiation", () => {
     const routes = Route.map({
-      "/data": Route.get(Route.json({ type: "json" })).get(Route.html("<div>html</div>")),
+      "/data": Route.get(Route.json({ type: "json" })).get(
+        Route.html("<div>html</div>"),
+      ),
     })
 
-    return Effect.gen(function* () {
-      const bunServer = yield* BunServer.BunServer
-      const baseUrl = `http://localhost:${bunServer.server.port}`
+    return Effect
+      .gen(function*() {
+        const bunServer = yield* BunServer.BunServer
+        const baseUrl = `http://localhost:${bunServer.server.port}`
 
-      const jsonResponse = yield* Effect.promise(() =>
-        fetch(`${baseUrl}/data`, {
-          headers: { Accept: "application/json" },
-        }),
+        const jsonResponse = yield* Effect.promise(() =>
+          fetch(`${baseUrl}/data`, {
+            headers: { Accept: "application/json" },
+          })
+        )
+        const jsonBody = yield* Effect.promise(() => jsonResponse.json())
+
+        const htmlResponse = yield* Effect.promise(() =>
+          fetch(`${baseUrl}/data`, {
+            headers: { Accept: "text/html" },
+          })
+        )
+        const htmlBody = yield* Effect.promise(() => htmlResponse.text())
+
+        test
+          .expect(jsonResponse.headers.get("Content-Type"))
+          .toBe(
+            "application/json",
+          )
+        test
+          .expect(jsonBody)
+          .toEqual({ type: "json" })
+        test
+          .expect(htmlResponse.headers.get("Content-Type"))
+          .toBe(
+            "text/html; charset=utf-8",
+          )
+        test
+          .expect(htmlBody)
+          .toBe("<div>html</div>")
+      })
+      .pipe(
+        Effect.provide(testLayer(routes)),
+        Effect.scoped,
+        Effect.runPromise,
       )
-      const jsonBody = yield* Effect.promise(() => jsonResponse.json())
-
-      const htmlResponse = yield* Effect.promise(() =>
-        fetch(`${baseUrl}/data`, {
-          headers: { Accept: "text/html" },
-        }),
-      )
-      const htmlBody = yield* Effect.promise(() => htmlResponse.text())
-
-      test.expect(jsonResponse.headers.get("Content-Type")).toBe("application/json")
-      test.expect(jsonBody).toEqual({ type: "json" })
-      test.expect(htmlResponse.headers.get("Content-Type")).toBe("text/html; charset=utf-8")
-      test.expect(htmlBody).toBe("<div>html</div>")
-    }).pipe(Effect.provide(testLayer(routes)), Effect.scoped, Effect.runPromise)
   })
 
   test.test("returns 406 for unacceptable content type", () => {
@@ -181,16 +246,24 @@ test.describe("routes", () => {
       "/data": Route.get(Route.json({ type: "json" })),
     })
 
-    return Effect.gen(function* () {
-      const bunServer = yield* BunServer.BunServer
-      const response = yield* Effect.promise(() =>
-        fetch(`http://localhost:${bunServer.server.port}/data`, {
-          headers: { Accept: "image/png" },
-        }),
-      )
+    return Effect
+      .gen(function*() {
+        const bunServer = yield* BunServer.BunServer
+        const response = yield* Effect.promise(() =>
+          fetch(`http://localhost:${bunServer.server.port}/data`, {
+            headers: { Accept: "image/png" },
+          })
+        )
 
-      test.expect(response.status).toBe(406)
-    }).pipe(Effect.provide(testLayer(routes)), Effect.scoped, Effect.runPromise)
+        test
+          .expect(response.status)
+          .toBe(406)
+      })
+      .pipe(
+        Effect.provide(testLayer(routes)),
+        Effect.scoped,
+        Effect.runPromise,
+      )
   })
 
   test.test("handles parameterized routes", () => {
@@ -198,16 +271,24 @@ test.describe("routes", () => {
       "/users/:id": Route.get(Route.text("user")),
     })
 
-    return Effect.gen(function* () {
-      const bunServer = yield* BunServer.BunServer
-      const response = yield* Effect.promise(() =>
-        fetch(`http://localhost:${bunServer.server.port}/users/123`),
-      )
-      const text = yield* Effect.promise(() => response.text())
+    return Effect
+      .gen(function*() {
+        const bunServer = yield* BunServer.BunServer
+        const response = yield* Effect.promise(() => fetch(`http://localhost:${bunServer.server.port}/users/123`))
+        const text = yield* Effect.promise(() => response.text())
 
-      test.expect(response.status).toBe(200)
-      test.expect(text).toBe("user")
-    }).pipe(Effect.provide(testLayer(routes)), Effect.scoped, Effect.runPromise)
+        test
+          .expect(response.status)
+          .toBe(200)
+        test
+          .expect(text)
+          .toBe("user")
+      })
+      .pipe(
+        Effect.provide(testLayer(routes)),
+        Effect.scoped,
+        Effect.runPromise,
+      )
   })
 })
 
@@ -222,16 +303,24 @@ test.describe("Start.serve composition", () => {
       BunServer.layerRoutes({ port: 0 }),
     )
 
-    return Effect.gen(function* () {
-      const bunServer = yield* BunServer.BunServer
-      const response = yield* Effect.promise(() =>
-        fetch(`http://localhost:${bunServer.server.port}/hello`),
-      )
-      const text = yield* Effect.promise(() => response.text())
+    return Effect
+      .gen(function*() {
+        const bunServer = yield* BunServer.BunServer
+        const response = yield* Effect.promise(() => fetch(`http://localhost:${bunServer.server.port}/hello`))
+        const text = yield* Effect.promise(() => response.text())
 
-      test.expect(response.status).toBe(200)
-      test.expect(text).toBe("world")
-    }).pipe(Effect.provide(appLayer), Effect.scoped, Effect.runPromise)
+        test
+          .expect(response.status)
+          .toBe(200)
+        test
+          .expect(text)
+          .toBe("world")
+      })
+      .pipe(
+        Effect.provide(appLayer),
+        Effect.scoped,
+        Effect.runPromise,
+      )
   })
 
   test.test("Start.pack keeps fallback handler when BunServer.layer is provided", () => {
@@ -244,14 +333,20 @@ test.describe("Start.serve composition", () => {
       BunServer.layer({ port: 0 }),
     )
 
-    return Effect.gen(function* () {
-      const bunServer = yield* BunServer.BunServer
-      const response = yield* Effect.promise(() =>
-        fetch(`http://localhost:${bunServer.server.port}/hello`),
-      )
+    return Effect
+      .gen(function*() {
+        const bunServer = yield* BunServer.BunServer
+        const response = yield* Effect.promise(() => fetch(`http://localhost:${bunServer.server.port}/hello`))
 
-      test.expect(response.status).toBe(404)
-    }).pipe(Effect.provide(appLayer), Effect.scoped, Effect.runPromise)
+        test
+          .expect(response.status)
+          .toBe(404)
+      })
+      .pipe(
+        Effect.provide(appLayer),
+        Effect.scoped,
+        Effect.runPromise,
+      )
   })
 
   test.test("routes resolve when server layer requires Route.Routes", () => {
@@ -262,18 +357,29 @@ test.describe("Start.serve composition", () => {
     )
 
     const serverLayer = BunServer.layerRoutes({ port: 0 })
-    const composed = Layer.provide(BunServer.withLogAddress(serverLayer), appLayer)
+    const composed = Layer.provide(
+      BunServer.withLogAddress(serverLayer),
+      appLayer,
+    )
 
-    return Effect.gen(function* () {
-      const bunServer = yield* BunServer.BunServer
-      const response = yield* Effect.promise(() =>
-        fetch(`http://localhost:${bunServer.server.port}/hello`),
+    return Effect
+      .gen(function*() {
+        const bunServer = yield* BunServer.BunServer
+        const response = yield* Effect.promise(() => fetch(`http://localhost:${bunServer.server.port}/hello`))
+        const text = yield* Effect.promise(() => response.text())
+
+        test
+          .expect(response.status)
+          .toBe(200)
+        test
+          .expect(text)
+          .toBe("world")
+      })
+      .pipe(
+        Effect.provide(composed),
+        Effect.scoped,
+        Effect.runPromise,
       )
-      const text = yield* Effect.promise(() => response.text())
-
-      test.expect(response.status).toBe(200)
-      test.expect(text).toBe("world")
-    }).pipe(Effect.provide(composed), Effect.scoped, Effect.runPromise)
   })
 
   test.test("existing BunServer is upgraded with routes by layerStart", () => {
@@ -285,23 +391,40 @@ test.describe("Start.serve composition", () => {
 
     const startAppLayer = Layer.effect(
       StartApp.StartApp,
-      Deferred.make<BunServer.BunServer>().pipe(Effect.map((server) => ({ server }))),
+      Deferred.make<BunServer.BunServer>().pipe(
+        Effect.map((server) => ({ server })),
+      ),
     )
 
-    const appLayer = Start.pack(startAppLayer, routeLayer, BunServer.layer({ port: 0 }))
+    const appLayer = Start.pack(
+      startAppLayer,
+      routeLayer,
+      BunServer.layer({ port: 0 }),
+    )
 
-    const composed = Layer.provide(BunServer.withLogAddress(BunServer.layerStart()), appLayer)
+    const composed = Layer.provide(
+      BunServer.withLogAddress(BunServer.layerStart()),
+      appLayer,
+    )
 
-    return Effect.gen(function* () {
-      const bunServer = yield* BunServer.BunServer
-      const response = yield* Effect.promise(() =>
-        fetch(`http://localhost:${bunServer.server.port}/hello`),
+    return Effect
+      .gen(function*() {
+        const bunServer = yield* BunServer.BunServer
+        const response = yield* Effect.promise(() => fetch(`http://localhost:${bunServer.server.port}/hello`))
+        const text = yield* Effect.promise(() => response.text())
+
+        test
+          .expect(response.status)
+          .toBe(200)
+        test
+          .expect(text)
+          .toBe("world")
+      })
+      .pipe(
+        Effect.provide(composed),
+        Effect.scoped,
+        Effect.runPromise,
       )
-      const text = yield* Effect.promise(() => response.text())
-
-      test.expect(response.status).toBe(200)
-      test.expect(text).toBe("world")
-    }).pipe(Effect.provide(composed), Effect.scoped, Effect.runPromise)
   })
 
   test.test("route-agnostic layer starts with fallback handler", () => {
@@ -316,30 +439,46 @@ test.describe("Start.serve composition", () => {
       routeLayer,
     )
 
-    return Effect.gen(function* () {
-      const bunServer = yield* BunServer.BunServer
-      const response = yield* Effect.promise(() =>
-        fetch(`http://localhost:${bunServer.server.port}/hello`),
-      )
+    return Effect
+      .gen(function*() {
+        const bunServer = yield* BunServer.BunServer
+        const response = yield* Effect.promise(() => fetch(`http://localhost:${bunServer.server.port}/hello`))
 
-      test.expect(response.status).toBe(404)
-    }).pipe(Effect.provide(composed), Effect.scoped, Effect.runPromise)
+        test
+          .expect(response.status)
+          .toBe(404)
+      })
+      .pipe(
+        Effect.provide(composed),
+        Effect.scoped,
+        Effect.runPromise,
+      )
   })
 
   test.test("route-aware layer fails without Route.Routes", async () => {
-    const program = Effect.gen(function* () {
-      yield* BunServer.BunServer
-    }).pipe(Effect.provide(BunServer.layerRoutes({ port: 0 })), Effect.scoped) as Effect.Effect<
-      void,
-      never,
-      never
-    >
+    const program = Effect
+      .gen(function*() {
+        yield* BunServer.BunServer
+      })
+      .pipe(
+        Effect.provide(BunServer.layerRoutes({ port: 0 })),
+        Effect.scoped,
+      ) as Effect.Effect<
+        void,
+        never,
+        never
+      >
 
     const exit = await Effect.runPromiseExit(program)
 
-    test.expect(Exit.isFailure(exit)).toBe(true)
+    test
+      .expect(Exit.isFailure(exit))
+      .toBe(true)
+
     if (Exit.isFailure(exit)) {
-      test.expect(String(exit.cause)).toContain("effect-start/Routes")
+      test
+        .expect(String(exit.cause))
+        .toContain("effect-start/Routes")
     }
   })
 })
@@ -350,16 +489,23 @@ test.describe("make", () => {
       "/hello": Route.get(Route.text("world")),
     })
 
-    return Effect.gen(function* () {
-      const bunServer = yield* BunServer.make({ port: 0 }, routes)
-      const response = yield* Effect.promise(() =>
-        fetch(`http://localhost:${bunServer.server.port}/hello`),
-      )
-      const text = yield* Effect.promise(() => response.text())
+    return Effect
+      .gen(function*() {
+        const bunServer = yield* BunServer.make({ port: 0 }, routes)
+        const response = yield* Effect.promise(() => fetch(`http://localhost:${bunServer.server.port}/hello`))
+        const text = yield* Effect.promise(() => response.text())
 
-      test.expect(response.status).toBe(200)
-      test.expect(text).toBe("world")
-    }).pipe(Effect.scoped, Effect.runPromise)
+        test
+          .expect(response.status)
+          .toBe(200)
+        test
+          .expect(text)
+          .toBe("world")
+      })
+      .pipe(
+        Effect.scoped,
+        Effect.runPromise,
+      )
   })
 })
 
@@ -398,17 +544,27 @@ test.describe("prebuilt htmlBundle", () => {
       ),
     })
 
-    return Effect.gen(function* () {
-      const bunServer = yield* BunServer.BunServer
-      const response = yield* Effect.promise(() =>
-        fetch(`http://localhost:${bunServer.server.port}/`),
-      )
-      const html = yield* Effect.promise(() => response.text())
+    return Effect
+      .gen(function*() {
+        const bunServer = yield* BunServer.BunServer
+        const response = yield* Effect.promise(() => fetch(`http://localhost:${bunServer.server.port}/`))
+        const html = yield* Effect.promise(() => response.text())
 
-      test.expect(response.status).toBe(200)
-      test.expect(html).toContain("<p>Prebuilt Content</p>")
-      test.expect(html).not.toContain("%children%")
-    }).pipe(Effect.provide(testLayer(routes)), Effect.runPromise)
+        test
+          .expect(response.status)
+          .toBe(200)
+        test
+          .expect(html)
+          .toContain("<p>Prebuilt Content</p>")
+        test
+          .expect(html)
+          .not
+          .toContain("%children%")
+      })
+      .pipe(
+        Effect.provide(testLayer(routes)),
+        Effect.runPromise,
+      )
   })
 
   test.test("serves CSS assets at top-level routes", () => {
@@ -419,17 +575,28 @@ test.describe("prebuilt htmlBundle", () => {
       ),
     })
 
-    return Effect.gen(function* () {
-      const bunServer = yield* BunServer.BunServer
-      const response = yield* Effect.promise(() =>
-        fetch(`http://localhost:${bunServer.server.port}/test-asset.css`),
-      )
-      const css = yield* Effect.promise(() => response.text())
+    return Effect
+      .gen(function*() {
+        const bunServer = yield* BunServer.BunServer
+        const response = yield* Effect.promise(() => fetch(`http://localhost:${bunServer.server.port}/test-asset.css`))
+        const css = yield* Effect.promise(() => response.text())
 
-      test.expect(response.status).toBe(200)
-      test.expect(css).toContain("color: red")
-      test.expect(response.headers.get("content-type")).toBe("text/css;charset=utf-8")
-    }).pipe(Effect.provide(testLayer(routes)), Effect.runPromise)
+        test
+          .expect(response.status)
+          .toBe(200)
+        test
+          .expect(css)
+          .toContain("color: red")
+        test
+          .expect(response.headers.get("content-type"))
+          .toBe(
+            "text/css;charset=utf-8",
+          )
+      })
+      .pipe(
+        Effect.provide(testLayer(routes)),
+        Effect.runPromise,
+      )
   })
 
   test.test("serves prebuilt HTML with correct content-type", () => {
@@ -440,15 +607,22 @@ test.describe("prebuilt htmlBundle", () => {
       ),
     })
 
-    return Effect.gen(function* () {
-      const bunServer = yield* BunServer.BunServer
-      const response = yield* Effect.promise(() =>
-        fetch(`http://localhost:${bunServer.server.port}/`),
-      )
+    return Effect
+      .gen(function*() {
+        const bunServer = yield* BunServer.BunServer
+        const response = yield* Effect.promise(() => fetch(`http://localhost:${bunServer.server.port}/`))
 
-      test.expect(response.status).toBe(200)
-      test.expect(response.headers.get("content-type")).toContain("text/html")
-    }).pipe(Effect.provide(testLayer(routes)), Effect.runPromise)
+        test
+          .expect(response.status)
+          .toBe(200)
+        test
+          .expect(response.headers.get("content-type"))
+          .toContain("text/html")
+      })
+      .pipe(
+        Effect.provide(testLayer(routes)),
+        Effect.runPromise,
+      )
   })
 })
 
@@ -493,7 +667,10 @@ test.describe("prebuilt htmlBundle rewrites relative asset paths", () => {
     // the test runner — not the output directory. Resolve them to absolute paths.
     bundle = {
       index: NPath.resolve(outDir, raw.index),
-      files: raw.files!.map((f) => ({ ...f, path: NPath.resolve(outDir, f.path) })),
+      files: raw.files!.map((f) => ({
+        ...f,
+        path: NPath.resolve(outDir, f.path),
+      })),
     }
   })
 
@@ -509,20 +686,32 @@ test.describe("prebuilt htmlBundle rewrites relative asset paths", () => {
       ),
     })
 
-    return Effect.gen(function* () {
-      const bunServer = yield* BunServer.BunServer
-      const response = yield* Effect.promise(() =>
-        fetch(`http://localhost:${bunServer.server.port}/notes/hello`),
+    return Effect
+      .gen(function*() {
+        const bunServer = yield* BunServer.BunServer
+        const response = yield* Effect.promise(() => fetch(`http://localhost:${bunServer.server.port}/notes/hello`))
+        const html = yield* Effect.promise(() => response.text())
+
+        test
+          .expect(html)
+          .not
+          .toContain("href=\"./")
+        test
+          .expect(html)
+          .not
+          .toContain("src=\"./")
+
+        const cssFile = bundle.files!.find((f) => f.loader === "css")!
+        const cssBasename = NPath.basename(cssFile.path)
+
+        test
+          .expect(html)
+          .toContain(`href="/${cssBasename}"`)
+      })
+      .pipe(
+        Effect.provide(testLayer(routes)),
+        Effect.runPromise,
       )
-      const html = yield* Effect.promise(() => response.text())
-
-      test.expect(html).not.toContain('href="./')
-      test.expect(html).not.toContain('src="./')
-
-      const cssFile = bundle.files!.find((f) => f.loader === "css")!
-      const cssBasename = NPath.basename(cssFile.path)
-      test.expect(html).toContain(`href="/${cssBasename}"`)
-    }).pipe(Effect.provide(testLayer(routes)), Effect.runPromise)
   })
 
   test.test("CSS asset is accessible at top-level path", () => {
@@ -536,14 +725,24 @@ test.describe("prebuilt htmlBundle rewrites relative asset paths", () => {
     const cssFile = bundle.files!.find((f) => f.loader === "css")!
     const cssBasename = NPath.basename(cssFile.path)
 
-    return Effect.gen(function* () {
-      const bunServer = yield* BunServer.BunServer
-      const response = yield* Effect.promise(() =>
-        fetch(`http://localhost:${bunServer.server.port}/${cssBasename}`),
+    return Effect
+      .gen(function*() {
+        const bunServer = yield* BunServer.BunServer
+        const response = yield* Effect.promise(() => fetch(`http://localhost:${bunServer.server.port}/${cssBasename}`))
+
+        test
+          .expect(response.status)
+          .toBe(200)
+        test
+          .expect(response.headers.get("content-type"))
+          .toBe(
+            "text/css;charset=utf-8",
+          )
+      })
+      .pipe(
+        Effect.provide(testLayer(routes)),
+        Effect.runPromise,
       )
-      test.expect(response.status).toBe(200)
-      test.expect(response.headers.get("content-type")).toBe("text/css;charset=utf-8")
-    }).pipe(Effect.provide(testLayer(routes)), Effect.runPromise)
   })
 })
 
@@ -557,8 +756,14 @@ test.describe("prebuilt htmlBundle with images", () => {
     const srcDir = NPath.join(tmpDir, "src")
     outDir = NPath.join(tmpDir, "out")
 
-    await Bun.write(NPath.join(srcDir, "pixel.gif"), Bun.file(NPath.join(staticDir, "pixel.gif")))
-    await Bun.write(NPath.join(srcDir, "icon.svg"), Bun.file(NPath.join(staticDir, "icon.svg")))
+    await Bun.write(
+      NPath.join(srcDir, "pixel.gif"),
+      Bun.file(NPath.join(staticDir, "pixel.gif")),
+    )
+    await Bun.write(
+      NPath.join(srcDir, "icon.svg"),
+      Bun.file(NPath.join(staticDir, "icon.svg")),
+    )
 
     await Bun.write(
       NPath.join(srcDir, "index.html"),
@@ -592,7 +797,10 @@ test.describe("prebuilt htmlBundle with images", () => {
 
     bundle = {
       index: NPath.resolve(outDir, raw.index),
-      files: raw.files!.map((f) => ({ ...f, path: NPath.resolve(outDir, f.path) })),
+      files: raw.files!.map((f) => ({
+        ...f,
+        path: NPath.resolve(outDir, f.path),
+      })),
     }
   })
 
@@ -602,7 +810,9 @@ test.describe("prebuilt htmlBundle with images", () => {
 
   function findOutputFile(name: string): string {
     const stem = name.replace(/\.[^.]+$/, "")
-    const files = [...new Bun.Glob("*").scanSync({ cwd: outDir, onlyFiles: true })]
+    const files = [
+      ...new Bun.Glob("*").scanSync({ cwd: outDir, onlyFiles: true }),
+    ]
     const match = files.find((f) => f.startsWith(stem) && !f.endsWith(".js"))
     if (!match) throw new Error(`No output file found for ${name}`)
     return match
@@ -616,22 +826,37 @@ test.describe("prebuilt htmlBundle with images", () => {
       ),
     })
 
-    return Effect.gen(function* () {
-      const bunServer = yield* BunServer.BunServer
-      const response = yield* Effect.promise(() =>
-        fetch(`http://localhost:${bunServer.server.port}/bio`),
+    return Effect
+      .gen(function*() {
+        const bunServer = yield* BunServer.BunServer
+        const response = yield* Effect.promise(() => fetch(`http://localhost:${bunServer.server.port}/bio`))
+        const html = yield* Effect.promise(() => response.text())
+
+        test
+          .expect(html)
+          .not
+          .toContain("src=\"./")
+        test
+          .expect(html)
+          .not
+          .toContain("src=\"../")
+
+        const gifFile = findOutputFile("pixel.gif")
+
+        test
+          .expect(html)
+          .toContain(`src="/${gifFile}"`)
+
+        const svgFile = findOutputFile("icon.svg")
+
+        test
+          .expect(html)
+          .toContain(`src="/${svgFile}"`)
+      })
+      .pipe(
+        Effect.provide(testLayer(routes)),
+        Effect.runPromise,
       )
-      const html = yield* Effect.promise(() => response.text())
-
-      test.expect(html).not.toContain('src="./')
-      test.expect(html).not.toContain('src="../')
-
-      const gifFile = findOutputFile("pixel.gif")
-      test.expect(html).toContain(`src="/${gifFile}"`)
-
-      const svgFile = findOutputFile("icon.svg")
-      test.expect(html).toContain(`src="/${svgFile}"`)
-    }).pipe(Effect.provide(testLayer(routes)), Effect.runPromise)
   })
 
   test.test("rewrites img src at deeply nested route", () => {
@@ -642,23 +867,34 @@ test.describe("prebuilt htmlBundle with images", () => {
       ),
     })
 
-    return Effect.gen(function* () {
-      const bunServer = yield* BunServer.BunServer
-      const response = yield* Effect.promise(() =>
-        fetch(`http://localhost:${bunServer.server.port}/users/42/profile`),
-      )
-      const html = yield* Effect.promise(() => response.text())
+    return Effect
+      .gen(function*() {
+        const bunServer = yield* BunServer.BunServer
+        const response = yield* Effect.promise(() =>
+          fetch(`http://localhost:${bunServer.server.port}/users/42/profile`)
+        )
+        const html = yield* Effect.promise(() => response.text())
 
-      const gifFile = findOutputFile("pixel.gif")
-      test.expect(html).toContain(`src="/${gifFile}"`)
-    }).pipe(Effect.provide(testLayer(routes)), Effect.runPromise)
+        const gifFile = findOutputFile("pixel.gif")
+
+        test
+          .expect(html)
+          .toContain(`src="/${gifFile}"`)
+      })
+      .pipe(
+        Effect.provide(testLayer(routes)),
+        Effect.runPromise,
+      )
   })
 
   test.test("bundler does not include images in bundle.files", async () => {
     const gifFile = findOutputFile("pixel.gif")
     const bundledPaths = (bundle.files ?? []).map((f) => NPath.basename(f.path))
 
-    test.expect(bundledPaths).not.toContain(gifFile)
+    test
+      .expect(bundledPaths)
+      .not
+      .toContain(gifFile)
   })
 })
 
@@ -667,57 +903,87 @@ test.describe("static file routes", () => {
     const gifPath = NPath.join(staticDir, "pixel.gif")
     const svgPath = NPath.join(staticDir, "icon.svg")
 
-    return Effect.gen(function* () {
-      const bunServer = yield* BunServer.make({
-        port: 0,
+    return Effect
+      .gen(function*() {
+        const bunServer = yield* BunServer.make({
+          port: 0,
+        })
+
+        bunServer.server.reload({
+          routes: {
+            "/pixel.gif": Bun.file(gifPath),
+            "/icon.svg": Bun.file(svgPath),
+          },
+          fetch: () => new Response("not found", { status: 404 }),
+        })
+
+        const base = `http://localhost:${bunServer.server.port}`
+
+        const gifResponse = yield* Effect.promise(() => fetch(`${base}/pixel.gif`))
+
+        test
+          .expect(gifResponse.status)
+          .toBe(200)
+        test
+          .expect(gifResponse.headers.get("content-type"))
+          .toBe("image/gif")
+
+        const svgResponse = yield* Effect.promise(() => fetch(`${base}/icon.svg`))
+
+        test
+          .expect(svgResponse.status)
+          .toBe(200)
+        test
+          .expect(svgResponse.headers.get("content-type"))
+          .toBe(
+            "image/svg+xml",
+          )
       })
-
-      bunServer.server.reload({
-        routes: {
-          "/pixel.gif": Bun.file(gifPath),
-          "/icon.svg": Bun.file(svgPath),
-        },
-        fetch: () => new Response("not found", { status: 404 }),
-      })
-
-      const base = `http://localhost:${bunServer.server.port}`
-
-      const gifResponse = yield* Effect.promise(() => fetch(`${base}/pixel.gif`))
-      test.expect(gifResponse.status).toBe(200)
-      test.expect(gifResponse.headers.get("content-type")).toBe("image/gif")
-
-      const svgResponse = yield* Effect.promise(() => fetch(`${base}/icon.svg`))
-      test.expect(svgResponse.status).toBe(200)
-      test.expect(svgResponse.headers.get("content-type")).toBe("image/svg+xml")
-    }).pipe(Effect.scoped, Effect.runPromise)
+      .pipe(
+        Effect.scoped,
+        Effect.runPromise,
+      )
   })
 
   test.test("HEAD request returns headers without body for Bun.file routes", () => {
     const gifPath = NPath.join(staticDir, "pixel.gif")
 
-    return Effect.gen(function* () {
-      const bunServer = yield* BunServer.make({
-        port: 0,
+    return Effect
+      .gen(function*() {
+        const bunServer = yield* BunServer.make({
+          port: 0,
+        })
+
+        bunServer.server.reload({
+          routes: {
+            "/pixel.gif": Bun.file(gifPath),
+          },
+          fetch: () => new Response("not found", { status: 404 }),
+        })
+
+        const base = `http://localhost:${bunServer.server.port}`
+
+        const headResponse = yield* Effect.promise(() => fetch(`${base}/pixel.gif`, { method: "HEAD" }))
+
+        test
+          .expect(headResponse.status)
+          .toBe(200)
+        test
+          .expect(headResponse.headers.get("content-type"))
+          .toBe("image/gif")
+        test
+          .expect(Number(headResponse.headers.get("content-length")))
+          .toBeGreaterThan(0)
+
+        const body = yield* Effect.promise(() => headResponse.text())
+
+        test
+          .expect(body)
+          .toBe("")
       })
-
-      bunServer.server.reload({
-        routes: {
-          "/pixel.gif": Bun.file(gifPath),
-        },
-        fetch: () => new Response("not found", { status: 404 }),
-      })
-
-      const base = `http://localhost:${bunServer.server.port}`
-
-      const headResponse = yield* Effect.promise(() =>
-        fetch(`${base}/pixel.gif`, { method: "HEAD" }),
+      .pipe(
+        Effect.scoped,
+        Effect.runPromise,
       )
-      test.expect(headResponse.status).toBe(200)
-      test.expect(headResponse.headers.get("content-type")).toBe("image/gif")
-      test.expect(Number(headResponse.headers.get("content-length"))).toBeGreaterThan(0)
-
-      const body = yield* Effect.promise(() => headResponse.text())
-      test.expect(body).toBe("")
-    }).pipe(Effect.scoped, Effect.runPromise)
   })
 })

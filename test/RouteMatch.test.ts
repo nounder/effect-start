@@ -1,7 +1,7 @@
 import * as test from "bun:test"
 import * as Route from "effect-start/Route"
-import * as RouteMatch from "effect-start/RouteMatch"
 import * as RouteMap from "effect-start/RouteMap"
+import * as RouteMatch from "effect-start/RouteMatch"
 
 test.describe("layer route", () => {
   test.it("match finds LayerRoute first", () => {
@@ -14,8 +14,13 @@ test.describe("layer route", () => {
 
     const result = RouteMatch.match(matcher, "GET", "/users")
 
-    test.expect(result).not.toBeNull()
-    test.expect(Route.descriptor(result!.route).method).toBe("*")
+    test
+      .expect(result)
+      .not
+      .toBeNull()
+    test
+      .expect(Route.descriptor(result!.route).method)
+      .toBe("*")
   })
 })
 
@@ -35,16 +40,24 @@ test.describe("nested trees", () => {
 
     const home = RouteMatch.match(matcher, "GET", "/")
 
-    test.expect(Route.descriptor(home!.route).path).toBe("/")
+    test
+      .expect(Route.descriptor(home!.route).path)
+      .toBe("/")
 
     const users = RouteMatch.match(matcher, "GET", "/api/users")
 
-    test.expect(Route.descriptor(users!.route).path).toBe("/api/users")
+    test
+      .expect(Route.descriptor(users!.route).path)
+      .toBe("/api/users")
 
     const user = RouteMatch.match(matcher, "GET", "/api/users/123")
 
-    test.expect(Route.descriptor(user!.route).path).toBe("/api/users/:id")
-    test.expect(user!.params).toEqual({ id: "123" })
+    test
+      .expect(Route.descriptor(user!.route).path)
+      .toBe("/api/users/:id")
+    test
+      .expect(user!.params)
+      .toEqual({ id: "123" })
   })
 })
 
@@ -59,9 +72,16 @@ test.describe(RouteMatch.match, () => {
 
     const result = RouteMatch.match(matcher, "GET", "/users")
 
-    test.expect(result).not.toBeNull()
-    test.expect(result!.params).toEqual({})
-    test.expect(Route.descriptor(result!.route).path).toBe("/users")
+    test
+      .expect(result)
+      .not
+      .toBeNull()
+    test
+      .expect(result!.params)
+      .toEqual({})
+    test
+      .expect(Route.descriptor(result!.route).path)
+      .toBe("/users")
   })
 
   test.it("extracts path parameters", () => {
@@ -73,8 +93,13 @@ test.describe(RouteMatch.match, () => {
 
     const result = RouteMatch.match(matcher, "GET", "/users/123")
 
-    test.expect(result).not.toBeNull()
-    test.expect(result!.params).toEqual({ id: "123" })
+    test
+      .expect(result)
+      .not
+      .toBeNull()
+    test
+      .expect(result!.params)
+      .toEqual({ id: "123" })
   })
 
   test.it("filters by HTTP method", () => {
@@ -87,15 +112,23 @@ test.describe(RouteMatch.match, () => {
 
     const getResult = RouteMatch.match(matcher, "GET", "/users")
 
-    test.expect(getResult).not.toBeNull()
+    test
+      .expect(getResult)
+      .not
+      .toBeNull()
 
     const postOnGet = RouteMatch.match(matcher, "POST", "/users")
 
-    test.expect(postOnGet).toBeNull()
+    test
+      .expect(postOnGet)
+      .toBeNull()
 
     const postResult = RouteMatch.match(matcher, "POST", "/admin")
 
-    test.expect(postResult).not.toBeNull()
+    test
+      .expect(postResult)
+      .not
+      .toBeNull()
   })
 
   test.it("wildcard method matches any method", () => {
@@ -107,15 +140,24 @@ test.describe(RouteMatch.match, () => {
 
     const getResult = RouteMatch.match(matcher, "GET", "/api")
 
-    test.expect(getResult).not.toBeNull()
+    test
+      .expect(getResult)
+      .not
+      .toBeNull()
 
     const postResult = RouteMatch.match(matcher, "POST", "/api")
 
-    test.expect(postResult).not.toBeNull()
+    test
+      .expect(postResult)
+      .not
+      .toBeNull()
 
     const deleteResult = RouteMatch.match(matcher, "DELETE", "/api")
 
-    test.expect(deleteResult).not.toBeNull()
+    test
+      .expect(deleteResult)
+      .not
+      .toBeNull()
   })
 
   test.it("static routes take priority over param routes", () => {
@@ -128,9 +170,16 @@ test.describe(RouteMatch.match, () => {
 
     const result = RouteMatch.match(matcher, "GET", "/users/me")
 
-    test.expect(result).not.toBeNull()
-    test.expect(Route.descriptor(result!.route).path).toBe("/users/me")
-    test.expect(result!.params).toEqual({})
+    test
+      .expect(result)
+      .not
+      .toBeNull()
+    test
+      .expect(Route.descriptor(result!.route).path)
+      .toBe("/users/me")
+    test
+      .expect(result!.params)
+      .toEqual({})
   })
 
   test.it("matches greedy params with +", () => {
@@ -142,12 +191,19 @@ test.describe(RouteMatch.match, () => {
 
     const result = RouteMatch.match(matcher, "GET", "/docs/api/v1/users")
 
-    test.expect(result).not.toBeNull()
-    test.expect(result!.params).toEqual({ path: "api/v1/users" })
+    test
+      .expect(result)
+      .not
+      .toBeNull()
+    test
+      .expect(result!.params)
+      .toEqual({ path: "api/v1/users" })
 
     const noMatch = RouteMatch.match(matcher, "GET", "/docs")
 
-    test.expect(noMatch).toBeNull()
+    test
+      .expect(noMatch)
+      .toBeNull()
   })
 
   test.it("matches greedy params with *", () => {
@@ -159,13 +215,23 @@ test.describe(RouteMatch.match, () => {
 
     const withPath = RouteMatch.match(matcher, "GET", "/files/a/b/c")
 
-    test.expect(withPath).not.toBeNull()
-    test.expect(withPath!.params).toEqual({ path: "a/b/c" })
+    test
+      .expect(withPath)
+      .not
+      .toBeNull()
+    test
+      .expect(withPath!.params)
+      .toEqual({ path: "a/b/c" })
 
     const withoutPath = RouteMatch.match(matcher, "GET", "/files")
 
-    test.expect(withoutPath).not.toBeNull()
-    test.expect(withoutPath!.params).toEqual({})
+    test
+      .expect(withoutPath)
+      .not
+      .toBeNull()
+    test
+      .expect(withoutPath!.params)
+      .toEqual({})
   })
 
   test.it("returns null for no match", () => {
@@ -177,7 +243,9 @@ test.describe(RouteMatch.match, () => {
 
     const result = RouteMatch.match(matcher, "GET", "/not-found")
 
-    test.expect(result).toBeNull()
+    test
+      .expect(result)
+      .toBeNull()
   })
 
   test.it("matches optional params with ?", () => {
@@ -189,13 +257,23 @@ test.describe(RouteMatch.match, () => {
 
     const withParam = RouteMatch.match(matcher, "GET", "/files/readme")
 
-    test.expect(withParam).not.toBeNull()
-    test.expect(withParam!.params).toEqual({ name: "readme" })
+    test
+      .expect(withParam)
+      .not
+      .toBeNull()
+    test
+      .expect(withParam!.params)
+      .toEqual({ name: "readme" })
 
     const withoutParam = RouteMatch.match(matcher, "GET", "/files")
 
-    test.expect(withoutParam).not.toBeNull()
-    test.expect(withoutParam!.params).toEqual({})
+    test
+      .expect(withoutParam)
+      .not
+      .toBeNull()
+    test
+      .expect(withoutParam!.params)
+      .toEqual({})
   })
 
   test.it("respects route priority for complex trees", () => {
@@ -210,21 +288,33 @@ test.describe(RouteMatch.match, () => {
 
     const staticMatch = RouteMatch.match(matcher, "GET", "/api/users")
 
-    test.expect(Route.descriptor(staticMatch!.route).path).toBe("/api/users")
+    test
+      .expect(Route.descriptor(staticMatch!.route).path)
+      .toBe("/api/users")
 
     const paramMatch = RouteMatch.match(matcher, "GET", "/api/users/123")
 
-    test.expect(Route.descriptor(paramMatch!.route).path).toBe("/api/users/:id")
-    test.expect(paramMatch!.params).toEqual({ id: "123" })
+    test
+      .expect(Route.descriptor(paramMatch!.route).path)
+      .toBe("/api/users/:id")
+    test
+      .expect(paramMatch!.params)
+      .toEqual({ id: "123" })
 
     const greedyMatch = RouteMatch.match(matcher, "GET", "/api/something/else")
 
-    test.expect(Route.descriptor(greedyMatch!.route).path).toBe("/api/:rest+")
-    test.expect(greedyMatch!.params).toEqual({ rest: "something/else" })
+    test
+      .expect(Route.descriptor(greedyMatch!.route).path)
+      .toBe("/api/:rest+")
+    test
+      .expect(greedyMatch!.params)
+      .toEqual({ rest: "something/else" })
 
     const catchAll = RouteMatch.match(matcher, "GET", "/random/path")
 
-    test.expect(Route.descriptor(catchAll!.route).path).toBe("/:path*")
+    test
+      .expect(Route.descriptor(catchAll!.route).path)
+      .toBe("/:path*")
   })
 
   test.it("static routes take priority over optional param routes", () => {
@@ -237,17 +327,29 @@ test.describe(RouteMatch.match, () => {
 
     const staticMatch = RouteMatch.match(matcher, "GET", "/files/latest")
 
-    test.expect(Route.descriptor(staticMatch!.route).path).toBe("/files/latest")
+    test
+      .expect(Route.descriptor(staticMatch!.route).path)
+      .toBe("/files/latest")
 
     const optionalMatch = RouteMatch.match(matcher, "GET", "/files/other")
 
-    test.expect(Route.descriptor(optionalMatch!.route).path).toBe("/files/:name?")
-    test.expect(optionalMatch!.params).toEqual({ name: "other" })
+    test
+      .expect(Route.descriptor(optionalMatch!.route).path)
+      .toBe(
+        "/files/:name?",
+      )
+    test
+      .expect(optionalMatch!.params)
+      .toEqual({ name: "other" })
 
     const noParam = RouteMatch.match(matcher, "GET", "/files")
 
-    test.expect(Route.descriptor(noParam!.route).path).toBe("/files/:name?")
-    test.expect(noParam!.params).toEqual({})
+    test
+      .expect(Route.descriptor(noParam!.route).path)
+      .toBe("/files/:name?")
+    test
+      .expect(noParam!.params)
+      .toEqual({})
   })
 
   test.it("handles dots in path segments", () => {
@@ -259,8 +361,13 @@ test.describe(RouteMatch.match, () => {
 
     const result = RouteMatch.match(matcher, "GET", "/api/v1.0/users")
 
-    test.expect(result).not.toBeNull()
-    test.expect(result!.params).toEqual({})
+    test
+      .expect(result)
+      .not
+      .toBeNull()
+    test
+      .expect(result!.params)
+      .toEqual({})
   })
 
   test.it("does not match dots as regex wildcards", () => {
@@ -270,8 +377,13 @@ test.describe(RouteMatch.match, () => {
       }),
     )
 
-    test.expect(RouteMatch.match(matcher, "GET", "/a.b")).not.toBeNull()
-    test.expect(RouteMatch.match(matcher, "GET", "/aXb")).toBeNull()
+    test
+      .expect(RouteMatch.match(matcher, "GET", "/a.b"))
+      .not
+      .toBeNull()
+    test
+      .expect(RouteMatch.match(matcher, "GET", "/aXb"))
+      .toBeNull()
   })
 
   test.it("handles trailing slashes", () => {
@@ -281,8 +393,14 @@ test.describe(RouteMatch.match, () => {
       }),
     )
 
-    test.expect(RouteMatch.match(matcher, "GET", "/users/")).not.toBeNull()
-    test.expect(RouteMatch.match(matcher, "GET", "/users///")).not.toBeNull()
+    test
+      .expect(RouteMatch.match(matcher, "GET", "/users/"))
+      .not
+      .toBeNull()
+    test
+      .expect(RouteMatch.match(matcher, "GET", "/users///"))
+      .not
+      .toBeNull()
   })
 
   test.it("multiple params in one path", () => {
@@ -294,28 +412,47 @@ test.describe(RouteMatch.match, () => {
 
     const result = RouteMatch.match(matcher, "GET", "/users/42/posts/99")
 
-    test.expect(result).not.toBeNull()
-    test.expect(result!.params).toEqual({ userId: "42", postId: "99" })
+    test
+      .expect(result)
+      .not
+      .toBeNull()
+    test
+      .expect(result!.params)
+      .toEqual({ userId: "42", postId: "99" })
   })
 
   test.it("same path different methods", () => {
     const matcher = RouteMatch.make(
       Route.map({
-        "/users": Route.get(Route.text("get users")).post(Route.text("create user")),
+        "/users": Route.get(Route.text("get users")).post(
+          Route.text("create user"),
+        ),
       }),
     )
 
     const getResult = RouteMatch.match(matcher, "GET", "/users")
 
-    test.expect(getResult).not.toBeNull()
-    test.expect(Route.descriptor(getResult!.route).method).toBe("GET")
+    test
+      .expect(getResult)
+      .not
+      .toBeNull()
+    test
+      .expect(Route.descriptor(getResult!.route).method)
+      .toBe("GET")
 
     const postResult = RouteMatch.match(matcher, "POST", "/users")
 
-    test.expect(postResult).not.toBeNull()
-    test.expect(Route.descriptor(postResult!.route).method).toBe("POST")
+    test
+      .expect(postResult)
+      .not
+      .toBeNull()
+    test
+      .expect(Route.descriptor(postResult!.route).method)
+      .toBe("POST")
 
-    test.expect(RouteMatch.match(matcher, "DELETE", "/users")).toBeNull()
+    test
+      .expect(RouteMatch.match(matcher, "DELETE", "/users"))
+      .toBeNull()
   })
 
   test.it("root path matches", () => {
@@ -325,7 +462,10 @@ test.describe(RouteMatch.match, () => {
       }),
     )
 
-    test.expect(RouteMatch.match(matcher, "GET", "/")).not.toBeNull()
+    test
+      .expect(RouteMatch.match(matcher, "GET", "/"))
+      .not
+      .toBeNull()
   })
 
   test.it("match works after merge", () => {
@@ -337,9 +477,17 @@ test.describe(RouteMatch.match, () => {
     })
     const matcher = RouteMatch.make(RouteMap.merge(a, b))
 
-    test.expect(RouteMatch.match(matcher, "GET", "/users")).not.toBeNull()
-    test.expect(RouteMatch.match(matcher, "GET", "/posts")).not.toBeNull()
-    test.expect(RouteMatch.match(matcher, "GET", "/other")).toBeNull()
+    test
+      .expect(RouteMatch.match(matcher, "GET", "/users"))
+      .not
+      .toBeNull()
+    test
+      .expect(RouteMatch.match(matcher, "GET", "/posts"))
+      .not
+      .toBeNull()
+    test
+      .expect(RouteMatch.match(matcher, "GET", "/other"))
+      .toBeNull()
   })
 
   test.it("param values with special characters", () => {
@@ -351,8 +499,13 @@ test.describe(RouteMatch.match, () => {
 
     const result = RouteMatch.match(matcher, "GET", "/files/my-file_v2.txt")
 
-    test.expect(result).not.toBeNull()
-    test.expect(result!.params).toEqual({ name: "my-file_v2.txt" })
+    test
+      .expect(result)
+      .not
+      .toBeNull()
+    test
+      .expect(result!.params)
+      .toEqual({ name: "my-file_v2.txt" })
   })
 
   test.it("greedy param captures slashes", () => {
@@ -364,7 +517,9 @@ test.describe(RouteMatch.match, () => {
 
     const result = RouteMatch.match(matcher, "GET", "/api/a/b/c")
 
-    test.expect(result!.params).toEqual({ rest: "a/b/c" })
+    test
+      .expect(result!.params)
+      .toEqual({ rest: "a/b/c" })
   })
 
   test.it("literal-prefix greedy route takes priority over param route", () => {
@@ -377,20 +532,43 @@ test.describe(RouteMatch.match, () => {
 
     const match = RouteMatch.match(matcher, "GET", "/pages")
 
-    test.expect(match).not.toBeNull()
-    test.expect(Route.descriptor(match!.route).path).toBe("/pages/:path*")
-    test.expect(match!.params).toEqual({})
+    test
+      .expect(match)
+      .not
+      .toBeNull()
+    test
+      .expect(Route.descriptor(match!.route).path)
+      .toBe("/pages/:path*")
+    test
+      .expect(match!.params)
+      .toEqual({})
 
     const matchWithPath = RouteMatch.match(matcher, "GET", "/pages/app.js")
 
-    test.expect(matchWithPath).not.toBeNull()
-    test.expect(Route.descriptor(matchWithPath!.route).path).toBe("/pages/:path*")
-    test.expect(matchWithPath!.params).toEqual({ path: "app.js" })
+    test
+      .expect(matchWithPath)
+      .not
+      .toBeNull()
+    test
+      .expect(Route.descriptor(matchWithPath!.route).path)
+      .toBe(
+        "/pages/:path*",
+      )
+    test
+      .expect(matchWithPath!.params)
+      .toEqual({ path: "app.js" })
 
     const owner = RouteMatch.match(matcher, "GET", "/someone")
 
-    test.expect(owner).not.toBeNull()
-    test.expect(Route.descriptor(owner!.route).path).toBe("/:owner")
-    test.expect(owner!.params).toEqual({ owner: "someone" })
+    test
+      .expect(owner)
+      .not
+      .toBeNull()
+    test
+      .expect(Route.descriptor(owner!.route).path)
+      .toBe("/:owner")
+    test
+      .expect(owner!.params)
+      .toEqual({ owner: "someone" })
   })
 })

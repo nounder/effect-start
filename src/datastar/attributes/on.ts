@@ -38,14 +38,19 @@ attribute({
         if (!el.contains(evt?.target as HTMLElement)) cb(evt)
       }
     }
-    if (eventName === DATASTAR_FETCH_EVENT || eventName === DATASTAR_SIGNAL_PATCH_EVENT) {
+    if (
+      eventName === DATASTAR_FETCH_EVENT ||
+      eventName === DATASTAR_SIGNAL_PATCH_EVENT
+    ) {
       target = document
     }
     const listener = (evt?: Event) => {
       if (evt) {
         if (mods.has("prevent")) evt.preventDefault()
         if (mods.has("stop")) evt.stopPropagation()
-        if (el instanceof HTMLFormElement && eventName === "submit") evt.preventDefault()
+        if (el instanceof HTMLFormElement && eventName === "submit") {
+          evt.preventDefault()
+        }
       }
       callback(evt)
     }

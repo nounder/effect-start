@@ -24,7 +24,9 @@ function buildSnowflake(): Snowflake {
   const fn = Object.assign(
     (time: number = Date.now()) => {
       const nowMs = BigInt(toSafeTime(time))
-      const timestampMs = nowMs > fn.state.timestampMs ? nowMs : fn.state.timestampMs
+      const timestampMs = nowMs > fn.state.timestampMs
+        ? nowMs
+        : fn.state.timestampMs
 
       if (timestampMs > fn.state.timestampMs) {
         fn.state.timestampMs = timestampMs
@@ -37,7 +39,8 @@ function buildSnowflake(): Snowflake {
         }
       }
 
-      return ((fn.state.timestampMs & timestampMask) << seqBits) | fn.state.sequence
+      return ((fn.state.timestampMs & timestampMask) << seqBits) |
+        fn.state.sequence
     },
     {
       state: {
@@ -253,7 +256,10 @@ export function nanoid(size = 21, alphabet = ALPHABET_BASE64_URL): string {
   return id
 }
 
-function toBase32(bytes: Uint8Array, alphabet = ALPHABET_BASE32_CROCKFORD): string {
+function toBase32(
+  bytes: Uint8Array,
+  alphabet = ALPHABET_BASE32_CROCKFORD,
+): string {
   if (bytes.length === 0) return ""
 
   let result = ""

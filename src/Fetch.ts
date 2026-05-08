@@ -6,7 +6,10 @@ import * as Entity from "./Entity.ts"
 
 const TypeId = "~effect-start/FetchClient" as const
 
-export type FetchEntity = Entity.Entity<Stream.Stream<Uint8Array, FetchError, never>, FetchError>
+export type FetchEntity = Entity.Entity<
+  Stream.Stream<Uint8Array, FetchError, never>,
+  FetchError
+>
 
 export class FetchError extends Data.TaggedError("FetchError")<{
   readonly reason: "Network" | "Status"
@@ -53,12 +56,15 @@ function withTrace<E, R>(
       }
       span.attribute("url.scheme", url.protocol.slice(0, -1))
 
-      return Effect.flatMap(Effect.exit(Effect.withParentSpan(effect, span)), (exit) => {
-        if (exit._tag === "Success") {
-          span.attribute("http.response.status_code", exit.value.status ?? 0)
-        }
-        return exit
-      })
+      return Effect.flatMap(
+        Effect.exit(Effect.withParentSpan(effect, span)),
+        (exit) => {
+          if (exit._tag === "Success") {
+            span.attribute("http.response.status_code", exit.value.status ?? 0)
+          }
+          return exit
+        },
+      )
     },
   )
 }
@@ -99,7 +105,7 @@ export function fetch(
 ): Effect.Effect<FetchEntity, any, any> {
   const middleware: ReadonlyArray<Middleware<any, any>> =
     (this as any)?.middleware ?? defaultMiddleware
-  return Effect.gen(function* () {
+  return Effect.gen(function*() {
     const request = new Request(input, init)
 
     let handler: Next = noopNext as Next
@@ -146,7 +152,9 @@ export function post(
   return fetch.call(this as any, input, { ...init, method: "POST" }) as any
 }
 
-export function use<E2, R2>(...middleware: ReadonlyArray<Middleware<E2, R2>>): FetchClient<E2, R2>
+export function use<E2, R2>(
+  ...middleware: ReadonlyArray<Middleware<E2, R2>>
+): FetchClient<E2, R2>
 export function use<E, R, E2, R2>(
   this: FetchClient<E, R>,
   ...middleware: ReadonlyArray<Middleware<E2, R2>>
@@ -189,11 +197,13 @@ export function fromHandler(handler: WebHandler): FetchClient {
 export function filterStatus(
   predicate: (status: number) => boolean,
   options?: {
-    readonly orElse?: (entity: FetchEntity) => Effect.Effect<FetchEntity, any, any>
+    readonly orElse?: (
+      entity: FetchEntity,
+    ) => Effect.Effect<FetchEntity, any, any>
   },
 ): Middleware<FetchError> {
   return ((_request: Request, next: Next) =>
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       const entity = yield* next(_request)
       const status = entity.status ?? 0
       if (predicate(status)) {
@@ -202,21 +212,27 @@ export function filterStatus(
       if (options?.orElse) {
         return yield* options.orElse(entity)
       }
-      return yield* Effect.fail(new FetchError({ reason: "Status", response: entity }))
+      return yield* Effect.fail(
+        new FetchError({ reason: "Status", response: entity }),
+      )
     })) as Middleware<FetchError>
 }
 
 export function filterStatusOk(options?: {
-  readonly orElse?: (entity: FetchEntity) => Effect.Effect<FetchEntity, any, any>
+  readonly orElse?: (
+    entity: FetchEntity,
+  ) => Effect.Effect<FetchEntity, any, any>
 }): Middleware<FetchError> {
   return filterStatus((status) => status >= 200 && status < 300, options)
 }
 
-export function followRedirects(options?: { readonly maxRedirects?: number }): Middleware {
+export function followRedirects(
+  options?: { readonly maxRedirects?: number },
+): Middleware {
   const maxRedirects = options?.maxRedirects ?? 10
 
   return (request: Request, next: Next) =>
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       let currentRequest = new Request(request.url, {
         ...request,
         redirect: "manual",
@@ -300,13 +316,19 @@ export function sse(_options?: {
       return Stream.fail(
         new FetchError({
           reason: "Status",
-          cause: new Error(`Expected content-type text/event-stream, got: ${contentType}`),
+          cause: new Error(
+            `Expected content-type text/event-stream, got: ${contentType}`,
+          ),
           response: entity,
         }),
       )
     }
 
-    const byteStream = entity.body as Stream.Stream<Uint8Array, FetchError, never>
+    const byteStream = entity.body as Stream.Stream<
+      Uint8Array,
+      FetchError,
+      never
+    >
     const decoder = new TextDecoder()
     const empty = {
       partial: "",
@@ -326,41 +348,47 @@ export function sse(_options?: {
         return [{ ...acc, partial }, lines]
       }),
       Stream.flatMap(Stream.fromIterable),
-      Stream.mapAccum(empty, (acc, line: string): [Acc, SseEvent | undefined] => {
-        if (line === "") {
-          if (acc.dataLines.length > 0) {
-            const event: SseEvent = { data: acc.dataLines.join("\n") }
-            if (acc.eventType !== undefined) event.event = acc.eventType
-            if (acc.retryMs !== undefined) event.retry = acc.retryMs
-            if (acc.lastEventId !== undefined) event.id = acc.lastEventId
-            return [{ ...empty, lastEventId: acc.lastEventId }, event]
+      Stream.mapAccum(
+        empty,
+        (acc, line: string): [Acc, SseEvent | undefined] => {
+          if (line === "") {
+            if (acc.dataLines.length > 0) {
+              const event: SseEvent = { data: acc.dataLines.join("\n") }
+              if (acc.eventType !== undefined) event.event = acc.eventType
+              if (acc.retryMs !== undefined) event.retry = acc.retryMs
+              if (acc.lastEventId !== undefined) event.id = acc.lastEventId
+              return [{ ...empty, lastEventId: acc.lastEventId }, event]
+            }
+            return [{ ...empty, lastEventId: acc.lastEventId }, undefined]
           }
-          return [{ ...empty, lastEventId: acc.lastEventId }, undefined]
-        }
 
-        if (line.startsWith(":")) return [acc, undefined]
+          if (line.startsWith(":")) return [acc, undefined]
 
-        const colonIdx = line.indexOf(":")
-        const field = colonIdx === -1 ? line : line.slice(0, colonIdx)
-        let value = colonIdx === -1 ? "" : line.slice(colonIdx + 1)
-        if (value.startsWith(" ")) value = value.slice(1)
+          const colonIdx = line.indexOf(":")
+          const field = colonIdx === -1 ? line : line.slice(0, colonIdx)
+          let value = colonIdx === -1 ? "" : line.slice(colonIdx + 1)
+          if (value.startsWith(" ")) value = value.slice(1)
 
-        switch (field) {
-          case "event":
-            return [{ ...acc, eventType: value }, undefined]
-          case "data":
-            return [{ ...acc, dataLines: [...acc.dataLines, value] }, undefined]
-          case "retry": {
-            const n = parseInt(value, 10)
-            if (!isNaN(n)) return [{ ...acc, retryMs: n }, undefined]
-            return [acc, undefined]
+          switch (field) {
+            case "event":
+              return [{ ...acc, eventType: value }, undefined]
+            case "data":
+              return [
+                { ...acc, dataLines: [...acc.dataLines, value] },
+                undefined,
+              ]
+            case "retry": {
+              const n = parseInt(value, 10)
+              if (!isNaN(n)) return [{ ...acc, retryMs: n }, undefined]
+              return [acc, undefined]
+            }
+            case "id":
+              return [{ ...acc, lastEventId: value }, undefined]
+            default:
+              return [acc, undefined]
           }
-          case "id":
-            return [{ ...acc, lastEventId: value }, undefined]
-          default:
-            return [acc, undefined]
-        }
-      }),
+        },
+      ),
       Stream.filter((event): event is SseEvent => event !== undefined),
     )
   }

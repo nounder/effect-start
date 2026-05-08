@@ -13,7 +13,10 @@ import * as MutableRef from "effect/MutableRef"
 
 export const mainFiber = GlobalValue.globalValue(
   Symbol.for("effect-start/PlatformRuntime/mainFiber"),
-  () => MutableRef.make<Fiber.RuntimeFiber<unknown, unknown> | undefined>(undefined),
+  () =>
+    MutableRef.make<Fiber.RuntimeFiber<unknown, unknown> | undefined>(
+      undefined,
+    ),
 )
 
 export interface Teardown {
@@ -43,7 +46,10 @@ export interface RunMain {
   ): void
 }
 
-const addPrettyLogger = (refs: FiberRefs.FiberRefs, fiberId: FiberId.Runtime) => {
+const addPrettyLogger = (
+  refs: FiberRefs.FiberRefs,
+  fiberId: FiberId.Runtime,
+) => {
   const loggers = FiberRefs.getOrDefault(refs, FiberRef.currentLoggers)
   if (!HashSet.has(loggers, Logger.defaultLogger)) {
     return refs
@@ -74,22 +80,25 @@ export const makeRunMain = (
         readonly teardown?: Teardown | undefined
       },
     ) => {
-      const fiber =
-        options?.disableErrorReporting === true
-          ? Effect.runFork(effect, {
-              updateRefs: options?.disablePrettyLogger === true ? undefined : addPrettyLogger,
-            })
-          : Effect.runFork(
-              Effect.tapErrorCause(effect, (cause) => {
-                if (Cause.isInterruptedOnly(cause)) {
-                  return Effect.void
-                }
-                return Effect.logError(cause)
-              }),
-              {
-                updateRefs: options?.disablePrettyLogger === true ? undefined : addPrettyLogger,
-              },
-            )
+      const fiber = options?.disableErrorReporting === true
+        ? Effect.runFork(effect, {
+          updateRefs: options?.disablePrettyLogger === true
+            ? undefined
+            : addPrettyLogger,
+        })
+        : Effect.runFork(
+          Effect.tapErrorCause(effect, (cause) => {
+            if (Cause.isInterruptedOnly(cause)) {
+              return Effect.void
+            }
+            return Effect.logError(cause)
+          }),
+          {
+            updateRefs: options?.disablePrettyLogger === true
+              ? undefined
+              : addPrettyLogger,
+          },
+        )
       const teardown = options?.teardown ?? defaultTeardown
       return f({ fiber, teardown })
     },
@@ -102,6 +111,8 @@ export function isAgentHarness() {
   return (
     typeof process !== "undefined" &&
     !process.stdout.isTTY &&
-    (process.env.CLAUDECODE || process.env.CURSOR_AGENT || process.env.CODEX_THREAD_ID)
+    (process.env.CLAUDECODE ||
+      process.env.CURSOR_AGENT ||
+      process.env.CODEX_THREAD_ID)
   )
 }

@@ -4,7 +4,9 @@ export interface RouteInfo {
   readonly format: string | undefined
 }
 
-function groupByPath(routes: Array<RouteInfo>): Array<{ path: string; routes: Array<RouteInfo> }> {
+function groupByPath(
+  routes: Array<RouteInfo>,
+): Array<{ path: string; routes: Array<RouteInfo> }> {
   const byPath = new Map<string, Array<RouteInfo>>()
   for (const r of routes) {
     let group = byPath.get(r.path)
@@ -14,10 +16,14 @@ function groupByPath(routes: Array<RouteInfo>): Array<{ path: string; routes: Ar
     }
     group.push(r)
   }
-  return Array.from(byPath, ([path, routes]) => ({
-    path,
-    routes: routes.sort((a, b) => methodOrder.indexOf(a.method) - methodOrder.indexOf(b.method)),
-  })).sort((a, b) => a.path.localeCompare(b.path))
+  return Array
+    .from(byPath, ([path, routes]) => ({
+      path,
+      routes: routes.sort((a, b) =>
+        methodOrder.indexOf(a.method) - methodOrder.indexOf(b.method)
+      ),
+    }))
+    .sort((a, b) => a.path.localeCompare(b.path))
 }
 
 function methodColor(method: string): string {
@@ -39,12 +45,25 @@ function methodBg(method: string): string {
   return "#1e293b"
 }
 
-const methodOrder = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "*"]
+const methodOrder = [
+  "GET",
+  "POST",
+  "PUT",
+  "PATCH",
+  "DELETE",
+  "HEAD",
+  "OPTIONS",
+  "*",
+]
 
 function MethodBadge(props: { method: string }) {
   return (
     <span
-      style={`font-size:10px;font-weight:700;font-family:monospace;padding:2px 6px;border-radius:3px;background:${methodBg(props.method)};color:${methodColor(props.method)};min-width:48px;text-align:center;display:inline-block`}
+      style={`font-size:10px;font-weight:700;font-family:monospace;padding:2px 6px;border-radius:3px;background:${
+        methodBg(props.method)
+      };color:${
+        methodColor(props.method)
+      };min-width:48px;text-align:center;display:inline-block`}
     >
       {props.method}
     </span>
@@ -63,19 +82,27 @@ function ColoredPath(props: { path: string }) {
   const segments = props.path.split("/").filter(Boolean)
   return (
     <span style="font-family:monospace;font-size:13px">
-      {segments.length === 0 ? (
-        <span style="color:#e2e8f0">/</span>
-      ) : (
-        segments.map((seg) => {
-          const isParam = seg.startsWith(":")
-          return (
-            <>
-              <span style="color:#475569">/</span>
-              <span style={isParam ? "color:#c084fc" : "color:#e2e8f0"}>{seg}</span>
-            </>
-          )
-        })
-      )}
+      {segments.length === 0 ?
+        (
+          <span style="color:#e2e8f0">
+            /
+          </span>
+        ) :
+        (
+          segments.map((seg) => {
+            const isParam = seg.startsWith(":")
+            return (
+              <>
+                <span style="color:#475569">
+                  /
+                </span>
+                <span style={isParam ? "color:#c084fc" : "color:#e2e8f0"}>
+                  {seg}
+                </span>
+              </>
+            )
+          })
+        )}
     </span>
   )
 }
@@ -100,7 +127,11 @@ function PathGroup(props: { path: string; routes: Array<RouteInfo> }) {
 
 export function RouteList(props: { routes: Array<RouteInfo> }) {
   if (props.routes.length === 0) {
-    return <div class="empty">No routes registered</div>
+    return (
+      <div class="empty">
+        No routes registered
+      </div>
+    )
   }
 
   const groups = groupByPath(props.routes)
@@ -117,9 +148,7 @@ export function RouteList(props: { routes: Array<RouteInfo> }) {
           {routeCount} route{routeCount !== 1 ? "s" : ""}
         </span>
       </div>
-      {groups.map((g) => (
-        <PathGroup path={g.path} routes={g.routes} />
-      ))}
+      {groups.map((g) => <PathGroup path={g.path} routes={g.routes} />)}
     </>
   )
 }

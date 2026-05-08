@@ -6,9 +6,11 @@ export class BadRequest extends Schema.TaggedError<BadRequest>()("BadRequest", {
   static readonly status = 400
 }
 
-export class Unauthorized extends Schema.TaggedError<Unauthorized>()("Unauthorized", {
-  message: Schema.String,
-}) {
+export class Unauthorized
+  extends Schema.TaggedError<Unauthorized>()("Unauthorized", {
+    message: Schema.String,
+  })
+{
   static readonly status = 401
 }
 
@@ -24,9 +26,11 @@ export class NotFound extends Schema.TaggedError<NotFound>()("NotFound", {
   static readonly status = 404
 }
 
-export class MethodNotAllowed extends Schema.TaggedError<MethodNotAllowed>()("MethodNotAllowed", {
-  message: Schema.String,
-}) {
+export class MethodNotAllowed
+  extends Schema.TaggedError<MethodNotAllowed>()("MethodNotAllowed", {
+    message: Schema.String,
+  })
+{
   static readonly status = 405
 }
 
@@ -42,35 +46,45 @@ export class Gone extends Schema.TaggedError<Gone>()("Gone", {
   static readonly status = 410
 }
 
-export class UnprocessableEntity extends Schema.TaggedError<UnprocessableEntity>()(
-  "UnprocessableEntity",
-  { message: Schema.String },
-) {
+export class UnprocessableEntity
+  extends Schema.TaggedError<UnprocessableEntity>()(
+    "UnprocessableEntity",
+    { message: Schema.String },
+  )
+{
   static readonly status = 422
 }
 
-export class TooManyRequests extends Schema.TaggedError<TooManyRequests>()("TooManyRequests", {
-  message: Schema.String,
-}) {
+export class TooManyRequests
+  extends Schema.TaggedError<TooManyRequests>()("TooManyRequests", {
+    message: Schema.String,
+  })
+{
   static readonly status = 429
 }
 
-export class InternalServerError extends Schema.TaggedError<InternalServerError>()(
-  "InternalServerError",
-  { message: Schema.String },
-) {
+export class InternalServerError
+  extends Schema.TaggedError<InternalServerError>()(
+    "InternalServerError",
+    { message: Schema.String },
+  )
+{
   static readonly status = 500
 }
 
-export class NotImplemented extends Schema.TaggedError<NotImplemented>()("NotImplemented", {
-  message: Schema.String,
-}) {
+export class NotImplemented
+  extends Schema.TaggedError<NotImplemented>()("NotImplemented", {
+    message: Schema.String,
+  })
+{
   static readonly status = 501
 }
 
-export class ServiceUnavailable extends Schema.TaggedError<ServiceUnavailable>()(
-  "ServiceUnavailable",
-  { message: Schema.String },
-) {
+export class ServiceUnavailable
+  extends Schema.TaggedError<ServiceUnavailable>()(
+    "ServiceUnavailable",
+    { message: Schema.String },
+  )
+{
   static readonly status = 503
 }

@@ -8,27 +8,35 @@ import * as StudioStore from "../StudioStore.ts"
 const unauthorized = Entity.make("Unauthorized", {
   status: 401,
   headers: {
-    "www-authenticate": 'Basic realm="Studio", charset="UTF-8"',
+    "www-authenticate": "Basic realm=\"Studio\", charset=\"UTF-8\"",
     "content-type": "text/plain; charset=utf-8",
   },
 })
 
-const basicAuthRoute = Route.make<{}, {}, unknown, never, Studio.Studio | Route.Request>(
+const basicAuthRoute = Route.make<
+  {},
+  {},
+  unknown,
+  never,
+  Studio.Studio | Route.Request
+>(
   (_context, next) =>
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       const studio = yield* Studio.Studio
       if (!studio.auth || studio.auth.type !== "basic") return yield* next
       const request = yield* Route.Request
       const header = request.headers.get("authorization")
-      const expected = "Basic " + btoa(`${studio.auth.username}:${studio.auth.password}`)
+      const expected = "Basic " +
+        btoa(`${studio.auth.username}:${studio.auth.password}`)
       if (header !== expected) return unauthorized
       return yield* next
     }),
 )
 
 export default Route.use(
-  (self) => Route.set([...Route.items(self), basicAuthRoute], Route.descriptor(self)),
-  Route.filter(function* () {
+  (self) =>
+    Route.set([...Route.items(self), basicAuthRoute], Route.descriptor(self)),
+  Route.filter(function*() {
     yield* Effect.annotateCurrentSpan(StudioStore.studioTraceAttribute, true)
     return { context: {} }
   }),

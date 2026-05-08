@@ -5,7 +5,7 @@ const htmlEscapeMap: Record<string, string> = {
   "&": "&amp;",
   "<": "&lt;",
   ">": "&gt;",
-  '"': "&quot;",
+  "\"": "&quot;",
   "'": "&#39;",
 }
 
@@ -21,7 +21,9 @@ export function PreformattedText(props: { text: string; style?: string }) {
   return <pre style={props.style}>{Html.unsafe(toPreHtml(props.text))}</pre>
 }
 
-export function PrettyValue(props: { value: unknown; style?: string; preStyle?: string }) {
+export function PrettyValue(
+  props: { value: unknown; style?: string; preStyle?: string },
+) {
   if (props.value == null) return null
   if (Pretty.isStructuredValue(props.value)) {
     return (
@@ -31,5 +33,9 @@ export function PrettyValue(props: { value: unknown; style?: string; preStyle?: 
       />
     )
   }
-  return <span style={props.style}>{String(props.value)}</span>
+  return (
+    <span style={props.style}>
+      {String(props.value)}
+    </span>
+  )
 }

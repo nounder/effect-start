@@ -1,4 +1,3 @@
-import * as FileSystem from "./FileSystem.ts"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
@@ -9,11 +8,12 @@ import * as NPath from "node:path"
 import * as NUrl from "node:url"
 import * as Development from "./Development.ts"
 import * as FileRouterCodegen from "./FileRouterCodegen.ts"
-import * as NodeUtils from "./node/NodeUtils.ts"
+import * as FileSystem from "./FileSystem.ts"
 import * as PathPattern from "./internal/PathPattern.ts"
-import type * as System from "./System.ts"
+import * as NodeUtils from "./node/NodeUtils.ts"
 import * as Route from "./Route.ts"
 import * as RouteMap from "./RouteMap.ts"
+import type * as System from "./System.ts"
 
 export class FileRouterError extends Data.TaggedError("FileRouterError")<{
   reason: "Import" | "Conflict" | "FileSystem"
@@ -28,7 +28,7 @@ export type RouteModule = {
 export type LazyRouteModule = () => Promise<RouteModule>
 
 export type FileRoutes = {
-  [path: PathPattern.PathPattern]: [LazyRouteModule, ...LazyRouteModule[]]
+  [path: PathPattern.PathPattern]: [LazyRouteModule, ...Array<LazyRouteModule>]
 }
 
 export type FileRoute = {
@@ -71,7 +71,9 @@ export function parseRoute(path: string): FileRoute | null {
   }
 }
 
-function importModule<T>(load: () => Promise<T>): Effect.Effect<T, FileRouterError> {
+function importModule<T>(
+  load: () => Promise<T>,
+): Effect.Effect<T, FileRouterError> {
   return Effect.tryPromise({
     try: () => load(),
     catch: (cause) => new FileRouterError({ reason: "Import", cause }),
@@ -93,13 +95,12 @@ export function layer(
     | (() => Promise<{ default: FileRoutes }>)
     | { load: () => Promise<{ default: FileRoutes }>; path: string },
 ) {
-  const options =
-    typeof loadOrOptions === "function"
-      ? {
-          load: loadOrOptions,
-          path: NPath.join(NodeUtils.getEntrypoint(), "routes"),
-        }
-      : loadOrOptions
+  const options = typeof loadOrOptions === "function"
+    ? {
+      load: loadOrOptions,
+      path: NPath.join(NodeUtils.getEntrypoint(), "routes"),
+    }
+    : loadOrOptions
   let treePath = options.path
   if (treePath.startsWith("file://")) {
     treePath = NUrl.fileURLToPath(treePath)
@@ -114,7 +115,7 @@ export function layer(
 
   return Layer.scoped(
     Route.Routes,
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       yield* FileRouterCodegen.update(routesPath, treeFilename)
 
       const m = yield* importModule(options.load)
@@ -122,19 +123,27 @@ export function layer(
 
       yield* Function.pipe(
         Development.events,
-        Stream.filter((e) => e._tag !== "Reload" && e.path.startsWith(relativeRoutesPath)),
-        Stream.runForEach(() => FileRouterCodegen.update(routesPath, treeFilename)),
+        Stream.filter((e) =>
+          e._tag !== "Reload" && e.path.startsWith(relativeRoutesPath)
+        ),
+        Stream.runForEach(() =>
+          FileRouterCodegen.update(routesPath, treeFilename)
+        ),
         Effect.fork,
       )
 
       const existing = yield* Effect.serviceOption(Route.Routes)
-      return existing._tag === "Some" ? RouteMap.merge(existing.value, routeMap) : routeMap
+      return existing._tag === "Some"
+        ? RouteMap.merge(existing.value, routeMap)
+        : routeMap
     }),
   )
 }
 
-export function fromFileRoutes(fileRoutes: FileRoutes): Effect.Effect<RouteMap.RouteMap> {
-  return Effect.gen(function* () {
+export function fromFileRoutes(
+  fileRoutes: FileRoutes,
+): Effect.Effect<RouteMap.RouteMap> {
+  return Effect.gen(function*() {
     const mounts: RouteMap.RouteMapInput = {}
 
     for (const [path, loaders] of Object.entries(fileRoutes)) {
@@ -144,15 +153,20 @@ export function fromFileRoutes(fileRoutes: FileRoutes): Effect.Effect<RouteMap.R
         const result = yield* Effect.either(
           Effect.tryPromise({
             try: () => loader(),
-            catch: (cause) => new FileRouterError({ reason: "Import", cause, path }),
+            catch: (cause) =>
+              new FileRouterError({ reason: "Import", cause, path }),
           }),
         )
 
         if (Either.isLeft(result)) {
           const error = result.left
-          for (const route of Route.use(
-            Route.render((): Effect.Effect<string, FileRouterError> => Effect.fail(error)),
-          )) {
+          for (
+            const route of Route.use(
+              Route.render((): Effect.Effect<string, FileRouterError> =>
+                Effect.fail(error)
+              ),
+            )
+          ) {
             allRoutes.push(route as Route.Route.With<{ method: string }>)
           }
         } else {
@@ -174,8 +188,12 @@ export function fromFileRoutes(fileRoutes: FileRoutes): Effect.Effect<RouteMap.R
 
 export function walkRoutesDirectory(
   dir: string,
-): Effect.Effect<OrderedFileRoutes, System.SystemError | FileRouterError, FileSystem.FileSystem> {
-  return Effect.gen(function* () {
+): Effect.Effect<
+  OrderedFileRoutes,
+  System.SystemError | FileRouterError,
+  FileSystem.FileSystem
+> {
+  return Effect.gen(function*() {
     const fs = yield* FileSystem.FileSystem
     const files = yield* fs.readDirectory(dir, { recursive: true })
 
@@ -186,7 +204,7 @@ export function walkRoutesDirectory(
 export function getFileRoutes(
   paths: Array<string>,
 ): Effect.Effect<OrderedFileRoutes, FileRouterError> {
-  return Effect.gen(function* () {
+  return Effect.gen(function*() {
     const routes = paths
       .map((f) => f.replaceAll("\\", "/"))
       .map((f) => f.match(ROUTE_PATH_REGEX))
@@ -203,10 +221,12 @@ export function getFileRoutes(
       .toSorted((a, b) => {
         const aDepth = a.modulePath.split("/").filter(Boolean).length - 1
         const bDepth = b.modulePath.split("/").filter(Boolean).length - 1
-        const aHasRest = a.routePath
+        const aHasRest = a
+          .routePath
           .split("/")
           .some((seg) => seg.startsWith(":") && seg.endsWith("*"))
-        const bHasRest = b.routePath
+        const bHasRest = b
+          .routePath
           .split("/")
           .some((seg) => seg.startsWith(":") && seg.endsWith("*"))
 

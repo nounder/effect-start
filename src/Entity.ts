@@ -1,5 +1,5 @@
-import * as Effectable from "effect/Effectable"
 import * as Effect from "effect/Effect"
+import * as Effectable from "effect/Effectable"
 import * as ParseResult from "effect/ParseResult"
 import * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
@@ -26,7 +26,9 @@ export type Headers = {
   readonly [header: string]: string | ReadonlyArray<string> | null | undefined
 }
 
-export interface Entity<T = unknown, E = never> extends Effect.Effect<Entity<T, E>, E> {
+export interface Entity<T = unknown, E = never>
+  extends Effect.Effect<Entity<T, E>, E>
+{
   readonly [TypeId]: typeof TypeId
   readonly body: T
   readonly headers: Headers
@@ -37,22 +39,19 @@ export interface Entity<T = unknown, E = never> extends Effect.Effect<Entity<T, 
    */
   readonly url: string | undefined
   readonly status: number | undefined
-  readonly text: T extends string
-    ? Effect.Effect<T, ParseResult.ParseError | E>
+  readonly text: T extends string ? Effect.Effect<T, ParseResult.ParseError | E>
     : Effect.Effect<string, ParseResult.ParseError | E>
   readonly html: Effect.Effect<Html.TrustedHtml, ParseResult.ParseError | E>
-  readonly json: [T] extends [Effect.Effect<infer A, any, any>]
-    ? Effect.Effect<
-        A extends string | Uint8Array | ArrayBuffer ? unknown : A,
-        ParseResult.ParseError | E
-      >
+  readonly json: [T] extends [Effect.Effect<infer A, any, any>] ? Effect.Effect<
+      A extends string | Uint8Array | ArrayBuffer ? unknown : A,
+      ParseResult.ParseError | E
+    >
     : [T] extends [Stream.Stream<any, any, any>]
       ? Effect.Effect<unknown, ParseResult.ParseError | E>
-      : [T] extends [string | Uint8Array | ArrayBuffer]
-        ? Effect.Effect<unknown, ParseResult.ParseError | E>
-        : [T] extends [Values.Json]
-          ? Effect.Effect<T, ParseResult.ParseError | E>
-          : Effect.Effect<unknown, ParseResult.ParseError | E>
+    : [T] extends [string | Uint8Array | ArrayBuffer]
+      ? Effect.Effect<unknown, ParseResult.ParseError | E>
+    : [T] extends [Values.Json] ? Effect.Effect<T, ParseResult.ParseError | E>
+    : Effect.Effect<unknown, ParseResult.ParseError | E>
   readonly schemaJson: <A, I, R>(
     schema: Schema.Schema<A, I, R>,
   ) => Effect.Effect<A, ParseResult.ParseError | E, R>
@@ -98,7 +97,9 @@ function getText(
 ): Effect.Effect<string, ParseResult.ParseError | unknown> {
   const v = self.body
   if (StreamExtra.isStream(v)) {
-    return Stream.mkString(Stream.decodeText(v as Stream.Stream<Uint8Array, unknown, never>))
+    return Stream.mkString(
+      Stream.decodeText(v as Stream.Stream<Uint8Array, unknown, never>),
+    )
   }
   if (Effect.isEffect(v)) {
     return Effect.flatMap(
@@ -217,8 +218,12 @@ function getBytes(
 function getStream<A, E1, E2>(
   self: Entity<Stream.Stream<A, E1, never>, E2>,
 ): Stream.Stream<A, ParseResult.ParseError | E1 | E2>
-function getStream<T, E>(self: Entity<T, E>): Stream.Stream<Uint8Array, ParseResult.ParseError | E>
-function getStream(self: Entity<unknown, unknown>): Stream.Stream<unknown, unknown> {
+function getStream<T, E>(
+  self: Entity<T, E>,
+): Stream.Stream<Uint8Array, ParseResult.ParseError | E>
+function getStream(
+  self: Entity<unknown, unknown>,
+): Stream.Stream<unknown, unknown> {
   const v = self.body
   if (StreamExtra.isStream(v)) {
     return v as Stream.Stream<unknown, unknown, never>
@@ -236,44 +241,47 @@ function getStream(self: Entity<unknown, unknown>): Stream.Stream<unknown, unkno
   return Stream.fromEffect(getBytes(self))
 }
 
-const Proto: Proto = Object.defineProperties(Object.create(Effectable.CommitPrototype), {
-  [TypeId]: { value: TypeId },
-  commit: {
-    value: function (this: Entity) {
-      return resolve(this)
+const Proto: Proto = Object.defineProperties(
+  Object.create(Effectable.CommitPrototype),
+  {
+    [TypeId]: { value: TypeId },
+    commit: {
+      value(this: Entity) {
+        return resolve(this)
+      },
+    },
+    text: {
+      get(this: Entity<unknown, unknown>) {
+        return getText(this)
+      },
+    },
+    html: {
+      get(this: Entity<unknown, unknown>) {
+        return Effect.map(getText(this), Html.unsafe)
+      },
+    },
+    json: {
+      get(this: Entity<unknown, unknown>) {
+        return getJson(this)
+      },
+    },
+    schemaJson: {
+      value(this: Entity<unknown, unknown>, schema: Schema.Schema.Any) {
+        return schemaJson(this, schema)
+      },
+    },
+    bytes: {
+      get(this: Entity<unknown, unknown>) {
+        return getBytes(this)
+      },
+    },
+    stream: {
+      get(this: Entity<unknown, unknown>) {
+        return getStream(this)
+      },
     },
   },
-  text: {
-    get(this: Entity<unknown, unknown>) {
-      return getText(this)
-    },
-  },
-  html: {
-    get(this: Entity<unknown, unknown>) {
-      return Effect.map(getText(this), Html.unsafe)
-    },
-  },
-  json: {
-    get(this: Entity<unknown, unknown>) {
-      return getJson(this)
-    },
-  },
-  schemaJson: {
-    value(this: Entity<unknown, unknown>, schema: Schema.Schema.Any) {
-      return schemaJson(this, schema)
-    },
-  },
-  bytes: {
-    get(this: Entity<unknown, unknown>) {
-      return getBytes(this)
-    },
-  },
-  stream: {
-    get(this: Entity<unknown, unknown>) {
-      return getStream(this)
-    },
-  },
-})
+)
 
 export function schemaJson<T, E, A, I, R>(
   self: Entity<T, E>,
@@ -301,7 +309,10 @@ export function make<A extends Uint8Array | string, E>(
   options?: Options,
 ): Entity<Stream.Stream<A, E, never>, E>
 export function make<T>(body: T, options?: Options): Entity<T, never>
-export function make(body: unknown, options?: Options): Entity<unknown, unknown> {
+export function make(
+  body: unknown,
+  options?: Options,
+): Entity<unknown, unknown> {
   return Object.assign(Object.create(Proto), {
     body,
     headers: options?.headers ?? {},
@@ -310,7 +321,9 @@ export function make(body: unknown, options?: Options): Entity<unknown, unknown>
   })
 }
 
-export function effect<A, E, R>(body: Effect.Effect<Entity<A> | A, E, R>): Entity<A, E> {
+export function effect<A, E, R>(
+  body: Effect.Effect<Entity<A> | A, E, R>,
+): Entity<A, E> {
   return make(body) as unknown as Entity<A, E>
 }
 
@@ -325,13 +338,19 @@ function mergeSetCookie(
   return [...a, ...b]
 }
 
-export function merge<T, E>(entity: Entity<T, E>, options: Options): Entity<T, E> {
+export function merge<T, E>(
+  entity: Entity<T, E>,
+  options: Options,
+): Entity<T, E> {
   const headers: Headers = options.headers
     ? {
-        ...entity.headers,
-        ...options.headers,
-        "set-cookie": mergeSetCookie(entity.headers["set-cookie"], options.headers["set-cookie"]),
-      }
+      ...entity.headers,
+      ...options.headers,
+      "set-cookie": mergeSetCookie(
+        entity.headers["set-cookie"],
+        options.headers["set-cookie"],
+      ),
+    }
     : entity.headers
   return make(entity.body, {
     headers,
@@ -340,13 +359,17 @@ export function merge<T, E>(entity: Entity<T, E>, options: Options): Entity<T, E
   }) as Entity<T, E>
 }
 
-export function resolve<A, E>(entity: Entity<A, E>): Effect.Effect<Entity<A, E>, E, never> {
+export function resolve<A, E>(
+  entity: Entity<A, E>,
+): Effect.Effect<Entity<A, E>, E, never> {
   const body = entity.body
   if (Effect.isEffect(body)) {
-    return Effect.map(body as Effect.Effect<Entity<A> | A, E, never>, (inner) =>
-      isEntity(inner)
-        ? (inner as Entity<A, E>)
-        : (make(inner as A, {
+    return Effect.map(
+      body as Effect.Effect<Entity<A> | A, E, never>,
+      (inner) =>
+        isEntity(inner)
+          ? (inner as Entity<A, E>)
+          : (make(inner as A, {
             status: entity.status,
             headers: entity.headers,
             url: entity.url,
@@ -392,15 +415,15 @@ export function fromResponse<E extends Error = Error>(
 ): Entity<Stream.Stream<Uint8Array, E, never>, E> {
   const body = response.body
     ? Stream.fromReadableStream(
-        () => response.body!,
-        (e) => (e instanceof Error ? e : new Error(String(e))) as E,
-      )
+      () => response.body!,
+      (e) => (e instanceof Error ? e : new Error(String(e))) as E,
+    )
     : Stream.fromEffect(
-        Effect.tryPromise({
-          try: () => response.arrayBuffer().then((buf) => new Uint8Array(buf)),
-          catch: (e) => (e instanceof Error ? e : new Error(String(e))) as E,
-        }),
-      )
+      Effect.tryPromise({
+        try: () => response.arrayBuffer().then((buf) => new Uint8Array(buf)),
+        catch: (e) => (e instanceof Error ? e : new Error(String(e))) as E,
+      }),
+    )
 
   return make(body, {
     headers: Object.fromEntries(response.headers.entries()),
@@ -409,7 +432,10 @@ export function fromResponse<E extends Error = Error>(
   })
 }
 
-function mismatch(expected: Schema.Schema.Any, actual: unknown): ParseResult.ParseError {
+function mismatch(
+  expected: Schema.Schema.Any,
+  actual: unknown,
+): ParseResult.ParseError {
   return new ParseResult.ParseError({
     issue: new ParseResult.Type(expected.ast, actual),
   })

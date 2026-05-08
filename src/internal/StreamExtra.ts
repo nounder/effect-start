@@ -6,16 +6,24 @@ import * as Predicate from "effect/Predicate"
 import * as Runtime from "effect/Runtime"
 import * as Stream from "effect/Stream"
 
-export const isStream = (u: unknown): u is Stream.Stream<unknown, unknown, unknown> =>
+export const isStream = (
+  u: unknown,
+): u is Stream.Stream<unknown, unknown, unknown> =>
   Predicate.hasProperty(u, Stream.StreamTypeId)
 
-export type IsStream<T> = T extends Stream.Stream<infer _A, infer _E, infer _R> ? true : false
+export type IsStream<T> = T extends Stream.Stream<infer _A, infer _E, infer _R>
+  ? true
+  : false
 
-export type Chunk<T> = T extends Stream.Stream<infer A, infer _E, infer _R> ? A : never
+export type Chunk<T> = T extends Stream.Stream<infer A, infer _E, infer _R> ? A
+  : never
 
-export type StreamError<T> = T extends Stream.Stream<infer _A, infer E, infer _R> ? E : never
+export type StreamError<T> = T extends
+  Stream.Stream<infer _A, infer E, infer _R> ? E : never
 
-export type Context<T> = T extends Stream.Stream<infer _A, infer _E, infer R> ? R : never
+export type Context<T> = T extends Stream.Stream<infer _A, infer _E, infer R>
+  ? R
+  : never
 
 /**
  * Patched version of original Stream.toReadableStreamRuntime (v3.14.4) to
@@ -39,7 +47,9 @@ export const toReadableStreamRuntimePatched = Function.dual<
     options?: { readonly strategy?: QueuingStrategy<A> | undefined },
   ) => ReadableStream<A>
 >(
-  (args) => Predicate.hasProperty(args[0], Stream.StreamTypeId) || Effect.isEffect(args[0]),
+  (args) =>
+    Predicate.hasProperty(args[0], Stream.StreamTypeId) ||
+    Effect.isEffect(args[0]),
   <A, E, XR, R extends XR>(
     self: Stream.Stream<A, E, R>,
     runtime: Runtime.Runtime<XR>,
@@ -65,7 +75,7 @@ export const toReadableStreamRuntimePatched = Function.dual<
                   } catch (e) {
                     if (
                       (e as Error).message ===
-                      `Value of "this" must be of type ReadableStreamDefaultController`
+                        `Value of "this" must be of type ReadableStreamDefaultController`
                     ) {
                       // Do nothing when this happens in Bun.
                     } else {
@@ -75,8 +85,7 @@ export const toReadableStreamRuntimePatched = Function.dual<
                   currentResolve!()
                   currentResolve = undefined
                 }),
-              ),
-            ),
+              )),
           )
           // In original code, we had fiber.addObserver here that called
           // error() or close() on controller. This patched version removes it.
@@ -108,13 +117,14 @@ export const toReadableStreamRuntimePatched2 = Function.dual<
     options?: { readonly strategy?: QueuingStrategy<A> | undefined },
   ) => ReadableStream<A>
 >(
-  (args) => Predicate.hasProperty(args[0], Stream.StreamTypeId) || Effect.isEffect(args[0]),
+  (args) =>
+    Predicate.hasProperty(args[0], Stream.StreamTypeId) ||
+    Effect.isEffect(args[0]),
   <A, E, XR, R extends XR>(
     self: Stream.Stream<A, E, R>,
     runtime: Runtime.Runtime<XR>,
     options?: { readonly strategy?: QueuingStrategy<A> | undefined },
   ): ReadableStream<A> => {
-    const runSync = Runtime.runSync(runtime)
     const runFork = Runtime.runFork(runtime)
     let currentResolve: (() => void) | undefined = undefined
     let fiber: Fiber.RuntimeFiber<void, E> | undefined = undefined
@@ -134,8 +144,7 @@ export const toReadableStreamRuntimePatched2 = Function.dual<
                   currentResolve!()
                   currentResolve = undefined
                 }),
-              ),
-            ),
+              )),
           )
           fiber.addObserver((exit) => {
             if (exit._tag === "Failure") {

@@ -2,9 +2,9 @@ import {
   action,
   filtered,
   mergePatch,
+  type SignalFilterOptions,
   startPeeking,
   stopPeeking,
-  type SignalFilterOptions,
 } from "../engine.ts"
 import { updateLeaves } from "../utils.ts"
 

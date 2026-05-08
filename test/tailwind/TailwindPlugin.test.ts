@@ -13,11 +13,19 @@ import * as TailwindPlugin from "../../src/tailwind/TailwindPlugin.ts"
  */
 
 const containsAll = (set: Set<string>, names: ReadonlyArray<string>) => {
-  for (const name of names) test.expect(set.has(name)).toBe(true)
+  for (const name of names) {
+    test
+      .expect(set.has(name))
+      .toBe(true)
+  }
 }
 
 const containsNone = (set: Set<string>, names: ReadonlyArray<string>) => {
-  for (const name of names) test.expect(set.has(name)).toBe(false)
+  for (const name of names) {
+    test
+      .expect(set.has(name))
+      .toBe(false)
+  }
 }
 
 test.describe(`${TailwindPlugin.extractClassNames.name}`, () => {
@@ -81,7 +89,10 @@ test.describe(`${TailwindPlugin.extractClassNames.name}`, () => {
 
     for (const [source, expected] of cases) {
       const result = TailwindPlugin.extractClassNames(source)
-      test.expect(result.has(expected)).toBe(true)
+
+      test
+        .expect(result.has(expected))
+        .toBe(true)
     }
   })
 
@@ -151,7 +162,11 @@ test.describe(`${TailwindPlugin.extractClassNames.name}`, () => {
     const source = `<div class="bg-red-500/20 bg-red-500/[20%] bg-red-500/(--opacity)">Modifiers</div>`
     const result = TailwindPlugin.extractClassNames(source)
 
-    containsAll(result, ["bg-red-500/20", "bg-red-500/[20%]", "bg-red-500/(--opacity)"])
+    containsAll(result, [
+      "bg-red-500/20",
+      "bg-red-500/[20%]",
+      "bg-red-500/(--opacity)",
+    ])
   })
 
   test.it("CSS variable arbitrary values", () => {
@@ -245,7 +260,14 @@ test.describe(`${TailwindPlugin.extractClassNames.name}`, () => {
     const source = `<Toast.Toast class="toast toast-top toast-center fixed top-8 z-10">Content</Toast.Toast>`
     const result = TailwindPlugin.extractClassNames(source)
 
-    containsAll(result, ["toast", "toast-top", "toast-center", "fixed", "top-8", "z-10"])
+    containsAll(result, [
+      "toast",
+      "toast-top",
+      "toast-center",
+      "fixed",
+      "top-8",
+      "z-10",
+    ])
   })
 
   test.it("Complex component names and attributes", () => {
@@ -257,7 +279,13 @@ test.describe(`${TailwindPlugin.extractClassNames.name}`, () => {
     `
     const result = TailwindPlugin.extractClassNames(source)
 
-    containsAll(result, ["flex", "items-center", "bg-red-500", "text-lg", "border-2"])
+    containsAll(result, [
+      "flex",
+      "items-center",
+      "bg-red-500",
+      "text-lg",
+      "border-2",
+    ])
   })
 
   test.it("Conditional JSX with Toast component", () => {
@@ -317,7 +345,9 @@ test.describe(`${TailwindPlugin.extractClassNames.name}`, () => {
     const source = `<div data-class:underline="$active">Link</div>`
     const result = TailwindPlugin.extractClassNames(source)
 
-    test.expect(result.has("underline")).toBe(true)
+    test
+      .expect(result.has("underline"))
+      .toBe(true)
   })
 
   test.it("data-class: extracts multiple utilities from separate attributes", () => {
@@ -331,14 +361,18 @@ test.describe(`${TailwindPlugin.extractClassNames.name}`, () => {
     const source = `<div data-class:hover:text-blue-500="$hovered">Hover me</div>`
     const result = TailwindPlugin.extractClassNames(source)
 
-    test.expect(result.has("hover:text-blue-500")).toBe(true)
+    test
+      .expect(result.has("hover:text-blue-500"))
+      .toBe(true)
   })
 
   test.it("data-class: handles arbitrary values", () => {
     const source = `<div data-class:w-[200px]="$wide">Wide</div>`
     const result = TailwindPlugin.extractClassNames(source)
 
-    test.expect(result.has("w-[200px]")).toBe(true)
+    test
+      .expect(result.has("w-[200px]"))
+      .toBe(true)
   })
 
   test.it("data-class: combined with regular class attribute", () => {
@@ -349,7 +383,8 @@ test.describe(`${TailwindPlugin.extractClassNames.name}`, () => {
   })
 
   test.it("Named group/peer designators on variants", () => {
-    const source = `<div class="group-hover/carousel:text-blue-500 peer-focus/form:ring-2 group-data-[x]/sidebar:hidden">Named groups</div>`
+    const source =
+      `<div class="group-hover/carousel:text-blue-500 peer-focus/form:ring-2 group-data-[x]/sidebar:hidden">Named groups</div>`
     const result = TailwindPlugin.extractClassNames(source)
 
     containsAll(result, [

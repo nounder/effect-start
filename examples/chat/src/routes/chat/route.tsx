@@ -1,10 +1,10 @@
 import { Ref } from "effect"
 import { Route } from "effect-start"
-import { Message, messagesRef } from "../../Chat.tsx"
+import * as Chat from "../../Chat.tsx"
 
 export default Route.get(
-  Route.html(function* () {
-    const messages = yield* Ref.get(messagesRef)
+  Route.html(function*() {
+    const messages = yield* Ref.get(Chat.messagesRef)
 
     return (
       <div
@@ -15,10 +15,11 @@ export default Route.get(
           username: "User" + Math.floor(Math.random() * 1000),
         }}
       >
-        <div id="chat-messages" class="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
-          {messages.map((m) => (
-            <Message msg={m} />
-          ))}
+        <div
+          id="chat-messages"
+          class="flex-1 overflow-y-auto p-4 flex flex-col gap-4"
+        >
+          {messages.map((m) => <Chat.Message msg={m} />)}
         </div>
 
         <form
@@ -51,8 +52,9 @@ export default Route.get(
 
             function checkIfAtBottom() {
               const threshold = 50
-              isAtBottom =
-                scrollEl.scrollHeight - scrollEl.scrollTop - scrollEl.clientHeight < threshold
+              isAtBottom = scrollEl.scrollHeight - scrollEl
+                    .scrollTop - scrollEl
+                    .clientHeight < threshold
             }
 
             function scrollToBottom() {

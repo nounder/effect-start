@@ -1,11 +1,15 @@
 import { Schema } from "effect"
 import { Route } from "effect-start"
 import * as Github from "../../../../../Github.ts"
-import { Layout, Tabs } from "../../../../../Ui.tsx"
+import * as Ui from "../../../../../Ui.tsx"
 
 export default Route.get(
-  Route.schemaPathParams({ owner: Schema.String, repo: Schema.String, sha: Schema.String }),
-  Route.html(function* (ctx) {
+  Route.schemaPathParams({
+    owner: Schema.String,
+    repo: Schema.String,
+    sha: Schema.String,
+  }),
+  Route.html(function*(ctx) {
     const { owner, repo, sha } = ctx.pathParams
 
     const commit = yield* Github.getCommit(owner, repo, sha)
@@ -19,44 +23,86 @@ export default Route.get(
     const files = commit.files ?? []
 
     return (
-      <Layout>
+      <Ui.Layout>
         <div class="pt-4">
           <RepoHeader owner={owner} repo={repo} />
-          <Tabs
+          <Ui.Tabs
             items={[
-              { label: "Code", href: Route.link("/:owner/:repo", { owner, repo }) },
-              { label: "Issues", href: Route.link("/:owner/:repo/issues", { owner, repo }) },
-              { label: "Pull requests", href: Route.link("/:owner/:repo/pulls", { owner, repo }) },
-              { label: "Commits", href: Route.link("/:owner/:repo/commits", { owner, repo }), active: true },
-              { label: "Contributors", href: Route.link("/:owner/:repo/contributors", { owner, repo }) },
+              {
+                label: "Code",
+                href: Route.link("/:owner/:repo", { owner, repo }),
+              },
+              {
+                label: "Issues",
+                href: Route.link("/:owner/:repo/issues", { owner, repo }),
+              },
+              {
+                label: "Pull requests",
+                href: Route.link("/:owner/:repo/pulls", { owner, repo }),
+              },
+              {
+                label: "Commits",
+                href: Route.link("/:owner/:repo/commits", { owner, repo }),
+                active: true,
+              },
+              {
+                label: "Contributors",
+                href: Route.link("/:owner/:repo/contributors", { owner, repo }),
+              },
             ]}
           />
 
           <div class="border border-[#21262d] rounded-md mb-6">
             <div class="p-4 bg-[#161b22] rounded-t-md">
-              <h1 class="text-lg font-semibold mb-1">{firstLine}</h1>
+              <h1 class="text-lg font-semibold mb-1">
+                {firstLine}
+              </h1>
               {restLines && (
                 <pre class="text-sm text-[#8b949e] mt-2 whitespace-pre-wrap">{restLines}</pre>
               )}
             </div>
             <div class="flex items-center gap-3 px-4 py-3 text-sm border-t border-[#21262d]">
               {commit.author?.avatar_url && (
-                <img src={commit.author.avatar_url} class="w-5 h-5 rounded-full" />
+                <img
+                  src={commit
+                    .author
+                    .avatar_url}
+                  class="w-5 h-5 rounded-full"
+                />
               )}
-              <a href={Route.link("/:owner", { owner: author })} class="font-semibold text-[#e6edf3] hover:text-[#58a6ff]">
+              <a
+                href={Route.link("/:owner", { owner: author })}
+                class="font-semibold text-[#e6edf3] hover:text-[#58a6ff]"
+              >
                 {author}
               </a>
-              <span class="text-[#8b949e]">committed {Github.timeAgo(date)}</span>
-              <code class="ml-auto text-xs text-[#8b949e] font-mono">{commit.sha}</code>
+              <span class="text-[#8b949e]">
+                committed {Github.timeAgo(date)}
+              </span>
+              <code class="ml-auto text-xs text-[#8b949e] font-mono">
+                {commit.sha}
+              </code>
             </div>
           </div>
 
           <div class="flex items-center gap-4 text-sm mb-4 pb-4 border-b border-[#21262d]">
             <span class="text-[#8b949e]">
-              Showing <span class="font-semibold text-[#e6edf3]">{files.length}</span> changed files
+              Showing{" "}
+              <span class="font-semibold text-[#e6edf3]">
+                {files.length}
+              </span>{" "}
+              changed files
             </span>
-            {stats && <span class="text-[#3fb950]">+{stats.additions}</span>}
-            {stats && <span class="text-[#f85149]">-{stats.deletions}</span>}
+            {stats && (
+              <span class="text-[#3fb950]">
+                +{stats.additions}
+              </span>
+            )}
+            {stats && (
+              <span class="text-[#f85149]">
+                -{stats.deletions}
+              </span>
+            )}
           </div>
 
           <div class="space-y-3">
@@ -68,24 +114,34 @@ export default Route.get(
                       f.status === "added"
                         ? "bg-[#238636] text-white"
                         : f.status === "removed"
-                          ? "bg-[#da3633] text-white"
-                          : f.status === "renamed"
-                            ? "bg-[#8957e5] text-white"
-                            : "bg-[#d29922] text-white"
+                        ? "bg-[#da3633] text-white"
+                        : f.status === "renamed"
+                        ? "bg-[#8957e5] text-white"
+                        : "bg-[#d29922] text-white"
                     }`}
                   >
                     {f.status === "added"
                       ? "A"
                       : f.status === "removed"
-                        ? "D"
-                        : f.status === "renamed"
-                          ? "R"
-                          : "M"}
+                      ? "D"
+                      : f.status === "renamed"
+                      ? "R"
+                      : "M"}
                   </span>
-                  <span class="font-mono text-[#e6edf3]">{f.filename}</span>
+                  <span class="font-mono text-[#e6edf3]">
+                    {f.filename}
+                  </span>
                   <span class="ml-auto text-[#8b949e]">
-                    {f.additions > 0 && <span class="text-[#3fb950]">+{f.additions} </span>}
-                    {f.deletions > 0 && <span class="text-[#f85149]">-{f.deletions}</span>}
+                    {f.additions > 0 && (
+                      <span class="text-[#3fb950]">
+                        +{f.additions}
+                      </span>
+                    )}
+                    {f.deletions > 0 && (
+                      <span class="text-[#f85149]">
+                        -{f.deletions}
+                      </span>
+                    )}
                   </span>
                 </div>
                 {f.patch && (
@@ -97,7 +153,7 @@ export default Route.get(
             ))}
           </div>
         </div>
-      </Layout>
+      </Ui.Layout>
     )
   }),
 )
@@ -108,11 +164,22 @@ function RepoHeader(props: { owner: string; repo: string }) {
       <svg width="16" height="16" viewBox="0 0 16 16" fill="#8b949e">
         <path d="M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5Zm10.5-1h-8a1 1 0 0 0-1 1v6.708A2.486 2.486 0 0 1 4.5 9h8ZM5 12.25a.25.25 0 0 1 .25-.25h3.5a.25.25 0 0 1 .25.25v3.25a.25.25 0 0 1-.4.2l-1.45-1.087a.249.249 0 0 0-.3 0L5.4 15.7a.25.25 0 0 1-.4-.2Z" />
       </svg>
-      <a href={Route.link("/:owner", { owner: props.owner })} class="text-[#58a6ff] hover:underline">
+      <a
+        href={Route.link("/:owner", { owner: props.owner })}
+        class="text-[#58a6ff] hover:underline"
+      >
         {props.owner}
       </a>
-      <span class="text-[#8b949e]">/</span>
-      <a href={Route.link("/:owner/:repo", { owner: props.owner, repo: props.repo })} class="text-[#58a6ff] font-bold hover:underline">
+      <span class="text-[#8b949e]">
+        /
+      </span>
+      <a
+        href={Route.link("/:owner/:repo", {
+          owner: props.owner,
+          repo: props.repo,
+        })}
+        class="text-[#58a6ff] font-bold hover:underline"
+      >
         {props.repo}
       </a>
     </div>

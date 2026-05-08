@@ -35,7 +35,8 @@ const Proto = {
   },
 }
 
-export const isMatcher = (u: unknown): u is Matcher => Predicate.hasProperty(u, TypeId)
+export const isMatcher = (u: unknown): u is Matcher =>
+  Predicate.hasProperty(u, TypeId)
 
 export function make(map: RouteMap.RouteMap): Matcher {
   return Object.assign(Object.create(Proto), {
@@ -43,7 +44,11 @@ export function make(map: RouteMap.RouteMap): Matcher {
   })
 }
 
-export function match(matcher: Matcher, method: string, path: string): MatchResult | null {
+export function match(
+  matcher: Matcher,
+  method: string,
+  path: string,
+): MatchResult | null {
   const wildcard = matcher.methods["*"]
   if (wildcard) {
     const result = exec(wildcard, path)
@@ -66,7 +71,15 @@ function matchScore(path: string): number {
   const staticCount = segments.filter((s) => !s.startsWith(":")).length
   const maxPriority = Math.max(
     ...segments.map((s) =>
-      !s.startsWith(":") ? 0 : s.endsWith("*") ? 4 : s.endsWith("+") ? 3 : s.endsWith("?") ? 2 : 1,
+      !s.startsWith(":")
+        ? 0
+        : s.endsWith("*")
+        ? 4
+        : s.endsWith("+")
+        ? 3
+        : s.endsWith("?")
+        ? 2
+        : 1
     ),
     0,
   )
@@ -121,7 +134,9 @@ function patternToRegex(pattern: string): {
   return { fragment, paramNames, groupCount }
 }
 
-function compile(sortedRoutes: RouteMap.RouteMap): Record<string, CompiledMethod> {
+function compile(
+  sortedRoutes: RouteMap.RouteMap,
+): Record<string, CompiledMethod> {
   const methodGroups: Record<
     string,
     Array<{
@@ -130,13 +145,18 @@ function compile(sortedRoutes: RouteMap.RouteMap): Record<string, CompiledMethod
     }>
   > = {}
 
-  for (const path of Object.keys(sortedRoutes) as Array<PathPattern.PathPattern>) {
+  for (
+    const path of Object.keys(sortedRoutes) as Array<PathPattern.PathPattern>
+  ) {
     for (const routeData of sortedRoutes[path]) {
       const descriptor = {
         ...routeData[Route.RouteDescriptor],
         path,
       }
-      const mounted = Route.make(routeData.handler as any, descriptor) as RouteMount.MountedRoute
+      const mounted = Route.make(
+        routeData.handler as any,
+        descriptor,
+      ) as RouteMount.MountedRoute
       const method = (descriptor as { method: string }).method
 
       if (!methodGroups[method]) methodGroups[method] = []
@@ -178,7 +198,8 @@ function compile(sortedRoutes: RouteMap.RouteMap): Record<string, CompiledMethod
 
   for (const method of Object.keys(pathRoutesByMethod)) {
     const pathMap = pathRoutesByMethod[method]
-    const orderedPaths = (Object.keys(sortedRoutes) as Array<PathPattern.PathPattern>)
+    const orderedPaths = (Object
+      .keys(sortedRoutes) as Array<PathPattern.PathPattern>)
       .filter((p) => pathMap.has(p))
       .sort((a, b) => matchScore(a) - matchScore(b) || a.localeCompare(b))
 

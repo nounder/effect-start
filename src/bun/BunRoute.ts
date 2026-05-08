@@ -1,7 +1,7 @@
-import * as Bun from "bun"
+import type * as Bun from "bun"
 import * as Data from "effect/Data"
-import * as Either from "effect/Either"
 import * as Effect from "effect/Effect"
+import * as Either from "effect/Either"
 import * as FiberRef from "effect/FiberRef"
 import * as Option from "effect/Option"
 import * as Entity from "../Entity.ts"
@@ -28,7 +28,10 @@ export function descriptors(
   route: Route.Route<any, any, any, any, any>,
 ): BunDescriptors | undefined {
   const descriptor = Route.descriptor(route) as Partial<BunDescriptors>
-  if (typeof descriptor.bunPrefix === "string" && typeof descriptor.bunLoad === "function") {
+  if (
+    typeof descriptor.bunPrefix === "string" &&
+    typeof descriptor.bunLoad === "function"
+  ) {
     return descriptor as BunDescriptors
   }
   return undefined
@@ -38,13 +41,17 @@ type HTMLBundleModule = Bun.HTMLBundle | { default: Bun.HTMLBundle }
 
 const bundleDepthRef = FiberRef.unsafeMake(0)
 
-export function htmlBundle(load: () => HTMLBundleModule | Promise<HTMLBundleModule>) {
+export function htmlBundle(
+  load: () => HTMLBundleModule | Promise<HTMLBundleModule>,
+) {
   const bunPrefix = `/.BunRoute-${Unique.token(10)}`
   const bunLoad = () =>
-    Promise.resolve(load()).then((mod) => ("default" in mod ? mod.default : mod))
+    Promise.resolve(load()).then((
+      mod,
+    ) => ("default" in mod ? mod.default : mod))
   const descriptors = { bunPrefix, bunLoad, format: "html" as const }
 
-  return function <D, B, I extends Route.Route.Tuple>(
+  return function<D, B, I extends Route.Route.Tuple>(
     self: Route.RouteSet<D, B, I>,
   ): Route.RouteSet<
     D,
@@ -66,7 +73,7 @@ export function htmlBundle(load: () => HTMLBundleModule | Promise<HTMLBundleModu
       BunRouteError,
       BunServer.BunServer | Route.Request
     > = (_context, next) =>
-      Effect.gen(function* () {
+      Effect.gen(function*() {
         const originalRequest = yield* Route.Request
         const bundleDepth = yield* FiberRef.get(bundleDepthRef)
 
@@ -120,7 +127,9 @@ export function htmlBundle(load: () => HTMLBundleModule | Promise<HTMLBundleModu
         let childrenHtml = ""
         if (children != null) {
           if ((children as unknown) instanceof Response) {
-            childrenHtml = yield* Effect.promise(() => (children as unknown as Response).text())
+            childrenHtml = yield* Effect.promise(() =>
+              (children as unknown as Response).text()
+            )
           } else if (Html.isGenericJsxObject(children)) {
             childrenHtml = Html.text(children)
           } else {
@@ -148,7 +157,10 @@ export function htmlBundle(load: () => HTMLBundleModule | Promise<HTMLBundleModu
       BunServer.BunServer | Route.Request
     >(handler, descriptors)
 
-    return Route.set([...Route.items(self), route] as any, Route.descriptor(self))
+    return Route.set(
+      [...Route.items(self), route] as any,
+      Route.descriptor(self),
+    )
   }
 }
 
@@ -156,7 +168,7 @@ function fetchBundleResponse(
   bunPrefix: string,
   originalRequest: Request,
 ) {
-  return Effect.gen(function* () {
+  return Effect.gen(function*() {
     const bunServer = yield* BunServer.BunServer
     const url = new URL(originalRequest.url)
     const internalUrl = new URL(bunServer.server.url)
@@ -195,7 +207,9 @@ function stripDuplicateBunScripts(parentHtml: string, childHtml: string) {
       const rewriter = new HTMLRewriter().on("script", {
         element(element) {
           const src = element.getAttribute("src")
-          const hasDevAttribute = element.hasAttribute("data-bun-dev-server-script")
+          const hasDevAttribute = element.hasAttribute(
+            "data-bun-dev-server-script",
+          )
 
           if (src !== null && hasDevAttribute && parentScriptSrcs.has(src)) {
             element.remove()
@@ -242,7 +256,9 @@ function getInjectedBunScriptSrcs(html: string) {
       const rewriter = new HTMLRewriter().on("script", {
         element(element) {
           const src = element.getAttribute("src")
-          if (src !== null && element.hasAttribute("data-bun-dev-server-script")) {
+          if (
+            src !== null && element.hasAttribute("data-bun-dev-server-script")
+          ) {
             srcs.add(src)
           }
         },
@@ -299,7 +315,9 @@ export type BunRoutes = Record<string, BunServerRouteHandler>
  * - /hello-*   - Inline prefix wildcard
  */
 
-export function validateBunPattern(pattern: string): Option.Option<BunRouteError> {
+export function validateBunPattern(
+  pattern: string,
+): Option.Option<BunRouteError> {
   const parsed = PathPattern.fromFilePath(pattern)
   if (Either.isLeft(parsed)) {
     return Option.some(
@@ -318,6 +336,7 @@ export const isHtmlBundle = (handle: any) => {
   return (
     typeof handle === "object" &&
     handle !== null &&
-    (handle.toString() === "[object HTMLBundle]" || typeof handle.index === "string")
+    (handle.toString() === "[object HTMLBundle]" ||
+      typeof handle.index === "string")
   )
 }

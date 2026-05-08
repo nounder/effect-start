@@ -11,9 +11,16 @@ const TypeId = "effect-start/KeyValueStore" as const
 
 export interface KeyValueStore {
   readonly [TypeId]: typeof TypeId
-  readonly get: (key: string) => Effect.Effect<string | undefined, KeyValueStoreError>
-  readonly getUint8Array: (key: string) => Effect.Effect<Uint8Array | undefined, KeyValueStoreError>
-  readonly set: (key: string, value: string | Uint8Array) => Effect.Effect<void, KeyValueStoreError>
+  readonly get: (
+    key: string,
+  ) => Effect.Effect<string | undefined, KeyValueStoreError>
+  readonly getUint8Array: (
+    key: string,
+  ) => Effect.Effect<Uint8Array | undefined, KeyValueStoreError>
+  readonly set: (
+    key: string,
+    value: string | Uint8Array,
+  ) => Effect.Effect<void, KeyValueStoreError>
   readonly remove: (key: string) => Effect.Effect<void, KeyValueStoreError>
   readonly clear: Effect.Effect<void, KeyValueStoreError>
   readonly size: Effect.Effect<number, KeyValueStoreError>
@@ -30,17 +37,29 @@ export interface KeyValueStore {
 }
 
 type MakeOptions = Partial<KeyValueStore> & {
-  readonly get: (key: string) => Effect.Effect<string | undefined, KeyValueStoreError>
-  readonly getUint8Array: (key: string) => Effect.Effect<Uint8Array | undefined, KeyValueStoreError>
-  readonly set: (key: string, value: string | Uint8Array) => Effect.Effect<void, KeyValueStoreError>
+  readonly get: (
+    key: string,
+  ) => Effect.Effect<string | undefined, KeyValueStoreError>
+  readonly getUint8Array: (
+    key: string,
+  ) => Effect.Effect<Uint8Array | undefined, KeyValueStoreError>
+  readonly set: (
+    key: string,
+    value: string | Uint8Array,
+  ) => Effect.Effect<void, KeyValueStoreError>
   readonly remove: (key: string) => Effect.Effect<void, KeyValueStoreError>
   readonly clear: Effect.Effect<void, KeyValueStoreError>
   readonly size: Effect.Effect<number, KeyValueStoreError>
 }
 
 type MakeStringOptions = Partial<Omit<KeyValueStore, "set">> & {
-  readonly get: (key: string) => Effect.Effect<string | undefined, KeyValueStoreError>
-  readonly set: (key: string, value: string) => Effect.Effect<void, KeyValueStoreError>
+  readonly get: (
+    key: string,
+  ) => Effect.Effect<string | undefined, KeyValueStoreError>
+  readonly set: (
+    key: string,
+    value: string,
+  ) => Effect.Effect<void, KeyValueStoreError>
   readonly remove: (key: string) => Effect.Effect<void, KeyValueStoreError>
   readonly clear: Effect.Effect<void, KeyValueStoreError>
   readonly size: Effect.Effect<number, KeyValueStoreError>
@@ -53,9 +72,10 @@ export class KeyValueStoreError extends Data.TaggedError("KeyValueStoreError")<{
   cause?: unknown
 }> {}
 
-export const KeyValueStore: Context.Tag<KeyValueStore, KeyValueStore> = Context.GenericTag<KeyValueStore>(
-  "effect-start/KeyValueStore",
-)
+export const KeyValueStore: Context.Tag<KeyValueStore, KeyValueStore> = Context
+  .GenericTag<KeyValueStore>(
+    "effect-start/KeyValueStore",
+  )
 
 const make = (options: MakeOptions): KeyValueStore => ({
   [TypeId]: TypeId,
@@ -107,55 +127,91 @@ export const prefix: {
   modifyUint8Array: (key, f) => self.modifyUint8Array(`${prefix}${key}`, f),
 }))
 
-export const layerMemory: Layer.Layer<KeyValueStore> = Layer.sync(KeyValueStore, () => {
-  const store = new Map<string, string | Uint8Array>()
-  const encoder = new TextEncoder()
+export const layerMemory: Layer.Layer<KeyValueStore> = Layer.sync(
+  KeyValueStore,
+  () => {
+    const store = new Map<string, string | Uint8Array>()
+    const encoder = new TextEncoder()
 
-  return make({
-    get: (key: string) =>
-      Effect.sync(() => {
-        const value = store.get(key)
-        return value === undefined ? undefined : typeof value === "string" ? value : Encoding.encodeBase64(value)
-      }),
-    getUint8Array: (key: string) =>
-      Effect.sync(() => {
-        const value = store.get(key)
-        return value === undefined ? undefined : typeof value === "string" ? encoder.encode(value) : value
-      }),
-    set: (key: string, value: string | Uint8Array) => Effect.sync(() => store.set(key, value)),
-    remove: (key: string) => Effect.sync(() => store.delete(key)),
-    clear: Effect.sync(() => store.clear()),
-    size: Effect.sync(() => store.size),
-  })
-})
+    return make({
+      get: (key: string) =>
+        Effect.sync(() => {
+          const value = store.get(key)
+          return value === undefined
+            ? undefined
+            : typeof value === "string"
+            ? value
+            : Encoding.encodeBase64(value)
+        }),
+      getUint8Array: (key: string) =>
+        Effect.sync(() => {
+          const value = store.get(key)
+          return value === undefined
+            ? undefined
+            : typeof value === "string"
+            ? encoder.encode(value)
+            : value
+        }),
+      set: (key: string, value: string | Uint8Array) =>
+        Effect.sync(() => store.set(key, value)),
+      remove: (key: string) => Effect.sync(() => store.delete(key)),
+      clear: Effect.sync(() => store.clear()),
+      size: Effect.sync(() => store.size),
+    })
+  },
+)
 
-export const layerStorage = (evaluate: Function.LazyArg<Storage>): Layer.Layer<KeyValueStore> =>
+export const layerStorage = (
+  evaluate: Function.LazyArg<Storage>,
+): Layer.Layer<KeyValueStore> =>
   Layer.sync(KeyValueStore, () => {
     const storage = evaluate()
     return makeStringOnly({
       get: (key: string) =>
         Effect.try({
           try: () => storage.getItem(key) ?? undefined,
-          catch: () => new KeyValueStoreError({ key, method: "get", message: `Unable to get item with key ${key}` }),
+          catch: () =>
+            new KeyValueStoreError({
+              key,
+              method: "get",
+              message: `Unable to get item with key ${key}`,
+            }),
         }),
       set: (key: string, value: string) =>
         Effect.try({
           try: () => storage.setItem(key, value),
-          catch: () => new KeyValueStoreError({ key, method: "set", message: `Unable to set item with key ${key}` }),
+          catch: () =>
+            new KeyValueStoreError({
+              key,
+              method: "set",
+              message: `Unable to set item with key ${key}`,
+            }),
         }),
       remove: (key: string) =>
         Effect.try({
           try: () => storage.removeItem(key),
           catch: () =>
-            new KeyValueStoreError({ key, method: "remove", message: `Unable to remove item with key ${key}` }),
+            new KeyValueStoreError({
+              key,
+              method: "remove",
+              message: `Unable to remove item with key ${key}`,
+            }),
         }),
       clear: Effect.try({
         try: () => storage.clear(),
-        catch: () => new KeyValueStoreError({ method: "clear", message: `Unable to clear storage` }),
+        catch: () =>
+          new KeyValueStoreError({
+            method: "clear",
+            message: `Unable to clear storage`,
+          }),
       }),
       size: Effect.try({
         try: () => storage.length,
-        catch: () => new KeyValueStoreError({ method: "size", message: `Unable to get size` }),
+        catch: () =>
+          new KeyValueStoreError({
+            method: "size",
+            message: `Unable to get size`,
+          }),
       }),
     })
   })

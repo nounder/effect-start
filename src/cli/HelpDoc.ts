@@ -71,4 +71,5 @@ export const formatHelpDoc = (doc: HelpDoc): string => {
   return sections.join("\n")
 }
 
-export const formatVersion = (name: string, version: string): string => `${name} v${version}`
+export const formatVersion = (name: string, version: string): string =>
+  `${name} v${version}`

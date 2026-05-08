@@ -10,11 +10,18 @@ export function ErrorPage(props: {
   return (
     <Layout>
       <div class="pt-16 text-center">
-        <h1 class="text-3xl font-bold mb-2">{props.title}</h1>
-        {props.message && <p class="text-[#8b949e] mb-4">{props.message}</p>}
+        <h1 class="text-3xl font-bold mb-2">
+          {props.title}
+        </h1>
+        {props.message && (
+          <p class="text-[#8b949e] mb-4">
+            {props.message}
+          </p>
+        )}
         {props.backHref && (
           <a href={props.backHref} class="text-[#58a6ff] hover:underline">
-            {props.backLabel ?? "Go back"}
+            {props
+              .backLabel ?? "Go back"}
           </a>
         )}
       </div>
@@ -26,11 +33,16 @@ export function Layout(props: { title?: string; children: any }) {
   return (
     <div class="min-h-screen bg-[#0d1117] text-[#e6edf3]">
       <Nav />
-      <main class="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-6">{props.children}</main>
+      <main class="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {props.children}
+      </main>
       <footer class="border-t border-[#21262d] mt-12 py-8 text-center text-xs text-[#8b949e]">
         <div class="max-w-[1280px] mx-auto px-4">
           Built with{" "}
-          <a href="https://github.com/effect-ts/effect" class="text-[#58a6ff] hover:underline">
+          <a
+            href="https://github.com/effect-ts/effect"
+            class="text-[#58a6ff] hover:underline"
+          >
             Effect
           </a>{" "}
           +{" "}
@@ -81,7 +93,7 @@ export function RepoCard(props: {
   stars: number
   forks: number
   updated?: string | null
-  topics?: readonly string[]
+  topics?: ReadonlyArray<string>
 }) {
   const r = { owner: props.owner, repo: props.name }
   return (
@@ -97,7 +109,9 @@ export function RepoCard(props: {
         </span>
       </div>
       {props.description && (
-        <p class="text-[#8b949e] text-xs mb-3 line-clamp-2">{props.description}</p>
+        <p class="text-[#8b949e] text-xs mb-3 line-clamp-2">
+          {props.description}
+        </p>
       )}
       {props.topics && props.topics.length > 0 && (
         <div class="flex flex-wrap gap-1 mb-3">
@@ -118,11 +132,15 @@ export function RepoCard(props: {
               class="w-3 h-3 rounded-full inline-block"
               style={`background-color: ${Github.langColor(props.language)}`}
             />
-            {props.language}
+            {props
+              .language}
           </span>
         )}
         {props.stars > 0 && (
-          <a href={Route.link("/:owner/:repo", r)} class="flex items-center gap-1 hover:text-[#58a6ff]">
+          <a
+            href={Route.link("/:owner/:repo", r)}
+            class="flex items-center gap-1 hover:text-[#58a6ff]"
+          >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
               <path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z" />
             </svg>
@@ -130,14 +148,21 @@ export function RepoCard(props: {
           </a>
         )}
         {props.forks > 0 && (
-          <a href={Route.link("/:owner/:repo", r)} class="flex items-center gap-1 hover:text-[#58a6ff]">
+          <a
+            href={Route.link("/:owner/:repo", r)}
+            class="flex items-center gap-1 hover:text-[#58a6ff]"
+          >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
               <path d="M5 5.372v.878c0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75v-.878a2.25 2.25 0 1 0-1.5 0v.878H6.75v-.878a2.25 2.25 0 1 0-1.5 0ZM8 14.25a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5Z" />
             </svg>
             {Github.num(props.forks)}
           </a>
         )}
-        {props.updated && <span>Updated {Github.timeAgo(props.updated)}</span>}
+        {props.updated && (
+          <span>
+            Updated {Github.timeAgo(props.updated)}
+          </span>
+        )}
       </div>
     </div>
   )
@@ -151,7 +176,7 @@ export function RepoListItem(props: {
   stars: number
   forks: number
   updated?: string | null
-  topics?: readonly string[]
+  topics?: ReadonlyArray<string>
 }) {
   const r = { owner: props.owner, repo: props.repo }
   return (
@@ -159,12 +184,17 @@ export function RepoListItem(props: {
       <div class="flex items-start justify-between gap-4">
         <div class="flex-1 min-w-0">
           <h3 class="text-xl mb-1">
-            <a href={Route.link("/:owner/:repo", r)} class="text-[#58a6ff] font-semibold hover:underline">
+            <a
+              href={Route.link("/:owner/:repo", r)}
+              class="text-[#58a6ff] font-semibold hover:underline"
+            >
               {props.owner}/{props.repo}
             </a>
           </h3>
           {props.description && (
-            <p class="text-[#8b949e] text-sm mb-2 max-w-[680px]">{props.description}</p>
+            <p class="text-[#8b949e] text-sm mb-2 max-w-[680px]">
+              {props.description}
+            </p>
           )}
           {props.topics && props.topics.length > 0 && (
             <div class="flex flex-wrap gap-1 mb-2">
@@ -183,14 +213,21 @@ export function RepoListItem(props: {
               <span class="flex items-center gap-1">
                 <span
                   class="w-3 h-3 rounded-full inline-block"
-                  style={`background-color: ${Github.langColor(props.language)}`}
+                  style={`background-color: ${
+                    Github.langColor(props.language)
+                  }`}
                 />
                 {props.language}
               </span>
             )}
             {props.stars > 0 && (
               <span class="flex items-center gap-1">
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 16 16"
+                  fill="currentColor"
+                >
                   <path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z" />
                 </svg>
                 {Github.num(props.stars)}
@@ -198,13 +235,22 @@ export function RepoListItem(props: {
             )}
             {props.forks > 0 && (
               <span class="flex items-center gap-1">
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 16 16"
+                  fill="currentColor"
+                >
                   <path d="M5 5.372v.878c0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75v-.878a2.25 2.25 0 1 0-1.5 0v.878H6.75v-.878a2.25 2.25 0 1 0-1.5 0ZM8 14.25a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5Z" />
                 </svg>
                 {Github.num(props.forks)}
               </span>
             )}
-            {props.updated && <span>Updated {Github.timeAgo(props.updated)}</span>}
+            {props.updated && (
+              <span>
+                Updated {Github.timeAgo(props.updated)}
+              </span>
+            )}
           </div>
         </div>
         <div class="shrink-0">
@@ -244,11 +290,19 @@ export function UserCard(props: {
       <img
         src={props.avatar}
         alt={props.login}
-        class={`w-10 h-10 ${props.type === "Organization" ? "rounded-md" : "rounded-full"} bg-[#21262d]`}
+        class={`w-10 h-10 ${
+          props.type === "Organization" ? "rounded-md" : "rounded-full"
+        } bg-[#21262d]`}
       />
       <div class="min-w-0">
-        <div class="text-[#58a6ff] text-sm font-medium truncate">{props.login}</div>
-        {props.name && <div class="text-[#8b949e] text-xs truncate">{props.name}</div>}
+        <div class="text-[#58a6ff] text-sm font-medium truncate">
+          {props.login}
+        </div>
+        {props.name && (
+          <div class="text-[#8b949e] text-xs truncate">
+            {props.name}
+          </div>
+        )}
       </div>
     </a>
   )
@@ -272,15 +326,21 @@ export function IssueRow(props: {
       ? `<svg width="16" height="16" viewBox="0 0 16 16" fill="#3fb950"><path d="M1.5 3.25a2.25 2.25 0 1 1 3 2.122v5.256a2.251 2.251 0 1 1-1.5 0V5.372A2.25 2.25 0 0 1 1.5 3.25Zm5.677-.177L9.573.677A.25.25 0 0 1 10 .854V2.5h1A2.5 2.5 0 0 1 13.5 5v5.628a2.251 2.251 0 1 1-1.5 0V5a1 1 0 0 0-1-1h-1v1.646a.25.25 0 0 1-.427.177L7.177 3.427a.25.25 0 0 1 0-.354Z" /></svg>`
       : `<svg width="16" height="16" viewBox="0 0 16 16" fill="#a371f7"><path d="M5.45 5.154A4.25 4.25 0 0 0 9.25 7.5h1.378a2.251 2.251 0 1 1 0 1.5H9.25A5.734 5.734 0 0 1 5 7.123v3.505a2.25 2.25 0 1 1-1.5 0V5.372a2.25 2.25 0 1 1 1.95-.218Z" /></svg>`
     : isOpen
-      ? `<svg width="16" height="16" viewBox="0 0 16 16" fill="#3fb950"><path d="M8 9.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z" /><path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0ZM1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0Z" /></svg>`
-      : `<svg width="16" height="16" viewBox="0 0 16 16" fill="#a371f7"><path d="M11.28 6.78a.75.75 0 0 0-1.06-1.06L8 7.94 5.78 5.72a.75.75 0 0 0-1.06 1.06L6.94 9l-2.22 2.22a.75.75 0 1 0 1.06 1.06L8 10.06l2.22 2.22a.75.75 0 1 0 1.06-1.06L9.06 9l2.22-2.22Z" /><path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0ZM1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0Z" /></svg>`
+    ? `<svg width="16" height="16" viewBox="0 0 16 16" fill="#3fb950"><path d="M8 9.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z" /><path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0ZM1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0Z" /></svg>`
+    : `<svg width="16" height="16" viewBox="0 0 16 16" fill="#a371f7"><path d="M11.28 6.78a.75.75 0 0 0-1.06-1.06L8 7.94 5.78 5.72a.75.75 0 0 0-1.06 1.06L6.94 9l-2.22 2.22a.75.75 0 1 0 1.06 1.06L8 10.06l2.22 2.22a.75.75 0 1 0 1.06-1.06L9.06 9l2.22-2.22Z" /><path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0ZM1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0Z" /></svg>`
   return (
     <div class="flex items-start gap-2 py-2 px-3 hover:bg-[#161b22] rounded">
-      <span class="mt-1 shrink-0">{Html.unsafe(icon)}</span>
+      <span class="mt-1 shrink-0">
+        {Html.unsafe(icon)}
+      </span>
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-2 flex-wrap">
           <a
-            href={Route.link("/:owner/:repo/issues/:number", { owner: props.owner, repo: props.repo, number: props.number })}
+            href={Route.link("/:owner/:repo/issues/:number", {
+              owner: props.owner,
+              repo: props.repo,
+              number: props.number,
+            })}
             class="text-sm font-semibold text-[#e6edf3] hover:text-[#58a6ff]"
           >
             {props.title}
@@ -323,17 +383,25 @@ export function CommitRow(props: {
   const firstLine = props.message.split("\n")[0]
   return (
     <div class="flex items-center gap-3 py-2 px-3 hover:bg-[#161b22] rounded">
-      {props.avatar && <img src={props.avatar} class="w-5 h-5 rounded-full shrink-0" />}
+      {props.avatar && (
+        <img src={props.avatar} class="w-5 h-5 rounded-full shrink-0" />
+      )}
       <div class="flex-1 min-w-0">
         <a
-          href={Route.link("/:owner/:repo/commit/:sha", { owner: props.owner, repo: props.repo, sha: props.sha })}
+          href={Route.link("/:owner/:repo/commit/:sha", {
+            owner: props.owner,
+            repo: props.repo,
+            sha: props.sha,
+          })}
           class="text-sm text-[#e6edf3] font-medium hover:text-[#58a6ff] truncate block"
         >
           {firstLine}
         </a>
         <div class="text-xs text-[#8b949e]">
-          <span class="font-medium text-[#e6edf3]">{props.author}</span> committed{" "}
-          {Github.timeAgo(props.date)}
+          <span class="font-medium text-[#e6edf3]">
+            {props.author}
+          </span>{" "}
+          committed {Github.timeAgo(props.date)}
         </div>
       </div>
       <code class="text-xs text-[#58a6ff] bg-[#388bfd1a] px-2 py-0.5 rounded shrink-0 font-mono hover:bg-[#58a6ff] hover:text-white transition-colors cursor-pointer">
@@ -343,7 +411,9 @@ export function CommitRow(props: {
   )
 }
 
-export function ContributorCard(props: { login: string; avatar: string; contributions: number }) {
+export function ContributorCard(
+  props: { login: string; avatar: string; contributions: number },
+) {
   return (
     <a
       href={Route.link("/:owner", { owner: props.login })}
@@ -351,25 +421,41 @@ export function ContributorCard(props: { login: string; avatar: string; contribu
     >
       <img src={props.avatar} class="w-8 h-8 rounded-full bg-[#21262d]" />
       <div class="min-w-0">
-        <div class="text-sm text-[#58a6ff] font-medium truncate">{props.login}</div>
-        <div class="text-xs text-[#8b949e]">{Github.num(props.contributions)} commits</div>
+        <div class="text-sm text-[#58a6ff] font-medium truncate">
+          {props.login}
+        </div>
+        <div class="text-xs text-[#8b949e]">
+          {Github.num(props.contributions)} commits
+        </div>
       </div>
     </a>
   )
 }
 
-export function Stat(props: { label: string; value: string | number; icon?: string }) {
+export function Stat(
+  props: { label: string; value: string | number; icon?: string },
+) {
   return (
     <div class="flex items-center gap-2 text-sm text-[#8b949e]">
-      {props.icon && <span>{Html.unsafe(props.icon)}</span>}
-      <span class="font-medium text-[#e6edf3]">{props.value}</span>
-      <span>{props.label}</span>
+      {props.icon && (
+        <span>
+          {Html.unsafe(props.icon)}
+        </span>
+      )}
+      <span class="font-medium text-[#e6edf3]">
+        {props.value}
+      </span>
+      <span>
+        {props.label}
+      </span>
     </div>
   )
 }
 
 export function Tabs(props: {
-  items: Array<{ label: string; href: string; count?: number; active?: boolean }>
+  items: Array<
+    { label: string; href: string; count?: number; active?: boolean }
+  >
 }) {
   return (
     <div class="flex gap-0 border-b border-[#21262d] mb-4 overflow-x-auto">
@@ -394,17 +480,31 @@ export function Tabs(props: {
   )
 }
 
-export function EmptyState(props: { icon?: string; title: string; description?: string }) {
+export function EmptyState(
+  props: { icon?: string; title: string; description?: string },
+) {
   return (
     <div class="text-center py-12">
-      {props.icon && <div class="text-[#8b949e] text-4xl mb-4">{props.icon}</div>}
-      <h3 class="text-xl text-[#e6edf3] mb-2">{props.title}</h3>
-      {props.description && <p class="text-[#8b949e] text-sm">{props.description}</p>}
+      {props.icon && (
+        <div class="text-[#8b949e] text-4xl mb-4">
+          {props.icon}
+        </div>
+      )}
+      <h3 class="text-xl text-[#e6edf3] mb-2">
+        {props.title}
+      </h3>
+      {props.description && (
+        <p class="text-[#8b949e] text-sm">
+          {props.description}
+        </p>
+      )}
     </div>
   )
 }
 
-export function LanguageBar(props: { languages: { readonly [key: string]: number } }) {
+export function LanguageBar(
+  props: { languages: { readonly [key: string]: number } },
+) {
   const total = Object.values(props.languages).reduce((a, b) => a + b, 0)
   if (total === 0) return null
   const sorted = Object.entries(props.languages).sort(([, a], [, b]) => b - a)
@@ -415,7 +515,9 @@ export function LanguageBar(props: { languages: { readonly [key: string]: number
           const pct = ((bytes / total) * 100).toFixed(1)
           return (
             <span
-              style={`width: ${pct}%; background-color: ${Github.langColor(lang)}`}
+              style={`width: ${pct}%; background-color: ${
+                Github.langColor(lang)
+              }`}
               title={`${lang} ${pct}%`}
             />
           )
@@ -430,8 +532,12 @@ export function LanguageBar(props: { languages: { readonly [key: string]: number
                 class="w-2 h-2 rounded-full inline-block"
                 style={`background-color: ${Github.langColor(lang)}`}
               />
-              <span class="text-[#e6edf3] font-medium">{lang}</span>
-              <span class="text-[#8b949e]">{pct}%</span>
+              <span class="text-[#e6edf3] font-medium">
+                {lang}
+              </span>
+              <span class="text-[#8b949e]">
+                {pct}%
+              </span>
             </span>
           )
         })}
@@ -450,17 +556,27 @@ export function StateFilter(props: {
     <div class="flex gap-2 mb-4 text-sm">
       <a
         href={props.openHref}
-        class={`flex items-center gap-1 ${props.current === "open" ? "text-[#e6edf3] font-semibold" : "text-[#8b949e] hover:text-[#e6edf3]"}`}
+        class={`flex items-center gap-1 ${
+          props.current === "open"
+            ? "text-[#e6edf3] font-semibold"
+            : "text-[#8b949e] hover:text-[#e6edf3]"
+        }`}
       >
         <svg width="16" height="16" viewBox="0 0 16 16" fill="#3fb950">
           <path d="M8 9.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z" />
           <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0ZM1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0Z" />
         </svg>
-        {props.counts?.open !== undefined ? `${Github.num(props.counts.open)} Open` : "Open"}
+        {props.counts?.open !== undefined
+          ? `${Github.num(props.counts.open)} Open`
+          : "Open"}
       </a>
       <a
         href={props.closedHref}
-        class={`flex items-center gap-1 ${props.current === "closed" ? "text-[#e6edf3] font-semibold" : "text-[#8b949e] hover:text-[#e6edf3]"}`}
+        class={`flex items-center gap-1 ${
+          props.current === "closed"
+            ? "text-[#e6edf3] font-semibold"
+            : "text-[#8b949e] hover:text-[#e6edf3]"
+        }`}
       >
         <svg width="16" height="16" viewBox="0 0 16 16" fill="#a371f7">
           <path d="M11.28 6.78a.75.75 0 0 0-1.06-1.06L8 7.94 5.78 5.72a.75.75 0 0 0-1.06 1.06L6.94 9l-2.22 2.22a.75.75 0 1 0 1.06 1.06L8 10.06l2.22 2.22a.75.75 0 1 0 1.06-1.06L9.06 9l2.22-2.22Z" />

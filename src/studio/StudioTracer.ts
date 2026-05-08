@@ -21,14 +21,18 @@ const fromTracerId = (id: string): bigint | undefined => {
   }
 }
 
-const make = (store: StudioStore.State, sql: SqlClient.SqlClient): Tracer.Tracer =>
+const make = (
+  store: StudioStore.State,
+  sql: SqlClient.SqlClient,
+): Tracer.Tracer =>
   Tracer.make({
     span(name, parent, context, links, startTime, kind, options) {
-      const parentSpanId =
-        Option.isSome(parent) && parent.value._tag === "Span"
-          ? fromTracerId(parent.value.spanId)
-          : undefined
-      const parentTraceId = Option.isSome(parent) ? fromTracerId(parent.value.traceId) : undefined
+      const parentSpanId = Option.isSome(parent) && parent.value._tag === "Span"
+        ? fromTracerId(parent.value.spanId)
+        : undefined
+      const parentTraceId = Option.isSome(parent)
+        ? fromTracerId(parent.value.traceId)
+        : undefined
       const traceId = parentTraceId ?? StudioStore.nextTraceId()
       const spanId = StudioStore.nextSpanId()
 
@@ -62,7 +66,8 @@ const make = (store: StudioStore.State, sql: SqlClient.SqlClient): Tracer.Tracer
         events: [],
       }
 
-      StudioStore.runWrite(sql,
+      StudioStore.runWrite(
+        sql,
         Effect.zipRight(
           StudioStore.insertSpan(studioSpan),
           StudioStore.evict("Span", store.spanCapacity),
@@ -100,9 +105,10 @@ const make = (store: StudioStore.State, sql: SqlClient.SqlClient): Tracer.Tracer
         kind,
         end(endTime, exit) {
           studioSpan.endTime = endTime
-          studioSpan.durationMs = Number(endTime - studioSpan.startTime) / 1_000_000
+          studioSpan.durationMs = Number(endTime - studioSpan.startTime) /
+            1_000_000
           studioSpan.status = Exit.isSuccess(exit) ? "ok" : "error"
-          StudioStore.runWrite(sql,StudioStore.updateSpan(studioSpan))
+          StudioStore.runWrite(sql, StudioStore.updateSpan(studioSpan))
           publish(store, { _tag: "SpanEnd", span: studioSpan })
           if (parentSpanId === undefined) {
             publish(store, { _tag: "TraceEnd", traceId })
@@ -111,11 +117,11 @@ const make = (store: StudioStore.State, sql: SqlClient.SqlClient): Tracer.Tracer
         attribute(key, value) {
           attrs.set(key, value)
           ;(studioSpan.attributes as Record<string, unknown>)[key] = value
-          StudioStore.runWrite(sql,StudioStore.updateSpan(studioSpan))
+          StudioStore.runWrite(sql, StudioStore.updateSpan(studioSpan))
         },
         event(name, startTime, attributes) {
           studioSpan.events.push({ name, startTime, attributes })
-          StudioStore.runWrite(sql,StudioStore.updateSpan(studioSpan))
+          StudioStore.runWrite(sql, StudioStore.updateSpan(studioSpan))
         },
         addLinks(newLinks) {
           spanLinks.push(...newLinks)
@@ -133,7 +139,7 @@ export const layer: Layer.Layer<
   never,
   Studio.Studio | SqlClient.SqlClient
 > = Layer.unwrapEffect(
-  Effect.gen(function* () {
+  Effect.gen(function*() {
     const studio = yield* Studio.Studio
     const sql = yield* SqlClient.SqlClient
     return Layer.setTracer(make(studio.store, sql))

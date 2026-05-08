@@ -1,4 +1,3 @@
-import * as Socket from "../Socket.ts"
 import * as Bun from "bun"
 import * as Config from "effect/Config"
 import * as Context from "effect/Context"
@@ -13,12 +12,13 @@ import type * as Scope from "effect/Scope"
 import * as NOs from "node:os"
 import * as NPath from "node:path"
 import * as PathPattern from "../internal/PathPattern.ts"
+import * as StartApp from "../internal/StartApp.ts"
 import * as PlatformRuntime from "../PlatformRuntime.ts"
 import * as Route from "../Route.ts"
 import * as RouteHttp from "../RouteHttp.ts"
-import * as StartApp from "../internal/StartApp.ts"
-import type * as RouteMount from "../RouteMount.ts"
 import * as RouteMap from "../RouteMap.ts"
+import type * as RouteMount from "../RouteMount.ts"
+import * as Socket from "../Socket.ts"
 import * as BunRoute from "./BunRoute.ts"
 
 export interface WebSocketContext {
@@ -61,7 +61,7 @@ export const make = (
   options: BunServeOptions,
   map?: RouteMap.RouteMap,
 ): Effect.Effect<BunServer, never, Scope.Scope> =>
-  Effect.gen(function* () {
+  Effect.gen(function*() {
     const port = yield* Config.number("PORT").pipe(
       Effect.catchTag("ConfigError", () => {
         return PlatformRuntime.isAgentHarness()
@@ -71,46 +71,51 @@ export const make = (
     )
     const hostFlag = process.argv.includes("--host")
     const hostname = yield* Config.string("HOST").pipe(
-      Effect.catchTag("ConfigError", () => Effect.succeed(hostFlag ? "0.0.0.0" : undefined)),
+      Effect.catchTag("ConfigError", () =>
+        Effect.succeed(hostFlag ? "0.0.0.0" : undefined)),
     )
 
     const handlerStack: Array<FetchHandler> = [
-      function (_request, _server) {
+      function(_request, _server) {
         return new Response("not found", { status: 404 })
       },
     ]
 
-    const setRoutesDeferred =
-      yield* Deferred.make<(map: RouteMap.RouteMap) => Effect.Effect<void>>()
+    const setRoutesDeferred = yield* Deferred
+      .make<(map: RouteMap.RouteMap) => Effect.Effect<void>>()
 
-    const service = BunServer.of({
-      // During the construction we need to create a service imlpementation
-      // first so we can provide it in the runtime that will be used in web
-      // handlers. After we create the runtime, we set it below so it's always
-      // available at runtime.
-      // An alternative approach would be to use Bun.Server.reload but I prefer
-      // to avoid it since it's badly documented and has bunch of bugs.
-      server: undefined as any,
-      pushHandler(fetch) {
-        handlerStack.push(fetch)
-        reload()
-      },
-      popHandler() {
-        handlerStack.pop()
-        reload()
-      },
-      setRoutes(map) {
-        return Deferred.await(setRoutesDeferred).pipe(
-          Effect.flatMap((applyRoutes) => applyRoutes(map)),
-        )
-      },
-    })
+    const service = BunServer
+      .of({
+        // During the construction we need to create a service imlpementation
+        // first so we can provide it in the runtime that will be used in web
+        // handlers. After we create the runtime, we set it below so it's always
+        // available at runtime.
+        // An alternative approach would be to use Bun.Server.reload but I prefer
+        // to avoid it since it's badly documented and has bunch of bugs.
+        server: undefined as any,
+        pushHandler(fetch) {
+          handlerStack
+            .push(fetch)
+          reload()
+        },
+        popHandler() {
+          handlerStack.pop()
+          reload()
+        },
+        setRoutes(map) {
+          return Deferred.await(setRoutesDeferred).pipe(
+            Effect.flatMap((applyRoutes) => applyRoutes(map)),
+          )
+        },
+      })
 
     const runtime = yield* Effect.runtime().pipe(
       Effect.andThen(Runtime.provideService(BunServer, service)),
     )
 
-    let currentRoutes: BunRoute.BunRoutes = map ? yield* walkBunRoutes(runtime, map) : {}
+    let currentRoutes: BunRoute.BunRoutes = map
+      ? yield* walkBunRoutes(runtime, map)
+      : {}
 
     const websocket: Bun.WebSocketHandler<WebSocketContext> = {
       open(ws) {
@@ -124,12 +129,12 @@ export const make = (
           ws.data.closeDeferred,
           Socket.defaultCloseCodeIsError(code)
             ? Exit.fail(
-                new Socket.SocketError({
-                  reason: "Close",
-                  code,
-                  closeReason,
-                }),
-              )
+              new Socket.SocketError({
+                reason: "Close",
+                code,
+                closeReason,
+              }),
+            )
             : Exit.void,
         )
       },
@@ -156,7 +161,7 @@ export const make = (
         if (currentMain === myFiber) {
           server.stop()
         }
-      }),
+      })
     )
 
     const reload = () => {
@@ -168,33 +173,35 @@ export const make = (
     }
 
     yield* Deferred.succeed(setRoutesDeferred, (map) =>
-      walkBunRoutes(runtime, map).pipe(
-        Effect.tap((bunRoutes) =>
-          Effect.sync(() => {
-            currentRoutes = bunRoutes
-            reload()
-          }),
-        ),
-        Effect.asVoid,
-      ),
-    )
+      walkBunRoutes(runtime, map)
+        .pipe(
+          Effect
+            .tap((bunRoutes) =>
+              Effect.sync(() => {
+                currentRoutes = bunRoutes
+                reload()
+              })
+            ),
+          Effect.asVoid,
+        ))
 
-    const bunServer = BunServer.of({
-      server,
-      pushHandler(fetch) {
-        handlerStack.push(fetch)
-        reload()
-      },
-      popHandler() {
-        handlerStack.pop()
-        reload()
-      },
-      setRoutes(map) {
-        return Deferred.await(setRoutesDeferred).pipe(
-          Effect.flatMap((applyRoutes) => applyRoutes(map)),
-        )
-      },
-    })
+    const bunServer = BunServer
+      .of({
+        server,
+        pushHandler(fetch) {
+          handlerStack.push(fetch)
+          reload()
+        },
+        popHandler() {
+          handlerStack.pop()
+          reload()
+        },
+        setRoutes(map) {
+          return Deferred.await(setRoutesDeferred).pipe(
+            Effect.flatMap((applyRoutes) => applyRoutes(map)),
+          )
+        },
+      })
 
     return bunServer
   })
@@ -210,7 +217,7 @@ export const layerRoutes = (
 ): Layer.Layer<BunServer, never, Route.Routes> =>
   Layer.scoped(
     BunServer,
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       const routes = yield* Route.Routes
       return yield* make(options ?? {}, routes)
     }),
@@ -228,7 +235,7 @@ export const layerStart = (
 ): Layer.Layer<BunServer, never, StartApp.StartApp> =>
   Layer.scoped(
     BunServer,
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       const app = yield* StartApp.StartApp
       const routes = yield* Effect.serviceOption(Route.Routes)
       const routeMap = Option.getOrNull(routes)
@@ -247,18 +254,23 @@ export const layerStart = (
   )
 
 export const withLogAddress = <A, E, R>(layer: Layer.Layer<A, E, R>) =>
-  Layer.effectDiscard(
-    Effect.gen(function* () {
-      const { server } = yield* BunServer
-      const { hostname, port } = server
-      const addr = hostname === "0.0.0.0" ? getLocalIp() : "localhost"
+  Layer
+    .effectDiscard(
+      Effect.gen(function*() {
+        const { server } = yield* BunServer
+        const { hostname, port } = server
+        const addr = hostname === "0.0.0.0" ? getLocalIp() : "localhost"
 
-      yield* Effect.log(`Listening on http://${addr}:${port}`)
-    }),
-  ).pipe(Layer.provideMerge(layer))
+        yield* Effect.log(`Listening on http://${addr}:${port}`)
+      }),
+    )
+    .pipe(Layer.provideMerge(layer))
 
-function walkBunRoutes(runtime: Runtime.Runtime<BunServer>, map: RouteMap.RouteMap) {
-  return Effect.gen(function* () {
+function walkBunRoutes(
+  runtime: Runtime.Runtime<BunServer>,
+  map: RouteMap.RouteMap,
+) {
+  return Effect.gen(function*() {
     const bunRoutes: BunRoute.BunRoutes = {}
     const pathGroups = new Map<string, Array<RouteMount.MountedRoute>>()
     const toWebHandler = RouteHttp.toWebHandlerRuntime(runtime)
@@ -271,7 +283,11 @@ function walkBunRoutes(runtime: Runtime.Runtime<BunServer>, map: RouteMap.RouteM
         const htmlBundle = yield* Effect.promise(bunDescriptors.bunLoad)
         if (htmlBundle.files) {
           hasPrebuiltBundles = true
-          registerPrebuiltBundle(bunDescriptors.bunPrefix, htmlBundle, bunRoutes)
+          registerPrebuiltBundle(
+            bunDescriptors.bunPrefix,
+            htmlBundle,
+            bunRoutes,
+          )
         } else {
           bunRoutes[`${bunDescriptors.bunPrefix}/*`] = htmlBundle
         }
@@ -303,14 +319,20 @@ function walkBunRoutes(runtime: Runtime.Runtime<BunServer>, map: RouteMap.RouteM
   })
 }
 
-function registerPrebuiltBundle(prefix: string, bundle: any, bunRoutes: BunRoute.BunRoutes) {
+function registerPrebuiltBundle(
+  prefix: string,
+  bundle: any,
+  bunRoutes: BunRoute.BunRoutes,
+) {
   const mainDir = NPath.dirname(Bun.main)
   const indexPath = NPath.resolve(mainDir, bundle.index)
 
   const htmlPromise = rewriteRelativeAssetPaths(Bun.file(indexPath).text())
 
   bunRoutes[`${prefix}/*`] = async () =>
-    new Response(await htmlPromise, { headers: { "content-type": "text/html;charset=utf-8" } })
+    new Response(await htmlPromise, {
+      headers: { "content-type": "text/html;charset=utf-8" },
+    })
 
   for (const file of bundle.files ?? []) {
     if (file.loader === "html") continue
@@ -342,7 +364,9 @@ function discoverStaticOutputs(dir: string): Array<StaticOutput> {
   }
 
   const outputs: Array<StaticOutput> = []
-  for (const entry of new Bun.Glob("*").scanSync({ cwd: dir, onlyFiles: true })) {
+  for (
+    const entry of new Bun.Glob("*").scanSync({ cwd: dir, onlyFiles: true })
+  ) {
     const ext = NPath.extname(entry).toLowerCase()
     outputs.push({
       path: NPath.resolve(dir, entry),
@@ -353,7 +377,9 @@ function discoverStaticOutputs(dir: string): Array<StaticOutput> {
   return outputs
 }
 
-function rewriteRelativeAssetPaths(html: string | Promise<string>): Promise<string> {
+function rewriteRelativeAssetPaths(
+  html: string | Promise<string>,
+): Promise<string> {
   const rewriter = new HTMLRewriter()
     .on("link[href]", {
       element(el) {
@@ -380,7 +406,9 @@ function rewriteRelativeAssetPaths(html: string | Promise<string>): Promise<stri
       },
     })
 
-  return Promise.resolve(html).then((h) => rewriter.transform(new Response(h)).text())
+  return Promise.resolve(html).then((h) =>
+    rewriter.transform(new Response(h)).text()
+  )
 }
 
 function isRelativePath(path: string): boolean {
@@ -393,7 +421,9 @@ function assetBasename(path: string): string {
 }
 
 function getLocalIp(): string | undefined {
-  return Object.values(NOs.networkInterfaces())
+  return Object
+    .values(NOs.networkInterfaces())
     .flatMap((addresses) => addresses ?? [])
-    .find((addr) => addr.family === "IPv4" && !addr.internal)?.address
+    .find((addr) => addr.family === "IPv4" && !addr.internal)
+    ?.address
 }

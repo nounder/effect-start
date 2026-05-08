@@ -2,7 +2,8 @@ import * as Predicate from "effect/Predicate"
 
 const TypeId = "~effect-start/Cli/CliError"
 
-export const isCliError = (u: unknown): u is CliError => Predicate.hasProperty(u, TypeId)
+export const isCliError = (u: unknown): u is CliError =>
+  Predicate.hasProperty(u, TypeId)
 
 export type CliError =
   | UnrecognizedOption
@@ -15,7 +16,9 @@ export type CliError =
   | UserError
 
 const suggestText = (suggestions: ReadonlyArray<string>) =>
-  suggestions.length > 0 ? `\n\n  Did you mean this?\n    ${suggestions.join("\n    ")}` : ""
+  suggestions.length > 0
+    ? `\n\n  Did you mean this?\n    ${suggestions.join("\n    ")}`
+    : ""
 
 export class UnrecognizedOption {
   readonly _tag = "UnrecognizedOption"
@@ -46,7 +49,9 @@ export class DuplicateOption {
   readonly option: string
   readonly parentCommand: string
   readonly childCommand: string
-  constructor(props: { option: string; parentCommand: string; childCommand: string }) {
+  constructor(
+    props: { option: string; parentCommand: string; childCommand: string },
+  ) {
     this.option = props.option
     this.parentCommand = props.parentCommand
     this.childCommand = props.childCommand

@@ -4,9 +4,9 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Entity from "../Entity.ts"
 import * as PathPattern from "../internal/PathPattern.ts"
+import * as Values from "../internal/Values.ts"
 import * as Route from "../Route.ts"
 import * as RouteMap from "../RouteMap.ts"
-import * as Values from "../internal/Values.ts"
 import * as Bundle from "./Bundle.ts"
 
 /**
@@ -19,9 +19,11 @@ import * as Bundle from "./Bundle.ts"
  * })
  * ```
  */
-export const make = <Tag extends Context.Tag<any, Bundle.BundleContext>>(tag: Tag) =>
+export const make = <Tag extends Context.Tag<any, Bundle.BundleContext>>(
+  tag: Tag,
+) =>
   Route.get(
-    Route.render(function* (ctx) {
+    Route.render(function*(ctx) {
       const bundle = yield* tag
       if (bundle.rebuild) {
         yield* bundle.rebuild()
@@ -38,7 +40,9 @@ export const make = <Tag extends Context.Tag<any, Bundle.BundleContext>>(tag: Ta
       if (!blob) {
         return Entity.make("Not Found", { status: 404 })
       }
-      const bytes = new Uint8Array(yield* Effect.promise(() => blob.arrayBuffer()))
+      const bytes = new Uint8Array(
+        yield* Effect.promise(() => blob.arrayBuffer()),
+      )
       return Entity.make(bytes, {
         headers: {
           "content-type": blob.type || "application/octet-stream",
@@ -71,7 +75,7 @@ export const layer = (options?: {
 
   return Layer.effect(
     Route.Routes,
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       const clientBundle = yield* Effect.serviceOption(Bundle.ClientBundle)
       const existing = yield* Effect.serviceOption(Route.Routes).pipe(
         Effect.andThen(Option.getOrUndefined),

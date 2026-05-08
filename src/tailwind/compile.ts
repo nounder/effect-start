@@ -1,14 +1,25 @@
 import fsPromises from "node:fs/promises"
 import path from "node:path"
 import { pathToFileURL } from "node:url"
-import { compile as _compile, compileAst as _compileAst, Features, Polyfills } from "tailwindcss"
+import {
+  compile as _compile,
+  compileAst as _compileAst,
+  Features,
+  Polyfills,
+} from "tailwindcss"
 import * as BunEnhancedResolve from "../bun/internal/BunEnhancedResolve.ts"
 
 type AstNode = Parameters<typeof _compileAst>[0][number]
 
-export { Features, Polyfills }
+export {
+  Features,
+  Polyfills,
+}
 
-export type Resolver = (id: string, base: string) => Promise<string | false | undefined>
+export type Resolver = (
+  id: string,
+  base: string,
+) => Promise<string | false | undefined>
 
 export interface CompileOptions {
   base: string
@@ -26,7 +37,12 @@ function createCompileOptions(options: CompileOptions) {
     polyfills: options.polyfills,
     from: options.from,
     async loadModule(id: string, base: string) {
-      return loadModule(id, base, options.onDependency, options.customJsResolver)
+      return loadModule(
+        id,
+        base,
+        options.onDependency,
+        options.customJsResolver,
+      )
     },
     async loadStylesheet(id: string, sheetBase: string) {
       let sheet = await loadStylesheet(
@@ -78,7 +94,10 @@ export async function compileAst(
   return compiler
 }
 
-export async function compile(css: string, options: CompileOptions): ReturnType<typeof _compile> {
+export async function compile(
+  css: string,
+  options: CompileOptions,
+): ReturnType<typeof _compile> {
   let compiler = await _compile(css, createCompileOptions(options))
   await ensureSourceDetectionRootExists(compiler)
   return compiler
@@ -109,7 +128,9 @@ export async function loadModule(
     throw new Error(`Could not resolve '${id}' from '${base}'`)
   }
 
-  let module = await importModule(pathToFileURL(resolvedPath).href + "?id=" + Date.now())
+  let module = await importModule(
+    pathToFileURL(resolvedPath).href + "?id=" + Date.now(),
+  )
 
   return {
     path: resolvedPath,
@@ -206,7 +227,9 @@ async function resolveJsId(
     }
   }
 
-  return runResolver(esmResolver, id, base).catch(() => runResolver(cjsResolver, id, base))
+  return runResolver(esmResolver, id, base).catch(() =>
+    runResolver(cjsResolver, id, base)
+  )
 }
 
 function runResolver(
@@ -218,6 +241,6 @@ function runResolver(
     resolver.resolve({}, base, id, {}, (err, result) => {
       if (err) return reject(err)
       resolve(result)
-    }),
+    })
   )
 }

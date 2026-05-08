@@ -1,6 +1,11 @@
-import { attribute, DATASTAR_FETCH_EVENT, mergePaths, type DatastarFetchEvent } from "../engine.ts"
-import { modifyCasing } from "../utils.ts"
 import { FINISHED, STARTED } from "../actions/fetch.ts"
+import {
+  attribute,
+  DATASTAR_FETCH_EVENT,
+  type DatastarFetchEvent,
+  mergePaths,
+} from "../engine.ts"
+import { modifyCasing } from "../utils.ts"
 
 attribute({
   name: "indicator",

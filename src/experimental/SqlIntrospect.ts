@@ -251,14 +251,25 @@ const mssqlIndexes = `
 
 export type Dialect = "sqlite" | "postgres" | "mssql"
 
-const dialectQueries: Record<Dialect, { columns: string; foreignKeys: string; indexes: string }> = {
-  sqlite: { columns: sqliteColumns, foreignKeys: sqliteForeignKeys, indexes: sqliteIndexes },
+const dialectQueries: Record<
+  Dialect,
+  { columns: string; foreignKeys: string; indexes: string }
+> = {
+  sqlite: {
+    columns: sqliteColumns,
+    foreignKeys: sqliteForeignKeys,
+    indexes: sqliteIndexes,
+  },
   postgres: {
     columns: postgresColumns,
     foreignKeys: postgresForeignKeys,
     indexes: postgresIndexes,
   },
-  mssql: { columns: mssqlColumns, foreignKeys: mssqlForeignKeys, indexes: mssqlIndexes },
+  mssql: {
+    columns: mssqlColumns,
+    foreignKeys: mssqlForeignKeys,
+    indexes: mssqlIndexes,
+  },
 }
 
 const singleColumnIndexes = (indexes: ReadonlyArray<Index>): Set<string> => {
@@ -325,7 +336,9 @@ const groupByTable = (
   return Array.from(tableMap.values())
 }
 
-const normalizeBooleans = (columns: ReadonlyArray<Column>): ReadonlyArray<Column> =>
+const normalizeBooleans = (
+  columns: ReadonlyArray<Column>,
+): ReadonlyArray<Column> =>
   columns.map((c) => ({
     ...c,
     isNullable: Boolean(c.isNullable),
@@ -337,19 +350,19 @@ export const introspect = (
   dialect: Dialect,
   options?: IntrospectOptions,
 ): Effect.Effect<DatabaseSchema, SqlClient.SqlError, SqlClient.SqlClient> =>
-  Effect.gen(function* () {
+  Effect.gen(function*() {
     const sql = yield* SqlClient.SqlClient
     const q = dialectQueries[dialect]
     const columns = normalizeBooleans(yield* sql.unsafe<Column>(q.columns))
-    const foreignKeys =
-      options?.foreignKeys !== false ? yield* sql.unsafe<ForeignKey>(q.foreignKeys) : []
-    const indexes =
-      options?.indexes !== false
-        ? (yield* sql.unsafe<Index>(q.indexes)).map((i) => ({
-            ...i,
-            isUnique: Boolean(i.isUnique),
-          }))
-        : []
+    const foreignKeys = options?.foreignKeys !== false
+      ? yield* sql.unsafe<ForeignKey>(q.foreignKeys)
+      : []
+    const indexes = options?.indexes !== false
+      ? (yield* sql.unsafe<Index>(q.indexes)).map((i) => ({
+        ...i,
+        isUnique: Boolean(i.isUnique),
+      }))
+      : []
     return { tables: groupByTable(columns, foreignKeys, indexes) }
   })
 
@@ -365,8 +378,9 @@ const dataTypeToSchema = (dataType: string): Schema.Schema.Any | null => {
     t === "mediumint" ||
     t === "bigint" ||
     t === "int2"
-  )
+  ) {
     return Schema.Number
+  }
   if (
     t === "real" ||
     t === "double" ||
@@ -378,8 +392,9 @@ const dataTypeToSchema = (dataType: string): Schema.Schema.Any | null => {
     t === "decimal" ||
     t === "money" ||
     t === "smallmoney"
-  )
+  ) {
     return Schema.Number
+  }
   if (
     t === "text" ||
     t === "varchar" ||
@@ -394,10 +409,12 @@ const dataTypeToSchema = (dataType: string): Schema.Schema.Any | null => {
     t === "citext" ||
     t === "name" ||
     t === "xml"
-  )
+  ) {
     return Schema.String
-  if (t === "boolean" || t === "bool" || t === "bit")
+  }
+  if (t === "boolean" || t === "bool" || t === "bit") {
     return Schema.Union(Schema.Boolean, Schema.Number)
+  }
   if (
     t === "timestamp" ||
     t === "timestamptz" ||
@@ -409,15 +426,25 @@ const dataTypeToSchema = (dataType: string): Schema.Schema.Any | null => {
     t === "smalldatetime" ||
     t === "datetimeoffset" ||
     t === "time"
-  )
+  ) {
     return Schema.String
+  }
   if (t === "json" || t === "jsonb") return Schema.Unknown
-  if (t === "blob" || t === "bytea" || t === "varbinary" || t === "binary" || t === "image")
+  if (
+    t === "blob" ||
+    t === "bytea" ||
+    t === "varbinary" ||
+    t === "binary" ||
+    t === "image"
+  ) {
     return null
+  }
   return null
 }
 
-const columnToSchema = (col: Column): Schema.Schema.Any | Schema.PropertySignature.All | null => {
+const columnToSchema = (
+  col: Column,
+): Schema.Schema.Any | Schema.PropertySignature.All | null => {
   const base = dataTypeToSchema(col.dataType)
   if (base === null) return null
   if (col.isNullable) return Schema.NullOr(base)
@@ -481,7 +508,11 @@ export interface TableReader {
   readonly sortableColumns: ReadonlyArray<string>
   readonly findAll: (
     options?: FindAllOptions,
-  ) => Effect.Effect<ReadonlyArray<unknown>, SqlClient.SqlError, SqlClient.SqlClient>
+  ) => Effect.Effect<
+    ReadonlyArray<unknown>,
+    SqlClient.SqlError,
+    SqlClient.SqlClient
+  >
   readonly findById: (
     id: unknown,
   ) => Effect.Effect<unknown | null, SqlClient.SqlError, SqlClient.SqlClient>
@@ -495,7 +526,7 @@ export interface DatabaseReader {
   readonly table: (name: string) => TableReader | undefined
 }
 
-const escapeIdentifier = (id: string): string => `"${id.replace(/"/g, '""')}"`
+const escapeIdentifier = (id: string): string => `"${id.replace(/"/g, "\"\"")}"`
 
 const concatSql = (
   sql: SqlClient.Connection,
@@ -514,11 +545,16 @@ const concatSql = (
       if (j < frag.values.length) values.push(frag.values[j])
     }
   }
-  const tsa = Object.assign([...strings], { raw: strings }) as unknown as TemplateStringsArray
+  const tsa = Object.assign([...strings], {
+    raw: strings,
+  }) as unknown as TemplateStringsArray
   return sql(tsa, ...values)
 }
 
-const literal = (text: string) => ({ strings: [text], values: [] as Array<unknown> })
+const literal = (text: string) => ({
+  strings: [text],
+  values: [] as Array<unknown>,
+})
 
 const param = (value: unknown) => ({ strings: ["", ""], values: [value] })
 
@@ -526,7 +562,9 @@ const buildWhereFragments = (
   filters: ReadonlyArray<Filter>,
   columnSet: Set<string>,
 ): Array<{ strings: ReadonlyArray<string>; values: Array<unknown> }> => {
-  const parts: Array<{ strings: ReadonlyArray<string>; values: Array<unknown> }> = []
+  const parts: Array<
+    { strings: ReadonlyArray<string>; values: Array<unknown> }
+  > = []
   const valid = filters.filter((f) => columnSet.has(f.column))
   if (valid.length === 0) return parts
   parts.push(literal(" WHERE "))
@@ -535,7 +573,9 @@ const buildWhereFragments = (
     const f = valid[i]
     const col = escapeIdentifier(f.column)
     if (f.value === null) {
-      parts.push(literal(f.op === "eq" ? `${col} IS NULL` : `${col} IS NOT NULL`))
+      parts.push(
+        literal(f.op === "eq" ? `${col} IS NULL` : `${col} IS NOT NULL`),
+      )
     } else {
       parts.push(literal(`${col} ${f.op === "eq" ? "=" : "!="} `))
       parts.push(param(f.value))
@@ -549,9 +589,13 @@ const makeTableReader = (ts: TableSchema): TableReader => {
     ? `${escapeIdentifier(ts.tableSchema)}.${escapeIdentifier(ts.tableName)}`
     : escapeIdentifier(ts.tableName)
   const primaryKey = ts.columns.find((c) => c.isPrimaryKey)
-  const selectCols = ts.columns.map((c) => escapeIdentifier(c.columnName)).join(", ")
+  const selectCols = ts.columns.map((c) => escapeIdentifier(c.columnName)).join(
+    ", ",
+  )
   const columnSet = new Set(ts.columns.map((c) => c.columnName))
-  const sortableSet = new Set(ts.columns.filter((c) => c.isSortable).map((c) => c.columnName))
+  const sortableSet = new Set(
+    ts.columns.filter((c) => c.isSortable).map((c) => c.columnName),
+  )
 
   return {
     tableName: ts.tableName,
@@ -560,41 +604,56 @@ const makeTableReader = (ts: TableSchema): TableReader => {
     columns: ts.columns,
     sortableColumns: Array.from(sortableSet),
     findAll: (options) =>
-      Effect.gen(function* () {
+      Effect.gen(function*() {
         const sql = yield* SqlClient.SqlClient
-        const fragments: Array<{ strings: ReadonlyArray<string>; values: Array<unknown> }> = [
+        const fragments: Array<
+          { strings: ReadonlyArray<string>; values: Array<unknown> }
+        > = [
           literal(`SELECT ${selectCols} FROM ${qualifiedName}`),
         ]
         if (options?.filters) {
           fragments.push(...buildWhereFragments(options.filters, columnSet))
         }
         if (options?.sort && options.sort.length > 0) {
-          const sortClauses = options.sort
+          const sortClauses = options
+            .sort
             .filter((s) => sortableSet.has(s.column))
-            .map((s) => `${escapeIdentifier(s.column)} ${s.reverse ? "DESC" : "ASC"}`)
-          if (sortClauses.length > 0) fragments.push(literal(` ORDER BY ${sortClauses.join(", ")}`))
+            .map((s) =>
+              `${escapeIdentifier(s.column)} ${s.reverse ? "DESC" : "ASC"}`
+            )
+          if (sortClauses.length > 0) {
+            fragments.push(literal(` ORDER BY ${sortClauses.join(", ")}`))
+          }
         }
-        if (options?.limit !== undefined)
+        if (options?.limit !== undefined) {
           fragments.push(literal(` LIMIT ${Math.trunc(Number(options.limit))}`))
-        if (options?.offset !== undefined)
-          fragments.push(literal(` OFFSET ${Math.trunc(Number(options.offset))}`))
+        }
+        if (options?.offset !== undefined) {
+          fragments.push(
+            literal(` OFFSET ${Math.trunc(Number(options.offset))}`),
+          )
+        }
         return yield* concatSql(sql, fragments)
       }),
     findById: (id) =>
-      Effect.gen(function* () {
+      Effect.gen(function*() {
         if (!primaryKey) return null
         const sql = yield* SqlClient.SqlClient
         const pkCol = escapeIdentifier(primaryKey.columnName)
         const rows = yield* concatSql(sql, [
-          literal(`SELECT ${selectCols} FROM ${qualifiedName} WHERE ${pkCol} = `),
+          literal(
+            `SELECT ${selectCols} FROM ${qualifiedName} WHERE ${pkCol} = `,
+          ),
           param(id),
         ])
         return rows[0] ?? null
       }),
     count: (options) =>
-      Effect.gen(function* () {
+      Effect.gen(function*() {
         const sql = yield* SqlClient.SqlClient
-        const fragments: Array<{ strings: ReadonlyArray<string>; values: Array<unknown> }> = [
+        const fragments: Array<
+          { strings: ReadonlyArray<string>; values: Array<unknown> }
+        > = [
           literal(`SELECT COUNT(*) as count FROM ${qualifiedName}`),
         ]
         if (options?.filters) {

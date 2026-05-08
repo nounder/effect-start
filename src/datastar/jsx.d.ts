@@ -4,7 +4,10 @@ import type { DataEvent } from "./types.d.ts"
 type DatastarSignalsObject = Record<string, any>
 type DatastarClassObject = Record<string, boolean | string>
 type DatastarAttrObject = Record<string, string | boolean | number>
-type DatastarStyleObject = Record<string, string | number | boolean | null | undefined>
+type DatastarStyleObject = Record<
+  string,
+  string | number | boolean | null | undefined
+>
 
 type DatastarFn = (e: DataEvent) => any
 
@@ -26,7 +29,11 @@ export interface DatastarAttributes {
 
   // Attributes that accept function expressions
   "data-bind"?: string | undefined
-  "data-computed"?: string | DatastarFn | Record<string, DatastarFn | Record<string, DatastarFn>> | undefined
+  "data-computed"?:
+    | string
+    | DatastarFn
+    | Record<string, DatastarFn | Record<string, DatastarFn>>
+    | undefined
   "data-effect"?: string | DatastarFn | undefined
   "data-init"?: string | DatastarFn | undefined
   "data-indicator"?: string | undefined

@@ -9,7 +9,7 @@ import * as Shell from "../ui/Shell.tsx"
 
 export default Route.get(
   RouteSchema.schemaPathParams(Schema.Struct({ id: Schema.String })),
-  Route.html(function* (ctx) {
+  Route.html(function*(ctx) {
     const studio = yield* Studio.Studio
     const fiberId = ctx.pathParams.id
     const fiberName = fiberId.startsWith("#") ? fiberId : `#${fiberId}`

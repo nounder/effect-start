@@ -1,5 +1,5 @@
 import * as Unique from "../../Unique.ts"
-import * as StudioStore from "../StudioStore.ts"
+import type * as StudioStore from "../StudioStore.ts"
 import * as PrettyValue from "./internal/PrettyValue.tsx"
 
 function levelColor(level: string): string {
@@ -13,23 +13,28 @@ function levelColor(level: string): string {
 
 export function LogLine(props: { prefix: string; log: StudioStore.LogEntry }) {
   const color = levelColor(props.log.level)
-  const time = new Date(Number(Unique.snowflake.timestamp(props.log.id))).toLocaleTimeString(
-    "en",
-    {
-      hour12: false,
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    },
-  )
+  const time = new Date(Number(Unique.snowflake.timestamp(props.log.id)))
+    .toLocaleTimeString(
+      "en",
+      {
+        hour12: false,
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      },
+    )
 
   return (
     <div
       id={`log-${props.log.id}`}
       style="padding:6px 8px;border-bottom:1px solid #1f2937;font-family:monospace;font-size:12px;display:flex;align-items:flex-start;gap:8px"
     >
-      <span style="color:#6b7280;white-space:nowrap">{time}</span>
-      <span style={`color:${color};font-weight:600;width:56px;text-align:center;flex-shrink:0`}>
+      <span style="color:#6b7280;white-space:nowrap">
+        {time}
+      </span>
+      <span
+        style={`color:${color};font-weight:600;width:56px;text-align:center;flex-shrink:0`}
+      >
         {props.log.level}
       </span>
       <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">

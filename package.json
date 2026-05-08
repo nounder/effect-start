@@ -191,8 +191,8 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json && cd src && find . -name '*.html' -exec rsync -R {} ../dist/ \\;",
-    "format": "bunx oxfmt",
-    "lint": "oxlint --import-plugin --tsconfig tsconfig.json src/",
+    "lint": "oxlint && dprint check",
+    "lint-fix": "oxlint --fix && dprint fmt",
     "test": "bun test ./test/",
     "test-sql": "bun add --no-save mssql @types/mssql postgres && TEST_SQL=1 bun test ./src/sql/",
     "bump": "bun scripts/bump",

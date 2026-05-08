@@ -66,10 +66,12 @@ export interface Options {
    * on `*.example.com`) and you want to reject requests from sibling subdomains.
    */
   readonly allowSameSite?: boolean
-
 }
 
-function originTrusted(request: Request, trustedOrigins: ReadonlyArray<string>): boolean {
+function originTrusted(
+  request: Request,
+  trustedOrigins: ReadonlyArray<string>,
+): boolean {
   const origin = request.headers.get("origin")
   return origin !== null && origin !== "" && trustedOrigins.includes(origin)
 }
@@ -98,9 +100,16 @@ export function make(options?: Options) {
 
   return <D, SB, P extends Route.Route.Tuple>(
     self: Route.RouteSet<D, SB, P>,
-  ): Route.RouteSet<D, SB, [...P, Route.Route<{}, {}, unknown, never, Route.Request>]> => {
-    const route = Route.make<{}, {}, unknown, never, Route.Request>((_context, next) =>
-      Effect.gen(function* () {
+  ): Route.RouteSet<
+    D,
+    SB,
+    [...P, Route.Route<{}, {}, unknown, never, Route.Request>]
+  > => {
+    const route = Route.make<{}, {}, unknown, never, Route.Request>((
+      _context,
+      next,
+    ) =>
+      Effect.gen(function*() {
         const request = yield* Route.Request
         const method = request.method.toUpperCase()
 
@@ -114,11 +123,15 @@ export function make(options?: Options) {
           return yield* next
         }
 
-        if (!originMatchesBase(request) && !originTrusted(request, trustedOrigins)) {
+        if (
+          !originMatchesBase(request) && !originTrusted(request, trustedOrigins)
+        ) {
           const origin = request.headers.get("origin")
           const url = new URL(request.url)
           const base = `${url.protocol}//${url.host}`
-          return reject(`HTTP Origin header (${origin}) didn't match request.base_url (${base})`)
+          return reject(
+            `HTTP Origin header (${origin}) didn't match request.base_url (${base})`,
+          )
         }
 
         const value = secFetchSite.toLowerCase()
@@ -142,11 +155,14 @@ export function make(options?: Options) {
             ? "Sec-Fetch-Site header (cross-site) indicates a cross-site request"
             : `Sec-Fetch-Site header is invalid (${JSON.stringify(value)})`,
         )
-      }),
+      })
     )
 
     return Route.set(
-      [...Route.items(self), route] as [...P, Route.Route<{}, {}, unknown, never, Route.Request>],
+      [...Route.items(self), route] as [
+        ...P,
+        Route.Route<{}, {}, unknown, never, Route.Request>,
+      ],
       Route.descriptor(self),
     )
   }

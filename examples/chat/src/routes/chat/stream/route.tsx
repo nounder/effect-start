@@ -1,10 +1,10 @@
 import { Stream } from "effect"
 import { Route } from "effect-start"
 import * as Html from "effect-start/Html"
-import { type ChatMessage, chatPubSub, Message } from "../../../Chat.tsx"
+import * as Chat from "../../../Chat.tsx"
 
-const chatPatchMessage = (msg: ChatMessage) => {
-  const html = Html.text(<Message msg={msg} isNew />).replace(/\n/g, "")
+const chatPatchMessage = (msg: Chat.ChatMessage) => {
+  const html = Html.text(<Chat.Message msg={msg} isNew />).replace(/\n/g, "")
   return {
     type: "datastar-patch-elements",
     data: `selector #chat-messages\nmode append\nelements ${html}`,
@@ -12,5 +12,7 @@ const chatPatchMessage = (msg: ChatMessage) => {
 }
 
 export default Route.get(
-  Route.sse(Stream.fromPubSub(chatPubSub).pipe(Stream.map(chatPatchMessage))),
+  Route.sse(
+    Stream.fromPubSub(Chat.chatPubSub).pipe(Stream.map(chatPatchMessage)),
+  ),
 )

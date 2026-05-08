@@ -1,5 +1,13 @@
 import type { BuildConfig, BuildOutput } from "bun"
-import { Array, type Context, Effect, Iterable, Layer, pipe, Record } from "effect"
+import {
+  Array,
+  type Context,
+  Effect,
+  Iterable,
+  Layer,
+  pipe,
+  Record,
+} from "effect"
 import * as NPath from "node:path"
 import * as NUrl from "node:url"
 import * as Bundle from "../bundler/Bundle.ts"
@@ -7,7 +15,9 @@ import type { BunImportTrackerPlugin } from "./index.ts"
 
 export type BuildOptions = Omit<BuildConfig, "outdir">
 
-const toPath = (ep: string) => (ep.startsWith("file://") ? NUrl.fileURLToPath(ep) : ep)
+const toPath = (
+  ep: string,
+) => (ep.startsWith("file://") ? NUrl.fileURLToPath(ep) : ep)
 
 /**
  * Resolves bare specifiers and file:// URLs to absolute paths,
@@ -76,15 +86,20 @@ export const buildServer = (config: BuildOptions | string) => {
 export function build(
   config: BuildOptions,
 ): Effect.Effect<Bundle.BundleContext, Bundle.BundleError> {
-  return Effect.gen(function* () {
+  return Effect.gen(function*() {
     const resolvedConfig = {
       ...config,
       entrypoints: resolveEntrypoints(config.entrypoints),
     }
     const output = yield* buildBun(resolvedConfig)
     const manifest = generateManifest(config, output)
-    const artifactsMap = Record.fromIterableBy(output.outputs, (v) => v.path.replace(/^\.\//, ""))
-    const publicPath = typeof config.publicPath === "string" ? config.publicPath : ""
+    const artifactsMap = Record.fromIterableBy(
+      output.outputs,
+      (v) => v.path.replace(/^\.\//, ""),
+    )
+    const publicPath = typeof config.publicPath === "string"
+      ? config.publicPath
+      : ""
 
     const resolveRaw = Bundle.makeResolver(manifest.entrypoints)
 
@@ -96,7 +111,8 @@ export function build(
       },
       getArtifact: (path: string) => {
         const resolved = resolveRaw(path)
-        return (resolved ? artifactsMap[resolved] : undefined) ?? artifactsMap[path]
+        return (resolved ? artifactsMap[resolved] : undefined) ??
+          artifactsMap[path]
       },
     }
   })
@@ -111,11 +127,11 @@ export function build(
 function mutableContext(
   buildEffect: Effect.Effect<Bundle.BundleContext, Bundle.BundleError>,
 ): Effect.Effect<Bundle.BundleContext, Bundle.BundleError> {
-  return Effect.gen(function* () {
+  return Effect.gen(function*() {
     let current = yield* buildEffect
 
     const rebuild = () =>
-      Effect.gen(function* () {
+      Effect.gen(function*() {
         current = yield* buildEffect
         return current
       })
@@ -131,14 +147,19 @@ function mutableContext(
   })
 }
 
-export function layer(config: BuildOptions): Layer.Layer<Bundle.ClientBundle, Bundle.BundleError>
+export function layer(
+  config: BuildOptions,
+): Layer.Layer<Bundle.ClientBundle, Bundle.BundleError>
 export function layer<T>(
   tag: Context.Tag<T, Bundle.BundleContext>,
   config: BuildOptions,
 ): Layer.Layer<T, Bundle.BundleError>
 export function layer(tagOrConfig: any, maybeConfig?: BuildOptions) {
   if (maybeConfig === undefined) {
-    return Layer.effect(Bundle.ClientBundle, mutableContext(buildClient(tagOrConfig)))
+    return Layer.effect(
+      Bundle.ClientBundle,
+      mutableContext(buildClient(tagOrConfig)),
+    )
   }
   return Layer.effect(tagOrConfig, mutableContext(build(maybeConfig)))
 }
@@ -150,7 +171,9 @@ function getBaseDir(paths: Array<string>) {
   if (paths.length === 0) return ""
   if (paths.length === 1) return NPath.dirname(paths[0])
 
-  const segmentsList = paths.map((path) => NPath.dirname(path).split("/").filter(Boolean))
+  const segmentsList = paths.map((path) =>
+    NPath.dirname(path).split("/").filter(Boolean)
+  )
 
   return (
     segmentsList[0]
@@ -176,12 +199,19 @@ function joinBuildEntrypoints(options: BuildOptions, output: BuildOutput) {
   const cssEntrypoints = options.entrypoints.filter(isCss)
 
   const jsOutputs = output.outputs.filter(
-    (v) => v.kind === "entry-point" && !(v.loader === "html" && v.path.endsWith(".js")),
+    (v) =>
+      v.kind === "entry-point" &&
+      !(v.loader === "html" && v.path.endsWith(".js")),
   )
-  const cssOutputs = output.outputs.filter((v) => v.kind === "asset" && v.loader === "css")
+  const cssOutputs = output.outputs.filter((v) =>
+    v.kind === "asset" && v.loader === "css"
+  )
 
   return pipe(
-    [...Iterable.zip(jsEntrypoints, jsOutputs), ...Iterable.zip(cssEntrypoints, cssOutputs)],
+    [
+      ...Iterable.zip(jsEntrypoints, jsOutputs),
+      ...Iterable.zip(cssEntrypoints, cssOutputs),
+    ],
     Iterable.map(([entrypoint, artifact]) => ({
       shortPath: entrypoint.replace(commonPathPrefix, ""),
       fullPath: entrypoint,
@@ -204,7 +234,9 @@ function generateManifest(
   return {
     entrypoints: pipe(
       entrypointArtifacts,
-      Iterable.map((v) => [v.shortPath, v.artifact.path.replace(/^\.\//, "")] as const),
+      Iterable.map((v) =>
+        [v.shortPath, v.artifact.path.replace(/^\.\//, "")] as const
+      ),
       Record.fromEntries,
     ),
 
@@ -222,11 +254,15 @@ function generateManifest(
   }
 }
 
-function buildBun(config: BuildOptions): Effect.Effect<BuildOutput, Bundle.BundleError> {
+function buildBun(
+  config: BuildOptions,
+): Effect.Effect<BuildOutput, Bundle.BundleError> {
   return Effect.tryPromise({
     try: () => Bun.build(config),
     catch: (err: AggregateError | unknown) => {
-      const cause = err instanceof AggregateError ? (err.errors?.[0] ?? err) : err
+      const cause = err instanceof AggregateError
+        ? (err.errors?.[0] ?? err)
+        : err
       return new Bundle.BundleError({
         message: "Failed to Bun.build: " + cause,
         cause,

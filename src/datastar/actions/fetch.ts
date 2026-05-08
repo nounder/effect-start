@@ -1,12 +1,12 @@
 import {
   action,
   DATASTAR_FETCH_EVENT,
-  filtered,
-  startPeeking,
-  stopPeeking,
   type DatastarFetchEvent,
+  filtered,
   type HTMLOrSVG,
   type SignalFilterOptions,
+  startPeeking,
+  stopPeeking,
   type WatcherArgs,
 } from "../engine.ts"
 import { kebab } from "../utils.ts"
@@ -40,10 +40,9 @@ const createHttpMethod = (
         retryMaxCount = 10,
       }: FetchArgs = {},
     ) => {
-      const controller =
-        requestCancellation instanceof AbortController
-          ? requestCancellation
-          : new AbortController()
+      const controller = requestCancellation instanceof AbortController
+        ? requestCancellation
+        : new AbortController()
       if (requestCancellation === "auto" || requestCancellation === "cleanup") {
         abortControllers.get(el)?.abort()
         abortControllers.set(el, controller)
@@ -122,8 +121,9 @@ const createHttpMethod = (
           const queryParams = new URLSearchParams(urlInstance.search)
           if (contentType === "json") {
             startPeeking()
-            const requestPayload =
-              payload !== undefined ? payload : filtered({ include, exclude })
+            const requestPayload = payload !== undefined
+              ? payload
+              : filtered({ include, exclude })
             stopPeeking()
             const body = JSON.stringify(requestPayload)
             if (methodSupportsRequestBody(method)) {
@@ -159,13 +159,15 @@ const createHttpMethod = (
 
             if (
               submitter instanceof HTMLButtonElement ||
-              (submitter instanceof HTMLInputElement && submitter.type === "submit")
+              (submitter instanceof HTMLInputElement &&
+                submitter.type === "submit")
             ) {
               const name = submitter.getAttribute("name")
               if (name) formData.append(name, submitter.value)
             }
 
-            const multipart = formEl.getAttribute("enctype") === "multipart/form-data"
+            const multipart = formEl
+              .getAttribute("enctype") === "multipart/form-data"
             if (!multipart) {
               headers["Content-Type"] = "application/x-www-form-urlencoded"
             }
@@ -230,14 +232,14 @@ const isWrongContent = (err: any) => `${err}`.includes("text/event-stream")
 
 type ResponseOverrides =
   | {
-      selector?: string
-      mode?: string
-      namespace?: string
-      useViewTransition?: boolean
-    }
+    selector?: string
+    mode?: string
+    namespace?: string
+    useViewTransition?: boolean
+  }
   | {
-      onlyIfMissing?: boolean
-    }
+    onlyIfMissing?: boolean
+  }
 
 export type FetchArgs = {
   selector?: string
@@ -333,7 +335,7 @@ const getMessages = (
   onId: (id: string) => void,
   onRetry: (retry: number) => void,
   onMessage?: (msg: EventSourceMessage) => void,
-): ((line: Uint8Array, fieldLength: number) => void) => {
+): (line: Uint8Array, fieldLength: number) => void => {
   let message = newMessage()
   const decoder = new TextDecoder()
 
@@ -354,12 +356,12 @@ const getMessages = (
           message.event = value
           break
         case "id":
-          onId((message.id = value))
+          onId(message.id = value)
           break
         case "retry": {
           const retry = +value
           if (!Number.isNaN(retry)) {
-            onRetry((message.retry = retry))
+            onRetry(message.retry = retry)
           }
           break
         }
@@ -384,21 +386,21 @@ const newMessage = (): EventSourceMessage => ({
 
 type FetchEventSourceInit =
   | (RequestInit & {
-      input: RequestInfo
-      headers?: Record<string, string>
-      onopen?: (response: Response) => Promise<void>
-      onmessage?: (ev: EventSourceMessage) => void
-      onclose?: () => void
-      onerror?: (err: any) => number | null | undefined | void
-      openWhenHidden?: boolean
-      fetch?: typeof fetch
-      retry?: "auto" | "error" | "always" | "never"
-      retryInterval?: number
-      retryScaler?: number
-      retryMaxWait?: number
-      retryMaxCount?: number
-      responseOverrides?: ResponseOverrides
-    })
+    input: RequestInfo
+    headers?: Record<string, string>
+    onopen?: (response: Response) => Promise<void>
+    onmessage?: (ev: EventSourceMessage) => void
+    onclose?: () => void
+    onerror?: (err: any) => number | null | undefined | void
+    openWhenHidden?: boolean
+    fetch?: typeof fetch
+    retry?: "auto" | "error" | "always" | "never"
+    retryInterval?: number
+    retryScaler?: number
+    retryMaxWait?: number
+    retryMaxCount?: number
+    responseOverrides?: ResponseOverrides
+  })
   | undefined
 
 const fetchEventSource = (
@@ -554,10 +556,16 @@ const fetchEventSource = (
 
         if (ct?.includes("text/javascript")) {
           const script = document.createElement("script")
-          const scriptAttributesHeader = response.headers.get("datastar-script-attributes")
+          const scriptAttributesHeader = response.headers.get(
+            "datastar-script-attributes",
+          )
 
           if (scriptAttributesHeader) {
-            for (const [name, value] of Object.entries(JSON.parse(scriptAttributesHeader))) {
+            for (
+              const [name, value] of Object.entries(
+                JSON.parse(scriptAttributesHeader),
+              )
+            ) {
               script.setAttribute(name, value as string)
             }
           }

@@ -127,7 +127,10 @@ export const walk = async (root: string, visit: Visit): Promise<void> => {
   await walkInto(resolved, stack, visit)
 }
 
-const pushIgnore = async (stack: IgnoreStack, dir: string): Promise<boolean> => {
+const pushIgnore = async (
+  stack: IgnoreStack,
+  dir: string,
+): Promise<boolean> => {
   try {
     const content = await NFS.readFile(NPath.join(dir, ".gitignore"), "utf8")
     stack.push(parse(dir, content))
@@ -137,7 +140,11 @@ const pushIgnore = async (stack: IgnoreStack, dir: string): Promise<boolean> => 
   }
 }
 
-const walkInto = async (dir: string, stack: IgnoreStack, visit: Visit): Promise<WalkSignal> => {
+const walkInto = async (
+  dir: string,
+  stack: IgnoreStack,
+  visit: Visit,
+): Promise<WalkSignal> => {
   const pushed = await pushIgnore(stack, dir)
 
   let entries: Array<Dirent>
@@ -188,7 +195,7 @@ const globToRegex = (glob: string, anchored: boolean): RegExp => {
       re += "\\."
     } else if (c === "/") {
       re += "/"
-    } else if (/[\\^$+(){}|\[\]]/.test(c)) {
+    } else if (/[\\^$+(){}|[\]]/.test(c)) {
       re += "\\" + c
     } else {
       re += c

@@ -4,9 +4,9 @@ import * as Schedule from "effect/Schedule"
 import * as Stream from "effect/Stream"
 import type * as Utils from "effect/Utils"
 import * as Entity from "./Entity.ts"
-import * as Route from "./Route.ts"
 import * as StreamExtra from "./internal/StreamExtra.ts"
 import type * as Values from "./internal/Values.ts"
+import * as Route from "./Route.ts"
 
 const HEARTBEAT_INTERVAL = Duration.seconds(5)
 const HEARTBEAT = ": <3\n\n"
@@ -47,28 +47,36 @@ type SseHandlerInput<B, E, R> =
   | Stream.Stream<SseEvent, E, R>
   | Effect.Effect<Stream.Stream<SseEvent, E, R>, E, R>
   | ((
-      context: Values.Simplify<B>,
-      next: Entity.Entity<string, never>,
-    ) =>
-      | Stream.Stream<SseEvent, E, R>
-      | Effect.Effect<Stream.Stream<SseEvent, E, R>, E, R>
-      | Generator<
-          Utils.YieldWrap<Effect.Effect<unknown, E, R>>,
-          Stream.Stream<SseEvent, E, R>,
-          unknown
-        >)
+    context: Values.Simplify<B>,
+    next: Entity.Entity<string, never>,
+  ) =>
+    | Stream.Stream<SseEvent, E, R>
+    | Effect.Effect<Stream.Stream<SseEvent, E, R>, E, R>
+    | Generator<
+      Utils.YieldWrap<Effect.Effect<unknown, E, R>>,
+      Stream.Stream<SseEvent, E, R>,
+      unknown
+    >)
 
 export function sse<D, B, I extends Route.Route.Tuple, E = never, R = never>(
-  handler: SseHandlerInput<NoInfer<D & B & Route.ExtractBindings<I> & { format: "sse" }>, E, R>,
+  handler: SseHandlerInput<
+    NoInfer<D & B & Route.ExtractBindings<I> & { format: "sse" }>,
+    E,
+    R
+  >,
 ) {
-  return function (self: Route.RouteSet<D, B, I>) {
+  return function(self: Route.RouteSet<D, B, I>) {
     const sseHandler: Route.Route.Handler<
       D & B & Route.ExtractBindings<I> & { format: "sse" },
       Stream.Stream<string, E, R>,
       E,
       R
     > = (ctx, _next) => {
-      const getStream = (): Effect.Effect<Stream.Stream<SseEvent, E, R>, E, R> => {
+      const getStream = (): Effect.Effect<
+        Stream.Stream<SseEvent, E, R>,
+        E,
+        R
+      > => {
         if (typeof handler === "function") {
           const result = (handler as Function)(ctx, _next)
           if (StreamExtra.isStream(result)) {
@@ -77,7 +85,7 @@ export function sse<D, B, I extends Route.Route.Tuple, E = never, R = never>(
           if (Effect.isEffect(result)) {
             return result as Effect.Effect<Stream.Stream<SseEvent, E, R>, E, R>
           }
-          return Effect.gen(function* () {
+          return Effect.gen(function*() {
             return yield* result
           }) as Effect.Effect<Stream.Stream<SseEvent, E, R>, E, R>
         }
@@ -92,10 +100,12 @@ export function sse<D, B, I extends Route.Route.Tuple, E = never, R = never>(
 
       return Effect.map(getStream(), (eventStream) => {
         const formattedStream = Stream.map(eventStream, formatSseEvent)
-        const heartbeat = Stream.repeat(
-          Stream.succeed(HEARTBEAT),
-          Schedule.spaced(HEARTBEAT_INTERVAL),
-        ).pipe(Stream.drop(1))
+        const heartbeat = Stream
+          .repeat(
+            Stream.succeed(HEARTBEAT),
+            Schedule.spaced(HEARTBEAT_INTERVAL),
+          )
+          .pipe(Stream.drop(1))
         const merged = Stream.merge(formattedStream, heartbeat, {
           haltStrategy: "left",
         })
@@ -109,7 +119,13 @@ export function sse<D, B, I extends Route.Route.Tuple, E = never, R = never>(
       })
     }
 
-    const route = Route.make<{ format: "sse" }, {}, Stream.Stream<string, E, R>, E, R>(
+    const route = Route.make<
+      { format: "sse" },
+      {},
+      Stream.Stream<string, E, R>,
+      E,
+      R
+    >(
       sseHandler as any,
       { format: "sse" },
     )
@@ -122,7 +138,10 @@ export function sse<D, B, I extends Route.Route.Tuple, E = never, R = never>(
     return Route.set<
       D,
       B,
-      [...I, Route.Route<{ format: "sse" }, {}, Stream.Stream<string, E, R>, E, R>]
+      [
+        ...I,
+        Route.Route<{ format: "sse" }, {}, Stream.Stream<string, E, R>, E, R>,
+      ]
     >(items, Route.descriptor(self))
   }
 }

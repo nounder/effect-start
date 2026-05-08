@@ -1,7 +1,7 @@
 import * as Unique from "../../Unique.ts"
-import * as StudioStore from "../StudioStore.ts"
-import * as Logs from "./Logs.tsx"
+import type * as StudioStore from "../StudioStore.ts"
 import * as PrettyValue from "./internal/PrettyValue.tsx"
+import * as Logs from "./Logs.tsx"
 
 function formatDuration(ms: number | undefined): string {
   if (ms == null) return "..."
@@ -13,10 +13,10 @@ function formatDuration(ms: number | undefined): string {
 function KeyValue(props: { label: string; value: unknown }) {
   if (props.value == null) return null
   return (
-    <div
-      style="display:flex;align-items:flex-start;gap:8px;padding:4px 0;border-bottom:1px solid #1e293b;font-size:12px"
-    >
-      <span style="color:#64748b;min-width:120px">{props.label}</span>
+    <div style="display:flex;align-items:flex-start;gap:8px;padding:4px 0;border-bottom:1px solid #1e293b;font-size:12px">
+      <span style="color:#64748b;min-width:120px">
+        {props.label}
+      </span>
       <div style="flex:1;min-width:0">
         <PrettyValue.PrettyValue
           value={props.value}
@@ -29,12 +29,20 @@ function KeyValue(props: { label: string; value: unknown }) {
 }
 
 function StatusBadge(props: { status: string }) {
-  const bg =
-    props.status === "ok" ? "#166534" : props.status === "error" ? "#7f1d1d" : "#713f12"
-  const fg =
-    props.status === "ok" ? "#4ade80" : props.status === "error" ? "#fca5a5" : "#fde047"
+  const bg = props.status === "ok"
+    ? "#166534"
+    : props.status === "error"
+    ? "#7f1d1d"
+    : "#713f12"
+  const fg = props.status === "ok"
+    ? "#4ade80"
+    : props.status === "error"
+    ? "#fca5a5"
+    : "#fde047"
   return (
-    <span style={`font-size:11px;padding:2px 8px;border-radius:4px;background:${bg};color:${fg}`}>
+    <span
+      style={`font-size:11px;padding:2px 8px;border-radius:4px;background:${bg};color:${fg}`}
+    >
       {props.status}
     </span>
   )
@@ -49,7 +57,10 @@ export interface FiberSummary {
   readonly levels: Set<string>
 }
 
-export function getParentChain(fiberId: string, fiberParents: Map<string, string>): Array<string> {
+export function getParentChain(
+  fiberId: string,
+  fiberParents: Map<string, string>,
+): Array<string> {
   const chain: Array<string> = []
   const visited = new Set<string>()
   let current = fiberParents.get(fiberId)
@@ -127,11 +138,11 @@ function FiberRow(props: { fiber: FiberSummary; prefix: string }) {
   const statusBg = props.fiber.status === "alive" ? "#166534" : "#7f1d1d"
   const lastSeen = props.fiber.lastSeen
     ? new Date(props.fiber.lastSeen).toLocaleTimeString("en", {
-        hour12: false,
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-      })
+      hour12: false,
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    })
     : "—"
 
   return (
@@ -172,15 +183,19 @@ function FiberRow(props: { fiber: FiberSummary; prefix: string }) {
   )
 }
 
-export function FiberList(props: { fibers: Array<FiberSummary>; prefix: string }) {
+export function FiberList(
+  props: { fibers: Array<FiberSummary>; prefix: string },
+) {
   if (props.fibers.length === 0) {
-    return <div class="empty">Waiting for fibers...</div>
+    return (
+      <div class="empty">
+        Waiting for fibers...
+      </div>
+    )
   }
   return (
     <>
-      {props.fibers.map((f) => (
-        <FiberRow fiber={f} prefix={props.prefix} />
-      ))}
+      {props.fibers.map((f) => <FiberRow fiber={f} prefix={props.prefix} />)}
     </>
   )
 }
@@ -207,8 +222,12 @@ export function FiberDetail(props: {
           >
             Fibers
           </a>
-          <span style="color:#475569">/</span>
-          <span style="color:#e2e8f0;font-size:13px;font-family:monospace">{props.fiberId}</span>
+          <span style="color:#475569">
+            /
+          </span>
+          <span style="color:#e2e8f0;font-size:13px;font-family:monospace">
+            {props.fiberId}
+          </span>
           <span
             style={`font-size:11px;padding:2px 8px;border-radius:4px;background:${statusBg};color:${statusColor}`}
           >
@@ -246,18 +265,24 @@ export function FiberDetail(props: {
         {props.context &&
           (props.context.spanName ||
             props.context.traceId ||
-            Object.keys(props.context.annotations).length > 0) && (
+            Object.keys(props.context.annotations).length > 0) &&
+          (
             <div style="padding:8px 16px">
               <div style="color:#94a3b8;font-size:12px;font-weight:600;margin-bottom:8px">
                 Context
               </div>
               <div style="background:#111827;border:1px solid #1e293b;border-radius:6px;padding:8px 12px">
                 {props.context.spanName && (
-                  <KeyValue label="Span" value={props.context.spanName} />
+                  <KeyValue
+                    label="Span"
+                    value={props.context.spanName}
+                  />
                 )}
                 {props.context.traceId && (
                   <div style="display:flex;gap:8px;padding:4px 0;border-bottom:1px solid #1e293b;font-size:12px">
-                    <span style="color:#64748b;min-width:120px">Trace</span>
+                    <span style="color:#64748b;min-width:120px">
+                      Trace
+                    </span>
                     <a
                       href={`${props.prefix}/traces/${props.context.traceId}`}
                       style="color:#38bdf8;font-family:monospace;word-break:break-all;text-decoration:none"
@@ -275,9 +300,13 @@ export function FiberDetail(props: {
 
         {props.spans.length > 0 && (
           <div style="padding:8px 16px">
-            <div style="color:#94a3b8;font-size:12px;font-weight:600;margin-bottom:8px">Spans</div>
+            <div style="color:#94a3b8;font-size:12px;font-weight:600;margin-bottom:8px">
+              Spans
+            </div>
             {props.spans.map((s) => {
-              const stacktrace = s.attributes["code.stacktrace"] as string | undefined
+              const stacktrace = s.attributes["code.stacktrace"] as
+                | string
+                | undefined
               return (
                 <div style="margin-bottom:6px;background:#111827;border:1px solid #1e293b;border-radius:6px;padding:8px 12px">
                   <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
@@ -295,11 +324,10 @@ export function FiberDetail(props: {
                   <KeyValue label="Trace" value={s.traceId} />
                   <KeyValue label="Kind" value={s.kind} />
                   {stacktrace && <KeyValue label="Source" value={stacktrace} />}
-                  {Object.entries(s.attributes)
+                  {Object
+                    .entries(s.attributes)
                     .filter(([k]) => k !== "code.stacktrace")
-                    .map(([k, v]) => (
-                      <KeyValue label={k} value={v} />
-                    ))}
+                    .map(([k, v]) => <KeyValue label={k} value={v} />)}
                 </div>
               )
             })}
@@ -308,7 +336,9 @@ export function FiberDetail(props: {
 
         {props.logs.length > 0 && (
           <div style="padding:8px 16px">
-            <div style="color:#94a3b8;font-size:12px;font-weight:600;margin-bottom:8px">Logs</div>
+            <div style="color:#94a3b8;font-size:12px;font-weight:600;margin-bottom:8px">
+              Logs
+            </div>
             {props.logs.map((l) => (
               <Logs.LogLine prefix={props.prefix} log={l} />
             ))}
@@ -316,7 +346,9 @@ export function FiberDetail(props: {
         )}
 
         {props.logs.length === 0 && props.spans.length === 0 && (
-          <div class="empty">No data found for fiber {props.fiberId}</div>
+          <div class="empty">
+            No data found for fiber {props.fiberId}
+          </div>
         )}
       </div>
     </>

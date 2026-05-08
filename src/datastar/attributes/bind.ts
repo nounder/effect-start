@@ -41,7 +41,9 @@ const valueAdapter = (
   ...events: Array<string>
 ): BindAdapter => ({
   get: (el: HTMLInputElement | HTMLSelectElement, type: string) =>
-    type === "string" || (treatUndefinedAsString && type === "undefined") ? el.value : +el.value,
+    type === "string" || (treatUndefinedAsString && type === "undefined")
+      ? el.value
+      : +el.value,
   set: (el: HTMLInputElement | HTMLSelectElement, value: string | number) => {
     el.value = `${value}`
   },
@@ -61,21 +63,31 @@ const boundPath = (
   adapter: BindAdapter,
   initialValue: any,
 ) => {
-  if (initialValue === undefined && el instanceof HTMLInputElement && el.type === "radio") {
+  if (
+    initialValue === undefined && el instanceof HTMLInputElement && el
+        .type === "radio"
+  ) {
     const signalNameKebab = key ? key : value!
     const checked = [
       ...document.querySelectorAll(
-        `[${aliasedBind}\\:${CSS.escape(signalNameKebab)}],[${aliasedBind}="${CSS.escape(signalNameKebab)}"]`,
+        `[${aliasedBind}\\:${CSS.escape(signalNameKebab)}],[${aliasedBind}="${
+          CSS.escape(signalNameKebab)
+        }"]`,
       ),
-    ].find(
-      (input): input is HTMLInputElement => input instanceof HTMLInputElement && input.checked,
-    )
+    ]
+      .find(
+        (input): input is HTMLInputElement =>
+          input instanceof HTMLInputElement && input.checked,
+      )
     if (checked) {
       mergePaths([[signalName, checked.value]], { ifMissing: true })
     }
   }
 
-  if (!Array.isArray(initialValue) || (el instanceof HTMLSelectElement && el.multiple)) {
+  if (
+    !Array.isArray(initialValue) ||
+    (el instanceof HTMLSelectElement && el.multiple)
+  ) {
     mergePaths([[signalName, adapter.get(el, typeof initialValue)]], {
       ifMissing: true,
     })
@@ -84,7 +96,9 @@ const boundPath = (
 
   const signalNameKebab = key ? key : value!
   const inputs = document.querySelectorAll(
-    `[${aliasedBind}\\:${CSS.escape(signalNameKebab)}],[${aliasedBind}="${CSS.escape(signalNameKebab)}"]`,
+    `[${aliasedBind}\\:${CSS.escape(signalNameKebab)}],[${aliasedBind}="${
+      CSS.escape(signalNameKebab)
+    }"]`,
   ) as NodeListOf<Element>
 
   const paths: Paths = []
@@ -92,7 +106,10 @@ const boundPath = (
   for (const input of inputs) {
     paths.push([
       `${signalName}.${i}`,
-      adapter.get(input, typeof (hasOwn(initialValue, i) ? initialValue[i] : undefined)),
+      adapter.get(
+        input,
+        typeof (hasOwn(initialValue, i) ? initialValue[i] : undefined),
+      ),
     ])
     if (el === input) {
       break
@@ -123,12 +140,20 @@ attribute({
           adapter = {
             get: (el: HTMLInputElement, type: string) => {
               if (el.value !== "on") {
-                return type === "boolean" ? el.checked : el.checked ? el.value : ""
+                return type === "boolean"
+                  ? el.checked
+                  : el.checked
+                  ? el.value
+                  : ""
               }
-              return type === "string" ? (el.checked ? el.value : "") : el.checked
+              return type === "string"
+                ? (el.checked ? el.value : "")
+                : el.checked
             },
             set: (el: HTMLInputElement, value: string | boolean) => {
-              el.checked = typeof value === "string" ? value === el.value : value
+              el.checked = typeof value === "string"
+                ? value === el.value
+                : value
             },
             events: ["change"],
           }
@@ -141,7 +166,9 @@ attribute({
             get: (el: HTMLInputElement, type: string) =>
               el.checked ? (type === "number" ? +el.value : el.value) : empty,
             set: (el: HTMLInputElement, value: string | number) => {
-              el.checked = value === (typeof value === "number" ? +el.value : el.value)
+              el.checked = value === (typeof value === "number"
+                ? +el.value
+                : el.value)
             },
             events: ["change"],
           }
@@ -150,36 +177,38 @@ attribute({
           const syncSignal = () => {
             const files = [...(el.files || [])]
             const signalFiles: Array<SignalFile> = []
-            Promise.all(
-              files.map(
-                (f) =>
-                  new Promise<void>((resolve) => {
-                    const reader = new FileReader()
-                    reader.onload = () => {
-                      if (typeof reader.result !== "string") {
-                        throw error("InvalidFileResultType", {
-                          resultType: typeof reader.result,
+            Promise
+              .all(
+                files.map(
+                  (f) =>
+                    new Promise<void>((resolve) => {
+                      const reader = new FileReader()
+                      reader.onload = () => {
+                        if (typeof reader.result !== "string") {
+                          throw error("InvalidFileResultType", {
+                            resultType: typeof reader.result,
+                          })
+                        }
+                        const match = reader.result.match(dataURIRegex)
+                        if (!match?.groups) {
+                          throw error("InvalidDataUri", {
+                            result: reader.result,
+                          })
+                        }
+                        signalFiles.push({
+                          name: f.name,
+                          contents: match.groups.contents,
+                          mime: match.groups.mime,
                         })
                       }
-                      const match = reader.result.match(dataURIRegex)
-                      if (!match?.groups) {
-                        throw error("InvalidDataUri", {
-                          result: reader.result,
-                        })
-                      }
-                      signalFiles.push({
-                        name: f.name,
-                        contents: match.groups.contents,
-                        mime: match.groups.mime,
-                      })
-                    }
-                    reader.onloadend = () => resolve()
-                    reader.readAsDataURL(f)
-                  }),
-              ),
-            ).then(() => {
-              mergePaths([[signalName, signalFiles]])
-            })
+                      reader.onloadend = () => resolve()
+                      reader.readAsDataURL(f)
+                    }),
+                ),
+              )
+              .then(() => {
+                mergePaths([[signalName, signalFiles]])
+              })
           }
 
           el.addEventListener("change", syncSignal)
@@ -196,7 +225,9 @@ attribute({
         get: (el: HTMLSelectElement) =>
           [...el.selectedOptions].map((option) => {
             const type = typeMap.get(option.value)
-            return type === "string" || type == null ? option.value : +option.value
+            return type === "string" || type == null
+              ? option.value
+              : +option.value
           }),
         set: (el: HTMLSelectElement, value: Array<string | number>) => {
           for (const option of el.options) {
@@ -218,10 +249,9 @@ attribute({
     } else if (el instanceof HTMLTextAreaElement) {
       adapter = propAdapter("value", "input")
     } else if (el instanceof HTMLElement && el.tagName.includes("-")) {
-      adapter =
-        "value" in el
-          ? propAdapter("value", "input", "change")
-          : attrAdapter("value", "input", "change")
+      adapter = "value" in el
+        ? propAdapter("value", "input", "change")
+        : attrAdapter("value", "input", "change")
     } else if (el instanceof HTMLElement && "value" in el) {
       adapter = propAdapter("value", "change")
     } else {

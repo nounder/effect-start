@@ -20,8 +20,12 @@ const EffectTypeIds: Record<symbol, string> = {
 }
 
 function detectEffectType(value: unknown): string | undefined {
-  if (value === null || value === undefined || typeof value !== "object") return undefined
-  if ("publish" in value && "subscribe" in value && "offer" in value) return "PubSub"
+  if (value === null || value === undefined || typeof value !== "object") {
+    return undefined
+  }
+  if ("publish" in value && "subscribe" in value && "offer" in value) {
+    return "PubSub"
+  }
   for (const sym of Object.getOwnPropertySymbols(value)) {
     const name = EffectTypeIds[sym]
     if (name) return name
@@ -34,7 +38,9 @@ function inspectEffectValue(type: string, value: any): Record<string, unknown> {
   try {
     switch (type) {
       case "PubSub": {
-        if (typeof value.capacity === "function") info.capacity = value.capacity()
+        if (typeof value.capacity === "function") {
+          info.capacity = value.capacity()
+        }
         if (typeof value.isActive === "function") info.active = value.isActive()
         if (typeof value.unsafeSize === "function") {
           const size = value.unsafeSize()
@@ -47,7 +53,9 @@ function inspectEffectValue(type: string, value: any): Record<string, unknown> {
       }
       case "Enqueue":
       case "Dequeue": {
-        if (typeof value.capacity === "function") info.capacity = value.capacity()
+        if (typeof value.capacity === "function") {
+          info.capacity = value.capacity()
+        }
         if (typeof value.isActive === "function") info.active = value.isActive()
         if (typeof value.unsafeSize === "function") {
           const size = value.unsafeSize()
@@ -66,10 +74,16 @@ function inspectEffectValue(type: string, value: any): Record<string, unknown> {
       case "Pool": {
         if (typeof value.minSize === "number") info.minSize = value.minSize
         if (typeof value.maxSize === "number") info.maxSize = value.maxSize
-        if (typeof value.concurrency === "number") info.concurrency = value.concurrency
+        if (typeof value.concurrency === "number") {
+          info.concurrency = value.concurrency
+        }
         if (value.items instanceof Set) info.items = value.items.size
-        if (value.available instanceof Set) info.available = value.available.size
-        if (value.invalidated instanceof Set) info.invalidated = value.invalidated.size
+        if (value.available instanceof Set) {
+          info.available = value.available.size
+        }
+        if (value.invalidated instanceof Set) {
+          info.invalidated = value.invalidated.size
+        }
         if (typeof value.waiters === "number") info.waiters = value.waiters
         break
       }
@@ -102,8 +116,9 @@ function safeSerialize(value: unknown): unknown {
   if (detectEffectType(value)) return `<${detectEffectType(value)}>`
   if (Array.isArray(value)) return value.map(safeSerialize)
   const proto = Object.getPrototypeOf(value)
-  if (proto !== null && proto !== Object.prototype)
+  if (proto !== null && proto !== Object.prototype) {
     return `<${proto.constructor?.name ?? "object"}>`
+  }
   const out: Record<string, unknown> = {}
   for (const [k, v] of Object.entries(value)) {
     if (typeof v === "function") continue
@@ -141,7 +156,11 @@ function jsonReplacer(_key: string, v: unknown): unknown {
   return v
 }
 
-function collectDisplayValues(obj: unknown, prefix: string, out: Record<string, unknown>): void {
+function collectDisplayValues(
+  obj: unknown,
+  prefix: string,
+  out: Record<string, unknown>,
+): void {
   if (typeof obj === "function") return
   if (isJsonPrimitive(obj) || Array.isArray(obj)) {
     out[prefix] = safeSerialize(obj)
@@ -183,7 +202,9 @@ function ServiceRow(props: { entry: ServiceEntry }) {
             style={`width:8px;height:8px;border-radius:50%;background:${colors.fg};display:block`}
           />
         </span>
-        <span class="tl-cell tl-cell-name">{props.entry.key}</span>
+        <span class="tl-cell tl-cell-name">
+          {props.entry.key}
+        </span>
         <span class="tl-cell tl-cell-dur">
           <span
             style={`font-size:10px;padding:1px 6px;border-radius:4px;background:${colors.bg};color:${colors.fg}`}
@@ -193,13 +214,17 @@ function ServiceRow(props: { entry: ServiceEntry }) {
         </span>
       </summary>
       <div class="tl-body">
-        {props.entry.display ? (
-          <pre style="color:#e2e8f0;font-family:monospace;font-size:12px;margin:0;padding:8px;white-space:pre-wrap;word-break:break-all">
+        {props.entry.display ?
+          (
+            <pre style="color:#e2e8f0;font-family:monospace;font-size:12px;margin:0;padding:8px;white-space:pre-wrap;word-break:break-all">
             {props.entry.display}
-          </pre>
-        ) : (
-          <div style="padding:4px 8px;color:#64748b;font-size:12px">No inspectable values</div>
-        )}
+            </pre>
+          ) :
+          (
+            <div style="padding:4px 8px;color:#64748b;font-size:12px">
+              No inspectable values
+            </div>
+          )}
       </div>
     </details>
   )
@@ -207,30 +232,39 @@ function ServiceRow(props: { entry: ServiceEntry }) {
 
 export function ServiceList(props: { services: Array<ServiceEntry> }) {
   if (props.services.length === 0) {
-    return <div class="empty">No services registered</div>
+    return (
+      <div class="empty">
+        No services registered
+      </div>
+    )
   }
   return (
     <div class="tl-grid">
       <div class="tl-header tl-cols">
         <span class="tl-cell tl-cell-status" />
-        <span class="tl-cell tl-cell-name">Service</span>
-        <span class="tl-cell tl-cell-dur">Kind</span>
+        <span class="tl-cell tl-cell-name">
+          Service
+        </span>
+        <span class="tl-cell tl-cell-dur">
+          Kind
+        </span>
       </div>
-      {props.services.map((s) => (
-        <ServiceRow entry={s} />
-      ))}
+      {props.services.map((s) => <ServiceRow entry={s} />)}
     </div>
   )
 }
 
-export function collectServices(unsafeMap: Map<string, any>): Array<ServiceEntry> {
+export function collectServices(
+  unsafeMap: Map<string, any>,
+): Array<ServiceEntry> {
   const entries: Array<ServiceEntry> = []
   for (const [key, value] of unsafeMap) {
-    const isConfig =
-      key.toLowerCase().includes("config") || key.toLowerCase().includes("configuration")
+    const isConfig = key.toLowerCase().includes("config") ||
+      key.toLowerCase().includes("configuration")
 
-    const effectType =
-      typeof value === "object" && value !== null ? detectEffectType(value) : undefined
+    const effectType = typeof value === "object" && value !== null
+      ? detectEffectType(value)
+      : undefined
     if (effectType) {
       const info = inspectEffectValue(effectType, value)
       entries.push({
@@ -255,7 +289,9 @@ export function collectServices(unsafeMap: Map<string, any>): Array<ServiceEntry
     const type = isConfig ? ("config" as const) : ("value" as const)
     const plain: Record<string, unknown> = {}
     collectDisplayValues(value, "", plain)
-    const display = Object.keys(plain).length > 0 ? JSON.stringify(plain, jsonReplacer, 2) : ""
+    const display = Object.keys(plain).length > 0
+      ? JSON.stringify(plain, jsonReplacer, 2)
+      : ""
 
     let kind = "object"
     if (typeof value !== "object") {

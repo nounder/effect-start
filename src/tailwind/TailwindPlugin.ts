@@ -140,7 +140,9 @@ export const make = (opts?: {
             const moduleImports = importDescendants.get(currentPath)
 
             moduleImports?.forEach((moduleImport) => {
-              classNameCandidates.get(moduleImport)?.forEach((c) => candidates.add(c))
+              classNameCandidates.get(moduleImport)?.forEach((c) =>
+                candidates.add(c)
+              )
               pendingModules.push(moduleImport)
             })
 
@@ -152,11 +154,14 @@ export const make = (opts?: {
           // - `@source "..."` directives → `compiler.sources`
           // When `source(...)` is omitted, default to the project root. Only
           // `source(none)` opts out and relies solely on the module graph.
-          const projectRoot =
-            compiler.root === undefined ? await NodeUtils.findProjectRoot(args.path) : undefined
+          const projectRoot = compiler.root === undefined
+            ? await NodeUtils.findProjectRoot(args.path)
+            : undefined
           const sourceRoots = [
             ...(projectRoot ? [projectRoot] : []),
-            ...(compiler.root && compiler.root !== "none" ? [compiler.root.base] : []),
+            ...(compiler.root && compiler.root !== "none"
+              ? [compiler.root.base]
+              : []),
             ...compiler.sources.filter((s) => !s.negated).map((s) => s.base),
           ]
           for (const root of sourceRoots) {
@@ -251,7 +256,17 @@ export function extractClassNames(source: string): Set<string> {
   return candidates
 }
 
-const BOUNDARY_COMMON = new Set([" ", "\t", "\n", "\r", "\f", '"', "'", "`", "\0"])
+const BOUNDARY_COMMON = new Set([
+  " ",
+  "\t",
+  "\n",
+  "\r",
+  "\f",
+  "\"",
+  "'",
+  "`",
+  "\0",
+])
 const BOUNDARY_BEFORE_ONLY = new Set([".", "}", ">"])
 const BOUNDARY_AFTER_ONLY = new Set(["]", "{", "=", "\\", "<"])
 
@@ -472,7 +487,12 @@ function readNameBody(source: string, start: number): number {
  * disallowed boundary char (raw whitespace breaks the candidate; Tailwind
  * uses "_" as the in-bracket space).
  */
-function skipBracketed(source: string, start: number, open: string, close: string): number | null {
+function skipBracketed(
+  source: string,
+  start: number,
+  open: string,
+  close: string,
+): number | null {
   const len = source.length
   if (source[start] !== open) return null
   const stack: Array<string> = [close]

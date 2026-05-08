@@ -9,58 +9,56 @@ import * as SynchronizedRef from "effect/SynchronizedRef"
 
 type Unsatisfied<Unmet, Success> = Unmet extends Success ? Unmet : never
 
-export type LayersSuccess<Layers extends readonly Layer.Layer.Any[]> = {
+export type LayersSuccess<Layers extends ReadonlyArray<Layer.Layer.Any>> = {
   [K in keyof Layers]: Layer.Layer.Success<Layers[K]>
 }[number]
 
-export type LayersError<Layers extends readonly Layer.Layer.Any[]> = {
+export type LayersError<Layers extends ReadonlyArray<Layer.Layer.Any>> = {
   [K in keyof Layers]: Layer.Layer.Error<Layers[K]>
 }[number]
 
-export type LayersContext<Layers extends readonly Layer.Layer.Any[]> = Exclude<
-  { [K in keyof Layers]: Layer.Layer.Context<Layers[K]> }[number],
-  { [K in keyof Layers]: Layer.Layer.Success<Layers[K]> }[number]
->
+export type LayersContext<Layers extends ReadonlyArray<Layer.Layer.Any>> =
+  Exclude<
+    { [K in keyof Layers]: Layer.Layer.Context<Layers[K]> }[number],
+    { [K in keyof Layers]: Layer.Layer.Success<Layers[K]> }[number]
+  >
 
 export type Ordered<
-  Layers extends readonly Layer.Layer.Any[],
-  All extends readonly Layer.Layer.Any[],
+  Layers extends ReadonlyArray<Layer.Layer.Any>,
+  All extends ReadonlyArray<Layer.Layer.Any>,
 > = Layers extends readonly [
   infer Head extends Layer.Layer.Any,
-  ...infer Tail extends Layer.Layer.Any[],
-]
-  ? [
-      [
-        Unsatisfied<
-          Exclude<
-            Layer.Layer.Context<Head>,
-            { [K in keyof Tail]: Layer.Layer.Success<Tail[K]> }[number]
-          >,
-          { [K in keyof All]: Layer.Layer.Success<All[K]> }[number]
+  ...infer Tail extends Array<Layer.Layer.Any>,
+] ? [
+    [
+      Unsatisfied<
+        Exclude<
+          Layer.Layer.Context<Head>,
+          { [K in keyof Tail]: Layer.Layer.Success<Tail[K]> }[number]
         >,
-      ] extends [never]
-        ? Head
-        : never,
-      ...Ordered<Tail, All>,
-    ]
+        { [K in keyof All]: Layer.Layer.Success<All[K]> }[number]
+      >,
+    ] extends [never] ? Head
+      : never,
+    ...Ordered<Tail, All>,
+  ]
   : []
 
-export type Unordered<Layers extends readonly Layer.Layer.Any[]> = {
+export type Unordered<Layers extends ReadonlyArray<Layer.Layer.Any>> = {
   [K in keyof Layers]: [
     Exclude<
       Layer.Layer.Context<Layers[K]>,
       { [I in keyof Layers]: Layer.Layer.Success<Layers[I]> }[number]
     >,
-  ] extends [never]
-    ? Layers[K]
+  ] extends [never] ? Layers[K]
     : Layer.Layer<
-        Layer.Layer.Success<Layers[K]>,
-        Layer.Layer.Error<Layers[K]>,
-        Extract<
-          Layer.Layer.Context<Layers[K]>,
-          { [I in keyof Layers]: Layer.Layer.Success<Layers[I]> }[number]
-        >
+      Layer.Layer.Success<Layers[K]>,
+      Layer.Layer.Error<Layers[K]>,
+      Extract<
+        Layer.Layer.Context<Layers[K]>,
+        { [I in keyof Layers]: Layer.Layer.Success<Layers[I]> }[number]
       >
+    >
 }
 
 /**
@@ -74,7 +72,11 @@ export function provideMergeAll<
   const Layers extends readonly [Layer.Layer.Any, ...Array<Layer.Layer.Any>],
 >(
   ...layers: Layers & Ordered<NoInfer<Layers>, NoInfer<Layers>>
-): Layer.Layer<LayersSuccess<Layers>, LayersError<Layers>, LayersContext<Layers>> {
+): Layer.Layer<
+  LayersSuccess<Layers>,
+  LayersError<Layers>,
+  LayersContext<Layers>
+> {
   type AnyLayer = Layer.Layer<any, any, any>
   const layerArray = layers as unknown as ReadonlyArray<AnyLayer>
   const result: AnyLayer = layerArray.reduce(
@@ -98,7 +100,9 @@ export function provideMergeAll<
  * fails (because its deps weren't ready) and is later retried — use
  * `provideMergeAll` with explicit ordering for layers that can't tolerate that.
  */
-export function buildUnordered<const Layers extends ReadonlyArray<Layer.Layer.Any>>(
+export function buildUnordered<
+  const Layers extends ReadonlyArray<Layer.Layer.Any>,
+>(
   layers: Layers,
 ): Effect.Effect<
   Context.Context<LayersSuccess<Layers>>,
@@ -107,18 +111,23 @@ export function buildUnordered<const Layers extends ReadonlyArray<Layer.Layer.An
 > {
   type AnyLayer = Layer.Layer<any, any, any>
 
-  return Effect.gen(function* () {
+  return Effect.gen(function*() {
     const scope = yield* Effect.scope
     const memoMap = yield* Layer.makeMemoMap
     let ctx = yield* Effect.context<any>()
-    const pending = new Set<AnyLayer>(layers as unknown as ReadonlyArray<AnyLayer>)
+    const pending = new Set<AnyLayer>(
+      layers as unknown as ReadonlyArray<AnyLayer>,
+    )
 
     while (pending.size > 0) {
       let progressed = false
       const failures: Array<Cause.Cause<unknown>> = []
 
-      for (const layer of [...pending]) {
-        const childScope = yield* Scope.fork(scope, ExecutionStrategy.sequential)
+      for (const layer of pending) {
+        const childScope = yield* Scope.fork(
+          scope,
+          ExecutionStrategy.sequential,
+        )
         const exit = yield* layer.pipe(
           Layer.buildWithMemoMap(memoMap, childScope),
           Effect.provide(ctx),
@@ -135,7 +144,8 @@ export function buildUnordered<const Layers extends ReadonlyArray<Layer.Layer.An
           // would replay the same cause forever.
           const ref = (memoMap as unknown as {
             ref?: SynchronizedRef.SynchronizedRef<Map<AnyLayer, unknown>>
-          }).ref
+          })
+            .ref
           if (ref) {
             yield* SynchronizedRef.update(ref, (map) => {
               map.delete(layer)

@@ -1,11 +1,13 @@
 /** @jsxImportSource effect-start */
 import * as test from "bun:test"
 import * as Html from "../../src/Html.ts"
-import * as Traces from "../../src/studio/ui/Traces.tsx"
 import type * as StudioStore from "../../src/studio/StudioStore.ts"
+import * as Traces from "../../src/studio/ui/Traces.tsx"
 
 function makeSpan(
-  options: Partial<StudioStore.StudioSpan> & Pick<StudioStore.StudioSpan, "spanId" | "traceId" | "name">,
+  options:
+    & Partial<StudioStore.StudioSpan>
+    & Pick<StudioStore.StudioSpan, "spanId" | "traceId" | "name">,
 ): StudioStore.StudioSpan {
   return {
     spanId: options.spanId,
@@ -57,8 +59,16 @@ test.it("TraceDetail renders cyclic spans without recursing forever", () => {
 
   const html = Html.text(<Traces.TraceDetail prefix="/studio" spans={spans} />)
 
-  test.expect(html).toContain("root-ish")
-  test.expect(html).toContain("middle")
-  test.expect(html).toContain("cycle")
-  test.expect(html).toContain("/studio/traces")
+  test
+    .expect(html)
+    .toContain("root-ish")
+  test
+    .expect(html)
+    .toContain("middle")
+  test
+    .expect(html)
+    .toContain("cycle")
+  test
+    .expect(html)
+    .toContain("/studio/traces")
 })

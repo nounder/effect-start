@@ -8,7 +8,7 @@ import * as Traces from "../ui/Traces.tsx"
 
 export default Route.get(
   RouteSchema.schemaPathParams(Schema.Struct({ id: Schema.String })),
-  Route.html(function* (ctx) {
+  Route.html(function*(ctx) {
     const studio = yield* Studio.Studio
     let traceId: bigint
     try {
@@ -16,7 +16,9 @@ export default Route.get(
     } catch {
       return (
         <Shell.Shell prefix={studio.path} active="traces">
-          <div class="empty">Trace not found</div>
+          <div class="empty">
+            Trace not found
+          </div>
         </Shell.Shell>
       )
     }

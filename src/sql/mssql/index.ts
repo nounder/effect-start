@@ -5,14 +5,15 @@ import * as GlobalValue from "effect/GlobalValue"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Mssql from "mssql"
-import * as SqlClient from "../SqlClient.ts"
 import * as Values from "../../internal/Values.ts"
+import * as SqlClient from "../SqlClient.ts"
 
 const wrapError = (error: unknown): SqlClient.SqlError =>
   new SqlClient.SqlError({
-    code:
-      (error as any)?.code ??
-      ((error as any)?.number != null ? String((error as any).number) : "UNKNOWN"),
+    code: (error as any)?.code ??
+      ((error as any)?.number != null
+        ? String((error as any).number)
+        : "UNKNOWN"),
     message: error instanceof Error ? error.message : String(error),
     cause: error,
   })
@@ -57,7 +58,8 @@ interface TransactionConnection {
 
 const currentTransaction = GlobalValue.globalValue(
   Symbol.for("effect-start/sql/mssql/currentTransaction"),
-  () => FiberRef.unsafeMake<Option.Option<TransactionConnection>>(Option.none()),
+  () =>
+    FiberRef.unsafeMake<Option.Option<TransactionConnection>>(Option.none()),
 )
 
 const makeRequest = (
@@ -65,7 +67,9 @@ const makeRequest = (
   txOpt: Option.Option<TransactionConnection>,
   values: Array<unknown>,
 ): Mssql.Request => {
-  const request = Option.isSome(txOpt) ? txOpt.value.transaction.request() : pool.request()
+  const request = Option.isSome(txOpt)
+    ? txOpt.value.transaction.request()
+    : pool.request()
   addInputs(request, values)
   return request
 }
@@ -75,11 +79,15 @@ const executeQuery = <T>(
   text: string,
   values: Array<unknown>,
 ): Effect.Effect<ReadonlyArray<T>, SqlClient.SqlError> =>
-  Effect.flatMap(FiberRef.get(currentTransaction), (txOpt) =>
-    Effect.tryPromise({
-      try: () => makeRequest(pool, txOpt, values).query<T>(text),
-      catch: wrapError,
-    }).pipe(Effect.map((result) => result.recordset ?? [])),
+  Effect.flatMap(
+    FiberRef.get(currentTransaction),
+    (txOpt) =>
+      Effect
+        .tryPromise({
+          try: () => makeRequest(pool, txOpt, values).query<T>(text),
+          catch: wrapError,
+        })
+        .pipe(Effect.map((result) => result.recordset ?? [])),
   )
 
 const runUnsafe = <T>(
@@ -87,11 +95,15 @@ const runUnsafe = <T>(
   query: string,
   values?: Array<unknown>,
 ): Effect.Effect<ReadonlyArray<T>, SqlClient.SqlError> =>
-  Effect.flatMap(FiberRef.get(currentTransaction), (txOpt) =>
-    Effect.tryPromise({
-      try: () => makeRequest(pool, txOpt, values ?? []).query<T>(query),
-      catch: wrapError,
-    }).pipe(Effect.map((result) => result.recordset ?? [])),
+  Effect.flatMap(
+    FiberRef.get(currentTransaction),
+    (txOpt) =>
+      Effect
+        .tryPromise({
+          try: () => makeRequest(pool, txOpt, values ?? []).query<T>(query),
+          catch: wrapError,
+        })
+        .pipe(Effect.map((result) => result.recordset ?? [])),
   )
 
 const makeTaggedTemplate = (pool: Mssql.ConnectionPool) => {
@@ -108,7 +120,9 @@ const makeTaggedTemplate = (pool: Mssql.ConnectionPool) => {
     }
 
     let text = strings[0]
-    for (let i = 0; i < values.length; i++) text += `@p${i + 1}` + strings[i + 1]
+    for (let i = 0; i < values.length; i++) {
+      text += `@p${i + 1}` + strings[i + 1]
+    }
     return executeQuery<T>(pool, text, values)
   }
 }
@@ -118,20 +132,24 @@ const makeQuery = (
   spanAttributes: ReadonlyArray<readonly [string, unknown]>,
 ): SqlClient.Connection => {
   const query = makeTaggedTemplate(pool)
-  const unsafe: SqlClient.UnsafeQuery = <T = any>(query: string, values?: Array<unknown>) =>
-    runUnsafe<T>(pool, query, values)
+  const unsafe: SqlClient.UnsafeQuery = <T = any>(
+    query: string,
+    values?: Array<unknown>,
+  ) => runUnsafe<T>(pool, query, values)
   return SqlClient.connection(query, unsafe, { spanAttributes, dialect })
 }
 
 const makeWithTransaction =
   (pool: Mssql.ConnectionPool) =>
-  <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, SqlClient.SqlError | E, R> =>
+  <A, E, R>(
+    self: Effect.Effect<A, E, R>,
+  ): Effect.Effect<A, SqlClient.SqlError | E, R> =>
     Effect.uninterruptibleMask((restore) =>
       Effect.flatMap(FiberRef.get(currentTransaction), (txOpt) => {
         if (Option.isSome(txOpt)) {
           const { transaction, depth } = txOpt.value
           const name = `sp_${depth}`
-          return Effect.gen(function* () {
+          return Effect.gen(function*() {
             const req = transaction.request()
             yield* Effect.tryPromise({
               try: () => req.query(`SAVE TRANSACTION ${name}`),
@@ -150,32 +168,46 @@ const makeWithTransaction =
               return exit.value
             }
             const rbReq = transaction.request()
-            yield* Effect.tryPromise({
-              try: () => rbReq.query(`ROLLBACK TRANSACTION ${name}`),
-              catch: wrapError,
-            }).pipe(Effect.orDie)
+            yield* Effect
+              .tryPromise({
+                try: () => rbReq.query(`ROLLBACK TRANSACTION ${name}`),
+                catch: wrapError,
+              })
+              .pipe(Effect.orDie)
             return yield* exit
           })
         }
 
-        return Effect.gen(function* () {
+        return Effect.gen(function*() {
           const transaction = pool.transaction()
-          yield* Effect.tryPromise({ try: () => transaction.begin(), catch: wrapError })
+          yield* Effect.tryPromise({
+            try: () => transaction.begin(),
+            catch: wrapError,
+          })
           const exit = yield* Effect.exit(
             restore(
-              Effect.locally(self, currentTransaction, Option.some({ transaction, depth: 1 })),
+              Effect.locally(
+                self,
+                currentTransaction,
+                Option.some({ transaction, depth: 1 }),
+              ),
             ),
           )
           if (Exit.isSuccess(exit)) {
-            yield* Effect.tryPromise({ try: () => transaction.commit(), catch: wrapError })
+            yield* Effect.tryPromise({
+              try: () => transaction.commit(),
+              catch: wrapError,
+            })
             return exit.value
           }
-          yield* Effect.tryPromise({ try: () => transaction.rollback(), catch: wrapError }).pipe(
-            Effect.orDie,
-          )
+          yield* Effect
+            .tryPromise({ try: () => transaction.rollback(), catch: wrapError })
+            .pipe(
+              Effect.orDie,
+            )
           return yield* exit
         })
-      }),
+      })
     )
 
 export const layer = (
@@ -188,63 +220,78 @@ export const layer = (
     SqlClient.SqlClient,
     Effect.map(
       Effect.acquireRelease(
-        Effect.tryPromise({
-          try: async () => {
-            const driverConfig = { ...config } as Record<string, unknown>
-            delete driverConfig.spanAttributes
-            delete driverConfig.url
-            const pool = await new Mssql.ConnectionPool(
-              driverConfig as unknown as Mssql.config,
-            ).connect()
-            return pool
-          },
-          catch: wrapError,
-        }).pipe(
-          Effect.map((pool) => {
-            const driverConfig = { ...config } as Record<string, unknown>
-            delete driverConfig.spanAttributes
-            delete driverConfig.url
-            const spanAttributes = Object.entries(makeSpanAttributes(config))
-            const query = makeTaggedTemplate(pool)
-            const unsafeFn: SqlClient.UnsafeQuery = <T = any>(
-              query: string,
-              values?: Array<unknown>,
-            ) => runUnsafe<T>(pool, query, values)
-            const use: SqlClient.SqlClient["use"] = (fn) =>
-              Effect.tryPromise({ try: () => Promise.resolve(fn(pool)), catch: wrapError })
+        Effect
+          .tryPromise({
+            try: async () => {
+              const driverConfig = { ...config } as Record<string, unknown>
+              delete driverConfig.spanAttributes
+              delete driverConfig.url
+              const pool = await new Mssql.ConnectionPool(
+                driverConfig as unknown as Mssql.config,
+              )
+                .connect()
+              return pool
+            },
+            catch: wrapError,
+          })
+          .pipe(
+            Effect.map((pool) => {
+              const driverConfig = { ...config } as Record<string, unknown>
+              delete driverConfig.spanAttributes
+              delete driverConfig.url
+              const spanAttributes = Object.entries(makeSpanAttributes(config))
+              const query = makeTaggedTemplate(pool)
+              const unsafeFn: SqlClient.UnsafeQuery = <T = any>(
+                query: string,
+                values?: Array<unknown>,
+              ) => runUnsafe<T>(pool, query, values)
+              const use: SqlClient.SqlClient["use"] = (fn) =>
+                Effect.tryPromise({
+                  try: () => Promise.resolve(fn(pool)),
+                  catch: wrapError,
+                })
 
-            return {
-              client: SqlClient.make({
-                query,
-                unsafe: unsafeFn,
-                withTransaction: makeWithTransaction(pool),
-                spanAttributes,
-                dialect,
-                reserve: Effect.acquireRelease(
-                  Effect.tryPromise({
-                    try: () =>
-                      new Mssql.ConnectionPool({
-                        ...driverConfig,
-                        pool: { max: 1, min: 1 },
-                      } as unknown as Mssql.config).connect(),
-                    catch: wrapError,
-                  }),
-                  (reserved: Mssql.ConnectionPool) =>
-                    Effect.tryPromise({ try: () => reserved.close(), catch: () => void 0 }).pipe(
-                      Effect.asVoid,
-                      Effect.orDie,
+              return {
+                client: SqlClient.make({
+                  query,
+                  unsafe: unsafeFn,
+                  withTransaction: makeWithTransaction(pool),
+                  spanAttributes,
+                  dialect,
+                  reserve: Effect
+                    .acquireRelease(
+                      Effect.tryPromise({
+                        try: () =>
+                          new Mssql.ConnectionPool({
+                            ...driverConfig,
+                            pool: { max: 1, min: 1 },
+                          } as unknown as Mssql.config)
+                            .connect(),
+                        catch: wrapError,
+                      }),
+                      (reserved: Mssql.ConnectionPool) =>
+                        Effect
+                          .tryPromise({
+                            try: () => reserved.close(),
+                            catch: () => void 0,
+                          })
+                          .pipe(
+                            Effect.asVoid,
+                            Effect.orDie,
+                          ),
+                    )
+                    .pipe(
+                      Effect.map(
+                        (reserved): SqlClient.Connection =>
+                          makeQuery(reserved, spanAttributes),
+                      ),
                     ),
-                ).pipe(
-                  Effect.map(
-                    (reserved): SqlClient.Connection => makeQuery(reserved, spanAttributes),
-                  ),
-                ),
-                use,
-              }),
-              close: use((p) => p.close()),
-            }
-          }),
-        ),
+                  use,
+                }),
+                close: use((p) => p.close()),
+              }
+            }),
+          ),
         (handle) => handle.close.pipe(Effect.orDie),
       ),
       (handle) => handle.client,

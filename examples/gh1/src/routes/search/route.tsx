@@ -1,9 +1,9 @@
 import { Route } from "effect-start"
 import * as Github from "../../Github.ts"
-import { Layout, RepoListItem, UserCard, EmptyState } from "../../Ui.tsx"
+import * as Ui from "../../Ui.tsx"
 
 export default Route.get(
-  Route.html(function* () {
+  Route.html(function*() {
     const request = yield* Route.Request
     const url = new URL(request.url)
     const q = url.searchParams.get("q") ?? ""
@@ -12,11 +12,14 @@ export default Route.get(
 
     if (!q) {
       return (
-        <Layout>
+        <Ui.Layout>
           <div class="pt-12">
-            <EmptyState title="Search GitHub" description="Enter a query in the search bar above" />
+            <Ui.EmptyState
+              title="Search GitHub"
+              description="Enter a query in the search bar above"
+            />
           </div>
-        </Layout>
+        </Ui.Layout>
       )
     }
 
@@ -24,38 +27,48 @@ export default Route.get(
       const results = yield* Github.searchUsers(q, { per_page: 30, page })
       const users = results.items
       return (
-        <Layout>
+        <Ui.Layout>
           <div class="pt-6 pb-4">
             <h2 class="text-xl font-semibold mb-4">
-              <span class="text-[#8b949e]">{Github.num(results.total_count)} users matching</span> "
+              <span class="text-[#8b949e]">
+                {Github.num(results.total_count)} users matching
+              </span>{" "}
+              "
               {q}"
             </h2>
             <SearchTabs q={q} active="users" />
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
             {users.map((u) => (
-              <UserCard login={u.login} avatar={u.avatar_url} type={u.type} />
+              <Ui.UserCard
+                login={u.login}
+                avatar={u.avatar_url}
+                type={u.type}
+              />
             ))}
           </div>
           {users.length === 30 && <Pagination q={q} type={type} page={page} />}
-        </Layout>
+        </Ui.Layout>
       )
     }
 
     const results = yield* Github.searchRepos(q, { per_page: 30, page })
     const repos = results.items
     return (
-      <Layout>
+      <Ui.Layout>
         <div class="pt-6 pb-4">
           <h2 class="text-xl font-semibold mb-4">
-            <span class="text-[#8b949e]">{Github.num(results.total_count)} results matching</span> "
+            <span class="text-[#8b949e]">
+              {Github.num(results.total_count)} results matching
+            </span>{" "}
+            "
             {q}"
           </h2>
           <SearchTabs q={q} active="repositories" />
         </div>
         <div>
           {repos.map((r) => (
-            <RepoListItem
+            <Ui.RepoListItem
               owner={r.owner.login}
               repo={r.name}
               description={r.description}
@@ -68,10 +81,13 @@ export default Route.get(
           ))}
         </div>
         {repos.length === 0 && (
-          <EmptyState title="No results" description={`Nothing matched "${q}"`} />
+          <Ui.EmptyState
+            title="No results"
+            description={`Nothing matched "${q}"`}
+          />
         )}
         {repos.length === 30 && <Pagination q={q} type={type} page={page} />}
-      </Layout>
+      </Ui.Layout>
     )
   }),
 )
@@ -108,14 +124,18 @@ function Pagination(props: { q: string; type: string; page: number }) {
     <div class="flex justify-center gap-2 py-8">
       {props.page > 1 && (
         <a
-          href={`/search?q=${encodeURIComponent(props.q)}&type=${props.type}&page=${props.page - 1}`}
+          href={`/search?q=${
+            encodeURIComponent(props.q)
+          }&type=${props.type}&page=${props.page - 1}`}
           class="px-4 py-2 border border-[#30363d] rounded-md text-sm text-[#58a6ff] hover:bg-[#21262d]"
         >
           Previous
         </a>
       )}
       <a
-        href={`/search?q=${encodeURIComponent(props.q)}&type=${props.type}&page=${props.page + 1}`}
+        href={`/search?q=${
+          encodeURIComponent(props.q)
+        }&type=${props.type}&page=${props.page + 1}`}
         class="px-4 py-2 border border-[#30363d] rounded-md text-sm text-[#58a6ff] hover:bg-[#21262d]"
       >
         Next

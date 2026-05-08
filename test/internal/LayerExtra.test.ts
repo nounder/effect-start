@@ -26,7 +26,7 @@ const LoggerLive = Layer.succeed(Logger, { log: (msg) => Effect.log(msg) })
 
 const DatabaseLive = Layer.effect(
   Database,
-  Effect.gen(function* () {
+  Effect.gen(function*() {
     const logger = yield* Logger
     yield* logger.log("Connecting to database...")
     return { query: (_sql) => Effect.succeed({ rows: [] }) }
@@ -35,13 +35,15 @@ const DatabaseLive = Layer.effect(
 
 const UserRepoLive = Layer.effect(
   UserRepo,
-  Effect.gen(function* () {
+  Effect.gen(function*() {
     const db = yield* Database
     const logger = yield* Logger
     const api = yield* ExternalApi
     yield* logger.log("UserRepo initialized")
     yield* api.call()
-    return { findUser: (id) => db.query(`SELECT * FROM users WHERE id = ${id}`) }
+    return {
+      findUser: (id) => db.query(`SELECT * FROM users WHERE id = ${id}`),
+    }
   }),
 )
 
@@ -49,25 +51,47 @@ const ExternalApiLive = Layer.succeed(ExternalApi, { call: () => Effect.void })
 
 test.describe(LayerExtra.provideMergeAll, () => {
   test.test("resolves dependencies when ordered dependents-first", () => {
-    const AppLayer = LayerExtra.provideMergeAll(UserRepoLive, DatabaseLive, LoggerLive)
+    const AppLayer = LayerExtra.provideMergeAll(
+      UserRepoLive,
+      DatabaseLive,
+      LoggerLive,
+    )
 
-    return Effect.gen(function* () {
-      const userRepo = yield* UserRepo
-      const result = yield* userRepo.findUser("123")
+    return Effect
+      .gen(function*() {
+        const userRepo = yield* UserRepo
+        const result = yield* userRepo.findUser("123")
 
-      test.expect(result).toEqual({ rows: [] })
-    }).pipe(Effect.provide(AppLayer), Effect.provide(ExternalApiLive), Effect.runPromise)
+        test
+          .expect(result)
+          .toEqual({ rows: [] })
+      })
+      .pipe(
+        Effect.provide(AppLayer),
+        Effect.provide(ExternalApiLive),
+        Effect.runPromise,
+      )
   })
 
   test.test("exposes every provided service", () => {
-    const AppLayer = LayerExtra.provideMergeAll(UserRepoLive, DatabaseLive, LoggerLive)
+    const AppLayer = LayerExtra.provideMergeAll(
+      UserRepoLive,
+      DatabaseLive,
+      LoggerLive,
+    )
 
-    return Effect.gen(function* () {
-      yield* UserRepo
-      yield* Database
-      const logger = yield* Logger
-      yield* logger.log("All services available!")
-    }).pipe(Effect.provide(AppLayer), Effect.provide(ExternalApiLive), Effect.runPromise)
+    return Effect
+      .gen(function*() {
+        yield* UserRepo
+        yield* Database
+        const logger = yield* Logger
+        yield* logger.log("All services available!")
+      })
+      .pipe(
+        Effect.provide(AppLayer),
+        Effect.provide(ExternalApiLive),
+        Effect.runPromise,
+      )
   })
 
   test.test("memoizes shared dependencies", () => {
@@ -84,7 +108,7 @@ test.describe(LayerExtra.provideMergeAll, () => {
 
     const DatabaseLiveWithCounter = Layer.effect(
       Database,
-      Effect.gen(function* () {
+      Effect.gen(function*() {
         databaseBuildCount++
         const logger = yield* Logger
         yield* logger.log("DB init")
@@ -94,11 +118,13 @@ test.describe(LayerExtra.provideMergeAll, () => {
 
     const UserRepoLiveWithCounter = Layer.effect(
       UserRepo,
-      Effect.gen(function* () {
+      Effect.gen(function*() {
         const db = yield* Database
         const logger = yield* Logger
         yield* logger.log("UserRepo init")
-        return { findUser: (id) => db.query(`SELECT * FROM users WHERE id = ${id}`) }
+        return {
+          findUser: (id) => db.query(`SELECT * FROM users WHERE id = ${id}`),
+        }
       }),
     )
 
@@ -108,14 +134,23 @@ test.describe(LayerExtra.provideMergeAll, () => {
       LoggerLiveWithCounter,
     )
 
-    return Effect.gen(function* () {
-      yield* UserRepo
-      yield* Database
-      yield* Logger
+    return Effect
+      .gen(function*() {
+        yield* UserRepo
+        yield* Database
+        yield* Logger
 
-      test.expect(loggerBuildCount).toEqual(1)
-      test.expect(databaseBuildCount).toEqual(1)
-    }).pipe(Effect.provide(AppLayer), Effect.runPromise)
+        test
+          .expect(loggerBuildCount)
+          .toEqual(1)
+        test
+          .expect(databaseBuildCount)
+          .toEqual(1)
+      })
+      .pipe(
+        Effect.provide(AppLayer),
+        Effect.runPromise,
+      )
   })
 })
 
@@ -125,12 +160,20 @@ test.describe(LayerExtra.buildUnordered, () => {
       LayerExtra.buildUnordered([LoggerLive, DatabaseLive, UserRepoLive]),
     )
 
-    return Effect.gen(function* () {
-      const userRepo = yield* UserRepo
-      const result = yield* userRepo.findUser("123")
+    return Effect
+      .gen(function*() {
+        const userRepo = yield* UserRepo
+        const result = yield* userRepo.findUser("123")
 
-      test.expect(result).toEqual({ rows: [] })
-    }).pipe(Effect.provide(AppLayer), Effect.provide(ExternalApiLive), Effect.runPromise)
+        test
+          .expect(result)
+          .toEqual({ rows: [] })
+      })
+      .pipe(
+        Effect.provide(AppLayer),
+        Effect.provide(ExternalApiLive),
+        Effect.runPromise,
+      )
   })
 
   test.test("works with dependents-first order too", () => {
@@ -138,12 +181,20 @@ test.describe(LayerExtra.buildUnordered, () => {
       LayerExtra.buildUnordered([UserRepoLive, DatabaseLive, LoggerLive]),
     )
 
-    return Effect.gen(function* () {
-      const userRepo = yield* UserRepo
-      const result = yield* userRepo.findUser("456")
+    return Effect
+      .gen(function*() {
+        const userRepo = yield* UserRepo
+        const result = yield* userRepo.findUser("456")
 
-      test.expect(result).toEqual({ rows: [] })
-    }).pipe(Effect.provide(AppLayer), Effect.provide(ExternalApiLive), Effect.runPromise)
+        test
+          .expect(result)
+          .toEqual({ rows: [] })
+      })
+      .pipe(
+        Effect.provide(AppLayer),
+        Effect.provide(ExternalApiLive),
+        Effect.runPromise,
+      )
   })
 
   test.test("memoizes shared dependencies", () => {
@@ -160,7 +211,7 @@ test.describe(LayerExtra.buildUnordered, () => {
 
     const DatabaseLiveWithCounter = Layer.effect(
       Database,
-      Effect.gen(function* () {
+      Effect.gen(function*() {
         const logger = yield* Logger
         databaseBuildCount++
         yield* logger.log("DB init")
@@ -170,11 +221,13 @@ test.describe(LayerExtra.buildUnordered, () => {
 
     const UserRepoLiveWithCounter = Layer.effect(
       UserRepo,
-      Effect.gen(function* () {
+      Effect.gen(function*() {
         const db = yield* Database
         const logger = yield* Logger
         yield* logger.log("UserRepo init")
-        return { findUser: (id) => db.query(`SELECT * FROM users WHERE id = ${id}`) }
+        return {
+          findUser: (id) => db.query(`SELECT * FROM users WHERE id = ${id}`),
+        }
       }),
     )
 
@@ -186,14 +239,24 @@ test.describe(LayerExtra.buildUnordered, () => {
       ]),
     )
 
-    return Effect.gen(function* () {
-      yield* UserRepo
-      yield* Database
-      yield* Logger
+    return Effect
+      .gen(function*() {
+        yield* UserRepo
+        yield* Database
+        yield* Logger
 
-      test.expect(loggerBuildCount).toEqual(1)
-      test.expect(databaseBuildCount).toEqual(1)
-    }).pipe(Effect.provide(AppLayer), Effect.provide(ExternalApiLive), Effect.runPromise)
+        test
+          .expect(loggerBuildCount)
+          .toEqual(1)
+        test
+          .expect(databaseBuildCount)
+          .toEqual(1)
+      })
+      .pipe(
+        Effect.provide(AppLayer),
+        Effect.provide(ExternalApiLive),
+        Effect.runPromise,
+      )
   })
 })
 
@@ -203,43 +266,80 @@ test.describe(LayerExtra.buildUnordered, () => {
 // on; if they ever fail, update LayerExtra.buildUnordered accordingly.
 test.describe("buildUnordered Effect-internal assumptions", () => {
   test.test("MemoMap exposes a SynchronizedRef<Map> at .ref", () =>
-    Effect.gen(function* () {
-      const memoMap = yield* Layer.makeMemoMap
-      const ref = (memoMap as unknown as { ref?: unknown }).ref
+    Effect
+      .gen(function*() {
+        const memoMap = yield* Layer.makeMemoMap
+        const ref = (memoMap as unknown as { ref?: unknown }).ref
 
-      test.expect(ref).toBeDefined()
-      test.expect(SynchronizedRef.SynchronizedRefTypeId in (ref as object)).toBe(true)
+        test
+          .expect(ref)
+          .toBeDefined()
+        test
+          .expect(SynchronizedRef.SynchronizedRefTypeId in (ref as object))
+          .toBe(true)
 
-      const map = yield* SynchronizedRef.get(ref as SynchronizedRef.SynchronizedRef<unknown>)
-      test.expect(map).toBeInstanceOf(Map)
-    }).pipe(Effect.runPromise),
-  )
+        const map = yield* SynchronizedRef.get(
+          ref as SynchronizedRef.SynchronizedRef<unknown>,
+        )
+
+        test
+          .expect(map)
+          .toBeInstanceOf(Map)
+      })
+      .pipe(Effect.runPromise))
 
   test.test("MemoMap caches failed builds and replays the same failure", () =>
-    Effect.gen(function* () {
-      const memoMap = yield* Layer.makeMemoMap
-      const failingLayer = Layer.effect(Logger, Effect.fail("boom" as const)) as Layer.Layer<
-        Logger,
-        "boom"
-      >
+    Effect
+      .gen(function*() {
+        const memoMap = yield* Layer.makeMemoMap
+        const failingLayer = Layer.effect(
+          Logger,
+          Effect.fail("boom" as const),
+        ) as Layer.Layer<
+          Logger,
+          "boom"
+        >
 
-      const first = yield* Layer.buildWithMemoMap(failingLayer, memoMap, yield* Effect.scope).pipe(
-        Effect.exit,
-      )
-      const second = yield* Layer.buildWithMemoMap(failingLayer, memoMap, yield* Effect.scope).pipe(
-        Effect.exit,
-      )
+        const first = yield* Layer
+          .buildWithMemoMap(
+            failingLayer,
+            memoMap,
+            yield* Effect.scope,
+          )
+          .pipe(
+            Effect.exit,
+          )
+        const second = yield* Layer
+          .buildWithMemoMap(
+            failingLayer,
+            memoMap,
+            yield* Effect.scope,
+          )
+          .pipe(
+            Effect.exit,
+          )
 
-      test.expect(first._tag).toBe("Failure")
-      test.expect(second._tag).toBe("Failure")
+        test
+          .expect(first._tag)
+          .toBe("Failure")
+        test
+          .expect(second._tag)
+          .toBe("Failure")
 
-      const ref = (
-        memoMap as unknown as {
-          ref: SynchronizedRef.SynchronizedRef<Map<unknown, unknown>>
-        }
-      ).ref
-      const map = yield* SynchronizedRef.get(ref)
-      test.expect(map.has(failingLayer)).toBe(true)
-    }).pipe(Effect.scoped, Effect.runPromise),
-  )
+        const ref = (
+          memoMap as unknown as {
+            ref: SynchronizedRef.SynchronizedRef<Map<unknown, unknown>>
+          }
+        )
+          .ref
+        const map = yield* SynchronizedRef.get(ref)
+
+        test
+          .expect(map.has(failingLayer))
+          .toBe(true)
+      })
+      .pipe(
+        Effect.scoped,
+        Effect.runPromise,
+      ))
 })

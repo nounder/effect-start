@@ -62,7 +62,7 @@ export class DockerContainer extends Context.Tag("effect-start/DockerContainer")
 
 const dockerExec = (...args: ReadonlyArray<string>) =>
   Effect.scoped(
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       const handle = yield* System.spawn(["docker", ...args], {
         stdout: "ignore",
         stderr: "inherit",
@@ -73,13 +73,19 @@ const dockerExec = (...args: ReadonlyArray<string>) =>
 
 const dockerExecStdout = (...args: ReadonlyArray<string>) =>
   Effect.scoped(
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       const handle = yield* System.spawn(["docker", ...args], {
         stdout: "pipe",
         stderr: "inherit",
       })
       const [stdout, exitCode] = yield* Effect.all(
-        [handle.stdout.pipe(Stream.decodeText("utf-8"), Stream.mkString), handle.exitCode],
+        [
+          handle.stdout.pipe(
+            Stream.decodeText("utf-8"),
+            Stream.mkString,
+          ),
+          handle.exitCode,
+        ],
         { concurrency: 2 },
       )
       return { stdout, exitCode }
@@ -90,15 +96,17 @@ const removeContainer = (container: string) => dockerExec("rm", "-f", container)
 
 export const layer = Layer.scoped(
   Docker,
-  Effect.gen(function* () {
+  Effect.gen(function*() {
     const tracked = yield* Ref.make<ReadonlyArray<Container>>([])
 
     yield* Effect.addFinalizer(() =>
       Ref.get(tracked).pipe(
         Effect.flatMap((containers) =>
-          Effect.forEach(containers, (c) => removeContainer(c.id), { discard: true }),
+          Effect.forEach(containers, (c) => removeContainer(c.id), {
+            discard: true,
+          })
         ),
-      ),
+      )
     )
 
     const track = (container: Container) => Ref.update(tracked, (cs) => [container, ...cs])
@@ -108,7 +116,7 @@ export const layer = Layer.scoped(
       command: ReadonlyArray<string>,
       options?: { readonly detach?: boolean },
     ) =>
-      Effect.gen(function* () {
+      Effect.gen(function*() {
         const args: Array<string> = ["exec"]
         if (options?.detach) args.push("-d")
         args.push(container, ...command)
@@ -117,14 +125,17 @@ export const layer = Layer.scoped(
           Effect.mapError((cause) => new DockerError({ message: `docker exec failed`, cause })),
         )
 
-        return { exitCode: result.exitCode, stdout: result.stdout.trim() } satisfies ExecResult
+        return {
+          exitCode: result.exitCode,
+          stdout: result.stdout.trim(),
+        } satisfies ExecResult
       })
 
     return {
       exec: execFn,
 
       run: (options) =>
-        Effect.gen(function* () {
+        Effect.gen(function*() {
           const args: Array<string> = ["run"]
 
           if (options.detach) args.push("-d")
@@ -167,13 +178,15 @@ export const layer = Layer.scoped(
         }),
 
       start: (container) =>
-        Effect.gen(function* () {
+        Effect.gen(function*() {
           const code = yield* dockerExec("start", container).pipe(
             Effect.mapError((cause) => new DockerError({ message: `docker start failed`, cause })),
           )
           if (code !== 0) {
             yield* Effect.fail(
-              new DockerError({ message: `docker start exited with code ${code}` }),
+              new DockerError({
+                message: `docker start exited with code ${code}`,
+              }),
             )
           }
         }),

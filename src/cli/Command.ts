@@ -42,7 +42,9 @@ const lex = (argv: ReadonlyArray<string>): LexResult => {
           value: flags.slice(eq + 1),
         })
       } else {
-        for (const ch of flags) tokens.push({ _tag: "ShortOption", flag: ch, raw: `-${ch}` })
+        for (const ch of flags) {
+          tokens.push({ _tag: "ShortOption", flag: ch, raw: `-${ch}` })
+        }
       }
     } else {
       tokens.push({ _tag: "Value", value: arg })
@@ -54,18 +56,29 @@ const lex = (argv: ReadonlyArray<string>): LexResult => {
 const levenshtein = (a: string, b: string): number => {
   const m = a.length,
     n = b.length
-  const dp: Array<Array<number>> = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0))
+  const dp: Array<Array<number>> = Array.from(
+    { length: m + 1 },
+    () => new Array(n + 1).fill(0),
+  )
   for (let i = 0; i <= m; i++) dp[i][0] = i
   for (let j = 0; j <= n; j++) dp[0][j] = j
-  for (let i = 1; i <= m; i++)
+  for (let i = 1; i <= m; i++) {
     for (let j = 1; j <= n; j++) {
       const cost = a[i - 1] === b[j - 1] ? 0 : 1
-      dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + cost)
+      dp[i][j] = Math.min(
+        dp[i - 1][j] + 1,
+        dp[i][j - 1] + 1,
+        dp[i - 1][j - 1] + cost,
+      )
     }
+  }
   return dp[m][n]
 }
 
-const suggest = (input: string, candidates: ReadonlyArray<string>): ReadonlyArray<string> => {
+const suggest = (
+  input: string,
+  candidates: ReadonlyArray<string>,
+): ReadonlyArray<string> => {
   const ds = candidates
     .map((c) => [levenshtein(input, c), c] as const)
     .filter(([d]) => d <= 2)
@@ -114,7 +127,10 @@ const parseConfig = (config: Record<string, any>): ConfigInternal => {
   return { flags, arguments: args, orderedParams, tree: walk(config) }
 }
 
-const reconstructTree = (tree: ConfigTree, results: ReadonlyArray<any>): Record<string, any> => {
+const reconstructTree = (
+  tree: ConfigTree,
+  results: ReadonlyArray<any>,
+): Record<string, any> => {
   const out: Record<string, any> = {}
   for (const key in tree) out[key] = nodeValue(tree[key], results)
   return out
@@ -122,7 +138,9 @@ const reconstructTree = (tree: ConfigTree, results: ReadonlyArray<any>): Record<
 
 const nodeValue = (node: ConfigNode, results: ReadonlyArray<any>): any => {
   if (node._tag === "Param") return results[node.index]
-  if (node._tag === "Array") return node.children.map((c) => nodeValue(c, results))
+  if (node._tag === "Array") {
+    return node.children.map((c) => nodeValue(c, results))
+  }
   return reconstructTree(node.tree, results)
 }
 
@@ -133,28 +151,42 @@ const helpFlag: Flag.Flag<boolean> = Flag.boolean("help").pipe(
 const versionFlag: Flag.Flag<boolean> = Flag.boolean("version").pipe(
   Flag.withDescription("Show version information"),
 )
-const logLevelFlag: Flag.Flag<Option.Option<string>> = Flag.choice("log-level", [
-  "all",
-  "trace",
-  "debug",
-  "info",
-  "warn",
-  "warning",
-  "error",
-  "fatal",
-  "none",
-] as const).pipe(Flag.optional, Flag.withDescription("Sets the minimum log level"))
+const logLevelFlag: Flag.Flag<Option.Option<string>> = Flag
+  .choice(
+    "log-level",
+    [
+      "all",
+      "trace",
+      "debug",
+      "info",
+      "warn",
+      "warning",
+      "error",
+      "fatal",
+      "none",
+    ] as const,
+  )
+  .pipe(
+    Flag.optional,
+    Flag.withDescription("Sets the minimum log level"),
+  )
 
 interface ParsedTokens {
   readonly flags: Record<string, ReadonlyArray<string>>
   readonly arguments: ReadonlyArray<string>
   readonly errors?: ReadonlyArray<CliError.CliError>
-  readonly subcommand?: { readonly name: string; readonly parsedInput: ParsedTokens }
+  readonly subcommand?: {
+    readonly name: string
+    readonly parsedInput: ParsedTokens
+  }
 }
 
 type FlagParam = Param.SingleParam<"flag", unknown>
 type FlagMap = Record<string, Array<string>>
-type FlagRegistry = { params: ReadonlyArray<FlagParam>; index: Map<string, FlagParam> }
+type FlagRegistry = {
+  params: ReadonlyArray<FlagParam>
+  index: Map<string, FlagParam>
+}
 
 const createFlagRegistry = (params: ReadonlyArray<FlagParam>): FlagRegistry => {
   const index = new Map<string, FlagParam>()
@@ -169,9 +201,10 @@ const createEmptyFlagMap = (params: ReadonlyArray<FlagParam>): FlagMap =>
   Object.fromEntries(params.map((p) => [p.name, []]))
 
 type FlagToken = Extract<Token, { _tag: "LongOption" | "ShortOption" }>
-const isFlagToken = (t: Token): t is FlagToken =>
-  t._tag === "LongOption" || t._tag === "ShortOption"
-const getFlagName = (t: FlagToken): string => (t._tag === "LongOption" ? t.name : t.flag)
+const isFlagToken = (t: Token): t is FlagToken => t._tag === "LongOption" || t._tag === "ShortOption"
+const getFlagName = (
+  t: FlagToken,
+): string => (t._tag === "LongOption" ? t.name : t.flag)
 
 const consumeFlagValue = (
   tokens: ReadonlyArray<Token>,
@@ -182,8 +215,9 @@ const consumeFlagValue = (
   if (token.value !== undefined) return { value: token.value, skip: 0 }
   if (Primitive.isBoolean(spec.primitiveType)) {
     const next = tokens[i + 1]
-    if (next?._tag === "Value" && Primitive.isBooleanLiteral(next.value))
+    if (next?._tag === "Value" && Primitive.isBooleanLiteral(next.value)) {
       return { value: next.value, skip: 1 }
+    }
     return { value: "true", skip: 0 }
   }
   const next = tokens[i + 1]
@@ -219,9 +253,9 @@ const consumeKnownFlags = (
 }
 
 const builtInParams: ReadonlyArray<FlagParam> = [
-  ...(Param.extractSingleParams(helpFlag) as FlagParam[]),
-  ...(Param.extractSingleParams(versionFlag) as FlagParam[]),
-  ...(Param.extractSingleParams(logLevelFlag) as FlagParam[]),
+  ...(Param.extractSingleParams(helpFlag) as Array<FlagParam>),
+  ...(Param.extractSingleParams(versionFlag) as Array<FlagParam>),
+  ...(Param.extractSingleParams(logLevelFlag) as Array<FlagParam>),
 ]
 const builtInRegistry = createFlagRegistry(builtInParams)
 
@@ -236,7 +270,7 @@ const extractBuiltInOptions = (
   },
   CliError.CliError
 > =>
-  Effect.gen(function* () {
+  Effect.gen(function*() {
     const { flagMap, remainder } = consumeKnownFlags(tokens, builtInRegistry)
     const emptyArgs: Param.ParsedArgs = { flags: flagMap, arguments: [] }
     const [, help] = yield* helpFlag.parse(emptyArgs)
@@ -250,9 +284,11 @@ const parseArgs = (
   command: Command<any, any, any, any>,
   commandPath: ReadonlyArray<string> = [],
 ): Effect.Effect<ParsedTokens, CliError.CliError> =>
-  Effect.gen(function* () {
+  Effect.gen(function*() {
     const impl = toImpl(command)
-    const singles = impl.config.flags.flatMap(Param.extractSingleParams) as FlagParam[]
+    const singles = impl.config.flags.flatMap(
+      Param.extractSingleParams,
+    ) as Array<FlagParam>
     const flagRegistry = createFlagRegistry(singles.filter(Param.isFlagParam))
     const newPath = [...commandPath, command.name]
     const { tokens, trailingOperands } = lexResult
@@ -276,9 +312,7 @@ const parseArgs = (
             validNames.push(p.name)
             for (const a of p.aliases) validNames.push(a)
           }
-          const sug = suggest(getFlagName(t), validNames).map((n) =>
-            n.length === 1 ? `-${n}` : `--${n}`,
-          )
+          const sug = suggest(getFlagName(t), validNames).map((n) => n.length === 1 ? `-${n}` : `--${n}`)
           errors.push(
             new CliError.UnrecognizedOption({
               option: t._tag === "LongOption" ? `--${t.name}` : `-${t.flag}`,
@@ -297,13 +331,17 @@ const parseArgs = (
 
       if (t._tag === "Value") {
         if (mode === "awaiting") {
-          const subIndex = new Map(command.subcommands.map((s: any) => [s.name, s]))
-          const sub = subIndex.get(t.value) as Command<any, any, any, any> | undefined
+          const subIndex = new Map(
+            command.subcommands.map((s: any) => [s.name, s]),
+          )
+          const sub = subIndex.get(t.value) as
+            | Command<any, any, any, any>
+            | undefined
           if (sub) {
             const tail = consumeKnownFlags(tokens.slice(i + 1), flagRegistry)
             for (const key in tail.flagMap) {
               const vals = tail.flagMap[key]
-              if (vals?.length) for (const v of vals) flagMap[key].push(v)
+              if (vals?.length) { for (const v of vals) flagMap[key].push(v) }
             }
             subResult = { sub, childTokens: tail.remainder }
             break
@@ -352,11 +390,13 @@ const parseArgs = (
   })
 
 const getCommandPath = (p: ParsedTokens): ReadonlyArray<string> =>
-  p.subcommand ? [p.subcommand.name, ...getCommandPath(p.subcommand.parsedInput)] : []
+  p.subcommand
+    ? [p.subcommand.name, ...getCommandPath(p.subcommand.parsedInput)]
+    : []
 
 const CommandTypeId = "~effect-start/Cli/Command" as const
 
-export interface Command<Name extends string, Input, E = never, R = never> {
+export interface Command<Name extends string, _Input, _E = never, _R = never> {
   readonly [CommandTypeId]: typeof CommandTypeId
   readonly name: Name
   readonly description: string | undefined
@@ -372,15 +412,13 @@ export declare namespace Command {
   }
 
   namespace Config {
-    type Infer<A extends Config> = Types.Simplify<{ readonly [K in keyof A]: InferValue<A[K]> }>
-    type InferValue<A> =
-      A extends ReadonlyArray<any>
-        ? { readonly [K in keyof A]: InferValue<A[K]> }
-        : A extends Param.Param<any, infer V>
-          ? V
-          : A extends Config
-            ? Infer<A>
-            : never
+    type Infer<A extends Config> = Types.Simplify<
+      { readonly [K in keyof A]: InferValue<A[K]> }
+    >
+    type InferValue<A> = A extends ReadonlyArray<any> ? { readonly [K in keyof A]: InferValue<A[K]> }
+      : A extends Param.Param<any, infer V> ? V
+      : A extends Config ? Infer<A>
+      : never
   }
 
   type Any = Command<string, unknown, unknown, unknown>
@@ -388,7 +426,9 @@ export declare namespace Command {
 
 interface CommandInternal<Name extends string, Input, E, R> extends Command<Name, Input, E, R> {
   readonly config: ConfigInternal
-  readonly parse: (input: ParsedTokens) => Effect.Effect<Input, CliError.CliError>
+  readonly parse: (
+    input: ParsedTokens,
+  ) => Effect.Effect<Input, CliError.CliError>
   readonly handle: (
     input: Input,
     path: ReadonlyArray<string>,
@@ -396,8 +436,9 @@ interface CommandInternal<Name extends string, Input, E, R> extends Command<Name
   readonly buildHelpDoc: (path: ReadonlyArray<string>) => HelpDoc.HelpDoc
 }
 
-const toImpl = <N extends string, I, E, R>(c: Command<N, I, E, R>): CommandInternal<N, I, E, R> =>
-  c as CommandInternal<N, I, E, R>
+const toImpl = <N extends string, I, E, R>(
+  c: Command<N, I, E, R>,
+): CommandInternal<N, I, E, R> => c as CommandInternal<N, I, E, R>
 
 export const isCommand = (u: unknown): u is Command.Any => Predicate.hasProperty(u, CommandTypeId)
 
@@ -407,7 +448,10 @@ const makeCommandInternal = <N extends string, I, E, R>(opts: {
   description?: string
   subcommands?: ReadonlyArray<Command<any, any, any, any>>
   parse?: (input: ParsedTokens) => Effect.Effect<I, CliError.CliError>
-  handle?: (input: I, path: ReadonlyArray<string>) => Effect.Effect<void, E | CliError.CliError, R>
+  handle?: (
+    input: I,
+    path: ReadonlyArray<string>,
+  ) => Effect.Effect<void, E | CliError.CliError, R>
 }): Command<N, I, E, R> => {
   const config = opts.config
 
@@ -419,11 +463,13 @@ const makeCommandInternal = <N extends string, I, E, R>(opts: {
       ? opts.handle(input, path)
       : (Effect.fail(new CliError.ShowHelp({ commandPath: path })) as any)
 
-  const parse =
-    opts.parse ??
+  const parse = opts.parse ??
     ((input: ParsedTokens) =>
-      Effect.gen(function* () {
-        const parsedArgs: Param.ParsedArgs = { flags: input.flags, arguments: input.arguments }
+      Effect.gen(function*() {
+        const parsedArgs: Param.ParsedArgs = {
+          flags: input.flags,
+          arguments: input.arguments,
+        }
         const values: Array<unknown> = []
         let current = parsedArgs.arguments
         for (const param of config.orderedParams) {
@@ -514,19 +560,27 @@ const getHelpForCommandPath = (
   return toImpl(current).buildHelpDoc(path)
 }
 
-const checkForDuplicateFlags = (parent: Command.Any, subs: ReadonlyArray<Command.Any>): void => {
+const checkForDuplicateFlags = (
+  parent: Command.Any,
+  subs: ReadonlyArray<Command.Any>,
+): void => {
   const parentNames = new Set<string>()
-  for (const f of toImpl(parent).config.flags)
+  for (const f of toImpl(parent).config.flags) {
     for (const s of Param.extractSingleParams(f)) parentNames.add(s.name)
-  for (const sub of subs)
-    for (const f of toImpl(sub).config.flags)
-      for (const s of Param.extractSingleParams(f))
-        if (parentNames.has(s.name))
+  }
+  for (const sub of subs) {
+    for (const f of toImpl(sub).config.flags) {
+      for (const s of Param.extractSingleParams(f)) {
+        if (parentNames.has(s.name)) {
           throw new CliError.DuplicateOption({
             option: s.name,
             parentCommand: parent.name,
             childCommand: sub.name,
           })
+        }
+      }
+    }
+  }
 }
 
 export const make: {
@@ -586,24 +640,33 @@ export const make: {
   const byName = new Map(subs.map((s) => [s.name, toImpl(s)] as const))
 
   const parse = (raw: ParsedTokens): Effect.Effect<any, CliError.CliError> =>
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       const parent = yield* impl.parse(raw)
       if (!raw.subcommand) return parent
       const sub = byName.get(raw.subcommand.name)
       if (!sub) return parent
       const result = yield* sub.parse(raw.subcommand.parsedInput)
-      return Object.assign({}, parent, { _subcommand: { name: sub.name, result } })
+      return Object.assign({}, parent, {
+        _subcommand: { name: sub.name, result },
+      })
     })
 
-  const handle = (input: any, path: ReadonlyArray<string>): Effect.Effect<void, any, any> =>
-    Effect.gen(function* () {
+  const handle = (
+    input: any,
+    path: ReadonlyArray<string>,
+  ): Effect.Effect<void, any, any> =>
+    Effect.gen(function*() {
       if (input._subcommand) {
         const child = byName.get(input._subcommand.name)
-        if (!child)
+        if (!child) {
           return yield* Effect.fail(
             new CliError.ShowHelp({ commandPath: path }),
           )
-        return yield* child.handle(input._subcommand.result, [...path, child.name])
+        }
+        return yield* child.handle(input._subcommand.result, [
+          ...path,
+          child.name,
+        ])
       }
       return yield* impl.handle(input, path)
     })
@@ -623,25 +686,36 @@ const showHelp = (
   path: ReadonlyArray<string>,
   errors?: ReadonlyArray<CliError.CliError>,
 ) =>
-  Effect.gen(function* () {
-    yield* Console.log(HelpDoc.formatHelpDoc(getHelpForCommandPath(command, path)))
-    if (errors && errors.length > 0) yield* Console.error(CliError.formatErrors(errors))
+  Effect.gen(function*() {
+    yield* Console.log(
+      HelpDoc.formatHelpDoc(getHelpForCommandPath(command, path)),
+    )
+    if (errors && errors.length > 0) {
+      yield* Console.error(CliError.formatErrors(errors))
+    }
   })
 
 export const runWith = <N extends string, I, E, R>(
   command: Command<N, I, E, R>,
   config: { readonly version: string },
-): ((input: ReadonlyArray<string>) => Effect.Effect<void, E | CliError.CliError, R>) => {
+): (
+  input: ReadonlyArray<string>,
+) => Effect.Effect<void, E | CliError.CliError, R> => {
   const impl = toImpl(command)
   return (args: ReadonlyArray<string>) =>
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       const { tokens, trailingOperands } = lex(args)
       const { help, version, remainder } = yield* extractBuiltInOptions(tokens)
-      const parsedArgs = yield* parseArgs({ tokens: remainder, trailingOperands }, command)
+      const parsedArgs = yield* parseArgs({
+        tokens: remainder,
+        trailingOperands,
+      }, command)
       const commandPath = [command.name, ...getCommandPath(parsedArgs)]
 
       if (help) {
-        yield* Console.log(HelpDoc.formatHelpDoc(getHelpForCommandPath(command, commandPath)))
+        yield* Console.log(
+          HelpDoc.formatHelpDoc(getHelpForCommandPath(command, commandPath)),
+        )
         return
       }
       if (version) {
@@ -680,6 +754,8 @@ export const run: {
   ) => Effect.Effect<void, E | CliError.CliError, R>
 } = Function.dual(
   2,
-  <N extends string, I, E, R>(command: Command<N, I, E, R>, config: { readonly version: string }) =>
-    runWith(command, config)(process.argv.slice(2)),
+  <N extends string, I, E, R>(
+    command: Command<N, I, E, R>,
+    config: { readonly version: string },
+  ) => runWith(command, config)(process.argv.slice(2)),
 )

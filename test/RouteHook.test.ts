@@ -15,7 +15,9 @@ test.it("passes bindings", () => {
   const routes = Route.empty.pipe(
     Route.filter(() => Effect.succeed(filterResult)),
     Route.text((context) => {
-      test.expectTypeOf(context).toExtend<typeof filterResult.context>()
+      test
+        .expectTypeOf(context)
+        .toExtend<typeof filterResult.context>()
 
       return Effect.succeed(`Origin: ${context.headers.origin}`)
     }),
@@ -34,5 +36,7 @@ test.it("passes bindings", () => {
       >
     >()
 
-  test.expect(Route.items(routes)).toHaveLength(2)
+  test
+    .expect(Route.items(routes))
+    .toHaveLength(2)
 })

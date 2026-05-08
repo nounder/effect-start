@@ -1,8 +1,16 @@
-import type { JSX, HtmlElement, HtmlElemenetProps, HtmlElementType } from "../src/jsx.d.ts"
+import type {
+  HtmlElemenetProps,
+  HtmlElement,
+  HtmlElementType,
+  JSX,
+} from "../src/jsx.d.ts"
 
 const NoChildren: ReadonlyArray<never> = Object.freeze([])
 
-export function make(type: HtmlElementType, props: HtmlElemenetProps): HtmlElement {
+export function make(
+  type: HtmlElementType,
+  props: HtmlElemenetProps,
+): HtmlElement {
   return {
     type,
     props: {
@@ -16,7 +24,10 @@ export function isGenericJsxObject(value: unknown): value is {
   type: any
   props: any
 } {
-  return typeof value === "object" && value !== null && "type" in value && "props" in value
+  return typeof value === "object" &&
+    value !== null &&
+    "type" in value &&
+    "props" in value
 }
 
 const EMPTY_TAGS = [
@@ -44,7 +55,7 @@ let map = {
   "&": "amp",
   "<": "lt",
   ">": "gt",
-  '"': "quot",
+  "\"": "quot",
   "'": "#39",
 }
 
@@ -56,13 +67,18 @@ const serializeObjectProperty = (value: unknown): string | undefined => {
   if (value === undefined) return undefined
   if (typeof value === "function") return value.toString()
   if (Array.isArray(value)) {
-    return `[${value.map((item) => serializeObjectProperty(item) ?? "null").join(",")}]`
+    return `[${
+      value.map((item) => serializeObjectProperty(item) ?? "null").join(",")
+    }]`
   }
   if (value && typeof value === "object") {
-    const props = Object.entries(value)
+    const props = Object
+      .entries(value)
       .flatMap(([key, prop]) => {
         const serialized = serializeObjectProperty(prop)
-        return serialized === undefined ? [] : [`${JSON.stringify(key)}:${serialized}`]
+        return serialized === undefined
+          ? []
+          : [`${JSON.stringify(key)}:${serialized}`]
       })
       .join(",")
     return `{${props}}`
@@ -70,10 +86,18 @@ const serializeObjectProperty = (value: unknown): string | undefined => {
   return JSON.stringify(value)
 }
 
-const serializeDataAttributeObject = (key: string, value: Record<string, unknown>): string =>
-  key === "data-computed" ? serializeObjectProperty(value)! : JSON.stringify(value)
+const serializeDataAttributeObject = (
+  key: string,
+  value: Record<string, unknown>,
+): string =>
+  key === "data-computed"
+    ? serializeObjectProperty(value)!
+    : JSON.stringify(value)
 
-export function text(node: JSX.Children, hooks?: { onNode?: (node: HtmlElement) => void }): string {
+export function text(
+  node: JSX.Children,
+  hooks?: { onNode?: (node: HtmlElement) => void },
+): string {
   const stack: Array<any> = [node]
   let result = ""
 
@@ -136,9 +160,13 @@ export function text(node: JSX.Children, hooks?: { onNode?: (node: HtmlElement) 
             if (key.startsWith("data-") && typeof value === "function") {
               result += ` ${esc(resolvedKey)}="${esc(value.toString())}"`
             } else if (key.startsWith("data-") && typeof value === "object") {
-              result += ` ${esc(resolvedKey)}='${escSQ(serializeDataAttributeObject(key, value))}'`
+              result += ` ${esc(resolvedKey)}='${
+                escSQ(serializeDataAttributeObject(key, value))
+              }'`
             } else if (key.startsWith("on") && typeof value === "function") {
-              result += ` ${esc(resolvedKey)}="(${esc(value.toString())}).call(this,event)"`
+              result += ` ${esc(resolvedKey)}="(${
+                esc(value.toString())
+              }).call(this,event)"`
             } else {
               result += ` ${esc(resolvedKey)}="${esc(value)}"`
             }
@@ -163,7 +191,9 @@ export function text(node: JSX.Children, hooks?: { onNode?: (node: HtmlElement) 
             typeof (c as any)?.[TrustedHtmlSymbol] === "string"
               ? ((c as any)[TrustedHtmlSymbol] as string)
               : String(c)
-          const rawText = Array.isArray(children) ? children.map(toRaw).join("") : toRaw(children)
+          const rawText = Array.isArray(children)
+            ? children.map(toRaw).join("")
+            : toRaw(children)
           result += escapeRawText(rawText)
         } else if (Array.isArray(children)) {
           for (let i = children.length - 1; i >= 0; i--) {
@@ -213,9 +243,13 @@ type HtmlValue =
   | ReadonlyArray<HtmlValue>
 
 const resolveValue = (value: HtmlValue): string => {
-  if (value === null || value === undefined || value === false || value === true) return ""
+  if (
+    value === null || value === undefined || value === false || value === true
+  ) return ""
   if (isTrustedHtml(value)) return value.toString()
-  if (Array.isArray(value)) return (value as Array<HtmlValue>).map(resolveValue).join("")
+  if (Array.isArray(value)) {
+    return (value as Array<HtmlValue>).map(resolveValue).join("")
+  }
   if (typeof value === "function") return value.toString()
   if (typeof value === "object") return escSQ(JSON.stringify(value))
   if (typeof value === "string") return esc(value)

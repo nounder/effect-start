@@ -1,6 +1,5 @@
 import * as test from "bun:test"
 import * as Html from "../src/Html.ts"
-import { html } from "effect-start/Html"
 import type { HtmlElemenetProps } from "../src/jsx.d.ts"
 
 test.describe("html", () => {
@@ -11,94 +10,136 @@ test.describe("html", () => {
 
     test
       .expect(
-        html`
+        Html.html`
           <div>hello</div>
-        `.toString(),
+        `
+          .toString(),
       )
       .toBe(expected)
   })
 
   test.test("strings are escaped", () => {
-    const input = '<script>alert("xss")</script>'
+    const input = "<script>alert(\"xss\")</script>"
 
     test
-      .expect(html`<div>${input}</div>`.toString())
+      .expect(Html.html`<div>${input}</div>`.toString())
       .toBe("<div>&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;</div>")
   })
 
   test.test("interpolates numbers", () => {
-    test.expect(html`<span>${42}</span>`.toString()).toBe("<span>42</span>")
+    test
+      .expect(Html.html`<span>${42}</span>`.toString())
+      .toBe(
+        "<span>42</span>",
+      )
   })
 
   test.test("interpolates bigints", () => {
-    test.expect(html`<span>${100n}</span>`.toString()).toBe("<span>100</span>")
+    test
+      .expect(Html.html`<span>${100n}</span>`.toString())
+      .toBe(
+        "<span>100</span>",
+      )
   })
 
   test.test("null/undefined/boolean render as empty", () => {
-    test.expect(html`${null}${undefined}${false}${true}`.toString()).toBe("")
+    test
+      .expect(Html.html`${null}${undefined}${false}${true}`.toString())
+      .toBe(
+        "",
+      )
   })
 
   test.test("nested html templates compose", () => {
-    const inner = html`
+    const inner = Html.html`
       <em>bold</em>
     `
     const expected = `<div>${inner.toString()}</div>`
 
-    test.expect(html`<div>${inner}</div>`.toString()).toBe(expected)
+    test
+      .expect(Html.html`<div>${inner}</div>`.toString())
+      .toBe(expected)
   })
 
   test.test("arrays are joined", () => {
     const items = ["a", "b", "c"]
 
     test
-      .expect(html`<ul>${items.map((i) => html`<li>${i}</li>`)}</ul>`.toString())
+      .expect(
+        Html.html`<ul>${items.map((i) => Html.html`<li>${i}</li>`)}</ul>`
+          .toString(),
+      )
       .toBe("<ul><li>a</li><li>b</li><li>c</li></ul>")
   })
 
   test.test("html.unsafe passes through", () => {
-    const trusted = html.unsafe("<b>bold</b>")
+    const trusted = Html.html.unsafe("<b>bold</b>")
 
-    test.expect(html`<div>${trusted}</div>`.toString()).toBe("<div><b>bold</b></div>")
+    test
+      .expect(Html.html`<div>${trusted}</div>`.toString())
+      .toBe(
+        "<div><b>bold</b></div>",
+      )
   })
 
   test.test("objects are JSON-serialized", () => {
     const data = { name: "bob", age: 30 }
 
     test
-      .expect(html`<div data-signals='${data}'></div>`.toString())
-      .toBe('<div data-signals=\'{"name":"bob","age":30}\'></div>')
+      .expect(Html.html`<div data-signals='${data}'></div>`.toString())
+      .toBe("<div data-signals='{\"name\":\"bob\",\"age\":30}'></div>")
   })
 
   test.test("functions are stringified", () => {
     const fn = (window: Window) => window.alert("hi")
 
-    test.expect(html`${fn}`.toString()).toBe('(window) => window.alert("hi")')
+    test
+      .expect(Html.html`${fn}`.toString())
+      .toBe(
+        "(window) => window.alert(\"hi\")",
+      )
   })
 
   test.test("strings with & are escaped", () => {
-    test.expect(html`<div>${"a & b"}</div>`.toString()).toBe("<div>a &amp; b</div>")
+    test
+      .expect(Html.html`<div>${"a & b"}</div>`.toString())
+      .toBe(
+        "<div>a &amp; b</div>",
+      )
   })
 
   test.test("strings with single quotes are escaped", () => {
-    test.expect(html`<div>${"it's"}</div>`.toString()).toBe("<div>it&#39;s</div>")
+    test
+      .expect(Html.html`<div>${"it's"}</div>`.toString())
+      .toBe(
+        "<div>it&#39;s</div>",
+      )
   })
 
   test.test("objects with single quotes are escaped", () => {
     const data = { name: "it's" }
 
     test
-      .expect(html`<div data-signals='${data}'></div>`.toString())
-      .toBe('<div data-signals=\'{"name":"it&#39;s"}\'></div>')
+      .expect(Html.html`<div data-signals='${data}'></div>`.toString())
+      .toBe("<div data-signals='{\"name\":\"it&#39;s\"}'></div>")
   })
 
   test.test("nested html does not double-escape", () => {
-    const inner = html`${"<b>"}`
+    const inner = Html.html`${"<b>"}`
 
-    test.expect(html`<div>${inner}</div>`.toString()).toBe("<div>&lt;b&gt;</div>")
+    test
+      .expect(Html.html`<div>${inner}</div>`.toString())
+      .toBe(
+        "<div>&lt;b&gt;</div>",
+      )
   })
 
   test.test("array of strings escapes each item", () => {
-    test.expect(html`${["<a>", "<b>"] as any}`.toString()).toBe("&lt;a&gt;&lt;b&gt;")
+    test
+      .expect(Html.html`${["<a>", "<b>"] as any}`.toString())
+      .toBe(
+        "&lt;a&gt;&lt;b&gt;",
+      )
   })
 })
 
@@ -120,12 +161,20 @@ test.it("script function child infers event with window and target", () => {
     })
   }
 
-  test.expectTypeOf(handler).toExtend<HtmlElemenetProps[string]>()
+  test
+    .expectTypeOf(handler)
+    .toExtend<HtmlElemenetProps[string]>()
 
   const node = Html.make("script", { children: handler })
   const html_ = Html.text(node)
 
-  test.expect(html_).toContain("<script>(")
-  test.expect(html_).toContain("scrollTo")
-  test.expect(html_).toContain("MutationObserver")
+  test
+    .expect(html_)
+    .toContain("<script>(")
+  test
+    .expect(html_)
+    .toContain("scrollTo")
+  test
+    .expect(html_)
+    .toContain("MutationObserver")
 })

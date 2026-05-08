@@ -11,8 +11,14 @@ test.describe("PrettyValue", () => {
       />,
     )
 
-    test.expect(html).toContain("<pre")
-    test.expect(html).toContain("&quot;nested&quot;")
-    test.expect(html).toContain("&#10;")
+    test
+      .expect(html)
+      .toContain("<pre")
+    test
+      .expect(html)
+      .toContain("&quot;nested&quot;")
+    test
+      .expect(html)
+      .toContain("&#10;")
   })
 })

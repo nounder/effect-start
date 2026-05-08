@@ -1,5 +1,4 @@
-import type { PubSub } from "effect"
-import { Context, Data, Effect, pipe } from "effect"
+import { Context, Data, type Effect, pipe, type PubSub } from "effect"
 import * as Schema from "effect/Schema"
 
 /**
@@ -82,10 +81,11 @@ export const emptyBundleContext: BundleContext = {
   getArtifact: () => undefined,
 }
 
-export const Tag =
-  <const T extends BundleKey>(name: T) =>
-  <Identifier>() =>
-    Context.Tag(`${IdPrefix}${name}` as `${typeof IdPrefix}${T}`)<Identifier, BundleContext>()
+export const Tag = <const T extends BundleKey>(name: T) => <Identifier>() =>
+  Context.Tag(`${IdPrefix}${name}` as `${typeof IdPrefix}${T}`)<
+    Identifier,
+    BundleContext
+  >()
 
 export type Tag<T extends BundleKey = BundleKey> = Context.Tag<
   `${typeof IdPrefix}${T}`,
@@ -107,7 +107,7 @@ const isLocalPath = (path: string) =>
  */
 export const makeResolver = (
   entrypoints: Record<string, string>,
-): ((path: string) => string | undefined) => {
+): (path: string) => string | undefined => {
   const cache: Record<string, string | undefined> = Object.create(null)
 
   return (path: string): string | undefined => {
@@ -126,12 +126,17 @@ export const makeResolver = (
       if (segments.length < needle.length) continue
 
       const tail = segments.slice(segments.length - needle.length)
-      if (tail.every((seg, i) => seg === needle[i]) && segments.length > bestLength) {
+      if (
+        tail.every((seg, i) => seg === needle[i]) &&
+        segments.length > bestLength
+      ) {
         bestKey = key
         bestLength = segments.length
       }
     }
 
-    return (cache[path] = bestKey !== undefined ? entrypoints[bestKey] : undefined)
+    return (cache[path] = bestKey !== undefined
+      ? entrypoints[bestKey]
+      : undefined)
   }
 }

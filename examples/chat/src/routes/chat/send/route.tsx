@@ -1,9 +1,9 @@
 import { Effect, PubSub, Ref } from "effect"
 import { Route } from "effect-start"
-import { type ChatMessage, chatPubSub, messagesRef } from "../../../Chat.tsx"
+import * as Chat from "../../../Chat.tsx"
 
 export default Route.post(
-  Route.text(function* () {
+  Route.text(function*() {
     const request = yield* Route.Request
     const body = yield* Effect.tryPromise(() => request.json())
     const { pendingDraft, username } = body as {
@@ -15,27 +15,27 @@ export default Route.post(
       return ""
     }
 
-    const userMessage: ChatMessage = {
+    const userMessage: Chat.ChatMessage = {
       id: crypto.randomUUID(),
       user: username || "Anonymous",
       text: pendingDraft.trim(),
       timestamp: Date.now(),
     }
 
-    yield* Ref.update(messagesRef, (msgs) => [...msgs, userMessage])
-    yield* PubSub.publish(chatPubSub, userMessage)
+    yield* Ref.update(Chat.messagesRef, (msgs) => [...msgs, userMessage])
+    yield* PubSub.publish(Chat.chatPubSub, userMessage)
 
     yield* Effect.sleep(200)
 
-    const assistantMessage: ChatMessage = {
+    const assistantMessage: Chat.ChatMessage = {
       id: crypto.randomUUID(),
       user: "Assistant",
       text: "I don't understand",
       timestamp: Date.now(),
     }
 
-    yield* Ref.update(messagesRef, (msgs) => [...msgs, assistantMessage])
-    yield* PubSub.publish(chatPubSub, assistantMessage)
+    yield* Ref.update(Chat.messagesRef, (msgs) => [...msgs, assistantMessage])
+    yield* PubSub.publish(Chat.chatPubSub, assistantMessage)
 
     return `event: datastar-patch-signals\ndata: signals {"message":""}\n\n`
   }),

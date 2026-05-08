@@ -29,5 +29,7 @@ export function fromPath(path: string): string {
   const dotIndex = path.lastIndexOf(".")
   const extension = dotIndex === -1 ? "" : path.slice(dotIndex).toLowerCase()
   const mediaType = mediaTypes[extension] ?? "application/octet-stream"
-  return mediaType.startsWith("text/") ? `${mediaType}; charset=utf-8` : mediaType
+  return mediaType.startsWith("text/")
+    ? `${mediaType}; charset=utf-8`
+    : mediaType
 }

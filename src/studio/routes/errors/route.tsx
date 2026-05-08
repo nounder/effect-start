@@ -1,14 +1,14 @@
 import * as Effect from "effect/Effect"
 import * as Stream from "effect/Stream"
-import * as Route from "../../../Route.ts"
 import * as Html from "../../../Html.ts"
+import * as Route from "../../../Route.ts"
 import * as Studio from "../../Studio.ts"
 import * as StudioStore from "../../StudioStore.ts"
 import * as Errors from "../../ui/Errors.tsx"
 import * as Shell from "../../ui/Shell.tsx"
 
 export default Route.get(
-  Route.html(function* (_ctx) {
+  Route.html(function*(_ctx) {
     const studio = yield* Studio.Studio
     const request = yield* Route.Request
     const url = new URL(request.url)
@@ -24,7 +24,9 @@ export default Route.get(
     const sortedTags = Array.from(tagSet).sort()
     let errors = allErrors
     if (tag) {
-      errors = errors.filter((e) => e.details.some((d) => d.tag && d.tag.startsWith(tag)))
+      errors = errors.filter((e) =>
+        e.details.some((d) => d.tag && d.tag.startsWith(tag))
+      )
     }
     if (search) {
       const lower = search.toLowerCase()
@@ -41,14 +43,17 @@ export default Route.get(
           data-signals={{ errorSearch: "", errorTag: "" }}
           style="display:flex;flex-direction:column;flex:1;overflow:hidden"
         >
-          <div class="tab-header">Errors</div>
+          <div class="tab-header">
+            Errors
+          </div>
           <div class="filter-bar">
             <input
               type="text"
               name="errorSearch"
               placeholder="Search..."
               data-bind:errorSearch
-              data-on:input={(c) => c.actions.get(location.href, { contentType: "form" })}
+              data-on:input={(c) =>
+                c.actions.get(location.href, { contentType: "form" })}
             />
             <input
               type="text"
@@ -56,12 +61,11 @@ export default Route.get(
               placeholder="Tag..."
               list="error-tags"
               data-bind:errorTag
-              data-on:input={(c) => c.actions.get(location.href, { contentType: "form" })}
+              data-on:input={(c) =>
+                c.actions.get(location.href, { contentType: "form" })}
             />
             <datalist id="error-tags">
-              {sortedTags.map((t) => (
-                <option value={t} />
-              ))}
+              {sortedTags.map((t) => <option value={t} />)}
             </datalist>
           </div>
           <div id="errors-list" class="tab-body">
@@ -76,14 +80,16 @@ export default Route.get(
     )
   }),
   Route.sse(
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       const studio = yield* Studio.Studio
       return Stream.fromPubSub(studio.store.events).pipe(
         Stream.filter((e) => e._tag === "Error"),
         Stream.map((e) => {
-          const html = Html.text(
-            <Errors.ErrorLine prefix={studio.path} error={e.error} />,
-          ).replace(/\n/g, "")
+          const html = Html
+            .text(
+              <Errors.ErrorLine prefix={studio.path} error={e.error} />,
+            )
+            .replace(/\n/g, "")
           return {
             event: "datastar-patch-elements",
             data: `selector #errors-list\nmode prepend\nelements ${html}`,

@@ -14,7 +14,9 @@ attribute({
     const callback = () => {
       observer.disconnect()
 
-      classes = key ? { [key]: rx() as boolean } : (rx() as Record<string, boolean>)
+      classes = key
+        ? { [key]: rx() as boolean }
+        : (rx() as Record<string, boolean>)
 
       for (const k in classes) {
         const classNames = k.split(/\s+/).filter((cn) => cn.length > 0)

@@ -1,5 +1,4 @@
 import type * as PathPattern from "./internal/PathPattern.ts"
-import type * as Values from "./internal/Values.ts"
 import * as Route from "./Route.ts"
 import type * as RouteMount from "./RouteMount.ts"
 
@@ -31,8 +30,8 @@ export type RouteMap = {
  */
 export type Context<T> = Exclude<
   {
-    [K in keyof T]: T[K] extends Iterable<Route.Route<any, any, any, any, infer R>>
-      ? R
+    [K in keyof T]: T[K] extends
+      Iterable<Route.Route<any, any, any, any, infer R>> ? R
       : Context<T[K]>
   }[keyof T],
   { readonly [Route.IntrinsicService]?: any }
@@ -42,39 +41,47 @@ type PrefixKeys<T, Prefix extends string> = {
   [K in keyof T as K extends string ? `${Prefix}${K}` : never]: T[K]
 }
 
-type InferItems<T> =
-  T extends Route.RouteSet.Data<any, any, infer M> ? M : T extends Route.Route.Tuple ? T : []
+type InferItems<T> = T extends Route.RouteSet.Data<any, any, infer M> ? M
+  : T extends Route.Route.Tuple ? T
+  : []
 
-type LayerItems<T extends RouteMapInput> = "*" extends keyof T ? InferItems<T["*"]> : []
+type LayerItems<T extends RouteMapInput> = "*" extends keyof T
+  ? InferItems<T["*"]>
+  : []
 
 type IsLeaf<T> = T extends Iterable<any> ? true : false
 
 type FlattenRouteMap<T extends RouteMapInput> = string extends keyof T
   ? RouteMap
-  : {
+  :
+    & {
       [K in Exclude<keyof T, "*"> as IsLeaf<T[K]> extends true ? K : never]: [
         ...LayerItems<T>,
         ...InferItems<T[K]>,
       ]
-    } & UnionToIntersection<FlattenNested<T, Exclude<keyof T, "*">, LayerItems<T>>>
+    }
+    & UnionToIntersection<
+      FlattenNested<T, Exclude<keyof T, "*">, LayerItems<T>>
+    >
 
 type FlattenNested<T, K, L extends Route.Route.Tuple> = K extends keyof T
-  ? IsLeaf<T[K]> extends true
-    ? {}
-    : T[K] extends RouteMapInput
-      ? PrefixKeys<PrependLayers<FlattenRouteMap<T[K]>, L>, K & string>
-      : {}
+  ? IsLeaf<T[K]> extends true ? {}
+  : T[K] extends RouteMapInput
+    ? PrefixKeys<PrependLayers<FlattenRouteMap<T[K]>, L>, K & string>
+  : {}
   : {}
 
 type PrependLayers<T extends RouteMap, L extends Route.Route.Tuple> = {
   [K in keyof T]: T[K] extends Route.Route.Tuple ? [...L, ...T[K]] : never
 }
 
-type UnionToIntersection<U> = (U extends any ? (x: U) => void : never) extends (x: infer I) => void
-  ? I
+type UnionToIntersection<U> = (U extends any ? (x: U) => void : never) extends
+  (x: infer I) => void ? I
   : never
 
-export function make<const Input extends RouteMapInput>(input: Input): FlattenRouteMap<Input> {
+export function make<const Input extends RouteMapInput>(
+  input: Input,
+): FlattenRouteMap<Input> {
   const merged: RouteMap = {}
   flatten(input, "", [], merged)
   return sortRoutes(merged) as FlattenRouteMap<Input>
@@ -86,7 +93,10 @@ function flatten(
   parentLayers: Array<MethodRoute>,
   out: RouteMap,
 ): void {
-  const layers = [...parentLayers, ...((map[LayerKey] ?? []) as Iterable<MethodRoute>)]
+  const layers = [
+    ...parentLayers,
+    ...((map[LayerKey] ?? []) as Iterable<MethodRoute>),
+  ]
 
   for (const key of Object.keys(map)) {
     if (key === LayerKey) continue
@@ -125,26 +135,39 @@ export function merge(a: RouteMap, b: RouteMap): RouteMap {
 // segment priority: static (0) < :param (1) < :param? (2) < :param+ (3) < :param* (4)
 function sortScore(path: string): number {
   const segments = path.split("/")
-  const greedyIdx = segments.findIndex((s) => s.endsWith("*") || s.endsWith("+"))
+  const greedyIdx = segments.findIndex((s) =>
+    s.endsWith("*") || s.endsWith("+")
+  )
   const maxPriority = Math.max(
     ...segments.map((s) =>
-      !s.startsWith(":") ? 0 : s.endsWith("*") ? 4 : s.endsWith("+") ? 3 : s.endsWith("?") ? 2 : 1,
+      !s.startsWith(":")
+        ? 0
+        : s.endsWith("*")
+        ? 4
+        : s.endsWith("+")
+        ? 3
+        : s.endsWith("?")
+        ? 2
+        : 1
     ),
     0,
   )
 
   return greedyIdx === -1
-    ? // non-greedy: sort by depth, then by max segment priority
-      (segments.length << 16) + (maxPriority << 8)
-    : // greedy: sort after non-greedy, by greedy position (later = first), then priority
-      (1 << 24) + ((16 - greedyIdx) << 16) + (maxPriority << 8)
+    // non-greedy: sort by depth, then by max segment priority
+    ? (segments.length << 16) + (maxPriority << 8)
+    // greedy: sort after non-greedy, by greedy position (later = first), then priority
+    : (1 << 24) + ((16 - greedyIdx) << 16) + (maxPriority << 8)
 }
 
 function sortRoutes(input: RouteMap): RouteMap {
-  const keys = Object.keys(input).sort((a, b) => sortScore(a) - sortScore(b) || a.localeCompare(b))
+  const keys = Object.keys(input).sort((a, b) =>
+    sortScore(a) - sortScore(b) || a.localeCompare(b)
+  )
   const sorted: RouteMap = {}
   for (const key of keys) {
-    sorted[key as PathPattern.PathPattern] = input[key as PathPattern.PathPattern]
+    sorted[key as PathPattern.PathPattern] =
+      input[key as PathPattern.PathPattern]
   }
   return sorted
 }
@@ -158,6 +181,9 @@ function* flattenRoutes(
       ...route[Route.RouteDescriptor],
       path,
     }
-    yield Route.make(route.handler as any, descriptor) as RouteMount.MountedRoute
+    yield Route.make(
+      route.handler as any,
+      descriptor,
+    ) as RouteMount.MountedRoute
   }
 }

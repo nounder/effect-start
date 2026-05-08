@@ -1,10 +1,10 @@
-import * as NOS from "node:os"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as PubSub from "effect/PubSub"
 import * as Schedule from "effect/Schedule"
+import * as NOS from "node:os"
 import * as Studio from "./Studio.ts"
-import * as StudioStore from "./StudioStore.ts"
+import type * as StudioStore from "./StudioStore.ts"
 
 function snapshot(): StudioStore.ProcessStats {
   const mem = process.memoryUsage()
@@ -42,19 +42,22 @@ function snapshot(): StudioStore.ProcessStats {
   }
 }
 
-export const layer: Layer.Layer<never, never, Studio.Studio> = Layer.scopedDiscard(
-  Effect.gen(function* () {
-    const { store } = yield* Studio.Studio
+export const layer: Layer.Layer<never, never, Studio.Studio> = Layer
+  .scopedDiscard(
+    Effect.gen(function*() {
+      const { store } = yield* Studio.Studio
 
-    yield* Effect.forkScoped(
-      Effect.schedule(
-        Effect.sync(() => {
-          const stats = snapshot()
-          store.process = stats
-          Effect.runSync(PubSub.publish(store.events, { _tag: "ProcessSnapshot", stats }))
-        }),
-        Schedule.spaced("2 seconds"),
-      ),
-    )
-  }),
-)
+      yield* Effect.forkScoped(
+        Effect.schedule(
+          Effect.sync(() => {
+            const stats = snapshot()
+            store.process = stats
+            Effect.runSync(
+              PubSub.publish(store.events, { _tag: "ProcessSnapshot", stats }),
+            )
+          }),
+          Schedule.spaced("2 seconds"),
+        ),
+      )
+    }),
+  )

@@ -2,7 +2,9 @@ import * as test from "bun:test"
 import * as StudioStore from "../../../../src/studio/StudioStore.ts"
 
 function makeSpan(
-  options: Partial<StudioStore.StudioSpan> & Pick<StudioStore.StudioSpan, "spanId" | "traceId" | "name">,
+  options:
+    & Partial<StudioStore.StudioSpan>
+    & Pick<StudioStore.StudioSpan, "spanId" | "traceId" | "name">,
 ): StudioStore.StudioSpan {
   return {
     spanId: options.spanId,
@@ -31,7 +33,9 @@ test.describe("traces route", () => {
       }),
     ]
 
-    test.expect(StudioStore.isStudioTrace(spans)).toBe(true)
+    test
+      .expect(StudioStore.isStudioTrace(spans))
+      .toBe(true)
   })
 
   test.it("removes all spans for traces marked as studio", () => {
@@ -54,8 +58,12 @@ test.describe("traces route", () => {
       }),
     ]
 
-    test.expect(StudioStore.filterOutStudioSpans(spans).map((span) => span.traceId)).toEqual([
-      1n,
-    ])
+    test
+      .expect(
+        StudioStore.filterOutStudioSpans(spans).map((span) => span.traceId),
+      )
+      .toEqual([
+        1n,
+      ])
   })
 })

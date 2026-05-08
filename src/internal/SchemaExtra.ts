@@ -4,7 +4,9 @@ import * as SchemaAST from "effect/SchemaAST"
 function getBaseSchemaAST(schema: Schema.Schema.Any): SchemaAST.AST {
   let current = schema.ast
 
-  while (SchemaAST.isRefinement(current) || SchemaAST.isTransformation(current)) {
+  while (
+    SchemaAST.isRefinement(current) || SchemaAST.isTransformation(current)
+  ) {
     current = current.from
   }
 

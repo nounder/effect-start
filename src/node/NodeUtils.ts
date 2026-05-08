@@ -3,7 +3,9 @@ import * as NPath from "node:path"
 
 export const getEntrypoint = () => NPath.dirname(process.argv[1])
 
-export const findClosestPackageJson = async (path: string): Promise<string | undefined> => {
+export const findClosestPackageJson = async (
+  path: string,
+): Promise<string | undefined> => {
   const resolved = NPath.resolve(path)
   const stat = await NFS.stat(resolved).catch(() => undefined)
   let dir = stat?.isDirectory() ? resolved : NPath.dirname(resolved)
@@ -22,7 +24,9 @@ export const findClosestPackageJson = async (path: string): Promise<string | und
   return undefined
 }
 
-export const findProjectRoot = async (from: string): Promise<string | undefined> => {
+export const findProjectRoot = async (
+  from: string,
+): Promise<string | undefined> => {
   const pkgJson = await findClosestPackageJson(from)
   return pkgJson ? NPath.dirname(pkgJson) : undefined
 }

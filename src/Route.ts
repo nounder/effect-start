@@ -59,13 +59,13 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Pipeable from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
+import type { JSX } from "../src/jsx.d.ts"
 import * as Development from "./Development.ts"
 import * as Entity from "./Entity.ts"
+import * as Html from "./Html.ts"
+import type * as Values from "./internal/Values.ts"
 import * as RouteBody from "./RouteBody.ts"
 import * as RouteMap from "./RouteMap.ts"
-import type * as Values from "./internal/Values.ts"
-import * as Html from "./Html.ts"
-import type { JSX } from "../src/jsx.d.ts"
 
 /** @internal */
 export const RouteItems: unique symbol = Symbol()
@@ -77,10 +77,13 @@ declare const RouteBindings: unique symbol
 export const TypeId = "~effect-start/RouteSet" as const
 
 /** @internal */
-export type RouteSet<D = {}, B = {}, M extends Route.Tuple = []> = RouteSet.Data<D, B, M> & {
-  [TypeId]: typeof TypeId
-} & Pipeable.Pipeable &
-  Iterable<M[number]>
+export type RouteSet<D = {}, B = {}, M extends Route.Tuple = []> =
+  & RouteSet.Data<D, B, M>
+  & {
+    [TypeId]: typeof TypeId
+  }
+  & Pipeable.Pipeable
+  & Iterable<M[number]>
 
 /** @internal */
 export namespace RouteSet {
@@ -90,24 +93,30 @@ export namespace RouteSet {
     [RouteBindings]: B
   }
 
-  export type Proto = Pipeable.Pipeable &
-    Iterable<Route<any, any, any, any, any>> & {
+  export type Proto =
+    & Pipeable.Pipeable
+    & Iterable<Route<any, any, any, any, any>>
+    & {
       [TypeId]: typeof TypeId
     }
 
   export type Any = RouteSet<{}, {}, Route.Tuple>
 
-  export type Items<T extends Data<any, any, any>> = T extends Data<any, any, infer M> ? M : never
+  export type Items<T extends Data<any, any, any>> = T extends
+    Data<any, any, infer M> ? M : never
 
-  export type Descriptor<T extends Data<any, any, any>> =
-    T extends Data<infer D, any, any> ? D : never
+  export type Descriptor<T extends Data<any, any, any>> = T extends
+    Data<infer D, any, any> ? D : never
 }
 
-export interface Route<D = {}, B = {}, A = any, E = never, R = never> extends RouteSet<
-  D,
-  B,
-  [Route<D, B, A, E, R>]
-> {
+export interface Route<D = {}, B = {}, A = any, E = never, R = never>
+  extends
+    RouteSet<
+      D,
+      B,
+      [Route<D, B, A, E, R>]
+    >
+{
   readonly handler: Route.Handler<any, any, any, any>
 }
 
@@ -116,7 +125,7 @@ export namespace Route {
     [RouteDescriptor]: D
   }
 
-  export type Tuple = [...Route<any, any, any, any, any>[]]
+  export type Tuple = [...Array<Route<any, any, any, any, any>>]
 
   export type Handler<B, A, E, R> = (
     context: B,
@@ -126,13 +135,16 @@ export namespace Route {
   /**
    * Extracts only the bindings (B) from routes, excluding descriptors.
    */
-  export type Bindings<T extends RouteSet.Any, M extends Tuple = RouteSet.Items<T>> = M extends [
+  export type Bindings<
+    T extends RouteSet.Any,
+    M extends Tuple = RouteSet.Items<T>,
+  > = M extends [
     infer Head,
     ...infer Tail extends Tuple,
   ]
     ? Head extends Route<any, infer B, any, any, any>
       ? ShallowMerge<B, Bindings<T, Tail>>
-      : Bindings<T, Tail>
+    : Bindings<T, Tail>
     : {}
 
   /**
@@ -141,16 +153,18 @@ export namespace Route {
    * taking precedence via ShallowMerge to avoid `never` from conflicting
    * literal types (e.g. `{ method: "*" } & { method: "GET" }`).
    */
-  export type Context<T extends RouteSet.Any> = Omit<
-    RouteSet.Descriptor<T>,
-    keyof ExtractContext<RouteSet.Items<T>>
-  > &
-    ExtractContext<RouteSet.Items<T>>
+  export type Context<T extends RouteSet.Any> =
+    & Omit<
+      RouteSet.Descriptor<T>,
+      keyof ExtractContext<RouteSet.Items<T>>
+    >
+    & ExtractContext<RouteSet.Items<T>>
 
-  type ExtractContext<M extends Tuple> = M extends [infer Head, ...infer Tail extends Tuple]
+  type ExtractContext<M extends Tuple> = M extends
+    [infer Head, ...infer Tail extends Tuple]
     ? Head extends Route<infer D, infer B, any, any, any>
       ? ShallowMerge<Omit<D, keyof B> & B, ExtractContext<Tail>>
-      : ExtractContext<Tail>
+    : ExtractContext<Tail>
     : {}
 }
 
@@ -162,7 +176,9 @@ export const text = RouteBody.build<string, "text">({
 
 export const html = RouteBody.build<string | JSX.Children, string, "html">({
   format: "html",
-  handle: (body) => (typeof body === "string" ? body : Html.text(body as JSX.Children)),
+  handle: (
+    body,
+  ) => (typeof body === "string" ? body : Html.text(body as JSX.Children)),
 })
 
 export const json = RouteBody.build<Values.Json, "json">({
@@ -176,7 +192,9 @@ export const bytes = RouteBody.build<Uint8Array, "bytes">({
 export function redirect<D, B, I extends Route.Tuple>(
   url: string | URL,
   options?: { status?: 301 | 302 | 303 | 307 | 308 },
-): (self: RouteSet<D, B, I>) => RouteSet<D, B, [...I, Route<{}, {}, "", never, never>]> {
+): (
+  self: RouteSet<D, B, I>,
+) => RouteSet<D, B, [...I, Route<{}, {}, "", never, never>]> {
   const route = make<{}, {}, "">(
     () =>
       Effect.succeed(
@@ -191,15 +209,33 @@ export function redirect<D, B, I extends Route.Tuple>(
   )
 
   return (self) =>
-    set<D, B, [...I, Route<{}, {}, "", never, never>]>([...items(self), route], descriptor(self))
+    set<D, B, [...I, Route<{}, {}, "", never, never>]>(
+      [...items(self), route],
+      descriptor(self),
+    )
 }
 
-export { del, get, head, options, patch, post, put, use } from "./RouteMount.ts"
-export { sse } from "./RouteSse.ts"
-export { make as map } from "./RouteMap.ts"
-export { link } from "./RouteLink.ts"
-export { filter } from "./RouteHook.ts"
 export {
+  filter,
+} from "./RouteHook.ts"
+export {
+  link,
+} from "./RouteLink.ts"
+export {
+  make as map,
+} from "./RouteMap.ts"
+export {
+  del,
+  get,
+  head,
+  options,
+  patch,
+  post,
+  put,
+  use,
+} from "./RouteMount.ts"
+export {
+  RequestBodyError,
   schemaBodyForm,
   schemaBodyJson,
   schemaBodyMultipart,
@@ -210,10 +246,14 @@ export {
   schemaPathParams,
   schemaSearchParams,
   schemaSuccess,
-  RequestBodyError,
 } from "./RouteSchema.ts"
+export {
+  sse,
+} from "./RouteSse.ts"
 
-export class Routes extends Context.Tag("effect-start/Routes")<Routes, RouteMap.RouteMap>() {}
+export class Routes
+  extends Context.Tag("effect-start/Routes")<Routes, RouteMap.RouteMap>()
+{}
 
 export function layer<const Input extends RouteMap.RouteMapInput>(
   routes: Input,
@@ -230,7 +270,7 @@ export function layerMerge<const Input extends RouteMap.RouteMapInput>(
 ): Layer.Layer<Routes, never, RouteMap.Context<Input>> {
   return Layer.effect(
     Routes,
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       const existing = yield* Effect.serviceOption(Routes).pipe(
         Effect.andThen(Option.getOrUndefined),
       )
@@ -249,7 +289,11 @@ export function layerMerge<const Input extends RouteMap.RouteMapInput>(
  */
 export function devOnly<D, B, I extends Route.Tuple>(
   self: RouteSet<D, B, I>,
-): RouteSet<D, B, [...I, Route<{ dev: true }, { dev: true }, unknown, any, any>]> {
+): RouteSet<
+  D,
+  B,
+  [...I, Route<{ dev: true }, { dev: true }, unknown, any, any>]
+> {
   const route: Route<{ dev: true }, { dev: true }, unknown, any, any> = make<
     { dev: true },
     { dev: true },
@@ -258,20 +302,29 @@ export function devOnly<D, B, I extends Route.Tuple>(
     any
   >(
     (_context, next) =>
-      Effect.flatMap(Development.option, (developmentOption) =>
-        Option.isSome(developmentOption)
-          ? Effect.succeed(next)
-          : Effect.succeed(Entity.make("", { status: 404 })),
+      Effect.flatMap(
+        Development.option,
+        (developmentOption) =>
+          Option.isSome(developmentOption)
+            ? Effect.succeed(next)
+            : Effect.succeed(Entity.make("", { status: 404 })),
       ),
     { dev: true },
   )
 
-  const nextItems: [...I, Route<{ dev: true }, { dev: true }, unknown, any, any>] = [
+  const nextItems: [
+    ...I,
+    Route<{ dev: true }, { dev: true }, unknown, any, any>,
+  ] = [
     ...items(self),
     route,
   ]
 
-  return set<D, B, [...I, Route<{ dev: true }, { dev: true }, unknown, any, any>]>(
+  return set<
+    D,
+    B,
+    [...I, Route<{ dev: true }, { dev: true }, unknown, any, any>]
+  >(
     nextItems,
     descriptor(self),
   )
@@ -347,7 +400,9 @@ export function describe<D extends {} = {}>(descriptor: D) {
 }
 
 /** @internal */
-export function items<T extends RouteSet.Data<any, any, any>>(self: T): RouteSet.Items<T> {
+export function items<T extends RouteSet.Data<any, any, any>>(
+  self: T,
+): RouteSet.Items<T> {
   return self[RouteItems]
 }
 
@@ -361,7 +416,7 @@ export function descriptor<T extends RouteSet.Data<any, any, any>>(
 ): Array<T[typeof RouteDescriptor]>
 export function descriptor(
   self: RouteSet.Data<any, any, any> | Iterable<RouteSet.Data<any, any, any>>,
-): object | object[] {
+): object | Array<object> {
   if (RouteDescriptor in self) {
     return self[RouteDescriptor]
   }
@@ -374,17 +429,20 @@ export type ExtractBindings<M extends Route.Tuple> = M extends [
 ]
   ? Head extends Route<any, infer B, any, any, any>
     ? ShallowMerge<B, ExtractBindings<Tail>>
-    : ExtractBindings<Tail>
+  : ExtractBindings<Tail>
   : {}
 
 // Shallow merge two object types.
 // For overlapping keys, intersect the values.
-type ShallowMerge<A, B> = Omit<A, keyof B> & {
-  [K in keyof B]: K extends keyof A ? A[K] & B[K] : B[K]
-}
+type ShallowMerge<A, B> =
+  & Omit<A, keyof B>
+  & {
+    [K in keyof B]: K extends keyof A ? A[K] & B[K] : B[K]
+  }
 
-export type ExtractContext<Items extends Route.Tuple, Descriptor> = ExtractBindings<Items> &
-  Descriptor
+export type ExtractContext<Items extends Route.Tuple, Descriptor> =
+  & ExtractBindings<Items>
+  & Descriptor
 
 /**
  * Phantom marker for services that are provided automatically.
@@ -406,6 +464,10 @@ export class Request extends Context.Tag("effect-start/Route/Request")<
  *
  * @internal
  */
-export class RouteContext extends Context.Reference<RouteContext>()("effect-start/RouteContext", {
-  defaultValue: () => ({ context: Object.freeze({}) as Record<string, unknown> }),
-}) {}
+export class RouteContext
+  extends Context.Reference<RouteContext>()("effect-start/RouteContext", {
+    defaultValue: () => ({
+      context: Object.freeze({}) as Record<string, unknown>,
+    }),
+  })
+{}

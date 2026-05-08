@@ -1,7 +1,7 @@
 import * as test from "bun:test"
-import * as Context from "effect/Context"
 import * as Route from "effect-start/Route"
 import * as RouteMap from "effect-start/RouteMap"
+import * as Context from "effect/Context"
 
 test.describe("layer route", () => {
   test.it("merges LayerRoute into other routes", () => {
@@ -10,15 +10,24 @@ test.describe("layer route", () => {
       "/users": Route.get(Route.text("users")),
     })
 
-    test.expectTypeOf<typeof tree>().toExtend<{
-      "/users": Route.Route.Tuple
-    }>()
+    test
+      .expectTypeOf<typeof tree>()
+      .toExtend<{
+        "/users": Route.Route.Tuple
+      }>()
 
     // "*" key should not exist in the resulting type
-    test.expectTypeOf<typeof tree>().not.toHaveProperty("*")
+    test
+      .expectTypeOf<typeof tree>()
+      .not
+      .toHaveProperty("*")
 
     // layer route should be first in the tuple (method: "*")
-    test.expectTypeOf<(typeof tree)["/users"][0]>().toExtend<Route.Route.With<{ method: "*" }>>()
+    test
+      .expectTypeOf<(typeof tree)["/users"][0]>()
+      .toExtend<
+        Route.Route.With<{ method: "*" }>
+      >()
 
     // actual route should be second (method: "GET")
     test
@@ -33,12 +42,14 @@ test.describe("layer route", () => {
       "/admin": Route.post(Route.json({ ok: true })),
     })
 
-    test.expect(Route.descriptor(RouteMap.walk(tree))).toEqual([
-      { path: "/admin", method: "*" },
-      { path: "/admin", method: "POST", format: "json" },
-      { path: "/users", method: "*" },
-      { path: "/users", method: "GET", format: "text" },
-    ])
+    test
+      .expect(Route.descriptor(RouteMap.walk(tree)))
+      .toEqual([
+        { path: "/admin", method: "*" },
+        { path: "/admin", method: "POST", format: "json" },
+        { path: "/users", method: "*" },
+        { path: "/users", method: "GET", format: "text" },
+      ])
   })
 
   test.it("prepends multiple LayerRoutes to all other routes", () => {
@@ -49,11 +60,13 @@ test.describe("layer route", () => {
       "/users": Route.get(Route.text("users")),
     })
 
-    test.expect(Route.descriptor(RouteMap.walk(tree))).toEqual([
-      { path: "/users", method: "*" },
-      { path: "/users", method: "*" },
-      { path: "/users", method: "GET", format: "text" },
-    ])
+    test
+      .expect(Route.descriptor(RouteMap.walk(tree)))
+      .toEqual([
+        { path: "/users", method: "*" },
+        { path: "/users", method: "*" },
+        { path: "/users", method: "GET", format: "text" },
+      ])
   })
 
   test.it("only allows method '*' routes under '*' key", () => {
@@ -79,21 +92,25 @@ test.describe("layer route", () => {
 test.describe(RouteMap.make, () => {
   test.it("makes", () => {
     const routes = RouteMap.make({
-      "/admin": Route.use(
-        Route.filter({
-          context: {
-            isAdmin: true,
-          },
-        }),
-      ).get(Route.text("admin home")),
+      "/admin": Route
+        .use(
+          Route.filter({
+            context: {
+              isAdmin: true,
+            },
+          }),
+        )
+        .get(Route.text("admin home")),
 
       "/users": Route.get(Route.text("users list")),
     })
 
-    test.expectTypeOf<typeof routes>().toExtend<{
-      "/admin": unknown
-      "/users": unknown
-    }>()
+    test
+      .expectTypeOf<typeof routes>()
+      .toExtend<{
+        "/admin": unknown
+        "/users": unknown
+      }>()
   })
 
   test.it("flattens nested route trees with prefixed paths", () => {
@@ -107,19 +124,29 @@ test.describe(RouteMap.make, () => {
       "/api": apiTree,
     })
 
-    test.expectTypeOf<(typeof tree)["/"]>().toExtend<Route.Route.Tuple>()
+    test
+      .expectTypeOf<(typeof tree)["/"]>()
+      .toExtend<Route.Route.Tuple>()
 
     test
       .expectTypeOf<(typeof tree)["/"][0]>()
       .toExtend<Route.Route.With<{ method: "GET"; format: "text" }>>()
 
-    test.expectTypeOf<(typeof tree)["/api/users"]>().toExtend<Route.Route.Tuple>()
+    test
+      .expectTypeOf<(typeof tree)["/api/users"]>()
+      .toExtend<
+        Route.Route.Tuple
+      >()
 
     test
       .expectTypeOf<(typeof tree)["/api/users"][0]>()
       .toExtend<Route.Route.With<{ method: "GET"; format: "json" }>>()
 
-    test.expectTypeOf<(typeof tree)["/api/posts"]>().toExtend<Route.Route.Tuple>()
+    test
+      .expectTypeOf<(typeof tree)["/api/posts"]>()
+      .toExtend<
+        Route.Route.Tuple
+      >()
 
     test
       .expectTypeOf<(typeof tree)["/api/posts"][0]>()
@@ -137,11 +164,13 @@ test.describe(RouteMap.make, () => {
       "/api": apiTree,
     })
 
-    test.expect(Route.descriptor(RouteMap.walk(tree))).toEqual([
-      { path: "/", method: "GET", format: "text" },
-      { path: "/api/posts", method: "POST", format: "json" },
-      { path: "/api/users", method: "GET", format: "json" },
-    ])
+    test
+      .expect(Route.descriptor(RouteMap.walk(tree)))
+      .toEqual([
+        { path: "/", method: "GET", format: "text" },
+        { path: "/api/posts", method: "POST", format: "json" },
+        { path: "/api/users", method: "GET", format: "json" },
+      ])
   })
 
   test.it("deeply nested route trees", () => {
@@ -161,7 +190,6 @@ test.describe(RouteMap.make, () => {
       .expect(Route.descriptor(RouteMap.walk(tree)).map((d) => d.path))
       .toEqual(["/api/v1/health"])
   })
-
 })
 
 test.describe(RouteMap.walk, () => {
@@ -182,7 +210,14 @@ test.describe(RouteMap.walk, () => {
     // depth 2: /admin/stats, /admin/users, /users/:userId (static first, param last)
     test
       .expect(Route.descriptor(RouteMap.walk(routes)).map((d) => d.path))
-      .toEqual(["/", "/admin", "/users", "/admin/stats", "/admin/users", "/users/:userId"])
+      .toEqual([
+        "/",
+        "/admin",
+        "/users",
+        "/admin/stats",
+        "/admin/users",
+        "/users/:userId",
+      ])
   })
 
   test.it("static < :param < :param? < :param+ < :param*", () => {
@@ -265,10 +300,12 @@ test.describe(RouteMap.merge, () => {
 
     const merged = RouteMap.merge(a, b)
 
-    test.expect(Route.descriptor(RouteMap.walk(merged))).toEqual([
-      { path: "/users", method: "GET", format: "text" },
-      { path: "/users", method: "POST", format: "text" },
-    ])
+    test
+      .expect(Route.descriptor(RouteMap.walk(merged)))
+      .toEqual([
+        { path: "/users", method: "GET", format: "text" },
+        { path: "/users", method: "POST", format: "text" },
+      ])
   })
 
   test.it("returns sorted result", () => {
@@ -292,49 +329,63 @@ test.describe("RouteMap.Context", () => {
 
   const flat = {
     "/x": Route.get(
-      Route.html(function* () {
+      Route.html(function*() {
         yield* A
         return "hi"
       }),
     ),
   }
-  test.expectTypeOf<RouteMap.Context<typeof flat>>().toEqualTypeOf<A>()
+
+  test
+    .expectTypeOf<RouteMap.Context<typeof flat>>()
+    .toEqualTypeOf<A>()
 
   const nested = {
     "/api": {
       "*": Route.use(
-        Route.html(function* () {
+        Route.html(function*() {
           yield* B
           return "wrap"
         }),
       ),
       "/users": Route.get(
-        Route.html(function* () {
+        Route.html(function*() {
           yield* A
           return "users"
         }),
       ),
     },
   }
-  test.expectTypeOf<RouteMap.Context<typeof nested>>().toEqualTypeOf<A | B>()
+
+  test
+    .expectTypeOf<RouteMap.Context<typeof nested>>()
+    .toEqualTypeOf<A | B>()
 
   const withRequest = {
     "/x": Route.get(
-      Route.html(function* () {
+      Route.html(function*() {
         yield* Route.Request
         return "hi"
       }),
     ),
   }
-  test.expectTypeOf<RouteMap.Context<typeof withRequest>>().toEqualTypeOf<never>()
+
+  test
+    .expectTypeOf<RouteMap.Context<typeof withRequest>>()
+    .toEqualTypeOf<
+      never
+    >()
 
   const flattened = RouteMap.make({
     "/x": Route.get(
-      Route.html(function* () {
+      Route.html(function*() {
         yield* A
         return "hi"
       }),
     ),
   })
-  test.expectTypeOf<RouteMap.Context<typeof flattened>>().toEqualTypeOf<A>()
+
+  test
+    .expectTypeOf<RouteMap.Context<typeof flattened>>()
+    .toEqualTypeOf<A>()
 })

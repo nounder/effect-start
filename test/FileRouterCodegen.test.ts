@@ -7,31 +7,50 @@ const getRoutes = (paths: Array<string>) => Effect.runSync(FileRouter.getFileRou
 
 test.describe("generateCode", () => {
   test.it("generates code for simple routes", () => {
-    const routes = getRoutes(["route.tsx", "about/route.tsx", "users/route.tsx"])
+    const routes = getRoutes([
+      "route.tsx",
+      "about/route.tsx",
+      "users/route.tsx",
+    ])
 
     const code = FileRouterCodegen.generateCode(routes)
 
-    test.expect(code).toContain(`  "/": [
+    test
+      .expect(code)
+      .toContain(`  "/": [
     () => import("./route.tsx"),
   ]`)
-    test.expect(code).toContain(`  "/about": [
+    test
+      .expect(code)
+      .toContain(`  "/about": [
     () => import("./about/route.tsx"),
   ]`)
-    test.expect(code).toContain(`  "/users": [
+    test
+      .expect(code)
+      .toContain(`  "/users": [
     () => import("./users/route.tsx"),
   ]`)
   })
 
   test.it("includes layers in route entries", () => {
-    const routes = getRoutes(["layer.tsx", "about/route.tsx", "users/route.tsx", "users/layer.tsx"])
+    const routes = getRoutes([
+      "layer.tsx",
+      "about/route.tsx",
+      "users/route.tsx",
+      "users/layer.tsx",
+    ])
 
     const code = FileRouterCodegen.generateCode(routes)
 
-    test.expect(code).toContain(`  "/about": [
+    test
+      .expect(code)
+      .toContain(`  "/about": [
     () => import("./layer.tsx"),
     () => import("./about/route.tsx"),
   ]`)
-    test.expect(code).toContain(`  "/users": [
+    test
+      .expect(code)
+      .toContain(`  "/users": [
     () => import("./layer.tsx"),
     () => import("./users/layer.tsx"),
     () => import("./users/route.tsx"),
@@ -43,7 +62,9 @@ test.describe("generateCode", () => {
 
     const code = FileRouterCodegen.generateCode(routes)
 
-    test.expect(code).toContain(`  "/users/:userId": [
+    test
+      .expect(code)
+      .toContain(`  "/users/:userId": [
     () => import("./users/[userId]/route.tsx"),
   ]`)
   })
@@ -58,12 +79,16 @@ test.describe("generateCode", () => {
 
     const code = FileRouterCodegen.generateCode(routes)
 
-    test.expect(code).toContain(`  "/users": [
+    test
+      .expect(code)
+      .toContain(`  "/users": [
     () => import("./layer.tsx"),
     () => import("./users/layer.tsx"),
     () => import("./users/route.tsx"),
   ]`)
-    test.expect(code).toContain(`  "/users/:userId": [
+    test
+      .expect(code)
+      .toContain(`  "/users/:userId": [
     () => import("./layer.tsx"),
     () => import("./users/layer.tsx"),
     () => import("./users/[userId]/route.tsx"),
@@ -75,7 +100,9 @@ test.describe("generateCode", () => {
 
     const code = FileRouterCodegen.generateCode(routes)
 
-    test.expect(code).toContain(`  "/docs/:path*": [
+    test
+      .expect(code)
+      .toContain(`  "/docs/:path*": [
     () => import("./docs/[[path]]/route.tsx"),
   ]`)
   })
@@ -85,10 +112,14 @@ test.describe("generateCode", () => {
 
     const code = FileRouterCodegen.generateCode(routes)
 
-    test.expect(code).toContain(`  "/": [
+    test
+      .expect(code)
+      .toContain(`  "/": [
     () => import("./route.tsx"),
   ]`)
-    test.expect(code).toContain(`  "/:404*": [
+    test
+      .expect(code)
+      .toContain(`  "/:404*": [
     () => import("./[[404]]/route.tsx"),
   ]`)
   })
@@ -98,7 +129,9 @@ test.describe("generateCode", () => {
 
     const code = FileRouterCodegen.generateCode(routes)
 
-    test.expect(code).toContain(`  "/users": [
+    test
+      .expect(code)
+      .toContain(`  "/users": [
     () => import("./(admin)/users/route.tsx"),
   ]`)
   })
@@ -113,12 +146,16 @@ test.describe("generateCode", () => {
     const code = FileRouterCodegen.generateCode(routes)
 
     // /users should NOT have the (admin)/layer.tsx
-    test.expect(code).toContain(`  "/users": [
+    test
+      .expect(code)
+      .toContain(`  "/users": [
     () => import("./users/route.tsx"),
   ]`)
 
     // /users/manage should inherit (admin)/layer.tsx
-    test.expect(code).toContain(`  "/users/manage": [
+    test
+      .expect(code)
+      .toContain(`  "/users/manage": [
     () => import("./(admin)/layer.tsx"),
     () => import("./(admin)/users/manage/route.tsx"),
   ]`)
@@ -129,7 +166,9 @@ test.describe("generateCode", () => {
 
     const code = FileRouterCodegen.generateCode(routes)
 
-    test.expect(code).toBeNull()
+    test
+      .expect(code)
+      .toBeNull()
   })
 
   test.it("returns null for routes with only layers", () => {
@@ -137,7 +176,9 @@ test.describe("generateCode", () => {
 
     const code = FileRouterCodegen.generateCode(routes)
 
-    test.expect(code).toBeNull()
+    test
+      .expect(code)
+      .toBeNull()
   })
 
   test.it("generates valid TypeScript with satisfies", () => {
@@ -145,7 +186,9 @@ test.describe("generateCode", () => {
 
     const code = FileRouterCodegen.generateCode(routes)
 
-    test.expect(code).toContain(`} satisfies import("effect-start/FileRouter").FileRoutes`)
+    test
+      .expect(code)
+      .toContain(`} satisfies FileRouter.FileRoutes`)
   })
 
   test.it("generates declare module for registered routes", () => {
@@ -153,8 +196,14 @@ test.describe("generateCode", () => {
 
     const code = FileRouterCodegen.generateCode(routes)
 
-    test.expect(code).toContain(`declare module "effect-start/dev"`)
-    test.expect(code).toContain(`export interface Routes extends Omit<typeof import("./.server.ts").default, never> {}`)
+    test
+      .expect(code)
+      .toContain(`declare module "effect-start/dev"`)
+    test
+      .expect(code)
+      .toContain(
+        `export interface Routes extends Omit<typeof routes, never> {}`,
+      )
   })
 
   test.it("multiple groups with layers only apply to their own routes", () => {
@@ -168,13 +217,17 @@ test.describe("generateCode", () => {
     const code = FileRouterCodegen.generateCode(routes)
 
     // /users should only get (admin)/layer.tsx
-    test.expect(code).toContain(`  "/users": [
+    test
+      .expect(code)
+      .toContain(`  "/users": [
     () => import("./(admin)/layer.tsx"),
     () => import("./(admin)/users/route.tsx"),
   ]`)
 
     // /home should only get (public)/layer.tsx
-    test.expect(code).toContain(`  "/home": [
+    test
+      .expect(code)
+      .toContain(`  "/home": [
     () => import("./(public)/layer.tsx"),
     () => import("./(public)/home/route.tsx"),
   ]`)
@@ -190,7 +243,9 @@ test.describe("generateCode", () => {
     const code = FileRouterCodegen.generateCode(routes)
 
     // Should get both layers, outer first then inner
-    test.expect(code).toContain(`  "/users": [
+    test
+      .expect(code)
+      .toContain(`  "/users": [
     () => import("./(admin)/layer.tsx"),
     () => import("./(admin)/(internal)/layer.tsx"),
     () => import("./(admin)/(internal)/users/route.tsx"),
@@ -202,20 +257,29 @@ test.describe("generateCode", () => {
 
     const code = FileRouterCodegen.generateCode(routes)
 
-    test.expect(code).toContain(`  "/": [
+    test
+      .expect(code)
+      .toContain(`  "/": [
     () => import("./(admin)/layer.tsx"),
     () => import("./(admin)/route.tsx"),
   ]`)
   })
 
   test.it("multiple rest routes ordered by depth", () => {
-    const routes = getRoutes(["route.tsx", "docs/[[path]]/route.tsx", "[[404]]/route.tsx"])
+    const routes = getRoutes([
+      "route.tsx",
+      "docs/[[path]]/route.tsx",
+      "[[404]]/route.tsx",
+    ])
 
     const code = FileRouterCodegen.generateCode(routes)
 
-    test.expect(code).toBe(`/**
+    test
+      .expect(code)
+      .toBe(`/**
  * Generated by effect-start. DO NOT EDIT.
  */
+import type * as FileRouter from "effect-start/FileRouter"
 
 const routes = {
   "/": [
@@ -227,12 +291,12 @@ const routes = {
   "/:404*": [
     () => import("./[[404]]/route.tsx"),
   ],
-} satisfies import("effect-start/FileRouter").FileRoutes
+} satisfies FileRouter.FileRoutes
 
 export default routes
 
 declare module "effect-start/dev" {
-  export interface Routes extends Omit<typeof import("./.server.ts").default, never> {}
+  export interface Routes extends Omit<typeof routes, never> {}
 }
 `)
   })

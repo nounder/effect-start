@@ -3,15 +3,21 @@ import type * as Utils from "effect/Utils"
 import type * as Entity from "./Entity.ts"
 import * as Route from "./Route.ts"
 
-type FilterResult<BOut, E, R> = { context: BOut } | Effect.Effect<{ context: BOut }, E, R>
+type FilterResult<BOut, E, R> =
+  | { context: BOut }
+  | Effect.Effect<{ context: BOut }, E, R>
 
 type FilterHandlerInput<BIn, BOut, E, R> =
   | FilterResult<BOut, E, R>
   | ((
-      context: BIn,
-    ) =>
-      | FilterResult<BOut, E, R>
-      | Generator<Utils.YieldWrap<Effect.Effect<unknown, E, R>>, { context: BOut }, unknown>)
+    context: BIn,
+  ) =>
+    | FilterResult<BOut, E, R>
+    | Generator<
+      Utils.YieldWrap<Effect.Effect<unknown, E, R>>,
+      { context: BOut },
+      unknown
+    >)
 
 export function filter<
   D,
@@ -24,12 +30,12 @@ export function filter<
 >(filterHandler: FilterHandlerInput<BIn, BOut, E, R>) {
   const normalized = normalizeFilterHandler(filterHandler)
 
-  return function (
+  return function(
     self: Route.RouteSet<D, SB, P>,
   ): Route.RouteSet<D, SB, [...P, Route.Route<{}, BOut, unknown, E, R>]> {
     const route = Route.make<{}, BOut, unknown, E, R>(
       (context: BOut, next: Entity.Entity<unknown, never>) =>
-        Effect.gen(function* () {
+        Effect.gen(function*() {
           const filterResult = yield* normalized(context as unknown as BIn)
           if (!filterResult) return yield* next
           const ref = yield* Route.RouteContext
@@ -39,7 +45,10 @@ export function filter<
     )
 
     return Route.set(
-      [...Route.items(self), route] as [...P, Route.Route<{}, BOut, unknown, E, R>],
+      [...Route.items(self), route] as [
+        ...P,
+        Route.Route<{}, BOut, unknown, E, R>,
+      ],
       Route.descriptor(self),
     )
   }
@@ -66,7 +75,7 @@ function normalizeFilterHandler<BIn, BOut, E, R>(
       }
 
       if (isGenerator(result)) {
-        return Effect.gen(function* () {
+        return Effect.gen(function*() {
           return yield* result
         }) as Effect.Effect<{ context: BOut }, E, R>
       }

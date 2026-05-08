@@ -7,10 +7,14 @@ export interface Flag<A> extends Param.Param<"flag", A> {}
 
 const flagMake = Param.makeConstructor("flag")
 
-export const string = (name: string): Flag<string> => flagMake(name, Primitive.string)
-export const boolean = (name: string): Flag<boolean> => flagMake(name, Primitive.boolean)
-export const integer = (name: string): Flag<number> => flagMake(name, Primitive.integer)
-export const float = (name: string): Flag<number> => flagMake(name, Primitive.float)
+export const string = (name: string): Flag<string> =>
+  flagMake(name, Primitive.string)
+export const boolean = (name: string): Flag<boolean> =>
+  flagMake(name, Primitive.boolean)
+export const integer = (name: string): Flag<number> =>
+  flagMake(name, Primitive.integer)
+export const float = (name: string): Flag<number> =>
+  flagMake(name, Primitive.float)
 export const date = (name: string): Flag<Date> => flagMake(name, Primitive.date)
 export const redacted = (name: string): Flag<Redacted.Redacted<string>> =>
   flagMake(name, Primitive.redacted)
@@ -23,15 +27,25 @@ export const choice = <const C extends ReadonlyArray<string>>(
     name,
     primitiveType: Primitive.choice(choices.map((v) => [v, v] as const)),
   })
-export const choiceWithValue = <const C extends ReadonlyArray<readonly [string, any]>>(
+export const choiceWithValue = <
+  const C extends ReadonlyArray<readonly [string, any]>,
+>(
   name: string,
   choices: C,
 ): Flag<C[number][1]> =>
-  Param.makeSingleParam({ kind: "flag", name, primitiveType: Primitive.choice(choices) })
+  Param.makeSingleParam({
+    kind: "flag",
+    name,
+    primitiveType: Primitive.choice(choices),
+  })
 export const keyValuePair = (name: string): Flag<Record<string, string>> =>
   Param.paramMap(
     Param.paramVariadic(
-      Param.makeSingleParam({ kind: "flag", name, primitiveType: Primitive.keyValuePair }),
+      Param.makeSingleParam({
+        kind: "flag",
+        name,
+        primitiveType: Primitive.keyValuePair,
+      }),
       { min: 1 },
     ),
     (objs) => Object.assign({}, ...objs),
@@ -47,7 +61,8 @@ export const withAlias: {
   <A>(self: Flag<A>, alias: string): Flag<A>
 } = Function.dual(
   2,
-  <A>(self: Flag<A>, alias: string): Flag<A> => Param.paramWithAlias(self, alias),
+  <A>(self: Flag<A>, alias: string): Flag<A> =>
+    Param.paramWithAlias(self, alias),
 )
 
 const combinators = Param.makeParamCombinators("flag")

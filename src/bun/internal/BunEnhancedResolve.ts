@@ -34,11 +34,11 @@ interface ResolveContext {
 
 interface ResolveOptions {
   extensions?: Array<string>
-  mainFields?: Array<string | string[]>
+  mainFields?: Array<string | Array<string>>
   conditionNames?: Array<string>
   fileSystem?: unknown
   useSyncFileSystemCalls?: boolean
-  modules?: string | string[]
+  modules?: string | Array<string>
 }
 
 export interface Resolver {
@@ -47,18 +47,20 @@ export interface Resolver {
     path: string,
     request: string,
     resolveContext: ResolveContext,
-    callback: (err: null | ErrorWithDetail, res?: string | false, req?: ResolveRequest) => void,
+    callback: (
+      err: null | ErrorWithDetail,
+      res?: string | false,
+      req?: ResolveRequest,
+    ) => void,
   ): void
-}
-
-export class CachedInputFileSystem {
-  constructor(_fileSystem: unknown, _duration: number) {}
 }
 
 export const ResolverFactory = {
   createResolver(options: ResolveOptions): Resolver {
     const extensions = options.extensions ?? []
-    const mainFields = (options.mainFields ?? []).flatMap((f) => (Array.isArray(f) ? f : [f]))
+    const mainFields = (options.mainFields ?? []).flatMap((
+      f,
+    ) => (Array.isArray(f) ? f : [f]))
     const conditionNames = options.conditionNames ?? []
 
     return {
@@ -67,7 +69,11 @@ export const ResolverFactory = {
         basePath: string,
         id: string,
         _resolveContext: ResolveContext,
-        callback: (err: null | ErrorWithDetail, res?: string | false, req?: ResolveRequest) => void,
+        callback: (
+          err: null | ErrorWithDetail,
+          res?: string | false,
+          req?: ResolveRequest,
+        ) => void,
       ): void {
         try {
           const result = resolveSync(id, basePath, {
@@ -121,7 +127,11 @@ function resolveSync(
   }
 
   if (packageJson.exports) {
-    const resolved = resolveExports(packageJson.exports, packagePath, options.conditionNames)
+    const resolved = resolveExports(
+      packageJson.exports,
+      packagePath,
+      options.conditionNames,
+    )
     if (resolved && fs.existsSync(resolved)) return resolved
   }
 
@@ -134,7 +144,9 @@ function resolveSync(
 
 function resolvePackagePath(id: string, base: string): string | undefined {
   const parts = id.split("/")
-  const packageName = id.startsWith("@") ? parts.slice(0, 2).join("/") : parts[0]
+  const packageName = id.startsWith("@")
+    ? parts.slice(0, 2).join("/")
+    : parts[0]
 
   let dir = base
   while (dir !== path.dirname(dir)) {
@@ -163,7 +175,11 @@ function resolveExports(
 
     for (const condition of conditionNames) {
       if (condition in exportsObj) {
-        return resolveExports(exportsObj[condition], packagePath, conditionNames)
+        return resolveExports(
+          exportsObj[condition],
+          packagePath,
+          conditionNames,
+        )
       }
     }
 

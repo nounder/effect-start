@@ -11,7 +11,9 @@ test.it("boolean true attributes render without value (React-like)", () => {
 
   const html = Html.text(node)
 
-  test.expect(html).toBe("<div hidden disabled data-active></div>")
+  test
+    .expect(html)
+    .toBe("<div hidden disabled data-active></div>")
 })
 
 test.it("boolean false attributes are omitted", () => {
@@ -23,7 +25,9 @@ test.it("boolean false attributes are omitted", () => {
 
   const html = Html.text(node)
 
-  test.expect(html).toBe("<div></div>")
+  test
+    .expect(html)
+    .toBe("<div></div>")
 })
 
 test.it("string attributes render with values", () => {
@@ -35,7 +39,11 @@ test.it("string attributes render with values", () => {
 
   const html = Html.text(node)
 
-  test.expect(html).toBe('<div id="test" class="my-class" data-value="hello"></div>')
+  test
+    .expect(html)
+    .toBe(
+      "<div id=\"test\" class=\"my-class\" data-value=\"hello\"></div>",
+    )
 })
 
 test.it("number attributes render with values", () => {
@@ -48,7 +56,11 @@ test.it("number attributes render with values", () => {
 
   const html = Html.text(node)
 
-  test.expect(html).toBe('<input type="number" min="0" max="100" value="50">')
+  test
+    .expect(html)
+    .toBe(
+      "<input type=\"number\" min=\"0\" max=\"100\" value=\"50\">",
+    )
 })
 
 test.it("null and undefined attributes are omitted", () => {
@@ -60,7 +72,9 @@ test.it("null and undefined attributes are omitted", () => {
 
   const html = Html.text(node)
 
-  test.expect(html).toBe('<div data-test="value"></div>')
+  test
+    .expect(html)
+    .toBe("<div data-test=\"value\"></div>")
 })
 
 test.it("mixed boolean and string attributes", () => {
@@ -74,7 +88,11 @@ test.it("mixed boolean and string attributes", () => {
 
   const html = Html.text(node)
 
-  test.expect(html).toBe('<input type="checkbox" checked name="test" value="on">')
+  test
+    .expect(html)
+    .toBe(
+      "<input type=\"checkbox\" checked name=\"test\" value=\"on\">",
+    )
 })
 
 test.it("data-* attributes with object values use single-quoted JSON", () => {
@@ -90,7 +108,9 @@ test.it("data-* attributes with object values use single-quoted JSON", () => {
 
   test
     .expect(html)
-    .toBe(`<div data-signals='{"draft":"","pendingDraft":"","username":"User123"}'></div>`)
+    .toBe(
+      `<div data-signals='{"draft":"","pendingDraft":"","username":"User123"}'></div>`,
+    )
 })
 
 test.it("data-* attributes with array values use single-quoted JSON", () => {
@@ -100,7 +120,9 @@ test.it("data-* attributes with array values use single-quoted JSON", () => {
 
   const html = Html.text(node)
 
-  test.expect(html).toBe("<div data-items='[1,2,3]'></div>")
+  test
+    .expect(html)
+    .toBe("<div data-items='[1,2,3]'></div>")
 })
 
 test.it("data-* attributes with nested object values use single-quoted JSON", () => {
@@ -132,7 +154,9 @@ test.it("data-* object values with single quotes in values are escaped", () => {
 
   test
     .expect(html)
-    .toBe(`<div data-signals='{"message":"it&#39;s a test","name":"O&#39;Brien"}'></div>`)
+    .toBe(
+      `<div data-signals='{"message":"it&#39;s a test","name":"O&#39;Brien"}'></div>`,
+    )
 })
 
 test.it("data-* string values are not JSON stringified", () => {
@@ -142,7 +166,9 @@ test.it("data-* string values are not JSON stringified", () => {
 
   const html = Html.text(node)
 
-  test.expect(html).toBe('<div data-value="hello world"></div>')
+  test
+    .expect(html)
+    .toBe("<div data-value=\"hello world\"></div>")
 })
 
 test.it("non-data attributes with object values are not JSON stringified", () => {
@@ -152,12 +178,15 @@ test.it("non-data attributes with object values are not JSON stringified", () =>
 
   const html = Html.text(node)
 
-  test.expect(html).toBe('<div style="color: red"></div>')
+  test
+    .expect(html)
+    .toBe("<div style=\"color: red\"></div>")
 })
 
 test.it("script with function child renders as IIFE", () => {
   const handler = (e: { window: Window; target: HTMLScriptElement }) => {
-    console.log("Hello from", e.window.document.title, e.target)
+    void e.window.document.title
+    void e.target
   }
 
   const node = Html.make("script", {
@@ -166,63 +195,126 @@ test.it("script with function child renders as IIFE", () => {
 
   const html = Html.text(node)
 
-  test.expect(html).toBe(
-    `<script>(${handler.toString()})({window,target:document.currentScript})</script>`,
-  )
+  test
+    .expect(html)
+    .toBe(
+      `<script>(${handler.toString()})({window,target:document.currentScript})</script>`,
+    )
 })
 
 test.describe("raw text escaping", () => {
   test.it("script children escapes closing tag", () => {
-    const html = Html.text(<script>{'console.log("</script>")'}</script>)
+    const html = Html.text(
+      <script>
+        {"console.log(\"</script>\")"}
+      </script>,
+    )
 
-    test.expect(html).toBe('<script>console.log("<\\/script>")</script>')
-    test.expect(html).not.toContain("</script><")
+    test
+      .expect(html)
+      .toBe("<script>console.log(\"<\\/script>\")</script>")
+    test
+      .expect(html)
+      .not
+      .toContain("</script><")
   })
 
   test.it("style children escapes closing tag", () => {
-    const html = Html.text(<style>{'div::after { content: "</style>" }'}</style>)
+    const html = Html.text(
+      <style>
+        {"div::after { content: \"</style>\" }"}
+      </style>,
+    )
 
-    test.expect(html).toBe('<style>div::after { content: "<\\/style>" }</style>')
-    test.expect(html).not.toContain("</style><")
+    test
+      .expect(html)
+      .toBe(
+        "<style>div::after { content: \"<\\/style>\" }</style>",
+      )
+    test
+      .expect(html)
+      .not
+      .toContain("</style><")
   })
 
   test.it("script Html.unsafe child escapes closing tag", () => {
-    const html = Html.text(<script>{Html.unsafe('console.log("</script>")')}</script>)
+    const html = Html.text(
+      <script>
+        {Html.unsafe("console.log(\"</script>\")")}
+      </script>,
+    )
 
-    test.expect(html).toBe('<script>console.log("<\\/script>")</script>')
+    test
+      .expect(html)
+      .toBe("<script>console.log(\"<\\/script>\")</script>")
   })
 
   test.it("case-insensitive closing tags are escaped", () => {
-    const html = Html.text(<script>{'x = "</Script></SCRIPT></sCrIpT>"'}</script>)
+    const html = Html.text(
+      <script>
+        {"x = \"</Script></SCRIPT></sCrIpT>\""}
+      </script>,
+    )
 
-    test.expect(html).toBe('<script>x = "<\\/Script><\\/SCRIPT><\\/sCrIpT>"</script>')
+    test
+      .expect(html)
+      .toBe(
+        "<script>x = \"<\\/Script><\\/SCRIPT><\\/sCrIpT>\"</script>",
+      )
   })
 
   test.it("closing tag with whitespace is escaped", () => {
-    const html = Html.text(<script>{'x = "</script >"'}</script>)
+    const html = Html.text(
+      <script>
+        {"x = \"</script >\""}
+      </script>,
+    )
 
-    test.expect(html).toBe('<script>x = "<\\/script >"</script>')
+    test
+      .expect(html)
+      .toBe("<script>x = \"<\\/script >\"</script>")
   })
 
   test.it("XSS via script injection in script children", () => {
-    const userInput = '</script><script>alert("xss")</script>'
-    const html = Html.text(<script>{`var data = "${userInput}"`}</script>)
+    const userInput = "</script><script>alert(\"xss\")</script>"
+    const html = Html.text(
+      <script>
+        {`var data = "${userInput}"`}
+      </script>,
+    )
 
-    test.expect(html).not.toMatch(/<\/script.*<script/i)
+    test
+      .expect(html)
+      .not
+      .toMatch(/<\/script.*<script/i)
   })
 
   test.it("XSS via script injection in style children", () => {
-    const userInput = '</style><script>alert("xss")</script>'
-    const html = Html.text(<style>{`div::after { content: "${userInput}" }`}</style>)
+    const userInput = "</style><script>alert(\"xss\")</script>"
+    const html = Html.text(
+      <style>
+        {`div::after { content: "${userInput}" }`}
+      </style>,
+    )
 
-    test.expect(html).not.toMatch(/<\/style.*<script/i)
+    test
+      .expect(html)
+      .not
+      .toMatch(/<\/style.*<script/i)
   })
 
   test.it("XSS via script injection in Html.unsafe child", () => {
-    const userInput = '</script><script>alert("xss")</script>'
-    const html = Html.text(<script>{Html.unsafe(`var data = "${userInput}"`)}</script>)
+    const userInput = "</script><script>alert(\"xss\")</script>"
+    const html = Html.text(
+      <script>
+        {Html.unsafe(`var data = "${userInput}"`)}
+      </script>,
+    )
 
-    test.expect(html).not.toMatch(/<\/script.*<script/i)
+    test
+      .expect(html)
+      .not
+      .toMatch(/<\/script.*<script/i)
   })
 
   test.it("function child with closing tag in string literal", () => {
@@ -235,31 +327,57 @@ test.describe("raw text escaping", () => {
       </script>,
     )
 
-    test.expect(html).not.toMatch(/<\/script.*<script/i)
+    test
+      .expect(html)
+      .not
+      .toMatch(/<\/script.*<script/i)
   })
 
   test.it("multiple closing tags in one string", () => {
-    const html = Html.text(<script>{'a = "</script>"; b = "</script>"'}</script>)
+    const html = Html.text(
+      <script>
+        {"a = \"</script>\"; b = \"</script>\""}
+      </script>,
+    )
 
-    test.expect(html).toBe('<script>a = "<\\/script>"; b = "<\\/script>"</script>')
+    test
+      .expect(html)
+      .toBe(
+        "<script>a = \"<\\/script>\"; b = \"<\\/script>\"</script>",
+      )
   })
 
   test.it("partial closing tag sequences are escaped", () => {
-    const html = Html.text(<script>{'x = "</" + "script>"'}</script>)
+    const html = Html.text(
+      <script>
+        {"x = \"</\" + \"script>\""}
+      </script>,
+    )
 
-    test.expect(html).toBe('<script>x = "<\\/" + "script>"</script>')
+    test
+      .expect(html)
+      .toBe("<script>x = \"<\\/\" + \"script>\"</script>")
   })
 
   test.it("style Html.unsafe child escapes closing tag", () => {
     const html = Html.text(
-      <style>{Html.unsafe('div::after { content: "</style>" }')}</style>,
+      <style>
+        {Html.unsafe("div::after { content: \"</style>\" }")}
+      </style>,
     )
 
-    test.expect(html).not.toMatch(/<\/style.*</)
+    test
+      .expect(html)
+      .not
+      .toMatch(/<\/style.*</)
   })
 
   test.it("escaped output is still valid JS", () => {
-    const html = Html.text(<script>{'var x = "</script>"'}</script>)
+    const html = Html.text(
+      <script>
+        {"var x = \"</script>\""}
+      </script>,
+    )
 
     const content = html.replace("<script>", "").replace("</script>", "")
     const fn = new Function(content)
@@ -276,8 +394,12 @@ test.it("script with arrow function child renders as IIFE", () => {
 
   const html = Html.text(node)
 
-  test.expect(html).toContain("<script>(")
-  test.expect(html).toContain("window.alert")
+  test
+    .expect(html)
+    .toContain("<script>(")
+  test
+    .expect(html)
+    .toContain("window.alert")
 })
 
 test.it("script with string child renders without escaping", () => {
@@ -287,17 +409,23 @@ test.it("script with string child renders without escaping", () => {
 
   const html = Html.text(node)
 
-  test.expect(html).toBe("<script>console.log('hello')</script>")
+  test
+    .expect(html)
+    .toBe("<script>console.log('hello')</script>")
 })
 
 test.it("script with string child preserves ampersands and quotes", () => {
   const node = Html.make("script", {
-    children: 'if (a && b) { console.log("yes") }',
+    children: "if (a && b) { console.log(\"yes\") }",
   })
 
   const html = Html.text(node)
 
-  test.expect(html).toBe('<script>if (a && b) { console.log("yes") }</script>')
+  test
+    .expect(html)
+    .toBe(
+      "<script>if (a && b) { console.log(\"yes\") }</script>",
+    )
 })
 
 test.it("style tag content is not escaped", () => {
@@ -307,7 +435,9 @@ test.it("style tag content is not escaped", () => {
 
   const html = Html.text(node)
 
-  test.expect(html).toBe("<style>.foo > .bar { content: '&'; }</style>")
+  test
+    .expect(html)
+    .toBe("<style>.foo > .bar { content: '&'; }</style>")
 })
 
 test.it("script with attributes and no children", () => {
@@ -318,7 +448,11 @@ test.it("script with attributes and no children", () => {
 
   const html = Html.text(node)
 
-  test.expect(html).toBe('<script type="module" src="https://example.com/app.js"></script>')
+  test
+    .expect(html)
+    .toBe(
+      "<script type=\"module\" src=\"https://example.com/app.js\"></script>",
+    )
 })
 
 test.it("normal tag string content is escaped", () => {
@@ -328,41 +462,74 @@ test.it("normal tag string content is escaped", () => {
 
   const html = Html.text(node)
 
-  test.expect(html).toBe("<div>a &amp;&amp; b</div>")
+  test
+    .expect(html)
+    .toBe("<div>a &amp;&amp; b</div>")
 })
 
 test.it("string children that look like HTML are escaped", () => {
-  const html = Html.text(<div>{'<script>alert("xss")</script>'}</div>)
-
-  test.expect(html).toBe(
-    "<div>&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;</div>",
+  const html = Html.text(
+    <div>
+      {"<script>alert(\"xss\")</script>"}
+    </div>,
   )
+
+  test
+    .expect(html)
+    .toBe(
+      "<div>&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;</div>",
+    )
 })
 
 test.it("interpolated user input in JSX is escaped", () => {
-  const userInput = '<img src=x onerror="alert(1)">'
-  const html = Html.text(<p>{userInput}</p>)
+  const userInput = "<img src=x onerror=\"alert(1)\">"
+  const html = Html.text(
+    <p>
+      {userInput}
+    </p>,
+  )
 
-  test.expect(html).not.toContain("<img")
-  test.expect(html).toContain("&lt;img")
+  test
+    .expect(html)
+    .not
+    .toContain("<img")
+  test
+    .expect(html)
+    .toContain("&lt;img")
 })
 
 test.it("data-* function values are serialized with toString", () => {
   const node = Html.make("div", {
+    // eslint-disable-next-line no-console
     "data-on:click": () => console.log("clicked"),
   })
 
   const html = Html.text(node)
 
-  test.expect(html).toContain("data-on:click=")
-  test.expect(html).toContain("console.log")
+  test
+    .expect(html)
+    .toContain("data-on:click=")
+  test
+    .expect(html)
+    .toContain("console.log")
 })
 
 test.it("data-* object values don't render as [object Object]", () => {
-  const html = Html.text(<div data-signals={{ isOpen: false, count: 42 }}>content</div>)
+  const html = Html.text(
+    <div data-signals={{ isOpen: false, count: 42 }}>
+      content
+    </div>,
+  )
 
-  test.expect(html).toBe(`<div data-signals='{"isOpen":false,"count":42}'>content</div>`)
-  test.expect(html).not.toContain("[object Object]")
+  test
+    .expect(html)
+    .toBe(
+      `<div data-signals='{"isOpen":false,"count":42}'>content</div>`,
+    )
+  test
+    .expect(html)
+    .not
+    .toContain("[object Object]")
 })
 
 test.it("data-computed object values preserve function leaves", () => {
@@ -384,30 +551,49 @@ test.it("data-computed object values preserve function leaves", () => {
     </div>,
   )
 
-  test.expect(html).toContain("data-computed='")
-  test.expect(html).toContain('"listening":')
-  test.expect(html).toContain("e.signals.speechState")
-  test.expect(html).not.toContain(`data-computed='{}'`)
+  test
+    .expect(html)
+    .toContain("data-computed='")
+  test
+    .expect(html)
+    .toContain("\"listening\":")
+  test
+    .expect(html)
+    .toContain("e.signals.speechState")
+  test
+    .expect(html)
+    .not
+    .toContain(`data-computed='{}'`)
 })
 
 test.it("Html.unsafe child injects html without escaping", () => {
   const html = Html.text(
-    <div>{Html.unsafe('<span class="bold">hello & world</span>')}</div>,
+    <div>
+      {Html.unsafe("<span class=\"bold\">hello & world</span>")}
+    </div>,
   )
 
-  test.expect(html).toBe('<div><span class="bold">hello & world</span></div>')
+  test
+    .expect(html)
+    .toBe("<div><span class=\"bold\">hello & world</span></div>")
 })
 
 test.it("JSX component with data-* object values", () => {
   function TestComponent() {
     return (
       <div data-signals={{ isOpen: false }}>
-        <span>nested</span>
+        <span>
+          nested
+        </span>
       </div>
     )
   }
 
   const html = Html.text(<TestComponent />)
 
-  test.expect(html).toBe(`<div data-signals='{"isOpen":false}'><span>nested</span></div>`)
+  test
+    .expect(html)
+    .toBe(
+      `<div data-signals='{"isOpen":false}'><span>nested</span></div>`,
+    )
 })

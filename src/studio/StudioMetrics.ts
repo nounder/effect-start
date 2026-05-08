@@ -5,69 +5,76 @@ import * as MetricKeyType from "effect/MetricKeyType"
 import * as PubSub from "effect/PubSub"
 import * as Schedule from "effect/Schedule"
 import * as Studio from "./Studio.ts"
-import * as StudioStore from "./StudioStore.ts"
+import type * as StudioStore from "./StudioStore.ts"
 
-export const layer: Layer.Layer<never, never, Studio.Studio> = Layer.scopedDiscard(
-  Effect.gen(function* () {
-    const { store } = yield* Studio.Studio
+export const layer: Layer.Layer<never, never, Studio.Studio> = Layer
+  .scopedDiscard(
+    Effect.gen(function*() {
+      const { store } = yield* Studio.Studio
 
-    yield* Effect.forkScoped(
-      Effect.schedule(
-        Effect.sync(() => {
-          const pairs = Metric.unsafeSnapshot()
-          const snapshots: Array<StudioStore.MetricSnapshot> = []
+      yield* Effect.forkScoped(
+        Effect.schedule(
+          Effect.sync(() => {
+            const pairs = Metric.unsafeSnapshot()
+            const snapshots: Array<StudioStore.MetricSnapshot> = []
 
-          for (const pair of pairs) {
-            const key = pair.metricKey
-            const state = pair.metricState as any
-            let type: StudioStore.MetricSnapshot["type"] = "counter"
-            let value: unknown = 0
+            for (const pair of pairs) {
+              const key = pair.metricKey
+              const state = pair.metricState as any
+              let type: StudioStore.MetricSnapshot["type"] = "counter"
+              let value: unknown = 0
 
-            if (MetricKeyType.CounterKeyTypeTypeId in key.keyType) {
-              type = "counter"
-              value = state.count
-            } else if (MetricKeyType.GaugeKeyTypeTypeId in key.keyType) {
-              type = "gauge"
-              value = state.value
-            } else if (MetricKeyType.HistogramKeyTypeTypeId in key.keyType) {
-              type = "histogram"
-              value = {
-                buckets: state.buckets,
-                count: state.count,
-                sum: state.sum,
-                min: state.min,
-                max: state.max,
+              if (MetricKeyType.CounterKeyTypeTypeId in key.keyType) {
+                type = "counter"
+                value = state.count
+              } else if (MetricKeyType.GaugeKeyTypeTypeId in key.keyType) {
+                type = "gauge"
+                value = state.value
+              } else if (MetricKeyType.HistogramKeyTypeTypeId in key.keyType) {
+                type = "histogram"
+                value = {
+                  buckets: state.buckets,
+                  count: state.count,
+                  sum: state.sum,
+                  min: state.min,
+                  max: state.max,
+                }
+              } else if (MetricKeyType.FrequencyKeyTypeTypeId in key.keyType) {
+                type = "frequency"
+                value = Object.fromEntries(state.occurrences)
+              } else if (MetricKeyType.SummaryKeyTypeTypeId in key.keyType) {
+                type = "summary"
+                value = {
+                  quantiles: state.quantiles,
+                  count: state.count,
+                  sum: state.sum,
+                  min: state.min,
+                  max: state.max,
+                }
               }
-            } else if (MetricKeyType.FrequencyKeyTypeTypeId in key.keyType) {
-              type = "frequency"
-              value = Object.fromEntries(state.occurrences)
-            } else if (MetricKeyType.SummaryKeyTypeTypeId in key.keyType) {
-              type = "summary"
-              value = {
-                quantiles: state.quantiles,
-                count: state.count,
-                sum: state.sum,
-                min: state.min,
-                max: state.max,
-              }
+
+              snapshots.push({
+                name: key.name,
+                type,
+                value,
+                tags: key.tags.map((t: any) => ({
+                  key: t.key,
+                  value: t.value,
+                })),
+                timestamp: Date.now(),
+              })
             }
 
-            snapshots.push({
-              name: key.name,
-              type,
-              value,
-              tags: key.tags.map((t: any) => ({ key: t.key, value: t.value })),
-              timestamp: Date.now(),
-            })
-          }
-
-          store.metrics = snapshots
-          Effect.runSync(
-            PubSub.publish(store.events, { _tag: "MetricsSnapshot", metrics: snapshots }),
-          )
-        }),
-        Schedule.spaced("2 seconds"),
-      ),
-    )
-  }),
-)
+            store.metrics = snapshots
+            Effect.runSync(
+              PubSub.publish(store.events, {
+                _tag: "MetricsSnapshot",
+                metrics: snapshots,
+              }),
+            )
+          }),
+          Schedule.spaced("2 seconds"),
+        ),
+      )
+    }),
+  )

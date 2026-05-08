@@ -2,12 +2,18 @@ import { Route } from "effect-start"
 import * as Html from "effect-start/Html"
 
 export default Route.get(
-  Route.html(function* () {
+  Route.html(function*() {
     return Html.text(
       <div data-signals={{ a: 2 }}>
-        <h1>hello</h1>
-        <span data-text={() => "hello" + 23}></span>
-        <buton class="bg-red-500" data-on:click={(ctx) => ctx.window.alert("aaa")}>
+        <h1>
+          hello
+        </h1>
+        <span data-text={() => "hello" + 23}>
+        </span>
+        <buton
+          class="bg-red-500"
+          data-on:click={(ctx) => ctx.window.alert("aaa")}
+        >
           aa
         </buton>
       </div>,

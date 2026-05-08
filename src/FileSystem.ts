@@ -9,8 +9,8 @@ import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Function from "effect/Function"
 import * as Option from "effect/Option"
-import * as Sink from "effect/Sink"
 import type * as Scope from "effect/Scope"
+import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
 import * as System from "./System.ts"
 
@@ -24,15 +24,24 @@ export interface FileSystem {
     toPath: string,
     options?: CopyOptions,
   ) => Effect.Effect<void, System.SystemError>
-  readonly copyFile: (fromPath: string, toPath: string) => Effect.Effect<void, System.SystemError>
-  readonly chmod: (path: string, mode: number) => Effect.Effect<void, System.SystemError>
+  readonly copyFile: (
+    fromPath: string,
+    toPath: string,
+  ) => Effect.Effect<void, System.SystemError>
+  readonly chmod: (
+    path: string,
+    mode: number,
+  ) => Effect.Effect<void, System.SystemError>
   readonly chown: (
     path: string,
     uid: number,
     gid: number,
   ) => Effect.Effect<void, System.SystemError>
   readonly exists: (path: string) => Effect.Effect<boolean, System.SystemError>
-  readonly link: (fromPath: string, toPath: string) => Effect.Effect<void, System.SystemError>
+  readonly link: (
+    fromPath: string,
+    toPath: string,
+  ) => Effect.Effect<void, System.SystemError>
   readonly makeDirectory: (
     path: string,
     options?: MakeDirectoryOptions,
@@ -57,7 +66,9 @@ export interface FileSystem {
     path: string,
     options?: ReadDirectoryOptions,
   ) => Effect.Effect<Array<string>, System.SystemError>
-  readonly readFile: (path: string) => Effect.Effect<Uint8Array, System.SystemError>
+  readonly readFile: (
+    path: string,
+  ) => Effect.Effect<Uint8Array, System.SystemError>
   readonly readFileString: (
     path: string,
     encoding?: string,
@@ -68,7 +79,10 @@ export interface FileSystem {
     path: string,
     options?: RemoveOptions,
   ) => Effect.Effect<void, System.SystemError>
-  readonly rename: (oldPath: string, newPath: string) => Effect.Effect<void, System.SystemError>
+  readonly rename: (
+    oldPath: string,
+    newPath: string,
+  ) => Effect.Effect<void, System.SystemError>
   readonly sink: (
     path: string,
     options?: SinkOptions,
@@ -78,8 +92,14 @@ export interface FileSystem {
     path: string,
     options?: StreamOptions,
   ) => Stream.Stream<Uint8Array, System.SystemError>
-  readonly symlink: (fromPath: string, toPath: string) => Effect.Effect<void, System.SystemError>
-  readonly truncate: (path: string, length?: SizeInput) => Effect.Effect<void, System.SystemError>
+  readonly symlink: (
+    fromPath: string,
+    toPath: string,
+  ) => Effect.Effect<void, System.SystemError>
+  readonly truncate: (
+    path: string,
+    length?: SizeInput,
+  ) => Effect.Effect<void, System.SystemError>
   readonly utimes: (
     path: string,
     atime: Date | number,
@@ -101,9 +121,10 @@ export interface FileSystem {
   ) => Effect.Effect<void, System.SystemError>
 }
 
-export const FileSystem: Context.Tag<FileSystem, FileSystem> = Context.GenericTag<FileSystem>(
-  "@effect/platform/FileSystem",
-)
+export const FileSystem: Context.Tag<FileSystem, FileSystem> = Context
+  .GenericTag<FileSystem>(
+    "@effect/platform/FileSystem",
+  )
 
 export type Size = Brand.Branded<bigint, "Size">
 
@@ -112,7 +133,17 @@ export type SizeInput = bigint | number | Size
 export const Size = (bytes: SizeInput): Size =>
   typeof bytes === "bigint" ? (bytes as Size) : (BigInt(bytes) as Size)
 
-export type OpenFlag = "r" | "r+" | "w" | "wx" | "w+" | "wx+" | "a" | "ax" | "a+" | "ax+"
+export type OpenFlag =
+  | "r"
+  | "r+"
+  | "w"
+  | "wx"
+  | "w+"
+  | "wx+"
+  | "a"
+  | "ax"
+  | "a+"
+  | "ax+"
 
 export type SeekMode = "start" | "current"
 
@@ -180,7 +211,9 @@ export interface WatchOptions {
   readonly recursive?: boolean
 }
 
-export const FileTypeId: unique symbol = Symbol.for("@effect/platform/FileSystem/File")
+export const FileTypeId: unique symbol = Symbol.for(
+  "@effect/platform/FileSystem/File",
+)
 
 export type FileTypeId = typeof FileTypeId
 
@@ -194,9 +227,15 @@ export interface File {
   readonly readAlloc: (
     size: SizeInput,
   ) => Effect.Effect<Option.Option<Uint8Array>, System.SystemError>
-  readonly truncate: (length?: SizeInput) => Effect.Effect<void, System.SystemError>
-  readonly write: (buffer: Uint8Array) => Effect.Effect<Size, System.SystemError>
-  readonly writeAll: (buffer: Uint8Array) => Effect.Effect<void, System.SystemError>
+  readonly truncate: (
+    length?: SizeInput,
+  ) => Effect.Effect<void, System.SystemError>
+  readonly write: (
+    buffer: Uint8Array,
+  ) => Effect.Effect<Size, System.SystemError>
+  readonly writeAll: (
+    buffer: Uint8Array,
+  ) => Effect.Effect<void, System.SystemError>
 }
 
 export declare namespace File {
@@ -232,7 +271,10 @@ export declare namespace File {
 
 export const FileDescriptor = Brand.nominal<File.Descriptor>()
 
-export type WatchEvent = WatchEvent.Create | WatchEvent.Update | WatchEvent.Remove
+export type WatchEvent =
+  | WatchEvent.Create
+  | WatchEvent.Update
+  | WatchEvent.Remove
 
 export declare namespace WatchEvent {
   export interface Create {
@@ -251,28 +293,39 @@ export declare namespace WatchEvent {
   }
 }
 
-export const WatchEventCreate: Data.Case.Constructor<WatchEvent.Create, "_tag"> =
-  Data.tagged<WatchEvent.Create>("Create")
+export const WatchEventCreate: Data.Case.Constructor<
+  WatchEvent.Create,
+  "_tag"
+> = Data.tagged<WatchEvent.Create>("Create")
 
-export const WatchEventUpdate: Data.Case.Constructor<WatchEvent.Update, "_tag"> =
-  Data.tagged<WatchEvent.Update>("Update")
+export const WatchEventUpdate: Data.Case.Constructor<
+  WatchEvent.Update,
+  "_tag"
+> = Data.tagged<WatchEvent.Update>("Update")
 
-export const WatchEventRemove: Data.Case.Constructor<WatchEvent.Remove, "_tag"> =
-  Data.tagged<WatchEvent.Remove>("Remove")
+export const WatchEventRemove: Data.Case.Constructor<
+  WatchEvent.Remove,
+  "_tag"
+> = Data.tagged<WatchEvent.Remove>("Remove")
 
-export class WatchBackend extends Context.Tag("@effect/platform/FileSystem/WatchBackend")<
-  WatchBackend,
-  {
-    readonly register: (
-      path: string,
-      stat: File.Info,
-      options?: WatchOptions,
-    ) => Option.Option<Stream.Stream<WatchEvent, System.SystemError>>
-  }
->() {}
+export class WatchBackend
+  extends Context.Tag("@effect/platform/FileSystem/WatchBackend")<
+    WatchBackend,
+    {
+      readonly register: (
+        path: string,
+        stat: File.Info,
+        options?: WatchOptions,
+      ) => Option.Option<Stream.Stream<WatchEvent, System.SystemError>>
+    }
+  >()
+{}
 
 export const make = (
-  impl: Omit<FileSystem, "exists" | "readFileString" | "stream" | "sink" | "writeFileString">,
+  impl: Omit<
+    FileSystem,
+    "exists" | "readFileString" | "stream" | "sink" | "writeFileString"
+  >,
 ): FileSystem => {
   return FileSystem.of({
     ...impl,
@@ -281,8 +334,7 @@ export const make = (
         impl.access(path),
         Effect.as(true),
         Effect.catchTag("SystemError", (e) =>
-          e.reason === "NotFound" ? Effect.succeed(false) : Effect.fail(e),
-        ),
+          e.reason === "NotFound" ? Effect.succeed(false) : Effect.fail(e)),
       ),
     readFileString: (path, encoding) =>
       Effect.tryMap(impl.readFile(path), {
@@ -330,12 +382,21 @@ export const make = (
 }
 
 const fileStream = (file: File, options: StreamOptions = {}) => {
-  const bytesToRead = options.bytesToRead !== undefined ? Size(options.bytesToRead) : undefined
+  const bytesToRead = options.bytesToRead !== undefined
+    ? Size(options.bytesToRead)
+    : undefined
   const chunkSize = Size(options.chunkSize ?? 64 * 1024)
 
   function loop(
     totalBytesRead: bigint,
-  ): Channel.Channel<Chunk.Chunk<Uint8Array>, unknown, System.SystemError, unknown, void, unknown> {
+  ): Channel.Channel<
+    Chunk.Chunk<Uint8Array>,
+    unknown,
+    System.SystemError,
+    unknown,
+    void,
+    unknown
+  > {
     if (bytesToRead !== undefined && bytesToRead <= totalBytesRead) {
       return Channel.void
     }
@@ -350,8 +411,9 @@ const fileStream = (file: File, options: StreamOptions = {}) => {
       Option.match({
         onNone: () => Channel.void,
         onSome: (buf) =>
-          Channel.flatMap(Channel.write(Chunk.of(buf)), () =>
-            loop(totalBytesRead + BigInt(buf.length)),
+          Channel.flatMap(
+            Channel.write(Chunk.of(buf)),
+            () => loop(totalBytesRead + BigInt(buf.length)),
           ),
       }),
     )

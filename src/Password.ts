@@ -35,24 +35,29 @@ const PlainTextPassword = Schema.NonEmptyString.annotations({
 })
 
 function makePasswordSchema(options?: HashOptions) {
-  return Schema.transformOrFail(PlainTextPassword, PasswordStored, {
-    strict: true,
-    decode: (input, _, ast) =>
-      hash(input, options).pipe(
-        Effect.mapError((error) => new ParseResult.Type(ast, input, formatError(error))),
-      ),
-    encode: (stored, _, ast) =>
-      Effect.fail(
-        new ParseResult.Forbidden(
-          ast,
-          stored,
-          "Password hashes are write-only and cannot be encoded back to plain text.",
+  return Schema
+    .transformOrFail(PlainTextPassword, PasswordStored, {
+      strict: true,
+      decode: (input, _, ast) =>
+        hash(input, options).pipe(
+          Effect.mapError((error) =>
+            new ParseResult.Type(ast, input, formatError(error))
+          ),
         ),
-      ),
-  }).annotations({
-    identifier: "Password",
-    description: "A write-only password schema that decodes plain text into a password hash.",
-  })
+      encode: (stored, _, ast) =>
+        Effect.fail(
+          new ParseResult.Forbidden(
+            ast,
+            stored,
+            "Password hashes are write-only and cannot be encoded back to plain text.",
+          ),
+        ),
+    })
+    .annotations({
+      identifier: "Password",
+      description:
+        "A write-only password schema that decodes plain text into a password hash.",
+    })
 }
 
 export function schemaPassword(options?: HashOptions) {
@@ -63,14 +68,16 @@ export function hash(
   password: string,
   options?: HashOptions,
 ): Effect.Effect<PasswordStored, PasswordError> {
-  return Effect.gen(function* () {
+  return Effect.gen(function*() {
     const algorithm = options?.algorithm ?? defaultAlgorithm
 
     const digest = yield* Effect.tryPromise({
       try: () => Bun.password.hash(password, toBunAlgorithm(options)),
       catch: (cause) =>
         new PasswordError({
-          reason: isSupportedAlgorithm(algorithm) ? "HashFailure" : "UnsupportedAlgorithm",
+          reason: isSupportedAlgorithm(algorithm)
+            ? "HashFailure"
+            : "UnsupportedAlgorithm",
           algorithm,
           cause,
         }),
@@ -96,7 +103,11 @@ export function verify(
 
 function toBunAlgorithm(
   options?: HashOptions,
-): Bun.Password.AlgorithmLabel | Bun.Password.Argon2Algorithm | Bun.Password.BCryptAlgorithm {
+):
+  | Bun.Password.AlgorithmLabel
+  | Bun.Password.Argon2Algorithm
+  | Bun.Password.BCryptAlgorithm
+{
   const algorithm = options?.algorithm ?? defaultAlgorithm
 
   switch (algorithm) {
@@ -116,14 +127,18 @@ function toBunAlgorithm(
   }
 }
 
-function isSupportedAlgorithm(algorithm: string): algorithm is PasswordAlgorithm {
+function isSupportedAlgorithm(
+  algorithm: string,
+): algorithm is PasswordAlgorithm {
   return bunAlgorithms.includes(algorithm as PasswordAlgorithm)
 }
 
 function formatError(error: PasswordError): string {
   switch (error.reason) {
     case "UnsupportedAlgorithm":
-      return `Unsupported password hash algorithm: ${error.algorithm ?? "unknown"}`
+      return `Unsupported password hash algorithm: ${
+        error.algorithm ?? "unknown"
+      }`
     case "HashFailure":
       return `Failed to hash password with ${error.algorithm ?? "unknown"}`
   }
