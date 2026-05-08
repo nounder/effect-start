@@ -222,13 +222,16 @@ const resolveValue = (value: HtmlValue): string => {
   return esc(String(value))
 }
 
-export const html = (strings: TemplateStringsArray, ...values: Array<HtmlValue>): TrustedHtml => {
-  let result = strings[0]
-  for (let i = 0; i < values.length; i++) {
-    result += resolveValue(values[i])
-    result += strings[i + 1]
-  }
-  return unsafe(result)
-}
-
-html.unsafe = unsafe
+export const html = Object.assign(
+  (strings: TemplateStringsArray, ...values: Array<HtmlValue>): TrustedHtml => {
+    let result = strings[0]
+    for (let i = 0; i < values.length; i++) {
+      result += resolveValue(values[i])
+      result += strings[i + 1]
+    }
+    return unsafe(result)
+  },
+  {
+    unsafe,
+  },
+)
