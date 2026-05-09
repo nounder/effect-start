@@ -11,8 +11,7 @@ export default Route
         <div
           class="h-full flex flex-col"
           data-signals={{
-            draft: "",
-            pendingDraft: "",
+            _draft: "",
             username: "User" + Math.floor(Math.random() * 1000),
           }}
         >
@@ -28,22 +27,28 @@ export default Route
             data-on:submit={(e) => {
               e.preventDefault()
 
-              e.signals.pendingDraft = e.signals.draft
-              e.signals.draft = ""
-              e.actions.post(location.href)
+              e.actions.post(location.href, {
+                payload: {
+                  username: e.signals.username,
+                  text: e.signals._draft,
+                },
+              })
+
+              e.signals._draft = ""
             }}
           >
             <input
+              id="draft"
               type="text"
               placeholder="Type a message..."
-              data-bind:draft
+              data-bind="_draft"
               autocomplete="off"
               class="flex-1 py-3 px-3 border border-gray-300 rounded-lg text-base outline-none focus:border-emerald-500"
             />
             <button
               type="submit"
               data-indicator:sending
-              data-attr:disabled={(e) => e.signals.sending || !e.signals.draft.trim()}
+              data-attr:disabled={(e) => e.signals.sending || !e.signals._draft.trim()}
               class="py-3 px-6 border-none bg-emerald-500 text-white font-semibold rounded-lg cursor-pointer hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Send
@@ -53,8 +58,8 @@ export default Route
           <div data-init={(e) => e.actions.get(location.href)} />
 
           <script>
-            {(e) => {
-              const scrollEl = e.window.document.getElementById("chat-messages")!
+            {() => {
+              const scrollEl = window.document.getElementById("chat-messages")!
               let isAtBottom = true
 
               function checkIfAtBottom() {
@@ -100,18 +105,18 @@ export default Route
   )
   .post(
     Route.schemaBodyJson({
-      pendingDraft: Schema.String,
+      text: Schema.String,
       username: Schema.String,
     }),
     Route.text(function*(ctx) {
-      if (!ctx.body.pendingDraft?.trim()) {
+      if (!ctx.body.text?.trim()) {
         return ""
       }
 
       const userMessage: Chat.ChatMessage = {
         id: crypto.randomUUID(),
         user: ctx.body.username || "Anonymous",
-        text: ctx.body.pendingDraft.trim(),
+        text: ctx.body.text.trim(),
         timestamp: Date.now(),
       }
 

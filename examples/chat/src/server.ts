@@ -7,6 +7,9 @@ export default Start.pack(
   Development.layer(),
   FileRouter.layer(() => import("./routes/.server.ts")),
   Start.layerDev(),
+  BunServer.layer({
+    development: false,
+  }),
 )
 
 Start.runMain(import.meta)
