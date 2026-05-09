@@ -1,10 +1,8 @@
+import { Development } from "effect-start"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
-import * as FiberId from "effect/FiberId"
 import * as Function from "effect/Function"
 import * as Layer from "effect/Layer"
-import * as MutableRef from "effect/MutableRef"
-import * as BunChildProcessSpawner from "./bun/BunChildProcessSpawner.ts"
 import * as BunRuntime from "./bun/BunRuntime.ts"
 import * as BunServer from "./bun/BunServer.ts"
 import * as BundleRoute from "./bundler/BundleRoute.ts"
@@ -12,8 +10,6 @@ import type * as ChildProcess from "./ChildProcess.ts"
 import type * as FileSystem from "./FileSystem.ts"
 import * as LayerExtra from "./internal/LayerExtra.ts"
 import * as StartApp from "./internal/StartApp.ts"
-import * as NodeFileSystem from "./node/NodeFileSystem.ts"
-import * as PlatformRuntime from "./PlatformRuntime.ts"
 
 /**
  * Builds layers in the given order, wiring their dependencies automatically.
@@ -54,17 +50,18 @@ export function build<
  * Like `build`, but accepts layers in any order. Every layer's dependencies
  * must be satisfied by another layer.
  *
+ * @example
  * ```ts
  * // These all produce the same result:
  * Start.pack(LoggerLive, DatabaseLive, UserRepoLive)
  * Start.pack(UserRepoLive, DatabaseLive, LoggerLive)
  * ```
- *
- * @since 1.0.0
- * @category constructors
  */
 export function pack<
-  const Layers extends readonly [Layer.Layer.Any, ...Array<Layer.Layer.Any>],
+  const Layers extends readonly [
+    Layer.Layer.Any,
+    ...Array<Layer.Layer.Any>,
+  ],
 >(
   ...layers: LayerExtra.Unordered<Layers>
 ): Layer.Layer<
@@ -78,9 +75,10 @@ export function pack<
 }
 
 export function layerDev() {
-  return Layer.mergeAll(NodeFileSystem.layer, BunChildProcessSpawner.layer)
+  return Development.layerBase()
 }
 
+// TODO: do we even need to define requirements upfront?
 type AppRequirements =
   | BunServer.BunServer
   | FileSystem.FileSystem
@@ -134,18 +132,26 @@ export function serve<ROut, E, RIn extends AppRequirements>(
   )
 }
 
-export const mainFiberId: Effect.Effect<FiberId.FiberId> = Effect.sync(() => {
-  const fiber = MutableRef.get(PlatformRuntime.mainFiber)
-  return fiber ? fiber.id() : FiberId.none
-})
-
+/**
+ * Given module meta of an entrypoint that exports Start app, run it.
+ *
+ * @example
+ * ```ts
+ * // server.ts or other entrypoint
+ * import { Start } from "effect-start"
+ *
+ * export default Start.pack(...)
+ *
+ * Start.runMain(import.meta)
+ * ```
+ */
 export function runMain(meta: ImportMeta): void {
   if (meta.main) {
     serve(() => import(meta.url))
   } else {
     // eslint-disable-next-line no-console
     console.warn(
-      `Start.runMain: ${meta.url} is not the main entrypoint, skipping.`,
+      `Start.runMain: ${meta.url} is not an entrypoint, skipping.`,
     )
   }
 }

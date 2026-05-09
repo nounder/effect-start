@@ -6,7 +6,9 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as PubSub from "effect/PubSub"
 import * as Stream from "effect/Stream"
+import * as BunChildProcessSpawner from "./bun/BunChildProcessSpawner.ts"
 import * as FileSystem from "./FileSystem.ts"
+import * as NodeFileSystem from "./node/NodeFileSystem.ts"
 import type * as System from "./System.ts"
 
 export type DevelopmentEvent =
@@ -124,3 +126,13 @@ export const events: Stream.Stream<DevelopmentEvent> = Stream.unwrap(
     ),
   ),
 )
+
+/**
+ * @internal
+ */
+export function layerBase() {
+  return Layer.mergeAll(
+    NodeFileSystem.layer,
+    BunChildProcessSpawner.layer,
+  )
+}
