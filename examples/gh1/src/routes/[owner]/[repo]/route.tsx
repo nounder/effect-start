@@ -1,7 +1,9 @@
 import { Effect, Schema } from "effect"
 import { Html, Route } from "effect-start"
-import * as Github from "../../../Github.ts"
-import * as Ui from "../../../Ui.tsx"
+import * as Github from "Github.ts"
+import { Layout } from "ui/Layout.tsx"
+import { LanguageBar } from "ui/Repo.tsx"
+import { Tabs } from "ui/Tabs.tsx"
 
 export default Route.get(
   Route.schemaPathParams({ owner: Schema.String, repo: Schema.String }),
@@ -16,7 +18,7 @@ export default Route.get(
     ])
 
     return (
-      <Ui.Layout>
+      <Layout>
         <div class="pt-4">
           <div class="flex items-center gap-2 text-xl mb-2">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="#8b949e">
@@ -119,7 +121,7 @@ export default Route.get(
             )}
           </div>
 
-          <Ui.Tabs
+          <Tabs
             items={[
               {
                 label: "Code",
@@ -213,7 +215,7 @@ export default Route.get(
                   <h3 class="text-sm font-semibold mb-3">
                     Languages
                   </h3>
-                  <Ui.LanguageBar languages={languages} />
+                  <LanguageBar languages={languages} />
                 </div>
               )}
 
@@ -239,7 +241,7 @@ export default Route.get(
             </aside>
           </div>
         </div>
-      </Ui.Layout>
+      </Layout>
     )
   }),
 )

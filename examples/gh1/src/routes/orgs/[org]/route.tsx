@@ -1,7 +1,10 @@
 import { Effect, Schema } from "effect"
 import { Route } from "effect-start"
-import * as Github from "../../../Github.ts"
-import * as Ui from "../../../Ui.tsx"
+import * as Github from "Github.ts"
+import { Layout } from "ui/Layout.tsx"
+import { RepoCard } from "ui/Repo.tsx"
+import { Tabs } from "ui/Tabs.tsx"
+import { UserCard } from "ui/User.tsx"
 
 export default Route.get(
   Route.schemaPathParams({ org: Schema.String }),
@@ -19,7 +22,7 @@ export default Route.get(
     ])
 
     return (
-      <Ui.Layout>
+      <Layout>
         <div class="pt-6">
           <div class="flex items-center gap-4 mb-6 pb-6 border-b border-[#21262d]">
             <img
@@ -74,7 +77,7 @@ export default Route.get(
             </div>
           </div>
 
-          <Ui.Tabs
+          <Tabs
             items={[
               {
                 label: "Repositories",
@@ -94,7 +97,7 @@ export default Route.get(
             (
               <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                 {members.map((m: any) => (
-                  <Ui.UserCard
+                  <UserCard
                     login={m.login}
                     avatar={m.avatar_url}
                     type="User"
@@ -105,7 +108,7 @@ export default Route.get(
             (
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {repos.map((r: any) => (
-                  <Ui.RepoCard
+                  <RepoCard
                     owner={r.owner.login}
                     name={r.name}
                     description={r.description}
@@ -119,7 +122,7 @@ export default Route.get(
               </div>
             )}
         </div>
-      </Ui.Layout>
+      </Layout>
     )
   }),
 )

@@ -1,6 +1,9 @@
 import { Route } from "effect-start"
-import * as Github from "../../Github.ts"
-import * as Ui from "../../Ui.tsx"
+import * as Github from "Github.ts"
+import { EmptyState } from "ui/EmptyState.tsx"
+import { Layout } from "ui/Layout.tsx"
+import { RepoListItem } from "ui/Repo.tsx"
+import { UserCard } from "ui/User.tsx"
 
 export default Route.get(
   Route.html(function*() {
@@ -12,14 +15,14 @@ export default Route.get(
 
     if (!q) {
       return (
-        <Ui.Layout>
+        <Layout>
           <div class="pt-12">
-            <Ui.EmptyState
+            <EmptyState
               title="Search GitHub"
               description="Enter a query in the search bar above"
             />
           </div>
-        </Ui.Layout>
+        </Layout>
       )
     }
 
@@ -27,7 +30,7 @@ export default Route.get(
       const results = yield* Github.searchUsers(q, { per_page: 30, page })
       const users = results.items
       return (
-        <Ui.Layout>
+        <Layout>
           <div class="pt-6 pb-4">
             <h2 class="text-xl font-semibold mb-4">
               <span class="text-[#8b949e]">
@@ -40,7 +43,7 @@ export default Route.get(
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
             {users.map((u) => (
-              <Ui.UserCard
+              <UserCard
                 login={u.login}
                 avatar={u.avatar_url}
                 type={u.type}
@@ -48,14 +51,14 @@ export default Route.get(
             ))}
           </div>
           {users.length === 30 && <Pagination q={q} type={type} page={page} />}
-        </Ui.Layout>
+        </Layout>
       )
     }
 
     const results = yield* Github.searchRepos(q, { per_page: 30, page })
     const repos = results.items
     return (
-      <Ui.Layout>
+      <Layout>
         <div class="pt-6 pb-4">
           <h2 class="text-xl font-semibold mb-4">
             <span class="text-[#8b949e]">
@@ -68,7 +71,7 @@ export default Route.get(
         </div>
         <div>
           {repos.map((r) => (
-            <Ui.RepoListItem
+            <RepoListItem
               owner={r.owner.login}
               repo={r.name}
               description={r.description}
@@ -81,13 +84,13 @@ export default Route.get(
           ))}
         </div>
         {repos.length === 0 && (
-          <Ui.EmptyState
+          <EmptyState
             title="No results"
             description={`Nothing matched "${q}"`}
           />
         )}
         {repos.length === 30 && <Pagination q={q} type={type} page={page} />}
-      </Ui.Layout>
+      </Layout>
     )
   }),
 )

@@ -1,7 +1,10 @@
 import { Schema } from "effect"
 import { Route } from "effect-start"
-import * as Github from "../../../../Github.ts"
-import * as Ui from "../../../../Ui.tsx"
+import * as Github from "Github.ts"
+import { EmptyState } from "ui/EmptyState.tsx"
+import { Layout } from "ui/Layout.tsx"
+import { Tabs } from "ui/Tabs.tsx"
+import { ContributorCard } from "ui/User.tsx"
 
 export default Route.get(
   Route.schemaPathParams({ owner: Schema.String, repo: Schema.String }),
@@ -13,10 +16,10 @@ export default Route.get(
     })
 
     return (
-      <Ui.Layout>
+      <Layout>
         <div class="pt-4">
           <RepoHeader owner={owner} repo={repo} />
-          <Ui.Tabs
+          <Tabs
             items={[
               {
                 label: "Code",
@@ -45,7 +48,7 @@ export default Route.get(
 
           {contributors.length === 0 ?
             (
-              <Ui.EmptyState
+              <EmptyState
                 title="No contributors"
                 description="This repository has no contributors"
               />
@@ -53,7 +56,7 @@ export default Route.get(
             (
               <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
                 {contributors.map((c: any) => (
-                  <Ui.ContributorCard
+                  <ContributorCard
                     login={c.login}
                     avatar={c.avatar_url}
                     contributions={c.contributions}
@@ -62,7 +65,7 @@ export default Route.get(
               </div>
             )}
         </div>
-      </Ui.Layout>
+      </Layout>
     )
   }),
 )

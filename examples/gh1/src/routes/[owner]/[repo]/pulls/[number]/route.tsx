@@ -1,7 +1,8 @@
 import { Effect, Schema } from "effect"
 import { Route } from "effect-start"
-import * as Github from "../../../../../Github.ts"
-import * as Ui from "../../../../../Ui.tsx"
+import * as Github from "Github.ts"
+import { Layout } from "ui/Layout.tsx"
+import { Tabs } from "ui/Tabs.tsx"
 
 export default Route.get(
   Route.schemaPathParams({
@@ -21,10 +22,10 @@ export default Route.get(
     const isMerged = !!pr.merged_at
 
     return (
-      <Ui.Layout>
+      <Layout>
         <div class="pt-4">
           <RepoHeader owner={owner} repo={repo} />
-          <Ui.Tabs
+          <Tabs
             items={[
               {
                 label: "Code",
@@ -145,7 +146,7 @@ export default Route.get(
             ))}
           </div>
         </div>
-      </Ui.Layout>
+      </Layout>
     )
   }),
 )

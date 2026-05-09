@@ -1,7 +1,10 @@
 import { Schema } from "effect"
 import { Route } from "effect-start"
-import * as Github from "../../../../Github.ts"
-import * as Ui from "../../../../Ui.tsx"
+import * as Github from "Github.ts"
+import { EmptyState } from "ui/EmptyState.tsx"
+import { IssueRow, StateFilter } from "ui/Issue.tsx"
+import { Layout } from "ui/Layout.tsx"
+import { Tabs } from "ui/Tabs.tsx"
 
 export default Route.get(
   Route.schemaPathParams({ owner: Schema.String, repo: Schema.String }),
@@ -16,10 +19,10 @@ export default Route.get(
     })
 
     return (
-      <Ui.Layout>
+      <Layout>
         <div class="pt-4">
           <RepoHeader owner={owner} repo={repo} />
-          <Ui.Tabs
+          <Tabs
             items={[
               {
                 label: "Code",
@@ -45,7 +48,7 @@ export default Route.get(
             ]}
           />
 
-          <Ui.StateFilter
+          <StateFilter
             current={state}
             openHref={Route.link("/:owner/:repo/pulls", {
               owner,
@@ -61,7 +64,7 @@ export default Route.get(
 
           {pulls.length === 0 ?
             (
-              <Ui.EmptyState
+              <EmptyState
                 title="No pull requests found"
                 description={`There are no ${state} pull requests`}
               />
@@ -69,7 +72,7 @@ export default Route.get(
             (
               <div class="border border-[#21262d] rounded-md divide-y divide-[#21262d]">
                 {pulls.map((pr: any) => (
-                  <Ui.IssueRow
+                  <IssueRow
                     number={pr.number}
                     title={pr.title}
                     state={pr.state}
@@ -85,7 +88,7 @@ export default Route.get(
               </div>
             )}
         </div>
-      </Ui.Layout>
+      </Layout>
     )
   }),
 )
