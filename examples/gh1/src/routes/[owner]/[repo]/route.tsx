@@ -1,9 +1,9 @@
 import { Effect, Schema } from "effect"
 import { Html, Route } from "effect-start"
-import * as Github from "Github.ts"
-import { Layout } from "ui/Layout.tsx"
-import { LanguageBar } from "ui/Repo.tsx"
-import { Tabs } from "ui/Tabs.tsx"
+import * as Github from "../../../Github.ts"
+import { Layout } from "../../../ui/Layout.tsx"
+import { LanguageBar } from "../../../ui/Repo.tsx"
+import { Tabs } from "../../../ui/Tabs.tsx"
 
 export default Route.get(
   Route.schemaPathParams({ owner: Schema.String, repo: Schema.String }),

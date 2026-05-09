@@ -1,10 +1,10 @@
 import { Schema } from "effect"
 import { Route } from "effect-start"
-import * as Github from "Github.ts"
-import { CommitRow } from "ui/Commit.tsx"
-import { EmptyState } from "ui/EmptyState.tsx"
-import { Layout } from "ui/Layout.tsx"
-import { Tabs } from "ui/Tabs.tsx"
+import * as Github from "../../../../Github.ts"
+import { CommitRow } from "../../../../ui/Commit.tsx"
+import { EmptyState } from "../../../../ui/EmptyState.tsx"
+import { Layout } from "../../../../ui/Layout.tsx"
+import { Tabs } from "../../../../ui/Tabs.tsx"
 
 export default Route.get(
   Route.schemaPathParams({ owner: Schema.String, repo: Schema.String }),

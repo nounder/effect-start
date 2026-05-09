@@ -1,5 +1,5 @@
 import { Route } from "effect-start"
-import * as Github from "Github.ts"
+import * as Github from "../Github.ts"
 
 export function CommitRow(props: {
   sha: string

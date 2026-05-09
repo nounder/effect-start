@@ -1,7 +1,7 @@
 import { Route } from "effect-start"
-import * as Github from "Github.ts"
-import { Layout } from "ui/Layout.tsx"
-import { RepoListItem } from "ui/Repo.tsx"
+import * as Github from "../Github.ts"
+import { Layout } from "../ui/Layout.tsx"
+import { RepoListItem } from "../ui/Repo.tsx"
 
 export default Route.get(
   Route.html(function*() {

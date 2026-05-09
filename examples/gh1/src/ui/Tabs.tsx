@@ -1,4 +1,4 @@
-import * as Github from "Github.ts"
+import * as Github from "../Github.ts"
 
 export function Tabs(props: {
   items: Array<

@@ -7,8 +7,6 @@
     "moduleDetection": "force",
     "allowJs": true,
 
-    "baseUrl": "./src",
-
     // Bundler mode
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,

@@ -1,6 +1,6 @@
 import { Effect, PubSub, Ref, Schema, Stream } from "effect"
 import { Html, Route } from "effect-start"
-import * as Chat from "ui/Chat.tsx"
+import * as Chat from "../../ui/Chat.tsx"
 
 export default Route
   .get(

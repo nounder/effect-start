@@ -1,5 +1,5 @@
 import { Html, Route } from "effect-start"
-import * as Github from "Github.ts"
+import * as Github from "../Github.ts"
 
 export function IssueRow(props: {
   number: number

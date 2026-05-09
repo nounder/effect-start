@@ -1,9 +1,9 @@
 import { Route } from "effect-start"
-import * as Github from "Github.ts"
-import { EmptyState } from "ui/EmptyState.tsx"
-import { Layout } from "ui/Layout.tsx"
-import { RepoListItem } from "ui/Repo.tsx"
-import { UserCard } from "ui/User.tsx"
+import * as Github from "../../Github.ts"
+import { EmptyState } from "../../ui/EmptyState.tsx"
+import { Layout } from "../../ui/Layout.tsx"
+import { RepoListItem } from "../../ui/Repo.tsx"
+import { UserCard } from "../../ui/User.tsx"
 
 export default Route.get(
   Route.html(function*() {
