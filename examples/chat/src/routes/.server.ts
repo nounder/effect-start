@@ -24,14 +24,6 @@ const routes = {
     () => import("./layer.tsx"),
     () => import("./chat/about/route.tsx"),
   ],
-  "/chat/send": [
-    () => import("./layer.tsx"),
-    () => import("./chat/send/route.tsx"),
-  ],
-  "/chat/stream": [
-    () => import("./layer.tsx"),
-    () => import("./chat/stream/route.tsx"),
-  ],
 } satisfies FileRouter.FileRoutes
 
 export default routes
