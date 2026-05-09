@@ -1,6 +1,6 @@
 import { Ref } from "effect"
 import { Route } from "effect-start"
-import * as Chat from "../../Chat.tsx"
+import * as Chat from "ui/Chat.tsx"
 
 export default Route.get(
   Route.html(function*() {
@@ -24,7 +24,11 @@ export default Route.get(
 
         <form
           class="flex gap-2 p-2 border-t border-gray-200 bg-gray-50"
-          data-on:submit__prevent="$pendingDraft = $draft; $draft = ''; @post('/chat/send')"
+          data-on:submit__prevent={(e) => {
+            e.signals.pendingDraft = e.signals.draft
+            e.signals.draft = ""
+            e.actions.post("/chat/send")
+          }}
         >
           <input
             type="text"
@@ -36,25 +40,23 @@ export default Route.get(
           <button
             type="submit"
             data-indicator:sending
-            data-attr:disabled="$sending || !$draft.trim()"
+            data-attr:disabled={(e) => e.signals.sending || !e.signals.draft.trim()}
             class="py-3 px-6 border-none bg-emerald-500 text-white font-semibold rounded-lg cursor-pointer hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Send
           </button>
         </form>
 
-        <div data-init="@get('/chat/stream')" />
+        <div data-init={(e) => e.actions.get("/chat/stream")} />
 
         <script>
-          {(window) => {
-            const scrollEl = window.document.getElementById("chat-messages")!
+          {(e) => {
+            const scrollEl = e.window.document.getElementById("chat-messages")!
             let isAtBottom = true
 
             function checkIfAtBottom() {
               const threshold = 50
-              isAtBottom = scrollEl.scrollHeight - scrollEl
-                    .scrollTop - scrollEl
-                    .clientHeight < threshold
+              isAtBottom = scrollEl.scrollHeight - scrollEl.scrollTop - scrollEl.clientHeight < threshold
             }
 
             function scrollToBottom() {

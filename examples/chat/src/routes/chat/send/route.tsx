@@ -1,6 +1,6 @@
 import { Effect, PubSub, Ref } from "effect"
 import { Route } from "effect-start"
-import * as Chat from "../../../Chat.tsx"
+import * as Chat from "ui/Chat.tsx"
 
 export default Route.post(
   Route.text(function*() {
