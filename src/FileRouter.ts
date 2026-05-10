@@ -21,14 +21,36 @@ export class FileRouterError extends Data.TaggedError("FileRouterError")<{
   path?: string
 }> {}
 
-export type RouteModule = {
-  default: Route.RouteSet.Any
+export type RouteModule<R extends Route.RouteSet.Any> = {
+  default: R
 }
 
-export type LazyRouteModule = () => Promise<RouteModule>
+export type LazyRoute<R extends Route.RouteSet.Any> =
+  () => Promise<RouteModule<R>>
 
-export type FileRoutes = {
-  [path: PathPattern.PathPattern]: [LazyRouteModule, ...Array<LazyRouteModule>]
+export type LazyStack = readonly [LazyRoute<any>, ...Array<LazyRoute<any>>]
+
+export type FileRouteMap = {
+  [path: PathPattern.PathPattern]: LazyStack
+}
+
+export namespace FileRouteMap {
+  /**
+   * Extracts the union of `R` requirements from every route reachable in a
+   * {@link FileRouteMap}. Mirrors {@link RouteMap.Context} but walks the
+   * lazy-loader stacks at each path. Excludes services marked with
+   * {@link Route.IntrinsicService} since they are provided automatically by
+   * the request runtime.
+   */
+  export type Context<T> = Exclude<
+    {
+      [K in keyof T]: T[K] extends ReadonlyArray<LazyRoute<infer S>>
+        ? S extends Iterable<Route.Route<any, any, any, any, infer R>> ? R
+        : never
+        : never
+    }[keyof T],
+    { readonly [Route.IntrinsicService]?: any }
+  >
 }
 
 export type FileRoute = {
@@ -83,17 +105,25 @@ function importModule<T>(
 /**
  * Generates a tree file that references all routes.
  */
-export function layer(
-  load: () => Promise<{ default: FileRoutes }>,
-): Layer.Layer<Route.Routes, FileRouterError, FileSystem.FileSystem>
-export function layer(options: {
-  load: () => Promise<{ default: FileRoutes }>
+export function layer<const T extends FileRouteMap>(
+  load: () => Promise<{ default: T }>,
+): Layer.Layer<
+  Route.Routes,
+  FileRouterError,
+  FileSystem.FileSystem | FileRouteMap.Context<T>
+>
+export function layer<const T extends FileRouteMap>(options: {
+  load: () => Promise<{ default: T }>
   path: string
-}): Layer.Layer<Route.Routes, FileRouterError, FileSystem.FileSystem>
+}): Layer.Layer<
+  Route.Routes,
+  FileRouterError,
+  FileSystem.FileSystem | FileRouteMap.Context<T>
+>
 export function layer(
   loadOrOptions:
-    | (() => Promise<{ default: FileRoutes }>)
-    | { load: () => Promise<{ default: FileRoutes }>; path: string },
+    | (() => Promise<{ default: FileRouteMap }>)
+    | { load: () => Promise<{ default: FileRouteMap }>; path: string },
 ) {
   const options = typeof loadOrOptions === "function"
     ? {
@@ -141,7 +171,7 @@ export function layer(
 }
 
 export function fromFileRoutes(
-  fileRoutes: FileRoutes,
+  fileRoutes: FileRouteMap,
 ): Effect.Effect<RouteMap.RouteMap> {
   return Effect.gen(function*() {
     const mounts: RouteMap.RouteMapInput = {}
