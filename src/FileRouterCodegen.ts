@@ -148,9 +148,7 @@ export function generateCode(
     while (true) {
       const pathData = routesByPath.get(currentPath)
       if (pathData?.layers) {
-        const matchingLayers = pathData.layers.filter((layer) =>
-          layerMatchesRoute(layer, route)
-        )
+        const matchingLayers = pathData.layers.filter((layer) => layerMatchesRoute(layer, route))
         allLayers.unshift(...matchingLayers)
       }
 

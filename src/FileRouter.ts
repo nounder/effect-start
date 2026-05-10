@@ -25,8 +25,7 @@ export type RouteModule<R extends Route.RouteSet.Any> = {
   default: R
 }
 
-export type LazyRoute<R extends Route.RouteSet.Any> =
-  () => Promise<RouteModule<R>>
+export type LazyRoute<R extends Route.RouteSet.Any> = () => Promise<RouteModule<R>>
 
 export type LazyStack = readonly [LazyRoute<any>, ...Array<LazyRoute<any>>]
 
@@ -153,12 +152,8 @@ export function layer(
 
       yield* Function.pipe(
         Development.events,
-        Stream.filter((e) =>
-          e._tag !== "Reload" && e.path.startsWith(relativeRoutesPath)
-        ),
-        Stream.runForEach(() =>
-          FileRouterCodegen.update(routesPath, treeFilename)
-        ),
+        Stream.filter((e) => e._tag !== "Reload" && e.path.startsWith(relativeRoutesPath)),
+        Stream.runForEach(() => FileRouterCodegen.update(routesPath, treeFilename)),
         Effect.fork,
       )
 
@@ -183,8 +178,7 @@ export function fromFileRoutes(
         const result = yield* Effect.either(
           Effect.tryPromise({
             try: () => loader(),
-            catch: (cause) =>
-              new FileRouterError({ reason: "Import", cause, path }),
+            catch: (cause) => new FileRouterError({ reason: "Import", cause, path }),
           }),
         )
 
@@ -192,9 +186,7 @@ export function fromFileRoutes(
           const error = result.left
           for (
             const route of Route.use(
-              Route.render((): Effect.Effect<string, FileRouterError> =>
-                Effect.fail(error)
-              ),
+              Route.render((): Effect.Effect<string, FileRouterError> => Effect.fail(error)),
             )
           ) {
             allRoutes.push(route as Route.Route.With<{ method: string }>)

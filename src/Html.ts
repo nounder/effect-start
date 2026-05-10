@@ -1,9 +1,4 @@
-import type {
-  HtmlElemenetProps,
-  HtmlElement,
-  HtmlElementType,
-  JSX,
-} from "../src/jsx.d.ts"
+import type { HtmlElemenetProps, HtmlElement, HtmlElementType, JSX } from "../src/jsx.d.ts"
 
 const NoChildren: ReadonlyArray<never> = Object.freeze([])
 
@@ -67,9 +62,7 @@ const serializeObjectProperty = (value: unknown): string | undefined => {
   if (value === undefined) return undefined
   if (typeof value === "function") return value.toString()
   if (Array.isArray(value)) {
-    return `[${
-      value.map((item) => serializeObjectProperty(item) ?? "null").join(",")
-    }]`
+    return `[${value.map((item) => serializeObjectProperty(item) ?? "null").join(",")}]`
   }
   if (value && typeof value === "object") {
     const props = Object
@@ -160,13 +153,9 @@ export function text(
             if (key.startsWith("data-") && typeof value === "function") {
               result += ` ${esc(resolvedKey)}="${esc(value.toString())}"`
             } else if (key.startsWith("data-") && typeof value === "object") {
-              result += ` ${esc(resolvedKey)}='${
-                escSQ(serializeDataAttributeObject(key, value))
-              }'`
+              result += ` ${esc(resolvedKey)}='${escSQ(serializeDataAttributeObject(key, value))}'`
             } else if (key.startsWith("on") && typeof value === "function") {
-              result += ` ${esc(resolvedKey)}="(${
-                esc(value.toString())
-              }).call(this,event)"`
+              result += ` ${esc(resolvedKey)}="(${esc(value.toString())}).call(this,event)"`
             } else {
               result += ` ${esc(resolvedKey)}="${esc(value)}"`
             }
