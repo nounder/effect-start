@@ -31,13 +31,13 @@ const testBundle: Bundle.BundleContext = {
   },
 }
 
-const testLayer = Layer.succeed(Bundle.ClientBundle, testBundle)
+const testLayer = Layer.succeed(Bundle.Bundle, testBundle)
 
 test.it("serves a JS artifact", () =>
   Effect
     .gen(function*() {
-      const runtime = yield* Effect.runtime<Bundle.ClientBundle>()
-      const routes = BundleRoute.make(Bundle.ClientBundle)
+      const runtime = yield* Effect.runtime<Bundle.Bundle>()
+      const routes = BundleRoute.make(Bundle.Bundle)
       const tree = Route.map({ "/_bundle/:path+": routes })
       const handles = Object.fromEntries(RouteHttp.walkHandles(tree, runtime))
       const handler = handles["/_bundle/:path+"]
@@ -66,8 +66,8 @@ test.it("serves a JS artifact", () =>
 test.it("serves a CSS artifact", () =>
   Effect
     .gen(function*() {
-      const runtime = yield* Effect.runtime<Bundle.ClientBundle>()
-      const routes = BundleRoute.make(Bundle.ClientBundle)
+      const runtime = yield* Effect.runtime<Bundle.Bundle>()
+      const routes = BundleRoute.make(Bundle.Bundle)
       const tree = Route.map({ "/_bundle/:path+": routes })
       const handles = Object.fromEntries(RouteHttp.walkHandles(tree, runtime))
       const handler = handles["/_bundle/:path+"]
@@ -95,8 +95,8 @@ test.it("serves a CSS artifact", () =>
 test.it("returns 404 for missing artifact", () =>
   Effect
     .gen(function*() {
-      const runtime = yield* Effect.runtime<Bundle.ClientBundle>()
-      const routes = BundleRoute.make(Bundle.ClientBundle)
+      const runtime = yield* Effect.runtime<Bundle.Bundle>()
+      const routes = BundleRoute.make(Bundle.Bundle)
       const tree = Route.map({ "/_bundle/:path+": routes })
       const handles = Object.fromEntries(RouteHttp.walkHandles(tree, runtime))
       const handler = handles["/_bundle/:path+"]
@@ -118,8 +118,8 @@ test.it("returns 404 for missing artifact", () =>
 test.it("supports custom mount path", () =>
   Effect
     .gen(function*() {
-      const runtime = yield* Effect.runtime<Bundle.ClientBundle>()
-      const routes = BundleRoute.make(Bundle.ClientBundle)
+      const runtime = yield* Effect.runtime<Bundle.Bundle>()
+      const routes = BundleRoute.make(Bundle.Bundle)
       const tree = Route.map({ "/assets/:path+": routes })
       const handles = Object.fromEntries(RouteHttp.walkHandles(tree, runtime))
       const handler = handles["/assets/:path+"]

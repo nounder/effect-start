@@ -15,7 +15,7 @@ import * as Bundle from "./Bundle.ts"
  *
  * ```ts
  * RouteMap.make({
- *   "/_bundle/:path+": BundleRoute.make(Bundle.ClientBundle),
+ *   "/_bundle/:path+": BundleRoute.make(Bundle.Bundle),
  * })
  * ```
  */
@@ -52,12 +52,10 @@ export const make = <Tag extends Context.Tag<any, Bundle.BundleContext>>(
     }),
   )
 
-export const client = () => make(Bundle.ClientBundle)
-
 /**
  * Merges a bundle-serving route into the route tree.
  *
- * When called without arguments, checks if `ClientBundle` is available
+ * When called without arguments, checks if `Bundle` is available
  * in context and only adds the route if it is. This makes it safe to
  * include unconditionally — it's a no-op when no bundle is provided.
  */
@@ -76,14 +74,14 @@ export const layer = (options?: {
   return Layer.effect(
     Route.Routes,
     Effect.gen(function*() {
-      const clientBundle = yield* Effect.serviceOption(Bundle.ClientBundle)
+      const bundle = yield* Effect.serviceOption(Bundle.Bundle)
       const existing = yield* Effect.serviceOption(Route.Routes).pipe(
         Effect.andThen(Option.getOrUndefined),
       )
-      if (Option.isNone(clientBundle)) {
+      if (Option.isNone(bundle)) {
         return existing ?? RouteMap.make({})
       }
-      const bundleMap = RouteMap.make({ [path]: make(Bundle.ClientBundle) })
+      const bundleMap = RouteMap.make({ [path]: make(Bundle.Bundle) })
       return existing ? RouteMap.merge(existing, bundleMap) : bundleMap
     }),
   )

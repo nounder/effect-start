@@ -2,7 +2,7 @@ import { Bundle, Route } from "effect-start"
 
 export default Route.use(
   Route.html(function*(ctx, next) {
-    const bundle = yield* Bundle.ClientBundle
+    const bundle = yield* Bundle.Bundle
 
     return (
       <html>

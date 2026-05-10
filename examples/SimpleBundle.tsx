@@ -8,7 +8,7 @@ class SomeService extends Context.Tag("SomeService")<SomeService, {}>() {}
 const routes = Route.map({
   "*": Route.use(
     Route.html(function*(props, next) {
-      const bundle = yield* Bundle.ClientBundle
+      const bundle = yield* Bundle.Bundle
       yield* SomeService
 
       return (

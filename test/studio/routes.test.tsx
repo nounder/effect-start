@@ -31,7 +31,7 @@ const studioLayer = (auth: Studio.Studio["Type"]["auth"]) =>
     }),
   )
 
-const bundleLayer = Layer.succeed(Bundle.ClientBundle, {
+const bundleLayer = Layer.succeed(Bundle.Bundle, {
   ...Bundle.emptyBundleContext,
   resolve: (path) => `/_bundle/${path}`,
 })

@@ -45,7 +45,7 @@ export default Route.map({
     }),
     Route.html(function*(_, next) {
       const studio = yield* Studio.Studio
-      const bundle = yield* Bundle.ClientBundle
+      const bundle = yield* Bundle.Bundle
       const base = studio.path.endsWith("/") ? studio.path : `${studio.path}/`
       return (
         <html style="height: 100%">

@@ -149,7 +149,7 @@ function mutableContext(
 
 export function layer(
   config: BuildOptions,
-): Layer.Layer<Bundle.ClientBundle, Bundle.BundleError>
+): Layer.Layer<Bundle.Bundle, Bundle.BundleError>
 export function layer<T>(
   tag: Context.Tag<T, Bundle.BundleContext>,
   config: BuildOptions,
@@ -157,7 +157,7 @@ export function layer<T>(
 export function layer(tagOrConfig: any, maybeConfig?: BuildOptions) {
   if (maybeConfig === undefined) {
     return Layer.effect(
-      Bundle.ClientBundle,
+      Bundle.Bundle,
       mutableContext(buildClient(tagOrConfig)),
     )
   }
