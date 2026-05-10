@@ -105,8 +105,8 @@ export function build(
 
     return {
       manifest,
-      resolve: (path: string) => {
-        const resolved = resolveRaw(path)
+      resolve: (path: string, parent?: string) => {
+        const resolved = resolveRaw(path, parent)
         return resolved ? publicPath + resolved : undefined
       },
       getArtifact: (path: string) => {
@@ -140,7 +140,7 @@ function mutableContext(
       get manifest() {
         return current.manifest
       },
-      resolve: (url: string) => current.resolve(url),
+      resolve: (url: string, parent?: string) => current.resolve(url, parent),
       getArtifact: (path: string) => current.getArtifact(path),
       rebuild,
     } satisfies Bundle.BundleContext
