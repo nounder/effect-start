@@ -131,7 +131,7 @@ test.it("chains GET then POST with schemaBodyUrlParams", () => {
           email: Schema.String,
         }),
       ),
-      Route.render(function*(ctx) {
+      Route.handle(function*(ctx) {
         test
           .expectTypeOf(ctx.body)
           .toMatchObjectType<{ email: string }>()

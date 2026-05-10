@@ -3098,13 +3098,13 @@ test.describe("RouteMap layer routes", () => {
       .pipe(Effect.runPromise))
 })
 
-test.describe("Route.render (format=*)", () => {
+test.describe("Route.handle (format=*)", () => {
   test.it("accepts any Accept header", () =>
     Effect
       .gen(function*() {
         const handler = RouteHttp.toWebHandler(
           Route.get(
-            Route.render(function*() {
+            Route.handle(function*() {
               return Stream.make("event: message\ndata: hello\n\n")
             }),
           ),
@@ -3128,7 +3128,7 @@ test.describe("Route.render (format=*)", () => {
       .gen(function*() {
         const handler = RouteHttp.toWebHandler(
           Route.get(
-            Route.render(function*() {
+            Route.handle(function*() {
               return "raw response"
             }),
           ),
@@ -3150,7 +3150,7 @@ test.describe("Route.render (format=*)", () => {
       .gen(function*() {
         const handler = RouteHttp.toWebHandler(
           Route.get(Route.json({ type: "json" })).get(
-            Route.render(function*() {
+            Route.handle(function*() {
               return "fallback"
             }),
           ),
@@ -3183,7 +3183,7 @@ test.describe("Route.render (format=*)", () => {
       .gen(function*() {
         const handler = RouteHttp.toWebHandler(
           Route.get(
-            Route.render(function*() {
+            Route.handle(function*() {
               return "any format"
             }),
           ),
@@ -3219,7 +3219,7 @@ test.describe("Route.render (format=*)", () => {
       .gen(function*() {
         const handler = RouteHttp.toWebHandler(
           Route.get(
-            Route.render(function*() {
+            Route.handle(function*() {
               return Entity.make(Stream.make("data: hello\n\n"), {
                 headers: {
                   "content-type": "text/event-stream",
@@ -3255,13 +3255,13 @@ test.describe("Route.render (format=*)", () => {
         const handler = RouteHttp.toWebHandler(
           Route
             .use(
-              Route.render(function*(_ctx, next) {
+              Route.handle(function*(_ctx, next) {
                 const value = yield* next.text
                 return `wrapped: ${value}`
               }),
             )
             .get(
-              Route.render(function*() {
+              Route.handle(function*() {
                 return "inner"
               }),
             ),
@@ -3288,7 +3288,7 @@ test.describe("Route.render (format=*)", () => {
         const handler = RouteHttp.toWebHandler(
           Route
             .use(
-              Route.render(function*(_ctx, next) {
+              Route.handle(function*(_ctx, next) {
                 calls.push("render middleware")
                 return next.stream
               }),
@@ -3325,11 +3325,11 @@ test.describe("Route.render (format=*)", () => {
         const handler = RouteHttp.toWebHandler(
           Route
             .use(
-              Route.render(function*(_ctx, next) {
+              Route.handle(function*(_ctx, next) {
                 calls.push("render middleware 1")
                 return next.stream
               }),
-              Route.render(function*(_ctx, next) {
+              Route.handle(function*(_ctx, next) {
                 calls.push("render middleware 2")
                 return next.stream
               }),
@@ -3375,7 +3375,7 @@ test.describe("Route.render (format=*)", () => {
               calls.push("json")
               return { type: "json" }
             }),
-            Route.render(function*() {
+            Route.handle(function*() {
               calls.push("render")
               return "render output"
             }),
@@ -3405,7 +3405,7 @@ test.describe("Route.render (format=*)", () => {
           Route.get(
             Route.json({ type: "json" }),
             Route.html("<h1>html</h1>"),
-            Route.render(function*() {
+            Route.handle(function*() {
               return "fallback for unknown accept"
             }),
           ),
@@ -3428,7 +3428,7 @@ test.describe("Route.render (format=*)", () => {
 
   test.it("handler context includes format=*", () => {
     Route.get(
-      Route.render(function*(ctx) {
+      Route.handle(function*(ctx) {
         test
           .expectTypeOf(ctx.format)
           .toEqualTypeOf<"*">()
@@ -3443,7 +3443,7 @@ test.describe("Route.render (format=*)", () => {
       .gen(function*() {
         const handler = RouteHttp.toWebHandler(
           Route.get(
-            Route.render(function*() {
+            Route.handle(function*() {
               return Stream.make("chunk1", "chunk2", "chunk3")
             }),
           ),
@@ -3468,17 +3468,17 @@ test.describe("Route.render (format=*)", () => {
         const handler = RouteHttp.toWebHandler(
           Route
             .use(
-              Route.render(function*(_ctx, next) {
+              Route.handle(function*(_ctx, next) {
                 const value = yield* next.text
                 return `outer(${value})`
               }),
-              Route.render(function*(_ctx, next) {
+              Route.handle(function*(_ctx, next) {
                 const value = yield* next.text
                 return `inner(${value})`
               }),
             )
             .get(
-              Route.render(function*() {
+              Route.handle(function*() {
                 return "content"
               }),
             ),
@@ -3501,7 +3501,7 @@ test.describe("Route.render (format=*)", () => {
         const handler = RouteHttp.toWebHandler(
           Route
             .use(
-              Route.render(function*(_ctx, next) {
+              Route.handle(function*(_ctx, next) {
                 const value = yield* next.text
                 return `[${value}]`
               }),
@@ -3528,7 +3528,7 @@ test.describe("Route.render (format=*)", () => {
         const handler = RouteHttp.toWebHandler(
           Route
             .use(
-              Route.render(function*(_ctx, next) {
+              Route.handle(function*(_ctx, next) {
                 const value = yield* next.text
                 return `<!DOCTYPE html>${value}`
               }),
@@ -3555,7 +3555,7 @@ test.describe("Route.render (format=*)", () => {
 test.it("set-cookie array produces separate headers", async () => {
   const handler = RouteHttp.toWebHandler(
     Route.get(
-      Route.render(
+      Route.handle(
         Entity.make("ok", {
           status: 200,
           headers: {
@@ -3583,7 +3583,7 @@ test.it("set-cookie array produces separate headers", async () => {
 test.it("set-cookie string still works", async () => {
   const handler = RouteHttp.toWebHandler(
     Route.get(
-      Route.render(
+      Route.handle(
         Entity.make("ok", {
           status: 200,
           headers: {

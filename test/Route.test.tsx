@@ -340,7 +340,7 @@ test.describe(Route.redirect, () => {
     Effect
       .gen(function*() {
         const routes = Route.post(
-          Route.render(function*() {
+          Route.handle(function*() {
             return Route.redirect("/posts/123")
           }),
         )
@@ -606,19 +606,19 @@ test.describe("Route.use is not available after method-specific builders", () =>
   })
 
   test.it("use() after post() is a type error", () => {
-    const result = Route.post(Route.render("hello"))
+    const result = Route.post(Route.handle("hello"))
     // @ts-expect-error - use() should not be available after post()
     result.use
   })
 
   test.it("use() after get().post() is a type error", () => {
-    const result = Route.get(Route.html("hello")).post(Route.render("ok"))
+    const result = Route.get(Route.html("hello")).post(Route.handle("ok"))
     // @ts-expect-error - use() should not be available after post()
     result.use
   })
 
   test.it("use() after use() is allowed", () => {
-    const result = Route.use(Route.render((_ctx, next) => next))
+    const result = Route.use(Route.handle((_ctx, next) => next))
 
     test
       .expect(result.use)
@@ -626,7 +626,7 @@ test.describe("Route.use is not available after method-specific builders", () =>
   })
 
   test.it("get() after use() is allowed", () => {
-    const result = Route.use(Route.render((_ctx, next) => next)).get(
+    const result = Route.use(Route.handle((_ctx, next) => next)).get(
       Route.html("hello"),
     )
 

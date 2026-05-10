@@ -186,7 +186,7 @@ export function fromFileRoutes(
           const error = result.left
           for (
             const route of Route.use(
-              Route.render((): Effect.Effect<string, FileRouterError> => Effect.fail(error)),
+              Route.handle((): Effect.Effect<string, FileRouterError> => Effect.fail(error)),
             )
           ) {
             allRoutes.push(route as Route.Route.With<{ method: string }>)

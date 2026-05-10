@@ -18,7 +18,7 @@ const emptyNotFound = Entity.make(new Uint8Array(0), { status: 404 })
 export const make = (directory: string) =>
   Route.get(
     RouteSchema.schemaPathParams(PathParamsSchema),
-    Route.render(function*(ctx) {
+    Route.handle(function*(ctx) {
       const fs = yield* FileSystem.FileSystem
       const relativePath = typeof ctx.pathParams.path === "string"
         ? normalizeRelativePath(ctx.pathParams.path)

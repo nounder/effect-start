@@ -99,7 +99,7 @@ test.it("accepts value directly", () => {
     .toBeCallableWith(value)
 })
 
-test.describe(`${RouteBody.handle.name}()`, () => {
+test.describe(`${RouteBody.normalize.name}()`, () => {
   const ctx = {}
   const next = Entity.effect(Effect.succeed(Entity.make("next")))
 
@@ -108,13 +108,13 @@ test.describe(`${RouteBody.handle.name}()`, () => {
       .expectTypeOf<
         RouteBody.HandlerInput<{ foo: string }, string, Error, never>
       >()
-      .toExtend<Parameters<typeof RouteBody.handle>[0]>()
+      .toExtend<Parameters<typeof RouteBody.normalize>[0]>()
   })
 
   test.it("handles plain value", () =>
     Effect
       .gen(function*() {
-        const handler = RouteBody.handle<{}, string, never, never>("hello")
+        const handler = RouteBody.normalize<{}, string, never, never>("hello")
         const result = yield* handler(ctx, next)
 
         test
@@ -129,7 +129,7 @@ test.describe(`${RouteBody.handle.name}()`, () => {
   test.it("handles Effect directly", () =>
     Effect
       .gen(function*() {
-        const handler = RouteBody.handle<{}, string, never, never>(
+        const handler = RouteBody.normalize<{}, string, never, never>(
           Effect.succeed("from effect"),
         )
         const result = yield* handler(ctx, next)
@@ -141,7 +141,7 @@ test.describe(`${RouteBody.handle.name}()`, () => {
       .pipe(Effect.runPromise))
 
   test.it("handles Effect with error", async () => {
-    const handler = RouteBody.handle<{}, never, Error, never>(
+    const handler = RouteBody.normalize<{}, never, Error, never>(
       Effect.fail(new Error("oops")),
     )
 
@@ -156,7 +156,7 @@ test.describe(`${RouteBody.handle.name}()`, () => {
   test.it("handles function", () =>
     Effect
       .gen(function*() {
-        const handler = RouteBody.handle<{ id: number }, number, never, never>((
+        const handler = RouteBody.normalize<{ id: number }, number, never, never>((
           ctx,
         ) => Effect.succeed(ctx.id))
 
@@ -181,7 +181,7 @@ test.describe(`${RouteBody.handle.name}()`, () => {
   test.it("handles generator", () =>
     Effect
       .gen(function*() {
-        const handler = RouteBody.handle<{ id: number }, number, never, never>(
+        const handler = RouteBody.normalize<{ id: number }, number, never, never>(
           function*(ctx) {
             const n = yield* Effect.succeed(ctx.id)
             return n * 2
@@ -210,7 +210,7 @@ test.describe(`${RouteBody.handle.name}()`, () => {
   test.it("generator can call next", () =>
     Effect
       .gen(function*() {
-        const handler = RouteBody.handle<
+        const handler = RouteBody.normalize<
           {},
           string,
           ParseResult.ParseError,
@@ -236,7 +236,7 @@ test.describe(`${RouteBody.handle.name}()`, () => {
     }
     const ServiceA = Context.GenericTag<ServiceA>("ServiceA")
 
-    const handler = RouteBody.handle(function*() {
+    const handler = RouteBody.normalize(function*() {
       yield* ServiceA
       return "ok"
     })
@@ -271,7 +271,7 @@ test.describe(`${RouteBody.handle.name}()`, () => {
   test.it("generator infers error type from yielded effects", () => {
     class CustomError extends Data.TaggedError("CustomError")<{}> {}
 
-    const handler = RouteBody.handle(function*() {
+    const handler = RouteBody.normalize(function*() {
       yield* Effect.fail(new CustomError())
       return "ok"
     })

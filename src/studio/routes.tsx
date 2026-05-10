@@ -16,7 +16,7 @@ import * as Ui from "./ui.tsx"
 
 export default Route.map({
   "*": Route.use(
-    Route.render(function*(_, next) {
+    Route.handle(function*(_, next) {
       const studio = yield* Studio.Studio
       const request = yield* Route.Request
 
@@ -69,7 +69,7 @@ export default Route.map({
   ),
 
   "/": Route.get(
-    Route.render(function*() {
+    Route.handle(function*() {
       const studio = yield* Studio.Studio
       return Route.redirect(`${studio.path}/traces`)
     }),

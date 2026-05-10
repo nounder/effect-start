@@ -168,7 +168,7 @@ export namespace Route {
     : {}
 }
 
-export const render = RouteBody.render
+export const handle = RouteBody.handle
 
 export const text = RouteBody.build<string, "text">({
   format: "text",

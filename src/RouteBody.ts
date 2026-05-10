@@ -64,17 +64,19 @@ function isHandlerFunction<B, A, E, R>(
   return typeof handler === "function"
 }
 
-export function handle<
+/** @internal */
+export function normalize<
   B,
   A,
   Y extends Utils.YieldWrap<Effect.Effect<any, any, any>>,
 >(
   handler: GeneratorHandler<B, A, Y>,
 ): Route.Route.Handler<B, A, YieldError<Y>, YieldContext<Y>>
-export function handle<B, A, E, R>(
+/** @internal */
+export function normalize<B, A, E, R>(
   handler: HandlerInput<B, A, E, R>,
 ): Route.Route.Handler<B, A, E, R>
-export function handle<B, A, E, R>(
+export function normalize<B, A, E, R>(
   handler: HandlerInput<B, A, E, R>,
 ): Route.Route.Handler<B, A, E, R> {
   if (isHandlerFunction(handler)) {
@@ -213,7 +215,7 @@ export function build<Value, F extends Format>(options: {
   ) {
     return (self: Route.RouteSet<D, B, I>) => {
       const contentType = formatToContentType[descriptors.format]
-      const baseHandler = handle(handler)
+      const baseHandler = normalize(handler)
       const wrappedHandler: Route.Route.Handler<{ format: F }, A, E, R> = (
         ctx,
         next,
@@ -262,7 +264,7 @@ export type RenderValue =
   | Uint8Array
   | Stream.Stream<string | Uint8Array, any, any>
 
-export function render<
+export function handle<
   D extends {},
   B extends {},
   I extends Route.Route.Tuple,
@@ -281,7 +283,7 @@ export function render<
   B,
   [...I, Route.Route<{ format: "*" }, {}, A, YieldError<Y>, YieldContext<Y>>]
 >
-export function render<
+export function handle<
   D extends {},
   B extends {},
   I extends Route.Route.Tuple,
@@ -298,7 +300,7 @@ export function render<
 ): (
   self: Route.RouteSet<D, B, I>,
 ) => Route.RouteSet<D, B, [...I, Route.Route<{ format: "*" }, {}, A, E, R>]>
-export function render<
+export function handle<
   D extends {},
   B extends {},
   I extends Route.Route.Tuple,
@@ -314,7 +316,7 @@ export function render<
   >,
 ) {
   return (self: Route.RouteSet<D, B, I>) => {
-    const baseHandler = handle(handler)
+    const baseHandler = normalize(handler)
     const route = Route.make<{ format: "*" }, {}, A, E, R>(
       (ctx, next) =>
         baseHandler(

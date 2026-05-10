@@ -23,7 +23,7 @@ export const make = <Tag extends Context.Tag<any, Bundle.BundleContext>>(
   tag: Tag,
 ) =>
   Route.get(
-    Route.render(function*(ctx) {
+    Route.handle(function*(ctx) {
       const bundle = yield* tag
       if (bundle.rebuild) {
         yield* bundle.rebuild()
