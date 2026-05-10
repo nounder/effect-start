@@ -16,7 +16,8 @@ bunx tsc
 
 ## Module structure
 
-- Module designed to be used should have no side-effects and no default export (only named exports).
+- Module designed to be used should have no side-effects.
+- Use named exports over default export.
 - Private, or internal, modules live in an `internal/` subdirectory next to the public modules that use them, like `src/internal/ContentNegotiation.ts` or `src/studio/internal/Pretty.ts`.
 
 ## Import rules
