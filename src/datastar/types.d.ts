@@ -4,5 +4,6 @@ export type DataEvent = Event & {
   signals: Record<string, any>
   actions: Record<string, (...args: Array<any>) => any>
   target: HTMLOrSVG
+  currentTarget: HTMLOrSVG
   window: Window & typeof globalThis
 }
