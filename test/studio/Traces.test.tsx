@@ -2,7 +2,7 @@
 import * as test from "bun:test"
 import * as Html from "../../src/Html.ts"
 import type * as StudioStore from "../../src/studio/StudioStore.ts"
-import * as Traces from "../../src/studio/ui/Traces.tsx"
+import * as Traces from "../../src/studio/ui.tsx"
 
 function makeSpan(
   options:

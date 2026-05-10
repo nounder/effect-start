@@ -1,6 +1,6 @@
 import * as test from "bun:test"
 import * as Html from "../../src/Html.ts"
-import * as PrettyValue from "../../src/studio/ui/internal/PrettyValue.tsx"
+import * as PrettyValue from "../../src/studio/ui.tsx"
 
 test.describe("PrettyValue", () => {
   test.it("renders structured values inside pre blocks", () => {
