@@ -92,18 +92,15 @@ export type Tag<T extends BundleKey = BundleKey> = Context.Tag<
   BundleContext
 >
 
-export class ClientBundle extends Tag("ClientBundle")<ClientBundle>() {}
-export class ServerBundle extends Tag("ServerBundle")<ServerBundle>() {}
-
-const isLocalPath = (path: string) =>
-  path.startsWith("./") || path.startsWith("/") || path.startsWith("file:///")
+export class Bundle extends Tag("Bundle")<Bundle>() {}
 
 /**
- * Rsolver for a bundle's entrypoints map.
+ * Resolver for a bundle's entrypoints map.
  *
  * Module identifiers (e.g. `"effect-start/datastar"`) are matched exactly.
- * Local paths (starting with `./`, `/`, or `file:///`) are matched by
- * comparing path segments from the end, picking the most specific match.
+ * Relative paths (starting with `./` or `../`) are normalized first, then
+ * matched against entrypoints by visiting them in sequence and comparing
+ * path segments from the end, picking the most specific match.
  */
 export const makeResolver = (
   entrypoints: Record<string, string>,
@@ -116,12 +113,16 @@ export const makeResolver = (
     const exact = entrypoints[path]
     if (exact !== undefined) return (cache[path] = exact)
 
-    const needle = path.split("/").filter(Boolean)
+    const normalized = path.startsWith(".")
+      ? path.replace(/^(\.\.?\/)+/, "")
+      : path
+    const needle = normalized.split("/").filter(Boolean)
+    if (needle.length === 0) return (cache[path] = undefined)
+
     let bestKey: string | undefined
     let bestLength = 0
 
     for (const key of Object.keys(entrypoints)) {
-      if (!isLocalPath(key)) continue
       const segments = key.split("/").filter(Boolean)
       if (segments.length < needle.length) continue
 
