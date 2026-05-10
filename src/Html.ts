@@ -114,7 +114,7 @@ export function text(
       continue
     }
 
-    const trusted = current?.[TrustedHtmlSymbol]
+    const trusted = current?.["~effect-start/Html/TrustedHtml"]
     if (typeof trusted === "string") {
       result += trusted
       continue
@@ -188,8 +188,8 @@ export function text(
           )
         } else if (isRawText && children != null) {
           const toRaw = (c: unknown) =>
-            typeof (c as any)?.[TrustedHtmlSymbol] === "string"
-              ? ((c as any)[TrustedHtmlSymbol] as string)
+            typeof (c as any)?.["~effect-start/Html/TrustedHtml"] === "string"
+              ? ((c as any)["~effect-start/Html/TrustedHtml"] as string)
               : String(c)
           const rawText = Array.isArray(children)
             ? children.map(toRaw).join("")
@@ -210,25 +210,23 @@ export function text(
   return result
 }
 
-const TrustedHtmlSymbol = Symbol.for("TrustedHtml")
-
 /**
  * @internal
  */
 export class TrustedHtml {
-  readonly [TrustedHtmlSymbol]: string
+  readonly ["~effect-start/Html/TrustedHtml"]: string
   constructor(html: string) {
-    this[TrustedHtmlSymbol] = html
+    this["~effect-start/Html/TrustedHtml"] = html
   }
   toString(): string {
-    return this[TrustedHtmlSymbol]
+    return this["~effect-start/Html/TrustedHtml"]
   }
 }
 
 export const unsafe = (html: string): TrustedHtml => new TrustedHtml(html)
 
 export const isTrustedHtml = (value: unknown): value is TrustedHtml =>
-  typeof (value as any)?.[TrustedHtmlSymbol] === "string"
+  typeof (value as any)?.["~effect-start/Html/TrustedHtml"] === "string"
 
 type HtmlValue =
   | string
