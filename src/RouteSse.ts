@@ -58,6 +58,34 @@ type SseHandlerInput<B, E, R> =
       unknown
     >)
 
+/**
+ * Server-sent events (SSE) with heartbeats to keep connection alive.
+ *
+ * @example
+ * ```ts
+ * Route.sse(
+ *   Stream.fromIterable([
+ *     {
+ *       // pass custom event
+ *       event: "content",
+ *       // data with new lines is safely formatted and prefixed with data:
+ *       data: "# intro \n hi guys"
+ *     },
+ *     {
+ *       event: ""datastar-patch-elements"",
+ *       // you can also pass array when each element is a new line
+ *       data: [
+ *         "selector #page",
+ *          // note to properly handle multi-line html.
+ *          // a simple replaceAll("\n", "") could work but may break
+ *          // if js is embedded and doesn't use semicolons.
+ *         Html.split("\n").map((v) => `elements ${v}`).join("\n"),
+ *       ]
+ *     },
+ *   ])
+ * )
+ * ```
+ */
 export function sse<D, B, I extends Route.Route.Tuple, E = never, R = never>(
   handler: SseHandlerInput<
     NoInfer<D & B & Route.ExtractBindings<I> & { format: "sse" }>,
