@@ -38,7 +38,8 @@ export class Development extends Context.Tag("effect-start/Development")<
   }
 >() {}
 
-const SOURCE_FILENAME = /\.(tsx?|jsx?|html?|css|json)$/
+// Matches source files and directory paths (which fire withou ext when its created/renamed)
+const SOURCE_FILENAME = /(?:\.(?:tsx?|jsx?|html?|css|json)|(?:^|\/)[^./]+)$/
 
 const filterSourceFiles = (event: FileSystem.WatchEvent): boolean => {
   return SOURCE_FILENAME.test(event.path)
