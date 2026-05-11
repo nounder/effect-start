@@ -8,7 +8,7 @@ import * as PubSub from "effect/PubSub"
 import * as Bundle from "../../src/bundler/Bundle.ts"
 import routes from "../../src/studio/routes.tsx"
 import * as Studio from "../../src/studio/Studio.ts"
-import * as StudioStore from "../../src/studio/StudioStore.ts"
+import type * as StudioStore from "../../src/studio/StudioStore.ts"
 
 const tree = Route.map({ "/studio": routes })
 
@@ -57,8 +57,11 @@ test.describe("studio layer basic auth", () => {
     runWithAuth(undefined, (client) =>
       Effect.gen(function*() {
         const entity = yield* client.get("http://localhost/studio/services")
-        test.expect(entity.status).toBe(200)
-        test.expect(yield* entity.text).toContain("Services")
+
+        test.expect(entity.status)
+          .toBe(200)
+        test.expect(yield* entity.text)
+          .toContain("Services")
       })))
 
   test.it("returns 401 with WWW-Authenticate header when no credentials sent", () =>
@@ -67,11 +70,15 @@ test.describe("studio layer basic auth", () => {
       (client) =>
         Effect.gen(function*() {
           const entity = yield* client.get("http://localhost/studio/services")
-          test.expect(entity.status).toBe(401)
-          test.expect(entity.headers["www-authenticate"]).toBe(
+
+          test.expect(entity.status)
+            .toBe(401)
+          test.expect(entity.headers["www-authenticate"])
+            .toBe(
             "Basic realm=\"Studio\", charset=\"UTF-8\"",
           )
-          test.expect(yield* entity.text).not.toContain("Services")
+          test.expect(yield* entity.text).not
+            .toContain("Services")
         }),
     ))
 
@@ -85,7 +92,9 @@ test.describe("studio layer basic auth", () => {
             "http://localhost/studio/services",
             { headers: { authorization: wrong } },
           )
-          test.expect(entity.status).toBe(401)
+
+          test.expect(entity.status)
+            .toBe(401)
         }),
     ))
 
@@ -99,8 +108,11 @@ test.describe("studio layer basic auth", () => {
             "http://localhost/studio/services",
             { headers: { authorization: ok } },
           )
-          test.expect(entity.status).toBe(200)
-          test.expect(yield* entity.text).toContain("Services")
+
+          test.expect(entity.status)
+            .toBe(200)
+          test.expect(yield* entity.text)
+            .toContain("Services")
         }),
     ))
 })

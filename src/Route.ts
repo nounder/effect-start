@@ -102,20 +102,17 @@ export namespace RouteSet {
 
   export type Any = RouteSet<{}, {}, Route.Tuple>
 
-  export type Items<T extends Data<any, any, any>> = T extends
-    Data<any, any, infer M> ? M : never
+  export type Items<T extends Data<any, any, any>> = T extends Data<any, any, infer M> ? M : never
 
-  export type Descriptor<T extends Data<any, any, any>> = T extends
-    Data<infer D, any, any> ? D : never
+  export type Descriptor<T extends Data<any, any, any>> = T extends Data<infer D, any, any> ? D : never
 }
 
-export interface Route<D = {}, B = {}, A = any, E = never, R = never>
-  extends
-    RouteSet<
-      D,
-      B,
-      [Route<D, B, A, E, R>]
-    >
+export interface Route<D = {}, B = {}, A = any, E = never, R = never> extends
+  RouteSet<
+    D,
+    B,
+    [Route<D, B, A, E, R>]
+  >
 {
   readonly handler: Route.Handler<any, any, any, any>
 }
@@ -141,9 +138,7 @@ export namespace Route {
   > = M extends [
     infer Head,
     ...infer Tail extends Tuple,
-  ]
-    ? Head extends Route<any, infer B, any, any, any>
-      ? ShallowMerge<B, Bindings<T, Tail>>
+  ] ? Head extends Route<any, infer B, any, any, any> ? ShallowMerge<B, Bindings<T, Tail>>
     : Bindings<T, Tail>
     : {}
 
@@ -160,15 +155,11 @@ export namespace Route {
     >
     & ExtractContext<RouteSet.Items<T>>
 
-  type ExtractContext<M extends Tuple> = M extends
-    [infer Head, ...infer Tail extends Tuple]
-    ? Head extends Route<infer D, infer B, any, any, any>
-      ? ShallowMerge<Omit<D, keyof B> & B, ExtractContext<Tail>>
+  type ExtractContext<M extends Tuple> = M extends [infer Head, ...infer Tail extends Tuple]
+    ? Head extends Route<infer D, infer B, any, any, any> ? ShallowMerge<Omit<D, keyof B> & B, ExtractContext<Tail>>
     : ExtractContext<Tail>
     : {}
 }
-
-export const handle = RouteBody.handle
 
 export const text = RouteBody.build<string, "text">({
   format: "text",
@@ -188,6 +179,13 @@ export const json = RouteBody.build<Values.Json, "json">({
 export const bytes = RouteBody.build<Uint8Array, "bytes">({
   format: "bytes",
 })
+
+/**
+ * Renders an arbitrary response.
+ * Prefer text/html/json/bytes since they handle content negotiation
+ * and more friendly interace for each content type.
+ */
+export const handle = RouteBody.handle
 
 export function redirect<D, B, I extends Route.Tuple>(
   url: string | URL,
@@ -251,9 +249,7 @@ export {
   sse,
 } from "./RouteSse.ts"
 
-export class Routes
-  extends Context.Tag("effect-start/Routes")<Routes, RouteMap.RouteMap>()
-{}
+export class Routes extends Context.Tag("effect-start/Routes")<Routes, RouteMap.RouteMap>() {}
 
 export function layer<const Input extends RouteMap.RouteMapInput>(
   routes: Input,
@@ -426,9 +422,7 @@ export function descriptor(
 export type ExtractBindings<M extends Route.Tuple> = M extends [
   infer Head,
   ...infer Tail extends Route.Tuple,
-]
-  ? Head extends Route<any, infer B, any, any, any>
-    ? ShallowMerge<B, ExtractBindings<Tail>>
+] ? Head extends Route<any, infer B, any, any, any> ? ShallowMerge<B, ExtractBindings<Tail>>
   : ExtractBindings<Tail>
   : {}
 
@@ -464,10 +458,8 @@ export class Request extends Context.Tag("effect-start/Route/Request")<
  *
  * @internal
  */
-export class RouteContext
-  extends Context.Reference<RouteContext>()("effect-start/RouteContext", {
-    defaultValue: () => ({
-      context: Object.freeze({}) as Record<string, unknown>,
-    }),
-  })
-{}
+export class RouteContext extends Context.Reference<RouteContext>()("effect-start/RouteContext", {
+  defaultValue: () => ({
+    context: Object.freeze({}) as Record<string, unknown>,
+  }),
+}) {}
