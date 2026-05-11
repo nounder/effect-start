@@ -426,6 +426,34 @@ export default {
       },
     },
 
+    "no-jsx-key": {
+      meta: {
+        type: "suggestion",
+        docs: {
+          description: "Disallow the `key` attribute on JSX elements",
+        },
+        schema: [],
+        messages: {
+          noKey: "Do not use the `key` attribute in JSX when jsxImportSource=effect-start",
+        },
+      },
+      create(context) {
+        return {
+          JSXAttribute(node) {
+            if (
+              node.name.type === "JSXIdentifier" &&
+              node.name.name === "key"
+            ) {
+              context.report({
+                node,
+                messageId: "noKey",
+              })
+            }
+          },
+        }
+      },
+    },
+
     "pipe-args-newline": {
       meta: {
         type: "layout",

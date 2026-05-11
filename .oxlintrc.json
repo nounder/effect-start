@@ -104,7 +104,10 @@
     "effect-start/test-assertion-newline": "warn",
 
     // Enforce each pipe(...) argument on its own line when 2+ args
-    "effect-start/pipe-args-newline": "warn"
+    "effect-start/pipe-args-newline": "warn",
+
+    // Disallow the `key` attribute on JSX elements
+    "effect-start/no-jsx-key": "error"
   },
   "overrides": [
     {
