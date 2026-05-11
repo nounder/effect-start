@@ -1,20 +1,27 @@
 export const ALPHABET_BASE32_CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
 export const ALPHABET_BASE32_RFC4648 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"
-export const ALPHABET_BASE64_URL =
-  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+export const ALPHABET_BASE64_URL = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
 export const ALPHABET_HEX = "0123456789abcdef"
-
-interface SnowflakeState {
-  timestampMs: bigint
-  sequence: bigint
-}
 
 interface Snowflake {
   (time?: number): bigint
-  readonly state: SnowflakeState
+  readonly state: {
+    readonly timestampMs: bigint
+    readonly sequence: bigint
+  }
   readonly timestamp: (id: bigint) => bigint
 }
 
+/**
+ * Monotonic Snowflake variant:
+ * - 48-bit unix timestamp
+ * - 16-bit sequence
+ * - sequence resets on timestamp increment
+ * - sequence overflow carries into next millisecond
+ *
+ * Snowflake originated at Twitter. We use 7 more bits for timestamp,
+ * sacraficing shard bits, to avoid using custom epoch and use unix epoch instead.
+ */
 function buildSnowflake(): Snowflake {
   const timestampBits = 48n
   const seqBits = 16n
@@ -218,13 +225,6 @@ function toSafeTime(time: number): number {
   return Math.max(0, Math.trunc(time))
 }
 
-/**
- * Monotonic Snowflake variant:
- * - 48-bit unix timestamp (ms)
- * - 16-bit sequence
- * - sequence resets on timestamp increment
- * - over-capacity sequence carries into next millisecond
- */
 export const snowflake = buildSnowflake()
 
 /**
