@@ -31,11 +31,13 @@ We made following changes:
   - Function expressions receive a `DataEvent` object with `signals`, `actions`, `target`, and `window`
   - Shared expression-event setup is centralized in `createDataEvent()` and reused by both `genRx` and `data-computed`
   - Value-returning object literals are compiled as `return ({...});` so block-bodied arrow functions inside object expressions still parse
-- `data-computed` supports object values with function leaves:
-  - String/object-literal form still works: `data-computed="{statusText: (e) => e.signals.state}"`
-  - JSX object form also works: `data-computed={{ statusText: (e) => e.signals.state }}`
-  - Object values only accept functions at the leaves
-  - JSX typing allows `data-computed` object values
+- Object-form `data-class`, `data-attr`, `data-style`, and `data-computed` accept function leaves:
+  - JSX form: `data-class={{ invisible: (e) => !e.signals.draft.trim() }}`
+  - Also works for `data-attr={{ disabled: (e) => ... }}` and `data-style={{ color: (e) => ... }}`
+  - Object serialization goes through `serializeObjectProperty`, which inlines functions via `.toString()` instead of `JSON.stringify` (which would drop them)
+  - The wrapped `ctx.rx` in the plugin runner eagerly invokes function leaves on each tick with a fresh `DataEvent`, so plugins receive primitives and need no changes
+  - `data-computed` is the one exception (skipped by name) — it wraps each function in `computed()` itself to preserve per-leaf signal tracking
+  - JSX typing widens `DatastarClassObject` / `DatastarAttrObject` / `DatastarStyleObject` values to include `DatastarFn`
 - `data-on` supports function form:
   - Function form: `data-on:click="(e) => { e.signals.count = e.signals.count + 1 }"`
   - Event names are used literally from the attribute key; upstream `modifyCasing(..., "kebab")` normalization is no longer applied

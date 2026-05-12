@@ -1283,7 +1283,28 @@ const applyAttributePlugin = (
             cleanups,
           })
         }
-        return cachedRx(el, ...args)
+        const result = cachedRx(el, ...args)
+        // data-computed wraps each leaf in computed() itself, so it needs
+        // the raw functions; every other plugin gets eager evaluation.
+        if (
+          plugin.name !== "computed" &&
+          result &&
+          typeof result === "object" &&
+          !Array.isArray(result)
+        ) {
+          const evt = createDataEvent({
+            el,
+            cleanups,
+            error: () => ctx.error,
+          })
+          for (const k in result as Record<string, unknown>) {
+            const v = (result as Record<string, unknown>)[k]
+            if (typeof v === "function") {
+              (result as Record<string, unknown>)[k] = v(evt)
+            }
+          }
+        }
+        return result
       }
     }
 

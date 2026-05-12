@@ -597,6 +597,68 @@ test.describe("attr", () => {
         "{\"x\":1}",
       )
   })
+
+  test.it("key form works with function expression", async () => {
+    const c = await mount(
+      Html.text(
+        Html.make("div", {
+          "data-signals": { disabled: false },
+          children: [
+            Html.make("button", {
+              id: "btn",
+              "data-attr:disabled": (e: any) => e.signals.disabled,
+            }),
+          ],
+        }),
+      ),
+    )
+
+    test
+      .expect(c.querySelector("#btn")!.hasAttribute("disabled"))
+      .toBe(false)
+
+    await setSignals({ disabled: true })
+
+    test
+      .expect(c.querySelector("#btn")!.hasAttribute("disabled"))
+      .toBe(true)
+  })
+
+  test.it("rendered object value works with function leaves", async () => {
+    const c = await mount(
+      Html.text(
+        Html.make("div", {
+          "data-signals": { tip: "hi", banned: false },
+          children: [
+            Html.make("a", {
+              id: "lnk",
+              "data-attr": {
+                title: (e: any) => e.signals.tip,
+                "aria-disabled": (e: any) => e.signals.banned,
+              },
+            }),
+          ],
+        }),
+      ),
+    )
+    const el = c.querySelector("#lnk")!
+
+    test
+      .expect(el.getAttribute("title"))
+      .toBe("hi")
+    test
+      .expect(el.getAttribute("aria-disabled"))
+      .toBe(null)
+
+    await setSignals({ tip: "bye", banned: true })
+
+    test
+      .expect(el.getAttribute("title"))
+      .toBe("bye")
+    test
+      .expect(el.getAttribute("aria-disabled"))
+      .toBe("")
+  })
 })
 
 test.describe("class", () => {
@@ -658,6 +720,69 @@ test.describe("class", () => {
       .expect(el.classList.contains("font-bold"))
       .toBe(false)
   })
+
+  test.it("key form works with function expression", async () => {
+    const c = await mount(
+      Html.text(
+        Html.make("div", {
+          "data-signals": { showActive: false },
+          children: [
+            Html.make("div", {
+              id: "cls",
+              "data-class:active": (e: any) => e.signals.showActive,
+            }),
+          ],
+        }),
+      ),
+    )
+    const el = c.querySelector("#cls")!
+
+    test
+      .expect(el.classList.contains("active"))
+      .toBe(false)
+
+    await setSignals({ showActive: true })
+
+    test
+      .expect(el.classList.contains("active"))
+      .toBe(true)
+  })
+
+  test.it("rendered object value works with function leaves", async () => {
+    const c = await mount(
+      Html.text(
+        Html.make("div", {
+          "data-signals": { bold: true, italic: false },
+          children: [
+            Html.make("div", {
+              id: "cls",
+              "data-class": {
+                bold: (e: any) => e.signals.bold,
+                italic: (e: any) => e.signals.italic,
+              },
+            }),
+          ],
+        }),
+      ),
+    )
+    const el = c.querySelector("#cls")!
+
+    test
+      .expect(el.classList.contains("bold"))
+      .toBe(true)
+    test
+      .expect(el.classList.contains("italic"))
+      .toBe(false)
+
+    await setSignals({ bold: false, italic: true })
+
+    test
+      .expect(el.classList.contains("bold"))
+      .toBe(false)
+    test
+      .expect(el.classList.contains("italic"))
+      .toBe(true)
+  })
 })
 
 test.describe("style", () => {
@@ -696,6 +821,69 @@ test.describe("style", () => {
     test
       .expect(el.style.height)
       .toBe("50px")
+  })
+
+  test.it("key form works with function expression", async () => {
+    const c = await mount(
+      Html.text(
+        Html.make("div", {
+          "data-signals": { sz: "12px" },
+          children: [
+            Html.make("div", {
+              id: "styled",
+              "data-style:font-size": (e: any) => e.signals.sz,
+            }),
+          ],
+        }),
+      ),
+    )
+    const el = c.querySelector("#styled") as HTMLElement
+
+    test
+      .expect(el.style.fontSize)
+      .toBe("12px")
+
+    await setSignals({ sz: "24px" })
+
+    test
+      .expect(el.style.fontSize)
+      .toBe("24px")
+  })
+
+  test.it("rendered object value works with function leaves", async () => {
+    const c = await mount(
+      Html.text(
+        Html.make("div", {
+          "data-signals": { wide: "100px", tall: "50px" },
+          children: [
+            Html.make("div", {
+              id: "styled",
+              "data-style": {
+                width: (e: any) => e.signals.wide,
+                height: (e: any) => e.signals.tall,
+              },
+            }),
+          ],
+        }),
+      ),
+    )
+    const el = c.querySelector("#styled") as HTMLElement
+
+    test
+      .expect(el.style.width)
+      .toBe("100px")
+    test
+      .expect(el.style.height)
+      .toBe("50px")
+
+    await setSignals({ wide: "200px", tall: "75px" })
+
+    test
+      .expect(el.style.width)
+      .toBe("200px")
+    test
+      .expect(el.style.height)
+      .toBe("75px")
   })
 })
 

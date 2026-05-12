@@ -79,14 +79,6 @@ const serializeObjectProperty = (value: unknown): string | undefined => {
   return JSON.stringify(value)
 }
 
-const serializeDataAttributeObject = (
-  key: string,
-  value: Record<string, unknown>,
-): string =>
-  key === "data-computed"
-    ? serializeObjectProperty(value)!
-    : JSON.stringify(value)
-
 export function text(
   node: JSX.Children,
   hooks?: { onNode?: (node: HtmlElement) => void },
@@ -153,7 +145,7 @@ export function text(
             if (key.startsWith("data-") && typeof value === "function") {
               result += ` ${esc(resolvedKey)}="${esc(value.toString())}"`
             } else if (key.startsWith("data-") && typeof value === "object") {
-              result += ` ${esc(resolvedKey)}='${escSQ(serializeDataAttributeObject(key, value))}'`
+              result += ` ${esc(resolvedKey)}='${escSQ(serializeObjectProperty(value)!)}'`
             } else if (key.startsWith("on") && typeof value === "function") {
               result += ` ${esc(resolvedKey)}="(${esc(value.toString())}).call(this,event)"`
             } else {

@@ -1,15 +1,18 @@
 import type { DataEvent } from "./types.d.ts"
 
+type DatastarFn = (e: DataEvent) => any
+
 // Datastar object types for specific attributes
 type DatastarSignalsObject = Record<string, any>
-type DatastarClassObject = Record<string, boolean | string>
-type DatastarAttrObject = Record<string, string | boolean | number>
+type DatastarClassObject = Record<string, boolean | string | DatastarFn>
+type DatastarAttrObject = Record<
+  string,
+  string | boolean | number | DatastarFn
+>
 type DatastarStyleObject = Record<
   string,
-  string | number | boolean | null | undefined
+  string | number | boolean | null | undefined | DatastarFn
 >
-
-type DatastarFn = (e: DataEvent) => any
 
 /**
  * Datastar attributes for reactive web applications
