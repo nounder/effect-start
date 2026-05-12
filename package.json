@@ -209,11 +209,9 @@
     "effect-memfs": "^0.8.0",
     "jsdom": "^28.0.0",
     "mssql": "^12.2.0",
-    "oxfmt": "latest",
     "oxlint": "^1.63.0",
     "postgres": "^3.4.8",
     "tailwindcss": "^4.1.18",
-    "ts-morph": "^27.0.2",
     "typescript": "^6.0.2"
   },
   "peerDependencies": {
