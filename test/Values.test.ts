@@ -262,6 +262,24 @@ test.describe("Simplify", () => {
       .expectTypeOf<Result["response"]>()
       .toEqualTypeOf<Response>()
   })
+
+  test.it("preserves nested discriminated unions", () => {
+    type Event =
+      | { readonly _tag: "Intent"; readonly type: "yes" | "no" }
+      | { readonly _tag: "Submit" }
+
+    type Result = Values.Simplify<{ readonly body: Event }>
+
+    test
+      .expectTypeOf<Result["body"]>()
+      .toEqualTypeOf<Event>()
+
+    test
+      .expectTypeOf<
+        Extract<Result["body"], { readonly _tag: "Intent" }>["type"]
+      >()
+      .toEqualTypeOf<"yes" | "no">()
+  })
 })
 
 test.describe("compact", () => {

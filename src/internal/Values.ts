@@ -61,10 +61,16 @@ export type IsPlainObject<T> = T extends object ? T extends Function ? false
   : false
   : false
 
+type IsUnion<T, U = T> = [T] extends [never] ? false
+  : T extends any ? [U] extends [T] ? false : true
+  : false
+
+type SimplifyValue<T> = IsUnion<T> extends true ? T
+  : IsPlainObject<T> extends true ? { -readonly [P in keyof T]: T[P] }
+  : T
+
 export type Simplify<T> = {
-  -readonly [K in keyof T]: IsPlainObject<T[K]> extends true
-    ? { -readonly [P in keyof T[K]]: T[K][P] }
-    : T[K]
+  -readonly [K in keyof T]: SimplifyValue<T[K]>
 } extends infer U ? { [K in keyof U]: U[K] }
   : never
 

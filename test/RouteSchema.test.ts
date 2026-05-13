@@ -280,6 +280,37 @@ test.describe(`${RouteSchema.schemaBodyJson.name}()`, () => {
       })
       .pipe(Effect.runPromise))
 
+  test.it("preserves discriminated union type from Schema.Union body", () => {
+    const Event = Schema.Union(
+      Schema.TaggedStruct("Intent", {
+        type: Schema.Literal("yes", "no"),
+      }),
+      Schema.TaggedStruct("Submit", {}),
+    )
+    type Event = typeof Event.Type
+
+    const route = Route.post(
+      RouteSchema.schemaBodyJson(Event),
+      Route.json(function*(ctx) {
+        test
+          .expectTypeOf(ctx.body)
+          .toEqualTypeOf<Event>()
+
+        if (ctx.body._tag === "Intent") {
+          test
+            .expectTypeOf(ctx.body.type)
+            .toEqualTypeOf<"yes" | "no">()
+        }
+
+        return { received: ctx.body }
+      }),
+    )
+
+    test
+      .expectTypeOf<Route.Route.Context<typeof route>>()
+      .toExtend<{ body: Event }>()
+  })
+
   test.it("returns error for invalid JSON body", () =>
     Effect
       .gen(function*() {
