@@ -37,10 +37,15 @@ We made following changes:
   - Object serialization goes through `serializeObjectProperty`, which inlines functions via `.toString()` instead of `JSON.stringify` (which would drop them)
   - The wrapped `ctx.rx` in the plugin runner eagerly invokes function leaves on each tick with a fresh `DataEvent`, so plugins receive primitives and need no changes
   - `data-computed` is the one exception (skipped by name) — it wraps each function in `computed()` itself to preserve per-leaf signal tracking
-  - JSX typing widens `DatastarClassObject` / `DatastarAttrObject` / `DatastarStyleObject` values to include `DatastarFn`
+  - JSX typing widens `DatastarClassObject` / `DatastarAttrObject` / `DatastarStyleObject` values to include `DataFunction`
 - `data-on` supports function form:
   - Function form: `data-on:click="(e) => { e.signals.count = e.signals.count + 1 }"`
   - Event names are used literally from the attribute key; upstream `modifyCasing(..., "kebab")` normalization is no longer applied
+- `data-init` and `data-effect` support unmount cleanups (Solid-style):
+  - Function-form expression may return a teardown function; the engine invokes it when the element/attribute is removed
+  - `data-init="() => { const id = setInterval(tick, 1000); return () => clearInterval(id) }"`
+  - `data-effect` additionally fires the previous run's cleanup before each re-execution caused by a signal change, mirroring `useEffect` / `onCleanup` semantics
+  - Non-function return values are ignored, so existing usages (`data-init="$count = 0"`) are unaffected
 
 Intentionally not ported from upstream:
 

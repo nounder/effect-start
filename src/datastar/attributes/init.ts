@@ -8,9 +8,10 @@ attribute({
     value: "must",
   },
   apply({ rx, mods }) {
+    let userCleanup: unknown
     let callback = () => {
       beginBatch()
-      rx()
+      userCleanup = rx()
       endBatch()
     }
     callback = modifyViewTransition(callback, mods)
@@ -23,5 +24,8 @@ attribute({
       }
     }
     callback()
+    return () => {
+      if (typeof userCleanup === "function") userCleanup()
+    }
   },
 })

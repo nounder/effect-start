@@ -6,5 +6,15 @@ attribute({
     key: "denied",
     value: "must",
   },
-  apply: ({ rx }) => effect(rx),
+  apply: ({ rx }) => {
+    let userCleanup: unknown
+    const dispose = effect(() => {
+      if (typeof userCleanup === "function") userCleanup()
+      userCleanup = rx()
+    })
+    return () => {
+      dispose()
+      if (typeof userCleanup === "function") userCleanup()
+    }
+  },
 })
