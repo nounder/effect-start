@@ -1,17 +1,8 @@
 import type { BuildConfig, BuildOutput } from "bun"
-import {
-  Array,
-  type Context,
-  Effect,
-  Iterable,
-  Layer,
-  pipe,
-  Record,
-} from "effect"
+import { type Context, Effect, Layer } from "effect"
 import * as NPath from "node:path"
 import * as NUrl from "node:url"
 import * as Bundle from "../bundler/Bundle.ts"
-import type { BunImportTrackerPlugin } from "./index.ts"
 
 export type BuildOptions = Omit<BuildConfig, "outdir">
 
@@ -19,28 +10,41 @@ const toPath = (
   ep: string,
 ) => (ep.startsWith("file://") ? NUrl.fileURLToPath(ep) : ep)
 
+const toOutputPath = (path: string) => path.startsWith("./") ? path.slice(2) : path
+
+const normalizeEntrypointPath = (path: string): string => NPath.resolve(toPath(path))
+
+type EntrypointPair = {
+  original: string
+  resolved: string
+  id: string
+}
+
 /**
- * Resolves bare specifiers and file:// URLs to absolute paths,
- * then sorts non-CSS before CSS to work around a Bun bundler bug.
+ * Resolves bare specifiers and file:// URLs to absolute paths.
  *
- * Bun v1.3.10: CSS entrypoints before JS produce empty JS stubs.
- * CSS interleaved between JS causes a segfault.
+ * Bun v1.3.10 segfaults when CSS entrypoints are interleaved with JS
+ * entrypoints, so CSS is grouped after non-CSS entrypoints.
  * @see https://github.com/oven-sh/bun/issues/28947
  */
-function resolveEntrypoints(entrypoints: Array<string>): Array<string> {
-  const resolved = entrypoints.map((ep) => {
+function resolveEntrypointsPaired(
+  entrypoints: Array<string>,
+): Array<EntrypointPair> {
+  const paired = entrypoints.map((original) => {
+    let resolved: string
     try {
-      return Bun.resolveSync(toPath(ep), process.cwd())
+      resolved = Bun.resolveSync(toPath(original), process.cwd())
     } catch {
-      return toPath(ep)
+      resolved = toPath(original)
     }
+    return { original, resolved, id: normalizeEntrypointPath(resolved) }
   })
-  resolved.sort((a, b) => {
-    const aCss = NPath.extname(a) === ".css" ? 1 : 0
-    const bCss = NPath.extname(b) === ".css" ? 1 : 0
+  paired.sort((a, b) => {
+    const aCss = NPath.extname(a.resolved) === ".css" ? 1 : 0
+    const bCss = NPath.extname(b.resolved) === ".css" ? 1 : 0
     return aCss - bCss
   })
-  return resolved
+  return paired
 }
 
 export const buildClient = (config: BuildOptions | string) => {
@@ -87,24 +91,27 @@ export function build(
   config: BuildOptions,
 ): Effect.Effect<Bundle.BundleContext, Bundle.BundleError> {
   return Effect.gen(function*() {
+    const paired = resolveEntrypointsPaired(config.entrypoints)
     const resolvedConfig = {
       ...config,
-      entrypoints: resolveEntrypoints(config.entrypoints),
+      entrypoints: paired.map((p) => p.resolved),
+      metafile: true as const,
     }
     const output = yield* buildBun(resolvedConfig)
-    const manifest = generateManifest(config, output)
-    const artifactsMap = Record.fromIterableBy(
-      output.outputs,
-      (v) => v.path.replace(/^\.\//, ""),
+    const entrypoints = yield* makeEntrypoints(paired, output)
+    const artifactsMap = Object.fromEntries(
+      output.outputs.map((artifact) => [
+        toOutputPath(artifact.path),
+        artifact,
+      ]),
     )
     const publicPath = typeof config.publicPath === "string"
       ? config.publicPath
       : ""
 
-    const resolveRaw = Bundle.makeResolver(manifest.entrypoints)
+    const resolveRaw = Bundle.makeResolver(entrypoints)
 
     return {
-      manifest,
       resolve: (path: string, parent?: string) => {
         const resolved = resolveRaw(path, parent)
         return resolved ? publicPath + resolved : undefined
@@ -137,9 +144,6 @@ function mutableContext(
       })
 
     return {
-      get manifest() {
-        return current.manifest
-      },
       resolve: (url: string, parent?: string) => current.resolve(url, parent),
       getArtifact: (path: string) => current.getArtifact(path),
       rebuild,
@@ -164,6 +168,105 @@ export function layer(tagOrConfig: any, maybeConfig?: BuildOptions) {
   return Layer.effect(tagOrConfig, mutableContext(build(maybeConfig)))
 }
 
+type BuildArtifact = BuildOutput["outputs"][number]
+
+const isEntrypointArtifact = (v: BuildArtifact): boolean =>
+  (v.kind === "entry-point" &&
+    !(v.loader === "html" && v.path.endsWith(".js"))) ||
+  (v.kind === "asset" && v.loader === "css")
+
+/**
+ * Match emitted artifacts to entrypoints using Bun's metafile.
+ * `metafile.outputs[artifact].entryPoint` is the only Bun-provided
+ * back-reference from output artifact to source entrypoint.
+ */
+function makeEntrypoints(
+  paired: Array<EntrypointPair>,
+  output: BuildOutput,
+): Effect.Effect<Record<string, string>, Bundle.BundleError> {
+  return Effect.gen(function*() {
+    if (!output.metafile) {
+      return yield* Effect.fail(
+        new Bundle.BundleError({
+          message: "Bun.build did not return a metafile",
+        }),
+      )
+    }
+
+    const entrypointIds = new Set(paired.map((p) => p.id))
+    const artifactsByPath = new Map(
+      output.outputs.map((artifact) => [
+        toOutputPath(artifact.path),
+        artifact,
+      ]),
+    )
+    const artifactPathByEntrypoint = new Map<string, string>()
+
+    for (
+      const [outputPath, metadata] of Object.entries(
+        output.metafile.outputs,
+      )
+    ) {
+      if (!metadata.entryPoint) continue
+
+      const artifactPath = toOutputPath(outputPath)
+      const artifact = artifactsByPath.get(artifactPath)
+      if (!artifact || !isEntrypointArtifact(artifact)) continue
+
+      const id = normalizeEntrypointPath(metadata.entryPoint)
+      if (!entrypointIds.has(id)) continue
+
+      const existing = artifactPathByEntrypoint.get(id)
+      if (existing) {
+        return yield* Effect.fail(
+          new Bundle.BundleError({
+            message: `Entrypoint ${metadata.entryPoint} matched multiple artifacts: ${
+              [existing, artifactPath].join(", ")
+            }`,
+          }),
+        )
+      }
+      artifactPathByEntrypoint.set(id, artifactPath)
+    }
+
+    const missing = paired.filter((entrypoint) => !artifactPathByEntrypoint.has(entrypoint.id))
+    if (missing.length > 0) {
+      return yield* Effect.fail(
+        new Bundle.BundleError({
+          message: `No artifact emitted for ${missing.length} entrypoint(s): ${
+            missing.map((p) => p.original).join(", ")
+          }`,
+        }),
+      )
+    }
+
+    const baseDir = getBaseDir(paired.map((p) => p.id))
+    return Object.fromEntries(
+      paired.map((p) => [
+        entrypointKey(p.original, p.id, baseDir),
+        artifactPathByEntrypoint.get(p.id)!,
+      ]),
+    )
+  })
+}
+
+/**
+ * Derive the resolver key for an entrypoint.
+ *
+ * Non-absolute inputs stay intact so `bundle.resolve(original)` works.
+ * Absolute paths and file URLs are stripped against the common base directory.
+ */
+const entrypointKey = (
+  original: string,
+  resolved: string,
+  baseDir: string,
+): string => {
+  const originalPath = toPath(original)
+  if (!NPath.isAbsolute(originalPath)) return originalPath
+  const prefix = baseDir ? baseDir + "/" : ""
+  return resolved.startsWith(prefix) ? resolved.slice(prefix.length) : resolved
+}
+
 /**
  * Finds common path prefix across provided paths.
  */
@@ -171,87 +274,13 @@ function getBaseDir(paths: Array<string>) {
   if (paths.length === 0) return ""
   if (paths.length === 1) return NPath.dirname(paths[0])
 
-  const segmentsList = paths.map((path) =>
-    NPath.dirname(path).split("/").filter(Boolean)
-  )
+  const segmentsList = paths.map((path) => NPath.dirname(path).split("/").filter(Boolean))
 
   return (
     segmentsList[0]
       .filter((segment, i) => segmentsList.every((segs) => segs[i] === segment))
       .reduce((path, seg) => `${path}/${seg}`, "") ?? ""
   )
-}
-
-/**
- * Maps entrypoints to their respective build artifacts.
- * Entrypoint key is trimmed to remove common path prefix.
- *
- * Bun groups outputs by kind: JS entry-points first, then CSS assets.
- * We partition entrypoints the same way and zip each group separately.
- */
-function joinBuildEntrypoints(options: BuildOptions, output: BuildOutput) {
-  const baseDir = getBaseDir(options.entrypoints)
-  const commonPathPrefix = baseDir ? baseDir + "/" : ""
-
-  const isCss = (ep: string) => ep.endsWith(".css")
-
-  const jsEntrypoints = options.entrypoints.filter((ep) => !isCss(ep))
-  const cssEntrypoints = options.entrypoints.filter(isCss)
-
-  const jsOutputs = output.outputs.filter(
-    (v) =>
-      v.kind === "entry-point" &&
-      !(v.loader === "html" && v.path.endsWith(".js")),
-  )
-  const cssOutputs = output.outputs.filter((v) =>
-    v.kind === "asset" && v.loader === "css"
-  )
-
-  return pipe(
-    [
-      ...Iterable.zip(jsEntrypoints, jsOutputs),
-      ...Iterable.zip(cssEntrypoints, cssOutputs),
-    ],
-    Iterable.map(([entrypoint, artifact]) => ({
-      shortPath: entrypoint.replace(commonPathPrefix, ""),
-      fullPath: entrypoint,
-      artifact,
-    })),
-  )
-}
-
-/**
- * Generate manifest from a build.
- * Useful for SSR and providing source->artifact path mapping.
- */
-function generateManifest(
-  options: BuildOptions,
-  output: BuildOutput,
-  imports?: BunImportTrackerPlugin.ImportMap,
-): Bundle.BundleManifest {
-  const entrypointArtifacts = joinBuildEntrypoints(options, output)
-
-  return {
-    entrypoints: pipe(
-      entrypointArtifacts,
-      Iterable.map((v) =>
-        [v.shortPath, v.artifact.path.replace(/^\.\//, "")] as const
-      ),
-      Record.fromEntries,
-    ),
-
-    artifacts: pipe(
-      output.outputs,
-      Iterable.map((v) => ({
-        path: v.path.replace(/^\.\//, ""),
-        type: v.type,
-        size: v.size,
-        hash: v.hash ?? undefined,
-        imports: imports?.get(v.path),
-      })),
-      Array.fromIterable,
-    ),
-  }
 }
 
 function buildBun(

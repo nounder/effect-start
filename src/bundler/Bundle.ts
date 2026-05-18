@@ -1,45 +1,5 @@
-import { Context, Data, type Effect, pipe, type PubSub } from "effect"
+import { Context, Data, type Effect, type PubSub } from "effect"
 import * as Schema from "effect/Schema"
-
-/**
- * Generic shape describing a bundle across multiple bundlers
- * (like bun, esbuild & vite)
- */
-export const BundleManifestSchema = Schema.Struct({
-  entrypoints: Schema.Record({
-    key: Schema.String,
-    value: Schema.String,
-  }),
-  artifacts: Schema.Array(
-    Schema.Struct({
-      path: Schema.String,
-      type: Schema.String,
-      size: Schema.Number,
-      hash: pipe(Schema.String, Schema.optional),
-      imports: pipe(
-        Schema.Array(
-          Schema.Struct({
-            path: Schema.String,
-            kind: Schema.Literal(
-              "import-statement",
-              "require-call",
-              "require-resolve",
-              "dynamic-import",
-              "import-rule",
-              "url-token",
-              "internal",
-              "entry-point-run",
-              "entry-point-build",
-            ),
-          }),
-        ),
-        Schema.optional,
-      ),
-    }),
-  ),
-})
-
-export type BundleManifest = typeof BundleManifestSchema.Type
 
 const BundleEventChange = Schema.TaggedStruct("Change", {
   path: Schema.String,
@@ -63,7 +23,6 @@ export type BundleId = `${typeof IdPrefix}${BundleKey}`
  * imports within the bundle.
  */
 export type BundleContext = {
-  manifest: BundleManifest
   resolve: (url: string, parent?: string) => string | undefined
   getArtifact: (path: string) => Blob | undefined
   rebuild?: () => Effect.Effect<BundleContext, BundleError>
@@ -76,7 +35,6 @@ export class BundleError extends Data.TaggedError("BundleError")<{
 }> {}
 
 export const emptyBundleContext: BundleContext = {
-  manifest: { entrypoints: {}, artifacts: [] },
   resolve: () => undefined,
   getArtifact: () => undefined,
 }
