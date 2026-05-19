@@ -80,7 +80,7 @@ const serializeObjectProperty = (value: unknown): string | undefined => {
 }
 
 export function text(
-  node: JSX.Children,
+  node: JSX.Element,
   hooks?: { onNode?: (node: HtmlElement) => void },
 ): string {
   const stack: Array<any> = [node]

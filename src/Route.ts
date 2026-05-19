@@ -165,11 +165,11 @@ export const text = RouteBody.build<string, "text">({
   format: "text",
 })
 
-export const html = RouteBody.build<string | JSX.Children, string, "html">({
+export const html = RouteBody.build<string | JSX.Element, string, "html">({
   format: "html",
   handle: (
     body,
-  ) => (typeof body === "string" ? body : Html.text(body as JSX.Children)),
+  ) => (typeof body === "string" ? body : Html.text(body as JSX.Element)),
 })
 
 export const json = RouteBody.build<Values.Json, "json">({

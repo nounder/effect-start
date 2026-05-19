@@ -35,12 +35,22 @@ export interface HtmlElement {
 }
 
 export namespace JSX {
-  export type Element = HtmlElement
-  export type Child = Element | Html.TrustedHtml | string | number | bigint
-  export type Children = Child | SilentChild | Iterable<Children>
-  // a child that is not rendered and is often a result
-  // of conditional rendering, like: `{condition && <div>...</div>}`
+  export type Element =
+    | HtmlElement
+    | Html.TrustedHtml
+    | string
+    | number
+    | bigint
+    | SilentChild
+    | Iterable<Element>
+  // a value that renders to nothing, often the result of conditional rendering
+  // like `{condition && <div>...</div>}`
   export type SilentChild = boolean | null | undefined
+
+  /** @deprecated use `Element` */
+  export type Children = Element
+  /** @deprecated use `Element` */
+  export type Child = Element
 
   export interface ElementClass {
     // empty, libs can define requirements downstream
@@ -61,7 +71,7 @@ export namespace JSX {
   }
   export interface CustomAttributes<T> {
     ref?: T | ((el: T) => void) | undefined
-    children?: Children
+    children?: Element
   }
 
   // events
@@ -1461,7 +1471,7 @@ export namespace JSX {
     /** @deprecated */
     language?: string | undefined
 
-    children?: Children
+    children?: Element
   }
 
   // Separate interface for script elements with function children.

@@ -1,10 +1,5 @@
-import type {
-  HtmlElemenetProps,
-  HtmlElement,
-  HtmlElementType,
-  JSX,
-} from "../src/jsx.ts"
 import * as Html from "./Html.ts"
+import type { HtmlElemenetProps, HtmlElement, HtmlElementType, JSX } from "./jsx.ts"
 
 function Fragment(props: { children: JSX.Element }) {
   return props.children
