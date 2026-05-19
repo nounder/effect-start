@@ -1,4 +1,4 @@
-import type { DatastarAttributes, HTMLOrSVG } from "./datastar/jsx.d.ts"
+import type { DatastarAttributes, HTMLOrSVG } from "./datastar/jsx.ts"
 import type * as Html from "./Html.ts"
 
 /**
@@ -15,6 +15,8 @@ import type * as Html from "./Html.ts"
  * https://potahtml.github.io/namespace-jsx-project/index.html
  */
 type HtmlPrimitive = string | number | boolean | null | undefined
+type SerializableAttributeValue = string | number | boolean
+type CommandEvent = Event
 export type HtmlElementType = string | HtmlComponent
 export type HtmlElemenetProps = {
   [key: string]:
@@ -33,31 +35,31 @@ export interface HtmlElement {
 }
 
 export namespace JSX {
-  type Element = HtmlElement
-  type Child = Element | Html.TrustedHtml | string | number | bigint
-  type Children = Child | SilentChild | Iterable<Children>
+  export type Element = HtmlElement
+  export type Child = Element | Html.TrustedHtml | string | number | bigint
+  export type Children = Child | SilentChild | Iterable<Children>
   // a child that is not rendered and is often a result
   // of conditional rendering, like: `{condition && <div>...</div>}`
-  type SilentChild = boolean | null | undefined
+  export type SilentChild = boolean | null | undefined
 
-  interface ElementClass {
+  export interface ElementClass {
     // empty, libs can define requirements downstream
   }
-  interface ElementAttributesProperty {
+  export interface ElementAttributesProperty {
     // empty, libs can define requirements downstream
   }
-  interface ElementChildrenAttribute {
+  export interface ElementChildrenAttribute {
     children: {}
   }
 
-  type EventHandler<E extends Event, T = EventTarget> =
+  export type EventHandler<E extends Event, T = EventTarget> =
     | string
     | ((event: E & { readonly currentTarget: T }) => unknown)
 
-  interface IntrinsicAttributes {
+  export interface IntrinsicAttributes {
     ref?: unknown | ((e: unknown) => void) | undefined
   }
-  interface CustomAttributes<T> {
+  export interface CustomAttributes<T> {
     ref?: T | ((el: T) => void) | undefined
     children?: Children
   }
@@ -69,7 +71,7 @@ export namespace JSX {
    *
    * Excluding `Elements events` already defined as globals that all tags share, such as `onblur`.
    */
-  interface WindowEventMap<T> {
+  export interface WindowEventMap<T> {
     onafterprint?: EventHandler<Event, T> | undefined
     onbeforeprint?: EventHandler<Event, T> | undefined
     onbeforeunload?: EventHandler<BeforeUnloadEvent, T> | undefined
@@ -100,7 +102,7 @@ export namespace JSX {
    *
    * Includes events defined for the `Element` interface.
    */
-  interface CustomEventHandlersLowerCase<T> {
+  export interface CustomEventHandlersLowerCase<T> {
     onabort?: EventHandler<Event, T> | undefined
     onanimationcancel?: EventHandler<AnimationEvent, T> | undefined
     onanimationend?: EventHandler<AnimationEvent, T> | undefined
@@ -224,7 +226,7 @@ export namespace JSX {
    *
    * Includes `keys` defined for the `Element` and `Node` interfaces.
    */
-  interface DOMAttributes<T>
+  export interface DOMAttributes<T>
     extends
       CustomAttributes<T>,
       CustomEventHandlersLowerCase<T>,
@@ -249,14 +251,14 @@ export namespace JSX {
     tabIndex?: number | string | undefined
   }
 
-  type HTMLAutocapitalize =
+  export type HTMLAutocapitalize =
     | "off"
     | "none"
     | "on"
     | "sentences"
     | "words"
     | "characters"
-  type HTMLAutocomplete =
+  export type HTMLAutocomplete =
     | "additional-name"
     | "address-level1"
     | "address-level2"
@@ -320,14 +322,14 @@ export namespace JSX {
     | "username"
     | "work"
     | (string & {})
-  type HTMLDir = "ltr" | "rtl" | "auto"
-  type HTMLFormEncType =
+  export type HTMLDir = "ltr" | "rtl" | "auto"
+  export type HTMLFormEncType =
     | "application/x-www-form-urlencoded"
     | "multipart/form-data"
     | "text/plain"
-  type HTMLFormMethod = "post" | "get" | "dialog"
-  type HTMLCrossorigin = "anonymous" | "use-credentials" | ""
-  type HTMLReferrerPolicy =
+  export type HTMLFormMethod = "post" | "get" | "dialog"
+  export type HTMLCrossorigin = "anonymous" | "use-credentials" | ""
+  export type HTMLReferrerPolicy =
     | "no-referrer"
     | "no-referrer-when-downgrade"
     | "origin"
@@ -336,7 +338,7 @@ export namespace JSX {
     | "strict-origin"
     | "strict-origin-when-cross-origin"
     | "unsafe-url"
-  type HTMLIframeSandbox =
+  export type HTMLIframeSandbox =
     | "allow-downloads-without-user-activation"
     | "allow-downloads"
     | "allow-forms"
@@ -352,7 +354,7 @@ export namespace JSX {
     | "allow-top-navigation"
     | "allow-top-navigation-by-user-activation"
     | "allow-top-navigation-to-custom-protocols"
-  type HTMLLinkAs =
+  export type HTMLLinkAs =
     | "audio"
     | "document"
     | "embed"
@@ -367,7 +369,7 @@ export namespace JSX {
     | "worker"
 
   // All the WAI-ARIA 1.1 attributes from https://www.w3.org/TR/wai-aria-1.1/
-  interface AriaAttributes {
+  export interface AriaAttributes {
     /**
      * Identifies the currently active element when DOM focus is on a composite widget, textbox,
      * group, or application.
@@ -766,7 +768,7 @@ export namespace JSX {
   }
 
   /** `HTMLElement` interface keys only. (ex not svg/math) */
-  interface HTMLAttributes<T> extends DOMAttributes<T> {
+  export interface HTMLAttributes<T> extends DOMAttributes<T> {
     accesskey?: string | undefined
     autocapitalize?: HTMLAutocapitalize | undefined
     autocorrect?: "on" | "off" | undefined
@@ -855,7 +857,7 @@ export namespace JSX {
 
   // html elements
 
-  interface AnchorHTMLAttributes<T> extends HTMLAttributes<T> {
+  export interface AnchorHTMLAttributes<T> extends HTMLAttributes<T> {
     download?: string | undefined
     href?: string | undefined
     hreflang?: string | undefined
@@ -881,8 +883,8 @@ export namespace JSX {
     /** @deprecated */
     shape?: "rect" | "circle" | "poly" | "default" | undefined
   }
-  interface AudioHTMLAttributes<T> extends MediaHTMLAttributes<T> {}
-  interface AreaHTMLAttributes<T> extends HTMLAttributes<T> {
+  export interface AudioHTMLAttributes<T> extends MediaHTMLAttributes<T> {}
+  export interface AreaHTMLAttributes<T> extends HTMLAttributes<T> {
     alt?: string | undefined
     coords?: string | undefined
     download?: string | undefined
@@ -901,20 +903,20 @@ export namespace JSX {
     /** @deprecated */
     nohref?: boolean | undefined
   }
-  interface BaseHTMLAttributes<T> extends HTMLAttributes<T> {
+  export interface BaseHTMLAttributes<T> extends HTMLAttributes<T> {
     href?: string | undefined
     target?: "_self" | "_blank" | "_parent" | "_top" | (string & {}) | undefined
   }
-  interface BdoHTMLAttributes<T> extends HTMLAttributes<T> {
+  export interface BdoHTMLAttributes<T> extends HTMLAttributes<T> {
     dir?: "ltr" | "rtl" | undefined
   }
-  interface BlockquoteHTMLAttributes<T> extends HTMLAttributes<T> {
+  export interface BlockquoteHTMLAttributes<T> extends HTMLAttributes<T> {
     cite?: string | undefined
   }
-  interface BodyHTMLAttributes<T>
+  export interface BodyHTMLAttributes<T>
     extends HTMLAttributes<T>, WindowEventMap<T>
   {}
-  interface ButtonHTMLAttributes<T> extends HTMLAttributes<T> {
+  export interface ButtonHTMLAttributes<T> extends HTMLAttributes<T> {
     disabled?: boolean | undefined
     form?: string | undefined
     formaction?: string | SerializableAttributeValue | undefined
@@ -954,7 +956,7 @@ export namespace JSX {
     popoverTarget?: string | undefined
     popoverTargetAction?: "hide" | "show" | "toggle" | undefined
   }
-  interface CanvasHTMLAttributes<T> extends HTMLAttributes<T> {
+  export interface CanvasHTMLAttributes<T> extends HTMLAttributes<T> {
     height?: number | string | undefined
     width?: number | string | undefined
 
@@ -964,11 +966,11 @@ export namespace JSX {
      */
     "moz-opaque"?: boolean | undefined
   }
-  interface CaptionHTMLAttributes<T> extends HTMLAttributes<T> {
+  export interface CaptionHTMLAttributes<T> extends HTMLAttributes<T> {
     /** @deprecated */
     align?: "left" | "center" | "right" | undefined
   }
-  interface ColHTMLAttributes<T> extends HTMLAttributes<T> {
+  export interface ColHTMLAttributes<T> extends HTMLAttributes<T> {
     span?: number | string | undefined
 
     /** @deprecated */
@@ -984,7 +986,7 @@ export namespace JSX {
     /** @deprecated */
     width?: number | string | undefined
   }
-  interface ColgroupHTMLAttributes<T> extends HTMLAttributes<T> {
+  export interface ColgroupHTMLAttributes<T> extends HTMLAttributes<T> {
     span?: number | string | undefined
 
     /** @deprecated */
@@ -1000,14 +1002,14 @@ export namespace JSX {
     /** @deprecated */
     width?: number | string | undefined
   }
-  interface DataHTMLAttributes<T> extends HTMLAttributes<T> {
+  export interface DataHTMLAttributes<T> extends HTMLAttributes<T> {
     value?: string | Array<string> | number | undefined
   }
-  interface DetailsHtmlAttributes<T> extends HTMLAttributes<T> {
+  export interface DetailsHtmlAttributes<T> extends HTMLAttributes<T> {
     name?: string | undefined
     open?: boolean | undefined
   }
-  interface DialogHtmlAttributes<T> extends HTMLAttributes<T> {
+  export interface DialogHtmlAttributes<T> extends HTMLAttributes<T> {
     open?: boolean | undefined
     /**
      * Do not add the tabindex property to the <dialog> element as it is not interactive and does
@@ -1021,7 +1023,7 @@ export namespace JSX {
     /** @experimental */
     closedby?: "any" | "closerequest" | "none" | undefined
   }
-  interface EmbedHTMLAttributes<T> extends HTMLAttributes<T> {
+  export interface EmbedHTMLAttributes<T> extends HTMLAttributes<T> {
     height?: number | string | undefined
     src?: string | undefined
     type?: string | undefined
@@ -1032,12 +1034,12 @@ export namespace JSX {
     /** @deprecated */
     name?: string | undefined
   }
-  interface FieldsetHTMLAttributes<T> extends HTMLAttributes<T> {
+  export interface FieldsetHTMLAttributes<T> extends HTMLAttributes<T> {
     disabled?: boolean | undefined
     form?: string | undefined
     name?: string | undefined
   }
-  interface FormHTMLAttributes<T> extends HTMLAttributes<T> {
+  export interface FormHTMLAttributes<T> extends HTMLAttributes<T> {
     "accept-charset"?: string | undefined
     action?: string | SerializableAttributeValue | undefined
     autocomplete?: "on" | "off" | undefined
@@ -1054,7 +1056,7 @@ export namespace JSX {
     /** @deprecated */
     accept?: string | undefined
   }
-  interface IframeHTMLAttributes<T> extends HTMLAttributes<T> {
+  export interface IframeHTMLAttributes<T> extends HTMLAttributes<T> {
     allow?: string | undefined
     allowfullscreen?: boolean | undefined
     height?: number | string | undefined
@@ -1106,7 +1108,7 @@ export namespace JSX {
     /** @deprecated */
     seamless?: boolean | undefined
   }
-  interface ImgHTMLAttributes<T> extends HTMLAttributes<T> {
+  export interface ImgHTMLAttributes<T> extends HTMLAttributes<T> {
     alt?: string | undefined
     crossorigin?: HTMLCrossorigin | undefined
     decoding?: "sync" | "async" | "auto" | undefined
@@ -1149,7 +1151,7 @@ export namespace JSX {
     /** @deprecated */
     vspace?: number | string | undefined
   }
-  interface InputHTMLAttributes<T> extends HTMLAttributes<T> {
+  export interface InputHTMLAttributes<T> extends HTMLAttributes<T> {
     accept?: string | undefined
     alpha?: boolean | undefined
     alt?: string | undefined
@@ -1229,13 +1231,13 @@ export namespace JSX {
     /** @deprecated */
     usemap?: string | undefined
   }
-  interface ModHTMLAttributes<T> extends HTMLAttributes<T> {
+  export interface ModHTMLAttributes<T> extends HTMLAttributes<T> {
     cite?: string | undefined
     datetime?: string | undefined
 
     dateTime?: string | undefined
   }
-  interface KeygenHTMLAttributes<T> extends HTMLAttributes<T> {
+  export interface KeygenHTMLAttributes<T> extends HTMLAttributes<T> {
     /** @deprecated */
     challenge?: string | undefined
     /** @deprecated */
@@ -1249,16 +1251,16 @@ export namespace JSX {
     /** @deprecated */
     name?: string | undefined
   }
-  interface LabelHTMLAttributes<T> extends HTMLAttributes<T> {
+  export interface LabelHTMLAttributes<T> extends HTMLAttributes<T> {
     for?: string | undefined
   }
-  interface LiHTMLAttributes<T> extends HTMLAttributes<T> {
+  export interface LiHTMLAttributes<T> extends HTMLAttributes<T> {
     value?: number | string | undefined
 
     /** @deprecated */
     type?: "1" | "a" | "A" | "i" | "I" | undefined
   }
-  interface LinkHTMLAttributes<T> extends HTMLAttributes<T> {
+  export interface LinkHTMLAttributes<T> extends HTMLAttributes<T> {
     as?: HTMLLinkAs | undefined
     blocking?: "render" | undefined
     color?: string | undefined
@@ -1286,10 +1288,10 @@ export namespace JSX {
     /** @deprecated */
     target?: string | undefined
   }
-  interface MapHTMLAttributes<T> extends HTMLAttributes<T> {
+  export interface MapHTMLAttributes<T> extends HTMLAttributes<T> {
     name?: string | undefined
   }
-  interface MediaHTMLAttributes<T> extends HTMLAttributes<T> {
+  export interface MediaHTMLAttributes<T> extends HTMLAttributes<T> {
     autoplay?: boolean | undefined
     controls?: boolean | undefined
     controlslist?:
@@ -1315,7 +1317,7 @@ export namespace JSX {
     /** @deprecated */
     mediagroup?: string | undefined
   }
-  interface MenuHTMLAttributes<T> extends HTMLAttributes<T> {
+  export interface MenuHTMLAttributes<T> extends HTMLAttributes<T> {
     /** @deprecated */
     compact?: boolean | undefined
     /** @deprecated */
@@ -1323,7 +1325,7 @@ export namespace JSX {
     /** @deprecated */
     type?: "context" | "toolbar" | undefined
   }
-  interface MetaHTMLAttributes<T> extends HTMLAttributes<T> {
+  export interface MetaHTMLAttributes<T> extends HTMLAttributes<T> {
     "http-equiv"?:
       | "content-security-policy"
       | "content-type"
@@ -1339,7 +1341,7 @@ export namespace JSX {
     /** @deprecated */
     scheme?: string | undefined
   }
-  interface MeterHTMLAttributes<T> extends HTMLAttributes<T> {
+  export interface MeterHTMLAttributes<T> extends HTMLAttributes<T> {
     form?: string | undefined
     high?: number | string | undefined
     low?: number | string | undefined
@@ -1348,10 +1350,10 @@ export namespace JSX {
     optimum?: number | string | undefined
     value?: string | Array<string> | number | undefined
   }
-  interface QuoteHTMLAttributes<T> extends HTMLAttributes<T> {
+  export interface QuoteHTMLAttributes<T> extends HTMLAttributes<T> {
     cite?: string | undefined
   }
-  interface ObjectHTMLAttributes<T> extends HTMLAttributes<T> {
+  export interface ObjectHTMLAttributes<T> extends HTMLAttributes<T> {
     data?: string | undefined
     form?: string | undefined
     height?: number | string | undefined
@@ -1388,7 +1390,7 @@ export namespace JSX {
     /** @deprecated */
     typemustmatch?: boolean | undefined
   }
-  interface OlHTMLAttributes<T> extends HTMLAttributes<T> {
+  export interface OlHTMLAttributes<T> extends HTMLAttributes<T> {
     reversed?: boolean | undefined
     start?: number | string | undefined
     type?: "1" | "a" | "A" | "i" | "I" | undefined
@@ -1399,22 +1401,22 @@ export namespace JSX {
      */
     compact?: boolean | undefined
   }
-  interface OptgroupHTMLAttributes<T> extends HTMLAttributes<T> {
+  export interface OptgroupHTMLAttributes<T> extends HTMLAttributes<T> {
     disabled?: boolean | undefined
     label?: string | undefined
   }
-  interface OptionHTMLAttributes<T> extends HTMLAttributes<T> {
+  export interface OptionHTMLAttributes<T> extends HTMLAttributes<T> {
     disabled?: boolean | undefined
     label?: string | undefined
     selected?: boolean | undefined
     value?: string | Array<string> | number | undefined
   }
-  interface OutputHTMLAttributes<T> extends HTMLAttributes<T> {
+  export interface OutputHTMLAttributes<T> extends HTMLAttributes<T> {
     for?: string | undefined
     form?: string | undefined
     name?: string | undefined
   }
-  interface ParamHTMLAttributes<T> extends HTMLAttributes<T> {
+  export interface ParamHTMLAttributes<T> extends HTMLAttributes<T> {
     /** @deprecated */
     name?: string | undefined
     /** @deprecated */
@@ -1424,11 +1426,11 @@ export namespace JSX {
     /** @deprecated */
     valuetype?: "data" | "ref" | "object" | undefined
   }
-  interface ProgressHTMLAttributes<T> extends HTMLAttributes<T> {
+  export interface ProgressHTMLAttributes<T> extends HTMLAttributes<T> {
     max?: number | string | undefined
     value?: string | Array<string> | number | undefined
   }
-  interface ScriptHTMLAttributes<T> extends HTMLAttributes<T> {
+  export interface ScriptHTMLAttributes<T> extends HTMLAttributes<T> {
     async?: boolean | undefined
     blocking?: "render" | undefined
     crossorigin?: HTMLCrossorigin | undefined
@@ -1468,7 +1470,7 @@ export namespace JSX {
   // Using a union in a single interface (`children?: Function | Children`)
   // doesn't work because TS can't infer callback parameter types from unions.
   // By splitting into two interfaces, TS can discriminate based on children
-  interface ScriptHTMLAttributesWithHandler<T> extends
+  export interface ScriptHTMLAttributesWithHandler<T> extends
     Omit<
       ScriptHTMLAttributes<T>,
       "children" | "type"
@@ -1477,7 +1479,7 @@ export namespace JSX {
     children: (e: { window: Window; target: HTMLScriptElement }) => void
     type?: never
   }
-  interface SelectHTMLAttributes<T> extends HTMLAttributes<T> {
+  export interface SelectHTMLAttributes<T> extends HTMLAttributes<T> {
     autocomplete?: HTMLAutocomplete | undefined
     disabled?: boolean | undefined
     form?: string | undefined
@@ -1487,10 +1489,10 @@ export namespace JSX {
     size?: number | string | undefined
     value?: string | Array<string> | number | undefined
   }
-  interface HTMLSlotElementAttributes<T> extends HTMLAttributes<T> {
+  export interface HTMLSlotElementAttributes<T> extends HTMLAttributes<T> {
     name?: string | undefined
   }
-  interface SourceHTMLAttributes<T> extends HTMLAttributes<T> {
+  export interface SourceHTMLAttributes<T> extends HTMLAttributes<T> {
     height?: number | string | undefined
     media?: string | undefined
     sizes?: string | undefined
@@ -1499,7 +1501,7 @@ export namespace JSX {
     type?: string | undefined
     width?: number | string | undefined
   }
-  interface StyleHTMLAttributes<T> extends HTMLAttributes<T> {
+  export interface StyleHTMLAttributes<T> extends HTMLAttributes<T> {
     blocking?: "render" | undefined
     media?: string | undefined
 
@@ -1508,7 +1510,7 @@ export namespace JSX {
     /** @deprecated */
     type?: string | undefined
   }
-  interface TdHTMLAttributes<T> extends HTMLAttributes<T> {
+  export interface TdHTMLAttributes<T> extends HTMLAttributes<T> {
     colspan?: number | string | undefined
     headers?: string | undefined
     rowspan?: number | string | undefined
@@ -1539,7 +1541,7 @@ export namespace JSX {
     /** @deprecated */
     width?: number | string | undefined
   }
-  interface TemplateHTMLAttributes<T> extends HTMLAttributes<T> {
+  export interface TemplateHTMLAttributes<T> extends HTMLAttributes<T> {
     shadowrootclonable?: boolean | undefined
     shadowrootcustomelementregistry?: boolean | undefined
     shadowrootdelegatesfocus?: boolean | undefined
@@ -1548,7 +1550,7 @@ export namespace JSX {
     /** @experimental */
     shadowrootserializable?: boolean | undefined
   }
-  interface TextareaHTMLAttributes<T> extends HTMLAttributes<T> {
+  export interface TextareaHTMLAttributes<T> extends HTMLAttributes<T> {
     autocomplete?: HTMLAutocomplete | undefined
     cols?: number | string | undefined
     dirname?: string | undefined
@@ -1568,7 +1570,7 @@ export namespace JSX {
     minLength?: number | string | undefined
     readOnly?: boolean | undefined
   }
-  interface ThHTMLAttributes<T> extends HTMLAttributes<T> {
+  export interface ThHTMLAttributes<T> extends HTMLAttributes<T> {
     abbr?: string | undefined
     colspan?: number | string | undefined
     headers?: string | undefined
@@ -1597,12 +1599,12 @@ export namespace JSX {
     /** @deprecated */
     width?: number | string | undefined
   }
-  interface TimeHTMLAttributes<T> extends HTMLAttributes<T> {
+  export interface TimeHTMLAttributes<T> extends HTMLAttributes<T> {
     datetime?: string | undefined
 
     dateTime?: string | undefined
   }
-  interface TrackHTMLAttributes<T> extends HTMLAttributes<T> {
+  export interface TrackHTMLAttributes<T> extends HTMLAttributes<T> {
     default?: boolean | undefined
     kind?:
       | "alternative"
@@ -1624,7 +1626,7 @@ export namespace JSX {
     /** @deprecated */
     mediagroup?: string | undefined
   }
-  interface VideoHTMLAttributes<T> extends MediaHTMLAttributes<T> {
+  export interface VideoHTMLAttributes<T> extends MediaHTMLAttributes<T> {
     disablepictureinpicture?: boolean | undefined
     height?: number | string | undefined
     playsinline?: boolean | undefined
@@ -1635,7 +1637,7 @@ export namespace JSX {
     onleavepictureinpicture?: EventHandler<PictureInPictureEvent, T> | undefined
   }
 
-  interface WebViewHTMLAttributes<T> extends HTMLAttributes<T> {
+  export interface WebViewHTMLAttributes<T> extends HTMLAttributes<T> {
     allowpopups?: boolean | undefined
     disableblinkfeatures?: string | undefined
     disablewebsecurity?: boolean | undefined
@@ -1663,7 +1665,7 @@ export namespace JSX {
   }
 
   // svg elements
-  type SVGPreserveAspectRatio =
+  export type SVGPreserveAspectRatio =
     | "none"
     | "xMinYMin"
     | "xMidYMin"
@@ -1692,7 +1694,7 @@ export namespace JSX {
     | "xMinYMax slice"
     | "xMidYMax slice"
     | "xMaxYMax slice"
-  type ImagePreserveAspectRatio =
+  export type ImagePreserveAspectRatio =
     | SVGPreserveAspectRatio
     | "defer none"
     | "defer xMinYMin"
@@ -1722,10 +1724,10 @@ export namespace JSX {
     | "defer xMinYMax slice"
     | "defer xMidYMax slice"
     | "defer xMaxYMax slice"
-  type SVGUnits = "userSpaceOnUse" | "objectBoundingBox"
+  export type SVGUnits = "userSpaceOnUse" | "objectBoundingBox"
 
   /** Global `SVGElement` interface keys only. (ex not html/math) */
-  interface CoreSVGAttributes<T> extends DOMAttributes<T> {
+  export interface CoreSVGAttributes<T> extends DOMAttributes<T> {
     lang?: string | undefined
     tabindex?: number | string | undefined
     xmlns?: string | undefined
@@ -1733,22 +1735,22 @@ export namespace JSX {
     tabIndex?: number | string | undefined
   }
 
-  interface StylableSVGAttributes {
+  export interface StylableSVGAttributes {
     class?: string | undefined
     style?: string | undefined
   }
-  interface TransformableSVGAttributes {
+  export interface TransformableSVGAttributes {
     transform?: string | undefined
   }
-  interface ConditionalProcessingSVGAttributes {
+  export interface ConditionalProcessingSVGAttributes {
     requiredExtensions?: string | undefined
     requiredFeatures?: string | undefined
     systemLanguage?: string | undefined
   }
-  interface ExternalResourceSVGAttributes {
+  export interface ExternalResourceSVGAttributes {
     externalResourcesRequired?: "true" | "false" | undefined
   }
-  interface AnimationTimingSVGAttributes {
+  export interface AnimationTimingSVGAttributes {
     begin?: string | undefined
     dur?: string | undefined
     end?: string | undefined
@@ -1759,7 +1761,7 @@ export namespace JSX {
     repeatDur?: string | undefined
     restart?: "always" | "whenNotActive" | "never" | undefined
   }
-  interface AnimationValueSVGAttributes {
+  export interface AnimationValueSVGAttributes {
     by?: number | string | undefined
     calcMode?: "discrete" | "linear" | "paced" | "spline" | undefined
     from?: number | string | undefined
@@ -1768,16 +1770,16 @@ export namespace JSX {
     to?: number | string | undefined
     values?: string | undefined
   }
-  interface AnimationAdditionSVGAttributes {
+  export interface AnimationAdditionSVGAttributes {
     accumulate?: "none" | "sum" | undefined
     additive?: "replace" | "sum" | undefined
     attributeName?: string | undefined
   }
-  interface AnimationAttributeTargetSVGAttributes {
+  export interface AnimationAttributeTargetSVGAttributes {
     attributeName?: string | undefined
     attributeType?: "CSS" | "XML" | "auto" | undefined
   }
-  interface PresentationSVGAttributes {
+  export interface PresentationSVGAttributes {
     "alignment-baseline"?:
       | "auto"
       | "baseline"
@@ -1931,7 +1933,7 @@ export namespace JSX {
     stroke?: string | undefined
     visibility?: "visible" | "hidden" | "collapse" | "inherit" | undefined
   }
-  interface AnimationElementSVGAttributes<T>
+  export interface AnimationElementSVGAttributes<T>
     extends
       CoreSVGAttributes<T>,
       ExternalResourceSVGAttributes,
@@ -1943,7 +1945,7 @@ export namespace JSX {
     onrepeat?: EventHandler<Event, T> | undefined
   }
 
-  interface ContainerElementSVGAttributes<T>
+  export interface ContainerElementSVGAttributes<T>
     extends
       CoreSVGAttributes<T>,
       ShapeElementSVGAttributes<T>,
@@ -1959,7 +1961,7 @@ export namespace JSX {
         | "color-rendering"
       >
   {}
-  interface FilterPrimitiveElementSVGAttributes<T>
+  export interface FilterPrimitiveElementSVGAttributes<T>
     extends
       CoreSVGAttributes<T>,
       Pick<PresentationSVGAttributes, "color-interpolation-filters">
@@ -1970,18 +1972,18 @@ export namespace JSX {
     x?: number | string | undefined
     y?: number | string | undefined
   }
-  interface SingleInputFilterSVGAttributes {
+  export interface SingleInputFilterSVGAttributes {
     in?: string | undefined
   }
-  interface DoubleInputFilterSVGAttributes {
+  export interface DoubleInputFilterSVGAttributes {
     in?: string | undefined
     in2?: string | undefined
   }
-  interface FitToViewBoxSVGAttributes {
+  export interface FitToViewBoxSVGAttributes {
     preserveAspectRatio?: SVGPreserveAspectRatio | undefined
     viewBox?: string | undefined
   }
-  interface GradientElementSVGAttributes<T>
+  export interface GradientElementSVGAttributes<T>
     extends
       CoreSVGAttributes<T>,
       ExternalResourceSVGAttributes,
@@ -1992,7 +1994,7 @@ export namespace JSX {
     href?: string | undefined
     spreadMethod?: "pad" | "reflect" | "repeat" | undefined
   }
-  interface GraphicsElementSVGAttributes<T> extends
+  export interface GraphicsElementSVGAttributes<T> extends
     CoreSVGAttributes<T>,
     Pick<
       PresentationSVGAttributes,
@@ -2008,15 +2010,15 @@ export namespace JSX {
       | "color-rendering"
     >
   {}
-  interface LightSourceElementSVGAttributes<T> extends CoreSVGAttributes<T> {}
-  interface NewViewportSVGAttributes<T>
+  export interface LightSourceElementSVGAttributes<T> extends CoreSVGAttributes<T> {}
+  export interface NewViewportSVGAttributes<T>
     extends
       CoreSVGAttributes<T>,
       Pick<PresentationSVGAttributes, "overflow" | "clip">
   {
     viewBox?: string | undefined
   }
-  interface ShapeElementSVGAttributes<T> extends
+  export interface ShapeElementSVGAttributes<T> extends
     CoreSVGAttributes<T>,
     Pick<
       PresentationSVGAttributes,
@@ -2036,7 +2038,7 @@ export namespace JSX {
       | "pathLength"
     >
   {}
-  interface TextContentElementSVGAttributes<T>
+  export interface TextContentElementSVGAttributes<T>
     extends
       CoreSVGAttributes<T>,
       Pick<
@@ -2072,14 +2074,14 @@ export namespace JSX {
         | "stroke-opacity"
       >
   {}
-  interface ZoomAndPanSVGAttributes {
+  export interface ZoomAndPanSVGAttributes {
     /**
      * @deprecated
      * @non-standard
      */
     zoomAndPan?: "disable" | "magnify" | undefined
   }
-  interface AnimateSVGAttributes<T>
+  export interface AnimateSVGAttributes<T>
     extends
       AnimationElementSVGAttributes<T>,
       AnimationAttributeTargetSVGAttributes,
@@ -2088,7 +2090,7 @@ export namespace JSX {
       AnimationAdditionSVGAttributes,
       Pick<PresentationSVGAttributes, "color-interpolation" | "color-rendering">
   {}
-  interface AnimateMotionSVGAttributes<T>
+  export interface AnimateMotionSVGAttributes<T>
     extends
       AnimationElementSVGAttributes<T>,
       AnimationTimingSVGAttributes,
@@ -2100,7 +2102,7 @@ export namespace JSX {
     path?: string | undefined
     rotate?: number | string | "auto" | "auto-reverse" | undefined
   }
-  interface AnimateTransformSVGAttributes<T>
+  export interface AnimateTransformSVGAttributes<T>
     extends
       AnimationElementSVGAttributes<T>,
       AnimationAttributeTargetSVGAttributes,
@@ -2110,7 +2112,7 @@ export namespace JSX {
   {
     type?: "translate" | "scale" | "rotate" | "skewX" | "skewY" | undefined
   }
-  interface CircleSVGAttributes<T>
+  export interface CircleSVGAttributes<T>
     extends
       GraphicsElementSVGAttributes<T>,
       ShapeElementSVGAttributes<T>,
@@ -2123,7 +2125,7 @@ export namespace JSX {
     cy?: number | string | undefined
     r?: number | string | undefined
   }
-  interface ClipPathSVGAttributes<T>
+  export interface ClipPathSVGAttributes<T>
     extends
       CoreSVGAttributes<T>,
       ConditionalProcessingSVGAttributes,
@@ -2134,7 +2136,7 @@ export namespace JSX {
   {
     clipPathUnits?: SVGUnits | undefined
   }
-  interface DefsSVGAttributes<T>
+  export interface DefsSVGAttributes<T>
     extends
       ContainerElementSVGAttributes<T>,
       ConditionalProcessingSVGAttributes,
@@ -2142,10 +2144,10 @@ export namespace JSX {
       StylableSVGAttributes,
       TransformableSVGAttributes
   {}
-  interface DescSVGAttributes<T>
+  export interface DescSVGAttributes<T>
     extends CoreSVGAttributes<T>, StylableSVGAttributes
   {}
-  interface EllipseSVGAttributes<T>
+  export interface EllipseSVGAttributes<T>
     extends
       GraphicsElementSVGAttributes<T>,
       ShapeElementSVGAttributes<T>,
@@ -2160,7 +2162,7 @@ export namespace JSX {
     rx?: number | string | undefined
     ry?: number | string | undefined
   }
-  interface FeBlendSVGAttributes<T>
+  export interface FeBlendSVGAttributes<T>
     extends
       FilterPrimitiveElementSVGAttributes<T>,
       DoubleInputFilterSVGAttributes,
@@ -2168,7 +2170,7 @@ export namespace JSX {
   {
     mode?: "normal" | "multiply" | "screen" | "darken" | "lighten" | undefined
   }
-  interface FeColorMatrixSVGAttributes<T>
+  export interface FeColorMatrixSVGAttributes<T>
     extends
       FilterPrimitiveElementSVGAttributes<T>,
       SingleInputFilterSVGAttributes,
@@ -2177,13 +2179,13 @@ export namespace JSX {
     type?: "matrix" | "saturate" | "hueRotate" | "luminanceToAlpha" | undefined
     values?: string | undefined
   }
-  interface FeComponentTransferSVGAttributes<T>
+  export interface FeComponentTransferSVGAttributes<T>
     extends
       FilterPrimitiveElementSVGAttributes<T>,
       SingleInputFilterSVGAttributes,
       StylableSVGAttributes
   {}
-  interface FeCompositeSVGAttributes<T>
+  export interface FeCompositeSVGAttributes<T>
     extends
       FilterPrimitiveElementSVGAttributes<T>,
       DoubleInputFilterSVGAttributes,
@@ -2195,7 +2197,7 @@ export namespace JSX {
     k4?: number | string | undefined
     operator?: "over" | "in" | "out" | "atop" | "xor" | "arithmetic" | undefined
   }
-  interface FeConvolveMatrixSVGAttributes<T>
+  export interface FeConvolveMatrixSVGAttributes<T>
     extends
       FilterPrimitiveElementSVGAttributes<T>,
       SingleInputFilterSVGAttributes,
@@ -2211,7 +2213,7 @@ export namespace JSX {
     targetX?: number | string | undefined
     targetY?: number | string | undefined
   }
-  interface FeDiffuseLightingSVGAttributes<T>
+  export interface FeDiffuseLightingSVGAttributes<T>
     extends
       FilterPrimitiveElementSVGAttributes<T>,
       SingleInputFilterSVGAttributes,
@@ -2222,7 +2224,7 @@ export namespace JSX {
     kernelUnitLength?: number | string | undefined
     surfaceScale?: number | string | undefined
   }
-  interface FeDisplacementMapSVGAttributes<T>
+  export interface FeDisplacementMapSVGAttributes<T>
     extends
       FilterPrimitiveElementSVGAttributes<T>,
       DoubleInputFilterSVGAttributes,
@@ -2232,13 +2234,13 @@ export namespace JSX {
     xChannelSelector?: "R" | "G" | "B" | "A" | undefined
     yChannelSelector?: "R" | "G" | "B" | "A" | undefined
   }
-  interface FeDistantLightSVGAttributes<T>
+  export interface FeDistantLightSVGAttributes<T>
     extends LightSourceElementSVGAttributes<T>
   {
     azimuth?: number | string | undefined
     elevation?: number | string | undefined
   }
-  interface FeDropShadowSVGAttributes<T>
+  export interface FeDropShadowSVGAttributes<T>
     extends
       CoreSVGAttributes<T>,
       FilterPrimitiveElementSVGAttributes<T>,
@@ -2249,13 +2251,13 @@ export namespace JSX {
     dy?: number | string | undefined
     stdDeviation?: number | string | undefined
   }
-  interface FeFloodSVGAttributes<T>
+  export interface FeFloodSVGAttributes<T>
     extends
       FilterPrimitiveElementSVGAttributes<T>,
       StylableSVGAttributes,
       Pick<PresentationSVGAttributes, "color" | "flood-color" | "flood-opacity">
   {}
-  interface FeFuncSVGAttributes<T> extends CoreSVGAttributes<T> {
+  export interface FeFuncSVGAttributes<T> extends CoreSVGAttributes<T> {
     amplitude?: number | string | undefined
     exponent?: number | string | undefined
     intercept?: number | string | undefined
@@ -2264,7 +2266,7 @@ export namespace JSX {
     tableValues?: string | undefined
     type?: "identity" | "table" | "discrete" | "linear" | "gamma" | undefined
   }
-  interface FeGaussianBlurSVGAttributes<T>
+  export interface FeGaussianBlurSVGAttributes<T>
     extends
       FilterPrimitiveElementSVGAttributes<T>,
       SingleInputFilterSVGAttributes,
@@ -2272,7 +2274,7 @@ export namespace JSX {
   {
     stdDeviation?: number | string | undefined
   }
-  interface FeImageSVGAttributes<T>
+  export interface FeImageSVGAttributes<T>
     extends
       FilterPrimitiveElementSVGAttributes<T>,
       ExternalResourceSVGAttributes,
@@ -2281,13 +2283,13 @@ export namespace JSX {
     href?: string | undefined
     preserveAspectRatio?: SVGPreserveAspectRatio | undefined
   }
-  interface FeMergeSVGAttributes<T>
+  export interface FeMergeSVGAttributes<T>
     extends FilterPrimitiveElementSVGAttributes<T>, StylableSVGAttributes
   {}
-  interface FeMergeNodeSVGAttributes<T>
+  export interface FeMergeNodeSVGAttributes<T>
     extends CoreSVGAttributes<T>, SingleInputFilterSVGAttributes
   {}
-  interface FeMorphologySVGAttributes<T>
+  export interface FeMorphologySVGAttributes<T>
     extends
       FilterPrimitiveElementSVGAttributes<T>,
       SingleInputFilterSVGAttributes,
@@ -2296,7 +2298,7 @@ export namespace JSX {
     operator?: "erode" | "dilate" | undefined
     radius?: number | string | undefined
   }
-  interface FeOffsetSVGAttributes<T>
+  export interface FeOffsetSVGAttributes<T>
     extends
       FilterPrimitiveElementSVGAttributes<T>,
       SingleInputFilterSVGAttributes,
@@ -2305,14 +2307,14 @@ export namespace JSX {
     dx?: number | string | undefined
     dy?: number | string | undefined
   }
-  interface FePointLightSVGAttributes<T>
+  export interface FePointLightSVGAttributes<T>
     extends LightSourceElementSVGAttributes<T>
   {
     x?: number | string | undefined
     y?: number | string | undefined
     z?: number | string | undefined
   }
-  interface FeSpecularLightingSVGAttributes<T>
+  export interface FeSpecularLightingSVGAttributes<T>
     extends
       FilterPrimitiveElementSVGAttributes<T>,
       SingleInputFilterSVGAttributes,
@@ -2324,7 +2326,7 @@ export namespace JSX {
     specularExponent?: string | undefined
     surfaceScale?: string | undefined
   }
-  interface FeSpotLightSVGAttributes<T>
+  export interface FeSpotLightSVGAttributes<T>
     extends LightSourceElementSVGAttributes<T>
   {
     limitingConeAngle?: number | string | undefined
@@ -2336,13 +2338,13 @@ export namespace JSX {
     y?: number | string | undefined
     z?: number | string | undefined
   }
-  interface FeTileSVGAttributes<T>
+  export interface FeTileSVGAttributes<T>
     extends
       FilterPrimitiveElementSVGAttributes<T>,
       SingleInputFilterSVGAttributes,
       StylableSVGAttributes
   {}
-  interface FeTurbulanceSVGAttributes<T>
+  export interface FeTurbulanceSVGAttributes<T>
     extends FilterPrimitiveElementSVGAttributes<T>, StylableSVGAttributes
   {
     baseFrequency?: number | string | undefined
@@ -2351,7 +2353,7 @@ export namespace JSX {
     stitchTiles?: "stitch" | "noStitch" | undefined
     type?: "fractalNoise" | "turbulence" | undefined
   }
-  interface FilterSVGAttributes<T>
+  export interface FilterSVGAttributes<T>
     extends
       CoreSVGAttributes<T>,
       ExternalResourceSVGAttributes,
@@ -2365,7 +2367,7 @@ export namespace JSX {
     x?: number | string | undefined
     y?: number | string | undefined
   }
-  interface ForeignObjectSVGAttributes<T>
+  export interface ForeignObjectSVGAttributes<T>
     extends
       NewViewportSVGAttributes<T>,
       ConditionalProcessingSVGAttributes,
@@ -2379,7 +2381,7 @@ export namespace JSX {
     x?: number | string | undefined
     y?: number | string | undefined
   }
-  interface GSVGAttributes<T>
+  export interface GSVGAttributes<T>
     extends
       ContainerElementSVGAttributes<T>,
       ConditionalProcessingSVGAttributes,
@@ -2388,7 +2390,7 @@ export namespace JSX {
       TransformableSVGAttributes,
       Pick<PresentationSVGAttributes, "clip-path" | "display" | "visibility">
   {}
-  interface ImageSVGAttributes<T>
+  export interface ImageSVGAttributes<T>
     extends
       NewViewportSVGAttributes<T>,
       GraphicsElementSVGAttributes<T>,
@@ -2407,7 +2409,7 @@ export namespace JSX {
     x?: number | string | undefined
     y?: number | string | undefined
   }
-  interface LineSVGAttributes<T>
+  export interface LineSVGAttributes<T>
     extends
       GraphicsElementSVGAttributes<T>,
       ShapeElementSVGAttributes<T>,
@@ -2425,7 +2427,7 @@ export namespace JSX {
     y1?: number | string | undefined
     y2?: number | string | undefined
   }
-  interface LinearGradientSVGAttributes<T>
+  export interface LinearGradientSVGAttributes<T>
     extends GradientElementSVGAttributes<T>
   {
     x1?: number | string | undefined
@@ -2433,7 +2435,7 @@ export namespace JSX {
     y1?: number | string | undefined
     y2?: number | string | undefined
   }
-  interface MarkerSVGAttributes<T>
+  export interface MarkerSVGAttributes<T>
     extends
       ContainerElementSVGAttributes<T>,
       ExternalResourceSVGAttributes,
@@ -2448,7 +2450,7 @@ export namespace JSX {
     refX?: number | string | undefined
     refY?: number | string | undefined
   }
-  interface MaskSVGAttributes<T>
+  export interface MaskSVGAttributes<T>
     extends
       Omit<ContainerElementSVGAttributes<T>, "opacity" | "filter">,
       ConditionalProcessingSVGAttributes,
@@ -2463,9 +2465,9 @@ export namespace JSX {
     x?: number | string | undefined
     y?: number | string | undefined
   }
-  interface MetadataSVGAttributes<T> extends CoreSVGAttributes<T> {}
-  interface MPathSVGAttributes<T> extends CoreSVGAttributes<T> {}
-  interface PathSVGAttributes<T>
+  export interface MetadataSVGAttributes<T> extends CoreSVGAttributes<T> {}
+  export interface MPathSVGAttributes<T> extends CoreSVGAttributes<T> {}
+  export interface PathSVGAttributes<T>
     extends
       GraphicsElementSVGAttributes<T>,
       ShapeElementSVGAttributes<T>,
@@ -2481,7 +2483,7 @@ export namespace JSX {
     d?: string | undefined
     pathLength?: number | string | undefined
   }
-  interface PatternSVGAttributes<T>
+  export interface PatternSVGAttributes<T>
     extends
       ContainerElementSVGAttributes<T>,
       ConditionalProcessingSVGAttributes,
@@ -2499,7 +2501,7 @@ export namespace JSX {
     x?: number | string | undefined
     y?: number | string | undefined
   }
-  interface PolygonSVGAttributes<T>
+  export interface PolygonSVGAttributes<T>
     extends
       GraphicsElementSVGAttributes<T>,
       ShapeElementSVGAttributes<T>,
@@ -2514,7 +2516,7 @@ export namespace JSX {
   {
     points?: string | undefined
   }
-  interface PolylineSVGAttributes<T>
+  export interface PolylineSVGAttributes<T>
     extends
       GraphicsElementSVGAttributes<T>,
       ShapeElementSVGAttributes<T>,
@@ -2529,7 +2531,7 @@ export namespace JSX {
   {
     points?: string | undefined
   }
-  interface RadialGradientSVGAttributes<T>
+  export interface RadialGradientSVGAttributes<T>
     extends GradientElementSVGAttributes<T>
   {
     cx?: number | string | undefined
@@ -2538,7 +2540,7 @@ export namespace JSX {
     fy?: number | string | undefined
     r?: number | string | undefined
   }
-  interface RectSVGAttributes<T>
+  export interface RectSVGAttributes<T>
     extends
       GraphicsElementSVGAttributes<T>,
       ShapeElementSVGAttributes<T>,
@@ -2555,13 +2557,13 @@ export namespace JSX {
     x?: number | string | undefined
     y?: number | string | undefined
   }
-  interface SetSVGAttributes<T>
+  export interface SetSVGAttributes<T>
     extends
       AnimationElementSVGAttributes<T>,
       StylableSVGAttributes,
       AnimationTimingSVGAttributes
   {}
-  interface StopSVGAttributes<T>
+  export interface StopSVGAttributes<T>
     extends
       CoreSVGAttributes<T>,
       StylableSVGAttributes,
@@ -2569,7 +2571,7 @@ export namespace JSX {
   {
     offset?: number | string | undefined
   }
-  interface SvgSVGAttributes<T>
+  export interface SvgSVGAttributes<T>
     extends
       ContainerElementSVGAttributes<T>,
       NewViewportSVGAttributes<T>,
@@ -2582,7 +2584,7 @@ export namespace JSX {
       WindowEventMap<T>
   {
     "xmlns:xlink"?: string | undefined
-    [`xmlns:${string}`]?: string | undefined
+    [key: `xmlns:${string}`]: string | undefined
     contentScriptType?: string | undefined
     contentStyleType?: string | undefined
     height?: number | string | undefined
@@ -2596,7 +2598,7 @@ export namespace JSX {
     /** @deprecated */
     version?: string | undefined
   }
-  interface SwitchSVGAttributes<T>
+  export interface SwitchSVGAttributes<T>
     extends
       ContainerElementSVGAttributes<T>,
       ConditionalProcessingSVGAttributes,
@@ -2605,7 +2607,7 @@ export namespace JSX {
       TransformableSVGAttributes,
       Pick<PresentationSVGAttributes, "display" | "visibility">
   {}
-  interface SymbolSVGAttributes<T>
+  export interface SymbolSVGAttributes<T>
     extends
       ContainerElementSVGAttributes<T>,
       NewViewportSVGAttributes<T>,
@@ -2623,7 +2625,7 @@ export namespace JSX {
     x?: number | string | undefined
     y?: number | string | undefined
   }
-  interface TextSVGAttributes<T>
+  export interface TextSVGAttributes<T>
     extends
       TextContentElementSVGAttributes<T>,
       GraphicsElementSVGAttributes<T>,
@@ -2644,7 +2646,7 @@ export namespace JSX {
     x?: number | string | undefined
     y?: number | string | undefined
   }
-  interface TextPathSVGAttributes<T>
+  export interface TextPathSVGAttributes<T>
     extends
       TextContentElementSVGAttributes<T>,
       ConditionalProcessingSVGAttributes,
@@ -2660,7 +2662,7 @@ export namespace JSX {
     spacing?: "auto" | "exact" | undefined
     startOffset?: number | string | undefined
   }
-  interface TSpanSVGAttributes<T>
+  export interface TSpanSVGAttributes<T>
     extends
       TextContentElementSVGAttributes<T>,
       ConditionalProcessingSVGAttributes,
@@ -2680,7 +2682,7 @@ export namespace JSX {
     y?: number | string | undefined
   }
   /** @see https://developer.mozilla.org/en-US/docs/Web/SVG/Element/use */
-  interface UseSVGAttributes<T>
+  export interface UseSVGAttributes<T>
     extends
       CoreSVGAttributes<T>,
       StylableSVGAttributes,
@@ -2696,7 +2698,7 @@ export namespace JSX {
     x?: number | string | undefined
     y?: number | string | undefined
   }
-  interface ViewSVGAttributes<T>
+  export interface ViewSVGAttributes<T>
     extends
       CoreSVGAttributes<T>,
       ExternalResourceSVGAttributes,
@@ -2709,7 +2711,7 @@ export namespace JSX {
   // math elements
 
   /** Global `MathMLElement` interface keys only. (ex not html/svg) */
-  interface MathMLAttributes<T> extends DOMAttributes<T> {
+  export interface MathMLAttributes<T> extends DOMAttributes<T> {
     dir?: HTMLDir | undefined
     displaystyle?: boolean | undefined
     scriptlevel?: string | undefined
@@ -2725,13 +2727,13 @@ export namespace JSX {
     mathsize?: string | undefined
   }
 
-  interface MathMLAnnotationElementAttributes<T> extends MathMLAttributes<T> {
+  export interface MathMLAnnotationElementAttributes<T> extends MathMLAttributes<T> {
     encoding?: string | undefined
 
     /** @deprecated */
     src?: string | undefined
   }
-  interface MathMLAnnotationXmlElementAttributes<T>
+  export interface MathMLAnnotationXmlElementAttributes<T>
     extends MathMLAttributes<T>
   {
     encoding?: string | undefined
@@ -2739,7 +2741,7 @@ export namespace JSX {
     /** @deprecated */
     src?: string | undefined
   }
-  interface MathMLMactionElementAttributes<T> extends MathMLAttributes<T> {
+  export interface MathMLMactionElementAttributes<T> extends MathMLAttributes<T> {
     /**
      * @deprecated
      * @non-standard
@@ -2751,11 +2753,11 @@ export namespace JSX {
      */
     selection?: string | undefined
   }
-  interface MathMLMathElementAttributes<T> extends MathMLAttributes<T> {
+  export interface MathMLMathElementAttributes<T> extends MathMLAttributes<T> {
     display?: "block" | "inline" | undefined
   }
-  interface MathMLMerrorElementAttributes<T> extends MathMLAttributes<T> {}
-  interface MathMLMfracElementAttributes<T> extends MathMLAttributes<T> {
+  export interface MathMLMerrorElementAttributes<T> extends MathMLAttributes<T> {}
+  export interface MathMLMfracElementAttributes<T> extends MathMLAttributes<T> {
     linethickness?: string | undefined
 
     /**
@@ -2769,11 +2771,11 @@ export namespace JSX {
      */
     numalign?: "center" | "left" | "right" | undefined
   }
-  interface MathMLMiElementAttributes<T> extends MathMLAttributes<T> {
+  export interface MathMLMiElementAttributes<T> extends MathMLAttributes<T> {
     mathvariant?: "normal" | undefined
   }
 
-  interface MathMLMmultiscriptsElementAttributes<T>
+  export interface MathMLMmultiscriptsElementAttributes<T>
     extends MathMLAttributes<T>
   {
     /**
@@ -2787,8 +2789,8 @@ export namespace JSX {
      */
     superscriptshift?: string | undefined
   }
-  interface MathMLMnElementAttributes<T> extends MathMLAttributes<T> {}
-  interface MathMLMoElementAttributes<T> extends MathMLAttributes<T> {
+  export interface MathMLMnElementAttributes<T> extends MathMLAttributes<T> {}
+  export interface MathMLMoElementAttributes<T> extends MathMLAttributes<T> {
     fence?: boolean | undefined
     form?: "prefix" | "infix" | "postfix" | undefined
     largeop?: boolean | undefined
@@ -2804,33 +2806,33 @@ export namespace JSX {
     /** @non-standard */
     accent?: boolean | undefined
   }
-  interface MathMLMoverElementAttributes<T> extends MathMLAttributes<T> {
+  export interface MathMLMoverElementAttributes<T> extends MathMLAttributes<T> {
     accent?: boolean | undefined
   }
-  interface MathMLMpaddedElementAttributes<T> extends MathMLAttributes<T> {
+  export interface MathMLMpaddedElementAttributes<T> extends MathMLAttributes<T> {
     depth?: string | undefined
     height?: string | undefined
     lspace?: string | undefined
     voffset?: string | undefined
     width?: string | undefined
   }
-  interface MathMLMphantomElementAttributes<T> extends MathMLAttributes<T> {}
-  interface MathMLMprescriptsElementAttributes<T> extends MathMLAttributes<T> {}
-  interface MathMLMrootElementAttributes<T> extends MathMLAttributes<T> {}
-  interface MathMLMrowElementAttributes<T> extends MathMLAttributes<T> {}
-  interface MathMLMsElementAttributes<T> extends MathMLAttributes<T> {
+  export interface MathMLMphantomElementAttributes<T> extends MathMLAttributes<T> {}
+  export interface MathMLMprescriptsElementAttributes<T> extends MathMLAttributes<T> {}
+  export interface MathMLMrootElementAttributes<T> extends MathMLAttributes<T> {}
+  export interface MathMLMrowElementAttributes<T> extends MathMLAttributes<T> {}
+  export interface MathMLMsElementAttributes<T> extends MathMLAttributes<T> {
     /** @deprecated */
     lquote?: string | undefined
     /** @deprecated */
     rquote?: string | undefined
   }
-  interface MathMLMspaceElementAttributes<T> extends MathMLAttributes<T> {
+  export interface MathMLMspaceElementAttributes<T> extends MathMLAttributes<T> {
     depth?: string | undefined
     height?: string | undefined
     width?: string | undefined
   }
-  interface MathMLMsqrtElementAttributes<T> extends MathMLAttributes<T> {}
-  interface MathMLMstyleElementAttributes<T> extends MathMLAttributes<T> {
+  export interface MathMLMsqrtElementAttributes<T> extends MathMLAttributes<T> {}
+  export interface MathMLMstyleElementAttributes<T> extends MathMLAttributes<T> {
     /**
      * @deprecated
      * @non-standard
@@ -2862,14 +2864,14 @@ export namespace JSX {
     /** @deprecated */
     scriptsizemultiplier?: string | undefined
   }
-  interface MathMLMsubElementAttributes<T> extends MathMLAttributes<T> {
+  export interface MathMLMsubElementAttributes<T> extends MathMLAttributes<T> {
     /**
      * @deprecated
      * @non-standard
      */
     subscriptshift?: string | undefined
   }
-  interface MathMLMsubsupElementAttributes<T> extends MathMLAttributes<T> {
+  export interface MathMLMsubsupElementAttributes<T> extends MathMLAttributes<T> {
     /**
      * @deprecated
      * @non-standard
@@ -2881,14 +2883,14 @@ export namespace JSX {
      */
     superscriptshift?: string | undefined
   }
-  interface MathMLMsupElementAttributes<T> extends MathMLAttributes<T> {
+  export interface MathMLMsupElementAttributes<T> extends MathMLAttributes<T> {
     /**
      * @deprecated
      * @non-standard
      */
     superscriptshift?: string | undefined
   }
-  interface MathMLMtableElementAttributes<T> extends MathMLAttributes<T> {
+  export interface MathMLMtableElementAttributes<T> extends MathMLAttributes<T> {
     /** @non-standard */
     align?: "axis" | "baseline" | "bottom" | "center" | "top" | undefined
     /** @non-standard */
@@ -2910,7 +2912,7 @@ export namespace JSX {
     /** @non-standard */
     width?: string | undefined
   }
-  interface MathMLMtdElementAttributes<T> extends MathMLAttributes<T> {
+  export interface MathMLMtdElementAttributes<T> extends MathMLAttributes<T> {
     columnspan?: number | string | undefined
     rowspan?: number | string | undefined
     /** @non-standard */
@@ -2918,36 +2920,36 @@ export namespace JSX {
     /** @non-standard */
     rowalign?: "axis" | "baseline" | "bottom" | "center" | "top" | undefined
   }
-  interface MathMLMtextElementAttributes<T> extends MathMLAttributes<T> {}
-  interface MathMLMtrElementAttributes<T> extends MathMLAttributes<T> {
+  export interface MathMLMtextElementAttributes<T> extends MathMLAttributes<T> {}
+  export interface MathMLMtrElementAttributes<T> extends MathMLAttributes<T> {
     /** @non-standard */
     columnalign?: "center" | "left" | "right" | undefined
     /** @non-standard */
     rowalign?: "axis" | "baseline" | "bottom" | "center" | "top" | undefined
   }
-  interface MathMLMunderElementAttributes<T> extends MathMLAttributes<T> {
+  export interface MathMLMunderElementAttributes<T> extends MathMLAttributes<T> {
     accentunder?: "" | boolean | undefined
   }
-  interface MathMLMunderoverElementAttributes<T> extends MathMLAttributes<T> {
+  export interface MathMLMunderoverElementAttributes<T> extends MathMLAttributes<T> {
     accent?: "" | boolean | undefined
     accentunder?: "" | boolean | undefined
   }
-  interface MathMLSemanticsElementAttributes<T> extends MathMLAttributes<T> {}
+  export interface MathMLSemanticsElementAttributes<T> extends MathMLAttributes<T> {}
 
   /* MathMLDeprecatedElements */
 
-  interface MathMLMencloseElementAttributes<T> extends MathMLAttributes<T> {
+  export interface MathMLMencloseElementAttributes<T> extends MathMLAttributes<T> {
     /** @non-standard */
     notation?: string | undefined
   }
-  interface MathMLMfencedElementAttributes<T> extends MathMLAttributes<T> {
+  export interface MathMLMfencedElementAttributes<T> extends MathMLAttributes<T> {
     close?: string | undefined
     open?: string | undefined
     separators?: string | undefined
   }
 
   /** @type {HTMLElementTagNameMap} */
-  interface HTMLElementTags {
+  export interface HTMLElementTags {
     /**
      * @url https://developer.mozilla.org/en-US/docs/Web/HTML/Element/a
      * @url https://developer.mozilla.org/en-US/docs/Web/API/HTMLAnchorElement
@@ -3514,7 +3516,7 @@ export namespace JSX {
     webview: WebViewHTMLAttributes<HTMLElement>
   }
   /** @type {HTMLElementDeprecatedTagNameMap} */
-  interface HTMLElementDeprecatedTags {
+  export interface HTMLElementDeprecatedTags {
     /**
      * @deprecated
      * @url https://developer.mozilla.org/en-US/docs/Web/HTML/Element/big
@@ -3541,7 +3543,7 @@ export namespace JSX {
     param: ParamHTMLAttributes<HTMLParamElement>
   }
   /** @type {SVGElementTagNameMap} */
-  interface SVGElementTags {
+  export interface SVGElementTags {
     /**
      * @url https://developer.mozilla.org/en-US/docs/Web/SVG/Element/animate
      * @url https://developer.mozilla.org/en-US/docs/Web/API/SVGAnimateElement
@@ -3847,7 +3849,7 @@ export namespace JSX {
     view: ViewSVGAttributes<SVGViewElement>
   }
 
-  interface MathMLElementTags {
+  export interface MathMLElementTags {
     /**
      * @url https://developer.mozilla.org/en-US/docs/Web/MathML/Element/annotation
      * @url https://developer.mozilla.org/en-US/docs/Web/API/MathMLElement
@@ -4014,13 +4016,10 @@ export namespace JSX {
     mfenced: MathMLMfencedElementAttributes<MathMLElement>
   }
 
-  export interface IntrinsicElements
-    extends
-      HTMLElementTags,
-      HTMLElementDeprecatedTags,
-      SVGElementTags,
-      MathMLElementTags
-  {
-    [elemName: string]: DOMAttributes<HTMLElement>
-  }
+  export type IntrinsicElements =
+    & HTMLElementTags
+    & HTMLElementDeprecatedTags
+    & SVGElementTags
+    & MathMLElementTags
+    & { [elemName: string]: DOMAttributes<HTMLElement> }
 }

@@ -3,7 +3,7 @@ import type {
   HtmlElement,
   HtmlElementType,
   JSX,
-} from "../src/jsx.d.ts"
+} from "../src/jsx.ts"
 import * as Html from "./Html.ts"
 
 function Fragment(props: { children: JSX.Element }) {

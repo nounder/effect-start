@@ -1,4 +1,4 @@
-import type { HtmlElemenetProps, HtmlElement, HtmlElementType, JSX } from "../src/jsx.d.ts"
+import type { HtmlElemenetProps, HtmlElement, HtmlElementType, JSX } from "../src/jsx.ts"
 
 const NoChildren: ReadonlyArray<never> = Object.freeze([])
 
