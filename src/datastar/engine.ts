@@ -1,7 +1,5 @@
-import type {
-  DataEvent as _DataEvent,
-  HTMLOrSVG as _HTMLOrSVG,
-} from "./types.d.ts"
+import type { DataEvent, HTMLOrSVG } from "./jsx.d.ts"
+export type { DataEvent, HTMLOrSVG }
 import {
   aliasify,
   hasOwn,
@@ -137,9 +135,6 @@ export type ActionPlugin<T = any> = {
 export type MergePatchArgs = {
   ifMissing?: boolean
 }
-
-export type HTMLOrSVG = _HTMLOrSVG
-export type DataEvent = _DataEvent
 
 export const createDataEvent = ({
   el,

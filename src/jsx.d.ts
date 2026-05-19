@@ -1,4 +1,4 @@
-import type { DatastarAttributes } from "./datastar/jsx.d.ts"
+import type { DatastarAttributes, HTMLOrSVG } from "./datastar/jsx.d.ts"
 import type * as Html from "./Html.ts"
 
 /**
@@ -229,7 +229,7 @@ export namespace JSX {
       CustomAttributes<T>,
       CustomEventHandlersLowerCase<T>,
       AriaAttributes,
-      DatastarAttributes
+      DatastarAttributes<T extends HTMLOrSVG ? T : HTMLOrSVG>
   {
     // [key: ClassKeys]: boolean;
 
