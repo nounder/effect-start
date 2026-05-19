@@ -40,7 +40,7 @@ export type DataEvent<E extends HTMLOrSVG = HTMLOrSVG> =
   }
 
 type DataFunction<T = any, E extends HTMLOrSVG = HTMLOrSVG> = (e: DataEvent<E>) => T
-type DataLifecycleFunction<E extends HTMLOrSVG = HTMLOrSVG> = DataFunction<void | (() => void), E>
+type DataLifecycleFunction<E extends HTMLOrSVG = HTMLOrSVG> = DataFunction<unknown | (() => void), E>
 
 // Datastar object types for specific attributes
 type DatastarSignalsObject = Record<string, any>
