@@ -12,3 +12,7 @@ export * as Route from "./Route.ts"
 export * as Start from "./Start.ts"
 export * as System from "./System.ts"
 export * as Unique from "./Unique.ts"
+
+export type {
+  JSX,
+} from "./jsx.ts"
