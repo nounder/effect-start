@@ -1,11 +1,39 @@
 export type HTMLOrSVG = HTMLElement | SVGElement | MathMLElement
 
+type SignalFilterOptions = {
+  include?: RegExp | string
+  exclude?: RegExp | string
+}
+
+type FetchActionArgs = RequestInit & {
+  selector?: string
+  headers?: Record<string, string>
+  contentType?: "json" | "form"
+  filterSignals?: SignalFilterOptions
+  openWhenHidden?: boolean
+  payload?: any
+  requestCancellation?: "auto" | "cleanup" | "disabled" | AbortController
+  retry?: "auto" | "error" | "always" | "never"
+  retryInterval?: number
+}
+
+export interface DataActions {
+  peek: <T>(fn: () => T) => T
+  setAll: (value: any, filter?: SignalFilterOptions) => void
+  toggleAll: (filter?: SignalFilterOptions) => void
+  get: (url: string, args?: FetchActionArgs) => Promise<void>
+  post: (url: string, args?: FetchActionArgs) => Promise<void>
+  put: (url: string, args?: FetchActionArgs) => Promise<void>
+  patch: (url: string, args?: FetchActionArgs) => Promise<void>
+  delete: (url: string, args?: FetchActionArgs) => Promise<void>
+}
+
 export type DataEvent<E extends HTMLOrSVG = HTMLOrSVG> =
   & Omit<Event, "currentTarget" | "target">
-  & Record<string, (...args: Array<any>) => any>
+  & DataActions
   & {
     signals: Record<string, any>
-    actions: Record<string, (...args: Array<any>) => any>
+    actions: DataActions
     target: HTMLOrSVG
     currentTarget: E
     window: Window & typeof globalThis
