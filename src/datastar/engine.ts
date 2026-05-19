@@ -162,9 +162,20 @@ export const createDataEvent = ({
     (evt instanceof Event ? evt : new Event("datastar:expression")) as DataEvent
   Object.defineProperties(dataEvt, {
     target: { value: el },
+    currentTarget: { value: el },
     signals: { value: root },
     actions: { value: actionsProxy },
     window: { value: window },
+    untrack: {
+      value: <T>(fn: () => T): T => {
+        startPeeking()
+        try {
+          return fn()
+        } finally {
+          stopPeeking()
+        }
+      },
+    },
   })
 
   return dataEvt

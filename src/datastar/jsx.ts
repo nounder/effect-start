@@ -6,6 +6,7 @@ export type DataEvent<E extends HTMLOrSVG = HTMLOrSVG> = Omit<Event, "currentTar
   target: HTMLOrSVG
   currentTarget: E
   window: Window & typeof globalThis
+  untrack: <T>(fn: () => T) => T
 }
 
 type DataFunction<T = any, E extends HTMLOrSVG = HTMLOrSVG> = (e: DataEvent<E>) => T
