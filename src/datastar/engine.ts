@@ -1,13 +1,9 @@
 import type { DataEvent, HTMLOrSVG } from "./jsx.d.ts"
-export type { DataEvent, HTMLOrSVG }
-import {
-  aliasify,
-  hasOwn,
-  isHTMLOrSVG,
-  isPojo,
-  pathToObj,
-  snake,
-} from "./utils.ts"
+export type {
+  DataEvent,
+  HTMLOrSVG,
+}
+import { aliasify, hasOwn, isHTMLOrSVG, isPojo, pathToObj, snake } from "./utils.ts"
 
 /*********
  * consts.ts
@@ -70,12 +66,9 @@ type Rx<B extends boolean> = (
   ...args: Array<any>
 ) => B extends true ? unknown : void
 
-type ReqField<R, K extends "key" | "value", Return> = R extends
-  "must" | { [P in K]: "must" } ? Return
+type ReqField<R, K extends "key" | "value", Return> = R extends "must" | { [P in K]: "must" } ? Return
   : R extends "denied" | { [P in K]: "denied" } ? undefined
-  : R extends
-    "allowed" | { [P in K]: "allowed" } | (K extends keyof R ? never : R)
-    ? Return | undefined
+  : R extends "allowed" | { [P in K]: "allowed" } | (K extends keyof R ? never : R) ? Return | undefined
   : never
 
 type ReqFields<R extends Requirement, B extends boolean> = R extends "exclusive"
@@ -147,38 +140,42 @@ export const createDataEvent = ({
   cleanups: Map<string, () => void>
   error: (actionName: string) => ErrorFn
 }): DataEvent => {
+  const dispatchAction = (name: string) => (...actionArgs: Array<any>) => {
+    const err = error(name)
+    const fn = actions[name]
+    if (fn) {
+      return fn({ el, evt: undefined, error: err, cleanups }, ...actionArgs)
+    }
+    throw err("UndefinedAction")
+  }
+
   const actionsProxy = new Proxy({} as Record<string, any>, {
-    get: (_, name: string) => (...actionArgs: Array<any>) => {
-      const err = error(name)
-      const fn = actions[name]
-      if (fn) {
-        return fn({ el, evt: undefined, error: err, cleanups }, ...actionArgs)
+    get: (_, name: string) => dispatchAction(name),
+  })
+
+  const sourceEvt = evt instanceof Event ? evt : new Event("datastar:expression")
+
+  return new Proxy(sourceEvt, {
+    get(target, prop, receiver) {
+      if (prop === "target" || prop === "currentTarget") return el
+      if (prop === "signals") return privateRoot
+      // we're only keepit it for backward compat
+      if (prop === "actions") return actionsProxy
+      if (prop === "window") return window
+      if (typeof prop === "string" && actionPlugins.has(prop)) {
+        return dispatchAction(prop)
       }
-      throw err("UndefinedAction")
+      const value = Reflect.get(target, prop, receiver)
+      return typeof value === "function" ? value.bind(target) : value
     },
-  })
-
-  const dataEvt =
-    (evt instanceof Event ? evt : new Event("datastar:expression")) as DataEvent
-  Object.defineProperties(dataEvt, {
-    target: { value: el },
-    currentTarget: { value: el },
-    signals: { value: root },
-    actions: { value: actionsProxy },
-    window: { value: window },
-    untrack: {
-      value: <T>(fn: () => T): T => {
-        startPeeking()
-        try {
-          return fn()
-        } finally {
-          stopPeeking()
-        }
-      },
+    ownKeys(target) {
+      return Reflect.ownKeys(target).filter((k) => k !== "signals")
     },
-  })
-
-  return dataEvt
+    getOwnPropertyDescriptor(target, prop) {
+      if (prop === "signals") return undefined
+      return Reflect.getOwnPropertyDescriptor(target, prop)
+    },
+  }) as DataEvent
 }
 
 export type Modifiers = Map<string, Set<string>>
@@ -626,12 +623,11 @@ const propagate = (link: Link): void => {
 const startTracking = (sub: ReactiveNode): void => {
   version++
   sub.depsTail_ = undefined
-  sub.flags_ =
-    (sub.flags_ &
-      ~(56 as
-        | ReactiveFlags_Recursed
-        | ReactiveFlags_Dirty
-        | ReactiveFlags_Pending)) |
+  sub.flags_ = (sub.flags_ &
+    ~(56 as
+      | ReactiveFlags_Recursed
+      | ReactiveFlags_Dirty
+      | ReactiveFlags_Pending)) |
     (4 satisfies ReactiveFlags_RecursedCheck)
 }
 
@@ -888,8 +884,7 @@ export const mergePatch = (
   endBatch()
 }
 
-export const mergePaths = (paths: Paths, options?: MergePatchArgs): void =>
-  mergePatch(pathToObj(paths), options)
+export const mergePaths = (paths: Paths, options?: MergePatchArgs): void => mergePatch(pathToObj(paths), options)
 
 const mergeInner = (
   patch: any,
@@ -928,8 +923,7 @@ const mergeInner = (
   }
 }
 
-const toRegExp = (val: string | RegExp): RegExp =>
-  typeof val === "string" ? RegExp(val.replace(/^\/|\/$/g, "")) : val
+const toRegExp = (val: string | RegExp): RegExp => typeof val === "string" ? RegExp(val.replace(/^\/|\/$/g, "")) : val
 
 export const filtered = (
   { include = /.*/, exclude = /(?!)/ }: SignalFilterOptions = {},
@@ -957,6 +951,15 @@ export const filtered = (
 }
 
 export const root: Record<string, any> = deep({})
+/**
+ * proxy to root that doesn't expose any keys so when effect enumerates root
+ * (eg. `e => console.log(e.signals)`), the reactive signals won't subscribe
+ * to all immediate signals.
+ */
+const privateRoot: Record<string, any> = new Proxy(root, {
+  ownKeys: () => [],
+  getOwnPropertyDescriptor: () => undefined,
+})
 
 /*********
  * engine.ts (plugin system)
@@ -1071,8 +1074,7 @@ const cleanupEls = (els: Iterable<HTMLOrSVG>): void => {
 
 const aliasedIgnore = aliasify("ignore")
 const aliasedIgnoreAttr = `[${aliasedIgnore}]`
-const shouldIgnore = (el: HTMLOrSVG) =>
-  el.hasAttribute(`${aliasedIgnore}__self`) || !!el.closest(aliasedIgnoreAttr)
+const shouldIgnore = (el: HTMLOrSVG) => el.hasAttribute(`${aliasedIgnore}__self`) || !!el.closest(aliasedIgnoreAttr)
 
 const applyEls = (els: Iterable<HTMLOrSVG>, onlyNew?: boolean): void => {
   for (const el of els) {
@@ -1158,8 +1160,7 @@ export const parseAttributeKey = (
   return { pluginName, key, mods }
 }
 
-export const isDocumentObserverActive = () =>
-  observedRoots.has(document.documentElement)
+export const isDocumentObserverActive = () => observedRoots.has(document.documentElement)
 
 const dispatchDatastarReady = () => {
   if (datastarReadyDispatched || !isDocumentObserverActive()) return
@@ -1306,7 +1307,7 @@ const applyAttributePlugin = (
           for (const k in result as Record<string, unknown>) {
             const v = (result as Record<string, unknown>)[k]
             if (typeof v === "function") {
-              (result as Record<string, unknown>)[k] = v(evt)
+              ;(result as Record<string, unknown>)[k] = v(evt)
             }
           }
         }
@@ -1345,8 +1346,7 @@ type GenRxFn = <T>(el: HTMLOrSVG, ...args: Array<any>) => T
 
 const genRx = (
   value: string,
-  { returnsValue = false, argNames = [], cleanups = new Map() }: GenRxOptions =
-    {},
+  { returnsValue = false, argNames = [], cleanups = new Map() }: GenRxOptions = {},
 ): GenRxFn => {
   if (
     /^\s*(?:async\s+)?(?:\(.*?\)\s*=>|[\w$]+\s*=>|function\s*[\w$]*\s*\()/.test(

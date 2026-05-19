@@ -28,9 +28,16 @@ We made following changes:
   - Added type aliases `ReactiveFlags_X` to replace `ReactiveFlags.X` namespace types
 - Extended expressions with function form handled by `genRx`:
   - Function expressions are evaluated directly instead of compiled through Datastar's string-expression transform
-  - Function expressions receive a `DataEvent` object with `signals`, `actions`, `target`, and `window`
+  - Function expressions receive a `DataEvent` proxy wrapping the source `Event` (or a synthetic `datastar:expression` event when there is none)
+  - The proxy never mutates the underlying event — `target`/`currentTarget` return the element the attribute is on, `signals`/`actions`/`window` are synthetic properties, and `Event` methods (`preventDefault`, `stopPropagation`, etc.) are auto-bound to the source event so they keep working
+  - Actions are spread onto the event root: `e.peek(fn)`, `e.get(url)`, `e.post(url)`, etc. `e.actions.peek(fn)` still works for backward compat — both paths route through the same dispatcher
+  - `e.signals` is wrapped in a devtools-safe view (`ownKeys` returns `[]`) so `console.log(e)` and `console.log(e.signals)` don't trip the deep-signals proxy's declare-on-read side effect that would otherwise re-fire subscribed effects
   - Shared expression-event setup is centralized in `createDataEvent()` and reused by both `genRx` and `data-computed`
   - Value-returning object literals are compiled as `return ({...});` so block-bodied arrow functions inside object expressions still parse
+- JSX attribute types are parameterized by element:
+  - `DataEvent<E>` carries the element type so `e.currentTarget` narrows per tag (e.g. `<canvas data-effect={(e) => …}>` gives `e.currentTarget: HTMLCanvasElement`)
+  - `DatastarAttributes<E>` is mixed into `DOMAttributes<T>` so each intrinsic element threads its own type through
+  - The JSX type module is a `.ts` file (`src/datastar/jsx.ts`, sibling `src/jsx.ts`) so `tsc --build` emits a `.d.ts` to `dist/` and downstream consumers see the generic signature
 - Object-form `data-class`, `data-attr`, `data-style`, and `data-computed` accept function leaves:
   - JSX form: `data-class={{ invisible: (e) => !e.signals.draft.trim() }}`
   - Also works for `data-attr={{ disabled: (e) => ... }}` and `data-style={{ color: (e) => ... }}`

@@ -1,13 +1,15 @@
 export type HTMLOrSVG = HTMLElement | SVGElement | MathMLElement
 
-export type DataEvent<E extends HTMLOrSVG = HTMLOrSVG> = Omit<Event, "currentTarget" | "target"> & {
-  signals: Record<string, any>
-  actions: Record<string, (...args: Array<any>) => any>
-  target: HTMLOrSVG
-  currentTarget: E
-  window: Window & typeof globalThis
-  untrack: <T>(fn: () => T) => T
-}
+export type DataEvent<E extends HTMLOrSVG = HTMLOrSVG> =
+  & Omit<Event, "currentTarget" | "target">
+  & Record<string, (...args: Array<any>) => any>
+  & {
+    signals: Record<string, any>
+    actions: Record<string, (...args: Array<any>) => any>
+    target: HTMLOrSVG
+    currentTarget: E
+    window: Window & typeof globalThis
+  }
 
 type DataFunction<T = any, E extends HTMLOrSVG = HTMLOrSVG> = (e: DataEvent<E>) => T
 type DataLifecycleFunction<E extends HTMLOrSVG = HTMLOrSVG> = DataFunction<void | (() => void), E>
