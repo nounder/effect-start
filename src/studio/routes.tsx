@@ -45,6 +45,10 @@ export default Route.map({
     }),
     Route.html(function*(_, next) {
       const studio = yield* Studio.Studio
+      const request = yield* Route.Request
+      if (request.headers.get("datastar-request") === "true") {
+        return yield* next.html
+      }
       const bundle = yield* Bundle.Bundle
       const base = studio.path.endsWith("/") ? studio.path : `${studio.path}/`
       return (
@@ -76,11 +80,15 @@ export default Route.map({
   ),
 
   "/traces": Route.get(
-    Route.html(function*() {
+    Route.schemaSearchParams(
+      Schema.Struct({
+        traceSearch: Schema.optional(Schema.String),
+      }),
+    ),
+    Route.html(function*(ctx) {
       const studio = yield* Studio.Studio
       const request = yield* Route.Request
-      const url = new URL(request.url)
-      const search = url.searchParams.get("traceSearch") || ""
+      const search = ctx.searchParams.traceSearch ?? ""
       const allSpans = StudioStore.filterOutStudioSpans(
         yield* StudioStore.allSpans(),
       )
@@ -91,39 +99,65 @@ export default Route.map({
         spans = spans.filter((s) => s.name.toLowerCase().startsWith(lower))
       }
 
+      const body = (
+        <form
+          id="page-traces"
+          data-signals={{ traceSearch: search }}
+          style="display:flex;flex-direction:column;flex:1;overflow:hidden;min-width:0"
+        >
+          <div class="tab-header">Traces</div>
+          <div class="filter-bar">
+            <input
+              type="text"
+              name="traceSearch"
+              placeholder="Search trace name..."
+              list="trace-names"
+              value={search}
+              data-bind="traceSearch"
+              {...{
+                "data-on:input__debounce.400ms": (c: any) => {
+                  const url = new URL(location.href)
+                  url.searchParams.set(
+                    "traceSearch",
+                    c.signals.traceSearch ?? "",
+                  )
+                  return c.actions.get(url.toString(), {
+                    headers: { Accept: "text/html" },
+                  })
+                },
+              }}
+            />
+            <datalist id="trace-names">
+              {names.map((n) => <option value={n} />)}
+            </datalist>
+          </div>
+          <div id="traces-container" class="tab-body">
+            <Ui.TraceGroups prefix={studio.path} spans={spans} />
+          </div>
+          <div
+            data-effect={(c) => {
+              const u = new URL("traces", location.href)
+              u.searchParams.set("traceSearch", c.signals.traceSearch ?? "")
+              c.actions.get(u.pathname + u.search)
+            }}
+          />
+        </form>
+      )
+
+      if (request.headers.get("datastar-request") === "true") {
+        return body
+      }
       return (
         <Ui.Shell prefix={studio.path} active="traces">
-          <form
-            data-signals={{ traceSearch: "" }}
-            style="display:flex;flex-direction:column;flex:1;overflow:hidden"
-          >
-            <div class="tab-header">Traces</div>
-            <div class="filter-bar">
-              <input
-                type="text"
-                name="traceSearch"
-                placeholder="Search trace name..."
-                list="trace-names"
-                data-bind:traceSearch
-                data-on:input={(c) =>
-                  c.actions.get(location.href, { contentType: "form" })}
-              />
-              <datalist id="trace-names">
-                {names.map((n) => <option value={n} />)}
-              </datalist>
-            </div>
-            <div id="traces-container" class="tab-body">
-              <Ui.TraceGroups prefix={studio.path} spans={spans} />
-            </div>
-          </form>
-          <div data-init={(c) => c.actions.get("traces")} />
+          {body}
         </Ui.Shell>
       )
     }),
-    Route.sse(
+    Route.sse((ctx) =>
       Effect.gen(function*() {
         const studio = yield* Studio.Studio
         const sql = yield* SqlClient.SqlClient
+        const search = (ctx.searchParams.traceSearch ?? "").toLowerCase()
         return Stream.fromPubSub(studio.store.events).pipe(
           Stream.filter((e) => e._tag === "TraceEnd"),
           Stream.mapEffect((e) =>
@@ -131,6 +165,11 @@ export default Route.map({
               .gen(function*() {
                 const traceSpans = yield* StudioStore.spansByTraceId(e.traceId)
                 if (StudioStore.isStudioTrace(traceSpans)) return undefined
+                const root = traceSpans.find((s) => !s.parentSpanId) ??
+                  traceSpans[0]
+                if (search && !root.name.toLowerCase().startsWith(search)) {
+                  return undefined
+                }
                 const traceHtml = Html.text(
                   <Ui.TraceGroup
                     prefix={studio.path}
@@ -150,7 +189,7 @@ export default Route.map({
             event !== undefined
           ),
         )
-      }),
+      })
     ),
   ),
 
@@ -210,12 +249,17 @@ export default Route.map({
   ),
 
   "/logs": Route.get(
-    Route.html(function*() {
+    Route.schemaSearchParams(
+      Schema.Struct({
+        logLevel: Schema.optional(Schema.String),
+        logSearch: Schema.optional(Schema.String),
+      }),
+    ),
+    Route.html(function*(ctx) {
       const studio = yield* Studio.Studio
       const request = yield* Route.Request
-      const url = new URL(request.url)
-      const level = url.searchParams.get("logLevel") || ""
-      const search = url.searchParams.get("logSearch") || ""
+      const level = ctx.searchParams.logLevel ?? ""
+      const search = ctx.searchParams.logSearch ?? ""
       let logs = yield* StudioStore.allLogs()
       if (level) logs = logs.filter((l) => l.level === level)
       if (search) {
@@ -224,49 +268,87 @@ export default Route.map({
       }
       logs = logs.reverse()
 
+      const body = (
+        <form
+          id="page-logs"
+          data-signals={{ logLevel: level, logSearch: search }}
+          style="display:flex;flex-direction:column;flex:1;overflow:hidden;min-width:0"
+        >
+          <div class="tab-header">Logs</div>
+          <div class="filter-bar">
+            <select
+              name="logLevel"
+              data-bind="logLevel"
+              data-on:change={(c) => {
+                const url = new URL(location.href)
+                url.searchParams.set("logLevel", c.signals.logLevel ?? "")
+                url.searchParams.set("logSearch", c.signals.logSearch ?? "")
+                return c.actions.get(url.toString(), {
+                  headers: { Accept: "text/html" },
+                })
+              }}
+            >
+              <option value="" selected={level === ""}>All levels</option>
+              <option value="DEBUG" selected={level === "DEBUG"}>DEBUG</option>
+              <option value="INFO" selected={level === "INFO"}>INFO</option>
+              <option value="WARNING" selected={level === "WARNING"}>
+                WARNING
+              </option>
+              <option value="ERROR" selected={level === "ERROR"}>ERROR</option>
+              <option value="FATAL" selected={level === "FATAL"}>FATAL</option>
+            </select>
+            <input
+              type="text"
+              name="logSearch"
+              placeholder="Search..."
+              value={search}
+              data-bind="logSearch"
+              {...{
+                "data-on:input__debounce.400ms": (c: any) => {
+                  const url = new URL(location.href)
+                  url.searchParams.set("logLevel", c.signals.logLevel ?? "")
+                  url.searchParams.set("logSearch", c.signals.logSearch ?? "")
+                  return c.actions.get(url.toString(), {
+                    headers: { Accept: "text/html" },
+                  })
+                },
+              }}
+            />
+          </div>
+          <div id="logs-container" class="tab-body">
+            {logs.map((l) => <Ui.LogLine prefix={studio.path} log={l} />)}
+          </div>
+          <div
+            data-effect={(c) => {
+              const u = new URL("logs", location.href)
+              u.searchParams.set("logLevel", c.signals.logLevel ?? "")
+              u.searchParams.set("logSearch", c.signals.logSearch ?? "")
+              c.actions.get(u.pathname + u.search)
+            }}
+          />
+        </form>
+      )
+
+      if (request.headers.get("datastar-request") === "true") {
+        return body
+      }
       return (
         <Ui.Shell prefix={studio.path} active="logs">
-          <form
-            data-signals={{ logLevel: "", logSearch: "" }}
-            style="display:flex;flex-direction:column;flex:1;overflow:hidden"
-          >
-            <div class="tab-header">Logs</div>
-            <div class="filter-bar">
-              <select
-                name="logLevel"
-                data-bind:logLevel
-                data-on:change={(c) =>
-                  c.actions.get(location.href, { contentType: "form" })}
-              >
-                <option value="">All levels</option>
-                <option value="DEBUG">DEBUG</option>
-                <option value="INFO">INFO</option>
-                <option value="WARNING">WARNING</option>
-                <option value="ERROR">ERROR</option>
-                <option value="FATAL">FATAL</option>
-              </select>
-              <input
-                type="text"
-                name="logSearch"
-                placeholder="Search..."
-                data-bind:logSearch
-                data-on:input={(c) =>
-                  c.actions.get(location.href, { contentType: "form" })}
-              />
-            </div>
-            <div id="logs-container" class="tab-body">
-              {logs.map((l) => <Ui.LogLine prefix={studio.path} log={l} />)}
-            </div>
-            <div data-init={(c) => c.actions.get("logs")} />
-          </form>
+          {body}
         </Ui.Shell>
       )
     }),
-    Route.sse(
+    Route.sse((ctx) =>
       Effect.gen(function*() {
         const studio = yield* Studio.Studio
+        const level = ctx.searchParams.logLevel ?? ""
+        const search = (ctx.searchParams.logSearch ?? "").toLowerCase()
         return Stream.fromPubSub(studio.store.events).pipe(
           Stream.filter((e) => e._tag === "Log"),
+          Stream.filter((e) => !level || e.log.level === level),
+          Stream.filter((e) =>
+            !search || e.log.message.toLowerCase().includes(search)
+          ),
           Stream.map((e) => {
             const html = Html
               .text(<Ui.LogLine prefix={studio.path} log={e.log} />)
@@ -282,12 +364,15 @@ export default Route.map({
   ),
 
   "/errors": Route.get(
-    Route.html(function*() {
+    Route.schemaSearchParams(
+      Schema.Struct({
+        errorSearch: Schema.optional(Schema.String),
+      }),
+    ),
+    Route.html(function*(ctx) {
       const studio = yield* Studio.Studio
       const request = yield* Route.Request
-      const url = new URL(request.url)
-      const search = url.searchParams.get("errorSearch") || ""
-      const tag = url.searchParams.get("errorTag") || ""
+      const search = ctx.searchParams.errorSearch ?? ""
       const allErrors = yield* StudioStore.allErrors()
       const tagSet = new Set<string>()
       for (const error of allErrors) {
@@ -297,64 +382,90 @@ export default Route.map({
       }
       const sortedTags = Array.from(tagSet).sort()
       let errors = allErrors
-      if (tag) {
-        errors = errors.filter((e) =>
-          e.details.some((d) => d.tag && d.tag.startsWith(tag))
-        )
-      }
       if (search) {
         const lower = search.toLowerCase()
+        const isTag = tagSet.has(search)
         errors = errors.filter((e) => {
+          if (
+            isTag && e.details.some((d) => d.tag && d.tag === search)
+          ) return true
           const firstLine = e.prettyPrint.split("\n")[0] ?? ""
           return firstLine.toLowerCase().includes(lower)
         })
       }
       errors = errors.reverse()
 
+      const body = (
+        <form
+          id="page-errors"
+          data-signals={{ errorSearch: search }}
+          style="display:flex;flex-direction:column;flex:1;overflow:hidden;min-width:0"
+        >
+          <div class="tab-header">Errors</div>
+          <div class="filter-bar">
+            <input
+              type="text"
+              name="errorSearch"
+              placeholder="Search or pick tag..."
+              list="error-tags"
+              value={search}
+              data-bind="errorSearch"
+              {...{
+                "data-on:input__debounce.400ms": (c: any) => {
+                  const url = new URL(location.href)
+                  url.searchParams.set(
+                    "errorSearch",
+                    c.signals.errorSearch ?? "",
+                  )
+                  return c.actions.get(url.toString(), {
+                    headers: { Accept: "text/html" },
+                  })
+                },
+              }}
+            />
+            <datalist id="error-tags">
+              {sortedTags.map((t) => <option value={t} />)}
+            </datalist>
+          </div>
+          <div id="errors-list" class="tab-body">
+            {errors.map((e) => (
+              <Ui.ErrorLine prefix={studio.path} error={e} />
+            ))}
+          </div>
+          <div
+            data-effect={(c) => {
+              const u = new URL("errors", location.href)
+              u.searchParams.set("errorSearch", c.signals.errorSearch ?? "")
+              c.actions.get(u.pathname + u.search)
+            }}
+          />
+        </form>
+      )
+
+      if (request.headers.get("datastar-request") === "true") {
+        return body
+      }
       return (
         <Ui.Shell prefix={studio.path} active="errors">
-          <form
-            data-signals={{ errorSearch: "", errorTag: "" }}
-            style="display:flex;flex-direction:column;flex:1;overflow:hidden"
-          >
-            <div class="tab-header">Errors</div>
-            <div class="filter-bar">
-              <input
-                type="text"
-                name="errorSearch"
-                placeholder="Search..."
-                data-bind:errorSearch
-                data-on:input={(c) =>
-                  c.actions.get(location.href, { contentType: "form" })}
-              />
-              <input
-                type="text"
-                name="errorTag"
-                placeholder="Tag..."
-                list="error-tags"
-                data-bind:errorTag
-                data-on:input={(c) =>
-                  c.actions.get(location.href, { contentType: "form" })}
-              />
-              <datalist id="error-tags">
-                {sortedTags.map((t) => <option value={t} />)}
-              </datalist>
-            </div>
-            <div id="errors-list" class="tab-body">
-              {errors.map((e) => (
-                <Ui.ErrorLine prefix={studio.path} error={e} />
-              ))}
-            </div>
-            <div data-init={(c) => c.actions.get("errors")} />
-          </form>
+          {body}
         </Ui.Shell>
       )
     }),
-    Route.sse(
+    Route.sse((ctx) =>
       Effect.gen(function*() {
         const studio = yield* Studio.Studio
+        const rawSearch = ctx.searchParams.errorSearch ?? ""
+        const search = rawSearch.toLowerCase()
         return Stream.fromPubSub(studio.store.events).pipe(
           Stream.filter((e) => e._tag === "Error"),
+          Stream.filter((e) => {
+            if (!search) return true
+            if (e.error.details.some((d) => d.tag && d.tag === rawSearch)) {
+              return true
+            }
+            const firstLine = e.error.prettyPrint.split("\n")[0] ?? ""
+            return firstLine.toLowerCase().includes(search)
+          }),
           Stream.map((e) => {
             const html = Html
               .text(<Ui.ErrorLine prefix={studio.path} error={e.error} />)
@@ -365,7 +476,7 @@ export default Route.map({
             }
           }),
         )
-      }),
+      })
     ),
   ),
 
@@ -396,6 +507,7 @@ export default Route.map({
             e._tag === "SpanStart" || e._tag === "SpanEnd" ||
             e._tag === "Log"
           ),
+          Stream.debounce("500 millis"),
           Stream.mapEffect(() =>
             Effect
               .gen(function*() {

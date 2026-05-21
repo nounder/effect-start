@@ -199,7 +199,7 @@ export function ErrorLine(
                 <span style="color:#64748b">tag</span>
                 <span
                   style="color:#fca5a5;text-decoration:underline;cursor:copy"
-                  data-on:click={`(e) => { e.signals.errorTag = '${t}'; e.actions.get(location.href, { contentType: 'form' }) }`}
+                  data-on:click={`(e) => { e.signals.errorSearch = '${t}'; const u = new URL(location.href); u.searchParams.set('errorSearch', '${t}'); e.actions.get(u.toString(), { headers: { Accept: 'text/html' } }) }`}
                 >
                   {t}
                 </span>
@@ -404,43 +404,33 @@ function buildSpanTree(spans: Array<StudioStore.StudioSpan>): Array<TreeSpan> {
   return result
 }
 
+const TREE_INDENT = 16
+
 function TreeConnectors(props: { tree: TreeSpan }) {
   if (props.tree.depth === 0) return null
 
-  const indent = props.tree.depth * 20
+  const indent = props.tree.depth * TREE_INDENT
   const elements: Array<any> = []
 
   for (let i = 0; i < props.tree.ancestorHasNextSibling.length; i++) {
     if (props.tree.ancestorHasNextSibling[i]) {
-      elements.push(<div class="wf-vline" style={`left:${i * 20 + 6}px`} />)
+      elements.push(
+        <div class="wf-vline" style={`left:${i * TREE_INDENT + 4}px`} />,
+      )
     }
   }
 
+  const elbowLeft = (props.tree.depth - 1) * TREE_INDENT + 4
   if (props.tree.isLastChild) {
-    elements.push(
-      <div
-        class="wf-elbow"
-        style={`left:${(props.tree.depth - 1) * 20 + 6}px`}
-      />,
-    )
+    elements.push(<div class="wf-elbow" style={`left:${elbowLeft}px`} />)
   } else {
-    elements.push(
-      <div
-        class="wf-vline"
-        style={`left:${(props.tree.depth - 1) * 20 + 6}px`}
-      />,
-    )
+    elements.push(<div class="wf-vline" style={`left:${elbowLeft}px`} />)
   }
 
-  elements.push(
-    <div
-      class="wf-hline"
-      style={`left:${(props.tree.depth - 1) * 20 + 6}px;top:50%`}
-    />,
-  )
+  elements.push(<div class="wf-hline" style={`left:${elbowLeft}px`} />)
 
   return (
-    <div class="wf-tree" style={`width:${indent}px;position:relative`}>
+    <div class="wf-tree" style={`width:${indent}px`}>
       {elements}
     </div>
   )
@@ -511,11 +501,23 @@ function WaterfallRow(
     : 100
   const color = tracesStatusColor(s.status)
   const durLabelLeft = leftPct + widthPct + 0.5
+  const anchorName = `--wf-${s.spanId}`
+  const popoverId = `wf-pop-${s.spanId}`
+
+  const enter =
+    `clearTimeout(window.__wfTimer_${s.spanId});document.getElementById('${popoverId}')?.showPopover()`
+  const leave =
+    `window.__wfTimer_${s.spanId}=setTimeout(()=>document.getElementById('${popoverId}')?.hidePopover(),120)`
 
   return (
-    <details class="wf-row">
-      <summary>
-        <div class="wf-name">
+    <>
+      <div class="wf-row">
+        <div
+          class="wf-name"
+          style={`anchor-name:${anchorName}`}
+          onmouseenter={enter}
+          onmouseleave={leave}
+        >
           <TreeConnectors tree={props.tree} />
           <span style="overflow:hidden;text-overflow:ellipsis">{s.name}</span>
           {props.tree.childCount > 0 && (
@@ -531,9 +533,18 @@ function WaterfallRow(
             {formatDuration(s.durationMs)}
           </div>
         </div>
-      </summary>
-      <SpanDetailBody span={s} />
-    </details>
+      </div>
+      <div
+        id={popoverId}
+        popover="manual"
+        class="wf-popover"
+        style={`position-anchor:${anchorName}`}
+        onmouseenter={enter}
+        onmouseleave={leave}
+      >
+        <SpanDetailBody span={s} />
+      </div>
+    </>
   )
 }
 
@@ -802,6 +813,7 @@ function FiberRow(props: { fiber: FiberSummary; prefix: string }) {
 
   return (
     <a
+      id={`fiber-row-${props.fiber.id.replace("#", "")}`}
       href={`${props.prefix}/fibers/${props.fiber.id.replace("#", "")}`}
       style="display:flex;align-items:center;gap:12px;padding:8px 12px;border-bottom:1px solid #1e293b;text-decoration:none;transition:background .1s"
       onmouseover="this.style.background='#1e293b'"
@@ -1461,11 +1473,18 @@ export function ServiceList(props: { services: Array<ServiceEntry> }) {
   )
 }
 
+const HIDDEN_SERVICES = new Set([
+  "effect/ParentSpan",
+  "effect/Scope",
+  "effect/Layer/CurrentMemoMap",
+])
+
 export function collectServices(
   unsafeMap: Map<string, any>,
 ): Array<ServiceEntry> {
   const entries: Array<ServiceEntry> = []
   for (const [key, value] of unsafeMap) {
+    if (HIDDEN_SERVICES.has(key)) continue
     const isConfig = key.toLowerCase().includes("config") ||
       key.toLowerCase().includes("configuration")
 
