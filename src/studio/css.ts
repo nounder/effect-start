@@ -11,7 +11,6 @@ body {
   width: 180px;
   background: #1e293b;
   border-right: 1px solid #334155;
-  padding: 16px 0;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
@@ -20,7 +19,10 @@ body {
   font-size: 14px;
   font-weight: 700;
   color: #f1f5f9;
-  padding: 0 16px 16px;
+  height: 45px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
   border-bottom: 1px solid #334155;
   margin-bottom: 8px;
 }
@@ -41,8 +43,12 @@ body {
 .tab-header {
   font-size: 15px;
   font-weight: 600;
-  padding: 12px 16px;
+  height: 45px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
   border-bottom: 1px solid #1e293b;
+  flex-shrink: 0;
 }
 .tab-body {
   flex: 1;
@@ -77,6 +83,59 @@ body {
   font-size: 13px;
   text-align: center;
   padding: 48px 0;
+  grid-column: 1 / -1;
+}
+.sparkline {
+  display: flex;
+  align-items: flex-end;
+  gap: 1px;
+  height: 32px;
+  width: 100%;
+}
+.sparkline-bar {
+  flex: 1;
+  height: 100%;
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  min-width: 0;
+  margin: 0 1px;
+}
+.sparkline-fill {
+  width: 100%;
+  background: #60a5fa;
+}
+.sparkline-empty {
+  background: transparent;
+}
+.sparkline-popover {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1f2937;
+  border: 1px solid #374151;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-family: monospace;
+  color: #e5e7eb;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 80ms;
+  z-index: 10;
+}
+.sparkline-popover-time {
+  color: #9ca3af;
+  font-size: 10px;
+  margin-top: 2px;
+}
+.sparkline-bar:hover .sparkline-fill {
+  background: #93c5fd;
+}
+.sparkline-bar:hover .sparkline-popover {
+  opacity: 1;
 }
 
 .wf-grid {

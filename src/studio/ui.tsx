@@ -1058,34 +1058,87 @@ function MetricValue(props: { metric: StudioStore.MetricSnapshot }) {
   )
 }
 
-function MetricCard(props: { metric: StudioStore.MetricSnapshot }) {
+const SPARKLINE_SLOTS = 42
+const SPARKLINE_HEIGHT = 32
+const SPARKLINE_MIN_BAR_PX = 1
+
+function CounterSparkline(
+  props: { history: ReadonlyArray<StudioStore.MetricSnapshot> },
+) {
+  const deltas = props.history.slice(1).map((curr, i) => ({
+    value: Math.max(
+      0,
+      (curr.value as number) - (props.history[i].value as number),
+    ),
+    timestamp: curr.timestamp,
+  }))
+  const recent = deltas.slice(-SPARKLINE_SLOTS)
+  const max = recent.reduce((m, d) => Math.max(m, d.value), 0)
+  const padding = Math.max(0, SPARKLINE_SLOTS - recent.length)
+  const slots: Array<{ value: number; timestamp: number } | null> = [
+    ...Array.from({ length: padding }, () => null),
+    ...recent,
+  ]
   return (
-    <div style="background:#111827;border:1px solid #374151;border-radius:6px;padding:12px;min-width:200px">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-        <span style="color:#d1d5db;font-size:13px;font-weight:600">
-          {props.metric.name}
-        </span>
-        <span style="font-size:10px;padding:1px 6px;border-radius:4px;background:#1e3a5f;color:#60a5fa">
-          {props.metric.type}
-        </span>
-      </div>
-      <MetricValue metric={props.metric} />
-      {props.metric.tags.length > 0 && (
-        <div style="font-size:10px;color:#6b7280;margin-top:4px">
-          {props.metric.tags.map((t) => `${t.key}=${t.value}`).join(" ")}
+    <div class="sparkline">
+      {slots.map((slot) => {
+        if (slot === null) return <div class="sparkline-bar sparkline-empty" />
+        const h = max === 0
+          ? SPARKLINE_MIN_BAR_PX
+          : Math.max(SPARKLINE_MIN_BAR_PX, (slot.value / max) * SPARKLINE_HEIGHT)
+        return (
+          <div class="sparkline-bar">
+            <div class="sparkline-fill" style={`height:${h}px`} />
+            <div class="sparkline-popover">
+              <div>{String(slot.value)}</div>
+              <div class="sparkline-popover-time">
+                {new Date(slot.timestamp).toLocaleTimeString()}
+              </div>
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function MetricCard(props: { series: StudioStore.MetricSeries }) {
+  const metric = props.series.latest
+  return (
+    <div style="background:#111827;border:1px solid #374151;border-radius:6px;min-width:200px;display:flex;flex-direction:column;justify-content:space-between;overflow:hidden">
+      <div style="padding:12px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <span style="color:#d1d5db;font-size:13px;font-weight:600">
+            {metric.name}
+          </span>
+          <span style="font-size:10px;padding:1px 6px;border-radius:4px;background:#1e3a5f;color:#60a5fa">
+            {metric.type}
+          </span>
         </div>
+        <MetricValue metric={metric} />
+        {metric.tags.length > 0 && (
+          <div style="font-size:10px;color:#6b7280;margin-top:4px">
+            {metric.tags.map((t) => `${t.key}=${t.value}`).join(" ")}
+          </div>
+        )}
+      </div>
+      {metric.type === "counter" && (
+        <CounterSparkline history={props.series.history} />
       )}
     </div>
   )
 }
 
 export function MetricsGrid(
-  props: { metrics: Array<StudioStore.MetricSnapshot> },
+  props: { series: Array<StudioStore.MetricSeries> },
 ) {
-  if (props.metrics.length === 0) {
+  if (props.series.length === 0) {
     return <div class="empty">Waiting for metrics...</div>
   }
-  return <>{props.metrics.map((m) => <MetricCard metric={m} />)}</>
+  const sorted = [...props.series].sort((a, b) =>
+    a.latest.name.localeCompare(b.latest.name)
+  )
+  return <>{sorted.map((s) => <MetricCard series={s} />)}</>
 }
 
 export interface RouteInfo {

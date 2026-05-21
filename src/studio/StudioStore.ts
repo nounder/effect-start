@@ -139,7 +139,6 @@ export interface State {
   readonly spanCapacity: number
   readonly logCapacity: number
   readonly errorCapacity: number
-  metrics: Array<MetricSnapshot>
   process: ProcessStats | undefined
 }
 
@@ -181,7 +180,26 @@ const DDL = [
     traceId INTEGER,
     annotations TEXT NOT NULL
   )`,
+  `CREATE TABLE IF NOT EXISTS MetricSample (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    type TEXT NOT NULL,
+    tags TEXT NOT NULL,
+    timestamp INTEGER NOT NULL,
+    value TEXT NOT NULL
+  )`,
+  `CREATE INDEX IF NOT EXISTS ix_metric_series_ts
+    ON MetricSample(name, tags, timestamp)`,
+  `CREATE INDEX IF NOT EXISTS ix_metric_ts
+    ON MetricSample(timestamp)`,
 ]
+
+function canonicalTags(
+  tags: ReadonlyArray<{ key: string; value: string }>,
+): string {
+  const sorted = [...tags].sort((a, b) => a.key.localeCompare(b.key))
+  return JSON.stringify(sorted)
+}
 
 export const setupDatabase = Effect.gen(function*() {
   const sql = yield* SqlClient.SqlClient
@@ -263,6 +281,26 @@ export const FiberRow = Schema.Struct({
   annotations: Schema.String,
 })
 type FiberRow = typeof FiberRow.Type
+
+export const MetricSampleRow = Schema.Struct({
+  id: Schema.Number,
+  name: Schema.String,
+  type: Schema.String,
+  tags: Schema.String,
+  timestamp: Schema.Number,
+  value: Schema.String,
+})
+type MetricSampleRow = typeof MetricSampleRow.Type
+
+function deserializeMetric(row: MetricSampleRow): MetricSnapshot {
+  return {
+    name: row.name,
+    type: row.type as MetricSnapshot["type"],
+    value: JSON.parse(row.value),
+    tags: JSON.parse(row.tags),
+    timestamp: row.timestamp,
+  }
+}
 
 // TODO: do we need to dserialize? why not store it directly?
 function deserializeSpan(row: SpanRow): StudioSpan {
@@ -377,6 +415,25 @@ export function insertError(error: ErrorEntry) {
           details: JSON.stringify(error.details),
         })
       }`,
+  )
+}
+
+export function insertMetrics(
+  snapshots: ReadonlyArray<MetricSnapshot>,
+) {
+  if (snapshots.length === 0) return Effect.void
+  return withSql((sql) =>
+    sql`INSERT INTO MetricSample ${
+      sql(
+        snapshots.map((s) => ({
+          name: s.name,
+          type: s.type,
+          tags: canonicalTags(s.tags),
+          timestamp: s.timestamp,
+          value: JSON.stringify(s.value),
+        })),
+      )
+    }`
   )
 }
 
@@ -551,6 +608,76 @@ export function getParentChain(fiberId: string) {
           current = parentId
         }
         return chain.reverse()
+      })
+    ),
+  )
+}
+
+export function latestMetrics() {
+  return noTrace(
+    withSql((sql) =>
+      Effect.map(
+        sql<MetricSampleRow>`SELECT * FROM MetricSample
+          WHERE timestamp = (SELECT MAX(timestamp) FROM MetricSample)
+          ORDER BY name, tags`,
+        (rows) => rows.map(deserializeMetric),
+      )
+    ),
+  )
+}
+
+export function metricHistory(
+  name: string,
+  tags: ReadonlyArray<{ key: string; value: string }>,
+  sinceMs: number,
+) {
+  const tagsKey = canonicalTags(tags)
+  return noTrace(
+    withSql((sql) =>
+      Effect.map(
+        sql<MetricSampleRow>`SELECT * FROM MetricSample
+          WHERE name = ${name}
+            AND tags = ${tagsKey}
+            AND timestamp >= ${sinceMs}
+          ORDER BY timestamp`,
+        (rows) => rows.map(deserializeMetric),
+      )
+    ),
+  )
+}
+
+export interface MetricSeries {
+  readonly latest: MetricSnapshot
+  readonly history: ReadonlyArray<MetricSnapshot>
+}
+
+export function latestMetricsWithHistory(historyMs: number) {
+  return noTrace(
+    withSql((sql) =>
+      Effect.gen(function*() {
+        const rows = yield* sql<MetricSampleRow>`
+          SELECT * FROM MetricSample
+          WHERE timestamp >= (
+            SELECT COALESCE(MAX(timestamp), 0) - ${historyMs} FROM MetricSample
+          )
+          ORDER BY name, tags, timestamp
+        `
+        const grouped = new Map<string, Array<MetricSnapshot>>()
+        for (const row of rows) {
+          const key = `${row.name} ${row.tags}`
+          let arr = grouped.get(key)
+          if (!arr) {
+            arr = []
+            grouped.set(key, arr)
+          }
+          arr.push(deserializeMetric(row))
+        }
+        const series: Array<MetricSeries> = []
+        for (const history of grouped.values()) {
+          if (history.length === 0) continue
+          series.push({ latest: history[history.length - 1], history })
+        }
+        return series
       })
     ),
   )

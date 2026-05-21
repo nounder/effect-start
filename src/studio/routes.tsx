@@ -14,6 +14,8 @@ import * as Studio from "./Studio.ts"
 import * as StudioStore from "./StudioStore.ts"
 import * as Ui from "./ui.tsx"
 
+const METRICS_HISTORY_MS = 120_000
+
 export default Route.map({
   "*": Route.use(
     Route.handle(function*(_, next) {
@@ -219,11 +221,12 @@ export default Route.map({
   "/metrics": Route.get(
     Route.html(function*() {
       const studio = yield* Studio.Studio
+      const series = yield* StudioStore.latestMetricsWithHistory(METRICS_HISTORY_MS)
       return (
         <Ui.Shell prefix={studio.path} active="metrics">
           <div class="tab-header">Metrics</div>
           <div id="metrics-container" class="tab-body metrics-grid">
-            <Ui.MetricsGrid metrics={studio.store.metrics} />
+            <Ui.MetricsGrid series={series} />
           </div>
           <div data-init={(c) => c.actions.get("metrics")} />
         </Ui.Shell>
@@ -232,17 +235,26 @@ export default Route.map({
     Route.sse(
       Effect.gen(function*() {
         const studio = yield* Studio.Studio
+        const sql = yield* SqlClient.SqlClient
         return Stream.fromPubSub(studio.store.events).pipe(
           Stream.filter((e) => e._tag === "MetricsSnapshot"),
-          Stream.map((e) => {
-            const html = Html
-              .text(<Ui.MetricsGrid metrics={e.metrics} />)
-              .replace(/\n/g, "")
-            return {
-              event: "datastar-patch-elements",
-              data: `selector #metrics-container\nmode inner\nelements ${html}`,
-            }
-          }),
+          Stream.mapEffect(() =>
+            StudioStore
+              .latestMetricsWithHistory(METRICS_HISTORY_MS)
+              .pipe(
+                Effect.map((series) => {
+                  const html = Html
+                    .text(<Ui.MetricsGrid series={series} />)
+                    .replace(/\n/g, "")
+                  return {
+                    event: "datastar-patch-elements",
+                    data:
+                      `selector #metrics-container\nmode inner\nelements ${html}`,
+                  }
+                }),
+                Effect.provideService(SqlClient.SqlClient, sql),
+              )
+          ),
         )
       }),
     ),

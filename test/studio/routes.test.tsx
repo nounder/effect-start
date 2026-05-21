@@ -24,7 +24,6 @@ const studioLayer = (auth: Studio.Studio["Type"]["auth"]) =>
           spanCapacity: 0,
           logCapacity: 0,
           errorCapacity: 0,
-          metrics: [],
           process: undefined,
         },
       }
