@@ -11,6 +11,7 @@ import * as SqlClient from "../sql/SqlClient.ts"
 import * as Unique from "../Unique.ts"
 import css from "./css.ts"
 import * as Studio from "./Studio.ts"
+import * as StudioProcess from "./StudioProcess.ts"
 import * as StudioStore from "./StudioStore.ts"
 import * as Ui from "./ui.tsx"
 
@@ -56,19 +57,25 @@ export default Route.map({
       return (
         <html style="height: 100%">
           <head>
-            <title>Effect Studio</title>
+            <title>
+              Effect Studio
+            </title>
             <meta
               name="viewport"
               content="width=device-width, initial-scale=1"
             />
             <base href={base} />
-            <style>{css}</style>
+            <style>
+              {css}
+            </style>
             <script
               type="module"
               src={bundle.resolve("effect-start/datastar")}
             />
           </head>
-          <body>{yield* next.html}</body>
+          <body>
+            {yield* next.html}
+          </body>
         </html>
       )
     }),
@@ -107,12 +114,14 @@ export default Route.map({
           data-signals={{ traceSearch: search }}
           style="display:flex;flex-direction:column;flex:1;overflow:hidden;min-width:0"
         >
-          <div class="tab-header">Traces</div>
+          <div class="tab-header">
+            Traces
+          </div>
           <div class="filter-bar">
             <input
               type="text"
               name="traceSearch"
-              placeholder="Search trace name..."
+              placeholder="Search..."
               list="trace-names"
               value={search}
               data-bind="traceSearch"
@@ -181,15 +190,12 @@ export default Route.map({
                 )
                 return {
                   event: "datastar-patch-elements",
-                  data:
-                    `selector .tl-header\nmode after\nelements ${traceHtml}`,
+                  data: `selector .tl-header\nmode after\nelements ${traceHtml}`,
                 }
               })
               .pipe(Effect.provideService(SqlClient.SqlClient, sql))
           ),
-          Stream.filter((event): event is { event: string; data: string } =>
-            event !== undefined
-          ),
+          Stream.filter((event): event is { event: string; data: string } => event !== undefined),
         )
       })
     ),
@@ -205,7 +211,9 @@ export default Route.map({
       } catch {
         return (
           <Ui.Shell prefix={studio.path} active="traces">
-            <div class="empty">Trace not found</div>
+            <div class="empty">
+              Trace not found
+            </div>
           </Ui.Shell>
         )
       }
@@ -224,7 +232,9 @@ export default Route.map({
       const series = yield* StudioStore.latestMetricsWithHistory(METRICS_HISTORY_MS)
       return (
         <Ui.Shell prefix={studio.path} active="metrics">
-          <div class="tab-header">Metrics</div>
+          <div class="tab-header">
+            Metrics
+          </div>
           <div id="metrics-container" class="tab-body metrics-grid">
             <Ui.MetricsGrid series={series} />
           </div>
@@ -248,8 +258,7 @@ export default Route.map({
                     .replace(/\n/g, "")
                   return {
                     event: "datastar-patch-elements",
-                    data:
-                      `selector #metrics-container\nmode inner\nelements ${html}`,
+                    data: `selector #metrics-container\nmode inner\nelements ${html}`,
                   }
                 }),
                 Effect.provideService(SqlClient.SqlClient, sql),
@@ -286,7 +295,9 @@ export default Route.map({
           data-signals={{ logLevel: level, logSearch: search }}
           style="display:flex;flex-direction:column;flex:1;overflow:hidden;min-width:0"
         >
-          <div class="tab-header">Logs</div>
+          <div class="tab-header">
+            Logs
+          </div>
           <div class="filter-bar">
             <select
               name="logLevel"
@@ -300,14 +311,24 @@ export default Route.map({
                 })
               }}
             >
-              <option value="" selected={level === ""}>All levels</option>
-              <option value="DEBUG" selected={level === "DEBUG"}>DEBUG</option>
-              <option value="INFO" selected={level === "INFO"}>INFO</option>
+              <option value="" selected={level === ""}>
+                All levels
+              </option>
+              <option value="DEBUG" selected={level === "DEBUG"}>
+                DEBUG
+              </option>
+              <option value="INFO" selected={level === "INFO"}>
+                INFO
+              </option>
               <option value="WARNING" selected={level === "WARNING"}>
                 WARNING
               </option>
-              <option value="ERROR" selected={level === "ERROR"}>ERROR</option>
-              <option value="FATAL" selected={level === "FATAL"}>FATAL</option>
+              <option value="ERROR" selected={level === "ERROR"}>
+                ERROR
+              </option>
+              <option value="FATAL" selected={level === "FATAL"}>
+                FATAL
+              </option>
             </select>
             <input
               type="text"
@@ -358,9 +379,7 @@ export default Route.map({
         return Stream.fromPubSub(studio.store.events).pipe(
           Stream.filter((e) => e._tag === "Log"),
           Stream.filter((e) => !level || e.log.level === level),
-          Stream.filter((e) =>
-            !search || e.log.message.toLowerCase().includes(search)
-          ),
+          Stream.filter((e) => !search || e.log.message.toLowerCase().includes(search)),
           Stream.map((e) => {
             const html = Html
               .text(<Ui.LogLine prefix={studio.path} log={e.log} />)
@@ -371,7 +390,7 @@ export default Route.map({
             }
           }),
         )
-      }),
+      })
     ),
   ),
 
@@ -413,12 +432,14 @@ export default Route.map({
           data-signals={{ errorSearch: search }}
           style="display:flex;flex-direction:column;flex:1;overflow:hidden;min-width:0"
         >
-          <div class="tab-header">Errors</div>
+          <div class="tab-header">
+            Errors
+          </div>
           <div class="filter-bar">
             <input
               type="text"
               name="errorSearch"
-              placeholder="Search or pick tag..."
+              placeholder="Search..."
               list="error-tags"
               value={search}
               data-bind="errorSearch"
@@ -440,9 +461,7 @@ export default Route.map({
             </datalist>
           </div>
           <div id="errors-list" class="tab-body">
-            {errors.map((e) => (
-              <Ui.ErrorLine prefix={studio.path} error={e} />
-            ))}
+            {errors.map((e) => <Ui.ErrorLine prefix={studio.path} error={e} />)}
           </div>
           <div
             data-effect={(c) => {
@@ -501,7 +520,9 @@ export default Route.map({
       return (
         <Ui.Shell prefix={studio.path} active="fibers">
           <div style="display:flex;flex-direction:column;flex:1;overflow:hidden">
-            <div class="tab-header">Fibers</div>
+            <div class="tab-header">
+              Fibers
+            </div>
             <div id="fibers-container" class="tab-body">
               <Ui.FiberList fibers={fibers} prefix={studio.path} />
             </div>
@@ -515,10 +536,7 @@ export default Route.map({
         const studio = yield* Studio.Studio
         const sql = yield* SqlClient.SqlClient
         return Stream.fromPubSub(studio.store.events).pipe(
-          Stream.filter((e) =>
-            e._tag === "SpanStart" || e._tag === "SpanEnd" ||
-            e._tag === "Log"
-          ),
+          Stream.filter((e) => e._tag === "SpanStart" || e._tag === "SpanEnd" || e._tag === "Log"),
           Stream.debounce("500 millis"),
           Stream.mapEffect(() =>
             Effect
@@ -533,8 +551,7 @@ export default Route.map({
                   .replace(/\n/g, "")
                 return {
                   event: "datastar-patch-elements",
-                  data:
-                    `selector #fibers-container\nmode inner\nelements ${html}`,
+                  data: `selector #fibers-container\nmode inner\nelements ${html}`,
                 }
               })
               .pipe(Effect.provideService(SqlClient.SqlClient, sql))
@@ -596,7 +613,9 @@ export default Route.map({
 
       return (
         <Ui.Shell prefix={studio.path} active="routes">
-          <div class="tab-header">Routes</div>
+          <div class="tab-header">
+            Routes
+          </div>
           <div class="tab-body">
             <Ui.RouteList routes={infos} />
           </div>
@@ -608,15 +627,23 @@ export default Route.map({
   "/system": Route.get(
     Route.html(function*() {
       const studio = yield* Studio.Studio
-      const stats = studio.store.process
+      const series = yield* StudioStore.processSeries(METRICS_HISTORY_MS)
+      const info = StudioProcess.processInfo()
+      const hasData = Object.keys(series.latest).length > 0
       return (
         <Ui.Shell prefix={studio.path} active="system">
           <div style="display:flex;flex-direction:column;flex:1;overflow:hidden">
-            <div class="tab-header">System</div>
+            <div class="tab-header">
+              System
+            </div>
             <div id="system-container" class="tab-body">
-              {stats ?
-                <Ui.SystemStatsView stats={stats} /> :
-                <div class="empty">Waiting for system data...</div>}
+              {hasData ?
+                <Ui.SystemStatsView info={info} series={series} /> :
+                (
+                  <div class="empty">
+                    Waiting for system data...
+                  </div>
+                )}
             </div>
             <div data-init={(c) => c.actions.get("system")} />
           </div>
@@ -626,17 +653,26 @@ export default Route.map({
     Route.sse(
       Effect.gen(function*() {
         const studio = yield* Studio.Studio
+        const sql = yield* SqlClient.SqlClient
         return Stream.fromPubSub(studio.store.events).pipe(
           Stream.filter((e) => e._tag === "ProcessSnapshot"),
-          Stream.map((e) => {
-            const html = Html
-              .text(<Ui.SystemStatsView stats={e.stats} />)
-              .replace(/\n/g, "")
-            return {
-              event: "datastar-patch-elements",
-              data: `selector #system-container\nmode inner\nelements ${html}`,
-            }
-          }),
+          Stream.mapEffect(() =>
+            StudioStore
+              .processSeries(METRICS_HISTORY_MS)
+              .pipe(
+                Effect.map((series) => {
+                  const info = StudioProcess.processInfo()
+                  const html = Html
+                    .text(<Ui.SystemStatsView info={info} series={series} />)
+                    .replace(/\n/g, "")
+                  return {
+                    event: "datastar-patch-elements",
+                    data: `selector #system-container\nmode inner\nelements ${html}`,
+                  }
+                }),
+                Effect.provideService(SqlClient.SqlClient, sql),
+              )
+          ),
         )
       }),
     ),
@@ -649,7 +685,9 @@ export default Route.map({
       const services = Ui.collectServices(ctx.unsafeMap)
       return (
         <Ui.Shell prefix={studio.path} active="services">
-          <div class="tab-header">Services ({services.length})</div>
+          <div class="tab-header">
+            Services ({services.length})
+          </div>
           <div class="tab-body">
             <Ui.ServiceList services={services} />
           </div>

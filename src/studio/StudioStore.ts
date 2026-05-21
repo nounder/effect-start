@@ -61,34 +61,15 @@ export interface LogEntry {
   readonly annotations: Record<string, unknown>
 }
 
-export interface ProcessStats {
-  readonly pid: number
-  readonly uptime: number
-  readonly memory: {
-    readonly rss: number
-    readonly heapUsed: number
-    readonly heapTotal: number
-    readonly external: number
-    readonly arrayBuffers: number
-  }
-  readonly cpu: { readonly user: number; readonly system: number }
-  readonly resourceUsage: {
-    readonly maxRSS: number
-    readonly minorPageFault: number
-    readonly majorPageFault: number
-    readonly fsRead: number
-    readonly fsWrite: number
-    readonly voluntaryContextSwitches: number
-    readonly involuntaryContextSwitches: number
-  }
-  readonly system: {
-    readonly loadavg: readonly [number, number, number]
-    readonly freemem: number
-    readonly totalmem: number
-    readonly cpuCount: number
-    readonly platform: string
-    readonly arch: string
-  }
+export const STUDIO_METRIC_PREFIX = "effect-start."
+export const PROCESS_METRIC_PREFIX = STUDIO_METRIC_PREFIX + "process."
+
+export interface ProcessSeries {
+  readonly latest: Record<string, number>
+  readonly history: Record<string, ReadonlyArray<{
+    readonly timestamp: number
+    readonly value: number
+  }>>
 }
 
 export interface ErrorDetail {
@@ -126,7 +107,7 @@ export type StudioEvent =
     readonly _tag: "MetricsSnapshot"
     readonly metrics: Array<MetricSnapshot>
   }
-  | { readonly _tag: "ProcessSnapshot"; readonly stats: ProcessStats }
+  | { readonly _tag: "ProcessSnapshot" }
 
 export interface FiberContext {
   readonly spanName: string | undefined
@@ -139,7 +120,6 @@ export interface State {
   readonly spanCapacity: number
   readonly logCapacity: number
   readonly errorCapacity: number
-  process: ProcessStats | undefined
 }
 
 const DDL = [
@@ -660,6 +640,7 @@ export function latestMetricsWithHistory(historyMs: number) {
           WHERE timestamp >= (
             SELECT COALESCE(MAX(timestamp), 0) - ${historyMs} FROM MetricSample
           )
+            AND name NOT LIKE ${STUDIO_METRIC_PREFIX + "%"}
           ORDER BY name, tags, timestamp
         `
         const grouped = new Map<string, Array<MetricSnapshot>>()
@@ -678,6 +659,41 @@ export function latestMetricsWithHistory(historyMs: number) {
           series.push({ latest: history[history.length - 1], history })
         }
         return series
+      })
+    ),
+  )
+}
+
+export function processSeries(historyMs: number) {
+  return noTrace(
+    withSql((sql) =>
+      Effect.gen(function*() {
+        const rows = yield* sql<MetricSampleRow>`
+          SELECT * FROM MetricSample
+          WHERE name LIKE ${PROCESS_METRIC_PREFIX + "%"}
+            AND timestamp >= (
+              SELECT COALESCE(MAX(timestamp), 0) - ${historyMs} FROM MetricSample
+              WHERE name LIKE ${PROCESS_METRIC_PREFIX + "%"}
+            )
+          ORDER BY name, timestamp
+        `
+        const history: Record<
+          string,
+          Array<{ timestamp: number; value: number }>
+        > = {}
+        const latest: Record<string, number> = {}
+        for (const row of rows) {
+          const key = row.name.slice(PROCESS_METRIC_PREFIX.length)
+          const value = Number(JSON.parse(row.value))
+          let arr = history[key]
+          if (!arr) {
+            arr = []
+            history[key] = arr
+          }
+          arr.push({ timestamp: row.timestamp, value })
+          latest[key] = value
+        }
+        return { latest, history } satisfies ProcessSeries
       })
     ),
   )

@@ -142,7 +142,7 @@ export function LogLine(props: { prefix: string; log: StudioStore.LogEntry }) {
     >
       <span style="color:#6b7280;white-space:nowrap">{time}</span>
       <span
-        style={`color:${color};font-weight:600;width:56px;text-align:center;flex-shrink:0`}
+        style={`color:${color};font-weight:600;width:56px;text-align:left;flex-shrink:0`}
       >
         {props.log.level}
       </span>
@@ -412,10 +412,10 @@ function TreeConnectors(props: { tree: TreeSpan }) {
   const indent = props.tree.depth * TREE_INDENT
   const elements: Array<any> = []
 
-  for (let i = 0; i < props.tree.ancestorHasNextSibling.length; i++) {
+  for (let i = 1; i < props.tree.ancestorHasNextSibling.length; i++) {
     if (props.tree.ancestorHasNextSibling[i]) {
       elements.push(
-        <div class="wf-vline" style={`left:${i * TREE_INDENT + 4}px`} />,
+        <div class="wf-vline" style={`left:${(i - 1) * TREE_INDENT + 4}px`} />,
       )
     }
   }
@@ -501,11 +501,16 @@ function WaterfallRow(
     : 100
   const color = tracesStatusColor(s.status)
   const durLabelLeft = leftPct + widthPct + 0.5
-  const anchorName = `--wf-${s.spanId}`
+  const nameAnchor = `--wf-n-${s.spanId}`
+  const barAnchor = `--wf-b-${s.spanId}`
   const popoverId = `wf-pop-${s.spanId}`
 
-  const enter =
-    `clearTimeout(window.__wfTimer_${s.spanId});document.getElementById('${popoverId}')?.showPopover()`
+  const enterFromName =
+    `clearTimeout(window.__wfTimer_${s.spanId});var p=document.getElementById('${popoverId}');p.classList.remove('wf-popover-left');p.classList.add('wf-popover-right');p.style.positionAnchor='${nameAnchor}';p.showPopover()`
+  const enterFromBar =
+    `clearTimeout(window.__wfTimer_${s.spanId});var p=document.getElementById('${popoverId}');p.classList.remove('wf-popover-right');p.classList.add('wf-popover-left');p.style.positionAnchor='${barAnchor}';p.showPopover()`
+  const enterFromPopover =
+    `clearTimeout(window.__wfTimer_${s.spanId})`
   const leave =
     `window.__wfTimer_${s.spanId}=setTimeout(()=>document.getElementById('${popoverId}')?.hidePopover(),120)`
 
@@ -514,8 +519,8 @@ function WaterfallRow(
       <div class="wf-row">
         <div
           class="wf-name"
-          style={`anchor-name:${anchorName}`}
-          onmouseenter={enter}
+          style={`anchor-name:${nameAnchor}`}
+          onmouseenter={enterFromName}
           onmouseleave={leave}
         >
           <TreeConnectors tree={props.tree} />
@@ -527,7 +532,9 @@ function WaterfallRow(
         <div class="wf-bar-cell">
           <div
             class="wf-bar"
-            style={`left:${leftPct}%;width:${widthPct}%;background:${color}`}
+            style={`left:${leftPct}%;width:${widthPct}%;background:${color};anchor-name:${barAnchor}`}
+            onmouseenter={enterFromBar}
+            onmouseleave={leave}
           />
           <div class="wf-dur" style={`left:${durLabelLeft}%`}>
             {formatDuration(s.durationMs)}
@@ -538,8 +545,7 @@ function WaterfallRow(
         id={popoverId}
         popover="manual"
         class="wf-popover"
-        style={`position-anchor:${anchorName}`}
-        onmouseenter={enter}
+        onmouseenter={enterFromPopover}
         onmouseleave={leave}
       >
         <SpanDetailBody span={s} />
@@ -877,8 +883,8 @@ export function FiberDetail(props: {
 
   return (
     <>
-      <div class="tab-header">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+      <div class="tab-header" style="height:auto;padding:8px 16px;flex-direction:column;align-items:flex-start;gap:4px">
+        <div style="display:flex;align-items:center;gap:8px">
           <a
             href={`${props.prefix}/fibers`}
             style="color:#64748b;text-decoration:none;font-size:12px"
@@ -895,7 +901,7 @@ export function FiberDetail(props: {
             {props.status}
           </span>
         </div>
-        <div style="display:flex;gap:16px;font-size:12px;color:#94a3b8">
+        <div style="display:flex;gap:16px;font-size:12px;color:#94a3b8;font-weight:400">
           <span>
             {props.logs.length} log{props.logs.length !== 1 ? "s" : ""}
           </span>
@@ -1007,11 +1013,56 @@ export function FiberDetail(props: {
   )
 }
 
-function MetricValue(props: { metric: StudioStore.MetricSnapshot }) {
+function formatCompact(n: number): string {
+  const abs = Math.abs(n)
+  if (abs >= 1e9) return `${(n / 1e9).toFixed(2)}B`
+  if (abs >= 1e6) return `${(n / 1e6).toFixed(2)}M`
+  if (abs >= 1e3) return `${(n / 1e3).toFixed(2)}K`
+  if (Number.isInteger(n)) return String(n)
+  return n.toFixed(2)
+}
+
+function HistogramRange(
+  props: { min: number; max: number; avg: number },
+) {
+  const span = props.max - props.min
+  const avgPct = span === 0 ? 50 : ((props.avg - props.min) / span) * 100
+  return (
+    <div style="padding:0 8px 8px 8px">
+      <div style="position:relative;height:6px;background:#1f2937;border-radius:3px">
+        <div style="position:absolute;left:0;right:0;top:50%;height:2px;margin-top:-1px;background:linear-gradient(to right,#1e40af,#60a5fa);border-radius:1px" />
+        <div
+          style={`position:absolute;top:-2px;width:2px;height:10px;background:#f8fafc;left:${
+            avgPct.toFixed(1)
+          }%`}
+        />
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:#6b7280;font-family:monospace;margin-top:3px">
+        <span>{formatCompact(props.min)}</span>
+        <span style="color:#94a3b8">avg {formatCompact(props.avg)}</span>
+        <span>{formatCompact(props.max)}</span>
+      </div>
+    </div>
+  )
+}
+
+function MetricValue(
+  props: {
+    metric: StudioStore.MetricSnapshot
+    subtitle?: string
+  },
+) {
   if (props.metric.type === "counter" || props.metric.type === "gauge") {
     return (
-      <div style="font-size:32px;font-weight:700;color:#e5e7eb;font-family:monospace;line-height:1.1">
-        {String(props.metric.value)}
+      <div style="margin:1em 0;text-align:center">
+        <div style="font-size:32px;font-weight:700;color:#e5e7eb;font-family:monospace;line-height:1.1">
+          {formatCompact(props.metric.value as number)}
+        </div>
+        {props.subtitle && (
+          <div style="font-size:11px;color:#34d399;font-family:monospace;margin-top:4px">
+            {props.subtitle}
+          </div>
+        )}
       </div>
     )
   }
@@ -1022,16 +1073,15 @@ function MetricValue(props: { metric: StudioStore.MetricSnapshot }) {
       min: number
       max: number
     }
+    const avg = h.count === 0 ? 0 : h.sum / h.count
     return (
-      <div style="display:grid;grid-template-columns:auto auto;gap:2px 12px;font-size:12px;font-family:monospace">
-        <span style="color:#6b7280">count</span>
-        <span style="color:#e5e7eb">{h.count}</span>
-        <span style="color:#6b7280">sum</span>
-        <span style="color:#e5e7eb">{h.sum.toFixed(2)}</span>
-        <span style="color:#6b7280">min</span>
-        <span style="color:#e5e7eb">{h.min.toFixed(2)}</span>
-        <span style="color:#6b7280">max</span>
-        <span style="color:#e5e7eb">{h.max.toFixed(2)}</span>
+      <div style="margin:1em 0;text-align:center">
+        <div style="font-size:32px;font-weight:700;color:#e5e7eb;font-family:monospace;line-height:1.1">
+          {formatCompact(avg)}
+        </div>
+        <div style="font-size:11px;color:#6b7280;font-family:monospace;margin-top:4px">
+          avg · n={formatCompact(h.count)}
+        </div>
       </div>
     )
   }
@@ -1059,8 +1109,76 @@ function MetricValue(props: { metric: StudioStore.MetricSnapshot }) {
 }
 
 const SPARKLINE_SLOTS = 42
-const SPARKLINE_HEIGHT = 32
-const SPARKLINE_MIN_BAR_PX = 1
+const SPARKLINE_VIEW_W = 100
+const SPARKLINE_VIEW_H = 32
+
+export function BarChart(props: {
+  data: ReadonlyArray<{ value: number; timestamp: number }>
+  format?: (value: number) => string
+  max?: number
+}) {
+  const recent = props.data.slice(-SPARKLINE_SLOTS)
+  const max = props.max ?? recent.reduce((m, d) => Math.max(m, d.value), 0)
+  const padding = Math.max(0, SPARKLINE_SLOTS - recent.length)
+  const slots: Array<{ value: number; timestamp: number } | null> = [
+    ...Array.from({ length: padding }, () => null),
+    ...recent,
+  ]
+  const fmt = props.format ?? String
+  const slotW = SPARKLINE_VIEW_W / SPARKLINE_SLOTS
+  const linePts = slots.map((slot, i) => {
+    const value = slot === null ? 0 : slot.value
+    const x = (i + 0.5) * slotW
+    const ratio = max === 0 ? 0 : Math.min(1, value / max)
+    const y = SPARKLINE_VIEW_H - ratio * (SPARKLINE_VIEW_H - 1) - 0.5
+    return { x, y }
+  })
+  const linePath = linePts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`)
+    .join(" ")
+  const areaPath = linePts.length < 2
+    ? ""
+    : `${linePath} L${linePts[linePts.length - 1].x},${SPARKLINE_VIEW_H} L${
+      linePts[0].x
+    },${SPARKLINE_VIEW_H} Z`
+  return (
+    <div class="sparkline">
+      <svg
+        class="sparkline-svg"
+        viewBox={`0 0 ${SPARKLINE_VIEW_W} ${SPARKLINE_VIEW_H}`}
+        preserveAspectRatio="none"
+      >
+        {areaPath && <path d={areaPath} fill="#60a5fa" fill-opacity="0.18" />}
+        {linePath && (
+          <path
+            d={linePath}
+            fill="none"
+            stroke="#60a5fa"
+            stroke-width="1.2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            vector-effect="non-scaling-stroke"
+          />
+        )}
+      </svg>
+      <div class="sparkline-slots">
+        {slots.map((slot) => {
+          if (slot === null) return <div class="sparkline-slot" />
+          return (
+            <div class="sparkline-slot">
+              <div class="sparkline-marker" style="left:50%" />
+              <div class="sparkline-popover">
+                <div>{fmt(slot.value)}</div>
+                <div class="sparkline-popover-time">
+                  {new Date(slot.timestamp).toLocaleTimeString()}
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
 
 function CounterSparkline(
   props: { history: ReadonlyArray<StudioStore.MetricSnapshot> },
@@ -1072,59 +1190,81 @@ function CounterSparkline(
     ),
     timestamp: curr.timestamp,
   }))
-  const recent = deltas.slice(-SPARKLINE_SLOTS)
-  const max = recent.reduce((m, d) => Math.max(m, d.value), 0)
-  const padding = Math.max(0, SPARKLINE_SLOTS - recent.length)
-  const slots: Array<{ value: number; timestamp: number } | null> = [
-    ...Array.from({ length: padding }, () => null),
-    ...recent,
-  ]
-  return (
-    <div class="sparkline">
-      {slots.map((slot) => {
-        if (slot === null) return <div class="sparkline-bar sparkline-empty" />
-        const h = max === 0
-          ? SPARKLINE_MIN_BAR_PX
-          : Math.max(SPARKLINE_MIN_BAR_PX, (slot.value / max) * SPARKLINE_HEIGHT)
-        return (
-          <div class="sparkline-bar">
-            <div class="sparkline-fill" style={`height:${h}px`} />
-            <div class="sparkline-popover">
-              <div>{String(slot.value)}</div>
-              <div class="sparkline-popover-time">
-                {new Date(slot.timestamp).toLocaleTimeString()}
-              </div>
-            </div>
-          </div>
-        )
-      })}
-    </div>
-  )
+  return <BarChart data={deltas} />
+}
+
+function GaugeSparkline(
+  props: { history: ReadonlyArray<StudioStore.MetricSnapshot> },
+) {
+  const data = props.history.map((s) => ({
+    value: s.value as number,
+    timestamp: s.timestamp,
+  }))
+  return <BarChart data={data} format={formatCompact} />
+}
+
+function counterRatePerSec(
+  history: ReadonlyArray<StudioStore.MetricSnapshot>,
+): number | undefined {
+  if (history.length < 2) return undefined
+  const first = history[0]
+  const last = history[history.length - 1]
+  const dt = (last.timestamp - first.timestamp) / 1000
+  if (dt <= 0) return undefined
+  const delta = Math.max(0, (last.value as number) - (first.value as number))
+  return delta / dt
 }
 
 function MetricCard(props: { series: StudioStore.MetricSeries }) {
   const metric = props.series.latest
+  const rate = metric.type === "counter"
+    ? counterRatePerSec(props.series.history)
+    : undefined
   return (
-    <div style="background:#111827;border:1px solid #374151;border-radius:6px;min-width:200px;display:flex;flex-direction:column;justify-content:space-between;overflow:hidden">
-      <div style="padding:12px">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-          <span style="color:#d1d5db;font-size:13px;font-weight:600">
+    <div class="metric-card" style="background:#111827;border:1px solid #374151;border-radius:6px;min-width:200px;display:flex;flex-direction:column">
+      <div style="padding:8px 10px 4px 10px;flex:1">
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="color:#d1d5db;font-size:12px;font-weight:600">
             {metric.name}
           </span>
-          <span style="font-size:10px;padding:1px 6px;border-radius:4px;background:#1e3a5f;color:#60a5fa">
+          <span class="metric-type" style="font-size:10px;padding:1px 6px;border-radius:4px;background:#1e3a5f;color:#60a5fa">
             {metric.type}
           </span>
         </div>
-        <MetricValue metric={metric} />
-        {metric.tags.length > 0 && (
-          <div style="font-size:10px;color:#6b7280;margin-top:4px">
-            {metric.tags.map((t) => `${t.key}=${t.value}`).join(" ")}
-          </div>
-        )}
+        <MetricValue
+          metric={metric}
+          subtitle={rate !== undefined && rate > 0
+            ? `${formatCompact(rate)}/s`
+            : undefined}
+        />
+        {(() => {
+          const tags = metric.type === "histogram"
+            ? metric.tags.filter((t) => t.key !== "time_unit")
+            : metric.tags
+          if (tags.length === 0) return null
+          return (
+            <div style="font-size:10px;color:#6b7280;margin-top:4px">
+              {tags.map((t) => `${t.key}=${t.value}`).join(" ")}
+            </div>
+          )
+        })()}
       </div>
       {metric.type === "counter" && (
         <CounterSparkline history={props.series.history} />
       )}
+      {metric.type === "gauge" && (
+        <GaugeSparkline history={props.series.history} />
+      )}
+      {metric.type === "histogram" && (() => {
+        const h = metric.value as {
+          count: number
+          sum: number
+          min: number
+          max: number
+        }
+        const avg = h.count === 0 ? 0 : h.sum / h.count
+        return <HistogramRange min={h.min} max={h.max} avg={avg} />
+      })()}
     </div>
   )
 }
@@ -1623,84 +1763,125 @@ function StatCard(props: { label: string; value: string; sub?: string }) {
   )
 }
 
-function BarMeter(props: { label: string; used: number; total: number }) {
-  const pct = props.total > 0 ? (props.used / props.total) * 100 : 0
-  const color = pct > 90 ? "#ef4444" : pct > 70 ? "#f59e0b" : "#22c55e"
+function BarMeter(props: {
+  label: string
+  history: ReadonlyArray<{ value: number; timestamp: number }>
+  total: number
+}) {
+  const used = props.history.length > 0
+    ? props.history[props.history.length - 1].value
+    : 0
+  const pct = props.total > 0 ? (used / props.total) * 100 : 0
   return (
-    <div style="background:#111827;border:1px solid #374151;border-radius:6px;padding:12px">
-      <div style="display:flex;justify-content:space-between;margin-bottom:6px">
-        <span style="color:#9ca3af;font-size:11px">{props.label}</span>
-        <span style="color:#e5e7eb;font-size:11px;font-family:monospace">
-          {formatBytes(props.used)} / {formatBytes(props.total)}
-        </span>
+    <div style="background:#111827;border:1px solid #374151;border-radius:6px;display:flex;flex-direction:column;justify-content:space-between">
+      <div style="padding:12px">
+        <div style="display:flex;justify-content:space-between">
+          <span style="color:#9ca3af;font-size:11px">{props.label}</span>
+          <span style="color:#e5e7eb;font-size:11px;font-family:monospace">
+            {formatBytes(used)} / {formatBytes(props.total)} ({pct.toFixed(1)}%)
+          </span>
+        </div>
       </div>
-      <div style="height:8px;background:#1f2937;border-radius:4px;overflow:hidden">
-        <div
-          style={`width:${
-            pct.toFixed(1)
-          }%;height:100%;background:${color};border-radius:4px;transition:width .3s`}
-        />
-      </div>
-      <div style="color:#6b7280;font-size:10px;margin-top:2px;text-align:right">
-        {pct.toFixed(1)}%
-      </div>
+      <BarChart
+        data={props.history}
+        max={props.total}
+        format={formatBytes}
+      />
     </div>
   )
 }
 
-export function SystemStatsView(props: { stats: StudioStore.ProcessStats }) {
-  const cpuTotal = props.stats.cpu.user + props.stats.cpu.system
+export interface SystemStatsProps {
+  readonly info: {
+    readonly pid: number
+    readonly uptime: number
+    readonly platform: string
+    readonly arch: string
+    readonly cpuCount: number
+    readonly totalmem: number
+  }
+  readonly series: StudioStore.ProcessSeries
+}
+
+function gaugeAt(series: StudioStore.ProcessSeries, key: string): number {
+  return series.latest[key] ?? 0
+}
+
+function gaugeHistory(series: StudioStore.ProcessSeries, key: string) {
+  return series.history[key] ?? []
+}
+
+export function SystemStatsView(props: SystemStatsProps) {
+  const { series, info } = props
+  const cpuUser = gaugeAt(series, "cpu.user")
+  const cpuSystem = gaugeAt(series, "cpu.system")
+  const cpuTotal = cpuUser + cpuSystem
+  const load1 = gaugeAt(series, "system.loadavg1")
+  const load5 = gaugeAt(series, "system.loadavg5")
+  const load15 = gaugeAt(series, "system.loadavg15")
+  const freemem = gaugeAt(series, "system.freemem")
+  const heapHistory = gaugeHistory(series, "memory.heapUsed")
+  const heapTotal = gaugeAt(series, "memory.heapTotal")
+  const sysUsedHistory = gaugeHistory(series, "system.freemem").map((p) => ({
+    timestamp: p.timestamp,
+    value: info.totalmem - p.value,
+  }))
   return (
     <>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;padding:12px">
         <StatCard
           label="PID"
-          value={String(props.stats.pid)}
-          sub={`${props.stats.system.platform} ${props.stats.system.arch}`}
+          value={String(info.pid)}
+          sub={`${info.platform} ${info.arch}`}
         />
-        <StatCard label="Uptime" value={formatUptime(props.stats.uptime)} />
+        <StatCard label="Uptime" value={formatUptime(info.uptime)} />
         <StatCard
           label="CPU Time"
           value={`${(cpuTotal / 1_000_000).toFixed(2)}s`}
-          sub={`user ${(props.stats.cpu.user / 1_000_000).toFixed(2)}s / sys ${
-            (props.stats.cpu.system / 1_000_000).toFixed(2)
+          sub={`user ${(cpuUser / 1_000_000).toFixed(2)}s / sys ${
+            (cpuSystem / 1_000_000).toFixed(2)
           }s`}
         />
         <StatCard
           label="Load Average"
-          value={props.stats.system.loadavg[0].toFixed(2)}
-          sub={`${props.stats.system.loadavg[0].toFixed(2)} / ${
-            props.stats.system.loadavg[1].toFixed(2)
-          } / ${
-            props.stats.system.loadavg[2].toFixed(2)
-          }  (${props.stats.system.cpuCount} cores)`}
+          value={load1.toFixed(2)}
+          sub={`${load1.toFixed(2)} / ${load5.toFixed(2)} / ${
+            load15.toFixed(2)
+          }  (${info.cpuCount} cores)`}
         />
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;padding:0 12px 12px">
         <BarMeter
           label="Heap Memory"
-          used={props.stats.memory.heapUsed}
-          total={props.stats.memory.heapTotal}
+          history={heapHistory}
+          total={heapTotal}
         />
         <BarMeter
           label="System Memory"
-          used={props.stats.system.totalmem - props.stats.system.freemem}
-          total={props.stats.system.totalmem}
+          history={sysUsedHistory}
+          total={info.totalmem}
         />
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;padding:0 12px 12px">
-        <StatCard label="RSS" value={formatBytes(props.stats.memory.rss)} />
+        <StatCard
+          label="RSS"
+          value={formatBytes(gaugeAt(series, "memory.rss"))}
+        />
         <StatCard
           label="Peak RSS"
-          value={formatBytes(props.stats.resourceUsage.maxRSS)}
+          value={formatBytes(gaugeAt(series, "resourceUsage.maxRSS"))}
         />
         <StatCard
           label="External"
-          value={formatBytes(props.stats.memory.external)}
+          value={formatBytes(gaugeAt(series, "memory.external"))}
         />
         <StatCard
           label="Array Buffers"
-          value={formatBytes(props.stats.memory.arrayBuffers)}
+          value={formatBytes(gaugeAt(series, "memory.arrayBuffers"))}
+        />
+        <StatCard
+          label="Free Memory"
+          value={formatBytes(freemem)}
         />
       </div>
       <div style="padding:0 12px 12px">
@@ -1709,45 +1890,45 @@ export function SystemStatsView(props: { stats: StudioStore.ProcessStats }) {
             Resource Usage
           </div>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:4px">
-            <div style="display:flex;justify-content:space-between;font-size:12px">
-              <span style="color:#6b7280">Page Faults (minor)</span>
-              <span style="color:#e5e7eb;font-family:monospace">
-                {props.stats.resourceUsage.minorPageFault}
-              </span>
-            </div>
-            <div style="display:flex;justify-content:space-between;font-size:12px">
-              <span style="color:#6b7280">Page Faults (major)</span>
-              <span style="color:#e5e7eb;font-family:monospace">
-                {props.stats.resourceUsage.majorPageFault}
-              </span>
-            </div>
-            <div style="display:flex;justify-content:space-between;font-size:12px">
-              <span style="color:#6b7280">FS Reads</span>
-              <span style="color:#e5e7eb;font-family:monospace">
-                {props.stats.resourceUsage.fsRead}
-              </span>
-            </div>
-            <div style="display:flex;justify-content:space-between;font-size:12px">
-              <span style="color:#6b7280">FS Writes</span>
-              <span style="color:#e5e7eb;font-family:monospace">
-                {props.stats.resourceUsage.fsWrite}
-              </span>
-            </div>
-            <div style="display:flex;justify-content:space-between;font-size:12px">
-              <span style="color:#6b7280">Context Switches (vol)</span>
-              <span style="color:#e5e7eb;font-family:monospace">
-                {props.stats.resourceUsage.voluntaryContextSwitches}
-              </span>
-            </div>
-            <div style="display:flex;justify-content:space-between;font-size:12px">
-              <span style="color:#6b7280">Context Switches (invol)</span>
-              <span style="color:#e5e7eb;font-family:monospace">
-                {props.stats.resourceUsage.involuntaryContextSwitches}
-              </span>
-            </div>
+            <ResourceRow
+              label="Page Faults (minor)"
+              value={gaugeAt(series, "resourceUsage.minorPageFault")}
+            />
+            <ResourceRow
+              label="Page Faults (major)"
+              value={gaugeAt(series, "resourceUsage.majorPageFault")}
+            />
+            <ResourceRow
+              label="FS Reads"
+              value={gaugeAt(series, "resourceUsage.fsRead")}
+            />
+            <ResourceRow
+              label="FS Writes"
+              value={gaugeAt(series, "resourceUsage.fsWrite")}
+            />
+            <ResourceRow
+              label="Context Switches (vol)"
+              value={gaugeAt(series, "resourceUsage.voluntaryContextSwitches")}
+            />
+            <ResourceRow
+              label="Context Switches (invol)"
+              value={gaugeAt(
+                series,
+                "resourceUsage.involuntaryContextSwitches",
+              )}
+            />
           </div>
         </div>
       </div>
     </>
+  )
+}
+
+function ResourceRow(props: { label: string; value: number }) {
+  return (
+    <div style="display:flex;justify-content:space-between;font-size:12px">
+      <span style="color:#6b7280">{props.label}</span>
+      <span style="color:#e5e7eb;font-family:monospace">{props.value}</span>
+    </div>
   )
 }

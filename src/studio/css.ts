@@ -76,7 +76,16 @@ body {
 .metrics-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-auto-rows: max-content;
+  align-content: start;
   gap: 12px;
+}
+.metric-card .metric-type {
+  opacity: 0;
+  transition: opacity 80ms;
+}
+.metric-card:hover .metric-type {
+  opacity: 1;
 }
 .empty {
   color: #64748b;
@@ -86,27 +95,27 @@ body {
   grid-column: 1 / -1;
 }
 .sparkline {
-  display: flex;
-  align-items: flex-end;
-  gap: 1px;
+  position: relative;
   height: 32px;
   width: 100%;
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+  overflow: visible;
 }
-.sparkline-bar {
-  flex: 1;
-  height: 100%;
-  position: relative;
-  display: flex;
-  align-items: flex-end;
-  min-width: 0;
-  margin: 0 1px;
-}
-.sparkline-fill {
+.sparkline-svg {
+  display: block;
   width: 100%;
-  background: #60a5fa;
+  height: 100%;
 }
-.sparkline-empty {
-  background: transparent;
+.sparkline-slots {
+  position: absolute;
+  inset: 0;
+  display: flex;
+}
+.sparkline-slot {
+  flex: 1;
+  position: relative;
+  min-width: 0;
 }
 .sparkline-popover {
   position: absolute;
@@ -131,10 +140,19 @@ body {
   font-size: 10px;
   margin-top: 2px;
 }
-.sparkline-bar:hover .sparkline-fill {
-  background: #93c5fd;
+.sparkline-slot:hover .sparkline-popover {
+  opacity: 1;
 }
-.sparkline-bar:hover .sparkline-popover {
+.sparkline-marker {
+  position: absolute;
+  width: 1px;
+  top: 0;
+  bottom: 0;
+  background: rgba(147, 197, 253, 0.4);
+  opacity: 0;
+  pointer-events: none;
+}
+.sparkline-slot:hover .sparkline-marker {
   opacity: 1;
 }
 
@@ -154,7 +172,6 @@ body {
 .wf-row:hover > .wf-bar-cell { background: #1e293b; }
 .wf-popover {
   margin: 0;
-  margin-left: 8px;
   padding: 0;
   border: 1px solid #334155;
   border-radius: 6px;
@@ -162,11 +179,19 @@ body {
   color: #e5e7eb;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
   inset: auto;
-  position-area: right span-bottom;
-  position-try-fallbacks: left span-bottom, right span-top, left span-top;
   max-width: min(560px, 60vw);
   min-width: 280px;
   font-size: 12px;
+}
+.wf-popover-right {
+  margin-left: 8px;
+  position-area: right span-bottom;
+  position-try-fallbacks: right span-top, left span-bottom, left span-top;
+}
+.wf-popover-left {
+  margin-right: 8px;
+  position-area: left span-bottom;
+  position-try-fallbacks: left span-top, right span-bottom, right span-top;
 }
 .wf-popover[popover]:popover-open {
   display: block;
@@ -181,8 +206,6 @@ body {
   font-family: monospace;
   color: #d1d5db;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   position: relative;
   display: flex;
   align-items: center;
@@ -226,6 +249,7 @@ body {
   position: relative;
   align-self: stretch;
   flex-shrink: 0;
+  margin: -4px 0;
 }
 .wf-vline {
   position: absolute;
@@ -239,7 +263,7 @@ body {
   width: 1px;
   background: #475569;
   top: 0;
-  height: 50%;
+  height: calc(50% + 0.5px);
 }
 .wf-hline {
   position: absolute;
@@ -291,12 +315,21 @@ body {
 .tl-cols { display: grid; grid-template-columns: 24px 1fr 48px 72px 90px; }
 .tl-header {
   position: sticky;
-  top: 0;
+  top: -8px;
   z-index: 1;
   background: #0f172a;
   border-bottom: 1px solid #334155;
   color: #64748b;
   font-size: 11px;
+}
+.tl-header::before {
+  content: "";
+  position: absolute;
+  left: -8px;
+  right: -8px;
+  top: -8px;
+  height: 8px;
+  background: #0f172a;
 }
 .tl-row { border-bottom: 1px solid #1e293b; color: inherit; text-decoration: none; }
 .tl-row:hover { background: #111827; }

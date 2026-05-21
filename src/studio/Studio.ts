@@ -63,7 +63,6 @@ function layerStudio(options?: Options) {
           spanCapacity: options?.spanCapacity ?? 1000,
           logCapacity: options?.logCapacity ?? 5000,
           errorCapacity: options?.errorCapacity ?? 1000,
-          process: undefined,
         }
         return {
           path: options?.path ?? "/studio",
