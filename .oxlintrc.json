@@ -106,6 +106,9 @@
     // Enforce each pipe(...) argument on its own line when 2+ args
     "effect-start/pipe-args-newline": "warn",
 
+    // Enforce each union type member on its own leading-pipe line
+    "effect-start/union-type-newline": "warn",
+
     // Disallow the `key` attribute on JSX elements
     "effect-start/no-jsx-key": "error"
   },

@@ -606,3 +606,76 @@ test.describe.skipIf(!process.env.TEST_LINT)("no-destructured-params", () => {
       )
   })
 })
+
+test.describe.skipIf(!process.env.TEST_LINT)("union-type-newline", () => {
+  test.it("flags union members on the same line", () => {
+    const code = [
+      "type Context = IntentHub.IntentHub | ChildProcess.ChildProcessSpawner | ai.LanguageModel.LanguageModel",
+      "",
+    ]
+      .join("\n")
+    const diags = lintRule(code, "union-type-newline")
+
+    test
+      .expect(diags)
+      .toHaveLength(1)
+  })
+
+  test.it("allows leading-pipe union members on separate lines", () => {
+    const code = [
+      "type Context =",
+      "  | IntentHub.IntentHub",
+      "  | ChildProcess.ChildProcessSpawner",
+      "  | ai.LanguageModel.LanguageModel",
+      "",
+    ]
+      .join("\n")
+    const diags = lintRule(code, "union-type-newline")
+
+    test
+      .expect(diags)
+      .toHaveLength(0)
+  })
+
+  test.it("fixes generic type argument unions", () => {
+    const code = [
+      "const managerContext = yield* Effect.context<",
+      "  IntentHub.IntentHub | ChildProcess.ChildProcessSpawner | ai.LanguageModel.LanguageModel",
+      ">()",
+      "",
+    ]
+      .join("\n")
+    const fixed = lintFix(code)
+
+    test
+      .expect(fixed)
+      .toBe(
+        [
+          "const managerContext = yield* Effect.context<",
+          "  | IntentHub.IntentHub",
+          "  | ChildProcess.ChildProcessSpawner",
+          "  | ai.LanguageModel.LanguageModel",
+          ">()",
+          "",
+        ]
+          .join("\n"),
+      )
+  })
+
+  test.it("fixes inline type aliases", () => {
+    const fixed = lintFix(`type Context = A | B | C\n`)
+
+    test
+      .expect(fixed)
+      .toBe(
+        [
+          "type Context =",
+          "  | A",
+          "  | B",
+          "  | C",
+          "",
+        ]
+          .join("\n"),
+      )
+  })
+})

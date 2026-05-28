@@ -525,6 +525,78 @@ export default {
       },
     },
 
+    "union-type-newline": {
+      meta: {
+        type: "layout",
+        docs: {
+          description: "Enforce each union type member on its own leading-pipe line",
+        },
+        fixable: "whitespace",
+        schema: [],
+        messages: {
+          requireNewline: "Each union type member should be on its own line",
+        },
+      },
+      create(context) {
+        const sourceCode = context.sourceCode || context.getSourceCode()
+        const text = sourceCode.getText()
+
+        function getLineStart(index) {
+          return text.lastIndexOf("\n", index - 1) + 1
+        }
+
+        function getIndent(node) {
+          const lineStart = getLineStart(node.range[0])
+          const prefix = text.slice(lineStart, node.range[0])
+          if (prefix.trim() === "") return prefix
+          const leading = prefix.match(/^\s*/)[0]
+          return leading + "  "
+        }
+
+        function getFixRange(node) {
+          const lineStart = getLineStart(node.range[0])
+          const prefix = text.slice(lineStart, node.range[0])
+          if (prefix.trim() === "") return node.range
+
+          let start = node.range[0]
+          while (start > lineStart && /[ \t]/.test(text[start - 1])) {
+            start--
+          }
+          return [start, node.range[1]]
+        }
+
+        function getReplacement(node) {
+          const indent = getIndent(node)
+          const lineStart = getLineStart(node.range[0])
+          const prefix = text.slice(lineStart, node.range[0])
+          const formatted = node.types
+            .map((type) => indent + "| " + sourceCode.getText(type))
+            .join("\n")
+
+          if (prefix.trim() === "") return formatted.slice(indent.length)
+          return "\n" + formatted
+        }
+
+        return {
+          TSUnionType(node) {
+            if (node.types.length < 2) return
+
+            const replacement = getReplacement(node)
+            const range = getFixRange(node)
+            if (text.slice(range[0], range[1]) === replacement) return
+
+            context.report({
+              node,
+              messageId: "requireNewline",
+              fix(fixer) {
+                return fixer.replaceTextRange(range, replacement)
+              },
+            })
+          },
+        }
+      },
+    },
+
     "test-assertion-newline": {
       meta: {
         type: "layout",
