@@ -826,24 +826,16 @@ test.describe.skipIf(!process.env.TEST_LINT)("type-operator-newline", () => {
       )
   })
 
-  test.it("parenthesizes conditional type members before outer conditional branches", () => {
+  test.it("ignores conditional type check unions", () => {
     const code = [
       "type Req<R, K extends string> = R extends \"allowed\" | (K extends keyof R ? never : R) ? true : false",
       "",
     ]
       .join("\n")
-    const fixed = lintFix(code)
+    const diags = lintRule(code, "type-operator-newline")
 
     test
-      .expect(fixed)
-      .toBe(
-        [
-          "type Req<R, K extends string> = R extends",
-          "  | \"allowed\"",
-          "  | (K extends keyof R ? never : R) ? true : false",
-          "",
-        ]
-          .join("\n"),
-      )
+      .expect(diags)
+      .toHaveLength(0)
   })
 })

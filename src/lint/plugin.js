@@ -599,6 +599,25 @@ export default {
 
         function checkTypeOperator(node, operator) {
           if (node.types.length < 2) return
+          const ancestors = sourceCode.getAncestors(node)
+          const parent = ancestors[ancestors.length - 1]
+          const grandparent = ancestors[ancestors.length - 2]
+          if (
+            parent &&
+            (
+              (
+                parent.type === "TSTypeAnnotation" &&
+                grandparent &&
+                (
+                  grandparent.type === "TSFunctionType" ||
+                  grandparent.type === "TSConstructorType"
+                )
+              ) ||
+              parent.type === "TSConditionalType"
+            )
+          ) {
+            return
+          }
 
           const replacement = getReplacement(node, operator)
           const range = getFixRange(node)
