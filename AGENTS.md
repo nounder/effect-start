@@ -24,7 +24,7 @@ bunx tsc
 
 ```ts
 // when importing Node modules name them like such:
-import * as NPath from "node:path`
+import * as NUrl from "node:url`
 // always import test module as namespace:
 import * as test from "bun:test"
 // import Effect sub-modules directly
@@ -84,31 +84,40 @@ tsgo
 import * as test from "bun:test"
 
 // use test.expect when testing runtime
-test.expect(routes).toEqual([
-  {
-    type: "Literal",
-  },
-])
+test
+  .expect(routes)
+  .toEqual([
+    {
+      type: "Literal",
+    },
+  ])
 
 // use test.expectTypeOf when testing types
-test.expectTypeOf(context).toMatchObjectType<{
-  method: "GET"
-}>()
+test
+  .expectTypeOf(context)
+  .toMatchObjectType<{
+    method: "GET"
+  }>()
 ```
 
 ```ts
 // when test runs effect, wrap the entire body in Effect.gen/pipe
 test.it("does something", () =>
   Effect.gen(function* () {
-    yield* Commander.parse(cmd, args)
+    const parsed = yield* Commander.parse(cmd, args)
 
-    test.expect(executed).toBe(false)
+    test
+      .expect(parsed.args)
+      .toBe([])
   }).pipe(Effect.scoped, Effect.runPromise),
 )
 
 // bad
 test.it("does something", async () => {
   await Effect.runPromise(Commander.parse(cmd, args))
-  test.expect(executed).toBe(false)
+
+  test
+    .expect(executed)
+    .toBe(false)
 })
 ```
