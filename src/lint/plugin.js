@@ -525,16 +525,16 @@ export default {
       },
     },
 
-    "union-type-newline": {
+    "type-operator-newline": {
       meta: {
         type: "layout",
         docs: {
-          description: "Enforce each union type member on its own leading-pipe line",
+          description: "Enforce each union or intersection type member on its own operator-prefixed line",
         },
         fixable: "whitespace",
         schema: [],
         messages: {
-          requireNewline: "Each union type member should be on its own line",
+          requireNewline: "Each union or intersection type member should be on its own line",
         },
       },
       create(context) {
@@ -565,33 +565,72 @@ export default {
           return [start, node.range[1]]
         }
 
-        function getReplacement(node) {
+        function getMemberText(type, indent, operator, isInlineExpression) {
+          const raw = sourceCode.getText(type)
+          if (!raw.includes("\n")) return raw
+
+          const lines = raw.split("\n")
+          if (isInlineExpression) {
+            return lines
+              .map((line, index) => index === 0 ? line : indent + line)
+              .join("\n")
+          }
+
+          const targetColumn = indent.length + operator.length + 1
+          const delta = targetColumn - type.loc.start.column
+          return lines
+            .map((line, index) => {
+              if (index === 0) return line
+              if (delta >= 0) return " ".repeat(delta) + line
+
+              let remaining = -delta
+              let offset = 0
+              while (remaining > 0 && line[offset] === " ") {
+                remaining--
+                offset++
+              }
+              return line.slice(offset)
+            })
+            .join("\n")
+        }
+
+        function getReplacement(node, operator) {
           const indent = getIndent(node)
           const lineStart = getLineStart(node.range[0])
           const prefix = text.slice(lineStart, node.range[0])
+          const isInlineExpression = prefix.trim() !== ""
           const formatted = node.types
-            .map((type) => indent + "| " + sourceCode.getText(type))
+            .map((type) =>
+              indent + operator + " " + getMemberText(type, indent, operator, isInlineExpression)
+            )
             .join("\n")
 
-          if (prefix.trim() === "") return formatted.slice(indent.length)
+          if (!isInlineExpression) return formatted.slice(indent.length)
           return "\n" + formatted
+        }
+
+        function checkTypeOperator(node, operator) {
+          if (node.types.length < 2) return
+
+          const replacement = getReplacement(node, operator)
+          const range = getFixRange(node)
+          if (text.slice(range[0], range[1]) === replacement) return
+
+          context.report({
+            node,
+            messageId: "requireNewline",
+            fix(fixer) {
+              return fixer.replaceTextRange(range, replacement)
+            },
+          })
         }
 
         return {
           TSUnionType(node) {
-            if (node.types.length < 2) return
-
-            const replacement = getReplacement(node)
-            const range = getFixRange(node)
-            if (text.slice(range[0], range[1]) === replacement) return
-
-            context.report({
-              node,
-              messageId: "requireNewline",
-              fix(fixer) {
-                return fixer.replaceTextRange(range, replacement)
-              },
-            })
+            checkTypeOperator(node, "|")
+          },
+          TSIntersectionType(node) {
+            checkTypeOperator(node, "&")
           },
         }
       },

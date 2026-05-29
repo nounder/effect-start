@@ -607,14 +607,14 @@ test.describe.skipIf(!process.env.TEST_LINT)("no-destructured-params", () => {
   })
 })
 
-test.describe.skipIf(!process.env.TEST_LINT)("union-type-newline", () => {
+test.describe.skipIf(!process.env.TEST_LINT)("type-operator-newline", () => {
   test.it("flags union members on the same line", () => {
     const code = [
       "type Context = IntentHub.IntentHub | ChildProcess.ChildProcessSpawner | ai.LanguageModel.LanguageModel",
       "",
     ]
       .join("\n")
-    const diags = lintRule(code, "union-type-newline")
+    const diags = lintRule(code, "type-operator-newline")
 
     test
       .expect(diags)
@@ -630,7 +630,7 @@ test.describe.skipIf(!process.env.TEST_LINT)("union-type-newline", () => {
       "",
     ]
       .join("\n")
-    const diags = lintRule(code, "union-type-newline")
+    const diags = lintRule(code, "type-operator-newline")
 
     test
       .expect(diags)
@@ -673,6 +673,85 @@ test.describe.skipIf(!process.env.TEST_LINT)("union-type-newline", () => {
           "  | A",
           "  | B",
           "  | C",
+          "",
+        ]
+          .join("\n"),
+      )
+  })
+
+  test.it("flags intersection members on the same line", () => {
+    const code = [
+      "export type Options = BrowserOptions & {",
+      "  readonly url: string",
+      "}",
+      "",
+    ]
+      .join("\n")
+    const diags = lintRule(code, "type-operator-newline")
+
+    test
+      .expect(diags)
+      .toHaveLength(1)
+  })
+
+  test.it("allows leading-ampersand intersection members on separate lines", () => {
+    const code = [
+      "export type Options =",
+      "  & BrowserOptions",
+      "  & {",
+      "    readonly url: string",
+      "  }",
+      "",
+    ]
+      .join("\n")
+    const diags = lintRule(code, "type-operator-newline")
+
+    test
+      .expect(diags)
+      .toHaveLength(0)
+  })
+
+  test.it("fixes intersection type aliases", () => {
+    const code = [
+      "export type Options = BrowserOptions & {",
+      "  readonly url: string",
+      "}",
+      "",
+    ]
+      .join("\n")
+    const fixed = lintFix(code)
+
+    test
+      .expect(fixed)
+      .toBe(
+        [
+          "export type Options =",
+          "  & BrowserOptions",
+          "  & {",
+          "    readonly url: string",
+          "  }",
+          "",
+        ]
+          .join("\n"),
+      )
+  })
+
+  test.it("fixes unions in generic type arguments", () => {
+    const code = [
+      "type BrowserOptions = Omit<Browser.OpenOptions, \"url\" | \"headless\" | \"titlebar\">",
+      "",
+    ]
+      .join("\n")
+    const fixed = lintFix(code)
+
+    test
+      .expect(fixed)
+      .toBe(
+        [
+          "type BrowserOptions = Omit<Browser.OpenOptions,",
+          "  | \"url\"",
+          "  | \"headless\"",
+          "  | \"titlebar\">",
           "",
         ]
           .join("\n"),
