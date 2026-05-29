@@ -138,6 +138,10 @@
       "bun": "./src/lint/plugin.js",
       "default": "./dist/lint/plugin.js"
     },
+    "./lint/config": {
+      "bun": "./src/lint/config.ts",
+      "default": "./dist/lint/config.js"
+    },
     "./bun": {
       "bun": "./src/bun/index.ts",
       "default": "./dist/bun/index.js"
