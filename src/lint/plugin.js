@@ -426,34 +426,6 @@ export default {
       },
     },
 
-    "no-jsx-key": {
-      meta: {
-        type: "suggestion",
-        docs: {
-          description: "Disallow the `key` attribute on JSX elements",
-        },
-        schema: [],
-        messages: {
-          noKey: "Do not use the `key` attribute in JSX when jsxImportSource=effect-start",
-        },
-      },
-      create(context) {
-        return {
-          JSXAttribute(node) {
-            if (
-              node.name.type === "JSXIdentifier" &&
-              node.name.name === "key"
-            ) {
-              context.report({
-                node,
-                messageId: "noKey",
-              })
-            }
-          },
-        }
-      },
-    },
-
     "pipe-args-newline": {
       meta: {
         type: "layout",
@@ -567,15 +539,20 @@ export default {
 
         function getMemberText(type, indent, operator, isInlineExpression) {
           const raw = sourceCode.getText(type)
-          if (!raw.includes("\n")) return raw
+          const wrap = shouldParenthesizeTypeMember(type)
+          if (!raw.includes("\n")) return wrap ? "(" + raw + ")" : raw
 
           const lines = raw.split("\n")
-          if (isInlineExpression) {
-            return lines
+          const formatted = isInlineExpression
+            ? lines
               .map((line, index) => index === 0 ? line : indent + line)
               .join("\n")
-          }
+            : formatMultilineMember(type, lines, indent, operator)
 
+          return wrap ? "(" + formatted + ")" : formatted
+        }
+
+        function formatMultilineMember(type, lines, indent, operator) {
           const targetColumn = indent.length + operator.length + 1
           const delta = targetColumn - type.loc.start.column
           return lines
@@ -594,15 +571,26 @@ export default {
             .join("\n")
         }
 
+        function shouldParenthesizeTypeMember(type) {
+          return (
+            type.type === "TSFunctionType" ||
+            type.type === "TSConstructorType" ||
+            type.type === "TSConditionalType" ||
+            (
+              type.type === "TSParenthesizedType" &&
+              shouldParenthesizeTypeMember(type.typeAnnotation)
+            )
+          )
+        }
+
         function getReplacement(node, operator) {
           const indent = getIndent(node)
           const lineStart = getLineStart(node.range[0])
           const prefix = text.slice(lineStart, node.range[0])
           const isInlineExpression = prefix.trim() !== ""
-          const formatted = node.types
-            .map((type) =>
-              indent + operator + " " + getMemberText(type, indent, operator, isInlineExpression)
-            )
+          const formatted = node
+            .types
+            .map((type) => indent + operator + " " + getMemberText(type, indent, operator, isInlineExpression))
             .join("\n")
 
           if (!isInlineExpression) return formatted.slice(indent.length)

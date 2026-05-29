@@ -757,4 +757,93 @@ test.describe.skipIf(!process.env.TEST_LINT)("type-operator-newline", () => {
           .join("\n"),
       )
   })
+
+  test.it("parenthesizes function type members in unions", () => {
+    const code = [
+      "type Finalizer = string | (() => void) | undefined",
+      "",
+    ]
+      .join("\n")
+    const fixed = lintFix(code)
+
+    test
+      .expect(fixed)
+      .toBe(
+        [
+          "type Finalizer =",
+          "  | string",
+          "  | (() => void)",
+          "  | undefined",
+          "",
+        ]
+          .join("\n"),
+      )
+  })
+
+  test.it("parenthesizes multiline function type members in unions", () => {
+    const code = [
+      "type Handler = string | ((",
+      "  event: E,",
+      ") => void)",
+      "",
+    ]
+      .join("\n")
+    const fixed = lintFix(code)
+
+    test
+      .expect(fixed)
+      .toBe(
+        [
+          "type Handler =",
+          "  | string",
+          "  | ((",
+          "    event: E,",
+          "  ) => void)",
+          "",
+        ]
+          .join("\n"),
+      )
+  })
+
+  test.it("parenthesizes conditional type members in unions", () => {
+    const code = [
+      "type Req<R, K extends string> = \"allowed\" | (K extends keyof R ? never : R)",
+      "",
+    ]
+      .join("\n")
+    const fixed = lintFix(code)
+
+    test
+      .expect(fixed)
+      .toBe(
+        [
+          "type Req<R, K extends string> =",
+          "  | \"allowed\"",
+          "  | (K extends keyof R ? never : R)",
+          "",
+        ]
+          .join("\n"),
+      )
+  })
+
+  test.it("parenthesizes conditional type members before outer conditional branches", () => {
+    const code = [
+      "type Req<R, K extends string> = R extends \"allowed\" | (K extends keyof R ? never : R) ? true : false",
+      "",
+    ]
+      .join("\n")
+    const fixed = lintFix(code)
+
+    test
+      .expect(fixed)
+      .toBe(
+        [
+          "type Req<R, K extends string> = R extends",
+          "  | \"allowed\"",
+          "  | (K extends keyof R ? never : R) ? true : false",
+          "",
+        ]
+          .join("\n"),
+      )
+  })
 })
