@@ -109,7 +109,6 @@ export const formatRules: Rules = {
   "effect-start/test-space-around": "warn",
   "effect-start/test-assertion-newline": "warn",
   "effect-start/pipe-args-newline": "warn",
-  "effect-start/type-operator-newline": "warn",
 }
 
 /**

@@ -838,4 +838,22 @@ test.describe.skipIf(!process.env.TEST_LINT)("type-operator-newline", () => {
       .expect(diags)
       .toHaveLength(0)
   })
+
+  test.it("ignores unions in function return types", () => {
+    const code = [
+      "type Options = {",
+      "  onerror?: (err: any) => number | null | undefined | void",
+      "}",
+      "",
+    ]
+      .join("\n")
+
+    test
+      .expect(lintRule(code, "type-operator-newline"))
+      .toHaveLength(0)
+
+    test
+      .expect(lintFix(code))
+      .toBe(code)
+  })
 })
