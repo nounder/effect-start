@@ -7,7 +7,8 @@ test.describe(Bundle.makeResolver, () => {
       "effect-start/datastar": "datastar-abc.js",
     })
 
-    test.expect(resolve("effect-start/datastar"))
+    test
+      .expect(resolve("effect-start/datastar"))
       .toBe("datastar-abc.js")
   })
 
@@ -16,7 +17,8 @@ test.describe(Bundle.makeResolver, () => {
       "speak/client.ts": "client-xyz.js",
     })
 
-    test.expect(resolve("./client.ts"))
+    test
+      .expect(resolve("./client.ts"))
       .toBe("client-xyz.js")
   })
 
@@ -25,7 +27,8 @@ test.describe(Bundle.makeResolver, () => {
       "speak/client.ts": "client-xyz.js",
     })
 
-    test.expect(resolve("./missing.ts"))
+    test
+      .expect(resolve("./missing.ts"))
       .toBeUndefined()
   })
 
@@ -37,7 +40,8 @@ test.describe(Bundle.makeResolver, () => {
         "speak/client.ts": "client-ccc.js",
       })
 
-      test.expect(resolve("./client.ts"))
+      test
+        .expect(resolve("./client.ts"))
         .toBeUndefined()
     })
 
@@ -47,9 +51,11 @@ test.describe(Bundle.makeResolver, () => {
         "other/thing.ts": "thing-yyy.js",
       })
 
-      test.expect(resolve("./b/widget.ts"))
+      test
+        .expect(resolve("./b/widget.ts"))
         .toBe("widget-xxx.js")
-      test.expect(resolve("./widget.ts"))
+      test
+        .expect(resolve("./widget.ts"))
         .toBe("widget-xxx.js")
     })
   })

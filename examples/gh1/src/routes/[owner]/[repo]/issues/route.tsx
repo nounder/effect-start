@@ -1,10 +1,10 @@
 import { Schema } from "effect"
 import { Route } from "effect-start"
 import * as Github from "../../../../Github.ts"
-import { EmptyState } from "../../../../ui/EmptyState.tsx"
-import { IssueRow, StateFilter } from "../../../../ui/Issue.tsx"
-import { Layout } from "../../../../ui/Layout.tsx"
-import { Tabs } from "../../../../ui/Tabs.tsx"
+import * as EmptyState from "../../../../ui/EmptyState.tsx"
+import * as Issue from "../../../../ui/Issue.tsx"
+import * as Layout from "../../../../ui/Layout.tsx"
+import * as Tabs from "../../../../ui/Tabs.tsx"
 
 export default Route.get(
   Route.schemaPathParams({ owner: Schema.String, repo: Schema.String }),
@@ -20,10 +20,10 @@ export default Route.get(
     const filtered = issues.filter((i: any) => !i.pull_request)
 
     return (
-      <Layout>
+      <Layout.Layout>
         <div class="pt-4">
           <RepoHeader owner={owner} repo={repo} />
-          <Tabs
+          <Tabs.Tabs
             items={[
               {
                 label: "Code",
@@ -49,7 +49,7 @@ export default Route.get(
             ]}
           />
 
-          <StateFilter
+          <Issue.StateFilter
             current={state}
             openHref={Route.link("/:owner/:repo/issues", {
               owner,
@@ -65,7 +65,7 @@ export default Route.get(
 
           {filtered.length === 0 ?
             (
-              <EmptyState
+              <EmptyState.EmptyState
                 title="No issues found"
                 description={`There are no ${state} issues`}
               />
@@ -73,7 +73,7 @@ export default Route.get(
             (
               <div class="border border-[#21262d] rounded-md divide-y divide-[#21262d]">
                 {filtered.map((issue: any) => (
-                  <IssueRow
+                  <Issue.IssueRow
                     number={issue.number}
                     title={issue.title}
                     state={issue.state}
@@ -88,7 +88,7 @@ export default Route.get(
               </div>
             )}
         </div>
-      </Layout>
+      </Layout.Layout>
     )
   }),
 )

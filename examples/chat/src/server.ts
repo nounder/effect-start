@@ -1,6 +1,6 @@
 import { Development, FileRouter, Start } from "effect-start"
 import { BunBundle, BunServer } from "effect-start/bun"
-import { Simulation, Studio } from "effect-start/studio"
+import { Studio } from "effect-start/studio"
 import { TailwindPlugin } from "effect-start/tailwind"
 
 export default Start.pack(

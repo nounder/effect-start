@@ -1,10 +1,10 @@
 import { Schema } from "effect"
 import { Route } from "effect-start"
 import * as Github from "../../../../Github.ts"
-import { CommitRow } from "../../../../ui/Commit.tsx"
-import { EmptyState } from "../../../../ui/EmptyState.tsx"
-import { Layout } from "../../../../ui/Layout.tsx"
-import { Tabs } from "../../../../ui/Tabs.tsx"
+import * as Commit from "../../../../ui/Commit.tsx"
+import * as EmptyState from "../../../../ui/EmptyState.tsx"
+import * as Layout from "../../../../ui/Layout.tsx"
+import * as Tabs from "../../../../ui/Tabs.tsx"
 
 export default Route.get(
   Route.schemaPathParams({ owner: Schema.String, repo: Schema.String }),
@@ -24,10 +24,10 @@ export default Route.get(
     }
 
     return (
-      <Layout>
+      <Layout.Layout>
         <div class="pt-4">
           <RepoHeader owner={owner} repo={repo} />
-          <Tabs
+          <Tabs.Tabs
             items={[
               {
                 label: "Code",
@@ -55,7 +55,7 @@ export default Route.get(
 
           {commits.length === 0 ?
             (
-              <EmptyState
+              <EmptyState.EmptyState
                 title="No commits"
                 description="This repository has no commits"
               />
@@ -77,7 +77,7 @@ export default Route.get(
                     </h3>
                     <div class="border border-[#21262d] rounded-md divide-y divide-[#21262d]">
                       {dayCommits.map((c: any) => (
-                        <CommitRow
+                        <Commit.CommitRow
                           sha={c.sha}
                           message={c.commit.message}
                           author={c.author?.login ?? c.commit.author.name}
@@ -93,7 +93,7 @@ export default Route.get(
               </div>
             )}
         </div>
-      </Layout>
+      </Layout.Layout>
     )
   }),
 )

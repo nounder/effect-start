@@ -1,9 +1,9 @@
 import { Schema } from "effect"
 import { Route } from "effect-start"
 import * as Github from "../../Github.ts"
-import { Layout } from "../../ui/Layout.tsx"
-import { RepoCard } from "../../ui/Repo.tsx"
-import { Tabs } from "../../ui/Tabs.tsx"
+import * as Layout from "../../ui/Layout.tsx"
+import * as Repo from "../../ui/Repo.tsx"
+import * as Tabs from "../../ui/Tabs.tsx"
 
 export default Route.get(
   Route.schemaPathParams({ owner: Schema.String }),
@@ -25,7 +25,7 @@ export default Route.get(
       : Github.getUserRepos(owner, { sort: "updated", per_page: 30 })
 
     return (
-      <Layout>
+      <Layout.Layout>
         <div class="flex flex-col lg:flex-row gap-8 pt-4">
           <aside class="lg:w-[296px] shrink-0">
             <img
@@ -145,7 +145,7 @@ export default Route.get(
           </aside>
 
           <div class="flex-1 min-w-0">
-            <Tabs
+            <Tabs.Tabs
               items={[
                 {
                   label: "Repositories",
@@ -163,7 +163,7 @@ export default Route.get(
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               {[...displayRepos].map((r) => (
-                <RepoCard
+                <Repo.RepoCard
                   owner={r.owner.login}
                   name={r.name}
                   description={r.description}
@@ -177,14 +177,14 @@ export default Route.get(
             </div>
           </div>
         </div>
-      </Layout>
+      </Layout.Layout>
     )
   }),
 )
 
 function renderOrg(org: Github.User, repos: ReadonlyArray<Github.Repo>) {
   return (
-    <Layout>
+    <Layout.Layout>
       <div class="pt-6">
         <div class="flex items-center gap-4 mb-6">
           <img
@@ -223,7 +223,7 @@ function renderOrg(org: Github.User, repos: ReadonlyArray<Github.Repo>) {
           </div>
         </div>
 
-        <Tabs
+        <Tabs.Tabs
           items={[
             {
               label: "Repositories",
@@ -236,7 +236,7 @@ function renderOrg(org: Github.User, repos: ReadonlyArray<Github.Repo>) {
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           {repos.map((r) => (
-            <RepoCard
+            <Repo.RepoCard
               owner={r.owner.login}
               name={r.name}
               description={r.description}
@@ -249,6 +249,6 @@ function renderOrg(org: Github.User, repos: ReadonlyArray<Github.Repo>) {
           ))}
         </div>
       </div>
-    </Layout>
+    </Layout.Layout>
   )
 }

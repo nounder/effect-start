@@ -57,9 +57,11 @@ test.describe("studio layer basic auth", () => {
       Effect.gen(function*() {
         const entity = yield* client.get("http://localhost/studio/services")
 
-        test.expect(entity.status)
+        test
+          .expect(entity.status)
           .toBe(200)
-        test.expect(yield* entity.text)
+        test
+          .expect(yield* entity.text)
           .toContain("Services")
       })))
 
@@ -70,9 +72,11 @@ test.describe("studio layer basic auth", () => {
         Effect.gen(function*() {
           const entity = yield* client.get("http://localhost/studio/services")
 
-          test.expect(entity.status)
+          test
+            .expect(entity.status)
             .toBe(401)
-          test.expect(entity.headers["www-authenticate"])
+          test
+            .expect(entity.headers["www-authenticate"])
             .toBe(
             "Basic realm=\"Studio\", charset=\"UTF-8\"",
           )
@@ -92,7 +96,8 @@ test.describe("studio layer basic auth", () => {
             { headers: { authorization: wrong } },
           )
 
-          test.expect(entity.status)
+          test
+            .expect(entity.status)
             .toBe(401)
         }),
     ))
@@ -108,9 +113,11 @@ test.describe("studio layer basic auth", () => {
             { headers: { authorization: ok } },
           )
 
-          test.expect(entity.status)
+          test
+            .expect(entity.status)
             .toBe(200)
-          test.expect(yield* entity.text)
+          test
+            .expect(yield* entity.text)
             .toContain("Services")
         }),
     ))

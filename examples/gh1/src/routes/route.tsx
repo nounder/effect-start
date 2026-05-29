@@ -1,7 +1,7 @@
 import { Route } from "effect-start"
 import * as Github from "../Github.ts"
-import { Layout } from "../ui/Layout.tsx"
-import { RepoListItem } from "../ui/Repo.tsx"
+import * as Layout from "../ui/Layout.tsx"
+import * as Repo from "../ui/Repo.tsx"
 
 export default Route.get(
   Route.html(function*() {
@@ -9,7 +9,7 @@ export default Route.get(
     const repos = trending.items
 
     return (
-      <Layout>
+      <Layout.Layout>
         <div class="mb-8 pt-8 pb-4">
           <h1 class="text-3xl font-bold mb-1">
             Explore
@@ -47,7 +47,7 @@ export default Route.get(
                 {i + 1}
               </span>
               <div class="flex-1">
-                <RepoListItem
+                <Repo.RepoListItem
                   owner={r.owner.login}
                   repo={r.name}
                   description={r.description}
@@ -61,7 +61,7 @@ export default Route.get(
             </div>
           ))}
         </div>
-      </Layout>
+      </Layout.Layout>
     )
   }),
 )

@@ -1,9 +1,9 @@
 import type { DataEvent, HTMLOrSVG } from "./jsx.d.ts"
+import { aliasify, hasOwn, isHTMLOrSVG, isPojo, pathToObj, snake } from "./utils.ts"
 export type {
   DataEvent,
   HTMLOrSVG,
 }
-import { aliasify, hasOwn, isHTMLOrSVG, isPojo, pathToObj, snake } from "./utils.ts"
 
 /*********
  * consts.ts

@@ -3,7 +3,7 @@ import * as Layer from "effect/Layer"
 import * as PubSub from "effect/PubSub"
 import * as Schedule from "effect/Schedule"
 import * as NOS from "node:os"
-import * as SqlClient from "../sql/SqlClient.ts"
+import type * as SqlClient from "../sql/SqlClient.ts"
 import * as Studio from "./Studio.ts"
 import * as StudioStore from "./StudioStore.ts"
 
