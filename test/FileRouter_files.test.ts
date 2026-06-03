@@ -29,12 +29,12 @@ test.it("walks routes", () =>
     test
       .expect(files.map((v) => v.modulePath))
       .toEqual([
-        "/layer.tsx",
-        "/about/layer.tsx",
-        "/about/route.tsx",
-        "/users/layer.tsx",
-        "/users/route.tsx",
-        "/users/[userId]/route.tsx",
+        "layer.tsx",
+        "about/layer.tsx",
+        "about/route.tsx",
+        "users/layer.tsx",
+        "users/route.tsx",
+        "users/[userId]/route.tsx",
       ])
   }))
 
@@ -53,14 +53,14 @@ test.it("walks routes with rest", () =>
     test
       .expect(files.map((v) => v.modulePath))
       .toEqual([
-        "/layer.tsx",
-        "/about/layer.tsx",
-        "/about/route.tsx",
-        "/users/layer.tsx",
-        "/users/route.tsx",
-        "/users/[userId]/route.tsx",
-        "/users/[[path]]/route.tsx",
-        "/[[rest]]/route.tsx",
+        "layer.tsx",
+        "about/layer.tsx",
+        "about/route.tsx",
+        "users/layer.tsx",
+        "users/route.tsx",
+        "users/[userId]/route.tsx",
+        "users/[[path]]/route.tsx",
+        "[[rest]]/route.tsx",
       ])
   }))
 
@@ -84,10 +84,10 @@ test.it("walks routes with groups", () =>
         })),
       )
       .toEqual([
-        { modulePath: "/(admin)/layer.tsx", routePath: "/" },
-        { modulePath: "/users/route.tsx", routePath: "/users" },
+        { modulePath: "(admin)/layer.tsx", routePath: "/" },
+        { modulePath: "users/route.tsx", routePath: "/users" },
         {
-          modulePath: "/(admin)/users/manage/route.tsx",
+          modulePath: "(admin)/users/manage/route.tsx",
           routePath: "/users/manage",
         },
       ])

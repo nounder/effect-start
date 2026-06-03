@@ -130,8 +130,8 @@ export function generateCode(
     layer: FileRouter.FileRoute,
     route: FileRouter.FileRoute,
   ): boolean => {
-    const layerDir = layer.modulePath.replace(/\/(layer)\.(tsx?|jsx?)$/, "")
-    if (layerDir === "/") return true
+    const layerDir = layer.modulePath.replace(/(^|\/)(layer)\.(tsx?|jsx?)$/, "")
+    if (layerDir === "") return true
     return route.modulePath.startsWith(layerDir + "/")
   }
 
@@ -160,8 +160,8 @@ export function generateCode(
 
     // Order: layers from outermost to innermost, then route
     const loaders: Array<string> = [
-      ...allLayers.map((layer) => `() => import(".${layer.modulePath}")`),
-      `() => import(".${route.modulePath}")`,
+      ...allLayers.map((layer) => `() => import("./${layer.modulePath}")`),
+      `() => import("./${route.modulePath}")`,
     ]
 
     entries.push({ path, loaders })

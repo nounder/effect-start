@@ -54,9 +54,9 @@ export namespace FileRouteMap {
 
 export type FileRoute = {
   handle: "route" | "layer"
-  // eg. `/about/route.tsx`, `/users/[userId]/route.tsx`, `/(admin)/users/route.tsx`
-  modulePath: `/${string}`
-  // eg. `/about`, `/users/:userId`, `/users` (groups stripped)
+  // eg. `users/[userId]/route.tsx`, `(admin)/users/route.tsx`
+  modulePath: string
+  // eg. `/about`, `/users/:userId`, `/users` (groups stripped + leading slash)
   routePath: PathPattern.PathPattern
 }
 
@@ -87,7 +87,7 @@ export function parseRoute(path: string): FileRoute | null {
 
   return {
     handle,
-    modulePath: `/${normalizedPath}`,
+    modulePath: normalizedPath,
     routePath: routePathResult.right,
   }
 }
