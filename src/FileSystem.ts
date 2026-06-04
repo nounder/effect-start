@@ -123,15 +123,14 @@ export interface FileSystem {
 
 export const FileSystem: Context.Tag<FileSystem, FileSystem> = Context
   .GenericTag<FileSystem>(
-    "@effect/platform/FileSystem",
+    "effect-start/FileSystem",
   )
 
 export type Size = Brand.Branded<bigint, "Size">
 
 export type SizeInput = bigint | number | Size
 
-export const Size = (bytes: SizeInput): Size =>
-  typeof bytes === "bigint" ? (bytes as Size) : (BigInt(bytes) as Size)
+export const Size = (bytes: SizeInput): Size => typeof bytes === "bigint" ? (bytes as Size) : (BigInt(bytes) as Size)
 
 export type OpenFlag =
   | "r"
@@ -211,9 +210,7 @@ export interface WatchOptions {
   readonly recursive?: boolean
 }
 
-export const FileTypeId: unique symbol = Symbol.for(
-  "@effect/platform/FileSystem/File",
-)
+export const FileTypeId = "~effect-start/FileSystem/File"
 
 export type FileTypeId = typeof FileTypeId
 
@@ -308,18 +305,16 @@ export const WatchEventRemove: Data.Case.Constructor<
   "_tag"
 > = Data.tagged<WatchEvent.Remove>("Remove")
 
-export class WatchBackend
-  extends Context.Tag("@effect/platform/FileSystem/WatchBackend")<
-    WatchBackend,
-    {
-      readonly register: (
-        path: string,
-        stat: File.Info,
-        options?: WatchOptions,
-      ) => Option.Option<Stream.Stream<WatchEvent, System.SystemError>>
-    }
-  >()
-{}
+export class WatchBackend extends Context.Tag("effect-start/FileSystem/WatchBackend")<
+  WatchBackend,
+  {
+    readonly register: (
+      path: string,
+      stat: File.Info,
+      options?: WatchOptions,
+    ) => Option.Option<Stream.Stream<WatchEvent, System.SystemError>>
+  }
+>() {}
 
 export const make = (
   impl: Omit<
@@ -333,8 +328,7 @@ export const make = (
       Function.pipe(
         impl.access(path),
         Effect.as(true),
-        Effect.catchTag("SystemError", (e) =>
-          e.reason === "NotFound" ? Effect.succeed(false) : Effect.fail(e)),
+        Effect.catchTag("SystemError", (e) => e.reason === "NotFound" ? Effect.succeed(false) : Effect.fail(e)),
       ),
     readFileString: (path, encoding) =>
       Effect.tryMap(impl.readFile(path), {
@@ -401,10 +395,9 @@ const fileStream = (file: File, options: StreamOptions = {}) => {
       return Channel.void
     }
 
-    const toRead =
-      bytesToRead !== undefined && bytesToRead - totalBytesRead < chunkSize
-        ? bytesToRead - totalBytesRead
-        : chunkSize
+    const toRead = bytesToRead !== undefined && bytesToRead - totalBytesRead < chunkSize
+      ? bytesToRead - totalBytesRead
+      : chunkSize
 
     return Channel.flatMap(
       file.readAlloc(toRead),
