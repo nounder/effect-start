@@ -6,6 +6,11 @@ import * as StreamExtra from "./internal/StreamExtra.ts"
 import type * as Values from "./internal/Values.ts"
 import * as Route from "./Route.ts"
 
+type YieldError<T> = T extends Utils.YieldWrap<Effect.Effect<any, infer E, any>> ? E
+  : never
+type YieldContext<T> = T extends Utils.YieldWrap<Effect.Effect<any, any, infer R>> ? R
+  : never
+
 export type Format = "text" | "html" | "json" | "bytes" | "sse" | "*"
 
 const formatToContentType: Record<Format, string | undefined> = {
@@ -16,13 +21,6 @@ const formatToContentType: Record<Format, string | undefined> = {
   sse: "text/event-stream",
   "*": undefined,
 }
-
-type YieldError<T> = T extends Utils.YieldWrap<Effect.Effect<any, infer E, any>>
-  ? E
-  : never
-
-type YieldContext<T> = T extends
-  Utils.YieldWrap<Effect.Effect<any, any, infer R>> ? R : never
 
 type HandlerReturn<A> =
   | A

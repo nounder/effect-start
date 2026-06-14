@@ -3,6 +3,8 @@ import { BunServer } from "effect-start/bun"
 import * as Route from "effect-start/Route"
 import type * as RouteMap from "effect-start/RouteMap"
 import * as Socket from "effect-start/Socket"
+import * as Context from "effect/Context"
+import * as Data from "effect/Data"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
@@ -805,4 +807,28 @@ test.describe("Route.ws types", () => {
       .expectTypeOf<Layer.Layer.Context<typeof layer>>()
       .toEqualTypeOf<never>()
   })
+
+  test.it("infers the union of error and requirement types from generator yields", () => {
+    const rs = Route.get(Route.ws(function*(ctx) {
+      const db = yield* Db
+      const row = yield* db.query()
+      const write = yield* ctx.socket.writer
+      // yields with three different error types (none, MyErr, SocketError) and
+      // two requirements (Db, Scope) must all be collected, not unified to one.
+      yield* write(row)
+    }))
+
+    const layer = Route.layer(Route.map({ "/ws": rs }))
+
+    // Db survives as a real requirement; BunServer and Scope are stripped.
+    test
+      .expectTypeOf<Layer.Layer.Context<typeof layer>>()
+      .toEqualTypeOf<Db>()
+  })
 })
+
+class MyErr extends Data.TaggedError("MyErr")<{}> {}
+class Db extends Context.Tag("Db")<
+  Db,
+  { query: () => Effect.Effect<string, MyErr> }
+>() {}

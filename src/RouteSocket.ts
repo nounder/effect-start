@@ -8,6 +8,41 @@ import type * as Values from "./internal/Values.ts"
 import * as Route from "./Route.ts"
 import * as Socket from "./Socket.ts"
 
+type YieldError<T> = T extends Utils.YieldWrap<Effect.Effect<any, infer E, any>> ? E
+  : never
+type YieldContext<T> = T extends Utils.YieldWrap<Effect.Effect<any, any, infer R>> ? R
+  : never
+
+type WsContext<D, B, I extends Route.Route.Tuple> = Values.Simplify<
+  & D
+  & B
+  & Route.ExtractBindings<I>
+  & { protocol: "ws"; socket: Socket.Socket }
+>
+
+// The handler runs under its own Scope at runtime (so authors can use
+// acquireRelease/addFinalizer), and BunServer is provided by the request
+// runtime. Strip Scope from the handler's R and add BunServer so neither leaks
+// into `Route.layer`'s requirements as something the app must provide.
+type WsRouteR<R> = Exclude<R, Scope.Scope> | BunServer.BunServer
+
+type WsRoute<I extends Route.Route.Tuple, E, R> = [
+  ...I,
+  Route.Route<{ protocol: "ws" }, {}, void, E, WsRouteR<R>>,
+]
+
+export function ws<
+  D,
+  B,
+  I extends Route.Route.Tuple,
+  Y extends Utils.YieldWrap<Effect.Effect<any, any, any>>,
+>(
+  handler: (
+    context: WsContext<D, B, I>,
+  ) => Generator<Y, void, unknown>,
+): (
+  self: Route.RouteSet<D, B, I>,
+) => Route.RouteSet<D, B, WsRoute<I, YieldError<Y>, YieldContext<Y>>>
 export function ws<
   D,
   B,
@@ -16,12 +51,20 @@ export function ws<
   R = never,
 >(
   handler: (
-    context: Values.Simplify<
-      & D
-      & B
-      & Route.ExtractBindings<I>
-      & { protocol: "ws"; socket: Socket.Socket }
-    >,
+    context: WsContext<D, B, I>,
+  ) => Effect.Effect<void, E, R | Scope.Scope>,
+): (
+  self: Route.RouteSet<D, B, I>,
+) => Route.RouteSet<D, B, WsRoute<I, E, R>>
+export function ws<
+  D,
+  B,
+  I extends Route.Route.Tuple,
+  E = never,
+  R = never,
+>(
+  handler: (
+    context: WsContext<D, B, I>,
   ) =>
     | Effect.Effect<void, E, R | Scope.Scope>
     | Generator<
@@ -30,18 +73,9 @@ export function ws<
       unknown
     >,
 ) {
-  // The handler signature exposes `Scope.Scope` so authors can use scoped
-  // operators (acquireRelease, addFinalizer). The handler runs under
-  // Effect.scoped at runtime, so Scope is provided there and must NOT leak into
-  // the route's requirements. Excluding it keeps `Route.layer`'s R clean.
-  type RouteR = Exclude<R, Scope.Scope> | BunServer.BunServer
   return function(
     self: Route.RouteSet<D, B, I>,
-  ): Route.RouteSet<
-    D,
-    B,
-    [...I, Route.Route<{ protocol: "ws" }, {}, void, E, RouteR>]
-  > {
+  ): Route.RouteSet<D, B, WsRoute<I, E, R>> {
     const handle = (context: any): Effect.Effect<void, E, R | Scope.Scope> => {
       const result = handler(context)
       const effect = Effect.isEffect(result)
@@ -57,7 +91,7 @@ export function ws<
       {},
       void,
       E,
-      RouteR
+      WsRouteR<R>
     >(
       (context) =>
         Effect
@@ -102,23 +136,13 @@ export function ws<
           ) as unknown as Effect.Effect<
             Entity.Entity<void>,
             E,
-            RouteR
+            WsRouteR<R>
           >,
       { protocol: "ws" },
     )
 
-    return Route.set<
-      D,
-      B,
-      [
-        ...I,
-        Route.Route<{ protocol: "ws" }, {}, void, E, RouteR>,
-      ]
-    >(
-      [...Route.items(self), route] as [
-        ...I,
-        Route.Route<{ protocol: "ws" }, {}, void, E, RouteR>,
-      ],
+    return Route.set<D, B, WsRoute<I, E, R>>(
+      [...Route.items(self), route] as WsRoute<I, E, R>,
       Route.descriptor(self),
     )
   }
