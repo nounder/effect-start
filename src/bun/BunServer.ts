@@ -24,6 +24,9 @@ import * as BunRoute from "./BunRoute.ts"
 
 export interface WebSocketContext {
   readonly deferred: Deferred.Deferred<Bun.ServerWebSocket<WebSocketContext>>
+  // Resolves the connection lifetime: a failure carries the SocketCloseError
+  // for a peer-initiated close, a success means the close was intentional
+  // (the handler wrote a CloseEvent, or the scope ended).
   readonly closeDeferred: Deferred.Deferred<void, Socket.SocketError>
   readonly buffer: Array<Uint8Array | string>
   run: (_: Uint8Array | string) => void
@@ -413,6 +416,7 @@ function buildSocket(
         )
         : latch.whenOpen(Effect.sync(() => {
           if (Socket.isCloseEvent(chunk)) {
+            Deferred.unsafeDone(ctx.closeDeferred, Exit.void)
             ws.close(chunk.code, chunk.reason)
           } else if (typeof chunk === "string") {
             ws.sendText(chunk)

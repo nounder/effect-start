@@ -3,6 +3,7 @@ import { BunServer } from "effect-start/bun"
 import * as Route from "effect-start/Route"
 import type * as RouteMap from "effect-start/RouteMap"
 import * as Socket from "effect-start/Socket"
+import { TestLogger } from "effect-start/testing"
 import * as Context from "effect/Context"
 import * as Data from "effect/Data"
 import * as Deferred from "effect/Deferred"
@@ -13,6 +14,9 @@ import * as Scope from "effect/Scope"
 
 const testLayer = <const Input extends RouteMap.RouteMapInput>(routes: Input) =>
   BunServer.layerRoutes({ port: 0 }).pipe(Layer.provide(Route.layer(routes)))
+
+const loggingTestLayer = <const Input extends RouteMap.RouteMapInput>(routes: Input) =>
+  testLayer(routes).pipe(Layer.provideMerge(TestLogger.layer()))
 
 const connect = (url: string) =>
   Effect.async<WebSocket>((resume) => {
@@ -319,6 +323,71 @@ test.describe("Route.ws", () => {
       })
       .pipe(
         Effect.provide(testLayer(routes)),
+        Effect.scoped,
+        Effect.runPromise,
+      )
+  })
+
+  test.test("does not log an error when the client disconnects with a normal code", () => {
+    const routes = Route.map({
+      "/ws": Route.get(Route.ws(function*(ctx) {
+        const write = yield* ctx.socket.writer
+        yield* ctx.socket.runRaw((data) => write(data))
+      })),
+    })
+
+    return Effect
+      .gen(function*() {
+        const { server } = yield* BunServer.BunServer
+        const ws = yield* connect(`${wsUrl(server)}/ws`)
+        ws.send("hello")
+        yield* nextMessage(ws)
+        // 1001 "Going Away" is a normal browser/tab-close disconnect, not an
+        // application error — it must not be logged.
+        ws.close(1001, "going away")
+        yield* nextClose(ws)
+        yield* Effect.sleep("100 millis")
+
+        const messages = yield* TestLogger.messages
+
+        test
+          .expect(messages)
+          .toEqual([])
+      })
+      .pipe(
+        Effect.provide(loggingTestLayer(routes)),
+        Effect.scoped,
+        Effect.runPromise,
+      )
+  })
+
+  test.test("does not log an error when the handler closes the socket itself", () => {
+    const routes = Route.map({
+      "/ws": Route.get(Route.ws(function*(ctx) {
+        const write = yield* ctx.socket.writer
+        // The handler decides to close with a non-1000 code. Because the close
+        // is server-initiated it is intentional, so nothing should be logged
+        // regardless of the code.
+        yield* ctx.socket.runRaw(() => write(new Socket.CloseEvent(4001, "bye")))
+      })),
+    })
+
+    return Effect
+      .gen(function*() {
+        const { server } = yield* BunServer.BunServer
+        const ws = yield* connect(`${wsUrl(server)}/ws`)
+        ws.send("trigger")
+        yield* nextClose(ws)
+        yield* Effect.sleep("100 millis")
+
+        const messages = yield* TestLogger.messages
+
+        test
+          .expect(messages)
+          .toEqual([])
+      })
+      .pipe(
+        Effect.provide(loggingTestLayer(routes)),
         Effect.scoped,
         Effect.runPromise,
       )

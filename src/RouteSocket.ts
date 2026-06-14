@@ -109,7 +109,11 @@ export function ws<
             yield* server.runFork(
               Scope.use(handle({ ...context, socket }), handlerScope).pipe(
                 Effect.catchIf(
-                  Socket.SocketCloseError.isClean((code) => code === 1000 || code === 1006),
+                  // Normal disconnect codes: 1000 Normal, 1001 Going Away,
+                  // 1005 No Status, 1006 Abnormal — none are application errors.
+                  Socket.SocketCloseError.isClean((code) =>
+                    code === 1000 || code === 1001 || code === 1005 || code === 1006
+                  ),
                   () => Effect.void,
                 ),
                 Effect.catchAllCause((cause) => Effect.logError(cause)),

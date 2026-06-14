@@ -352,7 +352,7 @@ export interface WebSocket {
 
 export const WebSocket: Context.Tag<WebSocket, globalThis.WebSocket> = Context
   .GenericTag(
-    "@effect/platform/Socket/WebSocket",
+    "effect-start/Socket/WebSocket",
   )
 
 export interface WebSocketConstructor {
@@ -365,7 +365,7 @@ export const WebSocketConstructor: Context.Tag<
     url: string,
     protocols?: string | Array<string> | undefined,
   ) => globalThis.WebSocket
-> = Context.GenericTag("@effect/platform/Socket/WebSocketConstructor")
+> = Context.GenericTag("effect-start/Socket/WebSocketConstructor")
 
 export const layerWebSocketConstructorGlobal: Layer.Layer<WebSocketConstructor> = Layer.succeed(
   WebSocketConstructor,
