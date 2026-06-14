@@ -12,7 +12,7 @@ import * as FileSystem from "./FileSystem.ts"
 import * as PathPattern from "./internal/PathPattern.ts"
 import * as NodeUtils from "./node/NodeUtils.ts"
 import * as Route from "./Route.ts"
-import * as RouteMap from "./RouteMap.ts"
+import * as RouteMap from "./internal/RouteMap.ts"
 import type * as System from "./System.ts"
 
 export class FileRouterError extends Data.TaggedError("FileRouterError")<{

@@ -2,7 +2,6 @@ import * as test from "bun:test"
 import * as Fetch from "effect-start/Fetch"
 import * as Route from "effect-start/Route"
 import * as RouteHttp from "effect-start/RouteHttp"
-import * as RouteMount from "effect-start/RouteMount"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
@@ -10,7 +9,7 @@ import * as Stream from "effect/Stream"
 
 test.describe("Route.sse()", () => {
   test.it("infers format as sse", () => {
-    RouteMount.get(
+    Route.get(
       Route.sse(function*(ctx) {
         test
           .expectTypeOf(ctx)
@@ -25,13 +24,13 @@ test.describe("Route.sse()", () => {
   })
 
   test.it("accepts object events with data only", () => {
-    RouteMount.get(
+    Route.get(
       Route.sse(() => Stream.make({ data: "hello" }, { data: "world" })),
     )
   })
 
   test.it("accepts object events with data and type", () => {
-    RouteMount.get(
+    Route.get(
       Route.sse(() =>
         Stream.make({ data: "hello", event: "message" }, {
           data: "world",
@@ -42,15 +41,15 @@ test.describe("Route.sse()", () => {
   })
 
   test.it("accepts events with retry", () => {
-    RouteMount.get(Route.sse(() => Stream.make({ data: "hello", retry: 3000 })))
+    Route.get(Route.sse(() => Stream.make({ data: "hello", retry: 3000 })))
   })
 
   test.it("accepts Effect returning Stream", () => {
-    RouteMount.get(Route.sse(Effect.succeed(Stream.make({ data: "hello" }))))
+    Route.get(Route.sse(Effect.succeed(Stream.make({ data: "hello" }))))
   })
 
   test.it("accepts generator returning Stream", () => {
-    RouteMount.get(
+    Route.get(
       Route.sse(function*() {
         const prefix = yield* Effect.succeed("msg: ")
         return Stream.make({ data: `${prefix}hello` })

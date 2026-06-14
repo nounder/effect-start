@@ -1,7 +1,7 @@
 import * as test from "bun:test"
 import * as Route from "effect-start/Route"
-import * as RouteMap from "effect-start/RouteMap"
-import * as RouteMatch from "effect-start/RouteMatch"
+import * as RouteMap from "../src/internal/RouteMap.ts"
+import * as RouteMatch from "../src/internal/RouteMatch.ts"
 
 test.describe("layer route", () => {
   test.it("match finds LayerRoute first", () => {

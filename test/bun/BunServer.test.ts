@@ -1,7 +1,7 @@
 import * as test from "bun:test"
 import { BunRoute, BunServer } from "effect-start/bun"
 import * as Route from "effect-start/Route"
-import type * as RouteMap from "effect-start/RouteMap"
+import type * as RouteMap from "../../src/internal/RouteMap.ts"
 import * as Start from "effect-start/Start"
 import * as ConfigProvider from "effect/ConfigProvider"
 import * as Deferred from "effect/Deferred"

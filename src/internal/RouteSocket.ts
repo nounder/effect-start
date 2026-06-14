@@ -2,11 +2,11 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Scope from "effect/Scope"
 import type * as Utils from "effect/Utils"
-import * as BunServer from "./bun/BunServer.ts"
-import * as Entity from "./Entity.ts"
-import type * as Values from "./internal/Values.ts"
-import * as Route from "./Route.ts"
-import * as Socket from "./Socket.ts"
+import * as BunServer from "../bun/BunServer.ts"
+import * as Entity from "../Entity.ts"
+import type * as Values from "./Values.ts"
+import * as Route from "../Route.ts"
+import * as Socket from "../Socket.ts"
 
 type YieldError<T> = T extends Utils.YieldWrap<Effect.Effect<any, infer E, any>> ? E
   : never

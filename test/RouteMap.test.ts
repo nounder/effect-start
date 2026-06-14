@@ -1,6 +1,6 @@
 import * as test from "bun:test"
 import * as Route from "effect-start/Route"
-import * as RouteMap from "effect-start/RouteMap"
+import * as RouteMap from "../src/internal/RouteMap.ts"
 import * as Context from "effect/Context"
 
 test.describe("layer route", () => {

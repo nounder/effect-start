@@ -1,7 +1,7 @@
 import * as test from "bun:test"
 import { BunServer } from "effect-start/bun"
 import * as Route from "effect-start/Route"
-import type * as RouteMap from "effect-start/RouteMap"
+import type * as RouteMap from "../src/internal/RouteMap.ts"
 import * as Socket from "effect-start/Socket"
 import { TestLogger } from "effect-start/testing"
 import * as Context from "effect/Context"

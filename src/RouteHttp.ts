@@ -13,10 +13,10 @@ import * as ContentNegotiation from "./internal/ContentNegotiation.ts"
 import type * as Http from "./internal/Http.ts"
 import * as StreamExtra from "./internal/StreamExtra.ts"
 import * as Route from "./Route.ts"
-import type * as RouteBody from "./RouteBody.ts"
+import type * as RouteBody from "./internal/RouteBody.ts"
 import * as RouteHttpTracer from "./RouteHttpTracer.ts"
-import * as RouteMap from "./RouteMap.ts"
-import type * as RouteMount from "./RouteMount.ts"
+import * as RouteMap from "./internal/RouteMap.ts"
+import type * as RouteMount from "./internal/RouteMount.ts"
 
 type UnboundedRouteWithMethod = Route.Route.With<{
   method: RouteMount.RouteMount.Method

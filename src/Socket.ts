@@ -22,8 +22,6 @@ import type * as AsyncProducer from "effect/SingleProducerAsyncInput"
 
 export const TypeId = "~effect-start/Socket" as const
 
-export type TypeId = typeof TypeId
-
 export const isSocket = (u: unknown): u is Socket => Predicate.hasProperty(u, TypeId)
 
 export const Socket: Context.Tag<Socket, Socket> = Context.GenericTag<Socket>(
@@ -31,7 +29,7 @@ export const Socket: Context.Tag<Socket, Socket> = Context.GenericTag<Socket>(
 )
 
 export interface Socket {
-  readonly [TypeId]: TypeId
+  readonly [TypeId]: typeof TypeId
   readonly run: <_, E = never, R = never>(
     handler: (_: Uint8Array) => Effect.Effect<_, E, R> | void,
     options?: {

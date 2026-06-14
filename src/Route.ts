@@ -64,8 +64,8 @@ import * as Development from "./Development.ts"
 import * as Entity from "./Entity.ts"
 import * as Html from "./Html.ts"
 import type * as Values from "./internal/Values.ts"
-import * as RouteBody from "./RouteBody.ts"
-import * as RouteMap from "./RouteMap.ts"
+import * as RouteBody from "./internal/RouteBody.ts"
+import * as RouteMap from "./internal/RouteMap.ts"
 
 /** @internal */
 export const RouteItems: unique symbol = Symbol()
@@ -215,13 +215,13 @@ export function redirect<D, B, I extends Route.Tuple>(
 
 export {
   filter,
-} from "./RouteHook.ts"
+} from "./internal/RouteHook.ts"
 export {
   link,
-} from "./RouteLink.ts"
+} from "./internal/RouteLink.ts"
 export {
   make as map,
-} from "./RouteMap.ts"
+} from "./internal/RouteMap.ts"
 export {
   del,
   get,
@@ -231,7 +231,7 @@ export {
   post,
   put,
   use,
-} from "./RouteMount.ts"
+} from "./internal/RouteMount.ts"
 export {
   RequestBodyError,
   schemaBodyForm,
@@ -244,13 +244,13 @@ export {
   schemaPathParams,
   schemaSearchParams,
   schemaSuccess,
-} from "./RouteSchema.ts"
+} from "./internal/RouteSchema.ts"
 export {
   ws,
-} from "./RouteSocket.ts"
+} from "./internal/RouteSocket.ts"
 export {
   sse,
-} from "./RouteSse.ts"
+} from "./internal/RouteSse.ts"
 
 export class Routes extends Context.Tag("effect-start/Routes")<Routes, RouteMap.RouteMap>() {}
 

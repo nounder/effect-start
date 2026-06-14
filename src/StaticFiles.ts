@@ -6,7 +6,7 @@ import * as FileSystem from "./FileSystem.ts"
 import * as Mime from "./internal/Mime.ts"
 import type * as PathPattern from "./internal/PathPattern.ts"
 import * as Route from "./Route.ts"
-import * as RouteSchema from "./RouteSchema.ts"
+import * as RouteSchema from "./internal/RouteSchema.ts"
 
 const defaultMountPath = "/assets"
 const PathParamsSchema = Schema.Struct({

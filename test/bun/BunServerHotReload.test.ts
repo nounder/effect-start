@@ -1,7 +1,7 @@
 import * as test from "bun:test"
 import { BunServer } from "effect-start/bun"
 import * as Route from "effect-start/Route"
-import type * as RouteMap from "effect-start/RouteMap"
+import type * as RouteMap from "../../src/internal/RouteMap.ts"
 import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
 import * as MutableRef from "effect/MutableRef"

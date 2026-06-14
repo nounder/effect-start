@@ -1,7 +1,7 @@
 import * as Pipeable from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
-import type * as PathPattern from "./internal/PathPattern.ts"
-import * as Route from "./Route.ts"
+import type * as PathPattern from "./PathPattern.ts"
+import * as Route from "../Route.ts"
 import type * as RouteMap from "./RouteMap.ts"
 import type * as RouteMount from "./RouteMount.ts"
 

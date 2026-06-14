@@ -1,5 +1,5 @@
-import type * as PathPattern from "./internal/PathPattern.ts"
-import * as Route from "./Route.ts"
+import type * as PathPattern from "./PathPattern.ts"
+import * as Route from "../Route.ts"
 import type * as RouteMount from "./RouteMount.ts"
 
 type MethodRoute = Route.Route.With<{ method: string }>

@@ -6,7 +6,7 @@ import * as Entity from "../Entity.ts"
 import * as PathPattern from "../internal/PathPattern.ts"
 import * as Values from "../internal/Values.ts"
 import * as Route from "../Route.ts"
-import * as RouteMap from "../RouteMap.ts"
+import * as RouteMap from "../internal/RouteMap.ts"
 import * as Bundle from "./Bundle.ts"
 
 /**

@@ -4,8 +4,7 @@ import * as Fetch from "effect-start/Fetch"
 import * as Route from "effect-start/Route"
 import * as RouteError from "effect-start/RouteError"
 import * as RouteHttp from "effect-start/RouteHttp"
-import * as RouteMount from "effect-start/RouteMount"
-import * as RouteSchema from "effect-start/RouteSchema"
+import * as RouteSchema from "../src/internal/RouteSchema.ts"
 import { TestLogger } from "effect-start/testing"
 
 test.describe(`${RouteSchema.schemaHeaders.name}()`, () => {
@@ -52,7 +51,7 @@ test.describe(`${RouteSchema.schemaHeaders.name}()`, () => {
       headers: typeof headers
     }
 
-    const route = RouteMount.get(
+    const route = Route.get(
       RouteSchema.schemaHeaders(
         Schema.Struct({
           "x-hello": Schema.String,

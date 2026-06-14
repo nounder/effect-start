@@ -1,8 +1,8 @@
 import * as Function from "effect/Function"
 import type * as Types from "effect/Types"
-import type * as Http from "./internal/Http.ts"
-import type * as PathPattern from "./internal/PathPattern.ts"
-import * as Route from "./Route.ts"
+import type * as Http from "./Http.ts"
+import type * as PathPattern from "./PathPattern.ts"
+import * as Route from "../Route.ts"
 import type * as RouteBody from "./RouteBody.ts"
 // eslint-disable-next-line import/no-self-import
 import type * as Self_ from "./RouteMount.ts"

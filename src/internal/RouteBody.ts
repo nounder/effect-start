@@ -1,10 +1,10 @@
 import * as Effect from "effect/Effect"
 import type * as Stream from "effect/Stream"
 import type * as Utils from "effect/Utils"
-import * as Entity from "./Entity.ts"
-import * as StreamExtra from "./internal/StreamExtra.ts"
-import type * as Values from "./internal/Values.ts"
-import * as Route from "./Route.ts"
+import * as Entity from "../Entity.ts"
+import * as StreamExtra from "./StreamExtra.ts"
+import type * as Values from "./Values.ts"
+import * as Route from "../Route.ts"
 
 type YieldError<T> = T extends Utils.YieldWrap<Effect.Effect<any, infer E, any>> ? E
   : never

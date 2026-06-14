@@ -1,6 +1,6 @@
 import type { Routes as DevRoutes } from "effect-start/dev"
-import type * as PathPattern from "./internal/PathPattern.ts"
-import type * as Route from "./Route.ts"
+import type * as PathPattern from "./PathPattern.ts"
+import type * as Route from "../Route.ts"
 
 export type LinkParams<
   Routes,

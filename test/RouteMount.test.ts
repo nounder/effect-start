@@ -1,6 +1,6 @@
 import * as test from "bun:test"
 import * as Route from "effect-start/Route"
-import type * as RouteMount from "effect-start/RouteMount"
+import type * as RouteMount from "../src/internal/RouteMount.ts"
 import * as Effect from "effect/Effect"
 import type * as ParseResult from "effect/ParseResult"
 import * as Schema from "effect/Schema"

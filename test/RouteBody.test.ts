@@ -1,8 +1,7 @@
 import * as test from "bun:test"
 import * as Entity from "effect-start/Entity"
 import * as Route from "effect-start/Route"
-import * as RouteBody from "effect-start/RouteBody"
-import * as RouteMount from "effect-start/RouteMount"
+import * as RouteBody from "../src/internal/RouteBody.ts"
 import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Data from "effect/Data"
@@ -12,7 +11,7 @@ import type * as ParseResult from "effect/ParseResult"
 import * as Stream from "effect/Stream"
 
 test.it("infers parent descriptions", () => {
-  RouteMount.get(
+  Route.get(
     Route.text((ctx) =>
       Effect.gen(function*() {
         test
@@ -50,7 +49,7 @@ test.it("enforces result value", () => {
 })
 
 test.it("accepts text stream", () => {
-  RouteMount.get(
+  Route.get(
     Route.text((ctx) =>
       Effect.gen(function*() {
         test
@@ -67,7 +66,7 @@ test.it("accepts text stream", () => {
 })
 
 test.it("accepts Effect<Stream<string>> for html format", () => {
-  RouteMount.get(
+  Route.get(
     Route.html(function*() {
       return Stream.make("<div>", "content", "</div>")
     }),
@@ -77,7 +76,7 @@ test.it("accepts Effect<Stream<string>> for html format", () => {
 test.it("accepts Effect<Stream<Uint8Array>> for bytes format", () => {
   const encoder = new TextEncoder()
 
-  RouteMount.get(
+  Route.get(
     Route.bytes(function*() {
       return Stream.make(encoder.encode("chunk"))
     }),
@@ -285,7 +284,7 @@ test.describe(`${RouteBody.normalize.name}()`, () => {
   test.it("Route.text infers error type from yielded effects", () => {
     class MyError extends Data.TaggedError("MyError")<{}> {}
 
-    const routes = RouteMount.get(
+    const routes = Route.get(
       Route.text(function*() {
         yield* Effect.fail(new MyError())
         return "error occurred"
