@@ -887,14 +887,17 @@ test.describe("prebuilt htmlBundle with images", () => {
       )
   })
 
-  test.test("bundler does not include images in bundle.files", async () => {
+  test.test("bundler emits images into bundle.files", async () => {
     const gifFile = findOutputFile("pixel.gif")
+    const svgFile = findOutputFile("icon.svg")
     const bundledPaths = (bundle.files ?? []).map((f) => NPath.basename(f.path))
 
     test
       .expect(bundledPaths)
-      .not
       .toContain(gifFile)
+    test
+      .expect(bundledPaths)
+      .toContain(svgFile)
   })
 })
 
