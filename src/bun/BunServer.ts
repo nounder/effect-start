@@ -56,7 +56,16 @@ export type BunServer = {
   readonly setRoutes: (map: RouteMap.RouteMap) => Effect.Effect<void>
   readonly upgrade: (
     request: Request,
+    handlerScope: Scope.Scope,
   ) => Effect.Effect<Socket.Socket, Socket.SocketError>
+  /**
+   * Forks a socket handler into the server's scope, so it is interrupted (and
+   * its finalizers run) when the server shuts down. The effect must handle its
+   * own errors; its requirements are preserved.
+   */
+  readonly runFork: <R>(
+    effect: Effect.Effect<void, never, R>,
+  ) => Effect.Effect<void, never, R>
 }
 
 export const BunServer = Context.GenericTag<BunServer>("effect-start/BunServer")
@@ -87,6 +96,15 @@ export const make = (
     const setRoutesDeferred = yield* Deferred
       .make<(map: RouteMap.RouteMap) => Effect.Effect<void>>()
 
+    // Socket handlers are forked into the server's scope. When the server shuts
+    // down this scope closes, interrupting every live handler so their scopes
+    // (and any acquired resources) are released instead of leaking. forkIn
+    // preserves the caller's requirements, so the handler keeps the app's R.
+    const handlerScope = yield* Effect.scope
+    const runFork = <R>(
+      effect: Effect.Effect<void, never, R>,
+    ): Effect.Effect<void, never, R> => Effect.asVoid(Effect.forkIn(effect, handlerScope))
+
     const upgrade = makeUpgrade(() => service.server)
 
     const service = BunServer
@@ -113,6 +131,7 @@ export const make = (
           )
         },
         upgrade,
+        runFork,
       })
 
     const runtime = yield* Effect.runtime().pipe(
@@ -211,6 +230,7 @@ export const make = (
           )
         },
         upgrade,
+        runFork,
       })
 
     return bunServer
@@ -276,9 +296,7 @@ export const withLogAddress = <A, E, R>(layer: Layer.Layer<A, E, R>) =>
     .pipe(Layer.provideMerge(layer))
 
 const hasWebSocketRoute = (map: RouteMap.RouteMap): boolean =>
-  [...RouteMap.walk(map)].some((r) =>
-    Route.descriptor<{ protocol?: "ws" }>(r).protocol === "ws"
-  )
+  [...RouteMap.walk(map)].some((r) => Route.descriptor<{ protocol?: "ws" }>(r).protocol === "ws")
 
 function walkBunRoutes(
   runtime: Runtime.Runtime<BunServer>,
@@ -338,6 +356,7 @@ function buildSocket(
   ctx: WebSocketContext,
 ): Socket.Socket {
   const latch = Effect.unsafeMakeLatch(false)
+  let closed = false
 
   const runRaw = <_, E, R>(
     handler: (_: string | Uint8Array) => Effect.Effect<_, E, R> | void,
@@ -371,6 +390,7 @@ function buildSocket(
       }))
       .pipe(
         Effect.ensuring(Effect.sync(() => {
+          closed = true
           latch.unsafeClose()
           ctx.run = (data) => {
             ctx.buffer.push(data)
@@ -379,16 +399,28 @@ function buildSocket(
         Effect.interruptible,
       )
 
+  // Once the socket is closed the latch never reopens, so a write would park
+  // forever. Fail fast with a SocketWriteError instead of hanging.
   const write = (chunk: Uint8Array | string | Socket.CloseEvent) =>
-    latch.whenOpen(Effect.sync(() => {
-      if (Socket.isCloseEvent(chunk)) {
-        ws.close(chunk.code, chunk.reason)
-      } else if (typeof chunk === "string") {
-        ws.sendText(chunk)
-      } else {
-        ws.sendBinary(chunk)
-      }
-    }))
+    Effect.suspend(() =>
+      closed
+        ? Effect.fail(
+          new Socket.SocketError({
+            reason: new Socket.SocketWriteError({
+              cause: new Error("write on a closed socket"),
+            }),
+          }),
+        )
+        : latch.whenOpen(Effect.sync(() => {
+          if (Socket.isCloseEvent(chunk)) {
+            ws.close(chunk.code, chunk.reason)
+          } else if (typeof chunk === "string") {
+            ws.sendText(chunk)
+          } else {
+            ws.sendBinary(chunk)
+          }
+        }))
+    )
   const writer = Effect.succeed(write)
 
   return Socket.make({
@@ -397,38 +429,52 @@ function buildSocket(
   })
 }
 
-const makeUpgrade =
-  (getServer: () => Bun.Server<WebSocketContext>) =>
-  (request: Request): Effect.Effect<Socket.Socket, Socket.SocketError> =>
-    Effect.gen(function*() {
-      const deferred = yield* Deferred
-        .make<Bun.ServerWebSocket<WebSocketContext>>()
-      const closeDeferred = yield* Deferred.make<void, Socket.SocketError>()
-      const ctx: WebSocketContext = {
-        deferred,
-        closeDeferred,
-        buffer: [],
-        run: undefined as any,
-      }
-      ctx.run = (data) => {
-        ctx.buffer.push(data)
-      }
+const makeUpgrade = (getServer: () => Bun.Server<WebSocketContext>) =>
+(
+  request: Request,
+  handlerScope: Scope.Scope,
+): Effect.Effect<Socket.Socket, Socket.SocketError> =>
+  Effect.gen(function*() {
+    const deferred = yield* Deferred
+      .make<Bun.ServerWebSocket<WebSocketContext>>()
+    const closeDeferred = yield* Deferred.make<void, Socket.SocketError>()
+    const ctx: WebSocketContext = {
+      deferred,
+      closeDeferred,
+      buffer: [],
+      run: undefined as any,
+    }
+    ctx.run = (data) => {
+      ctx.buffer.push(data)
+    }
 
-      const ok = getServer().upgrade(request, { data: ctx })
-      if (!ok) {
-        return yield* Effect.fail(
-          new Socket.SocketError({
-            reason: new Socket.SocketOpenError({
-              kind: "Unknown",
-              cause: new Error("Bun declined the websocket upgrade"),
-            }),
+    const ok = getServer().upgrade(request, { data: ctx })
+    if (!ok) {
+      return yield* Effect.fail(
+        new Socket.SocketError({
+          reason: new Socket.SocketOpenError({
+            kind: "Unknown",
+            cause: new Error("Bun declined the websocket upgrade"),
           }),
-        )
-      }
+        }),
+      )
+    }
 
-      const ws = yield* Deferred.await(ctx.deferred)
-      return buildSocket(ws, ctx)
-    })
+    const ws = yield* Deferred.await(ctx.deferred)
+
+    yield* Scope.addFinalizerExit(
+      handlerScope,
+      (exit) =>
+        Effect.flatMap(Deferred.isDone(ctx.closeDeferred), (clientClosed) =>
+          clientClosed ?
+            Effect.void :
+            Effect.sync(() => {
+              ws.close(Exit.isSuccess(exit) ? 1000 : 1011)
+            })),
+    )
+
+    return buildSocket(ws, ctx)
+  })
 
 function registerPrebuiltBundle(
   prefix: string,

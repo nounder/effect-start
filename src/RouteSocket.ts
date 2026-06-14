@@ -1,5 +1,6 @@
 import * as Effect from "effect/Effect"
-import type * as Scope from "effect/Scope"
+import * as Exit from "effect/Exit"
+import * as Scope from "effect/Scope"
 import type * as Utils from "effect/Utils"
 import * as BunServer from "./bun/BunServer.ts"
 import * as Entity from "./Entity.ts"
@@ -59,42 +60,50 @@ export function ws<
       RouteR
     >(
       (context) =>
-        Effect.gen(function*() {
-          const server = yield* BunServer.BunServer
-          const request = yield* Route.Request
-          const socket = yield* server.upgrade(request)
+        Effect
+          .gen(function*() {
+            const server = yield* BunServer.BunServer
+            const request = yield* Route.Request
 
-          yield* Effect.forkDaemon(
-            Effect.scoped(handle({ ...context, socket })).pipe(
-              Effect.catchIf(
-                Socket.SocketCloseError.isClean((code) => code === 1000 || code === 1006),
-                () => Effect.void,
+            // scope is shared with handler and the connection.
+            // finalizer makes sure the socket is closed.
+            const handlerScope = yield* Scope.make()
+            const socket = yield* server.upgrade(request, handlerScope).pipe(
+              Effect.onError(() => Scope.close(handlerScope, Exit.void)),
+            )
+
+            yield* server.runFork(
+              Scope.use(handle({ ...context, socket }), handlerScope).pipe(
+                Effect.catchIf(
+                  Socket.SocketCloseError.isClean((code) => code === 1000 || code === 1006),
+                  () => Effect.void,
+                ),
+                Effect.catchAllCause((cause) => Effect.logError(cause)),
               ),
-              Effect.catchAllCause((cause) => Effect.logError(cause)),
+            )
+
+            // After a successful upgrade Bun hijacks the connection and ignores
+            // the response returned from the fetch handler. The chain still
+            // serializes this entity, so use an empty body and a status the
+            // Response constructor accepts.
+            return Entity.make("", { status: 200 })
+          })
+          .pipe(
+            Effect.catchIf(
+              (error) => error.reason._tag === "SocketOpenError",
+              () =>
+                Effect.succeed(
+                  Entity.make("", {
+                    status: 426,
+                    headers: { upgrade: "websocket" },
+                  }),
+                ),
             ),
-          )
-
-          // After a successful upgrade Bun hijacks the connection and ignores
-          // the response returned from the fetch handler. The chain still
-          // serializes this entity, so use an empty body and a status the
-          // Response constructor accepts.
-          return Entity.make("", { status: 200 })
-        }).pipe(
-          Effect.catchIf(
-            (error) => error.reason._tag === "SocketOpenError",
-            () =>
-              Effect.succeed(
-                Entity.make("", {
-                  status: 426,
-                  headers: { upgrade: "websocket" },
-                }),
-              ),
-          ),
-        ) as unknown as Effect.Effect<
-          Entity.Entity<void>,
-          E,
-          RouteR
-        >,
+          ) as unknown as Effect.Effect<
+            Entity.Entity<void>,
+            E,
+            RouteR
+          >,
       { protocol: "ws" },
     )
 

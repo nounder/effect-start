@@ -158,6 +158,7 @@ test.describe("StartApp.server", () => {
           popHandler: () => {},
           setRoutes: () => Effect.void,
           upgrade: () => Effect.die("not supported"),
+          runFork: () => Effect.void,
         } satisfies BunServer.BunServer
 
         const resultFiber = yield* Effect

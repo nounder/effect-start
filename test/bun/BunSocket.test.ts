@@ -5,6 +5,7 @@ import type * as RouteMap from "effect-start/RouteMap"
 import * as Socket from "effect-start/Socket"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
 import * as Layer from "effect/Layer"
 import * as Scope from "effect/Scope"
 
@@ -313,6 +314,69 @@ test.describe("Route.ws", () => {
             .expect(observed.reason._tag)
             .toBe("SocketCloseError")
         }
+      })
+      .pipe(
+        Effect.provide(testLayer(routes)),
+        Effect.scoped,
+        Effect.runPromise,
+      )
+  })
+
+  test.test("closes the socket with 1000 when the handler completes", () => {
+    const routes = Route.map({
+      "/ws": Route.get(Route.ws(function*(ctx) {
+        const write = yield* ctx.socket.writer
+        // Stop consuming after a short window so the handler returns while the
+        // client is still connected.
+        yield* ctx.socket.runRaw((data) => write(data)).pipe(
+          Effect.timeout("50 millis"),
+          Effect.ignore,
+        )
+      })),
+    })
+
+    return Effect
+      .gen(function*() {
+        const { server } = yield* BunServer.BunServer
+        const ws = yield* connect(`${wsUrl(server)}/ws`)
+        const closeEvent = yield* nextClose(ws)
+
+        test
+          .expect(closeEvent.code)
+          .toBe(1000)
+      })
+      .pipe(
+        Effect.provide(testLayer(routes)),
+        Effect.scoped,
+        Effect.runPromise,
+      )
+  })
+
+  test.test("closes the socket with 1011 when the handler fails", () => {
+    const routes = Route.map({
+      "/ws": Route.get(Route.ws(function*(ctx) {
+        const write = yield* ctx.socket.writer
+        yield* ctx.socket.runRaw((data) =>
+          Effect.gen(function*() {
+            yield* write(data)
+            yield* Effect.fail(new Error("boom"))
+          })
+        )
+      })),
+    })
+
+    return Effect
+      .gen(function*() {
+        const { server } = yield* BunServer.BunServer
+        const ws = yield* connect(`${wsUrl(server)}/ws`)
+        ws.send("hi")
+        const closeEvent = yield* nextClose(ws)
+
+        // A failed handler tears the connection down with Internal Error rather
+        // than leaving it half-open.
+        test
+          .expect(closeEvent.code)
+          .toBe(1011)
       })
       .pipe(
         Effect.provide(testLayer(routes)),
@@ -647,6 +711,65 @@ test.describe("Route.ws scope lifecycle", () => {
         ws.close(1000)
         yield* Deferred.await(released)
       }).pipe(Effect.provide(testLayer(routes)), Effect.scoped)
+    }).pipe(Effect.scoped, Effect.runPromise))
+
+  test.test("finalizer runs when the server scope closes with the socket still open", () =>
+    Effect.gen(function*() {
+      const released = yield* Deferred.make<void>()
+      const writeRef = yield* Deferred.make<
+        (chunk: Uint8Array | string | Socket.CloseEvent) => Effect.Effect<void, Socket.SocketError>
+      >()
+
+      const routes = Route.map({
+        "/ws": Route.get(Route.ws(function*(ctx) {
+          yield* Effect.addFinalizer(() => Deferred.succeed(released, undefined))
+          const write = yield* ctx.socket.writer
+          yield* Deferred.succeed(writeRef, write)
+          yield* ctx.socket.runRaw((data) => write(data))
+        })),
+      })
+
+      // Build the server into a scope we close ourselves, simulating shutdown
+      // while a connection is live.
+      const serverScope = yield* Scope.make()
+      const { server } = yield* Layer.build(testLayer(routes)).pipe(
+        Effect.flatMap((ctx) => Effect.provide(BunServer.BunServer, ctx)),
+        Scope.extend(serverScope),
+      )
+
+      const ws = yield* connect(`${wsUrl(server)}/ws`)
+      ws.send("hello")
+      yield* nextMessage(ws)
+      const write = yield* Deferred.await(writeRef)
+
+      test
+        .expect(yield* Deferred.isDone(released))
+        .toBe(false)
+
+      // Close the server scope while the socket is still open. The handler
+      // finalizer must run (its fiber is interrupted), rather than leak.
+      yield* Scope.close(serverScope, Exit.void)
+
+      yield* Deferred.await(released).pipe(
+        Effect.timeoutFail({
+          duration: "100 millis",
+          onTimeout: () => new Error("handler finalizer leaked: never ran after server scope closed"),
+        }),
+      )
+
+      // Writing after the socket is gone must fail fast with a SocketError,
+      // rather than parking forever on the now-closed latch.
+      const error = yield* write("after-close").pipe(
+        Effect.timeoutFail({
+          duration: "100 millis",
+          onTimeout: () => new Error("write after close hung instead of failing"),
+        }),
+        Effect.flip,
+      )
+
+      test
+        .expect(Socket.isSocketError(error))
+        .toBe(true)
     }).pipe(Effect.scoped, Effect.runPromise))
 })
 
