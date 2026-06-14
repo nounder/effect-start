@@ -577,6 +577,38 @@ test.describe("Route.ws", () => {
       )
   })
 
+  test.test("upgrades under a wildcard html layout layer", () => {
+    const routes = Route.map({
+      "/ws": Route.use(
+        Route.html(function*(_ctx, next) {
+          return yield* next.html
+        }),
+      ).get(Route.ws(function*(ctx) {
+        const write = yield* ctx.socket.writer
+        yield* ctx.socket.runRaw((data) => write(data))
+      })),
+    })
+
+    return Effect
+      .gen(function*() {
+        const { server } = yield* BunServer.BunServer
+        const ws = yield* connect(`${wsUrl(server)}/ws`)
+        ws.send("hello")
+        const echoed = yield* nextMessage(ws)
+
+        test
+          .expect(echoed)
+          .toBe("hello")
+
+        ws.close()
+      })
+      .pipe(
+        Effect.provide(testLayer(routes)),
+        Effect.scoped,
+        Effect.runPromise,
+      )
+  })
+
   test.test("runs wildcard middleware on the upgrade chain", () => {
     let middlewareRan = false
     const routes = Route.map({

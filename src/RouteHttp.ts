@@ -274,6 +274,7 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
         const varyAccept = specificFormats.size > 1
 
         if (
+          !isUpgrade &&
           selectedFormat === undefined &&
           hasSpecificFormatRoutes &&
           !hasWildcardFormatRoutes
