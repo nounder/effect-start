@@ -1,97 +1,111 @@
 import * as test from "bun:test"
-import { MemoryFileSystem } from "effect-memfs"
 import * as FileRouter from "effect-start/FileRouter"
 import * as FileRouterCodegen from "effect-start/FileRouterCodegen"
 import * as FileSystem from "effect-start/FileSystem"
-import { effectFn } from "effect-start/testing"
 import * as Effect from "effect/Effect"
 import * as NFs from "node:fs"
+import * as NOs from "node:os"
 import * as NPath from "node:path"
 import * as NodeFileSystem from "../src/node/NodeFileSystem.ts"
 
-const Files = {
-  "/routes/about/layer.tsx": "",
-  "/routes/about/route.tsx": "",
-  "/routes/users/route.tsx": "",
-  "/routes/users/layer.tsx": "",
-  "/routes/users/[userId]/route.tsx": "",
-  "/routes/layer.tsx": "",
+const writeTree = (root: string, files: Record<string, string>) => {
+  for (const [path, content] of Object.entries(files)) {
+    const full = NPath.join(root, path)
+    NFs.mkdirSync(NPath.dirname(full), { recursive: true })
+    NFs.writeFileSync(full, content)
+  }
 }
 
-const effect = effectFn()
+const withRoutes = (files: Record<string, string>) =>
+  Effect.acquireRelease(
+    Effect.sync(() => {
+      const root = NFs.mkdtempSync(NPath.join(NOs.tmpdir(), "effect-start-"))
+      writeTree(root, files)
+      return root
+    }),
+    (root) => Effect.sync(() => NFs.rmSync(root, { recursive: true, force: true })),
+  )
+
+const Files = {
+  "about/layer.tsx": "",
+  "about/route.tsx": "",
+  "users/route.tsx": "",
+  "users/layer.tsx": "",
+  "users/[userId]/route.tsx": "",
+  "layer.tsx": "",
+}
 
 test.it("walks routes", () =>
-  effect(function*() {
-    const files = yield* FileRouter.walkRoutesDirectory("/routes").pipe(
-      Effect.provide(MemoryFileSystem.layerWith(Files)),
-    )
+  Effect
+    .gen(function*() {
+      const root = yield* withRoutes(Files)
+      const files = yield* FileRouter.walkRoutesDirectory(root)
 
-    test
-      .expect(files.map((v) => v.modulePath))
-      .toEqual([
-        "layer.tsx",
-        "about/layer.tsx",
-        "about/route.tsx",
-        "users/layer.tsx",
-        "users/route.tsx",
-        "users/[userId]/route.tsx",
-      ])
-  }))
+      test
+        .expect(files.map((v) => v.modulePath))
+        .toEqual([
+          "layer.tsx",
+          "about/layer.tsx",
+          "about/route.tsx",
+          "users/layer.tsx",
+          "users/route.tsx",
+          "users/[userId]/route.tsx",
+        ])
+    })
+    .pipe(Effect.scoped, Effect.provide(NodeFileSystem.layer), Effect.runPromise))
 
 test.it("walks routes with rest", () =>
-  effect(function*() {
-    const files = yield* FileRouter.walkRoutesDirectory("/routes").pipe(
-      Effect.provide(
-        MemoryFileSystem.layerWith({
-          ...Files,
-          "/routes/[[rest]]/route.tsx": "",
-          "/routes/users/[[path]]/route.tsx": "",
-        }),
-      ),
-    )
+  Effect
+    .gen(function*() {
+      const root = yield* withRoutes({
+        ...Files,
+        "[[rest]]/route.tsx": "",
+        "users/[[path]]/route.tsx": "",
+      })
+      const files = yield* FileRouter.walkRoutesDirectory(root)
 
-    test
-      .expect(files.map((v) => v.modulePath))
-      .toEqual([
-        "layer.tsx",
-        "about/layer.tsx",
-        "about/route.tsx",
-        "users/layer.tsx",
-        "users/route.tsx",
-        "users/[userId]/route.tsx",
-        "users/[[path]]/route.tsx",
-        "[[rest]]/route.tsx",
-      ])
-  }))
+      test
+        .expect(files.map((v) => v.modulePath))
+        .toEqual([
+          "layer.tsx",
+          "about/layer.tsx",
+          "about/route.tsx",
+          "users/layer.tsx",
+          "users/route.tsx",
+          "users/[userId]/route.tsx",
+          "users/[[path]]/route.tsx",
+          "[[rest]]/route.tsx",
+        ])
+    })
+    .pipe(Effect.scoped, Effect.provide(NodeFileSystem.layer), Effect.runPromise))
 
 test.it("walks routes with groups", () =>
-  effect(function*() {
-    const files = yield* FileRouter.walkRoutesDirectory("/routes").pipe(
-      Effect.provide(
-        MemoryFileSystem.layerWith({
-          "/routes/users/route.tsx": "",
-          "/routes/(admin)/layer.tsx": "",
-          "/routes/(admin)/users/manage/route.tsx": "",
-        }),
-      ),
-    )
+  Effect
+    .gen(function*() {
+      const root = yield* withRoutes({
+        "users/route.tsx": "",
+        "(admin)/layer.tsx": "",
+        "(admin)/users/manage/route.tsx": "",
+      })
+      const files = yield* FileRouter.walkRoutesDirectory(root)
 
-    test
-      .expect(
-        files.map((v) => ({
-          modulePath: v.modulePath,
-          routePath: v.routePath,
-        })),
-      )
-      .toEqual([
-        { modulePath: "(admin)/layer.tsx", routePath: "/" },
-        { modulePath: "users/route.tsx", routePath: "/users" },
-        {
-          modulePath: "(admin)/users/manage/route.tsx",
-          routePath: "/users/manage",
-        },
-      ])
-  }))
+      test
+        .expect(
+          files.map((v) => ({
+            modulePath: v.modulePath,
+            routePath: v.routePath,
+          })),
+        )
+        .toEqual([
+          { modulePath: "(admin)/layer.tsx", routePath: "/" },
+          { modulePath: "users/route.tsx", routePath: "/users" },
+          {
+            modulePath: "(admin)/users/manage/route.tsx",
+            routePath: "/users/manage",
+          },
+        ])
+    })
+    .pipe(Effect.scoped, Effect.provide(NodeFileSystem.layer), Effect.runPromise))
 
 test.describe("codegen generates .server.ts by default", () => {
   const tmpDir = NPath.join(import.meta.dirname, ".tmp-test-routes")

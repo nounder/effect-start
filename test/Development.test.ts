@@ -1,5 +1,4 @@
 import * as test from "bun:test"
-import { MemoryFileSystem } from "effect-memfs"
 import * as Development from "effect-start/Development"
 import * as FileSystem from "effect-start/FileSystem"
 import * as Chunk from "effect/Chunk"
@@ -7,6 +6,9 @@ import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
 import * as Layer from "effect/Layer"
 import * as Stream from "effect/Stream"
+import * as NFs from "node:fs"
+import * as NPath from "node:path"
+import * as NodeFileSystem from "../src/node/NodeFileSystem.ts"
 
 test.beforeEach(() => {
   Development._testResetState()
@@ -16,16 +18,24 @@ test.describe("layer", () => {
   test.it("provides Development service", () =>
     Effect
       .gen(function*() {
-        const dev = yield* Development.Development
+        const fs = yield* FileSystem.FileSystem
+        const root = yield* fs.makeTempDirectoryScoped({ prefix: "effect-start-" })
 
-        test
-          .expect(dev.events)
-          .toBeDefined()
+        return yield* Effect
+          .gen(function*() {
+            const dev = yield* Development.Development
+
+            test
+              .expect(dev.events)
+              .toBeDefined()
+          })
+          .pipe(
+            Effect.provide(Development.layer({ path: root })),
+          )
       })
       .pipe(
         Effect.scoped,
-        Effect.provide(Development.layer({ path: "/layer-test" })),
-        Effect.provide(memfsLayer({ "/layer-test/.gitkeep": "" })),
+        Effect.provide(NodeFileSystem.layer),
         Effect.runPromise,
       ))
 })
@@ -35,31 +45,38 @@ test.describe("stream", () => {
     Effect
       .gen(function*() {
         const fs = yield* FileSystem.FileSystem
-        const watchDir = "/events-test"
+        const root = yield* fs.makeTempDirectoryScoped({ prefix: "effect-start-" })
 
-        const collectFiber = yield* Effect.fork(
-          Stream.runCollect(Stream.take(Development.events, 1)),
-        )
+        return yield* Effect
+          .gen(function*() {
+            const fs = yield* FileSystem.FileSystem
 
-        yield* Effect.sleep(1)
-        yield* fs.writeFileString(`${watchDir}/file.ts`, "content")
+            const collectFiber = yield* Effect.fork(
+              Stream.runCollect(Stream.take(Development.events, 1)),
+            )
 
-        const collected = yield* Fiber.join(collectFiber)
+            yield* Effect.sleep(1)
+            yield* fs.writeFileString(`${root}/file.ts`, "content")
 
-        test
-          .expect(Chunk.size(collected))
-          .toBe(1)
+            const collected = yield* Fiber.join(collectFiber)
 
-        const first = Chunk.unsafeGet(collected, 0)
+            test
+              .expect(Chunk.size(collected))
+              .toBe(1)
 
-        test
-          .expect("path" in first && first.path)
-          .toContain("file.ts")
+            const first = Chunk.unsafeGet(collected, 0)
+
+            test
+              .expect("path" in first && first.path)
+              .toContain("file.ts")
+          })
+          .pipe(
+            Effect.provide(Development.layer({ path: root })),
+          )
       })
       .pipe(
         Effect.scoped,
-        Effect.provide(Development.layer({ path: "/events-test" })),
-        Effect.provide(memfsLayer({ "/events-test/.gitkeep": "" })),
+        Effect.provide(NodeFileSystem.layer),
         Effect.runPromise,
       ))
 
@@ -90,33 +107,43 @@ test.describe("stream", () => {
       Effect
         .gen(function*() {
           const fs = yield* FileSystem.FileSystem
+          const root = yield* fs.makeTempDirectoryScoped({ prefix: "effect-start-" })
+          const routes = NPath.join(root, "routes")
+          NFs.mkdirSync(routes, { recursive: true })
 
-          yield* fs.makeDirectory("/routes/chat", { recursive: true })
-          yield* fs.writeFileString("/routes/chat/route.ts", "")
+          return yield* Effect
+            .gen(function*() {
+              const fs = yield* FileSystem.FileSystem
 
-          const collectFiber = yield* Effect.fork(
-            Stream.runCollect(Stream.take(Development.events, 1)),
-          )
+              yield* fs.makeDirectory(`${routes}/chat`, { recursive: true })
+              yield* fs.writeFileString(`${routes}/chat/route.ts`, "")
 
-          yield* Effect.sleep(1)
-          yield* fs.remove("/routes/chat", { recursive: true })
+              const collectFiber = yield* Effect.fork(
+                Stream.runCollect(Stream.take(Development.events, 1)),
+              )
 
-          const collected = yield* Fiber.join(collectFiber)
+              yield* Effect.sleep(1)
+              yield* fs.remove(`${routes}/chat`, { recursive: true })
 
-          test
-            .expect(Chunk.size(collected))
-            .toBe(1)
+              const collected = yield* Fiber.join(collectFiber)
 
-          const first = Chunk.unsafeGet(collected, 0)
+              test
+                .expect(Chunk.size(collected))
+                .toBe(1)
 
-          test
-            .expect("path" in first && first.path)
-            .toContain("chat")
+              const first = Chunk.unsafeGet(collected, 0)
+
+              test
+                .expect("path" in first && first.path)
+                .toContain("chat")
+            })
+            .pipe(
+              Effect.provide(Development.layer({ path: routes })),
+            )
         })
         .pipe(
           Effect.scoped,
-          Effect.provide(Development.layer({ path: "/routes" })),
-          Effect.provide(memfsLayer({ "/routes/.gitkeep": "" })),
+          Effect.provide(NodeFileSystem.layer),
           Effect.runPromise,
         ),
     500,
@@ -128,45 +155,47 @@ test.describe("stream", () => {
       Effect
         .gen(function*() {
           const fs = yield* FileSystem.FileSystem
+          const root = yield* fs.makeTempDirectoryScoped({ prefix: "effect-start-" })
+          const routes = NPath.join(root, "routes")
+          const staging = NPath.join(root, "staging")
+          NFs.mkdirSync(routes, { recursive: true })
+          NFs.mkdirSync(staging, { recursive: true })
 
-          yield* fs.makeDirectory("/staging/chat", { recursive: true })
-          yield* fs.writeFileString("/staging/chat/route.ts", "")
+          return yield* Effect
+            .gen(function*() {
+              const fs = yield* FileSystem.FileSystem
 
-          const collectFiber = yield* Effect.fork(
-            Stream.runCollect(Stream.take(Development.events, 1)),
-          )
+              yield* fs.makeDirectory(`${staging}/chat`, { recursive: true })
+              yield* fs.writeFileString(`${staging}/chat/route.ts`, "")
 
-          yield* Effect.sleep(1)
-          yield* fs.rename("/staging/chat", "/routes/chat")
+              const collectFiber = yield* Effect.fork(
+                Stream.runCollect(Stream.take(Development.events, 1)),
+              )
 
-          const collected = yield* Fiber.join(collectFiber)
+              yield* Effect.sleep(1)
+              yield* fs.rename(`${staging}/chat`, `${routes}/chat`)
 
-          test
-            .expect(Chunk.size(collected))
-            .toBe(1)
+              const collected = yield* Fiber.join(collectFiber)
 
-          const first = Chunk.unsafeGet(collected, 0)
+              test
+                .expect(Chunk.size(collected))
+                .toBe(1)
 
-          test
-            .expect("path" in first && first.path)
-            .toContain("chat")
+              const first = Chunk.unsafeGet(collected, 0)
+
+              test
+                .expect("path" in first && first.path)
+                .toContain("chat")
+            })
+            .pipe(
+              Effect.provide(Development.layer({ path: routes })),
+            )
         })
         .pipe(
           Effect.scoped,
-          Effect.provide(Development.layer({ path: "/routes" })),
-          Effect.provide(
-            memfsLayer({
-              "/routes/.gitkeep": "",
-              "/staging/.gitkeep": "",
-            }),
-          ),
+          Effect.provide(NodeFileSystem.layer),
           Effect.runPromise,
         ),
     500,
   )
 })
-
-const memfsLayer = (contents: MemoryFileSystem.Contents) =>
-  MemoryFileSystem.layerWith(contents) as unknown as Layer.Layer<
-    FileSystem.FileSystem
-  >
