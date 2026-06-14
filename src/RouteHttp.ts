@@ -211,12 +211,12 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
       new Promise((resolve) => {
         const method = request.method.toUpperCase()
         const accept = request.headers.get("accept")
-        const matchingRoutes = allRoutes.filter((route) => {
+        const methodRoutes = allRoutes.filter((route) => {
           const m = Route.descriptor(route).method?.toUpperCase()
           return m === "*" || m === method || (method === "HEAD" && m === "GET")
         })
 
-        if (matchingRoutes.length === 0) {
+        if (methodRoutes.length === 0) {
           if (method === "OPTIONS" || methods.size === 0) {
             return resolve(
               new Response(null, {
@@ -229,6 +229,35 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
           return resolve(
             respondError({ status: 405, message: "method not allowed" }, {
               allow: allowedMethods,
+            }),
+          )
+        }
+
+        const isUpgrade = method === "GET" &&
+          (request.headers.get("upgrade") ?? "").toLowerCase() === "websocket"
+        // Wildcard (`method: "*"`) routes are protocol-agnostic and must run for
+        // both plain and upgrade requests — they act as middleware that calls
+        // `next`, or as a terminal handler when no concrete route exists. Only
+        // concrete method routes are partitioned by protocol so a ws route
+        // handles upgrades and a plain route handles ordinary GETs.
+        const isWildcard = (route: UnboundedRouteWithMethod) =>
+          Route.descriptor<{ method?: string }>(route).method === "*"
+        const protocolMatches = (route: UnboundedRouteWithMethod) =>
+          (Route.descriptor<{ protocol?: "ws" }>(route).protocol === "ws") ===
+            isUpgrade
+        const matchingRoutes = methodRoutes.filter(
+          (route) => isWildcard(route) || protocolMatches(route),
+        )
+
+        // 426 only when concrete method routes existed but the protocol
+        // partition dropped all of them (e.g. a plain GET to a ws-only path or
+        // an upgrade to a non-ws path). Wildcard-only paths run normally.
+        const concreteRoutes = methodRoutes.filter((route) => !isWildcard(route))
+        if (concreteRoutes.length > 0 && !concreteRoutes.some(protocolMatches)) {
+          return resolve(
+            new Response(null, {
+              status: 426,
+              headers: { upgrade: "websocket" },
             }),
           )
         }

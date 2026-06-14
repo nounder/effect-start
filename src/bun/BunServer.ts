@@ -4,11 +4,12 @@ import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
+import * as FiberSet from "effect/FiberSet"
 import * as Layer from "effect/Layer"
 import * as MutableRef from "effect/MutableRef"
 import * as Option from "effect/Option"
 import * as Runtime from "effect/Runtime"
-import type * as Scope from "effect/Scope"
+import * as Scope from "effect/Scope"
 import * as NOs from "node:os"
 import * as NPath from "node:path"
 import * as PathPattern from "../internal/PathPattern.ts"
@@ -53,6 +54,9 @@ export type BunServer = {
   readonly pushHandler: (fetch: FetchHandler) => void
   readonly popHandler: () => void
   readonly setRoutes: (map: RouteMap.RouteMap) => Effect.Effect<void>
+  readonly upgrade: (
+    request: Request,
+  ) => Effect.Effect<Socket.Socket, Socket.SocketError>
 }
 
 export const BunServer = Context.GenericTag<BunServer>("effect-start/BunServer")
@@ -71,8 +75,7 @@ export const make = (
     )
     const hostFlag = process.argv.includes("--host")
     const hostname = yield* Config.string("HOST").pipe(
-      Effect.catchTag("ConfigError", () =>
-        Effect.succeed(hostFlag ? "0.0.0.0" : undefined)),
+      Effect.catchTag("ConfigError", () => Effect.succeed(hostFlag ? "0.0.0.0" : undefined)),
     )
 
     const handlerStack: Array<FetchHandler> = [
@@ -83,6 +86,8 @@ export const make = (
 
     const setRoutesDeferred = yield* Deferred
       .make<(map: RouteMap.RouteMap) => Effect.Effect<void>>()
+
+    const upgrade = makeUpgrade(() => service.server)
 
     const service = BunServer
       .of({
@@ -107,6 +112,7 @@ export const make = (
             Effect.flatMap((applyRoutes) => applyRoutes(map)),
           )
         },
+        upgrade,
       })
 
     const runtime = yield* Effect.runtime().pipe(
@@ -116,6 +122,9 @@ export const make = (
     let currentRoutes: BunRoute.BunRoutes = map
       ? yield* walkBunRoutes(runtime, map)
       : {}
+    let websocketEnabled = map
+      ? hasWebSocketRoute(map)
+      : false
 
     const websocket: Bun.WebSocketHandler<WebSocketContext> = {
       open(ws) {
@@ -127,15 +136,14 @@ export const make = (
       close(ws, code, closeReason) {
         Deferred.unsafeDone(
           ws.data.closeDeferred,
-          Socket.defaultCloseCodeIsError(code)
-            ? Exit.fail(
-              new Socket.SocketError({
-                reason: "Close",
+          Exit.fail(
+            new Socket.SocketError({
+              reason: new Socket.SocketCloseError({
                 code,
                 closeReason,
               }),
-            )
-            : Exit.void,
+            }),
+          ),
         )
       },
     }
@@ -146,8 +154,8 @@ export const make = (
       ...options,
       routes: currentRoutes,
       fetch: handlerStack[0],
-      websocket,
-    })
+      ...(websocketEnabled ? { websocket } : {}),
+    } as Bun.Serve.Options<WebSocketContext>)
 
     // @ts-expect-error
     service.server = server
@@ -168,7 +176,7 @@ export const make = (
       server.reload({
         fetch: handlerStack[handlerStack.length - 1],
         routes: currentRoutes,
-        websocket,
+        ...(websocketEnabled ? { websocket } : {}),
       })
     }
 
@@ -179,6 +187,7 @@ export const make = (
             .tap((bunRoutes) =>
               Effect.sync(() => {
                 currentRoutes = bunRoutes
+                websocketEnabled = websocketEnabled || hasWebSocketRoute(map)
                 reload()
               })
             ),
@@ -201,6 +210,7 @@ export const make = (
             Effect.flatMap((applyRoutes) => applyRoutes(map)),
           )
         },
+        upgrade,
       })
 
     return bunServer
@@ -209,8 +219,7 @@ export const make = (
 /**
  * Provides HttpServer using BunServer under the hood.
  */
-export const layer = (options?: BunServeOptions): Layer.Layer<BunServer> =>
-  Layer.scoped(BunServer, make(options ?? {}))
+export const layer = (options?: BunServeOptions): Layer.Layer<BunServer> => Layer.scoped(BunServer, make(options ?? {}))
 
 export const layerRoutes = (
   options?: BunServeOptions,
@@ -266,6 +275,11 @@ export const withLogAddress = <A, E, R>(layer: Layer.Layer<A, E, R>) =>
     )
     .pipe(Layer.provideMerge(layer))
 
+const hasWebSocketRoute = (map: RouteMap.RouteMap): boolean =>
+  [...RouteMap.walk(map)].some((r) =>
+    Route.descriptor<{ protocol?: "ws" }>(r).protocol === "ws"
+  )
+
 function walkBunRoutes(
   runtime: Runtime.Runtime<BunServer>,
   map: RouteMap.RouteMap,
@@ -319,6 +333,103 @@ function walkBunRoutes(
   })
 }
 
+function buildSocket(
+  ws: Bun.ServerWebSocket<WebSocketContext>,
+  ctx: WebSocketContext,
+): Socket.Socket {
+  const latch = Effect.unsafeMakeLatch(false)
+
+  const runRaw = <_, E, R>(
+    handler: (_: string | Uint8Array) => Effect.Effect<_, E, R> | void,
+    opts?: { readonly onOpen?: Effect.Effect<void> | undefined },
+  ): Effect.Effect<void, Socket.SocketError | E, R> =>
+    Effect
+      .scopedWith(Effect.fnUntraced(function*(scope) {
+        const fiberSet = yield* FiberSet
+          .make<any, E | Socket.SocketError>()
+          .pipe(Scope.extend(scope))
+        const run = yield* FiberSet.runtime(fiberSet)<R>()
+
+        ctx.run = (data) => {
+          const result = handler(data)
+          if (Effect.isEffect(result)) {
+            run(result)
+          }
+        }
+        for (const data of ctx.buffer) {
+          ctx.run(data)
+        }
+        ctx.buffer.length = 0
+
+        yield* latch.open
+        if (opts?.onOpen) yield* opts.onOpen
+
+        return yield* Effect.raceFirst(
+          FiberSet.join(fiberSet),
+          Deferred.await(ctx.closeDeferred),
+        )
+      }))
+      .pipe(
+        Effect.ensuring(Effect.sync(() => {
+          latch.unsafeClose()
+          ctx.run = (data) => {
+            ctx.buffer.push(data)
+          }
+        })),
+        Effect.interruptible,
+      )
+
+  const write = (chunk: Uint8Array | string | Socket.CloseEvent) =>
+    latch.whenOpen(Effect.sync(() => {
+      if (Socket.isCloseEvent(chunk)) {
+        ws.close(chunk.code, chunk.reason)
+      } else if (typeof chunk === "string") {
+        ws.sendText(chunk)
+      } else {
+        ws.sendBinary(chunk)
+      }
+    }))
+  const writer = Effect.succeed(write)
+
+  return Socket.make({
+    runRaw,
+    writer,
+  })
+}
+
+const makeUpgrade =
+  (getServer: () => Bun.Server<WebSocketContext>) =>
+  (request: Request): Effect.Effect<Socket.Socket, Socket.SocketError> =>
+    Effect.gen(function*() {
+      const deferred = yield* Deferred
+        .make<Bun.ServerWebSocket<WebSocketContext>>()
+      const closeDeferred = yield* Deferred.make<void, Socket.SocketError>()
+      const ctx: WebSocketContext = {
+        deferred,
+        closeDeferred,
+        buffer: [],
+        run: undefined as any,
+      }
+      ctx.run = (data) => {
+        ctx.buffer.push(data)
+      }
+
+      const ok = getServer().upgrade(request, { data: ctx })
+      if (!ok) {
+        return yield* Effect.fail(
+          new Socket.SocketError({
+            reason: new Socket.SocketOpenError({
+              kind: "Unknown",
+              cause: new Error("Bun declined the websocket upgrade"),
+            }),
+          }),
+        )
+      }
+
+      const ws = yield* Deferred.await(ctx.deferred)
+      return buildSocket(ws, ctx)
+    })
+
 function registerPrebuiltBundle(
   prefix: string,
   bundle: any,
@@ -338,8 +449,7 @@ function registerPrebuiltBundle(
     if (file.loader === "html") continue
     const absPath = NPath.resolve(mainDir, file.path)
     const basename = NPath.basename(file.path)
-    bunRoutes[`/${basename}`] = () =>
-      new Response(Bun.file(absPath), { headers: file.headers ?? {} })
+    bunRoutes[`/${basename}`] = () => new Response(Bun.file(absPath), { headers: file.headers ?? {} })
   }
 }
 
@@ -406,9 +516,7 @@ function rewriteRelativeAssetPaths(
       },
     })
 
-  return Promise.resolve(html).then((h) =>
-    rewriter.transform(new Response(h)).text()
-  )
+  return Promise.resolve(html).then((h) => rewriter.transform(new Response(h)).text())
 }
 
 function isRelativePath(path: string): boolean {

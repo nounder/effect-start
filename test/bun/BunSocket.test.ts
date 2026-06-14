@@ -320,6 +320,193 @@ test.describe("Route.ws", () => {
         Effect.runPromise,
       )
   })
+
+  test.test("server-initiated close delivers the code and reason to the client", () => {
+    const routes = Route.map({
+      "/ws": Route.get(Route.ws(function*(ctx) {
+        const write = yield* ctx.socket.writer
+        yield* ctx.socket.runRaw(() => write(new Socket.CloseEvent(4001, "bye")))
+      })),
+    })
+
+    return Effect
+      .gen(function*() {
+        const { server } = yield* BunServer.BunServer
+        const ws = yield* connect(`${wsUrl(server)}/ws`)
+        ws.send("trigger")
+        const closeEvent = yield* nextClose(ws)
+
+        test
+          .expect(closeEvent.code)
+          .toBe(4001)
+        test
+          .expect(closeEvent.reason)
+          .toBe("bye")
+      })
+      .pipe(
+        Effect.provide(testLayer(routes)),
+        Effect.scoped,
+        Effect.runPromise,
+      )
+  })
+
+  test.test("runs onOpen before forwarding frames", () => {
+    const routes = Route.map({
+      "/ws": Route.get(Route.ws(function*(ctx) {
+        const write = yield* ctx.socket.writer
+        yield* ctx.socket.runRaw((data) => write(data), {
+          // onOpen is typed Effect<void> (no error channel), but write can fail
+          // with SocketError — orDie to bridge it. See the onOpen ergonomics note.
+          onOpen: Effect.orDie(write("welcome")),
+        })
+      })),
+    })
+
+    return Effect
+      .gen(function*() {
+        const { server } = yield* BunServer.BunServer
+        const ws = yield* connect(`${wsUrl(server)}/ws`)
+        const first = yield* nextMessage(ws)
+
+        test
+          .expect(first)
+          .toBe("welcome")
+
+        ws.close()
+      })
+      .pipe(
+        Effect.provide(testLayer(routes)),
+        Effect.scoped,
+        Effect.runPromise,
+      )
+  })
+
+  test.test("isolates context across concurrent connections", () => {
+    const routes = Route.map({
+      "/ws": Route.get(Route.ws(function*(ctx) {
+        const write = yield* ctx.socket.writer
+        yield* ctx.socket.runRaw((data) => write(data))
+      })),
+    })
+
+    return Effect
+      .gen(function*() {
+        const { server } = yield* BunServer.BunServer
+        const a = yield* connect(`${wsUrl(server)}/ws`)
+        const b = yield* connect(`${wsUrl(server)}/ws`)
+
+        a.send("from-a")
+        b.send("from-b")
+        const echoedA = yield* nextMessage(a)
+        const echoedB = yield* nextMessage(b)
+
+        test
+          .expect(echoedA)
+          .toBe("from-a")
+        test
+          .expect(echoedB)
+          .toBe("from-b")
+
+        a.close()
+        b.close()
+      })
+      .pipe(
+        Effect.provide(testLayer(routes)),
+        Effect.scoped,
+        Effect.runPromise,
+      )
+  })
+
+  test.test("returns 426 for an upgrade request to a path with no socket route", () => {
+    const routes = Route.map({
+      "/plain": Route.get(Route.text("hi")),
+    })
+
+    return Effect
+      .gen(function*() {
+        const { server } = yield* BunServer.BunServer
+        const response = yield* Effect.promise(() =>
+          fetch(`http://localhost:${server.port}/plain`, {
+            headers: { upgrade: "websocket", connection: "Upgrade" },
+          })
+        )
+
+        test
+          .expect(response.status)
+          .toBe(426)
+      })
+      .pipe(
+        Effect.provide(testLayer(routes)),
+        Effect.scoped,
+        Effect.runPromise,
+      )
+  })
+
+  test.test("runs wildcard middleware on the upgrade chain", () => {
+    let middlewareRan = false
+    const routes = Route.map({
+      "/ws": Route.use(
+        Route.handle((_ctx, next) =>
+          Effect.gen(function*() {
+            middlewareRan = true
+            return yield* next
+          })
+        ),
+      ).get(Route.ws(function*(ctx) {
+        const write = yield* ctx.socket.writer
+        yield* ctx.socket.runRaw((data) => write(data))
+      })),
+    })
+
+    return Effect
+      .gen(function*() {
+        const { server } = yield* BunServer.BunServer
+        const ws = yield* connect(`${wsUrl(server)}/ws`)
+        ws.send("hello")
+        const echoed = yield* nextMessage(ws)
+
+        test
+          .expect(echoed)
+          .toBe("hello")
+        test
+          .expect(middlewareRan)
+          .toBe(true)
+
+        ws.close()
+      })
+      .pipe(
+        Effect.provide(testLayer(routes)),
+        Effect.scoped,
+        Effect.runPromise,
+      )
+  })
+
+  test.test("an upgrade to a path with only non-socket routes still returns 426", () => {
+    const routes = Route.map({
+      "/page": Route.use(
+        Route.handle((_ctx, next) => next),
+      ).get(Route.text("hello")),
+    })
+
+    return Effect
+      .gen(function*() {
+        const { server } = yield* BunServer.BunServer
+        const response = yield* Effect.promise(() =>
+          fetch(`http://localhost:${server.port}/page`, {
+            headers: { upgrade: "websocket", connection: "Upgrade" },
+          })
+        )
+
+        test
+          .expect(response.status)
+          .toBe(426)
+      })
+      .pipe(
+        Effect.provide(testLayer(routes)),
+        Effect.scoped,
+        Effect.runPromise,
+      )
+  })
 })
 
 test.describe("Route.ws scope lifecycle", () => {
@@ -461,4 +648,38 @@ test.describe("Route.ws scope lifecycle", () => {
         yield* Deferred.await(released)
       }).pipe(Effect.provide(testLayer(routes)), Effect.scoped)
     }).pipe(Effect.scoped, Effect.runPromise))
+})
+
+test.describe("Route.ws types", () => {
+  test.it("exposes protocol and socket on the handler context", () => {
+    Route.get(Route.ws((ctx) => {
+      test
+        .expectTypeOf(ctx)
+        .toExtend<{
+          protocol: "ws"
+          socket: Socket.Socket
+        }>()
+
+      return Effect.void
+    }))
+  })
+
+  test.it("does not leak BunServer or Scope into the app requirements", () => {
+    const layer = Route.layer(
+      Route.map({
+        "/ws": Route.get(Route.ws(function*(ctx) {
+          yield* Effect.addFinalizer(() => Effect.void)
+          const write = yield* ctx.socket.writer
+          yield* ctx.socket.runRaw((data) => write(data))
+        })),
+      }),
+    )
+
+    // BunServer is an IntrinsicService provided automatically at handling time;
+    // Scope is provided by the scoped runner around the handler. Neither should
+    // surface in the layer's requirements.
+    test
+      .expectTypeOf<Layer.Layer.Context<typeof layer>>()
+      .toEqualTypeOf<never>()
+  })
 })

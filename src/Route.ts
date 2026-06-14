@@ -246,6 +246,9 @@ export {
   schemaSuccess,
 } from "./RouteSchema.ts"
 export {
+  ws,
+} from "./RouteSocket.ts"
+export {
   sse,
 } from "./RouteSse.ts"
 
