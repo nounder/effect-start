@@ -1,5 +1,6 @@
 import * as test from "bun:test"
 import { BunServer } from "effect-start/bun"
+import * as Fetch from "effect-start/Fetch"
 import * as Route from "effect-start/Route"
 import type * as RouteMap from "../src/internal/RouteMap.ts"
 import * as Socket from "effect-start/Socket"
@@ -138,6 +139,69 @@ test.describe("Route.ws", () => {
           .toBe("hi")
 
         const ws = yield* connect(`${wsUrl(server)}/dual`)
+        ws.send("ping")
+        const echoed = yield* nextMessage(ws)
+
+        test
+          .expect(echoed)
+          .toBe("ping")
+
+        ws.close()
+      })
+      .pipe(
+        Effect.provide(testLayer(routes)),
+        Effect.scoped,
+        Effect.runPromise,
+      )
+  })
+
+  test.test("negotiates content for plain GETs and upgrades the socket on the same path", () => {
+    const routes = Route.map({
+      "/feed": Route.get(Route.html("<h1>feed</h1>"))
+        .get(Route.text("plain feed"))
+        .get(Route.ws(function*(ctx) {
+          const write = yield* ctx.socket.writer
+          yield* ctx.socket.runRaw((data) => write(data))
+        })),
+    })
+
+    return Effect
+      .gen(function*() {
+        const { server } = yield* BunServer.BunServer
+        const base = `http://localhost:${server.port}`
+
+        // No upgrade, Accept prefers html → the html route wins negotiation.
+        const htmlResponse = yield* Fetch.get(`${base}/feed`, {
+          headers: { accept: "text/html" },
+        })
+
+        test
+          .expect(htmlResponse.status)
+          .toBe(200)
+        test
+          .expect(htmlResponse.headers["content-type"])
+          .toBe("text/html; charset=utf-8")
+        test
+          .expect(yield* htmlResponse.text)
+          .toBe("<h1>feed</h1>")
+
+        // No upgrade, Accept prefers plain text → the text route wins.
+        const textResponse = yield* Fetch.get(`${base}/feed`, {
+          headers: { accept: "text/plain" },
+        })
+
+        test
+          .expect(textResponse.status)
+          .toBe(200)
+        test
+          .expect(textResponse.headers["content-type"])
+          .toBe("text/plain; charset=utf-8")
+        test
+          .expect(yield* textResponse.text)
+          .toBe("plain feed")
+
+        // Upgrade request on the same path → the socket route handles it.
+        const ws = yield* connect(`${wsUrl(server)}/feed`)
         ws.send("ping")
         const echoed = yield* nextMessage(ws)
 
