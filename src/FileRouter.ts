@@ -10,9 +10,9 @@ import * as Development from "./Development.ts"
 import * as FileRouterCodegen from "./FileRouterCodegen.ts"
 import * as FileSystem from "./FileSystem.ts"
 import * as PathPattern from "./internal/PathPattern.ts"
+import * as RouteMap from "./internal/RouteMap.ts"
 import * as NodeUtils from "./node/NodeUtils.ts"
 import * as Route from "./Route.ts"
-import * as RouteMap from "./internal/RouteMap.ts"
 import type * as System from "./System.ts"
 
 export class FileRouterError extends Data.TaggedError("FileRouterError")<{
@@ -101,25 +101,54 @@ function importModule<T>(
   })
 }
 
-/**
- * Generates a tree file that references all routes.
- */
-export function layer<const T extends FileRouteMap>(
-  load: () => Promise<{ default: T }>,
-): Layer.Layer<
-  Route.Routes,
-  FileRouterError,
-  FileSystem.FileSystem | FileRouteMap.Context<T>
->
-export function layer<const T extends FileRouteMap>(options: {
-  load: () => Promise<{ default: T }>
-  path: string
-}): Layer.Layer<
-  Route.Routes,
-  FileRouterError,
-  FileSystem.FileSystem | FileRouteMap.Context<T>
->
-export function layer(
+const normalizeFsPath = (path: string) => path.startsWith("file://") ? NUrl.fileURLToPath(path) : path
+
+const defaultRoutesPath = () => NPath.join(NodeUtils.getEntrypoint(), "routes")
+
+function makeRouteMap(
+  routesPath: string,
+  fileRoutes: OrderedFileRoutes,
+): FileRouteMap {
+  const routeMap: FileRouteMap = {}
+
+  for (const entry of FileRouterCodegen.getRouteEntries(fileRoutes)) {
+    const loaders = entry.modulePaths.map((modulePath): LazyRoute<any> => {
+      const href = NUrl.pathToFileURL(NPath.resolve(routesPath, modulePath)).href
+      return () => import(href) as Promise<RouteModule<any>>
+    })
+
+    routeMap[entry.path] = loaders as unknown as LazyStack
+  }
+
+  return routeMap
+}
+
+function mergeWithExisting(
+  routeMap: RouteMap.RouteMap,
+): Effect.Effect<RouteMap.RouteMap, never, Route.Routes> {
+  return Effect.gen(function*() {
+    const existing = yield* Effect.serviceOption(Route.Routes)
+    return existing._tag === "Some"
+      ? RouteMap.merge(existing.value, routeMap)
+      : routeMap
+  })
+}
+
+function layerMemory(routesPath: string) {
+  routesPath = normalizeFsPath(routesPath)
+
+  return Layer.scoped(
+    Route.Routes,
+    Effect.gen(function*() {
+      const fileRoutes = yield* walkRoutesDirectory(routesPath)
+      const routeMap = yield* fromFileRoutes(makeRouteMap(routesPath, fileRoutes))
+
+      return yield* mergeWithExisting(routeMap)
+    }),
+  )
+}
+
+function layerGenerated(
   loadOrOptions:
     | (() => Promise<{ default: FileRouteMap }>)
     | { load: () => Promise<{ default: FileRouteMap }>; path: string },
@@ -127,13 +156,10 @@ export function layer(
   const options = typeof loadOrOptions === "function"
     ? {
       load: loadOrOptions,
-      path: NPath.join(NodeUtils.getEntrypoint(), "routes"),
+      path: defaultRoutesPath(),
     }
     : loadOrOptions
-  let treePath = options.path
-  if (treePath.startsWith("file://")) {
-    treePath = NUrl.fileURLToPath(treePath)
-  }
+  let treePath = normalizeFsPath(options.path)
   if (NPath.extname(treePath) === "") {
     treePath = NPath.join(treePath, ".server.ts")
   }
@@ -157,12 +183,39 @@ export function layer(
         Effect.fork,
       )
 
-      const existing = yield* Effect.serviceOption(Route.Routes)
-      return existing._tag === "Some"
-        ? RouteMap.merge(existing.value, routeMap)
-        : routeMap
+      return yield* mergeWithExisting(routeMap)
     }),
   )
+}
+
+export function layer(): Layer.Layer<
+  Route.Routes,
+  FileRouterError,
+  FileSystem.FileSystem
+>
+export function layer<const T extends FileRouteMap>(
+  load: () => Promise<{ default: T }>,
+): Layer.Layer<
+  Route.Routes,
+  FileRouterError,
+  FileSystem.FileSystem | FileRouteMap.Context<T>
+>
+export function layer<const T extends FileRouteMap>(options: {
+  load: () => Promise<{ default: T }>
+  path: string
+}): Layer.Layer<
+  Route.Routes,
+  FileRouterError,
+  FileSystem.FileSystem | FileRouteMap.Context<T>
+>
+export function layer(
+  loadOrOptions?:
+    | (() => Promise<{ default: FileRouteMap }>)
+    | { load: () => Promise<{ default: FileRouteMap }>; path: string },
+) {
+  return loadOrOptions === undefined
+    ? layerMemory(defaultRoutesPath())
+    : layerGenerated(loadOrOptions)
 }
 
 export function fromFileRoutes(

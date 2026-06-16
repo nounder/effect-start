@@ -2,10 +2,12 @@ import * as test from "bun:test"
 import * as FileRouter from "effect-start/FileRouter"
 import * as FileRouterCodegen from "effect-start/FileRouterCodegen"
 import * as FileSystem from "effect-start/FileSystem"
+import * as Route from "effect-start/Route"
 import * as Effect from "effect/Effect"
 import * as NFs from "node:fs"
 import * as NOs from "node:os"
 import * as NPath from "node:path"
+import * as NUrl from "node:url"
 import * as NodeFileSystem from "../src/node/NodeFileSystem.ts"
 
 const writeTree = (root: string, files: Record<string, string>) => {
@@ -107,7 +109,46 @@ test.it("walks routes with groups", () =>
     })
     .pipe(Effect.scoped, Effect.provide(NodeFileSystem.layer), Effect.runPromise))
 
-test.describe("codegen generates .server.ts by default", () => {
+test.it("layer without load builds routes in memory without writing manifest", () =>
+  Effect
+    .gen(function*() {
+      const routeModuleUrl = NUrl.pathToFileURL(NPath.join(import.meta.dirname, "../src/Route.ts")).href
+      const root = yield* withRoutes({
+        "routes/route.ts": `import * as Route from ${JSON.stringify(routeModuleUrl)}
+
+export default Route.get(Route.text("memory"))
+`,
+      })
+      const previousEntrypoint = process.argv[1]
+      process.argv[1] = NPath.join(root, "server.ts")
+      yield* Effect.addFinalizer(() =>
+        Effect.sync(() => {
+          process.argv[1] = previousEntrypoint
+        })
+      )
+
+      const routeMap = yield* Route.Routes.pipe(
+        Effect.provide(FileRouter.layer()),
+      )
+      const fs = yield* FileSystem.FileSystem
+      const generated = yield* fs.exists(NPath.join(root, "routes", ".server.ts"))
+
+      test
+        .expect(Object.keys(routeMap))
+        .toEqual(["/"])
+      test
+        .expect(routeMap["/"])
+        .toHaveLength(1)
+      test
+        .expect(Route.descriptor<{ method: string }>(routeMap["/"][0]).method)
+        .toBe("GET")
+      test
+        .expect(generated)
+        .toBe(false)
+    })
+    .pipe(Effect.scoped, Effect.provide(NodeFileSystem.layer), Effect.runPromise))
+
+test.describe("codegen generates manifest by default", () => {
   const tmpDir = NPath.join(import.meta.dirname, ".tmp-test-routes")
 
   test.beforeAll(() => {
@@ -128,7 +169,7 @@ test.describe("codegen generates .server.ts by default", () => {
     NFs.rmSync(tmpDir, { recursive: true, force: true })
   })
 
-  test.it("update generates .server.ts", () =>
+  test.it("update generates manifest", () =>
     Effect
       .gen(function*() {
         yield* FileRouterCodegen.update(tmpDir)

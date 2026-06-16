@@ -103,12 +103,16 @@ export function validateRouteModules(
   })
 }
 
-export function generateCode(
+export type RouteEntry = {
+  readonly path: PathPattern.PathPattern
+  readonly modulePaths: ReadonlyArray<string>
+}
+
+export function getRouteEntries(
   fileRoutes: FileRouter.OrderedFileRoutes,
-): string | null {
-  // Group routes by path to find layers
+): Array<RouteEntry> {
   const routesByPath = new Map<
-    string,
+    PathPattern.PathPattern,
     {
       route?: FileRouter.FileRoute
       layers: Array<FileRouter.FileRoute>
@@ -125,7 +129,6 @@ export function generateCode(
     routesByPath.set(fileRoute.routePath, existing)
   }
 
-  // Helper to check if layer's path is an ancestor of route's path
   const layerMatchesRoute = (
     layer: FileRouter.FileRoute,
     route: FileRouter.FileRoute,
@@ -135,13 +138,11 @@ export function generateCode(
     return route.modulePath.startsWith(layerDir + "/")
   }
 
-  // Build entries for each route path
-  const entries: Array<{ path: string; loaders: Array<string> }> = []
+  const entries: Array<RouteEntry> = []
 
   for (const [path, { route }] of routesByPath) {
     if (!route) continue
 
-    // Collect all parent layers that match the route's groups
     const allLayers: Array<FileRouter.FileRoute> = []
     let currentPath = path
 
@@ -155,26 +156,36 @@ export function generateCode(
       if (currentPath === "/") break
 
       const parentPath = currentPath.substring(0, currentPath.lastIndexOf("/"))
-      currentPath = parentPath || "/"
+      currentPath = (parentPath || "/") as PathPattern.PathPattern
     }
 
-    // Order: layers from outermost to innermost, then route
-    const loaders: Array<string> = [
-      ...allLayers.map((layer) => `() => import("./${layer.modulePath}")`),
-      `() => import("./${route.modulePath}")`,
-    ]
-
-    entries.push({ path, loaders })
+    entries.push({
+      path,
+      modulePaths: [
+        ...allLayers.map((layer) => layer.modulePath),
+        route.modulePath,
+      ],
+    })
   }
 
-  // No routes found - don't create file
+  return entries
+}
+
+export function generateCode(
+  fileRoutes: FileRouter.OrderedFileRoutes,
+): string | null {
+  const entries = getRouteEntries(fileRoutes)
+
   if (entries.length === 0) {
     return null
   }
 
   const routeEntries = entries
     .map((v) => {
-      const loadersCode = v.loaders.join(",\n    ")
+      const loadersCode = v
+        .modulePaths
+        .map((modulePath) => `() => import("./${modulePath}")`)
+        .join(",\n    ")
       return `  "${v.path}": [\n    ${loadersCode},\n  ]`
     })
     .join(",\n")
