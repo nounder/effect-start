@@ -122,6 +122,10 @@
       "bun": "./src/bun/index.ts",
       "default": "./dist/bun/index.js"
     },
+    "./node": {
+      "bun": "./src/node/index.ts",
+      "default": "./dist/node/index.js"
+    },
     "./ts/import-plugin": "./src/ts/import-plugin.cjs",
     "./cli": {
       "bun": "./src/cli/index.ts",

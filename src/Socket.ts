@@ -370,13 +370,15 @@ export const layerWebSocketConstructorGlobal: Layer.Layer<WebSocketConstructor> 
   (url, protocols) => new globalThis.WebSocket(url, protocols),
 )
 
+type WebSocketOptions = {
+  readonly closeCodeIsError?: ((code: number) => boolean) | undefined
+  readonly openTimeout?: Duration.DurationInput | undefined
+  readonly protocols?: string | Array<string> | undefined
+}
+
 export const makeWebSocket = (
   url: string | Effect.Effect<string>,
-  options?: {
-    readonly closeCodeIsError?: ((code: number) => boolean) | undefined
-    readonly openTimeout?: Duration.DurationInput | undefined
-    readonly protocols?: string | Array<string> | undefined
-  },
+  options?: WebSocketOptions,
 ): Effect.Effect<Socket, never, WebSocketConstructor> =>
   fromWebSocket(
     Effect.acquireRelease(
@@ -542,12 +544,22 @@ export const makeWebSocketChannel = <IE = never>(
     Effect.map(makeWebSocket(url, options), toChannelWith<IE>()),
   )
 
-export const layerWebSocket = (url: string, options?: {
-  readonly closeCodeIsError?: (code: number) => boolean
-}): Layer.Layer<Socket, never, WebSocketConstructor> =>
+export const layerWebSocket = (
+  url: string | Effect.Effect<string>,
+  options?: WebSocketOptions,
+): Layer.Layer<Socket, never, WebSocketConstructor> =>
   Layer.effect(
     Socket,
     makeWebSocket(url, options),
+  )
+
+export const layerWebSocketGlobal = (
+  url: string | Effect.Effect<string>,
+  options?: WebSocketOptions,
+): Layer.Layer<Socket, never, never> =>
+  Layer.provide(
+    layerWebSocket(url, options),
+    layerWebSocketConstructorGlobal,
   )
 
 export const currentSendQueueCapacity: FiberRef.FiberRef<number> = GlobalValue.globalValue(
