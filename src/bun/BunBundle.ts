@@ -1,44 +1,22 @@
 import type { BuildConfig, BuildOutput } from "bun"
-import { type Context, Effect, Layer } from "effect"
+import type * as Context from "effect/Context"
+import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
 import * as NPath from "node:path"
-import * as NUrl from "node:url"
 import * as Bundle from "../bundler/Bundle.ts"
+import * as BundleHelpers from "../bundler/internal/BundleHelpers.ts"
 
 export type BuildOptions = Omit<BuildConfig, "outdir">
 
-const toPath = (
-  ep: string,
-) => (ep.startsWith("file://") ? NUrl.fileURLToPath(ep) : ep)
-
-const toOutputPath = (path: string) => path.startsWith("./") ? path.slice(2) : path
-
-const normalizeEntrypointPath = (path: string): string => NPath.resolve(toPath(path))
-
-type EntrypointPair = {
-  original: string
-  resolved: string
-  id: string
-}
-
 /**
- * Resolves bare specifiers and file:// URLs to absolute paths.
- *
  * Bun v1.3.10 segfaults when CSS entrypoints are interleaved with JS
  * entrypoints, so CSS is grouped after non-CSS entrypoints.
  * @see https://github.com/oven-sh/bun/issues/28947
  */
 function resolveEntrypointsPaired(
   entrypoints: Array<string>,
-): Array<EntrypointPair> {
-  const paired = entrypoints.map((original) => {
-    let resolved: string
-    try {
-      resolved = Bun.resolveSync(toPath(original), process.cwd())
-    } catch {
-      resolved = toPath(original)
-    }
-    return { original, resolved, id: normalizeEntrypointPath(resolved) }
-  })
+): Array<BundleHelpers.EntrypointPair> {
+  const paired = BundleHelpers.resolveEntrypointsPaired(entrypoints)
   paired.sort((a, b) => {
     const aCss = NPath.extname(a.resolved) === ".css" ? 1 : 0
     const bCss = NPath.extname(b.resolved) === ".css" ? 1 : 0
@@ -101,7 +79,7 @@ export function build(
     const entrypoints = yield* makeEntrypoints(paired, output)
     const artifactsMap = Object.fromEntries(
       output.outputs.map((artifact) => [
-        toOutputPath(artifact.path),
+        BundleHelpers.toOutputPath(artifact.path),
         artifact,
       ]),
     )
@@ -181,7 +159,7 @@ const isEntrypointArtifact = (v: BuildArtifact): boolean =>
  * back-reference from output artifact to source entrypoint.
  */
 function makeEntrypoints(
-  paired: Array<EntrypointPair>,
+  paired: Array<BundleHelpers.EntrypointPair>,
   output: BuildOutput,
 ): Effect.Effect<Record<string, string>, Bundle.BundleError> {
   return Effect.gen(function*() {
@@ -196,7 +174,7 @@ function makeEntrypoints(
     const entrypointIds = new Set(paired.map((p) => p.id))
     const artifactsByPath = new Map(
       output.outputs.map((artifact) => [
-        toOutputPath(artifact.path),
+        BundleHelpers.toOutputPath(artifact.path),
         artifact,
       ]),
     )
@@ -209,78 +187,20 @@ function makeEntrypoints(
     ) {
       if (!metadata.entryPoint) continue
 
-      const artifactPath = toOutputPath(outputPath)
+      const artifactPath = BundleHelpers.toOutputPath(outputPath)
       const artifact = artifactsByPath.get(artifactPath)
       if (!artifact || !isEntrypointArtifact(artifact)) continue
 
-      const id = normalizeEntrypointPath(metadata.entryPoint)
-      if (!entrypointIds.has(id)) continue
-
-      const existing = artifactPathByEntrypoint.get(id)
-      if (existing) {
-        return yield* Effect.fail(
-          new Bundle.BundleError({
-            message: `Entrypoint ${metadata.entryPoint} matched multiple artifacts: ${
-              [existing, artifactPath].join(", ")
-            }`,
-          }),
-        )
-      }
-      artifactPathByEntrypoint.set(id, artifactPath)
-    }
-
-    const missing = paired.filter((entrypoint) => !artifactPathByEntrypoint.has(entrypoint.id))
-    if (missing.length > 0) {
-      return yield* Effect.fail(
-        new Bundle.BundleError({
-          message: `No artifact emitted for ${missing.length} entrypoint(s): ${
-            missing.map((p) => p.original).join(", ")
-          }`,
-        }),
+      yield* BundleHelpers.recordEntrypointArtifact(
+        artifactPathByEntrypoint,
+        entrypointIds,
+        metadata.entryPoint,
+        artifactPath,
       )
     }
 
-    const baseDir = getBaseDir(paired.map((p) => p.id))
-    return Object.fromEntries(
-      paired.map((p) => [
-        entrypointKey(p.original, p.id, baseDir),
-        artifactPathByEntrypoint.get(p.id)!,
-      ]),
-    )
+    return yield* BundleHelpers.finishEntrypointMap(paired, artifactPathByEntrypoint)
   })
-}
-
-/**
- * Derive the resolver key for an entrypoint.
- *
- * Non-absolute inputs stay intact so `bundle.resolve(original)` works.
- * Absolute paths and file URLs are stripped against the common base directory.
- */
-const entrypointKey = (
-  original: string,
-  resolved: string,
-  baseDir: string,
-): string => {
-  const originalPath = toPath(original)
-  if (!NPath.isAbsolute(originalPath)) return originalPath
-  const prefix = baseDir ? baseDir + "/" : ""
-  return resolved.startsWith(prefix) ? resolved.slice(prefix.length) : resolved
-}
-
-/**
- * Finds common path prefix across provided paths.
- */
-function getBaseDir(paths: Array<string>) {
-  if (paths.length === 0) return ""
-  if (paths.length === 1) return NPath.dirname(paths[0])
-
-  const segmentsList = paths.map((path) => NPath.dirname(path).split("/").filter(Boolean))
-
-  return (
-    segmentsList[0]
-      .filter((segment, i) => segmentsList.every((segs) => segs[i] === segment))
-      .reduce((path, seg) => `${path}/${seg}`, "") ?? ""
-  )
 }
 
 function buildBun(

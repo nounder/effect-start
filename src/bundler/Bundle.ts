@@ -1,4 +1,7 @@
-import { Context, Data, type Effect, type PubSub } from "effect"
+import * as Context from "effect/Context"
+import * as Data from "effect/Data"
+import type * as Effect from "effect/Effect"
+import type * as PubSub from "effect/PubSub"
 import * as Schema from "effect/Schema"
 
 const BundleEventChange = Schema.TaggedStruct("Change", {
