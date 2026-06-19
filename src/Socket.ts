@@ -370,15 +370,13 @@ export const layerWebSocketConstructorGlobal: Layer.Layer<WebSocketConstructor> 
   (url, protocols) => new globalThis.WebSocket(url, protocols),
 )
 
-type WebSocketOptions = {
-  readonly closeCodeIsError?: ((code: number) => boolean) | undefined
-  readonly openTimeout?: Duration.DurationInput | undefined
-  readonly protocols?: string | Array<string> | undefined
-}
-
 export const makeWebSocket = (
   url: string | Effect.Effect<string>,
-  options?: WebSocketOptions,
+  options?: {
+    readonly closeCodeIsError?: ((code: number) => boolean) | undefined
+    readonly openTimeout?: Duration.DurationInput | undefined
+    readonly protocols?: string | Array<string> | undefined
+  },
 ): Effect.Effect<Socket, never, WebSocketConstructor> =>
   fromWebSocket(
     Effect.acquireRelease(
@@ -546,7 +544,11 @@ export const makeWebSocketChannel = <IE = never>(
 
 export const layerWebSocket = (
   url: string | Effect.Effect<string>,
-  options?: WebSocketOptions,
+  options?: {
+    readonly closeCodeIsError?: ((code: number) => boolean) | undefined
+    readonly openTimeout?: Duration.DurationInput | undefined
+    readonly protocols?: string | Array<string> | undefined
+  },
 ): Layer.Layer<Socket, never, WebSocketConstructor> =>
   Layer.effect(
     Socket,
@@ -555,7 +557,11 @@ export const layerWebSocket = (
 
 export const layerWebSocketGlobal = (
   url: string | Effect.Effect<string>,
-  options?: WebSocketOptions,
+  options?: {
+    readonly closeCodeIsError?: ((code: number) => boolean) | undefined
+    readonly openTimeout?: Duration.DurationInput | undefined
+    readonly protocols?: string | Array<string> | undefined
+  },
 ): Layer.Layer<Socket, never, never> =>
   Layer.provide(
     layerWebSocket(url, options),

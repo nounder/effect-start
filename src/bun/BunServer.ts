@@ -20,6 +20,7 @@ import * as RouteHttp from "../RouteHttp.ts"
 import * as RouteMap from "../internal/RouteMap.ts"
 import type * as RouteMount from "../internal/RouteMount.ts"
 import * as Socket from "../Socket.ts"
+import * as StartServer from "../StartServer.ts"
 import * as BunRoute from "./BunRoute.ts"
 
 export interface WebSocketContext {
@@ -51,25 +52,17 @@ interface BunServeOptions {
   readonly development?: Bun.Serve.Development
 }
 
-export type BunServer = {
-  readonly [Route.IntrinsicService]?: never
-  readonly server: Bun.Server<WebSocketContext>
-  readonly pushHandler: (fetch: FetchHandler) => void
-  readonly popHandler: () => void
-  readonly setRoutes: (map: RouteMap.RouteMap) => Effect.Effect<void>
-  readonly upgrade: (
-    request: Request,
-    handlerScope: Scope.Scope,
-  ) => Effect.Effect<Socket.Socket, Socket.SocketError>
-  /**
-   * Forks a socket handler into the server's scope, so it is interrupted (and
-   * its finalizers run) when the server shuts down. The effect must handle its
-   * own errors; its requirements are preserved.
-   */
-  readonly runFork: <R>(
-    effect: Effect.Effect<void, never, R>,
-  ) => Effect.Effect<void, never, R>
-}
+// Implements StartServer (upgrade/runFork) so `Route.ws` can resolve the
+// platform-agnostic tag at request time without depending on this Bun module.
+export type BunServer =
+  & StartServer.StartServer
+  & {
+    readonly [Route.IntrinsicService]?: never
+    readonly server: Bun.Server<WebSocketContext>
+    readonly pushHandler: (fetch: FetchHandler) => void
+    readonly popHandler: () => void
+    readonly setRoutes: (map: RouteMap.RouteMap) => Effect.Effect<void>
+  }
 
 export const BunServer = Context.GenericTag<BunServer>("effect-start/BunServer")
 
@@ -139,6 +132,9 @@ export const make = (
 
     const runtime = yield* Effect.runtime().pipe(
       Effect.andThen(Runtime.provideService(BunServer, service)),
+      // `Route.ws` resolves StartServer (not BunServer) at request time, so the
+      // request runtime must carry it too — backed by the same Bun service.
+      Effect.map(Runtime.provideService(StartServer.StartServer, service)),
     )
 
     let currentRoutes: BunRoute.BunRoutes = map
@@ -239,16 +235,27 @@ export const make = (
     return bunServer
   })
 
+const withStartServer = <R>(
+  effect: Effect.Effect<BunServer, never, R | Scope.Scope>,
+): Layer.Layer<BunServer | StartServer.StartServer, never, Exclude<R, Scope.Scope>> =>
+  Layer.scopedContext(
+    Effect.map(effect, (server) =>
+      Context.empty().pipe(
+        Context.add(BunServer, server),
+        Context.add(StartServer.StartServer, server),
+      )),
+  )
+
 /**
  * Provides HttpServer using BunServer under the hood.
  */
-export const layer = (options?: BunServeOptions): Layer.Layer<BunServer> => Layer.scoped(BunServer, make(options ?? {}))
+export const layer = (options?: BunServeOptions): Layer.Layer<BunServer | StartServer.StartServer> =>
+  withStartServer(make(options ?? {}))
 
 export const layerRoutes = (
   options?: BunServeOptions,
-): Layer.Layer<BunServer, never, Route.Routes> =>
-  Layer.scoped(
-    BunServer,
+): Layer.Layer<BunServer | StartServer.StartServer, never, Route.Routes> =>
+  withStartServer(
     Effect.gen(function*() {
       const routes = yield* Route.Routes
       return yield* make(options ?? {}, routes)
@@ -264,9 +271,8 @@ export const layerRoutes = (
  */
 export const layerStart = (
   options?: BunServeOptions,
-): Layer.Layer<BunServer, never, StartApp.StartApp> =>
-  Layer.scoped(
-    BunServer,
+): Layer.Layer<BunServer | StartServer.StartServer, never, StartApp.StartApp> =>
+  withStartServer(
     Effect.gen(function*() {
       const app = yield* StartApp.StartApp
       const routes = yield* Effect.serviceOption(Route.Routes)

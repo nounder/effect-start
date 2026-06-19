@@ -2,11 +2,11 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Scope from "effect/Scope"
 import type * as Utils from "effect/Utils"
-import * as BunServer from "../bun/BunServer.ts"
 import * as Entity from "../Entity.ts"
-import type * as Values from "./Values.ts"
 import * as Route from "../Route.ts"
 import * as Socket from "../Socket.ts"
+import * as StartServer from "../StartServer.ts"
+import type * as Values from "./Values.ts"
 
 type YieldError<T> = T extends Utils.YieldWrap<Effect.Effect<any, infer E, any>> ? E
   : never
@@ -20,11 +20,7 @@ type WsContext<D, B, I extends Route.Route.Tuple> = Values.Simplify<
   & { protocol: "ws"; socket: Socket.Socket }
 >
 
-// The handler runs under its own Scope at runtime (so authors can use
-// acquireRelease/addFinalizer), and BunServer is provided by the request
-// runtime. Strip Scope from the handler's R and add BunServer so neither leaks
-// into `Route.layer`'s requirements as something the app must provide.
-type WsRouteR<R> = Exclude<R, Scope.Scope> | BunServer.BunServer
+type WsRouteR<R> = Exclude<R, Scope.Scope> | StartServer.StartServer
 
 type WsRoute<I extends Route.Route.Tuple, E, R> = [
   ...I,
@@ -96,7 +92,7 @@ export function ws<
       (context) =>
         Effect
           .gen(function*() {
-            const server = yield* BunServer.BunServer
+            const server = yield* StartServer.StartServer
             const request = yield* Route.Request
 
             // scope is shared with handler and the connection.
