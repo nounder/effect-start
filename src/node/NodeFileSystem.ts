@@ -7,11 +7,11 @@ import * as Function from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Stream from "effect/Stream"
-import * as NCrypto from "node:crypto"
 import * as NFS from "node:fs"
 import * as NOS from "node:os"
 import * as NPath from "node:path"
 import * as FileSystem from "../FileSystem.ts"
+import * as Unique from "../Unique.ts"
 import * as Effectify from "../internal/Effectify.ts"
 import * as System from "../System.ts"
 
@@ -388,7 +388,9 @@ const makeTempFileFactory = (method: string) => {
   const makeDirectory = makeTempDirectoryFactory(method)
   const open = openFactory(method)
   const randomHexString = (bytes: number) =>
-    Effect.sync(() => NCrypto.randomBytes(bytes).toString("hex"))
+    Effect.sync(() =>
+      Array.from(Unique.bytes(bytes), (b) => b.toString(16).padStart(2, "0")).join("")
+    )
   return (options?: FileSystem.MakeTempFileOptions) =>
     Function.pipe(
       Effect.zip(makeDirectory(options), randomHexString(6)),
