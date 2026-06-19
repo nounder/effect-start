@@ -34,6 +34,10 @@
       "bun": "./src/esbuild/index.ts",
       "default": "./dist/esbuild/index.js"
     },
+    "./rolldown": {
+      "bun": "./src/rolldown/index.ts",
+      "default": "./dist/rolldown/index.js"
+    },
     "./Fetch": {
       "bun": "./src/Fetch.ts",
       "default": "./dist/Fetch.js"
