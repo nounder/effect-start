@@ -1,12 +1,8 @@
 import * as test from "bun:test"
-import type { BunServer } from "effect-start/bun"
 import * as Start from "effect-start/Start"
 import * as Context from "effect/Context"
-import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
-import * as Fiber from "effect/Fiber"
 import * as Layer from "effect/Layer"
-import * as StartApp from "../src/internal/StartApp.ts"
 
 // Start.build and Start.pack are thin wrappers over LayerExtra.provideMergeAll
 // and LayerExtra.buildUnordered (see test/internal/LayerExtra.test.ts for
@@ -142,45 +138,6 @@ test.describe(Start.pack, () => {
         Effect.runPromise,
       )
   })
-})
-
-test.describe("StartApp.server", () => {
-  test.test("waits for server ready deferred in StartApp", () =>
-    Effect
-      .gen(function*() {
-        const deferred = yield* Deferred.make<BunServer.BunServer>()
-
-        const fakeServer = {
-          server: { port: 1234 } as any,
-          pushHandler: (
-            _fetch: Parameters<BunServer.BunServer["pushHandler"]>[0],
-          ) => {},
-          popHandler: () => {},
-          setRoutes: () => Effect.void,
-          upgrade: () => Effect.die("not supported"),
-          runFork: () => Effect.void,
-        } satisfies BunServer.BunServer
-
-        const resultFiber = yield* Effect
-          .gen(function*() {
-            const app = yield* StartApp.StartApp
-            return yield* Deferred.await(app.server)
-          })
-          .pipe(
-            Effect.provide(
-              Layer.succeed(StartApp.StartApp, { server: deferred }),
-            ),
-            Effect.fork,
-          )
-
-        yield* Deferred.succeed(deferred, fakeServer)
-        const result = yield* Fiber.join(resultFiber)
-
-        test
-          .expect(result)
-          .toBe(fakeServer)
-      })
-      .pipe(Effect.runPromise))
 })
 
 class Logger extends Context.Tag("Logger")<

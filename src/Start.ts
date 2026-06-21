@@ -1,5 +1,3 @@
-import { Development } from "effect-start"
-import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Function from "effect/Function"
 import * as Layer from "effect/Layer"
@@ -7,9 +5,9 @@ import * as BunRuntime from "./bun/BunRuntime.ts"
 import * as BunServer from "./bun/BunServer.ts"
 import * as BundleRoute from "./bundler/BundleRoute.ts"
 import type * as ChildProcess from "./ChildProcess.ts"
+import * as Development from "./Development.ts"
 import type * as FileSystem from "./FileSystem.ts"
 import * as LayerExtra from "./internal/LayerExtra.ts"
-import * as StartApp from "./internal/StartApp.ts"
 
 /**
  * Builds layers in the given order, wiring their dependencies automatically.
@@ -83,7 +81,6 @@ type AppRequirements =
   | BunServer.BunServer
   | FileSystem.FileSystem
   | ChildProcess.ChildProcessSpawner
-  | StartApp.StartApp
 
 export function serve<ROut, E, RIn extends AppRequirements>(
   app:
@@ -101,17 +98,7 @@ export function serve<ROut, E, RIn extends AppRequirements>(
 
   const appLayerResolved = Function.pipe(
     appLayer,
-    Layer.provideMerge(
-      Layer.mergeAll(
-        layerDev(),
-        Layer.effect(
-          StartApp.StartApp,
-          Deferred.make<BunServer.BunServer>().pipe(
-            Effect.map((server) => ({ server })),
-          ),
-        ),
-      ),
-    ),
+    Layer.provideMerge(layerDev()),
   )
 
   const composed = Function.pipe(

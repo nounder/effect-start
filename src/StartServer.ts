@@ -11,13 +11,17 @@
 import type * as Effect from "effect/Effect"
 import * as Context from "effect/Context"
 import type * as Scope from "effect/Scope"
+import type * as SocketAddress from "./internal/SocketAddress.ts"
 import type * as Route from "./Route.ts"
 import type * as Socket from "./Socket.ts"
+
+export type Address = SocketAddress.Address
 
 export interface StartServer {
   // Provided automatically by the request runtime, so it's stripped from a
   // route handler's requirements rather than surfaced to the app.
   readonly [Route.IntrinsicService]?: never
+  readonly address: Address
   readonly upgrade: (
     request: Request,
     handlerScope: Scope.Scope,

@@ -4,14 +4,12 @@ import * as Route from "effect-start/Route"
 import type * as RouteMap from "../../src/internal/RouteMap.ts"
 import * as Start from "effect-start/Start"
 import * as ConfigProvider from "effect/ConfigProvider"
-import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Layer from "effect/Layer"
 import * as NFs from "node:fs"
 import * as NOs from "node:os"
 import * as NPath from "node:path"
-import * as StartApp from "../../src/internal/StartApp.ts"
 
 const staticDir = NPath.resolve(import.meta.dir, "../../static")
 
@@ -389,15 +387,7 @@ test.describe("Start.serve composition", () => {
       }),
     )
 
-    const startAppLayer = Layer.effect(
-      StartApp.StartApp,
-      Deferred.make<BunServer.BunServer>().pipe(
-        Effect.map((server) => ({ server })),
-      ),
-    )
-
     const appLayer = Start.pack(
-      startAppLayer,
       routeLayer,
       BunServer.layer({ port: 0 }),
     )

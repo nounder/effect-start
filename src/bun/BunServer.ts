@@ -13,7 +13,7 @@ import * as Scope from "effect/Scope"
 import * as NOs from "node:os"
 import * as NPath from "node:path"
 import * as PathPattern from "../internal/PathPattern.ts"
-import * as StartApp from "../internal/StartApp.ts"
+import * as SocketAddress from "../internal/SocketAddress.ts"
 import * as PlatformRuntime from "../PlatformRuntime.ts"
 import * as Route from "../Route.ts"
 import * as RouteHttp from "../RouteHttp.ts"
@@ -46,6 +46,7 @@ type FetchHandler = (
 interface BunServeOptions {
   readonly port?: number
   readonly hostname?: string
+  readonly unix?: string
   readonly reusePort?: boolean
   readonly ipv6Only?: boolean
   readonly idleTimeout?: number
@@ -101,17 +102,18 @@ export const make = (
       effect: Effect.Effect<void, never, R>,
     ): Effect.Effect<void, never, R> => Effect.asVoid(Effect.forkIn(effect, handlerScope))
 
-    const upgrade = makeUpgrade(() => service.server)
+    let boundServer: Bun.Server<WebSocketContext>
+    let boundAddress: SocketAddress.Address
+    const upgrade = makeUpgrade(() => boundServer)
 
     const service = BunServer
       .of({
-        // During the construction we need to create a service imlpementation
-        // first so we can provide it in the runtime that will be used in web
-        // handlers. After we create the runtime, we set it below so it's always
-        // available at runtime.
-        // An alternative approach would be to use Bun.Server.reload but I prefer
-        // to avoid it since it's badly documented and has bunch of bugs.
-        server: undefined as any,
+        get server() {
+          return boundServer
+        },
+        get address() {
+          return boundAddress
+        },
         pushHandler(fetch) {
           handlerStack
             .push(fetch)
@@ -167,16 +169,17 @@ export const make = (
     }
 
     const server = Bun.serve({
-      port,
-      hostname,
+      ...(options.unix !== undefined ? {} : { port, hostname }),
       ...options,
       routes: currentRoutes,
       fetch: handlerStack[0],
       ...(websocketEnabled ? { websocket } : {}),
     } as Bun.Serve.Options<WebSocketContext>)
 
-    // @ts-expect-error
-    service.server = server
+    boundServer = server
+    boundAddress = options.unix !== undefined
+      ? SocketAddress.unix(options.unix)
+      : SocketAddress.tcp(server.hostname!, server.port!)
 
     const myFiber = MutableRef.get(PlatformRuntime.mainFiber)
     yield* Effect.addFinalizer(() =>
@@ -212,27 +215,7 @@ export const make = (
           Effect.asVoid,
         ))
 
-    const bunServer = BunServer
-      .of({
-        server,
-        pushHandler(fetch) {
-          handlerStack.push(fetch)
-          reload()
-        },
-        popHandler() {
-          handlerStack.pop()
-          reload()
-        },
-        setRoutes(map) {
-          return Deferred.await(setRoutesDeferred).pipe(
-            Effect.flatMap((applyRoutes) => applyRoutes(map)),
-          )
-        },
-        upgrade,
-        runFork,
-      })
-
-    return bunServer
+    return service
   })
 
 const withStartServer = <R>(
@@ -271,10 +254,9 @@ export const layerRoutes = (
  */
 export const layerStart = (
   options?: BunServeOptions,
-): Layer.Layer<BunServer | StartServer.StartServer, never, StartApp.StartApp> =>
+): Layer.Layer<BunServer | StartServer.StartServer, never, never> =>
   withStartServer(
     Effect.gen(function*() {
-      const app = yield* StartApp.StartApp
       const routes = yield* Effect.serviceOption(Route.Routes)
       const routeMap = Option.getOrNull(routes)
       const existing = yield* Effect.serviceOption(BunServer)
@@ -282,12 +264,9 @@ export const layerStart = (
         if (routeMap !== null) {
           yield* existing.value.setRoutes(routeMap)
         }
-        yield* Deferred.succeed(app.server, existing.value)
         return existing.value
       }
-      const server = yield* make(options ?? {}, routeMap ?? undefined)
-      yield* Deferred.succeed(app.server, server)
-      return server
+      return yield* make(options ?? {}, routeMap ?? undefined)
     }),
   )
 
@@ -295,11 +274,15 @@ export const withLogAddress = <A, E, R>(layer: Layer.Layer<A, E, R>) =>
   Layer
     .effectDiscard(
       Effect.gen(function*() {
-        const { server } = yield* BunServer
-        const { hostname, port } = server
-        const addr = hostname === "0.0.0.0" ? getLocalIp() : "localhost"
-
-        yield* Effect.log(`Listening on http://${addr}:${port}`)
+        const server = yield* BunServer
+        if (server.address._tag === "UnixAddress") {
+          yield* Effect.log(`Listening on unix:${server.address.path}`)
+        } else {
+          const host = server.address.hostname === "0.0.0.0"
+            ? (getLocalIp() ?? "localhost")
+            : "localhost"
+          yield* Effect.log(`Listening on http://${host}:${server.address.port}`)
+        }
       }),
     )
     .pipe(Layer.provideMerge(layer))
