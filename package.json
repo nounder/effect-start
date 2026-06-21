@@ -163,10 +163,6 @@
       "bun": "./src/studio/index.ts",
       "default": "./dist/studio/index.js"
     },
-    "./tailscale": {
-      "bun": "./src/tailscale/index.ts",
-      "default": "./dist/tailscale/index.js"
-    },
     "./tailwind": {
       "bun": "./src/tailwind/index.ts",
       "default": "./dist/tailwind/index.js"
