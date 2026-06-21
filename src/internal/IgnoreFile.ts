@@ -131,13 +131,12 @@ const pushIgnore = async (
   stack: IgnoreStack,
   dir: string,
 ): Promise<boolean> => {
-  try {
-    const content = await NFS.readFile(NPath.join(dir, ".gitignore"), "utf8")
-    stack.push(parse(dir, content))
-    return true
-  } catch {
-    return false
-  }
+  const path = NPath.join(dir, ".gitignore")
+  const stat = await NFS.stat(path).catch(() => null)
+  if (stat === null || !stat.isFile()) return false
+  const content = await NFS.readFile(path, "utf8")
+  stack.push(parse(dir, content))
+  return true
 }
 
 const walkInto = async (
