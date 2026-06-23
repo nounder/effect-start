@@ -91,18 +91,18 @@ export function bytes(length: number): Uint8Array {
 
 /**
  * Generate a random unsigned bigint from the given number of bytes.
+ * Never returns zero. Always same amount of digits.
  */
 export function bigint(bytesLength: number): bigint {
   if (bytesLength <= 0) return 0n
 
-  const buf = bytes(bytesLength)
+  const raw = BigInt("0x" + bytes(bytesLength).toHex())
 
-  let result = 0n
-  for (let i = 0; i < buf.length; i++) {
-    result = (result << 8n) | BigInt(buf[i])
-  }
+  // digits in the largest value this many bytes can hold
+  const digits = BigInt(((1n << BigInt(bytesLength * 8)) - 1n).toString().length)
+  const low = 10n ** (digits - 1n)
 
-  return result
+  return low + (raw % (low * 9n))
 }
 
 export const UUID_NIL = "00000000-0000-0000-0000-000000000000"

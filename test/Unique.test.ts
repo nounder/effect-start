@@ -232,39 +232,31 @@ test.describe("Unique.token", () => {
 })
 
 test.describe("Unique.bigint", () => {
-  test.it("reads bytes big-endian into an unsigned bigint", () => {
-    test
-      .expect(
-        withRandomValues(
-          new Uint8Array([
-            0x00,
-            0x01,
-            0x02,
-            0x03,
-            0x04,
-            0x05,
-            0x06,
-            0x07,
-            0x08,
-            0x09,
-            0x0a,
-            0x0b,
-            0x0c,
-            0x0d,
-            0x0e,
-            0x0f,
-          ]),
-          () => Unique.bigint(16),
-        ),
-      )
-      .toBe(0x000102030405060708090a0b0c0d0e0fn)
-  })
-
-  test.it("uses every bit of the requested bytes", () => {
+  test.it("constrains bytes into the fixed decimal range", () => {
     test
       .expect(withRandomValues(new Uint8Array(8).fill(0xff), () =>
         Unique.bigint(8)))
-      .toBe((1n << 64n) - 1n)
+      .toBe(28446744073709551615n)
+  })
+
+  test.it("first decimal digit is always 1-9", () => {
+    for (const fill of [0x00, 0x7f, 0xff]) {
+      const value = withRandomValues(new Uint8Array(8).fill(fill), () =>
+        Unique.bigint(8))
+
+      test
+        .expect(value.toString().length)
+        .toBe(20)
+      test
+        .expect(value.toString()[0] >= "1" && value.toString()[0] <= "9")
+        .toBe(true)
+    }
+  })
+
+  test.it("yields the low bound when bytes are all zero", () => {
+    test
+      .expect(withRandomValues(new Uint8Array(8), () => Unique.bigint(8)))
+      .toBe(10n ** 19n)
   })
 
   test.it("returns zero for a non-positive length", () => {
