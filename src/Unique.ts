@@ -69,10 +69,10 @@ function buildSnowflake(): Snowflake {
  * - API keys: 32 chars (~160 bits)
  * - session tokens: 32-40 chars (~160-200 bits)
  */
-export function token(length = 32): string {
-  if (length <= 0) return ""
+export function token(stringLength = 32): string {
+  if (stringLength <= 0) return ""
 
-  const buf = new Uint8Array(length)
+  const buf = new Uint8Array(stringLength)
   crypto.getRandomValues(buf)
 
   let result = ""
@@ -87,6 +87,22 @@ export function bytes(length: number): Uint8Array {
   const buf = new Uint8Array(length)
   crypto.getRandomValues(buf)
   return buf
+}
+
+/**
+ * Generate a random unsigned bigint from the given number of bytes.
+ */
+export function bigint(bytesLength: number): bigint {
+  if (length <= 0) return 0n
+
+  const buf = bytes(length)
+
+  let result = 0n
+  for (let i = 0; i < buf.length; i++) {
+    result = (result << 8n) | BigInt(buf[i])
+  }
+
+  return result
 }
 
 export const UUID_NIL = "00000000-0000-0000-0000-000000000000"
@@ -118,16 +134,16 @@ function uuid4bytes(): Uint8Array {
  * const bytes = Unique.ulidBytes()
  * const timestamp = Unique.toTimestamp(bytes)
  */
-export function toTimestamp(bytes: Uint8Array): number {
-  if (bytes.length < 6) return 0
+export function toTimestamp(bytesLength: Uint8Array): number {
+  if (bytesLength.length < 6) return 0
 
   return (
-    bytes[0] * 0x10000000000 +
-    bytes[1] * 0x100000000 +
-    bytes[2] * 0x1000000 +
-    bytes[3] * 0x10000 +
-    bytes[4] * 0x100 +
-    bytes[5]
+    bytesLength[0] * 0x10000000000 +
+    bytesLength[1] * 0x100000000 +
+    bytesLength[2] * 0x1000000 +
+    bytesLength[3] * 0x10000 +
+    bytesLength[4] * 0x100 +
+    bytesLength[5]
   )
 }
 

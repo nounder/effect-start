@@ -230,3 +230,46 @@ test.describe("Unique.token", () => {
       .toBe("0".repeat(32))
   })
 })
+
+test.describe("Unique.bigint", () => {
+  test.it("reads bytes big-endian into an unsigned bigint", () => {
+    test
+      .expect(
+        withRandomValues(
+          new Uint8Array([
+            0x00,
+            0x01,
+            0x02,
+            0x03,
+            0x04,
+            0x05,
+            0x06,
+            0x07,
+            0x08,
+            0x09,
+            0x0a,
+            0x0b,
+            0x0c,
+            0x0d,
+            0x0e,
+            0x0f,
+          ]),
+          () => Unique.bigint(16),
+        ),
+      )
+      .toBe(0x000102030405060708090a0b0c0d0e0fn)
+  })
+
+  test.it("uses every bit of the requested bytes", () => {
+    test
+      .expect(withRandomValues(new Uint8Array(8).fill(0xff), () =>
+        Unique.bigint(8)))
+      .toBe((1n << 64n) - 1n)
+  })
+
+  test.it("returns zero for a non-positive length", () => {
+    test
+      .expect(Unique.bigint(0))
+      .toBe(0n)
+  })
+})
