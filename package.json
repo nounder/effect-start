@@ -94,6 +94,10 @@
       "bun": "./src/Start.ts",
       "default": "./dist/Start.js"
     },
+    "./StartServer": {
+      "bun": "./src/StartServer.ts",
+      "default": "./dist/StartServer.js"
+    },
     "./StaticFiles": {
       "bun": "./src/StaticFiles.ts",
       "default": "./dist/StaticFiles.js"
