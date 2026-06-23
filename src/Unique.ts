@@ -93,9 +93,9 @@ export function bytes(length: number): Uint8Array {
  * Generate a random unsigned bigint from the given number of bytes.
  */
 export function bigint(bytesLength: number): bigint {
-  if (length <= 0) return 0n
+  if (bytesLength <= 0) return 0n
 
-  const buf = bytes(length)
+  const buf = bytes(bytesLength)
 
   let result = 0n
   for (let i = 0; i < buf.length; i++) {
