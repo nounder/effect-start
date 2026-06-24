@@ -254,19 +254,16 @@ export const layerRoutes = (
  */
 export const layerStart = (
   options?: BunServeOptions,
-): Layer.Layer<BunServer | StartServer.StartServer, never, never> =>
+): Layer.Layer<BunServer | StartServer.StartServer, never, Route.Routes> =>
   withStartServer(
     Effect.gen(function*() {
-      const routes = yield* Effect.serviceOption(Route.Routes)
-      const routeMap = Option.getOrNull(routes)
+      const routeMap = yield* Route.Routes
       const existing = yield* Effect.serviceOption(BunServer)
       if (Option.isSome(existing)) {
-        if (routeMap !== null) {
-          yield* existing.value.setRoutes(routeMap)
-        }
+        yield* existing.value.setRoutes(routeMap)
         return existing.value
       }
-      return yield* make(options ?? {}, routeMap ?? undefined)
+      return yield* make(options ?? {}, routeMap)
     }),
   )
 
