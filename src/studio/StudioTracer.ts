@@ -51,7 +51,7 @@ const make = (
         }
       }
 
-      const studioSpan: StudioStore.StudioSpan = {
+      const studioSpan: StudioStore.Span = {
         spanId,
         traceId,
         fiberId,

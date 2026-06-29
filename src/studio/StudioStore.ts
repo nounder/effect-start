@@ -1,28 +1,26 @@
 import * as Effect from "effect/Effect"
 import type * as PubSub from "effect/PubSub"
 import * as Schema from "effect/Schema"
+import * as Tracing from "../internal/Tracing.ts"
 import * as SqlClient from "../sql/SqlClient.ts"
-import * as Unique from "../Unique.ts"
 
-const nextPackedId = (): bigint => Unique.snowflake()
+export type Span = Tracing.Span
+export const nextSpanId = Tracing.nextSpanId
+export const nextTraceId = Tracing.nextTraceId
 
-export const nextLogId = () => nextPackedId()
+export const nextLogId = () => Tracing.nextPackedId()
 
-export const nextErrorId = () => nextPackedId()
-
-export const nextSpanId = () => nextPackedId()
-
-export const nextTraceId = () => nextPackedId()
+export const nextErrorId = () => Tracing.nextPackedId()
 
 export const studioTraceAttribute = "effect-start.studio.internal"
 
-export function isStudioTrace(spans: Array<StudioSpan>): boolean {
+export function isStudioTrace(spans: Array<Span>): boolean {
   return spans.some((span) => span.attributes[studioTraceAttribute] === true)
 }
 
 export function filterOutStudioSpans(
-  spans: Array<StudioSpan>,
-): Array<StudioSpan> {
+  spans: Array<Span>,
+): Array<Span> {
   const hiddenTraceIds = new Set<bigint>()
 
   for (const span of spans) {
@@ -32,23 +30,6 @@ export function filterOutStudioSpans(
   }
 
   return spans.filter((span) => !hiddenTraceIds.has(span.traceId))
-}
-
-export interface StudioSpan {
-  readonly spanId: bigint
-  readonly traceId: bigint
-  readonly fiberId: string | undefined
-  readonly name: string
-  readonly kind: string
-  readonly parentSpanId: bigint | undefined
-  startTime: bigint
-  endTime: bigint | undefined
-  durationMs: number | undefined
-  status: "started" | "ok" | "error"
-  readonly attributes: Record<string, unknown>
-  readonly events: Array<
-    { name: string; startTime: bigint; attributes?: Record<string, unknown> }
-  >
 }
 
 export interface LogEntry {
@@ -66,10 +47,13 @@ export const PROCESS_METRIC_PREFIX = STUDIO_METRIC_PREFIX + "process."
 
 export interface ProcessSeries {
   readonly latest: Record<string, number>
-  readonly history: Record<string, ReadonlyArray<{
-    readonly timestamp: number
-    readonly value: number
-  }>>
+  readonly history: Record<
+    string,
+    ReadonlyArray<{
+      readonly timestamp: number
+      readonly value: number
+    }>
+  >
 }
 
 export interface ErrorDetail {
@@ -97,8 +81,8 @@ export interface MetricSnapshot {
 }
 
 export type StudioEvent =
-  | { readonly _tag: "SpanStart"; readonly span: StudioSpan }
-  | { readonly _tag: "SpanEnd"; readonly span: StudioSpan }
+  | { readonly _tag: "SpanStart"; readonly span: Span }
+  | { readonly _tag: "SpanEnd"; readonly span: Span }
   | { readonly _tag: "TraceStart"; readonly traceId: bigint }
   | { readonly _tag: "TraceEnd"; readonly traceId: bigint }
   | { readonly _tag: "Log"; readonly log: LogEntry }
@@ -283,8 +267,8 @@ function deserializeMetric(row: MetricSampleRow): MetricSnapshot {
 }
 
 // TODO: do we need to dserialize? why not store it directly?
-function deserializeSpan(row: SpanRow): StudioSpan {
-  const events = reviveBigint(JSON.parse(row.events)) as StudioSpan["events"]
+function deserializeSpan(row: SpanRow): Span {
+  const events = reviveBigint(JSON.parse(row.events)) as Span["events"]
   return {
     spanId: BigInt(row.spanId),
     traceId: BigInt(row.traceId),
@@ -297,7 +281,7 @@ function deserializeSpan(row: SpanRow): StudioSpan {
     startTime: BigInt(row.startTime),
     endTime: row.endTime ? BigInt(row.endTime) : undefined,
     durationMs: row.durationMs ?? undefined,
-    status: row.status as StudioSpan["status"],
+    status: row.status as Span["status"],
     attributes: JSON.parse(row.attributes),
     events,
   }
@@ -328,10 +312,9 @@ function deserializeError(row: ErrorRow): ErrorEntry {
 // TODO:
 const withSql = <A, E>(
   f: (sql: SqlClient.SqlClient) => Effect.Effect<A, E>,
-): Effect.Effect<A, E, SqlClient.SqlClient> =>
-  Effect.flatMap(SqlClient.SqlClient, f)
+): Effect.Effect<A, E, SqlClient.SqlClient> => Effect.flatMap(SqlClient.SqlClient, f)
 
-export function insertSpan(span: StudioSpan) {
+export function insertSpan(span: Span) {
   return withSql(
     (sql) =>
       sql`INSERT INTO Span ${
@@ -353,7 +336,7 @@ export function insertSpan(span: StudioSpan) {
   )
 }
 
-export function updateSpan(span: StudioSpan) {
+export function updateSpan(span: Span) {
   return withSql(
     (sql) =>
       sql`UPDATE Span SET
@@ -449,9 +432,7 @@ export function evict(table: string, capacity: number) {
       >`SELECT count(*) as cnt FROM ${sql(table)}`
       if (cnt > capacity) {
         const excess = cnt - capacity
-        yield* sql`DELETE FROM ${
-          sql(table)
-        } WHERE rowid IN (SELECT rowid FROM ${
+        yield* sql`DELETE FROM ${sql(table)} WHERE rowid IN (SELECT rowid FROM ${
           sql(table)
         } ORDER BY rowid LIMIT ${excess})`
       }

@@ -6,9 +6,9 @@ import * as Traces from "../../src/studio/ui.tsx"
 
 function makeSpan(
   options:
-    & Partial<StudioStore.StudioSpan>
-    & Pick<StudioStore.StudioSpan, "spanId" | "traceId" | "name">,
-): StudioStore.StudioSpan {
+    & Partial<StudioStore.Span>
+    & Pick<StudioStore.Span, "spanId" | "traceId" | "name">,
+): StudioStore.Span {
   return {
     spanId: options.spanId,
     traceId: options.traceId,
@@ -26,7 +26,7 @@ function makeSpan(
 }
 
 test.it("TraceDetail renders cyclic spans without recursing forever", () => {
-  const spans: Array<StudioStore.StudioSpan> = [
+  const spans: Array<StudioStore.Span> = [
     makeSpan({
       spanId: 1n,
       traceId: 42n,

@@ -3,9 +3,9 @@ import * as StudioStore from "../../../../src/studio/StudioStore.ts"
 
 function makeSpan(
   options:
-    & Partial<StudioStore.StudioSpan>
-    & Pick<StudioStore.StudioSpan, "spanId" | "traceId" | "name">,
-): StudioStore.StudioSpan {
+    & Partial<StudioStore.Span>
+    & Pick<StudioStore.Span, "spanId" | "traceId" | "name">,
+): StudioStore.Span {
   return {
     spanId: options.spanId,
     traceId: options.traceId,
@@ -24,7 +24,7 @@ function makeSpan(
 
 test.describe("traces route", () => {
   test.it("detects studio traces by attribute", () => {
-    const spans: Array<StudioStore.StudioSpan> = [
+    const spans: Array<StudioStore.Span> = [
       makeSpan({
         spanId: 1n,
         traceId: 42n,
@@ -39,7 +39,7 @@ test.describe("traces route", () => {
   })
 
   test.it("removes all spans for traces marked as studio", () => {
-    const spans: Array<StudioStore.StudioSpan> = [
+    const spans: Array<StudioStore.Span> = [
       makeSpan({
         spanId: 1n,
         traceId: 1n,
