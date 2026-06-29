@@ -8,8 +8,8 @@
  * lets browser-targeted modules depend on `Route.ws` without pulling a server
  * runtime — and its `import "bun"` — into the bundle.
  */
-import type * as Effect from "effect/Effect"
 import * as Context from "effect/Context"
+import type * as Effect from "effect/Effect"
 import type * as Scope from "effect/Scope"
 import type * as SocketAddress from "./internal/SocketAddress.ts"
 import type * as Route from "./Route.ts"
@@ -22,6 +22,7 @@ export interface StartServer {
   // route handler's requirements rather than surfaced to the app.
   readonly [Route.IntrinsicService]?: never
   readonly address: Address
+  readonly url: string
   readonly upgrade: (
     request: Request,
     handlerScope: Scope.Scope,

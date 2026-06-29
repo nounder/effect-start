@@ -13,12 +13,12 @@ import * as Scope from "effect/Scope"
 import * as NOs from "node:os"
 import * as NPath from "node:path"
 import * as PathPattern from "../internal/PathPattern.ts"
+import * as RouteMap from "../internal/RouteMap.ts"
+import type * as RouteMount from "../internal/RouteMount.ts"
 import * as SocketAddress from "../internal/SocketAddress.ts"
 import * as PlatformRuntime from "../PlatformRuntime.ts"
 import * as Route from "../Route.ts"
 import * as RouteHttp from "../RouteHttp.ts"
-import * as RouteMap from "../internal/RouteMap.ts"
-import type * as RouteMount from "../internal/RouteMount.ts"
 import * as Socket from "../Socket.ts"
 import * as StartServer from "../StartServer.ts"
 import * as BunRoute from "./BunRoute.ts"
@@ -113,6 +113,11 @@ export const make = (
         },
         get address() {
           return boundAddress
+        },
+        get url() {
+          return boundAddress._tag === "TcpAddress"
+            ? `http://${boundAddress.hostname}:${boundAddress.port}`
+            : "http://localhost"
         },
         pushHandler(fetch) {
           handlerStack

@@ -30,9 +30,3 @@ export const unix = (path: string): UnixAddress => ({
   _tag: "UnixAddress",
   path,
 })
-
-/** A display string for the address: `hostname:port` or `unix:path`. */
-export const host = (address: Address): string =>
-  address._tag === "TcpAddress"
-    ? `${address.hostname}:${address.port}`
-    : `unix:${address.path}`
