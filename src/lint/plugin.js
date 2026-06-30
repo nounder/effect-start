@@ -188,6 +188,58 @@ export default {
       },
     },
 
+    "effect-try-promise": {
+      meta: {
+        type: "suggestion",
+        docs: {
+          description: "Require Effect.tryPromise to use object form with try and catch",
+        },
+        schema: [],
+        messages: {
+          objectForm: "Prefer Effect.tryPromise({ try, catch }) so promise errors are mapped explicitly.",
+        },
+      },
+      create(context) {
+        function hasProperty(node, name) {
+          return node.properties.some((property) => {
+            if (property.type === "SpreadElement") return false
+            const key = property.key
+            if (key.type === "Identifier" && key.name === name) return true
+            if (key.type === "Literal" && key.value === name) return true
+            return false
+          })
+        }
+
+        return {
+          CallExpression(node) {
+            if (
+              node.callee.type !== "MemberExpression" ||
+              node.callee.object.type !== "Identifier" ||
+              node.callee.object.name !== "Effect" ||
+              node.callee.property.type !== "Identifier" ||
+              node.callee.property.name !== "tryPromise"
+            ) {
+              return
+            }
+
+            const options = node.arguments[0]
+            if (
+              options?.type === "ObjectExpression" &&
+              hasProperty(options, "try") &&
+              hasProperty(options, "catch")
+            ) {
+              return
+            }
+
+            context.report({
+              node,
+              messageId: "objectForm",
+            })
+          },
+        }
+      },
+    },
+
     "no-destructured-params": {
       meta: {
         type: "suggestion",

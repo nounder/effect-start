@@ -116,6 +116,7 @@ export const formatRules: Rules = {
  */
 export const ourRules: Rules = {
   "effect-start/namespace-import": "error",
+  "effect-start/effect-try-promise": "error",
   "effect-start/no-destructured-params": "warn",
   "effect-start/test-effects": "warn",
   "effect-start/schema-type-helpers": "warn",

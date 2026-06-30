@@ -354,6 +354,52 @@ test.describe.skipIf(!process.env.TEST_LINT)("schema-type-helpers", () => {
   })
 })
 
+test.describe.skipIf(!process.env.TEST_LINT)("effect-try-promise", () => {
+  test.it("flags function form", () => {
+    const diags = lintRule(
+      `import * as Effect from "effect/Effect"\nEffect.tryPromise(() => fetch("/"))\n`,
+      "effect-try-promise",
+    )
+
+    test
+      .expect(diags)
+      .toHaveLength(1)
+  })
+
+  test.it("flags object form without catch", () => {
+    const diags = lintRule(
+      `import * as Effect from "effect/Effect"\nEffect.tryPromise({ try: () => fetch("/") })\n`,
+      "effect-try-promise",
+    )
+
+    test
+      .expect(diags)
+      .toHaveLength(1)
+  })
+
+  test.it("allows object form with try and catch", () => {
+    const diags = lintRule(
+      `import * as Effect from "effect/Effect"\nEffect.tryPromise({ try: () => fetch("/"), catch: (cause) => cause })\n`,
+      "effect-try-promise",
+    )
+
+    test
+      .expect(diags)
+      .toHaveLength(0)
+  })
+
+  test.it("ignores other Effect calls", () => {
+    const diags = lintRule(
+      `import * as Effect from "effect/Effect"\nEffect.try(() => JSON.parse("{}"))\n`,
+      "effect-try-promise",
+    )
+
+    test
+      .expect(diags)
+      .toHaveLength(0)
+  })
+})
+
 test.describe.skipIf(!process.env.TEST_LINT)("no-destructured-params", () => {
   test.it("flags arrow function with destructured param", () => {
     const diags = lintRule(
