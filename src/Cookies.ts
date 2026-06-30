@@ -11,8 +11,7 @@ import type * as Types from "effect/Types"
 
 export const TypeId = "~effect-start/Cookies" as const
 
-export const isCookies = (u: unknown): u is Cookies =>
-  Predicate.hasProperty(u, TypeId)
+export const isCookies = (u: unknown): u is Cookies => Predicate.hasProperty(u, TypeId)
 
 export interface Cookies extends Pipeable.Pipeable, Inspectable.Inspectable {
   readonly [TypeId]: typeof TypeId
@@ -248,8 +247,7 @@ export const toRecord = (self: Cookies): Record<string, string> => {
   return record
 }
 
-export const toSetCookieHeaders = (self: Cookies): Array<string> =>
-  Object.values(self.cookies).map(serializeCookie)
+export const toSetCookieHeaders = (self: Cookies): Array<string> => Object.values(self.cookies).map(serializeCookie)
 
 export function parseHeader(header: string): Record<string, string> {
   const result: Record<string, string> = {}

@@ -11,6 +11,7 @@
         "@libsql/client": "^0.17.0",
         "@types/bun": "^1.3.4",
         "@types/jsdom": "^27.0.0",
+        "dprint-cli": "^0.5.0",
         "esbuild": "^0.28.1",
         "jsdom": "^28.0.0",
         "mssql": "^12.2.0",
@@ -321,6 +322,8 @@
     "define-lazy-prop": ["define-lazy-prop@3.0.0", "", {}, "sha512-N+MeXYoqr3pOgn8xfyRPREN7gHakLYjhsHhWGT3fWAiL4IkAt0iDw14QiiEm2bE30c5XX5q0FtAA3CK5f9/BUg=="],
 
     "detect-libc": ["detect-libc@2.0.2", "", {}, "sha512-UX6sGumvvqSaXgdKGUsgZWqcUyIXZ/vZTrlRT/iobiKhGL0zL4d3osHj3uqllWJK+i+sixDS/3COVEOFbupFyw=="],
+
+    "dprint-cli": ["dprint-cli@0.5.0", "", { "bin": { "dprint": "bin/dprint" } }, "sha512-YuRgJUZjbMdlkq9+XEH5W5fSGLy+TiXMGYC5pf9mLhb8S+2wfXfSiTzHGZxZnc0iFefM/NAz02isWrT92UV3vw=="],
 
     "ecdsa-sig-formatter": ["ecdsa-sig-formatter@1.0.11", "", { "dependencies": { "safe-buffer": "^5.0.1" } }, "sha512-nagl3RYrbNv6kQkeJIpt6NJZy8twLB/2vtz6yN9Z4vRKHN4/QZJIEbqohALSgwKdnksuY3k5Addp5lg8sVoVcQ=="],
 

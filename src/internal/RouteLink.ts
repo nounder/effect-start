@@ -1,20 +1,18 @@
 import type { Routes as DevRoutes } from "effect-start/dev"
-import type * as PathPattern from "./PathPattern.ts"
 import type * as Route from "../Route.ts"
+import type * as PathPattern from "./PathPattern.ts"
 
 export type LinkParams<
   Routes,
   P extends string,
   B = P extends keyof Routes ? Routes[P] extends [...Array<any>, infer L] // last route
-      ? L extends () => Promise<{ default: infer R extends Route.RouteSet.Any }>
-        ? Route.Route.Bindings<R>
+      ? L extends () => Promise<{ default: infer R extends Route.RouteSet.Any }> ? Route.Route.Bindings<R>
       : {}
     : {}
     : {},
 > =
   & {
-    [K in keyof PathPattern.Params<P>]: B extends { pathParams: infer S }
-      ? K extends keyof S ? S[K]
+    [K in keyof PathPattern.Params<P>]: B extends { pathParams: infer S } ? K extends keyof S ? S[K]
       : string | number
       : string | number
   }
@@ -28,8 +26,7 @@ export function link<
     : keyof Routes & string = keyof Routes extends never ? string
       : keyof Routes & string,
 >(
-  ...args: {} extends LinkParams<Routes, P>
-    ? [path: P, params?: LinkParams<Routes, P>]
+  ...args: {} extends LinkParams<Routes, P> ? [path: P, params?: LinkParams<Routes, P>]
     : [path: P, params: LinkParams<Routes, P>]
 ): string {
   const path = args[0] as string

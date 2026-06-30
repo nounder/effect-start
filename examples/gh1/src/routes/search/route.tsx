@@ -127,18 +127,14 @@ function Pagination(props: { q: string; type: string; page: number }) {
     <div class="flex justify-center gap-2 py-8">
       {props.page > 1 && (
         <a
-          href={`/search?q=${
-            encodeURIComponent(props.q)
-          }&type=${props.type}&page=${props.page - 1}`}
+          href={`/search?q=${encodeURIComponent(props.q)}&type=${props.type}&page=${props.page - 1}`}
           class="px-4 py-2 border border-[#30363d] rounded-md text-sm text-[#58a6ff] hover:bg-[#21262d]"
         >
           Previous
         </a>
       )}
       <a
-        href={`/search?q=${
-          encodeURIComponent(props.q)
-        }&type=${props.type}&page=${props.page + 1}`}
+        href={`/search?q=${encodeURIComponent(props.q)}&type=${props.type}&page=${props.page + 1}`}
         class="px-4 py-2 border border-[#30363d] rounded-md text-sm text-[#58a6ff] hover:bg-[#21262d]"
       >
         Next

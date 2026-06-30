@@ -8,21 +8,17 @@ import * as Stream from "effect/Stream"
 
 export const isStream = (
   u: unknown,
-): u is Stream.Stream<unknown, unknown, unknown> =>
-  Predicate.hasProperty(u, Stream.StreamTypeId)
+): u is Stream.Stream<unknown, unknown, unknown> => Predicate.hasProperty(u, Stream.StreamTypeId)
 
-export type IsStream<T> = T extends Stream.Stream<infer _A, infer _E, infer _R>
-  ? true
+export type IsStream<T> = T extends Stream.Stream<infer _A, infer _E, infer _R> ? true
   : false
 
 export type Chunk<T> = T extends Stream.Stream<infer A, infer _E, infer _R> ? A
   : never
 
-export type StreamError<T> = T extends
-  Stream.Stream<infer _A, infer E, infer _R> ? E : never
+export type StreamError<T> = T extends Stream.Stream<infer _A, infer E, infer _R> ? E : never
 
-export type Context<T> = T extends Stream.Stream<infer _A, infer _E, infer R>
-  ? R
+export type Context<T> = T extends Stream.Stream<infer _A, infer _E, infer R> ? R
   : never
 
 /**

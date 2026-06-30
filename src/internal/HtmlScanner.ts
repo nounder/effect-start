@@ -433,8 +433,7 @@ interface RewriteResult extends Iterable<MutableElement> {
 }
 
 export const rewrite = (html: string): RewriteResult => {
-  const edits: Array<{ offset: number; deleteCount: number; insert: string }> =
-    []
+  const edits: Array<{ offset: number; deleteCount: number; insert: string }> = []
 
   return {
     *[Symbol.iterator]() {

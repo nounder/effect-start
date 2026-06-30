@@ -20,12 +20,10 @@ type CookieValue =
   }
   | Array<CookieValue>
 
-export class EncryptedCookiesError
-  extends Data.TaggedError("EncryptedCookiesError")<{
-    cause: unknown
-    cookie?: Cookies.Cookie
-  }>
-{}
+export class EncryptedCookiesError extends Data.TaggedError("EncryptedCookiesError")<{
+  cause: unknown
+  cookie?: Cookies.Cookie
+}> {}
 
 export class EncryptedCookies extends Context.Tag("EncryptedCookies")<
   EncryptedCookies,
@@ -56,14 +54,10 @@ export function layer(options: { secret: string }) {
       const decryptKey = yield* deriveKey(keyMaterial, ["decrypt"])
 
       return EncryptedCookies.of({
-        encrypt: (value: CookieValue) =>
-          encryptWithDerivedKey(value, encryptKey),
-        decrypt: (encryptedValue: string) =>
-          decryptWithDerivedKey(encryptedValue, decryptKey),
-        encryptCookie: (cookie: Cookies.Cookie) =>
-          encryptCookieWithDerivedKey(cookie, encryptKey),
-        decryptCookie: (cookie: Cookies.Cookie) =>
-          decryptCookieWithDerivedKey(cookie, decryptKey),
+        encrypt: (value: CookieValue) => encryptWithDerivedKey(value, encryptKey),
+        decrypt: (encryptedValue: string) => decryptWithDerivedKey(encryptedValue, decryptKey),
+        encryptCookie: (cookie: Cookies.Cookie) => encryptCookieWithDerivedKey(cookie, encryptKey),
+        decryptCookie: (cookie: Cookies.Cookie) => decryptCookieWithDerivedKey(cookie, decryptKey),
       })
     }),
   )
@@ -168,8 +162,7 @@ function encryptWithDerivedKey(
     const data = new TextEncoder().encode(JSON.stringify(value))
 
     const encrypted = yield* Effect.tryPromise({
-      try: () =>
-        crypto.subtle.encrypt({ name: "AES-GCM", iv }, derivedKey, data),
+      try: () => crypto.subtle.encrypt({ name: "AES-GCM", iv }, derivedKey, data),
       catch: (error) => new EncryptedCookiesError({ cause: error }),
     })
 

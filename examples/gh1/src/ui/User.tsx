@@ -19,9 +19,7 @@ export function UserCard(props: {
       <img
         src={props.avatar}
         alt={props.login}
-        class={`w-10 h-10 ${
-          props.type === "Organization" ? "rounded-md" : "rounded-full"
-        } bg-[#21262d]`}
+        class={`w-10 h-10 ${props.type === "Organization" ? "rounded-md" : "rounded-full"} bg-[#21262d]`}
       />
       <div class="min-w-0">
         <div class="text-[#58a6ff] text-sm font-medium truncate">

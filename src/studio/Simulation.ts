@@ -670,9 +670,11 @@ const simulateSearchQuery = Effect
       })
       .pipe(Effect.withSpan("search.rank"))
 
-    yield* Effect.gen(function*() {
-      yield* Effect.sleep(yield* randomMs(0, 5))
-    }).pipe(Effect.withSpan("search.highlight"))
+    yield* Effect
+      .gen(function*() {
+        yield* Effect.sleep(yield* randomMs(0, 5))
+      })
+      .pipe(Effect.withSpan("search.highlight"))
   })
   .pipe(Effect.withSpan("search.pipeline"))
 
@@ -716,9 +718,11 @@ const simulateFileUpload = Effect
       })
       .pipe(Effect.withSpan("upload.store_s3"))
 
-    yield* Effect.gen(function*() {
-      yield* simulateDbQuery
-    }).pipe(Effect.withSpan("upload.persist_metadata"))
+    yield* Effect
+      .gen(function*() {
+        yield* simulateDbQuery
+      })
+      .pipe(Effect.withSpan("upload.persist_metadata"))
   })
   .pipe(Effect.withSpan("upload.pipeline"))
 

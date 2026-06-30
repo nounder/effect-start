@@ -228,9 +228,7 @@ export function interpolate(
           .join(", ")
         const rows = frag
           .value
-          .map((row) =>
-            `(${pushItems(frag.columns.map((c) => row[c as string]))})`
-          )
+          .map((row) => `(${pushItems(frag.columns.map((c) => row[c as string]))})`)
           .join(", ")
         parts.push(`(${cols}) VALUES ${rows}`)
       }

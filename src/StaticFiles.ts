@@ -5,8 +5,8 @@ import * as Entity from "./Entity.ts"
 import * as FileSystem from "./FileSystem.ts"
 import * as Mime from "./internal/Mime.ts"
 import type * as PathPattern from "./internal/PathPattern.ts"
-import * as Route from "./Route.ts"
 import * as RouteSchema from "./internal/RouteSchema.ts"
+import * as Route from "./Route.ts"
 
 const defaultMountPath = "/assets"
 const PathParamsSchema = Schema.Struct({
@@ -32,9 +32,7 @@ export const make = (directory: string) =>
       const info = yield* fs
         .stat(absolutePath)
         .pipe(
-          Effect.catchAll((error) =>
-            isNotFound(error) ? Effect.succeed(null) : Effect.fail(error)
-          ),
+          Effect.catchAll((error) => isNotFound(error) ? Effect.succeed(null) : Effect.fail(error)),
         )
 
       if (info === null || info.type !== "File") {

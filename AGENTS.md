@@ -13,6 +13,7 @@ bunx tsc
 - Do not write obvious comments that restate what the code is doing
   without adding meaningful context.
 - Inline logic that is 1-2 lines instead of defining a function that is only referenced once.
+- Avoid const deconstruction.
 
 ## Module structure
 

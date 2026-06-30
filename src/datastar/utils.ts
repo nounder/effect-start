@@ -1,9 +1,4 @@
-import type {
-  EventCallbackHandler,
-  HTMLOrSVG,
-  Modifiers,
-  Paths,
-} from "./engine.ts"
+import type { EventCallbackHandler, HTMLOrSVG, Modifiers, Paths } from "./engine.ts"
 
 /*********
  * dom.ts
@@ -68,16 +63,13 @@ export const kebab = (str: string): string =>
     .replace(/[\s_]+/g, "-")
     .toLowerCase()
 
-export const camel = (str: string): string =>
-  kebab(str).replace(/-./g, (x) => x[1].toUpperCase())
+export const camel = (str: string): string => kebab(str).replace(/-./g, (x) => x[1].toUpperCase())
 
 export const snake = (str: string): string => kebab(str).replace(/-/g, "_")
 
-export const pascal = (str: string): string =>
-  camel(str).replace(/(^.|(?<=\.).)/g, (x) => x[0].toUpperCase())
+export const pascal = (str: string): string => camel(str).replace(/(^.|(?<=\.).)/g, (x) => x[0].toUpperCase())
 
-export const title = (str: string): string =>
-  str.replace(/\b\w/g, (char) => char.toUpperCase())
+export const title = (str: string): string => str.replace(/\b\w/g, (char) => char.toUpperCase())
 
 export const jsStrToObject = (raw: string) => {
   try {
@@ -279,8 +271,7 @@ export const modifyViewTransition = (
 ): EventCallbackHandler => {
   if (mods.has("viewtransition") && supportsViewTransitions) {
     const cb = callback
-    callback = (...args: Array<any>) =>
-      document.startViewTransition(() => cb(...args))
+    callback = (...args: Array<any>) => document.startViewTransition(() => cb(...args))
   }
 
   return callback

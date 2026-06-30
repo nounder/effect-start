@@ -78,9 +78,11 @@ test.describe("studio layer basic auth", () => {
           test
             .expect(entity.headers["www-authenticate"])
             .toBe(
-            "Basic realm=\"Studio\", charset=\"UTF-8\"",
-          )
-          test.expect(yield* entity.text).not
+              "Basic realm=\"Studio\", charset=\"UTF-8\"",
+            )
+          test
+            .expect(yield* entity.text)
+            .not
             .toContain("Services")
         }),
     ))

@@ -152,8 +152,7 @@ export const layerMemory: Layer.Layer<KeyValueStore> = Layer.sync(
             ? encoder.encode(value)
             : value
         }),
-      set: (key: string, value: string | Uint8Array) =>
-        Effect.sync(() => store.set(key, value)),
+      set: (key: string, value: string | Uint8Array) => Effect.sync(() => store.set(key, value)),
       remove: (key: string) => Effect.sync(() => store.delete(key)),
       clear: Effect.sync(() => store.clear()),
       size: Effect.sync(() => store.size),

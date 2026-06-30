@@ -12,8 +12,7 @@ import {
 import { kebab } from "../utils.ts"
 
 const abortControllers = new WeakMap<HTMLOrSVG, AbortController>()
-const methodSupportsRequestBody = (method: string): boolean =>
-  !["GET", "DELETE"].includes(method)
+const methodSupportsRequestBody = (method: string): boolean => !["GET", "DELETE"].includes(method)
 
 const createHttpMethod = (
   name: string,

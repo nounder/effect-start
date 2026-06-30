@@ -17,11 +17,10 @@ export type LayersError<Layers extends ReadonlyArray<Layer.Layer.Any>> = {
   [K in keyof Layers]: Layer.Layer.Error<Layers[K]>
 }[number]
 
-export type LayersContext<Layers extends ReadonlyArray<Layer.Layer.Any>> =
-  Exclude<
-    { [K in keyof Layers]: Layer.Layer.Context<Layers[K]> }[number],
-    { [K in keyof Layers]: Layer.Layer.Success<Layers[K]> }[number]
-  >
+export type LayersContext<Layers extends ReadonlyArray<Layer.Layer.Any>> = Exclude<
+  { [K in keyof Layers]: Layer.Layer.Context<Layers[K]> }[number],
+  { [K in keyof Layers]: Layer.Layer.Success<Layers[K]> }[number]
+>
 
 export type Ordered<
   Layers extends ReadonlyArray<Layer.Layer.Any>,

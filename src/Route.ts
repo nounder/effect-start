@@ -63,9 +63,9 @@ import type { JSX } from "../src/jsx.ts"
 import * as Development from "./Development.ts"
 import * as Entity from "./Entity.ts"
 import * as Html from "./Html.ts"
-import type * as Values from "./internal/Values.ts"
 import * as RouteBody from "./internal/RouteBody.ts"
 import * as RouteMap from "./internal/RouteMap.ts"
+import type * as Values from "./internal/Values.ts"
 
 /** @internal */
 export const RouteItems: unique symbol = Symbol()

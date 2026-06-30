@@ -2,9 +2,9 @@ import * as Effect from "effect/Effect"
 import type * as Stream from "effect/Stream"
 import type * as Utils from "effect/Utils"
 import * as Entity from "../Entity.ts"
+import * as Route from "../Route.ts"
 import * as StreamExtra from "./StreamExtra.ts"
 import type * as Values from "./Values.ts"
-import * as Route from "../Route.ts"
 
 type YieldError<T> = T extends Utils.YieldWrap<Effect.Effect<any, infer E, any>> ? E
   : never
@@ -89,24 +89,22 @@ export function normalize<B, A, E, R>(
     }) as Route.Route.Handler<B, A, E, R>
   }
   if (Effect.isEffect(handler)) {
-    return ((_context: any, _next: any) =>
-      Effect.flatMap(handler, normalizeToEntity)) as Route.Route.Handler<
-        B,
-        A,
-        E,
-        R
-      >
-  }
-  if (Entity.isEntity(handler)) {
-    return (_context, _next) => Effect.succeed(handler as Entity.Entity<A>)
-  }
-  return ((_context: any, _next: any) =>
-    normalizeToEntity(handler)) as Route.Route.Handler<
+    return ((_context: any, _next: any) => Effect.flatMap(handler, normalizeToEntity)) as Route.Route.Handler<
       B,
       A,
       E,
       R
     >
+  }
+  if (Entity.isEntity(handler)) {
+    return (_context, _next) => Effect.succeed(handler as Entity.Entity<A>)
+  }
+  return ((_context: any, _next: any) => normalizeToEntity(handler)) as Route.Route.Handler<
+    B,
+    A,
+    E,
+    R
+  >
 }
 
 function normalizeToEntity(value: unknown): Effect.Effect<Entity.Entity<any>> {

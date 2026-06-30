@@ -1,7 +1,7 @@
 import * as Pipeable from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
-import type * as PathPattern from "./PathPattern.ts"
 import * as Route from "../Route.ts"
+import type * as PathPattern from "./PathPattern.ts"
 import type * as RouteMap from "./RouteMap.ts"
 import type * as RouteMount from "./RouteMount.ts"
 
@@ -35,8 +35,7 @@ const Proto = {
   },
 }
 
-export const isMatcher = (u: unknown): u is Matcher =>
-  Predicate.hasProperty(u, TypeId)
+export const isMatcher = (u: unknown): u is Matcher => Predicate.hasProperty(u, TypeId)
 
 export function make(map: RouteMap.RouteMap): Matcher {
   return Object.assign(Object.create(Proto), {

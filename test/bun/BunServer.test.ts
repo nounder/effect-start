@@ -1,7 +1,6 @@
 import * as test from "bun:test"
 import { BunRoute, BunServer } from "effect-start/bun"
 import * as Route from "effect-start/Route"
-import type * as RouteMap from "../../src/internal/RouteMap.ts"
 import * as Start from "effect-start/Start"
 import * as ConfigProvider from "effect/ConfigProvider"
 import * as Effect from "effect/Effect"
@@ -10,6 +9,7 @@ import * as Layer from "effect/Layer"
 import * as NFs from "node:fs"
 import * as NOs from "node:os"
 import * as NPath from "node:path"
+import type * as RouteMap from "../../src/internal/RouteMap.ts"
 
 const staticDir = NPath.resolve(import.meta.dir, "../../static")
 

@@ -12,8 +12,7 @@ type PgConfig = string | Postgres.Options<Record<string, Postgres.PostgresType>>
 
 const toPgTemplateValues = (
   values: Array<unknown>,
-): Array<Postgres.ParameterOrFragment<never>> =>
-  values as unknown as Array<Postgres.ParameterOrFragment<never>>
+): Array<Postgres.ParameterOrFragment<never>> => values as unknown as Array<Postgres.ParameterOrFragment<never>>
 
 const toPgUnsafeValues = (
   values?: Array<unknown>,
@@ -105,19 +104,52 @@ const runUnsafe = <T extends object = SqlClient.SqlRow>(
       }),
   )
 
-const makeWithTransaction =
-  (pg: Postgres.Sql) =>
-  <A, E, R>(
-    self: Effect.Effect<A, E, R>,
-  ): Effect.Effect<A, SqlClient.SqlError | E, R> =>
-    Effect.uninterruptibleMask((restore) =>
-      Effect.flatMap(FiberRef.get(currentTransaction), (txOpt) => {
-        if (Option.isSome(txOpt)) {
-          const { conn, depth } = txOpt.value
-          const name = `sp_${depth}`
-          return Effect.gen(function*() {
+const makeWithTransaction = (pg: Postgres.Sql) =>
+<A, E, R>(
+  self: Effect.Effect<A, E, R>,
+): Effect.Effect<A, SqlClient.SqlError | E, R> =>
+  Effect.uninterruptibleMask((restore) =>
+    Effect.flatMap(FiberRef.get(currentTransaction), (txOpt) => {
+      if (Option.isSome(txOpt)) {
+        const { conn, depth } = txOpt.value
+        const name = `sp_${depth}`
+        return Effect.gen(function*() {
+          yield* Effect.tryPromise({
+            try: () => Promise.resolve(conn.unsafe(`SAVEPOINT ${name}`)),
+            catch: wrapError,
+          })
+          const exit = yield* Effect.exit(
+            restore(
+              Effect.locally(
+                self,
+                currentTransaction,
+                Option.some({ conn, depth: depth + 1 }),
+              ),
+            ),
+          )
+          if (Exit.isSuccess(exit)) {
             yield* Effect.tryPromise({
-              try: () => Promise.resolve(conn.unsafe(`SAVEPOINT ${name}`)),
+              try: () => Promise.resolve(conn.unsafe(`RELEASE SAVEPOINT ${name}`)),
+              catch: wrapError,
+            })
+            return exit.value
+          }
+          yield* Effect
+            .tryPromise({
+              try: () => Promise.resolve(conn.unsafe(`ROLLBACK TO SAVEPOINT ${name}`)),
+              catch: wrapError,
+            })
+            .pipe(Effect.orDie)
+          return yield* exit
+        })
+      }
+
+      return Effect.acquireUseRelease(
+        Effect.tryPromise({ try: () => pg.reserve(), catch: wrapError }),
+        (reserved) =>
+          Effect.gen(function*() {
+            yield* Effect.tryPromise({
+              try: () => Promise.resolve(reserved.unsafe("BEGIN")),
               catch: wrapError,
             })
             const exit = yield* Effect.exit(
@@ -125,65 +157,29 @@ const makeWithTransaction =
                 Effect.locally(
                   self,
                   currentTransaction,
-                  Option.some({ conn, depth: depth + 1 }),
+                  Option.some({ conn: reserved, depth: 1 }),
                 ),
               ),
             )
             if (Exit.isSuccess(exit)) {
               yield* Effect.tryPromise({
-                try: () =>
-                  Promise.resolve(conn.unsafe(`RELEASE SAVEPOINT ${name}`)),
+                try: () => Promise.resolve(reserved.unsafe("COMMIT")),
                 catch: wrapError,
               })
               return exit.value
             }
             yield* Effect
               .tryPromise({
-                try: () =>
-                  Promise.resolve(conn.unsafe(`ROLLBACK TO SAVEPOINT ${name}`)),
+                try: () => Promise.resolve(reserved.unsafe("ROLLBACK")),
                 catch: wrapError,
               })
               .pipe(Effect.orDie)
             return yield* exit
-          })
-        }
-
-        return Effect.acquireUseRelease(
-          Effect.tryPromise({ try: () => pg.reserve(), catch: wrapError }),
-          (reserved) =>
-            Effect.gen(function*() {
-              yield* Effect.tryPromise({
-                try: () => Promise.resolve(reserved.unsafe("BEGIN")),
-                catch: wrapError,
-              })
-              const exit = yield* Effect.exit(
-                restore(
-                  Effect.locally(
-                    self,
-                    currentTransaction,
-                    Option.some({ conn: reserved, depth: 1 }),
-                  ),
-                ),
-              )
-              if (Exit.isSuccess(exit)) {
-                yield* Effect.tryPromise({
-                  try: () => Promise.resolve(reserved.unsafe("COMMIT")),
-                  catch: wrapError,
-                })
-                return exit.value
-              }
-              yield* Effect
-                .tryPromise({
-                  try: () => Promise.resolve(reserved.unsafe("ROLLBACK")),
-                  catch: wrapError,
-                })
-                .pipe(Effect.orDie)
-              return yield* exit
-            }),
-          (reserved) => Effect.sync(() => reserved.release()),
-        )
-      })
-    )
+          }),
+        (reserved) => Effect.sync(() => reserved.release()),
+      )
+    })
+  )
 
 const dialect = SqlClient.postgresDialect
 const spanAttributes: ReadonlyArray<readonly [string, unknown]> = [[
@@ -283,19 +279,14 @@ export const layer = (
                       try: () => pg.reserve(),
                       catch: wrapError,
                     }),
-                    (reserved: Postgres.ReservedSql) =>
-                      Effect.sync(() => reserved.release()),
+                    (reserved: Postgres.ReservedSql) => Effect.sync(() => reserved.release()),
                   )
                   .pipe(
-                    Effect.map((reserved): SqlClient.Connection =>
-                      makeReservedConnection(reserved)
-                    ),
+                    Effect.map((reserved): SqlClient.Connection => makeReservedConnection(reserved)),
                   ),
                 use,
               }),
-              close: use((driver) =>
-                (driver as Postgres.Sql).end({ timeout: 0 })
-              ),
+              close: use((driver) => (driver as Postgres.Sql).end({ timeout: 0 })),
             }
           },
           catch: wrapError,

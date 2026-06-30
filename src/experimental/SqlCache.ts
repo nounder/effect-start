@@ -7,9 +7,7 @@ import type * as SqlClient from "../sql/SqlClient.ts"
 
 type SqlCacheInstance = Cache.Cache<string, ReadonlyArray<any>>
 
-export class SqlCache
-  extends Context.Tag("effect-start/SqlCache")<SqlCache, SqlCacheInstance>()
-{}
+export class SqlCache extends Context.Tag("effect-start/SqlCache")<SqlCache, SqlCacheInstance>() {}
 
 export function layer(cache: SqlCacheInstance): Layer.Layer<SqlCache>
 export function layer(options: {
@@ -36,8 +34,7 @@ export function layer(
     Cache.make<string, ReadonlyArray<any>>({
       capacity: options.capacity,
       timeToLive: options.timeToLive,
-      lookup: (key) =>
-        Effect.die(`cache miss without populate for key: ${key}`),
+      lookup: (key) => Effect.die(`cache miss without populate for key: ${key}`),
     }),
   )
 }

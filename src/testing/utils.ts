@@ -12,24 +12,23 @@ import * as System from "../System.ts"
  * Creates a scoped Effects and runs is asynchronously.
  * Useful for testing.
  */
-export const effectFn =
-  <RL>(layer?: Layer.Layer<RL, any>) =>
-  <
-    Eff extends Utils.YieldWrap<Effect.Effect<any, any, RE>>,
-    AEff,
-    RE extends RL | Scope.Scope,
-  >(
-    f: () => Generator<Eff, AEff, never>,
-  ): Promise<void> =>
-    Function.pipe(
-      Effect.gen(f),
-      Effect.scoped,
-      Effect.provide(Logger.pretty),
-      Effect.provide(layer ?? Layer.empty),
-      // @ts-expect-error will have to figure out how to clear deps
-      Effect.runPromise,
-      (v) => v.then(() => {}, clearStackTraces),
-    )
+export const effectFn = <RL>(layer?: Layer.Layer<RL, any>) =>
+<
+  Eff extends Utils.YieldWrap<Effect.Effect<any, any, RE>>,
+  AEff,
+  RE extends RL | Scope.Scope,
+>(
+  f: () => Generator<Eff, AEff, never>,
+): Promise<void> =>
+  Function.pipe(
+    Effect.gen(f),
+    Effect.scoped,
+    Effect.provide(Logger.pretty),
+    Effect.provide(layer ?? Layer.empty),
+    // @ts-expect-error will have to figure out how to clear deps
+    Effect.runPromise,
+    (v) => v.then(() => {}, clearStackTraces),
+  )
 
 /*
  * When effect fails, instead of throwing FiberFailure,

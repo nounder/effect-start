@@ -923,9 +923,7 @@ export namespace JSX {
   export interface BlockquoteHTMLAttributes<T> extends HTMLAttributes<T> {
     cite?: string | undefined
   }
-  export interface BodyHTMLAttributes<T>
-    extends HTMLAttributes<T>, WindowEventMap<T>
-  {}
+  export interface BodyHTMLAttributes<T> extends HTMLAttributes<T>, WindowEventMap<T> {}
   export interface ButtonHTMLAttributes<T> extends HTMLAttributes<T> {
     disabled?: boolean | undefined
     form?: string | undefined
@@ -1944,10 +1942,7 @@ export namespace JSX {
     visibility?: "visible" | "hidden" | "collapse" | "inherit" | undefined
   }
   export interface AnimationElementSVGAttributes<T>
-    extends
-      CoreSVGAttributes<T>,
-      ExternalResourceSVGAttributes,
-      ConditionalProcessingSVGAttributes
+    extends CoreSVGAttributes<T>, ExternalResourceSVGAttributes, ConditionalProcessingSVGAttributes
   {
     onbegin?: EventHandler<Event, T> | undefined
     // TODO TimeEvent is currently undefined in TS
@@ -1955,26 +1950,23 @@ export namespace JSX {
     onrepeat?: EventHandler<Event, T> | undefined
   }
 
-  export interface ContainerElementSVGAttributes<T>
-    extends
-      CoreSVGAttributes<T>,
-      ShapeElementSVGAttributes<T>,
-      Pick<
-        PresentationSVGAttributes,
-        | "clip-path"
-        | "mask"
-        | "cursor"
-        | "opacity"
-        | "filter"
-        | "enable-background"
-        | "color-interpolation"
-        | "color-rendering"
-      >
+  export interface ContainerElementSVGAttributes<T> extends
+    CoreSVGAttributes<T>,
+    ShapeElementSVGAttributes<T>,
+    Pick<
+      PresentationSVGAttributes,
+      | "clip-path"
+      | "mask"
+      | "cursor"
+      | "opacity"
+      | "filter"
+      | "enable-background"
+      | "color-interpolation"
+      | "color-rendering"
+    >
   {}
   export interface FilterPrimitiveElementSVGAttributes<T>
-    extends
-      CoreSVGAttributes<T>,
-      Pick<PresentationSVGAttributes, "color-interpolation-filters">
+    extends CoreSVGAttributes<T>, Pick<PresentationSVGAttributes, "color-interpolation-filters">
   {
     height?: number | string | undefined
     result?: string | undefined
@@ -1994,10 +1986,7 @@ export namespace JSX {
     viewBox?: string | undefined
   }
   export interface GradientElementSVGAttributes<T>
-    extends
-      CoreSVGAttributes<T>,
-      ExternalResourceSVGAttributes,
-      StylableSVGAttributes
+    extends CoreSVGAttributes<T>, ExternalResourceSVGAttributes, StylableSVGAttributes
   {
     gradientTransform?: string | undefined
     gradientUnits?: SVGUnits | undefined
@@ -2022,9 +2011,7 @@ export namespace JSX {
   {}
   export interface LightSourceElementSVGAttributes<T> extends CoreSVGAttributes<T> {}
   export interface NewViewportSVGAttributes<T>
-    extends
-      CoreSVGAttributes<T>,
-      Pick<PresentationSVGAttributes, "overflow" | "clip">
+    extends CoreSVGAttributes<T>, Pick<PresentationSVGAttributes, "overflow" | "clip">
   {
     viewBox?: string | undefined
   }
@@ -2048,41 +2035,40 @@ export namespace JSX {
       | "pathLength"
     >
   {}
-  export interface TextContentElementSVGAttributes<T>
-    extends
-      CoreSVGAttributes<T>,
-      Pick<
-        PresentationSVGAttributes,
-        | "font-family"
-        | "font-style"
-        | "font-variant"
-        | "font-weight"
-        | "font-stretch"
-        | "font-size"
-        | "font-size-adjust"
-        | "kerning"
-        | "letter-spacing"
-        | "word-spacing"
-        | "text-decoration"
-        | "glyph-orientation-horizontal"
-        | "glyph-orientation-vertical"
-        | "direction"
-        | "unicode-bidi"
-        | "text-anchor"
-        | "dominant-baseline"
-        | "color"
-        | "fill"
-        | "fill-rule"
-        | "fill-opacity"
-        | "stroke"
-        | "stroke-width"
-        | "stroke-linecap"
-        | "stroke-linejoin"
-        | "stroke-miterlimit"
-        | "stroke-dasharray"
-        | "stroke-dashoffset"
-        | "stroke-opacity"
-      >
+  export interface TextContentElementSVGAttributes<T> extends
+    CoreSVGAttributes<T>,
+    Pick<
+      PresentationSVGAttributes,
+      | "font-family"
+      | "font-style"
+      | "font-variant"
+      | "font-weight"
+      | "font-stretch"
+      | "font-size"
+      | "font-size-adjust"
+      | "kerning"
+      | "letter-spacing"
+      | "word-spacing"
+      | "text-decoration"
+      | "glyph-orientation-horizontal"
+      | "glyph-orientation-vertical"
+      | "direction"
+      | "unicode-bidi"
+      | "text-anchor"
+      | "dominant-baseline"
+      | "color"
+      | "fill"
+      | "fill-rule"
+      | "fill-opacity"
+      | "stroke"
+      | "stroke-width"
+      | "stroke-linecap"
+      | "stroke-linejoin"
+      | "stroke-miterlimit"
+      | "stroke-dasharray"
+      | "stroke-dashoffset"
+      | "stroke-opacity"
+    >
   {}
   export interface ZoomAndPanSVGAttributes {
     /**
@@ -2154,9 +2140,7 @@ export namespace JSX {
       StylableSVGAttributes,
       TransformableSVGAttributes
   {}
-  export interface DescSVGAttributes<T>
-    extends CoreSVGAttributes<T>, StylableSVGAttributes
-  {}
+  export interface DescSVGAttributes<T> extends CoreSVGAttributes<T>, StylableSVGAttributes {}
   export interface EllipseSVGAttributes<T>
     extends
       GraphicsElementSVGAttributes<T>,
@@ -2173,33 +2157,21 @@ export namespace JSX {
     ry?: number | string | undefined
   }
   export interface FeBlendSVGAttributes<T>
-    extends
-      FilterPrimitiveElementSVGAttributes<T>,
-      DoubleInputFilterSVGAttributes,
-      StylableSVGAttributes
+    extends FilterPrimitiveElementSVGAttributes<T>, DoubleInputFilterSVGAttributes, StylableSVGAttributes
   {
     mode?: "normal" | "multiply" | "screen" | "darken" | "lighten" | undefined
   }
   export interface FeColorMatrixSVGAttributes<T>
-    extends
-      FilterPrimitiveElementSVGAttributes<T>,
-      SingleInputFilterSVGAttributes,
-      StylableSVGAttributes
+    extends FilterPrimitiveElementSVGAttributes<T>, SingleInputFilterSVGAttributes, StylableSVGAttributes
   {
     type?: "matrix" | "saturate" | "hueRotate" | "luminanceToAlpha" | undefined
     values?: string | undefined
   }
   export interface FeComponentTransferSVGAttributes<T>
-    extends
-      FilterPrimitiveElementSVGAttributes<T>,
-      SingleInputFilterSVGAttributes,
-      StylableSVGAttributes
+    extends FilterPrimitiveElementSVGAttributes<T>, SingleInputFilterSVGAttributes, StylableSVGAttributes
   {}
   export interface FeCompositeSVGAttributes<T>
-    extends
-      FilterPrimitiveElementSVGAttributes<T>,
-      DoubleInputFilterSVGAttributes,
-      StylableSVGAttributes
+    extends FilterPrimitiveElementSVGAttributes<T>, DoubleInputFilterSVGAttributes, StylableSVGAttributes
   {
     k1?: number | string | undefined
     k2?: number | string | undefined
@@ -2208,10 +2180,7 @@ export namespace JSX {
     operator?: "over" | "in" | "out" | "atop" | "xor" | "arithmetic" | undefined
   }
   export interface FeConvolveMatrixSVGAttributes<T>
-    extends
-      FilterPrimitiveElementSVGAttributes<T>,
-      SingleInputFilterSVGAttributes,
-      StylableSVGAttributes
+    extends FilterPrimitiveElementSVGAttributes<T>, SingleInputFilterSVGAttributes, StylableSVGAttributes
   {
     bias?: number | string | undefined
     divisor?: number | string | undefined
@@ -2235,18 +2204,13 @@ export namespace JSX {
     surfaceScale?: number | string | undefined
   }
   export interface FeDisplacementMapSVGAttributes<T>
-    extends
-      FilterPrimitiveElementSVGAttributes<T>,
-      DoubleInputFilterSVGAttributes,
-      StylableSVGAttributes
+    extends FilterPrimitiveElementSVGAttributes<T>, DoubleInputFilterSVGAttributes, StylableSVGAttributes
   {
     scale?: number | string | undefined
     xChannelSelector?: "R" | "G" | "B" | "A" | undefined
     yChannelSelector?: "R" | "G" | "B" | "A" | undefined
   }
-  export interface FeDistantLightSVGAttributes<T>
-    extends LightSourceElementSVGAttributes<T>
-  {
+  export interface FeDistantLightSVGAttributes<T> extends LightSourceElementSVGAttributes<T> {
     azimuth?: number | string | undefined
     elevation?: number | string | undefined
   }
@@ -2277,49 +2241,31 @@ export namespace JSX {
     type?: "identity" | "table" | "discrete" | "linear" | "gamma" | undefined
   }
   export interface FeGaussianBlurSVGAttributes<T>
-    extends
-      FilterPrimitiveElementSVGAttributes<T>,
-      SingleInputFilterSVGAttributes,
-      StylableSVGAttributes
+    extends FilterPrimitiveElementSVGAttributes<T>, SingleInputFilterSVGAttributes, StylableSVGAttributes
   {
     stdDeviation?: number | string | undefined
   }
   export interface FeImageSVGAttributes<T>
-    extends
-      FilterPrimitiveElementSVGAttributes<T>,
-      ExternalResourceSVGAttributes,
-      StylableSVGAttributes
+    extends FilterPrimitiveElementSVGAttributes<T>, ExternalResourceSVGAttributes, StylableSVGAttributes
   {
     href?: string | undefined
     preserveAspectRatio?: SVGPreserveAspectRatio | undefined
   }
-  export interface FeMergeSVGAttributes<T>
-    extends FilterPrimitiveElementSVGAttributes<T>, StylableSVGAttributes
-  {}
-  export interface FeMergeNodeSVGAttributes<T>
-    extends CoreSVGAttributes<T>, SingleInputFilterSVGAttributes
-  {}
+  export interface FeMergeSVGAttributes<T> extends FilterPrimitiveElementSVGAttributes<T>, StylableSVGAttributes {}
+  export interface FeMergeNodeSVGAttributes<T> extends CoreSVGAttributes<T>, SingleInputFilterSVGAttributes {}
   export interface FeMorphologySVGAttributes<T>
-    extends
-      FilterPrimitiveElementSVGAttributes<T>,
-      SingleInputFilterSVGAttributes,
-      StylableSVGAttributes
+    extends FilterPrimitiveElementSVGAttributes<T>, SingleInputFilterSVGAttributes, StylableSVGAttributes
   {
     operator?: "erode" | "dilate" | undefined
     radius?: number | string | undefined
   }
   export interface FeOffsetSVGAttributes<T>
-    extends
-      FilterPrimitiveElementSVGAttributes<T>,
-      SingleInputFilterSVGAttributes,
-      StylableSVGAttributes
+    extends FilterPrimitiveElementSVGAttributes<T>, SingleInputFilterSVGAttributes, StylableSVGAttributes
   {
     dx?: number | string | undefined
     dy?: number | string | undefined
   }
-  export interface FePointLightSVGAttributes<T>
-    extends LightSourceElementSVGAttributes<T>
-  {
+  export interface FePointLightSVGAttributes<T> extends LightSourceElementSVGAttributes<T> {
     x?: number | string | undefined
     y?: number | string | undefined
     z?: number | string | undefined
@@ -2336,9 +2282,7 @@ export namespace JSX {
     specularExponent?: string | undefined
     surfaceScale?: string | undefined
   }
-  export interface FeSpotLightSVGAttributes<T>
-    extends LightSourceElementSVGAttributes<T>
-  {
+  export interface FeSpotLightSVGAttributes<T> extends LightSourceElementSVGAttributes<T> {
     limitingConeAngle?: number | string | undefined
     pointsAtX?: number | string | undefined
     pointsAtY?: number | string | undefined
@@ -2349,14 +2293,9 @@ export namespace JSX {
     z?: number | string | undefined
   }
   export interface FeTileSVGAttributes<T>
-    extends
-      FilterPrimitiveElementSVGAttributes<T>,
-      SingleInputFilterSVGAttributes,
-      StylableSVGAttributes
+    extends FilterPrimitiveElementSVGAttributes<T>, SingleInputFilterSVGAttributes, StylableSVGAttributes
   {}
-  export interface FeTurbulanceSVGAttributes<T>
-    extends FilterPrimitiveElementSVGAttributes<T>, StylableSVGAttributes
-  {
+  export interface FeTurbulanceSVGAttributes<T> extends FilterPrimitiveElementSVGAttributes<T>, StylableSVGAttributes {
     baseFrequency?: number | string | undefined
     numOctaves?: number | string | undefined
     seed?: number | string | undefined
@@ -2364,10 +2303,7 @@ export namespace JSX {
     type?: "fractalNoise" | "turbulence" | undefined
   }
   export interface FilterSVGAttributes<T>
-    extends
-      CoreSVGAttributes<T>,
-      ExternalResourceSVGAttributes,
-      StylableSVGAttributes
+    extends CoreSVGAttributes<T>, ExternalResourceSVGAttributes, StylableSVGAttributes
   {
     filterRes?: number | string | undefined
     filterUnits?: SVGUnits | undefined
@@ -2437,9 +2373,7 @@ export namespace JSX {
     y1?: number | string | undefined
     y2?: number | string | undefined
   }
-  export interface LinearGradientSVGAttributes<T>
-    extends GradientElementSVGAttributes<T>
-  {
+  export interface LinearGradientSVGAttributes<T> extends GradientElementSVGAttributes<T> {
     x1?: number | string | undefined
     x2?: number | string | undefined
     y1?: number | string | undefined
@@ -2541,9 +2475,7 @@ export namespace JSX {
   {
     points?: string | undefined
   }
-  export interface RadialGradientSVGAttributes<T>
-    extends GradientElementSVGAttributes<T>
-  {
+  export interface RadialGradientSVGAttributes<T> extends GradientElementSVGAttributes<T> {
     cx?: number | string | undefined
     cy?: number | string | undefined
     fx?: number | string | undefined
@@ -2568,10 +2500,7 @@ export namespace JSX {
     y?: number | string | undefined
   }
   export interface SetSVGAttributes<T>
-    extends
-      AnimationElementSVGAttributes<T>,
-      StylableSVGAttributes,
-      AnimationTimingSVGAttributes
+    extends AnimationElementSVGAttributes<T>, StylableSVGAttributes, AnimationTimingSVGAttributes
   {}
   export interface StopSVGAttributes<T>
     extends
@@ -2709,11 +2638,7 @@ export namespace JSX {
     y?: number | string | undefined
   }
   export interface ViewSVGAttributes<T>
-    extends
-      CoreSVGAttributes<T>,
-      ExternalResourceSVGAttributes,
-      FitToViewBoxSVGAttributes,
-      ZoomAndPanSVGAttributes
+    extends CoreSVGAttributes<T>, ExternalResourceSVGAttributes, FitToViewBoxSVGAttributes, ZoomAndPanSVGAttributes
   {
     viewTarget?: string | undefined
   }
@@ -2743,9 +2668,7 @@ export namespace JSX {
     /** @deprecated */
     src?: string | undefined
   }
-  export interface MathMLAnnotationXmlElementAttributes<T>
-    extends MathMLAttributes<T>
-  {
+  export interface MathMLAnnotationXmlElementAttributes<T> extends MathMLAttributes<T> {
     encoding?: string | undefined
 
     /** @deprecated */
@@ -2785,9 +2708,7 @@ export namespace JSX {
     mathvariant?: "normal" | undefined
   }
 
-  export interface MathMLMmultiscriptsElementAttributes<T>
-    extends MathMLAttributes<T>
-  {
+  export interface MathMLMmultiscriptsElementAttributes<T> extends MathMLAttributes<T> {
     /**
      * @deprecated
      * @non-standard

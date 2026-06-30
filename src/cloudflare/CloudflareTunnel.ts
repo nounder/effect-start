@@ -1,13 +1,4 @@
-import {
-  Config,
-  Effect,
-  Layer,
-  LogLevel,
-  Option,
-  pipe,
-  Stream,
-  String,
-} from "effect"
+import { Config, Effect, Layer, LogLevel, Option, pipe, Stream, String } from "effect"
 import * as System from "../System.ts"
 
 export const start = (opts: {
@@ -35,9 +26,7 @@ export const start = (opts: {
     const proc = yield* System.spawn([command, ...args])
 
     yield* Effect.logInfo(
-      `Cloudflare tunnel started name=${opts.tunnelName} pid=${proc.pid} tunnelUrl=${
-        opts.tunnelUrl ?? "<empty>"
-      }`,
+      `Cloudflare tunnel started name=${opts.tunnelName} pid=${proc.pid} tunnelUrl=${opts.tunnelUrl ?? "<empty>"}`,
     )
 
     yield* pipe(
@@ -45,14 +34,10 @@ export const start = (opts: {
       Stream.decodeText("utf-8"),
       Stream.splitLines,
       (opts.cleanLogs ?? true)
-        ? Stream.map((v) =>
-          v.replace(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\s\w+\s/, "")
-        )
+        ? Stream.map((v) => v.replace(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\s\w+\s/, ""))
         : (s) => s,
       logPrefix ? Stream.map((v) => logPrefix + v) : (s) => s,
-      Stream.runForEach((v) =>
-        Effect.logWithLevel(opts.logLevel ?? LogLevel.Debug, v)
-      ),
+      Stream.runForEach((v) => Effect.logWithLevel(opts.logLevel ?? LogLevel.Debug, v)),
     )
   })
 
@@ -84,9 +69,7 @@ export const layer = () =>
           tunnelUrl,
         })
           .pipe(
-            Effect.catchAll((err) =>
-              Effect.logError("Cloudflare tunnel failed", err)
-            ),
+            Effect.catchAll((err) => Effect.logError("Cloudflare tunnel failed", err)),
           ),
       )
     }),

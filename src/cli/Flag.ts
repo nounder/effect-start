@@ -7,17 +7,12 @@ export interface Flag<A> extends Param.Param<"flag", A> {}
 
 const flagMake = Param.makeConstructor("flag")
 
-export const string = (name: string): Flag<string> =>
-  flagMake(name, Primitive.string)
-export const boolean = (name: string): Flag<boolean> =>
-  flagMake(name, Primitive.boolean)
-export const integer = (name: string): Flag<number> =>
-  flagMake(name, Primitive.integer)
-export const float = (name: string): Flag<number> =>
-  flagMake(name, Primitive.float)
+export const string = (name: string): Flag<string> => flagMake(name, Primitive.string)
+export const boolean = (name: string): Flag<boolean> => flagMake(name, Primitive.boolean)
+export const integer = (name: string): Flag<number> => flagMake(name, Primitive.integer)
+export const float = (name: string): Flag<number> => flagMake(name, Primitive.float)
 export const date = (name: string): Flag<Date> => flagMake(name, Primitive.date)
-export const redacted = (name: string): Flag<Redacted.Redacted<string>> =>
-  flagMake(name, Primitive.redacted)
+export const redacted = (name: string): Flag<Redacted.Redacted<string>> => flagMake(name, Primitive.redacted)
 export const choice = <const C extends ReadonlyArray<string>>(
   name: string,
   choices: C,
@@ -61,8 +56,7 @@ export const withAlias: {
   <A>(self: Flag<A>, alias: string): Flag<A>
 } = Function.dual(
   2,
-  <A>(self: Flag<A>, alias: string): Flag<A> =>
-    Param.paramWithAlias(self, alias),
+  <A>(self: Flag<A>, alias: string): Flag<A> => Param.paramWithAlias(self, alias),
 )
 
 const combinators = Param.makeParamCombinators("flag")

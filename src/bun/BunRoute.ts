@@ -127,9 +127,7 @@ export function htmlBundle(
         let childrenHtml = ""
         if (children != null) {
           if ((children as unknown) instanceof Response) {
-            childrenHtml = yield* Effect.promise(() =>
-              (children as unknown as Response).text()
-            )
+            childrenHtml = yield* Effect.promise(() => (children as unknown as Response).text())
           } else if (Html.isGenericJsxObject(children)) {
             childrenHtml = Html.text(children)
           } else {

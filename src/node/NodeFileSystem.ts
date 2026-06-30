@@ -11,9 +11,9 @@ import * as NFS from "node:fs"
 import * as NOS from "node:os"
 import * as NPath from "node:path"
 import * as FileSystem from "../FileSystem.ts"
-import * as Unique from "../Unique.ts"
 import * as Effectify from "../internal/Effectify.ts"
 import * as System from "../System.ts"
+import * as Unique from "../Unique.ts"
 
 const handleBadArgument = (method: string) => (cause: unknown) =>
   new System.SystemError({
@@ -88,8 +88,7 @@ const link = (() => {
     handleErrnoException("FileSystem", "link"),
     handleBadArgument("link"),
   )
-  return (existingPath: string, newPath: string) =>
-    nodeLink(existingPath, newPath)
+  return (existingPath: string, newPath: string) => nodeLink(existingPath, newPath)
 })()
 
 const makeDirectory = (() => {
@@ -145,8 +144,7 @@ const makeTempDirectoryScoped = (() => {
   return (options?: FileSystem.MakeTempDirectoryOptions) =>
     Effect.acquireRelease(
       makeDirectory(options),
-      (directory) =>
-        Effect.orDie(removeDirectory(directory, { recursive: true })),
+      (directory) => Effect.orDie(removeDirectory(directory, { recursive: true })),
     )
 })()
 
@@ -380,23 +378,18 @@ const makeFile = (() => {
     }
   }
 
-  return (fd: FileSystem.File.Descriptor, append: boolean): FileSystem.File =>
-    new FileImpl(fd, append)
+  return (fd: FileSystem.File.Descriptor, append: boolean): FileSystem.File => new FileImpl(fd, append)
 })()
 
 const makeTempFileFactory = (method: string) => {
   const makeDirectory = makeTempDirectoryFactory(method)
   const open = openFactory(method)
   const randomHexString = (bytes: number) =>
-    Effect.sync(() =>
-      Array.from(Unique.bytes(bytes), (b) => b.toString(16).padStart(2, "0")).join("")
-    )
+    Effect.sync(() => Array.from(Unique.bytes(bytes), (b) => b.toString(16).padStart(2, "0")).join(""))
   return (options?: FileSystem.MakeTempFileOptions) =>
     Function.pipe(
       Effect.zip(makeDirectory(options), randomHexString(6)),
-      Effect.map(([directory, random]) =>
-        NPath.join(directory, random + (options?.suffix ?? ""))
-      ),
+      Effect.map(([directory, random]) => NPath.join(directory, random + (options?.suffix ?? ""))),
       Effect.tap((path) => Effect.scoped(open(path, { flag: "w+" }))),
     )
 }
@@ -408,8 +401,7 @@ const makeTempFileScoped = (() => {
   return (options?: FileSystem.MakeTempFileOptions) =>
     Effect.acquireRelease(
       makeFile(options),
-      (file) =>
-        Effect.orDie(removeDirectory(NPath.dirname(file), { recursive: true })),
+      (file) => Effect.orDie(removeDirectory(NPath.dirname(file), { recursive: true })),
     )
 })()
 
@@ -419,8 +411,7 @@ const readDirectory = (
 ) =>
   Effect.tryPromise({
     try: () => NFS.promises.readdir(path, options),
-    catch: (err) =>
-      handleErrnoException("FileSystem", "readDirectory")(err as any, [path]),
+    catch: (err) => handleErrnoException("FileSystem", "readDirectory")(err as any, [path]),
   })
 
 const readFile = (path: string) =>
@@ -533,8 +524,7 @@ const utimes = (() => {
     handleErrnoException("FileSystem", "utime"),
     handleBadArgument("utime"),
   )
-  return (path: string, atime: number | Date, mtime: number | Date) =>
-    nodeUtimes(path, atime, mtime)
+  return (path: string, atime: number | Date, mtime: number | Date) => nodeUtimes(path, atime, mtime)
 })()
 
 const watchNode = (path: string, options?: FileSystem.WatchOptions) =>
@@ -550,8 +540,7 @@ const watchNode = (path: string, options?: FileSystem.WatchOptions) =>
               case "rename": {
                 emit.fromEffect(
                   Effect.matchEffect(stat(path), {
-                    onSuccess: (_) =>
-                      Effect.succeed(FileSystem.WatchEventCreate({ path })),
+                    onSuccess: (_) => Effect.succeed(FileSystem.WatchEventCreate({ path })),
                     onFailure: (err) =>
                       err._tag === "SystemError" && err.reason === "NotFound"
                         ? Effect.succeed(FileSystem.WatchEventRemove({ path }))

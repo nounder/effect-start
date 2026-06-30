@@ -129,9 +129,7 @@ export function RepoListItem(props: {
               <span class="flex items-center gap-1">
                 <span
                   class="w-3 h-3 rounded-full inline-block"
-                  style={`background-color: ${
-                    Github.langColor(props.language)
-                  }`}
+                  style={`background-color: ${Github.langColor(props.language)}`}
                 />
                 {props.language}
               </span>
@@ -201,9 +199,7 @@ export function LanguageBar(
           const pct = ((bytes / total) * 100).toFixed(1)
           return (
             <span
-              style={`width: ${pct}%; background-color: ${
-                Github.langColor(lang)
-              }`}
+              style={`width: ${pct}%; background-color: ${Github.langColor(lang)}`}
               title={`${lang} ${pct}%`}
             />
           )

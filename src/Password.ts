@@ -40,9 +40,7 @@ function makePasswordSchema(options?: HashOptions) {
       strict: true,
       decode: (input, _, ast) =>
         hash(input, options).pipe(
-          Effect.mapError((error) =>
-            new ParseResult.Type(ast, input, formatError(error))
-          ),
+          Effect.mapError((error) => new ParseResult.Type(ast, input, formatError(error))),
         ),
       encode: (stored, _, ast) =>
         Effect.fail(
@@ -55,8 +53,7 @@ function makePasswordSchema(options?: HashOptions) {
     })
     .annotations({
       identifier: "Password",
-      description:
-        "A write-only password schema that decodes plain text into a password hash.",
+      description: "A write-only password schema that decodes plain text into a password hash.",
     })
 }
 
@@ -136,9 +133,7 @@ function isSupportedAlgorithm(
 function formatError(error: PasswordError): string {
   switch (error.reason) {
     case "UnsupportedAlgorithm":
-      return `Unsupported password hash algorithm: ${
-        error.algorithm ?? "unknown"
-      }`
+      return `Unsupported password hash algorithm: ${error.algorithm ?? "unknown"}`
     case "HashFailure":
       return `Failed to hash password with ${error.algorithm ?? "unknown"}`
   }

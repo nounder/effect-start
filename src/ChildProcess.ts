@@ -52,8 +52,7 @@ const CommandProto = {
   },
 }
 
-export const isCommand = (u: unknown): u is Command =>
-  Predicate.hasProperty(u, TypeId)
+export const isCommand = (u: unknown): u is Command => Predicate.hasProperty(u, TypeId)
 
 export const make: {
   (command: string, options?: CommandOptions): Command
@@ -133,16 +132,14 @@ export interface ChildProcessHandle {
   readonly stderr: Stream.Stream<Uint8Array, System.SystemError>
 }
 
-export class ChildProcessSpawner
-  extends Context.Tag("effect-start/ChildProcessSpawner")<
-    ChildProcessSpawner,
-    {
-      readonly spawn: (
-        command: Command,
-      ) => Effect.Effect<ChildProcessHandle, System.SystemError, Scope.Scope>
-    }
-  >()
-{}
+export class ChildProcessSpawner extends Context.Tag("effect-start/ChildProcessSpawner")<
+  ChildProcessSpawner,
+  {
+    readonly spawn: (
+      command: Command,
+    ) => Effect.Effect<ChildProcessHandle, System.SystemError, Scope.Scope>
+  }
+>() {}
 
 export const spawn = (
   command: Command,

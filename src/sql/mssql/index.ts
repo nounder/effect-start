@@ -58,8 +58,7 @@ interface TransactionConnection {
 
 const currentTransaction = GlobalValue.globalValue(
   Symbol.for("effect-start/sql/mssql/currentTransaction"),
-  () =>
-    FiberRef.unsafeMake<Option.Option<TransactionConnection>>(Option.none()),
+  () => FiberRef.unsafeMake<Option.Option<TransactionConnection>>(Option.none()),
 )
 
 const makeRequest = (
@@ -107,8 +106,7 @@ const runUnsafe = <T>(
   )
 
 const makeTaggedTemplate = (pool: Mssql.ConnectionPool) => {
-  const unsafeFn = <T = any>(query: string, values?: Array<unknown>) =>
-    runUnsafe<T>(pool, query, values)
+  const unsafeFn = <T = any>(query: string, values?: Array<unknown>) => runUnsafe<T>(pool, query, values)
 
   return <T = any>(
     strings: TemplateStringsArray,
@@ -139,49 +137,19 @@ const makeQuery = (
   return SqlClient.connection(query, unsafe, { spanAttributes, dialect })
 }
 
-const makeWithTransaction =
-  (pool: Mssql.ConnectionPool) =>
-  <A, E, R>(
-    self: Effect.Effect<A, E, R>,
-  ): Effect.Effect<A, SqlClient.SqlError | E, R> =>
-    Effect.uninterruptibleMask((restore) =>
-      Effect.flatMap(FiberRef.get(currentTransaction), (txOpt) => {
-        if (Option.isSome(txOpt)) {
-          const { transaction, depth } = txOpt.value
-          const name = `sp_${depth}`
-          return Effect.gen(function*() {
-            const req = transaction.request()
-            yield* Effect.tryPromise({
-              try: () => req.query(`SAVE TRANSACTION ${name}`),
-              catch: wrapError,
-            })
-            const exit = yield* Effect.exit(
-              restore(
-                Effect.locally(
-                  self,
-                  currentTransaction,
-                  Option.some({ transaction, depth: depth + 1 }),
-                ),
-              ),
-            )
-            if (Exit.isSuccess(exit)) {
-              return exit.value
-            }
-            const rbReq = transaction.request()
-            yield* Effect
-              .tryPromise({
-                try: () => rbReq.query(`ROLLBACK TRANSACTION ${name}`),
-                catch: wrapError,
-              })
-              .pipe(Effect.orDie)
-            return yield* exit
-          })
-        }
-
+const makeWithTransaction = (pool: Mssql.ConnectionPool) =>
+<A, E, R>(
+  self: Effect.Effect<A, E, R>,
+): Effect.Effect<A, SqlClient.SqlError | E, R> =>
+  Effect.uninterruptibleMask((restore) =>
+    Effect.flatMap(FiberRef.get(currentTransaction), (txOpt) => {
+      if (Option.isSome(txOpt)) {
+        const { transaction, depth } = txOpt.value
+        const name = `sp_${depth}`
         return Effect.gen(function*() {
-          const transaction = pool.transaction()
+          const req = transaction.request()
           yield* Effect.tryPromise({
-            try: () => transaction.begin(),
+            try: () => req.query(`SAVE TRANSACTION ${name}`),
             catch: wrapError,
           })
           const exit = yield* Effect.exit(
@@ -189,26 +157,55 @@ const makeWithTransaction =
               Effect.locally(
                 self,
                 currentTransaction,
-                Option.some({ transaction, depth: 1 }),
+                Option.some({ transaction, depth: depth + 1 }),
               ),
             ),
           )
           if (Exit.isSuccess(exit)) {
-            yield* Effect.tryPromise({
-              try: () => transaction.commit(),
-              catch: wrapError,
-            })
             return exit.value
           }
+          const rbReq = transaction.request()
           yield* Effect
-            .tryPromise({ try: () => transaction.rollback(), catch: wrapError })
-            .pipe(
-              Effect.orDie,
-            )
+            .tryPromise({
+              try: () => rbReq.query(`ROLLBACK TRANSACTION ${name}`),
+              catch: wrapError,
+            })
+            .pipe(Effect.orDie)
           return yield* exit
         })
+      }
+
+      return Effect.gen(function*() {
+        const transaction = pool.transaction()
+        yield* Effect.tryPromise({
+          try: () => transaction.begin(),
+          catch: wrapError,
+        })
+        const exit = yield* Effect.exit(
+          restore(
+            Effect.locally(
+              self,
+              currentTransaction,
+              Option.some({ transaction, depth: 1 }),
+            ),
+          ),
+        )
+        if (Exit.isSuccess(exit)) {
+          yield* Effect.tryPromise({
+            try: () => transaction.commit(),
+            catch: wrapError,
+          })
+          return exit.value
+        }
+        yield* Effect
+          .tryPromise({ try: () => transaction.rollback(), catch: wrapError })
+          .pipe(
+            Effect.orDie,
+          )
+        return yield* exit
       })
-    )
+    })
+  )
 
 export const layer = (
   config: Mssql.config & {
@@ -282,8 +279,7 @@ export const layer = (
                     )
                     .pipe(
                       Effect.map(
-                        (reserved): SqlClient.Connection =>
-                          makeQuery(reserved, spanAttributes),
+                        (reserved): SqlClient.Connection => makeQuery(reserved, spanAttributes),
                       ),
                     ),
                   use,

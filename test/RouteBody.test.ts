@@ -1,7 +1,6 @@
 import * as test from "bun:test"
 import * as Entity from "effect-start/Entity"
 import * as Route from "effect-start/Route"
-import * as RouteBody from "../src/internal/RouteBody.ts"
 import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Data from "effect/Data"
@@ -9,6 +8,7 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import type * as ParseResult from "effect/ParseResult"
 import * as Stream from "effect/Stream"
+import * as RouteBody from "../src/internal/RouteBody.ts"
 
 test.it("infers parent descriptions", () => {
   Route.get(

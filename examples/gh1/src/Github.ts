@@ -286,8 +286,7 @@ export const getUserRepos = (
     type: "owner",
   })
 
-export const getRepo = (owner: string, repo: string) =>
-  request(Repo, `/repos/${owner}/${repo}`)
+export const getRepo = (owner: string, repo: string) => request(Repo, `/repos/${owner}/${repo}`)
 
 export const getRepoIssues = (
   owner: string,
@@ -355,11 +354,9 @@ export const getPull = (owner: string, repo: string, number: number) =>
 export const getCommit = (owner: string, repo: string, sha: string) =>
   request(Commit, `/repos/${owner}/${repo}/commits/${sha}`)
 
-export const getRepoReadme = (owner: string, repo: string) =>
-  requestHtml(`/repos/${owner}/${repo}/readme`)
+export const getRepoReadme = (owner: string, repo: string) => requestHtml(`/repos/${owner}/${repo}/readme`)
 
-export const getRepoLanguages = (owner: string, repo: string) =>
-  request(Languages, `/repos/${owner}/${repo}/languages`)
+export const getRepoLanguages = (owner: string, repo: string) => request(Languages, `/repos/${owner}/${repo}/languages`)
 
 export const searchRepos = (
   q: string,

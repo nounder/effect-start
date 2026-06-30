@@ -140,9 +140,7 @@ export const make = (opts?: {
             const moduleImports = importDescendants.get(currentPath)
 
             moduleImports?.forEach((moduleImport) => {
-              classNameCandidates.get(moduleImport)?.forEach((c) =>
-                candidates.add(c)
-              )
+              classNameCandidates.get(moduleImport)?.forEach((c) => candidates.add(c))
               pendingModules.push(moduleImport)
             })
 

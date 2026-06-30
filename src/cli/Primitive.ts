@@ -11,13 +11,10 @@ export const make = <A>(
   parse: (value: string) => Effect.Effect<A, string>,
 ): Primitive<A> => ({ _tag: tag, parse })
 
-export const isTrueValue = (v: string) =>
-  ["true", "1", "y", "yes", "on"].includes(v.toLowerCase())
-export const isFalseValue = (v: string) =>
-  ["false", "0", "n", "no", "off"].includes(v.toLowerCase())
+export const isTrueValue = (v: string) => ["true", "1", "y", "yes", "on"].includes(v.toLowerCase())
+export const isFalseValue = (v: string) => ["false", "0", "n", "no", "off"].includes(v.toLowerCase())
 export const isBooleanLiteral = (v: string) => isTrueValue(v) || isFalseValue(v)
-export const isBoolean = (p: Primitive<unknown>): p is Primitive<boolean> =>
-  p._tag === "Boolean"
+export const isBoolean = (p: Primitive<unknown>): p is Primitive<boolean> => p._tag === "Boolean"
 
 export const boolean: Primitive<boolean> = make("Boolean", (value) => {
   if (isTrueValue(value)) return Effect.succeed(true)

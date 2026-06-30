@@ -103,8 +103,7 @@ export function fetch(
   input: string | URL | Request,
   init?: RequestInit,
 ): Effect.Effect<FetchEntity, any, any> {
-  const middleware: ReadonlyArray<Middleware<any, any>> =
-    (this as any)?.middleware ?? defaultMiddleware
+  const middleware: ReadonlyArray<Middleware<any, any>> = (this as any)?.middleware ?? defaultMiddleware
   return Effect.gen(function*() {
     const request = new Request(input, init)
 

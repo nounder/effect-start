@@ -1,7 +1,7 @@
 import * as test from "bun:test"
 import * as Route from "effect-start/Route"
-import * as RouteMap from "../src/internal/RouteMap.ts"
 import * as Context from "effect/Context"
+import * as RouteMap from "../src/internal/RouteMap.ts"
 
 test.describe("layer route", () => {
   test.it("merges LayerRoute into other routes", () => {

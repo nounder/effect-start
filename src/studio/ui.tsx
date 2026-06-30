@@ -36,7 +36,11 @@ export function PrettyValue(
       />
     )
   }
-  return <span style={props.style}>{String(props.value)}</span>
+  return (
+    <span style={props.style}>
+      {String(props.value)}
+    </span>
+  )
 }
 
 export type NavTab =
@@ -52,7 +56,9 @@ export type NavTab =
 function Sidebar(props: { prefix: string; active: NavTab }) {
   return (
     <div class="sidebar">
-      <div class="sidebar-title">Effect Studio</div>
+      <div class="sidebar-title">
+        Effect Studio
+      </div>
       <a
         href={`${props.prefix}/traces`}
         class={props.active === "traces" ? "nav-link active" : "nav-link"}
@@ -111,7 +117,9 @@ export function Shell(
   return (
     <div class="shell">
       <Sidebar prefix={props.prefix} active={props.active} />
-      <div class="content">{props.children}</div>
+      <div class="content">
+        {props.children}
+      </div>
     </div>
   )
 }
@@ -140,7 +148,9 @@ export function LogLine(props: { prefix: string; log: StudioStore.LogEntry }) {
       id={`log-${props.log.id}`}
       style="padding:6px 8px;border-bottom:1px solid #1f2937;font-family:monospace;font-size:12px;display:flex;align-items:flex-start;gap:8px"
     >
-      <span style="color:#6b7280;white-space:nowrap">{time}</span>
+      <span style="color:#6b7280;white-space:nowrap">
+        {time}
+      </span>
       <span
         style={`color:${color};font-weight:600;width:56px;text-align:left;flex-shrink:0`}
       >
@@ -181,22 +191,26 @@ export function ErrorLine(
   const firstLine = props.error.prettyPrint.split("\n")[0] ?? ""
   const tags = props.error.details.map((d) => d.tag).filter(Boolean)
   const allSpans = props.error.details.map((d) => d.span).filter(Boolean)
-  const allProps = props.error.details.flatMap((d) =>
-    Object.entries(d.properties)
-  )
+  const allProps = props.error.details.flatMap((d) => Object.entries(d.properties))
 
   return (
     <details style="border-bottom:1px solid #1e293b">
       <summary style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12px;font-family:monospace">
-        <span style="color:#6b7280;flex-shrink:0">{time}</span>
-        <span style="color:#fca5a5">{firstLine}</span>
+        <span style="color:#6b7280;flex-shrink:0">
+          {time}
+        </span>
+        <span style="color:#fca5a5">
+          {firstLine}
+        </span>
       </summary>
       <div style="padding:4px 12px 10px;font-size:12px;font-family:monospace">
         {tags.length > 0 && (
           <div style="display:flex;flex-wrap:wrap;gap:4px 12px;margin-bottom:6px">
             {tags.map((t) => (
               <div>
-                <span style="color:#64748b">tag</span>
+                <span style="color:#64748b">
+                  tag
+                </span>
                 <span
                   style="color:#fca5a5;text-decoration:underline;cursor:copy"
                   data-on:click={`(e) => { e.signals.errorSearch = '${t}'; const u = new URL(location.href); u.searchParams.set('errorSearch', '${t}'); e.actions.get(u.toString(), { headers: { Accept: 'text/html' } }) }`}
@@ -211,8 +225,12 @@ export function ErrorLine(
           <div style="display:flex;flex-wrap:wrap;gap:4px 12px;margin-bottom:6px">
             {allSpans.map((s) => (
               <div>
-                <span style="color:#64748b">span</span>
-                <span style="color:#818cf8">{s}</span>
+                <span style="color:#64748b">
+                  span
+                </span>
+                <span style="color:#818cf8">
+                  {s}
+                </span>
               </div>
             ))}
           </div>
@@ -221,8 +239,12 @@ export function ErrorLine(
           <div style="display:flex;flex-wrap:wrap;gap:4px 12px;margin-bottom:6px">
             {allProps.map(([k, v]) => (
               <div>
-                <span style="color:#64748b">{k}</span>
-                <span style="color:#4b5563">=</span>
+                <span style="color:#64748b">
+                  {k}
+                </span>
+                <span style="color:#4b5563">
+                  =
+                </span>
                 <span style="color:#e2e8f0">
                   {typeof v === "object" ? JSON.stringify(v) : String(v)}
                 </span>
@@ -231,11 +253,11 @@ export function ErrorLine(
           </div>
         )}
         <div style="margin-bottom:6px">
-          <span style="color:#64748b">fiber</span>
+          <span style="color:#64748b">
+            fiber
+          </span>
           <a
-            href={`${props.prefix}/fibers/${
-              props.error.fiberId.replace("#", "")
-            }`}
+            href={`${props.prefix}/fibers/${props.error.fiberId.replace("#", "")}`}
             style="color:#9ca3af;text-decoration:none"
           >
             {props.error.fiberId}
@@ -266,7 +288,9 @@ function KeyValue(props: { label: string; value: unknown }) {
   if (props.value == null) return null
   return (
     <div style="display:flex;align-items:flex-start;gap:8px;padding:4px 0;border-bottom:1px solid #1e293b;font-size:12px">
-      <span style="color:#64748b;min-width:120px">{props.label}</span>
+      <span style="color:#64748b;min-width:120px">
+        {props.label}
+      </span>
       <div style="flex:1;min-width:0">
         <PrettyValue
           value={props.value}
@@ -320,9 +344,7 @@ function pickRootSpan(
 ): StudioStore.Span {
   const spanIds = new Set(spans.map((span) => span.spanId))
   return (
-    spans.find((span) =>
-      !span.parentSpanId || !spanIds.has(span.parentSpanId)
-    ) ??
+    spans.find((span) => !span.parentSpanId || !spanIds.has(span.parentSpanId)) ??
       spans.slice().sort(sortByStartTime)[0]
   )
 }
@@ -444,9 +466,15 @@ function TimeAxis(props: { totalMs: number }) {
   }
   return (
     <div class="wf-axis">
-      <div style="padding:4px 8px;color:#64748b;font-size:11px">Span</div>
+      <div style="padding:4px 8px;color:#64748b;font-size:11px">
+        Span
+      </div>
       <div class="wf-axis-ticks">
-        {labels.map((l) => <span>{l}</span>)}
+        {labels.map((l) => (
+          <span>
+            {l}
+          </span>
+        ))}
       </div>
     </div>
   )
@@ -455,9 +483,7 @@ function TimeAxis(props: { totalMs: number }) {
 function SpanDetailBody(props: { span: StudioStore.Span }) {
   const s = props.span
   const stacktrace = s.attributes["code.stacktrace"] as string | undefined
-  const customAttrs = Object.entries(s.attributes).filter(([k]) =>
-    k !== "code.stacktrace"
-  )
+  const customAttrs = Object.entries(s.attributes).filter(([k]) => k !== "code.stacktrace")
   return (
     <div class="wf-detail">
       <KeyValue label="Span ID" value={s.spanId} />
@@ -467,10 +493,14 @@ function SpanDetailBody(props: { span: StudioStore.Span }) {
       {customAttrs.map(([k, v]) => <KeyValue label={k} value={v} />)}
       {s.events.length > 0 && (
         <div style="margin-top:4px">
-          <span style="color:#64748b;font-size:11px">Events:</span>
+          <span style="color:#64748b;font-size:11px">
+            Events:
+          </span>
           {s.events.map((ev) => (
             <div style="display:flex;align-items:flex-start;gap:8px;padding:4px 0;font-size:11px;color:#94a3b8;font-family:monospace">
-              <span>{ev.name}</span>
+              <span>
+                {ev.name}
+              </span>
               {ev.attributes && (
                 <div style="flex:1;min-width:0">
                   <PreformattedText
@@ -509,8 +539,7 @@ function WaterfallRow(
     `clearTimeout(window.__wfTimer_${s.spanId});var p=document.getElementById('${popoverId}');p.classList.remove('wf-popover-left');p.classList.add('wf-popover-right');p.style.positionAnchor='${nameAnchor}';p.showPopover()`
   const enterFromBar =
     `clearTimeout(window.__wfTimer_${s.spanId});var p=document.getElementById('${popoverId}');p.classList.remove('wf-popover-right');p.classList.add('wf-popover-left');p.style.positionAnchor='${barAnchor}';p.showPopover()`
-  const enterFromPopover =
-    `clearTimeout(window.__wfTimer_${s.spanId})`
+  const enterFromPopover = `clearTimeout(window.__wfTimer_${s.spanId})`
   const leave =
     `window.__wfTimer_${s.spanId}=setTimeout(()=>document.getElementById('${popoverId}')?.hidePopover(),120)`
 
@@ -524,9 +553,13 @@ function WaterfallRow(
           onmouseleave={leave}
         >
           <TreeConnectors tree={props.tree} />
-          <span style="overflow:hidden;text-overflow:ellipsis">{s.name}</span>
+          <span style="overflow:hidden;text-overflow:ellipsis">
+            {s.name}
+          </span>
           {props.tree.childCount > 0 && (
-            <span class="wf-badge">{props.tree.childCount}</span>
+            <span class="wf-badge">
+              {props.tree.childCount}
+            </span>
           )}
         </div>
         <div class="wf-bar-cell">
@@ -573,9 +606,7 @@ function MiniWaterfall(props: {
         return (
           <div
             class="mini-wf-bar"
-            style={`left:${leftPct}%;width:${widthPct}%;background:${
-              tracesStatusColor(s.status)
-            }`}
+            style={`left:${leftPct}%;width:${widthPct}%;background:${tracesStatusColor(s.status)}`}
           />
         )
       })}
@@ -618,15 +649,21 @@ export function TraceGroup(props: {
     >
       <span class="tl-cell tl-cell-status">
         <span
-          style={`width:8px;height:8px;border-radius:50%;background:${
-            tracesStatusColor(status)
-          };display:block`}
+          style={`width:8px;height:8px;border-radius:50%;background:${tracesStatusColor(status)};display:block`}
         />
       </span>
-      <span class="tl-cell tl-cell-name">{root.name}</span>
-      <span class="tl-cell tl-cell-spans">{props.spans.length}</span>
-      <span class="tl-cell tl-cell-dur">{formatDuration(totalMs)}</span>
-      <span class="tl-cell tl-cell-id">{String(traceId).slice(0, 12)}</span>
+      <span class="tl-cell tl-cell-name">
+        {root.name}
+      </span>
+      <span class="tl-cell tl-cell-spans">
+        {props.spans.length}
+      </span>
+      <span class="tl-cell tl-cell-dur">
+        {formatDuration(totalMs)}
+      </span>
+      <span class="tl-cell tl-cell-id">
+        {String(traceId).slice(0, 12)}
+      </span>
     </a>
   )
 }
@@ -641,20 +678,30 @@ export function TraceGroups(
     .slice(0, 50)
 
   if (sorted.length === 0) {
-    return <div class="empty">Waiting for traces...</div>
+    return (
+      <div class="empty">
+        Waiting for traces...
+      </div>
+    )
   }
   return (
     <div class="tl-grid">
       <div class="tl-header tl-cols">
         <span class="tl-cell tl-cell-status" />
-        <span class="tl-cell tl-cell-name">Name</span>
-        <span class="tl-cell tl-cell-spans">Spans</span>
-        <span class="tl-cell tl-cell-dur">Duration</span>
-        <span class="tl-cell tl-cell-id">Trace</span>
+        <span class="tl-cell tl-cell-name">
+          Name
+        </span>
+        <span class="tl-cell tl-cell-spans">
+          Spans
+        </span>
+        <span class="tl-cell tl-cell-dur">
+          Duration
+        </span>
+        <span class="tl-cell tl-cell-id">
+          Trace
+        </span>
       </div>
-      {sorted.map((group) => (
-        <TraceGroup prefix={props.prefix} spans={group} />
-      ))}
+      {sorted.map((group) => <TraceGroup prefix={props.prefix} spans={group} />)}
     </div>
   )
 }
@@ -663,7 +710,11 @@ export function TraceDetail(
   props: { prefix: string; spans: Array<StudioStore.Span> },
 ) {
   if (props.spans.length === 0) {
-    return <div class="empty">Trace not found</div>
+    return (
+      <div class="empty">
+        Trace not found
+      </div>
+    )
   }
   const root = pickRootSpan(props.spans)
   const traceId = root.traceId
@@ -682,7 +733,9 @@ export function TraceDetail(
           >
             Traces
           </a>
-          <span style="color:#475569">/</span>
+          <span style="color:#475569">
+            /
+          </span>
           <span style="color:#e2e8f0;font-size:13px;font-family:monospace">
             {root.name}
           </span>
@@ -692,8 +745,12 @@ export function TraceDetail(
           <span>
             {props.spans.length} span{props.spans.length !== 1 ? "s" : ""}
           </span>
-          <span>{formatDuration(totalMs)}</span>
-          <span>{startDate.toLocaleTimeString("en", { hour12: false })}</span>
+          <span>
+            {formatDuration(totalMs)}
+          </span>
+          <span>
+            {startDate.toLocaleTimeString("en", { hour12: false })}
+          </span>
           <span style="color:#475569;font-family:monospace;font-size:10px">
             {traceId}
           </span>
@@ -711,9 +768,7 @@ export function TraceDetail(
       <div style="padding:0 8px 8px">
         <TimeAxis totalMs={totalMs} />
         <div class="wf-grid">
-          {tree.map((t) => (
-            <WaterfallRow tree={t} totalMs={totalMs} rootStart={rootStart} />
-          ))}
+          {tree.map((t) => <WaterfallRow tree={t} totalMs={totalMs} rootStart={rootStart} />)}
         </div>
       </div>
     </div>
@@ -860,7 +915,11 @@ export function FiberList(
   props: { fibers: Array<FiberSummary>; prefix: string },
 ) {
   if (props.fibers.length === 0) {
-    return <div class="empty">Waiting for fibers...</div>
+    return (
+      <div class="empty">
+        Waiting for fibers...
+      </div>
+    )
   }
   return (
     <>
@@ -891,7 +950,9 @@ export function FiberDetail(props: {
           >
             Fibers
           </a>
-          <span style="color:#475569">/</span>
+          <span style="color:#475569">
+            /
+          </span>
           <span style="color:#e2e8f0;font-size:13px;font-family:monospace">
             {props.fiberId}
           </span>
@@ -939,12 +1000,12 @@ export function FiberDetail(props: {
                 Context
               </div>
               <div style="background:#111827;border:1px solid #1e293b;border-radius:6px;padding:8px 12px">
-                {props.context.spanName && (
-                  <KeyValue label="Span" value={props.context.spanName} />
-                )}
+                {props.context.spanName && <KeyValue label="Span" value={props.context.spanName} />}
                 {props.context.traceId && (
                   <div style="display:flex;gap:8px;padding:4px 0;border-bottom:1px solid #1e293b;font-size:12px">
-                    <span style="color:#64748b;min-width:120px">Trace</span>
+                    <span style="color:#64748b;min-width:120px">
+                      Trace
+                    </span>
                     <a
                       href={`${props.prefix}/traces/${props.context.traceId}`}
                       style="color:#38bdf8;font-family:monospace;word-break:break-all;text-decoration:none"
@@ -953,9 +1014,7 @@ export function FiberDetail(props: {
                     </a>
                   </div>
                 )}
-                {Object.entries(props.context.annotations).map(([k, v]) => (
-                  <KeyValue label={k} value={v} />
-                ))}
+                {Object.entries(props.context.annotations).map(([k, v]) => <KeyValue label={k} value={v} />)}
               </div>
             </div>
           )}
@@ -1006,7 +1065,9 @@ export function FiberDetail(props: {
         )}
 
         {props.logs.length === 0 && props.spans.length === 0 && (
-          <div class="empty">No data found for fiber {props.fiberId}</div>
+          <div class="empty">
+            No data found for fiber {props.fiberId}
+          </div>
         )}
       </div>
     </>
@@ -1032,15 +1093,19 @@ function HistogramRange(
       <div style="position:relative;height:6px;background:#1f2937;border-radius:3px">
         <div style="position:absolute;left:0;right:0;top:50%;height:2px;margin-top:-1px;background:linear-gradient(to right,#1e40af,#60a5fa);border-radius:1px" />
         <div
-          style={`position:absolute;top:-2px;width:2px;height:10px;background:#f8fafc;left:${
-            avgPct.toFixed(1)
-          }%`}
+          style={`position:absolute;top:-2px;width:2px;height:10px;background:#f8fafc;left:${avgPct.toFixed(1)}%`}
         />
       </div>
       <div style="display:flex;justify-content:space-between;font-size:10px;color:#6b7280;font-family:monospace;margin-top:3px">
-        <span>{formatCompact(props.min)}</span>
-        <span style="color:#94a3b8">avg {formatCompact(props.avg)}</span>
-        <span>{formatCompact(props.max)}</span>
+        <span>
+          {formatCompact(props.min)}
+        </span>
+        <span style="color:#94a3b8">
+          avg {formatCompact(props.avg)}
+        </span>
+        <span>
+          {formatCompact(props.max)}
+        </span>
       </div>
     </div>
   )
@@ -1094,8 +1159,12 @@ function MetricValue(
           .slice(0, 10)
           .map(([k, v]) => (
             <>
-              <span style="color:#6b7280">{k}</span>
-              <span style="color:#e5e7eb">{v}</span>
+              <span style="color:#6b7280">
+                {k}
+              </span>
+              <span style="color:#e5e7eb">
+                {v}
+              </span>
             </>
           ))}
       </div>
@@ -1133,13 +1202,12 @@ export function BarChart(props: {
     const y = SPARKLINE_VIEW_H - ratio * (SPARKLINE_VIEW_H - 1) - 0.5
     return { x, y }
   })
-  const linePath = linePts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`)
+  const linePath = linePts
+    .map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`)
     .join(" ")
   const areaPath = linePts.length < 2
     ? ""
-    : `${linePath} L${linePts[linePts.length - 1].x},${SPARKLINE_VIEW_H} L${
-      linePts[0].x
-    },${SPARKLINE_VIEW_H} Z`
+    : `${linePath} L${linePts[linePts.length - 1].x},${SPARKLINE_VIEW_H} L${linePts[0].x},${SPARKLINE_VIEW_H} Z`
   return (
     <div class="sparkline">
       <svg
@@ -1167,7 +1235,9 @@ export function BarChart(props: {
             <div class="sparkline-slot">
               <div class="sparkline-marker" style="left:50%" />
               <div class="sparkline-popover">
-                <div>{fmt(slot.value)}</div>
+                <div>
+                  {fmt(slot.value)}
+                </div>
                 <div class="sparkline-popover-time">
                   {new Date(slot.timestamp).toLocaleTimeString()}
                 </div>
@@ -1221,13 +1291,19 @@ function MetricCard(props: { series: StudioStore.MetricSeries }) {
     ? counterRatePerSec(props.series.history)
     : undefined
   return (
-    <div class="metric-card" style="background:#111827;border:1px solid #374151;border-radius:6px;min-width:200px;display:flex;flex-direction:column">
+    <div
+      class="metric-card"
+      style="background:#111827;border:1px solid #374151;border-radius:6px;min-width:200px;display:flex;flex-direction:column"
+    >
       <div style="padding:8px 10px 4px 10px;flex:1">
         <div style="display:flex;align-items:center;gap:6px">
           <span style="color:#d1d5db;font-size:12px;font-weight:600">
             {metric.name}
           </span>
-          <span class="metric-type" style="font-size:10px;padding:1px 6px;border-radius:4px;background:#1e3a5f;color:#60a5fa">
+          <span
+            class="metric-type"
+            style="font-size:10px;padding:1px 6px;border-radius:4px;background:#1e3a5f;color:#60a5fa"
+          >
             {metric.type}
           </span>
         </div>
@@ -1249,12 +1325,8 @@ function MetricCard(props: { series: StudioStore.MetricSeries }) {
           )
         })()}
       </div>
-      {metric.type === "counter" && (
-        <CounterSparkline history={props.series.history} />
-      )}
-      {metric.type === "gauge" && (
-        <GaugeSparkline history={props.series.history} />
-      )}
+      {metric.type === "counter" && <CounterSparkline history={props.series.history} />}
+      {metric.type === "gauge" && <GaugeSparkline history={props.series.history} />}
       {metric.type === "histogram" && (() => {
         const h = metric.value as {
           count: number
@@ -1273,12 +1345,18 @@ export function MetricsGrid(
   props: { series: Array<StudioStore.MetricSeries> },
 ) {
   if (props.series.length === 0) {
-    return <div class="empty">Waiting for metrics...</div>
+    return (
+      <div class="empty">
+        Waiting for metrics...
+      </div>
+    )
   }
-  const sorted = [...props.series].sort((a, b) =>
-    a.latest.name.localeCompare(b.latest.name)
+  const sorted = [...props.series].sort((a, b) => a.latest.name.localeCompare(b.latest.name))
+  return (
+    <>
+      {sorted.map((s) => <MetricCard series={s} />)}
+    </>
   )
-  return <>{sorted.map((s) => <MetricCard series={s} />)}</>
 }
 
 export interface RouteInfo {
@@ -1313,9 +1391,7 @@ function groupByPath(
   return Array
     .from(byPath, ([path, routes]) => ({
       path,
-      routes: routes.sort((a, b) =>
-        methodOrder.indexOf(a.method) - methodOrder.indexOf(b.method)
-      ),
+      routes: routes.sort((a, b) => methodOrder.indexOf(a.method) - methodOrder.indexOf(b.method)),
     }))
     .sort((a, b) => a.path.localeCompare(b.path))
 }
@@ -1344,9 +1420,7 @@ function MethodBadge(props: { method: string }) {
     <span
       style={`font-size:10px;font-weight:700;font-family:monospace;padding:2px 6px;border-radius:3px;background:${
         methodBg(props.method)
-      };color:${
-        methodColor(props.method)
-      };min-width:48px;text-align:center;display:inline-block`}
+      };color:${methodColor(props.method)};min-width:48px;text-align:center;display:inline-block`}
     >
       {props.method}
     </span>
@@ -1366,13 +1440,19 @@ function ColoredPath(props: { path: string }) {
   return (
     <span style="font-family:monospace;font-size:13px">
       {segments.length === 0 ?
-        <span style="color:#e2e8f0">/</span> :
+        (
+          <span style="color:#e2e8f0">
+            /
+          </span>
+        ) :
         (
           segments.map((seg) => {
             const isParam = seg.startsWith(":")
             return (
               <>
-                <span style="color:#475569">/</span>
+                <span style="color:#475569">
+                  /
+                </span>
                 <span style={isParam ? "color:#c084fc" : "color:#e2e8f0"}>
                   {seg}
                 </span>
@@ -1404,7 +1484,11 @@ function PathGroup(props: { path: string; routes: Array<RouteInfo> }) {
 
 export function RouteList(props: { routes: Array<RouteInfo> }) {
   if (props.routes.length === 0) {
-    return <div class="empty">No routes registered</div>
+    return (
+      <div class="empty">
+        No routes registered
+      </div>
+    )
   }
 
   const groups = groupByPath(props.routes)
@@ -1414,8 +1498,12 @@ export function RouteList(props: { routes: Array<RouteInfo> }) {
   return (
     <>
       <div style="padding:8px 12px;border-bottom:1px solid #1e293b;display:flex;gap:16px;font-size:12px;color:#64748b">
-        <span>{pathCount} path{pathCount !== 1 ? "s" : ""}</span>
-        <span>{routeCount} route{routeCount !== 1 ? "s" : ""}</span>
+        <span>
+          {pathCount} path{pathCount !== 1 ? "s" : ""}
+        </span>
+        <span>
+          {routeCount} route{routeCount !== 1 ? "s" : ""}
+        </span>
       </div>
       {groups.map((g) => <PathGroup path={g.path} routes={g.routes} />)}
     </>
@@ -1624,7 +1712,9 @@ function ServiceRow(props: { entry: ServiceEntry }) {
             style={`width:8px;height:8px;border-radius:50%;background:${colors.fg};display:block`}
           />
         </span>
-        <span class="tl-cell tl-cell-name">{props.entry.key}</span>
+        <span class="tl-cell tl-cell-name">
+          {props.entry.key}
+        </span>
         <span class="tl-cell tl-cell-dur">
           <span
             style={`font-size:10px;padding:1px 6px;border-radius:4px;background:${colors.bg};color:${colors.fg}`}
@@ -1652,14 +1742,22 @@ function ServiceRow(props: { entry: ServiceEntry }) {
 
 export function ServiceList(props: { services: Array<ServiceEntry> }) {
   if (props.services.length === 0) {
-    return <div class="empty">No services registered</div>
+    return (
+      <div class="empty">
+        No services registered
+      </div>
+    )
   }
   return (
     <div class="tl-grid">
       <div class="tl-header tl-cols">
         <span class="tl-cell tl-cell-status" />
-        <span class="tl-cell tl-cell-name">Service</span>
-        <span class="tl-cell tl-cell-dur">Kind</span>
+        <span class="tl-cell tl-cell-name">
+          Service
+        </span>
+        <span class="tl-cell tl-cell-dur">
+          Kind
+        </span>
       </div>
       {props.services.map((s) => <ServiceRow entry={s} />)}
     </div>
@@ -1776,7 +1874,9 @@ function BarMeter(props: {
     <div style="background:#111827;border:1px solid #374151;border-radius:6px;display:flex;flex-direction:column;justify-content:space-between">
       <div style="padding:12px">
         <div style="display:flex;justify-content:space-between">
-          <span style="color:#9ca3af;font-size:11px">{props.label}</span>
+          <span style="color:#9ca3af;font-size:11px">
+            {props.label}
+          </span>
           <span style="color:#e5e7eb;font-size:11px;font-family:monospace">
             {formatBytes(used)} / {formatBytes(props.total)} ({pct.toFixed(1)}%)
           </span>
@@ -1838,16 +1938,12 @@ export function SystemStatsView(props: SystemStatsProps) {
         <StatCard
           label="CPU Time"
           value={`${(cpuTotal / 1_000_000).toFixed(2)}s`}
-          sub={`user ${(cpuUser / 1_000_000).toFixed(2)}s / sys ${
-            (cpuSystem / 1_000_000).toFixed(2)
-          }s`}
+          sub={`user ${(cpuUser / 1_000_000).toFixed(2)}s / sys ${(cpuSystem / 1_000_000).toFixed(2)}s`}
         />
         <StatCard
           label="Load Average"
           value={load1.toFixed(2)}
-          sub={`${load1.toFixed(2)} / ${load5.toFixed(2)} / ${
-            load15.toFixed(2)
-          }  (${info.cpuCount} cores)`}
+          sub={`${load1.toFixed(2)} / ${load5.toFixed(2)} / ${load15.toFixed(2)}  (${info.cpuCount} cores)`}
         />
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;padding:0 12px 12px">
@@ -1927,8 +2023,12 @@ export function SystemStatsView(props: SystemStatsProps) {
 function ResourceRow(props: { label: string; value: number }) {
   return (
     <div style="display:flex;justify-content:space-between;font-size:12px">
-      <span style="color:#6b7280">{props.label}</span>
-      <span style="color:#e5e7eb;font-family:monospace">{props.value}</span>
+      <span style="color:#6b7280">
+        {props.label}
+      </span>
+      <span style="color:#e5e7eb;font-family:monospace">
+        {props.value}
+      </span>
     </div>
   )
 }

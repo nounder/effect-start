@@ -26,9 +26,7 @@ export type Headers = {
   readonly [header: string]: string | ReadonlyArray<string> | null | undefined
 }
 
-export interface Entity<T = unknown, E = never>
-  extends Effect.Effect<Entity<T, E>, E>
-{
+export interface Entity<T = unknown, E = never> extends Effect.Effect<Entity<T, E>, E> {
   readonly [TypeId]: typeof TypeId
   readonly body: T
   readonly headers: Headers
@@ -46,18 +44,15 @@ export interface Entity<T = unknown, E = never>
       A extends string | Uint8Array | ArrayBuffer ? unknown : A,
       ParseResult.ParseError | E
     >
-    : [T] extends [Stream.Stream<any, any, any>]
-      ? Effect.Effect<unknown, ParseResult.ParseError | E>
-    : [T] extends [string | Uint8Array | ArrayBuffer]
-      ? Effect.Effect<unknown, ParseResult.ParseError | E>
+    : [T] extends [Stream.Stream<any, any, any>] ? Effect.Effect<unknown, ParseResult.ParseError | E>
+    : [T] extends [string | Uint8Array | ArrayBuffer] ? Effect.Effect<unknown, ParseResult.ParseError | E>
     : [T] extends [Values.Json] ? Effect.Effect<T, ParseResult.ParseError | E>
     : Effect.Effect<unknown, ParseResult.ParseError | E>
   readonly schemaJson: <A, I, R>(
     schema: Schema.Schema<A, I, R>,
   ) => Effect.Effect<A, ParseResult.ParseError | E, R>
   readonly bytes: Effect.Effect<Uint8Array, ParseResult.ParseError | E>
-  readonly stream: T extends Stream.Stream<infer A, infer E1, any>
-    ? Stream.Stream<A, ParseResult.ParseError | E | E1>
+  readonly stream: T extends Stream.Stream<infer A, infer E1, any> ? Stream.Stream<A, ParseResult.ParseError | E | E1>
     : Stream.Stream<Uint8Array, ParseResult.ParseError | E>
 }
 

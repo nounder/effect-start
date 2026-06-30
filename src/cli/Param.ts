@@ -8,9 +8,7 @@ import * as Primitive from "./Primitive.ts"
 
 export type ParamKind = "argument" | "flag"
 
-export interface Param<Kind extends ParamKind, out A>
-  extends Pipeable.Pipeable
-{
+export interface Param<Kind extends ParamKind, out A> extends Pipeable.Pipeable {
   readonly _tag: string
   readonly kind: Kind
   readonly parse: ParamParse<A>
@@ -28,9 +26,7 @@ export interface ParsedArgs {
   readonly arguments: ReadonlyArray<string>
 }
 
-export interface SingleParam<Kind extends ParamKind, out A>
-  extends Param<Kind, A>
-{
+export interface SingleParam<Kind extends ParamKind, out A> extends Param<Kind, A> {
   readonly _tag: "Single"
   readonly name: string
   readonly description: string | undefined
@@ -189,8 +185,7 @@ export const paramMap = <K extends ParamKind, A, B>(
   self: Param<K, A>,
   f: (a: A) => B,
 ): Param<K, B> => {
-  const parse: ParamParse<B> = (args) =>
-    Effect.map(self.parse(args), ([l, v]) => [l, f(v)] as const)
+  const parse: ParamParse<B> = (args) => Effect.map(self.parse(args), ([l, v]) => [l, f(v)] as const)
   return Object.assign(Object.create(ParamProto), {
     _tag: "Map",
     kind: self.kind,
@@ -218,9 +213,7 @@ export const paramMapEffect = <K extends ParamKind, A, B>(
 ): Param<K, B> =>
   paramTransform(
     self,
-    (parse) => (args) =>
-      Effect.flatMap(parse(args), ([l, a]) =>
-        Effect.map(f(a), (b) => [l, b] as const)),
+    (parse) => (args) => Effect.flatMap(parse(args), ([l, a]) => Effect.map(f(a), (b) => [l, b] as const)),
   )
 
 export const paramOptional = <K extends ParamKind, A>(
@@ -328,9 +321,7 @@ const parseOptionVariadic = <K extends ParamKind, A>(
           new CliError.InvalidValue({
             option: single.name,
             value: `${count} occurrences`,
-            expected: `at least ${options.min} value${
-              options.min === 1 ? "" : "s"
-            }`,
+            expected: `at least ${options.min} value${options.min === 1 ? "" : "s"}`,
             kind: single.kind,
           }),
         )
@@ -340,9 +331,7 @@ const parseOptionVariadic = <K extends ParamKind, A>(
         new CliError.InvalidValue({
           option: single.name,
           value: `${count} occurrences`,
-          expected: `at most ${options.max} value${
-            options.max === 1 ? "" : "s"
-          }`,
+          expected: `at most ${options.max} value${options.max === 1 ? "" : "s"}`,
           kind: single.kind,
         }),
       )
@@ -376,32 +365,26 @@ export const paramWithAlias = <K extends ParamKind, A>(
 export const paramWithDescription = <K extends ParamKind, A>(
   self: Param<K, A>,
   desc: string,
-): Param<K, A> =>
-  transformSingle(self, (s) => makeSingleParam({ ...s, description: desc }))
+): Param<K, A> => transformSingle(self, (s) => makeSingleParam({ ...s, description: desc }))
 
 export const paramWithMetavar = <K extends ParamKind, A>(
   self: Param<K, A>,
   metavar: string,
-): Param<K, A> =>
-  transformSingle(self, (s) => makeSingleParam({ ...s, typeName: metavar }))
+): Param<K, A> => transformSingle(self, (s) => makeSingleParam({ ...s, typeName: metavar }))
 
 export const makeParamCombinators = <K extends ParamKind>(_kind: K) => ({
-  optional: <A>(self: Param<K, A>): Param<K, Option.Option<A>> =>
-    paramOptional(self),
+  optional: <A>(self: Param<K, A>): Param<K, Option.Option<A>> => paramOptional(self),
   withDefault: Function.dual(
     2,
-    <A, B>(self: Param<K, A>, value: B): Param<K, A | B> =>
-      paramWithDefault(self, value),
+    <A, B>(self: Param<K, A>, value: B): Param<K, A | B> => paramWithDefault(self, value),
   ),
   withDescription: Function.dual(
     2,
-    <A>(self: Param<K, A>, desc: string): Param<K, A> =>
-      paramWithDescription(self, desc),
+    <A>(self: Param<K, A>, desc: string): Param<K, A> => paramWithDescription(self, desc),
   ),
   withMetavar: Function.dual(
     2,
-    <A>(self: Param<K, A>, metavar: string): Param<K, A> =>
-      paramWithMetavar(self, metavar),
+    <A>(self: Param<K, A>, metavar: string): Param<K, A> => paramWithMetavar(self, metavar),
   ),
   map: Function.dual(
     2,
@@ -462,13 +445,10 @@ export const makeParamCombinators = <K extends ParamKind>(_kind: K) => ({
     <A, B>(self: Param<K, A>, that: () => Param<K, B>): Param<K, A | B> =>
       paramTransform<K, A, A | B>(
         self,
-        (parse) => (args) =>
-          Effect.catchAll(parse(args), () => that().parse(args)),
+        (parse) => (args) => Effect.catchAll(parse(args), () => that().parse(args)),
       ),
   ),
 })
 
-export const makeConstructor =
-  <K extends ParamKind>(kind: K) =>
-  (name: string, prim: Primitive.Primitive<any>) =>
-    makeSingleParam({ kind, name, primitiveType: prim })
+export const makeConstructor = <K extends ParamKind>(kind: K) => (name: string, prim: Primitive.Primitive<any>) =>
+  makeSingleParam({ kind, name, primitiveType: prim })

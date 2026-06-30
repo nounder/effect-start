@@ -2,8 +2,7 @@ import * as Predicate from "effect/Predicate"
 
 const TypeId = "~effect-start/Cli/CliError"
 
-export const isCliError = (u: unknown): u is CliError =>
-  Predicate.hasProperty(u, TypeId)
+export const isCliError = (u: unknown): u is CliError => Predicate.hasProperty(u, TypeId)
 
 export type CliError =
   | UnrecognizedOption

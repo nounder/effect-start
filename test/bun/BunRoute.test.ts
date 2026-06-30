@@ -3,8 +3,8 @@ import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import { BunRoute, BunServer } from "../../src/bun/index.ts"
-import * as Route from "../../src/Route.ts"
 import type * as RouteMap from "../../src/internal/RouteMap.ts"
+import * as Route from "../../src/Route.ts"
 
 const testLayer = <const Input extends RouteMap.RouteMapInput>(
   routes: Input,

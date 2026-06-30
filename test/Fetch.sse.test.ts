@@ -2,10 +2,10 @@ import * as test from "bun:test"
 import { BunServer } from "effect-start/bun"
 import * as Fetch from "effect-start/Fetch"
 import * as Route from "effect-start/Route"
-import type * as RouteMap from "../src/internal/RouteMap.ts"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Stream from "effect/Stream"
+import type * as RouteMap from "../src/internal/RouteMap.ts"
 
 const testLayer = (routes: RouteMap.RouteMapInput) =>
   BunServer.layerRoutes({ port: 0 }).pipe(

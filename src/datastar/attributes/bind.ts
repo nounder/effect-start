@@ -1,11 +1,4 @@
-import {
-  attribute,
-  DATASTAR_PROP_CHANGE_EVENT,
-  effect,
-  getPath,
-  mergePaths,
-  type Paths,
-} from "../engine.ts"
+import { attribute, DATASTAR_PROP_CHANGE_EVENT, effect, getPath, mergePaths, type Paths } from "../engine.ts"
 import { aliasify, camel, hasOwn, modifyCasing } from "../utils.ts"
 
 type SignalFile = {
@@ -70,14 +63,11 @@ const boundPath = (
     const signalNameKebab = key ? key : value!
     const checked = [
       ...document.querySelectorAll(
-        `[${aliasedBind}\\:${CSS.escape(signalNameKebab)}],[${aliasedBind}="${
-          CSS.escape(signalNameKebab)
-        }"]`,
+        `[${aliasedBind}\\:${CSS.escape(signalNameKebab)}],[${aliasedBind}="${CSS.escape(signalNameKebab)}"]`,
       ),
     ]
       .find(
-        (input): input is HTMLInputElement =>
-          input instanceof HTMLInputElement && input.checked,
+        (input): input is HTMLInputElement => input instanceof HTMLInputElement && input.checked,
       )
     if (checked) {
       mergePaths([[signalName, checked.value]], { ifMissing: true })
@@ -96,9 +86,7 @@ const boundPath = (
 
   const signalNameKebab = key ? key : value!
   const inputs = document.querySelectorAll(
-    `[${aliasedBind}\\:${CSS.escape(signalNameKebab)}],[${aliasedBind}="${
-      CSS.escape(signalNameKebab)
-    }"]`,
+    `[${aliasedBind}\\:${CSS.escape(signalNameKebab)}],[${aliasedBind}="${CSS.escape(signalNameKebab)}"]`,
   ) as NodeListOf<Element>
 
   const paths: Paths = []

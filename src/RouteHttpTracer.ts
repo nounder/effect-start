@@ -13,15 +13,11 @@ export const currentTracerDisabledWhen = GlobalValue.globalValue(
 export const withTracerDisabledWhen = <A, E, R>(
   effect: Effect.Effect<A, E, R>,
   predicate: Predicate.Predicate<Request>,
-): Effect.Effect<A, E, R> =>
-  Effect.locally(effect, currentTracerDisabledWhen, predicate)
+): Effect.Effect<A, E, R> => Effect.locally(effect, currentTracerDisabledWhen, predicate)
 
 export const currentSpanNameGenerator = GlobalValue.globalValue(
   Symbol.for("effect-start/RouteHttp/spanNameGenerator"),
-  () =>
-    FiberRef.unsafeMake<(request: Request) => string>((request) =>
-      `http.server ${request.method}`
-    ),
+  () => FiberRef.unsafeMake<(request: Request) => string>((request) => `http.server ${request.method}`),
 )
 
 export const withSpanNameGenerator = <A, E, R>(

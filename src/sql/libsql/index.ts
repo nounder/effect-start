@@ -45,8 +45,7 @@ const wrapError = (error: unknown): SqlClient.SqlError =>
 
 const wrap = <T>(
   fn: () => PromiseLike<T>,
-): Effect.Effect<T, SqlClient.SqlError> =>
-  Effect.tryPromise({ try: () => Promise.resolve(fn()), catch: wrapError })
+): Effect.Effect<T, SqlClient.SqlError> => Effect.tryPromise({ try: () => Promise.resolve(fn()), catch: wrapError })
 
 const dialect = SqlClient.sqliteDialect
 const makeSpanAttributes = (
@@ -106,16 +105,13 @@ const loadLibsql = () => import("@libsql/client") as Promise<LibsqlModule>
 
 const currentTransaction = GlobalValue.globalValue(
   Symbol.for("effect-start/sql/libsql/currentTransaction"),
-  () =>
-    FiberRef.unsafeMake<Option.Option<TransactionConnection>>(Option.none()),
+  () => FiberRef.unsafeMake<Option.Option<TransactionConnection>>(Option.none()),
 )
 
-const exec = (client: Libsql.Client, sql: string) =>
-  wrap(() => client.execute(sql))
+const exec = (client: Libsql.Client, sql: string) => wrap(() => client.execute(sql))
 
 const makeTaggedTemplate = (client: Libsql.Client) => {
-  const unsafeFn = <T = any>(query: string, values?: Array<unknown>) =>
-    executeQuery<T>(client, query, values ?? [])
+  const unsafeFn = <T = any>(query: string, values?: Array<unknown>) => executeQuery<T>(client, query, values ?? [])
 
   return <T = any>(
     strings: TemplateStringsArray,
@@ -144,58 +140,57 @@ const makeQuery = (
   return SqlClient.connection(query, unsafe, { spanAttributes, dialect })
 }
 
-const makeWithTransaction =
-  (client: Libsql.Client) =>
-  <A, E, R>(
-    self: Effect.Effect<A, E, R>,
-  ): Effect.Effect<A, SqlClient.SqlError | E, R> =>
-    Effect.uninterruptibleMask((restore) =>
-      Effect.flatMap(FiberRef.get(currentTransaction), (txOpt) => {
-        if (Option.isSome(txOpt)) {
-          const { depth } = txOpt.value
-          const name = `sp_${depth}`
-          return Effect.gen(function*() {
-            yield* exec(client, `SAVEPOINT ${name}`)
-            const exit = yield* Effect.exit(
-              restore(
-                Effect.locally(
-                  self,
-                  currentTransaction,
-                  Option.some({ depth: depth + 1 }),
-                ),
-              ),
-            )
-            if (Exit.isSuccess(exit)) {
-              yield* exec(client, `RELEASE SAVEPOINT ${name}`)
-              return exit.value
-            }
-            yield* exec(client, `ROLLBACK TO SAVEPOINT ${name}`).pipe(
-              Effect.orDie,
-            )
-            return yield* exit
-          })
-        }
-
+const makeWithTransaction = (client: Libsql.Client) =>
+<A, E, R>(
+  self: Effect.Effect<A, E, R>,
+): Effect.Effect<A, SqlClient.SqlError | E, R> =>
+  Effect.uninterruptibleMask((restore) =>
+    Effect.flatMap(FiberRef.get(currentTransaction), (txOpt) => {
+      if (Option.isSome(txOpt)) {
+        const { depth } = txOpt.value
+        const name = `sp_${depth}`
         return Effect.gen(function*() {
-          yield* exec(client, "BEGIN")
+          yield* exec(client, `SAVEPOINT ${name}`)
           const exit = yield* Effect.exit(
             restore(
               Effect.locally(
                 self,
                 currentTransaction,
-                Option.some({ depth: 1 }),
+                Option.some({ depth: depth + 1 }),
               ),
             ),
           )
           if (Exit.isSuccess(exit)) {
-            yield* exec(client, "COMMIT")
+            yield* exec(client, `RELEASE SAVEPOINT ${name}`)
             return exit.value
           }
-          yield* exec(client, "ROLLBACK").pipe(Effect.orDie)
+          yield* exec(client, `ROLLBACK TO SAVEPOINT ${name}`).pipe(
+            Effect.orDie,
+          )
           return yield* exit
         })
+      }
+
+      return Effect.gen(function*() {
+        yield* exec(client, "BEGIN")
+        const exit = yield* Effect.exit(
+          restore(
+            Effect.locally(
+              self,
+              currentTransaction,
+              Option.some({ depth: 1 }),
+            ),
+          ),
+        )
+        if (Exit.isSuccess(exit)) {
+          yield* exec(client, "COMMIT")
+          return exit.value
+        }
+        yield* exec(client, "ROLLBACK").pipe(Effect.orDie)
+        return yield* exit
       })
-    )
+    })
+  )
 
 export const layer = (config?: LibsqlConfig) =>
   Layer.scoped(

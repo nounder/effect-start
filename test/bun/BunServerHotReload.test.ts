@@ -1,11 +1,11 @@
 import * as test from "bun:test"
 import { BunServer } from "effect-start/bun"
 import * as Route from "effect-start/Route"
-import type * as RouteMap from "../../src/internal/RouteMap.ts"
 import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
 import * as MutableRef from "effect/MutableRef"
 import * as Scope from "effect/Scope"
+import type * as RouteMap from "../../src/internal/RouteMap.ts"
 import * as PlatformRuntime from "../../src/PlatformRuntime.ts"
 
 /** Set mainFiber to a dummy fiber, returning it. */

@@ -1,8 +1,8 @@
 import * as Function from "effect/Function"
 import type * as Types from "effect/Types"
+import * as Route from "../Route.ts"
 import type * as Http from "./Http.ts"
 import type * as PathPattern from "./PathPattern.ts"
-import * as Route from "../Route.ts"
 import type * as RouteBody from "./RouteBody.ts"
 // eslint-disable-next-line import/no-self-import
 import type * as Self_ from "./RouteMount.ts"
@@ -113,9 +113,7 @@ export namespace RouteMount {
   type HasMethod<I extends Route.Route.Tuple> = I extends [
     infer Head,
     ...infer Tail extends Route.Route.Tuple,
-  ]
-    ? Head extends Route.Route<{ method: infer M }, any, any, any, any>
-      ? M extends Http.Method ? true
+  ] ? Head extends Route.Route<{ method: infer M }, any, any, any, any> ? M extends Http.Method ? true
       : HasMethod<Tail>
     : HasMethod<Tail>
     : false
@@ -128,36 +126,30 @@ export namespace RouteMount {
 
   export type Items<S> = S extends Builder<any, infer I> ? I : []
 
-  export type BuilderBindings<S> = S extends Builder<any, infer I>
-    ? Types.Simplify<WildcardBindings<I>>
+  export type BuilderBindings<S> = S extends Builder<any, infer I> ? Types.Simplify<WildcardBindings<I>>
     : {}
 
-  type WildcardBindingsItem<T> = T extends
-    Route.Route<{ method: "*" }, infer B, any, any, any> ? B : {}
+  type WildcardBindingsItem<T> = T extends Route.Route<{ method: "*" }, infer B, any, any, any> ? B : {}
 
-  type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends
-    (
-      k: infer I,
-    ) => void ? I
+  type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (
+    k: infer I,
+  ) => void ? I
     : never
 
-  export type WildcardBindings<I extends Route.Route.Tuple> =
-    UnionToIntersection<
-      {
-        [K in keyof I]: WildcardBindingsItem<I[K]>
-      }[number]
-    >
+  export type WildcardBindings<I extends Route.Route.Tuple> = UnionToIntersection<
+    {
+      [K in keyof I]: WildcardBindingsItem<I[K]>
+    }[number]
+  >
 
-  export type FlattenItems<M extends Method, I extends Route.Route.Tuple> =
-    I extends [
-      Route.Route<infer D, infer RB, infer A, infer E, infer R>,
-      ...infer Tail extends Route.Route.Tuple,
+  export type FlattenItems<M extends Method, I extends Route.Route.Tuple> = I extends [
+    Route.Route<infer D, infer RB, infer A, infer E, infer R>,
+    ...infer Tail extends Route.Route.Tuple,
+  ] ? [
+      Route.Route<Types.Simplify<{ method: M } & D> & {}, RB, A, E, R>,
+      ...FlattenItems<M, Tail>,
     ]
-      ? [
-        Route.Route<Types.Simplify<{ method: M } & D> & {}, RB, A, E, R>,
-        ...FlattenItems<M, Tail>,
-      ]
-      : []
+    : []
 
   export interface Describer<M extends Method> {
     <S extends Self, A extends Route.RouteSet.Any>(

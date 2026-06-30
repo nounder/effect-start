@@ -2,7 +2,6 @@ import * as test from "bun:test"
 import { BunServer } from "effect-start/bun"
 import * as Fetch from "effect-start/Fetch"
 import * as Route from "effect-start/Route"
-import type * as RouteMap from "../src/internal/RouteMap.ts"
 import * as Socket from "effect-start/Socket"
 import { TestLogger } from "effect-start/testing"
 import * as Context from "effect/Context"
@@ -12,6 +11,7 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Layer from "effect/Layer"
 import * as Scope from "effect/Scope"
+import type * as RouteMap from "../src/internal/RouteMap.ts"
 
 const testLayer = <const Input extends RouteMap.RouteMapInput>(routes: Input) =>
   BunServer.layerRoutes({ port: 0 }).pipe(Layer.provide(Route.layer(routes)))
@@ -157,7 +157,8 @@ test.describe("Route.ws", () => {
 
   test.test("negotiates content for plain GETs and upgrades the socket on the same path", () => {
     const routes = Route.map({
-      "/feed": Route.get(Route.html("<h1>feed</h1>"))
+      "/feed": Route
+        .get(Route.html("<h1>feed</h1>"))
         .get(Route.text("plain feed"))
         .get(Route.ws(function*(ctx) {
           const write = yield* ctx.socket.writer
@@ -643,14 +644,16 @@ test.describe("Route.ws", () => {
 
   test.test("upgrades under a wildcard html layout layer", () => {
     const routes = Route.map({
-      "/ws": Route.use(
-        Route.html(function*(_ctx, next) {
-          return yield* next.html
-        }),
-      ).get(Route.ws(function*(ctx) {
-        const write = yield* ctx.socket.writer
-        yield* ctx.socket.runRaw((data) => write(data))
-      })),
+      "/ws": Route
+        .use(
+          Route.html(function*(_ctx, next) {
+            return yield* next.html
+          }),
+        )
+        .get(Route.ws(function*(ctx) {
+          const write = yield* ctx.socket.writer
+          yield* ctx.socket.runRaw((data) => write(data))
+        })),
     })
 
     return Effect
@@ -676,17 +679,19 @@ test.describe("Route.ws", () => {
   test.test("runs wildcard middleware on the upgrade chain", () => {
     let middlewareRan = false
     const routes = Route.map({
-      "/ws": Route.use(
-        Route.handle((_ctx, next) =>
-          Effect.gen(function*() {
-            middlewareRan = true
-            return yield* next
-          })
-        ),
-      ).get(Route.ws(function*(ctx) {
-        const write = yield* ctx.socket.writer
-        yield* ctx.socket.runRaw((data) => write(data))
-      })),
+      "/ws": Route
+        .use(
+          Route.handle((_ctx, next) =>
+            Effect.gen(function*() {
+              middlewareRan = true
+              return yield* next
+            })
+          ),
+        )
+        .get(Route.ws(function*(ctx) {
+          const write = yield* ctx.socket.writer
+          yield* ctx.socket.runRaw((data) => write(data))
+        })),
     })
 
     return Effect
@@ -714,9 +719,11 @@ test.describe("Route.ws", () => {
 
   test.test("an upgrade to a path with only non-socket routes still returns 426", () => {
     const routes = Route.map({
-      "/page": Route.use(
-        Route.handle((_ctx, next) => next),
-      ).get(Route.text("hello")),
+      "/page": Route
+        .use(
+          Route.handle((_ctx, next) => next),
+        )
+        .get(Route.text("hello")),
     })
 
     return Effect
@@ -742,202 +749,264 @@ test.describe("Route.ws", () => {
 
 test.describe("Route.ws scope lifecycle", () => {
   test.test("handler runs inside an open scope", () =>
-    Effect.gen(function*() {
-      const observed = yield* Deferred.make<boolean>()
+    Effect
+      .gen(function*() {
+        const observed = yield* Deferred.make<boolean>()
 
-      const routes = Route.map({
-        "/ws": Route.get(Route.ws(function*(ctx) {
-          const scope = yield* Effect.scope
-          yield* Deferred.succeed(
-            observed,
-            Scope.ScopeTypeId in scope,
+        const routes = Route.map({
+          "/ws": Route.get(Route.ws(function*(ctx) {
+            const scope = yield* Effect.scope
+            yield* Deferred.succeed(
+              observed,
+              Scope.ScopeTypeId in scope,
+            )
+            const write = yield* ctx.socket.writer
+            yield* ctx.socket.runRaw((data) => write(data))
+          })),
+        })
+
+        return yield* Effect
+          .gen(function*() {
+            const { server } = yield* BunServer.BunServer
+            const ws = yield* connect(`${wsUrl(server)}/ws`)
+
+            test
+              .expect(yield* Deferred.await(observed))
+              .toBe(true)
+
+            ws.close()
+          })
+          .pipe(
+            Effect.provide(testLayer(routes)),
+            Effect.scoped,
           )
-          const write = yield* ctx.socket.writer
-          yield* ctx.socket.runRaw((data) => write(data))
-        })),
       })
-
-      return yield* Effect.gen(function*() {
-        const { server } = yield* BunServer.BunServer
-        const ws = yield* connect(`${wsUrl(server)}/ws`)
-
-        test
-          .expect(yield* Deferred.await(observed))
-          .toBe(true)
-
-        ws.close()
-      }).pipe(Effect.provide(testLayer(routes)), Effect.scoped)
-    }).pipe(Effect.scoped, Effect.runPromise))
+      .pipe(
+        Effect.scoped,
+        Effect.runPromise,
+      ))
 
   test.test("finalizer runs when the client closes cleanly", () =>
-    Effect.gen(function*() {
-      const released = yield* Deferred.make<void>()
+    Effect
+      .gen(function*() {
+        const released = yield* Deferred.make<void>()
 
-      const routes = Route.map({
-        "/ws": Route.get(Route.ws(function*(ctx) {
-          yield* Effect.addFinalizer(() => Deferred.succeed(released, undefined))
-          const write = yield* ctx.socket.writer
-          yield* ctx.socket.runRaw((data) => write(data))
-        })),
+        const routes = Route.map({
+          "/ws": Route.get(Route.ws(function*(ctx) {
+            yield* Effect.addFinalizer(() => Deferred.succeed(released, undefined))
+            const write = yield* ctx.socket.writer
+            yield* ctx.socket.runRaw((data) => write(data))
+          })),
+        })
+
+        return yield* Effect
+          .gen(function*() {
+            const { server } = yield* BunServer.BunServer
+            const ws = yield* connect(`${wsUrl(server)}/ws`)
+            ws.send("hello")
+            yield* nextMessage(ws)
+
+            test
+              .expect(yield* Deferred.isDone(released))
+              .toBe(false)
+
+            ws.close(1000)
+            yield* Deferred.await(released)
+          })
+          .pipe(
+            Effect.provide(testLayer(routes)),
+            Effect.scoped,
+          )
       })
-
-      return yield* Effect.gen(function*() {
-        const { server } = yield* BunServer.BunServer
-        const ws = yield* connect(`${wsUrl(server)}/ws`)
-        ws.send("hello")
-        yield* nextMessage(ws)
-
-        test
-          .expect(yield* Deferred.isDone(released))
-          .toBe(false)
-
-        ws.close(1000)
-        yield* Deferred.await(released)
-      }).pipe(Effect.provide(testLayer(routes)), Effect.scoped)
-    }).pipe(Effect.scoped, Effect.runPromise))
+      .pipe(
+        Effect.scoped,
+        Effect.runPromise,
+      ))
 
   test.test("finalizer runs when the client closes abnormally", () =>
-    Effect.gen(function*() {
-      const released = yield* Deferred.make<void>()
+    Effect
+      .gen(function*() {
+        const released = yield* Deferred.make<void>()
 
-      const routes = Route.map({
-        "/ws": Route.get(Route.ws(function*(ctx) {
-          yield* Effect.addFinalizer(() => Deferred.succeed(released, undefined))
-          const write = yield* ctx.socket.writer
-          yield* ctx.socket.runRaw((data) => write(data)).pipe(
-            Effect.catchAll(() => Effect.void),
+        const routes = Route.map({
+          "/ws": Route.get(Route.ws(function*(ctx) {
+            yield* Effect.addFinalizer(() => Deferred.succeed(released, undefined))
+            const write = yield* ctx.socket.writer
+            yield* ctx.socket.runRaw((data) => write(data)).pipe(
+              Effect.catchAll(() => Effect.void),
+            )
+          })),
+        })
+
+        return yield* Effect
+          .gen(function*() {
+            const { server } = yield* BunServer.BunServer
+            const ws = yield* connect(`${wsUrl(server)}/ws`)
+            ws.send("hello")
+            yield* nextMessage(ws)
+            ws.close(1011, "boom")
+            yield* Deferred.await(released)
+          })
+          .pipe(
+            Effect.provide(testLayer(routes)),
+            Effect.scoped,
           )
-        })),
       })
+      .pipe(
+        Effect.scoped,
+        Effect.runPromise,
+      ))
 
-      return yield* Effect.gen(function*() {
-        const { server } = yield* BunServer.BunServer
+  test.test("acquireRelease resource is released after close", () =>
+    Effect
+      .gen(function*() {
+        const acquired = yield* Deferred.make<void>()
+        const released = yield* Deferred.make<void>()
+
+        const routes = Route.map({
+          "/ws": Route.get(Route.ws(function*(ctx) {
+            yield* Effect.acquireRelease(
+              Deferred.succeed(acquired, undefined),
+              () => Deferred.succeed(released, undefined),
+            )
+            const write = yield* ctx.socket.writer
+            yield* ctx.socket.runRaw((data) => write(data))
+          })),
+        })
+
+        return yield* Effect
+          .gen(function*() {
+            const { server } = yield* BunServer.BunServer
+            const ws = yield* connect(`${wsUrl(server)}/ws`)
+            yield* Deferred.await(acquired)
+
+            test
+              .expect(yield* Deferred.isDone(released))
+              .toBe(false)
+
+            ws.close(1000)
+            yield* Deferred.await(released)
+          })
+          .pipe(
+            Effect.provide(testLayer(routes)),
+            Effect.scoped,
+          )
+      })
+      .pipe(
+        Effect.scoped,
+        Effect.runPromise,
+      ))
+
+  test.test("scope stays open across multiple frames", () =>
+    Effect
+      .gen(function*() {
+        const released = yield* Deferred.make<void>()
+
+        const routes = Route.map({
+          "/ws": Route.get(Route.ws(function*(ctx) {
+            yield* Effect.addFinalizer(() => Deferred.succeed(released, undefined))
+            const write = yield* ctx.socket.writer
+            yield* ctx.socket.runRaw((data) => write(data))
+          })),
+        })
+
+        return yield* Effect
+          .gen(function*() {
+            const { server } = yield* BunServer.BunServer
+            const ws = yield* connect(`${wsUrl(server)}/ws`)
+
+            ws.send("one")
+
+            test
+              .expect(yield* nextMessage(ws))
+              .toBe("one")
+
+            ws.send("two")
+
+            test
+              .expect(yield* nextMessage(ws))
+              .toBe("two")
+
+            test
+              .expect(yield* Deferred.isDone(released))
+              .toBe(false)
+
+            ws.close(1000)
+            yield* Deferred.await(released)
+          })
+          .pipe(
+            Effect.provide(testLayer(routes)),
+            Effect.scoped,
+          )
+      })
+      .pipe(
+        Effect.scoped,
+        Effect.runPromise,
+      ))
+
+  test.test("finalizer runs when the server scope closes with the socket still open", () =>
+    Effect
+      .gen(function*() {
+        const released = yield* Deferred.make<void>()
+        const writeRef = yield* Deferred.make<
+          (chunk: Uint8Array | string | Socket.CloseEvent) => Effect.Effect<void, Socket.SocketError>
+        >()
+
+        const routes = Route.map({
+          "/ws": Route.get(Route.ws(function*(ctx) {
+            yield* Effect.addFinalizer(() => Deferred.succeed(released, undefined))
+            const write = yield* ctx.socket.writer
+            yield* Deferred.succeed(writeRef, write)
+            yield* ctx.socket.runRaw((data) => write(data))
+          })),
+        })
+
+        // Build the server into a scope we close ourselves, simulating shutdown
+        // while a connection is live.
+        const serverScope = yield* Scope.make()
+        const { server } = yield* Layer.build(testLayer(routes)).pipe(
+          Effect.flatMap((ctx) => Effect.provide(BunServer.BunServer, ctx)),
+          Scope.extend(serverScope),
+        )
+
         const ws = yield* connect(`${wsUrl(server)}/ws`)
         ws.send("hello")
         yield* nextMessage(ws)
-        ws.close(1011, "boom")
-        yield* Deferred.await(released)
-      }).pipe(Effect.provide(testLayer(routes)), Effect.scoped)
-    }).pipe(Effect.scoped, Effect.runPromise))
-
-  test.test("acquireRelease resource is released after close", () =>
-    Effect.gen(function*() {
-      const acquired = yield* Deferred.make<void>()
-      const released = yield* Deferred.make<void>()
-
-      const routes = Route.map({
-        "/ws": Route.get(Route.ws(function*(ctx) {
-          yield* Effect.acquireRelease(
-            Deferred.succeed(acquired, undefined),
-            () => Deferred.succeed(released, undefined),
-          )
-          const write = yield* ctx.socket.writer
-          yield* ctx.socket.runRaw((data) => write(data))
-        })),
-      })
-
-      return yield* Effect.gen(function*() {
-        const { server } = yield* BunServer.BunServer
-        const ws = yield* connect(`${wsUrl(server)}/ws`)
-        yield* Deferred.await(acquired)
+        const write = yield* Deferred.await(writeRef)
 
         test
           .expect(yield* Deferred.isDone(released))
           .toBe(false)
 
-        ws.close(1000)
-        yield* Deferred.await(released)
-      }).pipe(Effect.provide(testLayer(routes)), Effect.scoped)
-    }).pipe(Effect.scoped, Effect.runPromise))
+        // Close the server scope while the socket is still open. The handler
+        // finalizer must run (its fiber is interrupted), rather than leak.
+        yield* Scope.close(serverScope, Exit.void)
 
-  test.test("scope stays open across multiple frames", () =>
-    Effect.gen(function*() {
-      const released = yield* Deferred.make<void>()
+        yield* Deferred.await(released).pipe(
+          Effect.timeoutFail({
+            duration: "100 millis",
+            onTimeout: () => new Error("handler finalizer leaked: never ran after server scope closed"),
+          }),
+        )
 
-      const routes = Route.map({
-        "/ws": Route.get(Route.ws(function*(ctx) {
-          yield* Effect.addFinalizer(() => Deferred.succeed(released, undefined))
-          const write = yield* ctx.socket.writer
-          yield* ctx.socket.runRaw((data) => write(data))
-        })),
-      })
-
-      return yield* Effect.gen(function*() {
-        const { server } = yield* BunServer.BunServer
-        const ws = yield* connect(`${wsUrl(server)}/ws`)
-
-        ws.send("one")
-        test.expect(yield* nextMessage(ws)).toBe("one")
-        ws.send("two")
-        test.expect(yield* nextMessage(ws)).toBe("two")
+        // Writing after the socket is gone must fail fast with a SocketError,
+        // rather than parking forever on the now-closed latch.
+        const error = yield* write("after-close").pipe(
+          Effect.timeoutFail({
+            duration: "100 millis",
+            onTimeout: () => new Error("write after close hung instead of failing"),
+          }),
+          Effect.flip,
+        )
 
         test
-          .expect(yield* Deferred.isDone(released))
-          .toBe(false)
-
-        ws.close(1000)
-        yield* Deferred.await(released)
-      }).pipe(Effect.provide(testLayer(routes)), Effect.scoped)
-    }).pipe(Effect.scoped, Effect.runPromise))
-
-  test.test("finalizer runs when the server scope closes with the socket still open", () =>
-    Effect.gen(function*() {
-      const released = yield* Deferred.make<void>()
-      const writeRef = yield* Deferred.make<
-        (chunk: Uint8Array | string | Socket.CloseEvent) => Effect.Effect<void, Socket.SocketError>
-      >()
-
-      const routes = Route.map({
-        "/ws": Route.get(Route.ws(function*(ctx) {
-          yield* Effect.addFinalizer(() => Deferred.succeed(released, undefined))
-          const write = yield* ctx.socket.writer
-          yield* Deferred.succeed(writeRef, write)
-          yield* ctx.socket.runRaw((data) => write(data))
-        })),
+          .expect(Socket.isSocketError(error))
+          .toBe(true)
       })
-
-      // Build the server into a scope we close ourselves, simulating shutdown
-      // while a connection is live.
-      const serverScope = yield* Scope.make()
-      const { server } = yield* Layer.build(testLayer(routes)).pipe(
-        Effect.flatMap((ctx) => Effect.provide(BunServer.BunServer, ctx)),
-        Scope.extend(serverScope),
-      )
-
-      const ws = yield* connect(`${wsUrl(server)}/ws`)
-      ws.send("hello")
-      yield* nextMessage(ws)
-      const write = yield* Deferred.await(writeRef)
-
-      test
-        .expect(yield* Deferred.isDone(released))
-        .toBe(false)
-
-      // Close the server scope while the socket is still open. The handler
-      // finalizer must run (its fiber is interrupted), rather than leak.
-      yield* Scope.close(serverScope, Exit.void)
-
-      yield* Deferred.await(released).pipe(
-        Effect.timeoutFail({
-          duration: "100 millis",
-          onTimeout: () => new Error("handler finalizer leaked: never ran after server scope closed"),
-        }),
-      )
-
-      // Writing after the socket is gone must fail fast with a SocketError,
-      // rather than parking forever on the now-closed latch.
-      const error = yield* write("after-close").pipe(
-        Effect.timeoutFail({
-          duration: "100 millis",
-          onTimeout: () => new Error("write after close hung instead of failing"),
-        }),
-        Effect.flip,
-      )
-
-      test
-        .expect(Socket.isSocketError(error))
-        .toBe(true)
-    }).pipe(Effect.scoped, Effect.runPromise))
+      .pipe(
+        Effect.scoped,
+        Effect.runPromise,
+      ))
 })
 
 test.describe("Route.ws types", () => {

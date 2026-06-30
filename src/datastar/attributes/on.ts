@@ -1,10 +1,4 @@
-import {
-  attribute,
-  beginBatch,
-  DATASTAR_FETCH_EVENT,
-  DATASTAR_SIGNAL_PATCH_EVENT,
-  endBatch,
-} from "../engine.ts"
+import { attribute, beginBatch, DATASTAR_FETCH_EVENT, DATASTAR_SIGNAL_PATCH_EVENT, endBatch } from "../engine.ts"
 import { modifyTiming, modifyViewTransition } from "../utils.ts"
 
 attribute({

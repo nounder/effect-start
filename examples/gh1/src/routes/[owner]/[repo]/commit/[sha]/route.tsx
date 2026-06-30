@@ -58,9 +58,7 @@ export default Route.get(
               <h1 class="text-lg font-semibold mb-1">
                 {firstLine}
               </h1>
-              {restLines && (
-                <pre class="text-sm text-[#8b949e] mt-2 whitespace-pre-wrap">{restLines}</pre>
-              )}
+              {restLines && <pre class="text-sm text-[#8b949e] mt-2 whitespace-pre-wrap">{restLines}</pre>}
             </div>
             <div class="flex items-center gap-3 px-4 py-3 text-sm border-t border-[#21262d]">
               {commit.author?.avatar_url && (

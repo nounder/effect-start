@@ -22,8 +22,7 @@ const wrapError = (error: unknown): SqlClient.SqlError =>
 
 const wrap = <T>(
   fn: () => PromiseLike<T>,
-): Effect.Effect<T, SqlClient.SqlError> =>
-  Effect.tryPromise({ try: () => Promise.resolve(fn()), catch: wrapError })
+): Effect.Effect<T, SqlClient.SqlError> => Effect.tryPromise({ try: () => Promise.resolve(fn()), catch: wrapError })
 
 interface TransactionConnection {
   readonly conn: any
@@ -32,20 +31,17 @@ interface TransactionConnection {
 
 const currentTransaction = GlobalValue.globalValue(
   Symbol.for("effect-start/sql/bun/currentTransaction"),
-  () =>
-    FiberRef.unsafeMake<Option.Option<TransactionConnection>>(Option.none()),
+  () => FiberRef.unsafeMake<Option.Option<TransactionConnection>>(Option.none()),
 )
 
-const makeRun =
-  (bunSql: any) =>
-  <T>(
-    fn: (conn: any) => PromiseLike<T>,
-  ): Effect.Effect<T, SqlClient.SqlError> =>
-    Effect.flatMap(
-      FiberRef.get(currentTransaction),
-      (txOpt) =>
-        wrap(() => fn(Option.isSome(txOpt) ? txOpt.value.conn : bunSql)),
-    )
+const makeRun = (bunSql: any) =>
+<T>(
+  fn: (conn: any) => PromiseLike<T>,
+): Effect.Effect<T, SqlClient.SqlError> =>
+  Effect.flatMap(
+    FiberRef.get(currentTransaction),
+    (txOpt) => wrap(() => fn(Option.isSome(txOpt) ? txOpt.value.conn : bunSql)),
+  )
 
 const detectDialect = (bunSql: any): SqlClient.DialectConfig => {
   const adapter = bunSql?.options?.adapter ?? bunSql?.adapter
@@ -122,70 +118,69 @@ const makeQuery = (
   return SqlClient.connection(query, unsafe, { spanAttributes, dialect })
 }
 
-const makeWithTransaction =
-  (bunSql: any) =>
-  <A, E, R>(
-    self: Effect.Effect<A, E, R>,
-  ): Effect.Effect<A, SqlClient.SqlError | E, R> =>
-    Effect.uninterruptibleMask((restore) =>
-      Effect.flatMap(FiberRef.get(currentTransaction), (txOpt) => {
-        if (Option.isSome(txOpt)) {
-          const { conn, depth } = txOpt.value
-          const name = `sp_${depth}`
-          return Effect.gen(function*() {
-            yield* wrap(() => conn.unsafe(`SAVEPOINT ${name}`))
-            const exit = yield* Effect.exit(
-              restore(
-                Effect.locally(
-                  self,
-                  currentTransaction,
-                  Option.some({ conn, depth: depth + 1 }),
-                ),
-              ),
-            )
-            if (Exit.isSuccess(exit)) {
-              yield* wrap(() => conn.unsafe(`RELEASE SAVEPOINT ${name}`))
-              return exit.value
-            }
-            yield* wrap(() => conn.unsafe(`ROLLBACK TO SAVEPOINT ${name}`))
-              .pipe(Effect.orDie)
-            return yield* exit
-          })
-        }
-
-        const runTx = (conn: any) =>
-          Effect.gen(function*() {
-            yield* wrap(() => conn.unsafe("BEGIN"))
-            const exit = yield* Effect.exit(
-              restore(Effect.locally(
+const makeWithTransaction = (bunSql: any) =>
+<A, E, R>(
+  self: Effect.Effect<A, E, R>,
+): Effect.Effect<A, SqlClient.SqlError | E, R> =>
+  Effect.uninterruptibleMask((restore) =>
+    Effect.flatMap(FiberRef.get(currentTransaction), (txOpt) => {
+      if (Option.isSome(txOpt)) {
+        const { conn, depth } = txOpt.value
+        const name = `sp_${depth}`
+        return Effect.gen(function*() {
+          yield* wrap(() => conn.unsafe(`SAVEPOINT ${name}`))
+          const exit = yield* Effect.exit(
+            restore(
+              Effect.locally(
                 self,
                 currentTransaction,
-                Option.some({ conn, depth: 1 }),
-              )),
-            )
-            if (
-              Exit.isSuccess(exit)
-            ) {
-              yield* wrap(() => conn.unsafe("COMMIT"))
-              return exit.value
-            }
-            yield* wrap(() => conn.unsafe("ROLLBACK")).pipe(Effect.orDie)
-            return yield* exit
-          })
-
-        return Effect.matchEffect(
-          wrap(() => bunSql.reserve()),
-          {
-            onFailure: () => runTx(bunSql),
-            onSuccess: (reserved: any) =>
-              Effect.ensuring(
-                runTx(reserved),
-                Effect.sync(() => reserved.release()),
+                Option.some({ conn, depth: depth + 1 }),
               ),
-          },
-        )
-      })
-    )
+            ),
+          )
+          if (Exit.isSuccess(exit)) {
+            yield* wrap(() => conn.unsafe(`RELEASE SAVEPOINT ${name}`))
+            return exit.value
+          }
+          yield* wrap(() => conn.unsafe(`ROLLBACK TO SAVEPOINT ${name}`))
+            .pipe(Effect.orDie)
+          return yield* exit
+        })
+      }
+
+      const runTx = (conn: any) =>
+        Effect.gen(function*() {
+          yield* wrap(() => conn.unsafe("BEGIN"))
+          const exit = yield* Effect.exit(
+            restore(Effect.locally(
+              self,
+              currentTransaction,
+              Option.some({ conn, depth: 1 }),
+            )),
+          )
+          if (
+            Exit.isSuccess(exit)
+          ) {
+            yield* wrap(() => conn.unsafe("COMMIT"))
+            return exit.value
+          }
+          yield* wrap(() => conn.unsafe("ROLLBACK")).pipe(Effect.orDie)
+          return yield* exit
+        })
+
+      return Effect.matchEffect(
+        wrap(() => bunSql.reserve()),
+        {
+          onFailure: () => runTx(bunSql),
+          onSuccess: (reserved: any) =>
+            Effect.ensuring(
+              runTx(reserved),
+              Effect.sync(() => reserved.release()),
+            ),
+        },
+      )
+    })
+  )
 
 export const layer = (
   config: ConstructorParameters<typeof Bun.SQL>[0] & {

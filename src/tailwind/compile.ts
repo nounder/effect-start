@@ -1,12 +1,7 @@
 import fsPromises from "node:fs/promises"
 import path from "node:path"
 import { pathToFileURL } from "node:url"
-import {
-  compile as _compile,
-  compileAst as _compileAst,
-  Features,
-  Polyfills,
-} from "tailwindcss"
+import { compile as _compile, compileAst as _compileAst, Features, Polyfills } from "tailwindcss"
 import * as BunEnhancedResolve from "../bun/internal/BunEnhancedResolve.ts"
 
 type AstNode = Parameters<typeof _compileAst>[0][number]
@@ -227,9 +222,7 @@ async function resolveJsId(
     }
   }
 
-  return runResolver(esmResolver, id, base).catch(() =>
-    runResolver(cjsResolver, id, base)
-  )
+  return runResolver(esmResolver, id, base).catch(() => runResolver(cjsResolver, id, base))
 }
 
 function runResolver(

@@ -4,7 +4,6 @@ import * as Entity from "effect-start/Entity"
 import * as Fetch from "effect-start/Fetch"
 import * as Route from "effect-start/Route"
 import * as RouteHttp from "effect-start/RouteHttp"
-import * as RouteSchema from "../src/internal/RouteSchema.ts"
 import { TestLogger } from "effect-start/testing"
 import * as Effect from "effect/Effect"
 import * as Ref from "effect/Ref"
@@ -12,6 +11,7 @@ import * as Schedule from "effect/Schedule"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
 import * as Http from "../src/internal/Http.ts"
+import * as RouteSchema from "../src/internal/RouteSchema.ts"
 
 test.it("converts string to text/plain for Route.text", () =>
   Effect

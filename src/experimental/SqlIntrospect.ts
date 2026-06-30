@@ -618,9 +618,7 @@ const makeTableReader = (ts: TableSchema): TableReader => {
           const sortClauses = options
             .sort
             .filter((s) => sortableSet.has(s.column))
-            .map((s) =>
-              `${escapeIdentifier(s.column)} ${s.reverse ? "DESC" : "ASC"}`
-            )
+            .map((s) => `${escapeIdentifier(s.column)} ${s.reverse ? "DESC" : "ASC"}`)
           if (sortClauses.length > 0) {
             fragments.push(literal(` ORDER BY ${sortClauses.join(", ")}`))
           }

@@ -14,9 +14,7 @@ export function CommitRow(props: {
   const firstLine = props.message.split("\n")[0]
   return (
     <div class="flex items-center gap-3 py-2 px-3 hover:bg-[#161b22] rounded">
-      {props.avatar && (
-        <img src={props.avatar} class="w-5 h-5 rounded-full shrink-0" />
-      )}
+      {props.avatar && <img src={props.avatar} class="w-5 h-5 rounded-full shrink-0" />}
       <div class="flex-1 min-w-0">
         <a
           href={Route.link("/:owner/:repo/commit/:sha", {

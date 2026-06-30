@@ -130,8 +130,7 @@ function specifyMediaType(
   if (specParams.length > 0) {
     if (
       specParams.every(
-        (key) =>
-          spec.params[key].toLowerCase() === (params[key] || "").toLowerCase(),
+        (key) => spec.params[key].toLowerCase() === (params[key] || "").toLowerCase(),
       )
     ) {
       s |= 1
@@ -436,9 +435,7 @@ export function media(
   }
 
   if (!available) {
-    return parsed.sort((a, b) => b.q - a.q || a.o - b.o).map((p) =>
-      `${p.type}/${p.subtype}`
-    )
+    return parsed.sort((a, b) => b.q - a.q || a.o - b.o).map((p) => `${p.type}/${p.subtype}`)
   }
 
   const priorities = available.map((t, i) => getMediaTypePriority(t, parsed, i))

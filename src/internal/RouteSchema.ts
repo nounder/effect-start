@@ -4,9 +4,9 @@ import * as Schema from "effect/Schema"
 import type * as Scope from "effect/Scope"
 import type * as Types from "effect/Types"
 import * as Entity from "../Entity.ts"
+import * as Route from "../Route.ts"
 import * as Http from "./Http.ts"
 import * as PathPattern from "./PathPattern.ts"
-import * as Route from "../Route.ts"
 import * as RouteHook from "./RouteHook.ts"
 
 export interface RequestBodyError {
@@ -538,9 +538,7 @@ export function schemaError<A, I, R>(
       Entity.resolve(next).pipe(
         Effect.catchIf(
           is,
-          (error) =>
-            Effect.map(Effect.orDie(encode(error)), (encoded) =>
-              Entity.make(encoded, { status })),
+          (error) => Effect.map(Effect.orDie(encode(error)), (encoded) => Entity.make(encoded, { status })),
         ),
       )
     )

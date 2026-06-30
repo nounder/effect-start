@@ -6,16 +6,11 @@ export interface Argument<A> extends Param.Param<"argument", A> {}
 
 const argMake = Param.makeConstructor("argument")
 
-export const string = (name: string): Argument<string> =>
-  argMake(name, Primitive.string)
-export const integer = (name: string): Argument<number> =>
-  argMake(name, Primitive.integer)
-export const float = (name: string): Argument<number> =>
-  argMake(name, Primitive.float)
-export const date = (name: string): Argument<Date> =>
-  argMake(name, Primitive.date)
-export const redacted = (name: string): Argument<Redacted.Redacted<string>> =>
-  argMake(name, Primitive.redacted)
+export const string = (name: string): Argument<string> => argMake(name, Primitive.string)
+export const integer = (name: string): Argument<number> => argMake(name, Primitive.integer)
+export const float = (name: string): Argument<number> => argMake(name, Primitive.float)
+export const date = (name: string): Argument<Date> => argMake(name, Primitive.date)
+export const redacted = (name: string): Argument<Redacted.Redacted<string>> => argMake(name, Primitive.redacted)
 export const choice = <const C extends ReadonlyArray<string>>(
   name: string,
   choices: C,

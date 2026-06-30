@@ -234,15 +234,13 @@ test.describe("Unique.token", () => {
 test.describe("Unique.bigint", () => {
   test.it("constrains bytes into the fixed decimal range", () => {
     test
-      .expect(withRandomValues(new Uint8Array(8).fill(0xff), () =>
-        Unique.bigint(8)))
+      .expect(withRandomValues(new Uint8Array(8).fill(0xff), () => Unique.bigint(8)))
       .toBe(28446744073709551615n)
   })
 
   test.it("first decimal digit is always 1-9", () => {
     for (const fill of [0x00, 0x7f, 0xff]) {
-      const value = withRandomValues(new Uint8Array(8).fill(fill), () =>
-        Unique.bigint(8))
+      const value = withRandomValues(new Uint8Array(8).fill(fill), () => Unique.bigint(8))
 
       test
         .expect(value.toString().length)

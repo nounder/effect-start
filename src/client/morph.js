@@ -154,10 +154,9 @@ const morphChildren = (
     if (ctxIdMap.has(newChild)) {
       const namespaceURI = newChild.namespaceURI
       const tagName = newChild.tagName
-      const newEmptyChild =
-        namespaceURI && namespaceURI !== "http://www.w3.org/1999/xhtml"
-          ? document.createElementNS(namespaceURI, tagName)
-          : document.createElement(tagName)
+      const newEmptyChild = namespaceURI && namespaceURI !== "http://www.w3.org/1999/xhtml"
+        ? document.createElementNS(namespaceURI, tagName)
+        : document.createElement(tagName)
       oldParent.insertBefore(newEmptyChild, insertionPoint)
       morphNode(newEmptyChild, newChild)
       insertionPoint = newEmptyChild.nextSibling
@@ -322,8 +321,7 @@ const morphNode = (oldNode, newNode) => {
         oldElt.value = newValue ?? ""
         shouldDispatchPropChangeEvent = true
       }
-      shouldDispatchPropChangeEvent =
-        updateElementProp(oldElt, newElt, "checked") ||
+      shouldDispatchPropChangeEvent = updateElementProp(oldElt, newElt, "checked") ||
         shouldDispatchPropChangeEvent
       updateElementProp(oldElt, newElt, "disabled")
     } else if (
@@ -338,8 +336,7 @@ const morphNode = (oldNode, newNode) => {
     } else if (
       oldElt instanceof HTMLOptionElement && newElt instanceof HTMLOptionElement
     ) {
-      shouldDispatchPropChangeEvent =
-        updateElementProp(oldElt, newElt, "selected") ||
+      shouldDispatchPropChangeEvent = updateElementProp(oldElt, newElt, "selected") ||
         shouldDispatchPropChangeEvent
     }
 

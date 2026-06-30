@@ -1,10 +1,5 @@
 import { attribute, beginBatch, endBatch, type HTMLOrSVG } from "../engine.ts"
-import {
-  clamp,
-  modifyTiming,
-  modifyViewTransition,
-  tagFirst,
-} from "../utils.ts"
+import { clamp, modifyTiming, modifyViewTransition, tagFirst } from "../utils.ts"
 
 const once = new WeakSet<HTMLOrSVG>()
 

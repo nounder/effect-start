@@ -54,7 +54,11 @@ test.it("walks routes", () =>
           "users/[userId]/route.tsx",
         ])
     })
-    .pipe(Effect.scoped, Effect.provide(NodeFileSystem.layer), Effect.runPromise))
+    .pipe(
+      Effect.scoped,
+      Effect.provide(NodeFileSystem.layer),
+      Effect.runPromise,
+    ))
 
 test.it("walks routes with rest", () =>
   Effect
@@ -79,7 +83,11 @@ test.it("walks routes with rest", () =>
           "[[rest]]/route.tsx",
         ])
     })
-    .pipe(Effect.scoped, Effect.provide(NodeFileSystem.layer), Effect.runPromise))
+    .pipe(
+      Effect.scoped,
+      Effect.provide(NodeFileSystem.layer),
+      Effect.runPromise,
+    ))
 
 test.it("walks routes with groups", () =>
   Effect
@@ -107,7 +115,11 @@ test.it("walks routes with groups", () =>
           },
         ])
     })
-    .pipe(Effect.scoped, Effect.provide(NodeFileSystem.layer), Effect.runPromise))
+    .pipe(
+      Effect.scoped,
+      Effect.provide(NodeFileSystem.layer),
+      Effect.runPromise,
+    ))
 
 test.it("layer without load builds routes in memory without writing manifest", () =>
   Effect
@@ -146,7 +158,11 @@ export default Route.get(Route.text("memory"))
         .expect(generated)
         .toBe(false)
     })
-    .pipe(Effect.scoped, Effect.provide(NodeFileSystem.layer), Effect.runPromise))
+    .pipe(
+      Effect.scoped,
+      Effect.provide(NodeFileSystem.layer),
+      Effect.runPromise,
+    ))
 
 test.describe("codegen generates manifest by default", () => {
   const tmpDir = NPath.join(import.meta.dirname, ".tmp-test-routes")

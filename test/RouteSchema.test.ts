@@ -4,8 +4,8 @@ import * as Fetch from "effect-start/Fetch"
 import * as Route from "effect-start/Route"
 import * as RouteError from "effect-start/RouteError"
 import * as RouteHttp from "effect-start/RouteHttp"
-import * as RouteSchema from "../src/internal/RouteSchema.ts"
 import { TestLogger } from "effect-start/testing"
+import * as RouteSchema from "../src/internal/RouteSchema.ts"
 
 test.describe(`${RouteSchema.schemaHeaders.name}()`, () => {
   test.it(`${RouteSchema.schemaHeaders.name} merges`, () => {

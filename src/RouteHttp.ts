@@ -11,12 +11,12 @@ import * as Development from "./Development.ts"
 import * as Entity from "./Entity.ts"
 import * as ContentNegotiation from "./internal/ContentNegotiation.ts"
 import type * as Http from "./internal/Http.ts"
-import * as StreamExtra from "./internal/StreamExtra.ts"
-import * as Route from "./Route.ts"
 import type * as RouteBody from "./internal/RouteBody.ts"
-import * as RouteHttpTracer from "./RouteHttpTracer.ts"
 import * as RouteMap from "./internal/RouteMap.ts"
 import type * as RouteMount from "./internal/RouteMount.ts"
+import * as StreamExtra from "./internal/StreamExtra.ts"
+import * as Route from "./Route.ts"
+import * as RouteHttpTracer from "./RouteHttpTracer.ts"
 
 type UnboundedRouteWithMethod = Route.Route.With<{
   method: RouteMount.RouteMount.Method
@@ -88,9 +88,7 @@ function streamResponse(
           ? encoder.encode(chunk)
           : (chunk as Uint8Array),
     ),
-    Stream.catchAll((error) =>
-      Stream.fail(error instanceof Error ? error : new Error(String(error)))
-    ),
+    Stream.catchAll((error) => Stream.fail(error instanceof Error ? error : new Error(String(error)))),
   )
   return new Response(Stream.toReadableStreamRuntime(byteStream, runtime), {
     status,
