@@ -69,6 +69,74 @@ export default {
       },
     },
 
+    "tagged-symbol-name": {
+      meta: {
+        type: "problem",
+        docs: {
+          description:
+            "Require a tagged class or const name to match the tag/identifier passed to its factory (Data.TaggedError, Schema.Class, Context.Tag, Context.GenericTag, Schema.TaggedStruct, etc.)",
+        },
+        fixable: "code",
+        schema: [],
+        messages: {
+          mismatch: "{{symbolKind}} \"{{name}}\" should match its {{kind}} \"{{tag}}\" passed to {{factory}}.",
+          mismatchSegment:
+            "{{symbolKind}} \"{{name}}\" should match the last segment of its identifier \"{{tag}}\" passed to {{factory}}.",
+        },
+      },
+      create(context) {
+        const imports = createImportTracker("effect")
+
+        function check(name, symbolKind, factoryExpr) {
+          const info = getTaggedFactory(factoryExpr, imports)
+          if (!info) return
+
+          const arg = info.call.arguments[info.argIndex]
+          if (!arg || arg.type !== "Literal" || typeof arg.value !== "string") return
+
+          const factory = info.object + "." + info.property
+
+          if (info.matchSegment) {
+            const tag = arg.value
+            const cut = Math.max(tag.lastIndexOf("/"), tag.lastIndexOf(".")) + 1
+            if (tag.slice(cut) === name) return
+
+            context.report({
+              node: arg,
+              messageId: "mismatchSegment",
+              data: { name, symbolKind, tag, factory },
+              fix: (fixer) => fixer.replaceTextRange(arg.range, JSON.stringify(tag.slice(0, cut) + name)),
+            })
+            return
+          }
+
+          if (arg.value === name) return
+
+          context.report({
+            node: arg,
+            messageId: "mismatch",
+            data: { name, symbolKind, kind: info.kind, tag: arg.value, factory },
+            fix: (fixer) => fixer.replaceTextRange(arg.range, JSON.stringify(name)),
+          })
+        }
+
+        function checkClass(node) {
+          if (node.id && node.superClass) check(node.id.name, "Class", node.superClass)
+        }
+
+        return {
+          ImportDeclaration: imports.ImportDeclaration,
+          ClassDeclaration: checkClass,
+          ClassExpression: checkClass,
+          VariableDeclarator(node) {
+            if (node.id.type === "Identifier" && node.init) {
+              check(node.id.name, "Const", node.init)
+            }
+          },
+        }
+      },
+    },
+
     "test-space-around": {
       meta: {
         type: "layout",
@@ -165,6 +233,8 @@ export default {
         },
       },
       create(context) {
+        const imports = createImportTracker("effect")
+
         function walk(node) {
           if (!node || typeof node !== "object") return
           if (Array.isArray(node)) {
@@ -172,7 +242,7 @@ export default {
             return
           }
           if (node.type === "TSTypeReference") {
-            checkTypeRef(context, node)
+            checkTypeRef(context, node, imports)
             return
           }
           for (const key of Object.keys(node)) {
@@ -181,6 +251,7 @@ export default {
           }
         }
         return {
+          ImportDeclaration: imports.ImportDeclaration,
           TSTypeAliasDeclaration(node) {
             walk(node.typeAnnotation)
           },
@@ -200,6 +271,8 @@ export default {
         },
       },
       create(context) {
+        const imports = createImportTracker("effect")
+
         function hasProperty(node, name) {
           return node.properties.some((property) => {
             if (property.type === "SpreadElement") return false
@@ -211,16 +284,9 @@ export default {
         }
 
         return {
+          ImportDeclaration: imports.ImportDeclaration,
           CallExpression(node) {
-            if (
-              node.callee.type !== "MemberExpression" ||
-              node.callee.object.type !== "Identifier" ||
-              node.callee.object.name !== "Effect" ||
-              node.callee.property.type !== "Identifier" ||
-              node.callee.property.name !== "tryPromise"
-            ) {
-              return
-            }
+            if (!imports.isMember(node.callee, "Effect", "tryPromise")) return
 
             const options = node.arguments[0]
             if (
@@ -414,6 +480,9 @@ export default {
           return {}
         }
 
+        const effect = createImportTracker("effect")
+        const bunTest = createImportTracker("bun:test")
+
         function isTestCallback(node) {
           const sourceCode = context.sourceCode || context.getSourceCode()
           const ancestors = sourceCode.getAncestors(node)
@@ -421,11 +490,8 @@ export default {
           if (!parent || parent.type !== "CallExpression") return false
           const callee = parent.callee
           return (
-            callee.type === "MemberExpression" &&
-            callee.object.type === "Identifier" &&
-            callee.object.name === "test" &&
-            callee.property.type === "Identifier" &&
-            (callee.property.name === "it" || callee.property.name === "test")
+            bunTest.isMember(callee, "bun:test", "it") ||
+            bunTest.isMember(callee, "bun:test", "test")
           )
         }
 
@@ -445,15 +511,12 @@ export default {
         }
 
         return {
+          ImportDeclaration(node) {
+            effect.ImportDeclaration(node)
+            bunTest.ImportDeclaration(node)
+          },
           CallExpression(node) {
-            if (
-              node.callee.type === "MemberExpression" &&
-              node.callee.object.type === "Identifier" &&
-              node.callee.object.name === "Effect" &&
-              node.callee.property.type === "Identifier" &&
-              node.callee.property.name === "scoped" &&
-              node.arguments.length === 1
-            ) {
+            if (effect.isMember(node.callee, "Effect", "scoped") && node.arguments.length === 1) {
               context.report({
                 node,
                 messageId: "scopedWrapping",
@@ -461,13 +524,7 @@ export default {
             }
           },
           MemberExpression(node) {
-            if (
-              node.object.type === "Identifier" &&
-              node.object.name === "Effect" &&
-              node.property.type === "Identifier" &&
-              node.property.name === "runPromise" &&
-              findEnclosingAsyncTestCallback(node)
-            ) {
+            if (effect.isMember(node, "Effect", "runPromise") && findEnclosingAsyncTestCallback(node)) {
               context.report({
                 node,
                 messageId: "noAwaitRunPromise",
@@ -888,7 +945,124 @@ export default {
   },
 }
 
-function checkTypeRef(context, node) {
+/**
+ * Factories whose enclosing class or const name should match a string argument.
+ *
+ * `object`/`property` identify the `X.Y(...)` callee. `shape` says where the
+ * string lives:
+ *   - "call": direct argument of the factory call, e.g. Data.TaggedError("Tag")
+ *   - "outer": Factory<Self>()("Tag", ...) — string on the outer of a double call
+ *   - "inner": Factory<Self>("Id")(...) or Factory("Id")<...>() — string on the
+ *     inner call (the factory's own call, which is the callee of the outer one)
+ * `matchSegment` compares against the last "/"- or "."-segment of the string
+ * instead of the whole string (namespaced identifiers like "effect-start/Routes").
+ */
+const taggedFactories = [
+  { object: "Data", property: "TaggedError", shape: "call", kind: "tag" },
+  { object: "Data", property: "TaggedClass", shape: "call", kind: "tag" },
+  { object: "Request", property: "TaggedClass", shape: "call", kind: "tag" },
+  { object: "Schema", property: "TaggedError", shape: "outer", kind: "tag" },
+  { object: "Schema", property: "TaggedClass", shape: "outer", kind: "tag" },
+  { object: "Schema", property: "TaggedRequest", shape: "outer", kind: "tag" },
+  { object: "Schema", property: "TaggedStruct", shape: "call", kind: "tag" },
+  { object: "Schema", property: "Class", shape: "inner", kind: "identifier" },
+  { object: "Context", property: "Tag", shape: "inner", matchSegment: true },
+  { object: "Context", property: "Reference", shape: "outer", matchSegment: true },
+  { object: "Context", property: "GenericTag", shape: "call", matchSegment: true },
+  { object: "Effect", property: "Tag", shape: "inner", matchSegment: true },
+  { object: "Effect", property: "Service", shape: "outer", matchSegment: true },
+]
+
+/**
+ * Track imports of a package's modules so rules match the module by binding,
+ * not by a bare identifier name (a local `Effect`/`Schema` no longer matches).
+ *
+ * Resolves a local (possibly aliased) name to a canonical module name across:
+ *   - submodule namespace:  import * as S from "effect/Schema"   -> S resolves to "Schema"
+ *   - barrel named:         import { Schema as S } from "effect" -> S resolves to "Schema"
+ *   - package namespace:    import * as test from "bun:test"     -> test resolves to "bun:test"
+ *
+ * Spread the returned `ImportDeclaration` into the rule's visitor object.
+ */
+function createImportTracker(pkg) {
+  const local = new Map()
+  const submodulePrefix = pkg + "/"
+
+  return {
+    ImportDeclaration(node) {
+      const source = node.source.value
+      if (typeof source !== "string") return
+
+      if (source === pkg) {
+        for (const specifier of node.specifiers) {
+          if (specifier.type === "ImportNamespaceSpecifier") {
+            local.set(specifier.local.name, pkg)
+          } else if (specifier.type === "ImportSpecifier" && specifier.imported.type === "Identifier") {
+            local.set(specifier.local.name, specifier.imported.name)
+          }
+        }
+        return
+      }
+
+      if (source.startsWith(submodulePrefix)) {
+        const canonical = source.slice(submodulePrefix.length)
+        for (const specifier of node.specifiers) {
+          if (specifier.type === "ImportNamespaceSpecifier") {
+            local.set(specifier.local.name, canonical)
+          }
+        }
+      }
+    },
+    moduleOf(node) {
+      return node.type === "Identifier" ? local.get(node.name) : undefined
+    },
+    isMember(node, module, property) {
+      const callee = node.type === "TSInstantiationExpression" ? node.expression : node
+      return (
+        callee.type === "MemberExpression" &&
+        callee.object.type === "Identifier" &&
+        local.get(callee.object.name) === module &&
+        callee.property.type === "Identifier" &&
+        callee.property.name === property
+      )
+    },
+  }
+}
+
+function matchesCallee(callee, factory, imports) {
+  return imports.isMember(callee, factory.object, factory.property)
+}
+
+function getTaggedFactory(superClass, imports) {
+  const outer = superClass.type === "TSInstantiationExpression"
+    ? superClass.expression
+    : superClass
+  if (outer.type !== "CallExpression") return
+
+  const inner = outer.callee.type === "CallExpression"
+    ? outer.callee
+    : outer.callee.type === "TSInstantiationExpression" &&
+        outer.callee.expression.type === "CallExpression"
+    ? outer.callee.expression
+    : undefined
+
+  for (const factory of taggedFactories) {
+    if (factory.shape === "call") {
+      if (!matchesCallee(outer.callee, factory, imports)) continue
+      return { call: outer, argIndex: 0, ...factory }
+    }
+    if (!inner) continue
+    if (factory.shape === "outer") {
+      if (!matchesCallee(inner.callee, factory, imports)) continue
+      return { call: outer, argIndex: 0, ...factory }
+    }
+    if (matchesCallee(inner.callee, factory, imports)) {
+      return { call: inner, argIndex: 0, ...factory }
+    }
+  }
+}
+
+function checkTypeRef(context, node, imports) {
   const typeName = node.typeName
   if (typeName.type !== "TSQualifiedName") return
   if (typeName.right.type !== "Identifier" || typeName.right.name !== "Type") {
@@ -898,7 +1072,7 @@ function checkTypeRef(context, node) {
   const mid = typeName.left
   if (mid.type !== "TSQualifiedName") return
   if (mid.right.type !== "Identifier" || mid.right.name !== "Schema") return
-  if (mid.left.type !== "Identifier" || mid.left.name !== "Schema") return
+  if (imports.moduleOf(mid.left) !== "Schema") return
 
   const args = node.typeArguments
   if (!args || args.params.length !== 1) return

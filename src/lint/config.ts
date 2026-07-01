@@ -120,6 +120,7 @@ export const ourRules: Rules = {
   "effect-start/no-destructured-params": "warn",
   "effect-start/test-effects": "warn",
   "effect-start/schema-type-helpers": "warn",
+  "effect-start/tagged-symbol-name": "error",
 }
 
 /**

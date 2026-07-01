@@ -116,7 +116,7 @@ test.describe("makeWebSocket", () => {
         const socket = yield* Socket.makeWebSocket(wsUrl(server))
         const fiber = yield* Effect.fork(socket.run(() => {}))
 
-        const write = yield* Effect.scoped(socket.writer)
+        const write = yield* socket.writer.pipe(Effect.scoped)
         yield* write("__close")
 
         const exit = yield* Fiber.join(fiber).pipe(Effect.exit)
@@ -163,7 +163,7 @@ test.describe("makeWebSocket", () => {
         })
         const fiber = yield* Effect.fork(socket.run(() => {}))
 
-        const write = yield* Effect.scoped(socket.writer)
+        const write = yield* socket.writer.pipe(Effect.scoped)
         yield* write("__close")
 
         const exit = yield* Fiber.join(fiber).pipe(Effect.exit)

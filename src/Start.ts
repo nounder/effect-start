@@ -1,3 +1,4 @@
+import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Function from "effect/Function"
 import * as Layer from "effect/Layer"
@@ -82,6 +83,10 @@ type AppRequirements =
   | FileSystem.FileSystem
   | ChildProcess.ChildProcessSpawner
 
+class StartError extends Data.TaggedError("StartError")<{
+  readonly cause: unknown
+}> {}
+
 export function serve<ROut, E, RIn extends AppRequirements>(
   app:
     | Layer.Layer<ROut, E, RIn>
@@ -89,7 +94,10 @@ export function serve<ROut, E, RIn extends AppRequirements>(
 ) {
   const appLayer = typeof app === "function"
     ? Function.pipe(
-      Effect.tryPromise(app),
+      Effect.tryPromise({
+        try: app,
+        catch: (cause) => new StartError({ cause }),
+      }),
       Effect.map((v) => v.default),
       Effect.orDie,
       Layer.unwrapEffect,

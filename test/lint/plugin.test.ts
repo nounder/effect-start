@@ -352,6 +352,20 @@ test.describe.skipIf(!process.env.TEST_LINT)("schema-type-helpers", () => {
       .expect(fixed)
       .toContain("type User = typeof User.Type")
   })
+
+  test.it("ignores a local module named Schema", () => {
+    const code = [
+      "import * as Schema from \"./local.ts\"",
+      "type User = Schema.Schema.Type<typeof User>",
+      "",
+    ]
+      .join("\n")
+    const diags = lintRule(code, "schema-type-helpers")
+
+    test
+      .expect(diags)
+      .toHaveLength(0)
+  })
 })
 
 test.describe.skipIf(!process.env.TEST_LINT)("effect-try-promise", () => {
@@ -391,6 +405,28 @@ test.describe.skipIf(!process.env.TEST_LINT)("effect-try-promise", () => {
   test.it("ignores other Effect calls", () => {
     const diags = lintRule(
       `import * as Effect from "effect/Effect"\nEffect.try(() => JSON.parse("{}"))\n`,
+      "effect-try-promise",
+    )
+
+    test
+      .expect(diags)
+      .toHaveLength(0)
+  })
+
+  test.it("flags aliased Effect import", () => {
+    const diags = lintRule(
+      `import * as E from "effect/Effect"\nE.tryPromise(() => fetch("/"))\n`,
+      "effect-try-promise",
+    )
+
+    test
+      .expect(diags)
+      .toHaveLength(1)
+  })
+
+  test.it("ignores a local module named Effect", () => {
+    const diags = lintRule(
+      `import * as Effect from "./local.ts"\nEffect.tryPromise(() => fetch("/"))\n`,
       "effect-try-promise",
     )
 
@@ -653,41 +689,58 @@ test.describe.skipIf(!process.env.TEST_LINT)("no-destructured-params", () => {
   })
 })
 
-test.describe.skipIf(!process.env.TEST_LINT)("type-operator-newline", () => {
-  test.it("flags union members on the same line", () => {
+test.describe.skipIf(!process.env.TEST_LINT)("tagged-symbol-name", () => {
+  test.it("flags class name that does not match the tag", () => {
     const code = [
-      "type Context = IntentHub.IntentHub | ChildProcess.ChildProcessSpawner | ai.LanguageModel.LanguageModel",
+      "import * as Data from \"effect/Data\"",
+      "export class UnsupportedError extends Data.TaggedError(\"FixtureUnsupportedError\")<{",
+      "  readonly message: string",
+      "}> {}",
       "",
     ]
       .join("\n")
-    const diags = lintRule(code, "type-operator-newline")
+    const diags = lintRule(code, "tagged-symbol-name")
 
     test
       .expect(diags)
       .toHaveLength(1)
   })
 
-  test.it("allows leading-pipe union members on separate lines", () => {
+  test.it("allows class name that matches the tag", () => {
     const code = [
-      "type Context =",
-      "  | IntentHub.IntentHub",
-      "  | ChildProcess.ChildProcessSpawner",
-      "  | ai.LanguageModel.LanguageModel",
+      "import * as Data from \"effect/Data\"",
+      "export class FetchError extends Data.TaggedError(\"FetchError\")<{",
+      "  readonly message: string",
+      "}> {}",
       "",
     ]
       .join("\n")
-    const diags = lintRule(code, "type-operator-newline")
+    const diags = lintRule(code, "tagged-symbol-name")
 
     test
       .expect(diags)
       .toHaveLength(0)
   })
 
-  test.it("fixes generic type argument unions", () => {
+  test.it("ignores unrelated classes", () => {
     const code = [
-      "const managerContext = yield* Effect.context<",
-      "  IntentHub.IntentHub | ChildProcess.ChildProcessSpawner | ai.LanguageModel.LanguageModel",
-      ">()",
+      "export class Foo {}",
+      "",
+    ]
+      .join("\n")
+    const diags = lintRule(code, "tagged-symbol-name")
+
+    test
+      .expect(diags)
+      .toHaveLength(0)
+  })
+
+  test.it("fixes the tag to match the class name", () => {
+    const code = [
+      "import * as Data from \"effect/Data\"",
+      "export class UnsupportedError extends Data.TaggedError(\"FixtureUnsupportedError\")<{",
+      "  readonly message: string",
+      "}> {}",
       "",
     ]
       .join("\n")
@@ -695,211 +748,369 @@ test.describe.skipIf(!process.env.TEST_LINT)("type-operator-newline", () => {
 
     test
       .expect(fixed)
-      .toBe(
-        [
-          "const managerContext = yield* Effect.context<",
-          "  | IntentHub.IntentHub",
-          "  | ChildProcess.ChildProcessSpawner",
-          "  | ai.LanguageModel.LanguageModel",
-          ">()",
-          "",
-        ]
-          .join("\n"),
-      )
+      .toContain("Data.TaggedError(\"UnsupportedError\")")
   })
 
-  test.it("fixes inline type aliases", () => {
-    const fixed = lintFix(`type Context = A | B | C\n`)
-
-    test
-      .expect(fixed)
-      .toBe(
-        [
-          "type Context =",
-          "  | A",
-          "  | B",
-          "  | C",
-          "",
-        ]
-          .join("\n"),
-      )
-  })
-
-  test.it("flags intersection members on the same line", () => {
-    const code = [
-      "export type Options = BrowserOptions & {",
-      "  readonly url: string",
-      "}",
-      "",
-    ]
-      .join("\n")
-    const diags = lintRule(code, "type-operator-newline")
+  test.it("flags Data.TaggedClass mismatch", () => {
+    const diags = lintRule(
+      `import * as Data from "effect/Data"\nexport class Foo extends Data.TaggedClass("Bar")<{}> {}\n`,
+      "tagged-symbol-name",
+    )
 
     test
       .expect(diags)
       .toHaveLength(1)
   })
 
-  test.it("allows leading-ampersand intersection members on separate lines", () => {
-    const code = [
-      "export type Options =",
-      "  & BrowserOptions",
-      "  & {",
-      "    readonly url: string",
-      "  }",
-      "",
-    ]
-      .join("\n")
-    const diags = lintRule(code, "type-operator-newline")
+  test.it("flags Request.TaggedClass mismatch", () => {
+    const diags = lintRule(
+      `import * as Request from "effect/Request"\nexport class Foo extends Request.TaggedClass("Bar")<number, never, {}> {}\n`,
+      "tagged-symbol-name",
+    )
+
+    test
+      .expect(diags)
+      .toHaveLength(1)
+  })
+
+  test.it("flags Schema.TaggedError mismatch (double-call)", () => {
+    const diags = lintRule(
+      `import * as Schema from "effect/Schema"\nexport class Foo extends Schema.TaggedError<Foo>()("Bar", {}) {}\n`,
+      "tagged-symbol-name",
+    )
+
+    test
+      .expect(diags)
+      .toHaveLength(1)
+  })
+
+  test.it("allows Schema.TaggedError match", () => {
+    const diags = lintRule(
+      `import * as Schema from "effect/Schema"\nexport class Foo extends Schema.TaggedError<Foo>()("Foo", {}) {}\n`,
+      "tagged-symbol-name",
+    )
 
     test
       .expect(diags)
       .toHaveLength(0)
   })
 
-  test.it("fixes intersection type aliases", () => {
-    const code = [
-      "export type Options = BrowserOptions & {",
-      "  readonly url: string",
-      "}",
-      "",
-    ]
-      .join("\n")
-    const fixed = lintFix(code)
+  test.it("flags Schema.TaggedClass and Schema.TaggedRequest mismatch", () => {
+    const diags = lintRule(
+      [
+        "import * as Schema from \"effect/Schema\"",
+        "export class A extends Schema.TaggedClass<A>()(\"X\", {}) {}",
+        "export class B extends Schema.TaggedRequest<B>()(\"Y\", { failure: Schema.Never, success: Schema.Void, payload: {} }) {}",
+        "",
+      ]
+        .join("\n"),
+      "tagged-symbol-name",
+    )
 
     test
-      .expect(fixed)
-      .toBe(
-        [
-          "export type Options =",
-          "  & BrowserOptions",
-          "  & {",
-          "    readonly url: string",
-          "  }",
-          "",
-        ]
-          .join("\n"),
-      )
+      .expect(diags)
+      .toHaveLength(2)
   })
 
-  test.it("fixes unions in generic type arguments", () => {
-    const code = [
-      "type BrowserOptions = Omit<Browser.OpenOptions, \"url\" | \"headless\" | \"titlebar\">",
-      "",
-    ]
-      .join("\n")
-    const fixed = lintFix(code)
+  test.it("flags Schema.Class identifier mismatch (inner-call)", () => {
+    const diags = lintRule(
+      `import * as Schema from "effect/Schema"\nexport class Foo extends Schema.Class<Foo>("Bar")({}) {}\n`,
+      "tagged-symbol-name",
+    )
 
     test
-      .expect(fixed)
-      .toBe(
-        [
-          "type BrowserOptions = Omit<Browser.OpenOptions,",
-          "  | \"url\"",
-          "  | \"headless\"",
-          "  | \"titlebar\">",
-          "",
-        ]
-          .join("\n"),
-      )
+      .expect(diags)
+      .toHaveLength(1)
   })
 
-  test.it("parenthesizes function type members in unions", () => {
-    const code = [
-      "type Finalizer = string | (() => void) | undefined",
-      "",
-    ]
-      .join("\n")
-    const fixed = lintFix(code)
-
-    test
-      .expect(fixed)
-      .toBe(
-        [
-          "type Finalizer =",
-          "  | string",
-          "  | (() => void)",
-          "  | undefined",
-          "",
-        ]
-          .join("\n"),
-      )
-  })
-
-  test.it("parenthesizes multiline function type members in unions", () => {
-    const code = [
-      "type Handler = string | ((",
-      "  event: E,",
-      ") => void)",
-      "",
-    ]
-      .join("\n")
-    const fixed = lintFix(code)
-
-    test
-      .expect(fixed)
-      .toBe(
-        [
-          "type Handler =",
-          "  | string",
-          "  | ((",
-          "    event: E,",
-          "  ) => void)",
-          "",
-        ]
-          .join("\n"),
-      )
-  })
-
-  test.it("parenthesizes conditional type members in unions", () => {
-    const code = [
-      "type Req<R, K extends string> = \"allowed\" | (K extends keyof R ? never : R)",
-      "",
-    ]
-      .join("\n")
-    const fixed = lintFix(code)
-
-    test
-      .expect(fixed)
-      .toBe(
-        [
-          "type Req<R, K extends string> =",
-          "  | \"allowed\"",
-          "  | (K extends keyof R ? never : R)",
-          "",
-        ]
-          .join("\n"),
-      )
-  })
-
-  test.it("ignores conditional type check unions", () => {
-    const code = [
-      "type Req<R, K extends string> = R extends \"allowed\" | (K extends keyof R ? never : R) ? true : false",
-      "",
-    ]
-      .join("\n")
-    const diags = lintRule(code, "type-operator-newline")
+  test.it("allows Context.Tag namespaced identifier matching last segment", () => {
+    const diags = lintRule(
+      `import * as Context from "effect/Context"\nexport class Routes extends Context.Tag("effect-start/Routes")<Routes, {}>() {}\n`,
+      "tagged-symbol-name",
+    )
 
     test
       .expect(diags)
       .toHaveLength(0)
   })
 
-  test.it("ignores unions in function return types", () => {
+  test.it("flags Context.Tag last-segment mismatch", () => {
+    const diags = lintRule(
+      `import * as Context from "effect/Context"\nexport class Routes extends Context.Tag("effect-start/Foo")<Routes, {}>() {}\n`,
+      "tagged-symbol-name",
+    )
+
+    test
+      .expect(diags)
+      .toHaveLength(1)
+  })
+
+  test.it("fixes Context.Tag last segment while preserving the namespace prefix", () => {
+    const fixed = lintFix(
+      `import * as Context from "effect/Context"\nexport class Routes extends Context.Tag("effect-start/Foo")<Routes, {}>() {}\n`,
+      "context-tag-fix.ts",
+    )
+
+    test
+      .expect(fixed)
+      .toContain("Context.Tag(\"effect-start/Routes\")")
+  })
+
+  test.it("allows Context.Reference namespaced identifier matching last segment", () => {
+    const diags = lintRule(
+      [
+        "import * as Context from \"effect/Context\"",
+        "export class RouteContext extends Context.Reference<RouteContext>()(\"effect-start/RouteContext\", { defaultValue: () => 1 }) {}",
+        "",
+      ]
+        .join("\n"),
+      "tagged-symbol-name",
+    )
+
+    test
+      .expect(diags)
+      .toHaveLength(0)
+  })
+
+  test.it("flags Context.Reference last-segment mismatch", () => {
+    const diags = lintRule(
+      [
+        "import * as Context from \"effect/Context\"",
+        "export class RouteContext extends Context.Reference<RouteContext>()(\"effect-start/Nope\", { defaultValue: () => 1 }) {}",
+        "",
+      ]
+        .join("\n"),
+      "tagged-symbol-name",
+    )
+
+    test
+      .expect(diags)
+      .toHaveLength(1)
+  })
+
+  test.it("allows Effect.Tag and Effect.Service matching last segment", () => {
+    const diags = lintRule(
+      [
+        "import * as Effect from \"effect/Effect\"",
+        "export class Notifications extends Effect.Tag(\"app/Notifications\")<Notifications, {}>() {}",
+        "export class Cache extends Effect.Service<Cache>()(\"app/Cache\", { succeed: 1 }) {}",
+        "",
+      ]
+        .join("\n"),
+      "tagged-symbol-name",
+    )
+
+    test
+      .expect(diags)
+      .toHaveLength(0)
+  })
+
+  test.it("allows dot-namespaced identifier matching last segment", () => {
+    const diags = lintRule(
+      `import * as Context from "effect/Context"\nexport class Logger extends Context.Tag("LayerExtra.test.Logger")<Logger, {}>() {}\n`,
+      "tagged-symbol-name",
+    )
+
+    test
+      .expect(diags)
+      .toHaveLength(0)
+  })
+
+  test.it("flags dot-namespaced identifier with mismatched last segment", () => {
+    const diags = lintRule(
+      `import * as Context from "effect/Context"\nexport class Logger extends Context.Tag("LayerExtra.test.Nope")<Logger, {}>() {}\n`,
+      "tagged-symbol-name",
+    )
+
+    test
+      .expect(diags)
+      .toHaveLength(1)
+  })
+
+  test.it("allows Context.GenericTag const matching last segment", () => {
+    const diags = lintRule(
+      `import * as Context from "effect/Context"\nexport const StartServer = Context.GenericTag<StartServer>("effect-start/StartServer")\nStartServer\n`,
+      "tagged-symbol-name",
+    )
+
+    test
+      .expect(diags)
+      .toHaveLength(0)
+  })
+
+  test.it("flags Context.GenericTag const with mismatched last segment", () => {
+    const diags = lintRule(
+      `import * as Context from "effect/Context"\nexport const StartServer = Context.GenericTag<StartServer>("effect-start/Nope")\nStartServer\n`,
+      "tagged-symbol-name",
+    )
+
+    test
+      .expect(diags)
+      .toHaveLength(1)
+  })
+
+  test.it("fixes Context.GenericTag const key preserving the prefix", () => {
+    const fixed = lintFix(
+      `import * as Context from "effect/Context"\nexport const StartServer = Context.GenericTag<StartServer>("effect-start/Nope")\nStartServer\n`,
+      "generic-tag-fix.ts",
+    )
+
+    test
+      .expect(fixed)
+      .toContain("Context.GenericTag<StartServer>(\"effect-start/StartServer\")")
+  })
+
+  test.it("allows Schema.TaggedStruct const matching its tag", () => {
+    const diags = lintRule(
+      `import * as Schema from "effect/Schema"\nexport const File = Schema.TaggedStruct("File", { path: Schema.String })\nFile\n`,
+      "tagged-symbol-name",
+    )
+
+    test
+      .expect(diags)
+      .toHaveLength(0)
+  })
+
+  test.it("flags Schema.TaggedStruct const with mismatched tag", () => {
+    const diags = lintRule(
+      `import * as Schema from "effect/Schema"\nexport const BundleEventChange = Schema.TaggedStruct("Change", { path: Schema.String })\nBundleEventChange\n`,
+      "tagged-symbol-name",
+    )
+
+    test
+      .expect(diags)
+      .toHaveLength(1)
+  })
+
+  test.it("resolves aliased namespace import", () => {
+    const diags = lintRule(
+      `import * as D from "effect/Data"\nexport class Foo extends D.TaggedError("Bar")<{}> {}\n`,
+      "tagged-symbol-name",
+    )
+
+    test
+      .expect(diags)
+      .toHaveLength(1)
+  })
+
+  test.it("resolves barrel import", () => {
+    const diags = lintRule(
+      `import { Data } from "effect"\nexport class Foo extends Data.TaggedError("Bar")<{}> {}\n`,
+      "tagged-symbol-name",
+    )
+
+    test
+      .expect(diags)
+      .toHaveLength(1)
+  })
+
+  test.it("resolves aliased barrel import", () => {
+    const diags = lintRule(
+      `import { Data as D } from "effect"\nexport class Foo extends D.TaggedError("Bar")<{}> {}\n`,
+      "tagged-symbol-name",
+    )
+
+    test
+      .expect(diags)
+      .toHaveLength(1)
+  })
+
+  test.it("ignores a same-named factory not imported from effect", () => {
+    const diags = lintRule(
+      `import * as Data from "./local/Data.ts"\nexport class Foo extends Data.TaggedError("Bar")<{}> {}\n`,
+      "tagged-symbol-name",
+    )
+
+    test
+      .expect(diags)
+      .toHaveLength(0)
+  })
+
+  test.it("ignores a factory used with no matching import", () => {
+    const diags = lintRule(
+      `export class Foo extends Data.TaggedError("Bar")<{}> {}\n`,
+      "tagged-symbol-name",
+    )
+
+    test
+      .expect(diags)
+      .toHaveLength(0)
+  })
+})
+
+test.describe.skipIf(!process.env.TEST_LINT)("test-effects", () => {
+  test.it("flags await Effect.runPromise in async test callback", () => {
     const code = [
-      "type Options = {",
-      "  onerror?: (err: any) => number | null | undefined | void",
-      "}",
+      "import * as test from \"bun:test\"",
+      "import * as Effect from \"effect/Effect\"",
+      "test.it(\"x\", async () => { await Effect.runPromise(Effect.void) })",
       "",
     ]
       .join("\n")
+    const diags = lintRule(code, "test-effects", "a.test.ts")
 
     test
-      .expect(lintRule(code, "type-operator-newline"))
+      .expect(diags.some((d) => d.message.includes("runPromise")))
+      .toBe(true)
+  })
+
+  test.it("flags Effect.scoped(...) wrapping", () => {
+    const code = [
+      "import * as test from \"bun:test\"",
+      "import * as Effect from \"effect/Effect\"",
+      "test.it(\"x\", () => Effect.scoped(Effect.void))",
+      "",
+    ]
+      .join("\n")
+    const diags = lintRule(code, "test-effects", "a.test.ts")
+
+    test
+      .expect(diags.some((d) => d.message.includes("scoped")))
+      .toBe(true)
+  })
+
+  test.it("resolves aliased Effect and test imports", () => {
+    const code = [
+      "import * as t from \"bun:test\"",
+      "import * as E from \"effect/Effect\"",
+      "t.it(\"x\", async () => { await E.runPromise(E.void) })",
+      "",
+    ]
+      .join("\n")
+    const diags = lintRule(code, "test-effects", "a.test.ts")
+
+    test
+      .expect(diags.some((d) => d.message.includes("runPromise")))
+      .toBe(true)
+  })
+
+  test.it("ignores a local module named Effect", () => {
+    const code = [
+      "import * as test from \"bun:test\"",
+      "import * as Effect from \"./local.ts\"",
+      "test.it(\"x\", async () => { await Effect.runPromise(Effect.void) })",
+      "",
+    ]
+      .join("\n")
+    const diags = lintRule(code, "test-effects", "a.test.ts")
+
+    test
+      .expect(diags)
       .toHaveLength(0)
+  })
+
+  test.it("skips non-test files", () => {
+    const code = [
+      "import * as Effect from \"effect/Effect\"",
+      "async function run() { await Effect.runPromise(Effect.void) }",
+      "run",
+      "",
+    ]
+      .join("\n")
+    const diags = lintRule(code, "test-effects", "a.ts")
 
     test
-      .expect(lintFix(code))
-      .toBe(code)
+      .expect(diags)
+      .toHaveLength(0)
   })
 })

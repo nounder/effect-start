@@ -4,11 +4,11 @@ import type * as Effect from "effect/Effect"
 import type * as PubSub from "effect/PubSub"
 import * as Schema from "effect/Schema"
 
-const BundleEventChange = Schema.TaggedStruct("Change", {
+const BundleEventChange = Schema.TaggedStruct("BundleEventChange", {
   path: Schema.String,
 })
 
-const BundleEventBuildError = Schema.TaggedStruct("BuildError", {
+const BundleEventBuildError = Schema.TaggedStruct("BundleEventBuildError", {
   error: Schema.String,
 })
 
