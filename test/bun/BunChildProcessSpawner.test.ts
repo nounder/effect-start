@@ -2,6 +2,7 @@ import * as test from "bun:test"
 import * as Effect from "effect/Effect"
 import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
+import * as Tracer from "effect/Tracer"
 
 import { BunChildProcessSpawner } from "effect-start/bun"
 import * as ChildProcess from "effect-start/ChildProcess"
@@ -301,4 +302,90 @@ test.describe("spawn errors", () => {
         Effect.scoped,
         Effect.runPromise,
       ))
+})
+
+const recordingTracer = (spans: Array<Tracer.Span>) =>
+  Tracer.make({
+    span(name, parent, context, links, startTime, kind) {
+      const attributes = new Map<string, unknown>()
+      const span: Tracer.Span = {
+        _tag: "Span",
+        name,
+        spanId: "1",
+        traceId: "1",
+        parent,
+        context,
+        status: { _tag: "Started", startTime },
+        attributes,
+        links: [...links],
+        sampled: true,
+        kind,
+        end() {},
+        attribute(key, value) {
+          attributes.set(key, value)
+        },
+        event() {},
+        addLinks() {},
+      }
+      spans.push(span)
+      return span
+    },
+    context(f) {
+      return f()
+    },
+  })
+
+test.describe("spawn + tracing", () => {
+  test.it("follows the OTel CLI span convention", async () => {
+    const spans: Array<Tracer.Span> = []
+
+    await run(
+      ChildProcess
+        .spawn(ChildProcess.make("echo", ["hello"]))
+        .pipe(
+          Effect.flatMap((handle) => handle.exitCode),
+          Effect.withTracer(recordingTracer(spans)),
+        ),
+    )
+
+    const span = spans.find((s) => s.name === "echo")
+
+    test
+      .expect(span?.kind)
+      .toBe("internal")
+    test
+      .expect(span?.attributes.get("process.executable.name"))
+      .toBe("echo")
+    test
+      .expect(span?.attributes.get("process.command_args"))
+      .toEqual(["echo", "hello"])
+    test
+      .expect(span?.attributes.get("process.pid") as number)
+      .toBeGreaterThan(0)
+    test
+      .expect(span?.attributes.get("process.exit.code"))
+      .toBe(0)
+  })
+
+  test.it("records error.type on non-zero exit", async () => {
+    const spans: Array<Tracer.Span> = []
+
+    await run(
+      ChildProcess
+        .spawn(ChildProcess.make("false"))
+        .pipe(
+          Effect.flatMap((handle) => handle.exitCode),
+          Effect.withTracer(recordingTracer(spans)),
+        ),
+    )
+
+    const span = spans.find((s) => s.name === "false")
+
+    test
+      .expect(span?.attributes.get("process.exit.code"))
+      .toBe(1)
+    test
+      .expect(span?.attributes.get("error.type"))
+      .toBe("1")
+  })
 })
