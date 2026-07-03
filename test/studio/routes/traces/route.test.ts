@@ -26,8 +26,8 @@ test.describe("traces route", () => {
   test.it("detects studio traces by attribute", () => {
     const spans: Array<StudioStore.Span> = [
       makeSpan({
-        spanId: 1n,
-        traceId: 42n,
+        spanId: "1",
+        traceId: "42",
         name: "GET /studio/traces",
         attributes: { [StudioStore.studioTraceAttribute]: true },
       }),
@@ -41,19 +41,19 @@ test.describe("traces route", () => {
   test.it("removes all spans for traces marked as studio", () => {
     const spans: Array<StudioStore.Span> = [
       makeSpan({
-        spanId: 1n,
-        traceId: 1n,
+        spanId: "1",
+        traceId: "1",
         name: "app root",
       }),
       makeSpan({
-        spanId: 2n,
-        traceId: 2n,
+        spanId: "2",
+        traceId: "2",
         name: "studio root",
         attributes: { [StudioStore.studioTraceAttribute]: true },
       }),
       makeSpan({
-        spanId: 3n,
-        traceId: 2n,
+        spanId: "3",
+        traceId: "2",
         name: "studio child",
       }),
     ]
@@ -63,7 +63,7 @@ test.describe("traces route", () => {
         StudioStore.filterOutStudioSpans(spans).map((span) => span.traceId),
       )
       .toEqual([
-        1n,
+        "1",
       ])
   })
 })

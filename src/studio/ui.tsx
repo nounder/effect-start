@@ -350,8 +350,8 @@ function pickRootSpan(
 }
 
 function buildSpanTree(spans: Array<StudioStore.Span>): Array<TreeSpan> {
-  const byId = new Map<bigint, StudioStore.Span>()
-  const childrenOf = new Map<bigint, Array<StudioStore.Span>>()
+  const byId = new Map<string, StudioStore.Span>()
+  const childrenOf = new Map<string, Array<StudioStore.Span>>()
 
   for (const s of spans) {
     byId.set(s.spanId, s)
@@ -377,14 +377,14 @@ function buildSpanTree(spans: Array<StudioStore.Span>): Array<TreeSpan> {
   }
 
   const result: Array<TreeSpan> = []
-  const visited = new Set<bigint>()
+  const visited = new Set<string>()
 
   function walk(
     span: StudioStore.Span,
     depth: number,
     isLast: boolean,
     ancestors: Array<boolean>,
-    lineage: Set<bigint>,
+    lineage: Set<string>,
   ) {
     if (lineage.has(span.spanId) || visited.has(span.spanId)) return
 
@@ -616,8 +616,8 @@ function MiniWaterfall(props: {
 
 export function groupByTraceId(
   spans: Array<StudioStore.Span>,
-): Map<bigint, Array<StudioStore.Span>> {
-  const groups = new Map<bigint, Array<StudioStore.Span>>()
+): Map<string, Array<StudioStore.Span>> {
+  const groups = new Map<string, Array<StudioStore.Span>>()
   for (const span of spans) {
     let group = groups.get(span.traceId)
     if (!group) {
@@ -631,7 +631,7 @@ export function groupByTraceId(
 
 export function TraceGroup(props: {
   prefix: string
-  id?: bigint
+  id?: string
   spans: Array<StudioStore.Span>
 }) {
   if (props.spans.length === 0) return null

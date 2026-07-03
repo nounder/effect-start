@@ -1,3 +1,4 @@
+import * as Config from "effect/Config"
 import * as Console from "effect/Console"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -7,21 +8,17 @@ import * as FiberId from "effect/FiberId"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Tracer from "effect/Tracer"
-import * as NProcess from "node:process"
 import * as Tracing from "../internal/Tracing.ts"
 
 export type Span = Tracing.Span
-
-const enabled = (value: string | boolean | undefined = NProcess.env.TRACING) =>
-  value === true || (typeof value === "string" && ["1", "true"].includes(value.trim().toLowerCase()))
 
 const make = (spans: Array<Tracing.Span>): Tracer.Tracer =>
   Tracer.make({
     span(name, parent, context, links, startTime, kind) {
       const parentSpanId = Option.isSome(parent) && parent.value._tag === "Span"
-        ? BigInt(parent.value.spanId)
+        ? parent.value.spanId
         : undefined
-      const traceId = Option.isSome(parent) ? BigInt(parent.value.traceId) : Tracing.nextTraceId()
+      const traceId = Option.isSome(parent) ? parent.value.traceId : Tracing.nextTraceId()
       const spanId = Tracing.nextSpanId()
       const currentFiber = Fiber.getCurrentFiber()
       const fiberId = Option.isSome(currentFiber) ? FiberId.threadName(currentFiber.value.id()) : undefined
@@ -47,8 +44,8 @@ const make = (spans: Array<Tracing.Span>): Tracer.Tracer =>
       const span: Tracer.Span = {
         _tag: "Span",
         name,
-        spanId: String(spanId),
-        traceId: String(traceId),
+        spanId,
+        traceId,
         parent,
         context,
         get status(): Tracer.SpanStatus {
@@ -93,8 +90,8 @@ const jsonValue = (value: unknown): unknown => {
 }
 
 type Row = {
-  readonly id: bigint
-  readonly parentId: bigint | undefined
+  readonly id: string
+  readonly parentId: string | undefined
   readonly name: string
   readonly startMs: number
   readonly durationMs: number
@@ -130,9 +127,9 @@ const formatTrace = (
   const selected = rows.filter((row) => kept.has(row.id))
   const selectedIds = new Set(selected.map((row) => row.id))
   const byId = new Map(rows.map((row) => [row.id, row]))
-  const children = new Map<bigint | undefined, Array<Row>>()
+  const children = new Map<string | undefined, Array<Row>>()
 
-  const visibleParent = (row: Row): bigint | undefined => {
+  const visibleParent = (row: Row): string | undefined => {
     let parentId = row.parentId
     while (parentId !== undefined && !selectedIds.has(parentId)) parentId = byId.get(parentId)?.parentId
     return parentId
@@ -158,8 +155,7 @@ const formatTrace = (
   if (json) {
     const serialized = selected.map((row) => ({
       ...row,
-      id: String(row.id),
-      parentId: row.parentId === undefined ? null : String(row.parentId),
+      parentId: row.parentId ?? null,
     }))
     out.push("[trace json]", JSON.stringify(serialized, null, 2))
   }
@@ -171,17 +167,21 @@ export const filterDuration = (minDuration: Duration.DurationInput) => {
   return (span: Span) => (span.durationMs ?? 0) >= minDurationMs
 }
 
-export const layerConfig = (
+const tracePrint = Effect.orElseSucceed(Config.boolean("TRACE_PRINT"), () => false)
+
+export const layer = (
   options: { readonly json?: boolean; readonly filter?: (span: Span) => boolean } = {},
-) => {
-  if (!enabled()) return Layer.empty
+): Layer.Layer<never> => {
   const json = options.json ?? false
   const filter = options.filter ?? filterDuration("50 millis")
   const spans: Array<Tracing.Span> = []
   return Layer.scopedDiscard(
     Effect.gen(function*() {
       yield* Effect.withTracerScoped(make(spans))
-      yield* Effect.addFinalizer(() => Console.log(formatTrace(spans, json, filter)))
+      const print = yield* tracePrint
+      if (print) {
+        yield* Effect.addFinalizer(() => Console.log(formatTrace(spans, json, filter)))
+      }
     }),
   )
 }

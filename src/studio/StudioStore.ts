@@ -21,7 +21,7 @@ export function isStudioTrace(spans: Array<Span>): boolean {
 export function filterOutStudioSpans(
   spans: Array<Span>,
 ): Array<Span> {
-  const hiddenTraceIds = new Set<bigint>()
+  const hiddenTraceIds = new Set<string>()
 
   for (const span of spans) {
     if (span.attributes[studioTraceAttribute] === true) {
@@ -83,8 +83,8 @@ export interface MetricSnapshot {
 export type StudioEvent =
   | { readonly _tag: "SpanStart"; readonly span: Span }
   | { readonly _tag: "SpanEnd"; readonly span: Span }
-  | { readonly _tag: "TraceStart"; readonly traceId: bigint }
-  | { readonly _tag: "TraceEnd"; readonly traceId: bigint }
+  | { readonly _tag: "TraceStart"; readonly traceId: string }
+  | { readonly _tag: "TraceEnd"; readonly traceId: string }
   | { readonly _tag: "Log"; readonly log: LogEntry }
   | { readonly _tag: "Error"; readonly error: ErrorEntry }
   | {
@@ -95,7 +95,7 @@ export type StudioEvent =
 
 export interface FiberContext {
   readonly spanName: string | undefined
-  readonly traceId: bigint | undefined
+  readonly traceId: string | undefined
   readonly annotations: Record<string, unknown>
 }
 
@@ -270,13 +270,13 @@ function deserializeMetric(row: MetricSampleRow): MetricSnapshot {
 function deserializeSpan(row: SpanRow): Span {
   const events = reviveBigint(JSON.parse(row.events)) as Span["events"]
   return {
-    spanId: BigInt(row.spanId),
-    traceId: BigInt(row.traceId),
+    spanId: String(row.spanId),
+    traceId: String(row.traceId),
     fiberId: row.fiberId ?? undefined,
     name: row.name,
     kind: row.kind,
     parentSpanId: row.parentSpanId != null
-      ? BigInt(row.parentSpanId)
+      ? String(row.parentSpanId)
       : undefined,
     startTime: BigInt(row.startTime),
     endTime: row.endTime ? BigInt(row.endTime) : undefined,
@@ -500,7 +500,7 @@ export function allErrors() {
   )
 }
 
-export function spansByTraceId(traceId: bigint) {
+export function spansByTraceId(traceId: string) {
   return noTrace(
     withSql((sql) =>
       Effect.map(
@@ -690,7 +690,7 @@ export function getFiberContext(fiberId: string) {
             ? {
               spanName: rows[0].spanName ?? undefined,
               traceId: rows[0].traceId != null
-                ? BigInt(rows[0].traceId)
+                ? String(rows[0].traceId)
                 : undefined,
               annotations: JSON.parse(rows[0].annotations),
             }

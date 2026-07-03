@@ -8,17 +8,17 @@ function runTrace<A, E>(
   options: {
     readonly json?: boolean
     readonly filter?: (span: TestTracer.Span) => boolean
-    readonly tracing?: string
+    readonly print?: string
   },
   spans: Effect.Effect<A, E, never>,
 ): Promise<string> {
-  const previous = NProcess.env.TRACING
+  const previous = NProcess.env.TRACE_PRINT
   const original = globalThis.console.log
   const lines: Array<string> = []
   globalThis.console.log = (...args: Array<unknown>) => lines.push(args.join(" "))
-  if (options.tracing === undefined) delete NProcess.env.TRACING
-  else NProcess.env.TRACING = options.tracing
-  const layer: Layer.Layer<never> = TestTracer.layerConfig({ json: options.json, filter: options.filter })
+  if (options.print === undefined) delete NProcess.env.TRACE_PRINT
+  else NProcess.env.TRACE_PRINT = options.print
+  const layer: Layer.Layer<never> = TestTracer.layer({ json: options.json, filter: options.filter })
   return spans
     .pipe(
       Effect.scoped,
@@ -28,14 +28,14 @@ function runTrace<A, E>(
     .then(() => lines.join("\n"))
     .finally(() => {
       globalThis.console.log = original
-      if (previous === undefined) delete NProcess.env.TRACING
-      else NProcess.env.TRACING = previous
+      if (previous === undefined) delete NProcess.env.TRACE_PRINT
+      else NProcess.env.TRACE_PRINT = previous
     })
 }
 
 test.it("captures nested spans as an indented tree with attributes", async () => {
   const output = await runTrace(
-    { tracing: "1", filter: () => true },
+    { print: "true", filter: () => true },
     Effect.annotateCurrentSpan("phase", "warmup").pipe(
       Effect.withSpan("child"),
       Effect.withSpan("parent"),
@@ -60,7 +60,7 @@ test.it("captures nested spans as an indented tree with attributes", async () =>
 
 test.it("drops spans rejected by the filter, reparenting their children", async () => {
   const output = await runTrace(
-    { tracing: "1", filter: (span) => span.name !== "hidden" },
+    { print: "true", filter: (span) => span.name !== "hidden" },
     Effect.withSpan("leaf")(Effect.void).pipe(
       Effect.withSpan("hidden"),
       Effect.withSpan("root"),
@@ -80,9 +80,9 @@ test.it("drops spans rejected by the filter, reparenting their children", async 
     .toBe(rootLine.search(/\S/) + 2)
 })
 
-test.it("emits serialized JSON with bigint ids as strings when json is enabled", async () => {
+test.it("emits serialized JSON with string ids when json is enabled", async () => {
   const output = await runTrace(
-    { tracing: "1", json: true, filter: () => true },
+    { print: "true", json: true, filter: () => true },
     Effect.withSpan("root")(Effect.void),
   )
   const rows = JSON.parse(output.slice(output.indexOf("[trace json]") + "[trace json]".length))
@@ -104,13 +104,31 @@ test.it("emits serialized JSON with bigint ids as strings when json is enabled",
     .toMatch(/^\d+$/)
 })
 
-test.it("does nothing when TRACING is not set", async () => {
+test.it("does not print when TRACE_PRINT is not set", async () => {
   const output = await runTrace(
-    { tracing: undefined },
+    { print: undefined },
     Effect.withSpan("root")(Effect.void),
   )
 
   test
     .expect(output)
     .toBe("")
+})
+
+test.it("still records spans when TRACE_PRINT is not set", async () => {
+  const span = await Effect
+    .currentSpan
+    .pipe(
+      Effect.withSpan("root"),
+      Effect.scoped,
+      Effect.provide(TestTracer.layer()),
+      Effect.runPromise,
+    )
+
+  test
+    .expect(span.name)
+    .toBe("root")
+  test
+    .expect(span.spanId)
+    .toMatch(/^\d+$/)
 })

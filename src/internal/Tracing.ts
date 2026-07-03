@@ -1,12 +1,12 @@
 import * as Unique from "../Unique.ts"
 
 export interface Span {
-  readonly spanId: bigint
-  readonly traceId: bigint
+  readonly spanId: string
+  readonly traceId: string
   readonly fiberId: string | undefined
   readonly name: string
   readonly kind: string
-  readonly parentSpanId: bigint | undefined
+  readonly parentSpanId: string | undefined
   startTime: bigint
   endTime: bigint | undefined
   durationMs: number | undefined
@@ -19,6 +19,6 @@ export interface Span {
 
 export const nextPackedId = (): bigint => Unique.snowflake()
 
-export const nextSpanId = () => nextPackedId()
+export const nextSpanId = (): string => nextPackedId().toString()
 
-export const nextTraceId = () => nextPackedId()
+export const nextTraceId = (): string => nextPackedId().toString()

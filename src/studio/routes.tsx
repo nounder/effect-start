@@ -205,9 +205,9 @@ export default Route.map({
     RouteSchema.schemaPathParams(Schema.Struct({ id: Schema.String })),
     Route.html(function*(ctx) {
       const studio = yield* Studio.Studio
-      let traceId: bigint
+      let traceId: string
       try {
-        traceId = BigInt(ctx.pathParams.id)
+        traceId = String(BigInt(ctx.pathParams.id))
       } catch {
         return (
           <Ui.Shell prefix={studio.path} active="traces">

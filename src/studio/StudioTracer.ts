@@ -13,14 +13,6 @@ import * as StudioStore from "./StudioStore.ts"
 const publish = (store: StudioStore.State, event: StudioStore.StudioEvent) =>
   Effect.runSync(PubSub.publish(store.events, event))
 
-const fromTracerId = (id: string): bigint | undefined => {
-  try {
-    return BigInt(id)
-  } catch {
-    return undefined
-  }
-}
-
 const make = (
   store: StudioStore.State,
   sql: SqlClient.SqlClient,
@@ -28,10 +20,10 @@ const make = (
   Tracer.make({
     span(name, parent, context, links, startTime, kind, options) {
       const parentSpanId = Option.isSome(parent) && parent.value._tag === "Span"
-        ? fromTracerId(parent.value.spanId)
+        ? parent.value.spanId
         : undefined
       const parentTraceId = Option.isSome(parent)
-        ? fromTracerId(parent.value.traceId)
+        ? parent.value.traceId
         : undefined
       const traceId = parentTraceId ?? StudioStore.nextTraceId()
       const spanId = StudioStore.nextSpanId()
@@ -84,8 +76,8 @@ const make = (
       const span: Tracer.Span = {
         _tag: "Span",
         name,
-        spanId: String(spanId),
-        traceId: String(traceId),
+        spanId,
+        traceId,
         parent,
         context,
         get status(): Tracer.SpanStatus {
