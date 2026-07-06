@@ -1,26 +1,20 @@
+import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import type * as PubSub from "effect/PubSub"
-import * as Schema from "effect/Schema"
+import * as Queue from "effect/Queue"
 import * as Tracing from "../internal/Tracing.ts"
 import * as SqlClient from "../sql/SqlClient.ts"
-
-export type Span = Tracing.Span
-export const nextSpanId = Tracing.nextSpanId
-export const nextTraceId = Tracing.nextTraceId
-
-export const nextLogId = () => Tracing.nextPackedId()
-
-export const nextErrorId = () => Tracing.nextPackedId()
+import * as Studio from "./Studio.ts"
 
 export const studioTraceAttribute = "effect-start.studio.internal"
 
-export function isStudioTrace(spans: Array<Span>): boolean {
+export function isStudioTrace(spans: Array<Tracing.Span>): boolean {
   return spans.some((span) => span.attributes[studioTraceAttribute] === true)
 }
 
 export function filterOutStudioSpans(
-  spans: Array<Span>,
-): Array<Span> {
+  spans: Array<Tracing.Span>,
+): Array<Tracing.Span> {
   const hiddenTraceIds = new Set<string>()
 
   for (const span of spans) {
@@ -81,8 +75,8 @@ export interface MetricSnapshot {
 }
 
 export type StudioEvent =
-  | { readonly _tag: "SpanStart"; readonly span: Span }
-  | { readonly _tag: "SpanEnd"; readonly span: Span }
+  | { readonly _tag: "SpanStart"; readonly span: Tracing.Span }
+  | { readonly _tag: "SpanEnd"; readonly span: Tracing.Span }
   | { readonly _tag: "TraceStart"; readonly traceId: string }
   | { readonly _tag: "TraceEnd"; readonly traceId: string }
   | { readonly _tag: "Log"; readonly log: LogEntry }
@@ -99,8 +93,15 @@ export interface FiberContext {
   readonly annotations: Record<string, unknown>
 }
 
+export type Write = Effect.Effect<
+  unknown,
+  SqlClient.SqlError,
+  SqlClient.SqlClient
+>
+
 export interface State {
   readonly events: PubSub.PubSub<StudioEvent>
+  readonly writes: Queue.Queue<Write>
   readonly spanCapacity: number
   readonly logCapacity: number
   readonly errorCapacity: number
@@ -152,9 +153,9 @@ const DDL = [
     timestamp INTEGER NOT NULL,
     value TEXT NOT NULL
   )`,
-  `CREATE INDEX IF NOT EXISTS ix_metric_series_ts
+  `CREATE INDEX IF NOT EXISTS idx_MetricSample_name_tags_timestamp
     ON MetricSample(name, tags, timestamp)`,
-  `CREATE INDEX IF NOT EXISTS ix_metric_ts
+  `CREATE INDEX IF NOT EXISTS idx_MetricSample_timestamp
     ON MetricSample(timestamp)`,
 ]
 
@@ -200,61 +201,55 @@ function reviveBigint(value: unknown): unknown {
   return value
 }
 
-export const SpanRow = Schema.Struct({
-  spanId: Schema.BigIntFromSelf,
-  traceId: Schema.BigIntFromSelf,
-  fiberId: Schema.NullOr(Schema.String),
-  name: Schema.String,
-  kind: Schema.String,
-  parentSpanId: Schema.NullOr(Schema.BigIntFromSelf),
-  startTime: Schema.String,
-  endTime: Schema.NullOr(Schema.String),
-  durationMs: Schema.NullOr(Schema.Number),
-  status: Schema.String,
-  attributes: Schema.String,
-  events: Schema.String,
-})
-// remove those typeof X.Type in this file
-type SpanRow = typeof SpanRow.Type
+export interface SpanRow {
+  readonly spanId: bigint
+  readonly traceId: bigint
+  readonly fiberId: string | null
+  readonly name: string
+  readonly kind: string
+  readonly parentSpanId: bigint | null
+  readonly startTime: string
+  readonly endTime: string | null
+  readonly durationMs: number | null
+  readonly status: string
+  readonly attributes: string
+  readonly events: string
+}
 
-export const LogRow = Schema.Struct({
-  id: Schema.BigIntFromSelf,
-  level: Schema.String,
-  message: Schema.String,
-  fiberId: Schema.String,
-  cause: Schema.NullOr(Schema.String),
-  spans: Schema.String,
-  annotations: Schema.String,
-})
-type LogRow = typeof LogRow.Type
+export interface LogRow {
+  readonly id: bigint
+  readonly level: string
+  readonly message: string
+  readonly fiberId: string
+  readonly cause: string | null
+  readonly spans: string
+  readonly annotations: string
+}
 
-export const ErrorRow = Schema.Struct({
-  id: Schema.BigIntFromSelf,
-  fiberId: Schema.String,
-  interrupted: Schema.BigIntFromSelf,
-  prettyPrint: Schema.String,
-  details: Schema.String,
-})
-type ErrorRow = typeof ErrorRow.Type
+export interface ErrorRow {
+  readonly id: bigint
+  readonly fiberId: string
+  readonly interrupted: bigint
+  readonly prettyPrint: string
+  readonly details: string
+}
 
-export const FiberRow = Schema.Struct({
-  id: Schema.String,
-  parentId: Schema.NullOr(Schema.String),
-  spanName: Schema.NullOr(Schema.String),
-  traceId: Schema.NullOr(Schema.BigIntFromSelf),
-  annotations: Schema.String,
-})
-type FiberRow = typeof FiberRow.Type
+export interface FiberRow {
+  readonly id: string
+  readonly parentId: string | null
+  readonly spanName: string | null
+  readonly traceId: bigint | null
+  readonly annotations: string
+}
 
-export const MetricSampleRow = Schema.Struct({
-  id: Schema.BigIntFromSelf,
-  name: Schema.String,
-  type: Schema.String,
-  tags: Schema.String,
-  timestamp: Schema.BigIntFromSelf,
-  value: Schema.String,
-})
-type MetricSampleRow = typeof MetricSampleRow.Type
+interface MetricSampleRow {
+  readonly id: bigint
+  readonly name: string
+  readonly type: string
+  readonly tags: string
+  readonly timestamp: bigint
+  readonly value: string
+}
 
 function deserializeMetric(row: MetricSampleRow): MetricSnapshot {
   return {
@@ -267,8 +262,8 @@ function deserializeMetric(row: MetricSampleRow): MetricSnapshot {
 }
 
 // TODO: do we need to dserialize? why not store it directly?
-function deserializeSpan(row: SpanRow): Span {
-  const events = reviveBigint(JSON.parse(row.events)) as Span["events"]
+export function deserializeSpan(row: SpanRow): Tracing.Span {
+  const events = reviveBigint(JSON.parse(row.events)) as Tracing.Span["events"]
   return {
     spanId: String(row.spanId),
     traceId: String(row.traceId),
@@ -281,13 +276,13 @@ function deserializeSpan(row: SpanRow): Span {
     startTime: BigInt(row.startTime),
     endTime: row.endTime ? BigInt(row.endTime) : undefined,
     durationMs: row.durationMs ?? undefined,
-    status: row.status as Span["status"],
+    status: row.status as Tracing.Span["status"],
     attributes: JSON.parse(row.attributes),
     events,
   }
 }
 
-function deserializeLog(row: LogRow): LogEntry {
+export function deserializeLog(row: LogRow): LogEntry {
   return {
     id: row.id,
     level: row.level as LogEntry["level"],
@@ -299,7 +294,7 @@ function deserializeLog(row: LogRow): LogEntry {
   }
 }
 
-function deserializeError(row: ErrorRow): ErrorEntry {
+export function deserializeError(row: ErrorRow): ErrorEntry {
   return {
     id: row.id,
     fiberId: row.fiberId,
@@ -314,7 +309,7 @@ const withSql = <A, E>(
   f: (sql: SqlClient.SqlClient) => Effect.Effect<A, E>,
 ): Effect.Effect<A, E, SqlClient.SqlClient> => Effect.flatMap(SqlClient.SqlClient, f)
 
-export function insertSpan(span: Span) {
+export function insertSpan(span: Tracing.Span) {
   return withSql(
     (sql) =>
       sql`INSERT INTO Span ${
@@ -336,7 +331,7 @@ export function insertSpan(span: Span) {
   )
 }
 
-export function updateSpan(span: Span) {
+export function updateSpan(span: Tracing.Span) {
   return withSql(
     (sql) =>
       sql`UPDATE Span SET
@@ -421,47 +416,39 @@ export function upsertFiber(
   )
 }
 
-// TODO: properly type table baesd on the Studio DDL
-// TODO is there a beter way to clean up the database, maybe without the need to send two queries
-export function evict(table: string, capacity: number) {
-  // TODO: I don't think withSql is useful here, we use Effect.gen, might as well yield* SqlClient. find othe similar ones
+// Ids are snowflakes aliased to rowid, so time order is rowid order: keeping
+// the newest rows is a single delete below the (capacity + 1)-th largest id.
+// When the table holds at most capacity rows, the subquery yields NULL and
+// nothing matches.
+export function evict(
+  table: "Span" | "Log" | "Error" | "MetricSample",
+  capacity: number,
+) {
   return withSql((sql) =>
-    Effect.gen(function*() {
-      const [{ cnt }] = yield* sql<
-        { cnt: bigint }
-      >`SELECT count(*) as cnt FROM ${sql(table)}`
-      if (cnt > capacity) {
-        const excess = Number(cnt) - capacity
-        yield* sql`DELETE FROM ${sql(table)} WHERE rowid IN (SELECT rowid FROM ${
-          sql(table)
-        } ORDER BY rowid LIMIT ${excess})`
-      }
-    })
+    sql`DELETE FROM ${sql(table)} WHERE rowid <= (
+      SELECT rowid FROM ${sql(table)}
+      ORDER BY rowid DESC LIMIT 1 OFFSET ${capacity}
+    )`
   )
 }
 
-// TODO: this seem overly complex. understand how we use it and suggest the alternatives
-// if we NEED to do things outside of Effect context, maybe we can create a studio runtime
-// that contains sql, etc
-export function runWrite(
-  sql: SqlClient.SqlClient,
-  effect: Effect.Effect<unknown, SqlClient.SqlError, SqlClient.SqlClient>,
-) {
-  writeQueue = writeQueue
-    .then(() =>
-      Effect
-        .runPromise(
-          Effect.withTracerEnabled(
-            Effect.provideService(effect, SqlClient.SqlClient, sql),
-            false,
-          ),
-        )
-        .then(() => undefined)
-    )
-    .catch(() => undefined)
+// Tracer hooks, loggers, and supervisors are synchronous callbacks invoked by
+// the runtime, so they cannot yield the insert effects themselves. They enqueue
+// writes here, and a fiber forked in the Studio layer drains them in order.
+export function runWrite(store: State, effect: Write) {
+  Queue.unsafeOffer(store.writes, effect)
 }
 
-let writeQueue = Promise.resolve<void>(undefined)
+// Events are published synchronously while writes are queued, so readers
+// reacting to an event must flush before querying to observe its data.
+export function flushWrites() {
+  return Effect.gen(function*() {
+    const studio = yield* Studio.Studio
+    const done = yield* Deferred.make<void>()
+    yield* Queue.offer(studio.store.writes, Deferred.succeed(done, undefined))
+    yield* Deferred.await(done)
+  })
+}
 
 const noTrace = <A, E, R>(
   effect: Effect.Effect<A, E, R>,
@@ -489,17 +476,6 @@ export function allLogs() {
   )
 }
 
-export function allErrors() {
-  return noTrace(
-    withSql((sql) =>
-      Effect.map(
-        sql<ErrorRow>`SELECT * FROM Error ORDER BY rowid`,
-        (rows) => rows.map(deserializeError),
-      )
-    ),
-  )
-}
-
 export function spansByTraceId(traceId: string) {
   return noTrace(
     withSql((sql) =>
@@ -508,114 +484,6 @@ export function spansByTraceId(traceId: string) {
           SpanRow
         >`SELECT * FROM Span WHERE traceId = ${traceId} ORDER BY rowid`,
         (rows) => rows.map(deserializeSpan),
-      )
-    ),
-  )
-}
-
-export function spansByFiberId(fiberId: string) {
-  return noTrace(
-    withSql((sql) =>
-      Effect.map(
-        sql<
-          SpanRow
-        >`SELECT * FROM Span WHERE fiberId = ${fiberId} ORDER BY rowid`,
-        (rows) => rows.map(deserializeSpan),
-      )
-    ),
-  )
-}
-
-export function logsByFiberId(fiberId: string) {
-  return noTrace(
-    withSql((sql) =>
-      Effect.map(
-        sql<
-          LogRow
-        >`SELECT * FROM Log WHERE fiberId = ${fiberId} ORDER BY rowid`,
-        (rows) => rows.map(deserializeLog),
-      )
-    ),
-  )
-}
-
-export function logsByTraceId(traceId: string) {
-  return noTrace(
-    withSql((sql) =>
-      Effect.map(
-        sql<LogRow>`SELECT * FROM Log WHERE fiberId IN (
-          SELECT DISTINCT fiberId FROM Span
-          WHERE traceId = ${traceId} AND fiberId IS NOT NULL
-        ) ORDER BY rowid`,
-        (rows) => rows.map(deserializeLog),
-      )
-    ),
-  )
-}
-
-export function getFiber(fiberId: string) {
-  return noTrace(
-    withSql((sql) =>
-      Effect.map(
-        sql<FiberRow>`SELECT * FROM Fiber WHERE id = ${fiberId}`,
-        (rows) => rows.length > 0 ? rows[0] : undefined,
-      )
-    ),
-  )
-}
-
-export function getParentChain(fiberId: string) {
-  return noTrace(
-    withSql((sql) =>
-      Effect.gen(function*() {
-        const chain: Array<string> = []
-        const visited = new Set<string>()
-        let current = fiberId
-        while (true) {
-          const rows = yield* sql<
-            FiberRow
-          >`SELECT * FROM Fiber WHERE id = ${current}`
-          if (rows.length === 0 || !rows[0].parentId) break
-          const parentId = rows[0].parentId
-          if (visited.has(parentId)) break
-          chain.push(parentId)
-          visited.add(parentId)
-          current = parentId
-        }
-        return chain.reverse()
-      })
-    ),
-  )
-}
-
-export function latestMetrics() {
-  return noTrace(
-    withSql((sql) =>
-      Effect.map(
-        sql<MetricSampleRow>`SELECT * FROM MetricSample
-          WHERE timestamp = (SELECT MAX(timestamp) FROM MetricSample)
-          ORDER BY name, tags`,
-        (rows) => rows.map(deserializeMetric),
-      )
-    ),
-  )
-}
-
-export function metricHistory(
-  name: string,
-  tags: ReadonlyArray<{ key: string; value: string }>,
-  sinceMs: number,
-) {
-  const tagsKey = canonicalTags(tags)
-  return noTrace(
-    withSql((sql) =>
-      Effect.map(
-        sql<MetricSampleRow>`SELECT * FROM MetricSample
-          WHERE name = ${name}
-            AND tags = ${tagsKey}
-            AND timestamp >= ${sinceMs}
-          ORDER BY timestamp`,
-        (rows) => rows.map(deserializeMetric),
       )
     ),
   )
@@ -694,22 +562,3 @@ export function processSeries(historyMs: number) {
   )
 }
 
-export function getFiberContext(fiberId: string) {
-  return noTrace(
-    withSql((sql) =>
-      Effect.map(
-        sql<FiberRow>`SELECT * FROM Fiber WHERE id = ${fiberId}`,
-        (rows): FiberContext | undefined =>
-          rows.length > 0
-            ? {
-              spanName: rows[0].spanName ?? undefined,
-              traceId: rows[0].traceId != null
-                ? String(rows[0].traceId)
-                : undefined,
-              annotations: JSON.parse(rows[0].annotations),
-            }
-            : undefined,
-      )
-    ),
-  )
-}

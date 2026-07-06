@@ -6,12 +6,12 @@ import * as Layer from "effect/Layer"
 import * as List from "effect/List"
 import * as Logger from "effect/Logger"
 import * as PubSub from "effect/PubSub"
-import * as SqlClient from "../sql/SqlClient.ts"
+import * as Tracing from "../internal/Tracing.ts"
 import * as Pretty from "./internal/Pretty.ts"
 import * as Studio from "./Studio.ts"
 import * as StudioStore from "./StudioStore.ts"
 
-const make = (store: StudioStore.State, sql: SqlClient.SqlClient) =>
+const make = (store: StudioStore.State) =>
   Logger.make((logOptions) => {
     try {
       const levelMap: Record<string, StudioStore.LogEntry["level"]> = {
@@ -33,7 +33,7 @@ const make = (store: StudioStore.State, sql: SqlClient.SqlClient) =>
       })
 
       const log: StudioStore.LogEntry = {
-        id: StudioStore.nextLogId(),
+        id: Tracing.nextPackedId(),
         level,
         message: Pretty.formatLogMessage(logOptions.message),
         fiberId: FiberId.threadName(logOptions.fiberId),
@@ -42,7 +42,7 @@ const make = (store: StudioStore.State, sql: SqlClient.SqlClient) =>
         annotations: ann,
       }
       StudioStore.runWrite(
-        sql,
+        store,
         Effect.zipRight(
           StudioStore.insertLog(log),
           StudioStore.evict("Log", store.logCapacity),
@@ -52,14 +52,10 @@ const make = (store: StudioStore.State, sql: SqlClient.SqlClient) =>
     } catch {}
   })
 
-export const layer: Layer.Layer<
-  never,
-  never,
-  Studio.Studio | SqlClient.SqlClient
-> = Layer.unwrapEffect(
-  Effect.gen(function*() {
-    const studio = yield* Studio.Studio
-    const sql = yield* SqlClient.SqlClient
-    return Logger.add(make(studio.store, sql))
-  }),
-)
+export const layer: Layer.Layer<never, never, Studio.Studio> = Layer
+  .unwrapEffect(
+    Effect.gen(function*() {
+      const studio = yield* Studio.Studio
+      return Logger.add(make(studio.store))
+    }),
+  )

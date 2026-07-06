@@ -6,17 +6,14 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as PubSub from "effect/PubSub"
 import * as Tracer from "effect/Tracer"
-import * as SqlClient from "../sql/SqlClient.ts"
+import * as Tracing from "../internal/Tracing.ts"
 import * as Studio from "./Studio.ts"
 import * as StudioStore from "./StudioStore.ts"
 
 const publish = (store: StudioStore.State, event: StudioStore.StudioEvent) =>
   Effect.runSync(PubSub.publish(store.events, event))
 
-const make = (
-  store: StudioStore.State,
-  sql: SqlClient.SqlClient,
-): Tracer.Tracer =>
+const make = (store: StudioStore.State): Tracer.Tracer =>
   Tracer.make({
     span(name, parent, context, links, startTime, kind, options) {
       const parentSpanId = Option.isSome(parent) && parent.value._tag === "Span"
@@ -25,8 +22,8 @@ const make = (
       const parentTraceId = Option.isSome(parent)
         ? parent.value.traceId
         : undefined
-      const traceId = parentTraceId ?? StudioStore.nextTraceId()
-      const spanId = StudioStore.nextSpanId()
+      const traceId = parentTraceId ?? Tracing.nextTraceId()
+      const spanId = Tracing.nextSpanId()
 
       const attributes: Record<string, unknown> = {}
       const currentFiber = Fiber.getCurrentFiber()
@@ -43,7 +40,7 @@ const make = (
         }
       }
 
-      const studioSpan: StudioStore.Span = {
+      const studioSpan: Tracing.Span = {
         spanId,
         traceId,
         fiberId,
@@ -59,7 +56,7 @@ const make = (
       }
 
       StudioStore.runWrite(
-        sql,
+        store,
         Effect.zipRight(
           StudioStore.insertSpan(studioSpan),
           StudioStore.evict("Span", store.spanCapacity),
@@ -100,7 +97,7 @@ const make = (
           studioSpan.durationMs = Number(endTime - studioSpan.startTime) /
             1_000_000
           studioSpan.status = Exit.isSuccess(exit) ? "ok" : "error"
-          StudioStore.runWrite(sql, StudioStore.updateSpan(studioSpan))
+          StudioStore.runWrite(store, StudioStore.updateSpan(studioSpan))
           publish(store, { _tag: "SpanEnd", span: studioSpan })
           if (parentSpanId === undefined) {
             publish(store, { _tag: "TraceEnd", traceId })
@@ -109,11 +106,11 @@ const make = (
         attribute(key, value) {
           attrs.set(key, value)
           ;(studioSpan.attributes as Record<string, unknown>)[key] = value
-          StudioStore.runWrite(sql, StudioStore.updateSpan(studioSpan))
+          StudioStore.runWrite(store, StudioStore.updateSpan(studioSpan))
         },
         event(name, startTime, attributes) {
           studioSpan.events.push({ name, startTime, attributes })
-          StudioStore.runWrite(sql, StudioStore.updateSpan(studioSpan))
+          StudioStore.runWrite(store, StudioStore.updateSpan(studioSpan))
         },
         addLinks(newLinks) {
           spanLinks.push(...newLinks)
@@ -126,14 +123,10 @@ const make = (
     },
   })
 
-export const layer: Layer.Layer<
-  never,
-  never,
-  Studio.Studio | SqlClient.SqlClient
-> = Layer.unwrapEffect(
-  Effect.gen(function*() {
-    const studio = yield* Studio.Studio
-    const sql = yield* SqlClient.SqlClient
-    return Layer.setTracer(make(studio.store, sql))
-  }),
-)
+export const layer: Layer.Layer<never, never, Studio.Studio> = Layer
+  .unwrapEffect(
+    Effect.gen(function*() {
+      const studio = yield* Studio.Studio
+      return Layer.setTracer(make(studio.store))
+    }),
+  )

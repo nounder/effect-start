@@ -171,31 +171,39 @@ export default Route.map({
         const search = (ctx.searchParams.traceSearch ?? "").toLowerCase()
         return Stream.fromPubSub(studio.store.events).pipe(
           Stream.filter((e) => e._tag === "TraceEnd"),
-          Stream.mapEffect((e) =>
+          Stream.filterEffect((e) =>
             Effect
               .gen(function*() {
+                yield* StudioStore.flushWrites()
                 const traceSpans = yield* StudioStore.spansByTraceId(e.traceId)
-                if (StudioStore.isStudioTrace(traceSpans)) return undefined
-                const root = traceSpans.find((s) => !s.parentSpanId) ??
-                  traceSpans[0]
-                if (search && !root.name.toLowerCase().startsWith(search)) {
-                  return undefined
-                }
-                const traceHtml = Html.text(
-                  <Ui.TraceGroup
-                    prefix={studio.path}
-                    id={e.traceId}
-                    spans={traceSpans}
-                  />,
+                return traceSpans.length > 0 &&
+                  !StudioStore.isStudioTrace(traceSpans)
+              })
+              .pipe(
+                Effect.provideService(Studio.Studio, studio),
+                Effect.provideService(SqlClient.SqlClient, sql),
+              )
+          ),
+          Stream.debounce("500 millis"),
+          Stream.mapEffect(() =>
+            Effect
+              .gen(function*() {
+                let spans = StudioStore.filterOutStudioSpans(
+                  yield* StudioStore.allSpans(),
                 )
+                if (search) {
+                  spans = spans.filter((s) => s.name.toLowerCase().startsWith(search))
+                }
+                const html = Html
+                  .text(<Ui.TraceGroups prefix={studio.path} spans={spans} />)
+                  .replace(/\n/g, "")
                 return {
                   event: "datastar-patch-elements",
-                  data: `selector .tl-header\nmode after\nelements ${traceHtml}`,
+                  data: `selector #traces-container\nmode inner\nelements ${html}`,
                 }
               })
               .pipe(Effect.provideService(SqlClient.SqlClient, sql))
           ),
-          Stream.filter((event): event is { event: string; data: string } => event !== undefined),
         )
       })
     ),
@@ -217,14 +225,63 @@ export default Route.map({
           </Ui.Shell>
         )
       }
-      const spans = yield* StudioStore.spansByTraceId(traceId)
-      const logs = yield* StudioStore.logsByTraceId(traceId)
       return (
         <Ui.Shell prefix={studio.path} active="traces">
-          <Ui.TraceDetail prefix={studio.path} spans={spans} logs={logs} />
+          <div
+            id="trace-detail"
+            style="display:flex;flex-direction:column;flex:1;overflow:hidden;min-width:0"
+          >
+            {yield* renderTraceDetail(traceId)}
+          </div>
+          <div data-init={(c) => c.actions.get(location.pathname)} />
         </Ui.Shell>
       )
     }),
+    Route.sse((ctx) =>
+      Effect.gen(function*() {
+        const studio = yield* Studio.Studio
+        const sql = yield* SqlClient.SqlClient
+        let traceId: string
+        try {
+          traceId = String(BigInt(ctx.pathParams.id))
+        } catch {
+          return Stream.empty
+        }
+        return Stream.fromPubSub(studio.store.events).pipe(
+          Stream.filterEffect((e) => {
+            if (e._tag === "SpanStart" || e._tag === "SpanEnd") {
+              return Effect.succeed(e.span.traceId === traceId)
+            }
+            if (e._tag === "Log") {
+              return sql`SELECT 1 FROM Span
+                WHERE traceId = ${traceId} AND fiberId = ${e.log.fiberId}
+                LIMIT 1`.pipe(
+                  Effect.map((rows) => rows.length > 0),
+                  Effect.withTracerEnabled(false),
+                )
+            }
+            return Effect.succeed(false)
+          }),
+          Stream.debounce("500 millis"),
+          Stream.mapEffect(() =>
+            Effect
+              .gen(function*() {
+                const html = Html
+                  .text(yield* renderTraceDetail(traceId))
+                  .replace(/\n/g, "")
+                return {
+                  event: "datastar-patch-elements",
+                  data: `selector #trace-detail\nmode inner\nelements ${html}`,
+                }
+              })
+              .pipe(
+                Effect.provideService(Studio.Studio, studio),
+                Effect.provideService(SqlClient.SqlClient, sql),
+              )
+          ),
+        )
+      })
+    ),
   ),
 
   "/metrics": Route.get(
@@ -405,7 +462,11 @@ export default Route.map({
       const studio = yield* Studio.Studio
       const request = yield* Route.Request
       const search = ctx.searchParams.errorSearch ?? ""
-      const allErrors = yield* StudioStore.allErrors()
+      const sql = yield* SqlClient.SqlClient
+      const errorRows = yield* sql<StudioStore.ErrorRow>`SELECT * FROM Error ORDER BY rowid`.pipe(
+        Effect.withTracerEnabled(false),
+      )
+      const allErrors = errorRows.map(StudioStore.deserializeError)
       const tagSet = new Set<string>()
       for (const error of allErrors) {
         for (const d of error.details) {
@@ -568,32 +629,50 @@ export default Route.map({
       const studio = yield* Studio.Studio
       const fiberId = ctx.pathParams.id
       const fiberName = fiberId.startsWith("#") ? fiberId : `#${fiberId}`
-
-      const fiberLogs = yield* StudioStore.logsByFiberId(fiberName)
-      const fiberSpans = yield* StudioStore.spansByFiberId(fiberName)
-
-      const hasRecent = fiberLogs.some(
-        (l) => Date.now() - Number(Unique.snowflake.timestamp(l.id)) < 5000,
-      )
-      const status: "alive" | "dead" = hasRecent ? "alive" : "dead"
-
-      const parents = yield* StudioStore.getParentChain(fiberName)
-      const fiberContext = yield* StudioStore.getFiberContext(fiberName)
-
       return (
         <Ui.Shell prefix={studio.path} active="fibers">
-          <Ui.FiberDetail
-            prefix={studio.path}
-            fiberId={fiberName}
-            logs={fiberLogs}
-            spans={fiberSpans}
-            status={status}
-            parents={parents}
-            context={fiberContext}
-          />
+          <div
+            id="fiber-detail"
+            style="display:flex;flex-direction:column;flex:1;overflow:hidden;min-width:0"
+          >
+            {yield* renderFiberDetail(fiberName)}
+          </div>
+          <div data-init={(c) => c.actions.get(location.pathname)} />
         </Ui.Shell>
       )
     }),
+    Route.sse((ctx) =>
+      Effect.gen(function*() {
+        const studio = yield* Studio.Studio
+        const sql = yield* SqlClient.SqlClient
+        const fiberId = ctx.pathParams.id
+        const fiberName = fiberId.startsWith("#") ? fiberId : `#${fiberId}`
+        return Stream.fromPubSub(studio.store.events).pipe(
+          Stream.filter((e) =>
+            (e._tag === "Log" && e.log.fiberId === fiberName) ||
+            ((e._tag === "SpanStart" || e._tag === "SpanEnd") &&
+              e.span.fiberId === fiberName)
+          ),
+          Stream.debounce("500 millis"),
+          Stream.mapEffect(() =>
+            Effect
+              .gen(function*() {
+                const html = Html
+                  .text(yield* renderFiberDetail(fiberName))
+                  .replace(/\n/g, "")
+                return {
+                  event: "datastar-patch-elements",
+                  data: `selector #fiber-detail\nmode inner\nelements ${html}`,
+                }
+              })
+              .pipe(
+                Effect.provideService(Studio.Studio, studio),
+                Effect.provideService(SqlClient.SqlClient, sql),
+              )
+          ),
+        )
+      })
+    ),
   ),
 
   "/routes": Route.get(
@@ -697,3 +776,75 @@ export default Route.map({
     }),
   ),
 })
+
+function renderTraceDetail(traceId: string) {
+  return Effect.gen(function*() {
+    const studio = yield* Studio.Studio
+    const sql = yield* SqlClient.SqlClient
+    yield* StudioStore.flushWrites()
+    const spans = yield* StudioStore.spansByTraceId(traceId)
+    const logRows = yield* sql<StudioStore.LogRow>`SELECT * FROM Log
+      WHERE fiberId IN (
+        SELECT DISTINCT fiberId FROM Span
+        WHERE traceId = ${traceId} AND fiberId IS NOT NULL
+      ) ORDER BY rowid`
+    const logs = logRows.map(StudioStore.deserializeLog)
+    return <Ui.TraceDetail prefix={studio.path} spans={spans} logs={logs} />
+  }).pipe(Effect.withTracerEnabled(false))
+}
+
+function renderFiberDetail(fiberName: string) {
+  return Effect.gen(function*() {
+    const studio = yield* Studio.Studio
+    const sql = yield* SqlClient.SqlClient
+    yield* StudioStore.flushWrites()
+    const logRows = yield* sql<StudioStore.LogRow>`SELECT * FROM Log
+      WHERE fiberId = ${fiberName} ORDER BY rowid`
+    const logs = logRows.map(StudioStore.deserializeLog)
+    const spanRows = yield* sql<StudioStore.SpanRow>`SELECT * FROM Span
+      WHERE fiberId = ${fiberName} ORDER BY rowid`
+    const spans = spanRows.map(StudioStore.deserializeSpan)
+    const hasRecent = logs.some(
+      (l) => Date.now() - Number(Unique.snowflake.timestamp(l.id)) < 5000,
+    )
+
+    const parents: Array<string> = []
+    const visited = new Set<string>()
+    let current = fiberName
+    while (true) {
+      const rows = yield* sql<StudioStore.FiberRow>`SELECT * FROM Fiber
+        WHERE id = ${current}`
+      if (rows.length === 0 || !rows[0].parentId) break
+      const parentId = rows[0].parentId
+      if (visited.has(parentId)) break
+      parents.push(parentId)
+      visited.add(parentId)
+      current = parentId
+    }
+    parents.reverse()
+
+    const fiberRows = yield* sql<StudioStore.FiberRow>`SELECT * FROM Fiber
+      WHERE id = ${fiberName}`
+    const context: StudioStore.FiberContext | undefined = fiberRows.length > 0
+      ? {
+        spanName: fiberRows[0].spanName ?? undefined,
+        traceId: fiberRows[0].traceId != null
+          ? String(fiberRows[0].traceId)
+          : undefined,
+        annotations: JSON.parse(fiberRows[0].annotations),
+      }
+      : undefined
+
+    return (
+      <Ui.FiberDetail
+        prefix={studio.path}
+        fiberId={fiberName}
+        logs={logs}
+        spans={spans}
+        status={hasRecent ? "alive" : "dead"}
+        parents={parents}
+        context={context}
+      />
+    )
+  }).pipe(Effect.withTracerEnabled(false))
+}

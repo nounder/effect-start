@@ -1,11 +1,12 @@
 import * as test from "bun:test"
+import type * as Tracing from "../../../../src/internal/Tracing.ts"
 import * as StudioStore from "../../../../src/studio/StudioStore.ts"
 
 function makeSpan(
   options:
-    & Partial<StudioStore.Span>
-    & Pick<StudioStore.Span, "spanId" | "traceId" | "name">,
-): StudioStore.Span {
+    & Partial<Tracing.Span>
+    & Pick<Tracing.Span, "spanId" | "traceId" | "name">,
+): Tracing.Span {
   return {
     spanId: options.spanId,
     traceId: options.traceId,
@@ -24,7 +25,7 @@ function makeSpan(
 
 test.describe("traces route", () => {
   test.it("detects studio traces by attribute", () => {
-    const spans: Array<StudioStore.Span> = [
+    const spans: Array<Tracing.Span> = [
       makeSpan({
         spanId: "1",
         traceId: "42",
@@ -39,7 +40,7 @@ test.describe("traces route", () => {
   })
 
   test.it("removes all spans for traces marked as studio", () => {
-    const spans: Array<StudioStore.Span> = [
+    const spans: Array<Tracing.Span> = [
       makeSpan({
         spanId: "1",
         traceId: "1",

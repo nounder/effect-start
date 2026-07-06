@@ -3,6 +3,7 @@ import * as Effect from "effect/Effect"
 import * as GlobalValue from "effect/GlobalValue"
 import * as Layer from "effect/Layer"
 import * as PubSub from "effect/PubSub"
+import * as Queue from "effect/Queue"
 import * as Scope from "effect/Scope"
 import type * as PathPattern from "../internal/PathPattern.ts"
 import * as Route from "../Route.ts"
@@ -69,16 +70,24 @@ export function layer(options?: Options) {
 
 function layerStudio(options?: Options) {
   return Layer
-    .effect(
+    .scoped(
       Studio,
       Effect.gen(function*() {
         yield* StudioStore.setupDatabase
         const store: StudioStore.State = {
           events: yield* PubSub.unbounded<StudioStore.StudioEvent>(),
+          writes: yield* Queue.unbounded<StudioStore.Write>(),
           spanCapacity: options?.spanCapacity ?? 1000,
           logCapacity: options?.logCapacity ?? 5000,
           errorCapacity: options?.errorCapacity ?? 1000,
         }
+        yield* Effect.forkScoped(
+          Queue.take(store.writes).pipe(
+            Effect.flatMap((write) => Effect.catchAllCause(write, () => Effect.void)),
+            Effect.forever,
+            Effect.withTracerEnabled(false),
+          ),
+        )
         return {
           path: options?.path ?? "/studio",
           auth: options?.auth,

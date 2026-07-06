@@ -5,7 +5,9 @@ import * as RouteHttp from "effect-start/RouteHttp"
 import * as RouteHttpTracer from "effect-start/RouteHttpTracer"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
+import * as Stream from "effect/Stream"
 import type * as Tracer from "effect/Tracer"
+import * as Tracing from "../src/internal/Tracing.ts"
 
 test.describe("tracing", () => {
   test.it("creates span with correct name and kind", () =>
@@ -302,6 +304,47 @@ test.describe("tracing", () => {
         test
           .expect(capturedSpan?.name)
           .toBe("GET /users")
+      })
+      .pipe(Effect.runPromise))
+
+  test.it("spans created inside an sse stream join the request trace", () =>
+    Effect
+      .gen(function*() {
+        const spans: Array<Tracing.Span> = []
+        const runtime = yield* Effect.runtime<never>().pipe(
+          Effect.withTracer(Tracing.makeTracer(spans)),
+        )
+
+        const handler = RouteHttp.toWebHandlerRuntime(runtime)(
+          Route.get(
+            Route.sse(() =>
+              Stream.make({ data: "a" }, { data: "b" }).pipe(
+                Stream.mapEffect((event) => Effect.withSpan(Effect.succeed(event), "sse.event")),
+              )
+            ),
+          ),
+        )
+
+        const response = yield* Effect.promise(() => Promise.resolve(handler(new Request("http://localhost/events"))))
+        yield* Effect.promise(() => response.text())
+
+        const serverSpan = spans.find((span) => span.name === "http.server GET")
+        const eventSpans = spans.filter((span) => span.name === "sse.event")
+
+        test
+          .expect(serverSpan)
+          .toBeDefined()
+        test
+          .expect(eventSpans)
+          .toHaveLength(2)
+        for (const span of eventSpans) {
+          test
+            .expect(span.traceId)
+            .toBe(serverSpan!.traceId)
+          test
+            .expect(span.parentSpanId)
+            .toBe(serverSpan!.spanId)
+        }
       })
       .pipe(Effect.runPromise))
 

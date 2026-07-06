@@ -5,6 +5,7 @@ import * as RouteHttp from "effect-start/RouteHttp"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as PubSub from "effect/PubSub"
+import * as Queue from "effect/Queue"
 import * as Bundle from "../../src/bundler/Bundle.ts"
 import routes from "../../src/studio/routes.tsx"
 import * as Studio from "../../src/studio/Studio.ts"
@@ -21,6 +22,7 @@ const studioLayer = (auth: Studio.Studio["Type"]["auth"]) =>
         auth,
         store: {
           events: yield* PubSub.unbounded<StudioStore.StudioEvent>(),
+          writes: yield* Queue.unbounded<StudioStore.Write>(),
           spanCapacity: 0,
           logCapacity: 0,
           errorCapacity: 0,

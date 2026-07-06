@@ -1,5 +1,6 @@
 import * as Option from "effect/Option"
 import * as Html from "../Html.ts"
+import type * as Tracing from "../internal/Tracing.ts"
 import * as Unique from "../Unique.ts"
 import * as Pretty from "./internal/Pretty.ts"
 import type * as StudioStore from "./StudioStore.ts"
@@ -323,7 +324,7 @@ function StatusBadge(props: { status: string }) {
 }
 
 interface TreeSpan {
-  span: StudioStore.Span
+  span: Tracing.Span
   depth: number
   childCount: number
   isLastChild: boolean
@@ -331,8 +332,8 @@ interface TreeSpan {
 }
 
 function sortByStartTime(
-  a: StudioStore.Span,
-  b: StudioStore.Span,
+  a: Tracing.Span,
+  b: Tracing.Span,
 ): number {
   if (a.startTime < b.startTime) return -1
   if (a.startTime > b.startTime) return 1
@@ -340,8 +341,8 @@ function sortByStartTime(
 }
 
 function pickRootSpan(
-  spans: Array<StudioStore.Span>,
-): StudioStore.Span {
+  spans: Array<Tracing.Span>,
+): Tracing.Span {
   const spanIds = new Set(spans.map((span) => span.spanId))
   return (
     spans.find((span) => !span.parentSpanId || !spanIds.has(span.parentSpanId)) ??
@@ -349,15 +350,15 @@ function pickRootSpan(
   )
 }
 
-function buildSpanTree(spans: Array<StudioStore.Span>): Array<TreeSpan> {
-  const byId = new Map<string, StudioStore.Span>()
-  const childrenOf = new Map<string, Array<StudioStore.Span>>()
+function buildSpanTree(spans: Array<Tracing.Span>): Array<TreeSpan> {
+  const byId = new Map<string, Tracing.Span>()
+  const childrenOf = new Map<string, Array<Tracing.Span>>()
 
   for (const s of spans) {
     byId.set(s.spanId, s)
   }
 
-  const roots: Array<StudioStore.Span> = []
+  const roots: Array<Tracing.Span> = []
   for (const s of spans) {
     if (s.parentSpanId && byId.has(s.parentSpanId)) {
       let children = childrenOf.get(s.parentSpanId)
@@ -380,7 +381,7 @@ function buildSpanTree(spans: Array<StudioStore.Span>): Array<TreeSpan> {
   const visited = new Set<string>()
 
   function walk(
-    span: StudioStore.Span,
+    span: Tracing.Span,
     depth: number,
     isLast: boolean,
     ancestors: Array<boolean>,
@@ -480,7 +481,7 @@ function TimeAxis(props: { totalMs: number }) {
   )
 }
 
-function SpanDetailBody(props: { span: StudioStore.Span }) {
+function SpanDetailBody(props: { span: Tracing.Span }) {
   const s = props.span
   const stacktrace = s.attributes["code.stacktrace"] as string | undefined
   const customAttrs = Object.entries(s.attributes).filter(([k]) => k !== "code.stacktrace")
@@ -588,7 +589,7 @@ function WaterfallRow(
 }
 
 function MiniWaterfall(props: {
-  spans: Array<StudioStore.Span>
+  spans: Array<Tracing.Span>
   totalMs: number
   rootStart: bigint
 }) {
@@ -615,9 +616,9 @@ function MiniWaterfall(props: {
 }
 
 export function groupByTraceId(
-  spans: Array<StudioStore.Span>,
-): Map<string, Array<StudioStore.Span>> {
-  const groups = new Map<string, Array<StudioStore.Span>>()
+  spans: Array<Tracing.Span>,
+): Map<string, Array<Tracing.Span>> {
+  const groups = new Map<string, Array<Tracing.Span>>()
   for (const span of spans) {
     let group = groups.get(span.traceId)
     if (!group) {
@@ -645,7 +646,7 @@ function statusBadgeColors(status: number): { bg: string; fg: string } {
   return { bg: "#052e16", fg: "#22c55e" }
 }
 
-function SpanTitle(props: { span: StudioStore.Span }) {
+function SpanTitle(props: { span: Tracing.Span }) {
   const span = props.span
   const isServer = span.name.startsWith("http.server")
   const isClient = span.name.startsWith("http.client")
@@ -685,7 +686,7 @@ function SpanTitle(props: { span: StudioStore.Span }) {
 export function TraceGroup(props: {
   prefix: string
   id?: string
-  spans: Array<StudioStore.Span>
+  spans: Array<Tracing.Span>
 }) {
   if (props.spans.length === 0) return null
   const root = pickRootSpan(props.spans)
@@ -722,7 +723,7 @@ export function TraceGroup(props: {
 }
 
 export function TraceGroups(
-  props: { prefix: string; spans: Array<StudioStore.Span> },
+  props: { prefix: string; spans: Array<Tracing.Span> },
 ) {
   const groups = groupByTraceId(props.spans)
   const sorted = Array
@@ -762,7 +763,7 @@ export function TraceGroups(
 export function TraceDetail(
   props: {
     prefix: string
-    spans: Array<StudioStore.Span>
+    spans: Array<Tracing.Span>
     logs: Array<StudioStore.LogEntry>
   },
 ) {
@@ -870,7 +871,7 @@ export function getParentChain(
 
 export function collectFibers(
   logs: Array<StudioStore.LogEntry>,
-  spans: Array<StudioStore.Span>,
+  spans: Array<Tracing.Span>,
 ): Array<FiberSummary> {
   const map = new Map<string, FiberSummary>()
   const now = Date.now()
@@ -1001,7 +1002,7 @@ export function FiberDetail(props: {
   prefix: string
   fiberId: string
   logs: Array<StudioStore.LogEntry>
-  spans: Array<StudioStore.Span>
+  spans: Array<Tracing.Span>
   status: "alive" | "dead"
   parents: Array<string>
   context: StudioStore.FiberContext | undefined
