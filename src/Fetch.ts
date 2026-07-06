@@ -56,11 +56,23 @@ function withTrace<E, R>(
       }
       span.attribute("url.scheme", url.protocol.slice(0, -1))
 
+      const requestContentType = request.headers.get("content-type")
+      if (requestContentType !== null) {
+        span.attribute(
+          "http.request.header.content-type",
+          [requestContentType],
+        )
+      }
+
       return Effect.flatMap(
         Effect.exit(Effect.withParentSpan(effect, span)),
         (exit) => {
           if (exit._tag === "Success") {
             span.attribute("http.response.status_code", exit.value.status ?? 0)
+            const contentType = exit.value.headers["content-type"]
+            if (typeof contentType === "string") {
+              span.attribute("http.response.header.content-type", [contentType])
+            }
           }
           return exit
         },

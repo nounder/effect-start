@@ -394,6 +394,14 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
                   span.attribute("user_agent.original", userAgent)
                 }
 
+                const requestContentType = request.headers.get("content-type")
+                if (requestContentType !== null) {
+                  span.attribute(
+                    "http.request.header.content-type",
+                    [requestContentType],
+                  )
+                }
+
                 return Effect.flatMap(
                   Effect.exit(Effect.withParentSpan(innerEffect, span)),
                   (exit) => {
@@ -402,6 +410,13 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
                         "http.response.status_code",
                         exit.value.status,
                       )
+                      const contentType = exit.value.headers.get("content-type")
+                      if (contentType !== null) {
+                        span.attribute(
+                          "http.response.header.content-type",
+                          [contentType],
+                        )
+                      }
                     }
                     return exit
                   },
