@@ -201,12 +201,12 @@ function reviveBigint(value: unknown): unknown {
 }
 
 export const SpanRow = Schema.Struct({
-  spanId: Schema.Number,
-  traceId: Schema.Number,
+  spanId: Schema.BigIntFromSelf,
+  traceId: Schema.BigIntFromSelf,
   fiberId: Schema.NullOr(Schema.String),
   name: Schema.String,
   kind: Schema.String,
-  parentSpanId: Schema.NullOr(Schema.Number),
+  parentSpanId: Schema.NullOr(Schema.BigIntFromSelf),
   startTime: Schema.String,
   endTime: Schema.NullOr(Schema.String),
   durationMs: Schema.NullOr(Schema.Number),
@@ -218,7 +218,7 @@ export const SpanRow = Schema.Struct({
 type SpanRow = typeof SpanRow.Type
 
 export const LogRow = Schema.Struct({
-  id: Schema.Number,
+  id: Schema.BigIntFromSelf,
   level: Schema.String,
   message: Schema.String,
   fiberId: Schema.String,
@@ -229,9 +229,9 @@ export const LogRow = Schema.Struct({
 type LogRow = typeof LogRow.Type
 
 export const ErrorRow = Schema.Struct({
-  id: Schema.Number,
+  id: Schema.BigIntFromSelf,
   fiberId: Schema.String,
-  interrupted: Schema.Number,
+  interrupted: Schema.BigIntFromSelf,
   prettyPrint: Schema.String,
   details: Schema.String,
 })
@@ -241,17 +241,17 @@ export const FiberRow = Schema.Struct({
   id: Schema.String,
   parentId: Schema.NullOr(Schema.String),
   spanName: Schema.NullOr(Schema.String),
-  traceId: Schema.NullOr(Schema.Number),
+  traceId: Schema.NullOr(Schema.BigIntFromSelf),
   annotations: Schema.String,
 })
 type FiberRow = typeof FiberRow.Type
 
 export const MetricSampleRow = Schema.Struct({
-  id: Schema.Number,
+  id: Schema.BigIntFromSelf,
   name: Schema.String,
   type: Schema.String,
   tags: Schema.String,
-  timestamp: Schema.Number,
+  timestamp: Schema.BigIntFromSelf,
   value: Schema.String,
 })
 type MetricSampleRow = typeof MetricSampleRow.Type
@@ -262,7 +262,7 @@ function deserializeMetric(row: MetricSampleRow): MetricSnapshot {
     type: row.type as MetricSnapshot["type"],
     value: JSON.parse(row.value),
     tags: JSON.parse(row.tags),
-    timestamp: row.timestamp,
+    timestamp: Number(row.timestamp),
   }
 }
 
@@ -289,7 +289,7 @@ function deserializeSpan(row: SpanRow): Span {
 
 function deserializeLog(row: LogRow): LogEntry {
   return {
-    id: BigInt(row.id),
+    id: row.id,
     level: row.level as LogEntry["level"],
     message: row.message,
     fiberId: row.fiberId,
@@ -301,9 +301,9 @@ function deserializeLog(row: LogRow): LogEntry {
 
 function deserializeError(row: ErrorRow): ErrorEntry {
   return {
-    id: BigInt(row.id),
+    id: row.id,
     fiberId: row.fiberId,
-    interrupted: row.interrupted === 1,
+    interrupted: row.interrupted === 1n,
     prettyPrint: row.prettyPrint,
     details: JSON.parse(row.details),
   }
@@ -428,10 +428,10 @@ export function evict(table: string, capacity: number) {
   return withSql((sql) =>
     Effect.gen(function*() {
       const [{ cnt }] = yield* sql<
-        { cnt: number }
+        { cnt: bigint }
       >`SELECT count(*) as cnt FROM ${sql(table)}`
       if (cnt > capacity) {
-        const excess = cnt - capacity
+        const excess = Number(cnt) - capacity
         yield* sql`DELETE FROM ${sql(table)} WHERE rowid IN (SELECT rowid FROM ${
           sql(table)
         } ORDER BY rowid LIMIT ${excess})`
@@ -671,7 +671,7 @@ export function processSeries(historyMs: number) {
             arr = []
             history[key] = arr
           }
-          arr.push({ timestamp: row.timestamp, value })
+          arr.push({ timestamp: Number(row.timestamp), value })
           latest[key] = value
         }
         return { latest, history } satisfies ProcessSeries

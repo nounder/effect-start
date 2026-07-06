@@ -629,6 +629,22 @@ export function groupByTraceId(
   return groups
 }
 
+function traceTitle(span: StudioStore.Span): string {
+  let title = span.name
+  if (span.name.startsWith("http.server")) {
+    const path = span.attributes["url.path"]
+    if (typeof path === "string") title += ` ${path}`
+  } else if (span.name.startsWith("http.client")) {
+    const full = span.attributes["url.full"]
+    if (typeof full === "string") title += ` ${full}`
+  } else {
+    return title
+  }
+  const status = span.attributes["http.response.status_code"]
+  if (status !== undefined) title += ` (${status})`
+  return title
+}
+
 export function TraceGroup(props: {
   prefix: string
   id?: string
@@ -653,7 +669,7 @@ export function TraceGroup(props: {
         />
       </span>
       <span class="tl-cell tl-cell-name">
-        {root.name}
+        {traceTitle(root)}
       </span>
       <span class="tl-cell tl-cell-spans">
         {props.spans.length}

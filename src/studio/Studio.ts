@@ -1,7 +1,9 @@
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as GlobalValue from "effect/GlobalValue"
 import * as Layer from "effect/Layer"
 import * as PubSub from "effect/PubSub"
+import * as Scope from "effect/Scope"
 import type * as PathPattern from "../internal/PathPattern.ts"
 import * as Route from "../Route.ts"
 import * as sqlBun from "../sql/bun/index.ts"
@@ -37,9 +39,22 @@ interface Options {
 }
 
 export function layer(options?: Options) {
-  const sqlLayer = sqlBun
-    .layer({ adapter: "sqlite" as const, filename: ":memory:" })
-    .pipe(Layer.orDie)
+  const sqlLayer = Layer.effectContext(Effect.sync(() =>
+    GlobalValue.globalValue(
+      Symbol.for("effect-start/Studio/sql"),
+      () =>
+        Effect.runSync(
+          Layer.buildWithScope(
+            sqlBun.layer({
+              adapter: "sqlite" as const,
+              filename: ":memory:",
+              safeIntegers: true,
+            }),
+            Effect.runSync(Scope.make()),
+          ),
+        ),
+    )
+  ))
   const path = options?.path ?? "/studio"
   const studio = layerStudio(options)
   return Layer
