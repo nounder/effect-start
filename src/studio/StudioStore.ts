@@ -539,6 +539,20 @@ export function logsByFiberId(fiberId: string) {
   )
 }
 
+export function logsByTraceId(traceId: string) {
+  return noTrace(
+    withSql((sql) =>
+      Effect.map(
+        sql<LogRow>`SELECT * FROM Log WHERE fiberId IN (
+          SELECT DISTINCT fiberId FROM Span
+          WHERE traceId = ${traceId} AND fiberId IS NOT NULL
+        ) ORDER BY rowid`,
+        (rows) => rows.map(deserializeLog),
+      )
+    ),
+  )
+}
+
 export function getFiber(fiberId: string) {
   return noTrace(
     withSql((sql) =>

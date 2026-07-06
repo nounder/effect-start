@@ -57,7 +57,9 @@ test.it("TraceDetail renders cyclic spans without recursing forever", () => {
     }),
   ]
 
-  const html = Html.text(<Traces.TraceDetail prefix="/studio" spans={spans} />)
+  const html = Html.text(
+    <Traces.TraceDetail prefix="/studio" spans={spans} logs={[]} />,
+  )
 
   test
     .expect(html)

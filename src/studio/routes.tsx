@@ -218,9 +218,10 @@ export default Route.map({
         )
       }
       const spans = yield* StudioStore.spansByTraceId(traceId)
+      const logs = yield* StudioStore.logsByTraceId(traceId)
       return (
         <Ui.Shell prefix={studio.path} active="traces">
-          <Ui.TraceDetail prefix={studio.path} spans={spans} />
+          <Ui.TraceDetail prefix={studio.path} spans={spans} logs={logs} />
         </Ui.Shell>
       )
     }),

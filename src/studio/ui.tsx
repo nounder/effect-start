@@ -760,7 +760,11 @@ export function TraceGroups(
 }
 
 export function TraceDetail(
-  props: { prefix: string; spans: Array<StudioStore.Span> },
+  props: {
+    prefix: string
+    spans: Array<StudioStore.Span>
+    logs: Array<StudioStore.LogEntry>
+  },
 ) {
   if (props.spans.length === 0) {
     return (
@@ -799,6 +803,9 @@ export function TraceDetail(
             {props.spans.length} span{props.spans.length !== 1 ? "s" : ""}
           </span>
           <span>
+            {props.logs.length} log{props.logs.length !== 1 ? "s" : ""}
+          </span>
+          <span>
             {formatDuration(totalMs)}
           </span>
           <span>
@@ -824,6 +831,15 @@ export function TraceDetail(
           {tree.map((t) => <WaterfallRow tree={t} totalMs={totalMs} rootStart={rootStart} />)}
         </div>
       </div>
+
+      {props.logs.length > 0 && (
+        <div style="padding:8px 16px">
+          <div style="color:#94a3b8;font-size:12px;font-weight:600;margin-bottom:8px">
+            Logs
+          </div>
+          {props.logs.map((l) => <LogLine prefix={props.prefix} log={l} />)}
+        </div>
+      )}
     </div>
   )
 }
