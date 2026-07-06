@@ -554,7 +554,7 @@ function WaterfallRow(
         >
           <TreeConnectors tree={props.tree} />
           <span style="overflow:hidden;text-overflow:ellipsis">
-            {s.name}
+            <SpanTitle span={s} />
           </span>
           {props.tree.childCount > 0 && (
             <span class="wf-badge">
@@ -629,20 +629,57 @@ export function groupByTraceId(
   return groups
 }
 
-function traceTitle(span: StudioStore.Span): string {
-  let title = span.name
-  if (span.name.startsWith("http.server")) {
-    const path = span.attributes["url.path"]
-    if (typeof path === "string") title += ` ${path}`
-  } else if (span.name.startsWith("http.client")) {
-    const full = span.attributes["url.full"]
-    if (typeof full === "string") title += ` ${full}`
-  } else {
-    return title
+// Maps a content-type header to the short format names used on the routes
+// page: text/html -> html, text/event-stream -> sse, application/json -> json.
+function formatContentType(value: string): string {
+  const mime = value.split(";")[0].trim()
+  if (mime === "text/event-stream") return "sse"
+  if (mime === "text/plain") return "text"
+  if (mime === "application/octet-stream") return "bytes"
+  return mime.split("/")[1] ?? mime
+}
+
+function statusBadgeColors(status: number): { bg: string; fg: string } {
+  if (status >= 500) return { bg: "#450a0a", fg: "#ef4444" }
+  if (status >= 400) return { bg: "#422006", fg: "#f59e0b" }
+  return { bg: "#052e16", fg: "#22c55e" }
+}
+
+function SpanTitle(props: { span: StudioStore.Span }) {
+  const span = props.span
+  const isServer = span.name.startsWith("http.server")
+  const isClient = span.name.startsWith("http.client")
+  if (!isServer && !isClient) {
+    return (
+      <>
+        {span.name}
+      </>
+    )
   }
+
+  const target = span.attributes[isServer ? "url.path" : "url.full"]
   const status = span.attributes["http.response.status_code"]
-  if (status !== undefined) title += ` (${status})`
-  return title
+  const contentType = span.attributes["http.response.header.content-type"]
+  const colors = statusBadgeColors(typeof status === "number" ? status : 0)
+
+  return (
+    <>
+      {span.name}
+      {typeof target === "string" && ` ${target}`}
+      {status !== undefined && (
+        <span
+          style={`font-size:10px;font-weight:700;font-family:monospace;padding:1px 6px;border-radius:3px;margin-left:6px;background:${colors.bg};color:${colors.fg}`}
+        >
+          {`${status}`}
+        </span>
+      )}
+      {Array.isArray(contentType) && typeof contentType[0] === "string" && (
+        <span style="font-size:10px;padding:1px 6px;border-radius:3px;margin-left:6px;background:#1e3a5f;color:#60a5fa">
+          {formatContentType(contentType[0])}
+        </span>
+      )}
+    </>
+  )
 }
 
 export function TraceGroup(props: {
@@ -669,7 +706,7 @@ export function TraceGroup(props: {
         />
       </span>
       <span class="tl-cell tl-cell-name">
-        {traceTitle(root)}
+        <SpanTitle span={root} />
       </span>
       <span class="tl-cell tl-cell-spans">
         {props.spans.length}
@@ -753,7 +790,7 @@ export function TraceDetail(
             /
           </span>
           <span style="color:#e2e8f0;font-size:13px;font-family:monospace">
-            {root.name}
+            <SpanTitle span={root} />
           </span>
         </div>
         <div style="display:flex;gap:16px;font-size:12px;color:#94a3b8;align-items:center">
