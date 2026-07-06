@@ -2,83 +2,10 @@ import * as Config from "effect/Config"
 import * as Console from "effect/Console"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
-import * as Exit from "effect/Exit"
-import * as Fiber from "effect/Fiber"
-import * as FiberId from "effect/FiberId"
 import * as Layer from "effect/Layer"
-import * as Option from "effect/Option"
-import * as Tracer from "effect/Tracer"
 import * as Tracing from "../internal/Tracing.ts"
 
 export type Span = Tracing.Span
-
-const make = (spans: Array<Tracing.Span>): Tracer.Tracer =>
-  Tracer.make({
-    span(name, parent, context, links, startTime, kind) {
-      const parentSpanId = Option.isSome(parent) && parent.value._tag === "Span"
-        ? parent.value.spanId
-        : undefined
-      const traceId = Option.isSome(parent) ? parent.value.traceId : Tracing.nextTraceId()
-      const spanId = Tracing.nextSpanId()
-      const currentFiber = Fiber.getCurrentFiber()
-      const fiberId = Option.isSome(currentFiber) ? FiberId.threadName(currentFiber.value.id()) : undefined
-
-      const record: Tracing.Span = {
-        spanId,
-        traceId,
-        fiberId,
-        name,
-        kind,
-        parentSpanId,
-        startTime,
-        endTime: undefined,
-        durationMs: undefined,
-        status: "started",
-        attributes: {},
-        events: [],
-      }
-      spans.push(record)
-
-      const attrs = new Map<string, unknown>()
-      const spanLinks = [...links]
-      const span: Tracer.Span = {
-        _tag: "Span",
-        name,
-        spanId,
-        traceId,
-        parent,
-        context,
-        get status(): Tracer.SpanStatus {
-          return record.endTime != null
-            ? { _tag: "Ended", startTime: record.startTime, endTime: record.endTime, exit: Exit.void }
-            : { _tag: "Started", startTime: record.startTime }
-        },
-        attributes: attrs,
-        links: spanLinks,
-        sampled: true,
-        kind,
-        end(endTime, exit) {
-          record.endTime = endTime
-          record.durationMs = Number(endTime - record.startTime) / 1_000_000
-          record.status = Exit.isSuccess(exit) ? "ok" : "error"
-        },
-        attribute(key, value) {
-          attrs.set(key, value)
-          record.attributes[key] = value
-        },
-        event(name, startTime, attributes) {
-          record.events.push({ name, startTime, attributes })
-        },
-        addLinks(newLinks) {
-          spanLinks.push(...newLinks)
-        },
-      }
-      return span
-    },
-    context(f) {
-      return f()
-    },
-  })
 
 const jsonValue = (value: unknown): unknown => {
   if (typeof value === "bigint") return value.toString()
@@ -177,7 +104,7 @@ export const layer = (
   const spans: Array<Tracing.Span> = []
   return Layer.scopedDiscard(
     Effect.gen(function*() {
-      yield* Effect.withTracerScoped(make(spans))
+      yield* Effect.withTracerScoped(Tracing.makeTracer(spans))
       const print = yield* tracePrint
       if (print) {
         yield* Effect.addFinalizer(() => Console.log(formatTrace(spans, json, filter)))
