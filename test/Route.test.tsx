@@ -282,6 +282,45 @@ test.describe("Route.html with JSX", () => {
       .pipe(Effect.runPromise))
 })
 
+test.describe("Route.json", () => {
+  test.it("allows Entity with a different body shape", () =>
+    Effect
+      .gen(function*() {
+        const handler = RouteHttp.toWebHandler(
+          Route.get(
+            Route.json(function*() {
+              const request = yield* Route.Request
+              if (new URL(request.url).searchParams.has("missing")) {
+                return Entity.make({ error: "not found" }, { status: 404 })
+              }
+              return { data: [1, 2, 3] }
+            }),
+          ),
+        )
+        const client = Fetch.fromHandler(handler)
+
+        const found = yield* client.get("http://localhost/json")
+        test
+          .expect(found.status)
+          .toBe(200)
+        test
+          .expect(yield* found.json)
+          .toEqual({ data: [1, 2, 3] })
+
+        const missing = yield* client.get("http://localhost/json?missing")
+        test
+          .expect(missing.status)
+          .toBe(404)
+        test
+          .expect(missing.headers["content-type"])
+          .toBe("application/json")
+        test
+          .expect(yield* missing.json)
+          .toEqual({ error: "not found" })
+      })
+      .pipe(Effect.runPromise))
+})
+
 test.describe(Route.redirect, () => {
   test.it("composes with Route.get", () =>
     Effect

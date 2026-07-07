@@ -6,6 +6,7 @@ import * as Route from "effect-start/Route"
 import * as RouteHttp from "effect-start/RouteHttp"
 import { TestLogger } from "effect-start/testing"
 import * as Effect from "effect/Effect"
+import * as Queue from "effect/Queue"
 import * as Ref from "effect/Ref"
 import * as Schedule from "effect/Schedule"
 import * as Schema from "effect/Schema"
@@ -2641,6 +2642,279 @@ test.describe("schema handlers", () => {
             apiKey: "secret",
             title: "New Task",
           })
+      })
+      .pipe(Effect.runPromise))
+})
+
+test.describe("stream response scope", () => {
+  test.it("keeps handler resources alive until the stream completes", () =>
+    Effect
+      .gen(function*() {
+        let released = false
+        let releasedDuringStream: boolean | undefined
+
+        const handler = RouteHttp.toWebHandler(
+          Route.get(
+            Route.sse(() =>
+              Effect.gen(function*() {
+                yield* Effect.acquireRelease(
+                  Effect.void,
+                  () =>
+                    Effect.sync(() => {
+                      released = true
+                    }),
+                )
+                return Stream.make({ data: "a" }, { data: "b" }).pipe(
+                  Stream.mapEffect((event) =>
+                    Effect.sleep("20 millis").pipe(
+                      Effect.tap(() =>
+                        Effect.sync(() => {
+                          releasedDuringStream = released
+                        })
+                      ),
+                      Effect.as(event),
+                    )
+                  ),
+                )
+              })
+            ),
+          ),
+        )
+
+        const response = yield* Effect.promise(() => Promise.resolve(handler(new Request("http://localhost/events"))))
+        yield* Effect.promise(() => response.text())
+
+        test
+          .expect(releasedDuringStream)
+          .toBe(false)
+        test
+          .expect(released)
+          .toBe(true)
+      })
+      .pipe(Effect.runPromise))
+
+  test.it("closes the request scope when the client cancels the stream", () =>
+    Effect
+      .gen(function*() {
+        let released = false
+
+        const handler = RouteHttp.toWebHandler(
+          Route.get(
+            Route.sse(() =>
+              Effect.gen(function*() {
+                yield* Effect.acquireRelease(
+                  Effect.void,
+                  () =>
+                    Effect.sync(() => {
+                      released = true
+                    }),
+                )
+                return Stream.concat(Stream.make({ data: "first" }), Stream.never)
+              })
+            ),
+          ),
+        )
+
+        const response = yield* Effect.promise(() => Promise.resolve(handler(new Request("http://localhost/events"))))
+        const reader = response.body!.getReader()
+        yield* Effect.promise(() => reader.read())
+
+        test
+          .expect(released)
+          .toBe(false)
+
+        yield* Effect.promise(() => reader.cancel())
+
+        test
+          .expect(released)
+          .toBe(true)
+      })
+      .pipe(Effect.runPromise))
+
+  test.it("closes the request scope when the request aborts mid-stream", () =>
+    Effect
+      .gen(function*() {
+        let released = false
+
+        const handler = RouteHttp.toWebHandler(
+          Route.get(
+            Route.sse(() =>
+              Effect.gen(function*() {
+                yield* Effect.acquireRelease(
+                  Effect.void,
+                  () =>
+                    Effect.sync(() => {
+                      released = true
+                    }),
+                )
+                return Stream.concat(Stream.make({ data: "first" }), Stream.never)
+              })
+            ),
+          ),
+        )
+
+        const { request, abort } = Http.createAbortableRequest({
+          path: "/events",
+        })
+        const response = yield* Effect.promise(() => Promise.resolve(handler(request)))
+        const reader = response.body!.getReader()
+        yield* Effect.promise(() => reader.read())
+
+        test
+          .expect(released)
+          .toBe(false)
+
+        abort()
+        yield* Effect.sleep("50 millis")
+
+        test
+          .expect(released)
+          .toBe(true)
+      })
+      .pipe(Effect.runPromise))
+
+  test.it("closes the request scope for HEAD requests to stream routes", () =>
+    Effect
+      .gen(function*() {
+        let released = false
+
+        const handler = RouteHttp.toWebHandler(
+          Route.get(
+            Route.sse(() =>
+              Effect.gen(function*() {
+                yield* Effect.acquireRelease(
+                  Effect.void,
+                  () =>
+                    Effect.sync(() => {
+                      released = true
+                    }),
+                )
+                return Stream.concat(Stream.make({ data: "first" }), Stream.never)
+              })
+            ),
+          ),
+        )
+
+        const response = yield* Effect.promise(() =>
+          Promise.resolve(
+            handler(new Request("http://localhost/events", { method: "HEAD" })),
+          )
+        )
+
+        test
+          .expect(response.body)
+          .toBeNull()
+
+        yield* Effect.sleep("50 millis")
+
+        test
+          .expect(released)
+          .toBe(true)
+      })
+      .pipe(Effect.runPromise))
+
+  test.it("closes the request scope when a non-stream response completes", () =>
+    Effect
+      .gen(function*() {
+        let released = false
+
+        const handler = RouteHttp.toWebHandler(
+          Route.get(
+            Route.text(function*() {
+              yield* Effect.acquireRelease(
+                Effect.void,
+                () =>
+                  Effect.sync(() => {
+                    released = true
+                  }),
+              )
+              return "ok"
+            }),
+          ),
+        )
+
+        const response = yield* Effect.promise(() => Promise.resolve(handler(new Request("http://localhost/test"))))
+
+        test
+          .expect(yield* Effect.promise(() => response.text()))
+          .toBe("ok")
+        test
+          .expect(released)
+          .toBe(true)
+      })
+      .pipe(Effect.runPromise))
+
+  test.it("keeps fibers forked in the request scope alive while streaming", () =>
+    Effect
+      .gen(function*() {
+        let interrupted = false
+        let ticks = 0
+
+        const handler = RouteHttp.toWebHandler(
+          Route.get(
+            Route.sse(() =>
+              Effect.gen(function*() {
+                const queue = yield* Queue.unbounded<{ data: string }>()
+                yield* Effect.forkScoped(
+                  Effect.repeat(
+                    Effect.sync(() => ticks++).pipe(
+                      Effect.flatMap((n) => Queue.offer(queue, { data: String(n) })),
+                    ),
+                    Schedule.spaced("10 millis"),
+                  ).pipe(
+                    Effect.onInterrupt(() =>
+                      Effect.sync(() => {
+                        interrupted = true
+                      })
+                    ),
+                  ),
+                )
+                return Stream.fromQueue(queue)
+              })
+            ),
+          ),
+        )
+
+        const response = yield* Effect.promise(() => Promise.resolve(handler(new Request("http://localhost/events"))))
+        const reader = response.body!.getReader()
+        yield* Effect.promise(() => reader.read())
+        yield* Effect.sleep("30 millis")
+        yield* Effect.promise(() => reader.read())
+
+        test
+          .expect(interrupted)
+          .toBe(false)
+        test
+          .expect(ticks)
+          .toBeGreaterThan(1)
+
+        yield* Effect.promise(() => reader.cancel())
+
+        test
+          .expect(interrupted)
+          .toBe(true)
+      })
+      .pipe(Effect.runPromise))
+
+  test.it("request services are available inside the sse stream", () =>
+    Effect
+      .gen(function*() {
+        const handler = RouteHttp.toWebHandler(
+          Route.get(
+            Route.sse(() =>
+              Stream.fromEffect(Route.Request).pipe(
+                Stream.map((request) => ({ data: new URL(request.url).pathname })),
+              )
+            ),
+          ),
+        )
+
+        const response = yield* Effect.promise(() => Promise.resolve(handler(new Request("http://localhost/events"))))
+        const text = yield* Effect.promise(() => response.text())
+
+        test
+          .expect(text)
+          .toContain("data: /events")
       })
       .pipe(Effect.runPromise))
 })

@@ -22,43 +22,43 @@ const formatToContentType: Record<Format, string | undefined> = {
   "*": undefined,
 }
 
-type HandlerReturn<A> =
+type HandlerReturn<A, Value = A> =
   | A
-  | Entity.Entity<A, any>
+  | Entity.Entity<Value, any>
   | Entity.Entity<Uint8Array, any>
   | ((self: Route.RouteSet.Any) => Route.RouteSet.Any)
 
-type HandlerFunction<B, A, E, R> = (
+type HandlerFunction<B, A, E, R, Value = A> = (
   context: Values.Simplify<B>,
   next: Entity.Entity<
     A extends Stream.Stream<infer V, any, any> ? V : A,
     never
   >,
 ) =>
-  | Effect.Effect<HandlerReturn<A>, E, R>
+  | Effect.Effect<HandlerReturn<A, Value>, E, R>
   | Generator<
     Utils.YieldWrap<Effect.Effect<unknown, E, R>>,
-    HandlerReturn<A>,
+    HandlerReturn<A, Value>,
     unknown
   >
 
-export type GeneratorHandler<B, A, Y> = (
+export type GeneratorHandler<B, A, Y, Value = A> = (
   context: Values.Simplify<B>,
   next: Entity.Entity<
     A extends Stream.Stream<infer V, any, any> ? V : A,
     never
   >,
-) => Generator<Y, HandlerReturn<A>, never>
+) => Generator<Y, HandlerReturn<A, Value>, never>
 
-export type HandlerInput<B, A, E, R> =
+export type HandlerInput<B, A, E, R, Value = A> =
   | A
-  | Entity.Entity<A, any>
-  | Effect.Effect<HandlerReturn<A>, E, R>
-  | HandlerFunction<B, A, E, R>
+  | Entity.Entity<Value, any>
+  | Effect.Effect<HandlerReturn<A, Value>, E, R>
+  | HandlerFunction<B, A, E, R, Value>
 
-function isHandlerFunction<B, A, E, R>(
-  handler: HandlerInput<B, A, E, R>,
-): handler is HandlerFunction<B, A, E, R> {
+function isHandlerFunction<B, A, E, R, Value>(
+  handler: HandlerInput<B, A, E, R, Value>,
+): handler is HandlerFunction<B, A, E, R, Value> {
   return typeof handler === "function"
 }
 
@@ -67,15 +67,16 @@ export function normalize<
   B,
   A,
   Y extends Utils.YieldWrap<Effect.Effect<any, any, any>>,
+  Value = A,
 >(
-  handler: GeneratorHandler<B, A, Y>,
+  handler: GeneratorHandler<B, A, Y, Value>,
 ): Route.Route.Handler<B, A, YieldError<Y>, YieldContext<Y>>
 /** @internal */
-export function normalize<B, A, E, R>(
-  handler: HandlerInput<B, A, E, R>,
+export function normalize<B, A, E, R, Value = A>(
+  handler: HandlerInput<B, A, E, R, Value>,
 ): Route.Route.Handler<B, A, E, R>
-export function normalize<B, A, E, R>(
-  handler: HandlerInput<B, A, E, R>,
+export function normalize<B, A, E, R, Value = A>(
+  handler: HandlerInput<B, A, E, R, Value>,
 ): Route.Route.Handler<B, A, E, R> {
   if (isHandlerFunction(handler)) {
     return ((context: any, next: any) => {
@@ -131,13 +132,14 @@ export interface BuildReturn<Value, F extends Format, Body = never> {
     D,
     B,
     I extends Route.Route.Tuple,
-    A extends F extends "json" ? Value : Value | Stream.Stream<Value, any, any>,
-    Y extends Utils.YieldWrap<Effect.Effect<any, any, any>>,
+    A extends F extends "json" ? Value : Value | Stream.Stream<Value, any, any> = Value,
+    Y extends Utils.YieldWrap<Effect.Effect<any, any, any>> = never,
   >(
     handler: GeneratorHandler<
       NoInfer<D & B & Route.ExtractBindings<I> & { format: F }>,
       A,
-      Y
+      Y,
+      Value
     >,
   ): (
     self: Route.RouteSet<D, B, I>,
@@ -160,7 +162,7 @@ export interface BuildReturn<Value, F extends Format, Body = never> {
     D,
     B,
     I extends Route.Route.Tuple,
-    A extends F extends "json" ? Value : Value | Stream.Stream<Value, any, any>,
+    A extends F extends "json" ? Value : Value | Stream.Stream<Value, any, any> = Value,
     E = never,
     R = never,
   >(
@@ -168,7 +170,8 @@ export interface BuildReturn<Value, F extends Format, Body = never> {
       NoInfer<D & B & Route.ExtractBindings<I> & { format: F }>,
       A,
       E,
-      R
+      R,
+      Value
     >,
   ): (
     self: Route.RouteSet<D, B, I>,
@@ -206,7 +209,8 @@ export function build<Value, F extends Format>(options: {
       NoInfer<D & B & Route.ExtractBindings<I> & { format: F }>,
       A,
       E,
-      R
+      R,
+      Value
     >,
   ) {
     return (self: Route.RouteSet<D, B, I>) => {

@@ -6,6 +6,8 @@ import * as Entity from "../Entity.ts"
 import * as Html from "../Html.ts"
 import * as RouteMap from "../internal/RouteMap.ts"
 import * as RouteSchema from "../internal/RouteSchema.ts"
+import type * as Tracing from "../internal/Tracing.ts"
+import type * as Values from "../internal/Values.ts"
 import * as Route from "../Route.ts"
 import * as SqlClient from "../sql/SqlClient.ts"
 import * as Unique from "../Unique.ts"
@@ -91,21 +93,39 @@ export default Route.map({
   "/traces": Route.get(
     Route.schemaSearchParams(
       Schema.Struct({
-        traceSearch: Schema.optional(Schema.String),
+        traceSearch: Schema.optionalWith(Schema.Lowercase, {
+          default: () => "",
+        }),
       }),
     ),
+    Route.json(function*(ctx) {
+      const search = ctx.searchParams.traceSearch
+      let spans = StudioStore.filterOutStudioSpans(
+        yield* StudioStore.allSpans(),
+      )
+      if (search) {
+        spans = spans.filter((s) => s.name.toLowerCase().startsWith(search))
+      }
+      const traces = Array
+        .from(Ui.groupByTraceId(spans).values())
+        .sort((a, b) => Number(b[0].startTime) - Number(a[0].startTime))
+        .map((group) => ({
+          traceId: group[0].traceId,
+          spans: group.map(spanJson),
+        }))
+      return { traces }
+    }),
     Route.html(function*(ctx) {
       const studio = yield* Studio.Studio
       const request = yield* Route.Request
-      const search = ctx.searchParams.traceSearch ?? ""
+      const search = ctx.searchParams.traceSearch
       const allSpans = StudioStore.filterOutStudioSpans(
         yield* StudioStore.allSpans(),
       )
       const names = Array.from(new Set(allSpans.map((s) => s.name))).sort()
       let spans = allSpans
       if (search) {
-        const lower = search.toLowerCase()
-        spans = spans.filter((s) => s.name.toLowerCase().startsWith(lower))
+        spans = spans.filter((s) => s.name.toLowerCase().startsWith(search))
       }
 
       const body = (
@@ -168,7 +188,7 @@ export default Route.map({
       Effect.gen(function*() {
         const studio = yield* Studio.Studio
         const sql = yield* SqlClient.SqlClient
-        const search = (ctx.searchParams.traceSearch ?? "").toLowerCase()
+        const search = ctx.searchParams.traceSearch
         return Stream.fromPubSub(studio.store.events).pipe(
           Stream.filter((e) => e._tag === "TraceEnd"),
           Stream.filterEffect((e) =>
@@ -211,6 +231,17 @@ export default Route.map({
 
   "/traces/:id": Route.get(
     RouteSchema.schemaPathParams(Schema.Struct({ id: Schema.String })),
+    Route.json(function*(ctx) {
+      const data = yield* traceData(ctx.pathParams.id)
+      if (data.spans.length === 0) {
+        return Entity.make({ error: "Trace not found" }, { status: 404 })
+      }
+      return {
+        traceId: ctx.pathParams.id,
+        spans: data.spans.map(spanJson),
+        logs: data.logs.map(logJson),
+      }
+    }),
     Route.html(function*(ctx) {
       const studio = yield* Studio.Studio
       let traceId: string
@@ -777,9 +808,8 @@ export default Route.map({
   ),
 })
 
-function renderTraceDetail(traceId: string) {
+function traceData(traceId: string) {
   return Effect.gen(function*() {
-    const studio = yield* Studio.Studio
     const sql = yield* SqlClient.SqlClient
     yield* StudioStore.flushWrites()
     const spans = yield* StudioStore.spansByTraceId(traceId)
@@ -788,9 +818,62 @@ function renderTraceDetail(traceId: string) {
         SELECT DISTINCT fiberId FROM Span
         WHERE traceId = ${traceId} AND fiberId IS NOT NULL
       ) ORDER BY rowid`
-    const logs = logRows.map(StudioStore.deserializeLog)
-    return <Ui.TraceDetail prefix={studio.path} spans={spans} logs={logs} />
+    return { spans, logs: logRows.map(StudioStore.deserializeLog) }
   }).pipe(Effect.withTracerEnabled(false))
+}
+
+function renderTraceDetail(traceId: string) {
+  return Effect.gen(function*() {
+    const studio = yield* Studio.Studio
+    const data = yield* traceData(traceId)
+    return (
+      <Ui.TraceDetail
+        prefix={studio.path}
+        spans={data.spans}
+        logs={data.logs}
+      />
+    )
+  })
+}
+
+function toJson(value: unknown): Values.Json {
+  if (typeof value === "bigint") return String(value)
+  if (Array.isArray(value)) return value.map(toJson)
+  if (value !== null && typeof value === "object") {
+    const out: Record<string, Values.Json> = {}
+    for (const [key, item] of Object.entries(value)) out[key] = toJson(item)
+    return out
+  }
+  return value as Values.Json
+}
+
+function spanJson(span: Tracing.Span) {
+  return {
+    spanId: span.spanId,
+    traceId: span.traceId,
+    fiberId: span.fiberId,
+    name: span.name,
+    kind: span.kind,
+    parentSpanId: span.parentSpanId,
+    startTime: String(span.startTime),
+    endTime: span.endTime !== undefined ? String(span.endTime) : undefined,
+    durationMs: span.durationMs,
+    status: span.status,
+    attributes: toJson(span.attributes),
+    events: toJson(span.events),
+  }
+}
+
+function logJson(log: StudioStore.LogEntry) {
+  return {
+    id: String(log.id),
+    level: log.level,
+    message: log.message,
+    fiberId: log.fiberId,
+    cause: log.cause,
+    spans: log.spans,
+    annotations: toJson(log.annotations),
+  }
 }
 
 function renderFiberDetail(fiberName: string) {
