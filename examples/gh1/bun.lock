@@ -4,8 +4,8 @@
   "workspaces": {
     "": {
       "dependencies": {
-        "effect": "^3.19.15",
-        "effect-start": "^0.22.1",
+        "effect": "^3.21.0",
+        "effect-start": "^0.44.0",
       },
       "devDependencies": {
         "@types/bun": "^1.3.4",
@@ -25,9 +25,9 @@
 
     "bun-types": ["bun-types@1.3.9", "", { "dependencies": { "@types/node": "*" } }, "sha512-+UBWWOakIP4Tswh0Bt0QD0alpTY8cb5hvgiYeWCMet9YukHbzuruIEeXC2D7nMJPB12kbh8C7XJykSexEqGKJg=="],
 
-    "effect": ["effect@3.19.16", "", { "dependencies": { "@standard-schema/spec": "^1.0.0", "fast-check": "^3.23.1" } }, "sha512-7+XC3vGrbAhCHd8LTFHvnZjRpZKZ8YHRZqJTkpNoxcJ2mCyNs2SwI+6VkV/ij8Y3YW7wfBN4EbU06/F5+m/wkQ=="],
+    "effect": ["effect@3.21.4", "", { "dependencies": { "@standard-schema/spec": "^1.0.0", "fast-check": "^3.23.1" } }, "sha512-B89v/xSgPbl1J2Ai2u18jxq3odpFauU1rC6/eSs4FeNHi72kwKdJp12VGigvRV2lK+kRnx+OOz41XV8guZd4gQ=="],
 
-    "effect-start": ["effect-start@0.22.1", "", { "peerDependencies": { "effect": ">=3.19.0" } }, "sha512-gydolkoedekbp+OaqS7I695jdcYxPCMiYlR/8ZFwUt9N2ANMla+2HbL8ja9u2mCc9Oqar7vOPNU4ij2sfhSQlQ=="],
+    "effect-start": ["effect-start@0.44.0", "", { "peerDependencies": { "@libsql/client": ">=0.17.0", "effect": "^3.21.0", "esbuild": ">=0.28.1", "mssql": ">=12.2.0", "rolldown": ">=1.1.2" }, "optionalPeers": ["@libsql/client", "esbuild", "mssql", "rolldown"] }, "sha512-sE3jwfsgCsFBWIAbQHo3q+9SDsVfePAwUgQ2BBpwqD+it43P1tvyoUh6KLgqqicn7heM3F39xeEvAl6rJWkksw=="],
 
     "fast-check": ["fast-check@3.23.2", "", { "dependencies": { "pure-rand": "^6.1.0" } }, "sha512-h5+1OzzfCC3Ef7VbtKdcv7zsstUQwUDlYpUTvjeUsJAssPgLn7QzbboPtL5ro04Mq0rPOsMzl7q5hIbRs2wD1A=="],
 

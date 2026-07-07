@@ -6,7 +6,7 @@ import { TailwindPlugin } from "effect-start/tailwind"
 export default Start.pack(
   Studio.layer(),
   Development.layer(),
-  FileRouter.layer(() => import("./routes/.server.ts")),
+  FileRouter.layer(),
   BunBundle.layer({
     entrypoints: [import.meta.resolve("./app.css"), "effect-start/datastar"],
     plugins: [TailwindPlugin.make()],
