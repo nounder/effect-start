@@ -279,6 +279,38 @@ function formatDuration(ms: number | undefined): string {
   return `${(ms / 1000).toFixed(2)}s`
 }
 
+function isSpanRunning(span: Tracing.Span): boolean {
+  return span.status === "started" || span.durationMs == null
+}
+
+function formatSpanDuration(span: Tracing.Span): string | null {
+  if (isSpanRunning(span)) return null
+  return formatDuration(span.durationMs)
+}
+
+function spanDurationMs(span: Tracing.Span, nowMs: number): number {
+  if (span.durationMs != null) return span.durationMs
+  return Math.max(0, nowMs - Number(span.startTime) / 1_000_000)
+}
+
+function traceTimelineMs(
+  spans: Array<Tracing.Span>,
+  root: Tracing.Span,
+  nowMs: number,
+): number {
+  if (root.durationMs != null) return root.durationMs
+  const rootStartMs = Number(root.startTime) / 1_000_000
+  let maxEndMs = rootStartMs
+  for (const span of spans) {
+    const startMs = Number(span.startTime) / 1_000_000
+    const endMs = span.durationMs != null
+      ? startMs + span.durationMs
+      : nowMs
+    if (endMs > maxEndMs) maxEndMs = endMs
+  }
+  return Math.max(maxEndMs - rootStartMs, 0.001)
+}
+
 function tracesStatusColor(status: string): string {
   if (status === "ok") return "#22c55e"
   if (status === "error") return "#ef4444"
@@ -519,11 +551,11 @@ function SpanDetailBody(props: { span: Tracing.Span }) {
 }
 
 function WaterfallRow(
-  props: { tree: TreeSpan; totalMs: number; rootStart: bigint },
+  props: { tree: TreeSpan; totalMs: number; rootStart: bigint; nowMs: number },
 ) {
   const s = props.tree.span
   const offsetMs = Number(s.startTime - props.rootStart) / 1_000_000
-  const durMs = s.durationMs ?? 0
+  const durMs = spanDurationMs(s, props.nowMs)
   const leftPct = props.totalMs > 0
     ? Math.min(100, (offsetMs / props.totalMs) * 100)
     : 0
@@ -531,6 +563,7 @@ function WaterfallRow(
     ? Math.max(0.5, Math.min(100 - leftPct, (durMs / props.totalMs) * 100))
     : 100
   const color = tracesStatusColor(s.status)
+  const durationLabel = formatSpanDuration(s)
   const durLabelLeft = leftPct + widthPct + 0.5
   const nameAnchor = `--wf-n-${s.spanId}`
   const barAnchor = `--wf-b-${s.spanId}`
@@ -570,9 +603,11 @@ function WaterfallRow(
             onmouseenter={enterFromBar}
             onmouseleave={leave}
           />
-          <div class="wf-dur" style={`left:${durLabelLeft}%`}>
-            {formatDuration(s.durationMs)}
-          </div>
+          {durationLabel != null && (
+            <div class="wf-dur" style={`left:${durLabelLeft}%`}>
+              {durationLabel}
+            </div>
+          )}
         </div>
       </div>
       <div
@@ -592,13 +627,14 @@ function MiniWaterfall(props: {
   spans: Array<Tracing.Span>
   totalMs: number
   rootStart: bigint
+  nowMs: number
 }) {
   if (props.totalMs <= 0) return <div class="mini-wf" />
   return (
     <div class="mini-wf">
       {props.spans.map((s) => {
         const offsetMs = Number(s.startTime - props.rootStart) / 1_000_000
-        const durMs = s.durationMs ?? 0
+        const durMs = spanDurationMs(s, props.nowMs)
         const leftPct = Math.min(100, (offsetMs / props.totalMs) * 100)
         const widthPct = Math.max(
           0.3,
@@ -691,9 +727,9 @@ export function TraceGroup(props: {
   if (props.spans.length === 0) return null
   const root = pickRootSpan(props.spans)
   const traceId = props.id ?? root.traceId
-  const totalMs = root.durationMs ?? 0
   const hasError = props.spans.some((s) => s.status === "error")
   const status = hasError ? "error" : root.status
+  const durationLabel = formatSpanDuration(root)
 
   return (
     <a
@@ -713,7 +749,7 @@ export function TraceGroup(props: {
         {props.spans.length}
       </span>
       <span class="tl-cell tl-cell-dur">
-        {formatDuration(totalMs)}
+        {durationLabel ?? ""}
       </span>
       <span class="tl-cell tl-cell-id">
         {String(traceId).slice(0, 12)}
@@ -776,10 +812,12 @@ export function TraceDetail(
   }
   const root = pickRootSpan(props.spans)
   const traceId = root.traceId
-  const totalMs = root.durationMs ?? 0
+  const nowMs = Date.now()
+  const totalMs = traceTimelineMs(props.spans, root, nowMs)
   const rootStart = root.startTime
   const startDate = new Date(Number(rootStart) / 1_000_000)
   const tree = buildSpanTree(props.spans)
+  const durationLabel = formatSpanDuration(root)
 
   return (
     <div class="tab-body">
@@ -806,9 +844,11 @@ export function TraceDetail(
           <span>
             {props.logs.length} log{props.logs.length !== 1 ? "s" : ""}
           </span>
-          <span>
-            {formatDuration(totalMs)}
-          </span>
+          {durationLabel != null && (
+            <span>
+              {durationLabel}
+            </span>
+          )}
           <span>
             {startDate.toLocaleTimeString("en", { hour12: false })}
           </span>
@@ -823,13 +863,21 @@ export function TraceDetail(
           spans={props.spans}
           totalMs={totalMs}
           rootStart={rootStart}
+          nowMs={nowMs}
         />
       </div>
 
       <div style="padding:0 8px 8px">
         <TimeAxis totalMs={totalMs} />
         <div class="wf-grid">
-          {tree.map((t) => <WaterfallRow tree={t} totalMs={totalMs} rootStart={rootStart} />)}
+          {tree.map((t) => (
+            <WaterfallRow
+              tree={t}
+              totalMs={totalMs}
+              rootStart={rootStart}
+              nowMs={nowMs}
+            />
+          ))}
         </div>
       </div>
 
@@ -1108,9 +1156,11 @@ export function FiberDetail(props: {
                       {s.name}
                     </a>
                     <StatusBadge status={s.status} />
-                    <span style="color:#64748b;font-size:11px;margin-left:auto;font-family:monospace">
-                      {formatDuration(s.durationMs)}
-                    </span>
+                    {formatSpanDuration(s) != null && (
+                      <span style="color:#64748b;font-size:11px;margin-left:auto;font-family:monospace">
+                        {formatSpanDuration(s)}
+                      </span>
+                    )}
                   </div>
                   <KeyValue label="Trace" value={s.traceId} />
                   <KeyValue label="Kind" value={s.kind} />

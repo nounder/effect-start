@@ -74,3 +74,51 @@ test.it("TraceDetail renders cyclic spans without recursing forever", () => {
     .expect(html)
     .toContain("/studio/traces")
 })
+
+test.it("TraceGroup hides duration while root span is running", () => {
+  const html = Html.text(
+    <Traces.TraceGroup
+      prefix="/studio"
+      spans={[
+        makeSpan({
+          spanId: "1",
+          traceId: "99",
+          name: "GET /api",
+          startTime: BigInt(Date.now()) * 1_000_000n,
+          status: "started",
+        }),
+      ]}
+    />,
+  )
+
+  test.expect(html).not.toContain("0µs")
+  test.expect(html).not.toContain("...")
+})
+
+test.it("TraceDetail hides duration labels while spans are running", () => {
+  const html = Html.text(
+    <Traces.TraceDetail
+      prefix="/studio"
+      spans={[
+        makeSpan({
+          spanId: "1",
+          traceId: "99",
+          name: "root",
+          startTime: BigInt(Date.now() - 100) * 1_000_000n,
+          status: "started",
+        }),
+        makeSpan({
+          spanId: "2",
+          traceId: "99",
+          name: "child",
+          parentSpanId: "1",
+          startTime: BigInt(Date.now() - 50) * 1_000_000n,
+          status: "started",
+        }),
+      ]}
+      logs={[]}
+    />,
+  )
+
+  test.expect(html).not.toContain("wf-dur")
+})
