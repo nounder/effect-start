@@ -93,7 +93,7 @@ export default Route.map({
   "/traces": Route.get(
     Route.schemaSearchParams(
       Schema.Struct({
-        traceSearch: Schema.optionalWith(Schema.Lowercase, {
+        traceSearch: Schema.optionalWith(Schema.String, {
           default: () => "",
         }),
       }),
@@ -104,7 +104,8 @@ export default Route.map({
         yield* StudioStore.allSpans(),
       )
       if (search) {
-        spans = spans.filter((s) => s.name.toLowerCase().startsWith(search))
+        const lower = search.toLowerCase()
+        spans = spans.filter((s) => s.name.toLowerCase().startsWith(lower))
       }
       const traces = Array
         .from(Ui.groupByTraceId(spans).values())
@@ -125,7 +126,8 @@ export default Route.map({
       const names = Array.from(new Set(allSpans.map((s) => s.name))).sort()
       let spans = allSpans
       if (search) {
-        spans = spans.filter((s) => s.name.toLowerCase().startsWith(search))
+        const lower = search.toLowerCase()
+        spans = spans.filter((s) => s.name.toLowerCase().startsWith(lower))
       }
 
       const body = (
@@ -188,7 +190,7 @@ export default Route.map({
       Effect.gen(function*() {
         const studio = yield* Studio.Studio
         const sql = yield* SqlClient.SqlClient
-        const search = ctx.searchParams.traceSearch
+        const search = ctx.searchParams.traceSearch.toLowerCase()
         return Stream.fromPubSub(studio.store.events).pipe(
           Stream.filter((e) => e._tag === "TraceEnd"),
           Stream.filterEffect((e) =>
