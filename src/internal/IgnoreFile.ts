@@ -1,4 +1,5 @@
 import type { Dirent } from "node:fs"
+import * as NFSSync from "node:fs"
 import * as NFS from "node:fs/promises"
 import * as NPath from "node:path"
 
@@ -132,8 +133,8 @@ const pushIgnore = async (
   dir: string,
 ): Promise<boolean> => {
   const path = NPath.join(dir, ".gitignore")
-  const stat = await NFS.stat(path).catch(() => null)
-  if (stat === null || !stat.isFile()) return false
+  const stat = NFSSync.statSync(path, { throwIfNoEntry: false })
+  if (!stat?.isFile()) return false
   const content = await NFS.readFile(path, "utf8")
   stack.push(parse(dir, content))
   return true
