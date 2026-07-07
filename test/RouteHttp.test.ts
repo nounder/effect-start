@@ -522,7 +522,8 @@ test.it("selects json when Accept prefers application/json", () =>
   Effect
     .gen(function*() {
       const handler = RouteHttp.toWebHandler(
-        Route.get(Route.json({ type: "json" })).get(
+        Route.get(
+          Route.json({ type: "json" }),
           Route.html("<div>html</div>"),
         ),
       )
@@ -544,7 +545,8 @@ test.it("selects html when Accept prefers text/html", () =>
   Effect
     .gen(function*() {
       const handler = RouteHttp.toWebHandler(
-        Route.get(Route.json({ type: "json" })).get(
+        Route.get(
+          Route.json({ type: "json" }),
           Route.html("<div>html</div>"),
         ),
       )
@@ -568,7 +570,7 @@ test.it("selects text/plain when Accept prefers it", () =>
   Effect
     .gen(function*() {
       const handler = RouteHttp.toWebHandler(
-        Route.get(Route.text("plain text")).get(Route.json({ type: "json" })),
+        Route.get(Route.text("plain text"), Route.json({ type: "json" })),
       )
       const client = Fetch.fromHandler(handler)
       const entity = yield* client.get("http://localhost/data", {
@@ -586,12 +588,13 @@ test.it("selects text/plain when Accept prefers it", () =>
     })
     .pipe(Effect.runPromise))
 
-test.it("returns first candidate when no Accept header", () =>
+test.it("prefers json when no Accept header regardless of definition order", () =>
   Effect
     .gen(function*() {
       const handler = RouteHttp.toWebHandler(
-        Route.get(Route.json({ type: "json" })).get(
+        Route.get(
           Route.html("<div>html</div>"),
+          Route.json({ type: "json" }),
         ),
       )
       const client = Fetch.fromHandler(handler)
@@ -607,7 +610,8 @@ test.it("handles Accept with quality values", () =>
   Effect
     .gen(function*() {
       const handler = RouteHttp.toWebHandler(
-        Route.get(Route.json({ type: "json" })).get(
+        Route.get(
+          Route.json({ type: "json" }),
           Route.html("<div>html</div>"),
         ),
       )
@@ -626,8 +630,29 @@ test.it("handles Accept: */*", () =>
   Effect
     .gen(function*() {
       const handler = RouteHttp.toWebHandler(
-        Route.get(Route.json({ type: "json" })).get(
+        Route.get(
+          Route.json({ type: "json" }),
           Route.html("<div>html</div>"),
+        ),
+      )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/data", {
+        headers: { Accept: "*/*" },
+      })
+
+      test
+        .expect(entity.headers["content-type"])
+        .toBe("application/json")
+    })
+    .pipe(Effect.runPromise))
+
+test.it("prefers json for Accept: */* regardless of definition order", () =>
+  Effect
+    .gen(function*() {
+      const handler = RouteHttp.toWebHandler(
+        Route.get(
+          Route.html("<div>html</div>"),
+          Route.json({ type: "json" }),
         ),
       )
       const client = Fetch.fromHandler(handler)
@@ -668,7 +693,8 @@ test.it("returns 406 when Accept doesn't match any of multiple formats", () =>
   Effect
     .gen(function*() {
       const handler = RouteHttp.toWebHandler(
-        Route.get(Route.json({ type: "json" })).get(
+        Route.get(
+          Route.json({ type: "json" }),
           Route.html("<div>html</div>"),
         ),
       )
@@ -683,11 +709,11 @@ test.it("returns 406 when Accept doesn't match any of multiple formats", () =>
     })
     .pipe(Effect.runPromise))
 
-test.it("definition order determines priority when no Accept header", () =>
+test.it("prefers text over html when no Accept header regardless of definition order", () =>
   Effect
     .gen(function*() {
       const handler = RouteHttp.toWebHandler(
-        Route.get(Route.text("plain")).get(Route.html("<div>html</div>")),
+        Route.get(Route.html("<div>html</div>"), Route.text("plain")),
       )
       const client = Fetch.fromHandler(handler)
       const entity = yield* client.get("http://localhost/data")
@@ -704,7 +730,8 @@ test.it("sets Vary: Accept when multiple formats exist", () =>
   Effect
     .gen(function*() {
       const handler = RouteHttp.toWebHandler(
-        Route.get(Route.json({ type: "json" })).get(
+        Route.get(
+          Route.json({ type: "json" }),
           Route.html("<div>html</div>"),
         ),
       )
@@ -746,7 +773,7 @@ test.it("sets Vary: Accept when no Accept header but multiple formats", () =>
   Effect
     .gen(function*() {
       const handler = RouteHttp.toWebHandler(
-        Route.get(Route.json({ type: "json" })).get(Route.text("plain")),
+        Route.get(Route.json({ type: "json" }), Route.text("plain")),
       )
       const client = Fetch.fromHandler(handler)
       const entity = yield* client.get("http://localhost/data")
@@ -1360,8 +1387,7 @@ test.describe("middleware chain", () => {
                 return { wrapped: value }
               }),
             )
-            .get(Route.json({ type: "json" }))
-            .get(Route.text("plain text")),
+            .get(Route.json({ type: "json" }), Route.text("plain text")),
         )
         const client = Fetch.fromHandler(handler)
 
@@ -3423,7 +3449,8 @@ test.describe("Route.handle (format=*)", () => {
     Effect
       .gen(function*() {
         const handler = RouteHttp.toWebHandler(
-          Route.get(Route.json({ type: "json" })).get(
+          Route.get(
+            Route.json({ type: "json" }),
             Route.handle(function*() {
               return "fallback"
             }),

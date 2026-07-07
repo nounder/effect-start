@@ -27,20 +27,21 @@ type UnboundedRouteWithMethod = Route.Route.With<{
   format?: RouteBody.Format
 }>
 
-// Used to match Accept headers against available route formats.
+// Media types offered during content negotiation. Key order defines the
+// default format priority.
 const formatToMediaType = {
+  json: "application/json",
   text: "text/*",
   html: "text/html",
-  json: "application/json",
   bytes: "application/octet-stream",
   sse: "text/event-stream",
 } as const
 
 // Used after content negotiation to determine which format was selected.
 const mediaTypeToFormat = {
+  "application/json": "json",
   "text/*": "text",
   "text/html": "html",
-  "application/json": "json",
   "application/octet-stream": "bytes",
   "text/event-stream": "sse",
 } as const
@@ -195,29 +196,87 @@ type Handler = (
   next: Entity.Entity<any, any>,
 ) => Effect.Effect<Entity.Entity<any>, any, any>
 
+interface MethodPlan {
+  hasMethodRoutes: boolean
+  upgradeRequired: boolean
+  matchingRoutes: Array<UnboundedRouteWithMethod>
+  // Offered formats in default priority order (formatToMediaType key order).
+  formats: Array<Exclude<RouteBody.Format, "*">>
+  mediaTypes: Array<string>
+  hasSpecificFormatRoutes: boolean
+  hasWildcardFormatRoutes: boolean
+  varyAccept: boolean
+  routePath: string | undefined
+}
+
+function makeMethodPlan(
+  allRoutes: Array<UnboundedRouteWithMethod>,
+  method: string,
+  isUpgrade: boolean,
+): MethodPlan {
+  const methodRoutes = allRoutes.filter((route) => {
+    const m = Route.descriptor(route).method?.toUpperCase()
+    return m === "*" || m === method || (method === "HEAD" && m === "GET")
+  })
+
+  const isWildcard = (route: UnboundedRouteWithMethod) => Route.descriptor<{ method?: string }>(route).method === "*"
+  const protocolMatches = (route: UnboundedRouteWithMethod) =>
+    (Route.descriptor<{ protocol?: "ws" }>(route).protocol === "ws") ===
+      isUpgrade
+  const matchingRoutes = methodRoutes.filter(
+    (route) => isWildcard(route) || protocolMatches(route),
+  )
+  const concreteRoutes = methodRoutes.filter((route) => !isWildcard(route))
+
+  const negotiable = new Set(
+    matchingRoutes
+      .filter((r) => !isWildcard(r))
+      .map((r) => Route.descriptor(r).format)
+      .filter((f): f is Exclude<RouteBody.Format, "*"> => Boolean(f) && f !== "*"),
+  )
+  const formats = (Object.keys(formatToMediaType) as Array<
+    keyof typeof formatToMediaType
+  >)
+    .filter((f) => negotiable.has(f))
+
+  const specificFormats = new Set<string>()
+  let hasWildcardFormatRoutes = false
+  for (const r of matchingRoutes) {
+    const format = Route.descriptor(r).format
+    if (format === "*") hasWildcardFormatRoutes = true
+    else if (format) specificFormats.add(format)
+  }
+
+  return {
+    hasMethodRoutes: methodRoutes.length > 0,
+    upgradeRequired: concreteRoutes.length > 0 &&
+      !concreteRoutes.some(protocolMatches),
+    matchingRoutes,
+    formats,
+    mediaTypes: formats.map((f) => formatToMediaType[f]),
+    hasSpecificFormatRoutes: specificFormats.size > 0,
+    hasWildcardFormatRoutes,
+    varyAccept: specificFormats.size > 1,
+    // All routes in a chain share the same path (RouteMap groups them).
+    routePath: matchingRoutes.length > 0
+      ? Route.descriptor<{ path?: string }>(matchingRoutes[0]).path
+      : undefined,
+  }
+}
+
 function determineSelectedFormat(
   accept: string | null,
-  routes: Array<UnboundedRouteWithMethod>,
+  plan: MethodPlan,
 ): RouteBody.Format | undefined {
-  const formats = routes
-    .filter((r) => Route.descriptor(r).method !== "*")
-    .map((r) => Route.descriptor(r).format)
-    .filter((f): f is Exclude<RouteBody.Format, "*"> => Boolean(f) && f !== "*")
-
-  const uniqueFormats = [...new Set(formats)]
-  const mediaTypes = uniqueFormats.map((f) => formatToMediaType[f]).filter(
-    Boolean,
-  )
-
-  if (mediaTypes.length === 0) {
+  if (plan.mediaTypes.length === 0) {
     return undefined
   }
 
   if (!accept) {
-    return uniqueFormats[0]
+    return plan.formats[0]
   }
 
-  const negotiated = ContentNegotiation.media(accept, mediaTypes)
+  const negotiated = ContentNegotiation.media(accept, plan.mediaTypes)
   if (negotiated.length > 0) {
     return mediaTypeToFormat[negotiated[0]]
   }
@@ -242,6 +301,20 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
     }
     const allowedMethods = Array.from(methods).join(", ")
 
+    const plans = new Map<string, MethodPlan>()
+    const planFor = (method: string, isUpgrade: boolean): MethodPlan => {
+      // Unknown methods are only ever served by wildcard routes and all
+      // produce the same plan, so they share one cache entry.
+      const key = (methods.has(method) ? method : "*") +
+        (isUpgrade ? "+upgrade" : "")
+      let plan = plans.get(key)
+      if (plan === undefined) {
+        plan = makeMethodPlan(allRoutes, method, isUpgrade)
+        plans.set(key, plan)
+      }
+      return plan
+    }
+
     return (request) =>
       new Promise((resolve) => {
         // Captured when the request span is created so error responses built
@@ -249,12 +322,11 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
         let requestSpan: Tracer.Span | undefined
         const method = request.method.toUpperCase()
         const accept = request.headers.get("accept")
-        const methodRoutes = allRoutes.filter((route) => {
-          const m = Route.descriptor(route).method?.toUpperCase()
-          return m === "*" || m === method || (method === "HEAD" && m === "GET")
-        })
+        const isUpgrade = method === "GET" &&
+          (request.headers.get("upgrade") ?? "").toLowerCase() === "websocket"
+        const plan = planFor(method, isUpgrade)
 
-        if (methodRoutes.length === 0) {
+        if (!plan.hasMethodRoutes) {
           if (method === "OPTIONS" || methods.size === 0) {
             return resolve(
               new Response(null, {
@@ -271,27 +343,10 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
           )
         }
 
-        const isUpgrade = method === "GET" &&
-          (request.headers.get("upgrade") ?? "").toLowerCase() === "websocket"
-        // Wildcard (`method: "*"`) routes are protocol-agnostic and must run for
-        // both plain and upgrade requests — they act as middleware that calls
-        // `next`, or as a terminal handler when no concrete route exists. Only
-        // concrete method routes are partitioned by protocol so a ws route
-        // handles upgrades and a plain route handles ordinary GETs.
-        const isWildcard = (route: UnboundedRouteWithMethod) =>
-          Route.descriptor<{ method?: string }>(route).method === "*"
-        const protocolMatches = (route: UnboundedRouteWithMethod) =>
-          (Route.descriptor<{ protocol?: "ws" }>(route).protocol === "ws") ===
-            isUpgrade
-        const matchingRoutes = methodRoutes.filter(
-          (route) => isWildcard(route) || protocolMatches(route),
-        )
-
         // 426 only when concrete method routes existed but the protocol
         // partition dropped all of them (e.g. a plain GET to a ws-only path or
         // an upgrade to a non-ws path). Wildcard-only paths run normally.
-        const concreteRoutes = methodRoutes.filter((route) => !isWildcard(route))
-        if (concreteRoutes.length > 0 && !concreteRoutes.some(protocolMatches)) {
+        if (plan.upgradeRequired) {
           return resolve(
             new Response(null, {
               status: 426,
@@ -299,23 +354,13 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
             }),
           )
         }
-        const selectedFormat = determineSelectedFormat(accept, matchingRoutes)
-
-        const specificFormats = new Set<string>()
-        let hasWildcardFormatRoutes = false
-        for (const r of matchingRoutes) {
-          const format = Route.descriptor(r).format
-          if (format === "*") hasWildcardFormatRoutes = true
-          else if (format) specificFormats.add(format)
-        }
-        const hasSpecificFormatRoutes = specificFormats.size > 0
-        const varyAccept = specificFormats.size > 1
+        const selectedFormat = determineSelectedFormat(accept, plan)
 
         if (
           !isUpgrade &&
           selectedFormat === undefined &&
-          hasSpecificFormatRoutes &&
-          !hasWildcardFormatRoutes
+          plan.hasSpecificFormatRoutes &&
+          !plan.hasWildcardFormatRoutes
         ) {
           return resolve(
             respondError({ status: 406, message: "not acceptable" }),
@@ -326,7 +371,7 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
           let index = 0
 
           const runNext = (): Effect.Effect<Entity.Entity<any>, any, any> => {
-            if (index >= matchingRoutes.length) {
+            if (index >= plan.matchingRoutes.length) {
               return Effect.succeed(
                 Entity.make({ status: 404, message: "route not found" }, {
                   status: 404,
@@ -334,7 +379,7 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
               )
             }
 
-            const route = matchingRoutes[index++]
+            const route = plan.matchingRoutes[index++]
             const descriptor = Route.descriptor(route)
             const format = descriptor.format
             const handler = route.handler as Handler
@@ -353,11 +398,6 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
 
           return runNext()
         }
-
-        // All routes in a chain share the same path (RouteMap groups them).
-        const routePath = Route
-          .descriptor<{ path?: string }>(matchingRoutes[0])
-          .path
 
         const effect = Effect.withFiberRuntime<Response, unknown, R>(
           (fiber) => {
@@ -385,7 +425,7 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
                 }
 
                 const response = yield* toResponse(entity, selectedFormat)
-                if (varyAccept) {
+                if (plan.varyAccept) {
                   response.headers.set("vary", "Accept")
                 }
                 return response
@@ -417,8 +457,8 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
                 span.attribute("http.request.method", request.method)
                 span.attribute("url.full", url.toString())
                 span.attribute("url.path", url.pathname)
-                if (routePath !== undefined) {
-                  span.attribute("http.route", routePath)
+                if (plan.routePath !== undefined) {
+                  span.attribute("http.route", plan.routePath)
                 }
                 const query = url.search.slice(1)
                 if (query !== "") {

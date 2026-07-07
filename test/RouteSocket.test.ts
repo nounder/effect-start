@@ -117,10 +117,13 @@ test.describe("Route.ws", () => {
 
   test.test("coexists with a plain GET on the same path", () => {
     const routes = Route.map({
-      "/dual": Route.get(Route.text("hi")).get(Route.ws(function*(ctx) {
-        const write = yield* ctx.socket.writer
-        yield* ctx.socket.runRaw((data) => write(data))
-      })),
+      "/dual": Route.get(
+        Route.text("hi"),
+        Route.ws(function*(ctx) {
+          const write = yield* ctx.socket.writer
+          yield* ctx.socket.runRaw((data) => write(data))
+        }),
+      ),
     })
 
     return Effect
@@ -157,13 +160,14 @@ test.describe("Route.ws", () => {
 
   test.test("negotiates content for plain GETs and upgrades the socket on the same path", () => {
     const routes = Route.map({
-      "/feed": Route
-        .get(Route.html("<h1>feed</h1>"))
-        .get(Route.text("plain feed"))
-        .get(Route.ws(function*(ctx) {
+      "/feed": Route.get(
+        Route.html("<h1>feed</h1>"),
+        Route.text("plain feed"),
+        Route.ws(function*(ctx) {
           const write = yield* ctx.socket.writer
           yield* ctx.socket.runRaw((data) => write(data))
-        })),
+        }),
+      ),
     })
 
     return Effect

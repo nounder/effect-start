@@ -191,7 +191,8 @@ test.describe("routes", () => {
 
   test.test("handles content negotiation", () => {
     const routes = Route.map({
-      "/data": Route.get(Route.json({ type: "json" })).get(
+      "/data": Route.get(
+        Route.json({ type: "json" }),
         Route.html("<div>html</div>"),
       ),
     })
