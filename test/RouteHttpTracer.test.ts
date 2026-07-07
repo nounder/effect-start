@@ -8,6 +8,7 @@ import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
 import * as Stream from "effect/Stream"
 import type * as Tracer from "effect/Tracer"
+import * as Http from "../src/internal/Http.ts"
 import * as Tracing from "../src/internal/Tracing.ts"
 
 test.describe("tracing", () => {
@@ -457,6 +458,110 @@ test.describe("tracing", () => {
         test
           .expect(response.headers.get("server-timing"))
           .toBeNull()
+      })
+      .pipe(Effect.runPromise))
+
+  test.it("keeps the http.server span open until the sse stream completes", () =>
+    Effect
+      .gen(function*() {
+        const spans: Array<Tracing.Span> = []
+        const runtime = yield* Effect.runtime<never>().pipe(
+          Effect.withTracer(Tracing.makeTracer(spans)),
+        )
+
+        const handler = RouteHttp.toWebHandlerRuntime(runtime)(
+          Route.get(
+            Route.sse(() =>
+              Stream.make({ data: "a" }, { data: "b" }).pipe(
+                Stream.mapEffect((event) => Effect.sleep("15 millis").pipe(Effect.as(event))),
+              )
+            ),
+          ),
+        )
+
+        const response = yield* Effect.promise(() => Promise.resolve(handler(new Request("http://localhost/events"))))
+
+        const serverSpan = spans.find((span) => span.name === "http.server GET")
+
+        test
+          .expect(serverSpan!.status)
+          .toBe("started")
+
+        yield* Effect.promise(() => response.text())
+
+        test
+          .expect(serverSpan!.status)
+          .toBe("ok")
+        test
+          .expect(serverSpan!.durationMs!)
+          .toBeGreaterThan(25)
+      })
+      .pipe(Effect.runPromise))
+
+  test.it("ends the http.server span with ok status when the client cancels", () =>
+    Effect
+      .gen(function*() {
+        const spans: Array<Tracing.Span> = []
+        const runtime = yield* Effect.runtime<never>().pipe(
+          Effect.withTracer(Tracing.makeTracer(spans)),
+        )
+
+        const handler = RouteHttp.toWebHandlerRuntime(runtime)(
+          Route.get(
+            Route.sse(() => Stream.concat(Stream.make({ data: "first" }), Stream.never)),
+          ),
+        )
+
+        const response = yield* Effect.promise(() => Promise.resolve(handler(new Request("http://localhost/events"))))
+        const reader = response.body!.getReader()
+        yield* Effect.promise(() => reader.read())
+        yield* Effect.promise(() => reader.cancel())
+
+        const serverSpan = spans.find((span) => span.name === "http.server GET")
+
+        test
+          .expect(serverSpan!.status)
+          .toBe("ok")
+        test
+          .expect(serverSpan!.attributes["status.interrupted"])
+          .toBe(true)
+      })
+      .pipe(Effect.runPromise))
+
+  test.it("records the 499 status on the span when the client aborts mid request", () =>
+    Effect
+      .gen(function*() {
+        const spans: Array<Tracing.Span> = []
+        const runtime = yield* Effect.runtime<never>().pipe(
+          Effect.withTracer(Tracing.makeTracer(spans)),
+        )
+
+        const handler = RouteHttp.toWebHandlerRuntime(runtime)(
+          Route.get(
+            Route.text(Effect.as(Effect.sleep("10 seconds"), "unreachable")),
+          ),
+        )
+
+        const abortable = Http.createAbortableRequest({ path: "/abort" })
+        const responsePromise = handler(abortable.request)
+        yield* Effect.sleep("10 millis")
+        abortable.abort()
+        const response = yield* Effect.promise(() => Promise.resolve(responsePromise))
+
+        const serverSpan = spans.find((span) => span.name === "http.server GET")
+
+        test
+          .expect(response.status)
+          .toBe(499)
+        test
+          .expect(serverSpan!.status)
+          .toBe("ok")
+        test
+          .expect(serverSpan!.attributes["status.interrupted"])
+          .toBe(true)
+        test
+          .expect(serverSpan!.attributes["http.response.status_code"])
+          .toBe(499)
       })
       .pipe(Effect.runPromise))
 

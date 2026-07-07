@@ -399,7 +399,11 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
           return runNext()
         }
 
-        const effect = Effect.withFiberRuntime<Response, unknown, R>(
+        const effect = Effect.withFiberRuntime<
+          Response,
+          unknown,
+          R | Scope.Scope
+        >(
           (fiber) => {
             const tracerDisabled = !fiber
               .getFiberRef(FiberRef.currentTracerEnabled) ||
@@ -443,15 +447,18 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
               RouteHttpTracer.currentSpanNameGenerator,
             )
 
-            return Effect.useSpan(
-              spanNameGenerator(request),
-              {
+            // The span is bound to the request scope instead of the request
+            // effect: for stream responses the scope closes when the body
+            // finishes streaming, so the span covers the full response
+            // instead of the handler execution time.
+            return Effect.flatMap(
+              Effect.makeSpanScoped(spanNameGenerator(request), {
                 parent: Option.getOrUndefined(
                   RouteHttpTracer.parentSpanFromHeaders(request.headers),
                 ),
                 kind: "server",
                 captureStackTrace: false,
-              },
+              }),
               (span) => {
                 requestSpan = span
                 span.attribute("http.request.method", request.method)
@@ -510,9 +517,22 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
               Effect.onExit(
                 Scope.extend(effect, scope),
                 (exit) =>
-                  streamOwnedScopes.has(scope)
-                    ? Effect.void
-                    : Scope.close(scope, exit),
+                  Effect.suspend(() => {
+                    // The error responses below are produced after the scope
+                    // has closed and the span has ended, so the status they
+                    // will carry has to be recorded on the span here.
+                    if (requestSpan !== undefined && exit._tag === "Failure") {
+                      requestSpan.attribute(
+                        "http.response.status_code",
+                        isClientAbort(exit.cause)
+                          ? 499
+                          : getStatusFromCause(exit.cause),
+                      )
+                    }
+                    return streamOwnedScopes.has(scope)
+                      ? Effect.void
+                      : Scope.close(scope, exit)
+                  }),
               ))
             .pipe(
               Effect.catchAllCause((cause) =>
@@ -531,13 +551,18 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
             ),
         )
 
-        request.signal?.addEventListener(
-          "abort",
-          () => {
-            fiber.unsafeInterruptAsFork(clientAbortFiberId)
-          },
-          { once: true },
-        )
+        // An already-aborted signal never fires the abort event.
+        if (request.signal?.aborted) {
+          fiber.unsafeInterruptAsFork(clientAbortFiberId)
+        } else {
+          request.signal?.addEventListener(
+            "abort",
+            () => {
+              fiber.unsafeInterruptAsFork(clientAbortFiberId)
+            },
+            { once: true },
+          )
+        }
 
         const resolveForMethod = method === "HEAD"
           ? (response: Response) => {

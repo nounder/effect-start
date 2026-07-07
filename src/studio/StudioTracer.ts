@@ -59,7 +59,7 @@ const make = (store: StudioStore.State): Tracer.Tracer =>
         store,
         Effect.zipRight(
           StudioStore.insertSpan(studioSpan),
-          StudioStore.evict("Span", store.spanCapacity),
+          StudioStore.evictSpans(store.spanCapacity),
         ),
       )
       publish(store, { _tag: "SpanStart", span: studioSpan })
@@ -69,6 +69,7 @@ const make = (store: StudioStore.State): Tracer.Tracer =>
 
       const attrs = new Map<string, unknown>(Object.entries(attributes))
       const spanLinks = [...links]
+      let endExit: Exit.Exit<unknown, unknown> = Exit.void
 
       const span: Tracer.Span = {
         _tag: "Span",
@@ -83,7 +84,7 @@ const make = (store: StudioStore.State): Tracer.Tracer =>
               _tag: "Ended",
               startTime: studioSpan.startTime,
               endTime: studioSpan.endTime,
-              exit: Exit.void,
+              exit: endExit,
             }
           }
           return { _tag: "Started", startTime: studioSpan.startTime }
@@ -93,10 +94,16 @@ const make = (store: StudioStore.State): Tracer.Tracer =>
         sampled: true,
         kind,
         end(endTime, exit) {
+          endExit = exit
           studioSpan.endTime = endTime
           studioSpan.durationMs = Number(endTime - studioSpan.startTime) /
             1_000_000
-          studioSpan.status = Exit.isSuccess(exit) ? "ok" : "error"
+          const ending = Tracing.statusFromExit(exit)
+          studioSpan.status = ending.status
+          if (ending.interrupted) {
+            attrs.set("status.interrupted", true)
+            ;(studioSpan.attributes as Record<string, unknown>)["status.interrupted"] = true
+          }
           StudioStore.runWrite(store, StudioStore.updateSpan(studioSpan))
           publish(store, { _tag: "SpanEnd", span: studioSpan })
           if (parentSpanId === undefined) {

@@ -1,3 +1,4 @@
+import * as Cause from "effect/Cause"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import * as FiberId from "effect/FiberId"
@@ -28,6 +29,16 @@ export const nextSpanId = (): string => nextPackedId().toString()
 
 export const nextTraceId = (): string => nextPackedId().toString()
 
+export const statusFromExit = (
+  exit: Exit.Exit<unknown, unknown>,
+): { status: "ok" | "error"; interrupted: boolean } => {
+  const interrupted = Exit.isFailure(exit) && Cause.isInterruptedOnly(exit.cause)
+  return {
+    status: Exit.isSuccess(exit) || interrupted ? "ok" : "error",
+    interrupted,
+  }
+}
+
 export const makeTracer = (spans: Array<Span>): Tracer.Tracer =>
   Tracer.make({
     span(name, parent, context, links, startTime, kind) {
@@ -57,6 +68,7 @@ export const makeTracer = (spans: Array<Span>): Tracer.Tracer =>
 
       const attrs = new Map<string, unknown>()
       const spanLinks = [...links]
+      let endExit: Exit.Exit<unknown, unknown> = Exit.void
       const span: Tracer.Span = {
         _tag: "Span",
         name,
@@ -66,7 +78,7 @@ export const makeTracer = (spans: Array<Span>): Tracer.Tracer =>
         context,
         get status(): Tracer.SpanStatus {
           return record.endTime != null
-            ? { _tag: "Ended", startTime: record.startTime, endTime: record.endTime, exit: Exit.void }
+            ? { _tag: "Ended", startTime: record.startTime, endTime: record.endTime, exit: endExit }
             : { _tag: "Started", startTime: record.startTime }
         },
         attributes: attrs,
@@ -74,9 +86,15 @@ export const makeTracer = (spans: Array<Span>): Tracer.Tracer =>
         sampled: true,
         kind,
         end(endTime, exit) {
+          endExit = exit
           record.endTime = endTime
           record.durationMs = Number(endTime - record.startTime) / 1_000_000
-          record.status = Exit.isSuccess(exit) ? "ok" : "error"
+          const ending = statusFromExit(exit)
+          record.status = ending.status
+          if (ending.interrupted) {
+            attrs.set("status.interrupted", true)
+            record.attributes["status.interrupted"] = true
+          }
         },
         attribute(key, value) {
           attrs.set(key, value)

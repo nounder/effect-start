@@ -421,12 +421,21 @@ export function upsertFiber(
 // When the table holds at most capacity rows, the subquery yields NULL and
 // nothing matches.
 export function evict(
-  table: "Span" | "Log" | "Error" | "MetricSample",
+  table: "Log" | "Error" | "MetricSample",
   capacity: number,
 ) {
   return withSql((sql) =>
     sql`DELETE FROM ${sql(table)} WHERE rowid <= (
       SELECT rowid FROM ${sql(table)}
+      ORDER BY rowid DESC LIMIT 1 OFFSET ${capacity}
+    )`
+  )
+}
+
+export function evictSpans(capacity: number) {
+  return withSql((sql) =>
+    sql`DELETE FROM Span WHERE status != 'started' AND rowid <= (
+      SELECT rowid FROM Span
       ORDER BY rowid DESC LIMIT 1 OFFSET ${capacity}
     )`
   )
