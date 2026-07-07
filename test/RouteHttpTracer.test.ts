@@ -1,4 +1,5 @@
 import * as test from "bun:test"
+import * as Entity from "effect-start/Entity"
 import * as Fetch from "effect-start/Fetch"
 import * as Route from "effect-start/Route"
 import * as RouteHttp from "effect-start/RouteHttp"
@@ -345,6 +346,117 @@ test.describe("tracing", () => {
             .expect(span.parentSpanId)
             .toBe(serverSpan!.spanId)
         }
+      })
+      .pipe(Effect.runPromise))
+
+  test.it("adds server-timing trace metric to successful responses", () =>
+    Effect
+      .gen(function*() {
+        let capturedSpan: Tracer.Span | undefined
+
+        const handler = RouteHttp.toWebHandler(
+          Route.get(
+            Route.text(function*() {
+              capturedSpan = yield* Effect.currentSpan
+              return "ok"
+            }),
+          ),
+        )
+
+        const response = yield* Effect.promise(() => Promise.resolve(handler(new Request("http://localhost/test"))))
+
+        test
+          .expect(response.headers.get("server-timing"))
+          .toBe(`trace;desc=00-${capturedSpan!.traceId}-${capturedSpan!.spanId}-01`)
+      })
+      .pipe(Effect.runPromise))
+
+  test.it("adds server-timing trace metric to stream responses", () =>
+    Effect
+      .gen(function*() {
+        const spans: Array<Tracing.Span> = []
+        const runtime = yield* Effect.runtime<never>().pipe(
+          Effect.withTracer(Tracing.makeTracer(spans)),
+        )
+
+        const handler = RouteHttp.toWebHandlerRuntime(runtime)(
+          Route.get(Route.sse(() => Stream.make({ data: "a" }))),
+        )
+
+        const response = yield* Effect.promise(() => Promise.resolve(handler(new Request("http://localhost/events"))))
+        yield* Effect.promise(() => response.text())
+
+        const serverSpan = spans.find((span) => span.name === "http.server GET")
+
+        test
+          .expect(response.headers.get("server-timing"))
+          .toBe(`trace;desc=00-${serverSpan!.traceId}-${serverSpan!.spanId}-01`)
+      })
+      .pipe(Effect.runPromise))
+
+  test.it("adds server-timing trace metric to error responses", () =>
+    Effect
+      .gen(function*() {
+        const spans: Array<Tracing.Span> = []
+        const runtime = yield* Effect.runtime<never>().pipe(
+          Effect.withTracer(Tracing.makeTracer(spans)),
+        )
+
+        const handler = RouteHttp.toWebHandlerRuntime(runtime)(
+          Route.get(
+            Route.text(function*() {
+              return yield* Effect.die(new Error("boom"))
+            }),
+          ),
+        )
+
+        const response = yield* Effect.promise(() => Promise.resolve(handler(new Request("http://localhost/test"))))
+
+        test
+          .expect(response.status)
+          .toBe(500)
+
+        const serverSpan = spans.find((span) => span.name === "http.server GET")
+
+        test
+          .expect(response.headers.get("server-timing"))
+          .toBe(`trace;desc=00-${serverSpan!.traceId}-${serverSpan!.spanId}-01`)
+      })
+      .pipe(Effect.runPromise))
+
+  test.it("appends the trace metric to handler-set server-timing headers", () =>
+    Effect
+      .gen(function*() {
+        const handler = RouteHttp.toWebHandler(
+          Route.get(
+            Route.text(Entity.make("ok", { headers: { "server-timing": "db;dur=5" } })),
+          ),
+        )
+
+        const response = yield* Effect.promise(() => Promise.resolve(handler(new Request("http://localhost/test"))))
+
+        test
+          .expect(response.headers.get("server-timing"))
+          .toMatch(/^db;dur=5, trace;desc=00-/)
+      })
+      .pipe(Effect.runPromise))
+
+  test.it("omits server-timing trace metric when tracing is disabled", () =>
+    Effect
+      .gen(function*() {
+        const runtime = yield* RouteHttpTracer.withTracerDisabledWhen(
+          Effect.runtime<never>(),
+          () => true,
+        )
+        const handler = RouteHttp.toWebHandlerRuntime(runtime)(
+          Route.get(Route.text("ok")),
+        )
+
+        const response = yield* Effect.promise(() => Promise.resolve(handler(new Request("http://localhost/test"))))
+
+        test
+          .expect(response.headers.get("server-timing"))
+          .toBeNull()
       })
       .pipe(Effect.runPromise))
 

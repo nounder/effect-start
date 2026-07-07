@@ -1,12 +1,16 @@
 import * as Cause from "effect/Cause"
+import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as FiberId from "effect/FiberId"
 import * as FiberRef from "effect/FiberRef"
+import * as GlobalValue from "effect/GlobalValue"
 import * as HashSet from "effect/HashSet"
 import * as Option from "effect/Option"
 import type * as ParseResult from "effect/ParseResult"
 import * as Runtime from "effect/Runtime"
+import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
+import type * as Tracer from "effect/Tracer"
 import * as Development from "./Development.ts"
 import * as Entity from "./Entity.ts"
 import * as ContentNegotiation from "./internal/ContentNegotiation.ts"
@@ -74,25 +78,59 @@ const respondError = (
     headers: { "content-type": "application/json", ...headers },
   })
 
+const serverTimingTrace = (span: Tracer.Span): string =>
+  `trace;desc=00-${span.traceId}-${span.spanId}-${span.sampled ? "01" : "00"}`
+
+const streamOwnedScopes = GlobalValue.globalValue(
+  Symbol.for("effect-start/RouteHttp/streamOwnedScopes"),
+  () => new WeakSet<Scope.Scope>(),
+)
+
 function streamResponse(
   stream: Stream.Stream<unknown, unknown, unknown>,
   headers: globalThis.Headers,
   status: number,
-  runtime: Runtime.Runtime<any>,
-): Response {
-  const encoder = new TextEncoder()
-  const byteStream = (stream as Stream.Stream<unknown, unknown, never>).pipe(
-    Stream.map(
-      (chunk): Uint8Array =>
-        typeof chunk === "string"
-          ? encoder.encode(chunk)
-          : (chunk as Uint8Array),
-    ),
-    Stream.catchAll((error) => Stream.fail(error instanceof Error ? error : new Error(String(error)))),
-  )
-  return new Response(Stream.toReadableStreamRuntime(byteStream, runtime), {
-    status,
-    headers,
+): Effect.Effect<Response> {
+  return Effect.map(Effect.runtime<never>(), (runtime) => {
+    const encoder = new TextEncoder()
+    let byteStream = (stream as Stream.Stream<unknown, unknown, never>).pipe(
+      Stream.map(
+        (chunk): Uint8Array =>
+          typeof chunk === "string"
+            ? encoder.encode(chunk)
+            : (chunk as Uint8Array),
+      ),
+      Stream.catchAll((error) => Stream.fail(error instanceof Error ? error : new Error(String(error)))),
+    )
+
+    const request = Context.getOption(runtime.context, Route.Request)
+    const signal = Option.isSome(request) ? request.value.signal : undefined
+    if (signal !== undefined) {
+      // The request fiber is already done while the body streams, so a client
+      // abort has to interrupt the stream directly.
+      byteStream = Stream.interruptWhen(
+        byteStream,
+        signal.aborted ? Effect.void : Effect.async<void>((resume) => {
+          const onAbort = () => resume(Effect.void)
+          signal.addEventListener("abort", onAbort, { once: true })
+          return Effect.sync(() => signal.removeEventListener("abort", onAbort))
+        }),
+      )
+    }
+
+    const scope = Context.getOption(runtime.context, Scope.Scope)
+    if (Option.isSome(scope)) {
+      streamOwnedScopes.add(scope.value)
+      byteStream = Stream.ensuringWith(
+        byteStream,
+        (exit) => Scope.close(scope.value as Scope.CloseableScope, exit),
+      )
+    }
+
+    return new Response(Stream.toReadableStreamRuntime(byteStream, runtime), {
+      status,
+      headers,
+    })
   })
 }
 
@@ -119,14 +157,13 @@ function toHeaders(
 function toResponse(
   entity: Entity.Entity<any>,
   format: string | undefined,
-  runtime: Runtime.Runtime<any>,
 ): Effect.Effect<Response, ParseResult.ParseError> {
   const contentType = Entity.type(entity)
   const status = entity.status ?? 200
   const headers = toHeaders(entity.headers, contentType)
 
   if (StreamExtra.isStream(entity.body)) {
-    return Effect.succeed(streamResponse(entity.body, headers, status, runtime))
+    return streamResponse(entity.body, headers, status)
   }
 
   if (format === "json") {
@@ -150,7 +187,7 @@ function toResponse(
     )
   }
 
-  return Effect.succeed(streamResponse(entity.stream, headers, status, runtime))
+  return streamResponse(entity.stream, headers, status)
 }
 
 type Handler = (
@@ -207,6 +244,9 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
 
     return (request) =>
       new Promise((resolve) => {
+        // Captured when the request span is created so error responses built
+        // after the span has ended can still reference the trace.
+        let requestSpan: Tracer.Span | undefined
         const method = request.method.toUpperCase()
         const accept = request.headers.get("accept")
         const methodRoutes = allRoutes.filter((route) => {
@@ -344,11 +384,7 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
                   })
                 }
 
-                const response = yield* toResponse(
-                  entity,
-                  selectedFormat,
-                  runtime,
-                )
+                const response = yield* toResponse(entity, selectedFormat)
                 if (varyAccept) {
                   response.headers.set("vary", "Accept")
                 }
@@ -377,6 +413,7 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
                 captureStackTrace: false,
               },
               (span) => {
+                requestSpan = span
                 span.attribute("http.request.method", request.method)
                 span.attribute("url.full", url.toString())
                 span.attribute("url.path", url.pathname)
@@ -406,6 +443,7 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
                   Effect.exit(Effect.withParentSpan(innerEffect, span)),
                   (exit) => {
                     if (exit._tag === "Success") {
+                      exit.value.headers.append("server-timing", serverTimingTrace(span))
                       span.attribute(
                         "http.response.status_code",
                         exit.value.status,
@@ -427,19 +465,30 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
         )
 
         const fiber = runFork(
-          effect.pipe(
-            Effect.scoped,
-            Effect.catchAllCause((cause) =>
-              Effect.gen(function*() {
-                yield* Effect.logError(cause)
-                const status = getStatusFromCause(cause)
-                const message = inDevelopment
-                  ? Cause.pretty(cause, { renderErrorCause: true })
-                  : "Internal Server Error"
-                return respondError({ status, message })
-              })
+          Effect
+            .flatMap(Scope.make(), (scope) =>
+              Effect.onExit(
+                Scope.extend(effect, scope),
+                (exit) =>
+                  streamOwnedScopes.has(scope)
+                    ? Effect.void
+                    : Scope.close(scope, exit),
+              ))
+            .pipe(
+              Effect.catchAllCause((cause) =>
+                Effect.gen(function*() {
+                  yield* Effect.logError(cause)
+                  const status = getStatusFromCause(cause)
+                  const message = inDevelopment
+                    ? Cause.pretty(cause, { renderErrorCause: true })
+                    : "Internal Server Error"
+                  return respondError(
+                    { status, message },
+                    requestSpan && { "server-timing": serverTimingTrace(requestSpan) },
+                  )
+                })
+              ),
             ),
-          ),
         )
 
         request.signal?.addEventListener(
@@ -451,28 +500,37 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
         )
 
         const resolveForMethod = method === "HEAD"
-          ? (response: Response) =>
+          ? (response: Response) => {
+            // The body is discarded for HEAD; cancel it so a stream that owns
+            // the request scope still closes it.
+            void response.body?.cancel()
             resolve(
               new Response(null, {
                 status: response.status,
                 headers: response.headers,
               }),
             )
+          }
           : resolve
 
         fiber.addObserver((exit) => {
+          const traceHeaders = requestSpan &&
+            { "server-timing": serverTimingTrace(requestSpan) }
           if (exit._tag === "Success") {
             resolveForMethod(exit.value)
           } else if (isClientAbort(exit.cause)) {
             resolve(
-              respondError({ status: 499, message: "client closed request" }),
+              respondError(
+                { status: 499, message: "client closed request" },
+                traceHeaders,
+              ),
             )
           } else {
             const status = getStatusFromCause(exit.cause)
             const message = inDevelopment
               ? Cause.pretty(exit.cause, { renderErrorCause: true })
               : "Internal Server Error"
-            resolve(respondError({ status, message }))
+            resolve(respondError({ status, message }, traceHeaders))
           }
         })
       })
