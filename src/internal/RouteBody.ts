@@ -25,6 +25,8 @@ const formatToContentType: Record<Format, string | undefined> = {
 type HandlerReturn<A, Value = A> =
   | A
   | Entity.Entity<Value, any>
+  | Entity.Entity<Stream.Stream<Value, any, any>, any>
+  // support returing bytes from text/json/etc
   | Entity.Entity<Uint8Array, any>
   | ((self: Route.RouteSet.Any) => Route.RouteSet.Any)
 

@@ -1747,6 +1747,35 @@ test.describe("streaming responses", () => {
       })
       .pipe(Effect.runPromise))
 
+  test.it("streams Entity-wrapped bytes response with custom headers", () =>
+    Effect
+      .gen(function*() {
+        const encoder = new TextEncoder()
+        const handler = RouteHttp.toWebHandler(
+          Route.get(
+            Route.bytes(function*() {
+              return Entity.make(
+                Stream.make(
+                  encoder.encode("chunk1"),
+                  encoder.encode("chunk2"),
+                ),
+                { headers: { "content-type": "audio/mpeg" } },
+              )
+            }),
+          ),
+        )
+        const client = Fetch.fromHandler(handler)
+        const entity = yield* client.get("http://localhost/stream")
+
+        test
+          .expect(entity.headers["content-type"])
+          .toBe("audio/mpeg")
+        test
+          .expect(yield* entity.text)
+          .toBe("chunk1chunk2")
+      })
+      .pipe(Effect.runPromise))
+
   test.it("handles stream errors gracefully", () =>
     Effect
       .gen(function*() {
@@ -2882,18 +2911,20 @@ test.describe("stream response scope", () => {
               Effect.gen(function*() {
                 const queue = yield* Queue.unbounded<{ data: string }>()
                 yield* Effect.forkScoped(
-                  Effect.repeat(
-                    Effect.sync(() => ticks++).pipe(
-                      Effect.flatMap((n) => Queue.offer(queue, { data: String(n) })),
+                  Effect
+                    .repeat(
+                      Effect.sync(() => ticks++).pipe(
+                        Effect.flatMap((n) => Queue.offer(queue, { data: String(n) })),
+                      ),
+                      Schedule.spaced("10 millis"),
+                    )
+                    .pipe(
+                      Effect.onInterrupt(() =>
+                        Effect.sync(() => {
+                          interrupted = true
+                        })
+                      ),
                     ),
-                    Schedule.spaced("10 millis"),
-                  ).pipe(
-                    Effect.onInterrupt(() =>
-                      Effect.sync(() => {
-                        interrupted = true
-                      })
-                    ),
-                  ),
                 )
                 return Stream.fromQueue(queue)
               })

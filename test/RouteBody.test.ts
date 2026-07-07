@@ -83,6 +83,18 @@ test.it("accepts Effect<Stream<Uint8Array>> for bytes format", () => {
   )
 })
 
+test.it("accepts Entity wrapping Stream<Uint8Array> for bytes format", () => {
+  const encoder = new TextEncoder()
+
+  Route.get(
+    Route.bytes(function*() {
+      return Entity.make(Stream.make(encoder.encode("chunk")), {
+        headers: { "content-type": "audio/mpeg" },
+      })
+    }),
+  )
+})
+
 test.it("rejects Stream for json format", () => {
   // @ts-expect-error Stream not allowed for json format
   Route.json(function*() {
