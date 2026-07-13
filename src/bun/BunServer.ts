@@ -115,9 +115,12 @@ export const make = (
           return boundAddress
         },
         get url() {
-          return boundAddress._tag === "TcpAddress"
-            ? `http://${boundAddress.hostname}:${boundAddress.port}`
-            : "http://localhost"
+          if (boundAddress._tag === "UnixAddress") return "http://localhost"
+
+          const hostname = boundAddress.hostname === "0.0.0.0" || boundAddress.hostname === "::"
+            ? "localhost"
+            : boundAddress.hostname
+          return `http://${hostname}:${boundAddress.port}`
         },
         pushHandler(fetch) {
           handlerStack

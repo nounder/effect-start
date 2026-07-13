@@ -71,6 +71,21 @@ test.describe("layerRoutes port precedence", () => {
   })
 })
 
+test.test("uses localhost URL for wildcard binds", () =>
+  Effect
+    .gen(function*() {
+      const ipv4Server = yield* BunServer.make({ hostname: "0.0.0.0", port: 0 })
+      const ipv6Server = yield* BunServer.make({ hostname: "::", port: 0 })
+
+      test
+        .expect(ipv4Server.url)
+        .toBe(`http://localhost:${ipv4Server.server.port}`)
+      test
+        .expect(ipv6Server.url)
+        .toBe(`http://localhost:${ipv6Server.server.port}`)
+    })
+    .pipe(Effect.scoped, Effect.runPromise))
+
 test.describe("smart port selection", () => {
   test.test.skipIf(process.stdout.isTTY)(
     "uses random port when PORT not set, isTTY=false, CLAUDECODE set",
