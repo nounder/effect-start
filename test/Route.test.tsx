@@ -750,10 +750,13 @@ test.describe("Route.link", () => {
 
   test.it("extra params become search params", () => {
     const routes = Route.get(
-      Route.schemaPathParams(Schema.Struct({ id: Schema.String })),
-      Route.schemaSearchParams(
-        Schema.Struct({ tab: Schema.String, page: Schema.String }),
-      ),
+      Route.schemaPathParams({
+        id: Schema.String,
+      }),
+      Route.schemaSearchParams({
+        tab: Schema.String,
+        page: Schema.String,
+      }),
       Route.html(""),
     )
 
@@ -768,7 +771,9 @@ test.describe("Route.link", () => {
 
   test.it("search params are encoded", () => {
     const routes = Route.get(
-      Route.schemaSearchParams(Schema.Struct({ q: Schema.String })),
+      Route.schemaSearchParams({
+        q: Schema.String,
+      }),
       Route.html(""),
     )
 
@@ -783,8 +788,12 @@ test.describe("Route.link", () => {
 
   test.it("null/undefined search params are omitted", () => {
     const routes = Route.get(
-      Route.schemaPathParams(Schema.Struct({ id: Schema.String })),
-      Route.schemaSearchParams(Schema.Struct({ tab: Schema.String })),
+      Route.schemaPathParams({
+        id: Schema.String,
+      }),
+      Route.schemaSearchParams({
+        tab: Schema.String,
+      }),
       Route.html(""),
     )
 
@@ -799,7 +808,9 @@ test.describe("Route.link", () => {
 
   test.it("type: search params are optional", () => {
     const routes = Route.get(
-      Route.schemaSearchParams(Schema.Struct({ tab: Schema.String })),
+      Route.schemaSearchParams({
+        tab: Schema.String,
+      }),
       Route.html(""),
     )
 
@@ -811,9 +822,10 @@ test.describe("Route.link", () => {
 
   test.it("type: path params preserve schema types", () => {
     const routes = Route.get(
-      Route.schemaPathParams(
-        Schema.Struct({ owner: Schema.String, repo: Schema.String }),
-      ),
+      Route.schemaPathParams({
+        owner: Schema.String,
+        repo: Schema.String,
+      }),
       Route.html(""),
     )
 
@@ -827,10 +839,13 @@ test.describe("Route.link", () => {
 
   test.it("type: search params preserve schema types", () => {
     const routes = Route.get(
-      Route.schemaPathParams(
-        Schema.Struct({ owner: Schema.String, repo: Schema.String }),
-      ),
-      Route.schemaSearchParams(Schema.Struct({ state: Schema.String })),
+      Route.schemaPathParams({
+        owner: Schema.String,
+        repo: Schema.String,
+      }),
+      Route.schemaSearchParams({
+        state: Schema.String,
+      }),
       Route.html(""),
     )
 
@@ -850,9 +865,9 @@ test.describe("Route.link", () => {
 
   test.it("type: optional search params from schema", () => {
     const routes = Route.get(
-      Route.schemaSearchParams(
-        Schema.Struct({ tab: Schema.optional(Schema.String) }),
-      ),
+      Route.schemaSearchParams({
+        tab: Schema.optional(Schema.String),
+      }),
       Route.html(""),
     )
 

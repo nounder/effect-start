@@ -126,11 +126,9 @@ test.it("chains GET then POST with schemaBodyUrlParams", () => {
       }),
     )
     .post(
-      Route.schemaBodyUrlParams(
-        Schema.Struct({
-          email: Schema.String,
-        }),
-      ),
+      Route.schemaBodyUrlParams({
+        email: Schema.String,
+      }),
       Route.handle(function*(ctx) {
         test
           .expectTypeOf(ctx.body)
@@ -350,18 +348,14 @@ test.it("Builder extends RouteSet", () => {
 test.it("schemaHeaders flattens method into route descriptor", () => {
   const routes = Route
     .use(
-      Route.schemaHeaders(
-        Schema.Struct({
-          hello: Schema.String,
-        }),
-      ),
+      Route.schemaHeaders({
+        hello: Schema.String,
+      }),
     )
     .get(
-      Route.schemaHeaders(
-        Schema.Struct({
-          "x-custom-header": Schema.String,
-        }),
-      ),
+      Route.schemaHeaders({
+        "x-custom-header": Schema.String,
+      }),
       Route.html(function*(_ctx) {
         return `<h1>Hello, world!</h1>`
       }),
