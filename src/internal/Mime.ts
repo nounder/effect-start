@@ -25,11 +25,14 @@ const mediaTypes: Record<string, string> = {
   ".xml": "application/xml",
 }
 
-export function fromPath(path: string): string {
+export function fromPath(
+  path: string,
+  options?: { charset?: boolean },
+): string {
   const dotIndex = path.lastIndexOf(".")
   const extension = dotIndex === -1 ? "" : path.slice(dotIndex).toLowerCase()
   const mediaType = mediaTypes[extension] ?? "application/octet-stream"
-  return mediaType.startsWith("text/")
+  return options?.charset !== false && mediaType.startsWith("text/")
     ? `${mediaType}; charset=utf-8`
     : mediaType
 }

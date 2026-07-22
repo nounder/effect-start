@@ -42,6 +42,10 @@
       "bun": "./src/Fetch.ts",
       "default": "./dist/Fetch.js"
     },
+    "./FileRoute": {
+      "bun": "./src/FileRoute.ts",
+      "default": "./dist/FileRoute.js"
+    },
     "./FileRouter": {
       "bun": "./src/FileRouter.ts",
       "default": "./dist/FileRouter.js"

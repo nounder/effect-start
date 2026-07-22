@@ -163,6 +163,11 @@ function toResponse(
   const status = entity.status ?? 200
   const headers = toHeaders(entity.headers, contentType)
 
+  // Fetch rejects bodies for conditional responses
+  if (status === 304) {
+    return Effect.succeed(new Response(null, { status, headers }))
+  }
+
   if (StreamExtra.isStream(entity.body)) {
     return streamResponse(entity.body, headers, status)
   }
