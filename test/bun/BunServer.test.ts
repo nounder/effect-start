@@ -1,5 +1,7 @@
 import * as test from "bun:test"
 import { BunRoute, BunServer } from "effect-start/bun"
+import * as FileSystem from "effect-start/FileSystem"
+import { NodeFileSystem } from "effect-start/node"
 import * as Route from "effect-start/Route"
 import * as Start from "effect-start/Start"
 import * as ConfigProvider from "effect/ConfigProvider"
@@ -893,17 +895,36 @@ test.describe("prebuilt htmlBundle with images", () => {
       )
   })
 
-  test.test("bundler emits images into bundle.files", async () => {
+  test.test("bundler emits images as outdir assets, not into bundle.files", () => {
     const gifFile = findOutputFile("pixel.gif")
     const svgFile = findOutputFile("icon.svg")
-    const bundledPaths = (bundle.files ?? []).map((f) => NPath.basename(f.path))
 
-    test
-      .expect(bundledPaths)
-      .toContain(gifFile)
-    test
-      .expect(bundledPaths)
-      .toContain(svgFile)
+    return Effect
+      .gen(function*() {
+        const fs = yield* FileSystem.FileSystem
+
+        test
+          .expect(yield* fs.exists(NPath.join(outDir, gifFile)))
+          .toBe(true)
+        test
+          .expect(yield* fs.exists(NPath.join(outDir, svgFile)))
+          .toBe(true)
+
+        const bundledPaths = (bundle.files ?? []).map((f) => NPath.basename(f.path))
+
+        test
+          .expect(bundledPaths)
+          .not
+          .toContain(gifFile)
+        test
+          .expect(bundledPaths)
+          .not
+          .toContain(svgFile)
+      })
+      .pipe(
+        Effect.provide(NodeFileSystem.layer),
+        Effect.runPromise,
+      )
   })
 })
 
