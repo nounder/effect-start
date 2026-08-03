@@ -339,24 +339,28 @@ test.describe("Start.serve composition", () => {
       )
   })
 
-  test.test("Start.pack keeps fallback handler when BunServer.layer is provided", () => {
+  test.it("BunServer.layer can be upgraded with routes", () => {
+    const routes = Route.map({
+      "/hello": Route.get(Route.text("world")),
+    })
     const appLayer = Start.pack(
-      Route.layer(
-        Route.map({
-          "/hello": Route.get(Route.text("world")),
-        }),
-      ),
+      Route.layer(routes),
       BunServer.layer({ port: 0 }),
     )
 
     return Effect
       .gen(function*() {
         const bunServer = yield* BunServer.BunServer
+        yield* bunServer.setRoutes(routes)
         const response = yield* Effect.promise(() => fetch(`http://localhost:${bunServer.server.port}/hello`))
+        const text = yield* Effect.promise(() => response.text())
 
         test
           .expect(response.status)
-          .toBe(404)
+          .toBe(200)
+        test
+          .expect(text)
+          .toBe("world")
       })
       .pipe(
         Effect.provide(appLayer),
@@ -435,12 +439,11 @@ test.describe("Start.serve composition", () => {
       )
   })
 
-  test.test("route-agnostic layer starts with fallback handler", () => {
-    const routeLayer = Route.layer(
-      Route.map({
-        "/hello": Route.get(Route.text("world")),
-      }),
-    )
+  test.it("route-agnostic layer waits for routes", () => {
+    const routes = Route.map({
+      "/hello": Route.get(Route.text("world")),
+    })
+    const routeLayer = Route.layer(routes)
 
     const composed = Layer.provide(
       BunServer.withLogAddress(BunServer.layer({ port: 0 })),
@@ -450,11 +453,30 @@ test.describe("Start.serve composition", () => {
     return Effect
       .gen(function*() {
         const bunServer = yield* BunServer.BunServer
-        const response = yield* Effect.promise(() => fetch(`http://localhost:${bunServer.server.port}/hello`))
+        const responsePromise = fetch(`http://localhost:${bunServer.server.port}/hello`)
+        const state = yield* Effect.promise(() =>
+          Promise.race([
+            responsePromise.then(() => "settled" as const),
+            (async () => {
+              while (bunServer.server.pendingRequests === 0) {
+                await Bun.sleep(1)
+              }
+              return "pending" as const
+            })(),
+          ])
+        )
+
+        test
+          .expect(state)
+          .toBe("pending")
+
+        yield* bunServer.setRoutes(routes)
+
+        const response = yield* Effect.promise(() => responsePromise)
 
         test
           .expect(response.status)
-          .toBe(404)
+          .toBe(200)
       })
       .pipe(
         Effect.provide(composed),

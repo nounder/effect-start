@@ -84,12 +84,8 @@ export const make = (
       Effect.catchTag("ConfigError", () => Effect.succeed(hostFlag ? "0.0.0.0" : undefined)),
     )
 
-    const handlerStack: Array<FetchHandler> = [
-      function(_request, _server) {
-        return new Response("not found", { status: 404 })
-      },
-    ]
-
+    const routesReady = yield* Deferred.make<FetchHandler>()
+    let routesAvailable = false
     const setRoutesDeferred = yield* Deferred
       .make<(map: RouteMap.RouteMap) => Effect.Effect<void>>()
 
@@ -147,9 +143,25 @@ export const make = (
       Effect.map(Runtime.provideService(StartServer.StartServer, service)),
     )
 
-    let currentRoutes: BunRoute.BunRoutes = map
-      ? yield* walkBunRoutes(runtime, map)
-      : {}
+    const routesReadyPromise = Runtime.runPromise(runtime)(
+      Deferred.await(routesReady),
+    )
+    const handlerStack: Array<FetchHandler> = [
+      function(request, server) {
+        if (routesAvailable) {
+          return new Response("not found", { status: 404 })
+        }
+        return routesReadyPromise.then((resume) => resume(request, server))
+      },
+    ]
+
+    let currentRoutes: BunRoute.BunRoutes = {}
+    if (map !== undefined) {
+      const compiled = yield* walkBunRoutes(runtime, map)
+      currentRoutes = compiled.routes
+      routesAvailable = true
+      yield* Deferred.succeed(routesReady, compiled.resume)
+    }
     let websocketEnabled = map
       ? hasWebSocketRoute(map)
       : false
@@ -212,14 +224,15 @@ export const make = (
     yield* Deferred.succeed(setRoutesDeferred, (map) =>
       walkBunRoutes(runtime, map)
         .pipe(
-          Effect
-            .tap((bunRoutes) =>
-              Effect.sync(() => {
-                currentRoutes = bunRoutes
-                websocketEnabled = websocketEnabled || hasWebSocketRoute(map)
-                reload()
-              })
-            ),
+          Effect.tap((compiled) =>
+            Effect.sync(() => {
+              currentRoutes = compiled.routes
+              websocketEnabled = websocketEnabled || hasWebSocketRoute(map)
+              reload()
+              routesAvailable = true
+            })
+          ),
+          Effect.tap((compiled) => Deferred.succeed(routesReady, compiled.resume)),
           Effect.asVoid,
         ))
 
@@ -302,6 +315,10 @@ function walkBunRoutes(
   return Effect.gen(function*() {
     const bunRoutes: BunRoute.BunRoutes = {}
     const pathGroups = new Map<string, Array<RouteMount.MountedRoute>>()
+    const routeHandlers: Array<{
+      readonly path: string
+      readonly fetch: FetchHandler
+    }> = []
     const toWebHandler = RouteHttp.toWebHandlerRuntime(runtime)
 
     let hasPrebuiltBundles = false
@@ -330,6 +347,7 @@ function walkBunRoutes(
 
     for (const [path, routes] of pathGroups) {
       const handler = toWebHandler(routes)
+      routeHandlers.push({ path, fetch: handler })
       for (const bunPath of PathPattern.toBun(path)) {
         bunRoutes[bunPath] = handler
       }
@@ -344,7 +362,17 @@ function walkBunRoutes(
       }
     }
 
-    return bunRoutes
+    const resume: FetchHandler = (request, server) => {
+      const pathname = decodeURI(new URL(request.url).pathname)
+      for (const route of routeHandlers) {
+        if (PathPattern.match(route.path, pathname) !== null) {
+          return route.fetch(request, server)
+        }
+      }
+      return new Response("not found", { status: 404 })
+    }
+
+    return { routes: bunRoutes, resume }
   })
 }
 
