@@ -1,10 +1,10 @@
 import * as test from "bun:test"
 import * as Fetch from "effect-start/Fetch"
-import * as FileRoute from "effect-start/FileRoute"
 import * as FileSystem from "effect-start/FileSystem"
 import { NodeFileSystem } from "effect-start/node"
 import * as Route from "effect-start/Route"
 import * as RouteHttp from "effect-start/RouteHttp"
+import * as StaticRoute from "effect-start/StaticRoute"
 import * as Effect from "effect/Effect"
 import * as NPath from "node:path"
 import * as NUrl from "node:url"
@@ -19,8 +19,8 @@ test.it("renders a directory index as JSON and HTML and serves its files", () =>
 
       const runtime = yield* Effect.runtime<FileSystem.FileSystem>()
       const routes = Route.map({
-        "/files/:path*": FileRoute.from({ path: directory, directoryIndex: true }),
-        "/private/:path*": FileRoute.from({ path: directory, directoryIndex: false }),
+        "/files/:path*": StaticRoute.from({ path: directory, directoryIndex: true }),
+        "/private/:path*": StaticRoute.from({ path: directory, directoryIndex: false }),
       })
       const handles = Object.fromEntries(RouteHttp.walkHandles(routes, runtime))
       const client = Fetch.fromHandler(handles["/files/:path*"])
@@ -54,9 +54,18 @@ test.it("renders a directory index as JSON and HTML and serves its files", () =>
       test
         .expect(html.headers["content-type"])
         .toBe("text/html; charset=utf-8")
+
+      const htmlText = yield* html.text
+
       test
-        .expect(yield* html.text)
+        .expect(htmlText)
         .toContain("hello.txt")
+      test
+        .expect(htmlText)
+        .toContain("href=\"/files/hello.txt\"")
+      test
+        .expect(htmlText)
+        .toContain("href=\"/files/nested/\"")
 
       const file = yield* client.get("http://localhost/files/hello.txt")
       const etag = file.headers.etag
@@ -194,7 +203,7 @@ test.it("serves a single file from a file URL on a rest path route", () =>
 
       const runtime = yield* Effect.runtime<FileSystem.FileSystem>()
       const routes = Route.map({
-        "/download/:path*": FileRoute.from({
+        "/download/:path*": StaticRoute.from({
           path: NUrl.pathToFileURL(path),
           directoryIndex: false,
         }),

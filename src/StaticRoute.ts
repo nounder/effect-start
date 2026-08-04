@@ -130,6 +130,8 @@ export const from = (options: { path: string | URL; directoryIndex: boolean }) =
           const pathParam = ctx.pathParams.path?.replace(/^\/+|\/+$/g, "") ?? ""
           const pathname = pathParam === "" ? "/" : `/${pathParam}/`
           if (format === "text/html") {
+            const requestPath = new URL(request.url).pathname
+            const hrefBase = requestPath.endsWith("/") ? requestPath : `${requestPath}/`
             return Entity.make(
               `<!doctype html>
 <html>
@@ -143,12 +145,12 @@ export const from = (options: { path: string | URL; directoryIndex: boolean }) =
 ${
                 [
                   ...directories.map((entry) =>
-                    `      <li><a href="${pathname}${encodeURIComponent(entry.name)}/">${
+                    `      <li><a href="${escapeHtml(`${hrefBase}${encodeURIComponent(entry.name)}/`)}">${
                       escapeHtml(entry.name)
                     }/</a></li>`
                   ),
                   ...files.map((entry) =>
-                    `      <li><a href="${pathname}${encodeURIComponent(entry.name)}">${
+                    `      <li><a href="${escapeHtml(`${hrefBase}${encodeURIComponent(entry.name)}`)}">${
                       escapeHtml(entry.name)
                     }</a></li>`
                   ),
