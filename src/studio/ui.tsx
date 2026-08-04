@@ -136,7 +136,7 @@ function levelColor(level: string): string {
 
 export function LogLine(props: { prefix: string; log: StudioStore.LogEntry }) {
   const color = levelColor(props.log.level)
-  const time = new Date(Number(Unique.snowflake.timestamp(props.log.id)))
+  const time = new Date(props.log.timestamp)
     .toLocaleTimeString("en", {
       hour12: false,
       hour: "2-digit",
@@ -166,6 +166,13 @@ export function LogLine(props: { prefix: string; log: StudioStore.LogEntry }) {
           <PreformattedText
             text={props.log.cause}
             style="color:#ef4444;font-size:11px;margin:0;white-space:pre-wrap;word-break:break-word;font:inherit"
+          />
+        )}
+        {props.log.resource && <KeyValue label="Resource" value={props.log.resource} />}
+        {props.log.instrumentationScope && (
+          <KeyValue
+            label="Instrumentation scope"
+            value={props.log.instrumentationScope}
           />
         )}
       </div>
@@ -522,6 +529,8 @@ function SpanDetailBody(props: { span: Tracing.Span }) {
       <KeyValue label="Span ID" value={s.spanId} />
       <KeyValue label="Kind" value={s.kind} />
       {s.parentSpanId && <KeyValue label="Parent" value={s.parentSpanId} />}
+      {s.resource && <KeyValue label="Resource" value={s.resource} />}
+      {s.instrumentationScope && <KeyValue label="Instrumentation scope" value={s.instrumentationScope} />}
       {stacktrace && <KeyValue label="Source" value={stacktrace} />}
       {customAttrs.map(([k, v]) => <KeyValue label={k} value={v} />)}
       {s.events.length > 0 && (
@@ -939,7 +948,7 @@ export function collectFibers(
     }
     fiber.logCount++
     fiber.levels.add(log.level)
-    const logTimestamp = Number(Unique.snowflake.timestamp(log.id))
+    const logTimestamp = log.timestamp
     if (!fiber.lastSeen || logTimestamp > fiber.lastSeen) {
       fiber.lastSeen = logTimestamp
     }
@@ -1164,6 +1173,8 @@ export function FiberDetail(props: {
                   </div>
                   <KeyValue label="Trace" value={s.traceId} />
                   <KeyValue label="Kind" value={s.kind} />
+                  {s.resource && <KeyValue label="Resource" value={s.resource} />}
+                  {s.instrumentationScope && <KeyValue label="Instrumentation scope" value={s.instrumentationScope} />}
                   {stacktrace && <KeyValue label="Source" value={stacktrace} />}
                   {Object
                     .entries(s.attributes)
@@ -1444,6 +1455,8 @@ function MetricCard(props: { series: StudioStore.MetricSeries }) {
             </div>
           )
         })()}
+        {metric.resource && <KeyValue label="Resource" value={metric.resource} />}
+        {metric.instrumentationScope && <KeyValue label="Instrumentation scope" value={metric.instrumentationScope} />}
       </div>
       {metric.type === "counter" && <CounterSparkline history={props.series.history} />}
       {metric.type === "gauge" && <GaugeSparkline history={props.series.history} />}

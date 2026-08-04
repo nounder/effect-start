@@ -34,6 +34,7 @@ const make = (store: StudioStore.State) =>
 
       const log: StudioStore.LogEntry = {
         id: Tracing.nextPackedId(),
+        timestamp: logOptions.date.getTime(),
         level,
         message: Pretty.formatLogMessage(logOptions.message),
         fiberId: FiberId.threadName(logOptions.fiberId),

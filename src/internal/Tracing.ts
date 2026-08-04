@@ -6,6 +6,20 @@ import * as Option from "effect/Option"
 import * as Tracer from "effect/Tracer"
 import * as Unique from "../Unique.ts"
 
+export interface Resource {
+  readonly attributes: Record<string, unknown>
+  readonly droppedAttributesCount: number
+  readonly schemaUrl: string | undefined
+}
+
+export interface InstrumentationScope {
+  readonly name: string | undefined
+  readonly version: string | undefined
+  readonly attributes: Record<string, unknown>
+  readonly droppedAttributesCount: number
+  readonly schemaUrl: string | undefined
+}
+
 export interface Span {
   readonly spanId: string
   readonly traceId: string
@@ -18,6 +32,8 @@ export interface Span {
   durationMs: number | undefined
   status: "started" | "ok" | "error"
   readonly attributes: Record<string, unknown>
+  readonly resource?: Resource
+  readonly instrumentationScope?: InstrumentationScope
   readonly events: Array<
     { name: string; startTime: bigint; attributes?: Record<string, unknown> }
   >

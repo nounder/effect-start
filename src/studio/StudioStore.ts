@@ -2,7 +2,7 @@ import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import type * as PubSub from "effect/PubSub"
 import * as Queue from "effect/Queue"
-import * as Tracing from "../internal/Tracing.ts"
+import type * as Tracing from "../internal/Tracing.ts"
 import * as SqlClient from "../sql/SqlClient.ts"
 import * as Studio from "./Studio.ts"
 
@@ -28,12 +28,15 @@ export function filterOutStudioSpans(
 
 export interface LogEntry {
   readonly id: bigint
+  readonly timestamp: number
   readonly level: "DEBUG" | "INFO" | "WARNING" | "ERROR" | "FATAL"
   readonly message: string
   readonly fiberId: string
   readonly cause: string | undefined
   readonly spans: Array<string>
   readonly annotations: Record<string, unknown>
+  readonly resource?: Tracing.Resource
+  readonly instrumentationScope?: Tracing.InstrumentationScope
 }
 
 export const STUDIO_METRIC_PREFIX = "effect-start."
@@ -72,6 +75,8 @@ export interface MetricSnapshot {
   readonly value: unknown
   readonly tags: ReadonlyArray<{ key: string; value: string }>
   readonly timestamp: number
+  readonly resource?: Tracing.Resource
+  readonly instrumentationScope?: Tracing.InstrumentationScope
 }
 
 export type StudioEvent =
@@ -109,27 +114,33 @@ export interface State {
 
 const DDL = [
   `CREATE TABLE IF NOT EXISTS Span (
-    spanId INTEGER PRIMARY KEY,
-    traceId INTEGER NOT NULL,
+    spanId BLOB NOT NULL,
+    traceId BLOB NOT NULL,
     fiberId TEXT,
     name TEXT NOT NULL,
     kind TEXT NOT NULL,
-    parentSpanId INTEGER,
+    parentSpanId BLOB,
     startTime TEXT NOT NULL,
     endTime TEXT,
     durationMs REAL,
     status TEXT NOT NULL,
     attributes TEXT NOT NULL,
-    events TEXT NOT NULL
+    events TEXT NOT NULL,
+    resource TEXT,
+    instrumentationScope TEXT,
+    PRIMARY KEY (traceId, spanId)
   )`,
   `CREATE TABLE IF NOT EXISTS Log (
     id INTEGER PRIMARY KEY,
+    timestamp INTEGER NOT NULL,
     level TEXT NOT NULL,
     message TEXT NOT NULL,
     fiberId TEXT NOT NULL,
     cause TEXT,
     spans TEXT NOT NULL,
-    annotations TEXT NOT NULL
+    annotations TEXT NOT NULL,
+    resource TEXT,
+    instrumentationScope TEXT
   )`,
   `CREATE TABLE IF NOT EXISTS Error (
     id INTEGER PRIMARY KEY,
@@ -151,7 +162,9 @@ const DDL = [
     type TEXT NOT NULL,
     tags TEXT NOT NULL,
     timestamp INTEGER NOT NULL,
-    value TEXT NOT NULL
+    value TEXT NOT NULL,
+    resource TEXT,
+    instrumentationScope TEXT
   )`,
   `CREATE INDEX IF NOT EXISTS idx_MetricSample_name_tags_timestamp
     ON MetricSample(name, tags, timestamp)`,
@@ -164,6 +177,42 @@ function canonicalTags(
 ): string {
   const sorted = [...tags].sort((a, b) => a.key.localeCompare(b.key))
   return JSON.stringify(sorted)
+}
+
+function canonicalJson(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => item === undefined ? "null" : canonicalJson(item)).join(",")}]`
+  }
+  if (value !== null && typeof value === "object") {
+    const record = value as Record<string, unknown>
+    return `{${
+      Object
+        .keys(record)
+        .filter((key) => record[key] !== undefined)
+        .sort()
+        .map((key) => `${JSON.stringify(key)}:${canonicalJson(record[key])}`)
+        .join(",")
+    }}`
+  }
+  return JSON.stringify(value) ?? "null"
+}
+
+function encodeTelemetryId(id: string): string | bigint | Uint8Array {
+  if ((id.length === 16 || id.length === 32) && /^[0-9a-f]+$/i.test(id)) {
+    return Uint8Array.from(id.match(/../g)!, (byte) => Number.parseInt(byte, 16))
+  }
+  if (/^[0-9]{1,19}$/.test(id)) {
+    const value = BigInt(id)
+    if (value <= 0x7fffffffffffffffn) return value
+  }
+  return id
+}
+
+function decodeTelemetryId(id: string | bigint | Uint8Array): string {
+  if (id instanceof Uint8Array) {
+    return Array.from(id, (byte) => byte.toString(16).padStart(2, "0")).join("")
+  }
+  return String(id)
 }
 
 export const setupDatabase = Effect.gen(function*() {
@@ -202,28 +251,33 @@ function reviveBigint(value: unknown): unknown {
 }
 
 export interface SpanRow {
-  readonly spanId: bigint
-  readonly traceId: bigint
+  readonly spanId: string | bigint | Uint8Array
+  readonly traceId: string | bigint | Uint8Array
   readonly fiberId: string | null
   readonly name: string
   readonly kind: string
-  readonly parentSpanId: bigint | null
+  readonly parentSpanId: string | bigint | Uint8Array | null
   readonly startTime: string
   readonly endTime: string | null
   readonly durationMs: number | null
   readonly status: string
   readonly attributes: string
   readonly events: string
+  readonly resource: string | null
+  readonly instrumentationScope: string | null
 }
 
 export interface LogRow {
   readonly id: bigint
+  readonly timestamp: bigint
   readonly level: string
   readonly message: string
   readonly fiberId: string
   readonly cause: string | null
   readonly spans: string
   readonly annotations: string
+  readonly resource: string | null
+  readonly instrumentationScope: string | null
 }
 
 export interface ErrorRow {
@@ -249,6 +303,8 @@ interface MetricSampleRow {
   readonly tags: string
   readonly timestamp: bigint
   readonly value: string
+  readonly resource: string | null
+  readonly instrumentationScope: string | null
 }
 
 function deserializeMetric(row: MetricSampleRow): MetricSnapshot {
@@ -258,6 +314,8 @@ function deserializeMetric(row: MetricSampleRow): MetricSnapshot {
     value: JSON.parse(row.value),
     tags: JSON.parse(row.tags),
     timestamp: Number(row.timestamp),
+    resource: row.resource ? JSON.parse(row.resource) : undefined,
+    instrumentationScope: row.instrumentationScope ? JSON.parse(row.instrumentationScope) : undefined,
   }
 }
 
@@ -265,13 +323,13 @@ function deserializeMetric(row: MetricSampleRow): MetricSnapshot {
 export function deserializeSpan(row: SpanRow): Tracing.Span {
   const events = reviveBigint(JSON.parse(row.events)) as Tracing.Span["events"]
   return {
-    spanId: String(row.spanId),
-    traceId: String(row.traceId),
+    spanId: decodeTelemetryId(row.spanId),
+    traceId: decodeTelemetryId(row.traceId),
     fiberId: row.fiberId ?? undefined,
     name: row.name,
     kind: row.kind,
     parentSpanId: row.parentSpanId != null
-      ? String(row.parentSpanId)
+      ? decodeTelemetryId(row.parentSpanId)
       : undefined,
     startTime: BigInt(row.startTime),
     endTime: row.endTime ? BigInt(row.endTime) : undefined,
@@ -279,18 +337,23 @@ export function deserializeSpan(row: SpanRow): Tracing.Span {
     status: row.status as Tracing.Span["status"],
     attributes: JSON.parse(row.attributes),
     events,
+    resource: row.resource ? JSON.parse(row.resource) : undefined,
+    instrumentationScope: row.instrumentationScope ? JSON.parse(row.instrumentationScope) : undefined,
   }
 }
 
 export function deserializeLog(row: LogRow): LogEntry {
   return {
     id: row.id,
+    timestamp: Number(row.timestamp),
     level: row.level as LogEntry["level"],
     message: row.message,
     fiberId: row.fiberId,
     cause: row.cause ?? undefined,
     spans: JSON.parse(row.spans),
     annotations: JSON.parse(row.annotations),
+    resource: row.resource ? JSON.parse(row.resource) : undefined,
+    instrumentationScope: row.instrumentationScope ? JSON.parse(row.instrumentationScope) : undefined,
   }
 }
 
@@ -312,20 +375,22 @@ const withSql = <A, E>(
 export function insertSpan(span: Tracing.Span) {
   return withSql(
     (sql) =>
-      sql`INSERT INTO Span ${
+      sql`INSERT OR REPLACE INTO Span ${
         sql({
-          spanId: span.spanId,
-          traceId: span.traceId,
+          spanId: encodeTelemetryId(span.spanId),
+          traceId: encodeTelemetryId(span.traceId),
           fiberId: span.fiberId ?? null,
           name: span.name,
           kind: span.kind,
-          parentSpanId: span.parentSpanId ?? null,
+          parentSpanId: span.parentSpanId ? encodeTelemetryId(span.parentSpanId) : null,
           startTime: span.startTime.toString(),
           endTime: span.endTime?.toString() ?? null,
           durationMs: span.durationMs ?? null,
           status: span.status,
           attributes: JSON.stringify(span.attributes),
           events: JSON.stringify(serializeBigint(span.events)),
+          resource: span.resource ? JSON.stringify(span.resource) : null,
+          instrumentationScope: span.instrumentationScope ? JSON.stringify(span.instrumentationScope) : null,
         })
       }`,
   )
@@ -339,8 +404,10 @@ export function updateSpan(span: Tracing.Span) {
       durationMs = ${span.durationMs ?? null},
       status = ${span.status},
       attributes = ${JSON.stringify(span.attributes)},
-      events = ${JSON.stringify(serializeBigint(span.events))}
-      WHERE spanId = ${span.spanId}`,
+      events = ${JSON.stringify(serializeBigint(span.events))},
+      resource = ${span.resource ? JSON.stringify(span.resource) : null},
+      instrumentationScope = ${span.instrumentationScope ? JSON.stringify(span.instrumentationScope) : null}
+      WHERE traceId = ${encodeTelemetryId(span.traceId)} AND spanId = ${encodeTelemetryId(span.spanId)}`,
   )
 }
 
@@ -350,12 +417,15 @@ export function insertLog(log: LogEntry) {
       sql`INSERT INTO Log ${
         sql({
           id: log.id,
+          timestamp: log.timestamp,
           level: log.level,
           message: log.message,
           fiberId: log.fiberId,
           cause: log.cause ?? null,
           spans: JSON.stringify(log.spans),
           annotations: JSON.stringify(log.annotations),
+          resource: log.resource ? JSON.stringify(log.resource) : null,
+          instrumentationScope: log.instrumentationScope ? JSON.stringify(log.instrumentationScope) : null,
         })
       }`,
   )
@@ -389,6 +459,8 @@ export function insertMetrics(
           tags: canonicalTags(s.tags),
           timestamp: s.timestamp,
           value: JSON.stringify(s.value),
+          resource: s.resource ? canonicalJson(s.resource) : null,
+          instrumentationScope: s.instrumentationScope ? canonicalJson(s.instrumentationScope) : null,
         })),
       )
     }`
@@ -491,11 +563,32 @@ export function spansByTraceId(traceId: string) {
       Effect.map(
         sql<
           SpanRow
-        >`SELECT * FROM Span WHERE traceId = ${traceId} ORDER BY rowid`,
+        >`SELECT * FROM Span WHERE traceId = ${encodeTelemetryId(traceId)} ORDER BY rowid`,
         (rows) => rows.map(deserializeSpan),
       )
     ),
   )
+}
+
+export function traceContainsFiber(traceId: string, fiberId: string) {
+  return noTrace(withSql((sql) =>
+    Effect.map(
+      sql`SELECT 1 FROM Span WHERE traceId = ${encodeTelemetryId(traceId)} AND fiberId = ${fiberId} LIMIT 1`,
+      (rows) => rows.length > 0,
+    )
+  ))
+}
+
+export function logsByTraceId(traceId: string) {
+  return noTrace(withSql((sql) =>
+    Effect.map(
+      sql<LogRow>`SELECT * FROM Log WHERE fiberId IN (
+        SELECT DISTINCT fiberId FROM Span
+        WHERE traceId = ${encodeTelemetryId(traceId)} AND fiberId IS NOT NULL
+      ) ORDER BY rowid`,
+      (rows) => rows.map(deserializeLog),
+    )
+  ))
 }
 
 export interface MetricSeries {
@@ -517,7 +610,7 @@ export function latestMetricsWithHistory(historyMs: number) {
         `
         const grouped = new Map<string, Array<MetricSnapshot>>()
         for (const row of rows) {
-          const key = `${row.name} ${row.tags}`
+          const key = `${row.name} ${row.tags} ${row.resource ?? ""} ${row.instrumentationScope ?? ""}`
           let arr = grouped.get(key)
           if (!arr) {
             arr = []
@@ -570,4 +663,3 @@ export function processSeries(historyMs: number) {
     ),
   )
 }
-
