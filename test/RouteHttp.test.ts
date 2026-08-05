@@ -2,6 +2,7 @@ import * as test from "bun:test"
 import * as Development from "effect-start/Development"
 import * as Entity from "effect-start/Entity"
 import * as Fetch from "effect-start/Fetch"
+import * as Multipart from "effect-start/Multipart"
 import * as Route from "effect-start/Route"
 import * as RouteHttp from "effect-start/RouteHttp"
 import { TestLogger } from "effect-start/testing"
@@ -2016,16 +2017,20 @@ test.describe("schema handlers", () => {
             RouteSchema.schemaBodyMultipart(
               Schema.Struct({
                 title: Schema.String,
-                file: Schema.Array(RouteSchema.File),
+                file: Multipart.SingleFileSchema,
               }),
             ),
             Route.json(function*(ctx) {
-              const file = ctx.body.file[0]
+              const size = yield* Stream.runFold(
+                ctx.body.file.content,
+                0,
+                (size, chunk) => size + chunk.length,
+              )
               return {
                 title: ctx.body.title,
-                fileName: file.name,
-                contentType: file.contentType,
-                size: file.content.length,
+                fileName: ctx.body.file.name,
+                contentType: ctx.body.file.contentType,
+                size,
               }
             }),
           ),
@@ -2072,14 +2077,22 @@ test.describe("schema handlers", () => {
           Route.post(
             RouteSchema.schemaBodyMultipart(
               Schema.Struct({
-                documents: Schema.Array(RouteSchema.File),
+                documents: Multipart.FilesSchema,
               }),
             ),
             Route.json(function*(ctx) {
               return {
                 count: ctx.body.documents.length,
                 names: ctx.body.documents.map((f) => f.name),
-                sizes: ctx.body.documents.map((f) => f.content.length),
+                sizes: yield* Effect.forEach(
+                  ctx.body.documents,
+                  (file) =>
+                    Stream.runFold(
+                      file.content,
+                      0,
+                      (size, chunk) => size + chunk.length,
+                    ),
+                ),
               }
             }),
           ),
@@ -2132,15 +2145,19 @@ test.describe("schema handlers", () => {
           Route.post(
             RouteSchema.schemaBodyMultipart(
               Schema.Struct({
-                image: Schema.Array(RouteSchema.File),
+                image: Multipart.SingleFileSchema,
               }),
             ),
             Route.json(function*(ctx) {
-              const image = ctx.body.image[0]
+              const size = yield* Stream.runFold(
+                ctx.body.image.content,
+                0,
+                (size, chunk) => size + chunk.length,
+              )
               return {
-                name: image.name,
-                type: image.contentType,
-                size: image.content.length,
+                name: ctx.body.image.name,
+                type: ctx.body.image.contentType,
+                size,
               }
             }),
           ),

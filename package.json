@@ -66,6 +66,10 @@
       "bun": "./src/Html.ts",
       "default": "./dist/Html.js"
     },
+    "./Multipart": {
+      "bun": "./src/Multipart.ts",
+      "default": "./dist/Multipart.js"
+    },
     "./Password": {
       "bun": "./src/Password.ts",
       "default": "./dist/Password.js"
@@ -102,9 +106,9 @@
       "bun": "./src/StartServer.ts",
       "default": "./dist/StartServer.js"
     },
-    "./StaticFiles": {
-      "bun": "./src/StaticFiles.ts",
-      "default": "./dist/StaticFiles.js"
+    "./StaticRoute": {
+      "bun": "./src/StaticRoute.ts",
+      "default": "./dist/StaticRoute.js"
     },
     "./System": {
       "bun": "./src/System.ts",

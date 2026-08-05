@@ -1,10 +1,12 @@
 import * as test from "bun:test"
 import { Effect, Schema } from "effect"
 import * as Fetch from "effect-start/Fetch"
+import * as Multipart from "effect-start/Multipart"
 import * as Route from "effect-start/Route"
 import * as RouteError from "effect-start/RouteError"
 import * as RouteHttp from "effect-start/RouteHttp"
 import { TestLogger } from "effect-start/testing"
+import * as Stream from "effect/Stream"
 import * as RouteSchema from "../src/internal/RouteSchema.ts"
 
 test.describe(`${RouteSchema.schemaHeaders.name}()`, () => {
@@ -468,6 +470,160 @@ test.describe(`${RouteSchema.schemaBodyForm.name}()`, () => {
         body: { email: string }
       }>()
   })
+
+  test.it("parses multipart fields with single and multiple files", () =>
+    Effect
+      .gen(function*() {
+        const handler = RouteHttp.toWebHandler(
+          Route.post(
+            Route.schemaBodyForm({
+              title: Schema.String,
+              tags: Schema.Array(Schema.String),
+              file: Multipart.SingleFileSchema,
+              files: Multipart.FilesSchema,
+            }),
+            Route.json(function*(ctx) {
+              test
+                .expectTypeOf(ctx.body)
+                .toExtend<{
+                  title: string
+                  tags: ReadonlyArray<string>
+                  file: Multipart.File
+                  files: ReadonlyArray<Multipart.File>
+                }>()
+
+              const files: Array<{
+                key: string
+                name: string
+                contentType: string
+                content: string
+              }> = []
+              for (const file of [ctx.body.file, ...ctx.body.files]) {
+                test
+                  .expect(Multipart.isFile(file))
+                  .toBe(true)
+                test
+                  .expect(file[Multipart.TypeId])
+                  .toBe(Multipart.TypeId)
+
+                const content = yield* Stream.runFold(
+                  file.content,
+                  "",
+                  (content, chunk) => content + new TextDecoder().decode(chunk),
+                )
+                files.push({
+                  key: file.key,
+                  name: file.name,
+                  contentType: file.contentType.split(";", 1)[0],
+                  content,
+                })
+              }
+
+              return {
+                title: ctx.body.title,
+                tags: [...ctx.body.tags],
+                files,
+              }
+            }),
+          ),
+        )
+        const formData = new FormData()
+        formData.append("title", "My Upload")
+        formData.append("tags", "first")
+        formData.append("tags", "second")
+        formData.append(
+          "file",
+          new Blob(["hello"], { type: "text/plain" }),
+          "hello.txt",
+        )
+        formData.append(
+          "files",
+          new Blob(["world"], { type: "text/markdown" }),
+          "world.md",
+        )
+        formData.append(
+          "files",
+          new Blob(["second"], { type: "text/plain" }),
+          "second.txt",
+        )
+        const client = Fetch.fromHandler(handler)
+        const entity = yield* client.post("http://localhost/upload", {
+          body: formData,
+        })
+
+        test
+          .expect(entity.status)
+          .toBe(200)
+        test
+          .expect(yield* entity.json)
+          .toEqual({
+            title: "My Upload",
+            tags: ["first", "second"],
+            files: [
+              {
+                key: "file",
+                name: "hello.txt",
+                contentType: "text/plain",
+                content: "hello",
+              },
+              {
+                key: "files",
+                name: "world.md",
+                contentType: "text/markdown",
+                content: "world",
+              },
+              {
+                key: "files",
+                name: "second.txt",
+                contentType: "text/plain",
+                content: "second",
+              },
+            ],
+          })
+      })
+      .pipe(Effect.runPromise))
+
+  test.it("rejects multiple files for SingleFileSchema", () =>
+    Effect
+      .gen(function*() {
+        let handled = false
+        const runtime = yield* Effect.runtime<TestLogger.TestLogger>()
+        const handler = RouteHttp.toWebHandlerRuntime(runtime)(
+          Route.post(
+            Route.schemaBodyForm({
+              file: Multipart.SingleFileSchema,
+            }),
+            Route.json(function*() {
+              handled = true
+              return { ok: true }
+            }),
+          ),
+        )
+        const formData = new FormData()
+        formData.append("file", new File(["first"], "first.txt"))
+        formData.append("file", new File(["second"], "second.txt"))
+        const client = Fetch.fromHandler(handler)
+        const entity = yield* client.post("http://localhost/upload", {
+          body: formData,
+        })
+
+        test
+          .expect(entity.status)
+          .toBe(400)
+        test
+          .expect(handled)
+          .toBe(false)
+
+        const messages = yield* TestLogger.messages
+
+        test
+          .expect(messages.some((message) => message.includes("ParseError")))
+          .toBe(true)
+      })
+      .pipe(
+        Effect.provide(TestLogger.layer()),
+        Effect.runPromise,
+      ))
 })
 
 test.describe(`${RouteSchema.schemaSuccess.name}()`, () => {

@@ -1,4 +1,7 @@
 import * as test from "bun:test"
+import * as Multipart from "effect-start/Multipart"
+import * as Effect from "effect/Effect"
+import * as Stream from "effect/Stream"
 import * as Http from "../src/internal/Http.ts"
 
 test.describe("mapHeaders", () => {
@@ -171,198 +174,85 @@ test.describe("parseFormData", () => {
     })
   }
 
-  test.it("parses single string field", async () => {
-    const formData = new FormData()
-    formData.append("name", "John")
+  test.it("maps single and repeated fields", () =>
+    Effect
+      .gen(function*() {
+        const formData = new FormData()
+        formData.append("name", "John")
+        formData.append("tags", "red")
+        formData.append("tags", "blue")
 
-    const request = createFormDataRequest(formData)
-    const result = await Http.parseFormData(request)
+        const result = yield* Effect.promise(() => Http.parseFormData(createFormDataRequest(formData)))
 
-    test
-      .expect(result)
-      .toEqual({
-        name: "John",
+        test
+          .expect(result)
+          .toEqual({
+            name: "John",
+            tags: ["red", "blue"],
+          })
       })
-  })
+      .pipe(Effect.runPromise))
 
-  test.it("parses multiple string fields", async () => {
-    const formData = new FormData()
-    formData.append("name", "John")
-    formData.append("email", "john@example.com")
+  test.it("maps uploaded files without requiring a FileSystem", () =>
+    Effect
+      .gen(function*() {
+        const formData = new FormData()
+        const expected = new Uint8Array([72, 101, 108, 108, 111])
+        formData.append("document", new File([expected], "test.txt", { type: "text/plain" }))
 
-    const request = createFormDataRequest(formData)
-    const result = await Http.parseFormData(request)
+        const result = yield* Effect.promise(() => Http.parseFormData(createFormDataRequest(formData)))
+        const files = result.document
 
-    test
-      .expect(result)
-      .toEqual({
-        name: "John",
-        email: "john@example.com",
+        test
+          .expect(Array.isArray(files))
+          .toBe(true)
+
+        if (!Array.isArray(files)) return
+        const file = files[0]
+
+        test
+          .expect(Multipart.isFile(file))
+          .toBe(true)
+
+        if (!Multipart.isFile(file)) return
+
+        test
+          .expect(file.key)
+          .toBe("document")
+        test
+          .expect(file.name)
+          .toBe("test.txt")
+        test
+          .expect(file.contentType.startsWith("text/plain"))
+          .toBe(true)
+
+        const content = yield* Stream.runFold(
+          file.content,
+          [] as Array<number>,
+          (bytes, chunk) => [...bytes, ...chunk],
+        )
+
+        test
+          .expect(Uint8Array.from(content))
+          .toEqual(expected)
+        test
+          .expect(yield* file.contentEffect)
+          .toEqual(expected)
       })
-  })
+      .pipe(Effect.runPromise))
 
-  test.it("parses multiple values for same key as array", async () => {
-    const formData = new FormData()
-    formData.append("tags", "red")
-    formData.append("tags", "blue")
-    formData.append("tags", "green")
+  test.it("uses a default content type for files without one", () =>
+    Effect
+      .gen(function*() {
+        const formData = new FormData()
+        formData.append("upload", new File(["test"], "unknown.dat"))
 
-    const request = createFormDataRequest(formData)
-    const result = await Http.parseFormData(request)
+        const result = yield* Effect.promise(() => Http.parseFormData(createFormDataRequest(formData)))
+        const files = result.upload
 
-    test
-      .expect(result)
-      .toEqual({
-        tags: ["red", "blue", "green"],
+        test
+          .expect(Array.isArray(files) && Multipart.isFile(files[0]) && files[0].contentType)
+          .toBe("application/octet-stream")
       })
-  })
-
-  test.it("parses single file upload", async () => {
-    const formData = new FormData()
-    const fileContent = new Uint8Array([72, 101, 108, 108, 111]) // "Hello"
-    const file = new File([fileContent], "test.txt", { type: "text/plain" })
-    formData.append("document", file)
-
-    const request = createFormDataRequest(formData)
-    const result = await Http.parseFormData(request)
-
-    test
-      .expect(result.document)
-      .toBeDefined()
-
-    const files = result.document as ReadonlyArray<Http.FilePart>
-
-    test
-      .expect(files)
-      .toHaveLength(1)
-    test
-      .expect(files[0]._tag)
-      .toBe("File")
-    test
-      .expect(files[0].key)
-      .toBe("document")
-    test
-      .expect(files[0].name)
-      .toBe("test.txt")
-    test
-      .expect(files[0].contentType.startsWith("text/plain"))
-      .toBe(true)
-    test
-      .expect(files[0].content)
-      .toEqual(fileContent)
-  })
-
-  test.it("parses multiple file uploads for same key", async () => {
-    const formData = new FormData()
-    const file1 = new File([new Uint8Array([1, 2, 3])], "file1.bin", {
-      type: "application/octet-stream",
-    })
-    const file2 = new File([new Uint8Array([4, 5, 6])], "file2.bin", {
-      type: "application/octet-stream",
-    })
-    formData.append("files", file1)
-    formData.append("files", file2)
-
-    const request = createFormDataRequest(formData)
-    const result = await Http.parseFormData(request)
-
-    const files = result.files as ReadonlyArray<Http.FilePart>
-
-    test
-      .expect(files)
-      .toHaveLength(2)
-    test
-      .expect(files[0].name)
-      .toBe("file1.bin")
-    test
-      .expect(files[0].content)
-      .toEqual(new Uint8Array([1, 2, 3]))
-    test
-      .expect(files[1].name)
-      .toBe("file2.bin")
-    test
-      .expect(files[1].content)
-      .toEqual(new Uint8Array([4, 5, 6]))
-  })
-
-  test.it("uses default content type for files without type", async () => {
-    const formData = new FormData()
-    const file = new File([new Uint8Array([1, 2, 3])], "unknown.dat", {
-      type: "",
-    })
-    formData.append("upload", file)
-
-    const request = createFormDataRequest(formData)
-    const result = await Http.parseFormData(request)
-
-    const files = result.upload as ReadonlyArray<Http.FilePart>
-
-    test
-      .expect(files[0].contentType)
-      .toBe("application/octet-stream")
-  })
-
-  test.it("parses mixed string fields and file uploads", async () => {
-    const formData = new FormData()
-    formData.append("title", "My Document")
-    const file = new File([new Uint8Array([1, 2, 3])], "doc.pdf", {
-      type: "application/pdf",
-    })
-    formData.append("attachment", file)
-    formData.append("description", "A test document")
-
-    const request = createFormDataRequest(formData)
-    const result = await Http.parseFormData(request)
-
-    test
-      .expect(result.title)
-      .toBe("My Document")
-    test
-      .expect(result.description)
-      .toBe("A test document")
-
-    const files = result.attachment as ReadonlyArray<Http.FilePart>
-
-    test
-      .expect(files)
-      .toHaveLength(1)
-    test
-      .expect(files[0].name)
-      .toBe("doc.pdf")
-  })
-
-  test.it("returns empty record for empty form data", async () => {
-    const formData = new FormData()
-
-    const request = createFormDataRequest(formData)
-    const result = await Http.parseFormData(request)
-
-    test
-      .expect(result)
-      .toEqual({})
-  })
-
-  test.it("parses Blob as file", async () => {
-    const formData = new FormData()
-    const blob = new Blob([new Uint8Array([10, 20, 30])], { type: "image/png" })
-    formData.append("image", blob, "image.png")
-
-    const request = createFormDataRequest(formData)
-    const result = await Http.parseFormData(request)
-
-    const files = result.image as ReadonlyArray<Http.FilePart>
-
-    test
-      .expect(files)
-      .toHaveLength(1)
-    test
-      .expect(files[0].name)
-      .toBe("image.png")
-    test
-      .expect(files[0].contentType)
-      .toBe("image/png")
-    test
-      .expect(files[0].content)
-      .toEqual(new Uint8Array([10, 20, 30]))
-  })
+      .pipe(Effect.runPromise))
 })

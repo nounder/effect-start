@@ -236,3 +236,77 @@ test.it("serves a single file from a file URL on a rest path route", () =>
       Effect.provide(NodeFileSystem.layer),
       Effect.runPromise,
     ))
+
+test.it("decodes URL-encoded characters in path params", () =>
+  Effect
+    .gen(function*() {
+      const fs = yield* FileSystem.FileSystem
+      const directory = yield* fs.makeTempDirectoryScoped()
+      yield* fs.writeFileString(NPath.join(directory, "hello world.txt"), "spaced")
+      yield* fs.writeFileString(NPath.join(directory, "café.txt"), "unicode")
+
+      const runtime = yield* Effect.runtime<FileSystem.FileSystem>()
+      const routes = Route.map({
+        "/assets/:path*": StaticRoute.from({ path: directory, directoryIndex: false }),
+      })
+      const handles = Object.fromEntries(RouteHttp.walkHandles(routes, runtime))
+      const client = Fetch.fromHandler(handles["/assets/:path*"])
+
+      const spaced = yield* client.get("http://localhost/assets/hello%20world.txt")
+      const unicode = yield* client.get("http://localhost/assets/caf%C3%A9.txt")
+
+      test
+        .expect(spaced.status)
+        .toBe(200)
+      test
+        .expect(yield* spaced.text)
+        .toBe("spaced")
+      test
+        .expect(unicode.status)
+        .toBe(200)
+      test
+        .expect(yield* unicode.text)
+        .toBe("unicode")
+    })
+    .pipe(
+      Effect.scoped,
+      Effect.provide(NodeFileSystem.layer),
+      Effect.runPromise,
+    ))
+
+test.it("detects javascript and source map content types", () =>
+  Effect
+    .gen(function*() {
+      const fs = yield* FileSystem.FileSystem
+      const directory = yield* fs.makeTempDirectoryScoped()
+      yield* fs.writeFileString(NPath.join(directory, "app.js"), "console.log('hi')")
+      yield* fs.writeFileString(NPath.join(directory, "app.js.map"), "{}")
+
+      const runtime = yield* Effect.runtime<FileSystem.FileSystem>()
+      const routes = Route.map({
+        "/assets/:path*": StaticRoute.from({ path: directory, directoryIndex: false }),
+      })
+      const handles = Object.fromEntries(RouteHttp.walkHandles(routes, runtime))
+      const client = Fetch.fromHandler(handles["/assets/:path*"])
+
+      const js = yield* client.get("http://localhost/assets/app.js")
+      const map = yield* client.get("http://localhost/assets/app.js.map")
+
+      test
+        .expect(js.status)
+        .toBe(200)
+      test
+        .expect(js.headers["content-type"])
+        .toBe("text/javascript; charset=utf-8")
+      test
+        .expect(map.status)
+        .toBe(200)
+      test
+        .expect(map.headers["content-type"])
+        .toBe("application/json")
+    })
+    .pipe(
+      Effect.scoped,
+      Effect.provide(NodeFileSystem.layer),
+      Effect.runPromise,
+    ))

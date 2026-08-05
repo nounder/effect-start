@@ -1,35 +1,24 @@
+import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import type * as ParseResult from "effect/ParseResult"
 import * as Schema from "effect/Schema"
 import type * as Scope from "effect/Scope"
 import type * as Types from "effect/Types"
 import * as Entity from "../Entity.ts"
+import type * as Multipart from "../Multipart.ts"
 import * as Route from "../Route.ts"
 import * as Http from "./Http.ts"
 import * as PathPattern from "./PathPattern.ts"
 import * as RouteHook from "./RouteHook.ts"
 
-export interface RequestBodyError {
-  readonly _tag: "RequestBodyError"
+export class RequestBodyError extends Data.TaggedError("RequestBodyError")<{
   readonly reason:
     | "JsonError"
     | "UrlParamsError"
     | "MultipartError"
     | "FormDataError"
   readonly cause: unknown
-}
-
-export const RequestBodyError = (
-  reason: RequestBodyError["reason"],
-  cause: unknown,
-): RequestBodyError => ({ _tag: "RequestBodyError", reason, cause })
-
-export const File = Schema.TaggedStruct("File", {
-  key: Schema.String,
-  name: Schema.String,
-  contentType: Schema.String,
-  content: Schema.Uint8ArrayFromSelf,
-})
+}> {}
 
 type SchemaOrFields = Schema.Schema.All | Schema.Struct.Fields
 
@@ -299,7 +288,7 @@ export function schemaBodyJson(fields: SchemaOrFields) {
       const request = yield* Route.Request
       const json = yield* Effect.tryPromise({
         try: () => request.json(),
-        catch: (error) => RequestBodyError("JsonError", error),
+        catch: (cause) => new RequestBodyError({ reason: "JsonError", cause }),
       })
       const parsed = yield* decode(json)
       return { context: { body: { ...ctx.body, ...parsed } } }
@@ -355,7 +344,7 @@ export function schemaBodyUrlParams(fields: SchemaOrFields) {
       const request = yield* Route.Request
       const text = yield* Effect.tryPromise({
         try: () => request.text(),
-        catch: (error) => RequestBodyError("UrlParamsError", error),
+        catch: (cause) => new RequestBodyError({ reason: "UrlParamsError", cause }),
       })
       const params = new URLSearchParams(text)
       const parsed = yield* decode(Http.mapUrlSearchParams(params))
@@ -387,7 +376,7 @@ export function schemaBodyMultipart<
   I extends Partial<
     Record<
       string,
-      ReadonlyArray<Http.FilePart> | ReadonlyArray<string> | string
+      ReadonlyArray<Multipart.File | string> | string
     >
   >,
   R,
@@ -415,7 +404,7 @@ export function schemaBodyMultipart(fields: SchemaOrFields) {
       const request = yield* Route.Request
       const record = yield* Effect.tryPromise({
         try: () => Http.parseFormData(request),
-        catch: (error) => RequestBodyError("MultipartError", error),
+        catch: (cause) => new RequestBodyError({ reason: "MultipartError", cause }),
       })
       const parsed = yield* decode(record)
       return { context: { body: { ...ctx.body, ...parsed } } }
@@ -446,7 +435,7 @@ export function schemaBodyForm<
   I extends Partial<
     Record<
       string,
-      ReadonlyArray<Http.FilePart> | ReadonlyArray<string> | string
+      ReadonlyArray<Multipart.File | string> | string
     >
   >,
   R,
@@ -477,7 +466,7 @@ export function schemaBodyForm(fields: SchemaOrFields) {
       if (contentType.includes("application/x-www-form-urlencoded")) {
         const text = yield* Effect.tryPromise({
           try: () => request.text(),
-          catch: (error) => RequestBodyError("UrlParamsError", error),
+          catch: (cause) => new RequestBodyError({ reason: "UrlParamsError", cause }),
         })
         const params = new URLSearchParams(text)
         const record = Http.mapUrlSearchParams(params)
@@ -487,7 +476,7 @@ export function schemaBodyForm(fields: SchemaOrFields) {
 
       const record = yield* Effect.tryPromise({
         try: () => Http.parseFormData(request),
-        catch: (error) => RequestBodyError("FormDataError", error),
+        catch: (cause) => new RequestBodyError({ reason: "FormDataError", cause }),
       })
       const parsed = yield* decode(record as any)
       return { context: { body: { ...ctx.body, ...parsed } } }

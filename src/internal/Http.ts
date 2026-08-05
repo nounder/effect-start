@@ -1,3 +1,8 @@
+import * as Effect from "effect/Effect"
+import * as Inspectable from "effect/Inspectable"
+import * as Stream from "effect/Stream"
+import * as Multipart from "../Multipart.ts"
+
 export type Method =
   | "GET"
   | "POST"
@@ -69,55 +74,48 @@ export function mapUrlSearchParams(
   return result
 }
 
-export interface FilePart {
-  readonly _tag: "File"
-  readonly key: string
-  readonly name: string
-  readonly contentType: string
-  readonly content: Uint8Array
-}
-
-export interface FieldPart {
-  readonly _tag: "Field"
-  readonly key: string
-  readonly value: string
-}
-
-export type MultipartPart = FilePart | FieldPart
-
 export async function parseFormData(
   request: Request,
 ): Promise<
-  Record<string, ReadonlyArray<FilePart> | ReadonlyArray<string> | string>
+  Record<string, ReadonlyArray<Multipart.File | string> | string>
 > {
   const formData = await request.formData()
-  const result: Record<
-    string,
-    ReadonlyArray<FilePart> | ReadonlyArray<string> | string
-  > = {}
+  const result: Record<string, ReadonlyArray<Multipart.File | string> | string> = {}
 
   for (const key of new Set(formData.keys())) {
     const values = formData.getAll(key)
-    const first = values[0]
-
-    if (typeof first === "string") {
-      result[key] = values.length === 1 ? first : (values as Array<string>)
-    } else {
-      const files: Array<FilePart> = []
-      for (const value of values) {
-        if (typeof value !== "string") {
-          const content = new Uint8Array(await value.arrayBuffer())
-          files.push({
-            _tag: "File",
-            key,
-            name: value.name,
-            contentType: value.type || "application/octet-stream",
-            content,
-          })
-        }
-      }
-      result[key] = files
+    if (values.every((value) => typeof value === "string")) {
+      result[key] = values.length === 1 ? values[0] as string : values as Array<string>
+      continue
     }
+
+    result[key] = values.map((value) => {
+      if (typeof value === "string") return value
+
+      const contentType = value.type || "application/octet-stream"
+      return {
+        ...Inspectable.BaseProto,
+        [Multipart.TypeId]: Multipart.TypeId,
+        _tag: "File",
+        key,
+        name: value.name,
+        contentType,
+        content: Stream.fromReadableStream({
+          evaluate: () => value.stream(),
+          onError: (cause) => new Multipart.MultipartError({ reason: { _tag: "InternalError", cause } }),
+        }),
+        contentEffect: Effect.tryPromise({
+          try: () => value.arrayBuffer().then((buffer) => new Uint8Array(buffer)),
+          catch: (cause) => new Multipart.MultipartError({ reason: { _tag: "InternalError", cause } }),
+        }),
+        toJSON: () => ({
+          _id: "effect-start/Multipart/File",
+          key,
+          name: value.name,
+          contentType,
+        }),
+      } satisfies Multipart.File
+    })
   }
 
   return result
