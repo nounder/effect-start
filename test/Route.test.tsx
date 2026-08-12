@@ -510,16 +510,21 @@ test.describe(Route.redirect, () => {
         const layerCookies = Cookies.unsafeSet(Cookies.empty, "a", "1")
         const redirectCookies = Cookies.unsafeSet(Cookies.empty, "b", "2")
 
-        const layer = Route.make<{}, {}, unknown>((_context, next) =>
-          Effect.map(next, (entity) =>
-            Entity.merge(entity, {
-              headers: {
-                "set-cookie": Cookies.toSetCookieHeaders(layerCookies),
-              },
-            }))
-        )
+        const withLayerCookie = <D, B, I extends Route.Route.Tuple>(
+          self: Route.RouteSet<D, B, I>,
+        ) => {
+          const route = Route.make<{}, {}, unknown>((_context, next) =>
+            Effect.map(next, (entity) =>
+              Entity.merge(entity, {
+                headers: {
+                  "set-cookie": Cookies.toSetCookieHeaders(layerCookies),
+                },
+              }))
+          )
+          return Route.set([...Route.items(self), route], Route.descriptor(self))
+        }
 
-        const routes = Route.use(layer).get(
+        const routes = Route.use(withLayerCookie).get(
           Route.redirect("/", { cookies: redirectCookies }),
         )
         const handler = RouteHttp.toWebHandler(routes)
@@ -531,8 +536,8 @@ test.describe(Route.redirect, () => {
         test
           .expect(response.headers.getSetCookie())
           .toEqual([
-            "a=1",
             "b=2",
+            "a=1",
           ])
       })
       .pipe(Effect.runPromise))
