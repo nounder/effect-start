@@ -1,7 +1,11 @@
+import * as Context from "effect/Context"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Function from "effect/Function"
 import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
+import * as Runtime from "effect/Runtime"
+import * as Scope from "effect/Scope"
 import * as BunRuntime from "./bun/BunRuntime.ts"
 import * as BunServer from "./bun/BunServer.ts"
 import * as BundleRoute from "./bundler/BundleRoute.ts"
@@ -9,6 +13,10 @@ import type * as ChildProcess from "./ChildProcess.ts"
 import * as Development from "./Development.ts"
 import type * as FileSystem from "./FileSystem.ts"
 import * as LayerExtra from "./internal/LayerExtra.ts"
+import * as PathPattern from "./internal/PathPattern.ts"
+import * as RouteMap from "./internal/RouteMap.ts"
+import * as Route from "./Route.ts"
+import * as RouteHttp from "./RouteHttp.ts"
 
 /**
  * Builds layers in the given order, wiring their dependencies automatically.
@@ -149,4 +157,125 @@ export function runMain(meta: ImportMeta): void {
       `Start.runMain: ${meta.url} is not an entrypoint, skipping.`,
     )
   }
+}
+
+export type FetchHandler = (
+  request: Request,
+  ...args: ReadonlyArray<unknown>
+) => Promise<Response>
+
+/**
+ * Lets a layer turn the extra arguments a platform passes to `fetch` (e.g.
+ * Cloudflare Workers' `env` and `ctx`) into request-scoped context that
+ * route handlers can pull services from.
+ */
+export interface FetchAdapter {
+  readonly context: (args: ReadonlyArray<unknown>) => Context.Context<never>
+}
+
+export const FetchAdapter = Context.GenericTag<FetchAdapter>(
+  "effect-start/Start/FetchAdapter",
+)
+
+/**
+ * Builds a `FetchAdapter` layer from a function mapping the extra arguments
+ * passed to the exported `fetch` into a `Context` of services.
+ *
+ * @example
+ * ```ts
+ * // Cloudflare Workers call fetch(request, env, ctx)
+ * class CloudflareEnv extends Context.Tag("CloudflareEnv")<CloudflareEnv, Env>() {}
+ *
+ * Start.layerFetchAdapter((env: Env) => Context.make(CloudflareEnv, env))
+ * ```
+ */
+export function layerFetchAdapter(
+  toContext: (...args: ReadonlyArray<any>) => Context.Context<never>,
+): Layer.Layer<FetchAdapter> {
+  return Layer.succeed(FetchAdapter, {
+    context: (args) => toContext(...args),
+  })
+}
+
+function dispatcher(
+  routeMap: RouteMap.RouteMap,
+  runtime: Runtime.Runtime<any>,
+): (request: Request) => Promise<Response> {
+  const handlers = Array.from(RouteHttp.walkHandles(routeMap, runtime))
+  return (request) => {
+    const pathname = decodeURI(new URL(request.url).pathname)
+    for (const [path, handler] of handlers) {
+      if (PathPattern.match(path, pathname) !== null) {
+        return handler(request) as Promise<Response>
+      }
+    }
+    return Promise.resolve(new Response("not found", { status: 404 }))
+  }
+}
+
+/**
+ * Like `pack`, but instead of starting a server, resolves to a `fetch`
+ * handler — the shape serverless platforms (Cloudflare Workers, Deno Deploy)
+ * expect.
+ *
+ * Unlike `serve`, this does not depend on `BunServer`, `BunRuntime`, or
+ * `layerDev` (which pulls in Bun/Node-only services), so the resulting
+ * `fetch` handler stays usable outside of Bun. Layers passed in must
+ * satisfy their own dependencies, same as `pack`.
+ *
+ * A layer can provide `FetchAdapter` to accept extra arguments (beyond
+ * `request`) and turn them into request-scoped context.
+ *
+ * @example
+ * ```ts
+ * export default { fetch: await Start.export(Route.layer(routes)) }
+ * ```
+ */
+export function export_<
+  const Layers extends readonly [Layer.Layer.Any, ...Array<Layer.Layer.Any>],
+>(
+  ...layers: LayerExtra.Unordered<Layers>
+): Promise<FetchHandler> {
+  const appLayer = Layer.scopedContext(
+    LayerExtra.buildUnordered(layers as unknown as Layers),
+  ) as Layer.Layer<
+    LayerExtra.LayersSuccess<Layers>,
+    LayerExtra.LayersError<Layers>,
+    never
+  >
+
+  const composed = Function.pipe(
+    BundleRoute.layer(),
+    Layer.provideMerge(appLayer),
+  )
+
+  return Effect.runPromise(
+    Effect.gen(function*() {
+      const scope = yield* Scope.make()
+      const runtime = yield* Layer.toRuntime(composed).pipe(
+        Effect.provideService(Scope.Scope, scope),
+      )
+      const routeMap = Context.getOption(runtime.context, Route.Routes).pipe(
+        Option.getOrElse(() => RouteMap.make({})),
+      )
+      const dispatch = dispatcher(routeMap, runtime)
+      const adapter = Context.getOption(runtime.context, FetchAdapter)
+
+      if (Option.isNone(adapter)) {
+        return dispatch as FetchHandler
+      }
+
+      return ((request: Request, ...args: ReadonlyArray<unknown>) => {
+        const requestRuntime = Runtime.updateContext(
+          runtime,
+          (ctx) => Context.merge(ctx, adapter.value.context(args)),
+        )
+        return dispatcher(routeMap, requestRuntime)(request)
+      }) as FetchHandler
+    }),
+  )
+}
+
+export {
+  export_ as export,
 }
