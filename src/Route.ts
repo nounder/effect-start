@@ -60,6 +60,7 @@ import * as Option from "effect/Option"
 import * as Pipeable from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import type { JSX } from "../src/jsx.ts"
+import * as Cookies from "./Cookies.ts"
 import * as Development from "./Development.ts"
 import * as Entity from "./Entity.ts"
 import * as Html from "./Html.ts"
@@ -187,9 +188,17 @@ export const bytes = RouteBody.build<Uint8Array, "bytes">({
  */
 export const handle = RouteBody.handle
 
+/**
+ * Redirects to the given URL. Accepts custom headers and cookies,
+ * e.g. to set a flash message or session cookie alongside the redirect.
+ */
 export function redirect<D, B, I extends Route.Tuple>(
   url: string | URL,
-  options?: { status?: 301 | 302 | 303 | 307 | 308 },
+  options?: {
+    status?: 301 | 302 | 303 | 307 | 308
+    headers?: Entity.Headers
+    cookies?: Cookies.Cookies
+  },
 ): (
   self: RouteSet<D, B, I>,
 ) => RouteSet<D, B, [...I, Route<{}, {}, "", never, never>]> {
@@ -199,7 +208,11 @@ export function redirect<D, B, I extends Route.Tuple>(
         Entity.make("", {
           status: options?.status ?? 302,
           headers: {
+            ...options?.headers,
             location: url instanceof URL ? url.href : url,
+            ...(options?.cookies && !Cookies.isEmpty(options.cookies)
+              ? { "set-cookie": Cookies.toSetCookieHeaders(options.cookies) }
+              : undefined),
           },
         }),
       ),
