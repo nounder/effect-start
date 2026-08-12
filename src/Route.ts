@@ -214,6 +214,10 @@ export function redirect<D, B, I extends Route.Tuple>(
 }
 
 export {
+  addHeaders,
+  withHeaders,
+} from "./internal/RouteHeaders.ts"
+export {
   filter,
 } from "./internal/RouteHook.ts"
 export {
@@ -467,5 +471,18 @@ export class Request extends Context.Tag("effect-start/Route/Request")<
 export class RouteContext extends Context.Reference<RouteContext>()("effect-start/RouteContext", {
   defaultValue: () => ({
     context: Object.freeze({}) as Record<string, unknown>,
+  }),
+}) {}
+
+/**
+ * Headers accumulated per request via {@link addHeaders} / {@link withHeaders}.
+ * RouteHttp merges them onto the final response, and Route.ws reads them
+ * eagerly before upgrading so they can reach the handshake response too.
+ *
+ * @internal
+ */
+export class RouteHeaders extends Context.Reference<RouteHeaders>()("effect-start/RouteHeaders", {
+  defaultValue: () => ({
+    headers: {} as Entity.Headers,
   }),
 }) {}

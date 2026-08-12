@@ -1,4 +1,5 @@
 import * as test from "bun:test"
+import * as Entity from "effect-start/Entity"
 import * as Fetch from "effect-start/Fetch"
 import * as Route from "effect-start/Route"
 import * as RouteHttp from "effect-start/RouteHttp"
@@ -267,4 +268,87 @@ test.describe("Route.sse()", () => {
           )
       })
       .pipe(Effect.runPromise))
+
+  test.it("adds CORS headers via Route.use(Route.withHeaders(...)) instead of Route.use+Entity.merge", () =>
+    Effect
+      .gen(function*() {
+        const handler = RouteHttp.toWebHandler(
+          Route
+            .use(
+              Route.withHeaders({ "access-control-allow-origin": "*" }),
+            )
+            .get(
+              Route.sse(() => Stream.make({ data: "hello" })),
+            ),
+        )
+        const client = Fetch.fromHandler(handler)
+        const entity = yield* client.get("http://localhost/events")
+
+        test
+          .expect(entity.headers)
+          .toMatchObject({
+            "content-type": "text/event-stream",
+            "cache-control": "no-cache",
+            connection: "keep-alive",
+            "access-control-allow-origin": "*",
+          })
+        test
+          .expect(yield* entity.text)
+          .toBe("data: hello\n\n")
+      })
+      .pipe(Effect.runPromise))
+
+  test.it("adds headers procedurally with Route.addHeaders from inside the generator handler", () =>
+    Effect
+      .gen(function*() {
+        const handler = RouteHttp.toWebHandler(
+          Route.get(
+            Route.sse(function*() {
+              yield* Route.addHeaders({ "access-control-allow-origin": "*" })
+              return Stream.make({ data: "hello" })
+            }),
+          ),
+        )
+        const client = Fetch.fromHandler(handler)
+        const entity = yield* client.get("http://localhost/events")
+
+        test
+          .expect(entity.headers["access-control-allow-origin"])
+          .toBe("*")
+        test
+          .expect(yield* entity.text)
+          .toBe("data: hello\n\n")
+      })
+      .pipe(Effect.runPromise))
+
+  test.it("Route.withHeaders does not override the entity's own content-type unless asked to", () =>
+    Effect
+      .gen(function*() {
+        const handler = RouteHttp.toWebHandler(
+          Route
+            .use(Route.withHeaders({ "x-request-id": "abc123" }))
+            .get(Route.sse(() => Stream.make({ data: "hello" }))),
+        )
+        const client = Fetch.fromHandler(handler)
+        const entity = yield* client.get("http://localhost/events")
+
+        test
+          .expect(entity.headers["content-type"])
+          .toBe("text/event-stream")
+        test
+          .expect(entity.headers["x-request-id"])
+          .toBe("abc123")
+      })
+      .pipe(Effect.runPromise))
+
+  test.it("Entity.mergeHeaders combines set-cookie without dropping either value", () => {
+    const merged = Entity.mergeHeaders(
+      { "set-cookie": "a=1" },
+      { "set-cookie": "b=2" },
+    )
+
+    test
+      .expect(merged["set-cookie"])
+      .toEqual(["a=1", "b=2"])
+  })
 })

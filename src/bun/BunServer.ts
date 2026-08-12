@@ -12,6 +12,7 @@ import * as Runtime from "effect/Runtime"
 import * as Scope from "effect/Scope"
 import * as NOs from "node:os"
 import * as NPath from "node:path"
+import type * as Entity from "../Entity.ts"
 import * as PathPattern from "../internal/PathPattern.ts"
 import * as RouteMap from "../internal/RouteMap.ts"
 import type * as RouteMount from "../internal/RouteMount.ts"
@@ -455,10 +456,28 @@ function buildSocket(
   })
 }
 
+// Bun accepts headers as a plain Headers instance for the handshake
+// response; a Headers instance handles multi-valued entries (e.g.
+// set-cookie) that a plain object can't.
+function toHandshakeHeaders(headers: Entity.Headers): Headers {
+  const result = new Headers()
+  for (const key in headers) {
+    const value = headers[key]
+    if (value == null) continue
+    if (typeof value === "string") {
+      result.append(key, value)
+    } else {
+      for (const v of value) result.append(key, v)
+    }
+  }
+  return result
+}
+
 const makeUpgrade = (getServer: () => Bun.Server<WebSocketContext>) =>
 (
   request: Request,
   handlerScope: Scope.Scope,
+  headers?: Entity.Headers,
 ): Effect.Effect<Socket.Socket, Socket.SocketError> =>
   Effect.gen(function*() {
     const deferred = yield* Deferred
@@ -474,7 +493,10 @@ const makeUpgrade = (getServer: () => Bun.Server<WebSocketContext>) =>
       ctx.buffer.push(data)
     }
 
-    const ok = getServer().upgrade(request, { data: ctx })
+    const ok = getServer().upgrade(request, {
+      data: ctx,
+      ...(headers && Object.keys(headers).length > 0 ? { headers: toHandshakeHeaders(headers) } : {}),
+    })
     if (!ok) {
       return yield* Effect.fail(
         new Socket.SocketError({

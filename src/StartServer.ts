@@ -11,6 +11,7 @@
 import * as Context from "effect/Context"
 import type * as Effect from "effect/Effect"
 import type * as Scope from "effect/Scope"
+import type * as Entity from "./Entity.ts"
 import type * as SocketAddress from "./internal/SocketAddress.ts"
 import type * as Route from "./Route.ts"
 import type * as Socket from "./Socket.ts"
@@ -23,9 +24,15 @@ export interface StartServer {
   readonly [Route.IntrinsicService]?: never
   readonly address: Address
   readonly url: string
+  /**
+   * Upgrades a request to a socket. `headers` (e.g. added via
+   * `Route.addHeaders`/`Route.withHeaders`) are attached to the handshake
+   * response when the platform supports it.
+   */
   readonly upgrade: (
     request: Request,
     handlerScope: Scope.Scope,
+    headers?: Entity.Headers,
   ) => Effect.Effect<Socket.Socket, Socket.SocketError>
   /**
    * Forks a socket handler into the server's scope, so it is interrupted (and

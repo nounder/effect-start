@@ -3950,3 +3950,195 @@ test.it("set-cookie string still works", async () => {
     .expect(cookies)
     .toEqual(["a=1; Path=/"])
 })
+
+test.describe("Route.withHeaders", () => {
+  test.it("adds headers to a json response without touching the body", () =>
+    Effect
+      .gen(function*() {
+        const handler = RouteHttp.toWebHandler(
+          Route
+            .use(
+              Route.withHeaders({ "access-control-allow-origin": "*" }),
+            )
+            .get(Route.json({ hello: "world" })),
+        )
+        const client = Fetch.fromHandler(handler)
+        const entity = yield* client.get("http://localhost/")
+
+        test
+          .expect(entity.headers["access-control-allow-origin"])
+          .toBe("*")
+        test
+          .expect(yield* entity.json)
+          .toEqual({ hello: "world" })
+      })
+      .pipe(Effect.runPromise))
+
+  test.it("adds headers to a Route.sse response, replacing the manual Entity.merge pattern", () =>
+    Effect
+      .gen(function*() {
+        const handler = RouteHttp.toWebHandler(
+          Route
+            .use(
+              Route.withHeaders({ "access-control-allow-origin": "*" }),
+            )
+            .get(
+              Route.sse(() => Stream.make({ data: "hello" })),
+            ),
+        )
+        const client = Fetch.fromHandler(handler)
+        const entity = yield* client.get("http://localhost/events")
+
+        test
+          .expect(entity.headers)
+          .toMatchObject({
+            "content-type": "text/event-stream",
+            "cache-control": "no-cache",
+            connection: "keep-alive",
+            "access-control-allow-origin": "*",
+          })
+        test
+          .expect(yield* entity.text)
+          .toBe("data: hello\n\n")
+      })
+      .pipe(Effect.runPromise))
+
+  test.it("lets added headers override headers set by the route itself", () =>
+    Effect
+      .gen(function*() {
+        const handler = RouteHttp.toWebHandler(
+          Route
+            .use(Route.withHeaders({ "content-type": "text/markdown" }))
+            .get(Route.text("hello")),
+        )
+        const client = Fetch.fromHandler(handler)
+        const entity = yield* client.get("http://localhost/")
+
+        test
+          .expect(entity.headers["content-type"])
+          .toBe("text/markdown")
+      })
+      .pipe(Effect.runPromise))
+
+  test.it("merges set-cookie instead of overriding it", () =>
+    Effect
+      .gen(function*() {
+        const handler = RouteHttp.toWebHandler(
+          Route
+            .use(Route.withHeaders({ "set-cookie": "outer=1" }))
+            .get(
+              Route.handle(
+                Entity.make("ok", { headers: { "set-cookie": "inner=1" } }),
+              ),
+            ),
+        )
+        const response = yield* Effect.promise(() => Promise.resolve(handler(new Request("http://localhost/"))))
+
+        test
+          .expect(response.headers.getSetCookie())
+          .toEqual(["inner=1", "outer=1"])
+      })
+      .pipe(Effect.runPromise))
+
+  test.it("applies to every route under a wildcard mount", () =>
+    Effect
+      .gen(function*() {
+        const tree = Route.map({
+          "*": Route.use(Route.withHeaders({ "x-app": "effect-start" })),
+          "/a": Route.get(Route.text("a")),
+          "/b": Route.get(Route.text("b")),
+        })
+
+        const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
+        const client = Fetch.fromHandler(handles["/a"])
+        const entityA = yield* client.get("http://localhost/a")
+        const entityB = yield* Fetch.fromHandler(handles["/b"]).get(
+          "http://localhost/b",
+        )
+
+        test
+          .expect(entityA.headers["x-app"])
+          .toBe("effect-start")
+        test
+          .expect(entityB.headers["x-app"])
+          .toBe("effect-start")
+      })
+      .pipe(Effect.runPromise))
+})
+
+test.describe("Route.addHeaders", () => {
+  test.it("adds headers procedurally from inside a handler", () =>
+    Effect
+      .gen(function*() {
+        const handler = RouteHttp.toWebHandler(
+          Route.get(
+            Route.text(function*() {
+              yield* Route.addHeaders({ "x-request-id": "abc123" })
+              return "hello"
+            }),
+          ),
+        )
+        const client = Fetch.fromHandler(handler)
+        const entity = yield* client.get("http://localhost/")
+
+        test
+          .expect(entity.headers["x-request-id"])
+          .toBe("abc123")
+        test
+          .expect(yield* entity.text)
+          .toBe("hello")
+      })
+      .pipe(Effect.runPromise))
+
+  test.it("merges multiple calls, later calls winning on conflicts", () =>
+    Effect
+      .gen(function*() {
+        const handler = RouteHttp.toWebHandler(
+          Route
+            .use(Route.withHeaders({ "x-source": "middleware" }))
+            .get(
+              Route.text(function*() {
+                yield* Route.addHeaders({ "x-request-id": "abc123", "x-source": "handler" })
+                return "hello"
+              }),
+            ),
+        )
+        const client = Fetch.fromHandler(handler)
+        const entity = yield* client.get("http://localhost/")
+
+        test
+          .expect(entity.headers["x-request-id"])
+          .toBe("abc123")
+        test
+          .expect(entity.headers["x-source"])
+          .toBe("handler")
+      })
+      .pipe(Effect.runPromise))
+
+  test.it("does not leak headers between requests", () =>
+    Effect
+      .gen(function*() {
+        const handler = RouteHttp.toWebHandler(
+          Route.get(
+            Route.text(function*() {
+              const request = yield* Route.Request
+              if (new URL(request.url).pathname === "/tagged") {
+                yield* Route.addHeaders({ "x-tagged": "yes" })
+              }
+              return "hello"
+            }),
+          ),
+        )
+        const client = Fetch.fromHandler(handler)
+        const untagged = yield* client.get("http://localhost/plain")
+        const tagged = yield* client.get("http://localhost/tagged")
+
+        test
+          .expect(untagged.headers["x-tagged"])
+          .toBeUndefined()
+        test
+          .expect(tagged.headers["x-tagged"])
+          .toBe("yes")
+      })
+      .pipe(Effect.runPromise))
+})
