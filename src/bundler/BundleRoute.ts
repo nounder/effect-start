@@ -2,6 +2,7 @@ import type * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
+import * as Development from "../Development.ts"
 import * as Entity from "../Entity.ts"
 import * as PathPattern from "../internal/PathPattern.ts"
 import * as RouteMap from "../internal/RouteMap.ts"
@@ -25,7 +26,10 @@ export const make = <Tag extends Context.Tag<any, Bundle.BundleContext>>(
   Route.get(
     Route.handle(function*(ctx) {
       const bundle = yield* tag
-      if (bundle.rebuild) {
+      // Only rebuild when running under `Development` (dev server). In
+      // production, artifacts are static and the bundle is kept fresh via
+      // file watch + `BundleContext.events` instead of a per-request rebuild.
+      if (bundle.rebuild && Option.isSome(yield* Development.option)) {
         yield* bundle.rebuild()
       }
       const request = yield* Route.Request
