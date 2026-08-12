@@ -28,6 +28,8 @@ type HandlerReturn<A, Value = A> =
   | Entity.Entity<Stream.Stream<Value, any, any>, any>
   // support returing bytes from text/json/etc
   | Entity.Entity<Uint8Array, any>
+  // scope is extended until the response body finishes streaming
+  | Response
   | ((self: Route.RouteSet.Any) => Route.RouteSet.Any)
 
 type HandlerFunction<B, A, E, R, Value = A> = (
@@ -125,6 +127,9 @@ function normalizeToEntity(value: unknown): Effect.Effect<Entity.Entity<any>> {
   }
   if (Entity.isEntity(value)) {
     return Effect.succeed(value)
+  }
+  if (value instanceof Response) {
+    return Effect.succeed(Entity.fromResponse(value))
   }
   return Effect.succeed(Entity.make(value, { status: 200 }))
 }
