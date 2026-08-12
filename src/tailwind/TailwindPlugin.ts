@@ -1,9 +1,15 @@
-import type { BunPlugin } from "bun"
 import * as NPath from "node:path"
+import type * as Plugin from "../bundler/Plugin.ts"
 import * as IgnoreFile from "../internal/IgnoreFile.ts"
 import * as NodeUtils from "../node/NodeUtils.ts"
 import { compile } from "./compile.ts"
 
+/**
+ * Builds a Tailwind CSS plugin against the bundler-agnostic {@link Plugin.Plugin}
+ * shape. Convert it for a specific bundler with the matching adapter:
+ * `bun/BunPlugin.toBunPlugin`, `esbuild/EsbuildPlugin.toEsbuildPlugin`, or
+ * `rolldown/RolldownPlugin.toRolldownPlugin`.
+ */
 export const make = (opts?: {
   /**
    * Pattern to match component and HTML files for class name extraction.
@@ -14,18 +20,14 @@ export const make = (opts?: {
    * Pattern to match CSS files that import Tailwind.
    */
   cssPattern?: RegExp
-
-  target?: "browser" | "bun" | "node"
-}): BunPlugin => {
+}): Plugin.Plugin => {
   const {
     filesPattern = /\.(jsx?|tsx?|html|svelte|vue|astro)$/,
     cssPattern = /\.css$/,
-    target = "browser",
   } = opts ?? {}
 
   return {
     name: "Tailwind.css plugin",
-    target,
     async setup(builder) {
       // (file) -> (class names)
       const classNameCandidates = new Map<string, Set<string>>()
