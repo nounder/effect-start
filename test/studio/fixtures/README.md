@@ -45,9 +45,6 @@ Two things to watch for when writing the sample apps:
   positionally leaves it undefined, so records are silently dropped and
   `shutdown()` throws.
 
-Serve the studio with a bundler layer present (`BunBundle.layer` with a real
-entrypoint); the `/logs` and `/metrics` pages need it, though ingestion does not.
-
 ## Regression this fixture caught
 
 Proto3 omits `is_monotonic` when false, which is how both SDKs encode an up/down

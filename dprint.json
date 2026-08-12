@@ -29,6 +29,7 @@
     "**/node_modules",
     "**/*-lock.json",
     "**/package.json",
-    "vscode/*.json"
+    "vscode/*.json",
+    "src/studio/internal/DatastarClient.ts"
   ]
 }

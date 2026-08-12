@@ -191,12 +191,13 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
+    "build-datastar-client": "bun scripts/build-datastar-client",
     "lint": "oxlint && dprint check",
     "lint-fix": "oxlint --fix && dprint fmt",
     "test": "bun test ./test/",
     "test-sql": "bun add --no-save mssql @types/mssql postgres && TEST_SQL=1 bun test ./src/sql/",
     "bump": "bun scripts/bump",
-    "prepublishOnly": "bun run build",
+    "prepublishOnly": "bun run build-datastar-client && bun run build",
     "deploy": "bunx --bun npm publish --access public"
   },
   "devDependencies": {
