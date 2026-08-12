@@ -189,7 +189,7 @@ export function LogLine(props: { prefix: string; log: StudioStore.LogEntry }) {
 export function ErrorLine(
   props: { prefix: string; error: StudioStore.ErrorEntry },
 ) {
-  const time = new Date(Number(Unique.snowflake.timestamp(props.error.id)))
+  const time = new Date(Unique.snowflake.timestamp(props.error.id))
     .toLocaleTimeString("en", {
       hour12: false,
       hour: "2-digit",

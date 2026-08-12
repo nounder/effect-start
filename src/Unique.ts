@@ -3,34 +3,76 @@ export const ALPHABET_BASE32_RFC4648 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"
 export const ALPHABET_BASE64_URL = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
 export const ALPHABET_HEX = "0123456789abcdef"
 
+/**
+ * Millisecond epoch snowflake timestamps are relative to, matching
+ * `@effect/cluster`'s `Snowflake` module (2025-01-01T00:00:00.000Z UTC).
+ */
+export const SNOWFLAKE_EPOCH_MS = Date.UTC(2025, 0, 1)
+
+const SNOWFLAKE_MACHINE_ID_BITS = 10n
+const SNOWFLAKE_SEQUENCE_BITS = 12n
+const SNOWFLAKE_TIMESTAMP_BITS = 41n
+const SNOWFLAKE_MACHINE_ID_SHIFT = SNOWFLAKE_SEQUENCE_BITS
+const SNOWFLAKE_TIMESTAMP_SHIFT = SNOWFLAKE_MACHINE_ID_BITS + SNOWFLAKE_SEQUENCE_BITS
+const SNOWFLAKE_MACHINE_ID_MAX = (1n << SNOWFLAKE_MACHINE_ID_BITS) - 1n
+const SNOWFLAKE_SEQUENCE_MAX = (1n << SNOWFLAKE_SEQUENCE_BITS) - 1n
+const SNOWFLAKE_TIMESTAMP_MASK = (1n << SNOWFLAKE_TIMESTAMP_BITS) - 1n
+
+export interface SnowflakeParts {
+  readonly timestamp: number
+  readonly machineId: number
+  readonly sequence: number
+}
+
 interface Snowflake {
   (time?: number): bigint
   readonly state: {
-    readonly timestampMs: bigint
-    readonly sequence: bigint
+    timestampMs: bigint
+    machineId: bigint
+    sequence: bigint
   }
-  readonly timestamp: (id: bigint) => bigint
+  readonly timestamp: (id: bigint) => number
+  readonly machineId: (id: bigint) => number
+  readonly sequence: (id: bigint) => number
+  readonly toParts: (id: bigint) => SnowflakeParts
+  readonly setMachineId: (machineId: number) => void
 }
 
 /**
- * Monotonic Snowflake variant:
- * - 48-bit unix timestamp
- * - 16-bit sequence
- * - sequence resets on timestamp increment
- * - sequence overflow carries into next millisecond
- *
- * Snowflake originated at Twitter. We use 7 more bits for timestamp,
- * sacraficing shard bits, to avoid using custom epoch and use unix epoch instead.
+ * Pack timestamp, machine id and sequence parts into a snowflake id, mirroring
+ * `@effect/cluster`'s `Snowflake.make`. Machine id wraps modulo 1024 and
+ * sequence wraps modulo 4096.
  */
-function buildSnowflake(): Snowflake {
-  const timestampBits = 48n
-  const seqBits = 16n
-  const seqMax = (1n << seqBits) - 1n
-  const timestampMask = (1n << timestampBits) - 1n
+export function makeSnowflake(options: {
+  readonly timestamp: number
+  readonly machineId: number
+  readonly sequence: number
+}): bigint {
+  const relativeMs = toSafeTime(options.timestamp) - SNOWFLAKE_EPOCH_MS
+  const timestampMs = BigInt(relativeMs > 0 ? relativeMs : 0) & SNOWFLAKE_TIMESTAMP_MASK
 
+  return (timestampMs << SNOWFLAKE_TIMESTAMP_SHIFT) |
+    ((BigInt(options.machineId) & SNOWFLAKE_MACHINE_ID_MAX) << SNOWFLAKE_MACHINE_ID_SHIFT) |
+    (BigInt(options.sequence) & SNOWFLAKE_SEQUENCE_MAX)
+}
+
+/**
+ * Monotonic Snowflake generator compatible with `@effect/cluster`'s
+ * `Snowflake` layout:
+ * - 41-bit timestamp, milliseconds since `SNOWFLAKE_EPOCH_MS` (2025-01-01)
+ * - 10-bit machine id
+ * - 12-bit sequence, reset on timestamp increment, overflow carries into
+ *   the next millisecond
+ *
+ * Unlike `@effect/cluster`, machine id defaults to 0 and there's no `Clock`
+ * or `Effect` dependency, so this generator can be used standalone. Pass
+ * `machineId` (0-1023) so ids stay unique across many deployed instances.
+ */
+export function buildSnowflake(options?: { readonly machineId?: number }): Snowflake {
   const fn = Object.assign(
     (time: number = Date.now()) => {
-      const nowMs = BigInt(toSafeTime(time))
+      const relativeMs = BigInt(toSafeTime(time) - SNOWFLAKE_EPOCH_MS)
+      const nowMs = relativeMs > 0n ? relativeMs : 0n
       const timestampMs = nowMs > fn.state.timestampMs
         ? nowMs
         : fn.state.timestampMs
@@ -40,21 +82,33 @@ function buildSnowflake(): Snowflake {
         fn.state.sequence = 0n
       } else {
         fn.state.sequence += 1n
-        if (fn.state.sequence > seqMax) {
+        if (fn.state.sequence > SNOWFLAKE_SEQUENCE_MAX) {
           fn.state.timestampMs += 1n
           fn.state.sequence = 0n
         }
       }
 
-      return ((fn.state.timestampMs & timestampMask) << seqBits) |
+      return ((fn.state.timestampMs & SNOWFLAKE_TIMESTAMP_MASK) << SNOWFLAKE_TIMESTAMP_SHIFT) |
+        (fn.state.machineId << SNOWFLAKE_MACHINE_ID_SHIFT) |
         fn.state.sequence
     },
     {
       state: {
-        timestampMs: 0n,
+        timestampMs: -1n,
+        machineId: BigInt(options?.machineId ?? 0) & SNOWFLAKE_MACHINE_ID_MAX,
         sequence: -1n,
       },
-      timestamp: (id: bigint): bigint => id >> seqBits,
+      timestamp: (id: bigint): number => Number(id >> SNOWFLAKE_TIMESTAMP_SHIFT) + SNOWFLAKE_EPOCH_MS,
+      machineId: (id: bigint): number => Number((id >> SNOWFLAKE_MACHINE_ID_SHIFT) & SNOWFLAKE_MACHINE_ID_MAX),
+      sequence: (id: bigint): number => Number(id & SNOWFLAKE_SEQUENCE_MAX),
+      toParts: (id: bigint): SnowflakeParts => ({
+        timestamp: fn.timestamp(id),
+        machineId: fn.machineId(id),
+        sequence: fn.sequence(id),
+      }),
+      setMachineId: (machineId: number) => {
+        fn.state.machineId = BigInt(machineId) & SNOWFLAKE_MACHINE_ID_MAX
+      },
     },
   )
   return fn
