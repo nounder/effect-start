@@ -251,6 +251,9 @@ export {
 export {
   sse,
 } from "./internal/RouteSse.ts"
+export {
+  make as trailingSlashRedirect,
+} from "./internal/RouteTrailingSlash.ts"
 
 export class Routes extends Context.Tag("effect-start/Routes")<Routes, RouteMap.RouteMap>() {}
 
