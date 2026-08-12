@@ -485,6 +485,16 @@ export function schemaBodyForm(fields: SchemaOrFields) {
 }
 
 /**
+ * Metadata attached to the descriptor of a route created by `schemaError`,
+ * so tooling (e.g. an OpenAPI generator) can walk `Route.items()` and read
+ * off every declared error response without executing the route.
+ */
+export interface SchemaErrorDescriptor {
+  readonly schema: Schema.Schema<any, any, any>
+  readonly status: number
+}
+
+/**
  * Intercepts typed errors from downstream handlers, encodes them through the
  * schema, and returns a JSON response with the given status code.
  *
@@ -492,26 +502,39 @@ export function schemaBodyForm(fields: SchemaOrFields) {
  * execution of request. `schemaError` short circuts error handling by
  * return an error response immedietly.
  *
- * TODO: store the errors in runtime to enable generating OpenAPI and other
- * goodies.
+ * The schema and status are also recorded on the route's descriptor under
+ * `schemaError`, so tooling can generate OpenAPI (or similar) documentation
+ * by reading `Route.descriptor()` for each item, without running the route.
  */
 export function schemaError<A, I, R>(
   schema: Schema.Schema<A, I, R> & { readonly status: number },
 ): <D, SB, P extends Route.Route.Tuple>(
   self: Route.RouteSet<D, SB, P>,
-) => Route.RouteSet<D, SB, [...P, Route.Route<{}, {}, unknown, never, R>]>
+) => Route.RouteSet<
+  D,
+  SB,
+  [...P, Route.Route<{ schemaError: SchemaErrorDescriptor }, {}, unknown, never, R>]
+>
 export function schemaError<A, I, R>(
   schema: Schema.Schema<A, I, R>,
   options: { readonly status: number },
 ): <D, SB, P extends Route.Route.Tuple>(
   self: Route.RouteSet<D, SB, P>,
-) => Route.RouteSet<D, SB, [...P, Route.Route<{}, {}, unknown, never, R>]>
+) => Route.RouteSet<
+  D,
+  SB,
+  [...P, Route.Route<{ schemaError: SchemaErrorDescriptor }, {}, unknown, never, R>]
+>
 export function schemaError<A, I, R>(
   schema: Schema.Schema<A, I, R> & { readonly status?: number },
   options?: { readonly status: number },
 ): <D, SB, P extends Route.Route.Tuple>(
   self: Route.RouteSet<D, SB, P>,
-) => Route.RouteSet<D, SB, [...P, Route.Route<{}, {}, unknown, never, R>]> {
+) => Route.RouteSet<
+  D,
+  SB,
+  [...P, Route.Route<{ schemaError: SchemaErrorDescriptor }, {}, unknown, never, R>]
+> {
   const status = options?.status ?? (schema as any).status
   if (typeof status !== "number") {
     throw new Error(
@@ -522,23 +545,38 @@ export function schemaError<A, I, R>(
   const is = Schema.is(schema)
   return function<D, SB, P extends Route.Route.Tuple>(
     self: Route.RouteSet<D, SB, P>,
-  ): Route.RouteSet<D, SB, [...P, Route.Route<{}, {}, unknown, never, R>]> {
-    const route = Route.make<{}, {}, unknown, never, R>((_context, next) =>
-      Entity.resolve(next).pipe(
-        Effect.catchIf(
-          is,
-          (error) => Effect.map(Effect.orDie(encode(error)), (encoded) => Entity.make(encoded, { status })),
+  ): Route.RouteSet<
+    D,
+    SB,
+    [...P, Route.Route<{ schemaError: SchemaErrorDescriptor }, {}, unknown, never, R>]
+  > {
+    const route = Route.make<{ schemaError: SchemaErrorDescriptor }, {}, unknown, never, R>(
+      (_context, next) =>
+        Entity.resolve(next).pipe(
+          Effect.catchIf(
+            is,
+            (error) => Effect.map(Effect.orDie(encode(error)), (encoded) => Entity.make(encoded, { status })),
+          ),
         ),
-      )
+      { schemaError: { schema, status } },
     )
 
-    const items: [...P, Route.Route<{}, {}, unknown, never, R>] = [
+    const items: [...P, Route.Route<{ schemaError: SchemaErrorDescriptor }, {}, unknown, never, R>] = [
       ...Route.items(self),
       route,
     ]
 
     return Route.set(items, Route.descriptor(self))
   }
+}
+
+/**
+ * Metadata attached to the descriptor of a route created by `schemaSuccess`,
+ * so tooling (e.g. an OpenAPI generator) can walk `Route.items()` and read
+ * off the declared success response without executing the route.
+ */
+export interface SchemaSuccessDescriptor {
+  readonly schema: Schema.Schema<any, any, any>
 }
 
 export function schemaSuccess<F extends Schema.Struct.Fields>(
@@ -551,7 +589,7 @@ export function schemaSuccess<F extends Schema.Struct.Fields>(
   [
     ...P,
     Route.Route<
-      {},
+      { schemaSuccess: SchemaSuccessDescriptor },
       {},
       Types.Simplify<Schema.Struct.Encoded<F>>,
       ParseResult.ParseError,
@@ -566,7 +604,7 @@ export function schemaSuccess<A, I, R>(
 ) => Route.RouteSet<
   D,
   SB,
-  [...P, Route.Route<{}, {}, I, ParseResult.ParseError, R>]
+  [...P, Route.Route<{ schemaSuccess: SchemaSuccessDescriptor }, {}, I, ParseResult.ParseError, R>]
 >
 export function schemaSuccess(
   schema: SchemaOrFields,
@@ -574,17 +612,19 @@ export function schemaSuccess(
   const s = toSchema(schema)
   const encode = Schema.encodeUnknown(s)
   return function(self: Route.RouteSet<any, any, any>) {
-    const route = Route.make((_context: any, next: any) =>
-      Effect.flatMap(
-        Entity.resolve(next),
-        (entity) =>
-          Effect.map(encode(entity.body), (encoded) =>
-            Entity.make(encoded, {
-              status: entity.status,
-              headers: entity.headers,
-              url: entity.url,
-            })),
-      )
+    const route = Route.make(
+      (_context: any, next: any) =>
+        Effect.flatMap(
+          Entity.resolve(next),
+          (entity) =>
+            Effect.map(encode(entity.body), (encoded) =>
+              Entity.make(encoded, {
+                status: entity.status,
+                headers: entity.headers,
+                url: entity.url,
+              })),
+        ),
+      { schemaSuccess: { schema: s } },
     )
 
     const items = [

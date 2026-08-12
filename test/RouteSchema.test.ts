@@ -754,6 +754,23 @@ test.describe(`${RouteSchema.schemaSuccess.name}()`, () => {
           })
       })
       .pipe(Effect.runPromise))
+
+  test.it("records the schema on the route descriptor for OpenAPI-style introspection", () => {
+    const UserResponse = Schema.Struct({
+      name: Schema.String,
+      age: Schema.Number,
+    })
+
+    const routeSet = RouteSchema.schemaSuccess(UserResponse)(Route.empty)
+    const [route] = Route.items(routeSet)
+    const descriptor = Route.descriptor<{
+      schemaSuccess: RouteSchema.SchemaSuccessDescriptor
+    }>(route)
+
+    test
+      .expect(descriptor.schemaSuccess.schema)
+      .toBe(UserResponse)
+  })
 })
 
 test.describe(`${RouteSchema.schemaError.name}()`, () => {
@@ -974,4 +991,25 @@ test.describe(`${RouteSchema.schemaError.name}()`, () => {
           })
       })
       .pipe(Effect.runPromise))
+
+  test.it("records the schema and status on each chained route's descriptor", () => {
+    const routeSet = Route.get(
+      RouteSchema.schemaError(NotFound, { status: 404 }),
+      RouteSchema.schemaError(Unauthorized, { status: 401 }),
+    )
+    const [notFoundRoute, unauthorizedRoute] = Route.items(routeSet)
+    const notFoundDescriptor = Route.descriptor<{
+      schemaError: RouteSchema.SchemaErrorDescriptor
+    }>(notFoundRoute)
+    const unauthorizedDescriptor = Route.descriptor<{
+      schemaError: RouteSchema.SchemaErrorDescriptor
+    }>(unauthorizedRoute)
+
+    test
+      .expect(notFoundDescriptor.schemaError)
+      .toEqual({ schema: NotFound, status: 404 })
+    test
+      .expect(unauthorizedDescriptor.schemaError)
+      .toEqual({ schema: Unauthorized, status: 401 })
+  })
 })
