@@ -1,5 +1,6 @@
 export * as BunBundle from "./BunBundle.ts"
 export * as BunChildProcessSpawner from "./BunChildProcessSpawner.ts"
+export * as BunFileRouterPlugin from "./BunFileRouterPlugin.ts"
 export * as BunImportTrackerPlugin from "./BunImportTrackerPlugin.ts"
 export * as BunRoute from "./BunRoute.ts"
 export * as BunServer from "./BunServer.ts"

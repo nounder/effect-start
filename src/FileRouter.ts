@@ -188,11 +188,28 @@ function layerGenerated(
   )
 }
 
+/**
+ * Scans `routesPath` (default: `<entrypoint>/routes`) and builds the route
+ * map in memory, with no manifest file ever written to disk. This is the
+ * recommended default for bun/node: agents and editors can't accidentally
+ * "fix" a file that doesn't exist.
+ */
 export function layer(): Layer.Layer<
   Route.Routes,
   FileRouterError,
   FileSystem.FileSystem
 >
+/**
+ * Loads a pre-built {@link FileRouteMap}, e.g. for typed `DevRoutes` support.
+ * `load` is re-imported and `path`'s directory is re-scanned to keep the
+ * `.server.ts` manifest current as files change; the manifest itself is
+ * still a real file on disk, so prefer {@link layer}`()` unless you need it.
+ *
+ * When targeting a single bundled artifact (edge/serverless deploys),
+ * pair this with a bundler plugin that serves the manifest as a virtual
+ * module instead of a file, e.g. `BunFileRouterPlugin` from
+ * `effect-start/bun`.
+ */
 export function layer<const T extends FileRouteMap>(
   load: () => Promise<{ default: T }>,
 ): Layer.Layer<
