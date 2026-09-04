@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$repo_root"
+
+minimum_bun_version="1.4.1"
+mkdir -p "$HOME/bin"
+export PATH="$HOME/bin:$PATH"
+
+bun_version="$(bun --version 2>/dev/null || true)"
+if [[ "$(printf '%s\n' "$minimum_bun_version" "$bun_version" | sort -V | head -n 1)" != "$minimum_bun_version" ]]; then
+  echo "Installing Bun $minimum_bun_version"
+  bun_download="$(mktemp -d)"
+  trap 'rm -rf "$bun_download"' EXIT
+  curl -fsSL "https://github.com/oven-sh/bun/releases/download/bun-v$minimum_bun_version/bun-linux-x64.zip" -o "$bun_download/bun.zip"
+  unzip -q "$bun_download/bun.zip" -d "$bun_download"
+  install -m 755 "$bun_download/bun-linux-x64/bun" "$HOME/bin/bun"
+fi
+
+if ! grep -Fqx '# effect-start bin' "$HOME/.bash_profile" 2>/dev/null; then
+  cat >> "$HOME/.bash_profile" <<'EOF'
+
+# effect-start bin
+export PATH="$HOME/bin:$PATH"
+EOF
+fi
+
+echo "Using Bun $(bun --version)"
+echo "Installing dependencies from bun.lock"
+time bun install --frozen-lockfile
+
+echo "Setup complete"
