@@ -2,6 +2,7 @@ import * as test from "bun:test"
 import { BunRoute, BunServer } from "effect-start/bun"
 import * as Route from "effect-start/Route"
 import * as Start from "effect-start/Start"
+import * as StartServer from "effect-start/StartServer"
 import * as ConfigProvider from "effect/ConfigProvider"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
@@ -84,7 +85,78 @@ test.test("uses localhost URL for wildcard binds", () =>
         .expect(ipv6Server.url)
         .toBe(`http://localhost:${ipv6Server.server.port}`)
     })
-    .pipe(Effect.scoped, Effect.runPromise))
+    .pipe(
+      Effect.scoped,
+      Effect.runPromise,
+    ))
+
+test.describe("Server interface (StartServer)", () => {
+  test.test("hostname/port mirror the underlying Bun server, address is a TcpAddress", () =>
+    Effect
+      .gen(function*() {
+        const bunServer = yield* BunServer.make({ hostname: "127.0.0.1", port: 0 })
+
+        test
+          .expect(bunServer.hostname)
+          .toBe(bunServer.server.hostname!)
+        test
+          .expect(bunServer.port)
+          .toBe(bunServer.server.port!)
+        test
+          .expect(bunServer.address)
+          .toEqual({
+            _tag: "TcpAddress",
+            hostname: bunServer.server.hostname!,
+            port: bunServer.server.port!,
+          })
+      })
+      .pipe(
+        Effect.scoped,
+        Effect.runPromise,
+      ))
+
+  test.test("hostname/port fall back to localhost/0 for a unix socket address", () => {
+    const unixPath = NPath.join(NOs.tmpdir(), `effect-start-test-${Date.now()}.sock`)
+
+    return Effect
+      .gen(function*() {
+        const bunServer = yield* BunServer.make({ unix: unixPath })
+
+        test
+          .expect(bunServer.address)
+          .toEqual({ _tag: "UnixAddress", path: unixPath })
+        test
+          .expect(bunServer.hostname)
+          .toBe("localhost")
+        test
+          .expect(bunServer.port)
+          .toBe(0)
+        test
+          .expect(bunServer.url)
+          .toBe("http://localhost")
+      })
+      .pipe(
+        Effect.scoped,
+        Effect.runPromise,
+      )
+  })
+
+  test.test("the same instance satisfies both BunServer and StartServer tags", () =>
+    Effect
+      .gen(function*() {
+        const bunServer = yield* BunServer.BunServer
+        const startServer = yield* StartServer.StartServer
+
+        test
+          .expect(startServer)
+          .toBe(bunServer)
+      })
+      .pipe(
+        Effect.provide(BunServer.layer({ port: 0 })),
+        Effect.scoped,
+        Effect.runPromise,
+      ))
+})
 
 test.describe("smart port selection", () => {
   test.test.skipIf(process.stdout.isTTY)(

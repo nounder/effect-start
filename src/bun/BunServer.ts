@@ -94,9 +94,7 @@ export const make = (
     // (and any acquired resources) are released instead of leaking. forkIn
     // preserves the caller's requirements, so the handler keeps the app's R.
     const handlerScope = yield* Effect.scope
-    const runFork = <R>(
-      effect: Effect.Effect<void, never, R>,
-    ): Effect.Effect<void, never, R> => Effect.asVoid(Effect.forkIn(effect, handlerScope))
+    const runFork = StartServer.runForkIn(handlerScope)
 
     let boundServer: Bun.Server<WebSocketContext>
     let boundAddress: SocketAddress.Address
@@ -110,13 +108,14 @@ export const make = (
         get address() {
           return boundAddress
         },
+        get hostname() {
+          return SocketAddress.hostname(boundAddress)
+        },
+        get port() {
+          return SocketAddress.port(boundAddress)
+        },
         get url() {
-          if (boundAddress._tag === "UnixAddress") return "http://localhost"
-
-          const hostname = boundAddress.hostname === "0.0.0.0" || boundAddress.hostname === "::"
-            ? "localhost"
-            : boundAddress.hostname
-          return `http://${hostname}:${boundAddress.port}`
+          return SocketAddress.urlOf(boundAddress, "http")
         },
         pushHandler(fetch) {
           handlerStack
