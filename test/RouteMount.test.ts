@@ -1,9 +1,8 @@
 import * as test from "bun:test"
 import * as Route from "effect-start/Route"
 import * as Effect from "effect/Effect"
-import type * as ParseResult from "effect/ParseResult"
 import * as Schema from "effect/Schema"
-import type * as RouteMount from "../src/internal/RouteMount.ts"
+import type * as RouteMount from "effect-start/internal/RouteMount"
 
 test.it("uses GET method", async () => {
   const route = Route.get(
@@ -394,7 +393,7 @@ test.it("schemaHeaders flattens method into route descriptor", () => {
           }
         },
         unknown,
-        ParseResult.ParseError,
+        Schema.SchemaError,
         Route.Request
       >
     >()
@@ -411,7 +410,7 @@ test.it("schemaHeaders flattens method into route descriptor", () => {
           }
         },
         unknown,
-        ParseResult.ParseError,
+        Schema.SchemaError,
         Route.Request
       >
     >()

@@ -252,7 +252,7 @@ export const effectify: {
   onSyncError?: (e: any, args: any) => any,
 ) =>
 (...args: Array<any>) =>
-  Effect.async<any, any>((resume) => {
+  Effect.callback<any, any>((resume) => {
     try {
       fn(...args, (err: any, result: any) => {
         if (err) {

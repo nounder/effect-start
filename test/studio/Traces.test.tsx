@@ -1,4 +1,3 @@
-/** @jsxImportSource effect-start */
 import * as test from "bun:test"
 import * as Html from "../../src/Html.ts"
 import type * as Tracing from "../../src/internal/Tracing.ts"
@@ -91,8 +90,14 @@ test.it("TraceGroup hides duration while root span is running", () => {
     />,
   )
 
-  test.expect(html).not.toContain("0µs")
-  test.expect(html).not.toContain("...")
+  test
+    .expect(html)
+    .not
+    .toContain("0µs")
+  test
+    .expect(html)
+    .not
+    .toContain("...")
 })
 
 test.it("TraceDetail hides duration labels while spans are running", () => {
@@ -120,5 +125,8 @@ test.it("TraceDetail hides duration labels while spans are running", () => {
     />,
   )
 
-  test.expect(html).not.toContain("wf-dur")
+  test
+    .expect(html)
+    .not
+    .toContain("wf-dur")
 })

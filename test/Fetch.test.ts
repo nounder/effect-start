@@ -1,8 +1,10 @@
 import * as test from "bun:test"
 import * as Entity from "effect-start/Entity"
 import * as Fetch from "effect-start/Fetch"
+import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as Option from "effect/Option"
 
 function patchFetch(
   fn: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>,
@@ -115,12 +117,14 @@ test.describe("fetch", () => {
           .toBe("Failure")
 
         if (result._tag === "Failure") {
-          test
-            .expect(result.cause._tag)
-            .toBe("Fail")
+          const failure = Cause.findErrorOption(result.cause)
 
-          if (result.cause._tag === "Fail") {
-            const error = result.cause.error as Fetch.FetchError
+          test
+            .expect(Option.isSome(failure))
+            .toBe(true)
+
+          if (Option.isSome(failure)) {
+            const error = failure.value
 
             test
               .expect(error._tag)
@@ -485,12 +489,12 @@ test.describe("type tests", () => {
     type R = ReturnType<typeof client.fetch>
 
     test
-      .expectTypeOf<Effect.Effect.Error<R>>()
+      .expectTypeOf<Effect.Error<R>>()
       .toEqualTypeOf<
         Fetch.FetchError | CustomError
       >()
     test
-      .expectTypeOf<Effect.Effect.Context<R>>()
+      .expectTypeOf<Effect.Services<R>>()
       .toEqualTypeOf<never>()
   })
 
@@ -499,7 +503,7 @@ test.describe("type tests", () => {
       readonly _tag: "Token"
       readonly value: string
     }
-    const Token = Context.GenericTag<Token>("Token")
+    const Token = Context.Service<Token, Token>()("Token")
 
     const middleware: Fetch.Middleware<never, Token> = (request, next) =>
       Effect.gen(function*() {
@@ -513,12 +517,12 @@ test.describe("type tests", () => {
     type R = ReturnType<typeof client.fetch>
 
     test
-      .expectTypeOf<Effect.Effect.Error<R>>()
+      .expectTypeOf<Effect.Error<R>>()
       .toEqualTypeOf<
         Fetch.FetchError
       >()
     test
-      .expectTypeOf<Effect.Effect.Context<R>>()
+      .expectTypeOf<Effect.Services<R>>()
       .toEqualTypeOf<Token>()
   })
 
@@ -536,8 +540,8 @@ test.describe("type tests", () => {
     interface ServiceB {
       readonly _tag: "ServiceB"
     }
-    const ServiceA = Context.GenericTag<ServiceA>("ServiceA")
-    const ServiceB = Context.GenericTag<ServiceB>("ServiceB")
+    const ServiceA = Context.Service<ServiceA, ServiceA>()("ServiceA")
+    const ServiceB = Context.Service<ServiceB, ServiceB>()("ServiceB")
 
     const mwA: Fetch.Middleware<ErrorA, ServiceA> = (_request, next) =>
       Effect.gen(function*() {
@@ -555,12 +559,12 @@ test.describe("type tests", () => {
     type R = ReturnType<typeof client.fetch>
 
     test
-      .expectTypeOf<Effect.Effect.Error<R>>()
+      .expectTypeOf<Effect.Error<R>>()
       .toEqualTypeOf<
         Fetch.FetchError | ErrorA | ErrorB
       >()
     test
-      .expectTypeOf<Effect.Effect.Context<R>>()
+      .expectTypeOf<Effect.Services<R>>()
       .toEqualTypeOf<
         ServiceA | ServiceB
       >()
@@ -571,12 +575,12 @@ test.describe("type tests", () => {
     type R = ReturnType<typeof client.fetch>
 
     test
-      .expectTypeOf<Effect.Effect.Error<R>>()
+      .expectTypeOf<Effect.Error<R>>()
       .toEqualTypeOf<
         Fetch.FetchError
       >()
     test
-      .expectTypeOf<Effect.Effect.Context<R>>()
+      .expectTypeOf<Effect.Services<R>>()
       .toEqualTypeOf<never>()
   })
 
@@ -595,12 +599,12 @@ test.describe("type tests", () => {
     type R = ReturnType<typeof client.fetch>
 
     test
-      .expectTypeOf<Effect.Effect.Error<R>>()
+      .expectTypeOf<Effect.Error<R>>()
       .toEqualTypeOf<
         Fetch.FetchError | Error1 | Error2
       >()
     test
-      .expectTypeOf<Effect.Effect.Context<R>>()
+      .expectTypeOf<Effect.Services<R>>()
       .toEqualTypeOf<never>()
   })
 
@@ -622,17 +626,17 @@ test.describe("type tests", () => {
     type R = ReturnType<typeof client.fetch>
 
     test
-      .expectTypeOf<Effect.Effect.Success<R>>()
+      .expectTypeOf<Effect.Success<R>>()
       .toEqualTypeOf<
         Fetch.FetchEntity
       >()
     test
-      .expectTypeOf<Effect.Effect.Error<R>>()
+      .expectTypeOf<Effect.Error<R>>()
       .toEqualTypeOf<
         Fetch.FetchError | CustomError
       >()
     test
-      .expectTypeOf<Effect.Effect.Context<R>>()
+      .expectTypeOf<Effect.Services<R>>()
       .toEqualTypeOf<never>()
   })
 
@@ -641,7 +645,7 @@ test.describe("type tests", () => {
       readonly _tag: "Token"
       readonly value: string
     }
-    const Token = Context.GenericTag<Token>("Token")
+    const Token = Context.Service<Token, Token>()("Token")
 
     const middleware: Fetch.Middleware<never, Token> = (request, next) =>
       Effect.gen(function*() {
@@ -655,12 +659,12 @@ test.describe("type tests", () => {
     type R = ReturnType<typeof client.fetch>
 
     test
-      .expectTypeOf<Effect.Effect.Error<R>>()
+      .expectTypeOf<Effect.Error<R>>()
       .toEqualTypeOf<
         Fetch.FetchError
       >()
     test
-      .expectTypeOf<Effect.Effect.Context<R>>()
+      .expectTypeOf<Effect.Services<R>>()
       .toEqualTypeOf<Token>()
   })
 
@@ -670,45 +674,45 @@ test.describe("type tests", () => {
     const postResult = Fetch.post("https://example.com")
 
     test
-      .expectTypeOf<Effect.Effect.Success<typeof fetchResult>>()
+      .expectTypeOf<Effect.Success<typeof fetchResult>>()
       .toEqualTypeOf<Fetch.FetchEntity>()
     test
-      .expectTypeOf<Effect.Effect.Error<typeof fetchResult>>()
+      .expectTypeOf<Effect.Error<typeof fetchResult>>()
       .toEqualTypeOf<
         Fetch.FetchError
       >()
     test
-      .expectTypeOf<Effect.Effect.Context<typeof fetchResult>>()
+      .expectTypeOf<Effect.Services<typeof fetchResult>>()
       .toEqualTypeOf<never>()
 
     test
-      .expectTypeOf<Effect.Effect.Success<typeof getResult>>()
+      .expectTypeOf<Effect.Success<typeof getResult>>()
       .toEqualTypeOf<
         Fetch.FetchEntity
       >()
     test
-      .expectTypeOf<Effect.Effect.Error<typeof getResult>>()
+      .expectTypeOf<Effect.Error<typeof getResult>>()
       .toEqualTypeOf<
         Fetch.FetchError
       >()
     test
-      .expectTypeOf<Effect.Effect.Context<typeof getResult>>()
+      .expectTypeOf<Effect.Services<typeof getResult>>()
       .toEqualTypeOf<
         never
       >()
 
     test
-      .expectTypeOf<Effect.Effect.Success<typeof postResult>>()
+      .expectTypeOf<Effect.Success<typeof postResult>>()
       .toEqualTypeOf<
         Fetch.FetchEntity
       >()
     test
-      .expectTypeOf<Effect.Effect.Error<typeof postResult>>()
+      .expectTypeOf<Effect.Error<typeof postResult>>()
       .toEqualTypeOf<
         Fetch.FetchError
       >()
     test
-      .expectTypeOf<Effect.Effect.Context<typeof postResult>>()
+      .expectTypeOf<Effect.Services<typeof postResult>>()
       .toEqualTypeOf<
         never
       >()

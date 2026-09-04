@@ -1,35 +1,34 @@
-/*
- * Adapted from @effect/platform
+/**
+ * Ported from effect@4.0.0-rc.112.
  */
-import type * as Context from "effect/Context"
+import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
+import * as FileSystem from "effect/FileSystem"
 import * as Function from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
+import * as Error from "effect/PlatformError"
+import * as Queue from "effect/Queue"
 import * as Stream from "effect/Stream"
+import * as Crypto from "node:crypto"
 import * as NFS from "node:fs"
-import * as NOS from "node:os"
-import * as NPath from "node:path"
-import * as FileSystem from "../FileSystem.ts"
-import * as Effectify from "../internal/Effectify.ts"
-import * as System from "../System.ts"
-import * as Unique from "../Unique.ts"
+import * as OS from "node:os"
+import * as Path from "node:path"
 
-const handleBadArgument = (method: string) => (cause: unknown) =>
-  new System.SystemError({
-    reason: "BadArgument",
+const handleBadArgument = (method: string) => (err: unknown) =>
+  Error.badArgument({
     module: "FileSystem",
     method,
-    cause,
+    description: (err as Error).message ?? String(err),
   })
 
-const access = (() => {
-  const nodeAccess = Effectify.effectify(
+const access = ((): FileSystem.FileSystem["access"] => {
+  const nodeAccess = Effect.effectify(
     NFS.access,
     handleErrnoException("FileSystem", "access"),
     handleBadArgument("access"),
   )
-  return (path: string, options?: FileSystem.AccessFileOptions) => {
+  return (path, options) => {
     let mode = NFS.constants.F_OK
     if (options?.readable) {
       mode |= NFS.constants.R_OK
@@ -41,13 +40,13 @@ const access = (() => {
   }
 })()
 
-const copy = (() => {
-  const nodeCp = Effectify.effectify(
+const copy = ((): FileSystem.FileSystem["copy"] => {
+  const nodeCp = Effect.effectify(
     NFS.cp,
     handleErrnoException("FileSystem", "copy"),
     handleBadArgument("copy"),
   )
-  return (fromPath: string, toPath: string, options?: FileSystem.CopyOptions) =>
+  return (fromPath, toPath, options) =>
     nodeCp(fromPath, toPath, {
       force: options?.overwrite ?? false,
       preserveTimestamps: options?.preserveTimestamps ?? false,
@@ -56,7 +55,7 @@ const copy = (() => {
 })()
 
 const copyFile = (() => {
-  const nodeCopyFile = Effectify.effectify(
+  const nodeCopyFile = Effect.effectify(
     NFS.copyFile,
     handleErrnoException("FileSystem", "copyFile"),
     handleBadArgument("copyFile"),
@@ -65,7 +64,7 @@ const copyFile = (() => {
 })()
 
 const chmod = (() => {
-  const nodeChmod = Effectify.effectify(
+  const nodeChmod = Effect.effectify(
     NFS.chmod,
     handleErrnoException("FileSystem", "chmod"),
     handleBadArgument("chmod"),
@@ -74,7 +73,7 @@ const chmod = (() => {
 })()
 
 const chown = (() => {
-  const nodeChown = Effectify.effectify(
+  const nodeChown = Effect.effectify(
     NFS.chown,
     handleErrnoException("FileSystem", "chown"),
     handleBadArgument("chown"),
@@ -82,8 +81,21 @@ const chown = (() => {
   return (path: string, uid: number, gid: number) => nodeChown(path, uid, gid)
 })()
 
+const glob = ((): FileSystem.FileSystem["glob"] => {
+  const nodeGlob = Effect.effectify(
+    NFS.glob,
+    handleErrnoException("FileSystem", "glob"),
+    handleBadArgument("glob"),
+  )
+  return (pattern: string, options) =>
+    nodeGlob(pattern, {
+      cwd: options?.root,
+      exclude: options?.exclude,
+    })
+})()
+
 const link = (() => {
-  const nodeLink = Effectify.effectify(
+  const nodeLink = Effect.effectify(
     NFS.link,
     handleErrnoException("FileSystem", "link"),
     handleBadArgument("link"),
@@ -91,119 +103,112 @@ const link = (() => {
   return (existingPath: string, newPath: string) => nodeLink(existingPath, newPath)
 })()
 
-const makeDirectory = (() => {
-  const nodeMkdir = Effectify.effectify(
+const makeDirectory = ((): FileSystem.FileSystem["makeDirectory"] => {
+  const nodeMkdir = Effect.effectify(
     NFS.mkdir,
     handleErrnoException("FileSystem", "makeDirectory"),
     handleBadArgument("makeDirectory"),
   )
-  return (path: string, options?: FileSystem.MakeDirectoryOptions) =>
+  return (path, options) =>
     nodeMkdir(path, {
       recursive: options?.recursive ?? false,
       mode: options?.mode,
     })
 })()
 
-const makeTempDirectoryFactory = (method: string) => {
-  const nodeMkdtemp = Effectify.effectify(
+const makeTempDirectoryFactory = (method: string): FileSystem.FileSystem["makeTempDirectory"] => {
+  const nodeMkdtemp = Effect.effectify(
     NFS.mkdtemp,
     handleErrnoException("FileSystem", method),
     handleBadArgument(method),
   )
-  return (options?: FileSystem.MakeTempDirectoryOptions) =>
+  return (options) =>
     Effect.suspend(() => {
       const prefix = options?.prefix ?? ""
       const directory = typeof options?.directory === "string"
-        ? NPath.join(options.directory, ".")
-        : NOS.tmpdir()
+        ? Path.join(options.directory, ".")
+        : OS.tmpdir()
 
-      return nodeMkdtemp(
-        prefix ? NPath.join(directory, prefix) : directory + "/",
-      )
+      return nodeMkdtemp(prefix ? Path.join(directory, prefix) : directory + "/")
     })
 }
 const makeTempDirectory = makeTempDirectoryFactory("makeTempDirectory")
 
-const removeFactory = (method: string) => {
-  const nodeRm = Effectify.effectify(
+const removeFactory = (method: string): FileSystem.FileSystem["remove"] => {
+  const nodeRm = Effect.effectify(
     NFS.rm,
     handleErrnoException("FileSystem", method),
     handleBadArgument(method),
   )
-  return (path: string, options?: FileSystem.RemoveOptions) =>
-    nodeRm(path, {
-      recursive: options?.recursive ?? false,
-      force: options?.force ?? false,
-    })
+  return (path, options) =>
+    nodeRm(
+      path,
+      { recursive: options?.recursive ?? false, force: options?.force ?? false },
+    )
 }
 const remove = removeFactory("remove")
 
-const makeTempDirectoryScoped = (() => {
+const makeTempDirectoryScoped = ((): FileSystem.FileSystem["makeTempDirectoryScoped"] => {
   const makeDirectory = makeTempDirectoryFactory("makeTempDirectoryScoped")
   const removeDirectory = removeFactory("makeTempDirectoryScoped")
-  return (options?: FileSystem.MakeTempDirectoryOptions) =>
+  return (options) =>
     Effect.acquireRelease(
       makeDirectory(options),
       (directory) => Effect.orDie(removeDirectory(directory, { recursive: true })),
     )
 })()
 
-const openFactory = (method: string) => {
-  const nodeOpen = Effectify.effectify(
+const openFactory = (method: string): FileSystem.FileSystem["open"] => {
+  const nodeOpen = Effect.effectify(
     NFS.open,
     handleErrnoException("FileSystem", method),
     handleBadArgument(method),
   )
-  const nodeClose = Effectify.effectify(
+  const nodeClose = Effect.effectify(
     NFS.close,
     handleErrnoException("FileSystem", method),
     handleBadArgument(method),
   )
 
-  return (path: string, options?: FileSystem.OpenFileOptions) =>
+  return (path, options) =>
     Function.pipe(
       Effect.acquireRelease(
         nodeOpen(path, options?.flag ?? "r", options?.mode),
         (fd) => Effect.orDie(nodeClose(fd)),
       ),
-      Effect.map((fd) =>
-        makeFile(
-          FileSystem.FileDescriptor(fd),
-          options?.flag?.startsWith("a") ?? false,
-        )
-      ),
+      Effect.map((fd) => makeFile(fd, options?.flag?.startsWith("a") ?? false)),
     )
 }
 const open = openFactory("open")
 
 const makeFile = (() => {
   const nodeReadFactory = (method: string) =>
-    Effectify.effectify(
+    Effect.effectify(
       NFS.read,
       handleErrnoException("FileSystem", method),
       handleBadArgument(method),
     )
   const nodeRead = nodeReadFactory("read")
   const nodeReadAlloc = nodeReadFactory("readAlloc")
-  const nodeStat = Effectify.effectify(
+  const nodeStat = Effect.effectify(
     NFS.fstat,
     handleErrnoException("FileSystem", "stat"),
     handleBadArgument("stat"),
   )
-  const nodeTruncate = Effectify.effectify(
+  const nodeTruncate = Effect.effectify(
     NFS.ftruncate,
     handleErrnoException("FileSystem", "truncate"),
     handleBadArgument("truncate"),
   )
 
-  const nodeSync = Effectify.effectify(
+  const nodeSync = Effect.effectify(
     NFS.fsync,
     handleErrnoException("FileSystem", "sync"),
     handleBadArgument("sync"),
   )
 
   const nodeWriteFactory = (method: string) =>
-    Effectify.effectify(
+    Effect.effectify(
       NFS.write,
       handleErrnoException("FileSystem", method),
       handleBadArgument(method),
@@ -212,14 +217,16 @@ const makeFile = (() => {
   const nodeWriteAll = nodeWriteFactory("writeAll")
 
   class FileImpl implements FileSystem.File {
-    readonly [FileSystem.FileTypeId]: FileSystem.FileTypeId
-    readonly fd: FileSystem.File.Descriptor
+    readonly [FileSystem.FileTypeId]: typeof FileSystem.FileTypeId
+    readonly fd: number
     private readonly append: boolean
 
-    private readonly semaphore = Effect.unsafeMakeSemaphore(1)
-    private position: bigint = 0n
+    private position: bigint = BigInt(0)
 
-    constructor(fd: FileSystem.File.Descriptor, append: boolean) {
+    constructor(
+      fd: number,
+      append: boolean,
+    ) {
       this[FileSystem.FileTypeId] = FileSystem.FileTypeId
       this.fd = fd
       this.append = append
@@ -235,195 +242,153 @@ const makeFile = (() => {
 
     seek(offset: FileSystem.SizeInput, from: FileSystem.SeekMode) {
       const offsetSize = FileSystem.Size(offset)
-      return this.semaphore.withPermits(1)(
-        Effect.sync(() => {
-          if (from === "start") {
-            this.position = offsetSize
-          } else if (from === "current") {
-            this.position = this.position + offsetSize
-          }
+      return Effect.sync(() => {
+        if (from === "start") {
+          this.position = offsetSize
+        } else if (from === "current") {
+          this.position = this.position + offsetSize
+        }
 
-          return this.position
-        }),
-      )
+        return FileSystem.Size(this.position)
+      })
     }
 
     read(buffer: Uint8Array) {
-      return this.semaphore.withPermits(1)(
-        Effect.map(
-          Effect.suspend(() =>
-            nodeRead(this.fd, {
-              buffer,
-              position: this.position,
-            })
-          ),
+      return Effect.suspend(() => {
+        const position = this.position
+        return Effect.map(
+          nodeRead(this.fd, { buffer, position }),
           (bytesRead) => {
             const sizeRead = FileSystem.Size(bytesRead)
-            this.position = this.position + sizeRead
+            this.position = position + sizeRead
             return sizeRead
           },
-        ),
-      )
+        )
+      })
     }
 
     readAlloc(size: FileSystem.SizeInput) {
       const sizeNumber = Number(size)
-      return this.semaphore.withPermits(1)(
-        Effect.flatMap(
-          Effect.sync(() => Buffer.allocUnsafeSlow(sizeNumber)),
-          (buffer) =>
-            Effect.map(
-              nodeReadAlloc(this.fd, {
-                buffer,
-                position: this.position,
-              }),
-              (bytesRead): Option.Option<Buffer> => {
-                if (bytesRead === 0) {
-                  return Option.none()
-                }
+      return Effect.suspend(() => {
+        const buffer = Buffer.allocUnsafeSlow(sizeNumber)
+        const position = this.position
+        return Effect.map(
+          nodeReadAlloc(this.fd, { buffer, position }),
+          (bytesRead): Option.Option<Buffer> => {
+            if (bytesRead === 0) {
+              return Option.none()
+            }
 
-                this.position = this.position + BigInt(bytesRead)
-                if (bytesRead === sizeNumber) {
-                  return Option.some(buffer)
-                }
+            this.position = position + BigInt(bytesRead)
+            if (bytesRead === sizeNumber) {
+              return Option.some(buffer)
+            }
 
-                const dst = Buffer.allocUnsafeSlow(bytesRead)
-                buffer.copy(dst, 0, 0, bytesRead)
-                return Option.some(dst)
-              },
-            ),
-        ),
-      )
+            const dst = Buffer.allocUnsafeSlow(bytesRead)
+            buffer.copy(dst, 0, 0, bytesRead)
+            return Option.some(dst)
+          },
+        )
+      })
     }
 
     truncate(length?: FileSystem.SizeInput) {
-      return this.semaphore.withPermits(1)(
-        Effect.map(
-          nodeTruncate(this.fd, length ? Number(length) : undefined),
-          () => {
-            if (!this.append) {
-              const len = BigInt(length ?? 0)
-              if (this.position > len) {
-                this.position = len
-              }
-            }
-          },
-        ),
-      )
+      return Effect.map(nodeTruncate(this.fd, length ? Number(length) : undefined), () => {
+        if (!this.append) {
+          const len = BigInt(length ?? 0)
+          if (this.position > len) {
+            this.position = len
+          }
+        }
+      })
     }
 
     write(buffer: Uint8Array) {
-      return this.semaphore.withPermits(1)(
-        Effect.map(
-          Effect.suspend(() =>
-            nodeWrite(
-              this.fd,
-              buffer,
-              undefined,
-              undefined,
-              this.append ? undefined : Number(this.position),
-            )
-          ),
+      return Effect.suspend(() => {
+        const position = this.position
+        return Effect.map(
+          nodeWrite(this.fd, buffer, undefined, undefined, this.append ? undefined : Number(position)),
           (bytesWritten) => {
             const sizeWritten = FileSystem.Size(bytesWritten)
             if (!this.append) {
-              this.position = this.position + sizeWritten
+              this.position = position + sizeWritten
             }
-
             return sizeWritten
           },
-        ),
-      )
+        )
+      })
     }
 
-    private writeAllChunk(
-      buffer: Uint8Array,
-    ): Effect.Effect<void, System.SystemError> {
-      return Effect.flatMap(
-        Effect.suspend(() =>
-          nodeWriteAll(
-            this.fd,
-            buffer,
-            undefined,
-            undefined,
-            this.append ? undefined : Number(this.position),
-          )
-        ),
-        (bytesWritten) => {
-          if (bytesWritten === 0) {
-            return Effect.fail(
-              new System.SystemError({
-                module: "FileSystem",
-                method: "writeAll",
-                reason: "WriteZero",
-                pathOrDescriptor: this.fd,
-                description: "write returned 0 bytes written",
-              }),
-            )
-          }
+    private writeAllChunk(buffer: Uint8Array): Effect.Effect<void, Error.PlatformError> {
+      return Effect.suspend(() => {
+        const position = this.position
+        return Effect.flatMap(
+          nodeWriteAll(this.fd, buffer, undefined, undefined, this.append ? undefined : Number(position)),
+          (bytesWritten) => {
+            if (bytesWritten === 0) {
+              return Effect.fail(
+                Error.systemError({
+                  module: "FileSystem",
+                  method: "writeAll",
+                  _tag: "WriteZero",
+                  pathOrDescriptor: this.fd,
+                  description: "write returned 0 bytes written",
+                }),
+              )
+            }
 
-          if (!this.append) {
-            this.position = this.position + BigInt(bytesWritten)
-          }
+            if (!this.append) {
+              this.position = position + BigInt(bytesWritten)
+            }
 
-          return bytesWritten < buffer.length
-            ? this.writeAllChunk(buffer.subarray(bytesWritten))
-            : Effect.void
-        },
-      )
+            return bytesWritten < buffer.length ? this.writeAllChunk(buffer.subarray(bytesWritten)) : Effect.void
+          },
+        )
+      })
     }
 
     writeAll(buffer: Uint8Array) {
-      return this.semaphore.withPermits(1)(this.writeAllChunk(buffer))
+      return this.writeAllChunk(buffer)
     }
   }
 
-  return (fd: FileSystem.File.Descriptor, append: boolean): FileSystem.File => new FileImpl(fd, append)
+  return (fd: number, append: boolean): FileSystem.File => new FileImpl(fd, append)
 })()
 
-const makeTempFileFactory = (method: string) => {
+const makeTempFileFactory = (method: string): FileSystem.FileSystem["makeTempFile"] => {
   const makeDirectory = makeTempDirectoryFactory(method)
-  const open = openFactory(method)
-  const randomHexString = (bytes: number) =>
-    Effect.sync(() => Array.from(Unique.bytes(bytes), (b) => b.toString(16).padStart(2, "0")).join(""))
-  return (options?: FileSystem.MakeTempFileOptions) =>
-    Function.pipe(
-      Effect.zip(makeDirectory(options), randomHexString(6)),
-      Effect.map(([directory, random]) => NPath.join(directory, random + (options?.suffix ?? ""))),
-      Effect.tap((path) => Effect.scoped(open(path, { flag: "w+" }))),
-    )
+  return Effect.fnUntraced(function*(options) {
+    const directory = yield* makeDirectory(options)
+    const random = Crypto.randomBytes(6).toString("hex")
+    const name = Path.join(directory, options?.suffix ? `${random}${options.suffix}` : random)
+    yield* writeFile(name, new Uint8Array(0))
+    return name
+  })
 }
 const makeTempFile = makeTempFileFactory("makeTempFile")
 
-const makeTempFileScoped = (() => {
+const makeTempFileScoped = ((): FileSystem.FileSystem["makeTempFileScoped"] => {
   const makeFile = makeTempFileFactory("makeTempFileScoped")
   const removeDirectory = removeFactory("makeTempFileScoped")
-  return (options?: FileSystem.MakeTempFileOptions) =>
+  return (options) =>
     Effect.acquireRelease(
       makeFile(options),
-      (file) => Effect.orDie(removeDirectory(NPath.dirname(file), { recursive: true })),
+      (file) => Effect.orDie(removeDirectory(Path.dirname(file), { recursive: true })),
     )
 })()
 
-const readDirectory = (
-  path: string,
-  options?: FileSystem.ReadDirectoryOptions,
-) =>
+const readDirectory: FileSystem.FileSystem["readDirectory"] = (path, options) =>
   Effect.tryPromise({
     try: () => NFS.promises.readdir(path, options),
     catch: (err) => handleErrnoException("FileSystem", "readDirectory")(err as any, [path]),
   })
 
 const readFile = (path: string) =>
-  Effect.async<Uint8Array, System.SystemError>((resume, signal) => {
+  Effect.callback<Uint8Array, Error.PlatformError>((resume, signal) => {
     try {
       NFS.readFile(path, { signal }, (err, data) => {
         if (err) {
-          resume(
-            Effect.fail(
-              handleErrnoException("FileSystem", "readFile")(err, [path]),
-            ),
-          )
+          resume(Effect.fail(handleErrnoException("FileSystem", "readFile")(err, [path])))
         } else {
           resume(Effect.succeed(data))
         }
@@ -434,7 +399,7 @@ const readFile = (path: string) =>
   })
 
 const readLink = (() => {
-  const nodeReadLink = Effectify.effectify(
+  const nodeReadLink = Effect.effectify(
     NFS.readlink,
     handleErrnoException("FileSystem", "readLink"),
     handleBadArgument("readLink"),
@@ -443,7 +408,7 @@ const readLink = (() => {
 })()
 
 const realPath = (() => {
-  const nodeRealPath = Effectify.effectify(
+  const nodeRealPath = Effect.effectify(
     NFS.realpath,
     handleErrnoException("FileSystem", "realPath"),
     handleBadArgument("realPath"),
@@ -452,7 +417,7 @@ const realPath = (() => {
 })()
 
 const rename = (() => {
-  const nodeRename = Effectify.effectify(
+  const nodeRename = Effect.effectify(
     NFS.rename,
     handleErrnoException("FileSystem", "rename"),
     handleBadArgument("rename"),
@@ -461,37 +426,37 @@ const rename = (() => {
 })()
 
 const makeFileInfo = (stat: NFS.Stats): FileSystem.File.Info => ({
-  type: stat.isFile()
-    ? "File"
-    : stat.isDirectory()
-    ? "Directory"
-    : stat.isSymbolicLink()
-    ? "SymbolicLink"
-    : stat.isBlockDevice()
-    ? "BlockDevice"
-    : stat.isCharacterDevice()
-    ? "CharacterDevice"
-    : stat.isFIFO()
-    ? "FIFO"
-    : stat.isSocket()
-    ? "Socket"
-    : "Unknown",
-  mtime: Option.fromNullable(stat.mtime),
-  atime: Option.fromNullable(stat.atime),
-  birthtime: Option.fromNullable(stat.birthtime),
+  type: stat.isFile() ?
+    "File" :
+    stat.isDirectory() ?
+    "Directory" :
+    stat.isSymbolicLink() ?
+    "SymbolicLink" :
+    stat.isBlockDevice() ?
+    "BlockDevice" :
+    stat.isCharacterDevice() ?
+    "CharacterDevice" :
+    stat.isFIFO() ?
+    "FIFO" :
+    stat.isSocket() ?
+    "Socket" :
+    "Unknown",
+  mtime: Option.fromNullishOr(stat.mtime),
+  atime: Option.fromNullishOr(stat.atime),
+  birthtime: Option.fromNullishOr(stat.birthtime),
   dev: stat.dev,
-  rdev: Option.fromNullable(stat.rdev),
-  ino: Option.fromNullable(stat.ino),
+  rdev: Option.fromNullishOr(stat.rdev),
+  ino: Option.fromNullishOr(stat.ino),
   mode: stat.mode,
-  nlink: Option.fromNullable(stat.nlink),
-  uid: Option.fromNullable(stat.uid),
-  gid: Option.fromNullable(stat.gid),
+  nlink: Option.fromNullishOr(stat.nlink),
+  uid: Option.fromNullishOr(stat.uid),
+  gid: Option.fromNullishOr(stat.gid),
   size: FileSystem.Size(stat.size),
-  blksize: Option.map(Option.fromNullable(stat.blksize), FileSystem.Size),
-  blocks: Option.fromNullable(stat.blocks),
+  blksize: stat.blksize !== undefined ? Option.some(FileSystem.Size(stat.blksize)) : Option.none(),
+  blocks: Option.fromNullishOr(stat.blocks),
 })
 const stat = (() => {
-  const nodeStat = Effectify.effectify(
+  const nodeStat = Effect.effectify(
     NFS.stat,
     handleErrnoException("FileSystem", "stat"),
     handleBadArgument("stat"),
@@ -500,7 +465,7 @@ const stat = (() => {
 })()
 
 const symlink = (() => {
-  const nodeSymlink = Effectify.effectify(
+  const nodeSymlink = Effect.effectify(
     NFS.symlink,
     handleErrnoException("FileSystem", "symlink"),
     handleBadArgument("symlink"),
@@ -509,7 +474,7 @@ const symlink = (() => {
 })()
 
 const truncate = (() => {
-  const nodeTruncate = Effectify.effectify(
+  const nodeTruncate = Effect.effectify(
     NFS.truncate,
     handleErrnoException("FileSystem", "truncate"),
     handleBadArgument("truncate"),
@@ -519,7 +484,7 @@ const truncate = (() => {
 })()
 
 const utimes = (() => {
-  const nodeUtimes = Effectify.effectify(
+  const nodeUtimes = Effect.effectify(
     NFS.utimes,
     handleErrnoException("FileSystem", "utime"),
     handleBadArgument("utime"),
@@ -528,47 +493,43 @@ const utimes = (() => {
 })()
 
 const watchNode = (path: string, options?: FileSystem.WatchOptions) =>
-  Stream.asyncScoped<FileSystem.WatchEvent, System.SystemError>((emit) =>
+  Stream.callback<FileSystem.WatchEvent, Error.PlatformError>((queue) =>
     Effect.acquireRelease(
       Effect.sync(() => {
-        const watcher = NFS.watch(
-          path,
-          { recursive: options?.recursive },
-          (event, path) => {
-            if (!path) return
-            switch (event) {
-              case "rename": {
-                emit.fromEffect(
-                  Effect.matchEffect(stat(path), {
-                    onSuccess: (_) => Effect.succeed(FileSystem.WatchEventCreate({ path })),
-                    onFailure: (err) =>
-                      err._tag === "SystemError" && err.reason === "NotFound"
-                        ? Effect.succeed(FileSystem.WatchEventRemove({ path }))
-                        : Effect.fail(err),
-                  }),
-                )
-                return
-              }
-              case "change": {
-                emit.single(FileSystem.WatchEventUpdate({ path }))
-                return
-              }
+        const watcher = NFS.watch(path, {
+          recursive: options?.recursive ?? false,
+        }, (event, path) => {
+          if (!path) return
+          switch (event) {
+            case "rename": {
+              Effect.runFork(Effect.matchEffect(stat(path), {
+                onSuccess: (_) => Queue.offer(queue, { _tag: "Create", path }),
+                onFailure: (_) => Queue.offer(queue, { _tag: "Remove", path }),
+              }))
+              return
             }
-          },
-        )
+            case "change": {
+              Queue.offerUnsafe(queue, { _tag: "Update", path })
+              return
+            }
+          }
+        })
         watcher.on("error", (error) => {
-          emit.fail(
-            new System.SystemError({
-              module: "FileSystem",
-              reason: "Unknown",
-              method: "watch",
-              pathOrDescriptor: path,
-              cause: error,
-            }),
+          Queue.failCauseUnsafe(
+            queue,
+            Cause.fail(
+              Error.systemError({
+                module: "FileSystem",
+                _tag: "Unknown",
+                method: "watch",
+                pathOrDescriptor: path,
+                cause: error,
+              }),
+            ),
           )
         })
         watcher.on("close", () => {
-          emit.end()
+          Queue.endUnsafe(queue)
         })
         return watcher
       }),
@@ -577,7 +538,7 @@ const watchNode = (path: string, options?: FileSystem.WatchOptions) =>
   )
 
 const watch = (
-  backend: Option.Option<Context.Tag.Service<FileSystem.WatchBackend>>,
+  backend: Option.Option<FileSystem.WatchBackend["Service"]>,
   path: string,
   options?: FileSystem.WatchOptions,
 ) =>
@@ -591,124 +552,91 @@ const watch = (
     Stream.unwrap,
   )
 
-const writeFile = (
-  path: string,
-  data: Uint8Array,
-  options?: FileSystem.WriteFileOptions,
-) =>
-  Effect.async<void, System.SystemError>((resume, signal) => {
+const writeFile: FileSystem.FileSystem["writeFile"] = (path, data, options) =>
+  Effect.callback<void, Error.PlatformError>((resume, signal) => {
     try {
-      NFS.writeFile(
-        path,
-        data,
-        {
-          signal,
-          flag: options?.flag,
-          mode: options?.mode,
-        },
-        (err) => {
-          if (err) {
-            resume(
-              Effect.fail(
-                handleErrnoException("FileSystem", "writeFile")(err, [path]),
-              ),
-            )
-          } else {
-            resume(Effect.void)
-          }
-        },
-      )
+      NFS.writeFile(path, data, {
+        signal,
+        flag: options?.flag,
+        mode: options?.mode,
+      }, (err) => {
+        if (err) {
+          resume(Effect.fail(handleErrnoException("FileSystem", "writeFile")(err, [path])))
+        } else {
+          resume(Effect.void)
+        }
+      })
     } catch (err) {
       resume(Effect.fail(handleBadArgument("writeFile")(err)))
     }
   })
 
-const make = Effect.map(
-  Effect.serviceOption(FileSystem.WatchBackend),
-  (backend) =>
-    FileSystem.make({
-      access,
-      chmod,
-      chown,
-      copy,
-      copyFile,
-      link,
-      makeDirectory,
-      makeTempDirectory,
-      makeTempDirectoryScoped,
-      makeTempFile,
-      makeTempFileScoped,
-      open,
-      readDirectory,
-      readFile,
-      readLink,
-      realPath,
-      remove,
-      rename,
-      stat,
-      symlink,
-      truncate,
-      utimes,
-      watch(path, options) {
-        return watch(backend, path, options)
-      },
-      writeFile,
-    }),
-)
+const makeFileSystem = Effect.map(Effect.serviceOption(FileSystem.WatchBackend), (backend) =>
+  FileSystem.make({
+    access,
+    chmod,
+    chown,
+    copy,
+    copyFile,
+    glob,
+    link,
+    makeDirectory,
+    makeTempDirectory,
+    makeTempDirectoryScoped,
+    makeTempFile,
+    makeTempFileScoped,
+    open,
+    readDirectory,
+    readFile,
+    readLink,
+    realPath,
+    remove,
+    rename,
+    stat,
+    symlink,
+    truncate,
+    utimes,
+    watch(path, options) {
+      return watch(backend, path, options)
+    },
+    writeFile,
+  }))
 
-export const layer = Layer.effect(FileSystem.FileSystem, make)
+export const layer: Layer.Layer<FileSystem.FileSystem> = Layer.effect(FileSystem.FileSystem)(makeFileSystem)
 
-export {
-  System as Error,
-}
-
-export function handleErrnoException(
-  module: System.SystemError["module"],
-  method: string,
-) {
+export function handleErrnoException(module: string, method: string) {
   return function(
     err: NodeJS.ErrnoException,
-    [path]: [path: NFS.PathLike | number, ...args: Array<any>],
-  ): System.SystemError {
-    let reason: System.SystemErrorReason = "Unknown"
+    [path]: [path: NFS.PathLike | number | string | ReadonlyArray<string>, ...args: Array<any>],
+  ): Error.PlatformError {
+    let reason: Error.SystemErrorTag = "Unknown"
 
     switch (err.code) {
       case "ENOENT":
         reason = "NotFound"
         break
-
       case "EACCES":
         reason = "PermissionDenied"
         break
-
       case "EEXIST":
         reason = "AlreadyExists"
         break
-
       case "EISDIR":
-        reason = "BadResource"
-        break
-
       case "ENOTDIR":
-        reason = "BadResource"
-        break
-
-      case "EBUSY":
-        reason = "Busy"
-        break
-
       case "ELOOP":
         reason = "BadResource"
         break
+      case "EBUSY":
+        reason = "Busy"
+        break
     }
 
-    return new System.SystemError({
-      reason,
+    return Error.systemError({
+      _tag: reason,
       module,
       method,
       pathOrDescriptor: path as string | number,
       syscall: err.syscall,
-      description: err.message,
       cause: err,
     })
   }

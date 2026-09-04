@@ -1,10 +1,10 @@
 import * as test from "bun:test"
+import { BunFileSystem } from "effect-start/bun"
 import { FileTracer } from "effect-start/testing"
 import * as Effect from "effect/Effect"
+import * as FileSystem from "effect/FileSystem"
 import * as Schema from "effect/Schema"
 import * as NPath from "node:path"
-import * as FileSystem from "../../src/FileSystem.ts"
-import * as NodeFileSystem from "../../src/node/NodeFileSystem.ts"
 
 const decodeRow = Schema.decodeUnknownSync(FileTracer.RowFromJson)
 
@@ -26,15 +26,15 @@ const withTrace = <A, E>(
       const dir = yield* fs.makeTempDirectoryScoped()
       const path = NPath.join(dir, "trace.jsonl")
 
-      yield* Effect.scoped(
-        Effect.provide(spans(path), FileTracer.layer({ path, ...options })),
-      )
+      yield* Effect
+        .provide(spans(path), FileTracer.layer({ path, ...options }))
+        .pipe(Effect.scoped)
 
       return yield* fs.readFileString(path)
     })
     .pipe(
       Effect.scoped,
-      Effect.provide(NodeFileSystem.layer),
+      Effect.provide(BunFileSystem.layer),
       Effect.runPromise,
     )
 
@@ -95,6 +95,7 @@ test.it("each line is independently valid JSON", async () => {
   test
     .expect(lines)
     .toHaveLength(3)
+
   for (const line of lines) {
     test
       .expect(() => decodeRow(line))
@@ -134,36 +135,35 @@ test.it("writes nothing when no spans are recorded", async () => {
     .toBe("")
 })
 
-test.it("appends across multiple scopes to the same file", async () => {
-  const output = await Effect
+test.it("appends across multiple scopes to the same file", () =>
+  Effect
     .gen(function*() {
       const fs = yield* FileSystem.FileSystem
       const dir = yield* fs.makeTempDirectoryScoped()
       const path = NPath.join(dir, "trace.jsonl")
 
-      yield* Effect.scoped(
-        Effect.provide(
+      yield* Effect
+        .provide(
           Effect.withSpan("first")(Effect.void),
           FileTracer.layer({ path, filter: () => true }),
-        ),
-      )
-      yield* Effect.scoped(
-        Effect.provide(
+        )
+        .pipe(Effect.scoped)
+      yield* Effect
+        .provide(
           Effect.withSpan("second")(Effect.void),
           FileTracer.layer({ path, filter: () => true }),
-        ),
-      )
+        )
+        .pipe(Effect.scoped)
 
-      return yield* fs.readFileString(path)
+      const output = yield* fs.readFileString(path)
+      const rows = parseJsonl(output)
+
+      test
+        .expect(rows.map((row) => row.name))
+        .toEqual(["first", "second"])
     })
     .pipe(
       Effect.scoped,
-      Effect.provide(NodeFileSystem.layer),
+      Effect.provide(BunFileSystem.layer),
       Effect.runPromise,
-    )
-  const rows = parseJsonl(output)
-
-  test
-    .expect(rows.map((row) => row.name))
-    .toEqual(["first", "second"])
-})
+    ))

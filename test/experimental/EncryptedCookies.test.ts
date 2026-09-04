@@ -1,8 +1,8 @@
 import * as test from "bun:test"
-import * as Cookies from "effect-start/Cookies"
 import * as EncryptedCookies from "effect-start/experimental/EncryptedCookies"
 import * as ConfigProvider from "effect/ConfigProvider"
 import * as Effect from "effect/Effect"
+import * as Cookies from "effect/unstable/http/Cookies"
 
 test.describe(`${EncryptedCookies.encrypt.name}`, () => {
   test.test("return encrypted string in correct format", () =>
@@ -245,7 +245,7 @@ test.describe(`${EncryptedCookies.encryptCookie.name}`, () => {
   test.test("preserve cookie properties and encrypt value", () =>
     Effect
       .gen(function*() {
-        const cookie = Cookies.unsafeMakeCookie("test", "hello world")
+        const cookie = Cookies.makeCookieUnsafe("test", "hello world")
 
         const result = yield* EncryptedCookies.encryptCookie(cookie, {
           secret: "test-secret",
@@ -274,7 +274,7 @@ test.describe(`${EncryptedCookies.decryptCookie.name}`, () => {
   test.test("preserve cookie properties and decrypt value", () =>
     Effect
       .gen(function*() {
-        const originalCookie = Cookies.unsafeMakeCookie("test", "hello world")
+        const originalCookie = Cookies.makeCookieUnsafe("test", "hello world")
 
         const encrypted = yield* EncryptedCookies.encryptCookie(
           originalCookie,
@@ -329,7 +329,7 @@ test.describe("service", () => {
   test.test("service cookie functions work with pre-calculated key", () =>
     Effect
       .gen(function*() {
-        const originalCookie = Cookies.unsafeMakeCookie("test", "hello world")
+        const originalCookie = Cookies.makeCookieUnsafe("test", "hello world")
 
         const service = yield* EncryptedCookies.EncryptedCookies
 
@@ -450,8 +450,8 @@ test.describe("layerConfig", () => {
       })
       .pipe(
         Effect.provide(EncryptedCookies.layerConfig("SECRET_KEY_BASE")),
-        Effect.withConfigProvider(
-          ConfigProvider.fromJson({ SECRET_KEY_BASE: validSecret }),
+        Effect.provide(
+          ConfigProvider.layer(ConfigProvider.fromUnknown({ SECRET_KEY_BASE: validSecret })),
         ),
         Effect.runPromise,
       )
@@ -465,8 +465,8 @@ test.describe("layerConfig", () => {
       })
       .pipe(
         Effect.provide(EncryptedCookies.layerConfig("SECRET_KEY_BASE")),
-        Effect.withConfigProvider(
-          ConfigProvider.fromJson({ SECRET_KEY_BASE: "short" }),
+        Effect.provide(
+          ConfigProvider.layer(ConfigProvider.fromUnknown({ SECRET_KEY_BASE: "short" })),
         ),
         Effect.exit,
         Effect.flatMap((exit) =>
@@ -492,7 +492,7 @@ test.describe("layerConfig", () => {
       })
       .pipe(
         Effect.provide(EncryptedCookies.layerConfig("SECRET_KEY_BASE")),
-        Effect.withConfigProvider(ConfigProvider.fromJson({})),
+        Effect.provide(ConfigProvider.layer(ConfigProvider.fromUnknown({}))),
         Effect.exit,
         Effect.flatMap((exit) =>
           Effect.sync(() => {

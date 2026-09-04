@@ -1,16 +1,20 @@
 import * as Effect from "effect/Effect"
-import * as ParseResult from "effect/ParseResult"
 import * as PubSub from "effect/PubSub"
 import * as Schema from "effect/Schema"
+import * as SchemaIssue from "effect/SchemaIssue"
 import * as Stream from "effect/Stream"
+import * as SqlClient from "effect/unstable/sql/SqlClient"
 import * as NZlib from "node:zlib"
 import * as Entity from "../../Entity.ts"
 import type * as Tracing from "../../internal/Tracing.ts"
 import * as Route from "../../Route.ts"
-import * as SqlClient from "../../sql/SqlClient.ts"
 import * as Unique from "../../Unique.ts"
-import * as Studio from "../Studio.ts"
 import * as StudioStore from "../StudioStore.ts"
+import * as StudioContext from "./StudioContext.ts"
+
+namespace ParseResult {
+  export type ParseError = Schema.SchemaError
+}
 
 type OpenTelemetrySignal = "traces" | "logs" | "metrics"
 type JsonObject = Record<string, unknown>
@@ -49,12 +53,10 @@ const protocolError = (status: 413 | 415, message: string): ProtocolError => ({
 })
 
 function parseError(actual: unknown, message: string, path: Path = []) {
-  const issue = new ParseResult.Type(Schema.Unknown.ast, actual, message)
-  return new ParseResult.ParseError({
-    issue: path.length === 0
-      ? issue
-      : new ParseResult.Pointer(path as [PropertyKey, ...Array<PropertyKey>], actual, issue),
-  })
+  const issue = new SchemaIssue.Forbidden({ message }, actual, { reportInput: true })
+  return new Schema.SchemaError(
+    path.length === 0 ? issue : new SchemaIssue.Pointer(path, issue),
+  )
 }
 
 function asObject(value: unknown): JsonObject | undefined {
@@ -1157,7 +1159,7 @@ function readRequest(request: Request) {
           evaluate: () => request.body!,
           onError: (cause) => parseError("request body stream", `Unable to read OTLP request: ${String(cause)}`),
         })
-        .pipe(Stream.runFoldEffect({ chunks: [] as Array<Uint8Array>, size: 0 }, (accumulator, chunk) => {
+        .pipe(Stream.runFoldEffect(() => ({ chunks: [] as Array<Uint8Array>, size: 0 }), (accumulator, chunk) => {
           accumulator.size += chunk.length
           accumulator.chunks.push(chunk)
           return accumulator.size > MAX_REQUEST_BYTES
@@ -1168,7 +1170,7 @@ function readRequest(request: Request) {
     if (contentEncoding === "gzip") {
       bytes = yield* Effect.try({
         try: () => NZlib.gunzipSync(bytes, { maxOutputLength: MAX_REQUEST_BYTES }),
-        catch: (cause): ProtocolError | ParseResult.ParseError =>
+        catch: (cause): ProtocolError | Schema.SchemaError =>
           asObject(cause)?.code === "ERR_BUFFER_TOO_LARGE"
             ? protocolError(413, "OTLP request exceeds the 64 MiB limit")
             : parseError("gzip body", `Unable to decompress OTLP request: ${String(cause)}`),
@@ -1201,7 +1203,7 @@ function parseRequest(
 function persist(signal: OpenTelemetrySignal, input: Input) {
   return Effect
     .gen(function*() {
-      const studio = yield* Studio.Studio
+      const studio = yield* StudioContext.Studio
       const sql = yield* SqlClient.SqlClient
       if (signal === "traces") {
         const parsed = yield* parseTraces(input)
@@ -1275,24 +1277,27 @@ export function handle(signal: OpenTelemetrySignal) {
       })
     })
     .pipe(
-      Effect.catchAll((cause) => {
-        const status = ParseResult.isParseError(cause)
-          ? 400
-          : asObject(cause)?._tag === "ProtocolError"
-          ? (cause as ProtocolError).status
-          : 500
-        const message = ParseResult.isParseError(cause)
-          ? String(cause)
-          : asObject(cause)?._tag === "ProtocolError"
-          ? (cause as ProtocolError).message
-          : "Unable to persist OTLP telemetry"
-        return Effect.map(Route.Request, (request) => {
-          const contentType = requestContentType(request) ?? "application/json"
-          return Entity.make(errorBody(contentType, status, message), {
-            status,
-            headers: { "content-type": contentType },
+      Effect.matchEffect({
+        onFailure: (cause) => {
+          const status = Schema.isSchemaError(cause)
+            ? 400
+            : asObject(cause)?._tag === "ProtocolError"
+            ? (cause as ProtocolError).status
+            : 500
+          const message = Schema.isSchemaError(cause)
+            ? String(cause)
+            : asObject(cause)?._tag === "ProtocolError"
+            ? (cause as ProtocolError).message
+            : "Unable to persist OTLP telemetry"
+          return Effect.map(Route.Request, (request) => {
+            const contentType = requestContentType(request) ?? "application/json"
+            return Entity.make(errorBody(contentType, status, message), {
+              status,
+              headers: { "content-type": contentType },
+            })
           })
-        })
+        },
+        onSuccess: Effect.succeed,
       }),
     )
 }

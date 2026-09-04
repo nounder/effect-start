@@ -1,41 +1,39 @@
 import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
-import * as ExecutionStrategy from "effect/ExecutionStrategy"
 import * as Exit from "effect/Exit"
 import * as Layer from "effect/Layer"
 import * as Scope from "effect/Scope"
-import * as SynchronizedRef from "effect/SynchronizedRef"
 
 type Unsatisfied<Unmet, Success> = Unmet extends Success ? Unmet : never
 
-export type LayersSuccess<Layers extends ReadonlyArray<Layer.Layer.Any>> = {
-  [K in keyof Layers]: Layer.Layer.Success<Layers[K]>
+export type LayersSuccess<Layers extends ReadonlyArray<Layer.Any>> = {
+  [K in keyof Layers]: Layer.Success<Layers[K]>
 }[number]
 
-export type LayersError<Layers extends ReadonlyArray<Layer.Layer.Any>> = {
-  [K in keyof Layers]: Layer.Layer.Error<Layers[K]>
+export type LayersError<Layers extends ReadonlyArray<Layer.Any>> = {
+  [K in keyof Layers]: Layer.Error<Layers[K]>
 }[number]
 
-export type LayersContext<Layers extends ReadonlyArray<Layer.Layer.Any>> = Exclude<
-  { [K in keyof Layers]: Layer.Layer.Context<Layers[K]> }[number],
-  { [K in keyof Layers]: Layer.Layer.Success<Layers[K]> }[number]
+export type LayersContext<Layers extends ReadonlyArray<Layer.Any>> = Exclude<
+  { [K in keyof Layers]: Layer.Services<Layers[K]> }[number],
+  { [K in keyof Layers]: Layer.Success<Layers[K]> }[number]
 >
 
 export type Ordered<
-  Layers extends ReadonlyArray<Layer.Layer.Any>,
-  All extends ReadonlyArray<Layer.Layer.Any>,
+  Layers extends ReadonlyArray<Layer.Any>,
+  All extends ReadonlyArray<Layer.Any>,
 > = Layers extends readonly [
-  infer Head extends Layer.Layer.Any,
-  ...infer Tail extends Array<Layer.Layer.Any>,
+  infer Head extends Layer.Any,
+  ...infer Tail extends Array<Layer.Any>,
 ] ? [
     [
       Unsatisfied<
         Exclude<
-          Layer.Layer.Context<Head>,
-          { [K in keyof Tail]: Layer.Layer.Success<Tail[K]> }[number]
+          Layer.Services<Head>,
+          { [K in keyof Tail]: Layer.Success<Tail[K]> }[number]
         >,
-        { [K in keyof All]: Layer.Layer.Success<All[K]> }[number]
+        { [K in keyof All]: Layer.Success<All[K]> }[number]
       >,
     ] extends [never] ? Head
       : never,
@@ -43,19 +41,19 @@ export type Ordered<
   ]
   : []
 
-export type Unordered<Layers extends ReadonlyArray<Layer.Layer.Any>> = {
+export type Unordered<Layers extends ReadonlyArray<Layer.Any>> = {
   [K in keyof Layers]: [
     Exclude<
-      Layer.Layer.Context<Layers[K]>,
-      { [I in keyof Layers]: Layer.Layer.Success<Layers[I]> }[number]
+      Layer.Services<Layers[K]>,
+      { [I in keyof Layers]: Layer.Success<Layers[I]> }[number]
     >,
   ] extends [never] ? Layers[K]
     : Layer.Layer<
-      Layer.Layer.Success<Layers[K]>,
-      Layer.Layer.Error<Layers[K]>,
+      Layer.Success<Layers[K]>,
+      Layer.Error<Layers[K]>,
       Extract<
-        Layer.Layer.Context<Layers[K]>,
-        { [I in keyof Layers]: Layer.Layer.Success<Layers[I]> }[number]
+        Layer.Services<Layers[K]>,
+        { [I in keyof Layers]: Layer.Success<Layers[I]> }[number]
       >
     >
 }
@@ -68,7 +66,7 @@ export type Unordered<Layers extends ReadonlyArray<Layer.Layer.Any>> = {
  * required externally on the resulting layer's `R`.
  */
 export function provideMergeAll<
-  const Layers extends readonly [Layer.Layer.Any, ...Array<Layer.Layer.Any>],
+  const Layers extends readonly [Layer.Any, ...Array<Layer.Any>],
 >(
   ...layers: Layers & Ordered<NoInfer<Layers>, NoInfer<Layers>>
 ): Layer.Layer<
@@ -93,14 +91,17 @@ export function provideMergeAll<
  * instead of an arbitrary single error.
  *
  * Returns the merged `Context` of all built layers; the caller is responsible
- * for the surrounding scope (typically via `Layer.scopedContext`).
+ * for the surrounding scope (typically via `Layer.effectContext`).
  *
  * Side effects on a layer's acquire path may run more than once if the layer
  * fails (because its deps weren't ready) and is later retried — use
  * `provideMergeAll` with explicit ordering for layers that can't tolerate that.
+ * Effect 4 RC.112 represents a missing service as an unbranded `Error`, so a
+ * user defect with the same message is indistinguishable; use explicit ordering
+ * if a layer can die with `Service not found`.
  */
 export function buildUnordered<
-  const Layers extends ReadonlyArray<Layer.Layer.Any>,
+  const Layers extends ReadonlyArray<Layer.Any>,
 >(
   layers: Layers,
 ): Effect.Effect<
@@ -112,8 +113,8 @@ export function buildUnordered<
 
   return Effect.gen(function*() {
     const scope = yield* Effect.scope
-    const memoMap = yield* Layer.makeMemoMap
     let ctx = yield* Effect.context<any>()
+    const provided = new Map<string, unknown>()
     const pending = new Set<AnyLayer>(
       layers as unknown as ReadonlyArray<AnyLayer>,
     )
@@ -123,9 +124,10 @@ export function buildUnordered<
       const failures: Array<Cause.Cause<unknown>> = []
 
       for (const layer of pending) {
+        const memoMap = Layer.CurrentMemoMap.forkOrCreate(ctx)
         const childScope = yield* Scope.fork(
           scope,
-          ExecutionStrategy.sequential,
+          "sequential",
         )
         const exit = yield* layer.pipe(
           Layer.buildWithMemoMap(memoMap, childScope),
@@ -133,34 +135,38 @@ export function buildUnordered<
           Effect.exit,
         )
         if (Exit.isSuccess(exit)) {
+          const outputs = [...exit.value.mapUnsafe].filter(([key]) => key !== Layer.CurrentMemoMap.key)
+          const duplicateKey = outputs
+            .find(([key, value]) => provided.has(key) && !Object.is(provided.get(key), value))
+            ?.[0]
+          if (duplicateKey !== undefined) {
+            const defect = new Error(`Start.pack received multiple layers providing service: ${duplicateKey}`)
+            yield* Scope.close(childScope, Exit.die(defect))
+            return yield* Effect.die(defect)
+          }
+          for (const [key, value] of outputs) provided.set(key, value)
           ctx = Context.merge(ctx, exit.value)
           pending.delete(layer)
           progressed = true
         } else {
           yield* Scope.close(childScope, exit)
-          // Drop the poisoned memo entry so the layer can be retried once its
-          // dependencies become available; otherwise the failed deferred
-          // would replay the same cause forever.
-          const ref = (memoMap as unknown as {
-            ref?: SynchronizedRef.SynchronizedRef<Map<AnyLayer, unknown>>
-          })
-            .ref
-          if (ref) {
-            yield* SynchronizedRef.update(ref, (map) => {
-              map.delete(layer)
-              return map
-            })
-          }
-          failures.push(exit.cause)
-          if (Cause.isInterruptedOnly(exit.cause)) {
+          const isMissingService = exit.cause.reasons.length > 0 &&
+            exit.cause.reasons.every((reason) =>
+              Cause.isDieReason(reason) &&
+              reason.defect instanceof Error &&
+              (reason.defect.message === "Service not found" ||
+                reason.defect.message.startsWith("Service not found: "))
+            )
+          if (!isMissingService) {
             return yield* exit
           }
+          failures.push(exit.cause)
         }
       }
 
       if (!progressed) {
         const combined = failures.reduce<Cause.Cause<unknown>>(
-          (acc, cause) => Cause.parallel(acc, cause),
+          (acc, cause) => Cause.combine(acc, cause),
           Cause.empty,
         )
         return yield* Effect.failCause(combined)

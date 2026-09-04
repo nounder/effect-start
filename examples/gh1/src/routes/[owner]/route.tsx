@@ -54,7 +54,7 @@ export default Route.get(
                 <path d="M2 5.5a3.5 3.5 0 1 1 5.898 2.549 5.508 5.508 0 0 1 3.034 4.084.75.75 0 1 1-1.482.235 4.001 4.001 0 0 0-6.9 0 .75.75 0 0 1-1.482-.236A5.507 5.507 0 0 1 3.102 8.05 3.493 3.493 0 0 1 2 5.5ZM11 4a.75.75 0 1 0 0 1.5 1.5 1.5 0 0 1 .666 2.844.75.75 0 0 0-.416.672v.352a.75.75 0 0 0 .574.73c1.2.289 2.162 1.2 2.522 2.372a.75.75 0 1 0 1.434-.44 5.01 5.01 0 0 0-2.56-3.012A3 3 0 0 0 11 4Z" />
               </svg>
               <a
-                href={Route.link("/:owner", { owner, tab: "followers" })}
+                href={`${Route.link("/:owner", { owner })}?tab=followers`}
                 class="hover:text-[#58a6ff]"
               >
                 <span class="font-semibold text-[#e6edf3]">
@@ -66,7 +66,7 @@ export default Route.get(
                 ·
               </span>
               <a
-                href={Route.link("/:owner", { owner, tab: "following" })}
+                href={`${Route.link("/:owner", { owner })}?tab=following`}
                 class="hover:text-[#58a6ff]"
               >
                 <span class="font-semibold text-[#e6edf3]">
@@ -155,7 +155,7 @@ export default Route.get(
                 },
                 {
                   label: "Stars",
-                  href: Route.link("/:owner", { owner, tab: "stars" }),
+                  href: `${Route.link("/:owner", { owner })}?tab=stars`,
                   active: tab === "stars",
                 },
               ]}

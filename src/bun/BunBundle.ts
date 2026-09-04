@@ -133,7 +133,7 @@ export function layer(
   config: BuildOptions,
 ): Layer.Layer<Bundle.Bundle, Bundle.BundleError>
 export function layer<T>(
-  tag: Context.Tag<T, Bundle.BundleContext>,
+  tag: Context.Key<T, Bundle.BundleContext>,
   config: BuildOptions,
 ): Layer.Layer<T, Bundle.BundleError>
 export function layer(tagOrConfig: any, maybeConfig?: BuildOptions) {

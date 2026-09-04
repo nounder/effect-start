@@ -1,3 +1,4 @@
+import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
 import * as Html from "../Html.ts"
 import type * as Tracing from "../internal/Tracing.ts"
@@ -1650,12 +1651,10 @@ const EffectTypeIds: Record<symbol, string> = {
   [Symbol.for("effect/QueueEnqueue")]: "Enqueue",
   [Symbol.for("effect/Pool")]: "Pool",
   [Symbol.for("effect/Deferred")]: "Deferred",
-  [Symbol.for("effect/FiberRef")]: "FiberRef",
   [Symbol.for("effect/Scope")]: "Scope",
   [Symbol.for("effect/Tracer")]: "Tracer",
   [Symbol.for("effect/Request/Cache")]: "RequestCache",
   [Symbol.for("effect/Logger")]: "Logger",
-  [Symbol.for("effect/Supervisor")]: "Supervisor",
   [Symbol.for("effect/Clock")]: "Clock",
   [Symbol.for("effect/Random")]: "Random",
   [Symbol.for("effect/KeyValueStore")]: "KeyValueStore",
@@ -1666,6 +1665,7 @@ function detectEffectType(value: unknown): string | undefined {
   if (value === null || value === undefined || typeof value !== "object") {
     return undefined
   }
+  if (Effect.isEffect(value)) return "Effect"
   if ("publish" in value && "subscribe" in value && "offer" in value) {
     return "PubSub"
   }
@@ -1783,13 +1783,19 @@ function isJsonPrimitive(value: unknown): boolean {
   return t === "string" || t === "number" || t === "boolean" || t === "bigint"
 }
 
-function isPlainJson(value: unknown): boolean {
+function isPlainJson(value: unknown, seen = new WeakSet<object>()): boolean {
   if (isJsonPrimitive(value)) return true
-  if (Array.isArray(value)) return value.every(isPlainJson)
+  if (Array.isArray(value)) {
+    if (seen.has(value)) return false
+    seen.add(value)
+    return value.every((item) => isPlainJson(item, seen))
+  }
   if (typeof value === "object" && value !== null) {
+    if (seen.has(value)) return false
+    seen.add(value)
     const proto = Object.getPrototypeOf(value)
     if (proto !== null && proto !== Object.prototype) return false
-    return Object.values(value).every(isPlainJson)
+    return Object.values(value).every((item) => isPlainJson(item, seen))
   }
   return false
 }
@@ -1803,6 +1809,7 @@ function collectDisplayValues(
   obj: unknown,
   prefix: string,
   out: Record<string, unknown>,
+  seen = new WeakSet<object>(),
 ): void {
   if (typeof obj === "function") return
   if (isJsonPrimitive(obj) || Array.isArray(obj)) {
@@ -1810,6 +1817,11 @@ function collectDisplayValues(
     return
   }
   if (typeof obj === "object" && obj !== null) {
+    if (seen.has(obj)) {
+      out[prefix] = "<circular>"
+      return
+    }
+    seen.add(obj)
     const et = detectEffectType(obj)
     if (et) {
       out[prefix || et] = inspectEffectValue(et, obj)
@@ -1821,7 +1833,7 @@ function collectDisplayValues(
       if (isPlainJson(v)) {
         out[path] = safeSerialize(v)
       } else if (typeof v === "object" && v !== null) {
-        collectDisplayValues(v, path, out)
+        collectDisplayValues(v, path, out, seen)
       }
     }
   }
@@ -1839,7 +1851,7 @@ function ServiceRow(props: { entry: ServiceEntry }) {
   const colors = kindColor(props.entry.type)
   return (
     <details class="tl-row">
-      <summary class="tl-summary tl-cols">
+      <summary class="tl-summary tl-cols service-cols">
         <span class="tl-cell tl-cell-status">
           <span
             style={`width:8px;height:8px;border-radius:50%;background:${colors.fg};display:block`}
@@ -1883,7 +1895,7 @@ export function ServiceList(props: { services: Array<ServiceEntry> }) {
   }
   return (
     <div class="tl-grid">
-      <div class="tl-header tl-cols">
+      <div class="tl-header tl-cols service-cols">
         <span class="tl-cell tl-cell-status" />
         <span class="tl-cell tl-cell-name">
           Service
@@ -1904,7 +1916,7 @@ const HIDDEN_SERVICES = new Set([
 ])
 
 export function collectServices(
-  unsafeMap: Map<string, any>,
+  unsafeMap: ReadonlyMap<string, any>,
 ): Array<ServiceEntry> {
   const entries: Array<ServiceEntry> = []
   for (const [key, value] of unsafeMap) {

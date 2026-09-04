@@ -1,92 +1,86 @@
-/*
- * Adapted from effect-smol aka v4
+/**
+ * Ported from effect@4.0.0-rc.112.
  */
+import type { Array } from "effect"
 import * as Channel from "effect/Channel"
-import type * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
 import type * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as FiberSet from "effect/FiberSet"
 import * as Function from "effect/Function"
+import * as Latch from "effect/Latch"
 import * as Layer from "effect/Layer"
 import * as Scope from "effect/Scope"
-import * as NNet from "node:net"
-import type * as NStream from "node:stream"
-import * as Socket from "../Socket.ts"
+import * as Socket from "effect/unstable/socket/Socket"
+import * as Net from "node:net"
+import type { Duplex } from "node:stream"
 
-export interface NetSocket {
-  readonly _: unique symbol
-}
-
-export const NetSocket: Context.Tag<NetSocket, NNet.Socket> = Context.GenericTag(
-  "effect-start/node/NodeSocket/NetSocket",
-)
+export class NetSocket extends Context.Service<NetSocket, Net.Socket>()(
+  "@effect/platform-node/NodeSocket/NetSocket",
+) {}
 
 export const makeNet = (
-  options: NNet.NetConnectOpts & {
-    readonly openTimeout?: Duration.DurationInput | undefined
+  options: Net.NetConnectOpts & {
+    readonly openTimeout?: Duration.Input | undefined
   },
 ): Effect.Effect<Socket.Socket> =>
   fromDuplex(
-    Effect.gen(function*() {
-      let conn: NNet.Socket | undefined
-      yield* Effect.addFinalizer(() =>
-        Effect.sync(() => {
-          if (!conn || conn.destroyed) return
-          if ("destroySoon" in conn && typeof conn.destroySoon === "function") {
-            conn.destroySoon()
-          } else {
-            conn.destroy()
-          }
-        })
+    Effect.contextWith((context: Context.Context<Scope.Scope>) => {
+      let conn: Net.Socket | undefined
+      return Effect.flatMap(
+        Scope.addFinalizer(
+          Context.get(context, Scope.Scope),
+          Effect.sync(() => {
+            if (!conn) return
+            if (conn.closed === false) {
+              if ("destroySoon" in conn) {
+                conn.destroySoon()
+              } else {
+                ;(conn as Net.Socket).destroy()
+              }
+            }
+          }),
+        ),
+        () =>
+          Effect.callback<Net.Socket, Socket.SocketError, never>((resume) => {
+            conn = Net.createConnection(options)
+            conn.once("connect", () => {
+              resume(Effect.succeed(conn!))
+            })
+            conn.on("error", (cause: Error) => {
+              resume(Effect.fail(
+                new Socket.SocketError({
+                  reason: new Socket.SocketOpenError({ kind: "Unknown", cause }),
+                }),
+              ))
+            })
+          }),
       )
-      return yield* Effect.async<NNet.Socket, Socket.SocketError>((resume) => {
-        conn = NNet.createConnection(options)
-        const onConnect = () => {
-          conn!.off("error", onError)
-          resume(Effect.succeed(conn!))
-        }
-        const onError = (cause: Error) => {
-          conn!.off("connect", onConnect)
-          resume(
-            Effect.fail(
-              new Socket.SocketError({
-                reason: new Socket.SocketOpenError({ kind: "Unknown", cause }),
-              }),
-            ),
-          )
-        }
-        conn.once("connect", onConnect)
-        conn.once("error", onError)
-      })
     }),
     options,
   )
 
 export const fromDuplex = <RO>(
-  open: Effect.Effect<NStream.Duplex, Socket.SocketError, RO>,
+  open: Effect.Effect<Duplex, Socket.SocketError, RO>,
   options?: {
-    readonly openTimeout?: Duration.DurationInput | undefined
+    readonly openTimeout?: Duration.Input | undefined
   },
 ): Effect.Effect<Socket.Socket, never, Exclude<RO, Scope.Scope>> =>
-  Effect.withFiberRuntime((fiber) => {
-    let currentSocket: NStream.Duplex | undefined
-    const latch = Effect.unsafeMakeLatch(false)
-    const openContext = fiber.currentContext as Context.Context<RO>
+  Effect.withFiber<Socket.Socket, never, Exclude<RO, Scope.Scope>>((fiber) => {
+    let currentSocket: Duplex | undefined
+    const latch = Latch.makeUnsafe(false)
+    const openServices = fiber.context as Context.Context<RO>
 
-    const run = <_, E, R>(
-      handler: (_: Uint8Array) => Effect.Effect<_, E, R> | void,
-      opts?: {
-        readonly onOpen?: Effect.Effect<void> | undefined
-      },
-    ) =>
+    const run = <R, E, _>(handler: (_: Uint8Array) => Effect.Effect<_, E, R> | void, opts?: {
+      readonly onOpen?: Effect.Effect<void> | undefined
+    }) =>
       Effect
         .scopedWith(Effect.fnUntraced(function*(scope) {
           const fiberSet = yield* FiberSet.make<any, E | Socket.SocketError>().pipe(
-            Scope.extend(scope),
+            Scope.provide(scope),
           )
-          let conn: NStream.Duplex | undefined
+          let conn: Duplex | undefined = undefined
           yield* Scope.addFinalizer(
             scope,
             Effect.sync(() => {
@@ -97,52 +91,44 @@ export const fromDuplex = <RO>(
               conn.off("close", onClose)
             }),
           )
-
-          const acquire = Scope.extend(open, scope)
-          conn = yield* options?.openTimeout
-            ? acquire.pipe(
-              Effect.timeoutFail({
+          conn = yield* Scope.provide(open, scope).pipe(
+            options?.openTimeout !== undefined ?
+              Effect.timeoutOrElse({
                 duration: options.openTimeout,
-                onTimeout: () =>
-                  new Socket.SocketError({
-                    reason: new Socket.SocketOpenError({
-                      kind: "Timeout",
-                      cause: new Error("Connection timed out"),
+                orElse: () =>
+                  Effect.fail(
+                    new Socket.SocketError({
+                      reason: new Socket.SocketOpenError({ kind: "Timeout", cause: new Error("Connection timed out") }),
                     }),
-                  }),
-              }),
-            )
-            : acquire
-
+                  ),
+              }) :
+              Function.identity,
+          )
           conn.on("end", onEnd)
           conn.on("error", onError)
           conn.on("close", onClose)
-          const runFork = yield* Effect.provideService(
-            FiberSet.runtime(fiberSet)<R>(),
-            NetSocket,
-            conn as NNet.Socket,
-          )
+          const run = yield* Effect.provideService(FiberSet.runtime(fiberSet)<R>(), NetSocket, conn as Net.Socket)
           conn.on("data", onData)
 
           currentSocket = conn
-          yield* latch.open
-          if (opts?.onOpen) yield* opts.onOpen
+          latch.openUnsafe()
+          if (opts?.onOpen) {
+            yield* opts.onOpen
+          }
 
           return yield* FiberSet.join(fiberSet)
 
           function onData(chunk: Uint8Array) {
             const result = handler(chunk)
             if (Effect.isEffect(result)) {
-              runFork(result)
+              run(result)
             }
           }
-
           function onEnd() {
-            Deferred.unsafeDone(fiberSet.deferred, Effect.void)
+            Deferred.doneUnsafe(fiberSet.deferred, Effect.void)
           }
-
           function onError(cause: Error) {
-            Deferred.unsafeDone(
+            Deferred.doneUnsafe(
               fiberSet.deferred,
               Effect.fail(
                 new Socket.SocketError({
@@ -151,9 +137,8 @@ export const fromDuplex = <RO>(
               ),
             )
           }
-
           function onClose(hadError: boolean) {
-            Deferred.unsafeDone(
+            Deferred.doneUnsafe(
               fiberSet.deferred,
               Effect.fail(
                 new Socket.SocketError({
@@ -164,47 +149,34 @@ export const fromDuplex = <RO>(
           }
         }))
         .pipe(
-          Effect.mapInputContext((input: Context.Context<R>) => Context.merge(openContext, input)),
-          Effect.ensuring(Effect.sync(() => {
-            latch.unsafeClose()
-            currentSocket = undefined
-          })),
-          Effect.interruptible,
+          Effect.updateContext((input: Context.Context<R>) => Context.merge(openServices, input)),
+          Effect.onExit(() =>
+            Effect.sync(() => {
+              latch.closeUnsafe()
+              currentSocket = undefined
+            })
+          ),
         )
 
     const write = (chunk: Uint8Array | string | Socket.CloseEvent) =>
-      latch.whenOpen(
-        Effect.async<void, Socket.SocketError>((resume) => {
-          const conn = currentSocket!
-          if (Socket.isCloseEvent(chunk)) {
-            conn.destroy(chunk.code > 1000 ? new Error(`closed with code ${chunk.code}`) : undefined)
-            resume(Effect.void)
-            return
-          }
-
-          try {
-            conn.write(chunk, (cause?: Error | null) => {
-              resume(
-                cause
-                  ? Effect.fail(
-                    new Socket.SocketError({
-                      reason: new Socket.SocketWriteError({ cause }),
-                    }),
-                  )
-                  : Effect.void,
-              )
-            })
-          } catch (cause) {
-            resume(
-              Effect.fail(
+      latch.whenOpen(Effect.callback<void, Socket.SocketError>((resume) => {
+        const conn = currentSocket!
+        if (Socket.isCloseEvent(chunk)) {
+          conn.destroy(chunk.code > 1000 ? new Error(`closed with code ${chunk.code}`) : undefined)
+          return resume(Effect.void)
+        }
+        currentSocket!.write(chunk, (cause) => {
+          resume(
+            cause
+              ? Effect.fail(
                 new Socket.SocketError({
-                  reason: new Socket.SocketWriteError({ cause }),
+                  reason: new Socket.SocketWriteError({ cause: cause! }),
                 }),
-              ),
-            )
-          }
-        }),
-      )
+              )
+              : Effect.void,
+          )
+        })
+      }))
 
     const writer = Effect.acquireRelease(
       Effect.succeed(write),
@@ -223,23 +195,19 @@ export const fromDuplex = <RO>(
   })
 
 export const makeNetChannel = <IE = never>(
-  options: NNet.NetConnectOpts & {
-    readonly openTimeout?: Duration.DurationInput | undefined
-  },
+  options: Net.NetConnectOpts,
 ): Channel.Channel<
-  Chunk.Chunk<Uint8Array>,
-  Chunk.Chunk<Uint8Array | string | Socket.CloseEvent>,
+  Array.NonEmptyReadonlyArray<Uint8Array>,
   Socket.SocketError | IE,
-  IE,
   void,
-  unknown
+  Array.NonEmptyReadonlyArray<Uint8Array | string | Socket.CloseEvent>,
+  IE
 > =>
   Channel.unwrap(
     Effect.map(makeNet(options), Socket.toChannelWith<IE>()),
   )
 
-export const layerNet: (
-  options: NNet.NetConnectOpts & {
-    readonly openTimeout?: Duration.DurationInput | undefined
-  },
-) => Layer.Layer<Socket.Socket> = Function.flow(makeNet, Layer.effect(Socket.Socket))
+export const layerNet: (options: Net.NetConnectOpts) => Layer.Layer<
+  Socket.Socket,
+  Socket.SocketError
+> = Function.flow(makeNet, Layer.effect(Socket.Socket))

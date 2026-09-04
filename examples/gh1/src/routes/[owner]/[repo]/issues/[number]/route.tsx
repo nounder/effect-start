@@ -8,7 +8,7 @@ export default Route.get(
   Route.schemaPathParams({
     owner: Schema.String,
     repo: Schema.String,
-    number: Schema.NumberFromString,
+    number: Schema.FiniteFromString,
   }),
   Route.html(function*(ctx) {
     const { owner, repo, number } = ctx.pathParams

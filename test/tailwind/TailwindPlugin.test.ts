@@ -1,5 +1,5 @@
 import * as test from "bun:test"
-import * as TailwindPlugin from "../../src/tailwind/TailwindPlugin.ts"
+import * as TailwindPlugin from "effect-start/tailwind/TailwindPlugin"
 
 /**
  * Tailwind v4 scans source files as plain text and extracts every token that

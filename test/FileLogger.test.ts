@@ -1,10 +1,10 @@
 import * as test from "bun:test"
+import { BunFileSystem } from "effect-start/bun"
 import * as Effect from "effect/Effect"
+import * as FileSystem from "effect/FileSystem"
 import * as Logger from "effect/Logger"
 import * as NPath from "node:path"
-import * as FileLogger from "../src/FileLogger.ts"
-import * as FileSystem from "../src/FileSystem.ts"
-import * as NodeFileSystem from "../src/node/NodeFileSystem.ts"
+import * as FileLogger from "effect-start/FileLogger"
 
 const withTempDir = <A, E>(
   f: (dir: string) => Effect.Effect<A, E, FileSystem.FileSystem>,
@@ -17,7 +17,7 @@ const withTempDir = <A, E>(
     })
     .pipe(
       Effect.scoped,
-      Effect.provide(NodeFileSystem.layer),
+      Effect.provide(BunFileSystem.layer),
       Effect.runPromise,
     )
 
@@ -27,10 +27,7 @@ test.it("writes log lines to the file", () =>
       const fs = yield* FileSystem.FileSystem
       const path = NPath.join(dir, "app.log")
 
-      const loggerLayer = Logger.replaceScoped(
-        Logger.defaultLogger,
-        FileLogger.toFile(Logger.logfmtLogger, { path }),
-      )
+      const loggerLayer = Logger.layer([FileLogger.toFile(Logger.formatLogFmt, { path })])
 
       yield* Effect
         .gen(function*() {
@@ -56,10 +53,7 @@ test.it("writes multiple entries as separate lines", () =>
       const fs = yield* FileSystem.FileSystem
       const path = NPath.join(dir, "app.log")
 
-      const loggerLayer = Logger.replaceScoped(
-        Logger.defaultLogger,
-        FileLogger.toFile(Logger.logfmtLogger, { path }),
-      )
+      const loggerLayer = Logger.layer([FileLogger.toFile(Logger.formatLogFmt, { path })])
 
       yield* Effect
         .gen(function*() {
@@ -86,10 +80,7 @@ test.it("respects a custom batch window and flushes on close", () =>
       const fs = yield* FileSystem.FileSystem
       const path = NPath.join(dir, "app.log")
 
-      const loggerLayer = Logger.replaceScoped(
-        Logger.defaultLogger,
-        FileLogger.toFile(Logger.logfmtLogger, { path, batchWindow: "1 hour" }),
-      )
+      const loggerLayer = Logger.layer([FileLogger.toFile(Logger.formatLogFmt, { path, batchWindow: "1 hour" })])
 
       yield* Effect.log("buffered").pipe(Effect.provide(loggerLayer))
 
@@ -105,8 +96,8 @@ test.it("data-last form pipes onto a logger", () =>
       const fs = yield* FileSystem.FileSystem
       const path = NPath.join(dir, "app.log")
 
-      const fileLogger = Logger.logfmtLogger.pipe(FileLogger.toFile({ path }))
-      const loggerLayer = Logger.replaceScoped(Logger.defaultLogger, fileLogger)
+      const fileLogger = Logger.formatLogFmt.pipe(FileLogger.toFile({ path }))
+      const loggerLayer = Logger.layer([fileLogger])
 
       yield* Effect.log("piped").pipe(Effect.provide(loggerLayer))
 
@@ -124,11 +115,8 @@ test.it("composes with another logger via zip", () =>
 
       const captured: Array<string> = []
       const spy = Logger.make((options) => captured.push(String(options.message)))
-      const both = Effect.map(
-        Logger.logfmtLogger.pipe(FileLogger.toFile({ path })),
-        (fileLogger) => Logger.zip(spy, fileLogger),
-      )
-      const loggerLayer = Logger.replaceScoped(Logger.defaultLogger, both)
+      const fileLogger = Logger.formatLogFmt.pipe(FileLogger.toFile({ path }))
+      const loggerLayer = Logger.layer([spy, fileLogger])
 
       yield* Effect.log("both").pipe(Effect.provide(loggerLayer))
 

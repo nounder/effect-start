@@ -1,8 +1,9 @@
 import type * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
+import * as FileSystem from "effect/FileSystem"
+import type * as PlatformError from "effect/PlatformError"
 import type * as Scope from "effect/Scope"
-import * as FileSystem from "./FileSystem.ts"
-import type * as System from "./System.ts"
+import * as Semaphore from "effect/Semaphore"
 
 export interface FileWriter {
   readonly append: (content: string) => Effect.Effect<void>
@@ -12,7 +13,7 @@ export interface FileWriter {
 export interface Options {
   readonly path: string
   readonly mode?: number | undefined
-  readonly batchWindow?: Duration.DurationInput | undefined
+  readonly batchWindow?: Duration.Input | undefined
   readonly truncateSize?: FileSystem.SizeInput | undefined
   readonly truncateAlignLines?: boolean | undefined
 }
@@ -30,7 +31,7 @@ const keepTail = (contents: Uint8Array, keep: number, alignLines: boolean): Uint
 
 export const build = (
   options: Options,
-): Effect.Effect<FileWriter, System.SystemError, Scope.Scope | FileSystem.FileSystem> =>
+): Effect.Effect<FileWriter, PlatformError.PlatformError, Scope.Scope | FileSystem.FileSystem> =>
   Effect.gen(function*() {
     const path = options.path
     const fs = yield* FileSystem.FileSystem
@@ -40,7 +41,7 @@ export const build = (
     const file = yield* fs.open(path, { flag: "a+", mode: options.mode })
     let written = Number((yield* file.stat).size)
 
-    const semaphore = Effect.unsafeMakeSemaphore(1)
+    const semaphore = Semaphore.makeUnsafe(1)
     const write = (bytes: Uint8Array) =>
       semaphore.withPermits(1)(Effect.gen(function*() {
         if (truncateSize !== undefined && written > 0 && written + bytes.length > truncateSize) {
@@ -69,7 +70,7 @@ export const build = (
       }
     }
 
-    yield* Effect.forkScoped(Effect.forever(Effect.zipRight(Effect.sleep(options.batchWindow), flush)))
+    yield* Effect.forkScoped(Effect.forever(Effect.andThen(Effect.sleep(options.batchWindow), flush)))
     yield* Effect.addFinalizer(() => flush)
 
     return {

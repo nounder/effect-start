@@ -3,7 +3,7 @@ import { Bundle, Route, Start } from "effect-start"
 import { BunBundle } from "effect-start/bun"
 import { TailwindPlugin } from "effect-start/tailwind"
 
-class SomeService extends Context.Tag("SomeService")<SomeService, {}>() {}
+class SomeService extends Context.Service<SomeService, {}>()("SomeService") {}
 
 const routes = Route.map({
   "*": Route.use(

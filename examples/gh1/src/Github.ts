@@ -35,21 +35,21 @@ function buildUrl(
   return url.toString()
 }
 
-function request<A, I>(
-  schema: Schema.Schema<A, I>,
+function request<A>(
+  schema: Schema.Schema<A>,
   path: string,
   params?: Record<string, string | number | undefined>,
 ) {
   const url = buildUrl(path, params)
   return Effect.flatMap(
     Effect.flatMap(client.get(url), (entity) => entity.json),
-    Schema.decodeUnknown(schema),
+    Schema.decodeUnknownEffect(schema),
   )
 }
 
 function requestHtml(path: string) {
   const url = buildUrl(path)
-  return Effect.catchAll(
+  return Effect.catchCause(
     Effect.flatMap(
       client.get(url, {
         headers: { Accept: "application/vnd.github.html+json" },
@@ -230,7 +230,7 @@ const Contributor = Schema.Struct({
 })
 export type Contributor = typeof Contributor.Type
 
-const SearchResult = <A, I>(itemSchema: Schema.Schema<A, I>) =>
+const SearchResult = <A>(itemSchema: Schema.Schema<A>) =>
   Schema.Struct({
     total_count: Schema.Number,
     incomplete_results: Schema.Boolean,
@@ -271,7 +271,7 @@ const OrgMember = Schema.Struct({
   type: Schema.optional(Schema.String),
 })
 
-const Languages = Schema.Record({ key: Schema.String, value: Schema.Number })
+const Languages = Schema.Record(Schema.String, Schema.Number)
 
 export const getUser = (username: string) => request(User, `/users/${username}`)
 

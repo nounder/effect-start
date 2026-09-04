@@ -1,8 +1,5 @@
 import * as test from "bun:test"
-import * as Multipart from "effect-start/Multipart"
-import * as Effect from "effect/Effect"
-import * as Stream from "effect/Stream"
-import * as Http from "../src/internal/Http.ts"
+import * as Http from "effect-start/internal/Http"
 
 test.describe("mapHeaders", () => {
   test.it("converts Headers to record with lowercase keys", () => {
@@ -164,95 +161,4 @@ test.describe("mapUrlSearchParams", () => {
       .expect(record)
       .toEqual({})
   })
-})
-
-test.describe("parseFormData", () => {
-  function createFormDataRequest(formData: FormData): Request {
-    return new Request("http://localhost/", {
-      method: "POST",
-      body: formData,
-    })
-  }
-
-  test.it("maps single and repeated fields", () =>
-    Effect
-      .gen(function*() {
-        const formData = new FormData()
-        formData.append("name", "John")
-        formData.append("tags", "red")
-        formData.append("tags", "blue")
-
-        const result = yield* Effect.promise(() => Http.parseFormData(createFormDataRequest(formData)))
-
-        test
-          .expect(result)
-          .toEqual({
-            name: "John",
-            tags: ["red", "blue"],
-          })
-      })
-      .pipe(Effect.runPromise))
-
-  test.it("maps uploaded files without requiring a FileSystem", () =>
-    Effect
-      .gen(function*() {
-        const formData = new FormData()
-        const expected = new Uint8Array([72, 101, 108, 108, 111])
-        formData.append("document", new File([expected], "test.txt", { type: "text/plain" }))
-
-        const result = yield* Effect.promise(() => Http.parseFormData(createFormDataRequest(formData)))
-        const files = result.document
-
-        test
-          .expect(Array.isArray(files))
-          .toBe(true)
-
-        if (!Array.isArray(files)) return
-        const file = files[0]
-
-        test
-          .expect(Multipart.isFile(file))
-          .toBe(true)
-
-        if (!Multipart.isFile(file)) return
-
-        test
-          .expect(file.key)
-          .toBe("document")
-        test
-          .expect(file.name)
-          .toBe("test.txt")
-        test
-          .expect(file.contentType.startsWith("text/plain"))
-          .toBe(true)
-
-        const content = yield* Stream.runFold(
-          file.content,
-          [] as Array<number>,
-          (bytes, chunk) => [...bytes, ...chunk],
-        )
-
-        test
-          .expect(Uint8Array.from(content))
-          .toEqual(expected)
-        test
-          .expect(yield* file.contentEffect)
-          .toEqual(expected)
-      })
-      .pipe(Effect.runPromise))
-
-  test.it("uses a default content type for files without one", () =>
-    Effect
-      .gen(function*() {
-        const formData = new FormData()
-        formData.append("upload", new File(["test"], "unknown.dat"))
-
-        const result = yield* Effect.promise(() => Http.parseFormData(createFormDataRequest(formData)))
-        const files = result.upload
-
-        test
-          .expect(Array.isArray(files) && Multipart.isFile(files[0]) && files[0].contentType)
-          .toBe("application/octet-stream")
-      })
-      .pipe(Effect.runPromise))
 })

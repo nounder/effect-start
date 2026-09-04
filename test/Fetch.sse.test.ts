@@ -2,12 +2,15 @@ import * as test from "bun:test"
 import { BunServer } from "effect-start/bun"
 import * as Fetch from "effect-start/Fetch"
 import * as Route from "effect-start/Route"
+import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
 import * as Stream from "effect/Stream"
-import type * as RouteMap from "../src/internal/RouteMap.ts"
+import * as HttpServer from "effect/unstable/http/HttpServer"
+import type * as RouteMap from "effect-start/internal/RouteMap"
 
-const testLayer = (routes: RouteMap.RouteMapInput) =>
+const testLayer = <const Input extends RouteMap.RouteMapInput>(routes: Input) =>
   BunServer.layerRoutes({ port: 0 }).pipe(
     Layer.provide(Route.layer(Route.map(routes))),
   )
@@ -16,8 +19,8 @@ test.describe("Fetch.sse", () => {
   test.it("parses SSE events from a real server", () =>
     Effect
       .gen(function*() {
-        const { server } = yield* BunServer.BunServer
-        const url = `http://localhost:${server.port}/events`
+        const server = yield* HttpServer.HttpServer
+        const url = `${HttpServer.formatAddress(server.address)}/events`
 
         const events = yield* Fetch.get(url).pipe(
           Effect.map(Fetch.sse()),
@@ -52,8 +55,8 @@ test.describe("Fetch.sse", () => {
   test.it("fails on non-SSE content-type", () =>
     Effect
       .gen(function*() {
-        const { server } = yield* BunServer.BunServer
-        const url = `http://localhost:${server.port}/json`
+        const server = yield* HttpServer.HttpServer
+        const url = `${HttpServer.formatAddress(server.address)}/json`
 
         const exit = yield* Fetch.get(url).pipe(
           Effect.map(Fetch.sse()),
@@ -65,12 +68,14 @@ test.describe("Fetch.sse", () => {
           .expect(exit._tag)
           .toBe("Failure")
 
-        if (exit._tag === "Failure" && exit.cause._tag === "Fail") {
+        if (exit._tag === "Failure") {
+          const error = Cause.findErrorOption(exit.cause)
+
           test
-            .expect(exit.cause.error._tag)
+            .expect(Option.isSome(error) && error.value._tag)
             .toBe("FetchError")
           test
-            .expect(exit.cause.error.reason)
+            .expect(Option.isSome(error) && error.value.reason)
             .toBe("Status")
         }
       })
@@ -86,8 +91,8 @@ test.describe("Fetch.sse", () => {
   test.it("parses multi-line data events", () =>
     Effect
       .gen(function*() {
-        const { server } = yield* BunServer.BunServer
-        const url = `http://localhost:${server.port}/events`
+        const server = yield* HttpServer.HttpServer
+        const url = `${HttpServer.formatAddress(server.address)}/events`
 
         const events = yield* Fetch.get(url).pipe(
           Effect.map(Fetch.sse()),
@@ -114,8 +119,8 @@ test.describe("Fetch.sse", () => {
   test.it("parses tagged struct events", () =>
     Effect
       .gen(function*() {
-        const { server } = yield* BunServer.BunServer
-        const url = `http://localhost:${server.port}/events`
+        const server = yield* HttpServer.HttpServer
+        const url = `${HttpServer.formatAddress(server.address)}/events`
 
         const events = yield* Fetch.get(url).pipe(
           Effect.map(Fetch.sse()),
@@ -145,14 +150,14 @@ test.describe("Fetch.sse", () => {
   test.it("handles stream timeout", () =>
     Effect
       .gen(function*() {
-        const { server } = yield* BunServer.BunServer
-        const url = `http://localhost:${server.port}/events`
+        const server = yield* HttpServer.HttpServer
+        const url = `${HttpServer.formatAddress(server.address)}/events`
 
         const events = yield* Fetch.get(url).pipe(
           Effect.map(Fetch.sse()),
           Effect.flatMap((stream) =>
             stream.pipe(
-              Stream.takeUntilEffect(() => Effect.sleep("100 millis").pipe(Effect.as(true))),
+              Stream.timeout("100 millis"),
               Stream.runCollect,
             )
           ),

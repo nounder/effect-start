@@ -1,4 +1,4 @@
-import * as Either from "effect/Either"
+import * as Result from "effect/Result"
 
 export type PathPattern = `/${string}`
 
@@ -58,7 +58,7 @@ export function validate(path: string): ValidateResult {
 
 export function fromFilePath(
   filePath: string,
-): Either.Either<PathPattern, PathPatternError> {
+): Result.Result<PathPattern, PathPatternError> {
   const parts = filePath.split("/").filter(Boolean)
   const pathParts: Array<string> = []
   let sawRest = false
@@ -73,14 +73,14 @@ export function fromFilePath(
     if (part.startsWith("[[") && part.endsWith("]]")) {
       const name = part.slice(2, -2)
       if (!isValidFileParamName(name)) {
-        return Either.left({
+        return Result.fail({
           _tag: "PathPatternError",
           pattern: filePath,
           message: `Invalid segment: "${part}"`,
         })
       }
       if (index !== parts.length - 1) {
-        return Either.left({
+        return Result.fail({
           _tag: "PathPatternError",
           pattern: filePath,
           message: "Rest segment must be the last segment",
@@ -94,14 +94,14 @@ export function fromFilePath(
     if (part.startsWith("[") && part.endsWith("]")) {
       const name = part.slice(1, -1)
       if (!isValidFileParamName(name)) {
-        return Either.left({
+        return Result.fail({
           _tag: "PathPatternError",
           pattern: filePath,
           message: `Invalid segment: "${part}"`,
         })
       }
       if (sawRest) {
-        return Either.left({
+        return Result.fail({
           _tag: "PathPatternError",
           pattern: filePath,
           message: "Rest segment must be the last segment",
@@ -113,7 +113,7 @@ export function fromFilePath(
 
     if (/^[\p{L}\p{N}._~-]+$/u.test(part)) {
       if (sawRest) {
-        return Either.left({
+        return Result.fail({
           _tag: "PathPatternError",
           pattern: filePath,
           message: "Rest segment must be the last segment",
@@ -123,7 +123,7 @@ export function fromFilePath(
       continue
     }
 
-    return Either.left({
+    return Result.fail({
       _tag: "PathPatternError",
       pattern: filePath,
       message: `Invalid segment: "${part}"`,
@@ -131,7 +131,7 @@ export function fromFilePath(
   }
 
   const path = (pathParts.length > 0 ? `/${pathParts.join("/")}` : "/") as PathPattern
-  return Either.right(path)
+  return Result.succeed(path)
 }
 
 export function params(

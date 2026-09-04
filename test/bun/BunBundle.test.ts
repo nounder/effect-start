@@ -1,11 +1,10 @@
 import * as test from "bun:test"
-import { BunBundle } from "effect-start/bun"
-import * as FileSystem from "effect-start/FileSystem"
+import { BunBundle, BunFileSystem } from "effect-start/bun"
 import * as Effect from "effect/Effect"
+import * as FileSystem from "effect/FileSystem"
 import * as NPath from "node:path"
-import * as NodeFileSystem from "../../src/node/NodeFileSystem.ts"
 
-const layer = NodeFileSystem.layer
+const layer = BunFileSystem.layer
 
 const artifactText = (
   bundle: {

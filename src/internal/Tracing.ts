@@ -1,7 +1,6 @@
 import * as Cause from "effect/Cause"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
-import * as FiberId from "effect/FiberId"
 import * as Option from "effect/Option"
 import * as Tracer from "effect/Tracer"
 import * as Unique from "../Unique.ts"
@@ -48,7 +47,7 @@ export const nextTraceId = (): string => nextPackedId().toString()
 export const statusFromExit = (
   exit: Exit.Exit<unknown, unknown>,
 ): { status: "ok" | "error"; interrupted: boolean } => {
-  const interrupted = Exit.isFailure(exit) && Cause.isInterruptedOnly(exit.cause)
+  const interrupted = Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause)
   return {
     status: Exit.isSuccess(exit) || interrupted ? "ok" : "error",
     interrupted,
@@ -57,14 +56,19 @@ export const statusFromExit = (
 
 export const makeTracer = (spans: Array<Span>): Tracer.Tracer =>
   Tracer.make({
-    span(name, parent, context, links, startTime, kind) {
+    span(options) {
+      const name = options.name
+      const parent = options.parent
+      const links = options.links
+      const startTime = options.startTime
+      const kind = options.kind
       const parentSpanId = Option.isSome(parent) && parent.value._tag === "Span"
         ? parent.value.spanId
         : undefined
       const traceId = Option.isSome(parent) ? parent.value.traceId : nextTraceId()
       const spanId = nextSpanId()
-      const currentFiber = Fiber.getCurrentFiber()
-      const fiberId = Option.isSome(currentFiber) ? FiberId.threadName(currentFiber.value.id()) : undefined
+      const currentFiber = Fiber.getCurrent()
+      const fiberId = currentFiber === undefined ? undefined : String(currentFiber.id)
 
       const record: Span = {
         spanId,
@@ -91,7 +95,7 @@ export const makeTracer = (spans: Array<Span>): Tracer.Tracer =>
         spanId,
         traceId,
         parent,
-        context,
+        annotations: options.annotations,
         get status(): Tracer.SpanStatus {
           return record.endTime != null
             ? { _tag: "Ended", startTime: record.startTime, endTime: record.endTime, exit: endExit }
@@ -124,8 +128,5 @@ export const makeTracer = (spans: Array<Span>): Tracer.Tracer =>
         },
       }
       return span
-    },
-    context(f) {
-      return f()
     },
   })

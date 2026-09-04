@@ -1,7 +1,8 @@
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
-import * as ParseResult from "effect/ParseResult"
 import * as Schema from "effect/Schema"
+import * as SchemaGetter from "effect/SchemaGetter"
+import * as SchemaIssue from "effect/SchemaIssue"
 
 export class PasswordError extends Data.TaggedError("PasswordError")<{
   readonly reason: "HashFailure" | "UnsupportedAlgorithm"
@@ -22,39 +23,35 @@ type HashOptions = {
   readonly timeCost?: number
 }
 
-export const PasswordStored = Schema.NonEmptyString.annotations({
+export const PasswordStored = Schema.NonEmptyString.annotate({
   identifier: "PasswordStored",
   description: "A stored password hash string.",
 })
 
 export type PasswordStored = typeof PasswordStored.Type
 
-const PlainTextPassword = Schema.NonEmptyString.annotations({
+const PlainTextPassword = Schema.NonEmptyString.annotate({
   identifier: "PasswordPlainText",
   description: "A plain-text password that will be hashed when decoded.",
 })
 
 function makePasswordSchema(options?: HashOptions) {
-  return Schema
-    .transformOrFail(PlainTextPassword, PasswordStored, {
-      strict: true,
-      decode: (input, _, ast) =>
+  return PlainTextPassword.pipe(
+    Schema.decodeTo(PasswordStored, {
+      decode: SchemaGetter.transformOrFail((input) =>
         hash(input, options).pipe(
-          Effect.mapError((error) => new ParseResult.Type(ast, input, formatError(error))),
-        ),
-      encode: (stored, _, ast) =>
-        Effect.fail(
-          new ParseResult.Forbidden(
-            ast,
-            stored,
-            "Password hashes are write-only and cannot be encoded back to plain text.",
-          ),
-        ),
-    })
-    .annotations({
+          Effect.mapError((error) => new SchemaIssue.InvalidValue({ message: formatError(error) })),
+        )
+      ),
+      encode: SchemaGetter.forbidden(
+        () => "Password hashes are write-only and cannot be encoded back to plain text.",
+      ),
+    }),
+    Schema.annotate({
       identifier: "Password",
       description: "A write-only password schema that decodes plain text into a password hash.",
-    })
+    }),
+  )
 }
 
 export function schemaPassword(options?: HashOptions) {

@@ -1,15 +1,13 @@
 import type * as Bun from "bun"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
-import * as FiberRef from "effect/FiberRef"
 import * as Option from "effect/Option"
+import * as Result from "effect/Result"
 import * as Entity from "../Entity.ts"
 import * as Html from "../Html.ts"
 import * as PathPattern from "../internal/PathPattern.ts"
 import * as Route from "../Route.ts"
 import * as Unique from "../Unique.ts"
-import * as BunServer from "./BunServer.ts"
 
 const INTERNAL_FETCH_HEADER = "x-effect-start-internal-fetch"
 
@@ -39,8 +37,6 @@ export function descriptors(
 
 type HTMLBundleModule = Bun.HTMLBundle | { default: Bun.HTMLBundle }
 
-const bundleDepthRef = FiberRef.unsafeMake(0)
-
 export function htmlBundle(
   load: () => HTMLBundleModule | Promise<HTMLBundleModule>,
 ) {
@@ -63,7 +59,7 @@ export function htmlBundle(
         {},
         string,
         BunRouteError,
-        BunServer.BunServer | Route.Request
+        Route.Request
       >,
     ]
   > {
@@ -71,11 +67,10 @@ export function htmlBundle(
       BunDescriptors & { format: "html" },
       string,
       BunRouteError,
-      BunServer.BunServer | Route.Request
+      Route.Request
     > = (_context, next) =>
       Effect.gen(function*() {
         const originalRequest = yield* Route.Request
-        const bundleDepth = yield* FiberRef.get(bundleDepthRef)
 
         if (originalRequest.headers.get(INTERNAL_FETCH_HEADER) === "true") {
           const url = new URL(originalRequest.url)
@@ -109,9 +104,7 @@ export function htmlBundle(
         status = response.status
         contentType = response.headers.get("content-type") ?? contentType
 
-        const childEntity = yield* next.pipe(
-          Effect.locally(bundleDepthRef, bundleDepth + 1),
-        )
+        const childEntity = yield* next
 
         if (
           Entity.isEntity(childEntity) &&
@@ -152,7 +145,7 @@ export function htmlBundle(
       {},
       string,
       BunRouteError,
-      BunServer.BunServer | Route.Request
+      Route.Request
     >(handler, descriptors)
 
     return Route.set(
@@ -167,9 +160,8 @@ function fetchBundleResponse(
   originalRequest: Request,
 ) {
   return Effect.gen(function*() {
-    const bunServer = yield* BunServer.BunServer
     const url = new URL(originalRequest.url)
-    const internalUrl = new URL(bunServer.server.url)
+    const internalUrl = new URL(url.origin)
 
     internalUrl.pathname = `${bunPrefix}${url.pathname}`
     internalUrl.search = url.search
@@ -317,12 +309,12 @@ export function validateBunPattern(
   pattern: string,
 ): Option.Option<BunRouteError> {
   const parsed = PathPattern.fromFilePath(pattern)
-  if (Either.isLeft(parsed)) {
+  if (Result.isFailure(parsed)) {
     return Option.some(
       new BunRouteError({
         reason: "UnsupportedPattern",
         pattern,
-        message: parsed.left.message,
+        message: parsed.failure.message,
       }),
     )
   }

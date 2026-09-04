@@ -1,11 +1,10 @@
-/** @jsxImportSource effect-start */
 import { Context, Effect, Layer, PubSub, Ref, Schema, Stream } from "effect"
 import { Html, Route, Start } from "effect-start"
 
 type Todo = { id: string; text: string; done: boolean }
 type TodoEvent = { _tag: "Add"; todo: Todo } | { _tag: "Update"; todo: Todo }
 
-class Store extends Context.Tag("Store")<
+class Store extends Context.Service<
   Store,
   {
     readonly todos: Ref.Ref<Array<Todo>>
@@ -13,7 +12,7 @@ class Store extends Context.Tag("Store")<
     readonly add: (text: string) => Effect.Effect<{ id: string }>
     readonly toggle: (id: string, done: boolean) => Effect.Effect<void>
   }
->() {}
+>()("Store") {}
 
 const routes = Route.map({
   "*": Route.use(

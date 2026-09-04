@@ -13,7 +13,7 @@ import type * as StudioStore from "../../src/studio/StudioStore.ts"
 
 const tree = Route.map({ "/studio": routes })
 
-const studioLayer = (auth: Studio.Studio["Type"]["auth"]) =>
+const studioLayer = (auth: typeof Studio.Studio.Service["auth"]) =>
   Layer.effect(
     Studio.Studio,
     Effect.gen(function*() {
@@ -38,13 +38,13 @@ const bundleLayer = Layer.succeed(Bundle.Bundle, {
 })
 
 const runWithAuth = (
-  auth: Studio.Studio["Type"]["auth"],
+  auth: typeof Studio.Studio.Service["auth"],
   perform: (client: Fetch.FetchClient) => Effect.Effect<void, any, never>,
 ) =>
   Effect
     .gen(function*() {
-      const runtime = yield* Effect.runtime<never>()
-      const handles = Object.fromEntries(RouteHttp.walkHandles(tree, runtime))
+      const context = yield* Effect.context<Studio.Studio | Bundle.Bundle>()
+      const handles = Object.fromEntries(RouteHttp.walkHandles(tree, context))
       const handler = handles["/studio/services"]
       yield* perform(Fetch.fromHandler(handler))
     })

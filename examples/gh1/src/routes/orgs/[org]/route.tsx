@@ -87,7 +87,7 @@ export default Route.get(
               },
               {
                 label: "People",
-                href: Route.link("/orgs/:org", { org, tab: "people" }),
+                href: `${Route.link("/orgs/:org", { org })}?tab=people`,
                 active: tab === "people",
               },
             ]}

@@ -54,13 +54,11 @@ export default Route.get(
             openHref={Route.link("/:owner/:repo/issues", {
               owner,
               repo,
-              state: "open",
-            })}
+            }) + "?state=open"}
             closedHref={Route.link("/:owner/:repo/issues", {
               owner,
               repo,
-              state: "closed",
-            })}
+            }) + "?state=closed"}
           />
 
           {filtered.length === 0 ?

@@ -1,6 +1,7 @@
 import * as Effect from "effect/Effect"
 import * as Schema from "effect/Schema"
-import * as SqlClient from "../sql/SqlClient.ts"
+import * as SqlClient from "effect/unstable/sql/SqlClient"
+import type * as SqlError from "effect/unstable/sql/SqlError"
 
 export interface Column {
   readonly tableSchema: string
@@ -349,7 +350,7 @@ const normalizeBooleans = (
 export const introspect = (
   dialect: Dialect,
   options?: IntrospectOptions,
-): Effect.Effect<DatabaseSchema, SqlClient.SqlError, SqlClient.SqlClient> =>
+): Effect.Effect<DatabaseSchema, SqlError.SqlError, SqlClient.SqlClient> =>
   Effect.gen(function*() {
     const sql = yield* SqlClient.SqlClient
     const q = dialectQueries[dialect]
@@ -366,7 +367,7 @@ export const introspect = (
     return { tables: groupByTable(columns, foreignKeys, indexes) }
   })
 
-const dataTypeToSchema = (dataType: string): Schema.Schema.Any | null => {
+const dataTypeToSchema = (dataType: string): Schema.Constraint | null => {
   const t = dataType.toLowerCase()
   if (
     t === "integer" ||
@@ -413,7 +414,7 @@ const dataTypeToSchema = (dataType: string): Schema.Schema.Any | null => {
     return Schema.String
   }
   if (t === "boolean" || t === "bool" || t === "bit") {
-    return Schema.Union(Schema.Boolean, Schema.Number)
+    return Schema.Union([Schema.Boolean, Schema.Number])
   }
   if (
     t === "timestamp" ||
@@ -444,7 +445,7 @@ const dataTypeToSchema = (dataType: string): Schema.Schema.Any | null => {
 
 const columnToSchema = (
   col: Column,
-): Schema.Schema.Any | Schema.PropertySignature.All | null => {
+): Schema.Constraint | null => {
   const base = dataTypeToSchema(col.dataType)
   if (base === null) return null
   if (col.isNullable) return Schema.NullOr(base)
@@ -454,17 +455,17 @@ const columnToSchema = (
 export interface TableSchema {
   readonly tableName: string
   readonly tableSchema: string
-  readonly schema: Schema.Schema<any, any, never>
+  readonly schema: Schema.Struct<Record<string, Schema.Constraint>>
   readonly columns: ReadonlyArray<Column>
 }
 
 export const tableToSchema = (table: Table): TableSchema | null => {
-  const fields: Record<string, Schema.Schema<any, any, never>> = {}
+  const fields: Record<string, Schema.Constraint> = {}
   let hasFields = false
   for (const col of table.columns) {
     const s = columnToSchema(col)
     if (s === null) continue
-    fields[col.columnName] = s as Schema.Schema<any, any, never>
+    fields[col.columnName] = s
     hasFields = true
   }
   if (!hasFields) return null
@@ -503,22 +504,22 @@ export interface FindAllOptions {
 export interface TableReader {
   readonly tableName: string
   readonly tableSchema: string
-  readonly schema: Schema.Schema<any, any, never>
+  readonly schema: Schema.Struct<Record<string, Schema.Constraint>>
   readonly columns: ReadonlyArray<Column>
   readonly sortableColumns: ReadonlyArray<string>
   readonly findAll: (
     options?: FindAllOptions,
   ) => Effect.Effect<
     ReadonlyArray<unknown>,
-    SqlClient.SqlError,
+    SqlError.SqlError,
     SqlClient.SqlClient
   >
   readonly findById: (
     id: unknown,
-  ) => Effect.Effect<unknown | null, SqlClient.SqlError, SqlClient.SqlClient>
+  ) => Effect.Effect<unknown | null, SqlError.SqlError, SqlClient.SqlClient>
   readonly count: (options?: {
     readonly filters?: ReadonlyArray<Filter>
-  }) => Effect.Effect<number, SqlClient.SqlError, SqlClient.SqlClient>
+  }) => Effect.Effect<number, SqlError.SqlError, SqlClient.SqlClient>
 }
 
 export interface DatabaseReader {
@@ -529,9 +530,9 @@ export interface DatabaseReader {
 const escapeIdentifier = (id: string): string => `"${id.replace(/"/g, "\"\"")}"`
 
 const concatSql = (
-  sql: SqlClient.Connection,
+  sql: SqlClient.SqlClient,
   fragments: Array<{ strings: ReadonlyArray<string>; values: Array<unknown> }>,
-): Effect.Effect<ReadonlyArray<unknown>, SqlClient.SqlError> => {
+): Effect.Effect<ReadonlyArray<unknown>, SqlError.SqlError> => {
   const strings: Array<string> = []
   const values: Array<unknown> = []
   for (let i = 0; i < fragments.length; i++) {

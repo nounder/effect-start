@@ -1,8 +1,3 @@
-import * as Effect from "effect/Effect"
-import * as Inspectable from "effect/Inspectable"
-import * as Stream from "effect/Stream"
-import * as Multipart from "../Multipart.ts"
-
 export type Method =
   | "GET"
   | "POST"
@@ -71,52 +66,5 @@ export function mapUrlSearchParams(
     const values = params.getAll(key)
     result[key] = values.length === 1 ? values[0] : values
   }
-  return result
-}
-
-export async function parseFormData(
-  request: Request,
-): Promise<
-  Record<string, ReadonlyArray<Multipart.File | string> | string>
-> {
-  const formData = await request.formData()
-  const result: Record<string, ReadonlyArray<Multipart.File | string> | string> = {}
-
-  for (const key of new Set(formData.keys())) {
-    const values = formData.getAll(key)
-    if (values.every((value) => typeof value === "string")) {
-      result[key] = values.length === 1 ? values[0] as string : values as Array<string>
-      continue
-    }
-
-    result[key] = values.map((value) => {
-      if (typeof value === "string") return value
-
-      const contentType = value.type || "application/octet-stream"
-      return {
-        ...Inspectable.BaseProto,
-        [Multipart.TypeId]: Multipart.TypeId,
-        _tag: "File",
-        key,
-        name: value.name,
-        contentType,
-        content: Stream.fromReadableStream({
-          evaluate: () => value.stream(),
-          onError: (cause) => new Multipart.MultipartError({ reason: { _tag: "InternalError", cause } }),
-        }),
-        contentEffect: Effect.tryPromise({
-          try: () => value.arrayBuffer().then((buffer) => new Uint8Array(buffer)),
-          catch: (cause) => new Multipart.MultipartError({ reason: { _tag: "InternalError", cause } }),
-        }),
-        toJSON: () => ({
-          _id: "effect-start/Multipart/File",
-          key,
-          name: value.name,
-          contentType,
-        }),
-      } satisfies Multipart.File
-    })
-  }
-
   return result
 }

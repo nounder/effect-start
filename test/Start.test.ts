@@ -22,7 +22,7 @@ test.describe(Start.build, () => {
     const AppLayer = Start.build(UserRepoLive, DatabaseLive, LoggerLive)
 
     test
-      .expectTypeOf<Layer.Layer.Context<typeof AppLayer>>()
+      .expectTypeOf<Layer.Services<typeof AppLayer>>()
       .toEqualTypeOf<
         ExternalApi
       >()
@@ -89,7 +89,7 @@ test.describe(Start.pack, () => {
     )
 
     test
-      .expectTypeOf<Layer.Layer.Context<typeof AppLayer>>()
+      .expectTypeOf<Layer.Services<typeof AppLayer>>()
       .toEqualTypeOf<
         never
       >()
@@ -140,22 +140,18 @@ test.describe(Start.pack, () => {
   })
 })
 
-class Logger extends Context.Tag("Logger")<
-  Logger,
-  { log: (msg: string) => Effect.Effect<void> }
->() {}
-class Database extends Context.Tag("Database")<
-  Database,
-  { query: (sql: string) => Effect.Effect<unknown> }
->() {}
-class UserRepo extends Context.Tag("UserRepo")<
-  UserRepo,
-  { findUser: (id: string) => Effect.Effect<unknown> }
->() {}
-class ExternalApi extends Context.Tag("ExternalApi")<
-  ExternalApi,
-  { call: () => Effect.Effect<void> }
->() {}
+class Logger extends Context.Service<Logger, {
+  log: (msg: string) => Effect.Effect<void>
+}>()("Logger") {}
+class Database extends Context.Service<Database, {
+  query: (sql: string) => Effect.Effect<unknown>
+}>()("Database") {}
+class UserRepo extends Context.Service<UserRepo, {
+  findUser: (id: string) => Effect.Effect<unknown>
+}>()("UserRepo") {}
+class ExternalApi extends Context.Service<ExternalApi, {
+  call: () => Effect.Effect<void>
+}>()("ExternalApi") {}
 
 const LoggerLive = Layer.succeed(Logger, { log: (msg) => Effect.log(msg) })
 

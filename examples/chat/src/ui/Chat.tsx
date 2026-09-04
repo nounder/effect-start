@@ -1,4 +1,4 @@
-import { Effect, GlobalValue, PubSub, Ref } from "effect"
+import { Effect, PubSub, Ref } from "effect"
 
 export interface ChatMessage {
   id: string
@@ -7,10 +7,7 @@ export interface ChatMessage {
   timestamp: number
 }
 
-export const messagesRef = GlobalValue.globalValue(
-  Symbol.for("app/messagesRef"),
-  () => Effect.runSync(Ref.make<Array<ChatMessage>>([])),
-)
+export const messagesRef = Ref.makeUnsafe<Array<ChatMessage>>([])
 
 export const chatPubSub = Effect.runSync(PubSub.unbounded<ChatMessage>())
 

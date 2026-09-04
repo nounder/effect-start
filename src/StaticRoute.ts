@@ -1,10 +1,10 @@
 import * as Effect from "effect/Effect"
+import * as FileSystem from "effect/FileSystem"
 import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
 import * as NPath from "node:path"
 import * as NUrl from "node:url"
 import * as Entity from "./Entity.ts"
-import * as FileSystem from "./FileSystem.ts"
 import * as ContentNegotiation from "./internal/ContentNegotiation.ts"
 import * as Mime from "./internal/Mime.ts"
 import * as Route from "./Route.ts"
@@ -199,7 +199,7 @@ ${
           })
         })
         .pipe(
-          Effect.catchAll((error) => isNotFound(error) ? Effect.succeed(notFound) : Effect.fail(error)),
+          Effect.catch((error) => isNotFound(error) ? Effect.succeed(notFound) : Effect.fail(error)),
         )
     ),
   )
@@ -221,10 +221,11 @@ function normalizeRelativePath(path: string | undefined): string | null {
 function isNotFound(error: unknown): boolean {
   return typeof error === "object" &&
     error !== null &&
-    "_tag" in error &&
-    error._tag === "SystemError" &&
     "reason" in error &&
-    error.reason === "NotFound"
+    typeof error.reason === "object" &&
+    error.reason !== null &&
+    "_tag" in error.reason &&
+    error.reason._tag === "NotFound"
 }
 
 function etagMatches(header: string, etag: string, weak: boolean): boolean {

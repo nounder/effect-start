@@ -2,19 +2,19 @@ import * as Context from "effect/Context"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
+import type * as PlatformError from "effect/PlatformError"
 import * as Ref from "effect/Ref"
 import * as Stream from "effect/Stream"
-
-import type * as ChildProcess from "../ChildProcess.ts"
-import * as System from "../System.ts"
+import * as ChildProcess from "effect/unstable/process/ChildProcess"
+import * as ChildProcessSpawner from "effect/unstable/process/ChildProcessSpawner"
 
 export class DockerError extends Data.TaggedError("DockerError")<{
   message: string
-  cause?: unknown
+  cause?: PlatformError.PlatformError
 }> {}
 
 export interface ExecResult {
-  readonly exitCode: number
+  readonly exitCode: ChildProcessSpawner.ExitCode
   readonly stdout: string
 }
 
@@ -25,7 +25,7 @@ export interface Container {
   readonly exec: (
     command: ReadonlyArray<string>,
     options?: { readonly detach?: boolean },
-  ) => Effect.Effect<ExecResult, DockerError, ChildProcess.ChildProcessSpawner>
+  ) => Effect.Effect<ExecResult, DockerError, ChildProcessSpawner.ChildProcessSpawner>
 }
 
 export interface ContainerOptions {
@@ -43,27 +43,27 @@ export interface DockerService {
     container: string,
     command: ReadonlyArray<string>,
     options?: { readonly detach?: boolean },
-  ) => Effect.Effect<ExecResult, DockerError, ChildProcess.ChildProcessSpawner>
+  ) => Effect.Effect<ExecResult, DockerError, ChildProcessSpawner.ChildProcessSpawner>
   readonly run: (
     options: ContainerOptions,
-  ) => Effect.Effect<Container, DockerError, ChildProcess.ChildProcessSpawner>
+  ) => Effect.Effect<Container, DockerError, ChildProcessSpawner.ChildProcessSpawner>
   readonly start: (
     container: string,
-  ) => Effect.Effect<void, DockerError, ChildProcess.ChildProcessSpawner>
+  ) => Effect.Effect<void, DockerError, ChildProcessSpawner.ChildProcessSpawner>
   readonly containers: Effect.Effect<ReadonlyArray<Container>>
 }
 
-export class Docker extends Context.Tag("effect-start/Docker")<Docker, DockerService>() {}
+export class Docker extends Context.Service<Docker, DockerService>()("effect-start/Docker") {}
 
-export class DockerContainer extends Context.Tag("effect-start/DockerContainer")<
+export class DockerContainer extends Context.Service<
   DockerContainer,
   Container
->() {}
+>()("effect-start/DockerContainer") {}
 
 const dockerExec = (...args: ReadonlyArray<string>) =>
   Effect.scoped(
     Effect.gen(function*() {
-      const handle = yield* System.spawn(["docker", ...args], {
+      const handle = yield* ChildProcess.make("docker", args, {
         stdout: "ignore",
         stderr: "inherit",
       })
@@ -74,14 +74,14 @@ const dockerExec = (...args: ReadonlyArray<string>) =>
 const dockerExecStdout = (...args: ReadonlyArray<string>) =>
   Effect.scoped(
     Effect.gen(function*() {
-      const handle = yield* System.spawn(["docker", ...args], {
+      const handle = yield* ChildProcess.make("docker", args, {
         stdout: "pipe",
         stderr: "inherit",
       })
       const [stdout, exitCode] = yield* Effect.all(
         [
           handle.stdout.pipe(
-            Stream.decodeText("utf-8"),
+            Stream.decodeText(),
             Stream.mkString,
           ),
           handle.exitCode,
@@ -94,7 +94,7 @@ const dockerExecStdout = (...args: ReadonlyArray<string>) =>
 
 const removeContainer = (container: string) => dockerExec("rm", "-f", container).pipe(Effect.ignore)
 
-export const layer = Layer.scoped(
+export const layer = Layer.effect(
   Docker,
   Effect.gen(function*() {
     const tracked = yield* Ref.make<ReadonlyArray<Container>>([])
@@ -182,7 +182,7 @@ export const layer = Layer.scoped(
           const code = yield* dockerExec("start", container).pipe(
             Effect.mapError((cause) => new DockerError({ message: `docker start failed`, cause })),
           )
-          if (code !== 0) {
+          if (code !== ChildProcessSpawner.ExitCode(0)) {
             yield* Effect.fail(
               new DockerError({
                 message: `docker start exited with code ${code}`,

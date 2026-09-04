@@ -19,7 +19,7 @@ import * as Bundle from "./Bundle.ts"
  * })
  * ```
  */
-export const make = <Tag extends Context.Tag<any, Bundle.BundleContext>>(
+export const make = <Tag extends Context.Key<any, Bundle.BundleContext>>(
   tag: Tag,
 ) =>
   Route.get(
@@ -60,7 +60,7 @@ export const make = <Tag extends Context.Tag<any, Bundle.BundleContext>>(
  * include unconditionally — it's a no-op when no bundle is provided.
  */
 export const layer = (options?: {
-  bundle?: Context.Tag<any, Bundle.BundleContext>
+  bundle?: Context.Key<any, Bundle.BundleContext>
   path?: PathPattern.PathPattern
 }) => {
   const path = options?.path ?? "/_bundle/:path*"
@@ -75,9 +75,7 @@ export const layer = (options?: {
     Route.Routes,
     Effect.gen(function*() {
       const bundle = yield* Effect.serviceOption(Bundle.Bundle)
-      const existing = yield* Effect.serviceOption(Route.Routes).pipe(
-        Effect.andThen(Option.getOrUndefined),
-      )
+      const existing = Option.getOrUndefined(yield* Effect.serviceOption(Route.Routes))
       if (Option.isNone(bundle)) {
         return existing ?? RouteMap.make({})
       }

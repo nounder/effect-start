@@ -1,9 +1,10 @@
 import * as Config from "effect/Config"
+import * as ConfigProvider from "effect/ConfigProvider"
 import * as Context from "effect/Context"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import * as Cookies from "../Cookies.ts"
+import * as Cookies from "effect/unstable/http/Cookies"
 
 type CookieValue =
   | string
@@ -25,7 +26,7 @@ export class EncryptedCookiesError extends Data.TaggedError("EncryptedCookiesErr
   cookie?: Cookies.Cookie
 }> {}
 
-export class EncryptedCookies extends Context.Tag("EncryptedCookies")<
+export class EncryptedCookies extends Context.Service<
   EncryptedCookies,
   {
     encrypt: (
@@ -41,7 +42,7 @@ export class EncryptedCookies extends Context.Tag("EncryptedCookies")<
       cookie: Cookies.Cookie,
     ) => Effect.Effect<Cookies.Cookie, EncryptedCookiesError>
   }
->() {}
+>()("EncryptedCookies") {}
 
 export function layer(options: { secret: string }) {
   return Layer.effect(
@@ -53,35 +54,41 @@ export function layer(options: { secret: string }) {
       const encryptKey = yield* deriveKey(keyMaterial, ["encrypt"])
       const decryptKey = yield* deriveKey(keyMaterial, ["decrypt"])
 
-      return EncryptedCookies.of({
+      return {
         encrypt: (value: CookieValue) => encryptWithDerivedKey(value, encryptKey),
         decrypt: (encryptedValue: string) => decryptWithDerivedKey(encryptedValue, decryptKey),
         encryptCookie: (cookie: Cookies.Cookie) => encryptCookieWithDerivedKey(cookie, encryptKey),
         decryptCookie: (cookie: Cookies.Cookie) => decryptCookieWithDerivedKey(cookie, decryptKey),
-      })
+      }
     }),
   )
 }
 
 export function layerConfig(name = "SECRET_KEY_BASE") {
-  return Effect
-    .gen(function*() {
-      const secret = yield* Config.nonEmptyString(name).pipe(
-        Effect.flatMap((value) => {
-          return value.length < 40
-            ? Effect.fail(new Error("ba"))
+  return Layer.effect(
+    EncryptedCookies,
+    Effect.gen(function*() {
+      const provider = yield* ConfigProvider.ConfigProvider
+      const secret = yield* Config.nonEmptyString(name).parse(provider).pipe(
+        Effect.flatMap((value) =>
+          value.length < 40
+            ? Effect.fail(new Error("SECRET_KEY_BASE is too short"))
             : Effect.succeed(value)
-        }),
-        Effect.catchAll(() => {
-          return Effect.dieMessage(
-            "SECRET_KEY_BASE must be at least 40 characters",
-          )
-        }),
+        ),
+        Effect.catchCause(() => Effect.die(new Error("SECRET_KEY_BASE must be at least 40 characters"))),
       )
+      const keyMaterial = yield* deriveKeyMaterial(secret)
+      const encryptKey = yield* deriveKey(keyMaterial, ["encrypt"])
+      const decryptKey = yield* deriveKey(keyMaterial, ["decrypt"])
 
-      return layer({ secret })
-    })
-    .pipe(Layer.unwrapEffect)
+      return {
+        encrypt: (value: CookieValue) => encryptWithDerivedKey(value, encryptKey),
+        decrypt: (encryptedValue: string) => decryptWithDerivedKey(encryptedValue, decryptKey),
+        encryptCookie: (cookie: Cookies.Cookie) => encryptCookieWithDerivedKey(cookie, encryptKey),
+        decryptCookie: (cookie: Cookies.Cookie) => decryptCookieWithDerivedKey(cookie, decryptKey),
+      }
+    }),
+  )
 }
 
 function encodeToBase64Segments(
@@ -259,7 +266,7 @@ function encryptCookieWithDerivedKey(
             }),
         ),
       )
-    return Cookies.unsafeMakeCookie(cookie.name, encryptedValue, cookie.options)
+    return Cookies.makeCookieUnsafe(cookie.name, encryptedValue, cookie.options)
   })
 }
 function decryptCookieWithDerivedKey(
@@ -280,7 +287,7 @@ function decryptCookieWithDerivedKey(
             }),
         ),
       )
-    return Cookies.unsafeMakeCookie(
+    return Cookies.makeCookieUnsafe(
       cookie.name,
       JSON.stringify(decryptedValue),
       cookie.options,
@@ -309,7 +316,7 @@ export function encryptCookie(
             }),
         ),
       )
-    return Cookies.unsafeMakeCookie(cookie.name, encryptedValue, cookie.options)
+    return Cookies.makeCookieUnsafe(cookie.name, encryptedValue, cookie.options)
   })
 }
 
@@ -334,7 +341,7 @@ export function decryptCookie(
             }),
         ),
       )
-    return Cookies.unsafeMakeCookie(
+    return Cookies.makeCookieUnsafe(
       cookie.name,
       JSON.stringify(decryptedValue),
       cookie.options,

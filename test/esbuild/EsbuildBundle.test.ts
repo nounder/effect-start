@@ -1,9 +1,8 @@
 import * as test from "bun:test"
-import { BunBundle } from "effect-start/bun"
+import { BunBundle, BunFileSystem } from "effect-start/bun"
 import { EsbuildBundle } from "effect-start/esbuild"
-import * as FileSystem from "effect-start/FileSystem"
-import { NodeFileSystem } from "effect-start/node"
 import * as Effect from "effect/Effect"
+import * as FileSystem from "effect/FileSystem"
 import * as NPath from "node:path"
 
 const makeEntrypoint = () =>
@@ -58,7 +57,7 @@ test.it("builds and resolves client artifact", () =>
     })
     .pipe(
       Effect.scoped,
-      Effect.provide(NodeFileSystem.layer),
+      Effect.provide(BunFileSystem.layer),
       Effect.runPromise,
     ))
 
@@ -108,6 +107,6 @@ test.it("maps nested outputs with duplicate basenames", () =>
     })
     .pipe(
       Effect.scoped,
-      Effect.provide(NodeFileSystem.layer),
+      Effect.provide(BunFileSystem.layer),
       Effect.runPromise,
     ))

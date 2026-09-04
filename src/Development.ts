@@ -1,15 +1,15 @@
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as FileSystem from "effect/FileSystem"
 import * as Function from "effect/Function"
-import * as GlobalValue from "effect/GlobalValue"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
+import type * as PlatformError from "effect/PlatformError"
 import * as PubSub from "effect/PubSub"
 import * as Stream from "effect/Stream"
 import * as BunChildProcessSpawner from "./bun/BunChildProcessSpawner.ts"
-import * as FileSystem from "./FileSystem.ts"
-import * as NodeFileSystem from "./node/NodeFileSystem.ts"
-import type * as System from "./System.ts"
+import * as BunFileSystem from "./bun/BunFileSystem.ts"
+import * as BunPath from "./bun/BunPath.ts"
 
 export type DevelopmentEvent =
   | FileSystem.WatchEvent
@@ -17,26 +17,26 @@ export type DevelopmentEvent =
     readonly _tag: "Reload"
   }
 
-const devState = GlobalValue.globalValue(
-  Symbol.for("effect-start/Development"),
-  () => ({
-    count: 0,
-    pubsub: null as PubSub.PubSub<DevelopmentEvent> | null,
-  }),
-)
+const devStateKey = Symbol.for("effect-start/Development")
+const globals = globalThis as typeof globalThis & {
+  [devStateKey]?: {
+    count: number
+    pubsub: PubSub.PubSub<DevelopmentEvent> | null
+  }
+}
+const devState = globals[devStateKey] ??= { count: 0, pubsub: null }
 
-/** @internal */
 export const _testResetState = () => {
   devState.count = 0
   devState.pubsub = null
 }
 
-export class Development extends Context.Tag("effect-start/Development")<
+export class Development extends Context.Service<
   Development,
   {
     events: PubSub.PubSub<DevelopmentEvent>
   }
->() {}
+>()("effect-start/Development") {}
 
 // Matches source files and directory paths (which fire withou ext when its created/renamed)
 const SOURCE_FILENAME = /(?:\.(?:tsx?|jsx?|html?|css|json)|(?:^|\/)[^./]+)$/
@@ -51,7 +51,7 @@ const watchSource = (opts?: {
   filter?: (event: FileSystem.WatchEvent) => boolean
 }): Stream.Stream<
   FileSystem.WatchEvent,
-  System.SystemError,
+  PlatformError.PlatformError,
   FileSystem.FileSystem
 > => {
   const baseDir = opts?.path ?? process.cwd()
@@ -86,6 +86,7 @@ const watch = (opts?: {
     if (devState.count === 1) {
       const pubsub = yield* PubSub.unbounded<DevelopmentEvent>()
       devState.pubsub = pubsub
+      const scope = yield* Effect.scope
 
       yield* Function.pipe(
         watchSource({
@@ -94,7 +95,7 @@ const watch = (opts?: {
           filter: opts?.filter ?? filterSourceFiles,
         }),
         Stream.runForEach((event) => PubSub.publish(pubsub, event)),
-        Effect.fork,
+        Effect.forkIn(scope, { startImmediately: true }),
       )
     } else {
       yield* PubSub.publish(devState.pubsub!, { _tag: "Reload" })
@@ -107,7 +108,7 @@ export const layer = (opts?: {
   path?: string
   recursive?: boolean
   filter?: (event: FileSystem.WatchEvent) => boolean
-}) => Layer.scoped(Development, watch(opts))
+}) => Layer.effect(Development, watch(opts))
 
 export const layerTest = Layer.effect(
   Development,
@@ -128,12 +129,11 @@ export const events: Stream.Stream<DevelopmentEvent> = Stream.unwrap(
   ),
 )
 
-/**
- * @internal
- */
 export function layerBase() {
-  return Layer.mergeAll(
-    NodeFileSystem.layer,
-    BunChildProcessSpawner.layer,
+  return BunChildProcessSpawner.layer.pipe(
+    Layer.provideMerge(Layer.merge(
+      BunFileSystem.layer,
+      BunPath.layer,
+    )),
   )
 }

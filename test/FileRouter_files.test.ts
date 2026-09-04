@@ -1,14 +1,14 @@
 import * as test from "bun:test"
+import { BunFileSystem } from "effect-start/bun"
 import * as FileRouter from "effect-start/FileRouter"
 import * as FileRouterCodegen from "effect-start/FileRouterCodegen"
-import * as FileSystem from "effect-start/FileSystem"
 import * as Route from "effect-start/Route"
 import * as Effect from "effect/Effect"
+import * as FileSystem from "effect/FileSystem"
 import * as NFs from "node:fs"
 import * as NOs from "node:os"
 import * as NPath from "node:path"
 import * as NUrl from "node:url"
-import * as NodeFileSystem from "../src/node/NodeFileSystem.ts"
 
 const writeTree = (root: string, files: Record<string, string>) => {
   for (const [path, content] of Object.entries(files)) {
@@ -56,7 +56,7 @@ test.it("walks routes", () =>
     })
     .pipe(
       Effect.scoped,
-      Effect.provide(NodeFileSystem.layer),
+      Effect.provide(BunFileSystem.layer),
       Effect.runPromise,
     ))
 
@@ -85,7 +85,7 @@ test.it("walks routes with rest", () =>
     })
     .pipe(
       Effect.scoped,
-      Effect.provide(NodeFileSystem.layer),
+      Effect.provide(BunFileSystem.layer),
       Effect.runPromise,
     ))
 
@@ -117,7 +117,7 @@ test.it("walks routes with groups", () =>
     })
     .pipe(
       Effect.scoped,
-      Effect.provide(NodeFileSystem.layer),
+      Effect.provide(BunFileSystem.layer),
       Effect.runPromise,
     ))
 
@@ -160,7 +160,7 @@ export default Route.get(Route.text("memory"))
     })
     .pipe(
       Effect.scoped,
-      Effect.provide(NodeFileSystem.layer),
+      Effect.provide(BunFileSystem.layer),
       Effect.runPromise,
     ))
 
@@ -214,7 +214,7 @@ test.describe("codegen generates manifest by default", () => {
           .toContain(`"/users":`)
       })
       .pipe(
-        Effect.provide(NodeFileSystem.layer),
+        Effect.provide(BunFileSystem.layer),
         Effect.runPromise,
       ))
 
@@ -234,7 +234,7 @@ test.describe("codegen generates manifest by default", () => {
           .toBe(true)
       })
       .pipe(
-        Effect.provide(NodeFileSystem.layer),
+        Effect.provide(BunFileSystem.layer),
         Effect.runPromise,
       ))
 })

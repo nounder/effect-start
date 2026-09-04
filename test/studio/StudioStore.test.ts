@@ -1,9 +1,12 @@
 import * as test from "bun:test"
+import { SqliteClient } from "effect-start/bun"
+import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
-import type * as Tracing from "../../src/internal/Tracing.ts"
-import * as BunSql from "../../src/sql/bun/index.ts"
-import * as SqlClient from "../../src/sql/SqlClient.ts"
-import * as StudioStore from "../../src/studio/StudioStore.ts"
+import * as Layer from "effect/Layer"
+import * as Sql from "effect/unstable/sql/SqlClient"
+import type * as Tracing from "effect-start/internal/Tracing"
+import * as StudioSql from "effect-start/studio/internal/StudioSql"
+import * as StudioStore from "effect-start/studio/StudioStore"
 
 let nextId = 1n
 
@@ -64,7 +67,7 @@ test.it("evictSpans keeps spans that have not ended yet", () =>
         .toContain(openSpan.spanId)
     })
     .pipe(
-      Effect.provide(BunSql.layer({ adapter: "sqlite", filename: ":memory:" })),
+      Effect.provide(SqliteClient.layer({ filename: ":memory:" })),
       Effect.runPromise,
     ))
 
@@ -100,7 +103,7 @@ test.it("round-trips compact OTLP IDs and telemetry metadata", () =>
         .expect(spans)
         .toEqual([span])
 
-      const sql = yield* SqlClient.SqlClient
+      const sql = yield* Sql.SqlClient
       const rows = yield* sql<{ spanType: string; traceType: string }>`SELECT
         typeof(spanId) AS spanType,
         typeof(traceId) AS traceType
@@ -144,6 +147,24 @@ test.it("round-trips compact OTLP IDs and telemetry metadata", () =>
         .toEqual(["api", "worker"])
     })
     .pipe(
-      Effect.provide(BunSql.layer({ adapter: "sqlite", filename: ":memory:" })),
+      Effect.provide(SqliteClient.layer({ filename: ":memory:" })),
       Effect.runPromise,
     ))
+
+test.it("keeps Studio's in-memory SQLite client alive across layer scopes", () =>
+  Effect
+    .gen(function*() {
+      const first = yield* Layer.build(StudioSql.layer).pipe(
+        Effect.map((context) => Context.get(context, Sql.SqlClient)),
+        Effect.scoped,
+      )
+      const second = yield* Layer.build(StudioSql.layer).pipe(
+        Effect.map((context) => Context.get(context, Sql.SqlClient)),
+        Effect.scoped,
+      )
+
+      test
+        .expect(first)
+        .toBe(second)
+    })
+    .pipe(Effect.runPromise))

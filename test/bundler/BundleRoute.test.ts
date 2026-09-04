@@ -4,8 +4,8 @@ import * as Route from "effect-start/Route"
 import * as RouteHttp from "effect-start/RouteHttp"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import * as Bundle from "../../src/bundler/Bundle.ts"
-import * as BundleRoute from "../../src/bundler/BundleRoute.ts"
+import * as Bundle from "effect-start/bundler/Bundle"
+import * as BundleRoute from "effect-start/bundler/BundleRoute"
 
 const testBundle: Bundle.BundleContext = {
   resolve: (url) => (url === "app.ts" ? "app-abc123.js" : undefined),
@@ -27,10 +27,10 @@ const testLayer = Layer.succeed(Bundle.Bundle, testBundle)
 test.it("serves a JS artifact", () =>
   Effect
     .gen(function*() {
-      const runtime = yield* Effect.runtime<Bundle.Bundle>()
+      const context = yield* Effect.context<Bundle.Bundle>()
       const routes = BundleRoute.make(Bundle.Bundle)
       const tree = Route.map({ "/_bundle/:path+": routes })
-      const handles = Object.fromEntries(RouteHttp.walkHandles(tree, runtime))
+      const handles = Object.fromEntries(RouteHttp.walkHandles(tree, context))
       const handler = handles["/_bundle/:path+"]
 
       const client = Fetch.fromHandler(handler)
@@ -57,10 +57,10 @@ test.it("serves a JS artifact", () =>
 test.it("serves a CSS artifact", () =>
   Effect
     .gen(function*() {
-      const runtime = yield* Effect.runtime<Bundle.Bundle>()
+      const context = yield* Effect.context<Bundle.Bundle>()
       const routes = BundleRoute.make(Bundle.Bundle)
       const tree = Route.map({ "/_bundle/:path+": routes })
-      const handles = Object.fromEntries(RouteHttp.walkHandles(tree, runtime))
+      const handles = Object.fromEntries(RouteHttp.walkHandles(tree, context))
       const handler = handles["/_bundle/:path+"]
 
       const client = Fetch.fromHandler(handler)
@@ -86,10 +86,10 @@ test.it("serves a CSS artifact", () =>
 test.it("returns 404 for missing artifact", () =>
   Effect
     .gen(function*() {
-      const runtime = yield* Effect.runtime<Bundle.Bundle>()
+      const context = yield* Effect.context<Bundle.Bundle>()
       const routes = BundleRoute.make(Bundle.Bundle)
       const tree = Route.map({ "/_bundle/:path+": routes })
-      const handles = Object.fromEntries(RouteHttp.walkHandles(tree, runtime))
+      const handles = Object.fromEntries(RouteHttp.walkHandles(tree, context))
       const handler = handles["/_bundle/:path+"]
 
       const client = Fetch.fromHandler(handler)
@@ -109,10 +109,10 @@ test.it("returns 404 for missing artifact", () =>
 test.it("supports custom mount path", () =>
   Effect
     .gen(function*() {
-      const runtime = yield* Effect.runtime<Bundle.Bundle>()
+      const context = yield* Effect.context<Bundle.Bundle>()
       const routes = BundleRoute.make(Bundle.Bundle)
       const tree = Route.map({ "/assets/:path+": routes })
-      const handles = Object.fromEntries(RouteHttp.walkHandles(tree, runtime))
+      const handles = Object.fromEntries(RouteHttp.walkHandles(tree, context))
       const handler = handles["/assets/:path+"]
 
       const client = Fetch.fromHandler(handler)

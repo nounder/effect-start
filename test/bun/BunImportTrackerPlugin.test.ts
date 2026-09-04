@@ -1,7 +1,7 @@
 import * as test from "bun:test"
-import * as BunImportTrackerPlugin from "../../src/bun/BunImportTrackerPlugin.ts"
+import * as BunImportTrackerPlugin from "effect-start/bun/BunImportTrackerPlugin"
 // eslint-disable-next-line no-unused-vars
-import * as BunVirtualFilesPlugin from "../../src/bun/BunVirtualFilesPlugin.ts"
+import * as BunVirtualFilesPlugin from "effect-start/bun/BunVirtualFilesPlugin"
 
 test.it("virtual import", async () => {
   const trackerPlugin = BunImportTrackerPlugin.make({
@@ -26,11 +26,11 @@ test.it("virtual import", async () => {
           },
           {
             kind: "import-statement",
-            path: "src/bun/BunImportTrackerPlugin.ts",
+            path: "test/bun/effect-start/bun/BunImportTrackerPlugin",
           },
           {
             kind: "import-statement",
-            path: "src/bun/BunVirtualFilesPlugin.ts",
+            path: "test/bun/effect-start/bun/BunVirtualFilesPlugin",
           },
         ],
       ],

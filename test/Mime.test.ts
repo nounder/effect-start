@@ -1,5 +1,5 @@
 import * as test from "bun:test"
-import * as Mime from "../src/internal/Mime.ts"
+import * as Mime from "effect-start/internal/Mime"
 
 test.it("includes a charset for text content by default", () => {
   test

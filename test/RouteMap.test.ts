@@ -1,7 +1,7 @@
 import * as test from "bun:test"
 import * as Route from "effect-start/Route"
 import * as Context from "effect/Context"
-import * as RouteMap from "../src/internal/RouteMap.ts"
+import * as RouteMap from "effect-start/internal/RouteMap"
 
 test.describe("layer route", () => {
   test.it("merges LayerRoute into other routes", () => {
@@ -324,8 +324,8 @@ test.describe(RouteMap.merge, () => {
 })
 
 test.describe("RouteMap.Context", () => {
-  class A extends Context.Tag("A")<A, { a: number }>() {}
-  class B extends Context.Tag("B")<B, { b: number }>() {}
+  class A extends Context.Service<A, { a: number }>()("A") {}
+  class B extends Context.Service<B, { b: number }>()("B") {}
 
   const flat = {
     "/x": Route.get(

@@ -1,6 +1,6 @@
 import * as test from "bun:test"
-import type * as Tracing from "../../../../src/internal/Tracing.ts"
-import * as StudioStore from "../../../../src/studio/StudioStore.ts"
+import type * as Tracing from "effect-start/internal/Tracing"
+import * as StudioStore from "effect-start/studio/StudioStore"
 
 function makeSpan(
   options:

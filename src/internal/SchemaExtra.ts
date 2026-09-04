@@ -1,26 +1,13 @@
 import type * as Schema from "effect/Schema"
 import * as SchemaAST from "effect/SchemaAST"
 
-function getBaseSchemaAST(schema: Schema.Schema.Any): SchemaAST.AST {
-  let current = schema.ast
-
-  while (
-    SchemaAST.isRefinement(current) || SchemaAST.isTransformation(current)
-  ) {
-    current = current.from
-  }
-
-  return current
+function getBaseSchemaAST(schema: Schema.Constraint): SchemaAST.AST {
+  return schema.ast
 }
 
-function isOptional(schema: Schema.Schema.Any): boolean {
-  const ast = schema.ast
-
-  if (ast._tag === "Union") {
-    return ast.types.some((t: SchemaAST.AST) => t._tag === "UndefinedKeyword")
-  }
-
-  return false
+function isOptional(schema: Schema.Constraint): boolean {
+  return schema["~type.optionality"] === "optional" ||
+    (schema.ast._tag === "Union" && schema.ast.types.some(SchemaAST.isUndefined))
 }
 
 export function schemaEqual(
@@ -72,25 +59,26 @@ export function schemaEqual(
   return true
 }
 
-function getSchemaTypeName(schema: Schema.Schema.Any): string {
+function getSchemaTypeName(schema: Schema.Constraint): string {
   const baseAST = getBaseSchemaAST(schema)
   switch (baseAST._tag) {
-    case "StringKeyword":
+    case "String":
       return "Schema.String"
-    case "NumberKeyword":
+    case "Number":
       return "Schema.Number"
-    case "BooleanKeyword":
+    case "Boolean":
       return "Schema.Boolean"
     default:
       return "Schema.String"
   }
 }
 
-export function formatSchemaCode(schema: Schema.Struct<any>): string {
+export function formatSchemaCode<F extends Schema.Struct.Fields>(schema: Schema.Struct<F>): string {
   const fields = schema.fields
   const fieldStrings: Array<string> = []
 
-  for (const [key, fieldSchema] of Object.entries(fields)) {
+  for (const key of Object.keys(fields)) {
+    const fieldSchema = fields[key]
     const optional = isOptional(fieldSchema)
     const typeName = getSchemaTypeName(fieldSchema)
     const fieldStr = optional ? `${key}?: ${typeName}` : `${key}: ${typeName}`

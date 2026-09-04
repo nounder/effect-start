@@ -2,7 +2,6 @@ import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Schedule from "effect/Schedule"
 import * as Stream from "effect/Stream"
-import type * as Utils from "effect/Utils"
 import * as Entity from "../Entity.ts"
 import * as Route from "../Route.ts"
 import * as StreamExtra from "./StreamExtra.ts"
@@ -53,7 +52,7 @@ type SseHandlerInput<B, E, R> =
     | Stream.Stream<SseEvent, E, R>
     | Effect.Effect<Stream.Stream<SseEvent, E, R>, E, R>
     | Generator<
-      Utils.YieldWrap<Effect.Effect<unknown, E, R>>,
+      Effect.Effect<unknown, E, R>,
       Stream.Stream<SseEvent, E, R>,
       unknown
     >)

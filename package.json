@@ -17,14 +17,6 @@
       "bun": "./src/index.ts",
       "default": "./dist/index.js"
     },
-    "./ChildProcess": {
-      "bun": "./src/ChildProcess.ts",
-      "default": "./dist/ChildProcess.js"
-    },
-    "./Cookies": {
-      "bun": "./src/Cookies.ts",
-      "default": "./dist/Cookies.js"
-    },
     "./Development": {
       "bun": "./src/Development.ts",
       "default": "./dist/Development.js"
@@ -45,10 +37,6 @@
       "bun": "./src/Fetch.ts",
       "default": "./dist/Fetch.js"
     },
-    "./FileRoute": {
-      "bun": "./src/FileRoute.ts",
-      "default": "./dist/FileRoute.js"
-    },
     "./FileRouter": {
       "bun": "./src/FileRouter.ts",
       "default": "./dist/FileRouter.js"
@@ -56,10 +44,6 @@
     "./FileRouterCodegen": {
       "bun": "./src/FileRouterCodegen.ts",
       "default": "./dist/FileRouterCodegen.js"
-    },
-    "./FileSystem": {
-      "bun": "./src/FileSystem.ts",
-      "default": "./dist/FileSystem.js"
     },
     "./GlobalLayer": {
       "bun": "./src/GlobalLayer.ts",
@@ -69,17 +53,9 @@
       "bun": "./src/Html.ts",
       "default": "./dist/Html.js"
     },
-    "./Multipart": {
-      "bun": "./src/Multipart.ts",
-      "default": "./dist/Multipart.js"
-    },
     "./Password": {
       "bun": "./src/Password.ts",
       "default": "./dist/Password.js"
-    },
-    "./PlatformRuntime": {
-      "bun": "./src/PlatformRuntime.ts",
-      "default": "./dist/PlatformRuntime.js"
     },
     "./Route": {
       "bun": "./src/Route.ts",
@@ -97,25 +73,13 @@
       "bun": "./src/RouteHttpTracer.ts",
       "default": "./dist/RouteHttpTracer.js"
     },
-    "./Socket": {
-      "bun": "./src/Socket.ts",
-      "default": "./dist/Socket.js"
-    },
     "./Start": {
       "bun": "./src/Start.ts",
       "default": "./dist/Start.js"
     },
-    "./StartServer": {
-      "bun": "./src/StartServer.ts",
-      "default": "./dist/StartServer.js"
-    },
     "./StaticRoute": {
       "bun": "./src/StaticRoute.ts",
       "default": "./dist/StaticRoute.js"
-    },
-    "./System": {
-      "bun": "./src/System.ts",
-      "default": "./dist/System.js"
     },
     "./Unique": {
       "bun": "./src/Unique.ts",
@@ -145,15 +109,6 @@
       "bun": "./src/bun/index.ts",
       "default": "./dist/bun/index.js"
     },
-    "./node": {
-      "bun": "./src/node/index.ts",
-      "default": "./dist/node/index.js"
-    },
-    "./ts/import-plugin": "./src/ts/import-plugin.cjs",
-    "./cli": {
-      "bun": "./src/cli/index.ts",
-      "default": "./dist/cli/index.js"
-    },
     "./cloudflare": {
       "bun": "./src/cloudflare/index.ts",
       "default": "./dist/cloudflare/index.js"
@@ -162,17 +117,21 @@
       "bun": "./src/datastar/index.ts",
       "default": "./dist/datastar/index.js"
     },
-    "./experimental/*": {
-      "bun": "./src/experimental/*.ts",
-      "default": "./dist/experimental/*.js"
+    "./experimental/CsrfProtection": {
+      "bun": "./src/experimental/CsrfProtection.ts",
+      "default": "./dist/experimental/CsrfProtection.js"
     },
-    "./sql": {
-      "bun": "./src/sql/index.ts",
-      "default": "./dist/sql/index.js"
+    "./experimental/EncryptedCookies": {
+      "bun": "./src/experimental/EncryptedCookies.ts",
+      "default": "./dist/experimental/EncryptedCookies.js"
     },
-    "./sql/*": {
-      "bun": "./src/sql/*/index.ts",
-      "default": "./dist/sql/*/index.js"
+    "./experimental/SqlCache": {
+      "bun": "./src/experimental/SqlCache.ts",
+      "default": "./dist/experimental/SqlCache.js"
+    },
+    "./experimental/SqlIntrospect": {
+      "bun": "./src/experimental/SqlIntrospect.ts",
+      "default": "./dist/experimental/SqlIntrospect.js"
     },
     "./studio": {
       "bun": "./src/studio/index.ts",
@@ -193,11 +152,10 @@
     "./package.json": "./package.json"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
     "lint": "oxlint && dprint check",
     "lint-fix": "oxlint --fix && dprint fmt",
     "test": "bun test ./test/",
-    "test-sql": "bun add --no-save mssql @types/mssql postgres && TEST_SQL=1 bun test ./src/sql/",
     "bump": "bun scripts/bump",
     "prepublishOnly": "bun run build",
     "deploy": "bunx --bun npm publish --access public"
@@ -206,34 +164,24 @@
     "@dprint/json": "^0.21.3",
     "@dprint/markdown": "^0.21.1",
     "@dprint/typescript": "^0.96.0",
-    "@libsql/client": "^0.17.0",
     "@types/bun": "^1.3.4",
     "@types/jsdom": "^27.0.0",
     "dprint-cli": "^0.5.0",
+    "effect": "4.0.0-rc.112",
     "esbuild": "^0.28.1",
     "jsdom": "^28.0.0",
-    "mssql": "^12.2.0",
     "oxlint": "^1.63.0",
-    "postgres": "^3.4.8",
     "rolldown": "^1.1.2",
     "tailwindcss": "^4.1.18",
-    "typescript": "^6.0.2"
+    "typescript": "7.0.2"
   },
   "peerDependencies": {
-    "@libsql/client": ">=0.17.0",
-    "effect": "^3.21.0",
+    "effect": "4.0.0-rc.112",
     "esbuild": ">=0.28.1",
-    "mssql": ">=12.2.0",
     "rolldown": ">=1.1.2"
   },
   "peerDependenciesMeta": {
-    "@libsql/client": {
-      "optional": true
-    },
     "esbuild": {
-      "optional": true
-    },
-    "mssql": {
       "optional": true
     },
     "rolldown": {

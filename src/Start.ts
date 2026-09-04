@@ -1,13 +1,14 @@
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
+import type * as FileSystem from "effect/FileSystem"
 import * as Function from "effect/Function"
 import * as Layer from "effect/Layer"
+import type * as HttpServer from "effect/unstable/http/HttpServer"
+import type * as ChildProcessSpawner from "effect/unstable/process/ChildProcessSpawner"
 import * as BunRuntime from "./bun/BunRuntime.ts"
 import * as BunServer from "./bun/BunServer.ts"
 import * as BundleRoute from "./bundler/BundleRoute.ts"
-import type * as ChildProcess from "./ChildProcess.ts"
 import * as Development from "./Development.ts"
-import type * as FileSystem from "./FileSystem.ts"
 import * as LayerExtra from "./internal/LayerExtra.ts"
 
 /**
@@ -32,7 +33,7 @@ import * as LayerExtra from "./internal/LayerExtra.ts"
  * @category constructors
  */
 export function build<
-  const Layers extends readonly [Layer.Layer.Any, ...Array<Layer.Layer.Any>],
+  const Layers extends readonly [Layer.Any, ...Array<Layer.Any>],
 >(
   ...layers: Layers & LayerExtra.Ordered<NoInfer<Layers>, NoInfer<Layers>>
 ): Layer.Layer<
@@ -40,7 +41,7 @@ export function build<
   LayerExtra.LayersError<Layers>,
   LayerExtra.LayersContext<Layers>
 > {
-  return (LayerExtra.provideMergeAll as (...l: Array<Layer.Layer.Any>) => any)(
+  return (LayerExtra.provideMergeAll as (...l: Array<Layer.Any>) => any)(
     ...layers,
   )
 }
@@ -58,8 +59,8 @@ export function build<
  */
 export function pack<
   const Layers extends readonly [
-    Layer.Layer.Any,
-    ...Array<Layer.Layer.Any>,
+    Layer.Any,
+    ...Array<Layer.Any>,
   ],
 >(
   ...layers: LayerExtra.Unordered<Layers>
@@ -68,7 +69,7 @@ export function pack<
   LayerExtra.LayersError<Layers>,
   never
 > {
-  return Layer.scopedContext(
+  return Layer.effectContext(
     LayerExtra.buildUnordered(layers as unknown as Layers),
   ) as any
 }
@@ -79,9 +80,9 @@ export function layerDev() {
 
 // TODO: do we even need to define requirements upfront?
 type AppRequirements =
-  | BunServer.BunServer
+  | HttpServer.HttpServer
   | FileSystem.FileSystem
-  | ChildProcess.ChildProcessSpawner
+  | ChildProcessSpawner.ChildProcessSpawner
 
 class StartError extends Data.TaggedError("StartError")<{
   readonly cause: unknown
@@ -100,7 +101,7 @@ export function serve<ROut, E, RIn extends AppRequirements>(
       }),
       Effect.map((v) => v.default),
       Effect.orDie,
-      Layer.unwrapEffect,
+      Layer.unwrap,
     )
     : app
 
@@ -118,7 +119,7 @@ export function serve<ROut, E, RIn extends AppRequirements>(
         Layer.provideMerge(appLayerResolved),
       ),
     ),
-  ) as Layer.Layer<BunServer.BunServer, never, never>
+  ) as Layer.Layer<HttpServer.HttpServer, never, never>
 
   return Function.pipe(
     composed,

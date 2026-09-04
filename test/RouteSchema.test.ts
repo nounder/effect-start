@@ -1,13 +1,22 @@
 import * as test from "bun:test"
-import { Effect, Schema } from "effect"
+import { BunFileSystem, BunPath } from "effect-start/bun"
 import * as Fetch from "effect-start/Fetch"
-import * as Multipart from "effect-start/Multipart"
 import * as Route from "effect-start/Route"
 import * as RouteError from "effect-start/RouteError"
 import * as RouteHttp from "effect-start/RouteHttp"
 import { TestLogger } from "effect-start/testing"
-import * as Stream from "effect/Stream"
-import * as RouteSchema from "../src/internal/RouteSchema.ts"
+import * as Context from "effect/Context"
+import * as Effect from "effect/Effect"
+import type * as FileSystem from "effect/FileSystem"
+import * as Layer from "effect/Layer"
+import type * as Path from "effect/Path"
+import * as Schema from "effect/Schema"
+import * as Multipart from "effect/unstable/http/Multipart"
+import * as RouteSchema from "effect-start/internal/RouteSchema"
+
+const multipartContext = Effect.runSync(
+  Layer.build(Layer.merge(BunFileSystem.layer, BunPath.layer)).pipe(Effect.scoped),
+)
 
 test.describe(`${RouteSchema.schemaHeaders.name}()`, () => {
   test.it(`${RouteSchema.schemaHeaders.name} merges`, () => {
@@ -195,8 +204,8 @@ test.describe(`${RouteSchema.schemaSearchParams.name}()`, () => {
           Route.get(
             RouteSchema.schemaSearchParams(
               Schema.Struct({
-                page: Schema.NumberFromString,
-                limit: Schema.NumberFromString,
+                page: Schema.FiniteFromString,
+                limit: Schema.FiniteFromString,
               }),
             ),
             Route.text(function*(ctx) {
@@ -282,12 +291,12 @@ test.describe(`${RouteSchema.schemaBodyJson.name}()`, () => {
       .pipe(Effect.runPromise))
 
   test.it("preserves discriminated union type from Schema.Union body", () => {
-    const Event = Schema.Union(
+    const Event = Schema.Union([
       Schema.TaggedStruct("Intent", {
-        type: Schema.Literal("yes", "no"),
+        type: Schema.Literals(["yes", "no"]),
       }),
       Schema.TaggedStruct("Submit", {}),
-    )
+    ])
     type Event = typeof Event.Type
 
     const route = Route.post(
@@ -315,8 +324,8 @@ test.describe(`${RouteSchema.schemaBodyJson.name}()`, () => {
   test.it("returns error for invalid JSON body", () =>
     Effect
       .gen(function*() {
-        const runtime = yield* Effect.runtime<TestLogger.TestLogger>()
-        const handler = RouteHttp.toWebHandlerRuntime(runtime)(
+        const context = yield* Effect.context<TestLogger.TestLogger>()
+        const handler = RouteHttp.toWebHandlerWith(context)(
           Route.post(
             RouteSchema.schemaBodyJson(
               Schema.Struct({
@@ -344,7 +353,7 @@ test.describe(`${RouteSchema.schemaBodyJson.name}()`, () => {
         const messages = yield* TestLogger.messages
 
         test
-          .expect(messages.some((m) => m.includes("ParseError")))
+          .expect(messages.some((m) => m.includes("SchemaError")))
           .toBe(true)
       })
       .pipe(
@@ -444,6 +453,12 @@ test.describe(`${RouteSchema.schemaBodyMultipart.name}()`, () => {
       .toExtend<{
         body: { name: string }
       }>()
+
+    const layer = Route.layer(Route.map({ "/upload": route }))
+
+    test
+      .expectTypeOf<Layer.Services<typeof layer>>()
+      .toEqualTypeOf<FileSystem.FileSystem | Path.Path>()
   })
 })
 
@@ -474,7 +489,7 @@ test.describe(`${RouteSchema.schemaBodyForm.name}()`, () => {
   test.it("parses multipart fields with single and multiple files", () =>
     Effect
       .gen(function*() {
-        const handler = RouteHttp.toWebHandler(
+        const handler = RouteHttp.toWebHandlerWith(multipartContext)(
           Route.post(
             Route.schemaBodyForm({
               title: Schema.String,
@@ -488,8 +503,8 @@ test.describe(`${RouteSchema.schemaBodyForm.name}()`, () => {
                 .toExtend<{
                   title: string
                   tags: ReadonlyArray<string>
-                  file: Multipart.File
-                  files: ReadonlyArray<Multipart.File>
+                  file: Multipart.PersistedFile
+                  files: ReadonlyArray<Multipart.PersistedFile>
                 }>()
 
               const files: Array<{
@@ -500,17 +515,13 @@ test.describe(`${RouteSchema.schemaBodyForm.name}()`, () => {
               }> = []
               for (const file of [ctx.body.file, ...ctx.body.files]) {
                 test
-                  .expect(Multipart.isFile(file))
+                  .expect(Multipart.isPersistedFile(file))
                   .toBe(true)
                 test
-                  .expect(file[Multipart.TypeId])
-                  .toBe(Multipart.TypeId)
+                  .expect(file._tag)
+                  .toBe("PersistedFile")
 
-                const content = yield* Stream.runFold(
-                  file.content,
-                  "",
-                  (content, chunk) => content + new TextDecoder().decode(chunk),
-                )
+                const content = yield* Effect.promise(() => Bun.file(file.path).text())
                 files.push({
                   key: file.key,
                   name: file.name,
@@ -587,8 +598,8 @@ test.describe(`${RouteSchema.schemaBodyForm.name}()`, () => {
     Effect
       .gen(function*() {
         let handled = false
-        const runtime = yield* Effect.runtime<TestLogger.TestLogger>()
-        const handler = RouteHttp.toWebHandlerRuntime(runtime)(
+        const context = yield* Effect.context<TestLogger.TestLogger>()
+        const handler = RouteHttp.toWebHandlerWith(Context.merge(multipartContext, context))(
           Route.post(
             Route.schemaBodyForm({
               file: Multipart.SingleFileSchema,
@@ -617,7 +628,7 @@ test.describe(`${RouteSchema.schemaBodyForm.name}()`, () => {
         const messages = yield* TestLogger.messages
 
         test
-          .expect(messages.some((message) => message.includes("ParseError")))
+          .expect(messages.some((message) => message.includes("SchemaError")))
           .toBe(true)
       })
       .pipe(
@@ -663,8 +674,8 @@ test.describe(`${RouteSchema.schemaSuccess.name}()`, () => {
           age: Schema.Number,
         })
 
-        const runtime = yield* Effect.runtime<TestLogger.TestLogger>()
-        const handler = RouteHttp.toWebHandlerRuntime(runtime)(
+        const context = yield* Effect.context<TestLogger.TestLogger>()
+        const handler = RouteHttp.toWebHandlerWith(context)(
           Route.get(
             RouteSchema.schemaSuccess(StrictResponse),
             Route.json(function*() {
@@ -682,7 +693,7 @@ test.describe(`${RouteSchema.schemaSuccess.name}()`, () => {
         const messages = yield* TestLogger.messages
 
         test
-          .expect(messages.some((m) => m.includes("ParseError")))
+          .expect(messages.some((m) => m.includes("SchemaError")))
           .toBe(true)
       })
       .pipe(
@@ -798,8 +809,8 @@ test.describe(`${RouteSchema.schemaError.name}()`, () => {
   test.it("passes through unmatched errors", () =>
     Effect
       .gen(function*() {
-        const runtime = yield* Effect.runtime<TestLogger.TestLogger>()
-        const handler = RouteHttp.toWebHandlerRuntime(runtime)(
+        const context = yield* Effect.context<TestLogger.TestLogger>()
+        const handler = RouteHttp.toWebHandlerWith(context)(
           Route.get(
             RouteSchema.schemaError(NotFound, { status: 404 }),
             Route.json(function*() {

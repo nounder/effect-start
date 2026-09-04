@@ -6,7 +6,7 @@ import * as Layer from "effect/Layer"
 
 import * as GlobalLayer from "effect-start/GlobalLayer"
 
-class TestService extends Context.Tag("TestService")<TestService, { readonly value: number }>() {}
+class TestService extends Context.Service<TestService, { readonly value: number }>()("TestService") {}
 
 let keyId = 0
 const freshKey = () => `test/GlobalLayer/${keyId++}`

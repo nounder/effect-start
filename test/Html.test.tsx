@@ -1,4 +1,3 @@
-/** @jsxImportSource effect-start */
 import * as test from "bun:test"
 import * as Html from "../src/Html.ts"
 

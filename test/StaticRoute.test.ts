@@ -1,11 +1,11 @@
 import * as test from "bun:test"
+import { BunFileSystem } from "effect-start/bun"
 import * as Fetch from "effect-start/Fetch"
-import * as FileSystem from "effect-start/FileSystem"
-import { NodeFileSystem } from "effect-start/node"
 import * as Route from "effect-start/Route"
 import * as RouteHttp from "effect-start/RouteHttp"
 import * as StaticRoute from "effect-start/StaticRoute"
 import * as Effect from "effect/Effect"
+import * as FileSystem from "effect/FileSystem"
 import * as NPath from "node:path"
 import * as NUrl from "node:url"
 
@@ -17,12 +17,12 @@ test.it("renders a directory index as JSON and HTML and serves its files", () =>
       yield* fs.makeDirectory(NPath.join(directory, "nested"))
       yield* fs.writeFileString(NPath.join(directory, "hello.txt"), "hello")
 
-      const runtime = yield* Effect.runtime<FileSystem.FileSystem>()
+      const context = yield* Effect.context<FileSystem.FileSystem>()
       const routes = Route.map({
         "/files/:path*": StaticRoute.from({ path: directory, directoryIndex: true }),
         "/private/:path*": StaticRoute.from({ path: directory, directoryIndex: false }),
       })
-      const handles = Object.fromEntries(RouteHttp.walkHandles(routes, runtime))
+      const handles = Object.fromEntries(RouteHttp.walkHandles(routes, context))
       const client = Fetch.fromHandler(handles["/files/:path*"])
 
       const json = yield* client.get("http://localhost/files", {
@@ -189,7 +189,7 @@ test.it("renders a directory index as JSON and HTML and serves its files", () =>
     })
     .pipe(
       Effect.scoped,
-      Effect.provide(NodeFileSystem.layer),
+      Effect.provide(BunFileSystem.layer),
       Effect.runPromise,
     ))
 
@@ -201,14 +201,14 @@ test.it("serves a single file from a file URL on a rest path route", () =>
       const path = NPath.join(directory, "data.json")
       yield* fs.writeFileString(path, "{\"ok\":true}")
 
-      const runtime = yield* Effect.runtime<FileSystem.FileSystem>()
+      const context = yield* Effect.context<FileSystem.FileSystem>()
       const routes = Route.map({
         "/download/:path*": StaticRoute.from({
           path: NUrl.pathToFileURL(path),
           directoryIndex: false,
         }),
       })
-      const handles = Object.fromEntries(RouteHttp.walkHandles(routes, runtime))
+      const handles = Object.fromEntries(RouteHttp.walkHandles(routes, context))
       const client = Fetch.fromHandler(handles["/download/:path*"])
 
       const file = yield* client.get("http://localhost/download", {
@@ -233,7 +233,7 @@ test.it("serves a single file from a file URL on a rest path route", () =>
     })
     .pipe(
       Effect.scoped,
-      Effect.provide(NodeFileSystem.layer),
+      Effect.provide(BunFileSystem.layer),
       Effect.runPromise,
     ))
 
@@ -245,11 +245,11 @@ test.it("decodes URL-encoded characters in path params", () =>
       yield* fs.writeFileString(NPath.join(directory, "hello world.txt"), "spaced")
       yield* fs.writeFileString(NPath.join(directory, "café.txt"), "unicode")
 
-      const runtime = yield* Effect.runtime<FileSystem.FileSystem>()
+      const context = yield* Effect.context<FileSystem.FileSystem>()
       const routes = Route.map({
         "/assets/:path*": StaticRoute.from({ path: directory, directoryIndex: false }),
       })
-      const handles = Object.fromEntries(RouteHttp.walkHandles(routes, runtime))
+      const handles = Object.fromEntries(RouteHttp.walkHandles(routes, context))
       const client = Fetch.fromHandler(handles["/assets/:path*"])
 
       const spaced = yield* client.get("http://localhost/assets/hello%20world.txt")
@@ -270,7 +270,7 @@ test.it("decodes URL-encoded characters in path params", () =>
     })
     .pipe(
       Effect.scoped,
-      Effect.provide(NodeFileSystem.layer),
+      Effect.provide(BunFileSystem.layer),
       Effect.runPromise,
     ))
 
@@ -282,11 +282,11 @@ test.it("detects javascript and source map content types", () =>
       yield* fs.writeFileString(NPath.join(directory, "app.js"), "console.log('hi')")
       yield* fs.writeFileString(NPath.join(directory, "app.js.map"), "{}")
 
-      const runtime = yield* Effect.runtime<FileSystem.FileSystem>()
+      const context = yield* Effect.context<FileSystem.FileSystem>()
       const routes = Route.map({
         "/assets/:path*": StaticRoute.from({ path: directory, directoryIndex: false }),
       })
-      const handles = Object.fromEntries(RouteHttp.walkHandles(routes, runtime))
+      const handles = Object.fromEntries(RouteHttp.walkHandles(routes, context))
       const client = Fetch.fromHandler(handles["/assets/:path*"])
 
       const js = yield* client.get("http://localhost/assets/app.js")
@@ -307,6 +307,6 @@ test.it("detects javascript and source map content types", () =>
     })
     .pipe(
       Effect.scoped,
-      Effect.provide(NodeFileSystem.layer),
+      Effect.provide(BunFileSystem.layer),
       Effect.runPromise,
     ))

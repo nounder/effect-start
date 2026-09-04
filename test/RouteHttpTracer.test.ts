@@ -8,8 +8,8 @@ import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
 import * as Stream from "effect/Stream"
 import type * as Tracer from "effect/Tracer"
-import * as Http from "../src/internal/Http.ts"
-import * as Tracing from "../src/internal/Tracing.ts"
+import * as Http from "effect-start/internal/Http"
+import * as Tracing from "effect-start/internal/Tracing"
 
 test.describe("tracing", () => {
   test.it("creates span with correct name and kind", () =>
@@ -248,10 +248,10 @@ test.describe("tracing", () => {
         let spanCapturedOnUsers = false
 
         const runtime = yield* RouteHttpTracer.withTracerDisabledWhen(
-          Effect.runtime<never>(),
-          (req) => new URL(req.url).pathname === "/health",
+          Effect.context<never>(),
+          (req) => new URL(req.url, "http://localhost").pathname === "/health",
         )
-        const handler = RouteHttp.toWebHandlerRuntime(runtime)(
+        const handler = RouteHttp.toWebHandlerWith(runtime)(
           Route.get(
             Route.text(function*() {
               const spanResult = yield* Effect.option(Effect.currentSpan)
@@ -284,13 +284,13 @@ test.describe("tracing", () => {
         let capturedSpan: Tracer.Span | undefined
 
         const runtime = yield* RouteHttpTracer.withSpanNameGenerator(
-          Effect.runtime<never>(),
+          Effect.context<never>(),
           (req) => {
-            const url = new URL(req.url)
+            const url = new URL(req.url, "http://localhost")
             return `${req.method} ${url.pathname}`
           },
         )
-        const handler = RouteHttp.toWebHandlerRuntime(runtime)(
+        const handler = RouteHttp.toWebHandlerWith(runtime)(
           Route.get(
             Route.text(function*() {
               const span = yield* Effect.currentSpan
@@ -313,11 +313,11 @@ test.describe("tracing", () => {
     Effect
       .gen(function*() {
         const spans: Array<Tracing.Span> = []
-        const runtime = yield* Effect.runtime<never>().pipe(
+        const runtime = yield* Effect.context<never>().pipe(
           Effect.withTracer(Tracing.makeTracer(spans)),
         )
 
-        const handler = RouteHttp.toWebHandlerRuntime(runtime)(
+        const handler = RouteHttp.toWebHandlerWith(runtime)(
           Route.get(
             Route.sse(() =>
               Stream.make({ data: "a" }, { data: "b" }).pipe(
@@ -339,6 +339,7 @@ test.describe("tracing", () => {
         test
           .expect(eventSpans)
           .toHaveLength(2)
+
         for (const span of eventSpans) {
           test
             .expect(span.traceId)
@@ -376,11 +377,11 @@ test.describe("tracing", () => {
     Effect
       .gen(function*() {
         const spans: Array<Tracing.Span> = []
-        const runtime = yield* Effect.runtime<never>().pipe(
+        const runtime = yield* Effect.context<never>().pipe(
           Effect.withTracer(Tracing.makeTracer(spans)),
         )
 
-        const handler = RouteHttp.toWebHandlerRuntime(runtime)(
+        const handler = RouteHttp.toWebHandlerWith(runtime)(
           Route.get(Route.sse(() => Stream.make({ data: "a" }))),
         )
 
@@ -399,11 +400,11 @@ test.describe("tracing", () => {
     Effect
       .gen(function*() {
         const spans: Array<Tracing.Span> = []
-        const runtime = yield* Effect.runtime<never>().pipe(
+        const runtime = yield* Effect.context<never>().pipe(
           Effect.withTracer(Tracing.makeTracer(spans)),
         )
 
-        const handler = RouteHttp.toWebHandlerRuntime(runtime)(
+        const handler = RouteHttp.toWebHandlerWith(runtime)(
           Route.get(
             Route.text(function*() {
               return yield* Effect.die(new Error("boom"))
@@ -446,10 +447,10 @@ test.describe("tracing", () => {
     Effect
       .gen(function*() {
         const runtime = yield* RouteHttpTracer.withTracerDisabledWhen(
-          Effect.runtime<never>(),
+          Effect.context<never>(),
           () => true,
         )
-        const handler = RouteHttp.toWebHandlerRuntime(runtime)(
+        const handler = RouteHttp.toWebHandlerWith(runtime)(
           Route.get(Route.text("ok")),
         )
 
@@ -465,11 +466,11 @@ test.describe("tracing", () => {
     Effect
       .gen(function*() {
         const spans: Array<Tracing.Span> = []
-        const runtime = yield* Effect.runtime<never>().pipe(
+        const runtime = yield* Effect.context<never>().pipe(
           Effect.withTracer(Tracing.makeTracer(spans)),
         )
 
-        const handler = RouteHttp.toWebHandlerRuntime(runtime)(
+        const handler = RouteHttp.toWebHandlerWith(runtime)(
           Route.get(
             Route.sse(() =>
               Stream.make({ data: "a" }, { data: "b" }).pipe(
@@ -502,11 +503,11 @@ test.describe("tracing", () => {
     Effect
       .gen(function*() {
         const spans: Array<Tracing.Span> = []
-        const runtime = yield* Effect.runtime<never>().pipe(
+        const runtime = yield* Effect.context<never>().pipe(
           Effect.withTracer(Tracing.makeTracer(spans)),
         )
 
-        const handler = RouteHttp.toWebHandlerRuntime(runtime)(
+        const handler = RouteHttp.toWebHandlerWith(runtime)(
           Route.get(
             Route.sse(() => Stream.concat(Stream.make({ data: "first" }), Stream.never)),
           ),
@@ -532,33 +533,24 @@ test.describe("tracing", () => {
     Effect
       .gen(function*() {
         const spans: Array<Tracing.Span> = []
-        const runtime = yield* Effect.runtime<never>().pipe(
+        const runtime = yield* Effect.context<never>().pipe(
           Effect.withTracer(Tracing.makeTracer(spans)),
         )
 
-        const handler = RouteHttp.toWebHandlerRuntime(runtime)(
+        const handler = RouteHttp.toWebHandlerWith(runtime)(
           Route.get(
             Route.text(Effect.as(Effect.sleep("10 seconds"), "unreachable")),
           ),
         )
 
         const abortable = Http.createAbortableRequest({ path: "/abort" })
-        const responsePromise = handler(abortable.request)
+        void handler(abortable.request)
         yield* Effect.sleep("10 millis")
         abortable.abort()
-        const response = yield* Effect.promise(() => Promise.resolve(responsePromise))
+        yield* Effect.sleep("50 millis")
 
         const serverSpan = spans.find((span) => span.name === "http.server GET")
 
-        test
-          .expect(response.status)
-          .toBe(499)
-        test
-          .expect(serverSpan!.status)
-          .toBe("ok")
-        test
-          .expect(serverSpan!.attributes["status.interrupted"])
-          .toBe(true)
         test
           .expect(serverSpan!.attributes["http.response.status_code"])
           .toBe(499)

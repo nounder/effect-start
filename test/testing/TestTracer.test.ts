@@ -115,20 +115,21 @@ test.it("does not print when TRACE_PRINT is not set", async () => {
     .toBe("")
 })
 
-test.it("still records spans when TRACE_PRINT is not set", async () => {
-  const span = await Effect
-    .currentSpan
+test.it("still records spans when TRACE_PRINT is not set", () =>
+  Effect
+    .gen(function*() {
+      const span = yield* Effect.currentSpan
+
+      test
+        .expect(span.name)
+        .toBe("root")
+      test
+        .expect(span.spanId)
+        .toMatch(/^\d+$/)
+    })
     .pipe(
       Effect.withSpan("root"),
       Effect.scoped,
       Effect.provide(TestTracer.layer()),
       Effect.runPromise,
-    )
-
-  test
-    .expect(span.name)
-    .toBe("root")
-  test
-    .expect(span.spanId)
-    .toMatch(/^\d+$/)
-})
+    ))

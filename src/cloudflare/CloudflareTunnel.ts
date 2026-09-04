@@ -1,17 +1,19 @@
-import { Config, Effect, Layer, LogLevel, Option, pipe, Stream, String } from "effect"
-import * as System from "../System.ts"
+import { Config, Effect, Layer, type LogLevel, Option, pipe, Stream, String } from "effect"
+import * as ChildProcess from "effect/unstable/process/ChildProcess"
 
 export const start = (opts: {
   command?: string
   tunnelName: string
   tunnelUrl?: string
   cleanLogs?: false
-  logLevel?: LogLevel.LogLevel
+  logLevel?: LogLevel.Severity
   logPrefix?: string
 }) =>
   Effect.gen(function*() {
-    const command = opts.command ?? "cloudflared"
-    yield* System.which(command)
+    const executable = opts.command ?? "cloudflared"
+    if (Bun.which(executable) === null) {
+      return yield* Effect.fail(new Error(`Command not found: ${executable}`))
+    }
     const logPrefix = String.isString(opts.logPrefix)
       ? opts.logPrefix
       : "CloudflareTunnel: "
@@ -23,36 +25,38 @@ export const start = (opts: {
     ]
       .flatMap((v) => v)
 
-    const proc = yield* System.spawn([command, ...args])
+    const proc = yield* ChildProcess.make(executable, args)
 
     yield* Effect.logInfo(
       `Cloudflare tunnel started name=${opts.tunnelName} pid=${proc.pid} tunnelUrl=${opts.tunnelUrl ?? "<empty>"}`,
     )
 
     yield* pipe(
-      Stream.merge(proc.stdout, proc.stderr),
-      Stream.decodeText("utf-8"),
+      proc.all,
+      Stream.decodeText(),
       Stream.splitLines,
       (opts.cleanLogs ?? true)
         ? Stream.map((v) => v.replace(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\s\w+\s/, ""))
         : (s) => s,
       logPrefix ? Stream.map((v) => logPrefix + v) : (s) => s,
-      Stream.runForEach((v) => Effect.logWithLevel(opts.logLevel ?? LogLevel.Debug, v)),
+      Stream.runForEach((v) => Effect.logWithLevel(opts.logLevel ?? "Debug")(v)),
     )
   })
 
 export const layer = () =>
-  Layer.scopedDiscard(
+  Layer.effectDiscard(
     Effect.gen(function*() {
-      const tunnelName = yield* pipe(
-        Config.string("CLOUDFLARE_TUNNEL_NAME"),
-        Config.option,
-        Effect.andThen(Option.getOrUndefined),
+      const tunnelName = Option.getOrUndefined(
+        yield* pipe(
+          Config.string("CLOUDFLARE_TUNNEL_NAME"),
+          Config.option,
+        ),
       )
-      const tunnelUrl = yield* pipe(
-        Config.string("CLOUDFLARE_TUNNEL_URL"),
-        Config.option,
-        Effect.andThen(Option.getOrUndefined),
+      const tunnelUrl = Option.getOrUndefined(
+        yield* pipe(
+          Config.string("CLOUDFLARE_TUNNEL_URL"),
+          Config.option,
+        ),
       )
 
       if (!tunnelName) {
@@ -69,7 +73,7 @@ export const layer = () =>
           tunnelUrl,
         })
           .pipe(
-            Effect.catchAll((err) => Effect.logError("Cloudflare tunnel failed", err)),
+            Effect.catch((err) => Effect.logError("Cloudflare tunnel failed", err)),
           ),
       )
     }),

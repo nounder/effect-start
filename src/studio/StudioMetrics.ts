@@ -1,11 +1,10 @@
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Metric from "effect/Metric"
-import * as MetricKeyType from "effect/MetricKeyType"
 import * as PubSub from "effect/PubSub"
 import * as Schedule from "effect/Schedule"
-import type * as SqlClient from "../sql/SqlClient.ts"
-import * as Studio from "./Studio.ts"
+import type * as SqlClient from "effect/unstable/sql/SqlClient"
+import * as StudioContext from "./internal/StudioContext.ts"
 import * as StudioStore from "./StudioStore.ts"
 
 const PERIOD_MS = 2000
@@ -14,57 +13,57 @@ const SAMPLE_CAPACITY = 50_000
 export const layer: Layer.Layer<
   never,
   never,
-  Studio.Studio | SqlClient.SqlClient
+  StudioContext.Studio | SqlClient.SqlClient
 > = Layer
-  .scopedDiscard(
+  .effectDiscard(
     Effect.gen(function*() {
-      const { store } = yield* Studio.Studio
+      const { store } = yield* StudioContext.Studio
 
       const tick = Effect.gen(function*() {
         const timestamp = Math.floor(Date.now() / PERIOD_MS) * PERIOD_MS
-        const pairs = Metric.unsafeSnapshot()
+        const pairs = yield* Metric.snapshot
         const snapshots: Array<StudioStore.MetricSnapshot> = []
 
         for (const pair of pairs) {
-          const key = pair.metricKey
-          const state = pair.metricState as any
           let type: StudioStore.MetricSnapshot["type"] = "counter"
           let value: unknown = 0
 
-          if (MetricKeyType.CounterKeyTypeTypeId in key.keyType) {
+          if (pair.type === "Counter") {
             type = "counter"
-            value = state.count
-          } else if (MetricKeyType.GaugeKeyTypeTypeId in key.keyType) {
+            value = pair.state.count
+          } else if (pair.type === "Gauge") {
             type = "gauge"
-            value = state.value
-          } else if (MetricKeyType.HistogramKeyTypeTypeId in key.keyType) {
+            value = pair.state.value
+          } else if (pair.type === "Histogram") {
             type = "histogram"
             value = {
-              buckets: state.buckets,
-              count: state.count,
-              sum: state.sum,
-              min: state.min,
-              max: state.max,
+              buckets: pair.state.buckets,
+              count: pair.state.count,
+              sum: pair.state.sum,
+              min: pair.state.min,
+              max: pair.state.max,
             }
-          } else if (MetricKeyType.FrequencyKeyTypeTypeId in key.keyType) {
+          } else if (pair.type === "Frequency") {
             type = "frequency"
-            value = Object.fromEntries(state.occurrences)
-          } else if (MetricKeyType.SummaryKeyTypeTypeId in key.keyType) {
+            value = Object.fromEntries(pair.state.occurrences)
+          } else if (pair.type === "Summary") {
             type = "summary"
             value = {
-              quantiles: state.quantiles,
-              count: state.count,
-              sum: state.sum,
-              min: state.min,
-              max: state.max,
+              quantiles: pair.state.quantiles,
+              count: pair.state.count,
+              sum: pair.state.sum,
+              min: pair.state.min,
+              max: pair.state.max,
             }
           }
 
           snapshots.push({
-            name: key.name,
+            name: pair.id,
             type,
             value,
-            tags: key.tags.map((t: any) => ({ key: t.key, value: t.value })),
+            tags: pair.attributes === undefined
+              ? []
+              : Object.entries(pair.attributes).map(([key, value]) => ({ key, value: String(value) })),
             timestamp,
           })
         }

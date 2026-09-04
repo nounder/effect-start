@@ -1,36 +1,28 @@
-import * as MutableRef from "effect/MutableRef"
-import * as PlatformRuntime from "../PlatformRuntime.ts"
+import * as Runtime from "effect/Runtime"
+import * as MainFiber from "./internal/MainFiber.ts"
 
-export const runMain = PlatformRuntime.makeRunMain((options) => {
-  const prevFiber = MutableRef.get(PlatformRuntime.mainFiber)
-
-  MutableRef.set(PlatformRuntime.mainFiber, options.fiber)
-
+export const runMain = Runtime.makeRunMain((options) => {
+  const previous = MainFiber.get()
+  MainFiber.set(options.fiber)
   let receivedSignal = false
 
   options.fiber.addObserver((exit) => {
-    if (!receivedSignal) {
-      process.removeListener("SIGINT", onSigint)
-      process.removeListener("SIGTERM", onSigint)
-    }
+    const isCurrent = MainFiber.get() === options.fiber
+    MainFiber.clear(options.fiber)
+    process.removeListener("SIGINT", onSignal)
+    process.removeListener("SIGTERM", onSignal)
+    if (!isCurrent) return
     options.teardown(exit, (code) => {
-      if (receivedSignal || code !== 0) {
-        process.exit(code)
-      }
+      if (receivedSignal || code !== 0) process.exit(code)
     })
   })
 
-  function onSigint() {
+  function onSignal() {
     receivedSignal = true
-    process.removeListener("SIGINT", onSigint)
-    process.removeListener("SIGTERM", onSigint)
-    options.fiber.unsafeInterruptAsFork(options.fiber.id())
+    options.fiber.interruptUnsafe(options.fiber.id)
   }
 
-  process.on("SIGINT", onSigint)
-  process.on("SIGTERM", onSigint)
-
-  if (prevFiber) {
-    prevFiber.unsafeInterruptAsFork(prevFiber.id())
-  }
+  process.on("SIGINT", onSignal)
+  process.on("SIGTERM", onSignal)
+  previous?.interruptUnsafe(previous.id)
 })

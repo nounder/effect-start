@@ -12,7 +12,7 @@ const BundleEventBuildError = Schema.TaggedStruct("BundleEventBuildError", {
   error: Schema.String,
 })
 
-const BundleEvent = Schema.Union(BundleEventChange, BundleEventBuildError)
+const BundleEvent = Schema.Union([BundleEventChange, BundleEventBuildError])
 
 const IdPrefix = "effect-start/tags/"
 
@@ -43,12 +43,12 @@ export const emptyBundleContext: BundleContext = {
 }
 
 export const Tag = <const T extends BundleKey>(name: T) => <Identifier>() =>
-  Context.Tag(`${IdPrefix}${name}` as `${typeof IdPrefix}${T}`)<
+  Context.Service<
     Identifier,
     BundleContext
-  >()
+  >()(`${IdPrefix}${name}` as `${typeof IdPrefix}${T}`)
 
-export type Tag<T extends BundleKey = BundleKey> = Context.Tag<
+export type Tag<T extends BundleKey = BundleKey> = Context.Key<
   `${typeof IdPrefix}${T}`,
   BundleContext
 >

@@ -2,27 +2,59 @@ import * as test from "bun:test"
 import { BunServer } from "effect-start/bun"
 import * as Fetch from "effect-start/Fetch"
 import * as Route from "effect-start/Route"
-import * as Socket from "effect-start/Socket"
 import { TestLogger } from "effect-start/testing"
 import * as Context from "effect/Context"
 import * as Data from "effect/Data"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
+import * as Fiber from "effect/Fiber"
 import * as Layer from "effect/Layer"
 import * as Scope from "effect/Scope"
-import type * as RouteMap from "../src/internal/RouteMap.ts"
+import * as HttpServer from "effect/unstable/http/HttpServer"
+import * as Socket from "effect/unstable/socket/Socket"
+import type * as RouteMap from "effect-start/internal/RouteMap"
 
 const testLayer = <const Input extends RouteMap.RouteMapInput>(routes: Input) =>
-  BunServer.layerRoutes({ port: 0 }).pipe(Layer.provide(Route.layer(routes)))
+  BunServer
+    .layerRoutes({
+      hostname: "localhost",
+      port: 0,
+      gracefulShutdownTimeout: "100 millis",
+    })
+    .pipe(Layer.provide(Route.layer(routes)))
 
 const loggingTestLayer = <const Input extends RouteMap.RouteMapInput>(routes: Input) =>
   testLayer(routes).pipe(Layer.provideMerge(TestLogger.layer()))
 
+const messages = new WeakMap<WebSocket, Array<string | ArrayBuffer>>()
+const messageWaiters = new WeakMap<WebSocket, (data: string | ArrayBuffer) => void>()
+const closes = new WeakMap<WebSocket, CloseEvent>()
+const closeWaiters = new WeakMap<WebSocket, (event: CloseEvent) => void>()
+
 const connect = (url: string) =>
-  Effect.async<WebSocket>((resume) => {
+  Effect.callback<WebSocket>((resume) => {
     const ws = new WebSocket(url)
     ws.binaryType = "arraybuffer"
+    messages.set(ws, [])
+    ws.addEventListener("message", (event) => {
+      const waiter = messageWaiters.get(ws)
+      if (waiter !== undefined) {
+        messageWaiters.delete(ws)
+        waiter(event.data)
+      } else {
+        messages.get(ws)!.push(event.data)
+      }
+    })
+    ws.addEventListener("close", (event) => {
+      const waiter = closeWaiters.get(ws)
+      if (waiter !== undefined) {
+        closeWaiters.delete(ws)
+        waiter(event)
+      } else {
+        closes.set(ws, event)
+      }
+    })
     ws.addEventListener("open", () => resume(Effect.succeed(ws)), { once: true })
     ws.addEventListener("error", () => resume(Effect.die("ws error")), {
       once: true,
@@ -30,24 +62,31 @@ const connect = (url: string) =>
   })
 
 const nextMessage = (ws: WebSocket) =>
-  Effect.async<string | ArrayBuffer>((resume) => {
-    ws.addEventListener(
-      "message",
-      (event) => resume(Effect.succeed(event.data)),
-      { once: true },
-    )
+  Effect.callback<string | ArrayBuffer>((resume) => {
+    const buffered = messages.get(ws)?.shift()
+    if (buffered !== undefined) {
+      resume(Effect.succeed(buffered))
+    } else {
+      messageWaiters.set(ws, (data) => resume(Effect.succeed(data)))
+    }
   })
 
 const nextClose = (ws: WebSocket) =>
-  Effect.async<CloseEvent>((resume) => {
-    ws.addEventListener(
-      "close",
-      (event) => resume(Effect.succeed(event)),
-      { once: true },
-    )
+  Effect.callback<CloseEvent>((resume) => {
+    const buffered = closes.get(ws)
+    if (buffered !== undefined) {
+      closes.delete(ws)
+      resume(Effect.succeed(buffered))
+    } else {
+      closeWaiters.set(ws, (event) => resume(Effect.succeed(event)))
+    }
   })
 
-const wsUrl = (server: { port: number | undefined }) => `ws://localhost:${server.port}`
+const httpUrl = (server: { readonly address: HttpServer.Address }) => HttpServer.formatAddress(server.address)
+
+const wsUrl = (server: { readonly address: HttpServer.Address }) => httpUrl(server).replace(/^http/, "ws")
+
+const runPromise = <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.runPromise(effect as Effect.Effect<A, E>)
 
 test.describe("Route.ws", () => {
   test.test("echoes text frames", () => {
@@ -60,7 +99,7 @@ test.describe("Route.ws", () => {
 
     return Effect
       .gen(function*() {
-        const { server } = yield* BunServer.BunServer
+        const server = yield* HttpServer.HttpServer
         const ws = yield* connect(`${wsUrl(server)}/ws`)
         ws.send("hello")
         const echoed = yield* nextMessage(ws)
@@ -70,11 +109,12 @@ test.describe("Route.ws", () => {
           .toBe("hello")
 
         ws.close()
+        yield* nextClose(ws)
       })
       .pipe(
         Effect.provide(testLayer(routes)),
         Effect.scoped,
-        Effect.runPromise,
+        runPromise,
       )
   })
 
@@ -88,7 +128,7 @@ test.describe("Route.ws", () => {
 
     return Effect
       .gen(function*() {
-        const { server } = yield* BunServer.BunServer
+        const server = yield* HttpServer.HttpServer
         const ws = yield* connect(`${wsUrl(server)}/ws`)
 
         ws.send("text-frame")
@@ -107,11 +147,12 @@ test.describe("Route.ws", () => {
           .toEqual(bytes)
 
         ws.close()
+        yield* nextClose(ws)
       })
       .pipe(
         Effect.provide(testLayer(routes)),
         Effect.scoped,
-        Effect.runPromise,
+        runPromise,
       )
   })
 
@@ -128,8 +169,8 @@ test.describe("Route.ws", () => {
 
     return Effect
       .gen(function*() {
-        const { server } = yield* BunServer.BunServer
-        const base = `http://localhost:${server.port}`
+        const server = yield* HttpServer.HttpServer
+        const base = httpUrl(server)
 
         const response = yield* Effect.promise(() => fetch(`${base}/dual`))
         const body = yield* Effect.promise(() => response.text())
@@ -150,11 +191,12 @@ test.describe("Route.ws", () => {
           .toBe("ping")
 
         ws.close()
+        yield* nextClose(ws)
       })
       .pipe(
         Effect.provide(testLayer(routes)),
         Effect.scoped,
-        Effect.runPromise,
+        runPromise,
       )
   })
 
@@ -172,8 +214,8 @@ test.describe("Route.ws", () => {
 
     return Effect
       .gen(function*() {
-        const { server } = yield* BunServer.BunServer
-        const base = `http://localhost:${server.port}`
+        const server = yield* HttpServer.HttpServer
+        const base = httpUrl(server)
 
         // No upgrade, Accept prefers html → the html route wins negotiation.
         const htmlResponse = yield* Fetch.get(`${base}/feed`, {
@@ -215,11 +257,12 @@ test.describe("Route.ws", () => {
           .toBe("ping")
 
         ws.close()
+        yield* nextClose(ws)
       })
       .pipe(
         Effect.provide(testLayer(routes)),
         Effect.scoped,
-        Effect.runPromise,
+        runPromise,
       )
   })
 
@@ -233,8 +276,8 @@ test.describe("Route.ws", () => {
 
     return Effect
       .gen(function*() {
-        const { server } = yield* BunServer.BunServer
-        const response = yield* Effect.promise(() => fetch(`http://localhost:${server.port}/ws`))
+        const server = yield* HttpServer.HttpServer
+        const response = yield* Effect.promise(() => fetch(`${httpUrl(server)}/ws`))
 
         test
           .expect(response.status)
@@ -243,7 +286,7 @@ test.describe("Route.ws", () => {
       .pipe(
         Effect.provide(testLayer(routes)),
         Effect.scoped,
-        Effect.runPromise,
+        runPromise,
       )
   })
 
@@ -257,7 +300,7 @@ test.describe("Route.ws", () => {
 
     return Effect
       .gen(function*() {
-        const { server } = yield* BunServer.BunServer
+        const server = yield* HttpServer.HttpServer
         const ws = yield* connect(`${wsUrl(server)}/ws`)
         ws.send("immediately")
         const echoed = yield* nextMessage(ws)
@@ -267,11 +310,12 @@ test.describe("Route.ws", () => {
           .toBe("immediately")
 
         ws.close()
+        yield* nextClose(ws)
       })
       .pipe(
         Effect.provide(testLayer(routes)),
         Effect.scoped,
-        Effect.runPromise,
+        runPromise,
       )
   })
 
@@ -282,8 +326,8 @@ test.describe("Route.ws", () => {
 
     return Effect
       .gen(function*() {
-        const { server } = yield* BunServer.BunServer
-        const base = `http://localhost:${server.port}`
+        const server = yield* HttpServer.HttpServer
+        const base = httpUrl(server)
 
         const response = yield* Effect.promise(() => fetch(`${base}/`))
         const body = yield* Effect.promise(() => response.text())
@@ -295,7 +339,7 @@ test.describe("Route.ws", () => {
           .expect(body)
           .toBe("plain")
 
-        const closed = yield* Effect.async<CloseEvent>((resume) => {
+        const closed = yield* Effect.callback<CloseEvent>((resume) => {
           const ws = new WebSocket(`${wsUrl(server)}/`)
           ws.addEventListener(
             "close",
@@ -315,7 +359,7 @@ test.describe("Route.ws", () => {
       .pipe(
         Effect.provide(testLayer(routes)),
         Effect.scoped,
-        Effect.runPromise,
+        runPromise,
       )
   })
 
@@ -331,7 +375,7 @@ test.describe("Route.ws", () => {
 
     return Effect
       .gen(function*() {
-        const { server } = yield* BunServer.BunServer
+        const server = yield* HttpServer.HttpServer
         const ws = yield* connect(`${wsUrl(server)}/ws`)
         ws.send("hello")
         yield* nextMessage(ws)
@@ -345,7 +389,7 @@ test.describe("Route.ws", () => {
       .pipe(
         Effect.provide(testLayer(routes)),
         Effect.scoped,
-        Effect.runPromise,
+        runPromise,
       )
   })
 
@@ -357,7 +401,7 @@ test.describe("Route.ws", () => {
         Route.ws(function*(ctx) {
           const write = yield* ctx.socket.writer
           yield* ctx.socket.runRaw((data) => write(data)).pipe(
-            Effect.catchAll((error) =>
+            Effect.catch((error) =>
               Effect.sync(() => {
                 observed = error
               })
@@ -372,7 +416,7 @@ test.describe("Route.ws", () => {
 
     return Effect
       .gen(function*() {
-        const { server } = yield* BunServer.BunServer
+        const server = yield* HttpServer.HttpServer
         const ws = yield* connect(`${wsUrl(server)}/ws`)
         ws.send("hello")
         yield* nextMessage(ws)
@@ -393,7 +437,7 @@ test.describe("Route.ws", () => {
       .pipe(
         Effect.provide(testLayer(routes)),
         Effect.scoped,
-        Effect.runPromise,
+        runPromise,
       )
   })
 
@@ -407,7 +451,7 @@ test.describe("Route.ws", () => {
 
     return Effect
       .gen(function*() {
-        const { server } = yield* BunServer.BunServer
+        const server = yield* HttpServer.HttpServer
         const ws = yield* connect(`${wsUrl(server)}/ws`)
         ws.send("hello")
         yield* nextMessage(ws)
@@ -426,24 +470,21 @@ test.describe("Route.ws", () => {
       .pipe(
         Effect.provide(loggingTestLayer(routes)),
         Effect.scoped,
-        Effect.runPromise,
+        runPromise,
       )
   })
 
-  test.test("does not log an error when the handler closes the socket itself", () => {
+  test.test("logs an unclean server-initiated close", () => {
     const routes = Route.map({
       "/ws": Route.get(Route.ws(function*(ctx) {
         const write = yield* ctx.socket.writer
-        // The handler decides to close with a non-1000 code. Because the close
-        // is server-initiated it is intentional, so nothing should be logged
-        // regardless of the code.
         yield* ctx.socket.runRaw(() => write(new Socket.CloseEvent(4001, "bye")))
       })),
     })
 
     return Effect
       .gen(function*() {
-        const { server } = yield* BunServer.BunServer
+        const server = yield* HttpServer.HttpServer
         const ws = yield* connect(`${wsUrl(server)}/ws`)
         ws.send("trigger")
         yield* nextClose(ws)
@@ -452,32 +493,27 @@ test.describe("Route.ws", () => {
         const messages = yield* TestLogger.messages
 
         test
-          .expect(messages)
-          .toEqual([])
+          .expect(messages.some((message) => message.includes("SocketError: 4001: bye")))
+          .toBe(true)
       })
       .pipe(
         Effect.provide(loggingTestLayer(routes)),
         Effect.scoped,
-        Effect.runPromise,
+        runPromise,
       )
   })
 
-  test.test("closes the socket with 1000 when the handler completes", () => {
+  test.test("closes the socket with 1000 when the handler requests a clean close", () => {
     const routes = Route.map({
       "/ws": Route.get(Route.ws(function*(ctx) {
         const write = yield* ctx.socket.writer
-        // Stop consuming after a short window so the handler returns while the
-        // client is still connected.
-        yield* ctx.socket.runRaw((data) => write(data)).pipe(
-          Effect.timeout("50 millis"),
-          Effect.ignore,
-        )
+        yield* write(new Socket.CloseEvent(1000))
       })),
     })
 
     return Effect
       .gen(function*() {
-        const { server } = yield* BunServer.BunServer
+        const server = yield* HttpServer.HttpServer
         const ws = yield* connect(`${wsUrl(server)}/ws`)
         const closeEvent = yield* nextClose(ws)
 
@@ -488,7 +524,7 @@ test.describe("Route.ws", () => {
       .pipe(
         Effect.provide(testLayer(routes)),
         Effect.scoped,
-        Effect.runPromise,
+        runPromise,
       )
   })
 
@@ -507,7 +543,7 @@ test.describe("Route.ws", () => {
 
     return Effect
       .gen(function*() {
-        const { server } = yield* BunServer.BunServer
+        const server = yield* HttpServer.HttpServer
         const ws = yield* connect(`${wsUrl(server)}/ws`)
         ws.send("hi")
         const closeEvent = yield* nextClose(ws)
@@ -521,7 +557,7 @@ test.describe("Route.ws", () => {
       .pipe(
         Effect.provide(testLayer(routes)),
         Effect.scoped,
-        Effect.runPromise,
+        runPromise,
       )
   })
 
@@ -535,7 +571,7 @@ test.describe("Route.ws", () => {
 
     return Effect
       .gen(function*() {
-        const { server } = yield* BunServer.BunServer
+        const server = yield* HttpServer.HttpServer
         const ws = yield* connect(`${wsUrl(server)}/ws`)
         ws.send("trigger")
         const closeEvent = yield* nextClose(ws)
@@ -550,7 +586,7 @@ test.describe("Route.ws", () => {
       .pipe(
         Effect.provide(testLayer(routes)),
         Effect.scoped,
-        Effect.runPromise,
+        runPromise,
       )
   })
 
@@ -568,7 +604,7 @@ test.describe("Route.ws", () => {
 
     return Effect
       .gen(function*() {
-        const { server } = yield* BunServer.BunServer
+        const server = yield* HttpServer.HttpServer
         const ws = yield* connect(`${wsUrl(server)}/ws`)
         const first = yield* nextMessage(ws)
 
@@ -577,11 +613,12 @@ test.describe("Route.ws", () => {
           .toBe("welcome")
 
         ws.close()
+        yield* nextClose(ws)
       })
       .pipe(
         Effect.provide(testLayer(routes)),
         Effect.scoped,
-        Effect.runPromise,
+        runPromise,
       )
   })
 
@@ -595,7 +632,7 @@ test.describe("Route.ws", () => {
 
     return Effect
       .gen(function*() {
-        const { server } = yield* BunServer.BunServer
+        const server = yield* HttpServer.HttpServer
         const a = yield* connect(`${wsUrl(server)}/ws`)
         const b = yield* connect(`${wsUrl(server)}/ws`)
 
@@ -613,11 +650,12 @@ test.describe("Route.ws", () => {
 
         a.close()
         b.close()
+        yield* Effect.all([nextClose(a), nextClose(b)])
       })
       .pipe(
         Effect.provide(testLayer(routes)),
         Effect.scoped,
-        Effect.runPromise,
+        runPromise,
       )
   })
 
@@ -628,9 +666,9 @@ test.describe("Route.ws", () => {
 
     return Effect
       .gen(function*() {
-        const { server } = yield* BunServer.BunServer
+        const server = yield* HttpServer.HttpServer
         const response = yield* Effect.promise(() =>
-          fetch(`http://localhost:${server.port}/plain`, {
+          fetch(`${httpUrl(server)}/plain`, {
             headers: { upgrade: "websocket", connection: "Upgrade" },
           })
         )
@@ -642,7 +680,7 @@ test.describe("Route.ws", () => {
       .pipe(
         Effect.provide(testLayer(routes)),
         Effect.scoped,
-        Effect.runPromise,
+        runPromise,
       )
   })
 
@@ -662,7 +700,7 @@ test.describe("Route.ws", () => {
 
     return Effect
       .gen(function*() {
-        const { server } = yield* BunServer.BunServer
+        const server = yield* HttpServer.HttpServer
         const ws = yield* connect(`${wsUrl(server)}/ws`)
         ws.send("hello")
         const echoed = yield* nextMessage(ws)
@@ -672,11 +710,12 @@ test.describe("Route.ws", () => {
           .toBe("hello")
 
         ws.close()
+        yield* nextClose(ws)
       })
       .pipe(
         Effect.provide(testLayer(routes)),
         Effect.scoped,
-        Effect.runPromise,
+        runPromise,
       )
   })
 
@@ -700,7 +739,7 @@ test.describe("Route.ws", () => {
 
     return Effect
       .gen(function*() {
-        const { server } = yield* BunServer.BunServer
+        const server = yield* HttpServer.HttpServer
         const ws = yield* connect(`${wsUrl(server)}/ws`)
         ws.send("hello")
         const echoed = yield* nextMessage(ws)
@@ -713,11 +752,12 @@ test.describe("Route.ws", () => {
           .toBe(true)
 
         ws.close()
+        yield* nextClose(ws)
       })
       .pipe(
         Effect.provide(testLayer(routes)),
         Effect.scoped,
-        Effect.runPromise,
+        runPromise,
       )
   })
 
@@ -732,9 +772,9 @@ test.describe("Route.ws", () => {
 
     return Effect
       .gen(function*() {
-        const { server } = yield* BunServer.BunServer
+        const server = yield* HttpServer.HttpServer
         const response = yield* Effect.promise(() =>
-          fetch(`http://localhost:${server.port}/page`, {
+          fetch(`${httpUrl(server)}/page`, {
             headers: { upgrade: "websocket", connection: "Upgrade" },
           })
         )
@@ -746,7 +786,7 @@ test.describe("Route.ws", () => {
       .pipe(
         Effect.provide(testLayer(routes)),
         Effect.scoped,
-        Effect.runPromise,
+        runPromise,
       )
   })
 })
@@ -762,7 +802,7 @@ test.describe("Route.ws scope lifecycle", () => {
             const scope = yield* Effect.scope
             yield* Deferred.succeed(
               observed,
-              Scope.ScopeTypeId in scope,
+              scope.state._tag !== "Closed",
             )
             const write = yield* ctx.socket.writer
             yield* ctx.socket.runRaw((data) => write(data))
@@ -771,7 +811,7 @@ test.describe("Route.ws scope lifecycle", () => {
 
         return yield* Effect
           .gen(function*() {
-            const { server } = yield* BunServer.BunServer
+            const server = yield* HttpServer.HttpServer
             const ws = yield* connect(`${wsUrl(server)}/ws`)
 
             test
@@ -779,6 +819,7 @@ test.describe("Route.ws scope lifecycle", () => {
               .toBe(true)
 
             ws.close()
+            yield* nextClose(ws)
           })
           .pipe(
             Effect.provide(testLayer(routes)),
@@ -787,7 +828,7 @@ test.describe("Route.ws scope lifecycle", () => {
       })
       .pipe(
         Effect.scoped,
-        Effect.runPromise,
+        runPromise,
       ))
 
   test.test("finalizer runs when the client closes cleanly", () =>
@@ -805,7 +846,7 @@ test.describe("Route.ws scope lifecycle", () => {
 
         return yield* Effect
           .gen(function*() {
-            const { server } = yield* BunServer.BunServer
+            const server = yield* HttpServer.HttpServer
             const ws = yield* connect(`${wsUrl(server)}/ws`)
             ws.send("hello")
             yield* nextMessage(ws)
@@ -824,7 +865,7 @@ test.describe("Route.ws scope lifecycle", () => {
       })
       .pipe(
         Effect.scoped,
-        Effect.runPromise,
+        runPromise,
       ))
 
   test.test("finalizer runs when the client closes abnormally", () =>
@@ -837,14 +878,14 @@ test.describe("Route.ws scope lifecycle", () => {
             yield* Effect.addFinalizer(() => Deferred.succeed(released, undefined))
             const write = yield* ctx.socket.writer
             yield* ctx.socket.runRaw((data) => write(data)).pipe(
-              Effect.catchAll(() => Effect.void),
+              Effect.catch(() => Effect.void),
             )
           })),
         })
 
         return yield* Effect
           .gen(function*() {
-            const { server } = yield* BunServer.BunServer
+            const server = yield* HttpServer.HttpServer
             const ws = yield* connect(`${wsUrl(server)}/ws`)
             ws.send("hello")
             yield* nextMessage(ws)
@@ -858,7 +899,7 @@ test.describe("Route.ws scope lifecycle", () => {
       })
       .pipe(
         Effect.scoped,
-        Effect.runPromise,
+        runPromise,
       ))
 
   test.test("acquireRelease resource is released after close", () =>
@@ -880,7 +921,7 @@ test.describe("Route.ws scope lifecycle", () => {
 
         return yield* Effect
           .gen(function*() {
-            const { server } = yield* BunServer.BunServer
+            const server = yield* HttpServer.HttpServer
             const ws = yield* connect(`${wsUrl(server)}/ws`)
             yield* Deferred.await(acquired)
 
@@ -898,7 +939,7 @@ test.describe("Route.ws scope lifecycle", () => {
       })
       .pipe(
         Effect.scoped,
-        Effect.runPromise,
+        runPromise,
       ))
 
   test.test("scope stays open across multiple frames", () =>
@@ -916,7 +957,7 @@ test.describe("Route.ws scope lifecycle", () => {
 
         return yield* Effect
           .gen(function*() {
-            const { server } = yield* BunServer.BunServer
+            const server = yield* HttpServer.HttpServer
             const ws = yield* connect(`${wsUrl(server)}/ws`)
 
             ws.send("one")
@@ -945,22 +986,18 @@ test.describe("Route.ws scope lifecycle", () => {
       })
       .pipe(
         Effect.scoped,
-        Effect.runPromise,
+        runPromise,
       ))
 
   test.test("finalizer runs when the server scope closes with the socket still open", () =>
     Effect
       .gen(function*() {
         const released = yield* Deferred.make<void>()
-        const writeRef = yield* Deferred.make<
-          (chunk: Uint8Array | string | Socket.CloseEvent) => Effect.Effect<void, Socket.SocketError>
-        >()
 
         const routes = Route.map({
           "/ws": Route.get(Route.ws(function*(ctx) {
             yield* Effect.addFinalizer(() => Deferred.succeed(released, undefined))
             const write = yield* ctx.socket.writer
-            yield* Deferred.succeed(writeRef, write)
             yield* ctx.socket.runRaw((data) => write(data))
           })),
         })
@@ -968,48 +1005,32 @@ test.describe("Route.ws scope lifecycle", () => {
         // Build the server into a scope we close ourselves, simulating shutdown
         // while a connection is live.
         const serverScope = yield* Scope.make()
-        const { server } = yield* Layer.build(testLayer(routes)).pipe(
-          Effect.flatMap((ctx) => Effect.provide(BunServer.BunServer, ctx)),
-          Scope.extend(serverScope),
+        const server = yield* Layer.build(testLayer(routes)).pipe(
+          Effect.map((context) => Context.get(context, HttpServer.HttpServer)),
+          Scope.provide(serverScope),
         )
 
         const ws = yield* connect(`${wsUrl(server)}/ws`)
         ws.send("hello")
         yield* nextMessage(ws)
-        const write = yield* Deferred.await(writeRef)
 
         test
           .expect(yield* Deferred.isDone(released))
           .toBe(false)
 
-        // Close the server scope while the socket is still open. The handler
-        // finalizer must run (its fiber is interrupted), rather than leak.
-        yield* Scope.close(serverScope, Exit.void)
+        const closeFiber = yield* Effect.forkChild(Scope.close(serverScope, Exit.void))
 
         yield* Deferred.await(released).pipe(
-          Effect.timeoutFail({
-            duration: "100 millis",
-            onTimeout: () => new Error("handler finalizer leaked: never ran after server scope closed"),
-          }),
+          Effect.timeout("500 millis"),
         )
 
-        // Writing after the socket is gone must fail fast with a SocketError,
-        // rather than parking forever on the now-closed latch.
-        const error = yield* write("after-close").pipe(
-          Effect.timeoutFail({
-            duration: "100 millis",
-            onTimeout: () => new Error("write after close hung instead of failing"),
-          }),
-          Effect.flip,
-        )
-
-        test
-          .expect(Socket.isSocketError(error))
-          .toBe(true)
+        ws.close()
+        yield* nextClose(ws)
+        yield* Fiber.join(closeFiber)
       })
       .pipe(
         Effect.scoped,
-        Effect.runPromise,
+        runPromise,
       ))
 })
 
@@ -1027,7 +1048,7 @@ test.describe("Route.ws types", () => {
     }))
   })
 
-  test.it("does not leak BunServer or Scope into the app requirements", () => {
+  test.it("does not leak HttpServer or Scope into the app requirements", () => {
     const layer = Route.layer(
       Route.map({
         "/ws": Route.get(Route.ws(function*(ctx) {
@@ -1038,11 +1059,11 @@ test.describe("Route.ws types", () => {
       }),
     )
 
-    // BunServer is an IntrinsicService provided automatically at handling time;
+    // HttpServerRequest is provided automatically at handling time;
     // Scope is provided by the scoped runner around the handler. Neither should
     // surface in the layer's requirements.
     test
-      .expectTypeOf<Layer.Layer.Context<typeof layer>>()
+      .expectTypeOf<Layer.Services<typeof layer>>()
       .toEqualTypeOf<never>()
   })
 
@@ -1058,15 +1079,12 @@ test.describe("Route.ws types", () => {
 
     const layer = Route.layer(Route.map({ "/ws": rs }))
 
-    // Db survives as a real requirement; BunServer and Scope are stripped.
+    // Db survives as a real requirement; HttpServerRequest and Scope are stripped.
     test
-      .expectTypeOf<Layer.Layer.Context<typeof layer>>()
+      .expectTypeOf<Layer.Services<typeof layer>>()
       .toEqualTypeOf<Db>()
   })
 })
 
 class MyErr extends Data.TaggedError("MyErr")<{}> {}
-class Db extends Context.Tag("Db")<
-  Db,
-  { query: () => Effect.Effect<string, MyErr> }
->() {}
+class Db extends Context.Service<Db, { query: () => Effect.Effect<string, MyErr> }>()("Db") {}

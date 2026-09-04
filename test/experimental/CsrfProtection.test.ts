@@ -3,7 +3,7 @@ import * as Fetch from "effect-start/Fetch"
 import * as Route from "effect-start/Route"
 import * as RouteHttp from "effect-start/RouteHttp"
 import * as Effect from "effect/Effect"
-import * as CsrfProtection from "../../src/experimental/CsrfProtection.ts"
+import * as CsrfProtection from "effect-start/experimental/CsrfProtection"
 
 function makeHandler(options?: CsrfProtection.Options) {
   return Fetch.fromHandler(

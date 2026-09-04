@@ -2,9 +2,14 @@ import * as test from "bun:test"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
-import { BunRoute, BunServer } from "../../src/bun/index.ts"
-import type * as RouteMap from "../../src/internal/RouteMap.ts"
-import * as Route from "../../src/Route.ts"
+import * as HttpServer from "effect/unstable/http/HttpServer"
+import { BunRoute, BunServer } from "effect-start/bun"
+import * as Route from "effect-start/Route"
+import type * as RouteMap from "effect-start/internal/RouteMap"
+
+const serverPort = (server: HttpServer.HttpServer["Service"]) =>
+  server.address._tag === "TcpAddress" ? server.address.port : undefined
+const serveOptions = (options: BunServer.BunServeOptions) => options
 
 const testLayer = <const Input extends RouteMap.RouteMapInput>(
   routes: Input,
@@ -13,10 +18,10 @@ const testLayer = <const Input extends RouteMap.RouteMapInput>(
   },
 ) =>
   BunServer
-    .layerRoutes({
+    .layerRoutes(serveOptions({
       port: 0,
       ...options,
-    })
+    }))
     .pipe(Layer.provide(Route.layer(routes)))
 
 const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
@@ -49,8 +54,8 @@ test.describe(BunRoute.htmlBundle, () => {
 
     return Effect
       .gen(function*() {
-        const bunServer = yield* BunServer.BunServer
-        const response = yield* Effect.promise(() => fetch(`http://localhost:${bunServer.server.port}/`))
+        const bunServer = yield* HttpServer.HttpServer
+        const response = yield* Effect.promise(() => fetch(`http://localhost:${serverPort(bunServer)}/`))
         const html = yield* Effect.promise(() => response.text())
 
         test
@@ -82,8 +87,8 @@ test.describe(BunRoute.htmlBundle, () => {
 
     return Effect
       .gen(function*() {
-        const bunServer = yield* BunServer.BunServer
-        const response = yield* Effect.promise(() => fetch(`http://localhost:${bunServer.server.port}/page`))
+        const bunServer = yield* HttpServer.HttpServer
+        const response = yield* Effect.promise(() => fetch(`http://localhost:${serverPort(bunServer)}/page`))
         const html = yield* Effect.promise(() => response.text())
 
         test
@@ -111,8 +116,8 @@ test.describe(BunRoute.htmlBundle, () => {
 
     return Effect
       .gen(function*() {
-        const bunServer = yield* BunServer.BunServer
-        const response = yield* Effect.promise(() => fetch(`http://localhost:${bunServer.server.port}/any/path`))
+        const bunServer = yield* HttpServer.HttpServer
+        const response = yield* Effect.promise(() => fetch(`http://localhost:${serverPort(bunServer)}/any/path`))
 
         test
           .expect(response.status)
@@ -134,8 +139,8 @@ test.describe(BunRoute.htmlBundle, () => {
   test.test("injects HMR script once when multiple htmlBundle wrappers are applied", () =>
     Effect
       .gen(function*() {
-        const bunServer = yield* BunServer.BunServer
-        const response = yield* Effect.promise(() => fetch(`http://localhost:${bunServer.server.port}/any/path`))
+        const bunServer = yield* HttpServer.HttpServer
+        const response = yield* Effect.promise(() => fetch(`http://localhost:${serverPort(bunServer)}/any/path`))
         const html = yield* Effect.promise(() => response.text())
 
         test
@@ -172,8 +177,8 @@ test.describe(BunRoute.htmlBundle, () => {
   test.test("preserves non-Bun child scripts while de-duplicating Bun scripts", () =>
     Effect
       .gen(function*() {
-        const bunServer = yield* BunServer.BunServer
-        const response = yield* Effect.promise(() => fetch(`http://localhost:${bunServer.server.port}/any/path`))
+        const bunServer = yield* HttpServer.HttpServer
+        const response = yield* Effect.promise(() => fetch(`http://localhost:${serverPort(bunServer)}/any/path`))
         const html = yield* Effect.promise(() => response.text())
         const bunScriptCount = countBunDevScripts(html)
 
@@ -213,8 +218,8 @@ test.describe(BunRoute.htmlBundle, () => {
   test.test("preserves linked layout script while keeping distinct bundle entry scripts", () =>
     Effect
       .gen(function*() {
-        const bunServer = yield* BunServer.BunServer
-        const response = yield* Effect.promise(() => fetch(`http://localhost:${bunServer.server.port}/any/path`))
+        const bunServer = yield* HttpServer.HttpServer
+        const response = yield* Effect.promise(() => fetch(`http://localhost:${serverPort(bunServer)}/any/path`))
         const html = yield* Effect.promise(() => response.text())
         const bunScriptCount = countBunDevScripts(html)
         const linkedScriptCount = countScriptsBySrc(
@@ -256,8 +261,8 @@ test.describe(BunRoute.htmlBundle, () => {
   test.test("preserves nested bundle entry scripts for distinct html bundles", () =>
     Effect
       .gen(function*() {
-        const bunServer = yield* BunServer.BunServer
-        const baseUrl = `http://localhost:${bunServer.server.port}/any/path`
+        const bunServer = yield* HttpServer.HttpServer
+        const baseUrl = `http://localhost:${serverPort(bunServer)}/any/path`
         const response = yield* Effect.promise(() => fetch(baseUrl))
         const html = yield* Effect.promise(() => response.text())
         const scriptSrcs = extractScriptSrcs(html)
@@ -314,8 +319,8 @@ test.describe(BunRoute.htmlBundle, () => {
   test.test("does not include Bun dev scripts when development is false", () =>
     Effect
       .gen(function*() {
-        const bunServer = yield* BunServer.BunServer
-        const response = yield* Effect.promise(() => fetch(`http://localhost:${bunServer.server.port}/any/path`))
+        const bunServer = yield* HttpServer.HttpServer
+        const response = yield* Effect.promise(() => fetch(`http://localhost:${serverPort(bunServer)}/any/path`))
         const html = yield* Effect.promise(() => response.text())
         const bunScriptCount = countBunDevScripts(html)
 
@@ -348,8 +353,8 @@ test.describe(BunRoute.htmlBundle, () => {
   test.test("includes Bun dev scripts when development is true", () =>
     Effect
       .gen(function*() {
-        const bunServer = yield* BunServer.BunServer
-        const response = yield* Effect.promise(() => fetch(`http://localhost:${bunServer.server.port}/any/path`))
+        const bunServer = yield* HttpServer.HttpServer
+        const response = yield* Effect.promise(() => fetch(`http://localhost:${serverPort(bunServer)}/any/path`))
         const html = yield* Effect.promise(() => response.text())
         const bunScriptCount = countBunDevScripts(html)
 
@@ -389,8 +394,8 @@ test.describe(BunRoute.htmlBundle, () => {
 
     return Effect
       .gen(function*() {
-        const bunServer = yield* BunServer.BunServer
-        const response = yield* Effect.promise(() => fetch(`http://localhost:${bunServer.server.port}/`))
+        const bunServer = yield* HttpServer.HttpServer
+        const response = yield* Effect.promise(() => fetch(`http://localhost:${serverPort(bunServer)}/`))
 
         test
           .expect(response.status)

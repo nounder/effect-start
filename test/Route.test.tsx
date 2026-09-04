@@ -1,4 +1,3 @@
-/** @jsxImportSource effect-start */
 import * as test from "bun:test"
 import type * as Engine from "effect-start/datastar"
 import * as Development from "effect-start/Development"
@@ -300,6 +299,7 @@ test.describe("Route.json", () => {
         const client = Fetch.fromHandler(handler)
 
         const found = yield* client.get("http://localhost/json")
+
         test
           .expect(found.status)
           .toBe(200)
@@ -308,6 +308,7 @@ test.describe("Route.json", () => {
           .toEqual({ data: [1, 2, 3] })
 
         const missing = yield* client.get("http://localhost/json?missing")
+
         test
           .expect(missing.status)
           .toBe(404)
@@ -524,8 +525,8 @@ test.describe(Route.devOnly, () => {
   test.it("provides dev context to subsequent routes", () =>
     Effect
       .gen(function*() {
-        const runtime = yield* Effect.runtime<Development.Development>()
-        const handler = RouteHttp.toWebHandlerRuntime(runtime)(
+        const context = yield* Effect.context<Development.Development>()
+        const handler = RouteHttp.toWebHandlerWith(context)(
           Route.get(
             Route.devOnly,
             Route.filter(function*(ctx) {
@@ -577,8 +578,8 @@ test.describe(Route.devOnly, () => {
   test.it("development handler falls through in dev with dev context", () =>
     Effect
       .gen(function*() {
-        const runtime = yield* Effect.runtime<Development.Development>()
-        const handler = RouteHttp.toWebHandlerRuntime(runtime)(
+        const context = yield* Effect.context<Development.Development>()
+        const handler = RouteHttp.toWebHandlerWith(context)(
           Route.get(
             Route.devOnly,
             Route.text(function*(ctx) {
@@ -605,6 +606,7 @@ test.describe(Route.devOnly, () => {
 test.describe("Route generator handler must not allow returning an Effect", () => {
   test.it("returning an Effect from html generator is a type error", () => {
     Route.get(
+      // @ts-expect-error - generator handlers must return renderable values
       Route.html(function*() {
         return Effect.succeed(
           <div>
@@ -617,6 +619,7 @@ test.describe("Route generator handler must not allow returning an Effect", () =
 
   test.it("returning an Effect from text generator is a type error", () => {
     Route.get(
+      // @ts-expect-error - generator handlers must return renderable values
       Route.text(function*() {
         return Effect.succeed("oops")
       }),
@@ -883,8 +886,8 @@ test.describe("Route.link", () => {
 })
 
 test.describe("Route.layer / Route.layerMerge type inference", () => {
-  class SomeService extends Context.Tag("SomeService")<SomeService, { x: number }>() {}
-  class OtherService extends Context.Tag("OtherService")<OtherService, { y: number }>() {}
+  class SomeService extends Context.Service<SomeService, { x: number }>()("SomeService") {}
+  class OtherService extends Context.Service<OtherService, { y: number }>()("OtherService") {}
 
   const flat = Route.map({
     "/x": Route.get(
@@ -898,32 +901,32 @@ test.describe("Route.layer / Route.layerMerge type inference", () => {
   const flatMerge = Route.layerMerge(flat)
 
   test
-    .expectTypeOf<Layer.Layer.Success<typeof flatLayer>>()
+    .expectTypeOf<Layer.Success<typeof flatLayer>>()
     .toEqualTypeOf<
       Route.Routes
     >()
   test
-    .expectTypeOf<Layer.Layer.Error<typeof flatLayer>>()
+    .expectTypeOf<Layer.Error<typeof flatLayer>>()
     .toEqualTypeOf<
       never
     >()
   test
-    .expectTypeOf<Layer.Layer.Context<typeof flatLayer>>()
+    .expectTypeOf<Layer.Services<typeof flatLayer>>()
     .toEqualTypeOf<
       SomeService
     >()
   test
-    .expectTypeOf<Layer.Layer.Success<typeof flatMerge>>()
+    .expectTypeOf<Layer.Success<typeof flatMerge>>()
     .toEqualTypeOf<
       Route.Routes
     >()
   test
-    .expectTypeOf<Layer.Layer.Error<typeof flatMerge>>()
+    .expectTypeOf<Layer.Error<typeof flatMerge>>()
     .toEqualTypeOf<
       never
     >()
   test
-    .expectTypeOf<Layer.Layer.Context<typeof flatMerge>>()
+    .expectTypeOf<Layer.Services<typeof flatMerge>>()
     .toEqualTypeOf<
       SomeService
     >()
@@ -947,7 +950,7 @@ test.describe("Route.layer / Route.layerMerge type inference", () => {
   const nestedLayer = Route.layer(nested)
 
   test
-    .expectTypeOf<Layer.Layer.Context<typeof nestedLayer>>()
+    .expectTypeOf<Layer.Services<typeof nestedLayer>>()
     .toEqualTypeOf<SomeService | OtherService>()
 
   const withRequest = Route.map({
@@ -961,7 +964,7 @@ test.describe("Route.layer / Route.layerMerge type inference", () => {
   const requestLayer = Route.layer(withRequest)
 
   test
-    .expectTypeOf<Layer.Layer.Context<typeof requestLayer>>()
+    .expectTypeOf<Layer.Services<typeof requestLayer>>()
     .toEqualTypeOf<
       never
     >()

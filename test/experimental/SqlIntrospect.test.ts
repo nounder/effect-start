@@ -1,20 +1,20 @@
 import * as test from "bun:test"
+import { SqliteClient } from "effect-start/bun"
 import * as SqlIntrospect from "effect-start/experimental/SqlIntrospect"
-import { SqlClient } from "effect-start/sql"
 import * as Effect from "effect/Effect"
 import * as Schema from "effect/Schema"
-import * as BunSql from "../../src/sql/bun/index.ts"
+import * as Sql from "effect/unstable/sql/SqlClient"
 
-const runSql = <A, E>(effect: Effect.Effect<A, E, SqlClient.SqlClient>) =>
+const runSql = <A, E>(effect: Effect.Effect<A, E, Sql.SqlClient>) =>
   Effect.runPromise(
     Effect.provide(
       effect,
-      BunSql.layer({ adapter: "sqlite", filename: ":memory:" }),
+      SqliteClient.layer({ filename: ":memory:" }),
     ),
   )
 
 const setupTestDb = Effect.gen(function*() {
-  const sql = yield* SqlClient.SqlClient
+  const sql = yield* Sql.SqlClient
   yield* sql`CREATE TABLE users (
     id INTEGER PRIMARY KEY,
     name TEXT NOT NULL,
@@ -252,7 +252,7 @@ test.describe("SqlIntrospect", () => {
     test.it("composite index columns should not be sortable individually", () =>
       runSql(
         Effect.gen(function*() {
-          const sql = yield* SqlClient.SqlClient
+          const sql = yield* Sql.SqlClient
           yield* sql`CREATE TABLE composite (id INTEGER PRIMARY KEY, a TEXT, b TEXT)`
           yield* sql`CREATE INDEX idx_composite_ab ON composite(a, b)`
           const db = yield* SqlIntrospect.introspect("sqlite")
@@ -308,7 +308,9 @@ test.describe("SqlIntrospect", () => {
             .expect(ts.columns)
             .toHaveLength(5)
 
-          const decoded = Schema.decodeUnknownSync(ts.schema)({
+          const decoded = yield* Schema.decodeUnknownEffect(
+            ts.schema as unknown as Schema.ConstraintDecoder<Record<string, unknown>>,
+          )({
             id: 1,
             name: "Alice",
             email: null,
@@ -336,7 +338,9 @@ test.describe("SqlIntrospect", () => {
           const posts = db.tables.find((t) => t.tableName === "posts")!
           const ts = SqlIntrospect.tableToSchema(posts)!
 
-          const decoded = Schema.decodeUnknownSync(ts.schema)({
+          const decoded = yield* Schema.decodeUnknownEffect(
+            ts.schema as unknown as Schema.ConstraintDecoder<Record<string, unknown>>,
+          )({
             id: 1,
             title: "Hello",
             body: null,
@@ -356,7 +360,7 @@ test.describe("SqlIntrospect", () => {
     test.it("should skip unmappable columns (blob)", () =>
       runSql(
         Effect.gen(function*() {
-          const sql = yield* SqlClient.SqlClient
+          const sql = yield* Sql.SqlClient
           yield* sql`CREATE TABLE blobs (id INTEGER PRIMARY KEY, data BLOB, name TEXT)`
           const db = yield* SqlIntrospect.introspect("sqlite")
           const table = db.tables.find((t) => t.tableName === "blobs")!
@@ -377,7 +381,7 @@ test.describe("SqlIntrospect", () => {
     test.it("should return null for table with only unmappable columns", () =>
       runSql(
         Effect.gen(function*() {
-          const sql = yield* SqlClient.SqlClient
+          const sql = yield* Sql.SqlClient
           yield* sql`CREATE TABLE only_blobs (data BLOB, image BLOB)`
           const db = yield* SqlIntrospect.introspect("sqlite")
           const table = db.tables.find((t) => t.tableName === "only_blobs")!
@@ -394,7 +398,7 @@ test.describe("SqlIntrospect", () => {
     test.it("should convert all tables to schemas, skipping unmappable", () =>
       runSql(
         Effect.gen(function*() {
-          const sql = yield* SqlClient.SqlClient
+          const sql = yield* Sql.SqlClient
           yield* sql`CREATE TABLE mappable (id INTEGER PRIMARY KEY, name TEXT)`
           yield* sql`CREATE TABLE unmappable (data BLOB)`
           const db = yield* SqlIntrospect.introspect("sqlite")
@@ -534,7 +538,7 @@ test.describe("SqlIntrospect", () => {
     test.it("findAll should support multiple sort columns", () =>
       runSql(
         Effect.gen(function*() {
-          const sql = yield* SqlClient.SqlClient
+          const sql = yield* Sql.SqlClient
           yield* sql`CREATE TABLE items (id INTEGER PRIMARY KEY, category INTEGER, name TEXT)`
           yield* sql`CREATE INDEX idx_items_category ON items(category)`
           yield* sql`INSERT INTO items (category, name) VALUES (${2}, ${"B"})`
@@ -802,11 +806,9 @@ test.describe("SqlIntrospect", () => {
           const users = reader.table("users")!
           const rows = yield* users.findAll()
           for (const row of rows) {
-            const result = Schema.decodeUnknownEither(users.schema)(row)
-
-            test
-              .expect(result._tag)
-              .toBe("Right")
+            yield* Schema.decodeUnknownEffect(
+              users.schema as unknown as Schema.ConstraintDecoder<unknown>,
+            )(row)
           }
         }),
       ))

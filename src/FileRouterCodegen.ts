@@ -1,8 +1,8 @@
 import * as Effect from "effect/Effect"
+import * as FileSystem from "effect/FileSystem"
 import * as Schema from "effect/Schema"
 import * as NPath from "node:path"
 import * as FileRouter from "./FileRouter.ts"
-import * as FileSystem from "./FileSystem.ts"
 import * as PathPattern from "./internal/PathPattern.ts"
 import * as SchemaExtra from "./internal/SchemaExtra.ts"
 import type * as Route from "./Route.ts"
@@ -25,10 +25,7 @@ export function validateRouteModule(
 export function generatePathParamsSchema(
   path: PathPattern.PathPattern,
 ): Schema.Struct<any> | null {
-  const fields: Record<
-    PropertyKey,
-    Schema.Schema.Any | Schema.PropertySignature.All
-  > = {}
+  const fields: Record<PropertyKey, Schema.Constraint> = {}
 
   for (const param of PathPattern.params(path)) {
     fields[param.name] = param.optional
@@ -61,7 +58,7 @@ export function validateRouteModules(
 
       const fileExists = yield* fs
         .exists(routeModulePath)
-        .pipe(Effect.catchAll(() => Effect.succeed(false)))
+        .pipe(Effect.catch(() => Effect.succeed(false)))
       if (!fileExists) {
         continue
       }
@@ -237,7 +234,7 @@ export function update(
     // Check if file exists (ok to fail - means file doesn't exist)
     const existingCode = yield* fs
       .readFileString(treePath)
-      .pipe(Effect.catchAll(() => Effect.succeed(null)))
+      .pipe(Effect.catch(() => Effect.succeed(null)))
 
     // No routes found
     if (newCode === null) {

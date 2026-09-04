@@ -1,6 +1,7 @@
 import * as Effect from "effect/Effect"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
+import * as SqlClient from "effect/unstable/sql/SqlClient"
 import * as Bundle from "../bundler/Bundle.ts"
 import * as Entity from "../Entity.ts"
 import * as Html from "../Html.ts"
@@ -9,10 +10,9 @@ import * as RouteSchema from "../internal/RouteSchema.ts"
 import type * as Tracing from "../internal/Tracing.ts"
 import type * as Values from "../internal/Values.ts"
 import * as Route from "../Route.ts"
-import * as SqlClient from "../sql/SqlClient.ts"
 import css from "./css.ts"
 import * as OpenTelemetry from "./internal/OpenTelemetry.ts"
-import * as Studio from "./Studio.ts"
+import * as StudioContext from "./internal/StudioContext.ts"
 import * as StudioProcess from "./StudioProcess.ts"
 import * as StudioStore from "./StudioStore.ts"
 import * as Ui from "./ui.tsx"
@@ -22,7 +22,7 @@ const METRICS_HISTORY_MS = 120_000
 export default Route.map({
   "*": Route.use(
     Route.handle(function*(_, next) {
-      const studio = yield* Studio.Studio
+      const studio = yield* StudioContext.Studio
       const request = yield* Route.Request
 
       if (!studio.auth || studio.auth.type !== "basic") {
@@ -49,7 +49,7 @@ export default Route.map({
       return { context: {} }
     }),
     Route.html(function*(_, next) {
-      const studio = yield* Studio.Studio
+      const studio = yield* StudioContext.Studio
       const request = yield* Route.Request
       if (request.headers.get("datastar-request") === "true") {
         return yield* next.html
@@ -85,7 +85,7 @@ export default Route.map({
 
   "/": Route.get(
     Route.handle(function*() {
-      const studio = yield* Studio.Studio
+      const studio = yield* StudioContext.Studio
       return Route.redirect(`${studio.path}/traces`)
     }),
   ),
@@ -99,9 +99,7 @@ export default Route.map({
   "/traces": Route.get(
     Route.schemaSearchParams(
       Schema.Struct({
-        traceSearch: Schema.optionalWith(Schema.String, {
-          default: () => "",
-        }),
+        traceSearch: Schema.String.pipe(Schema.withDecodingDefault(Effect.succeed(""))),
       }),
     ),
     Route.json(function*(ctx) {
@@ -123,7 +121,7 @@ export default Route.map({
       return { traces }
     }),
     Route.html(function*(ctx) {
-      const studio = yield* Studio.Studio
+      const studio = yield* StudioContext.Studio
       const request = yield* Route.Request
       const search = ctx.searchParams.traceSearch
       const allSpans = StudioStore.filterOutStudioSpans(
@@ -194,7 +192,7 @@ export default Route.map({
     }),
     Route.sse((ctx) =>
       Effect.gen(function*() {
-        const studio = yield* Studio.Studio
+        const studio = yield* StudioContext.Studio
         const sql = yield* SqlClient.SqlClient
         const search = ctx.searchParams.traceSearch.toLowerCase()
         return Stream.fromPubSub(studio.store.events).pipe(
@@ -208,7 +206,7 @@ export default Route.map({
                   !StudioStore.isStudioTrace(traceSpans)
               })
               .pipe(
-                Effect.provideService(Studio.Studio, studio),
+                Effect.provideService(StudioContext.Studio, studio),
                 Effect.provideService(SqlClient.SqlClient, sql),
               )
           ),
@@ -251,7 +249,7 @@ export default Route.map({
       }
     }),
     Route.html(function*(ctx) {
-      const studio = yield* Studio.Studio
+      const studio = yield* StudioContext.Studio
       const traceId = ctx.pathParams.id
       return (
         <Ui.Shell prefix={studio.path} active="traces">
@@ -267,7 +265,7 @@ export default Route.map({
     }),
     Route.sse((ctx) =>
       Effect.gen(function*() {
-        const studio = yield* Studio.Studio
+        const studio = yield* StudioContext.Studio
         const sql = yield* SqlClient.SqlClient
         const traceId = ctx.pathParams.id
         return Stream.fromPubSub(studio.store.events).pipe(
@@ -293,7 +291,7 @@ export default Route.map({
                 }
               })
               .pipe(
-                Effect.provideService(Studio.Studio, studio),
+                Effect.provideService(StudioContext.Studio, studio),
                 Effect.provideService(SqlClient.SqlClient, sql),
               )
           ),
@@ -304,7 +302,7 @@ export default Route.map({
 
   "/metrics": Route.get(
     Route.html(function*() {
-      const studio = yield* Studio.Studio
+      const studio = yield* StudioContext.Studio
       const series = yield* StudioStore.latestMetricsWithHistory(METRICS_HISTORY_MS)
       return (
         <Ui.Shell prefix={studio.path} active="metrics">
@@ -320,7 +318,7 @@ export default Route.map({
     }),
     Route.sse(
       Effect.gen(function*() {
-        const studio = yield* Studio.Studio
+        const studio = yield* StudioContext.Studio
         const sql = yield* SqlClient.SqlClient
         return Stream.fromPubSub(studio.store.events).pipe(
           Stream.filter((e) => e._tag === "MetricsSnapshot"),
@@ -353,7 +351,7 @@ export default Route.map({
       }),
     ),
     Route.html(function*(ctx) {
-      const studio = yield* Studio.Studio
+      const studio = yield* StudioContext.Studio
       const request = yield* Route.Request
       const level = ctx.searchParams.logLevel ?? ""
       const search = ctx.searchParams.logSearch ?? ""
@@ -449,7 +447,7 @@ export default Route.map({
     }),
     Route.sse((ctx) =>
       Effect.gen(function*() {
-        const studio = yield* Studio.Studio
+        const studio = yield* StudioContext.Studio
         const level = ctx.searchParams.logLevel ?? ""
         const search = (ctx.searchParams.logSearch ?? "").toLowerCase()
         return Stream.fromPubSub(studio.store.events).pipe(
@@ -477,7 +475,7 @@ export default Route.map({
       }),
     ),
     Route.html(function*(ctx) {
-      const studio = yield* Studio.Studio
+      const studio = yield* StudioContext.Studio
       const request = yield* Route.Request
       const search = ctx.searchParams.errorSearch ?? ""
       const sql = yield* SqlClient.SqlClient
@@ -564,7 +562,7 @@ export default Route.map({
     }),
     Route.sse((ctx) =>
       Effect.gen(function*() {
-        const studio = yield* Studio.Studio
+        const studio = yield* StudioContext.Studio
         const rawSearch = ctx.searchParams.errorSearch ?? ""
         const search = rawSearch.toLowerCase()
         return Stream.fromPubSub(studio.store.events).pipe(
@@ -593,7 +591,7 @@ export default Route.map({
 
   "/fibers": Route.get(
     Route.html(function*() {
-      const studio = yield* Studio.Studio
+      const studio = yield* StudioContext.Studio
       const logs = yield* StudioStore.allLogs()
       const spans = yield* StudioStore.allSpans()
       const fibers = Ui.collectFibers(logs, spans)
@@ -613,7 +611,7 @@ export default Route.map({
     }),
     Route.sse(
       Effect.gen(function*() {
-        const studio = yield* Studio.Studio
+        const studio = yield* StudioContext.Studio
         const sql = yield* SqlClient.SqlClient
         return Stream.fromPubSub(studio.store.events).pipe(
           Stream.filter((e) => e._tag === "SpanStart" || e._tag === "SpanEnd" || e._tag === "Log"),
@@ -644,7 +642,7 @@ export default Route.map({
   "/fibers/:id": Route.get(
     RouteSchema.schemaPathParams(Schema.Struct({ id: Schema.String })),
     Route.html(function*(ctx) {
-      const studio = yield* Studio.Studio
+      const studio = yield* StudioContext.Studio
       const fiberId = ctx.pathParams.id
       const fiberName = fiberId.startsWith("#") || fiberId.startsWith("otlp:")
         ? fiberId
@@ -663,7 +661,7 @@ export default Route.map({
     }),
     Route.sse((ctx) =>
       Effect.gen(function*() {
-        const studio = yield* Studio.Studio
+        const studio = yield* StudioContext.Studio
         const sql = yield* SqlClient.SqlClient
         const fiberId = ctx.pathParams.id
         const fiberName = fiberId.startsWith("#") ? fiberId : `#${fiberId}`
@@ -686,7 +684,7 @@ export default Route.map({
                 }
               })
               .pipe(
-                Effect.provideService(Studio.Studio, studio),
+                Effect.provideService(StudioContext.Studio, studio),
                 Effect.provideService(SqlClient.SqlClient, sql),
               )
           ),
@@ -697,7 +695,7 @@ export default Route.map({
 
   "/routes": Route.get(
     Route.html(function*() {
-      const studio = yield* Studio.Studio
+      const studio = yield* StudioContext.Studio
       const routes = yield* Route.Routes
       const infos: Array<Ui.RouteInfo> = Array.from(
         RouteMap.walk(routes),
@@ -726,7 +724,7 @@ export default Route.map({
 
   "/system": Route.get(
     Route.html(function*() {
-      const studio = yield* Studio.Studio
+      const studio = yield* StudioContext.Studio
       const series = yield* StudioStore.processSeries(METRICS_HISTORY_MS)
       const info = StudioProcess.processInfo()
       const hasData = Object.keys(series.latest).length > 0
@@ -752,7 +750,7 @@ export default Route.map({
     }),
     Route.sse(
       Effect.gen(function*() {
-        const studio = yield* Studio.Studio
+        const studio = yield* StudioContext.Studio
         const sql = yield* SqlClient.SqlClient
         return Stream.fromPubSub(studio.store.events).pipe(
           Stream.filter((e) => e._tag === "ProcessSnapshot"),
@@ -780,9 +778,9 @@ export default Route.map({
 
   "/services": Route.get(
     Route.html(function*() {
-      const studio = yield* Studio.Studio
+      const studio = yield* StudioContext.Studio
       const ctx = yield* Effect.context<never>()
-      const services = Ui.collectServices(ctx.unsafeMap)
+      const services = Ui.collectServices(ctx.mapUnsafe)
       return (
         <Ui.Shell prefix={studio.path} active="services">
           <div class="tab-header">
@@ -810,7 +808,7 @@ function traceData(traceId: string) {
 
 function renderTraceDetail(traceId: string) {
   return Effect.gen(function*() {
-    const studio = yield* Studio.Studio
+    const studio = yield* StudioContext.Studio
     const data = yield* traceData(traceId)
     return (
       <Ui.TraceDetail
@@ -870,7 +868,7 @@ function logJson(log: StudioStore.LogEntry) {
 function renderFiberDetail(fiberName: string) {
   return Effect
     .gen(function*() {
-      const studio = yield* Studio.Studio
+      const studio = yield* StudioContext.Studio
       const sql = yield* SqlClient.SqlClient
       yield* StudioStore.flushWrites()
       const logRows = yield* sql<StudioStore.LogRow>`SELECT * FROM Log

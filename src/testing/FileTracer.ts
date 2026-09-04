@@ -1,8 +1,9 @@
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
+import type * as FileSystem from "effect/FileSystem"
 import * as Layer from "effect/Layer"
 import * as Schema from "effect/Schema"
-import type * as FileSystem from "../FileSystem.ts"
+import * as Tracer from "effect/Tracer"
 import * as FileWriter from "../FileWriter.ts"
 import * as Tracing from "../internal/Tracing.ts"
 
@@ -15,17 +16,17 @@ export const Row = Schema.Struct({
   name: Schema.String,
   startMs: Schema.Number,
   durationMs: Schema.Number,
-  status: Schema.Literal("started", "ok", "error"),
-  attributes: Schema.Record({ key: Schema.String, value: Schema.Unknown }),
+  status: Schema.Literals(["started", "ok", "error"]),
+  attributes: Schema.Record(Schema.String, Schema.Unknown),
 })
 
 export type Row = typeof Row.Type
 
-export const RowFromJson: Schema.Schema<Row, string> = Schema.parseJson(Row)
+export const RowFromJson = Schema.fromJsonString(Row)
 
 const encodeRow = Schema.encodeSync(RowFromJson)
 
-export const filterDuration = (minDuration: Duration.DurationInput) => {
+export const filterDuration = (minDuration: Duration.Input) => {
   const minDurationMs = Duration.toMillis(minDuration)
   return (span: Span) => (span.durationMs ?? 0) >= minDurationMs
 }
@@ -70,14 +71,16 @@ export const layer = (
 ): Layer.Layer<never, never, FileSystem.FileSystem> => {
   const filter = options.filter ?? filterDuration("50 millis")
   const spans: Array<Tracing.Span> = []
-  return Layer.scopedDiscard(
-    Effect.gen(function*() {
-      yield* Effect.withTracerScoped(Tracing.makeTracer(spans))
-      const writer = yield* Effect.orDie(FileWriter.build(options))
-      yield* Effect.addFinalizer(() => {
-        const rows = rowsFromSpans(spans, filter)
-        return rows.length === 0 ? Effect.void : writer.append(rows.map((row) => encodeRow(row)).join("\n"))
-      })
-    }),
+  return Layer.merge(
+    Layer.succeed(Tracer.Tracer, Tracing.makeTracer(spans)),
+    Layer.effectDiscard(
+      Effect.gen(function*() {
+        const writer = yield* Effect.orDie(FileWriter.build(options))
+        yield* Effect.addFinalizer(() => {
+          const rows = rowsFromSpans(spans, filter)
+          return rows.length === 0 ? Effect.void : writer.append(rows.map((row) => encodeRow(row)).join("\n"))
+        })
+      }),
+    ),
   )
 }

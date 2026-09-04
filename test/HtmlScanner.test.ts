@@ -1,5 +1,5 @@
 import * as test from "bun:test"
-import * as HtmlScanner from "../src/internal/HtmlScanner.ts"
+import * as HtmlScanner from "effect-start/internal/HtmlScanner"
 
 test.describe("parse", () => {
   test.it("finds script tags with attributes", () => {

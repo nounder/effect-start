@@ -74,7 +74,7 @@ export default {
         type: "problem",
         docs: {
           description:
-            "Require a tagged class or const name to match the tag/identifier passed to its factory (Data.TaggedError, Schema.Class, Context.Tag, Context.GenericTag, Schema.TaggedStruct, etc.)",
+            "Require a tagged class or const name to match the tag/identifier passed to its factory (Data.TaggedError, Schema.Class, Context.Service, Context.Reference, Schema.TaggedStruct, etc.)",
         },
         fixable: "code",
         schema: [],
@@ -820,11 +820,9 @@ const taggedFactories = [
   { object: "Schema", property: "TaggedRequest", shape: "outer", kind: "tag" },
   { object: "Schema", property: "TaggedStruct", shape: "call", kind: "tag" },
   { object: "Schema", property: "Class", shape: "inner", kind: "identifier" },
-  { object: "Context", property: "Tag", shape: "inner", matchSegment: true },
-  { object: "Context", property: "Reference", shape: "outer", matchSegment: true },
-  { object: "Context", property: "GenericTag", shape: "call", matchSegment: true },
-  { object: "Effect", property: "Tag", shape: "inner", matchSegment: true },
-  { object: "Effect", property: "Service", shape: "outer", matchSegment: true },
+  { object: "Context", property: "Service", shape: "call", matchSegment: true },
+  { object: "Context", property: "Service", shape: "outer", matchSegment: true },
+  { object: "Context", property: "Reference", shape: "call", matchSegment: true },
 ]
 
 /**

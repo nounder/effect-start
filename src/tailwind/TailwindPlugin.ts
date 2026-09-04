@@ -1,7 +1,7 @@
 import type { BunPlugin } from "bun"
 import * as NPath from "node:path"
+import * as BunProjectRoot from "../bun/internal/BunProjectRoot.ts"
 import * as IgnoreFile from "../internal/IgnoreFile.ts"
-import * as NodeUtils from "../node/NodeUtils.ts"
 import { compile } from "./compile.ts"
 
 export const make = (opts?: {
@@ -153,7 +153,7 @@ export const make = (opts?: {
           // When `source(...)` is omitted, default to the project root. Only
           // `source(none)` opts out and relies solely on the module graph.
           const projectRoot = compiler.root === undefined
-            ? await NodeUtils.findProjectRoot(args.path)
+            ? await BunProjectRoot.find(args.path)
             : undefined
           const sourceRoots = [
             ...(projectRoot ? [projectRoot] : []),

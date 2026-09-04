@@ -25,7 +25,7 @@ test.it("TestLogger captures log messages", () =>
         .toContain("This is an error")
       test
         .expect(messages[1])
-        .toContain("[Warning]")
+        .toContain("[Warn]")
       test
         .expect(messages[1])
         .toContain("This is a warning")

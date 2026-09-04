@@ -1,14 +1,13 @@
 import * as test from "bun:test"
+import { BunFileSystem } from "effect-start/bun"
 import * as Development from "effect-start/Development"
-import * as FileSystem from "effect-start/FileSystem"
-import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
+import * as FileSystem from "effect/FileSystem"
 import * as Layer from "effect/Layer"
 import * as Stream from "effect/Stream"
 import * as NFs from "node:fs"
 import * as NPath from "node:path"
-import * as NodeFileSystem from "../src/node/NodeFileSystem.ts"
 
 test.beforeEach(() => {
   Development._testResetState()
@@ -35,7 +34,7 @@ test.describe("layer", () => {
       })
       .pipe(
         Effect.scoped,
-        Effect.provide(NodeFileSystem.layer),
+        Effect.provide(BunFileSystem.layer),
         Effect.runPromise,
       ))
 })
@@ -51,8 +50,8 @@ test.describe("stream", () => {
           .gen(function*() {
             const fs = yield* FileSystem.FileSystem
 
-            const collectFiber = yield* Effect.fork(
-              Stream.runCollect(Stream.take(Development.events, 1)),
+            const collectFiber = yield* Stream.runCollect(Stream.take(Development.events, 1)).pipe(
+              Effect.forkChild({ startImmediately: true }),
             )
 
             yield* Effect.sleep(1)
@@ -61,10 +60,10 @@ test.describe("stream", () => {
             const collected = yield* Fiber.join(collectFiber)
 
             test
-              .expect(Chunk.size(collected))
+              .expect(collected.length)
               .toBe(1)
 
-            const first = Chunk.unsafeGet(collected, 0)
+            const first = collected[0]!
 
             test
               .expect("path" in first && first.path)
@@ -76,7 +75,7 @@ test.describe("stream", () => {
       })
       .pipe(
         Effect.scoped,
-        Effect.provide(NodeFileSystem.layer),
+        Effect.provide(BunFileSystem.layer),
         Effect.runPromise,
       ))
 
@@ -86,7 +85,7 @@ test.describe("stream", () => {
         const collected = yield* Stream.runCollect(Development.events)
 
         test
-          .expect(Chunk.size(collected))
+          .expect(collected.length)
           .toBe(0)
       })
       .pipe(
@@ -118,8 +117,8 @@ test.describe("stream", () => {
               yield* fs.makeDirectory(`${routes}/chat`, { recursive: true })
               yield* fs.writeFileString(`${routes}/chat/route.ts`, "")
 
-              const collectFiber = yield* Effect.fork(
-                Stream.runCollect(Stream.take(Development.events, 1)),
+              const collectFiber = yield* Stream.runCollect(Stream.take(Development.events, 1)).pipe(
+                Effect.forkChild({ startImmediately: true }),
               )
 
               yield* Effect.sleep(1)
@@ -128,10 +127,10 @@ test.describe("stream", () => {
               const collected = yield* Fiber.join(collectFiber)
 
               test
-                .expect(Chunk.size(collected))
+                .expect(collected.length)
                 .toBe(1)
 
-              const first = Chunk.unsafeGet(collected, 0)
+              const first = collected[0]!
 
               test
                 .expect("path" in first && first.path)
@@ -143,7 +142,7 @@ test.describe("stream", () => {
         })
         .pipe(
           Effect.scoped,
-          Effect.provide(NodeFileSystem.layer),
+          Effect.provide(BunFileSystem.layer),
           Effect.runPromise,
         ),
     500,
@@ -168,8 +167,8 @@ test.describe("stream", () => {
               yield* fs.makeDirectory(`${staging}/chat`, { recursive: true })
               yield* fs.writeFileString(`${staging}/chat/route.ts`, "")
 
-              const collectFiber = yield* Effect.fork(
-                Stream.runCollect(Stream.take(Development.events, 1)),
+              const collectFiber = yield* Stream.runCollect(Stream.take(Development.events, 1)).pipe(
+                Effect.forkChild({ startImmediately: true }),
               )
 
               yield* Effect.sleep(1)
@@ -178,10 +177,10 @@ test.describe("stream", () => {
               const collected = yield* Fiber.join(collectFiber)
 
               test
-                .expect(Chunk.size(collected))
+                .expect(collected.length)
                 .toBe(1)
 
-              const first = Chunk.unsafeGet(collected, 0)
+              const first = collected[0]!
 
               test
                 .expect("path" in first && first.path)
@@ -193,7 +192,7 @@ test.describe("stream", () => {
         })
         .pipe(
           Effect.scoped,
-          Effect.provide(NodeFileSystem.layer),
+          Effect.provide(BunFileSystem.layer),
           Effect.runPromise,
         ),
     500,

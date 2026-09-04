@@ -1,41 +1,41 @@
 import * as test from "bun:test"
-import * as Either from "effect/Either"
-import * as FileRouter from "../src/FileRouter.ts"
-import * as PathPattern from "../src/internal/PathPattern.ts"
+import * as Result from "effect/Result"
+import * as FileRouter from "effect-start/FileRouter"
+import * as PathPattern from "effect-start/internal/PathPattern"
 
 test.it("converts empty file paths", () => {
   test
     .expect(PathPattern.fromFilePath(""))
-    .toEqual(Either.right("/"))
+    .toEqual(Result.succeed("/"))
   test
     .expect(PathPattern.fromFilePath("/"))
-    .toEqual(Either.right("/"))
+    .toEqual(Result.succeed("/"))
 })
 
 test.it("strips groups during conversion", () => {
   test
     .expect(PathPattern.fromFilePath("(admin)"))
-    .toEqual(Either.right("/"))
+    .toEqual(Result.succeed("/"))
   test
     .expect(PathPattern.fromFilePath("/(admin)/users"))
     .toEqual(
-      Either.right("/users"),
+      Result.succeed("/users"),
     )
   test
     .expect(PathPattern.fromFilePath("(auth)/login/(step1)"))
     .toEqual(
-      Either.right("/login"),
+      Result.succeed("/login"),
     )
 })
 
 test.it("converts params and rest segments", () => {
   test
     .expect(PathPattern.fromFilePath("users/[userId]/posts"))
-    .toEqual(Either.right("/users/:userId/posts"))
+    .toEqual(Result.succeed("/users/:userId/posts"))
   test
     .expect(PathPattern.fromFilePath("api/[[path]]"))
     .toEqual(
-      Either.right("/api/:path*"),
+      Result.succeed("/api/:path*"),
     )
 })
 
@@ -112,15 +112,15 @@ test.it("parseRoute with params and rest", () => {
 
 test.it("rejects invalid file path patterns", () => {
   test
-    .expect(Either.isLeft(PathPattern.fromFilePath("$...")))
+    .expect(Result.isFailure(PathPattern.fromFilePath("$...")))
     .toBe(true)
   test
-    .expect(Either.isLeft(PathPattern.fromFilePath("invalid%char")))
+    .expect(Result.isFailure(PathPattern.fromFilePath("invalid%char")))
     .toBe(
       true,
     )
   test
-    .expect(Either.isLeft(PathPattern.fromFilePath("foo/[[rest]]/bar")))
+    .expect(Result.isFailure(PathPattern.fromFilePath("foo/[[rest]]/bar")))
     .toBe(
       true,
     )
@@ -130,6 +130,6 @@ test.it("supports literal segments with dots", () => {
   test
     .expect(PathPattern.fromFilePath("events.json"))
     .toEqual(
-      Either.right("/events.json"),
+      Result.succeed("/events.json"),
     )
 })

@@ -1,8 +1,8 @@
 import * as test from "bun:test"
 import * as Html from "effect-start/Html"
 import { JSDOM } from "jsdom"
-import type * as Engine from "../../src/datastar/index.ts"
-import type { JSX } from "../../src/jsx-runtime.ts"
+import type * as Engine from "effect-start/datastar"
+import type { JSX } from "effect-start/jsx-runtime"
 
 const dom = new JSDOM("<!DOCTYPE html><html><body></body></html>", {
   url: "http://localhost",
@@ -56,7 +56,7 @@ if (typeof globalThis.MathMLElement === "undefined") {
   ;(globalThis as any).MathMLElement = class MathMLElement extends (_window as any).HTMLElement {}
 }
 
-await import("../../src/datastar/index.ts")
+await import("effect-start/datastar")
 
 const tick = () => new Promise<void>((r) => setTimeout(r, 0))
 

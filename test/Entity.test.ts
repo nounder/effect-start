@@ -2,8 +2,8 @@ import * as test from "bun:test"
 import * as Entity from "effect-start/Entity"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
-import * as ParseResult from "effect/ParseResult"
 import * as Schema from "effect/Schema"
+import * as SchemaIssue from "effect/SchemaIssue"
 import * as Stream from "effect/Stream"
 
 test.describe(Entity.make, () => {
@@ -574,9 +574,7 @@ test.describe("Effect body", () => {
       .pipe(Effect.runPromise))
 
   test.it("propagates Effect errors", async () => {
-    const error = new ParseResult.ParseError({
-      issue: new ParseResult.Type(Schema.String.ast, 123),
-    })
+    const error = new Schema.SchemaError(new SchemaIssue.InvalidType(Schema.String.ast, 123))
     const effect = Effect.fail(error)
     const entity = Entity.make(effect)
     const result = await Effect.runPromiseExit(entity.text)
@@ -595,7 +593,7 @@ test.describe("Effect body", () => {
 
     test
       .expectTypeOf<
-        CustomError extends Effect.Effect.Error<typeof entity.text> ? true
+        CustomError extends Effect.Error<typeof entity.text> ? true
           : false
       >()
       .toEqualTypeOf<true>()
@@ -781,7 +779,7 @@ test.describe("type inference", () => {
     const entity = Entity.make("hello")
 
     test
-      .expectTypeOf<Effect.Effect.Success<typeof entity.text>>()
+      .expectTypeOf<Effect.Success<typeof entity.text>>()
       .toEqualTypeOf<string>()
   })
 
@@ -789,7 +787,7 @@ test.describe("type inference", () => {
     const entity = Entity.make({ key: "value" })
 
     test
-      .expectTypeOf<Effect.Effect.Success<typeof entity.json>>()
+      .expectTypeOf<Effect.Success<typeof entity.json>>()
       .toEqualTypeOf<{ key: string }>()
   })
 
@@ -801,7 +799,7 @@ test.describe("type inference", () => {
     test
       .expectTypeOf(parsed)
       .toEqualTypeOf<
-        Effect.Effect<{ readonly key: string }, ParseResult.ParseError, never>
+        Effect.Effect<{ readonly key: string }, Schema.SchemaError, never>
       >()
   })
 
@@ -809,7 +807,7 @@ test.describe("type inference", () => {
     const entity = Entity.make("hello")
 
     test
-      .expectTypeOf<Effect.Effect.Success<typeof entity.bytes>>()
+      .expectTypeOf<Effect.Success<typeof entity.bytes>>()
       .toEqualTypeOf<Uint8Array>()
   })
 
@@ -817,7 +815,7 @@ test.describe("type inference", () => {
     const entity = Entity.make("hello")
 
     test
-      .expectTypeOf<Stream.Stream.Success<typeof entity.stream>>()
+      .expectTypeOf<Stream.Success<typeof entity.stream>>()
       .toEqualTypeOf<Uint8Array>()
   })
 })

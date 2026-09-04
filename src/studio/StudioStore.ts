@@ -2,9 +2,10 @@ import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import type * as PubSub from "effect/PubSub"
 import * as Queue from "effect/Queue"
+import * as SqlClient from "effect/unstable/sql/SqlClient"
+import type * as SqlError from "effect/unstable/sql/SqlError"
 import type * as Tracing from "../internal/Tracing.ts"
-import * as SqlClient from "../sql/SqlClient.ts"
-import * as Studio from "./Studio.ts"
+import * as StudioContext from "./internal/StudioContext.ts"
 
 export const studioTraceAttribute = "effect-start.studio.internal"
 
@@ -100,7 +101,7 @@ export interface FiberContext {
 
 export type Write = Effect.Effect<
   unknown,
-  SqlClient.SqlError,
+  SqlError.SqlError,
   SqlClient.SqlClient
 >
 
@@ -376,7 +377,7 @@ export function insertSpan(span: Tracing.Span) {
   return withSql(
     (sql) =>
       sql`INSERT OR REPLACE INTO Span ${
-        sql({
+        sql.insert({
           spanId: encodeTelemetryId(span.spanId),
           traceId: encodeTelemetryId(span.traceId),
           fiberId: span.fiberId ?? null,
@@ -415,7 +416,7 @@ export function insertLog(log: LogEntry) {
   return withSql(
     (sql) =>
       sql`INSERT INTO Log ${
-        sql({
+        sql.insert({
           id: log.id,
           timestamp: log.timestamp,
           level: log.level,
@@ -435,7 +436,7 @@ export function insertError(error: ErrorEntry) {
   return withSql(
     (sql) =>
       sql`INSERT INTO Error ${
-        sql({
+        sql.insert({
           id: error.id,
           fiberId: error.fiberId,
           interrupted: error.interrupted ? 1 : 0,
@@ -452,7 +453,7 @@ export function insertMetrics(
   if (snapshots.length === 0) return Effect.void
   return withSql((sql) =>
     sql`INSERT INTO MetricSample ${
-      sql(
+      sql.insert(
         snapshots.map((s) => ({
           name: s.name,
           type: s.type,
@@ -477,7 +478,7 @@ export function upsertFiber(
   return withSql(
     (sql) =>
       sql`INSERT OR REPLACE INTO Fiber ${
-        sql({
+        sql.insert({
           id,
           parentId: parentId ?? null,
           spanName: spanName ?? null,
@@ -513,18 +514,18 @@ export function evictSpans(capacity: number) {
   )
 }
 
-// Tracer hooks, loggers, and supervisors are synchronous callbacks invoked by
-// the runtime, so they cannot yield the insert effects themselves. They enqueue
+// Tracer hooks and loggers are synchronous callbacks invoked by the runtime,
+// so they cannot yield the insert effects themselves. They enqueue
 // writes here, and a fiber forked in the Studio layer drains them in order.
 export function runWrite(store: State, effect: Write) {
-  Queue.unsafeOffer(store.writes, effect)
+  Queue.offerUnsafe(store.writes, effect)
 }
 
 // Events are published synchronously while writes are queued, so readers
 // reacting to an event must flush before querying to observe its data.
 export function flushWrites() {
   return Effect.gen(function*() {
-    const studio = yield* Studio.Studio
+    const studio = yield* StudioContext.Studio
     const done = yield* Deferred.make<void>()
     yield* Queue.offer(studio.store.writes, Deferred.succeed(done, undefined))
     yield* Deferred.await(done)

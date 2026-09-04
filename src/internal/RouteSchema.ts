@@ -1,11 +1,14 @@
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
-import type * as ParseResult from "effect/ParseResult"
+import type * as FileSystem from "effect/FileSystem"
+import type * as Path from "effect/Path"
 import * as Schema from "effect/Schema"
 import type * as Scope from "effect/Scope"
 import type * as Types from "effect/Types"
+import * as Cookies from "effect/unstable/http/Cookies"
+import * as HttpServerRequest from "effect/unstable/http/HttpServerRequest"
+import type * as Multipart from "effect/unstable/http/Multipart"
 import * as Entity from "../Entity.ts"
-import type * as Multipart from "../Multipart.ts"
 import * as Route from "../Route.ts"
 import * as Http from "./Http.ts"
 import * as PathPattern from "./PathPattern.ts"
@@ -20,10 +23,20 @@ export class RequestBodyError extends Data.TaggedError("RequestBodyError")<{
   readonly cause: unknown
 }> {}
 
-type SchemaOrFields = Schema.Schema.All | Schema.Struct.Fields
+type SchemaOrFields = Schema.Constraint | Schema.Struct.Fields
 
-function toSchema(input: SchemaOrFields): Schema.Schema<any, any, any> {
-  return (Schema.isSchema(input) ? input : Schema.Struct(input as any)) as any
+function isFields(input: unknown): input is Schema.Struct.Fields {
+  if (typeof input !== "object" || input === null) return false
+  for (const value of Object.values(input)) {
+    if (!Schema.isSchema(value)) return false
+  }
+  return true
+}
+
+function toSchema(input: SchemaOrFields): Schema.Constraint {
+  if (Schema.isSchema(input)) return input
+  if (isFields(input)) return Schema.Struct(input)
+  throw new TypeError("Expected a schema or schema fields")
 }
 
 function makeSchemaFilter(
@@ -33,7 +46,7 @@ function makeSchemaFilter(
   ) => Effect.Effect<any, any, any>,
 ) {
   return (fields: SchemaOrFields): any => {
-    const decode = Schema.decodeUnknown(toSchema(fields))
+    const decode = Schema.decodeUnknownEffect(toSchema(fields))
     return RouteHook.filter((ctx: any) => handler(ctx, decode))
   }
 }
@@ -51,17 +64,16 @@ export function schemaHeaders<F extends Schema.Struct.Fields>(
       {},
       { headers: Types.Simplify<Schema.Struct.Type<F>> },
       unknown,
-      ParseResult.ParseError,
-      Schema.Struct.Context<F> | Route.Request
+      Schema.SchemaError,
+      Schema.Struct.DecodingServices<F> | Route.Request
     >,
   ]
 >
 export function schemaHeaders<
   A,
-  I extends Readonly<Record<string, string | undefined>>,
   R,
 >(
-  fields: Schema.Schema<A, I, R>,
+  fields: Schema.ConstraintDecoder<A, R>,
 ): <D, SB, P extends Route.Route.Tuple>(
   self: Route.RouteSet<D, SB, P>,
 ) => Route.RouteSet<
@@ -73,7 +85,7 @@ export function schemaHeaders<
       {},
       { headers: A },
       unknown,
-      ParseResult.ParseError,
+      Schema.SchemaError,
       R | Route.Request
     >,
   ]
@@ -101,17 +113,16 @@ export function schemaCookies<F extends Schema.Struct.Fields>(
       {},
       { cookies: Types.Simplify<Schema.Struct.Type<F>> },
       unknown,
-      ParseResult.ParseError,
-      Schema.Struct.Context<F> | Route.Request
+      Schema.SchemaError,
+      Schema.Struct.DecodingServices<F> | Route.Request
     >,
   ]
 >
 export function schemaCookies<
   A,
-  I extends Readonly<Record<string, string | undefined>>,
   R,
 >(
-  fields: Schema.Schema<A, I, R>,
+  fields: Schema.ConstraintDecoder<A, R>,
 ): <D, SB, P extends Route.Route.Tuple>(
   self: Route.RouteSet<D, SB, P>,
 ) => Route.RouteSet<
@@ -123,7 +134,7 @@ export function schemaCookies<
       {},
       { cookies: A },
       unknown,
-      ParseResult.ParseError,
+      Schema.SchemaError,
       R | Route.Request
     >,
   ]
@@ -133,7 +144,7 @@ export function schemaCookies(fields: SchemaOrFields) {
     Effect.gen(function*() {
       const request = yield* Route.Request
       const parsed = yield* decode(
-        Http.parseCookies(request.headers.get("cookie")),
+        Cookies.parseHeader(request.headers.get("cookie") ?? ""),
       )
       return { context: { cookies: { ...ctx.cookies, ...parsed } } }
     })
@@ -153,19 +164,16 @@ export function schemaSearchParams<F extends Schema.Struct.Fields>(
       {},
       { searchParams: Types.Simplify<Schema.Struct.Type<F>> },
       unknown,
-      ParseResult.ParseError,
-      Schema.Struct.Context<F> | Route.Request
+      Schema.SchemaError,
+      Schema.Struct.DecodingServices<F> | Route.Request
     >,
   ]
 >
 export function schemaSearchParams<
   A,
-  I extends Readonly<
-    Record<string, string | ReadonlyArray<string> | undefined>
-  >,
   R,
 >(
-  fields: Schema.Schema<A, I, R>,
+  fields: Schema.ConstraintDecoder<A, R>,
 ): <D, SB, P extends Route.Route.Tuple>(
   self: Route.RouteSet<D, SB, P>,
 ) => Route.RouteSet<
@@ -177,7 +185,7 @@ export function schemaSearchParams<
       {},
       { searchParams: A },
       unknown,
-      ParseResult.ParseError,
+      Schema.SchemaError,
       R | Route.Request
     >,
   ]
@@ -206,17 +214,16 @@ export function schemaPathParams<F extends Schema.Struct.Fields>(
       {},
       { pathParams: Types.Simplify<Schema.Struct.Type<F>> },
       unknown,
-      ParseResult.ParseError,
-      Schema.Struct.Context<F> | Route.Request
+      Schema.SchemaError,
+      Schema.Struct.DecodingServices<F> | Route.Request
     >,
   ]
 >
 export function schemaPathParams<
   A,
-  I extends Readonly<Record<string, string | undefined>>,
   R,
 >(
-  fields: Schema.Schema<A, I, R>,
+  fields: Schema.ConstraintDecoder<A, R>,
 ): <D, SB, P extends Route.Route.Tuple>(
   self: Route.RouteSet<D, SB, P>,
 ) => Route.RouteSet<
@@ -228,7 +235,7 @@ export function schemaPathParams<
       {},
       { pathParams: A },
       unknown,
-      ParseResult.ParseError,
+      Schema.SchemaError,
       R | Route.Request
     >,
   ]
@@ -259,13 +266,13 @@ export function schemaBodyJson<F extends Schema.Struct.Fields>(
       {},
       { body: Types.Simplify<Schema.Struct.Type<F>> },
       unknown,
-      RequestBodyError | ParseResult.ParseError,
-      Schema.Struct.Context<F> | Route.Request
+      RequestBodyError | Schema.SchemaError,
+      Schema.Struct.DecodingServices<F> | Route.Request
     >,
   ]
 >
-export function schemaBodyJson<A, I, R>(
-  fields: Schema.Schema<A, I, R>,
+export function schemaBodyJson<A, R>(
+  fields: Schema.ConstraintDecoder<A, R>,
 ): <D, SB, P extends Route.Route.Tuple>(
   self: Route.RouteSet<D, SB, P>,
 ) => Route.RouteSet<
@@ -277,7 +284,7 @@ export function schemaBodyJson<A, I, R>(
       {},
       { body: A },
       unknown,
-      RequestBodyError | ParseResult.ParseError,
+      RequestBodyError | Schema.SchemaError,
       R | Route.Request
     >,
   ]
@@ -309,19 +316,16 @@ export function schemaBodyUrlParams<F extends Schema.Struct.Fields>(
       {},
       { body: Types.Simplify<Schema.Struct.Type<F>> },
       unknown,
-      RequestBodyError | ParseResult.ParseError,
-      Schema.Struct.Context<F> | Route.Request
+      RequestBodyError | Schema.SchemaError,
+      Schema.Struct.DecodingServices<F> | Route.Request
     >,
   ]
 >
 export function schemaBodyUrlParams<
   A,
-  I extends Readonly<
-    Record<string, string | ReadonlyArray<string> | undefined>
-  >,
   R,
 >(
-  fields: Schema.Schema<A, I, R>,
+  fields: Schema.ConstraintDecoder<A, R>,
 ): <D, SB, P extends Route.Route.Tuple>(
   self: Route.RouteSet<D, SB, P>,
 ) => Route.RouteSet<
@@ -333,7 +337,7 @@ export function schemaBodyUrlParams<
       {},
       { body: A },
       unknown,
-      RequestBodyError | ParseResult.ParseError,
+      RequestBodyError | Schema.SchemaError,
       R | Route.Request
     >,
   ]
@@ -366,8 +370,12 @@ export function schemaBodyMultipart<F extends Schema.Struct.Fields>(
       {},
       { body: Types.Simplify<Schema.Struct.Type<F>> },
       unknown,
-      RequestBodyError | ParseResult.ParseError,
-      Schema.Struct.Context<F> | Route.Request | Scope.Scope
+      RequestBodyError | Schema.SchemaError,
+      | Schema.Struct.DecodingServices<F>
+      | HttpServerRequest.HttpServerRequest
+      | Scope.Scope
+      | FileSystem.FileSystem
+      | Path.Path
     >,
   ]
 >
@@ -376,12 +384,12 @@ export function schemaBodyMultipart<
   I extends Partial<
     Record<
       string,
-      ReadonlyArray<Multipart.File | string> | string
+      ReadonlyArray<Multipart.PersistedFile | string> | string
     >
   >,
   R,
 >(
-  fields: Schema.Schema<A, I, R>,
+  fields: Schema.ConstraintCodec<A, I, R, unknown>,
 ): <D, SB, P extends Route.Route.Tuple>(
   self: Route.RouteSet<D, SB, P>,
 ) => Route.RouteSet<
@@ -393,19 +401,18 @@ export function schemaBodyMultipart<
       {},
       { body: A },
       unknown,
-      RequestBodyError | ParseResult.ParseError,
-      R | Route.Request | Scope.Scope
+      RequestBodyError | Schema.SchemaError,
+      R | HttpServerRequest.HttpServerRequest | Scope.Scope | FileSystem.FileSystem | Path.Path
     >,
   ]
 >
 export function schemaBodyMultipart(fields: SchemaOrFields) {
   return makeSchemaFilter((ctx, decode) =>
     Effect.gen(function*() {
-      const request = yield* Route.Request
-      const record = yield* Effect.tryPromise({
-        try: () => Http.parseFormData(request),
-        catch: (cause) => new RequestBodyError({ reason: "MultipartError", cause }),
-      })
+      const request = yield* HttpServerRequest.HttpServerRequest
+      const record = yield* request.multipart.pipe(
+        Effect.mapError((cause) => new RequestBodyError({ reason: "MultipartError", cause })),
+      )
       const parsed = yield* decode(record)
       return { context: { body: { ...ctx.body, ...parsed } } }
     })
@@ -425,8 +432,12 @@ export function schemaBodyForm<F extends Schema.Struct.Fields>(
       {},
       { body: Types.Simplify<Schema.Struct.Type<F>> },
       unknown,
-      RequestBodyError | ParseResult.ParseError,
-      Schema.Struct.Context<F> | Route.Request | Scope.Scope
+      RequestBodyError | Schema.SchemaError,
+      | Schema.Struct.DecodingServices<F>
+      | HttpServerRequest.HttpServerRequest
+      | Scope.Scope
+      | FileSystem.FileSystem
+      | Path.Path
     >,
   ]
 >
@@ -435,12 +446,12 @@ export function schemaBodyForm<
   I extends Partial<
     Record<
       string,
-      ReadonlyArray<Multipart.File | string> | string
+      ReadonlyArray<Multipart.PersistedFile | string> | string
     >
   >,
   R,
 >(
-  fields: Schema.Schema<A, I, R>,
+  fields: Schema.ConstraintCodec<A, I, R, unknown>,
 ): <D, SB, P extends Route.Route.Tuple>(
   self: Route.RouteSet<D, SB, P>,
 ) => Route.RouteSet<
@@ -452,33 +463,29 @@ export function schemaBodyForm<
       {},
       { body: A },
       unknown,
-      RequestBodyError | ParseResult.ParseError,
-      R | Route.Request | Scope.Scope
+      RequestBodyError | Schema.SchemaError,
+      R | HttpServerRequest.HttpServerRequest | Scope.Scope | FileSystem.FileSystem | Path.Path
     >,
   ]
 >
 export function schemaBodyForm(fields: SchemaOrFields) {
   return makeSchemaFilter((ctx, decode) =>
     Effect.gen(function*() {
-      const request = yield* Route.Request
-      const contentType = request.headers.get("content-type") ?? ""
+      const request = yield* HttpServerRequest.HttpServerRequest
+      const contentType = request.headers["content-type"] ?? ""
 
       if (contentType.includes("application/x-www-form-urlencoded")) {
-        const text = yield* Effect.tryPromise({
-          try: () => request.text(),
-          catch: (cause) => new RequestBodyError({ reason: "UrlParamsError", cause }),
-        })
-        const params = new URLSearchParams(text)
-        const record = Http.mapUrlSearchParams(params)
-        const parsed = yield* decode(record as any)
+        const record = yield* request.urlParamsBody.pipe(
+          Effect.mapError((cause) => new RequestBodyError({ reason: "UrlParamsError", cause })),
+        )
+        const parsed = yield* decode(record)
         return { context: { body: { ...ctx.body, ...parsed } } }
       }
 
-      const record = yield* Effect.tryPromise({
-        try: () => Http.parseFormData(request),
-        catch: (cause) => new RequestBodyError({ reason: "FormDataError", cause }),
-      })
-      const parsed = yield* decode(record as any)
+      const record = yield* request.multipart.pipe(
+        Effect.mapError((cause) => new RequestBodyError({ reason: "FormDataError", cause })),
+      )
+      const parsed = yield* decode(record)
       return { context: { body: { ...ctx.body, ...parsed } } }
     })
   )(fields)
@@ -496,18 +503,18 @@ export function schemaBodyForm(fields: SchemaOrFields) {
  * goodies.
  */
 export function schemaError<A, I, R>(
-  schema: Schema.Schema<A, I, R> & { readonly status: number },
+  schema: Schema.Schema<A> & Schema.ConstraintEncoder<I, R> & { readonly status: number },
 ): <D, SB, P extends Route.Route.Tuple>(
   self: Route.RouteSet<D, SB, P>,
 ) => Route.RouteSet<D, SB, [...P, Route.Route<{}, {}, unknown, never, R>]>
 export function schemaError<A, I, R>(
-  schema: Schema.Schema<A, I, R>,
+  schema: Schema.Schema<A> & Schema.ConstraintEncoder<I, R>,
   options: { readonly status: number },
 ): <D, SB, P extends Route.Route.Tuple>(
   self: Route.RouteSet<D, SB, P>,
 ) => Route.RouteSet<D, SB, [...P, Route.Route<{}, {}, unknown, never, R>]>
 export function schemaError<A, I, R>(
-  schema: Schema.Schema<A, I, R> & { readonly status?: number },
+  schema: Schema.Schema<A> & Schema.ConstraintEncoder<I, R> & { readonly status?: number },
   options?: { readonly status: number },
 ): <D, SB, P extends Route.Route.Tuple>(
   self: Route.RouteSet<D, SB, P>,
@@ -518,7 +525,7 @@ export function schemaError<A, I, R>(
       "schemaError: status is required either via options or as a static property on the schema",
     )
   }
-  const encode = Schema.encode(schema)
+  const encode = Schema.encodeEffect(schema)
   const is = Schema.is(schema)
   return function<D, SB, P extends Route.Route.Tuple>(
     self: Route.RouteSet<D, SB, P>,
@@ -554,25 +561,25 @@ export function schemaSuccess<F extends Schema.Struct.Fields>(
       {},
       {},
       Types.Simplify<Schema.Struct.Encoded<F>>,
-      ParseResult.ParseError,
-      Schema.Struct.Context<F>
+      Schema.SchemaError,
+      Schema.Struct.EncodingServices<F>
     >,
   ]
 >
 export function schemaSuccess<A, I, R>(
-  schema: Schema.Schema<A, I, R>,
+  schema: Schema.Schema<A> & Schema.ConstraintEncoder<I, R>,
 ): <D, SB, P extends Route.Route.Tuple>(
   self: Route.RouteSet<D, SB, P>,
 ) => Route.RouteSet<
   D,
   SB,
-  [...P, Route.Route<{}, {}, I, ParseResult.ParseError, R>]
+  [...P, Route.Route<{}, {}, I, Schema.SchemaError, R>]
 >
 export function schemaSuccess(
   schema: SchemaOrFields,
 ): any {
   const s = toSchema(schema)
-  const encode = Schema.encodeUnknown(s)
+  const encode = Schema.encodeUnknownEffect(s)
   return function(self: Route.RouteSet<any, any, any>) {
     const route = Route.make((_context: any, next: any) =>
       Effect.flatMap(

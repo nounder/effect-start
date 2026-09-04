@@ -1,26 +1,23 @@
 import * as test from "bun:test"
+import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
 import * as Layer from "effect/Layer"
-import * as SynchronizedRef from "effect/SynchronizedRef"
-import * as LayerExtra from "../../src/internal/LayerExtra.ts"
+import * as LayerExtra from "effect-start/internal/LayerExtra"
 
-class Logger extends Context.Tag("LayerExtra.test.Logger")<
-  Logger,
-  { log: (msg: string) => Effect.Effect<void> }
->() {}
-class Database extends Context.Tag("LayerExtra.test.Database")<
-  Database,
-  { query: (sql: string) => Effect.Effect<unknown> }
->() {}
-class UserRepo extends Context.Tag("LayerExtra.test.UserRepo")<
-  UserRepo,
-  { findUser: (id: string) => Effect.Effect<unknown> }
->() {}
-class ExternalApi extends Context.Tag("LayerExtra.test.ExternalApi")<
-  ExternalApi,
-  { call: () => Effect.Effect<void> }
->() {}
+class Logger extends Context.Service<Logger, {
+  log: (msg: string) => Effect.Effect<void>
+}>()("LayerExtra.test.Logger") {}
+class Database extends Context.Service<Database, {
+  query: (sql: string) => Effect.Effect<unknown>
+}>()("LayerExtra.test.Database") {}
+class UserRepo extends Context.Service<UserRepo, {
+  findUser: (id: string) => Effect.Effect<unknown>
+}>()("LayerExtra.test.UserRepo") {}
+class ExternalApi extends Context.Service<ExternalApi, {
+  call: () => Effect.Effect<void>
+}>()("LayerExtra.test.ExternalApi") {}
 
 const LoggerLive = Layer.succeed(Logger, { log: (msg) => Effect.log(msg) })
 
@@ -156,7 +153,7 @@ test.describe(LayerExtra.provideMergeAll, () => {
 
 test.describe(LayerExtra.buildUnordered, () => {
   test.test("resolves dependencies regardless of order", () => {
-    const AppLayer = Layer.scopedContext(
+    const AppLayer = Layer.effectContext(
       LayerExtra.buildUnordered([LoggerLive, DatabaseLive, UserRepoLive]),
     )
 
@@ -177,7 +174,7 @@ test.describe(LayerExtra.buildUnordered, () => {
   })
 
   test.test("works with dependents-first order too", () => {
-    const AppLayer = Layer.scopedContext(
+    const AppLayer = Layer.effectContext(
       LayerExtra.buildUnordered([UserRepoLive, DatabaseLive, LoggerLive]),
     )
 
@@ -197,9 +194,8 @@ test.describe(LayerExtra.buildUnordered, () => {
       )
   })
 
-  test.test("memoizes shared dependencies", () => {
+  test.test("memoizes nested layers across successful builds", () => {
     let loggerBuildCount = 0
-    let databaseBuildCount = 0
 
     const LoggerLiveWithCounter = Layer.effect(
       Logger,
@@ -209,137 +205,283 @@ test.describe(LayerExtra.buildUnordered, () => {
       }),
     )
 
-    const DatabaseLiveWithCounter = Layer.effect(
-      Database,
-      Effect.gen(function*() {
-        const logger = yield* Logger
-        databaseBuildCount++
-        yield* logger.log("DB init")
-        return { query: (_sql) => Effect.succeed({ rows: [] }) }
-      }),
-    )
+    const DatabaseLiveWithCounter = Layer
+      .effect(
+        Database,
+        Effect.gen(function*() {
+          yield* Logger
+          return { query: (_sql) => Effect.succeed({ rows: [] }) }
+        }),
+      )
+      .pipe(Layer.provide(LoggerLiveWithCounter))
 
-    const UserRepoLiveWithCounter = Layer.effect(
-      UserRepo,
-      Effect.gen(function*() {
-        const db = yield* Database
-        const logger = yield* Logger
-        yield* logger.log("UserRepo init")
-        return {
-          findUser: (id) => db.query(`SELECT * FROM users WHERE id = ${id}`),
-        }
-      }),
-    )
+    const UserRepoLiveWithCounter = Layer
+      .effect(
+        UserRepo,
+        Effect.gen(function*() {
+          yield* Logger
+          return {
+            findUser: (_id) => Effect.succeed({ rows: [] }),
+          }
+        }),
+      )
+      .pipe(Layer.provide(LoggerLiveWithCounter))
 
-    const AppLayer = Layer.scopedContext(
+    const AppLayer = Layer.effectContext(
       LayerExtra.buildUnordered([
-        UserRepoLiveWithCounter,
         DatabaseLiveWithCounter,
-        LoggerLiveWithCounter,
+        UserRepoLiveWithCounter,
       ]),
     )
 
     return Effect
       .gen(function*() {
-        yield* UserRepo
         yield* Database
-        yield* Logger
+        yield* UserRepo
 
         test
           .expect(loggerBuildCount)
           .toEqual(1)
-        test
-          .expect(databaseBuildCount)
-          .toEqual(1)
       })
       .pipe(
         Effect.provide(AppLayer),
-        Effect.provide(ExternalApiLive),
         Effect.runPromise,
       )
   })
-})
 
-// `buildUnordered` reaches into MemoMap internals to invalidate failed-build
-// entries so out-of-order layers can be retried once their dependencies become
-// available. These tests pin the Effect-internal assumptions that logic relies
-// on; if they ever fail, update LayerExtra.buildUnordered accordingly.
-test.describe("buildUnordered Effect-internal assumptions", () => {
-  test.test("MemoMap exposes a SynchronizedRef<Map> at .ref", () =>
-    Effect
-      .gen(function*() {
-        const memoMap = yield* Layer.makeMemoMap
-        const ref = (memoMap as unknown as { ref?: unknown }).ref
+  test.test("releases failed speculative acquisitions before retrying", () => {
+    class Dependency extends Context.Service<Dependency, {}>()("LayerExtra.test.Dependency") {}
+    class Resource extends Context.Service<Resource, {}>()("LayerExtra.test.Resource") {}
 
-        test
-          .expect(ref)
-          .toBeDefined()
-        test
-          .expect(SynchronizedRef.SynchronizedRefTypeId in (ref as object))
-          .toBe(true)
-
-        const map = yield* SynchronizedRef.get(
-          ref as SynchronizedRef.SynchronizedRef<unknown>,
+    const events: Array<string> = []
+    const ResourceLive = Layer.effect(
+      Resource,
+      Effect.gen(function*() {
+        yield* Effect.acquireRelease(
+          Effect.sync(() => events.push("acquire")),
+          () => Effect.sync(() => events.push("release")),
         )
+        yield* Dependency
+        return {}
+      }),
+    )
+    const DependencyLive = Layer.succeed(Dependency, {})
+    const AppLayer = Layer.effectContext(
+      LayerExtra.buildUnordered([ResourceLive, DependencyLive]),
+    )
 
-        test
-          .expect(map)
-          .toBeInstanceOf(Map)
-      })
-      .pipe(Effect.runPromise))
-
-  test.test("MemoMap caches failed builds and replays the same failure", () =>
-    Effect
+    return Effect
       .gen(function*() {
-        const memoMap = yield* Layer.makeMemoMap
-        const failingLayer = Layer.effect(
-          Logger,
-          Effect.fail("boom" as const),
-        ) as Layer.Layer<
-          Logger,
-          "boom"
-        >
-
-        const first = yield* Layer
-          .buildWithMemoMap(
-            failingLayer,
-            memoMap,
-            yield* Effect.scope,
-          )
-          .pipe(
-            Effect.exit,
-          )
-        const second = yield* Layer
-          .buildWithMemoMap(
-            failingLayer,
-            memoMap,
-            yield* Effect.scope,
-          )
-          .pipe(
-            Effect.exit,
-          )
+        yield* Resource
 
         test
-          .expect(first._tag)
-          .toBe("Failure")
-        test
-          .expect(second._tag)
-          .toBe("Failure")
-
-        const ref = (
-          memoMap as unknown as {
-            ref: SynchronizedRef.SynchronizedRef<Map<unknown, unknown>>
-          }
-        )
-          .ref
-        const map = yield* SynchronizedRef.get(ref)
-
-        test
-          .expect(map.has(failingLayer))
-          .toBe(true)
+          .expect(events)
+          .toEqual(["acquire", "release", "acquire"])
       })
       .pipe(
-        Effect.scoped,
+        Effect.provide(AppLayer),
+        Effect.tap(() =>
+          Effect.sync(() => {
+            test
+              .expect(events)
+              .toEqual(["acquire", "release", "acquire", "release"])
+          })
+        ),
         Effect.runPromise,
-      ))
+      )
+  })
+
+  test.test("preserves acquisition failures when no layer can progress", () => {
+    const FailingLive = Layer.effect(
+      Logger,
+      Effect.fail("build failed" as const),
+    )
+    const AppLayer = Layer.effectContext(
+      LayerExtra.buildUnordered([FailingLive]),
+    )
+
+    return Layer
+      .build(AppLayer)
+      .pipe(
+        Effect.scoped,
+        Effect.flip,
+        Effect.tap((error) =>
+          Effect.sync(() => {
+            test
+              .expect(error)
+              .toBe("build failed")
+          })
+        ),
+        Effect.runPromise,
+      )
+  })
+
+  test.test("does not retry or suppress acquisition failures when another layer progresses", () => {
+    let attempts = 0
+    const FailingOnceLive = Layer.effect(
+      Logger,
+      Effect.suspend(() => {
+        attempts++
+        return attempts === 1
+          ? Effect.fail("build failed" as const)
+          : Effect.succeed({ log: (_msg: string) => Effect.void })
+      }),
+    )
+    const AppLayer = Layer.effectContext(
+      LayerExtra.buildUnordered([FailingOnceLive, ExternalApiLive]),
+    )
+
+    return Effect
+      .gen(function*() {
+        const exit = yield* Layer.build(AppLayer).pipe(
+          Effect.scoped,
+          Effect.exit,
+        )
+
+        test
+          .expect(attempts)
+          .toBe(1)
+        test
+          .expect(exit)
+          .toEqual(Exit.fail("build failed"))
+      })
+      .pipe(Effect.runPromise)
+  })
+
+  test.test("does not retry non-service defects when another layer progresses", () => {
+    let attempts = 0
+    const defect = new Error("Service not found accidentally")
+    const DefectiveLive = Layer.effect(
+      Logger,
+      Effect.suspend(() => {
+        attempts++
+        return attempts === 1
+          ? Effect.die(defect)
+          : Effect.succeed({ log: (_msg: string) => Effect.void })
+      }),
+    )
+    const AppLayer = Layer.effectContext(
+      LayerExtra.buildUnordered([DefectiveLive, ExternalApiLive]),
+    )
+
+    return Effect
+      .gen(function*() {
+        const exit = yield* Layer.build(AppLayer).pipe(
+          Effect.scoped,
+          Effect.exit,
+        )
+
+        test
+          .expect(attempts)
+          .toBe(1)
+        test
+          .expect(
+            Exit.isFailure(exit) && exit.cause.reasons.some(
+              (reason) => Cause.isDieReason(reason) && reason.defect === defect,
+            ),
+          )
+          .toBe(true)
+      })
+      .pipe(Effect.runPromise)
+  })
+
+  test.test("rejects duplicate service providers", () => {
+    const FirstLoggerLive = Layer.succeed(Logger, { log: (_msg: string) => Effect.void })
+    const SecondLoggerLive = Layer.succeed(Logger, { log: (_msg: string) => Effect.void })
+    const AppLayer = Layer.effectContext(
+      LayerExtra.buildUnordered([FirstLoggerLive, SecondLoggerLive]),
+    )
+
+    return Effect
+      .gen(function*() {
+        const exit = yield* Layer.build(AppLayer).pipe(
+          Effect.scoped,
+          Effect.exit,
+        )
+
+        test
+          .expect(
+            Exit.isFailure(exit) && exit.cause.reasons.some(
+              (reason) =>
+                Cause.isDieReason(reason) &&
+                String(reason.defect).includes("multiple layers providing service: LayerExtra.test.Logger"),
+            ),
+          )
+          .toBe(true)
+      })
+      .pipe(Effect.runPromise)
+  })
+
+  test.test("accepts repeated exposure of the same service instance", () => {
+    const logger = { log: (_msg: string) => Effect.void }
+    const AppLayer = Layer.effectContext(
+      LayerExtra.buildUnordered([
+        Layer.succeed(Logger, logger),
+        Layer.succeed(Logger, logger),
+      ]),
+    )
+
+    return Effect
+      .gen(function*() {
+        const context = yield* Layer.build(AppLayer).pipe(Effect.scoped)
+
+        test
+          .expect(Context.get(context, Logger))
+          .toBe(logger)
+      })
+      .pipe(Effect.runPromise)
+  })
+
+  test.test("reports every missing service in a cyclic graph", () => {
+    class First extends Context.Service<First, {}>()("LayerExtra.test.First") {}
+    class Second extends Context.Service<Second, {}>()("LayerExtra.test.Second") {}
+
+    const FirstLive = Layer.effect(
+      First,
+      Effect.gen(function*() {
+        yield* Second
+        return {}
+      }),
+    )
+    const SecondLive = Layer.effect(
+      Second,
+      Effect.gen(function*() {
+        yield* First
+        return {}
+      }),
+    )
+    const AppLayer = Layer.effectContext(
+      LayerExtra.buildUnordered([FirstLive, SecondLive]),
+    )
+
+    return Effect
+      .gen(function*() {
+        const exit = yield* Layer.build(AppLayer).pipe(
+          Effect.scoped,
+          Effect.exit,
+        )
+
+        test
+          .expect(Exit.isFailure(exit))
+          .toBe(true)
+
+        if (Exit.isFailure(exit)) {
+          const defects = exit.cause.reasons.filter(Cause.isDieReason)
+
+          test
+            .expect(defects)
+            .toHaveLength(2)
+
+          const messages = defects.map((reason) => String(reason.defect))
+
+          test
+            .expect(messages.some((message) => message.includes("LayerExtra.test.First")))
+            .toBe(true)
+          test
+            .expect(messages.some((message) => message.includes("LayerExtra.test.Second")))
+            .toBe(true)
+        }
+      })
+      .pipe(Effect.runPromise)
+  })
 })

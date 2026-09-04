@@ -191,9 +191,6 @@ export function text(
   return result
 }
 
-/**
- * @internal
- */
 export class TrustedHtml {
   readonly ["~effect-start/Html/TrustedHtml"]: string
   constructor(html: string) {

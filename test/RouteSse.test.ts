@@ -173,7 +173,7 @@ test.describe("Route.sse()", () => {
   })
 
   test.it("infers context type from Stream", () => {
-    class Config extends Context.Tag("Config")<Config, { url: string }>() {}
+    class Config extends Context.Service<Config, { url: string }>()("Config") {}
 
     const stream = Stream.fromEffect(
       Effect.map(Config, (cfg) => ({ data: cfg.url })),
@@ -192,9 +192,7 @@ test.describe("Route.sse()", () => {
   test.it("works with context at runtime", () =>
     Effect
       .gen(function*() {
-        class Config extends Context
-          .Tag("Config")<Config, { message: string }>()
-        {}
+        class Config extends Context.Service<Config, { message: string }>()("Config") {}
 
         const stream = Stream.fromEffect(
           Effect.map(Config, (cfg) => ({ data: cfg.message })),
@@ -202,10 +200,8 @@ test.describe("Route.sse()", () => {
 
         const route = Route.get(Route.sse(stream))
         const layer = Layer.succeed(Config, { message: "from context" })
-        const runtime = Effect.runSync(
-          Layer.toRuntime(layer).pipe(Effect.scoped),
-        )
-        const handler = RouteHttp.toWebHandlerRuntime(runtime)(route)
+        const context = Effect.runSync(Layer.build(layer).pipe(Effect.scoped))
+        const handler = RouteHttp.toWebHandlerWith(context)(route)
 
         const client = Fetch.fromHandler(handler)
         const entity = yield* client.get("http://localhost/events")

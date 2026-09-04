@@ -1,19 +1,29 @@
 import * as test from "bun:test"
+import { BunFileSystem, BunPath } from "effect-start/bun"
 import * as Development from "effect-start/Development"
 import * as Entity from "effect-start/Entity"
 import * as Fetch from "effect-start/Fetch"
-import * as Multipart from "effect-start/Multipart"
 import * as Route from "effect-start/Route"
 import * as RouteHttp from "effect-start/RouteHttp"
 import { TestLogger } from "effect-start/testing"
+import * as Cause from "effect/Cause"
+import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
+import * as Layer from "effect/Layer"
 import * as Queue from "effect/Queue"
 import * as Ref from "effect/Ref"
 import * as Schedule from "effect/Schedule"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
-import * as Http from "../src/internal/Http.ts"
-import * as RouteSchema from "../src/internal/RouteSchema.ts"
+import * as HttpServerError from "effect/unstable/http/HttpServerError"
+import * as Multipart from "effect/unstable/http/Multipart"
+import * as Http from "effect-start/internal/Http"
+import * as RouteSchema from "effect-start/internal/RouteSchema"
+
+const multipartContext = Effect.runSync(
+  Layer.build(Layer.merge(BunFileSystem.layer, BunPath.layer)).pipe(Effect.scoped),
+)
 
 test.it("converts string to text/plain for Route.text", () =>
   Effect
@@ -145,8 +155,8 @@ test.it("handles method-specific routes", () =>
 test.it("handles errors by returning 500 response with generic message in production", () =>
   Effect
     .gen(function*() {
-      const runtime = yield* Effect.runtime<TestLogger.TestLogger>()
-      const handler = RouteHttp.toWebHandlerRuntime(runtime)(
+      const runtime = yield* Effect.context<TestLogger.TestLogger>()
+      const handler = RouteHttp.toWebHandlerWith(runtime)(
         Route.get(
           Route.text(function*() {
             return yield* Effect.fail(new Error("Something went wrong"))
@@ -184,8 +194,8 @@ test.it("handles errors by returning 500 response with generic message in produc
 test.it("handles defects by returning 500 response", () =>
   Effect
     .gen(function*() {
-      const runtime = yield* Effect.runtime<TestLogger.TestLogger>()
-      const handler = RouteHttp.toWebHandlerRuntime(runtime)(
+      const runtime = yield* Effect.context<TestLogger.TestLogger>()
+      const handler = RouteHttp.toWebHandlerWith(runtime)(
         Route.get(
           Route.text(function*() {
             return yield* Effect.die("Unexpected error")
@@ -215,8 +225,8 @@ test.it("handles defects by returning 500 response", () =>
 test.it("error response hides stack trace and cause chain in production", () =>
   Effect
     .gen(function*() {
-      const runtime = yield* Effect.runtime<TestLogger.TestLogger>()
-      const handler = RouteHttp.toWebHandlerRuntime(runtime)(
+      const runtime = yield* Effect.context<TestLogger.TestLogger>()
+      const handler = RouteHttp.toWebHandlerWith(runtime)(
         Route.get(
           Route.text(function*() {
             const innerError = new Error("Database connection failed")
@@ -263,10 +273,10 @@ test.it("error response hides stack trace and cause chain in production", () =>
 test.it("error response includes stack trace in development", () =>
   Effect
     .gen(function*() {
-      const runtime = yield* Effect.runtime<
+      const runtime = yield* Effect.context<
         TestLogger.TestLogger | Development.Development
       >()
-      const handler = RouteHttp.toWebHandlerRuntime(runtime)(
+      const handler = RouteHttp.toWebHandlerWith(runtime)(
         Route.get(
           Route.text(function*() {
             const innerError = new Error("Database connection failed")
@@ -299,10 +309,10 @@ test.it("error response includes stack trace in development", () =>
 test.it("handles errors with verbose details in development", () =>
   Effect
     .gen(function*() {
-      const runtime = yield* Effect.runtime<
+      const runtime = yield* Effect.context<
         TestLogger.TestLogger | Development.Development
       >()
-      const handler = RouteHttp.toWebHandlerRuntime(runtime)(
+      const handler = RouteHttp.toWebHandlerWith(runtime)(
         Route.get(
           Route.text(function*() {
             return yield* Effect.fail(new Error("Something went wrong"))
@@ -943,9 +953,9 @@ test.describe(Route.devOnly, () => {
   test.it("falls through in dev", () =>
     Effect
       .gen(function*() {
-        const runtime = yield* Effect.runtime<Development.Development>()
+        const runtime = yield* Effect.context<Development.Development>()
         const calls: Array<string> = []
-        const handler = RouteHttp.toWebHandlerRuntime(runtime)(
+        const handler = RouteHttp.toWebHandlerWith(runtime)(
           Route.get(
             Route.devOnly,
             Route.text(function*() {
@@ -975,8 +985,8 @@ test.describe(Route.devOnly, () => {
   test.it("propagates through use() to all methods in dev", () =>
     Effect
       .gen(function*() {
-        const runtime = yield* Effect.runtime<Development.Development>()
-        const handler = RouteHttp.toWebHandlerRuntime(runtime)(
+        const runtime = yield* Effect.context<Development.Development>()
+        const handler = RouteHttp.toWebHandlerWith(runtime)(
           Route
             .use(
               Route.filter(function*() {
@@ -1023,7 +1033,7 @@ test.describe(Route.devOnly, () => {
   test.it("walkHandles excludes development routes from web handlers", () =>
     Effect
       .gen(function*() {
-        const runtime = yield* Effect.runtime<Development.Development>()
+        const runtime = yield* Effect.context<Development.Development>()
         const tree = Route.map({
           "/development-only": Route.use(Route.devOnly),
           "/mixed": Route.get(Route.devOnly, Route.text("public")),
@@ -1073,7 +1083,7 @@ test.describe(Route.devOnly, () => {
   test.it("walkHandles with Route.map wildcard development layer keeps routes in dev", () =>
     Effect
       .gen(function*() {
-        const runtime = yield* Effect.runtime<Development.Development>()
+        const runtime = yield* Effect.context<Development.Development>()
         const tree = Route.map({
           "*": Route.use(Route.devOnly),
           "/public": Route.get(Route.text("public")),
@@ -1175,8 +1185,8 @@ test.describe("middleware chain", () => {
   test.it("middleware error short-circuits chain", () =>
     Effect
       .gen(function*() {
-        const runtime = yield* Effect.runtime<TestLogger.TestLogger>()
-        const handler = RouteHttp.toWebHandlerRuntime(runtime)(
+        const runtime = yield* Effect.context<TestLogger.TestLogger>()
+        const handler = RouteHttp.toWebHandlerWith(runtime)(
           Route
             .use(
               Route.filter(function*() {
@@ -1646,6 +1656,10 @@ test.describe("middleware chain", () => {
 })
 
 test.describe("toWebHandler type constraints", () => {
+  class RequiredService extends Context.Service<RequiredService, { readonly value: string }>()(
+    "RouteHttp.test.RequiredService",
+  ) {}
+
   test.it("accepts routes with method", () => {
     RouteHttp.toWebHandler(Route.get(Route.text("hello")))
   })
@@ -1668,6 +1682,19 @@ test.describe("toWebHandler type constraints", () => {
     const mixed = [...withMethod, ...withoutMethod] as const
     // @ts-expect-error
     RouteHttp.toWebHandler(mixed)
+  })
+
+  test.it("requires every route service in the supplied context", () => {
+    const routes = Route.get(Route.text(function*() {
+      const service = yield* RequiredService
+      return service.value
+    }))
+
+    // @ts-expect-error
+    RouteHttp.toWebHandler(routes)
+    // @ts-expect-error
+    RouteHttp.toWebHandlerWith(Context.empty())(routes)
+    RouteHttp.toWebHandlerWith(Context.make(RequiredService, { value: "provided" }))(routes)
   })
 })
 
@@ -1823,8 +1850,8 @@ test.describe("schema handlers", () => {
             ),
             RouteSchema.schemaSearchParams(
               Schema.Struct({
-                page: Schema.NumberFromString,
-                limit: Schema.optional(Schema.NumberFromString),
+                page: Schema.FiniteFromString,
+                limit: Schema.optional(Schema.FiniteFromString),
               }),
             ),
             Route.json(function*(ctx) {
@@ -1946,12 +1973,12 @@ test.describe("schema handlers", () => {
   test.it("returns 400 on schema validation failure", () =>
     Effect
       .gen(function*() {
-        const runtime = yield* Effect.runtime<TestLogger.TestLogger>()
-        const handler = RouteHttp.toWebHandlerRuntime(runtime)(
+        const runtime = yield* Effect.context<TestLogger.TestLogger>()
+        const handler = RouteHttp.toWebHandlerWith(runtime)(
           Route.get(
             RouteSchema.schemaSearchParams(
               Schema.Struct({
-                count: Schema.NumberFromString,
+                count: Schema.FiniteFromString,
               }),
             ),
             Route.text("ok"),
@@ -1969,7 +1996,7 @@ test.describe("schema handlers", () => {
         const messages = yield* TestLogger.messages
 
         test
-          .expect(messages.some((m) => m.includes("ParseError")))
+          .expect(messages.some((m) => m.includes("SchemaError")))
           .toBe(true)
       })
       .pipe(
@@ -1980,8 +2007,8 @@ test.describe("schema handlers", () => {
   test.it("handles missing required fields", () =>
     Effect
       .gen(function*() {
-        const runtime = yield* Effect.runtime<TestLogger.TestLogger>()
-        const handler = RouteHttp.toWebHandlerRuntime(runtime)(
+        const runtime = yield* Effect.context<TestLogger.TestLogger>()
+        const handler = RouteHttp.toWebHandlerWith(runtime)(
           Route.get(
             RouteSchema.schemaHeaders(
               Schema.Struct({
@@ -2012,7 +2039,7 @@ test.describe("schema handlers", () => {
   test.it("parses multipart form data with file", () =>
     Effect
       .gen(function*() {
-        const handler = RouteHttp.toWebHandler(
+        const handler = RouteHttp.toWebHandlerWith(multipartContext)(
           Route.post(
             RouteSchema.schemaBodyMultipart(
               Schema.Struct({
@@ -2021,11 +2048,7 @@ test.describe("schema handlers", () => {
               }),
             ),
             Route.json(function*(ctx) {
-              const size = yield* Stream.runFold(
-                ctx.body.file.content,
-                0,
-                (size, chunk) => size + chunk.length,
-              )
+              const size = Bun.file(ctx.body.file.path).size
               return {
                 title: ctx.body.title,
                 fileName: ctx.body.file.name,
@@ -2073,7 +2096,7 @@ test.describe("schema handlers", () => {
   test.it("handles multiple files with same field name", () =>
     Effect
       .gen(function*() {
-        const handler = RouteHttp.toWebHandler(
+        const handler = RouteHttp.toWebHandlerWith(multipartContext)(
           Route.post(
             RouteSchema.schemaBodyMultipart(
               Schema.Struct({
@@ -2084,15 +2107,7 @@ test.describe("schema handlers", () => {
               return {
                 count: ctx.body.documents.length,
                 names: ctx.body.documents.map((f) => f.name),
-                sizes: yield* Effect.forEach(
-                  ctx.body.documents,
-                  (file) =>
-                    Stream.runFold(
-                      file.content,
-                      0,
-                      (size, chunk) => size + chunk.length,
-                    ),
-                ),
+                sizes: ctx.body.documents.map((file) => Bun.file(file.path).size),
               }
             }),
           ),
@@ -2141,7 +2156,7 @@ test.describe("schema handlers", () => {
   test.it("handles single file upload", () =>
     Effect
       .gen(function*() {
-        const handler = RouteHttp.toWebHandler(
+        const handler = RouteHttp.toWebHandlerWith(multipartContext)(
           Route.post(
             RouteSchema.schemaBodyMultipart(
               Schema.Struct({
@@ -2149,11 +2164,7 @@ test.describe("schema handlers", () => {
               }),
             ),
             Route.json(function*(ctx) {
-              const size = yield* Stream.runFold(
-                ctx.body.image.content,
-                0,
-                (size, chunk) => size + chunk.length,
-              )
+              const size = Bun.file(ctx.body.image.path).size
               return {
                 name: ctx.body.image.name,
                 type: ctx.body.image.contentType,
@@ -2196,7 +2207,7 @@ test.describe("schema handlers", () => {
   test.it("handles multiple string values for same field", () =>
     Effect
       .gen(function*() {
-        const handler = RouteHttp.toWebHandler(
+        const handler = RouteHttp.toWebHandlerWith(multipartContext)(
           Route.post(
             RouteSchema.schemaBodyMultipart(
               Schema.Struct({
@@ -2242,7 +2253,7 @@ test.describe("schema handlers", () => {
   test.it("schema validation: single value with Schema.String succeeds", () =>
     Effect
       .gen(function*() {
-        const handler = RouteHttp.toWebHandler(
+        const handler = RouteHttp.toWebHandlerWith(multipartContext)(
           Route.post(
             RouteSchema.schemaBodyMultipart(
               Schema.Struct({
@@ -2278,8 +2289,8 @@ test.describe("schema handlers", () => {
   test.it("schema validation: multiple values with Schema.String fails with generic error in production", () =>
     Effect
       .gen(function*() {
-        const runtime = yield* Effect.runtime<TestLogger.TestLogger>()
-        const handler = RouteHttp.toWebHandlerRuntime(runtime)(
+        const runtime = yield* Effect.context<TestLogger.TestLogger>()
+        const handler = RouteHttp.toWebHandlerWith(Context.merge(multipartContext, runtime))(
           Route.post(
             RouteSchema.schemaBodyMultipart(
               Schema.Struct({
@@ -2314,7 +2325,7 @@ test.describe("schema handlers", () => {
         const messages = yield* TestLogger.messages
 
         test
-          .expect(messages.some((m) => m.includes("ParseError")))
+          .expect(messages.some((m) => m.includes("SchemaError")))
           .toBe(true)
       })
       .pipe(
@@ -2326,9 +2337,9 @@ test.describe("schema handlers", () => {
     Effect
       .gen(function*() {
         const testLogger = yield* TestLogger.TestLogger
-        const runtime = yield* Effect.runtime<TestLogger.TestLogger>()
+        const runtime = yield* Effect.context<TestLogger.TestLogger>()
 
-        const handler = RouteHttp.toWebHandlerRuntime(runtime)(
+        const handler = RouteHttp.toWebHandlerWith(Context.merge(multipartContext, runtime))(
           Route.post(
             RouteSchema.schemaBodyMultipart(
               Schema.Struct({
@@ -2359,11 +2370,11 @@ test.describe("schema handlers", () => {
 
         test
           .expect(errorLogs[0])
-          .toContain("ParseError")
+          .toContain("SchemaError")
         test
           .expect(errorLogs[0])
           .toContain(
-            "Expected string, actual [\"John\",\"Jane\"]",
+            "at [\"name\"]",
           )
       })
       .pipe(
@@ -2505,7 +2516,7 @@ test.describe("schema handlers", () => {
             RouteSchema.schemaPathParams(
               Schema.Struct({
                 folderId: Schema.String,
-                fileId: Schema.NumberFromString,
+                fileId: Schema.FiniteFromString,
               }),
             ),
             Route.json(function*(ctx) {
@@ -2605,8 +2616,8 @@ test.describe("schema handlers", () => {
   test.it("schemaPathParams cannot extract params without RouteMap (no path descriptor)", () =>
     Effect
       .gen(function*() {
-        const runtime = yield* Effect.runtime<TestLogger.TestLogger>()
-        const handler = RouteHttp.toWebHandlerRuntime(runtime)(
+        const runtime = yield* Effect.context<TestLogger.TestLogger>()
+        const handler = RouteHttp.toWebHandlerWith(runtime)(
           Route.get(
             RouteSchema.schemaPathParams(
               Schema.Struct({ id: Schema.String }),
@@ -2621,7 +2632,7 @@ test.describe("schema handlers", () => {
 
         // Without RouteMap, ctx.path is undefined, falls back to "/",
         // so PathPattern.match("/", "/users/abc") returns no params
-        // and schema validation fails with ParseError -> 400
+        // and schema validation fails with SchemaError -> 400
         test
           .expect(entity.status)
           .toBe(400)
@@ -2634,12 +2645,12 @@ test.describe("schema handlers", () => {
   test.it("path params validation fails on invalid input", () =>
     Effect
       .gen(function*() {
-        const runtime = yield* Effect.runtime<TestLogger.TestLogger>()
-        const handler = RouteHttp.toWebHandlerRuntime(runtime)(
+        const runtime = yield* Effect.context<TestLogger.TestLogger>()
+        const handler = RouteHttp.toWebHandlerWith(runtime)(
           Route.get(
             RouteSchema.schemaPathParams(
               Schema.Struct({
-                userId: Schema.NumberFromString,
+                userId: Schema.FiniteFromString,
               }),
             ),
             Route.text("ok"),
@@ -2655,7 +2666,7 @@ test.describe("schema handlers", () => {
         const messages = yield* TestLogger.messages
 
         test
-          .expect(messages.some((m) => m.includes("ParseError")))
+          .expect(messages.some((m) => m.includes("SchemaError")))
           .toBe(true)
       })
       .pipe(
@@ -2803,7 +2814,7 @@ test.describe("stream response scope", () => {
       })
       .pipe(Effect.runPromise))
 
-  test.it("closes the request scope when the request aborts mid-stream", () =>
+  test.it("keeps the returned stream alive until its body is cancelled", () =>
     Effect
       .gen(function*() {
         let released = false
@@ -2838,6 +2849,12 @@ test.describe("stream response scope", () => {
 
         abort()
         yield* Effect.sleep("50 millis")
+
+        test
+          .expect(released)
+          .toBe(false)
+
+        yield* Effect.promise(() => reader.cancel())
 
         test
           .expect(released)
@@ -3033,10 +3050,10 @@ test.describe("request abort handling", () => {
       })
       .pipe(Effect.runPromise))
 
-  test.it("uses clientAbortFiberId to identify client disconnects", () =>
+  test.it("uses the canonical client-abort cause annotation", () =>
     Effect
       .gen(function*() {
-        let interruptedBy: string | undefined
+        let isClientAbort = false
 
         const handler = RouteHttp.toWebHandler(
           Route.get(
@@ -3047,10 +3064,12 @@ test.describe("request abort handling", () => {
                   return "should not reach"
                 })
                 .pipe(
-                  Effect.onInterrupt((interruptors) =>
+                  Effect.onExit((exit) =>
                     Effect.sync(() => {
-                      for (const id of interruptors) {
-                        interruptedBy = String(id)
+                      if (Exit.isFailure(exit)) {
+                        isClientAbort = exit.cause.reasons.some((reason) =>
+                          Cause.isInterruptReason(reason) && reason.annotations.has(HttpServerError.ClientAbort.key)
+                        )
                       }
                     })
                   ),
@@ -3071,55 +3090,7 @@ test.describe("request abort handling", () => {
         yield* Effect.promise(() => Promise.resolve(responsePromise))
 
         test
-          .expect(interruptedBy)
-          .toContain("-499")
-      })
-      .pipe(Effect.runPromise))
-
-  test.it("interrupts streaming response when request is aborted", () =>
-    Effect
-      .gen(function*() {
-        let finalizerRan = false
-
-        const handler = RouteHttp.toWebHandler(
-          Route.get(
-            Route.text(function*() {
-              yield* Effect.addFinalizer(() =>
-                Effect.sync(() => {
-                  finalizerRan = true
-                })
-              )
-              return Stream.fromSchedule(Schedule.spaced("100 millis")).pipe(
-                Stream.map((n) => `event ${n}\n`),
-                Stream.take(100),
-              )
-            }),
-          ),
-        )
-
-        const { request, abort } = Http.createAbortableRequest({
-          path: "/stream",
-        })
-
-        const response = yield* Effect.promise(() => Promise.resolve(handler(request)))
-
-        test
-          .expect(response.status)
-          .toBe(200)
-
-        const reader = response.body!.getReader()
-        const firstChunk = yield* Effect.promise(() => reader.read())
-
-        test
-          .expect(firstChunk.done)
-          .toBe(false)
-
-        abort()
-
-        yield* Effect.sleep("50 millis")
-
-        test
-          .expect(finalizerRan)
+          .expect(isClientAbort)
           .toBe(true)
       })
       .pipe(Effect.runPromise))
@@ -3283,7 +3254,7 @@ test.describe("RouteMap layer routes", () => {
   test.it("layer routes can short-circuit with error", () =>
     Effect
       .gen(function*() {
-        const runtime = yield* Effect.runtime<TestLogger.TestLogger>()
+        const runtime = yield* Effect.context<TestLogger.TestLogger>()
         let handlerExecuted = false
 
         const tree = Route.map({
@@ -3598,6 +3569,33 @@ test.describe("Route.handle (format=*)", () => {
       })
       .pipe(Effect.runPromise))
 
+  test.it("does not treat Entity URL metadata as a redirect", () =>
+    Effect
+      .gen(function*() {
+        const handler = RouteHttp.toWebHandler(
+          Route.get(
+            Route.handle(function*() {
+              return Entity.make("redirect response body", {
+                status: 302,
+                url: "https://example.com/original-request",
+              })
+            }),
+          ),
+        )
+        const response = yield* Effect.promise(() => Promise.resolve(handler(new Request("http://localhost/"))))
+
+        test
+          .expect(response.status)
+          .toBe(302)
+        test
+          .expect(response.headers.has("location"))
+          .toBe(false)
+        test
+          .expect(yield* Effect.promise(() => response.text()))
+          .toBe("redirect response body")
+      })
+      .pipe(Effect.runPromise))
+
   test.it("handle middleware wraps handle handler", () =>
     Effect
       .gen(function*() {
@@ -3657,11 +3655,14 @@ test.describe("Route.handle (format=*)", () => {
         test
           .expect(entity.status)
           .toBe(200)
+
+        const body = yield* entity.json
+
         test
           .expect(calls)
           .toEqual(["render middleware", "json handler"])
         test
-          .expect(yield* entity.json)
+          .expect(body)
           .toEqual({ type: "json" })
       })
       .pipe(Effect.runPromise))
@@ -3702,6 +3703,9 @@ test.describe("Route.handle (format=*)", () => {
         test
           .expect(entity.status)
           .toBe(200)
+        test
+          .expect(yield* entity.json)
+          .toEqual({ type: "json" })
         test
           .expect(calls)
           .toEqual([
@@ -3925,7 +3929,7 @@ test.it("set-cookie array produces separate headers", async () => {
     .expect(cookies)
     .toEqual([
       "a=1; Path=/; HttpOnly",
-      "b=2; Path=/; Max-Age=60",
+      "b=2; Max-Age=60; Path=/",
     ])
 })
 

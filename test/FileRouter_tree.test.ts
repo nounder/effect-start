@@ -6,7 +6,7 @@ import * as RouteHttp from "effect-start/RouteHttp"
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
-import * as Option from "effect/Option"
+import * as Result from "effect/Result"
 
 test.it("fails on overlapping routes from groups", async () => {
   const routes = ["(admin)/users/route.tsx", "users/route.tsx"]
@@ -24,7 +24,7 @@ test.it("fails on overlapping routes from groups", async () => {
     .toBe(true)
 
   if (Exit.isFailure(exit)) {
-    const error = Option.getOrThrow(Cause.failureOption(exit.cause))
+    const error = Result.getOrThrow(Cause.findError(exit.cause))
 
     test
       .expect(error.reason)
@@ -51,7 +51,7 @@ test.it("fails on overlapping routes with same path", async () => {
     .toBe(true)
 
   if (Exit.isFailure(exit)) {
-    const error = Option.getOrThrow(Cause.failureOption(exit.cause))
+    const error = Result.getOrThrow(Cause.findError(exit.cause))
 
     test
       .expect(error.reason)
@@ -65,12 +65,12 @@ test.it("fails on overlapping routes with same path", async () => {
 test.it("import error renders as 500 response", () =>
   Effect
     .gen(function*() {
-      const runtime = yield* Effect.runtime<Development.Development>()
+      const context = yield* Effect.context<Development.Development>()
       const tree = yield* FileRouter.fromFileRoutes({
         "/broken": [() => Promise.reject(new Error("module not found"))],
       })
 
-      const handles = Object.fromEntries(RouteHttp.walkHandles(tree, runtime))
+      const handles = Object.fromEntries(RouteHttp.walkHandles(tree, context))
       const client = Fetch.fromHandler(handles["/broken"])
 
       const entity = yield* client.fetch("http://localhost/broken")

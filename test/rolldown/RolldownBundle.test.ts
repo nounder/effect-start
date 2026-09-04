@@ -1,9 +1,8 @@
 import * as test from "bun:test"
-import { BunBundle } from "effect-start/bun"
-import * as FileSystem from "effect-start/FileSystem"
-import { NodeFileSystem } from "effect-start/node"
+import { BunBundle, BunFileSystem } from "effect-start/bun"
 import { RolldownBundle } from "effect-start/rolldown"
 import * as Effect from "effect/Effect"
+import * as FileSystem from "effect/FileSystem"
 import * as NPath from "node:path"
 
 const makeEntrypoint = () =>
@@ -58,6 +57,6 @@ test.it("builds and resolves client artifact", () =>
     })
     .pipe(
       Effect.scoped,
-      Effect.provide(NodeFileSystem.layer),
+      Effect.provide(BunFileSystem.layer),
       Effect.runPromise,
     ))

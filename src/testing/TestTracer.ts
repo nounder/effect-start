@@ -1,8 +1,10 @@
 import * as Config from "effect/Config"
+import * as ConfigProvider from "effect/ConfigProvider"
 import * as Console from "effect/Console"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
+import * as Tracer from "effect/Tracer"
 import * as Tracing from "../internal/Tracing.ts"
 
 export type Span = Tracing.Span
@@ -89,12 +91,10 @@ const formatTrace = (
   return out.join("\n")
 }
 
-export const filterDuration = (minDuration: Duration.DurationInput) => {
+export const filterDuration = (minDuration: Duration.Input) => {
   const minDurationMs = Duration.toMillis(minDuration)
   return (span: Span) => (span.durationMs ?? 0) >= minDurationMs
 }
-
-const tracePrint = Effect.orElseSucceed(Config.boolean("TRACE_PRINT"), () => false)
 
 export const layer = (
   options: { readonly json?: boolean; readonly filter?: (span: Span) => boolean } = {},
@@ -102,13 +102,17 @@ export const layer = (
   const json = options.json ?? false
   const filter = options.filter ?? filterDuration("50 millis")
   const spans: Array<Tracing.Span> = []
-  return Layer.scopedDiscard(
-    Effect.gen(function*() {
-      yield* Effect.withTracerScoped(Tracing.makeTracer(spans))
-      const print = yield* tracePrint
-      if (print) {
-        yield* Effect.addFinalizer(() => Console.log(formatTrace(spans, json, filter)))
-      }
-    }),
+  return Layer.merge(
+    Layer.succeed(Tracer.Tracer, Tracing.makeTracer(spans)),
+    Layer.effectDiscard(
+      Effect.gen(function*() {
+        const print = yield* Effect.orElseSucceed(Config.boolean("TRACE_PRINT"), () => false).pipe(
+          Effect.provideService(ConfigProvider.ConfigProvider, ConfigProvider.fromEnv()),
+        )
+        if (print) {
+          yield* Effect.addFinalizer(() => Console.log(formatTrace(spans, json, filter)))
+        }
+      }),
+    ),
   )
 }

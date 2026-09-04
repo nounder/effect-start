@@ -1,3 +1,4 @@
+import type * as Effect from "effect/Effect"
 import type { DatastarAttributes, HTMLOrSVG } from "./datastar/jsx.ts"
 import type * as Html from "./Html.ts"
 
@@ -42,7 +43,7 @@ export namespace JSX {
     | number
     | bigint
     | SilentChild
-    | Iterable<Element>
+    | (Iterable<Element> & { readonly [Effect.TypeId]?: never })
   // a value that renders to nothing, often the result of conditional rendering
   // like `{condition && <div>...</div>}`
   export type SilentChild = boolean | null | undefined

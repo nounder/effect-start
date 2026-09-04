@@ -1,16 +1,21 @@
+import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
-import * as Exit from "effect/Exit"
-import * as Scope from "effect/Scope"
-import type * as Utils from "effect/Utils"
+import * as Fiber from "effect/Fiber"
+import type * as Scope from "effect/Scope"
+import * as HttpServerRequest from "effect/unstable/http/HttpServerRequest"
+import * as Socket from "effect/unstable/socket/Socket"
 import * as Entity from "../Entity.ts"
 import * as Route from "../Route.ts"
-import * as Socket from "../Socket.ts"
-import * as StartServer from "../StartServer.ts"
 import type * as Values from "./Values.ts"
 
-type YieldError<T> = T extends Utils.YieldWrap<Effect.Effect<any, infer E, any>> ? E
+export const HandlerScope = Context.Reference<Scope.Scope | undefined>(
+  "effect-start/RouteSocket/HandlerScope",
+  { defaultValue: () => undefined },
+)
+
+type YieldError<T> = T extends Effect.Effect<any, infer E, any> ? E
   : never
-type YieldContext<T> = T extends Utils.YieldWrap<Effect.Effect<any, any, infer R>> ? R
+type YieldContext<T> = T extends Effect.Effect<any, any, infer R> ? R
   : never
 
 type WsContext<D, B, I extends Route.Route.Tuple> = Values.Simplify<
@@ -20,7 +25,7 @@ type WsContext<D, B, I extends Route.Route.Tuple> = Values.Simplify<
   & { protocol: "ws"; socket: Socket.Socket }
 >
 
-type WsRouteR<R> = Exclude<R, Scope.Scope> | StartServer.StartServer
+type WsRouteR<R> = Exclude<R, Scope.Scope> | HttpServerRequest.HttpServerRequest
 
 type WsRoute<I extends Route.Route.Tuple, E, R> = [
   ...I,
@@ -31,7 +36,7 @@ export function ws<
   D,
   B,
   I extends Route.Route.Tuple,
-  Y extends Utils.YieldWrap<Effect.Effect<any, any, any>>,
+  Y extends Effect.Effect<any, any, any>,
 >(
   handler: (
     context: WsContext<D, B, I>,
@@ -64,7 +69,7 @@ export function ws<
   ) =>
     | Effect.Effect<void, E, R | Scope.Scope>
     | Generator<
-      Utils.YieldWrap<Effect.Effect<unknown, E, R | Scope.Scope>>,
+      Effect.Effect<unknown, E, R | Scope.Scope>,
       void,
       unknown
     >,
@@ -92,46 +97,34 @@ export function ws<
       (context) =>
         Effect
           .gen(function*() {
-            const server = yield* StartServer.StartServer
-            const request = yield* Route.Request
-
-            // scope is shared with handler and the connection.
-            // finalizer makes sure the socket is closed.
-            const handlerScope = yield* Scope.make()
-            const socket = yield* server.upgrade(request, handlerScope).pipe(
-              Effect.onError(() => Scope.close(handlerScope, Exit.void)),
-            )
-
-            yield* server.runFork(
-              Scope.use(handle({ ...context, socket }), handlerScope).pipe(
-                Effect.catchIf(
-                  // Normal disconnect codes: 1000 Normal, 1001 Going Away,
-                  // 1005 No Status, 1006 Abnormal — none are application errors.
-                  Socket.SocketCloseError.isClean((code) =>
-                    code === 1000 || code === 1001 || code === 1005 || code === 1006
-                  ),
-                  () => Effect.void,
+            const request = yield* HttpServerRequest.HttpServerRequest
+            const socket = yield* request.upgrade
+            const handlerScope = yield* HandlerScope
+            const handlerEffect = handle({ ...context, socket }).pipe(
+              Effect.catchFilter(
+                Socket.SocketCloseError.filterClean((code) =>
+                  code === 1000 || code === 1001 || code === 1005 || code === 1006
                 ),
-                Effect.catchAllCause((cause) => Effect.logError(cause)),
+                () => Effect.void,
               ),
+              Effect.catchCause((cause) => Effect.logError(cause)),
             )
+            yield* handlerScope === undefined
+              ? handlerEffect
+              : Effect.forkIn(handlerEffect, handlerScope).pipe(
+                Effect.flatMap(Fiber.join),
+              )
 
-            // After a successful upgrade Bun hijacks the connection and ignores
-            // the response returned from the fetch handler. The chain still
-            // serializes this entity, so use an empty body and a status the
-            // Response constructor accepts.
             return Entity.make("", { status: 200 })
           })
           .pipe(
-            Effect.catchIf(
-              (error) => error.reason._tag === "SocketOpenError",
-              () =>
-                Effect.succeed(
-                  Entity.make("", {
-                    status: 426,
-                    headers: { upgrade: "websocket" },
-                  }),
-                ),
+            Effect.catch((_) =>
+              Effect.succeed(
+                Entity.make("", {
+                  status: 426,
+                  headers: { upgrade: "websocket" },
+                }),
+              )
             ),
           ) as unknown as Effect.Effect<
             Entity.Entity<void>,

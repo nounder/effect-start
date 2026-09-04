@@ -1,14 +1,13 @@
 import * as Effect from "effect/Effect"
 import type * as Stream from "effect/Stream"
-import type * as Utils from "effect/Utils"
 import * as Entity from "../Entity.ts"
 import * as Route from "../Route.ts"
 import * as StreamExtra from "./StreamExtra.ts"
 import type * as Values from "./Values.ts"
 
-type YieldError<T> = T extends Utils.YieldWrap<Effect.Effect<any, infer E, any>> ? E
+type YieldError<T> = T extends Effect.Effect<any, infer E, any> ? E
   : never
-type YieldContext<T> = T extends Utils.YieldWrap<Effect.Effect<any, any, infer R>> ? R
+type YieldContext<T> = T extends Effect.Effect<any, any, infer R> ? R
   : never
 
 export type Format = "text" | "html" | "json" | "bytes" | "sse" | "*"
@@ -39,7 +38,7 @@ type HandlerFunction<B, A, E, R, Value = A> = (
 ) =>
   | Effect.Effect<HandlerReturn<A, Value>, E, R>
   | Generator<
-    Utils.YieldWrap<Effect.Effect<unknown, E, R>>,
+    Effect.Effect<unknown, E, R>,
     HandlerReturn<A, Value>,
     unknown
   >
@@ -64,16 +63,14 @@ function isHandlerFunction<B, A, E, R, Value>(
   return typeof handler === "function"
 }
 
-/** @internal */
 export function normalize<
   B,
   A,
-  Y extends Utils.YieldWrap<Effect.Effect<any, any, any>>,
+  Y extends Effect.Effect<any, any, any>,
   Value = A,
 >(
   handler: GeneratorHandler<B, A, Y, Value>,
 ): Route.Route.Handler<B, A, YieldError<Y>, YieldContext<Y>>
-/** @internal */
 export function normalize<B, A, E, R, Value = A>(
   handler: HandlerInput<B, A, E, R, Value>,
 ): Route.Route.Handler<B, A, E, R>
@@ -135,7 +132,7 @@ export interface BuildReturn<Value, F extends Format, Body = never> {
     B,
     I extends Route.Route.Tuple,
     A extends F extends "json" ? Value : Value | Stream.Stream<Value, any, any> = Value,
-    Y extends Utils.YieldWrap<Effect.Effect<any, any, any>> = never,
+    Y extends Effect.Effect<any, any, any> = never,
   >(
     handler: GeneratorHandler<
       NoInfer<D & B & Route.ExtractBindings<I> & { format: F }>,
@@ -271,7 +268,7 @@ export function handle<
   B extends {},
   I extends Route.Route.Tuple,
   A extends RenderValue,
-  Y extends Utils.YieldWrap<Effect.Effect<any, any, any>>,
+  Y extends Effect.Effect<any, any, any>,
 >(
   handler: GeneratorHandler<
     NoInfer<D & B & Route.ExtractBindings<I> & { format: "*" }>,

@@ -1,7 +1,7 @@
 import * as test from "bun:test"
-import * as BunBundle from "../../src/bun/BunBundle.ts"
-import * as BunImportTrackerPlugin from "../../src/bun/BunImportTrackerPlugin.ts"
-import { effectFn } from "../../src/testing"
+import * as BunBundle from "effect-start/bun/BunBundle"
+import * as BunImportTrackerPlugin from "effect-start/bun/BunImportTrackerPlugin"
+import { effectFn } from "effect-start/testing"
 
 const effect = effectFn()
 
@@ -29,15 +29,15 @@ test.it("imports", () =>
           },
           {
             kind: "import-statement",
-            path: "src/bun/BunBundle.ts",
+            path: "test/bun/effect-start/bun/BunBundle",
           },
           {
             kind: "import-statement",
-            path: "src/bun/BunImportTrackerPlugin.ts",
+            path: "test/bun/effect-start/bun/BunImportTrackerPlugin",
           },
           {
             kind: "import-statement",
-            path: "src/testing",
+            path: "test/bun/effect-start/testing",
           },
         ],
       ])

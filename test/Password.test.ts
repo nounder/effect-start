@@ -19,13 +19,13 @@ test.describe("Password.schemaPassword", () => {
             password: Password.PasswordStored
           }>()
         test
-          .expectTypeOf<Schema.Schema.Encoded<typeof UserCreate>>()
+          .expectTypeOf<Schema.Codec.Encoded<typeof UserCreate>>()
           .toMatchTypeOf<{
             email: string
             password: string
           }>()
 
-        const user = yield* Schema.decodeUnknown(UserCreate)({
+        const user = yield* Schema.decodeUnknownEffect(UserCreate)({
           email: "alice@example.com",
           password: "correct horse battery staple",
         })
@@ -59,7 +59,7 @@ test.describe("Password.schemaPassword", () => {
         const stored = yield* Password.hash("secret")
 
         const exit = yield* Effect.exit(
-          Schema.encodeUnknown(UserCreate)({
+          Schema.encodeUnknownEffect(UserCreate)({
             password: stored,
           }),
         )

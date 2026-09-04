@@ -1,19 +1,18 @@
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
+import * as FileSystem from "effect/FileSystem"
 import * as Function from "effect/Function"
 import * as Layer from "effect/Layer"
+import type * as PlatformError from "effect/PlatformError"
+import * as Result from "effect/Result"
 import * as Stream from "effect/Stream"
 import * as NPath from "node:path"
 import * as NUrl from "node:url"
 import * as Development from "./Development.ts"
 import * as FileRouterCodegen from "./FileRouterCodegen.ts"
-import * as FileSystem from "./FileSystem.ts"
 import * as PathPattern from "./internal/PathPattern.ts"
 import * as RouteMap from "./internal/RouteMap.ts"
-import * as NodeUtils from "./node/NodeUtils.ts"
 import * as Route from "./Route.ts"
-import type * as System from "./System.ts"
 
 export class FileRouterError extends Data.TaggedError("FileRouterError")<{
   reason: "Import" | "Conflict" | "FileSystem"
@@ -81,14 +80,14 @@ export function parseRoute(path: string): FileRoute | null {
   const routeDir = matched[1]?.replace(/\/$/, "") ?? ""
   const handle = matched[2] as "route" | "layer"
   const routePathResult = PathPattern.fromFilePath(routeDir)
-  if (Either.isLeft(routePathResult)) {
+  if (Result.isFailure(routePathResult)) {
     return null
   }
 
   return {
     handle,
     modulePath: normalizedPath,
-    routePath: routePathResult.right,
+    routePath: routePathResult.success,
   }
 }
 
@@ -103,7 +102,7 @@ function importModule<T>(
 
 const normalizeFsPath = (path: string) => path.startsWith("file://") ? NUrl.fileURLToPath(path) : path
 
-const defaultRoutesPath = () => NPath.join(NodeUtils.getEntrypoint(), "routes")
+const defaultRoutesPath = () => NPath.join(NPath.dirname(process.argv[1]!), "routes")
 
 function makeRouteMap(
   routesPath: string,
@@ -137,7 +136,7 @@ function mergeWithExisting(
 function layerMemory(routesPath: string) {
   routesPath = normalizeFsPath(routesPath)
 
-  return Layer.scoped(
+  return Layer.effect(
     Route.Routes,
     Effect.gen(function*() {
       const fileRoutes = yield* walkRoutesDirectory(routesPath)
@@ -168,7 +167,7 @@ function layerGenerated(
   const treeFilename = NPath.basename(treePath)
   const relativeRoutesPath = NPath.relative(process.cwd(), routesPath)
 
-  return Layer.scoped(
+  return Layer.effect(
     Route.Routes,
     Effect.gen(function*() {
       yield* FileRouterCodegen.update(routesPath, treeFilename)
@@ -180,7 +179,7 @@ function layerGenerated(
         Development.events,
         Stream.filter((e) => e._tag !== "Reload" && e.path.startsWith(relativeRoutesPath)),
         Stream.runForEach(() => FileRouterCodegen.update(routesPath, treeFilename)),
-        Effect.fork,
+        Effect.forkChild({ startImmediately: true }),
       )
 
       return yield* mergeWithExisting(routeMap)
@@ -228,15 +227,15 @@ export function fromFileRoutes(
       const allRoutes: Array<Route.Route.With<{ method: string }>> = []
 
       for (const loader of loaders) {
-        const result = yield* Effect.either(
+        const result = yield* Effect.result(
           Effect.tryPromise({
             try: () => loader(),
             catch: (cause) => new FileRouterError({ reason: "Import", cause, path }),
           }),
         )
 
-        if (Either.isLeft(result)) {
-          const error = result.left
+        if (Result.isFailure(result)) {
+          const error = result.failure
           for (
             const route of Route.use(
               Route.handle((): Effect.Effect<string, FileRouterError> => Effect.fail(error)),
@@ -245,7 +244,7 @@ export function fromFileRoutes(
             allRoutes.push(route as Route.Route.With<{ method: string }>)
           }
         } else {
-          const m = result.right
+          const m = result.success
           if (Route.isRouteSet(m.default)) {
             for (const route of m.default) {
               allRoutes.push(route as Route.Route.With<{ method: string }>)
@@ -265,7 +264,7 @@ export function walkRoutesDirectory(
   dir: string,
 ): Effect.Effect<
   OrderedFileRoutes,
-  System.SystemError | FileRouterError,
+  PlatformError.PlatformError | FileRouterError,
   FileSystem.FileSystem
 > {
   return Effect.gen(function*() {

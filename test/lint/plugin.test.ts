@@ -823,9 +823,9 @@ test.describe.skipIf(!process.env.TEST_LINT)("tagged-symbol-name", () => {
       .toHaveLength(1)
   })
 
-  test.it("allows Context.Tag namespaced identifier matching last segment", () => {
+  test.it("allows Context.Service class identifier matching last segment", () => {
     const diags = lintRule(
-      `import * as Context from "effect/Context"\nexport class Routes extends Context.Tag("effect-start/Routes")<Routes, {}>() {}\n`,
+      `import * as Context from "effect/Context"\nexport class Routes extends Context.Service<Routes, {}>()("app/Routes") {}\n`,
       "tagged-symbol-name",
     )
 
@@ -834,9 +834,9 @@ test.describe.skipIf(!process.env.TEST_LINT)("tagged-symbol-name", () => {
       .toHaveLength(0)
   })
 
-  test.it("flags Context.Tag last-segment mismatch", () => {
+  test.it("flags Context.Service class last-segment mismatch", () => {
     const diags = lintRule(
-      `import * as Context from "effect/Context"\nexport class Routes extends Context.Tag("effect-start/Foo")<Routes, {}>() {}\n`,
+      `import * as Context from "effect/Context"\nexport class Routes extends Context.Service<Routes, {}>()("app/Foo") {}\n`,
       "tagged-symbol-name",
     )
 
@@ -845,25 +845,20 @@ test.describe.skipIf(!process.env.TEST_LINT)("tagged-symbol-name", () => {
       .toHaveLength(1)
   })
 
-  test.it("fixes Context.Tag last segment while preserving the namespace prefix", () => {
+  test.it("fixes Context.Service class last segment while preserving the namespace prefix", () => {
     const fixed = lintFix(
-      `import * as Context from "effect/Context"\nexport class Routes extends Context.Tag("effect-start/Foo")<Routes, {}>() {}\n`,
-      "context-tag-fix.ts",
+      `import * as Context from "effect/Context"\nexport class Routes extends Context.Service<Routes, {}>()("app/Foo") {}\n`,
+      "context-service-class-fix.ts",
     )
 
     test
       .expect(fixed)
-      .toContain("Context.Tag(\"effect-start/Routes\")")
+      .toContain("Context.Service<Routes, {}>()(\"app/Routes\")")
   })
 
-  test.it("allows Context.Reference namespaced identifier matching last segment", () => {
+  test.it("allows Context.Service const identifier matching last segment", () => {
     const diags = lintRule(
-      [
-        "import * as Context from \"effect/Context\"",
-        "export class RouteContext extends Context.Reference<RouteContext>()(\"effect-start/RouteContext\", { defaultValue: () => 1 }) {}",
-        "",
-      ]
-        .join("\n"),
+      `import * as Context from "effect/Context"\nexport const Routes = Context.Service<{}>("app/Routes")\nRoutes\n`,
       "tagged-symbol-name",
     )
 
@@ -872,14 +867,9 @@ test.describe.skipIf(!process.env.TEST_LINT)("tagged-symbol-name", () => {
       .toHaveLength(0)
   })
 
-  test.it("flags Context.Reference last-segment mismatch", () => {
+  test.it("flags Context.Service const last-segment mismatch", () => {
     const diags = lintRule(
-      [
-        "import * as Context from \"effect/Context\"",
-        "export class RouteContext extends Context.Reference<RouteContext>()(\"effect-start/Nope\", { defaultValue: () => 1 }) {}",
-        "",
-      ]
-        .join("\n"),
+      `import * as Context from "effect/Context"\nexport const Routes = Context.Service<{}>("app/Nope")\nRoutes\n`,
       "tagged-symbol-name",
     )
 
@@ -888,26 +878,20 @@ test.describe.skipIf(!process.env.TEST_LINT)("tagged-symbol-name", () => {
       .toHaveLength(1)
   })
 
-  test.it("allows Effect.Tag and Effect.Service matching last segment", () => {
-    const diags = lintRule(
-      [
-        "import * as Effect from \"effect/Effect\"",
-        "export class Notifications extends Effect.Tag(\"app/Notifications\")<Notifications, {}>() {}",
-        "export class Cache extends Effect.Service<Cache>()(\"app/Cache\", { succeed: 1 }) {}",
-        "",
-      ]
-        .join("\n"),
-      "tagged-symbol-name",
+  test.it("fixes Context.Service const key preserving the prefix", () => {
+    const fixed = lintFix(
+      `import * as Context from "effect/Context"\nexport const Routes = Context.Service<{}>("app/Nope")\nRoutes\n`,
+      "context-service-const-fix.ts",
     )
 
     test
-      .expect(diags)
-      .toHaveLength(0)
+      .expect(fixed)
+      .toContain("Context.Service<{}>(\"app/Routes\")")
   })
 
   test.it("allows dot-namespaced identifier matching last segment", () => {
     const diags = lintRule(
-      `import * as Context from "effect/Context"\nexport class Logger extends Context.Tag("LayerExtra.test.Logger")<Logger, {}>() {}\n`,
+      `import * as Context from "effect/Context"\nexport class Logger extends Context.Service<Logger, {}>()("LayerExtra.test.Logger") {}\n`,
       "tagged-symbol-name",
     )
 
@@ -918,7 +902,7 @@ test.describe.skipIf(!process.env.TEST_LINT)("tagged-symbol-name", () => {
 
   test.it("flags dot-namespaced identifier with mismatched last segment", () => {
     const diags = lintRule(
-      `import * as Context from "effect/Context"\nexport class Logger extends Context.Tag("LayerExtra.test.Nope")<Logger, {}>() {}\n`,
+      `import * as Context from "effect/Context"\nexport class Logger extends Context.Service<Logger, {}>()("LayerExtra.test.Nope") {}\n`,
       "tagged-symbol-name",
     )
 
@@ -927,9 +911,9 @@ test.describe.skipIf(!process.env.TEST_LINT)("tagged-symbol-name", () => {
       .toHaveLength(1)
   })
 
-  test.it("allows Context.GenericTag const matching last segment", () => {
+  test.it("allows Context.Reference const matching last segment", () => {
     const diags = lintRule(
-      `import * as Context from "effect/Context"\nexport const StartServer = Context.GenericTag<StartServer>("effect-start/StartServer")\nStartServer\n`,
+      `import * as Context from "effect/Context"\nexport const LogLevel = Context.Reference<string>("app/LogLevel", { defaultValue: () => "info" })\nLogLevel\n`,
       "tagged-symbol-name",
     )
 
@@ -938,9 +922,9 @@ test.describe.skipIf(!process.env.TEST_LINT)("tagged-symbol-name", () => {
       .toHaveLength(0)
   })
 
-  test.it("flags Context.GenericTag const with mismatched last segment", () => {
+  test.it("flags Context.Reference const with mismatched last segment", () => {
     const diags = lintRule(
-      `import * as Context from "effect/Context"\nexport const StartServer = Context.GenericTag<StartServer>("effect-start/Nope")\nStartServer\n`,
+      `import * as Context from "effect/Context"\nexport const LogLevel = Context.Reference<string>("app/Nope", { defaultValue: () => "info" })\nLogLevel\n`,
       "tagged-symbol-name",
     )
 
@@ -949,15 +933,15 @@ test.describe.skipIf(!process.env.TEST_LINT)("tagged-symbol-name", () => {
       .toHaveLength(1)
   })
 
-  test.it("fixes Context.GenericTag const key preserving the prefix", () => {
+  test.it("fixes Context.Reference const key preserving the prefix", () => {
     const fixed = lintFix(
-      `import * as Context from "effect/Context"\nexport const StartServer = Context.GenericTag<StartServer>("effect-start/Nope")\nStartServer\n`,
-      "generic-tag-fix.ts",
+      `import * as Context from "effect/Context"\nexport const LogLevel = Context.Reference<string>("app/Nope", { defaultValue: () => "info" })\nLogLevel\n`,
+      "context-reference-fix.ts",
     )
 
     test
       .expect(fixed)
-      .toContain("Context.GenericTag<StartServer>(\"effect-start/StartServer\")")
+      .toContain("Context.Reference<string>(\"app/LogLevel\"")
   })
 
   test.it("allows Schema.TaggedStruct const matching its tag", () => {

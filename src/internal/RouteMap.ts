@@ -1,3 +1,5 @@
+import type * as Scope from "effect/Scope"
+import type * as HttpServerRequest from "effect/unstable/http/HttpServerRequest"
 import * as Route from "../Route.ts"
 import type * as PathPattern from "./PathPattern.ts"
 import type * as RouteMount from "./RouteMount.ts"
@@ -33,7 +35,7 @@ export type Context<T> = Exclude<
     [K in keyof T]: T[K] extends Iterable<Route.Route<any, any, any, any, infer R>> ? R
       : Context<T[K]>
   }[keyof T],
-  { readonly [Route.IntrinsicService]?: any }
+  { readonly [Route.IntrinsicService]?: any } | HttpServerRequest.HttpServerRequest | Scope.Scope
 >
 
 type PrefixKeys<T, Prefix extends string> = {

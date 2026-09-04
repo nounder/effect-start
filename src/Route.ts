@@ -67,16 +67,13 @@ import * as RouteBody from "./internal/RouteBody.ts"
 import * as RouteMap from "./internal/RouteMap.ts"
 import type * as Values from "./internal/Values.ts"
 
-/** @internal */
 export const RouteItems: unique symbol = Symbol()
-/** @internal */
 export const RouteDescriptor: unique symbol = Symbol()
 // only for structural type matching
 declare const RouteBindings: unique symbol
 
 export const TypeId = "~effect-start/RouteSet" as const
 
-/** @internal */
 export type RouteSet<D = {}, B = {}, M extends Route.Tuple = []> =
   & RouteSet.Data<D, B, M>
   & {
@@ -85,7 +82,6 @@ export type RouteSet<D = {}, B = {}, M extends Route.Tuple = []> =
   & Pipeable.Pipeable
   & Iterable<M[number]>
 
-/** @internal */
 export namespace RouteSet {
   export type Data<D = {}, B = {}, M extends Route.Tuple = []> = {
     [RouteItems]: M
@@ -252,7 +248,7 @@ export {
   sse,
 } from "./internal/RouteSse.ts"
 
-export class Routes extends Context.Tag("effect-start/Routes")<Routes, RouteMap.RouteMap>() {}
+export class Routes extends Context.Service<Routes, RouteMap.RouteMap>()("effect-start/Routes") {}
 
 export function layer<const Input extends RouteMap.RouteMapInput>(
   routes: Input,
@@ -270,9 +266,7 @@ export function layerMerge<const Input extends RouteMap.RouteMapInput>(
   return Layer.effect(
     Routes,
     Effect.gen(function*() {
-      const existing = yield* Effect.serviceOption(Routes).pipe(
-        Effect.andThen(Option.getOrUndefined),
-      )
+      const existing = Option.getOrUndefined(yield* Effect.serviceOption(Routes))
       const map = RouteMap.make(routes)
       if (!existing) return map
       return RouteMap.merge(existing, map)
@@ -356,7 +350,6 @@ const Proto: RouteSet.Proto = {
   },
 }
 
-/** @internal */
 export function isRouteSet(input: unknown): input is RouteSet.Any {
   return Predicate.hasProperty(input, TypeId)
 }
@@ -365,7 +358,6 @@ export function isRoute(input: unknown): input is Route {
   return isRouteSet(input) && Predicate.hasProperty(input, "handler")
 }
 
-/** @internal */
 export function set<D = {}, B = {}, I extends Route.Tuple = []>(
   items: I = [] as unknown as I,
   descriptor: D = {} as D,
@@ -398,14 +390,12 @@ export function describe<D extends {} = {}>(descriptor: D) {
   return set([], descriptor)
 }
 
-/** @internal */
 export function items<T extends RouteSet.Data<any, any, any>>(
   self: T,
 ): RouteSet.Items<T> {
   return self[RouteItems]
 }
 
-/** @internal */
 export function descriptor<T extends RouteSet.Data<any, any, any>>(
   self: T,
 ): T[typeof RouteDescriptor]
@@ -445,24 +435,18 @@ export type ExtractContext<Items extends Route.Tuple, Descriptor> =
  * Phantom marker for services that are provided automatically.
  * Routes may declare them as requirements, but they are stripped
  * from the R since they are provided by default when handling.
- * @internal
  */
 export declare const IntrinsicService: unique symbol
 
-export class Request extends Context.Tag("effect-start/Route/Request")<
-  Request,
-  globalThis.Request
->() {
+export class Request extends Context.Service<Request, globalThis.Request>()("effect-start/Route/Request") {
   declare readonly [IntrinsicService]: never
 }
 
 /**
  * Context shared across handlers per request.
- *
- * @internal
  */
-export class RouteContext extends Context.Reference<RouteContext>()("effect-start/RouteContext", {
+export const RouteContext = Context.Reference("effect-start/RouteContext", {
   defaultValue: () => ({
     context: Object.freeze({}) as Record<string, unknown>,
   }),
-}) {}
+})

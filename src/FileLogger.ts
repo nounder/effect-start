@@ -1,10 +1,10 @@
 import * as Effect from "effect/Effect"
+import type * as FileSystem from "effect/FileSystem"
 import * as Function from "effect/Function"
 import * as Logger from "effect/Logger"
+import type * as PlatformError from "effect/PlatformError"
 import type * as Scope from "effect/Scope"
-import type * as FileSystem from "./FileSystem.ts"
 import * as FileWriter from "./FileWriter.ts"
-import type * as System from "./System.ts"
 
 export const toFile: {
   (
@@ -13,7 +13,7 @@ export const toFile: {
     self: Logger.Logger<Message, string>,
   ) => Effect.Effect<
     Logger.Logger<Message, void>,
-    System.SystemError,
+    PlatformError.PlatformError,
     Scope.Scope | FileSystem.FileSystem
   >
   <Message>(
@@ -21,7 +21,7 @@ export const toFile: {
     options: FileWriter.Options,
   ): Effect.Effect<
     Logger.Logger<Message, void>,
-    System.SystemError,
+    PlatformError.PlatformError,
     Scope.Scope | FileSystem.FileSystem
   >
 } = Function.dual(

@@ -1,6 +1,6 @@
 import * as test from "bun:test"
-import * as Html from "../src/Html.ts"
-import type { HtmlElemenetProps } from "../src/jsx.d.ts"
+import * as Html from "effect-start/Html"
+import type { HtmlElemenetProps } from "effect-start/jsx"
 
 test.describe("html", () => {
   test.test("plain template", () => {

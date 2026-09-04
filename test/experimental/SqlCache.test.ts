@@ -1,18 +1,17 @@
 import * as test from "bun:test"
+import { SqliteClient } from "effect-start/bun"
 import * as SqlCache from "effect-start/experimental/SqlCache"
-import { SqlClient } from "effect-start/sql"
 import * as Cache from "effect/Cache"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import * as BunSql from "../../src/sql/bun/index.ts"
+import * as Sql from "effect/unstable/sql/SqlClient"
 
-const sqlLayer = BunSql.layer({ adapter: "sqlite", filename: ":memory:" })
+const sqlLayer = SqliteClient.layer({ filename: ":memory:" })
 
-const runSql = <A, E>(effect: Effect.Effect<A, E, SqlClient.SqlClient>) =>
-  Effect.runPromise(Effect.provide(effect, sqlLayer))
+const runSql = <A, E>(effect: Effect.Effect<A, E, Sql.SqlClient>) => Effect.runPromise(Effect.provide(effect, sqlLayer))
 
 const runSqlCached = <A, E>(
-  effect: Effect.Effect<A, E, SqlClient.SqlClient | SqlCache.SqlCache>,
+  effect: Effect.Effect<A, E, Sql.SqlClient | SqlCache.SqlCache>,
 ) =>
   Effect.runPromise(
     Effect.provide(
@@ -29,7 +28,7 @@ test.describe("SqlCache", () => {
     test.it("returns cached result on second call with same query", () =>
       runSql(
         Effect.gen(function*() {
-          const sql = yield* SqlClient.SqlClient
+          const sql = yield* Sql.SqlClient
           yield* sql`CREATE TABLE cache_test (id INTEGER PRIMARY KEY, name TEXT)`
           yield* sql`INSERT INTO cache_test (name) VALUES (${"Alice"})`
 
@@ -68,7 +67,7 @@ test.describe("SqlCache", () => {
     test.it("different parameters produce different cache entries", () =>
       runSql(
         Effect.gen(function*() {
-          const sql = yield* SqlClient.SqlClient
+          const sql = yield* Sql.SqlClient
           yield* sql`CREATE TABLE cache_params (id INTEGER PRIMARY KEY, name TEXT)`
           yield* sql`INSERT INTO cache_params (name) VALUES (${"Alice"})`
           yield* sql`INSERT INTO cache_params (name) VALUES (${"Bob"})`
@@ -104,7 +103,7 @@ test.describe("SqlCache", () => {
     test.it("works with unsafe queries", () =>
       runSql(
         Effect.gen(function*() {
-          const sql = yield* SqlClient.SqlClient
+          const sql = yield* Sql.SqlClient
           yield* sql`CREATE TABLE cache_unsafe (id INTEGER PRIMARY KEY, val TEXT)`
           yield* sql`INSERT INTO cache_unsafe (val) VALUES (${"x"})`
 
@@ -139,7 +138,7 @@ test.describe("SqlCache", () => {
     test.it("uses SqlCache from the environment", () =>
       runSqlCached(
         Effect.gen(function*() {
-          const sql = yield* SqlClient.SqlClient
+          const sql = yield* Sql.SqlClient
           yield* sql`CREATE TABLE cache_ctx (id INTEGER PRIMARY KEY, name TEXT)`
           yield* sql`INSERT INTO cache_ctx (name) VALUES (${"Alice"})`
 
@@ -172,7 +171,7 @@ test.describe("SqlCache", () => {
     test.it("different parameters produce different cache entries from context", () =>
       runSqlCached(
         Effect.gen(function*() {
-          const sql = yield* SqlClient.SqlClient
+          const sql = yield* Sql.SqlClient
           yield* sql`CREATE TABLE cache_ctx_params (id INTEGER PRIMARY KEY, name TEXT)`
           yield* sql`INSERT INTO cache_ctx_params (name) VALUES (${"Alice"})`
           yield* sql`INSERT INTO cache_ctx_params (name) VALUES (${"Bob"})`

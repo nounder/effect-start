@@ -1,5 +1,5 @@
 import * as test from "bun:test"
-import * as Bundle from "../../src/bundler/Bundle.ts"
+import * as Bundle from "effect-start/bundler/Bundle"
 
 test.describe(Bundle.makeResolver, () => {
   test.it("resolves exact module identifiers", () => {

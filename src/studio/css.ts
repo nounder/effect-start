@@ -313,6 +313,7 @@ body {
 
 .tl-grid { font-size: 12px; }
 .tl-cols { display: grid; grid-template-columns: 24px 1fr 48px 72px 90px; }
+.service-cols { grid-template-columns: 24px minmax(0, 1fr) 160px; }
 .tl-header {
   position: sticky;
   top: -8px;

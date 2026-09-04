@@ -3,32 +3,39 @@ import * as Effect from "effect/Effect"
 import * as Function from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Logger from "effect/Logger"
+import * as ManagedRuntime from "effect/ManagedRuntime"
+import * as PlatformError from "effect/PlatformError"
 import type * as Scope from "effect/Scope"
-import type * as Utils from "effect/Utils"
 import * as NNet from "node:net"
-import * as System from "../System.ts"
 
 /**
  * Creates a scoped Effects and runs is asynchronously.
  * Useful for testing.
  */
-export const effectFn = <RL>(layer?: Layer.Layer<RL, any>) =>
-<
-  Eff extends Utils.YieldWrap<Effect.Effect<any, any, RE>>,
-  AEff,
-  RE extends RL | Scope.Scope,
->(
-  f: () => Generator<Eff, AEff, never>,
-): Promise<void> =>
-  Function.pipe(
-    Effect.gen(f),
-    Effect.scoped,
-    Effect.provide(Logger.pretty),
-    Effect.provide(layer ?? Layer.empty),
-    // @ts-expect-error will have to figure out how to clear deps
-    Effect.runPromise,
-    (v) => v.then(() => {}, clearStackTraces),
-  )
+export function effectFn(): <AEff>(
+  f: () => Generator<Effect.Effect<any, any, Scope.Scope>, AEff, never>,
+) => Promise<void>
+export function effectFn<RL>(layer: Layer.Layer<RL, any>): <AEff>(
+  f: () => Generator<Effect.Effect<any, any, RL | Scope.Scope>, AEff, never>,
+) => Promise<void>
+export function effectFn(layer?: Layer.Layer<any, any>) {
+  if (layer === undefined) {
+    return <AEff>(f: () => Generator<Effect.Effect<any, any, Scope.Scope>, AEff, never>): Promise<void> => {
+      const runtime = ManagedRuntime.make(Logger.layer([Logger.consolePretty()]))
+      return runtime
+        .runPromise(Effect.scoped(Effect.gen(f)))
+        .then(() => {}, clearStackTraces)
+        .finally(() => runtime.dispose())
+    }
+  }
+  return <AEff>(f: () => Generator<Effect.Effect<any, any, any>, AEff, never>): Promise<void> => {
+    const runtime = ManagedRuntime.make(Layer.merge(layer, Logger.layer([Logger.consolePretty()])))
+    return runtime
+      .runPromise(Effect.scoped(Effect.gen(f)))
+      .then(() => {}, clearStackTraces)
+      .finally(() => runtime.dispose())
+  }
+}
 
 /*
  * When effect fails, instead of throwing FiberFailure,
@@ -41,18 +48,18 @@ export const effectFn = <RL>(layer?: Layer.Layer<RL, any>) =>
  * some tools, like effect-start, use it to generate temporary
  * files that are then loaded into a runtime.
  */
-export const randomFreePort: Effect.Effect<number, System.SystemError> = Effect
-  .async<
+export const randomFreePort: Effect.Effect<number, PlatformError.PlatformError> = Effect
+  .callback<
     number,
-    System.SystemError
+    PlatformError.PlatformError
   >((resume) => {
     const server = NNet.createServer()
     server.unref()
     server.on("error", (err) =>
       resume(
         Effect.fail(
-          new System.SystemError({
-            reason: "Unknown",
+          PlatformError.systemError({
+            _tag: "Unknown",
             module: "System",
             method: "randomFreePort",
             description: err.message,
@@ -66,8 +73,8 @@ export const randomFreePort: Effect.Effect<number, System.SystemError> = Effect
         server.close(() =>
           resume(
             Effect.fail(
-              new System.SystemError({
-                reason: "Unknown",
+              PlatformError.systemError({
+                _tag: "Unknown",
                 module: "System",
                 method: "randomFreePort",
                 description: "Failed to allocate a free port",
@@ -82,8 +89,8 @@ export const randomFreePort: Effect.Effect<number, System.SystemError> = Effect
         if (err) {
           resume(
             Effect.fail(
-              new System.SystemError({
-                reason: "Unknown",
+              PlatformError.systemError({
+                _tag: "Unknown",
                 module: "System",
                 method: "randomFreePort",
                 description: err.message,

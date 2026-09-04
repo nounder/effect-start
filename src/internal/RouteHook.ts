@@ -1,5 +1,4 @@
 import * as Effect from "effect/Effect"
-import type * as Utils from "effect/Utils"
 import type * as Entity from "../Entity.ts"
 import * as Route from "../Route.ts"
 
@@ -14,7 +13,7 @@ type FilterHandlerInput<BIn, BOut, E, R> =
   ) =>
     | FilterResult<BOut, E, R>
     | Generator<
-      Utils.YieldWrap<Effect.Effect<unknown, E, R>>,
+      Effect.Effect<unknown, E, R>,
       { context: BOut },
       unknown
     >)

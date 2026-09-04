@@ -3,7 +3,6 @@ import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Metric from "effect/Metric"
-import * as MetricBoundaries from "effect/MetricBoundaries"
 import * as Random from "effect/Random"
 import * as Schedule from "effect/Schedule"
 
@@ -21,12 +20,12 @@ const maybe = (pct: number, op: Effect.Effect<void, any>) =>
 const httpRequestsTotal = Metric.counter("http.requests.total")
 const httpRequestDuration = Metric.histogram(
   "http.request.duration_ms",
-  MetricBoundaries.linear({ start: 0, width: 50, count: 20 }),
+  { boundaries: Metric.linearBoundaries({ start: 0, width: 50, count: 20 }) },
 )
 const activeConnections = Metric.gauge("http.active_connections")
 const dbQueryDuration = Metric.histogram(
   "db.query.duration_ms",
-  MetricBoundaries.linear({ start: 0, width: 10, count: 25 }),
+  { boundaries: Metric.linearBoundaries({ start: 0, width: 10, count: 25 }) },
 )
 const dbPoolSize = Metric.gauge("db.pool.active")
 const cacheHits = Metric.counter("cache.hits")
@@ -38,7 +37,7 @@ const circuitBreakerTrips = Metric.counter("circuit_breaker.trips")
 const rateLimitRejections = Metric.counter("rate_limit.rejections")
 const serializationDuration = Metric.histogram(
   "serialization.duration_ms",
-  MetricBoundaries.linear({ start: 0, width: 5, count: 15 }),
+  { boundaries: Metric.linearBoundaries({ start: 0, width: 5, count: 15 }) },
 )
 
 const routes = [
@@ -233,7 +232,7 @@ const simulateConnectionPoolAcquire = Effect
     const maxPool = 20
     yield* Effect.annotateCurrentSpan("pool.active", pool)
     yield* Effect.annotateCurrentSpan("pool.max", maxPool)
-    yield* dbPoolSize.pipe(Metric.set(pool))
+    yield* Metric.update(dbPoolSize, pool)
     yield* Effect.sleep(yield* randomMs(0, pool > 15 ? 50 : 5))
     if (pool >= 19 && (yield* Random.nextIntBetween(0, 100)) < 30) {
       return yield* Effect.die(
@@ -328,11 +327,11 @@ const simulateCache = Effect
     yield* Effect.annotateCurrentSpan("cache.hit", hit)
     yield* Effect.sleep(yield* randomMs(0, 3))
     if (hit) {
-      yield* Metric.increment(cacheHits)
+      yield* Metric.update(cacheHits, 1)
       yield* simulateCacheDeserialize
       yield* Effect.logDebug(`cache hit: ${key}`)
     } else {
-      yield* Metric.increment(cacheMisses)
+      yield* Metric.update(cacheMisses, 1)
       yield* Effect.logDebug(`cache miss: ${key}`)
     }
   })
@@ -407,7 +406,7 @@ const simulateRateLimit = Effect
     yield* Effect.annotateCurrentSpan("rate_limit.remaining", remaining)
     yield* Effect.sleep(yield* randomMs(0, 2))
     if (remaining < 3) {
-      yield* Metric.increment(rateLimitRejections)
+      yield* Metric.update(rateLimitRejections, 1)
       yield* Effect.logWarning(`rate limit near threshold for ${ip}`)
       if ((yield* Random.nextIntBetween(0, 100)) < 40) {
         return yield* Effect.fail(
@@ -526,7 +525,7 @@ const simulateCircuitBreaker = (
         failures,
       )
       if (failures >= 8) {
-        yield* Metric.increment(circuitBreakerTrips)
+        yield* Metric.update(circuitBreakerTrips, 1)
         yield* Effect.logWarning(`circuit breaker OPEN for ${service}`)
         return yield* Effect.fail(
           new CircuitBreakerError({ service, failureCount: failures }),
@@ -547,18 +546,21 @@ const simulateRetry = (inner: Effect.Effect<void, any>, opName: string) =>
         yield* Effect.annotateCurrentSpan("retry.attempt", attempt)
         const result = yield* inner.pipe(
           Effect.map(() => true),
-          Effect.catchAll((e) => {
-            if (attempt < maxRetries) {
-              return Effect.gen(function*() {
-                yield* Metric.increment(retryCount)
-                yield* Effect.logWarning(
-                  `${opName} attempt ${attempt} failed, retrying`,
-                )
-                yield* Effect.sleep(yield* randomMs(10, 50 * attempt))
-                return false
-              })
-            }
-            return Effect.fail(e)
+          Effect.matchEffect({
+            onFailure: (e) => {
+              if (attempt < maxRetries) {
+                return Effect.gen(function*() {
+                  yield* Metric.update(retryCount, 1)
+                  yield* Effect.logWarning(
+                    `${opName} attempt ${attempt} failed, retrying`,
+                  )
+                  yield* Effect.sleep(yield* randomMs(10, 50 * attempt))
+                  return false
+                })
+              }
+              return Effect.fail(e)
+            },
+            onSuccess: Effect.succeed,
           }),
         )
         succeeded = result
@@ -876,7 +878,7 @@ const simulateBackgroundTask = Effect
       })
       .pipe(Effect.withSpan("task.ack"))
 
-    yield* Metric.increment(eventCount)
+    yield* Metric.update(eventCount, 1)
     yield* Effect.logInfo(`completed background task: ${task}`)
   })
   .pipe(Effect.withSpan("task.background"))
@@ -898,8 +900,8 @@ const simulateRequest = Effect.gen(function*() {
     500,
   ]
 
-  yield* Metric.increment(httpRequestsTotal)
-  yield* Metric.increment(activeConnections)
+  yield* Metric.update(httpRequestsTotal, 1)
+  yield* Metric.update(activeConnections, 1)
 
   const result = yield* Effect
     .gen(function*() {
@@ -973,7 +975,7 @@ const simulateRequest = Effect.gen(function*() {
     })
     .pipe(Effect.withSpan(`${route.method} ${route.path}`))
 
-  yield* activeConnections.pipe(Metric.set(0))
+  yield* Metric.update(activeConnections, 0)
 
   const durationMs = yield* Random.nextIntBetween(5, 500)
   yield* Metric.update(httpRequestDuration, durationMs)
@@ -988,7 +990,7 @@ const requestLoop = Effect.gen(function*() {
       const burst = yield* Random.nextIntBetween(1, 4)
       yield* Effect.forEach(
         Array.from({ length: burst }, (_, i) => i),
-        () => simulateRequest.pipe(Effect.fork),
+        () => simulateRequest.pipe(Effect.forkChild),
         { concurrency: "unbounded" },
       )
     }),
@@ -1000,16 +1002,16 @@ const backgroundLoop = Effect.gen(function*() {
   yield* Effect.logInfo("simulation: background task loop started")
   yield* Effect.schedule(
     Effect.gen(function*() {
-      yield* Effect.fork(simulateBackgroundTask)
+      yield* Effect.forkChild(simulateBackgroundTask)
       const depth = yield* Random.nextIntBetween(0, 25)
-      yield* queueDepth.pipe(Metric.set(depth))
+      yield* Metric.update(queueDepth, depth)
     }),
     Schedule.jittered(Schedule.spaced("2 seconds")),
   )
 })
 
 export function layer() {
-  return Layer.scopedDiscard(
+  return Layer.effectDiscard(
     Effect.gen(function*() {
       yield* Effect.logInfo("simulation layer starting")
       yield* Effect.forkScoped(requestLoop)

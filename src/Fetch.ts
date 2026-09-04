@@ -45,7 +45,7 @@ function withTrace<E, R>(
 
   return Effect.useSpan(
     `http.client ${request.method}`,
-    { kind: "client", captureStackTrace: false },
+    { kind: "client" },
     (span) => {
       span.attribute("http.request.method", request.method)
       span.attribute("url.full", url.toString())
@@ -202,7 +202,9 @@ export function fromHandler(handler: WebHandler): FetchClient {
       }),
       (response) => Entity.fromResponse<FetchError>(response, request),
     )
-  return use(transport)
+  return Object.create(ClientProto, {
+    middleware: { value: [transport] },
+  }) as FetchClient
 }
 
 export function filterStatus(
@@ -306,7 +308,7 @@ export function retry(options: {
 
     return Effect.retry(
       Effect.suspend(() => next(request)),
-      Schedule.intersect(Schedule.recurs(times), Schedule.exponential(delay)),
+      Schedule.exponential(delay).pipe(Schedule.upTo({ times })),
     )
   }) as Middleware
 }
@@ -351,29 +353,28 @@ export function sse(_options?: {
     type Acc = typeof empty
 
     return byteStream.pipe(
-      Stream.mapAccum(empty, (acc, chunk: Uint8Array): [Acc, Array<string>] => {
+      Stream.mapAccum(() => empty, (acc, chunk: Uint8Array): [Acc, Array<string>] => {
         const text = acc.partial + decoder.decode(chunk, { stream: true })
         const parts = text.split("\n")
         const partial = parts.pop()!
         const lines = parts.map((l) => (l.endsWith("\r") ? l.slice(0, -1) : l))
         return [{ ...acc, partial }, lines]
       }),
-      Stream.flatMap(Stream.fromIterable),
       Stream.mapAccum(
-        empty,
-        (acc, line: string): [Acc, SseEvent | undefined] => {
+        () => empty,
+        (acc, line: string): [Acc, ReadonlyArray<SseEvent>] => {
           if (line === "") {
             if (acc.dataLines.length > 0) {
               const event: SseEvent = { data: acc.dataLines.join("\n") }
               if (acc.eventType !== undefined) event.event = acc.eventType
               if (acc.retryMs !== undefined) event.retry = acc.retryMs
               if (acc.lastEventId !== undefined) event.id = acc.lastEventId
-              return [{ ...empty, lastEventId: acc.lastEventId }, event]
+              return [{ ...empty, lastEventId: acc.lastEventId }, [event]]
             }
-            return [{ ...empty, lastEventId: acc.lastEventId }, undefined]
+            return [{ ...empty, lastEventId: acc.lastEventId }, []]
           }
 
-          if (line.startsWith(":")) return [acc, undefined]
+          if (line.startsWith(":")) return [acc, []]
 
           const colonIdx = line.indexOf(":")
           const field = colonIdx === -1 ? line : line.slice(0, colonIdx)
@@ -382,25 +383,24 @@ export function sse(_options?: {
 
           switch (field) {
             case "event":
-              return [{ ...acc, eventType: value }, undefined]
+              return [{ ...acc, eventType: value }, []]
             case "data":
               return [
                 { ...acc, dataLines: [...acc.dataLines, value] },
-                undefined,
+                [],
               ]
             case "retry": {
               const n = parseInt(value, 10)
-              if (!isNaN(n)) return [{ ...acc, retryMs: n }, undefined]
-              return [acc, undefined]
+              if (!isNaN(n)) return [{ ...acc, retryMs: n }, []]
+              return [acc, []]
             }
             case "id":
-              return [{ ...acc, lastEventId: value }, undefined]
+              return [{ ...acc, lastEventId: value }, []]
             default:
-              return [acc, undefined]
+              return [acc, []]
           }
         },
       ),
-      Stream.filter((event): event is SseEvent => event !== undefined),
     )
   }
 }

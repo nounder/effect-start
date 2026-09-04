@@ -1,14 +1,12 @@
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
-import * as FiberId from "effect/FiberId"
-import * as HashMap from "effect/HashMap"
 import * as Layer from "effect/Layer"
-import * as List from "effect/List"
 import * as Logger from "effect/Logger"
 import * as PubSub from "effect/PubSub"
+import * as References from "effect/References"
 import * as Tracing from "../internal/Tracing.ts"
 import * as Pretty from "./internal/Pretty.ts"
-import * as Studio from "./Studio.ts"
+import * as StudioContext from "./internal/StudioContext.ts"
 import * as StudioStore from "./StudioStore.ts"
 
 const make = (store: StudioStore.State) =>
@@ -21,30 +19,26 @@ const make = (store: StudioStore.State) =>
         Error: "ERROR",
         Fatal: "FATAL",
       }
-      const level = levelMap[logOptions.logLevel._tag] ?? "INFO"
-      const causeStr = !Cause.isEmpty(logOptions.cause)
-        ? Cause.pretty(logOptions.cause, { renderErrorCause: true })
+      const level = levelMap[logOptions.logLevel] ?? "INFO"
+      const causeStr = logOptions.cause.reasons.length > 0
+        ? Cause.pretty(logOptions.cause)
         : undefined
-      const spanNames: Array<string> = []
-      List.forEach(logOptions.spans, (s) => spanNames.push(s.label))
-      const ann: Record<string, unknown> = {}
-      HashMap.forEach(logOptions.annotations, (v, k) => {
-        ann[k] = v
-      })
+      const spanNames = logOptions.fiber.getRef(References.CurrentLogSpans).map(([label]) => label)
+      const ann = logOptions.fiber.getRef(References.CurrentLogAnnotations)
 
       const log: StudioStore.LogEntry = {
         id: Tracing.nextPackedId(),
         timestamp: logOptions.date.getTime(),
         level,
         message: Pretty.formatLogMessage(logOptions.message),
-        fiberId: FiberId.threadName(logOptions.fiberId),
+        fiberId: `#${logOptions.fiber.id}`,
         cause: causeStr,
         spans: spanNames,
         annotations: ann,
       }
       StudioStore.runWrite(
         store,
-        Effect.zipRight(
+        Effect.andThen(
           StudioStore.insertLog(log),
           StudioStore.evict("Log", store.logCapacity),
         ),
@@ -53,10 +47,10 @@ const make = (store: StudioStore.State) =>
     } catch {}
   })
 
-export const layer: Layer.Layer<never, never, Studio.Studio> = Layer
-  .unwrapEffect(
+export const layer: Layer.Layer<never, never, StudioContext.Studio> = Layer
+  .unwrap(
     Effect.gen(function*() {
-      const studio = yield* Studio.Studio
-      return Logger.add(make(studio.store))
+      const studio = yield* StudioContext.Studio
+      return Logger.layer([make(studio.store)], { mergeWithExisting: true })
     }),
   )

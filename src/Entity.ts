@@ -1,8 +1,8 @@
 import * as Effect from "effect/Effect"
 import * as Effectable from "effect/Effectable"
-import * as ParseResult from "effect/ParseResult"
 import * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
+import * as SchemaIssue from "effect/SchemaIssue"
 import * as Stream from "effect/Stream"
 import * as Html from "./Html.ts"
 import * as StreamExtra from "./internal/StreamExtra.ts"
@@ -37,41 +37,35 @@ export interface Entity<T = unknown, E = never> extends Effect.Effect<Entity<T, 
    */
   readonly url: string | undefined
   readonly status: number | undefined
-  readonly text: T extends string ? Effect.Effect<T, ParseResult.ParseError | E>
-    : Effect.Effect<string, ParseResult.ParseError | E>
-  readonly html: Effect.Effect<Html.TrustedHtml, ParseResult.ParseError | E>
+  readonly text: T extends string ? Effect.Effect<T, Schema.SchemaError | E>
+    : Effect.Effect<string, Schema.SchemaError | E>
+  readonly html: Effect.Effect<Html.TrustedHtml, Schema.SchemaError | E>
   readonly json: [T] extends [Effect.Effect<infer A, any, any>] ? Effect.Effect<
       A extends string | Uint8Array | ArrayBuffer ? unknown : A,
-      ParseResult.ParseError | E
+      Schema.SchemaError | E
     >
-    : [T] extends [Stream.Stream<any, any, any>] ? Effect.Effect<unknown, ParseResult.ParseError | E>
-    : [T] extends [string | Uint8Array | ArrayBuffer] ? Effect.Effect<unknown, ParseResult.ParseError | E>
-    : [T] extends [Values.Json] ? Effect.Effect<T, ParseResult.ParseError | E>
-    : Effect.Effect<unknown, ParseResult.ParseError | E>
-  readonly schemaJson: <A, I, R>(
-    schema: Schema.Schema<A, I, R>,
-  ) => Effect.Effect<A, ParseResult.ParseError | E, R>
-  readonly bytes: Effect.Effect<Uint8Array, ParseResult.ParseError | E>
-  readonly stream: T extends Stream.Stream<infer A, infer E1, any> ? Stream.Stream<A, ParseResult.ParseError | E | E1>
-    : Stream.Stream<Uint8Array, ParseResult.ParseError | E>
+    : [T] extends [Stream.Stream<any, any, any>] ? Effect.Effect<unknown, Schema.SchemaError | E>
+    : [T] extends [string | Uint8Array | ArrayBuffer] ? Effect.Effect<unknown, Schema.SchemaError | E>
+    : [T] extends [Values.Json] ? Effect.Effect<T, Schema.SchemaError | E>
+    : Effect.Effect<unknown, Schema.SchemaError | E>
+  readonly schemaJson: <S extends Schema.ConstraintDecoder<unknown>>(
+    schema: S,
+  ) => Effect.Effect<S["Type"], Schema.SchemaError | E, S["DecodingServices"]>
+  readonly bytes: Effect.Effect<Uint8Array, Schema.SchemaError | E>
+  readonly stream: T extends Stream.Stream<infer A, infer E1, any> ? Stream.Stream<A, Schema.SchemaError | E | E1>
+    : Stream.Stream<Uint8Array, Schema.SchemaError | E>
 }
 
 export interface Proto extends Effect.Effect<Entity, never> {
   readonly [TypeId]: typeof TypeId
 }
 
-function parseJson(s: string): Effect.Effect<unknown, ParseResult.ParseError> {
+function parseJson(s: string): Effect.Effect<unknown, Schema.SchemaError> {
   try {
     return Effect.succeed(JSON.parse(s))
-  } catch (e) {
+  } catch {
     return Effect.fail(
-      new ParseResult.ParseError({
-        issue: new ParseResult.Type(
-          Schema.Unknown.ast,
-          s,
-          e instanceof Error ? e.message : "Failed to parse JSON",
-        ),
-      }),
+      new Schema.SchemaError(new SchemaIssue.InvalidType(Schema.Unknown.ast, s)),
     )
   }
 }
@@ -89,7 +83,7 @@ function isDirectJson(value: unknown): value is Exclude<Values.Json, string> {
 
 function getText(
   self: Entity<unknown, unknown>,
-): Effect.Effect<string, ParseResult.ParseError | unknown> {
+): Effect.Effect<string, Schema.SchemaError | unknown> {
   const v = self.body
   if (StreamExtra.isStream(v)) {
     return Stream.mkString(
@@ -99,7 +93,7 @@ function getText(
   if (Effect.isEffect(v)) {
     return Effect.flatMap(
       v as Effect.Effect<unknown, unknown, never>,
-      (inner): Effect.Effect<string, ParseResult.ParseError | unknown> => {
+      (inner): Effect.Effect<string, Schema.SchemaError | unknown> => {
         if (isEntity(inner)) {
           return inner.text
         }
@@ -126,7 +120,7 @@ function getText(
 // maybe text could use getBytes, tto osince we need to decode it.
 function getJson(
   self: Entity<unknown, unknown>,
-): Effect.Effect<unknown, ParseResult.ParseError | unknown> {
+): Effect.Effect<unknown, Schema.SchemaError | unknown> {
   const v = self.body
   if (StreamExtra.isStream(v)) {
     return Effect.flatMap(getText(self), parseJson)
@@ -134,7 +128,7 @@ function getJson(
   if (Effect.isEffect(v)) {
     return Effect.flatMap(
       v as Effect.Effect<unknown, unknown, never>,
-      (inner): Effect.Effect<unknown, ParseResult.ParseError | unknown> => {
+      (inner): Effect.Effect<unknown, Schema.SchemaError | unknown> => {
         if (isEntity(inner)) {
           return inner.json
         }
@@ -165,19 +159,19 @@ function getJson(
 
 function getBytes(
   self: Entity<unknown, unknown>,
-): Effect.Effect<Uint8Array, ParseResult.ParseError | unknown> {
+): Effect.Effect<Uint8Array, Schema.SchemaError | unknown> {
   const v = self.body
   if (StreamExtra.isStream(v)) {
     return Stream.runFold(
       v as Stream.Stream<Uint8Array, unknown, never>,
-      new Uint8Array(0),
+      () => new Uint8Array(0),
       Values.concatBytes,
     )
   }
   if (Effect.isEffect(v)) {
     return Effect.flatMap(
       v as Effect.Effect<unknown, unknown, never>,
-      (inner): Effect.Effect<Uint8Array, ParseResult.ParseError | unknown> => {
+      (inner): Effect.Effect<Uint8Array, Schema.SchemaError | unknown> => {
         if (isEntity(inner)) {
           return inner.bytes
         }
@@ -190,7 +184,7 @@ function getBytes(
         if (typeof inner === "string") {
           return Effect.succeed(textEncoder.encode(inner))
         }
-        return Effect.fail(mismatch(Schema.Uint8ArrayFromSelf, inner))
+        return Effect.fail(mismatch(Schema.Uint8Array, inner))
       },
     )
   }
@@ -207,15 +201,15 @@ function getBytes(
   if (isDirectJson(v)) {
     return Effect.succeed(textEncoder.encode(JSON.stringify(v)))
   }
-  return Effect.fail(mismatch(Schema.Uint8ArrayFromSelf, v))
+  return Effect.fail(mismatch(Schema.Uint8Array, v))
 }
 
 function getStream<A, E1, E2>(
   self: Entity<Stream.Stream<A, E1, never>, E2>,
-): Stream.Stream<A, ParseResult.ParseError | E1 | E2>
+): Stream.Stream<A, Schema.SchemaError | E1 | E2>
 function getStream<T, E>(
   self: Entity<T, E>,
-): Stream.Stream<Uint8Array, ParseResult.ParseError | E>
+): Stream.Stream<Uint8Array, Schema.SchemaError | E>
 function getStream(
   self: Entity<unknown, unknown>,
 ): Stream.Stream<unknown, unknown> {
@@ -237,14 +231,14 @@ function getStream(
 }
 
 const Proto: Proto = Object.defineProperties(
-  Object.create(Effectable.CommitPrototype),
+  Object.create(Effectable.Prototype<Entity>({
+    label: TypeId,
+    evaluate() {
+      return resolve(this)
+    },
+  })),
   {
     [TypeId]: { value: TypeId },
-    commit: {
-      value(this: Entity) {
-        return resolve(this)
-      },
-    },
     text: {
       get(this: Entity<unknown, unknown>) {
         return getText(this)
@@ -261,7 +255,7 @@ const Proto: Proto = Object.defineProperties(
       },
     },
     schemaJson: {
-      value(this: Entity<unknown, unknown>, schema: Schema.Schema.Any) {
+      value(this: Entity<unknown, unknown>, schema: Schema.ConstraintDecoder<unknown>) {
         return schemaJson(this, schema)
       },
     },
@@ -278,11 +272,11 @@ const Proto: Proto = Object.defineProperties(
   },
 )
 
-export function schemaJson<T, E, A, I, R>(
+export function schemaJson<T, E, S extends Schema.ConstraintDecoder<unknown>>(
   self: Entity<T, E>,
-  schema: Schema.Schema<A, I, R>,
-): Effect.Effect<A, ParseResult.ParseError | E, R> {
-  return Effect.flatMap(self.json, Schema.decodeUnknown(schema))
+  schema: S,
+): Effect.Effect<S["Type"], Schema.SchemaError | E, S["DecodingServices"]> {
+  return Effect.flatMap(self.json, Schema.decodeUnknownEffect(schema))
 }
 
 export function isEntity(input: unknown): input is Entity {
@@ -410,8 +404,7 @@ export function fromResponse<E extends Error = Error>(
 ): Entity<Stream.Stream<Uint8Array, E, never>, E> {
   const body = response.body
     ? Stream.fromReadableStream(
-      () => response.body!,
-      (e) => (e instanceof Error ? e : new Error(String(e))) as E,
+      { evaluate: () => response.body!, onError: (e) => (e instanceof Error ? e : new Error(String(e))) as E },
     )
     : Stream.fromEffect(
       Effect.tryPromise({
@@ -428,10 +421,8 @@ export function fromResponse<E extends Error = Error>(
 }
 
 function mismatch(
-  expected: Schema.Schema.Any,
+  expected: Schema.Top,
   actual: unknown,
-): ParseResult.ParseError {
-  return new ParseResult.ParseError({
-    issue: new ParseResult.Type(expected.ast, actual),
-  })
+): Schema.SchemaError {
+  return new Schema.SchemaError(new SchemaIssue.InvalidType(expected.ast, actual))
 }

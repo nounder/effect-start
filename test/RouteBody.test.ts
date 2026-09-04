@@ -6,9 +6,9 @@ import * as Context from "effect/Context"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
-import type * as ParseResult from "effect/ParseResult"
+import type * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
-import * as RouteBody from "../src/internal/RouteBody.ts"
+import * as RouteBody from "effect-start/internal/RouteBody"
 
 test.it("infers parent descriptions", () => {
   Route.get(
@@ -224,7 +224,7 @@ test.describe(`${RouteBody.normalize.name}()`, () => {
         const handler = RouteBody.normalize<
           {},
           string,
-          ParseResult.ParseError,
+          Schema.SchemaError,
           never
         >(
           function*(_ctx, next) {
@@ -245,7 +245,7 @@ test.describe(`${RouteBody.normalize.name}()`, () => {
     interface ServiceA {
       readonly _: unique symbol
     }
-    const ServiceA = Context.GenericTag<ServiceA>("ServiceA")
+    const ServiceA = Context.Service<ServiceA>("ServiceA")
 
     const handler = RouteBody.normalize(function*() {
       yield* ServiceA

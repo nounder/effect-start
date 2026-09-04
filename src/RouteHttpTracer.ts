@@ -1,94 +1,136 @@
+import * as Cause from "effect/Cause"
+import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
-import * as FiberRef from "effect/FiberRef"
-import * as GlobalValue from "effect/GlobalValue"
+import * as Exit from "effect/Exit"
 import * as Option from "effect/Option"
-import type * as Predicate from "effect/Predicate"
+import * as References from "effect/References"
+import type * as Scope from "effect/Scope"
+import * as Stream from "effect/Stream"
 import * as Tracer from "effect/Tracer"
+import * as HttpBody from "effect/unstable/http/HttpBody"
+import * as HttpEffect from "effect/unstable/http/HttpEffect"
+import * as HttpServerError from "effect/unstable/http/HttpServerError"
+import * as HttpServerRequest from "effect/unstable/http/HttpServerRequest"
+import * as HttpServerResponse from "effect/unstable/http/HttpServerResponse"
+import * as HttpTraceContext from "effect/unstable/http/HttpTraceContext"
 
-export const currentTracerDisabledWhen = GlobalValue.globalValue(
-  Symbol.for("effect-start/RouteHttp/tracerDisabledWhen"),
-  () => FiberRef.unsafeMake<Predicate.Predicate<Request>>(() => false),
-)
+export const currentTracerDisabledWhen = Context.Reference<
+  (request: HttpServerRequest.HttpServerRequest) => boolean
+>("effect-start/RouteHttpTracer/currentTracerDisabledWhen", {
+  defaultValue: () => () => false,
+})
 
 export const withTracerDisabledWhen = <A, E, R>(
   effect: Effect.Effect<A, E, R>,
-  predicate: Predicate.Predicate<Request>,
-): Effect.Effect<A, E, R> => Effect.locally(effect, currentTracerDisabledWhen, predicate)
+  predicate: (request: HttpServerRequest.HttpServerRequest) => boolean,
+): Effect.Effect<A, E, R> => Effect.provideService(effect, currentTracerDisabledWhen, predicate)
 
-export const currentSpanNameGenerator = GlobalValue.globalValue(
-  Symbol.for("effect-start/RouteHttp/spanNameGenerator"),
-  () => FiberRef.unsafeMake<(request: Request) => string>((request) => `http.server ${request.method}`),
-)
+export const currentSpanNameGenerator = Context.Reference<
+  (request: HttpServerRequest.HttpServerRequest) => string
+>("effect-start/RouteHttpTracer/currentSpanNameGenerator", {
+  defaultValue: () => (request) => `http.server ${request.method}`,
+})
 
 export const withSpanNameGenerator = <A, E, R>(
   effect: Effect.Effect<A, E, R>,
-  f: (request: Request) => string,
-): Effect.Effect<A, E, R> => Effect.locally(effect, currentSpanNameGenerator, f)
+  f: (request: HttpServerRequest.HttpServerRequest) => string,
+): Effect.Effect<A, E, R> => Effect.provideService(effect, currentSpanNameGenerator, f)
 
-const w3cTraceparent = (
-  headers: Headers,
-): Option.Option<Tracer.ExternalSpan> => {
-  const header = headers.get("traceparent")
-  if (header === null) return Option.none()
+const serverTimingTrace = (span: Tracer.Span): string =>
+  `trace;desc=00-${span.traceId}-${span.spanId}-${span.sampled ? "01" : "00"}`
 
-  const parts = header.split("-")
-  if (parts.length < 4) return Option.none()
+const annotateRequest = (
+  span: Tracer.Span,
+  request: HttpServerRequest.HttpServerRequest,
+): void => {
+  const url = new URL(request.url, "http://localhost")
+  span.attribute("http.request.method", request.method)
+  span.attribute("url.full", url.toString())
+  span.attribute("url.path", url.pathname)
+  if (url.search.length > 1) span.attribute("url.query", url.search.slice(1))
+  span.attribute("url.scheme", url.protocol.slice(0, -1))
+  if (request.headers["user-agent"] !== undefined) {
+    span.attribute("user_agent.original", request.headers["user-agent"])
+  }
+  if (request.headers["content-type"] !== undefined) {
+    span.attribute("http.request.header.content-type", [request.headers["content-type"]])
+  }
+}
 
-  const [_version, traceId, spanId, flags] = parts
-  if (!traceId || !spanId) return Option.none()
+const annotateResponse = (
+  span: Tracer.Span,
+  response: HttpServerResponse.HttpServerResponse,
+): HttpServerResponse.HttpServerResponse => {
+  span.attribute("http.response.status_code", response.status)
+  const contentType = response.headers["content-type"]
+  if (contentType !== undefined) span.attribute("http.response.header.content-type", [contentType])
 
-  return Option.some(
-    Tracer.externalSpan({
-      spanId,
-      traceId,
-      sampled: flags === "01",
-    }),
+  const timing = serverTimingTrace(span)
+  const currentTiming = response.headers["server-timing"]
+  return HttpServerResponse.setHeader(
+    response,
+    "server-timing",
+    currentTiming === undefined ? timing : `${currentTiming}, ${timing}`,
   )
 }
 
-const b3Single = (headers: Headers): Option.Option<Tracer.ExternalSpan> => {
-  const header = headers.get("b3")
-  if (header === null) return Option.none()
+const provideParentToStream = (
+  response: HttpServerResponse.HttpServerResponse,
+  span: Tracer.Span,
+): HttpServerResponse.HttpServerResponse =>
+  response.body._tag === "Stream"
+    ? HttpServerResponse.setBody(
+      response,
+      HttpBody.stream(
+        Stream.provideService(response.body.stream, Tracer.ParentSpan, span),
+        response.body.contentType,
+        response.body.contentLength,
+      ),
+    )
+    : response
 
-  const parts = header.split("-")
-  if (parts.length < 2) return Option.none()
+export const tracer = <E, R>(
+  app: Effect.Effect<
+    HttpServerResponse.HttpServerResponse,
+    E,
+    R | HttpServerRequest.HttpServerRequest
+  >,
+): Effect.Effect<
+  HttpServerResponse.HttpServerResponse,
+  E,
+  R | HttpServerRequest.HttpServerRequest | Scope.Scope
+> =>
+  Effect.gen(function*() {
+    const request = yield* HttpServerRequest.HttpServerRequest
+    const tracerEnabled = yield* References.TracerEnabled
+    const disabledWhen = yield* currentTracerDisabledWhen
+    if (!tracerEnabled || disabledWhen(request)) return yield* app
 
-  const [traceId, spanId, sampledStr] = parts
-  if (!traceId || !spanId) return Option.none()
+    const spanName = yield* currentSpanNameGenerator
+    const span = yield* Effect.makeSpanScoped(spanName(request), {
+      parent: Option.getOrUndefined(HttpTraceContext.fromHeaders(request.headers)),
+      kind: "server",
+    })
+    annotateRequest(span, request)
+    if (request.source instanceof Request) {
+      const onAbort = () => span.attribute("http.response.status_code", 499)
+      request.source.signal.addEventListener("abort", onAbort, { once: true })
+      yield* Effect.addFinalizer(() =>
+        Effect.sync(() =>
+          request.source instanceof Request && request.source.signal.removeEventListener("abort", onAbort)
+        )
+      )
+    }
 
-  return Option.some(
-    Tracer.externalSpan({
-      spanId,
-      traceId,
-      sampled: sampledStr === "1",
-    }),
-  )
-}
+    yield* HttpEffect.appendPreResponseHandler((_request, response) => Effect.succeed(annotateResponse(span, response)))
 
-const xb3 = (headers: Headers): Option.Option<Tracer.ExternalSpan> => {
-  const traceId = headers.get("x-b3-traceid")
-  const spanId = headers.get("x-b3-spanid")
-  if (traceId === null || spanId === null) return Option.none()
-
-  const sampled = headers.get("x-b3-sampled")
-
-  return Option.some(
-    Tracer.externalSpan({
-      spanId,
-      traceId,
-      sampled: sampled === "1",
-    }),
-  )
-}
-
-export const parentSpanFromHeaders = (
-  headers: Headers,
-): Option.Option<Tracer.ExternalSpan> => {
-  let span = w3cTraceparent(headers)
-  if (span._tag === "Some") return span
-
-  span = b3Single(headers)
-  if (span._tag === "Some") return span
-
-  return xb3(headers)
-}
+    return yield* Effect.withParentSpan(app, span).pipe(
+      Effect.map((response) => provideParentToStream(response, span)),
+      Effect.onExit((exit) => {
+        if (Exit.isSuccess(exit) || !Cause.hasInterrupts(exit.cause)) return Effect.void
+        return Effect.map(HttpServerError.causeResponse(exit.cause), ([response]) => {
+          span.attribute("http.response.status_code", response.status)
+        })
+      }),
+    )
+  })
