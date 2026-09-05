@@ -9,6 +9,9 @@ import type * as ChildProcess from "./ChildProcess.ts"
 import * as Development from "./Development.ts"
 import type * as FileSystem from "./FileSystem.ts"
 import * as LayerExtra from "./internal/LayerExtra.ts"
+import type * as PlatformRuntime from "./PlatformRuntime.ts"
+import type * as Route from "./Route.ts"
+import * as StartServer from "./StartServer.ts"
 
 /**
  * Builds layers in the given order, wiring their dependencies automatically.
@@ -79,7 +82,7 @@ export function layerDev() {
 
 // TODO: do we even need to define requirements upfront?
 type AppRequirements =
-  | BunServer.BunServer
+  | StartServer.StartServer
   | FileSystem.FileSystem
   | ChildProcess.ChildProcessSpawner
 
@@ -87,10 +90,30 @@ class StartError extends Data.TaggedError("StartError")<{
   readonly cause: unknown
 }> {}
 
+/**
+ * Defaults to Bun (`BunServer` + `BunRuntime.runMain`). Pass `server` and
+ * `runMain` to target another platform, e.g. `node/NodeServer` +
+ * `node/NodeRuntime` for a plain Node.js HTTP server:
+ *
+ * ```ts
+ * import { NodeRuntime, NodeServer } from "effect-start/node"
+ *
+ * Start.serve(app, {
+ *   server: NodeServer.withLogAddress(NodeServer.layerStart()),
+ *   runMain: NodeRuntime.runMain,
+ * })
+ * ```
+ */
+export interface ServeOptions {
+  readonly server?: Layer.Layer<StartServer.StartServer, never, Route.Routes>
+  readonly runMain?: PlatformRuntime.RunMain
+}
+
 export function serve<ROut, E, RIn extends AppRequirements>(
   app:
     | Layer.Layer<ROut, E, RIn>
     | (() => Promise<{ default: Layer.Layer<ROut, E, RIn> }>),
+  options?: ServeOptions,
 ) {
   const appLayer = typeof app === "function"
     ? Function.pipe(
@@ -109,21 +132,22 @@ export function serve<ROut, E, RIn extends AppRequirements>(
     Layer.provideMerge(layerDev()),
   )
 
+  const serverLayer = options?.server ?? BunServer.withLogAddress(BunServer.layerStart())
+
   const composed = Function.pipe(
-    BunServer.layerStart(),
-    BunServer.withLogAddress,
+    serverLayer,
     Layer.provide(
       Function.pipe(
         BundleRoute.layer(),
         Layer.provideMerge(appLayerResolved),
       ),
     ),
-  ) as Layer.Layer<BunServer.BunServer, never, never>
+  ) as Layer.Layer<StartServer.StartServer, never, never>
 
   return Function.pipe(
     composed,
     Layer.launch,
-    BunRuntime.runMain,
+    options?.runMain ?? BunRuntime.runMain,
   )
 }
 
