@@ -6,7 +6,6 @@ import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as PubSub from "effect/PubSub"
 import * as Queue from "effect/Queue"
-import * as Bundle from "../../src/bundler/Bundle.ts"
 import routes from "../../src/studio/routes.tsx"
 import * as Studio from "../../src/studio/Studio.ts"
 import type * as StudioStore from "../../src/studio/StudioStore.ts"
@@ -32,26 +31,27 @@ const studioLayer = (auth: Studio.Studio["Type"]["auth"]) =>
     }),
   )
 
-const bundleLayer = Layer.succeed(Bundle.Bundle, {
-  ...Bundle.emptyBundleContext,
-  resolve: (path) => `/_bundle/${path}`,
-})
-
-const runWithAuth = (
+const runAt = (
   auth: Studio.Studio["Type"]["auth"],
+  path: string,
   perform: (client: Fetch.FetchClient) => Effect.Effect<void, any, never>,
 ) =>
   Effect
     .gen(function*() {
       const runtime = yield* Effect.runtime<never>()
       const handles = Object.fromEntries(RouteHttp.walkHandles(tree, runtime))
-      const handler = handles["/studio/services"]
+      const handler = handles[path]
       yield* perform(Fetch.fromHandler(handler))
     })
     .pipe(
-      Effect.provide(Layer.mergeAll(studioLayer(auth), bundleLayer)),
+      Effect.provide(studioLayer(auth)),
       Effect.runPromise,
     )
+
+const runWithAuth = (
+  auth: Studio.Studio["Type"]["auth"],
+  perform: (client: Fetch.FetchClient) => Effect.Effect<void, any, never>,
+) => runAt(auth, "/studio/services", perform)
 
 test.describe("studio layer basic auth", () => {
   test.it("does not require auth when auth option is undefined", () =>
@@ -123,6 +123,56 @@ test.describe("studio layer basic auth", () => {
           test
             .expect(yield* entity.text)
             .toContain("Services")
+        }),
+    ))
+})
+
+test.describe("studio serves its own datastar client", () => {
+  test.it("renders the page without requiring a Bundle layer", () =>
+    runWithAuth(undefined, (client) =>
+      Effect.gen(function*() {
+        const entity = yield* client.get("http://localhost/studio/services")
+        const html = yield* entity.text
+
+        test
+          .expect(html)
+          .toContain("<script type=\"module\" src=\"_datastar.js\">")
+      })))
+
+  test.it("serves working JavaScript from /_datastar.js", () =>
+    runAt(undefined, "/studio/_datastar.js", (client) =>
+      Effect.gen(function*() {
+        const entity = yield* client.get("http://localhost/studio/_datastar.js")
+
+        test
+          .expect(entity.status)
+          .toBe(200)
+        test
+          .expect(entity.headers["content-type"])
+          .toContain("text/javascript")
+
+        const body = yield* entity.text
+
+        test
+          .expect(body)
+          .toContain("mergePatch")
+        test
+          .expect(() => new Bun.Transpiler({ loader: "js" }).transformSync(body))
+          .not
+          .toThrow()
+      })))
+
+  test.it("/_datastar.js is protected by the same basic auth as the rest of studio", () =>
+    runAt(
+      { type: "basic", username: "admin", password: "s3cret" },
+      "/studio/_datastar.js",
+      (client) =>
+        Effect.gen(function*() {
+          const entity = yield* client.get("http://localhost/studio/_datastar.js")
+
+          test
+            .expect(entity.status)
+            .toBe(401)
         }),
     ))
 })

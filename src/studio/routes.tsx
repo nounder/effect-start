@@ -1,7 +1,6 @@
 import * as Effect from "effect/Effect"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
-import * as Bundle from "../bundler/Bundle.ts"
 import * as Entity from "../Entity.ts"
 import * as Html from "../Html.ts"
 import * as RouteMap from "../internal/RouteMap.ts"
@@ -11,6 +10,7 @@ import type * as Values from "../internal/Values.ts"
 import * as Route from "../Route.ts"
 import * as SqlClient from "../sql/SqlClient.ts"
 import css from "./css.ts"
+import DatastarClient from "./internal/DatastarClient.ts"
 import * as OpenTelemetry from "./internal/OpenTelemetry.ts"
 import * as Studio from "./Studio.ts"
 import * as StudioProcess from "./StudioProcess.ts"
@@ -18,6 +18,7 @@ import * as StudioStore from "./StudioStore.ts"
 import * as Ui from "./ui.tsx"
 
 const METRICS_HISTORY_MS = 120_000
+const DATASTAR_CLIENT_PATH = "_datastar.js"
 
 export default Route.map({
   "*": Route.use(
@@ -54,7 +55,6 @@ export default Route.map({
       if (request.headers.get("datastar-request") === "true") {
         return yield* next.html
       }
-      const bundle = yield* Bundle.Bundle
       const base = studio.path.endsWith("/") ? studio.path : `${studio.path}/`
       return (
         <html style="height: 100%">
@@ -70,10 +70,7 @@ export default Route.map({
             <style>
               {css}
             </style>
-            <script
-              type="module"
-              src={bundle.resolve("effect-start/datastar")}
-            />
+            <script type="module" src={DATASTAR_CLIENT_PATH} />
           </head>
           <body>
             {yield* next.html}
@@ -81,6 +78,17 @@ export default Route.map({
         </html>
       )
     }),
+  ),
+
+  [`/${DATASTAR_CLIENT_PATH}`]: Route.get(
+    Route.handle(() =>
+      Entity.make(DatastarClient, {
+        headers: {
+          "content-type": "text/javascript; charset=utf-8",
+          "cache-control": "public, max-age=31536000, immutable",
+        },
+      })
+    ),
   ),
 
   "/": Route.get(
