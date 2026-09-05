@@ -1,4 +1,5 @@
 import * as test from "bun:test"
+import * as Route from "effect-start/Route"
 import * as Start from "effect-start/Start"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
@@ -137,6 +138,109 @@ test.describe(Start.pack, () => {
         Effect.provide(AppLayer),
         Effect.runPromise,
       )
+  })
+})
+
+test.describe("Start.export", () => {
+  test.test("routes a matching request", async () => {
+    const fetch = await Start.export(
+      Route.layer({
+        "/hello": Route.get(Route.text("hello world")),
+      }),
+    )
+
+    const response = await fetch(new Request("http://localhost/hello"))
+
+    test.expect(response.status).toBe(200)
+    test.expect(await response.text()).toBe("hello world")
+  })
+
+  test.test("returns 404 for an unmatched path", async () => {
+    const fetch = await Start.export(
+      Route.layer({
+        "/hello": Route.get(Route.text("hello world")),
+      }),
+    )
+
+    const response = await fetch(new Request("http://localhost/missing"))
+
+    test.expect(response.status).toBe(404)
+  })
+
+  test.test("resolves services from layers regardless of order, like pack", async () => {
+    class Config extends Context.Tag("Config")<Config, { readonly name: string }>() {}
+    class Greeter extends Context.Tag("Greeter")<
+      Greeter,
+      { readonly greet: () => Effect.Effect<string> }
+    >() {}
+
+    const GreeterLive = Layer.effect(
+      Greeter,
+      Effect.gen(function*() {
+        const config = yield* Config
+        return { greet: () => Effect.succeed(`hello, ${config.name}`) }
+      }),
+    )
+    const ConfigLive = Layer.succeed(Config, { name: "world" })
+
+    const fetch = await Start.export(
+      Route.layer({
+        "/greet": Route.get(
+          Route.text(function*() {
+            const greeter = yield* Greeter
+            return yield* greeter.greet()
+          }),
+        ),
+      }),
+      // GreeterLive is listed before its dependency ConfigLive, same as pack.
+      GreeterLive,
+      ConfigLive,
+    )
+
+    const response = await fetch(new Request("http://localhost/greet"))
+
+    test.expect(await response.text()).toBe("hello, world")
+  })
+
+  test.test("FetchAdapter turns extra fetch arguments into request context", async () => {
+    // Services that a FetchAdapter fills in per-request are marked with
+    // Route.IntrinsicService so routes can depend on them without a Layer
+    // providing them upfront, the same way Route.Request is provided.
+    class CloudflareEnv extends Context.Tag("CloudflareEnv")<
+      CloudflareEnv,
+      { readonly greeting: string }
+    >() {
+      declare readonly [Route.IntrinsicService]: never
+    }
+
+    const fetch = await Start.export(
+      Route.layer({
+        "/greet": Route.get(
+          Route.text(function*() {
+            const env = yield* CloudflareEnv
+            return env.greeting
+          }),
+        ),
+      }),
+      Start.layerFetchAdapter((env: { greeting: string }) => Context.make(CloudflareEnv, env)),
+    )
+
+    const response = await fetch(
+      new Request("http://localhost/greet"),
+      { greeting: "hi from cloudflare" },
+    )
+
+    test.expect(await response.text()).toBe("hi from cloudflare")
+  })
+
+  test.test("without a FetchAdapter the handler only takes a request", async () => {
+    const fetch = await Start.export(
+      Route.layer({
+        "/hello": Route.get(Route.text("hello world")),
+      }),
+    )
+
+    test.expect(fetch.length).toBe(1)
   })
 })
 
