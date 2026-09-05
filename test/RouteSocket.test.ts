@@ -11,6 +11,7 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Layer from "effect/Layer"
 import * as Scope from "effect/Scope"
+import * as NHttp from "node:http"
 import type * as RouteMap from "../src/internal/RouteMap.ts"
 
 const testLayer = <const Input extends RouteMap.RouteMapInput>(routes: Input) =>
@@ -48,6 +49,27 @@ const nextClose = (ws: WebSocket) =>
   })
 
 const wsUrl = (server: { port: number | undefined }) => `ws://localhost:${server.port}`
+
+// Performs the WebSocket opening handshake with node:http directly so the
+// (otherwise inaccessible from a browser-like WebSocket client) 101
+// response headers can be inspected.
+const handshake = (url: string) =>
+  Effect.async<NHttp.IncomingHttpHeaders>((resume) => {
+    const req = NHttp.request(url, {
+      headers: {
+        connection: "Upgrade",
+        upgrade: "websocket",
+        "sec-websocket-version": "13",
+        "sec-websocket-key": "dGhlIHNhbXBsZSBub25jZQ==",
+      },
+    })
+    req.on("response", (res) => {
+      res.destroy()
+      resume(Effect.succeed(res.headers))
+    })
+    req.on("error", (error) => resume(Effect.die(error)))
+    req.end()
+  })
 
 test.describe("Route.ws", () => {
   test.test("echoes text frames", () => {
@@ -712,6 +734,76 @@ test.describe("Route.ws", () => {
           .expect(middlewareRan)
           .toBe(true)
 
+        ws.close()
+      })
+      .pipe(
+        Effect.provide(testLayer(routes)),
+        Effect.scoped,
+        Effect.runPromise,
+      )
+  })
+
+  test.test("attaches headers added via Route.withHeaders to the upgrade handshake", () => {
+    const routes = Route.map({
+      "/ws": Route
+        .use(Route.withHeaders({ "x-app": "effect-start" }))
+        .get(Route.ws(function*(ctx) {
+          const write = yield* ctx.socket.writer
+          yield* ctx.socket.runRaw((data) => write(data))
+        })),
+    })
+
+    return Effect
+      .gen(function*() {
+        const { server } = yield* BunServer.BunServer
+        const headers = yield* handshake(`http://localhost:${server.port}/ws`)
+
+        test
+          .expect(headers["x-app"])
+          .toBe("effect-start")
+
+        const ws = yield* connect(`${wsUrl(server)}/ws`)
+        ws.send("ping")
+        const echoed = yield* nextMessage(ws)
+
+        test
+          .expect(echoed)
+          .toBe("ping")
+
+        ws.close()
+      })
+      .pipe(
+        Effect.provide(testLayer(routes)),
+        Effect.scoped,
+        Effect.runPromise,
+      )
+  })
+
+  test.test("attaches headers added via Route.addHeaders before the upgrade to the handshake", () => {
+    const routes = Route.map({
+      "/ws": Route
+        .use(
+          Route.handle(function*(_ctx, next) {
+            yield* Route.addHeaders({ "set-cookie": "session=abc" })
+            return yield* next
+          }),
+        )
+        .get(Route.ws(function*(ctx) {
+          const write = yield* ctx.socket.writer
+          yield* ctx.socket.runRaw((data) => write(data))
+        })),
+    })
+
+    return Effect
+      .gen(function*() {
+        const { server } = yield* BunServer.BunServer
+        const headers = yield* handshake(`http://localhost:${server.port}/ws`)
+
+        test
+          .expect(headers["set-cookie"])
+          .toEqual(["session=abc"])
+
+        const ws = yield* connect(`${wsUrl(server)}/ws`)
         ws.close()
       })
       .pipe(

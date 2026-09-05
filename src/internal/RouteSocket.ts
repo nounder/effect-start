@@ -94,11 +94,16 @@ export function ws<
           .gen(function*() {
             const server = yield* StartServer.StartServer
             const request = yield* Route.Request
+            // Read eagerly, before upgrading, so headers added by earlier
+            // middleware (e.g. Route.withHeaders) reach the handshake
+            // response instead of a response that gets discarded once the
+            // connection is hijacked.
+            const routeHeaders = yield* Route.RouteHeaders
 
             // scope is shared with handler and the connection.
             // finalizer makes sure the socket is closed.
             const handlerScope = yield* Scope.make()
-            const socket = yield* server.upgrade(request, handlerScope).pipe(
+            const socket = yield* server.upgrade(request, handlerScope, routeHeaders.headers).pipe(
               Effect.onError(() => Scope.close(handlerScope, Exit.void)),
             )
 

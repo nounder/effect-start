@@ -333,20 +333,26 @@ function mergeSetCookie(
   return [...a, ...b]
 }
 
+/**
+ * Combines two header sets, with `incoming` values overriding `existing`
+ * ones, except `set-cookie` which is concatenated per RFC 6265.
+ */
+export function mergeHeaders(existing: Headers, incoming: Headers): Headers {
+  return {
+    ...existing,
+    ...incoming,
+    "set-cookie": mergeSetCookie(
+      existing["set-cookie"],
+      incoming["set-cookie"],
+    ),
+  }
+}
+
 export function merge<T, E>(
   entity: Entity<T, E>,
   options: Options,
 ): Entity<T, E> {
-  const headers: Headers = options.headers
-    ? {
-      ...entity.headers,
-      ...options.headers,
-      "set-cookie": mergeSetCookie(
-        entity.headers["set-cookie"],
-        options.headers["set-cookie"],
-      ),
-    }
-    : entity.headers
+  const headers = options.headers ? mergeHeaders(entity.headers, options.headers) : entity.headers
   return make(entity.body, {
     headers,
     status: options.status ?? entity.status,

@@ -422,9 +422,14 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
               .gen(function*() {
                 const result = yield* createChain()
 
-                const entity = Entity.isEntity(result)
+                const resultEntity = Entity.isEntity(result)
                   ? result
                   : Entity.make(result, { status: 200 })
+
+                const addedHeaders = (yield* Route.RouteHeaders).headers
+                const entity = Object.keys(addedHeaders).length > 0
+                  ? Entity.merge(resultEntity, { headers: addedHeaders })
+                  : resultEntity
 
                 if (entity.status === 404 && entity.body === undefined) {
                   return respondError({
@@ -442,6 +447,7 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
               .pipe(
                 Effect.provideService(Route.Request, request),
                 Effect.provideService(Route.RouteContext, { context: {} }),
+                Effect.provideService(Route.RouteHeaders, { headers: {} }),
               )
 
             if (tracerDisabled) {
