@@ -1,6 +1,6 @@
 import { Context, Layer, Schema } from "effect"
 import { Bundle, Route, Start } from "effect-start"
-import { BunBundle } from "effect-start/bun"
+import { BunBundle, BunPlugin } from "effect-start/bun"
 import { TailwindPlugin } from "effect-start/tailwind"
 
 class SomeService extends Context.Tag("SomeService")<SomeService, {}>() {}
@@ -62,7 +62,7 @@ export default Start.pack(
       import.meta.resolve("./client.js"),
       import.meta.resolve("./client.css"),
     ],
-    plugins: [TailwindPlugin.make()],
+    plugins: [BunPlugin.toBunPlugin(TailwindPlugin.make())],
   }),
   Route.layer(routes),
 )

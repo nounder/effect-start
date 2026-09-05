@@ -1,5 +1,5 @@
 import { Development, FileRouter, Start } from "effect-start"
-import { BunBundle } from "effect-start/bun"
+import { BunBundle, BunPlugin } from "effect-start/bun"
 import { Studio } from "effect-start/studio"
 import { TailwindPlugin } from "effect-start/tailwind"
 
@@ -9,7 +9,7 @@ export default Start.pack(
   FileRouter.layer(),
   BunBundle.layer({
     entrypoints: [import.meta.resolve("./app.css"), "effect-start/datastar"],
-    plugins: [TailwindPlugin.make()],
+    plugins: [BunPlugin.toBunPlugin(TailwindPlugin.make())],
   }),
   Start.layerDev(),
 )
