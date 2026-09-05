@@ -91,6 +91,9 @@ function getText(
   self: Entity<unknown, unknown>,
 ): Effect.Effect<string, ParseResult.ParseError | unknown> {
   const v = self.body
+  if (v instanceof Response) {
+    return fromResponse(v).text
+  }
   if (StreamExtra.isStream(v)) {
     return Stream.mkString(
       Stream.decodeText(v as Stream.Stream<Uint8Array, unknown, never>),
@@ -102,6 +105,9 @@ function getText(
       (inner): Effect.Effect<string, ParseResult.ParseError | unknown> => {
         if (isEntity(inner)) {
           return inner.text
+        }
+        if (inner instanceof Response) {
+          return fromResponse(inner).text
         }
         if (typeof inner === "string") {
           return Effect.succeed(inner)
@@ -128,6 +134,9 @@ function getJson(
   self: Entity<unknown, unknown>,
 ): Effect.Effect<unknown, ParseResult.ParseError | unknown> {
   const v = self.body
+  if (v instanceof Response) {
+    return fromResponse(v).json
+  }
   if (StreamExtra.isStream(v)) {
     return Effect.flatMap(getText(self), parseJson)
   }
@@ -137,6 +146,9 @@ function getJson(
       (inner): Effect.Effect<unknown, ParseResult.ParseError | unknown> => {
         if (isEntity(inner)) {
           return inner.json
+        }
+        if (inner instanceof Response) {
+          return fromResponse(inner).json
         }
         if (isDirectJson(inner)) {
           return Effect.succeed(inner)
@@ -167,6 +179,9 @@ function getBytes(
   self: Entity<unknown, unknown>,
 ): Effect.Effect<Uint8Array, ParseResult.ParseError | unknown> {
   const v = self.body
+  if (v instanceof Response) {
+    return fromResponse(v).bytes
+  }
   if (StreamExtra.isStream(v)) {
     return Stream.runFold(
       v as Stream.Stream<Uint8Array, unknown, never>,
@@ -180,6 +195,9 @@ function getBytes(
       (inner): Effect.Effect<Uint8Array, ParseResult.ParseError | unknown> => {
         if (isEntity(inner)) {
           return inner.bytes
+        }
+        if (inner instanceof Response) {
+          return fromResponse(inner).bytes
         }
         if (inner instanceof Uint8Array) {
           return Effect.succeed(inner)
@@ -220,6 +238,9 @@ function getStream(
   self: Entity<unknown, unknown>,
 ): Stream.Stream<unknown, unknown> {
   const v = self.body
+  if (v instanceof Response) {
+    return fromResponse(v).stream
+  }
   if (StreamExtra.isStream(v)) {
     return v as Stream.Stream<unknown, unknown, never>
   }
@@ -228,6 +249,9 @@ function getStream(
       Effect.map(v as Effect.Effect<unknown, unknown, never>, (inner) => {
         if (isEntity(inner)) {
           return inner.stream
+        }
+        if (inner instanceof Response) {
+          return fromResponse(inner).stream
         }
         return Stream.fromEffect(getBytes(make(inner)))
       }),

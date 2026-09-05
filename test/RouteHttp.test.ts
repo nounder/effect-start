@@ -2,7 +2,9 @@ import * as test from "bun:test"
 import * as Development from "effect-start/Development"
 import * as Entity from "effect-start/Entity"
 import * as Fetch from "effect-start/Fetch"
+import * as FileSystem from "effect-start/FileSystem"
 import * as Multipart from "effect-start/Multipart"
+import { NodeFileSystem } from "effect-start/node"
 import * as Route from "effect-start/Route"
 import * as RouteHttp from "effect-start/RouteHttp"
 import { TestLogger } from "effect-start/testing"
@@ -2916,6 +2918,32 @@ test.describe("stream response scope", () => {
       })
       .pipe(Effect.runPromise))
 
+  test.it("keeps a temp file alive until a plain stream response finishes reading it", () =>
+    Effect
+      .gen(function*() {
+        const fs = yield* FileSystem.FileSystem
+        const runtime = yield* Effect.runtime<FileSystem.FileSystem>()
+        const handler = RouteHttp.toWebHandlerRuntime(runtime)(
+          Route.get(
+            Route.handle(() =>
+              Effect.gen(function*() {
+                const path = yield* fs.makeTempFileScoped()
+                yield* fs.writeFileString(path, "temp file contents")
+                return fs.stream(path)
+              })
+            ),
+          ),
+        )
+
+        const response = yield* Effect.promise(() => Promise.resolve(handler(new Request("http://localhost/file"))))
+        const text = yield* Effect.promise(() => response.text())
+
+        test
+          .expect(text)
+          .toBe("temp file contents")
+      })
+      .pipe(Effect.provide(NodeFileSystem.layer), Effect.runPromise))
+
   test.it("keeps fibers forked in the request scope alive while streaming", () =>
     Effect
       .gen(function*() {
@@ -2989,6 +3017,126 @@ test.describe("stream response scope", () => {
         test
           .expect(text)
           .toContain("data: /events")
+      })
+      .pipe(Effect.runPromise))
+})
+
+test.describe("native Response bodies", () => {
+  test.it("supports returning a raw Response from a handler, preserving its status and headers", () =>
+    Effect
+      .gen(function*() {
+        const handler = RouteHttp.toWebHandler(
+          Route.get(
+            Route.handle(() =>
+              Effect.succeed(
+                new Response("raw response body", {
+                  status: 201,
+                  headers: { "x-custom": "yes" },
+                }),
+              )
+            ),
+          ),
+        )
+
+        const response = yield* Effect.promise(() => Promise.resolve(handler(new Request("http://localhost/raw"))))
+
+        test
+          .expect(response.status)
+          .toBe(201)
+        test
+          .expect(response.headers.get("x-custom"))
+          .toBe("yes")
+        test
+          .expect(yield* Effect.promise(() => response.text()))
+          .toBe("raw response body")
+      })
+      .pipe(Effect.runPromise))
+
+  test.it("keeps the handler scope open until a raw Response body finishes streaming", () =>
+    Effect
+      .gen(function*() {
+        let released = false
+
+        const handler = RouteHttp.toWebHandler(
+          Route.get(
+            Route.handle(() =>
+              Effect.gen(function*() {
+                yield* Effect.acquireRelease(
+                  Effect.void,
+                  () =>
+                    Effect.sync(() => {
+                      released = true
+                    }),
+                )
+                const body = new ReadableStream({
+                  start(controller) {
+                    controller.enqueue(new TextEncoder().encode("chunk"))
+                    controller.close()
+                  },
+                })
+                return new Response(body)
+              })
+            ),
+          ),
+        )
+
+        const response = yield* Effect.promise(() => Promise.resolve(handler(new Request("http://localhost/raw"))))
+
+        test
+          .expect(released)
+          .toBe(false)
+
+        const text = yield* Effect.promise(() => response.text())
+
+        test
+          .expect(text)
+          .toBe("chunk")
+        test
+          .expect(released)
+          .toBe(true)
+      })
+      .pipe(Effect.runPromise))
+
+  test.it("closes the handler scope when the client cancels a raw Response body", () =>
+    Effect
+      .gen(function*() {
+        let released = false
+
+        const handler = RouteHttp.toWebHandler(
+          Route.get(
+            Route.handle(() =>
+              Effect.gen(function*() {
+                yield* Effect.acquireRelease(
+                  Effect.void,
+                  () =>
+                    Effect.sync(() => {
+                      released = true
+                    }),
+                )
+                const body = new ReadableStream({
+                  start(controller) {
+                    controller.enqueue(new TextEncoder().encode("first"))
+                  },
+                })
+                return new Response(body)
+              })
+            ),
+          ),
+        )
+
+        const response = yield* Effect.promise(() => Promise.resolve(handler(new Request("http://localhost/raw"))))
+        const reader = response.body!.getReader()
+        yield* Effect.promise(() => reader.read())
+
+        test
+          .expect(released)
+          .toBe(false)
+
+        yield* Effect.promise(() => reader.cancel())
+
+        test
+          .expect(released)
+          .toBe(true)
       })
       .pipe(Effect.runPromise))
 })
