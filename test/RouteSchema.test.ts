@@ -1,6 +1,7 @@
 import * as test from "bun:test"
 import { BunFileSystem, BunPath } from "effect-start/bun"
 import * as Fetch from "effect-start/Fetch"
+import * as RouteSchema from "effect-start/internal/RouteSchema"
 import * as Route from "effect-start/Route"
 import * as RouteError from "effect-start/RouteError"
 import * as RouteHttp from "effect-start/RouteHttp"
@@ -12,7 +13,6 @@ import * as Layer from "effect/Layer"
 import type * as Path from "effect/Path"
 import * as Schema from "effect/Schema"
 import * as Multipart from "effect/unstable/http/Multipart"
-import * as RouteSchema from "effect-start/internal/RouteSchema"
 
 const multipartContext = Effect.runSync(
   Layer.build(Layer.merge(BunFileSystem.layer, BunPath.layer)).pipe(Effect.scoped),
@@ -257,17 +257,15 @@ test.describe(`${RouteSchema.schemaBodyJson.name}()`, () => {
       }>()
   })
 
-  test.it("parses JSON body from request", () =>
+  test.it("parses JSON body from schema fields", () =>
     Effect
       .gen(function*() {
         const handler = RouteHttp.toWebHandler(
           Route.post(
-            RouteSchema.schemaBodyJson(
-              Schema.Struct({
-                name: Schema.String,
-                age: Schema.Number,
-              }),
-            ),
+            RouteSchema.schemaBodyJson({
+              name: Schema.String,
+              age: Schema.Number,
+            }),
             Route.json(function*(ctx) {
               return { name: ctx.body.name, age: ctx.body.age }
             }),

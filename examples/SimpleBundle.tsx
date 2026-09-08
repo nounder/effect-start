@@ -1,3 +1,4 @@
+/** @jsxImportSource effect-start */
 import { Context, Layer, Schema } from "effect"
 import { Bundle, Route, Start } from "effect-start"
 import { BunBundle } from "effect-start/bun"
@@ -17,7 +18,6 @@ const routes = Route.map({
             <title>
               Hello
             </title>
-            <script src={bundle.resolve("client.js")} />
             <link rel="stylesheet" href={bundle.resolve("client.css")} />
           </head>
           <body class="bg-black text-white">
@@ -59,7 +59,6 @@ export default Start.pack(
   Layer.succeed(SomeService, {}),
   BunBundle.layer({
     entrypoints: [
-      import.meta.resolve("./client.js"),
       import.meta.resolve("./client.css"),
     ],
     plugins: [TailwindPlugin.make()],
