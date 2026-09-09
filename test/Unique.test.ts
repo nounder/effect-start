@@ -231,6 +231,118 @@ test.describe("Unique.token", () => {
   })
 })
 
+test.describe("Unique.makeSnowflake", () => {
+  test.it("packs timestamp, machineId and sequence like @effect/cluster's Snowflake.make", () => {
+    const id = Unique.makeSnowflake({
+      timestamp: Unique.SNOWFLAKE_EPOCH_MS + 5,
+      machineId: 7,
+      sequence: 3,
+    })
+
+    test.expect(id).toBe((5n << 22n) | (7n << 12n) | 3n)
+  })
+
+  test.it("wraps machineId modulo 1024 and sequence modulo 4096", () => {
+    const id = Unique.makeSnowflake({
+      timestamp: Unique.SNOWFLAKE_EPOCH_MS,
+      machineId: 1024 + 5,
+      sequence: 4096 + 9,
+    })
+
+    test.expect(id).toBe((5n << 12n) | 9n)
+  })
+
+  test.it("clamps timestamps before the snowflake epoch to zero", () => {
+    const id = Unique.makeSnowflake({
+      timestamp: 0,
+      machineId: 0,
+      sequence: 0,
+    })
+
+    test.expect(id).toBe(0n)
+  })
+})
+
+test.describe("Unique.buildSnowflake", () => {
+  test.it("encodes a 41-bit timestamp, 10-bit machineId and 12-bit sequence", () => {
+    const snowflake = Unique.buildSnowflake({ machineId: 42 })
+    const id = withNow(Unique.SNOWFLAKE_EPOCH_MS + 1000, () => snowflake())
+
+    test
+      .expect(snowflake.toParts(id))
+      .toEqual({ timestamp: Unique.SNOWFLAKE_EPOCH_MS + 1000, machineId: 42, sequence: 0 })
+  })
+
+  test.it("defaults machineId to 0 when not provided", () => {
+    const snowflake = Unique.buildSnowflake()
+    const id = withNow(Unique.SNOWFLAKE_EPOCH_MS, () => snowflake())
+
+    test.expect(snowflake.machineId(id)).toBe(0)
+  })
+
+  test.it("increments sequence for ids generated within the same millisecond", () => {
+    const snowflake = Unique.buildSnowflake()
+
+    const idA = withNow(Unique.SNOWFLAKE_EPOCH_MS, () => snowflake())
+    const idB = withNow(Unique.SNOWFLAKE_EPOCH_MS, () => snowflake())
+
+    test.expect(snowflake.sequence(idA)).toBe(0)
+    test.expect(snowflake.sequence(idB)).toBe(1)
+    test.expect(snowflake.timestamp(idA)).toBe(snowflake.timestamp(idB))
+    test.expect(idB > idA).toBe(true)
+  })
+
+  test.it("resets sequence to 0 when the timestamp advances", () => {
+    const snowflake = Unique.buildSnowflake()
+
+    withNow(Unique.SNOWFLAKE_EPOCH_MS, () => snowflake())
+    const id = withNow(Unique.SNOWFLAKE_EPOCH_MS + 1, () => snowflake())
+
+    test.expect(snowflake.sequence(id)).toBe(0)
+    test.expect(snowflake.timestamp(id)).toBe(Unique.SNOWFLAKE_EPOCH_MS + 1)
+  })
+
+  test.it("carries sequence overflow into the next millisecond", () => {
+    const snowflake = Unique.buildSnowflake()
+
+    let last = 0n
+    for (let i = 0; i <= 4096; i++) {
+      last = withNow(Unique.SNOWFLAKE_EPOCH_MS, () => snowflake())
+    }
+
+    test.expect(snowflake.timestamp(last)).toBe(Unique.SNOWFLAKE_EPOCH_MS + 1)
+    test.expect(snowflake.sequence(last)).toBe(0)
+  })
+
+  test.it("stays monotonic when the clock goes backwards", () => {
+    const snowflake = Unique.buildSnowflake()
+
+    const idA = withNow(Unique.SNOWFLAKE_EPOCH_MS + 1000, () => snowflake())
+    const idB = withNow(Unique.SNOWFLAKE_EPOCH_MS, () => snowflake())
+
+    test.expect(idB > idA).toBe(true)
+    test.expect(snowflake.timestamp(idB)).toBe(Unique.SNOWFLAKE_EPOCH_MS + 1000)
+  })
+
+  test.it("setMachineId changes the machineId used by later ids", () => {
+    const snowflake = Unique.buildSnowflake({ machineId: 1 })
+
+    const idBefore = withNow(Unique.SNOWFLAKE_EPOCH_MS, () => snowflake())
+    snowflake.setMachineId(999)
+    const idAfter = withNow(Unique.SNOWFLAKE_EPOCH_MS + 1, () => snowflake())
+
+    test.expect(snowflake.machineId(idBefore)).toBe(1)
+    test.expect(snowflake.machineId(idAfter)).toBe(999 % 1024)
+  })
+
+  test.it("roundtrips through makeSnowflake", () => {
+    const parts = { timestamp: Unique.SNOWFLAKE_EPOCH_MS + 123456, machineId: 511, sequence: 4001 }
+    const id = Unique.makeSnowflake(parts)
+
+    test.expect(Unique.snowflake.toParts(id)).toEqual(parts)
+  })
+})
+
 test.describe("Unique.bigint", () => {
   test.it("constrains bytes into the fixed decimal range", () => {
     test
