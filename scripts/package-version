@@ -4,10 +4,17 @@ import { $ } from "bun"
 
 const args = process.argv.slice(2)
 const skipPrompt = args.includes("-y")
-const type = args.find(a => a !== "-y")
+const positional = args.filter(a => a !== "-y")
+const type = positional[0]
+const version = positional[1]
 
-if (!type || !["major", "minor", "patch"].includes(type)) {
-  console.error("Usage: package-version <major|minor|patch> [-y]")
+if (!type || !["major", "minor", "patch"].includes(type) || positional.length > 2) {
+  console.error("Usage: package-version <major|minor|patch> [version] [-y]")
+  process.exit(1)
+}
+
+if (version !== undefined && !/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(version)) {
+  console.error("Version must be in major.minor.patch format (for example, 0.100.0)")
   process.exit(1)
 }
 
@@ -25,12 +32,15 @@ if (!match) {
   process.exit(1)
 }
 
-const [, major, minor, patch] = match.map(Number)
+const major = Number(match[1])
+const minor = Number(match[2])
+const patch = Number(match[3])
 
-const newVersion =
+const newVersion = version ?? (
   type === "major" ? `${major + 1}.0.0`
   : type === "minor" ? `${major}.${minor + 1}.0`
   : `${major}.${minor}.${patch + 1}`
+)
 
 console.log(`${match[1]}.${match[2]}.${match[3]} -> ${newVersion}`)
 console.log(`This will: commit, tag, push, and publish to npm`)
