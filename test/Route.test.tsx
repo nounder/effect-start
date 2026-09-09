@@ -866,6 +866,40 @@ test.describe("Route.link", () => {
     Route.link<R>("/:owner/:repo/issues", { owner: "a", repo: "b", state: 123 })
   })
 
+  test.it("array search params produce repeated entries", () => {
+    const routes = Route.get(
+      Route.schemaSearchParams({
+        tags: Schema.Array(Schema.String),
+      }),
+      Route.html(""),
+    )
+
+    type R = { "/posts": [() => Promise<{ default: typeof routes }>] }
+
+    test
+      .expect(Route.link<R>("/posts", { tags: ["a", "b", "c"] }))
+      .toBe(
+        "/posts?tags=a&tags=b&tags=c",
+      )
+  })
+
+  test.it("empty array search params produce no query string", () => {
+    const routes = Route.get(
+      Route.schemaSearchParams({
+        tags: Schema.Array(Schema.String),
+      }),
+      Route.html(""),
+    )
+
+    type R = { "/posts": [() => Promise<{ default: typeof routes }>] }
+
+    test
+      .expect(Route.link<R>("/posts", { tags: [] }))
+      .toBe(
+        "/posts",
+      )
+  })
+
   test.it("type: optional search params from schema", () => {
     const routes = Route.get(
       Route.schemaSearchParams({
