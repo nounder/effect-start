@@ -79,9 +79,7 @@ function originTrusted(
 function originMatchesBase(request: Request): boolean {
   const origin = request.headers.get("origin")
   if (origin === null || origin === "") return true
-  const url = new URL(request.url)
-  const base = `${url.protocol}//${url.host}`
-  return origin === base
+  return origin === Route.requestOrigin(request)
 }
 
 function reject(reason: string): Entity.Entity<string> {
@@ -127,8 +125,7 @@ export function make(options?: Options) {
           !originMatchesBase(request) && !originTrusted(request, trustedOrigins)
         ) {
           const origin = request.headers.get("origin")
-          const url = new URL(request.url)
-          const base = `${url.protocol}//${url.host}`
+          const base = Route.requestOrigin(request)
           return reject(
             `HTTP Origin header (${origin}) didn't match request.base_url (${base})`,
           )
