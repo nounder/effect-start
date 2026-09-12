@@ -368,10 +368,13 @@ export function deserializeError(row: ErrorRow): ErrorEntry {
   }
 }
 
-// TODO:
+// Snowflake IDs exceed Number.MAX_SAFE_INTEGER and must round-trip without rounding.
 const withSql = <A, E>(
   f: (sql: SqlClient.SqlClient) => Effect.Effect<A, E>,
-): Effect.Effect<A, E, SqlClient.SqlClient> => Effect.flatMap(SqlClient.SqlClient, f)
+): Effect.Effect<A, E, SqlClient.SqlClient> =>
+  Effect.flatMap(SqlClient.SqlClient, f).pipe(
+    Effect.provideService(SqlClient.SafeIntegers, true),
+  )
 
 export function insertSpan(span: Tracing.Span) {
   return withSql(
