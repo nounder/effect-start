@@ -1,17 +1,16 @@
 import * as test from "bun:test"
-import { SqliteClient } from "effect-start/bun"
+import * as Route from "effect-start/Route"
+import * as RouteHttp from "effect-start/RouteHttp"
+import * as OpenTelemetry from "effect-start/studio/internal/OpenTelemetry"
+import * as StudioSql from "effect-start/studio/internal/StudioSql"
+import * as Studio from "effect-start/studio/Studio"
+import * as StudioStore from "effect-start/studio/StudioStore"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as PubSub from "effect/PubSub"
 import * as Queue from "effect/Queue"
-import type * as Sql from "effect/unstable/sql/SqlClient"
 import * as NFs from "node:fs"
 import * as NPath from "node:path"
-import * as Route from "effect-start/Route"
-import * as RouteHttp from "effect-start/RouteHttp"
-import * as OpenTelemetry from "effect-start/studio/internal/OpenTelemetry"
-import * as Studio from "effect-start/studio/Studio"
-import * as StudioStore from "effect-start/studio/StudioStore"
 
 /**
  * Fixture captured by proxying real OTLP exporters into the studio ingest
@@ -70,13 +69,12 @@ const studioLayer = Layer.effect(
   }),
 )
 
-const sqlLayer = SqliteClient.layer({
-  filename: ":memory:",
-})
-
-function run<A>(effect: Effect.Effect<A, unknown, Studio.Studio | Sql.SqlClient>) {
+function run<A>(effect: Effect.Effect<A, unknown, Studio.Studio | StudioSql.StudioSql>) {
   return effect.pipe(
-    Effect.provide(Layer.merge(studioLayer, sqlLayer)),
+    Effect.provide(Layer.merge(
+      studioLayer,
+      StudioSql.layer(),
+    )),
     Effect.runPromise,
   )
 }
@@ -84,7 +82,7 @@ function run<A>(effect: Effect.Effect<A, unknown, Studio.Studio | Sql.SqlClient>
 function replay(capture: Capture) {
   return Effect.gen(function*() {
     const signal = signalOf(capture)
-    const context = yield* Effect.context<Studio.Studio | Sql.SqlClient>()
+    const context = yield* Effect.context<Studio.Studio | StudioSql.StudioSql>()
     const handler = RouteHttp.toWebHandlerWith(context)(
       Route.post(Route.handle(() => OpenTelemetry.handle(signal))),
     )
@@ -659,7 +657,7 @@ test.it("ingests gzip-compressed recordings of the same payloads", () =>
 
     for (const capture of captures) {
       const signal = signalOf(capture)
-      const context = yield* Effect.context<Studio.Studio | Sql.SqlClient>()
+      const context = yield* Effect.context<Studio.Studio | StudioSql.StudioSql>()
       const handler = RouteHttp.toWebHandlerWith(context)(
         Route.post(Route.handle(() => OpenTelemetry.handle(signal))),
       )

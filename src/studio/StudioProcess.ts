@@ -2,9 +2,9 @@ import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as PubSub from "effect/PubSub"
 import * as Schedule from "effect/Schedule"
-import type * as SqlClient from "effect/unstable/sql/SqlClient"
 import * as NOS from "node:os"
 import * as StudioContext from "./internal/StudioContext.ts"
+import type * as StudioSql from "./internal/StudioSql.ts"
 import * as StudioStore from "./StudioStore.ts"
 
 const PERIOD_MS = 2000
@@ -66,7 +66,7 @@ function gauges(timestamp: number): Array<StudioStore.MetricSnapshot> {
 export const layer: Layer.Layer<
   never,
   never,
-  StudioContext.Studio | SqlClient.SqlClient
+  StudioContext.Studio | StudioSql.StudioSql
 > = Layer
   .effectDiscard(
     Effect.gen(function*() {

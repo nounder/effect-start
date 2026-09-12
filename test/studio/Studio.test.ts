@@ -1,6 +1,7 @@
 import * as test from "bun:test"
 import * as Bundle from "effect-start/bundler/Bundle"
 import * as Start from "effect-start/Start"
+import * as StudioSql from "effect-start/studio/internal/StudioSql"
 import * as Studio from "effect-start/studio/Studio"
 import * as StudioStore from "effect-start/studio/StudioStore"
 import * as Data from "effect/Data"
@@ -12,12 +13,47 @@ import * as HttpServer from "effect/unstable/http/HttpServer"
 import * as SqlClient from "effect/unstable/sql/SqlClient"
 import { JSDOM } from "jsdom"
 import * as BunServer from "../../src/bun/BunServer.ts"
+import * as SqliteClient from "../../src/bun/SqliteClient.ts"
 import * as Route from "../../src/Route.ts"
 
 const studioLayer = Start.pack(
   Studio.layer(),
   Layer.succeed(Bundle.Bundle, Bundle.emptyBundleContext),
 )
+
+test.it("keeps Studio SQL isolated from the application SQL client", () =>
+  Effect
+    .gen(function*() {
+      const server = yield* HttpServer.HttpServer
+      if (server.address._tag !== "TcpAddress") return yield* Effect.die("Expected a TCP server")
+
+      const sql = yield* SqlClient.SqlClient
+      const tables = yield* sql<{ name: string }>`SELECT name FROM sqlite_master
+        WHERE type = 'table' AND name = 'Log'`
+
+      test
+        .expect(tables)
+        .toEqual([])
+
+      const client = yield* HttpClient.HttpClient
+      const response = yield* client.get(`http://127.0.0.1:${server.address.port}/studio/fibers`, {
+        headers: { accept: "text/html" },
+      })
+
+      test
+        .expect(response.status)
+        .toBe(200)
+    })
+    .pipe(
+      Effect.provide(Start.build(
+        BunServer.layerRoutes({ port: 0, hostname: "127.0.0.1" }),
+        studioLayer,
+        SqliteClient.layer({ filename: ":memory:" }),
+      )),
+      Effect.provide(FetchHttpClient.layer),
+      Effect.scoped,
+      Effect.runPromise,
+    ))
 
 test.it("persists every request span and exposes the complete trace in Studio's API and UI", () =>
   Effect
@@ -280,7 +316,7 @@ test.it("retains tags and serializable properties for traced failures", () => {
       )
       yield* StudioStore.flushWrites()
 
-      const sql = yield* SqlClient.SqlClient
+      const sql = yield* StudioSql.StudioSql
       const rows = yield* sql<StudioStore.ErrorRow>`
         SELECT * FROM Error
         WHERE details LIKE ${"%StudioTracerTestError%"}

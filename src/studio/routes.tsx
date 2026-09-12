@@ -1,7 +1,6 @@
 import * as Effect from "effect/Effect"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
-import * as SqlClient from "effect/unstable/sql/SqlClient"
 import * as Bundle from "../bundler/Bundle.ts"
 import * as Entity from "../Entity.ts"
 import * as Html from "../Html.ts"
@@ -13,6 +12,7 @@ import * as Route from "../Route.ts"
 import css from "./css.ts"
 import * as OpenTelemetry from "./internal/OpenTelemetry.ts"
 import * as StudioContext from "./internal/StudioContext.ts"
+import * as StudioSql from "./internal/StudioSql.ts"
 import * as StudioProcess from "./StudioProcess.ts"
 import * as StudioStore from "./StudioStore.ts"
 import * as Ui from "./ui.tsx"
@@ -193,7 +193,7 @@ export default Route.map({
     Route.sse((ctx) =>
       Effect.gen(function*() {
         const studio = yield* StudioContext.Studio
-        const sql = yield* SqlClient.SqlClient
+        const sql = yield* StudioSql.StudioSql
         const search = ctx.searchParams.traceSearch.toLowerCase()
         return Stream.fromPubSub(studio.store.events).pipe(
           Stream.filter((e) => e._tag === "TraceEnd"),
@@ -207,7 +207,7 @@ export default Route.map({
               })
               .pipe(
                 Effect.provideService(StudioContext.Studio, studio),
-                Effect.provideService(SqlClient.SqlClient, sql),
+                Effect.provideService(StudioSql.StudioSql, sql),
               )
           ),
           Stream.debounce("500 millis"),
@@ -228,7 +228,7 @@ export default Route.map({
                   data: `selector #traces-container\nmode inner\nelements ${html}`,
                 }
               })
-              .pipe(Effect.provideService(SqlClient.SqlClient, sql))
+              .pipe(Effect.provideService(StudioSql.StudioSql, sql))
           ),
         )
       })
@@ -266,7 +266,7 @@ export default Route.map({
     Route.sse((ctx) =>
       Effect.gen(function*() {
         const studio = yield* StudioContext.Studio
-        const sql = yield* SqlClient.SqlClient
+        const sql = yield* StudioSql.StudioSql
         const traceId = ctx.pathParams.id
         return Stream.fromPubSub(studio.store.events).pipe(
           Stream.filterEffect((e) => {
@@ -292,7 +292,7 @@ export default Route.map({
               })
               .pipe(
                 Effect.provideService(StudioContext.Studio, studio),
-                Effect.provideService(SqlClient.SqlClient, sql),
+                Effect.provideService(StudioSql.StudioSql, sql),
               )
           ),
         )
@@ -319,7 +319,7 @@ export default Route.map({
     Route.sse(
       Effect.gen(function*() {
         const studio = yield* StudioContext.Studio
-        const sql = yield* SqlClient.SqlClient
+        const sql = yield* StudioSql.StudioSql
         return Stream.fromPubSub(studio.store.events).pipe(
           Stream.filter((e) => e._tag === "MetricsSnapshot"),
           Stream.mapEffect(() =>
@@ -335,7 +335,7 @@ export default Route.map({
                     data: `selector #metrics-container\nmode inner\nelements ${html}`,
                   }
                 }),
-                Effect.provideService(SqlClient.SqlClient, sql),
+                Effect.provideService(StudioSql.StudioSql, sql),
               )
           ),
         )
@@ -478,7 +478,7 @@ export default Route.map({
       const studio = yield* StudioContext.Studio
       const request = yield* Route.Request
       const search = ctx.searchParams.errorSearch ?? ""
-      const sql = yield* SqlClient.SqlClient
+      const sql = yield* StudioSql.StudioSql
       const errorRows = yield* sql<StudioStore.ErrorRow>`SELECT * FROM Error ORDER BY rowid`.pipe(
         Effect.withTracerEnabled(false),
       )
@@ -612,7 +612,7 @@ export default Route.map({
     Route.sse(
       Effect.gen(function*() {
         const studio = yield* StudioContext.Studio
-        const sql = yield* SqlClient.SqlClient
+        const sql = yield* StudioSql.StudioSql
         return Stream.fromPubSub(studio.store.events).pipe(
           Stream.filter((e) => e._tag === "SpanStart" || e._tag === "SpanEnd" || e._tag === "Log"),
           Stream.debounce("500 millis"),
@@ -632,7 +632,7 @@ export default Route.map({
                   data: `selector #fibers-container\nmode inner\nelements ${html}`,
                 }
               })
-              .pipe(Effect.provideService(SqlClient.SqlClient, sql))
+              .pipe(Effect.provideService(StudioSql.StudioSql, sql))
           ),
         )
       }),
@@ -662,7 +662,7 @@ export default Route.map({
     Route.sse((ctx) =>
       Effect.gen(function*() {
         const studio = yield* StudioContext.Studio
-        const sql = yield* SqlClient.SqlClient
+        const sql = yield* StudioSql.StudioSql
         const fiberId = ctx.pathParams.id
         const fiberName = fiberId.startsWith("#") ? fiberId : `#${fiberId}`
         return Stream.fromPubSub(studio.store.events).pipe(
@@ -685,7 +685,7 @@ export default Route.map({
               })
               .pipe(
                 Effect.provideService(StudioContext.Studio, studio),
-                Effect.provideService(SqlClient.SqlClient, sql),
+                Effect.provideService(StudioSql.StudioSql, sql),
               )
           ),
         )
@@ -751,7 +751,7 @@ export default Route.map({
     Route.sse(
       Effect.gen(function*() {
         const studio = yield* StudioContext.Studio
-        const sql = yield* SqlClient.SqlClient
+        const sql = yield* StudioSql.StudioSql
         return Stream.fromPubSub(studio.store.events).pipe(
           Stream.filter((e) => e._tag === "ProcessSnapshot"),
           Stream.mapEffect(() =>
@@ -768,7 +768,7 @@ export default Route.map({
                     data: `selector #system-container\nmode inner\nelements ${html}`,
                   }
                 }),
-                Effect.provideService(SqlClient.SqlClient, sql),
+                Effect.provideService(StudioSql.StudioSql, sql),
               )
           ),
         )
@@ -869,7 +869,7 @@ function renderFiberDetail(fiberName: string) {
   return Effect
     .gen(function*() {
       const studio = yield* StudioContext.Studio
-      const sql = yield* SqlClient.SqlClient
+      const sql = yield* StudioSql.StudioSql
       yield* StudioStore.flushWrites()
       const logRows = yield* sql<StudioStore.LogRow>`SELECT * FROM Log
       WHERE fiberId = ${fiberName} ORDER BY rowid`

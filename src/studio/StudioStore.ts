@@ -6,6 +6,7 @@ import * as SqlClient from "effect/unstable/sql/SqlClient"
 import type * as SqlError from "effect/unstable/sql/SqlError"
 import type * as Tracing from "../internal/Tracing.ts"
 import * as StudioContext from "./internal/StudioContext.ts"
+import * as StudioSql from "./internal/StudioSql.ts"
 
 export const studioTraceAttribute = "effect-start.studio.internal"
 
@@ -102,7 +103,7 @@ export interface FiberContext {
 export type Write = Effect.Effect<
   unknown,
   SqlError.SqlError,
-  SqlClient.SqlClient
+  StudioSql.StudioSql
 >
 
 export interface State {
@@ -217,7 +218,7 @@ function decodeTelemetryId(id: string | bigint | Uint8Array): string {
 }
 
 export const setupDatabase = Effect.gen(function*() {
-  const sql = yield* SqlClient.SqlClient
+  const sql = yield* StudioSql.StudioSql
   for (const ddl of DDL) {
     yield* sql.unsafe(ddl)
   }
@@ -371,8 +372,8 @@ export function deserializeError(row: ErrorRow): ErrorEntry {
 // Snowflake IDs exceed Number.MAX_SAFE_INTEGER and must round-trip without rounding.
 const withSql = <A, E>(
   f: (sql: SqlClient.SqlClient) => Effect.Effect<A, E>,
-): Effect.Effect<A, E, SqlClient.SqlClient> =>
-  Effect.flatMap(SqlClient.SqlClient, f).pipe(
+): Effect.Effect<A, E, StudioSql.StudioSql> =>
+  Effect.flatMap(StudioSql.StudioSql, f).pipe(
     Effect.provideService(SqlClient.SafeIntegers, true),
   )
 

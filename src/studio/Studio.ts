@@ -34,9 +34,8 @@ export function layer(options?: Options) {
       studio,
       layerTracking().pipe(Layer.provide(studio)),
       layerRoutes(path),
-      StudioSql.layer,
     )
-    .pipe(Layer.provide(StudioSql.layer))
+    .pipe(Layer.provideMerge(StudioSql.layer()))
 }
 
 function layerStudio(options?: Options) {

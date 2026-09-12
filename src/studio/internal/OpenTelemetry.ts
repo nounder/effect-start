@@ -3,7 +3,6 @@ import * as PubSub from "effect/PubSub"
 import * as Schema from "effect/Schema"
 import * as SchemaIssue from "effect/SchemaIssue"
 import * as Stream from "effect/Stream"
-import * as SqlClient from "effect/unstable/sql/SqlClient"
 import * as NZlib from "node:zlib"
 import * as Entity from "../../Entity.ts"
 import type * as Tracing from "../../internal/Tracing.ts"
@@ -11,6 +10,7 @@ import * as Route from "../../Route.ts"
 import * as Unique from "../../Unique.ts"
 import * as StudioStore from "../StudioStore.ts"
 import * as StudioContext from "./StudioContext.ts"
+import * as StudioSql from "./StudioSql.ts"
 
 namespace ParseResult {
   export type ParseError = Schema.SchemaError
@@ -1204,7 +1204,7 @@ function persist(signal: OpenTelemetrySignal, input: Input) {
   return Effect
     .gen(function*() {
       const studio = yield* StudioContext.Studio
-      const sql = yield* SqlClient.SqlClient
+      const sql = yield* StudioSql.StudioSql
       if (signal === "traces") {
         const parsed = yield* parseTraces(input)
         yield* sql.withTransaction(

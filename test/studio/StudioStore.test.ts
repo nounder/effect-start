@@ -1,14 +1,12 @@
 import * as test from "bun:test"
-import { SqliteClient } from "effect-start/bun"
-import * as Context from "effect/Context"
-import * as Effect from "effect/Effect"
-import * as Layer from "effect/Layer"
-import * as Sql from "effect/unstable/sql/SqlClient"
 import type * as Tracing from "effect-start/internal/Tracing"
 import * as StudioSql from "effect-start/studio/internal/StudioSql"
 import * as StudioStore from "effect-start/studio/StudioStore"
+import * as Effect from "effect/Effect"
 
 let nextId = 1n
+
+const layerSql = StudioSql.layer()
 
 function makeSpan(status: Tracing.Span["status"]): Tracing.Span {
   const spanId = (nextId++).toString()
@@ -67,7 +65,7 @@ test.it("evictSpans keeps spans that have not ended yet", () =>
         .toContain(openSpan.spanId)
     })
     .pipe(
-      Effect.provide(SqliteClient.layer({ filename: ":memory:" })),
+      Effect.provide(layerSql),
       Effect.runPromise,
     ))
 
@@ -103,7 +101,7 @@ test.it("round-trips compact OTLP IDs and telemetry metadata", () =>
         .expect(spans)
         .toEqual([span])
 
-      const sql = yield* Sql.SqlClient
+      const sql = yield* StudioSql.StudioSql
       const rows = yield* sql<{ spanType: string; traceType: string }>`SELECT
         typeof(spanId) AS spanType,
         typeof(traceId) AS traceType
@@ -147,24 +145,6 @@ test.it("round-trips compact OTLP IDs and telemetry metadata", () =>
         .toEqual(["api", "worker"])
     })
     .pipe(
-      Effect.provide(SqliteClient.layer({ filename: ":memory:" })),
+      Effect.provide(layerSql),
       Effect.runPromise,
     ))
-
-test.it("keeps Studio's in-memory SQLite client alive across layer scopes", () =>
-  Effect
-    .gen(function*() {
-      const first = yield* Layer.build(StudioSql.layer).pipe(
-        Effect.map((context) => Context.get(context, Sql.SqlClient)),
-        Effect.scoped,
-      )
-      const second = yield* Layer.build(StudioSql.layer).pipe(
-        Effect.map((context) => Context.get(context, Sql.SqlClient)),
-        Effect.scoped,
-      )
-
-      test
-        .expect(first)
-        .toBe(second)
-    })
-    .pipe(Effect.runPromise))

@@ -3,8 +3,8 @@ import * as Layer from "effect/Layer"
 import * as Metric from "effect/Metric"
 import * as PubSub from "effect/PubSub"
 import * as Schedule from "effect/Schedule"
-import type * as SqlClient from "effect/unstable/sql/SqlClient"
 import * as StudioContext from "./internal/StudioContext.ts"
+import type * as StudioSql from "./internal/StudioSql.ts"
 import * as StudioStore from "./StudioStore.ts"
 
 const PERIOD_MS = 2000
@@ -13,7 +13,7 @@ const SAMPLE_CAPACITY = 50_000
 export const layer: Layer.Layer<
   never,
   never,
-  StudioContext.Studio | SqlClient.SqlClient
+  StudioContext.Studio | StudioSql.StudioSql
 > = Layer
   .effectDiscard(
     Effect.gen(function*() {
