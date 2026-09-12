@@ -43,8 +43,7 @@ console.log(tag)
 process.stdout.write("Push and deploy? [y/N] ")
 for await (const line of console) {
   if (line.toLowerCase() === "y") {
-    await $`git push --tags`
-    await $`bun run deploy`
+    await $`git push --atomic origin main ${tag}`
   }
   break
 }

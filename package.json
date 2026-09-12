@@ -2,6 +2,10 @@
   "name": "effect-start",
   "version": "0.50.1",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nounder/effect-start.git"
+  },
   "files": [
     "src/",
     "dist/",
