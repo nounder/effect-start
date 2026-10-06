@@ -1,6 +1,6 @@
 {
   "name": "effect-start",
-  "version": "0.50.2",
+  "version": "0.51.0",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -116,6 +116,18 @@
     "./cloudflare": {
       "bun": "./src/cloudflare/index.ts",
       "default": "./dist/cloudflare/index.js"
+    },
+    "./cell": {
+      "bun": "./src/cell/index.ts",
+      "default": "./dist/cell/index.js"
+    },
+    "./cell/dom": {
+      "bun": "./src/cell/dom.js",
+      "default": "./dist/cell/dom.js"
+    },
+    "./cell/morph": {
+      "bun": "./src/cell/morph.js",
+      "default": "./dist/cell/morph.js"
     },
     "./datastar": {
       "bun": "./src/datastar/index.ts",
