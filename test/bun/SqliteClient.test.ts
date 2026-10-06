@@ -366,8 +366,8 @@ test.describe("SqliteClient", () => {
               .expect(result.failure.reason._tag)
               .toBe("UnknownError")
             test
-              .expect((result.failure.reason.cause as { readonly code?: string }).code)
-              .toBe("SQLITE_ERROR")
+              .expect(result.failure.reason.cause)
+              .toMatchObject({ errno: 1, message: "no such table: nonexistent_table" })
           }
         }),
       ))

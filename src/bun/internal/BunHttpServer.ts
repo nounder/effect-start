@@ -148,7 +148,15 @@ export const make = Effect.fnUntraced(function*(options: ServeOptions) {
     },
   })
 
-  const stop = yield* Effect.promise(() => server.stop()).pipe(Effect.cached)
+  const stop = yield* Effect
+    .tryPromise({
+      try: () => server.stop(true),
+      catch: (cause) => new HttpServerError.ServeError({ cause }),
+    })
+    .pipe(
+      Effect.orDie,
+      Effect.cached,
+    )
   const shutdown = (generation: Fiber.Fiber<unknown, unknown> | undefined) =>
     Effect.suspend(() => MainFiber.get() === generation && ownerGeneration === generation ? stop : Effect.void)
   const preemptiveShutdown = (generation: Fiber.Fiber<unknown, unknown> | undefined) =>
