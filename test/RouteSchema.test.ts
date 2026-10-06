@@ -9,10 +9,10 @@ import { TestLogger } from "effect-start/testing"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import type * as FileSystem from "effect/FileSystem"
+import * as Multipart from "effect/http/Multipart"
 import * as Layer from "effect/Layer"
 import type * as Path from "effect/Path"
 import * as Schema from "effect/Schema"
-import * as Multipart from "effect/unstable/http/Multipart"
 
 const multipartContext = Effect.runSync(
   Layer.build(Layer.merge(BunFileSystem.layer, BunPath.layer)).pipe(Effect.scoped),

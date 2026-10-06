@@ -2,13 +2,13 @@
  * Ported from effect@4.0.0-rc.112.
  */
 import * as Arr from "effect/Array"
+import * as ByteSize from "effect/ByteSize"
 import * as Cause from "effect/Cause"
 import * as Channel from "effect/Channel"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
-import type * as FileSystem from "effect/FileSystem"
 import * as Function from "effect/Function"
 import * as Latch from "effect/Latch"
 import * as MutableRef from "effect/MutableRef"
@@ -152,10 +152,12 @@ export const toString = <E = Cause.UnknownError>(
   options?: {
     readonly onError?: (error: unknown) => E
     readonly encoding?: BufferEncoding | undefined
-    readonly maxBytes?: FileSystem.SizeInput | undefined
+    readonly maxBytes?: ByteSize.Input | undefined
   },
 ): Effect.Effect<string, E> => {
-  const maxBytesNumber = options?.maxBytes !== undefined ? Number(options.maxBytes) : undefined
+  const maxBytesNumber = options?.maxBytes !== undefined
+    ? Number(ByteSize.fromInputUnsafe(options.maxBytes))
+    : undefined
   const onError = options?.onError ?? defaultOnError
   const encoding = options?.encoding ?? "utf8"
   return Effect.callback((resume) => {
@@ -196,10 +198,12 @@ export const toArrayBuffer = <E = Cause.UnknownError>(
   readable: Function.LazyArg<Readable | NodeJS.ReadableStream>,
   options?: {
     readonly onError?: (error: unknown) => E
-    readonly maxBytes?: FileSystem.SizeInput | undefined
+    readonly maxBytes?: ByteSize.Input | undefined
   },
 ): Effect.Effect<ArrayBuffer, E> => {
-  const maxBytesNumber = options?.maxBytes !== undefined ? Number(options.maxBytes) : undefined
+  const maxBytesNumber = options?.maxBytes !== undefined
+    ? Number(ByteSize.fromInputUnsafe(options.maxBytes))
+    : undefined
   const onError = options?.onError ?? defaultOnError
   return Effect.callback((resume) => {
     const stream = readable() as Readable
@@ -242,7 +246,7 @@ export const toUint8Array = <E = Cause.UnknownError>(
   readable: Function.LazyArg<Readable | NodeJS.ReadableStream>,
   options?: {
     readonly onError?: (error: unknown) => E
-    readonly maxBytes?: FileSystem.SizeInput | undefined
+    readonly maxBytes?: ByteSize.Input | undefined
   },
 ): Effect.Effect<Uint8Array, E> => Effect.map(toArrayBuffer(readable, options), (buffer) => new Uint8Array(buffer))
 

@@ -3,11 +3,11 @@ import { BunChildProcessSpawner, BunFileSystem, BunPath } from "effect-start/bun
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Layer from "effect/Layer"
+import * as ChildProcess from "effect/process/ChildProcess"
+import * as ChildProcessSpawner from "effect/process/ChildProcessSpawner"
 import type * as Scope from "effect/Scope"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
-import * as ChildProcess from "effect/unstable/process/ChildProcess"
-import * as ChildProcessSpawner from "effect/unstable/process/ChildProcessSpawner"
 
 const layer = BunChildProcessSpawner.layer.pipe(
   Layer.provideMerge(Layer.merge(BunFileSystem.layer, BunPath.layer)),

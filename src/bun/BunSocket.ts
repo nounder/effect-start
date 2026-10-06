@@ -5,19 +5,21 @@ import type * as Duration from "effect/Duration"
 import type * as Effect from "effect/Effect"
 import * as Function from "effect/Function"
 import * as Layer from "effect/Layer"
-import * as Socket from "effect/unstable/socket/Socket"
+import * as Socket from "effect/socket/Socket"
 
 export * from "../node/NodeSocket.ts"
 
 export const layerWebSocketConstructor: Layer.Layer<Socket.WebSocketConstructor> = Layer.succeed(
   Socket.WebSocketConstructor,
-  (url, protocols) => new globalThis.WebSocket(url, protocols),
+  (url, options) =>
+    new (globalThis.WebSocket as {
+      new(url: string, options?: Socket.WebSocketConstructorOptions): WebSocket
+    })(url, options),
 )
 
 export const layerWebSocket: (
   url: string | Effect.Effect<string>,
   options?: {
-    readonly closeCodeIsError?: ((code: number) => boolean) | undefined
     readonly openTimeout?: Duration.Input | undefined
     readonly protocols?: string | Array<string> | undefined
   } | undefined,

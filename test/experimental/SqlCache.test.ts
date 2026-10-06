@@ -4,7 +4,7 @@ import * as SqlCache from "effect-start/experimental/SqlCache"
 import * as Cache from "effect/Cache"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import * as Sql from "effect/unstable/sql/SqlClient"
+import * as Sql from "effect/sql/SqlClient"
 
 const sqlLayer = SqliteClient.layer({ filename: ":memory:" })
 

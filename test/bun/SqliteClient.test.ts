@@ -2,7 +2,7 @@ import * as test from "bun:test"
 import { SqliteClient } from "effect-start/bun"
 import * as Effect from "effect/Effect"
 import * as Result from "effect/Result"
-import * as Sql from "effect/unstable/sql/SqlClient"
+import * as Sql from "effect/sql/SqlClient"
 
 const runSql = <A, E>(effect: Effect.Effect<A, E, Sql.SqlClient>) =>
   effect.pipe(

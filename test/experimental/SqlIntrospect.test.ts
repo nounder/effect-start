@@ -3,7 +3,7 @@ import { SqliteClient } from "effect-start/bun"
 import * as SqlIntrospect from "effect-start/experimental/SqlIntrospect"
 import * as Effect from "effect/Effect"
 import * as Schema from "effect/Schema"
-import * as Sql from "effect/unstable/sql/SqlClient"
+import * as Sql from "effect/sql/SqlClient"
 
 const runSql = <A, E>(effect: Effect.Effect<A, E, Sql.SqlClient>) =>
   Effect.runPromise(

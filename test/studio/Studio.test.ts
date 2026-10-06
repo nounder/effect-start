@@ -6,11 +6,12 @@ import * as Studio from "effect-start/studio/Studio"
 import * as StudioStore from "effect-start/studio/StudioStore"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
+import * as FetchHttpClient from "effect/http/FetchHttpClient"
+import * as HttpClient from "effect/http/HttpClient"
+import * as HttpServer from "effect/http/HttpServer"
 import * as Layer from "effect/Layer"
-import * as FetchHttpClient from "effect/unstable/http/FetchHttpClient"
-import * as HttpClient from "effect/unstable/http/HttpClient"
-import * as HttpServer from "effect/unstable/http/HttpServer"
-import * as SqlClient from "effect/unstable/sql/SqlClient"
+import * as NetAddress from "effect/net/NetAddress"
+import * as SqlClient from "effect/sql/SqlClient"
 import { JSDOM } from "jsdom"
 import * as BunServer from "../../src/bun/BunServer.ts"
 import * as SqliteClient from "../../src/bun/SqliteClient.ts"
@@ -25,7 +26,7 @@ test.it("keeps Studio SQL isolated from the application SQL client", () =>
   Effect
     .gen(function*() {
       const server = yield* HttpServer.HttpServer
-      if (server.address._tag !== "TcpAddress") return yield* Effect.die("Expected a TCP server")
+      if (!NetAddress.isInetAddress(server.address)) return yield* Effect.die("Expected a TCP server")
 
       const sql = yield* SqlClient.SqlClient
       const tables = yield* sql<{ name: string }>`SELECT name FROM sqlite_master
@@ -62,9 +63,9 @@ test.it("persists every request span and exposes the complete trace in Studio's 
 
       test
         .expect(server.address._tag)
-        .toBe("TcpAddress")
+        .toBe("InetAddressV4")
 
-      if (server.address._tag !== "TcpAddress") return yield* Effect.die("Expected a TCP server")
+      if (server.address._tag !== "InetAddressV4") return yield* Effect.die("Expected a TCP server")
       const base = `http://127.0.0.1:${server.address.port}`
       const client = (yield* HttpClient.HttpClient).pipe(
         HttpClient.transformResponse(Effect.provideService(HttpClient.TracerDisabledWhen, () => true)),

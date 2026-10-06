@@ -3,13 +3,14 @@ import type * as Context from "effect/Context"
 import type * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
+import * as HttpMiddleware from "effect/http/HttpMiddleware"
+import * as HttpServer from "effect/http/HttpServer"
+import * as HttpServerRequest from "effect/http/HttpServerRequest"
+import * as HttpServerResponse from "effect/http/HttpServerResponse"
 import * as Layer from "effect/Layer"
+import * as NetAddress from "effect/net/NetAddress"
 import * as Option from "effect/Option"
 import * as Scope from "effect/Scope"
-import * as HttpMiddleware from "effect/unstable/http/HttpMiddleware"
-import * as HttpServer from "effect/unstable/http/HttpServer"
-import * as HttpServerRequest from "effect/unstable/http/HttpServerRequest"
-import * as HttpServerResponse from "effect/unstable/http/HttpServerResponse"
 import * as NOs from "node:os"
 import * as NPath from "node:path"
 import * as PathPattern from "../internal/PathPattern.ts"
@@ -33,10 +34,10 @@ const optionsWithDefaults = (options: BunServeOptions) =>
   "unix" in options && options.unix !== undefined
     ? Effect.succeed(options)
     : Effect.gen(function*() {
-      const port = yield* Config.number("PORT").pipe(
+      const port = yield* Config.Number("PORT").pipe(
         Effect.catchTag("ConfigError", () => Effect.succeed(AgentHarness.isAgentHarness() ? 0 : 3000)),
       )
-      const hostname = yield* Config.string("HOST").pipe(
+      const hostname = yield* Config.String("HOST").pipe(
         Effect.catchTag("ConfigError", () => Effect.succeed(process.argv.includes("--host") ? "0.0.0.0" : undefined)),
       )
       return { port, hostname, ...options } satisfies BunServeOptions
@@ -269,8 +270,8 @@ export const layerStart = (options: BunServeOptions = {}) =>
 export const withLogAddress = <A, E, R>(serverLayer: Layer.Layer<A, E, R>) =>
   Layer
     .effectDiscard(HttpServer.HttpServer.use((server) => {
-      if (server.address._tag === "UnixAddress") return Effect.log(`Listening on unix:${server.address.path}`)
-      const host = server.address.hostname === "0.0.0.0" ? (getLocalIp() ?? "localhost") : "localhost"
+      if (server.address._tag === "UnixPathAddress") return Effect.log(`Listening on unix:${server.address.path}`)
+      const host = NetAddress.formatHost(server.address) === "0.0.0.0" ? (getLocalIp() ?? "localhost") : "localhost"
       return Effect.log(`Listening on http://${host}:${server.address.port}`)
     }))
     .pipe(Layer.provideMerge(serverLayer))

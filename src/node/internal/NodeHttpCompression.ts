@@ -2,9 +2,9 @@
  * Ported from effect@4.0.0-rc.112.
  */
 import * as Effect from "effect/Effect"
-import * as HttpBody from "effect/unstable/http/HttpBody"
-import type * as Platform from "effect/unstable/http/HttpPlatform"
-import * as Response from "effect/unstable/http/HttpServerResponse"
+import * as HttpBody from "effect/http/HttpBody"
+import type * as Platform from "effect/http/HttpPlatform"
+import * as Response from "effect/http/HttpServerResponse"
 import type { Duplex } from "node:stream"
 import { Readable } from "node:stream"
 import * as Zlib from "node:zlib"

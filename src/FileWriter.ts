@@ -1,3 +1,4 @@
+import * as ByteSize from "effect/ByteSize"
 import type * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as FileSystem from "effect/FileSystem"
@@ -14,7 +15,7 @@ export interface Options {
   readonly path: string
   readonly mode?: number | undefined
   readonly batchWindow?: Duration.Input | undefined
-  readonly truncateSize?: FileSystem.SizeInput | undefined
+  readonly truncateSize?: ByteSize.Input | undefined
   readonly truncateAlignLines?: boolean | undefined
 }
 
@@ -36,7 +37,9 @@ export const build = (
     const path = options.path
     const fs = yield* FileSystem.FileSystem
     const encoder = new TextEncoder()
-    const truncateSize = options.truncateSize !== undefined ? Number(FileSystem.Size(options.truncateSize)) : undefined
+    const truncateSize = options.truncateSize !== undefined
+      ? Number(ByteSize.fromInputUnsafe(options.truncateSize))
+      : undefined
     const alignLines = options.truncateAlignLines ?? true
     const file = yield* fs.open(path, { flag: "a+", mode: options.mode })
     let written = Number((yield* file.stat).size)
@@ -47,7 +50,7 @@ export const build = (
         if (truncateSize !== undefined && written > 0 && written + bytes.length > truncateSize) {
           const tail = keepTail(yield* fs.readFile(path), truncateSize - bytes.length, alignLines)
           yield* file.truncate()
-          yield* file.seek(0, "start")
+          yield* file.seek(0n, "start")
           if (tail.length > 0) yield* file.writeAll(tail)
           written = tail.length
         }

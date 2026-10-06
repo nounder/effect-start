@@ -1,26 +1,27 @@
 import * as test from "bun:test"
 import { BunRoute, BunServer } from "effect-start/bun"
+import * as BunHttpServer from "effect-start/bun/internal/BunHttpServer"
+import * as MainFiber from "effect-start/bun/internal/MainFiber"
+import type * as RouteMap from "effect-start/internal/RouteMap"
 import * as Route from "effect-start/Route"
+import * as RouteHttp from "effect-start/RouteHttp"
 import * as Start from "effect-start/Start"
 import * as ConfigProvider from "effect/ConfigProvider"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
+import * as HttpServer from "effect/http/HttpServer"
 import * as Layer from "effect/Layer"
+import * as NetAddress from "effect/net/NetAddress"
 import * as Scope from "effect/Scope"
-import * as HttpServer from "effect/unstable/http/HttpServer"
 import * as NFs from "node:fs"
 import * as NOs from "node:os"
 import * as NPath from "node:path"
-import * as BunHttpServer from "effect-start/bun/internal/BunHttpServer"
-import * as MainFiber from "effect-start/bun/internal/MainFiber"
-import type * as RouteMap from "effect-start/internal/RouteMap"
-import * as RouteHttp from "effect-start/RouteHttp"
 
 const staticDir = NPath.resolve(import.meta.dir, "../../static")
 
 const serverPort = (server: HttpServer.HttpServer["Service"]) =>
-  server.address._tag === "TcpAddress" ? server.address.port : undefined
+  NetAddress.isInetAddress(server.address) ? server.address.port : undefined
 const serveOptions = (options: BunServer.BunServeOptions) => options
 
 const withEnv = (env: Record<string, string | undefined>) =>
@@ -336,10 +337,10 @@ test.test("exposes canonical addresses for wildcard binds", () =>
 
       test
         .expect(ipv4Server.address)
-        .toMatchObject({ _tag: "TcpAddress", hostname: "0.0.0.0" })
+        .toMatchObject({ _tag: "InetAddressV4", address: NetAddress.ipv4Unspecified })
       test
         .expect(ipv6Server.address)
-        .toMatchObject({ _tag: "TcpAddress", hostname: "::" })
+        .toMatchObject({ _tag: "InetAddressV6", address: NetAddress.ipv6Unspecified })
     })
     .pipe(
       Effect.scoped,
@@ -791,7 +792,7 @@ test.describe("prebuilt htmlBundle", () => {
         Route.html("<p>native-with-websocket</p>"),
       ),
       "/ws": Route.get(Route.ws(function*(ctx) {
-        const write = yield* ctx.socket.writer
+        const write = (yield* ctx.socket.writer).write
         yield* write("connected")
       })),
     })

@@ -1,7 +1,7 @@
 import * as Effect from "effect/Effect"
 import * as Schema from "effect/Schema"
-import * as SqlClient from "effect/unstable/sql/SqlClient"
-import type * as SqlError from "effect/unstable/sql/SqlError"
+import * as SqlClient from "effect/sql/SqlClient"
+import type * as SqlError from "effect/sql/SqlError"
 
 export interface Column {
   readonly tableSchema: string

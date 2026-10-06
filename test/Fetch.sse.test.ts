@@ -1,14 +1,14 @@
 import * as test from "bun:test"
 import { BunServer } from "effect-start/bun"
 import * as Fetch from "effect-start/Fetch"
+import type * as RouteMap from "effect-start/internal/RouteMap"
 import * as Route from "effect-start/Route"
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
+import * as HttpServer from "effect/http/HttpServer"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Stream from "effect/Stream"
-import * as HttpServer from "effect/unstable/http/HttpServer"
-import type * as RouteMap from "effect-start/internal/RouteMap"
 
 const testLayer = <const Input extends RouteMap.RouteMapInput>(routes: Input) =>
   BunServer.layerRoutes({ port: 0 }).pipe(

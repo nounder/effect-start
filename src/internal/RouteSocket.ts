@@ -1,9 +1,9 @@
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
+import * as HttpServerRequest from "effect/http/HttpServerRequest"
 import type * as Scope from "effect/Scope"
-import * as HttpServerRequest from "effect/unstable/http/HttpServerRequest"
-import * as Socket from "effect/unstable/socket/Socket"
+import * as Socket from "effect/socket/Socket"
 import * as Entity from "../Entity.ts"
 import * as Route from "../Route.ts"
 import type * as Values from "./Values.ts"
@@ -101,10 +101,10 @@ export function ws<
             const socket = yield* request.upgrade
             const handlerScope = yield* HandlerScope
             const handlerEffect = handle({ ...context, socket }).pipe(
-              Effect.catchFilter(
-                Socket.SocketCloseError.filterClean((code) =>
-                  code === 1000 || code === 1001 || code === 1005 || code === 1006
-                ),
+              Effect.catchIf(
+                (error) =>
+                  Socket.isSocketError(error) && error.reason._tag === "SocketCloseError" && [1000, 1001, 1005, 1006]
+                    .includes(error.reason.code),
                 () => Effect.void,
               ),
               Effect.catchCause((cause) => Effect.logError(cause)),

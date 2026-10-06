@@ -3,10 +3,10 @@
  */
 import type * as Effect from "effect/Effect"
 import type * as FileSystem from "effect/FileSystem"
+import * as Etag from "effect/http/Etag"
+import * as Platform from "effect/http/HttpPlatform"
+import * as Response from "effect/http/HttpServerResponse"
 import * as Layer from "effect/Layer"
-import * as Etag from "effect/unstable/http/Etag"
-import * as Platform from "effect/unstable/http/HttpPlatform"
-import * as Response from "effect/unstable/http/HttpServerResponse"
 import * as NodeHttpCompression from "../../node/internal/NodeHttpCompression.ts"
 import * as BunFileSystem from "../BunFileSystem.ts"
 

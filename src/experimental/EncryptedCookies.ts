@@ -3,8 +3,8 @@ import * as ConfigProvider from "effect/ConfigProvider"
 import * as Context from "effect/Context"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
+import * as Cookies from "effect/http/Cookies"
 import * as Layer from "effect/Layer"
-import * as Cookies from "effect/unstable/http/Cookies"
 
 type CookieValue =
   | string
@@ -69,7 +69,7 @@ export function layerConfig(name = "SECRET_KEY_BASE") {
     EncryptedCookies,
     Effect.gen(function*() {
       const provider = yield* ConfigProvider.ConfigProvider
-      const secret = yield* Config.nonEmptyString(name).parse(provider).pipe(
+      const secret = yield* Config.NonEmptyString(name).parse(provider).pipe(
         Effect.flatMap((value) =>
           value.length < 40
             ? Effect.fail(new Error("SECRET_KEY_BASE is too short"))

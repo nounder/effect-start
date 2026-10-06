@@ -1,14 +1,15 @@
 import * as test from "bun:test"
-import * as Effect from "effect/Effect"
-import * as Layer from "effect/Layer"
-import * as Option from "effect/Option"
-import * as HttpServer from "effect/unstable/http/HttpServer"
 import { BunRoute, BunServer } from "effect-start/bun"
-import * as Route from "effect-start/Route"
 import type * as RouteMap from "effect-start/internal/RouteMap"
+import * as Route from "effect-start/Route"
+import * as Effect from "effect/Effect"
+import * as HttpServer from "effect/http/HttpServer"
+import * as Layer from "effect/Layer"
+import * as NetAddress from "effect/net/NetAddress"
+import * as Option from "effect/Option"
 
 const serverPort = (server: HttpServer.HttpServer["Service"]) =>
-  server.address._tag === "TcpAddress" ? server.address.port : undefined
+  NetAddress.isInetAddress(server.address) ? server.address.port : undefined
 const serveOptions = (options: BunServer.BunServeOptions) => options
 
 const testLayer = <const Input extends RouteMap.RouteMapInput>(

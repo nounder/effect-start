@@ -1,5 +1,5 @@
+import type * as HttpServerRequest from "effect/http/HttpServerRequest"
 import type * as Scope from "effect/Scope"
-import type * as HttpServerRequest from "effect/unstable/http/HttpServerRequest"
 import * as Route from "../Route.ts"
 import type * as PathPattern from "./PathPattern.ts"
 import type * as RouteMount from "./RouteMount.ts"

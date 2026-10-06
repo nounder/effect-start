@@ -38,7 +38,7 @@ const PlainTextPassword = Schema.NonEmptyString.annotate({
 function makePasswordSchema(options?: HashOptions) {
   return PlainTextPassword.pipe(
     Schema.decodeTo(PasswordStored, {
-      decode: SchemaGetter.transformOrFail((input) =>
+      decode: SchemaGetter.transformEffect((input) =>
         hash(input, options).pipe(
           Effect.mapError((error) => new SchemaIssue.InvalidValue({ message: formatError(error) })),
         )

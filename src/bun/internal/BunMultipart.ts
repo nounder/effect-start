@@ -3,10 +3,10 @@
  */
 import type * as Effect from "effect/Effect"
 import type * as FileSystem from "effect/FileSystem"
+import * as Multipart from "effect/http/Multipart"
 import type * as Path from "effect/Path"
 import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
-import * as Multipart from "effect/unstable/http/Multipart"
 import * as BunStream from "./BunStream.ts"
 
 export const stream = (source: Request): Stream.Stream<Multipart.Part, Multipart.MultipartError> =>

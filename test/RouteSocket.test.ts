@@ -1,6 +1,7 @@
 import * as test from "bun:test"
 import { BunServer } from "effect-start/bun"
 import * as Fetch from "effect-start/Fetch"
+import type * as RouteMap from "effect-start/internal/RouteMap"
 import * as Route from "effect-start/Route"
 import { TestLogger } from "effect-start/testing"
 import * as Context from "effect/Context"
@@ -9,11 +10,10 @@ import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
+import * as HttpServer from "effect/http/HttpServer"
 import * as Layer from "effect/Layer"
 import * as Scope from "effect/Scope"
-import * as HttpServer from "effect/unstable/http/HttpServer"
-import * as Socket from "effect/unstable/socket/Socket"
-import type * as RouteMap from "effect-start/internal/RouteMap"
+import * as Socket from "effect/socket/Socket"
 
 const testLayer = <const Input extends RouteMap.RouteMapInput>(routes: Input) =>
   BunServer
@@ -82,9 +82,30 @@ const nextClose = (ws: WebSocket) =>
     }
   })
 
-const httpUrl = (server: { readonly address: HttpServer.Address }) => HttpServer.formatAddress(server.address)
+const consume = <A, E, R>(
+  socket: Socket.Socket,
+  handler: (data: Uint8Array | string) => Effect.Effect<A, E, R> | void,
+  options?: { readonly onOpen?: Effect.Effect<void> },
+) =>
+  Effect
+    .gen(function*() {
+      const reader = yield* socket.reader
+      if (options?.onOpen !== undefined) yield* options.onOpen
+      while (true) {
+        const frames = yield* reader.pull
+        for (const frame of frames) {
+          const result = handler(frame)
+          if (Effect.isEffect(result)) yield* result
+        }
+      }
+    })
+    .pipe(Effect.scoped)
 
-const wsUrl = (server: { readonly address: HttpServer.Address }) => httpUrl(server).replace(/^http/, "ws")
+const httpUrl = (server: { readonly address: HttpServer.HttpServer["Service"]["address"] }) =>
+  HttpServer.formatAddress(server.address)
+
+const wsUrl = (server: { readonly address: HttpServer.HttpServer["Service"]["address"] }) =>
+  httpUrl(server).replace(/^http/, "ws")
 
 const runPromise = <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.runPromise(effect as Effect.Effect<A, E>)
 
@@ -92,8 +113,8 @@ test.describe("Route.ws", () => {
   test.test("echoes text frames", () => {
     const routes = Route.map({
       "/ws": Route.get(Route.ws(function*(ctx) {
-        const write = yield* ctx.socket.writer
-        yield* ctx.socket.runRaw((data) => write(data))
+        const write = (yield* ctx.socket.writer).write
+        yield* consume(ctx.socket, (data) => write(data))
       })),
     })
 
@@ -121,8 +142,8 @@ test.describe("Route.ws", () => {
   test.test("round-trips text and binary frames", () => {
     const routes = Route.map({
       "/ws": Route.get(Route.ws(function*(ctx) {
-        const write = yield* ctx.socket.writer
-        yield* ctx.socket.runRaw((data) => write(data))
+        const write = (yield* ctx.socket.writer).write
+        yield* consume(ctx.socket, (data) => write(data))
       })),
     })
 
@@ -161,8 +182,8 @@ test.describe("Route.ws", () => {
       "/dual": Route.get(
         Route.text("hi"),
         Route.ws(function*(ctx) {
-          const write = yield* ctx.socket.writer
-          yield* ctx.socket.runRaw((data) => write(data))
+          const write = (yield* ctx.socket.writer).write
+          yield* consume(ctx.socket, (data) => write(data))
         }),
       ),
     })
@@ -206,8 +227,8 @@ test.describe("Route.ws", () => {
         Route.html("<h1>feed</h1>"),
         Route.text("plain feed"),
         Route.ws(function*(ctx) {
-          const write = yield* ctx.socket.writer
-          yield* ctx.socket.runRaw((data) => write(data))
+          const write = (yield* ctx.socket.writer).write
+          yield* consume(ctx.socket, (data) => write(data))
         }),
       ),
     })
@@ -269,8 +290,8 @@ test.describe("Route.ws", () => {
   test.test("returns 426 for a plain GET on a socket-only path", () => {
     const routes = Route.map({
       "/ws": Route.get(Route.ws(function*(ctx) {
-        const write = yield* ctx.socket.writer
-        yield* ctx.socket.runRaw((data) => write(data))
+        const write = (yield* ctx.socket.writer).write
+        yield* consume(ctx.socket, (data) => write(data))
       })),
     })
 
@@ -293,8 +314,8 @@ test.describe("Route.ws", () => {
   test.test("delivers a message buffered before the handler attaches", () => {
     const routes = Route.map({
       "/ws": Route.get(Route.ws(function*(ctx) {
-        const write = yield* ctx.socket.writer
-        yield* ctx.socket.runRaw((data) => write(data))
+        const write = (yield* ctx.socket.writer).write
+        yield* consume(ctx.socket, (data) => write(data))
       })),
     })
 
@@ -367,8 +388,8 @@ test.describe("Route.ws", () => {
     const routes = Route.map({
       "/ws": Route.get(
         Route.ws(function*(ctx) {
-          const write = yield* ctx.socket.writer
-          yield* ctx.socket.runRaw((data) => write(data))
+          const write = (yield* ctx.socket.writer).write
+          yield* consume(ctx.socket, (data) => write(data))
         }),
       ),
     })
@@ -399,8 +420,8 @@ test.describe("Route.ws", () => {
     const routes = Route.map({
       "/ws": Route.get(
         Route.ws(function*(ctx) {
-          const write = yield* ctx.socket.writer
-          yield* ctx.socket.runRaw((data) => write(data)).pipe(
+          const write = (yield* ctx.socket.writer).write
+          yield* consume(ctx.socket, (data) => write(data)).pipe(
             Effect.catch((error) =>
               Effect.sync(() => {
                 observed = error
@@ -444,8 +465,8 @@ test.describe("Route.ws", () => {
   test.test("does not log an error when the client disconnects with a normal code", () => {
     const routes = Route.map({
       "/ws": Route.get(Route.ws(function*(ctx) {
-        const write = yield* ctx.socket.writer
-        yield* ctx.socket.runRaw((data) => write(data))
+        const write = (yield* ctx.socket.writer).write
+        yield* consume(ctx.socket, (data) => write(data))
       })),
     })
 
@@ -477,8 +498,8 @@ test.describe("Route.ws", () => {
   test.test("logs an unclean server-initiated close", () => {
     const routes = Route.map({
       "/ws": Route.get(Route.ws(function*(ctx) {
-        const write = yield* ctx.socket.writer
-        yield* ctx.socket.runRaw(() => write(new Socket.CloseEvent(4001, "bye")))
+        const write = (yield* ctx.socket.writer).write
+        yield* consume(ctx.socket, () => write(new Socket.CloseEvent(4001, "bye")))
       })),
     })
 
@@ -506,7 +527,7 @@ test.describe("Route.ws", () => {
   test.test("closes the socket with 1000 when the handler requests a clean close", () => {
     const routes = Route.map({
       "/ws": Route.get(Route.ws(function*(ctx) {
-        const write = yield* ctx.socket.writer
+        const write = (yield* ctx.socket.writer).write
         yield* write(new Socket.CloseEvent(1000))
       })),
     })
@@ -531,13 +552,12 @@ test.describe("Route.ws", () => {
   test.test("closes the socket with 1011 when the handler fails", () => {
     const routes = Route.map({
       "/ws": Route.get(Route.ws(function*(ctx) {
-        const write = yield* ctx.socket.writer
-        yield* ctx.socket.runRaw((data) =>
+        const write = (yield* ctx.socket.writer).write
+        yield* consume(ctx.socket, (data) =>
           Effect.gen(function*() {
             yield* write(data)
             yield* Effect.fail(new Error("boom"))
-          })
-        )
+          }))
       })),
     })
 
@@ -564,8 +584,8 @@ test.describe("Route.ws", () => {
   test.test("server-initiated close delivers the code and reason to the client", () => {
     const routes = Route.map({
       "/ws": Route.get(Route.ws(function*(ctx) {
-        const write = yield* ctx.socket.writer
-        yield* ctx.socket.runRaw(() => write(new Socket.CloseEvent(4001, "bye")))
+        const write = (yield* ctx.socket.writer).write
+        yield* consume(ctx.socket, () => write(new Socket.CloseEvent(4001, "bye")))
       })),
     })
 
@@ -593,8 +613,8 @@ test.describe("Route.ws", () => {
   test.test("runs onOpen before forwarding frames", () => {
     const routes = Route.map({
       "/ws": Route.get(Route.ws(function*(ctx) {
-        const write = yield* ctx.socket.writer
-        yield* ctx.socket.runRaw((data) => write(data), {
+        const write = (yield* ctx.socket.writer).write
+        yield* consume(ctx.socket, (data) => write(data), {
           // onOpen is typed Effect<void> (no error channel), but write can fail
           // with SocketError — orDie to bridge it. See the onOpen ergonomics note.
           onOpen: Effect.orDie(write("welcome")),
@@ -625,8 +645,8 @@ test.describe("Route.ws", () => {
   test.test("isolates context across concurrent connections", () => {
     const routes = Route.map({
       "/ws": Route.get(Route.ws(function*(ctx) {
-        const write = yield* ctx.socket.writer
-        yield* ctx.socket.runRaw((data) => write(data))
+        const write = (yield* ctx.socket.writer).write
+        yield* consume(ctx.socket, (data) => write(data))
       })),
     })
 
@@ -693,8 +713,8 @@ test.describe("Route.ws", () => {
           }),
         )
         .get(Route.ws(function*(ctx) {
-          const write = yield* ctx.socket.writer
-          yield* ctx.socket.runRaw((data) => write(data))
+          const write = (yield* ctx.socket.writer).write
+          yield* consume(ctx.socket, (data) => write(data))
         })),
     })
 
@@ -732,8 +752,8 @@ test.describe("Route.ws", () => {
           ),
         )
         .get(Route.ws(function*(ctx) {
-          const write = yield* ctx.socket.writer
-          yield* ctx.socket.runRaw((data) => write(data))
+          const write = (yield* ctx.socket.writer).write
+          yield* consume(ctx.socket, (data) => write(data))
         })),
     })
 
@@ -804,8 +824,8 @@ test.describe("Route.ws scope lifecycle", () => {
               observed,
               scope.state._tag !== "Closed",
             )
-            const write = yield* ctx.socket.writer
-            yield* ctx.socket.runRaw((data) => write(data))
+            const write = (yield* ctx.socket.writer).write
+            yield* consume(ctx.socket, (data) => write(data))
           })),
         })
 
@@ -839,8 +859,8 @@ test.describe("Route.ws scope lifecycle", () => {
         const routes = Route.map({
           "/ws": Route.get(Route.ws(function*(ctx) {
             yield* Effect.addFinalizer(() => Deferred.succeed(released, undefined))
-            const write = yield* ctx.socket.writer
-            yield* ctx.socket.runRaw((data) => write(data))
+            const write = (yield* ctx.socket.writer).write
+            yield* consume(ctx.socket, (data) => write(data))
           })),
         })
 
@@ -876,8 +896,8 @@ test.describe("Route.ws scope lifecycle", () => {
         const routes = Route.map({
           "/ws": Route.get(Route.ws(function*(ctx) {
             yield* Effect.addFinalizer(() => Deferred.succeed(released, undefined))
-            const write = yield* ctx.socket.writer
-            yield* ctx.socket.runRaw((data) => write(data)).pipe(
+            const write = (yield* ctx.socket.writer).write
+            yield* consume(ctx.socket, (data) => write(data)).pipe(
               Effect.catch(() => Effect.void),
             )
           })),
@@ -914,8 +934,8 @@ test.describe("Route.ws scope lifecycle", () => {
               Deferred.succeed(acquired, undefined),
               () => Deferred.succeed(released, undefined),
             )
-            const write = yield* ctx.socket.writer
-            yield* ctx.socket.runRaw((data) => write(data))
+            const write = (yield* ctx.socket.writer).write
+            yield* consume(ctx.socket, (data) => write(data))
           })),
         })
 
@@ -950,8 +970,8 @@ test.describe("Route.ws scope lifecycle", () => {
         const routes = Route.map({
           "/ws": Route.get(Route.ws(function*(ctx) {
             yield* Effect.addFinalizer(() => Deferred.succeed(released, undefined))
-            const write = yield* ctx.socket.writer
-            yield* ctx.socket.runRaw((data) => write(data))
+            const write = (yield* ctx.socket.writer).write
+            yield* consume(ctx.socket, (data) => write(data))
           })),
         })
 
@@ -997,8 +1017,8 @@ test.describe("Route.ws scope lifecycle", () => {
         const routes = Route.map({
           "/ws": Route.get(Route.ws(function*(ctx) {
             yield* Effect.addFinalizer(() => Deferred.succeed(released, undefined))
-            const write = yield* ctx.socket.writer
-            yield* ctx.socket.runRaw((data) => write(data))
+            const write = (yield* ctx.socket.writer).write
+            yield* consume(ctx.socket, (data) => write(data))
           })),
         })
 
@@ -1053,8 +1073,8 @@ test.describe("Route.ws types", () => {
       Route.map({
         "/ws": Route.get(Route.ws(function*(ctx) {
           yield* Effect.addFinalizer(() => Effect.void)
-          const write = yield* ctx.socket.writer
-          yield* ctx.socket.runRaw((data) => write(data))
+          const write = (yield* ctx.socket.writer).write
+          yield* consume(ctx.socket, (data) => write(data))
         })),
       }),
     )
@@ -1071,7 +1091,7 @@ test.describe("Route.ws types", () => {
     const rs = Route.get(Route.ws(function*(ctx) {
       const db = yield* Db
       const row = yield* db.query()
-      const write = yield* ctx.socket.writer
+      const write = (yield* ctx.socket.writer).write
       // yields with three different error types (none, MyErr, SocketError) and
       // two requirements (Db, Scope) must all be collected, not unified to one.
       yield* write(row)

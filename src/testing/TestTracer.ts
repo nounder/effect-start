@@ -106,7 +106,7 @@ export const layer = (
     Layer.succeed(Tracer.Tracer, Tracing.makeTracer(spans)),
     Layer.effectDiscard(
       Effect.gen(function*() {
-        const print = yield* Effect.orElseSucceed(Config.boolean("TRACE_PRINT"), () => false).pipe(
+        const print = yield* Effect.orElseSucceed(Config.Boolean("TRACE_PRINT"), () => false).pipe(
           Effect.provideService(ConfigProvider.ConfigProvider, ConfigProvider.fromEnv()),
         )
         if (print) {

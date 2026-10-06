@@ -3,8 +3,8 @@ import * as Context from "effect/Context"
 import type * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import type * as SqlError from "effect/unstable/sql/SqlError"
-import type * as Statement from "effect/unstable/sql/Statement"
+import type * as SqlError from "effect/sql/SqlError"
+import type * as Statement from "effect/sql/Statement"
 
 type SqlCacheInstance = Cache.Cache<string, ReadonlyArray<any>>
 

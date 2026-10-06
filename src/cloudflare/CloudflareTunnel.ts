@@ -1,5 +1,5 @@
 import { Config, Effect, Layer, type LogLevel, Option, pipe, Stream, String } from "effect"
-import * as ChildProcess from "effect/unstable/process/ChildProcess"
+import * as ChildProcess from "effect/process/ChildProcess"
 
 export const start = (opts: {
   command?: string
@@ -48,13 +48,13 @@ export const layer = () =>
     Effect.gen(function*() {
       const tunnelName = Option.getOrUndefined(
         yield* pipe(
-          Config.string("CLOUDFLARE_TUNNEL_NAME"),
+          Config.String("CLOUDFLARE_TUNNEL_NAME"),
           Config.option,
         ),
       )
       const tunnelUrl = Option.getOrUndefined(
         yield* pipe(
-          Config.string("CLOUDFLARE_TUNNEL_URL"),
+          Config.String("CLOUDFLARE_TUNNEL_URL"),
           Config.option,
         ),
       )
