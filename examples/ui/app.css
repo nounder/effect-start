@@ -1,0 +1,100 @@
+@import "tailwindcss" source(".");
+
+@theme inline {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--background);
+  --color-card-foreground: var(--foreground);
+  --color-popover: var(--background);
+  --color-popover-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--muted);
+  --color-secondary-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--muted);
+  --color-accent-foreground: var(--foreground);
+  --color-destructive: #e5484d;
+  --color-border: var(--border);
+  --color-input: var(--border);
+  --color-ring: var(--muted-foreground);
+}
+
+:root {
+  color-scheme: light;
+  --background: #fff;
+  --foreground: #18181b;
+  --primary: #18181b;
+  --primary-foreground: #fafafa;
+  --muted: #f4f4f5;
+  --muted-foreground: #71717a;
+  --border: #e4e4e7;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --background: #09090b;
+    --foreground: #fafafa;
+    --primary: #fafafa;
+    --primary-foreground: #18181b;
+    --muted: #18181b;
+    --muted-foreground: #a1a1aa;
+    --border: #27272a;
+  }
+}
+
+@layer base {
+  * { border-color: var(--border); }
+  html { scroll-behavior: smooth; scroll-padding-top: 24px; scrollbar-gutter: stable; }
+  html:has(dialog:modal) { overflow: hidden; }
+  [hidden]:not([hidden="until-found"]) { display: none !important; }
+  ::selection { background: var(--foreground); color: var(--background); }
+  dialog::backdrop { background: rgb(0 0 0 / .45); backdrop-filter: blur(3px); }
+  :focus-visible { outline: 2px solid var(--muted-foreground); outline-offset: 3px; }
+}
+
+[data-slot="Sheet"] {
+  position: fixed;
+  margin: 0;
+  max-width: 100%;
+  max-height: 100%;
+}
+[data-slot="Sheet"][data-side="right"] { inset: 0 0 0 auto; width: min(400px, 90vw); height: 100dvh; }
+[data-slot="Sheet"][data-side="left"] { inset: 0 auto 0 0; width: min(400px, 90vw); height: 100dvh; }
+[data-slot="Sheet"][data-side="top"] { inset: 0 0 auto; width: 100%; }
+[data-slot="Sheet"][data-side="bottom"] { inset: auto 0 0; width: 100%; }
+[data-slot="Drawer"] { position: fixed; inset: auto 0 0; margin: 0; width: 100%; max-width: 100%; }
+[popover] { position: fixed; margin: 0; inset: auto; }
+[data-slot="Tooltip"] { pointer-events: none; }
+
+[data-slot="Command_list"] {
+  scrollbar-gutter: stable both-edges;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.docs-sidebar { scrollbar-width: thin; }
+.docs-link { color: var(--muted-foreground); }
+.docs-link:hover, .docs-link[aria-current="true"] { background: var(--muted); color: var(--foreground); }
+.preview-surface {
+  background-image: radial-gradient(var(--border) .65px, transparent .65px);
+  background-size: 12px 12px;
+}
+[data-doc-section] { scroll-margin-top: 24px; }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  [data-slot="Carousel_contentTrack"] { scroll-behavior: auto; }
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
+
+[data-test-state="passed"] > summary { color: #15803d; }
+[data-test-state="failed"] > summary, li[data-test-state="failed"] { color: #dc2626; }
+.dark [data-test-state="passed"] > summary { color: #4ade80; }
+.dark [data-test-state="failed"] > summary, .dark li[data-test-state="failed"] { color: #f87171; }
+
+[data-test-result][hidden="until-found"] { border: 0; padding: 0; margin: 0; }
+
+#collapsible .preview-surface { height: 320px; align-items: flex-start; }
