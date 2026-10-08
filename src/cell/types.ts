@@ -50,6 +50,8 @@ export interface Cell<E extends Element = Element> {
   request(
     url: string | URL,
     options?: Omit<RequestInit, "body"> & RequestBody & {
+      /** Merges query parameters into the URL, replacing existing values for supplied keys. */
+      urlParams?: ConstructorParameters<typeof URLSearchParams>[0]
       /** Network failures retry by default; error also retries HTTP errors, always also reconnects completed streams. */
       retry?: "auto" | "error" | "always" | "never"
       /** Initial delay in milliseconds; defaults to 1000. SSE retry fields override it. */

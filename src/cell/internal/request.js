@@ -75,6 +75,11 @@ export const createRequest = (target, lifetime, signals, patchElements) => {
     try {
       emit("started")
       const url = new URL(input, document.baseURI)
+      if (options.urlParams !== undefined) {
+        const params = new URLSearchParams(options.urlParams)
+        for (const key of params.keys()) url.searchParams.delete(key)
+        for (const [key, value] of params) url.searchParams.append(key, value)
+      }
       const headers = new Headers(options.headers)
       if (!headers.has("Accept")) headers.set("Accept", "text/event-stream, text/html")
       const retry = options.retry ?? "auto"
@@ -104,6 +109,7 @@ export const createRequest = (target, lifetime, signals, patchElements) => {
       }
       delete init.bodyJson
       delete init.bodyForm
+      delete init.urlParams
       delete init.retry
       delete init.retryInterval
       delete init.retryScaler

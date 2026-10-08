@@ -42,6 +42,59 @@ test.afterEach(() => {
   test.jest.useRealTimers()
 })
 
+test.it.each(["record", "pairs", "URLSearchParams", "string"])(
+  "urlParams accepts %s, replaces supplied keys, and preserves other URL components",
+  async (kind) => {
+    const pairs: Array<[string, string]> = [["q", "Ada & Łódź + #?"], ["tag", "first"]]
+    if (kind !== "record") pairs.push(["tag", "second"])
+    const urlParams = kind === "record" ?
+      { q: pairs[0][1], tag: "first" }
+      : kind === "URLSearchParams" ?
+      new URLSearchParams(pairs)
+      : kind === "string" ?
+      new URLSearchParams(pairs).toString()
+      : pairs
+    const url = new URL("http://localhost/search?q=old&tag=old&keep=yes&keep=also#results")
+    let requestedUrl: URL | undefined
+    let init: RequestInit | undefined
+    dom.window.fetch = (async (input, options) => {
+      requestedUrl = new URL(String(input))
+      init = options
+      return new Response(null, { status: 204 })
+    }) as typeof fetch
+    await cell.request(url, { urlParams })
+
+    test
+      .expect(Array.from(requestedUrl!.searchParams.entries()))
+      .toEqual([["keep", "yes"], ["keep", "also"], ...pairs])
+    test
+      .expect(requestedUrl!.hash)
+      .toBe("#results")
+    test
+      .expect(url.href)
+      .toBe("http://localhost/search?q=old&tag=old&keep=yes&keep=also#results")
+    test
+      .expect(Object.hasOwn(init!, "urlParams"))
+      .toBe(false)
+    test
+      .expect(init?.body)
+      .toBeUndefined()
+  },
+)
+
+test.it("empty urlParams preserves existing parameters", async () => {
+  let requestedUrl: URL | undefined
+  dom.window.fetch = (async (input) => {
+    requestedUrl = new URL(String(input))
+    return new Response(null, { status: 204 })
+  }) as typeof fetch
+  await cell.request("/search?q=hello%20world&tag=one&tag=two", { urlParams: {} })
+
+  test
+    .expect(requestedUrl!.href)
+    .toBe("http://localhost/search?q=hello%20world&tag=one&tag=two")
+})
+
 test.it.each([{ count: 2, nested: { _included: true } }, null, false, 0, ""])(
   "bodyJson serializes %j and supplies its content type",
   async (bodyJson) => {
@@ -310,7 +363,7 @@ test.it.each(["body", "bodyJson", "bodyForm"] as const)(
 
       test
         .expect(String(url))
-        .toBe("http://localhost/stream?q=explicit")
+        .toBe("http://localhost/stream?q=explicit&page=2")
       test
         .expect(options?.body)
         .toBe(body)
@@ -341,6 +394,7 @@ test.it.each(["body", "bodyJson", "bodyForm"] as const)(
     }) as typeof fetch
     const request = cell.request("/stream?q=explicit", {
       method: "POST",
+      urlParams: { page: "2" },
       headers: { "X-Custom": "explicit" },
       ...(kind === "bodyJson" ? { bodyJson: { count: 7 } } : { [kind]: body }),
       retryMaxCount: 1,
