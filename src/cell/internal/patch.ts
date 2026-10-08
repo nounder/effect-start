@@ -1,13 +1,13 @@
-import { morph } from "../morph.js"
+import * as Dom from "../Dom.ts"
 
-export const patchElements = (document, html, setup) => {
+export const patchElements = (document: Document, html: string, setup?: (element: Element) => void) => {
   const documentMarkup = html.replace(/<svg(\s[^>]*>|>)[\s\S]*?<\/svg>/gi, "")
   const hasHtml = /<\/html\s*>/i.test(documentMarkup)
   const hasHead = /<\/head\s*>/i.test(documentMarkup)
   const hasBody = /<\/body\s*>/i.test(documentMarkup)
   let content = document.createDocumentFragment()
   if (hasHtml || hasHead || hasBody) {
-    const parsed = new document.defaultView.DOMParser().parseFromString(html, "text/html")
+    const parsed = new document.defaultView!.DOMParser().parseFromString(html, "text/html")
     if (hasHtml) content.append(document.importNode(parsed.documentElement, true))
     else {
       if (hasHead) content.append(document.importNode(parsed.head, true))
@@ -30,7 +30,7 @@ export const patchElements = (document, html, setup) => {
         : element.localName === "body" ?
         document.body
         : element.id && document.getElementById(element.id)
-      if (target) morph(target, element)
+      if (target) Dom.morph(target, element)
     }
   }
 }

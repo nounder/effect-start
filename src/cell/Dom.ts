@@ -1,33 +1,27 @@
 /**
  * DOM matching and morphing adapted from the bundled Datastar v1.0.1 fork (MIT).
  * Consumes newContent. No attribute handling, script execution, or runtime hooks.
- *
- * @param {Element | ShadowRoot} oldElt
- * @param {DocumentFragment | Element} newContent
- * @param {"outer" | "inner"} [mode]
  */
-export const morph = (oldElt, newContent, mode = "outer") => {
+export const morph = (
+  oldElt: Element | ShadowRoot,
+  newContent: DocumentFragment | Element,
+  mode: "outer" | "inner" = "outer",
+) => {
   const document = oldElt.ownerDocument
-  const window = document.defaultView
-  const ctxIdMap = new Map()
-  const ctxPersistentIds = new Set()
-  const persistentElements = new Map()
-  const oldIdTagNameMap = new Map()
-  const duplicateIds = new Set()
+  const window = document.defaultView!
+  const ctxIdMap = new Map<Node, Set<string>>()
+  const ctxPersistentIds = new Set<string>()
+  const persistentElements = new Map<string, Element>()
+  const oldIdTagNameMap = new Map<string, string>()
+  const duplicateIds = new Set<string>()
   const ctxPantry = document.createElement("div")
   ctxPantry.hidden = true
 
-  /**
-   * @param {Element | ShadowRoot} oldParent
-   * @param {Element} newParent
-   * @param {Node | null} [insertionPoint]
-   * @param {Node | null} [endPoint]
-   */
   const morphChildren = (
-    oldParent,
-    newParent,
-    insertionPoint = null,
-    endPoint = null,
+    oldParent: ParentNode,
+    newParent: Element | DocumentFragment,
+    insertionPoint: Node | null = null,
+    endPoint: Node | null = null,
   ) => {
     if (
       oldParent instanceof window.HTMLTemplateElement &&
@@ -43,7 +37,7 @@ export const morph = (oldElt, newContent, mode = "outer") => {
         const bestMatch = findBestMatch(newChild, insertionPoint, endPoint)
         if (bestMatch) {
           if (bestMatch !== insertionPoint) {
-            let cursor = insertionPoint
+            let cursor: Node | null = insertionPoint
             while (cursor && cursor !== bestMatch) {
               const tempNode = cursor
               cursor = cursor.nextSibling
@@ -57,9 +51,9 @@ export const morph = (oldElt, newContent, mode = "outer") => {
       }
 
       if (newChild instanceof window.Element && ctxPersistentIds.has(newChild.id)) {
-        const movedChild = persistentElements.get(newChild.id)
+        const movedChild = persistentElements.get(newChild.id)!
 
-        let current = movedChild
+        let current: Node | null = movedChild
         while ((current = current.parentNode)) {
           const idSet = ctxIdMap.get(current)
           if (idSet) {
@@ -77,8 +71,8 @@ export const morph = (oldElt, newContent, mode = "outer") => {
       }
 
       if (ctxIdMap.has(newChild)) {
-        const namespaceURI = newChild.namespaceURI
-        const tagName = newChild.tagName
+        const namespaceURI = (newChild as Element).namespaceURI
+        const tagName = (newChild as Element).tagName
         const newEmptyChild = namespaceURI && namespaceURI !== "http://www.w3.org/1999/xhtml"
           ? document.createElementNS(namespaceURI, tagName)
           : document.createElement(tagName)
@@ -99,14 +93,8 @@ export const morph = (oldElt, newContent, mode = "outer") => {
     }
   }
 
-  /**
-   * @param {Node} node
-   * @param {Node | null} startPoint
-   * @param {Node | null} endPoint
-   * @returns {Node | null}
-   */
-  const findBestMatch = (node, startPoint, endPoint) => {
-    let bestMatch = null
+  const findBestMatch = (node: Node, startPoint: Node | null, endPoint: Node | null): Node | null => {
+    let bestMatch: Node | null | undefined = null
     let nextSibling = node.nextSibling
     let siblingSoftMatchCount = 0
     let displaceMatchCount = 0
@@ -161,31 +149,18 @@ export const morph = (oldElt, newContent, mode = "outer") => {
     return bestMatch || null
   }
 
-  /**
-   * @param {Node} oldNode
-   * @param {Node} newNode
-   * @returns {boolean}
-   */
-  const isSoftMatch = (oldNode, newNode) =>
+  const isSoftMatch = (oldNode: Node, newNode: Node) =>
     oldNode.nodeType === newNode.nodeType &&
-    oldNode.tagName === newNode.tagName &&
-    (!oldNode.id || oldNode.id === newNode.id)
+    (oldNode as Element).tagName === (newNode as Element).tagName &&
+    (!(oldNode as Element).id || (oldNode as Element).id === (newNode as Element).id)
 
-  /**
-   * @param {Node} node
-   */
-  const removeNode = (node) => {
+  const removeNode = (node: Node) => {
     ctxIdMap.has(node)
       ? moveBefore(ctxPantry, node, null)
       : node.parentNode?.removeChild(node)
   }
 
-  /**
-   * @param {Node} parentNode
-   * @param {Node} node
-   * @param {Node | null} after
-   */
-  const moveBefore = (parentNode, node, after) => {
+  const moveBefore = (parentNode: ParentNode, node: Node, after: Node | null) => {
     if ("moveBefore" in parentNode && node.parentNode && parentNode.isConnected === node.isConnected) {
       parentNode.moveBefore(node, after)
       return
@@ -193,29 +168,18 @@ export const morph = (oldElt, newContent, mode = "outer") => {
     parentNode.insertBefore(node, after)
   }
 
-  /**
-   * @param {Node} oldNode
-   * @param {Node} newNode
-   * @returns {Node}
-   */
-  const morphNode = (oldNode, newNode) => {
+  const morphNode = (oldNode: Node, newNode: Node): Node => {
     const type = newNode.nodeType
 
     if (type === 1) {
-      const oldElt = oldNode
-      const newElt = newNode
-      /**
-       * @param {Element} oldElt
-       * @param {Element} newElt
-       * @param {string} name
-       * @returns {boolean}
-       */
-      const updateElementProp = (oldElt, newElt, name) => {
+      const oldElt = oldNode as Element
+      const newElt = newNode as Element
+      const updateElementProp = <K extends string>(oldElt: Element & Record<K, boolean>, newElt: Element, name: K) => {
         const newEltHasAttr = newElt.hasAttribute(name)
         if (
           oldElt.hasAttribute(name) !== newEltHasAttr
         ) {
-          oldElt[name] = newEltHasAttr
+          ;(oldElt as Record<K, boolean>)[name] = newEltHasAttr
           return true
         }
         return false
@@ -284,14 +248,10 @@ export const morph = (oldElt, newContent, mode = "outer") => {
     return oldNode
   }
 
-  /**
-   * @param {Element | ShadowRoot | null} root
-   * @param {Iterable<Element>} elements
-   */
-  const populateIdMapWithTree = (root, elements) => {
+  const populateIdMapWithTree = (root: Node | null, elements: Iterable<Element>) => {
     for (const elt of elements) {
       if (ctxPersistentIds.has(elt.id)) {
-        let current = elt
+        let current: Element | null = elt
         while (current && current !== root) {
           let idSet = ctxIdMap.get(current)
           if (!idSet) {
@@ -327,7 +287,7 @@ export const morph = (oldElt, newContent, mode = "outer") => {
   }
 
   for (const element of [oldElt, ...oldIdElements]) {
-    if (element.id) persistentElements.set(element.id, element)
+    if ("id" in element && element.id) persistentElements.set(element.id, element)
   }
 
   ctxPersistentIds.clear()
@@ -350,7 +310,7 @@ export const morph = (oldElt, newContent, mode = "outer") => {
   duplicateIds.clear()
   ctxIdMap.clear()
 
-  const parent = mode === "outer" ? oldElt.parentNode : oldElt
+  const parent = mode === "outer" ? oldElt.parentNode! : oldElt
   populateIdMapWithTree(parent, oldIdElements)
   populateIdMapWithTree(normalizedElt, newIdElements)
 

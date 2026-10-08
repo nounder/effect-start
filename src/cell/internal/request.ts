@@ -1,10 +1,19 @@
-const readEvents = async (response, signal, dispatch, onId, onRetry) => {
+import type { Cell } from "../types.ts"
+import type { Signals } from "./signals.ts"
+
+const readEvents = async (
+  response: Response,
+  signal: AbortSignal,
+  dispatch: (event: string, data: string) => void,
+  onId: (id: string) => void,
+  onRetry: (interval: number) => void,
+) => {
   if (!response.body || signal.aborted) return
   const reader = response.body.getReader()
   const decoder = new TextDecoder()
   let buffer = ""
   let event = ""
-  let data = []
+  let data: Array<string> = []
   const cancel = () => {
     reader.cancel().catch(() => {})
   }
@@ -41,12 +50,16 @@ const readEvents = async (response, signal, dispatch, onId, onRetry) => {
   }
 }
 
-export const createRequest = (target, lifetime, signals, patchElements) => {
+export const createRequest = (
+  target: Element,
+  lifetime: AbortSignal,
+  signals: Signals,
+  patchElements: (html: string) => void,
+): Cell["request"] => {
   const document = target.ownerDocument
-  const window = document.defaultView
-  let current
+  const window = document.defaultView!
+  let current: AbortController | undefined
 
-  /** @type {import("../types.ts").Cell["request"]} */
   return async (input, options = {}) => {
     if (lifetime.aborted) return
     current?.abort()
@@ -56,7 +69,7 @@ export const createRequest = (target, lifetime, signals, patchElements) => {
     lifetime.addEventListener("abort", abort, { once: true })
     options.signal?.addEventListener("abort", abort, { once: true })
     if (options.signal?.aborted) controller.abort()
-    const emit = (phase, extra = {}) =>
+    const emit = (phase: string, extra: Record<string, unknown> = {}) =>
       target.dispatchEvent(
         new window.CustomEvent("cell:request", {
           bubbles: true,
@@ -64,7 +77,7 @@ export const createRequest = (target, lifetime, signals, patchElements) => {
         }),
       )
 
-    let attempt
+    let attempt: AbortController | undefined
     const visibility = () => attempt?.abort()
     const method = (options.method ?? "GET").toUpperCase()
     const openWhenHidden = options.openWhenHidden ?? true
@@ -89,18 +102,19 @@ export const createRequest = (target, lifetime, signals, patchElements) => {
       let baseInterval = options.retryInterval ?? 1_000
       let interval = baseInterval
       let retries = 0
-      const init = { ...options, method, headers }
+      const init: RequestInit & Record<string, unknown> = { ...options, method, headers }
       if (options.bodyJson !== undefined) {
         init.body = JSON.stringify(options.bodyJson)
         if (!headers.has("Content-Type")) headers.set("Content-Type", "application/json")
       } else if (options.bodyForm !== undefined) {
         const form = options.bodyForm
-        if (typeof form.get === "function") {
-          init.body = form
-        } else if (typeof form.preventDefault === "function") {
-          init.body = new window.FormData(form.target, form.submitter)
-        } else if (form.nodeType === 1) {
-          init.body = new window.FormData(form)
+        if ("get" in form && typeof form.get === "function") {
+          init.body = form as FormData
+        } else if ("preventDefault" in form && typeof form.preventDefault === "function") {
+          const event = form as SubmitEvent
+          init.body = new window.FormData(event.target as HTMLFormElement, event.submitter)
+        } else if ("nodeType" in form && form.nodeType === 1) {
+          init.body = new window.FormData(form as HTMLFormElement)
         } else {
           init.body = new window.FormData()
           for (const [name, value] of Object.entries(form)) init.body.append(name, value)
@@ -119,7 +133,7 @@ export const createRequest = (target, lifetime, signals, patchElements) => {
 
       while (!controller.signal.aborted) {
         if (!openWhenHidden && document.hidden) {
-          await new Promise((resolve) => {
+          await new Promise<void>((resolve) => {
             const resume = () => {
               if (document.hidden && !controller.signal.aborted) return
               document.removeEventListener("visibilitychange", resume)
@@ -187,15 +201,15 @@ export const createRequest = (target, lifetime, signals, patchElements) => {
         }
         retries++
         emit("retrying", { attempt: retries, delay: interval, error: failure })
-        await new Promise((resolve) => {
+        await new Promise<void>((resolve) => {
           const done = () => {
             window.clearTimeout(timer)
-            attempt.signal.removeEventListener("abort", done)
+            attempt!.signal.removeEventListener("abort", done)
             resolve()
           }
           const timer = window.setTimeout(done, interval)
-          attempt.signal.addEventListener("abort", done, { once: true })
-          if (attempt.signal.aborted) done()
+          attempt!.signal.addEventListener("abort", done, { once: true })
+          if (attempt!.signal.aborted) done()
         })
         interval = Math.min(interval * retryScaler, retryMaxWait)
       }

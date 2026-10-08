@@ -1,26 +1,28 @@
-import { createExpansion } from "./internal/expand.js"
-import { createLimit } from "./internal/limit.js"
-import { patchElements } from "./internal/patch.js"
-import { createRequest } from "./internal/request.js"
-import { createSignals } from "./internal/signals.js"
-import { morph } from "./morph.js"
+import * as Dom from "./Dom.ts"
+import { createExpansion, type Scope } from "./internal/expand.ts"
+import { createLimit } from "./internal/limit.ts"
+import { patchElements } from "./internal/patch.ts"
+import { createRequest } from "./internal/request.ts"
+import { createSignals } from "./internal/signals.ts"
+import type { Cell, Runtime, StartOptions } from "./types.ts"
 
-const runtimes = new WeakMap()
+const runtimes = new WeakMap<Document | Element | ShadowRoot, Runtime>()
 
 /**
  * Observe data-cell functions. Imports are inert; call start after the DOM exists.
- * @param {Document | Element | ShadowRoot} [root]
- * @param {import("./types.ts").StartOptions} [options]
- * @returns {import("./types.ts").Runtime}
  */
-export const start = (root = document, options = {}) => {
-  if (runtimes.has(root)) return runtimes.get(root)
-  const document = root.nodeType === 9 ? root : root.ownerDocument
-  const window = document.defaultView
+export const start = (root: Document | Element | ShadowRoot = document, options: StartOptions = {}): Runtime => {
+  if (runtimes.has(root)) return runtimes.get(root)!
+  const document = root.nodeType === 9 ? root as Document : root.ownerDocument!
+  const window = document.defaultView!
   const signals = createSignals(options.signals)
-  const mounted = new Map()
-  const scopes = new WeakMap()
-  const expansions = new Map()
+  const mounted = new Map<Node, {
+    source: string
+    controller: AbortController
+    cleanups: Set<() => void>
+  }>()
+  const scopes = new WeakMap<Node, Scope>()
+  const expansions = new Map<HTMLTemplateElement, ReturnType<typeof createExpansion>>()
   let stopped = false
   const report = options.onError ?? ((error) => {
     if (window.reportError) window.reportError(error)
@@ -31,7 +33,7 @@ export const start = (root = document, options = {}) => {
     }
   })
 
-  const dispose = (target) => {
+  const dispose = (target: Node) => {
     const state = mounted.get(target)
     if (!state) return
     mounted.delete(target)
@@ -40,35 +42,35 @@ export const start = (root = document, options = {}) => {
       try {
         cleanup()
       } catch (error) {
-        report(error, target)
+        report(error, target as Element)
       }
     }
   }
 
-  const disposeTree = (node) => {
-    const descendants = node.querySelectorAll?.("*") ?? []
+  const disposeTree = (node: Node) => {
+    const descendants = (node as ParentNode).querySelectorAll?.("*") ?? []
     dispose(node)
     for (const target of descendants) dispose(target)
   }
 
-  const setup = (target) => {
+  const setup = (target: Element) => {
     if (stopped) return
     const source = target.getAttribute("data-cell")
     if (mounted.get(target)?.source === source) return
     dispose(target)
     if (source === null) return
     const controller = new window.AbortController()
-    const cleanups = new Set()
-    let scope
-    let stopExpansion
-    for (let node = target; node; node = node.parentNode) {
+    const cleanups = new Set<() => void>()
+    let scope: Scope | undefined
+    let stopExpansion: (() => void) | undefined
+    for (let node: Node | null = target; node; node = node.parentNode) {
       if (scopes.has(node)) {
         scope = scopes.get(node)
         break
       }
     }
     mounted.set(target, { source, controller, cleanups })
-    const own = (cleanup) => {
+    const own = (cleanup: () => void) => {
       if (controller.signal.aborted) {
         cleanup()
         return () => {}
@@ -79,8 +81,7 @@ export const start = (root = document, options = {}) => {
       cleanups.add(remove)
       return remove
     }
-    /** @type {import("./types.ts").Cell} */
-    const cell = {
+    const cell: Cell = {
       target,
       get signals() {
         return signals.values
@@ -110,23 +111,29 @@ export const start = (root = document, options = {}) => {
           throw new TypeError(`Cell morph destination not found: ${destination}`)
         }
         if (receiver === target) return
-        const content = target.cloneNode(true)
+        const content = target.cloneNode(true) as Element
         content.removeAttribute("data-cell")
         if (mode === "outer") {
-          if (receiver.hasAttribute("data-cell")) content.setAttribute("data-cell", receiver.getAttribute("data-cell"))
-          morph(receiver, content)
+          if (receiver.hasAttribute("data-cell")) content.setAttribute("data-cell", receiver.getAttribute("data-cell")!)
+          Dom.morph(receiver, content)
         } else {
           const children = document.createDocumentFragment()
           children.append(...content.childNodes)
-          morph(receiver, children, "inner")
+          Dom.morph(receiver, children, "inner")
         }
       },
-      on(name, handler, options) {
+      on<E extends Event>(
+        name: string,
+        handler: (event: E) => unknown,
+        options?: AddEventListenerOptions | boolean,
+      ) {
         if (controller.signal.aborted) return () => {}
-        const listener = (event) => {
+        const listener = (event: Event) => {
           try {
-            const result = handler(event)
-            if (result && typeof result.then === "function") result.catch((error) => report(error, target))
+            const result = handler(event as E)
+            if (result && typeof (result as PromiseLike<unknown>).then === "function") {
+              ;(result as Promise<unknown>).catch((error) => report(error, target))
+            }
           } catch (error) {
             report(error, target)
           }
@@ -173,7 +180,7 @@ export const start = (root = document, options = {}) => {
       const cleanup = run(cell)
       if (typeof cleanup === "function") own(cleanup)
       else if (cleanup && typeof cleanup.then === "function") {
-        cleanup.catch((error) => report(error, target))
+        cleanup.catch((error: unknown) => report(error, target))
         throw new TypeError("data-cell setup must be synchronous; use async event handlers")
       }
     } catch (error) {
@@ -182,19 +189,19 @@ export const start = (root = document, options = {}) => {
     }
   }
 
-  const applyPatch = (html) =>
+  const applyPatch = (html: string) =>
     patchElements(document, html, (element) => {
       setup(element)
       if (!root.contains(element)) dispose(element)
     })
 
-  const mount = (target) => {
+  const mount = (target: Element) => {
     if (root.contains(target)) setup(target)
   }
 
-  const scan = (node) => {
-    if (node.nodeType === 1 && node.hasAttribute("data-cell")) mount(node)
-    for (const target of node.querySelectorAll?.("[data-cell]") ?? []) mount(target)
+  const scan = (node: Node) => {
+    if (node.nodeType === 1 && (node as Element).hasAttribute("data-cell")) mount(node as Element)
+    for (const target of (node as ParentNode).querySelectorAll?.("[data-cell]") ?? []) mount(target)
   }
 
   const observer = new window.MutationObserver((records) => {
@@ -203,7 +210,7 @@ export const start = (root = document, options = {}) => {
       if (!root.contains(target)) dispose(target)
     }
     for (const record of records) {
-      if (record.type === "attributes") mount(record.target)
+      if (record.type === "attributes") mount(record.target as Element)
       else for (const node of record.addedNodes) scan(node)
     }
     for (const entry of expansions) {

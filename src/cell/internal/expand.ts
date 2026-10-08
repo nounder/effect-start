@@ -1,16 +1,38 @@
-export const createExpansion = (template, source, inheritedScope, signals, scopes, disposeTree, onError) => {
+import type { Signals } from "./signals.ts"
+
+export interface Scope {
+  item: any
+  index: number
+}
+
+interface Row {
+  start: Comment
+  end: Comment
+  scope: Scope | undefined
+  nodes: Array<ChildNode>
+}
+
+export const createExpansion = (
+  template: HTMLTemplateElement,
+  source: unknown,
+  inheritedScope: Scope | undefined,
+  signals: Signals,
+  scopes: WeakMap<Node, Scope>,
+  disposeTree: (node: Node) => void,
+  onError: (error: unknown) => void,
+) => {
   const document = template.ownerDocument
   const end = document.createComment("cell:expand")
-  const rows = []
-  let items = []
+  const rows: Array<Row> = []
+  let items: Array<unknown> = []
   let array = false
   let stopped = false
   let blueprint = template.innerHTML
 
-  const range = (row) => {
+  const range = (row: Row) => {
     if (row.start.parentNode && row.start.parentNode === row.end.parentNode) {
-      const nodes = []
-      for (let node = row.start; node; node = node.nextSibling) {
+      const nodes: Array<ChildNode> = []
+      for (let node: ChildNode | null = row.start; node; node = node.nextSibling) {
         nodes.push(node)
         if (node === row.end) return nodes
       }
@@ -18,7 +40,7 @@ export const createExpansion = (template, source, inheritedScope, signals, scope
     return null
   }
 
-  const remove = (row) => {
+  const remove = (row: Row) => {
     // Keep the original nodes as a fallback when a server patch removes a boundary.
     const nodes = new Set([...(range(row) ?? []), ...row.nodes])
     for (const node of nodes) disposeTree(node)
@@ -39,10 +61,10 @@ export const createExpansion = (template, source, inheritedScope, signals, scope
       }
     }
     if (end.parentNode !== template.parentNode) template.after(end)
-    while (rows.length > items.length) remove(rows.pop())
+    while (rows.length > items.length) remove(rows.pop()!)
     for (let index = 0; index < items.length; index++) {
       if (rows[index]) {
-        if (array) rows[index].scope.item = items[index]
+        if (array) rows[index].scope!.item = items[index]
         continue
       }
       const scope = array ? signals.reactive({ item: items[index], index }) : inheritedScope
@@ -59,12 +81,12 @@ export const createExpansion = (template, source, inheritedScope, signals, scope
       end.before(content)
     }
 
-    let previous = template
+    let previous: ChildNode = template
     for (const row of rows) {
       if (previous.nextSibling !== row.start) {
         const parent = template.parentNode
         const before = previous.nextSibling
-        for (const node of range(row)) {
+        for (const node of range(row)!) {
           if ("moveBefore" in parent && parent.isConnected === node.isConnected) parent.moveBefore(node, before)
           else parent.insertBefore(node, before)
         }
@@ -86,7 +108,7 @@ export const createExpansion = (template, source, inheritedScope, signals, scope
     })
   }, onError)
 
-  const observer = new document.defaultView.MutationObserver(() => {
+  const observer = new document.defaultView!.MutationObserver(() => {
     if (stopped || blueprint === template.innerHTML) return
     blueprint = template.innerHTML
     try {

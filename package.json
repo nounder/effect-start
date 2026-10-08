@@ -121,14 +121,6 @@
       "bun": "./src/cell/index.ts",
       "default": "./dist/cell/index.js"
     },
-    "./cell/dom": {
-      "bun": "./src/cell/dom.js",
-      "default": "./dist/cell/dom.js"
-    },
-    "./cell/morph": {
-      "bun": "./src/cell/morph.js",
-      "default": "./dist/cell/morph.js"
-    },
     "./datastar": {
       "bun": "./src/datastar/index.ts",
       "default": "./dist/datastar/index.js"
@@ -203,6 +195,5 @@
     "rolldown": {
       "optional": true
     }
-  },
-  "sideEffects": []
+  }
 }

@@ -4,7 +4,7 @@ import { morph, start } from "effect-start/cell"
 import type { Cell, Runtime } from "effect-start/cell"
 import { jsx } from "effect-start/jsx-runtime"
 import { JSDOM } from "jsdom"
-import { createLimit } from "../../src/cell/internal/limit.js"
+import { createLimit } from "../../src/cell/internal/limit.ts"
 
 test.describe("limiter", () => {
   let limits: Array<ReturnType<typeof createLimit>>

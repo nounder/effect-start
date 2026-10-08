@@ -1,11 +1,20 @@
-export const createSignals = (initial = {}) => {
-  const proxies = new WeakMap()
-  const dependencies = new WeakMap()
-  const queued = new Set()
-  const keys = Symbol("keys")
-  let active
+type Subscription = {
+  dependencies: Set<Set<Subscription>>
+  stopped: boolean
+  cleanup: (() => void) | undefined
+  run(): void
+}
 
-  const track = (target, key) => {
+export type Signals = ReturnType<typeof createSignals>
+
+export const createSignals = (initial: Record<string, any> = {}) => {
+  const proxies = new WeakMap<object, object>()
+  const dependencies = new WeakMap<object, Map<PropertyKey, Set<Subscription>>>()
+  const queued = new Set<Subscription>()
+  const keys = Symbol("keys")
+  let active: Subscription | undefined
+
+  const track = (target: object, key: PropertyKey) => {
     if (!active) return
     let properties = dependencies.get(target)
     if (!properties) dependencies.set(target, properties = new Map())
@@ -15,7 +24,7 @@ export const createSignals = (initial = {}) => {
     active.dependencies.add(subscribers)
   }
 
-  const notify = (target, key) => {
+  const notify = (target: object, key: PropertyKey) => {
     for (const subscriber of dependencies.get(target)?.get(key) ?? []) {
       if (queued.has(subscriber)) continue
       queued.add(subscriber)
@@ -25,9 +34,9 @@ export const createSignals = (initial = {}) => {
     }
   }
 
-  const wrap = (target) => {
+  const wrap = <T>(target: T): T => {
     if (!target || typeof target !== "object") return target
-    if (proxies.has(target)) return proxies.get(target)
+    if (proxies.has(target)) return proxies.get(target) as T
     const proxy = new Proxy(target, {
       get(target, key, receiver) {
         track(target, key)
@@ -35,7 +44,7 @@ export const createSignals = (initial = {}) => {
       },
       set(target, key, value) {
         const existed = Object.hasOwn(target, key)
-        const previous = target[key]
+        const previous = Reflect.get(target, key)
         const length = Array.isArray(target) ? target.length : undefined
         // Define an own property so signal names such as __proto__ remain ordinary data.
         Object.defineProperty(target, key, {
@@ -49,7 +58,7 @@ export const createSignals = (initial = {}) => {
         if (Array.isArray(target) && length !== target.length) {
           notify(target, "length")
           notify(target, keys)
-          if (target.length < length) {
+          if (target.length < length!) {
             for (const property of dependencies.get(target)?.keys() ?? []) {
               if (typeof property === "string" && /^\d+$/.test(property) && +property >= target.length) {
                 notify(target, property)
@@ -84,8 +93,8 @@ export const createSignals = (initial = {}) => {
 
   const root = wrap({ value: wrap(structuredClone(initial)) })
 
-  const effect = (fn, onError) => {
-    const subscription = {
+  const effect = (fn: () => void | (() => void), onError: (error: unknown) => void) => {
+    const subscription: Subscription = {
       dependencies: new Set(),
       stopped: false,
       cleanup: undefined,
@@ -121,7 +130,7 @@ export const createSignals = (initial = {}) => {
     }
   }
 
-  const patch = (source, onlyIfMissing = false, target = root.value) => {
+  const patch = (source: Record<string, any>, onlyIfMissing = false, target = root.value): void => {
     if (!source || typeof source !== "object" || Array.isArray(source)) {
       throw new TypeError("Signal patches must be objects")
     }
@@ -155,7 +164,7 @@ export const createSignals = (initial = {}) => {
     effect,
     patch,
     reactive: wrap,
-    untrack(fn) {
+    untrack<T>(fn: () => T): T {
       const previous = active
       active = undefined
       try {
