@@ -1,4 +1,5 @@
 export interface Cell<E extends Element = Element> {
+  /** The same element throughout this cell's lifetime; incoming response roots start detached. */
   readonly target: E
   /** Reads the current shared root. Assignment replaces it and reruns dependent effects. */
   signals: Record<string, any>
@@ -8,6 +9,10 @@ export interface Cell<E extends Element = Element> {
   readonly index: number | undefined
   /** Aborted when the element is removed, its code changes, or the runtime stops. */
   readonly abortSignal: AbortSignal
+  /** Moves this element to the first matching destination. Defaults to appending inside it. */
+  move(destination: string | Element, position?: "append" | "prepend" | "before" | "after" | "replace"): void
+  /** Morphs a destination; inner uses this element's children. Incoming wrappers are one-shot; destination behavior is preserved. */
+  morph(destination: string | Element, mode?: "outer" | "inner"): void
   on<K extends keyof HTMLElementEventMap>(
     name: K,
     handler: (event: HTMLElementEventMap[K]) => unknown,

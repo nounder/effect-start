@@ -310,7 +310,7 @@ test.it("existing request handles apply SSE signal patches to the current root a
 
   cell.signals = { count: 2, keep: true, nullable: true }
   respond(
-    new Response("event: datastar-patch-signals\ndata: signals {\"count\":3,\"nullable\":null}\n\n", {
+    new Response("event: datastar-patch-signals\ndata: {\"signals\":{\"count\":3,\"nullable\":null}}\n\n", {
       headers: { "Content-Type": "text/event-stream" },
     }),
   )
@@ -653,9 +653,9 @@ test.it("SSE applies fragmented CRLF and UTF-8 messages, ignores other events, a
   const payload = new TextEncoder().encode([
     ": heartbeat\r\n",
     "event: unrelated\r\ndata: ignore\r\n\r\n",
-    "event: datastar-patch-elements\r\ndata: elements <div id=\"result\">café</div>\r\n\r\n",
-    "event: datastar-patch-signals\ndata: signals {\"count\":8}\n\n",
-    "event: datastar-patch-signals\ndata: onlyIfMissing true\ndata: signals {\"count\":9,\"new\":true}\n\n",
+    "event: datastar-patch-elements\r\ndata: <div id=\"result\">café</div>\r\n\r\n",
+    "event: datastar-patch-signals\ndata: {\"signals\":{\"count\":8}}\n\n",
+    "event: datastar-patch-signals\ndata: {\ndata: \"signals\":{\"count\":9,\"new\":true},\ndata: \"onlyIfMissing\":true\ndata: }\n\n",
   ]
     .join(""))
   dom.window.fetch = (async () =>
@@ -688,11 +688,11 @@ test.it("SSE applies fragmented CRLF and UTF-8 messages, ignores other events, a
     .toBe(true)
 })
 
-test.it.each([false, true])("SSE stores null values with onlyIfMissing=%s", async (onlyIfMissing) => {
+test.it.each([undefined, false, true])("SSE stores null values with onlyIfMissing=%s", async (onlyIfMissing) => {
   const patch = { existing: null, added: null, nested: { existing: null, added: null }, items: [null] }
   dom.window.fetch = (async () =>
     new Response(
-      `event: datastar-patch-signals\ndata: onlyIfMissing ${onlyIfMissing}\ndata: signals ${JSON.stringify(patch)}\n\n`,
+      `event: datastar-patch-signals\ndata: ${JSON.stringify({ signals: patch, onlyIfMissing })}\n\n`,
       { headers: { "Content-Type": "text/event-stream" } },
     )) as unknown as typeof fetch
   runtime.signals.existing = "keep"

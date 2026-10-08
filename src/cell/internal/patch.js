@@ -1,17 +1,6 @@
 import { morph } from "../morph.js"
 
-export const patchElements = (document, html, options = {}) => {
-  const mode = options.mode ?? "outer"
-  if (!["outer", "inner", "replace", "remove", "prepend", "append", "before", "after"].includes(mode)) {
-    throw new TypeError(`Unsupported patch mode: ${mode}`)
-  }
-  if (!options.selector && mode !== "outer" && mode !== "replace") {
-    throw new TypeError(`${mode} requires a selector`)
-  }
-  const template = document.createElement("template")
-  const namespace = options.namespace ?? "html"
-  if (!["html", "svg", "mathml"].includes(namespace)) throw new TypeError(`Unsupported namespace: ${namespace}`)
-  const wrapper = namespace === "svg" ? "svg" : namespace === "mathml" ? "math" : ""
+export const patchElements = (document, html, setup) => {
   const documentMarkup = html.replace(/<svg(\s[^>]*>|>)[\s\S]*?<\/svg>/gi, "")
   const hasHtml = /<\/html\s*>/i.test(documentMarkup)
   const hasHead = /<\/head\s*>/i.test(documentMarkup)
@@ -25,27 +14,15 @@ export const patchElements = (document, html, options = {}) => {
       if (hasBody) content.append(document.importNode(parsed.body, true))
     }
   } else {
-    template.innerHTML = wrapper ? `<${wrapper}>${html}</${wrapper}>` : html
+    const template = document.createElement("template")
+    template.innerHTML = html
     content = template.content
-    if (wrapper) {
-      const fragment = document.createDocumentFragment()
-      fragment.append(...content.firstElementChild.childNodes)
-      content = fragment
-    }
   }
 
-  const apply = (target, content) => {
-    const next = content.cloneNode(true)
-    if (mode === "outer" || mode === "inner") morph(target, next, mode)
-    else if (mode === "replace") target.replaceWith(next)
-    else if (mode === "remove") target.remove()
-    else target[mode](next)
-  }
-
-  if (options.selector) {
-    for (const target of document.querySelectorAll(options.selector)) apply(target, content)
-  } else {
-    for (const element of content.children) {
+  for (const element of Array.from(content.children)) {
+    if (setup && element.hasAttribute("data-cell")) {
+      setup(document.adoptNode(element))
+    } else {
       const target = element.localName === "html" ?
         document.documentElement
         : element.localName === "head" ?
@@ -53,7 +30,7 @@ export const patchElements = (document, html, options = {}) => {
         : element.localName === "body" ?
         document.body
         : element.id && document.getElementById(element.id)
-      if (target) apply(target, element)
+      if (target) morph(target, element)
     }
   }
 }

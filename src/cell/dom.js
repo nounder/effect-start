@@ -1,7 +1,9 @@
 import { createExpansion } from "./internal/expand.js"
 import { createLimit } from "./internal/limit.js"
+import { patchElements } from "./internal/patch.js"
 import { createRequest } from "./internal/request.js"
 import { createSignals } from "./internal/signals.js"
+import { morph } from "./morph.js"
 
 const runtimes = new WeakMap()
 
@@ -49,8 +51,8 @@ export const start = (root = document, options = {}) => {
     for (const target of descendants) dispose(target)
   }
 
-  const mount = (target) => {
-    if (stopped || !root.contains(target)) return
+  const setup = (target) => {
+    if (stopped) return
     const source = target.getAttribute("data-cell")
     if (mounted.get(target)?.source === source) return
     dispose(target)
@@ -93,6 +95,32 @@ export const start = (root = document, options = {}) => {
         return scope?.index
       },
       abortSignal: controller.signal,
+      move(destination, position = "append") {
+        if (controller.signal.aborted) return
+        const parent = typeof destination === "string" ? document.querySelector(destination) : destination
+        if (!(parent instanceof window.Element)) throw new TypeError(`Cell move destination not found: ${destination}`)
+        if (parent === target) return
+        if (position === "replace") parent.replaceWith(target)
+        else parent[position](target)
+      },
+      morph(destination, mode = "outer") {
+        if (controller.signal.aborted) return
+        const receiver = typeof destination === "string" ? document.querySelector(destination) : destination
+        if (!(receiver instanceof window.Element)) {
+          throw new TypeError(`Cell morph destination not found: ${destination}`)
+        }
+        if (receiver === target) return
+        const content = target.cloneNode(true)
+        content.removeAttribute("data-cell")
+        if (mode === "outer") {
+          if (receiver.hasAttribute("data-cell")) content.setAttribute("data-cell", receiver.getAttribute("data-cell"))
+          morph(receiver, content)
+        } else {
+          const children = document.createDocumentFragment()
+          children.append(...content.childNodes)
+          morph(receiver, children, "inner")
+        }
+      },
       on(name, handler, options) {
         if (controller.signal.aborted) return () => {}
         const listener = (event) => {
@@ -137,12 +165,12 @@ export const start = (root = document, options = {}) => {
         })
         return stopExpansion
       },
-      request: createRequest(target, controller.signal, signals),
+      request: createRequest(target, controller.signal, signals, applyPatch),
     }
     try {
-      const setup = window.Function(`"use strict"; return (${source}\n)`)()
-      if (typeof setup !== "function") throw new TypeError("data-cell must evaluate to a function")
-      const cleanup = setup(cell)
+      const run = window.Function(`"use strict"; return (${source}\n)`)()
+      if (typeof run !== "function") throw new TypeError("data-cell must evaluate to a function")
+      const cleanup = run(cell)
       if (typeof cleanup === "function") own(cleanup)
       else if (cleanup && typeof cleanup.then === "function") {
         cleanup.catch((error) => report(error, target))
@@ -152,6 +180,16 @@ export const start = (root = document, options = {}) => {
       dispose(target)
       report(error, target)
     }
+  }
+
+  const applyPatch = (html) =>
+    patchElements(document, html, (element) => {
+      setup(element)
+      if (!root.contains(element)) dispose(element)
+    })
+
+  const mount = (target) => {
+    if (root.contains(target)) setup(target)
   }
 
   const scan = (node) => {

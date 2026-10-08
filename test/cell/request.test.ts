@@ -162,7 +162,7 @@ test.it("SSE retries resume using event IDs and the server delay, and empty IDs 
             stream = controller
             controller.enqueue(
               new TextEncoder().encode(
-                "id: 42\r\nretry: 7\r\nevent: datastar-patch-signals\r\ndata: signals {\"count\":1}\r\n\r\n",
+                "id: 42\r\nretry: 7\r\nevent: datastar-patch-signals\r\ndata: {\"signals\":{\"count\":1}}\r\n\r\n",
               ),
             )
           },
@@ -392,8 +392,7 @@ test.it("switching tabs does not abort or restart a stream by default", async ()
 })
 
 test.it("malformed signal patches reject without retrying", async () => {
-  dom.window.fetch =
-    (async () => sse("event: datastar-patch-signals\ndata: signals invalid\n\n")) as unknown as typeof fetch
+  dom.window.fetch = (async () => sse("event: datastar-patch-signals\ndata: invalid\n\n")) as unknown as typeof fetch
   await test.expect(cell.request("/stream", { retry: "always" })).rejects.toThrow()
 
   test
@@ -412,7 +411,7 @@ test.it.each(["HTML", "SSE"])(
       `<!doctype html><html lang="en"><head><title>New</title><meta name="description" content="updated"></head><body class="new"><main>${cell.target.outerHTML}<input id="field" value="initial"></main><footer>New footer</footer></body></html>`
     dom.window.fetch = (async () =>
       kind === "SSE"
-        ? sse(`event: datastar-patch-elements\ndata: elements ${html}\n\n`)
+        ? sse(`event: datastar-patch-elements\ndata: ${html}\n\n`)
         : new Response(html, { headers: { "Content-Type": "text/html" } })) as unknown as typeof fetch
     await cell.request("/page")
     await flush()

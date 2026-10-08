@@ -7,8 +7,6 @@
  * @param {"outer" | "inner"} [mode]
  */
 export const morph = (oldElt, newContent, mode = "outer") => {
-  if (mode !== "outer" && mode !== "inner") throw new TypeError("Invalid morph mode")
-  if (mode === "outer" && !oldElt.parentNode) throw new TypeError("Outer morph requires a parent")
   const document = oldElt.ownerDocument
   const window = document.defaultView
   const ctxIdMap = new Map()

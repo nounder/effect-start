@@ -643,6 +643,43 @@ cell.on('input', () => search(cell.target.value))`}
 })`}
                 </pre>
               </section>
+              <section>
+                <h2>
+                  10 / Placement in the response
+                </h2>
+                <p>
+                  The returned element calls cell.move to append itself to the message list.
+                </p>
+                <form
+                  data-cell={(cell) => {
+                    cell.on("submit", async (event) => {
+                      event.preventDefault()
+                      await cell.request("/messages", {
+                        method: "POST",
+                        body: new FormData(cell.target, event.submitter),
+                      })
+                    })
+                  }}
+                >
+                  <label for="message">
+                    Message
+                  </label>
+                  <input id="message" name="message" required placeholder="Hello from the server" />
+                  <button type="submit">
+                    Send message
+                  </button>
+                </form>
+                <ol id="messages" aria-label="Messages" aria-live="polite">
+                  <li>
+                    Existing messages stay in the list.
+                  </li>
+                </ol>
+                <pre>
+{`<li data-cell={cell => cell.move('#messages')}>
+  {ctx.body.message}
+</li>`}
+                </pre>
+              </section>
             </main>
             <p
               class="status"
@@ -669,16 +706,14 @@ cell.on('input', () => search(cell.target.value))`}
     Route.sse((ctx) => {
       const count = ctx.body.count + 1
       return Stream.fromIterable([
-        { event: "datastar-patch-signals", data: `signals ${JSON.stringify({ count })}` },
+        { event: "datastar-patch-signals", data: JSON.stringify({ signals: { count } }) },
         {
           event: "datastar-patch-elements",
-          data: `elements ${
-            Html.text(
-              <p id="server-message">
-                The server incremented the count to {count}.
-              </p>,
-            )
-          }`,
+          data: Html.text(
+            <p id="server-message">
+              The server incremented the count to {count}.
+            </p>,
+          ),
         },
       ])
     }),
@@ -706,21 +741,36 @@ cell.on('input', () => search(cell.target.value))`}
       )
     }),
   ),
+  "/messages": Route.post(
+    Route.schemaBodyForm({ message: Schema.String }),
+    Route.html(function*(ctx) {
+      return (
+        <li
+          data-cell={(cell) => {
+            cell.move("#messages")
+          }}
+        >
+          {ctx.body.message}
+        </li>
+      )
+    }),
+  ),
   "/build": Route.get(Route.sse(
     Stream
       .fromIterable([
-        { event: "datastar-patch-signals", data: "signals {\"build\":{\"progress\":0,\"label\":\"Starting build\"}}" },
+        {
+          event: "datastar-patch-signals",
+          data: JSON.stringify({ signals: { build: { progress: 0, label: "Starting build" } } }),
+        },
         {
           event: "datastar-patch-elements",
-          data: `elements ${
-            Html.text(
-              <ol id="build-log" class="stream-log">
-                <li>
-                  Build started.
-                </li>
-              </ol>,
-            )
-          }`,
+          data: Html.text(
+            <ol id="build-log" class="stream-log">
+              <li>
+                Build started.
+              </li>
+            </ol>,
+          ),
         },
       ])
       .pipe(
@@ -738,20 +788,18 @@ cell.on('input', () => search(cell.target.value))`}
                 Effect.gen(function*() {
                   yield* Effect.sleep(700)
                   return [
-                    { event: "datastar-patch-signals", data: `signals ${JSON.stringify({ build })}` },
+                    { event: "datastar-patch-signals", data: JSON.stringify({ signals: { build } }) },
                     {
                       event: "datastar-patch-elements",
-                      data: [
-                        "selector #build-log",
-                        "mode append",
-                        `elements ${
-                          Html.text(
-                            <li>
-                              {build.label}
-                            </li>,
-                          )
-                        }`,
-                      ],
+                      data: Html.text(
+                        <li
+                          data-cell={(cell) => {
+                            cell.move("#build-log")
+                          }}
+                        >
+                          {build.label}
+                        </li>,
+                      ),
                     },
                   ]
                 })
@@ -782,6 +830,10 @@ cell.on('input', () => search(cell.target.value))`}
         { title: "An interval with a lifetime", description: "Move a timer and clean up its interval when it stops." },
         { title: "Search that cancels stale work", description: "Debounce input and cancel an older server request." },
         { title: "A deletion you can undo", description: "Restore a deleted note before its notification expires." },
+        {
+          title: "Placement in the response",
+          description: "Returned HTML uses cell.move to choose its destination.",
+        },
       ]
         .filter((example) => `${example.title} ${example.description}`.toLowerCase().includes(query))
       return (

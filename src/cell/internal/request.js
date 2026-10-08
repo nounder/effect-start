@@ -1,5 +1,3 @@
-import { patchElements } from "./patch.js"
-
 const readEvents = async (response, signal, dispatch, onId, onRetry) => {
   if (!response.body || signal.aborted) return
   const reader = response.body.getReader()
@@ -43,7 +41,7 @@ const readEvents = async (response, signal, dispatch, onId, onRetry) => {
   }
 }
 
-export const createRequest = (target, lifetime, signals) => {
+export const createRequest = (target, lifetime, signals, patchElements) => {
   const document = target.ownerDocument
   const window = document.defaultView
   let current
@@ -129,16 +127,10 @@ export const createRequest = (target, lifetime, signals) => {
             retryable = true
             await readEvents(response, attempt.signal, (event, data) => {
               retryable = false
-              const args = Object.create(null)
-              for (const line of data.split("\n")) {
-                const space = line.indexOf(" ")
-                if (space === -1) continue
-                const key = line.slice(0, space)
-                args[key] = key in args ? `${args[key]}\n${line.slice(space + 1)}` : line.slice(space + 1)
-              }
-              if (event === "datastar-patch-elements") patchElements(document, args.elements ?? "", args)
+              if (event === "datastar-patch-elements") patchElements(data)
               else if (event === "datastar-patch-signals") {
-                signals.patch(JSON.parse(args.signals), args.onlyIfMissing === "true")
+                const patch = JSON.parse(data)
+                signals.patch(patch.signals, patch.onlyIfMissing ?? false)
               }
               retryable = true
             }, (id) => {
@@ -152,7 +144,7 @@ export const createRequest = (target, lifetime, signals) => {
           } else if (contentType === "text/html") {
             const html = await response.text()
             if (attempt.signal.aborted) continue
-            patchElements(document, html)
+            patchElements(html)
             return
           } else {
             await response.body?.cancel()
