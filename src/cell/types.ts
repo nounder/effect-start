@@ -1,3 +1,20 @@
+import type * as Values from "../internal/Values.ts"
+
+type RequestBody =
+  | { body?: RequestInit["body"]; bodyJson?: never; bodyForm?: never }
+  | {
+    body?: never
+    /** JSON-encodes the value and defaults Content-Type to application/json. */
+    bodyJson: Values.Json
+    bodyForm?: never
+  }
+  | {
+    body?: never
+    bodyJson?: never
+    /** Sends multipart data from fields, a form, or a submit event (including its submitter). The browser supplies Content-Type and its boundary. */
+    bodyForm: FormData | HTMLFormElement | SubmitEvent | Record<string, string | Blob>
+  }
+
 export interface Cell<E extends Element = Element> {
   /** The same element throughout this cell's lifetime; incoming response roots start detached. */
   readonly target: E
@@ -32,7 +49,7 @@ export interface Cell<E extends Element = Element> {
   /** Sends only the supplied body; applies HTML or SSE updates. Other response types reject. */
   request(
     url: string | URL,
-    options?: RequestInit & {
+    options?: Omit<RequestInit, "body"> & RequestBody & {
       /** Network failures retry by default; error also retries HTTP errors, always also reconnects completed streams. */
       retry?: "auto" | "error" | "always" | "never"
       /** Initial delay in milliseconds; defaults to 1000. SSE retry fields override it. */

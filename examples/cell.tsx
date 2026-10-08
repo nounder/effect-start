@@ -20,44 +20,18 @@ const routes = Route.map({
             </title>
             <style>
               {`
-      :root { font: 16px/1.6 system-ui, sans-serif; color: #17352d; background: #f4f5ef; }
-      body { max-width: 1050px; margin: auto; padding: 48px 24px; }
-      header { max-width: 720px; margin-bottom: 40px; }
-      h1 { font-size: clamp(2rem, 6vw, 3.4rem); line-height: 1.15; letter-spacing: -.04em; margin: 12px 0; }
-      h2 { font-size: 1.15rem; margin-top: 0; }
-      p { color: #53665e; }
-      .eyebrow { color: #147955; letter-spacing: .12em; font-size: 12px; font-weight: 700; }
-      .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
-      section { padding: 26px; background: white; border: 1px solid #dce3d8; border-radius: 16px; }
-      button { font: inherit; background: #146d4e; color: white; border: 0; border-radius: 7px; padding: 10px 16px; cursor: pointer; }
-      button:hover { background: #104f3a; }
-      button:disabled { opacity: .5; cursor: wait; }
-      input { box-sizing: border-box; font: inherit; width: 100%; border: 1px solid #bccbc0; border-radius: 7px; padding: 9px 12px; margin: 6px 0 16px; }
-      pre { overflow: auto; padding: 16px; background: #f0f4ee; border-radius: 8px; font-size: 12px; line-height: 1.7; }
-      output { display: block; font-size: 3rem; font-weight: 600; margin-bottom: 18px; }
-      .status { min-height: 26px; color: #147955; }
-      label { font-size: 14px; }
-      select { font: inherit; border: 1px solid #bccbc0; border-radius: 7px; padding: 9px 12px; background: white; color: inherit; }
-      progress { display: block; width: 100%; height: 18px; accent-color: #147955; margin: 12px 0; }
-      .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 16px 0; }
-      .secondary { color: #17352d; background: #e9efe6; }
-      .secondary:hover { background: #dce6d8; }
-      .wide { grid-column: 1 / -1; }
-      .stream-log { min-height: 90px; padding-left: 24px; font-size: 14px; }
-      .stream-log li { padding: 3px 0; }
-      .timer-lanes { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-      .timer-lane { min-height: 160px; border: 1px dashed #a7beb0; border-radius: 10px; padding: 16px; }
-      .timer-card { background: #f0f4ee; border-radius: 8px; padding: 12px; margin-top: 12px; }
-      .timer-card output { font-size: 2rem; margin: 0; }
-      .metrics { display: flex; flex-wrap: wrap; gap: 18px; font-size: 14px; }
-      .search-results { padding-left: 20px; }
-      .search-results li { margin: 12px 0; }
-      .item-list { padding: 0; list-style: none; }
-      .item-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; }
-      .item-list button { padding: 6px 12px; }
-      .toast { padding: 12px; background: #f0f4ee; border-radius: 8px; }
-      @media (max-width: 700px) { .grid { grid-template-columns: 1fr; } }
-    `}
+                body { max-width: 760px; margin: auto; padding: 24px; font: 16px/1.5 system-ui, sans-serif; }
+                section { margin-top: 32px; padding-top: 16px; border-top: 1px solid #ccc; }
+                button, input, select { font: inherit; padding: 4px 8px; }
+                button { margin: 4px; cursor: pointer; }
+                input { display: block; box-sizing: border-box; width: 100%; margin: 8px 0; }
+                pre { overflow: auto; padding: 12px; background: #f5f5f5; font-size: 9.1px; }
+                output { display: block; font-size: 2rem; }
+                progress { display: block; width: 100%; margin: 12px 0; }
+                .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 16px 0; }
+                .lanes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+                .lanes > div { min-height: 140px; padding: 12px; border: 1px dashed #ccc; }
+              `}
             </style>
             <script type="module">
               {`import { start } from ${JSON.stringify(bundle.resolve("effect-start/cell"))}; start(document);`}
@@ -85,25 +59,18 @@ const routes = Route.map({
               }
             }}
           >
-            <header>
-              <div class="eyebrow">
-                EFFECT START / CELL PROTOTYPE
-              </div>
-              <h1>
-                JavaScript, close to the DOM.
-              </h1>
-              <p>
-                One attribute. A setup function. Ordinary events, shared signals, and HTML from your server.
-              </p>
-            </header>
-            <main class="grid">
+            <main>
               <section>
                 <h2>
                   01 / Local interaction
                 </h2>
-                <p>
-                  The setup runs once. Only the effect reacts to changes.
-                </p>
+                <pre>
+{`cell => {
+  cell.on('click', () => {
+    cell.signals.count++
+  })
+}`}
+                </pre>
                 <output
                   aria-label="Count"
                   data-cell={(cell) =>
@@ -121,21 +88,17 @@ const routes = Route.map({
                 >
                   Increment locally
                 </button>
-                <pre>
-{`cell => {
-  cell.on('click', () => {
-    cell.signals.count++
-  })
-}`}
-                </pre>
               </section>
               <section>
                 <h2>
                   02 / Server signals + HTML
                 </h2>
-                <p>
-                  A single request streams a signal update and an HTML patch.
-                </p>
+                <pre>
+{`await cell.request('/increment', {
+  method: 'POST',
+  bodyJson: { count: cell.signals.count }
+})`}
+                </pre>
                 <p id="server-message">
                   The server has not been called yet.
                 </p>
@@ -146,8 +109,7 @@ const routes = Route.map({
                       try {
                         await cell.request("/increment", {
                           method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ count: cell.signals.count }),
+                          bodyJson: { count: cell.signals.count },
                         })
                       } finally {
                         cell.target.disabled = false
@@ -157,31 +119,30 @@ const routes = Route.map({
                 >
                   Increment on server
                 </button>
-                <pre>
-{`await cell.request('/increment', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ count: cell.signals.count })
-})`}
-                </pre>
               </section>
               <section>
                 <h2>
                   03 / Morphing without a reset
                 </h2>
-                <p>
-                  Type a draft, then fetch fresh HTML. The input node and your unsent text survive.
-                </p>
+                <pre>
+{`cell.on('click', () => cell.request('/fragment'))`}
+                </pre>
                 <div id="server-fragment">
                   <label for="draft">
                     Unsent draft
                   </label>
-                  <input id="draft" value="" placeholder="Type something to keep" />
+                  <input
+                    id="draft"
+                    value=""
+                    placeholder="Type something to keep"
+                  />
                   <p>
                     Original server fragment.
                   </p>
                 </div>
-                <button data-cell={(cell) => cell.on("click", () => cell.request("/fragment"))}>
+                <button
+                  data-cell={(cell) => cell.on("click", () => cell.request("/fragment"))}
+                >
                   Refresh fragment
                 </button>
               </section>
@@ -189,16 +150,22 @@ const routes = Route.map({
                 <h2>
                   04 / Native form submission
                 </h2>
-                <p>
-                  Use a real submit event and ordinary FormData.
-                </p>
+                <pre>
+{`cell.on('submit', async event => {
+  event.preventDefault()
+  await cell.request('/save', {
+    method: 'POST',
+    bodyForm: event
+  })
+})`}
+                </pre>
                 <form
                   data-cell={(cell) => {
                     cell.on("submit", async (event) => {
                       event.preventDefault()
                       await cell.request("/save", {
                         method: "POST",
-                        body: new FormData(cell.target, event.submitter),
+                        bodyForm: event,
                       })
                     })
                   }}
@@ -206,7 +173,12 @@ const routes = Route.map({
                   <label for="name">
                     Name
                   </label>
-                  <input id="name" name="name" required placeholder="Ada" />
+                  <input
+                    id="name"
+                    name="name"
+                    required
+                    placeholder="Ada"
+                  />
                   <button type="submit">
                     Save name
                   </button>
@@ -219,9 +191,10 @@ const routes = Route.map({
                 <h2>
                   05 / Local list + conditional content
                 </h2>
-                <p>
-                  Add local reminders. The list appears when it has items and disappears when empty.
-                </p>
+                <pre>
+{`cell => cell.expand(() => cell.signals._todos)
+cell => cell.expand(() => cell.signals._todos.length)`}
+                </pre>
                 <form
                   data-cell={(cell) =>
                     cell.on("submit", (event) => {
@@ -237,7 +210,12 @@ const routes = Route.map({
                   <label for="todo">
                     New reminder
                   </label>
-                  <input id="todo" name="todo" required placeholder="Try a template" />
+                  <input
+                    id="todo"
+                    name="todo"
+                    required
+                    placeholder="Try a template"
+                  />
                   <button type="submit">
                     Add reminder
                   </button>
@@ -270,19 +248,16 @@ const routes = Route.map({
                     No reminders yet.
                   </p>
                 </template>
-                <pre>
-{`cell => cell.expand(() => cell.signals._todos)
-cell => cell.expand(() => cell.signals._todos.length)`}
-                </pre>
               </section>
               <section>
                 <h2>
                   06 / A live SSE build
                 </h2>
-                <p>
-                  One request streams progress and fresh HTML over time. Cancel halfway through, or let the build
-                  finish.
-                </p>
+                <pre>
+{`await cell.request('/build', {
+  signal: controller.signal
+})`}
+                </pre>
                 <strong
                   aria-live="polite"
                   data-cell={(cell) =>
@@ -329,25 +304,26 @@ cell => cell.expand(() => cell.signals._todos.length)`}
                 >
                   Start build
                 </button>
-                <ol id="build-log" class="stream-log">
+                <ol id="build-log">
                   <li>
                     Waiting for the server.
                   </li>
                 </ol>
-                <pre>
-{`await cell.request('/build', {
-  signal: controller.signal
-})`}
-                </pre>
               </section>
-              <section class="wide">
+              <section>
                 <h2>
                   07 / An interval with a lifetime
                 </h2>
-                <p>
-                  Mount a timer, change its speed, or move it between the two spots. Moving keeps its setup alive.
-                  Pausing, changing speed, and removing it clear the previous interval.
-                </p>
+                <pre>
+{`cell.effect(() => {
+  const delay = cell.signals._timerDelay
+  if (!cell.signals._timerRunning) return
+  const timer = setInterval(() => {
+    cell.signals._timerTicks++
+  }, delay)
+  return () => clearInterval(timer)
+})`}
+                </pre>
                 <div class="controls">
                   <button
                     data-cell={(cell) => {
@@ -362,7 +338,6 @@ cell => cell.expand(() => cell.signals._todos.length)`}
                     Mount timer
                   </button>
                   <button
-                    class="secondary"
                     data-cell={(cell) => {
                       cell.effect(() => {
                         cell.target.disabled = !cell.signals._timerVisible
@@ -383,7 +358,6 @@ cell => cell.expand(() => cell.signals._todos.length)`}
                     Move timer
                   </button>
                   <button
-                    class="secondary"
                     data-cell={(cell) => {
                       cell.effect(() => {
                         cell.target.disabled = !cell.signals._timerVisible
@@ -417,14 +391,13 @@ cell => cell.expand(() => cell.signals._todos.length)`}
                     </option>
                   </select>
                 </div>
-                <div class="timer-lanes">
-                  <div id="timer-left" class="timer-lane">
+                <div class="lanes">
+                  <div id="timer-left">
                     <strong>
                       Spot A
                     </strong>
                     <template id="timer-blueprint" data-cell={(cell) => cell.expand(() => cell.signals._timerVisible)}>
                       <div
-                        class="timer-card"
                         data-cell={(cell) => {
                           cell.signals._timerSetups++
                           cell.effect(() => {
@@ -460,13 +433,13 @@ cell => cell.expand(() => cell.signals._todos.length)`}
                       </div>
                     </template>
                   </div>
-                  <div id="timer-right" class="timer-lane">
+                  <div id="timer-right">
                     <strong>
                       Spot B
                     </strong>
                   </div>
                 </div>
-                <p class="metrics">
+                <p class="controls">
                   <span
                     data-cell={(cell) =>
                       cell.effect(() => {
@@ -489,25 +462,18 @@ cell => cell.expand(() => cell.signals._todos.length)`}
                   >
                   </span>
                 </p>
-                <pre>
-{`cell.effect(() => {
-  const delay = cell.signals._timerDelay
-  if (!cell.signals._timerRunning) return
-  const timer = setInterval(() => {
-    cell.signals._timerTicks++
-  }, delay)
-  return () => clearInterval(timer)
-})`}
-                </pre>
               </section>
               <section>
                 <h2>
                   08 / Search that cancels stale work
                 </h2>
-                <p>
-                  Type to search the examples on the server. A short pause starts the request; another edit cancels the
-                  pending work.
-                </p>
+                <pre>
+{`const search = cell.limit(query => {
+  return cell.request('/search?q=' + encodeURIComponent(query))
+}, { debounce: 300, concurrency: 1 })
+
+cell.on('input', () => search(cell.target.value))`}
+                </pre>
                 <label for="pattern-search">
                   Find an example
                 </label>
@@ -540,23 +506,22 @@ cell => cell.expand(() => cell.signals._todos.length)`}
                     Try “server”, “template”, or “timer”.
                   </p>
                 </div>
-                <pre>
-{`const search = cell.limit(query => {
-  return cell.request('/search?q=' + encodeURIComponent(query))
-}, { debounce: 300, concurrency: 1 })
-
-cell.on('input', () => search(cell.target.value))`}
-                </pre>
               </section>
               <section>
                 <h2>
                   09 / A deletion you can undo
                 </h2>
-                <p>
-                  Remove a note, then undo your last deletion within five seconds. Removing another note starts a fresh
-                  undo window.
-                </p>
-                <ul class="item-list" aria-label="Notes">
+                <pre>
+{`cell.effect(() => {
+  const pending = cell.signals._undo
+  if (!pending) return
+  const timer = setTimeout(() => {
+    cell.signals._undo = null
+  }, 5000)
+  return () => clearTimeout(timer)
+})`}
+                </pre>
+                <ul aria-label="Notes">
                   <template data-cell={(cell) => cell.expand(() => cell.signals._notes)}>
                     <li>
                       <span
@@ -567,7 +532,6 @@ cell.on('input', () => search(cell.target.value))`}
                       >
                       </span>
                       <button
-                        class="secondary"
                         data-cell={(cell) =>
                           cell.on("click", () => {
                             cell.signals._undo = { item: cell.item, index: cell.index }
@@ -586,7 +550,6 @@ cell.on('input', () => search(cell.target.value))`}
                 </template>
                 <template data-cell={(cell) => cell.expand(() => cell.signals._undo)}>
                   <div
-                    class="toast"
                     aria-live="polite"
                     data-cell={(cell) =>
                       cell.effect(() => {
@@ -620,7 +583,6 @@ cell.on('input', () => search(cell.target.value))`}
                 </template>
                 <div class="controls">
                   <button
-                    class="secondary"
                     data-cell={(cell) =>
                       cell.on("click", () => {
                         cell.signals._undo = null
@@ -632,31 +594,23 @@ cell.on('input', () => search(cell.target.value))`}
                     Reset notes
                   </button>
                 </div>
-                <pre>
-{`cell.effect(() => {
-  const pending = cell.signals._undo
-  if (!pending) return
-  const timer = setTimeout(() => {
-    cell.signals._undo = null
-  }, 5000)
-  return () => clearTimeout(timer)
-})`}
-                </pre>
               </section>
               <section>
                 <h2>
                   10 / Placement in the response
                 </h2>
-                <p>
-                  The returned element calls cell.move to append itself to the message list.
-                </p>
+                <pre>
+{`<li data-cell={cell => cell.move('#messages')}>
+  {ctx.body.message}
+</li>`}
+                </pre>
                 <form
                   data-cell={(cell) => {
                     cell.on("submit", async (event) => {
                       event.preventDefault()
                       await cell.request("/messages", {
                         method: "POST",
-                        body: new FormData(cell.target, event.submitter),
+                        bodyForm: event,
                       })
                     })
                   }}
@@ -664,7 +618,12 @@ cell.on('input', () => search(cell.target.value))`}
                   <label for="message">
                     Message
                   </label>
-                  <input id="message" name="message" required placeholder="Hello from the server" />
+                  <input
+                    id="message"
+                    name="message"
+                    required
+                    placeholder="Hello from the server"
+                  />
                   <button type="submit">
                     Send message
                   </button>
@@ -674,15 +633,9 @@ cell.on('input', () => search(cell.target.value))`}
                     Existing messages stay in the list.
                   </li>
                 </ol>
-                <pre>
-{`<li data-cell={cell => cell.move('#messages')}>
-  {ctx.body.message}
-</li>`}
-                </pre>
               </section>
             </main>
             <p
-              class="status"
               aria-live="polite"
               data-cell={(cell) => {
                 cell.effect(() => {
@@ -724,7 +677,11 @@ cell.on('input', () => search(cell.target.value))`}
         <label for="draft">
           Unsent draft
         </label>
-        <input id="draft" value="" placeholder="Type something to keep" />
+        <input
+          id="draft"
+          value=""
+          placeholder="Type something to keep"
+        />
         <p>
           Server fragment refreshed at {new Date().toLocaleTimeString()}.
         </p>
@@ -765,7 +722,7 @@ cell.on('input', () => search(cell.target.value))`}
         {
           event: "datastar-patch-elements",
           data: Html.text(
-            <ol id="build-log" class="stream-log">
+            <ol id="build-log">
               <li>
                 Build started.
               </li>
@@ -846,7 +803,7 @@ cell.on('input', () => search(cell.target.value))`}
             )
             : matches.length
             ? (
-              <ul class="search-results">
+              <ul>
                 {matches.map((example) => (
                   <li>
                     <strong>

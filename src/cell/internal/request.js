@@ -85,6 +85,25 @@ export const createRequest = (target, lifetime, signals, patchElements) => {
       let interval = baseInterval
       let retries = 0
       const init = { ...options, method, headers }
+      if (options.bodyJson !== undefined) {
+        init.body = JSON.stringify(options.bodyJson)
+        if (!headers.has("Content-Type")) headers.set("Content-Type", "application/json")
+      } else if (options.bodyForm !== undefined) {
+        const form = options.bodyForm
+        if (typeof form.get === "function") {
+          init.body = form
+        } else if (typeof form.preventDefault === "function") {
+          init.body = new window.FormData(form.target, form.submitter)
+        } else if (form.nodeType === 1) {
+          init.body = new window.FormData(form)
+        } else {
+          init.body = new window.FormData()
+          for (const [name, value] of Object.entries(form)) init.body.append(name, value)
+        }
+        headers.delete("Content-Type")
+      }
+      delete init.bodyJson
+      delete init.bodyForm
       delete init.retry
       delete init.retryInterval
       delete init.retryScaler
