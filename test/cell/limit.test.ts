@@ -1,6 +1,6 @@
 import * as test from "bun:test"
 import { Html } from "effect-start"
-import { morph, start } from "effect-start/cell"
+import { morph, run } from "effect-start/cell"
 import type { Cell, Runtime } from "effect-start/cell"
 import { jsx } from "effect-start/jsx-runtime"
 import { JSDOM } from "jsdom"
@@ -627,7 +627,7 @@ test.describe("cell integration", () => {
       cell.target.cell = cell
       cell.signals.setups = (cell.signals.setups ?? 0) + 1
     }"></button><section></section>`
-    runtime = start(dom.window.document, { onError: (error, target) => errors.push({ error, target }) })
+    runtime = run(dom.window.document, { onError: (error, target) => errors.push({ error, target }) })
     target = dom.window.document.querySelector("button")!
     cell = (target as any).cell
     test.jest.useFakeTimers({ now: 0 })
@@ -842,13 +842,13 @@ test.describe("cell integration", () => {
     runtime.stop()
     const scope = dom.window.document.querySelector("section")!
     scope.append(target)
-    runtime = start(scope, { onError: (error, target) => errors.push({ error, target }) })
+    runtime = run(scope, { onError: (error, target) => errors.push({ error, target }) })
     cell = (target as any).cell
     let calls = 0
-    const run = cell.limit(() => {
+    const invoke = cell.limit(() => {
       calls++
     }, { debounce: 100 })
-    run()
+    invoke()
     dom.window.document.body.append(target)
     await Promise.resolve()
     test.jest.advanceTimersByTime(100)

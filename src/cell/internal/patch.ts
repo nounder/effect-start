@@ -1,5 +1,5 @@
+import type * as Cell from "../Cell.ts"
 import * as Dom from "../Dom.ts"
-import type { CellDeclaration, CellFunction } from "../types.ts"
 
 export const patchElements = (document: Document, html: string) => {
   const documentMarkup = html.replace(/<svg(\s[^>]*>|>)[\s\S]*?<\/svg>/gi, "")
@@ -24,7 +24,9 @@ export const patchElements = (document: Document, html: string) => {
     const source = element.getAttribute("data-cell")
     const value = source === null
       ? {}
-      : document.defaultView!.Function(`"use strict"; return (${source}\n)`)() as CellFunction | CellDeclaration
+      : document.defaultView!.Function(`"use strict"; return (${source}\n)`)() as
+        | Cell.CellFunction
+        | Cell.CellDeclaration
     const declaration = typeof value === "function" ? {} : value
     const operation = (["append", "prepend", "before", "after", "replace", "morph", "morphChildren"] as const)
       .find((key) => declaration[key] !== undefined)

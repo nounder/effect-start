@@ -1,5 +1,5 @@
 import * as test from "bun:test"
-import { start } from "effect-start/cell"
+import { run } from "effect-start/cell"
 import type { Cell, Runtime } from "effect-start/cell"
 import { JSDOM } from "jsdom"
 
@@ -42,7 +42,7 @@ test.beforeEach(() => {
   )
   errors = []
   dom.window.document.getElementById("request")!.setAttribute("data-cell", "cell => { cell.target.cell = cell }")
-  runtime = start(dom.window.document, { onError: (error) => errors.push(error) })
+  runtime = run(dom.window.document, { onError: (error) => errors.push(error) })
   cell = (dom.window.document.getElementById("request") as any).cell
 })
 

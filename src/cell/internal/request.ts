@@ -1,4 +1,4 @@
-import type { Cell } from "../types.ts"
+import type * as Cell from "../Cell.ts"
 import type { Signals } from "./signals.ts"
 
 const readEvents = async (
@@ -55,7 +55,7 @@ export const createRequest = (
   lifetime: AbortSignal,
   signals: Signals,
   patchElements: (html: string) => void,
-): Cell["request"] => {
+): Cell.Cell["request"] => {
   const document = target.ownerDocument
   const window = document.defaultView!
   let current: AbortController | undefined

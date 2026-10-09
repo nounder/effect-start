@@ -1,6 +1,6 @@
 import * as test from "bun:test"
 import { Html } from "effect-start"
-import { morph, start } from "effect-start/cell"
+import { morph, run } from "effect-start/cell"
 import type { Cell, Runtime } from "effect-start/cell"
 import { JSDOM } from "jsdom"
 
@@ -13,7 +13,7 @@ const tick = () => new Promise<void>((resolve) => setTimeout(resolve, 0))
 test.beforeEach(() => {
   dom = new JSDOM("<!doctype html><html><body></body></html>", { runScripts: "outside-only", pretendToBeVisual: true })
   errors = []
-  runtime = start(dom.window.document, { onError: (error) => errors.push(error) })
+  runtime = run(dom.window.document, { onError: (error) => errors.push(error) })
 })
 
 test.afterEach(() => {
@@ -480,7 +480,7 @@ test.it("replacing or disposing an expansion removes its output and stop permits
     .expect(dom.window.document.body.childNodes.length)
     .toBe(1)
 
-  runtime = start(dom.window.document, { onError: (error) => errors.push(error) })
+  runtime = run(dom.window.document, { onError: (error) => errors.push(error) })
   await tick()
 
   test

@@ -1,5 +1,5 @@
 import type * as Effect from "effect/Effect"
-import type { CellDeclaration, CellFunction } from "./cell/types.ts"
+import type * as Cell from "./cell/Cell.ts"
 import type { DatastarAttributes, HTMLOrSVG } from "./datastar/jsx.ts"
 import type * as Html from "./Html.ts"
 
@@ -74,8 +74,8 @@ export namespace JSX {
   export interface CustomAttributes<T> {
     "data-cell"?:
       | string
-      | CellFunction<T extends globalThis.Element ? T : globalThis.Element>
-      | CellDeclaration<T extends globalThis.Element ? T : globalThis.Element>
+      | Cell.CellFunction<T extends globalThis.Element ? T : globalThis.Element>
+      | Cell.CellDeclaration<T extends globalThis.Element ? T : globalThis.Element>
       | undefined
     ref?: T | ((el: T) => void) | undefined
     children?: Element

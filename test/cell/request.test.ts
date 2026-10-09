@@ -1,5 +1,5 @@
 import * as test from "bun:test"
-import { start } from "effect-start/cell"
+import { run } from "effect-start/cell"
 import type { Cell, Runtime } from "effect-start/cell"
 import { JSDOM } from "jsdom"
 
@@ -29,7 +29,7 @@ test.beforeEach(() => {
     },
   )
   dom.window.document.getElementById("cell")!.setAttribute("data-cell", "cell => { cell.target.cell = cell }")
-  runtime = start(dom.window.document)
+  runtime = run(dom.window.document)
   cell = (dom.window.document.getElementById("cell") as any).cell
   phases = []
   cell.target.addEventListener("cell:request", (event: any) => phases.push(event.detail.phase))

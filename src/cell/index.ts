@@ -1,22 +1,22 @@
-import * as Runtime from "./Runtime.ts"
+import * as Cell from "./Cell.ts"
 
 export {
-  morph,
-} from "./Dom.ts"
-export {
-  start,
-} from "./Runtime.ts"
+  run,
+} from "./Cell.ts"
 export type {
   Cell,
   CellDeclaration,
   CellFunction,
+  RunOptions,
   Runtime,
-  StartOptions,
-} from "./types.ts"
+} from "./Cell.ts"
+export {
+  morph,
+} from "./Dom.ts"
 
 if (typeof window !== "undefined") {
   const key = "effect-start/cell/runtime"
-  const browser = window as Window & { [key]?: ReturnType<typeof Runtime.start> }
+  const browser = window as Window & { [key]?: ReturnType<typeof Cell.run> }
   browser[key]?.stop()
-  browser[key] = Runtime.start(document)
+  browser[key] = Cell.run(document)
 }

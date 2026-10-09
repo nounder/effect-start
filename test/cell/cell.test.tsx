@@ -1,6 +1,6 @@
 import * as test from "bun:test"
 import { Html } from "effect-start"
-import { morph, start } from "effect-start/cell"
+import { morph, run } from "effect-start/cell"
 import type { Cell, CellDeclaration, Runtime } from "effect-start/cell"
 import type { JSX } from "effect-start/jsx-runtime"
 import { JSDOM } from "jsdom"
@@ -18,7 +18,7 @@ test.beforeEach(() => {
     pretendToBeVisual: true,
   })
   errors = []
-  runtime = start(dom.window.document, { onError: (error) => errors.push(error) })
+  runtime = run(dom.window.document, { onError: (error) => errors.push(error) })
 })
 
 test.afterEach(() => {
@@ -356,7 +356,7 @@ test.it("a root cell can replace startup signals before descendant setup", () =>
       />
     </main>,
   )
-  runtime = start(dom.window.document, { signals: { obsolete: true }, onError: (error) => errors.push(error) })
+  runtime = run(dom.window.document, { signals: { obsolete: true }, onError: (error) => errors.push(error) })
 
   test
     .expect(dom.window.document.querySelector("span")!.textContent)
@@ -472,7 +472,7 @@ test.it("stop is idempotent, aborts cell lifetimes, and permits restart", async 
   }`)
 
   test
-    .expect(start(dom.window.document))
+    .expect(run(dom.window.document))
     .toBe(runtime)
 
   runtime.stop()
@@ -488,7 +488,7 @@ test.it("stop is idempotent, aborts cell lifetimes, and permits restart", async 
     .expect(target.textContent)
     .toBe("")
 
-  runtime = start(dom.window.document, { onError: (error) => errors.push(error) })
+  runtime = run(dom.window.document, { onError: (error) => errors.push(error) })
   target.click()
 
   test
