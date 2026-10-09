@@ -33,7 +33,7 @@ export function link<
   // Substitute path params, deleting used keys so the rest become search params
   const remaining = { ...args[1] } as Record<
     string,
-    string | number | undefined
+    string | number | ReadonlyArray<string | number> | undefined
   >
   const result = path.replace(
     /\/:(\w+)([?*+])?/g,
@@ -50,7 +50,13 @@ export function link<
 
   const search = new URLSearchParams()
   for (const key in remaining) {
-    if (remaining[key] != null) search.set(key, String(remaining[key]))
+    const value = remaining[key]
+    if (value == null) continue
+    if (Array.isArray(value)) {
+      for (const item of value) if (item != null) search.append(key, String(item))
+    } else {
+      search.set(key, String(value))
+    }
   }
   const qs = search.toString()
   return qs ? result + "?" + qs : result
