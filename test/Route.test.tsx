@@ -1,5 +1,6 @@
 import * as test from "bun:test"
 import type * as Engine from "effect-start/datastar"
+import * as Cookies from "effect-start/Cookies"
 import * as Development from "effect-start/Development"
 import * as Entity from "effect-start/Entity"
 import * as Fetch from "effect-start/Fetch"
@@ -415,6 +416,130 @@ test.describe(Route.redirect, () => {
         test
           .expect(entity.headers["location"])
           .toBe("/time")
+      })
+      .pipe(Effect.runPromise))
+
+  test.it("accepts cookies to set alongside the redirect", () =>
+    Effect
+      .gen(function*() {
+        const cookies = Cookies.unsafeSet(Cookies.empty, "session", "abc123")
+        const routes = Route.get(
+          Route.redirect("/", { cookies }),
+        )
+        const handler = RouteHttp.toWebHandler(routes)
+        const client = Fetch.fromHandler(handler)
+
+        const entity = yield* client.get("http://localhost/test")
+
+        test
+          .expect(entity.status)
+          .toBe(302)
+        test
+          .expect(entity.headers["location"])
+          .toBe("/")
+        test
+          .expect(entity.headers["set-cookie"])
+          .toBe("session=abc123")
+      })
+      .pipe(Effect.runPromise))
+
+  test.it("accepts multiple cookies", () =>
+    Effect
+      .gen(function*() {
+        const cookies = Cookies.unsafeSetAll(Cookies.empty, [
+          ["session", "abc123"],
+          ["theme", "dark"],
+        ])
+        const routes = Route.get(
+          Route.redirect("/", { cookies }),
+        )
+        const handler = RouteHttp.toWebHandler(routes)
+
+        const response = yield* Effect.promise(() =>
+          Promise.resolve(handler(new Request("http://localhost/test")))
+        )
+
+        test
+          .expect(response.headers.getSetCookie())
+          .toEqual([
+            "session=abc123",
+            "theme=dark",
+          ])
+      })
+      .pipe(Effect.runPromise))
+
+  test.it("ignores empty cookies", () =>
+    Effect
+      .gen(function*() {
+        const routes = Route.get(
+          Route.redirect("/", { cookies: Cookies.empty }),
+        )
+        const handler = RouteHttp.toWebHandler(routes)
+        const client = Fetch.fromHandler(handler)
+
+        const entity = yield* client.get("http://localhost/test")
+
+        test
+          .expect(entity.headers["set-cookie"])
+          .toBeUndefined()
+      })
+      .pipe(Effect.runPromise))
+
+  test.it("accepts custom headers", () =>
+    Effect
+      .gen(function*() {
+        const routes = Route.get(
+          Route.redirect("/", { headers: { "x-flash": "welcome" } }),
+        )
+        const handler = RouteHttp.toWebHandler(routes)
+        const client = Fetch.fromHandler(handler)
+
+        const entity = yield* client.get("http://localhost/test")
+
+        test
+          .expect(entity.headers["x-flash"])
+          .toBe("welcome")
+        test
+          .expect(entity.headers["location"])
+          .toBe("/")
+      })
+      .pipe(Effect.runPromise))
+
+  test.it("merges set-cookie from a wrapping layer with redirect cookies", () =>
+    Effect
+      .gen(function*() {
+        const layerCookies = Cookies.unsafeSet(Cookies.empty, "a", "1")
+        const redirectCookies = Cookies.unsafeSet(Cookies.empty, "b", "2")
+
+        const withLayerCookie = <D, B, I extends Route.Route.Tuple>(
+          self: Route.RouteSet<D, B, I>,
+        ) => {
+          const route = Route.make<{}, {}, unknown>((_context, next) =>
+            Effect.map(next, (entity) =>
+              Entity.merge(entity, {
+                headers: {
+                  "set-cookie": Cookies.toSetCookieHeaders(layerCookies),
+                },
+              }))
+          )
+          return Route.set([...Route.items(self), route], Route.descriptor(self))
+        }
+
+        const routes = Route.use(withLayerCookie).get(
+          Route.redirect("/", { cookies: redirectCookies }),
+        )
+        const handler = RouteHttp.toWebHandler(routes)
+
+        const response = yield* Effect.promise(() =>
+          Promise.resolve(handler(new Request("http://localhost/test")))
+        )
+
+        test
+          .expect(response.headers.getSetCookie())
+          .toEqual([
+            "b=2",
+            "a=1",
+          ])
       })
       .pipe(Effect.runPromise))
 })
