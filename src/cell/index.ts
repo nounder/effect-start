@@ -8,6 +8,7 @@ export {
 } from "./Runtime.ts"
 export type {
   Cell,
+  CellDeclaration,
   CellFunction,
   Runtime,
   StartOptions,

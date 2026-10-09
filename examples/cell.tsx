@@ -637,7 +637,7 @@ cell.on('input', e => search(e.target.value))`}
                   </ol>
                 </div>
                 <pre>
-{`<li data-cell={cell => cell.move('#messages')}>
+{`<li data-cell={{ append: '#messages' }}>
   {ctx.body.message}
 </li>`}
                 </pre>
@@ -679,23 +679,35 @@ cell.on('input', e => search(e.target.value))`}
       ])
     }),
   ),
-  "/fragment": Route.get(Route.html(function*() {
-    return (
-      <div id="server-fragment">
-        <label for="draft">
-          Unsent draft
-        </label>
-        <input
-          id="draft"
-          value=""
-          placeholder="Type something to keep"
-        />
-        <p>
-          Server fragment refreshed at {new Date().toLocaleTimeString()}.
-        </p>
-      </div>
-    )
-  })),
+  "/fragment": Route.get(
+    Route.html(function*() {
+      return (
+        <div
+          id="server-fragment"
+          data-cell={{
+            morph: "#server-fragment",
+            setup: (cell) => {
+              cell.on("input", () => {
+                cell.target.querySelector("p")!.textContent = "Your local draft will survive the next refresh."
+              })
+            },
+          }}
+        >
+          <label for="draft">
+            Unsent draft
+          </label>
+          <input
+            id="draft"
+            value=""
+            placeholder="Type something to keep"
+          />
+          <p>
+            Server fragment refreshed at {new Date().toLocaleTimeString()}.
+          </p>
+        </div>
+      )
+    }),
+  ),
   "/save": Route.post(
     Route.schemaBodyForm({ name: Schema.String }),
     Route.html(function*(ctx) {
@@ -707,75 +719,77 @@ cell.on('input', e => search(e.target.value))`}
     }),
   ),
   "/messages": Route.post(
-    Route.schemaBodyForm({ message: Schema.String }),
+    Route.schemaBodyForm({
+      message: Schema.String,
+    }),
     Route.html(function*(ctx) {
       return (
         <li
-          data-cell={(cell) => {
-            cell.move("#messages")
-          }}
+          data-cell={{ append: "#messages" }}
         >
           {ctx.body.message}
         </li>
       )
     }),
   ),
-  "/build": Route.get(Route.sse(
-    Stream
-      .fromIterable([
-        {
-          event: "datastar-patch-signals",
-          data: JSON.stringify({ signals: { build: { progress: 0, label: "Starting build" } } }),
-        },
-        {
-          event: "datastar-patch-elements",
-          data: Html.text(
-            <ol id="build-log">
-              <li>
-                Build started.
-              </li>
-            </ol>,
-          ),
-        },
-      ])
-      .pipe(
-        Stream.concat(
-          Stream
-            .fromIterable([
-              { progress: 20, label: "Reading source files" },
-              { progress: 40, label: "Compiling modules" },
-              { progress: 60, label: "Bundling assets" },
-              { progress: 80, label: "Checking output" },
-              { progress: 100, label: "Build complete" },
-            ])
-            .pipe(
-              Stream.mapEffect((build) =>
-                Effect.gen(function*() {
-                  yield* Effect.sleep(700)
-                  return [
-                    { event: "datastar-patch-signals", data: JSON.stringify({ signals: { build } }) },
-                    {
-                      event: "datastar-patch-elements",
-                      data: Html.text(
-                        <li
-                          data-cell={(cell) => {
-                            cell.move("#build-log")
-                          }}
-                        >
-                          {build.label}
-                        </li>,
-                      ),
-                    },
-                  ]
-                })
-              ),
-              Stream.flatMap((events) => Stream.fromIterable(events)),
+  "/build": Route.get(
+    Route.sse(
+      Stream
+        .fromIterable([
+          {
+            event: "datastar-patch-signals",
+            data: JSON.stringify({ signals: { build: { progress: 0, label: "Starting build" } } }),
+          },
+          {
+            event: "datastar-patch-elements",
+            data: Html.text(
+              <ol id="build-log">
+                <li>
+                  Build started.
+                </li>
+              </ol>,
             ),
+          },
+        ])
+        .pipe(
+          Stream.concat(
+            Stream
+              .fromIterable([
+                { progress: 20, label: "Reading source files" },
+                { progress: 40, label: "Compiling modules" },
+                { progress: 60, label: "Bundling assets" },
+                { progress: 80, label: "Checking output" },
+                { progress: 100, label: "Build complete" },
+              ])
+              .pipe(
+                Stream.mapEffect((build) =>
+                  Effect.gen(function*() {
+                    yield* Effect.sleep(700)
+                    return [
+                      { event: "datastar-patch-signals", data: JSON.stringify({ signals: { build } }) },
+                      {
+                        event: "datastar-patch-elements",
+                        data: Html.text(
+                          <li
+                            data-cell={{ append: "#build-log" }}
+                          >
+                            {build.label}
+                          </li>,
+                        ),
+                      },
+                    ]
+                  })
+                ),
+                Stream.flatMap((events) => Stream.fromIterable(events)),
+              ),
+          ),
         ),
-      ),
-  )),
+    ),
+  ),
   "/search": Route.get(
-    Route.schemaSearchParams({ q: Schema.optional(Schema.String) }),
+    Route.schemaSearchParams({
+      q: Schema.optional(Schema.String),
+    }),
     Route.html(function*(ctx) {
       const query = ctx.searchParams.q?.trim().toLowerCase() ?? ""
       yield* Effect.sleep(200)
@@ -797,7 +811,7 @@ cell.on('input', e => search(e.target.value))`}
         { title: "A deletion you can undo", description: "Restore a deleted note before its notification expires." },
         {
           title: "Placement in the response",
-          description: "Returned HTML uses cell.move to choose its destination.",
+          description: "Returned HTML declares where to append each message.",
         },
       ]
         .filter((example) => `${example.title} ${example.description}`.toLowerCase().includes(query))

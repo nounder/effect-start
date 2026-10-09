@@ -1,15 +1,14 @@
-import * as Dom from "./Dom.ts"
 import { createExpansion, type Scope } from "./internal/expand.ts"
 import { createLimit } from "./internal/limit.ts"
 import { patchElements } from "./internal/patch.ts"
 import { createRequest } from "./internal/request.ts"
 import { createSignals } from "./internal/signals.ts"
-import type { Cell, Runtime, StartOptions } from "./types.ts"
+import type { Cell, CellDeclaration, CellFunction, Runtime, StartOptions } from "./types.ts"
 
 const runtimes = new WeakMap<Document | Element | ShadowRoot, Runtime>()
 
 /**
- * Observe data-cell functions. Imports are inert; call start after the DOM exists.
+ * Initialize and observe data-cell behavior on the DOM.
  */
 export const start = (root: Document | Element | ShadowRoot = document, options: StartOptions = {}): Runtime => {
   if (runtimes.has(root)) return runtimes.get(root)!
@@ -54,7 +53,7 @@ export const start = (root: Document | Element | ShadowRoot = document, options:
   }
 
   const setup = (target: Element) => {
-    if (stopped) return
+    if (stopped || !root.contains(target)) return
     const source = target.getAttribute("data-cell")
     if (mounted.get(target)?.source === source) return
     dispose(target)
@@ -96,32 +95,6 @@ export const start = (root: Document | Element | ShadowRoot = document, options:
         return scope?.index
       },
       abortSignal: controller.signal,
-      move(destination, position = "append") {
-        if (controller.signal.aborted) return
-        const parent = typeof destination === "string" ? document.querySelector(destination) : destination
-        if (!(parent instanceof window.Element)) throw new TypeError(`Cell move destination not found: ${destination}`)
-        if (parent === target) return
-        if (position === "replace") parent.replaceWith(target)
-        else parent[position](target)
-      },
-      morph(destination, mode = "outer") {
-        if (controller.signal.aborted) return
-        const receiver = typeof destination === "string" ? document.querySelector(destination) : destination
-        if (!(receiver instanceof window.Element)) {
-          throw new TypeError(`Cell morph destination not found: ${destination}`)
-        }
-        if (receiver === target) return
-        const content = target.cloneNode(true) as Element
-        content.removeAttribute("data-cell")
-        if (mode === "outer") {
-          if (receiver.hasAttribute("data-cell")) content.setAttribute("data-cell", receiver.getAttribute("data-cell")!)
-          Dom.morph(receiver, content)
-        } else {
-          const children = document.createDocumentFragment()
-          children.append(...content.childNodes)
-          Dom.morph(receiver, children, "inner")
-        }
-      },
       on<E extends Event>(
         name: string,
         handler: (event: E) => unknown,
@@ -172,36 +145,21 @@ export const start = (root: Document | Element | ShadowRoot = document, options:
         })
         return stopExpansion
       },
-      request: createRequest(target, controller.signal, signals, applyPatch),
+      request: createRequest(target, controller.signal, signals, (html) => patchElements(document, html)),
     }
     try {
-      const run = window.Function(`"use strict"; return (${source}\n)`)()
-      if (typeof run !== "function") throw new TypeError("data-cell must evaluate to a function")
-      const cleanup = run(cell)
-      if (typeof cleanup === "function") own(cleanup)
-      else if (cleanup && typeof cleanup.then === "function") {
-        cleanup.catch((error: unknown) => report(error, target))
-        throw new TypeError("data-cell setup must be synchronous; use async event handlers")
-      }
+      const declaration = window.Function(`"use strict"; return (${source}\n)`)() as CellFunction | CellDeclaration
+      const cleanup = (typeof declaration === "function" ? declaration : declaration.setup)?.(cell)
+      if (cleanup) own(cleanup)
     } catch (error) {
       dispose(target)
       report(error, target)
     }
   }
 
-  const applyPatch = (html: string) =>
-    patchElements(document, html, (element) => {
-      setup(element)
-      if (!root.contains(element)) dispose(element)
-    })
-
-  const mount = (target: Element) => {
-    if (root.contains(target)) setup(target)
-  }
-
   const scan = (node: Node) => {
-    if (node.nodeType === 1 && (node as Element).hasAttribute("data-cell")) mount(node as Element)
-    for (const target of (node as ParentNode).querySelectorAll?.("[data-cell]") ?? []) mount(target)
+    if (node.nodeType === 1 && (node as Element).hasAttribute("data-cell")) setup(node as Element)
+    for (const target of (node as ParentNode).querySelectorAll?.("[data-cell]") ?? []) setup(target)
   }
 
   const observer = new window.MutationObserver((records) => {
@@ -210,7 +168,7 @@ export const start = (root: Document | Element | ShadowRoot = document, options:
       if (!root.contains(target)) dispose(target)
     }
     for (const record of records) {
-      if (record.type === "attributes") mount(record.target as Element)
+      if (record.type === "attributes") setup(record.target as Element)
       else for (const node of record.addedNodes) scan(node)
     }
     for (const entry of expansions) {

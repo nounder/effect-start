@@ -55,90 +55,96 @@ test.afterEach(() => {
     .toEqual([])
 })
 
-test.it.each([false, true])("moves multiple incoming roots in order and mounts each once, SSE=%s", async (sse) => {
-  const source = `cell => {
-    cell.move('#messages')
+test.it.each([false, true])(
+  "appends response roots in order and initializes each once on the DOM, SSE=%s",
+  async (sse) => {
+    const source = `{ append: "#messages", setup: cell => {
+    if (!cell.target.isConnected) throw new Error("Detached setup")
     cell.signals.mounts = (cell.signals.mounts ?? 0) + 1
     cell.on('click', () => { cell.signals.clicks = (cell.signals.clicks ?? 0) + 1 })
     return () => { cell.signals.cleanups = (cell.signals.cleanups ?? 0) + 1 }
-  }`
-  await respond(fragment("li", source, "Second") + fragment("li", source, "Third"), sse)
-  const list = dom.window.document.getElementById("messages")!
-  const second = list.children[1] as HTMLElement
-  second.click()
+  } }`
+    await respond(fragment("li", source, "Second") + fragment("li", source, "Third"), sse)
+    const list = dom.window.document.getElementById("messages")!
+    const second = list.children[1] as HTMLElement
+    second.click()
 
-  test
-    .expect(Array.from(list.children, (child) => child.textContent))
-    .toEqual(["First", "Second", "Third"])
-  test
-    .expect(runtime.signals.mounts)
-    .toBe(2)
-  test
-    .expect(runtime.signals.clicks)
-    .toBe(1)
-
-  list.prepend(second)
-  await tick()
-
-  test
-    .expect(runtime.signals.mounts)
-    .toBe(2)
-  test
-    .expect(runtime.signals.cleanups)
-    .toBeUndefined()
-
-  second.remove()
-  await tick()
-  second.click()
-
-  test
-    .expect(runtime.signals.cleanups)
-    .toBe(1)
-  test
-    .expect(runtime.signals.clicks)
-    .toBe(1)
-})
-
-test.it.each(["append", "prepend", "before", "after", "replace"])("move supports %s", async (position) => {
-  const document = dom.window.document
-  const original = document.getElementById("anchor")!
-  await respond(fragment("p", `cell => cell.move('#anchor', '${position}')`, "Incoming", "id=\"incoming\""))
-  const incoming = document.getElementById("incoming")!
-
-  test
-    .expect(incoming)
-    .not
-    .toBeNull()
-
-  if (position === "append") {
     test
-      .expect(original.lastChild)
-      .toBe(incoming)
-  } else if (position === "prepend") {
+      .expect(Array.from(list.children, (child) => child.textContent))
+      .toEqual(["First", "Second", "Third"])
     test
-      .expect(original.firstChild)
-      .toBe(incoming)
-  } else if (position === "before") {
+      .expect(runtime.signals.mounts)
+      .toBe(2)
     test
-      .expect(incoming.nextSibling)
-      .toBe(original)
-  } else if (position === "after") {
-    test
-      .expect(incoming.previousSibling)
-      .toBe(original)
-  } else {test
-      .expect(document.getElementById("anchor"))
-      .toBeNull()}
-})
+      .expect(runtime.signals.clicks)
+      .toBe(1)
 
-test.it("move accepts an element and preserves live listeners and cell lifetime", async () => {
+    list.prepend(second)
+    await tick()
+
+    test
+      .expect(runtime.signals.mounts)
+      .toBe(2)
+    test
+      .expect(runtime.signals.cleanups)
+      .toBeUndefined()
+
+    second.remove()
+    await tick()
+    second.click()
+
+    test
+      .expect(runtime.signals.cleanups)
+      .toBe(1)
+    test
+      .expect(runtime.signals.clicks)
+      .toBe(1)
+  },
+)
+
+test.it.each(["append", "prepend", "before", "after", "replace"])(
+  "placement supports %s without setup",
+  async (position) => {
+    const document = dom.window.document
+    const original = document.getElementById("anchor")!
+    await respond(fragment("p", `{ ${position}: "#anchor" }`, "Incoming", "id=\"incoming\""))
+    const incoming = document.getElementById("incoming")!
+
+    test
+      .expect(incoming)
+      .not
+      .toBeNull()
+
+    if (position === "append") {
+      test
+        .expect(original.lastChild)
+        .toBe(incoming)
+    } else if (position === "prepend") {
+      test
+        .expect(original.firstChild)
+        .toBe(incoming)
+    } else if (position === "before") {
+      test
+        .expect(incoming.nextSibling)
+        .toBe(original)
+    } else if (position === "after") {
+      test
+        .expect(incoming.previousSibling)
+        .toBe(original)
+    } else {test
+        .expect(document.getElementById("anchor"))
+        .toBeNull()}
+  },
+)
+
+test.it("native moves preserve live listeners and cell lifetime", async () => {
   const target = cell.target
   const destination = dom.window.document.getElementById("anchor")!
   let clicks = 0
   cell.on("click", () => {
     clicks++
   })
-  cell.move(destination, "prepend")
+  destination.prepend(target)
   await tick()
   ;(target as HTMLElement).click()
 
@@ -153,15 +159,14 @@ test.it("move accepts an element and preserves live listeners and cell lifetime"
     .toBe(1)
 })
 
-test.it("a moved cell and its descendants can react and make subsequent requests", async () => {
+test.it("an appended cell and its descendants can react and make subsequent requests", async () => {
   const child = fragment("span", "cell => cell.effect(() => { cell.target.textContent = cell.signals.count ?? 0 })")
   await respond(fragment(
     "li",
-    `cell => {
-    cell.move('#messages')
+    `{ append: "#messages", setup: cell => {
     cell.target.cell = cell
     cell.effect(() => { cell.target.title = String(cell.signals.count ?? 0) })
-  }`,
+  } }`,
     child,
   ))
   runtime.signals.count = 5
@@ -178,84 +183,124 @@ test.it("a moved cell and its descendants can react and make subsequent requests
     .toBe("5")
 })
 
-test.it.each(["outer", "inner"])("morph %s is one-shot and preserves the destination's cell", async (mode) => {
-  const document = dom.window.document
-  const destination = document.getElementById("anchor")!
-  destination.className = "old"
-  destination.innerHTML = "<input id=\"draft\" value=\"initial\"><b>Old</b>"
-  destination.setAttribute(
-    "data-cell",
-    `cell => {
-    cell.signals.destinationMounts = (cell.signals.destinationMounts ?? 0) + 1
-    cell.on('click', () => { cell.signals.clicked = true })
-    return () => { cell.signals.destinationDisposed = true }
+test.it.each(["morph", "morphChildren"])(
+  "%s initializes final root behavior and preserves unchanged nested cells",
+  async (operation) => {
+    const document = dom.window.document
+    const destination = document.getElementById("anchor")!
+    const child = fragment(
+      "span",
+      `cell => {
+    cell.signals.childMounts = (cell.signals.childMounts ?? 0) + 1
+    return () => { cell.signals.childDisposed = true }
   }`,
-  )
-  await tick()
-  const input = document.getElementById("draft") as HTMLInputElement
-  input.value = "typed"
-  const source = `cell => {
-    cell.signals.instructions = (cell.signals.instructions ?? 0) + 1
-    cell.morph('#anchor', '${mode}')
-    return () => { cell.signals.instructionCleanups = (cell.signals.instructionCleanups ?? 0) + 1 }
-  }`
-  const html = fragment(
-    "div",
-    source,
-    "<input id=\"draft\" value=\"initial\"><b>New</b>" +
-      fragment("span", "cell => { cell.signals.childMounts = (cell.signals.childMounts ?? 0) + 1 }", "Child"),
-    "id=\"anchor\" class=\"new\"",
-  )
-  await respond(html)
-  await respond(html)
-  ;(destination as HTMLElement).click()
+      "Child",
+      "id=\"child\"",
+    )
+    destination.className = "old"
+    destination.innerHTML = "<input id=\"draft\" value=\"initial\">" + child
+    destination.setAttribute(
+      "data-cell",
+      `cell => {
+    cell.signals.oldMounts = (cell.signals.oldMounts ?? 0) + 1
+    cell.on('click', () => { cell.signals.oldClicked = true })
+    return () => { cell.signals.oldDisposed = true }
+  }`,
+    )
+    await tick()
+    const input = document.getElementById("draft") as HTMLInputElement
+    const originalChild = document.getElementById("child")!
+    input.value = "typed"
+    const source = `{ ${operation}: "#anchor", setup: cell => {
+    if (!cell.target.isConnected) throw new Error("Detached setup")
+    if (!cell.signals.oldDisposed) throw new Error("Previous setup is still active")
+    const input = cell.target.querySelector('input')
+    cell.target.cell = cell
+    cell.signals.mounts = (cell.signals.mounts ?? 0) + 1
+    cell.effect(() => { cell.target.title = cell.signals.title ?? 'ready' })
+    cell.on('click', () => { cell.signals.readValue = input.value })
+    return () => { cell.signals.disposed = true }
+  } }`
+    const html = fragment(
+      "div",
+      source,
+      "<input id=\"draft\" value=\"initial\"><b>New</b>" + child,
+      "id=\"anchor\" class=\"new\"",
+    )
+    await respond(html)
+    const owner = (destination as any).cell as Cell
+    await respond(html)
+    ;(destination as HTMLElement).click()
+    runtime.signals.title = "updated"
+    await tick()
 
-  test
-    .expect(document.getElementById("anchor"))
-    .toBe(destination)
-  test
-    .expect(destination.className)
-    .toBe(mode === "outer" ? "new" : "old")
-  test
-    .expect(destination.querySelector("b")!.textContent)
-    .toBe("New")
-  test
-    .expect(runtime.signals.childMounts)
-    .toBe(1)
-  test
-    .expect(document.getElementById("draft"))
-    .toBe(input)
-  test
-    .expect(input.value)
-    .toBe("typed")
-  test
-    .expect(runtime.signals.instructions)
-    .toBe(2)
-  test
-    .expect(runtime.signals.instructionCleanups)
-    .toBe(2)
-  test
-    .expect(runtime.signals.destinationMounts)
-    .toBe(1)
-  test
-    .expect(runtime.signals.destinationDisposed)
-    .toBeUndefined()
-  test
-    .expect(runtime.signals.clicked)
-    .toBe(true)
-})
+    test
+      .expect(document.getElementById("anchor"))
+      .toBe(destination)
+    test
+      .expect(destination.className)
+      .toBe(operation === "morph" ? "new" : "old")
+    test
+      .expect(destination.querySelector("b")!.textContent)
+      .toBe("New")
+    test
+      .expect(document.getElementById("draft"))
+      .toBe(input)
+    test
+      .expect(document.getElementById("child"))
+      .toBe(originalChild)
+    test
+      .expect(runtime.signals.readValue)
+      .toBe("typed")
+    test
+      .expect(runtime.signals.mounts)
+      .toBe(1)
+    test
+      .expect(runtime.signals.childMounts)
+      .toBe(1)
+    test
+      .expect(runtime.signals.childDisposed)
+      .toBeUndefined()
+    test
+      .expect(runtime.signals.oldClicked)
+      .toBeUndefined()
+    test
+      .expect(runtime.signals.disposed)
+      .toBeUndefined()
+    test
+      .expect(owner.target)
+      .toBe(destination)
+    test
+      .expect(owner.abortSignal.aborted)
+      .toBe(false)
+    test
+      .expect(destination.title)
+      .toBe("updated")
+  },
+)
 
-test.it("outer morph can change the tag and mounts new child cells once", async () => {
+test.it("explicit outer morph can change the tag and initializes root and child behavior once", async () => {
   const source = "cell => { cell.signals.childMounts = (cell.signals.childMounts ?? 0) + 1 }"
-  await respond(fragment("section", "cell => cell.morph('#anchor')", fragment("p", source, "Child"), "id=\"anchor\""))
+  await respond(fragment(
+    "section",
+    `{ morph: "#anchor", setup: cell => {
+    cell.target.cell = cell
+    cell.signals.rootMounts = (cell.signals.rootMounts ?? 0) + 1
+  } }`,
+    fragment("p", source, "Child"),
+    "id=\"anchor\"",
+  ))
   const destination = dom.window.document.getElementById("anchor")!
 
   test
     .expect(destination.tagName)
     .toBe("SECTION")
   test
-    .expect(destination.hasAttribute("data-cell"))
-    .toBe(false)
+    .expect((destination as any).cell.target)
+    .toBe(destination)
+  test
+    .expect(runtime.signals.rootMounts)
+    .toBe(1)
   test
     .expect(runtime.signals.childMounts)
     .toBe(1)
@@ -300,116 +345,63 @@ test.it("ordinary roots morph by ID and preserve nested cell setup", async () =>
     .toBe(target)
 })
 
-test.it("incoming roots have stable detached targets and listeners and effects work before moving", async () => {
-  await respond(fragment(
-    "li",
-    `cell => {
-    const target = cell.target
-    window.incomingCell = cell
-    window.detachedBeforeMove = !target.isConnected
-    cell.on('click', () => { cell.signals.clicks = (cell.signals.clicks ?? 0) + 1 })
-    cell.effect(() => { target.title = String(cell.signals.count ?? 7) })
-    target.click()
-    window.effectBeforeMove = target.title
-    cell.move('#messages')
-    window.sameTarget = cell.target === target
-    return () => { cell.signals.disposed = true }
-  }`,
-    "Message",
-  ))
-  const target = dom.window.document.querySelector("#messages li:last-child") as HTMLLIElement
-  const incoming = (dom.window as any).incomingCell as Cell
-
-  test
-    .expect((dom.window as any).detachedBeforeMove)
-    .toBe(true)
-  test
-    .expect((dom.window as any).effectBeforeMove)
-    .toBe("7")
-  test
-    .expect((dom.window as any).sameTarget)
-    .toBe(true)
-  test
-    .expect(incoming.target)
-    .toBe(target)
-  test
-    .expect(runtime.signals.clicks)
-    .toBe(1)
-
-  runtime.signals.count = 9
-  await tick()
-
-  test
-    .expect(target.title)
-    .toBe("9")
-
-  target.remove()
-  await tick()
-
-  test
-    .expect(incoming.abortSignal.aborted)
-    .toBe(true)
-  test
-    .expect(runtime.signals.disposed)
-    .toBe(true)
-})
-
-test.it.each([false, true])("unplaced roots never fall back to ID morphing and are disposed, SSE=%s", async (sse) => {
-  const anchor = dom.window.document.getElementById("anchor")!
-  const source = `cell => {
-    window.incomingCell = cell
-    window.detached = !cell.target.isConnected
+test.it.each([false, true])(
+  "function roots morph by ID and initialize only once on the final element, SSE=%s",
+  async (sse) => {
+    const anchor = dom.window.document.getElementById("anchor")!
+    const source = `cell => {
+    if (!cell.target.isConnected) throw new Error("Detached setup")
+    cell.target.cell = cell
     cell.signals.setups = (cell.signals.setups ?? 0) + 1
-    cell.on('click', () => { cell.signals.clicked = true })
     cell.effect(() => {
-      cell.target.title = 'effect ran'
-      return () => { cell.signals.effectCleanups = (cell.signals.effectCleanups ?? 0) + 1 }
+      cell.target.title = cell.signals.title ?? 'ready'
+      window.effects = (window.effects ?? 0) + 1
     })
-    cell.limit(() => { cell.signals.late = true }, { debounce: 0 })()
-    return () => { cell.signals.cleanups = (cell.signals.cleanups ?? 0) + 1 }
+    cell.on('click', () => { cell.signals.clicked = true })
   }`
-  await respond(fragment("div", source, "Unplaced", "id=\"anchor\""), sse)
-  await respond(fragment("div", source, "Unplaced", "id=\"anchor\""), sse)
-  const incoming = (dom.window as any).incomingCell as Cell<HTMLElement>
-  incoming.target.click()
+    await respond(fragment("div", source, "Updated", "id=\"anchor\""), sse)
+    await respond(fragment("div", source, "Again", "id=\"anchor\""), sse)
+    ;(anchor as HTMLElement).click()
+
+    test
+      .expect(dom.window.document.getElementById("anchor"))
+      .toBe(anchor)
+    test
+      .expect(anchor.textContent)
+      .toBe("Again")
+    test
+      .expect(runtime.signals.setups)
+      .toBe(1)
+    test
+      .expect((dom.window as any).effects)
+      .toBe(1)
+    test
+      .expect(runtime.signals.clicked)
+      .toBe(true)
+    test
+      .expect((anchor as any).cell.target)
+      .toBe(anchor)
+  },
+)
+
+test.it("unmatched response roots never execute setup or start work", async () => {
+  const source = `cell => {
+    cell.signals.executed = true
+    cell.request('/background')
+  }`
+  await respond(fragment("div", source, "Ignored", "id=\"missing\""))
+  await respond(fragment("div", `{ setup: ${source} }`, "Ignored"))
 
   test
-    .expect((dom.window as any).detached)
-    .toBe(true)
+    .expect(runtime.signals.executed)
+    .toBeUndefined()
   test
-    .expect(dom.window.document.getElementById("anchor"))
-    .toBe(anchor)
-  test
-    .expect(anchor.textContent)
-    .toBe("Anchor")
-  test
-    .expect(incoming.target)
+    .expect(dom.window.document.body.textContent)
     .not
-    .toBe(anchor)
-  test
-    .expect(incoming.target.title)
-    .toBe("effect ran")
-  test
-    .expect(incoming.abortSignal.aborted)
-    .toBe(true)
-  test
-    .expect(runtime.signals.setups)
-    .toBe(2)
-  test
-    .expect(runtime.signals.cleanups)
-    .toBe(2)
-  test
-    .expect(runtime.signals.effectCleanups)
-    .toBe(2)
-  test
-    .expect(runtime.signals.clicked)
-    .toBeUndefined()
-  test
-    .expect(runtime.signals.late)
-    .toBeUndefined()
+    .toContain("Ignored")
 })
 
-test.it("incoming templates can expand before moving, and dispose their rows on removal", async () => {
+test.it("incoming templates expand after placement and dispose their rows on removal", async () => {
   runtime.signals.items = ["One", "Two"]
   const row = fragment(
     "li",
@@ -420,10 +412,9 @@ test.it("incoming templates can expand before moving, and dispose their rows on 
   )
   await respond(fragment(
     "template",
-    `cell => {
+    `{ append: "#messages", setup: cell => {
     cell.expand(() => cell.signals.items)
-    cell.move('#messages')
-  }`,
+  } }`,
     row,
   ))
   const list = dom.window.document.getElementById("messages")!
@@ -446,7 +437,7 @@ test.it("incoming templates can expand before moving, and dispose their rows on 
 test.it("mixed response roots are applied in order", async () => {
   await respond(
     "<div id=\"anchor\"><ol id=\"new-messages\"></ol></div>" +
-      fragment("li", "cell => cell.move('#new-messages')", "New message"),
+      fragment("li", "{ append: \"#new-messages\" }", "New message"),
   )
 
   test
@@ -454,87 +445,198 @@ test.it("mixed response roots are applied in order", async () => {
     .toBe("New message")
 })
 
-test.it("unplaced incoming cells abort requests started during setup", async () => {
-  let signal: AbortSignal | undefined
-  const html = fragment(
-    "div",
-    `cell => {
-    window.background = cell.request('/background')
-  }`,
-  )
-  dom.window.fetch = (async (url, options) => {
-    if (String(url).endsWith("/patch")) return new Response(html, { headers: { "Content-Type": "text/html" } })
-    signal = options!.signal!
-    return new Promise<Response>((_, reject) => {
-      signal!.addEventListener("abort", () => reject(new Error("cancelled")), { once: true })
-    })
-  }) as typeof fetch
-  await cell.request("/patch")
-  await (dom.window as any).background
+test.it("morphChildren without setup preserves the destination wrapper and its behavior", async () => {
+  const target = dom.window.document.getElementById("anchor")!
+  const source = `cell => {
+    cell.signals.mounts = (cell.signals.mounts ?? 0) + 1
+    cell.on('click', () => { cell.signals.clicked = true })
+  }`
+  target.setAttribute("data-cell", source)
+  await tick()
+  await respond(fragment("section", "{ morphChildren: \"#anchor\" }", "<b>New</b>"))
+  ;(target as HTMLElement).click()
 
   test
-    .expect(signal?.aborted)
+    .expect(target.tagName)
+    .toBe("DIV")
+  test
+    .expect(target.innerHTML)
+    .toBe("<b>New</b>")
+  test
+    .expect(target.getAttribute("data-cell"))
+    .toBe(source)
+  test
+    .expect(runtime.signals.mounts)
+    .toBe(1)
+  test
+    .expect(runtime.signals.clicked)
     .toBe(true)
 })
 
-test.it("one-shot morph effects run immediately and are cleaned up with the detached wrapper", async () => {
-  const document = dom.window.document
-  const destination = document.getElementById("anchor")!
-  runtime.signals.title = "Before"
-  await respond(fragment(
-    "div",
-    `cell => {
-    const target = cell.target
-    window.instructionCell = cell
-    cell.effect(() => {
-      target.title = cell.signals.title
-      return () => { cell.signals.effectCleanups = (cell.signals.effectCleanups ?? 0) + 1 }
-    })
-    cell.morph('#anchor')
-    window.sameInstructionTarget = cell.target === target && !target.isConnected
-  }`,
-    "Updated",
-    "id=\"anchor\"",
-  ))
-  runtime.signals.title = "After"
+test.it("replace disposes the previous cell and initializes a new element even with identical setup", async () => {
+  const source = `{ replace: "#anchor", setup: cell => {
+    cell.signals.mounts = (cell.signals.mounts ?? 0) + 1
+    cell.target.cell = cell
+    return () => { cell.signals.cleanups = (cell.signals.cleanups ?? 0) + 1 }
+  } }`
+  const target = dom.window.document.getElementById("anchor")!
+  target.setAttribute("data-cell", source)
   await tick()
-  const instruction = (dom.window as any).instructionCell as Cell
+  const previous = (target as any).cell as Cell
+  await respond(fragment("div", source, "New", "id=\"anchor\""))
+  const next = dom.window.document.getElementById("anchor")!
 
   test
-    .expect(document.getElementById("anchor"))
-    .toBe(destination)
+    .expect(next)
+    .not
+    .toBe(target)
   test
-    .expect(destination.title)
-    .toBe("Before")
-  test
-    .expect((dom.window as any).sameInstructionTarget)
+    .expect(previous.abortSignal.aborted)
     .toBe(true)
   test
-    .expect(instruction.abortSignal.aborted)
-    .toBe(true)
+    .expect((next as any).cell.abortSignal.aborted)
+    .toBe(false)
   test
-    .expect(runtime.signals.effectCleanups)
+    .expect(runtime.signals.mounts)
+    .toBe(2)
+  test
+    .expect(runtime.signals.cleanups)
     .toBe(1)
 })
 
-test.it("missing destinations report an error and dispose detached setup", async () => {
-  await respond(fragment(
-    "li",
-    `cell => {
-    cell.abortSignal.addEventListener('abort', () => { cell.signals.disposed = true })
-    cell.move('#missing')
-  }`,
-    "Lost",
-  ))
+test.it("root and nested cells follow the same setup-change and attribute-removal lifecycle", async () => {
+  const source = `cell => {
+    cell.signals.mounts = (cell.signals.mounts ?? 0) + 1
+    cell.on('click', () => { cell.signals.clicks = (cell.signals.clicks ?? 0) + 1 })
+    return () => { cell.signals.cleanups = (cell.signals.cleanups ?? 0) + 1 }
+  }`
+  const first = fragment("div", source, fragment("button", source, "Child", "id=\"child\""), "id=\"anchor\"")
+  await respond(first)
+  await respond(first)
 
   test
-    .expect(String(errors.shift()))
-    .toContain("Cell move destination not found")
+    .expect(runtime.signals.mounts)
+    .toBe(2)
   test
-    .expect(runtime.signals.disposed)
+    .expect(runtime.signals.cleanups)
+    .toBeUndefined()
+
+  await respond(
+    fragment("div", source + " ", fragment("button", source + " ", "Child", "id=\"child\""), "id=\"anchor\""),
+  )
+
+  test
+    .expect(runtime.signals.mounts)
+    .toBe(4)
+  test
+    .expect(runtime.signals.cleanups)
+    .toBe(2)
+
+  await respond("<div id=\"anchor\"><button id=\"child\">Child</button></div>")
+  ;(dom.window.document.getElementById("child") as HTMLElement).click()
+
+  test
+    .expect(runtime.signals.cleanups)
+    .toBe(4)
+  test
+    .expect(runtime.signals.clicks)
+    .toBeUndefined()
+})
+
+test.it("nested declarations initialize in place without replaying response placement", async () => {
+  await respond(
+    "<div id=\"anchor\">" + fragment(
+      "button",
+      `{ append: "#messages", setup: cell => {
+    cell.signals.parent = cell.target.parentElement.id
+  } }`,
+      "Child",
+    ) + "</div>",
+  )
+
+  test
+    .expect(runtime.signals.parent)
+    .toBe("anchor")
+  test
+    .expect(dom.window.document.querySelector("#anchor button")!.textContent)
+    .toBe("Child")
+  test
+    .expect(dom.window.document.getElementById("messages")!.textContent)
+    .toBe("First")
+})
+
+test.it("a full-document SSE morph preserves its unchanged connection-owning cell", async () => {
+  const document = dom.window.document
+  let stream!: ReadableStreamDefaultController<Uint8Array>
+  let signal: AbortSignal | undefined
+  let requests = 0
+  dom.window.fetch = (async (_url, options) => {
+    requests++
+    signal = options!.signal!
+    return new Response(
+      new ReadableStream({
+        start(controller) {
+          stream = controller
+        },
+      }),
+      {
+        headers: { "Content-Type": "text/event-stream" },
+      },
+    )
+  }) as typeof fetch
+  const owner = document.createElement("div")
+  owner.id = "connection"
+  owner.setAttribute(
+    "data-cell",
+    `cell => {
+    cell.signals.connections = (cell.signals.connections ?? 0) + 1
+    cell.target.cell = cell
+    window.connection = cell.request('/events')
+  }`,
+  )
+  document.body.append(owner)
+  await tick()
+  const connection = (owner as any).cell as Cell
+  const html = document.documentElement.outerHTML.replace(
+    "<div id=\"anchor\">Anchor</div>",
+    "<div id=\"anchor\">Updated</div>",
+  )
+  stream.enqueue(new TextEncoder().encode(
+    `event: datastar-patch-elements\n${html.split("\n").map((line) => `data: ${line}`).join("\n")}\n\n`,
+  ))
+  await tick()
+  stream.enqueue(
+    new TextEncoder().encode("event: datastar-patch-signals\ndata: {\"signals\":{\"continued\":true}}\n\n"),
+  )
+  await tick()
+
+  test
+    .expect(document.getElementById("connection"))
+    .toBe(owner)
+  test
+    .expect(document.getElementById("anchor")!.textContent)
+    .toBe("Updated")
+  test
+    .expect(runtime.signals.connections)
+    .toBe(1)
+  test
+    .expect(runtime.signals.continued)
     .toBe(true)
   test
-    .expect(dom.window.document.body.textContent)
-    .not
-    .toContain("Lost")
+    .expect(requests)
+    .toBe(1)
+  test
+    .expect(signal!.aborted)
+    .toBe(false)
+  test
+    .expect(connection.abortSignal.aborted)
+    .toBe(false)
+
+  owner.remove()
+  await tick()
+  await (dom.window as any).connection
+
+  test
+    .expect(signal!.aborted)
+    .toBe(true)
 })

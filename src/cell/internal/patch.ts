@@ -1,6 +1,7 @@
 import * as Dom from "../Dom.ts"
+import type { CellDeclaration, CellFunction } from "../types.ts"
 
-export const patchElements = (document: Document, html: string, setup?: (element: Element) => void) => {
+export const patchElements = (document: Document, html: string) => {
   const documentMarkup = html.replace(/<svg(\s[^>]*>|>)[\s\S]*?<\/svg>/gi, "")
   const hasHtml = /<\/html\s*>/i.test(documentMarkup)
   const hasHead = /<\/head\s*>/i.test(documentMarkup)
@@ -20,8 +21,23 @@ export const patchElements = (document: Document, html: string, setup?: (element
   }
 
   for (const element of Array.from(content.children)) {
-    if (setup && element.hasAttribute("data-cell")) {
-      setup(document.adoptNode(element))
+    const source = element.getAttribute("data-cell")
+    const value = source === null
+      ? {}
+      : document.defaultView!.Function(`"use strict"; return (${source}\n)`)() as CellFunction | CellDeclaration
+    const declaration = typeof value === "function" ? {} : value
+    const operation = (["append", "prepend", "before", "after", "replace", "morph", "morphChildren"] as const)
+      .find((key) => declaration[key] !== undefined)
+    if (operation) {
+      const target = document.querySelector(declaration[operation]!)!
+      if (operation === "morph") Dom.morph(target, element)
+      else if (operation === "morphChildren") {
+        const children = document.createDocumentFragment()
+        children.append(...element.childNodes)
+        Dom.morph(target, children, "inner")
+        if (declaration.setup !== undefined) target.setAttribute("data-cell", source!)
+      } else if (operation === "replace") target.replaceWith(element)
+      else target[operation](element)
     } else {
       const target = element.localName === "html" ?
         document.documentElement

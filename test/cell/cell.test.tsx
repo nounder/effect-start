@@ -1,7 +1,7 @@
 import * as test from "bun:test"
 import { Html } from "effect-start"
 import { morph, start } from "effect-start/cell"
-import type { Cell, Runtime } from "effect-start/cell"
+import type { Cell, CellDeclaration, Runtime } from "effect-start/cell"
 import type { JSX } from "effect-start/jsx-runtime"
 import { JSDOM } from "jsdom"
 
@@ -66,6 +66,82 @@ test.it("serializes JSX functions and types the cell target and native events", 
       }}
     >
       click
+    </button>,
+  )
+  await tick()
+  dom.window.document.querySelector("button")!.click()
+
+  test
+    .expect(dom.window.document.body.textContent)
+    .toBe("clicked")
+})
+
+test.it("types declarations and initializes their serialized setup on existing DOM", async () => {
+  const props: JSX.IntrinsicElements["button"] = {
+    "data-cell": {
+      append: "#missing",
+      setup: (cell) => {
+        test
+          .expectTypeOf(cell.target)
+          .toEqualTypeOf<HTMLButtonElement>()
+
+        cell.on("click", (event) => {
+          test
+            .expectTypeOf(event)
+            .toEqualTypeOf<HTMLElementEventMap["click"]>()
+        })
+      },
+    },
+  }
+
+  test
+    .expect(props)
+    .toBeDefined()
+  test
+    .expectTypeOf<{ append: string; prepend: string }>()
+    .not
+    .toExtend<CellDeclaration>()
+  test
+    .expectTypeOf<{ morph: string; morphChildren: string }>()
+    .not
+    .toExtend<CellDeclaration>()
+  test
+    .expectTypeOf<{ replace: string; append: string }>()
+    .not
+    .toExtend<CellDeclaration>()
+  test
+    .expectTypeOf<{ setup: string }>()
+    .not
+    .toExtend<CellDeclaration>()
+
+  const inner: JSX.IntrinsicElements["section"] = {
+    "data-cell": {
+      morphChildren: "#form",
+      setup: (cell) => {
+        test
+          .expectTypeOf(cell.target)
+          .toEqualTypeOf<Element>()
+      },
+    },
+  }
+
+  test
+    .expect(inner)
+    .toBeDefined()
+
+  dom.window.document.body.innerHTML = Html.text(
+    <button
+      data-cell={{
+        append: "#missing",
+        setup: (cell) => {
+          if (!cell.target.isConnected) throw new Error("Detached setup")
+          cell.on("click", () => {
+            cell.target.textContent = "clicked"
+          })
+        },
+      }}
+    >
+      Ready
     </button>,
   )
   await tick()
