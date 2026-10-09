@@ -322,6 +322,74 @@ test.describe("Route.json", () => {
       .pipe(Effect.runPromise))
 })
 
+test.describe(Route.requestOrigin, () => {
+  test.it("uses the request URL when no forwarded headers are present", () => {
+    const request = new globalThis.Request("https://example.com/path")
+
+    test
+      .expect(Route.requestOrigin(request))
+      .toBe("https://example.com")
+  })
+
+  test.it("prefers X-Forwarded-Host/Proto over the request URL", () => {
+    const request = new globalThis.Request("http://internal:8080/path", {
+      headers: {
+        "x-forwarded-host": "example.com",
+        "x-forwarded-proto": "https",
+      },
+    })
+
+    test
+      .expect(Route.requestOrigin(request))
+      .toBe("https://example.com")
+  })
+
+  test.it("defaults X-Forwarded-Proto to https when missing", () => {
+    const request = new globalThis.Request("http://internal:8080/path", {
+      headers: { "x-forwarded-host": "example.com" },
+    })
+
+    test
+      .expect(Route.requestOrigin(request))
+      .toBe("https://example.com")
+  })
+
+  test.it("ignores X-Forwarded-Proto when X-Forwarded-Host is absent", () => {
+    const request = new globalThis.Request("http://example.com/path", {
+      headers: { "x-forwarded-proto": "https" },
+    })
+
+    test
+      .expect(Route.requestOrigin(request))
+      .toBe("http://example.com")
+  })
+
+  test.it("Route.Request.origin resolves the origin from context", () =>
+    Effect
+      .gen(function*() {
+        const handler = RouteHttp.toWebHandler(
+          Route.get(
+            Route.text(function*() {
+              return yield* Route.Request.origin
+            }),
+          ),
+        )
+        const client = Fetch.fromHandler(handler)
+
+        const entity = yield* client.get("http://localhost/test", {
+          headers: {
+            "x-forwarded-host": "app.example.com",
+            "x-forwarded-proto": "https",
+          },
+        })
+
+        test
+          .expect(yield* entity.text)
+          .toBe("https://app.example.com")
+      })
+      .pipe(Effect.runPromise))
+})
+
 test.describe(Route.redirect, () => {
   test.it("composes with Route.get", () =>
     Effect

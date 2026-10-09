@@ -147,6 +147,46 @@ test.describe("CsrfProtection", () => {
         .pipe(Effect.runPromise))
   })
 
+  test.describe("behind a reverse proxy", () => {
+    test.it(
+      "matches origin against X-Forwarded-Host/Proto instead of request.url",
+      () =>
+        Effect
+          .gen(function*() {
+            const entity = yield* post(client, {
+              "sec-fetch-site": "same-origin",
+              "origin": "https://app.example.com",
+              "x-forwarded-host": "app.example.com",
+              "x-forwarded-proto": "https",
+            })
+
+            test
+              .expect(entity.status)
+              .toBe(200)
+          })
+          .pipe(Effect.runPromise),
+    )
+
+    test.it(
+      "still blocks when origin doesn't match the forwarded origin",
+      () =>
+        Effect
+          .gen(function*() {
+            const entity = yield* post(client, {
+              "sec-fetch-site": "same-origin",
+              "origin": "http://localhost",
+              "x-forwarded-host": "app.example.com",
+              "x-forwarded-proto": "https",
+            })
+
+            test
+              .expect(entity.status)
+              .toBe(403)
+          })
+          .pipe(Effect.runPromise),
+    )
+  })
+
   test.describe("trusted origins", () => {
     const trusted = makeHandler({
       trustedOrigins: ["https://accounts.google.com"],

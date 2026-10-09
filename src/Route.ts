@@ -440,6 +440,31 @@ export declare const IntrinsicService: unique symbol
 
 export class Request extends Context.Service<Request, globalThis.Request>()("effect-start/Route/Request") {
   declare readonly [IntrinsicService]: never
+
+  /**
+   * The origin the current request was made against, honoring
+   * `X-Forwarded-Host`/`X-Forwarded-Proto` so it reflects the public origin
+   * when the app runs behind a reverse proxy.
+   */
+  static readonly origin: Effect.Effect<string, never, Request> = Effect.map(Request, requestOrigin)
+}
+
+/**
+ * Resolves the origin (scheme + host) a request was made against.
+ *
+ * Reverse proxies terminate TLS and rewrite the host before forwarding to
+ * the app, so `request.url` alone would report the internal origin. This
+ * prefers `X-Forwarded-Host`/`X-Forwarded-Proto` when present, falling back
+ * to the request URL otherwise.
+ */
+export function requestOrigin(request: globalThis.Request): string {
+  const forwardedHost = request.headers.get("x-forwarded-host")
+  if (forwardedHost) {
+    const forwardedProto = request.headers.get("x-forwarded-proto")
+    return `${forwardedProto ?? "https"}://${forwardedHost}`
+  }
+  const url = new URL(request.url)
+  return `${url.protocol}//${url.host}`
 }
 
 /**
