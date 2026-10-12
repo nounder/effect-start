@@ -4,12 +4,15 @@ import type { JSX } from "effect-start/jsx-runtime"
 import * as UI from "../ui.tsx"
 import {
   Button,
+  Command,
+  CommandInput,
+  CommandItem,
+  CommandList,
   Dialog,
   DialogClose,
   DialogHeader,
   DialogTitle,
   Icon,
-  Input,
   Kbd,
   Tabs,
   TabsContent,
@@ -1780,47 +1783,44 @@ export default Route.get(Route.schemaSearchParams({ page: Schema.optional(Schema
           </div>
         </main>
       </div>
-      <Dialog aria-label="Search components" id="component-search" class="p-0 overflow-hidden">
+      <Dialog aria-label="Search components" id="component-search" class="gap-0! overflow-hidden! p-0!">
         <DialogHeader class="sr-only">
           <DialogTitle>
             Search components
           </DialogTitle>
         </DialogHeader>
-        <div class="flex items-center gap-3 border-b px-4 py-2">
-          <Icon name="search" class="size-5 text-muted-foreground" />
-          <Input
+        <Command id="component-search-command" class="relative">
+          <CommandInput
             id="component-search-input"
-            type="search"
             autofocus
             placeholder="Find a component…"
             aria-label="Find a component"
-            class="h-11 border-0 shadow-none focus-visible:ring-0"
+            class="pr-12"
           />
-          <Kbd>
-            esc
-          </Kbd>
-        </div>
-        <div id="search-results" class="max-h-80 overflow-y-auto px-2 pb-2" aria-label="Component results">
-          {gallery.map((component) => (
-            <a
-              href={`#${component.id}`}
-              data-search-result
-              data-search-text={`${component.title} ${component.group} ${component.primitive}`}
-              class="flex items-center justify-between rounded-md px-3 py-2.5 text-sm hover:bg-muted focus:bg-muted"
-            >
-              <span class="flex items-center gap-3">
-                <Icon name="code" class="size-4 text-muted-foreground" />
-                {component.title}
-              </span>
-              <span class="text-[10px] text-muted-foreground">
-                {component.group}
-              </span>
-            </a>
-          ))}
-          <p id="search-empty" hidden class="p-6 text-center text-sm text-muted-foreground">
-            No components found. Try another search.
-          </p>
-        </div>
+          <Kbd class="absolute right-3 top-3">esc</Kbd>
+          <CommandList id="search-results" aria-label="Component results">
+            {gallery.map((component) => (
+              <CommandItem
+                id={`search-${component.id}`}
+                href={`#${component.id}`}
+                data-search-result
+                data-search-text={`${component.title} ${component.group} ${component.primitive}`}
+                class="justify-between"
+              >
+                <span class="flex items-center gap-2">
+                  <Icon name="code" class="size-4 text-muted-foreground" />
+                  {component.title}
+                </span>
+                <span class="text-[10px] text-muted-foreground">
+                  {component.group}
+                </span>
+              </CommandItem>
+            ))}
+            <p id="component-search-empty" hidden class="p-6 text-center text-sm text-muted-foreground">
+              No components found. Try another search.
+            </p>
+          </CommandList>
+        </Command>
       </Dialog>
       <dialog
         id="mobile-navigation"
@@ -1921,10 +1921,6 @@ export default Route.get(Route.schemaSearchParams({ page: Schema.optional(Schema
               if (search.open) search.close()
               else search.showModal()
             }
-            if (search.open && event.key === "ArrowDown" && document.activeElement === searchInput) {
-              event.preventDefault()
-              results.find((result) => !result.hidden)?.focus()
-            }
           })
 
           searchInput.addEventListener("input", () => {
@@ -1934,7 +1930,7 @@ export default Route.get(Route.schemaSearchParams({ page: Schema.optional(Schema
               result.hidden = !result.dataset.searchText!.toLowerCase().includes(query)
               if (!result.hidden) matches++
             }
-            document.getElementById("search-empty")!.hidden = matches > 0
+            document.getElementById("component-search-empty")!.hidden = matches > 0
           })
 
           document.addEventListener("input", (event) => {
