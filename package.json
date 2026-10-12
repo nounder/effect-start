@@ -1,6 +1,6 @@
 {
   "name": "effect-start",
-  "version": "0.51.0",
+  "version": "0.52.0",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -163,7 +163,7 @@
     "build": "rm -rf dist && tsc -p tsconfig.build.json",
     "lint": "oxlint && dprint check",
     "lint-fix": "oxlint --fix && dprint fmt",
-    "test": "bun test ./test/",
+    "test": "bun test --parallel ./test/",
     "bump": "bun scripts/bump",
     "prepublishOnly": "bun run build",
     "deploy": "bunx --bun npm publish --access public"
