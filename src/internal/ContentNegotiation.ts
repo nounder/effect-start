@@ -85,9 +85,7 @@ function parseAccept(accept: string): Array<{
       ? splitMediaTypeParams(match[3])
       : { params: {}, q: 1 }
 
-    if (q > 0) {
-      specs.push({ type, subtype, params, q, o })
-    }
+    specs.push({ type, subtype, params, q, o })
   }
 
   return specs
@@ -208,9 +206,7 @@ function parseAcceptLanguage(
     const suffix = match[2]?.toLowerCase()
     const q = parseQuality(match[3])
 
-    if (q > 0) {
-      specs.push({ prefix, suffix, q, o })
-    }
+    specs.push({ prefix, suffix, q, o })
   }
 
   return specs
@@ -299,9 +295,7 @@ function parseAcceptEncoding(
     if (encoding === "identity") hasIdentity = true
     if (encoding === "*") hasIdentity = true
 
-    if (q > 0) {
-      specs.push({ encoding, q, o })
-    }
+    specs.push({ encoding, q, o })
   }
 
   if (!hasIdentity) {
@@ -370,9 +364,7 @@ function parseAcceptCharset(
     const charset = match[1].toLowerCase()
     const q = parseQuality(match[2])
 
-    if (q > 0) {
-      specs.push({ charset, q, o })
-    }
+    specs.push({ charset, q, o })
   }
 
   return specs
@@ -435,7 +427,10 @@ export function media(
   }
 
   if (!available) {
-    return parsed.sort((a, b) => b.q - a.q || a.o - b.o).map((p) => `${p.type}/${p.subtype}`)
+    return parsed
+      .filter((p) => p.q > 0)
+      .sort((a, b) => b.q - a.q || a.o - b.o)
+      .map((p) => `${p.type}/${p.subtype}`)
   }
 
   const priorities = available.map((t, i) => getMediaTypePriority(t, parsed, i))
@@ -455,6 +450,7 @@ export function language(
 
   if (!available) {
     return parsed
+      .filter((p) => p.q > 0)
       .sort((a, b) => b.q - a.q || a.o - b.o)
       .map((p) => (p.suffix ? `${p.prefix}-${p.suffix}` : p.prefix))
   }
@@ -475,7 +471,10 @@ export function encoding(
   }
 
   if (!available) {
-    return parsed.sort((a, b) => b.q - a.q || a.o - b.o).map((p) => p.encoding)
+    return parsed
+      .filter((p) => p.q > 0)
+      .sort((a, b) => b.q - a.q || a.o - b.o)
+      .map((p) => p.encoding)
   }
 
   const priorities = available.map((e, i) => getEncodingPriority(e, parsed, i))
@@ -494,7 +493,10 @@ export function charset(
   }
 
   if (!available) {
-    return parsed.sort((a, b) => b.q - a.q || a.o - b.o).map((p) => p.charset)
+    return parsed
+      .filter((p) => p.q > 0)
+      .sort((a, b) => b.q - a.q || a.o - b.o)
+      .map((p) => p.charset)
   }
 
   const priorities = available.map((c, i) => getCharsetPriority(c, parsed, i))

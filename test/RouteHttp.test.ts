@@ -577,6 +577,29 @@ test.it("selects html when Accept prefers text/html", () =>
     })
     .pipe(Effect.runPromise))
 
+test.it("selects html when Accept excludes json despite a wildcard", () =>
+  Effect
+    .gen(function*() {
+      const handler = RouteHttp.toWebHandler(
+        Route.get(
+          Route.json({ type: "json" }),
+          Route.html("<div>html</div>"),
+        ),
+      )
+      const client = Fetch.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/data", {
+        headers: { Accept: "application/json;q=0, */*;q=1" },
+      })
+
+      test
+        .expect(entity.headers["content-type"])
+        .toBe("text/html; charset=utf-8")
+      test
+        .expect(yield* entity.text)
+        .toBe("<div>html</div>")
+    })
+    .pipe(Effect.runPromise))
+
 test.it("selects text/plain when Accept prefers it", () =>
   Effect
     .gen(function*() {

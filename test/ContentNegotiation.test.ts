@@ -1,6 +1,48 @@
 import * as test from "bun:test"
 import * as ContentNegotiation from "effect-start/internal/ContentNegotiation"
 
+for (
+  const scenario of [
+    {
+      negotiate: ContentNegotiation.media,
+      accept: "application/json;q=0, */*;q=1",
+      available: ["application/json", "text/HTML"],
+      expected: ["text/HTML"],
+      wildcard: "*/*",
+    },
+    {
+      negotiate: ContentNegotiation.language,
+      accept: "en;q=0, *;q=1",
+      available: ["en", "FR"],
+      expected: ["FR"],
+      wildcard: "*",
+    },
+    {
+      negotiate: ContentNegotiation.encoding,
+      accept: "gzip;q=0, *;q=1",
+      available: ["gzip", "BR"],
+      expected: ["BR"],
+      wildcard: "*",
+    },
+    {
+      negotiate: ContentNegotiation.charset,
+      accept: "utf-8;q=0, *;q=1",
+      available: ["utf-8", "ISO-8859-1"],
+      expected: ["ISO-8859-1"],
+      wildcard: "*",
+    },
+  ]
+) {
+  test.it(`${scenario.negotiate.name} preserves exclusions over wildcards`, () => {
+    test
+      .expect(scenario.negotiate(scenario.accept))
+      .toEqual([scenario.wildcard])
+    test
+      .expect(scenario.negotiate(scenario.accept, scenario.available))
+      .toEqual(scenario.expected)
+  })
+}
+
 test.describe("ContentNegotiation.media", () => {
   test.it("returns empty array when no types provided", () => {
     const result = ContentNegotiation.media("text/html", [])
