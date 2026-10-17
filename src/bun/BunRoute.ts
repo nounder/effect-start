@@ -5,7 +5,7 @@ import * as Option from "effect/Option"
 import * as Result from "effect/Result"
 import * as Entity from "../Entity.ts"
 import * as Html from "../Html.ts"
-import * as PathPattern from "../internal/PathPattern.ts"
+import * as FilePathPattern from "../internal/FilePathPattern.ts"
 import * as Route from "../Route.ts"
 import * as Unique from "../Unique.ts"
 
@@ -308,7 +308,7 @@ export type BunRoutes = Record<string, BunServerRouteHandler>
 export function validateBunPattern(
   pattern: string,
 ): Option.Option<BunRouteError> {
-  const parsed = PathPattern.fromFilePath(pattern)
+  const parsed = FilePathPattern.toPathPattern(pattern)
   if (Result.isFailure(parsed)) {
     return Option.some(
       new BunRouteError({

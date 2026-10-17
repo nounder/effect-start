@@ -1,7 +1,7 @@
 import * as test from "bun:test"
-import * as Effect from "effect/Effect"
 import * as FileRouter from "effect-start/FileRouter"
 import * as FileRouterCodegen from "effect-start/FileRouterCodegen"
+import * as Effect from "effect/Effect"
 
 const getRoutes = (paths: Array<string>) => Effect.runSync(FileRouter.getFileRoutes(paths))
 
@@ -102,7 +102,7 @@ test.describe("generateCode", () => {
 
     test
       .expect(code)
-      .toContain(`  "/docs/:path*": [
+      .toContain(`  "/docs/*": [
     () => import("./docs/[[path]]/route.tsx"),
   ]`)
   })
@@ -119,7 +119,7 @@ test.describe("generateCode", () => {
   ]`)
     test
       .expect(code)
-      .toContain(`  "/:404*": [
+      .toContain(`  "/*": [
     () => import("./[[404]]/route.tsx"),
   ]`)
   })
@@ -283,10 +283,10 @@ const routes = {
   "/": [
     () => import("./route.tsx"),
   ],
-  "/docs/:path*": [
+  "/docs/*": [
     () => import("./docs/[[path]]/route.tsx"),
   ],
-  "/:404*": [
+  "/*": [
     () => import("./[[404]]/route.tsx"),
   ],
 } as const

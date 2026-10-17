@@ -3,9 +3,13 @@ import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Cookies from "effect/http/Cookies"
 import * as HttpEffect from "effect/http/HttpEffect"
+import type * as HttpMethod from "effect/http/HttpMethod"
 import * as HttpMiddleware from "effect/http/HttpMiddleware"
+import * as HttpRouter from "effect/http/HttpRouter"
+import * as HttpServerError from "effect/http/HttpServerError"
 import * as HttpServerRequest from "effect/http/HttpServerRequest"
 import * as HttpServerResponse from "effect/http/HttpServerResponse"
+import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
@@ -13,7 +17,9 @@ import * as Development from "./Development.ts"
 import * as Entity from "./Entity.ts"
 import * as ContentNegotiation from "./internal/ContentNegotiation.ts"
 import type * as Http from "./internal/Http.ts"
+import * as PathPattern from "./internal/PathPattern.ts"
 import type * as RouteBody from "./internal/RouteBody.ts"
+import * as RouteHttpRouter from "./internal/RouteHttpRouter.ts"
 import * as RouteMap from "./internal/RouteMap.ts"
 import type * as RouteMount from "./internal/RouteMount.ts"
 import * as StreamExtra from "./internal/StreamExtra.ts"
@@ -28,10 +34,7 @@ type UnboundedRouteWithMethod = Route.Route.With<{
 type RouteRequirements<Routes> = Routes extends Iterable<infer Item>
   ? Item extends Route.Route<any, any, any, any, infer R> ? Exclude<
       R,
-      | { readonly [Route.IntrinsicService]?: any }
-      | HttpServerRequest.HttpServerRequest
-      | HttpServerRequest.ParsedSearchParams
-      | Scope.Scope
+      RouteMap.Provided
     >
   : never
   : never
@@ -61,15 +64,6 @@ const mediaTypeToFormat = {
   "application/octet-stream": "bytes",
   "text/event-stream": "sse",
 } as const
-
-const getStatusFromCause = (cause: Cause.Cause<unknown>): number => {
-  for (const reason of cause.reasons) {
-    if (!Cause.isFailReason(reason)) continue
-    const error = reason.error as { _tag?: string }
-    if (error._tag === "ParseError" || error._tag === "RequestBodyError" || error._tag === "SchemaError") return 400
-  }
-  return 500
-}
 
 const errorResponse = (status: number, message: string, headers?: Record<string, string>) =>
   HttpServerResponse.text(JSON.stringify({ status, message }, null, 2), {
@@ -214,7 +208,8 @@ const selectedFormat = (accept: string | undefined, plan: MethodPlan): RouteBody
 export const handler = <R>(routes: Iterable<UnboundedRouteWithMethod>): Effect.Effect<
   HttpServerResponse.HttpServerResponse,
   never,
-  HttpServerRequest.HttpServerRequest | Exclude<R, Route.Request | HttpServerRequest.ParsedSearchParams>
+  | HttpServerRequest.HttpServerRequest
+  | Exclude<R, Route.Request | HttpServerRequest.ParsedSearchParams | HttpRouter.RouteContext>
 > => {
   const allRoutes = Array.from(routes)
   const methods = new Set<string>()
@@ -222,12 +217,25 @@ export const handler = <R>(routes: Iterable<UnboundedRouteWithMethod>): Effect.E
     const method = Route.descriptor(route).method?.toUpperCase()
     if (method && method !== "*") methods.add(method)
   }
+  const hasExplicitHead = methods.has("HEAD")
   if (methods.has("GET")) methods.add("HEAD")
   const allow = Array.from(methods).join(", ")
+  const path = allRoutes.length === 0
+    ? undefined
+    : Route.descriptor<{ path?: PathPattern.PathPattern }>(allRoutes[0]).path
+  const matchedRoutes = new Map<string, HttpRouter.Route<unknown, unknown>>()
 
-  return Effect
+  const app: Effect.Effect<
+    HttpServerResponse.HttpServerResponse,
+    never,
+    | HttpServerRequest.HttpServerRequest
+    | Exclude<R, Route.Request | HttpServerRequest.ParsedSearchParams | HttpRouter.RouteContext>
+  > = Effect
     .gen(function*() {
       const request = yield* HttpServerRequest.HttpServerRequest
+      const url = new URL(request.url, "http://localhost")
+      const params = path === undefined ? {} : PathPattern.match(path, url.pathname)
+      if (params === null) return errorResponse(404, "route not found")
       const method = request.method.toUpperCase()
       const isUpgrade = method === "GET" && (request.headers.upgrade ?? "").toLowerCase() === "websocket"
       const plan = makeMethodPlan(allRoutes, method, isUpgrade)
@@ -284,8 +292,12 @@ export const handler = <R>(routes: Iterable<UnboundedRouteWithMethod>): Effect.E
           Effect.provideService(Route.Request, request.source),
           Effect.provideService(
             HttpServerRequest.ParsedSearchParams,
-            HttpServerRequest.searchParamsFromURL(new URL(request.url, "http://localhost")),
+            HttpServerRequest.searchParamsFromURL(url),
           ),
+          Effect.provideService(HttpRouter.RouteContext, {
+            route: matchedRoutes.get(method) ?? matchedRoutes.get("*")!,
+            params,
+          }),
           Effect.provideService(Route.RouteContext, { context: {} }),
         )
     })
@@ -296,12 +308,17 @@ export const handler = <R>(routes: Iterable<UnboundedRouteWithMethod>): Effect.E
           ? Effect.failCause(Cause.fromReasons(cause.reasons.filter(Cause.isInterruptReason)))
           : Effect.gen(function*() {
             yield* Effect.logError(cause)
-            const status = getStatusFromCause(cause)
+            const status = (yield* HttpServerError.causeResponse(cause))[0].status
             const development = yield* Development.option
             return errorResponse(status, Option.isSome(development) ? Cause.pretty(cause) : "Internal Server Error")
           })
       ),
     )
+  for (const method of ["*", ...methods] as const) {
+    matchedRoutes.set(method, HttpRouter.route(method as HttpMethod.HttpMethod | "*", path ?? "/", app))
+  }
+  if (!hasExplicitHead && matchedRoutes.has("GET")) matchedRoutes.set("HEAD", matchedRoutes.get("GET")!)
+  return app
 }
 
 export const tracedHandler = <R>(routes: Iterable<UnboundedRouteWithMethod>) =>
@@ -309,14 +326,21 @@ export const tracedHandler = <R>(routes: Iterable<UnboundedRouteWithMethod>) =>
 
 export const toWebHandlerWith =
   <R>(context: Context.Context<R>) =>
-  <const Routes extends Iterable<UnboundedRouteWithMethod>>(routes: RoutesProvidedBy<Routes, R>): Http.WebHandler =>
-    HttpEffect.toWebHandlerWith<
-      R,
+  <const Routes extends Iterable<UnboundedRouteWithMethod>>(routes: RoutesProvidedBy<Routes, R>): Http.WebHandler => {
+    const items = Array.from(routes)
+    const path = items.length === 0 ? "/*" : Route.descriptor<{ path?: string }>(items[0]).path ?? "/*"
+    const existing = Context.getOrUndefined(context, HttpRouter.HttpRouter)
+    const services = existing === undefined
+      ? Context.merge(context, Effect.runSyncWith(context)(RouteHttpRouter.make(toHttpRouter({ [path]: items }))))
+      : Context.add(context, HttpRouter.HttpRouter, existing)
+    return HttpEffect.toWebHandlerWith<
+      R | HttpRouter.HttpRouter,
       R | HttpServerRequest.HttpServerRequest | Scope.Scope,
       never
     >(
-      Context.add(context, HttpMiddleware.TracerDisabledWhen, () => true),
-    )(tracedHandler<R>(routes))
+      Context.add(services, HttpMiddleware.TracerDisabledWhen, () => true),
+    )(tracedHandler<R>(items))
+  }
 
 export const toWebHandler = <const Routes extends Iterable<UnboundedRouteWithMethod>>(
   routes: RoutesProvidedBy<Routes, never>,
@@ -326,6 +350,9 @@ export function* walkHandles(
   map: RouteMap.RouteMap,
   context: Context.Context<any> = Context.empty() as Context.Context<any>,
 ): Generator<[path: string, handler: Http.WebHandler]> {
+  if (Context.getOrUndefined(context, HttpRouter.HttpRouter) === undefined) {
+    context = Context.merge(context, Effect.runSyncWith(context)(RouteHttpRouter.make(toHttpRouter(map))))
+  }
   const pathGroups = new Map<string, Array<RouteMount.MountedRoute>>()
   const inDevelopment = Option.isSome(Context.getOption(context, Development.Development))
   const developmentPaths = new Set<string>()
@@ -344,3 +371,63 @@ export function* walkHandles(
   const makeHandler = toWebHandlerWith(context)
   for (const [path, routes] of pathGroups) yield [path, makeHandler(routes)]
 }
+
+export const toHttpRouter = (map: RouteMap.RouteMap): Effect.Effect<HttpRouter.HttpRouter> =>
+  Effect.gen(function*() {
+    const router = yield* HttpRouter.make.pipe(Effect.provideService(HttpRouter.RouterConfig, {
+      caseSensitive: true,
+      ignoreTrailingSlash: true,
+      ignoreDuplicateSlashes: true,
+      maxParamLength: Infinity,
+    }))
+    const groups = new Map<PathPattern.PathPattern, Array<RouteMount.MountedRoute>>()
+    for (const route of RouteMap.walk(map)) {
+      const path = Route.descriptor<{ path: PathPattern.PathPattern }>(route).path
+      const group = groups.get(path) ?? []
+      group.push(route)
+      groups.set(path, group)
+    }
+    const entries = new Map<string, {
+      path: PathPattern.PathPattern
+      app: ReturnType<typeof tracedHandler<never>>
+    }>()
+    for (const path of Array.from(groups.keys()).sort(PathPattern.compare)) {
+      const app = tracedHandler<never>(groups.get(path)!)
+      for (const expanded of PathPattern.toEffect(path)) {
+        const key = expanded.replace(/:[^/]+/g, ":")
+        if (!entries.has(key)) entries.set(key, { path: expanded, app })
+      }
+    }
+    const wildcardBases = new Set(
+      Array
+        .from(entries.keys())
+        .filter((path) => path.endsWith("/*"))
+        .map((path) => path.slice(0, -2) || "/"),
+    )
+    for (const [key, entry] of entries) {
+      if (wildcardBases.has(key)) continue
+      const base = entry.path.endsWith("/*") ? entries.get(key.slice(0, -2) || "/") : undefined
+      // HttpRouter also registers the base of /*, so an explicit base shares that registration.
+      const app = base === undefined ?
+        entry.app :
+        HttpServerRequest.HttpServerRequest.use((request) =>
+          PathPattern.match(base.path, new URL(request.url, "http://localhost").pathname) === null
+            ? entry.app
+            : base.app
+        )
+      yield* router.add("*", entry.path, app)
+    }
+    return router
+  })
+
+export const layerRouter = () =>
+  Layer.effectContext(Effect.gen(function*() {
+    const existing = yield* Effect.serviceOption(HttpRouter.HttpRouter)
+    if (Option.isSome(existing)) {
+      return Context.make(HttpRouter.HttpRouter, existing.value).pipe(
+        Context.add(RouteHttpRouter.Fallback, Effect.suspend(() => existing.value.asHttpEffect())),
+      )
+    }
+    const routes = yield* Route.Routes
+    return yield* RouteHttpRouter.make(toHttpRouter(routes))
+  }))

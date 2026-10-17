@@ -29,9 +29,9 @@ test.it("serves a JS artifact", () =>
     .gen(function*() {
       const context = yield* Effect.context<Bundle.Bundle>()
       const routes = BundleRoute.make(Bundle.Bundle)
-      const tree = Route.map({ "/_bundle/:path+": routes })
+      const tree = Route.map({ "/_bundle/*": routes })
       const handles = Object.fromEntries(RouteHttp.walkHandles(tree, context))
-      const handler = handles["/_bundle/:path+"]
+      const handler = handles["/_bundle/*"]
 
       const client = TestHttpClient.fromHandler(handler)
       const entity = yield* client.get("http://localhost/_bundle/app-abc123.js")
@@ -59,9 +59,9 @@ test.it("serves a CSS artifact", () =>
     .gen(function*() {
       const context = yield* Effect.context<Bundle.Bundle>()
       const routes = BundleRoute.make(Bundle.Bundle)
-      const tree = Route.map({ "/_bundle/:path+": routes })
+      const tree = Route.map({ "/_bundle/*": routes })
       const handles = Object.fromEntries(RouteHttp.walkHandles(tree, context))
-      const handler = handles["/_bundle/:path+"]
+      const handler = handles["/_bundle/*"]
 
       const client = TestHttpClient.fromHandler(handler)
       const entity = yield* client.get(
@@ -88,9 +88,9 @@ test.it("returns 404 for missing artifact", () =>
     .gen(function*() {
       const context = yield* Effect.context<Bundle.Bundle>()
       const routes = BundleRoute.make(Bundle.Bundle)
-      const tree = Route.map({ "/_bundle/:path+": routes })
+      const tree = Route.map({ "/_bundle/*": routes })
       const handles = Object.fromEntries(RouteHttp.walkHandles(tree, context))
-      const handler = handles["/_bundle/:path+"]
+      const handler = handles["/_bundle/*"]
 
       const client = TestHttpClient.fromHandler(handler)
       const entity = yield* client.get(
@@ -111,9 +111,9 @@ test.it("supports custom mount path", () =>
     .gen(function*() {
       const context = yield* Effect.context<Bundle.Bundle>()
       const routes = BundleRoute.make(Bundle.Bundle)
-      const tree = Route.map({ "/assets/:path+": routes })
+      const tree = Route.map({ "/assets/*": routes })
       const handles = Object.fromEntries(RouteHttp.walkHandles(tree, context))
-      const handler = handles["/assets/:path+"]
+      const handler = handles["/assets/*"]
 
       const client = TestHttpClient.fromHandler(handler)
       const entity = yield* client.get("http://localhost/assets/app-abc123.js")

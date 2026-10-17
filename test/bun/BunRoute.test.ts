@@ -112,7 +112,7 @@ test.describe(BunRoute.htmlBundle, () => {
       "*": Route.use(
         BunRoute.htmlBundle(() => import("../../static/LayoutSlots.html")),
       ),
-      "/:path*": Route.get(Route.html("<section>Catch All</section>")),
+      "/*": Route.get(Route.html("<section>Catch All</section>")),
     })
 
     return Effect
@@ -164,7 +164,7 @@ test.describe(BunRoute.htmlBundle, () => {
               "*": Route.use(
                 BunRoute.htmlBundle(() => import("../../static/LayoutSlots.html")),
               ),
-              "/:path*": Route.get(
+              "/*": Route.get(
                 BunRoute.htmlBundle(() => import("../../static/LayoutSlots.html")),
                 Route.html("<section>Catch All</section>"),
               ),
@@ -203,7 +203,7 @@ test.describe(BunRoute.htmlBundle, () => {
               "*": Route.use(
                 BunRoute.htmlBundle(() => import("../../static/LayoutSlots.html")),
               ),
-              "/:path*": Route.get(
+              "/*": Route.get(
                 BunRoute.htmlBundle(() => import("../../static/LayoutSlots.html")),
                 Route.html(
                   "<section>Catch All</section><script src=\"/assets/app.js\"></script><script>window.__app=1</script>",
@@ -248,7 +248,7 @@ test.describe(BunRoute.htmlBundle, () => {
               "*": Route.use(
                 BunRoute.htmlBundle(() => import("../../static/LayoutSlotsOuterScripts.html")),
               ),
-              "/:path*": Route.get(
+              "/*": Route.get(
                 BunRoute.htmlBundle(() => import("../../static/LayoutSlotsInnerScripts.html")),
                 Route.html("<section>Catch All</section>"),
               ),
@@ -306,7 +306,7 @@ test.describe(BunRoute.htmlBundle, () => {
               "*": Route.use(
                 BunRoute.htmlBundle(() => import("../../static/LayoutSlotsOuterScripts.html")),
               ),
-              "/:path*": Route.get(
+              "/*": Route.get(
                 BunRoute.htmlBundle(() => import("../../static/NestedBundleWithScript.html")),
                 Route.html("<section>Catch All</section>"),
               ),
@@ -339,7 +339,7 @@ test.describe(BunRoute.htmlBundle, () => {
               "*": Route.use(
                 BunRoute.htmlBundle(() => import("../../static/LayoutSlots.html")),
               ),
-              "/:path*": Route.get(
+              "/*": Route.get(
                 BunRoute.htmlBundle(() => import("../../static/LayoutSlots.html")),
                 Route.html("<section>Catch All</section>"),
               ),
@@ -373,7 +373,7 @@ test.describe(BunRoute.htmlBundle, () => {
               "*": Route.use(
                 BunRoute.htmlBundle(() => import("../../static/LayoutSlots.html")),
               ),
-              "/:path*": Route.get(
+              "/*": Route.get(
                 BunRoute.htmlBundle(() => import("../../static/LayoutSlots.html")),
                 Route.html("<section>Catch All</section>"),
               ),

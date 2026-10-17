@@ -12,14 +12,20 @@ import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as HttpBody from "effect/http/HttpBody"
+import * as HttpEffect from "effect/http/HttpEffect"
+import * as HttpRouter from "effect/http/HttpRouter"
 import * as HttpServerError from "effect/http/HttpServerError"
+import * as HttpServerRequest from "effect/http/HttpServerRequest"
+import * as HttpServerResponse from "effect/http/HttpServerResponse"
 import * as Multipart from "effect/http/Multipart"
 import * as Layer from "effect/Layer"
 import * as Queue from "effect/Queue"
 import * as Ref from "effect/Ref"
 import * as Schedule from "effect/Schedule"
 import * as Schema from "effect/Schema"
+import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
+import * as RouteHttpRouter from "../src/internal/RouteHttpRouter.ts"
 import * as TestHttpClient from "./internal/TestHttpClient.ts"
 
 const multipartContext = Effect.runSync(
@@ -186,6 +192,37 @@ test.it("handles errors by returning 500 response with generic message in produc
       test
         .expect(messages.some((m) => m.includes("Something went wrong")))
         .toBe(true)
+    })
+    .pipe(
+      Effect.provide(TestLogger.layer()),
+      Effect.runPromise,
+    ))
+
+test.it.each(
+  [
+    [HttpServerError.RouteNotFound, 404],
+    [HttpServerError.InternalError, 500],
+  ] as const,
+)("preserves the status of %p", (Reason, status) =>
+  Effect
+    .gen(function*() {
+      const context = yield* Effect.context<TestLogger.TestLogger>()
+      const client = TestHttpClient.fromHandler(
+        RouteHttp.toWebHandlerWith(context)(
+          Route.get(Route.text(function*() {
+            const request = yield* HttpServerRequest.HttpServerRequest
+            return yield* Effect.fail(new HttpServerError.HttpServerError({ reason: new Reason({ request }) }))
+          })),
+        ),
+      )
+      const entity = yield* client.get("http://localhost/error")
+
+      test
+        .expect(entity.status)
+        .toBe(status)
+      test
+        .expect(yield* entity.json)
+        .toEqual({ status, message: "Internal Server Error" })
     })
     .pipe(
       Effect.provide(TestLogger.layer()),
@@ -923,13 +960,13 @@ test.describe("walkHandles", () => {
 
   test.it("preserves wildcard param syntax", () => {
     const tree = Route.map({
-      "/docs/:path*": Route.get(Route.text("docs")),
+      "/docs/*": Route.get(Route.text("docs")),
     })
 
     const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
 
     test
-      .expect("/docs/:path*" in handles)
+      .expect("/docs/*" in handles)
       .toBe(true)
   })
 })
@@ -2561,22 +2598,22 @@ test.describe("schema handlers", () => {
     Effect
       .gen(function*() {
         const tree = Route.map({
-          "/files/:path+": Route.get(
+          "/files/*": Route.get(
             RouteSchema.schemaPathParams(
               Schema.Struct({
-                path: Schema.String,
+                "*": Schema.String,
               }),
             ),
             Route.json(function*(ctx) {
               return {
-                path: ctx.pathParams.path,
+                path: ctx.pathParams["*"],
               }
             }),
           ),
         })
 
         const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
-        const handler = handles["/files/:path+"]
+        const handler = handles["/files/*"]
         const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get(
           "http://localhost/files/nested/hello.txt",
@@ -3964,3 +4001,459 @@ test.it("set-cookie string still works", async () => {
     .expect(cookies)
     .toEqual(["a=1; Path=/"])
 })
+
+test.describe("HttpRouter interoperability", () => {
+  test.it.each(["HttpRouter", "Start"] as const)(
+    "%s runs the first registered global middleware outermost",
+    (implementation) =>
+      Effect
+        .gen(function*() {
+          const events: Array<string> = []
+          let handler: Http.WebHandler
+
+          if (implementation === "HttpRouter") {
+            const router = yield* HttpRouter.make
+            for (const name of ["first", "second"]) {
+              yield* router.addGlobalMiddleware((next) =>
+                Effect.gen(function*() {
+                  events.push(`${name}:before`)
+                  const response = yield* next
+                  events.push(`${name}:after`)
+                  return HttpServerResponse.setHeader(response, "x-order", `${name}(${response.headers["x-order"]})`)
+                })
+              )
+            }
+            yield* router.add(
+              "GET",
+              "/",
+              Effect.sync(() => {
+                events.push("handler")
+                return HttpServerResponse.text("ok", { headers: { "x-order": "handler" } })
+              }),
+            )
+            handler = HttpEffect.toWebHandlerWith<
+              never,
+              HttpServerRequest.HttpServerRequest | Scope.Scope
+            >(Context.empty())(router.asHttpEffect())
+          } else {
+            const middleware = (name: string) =>
+              Route.handle(function*(_ctx, next) {
+                events.push(`${name}:before`)
+                const entity = yield* next
+                events.push(`${name}:after`)
+                return Entity.merge(entity, { headers: { "x-order": `${name}(${entity.headers["x-order"]})` } })
+              })
+            const routes = Route.map({
+              "*": Route.use(middleware("first")).use(middleware("second")),
+              "/": Route.get(Route.text(function*() {
+                events.push("handler")
+                return Entity.make("ok", { headers: { "x-order": "handler" } })
+              })),
+            })
+            handler = Object.fromEntries(RouteHttp.walkHandles(routes))["/"]
+          }
+
+          const client = TestHttpClient.fromHandler(handler)
+          const response = yield* client.get("http://localhost/")
+
+          test
+            .expect(response.status)
+            .toBe(200)
+          test
+            .expect(yield* response.text)
+            .toBe("ok")
+          test
+            .expect(response.headers["x-order"])
+            .toBe("first(second(handler))")
+          test
+            .expect(events)
+            .toEqual(["first:before", "second:before", "handler", "second:after", "first:after"])
+        })
+        .pipe(
+          Effect.scoped,
+          Effect.runPromise,
+        ),
+  )
+
+  test.it("decodes path params consistently with Effect helpers", () =>
+    Effect
+      .gen(function*() {
+        const routes = Route.map({
+          "/users/:id/*": Route.get(
+            Route.schemaPathParams({ id: Schema.NumberFromString, "*": Schema.String }),
+            Route.json(function*(ctx) {
+              const raw = yield* HttpRouter.params
+              const decoded = yield* HttpRouter.schemaPathParams(Schema.Struct({ id: Schema.NumberFromString }))
+              const matched = yield* HttpRouter.RouteContext
+              const search = yield* HttpServerRequest.ParsedSearchParams
+              yield* HttpRouter.HttpRouter
+              return {
+                raw,
+                decoded,
+                bindings: ctx.pathParams,
+                path: matched.route.path,
+                method: matched.route.method,
+                search,
+              }
+            }),
+          ),
+        })
+        const handles = Object.fromEntries(RouteHttp.walkHandles(routes))
+        const client = TestHttpClient.fromHandler(handles["/users/:id/*"])
+        const response = yield* client.get("http://localhost/users/42/a%20b/c?tag=x&tag=y")
+
+        test
+          .expect(response.status)
+          .toBe(200)
+        test
+          .expect(yield* response.json)
+          .toEqual({
+            raw: { id: "42", "*": "a b/c" },
+            decoded: { id: 42 },
+            bindings: { id: 42, "*": "a b/c" },
+            path: "/users/:id/*",
+            method: "GET",
+            search: { tag: ["x", "y"] },
+          })
+      })
+      .pipe(
+        Effect.scoped,
+        Effect.runPromise,
+      ))
+
+  test.it("compiles optional segments and overlapping wildcard bases without duplicate registrations", () =>
+    Effect
+      .gen(function*() {
+        const routes = Route.map({
+          "/": Route.get(Route.text("root")),
+          "/*": Route.get(Route.text("fallback")),
+          "/docs": Route.get(Route.text("docs index")),
+          "/docs/*": Route.get(Route.json(function*() {
+            return yield* HttpRouter.params
+          })),
+          "/users/:id?/edit": Route.get(Route.json(function*() {
+            return { path: (yield* HttpRouter.RouteContext).route.path, params: yield* HttpRouter.params }
+          })),
+          "/foo/:id": Route.get(Route.text("static prefix")),
+          "/:section/bar": Route.get(Route.text("parameter prefix")),
+        })
+        const router = yield* RouteHttp.toHttpRouter(routes)
+        const client = TestHttpClient.fromHandler(
+          HttpEffect.toWebHandlerWith<
+            never,
+            HttpServerRequest.HttpServerRequest | Scope.Scope
+          >(Context.empty())(router.asHttpEffect()),
+        )
+        for (
+          const entry of [["/", "root"], ["/docs", "docs index"], ["/unknown", "fallback"], [
+            "/foo/bar",
+            "static prefix",
+          ]]
+        ) {
+          const response = yield* client.get(`http://localhost${entry[0]}`)
+
+          test
+            .expect(response.status)
+            .toBe(200)
+          test
+            .expect(yield* response.text)
+            .toBe(entry[1])
+        }
+
+        test
+          .expect(yield* (yield* client.get("http://localhost/docs/a/b")).json)
+          .toEqual({ "*": "a/b" })
+        test
+          .expect(yield* (yield* client.get("http://localhost/users/edit")).json)
+          .toEqual({
+            path: "/users/:id?/edit",
+            params: {},
+          })
+        test
+          .expect(yield* (yield* client.get("http://localhost/users/42/edit")).json)
+          .toEqual({
+            path: "/users/:id?/edit",
+            params: { id: "42" },
+          })
+      })
+      .pipe(
+        Effect.scoped,
+        Effect.runPromise,
+      ))
+
+  test.it("configures the generated router for Start matching even when ambient config differs", () =>
+    Effect
+      .gen(function*() {
+        const router = yield* RouteHttp.toHttpRouter({}).pipe(Effect.provideService(HttpRouter.RouterConfig, {
+          caseSensitive: false,
+          ignoreDuplicateSlashes: false,
+          ignoreTrailingSlash: false,
+          maxParamLength: 1,
+        }))
+        yield* router.add("GET", "/Native/:id", Effect.map(HttpRouter.params, HttpServerResponse.jsonUnsafe))
+        const client = TestHttpClient.fromHandler(
+          HttpEffect.toWebHandlerWith<
+            never,
+            HttpServerRequest.HttpServerRequest | Scope.Scope
+          >(Context.empty())(router.asHttpEffect()),
+        )
+        for (const path of ["/native/42", "/Native/%GG", "/Native/%E0%A4%A"]) {
+          test
+            .expect((yield* client.get(`http://localhost${path}`)).status)
+            .toBe(404)
+        }
+        for (const id of ["42", "a".repeat(200)]) {
+          const response = yield* client.get(`http://localhost/Native//${id}/`)
+
+          test
+            .expect(response.status)
+            .toBe(200)
+          test
+            .expect(yield* response.json)
+            .toEqual({ id })
+        }
+      })
+      .pipe(
+        Effect.scoped,
+        Effect.runPromise,
+      ))
+
+  test.it("preserves negotiation, middleware, HEAD, OPTIONS, and method rejection", () =>
+    Effect
+      .gen(function*() {
+        let wrapped = 0
+        const router = yield* RouteHttp.toHttpRouter(Route.map({
+          "/item": Route
+            .get(
+              Route.filter(() => {
+                wrapped++
+                return { context: {} }
+              }),
+              Route.json({ ok: true }),
+            )
+            .get(Route.html("<p>ok</p>")),
+        }))
+        const client = TestHttpClient.fromHandler(
+          HttpEffect.toWebHandlerWith<
+            never,
+            HttpServerRequest.HttpServerRequest | Scope.Scope
+          >(Context.empty())(router.asHttpEffect()),
+        )
+
+        test
+          .expect(yield* (yield* client.get("http://localhost/item", { headers: { accept: "application/json" } })).json)
+          .toEqual({ ok: true })
+        test
+          .expect(yield* (yield* client.get("http://localhost/item", { headers: { accept: "text/html" } })).text)
+          .toBe("<p>ok</p>")
+
+        const head = yield* client.head("http://localhost/item")
+
+        test
+          .expect(head.status)
+          .toBe(200)
+        test
+          .expect(yield* head.text)
+          .toBe("")
+        test
+          .expect((yield* client.options("http://localhost/item")).status)
+          .toBe(204)
+
+        const rejected = yield* client.post("http://localhost/item")
+
+        test
+          .expect(rejected.status)
+          .toBe(405)
+        test
+          .expect(rejected.headers.allow)
+          .toContain("GET")
+        test
+          .expect(wrapped)
+          .toBe(3)
+      })
+      .pipe(
+        Effect.scoped,
+        Effect.runPromise,
+      ))
+
+  test.it("keeps native handlers lazy and shares first construction across concurrent router operations", () =>
+    Effect
+      .gen(function*() {
+        let builds = 0
+        const routes = Route.map({ "/native": Route.get(Route.text("native")) })
+        const context = yield* RouteHttpRouter.make(Effect.gen(function*() {
+          builds++
+          yield* Effect.yieldNow
+          return yield* RouteHttp.toHttpRouter(routes)
+        }))
+        const router = Context.get(context, HttpRouter.HttpRouter)
+        const prefixed = router.prefixed("/api")
+        const app = router.asHttpEffect()
+        const native = TestHttpClient.fromHandler(Object.fromEntries(RouteHttp.walkHandles(routes, context))["/native"])
+
+        test
+          .expect(yield* (yield* native.get("http://localhost/native")).text)
+          .toBe("native")
+
+        const missing = TestHttpClient.fromHandler(
+          HttpEffect.toWebHandlerWith<
+            never,
+            HttpServerRequest.HttpServerRequest | Scope.Scope
+          >(Context.empty())(Context.get(context, RouteHttpRouter.Fallback)),
+        )
+
+        test
+          .expect((yield* missing.get("http://localhost/missing")).status)
+          .toBe(404)
+        test
+          .expect(builds)
+          .toBe(0)
+
+        yield* Effect.all(
+          Array.from({ length: 5 }, (_, index) =>
+            prefixed.add("GET", `/item${index}`, HttpServerResponse.text(String(index)))),
+          { concurrency: "unbounded" },
+        )
+
+        test
+          .expect(builds)
+          .toBe(1)
+
+        const client = TestHttpClient
+          .fromHandler(
+            HttpEffect
+              .toWebHandlerWith<
+                never,
+                HttpServerRequest.HttpServerRequest | Scope.Scope
+              >(Context
+                .empty())(app),
+          )
+
+        test
+          .expect(
+            yield* (yield* client
+              .get("http://localhost/api/item4"))
+              .text,
+          )
+          .toBe("4")
+        test
+          .expect(
+            yield* (yield* client
+              .get("http://localhost/native"))
+              .text,
+          )
+          .toBe("native")
+        test
+          .expect(builds)
+          .toBe(1)
+      })
+      .pipe(
+        Effect.scoped,
+        Effect.runPromise,
+      ))
+
+  test.it("keeps cached router registrations isolated between applications", () =>
+    Effect
+      .gen(function*() {
+        const layer = Route.layer({ "/": Route.get(Route.text("home")) })
+        const first = yield* Layer.build(RouteHttp.layerRouter().pipe(Layer.provide(layer)))
+        const second = yield* Layer.build(RouteHttp.layerRouter().pipe(Layer.provide(layer)))
+        const firstRouter = Context.get(first, HttpRouter.HttpRouter)
+        const secondRouter = Context.get(second, HttpRouter.HttpRouter)
+        yield* firstRouter.add("GET", "/extra", HttpServerResponse.text("first"))
+        const client = TestHttpClient.fromHandler(
+          HttpEffect.toWebHandlerWith<
+            never,
+            HttpServerRequest.HttpServerRequest | Scope.Scope
+          >(Context.empty())(secondRouter.asHttpEffect()),
+        )
+
+        test
+          .expect((yield* client.get("http://localhost/extra")).status)
+          .toBe(404)
+        test
+          .expect(firstRouter)
+          .not
+          .toBe(secondRouter)
+      })
+      .pipe(
+        Effect.scoped,
+        Effect.runPromise,
+      ))
+})
+
+test.it("preserves router registration middleware, prefixes, and global middleware through the lazy service", () =>
+  Effect
+    .gen(function*() {
+      const context = yield* RouteHttpRouter.make(RouteHttp.toHttpRouter({}))
+      const router = Context.get(context, HttpRouter.HttpRouter)
+      const middleware = HttpRouter.middleware((app) =>
+        app.pipe(
+          Effect.map((response) => HttpServerResponse.setHeader(response, "x-route", "registered")),
+        )
+      )
+      yield* router
+        .prefixed("/api")
+        .addAll([
+          HttpRouter.route(
+            "GET",
+            "/value/:id",
+            Effect.gen(function*() {
+              const request = yield* HttpServerRequest.HttpServerRequest
+              const params = yield* HttpRouter.params
+              return HttpServerResponse.jsonUnsafe({ url: request.url, params })
+            }),
+          ),
+        ])
+        .pipe(Effect.provide(middleware.layer))
+      yield* router.addGlobalMiddleware((app) =>
+        Effect.map(app, (response) => HttpServerResponse.setHeader(response, "x-global", "registered"))
+      )
+      const client = TestHttpClient.fromHandler(
+        HttpEffect.toWebHandlerWith<
+          never,
+          HttpServerRequest.HttpServerRequest | Scope.Scope
+        >(Context.empty())(router.asHttpEffect()),
+      )
+      const response = yield* client.get("http://localhost/api/value/42")
+
+      test
+        .expect(response.headers["x-route"])
+        .toBe("registered")
+      test
+        .expect(response.headers["x-global"])
+        .toBe("registered")
+      test
+        .expect(yield* response.json)
+        .toEqual({ url: "/value/42", params: { id: "42" } })
+    })
+    .pipe(
+      Effect.scoped,
+      Effect.runPromise,
+    ))
+
+test.it("retains HttpRouter request services inside response streams", () =>
+  Effect
+    .gen(function*() {
+      const routes = Route.map({
+        "/events/:id": Route.get(Route.sse(() =>
+          Stream.fromEffect(Effect.gen(function*() {
+            const params = yield* HttpRouter.params
+            const search = yield* HttpServerRequest.ParsedSearchParams
+            return { data: JSON.stringify({ params, search }) }
+          }))
+        )),
+      })
+      const client = TestHttpClient.fromHandler(Object.fromEntries(RouteHttp.walkHandles(routes))["/events/:id"])
+      const response = yield* client.get("http://localhost/events/42?tag=one&tag=two")
+
+      test
+        .expect(yield* response.text)
+        .toContain(
+          "data: {\"params\":{\"id\":\"42\"},\"search\":{\"tag\":[\"one\",\"two\"]}}",
+        )
+    })
+    .pipe(
+      Effect.scoped,
+      Effect.runPromise,
+    ))

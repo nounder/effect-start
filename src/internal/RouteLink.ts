@@ -36,17 +36,21 @@ export function link<
     string | number | undefined
   >
   const result = path.replace(
-    /\/:(\w+)([?*+])?/g,
-    (_, name: string, modifier: string | undefined) => {
+    /\/(?::(\w+)(\?)?|(\*))/g,
+    (_, param: string | undefined, modifier: string | undefined, wildcard: string | undefined) => {
+      const name = param ?? "*"
       const value = remaining[name]
       delete remaining[name]
       if (value == null) {
-        if (modifier === "?" || modifier === "*") return ""
+        if (modifier === "?" || wildcard !== undefined) return ""
         return "/"
       }
-      return "/" + encodeURIComponent(String(value))
+      return "/" +
+        (wildcard === undefined
+          ? encodeURIComponent(String(value))
+          : String(value).split("/").map(encodeURIComponent).join("/"))
     },
-  )
+  ) || "/"
 
   const search = new URLSearchParams()
   for (const key in remaining) {

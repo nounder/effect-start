@@ -10,7 +10,8 @@ import * as NPath from "node:path"
 import * as NUrl from "node:url"
 import * as Development from "./Development.ts"
 import * as FileRouterCodegen from "./FileRouterCodegen.ts"
-import * as PathPattern from "./internal/PathPattern.ts"
+import * as FilePathPattern from "./internal/FilePathPattern.ts"
+import type * as PathPattern from "./internal/PathPattern.ts"
 import * as RouteMap from "./internal/RouteMap.ts"
 import * as Route from "./Route.ts"
 
@@ -47,7 +48,7 @@ export namespace FileRouteMap {
         : never
         : never
     }[keyof T],
-    { readonly [Route.IntrinsicService]?: any }
+    RouteMap.Provided
   >
 }
 
@@ -79,7 +80,7 @@ export function parseRoute(path: string): FileRoute | null {
 
   const routeDir = matched[1]?.replace(/\/$/, "") ?? ""
   const handle = matched[2] as "route" | "layer"
-  const routePathResult = PathPattern.fromFilePath(routeDir)
+  const routePathResult = FilePathPattern.toPathPattern(routeDir)
   if (Result.isFailure(routePathResult)) {
     return null
   }
@@ -298,11 +299,11 @@ export function getFileRoutes(
         const aHasRest = a
           .routePath
           .split("/")
-          .some((seg) => seg.startsWith(":") && seg.endsWith("*"))
+          .some((seg) => seg === "*")
         const bHasRest = b
           .routePath
           .split("/")
-          .some((seg) => seg.startsWith(":") && seg.endsWith("*"))
+          .some((seg) => seg === "*")
 
         return (
           // rest is a dominant factor (routes with rest come last)

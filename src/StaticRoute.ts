@@ -18,13 +18,13 @@ export const from = (options: { path: string | URL; directoryIndex: boolean }) =
 
   return Route.get(
     Route.schemaPathParams(Schema.Struct({
-      path: Schema.optional(Schema.String),
+      "*": Schema.optional(Schema.String),
     })),
     Route.handle((ctx) =>
       Effect
         .gen(function*() {
           const fs = yield* FileSystem.FileSystem
-          const normalized = normalizeRelativePath(ctx.pathParams.path)
+          const normalized = normalizeRelativePath(ctx.pathParams["*"])
           if (normalized === null) return notFound
 
           const rootInfo = yield* fs.stat(rootPath)
@@ -127,7 +127,7 @@ export const from = (options: { path: string | URL; directoryIndex: boolean }) =
               ["application/json", "text/html"],
             )[0]
 
-          const pathParam = ctx.pathParams.path?.replace(/^\/+|\/+$/g, "") ?? ""
+          const pathParam = ctx.pathParams["*"]?.replace(/^\/+|\/+$/g, "") ?? ""
           const pathname = pathParam === "" ? "/" : `/${pathParam}/`
           if (format === "text/html") {
             const requestPath = new URL(request.url).pathname

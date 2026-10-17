@@ -14,6 +14,7 @@ import * as Scope from "effect/Scope"
 import * as NOs from "node:os"
 import * as NPath from "node:path"
 import * as PathPattern from "../internal/PathPattern.ts"
+import * as RouteHttpRouter from "../internal/RouteHttpRouter.ts"
 import * as RouteMap from "../internal/RouteMap.ts"
 import type * as RouteMount from "../internal/RouteMount.ts"
 import * as RouteSocket from "../internal/RouteSocket.ts"
@@ -57,7 +58,7 @@ const routeGroups = (map: RouteMap.RouteMap) => {
 const routeApp = (map: RouteMap.RouteMap, handlerScope: Scope.Scope) => {
   const groups = routeGroups(map)
   return HttpServerRequest.HttpServerRequest.use((request) => {
-    const pathname = decodeURI(new URL(request.url, "http://localhost").pathname)
+    const pathname = new URL(request.url, "http://localhost").pathname
     for (const [path, routes] of groups) {
       if (PathPattern.match(path, pathname) !== null) {
         return RouteHttp.tracedHandler<never>(routes).pipe(
@@ -65,7 +66,13 @@ const routeApp = (map: RouteMap.RouteMap, handlerScope: Scope.Scope) => {
         )
       }
     }
-    return Effect.succeed(HttpServerResponse.text("not found", { status: 404 }))
+    return Effect.flatMap(
+      Effect.serviceOption(RouteHttpRouter.Fallback),
+      (fallback) =>
+        Option.isSome(fallback)
+          ? fallback.value
+          : Effect.succeed(HttpServerResponse.text("not found", { status: 404 })),
+    )
   })
 }
 
@@ -179,7 +186,9 @@ const compileBunRoutes = (
     for (const [path, routes] of groups) {
       if (routes.some((route) => Route.descriptor<{ protocol?: "ws" }>(route).protocol === "ws")) continue
       const handler = RouteHttp.toWebHandlerWith(context)(routes)
-      for (const bunPath of PathPattern.toBun(path)) bunRoutes[bunPath] = handler
+      for (const bunPath of PathPattern.toBun(path)) {
+        if (!(bunPath in bunRoutes)) bunRoutes[bunPath] = handler
+      }
     }
 
     if (hasPrebuiltBundles) {
@@ -247,7 +256,7 @@ export const layerRoutes = (options: BunServeOptions = {}) =>
       Layer.provide(serverLayer),
       Layer.provide(Layer.succeed(HttpMiddleware.TracerDisabledWhen)(() => true)),
     )
-    return Layer.merge(serverLayer, applicationLayer)
+    return Layer.merge(serverLayer, applicationLayer).pipe(Layer.provideMerge(RouteHttp.layerRouter()))
   }))
 
 export const layerStart = (options: BunServeOptions = {}) =>
@@ -264,7 +273,7 @@ export const layerStart = (options: BunServeOptions = {}) =>
       Layer.provide(platformLayer),
       Layer.provide(Layer.succeed(HttpMiddleware.TracerDisabledWhen)(() => true)),
     )
-    return Layer.merge(platformLayer, applicationLayer)
+    return Layer.merge(platformLayer, applicationLayer).pipe(Layer.provideMerge(RouteHttp.layerRouter()))
   }))
 
 export const withLogAddress = <A, E, R>(serverLayer: Layer.Layer<A, E, R>) =>

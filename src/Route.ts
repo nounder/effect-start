@@ -229,7 +229,6 @@ export {
   use,
 } from "./internal/RouteMount.ts"
 export {
-  RequestBodyError,
   schemaBodyForm,
   schemaBodyJson,
   schemaBodyMultipart,

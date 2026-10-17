@@ -1,7 +1,7 @@
 import * as Pipeable from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import * as Route from "../Route.ts"
-import type * as PathPattern from "./PathPattern.ts"
+import * as PathPattern from "./PathPattern.ts"
 import type * as RouteMap from "./RouteMap.ts"
 import type * as RouteMount from "./RouteMount.ts"
 
@@ -48,6 +48,12 @@ export function match(
   method: string,
   path: string,
 ): MatchResult | null {
+  try {
+    decodeURI(path)
+  } catch {
+    return null
+  }
+  path = path.replace(/\/{2,}/g, "/")
   const wildcard = matcher.methods["*"]
   if (wildcard) {
     const result = exec(wildcard, path)
@@ -61,28 +67,6 @@ export function match(
   }
 
   return null
-}
-
-// more static segments = more specific = lower score = matched first.
-// for same static count: lower maxPriority (more static) wins.
-function matchScore(path: string): number {
-  const segments = path.split("/").filter(Boolean)
-  const staticCount = segments.filter((s) => !s.startsWith(":")).length
-  const maxPriority = Math.max(
-    ...segments.map((s) =>
-      !s.startsWith(":")
-        ? 0
-        : s.endsWith("*")
-        ? 4
-        : s.endsWith("+")
-        ? 3
-        : s.endsWith("?")
-        ? 2
-        : 1
-    ),
-    0,
-  )
-  return ((16 - staticCount) << 16) + (maxPriority << 8)
 }
 
 function escapeRegex(s: string): string {
@@ -102,19 +86,13 @@ function patternToRegex(pattern: string): {
   for (let i = 0; i < segments.length; i++) {
     const seg = segments[i]
 
-    if (seg.startsWith(":")) {
+    if (seg === "*") {
+      paramNames.push("*")
+      fragment += "(?:\\/(.+))?"
+      groupCount++
+    } else if (seg.startsWith(":")) {
       const last = seg[seg.length - 1]
-      if (last === "+") {
-        const name = seg.slice(1, -1)
-        paramNames.push(name)
-        fragment += "\\/(.+)"
-        groupCount++
-      } else if (last === "*") {
-        const name = seg.slice(1, -1)
-        paramNames.push(name)
-        fragment += "(?:\\/(.+))?"
-        groupCount++
-      } else if (last === "?") {
+      if (last === "?") {
         const name = seg.slice(1, -1)
         paramNames.push(name)
         fragment += "(?:\\/([^\\/]+))?"
@@ -200,7 +178,7 @@ function compile(
     const orderedPaths = (Object
       .keys(sortedRoutes) as Array<PathPattern.PathPattern>)
       .filter((p) => pathMap.has(p))
-      .sort((a, b) => matchScore(a) - matchScore(b) || a.localeCompare(b))
+      .sort(PathPattern.compare)
 
     const branches: Array<string> = []
     const table: CompiledMethod["table"] = []
@@ -247,15 +225,8 @@ function exec(compiled: CompiledMethod, path: string): MatchResult | null {
   for (const entry of compiled.table) {
     if (m[entry.sentinelIndex] === undefined) continue
 
-    const params: Record<string, string> = {}
-    for (let i = 0; i < entry.paramNames.length; i++) {
-      const val = m[entry.paramGroupIndices[i]]
-      if (val !== undefined) {
-        params[entry.paramNames[i]] = val
-      }
-    }
-
-    return { route: entry.routes[0], params }
+    const params = PathPattern.match(entry.path, path)
+    return params === null ? null : { route: entry.routes[0], params }
   }
 
   return null

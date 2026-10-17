@@ -1,7 +1,6 @@
-import type * as HttpServerRequest from "effect/http/HttpServerRequest"
-import type * as Scope from "effect/Scope"
+import type * as HttpRouter from "effect/http/HttpRouter"
 import * as Route from "../Route.ts"
-import type * as PathPattern from "./PathPattern.ts"
+import * as PathPattern from "./PathPattern.ts"
 import type * as RouteMount from "./RouteMount.ts"
 
 type MethodRoute = Route.Route.With<{ method: string }>
@@ -23,11 +22,15 @@ export type RouteMap = {
   [path: PathPattern.PathPattern]: Route.Route.Tuple
 }
 
+export type Provided =
+  | { readonly [Route.IntrinsicService]?: any }
+  | HttpRouter.Provided
+  | HttpRouter.HttpRouter
+
 /**
  * Extracts the union of `R` requirements from every route reachable in a
  * {@link RouteMapInput} or {@link RouteMap}, including layer routes (`*`) and
- * nested inputs. Excludes services marked with
- * {@link Route.IntrinsicService} since they are provided automatically by
+ * nested inputs. Excludes intrinsic and HttpRouter services supplied by
  * the request runtime.
  */
 export type Context<T> = Exclude<
@@ -35,10 +38,7 @@ export type Context<T> = Exclude<
     [K in keyof T]: T[K] extends Iterable<Route.Route<any, any, any, any, infer R>> ? R
       : Context<T[K]>
   }[keyof T],
-  | { readonly [Route.IntrinsicService]?: any }
-  | HttpServerRequest.HttpServerRequest
-  | HttpServerRequest.ParsedSearchParams
-  | Scope.Scope
+  Provided
 >
 
 type PrefixKeys<T, Prefix extends string> = {
@@ -102,6 +102,8 @@ function flatten(
     const path = key as PathPattern.PathPattern
     const entry = map[path]
     const fullPath = `${prefix}${path}` as PathPattern.PathPattern
+    const validation = PathPattern.validate(fullPath)
+    if (!validation.ok) throw new TypeError(validation.error)
 
     if (Symbol.iterator in (entry as object)) {
       out[fullPath] = [...layers, ...(entry as Iterable<MethodRoute>)]
@@ -131,34 +133,8 @@ export function merge(a: RouteMap, b: RouteMap): RouteMap {
   return sortRoutes(combined)
 }
 
-// segment priority: static (0) < :param (1) < :param? (2) < :param+ (3) < :param* (4)
-function sortScore(path: string): number {
-  const segments = path.split("/")
-  const greedyIdx = segments.findIndex((s) => s.endsWith("*") || s.endsWith("+"))
-  const maxPriority = Math.max(
-    ...segments.map((s) =>
-      !s.startsWith(":")
-        ? 0
-        : s.endsWith("*")
-        ? 4
-        : s.endsWith("+")
-        ? 3
-        : s.endsWith("?")
-        ? 2
-        : 1
-    ),
-    0,
-  )
-
-  return greedyIdx === -1
-    // non-greedy: sort by depth, then by max segment priority
-    ? (segments.length << 16) + (maxPriority << 8)
-    // greedy: sort after non-greedy, by greedy position (later = first), then priority
-    : (1 << 24) + ((16 - greedyIdx) << 16) + (maxPriority << 8)
-}
-
 function sortRoutes(input: RouteMap): RouteMap {
-  const keys = Object.keys(input).sort((a, b) => sortScore(a) - sortScore(b) || a.localeCompare(b))
+  const keys = Object.keys(input).sort(PathPattern.compare)
   const sorted: RouteMap = {}
   for (const key of keys) {
     sorted[key as PathPattern.PathPattern] = input[key as PathPattern.PathPattern]

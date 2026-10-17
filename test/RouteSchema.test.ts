@@ -10,11 +10,14 @@ import * as Effect from "effect/Effect"
 import type * as FileSystem from "effect/FileSystem"
 import * as Headers from "effect/http/Headers"
 import * as HttpBody from "effect/http/HttpBody"
+import * as HttpRouter from "effect/http/HttpRouter"
+import * as HttpServerError from "effect/http/HttpServerError"
 import * as HttpServerRequest from "effect/http/HttpServerRequest"
 import * as Multipart from "effect/http/Multipart"
 import * as Layer from "effect/Layer"
 import type * as Path from "effect/Path"
 import * as Schema from "effect/Schema"
+import * as Stream from "effect/Stream"
 import * as TestHttpClient from "./internal/TestHttpClient.ts"
 
 const multipartContext = Effect.runSync(
@@ -73,7 +76,7 @@ test.describe("Effect HTTP interoperability", () => {
       })
       .pipe(Effect.runPromise))
 
-  test.it("decodes the request service modified by middleware", () =>
+  test.it("decodes modified request headers and path parameters", () =>
     Effect
       .gen(function*() {
         const routes = Route.map({
@@ -95,6 +98,10 @@ test.describe("Effect HTTP interoperability", () => {
               Route.schemaCookies({ session: Schema.String }),
               Route.schemaPathParams({ id: Schema.NumberFromString }),
               Route.json(function*(ctx) {
+                test
+                  .expect(yield* HttpRouter.params)
+                  .toEqual({ id: "1" })
+
                 return { name: ctx.headers["x-name"], session: ctx.cookies.session, id: ctx.pathParams.id }
               }),
             ),
@@ -190,7 +197,7 @@ test.describe("Effect HTTP interoperability", () => {
       })
       .pipe(Effect.runPromise))
 
-  test.it("preserves RequestBodyError for malformed JSON", () =>
+  test.it("preserves HttpServerError for malformed JSON", () =>
     Effect
       .gen(function*() {
         const context = yield* Effect.context<TestLogger.TestLogger>()
@@ -203,10 +210,10 @@ test.describe("Effect HTTP interoperability", () => {
                     Effect.tapError((error) => {
                       test
                         .expect(error)
-                        .toBeInstanceOf(Route.RequestBodyError)
+                        .toBeInstanceOf(HttpServerError.HttpServerError)
                       test
                         .expect(error)
-                        .toMatchObject({ reason: "JsonError" })
+                        .toMatchObject({ reason: { _tag: "RequestParseError", cause: test.expect.any(SyntaxError) } })
 
                       return Effect.void
                     }),
@@ -228,7 +235,7 @@ test.describe("Effect HTTP interoperability", () => {
           .expect(entity.status)
           .toBe(400)
         test
-          .expect((yield* TestLogger.messages).some((message) => message.includes("RequestBodyError")))
+          .expect((yield* TestLogger.messages).some((message) => message.includes("HttpServerError")))
           .toBe(true)
       })
       .pipe(

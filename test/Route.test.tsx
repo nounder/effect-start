@@ -969,3 +969,18 @@ test.describe("Route.layer / Route.layerMerge type inference", () => {
       never
     >()
 })
+
+test.it("builds links with unnamed catch-alls while preserving path separators", () => {
+  test
+    .expect(Route.link("/files/*", { "*": "one two/three" }))
+    .toBe("/files/one%20two/three")
+  test
+    .expect(Route.link("/files/*"))
+    .toBe("/files")
+  test
+    .expect(Route.link("/*"))
+    .toBe("/")
+  test
+    .expect(Route.link("/users/:id?/edit"))
+    .toBe("/users/edit")
+})

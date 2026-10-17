@@ -2,6 +2,7 @@ import * as test from "bun:test"
 import * as RouteMap from "effect-start/internal/RouteMap"
 import * as Route from "effect-start/Route"
 import * as Context from "effect/Context"
+import * as HttpRouter from "effect/http/HttpRouter"
 import * as HttpServerRequest from "effect/http/HttpServerRequest"
 
 test.describe("layer route", () => {
@@ -221,23 +222,22 @@ test.describe(RouteMap.walk, () => {
       ])
   })
 
-  test.it("static < :param < :param? < :param+ < :param*", () => {
+  test.it("static < :param < :param? < *", () => {
     const routes = RouteMap.make({
-      "/:path*": Route.get(Route.text("catch all")),
+      "/*": Route.get(Route.text("catch all")),
       "/about": Route.get(Route.text("about")),
-      "/:path+": Route.get(Route.text("one or more")),
       "/:page": Route.get(Route.text("single param")),
       "/:page?": Route.get(Route.text("optional param")),
     })
 
     test
       .expect(Route.descriptor(RouteMap.walk(routes)).map((d) => d.path))
-      .toEqual(["/about", "/:page", "/:page?", "/:path+", "/:path*"])
+      .toEqual(["/about", "/:page", "/:page?", "/*"])
   })
 
   test.it("greedy routes come after all non-greedy across depth", () => {
     const routes = RouteMap.make({
-      "/:path*": Route.get(Route.text("catch all")),
+      "/*": Route.get(Route.text("catch all")),
       "/users/:id": Route.get(Route.text("user detail")),
       "/users": Route.get(Route.text("users")),
       "/users/:id/posts/:postId": Route.get(Route.text("post detail")),
@@ -245,32 +245,30 @@ test.describe(RouteMap.walk, () => {
 
     test
       .expect(Route.descriptor(RouteMap.walk(routes)).map((d) => d.path))
-      .toEqual(["/users", "/users/:id", "/users/:id/posts/:postId", "/:path*"])
+      .toEqual(["/users", "/users/:id", "/users/:id/posts/:postId", "/*"])
   })
 
   test.it("greedy routes sorted by greedy position", () => {
     const routes = RouteMap.make({
-      "/:path*": Route.get(Route.text("root catch all")),
-      "/api/:rest*": Route.get(Route.text("api catch all")),
-      "/api/v1/:rest*": Route.get(Route.text("api v1 catch all")),
+      "/*": Route.get(Route.text("root catch all")),
+      "/api/*": Route.get(Route.text("api catch all")),
+      "/api/v1/*": Route.get(Route.text("api v1 catch all")),
     })
 
     test
       .expect(Route.descriptor(RouteMap.walk(routes)).map((d) => d.path))
-      .toEqual(["/api/v1/:rest*", "/api/:rest*", "/:path*"])
+      .toEqual(["/api/v1/*", "/api/*", "/*"])
   })
 
   test.it("greedy routes with same position sorted by prefix then type", () => {
     const routes = RouteMap.make({
-      "/docs/:path*": Route.get(Route.text("docs catch all")),
-      "/api/:rest+": Route.get(Route.text("api one or more")),
-      "/api/:rest*": Route.get(Route.text("api catch all")),
+      "/docs/*": Route.get(Route.text("docs catch all")),
+      "/api/*": Route.get(Route.text("api catch all")),
     })
 
-    // /api before /docs (alphabetical), then + before * for same prefix
     test
       .expect(Route.descriptor(RouteMap.walk(routes)).map((d) => d.path))
-      .toEqual(["/api/:rest+", "/api/:rest*", "/docs/:path*"])
+      .toEqual(["/api/*", "/docs/*"])
   })
 })
 
@@ -382,6 +380,8 @@ test.describe("RouteMap.Context", () => {
       Route.text(function*() {
         yield* HttpServerRequest.HttpServerRequest
         yield* HttpServerRequest.ParsedSearchParams
+        yield* HttpRouter.RouteContext
+        yield* HttpRouter.HttpRouter
         yield* A
         return "hi"
       }),

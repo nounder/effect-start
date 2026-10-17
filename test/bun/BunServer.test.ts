@@ -7,16 +7,21 @@ import * as Route from "effect-start/Route"
 import * as RouteHttp from "effect-start/RouteHttp"
 import * as Start from "effect-start/Start"
 import * as ConfigProvider from "effect/ConfigProvider"
+import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
+import * as HttpRouter from "effect/http/HttpRouter"
 import * as HttpServer from "effect/http/HttpServer"
+import * as HttpServerResponse from "effect/http/HttpServerResponse"
 import * as Layer from "effect/Layer"
 import * as NetAddress from "effect/net/NetAddress"
+import * as Schema from "effect/Schema"
 import * as Scope from "effect/Scope"
 import * as NFs from "node:fs"
 import * as NOs from "node:os"
 import * as NPath from "node:path"
+import * as TestHttpClient from "../internal/TestHttpClient.ts"
 
 const staticDir = NPath.resolve(import.meta.dir, "../../static")
 
@@ -1188,3 +1193,91 @@ test.describe("static file routes", () => {
       )
   })
 })
+
+test.it("serves optional suffixes and normalized catch-alls through native Bun routes", () =>
+  Effect
+    .gen(function*() {
+      const routes = Route.map({
+        "/users/:id?/edit": Route.get(
+          Route.schemaPathParams({ id: Schema.optional(Schema.NumberFromString) }),
+          Route.json(function*(ctx) {
+            yield* HttpRouter.HttpRouter
+            return { raw: yield* HttpRouter.params, decoded: ctx.pathParams }
+          }),
+        ),
+        "/docs": Route.get(Route.text("index")),
+        "/docs/*": Route.get(Route.json(function*() {
+          return yield* HttpRouter.params
+        })),
+        "/Files/*": Route.get(Route.json(function*() {
+          return yield* HttpRouter.params
+        })),
+        "/café/:id": Route.get(Route.json(function*() {
+          return yield* HttpRouter.params
+        })),
+      })
+      const context = yield* Layer.build(
+        BunServer.layerRoutes({ hostname: "localhost", port: 0 }).pipe(
+          Layer.provide(Route.layer(routes)),
+        ),
+      )
+      const address = HttpServer.formatAddress(Context.get(context, HttpServer.HttpServer).address)
+      const client = TestHttpClient.fromHandler((request) => fetch(request))
+      for (const path of ["/users/edit", "/users//edit/"]) {
+        const response = yield* client.get(address + path)
+
+        test
+          .expect(response.status)
+          .toBe(200)
+        test
+          .expect(yield* response.json)
+          .toEqual({ raw: {}, decoded: {} })
+      }
+      const user = yield* client.get(address + "/users/42/edit")
+
+      test
+        .expect(yield* user.json)
+        .toEqual({ raw: { id: "42" }, decoded: { id: 42 } })
+      test
+        .expect((yield* client.get(address + "/users")).status)
+        .toBe(404)
+      test
+        .expect((yield* client.get(address + "/Users/42/edit")).status)
+        .toBe(404)
+      test
+        .expect(yield* (yield* client.get(address + "/docs")).text)
+        .toBe("index")
+      test
+        .expect(yield* (yield* client.get(address + "/docs/a%20b/c")).json)
+        .toEqual({ "*": "a b/c" })
+
+      for (const path of ["/Files", "/Files/"]) {
+        test
+          .expect(yield* (yield* client.get(address + path)).json)
+          .toEqual({})
+      }
+
+      test
+        .expect((yield* client.get(address + "/Files/%GG")).status)
+        .toBe(404)
+      test
+        .expect((yield* client.get(address + "/users/%E0%A4%A/edit")).status)
+        .toBe(404)
+      test
+        .expect(yield* (yield* client.get(address + "/caf%C3%A9/%2520")).json)
+        .toEqual({ id: "%20" })
+
+      const router = Context.get(context, HttpRouter.HttpRouter)
+      yield* router.add("GET", "/external", HttpServerResponse.text("external"))
+
+      test
+        .expect(yield* (yield* client.get(address + "/external")).text)
+        .toBe("external")
+      test
+        .expect((yield* client.get(address + "/missing")).status)
+        .toBe(404)
+    })
+    .pipe(
+      Effect.scoped,
+      Effect.runPromise,
+    ))

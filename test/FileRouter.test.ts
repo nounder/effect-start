@@ -5,10 +5,12 @@ import * as FileRouterCodegen from "effect-start/FileRouterCodegen"
 import * as Route from "effect-start/Route"
 import * as Effect from "effect/Effect"
 import * as FileSystem from "effect/FileSystem"
+import * as Result from "effect/Result"
 import * as NFs from "node:fs"
 import * as NOs from "node:os"
 import * as NPath from "node:path"
 import * as NUrl from "node:url"
+import * as FilePathPattern from "../src/internal/FilePathPattern.ts"
 
 const writeTree = (root: string, files: Record<string, string>) => {
   for (const [path, content] of Object.entries(files)) {
@@ -237,4 +239,158 @@ test.describe("codegen generates manifest by default", () => {
         Effect.provide(BunFileSystem.layer),
         Effect.runPromise,
       ))
+})
+
+test.it("treats differently named filesystem catch-alls as the same runtime path", () =>
+  Effect
+    .gen(function*() {
+      const result = yield* Effect.result(FileRouter.getFileRoutes([
+        "docs/[[rest]]/route.ts",
+        "docs/[[path]]/route.ts",
+      ]))
+
+      test
+        .expect(result._tag)
+        .toBe("Failure")
+
+      if (result._tag === "Failure") {
+        test
+          .expect(result.failure.reason)
+          .toBe("Conflict")
+        test
+          .expect(result.failure.path)
+          .toBe("/docs/*")
+      }
+    })
+    .pipe(Effect.runPromise))
+
+test.it("converts empty file paths", () => {
+  test
+    .expect(FilePathPattern.toPathPattern(""))
+    .toEqual(Result.succeed("/"))
+  test
+    .expect(FilePathPattern.toPathPattern("/"))
+    .toEqual(Result.succeed("/"))
+})
+
+test.it("strips groups during conversion", () => {
+  test
+    .expect(FilePathPattern.toPathPattern("(admin)"))
+    .toEqual(Result.succeed("/"))
+  test
+    .expect(FilePathPattern.toPathPattern("/(admin)/users"))
+    .toEqual(
+      Result.succeed("/users"),
+    )
+  test
+    .expect(FilePathPattern.toPathPattern("(auth)/login/(step1)"))
+    .toEqual(
+      Result.succeed("/login"),
+    )
+})
+
+test.it("converts params and rest segments", () => {
+  test
+    .expect(FilePathPattern.toPathPattern("users/[userId]/posts"))
+    .toEqual(Result.succeed("/users/:userId/posts"))
+  test
+    .expect(FilePathPattern.toPathPattern("api/[[path]]"))
+    .toEqual(
+      Result.succeed("/api/*"),
+    )
+})
+
+test.it("parseRoute extracts handle", () => {
+  const route = FileRouter.parseRoute("users/route.tsx")
+
+  test
+    .expect(route)
+    .not
+    .toBeNull()
+  test
+    .expect(route!.handle)
+    .toBe("route")
+  test
+    .expect(route!.routePath)
+    .toBe("/users")
+
+  const layer = FileRouter.parseRoute("api/layer.ts")
+
+  test
+    .expect(layer)
+    .not
+    .toBeNull()
+  test
+    .expect(layer!.handle)
+    .toBe("layer")
+  test
+    .expect(layer!.routePath)
+    .toBe("/api")
+})
+
+test.it("parseRoute with groups", () => {
+  const route = FileRouter.parseRoute("(admin)/users/route.tsx")
+
+  test
+    .expect(route)
+    .not
+    .toBeNull()
+  test
+    .expect(route!.handle)
+    .toBe("route")
+  test
+    .expect(route!.routePath)
+    .toBe("/users")
+})
+
+test.it("parseRoute with params and rest", () => {
+  const route = FileRouter.parseRoute("users/[userId]/posts/route.tsx")
+
+  test
+    .expect(route)
+    .not
+    .toBeNull()
+  test
+    .expect(route!.handle)
+    .toBe("route")
+  test
+    .expect(route!.routePath)
+    .toBe("/users/:userId/posts")
+
+  const rest = FileRouter.parseRoute("api/[[path]]/route.ts")
+
+  test
+    .expect(rest)
+    .not
+    .toBeNull()
+  test
+    .expect(rest!.handle)
+    .toBe("route")
+  test
+    .expect(rest!.routePath)
+    .toBe("/api/*")
+})
+
+test.it("rejects invalid file path patterns", () => {
+  test
+    .expect(Result.isFailure(FilePathPattern.toPathPattern("$...")))
+    .toBe(true)
+  test
+    .expect(Result.isFailure(FilePathPattern.toPathPattern("invalid%char")))
+    .toBe(
+      true,
+    )
+  test
+    .expect(Result.isFailure(FilePathPattern.toPathPattern("foo/[[rest]]/bar")))
+    .toBe(
+      true,
+    )
+})
+
+test.it("supports literal segments with dots", () => {
+  test
+    .expect(FilePathPattern.toPathPattern("events.json"))
+    .toEqual(
+      Result.succeed("/events.json"),
+    )
 })

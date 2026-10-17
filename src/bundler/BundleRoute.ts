@@ -2,20 +2,20 @@ import type * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
+import * as Schema from "effect/Schema"
 import * as Entity from "../Entity.ts"
-import * as PathPattern from "../internal/PathPattern.ts"
+import type * as PathPattern from "../internal/PathPattern.ts"
 import * as RouteMap from "../internal/RouteMap.ts"
-import * as Values from "../internal/Values.ts"
 import * as Route from "../Route.ts"
 import * as Bundle from "./Bundle.ts"
 
 /**
  * Creates a GET route that serves bundle artifacts.
- * Mount at a path with a wildcard param (any name works).
+ * Mount at a path ending in /*.
  *
  * ```ts
  * RouteMap.make({
- *   "/_bundle/:path+": BundleRoute.make(Bundle.Bundle),
+ *   "/_bundle/*": BundleRoute.make(Bundle.Bundle),
  * })
  * ```
  */
@@ -23,16 +23,13 @@ export const make = <Tag extends Context.Key<any, Bundle.BundleContext>>(
   tag: Tag,
 ) =>
   Route.get(
+    Route.schemaPathParams({ "*": Schema.optional(Schema.String) }),
     Route.handle(function*(ctx) {
       const bundle = yield* tag
       if (bundle.rebuild) {
         yield* bundle.rebuild()
       }
-      const request = yield* Route.Request
-      const url = new URL(request.url)
-      const mountPath = (ctx as unknown as { path?: string }).path ?? "/"
-      const params = PathPattern.match(mountPath, url.pathname)
-      const artifactPath = params ? Values.firstValue(params) : undefined
+      const artifactPath = ctx.pathParams["*"]
       if (!artifactPath) {
         return Entity.make("Not Found", { status: 404 })
       }
@@ -63,7 +60,7 @@ export const layer = (options?: {
   bundle?: Context.Key<any, Bundle.BundleContext>
   path?: PathPattern.PathPattern
 }) => {
-  const path = options?.path ?? "/_bundle/:path*"
+  const path = options?.path ?? "/_bundle/*"
 
   if (options?.bundle) {
     return Route.layerMerge({
