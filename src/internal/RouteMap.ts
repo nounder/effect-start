@@ -35,7 +35,10 @@ export type Context<T> = Exclude<
     [K in keyof T]: T[K] extends Iterable<Route.Route<any, any, any, any, infer R>> ? R
       : Context<T[K]>
   }[keyof T],
-  { readonly [Route.IntrinsicService]?: any } | HttpServerRequest.HttpServerRequest | Scope.Scope
+  | { readonly [Route.IntrinsicService]?: any }
+  | HttpServerRequest.HttpServerRequest
+  | HttpServerRequest.ParsedSearchParams
+  | Scope.Scope
 >
 
 type PrefixKeys<T, Prefix extends string> = {

@@ -1,7 +1,8 @@
 import * as test from "bun:test"
+import * as RouteMap from "effect-start/internal/RouteMap"
 import * as Route from "effect-start/Route"
 import * as Context from "effect/Context"
-import * as RouteMap from "effect-start/internal/RouteMap"
+import * as HttpServerRequest from "effect/http/HttpServerRequest"
 
 test.describe("layer route", () => {
   test.it("merges LayerRoute into other routes", () => {
@@ -375,6 +376,21 @@ test.describe("RouteMap.Context", () => {
     .toEqualTypeOf<
       never
     >()
+
+  const withCoreRequest = {
+    "/x": Route.get(
+      Route.text(function*() {
+        yield* HttpServerRequest.HttpServerRequest
+        yield* HttpServerRequest.ParsedSearchParams
+        yield* A
+        return "hi"
+      }),
+    ),
+  }
+
+  test
+    .expectTypeOf<RouteMap.Context<typeof withCoreRequest>>()
+    .toEqualTypeOf<A>()
 
   const flattened = RouteMap.make({
     "/x": Route.get(

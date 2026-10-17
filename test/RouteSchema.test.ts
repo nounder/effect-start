@@ -9,6 +9,8 @@ import { TestLogger } from "effect-start/testing"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import type * as FileSystem from "effect/FileSystem"
+import * as Headers from "effect/http/Headers"
+import * as HttpServerRequest from "effect/http/HttpServerRequest"
 import * as Multipart from "effect/http/Multipart"
 import * as Layer from "effect/Layer"
 import type * as Path from "effect/Path"
@@ -17,6 +19,222 @@ import * as Schema from "effect/Schema"
 const multipartContext = Effect.runSync(
   Layer.build(Layer.merge(BunFileSystem.layer, BunPath.layer)).pipe(Effect.scoped),
 )
+
+test.describe("Effect HTTP interoperability", () => {
+  test.it("shares request services and core schema decoders across middleware and handlers", () =>
+    Effect
+      .gen(function*() {
+        const routes = Route
+          .use(
+            Route.filter(Effect.gen(function*() {
+              const request = yield* HttpServerRequest.HttpServerRequest
+
+              test
+                .expect(request.source)
+                .toBe(yield* Route.Request)
+
+              const searchParams = yield* HttpServerRequest.schemaSearchParams(Schema.Struct({
+                tag: Schema.Array(Schema.String),
+              }))
+              return { context: { request, coreSearchParams: searchParams } }
+            })),
+          )
+          .get(
+            Route.schemaSearchParams({ tag: Schema.Array(Schema.String) }),
+            Route.json(function*(ctx) {
+              test
+                .expect(yield* HttpServerRequest.HttpServerRequest)
+                .toBe(ctx.request)
+              test
+                .expect(ctx.searchParams)
+                .toEqual(ctx.coreSearchParams)
+
+              return { tag: [...ctx.searchParams.tag] }
+            }),
+          )
+        const layer = Route.layer({ "/": routes })
+
+        test
+          .expectTypeOf<Layer.Services<typeof layer>>()
+          .toEqualTypeOf<never>()
+
+        const client = Fetch.fromHandler(RouteHttp.toWebHandler(routes))
+        for (const tags of [["first", "second"], ["third", "fourth"]]) {
+          const entity = yield* client.get(`http://localhost/?tag=${tags[0]}&tag=${tags[1]}`)
+
+          test
+            .expect(entity.status)
+            .toBe(200)
+          test
+            .expect(yield* entity.json)
+            .toEqual({ tag: tags })
+        }
+      })
+      .pipe(Effect.runPromise))
+
+  test.it("decodes the request service modified by middleware", () =>
+    Effect
+      .gen(function*() {
+        const routes = Route.map({
+          "/users/:id": Route
+            .use(
+              Route.json(function*(_, next) {
+                const request = yield* HttpServerRequest.HttpServerRequest
+                return yield* next.pipe(Effect.provideService(
+                  HttpServerRequest.HttpServerRequest,
+                  request.modify({
+                    url: "/users/42",
+                    headers: Headers.fromInput({ "x-name": "modified", cookie: "session=updated" }),
+                  }),
+                ))
+              }),
+            )
+            .get(
+              Route.schemaHeaders({ "x-name": Schema.String }),
+              Route.schemaCookies({ session: Schema.String }),
+              Route.schemaPathParams({ id: Schema.NumberFromString }),
+              Route.json(function*(ctx) {
+                return { name: ctx.headers["x-name"], session: ctx.cookies.session, id: ctx.pathParams.id }
+              }),
+            ),
+        })
+        const client = Fetch.fromHandler(Object.fromEntries(RouteHttp.walkHandles(routes))["/users/:id"])
+        const entity = yield* client.get("http://localhost/users/1", {
+          headers: { "x-name": "original", cookie: "session=original" },
+        })
+
+        test
+          .expect(entity.status)
+          .toBe(200)
+        test
+          .expect(yield* entity.json)
+          .toEqual({ name: "modified", session: "updated", id: 42 })
+      })
+      .pipe(Effect.runPromise))
+
+  test.it("shares cached JSON bodies with core middleware and multiple route schemas", () =>
+    Effect
+      .gen(function*() {
+        const client = Fetch.fromHandler(RouteHttp.toWebHandler(
+          Route
+            .use(
+              Route.filter(function*() {
+                const body = yield* HttpServerRequest.schemaBodyJson(Schema.Struct({ name: Schema.String }))
+                return { context: { name: body.name } }
+              }),
+            )
+            .post(
+              Route.schemaBodyJson({ name: Schema.String }),
+              Route.schemaBodyJson({ age: Schema.Number }),
+              Route.json(function*(ctx) {
+                test
+                  .expect(ctx.body.name)
+                  .toBe(ctx.name)
+
+                const body = yield* HttpServerRequest.schemaBodyJson(Schema.Struct({ age: Schema.Number }))
+
+                test
+                  .expect(ctx.body.age)
+                  .toBe(body.age)
+
+                return ctx.body
+              }),
+            ),
+        ))
+        const entity = yield* client.post("http://localhost/", {
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ name: "Alice", age: 30 }),
+        })
+
+        test
+          .expect(entity.status)
+          .toBe(200)
+        test
+          .expect(yield* entity.json)
+          .toEqual({ name: "Alice", age: 30 })
+      })
+      .pipe(Effect.runPromise))
+
+  test.it("shares URL-encoded bodies across core, URL params, and form decoders", () =>
+    Effect
+      .gen(function*() {
+        const client = Fetch.fromHandler(
+          RouteHttp.toWebHandlerWith(multipartContext)(
+            Route.post(
+              Route.schemaBodyUrlParams({ name: Schema.String }),
+              Route.schemaBodyForm({ tag: Schema.Array(Schema.String) }),
+              Route.json(function*(ctx) {
+                const body = yield* HttpServerRequest.schemaBodyUrlParams(Schema.Struct({ name: Schema.String }))
+
+                test
+                  .expect(body.name)
+                  .toBe(ctx.body.name)
+
+                return { name: ctx.body.name, tag: [...ctx.body.tag] }
+              }),
+            ),
+          ),
+        )
+        const entity = yield* client.post("http://localhost/", {
+          headers: { "content-type": "application/x-www-form-urlencoded" },
+          body: "name=Alice&tag=first&tag=second",
+        })
+
+        test
+          .expect(entity.status)
+          .toBe(200)
+        test
+          .expect(yield* entity.json)
+          .toEqual({ name: "Alice", tag: ["first", "second"] })
+      })
+      .pipe(Effect.runPromise))
+
+  test.it("preserves RequestBodyError for malformed JSON", () =>
+    Effect
+      .gen(function*() {
+        const context = yield* Effect.context<TestLogger.TestLogger>()
+        const client = Fetch.fromHandler(
+          RouteHttp.toWebHandlerWith(context)(
+            Route
+              .use(
+                Route.json((_, next) =>
+                  next.pipe(
+                    Effect.tapError((error) => {
+                      test
+                        .expect(error)
+                        .toBeInstanceOf(Route.RequestBodyError)
+                      test
+                        .expect(error)
+                        .toMatchObject({ reason: "JsonError" })
+
+                      return Effect.void
+                    }),
+                  )
+                ),
+              )
+              .post(
+                Route.schemaBodyJson({ name: Schema.String }),
+                Route.json({ ok: true }),
+              ),
+          ),
+        )
+        const entity = yield* client.post("http://localhost/", {
+          headers: { "content-type": "application/json" },
+          body: "{",
+        })
+
+        test
+          .expect(entity.status)
+          .toBe(400)
+        test
+          .expect((yield* TestLogger.messages).some((message) => message.includes("RequestBodyError")))
+          .toBe(true)
+      })
+      .pipe(
+        Effect.provide(TestLogger.layer()),
+        Effect.runPromise,
+      ))
+})
 
 test.describe(`${RouteSchema.schemaHeaders.name}()`, () => {
   test.it(`${RouteSchema.schemaHeaders.name} merges`, () => {

@@ -30,6 +30,7 @@ type RouteRequirements<Routes> = Routes extends Iterable<infer Item>
       R,
       | { readonly [Route.IntrinsicService]?: any }
       | HttpServerRequest.HttpServerRequest
+      | HttpServerRequest.ParsedSearchParams
       | Scope.Scope
     >
   : never
@@ -213,7 +214,7 @@ const selectedFormat = (accept: string | undefined, plan: MethodPlan): RouteBody
 export const handler = <R>(routes: Iterable<UnboundedRouteWithMethod>): Effect.Effect<
   HttpServerResponse.HttpServerResponse,
   never,
-  HttpServerRequest.HttpServerRequest | Exclude<R, Route.Request>
+  HttpServerRequest.HttpServerRequest | Exclude<R, Route.Request | HttpServerRequest.ParsedSearchParams>
 > => {
   const allRoutes = Array.from(routes)
   const methods = new Set<string>()
@@ -281,6 +282,10 @@ export const handler = <R>(routes: Iterable<UnboundedRouteWithMethod>): Effect.E
         })
         .pipe(
           Effect.provideService(Route.Request, request.source),
+          Effect.provideService(
+            HttpServerRequest.ParsedSearchParams,
+            HttpServerRequest.searchParamsFromURL(new URL(request.url, "http://localhost")),
+          ),
           Effect.provideService(Route.RouteContext, { context: {} }),
         )
     })
