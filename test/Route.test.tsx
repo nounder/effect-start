@@ -2,13 +2,13 @@ import * as test from "bun:test"
 import type * as Engine from "effect-start/datastar"
 import * as Development from "effect-start/Development"
 import * as Entity from "effect-start/Entity"
-import * as Fetch from "effect-start/Fetch"
 import * as Route from "effect-start/Route"
 import * as RouteHttp from "effect-start/RouteHttp"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import type * as Layer from "effect/Layer"
 import * as Schema from "effect/Schema"
+import * as TestHttpClient from "./internal/TestHttpClient.ts"
 
 test.describe("Route.html with JSX", () => {
   test.it("renders JSX to HTML string", () =>
@@ -19,7 +19,7 @@ test.describe("Route.html with JSX", () => {
             Hello World
           </div>,
         )))
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/")
 
         test
@@ -53,7 +53,7 @@ test.describe("Route.html with JSX", () => {
             ),
           ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/")
 
         test
@@ -72,7 +72,7 @@ test.describe("Route.html with JSX", () => {
             </span>,
           ))),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/")
 
         test
@@ -98,7 +98,7 @@ test.describe("Route.html with JSX", () => {
             ),
           ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/")
 
         test
@@ -119,7 +119,7 @@ test.describe("Route.html with JSX", () => {
             )
           )),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/")
 
         test
@@ -146,7 +146,7 @@ test.describe("Route.html with JSX", () => {
             ),
           ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/")
 
         test
@@ -168,7 +168,7 @@ test.describe("Route.html with JSX", () => {
             { status: 201 },
           ))),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/")
 
         test
@@ -198,7 +198,7 @@ test.describe("Route.html with JSX", () => {
             ),
           ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/")
 
         test
@@ -244,7 +244,7 @@ test.describe("Route.html with JSX", () => {
             ),
           ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/")
         const text = yield* entity.text
 
@@ -263,7 +263,7 @@ test.describe("Route.html with JSX", () => {
         const handler = RouteHttp.toWebHandler(
           Route.get(Route.html("<h1>Hello</h1>")),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/")
 
         test
@@ -296,7 +296,7 @@ test.describe("Route.json", () => {
             }),
           ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
 
         const found = yield* client.get("http://localhost/json")
 
@@ -328,7 +328,7 @@ test.describe(Route.redirect, () => {
       .gen(function*() {
         const routes = Route.get(Route.redirect("/dashboard"))
         const handler = RouteHttp.toWebHandler(routes)
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
 
         const entity = yield* client.get("http://localhost/test")
 
@@ -346,7 +346,7 @@ test.describe(Route.redirect, () => {
       .gen(function*() {
         const routes = Route.get(Route.redirect("/new-url", { status: 301 }))
         const handler = RouteHttp.toWebHandler(routes)
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
 
         const entity = yield* client.get("http://localhost/test")
 
@@ -366,7 +366,7 @@ test.describe(Route.redirect, () => {
           Route.redirect(new URL("https://example.com/path")),
         )
         const handler = RouteHttp.toWebHandler(routes)
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
 
         const entity = yield* client.get("http://localhost/test")
 
@@ -385,7 +385,7 @@ test.describe(Route.redirect, () => {
           }),
         )
         const handler = RouteHttp.toWebHandler(routes)
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
 
         const entity = yield* client.post("http://localhost/test")
 
@@ -405,7 +405,7 @@ test.describe(Route.redirect, () => {
           Route.redirect("/time"),
         )
         const handler = RouteHttp.toWebHandler(routes)
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
 
         const entity = yield* client.get("http://localhost/")
 
@@ -468,7 +468,7 @@ test.describe(Route.lazy, () => {
         const routes = yield* lazyRoutes
         const handler = RouteHttp.toWebHandler(routes)
 
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/test")
 
         test
@@ -498,7 +498,7 @@ test.describe(Route.lazy, () => {
         const routes = yield* lazyRoutes
         const handler = RouteHttp.toWebHandler(routes)
 
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/test")
 
         test
@@ -545,7 +545,7 @@ test.describe(Route.devOnly, () => {
           ),
         )
 
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/test")
 
         test
@@ -566,7 +566,7 @@ test.describe(Route.devOnly, () => {
         const handler = RouteHttp.toWebHandler(
           Route.get(Route.devOnly, Route.text("public")),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/test")
 
         test
@@ -587,7 +587,7 @@ test.describe(Route.devOnly, () => {
             }),
           ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/test")
 
         test

@@ -1,11 +1,25 @@
 import * as test from "bun:test"
-import * as Fetch from "effect-start/Fetch"
+import { BunServer } from "effect-start/bun"
+import type * as RouteMap from "effect-start/internal/RouteMap"
 import * as Route from "effect-start/Route"
 import * as RouteHttp from "effect-start/RouteHttp"
+import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
+import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
+import * as Sse from "effect/encoding/Sse"
+import * as FetchHttpClient from "effect/http/FetchHttpClient"
+import * as HttpClient from "effect/http/HttpClient"
+import * as HttpServer from "effect/http/HttpServer"
 import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
 import * as Stream from "effect/Stream"
+import * as TestHttpClient from "./internal/TestHttpClient.ts"
+
+const testLayer = <const Input extends RouteMap.RouteMapInput>(routes: Input) =>
+  BunServer.layerRoutes({ port: 0 }).pipe(
+    Layer.provide(Route.layer(Route.map(routes))),
+  )
 
 test.describe("Route.sse()", () => {
   test.it("infers format as sse", () => {
@@ -65,7 +79,7 @@ test.describe("Route.sse()", () => {
             Route.sse(() => Stream.make({ data: "hello" }, { data: "world" })),
           ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/events")
 
         test
@@ -90,7 +104,7 @@ test.describe("Route.sse()", () => {
             Route.sse(() => Stream.make({ data: "payload", event: "custom" })),
           ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/events")
 
         test
@@ -107,7 +121,7 @@ test.describe("Route.sse()", () => {
             Route.sse(() => Stream.make({ data: "hello", retry: 5000 })),
           ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/events")
 
         test
@@ -129,7 +143,7 @@ test.describe("Route.sse()", () => {
             ),
           ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/events")
 
         test
@@ -144,7 +158,7 @@ test.describe("Route.sse()", () => {
         const handler = RouteHttp.toWebHandler(
           Route.get(Route.sse(Stream.make({ data: "direct" }))),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/events")
 
         test
@@ -203,7 +217,7 @@ test.describe("Route.sse()", () => {
         const context = Effect.runSync(Layer.build(layer).pipe(Effect.scoped))
         const handler = RouteHttp.toWebHandlerWith(context)(route)
 
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/events")
 
         test
@@ -225,7 +239,7 @@ test.describe("Route.sse()", () => {
             ),
           ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/events")
 
         test
@@ -251,7 +265,7 @@ test.describe("Route.sse()", () => {
             ),
           ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/events")
 
         test
@@ -263,4 +277,200 @@ test.describe("Route.sse()", () => {
           )
       })
       .pipe(Effect.runPromise))
+})
+
+test.describe("Route.sse with HttpClient", () => {
+  test.it("parses SSE events from a real server", () =>
+    Effect
+      .gen(function*() {
+        const server = yield* HttpServer.HttpServer
+        const url = `${HttpServer.formatAddress(server.address)}/events`
+
+        const events = yield* HttpClient.get(url).pipe(
+          Effect.map((response) =>
+            response.stream.pipe(
+              Stream.decodeText(),
+              Stream.pipeThroughChannel(Sse.decode()),
+            )
+          ),
+          Effect.flatMap(Stream.runCollect),
+        )
+
+        test
+          .expect(Array.from(events))
+          .toEqual([
+            { _tag: "Event", id: undefined, event: "message", data: "hello" },
+            { _tag: "Event", id: undefined, data: "world", event: "custom" },
+          ])
+      })
+      .pipe(
+        Effect.provide(
+          testLayer({
+            "/events": Route.get(
+              Route.sse(() =>
+                Stream.make(
+                  { data: "hello" },
+                  { data: "world", event: "custom" },
+                )
+              ),
+            ),
+          }),
+        ),
+        Effect.provide(FetchHttpClient.layer),
+        Effect.runPromise,
+      ))
+
+  test.it("exposes retry directives through the core SSE decoder", () =>
+    Effect
+      .gen(function*() {
+        const server = yield* HttpServer.HttpServer
+        const response = yield* HttpClient.get(`${HttpServer.formatAddress(server.address)}/events`)
+        const exit = yield* response.stream.pipe(
+          Stream.decodeText(),
+          Stream.pipeThroughChannel(Sse.decode()),
+          Stream.runCollect,
+          Effect.exit,
+        )
+
+        test
+          .expect(exit._tag)
+          .toBe("Failure")
+
+        if (exit._tag === "Failure") {
+          const error = Cause.findErrorOption(exit.cause)
+
+          test
+            .expect(Option.isSome(error) && Sse.Retry.is(error.value))
+            .toBe(true)
+
+          if (Option.isSome(error) && Sse.Retry.is(error.value)) {
+            test
+              .expect(Duration.toMillis(error.value.duration))
+              .toBe(3000)
+          }
+        }
+      })
+      .pipe(
+        Effect.provide(testLayer({
+          "/events": Route.get(Route.sse(Stream.make({ data: "reconnect", retry: 3000 }))),
+        })),
+        Effect.provide(FetchHttpClient.layer),
+        Effect.runPromise,
+      ))
+
+  test.it("parses multi-line data events", () =>
+    Effect
+      .gen(function*() {
+        const server = yield* HttpServer.HttpServer
+        const url = `${HttpServer.formatAddress(server.address)}/events`
+
+        const events = yield* HttpClient.get(url).pipe(
+          Effect.map((response) =>
+            response.stream.pipe(
+              Stream.decodeText(),
+              Stream.pipeThroughChannel(Sse.decode()),
+            )
+          ),
+          Effect.flatMap(Stream.runCollect),
+        )
+
+        test
+          .expect(Array.from(events))
+          .toEqual([{
+            _tag: "Event",
+            id: undefined,
+            event: "message",
+            data: "line1\nline2\nline3",
+          }])
+      })
+      .pipe(
+        Effect.provide(
+          testLayer({
+            "/events": Route.get(
+              Route.sse(() => Stream.make({ data: "line1\nline2\nline3" })),
+            ),
+          }),
+        ),
+        Effect.provide(FetchHttpClient.layer),
+        Effect.runPromise,
+      ))
+
+  test.it("parses tagged struct events", () =>
+    Effect
+      .gen(function*() {
+        const server = yield* HttpServer.HttpServer
+        const url = `${HttpServer.formatAddress(server.address)}/events`
+
+        const events = yield* HttpClient.get(url).pipe(
+          Effect.map((response) =>
+            response.stream.pipe(
+              Stream.decodeText(),
+              Stream.pipeThroughChannel(Sse.decode()),
+            )
+          ),
+          Effect.flatMap(Stream.runCollect),
+        )
+
+        test
+          .expect(Array.from(events))
+          .toEqual([
+            {
+              _tag: "Event",
+              id: undefined,
+              data: "{\"_tag\":\"UserCreated\",\"id\":1,\"name\":\"Alice\"}",
+              event: "UserCreated",
+            },
+          ])
+      })
+      .pipe(
+        Effect.provide(
+          testLayer({
+            "/events": Route.get(
+              Route.sse(() => Stream.make({ _tag: "UserCreated", id: 1, name: "Alice" })),
+            ),
+          }),
+        ),
+        Effect.provide(FetchHttpClient.layer),
+        Effect.runPromise,
+      ))
+
+  test.it("handles stream timeout", () =>
+    Effect
+      .gen(function*() {
+        const server = yield* HttpServer.HttpServer
+        const url = `${HttpServer.formatAddress(server.address)}/events`
+
+        const events = yield* HttpClient.get(url).pipe(
+          Effect.map((response) =>
+            response.stream.pipe(
+              Stream.decodeText(),
+              Stream.pipeThroughChannel(Sse.decode()),
+            )
+          ),
+          Effect.flatMap((stream) =>
+            stream.pipe(
+              Stream.timeout("100 millis"),
+              Stream.runCollect,
+            )
+          ),
+        )
+
+        test
+          .expect(Array.from(events).length)
+          .toBeGreaterThanOrEqual(1)
+        test
+          .expect(Array.from(events)[0])
+          .toEqual({ _tag: "Event", id: undefined, event: "message", data: "first" })
+      })
+      .pipe(
+        Effect.provide(
+          testLayer({
+            "/events": Route.get(
+              Route.sse(() => Stream.concat(Stream.make({ data: "first" }), Stream.never)),
+            ),
+          }),
+        ),
+        Effect.provide(FetchHttpClient.layer),
+        Effect.runPromise,
+      ))
 })

@@ -1,8 +1,8 @@
 import * as test from "bun:test"
-import * as Fetch from "effect-start/Fetch"
 import * as Route from "effect-start/Route"
 import * as RouteHttp from "effect-start/RouteHttp"
 import * as Effect from "effect/Effect"
+import type * as HttpClient from "effect/http/HttpClient"
 import * as Layer from "effect/Layer"
 import * as PubSub from "effect/PubSub"
 import * as Queue from "effect/Queue"
@@ -10,6 +10,7 @@ import * as Bundle from "../../src/bundler/Bundle.ts"
 import routes from "../../src/studio/routes.tsx"
 import * as Studio from "../../src/studio/Studio.ts"
 import type * as StudioStore from "../../src/studio/StudioStore.ts"
+import * as TestHttpClient from "../internal/TestHttpClient.ts"
 
 const tree = Route.map({ "/studio": routes })
 
@@ -39,14 +40,14 @@ const bundleLayer = Layer.succeed(Bundle.Bundle, {
 
 const runWithAuth = (
   auth: typeof Studio.Studio.Service["auth"],
-  perform: (client: Fetch.FetchClient) => Effect.Effect<void, any, never>,
+  perform: (client: HttpClient.HttpClient) => Effect.Effect<void, any, never>,
 ) =>
   Effect
     .gen(function*() {
       const context = yield* Effect.context<Studio.Studio | Bundle.Bundle>()
       const handles = Object.fromEntries(RouteHttp.walkHandles(tree, context))
       const handler = handles["/studio/services"]
-      yield* perform(Fetch.fromHandler(handler))
+      yield* perform(TestHttpClient.fromHandler(handler))
     })
     .pipe(
       Effect.provide(Layer.mergeAll(studioLayer(auth), bundleLayer)),

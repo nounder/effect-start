@@ -1,6 +1,5 @@
 import * as test from "bun:test"
 import { BunFileSystem, BunPath } from "effect-start/bun"
-import * as Fetch from "effect-start/Fetch"
 import * as RouteSchema from "effect-start/internal/RouteSchema"
 import * as Route from "effect-start/Route"
 import * as RouteError from "effect-start/RouteError"
@@ -10,11 +9,13 @@ import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import type * as FileSystem from "effect/FileSystem"
 import * as Headers from "effect/http/Headers"
+import * as HttpBody from "effect/http/HttpBody"
 import * as HttpServerRequest from "effect/http/HttpServerRequest"
 import * as Multipart from "effect/http/Multipart"
 import * as Layer from "effect/Layer"
 import type * as Path from "effect/Path"
 import * as Schema from "effect/Schema"
+import * as TestHttpClient from "./internal/TestHttpClient.ts"
 
 const multipartContext = Effect.runSync(
   Layer.build(Layer.merge(BunFileSystem.layer, BunPath.layer)).pipe(Effect.scoped),
@@ -58,7 +59,7 @@ test.describe("Effect HTTP interoperability", () => {
           .expectTypeOf<Layer.Services<typeof layer>>()
           .toEqualTypeOf<never>()
 
-        const client = Fetch.fromHandler(RouteHttp.toWebHandler(routes))
+        const client = TestHttpClient.fromHandler(RouteHttp.toWebHandler(routes))
         for (const tags of [["first", "second"], ["third", "fourth"]]) {
           const entity = yield* client.get(`http://localhost/?tag=${tags[0]}&tag=${tags[1]}`)
 
@@ -98,7 +99,7 @@ test.describe("Effect HTTP interoperability", () => {
               }),
             ),
         })
-        const client = Fetch.fromHandler(Object.fromEntries(RouteHttp.walkHandles(routes))["/users/:id"])
+        const client = TestHttpClient.fromHandler(Object.fromEntries(RouteHttp.walkHandles(routes))["/users/:id"])
         const entity = yield* client.get("http://localhost/users/1", {
           headers: { "x-name": "original", cookie: "session=original" },
         })
@@ -115,7 +116,7 @@ test.describe("Effect HTTP interoperability", () => {
   test.it("shares cached JSON bodies with core middleware and multiple route schemas", () =>
     Effect
       .gen(function*() {
-        const client = Fetch.fromHandler(RouteHttp.toWebHandler(
+        const client = TestHttpClient.fromHandler(RouteHttp.toWebHandler(
           Route
             .use(
               Route.filter(function*() {
@@ -143,7 +144,7 @@ test.describe("Effect HTTP interoperability", () => {
         ))
         const entity = yield* client.post("http://localhost/", {
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ name: "Alice", age: 30 }),
+          body: HttpBody.jsonUnsafe({ name: "Alice", age: 30 }),
         })
 
         test
@@ -158,7 +159,7 @@ test.describe("Effect HTTP interoperability", () => {
   test.it("shares URL-encoded bodies across core, URL params, and form decoders", () =>
     Effect
       .gen(function*() {
-        const client = Fetch.fromHandler(
+        const client = TestHttpClient.fromHandler(
           RouteHttp.toWebHandlerWith(multipartContext)(
             Route.post(
               Route.schemaBodyUrlParams({ name: Schema.String }),
@@ -177,7 +178,7 @@ test.describe("Effect HTTP interoperability", () => {
         )
         const entity = yield* client.post("http://localhost/", {
           headers: { "content-type": "application/x-www-form-urlencoded" },
-          body: "name=Alice&tag=first&tag=second",
+          body: HttpBody.raw("name=Alice&tag=first&tag=second"),
         })
 
         test
@@ -193,7 +194,7 @@ test.describe("Effect HTTP interoperability", () => {
     Effect
       .gen(function*() {
         const context = yield* Effect.context<TestLogger.TestLogger>()
-        const client = Fetch.fromHandler(
+        const client = TestHttpClient.fromHandler(
           RouteHttp.toWebHandlerWith(context)(
             Route
               .use(
@@ -220,7 +221,7 @@ test.describe("Effect HTTP interoperability", () => {
         )
         const entity = yield* client.post("http://localhost/", {
           headers: { "content-type": "application/json" },
-          body: "{",
+          body: HttpBody.raw("{"),
         })
 
         test
@@ -362,7 +363,7 @@ test.describe(`${RouteSchema.schemaCookies.name}()`, () => {
             }),
           ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/test", {
           headers: {
             Cookie: "session=abc123",
@@ -431,7 +432,7 @@ test.describe(`${RouteSchema.schemaSearchParams.name}()`, () => {
             }),
           ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get(
           "http://localhost/test?page=2&limit=10",
         )
@@ -489,12 +490,12 @@ test.describe(`${RouteSchema.schemaBodyJson.name}()`, () => {
             }),
           ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.post("http://localhost/test", {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ name: "Alice", age: 30 }),
+          body: HttpBody.jsonUnsafe({ name: "Alice", age: 30 }),
         })
 
         test
@@ -554,12 +555,12 @@ test.describe(`${RouteSchema.schemaBodyJson.name}()`, () => {
             }),
           ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.post("http://localhost/test", {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ name: "Alice", age: "not a number" }),
+          body: HttpBody.jsonUnsafe({ name: "Alice", age: "not a number" }),
         })
 
         test
@@ -626,12 +627,12 @@ test.describe(`${RouteSchema.schemaBodyUrlParams.name}()`, () => {
             }),
           ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.post("http://localhost/test", {
           headers: {
             "Content-Type": "application/x-www-form-urlencoded",
           },
-          body: "username=alice&password=secret123",
+          body: HttpBody.raw("username=alice&password=secret123"),
         })
 
         test
@@ -773,9 +774,9 @@ test.describe(`${RouteSchema.schemaBodyForm.name}()`, () => {
           new Blob(["second"], { type: "text/plain" }),
           "second.txt",
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.post("http://localhost/upload", {
-          body: formData,
+          body: HttpBody.formData(formData),
         })
 
         test
@@ -829,9 +830,9 @@ test.describe(`${RouteSchema.schemaBodyForm.name}()`, () => {
         const formData = new FormData()
         formData.append("file", new File(["first"], "first.txt"))
         formData.append("file", new File(["second"], "second.txt"))
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.post("http://localhost/upload", {
-          body: formData,
+          body: HttpBody.formData(formData),
         })
 
         test
@@ -870,7 +871,7 @@ test.describe(`${RouteSchema.schemaSuccess.name}()`, () => {
             }),
           ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/test")
 
         test
@@ -899,7 +900,7 @@ test.describe(`${RouteSchema.schemaSuccess.name}()`, () => {
             }),
           ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/test")
 
         test
@@ -933,7 +934,7 @@ test.describe(`${RouteSchema.schemaSuccess.name}()`, () => {
             }),
           ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/test")
 
         test
@@ -968,7 +969,7 @@ test.describe(`${RouteSchema.schemaSuccess.name}()`, () => {
             }),
           ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/test")
 
         test
@@ -1007,7 +1008,7 @@ test.describe(`${RouteSchema.schemaError.name}()`, () => {
             }),
           ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/test")
 
         test
@@ -1036,7 +1037,7 @@ test.describe(`${RouteSchema.schemaError.name}()`, () => {
             }),
           ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/test")
 
         test
@@ -1062,7 +1063,7 @@ test.describe(`${RouteSchema.schemaError.name}()`, () => {
             }),
           ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/test")
 
         test
@@ -1088,7 +1089,7 @@ test.describe(`${RouteSchema.schemaError.name}()`, () => {
             }),
           ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/test")
 
         test
@@ -1128,7 +1129,7 @@ test.describe(`${RouteSchema.schemaError.name}()`, () => {
             }),
           ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/test")
 
         test
@@ -1160,7 +1161,7 @@ test.describe(`${RouteSchema.schemaError.name}()`, () => {
             }),
           ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/test")
 
         test
@@ -1187,7 +1188,7 @@ test.describe(`${RouteSchema.schemaError.name}()`, () => {
             }),
           ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/test")
 
         test

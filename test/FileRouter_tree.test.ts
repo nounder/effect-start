@@ -1,12 +1,12 @@
 import * as test from "bun:test"
 import * as Development from "effect-start/Development"
-import * as Fetch from "effect-start/Fetch"
 import * as FileRouter from "effect-start/FileRouter"
 import * as RouteHttp from "effect-start/RouteHttp"
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Result from "effect/Result"
+import * as TestHttpClient from "./internal/TestHttpClient.ts"
 
 test.it("fails on overlapping routes from groups", async () => {
   const routes = ["(admin)/users/route.tsx", "users/route.tsx"]
@@ -71,9 +71,9 @@ test.it("import error renders as 500 response", () =>
       })
 
       const handles = Object.fromEntries(RouteHttp.walkHandles(tree, context))
-      const client = Fetch.fromHandler(handles["/broken"])
+      const client = TestHttpClient.fromHandler(handles["/broken"])
 
-      const entity = yield* client.fetch("http://localhost/broken")
+      const entity = yield* client.get("http://localhost/broken")
 
       test
         .expect(entity.status)

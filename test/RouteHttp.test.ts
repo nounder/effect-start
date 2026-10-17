@@ -2,7 +2,6 @@ import * as test from "bun:test"
 import { BunFileSystem, BunPath } from "effect-start/bun"
 import * as Development from "effect-start/Development"
 import * as Entity from "effect-start/Entity"
-import * as Fetch from "effect-start/Fetch"
 import * as Http from "effect-start/internal/Http"
 import * as RouteSchema from "effect-start/internal/RouteSchema"
 import * as Route from "effect-start/Route"
@@ -12,6 +11,7 @@ import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
+import * as HttpBody from "effect/http/HttpBody"
 import * as HttpServerError from "effect/http/HttpServerError"
 import * as Multipart from "effect/http/Multipart"
 import * as Layer from "effect/Layer"
@@ -20,6 +20,7 @@ import * as Ref from "effect/Ref"
 import * as Schedule from "effect/Schedule"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
+import * as TestHttpClient from "./internal/TestHttpClient.ts"
 
 const multipartContext = Effect.runSync(
   Layer.build(Layer.merge(BunFileSystem.layer, BunPath.layer)).pipe(Effect.scoped),
@@ -31,7 +32,7 @@ test.it("converts string to text/plain for Route.text", () =>
       const handler = RouteHttp.toWebHandler(
         Route.get(Route.text("Hello World")),
       )
-      const client = Fetch.fromHandler(handler)
+      const client = TestHttpClient.fromHandler(handler)
       const entity = yield* client.get("http://localhost/text")
 
       test
@@ -54,7 +55,7 @@ test.it("converts string to text/html for Route.html", () =>
       const handler = RouteHttp.toWebHandler(
         Route.get(Route.html("<h1>Hello</h1>")),
       )
-      const client = Fetch.fromHandler(handler)
+      const client = TestHttpClient.fromHandler(handler)
       const entity = yield* client.get("http://localhost/html")
 
       test
@@ -77,7 +78,7 @@ test.it("converts object to JSON for Route.json", () =>
       const handler = RouteHttp.toWebHandler(
         Route.get(Route.json({ message: "hello", count: 42 })),
       )
-      const client = Fetch.fromHandler(handler)
+      const client = TestHttpClient.fromHandler(handler)
       const entity = yield* client.get("http://localhost/json")
 
       test
@@ -96,7 +97,7 @@ test.it("converts array to JSON for Route.json", () =>
   Effect
     .gen(function*() {
       const handler = RouteHttp.toWebHandler(Route.get(Route.json([1, 2, 3])))
-      const client = Fetch.fromHandler(handler)
+      const client = TestHttpClient.fromHandler(handler)
       const entity = yield* client.get("http://localhost/array")
 
       test
@@ -115,7 +116,7 @@ test.it("converts JSON primitives for Route.json", () =>
   Effect
     .gen(function*() {
       const handler = RouteHttp.toWebHandler(Route.get(Route.json(true)))
-      const client = Fetch.fromHandler(handler)
+      const client = TestHttpClient.fromHandler(handler)
       const entity = yield* client.get("http://localhost/primitive")
 
       test
@@ -136,7 +137,7 @@ test.it("handles method-specific routes", () =>
       const handler = RouteHttp.toWebHandler(
         Route.get(Route.text("get resource")).post(Route.text("post resource")),
       )
-      const client = Fetch.fromHandler(handler)
+      const client = TestHttpClient.fromHandler(handler)
 
       const getEntity = yield* client.get("http://localhost/resource")
 
@@ -163,7 +164,7 @@ test.it("handles errors by returning 500 response with generic message in produc
           }),
         ),
       )
-      const client = Fetch.fromHandler(handler)
+      const client = TestHttpClient.fromHandler(handler)
       const entity = yield* client.get("http://localhost/error")
 
       test
@@ -202,7 +203,7 @@ test.it("handles defects by returning 500 response", () =>
           }),
         ),
       )
-      const client = Fetch.fromHandler(handler)
+      const client = TestHttpClient.fromHandler(handler)
       const entity = yield* client.get("http://localhost/defect")
 
       test
@@ -235,7 +236,7 @@ test.it("error response hides stack trace and cause chain in production", () =>
           }),
         ),
       )
-      const client = Fetch.fromHandler(handler)
+      const client = TestHttpClient.fromHandler(handler)
       const entity = yield* client.get("http://localhost/error")
 
       test
@@ -285,7 +286,7 @@ test.it("error response includes stack trace in development", () =>
           }),
         ),
       )
-      const client = Fetch.fromHandler(handler)
+      const client = TestHttpClient.fromHandler(handler)
       const entity = yield* client.get("http://localhost/error")
 
       test
@@ -319,7 +320,7 @@ test.it("handles errors with verbose details in development", () =>
           }),
         ),
       )
-      const client = Fetch.fromHandler(handler)
+      const client = TestHttpClient.fromHandler(handler)
       const entity = yield* client.get("http://localhost/error")
 
       test
@@ -351,7 +352,7 @@ test.it("includes descriptor properties in handler context", () =>
           }),
         ),
       )
-      const client = Fetch.fromHandler(handler)
+      const client = TestHttpClient.fromHandler(handler)
       yield* client.get("http://localhost/test")
 
       test
@@ -379,7 +380,7 @@ test.it("includes request in handler context", () =>
           }),
         ),
       )
-      const client = Fetch.fromHandler(handler)
+      const client = TestHttpClient.fromHandler(handler)
       yield* client.get("http://localhost/test", {
         headers: { "x-custom": "value" },
       })
@@ -399,11 +400,9 @@ test.it("returns Allow header on 405 and OPTIONS responses", () =>
       const handler = RouteHttp.toWebHandler(
         Route.get(Route.text("users")).post(Route.text("created")),
       )
-      const client = Fetch.fromHandler(handler)
+      const client = TestHttpClient.fromHandler(handler)
 
-      const notAllowed = yield* client.fetch("http://localhost/users", {
-        method: "DELETE",
-      })
+      const notAllowed = yield* client.del("http://localhost/users")
 
       test
         .expect(notAllowed.status)
@@ -412,9 +411,7 @@ test.it("returns Allow header on 405 and OPTIONS responses", () =>
         .expect(notAllowed.headers["allow"])
         .toBe("GET, POST, HEAD")
 
-      const options = yield* client.fetch("http://localhost/users", {
-        method: "OPTIONS",
-      })
+      const options = yield* client.options("http://localhost/users")
 
       test
         .expect(options.status)
@@ -431,10 +428,8 @@ test.it("uses explicit OPTIONS handler when registered", () =>
       const handler = RouteHttp.toWebHandler(
         Route.get(Route.text("users")).options(Route.json({ cors: true })),
       )
-      const client = Fetch.fromHandler(handler)
-      const entity = yield* client.fetch("http://localhost/users", {
-        method: "OPTIONS",
-      })
+      const client = TestHttpClient.fromHandler(handler)
+      const entity = yield* client.options("http://localhost/users")
 
       test
         .expect(entity.status)
@@ -451,10 +446,8 @@ test.it("HEAD request to GET route returns 200 with no body", () =>
       const handler = RouteHttp.toWebHandler(
         Route.get(Route.text("Hello World")),
       )
-      const client = Fetch.fromHandler(handler)
-      const entity = yield* client.fetch("http://localhost/text", {
-        method: "HEAD",
-      })
+      const client = TestHttpClient.fromHandler(handler)
+      const entity = yield* client.head("http://localhost/text")
 
       test
         .expect(entity.status)
@@ -476,19 +469,15 @@ test.it("HEAD is included in Allow header when GET routes exist", () =>
       const handler = RouteHttp.toWebHandler(
         Route.get(Route.text("users")).post(Route.text("created")),
       )
-      const client = Fetch.fromHandler(handler)
+      const client = TestHttpClient.fromHandler(handler)
 
-      const notAllowed = yield* client.fetch("http://localhost/users", {
-        method: "DELETE",
-      })
+      const notAllowed = yield* client.del("http://localhost/users")
 
       test
         .expect(notAllowed.headers["allow"])
         .toContain("HEAD")
 
-      const options = yield* client.fetch("http://localhost/users", {
-        method: "OPTIONS",
-      })
+      const options = yield* client.options("http://localhost/users")
 
       test
         .expect(options.headers["allow"])
@@ -502,10 +491,8 @@ test.it("explicit HEAD route takes precedence over GET fallback", () =>
       const handler = RouteHttp.toWebHandler(
         Route.get(Route.text("from GET")).head(Route.text("from HEAD")),
       )
-      const client = Fetch.fromHandler(handler)
-      const entity = yield* client.fetch("http://localhost/text", {
-        method: "HEAD",
-      })
+      const client = TestHttpClient.fromHandler(handler)
+      const entity = yield* client.head("http://localhost/text")
 
       test
         .expect(entity.status)
@@ -517,7 +504,7 @@ test.it("supports POST method", () =>
   Effect
     .gen(function*() {
       const handler = RouteHttp.toWebHandler(Route.post(Route.text("created")))
-      const client = Fetch.fromHandler(handler)
+      const client = TestHttpClient.fromHandler(handler)
       const entity = yield* client.post("http://localhost/users")
 
       test
@@ -538,7 +525,7 @@ test.it("selects json when Accept prefers application/json", () =>
           Route.html("<div>html</div>"),
         ),
       )
-      const client = Fetch.fromHandler(handler)
+      const client = TestHttpClient.fromHandler(handler)
       const entity = yield* client.get("http://localhost/data", {
         headers: { Accept: "application/json" },
       })
@@ -561,7 +548,7 @@ test.it("selects html when Accept prefers text/html", () =>
           Route.html("<div>html</div>"),
         ),
       )
-      const client = Fetch.fromHandler(handler)
+      const client = TestHttpClient.fromHandler(handler)
       const entity = yield* client.get("http://localhost/data", {
         headers: { Accept: "text/html" },
       })
@@ -606,7 +593,7 @@ test.it("selects text/plain when Accept prefers it", () =>
       const handler = RouteHttp.toWebHandler(
         Route.get(Route.text("plain text"), Route.json({ type: "json" })),
       )
-      const client = Fetch.fromHandler(handler)
+      const client = TestHttpClient.fromHandler(handler)
       const entity = yield* client.get("http://localhost/data", {
         headers: { Accept: "text/plain" },
       })
@@ -631,7 +618,7 @@ test.it("prefers json when no Accept header regardless of definition order", () 
           Route.json({ type: "json" }),
         ),
       )
-      const client = Fetch.fromHandler(handler)
+      const client = TestHttpClient.fromHandler(handler)
       const entity = yield* client.get("http://localhost/data")
 
       test
@@ -649,7 +636,7 @@ test.it("handles Accept with quality values", () =>
           Route.html("<div>html</div>"),
         ),
       )
-      const client = Fetch.fromHandler(handler)
+      const client = TestHttpClient.fromHandler(handler)
       const entity = yield* client.get("http://localhost/data", {
         headers: { Accept: "text/html;q=0.9, application/json;q=1.0" },
       })
@@ -669,7 +656,7 @@ test.it("handles Accept: */*", () =>
           Route.html("<div>html</div>"),
         ),
       )
-      const client = Fetch.fromHandler(handler)
+      const client = TestHttpClient.fromHandler(handler)
       const entity = yield* client.get("http://localhost/data", {
         headers: { Accept: "*/*" },
       })
@@ -689,7 +676,7 @@ test.it("prefers json for Accept: */* regardless of definition order", () =>
           Route.json({ type: "json" }),
         ),
       )
-      const client = Fetch.fromHandler(handler)
+      const client = TestHttpClient.fromHandler(handler)
       const entity = yield* client.get("http://localhost/data", {
         headers: { Accept: "*/*" },
       })
@@ -706,7 +693,7 @@ test.it("returns 406 when Accept doesn't match available formats", () =>
       const handler = RouteHttp.toWebHandler(
         Route.get(Route.json({ type: "json" })),
       )
-      const client = Fetch.fromHandler(handler)
+      const client = TestHttpClient.fromHandler(handler)
       const entity = yield* client.get("http://localhost/data", {
         headers: { Accept: "text/html" },
       })
@@ -732,7 +719,7 @@ test.it("returns 406 when Accept doesn't match any of multiple formats", () =>
           Route.html("<div>html</div>"),
         ),
       )
-      const client = Fetch.fromHandler(handler)
+      const client = TestHttpClient.fromHandler(handler)
       const entity = yield* client.get("http://localhost/data", {
         headers: { Accept: "image/png" },
       })
@@ -749,7 +736,7 @@ test.it("prefers text over html when no Accept header regardless of definition o
       const handler = RouteHttp.toWebHandler(
         Route.get(Route.html("<div>html</div>"), Route.text("plain")),
       )
-      const client = Fetch.fromHandler(handler)
+      const client = TestHttpClient.fromHandler(handler)
       const entity = yield* client.get("http://localhost/data")
 
       test
@@ -769,7 +756,7 @@ test.it("sets Vary: Accept when multiple formats exist", () =>
           Route.html("<div>html</div>"),
         ),
       )
-      const client = Fetch.fromHandler(handler)
+      const client = TestHttpClient.fromHandler(handler)
       const entity = yield* client.get("http://localhost/data", {
         headers: { Accept: "application/json" },
       })
@@ -789,7 +776,7 @@ test.it("does not set Vary: Accept when only one format exists", () =>
       const handler = RouteHttp.toWebHandler(
         Route.get(Route.json({ type: "json" })),
       )
-      const client = Fetch.fromHandler(handler)
+      const client = TestHttpClient.fromHandler(handler)
       const entity = yield* client.get("http://localhost/data", {
         headers: { Accept: "application/json" },
       })
@@ -809,7 +796,7 @@ test.it("sets Vary: Accept when no Accept header but multiple formats", () =>
       const handler = RouteHttp.toWebHandler(
         Route.get(Route.json({ type: "json" }), Route.text("plain")),
       )
-      const client = Fetch.fromHandler(handler)
+      const client = TestHttpClient.fromHandler(handler)
       const entity = yield* client.get("http://localhost/data")
 
       test
@@ -827,7 +814,7 @@ test.it("falls back to html when no Accept header and no json or text", () =>
       const handler = RouteHttp.toWebHandler(
         Route.get(Route.html("<div>html</div>")),
       )
-      const client = Fetch.fromHandler(handler)
+      const client = TestHttpClient.fromHandler(handler)
       const entity = yield* client.get("http://localhost/data")
 
       test
@@ -850,7 +837,7 @@ test.it("Route.text matches any text/* Accept header", () =>
           }),
         ),
       )
-      const client = Fetch.fromHandler(handler)
+      const client = TestHttpClient.fromHandler(handler)
       const entity = yield* client.get("http://localhost/events", {
         headers: { Accept: "text/event-stream" },
       })
@@ -879,7 +866,7 @@ test.it("Route.text matches text/markdown Accept header", () =>
           }),
         ),
       )
-      const client = Fetch.fromHandler(handler)
+      const client = TestHttpClient.fromHandler(handler)
       const entity = yield* client.get("http://localhost/doc", {
         headers: { Accept: "text/markdown" },
       })
@@ -961,7 +948,7 @@ test.describe(Route.devOnly, () => {
             }),
           ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/test")
 
         test
@@ -987,7 +974,7 @@ test.describe(Route.devOnly, () => {
             }),
           ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/test")
 
         test
@@ -1028,7 +1015,7 @@ test.describe(Route.devOnly, () => {
               }),
             ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
 
         const getEntity = yield* client.get("http://localhost/test")
 
@@ -1072,7 +1059,7 @@ test.describe(Route.devOnly, () => {
           .expect(handles)
           .toHaveProperty("/mixed")
 
-        const client = Fetch.fromHandler(handles["/mixed"])
+        const client = TestHttpClient.fromHandler(handles["/mixed"])
         const entity = yield* client.get("http://localhost/mixed")
 
         test
@@ -1118,7 +1105,7 @@ test.describe(Route.devOnly, () => {
           .expect(handles)
           .toHaveProperty("/public")
 
-        const client = Fetch.fromHandler(handles["/public"])
+        const client = TestHttpClient.fromHandler(handles["/public"])
         const entity = yield* client.get("http://localhost/public")
 
         test
@@ -1145,7 +1132,7 @@ test.describe("middleware chain", () => {
             }),
           ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/test")
 
         test
@@ -1170,7 +1157,7 @@ test.describe("middleware chain", () => {
               }),
             ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/test")
 
         test
@@ -1196,7 +1183,7 @@ test.describe("middleware chain", () => {
               }),
             ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/test")
 
         test
@@ -1218,7 +1205,7 @@ test.describe("middleware chain", () => {
             )
             .get(Route.text("should not reach")),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/test")
 
         test
@@ -1261,7 +1248,7 @@ test.describe("middleware chain", () => {
               }),
             ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
 
         const getEntity = yield* client.get("http://localhost/test")
 
@@ -1288,7 +1275,7 @@ test.describe("middleware chain", () => {
             }),
           ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/test")
 
         test
@@ -1308,7 +1295,7 @@ test.describe("middleware chain", () => {
             }),
           ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/test")
 
         test
@@ -1334,7 +1321,7 @@ test.describe("middleware chain", () => {
               }),
             ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
 
         const getEntity = yield* client.get("http://localhost/test")
 
@@ -1363,7 +1350,7 @@ test.describe("middleware chain", () => {
             )
             .get(Route.json({ message: "hello", count: 42 })),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/test")
 
         test
@@ -1399,7 +1386,7 @@ test.describe("middleware chain", () => {
             )
             .get(Route.json({ original: true })),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/test")
 
         test
@@ -1423,7 +1410,7 @@ test.describe("middleware chain", () => {
             )
             .get(Route.json({ type: "json" }), Route.text("plain text")),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
 
         const textEntity = yield* client.get("http://localhost/test", {
           headers: { Accept: "text/plain" },
@@ -1463,7 +1450,7 @@ test.describe("middleware chain", () => {
             )
             .get(Route.text("hello")),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/test")
 
         test
@@ -1490,7 +1477,7 @@ test.describe("middleware chain", () => {
             )
             .get(Route.html("<span>content</span>")),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/test")
 
         test
@@ -1521,7 +1508,7 @@ test.describe("middleware chain", () => {
             )
             .get(Route.bytes(encoder.encode("data"))),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/test")
 
         test
@@ -1576,7 +1563,7 @@ test.describe("middleware chain", () => {
               }),
             ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/test", {
           headers: { Accept: "text/plain" },
         })
@@ -1621,7 +1608,7 @@ test.describe("middleware chain", () => {
             }),
           ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/test", {
           headers: { "x-test": "test-value" },
         })
@@ -1658,7 +1645,7 @@ test.describe("middleware chain", () => {
               }),
             ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/test", {
           headers: {
             "x-shared": "shared-value",
@@ -1732,7 +1719,7 @@ test.describe("streaming responses", () => {
             }),
           ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/stream")
 
         test
@@ -1756,7 +1743,7 @@ test.describe("streaming responses", () => {
             }),
           ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/stream")
 
         test
@@ -1784,7 +1771,7 @@ test.describe("streaming responses", () => {
             }),
           ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/stream")
 
         test
@@ -1815,7 +1802,7 @@ test.describe("streaming responses", () => {
             }),
           ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/stream")
 
         test
@@ -1839,7 +1826,7 @@ test.describe("streaming responses", () => {
             }),
           ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/error")
 
         test
@@ -1887,7 +1874,7 @@ test.describe("schema handlers", () => {
             }),
           ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get(
           "http://localhost/test?page=2&limit=10",
           {
@@ -1937,10 +1924,10 @@ test.describe("schema handlers", () => {
             }),
           ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.post("http://localhost/users", {
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: "Alice", age: 30 }),
+          body: HttpBody.jsonUnsafe({ name: "Alice", age: 30 }),
         })
 
         test
@@ -1975,10 +1962,10 @@ test.describe("schema handlers", () => {
             }),
           ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.post("http://localhost/login", {
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: "username=alice&password=secret",
+          body: HttpBody.raw("username=alice&password=secret"),
         })
 
         test
@@ -2007,7 +1994,7 @@ test.describe("schema handlers", () => {
             Route.text("ok"),
           ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get(
           "http://localhost/test?count=not-a-number",
         )
@@ -2041,7 +2028,7 @@ test.describe("schema handlers", () => {
             Route.text("ok"),
           ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/test")
 
         test
@@ -2090,9 +2077,9 @@ test.describe("schema handlers", () => {
           "test.txt",
         )
 
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.post("http://localhost/upload", {
-          body: formData,
+          body: HttpBody.formData(formData),
         })
 
         test
@@ -2153,9 +2140,9 @@ test.describe("schema handlers", () => {
           "doc3.txt",
         )
 
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.post("http://localhost/upload", {
-          body: formData,
+          body: HttpBody.formData(formData),
         })
 
         test
@@ -2204,9 +2191,9 @@ test.describe("schema handlers", () => {
           "avatar.png",
         )
 
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.post("http://localhost/upload", {
-          body: formData,
+          body: HttpBody.formData(formData),
         })
 
         test
@@ -2253,9 +2240,9 @@ test.describe("schema handlers", () => {
         formData.append("tags", "typescript")
         formData.append("tags", "effect")
 
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.post("http://localhost/upload", {
-          body: formData,
+          body: HttpBody.formData(formData),
         })
 
         test
@@ -2292,9 +2279,9 @@ test.describe("schema handlers", () => {
         const formData = new FormData()
         formData.append("name", "John")
 
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.post("http://localhost/test", {
-          body: formData,
+          body: HttpBody.formData(formData),
         })
 
         test
@@ -2330,9 +2317,9 @@ test.describe("schema handlers", () => {
         formData.append("name", "John")
         formData.append("name", "Jane")
 
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.post("http://localhost/test", {
-          body: formData,
+          body: HttpBody.formData(formData),
         })
 
         test
@@ -2379,9 +2366,9 @@ test.describe("schema handlers", () => {
         formData.append("name", "John")
         formData.append("name", "Jane")
 
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         yield* client.post("http://localhost/test", {
-          body: formData,
+          body: HttpBody.formData(formData),
         })
 
         const messages = yield* Ref.get(testLogger.messages)
@@ -2444,14 +2431,14 @@ test.describe("schema handlers", () => {
               }),
             ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
 
         const postEntity = yield* client.post("http://localhost/api", {
           headers: {
             "x-api-version": "v2",
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ action: "create" }),
+          body: HttpBody.jsonUnsafe({ action: "create" }),
         })
 
         test
@@ -2486,7 +2473,7 @@ test.describe("schema handlers", () => {
             }),
           ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/test", {
           headers: { cookie: "token=abc=123==" },
         })
@@ -2515,7 +2502,7 @@ test.describe("schema handlers", () => {
             }),
           ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get(
           "http://localhost/test?tags=one&tags=two&tags=three",
         )
@@ -2553,7 +2540,7 @@ test.describe("schema handlers", () => {
 
         const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
         const handler = handles["/folders/:folderId/files/:fileId"]
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get(
           "http://localhost/folders/abc123/files/42",
         )
@@ -2590,7 +2577,7 @@ test.describe("schema handlers", () => {
 
         const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
         const handler = handles["/files/:path+"]
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get(
           "http://localhost/files/nested/hello.txt",
         )
@@ -2622,7 +2609,7 @@ test.describe("schema handlers", () => {
 
         const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
         const handler = handles["/users/:id"]
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/users/abc")
 
         test
@@ -2650,7 +2637,7 @@ test.describe("schema handlers", () => {
             }),
           ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/users/abc")
 
         // Without RouteMap, ctx.path is undefined, falls back to "/",
@@ -2679,7 +2666,7 @@ test.describe("schema handlers", () => {
             Route.text("ok"),
           ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/users/not-a-number")
 
         test
@@ -2729,12 +2716,12 @@ test.describe("schema handlers", () => {
 
         const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
         const handler = handles["/projects/:projectId/tasks"]
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.post(
           "http://localhost/projects/proj-999/tasks",
           {
             headers: { "x-api-key": "secret" },
-            body: JSON.stringify({ title: "New Task" }),
+            body: HttpBody.jsonUnsafe({ title: "New Task" }),
           },
         )
 
@@ -3148,7 +3135,7 @@ test.describe("RouteMap layer routes", () => {
         })
 
         const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
-        const client = Fetch.fromHandler(handles["/test"])
+        const client = TestHttpClient.fromHandler(handles["/test"])
         const entity = yield* client.get("http://localhost/test")
 
         test
@@ -3188,8 +3175,8 @@ test.describe("RouteMap layer routes", () => {
 
         const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
 
-        const usersClient = Fetch.fromHandler(handles["/users"])
-        const adminClient = Fetch.fromHandler(handles["/admin"])
+        const usersClient = TestHttpClient.fromHandler(handles["/users"])
+        const adminClient = TestHttpClient.fromHandler(handles["/admin"])
 
         calls.length = 0
         yield* usersClient.get("http://localhost/users")
@@ -3223,7 +3210,7 @@ test.describe("RouteMap layer routes", () => {
         })
 
         const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
-        const client = Fetch.fromHandler(handles["/test"])
+        const client = TestHttpClient.fromHandler(handles["/test"])
 
         layerCallCount = 0
         yield* client.get("http://localhost/test")
@@ -3265,7 +3252,7 @@ test.describe("RouteMap layer routes", () => {
         })
 
         const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
-        const client = Fetch.fromHandler(handles["/api/users"])
+        const client = TestHttpClient.fromHandler(handles["/api/users"])
         yield* client.get("http://localhost/api/users")
 
         test
@@ -3295,7 +3282,7 @@ test.describe("RouteMap layer routes", () => {
         })
 
         const handles = Object.fromEntries(RouteHttp.walkHandles(tree, runtime))
-        const client = Fetch.fromHandler(handles["/test"])
+        const client = TestHttpClient.fromHandler(handles["/test"])
         const entity = yield* client.get("http://localhost/test")
 
         test
@@ -3339,7 +3326,7 @@ test.describe("RouteMap layer routes", () => {
         })
 
         const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
-        const client = Fetch.fromHandler(handles["/data"])
+        const client = TestHttpClient.fromHandler(handles["/data"])
         const entity = yield* client.get("http://localhost/data")
 
         test
@@ -3362,7 +3349,7 @@ test.describe("RouteMap layer routes", () => {
         })
 
         const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
-        const client = Fetch.fromHandler(handles["/page"])
+        const client = TestHttpClient.fromHandler(handles["/page"])
         const entity = yield* client.get("http://localhost/page")
 
         test
@@ -3399,7 +3386,7 @@ test.describe("RouteMap layer routes", () => {
         })
 
         const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
-        const client = Fetch.fromHandler(handles["/test"])
+        const client = TestHttpClient.fromHandler(handles["/test"])
         yield* client.get("http://localhost/test")
 
         test
@@ -3422,7 +3409,7 @@ test.describe("RouteMap layer routes", () => {
         })
 
         const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
-        const client = Fetch.fromHandler(handles["/"])
+        const client = TestHttpClient.fromHandler(handles["/"])
         const entity = yield* client.get("http://localhost/")
 
         test
@@ -3451,7 +3438,7 @@ test.describe("Route.handle (format=*)", () => {
             }),
           ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/events", {
           headers: { Accept: "text/event-stream" },
         })
@@ -3475,7 +3462,7 @@ test.describe("Route.handle (format=*)", () => {
             }),
           ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/raw")
 
         test
@@ -3498,7 +3485,7 @@ test.describe("Route.handle (format=*)", () => {
             }),
           ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
 
         const jsonEntity = yield* client.get("http://localhost/data", {
           headers: { Accept: "application/json" },
@@ -3531,7 +3518,7 @@ test.describe("Route.handle (format=*)", () => {
             }),
           ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
 
         const entities = [
           yield* client.get("http://localhost/", {
@@ -3572,7 +3559,7 @@ test.describe("Route.handle (format=*)", () => {
             }),
           ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/events", {
           headers: { Accept: "text/event-stream" },
         })
@@ -3636,7 +3623,7 @@ test.describe("Route.handle (format=*)", () => {
               }),
             ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/", {
           headers: { Accept: "text/event-stream" },
         })
@@ -3670,7 +3657,7 @@ test.describe("Route.handle (format=*)", () => {
               }),
             ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/", {
           headers: { Accept: "application/json" },
         })
@@ -3718,7 +3705,7 @@ test.describe("Route.handle (format=*)", () => {
               }),
             ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/", {
           headers: { Accept: "application/json" },
         })
@@ -3757,7 +3744,7 @@ test.describe("Route.handle (format=*)", () => {
             }),
           ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const eventStreamEntity = yield* client.get("http://localhost/", {
           headers: { Accept: "text/event-stream" },
         })
@@ -3786,7 +3773,7 @@ test.describe("Route.handle (format=*)", () => {
             }),
           ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const eventStreamEntity = yield* client.get("http://localhost/", {
           headers: { Accept: "text/event-stream" },
         })
@@ -3824,7 +3811,7 @@ test.describe("Route.handle (format=*)", () => {
             }),
           ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/stream", {
           headers: { Accept: "text/event-stream" },
         })
@@ -3859,7 +3846,7 @@ test.describe("Route.handle (format=*)", () => {
               }),
             ),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/")
 
         test
@@ -3884,7 +3871,7 @@ test.describe("Route.handle (format=*)", () => {
             )
             .get(Route.text("hello")),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/", {
           headers: { Accept: "text/plain" },
         })
@@ -3911,7 +3898,7 @@ test.describe("Route.handle (format=*)", () => {
             )
             .get(Route.html("<body>content</body>")),
         )
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/", {
           headers: { Accept: "text/html" },
         })

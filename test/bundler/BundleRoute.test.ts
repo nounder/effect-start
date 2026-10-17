@@ -1,11 +1,11 @@
 import * as test from "bun:test"
-import * as Fetch from "effect-start/Fetch"
+import * as Bundle from "effect-start/bundler/Bundle"
+import * as BundleRoute from "effect-start/bundler/BundleRoute"
 import * as Route from "effect-start/Route"
 import * as RouteHttp from "effect-start/RouteHttp"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import * as Bundle from "effect-start/bundler/Bundle"
-import * as BundleRoute from "effect-start/bundler/BundleRoute"
+import * as TestHttpClient from "../internal/TestHttpClient.ts"
 
 const testBundle: Bundle.BundleContext = {
   resolve: (url) => (url === "app.ts" ? "app-abc123.js" : undefined),
@@ -33,7 +33,7 @@ test.it("serves a JS artifact", () =>
       const handles = Object.fromEntries(RouteHttp.walkHandles(tree, context))
       const handler = handles["/_bundle/:path+"]
 
-      const client = Fetch.fromHandler(handler)
+      const client = TestHttpClient.fromHandler(handler)
       const entity = yield* client.get("http://localhost/_bundle/app-abc123.js")
 
       test
@@ -63,7 +63,7 @@ test.it("serves a CSS artifact", () =>
       const handles = Object.fromEntries(RouteHttp.walkHandles(tree, context))
       const handler = handles["/_bundle/:path+"]
 
-      const client = Fetch.fromHandler(handler)
+      const client = TestHttpClient.fromHandler(handler)
       const entity = yield* client.get(
         "http://localhost/_bundle/style-def456.css",
       )
@@ -92,7 +92,7 @@ test.it("returns 404 for missing artifact", () =>
       const handles = Object.fromEntries(RouteHttp.walkHandles(tree, context))
       const handler = handles["/_bundle/:path+"]
 
-      const client = Fetch.fromHandler(handler)
+      const client = TestHttpClient.fromHandler(handler)
       const entity = yield* client.get(
         "http://localhost/_bundle/nonexistent.js",
       )
@@ -115,7 +115,7 @@ test.it("supports custom mount path", () =>
       const handles = Object.fromEntries(RouteHttp.walkHandles(tree, context))
       const handler = handles["/assets/:path+"]
 
-      const client = Fetch.fromHandler(handler)
+      const client = TestHttpClient.fromHandler(handler)
       const entity = yield* client.get("http://localhost/assets/app-abc123.js")
 
       test

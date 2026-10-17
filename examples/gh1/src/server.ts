@@ -2,8 +2,10 @@ import { Development, FileRouter, Start } from "effect-start"
 import { BunBundle } from "effect-start/bun"
 import { Studio } from "effect-start/studio"
 import { TailwindPlugin } from "effect-start/tailwind"
+import * as FetchHttpClient from "effect/http/FetchHttpClient"
 
 export default Start.pack(
+  FetchHttpClient.layer,
   Studio.layer(),
   Development.layer(),
   FileRouter.layer(),

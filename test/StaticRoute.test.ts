@@ -1,6 +1,5 @@
 import * as test from "bun:test"
 import { BunFileSystem } from "effect-start/bun"
-import * as Fetch from "effect-start/Fetch"
 import * as Route from "effect-start/Route"
 import * as RouteHttp from "effect-start/RouteHttp"
 import * as StaticRoute from "effect-start/StaticRoute"
@@ -8,6 +7,7 @@ import * as Effect from "effect/Effect"
 import * as FileSystem from "effect/FileSystem"
 import * as NPath from "node:path"
 import * as NUrl from "node:url"
+import * as TestHttpClient from "./internal/TestHttpClient.ts"
 
 test.it("renders a directory index as JSON and HTML and serves its files", () =>
   Effect
@@ -23,7 +23,7 @@ test.it("renders a directory index as JSON and HTML and serves its files", () =>
         "/private/:path*": StaticRoute.from({ path: directory, directoryIndex: false }),
       })
       const handles = Object.fromEntries(RouteHttp.walkHandles(routes, context))
-      const client = Fetch.fromHandler(handles["/files/:path*"])
+      const client = TestHttpClient.fromHandler(handles["/files/:path*"])
 
       const json = yield* client.get("http://localhost/files", {
         headers: { accept: "application/json" },
@@ -176,7 +176,7 @@ test.it("renders a directory index as JSON and HTML and serves its files", () =>
         .expect(missing.status)
         .toBe(404)
 
-      const privateClient = Fetch.fromHandler(handles["/private/:path*"])
+      const privateClient = TestHttpClient.fromHandler(handles["/private/:path*"])
       const privateIndex = yield* privateClient.get("http://localhost/private")
       const privateFile = yield* privateClient.get("http://localhost/private/hello.txt")
 
@@ -209,7 +209,7 @@ test.it("serves a single file from a file URL on a rest path route", () =>
         }),
       })
       const handles = Object.fromEntries(RouteHttp.walkHandles(routes, context))
-      const client = Fetch.fromHandler(handles["/download/:path*"])
+      const client = TestHttpClient.fromHandler(handles["/download/:path*"])
 
       const file = yield* client.get("http://localhost/download", {
         headers: { accept: "application/json" },
@@ -250,7 +250,7 @@ test.it("decodes URL-encoded characters in path params", () =>
         "/assets/:path*": StaticRoute.from({ path: directory, directoryIndex: false }),
       })
       const handles = Object.fromEntries(RouteHttp.walkHandles(routes, context))
-      const client = Fetch.fromHandler(handles["/assets/:path*"])
+      const client = TestHttpClient.fromHandler(handles["/assets/:path*"])
 
       const spaced = yield* client.get("http://localhost/assets/hello%20world.txt")
       const unicode = yield* client.get("http://localhost/assets/caf%C3%A9.txt")
@@ -287,7 +287,7 @@ test.it("detects javascript and source map content types", () =>
         "/assets/:path*": StaticRoute.from({ path: directory, directoryIndex: false }),
       })
       const handles = Object.fromEntries(RouteHttp.walkHandles(routes, context))
-      const client = Fetch.fromHandler(handles["/assets/:path*"])
+      const client = TestHttpClient.fromHandler(handles["/assets/:path*"])
 
       const js = yield* client.get("http://localhost/assets/app.js")
       const map = yield* client.get("http://localhost/assets/app.js.map")

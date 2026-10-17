@@ -1,19 +1,20 @@
 import * as test from "bun:test"
-import * as Fetch from "effect-start/Fetch"
+import * as CsrfProtection from "effect-start/experimental/CsrfProtection"
 import * as Route from "effect-start/Route"
 import * as RouteHttp from "effect-start/RouteHttp"
 import * as Effect from "effect/Effect"
-import * as CsrfProtection from "effect-start/experimental/CsrfProtection"
+import type * as HttpClient from "effect/http/HttpClient"
+import * as TestHttpClient from "../internal/TestHttpClient.ts"
 
 function makeHandler(options?: CsrfProtection.Options) {
-  return Fetch.fromHandler(
+  return TestHttpClient.fromHandler(
     RouteHttp.toWebHandler(
       Route.use(CsrfProtection.make(options)).post(Route.json({ ok: true })),
     ),
   )
 }
 
-function post(client: Fetch.FetchClient, headers?: Record<string, string>) {
+function post(client: HttpClient.HttpClient, headers?: Record<string, string>) {
   return client.post("http://localhost/test", headers ? { headers } : undefined)
 }
 

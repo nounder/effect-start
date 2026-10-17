@@ -1,6 +1,5 @@
 import * as test from "bun:test"
 import { BunServer } from "effect-start/bun"
-import * as Fetch from "effect-start/Fetch"
 import type * as RouteMap from "effect-start/internal/RouteMap"
 import * as Route from "effect-start/Route"
 import { TestLogger } from "effect-start/testing"
@@ -10,6 +9,8 @@ import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
+import * as FetchHttpClient from "effect/http/FetchHttpClient"
+import * as HttpClient from "effect/http/HttpClient"
 import * as HttpServer from "effect/http/HttpServer"
 import * as Layer from "effect/Layer"
 import * as Scope from "effect/Scope"
@@ -239,7 +240,7 @@ test.describe("Route.ws", () => {
         const base = httpUrl(server)
 
         // No upgrade, Accept prefers html → the html route wins negotiation.
-        const htmlResponse = yield* Fetch.get(`${base}/feed`, {
+        const htmlResponse = yield* HttpClient.get(`${base}/feed`, {
           headers: { accept: "text/html" },
         })
 
@@ -254,7 +255,7 @@ test.describe("Route.ws", () => {
           .toBe("<h1>feed</h1>")
 
         // No upgrade, Accept prefers plain text → the text route wins.
-        const textResponse = yield* Fetch.get(`${base}/feed`, {
+        const textResponse = yield* HttpClient.get(`${base}/feed`, {
           headers: { accept: "text/plain" },
         })
 
@@ -282,6 +283,7 @@ test.describe("Route.ws", () => {
       })
       .pipe(
         Effect.provide(testLayer(routes)),
+        Effect.provide(FetchHttpClient.layer),
         Effect.scoped,
         runPromise,
       )

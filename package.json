@@ -37,10 +37,6 @@
       "bun": "./src/rolldown/index.ts",
       "default": "./dist/rolldown/index.js"
     },
-    "./Fetch": {
-      "bun": "./src/Fetch.ts",
-      "default": "./dist/Fetch.js"
-    },
     "./FileRouter": {
       "bun": "./src/FileRouter.ts",
       "default": "./dist/FileRouter.js"

@@ -1,26 +1,23 @@
-import { Config, Effect, Schema } from "effect"
-import * as Fetch from "effect-start/Fetch"
+import * as Config from "effect/Config"
+import * as Effect from "effect/Effect"
+import * as HttpClient from "effect/http/HttpClient"
+import * as HttpClientRequest from "effect/http/HttpClientRequest"
+import * as Schema from "effect/Schema"
 
 const API = "https://api.github.com"
 
-const client = Fetch
-  .use((request, next) =>
-    Effect.gen(function*() {
-      const token = yield* Config.string("GITHUB_TOKEN")
-      const accept = request.headers.get("Accept") ??
-        "application/vnd.github+json"
-      return yield* next(
-        new Request(request, {
-          headers: {
-            Accept: accept,
-            "X-GitHub-Api-Version": "2022-11-28",
-            Authorization: `Bearer ${token}`,
-          },
-        }),
-      )
-    })
-  )
-  .use(Fetch.filterStatusOk())
+const client = Effect.map(HttpClient.HttpClient, (client) =>
+  client.pipe(
+    HttpClient.mapRequestEffect((request) =>
+      Effect.map(Config.String("GITHUB_TOKEN"), (token) =>
+        HttpClientRequest.setHeaders(request, {
+          Accept: request.headers.accept ?? "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28",
+          Authorization: `Bearer ${token}`,
+        }))
+    ),
+    HttpClient.filterStatusOk,
+  ))
 
 function buildUrl(
   path: string,
@@ -42,7 +39,7 @@ function request<A>(
 ) {
   const url = buildUrl(path, params)
   return Effect.flatMap(
-    Effect.flatMap(client.get(url), (entity) => entity.json),
+    Effect.flatMap(Effect.flatMap(client, (client) => client.get(url)), (response) => response.json),
     Schema.decodeUnknownEffect(schema),
   )
 }
@@ -51,9 +48,10 @@ function requestHtml(path: string) {
   const url = buildUrl(path)
   return Effect.catchCause(
     Effect.flatMap(
-      client.get(url, {
-        headers: { Accept: "application/vnd.github.html+json" },
-      }),
+      Effect.flatMap(client, (client) =>
+        client.get(url, {
+          headers: { Accept: "application/vnd.github.html+json" },
+        })),
       (entity) => entity.text,
     ),
     () => Effect.succeed(""),

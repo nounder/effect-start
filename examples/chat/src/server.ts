@@ -3,8 +3,10 @@ import { Development, FileRouter, Start } from "effect-start"
 import { BunBundle, BunServer } from "effect-start/bun"
 import { Studio } from "effect-start/studio"
 import { TailwindPlugin } from "effect-start/tailwind"
+import * as FetchHttpClient from "effect/http/FetchHttpClient"
 
 export default Layer.mergeAll(
+  FetchHttpClient.layer,
   Studio.layer(),
   FileRouter.layer(),
   Development.layer(),

@@ -1,15 +1,16 @@
 import * as test from "bun:test"
 import * as Entity from "effect-start/Entity"
-import * as Fetch from "effect-start/Fetch"
+import * as Http from "effect-start/internal/Http"
+import * as Tracing from "effect-start/internal/Tracing"
 import * as Route from "effect-start/Route"
 import * as RouteHttp from "effect-start/RouteHttp"
 import * as RouteHttpTracer from "effect-start/RouteHttpTracer"
 import * as Effect from "effect/Effect"
+import * as HttpClient from "effect/http/HttpClient"
 import * as Option from "effect/Option"
 import * as Stream from "effect/Stream"
 import type * as Tracer from "effect/Tracer"
-import * as Http from "effect-start/internal/Http"
-import * as Tracing from "effect-start/internal/Tracing"
+import * as TestHttpClient from "./internal/TestHttpClient.ts"
 
 test.describe("tracing", () => {
   test.it("creates span with correct name and kind", () =>
@@ -27,7 +28,7 @@ test.describe("tracing", () => {
           ),
         )
 
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         yield* client.get("http://localhost/test")
 
         test
@@ -57,7 +58,7 @@ test.describe("tracing", () => {
           ),
         )
 
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         yield* client.get("http://localhost/users?page=1&limit=10", {
           headers: { "user-agent": "test-agent" },
         })
@@ -101,7 +102,7 @@ test.describe("tracing", () => {
           ),
         )
 
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/test")
 
         test
@@ -131,12 +132,14 @@ test.describe("tracing", () => {
           ),
         )
 
-        const client = Fetch.fromHandler(handler)
-        yield* client.get("http://localhost/test", {
-          headers: {
-            traceparent: "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01",
-          },
-        })
+        const client = TestHttpClient.fromHandler(handler)
+        yield* client
+          .get("http://localhost/test", {
+            headers: {
+              traceparent: "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01",
+            },
+          })
+          .pipe(Effect.provideService(HttpClient.TracerPropagationEnabled, false))
 
         test
           .expect(capturedSpan?.parent)
@@ -172,12 +175,14 @@ test.describe("tracing", () => {
           ),
         )
 
-        const client = Fetch.fromHandler(handler)
-        yield* client.get("http://localhost/test", {
-          headers: {
-            b3: "80f198ee56343ba864fe8b2a57d3eff7-e457b5a2e4d86bd1-1",
-          },
-        })
+        const client = TestHttpClient.fromHandler(handler)
+        yield* client
+          .get("http://localhost/test", {
+            headers: {
+              b3: "80f198ee56343ba864fe8b2a57d3eff7-e457b5a2e4d86bd1-1",
+            },
+          })
+          .pipe(Effect.provideService(HttpClient.TracerPropagationEnabled, false))
 
         test
           .expect(capturedSpan?.parent)
@@ -213,14 +218,16 @@ test.describe("tracing", () => {
           ),
         )
 
-        const client = Fetch.fromHandler(handler)
-        yield* client.get("http://localhost/test", {
-          headers: {
-            "x-b3-traceid": "463ac35c9f6413ad48485a3953bb6124",
-            "x-b3-spanid": "0020000000000001",
-            "x-b3-sampled": "1",
-          },
-        })
+        const client = TestHttpClient.fromHandler(handler)
+        yield* client
+          .get("http://localhost/test", {
+            headers: {
+              "x-b3-traceid": "463ac35c9f6413ad48485a3953bb6124",
+              "x-b3-spanid": "0020000000000001",
+              "x-b3-sampled": "1",
+            },
+          })
+          .pipe(Effect.provideService(HttpClient.TracerPropagationEnabled, false))
 
         test
           .expect(capturedSpan?.parent)
@@ -265,7 +272,7 @@ test.describe("tracing", () => {
           ),
         )
 
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         yield* client.get("http://localhost/health")
         yield* client.get("http://localhost/users")
 
@@ -300,7 +307,7 @@ test.describe("tracing", () => {
           ),
         )
 
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         yield* client.get("http://localhost/users")
 
         test
@@ -575,7 +582,7 @@ test.describe("tracing", () => {
         const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
         const handler = handles["/users/:id"]
 
-        const client = Fetch.fromHandler(handler)
+        const client = TestHttpClient.fromHandler(handler)
         yield* client.get("http://localhost/users/123")
 
         test
