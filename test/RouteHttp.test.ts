@@ -3,7 +3,6 @@ import { BunFileSystem, BunPath } from "effect-start/bun"
 import * as Development from "effect-start/Development"
 import * as Entity from "effect-start/Entity"
 import * as Http from "effect-start/internal/Http"
-import * as RouteMap from "effect-start/internal/RouteMap"
 import * as RouteSchema from "effect-start/internal/RouteSchema"
 import * as Route from "effect-start/Route"
 import * as RouteHttp from "effect-start/RouteHttp"
@@ -26,7 +25,6 @@ import * as Schedule from "effect/Schedule"
 import * as Schema from "effect/Schema"
 import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
-import * as RouteHttpRouter from "../src/internal/RouteHttpRouter.ts"
 import * as TestHttpClient from "./internal/TestHttpClient.ts"
 
 const multipartContext = Effect.runSync(
@@ -4125,7 +4123,7 @@ test.describe("HttpRouter interoperability", () => {
   test.it("configures the generated router for Start matching even when ambient config differs", () =>
     Effect
       .gen(function*() {
-        const router = yield* RouteMap.toHttpRouter({}).pipe(Effect.provideService(HttpRouter.RouterConfig, {
+        const router = yield* RouteHttp.toHttpRouter({}).pipe(Effect.provideService(HttpRouter.RouterConfig, {
           caseSensitive: false,
           ignoreDuplicateSlashes: false,
           ignoreTrailingSlash: false,
@@ -4163,7 +4161,7 @@ test.describe("HttpRouter interoperability", () => {
     Effect
       .gen(function*() {
         let wrapped = 0
-        const router = yield* RouteMap.toHttpRouter(Route.map({
+        const router = yield* RouteHttp.toHttpRouter(Route.map({
           "/item": Route
             .get(
               Route.filter(() => {
@@ -4217,17 +4215,12 @@ test.describe("HttpRouter interoperability", () => {
         Effect.runPromise,
       ))
 
-  test.it("keeps native handlers lazy and shares first construction across concurrent router operations", () =>
+  test.it("registers a route map after native routes on the same router", () =>
     Effect
       .gen(function*() {
-        let builds = 0
         const routes = Route.map({ "/native": Route.get(Route.text("native")) })
-        const context = yield* RouteHttpRouter.make(Effect.gen(function*() {
-          builds++
-          yield* Effect.yieldNow
-          return yield* RouteMap.toHttpRouter(routes)
-        }))
-        const router = Context.get(context, HttpRouter.HttpRouter)
+        const router = yield* RouteHttp.toHttpRouter({})
+        const context = Context.make(HttpRouter.HttpRouter, router)
         const prefixed = router.prefixed("/api")
         const app = router.asHttpEffect()
         const native = TestHttpClient.fromHandler(Object.fromEntries(RouteHttp.walkHandles(routes, context))["/native"])
@@ -4236,19 +4229,14 @@ test.describe("HttpRouter interoperability", () => {
           .expect(yield* (yield* native.get("http://localhost/native")).text)
           .toBe("native")
 
-        test
-          .expect(builds)
-          .toBe(0)
-
         yield* Effect.all(
           Array.from({ length: 5 }, (_, index) =>
             prefixed.add("GET", `/item${index}`, HttpServerResponse.text(String(index)))),
           { concurrency: "unbounded" },
         )
 
-        test
-          .expect(builds)
-          .toBe(1)
+        yield* RouteHttp
+          .register(routes, router)
 
         const client = TestHttpClient
           .fromHandler(
@@ -4274,16 +4262,15 @@ test.describe("HttpRouter interoperability", () => {
               .text,
           )
           .toBe("native")
-        test
-          .expect(builds)
-          .toBe(1)
       })
       .pipe(
-        Effect.scoped,
-        Effect.runPromise,
+        Effect
+          .scoped,
+        Effect
+          .runPromise,
       ))
 
-  test.it("keeps cached router registrations isolated between applications", () =>
+  test.it("keeps router registrations isolated between applications", () =>
     Effect
       .gen(function*() {
         const layer = Route.layer({ "/": Route.get(Route.text("home")) })
@@ -4313,11 +4300,10 @@ test.describe("HttpRouter interoperability", () => {
       ))
 })
 
-test.it("preserves router registration middleware, prefixes, and global middleware through the lazy service", () =>
+test.it("preserves router registration middleware, prefixes, and global middleware", () =>
   Effect
     .gen(function*() {
-      const context = yield* RouteHttpRouter.make(RouteMap.toHttpRouter({}))
-      const router = Context.get(context, HttpRouter.HttpRouter)
+      const router = yield* RouteHttp.toHttpRouter({})
       const middleware = HttpRouter.middleware((app) =>
         app.pipe(
           Effect.map((response) => HttpServerResponse.setHeader(response, "x-route", "registered")),

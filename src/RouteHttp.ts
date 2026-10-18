@@ -19,7 +19,6 @@ import * as ContentNegotiation from "./internal/ContentNegotiation.ts"
 import type * as Http from "./internal/Http.ts"
 import * as PathPattern from "./internal/PathPattern.ts"
 import type * as RouteBody from "./internal/RouteBody.ts"
-import * as RouteHttpRouter from "./internal/RouteHttpRouter.ts"
 import * as RouteMap from "./internal/RouteMap.ts"
 import type * as RouteMount from "./internal/RouteMount.ts"
 import * as StreamExtra from "./internal/StreamExtra.ts"
@@ -320,18 +319,36 @@ export const handler = <R>(routes: Iterable<UnboundedRouteWithMethod>): Effect.E
   return app
 }
 
+export const register = (map: RouteMap.RouteMap, router: HttpRouter.HttpRouter): Effect.Effect<void> =>
+  Effect.gen(function*() {
+    for (const path of Object.keys(map) as Array<PathPattern.PathPattern>) {
+      yield* router.add("*", path, handler<never>(RouteMap.walk({ [path]: map[path] })))
+    }
+  })
+
+export const toHttpRouter = (map: RouteMap.RouteMap): Effect.Effect<HttpRouter.HttpRouter> =>
+  Effect.gen(function*() {
+    const router = yield* HttpRouter.make.pipe(Effect.provideService(HttpRouter.RouterConfig, {
+      caseSensitive: true,
+      ignoreTrailingSlash: true,
+      ignoreDuplicateSlashes: true,
+      maxParamLength: Infinity,
+    }))
+    yield* register(map, router)
+    return router
+  })
+
 export const toWebHandlerWith =
   <R>(context: Context.Context<R>) =>
   <const Routes extends Iterable<UnboundedRouteWithMethod>>(routes: RoutesProvidedBy<Routes, R>): Http.WebHandler => {
     const items = Array.from(routes)
     const path = items.length === 0 ? "/*" : Route.descriptor<{ path?: string }>(items[0]).path ?? "/*"
     const existing = Context.getOrUndefined(context, HttpRouter.HttpRouter)
-    const services = existing === undefined
-      ? Context.merge(
-        context,
-        Effect.runSyncWith(context)(RouteHttpRouter.make(RouteMap.toHttpRouter({ [path]: items }))),
-      )
-      : Context.add(context, HttpRouter.HttpRouter, existing)
+    const services = Context.add(
+      context,
+      HttpRouter.HttpRouter,
+      existing ?? Effect.runSyncWith(context)(toHttpRouter({ [path]: items })),
+    )
     return HttpEffect.toWebHandlerWith<
       R | HttpRouter.HttpRouter,
       R | HttpServerRequest.HttpServerRequest | Scope.Scope,
@@ -348,7 +365,7 @@ export function* walkHandles(
   context: Context.Context<any> = Context.empty() as Context.Context<any>,
 ): Generator<[path: string, handler: Http.WebHandler]> {
   if (Context.getOrUndefined(context, HttpRouter.HttpRouter) === undefined) {
-    context = Context.merge(context, Effect.runSyncWith(context)(RouteHttpRouter.make(RouteMap.toHttpRouter(map))))
+    context = Context.add(context, HttpRouter.HttpRouter, Effect.runSyncWith(context)(toHttpRouter(map)))
   }
   const pathGroups = new Map<string, Array<RouteMount.MountedRoute>>()
   const inDevelopment = Option.isSome(Context.getOption(context, Development.Development))
@@ -369,13 +386,16 @@ export function* walkHandles(
   for (const [path, routes] of pathGroups) yield [path, makeHandler(routes)]
 }
 
+export const layerRoutes = () =>
+  Layer.effectDiscard(Effect.gen(function*() {
+    const router = yield* HttpRouter.HttpRouter
+    const routes = yield* Effect.serviceOption(Route.Routes)
+    if (Option.isSome(routes)) yield* register(routes.value, router)
+  }))
+
 export const layer = () =>
-  Layer
-    .effectDiscard(Effect.gen(function*() {
-      const server = yield* HttpServer.HttpServer
-      const router = yield* HttpRouter.HttpRouter
-      yield* server.serve(Effect.suspend(() => router.asHttpEffect()))
-    }))
+  HttpServer
+    .serve(HttpRouter.HttpRouter.use((router) => router.asHttpEffect()))
     .pipe(Layer.provideMerge(layerRouter()))
 
 export const layerRouter = () =>
@@ -385,5 +405,5 @@ export const layerRouter = () =>
       return Context.make(HttpRouter.HttpRouter, existing.value)
     }
     const routes = yield* Route.Routes
-    return yield* RouteHttpRouter.make(RouteMap.toHttpRouter(routes))
+    return Context.make(HttpRouter.HttpRouter, yield* toHttpRouter(routes))
   }))

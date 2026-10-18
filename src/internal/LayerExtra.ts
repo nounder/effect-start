@@ -41,11 +41,11 @@ export type Ordered<
   ]
   : []
 
-export type Unordered<Layers extends ReadonlyArray<Layer.Any>> = {
+export type Unordered<Layers extends ReadonlyArray<Layer.Any>, Provided = never> = {
   [K in keyof Layers]: [
     Exclude<
       Layer.Services<Layers[K]>,
-      { [I in keyof Layers]: Layer.Success<Layers[I]> }[number]
+      { [I in keyof Layers]: Layer.Success<Layers[I]> }[number] | Provided
     >,
   ] extends [never] ? Layers[K]
     : Layer.Layer<
@@ -53,7 +53,7 @@ export type Unordered<Layers extends ReadonlyArray<Layer.Any>> = {
       Layer.Error<Layers[K]>,
       Extract<
         Layer.Services<Layers[K]>,
-        { [I in keyof Layers]: Layer.Success<Layers[I]> }[number]
+        { [I in keyof Layers]: Layer.Success<Layers[I]> }[number] | Provided
       >
     >
 }

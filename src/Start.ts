@@ -2,7 +2,8 @@ import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import type * as FileSystem from "effect/FileSystem"
 import * as Function from "effect/Function"
-import type * as HttpServer from "effect/http/HttpServer"
+import * as HttpRouter from "effect/http/HttpRouter"
+import * as HttpServer from "effect/http/HttpServer"
 import * as Layer from "effect/Layer"
 import type * as ChildProcessSpawner from "effect/process/ChildProcessSpawner"
 import * as BunRuntime from "./bun/BunRuntime.ts"
@@ -50,7 +51,7 @@ export function build<
 
 /**
  * Like `build`, but accepts layers in any order. Every layer's dependencies
- * must be satisfied by another layer.
+ * must be satisfied by another layer or the HttpRouter supplied by `serve`.
  *
  * @example
  * ```ts
@@ -65,11 +66,11 @@ export function pack<
     ...Array<Layer.Any>,
   ],
 >(
-  ...layers: LayerExtra.Unordered<Layers>
+  ...layers: LayerExtra.Unordered<Layers, HttpRouter.HttpRouter>
 ): Layer.Layer<
   LayerExtra.LayersSuccess<Layers>,
   LayerExtra.LayersError<Layers>,
-  never
+  LayerExtra.LayersContext<Layers>
 > {
   return Layer.effectContext(
     LayerExtra.buildUnordered(layers as unknown as Layers, [Route.Routes]),
@@ -83,6 +84,7 @@ export function layerDev() {
 // TODO: do we even need to define requirements upfront?
 type AppRequirements =
   | HttpServer.HttpServer
+  | HttpRouter.HttpRouter
   | FileSystem.FileSystem
   | ChildProcessSpawner.ChildProcessSpawner
 
@@ -109,11 +111,15 @@ export function serve<ROut, E, RIn extends AppRequirements>(
 
   const appLayerResolved = Function.pipe(
     appLayer,
-    Layer.provideMerge(layerDev()),
+    Layer.provideMerge(Layer.merge(
+      layerDev(),
+      Layer.effect(HttpRouter.HttpRouter, RouteHttp.toHttpRouter({})),
+    )),
   )
 
   const composed = Function.pipe(
-    RouteHttp.layer(),
+    HttpServer.serve(HttpRouter.HttpRouter.use((router) => router.asHttpEffect())),
+    Layer.provide(RouteHttp.layerRoutes()),
     Layer.provideMerge(BunServer.layerStart()),
     BunServer.withLogAddress,
     Layer.provide(
