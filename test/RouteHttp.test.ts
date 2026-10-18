@@ -613,7 +613,7 @@ test.it("selects html when Accept excludes json despite a wildcard", () =>
           Route.html("<div>html</div>"),
         ),
       )
-      const client = Fetch.fromHandler(handler)
+      const client = TestHttpClient.fromHandler(handler)
       const entity = yield* client.get("http://localhost/data", {
         headers: { Accept: "application/json;q=0, */*;q=1" },
       })
