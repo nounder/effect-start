@@ -1,5 +1,6 @@
 import * as test from "bun:test"
 import { BunServer } from "effect-start/bun"
+import * as Entity from "effect-start/Entity"
 import type * as RouteMap from "effect-start/internal/RouteMap"
 import * as Route from "effect-start/Route"
 import * as RouteHttp from "effect-start/RouteHttp"
@@ -708,40 +709,118 @@ test.describe("Route.ws", () => {
       )
   })
 
-  test.test("upgrades under a wildcard html layout layer", () => {
-    const routes = Route.map({
-      "/ws": Route
-        .use(
-          Route.html(function*(_ctx, next) {
-            return yield* next.html
-          }),
-        )
-        .get(Route.ws(function*(ctx) {
-          const write = (yield* ctx.socket.writer).write
-          yield* consume(ctx.socket, (data) => write(data))
-        })),
-    })
+  for (const method of ["get", "use"] as const) {
+    test.it(`skips format-specific middleware when upgrading a Route.${method} socket`, () =>
+      Effect
+        .gen(function*() {
+          const formats: Array<string> = []
+          const middleware = Route.use(
+            Route.html(function*(_ctx, next) {
+              formats.push("html")
+              return yield* next.html
+            }),
+            Route.text(function*(_ctx, next) {
+              formats.push("text")
+              return yield* next.text
+            }),
+            Route.json(function*(_ctx, next) {
+              formats.push("json")
+              return yield* next.json
+            }),
+          )
+          const echo = (ctx: { readonly socket: Socket.Socket }) =>
+            Effect.gen(function*() {
+              const write = (yield* ctx.socket.writer).write
+              yield* consume(ctx.socket, (data) => write(data))
+            })
+          const routes = Route.map({
+            "/ws": method === "get" ? middleware.get(Route.ws(echo)) : middleware.use(Route.ws(echo)),
+          })
 
-    return Effect
+          yield* Effect
+            .gen(function*() {
+              const server = yield* HttpServer.HttpServer
+              const ws = yield* connect(`${wsUrl(server)}/ws`)
+              ws.send("hello")
+
+              test
+                .expect(yield* nextMessage(ws))
+                .toBe("hello")
+              test
+                .expect(formats)
+                .toEqual([])
+
+              ws.close()
+              yield* nextClose(ws)
+            })
+            .pipe(Effect.provide(testLayer(routes)))
+        })
+        .pipe(
+          Effect.scoped,
+          runPromise,
+        ))
+  }
+
+  test.it("preserves middleware rejections without negotiating upgrade requests", () =>
+    Effect
       .gen(function*() {
-        const server = yield* HttpServer.HttpServer
-        const ws = yield* connect(`${wsUrl(server)}/ws`)
-        ws.send("hello")
-        const echoed = yield* nextMessage(ws)
+        const requests: Array<string> = []
+        const routes = Route.map({
+          "/ws": Route
+            .use(
+              Route.html("unexpected html"),
+              Route.json({ unexpected: "json" }),
+              Route.handle(function*() {
+                const request = yield* Route.Request
+                requests.push(request.url)
+                return Entity.make("Unauthorized", {
+                  status: 401,
+                  headers: { "www-authenticate": "Bearer" },
+                })
+              }),
+              Route.ws(() => Effect.die("The socket handler must not run")),
+            ),
+        })
 
-        test
-          .expect(echoed)
-          .toBe("hello")
+        yield* Effect
+          .gen(function*() {
+            const server = yield* HttpServer.HttpServer
+            const url = `${httpUrl(server)}/ws`
+            for (const accept of ["text/html", "application/json", "image/png"]) {
+              const response = yield* HttpClient.get(url, {
+                headers: { upgrade: "websocket", connection: "Upgrade", accept },
+              })
 
-        ws.close()
-        yield* nextClose(ws)
+              test
+                .expect(response.status)
+                .toBe(401)
+              test
+                .expect(response.headers["www-authenticate"])
+                .toBe("Bearer")
+              test
+                .expect(response.headers["content-type"])
+                .toBe("text/plain")
+              test
+                .expect(response.headers.vary)
+                .toBeUndefined()
+              test
+                .expect(yield* response.text)
+                .toBe("Unauthorized")
+            }
+
+            test
+              .expect(requests)
+              .toEqual([url, url, url])
+          })
+          .pipe(
+            Effect.provide(testLayer(routes)),
+            Effect.provide(FetchHttpClient.layer),
+          )
       })
       .pipe(
-        Effect.provide(testLayer(routes)),
         Effect.scoped,
         runPromise,
-      )
-  })
+      ))
 
   test.test("runs wildcard middleware on the upgrade chain", () => {
     let middlewareRan = false

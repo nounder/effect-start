@@ -133,82 +133,41 @@ const toResponse = (
 
 type Handler = (context: any, next: Entity.Entity<any, any>) => Effect.Effect<Entity.Entity<any>, any, any>
 
-const handler = (
+const isWildcard = (route: UnboundedRouteWithMethod) => Route.descriptor(route).method === "*"
+const isWebSocket = (route: UnboundedRouteWithMethod) => Route.descriptor<{ protocol?: "ws" }>(route).protocol === "ws"
+
+const runRoutes = (
   routes: Array<UnboundedRouteWithMethod>,
-  isUpgrade = false,
-): Effect.Effect<HttpServerResponse.HttpServerResponse, never, HttpRouter.Provided> => {
-  const isWildcard = (route: UnboundedRouteWithMethod) => Route.descriptor(route).method === "*"
-  const protocolMatches = (route: UnboundedRouteWithMethod) =>
-    (Route.descriptor<{ protocol?: "ws" }>(route).protocol === "ws") === isUpgrade
-  const matchingRoutes = routes.filter((route) => isWildcard(route) || protocolMatches(route))
-  const concreteRoutes = routes.filter((route) => !isWildcard(route))
-  if (concreteRoutes.length > 0 && !concreteRoutes.some(protocolMatches)) {
-    return Effect.succeed(HttpServerResponse.empty({ status: 426, headers: { upgrade: "websocket" } }))
-  }
-  const negotiable = new Set<RouteBody.Format>()
-  const specificFormats = new Set<RouteBody.Format>()
-  let hasWildcardFormatRoutes = false
-  for (const route of matchingRoutes) {
-    const format = Route.descriptor(route).format
-    if (format === "*") hasWildcardFormatRoutes = true
-    else if (format) {
-      specificFormats.add(format)
-      if (!isWildcard(route) || concreteRoutes.length === 0) negotiable.add(format)
+  format?: RouteBody.Format,
+): Effect.Effect<Entity.Entity<any>, any, any> =>
+  Effect.suspend(() => {
+    let index = 0
+    const runNext = (): Effect.Effect<Entity.Entity<any>, any, any> => {
+      if (index >= routes.length) {
+        return Effect.succeed(Entity.make({ status: 404, message: "route not found" }, { status: 404 }))
+      }
+      const route = routes[index++]
+      const descriptor = Route.descriptor(route)
+      if (descriptor.format && descriptor.format !== "*" && descriptor.format !== format) return runNext()
+      return Effect.gen(function*() {
+        const ref = yield* Route.RouteContext
+        ref.context = { ...ref.context, ...descriptor }
+        return yield* (route.handler as Handler)(ref.context, Entity.effect(Effect.suspend(runNext)))
+      })
     }
-  }
-  const mediaTypes = Object.keys(mediaTypeToFormat).filter((mediaType) => negotiable.has(mediaTypeToFormat[mediaType]!))
-  return Effect
+    return Effect.map(runNext(), (result) => Entity.isEntity(result) ? result : Entity.make(result, { status: 200 }))
+  })
+
+const withRequest = (
+  effect: Effect.Effect<HttpServerResponse.HttpServerResponse, unknown, any>,
+): Effect.Effect<HttpServerResponse.HttpServerResponse, never, HttpRouter.Provided> =>
+  Effect
     .gen(function*() {
       const request = yield* HttpServerRequest.HttpServerRequest
-      const mediaType = request.headers.accept
-        ? ContentNegotiation.media(request.headers.accept, mediaTypes)[0]
-        : mediaTypes[0]
-      const format = mediaTypeToFormat[mediaType]
-      if (!isUpgrade && format === undefined && specificFormats.size > 0 && !hasWildcardFormatRoutes) {
-        return errorResponse(406, "not acceptable")
-      }
-
-      let index = 0
-      const runNext = (): Effect.Effect<Entity.Entity<any>, any, any> => {
-        if (index >= matchingRoutes.length) {
-          return Effect.succeed(Entity.make({ status: 404, message: "route not found" }, { status: 404 }))
-        }
-        const route = matchingRoutes[index++]
-        const descriptor = Route.descriptor(route)
-        if (descriptor.format && descriptor.format !== "*" && descriptor.format !== format) return runNext()
-        return Effect.gen(function*() {
-          const ref = yield* Route.RouteContext
-          ref.context = { ...ref.context, ...descriptor }
-          return yield* (route.handler as Handler)(ref.context, Entity.effect(Effect.suspend(runNext)))
-        })
-      }
-
-      return yield* Effect
-        .gen(function*() {
-          const result = yield* runNext()
-          const entity = Entity.isEntity(result) ? result : Entity.make(result, { status: 200 })
-          if (entity.status === 404 && entity.body === undefined) return errorResponse(406, "not acceptable")
-          const context = yield* Effect.context<any>()
-          let response = yield* toResponse(
-            entity,
-            format,
-            context,
-          )
-          if (specificFormats.size > 1) response = HttpServerResponse.setHeader(response, "vary", "Accept")
-          if (request.method === "HEAD" && response.body._tag === "Stream") {
-            response = HttpServerResponse.empty({
-              status: response.status,
-              statusText: response.statusText,
-              headers: response.headers,
-              cookies: response.cookies,
-            })
-          }
-          return response
-        })
-        .pipe(
-          Effect.provideService(Route.Request, request.source),
-          Effect.provideService(Route.RouteContext, { context: {} }),
-        )
+      return yield* effect.pipe(
+        Effect.provideService(Route.Request, request.source),
+        Effect.provideService(Route.RouteContext, { context: {} }),
+      )
     })
     .pipe(
       Effect.interruptible,
@@ -223,7 +182,58 @@ const handler = (
           })
       ),
     )
+
+const httpHandler = (routes: Array<UnboundedRouteWithMethod>) => {
+  const hasConcreteRoutes = routes.some((route) => !isWildcard(route))
+  const negotiable = new Set<RouteBody.Format>()
+  const specificFormats = new Set<RouteBody.Format>()
+  let hasWildcardFormatRoutes = false
+  for (const route of routes) {
+    const format = Route.descriptor(route).format
+    if (format === "*") hasWildcardFormatRoutes = true
+    else if (format) {
+      specificFormats.add(format)
+      if (!isWildcard(route) || !hasConcreteRoutes) negotiable.add(format)
+    }
+  }
+  const mediaTypes = Object.keys(mediaTypeToFormat).filter((mediaType) => negotiable.has(mediaTypeToFormat[mediaType]!))
+  return withRequest(
+    Effect.gen(function*() {
+      const request = yield* HttpServerRequest.HttpServerRequest
+      const mediaType = request.headers.accept
+        ? ContentNegotiation.media(request.headers.accept, mediaTypes)[0]
+        : mediaTypes[0]
+      const format = mediaTypeToFormat[mediaType]
+      if (format === undefined && specificFormats.size > 0 && !hasWildcardFormatRoutes) {
+        return errorResponse(406, "not acceptable")
+      }
+
+      const entity = yield* runRoutes(routes, format)
+      if (entity.status === 404 && entity.body === undefined) return errorResponse(406, "not acceptable")
+      const context = yield* Effect.context<any>()
+      let response = yield* toResponse(entity, format, context)
+      if (specificFormats.size > 1) response = HttpServerResponse.setHeader(response, "vary", "Accept")
+      if (request.method === "HEAD" && response.body._tag === "Stream") {
+        response = HttpServerResponse.empty({
+          status: response.status,
+          statusText: response.statusText,
+          headers: response.headers,
+          cookies: response.cookies,
+        })
+      }
+      return response
+    }),
+  )
 }
+
+const websocketHandler = (routes: Array<UnboundedRouteWithMethod>) =>
+  withRequest(
+    Effect.gen(function*() {
+      const entity = yield* runRoutes(routes)
+      const context = yield* Effect.context<any>()
+      return yield* toResponse(entity, undefined, context)
+    }),
+  )
 
 export const register = (map: RouteMap.RouteMap, router: HttpRouter.HttpRouter): Effect.Effect<void> =>
   Effect.gen(function*() {
@@ -238,21 +248,27 @@ export const register = (map: RouteMap.RouteMap, router: HttpRouter.HttpRouter):
           const descriptor = Route.descriptor(route)
           return descriptor.method === "*" || descriptor.method === method
         })
-        const http = handler(methodRoutes)
-        const websocket = (method === "GET" || method === "*") &&
-            methodRoutes.some((route) => Route.descriptor<{ protocol?: "ws" }>(route).protocol === "ws")
-          ? handler(methodRoutes, true)
-          : undefined
+        const concreteRoutes = methodRoutes.filter((route) => !isWildcard(route))
+        const httpRoutes = methodRoutes.filter((route) => isWildcard(route) || !isWebSocket(route))
+        const websocketRoutes = methodRoutes.filter((route) => isWildcard(route) || isWebSocket(route))
+        const upgradeRequired = Effect.succeed(HttpServerResponse.empty({
+          status: 426,
+          headers: { upgrade: "websocket" },
+        }))
+        const http = concreteRoutes.length > 0 && concreteRoutes.every(isWebSocket)
+          ? upgradeRequired
+          : httpHandler(httpRoutes)
+        const hasWebSocketRoute = (concreteRoutes.length === 0 ? methodRoutes : concreteRoutes).some(isWebSocket)
+        const websocket = (method === "GET" || method === "*") && hasWebSocketRoute
+          ? websocketHandler(websocketRoutes)
+          : upgradeRequired
         yield* router.addAll([
           HttpRouter.route(
             method,
             path,
             (request) => {
               if (request.method === "GET" && request.headers.upgrade?.toLowerCase() === "websocket") {
-                return websocket ?? Effect.succeed(HttpServerResponse.empty({
-                  status: 426,
-                  headers: { upgrade: "websocket" },
-                }))
+                return websocket
               }
               return http
             },
