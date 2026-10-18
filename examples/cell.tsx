@@ -1,9 +1,7 @@
 /** @jsxImportSource effect-start */
+import { Effect, Schema, Stream } from "effect"
 import { Bundle, Html, Route, Start } from "effect-start"
 import { BunBundle, BunFileSystem, BunPath } from "effect-start/bun"
-import * as Effect from "effect/Effect"
-import * as Schema from "effect/Schema"
-import * as Stream from "effect/Stream"
 
 const routes = Route.map({
   "/": Route.get(Route.html(function*() {

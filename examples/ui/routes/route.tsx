@@ -1,5 +1,5 @@
+import { Schema } from "effect"
 import { Route } from "effect-start"
-import * as Schema from "effect/Schema"
 import type { JSX } from "effect-start/jsx-runtime"
 import * as UI from "../ui.tsx"
 import {

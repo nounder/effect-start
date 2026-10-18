@@ -1,8 +1,5 @@
-import * as Config from "effect/Config"
-import * as Effect from "effect/Effect"
-import * as HttpClient from "effect/http/HttpClient"
-import * as HttpClientRequest from "effect/http/HttpClientRequest"
-import * as Schema from "effect/Schema"
+import { Config, Effect, Schema } from "effect"
+import { HttpClient, HttpClientRequest } from "effect/http"
 
 const API = "https://api.github.com"
 

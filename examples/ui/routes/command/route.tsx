@@ -1,5 +1,5 @@
+import { Schema } from "effect"
 import { Route } from "effect-start"
-import * as Schema from "effect/Schema"
 import { CommandItem, CommandList, Icon } from "../../ui.tsx"
 
 const categories = [

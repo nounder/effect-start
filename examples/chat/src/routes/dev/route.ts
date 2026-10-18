@@ -1,7 +1,6 @@
+import { Effect, Stream } from "effect"
 import { Development, Route } from "effect-start"
-import * as Effect from "effect/Effect"
-import * as HttpClient from "effect/http/HttpClient"
-import * as Stream from "effect/Stream"
+import { HttpClient } from "effect/http"
 
 export default Route.get(
   Route.sse(
