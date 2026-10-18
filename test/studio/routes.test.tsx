@@ -45,9 +45,8 @@ const runWithAuth = (
   Effect
     .gen(function*() {
       const context = yield* Effect.context<Studio.Studio | Bundle.Bundle>()
-      const handles = Object.fromEntries(RouteHttp.walkHandles(tree, context))
-      const handler = handles["/studio/services"]
-      yield* perform(TestHttpClient.fromHandler(handler))
+      const router = yield* RouteHttp.toHttpRouter(tree)
+      yield* perform(TestHttpClient.fromRouter(router, context))
     })
     .pipe(
       Effect.provide(Layer.mergeAll(studioLayer(auth), bundleLayer)),

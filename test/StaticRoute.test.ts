@@ -22,8 +22,8 @@ test.it("renders a directory index as JSON and HTML and serves its files", () =>
         "/files/*": StaticRoute.from({ path: directory, directoryIndex: true }),
         "/private/*": StaticRoute.from({ path: directory, directoryIndex: false }),
       })
-      const handles = Object.fromEntries(RouteHttp.walkHandles(routes, context))
-      const client = TestHttpClient.fromHandler(handles["/files/*"])
+      const router = yield* RouteHttp.toHttpRouter(routes)
+      const client = TestHttpClient.fromRouter(router, context)
 
       const json = yield* client.get("http://localhost/files", {
         headers: { accept: "application/json" },
@@ -176,9 +176,8 @@ test.it("renders a directory index as JSON and HTML and serves its files", () =>
         .expect(missing.status)
         .toBe(404)
 
-      const privateClient = TestHttpClient.fromHandler(handles["/private/*"])
-      const privateIndex = yield* privateClient.get("http://localhost/private")
-      const privateFile = yield* privateClient.get("http://localhost/private/hello.txt")
+      const privateIndex = yield* client.get("http://localhost/private")
+      const privateFile = yield* client.get("http://localhost/private/hello.txt")
 
       test
         .expect(privateIndex.status)
@@ -208,8 +207,8 @@ test.it("serves a single file from a file URL on a rest path route", () =>
           directoryIndex: false,
         }),
       })
-      const handles = Object.fromEntries(RouteHttp.walkHandles(routes, context))
-      const client = TestHttpClient.fromHandler(handles["/download/*"])
+      const router = yield* RouteHttp.toHttpRouter(routes)
+      const client = TestHttpClient.fromRouter(router, context)
 
       const file = yield* client.get("http://localhost/download", {
         headers: { accept: "application/json" },
@@ -249,8 +248,8 @@ test.it("decodes URL-encoded characters in path params", () =>
       const routes = Route.map({
         "/assets/*": StaticRoute.from({ path: directory, directoryIndex: false }),
       })
-      const handles = Object.fromEntries(RouteHttp.walkHandles(routes, context))
-      const client = TestHttpClient.fromHandler(handles["/assets/*"])
+      const router = yield* RouteHttp.toHttpRouter(routes)
+      const client = TestHttpClient.fromRouter(router, context)
 
       const spaced = yield* client.get("http://localhost/assets/hello%20world.txt")
       const unicode = yield* client.get("http://localhost/assets/caf%C3%A9.txt")
@@ -286,8 +285,8 @@ test.it("detects javascript and source map content types", () =>
       const routes = Route.map({
         "/assets/*": StaticRoute.from({ path: directory, directoryIndex: false }),
       })
-      const handles = Object.fromEntries(RouteHttp.walkHandles(routes, context))
-      const client = TestHttpClient.fromHandler(handles["/assets/*"])
+      const router = yield* RouteHttp.toHttpRouter(routes)
+      const client = TestHttpClient.fromRouter(router, context)
 
       const js = yield* client.get("http://localhost/assets/app.js")
       const map = yield* client.get("http://localhost/assets/app.js.map")

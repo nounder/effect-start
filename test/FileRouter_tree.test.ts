@@ -70,8 +70,8 @@ test.it("import error renders as 500 response", () =>
         "/broken": [() => Promise.reject(new Error("module not found"))],
       })
 
-      const handles = Object.fromEntries(RouteHttp.walkHandles(tree, context))
-      const client = TestHttpClient.fromHandler(handles["/broken"])
+      const router = yield* RouteHttp.toHttpRouter(tree)
+      const client = TestHttpClient.fromRouter(router, context)
 
       const entity = yield* client.get("http://localhost/broken")
 

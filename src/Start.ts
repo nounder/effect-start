@@ -118,7 +118,7 @@ export function serve<ROut, E, RIn extends AppRequirements>(
   )
 
   const composed = Function.pipe(
-    HttpServer.serve(HttpRouter.HttpRouter.use((router) => router.asHttpEffect())),
+    HttpServer.serve(HttpRouter.HttpRouter.use((router) => Effect.suspend(() => router.asHttpEffect()))),
     Layer.provide(RouteHttp.layerRoutes()),
     Layer.provideMerge(BunServer.layerStart()),
     BunServer.withLogAddress,

@@ -53,6 +53,41 @@ const withEnv = (env: Record<string, string | undefined>) =>
   )
 
 test.describe("RouteHttp.layer with BunServer", () => {
+  test.it("applies global middleware registered after the server starts", () =>
+    Effect
+      .gen(function*() {
+        const server = yield* HttpServer.HttpServer
+        const router = yield* HttpRouter.HttpRouter
+        const address = HttpServer.formatAddress(server.address)
+        const client = TestHttpClient.fromHandler(fetch)
+        const before = yield* client.get(address)
+
+        test
+          .expect(before.headers["x-global"])
+          .toBeUndefined()
+
+        yield* router.addGlobalMiddleware((next) =>
+          Effect.map(next, (response) => HttpServerResponse.setHeader(response, "x-global", "late"))
+        )
+        const after = yield* client.get(address)
+
+        test
+          .expect(after.status)
+          .toBe(200)
+        test
+          .expect(after.headers["x-global"])
+          .toBe("late")
+      })
+      .pipe(
+        Effect.provide(Start.build(
+          RouteHttp.layer(),
+          BunServer.layer(serveOptions({ hostname: "localhost", port: 0 })),
+          Route.layer({ "/": Route.get(Route.text("ok")) }),
+        )),
+        Effect.scoped,
+        Effect.runPromise,
+      ))
+
   test.test("user-provided BunServer serves routes", () => {
     const routes = Route.map({
       "/": Route.get(Route.text("custom-server")),
@@ -96,10 +131,11 @@ const serveText = (
   scope: Scope.Scope,
   text: string,
 ) =>
-  server
-    .serve(
-      RouteHttp.handler<never>(Route.get(Route.text(text))),
-    )
+  Effect
+    .gen(function*() {
+      const router = yield* RouteHttp.toHttpRouter(Route.map({ "/*": Route.get(Route.text(text)) }))
+      yield* server.serve(Effect.suspend(() => router.asHttpEffect()))
+    })
     .pipe(Scope.provide(scope))
 
 test.describe("BunServer route hot replacement", () => {

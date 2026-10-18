@@ -25,6 +25,7 @@ import * as Schedule from "effect/Schedule"
 import * as Schema from "effect/Schema"
 import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
+import type * as Types from "effect/Types"
 import * as TestHttpClient from "./internal/TestHttpClient.ts"
 
 const multipartContext = Effect.runSync(
@@ -916,58 +917,46 @@ test.it("Route.text matches text/markdown Accept header", () =>
     })
     .pipe(Effect.runPromise))
 
-test.describe("walkHandles", () => {
-  test.it("yields handlers for static routes", () => {
-    const tree = Route.map({
-      "/users": Route.get(Route.text("users list")),
-      "/admin": Route.get(Route.text("admin")),
-    })
+test.describe("HttpRouter path matching", () => {
+  test.it("routes static, parameterized, optional, and wildcard paths", () =>
+    Effect
+      .gen(function*() {
+        const router = yield* RouteHttp.toHttpRouter(Route.map({
+          "/users": Route.get(Route.text("users list")),
+          "/users/:id": Route.get(Route.json(HttpRouter.params)),
+          "/files/:name?": Route.get(Route.json(HttpRouter.params)),
+          "/docs/*": Route.get(Route.json(HttpRouter.params)),
+        }))
+        const client = TestHttpClient.fromRouter(router)
 
-    const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
+        test
+          .expect(yield* (yield* client.get("http://localhost/users")).text)
+          .toBe("users list")
 
-    test
-      .expect("/users" in handles)
-      .toBe(true)
-    test
-      .expect("/admin" in handles)
-      .toBe(true)
-  })
+        for (
+          const entry of [
+            ["/users/42", { id: "42" }],
+            ["/files", {}],
+            ["/files/readme", { name: "readme" }],
+            ["/docs", {}],
+            ["/docs/api/v1", { "*": "api/v1" }],
+          ] as const
+        ) {
+          const response = yield* client.get(`http://localhost${entry[0]}`)
 
-  test.it("yields handlers for parameterized routes", () => {
-    const tree = Route.map({
-      "/users/:id": Route.get(Route.text("user detail")),
-    })
+          test
+            .expect(response.status)
+            .toBe(200)
+          test
+            .expect(yield* response.json)
+            .toEqual(entry[1])
+        }
 
-    const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
-
-    test
-      .expect("/users/:id" in handles)
-      .toBe(true)
-  })
-
-  test.it("preserves optional param syntax", () => {
-    const tree = Route.map({
-      "/files/:name?": Route.get(Route.text("files")),
-    })
-
-    const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
-
-    test
-      .expect("/files/:name?" in handles)
-      .toBe(true)
-  })
-
-  test.it("preserves wildcard param syntax", () => {
-    const tree = Route.map({
-      "/docs/*": Route.get(Route.text("docs")),
-    })
-
-    const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
-
-    test
-      .expect("/docs/*" in handles)
-      .toBe(true)
-  })
+        test
+          .expect((yield* client.get("http://localhost/missing")).status)
+          .toBe(404)
+      })
+      .pipe(Effect.runPromise))
 })
 
 test.describe(Route.devOnly, () => {
@@ -1076,85 +1065,42 @@ test.describe(Route.devOnly, () => {
         Effect.runPromise,
       ))
 
-  test.it("walkHandles excludes development routes from web handlers", () =>
-    Effect
-      .gen(function*() {
-        const runtime = yield* Effect.context<Development.Development>()
-        const tree = Route.map({
-          "/development-only": Route.use(Route.devOnly),
-          "/mixed": Route.get(Route.devOnly, Route.text("public")),
+  test.it.each([false, true])(
+    "HttpRouter respects development guards with development=%s",
+    (inDevelopment) =>
+      Effect
+        .gen(function*() {
+          const context = inDevelopment
+            ? yield* Layer.build(Development.layerTest)
+            : Context.empty()
+          const routes = Route.map({
+            "/mixed": Route.get(Route.devOnly, Route.text("public")),
+            "/development": {
+              "*": Route.use(Route.devOnly),
+              "/public": Route.get(Route.text("public")),
+            },
+          })
+          const router = yield* RouteHttp.toHttpRouter(routes)
+          const client = TestHttpClient.fromRouter(router, context)
+          for (const path of ["/mixed", "/development/public"]) {
+            const response = yield* client.get(`http://localhost${path}`)
+
+            test
+              .expect(response.status)
+              .toBe(inDevelopment ? 200 : 404)
+
+            if (inDevelopment) {
+              test
+                .expect(yield* response.text)
+                .toBe("public")
+            }
+          }
         })
-
-        const handles = Object.fromEntries(RouteHttp.walkHandles(tree, runtime))
-
-        test
-          .expect(handles)
-          .not
-          .toHaveProperty("/development-only")
-        test
-          .expect(handles)
-          .toHaveProperty("/mixed")
-
-        const client = TestHttpClient.fromHandler(handles["/mixed"])
-        const entity = yield* client.get("http://localhost/mixed")
-
-        test
-          .expect(entity.status)
-          .toBe(200)
-        test
-          .expect(yield* entity.text)
-          .toBe("public")
-      })
-      .pipe(
-        Effect.provide(Development.layerTest),
-        Effect.runPromise,
-      ))
-
-  test.it(
-    "walkHandles with Route.map wildcard development layer excludes routes outside dev",
-    () => {
-      const tree = Route.map({
-        "*": Route.use(Route.devOnly),
-        "/public": Route.get(Route.text("public")),
-      })
-      const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
-
-      test
-        .expect(handles)
-        .not
-        .toHaveProperty("/public")
-    },
+        .pipe(
+          Effect.scoped,
+          Effect.runPromise,
+        ),
   )
-
-  test.it("walkHandles with Route.map wildcard development layer keeps routes in dev", () =>
-    Effect
-      .gen(function*() {
-        const runtime = yield* Effect.context<Development.Development>()
-        const tree = Route.map({
-          "*": Route.use(Route.devOnly),
-          "/public": Route.get(Route.text("public")),
-        })
-
-        const handles = Object.fromEntries(RouteHttp.walkHandles(tree, runtime))
-
-        test
-          .expect(handles)
-          .toHaveProperty("/public")
-
-        const client = TestHttpClient.fromHandler(handles["/public"])
-        const entity = yield* client.get("http://localhost/public")
-
-        test
-          .expect(entity.status)
-          .toBe(200)
-        test
-          .expect(yield* entity.text)
-          .toBe("public")
-      })
-      .pipe(
-        Effect.provide(Development.layerTest),
-        Effect.runPromise,
-      ))
 })
 
 test.describe("middleware chain", () => {
@@ -2574,9 +2520,8 @@ test.describe("schema handlers", () => {
           ),
         })
 
-        const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
-        const handler = handles["/folders/:folderId/files/:fileId"]
-        const client = TestHttpClient.fromHandler(handler)
+        const router = yield* RouteHttp.toHttpRouter(tree)
+        const client = TestHttpClient.fromRouter(router)
         const entity = yield* client.get(
           "http://localhost/folders/abc123/files/42",
         )
@@ -2611,9 +2556,8 @@ test.describe("schema handlers", () => {
           ),
         })
 
-        const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
-        const handler = handles["/files/*"]
-        const client = TestHttpClient.fromHandler(handler)
+        const router = yield* RouteHttp.toHttpRouter(tree)
+        const client = TestHttpClient.fromRouter(router)
         const entity = yield* client.get(
           "http://localhost/files/nested/hello.txt",
         )
@@ -2643,9 +2587,8 @@ test.describe("schema handlers", () => {
           ),
         })
 
-        const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
-        const handler = handles["/users/:id"]
-        const client = TestHttpClient.fromHandler(handler)
+        const router = yield* RouteHttp.toHttpRouter(tree)
+        const client = TestHttpClient.fromRouter(router)
         const entity = yield* client.get("http://localhost/users/abc")
 
         test
@@ -2676,9 +2619,6 @@ test.describe("schema handlers", () => {
         const client = TestHttpClient.fromHandler(handler)
         const entity = yield* client.get("http://localhost/users/abc")
 
-        // Without RouteMap, ctx.path is undefined, falls back to "/",
-        // so PathPattern.match("/", "/users/abc") returns no params
-        // and schema validation fails with SchemaError -> 400
         test
           .expect(entity.status)
           .toBe(400)
@@ -2750,9 +2690,8 @@ test.describe("schema handlers", () => {
           ),
         })
 
-        const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
-        const handler = handles["/projects/:projectId/tasks"]
-        const client = TestHttpClient.fromHandler(handler)
+        const router = yield* RouteHttp.toHttpRouter(tree)
+        const client = TestHttpClient.fromRouter(router)
         const entity = yield* client.post(
           "http://localhost/projects/proj-999/tasks",
           {
@@ -3170,8 +3109,8 @@ test.describe("RouteMap layer routes", () => {
           ),
         })
 
-        const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
-        const client = TestHttpClient.fromHandler(handles["/test"])
+        const router = yield* RouteHttp.toHttpRouter(tree)
+        const client = TestHttpClient.fromRouter(router)
         const entity = yield* client.get("http://localhost/test")
 
         test
@@ -3209,20 +3148,19 @@ test.describe("RouteMap layer routes", () => {
           ),
         })
 
-        const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
+        const router = yield* RouteHttp.toHttpRouter(tree)
 
-        const usersClient = TestHttpClient.fromHandler(handles["/users"])
-        const adminClient = TestHttpClient.fromHandler(handles["/admin"])
+        const client = TestHttpClient.fromRouter(router)
 
         calls.length = 0
-        yield* usersClient.get("http://localhost/users")
+        yield* client.get("http://localhost/users")
 
         test
           .expect(calls)
           .toEqual(["layer", "users"])
 
         calls.length = 0
-        yield* adminClient.get("http://localhost/admin")
+        yield* client.get("http://localhost/admin")
 
         test
           .expect(calls)
@@ -3245,8 +3183,8 @@ test.describe("RouteMap layer routes", () => {
           "/test": Route.get(Route.text("ok")),
         })
 
-        const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
-        const client = TestHttpClient.fromHandler(handles["/test"])
+        const router = yield* RouteHttp.toHttpRouter(tree)
+        const client = TestHttpClient.fromRouter(router)
 
         layerCallCount = 0
         yield* client.get("http://localhost/test")
@@ -3287,8 +3225,8 @@ test.describe("RouteMap layer routes", () => {
           "/api": apiTree,
         })
 
-        const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
-        const client = TestHttpClient.fromHandler(handles["/api/users"])
+        const router = yield* RouteHttp.toHttpRouter(tree)
+        const client = TestHttpClient.fromRouter(router)
         yield* client.get("http://localhost/api/users")
 
         test
@@ -3317,8 +3255,8 @@ test.describe("RouteMap layer routes", () => {
           ),
         })
 
-        const handles = Object.fromEntries(RouteHttp.walkHandles(tree, runtime))
-        const client = TestHttpClient.fromHandler(handles["/test"])
+        const router = yield* RouteHttp.toHttpRouter(tree)
+        const client = TestHttpClient.fromRouter(router, runtime)
         const entity = yield* client.get("http://localhost/test")
 
         test
@@ -3361,8 +3299,8 @@ test.describe("RouteMap layer routes", () => {
           "/data": Route.get(Route.json({ original: true })),
         })
 
-        const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
-        const client = TestHttpClient.fromHandler(handles["/data"])
+        const router = yield* RouteHttp.toHttpRouter(tree)
+        const client = TestHttpClient.fromRouter(router)
         const entity = yield* client.get("http://localhost/data")
 
         test
@@ -3384,8 +3322,8 @@ test.describe("RouteMap layer routes", () => {
           "/page": Route.get(Route.text("Page Content")),
         })
 
-        const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
-        const client = TestHttpClient.fromHandler(handles["/page"])
+        const router = yield* RouteHttp.toHttpRouter(tree)
+        const client = TestHttpClient.fromRouter(router)
         const entity = yield* client.get("http://localhost/page")
 
         test
@@ -3421,8 +3359,8 @@ test.describe("RouteMap layer routes", () => {
           ),
         })
 
-        const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
-        const client = TestHttpClient.fromHandler(handles["/test"])
+        const router = yield* RouteHttp.toHttpRouter(tree)
+        const client = TestHttpClient.fromRouter(router)
         yield* client.get("http://localhost/test")
 
         test
@@ -3444,8 +3382,8 @@ test.describe("RouteMap layer routes", () => {
           "/": Route.get(Route.html("<h1>Hello</h1>")),
         })
 
-        const handles = Object.fromEntries(RouteHttp.walkHandles(tree))
-        const client = TestHttpClient.fromHandler(handles["/"])
+        const router = yield* RouteHttp.toHttpRouter(tree)
+        const client = TestHttpClient.fromRouter(router)
         const entity = yield* client.get("http://localhost/")
 
         test
@@ -4002,6 +3940,63 @@ test.it("set-cookie string still works", async () => {
 })
 
 test.describe("HttpRouter interoperability", () => {
+  test.it("web helpers use the provided router and apply global middleware registered before and after requests", () =>
+    Effect
+      .gen(function*() {
+        const router = yield* RouteHttp.toHttpRouter({})
+        const events: Array<string> = []
+        const middleware =
+          (name: string) => (next: Effect.Effect<HttpServerResponse.HttpServerResponse, Types.unhandled>) =>
+            Effect.gen(function*() {
+              events.push(`${name}:before`)
+              const response = yield* next
+              events.push(`${name}:after`)
+              return HttpServerResponse.setHeader(response, "x-order", `${name}(${response.headers["x-order"]})`)
+            })
+        yield* router.addGlobalMiddleware(middleware("first"))
+        const handler = RouteHttp.toWebHandlerWith(Context.make(HttpRouter.HttpRouter, router))(
+          Route.get(Route.text(function*() {
+            test
+              .expect(yield* HttpRouter.HttpRouter)
+              .toBe(router)
+
+            events.push("handler")
+            return Entity.make("ok", { headers: { "x-order": "handler" } })
+          })),
+        )
+        const client = TestHttpClient.fromHandler(handler)
+        const first = yield* client.get("http://localhost/")
+
+        test
+          .expect(first.headers["x-order"])
+          .toBe("first(handler)")
+        test
+          .expect(events)
+          .toEqual(["first:before", "handler", "first:after"])
+
+        yield* router.addGlobalMiddleware(middleware("second"))
+        events.length = 0
+        const second = yield* client.get("http://localhost/")
+
+        test
+          .expect(second.headers["x-order"])
+          .toBe("first(second(handler))")
+        test
+          .expect(events)
+          .toEqual(["first:before", "second:before", "handler", "second:after", "first:after"])
+
+        yield* router.add("GET", "/native", HttpServerResponse.text("native", { headers: { "x-order": "native" } }))
+        const native = yield* client.get("http://localhost/native")
+
+        test
+          .expect(yield* native.text)
+          .toBe("native")
+        test
+          .expect(native.headers["x-order"])
+          .toBe("first(second(native))")
+      })
+      .pipe(Effect.runPromise))
+
   test.it.each(["HttpRouter", "Start"] as const)(
     "%s runs the first registered global middleware outermost",
     (implementation) =>
@@ -4049,7 +4044,11 @@ test.describe("HttpRouter interoperability", () => {
                 return Entity.make("ok", { headers: { "x-order": "handler" } })
               })),
             })
-            handler = Object.fromEntries(RouteHttp.walkHandles(routes))["/"]
+            const router = yield* RouteHttp.toHttpRouter(routes)
+            handler = HttpEffect.toWebHandlerWith<
+              HttpRouter.HttpRouter,
+              HttpServerRequest.HttpServerRequest | Scope.Scope
+            >(Context.make(HttpRouter.HttpRouter, router))(router.asHttpEffect())
           }
 
           const client = TestHttpClient.fromHandler(handler)
@@ -4097,8 +4096,8 @@ test.describe("HttpRouter interoperability", () => {
             }),
           ),
         })
-        const handles = Object.fromEntries(RouteHttp.walkHandles(routes))
-        const client = TestHttpClient.fromHandler(handles["/users/:id/*"])
+        const router = yield* RouteHttp.toHttpRouter(routes)
+        const client = TestHttpClient.fromRouter(router)
         const response = yield* client.get("http://localhost/users/42/a%20b/c?tag=x&tag=y")
 
         test
@@ -4111,7 +4110,7 @@ test.describe("HttpRouter interoperability", () => {
             decoded: { id: 42 },
             bindings: { id: 42, "*": "a b/c" },
             path: "/users/:id/*",
-            method: "GET",
+            method: "*",
             search: { tag: ["x", "y"] },
           })
       })
@@ -4220,14 +4219,8 @@ test.describe("HttpRouter interoperability", () => {
       .gen(function*() {
         const routes = Route.map({ "/native": Route.get(Route.text("native")) })
         const router = yield* RouteHttp.toHttpRouter({})
-        const context = Context.make(HttpRouter.HttpRouter, router)
         const prefixed = router.prefixed("/api")
         const app = router.asHttpEffect()
-        const native = TestHttpClient.fromHandler(Object.fromEntries(RouteHttp.walkHandles(routes, context))["/native"])
-
-        test
-          .expect(yield* (yield* native.get("http://localhost/native")).text)
-          .toBe("native")
 
         yield* Effect.all(
           Array.from({ length: 5 }, (_, index) =>
@@ -4361,7 +4354,8 @@ test.it("retains HttpRouter request services inside response streams", () =>
           }))
         )),
       })
-      const client = TestHttpClient.fromHandler(Object.fromEntries(RouteHttp.walkHandles(routes))["/events/:id"])
+      const router = yield* RouteHttp.toHttpRouter(routes)
+      const client = TestHttpClient.fromRouter(router)
       const response = yield* client.get("http://localhost/events/42?tag=one&tag=two")
 
       test

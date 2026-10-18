@@ -274,10 +274,7 @@ export function layerMerge<const Input extends RouteMap.RouteMapInput>(
 }
 
 /**
- * Creates a route that short-curcits in development.
- *
- * Note that when we convert the routes to web handles in {@link import("./RouteHttp.ts")},
- * we exclude them altogeteher in non-dev environments.
+ * Continues the route chain in development and returns 404 otherwise.
  */
 export function devOnly<D, B, I extends Route.Tuple>(
   self: RouteSet<D, B, I>,

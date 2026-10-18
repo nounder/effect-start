@@ -1,5 +1,6 @@
 import * as Effect from "effect/Effect"
 import type * as FileSystem from "effect/FileSystem"
+import * as HttpRouter from "effect/http/HttpRouter"
 import type * as HttpServerError from "effect/http/HttpServerError"
 import * as HttpServerRequest from "effect/http/HttpServerRequest"
 import type * as Multipart from "effect/http/Multipart"
@@ -9,7 +10,6 @@ import type * as Scope from "effect/Scope"
 import type * as Types from "effect/Types"
 import * as Entity from "../Entity.ts"
 import * as Route from "../Route.ts"
-import * as PathPattern from "./PathPattern.ts"
 import * as RouteHook from "./RouteHook.ts"
 
 type SchemaOrFields = Schema.Constraint | Schema.Struct.Fields
@@ -19,7 +19,7 @@ function toSchema(input: SchemaOrFields): Schema.ConstraintCodec<any, any, any, 
 }
 
 function makeSchemaFilter(
-  binding: "headers" | "cookies" | "searchParams" | "body",
+  binding: "headers" | "cookies" | "searchParams" | "pathParams" | "body",
   decode: Effect.Effect<any, any, any>,
 ): any {
   return RouteHook.filter((ctx: any) =>
@@ -172,7 +172,7 @@ export function schemaPathParams<F extends Schema.Struct.Fields>(
       { pathParams: Types.Simplify<Schema.Struct.Type<F>> },
       unknown,
       Schema.SchemaError,
-      Schema.Struct.DecodingServices<F> | HttpServerRequest.HttpServerRequest
+      Schema.Struct.DecodingServices<F> | HttpRouter.RouteContext
     >,
   ]
 >
@@ -193,21 +193,12 @@ export function schemaPathParams<
       { pathParams: A },
       unknown,
       Schema.SchemaError,
-      R | HttpServerRequest.HttpServerRequest
+      R | HttpRouter.RouteContext
     >,
   ]
 >
 export function schemaPathParams(fields: SchemaOrFields) {
-  const decode = Schema.decodeUnknownEffect(toSchema(fields))
-  return RouteHook.filter((ctx: any) =>
-    Effect.gen(function*() {
-      const request = yield* HttpServerRequest.HttpServerRequest
-      const url = new URL(request.url, "http://localhost")
-      const params = PathPattern.match(ctx.path ?? "/", url.pathname) ?? {}
-      const parsed = yield* decode(params)
-      return { context: { pathParams: { ...ctx.pathParams, ...parsed } } }
-    })
-  )
+  return makeSchemaFilter("pathParams", HttpRouter.schemaPathParams(toSchema(fields)))
 }
 
 export function schemaBodyJson<F extends Schema.Struct.Fields>(

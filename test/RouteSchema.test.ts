@@ -17,7 +17,6 @@ import * as Multipart from "effect/http/Multipart"
 import * as Layer from "effect/Layer"
 import type * as Path from "effect/Path"
 import * as Schema from "effect/Schema"
-import * as Stream from "effect/Stream"
 import * as TestHttpClient from "./internal/TestHttpClient.ts"
 
 const multipartContext = Effect.runSync(
@@ -76,7 +75,7 @@ test.describe("Effect HTTP interoperability", () => {
       })
       .pipe(Effect.runPromise))
 
-  test.it("decodes modified request headers and path parameters", () =>
+  test.it("decodes modified headers and uses the matched path parameters", () =>
     Effect
       .gen(function*() {
         const routes = Route.map({
@@ -106,7 +105,8 @@ test.describe("Effect HTTP interoperability", () => {
               }),
             ),
         })
-        const client = TestHttpClient.fromHandler(Object.fromEntries(RouteHttp.walkHandles(routes))["/users/:id"])
+        const router = yield* RouteHttp.toHttpRouter(routes)
+        const client = TestHttpClient.fromRouter(router)
         const entity = yield* client.get("http://localhost/users/1", {
           headers: { "x-name": "original", cookie: "session=original" },
         })
@@ -116,7 +116,7 @@ test.describe("Effect HTTP interoperability", () => {
           .toBe(200)
         test
           .expect(yield* entity.json)
-          .toEqual({ name: "modified", session: "updated", id: 42 })
+          .toEqual({ name: "modified", session: "updated", id: 1 })
       })
       .pipe(Effect.runPromise))
 

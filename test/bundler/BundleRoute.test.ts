@@ -30,10 +30,9 @@ test.it("serves a JS artifact", () =>
       const context = yield* Effect.context<Bundle.Bundle>()
       const routes = BundleRoute.make(Bundle.Bundle)
       const tree = Route.map({ "/_bundle/*": routes })
-      const handles = Object.fromEntries(RouteHttp.walkHandles(tree, context))
-      const handler = handles["/_bundle/*"]
+      const router = yield* RouteHttp.toHttpRouter(tree)
 
-      const client = TestHttpClient.fromHandler(handler)
+      const client = TestHttpClient.fromRouter(router, context)
       const entity = yield* client.get("http://localhost/_bundle/app-abc123.js")
 
       test
@@ -60,10 +59,9 @@ test.it("serves a CSS artifact", () =>
       const context = yield* Effect.context<Bundle.Bundle>()
       const routes = BundleRoute.make(Bundle.Bundle)
       const tree = Route.map({ "/_bundle/*": routes })
-      const handles = Object.fromEntries(RouteHttp.walkHandles(tree, context))
-      const handler = handles["/_bundle/*"]
+      const router = yield* RouteHttp.toHttpRouter(tree)
 
-      const client = TestHttpClient.fromHandler(handler)
+      const client = TestHttpClient.fromRouter(router, context)
       const entity = yield* client.get(
         "http://localhost/_bundle/style-def456.css",
       )
@@ -89,10 +87,9 @@ test.it("returns 404 for missing artifact", () =>
       const context = yield* Effect.context<Bundle.Bundle>()
       const routes = BundleRoute.make(Bundle.Bundle)
       const tree = Route.map({ "/_bundle/*": routes })
-      const handles = Object.fromEntries(RouteHttp.walkHandles(tree, context))
-      const handler = handles["/_bundle/*"]
+      const router = yield* RouteHttp.toHttpRouter(tree)
 
-      const client = TestHttpClient.fromHandler(handler)
+      const client = TestHttpClient.fromRouter(router, context)
       const entity = yield* client.get(
         "http://localhost/_bundle/nonexistent.js",
       )
@@ -112,10 +109,9 @@ test.it("supports custom mount path", () =>
       const context = yield* Effect.context<Bundle.Bundle>()
       const routes = BundleRoute.make(Bundle.Bundle)
       const tree = Route.map({ "/assets/*": routes })
-      const handles = Object.fromEntries(RouteHttp.walkHandles(tree, context))
-      const handler = handles["/assets/*"]
+      const router = yield* RouteHttp.toHttpRouter(tree)
 
-      const client = TestHttpClient.fromHandler(handler)
+      const client = TestHttpClient.fromRouter(router, context)
       const entity = yield* client.get("http://localhost/assets/app-abc123.js")
 
       test

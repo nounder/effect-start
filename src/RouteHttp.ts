@@ -3,7 +3,6 @@ import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Cookies from "effect/http/Cookies"
 import * as HttpEffect from "effect/http/HttpEffect"
-import type * as HttpMethod from "effect/http/HttpMethod"
 import * as HttpRouter from "effect/http/HttpRouter"
 import * as HttpServer from "effect/http/HttpServer"
 import * as HttpServerError from "effect/http/HttpServerError"
@@ -17,7 +16,7 @@ import * as Development from "./Development.ts"
 import * as Entity from "./Entity.ts"
 import * as ContentNegotiation from "./internal/ContentNegotiation.ts"
 import type * as Http from "./internal/Http.ts"
-import * as PathPattern from "./internal/PathPattern.ts"
+import type * as PathPattern from "./internal/PathPattern.ts"
 import type * as RouteBody from "./internal/RouteBody.ts"
 import * as RouteMap from "./internal/RouteMap.ts"
 import type * as RouteMount from "./internal/RouteMount.ts"
@@ -151,7 +150,6 @@ interface MethodPlan {
   readonly hasSpecificFormatRoutes: boolean
   readonly hasWildcardFormatRoutes: boolean
   readonly varyAccept: boolean
-  readonly routePath: string | undefined
 }
 
 const makeMethodPlan = (
@@ -192,7 +190,6 @@ const makeMethodPlan = (
     hasSpecificFormatRoutes: specificFormats.size > 0,
     hasWildcardFormatRoutes,
     varyAccept: specificFormats.size > 1,
-    routePath: matchingRoutes.length === 0 ? undefined : Route.descriptor<{ path?: string }>(matchingRoutes[0]).path,
   }
 }
 
@@ -203,11 +200,10 @@ const selectedFormat = (accept: string | undefined, plan: MethodPlan): RouteBody
   return negotiated.length === 0 ? undefined : mediaTypeToFormat[negotiated[0]]
 }
 
-export const handler = <R>(routes: Iterable<UnboundedRouteWithMethod>): Effect.Effect<
+const handler = (routes: Iterable<UnboundedRouteWithMethod>): Effect.Effect<
   HttpServerResponse.HttpServerResponse,
   never,
-  | HttpServerRequest.HttpServerRequest
-  | Exclude<R, Route.Request | HttpServerRequest.ParsedSearchParams | HttpRouter.RouteContext>
+  HttpRouter.Provided
 > => {
   const allRoutes = Array.from(routes)
   const methods = new Set<string>()
@@ -215,25 +211,11 @@ export const handler = <R>(routes: Iterable<UnboundedRouteWithMethod>): Effect.E
     const method = Route.descriptor(route).method?.toUpperCase()
     if (method && method !== "*") methods.add(method)
   }
-  const hasExplicitHead = methods.has("HEAD")
   if (methods.has("GET")) methods.add("HEAD")
   const allow = Array.from(methods).join(", ")
-  const path = allRoutes.length === 0
-    ? undefined
-    : Route.descriptor<{ path?: PathPattern.PathPattern }>(allRoutes[0]).path
-  const matchedRoutes = new Map<string, HttpRouter.Route<unknown, unknown>>()
-
-  const app: Effect.Effect<
-    HttpServerResponse.HttpServerResponse,
-    never,
-    | HttpServerRequest.HttpServerRequest
-    | Exclude<R, Route.Request | HttpServerRequest.ParsedSearchParams | HttpRouter.RouteContext>
-  > = Effect
+  return Effect
     .gen(function*() {
       const request = yield* HttpServerRequest.HttpServerRequest
-      const url = new URL(request.url, "http://localhost")
-      const params = path === undefined ? {} : PathPattern.match(path, url.pathname)
-      if (params === null) return errorResponse(404, "route not found")
       const method = request.method.toUpperCase()
       const isUpgrade = method === "GET" && (request.headers.upgrade ?? "").toLowerCase() === "websocket"
       const plan = makeMethodPlan(allRoutes, method, isUpgrade)
@@ -275,7 +257,6 @@ export const handler = <R>(routes: Iterable<UnboundedRouteWithMethod>): Effect.E
             context,
           )
           if (plan.varyAccept) response = HttpServerResponse.setHeader(response, "vary", "Accept")
-          if (plan.routePath !== undefined) yield* Effect.annotateCurrentSpan("http.route", plan.routePath)
           if (method === "HEAD" && response.body._tag === "Stream") {
             response = HttpServerResponse.empty({
               status: response.status,
@@ -288,14 +269,6 @@ export const handler = <R>(routes: Iterable<UnboundedRouteWithMethod>): Effect.E
         })
         .pipe(
           Effect.provideService(Route.Request, request.source),
-          Effect.provideService(
-            HttpServerRequest.ParsedSearchParams,
-            HttpServerRequest.searchParamsFromURL(url),
-          ),
-          Effect.provideService(HttpRouter.RouteContext, {
-            route: matchedRoutes.get(method) ?? matchedRoutes.get("*")!,
-            params,
-          }),
           Effect.provideService(Route.RouteContext, { context: {} }),
         )
     })
@@ -312,17 +285,12 @@ export const handler = <R>(routes: Iterable<UnboundedRouteWithMethod>): Effect.E
           })
       ),
     )
-  for (const method of ["*", ...methods] as const) {
-    matchedRoutes.set(method, HttpRouter.route(method as HttpMethod.HttpMethod | "*", path ?? "/", app))
-  }
-  if (!hasExplicitHead && matchedRoutes.has("GET")) matchedRoutes.set("HEAD", matchedRoutes.get("GET")!)
-  return app
 }
 
 export const register = (map: RouteMap.RouteMap, router: HttpRouter.HttpRouter): Effect.Effect<void> =>
   Effect.gen(function*() {
     for (const path of Object.keys(map) as Array<PathPattern.PathPattern>) {
-      yield* router.add("*", path, handler<never>(RouteMap.walk({ [path]: map[path] })))
+      yield* router.add("*", path, handler(RouteMap.walk({ [path]: map[path] })))
     }
   })
 
@@ -344,47 +312,19 @@ export const toWebHandlerWith =
     const items = Array.from(routes)
     const path = items.length === 0 ? "/*" : Route.descriptor<{ path?: string }>(items[0]).path ?? "/*"
     const existing = Context.getOrUndefined(context, HttpRouter.HttpRouter)
-    const services = Context.add(
-      context,
-      HttpRouter.HttpRouter,
-      existing ?? Effect.runSyncWith(context)(toHttpRouter({ [path]: items })),
-    )
+    const router = existing ?? Effect.runSyncWith(context)(toHttpRouter({}))
+    Effect.runSyncWith(context)(register({ [path]: items }, router))
+    const services = Context.add(context, HttpRouter.HttpRouter, router)
     return HttpEffect.toWebHandlerWith<
       R | HttpRouter.HttpRouter,
       R | HttpServerRequest.HttpServerRequest | Scope.Scope,
       never
-    >(services)(handler<R>(items))
+    >(services)(Effect.suspend(() => router.asHttpEffect()))
   }
 
 export const toWebHandler = <const Routes extends Iterable<UnboundedRouteWithMethod>>(
   routes: RoutesProvidedBy<Routes, never>,
 ): Http.WebHandler => toWebHandlerWith(Context.empty())(routes)
-
-export function* walkHandles(
-  map: RouteMap.RouteMap,
-  context: Context.Context<any> = Context.empty() as Context.Context<any>,
-): Generator<[path: string, handler: Http.WebHandler]> {
-  if (Context.getOrUndefined(context, HttpRouter.HttpRouter) === undefined) {
-    context = Context.add(context, HttpRouter.HttpRouter, Effect.runSyncWith(context)(toHttpRouter(map)))
-  }
-  const pathGroups = new Map<string, Array<RouteMount.MountedRoute>>()
-  const inDevelopment = Option.isSome(Context.getOption(context, Development.Development))
-  const developmentPaths = new Set<string>()
-  for (const route of RouteMap.walk(map)) {
-    const descriptor = Route.descriptor<{ dev?: boolean; method?: string; path: string }>(route)
-    if (descriptor.dev === true && descriptor.method === "*") developmentPaths.add(descriptor.path)
-  }
-  for (const route of RouteMap.walk(map)) {
-    const descriptor = Route.descriptor<{ dev?: boolean; path: string }>(route)
-    if (descriptor.dev === true || (!inDevelopment && developmentPaths.has(descriptor.path))) continue
-    const path = descriptor.path
-    const group = pathGroups.get(path) ?? []
-    group.push(route)
-    pathGroups.set(path, group)
-  }
-  const makeHandler = toWebHandlerWith(context)
-  for (const [path, routes] of pathGroups) yield [path, makeHandler(routes)]
-}
 
 export const layerRoutes = () =>
   Layer.effectDiscard(Effect.gen(function*() {
@@ -395,7 +335,7 @@ export const layerRoutes = () =>
 
 export const layer = () =>
   HttpServer
-    .serve(HttpRouter.HttpRouter.use((router) => router.asHttpEffect()))
+    .serve(HttpRouter.HttpRouter.use((router) => Effect.suspend(() => router.asHttpEffect())))
     .pipe(Layer.provideMerge(layerRouter()))
 
 export const layerRouter = () =>
