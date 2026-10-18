@@ -431,34 +431,6 @@ test.it("includes request in handler context", () =>
     })
     .pipe(Effect.runPromise))
 
-test.it("returns Allow header on 405 and OPTIONS responses", () =>
-  Effect
-    .gen(function*() {
-      const handler = RouteHttp.toWebHandler(
-        Route.get(Route.text("users")).post(Route.text("created")),
-      )
-      const client = TestHttpClient.fromHandler(handler)
-
-      const notAllowed = yield* client.del("http://localhost/users")
-
-      test
-        .expect(notAllowed.status)
-        .toBe(405)
-      test
-        .expect(notAllowed.headers["allow"])
-        .toBe("GET, POST, HEAD")
-
-      const options = yield* client.options("http://localhost/users")
-
-      test
-        .expect(options.status)
-        .toBe(204)
-      test
-        .expect(options.headers["allow"])
-        .toBe("GET, POST, HEAD")
-    })
-    .pipe(Effect.runPromise))
-
 test.it("uses explicit OPTIONS handler when registered", () =>
   Effect
     .gen(function*() {
@@ -500,33 +472,55 @@ test.it("HEAD request to GET route returns 200 with no body", () =>
     })
     .pipe(Effect.runPromise))
 
-test.it("HEAD is included in Allow header when GET routes exist", () =>
+test.it("uses HttpRouter's GET fallback for HEAD with shared middleware", () =>
   Effect
     .gen(function*() {
+      const calls: Array<string> = []
       const handler = RouteHttp.toWebHandler(
-        Route.get(Route.text("users")).post(Route.text("created")),
+        Route
+          .use(Route.filter(() => {
+            calls.push("middleware")
+            return { context: {} }
+          }))
+          .get(Route.text(function*() {
+            const matched = yield* HttpRouter.RouteContext
+            calls.push(matched.route.method)
+            return Entity.make("users", { headers: { "x-handler": matched.route.method } })
+          })),
       )
       const client = TestHttpClient.fromHandler(handler)
-
-      const notAllowed = yield* client.del("http://localhost/users")
-
-      test
-        .expect(notAllowed.headers["allow"])
-        .toContain("HEAD")
-
-      const options = yield* client.options("http://localhost/users")
+      const response = yield* client.head("http://localhost/users")
 
       test
-        .expect(options.headers["allow"])
-        .toContain("HEAD")
+        .expect(response.status)
+        .toBe(200)
+      test
+        .expect(response.headers["x-handler"])
+        .toBe("GET")
+      test
+        .expect(yield* response.text)
+        .toBe("")
+      test
+        .expect(calls)
+        .toEqual(["middleware", "GET"])
     })
     .pipe(Effect.runPromise))
 
 test.it("explicit HEAD route takes precedence over GET fallback", () =>
   Effect
     .gen(function*() {
+      const calls: Array<string> = []
       const handler = RouteHttp.toWebHandler(
-        Route.get(Route.text("from GET")).head(Route.text("from HEAD")),
+        Route
+          .get(Route.text(function*() {
+            calls.push("GET")
+            return "from GET"
+          }))
+          .head(Route.text(function*() {
+            const matched = yield* HttpRouter.RouteContext
+            calls.push(matched.route.method)
+            return Entity.make("from HEAD", { headers: { "x-handler": matched.route.method } })
+          })),
       )
       const client = TestHttpClient.fromHandler(handler)
       const entity = yield* client.head("http://localhost/text")
@@ -534,6 +528,15 @@ test.it("explicit HEAD route takes precedence over GET fallback", () =>
       test
         .expect(entity.status)
         .toBe(200)
+      test
+        .expect(entity.headers["x-handler"])
+        .toBe("HEAD")
+      test
+        .expect(yield* entity.text)
+        .toBe("")
+      test
+        .expect(calls)
+        .toEqual(["HEAD"])
     })
     .pipe(Effect.runPromise))
 
@@ -681,6 +684,118 @@ test.it("handles Accept with quality values", () =>
       test
         .expect(entity.headers["content-type"])
         .toBe("application/json")
+    })
+    .pipe(Effect.runPromise))
+
+test.it("keeps content negotiation independent across methods and requests", () =>
+  Effect
+    .gen(function*() {
+      const handler = RouteHttp.toWebHandler(
+        Route
+          .get(Route.json({ method: "GET" }), Route.html("<p>GET</p>"))
+          .post(Route.text("POST")),
+      )
+      const client = TestHttpClient.fromHandler(handler)
+      const requests = [
+        { method: "get", accept: "text/html", status: 200, body: "<p>GET</p>", vary: "Accept" },
+        { method: "post", accept: "application/json", status: 406 },
+        { method: "get", accept: "application/json", status: 200, body: "{\"method\":\"GET\"}", vary: "Accept" },
+        { method: "post", accept: "text/plain", status: 200, body: "POST" },
+        { method: "head", accept: "text/html", status: 200, body: "", vary: "Accept" },
+        { method: "get", accept: "text/plain", status: 406 },
+        { method: "get", accept: "text/html", status: 200, body: "<p>GET</p>", vary: "Accept" },
+      ] as const
+
+      for (const request of requests) {
+        const response = yield* client[request.method]("http://localhost/item", {
+          headers: { accept: request.accept },
+        })
+
+        test
+          .expect(response.status)
+          .toBe(request.status)
+
+        if ("vary" in request) {
+          test
+            .expect(response.headers.vary)
+            .toBe(request.vary)
+        } else {
+          test
+            .expect(response.headers.vary)
+            .toBeUndefined()
+        }
+        if ("body" in request) {
+          test
+            .expect(yield* response.text)
+            .toBe(request.body)
+        }
+      }
+    })
+    .pipe(Effect.runPromise))
+
+test.it("shared middleware does not register handlers for undeclared methods", () =>
+  Effect
+    .gen(function*() {
+      const calls: Array<string> = []
+      const handler = RouteHttp.toWebHandler(
+        Route
+          .use(Route.handle(function*(_ctx, next) {
+            const request = yield* Route.Request
+            calls.push(request.method)
+            return yield* next
+          }))
+          .get(Route.json({ method: "GET" })),
+      )
+      const client = TestHttpClient.fromHandler(handler)
+
+      for (const method of ["post", "del", "post"] as const) {
+        const response = yield* client[method]("http://localhost/item", { headers: { accept: "image/png" } })
+
+        test
+          .expect(response.status)
+          .toBe(404)
+      }
+
+      test
+        .expect(yield* (yield* client.get("http://localhost/item")).json)
+        .toEqual({ method: "GET" })
+      test
+        .expect(calls)
+        .toEqual(["GET"])
+    })
+    .pipe(Effect.runPromise))
+
+test.it("registers standalone Route.use handlers for all methods with content negotiation", () =>
+  Effect
+    .gen(function*() {
+      const handler = RouteHttp.toWebHandler(
+        Route.use(
+          Route.json(function*() {
+            const matched = yield* HttpRouter.RouteContext
+            return { method: matched.route.method }
+          }),
+          Route.text("all methods"),
+        ),
+      )
+      const client = TestHttpClient.fromHandler(handler)
+
+      for (const method of ["get", "post", "options", "del"] as const) {
+        const json = yield* client[method]("http://localhost/item", { headers: { accept: "application/json" } })
+        const text = yield* client[method]("http://localhost/item", { headers: { accept: "text/plain" } })
+
+        test
+          .expect(json.status)
+          .toBe(200)
+        test
+          .expect(yield* json.json)
+          .toEqual({ method: "*" })
+        test
+          .expect(text.status)
+          .toBe(200)
+        test
+          .expect(yield* text.text)
+          .toBe("all methods")
+      }
     })
     .pipe(Effect.runPromise))
 
@@ -3940,6 +4055,87 @@ test.it("set-cookie string still works", async () => {
 })
 
 test.describe("HttpRouter interoperability", () => {
+  test.it.each(["before", "after"] as const)(
+    "matches method/path pairs with native routes registered %s Start routes",
+    (order) =>
+      Effect
+        .gen(function*() {
+          const router = yield* RouteHttp.toHttpRouter({})
+          const native = router.add(
+            "PUT",
+            "/items/:id",
+            Effect.gen(function*() {
+              const params = yield* HttpRouter.params
+              return HttpServerResponse.text(`native:${params.id}`)
+            }),
+          )
+          const calls: Array<string> = []
+          if (order === "before") yield* native
+          yield* RouteHttp.register(
+            Route.map({
+              "*": Route.use(Route.filter(function*() {
+                const matched = yield* HttpRouter.RouteContext
+                calls.push(`${matched.route.method} ${matched.route.path}`)
+                return { context: {} }
+              })),
+              "/items/special": Route.get(Route.text("special")),
+              "/items/:id": Route.post(
+                Route.json(HttpRouter.params),
+                Route.html("<p>item</p>"),
+              ),
+            }),
+            router,
+          )
+          if (order === "after") yield* native
+          const client = TestHttpClient.fromRouter(router)
+
+          test
+            .expect(yield* (yield* client.get("http://localhost/items/special")).text)
+            .toBe("special")
+          test
+            .expect(yield* (yield* client.post("http://localhost/items/special")).json)
+            .toEqual({ id: "special" })
+          test
+            .expect(
+              yield* (yield* client.post("http://localhost/items/42", { headers: { accept: "text/html" } })).text,
+            )
+            .toBe("<p>item</p>")
+          test
+            .expect(yield* (yield* client.put("http://localhost/items/special")).text)
+            .toBe("native:special")
+          test
+            .expect((yield* client.get("http://localhost/items/42")).status)
+            .toBe(404)
+          test
+            .expect(calls)
+            .toEqual(["GET /items/special", "POST /items/:id", "POST /items/:id"])
+        })
+        .pipe(Effect.runPromise),
+  )
+
+  test.it("registers different methods at the same path in separate calls", () =>
+    Effect
+      .gen(function*() {
+        const router = yield* RouteHttp.toHttpRouter(Route.map({
+          "/item": Route.get(Route.json({ method: "GET" })),
+        }))
+        yield* RouteHttp.register(
+          Route.map({
+            "/item": Route.post(Route.text("POST")),
+          }),
+          router,
+        )
+        const client = TestHttpClient.fromRouter(router)
+
+        test
+          .expect(yield* (yield* client.get("http://localhost/item")).json)
+          .toEqual({ method: "GET" })
+        test
+          .expect(yield* (yield* client.post("http://localhost/item")).text)
+          .toBe("POST")
+      })
+      .pipe(Effect.runPromise))
+
   test.it("web helpers use the provided router and apply global middleware registered before and after requests", () =>
     Effect
       .gen(function*() {
@@ -4110,7 +4306,7 @@ test.describe("HttpRouter interoperability", () => {
             decoded: { id: 42 },
             bindings: { id: 42, "*": "a b/c" },
             path: "/users/:id/*",
-            method: "*",
+            method: "GET",
             search: { tag: ["x", "y"] },
           })
       })
@@ -4156,7 +4352,7 @@ test.describe("HttpRouter interoperability", () => {
         Effect.runPromise,
       ))
 
-  test.it("preserves negotiation, middleware, HEAD, OPTIONS, and method rejection", () =>
+  test.it("preserves negotiation and middleware with native HEAD fallback", () =>
     Effect
       .gen(function*() {
         let wrapped = 0
@@ -4193,18 +4389,6 @@ test.describe("HttpRouter interoperability", () => {
         test
           .expect(yield* head.text)
           .toBe("")
-        test
-          .expect((yield* client.options("http://localhost/item")).status)
-          .toBe(204)
-
-        const rejected = yield* client.post("http://localhost/item")
-
-        test
-          .expect(rejected.status)
-          .toBe(405)
-        test
-          .expect(rejected.headers.allow)
-          .toContain("GET")
         test
           .expect(wrapped)
           .toBe(3)

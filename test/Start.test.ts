@@ -319,27 +319,20 @@ test.describe(RouteHttp.layer, () => {
               .toEqual(["first:before:GET", "second:before:GET", "second:after", "first:after"])
           }
 
-          for (const method of ["head", "options", "post"] as const) {
-            events.length = 0
-            const response = yield* client[method](address + "/")
+          events.length = 0
+          const head = yield* client.head(address + "/")
 
-            test
-              .expect(response.status)
-              .toBe(method === "head" ? 200 : method === "options" ? 204 : 405)
-            test
-              .expect(response.headers["x-order"])
-              .toBe("first(second(handler))")
-            test
-              .expect(events)
-              .toEqual([
-                `first:before:${method.toUpperCase()}`,
-                `second:before:${method.toUpperCase()}`,
-                "second:after",
-                "first:after",
-              ])
+          test
+            .expect(head.status)
+            .toBe(200)
+          test
+            .expect(head.headers["x-order"])
+            .toBe("first(second(handler))")
+          test
+            .expect(events)
+            .toEqual(["first:before:HEAD", "second:before:HEAD", "second:after", "first:after"])
 
-            yield* response.text
-          }
+          yield* head.text
 
           events.length = 0
 

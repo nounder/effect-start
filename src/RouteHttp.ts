@@ -46,26 +46,18 @@ type RoutesProvidedBy<Routes, Provided> =
       : never
   )
 
-const formatToMediaType = {
-  json: "application/json",
-  text: "text/*",
-  html: "text/html",
-  bytes: "application/octet-stream",
-  sse: "text/event-stream",
-} as const
-
-const mediaTypeToFormat = {
+const mediaTypeToFormat: Readonly<Record<string, Exclude<RouteBody.Format, "*"> | undefined>> = {
   "application/json": "json",
   "text/*": "text",
   "text/html": "html",
   "application/octet-stream": "bytes",
   "text/event-stream": "sse",
-} as const
+}
 
-const errorResponse = (status: number, message: string, headers?: Record<string, string>) =>
+const errorResponse = (status: number, message: string) =>
   HttpServerResponse.text(JSON.stringify({ status, message }, null, 2), {
     status,
-    headers: { "content-type": "application/json", ...headers },
+    headers: { "content-type": "application/json" },
   })
 
 const responseOptions = (entity: Entity.Entity<any>, contentType: string) => {
@@ -141,101 +133,47 @@ const toResponse = (
 
 type Handler = (context: any, next: Entity.Entity<any, any>) => Effect.Effect<Entity.Entity<any>, any, any>
 
-interface MethodPlan {
-  readonly hasMethodRoutes: boolean
-  readonly upgradeRequired: boolean
-  readonly matchingRoutes: Array<UnboundedRouteWithMethod>
-  readonly formats: Array<Exclude<RouteBody.Format, "*">>
-  readonly mediaTypes: Array<string>
-  readonly hasSpecificFormatRoutes: boolean
-  readonly hasWildcardFormatRoutes: boolean
-  readonly varyAccept: boolean
-}
-
-const makeMethodPlan = (
-  allRoutes: Array<UnboundedRouteWithMethod>,
-  method: string,
-  isUpgrade: boolean,
-): MethodPlan => {
-  const methodRoutes = allRoutes.filter((route) => {
-    const routeMethod = Route.descriptor(route).method?.toUpperCase()
-    return routeMethod === "*" || routeMethod === method || (method === "HEAD" && routeMethod === "GET")
-  })
-  const isWildcard = (route: UnboundedRouteWithMethod) => Route.descriptor<{ method?: string }>(route).method === "*"
+const handler = (
+  routes: Array<UnboundedRouteWithMethod>,
+  isUpgrade = false,
+): Effect.Effect<HttpServerResponse.HttpServerResponse, never, HttpRouter.Provided> => {
+  const isWildcard = (route: UnboundedRouteWithMethod) => Route.descriptor(route).method === "*"
   const protocolMatches = (route: UnboundedRouteWithMethod) =>
     (Route.descriptor<{ protocol?: "ws" }>(route).protocol === "ws") === isUpgrade
-  const matchingRoutes = methodRoutes.filter((route) => isWildcard(route) || protocolMatches(route))
-  const concreteRoutes = methodRoutes.filter((route) => !isWildcard(route))
-  const negotiable = new Set(
-    matchingRoutes
-      .filter((route) => !isWildcard(route))
-      .map((route) => Route.descriptor(route).format)
-      .filter((format): format is Exclude<RouteBody.Format, "*"> => Boolean(format) && format !== "*"),
-  )
-  const formats = (Object.keys(formatToMediaType) as Array<keyof typeof formatToMediaType>)
-    .filter((format) => negotiable.has(format))
-  const specificFormats = new Set<string>()
+  const matchingRoutes = routes.filter((route) => isWildcard(route) || protocolMatches(route))
+  const concreteRoutes = routes.filter((route) => !isWildcard(route))
+  if (concreteRoutes.length > 0 && !concreteRoutes.some(protocolMatches)) {
+    return Effect.succeed(HttpServerResponse.empty({ status: 426, headers: { upgrade: "websocket" } }))
+  }
+  const negotiable = new Set<RouteBody.Format>()
+  const specificFormats = new Set<RouteBody.Format>()
   let hasWildcardFormatRoutes = false
   for (const route of matchingRoutes) {
     const format = Route.descriptor(route).format
     if (format === "*") hasWildcardFormatRoutes = true
-    else if (format) specificFormats.add(format)
+    else if (format) {
+      specificFormats.add(format)
+      if (!isWildcard(route) || concreteRoutes.length === 0) negotiable.add(format)
+    }
   }
-  return {
-    hasMethodRoutes: methodRoutes.length > 0,
-    upgradeRequired: concreteRoutes.length > 0 && !concreteRoutes.some(protocolMatches),
-    matchingRoutes,
-    formats,
-    mediaTypes: formats.map((format) => formatToMediaType[format]),
-    hasSpecificFormatRoutes: specificFormats.size > 0,
-    hasWildcardFormatRoutes,
-    varyAccept: specificFormats.size > 1,
-  }
-}
-
-const selectedFormat = (accept: string | undefined, plan: MethodPlan): RouteBody.Format | undefined => {
-  if (plan.mediaTypes.length === 0) return undefined
-  if (!accept) return plan.formats[0]
-  const negotiated = ContentNegotiation.media(accept, plan.mediaTypes)
-  return negotiated.length === 0 ? undefined : mediaTypeToFormat[negotiated[0]]
-}
-
-const handler = (routes: Iterable<UnboundedRouteWithMethod>): Effect.Effect<
-  HttpServerResponse.HttpServerResponse,
-  never,
-  HttpRouter.Provided
-> => {
-  const allRoutes = Array.from(routes)
-  const methods = new Set<string>()
-  for (const route of allRoutes) {
-    const method = Route.descriptor(route).method?.toUpperCase()
-    if (method && method !== "*") methods.add(method)
-  }
-  if (methods.has("GET")) methods.add("HEAD")
-  const allow = Array.from(methods).join(", ")
+  const mediaTypes = Object.keys(mediaTypeToFormat).filter((mediaType) => negotiable.has(mediaTypeToFormat[mediaType]!))
   return Effect
     .gen(function*() {
       const request = yield* HttpServerRequest.HttpServerRequest
-      const method = request.method.toUpperCase()
-      const isUpgrade = method === "GET" && (request.headers.upgrade ?? "").toLowerCase() === "websocket"
-      const plan = makeMethodPlan(allRoutes, method, isUpgrade)
-      if (!plan.hasMethodRoutes) {
-        return method === "OPTIONS" || methods.size === 0
-          ? HttpServerResponse.empty({ status: 204, headers: { allow } })
-          : errorResponse(405, "method not allowed", { allow })
-      }
-      if (plan.upgradeRequired) return HttpServerResponse.empty({ status: 426, headers: { upgrade: "websocket" } })
-      const format = selectedFormat(request.headers.accept, plan)
-      if (!isUpgrade && format === undefined && plan.hasSpecificFormatRoutes && !plan.hasWildcardFormatRoutes) {
+      const mediaType = request.headers.accept
+        ? ContentNegotiation.media(request.headers.accept, mediaTypes)[0]
+        : mediaTypes[0]
+      const format = mediaTypeToFormat[mediaType]
+      if (!isUpgrade && format === undefined && specificFormats.size > 0 && !hasWildcardFormatRoutes) {
         return errorResponse(406, "not acceptable")
       }
 
       let index = 0
       const runNext = (): Effect.Effect<Entity.Entity<any>, any, any> => {
-        if (index >= plan.matchingRoutes.length) {
+        if (index >= matchingRoutes.length) {
           return Effect.succeed(Entity.make({ status: 404, message: "route not found" }, { status: 404 }))
         }
-        const route = plan.matchingRoutes[index++]
+        const route = matchingRoutes[index++]
         const descriptor = Route.descriptor(route)
         if (descriptor.format && descriptor.format !== "*" && descriptor.format !== format) return runNext()
         return Effect.gen(function*() {
@@ -256,8 +194,8 @@ const handler = (routes: Iterable<UnboundedRouteWithMethod>): Effect.Effect<
             format,
             context,
           )
-          if (plan.varyAccept) response = HttpServerResponse.setHeader(response, "vary", "Accept")
-          if (method === "HEAD" && response.body._tag === "Stream") {
+          if (specificFormats.size > 1) response = HttpServerResponse.setHeader(response, "vary", "Accept")
+          if (request.method === "HEAD" && response.body._tag === "Stream") {
             response = HttpServerResponse.empty({
               status: response.status,
               statusText: response.statusText,
@@ -290,7 +228,37 @@ const handler = (routes: Iterable<UnboundedRouteWithMethod>): Effect.Effect<
 export const register = (map: RouteMap.RouteMap, router: HttpRouter.HttpRouter): Effect.Effect<void> =>
   Effect.gen(function*() {
     for (const path of Object.keys(map) as Array<PathPattern.PathPattern>) {
-      yield* router.add("*", path, handler(RouteMap.walk({ [path]: map[path] })))
+      const routes = Array.from(RouteMap.walk({ [path]: map[path] }))
+      const methods = new Set<RouteMount.RouteMount.Method>(
+        routes.map((route) => Route.descriptor(route).method).filter((method) => method && method !== "*"),
+      )
+      if (methods.size === 0 && routes.length > 0) methods.add("*")
+      for (const method of methods) {
+        const methodRoutes = routes.filter((route) => {
+          const descriptor = Route.descriptor(route)
+          return descriptor.method === "*" || descriptor.method === method
+        })
+        const http = handler(methodRoutes)
+        const websocket = (method === "GET" || method === "*") &&
+            methodRoutes.some((route) => Route.descriptor<{ protocol?: "ws" }>(route).protocol === "ws")
+          ? handler(methodRoutes, true)
+          : undefined
+        yield* router.addAll([
+          HttpRouter.route(
+            method,
+            path,
+            (request) => {
+              if (request.method === "GET" && request.headers.upgrade?.toLowerCase() === "websocket") {
+                return websocket ?? Effect.succeed(HttpServerResponse.empty({
+                  status: 426,
+                  headers: { upgrade: "websocket" },
+                }))
+              }
+              return http
+            },
+          ),
+        ])
+      }
     }
   })
 
