@@ -1,5 +1,7 @@
-import type * as HttpRouter from "effect/http/HttpRouter"
+import * as Effect from "effect/Effect"
+import * as HttpRouter from "effect/http/HttpRouter"
 import * as Route from "../Route.ts"
+import * as RouteHttp from "../RouteHttp.ts"
 import * as PathPattern from "./PathPattern.ts"
 import type * as RouteMount from "./RouteMount.ts"
 
@@ -118,6 +120,20 @@ export function* walk(map: RouteMap): Generator<RouteMount.MountedRoute> {
     yield* flattenRoutes(path, map[path])
   }
 }
+
+export const toHttpRouter = (map: RouteMap): Effect.Effect<HttpRouter.HttpRouter> =>
+  Effect.gen(function*() {
+    const router = yield* HttpRouter.make.pipe(Effect.provideService(HttpRouter.RouterConfig, {
+      caseSensitive: true,
+      ignoreTrailingSlash: true,
+      ignoreDuplicateSlashes: true,
+      maxParamLength: Infinity,
+    }))
+    for (const path of Object.keys(map) as Array<PathPattern.PathPattern>) {
+      yield* router.add("*", path, RouteHttp.handler<never>(flattenRoutes(path, map[path])))
+    }
+    return router
+  })
 
 /**
  * Merges two route maps.

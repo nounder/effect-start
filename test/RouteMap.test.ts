@@ -92,6 +92,15 @@ test.describe("layer route", () => {
 })
 
 test.describe(RouteMap.make, () => {
+  test.it("rejects optional parameters before the end of the path", () => {
+    test
+      .expect(() => RouteMap.make({ "/users/:id?/edit": Route.get(Route.text("edit")) }))
+      .toThrow("Optional parameter must be the last segment")
+    test
+      .expect(() => RouteMap.make({ "/users/:id?": { "/edit": Route.get(Route.text("edit")) } }))
+      .toThrow("Optional parameter must be the last segment")
+  })
+
   test.it("makes", () => {
     const routes = RouteMap.make({
       "/admin": Route

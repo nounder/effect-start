@@ -2,20 +2,29 @@ import * as test from "bun:test"
 import * as PathPattern from "../src/internal/PathPattern.ts"
 
 test.it("accepts supported runtime paths and rejects named catch-alls", () => {
-  for (const path of ["/", "/users/:id", "/users/:id?/edit", "/docs/*", "/用户/file.txt"]) {
+  for (const path of ["/", "/users/:id", "/users/:id?", "/docs/*", "/用户/file.txt"]) {
     test
       .expect(PathPattern.validate(path).ok)
       .toBe(true)
   }
   for (
-    const path of ["users", "/files/:path*", "/files/:path+", "/foo/*/bar", "/:", "/foo bar", "/:id/:id", "/:id(\\d+)"]
+    const path of [
+      "users",
+      "/files/:path*",
+      "/files/:path+",
+      "/foo/*/bar",
+      "/:",
+      "/foo bar",
+      "/:id/:id",
+      "/:id(\\d+)",
+      "/users/:id?/edit",
+      "/users/:id?/posts/:postId?",
+      "/users/:id?/*",
+    ]
   ) {
     test
       .expect(PathPattern.validate(path).ok)
       .toBe(false)
-    test
-      .expect(() => PathPattern.toEffect(path))
-      .toThrow(TypeError)
   }
 })
 
@@ -24,15 +33,15 @@ test.it("infers wildcard and optional parameter types", () => {
     .expectTypeOf<PathPattern.Params<"/users/:id/files/*">>()
     .toEqualTypeOf<{ id: string } & { "*"?: string }>()
   test
-    .expectTypeOf<PathPattern.Params<"/users/:id?/edit">>()
+    .expectTypeOf<PathPattern.Params<"/users/:id?">>()
     .toEqualTypeOf<{ id?: string }>()
   test
     .expectTypeOf<PathPattern.Params<"/users">>()
     .toEqualTypeOf<{}>()
   test
-    .expect(PathPattern.params("/users/:id?/files/*"))
+    .expect(PathPattern.params("/users/:id/files/*"))
     .toEqual([
-      { name: "id", optional: true },
+      { name: "id", optional: false },
       { name: "*", optional: true },
     ])
 })
@@ -45,9 +54,9 @@ test.it.each(
     ["/users/:id", "/Users/42", null],
     ["/users/:id", "/users//42/", { id: "42" }],
     ["/users/:id?", "/users", {}],
-    ["/users/:id?/edit", "/users/edit", {}],
-    ["/users/:id?/edit", "/users/42/edit", { id: "42" }],
-    ["/users/:id?/posts/:postId?", "/users/posts/2", { postId: "2" }],
+    ["/users/:id?", "/users/42", { id: "42" }],
+    ["/users/:id?/edit", "/users/edit", null],
+    ["/users/:id?/edit", "/users/42/edit", null],
     ["/docs/*", "/docs", {}],
     ["/docs/*", "/docs/", {}],
     ["/docs/*", "/docs/a/b", { "*": "a/b" }],
@@ -66,38 +75,6 @@ test.it.each(
   test
     .expect(PathPattern.match(pattern, path))
     .toEqual(params)
-})
-
-test.it("preserves suffixes when expanding optional parameters", () => {
-  test
-    .expect(PathPattern.toBun("/users/:id?/edit"))
-    .toEqual(["/users/edit", "/users/:id/edit"])
-  test
-    .expect(PathPattern.toEffect("/users/:id?/edit"))
-    .toEqual(["/users/edit", "/users/:id/edit"])
-  test
-    .expect(PathPattern.toBun("/users/:id?/posts/:postId?"))
-    .toEqual([
-      "/users/posts",
-      "/users/posts/:postId",
-      "/users/:id/posts",
-      "/users/:id/posts/:postId",
-    ])
-})
-
-test.it("lets HttpRouter register wildcard bases and expands them explicitly for Bun", () => {
-  test
-    .expect(PathPattern.toEffect("/docs/*"))
-    .toEqual(["/docs/*"])
-  test
-    .expect(PathPattern.toBun("/docs/*"))
-    .toEqual(["/docs", "/docs/*"])
-  test
-    .expect(PathPattern.toEffect("/*"))
-    .toEqual(["/*"])
-  test
-    .expect(PathPattern.toBun("/*"))
-    .toEqual(["/", "/*"])
 })
 
 test.it("prioritizes static segments before parameters and wildcards", () => {

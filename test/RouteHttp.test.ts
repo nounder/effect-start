@@ -3,6 +3,7 @@ import { BunFileSystem, BunPath } from "effect-start/bun"
 import * as Development from "effect-start/Development"
 import * as Entity from "effect-start/Entity"
 import * as Http from "effect-start/internal/Http"
+import * as RouteMap from "effect-start/internal/RouteMap"
 import * as RouteSchema from "effect-start/internal/RouteSchema"
 import * as Route from "effect-start/Route"
 import * as RouteHttp from "effect-start/RouteHttp"
@@ -4121,70 +4122,10 @@ test.describe("HttpRouter interoperability", () => {
         Effect.runPromise,
       ))
 
-  test.it("compiles optional segments and overlapping wildcard bases without duplicate registrations", () =>
-    Effect
-      .gen(function*() {
-        const routes = Route.map({
-          "/": Route.get(Route.text("root")),
-          "/*": Route.get(Route.text("fallback")),
-          "/docs": Route.get(Route.text("docs index")),
-          "/docs/*": Route.get(Route.json(function*() {
-            return yield* HttpRouter.params
-          })),
-          "/users/:id?/edit": Route.get(Route.json(function*() {
-            return { path: (yield* HttpRouter.RouteContext).route.path, params: yield* HttpRouter.params }
-          })),
-          "/foo/:id": Route.get(Route.text("static prefix")),
-          "/:section/bar": Route.get(Route.text("parameter prefix")),
-        })
-        const router = yield* RouteHttp.toHttpRouter(routes)
-        const client = TestHttpClient.fromHandler(
-          HttpEffect.toWebHandlerWith<
-            never,
-            HttpServerRequest.HttpServerRequest | Scope.Scope
-          >(Context.empty())(router.asHttpEffect()),
-        )
-        for (
-          const entry of [["/", "root"], ["/docs", "docs index"], ["/unknown", "fallback"], [
-            "/foo/bar",
-            "static prefix",
-          ]]
-        ) {
-          const response = yield* client.get(`http://localhost${entry[0]}`)
-
-          test
-            .expect(response.status)
-            .toBe(200)
-          test
-            .expect(yield* response.text)
-            .toBe(entry[1])
-        }
-
-        test
-          .expect(yield* (yield* client.get("http://localhost/docs/a/b")).json)
-          .toEqual({ "*": "a/b" })
-        test
-          .expect(yield* (yield* client.get("http://localhost/users/edit")).json)
-          .toEqual({
-            path: "/users/:id?/edit",
-            params: {},
-          })
-        test
-          .expect(yield* (yield* client.get("http://localhost/users/42/edit")).json)
-          .toEqual({
-            path: "/users/:id?/edit",
-            params: { id: "42" },
-          })
-      })
-      .pipe(
-        Effect.scoped,
-        Effect.runPromise,
-      ))
-
   test.it("configures the generated router for Start matching even when ambient config differs", () =>
     Effect
       .gen(function*() {
-        const router = yield* RouteHttp.toHttpRouter({}).pipe(Effect.provideService(HttpRouter.RouterConfig, {
+        const router = yield* RouteMap.toHttpRouter({}).pipe(Effect.provideService(HttpRouter.RouterConfig, {
           caseSensitive: false,
           ignoreDuplicateSlashes: false,
           ignoreTrailingSlash: false,
@@ -4222,7 +4163,7 @@ test.describe("HttpRouter interoperability", () => {
     Effect
       .gen(function*() {
         let wrapped = 0
-        const router = yield* RouteHttp.toHttpRouter(Route.map({
+        const router = yield* RouteMap.toHttpRouter(Route.map({
           "/item": Route
             .get(
               Route.filter(() => {
@@ -4284,7 +4225,7 @@ test.describe("HttpRouter interoperability", () => {
         const context = yield* RouteHttpRouter.make(Effect.gen(function*() {
           builds++
           yield* Effect.yieldNow
-          return yield* RouteHttp.toHttpRouter(routes)
+          return yield* RouteMap.toHttpRouter(routes)
         }))
         const router = Context.get(context, HttpRouter.HttpRouter)
         const prefixed = router.prefixed("/api")
@@ -4295,16 +4236,6 @@ test.describe("HttpRouter interoperability", () => {
           .expect(yield* (yield* native.get("http://localhost/native")).text)
           .toBe("native")
 
-        const missing = TestHttpClient.fromHandler(
-          HttpEffect.toWebHandlerWith<
-            never,
-            HttpServerRequest.HttpServerRequest | Scope.Scope
-          >(Context.empty())(Context.get(context, RouteHttpRouter.Fallback)),
-        )
-
-        test
-          .expect((yield* missing.get("http://localhost/missing")).status)
-          .toBe(404)
         test
           .expect(builds)
           .toBe(0)
@@ -4385,7 +4316,7 @@ test.describe("HttpRouter interoperability", () => {
 test.it("preserves router registration middleware, prefixes, and global middleware through the lazy service", () =>
   Effect
     .gen(function*() {
-      const context = yield* RouteHttpRouter.make(RouteHttp.toHttpRouter({}))
+      const context = yield* RouteHttpRouter.make(RouteMap.toHttpRouter({}))
       const router = Context.get(context, HttpRouter.HttpRouter)
       const middleware = HttpRouter.middleware((app) =>
         app.pipe(

@@ -69,10 +69,6 @@
       "bun": "./src/RouteHttp.ts",
       "default": "./dist/RouteHttp.js"
     },
-    "./RouteHttpTracer": {
-      "bun": "./src/RouteHttpTracer.ts",
-      "default": "./dist/RouteHttpTracer.js"
-    },
     "./Start": {
       "bun": "./src/Start.ts",
       "default": "./dist/Start.js"

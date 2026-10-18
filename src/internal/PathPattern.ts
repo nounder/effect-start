@@ -8,7 +8,7 @@ export type Params<T extends string> = string extends T ? Record<string, string>
   : T extends `:${infer Name}` ? { [K in Name]: string }
   : {}
 
-export function validate(path: string): { ok: true; segments: Array<string> } | { ok: false; error: string } {
+export function validate(path: string): { ok: true } | { ok: false; error: string } {
   if (!path.startsWith("/")) return { ok: false, error: `Expected an absolute path: "${path}"` }
   const segments = path.split("/").filter(Boolean)
   const names = new Set<string>()
@@ -16,6 +16,9 @@ export function validate(path: string): { ok: true; segments: Array<string> } | 
     const segment = segments[index]
     if (segment === "*" && index === segments.length - 1) continue
     if (segment.startsWith(":")) {
+      if (segment.endsWith("?") && index !== segments.length - 1) {
+        return { ok: false, error: `Optional parameter must be the last segment in "${path}"` }
+      }
       const name = segment.slice(1).replace(/\?$/, "")
       if (/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name) && !names.has(name)) {
         names.add(name)
@@ -26,7 +29,7 @@ export function validate(path: string): { ok: true; segments: Array<string> } | 
     }
     return { ok: false, error: `Invalid segment "${segment}" in "${path}"` }
   }
-  return { ok: true, segments }
+  return { ok: true }
 }
 
 export function params(path: string): Array<{ name: string; optional: boolean }> {
@@ -54,6 +57,7 @@ export function match(pattern: string, path: string): Record<string, string> | n
     }
     if (segment.startsWith(":")) {
       const optional = segment.endsWith("?")
+      if (optional && patternIndex !== patternSegments.length - 1) return null
       if (pathIndex < pathSegments.length) {
         const next = walk(patternIndex + 1, pathIndex + 1)
         if (next !== null) return { [segment.slice(1, optional ? -1 : undefined)]: pathSegments[pathIndex], ...next }
@@ -64,31 +68,6 @@ export function match(pattern: string, path: string): Record<string, string> | n
   }
 
   return walk(0, 0)
-}
-
-/** Expands optional segments so every emitted pattern is accepted by HttpRouter. */
-export function toEffect(path: string): Array<PathPattern> {
-  const parsed = validate(path)
-  if (!parsed.ok) throw new TypeError(parsed.error)
-  let paths = [""]
-  for (const segment of parsed.segments) {
-    paths = segment.startsWith(":") && segment.endsWith("?")
-      ? paths.flatMap((prefix) => [prefix, `${prefix}/${segment.slice(0, -1)}`])
-      : paths.map((prefix) => `${prefix}/${segment}`)
-  }
-  return Array.from(new Set(paths.map((path) => (path || "/") as PathPattern)))
-}
-
-export function toBun(path: string): Array<PathPattern> {
-  return Array
-    .from(
-      new Set(
-        toEffect(path).flatMap((path) =>
-          path.endsWith("/*") ? [(path.slice(0, -2) || "/") as PathPattern, path] : [path]
-        ),
-      ),
-    )
-    .map((path) => encodeURI(path) as PathPattern)
 }
 
 export function compare(a: string, b: string): number {

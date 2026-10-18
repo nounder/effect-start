@@ -2,6 +2,7 @@ import * as test from "bun:test"
 import { BunServer } from "effect-start/bun"
 import type * as RouteMap from "effect-start/internal/RouteMap"
 import * as Route from "effect-start/Route"
+import * as RouteHttp from "effect-start/RouteHttp"
 import { TestLogger } from "effect-start/testing"
 import * as Context from "effect/Context"
 import * as Data from "effect/Data"
@@ -17,13 +18,14 @@ import * as Scope from "effect/Scope"
 import * as Socket from "effect/socket/Socket"
 
 const testLayer = <const Input extends RouteMap.RouteMapInput>(routes: Input) =>
-  BunServer
-    .layerRoutes({
+  RouteHttp.layer().pipe(
+    Layer.provideMerge(BunServer.layer({
       hostname: "localhost",
       port: 0,
       gracefulShutdownTimeout: "100 millis",
-    })
-    .pipe(Layer.provide(Route.layer(routes)))
+    })),
+    Layer.provide(Route.layer(routes)),
+  )
 
 const loggingTestLayer = <const Input extends RouteMap.RouteMapInput>(routes: Input) =>
   testLayer(routes).pipe(Layer.provideMerge(TestLogger.layer()))

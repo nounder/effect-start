@@ -4,8 +4,8 @@ import * as Effect from "effect/Effect"
 import * as Cookies from "effect/http/Cookies"
 import * as HttpEffect from "effect/http/HttpEffect"
 import type * as HttpMethod from "effect/http/HttpMethod"
-import * as HttpMiddleware from "effect/http/HttpMiddleware"
 import * as HttpRouter from "effect/http/HttpRouter"
+import * as HttpServer from "effect/http/HttpServer"
 import * as HttpServerError from "effect/http/HttpServerError"
 import * as HttpServerRequest from "effect/http/HttpServerRequest"
 import * as HttpServerResponse from "effect/http/HttpServerResponse"
@@ -24,7 +24,6 @@ import * as RouteMap from "./internal/RouteMap.ts"
 import type * as RouteMount from "./internal/RouteMount.ts"
 import * as StreamExtra from "./internal/StreamExtra.ts"
 import * as Route from "./Route.ts"
-import * as RouteHttpTracer from "./RouteHttpTracer.ts"
 
 type UnboundedRouteWithMethod = Route.Route.With<{
   method: RouteMount.RouteMount.Method
@@ -321,9 +320,6 @@ export const handler = <R>(routes: Iterable<UnboundedRouteWithMethod>): Effect.E
   return app
 }
 
-export const tracedHandler = <R>(routes: Iterable<UnboundedRouteWithMethod>) =>
-  RouteHttpTracer.tracer(handler<R>(routes))
-
 export const toWebHandlerWith =
   <R>(context: Context.Context<R>) =>
   <const Routes extends Iterable<UnboundedRouteWithMethod>>(routes: RoutesProvidedBy<Routes, R>): Http.WebHandler => {
@@ -331,15 +327,16 @@ export const toWebHandlerWith =
     const path = items.length === 0 ? "/*" : Route.descriptor<{ path?: string }>(items[0]).path ?? "/*"
     const existing = Context.getOrUndefined(context, HttpRouter.HttpRouter)
     const services = existing === undefined
-      ? Context.merge(context, Effect.runSyncWith(context)(RouteHttpRouter.make(toHttpRouter({ [path]: items }))))
+      ? Context.merge(
+        context,
+        Effect.runSyncWith(context)(RouteHttpRouter.make(RouteMap.toHttpRouter({ [path]: items }))),
+      )
       : Context.add(context, HttpRouter.HttpRouter, existing)
     return HttpEffect.toWebHandlerWith<
       R | HttpRouter.HttpRouter,
       R | HttpServerRequest.HttpServerRequest | Scope.Scope,
       never
-    >(
-      Context.add(services, HttpMiddleware.TracerDisabledWhen, () => true),
-    )(tracedHandler<R>(items))
+    >(services)(handler<R>(items))
   }
 
 export const toWebHandler = <const Routes extends Iterable<UnboundedRouteWithMethod>>(
@@ -351,7 +348,7 @@ export function* walkHandles(
   context: Context.Context<any> = Context.empty() as Context.Context<any>,
 ): Generator<[path: string, handler: Http.WebHandler]> {
   if (Context.getOrUndefined(context, HttpRouter.HttpRouter) === undefined) {
-    context = Context.merge(context, Effect.runSyncWith(context)(RouteHttpRouter.make(toHttpRouter(map))))
+    context = Context.merge(context, Effect.runSyncWith(context)(RouteHttpRouter.make(RouteMap.toHttpRouter(map))))
   }
   const pathGroups = new Map<string, Array<RouteMount.MountedRoute>>()
   const inDevelopment = Option.isSome(Context.getOption(context, Development.Development))
@@ -372,62 +369,21 @@ export function* walkHandles(
   for (const [path, routes] of pathGroups) yield [path, makeHandler(routes)]
 }
 
-export const toHttpRouter = (map: RouteMap.RouteMap): Effect.Effect<HttpRouter.HttpRouter> =>
-  Effect.gen(function*() {
-    const router = yield* HttpRouter.make.pipe(Effect.provideService(HttpRouter.RouterConfig, {
-      caseSensitive: true,
-      ignoreTrailingSlash: true,
-      ignoreDuplicateSlashes: true,
-      maxParamLength: Infinity,
+export const layer = () =>
+  Layer
+    .effectDiscard(Effect.gen(function*() {
+      const server = yield* HttpServer.HttpServer
+      const router = yield* HttpRouter.HttpRouter
+      yield* server.serve(Effect.suspend(() => router.asHttpEffect()))
     }))
-    const groups = new Map<PathPattern.PathPattern, Array<RouteMount.MountedRoute>>()
-    for (const route of RouteMap.walk(map)) {
-      const path = Route.descriptor<{ path: PathPattern.PathPattern }>(route).path
-      const group = groups.get(path) ?? []
-      group.push(route)
-      groups.set(path, group)
-    }
-    const entries = new Map<string, {
-      path: PathPattern.PathPattern
-      app: ReturnType<typeof tracedHandler<never>>
-    }>()
-    for (const path of Array.from(groups.keys()).sort(PathPattern.compare)) {
-      const app = tracedHandler<never>(groups.get(path)!)
-      for (const expanded of PathPattern.toEffect(path)) {
-        const key = expanded.replace(/:[^/]+/g, ":")
-        if (!entries.has(key)) entries.set(key, { path: expanded, app })
-      }
-    }
-    const wildcardBases = new Set(
-      Array
-        .from(entries.keys())
-        .filter((path) => path.endsWith("/*"))
-        .map((path) => path.slice(0, -2) || "/"),
-    )
-    for (const [key, entry] of entries) {
-      if (wildcardBases.has(key)) continue
-      const base = entry.path.endsWith("/*") ? entries.get(key.slice(0, -2) || "/") : undefined
-      // HttpRouter also registers the base of /*, so an explicit base shares that registration.
-      const app = base === undefined ?
-        entry.app :
-        HttpServerRequest.HttpServerRequest.use((request) =>
-          PathPattern.match(base.path, new URL(request.url, "http://localhost").pathname) === null
-            ? entry.app
-            : base.app
-        )
-      yield* router.add("*", entry.path, app)
-    }
-    return router
-  })
+    .pipe(Layer.provideMerge(layerRouter()))
 
 export const layerRouter = () =>
   Layer.effectContext(Effect.gen(function*() {
     const existing = yield* Effect.serviceOption(HttpRouter.HttpRouter)
     if (Option.isSome(existing)) {
-      return Context.make(HttpRouter.HttpRouter, existing.value).pipe(
-        Context.add(RouteHttpRouter.Fallback, Effect.suspend(() => existing.value.asHttpEffect())),
-      )
+      return Context.make(HttpRouter.HttpRouter, existing.value)
     }
     const routes = yield* Route.Routes
-    return yield* RouteHttpRouter.make(toHttpRouter(routes))
+    return yield* RouteHttpRouter.make(RouteMap.toHttpRouter(routes))
   }))

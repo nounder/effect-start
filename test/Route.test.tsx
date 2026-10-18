@@ -980,7 +980,4 @@ test.it("builds links with unnamed catch-alls while preserving path separators",
   test
     .expect(Route.link("/*"))
     .toBe("/")
-  test
-    .expect(Route.link("/users/:id?/edit"))
-    .toBe("/users/edit")
 })

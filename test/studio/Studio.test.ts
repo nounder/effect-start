@@ -1,5 +1,6 @@
 import * as test from "bun:test"
 import * as Bundle from "effect-start/bundler/Bundle"
+import * as RouteHttp from "effect-start/RouteHttp"
 import * as Start from "effect-start/Start"
 import * as StudioSql from "effect-start/studio/internal/StudioSql"
 import * as Studio from "effect-start/studio/Studio"
@@ -47,7 +48,8 @@ test.it("keeps Studio SQL isolated from the application SQL client", () =>
     })
     .pipe(
       Effect.provide(Start.build(
-        BunServer.layerRoutes({ port: 0, hostname: "127.0.0.1" }),
+        RouteHttp.layer(),
+        BunServer.layer({ port: 0, hostname: "127.0.0.1" }),
         studioLayer,
         SqliteClient.layer({ filename: ":memory:" }),
       )),
@@ -120,9 +122,6 @@ test.it("persists every request span and exposes the complete trace in Studio's 
 
       const root = spans[0]!
 
-      test
-        .expect(response.headers["server-timing"])
-        .toBe(`trace;desc=00-${result.traceId}-${root.spanId}-01`)
       test
         .expect(spans.map((span) => span.parentSpanId))
         .toEqual([
@@ -246,7 +245,8 @@ test.it("persists every request span and exposes the complete trace in Studio's 
     })
     .pipe(
       Effect.provide(Start.build(
-        BunServer.layerRoutes({ port: 0, hostname: "127.0.0.1" }),
+        RouteHttp.layer(),
+        BunServer.layer({ port: 0, hostname: "127.0.0.1" }),
         Route.layerMerge({
           "/widgets": Route.get(Route.json(
             Effect

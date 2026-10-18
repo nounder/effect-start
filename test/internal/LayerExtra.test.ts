@@ -1,10 +1,10 @@
 import * as test from "bun:test"
+import * as LayerExtra from "effect-start/internal/LayerExtra"
 import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Layer from "effect/Layer"
-import * as LayerExtra from "effect-start/internal/LayerExtra"
 
 class Logger extends Context.Service<Logger, {
   log: (msg: string) => Effect.Effect<void>
@@ -385,11 +385,11 @@ test.describe(LayerExtra.buildUnordered, () => {
       .pipe(Effect.runPromise)
   })
 
-  test.test("rejects duplicate service providers", () => {
+  test.test("rejects duplicate providers for services not allowed to update", () => {
     const FirstLoggerLive = Layer.succeed(Logger, { log: (_msg: string) => Effect.void })
     const SecondLoggerLive = Layer.succeed(Logger, { log: (_msg: string) => Effect.void })
     const AppLayer = Layer.effectContext(
-      LayerExtra.buildUnordered([FirstLoggerLive, SecondLoggerLive]),
+      LayerExtra.buildUnordered([FirstLoggerLive, SecondLoggerLive], [ExternalApi]),
     )
 
     return Effect

@@ -104,6 +104,7 @@ export function buildUnordered<
   const Layers extends ReadonlyArray<Layer.Any>,
 >(
   layers: Layers,
+  replaceable: ReadonlyArray<Context.Key<any, any>> = [],
 ): Effect.Effect<
   Context.Context<LayersSuccess<Layers>>,
   LayersError<Layers>,
@@ -137,7 +138,11 @@ export function buildUnordered<
         if (Exit.isSuccess(exit)) {
           const outputs = [...exit.value.mapUnsafe].filter(([key]) => key !== Layer.CurrentMemoMap.key)
           const duplicateKey = outputs
-            .find(([key, value]) => provided.has(key) && !Object.is(provided.get(key), value))
+            .find(([key, value]) =>
+              provided.has(key) &&
+              !Object.is(provided.get(key), value) &&
+              !replaceable.some((service) => service.key === key)
+            )
             ?.[0]
           if (duplicateKey !== undefined) {
             const defect = new Error(`Start.pack received multiple layers providing service: ${duplicateKey}`)

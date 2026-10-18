@@ -37,6 +37,7 @@ import * as Semaphore from "effect/Semaphore"
 import * as Socket from "effect/socket/Socket"
 import * as Stream from "effect/Stream"
 import * as NDns from "node:dns/promises"
+import * as RouteSocket from "../../internal/RouteSocket.ts"
 import * as BunFileSystem from "../BunFileSystem.ts"
 import * as BunPath from "../BunPath.ts"
 import * as BunHttpPlatform from "./BunHttpPlatform.ts"
@@ -67,19 +68,10 @@ export type ServeOptions =
     | Bun.Serve.HostnamePortServeOptions<WebSocketContext>
   )
   & {
-    readonly routes?: Bun.Serve.Routes<WebSocketContext, string>
     readonly disablePreemptiveShutdown?: boolean
     readonly gracefulShutdownTimeout?: Duration.Input
     readonly websocket?: WebSocketOptions
   }
-
-export interface ManagedServer {
-  readonly service: HttpServer.HttpServer["Service"]
-  readonly replaceRoutes: (
-    routes: Bun.Serve.Routes<WebSocketContext, string>,
-    generation: Fiber.Fiber<unknown, unknown> | undefined,
-  ) => void
-}
 
 export const layerHttpServices: Layer.Layer<
   HttpPlatform.HttpPlatform | Etag.Generator | FileSystem.FileSystem | Path.Path
@@ -107,8 +99,6 @@ export const make = Effect.fnUntraced(function*(options: ServeOptions) {
     () => new Response("not found", { status: 404 }),
   ]
   const handlerGenerations = new Map<FetchHandler, Fiber.Fiber<unknown, unknown> | undefined>()
-  const configuredRoutes = options.routes ?? {}
-  let currentRoutes = configuredRoutes
   const listenOptions = "unix" in options && options.unix !== undefined
     ? options
     : {
@@ -127,7 +117,6 @@ export const make = Effect.fnUntraced(function*(options: ServeOptions) {
     }
   const server = Bun.serve<WebSocketContext, string>({
     ...listenOptions as ServeOptions,
-    routes: currentRoutes,
     fetch: handlerStack[0],
     websocket: {
       ...websocket,
@@ -182,7 +171,6 @@ export const make = Effect.fnUntraced(function*(options: ServeOptions) {
     if (MainFiber.get() !== generation) return
     server.reload({
       fetch: handlerStack[handlerStack.length - 1],
-      routes: currentRoutes,
     })
   }
 
@@ -196,8 +184,9 @@ export const make = Effect.fnUntraced(function*(options: ServeOptions) {
       const services = parent.context
       const serveScope = Context.getUnsafe(services, Scope.Scope)
       const requestScope = Scope.forkUnsafe(serveScope, "parallel")
+      const handlerScope = yield* Scope.make()
       const httpEffect = HttpEffect.toHandled(
-        httpApp,
+        httpApp.pipe(Effect.provideService(RouteSocket.HandlerScope, handlerScope)),
         (request, response) =>
           Effect.sync(() => {
             ;(request as BunServerRequest).resolve(
@@ -241,6 +230,7 @@ export const make = Effect.fnUntraced(function*(options: ServeOptions) {
         reload(generation)
         return handlerStack.length === 1 ? preemptiveShutdown(generation) : Effect.void
       })
+      yield* Scope.addFinalizer(serveScope, Scope.close(handlerScope, Exit.void))
       if (MainFiber.get() !== generation) return
       discardStaleHandlers(generation)
       handlerStack.push(handler)
@@ -250,15 +240,7 @@ export const make = Effect.fnUntraced(function*(options: ServeOptions) {
     }),
   })
 
-  return {
-    service,
-    replaceRoutes(routes, generation) {
-      if (MainFiber.get() !== generation) return
-      discardStaleHandlers(generation)
-      currentRoutes = { ...configuredRoutes, ...routes }
-      reload(generation)
-    },
-  }
+  return service
 })
 
 const makeResponse = (

@@ -17,7 +17,8 @@ import * as Stream from "effect/Stream"
 import * as TestHttpClient from "./internal/TestHttpClient.ts"
 
 const testLayer = <const Input extends RouteMap.RouteMapInput>(routes: Input) =>
-  BunServer.layerRoutes({ port: 0 }).pipe(
+  RouteHttp.layer().pipe(
+    Layer.provideMerge(BunServer.layer({ port: 0 })),
     Layer.provide(Route.layer(Route.map(routes))),
   )
 

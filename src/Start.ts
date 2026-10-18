@@ -10,6 +10,8 @@ import * as BunServer from "./bun/BunServer.ts"
 import * as BundleRoute from "./bundler/BundleRoute.ts"
 import * as Development from "./Development.ts"
 import * as LayerExtra from "./internal/LayerExtra.ts"
+import * as Route from "./Route.ts"
+import * as RouteHttp from "./RouteHttp.ts"
 
 /**
  * Builds layers in the given order, wiring their dependencies automatically.
@@ -70,7 +72,7 @@ export function pack<
   never
 > {
   return Layer.effectContext(
-    LayerExtra.buildUnordered(layers as unknown as Layers),
+    LayerExtra.buildUnordered(layers as unknown as Layers, [Route.Routes]),
   ) as any
 }
 
@@ -111,7 +113,8 @@ export function serve<ROut, E, RIn extends AppRequirements>(
   )
 
   const composed = Function.pipe(
-    BunServer.layerStart(),
+    RouteHttp.layer(),
+    Layer.provideMerge(BunServer.layerStart()),
     BunServer.withLogAddress,
     Layer.provide(
       Function.pipe(
