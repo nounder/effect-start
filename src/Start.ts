@@ -5,6 +5,7 @@ import * as Function from "effect/Function"
 import * as HttpRouter from "effect/http/HttpRouter"
 import * as HttpServer from "effect/http/HttpServer"
 import * as Layer from "effect/Layer"
+import type * as Path from "effect/Path"
 import type * as ChildProcessSpawner from "effect/process/ChildProcessSpawner"
 import * as BunRuntime from "./bun/BunRuntime.ts"
 import * as BunServer from "./bun/BunServer.ts"
@@ -49,9 +50,15 @@ export function build<
   )
 }
 
+type StartServices =
+  | HttpRouter.HttpRouter
+  | FileSystem.FileSystem
+  | Path.Path
+  | ChildProcessSpawner.ChildProcessSpawner
+
 /**
  * Like `build`, but accepts layers in any order. Every layer's dependencies
- * must be satisfied by another layer or the HttpRouter supplied by `serve`.
+ * must be satisfied by another layer or a service supplied by `serve`.
  *
  * @example
  * ```ts
@@ -66,7 +73,7 @@ export function pack<
     ...Array<Layer.Any>,
   ],
 >(
-  ...layers: LayerExtra.Unordered<Layers, HttpRouter.HttpRouter>
+  ...layers: LayerExtra.Unordered<Layers, StartServices>
 ): Layer.Layer<
   LayerExtra.LayersSuccess<Layers>,
   LayerExtra.LayersError<Layers>,
@@ -82,11 +89,7 @@ export function layerDev() {
 }
 
 // TODO: do we even need to define requirements upfront?
-type AppRequirements =
-  | HttpServer.HttpServer
-  | HttpRouter.HttpRouter
-  | FileSystem.FileSystem
-  | ChildProcessSpawner.ChildProcessSpawner
+type AppRequirements = HttpServer.HttpServer | StartServices
 
 class StartError extends Data.TaggedError("StartError")<{
   readonly cause: unknown
