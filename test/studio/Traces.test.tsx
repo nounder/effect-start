@@ -4,9 +4,7 @@ import type * as Tracing from "../../src/internal/Tracing.ts"
 import * as Traces from "../../src/studio/ui.tsx"
 
 function makeSpan(
-  options:
-    & Partial<Tracing.Span>
-    & Pick<Tracing.Span, "spanId" | "traceId" | "name">,
+  options: Partial<Tracing.Span> & Pick<Tracing.Span, "spanId" | "traceId" | "name">,
 ): Tracing.Span {
   return {
     spanId: options.spanId,
@@ -57,21 +55,17 @@ test.it("TraceDetail renders cyclic spans without recursing forever", () => {
   ]
 
   const html = Html.text(
-    <Traces.TraceDetail prefix="/studio" spans={spans} logs={[]} />,
+    <Traces.TraceDetail
+      prefix="/studio"
+      spans={spans}
+      logs={[]}
+    />,
   )
 
-  test
-    .expect(html)
-    .toContain("root-ish")
-  test
-    .expect(html)
-    .toContain("middle")
-  test
-    .expect(html)
-    .toContain("cycle")
-  test
-    .expect(html)
-    .toContain("/studio/traces")
+  test.expect(html).toContain("root-ish")
+  test.expect(html).toContain("middle")
+  test.expect(html).toContain("cycle")
+  test.expect(html).toContain("/studio/traces")
 })
 
 test.it("TraceGroup hides duration while root span is running", () => {
@@ -90,14 +84,8 @@ test.it("TraceGroup hides duration while root span is running", () => {
     />,
   )
 
-  test
-    .expect(html)
-    .not
-    .toContain("0µs")
-  test
-    .expect(html)
-    .not
-    .toContain("...")
+  test.expect(html).not.toContain("0µs")
+  test.expect(html).not.toContain("...")
 })
 
 test.it("TraceDetail hides duration labels while spans are running", () => {
@@ -125,8 +113,5 @@ test.it("TraceDetail hides duration labels while spans are running", () => {
     />,
   )
 
-  test
-    .expect(html)
-    .not
-    .toContain("wf-dur")
+  test.expect(html).not.toContain("wf-dur")
 })

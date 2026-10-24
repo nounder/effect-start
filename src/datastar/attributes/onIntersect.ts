@@ -29,19 +29,16 @@ attribute({
       }
     }
     const exit = mods.has("exit")
-    let observer: IntersectionObserver | null = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting !== exit) {
-            callback()
-            if (observer && once.has(el)) {
-              observer.disconnect()
-            }
+    let observer: IntersectionObserver | null = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.isIntersecting !== exit) {
+          callback()
+          if (observer && once.has(el)) {
+            observer.disconnect()
           }
         }
-      },
-      options,
-    )
+      }
+    }, options)
     observer.observe(el)
     if (mods.has("once")) {
       once.add(el)

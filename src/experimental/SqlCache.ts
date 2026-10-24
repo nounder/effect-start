@@ -8,7 +8,9 @@ import type * as Statement from "effect/sql/Statement"
 
 type SqlCacheInstance = Cache.Cache<string, ReadonlyArray<any>>
 
-export class SqlCache extends Context.Service<SqlCache, SqlCacheInstance>()("effect-start/SqlCache") {}
+export class SqlCache extends Context.Service<SqlCache, SqlCacheInstance>()(
+  "effect-start/SqlCache",
+) {}
 
 export function layer(cache: SqlCacheInstance): Layer.Layer<SqlCache>
 export function layer(options: {
@@ -19,9 +21,9 @@ export function layer(
   cacheOrOptions:
     | SqlCacheInstance
     | {
-      readonly capacity: number
-      readonly timeToLive: Duration.Input
-    },
+        readonly capacity: number
+        readonly timeToLive: Duration.Input
+      },
 ): Layer.Layer<SqlCache> {
   if ("pipe" in cacheOrOptions) {
     return Layer.succeed(SqlCache, cacheOrOptions as SqlCacheInstance)
@@ -60,15 +62,13 @@ export function withCache(cache?: SqlCacheInstance) {
         return Effect.tap(self, (result) => Cache.set(cache, key, result))
       })
     }
-    return Effect.flatMap(
-      SqlCache,
-      (c) =>
-        Effect.flatMap(Cache.getOption(c, key), (option) => {
-          if (option._tag === "Some") {
-            return Effect.succeed(option.value as ReadonlyArray<A>)
-          }
-          return Effect.tap(self, (result) => Cache.set(c, key, result))
-        }),
+    return Effect.flatMap(SqlCache, (c) =>
+      Effect.flatMap(Cache.getOption(c, key), (option) => {
+        if (option._tag === "Some") {
+          return Effect.succeed(option.value as ReadonlyArray<A>)
+        }
+        return Effect.tap(self, (result) => Cache.set(c, key, result))
+      }),
     )
   }
 }

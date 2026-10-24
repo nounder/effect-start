@@ -1,6 +1,6 @@
 /**
- * Sample JavaScript service used to capture OpenTelemetry traffic.
- * Exports traces, logs and metrics over OTLP/HTTP (JSON) to the recording proxy.
+ * Sample JavaScript service used to capture OpenTelemetry traffic. Exports traces, logs and metrics
+ * over OTLP/HTTP (JSON) to the recording proxy.
  */
 import { SpanKind, SpanStatusCode, trace } from "@opentelemetry/api"
 import { logs } from "@opentelemetry/api-logs"
@@ -9,7 +9,11 @@ import { OTLPMetricExporter } from "@opentelemetry/exporter-metrics-otlp-http"
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http"
 import { resourceFromAttributes } from "@opentelemetry/resources"
 import { BatchLogRecordProcessor, LoggerProvider } from "@opentelemetry/sdk-logs"
-import { AggregationTemporality, MeterProvider, PeriodicExportingMetricReader } from "@opentelemetry/sdk-metrics"
+import {
+  AggregationTemporality,
+  MeterProvider,
+  PeriodicExportingMetricReader,
+} from "@opentelemetry/sdk-metrics"
 import { BatchSpanProcessor, NodeTracerProvider } from "@opentelemetry/sdk-trace-node"
 
 const ENDPOINT = process.env.OTEL_EXPORTER_OTLP_ENDPOINT ?? "http://localhost:4317"
@@ -22,9 +26,7 @@ const resource = resourceFromAttributes({
 
 const tracerProvider = new NodeTracerProvider({
   resource,
-  spanProcessors: [
-    new BatchSpanProcessor(new OTLPTraceExporter({ url: `${ENDPOINT}/v1/traces` })),
-  ],
+  spanProcessors: [new BatchSpanProcessor(new OTLPTraceExporter({ url: `${ENDPOINT}/v1/traces` }))],
 })
 tracerProvider.register()
 

@@ -2,9 +2,7 @@ import { defineConfig } from "oxlint"
 import * as LintConfig from "./src/lint/config.ts"
 
 export default defineConfig({
-  extends: [
-    LintConfig.config,
-  ],
+  extends: [LintConfig.config],
   rules: {
     ...LintConfig.formatRules,
     ...LintConfig.ourRules,

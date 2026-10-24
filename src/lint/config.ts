@@ -1,22 +1,10 @@
-type Severity =
-  | "allow"
-  | "off"
-  | "warn"
-  | "error"
-  | "deny"
-  | number
+type Severity = "allow" | "off" | "warn" | "error" | "deny" | number
 
-type RuleConfig =
-  | Severity
-  | [Severity, ...Array<unknown>]
+type RuleConfig = Severity | [Severity, ...Array<unknown>]
 
 // we need define plugin as union.
 // otherwise a tuple is too strict for oxlint
-type Plugin =
-  | "typescript"
-  | "import"
-  | "unicorn"
-  | "oxc"
+type Plugin = "typescript" | "import" | "unicorn" | "oxc"
 
 type Rules = Record<string, RuleConfig>
 
@@ -29,16 +17,9 @@ type Config = {
   readonly rules?: Rules
 }
 
-const plugins: Array<Plugin> = [
-  "typescript",
-  "import",
-  "unicorn",
-  "oxc",
-]
+const plugins: Array<Plugin> = ["typescript", "import", "unicorn", "oxc"]
 
-/**
- * Typescript rules commonly used in Effect ecosystem.
- */
+/** Typescript rules commonly used in Effect ecosystem. */
 const tsRules: Rules = {
   "object-shorthand": "error",
 
@@ -101,18 +82,13 @@ const tsRules: Rules = {
   "no-unused-expressions": "off",
 }
 
-/**
- * Aesthetic rules to make code more readable.
- * What can I say, I love whitespace.
- */
+/** Aesthetic rules to make code more readable. What can I say, I love whitespace. */
 export const formatRules: Rules = {
   "effect-start/test-space-around": "warn",
   "effect-start/pipe-args-newline": "warn",
 }
 
-/**
- * Our idiosyncratic rules I need but others may hate.
- */
+/** Our idiosyncratic rules I need but others may hate. */
 export const ourRules: Rules = {
   "effect-start/namespace-import": "error",
   "effect-start/effect-try-promise": "error",
@@ -123,14 +99,12 @@ export const ourRules: Rules = {
 }
 
 /**
- * oxlint/eslint config that every Effect codebase should use (imho)
- * Includes only widely accepted rules.
+ * Oxlint/eslint config that every Effect codebase should use (imho) Includes only widely accepted
+ * rules.
  */
 export const config: Config = {
   plugins,
-  jsPlugins: [
-    import.meta.resolve("./plugin.js"),
-  ],
+  jsPlugins: [import.meta.resolve("./plugin.js")],
   categories: {
     correctness: "error",
   },

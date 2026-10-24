@@ -22,14 +22,15 @@ export const patchElements = (document: Document, html: string) => {
 
   for (const element of Array.from(content.children)) {
     const source = element.getAttribute("data-cell")
-    const value = source === null
-      ? {}
-      : document.defaultView!.Function(`"use strict"; return (${source}\n)`)() as
-        | Cell.CellFunction
-        | Cell.CellDeclaration
+    const value =
+      source === null
+        ? {}
+        : (document.defaultView!.Function(`"use strict"; return (${source}\n)`)() as
+            Cell.CellFunction | Cell.CellDeclaration)
     const declaration = typeof value === "function" ? {} : value
-    const operation = (["append", "prepend", "before", "after", "replace", "morph", "morphChildren"] as const)
-      .find((key) => declaration[key] !== undefined)
+    const operation = (
+      ["append", "prepend", "before", "after", "replace", "morph", "morphChildren"] as const
+    ).find((key) => declaration[key] !== undefined)
     if (operation) {
       const target = document.querySelector(declaration[operation]!)!
       if (operation === "morph") Dom.morph(target, element)
@@ -41,13 +42,14 @@ export const patchElements = (document: Document, html: string) => {
       } else if (operation === "replace") target.replaceWith(element)
       else target[operation](element)
     } else {
-      const target = element.localName === "html" ?
-        document.documentElement
-        : element.localName === "head" ?
-        document.head
-        : element.localName === "body" ?
-        document.body
-        : element.id && document.getElementById(element.id)
+      const target =
+        element.localName === "html"
+          ? document.documentElement
+          : element.localName === "head"
+            ? document.head
+            : element.localName === "body"
+              ? document.body
+              : element.id && document.getElementById(element.id)
       if (target) Dom.morph(target, element)
     }
   }

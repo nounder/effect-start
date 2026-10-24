@@ -1,6 +1,4 @@
-/**
- * @see https://oxc.rs/docs/guide/usage/linter/js-plugins.html#using-js-plugins
- */
+/** @see https://oxc.rs/docs/guide/usage/linter/js-plugins.html#using-js-plugins */
 const forceNamespace = new Set(["bun:test"])
 
 export default {
@@ -19,8 +17,9 @@ export default {
         schema: [],
         messages: {
           preferNamespace:
-            "Use namespace import for module \"{{source}}\": import * as {{baseName}} from \"{{source}}\"",
-          mismatch: "Namespace import alias \"{{alias}}\" does not match module basename \"{{baseName}}\"",
+            'Use namespace import for module "{{source}}": import * as {{baseName}} from "{{source}}"',
+          mismatch:
+            'Namespace import alias "{{alias}}" does not match module basename "{{baseName}}"',
         },
       },
       create(context) {
@@ -35,8 +34,8 @@ export default {
             const forced = forceNamespace.has(source)
             if (!forced && !isCapitalized(baseName)) return
 
-            const isNamespace = node.specifiers.length === 1 &&
-              node.specifiers[0].type === "ImportNamespaceSpecifier"
+            const isNamespace =
+              node.specifiers.length === 1 && node.specifiers[0].type === "ImportNamespaceSpecifier"
 
             if (isNamespace) {
               if (!isLocalImport(source)) return
@@ -79,9 +78,10 @@ export default {
         fixable: "code",
         schema: [],
         messages: {
-          mismatch: "{{symbolKind}} \"{{name}}\" should match its {{kind}} \"{{tag}}\" passed to {{factory}}.",
+          mismatch:
+            '{{symbolKind}} "{{name}}" should match its {{kind}} "{{tag}}" passed to {{factory}}.',
           mismatchSegment:
-            "{{symbolKind}} \"{{name}}\" should match the last segment of its identifier \"{{tag}}\" passed to {{factory}}.",
+            '{{symbolKind}} "{{name}}" should match the last segment of its identifier "{{tag}}" passed to {{factory}}.',
         },
       },
       create(context) {
@@ -105,7 +105,8 @@ export default {
               node: arg,
               messageId: "mismatchSegment",
               data: { name, symbolKind, tag, factory },
-              fix: (fixer) => fixer.replaceTextRange(arg.range, JSON.stringify(tag.slice(0, cut) + name)),
+              fix: (fixer) =>
+                fixer.replaceTextRange(arg.range, JSON.stringify(tag.slice(0, cut) + name)),
             })
             return
           }
@@ -183,10 +184,7 @@ export default {
                   node,
                   messageId: "requireBlankBefore",
                   fix(fixer) {
-                    return fixer.insertTextAfter(
-                      sourceCode.getLastToken(prev),
-                      "\n",
-                    )
+                    return fixer.insertTextAfter(sourceCode.getLastToken(prev), "\n")
                   },
                 })
               }
@@ -198,10 +196,7 @@ export default {
                   node,
                   messageId: "requireBlankAfter",
                   fix(fixer) {
-                    return fixer.insertTextAfter(
-                      sourceCode.getLastToken(node),
-                      "\n",
-                    )
+                    return fixer.insertTextAfter(sourceCode.getLastToken(node), "\n")
                   },
                 })
               }
@@ -229,7 +224,8 @@ export default {
         fixable: "code",
         schema: [],
         messages: {
-          preferTypeof: "Use `typeof {{name}}.Type` instead of `Schema.Schema.Type<typeof {{name}}>`",
+          preferTypeof:
+            "Use `typeof {{name}}.Type` instead of `Schema.Schema.Type<typeof {{name}}>`",
         },
       },
       create(context) {
@@ -267,7 +263,8 @@ export default {
         },
         schema: [],
         messages: {
-          objectForm: "Prefer Effect.tryPromise({ try, catch }) so promise errors are mapped explicitly.",
+          objectForm:
+            "Prefer Effect.tryPromise({ try, catch }) so promise errors are mapped explicitly.",
         },
       },
       create(context) {
@@ -330,7 +327,7 @@ export default {
             current = current.upper
           }
           if (!names.has(base)) return base
-          for (let i = 2;; i++) {
+          for (let i = 2; ; i++) {
             const candidate = base + i
             if (!names.has(candidate)) return candidate
           }
@@ -341,10 +338,7 @@ export default {
           const ancestors = sourceCode.getAncestors(node)
           const parent = ancestors[ancestors.length - 1]
           if (!parent) return false
-          if (
-            parent.type === "MethodDefinition" ||
-            (parent.type === "Property" && parent.method)
-          ) {
+          if (parent.type === "MethodDefinition" || (parent.type === "Property" && parent.method)) {
             return true
           }
           if (parent.type === "VariableDeclarator" && parent.init === node) {
@@ -355,20 +349,15 @@ export default {
 
         function checkParams(node) {
           for (const param of node.params) {
-            const pattern = param.type === "AssignmentPattern"
-              ? param.left
-              : param
+            const pattern = param.type === "AssignmentPattern" ? param.left : param
             if (pattern.type !== "ObjectPattern") continue
 
             const baseName = isDefinition(node) ? "options" : "v"
-            const outerScope = sourceCode.getScope(node).upper ||
-              sourceCode.getScope(node)
+            const outerScope = sourceCode.getScope(node).upper || sourceCode.getScope(node)
             const name = findUnusedName(outerScope, baseName)
 
             const hasPropertyDefaults = pattern.properties.some(
-              (prop) =>
-                prop.type !== "RestElement" &&
-                prop.value.type === "AssignmentPattern",
+              (prop) => prop.type !== "RestElement" && prop.value.type === "AssignmentPattern",
             )
 
             context.report({
@@ -377,77 +366,69 @@ export default {
               fix: hasPropertyDefaults
                 ? undefined
                 : (fixer) => {
-                  const fixes = []
+                    const fixes = []
 
-                  const typeAnnotation = pattern.typeAnnotation
-                    ? sourceCode.getText(pattern.typeAnnotation)
-                    : ""
-                  const hasDefault = param.type === "AssignmentPattern"
-                  const defaultValue = hasDefault
-                    ? " = " + sourceCode.getText(param.right)
-                    : ""
+                    const typeAnnotation = pattern.typeAnnotation
+                      ? sourceCode.getText(pattern.typeAnnotation)
+                      : ""
+                    const hasDefault = param.type === "AssignmentPattern"
+                    const defaultValue = hasDefault ? " = " + sourceCode.getText(param.right) : ""
 
-                  fixes.push(
-                    fixer.replaceTextRange(
-                      param.range,
-                      name + typeAnnotation + defaultValue,
-                    ),
-                  )
+                    fixes.push(
+                      fixer.replaceTextRange(param.range, name + typeAnnotation + defaultValue),
+                    )
 
-                  const fnScope = sourceCode.getScope(node)
-                  const localToKey = new Map()
-                  for (const prop of pattern.properties) {
-                    if (prop.type === "RestElement") continue
-                    const keyName = prop.key.type === "Identifier"
-                      ? prop.key.name
-                      : sourceCode.getText(prop.key)
-                    const localNode = prop.value.type === "AssignmentPattern"
-                      ? prop.value.left
-                      : prop.value
-                    if (localNode.type === "Identifier") {
-                      localToKey.set(localNode.name, keyName)
-                    }
-                  }
-
-                  for (const variable of fnScope.variables) {
-                    const keyName = localToKey.get(variable.name)
-                    if (keyName === undefined) continue
-
-                    for (const ref of variable.references) {
-                      if (
-                        ref.identifier.range[0] >= pattern.range[0] &&
-                        ref.identifier.range[1] <= pattern.range[1]
-                      ) {
-                        continue
-                      }
-
-                      const ancestors = sourceCode.getAncestors(ref.identifier)
-                      const parent = ancestors[ancestors.length - 1]
-                      if (
-                        parent &&
-                        parent.type === "Property" &&
-                        parent.shorthand &&
-                        parent.value === ref.identifier
-                      ) {
-                        fixes.push(
-                          fixer.replaceTextRange(
-                            parent.range,
-                            keyName + ": " + name + "." + keyName,
-                          ),
-                        )
-                      } else {
-                        fixes.push(
-                          fixer.replaceTextRange(
-                            ref.identifier.range,
-                            name + "." + keyName,
-                          ),
-                        )
+                    const fnScope = sourceCode.getScope(node)
+                    const localToKey = new Map()
+                    for (const prop of pattern.properties) {
+                      if (prop.type === "RestElement") continue
+                      const keyName =
+                        prop.key.type === "Identifier"
+                          ? prop.key.name
+                          : sourceCode.getText(prop.key)
+                      const localNode =
+                        prop.value.type === "AssignmentPattern" ? prop.value.left : prop.value
+                      if (localNode.type === "Identifier") {
+                        localToKey.set(localNode.name, keyName)
                       }
                     }
-                  }
 
-                  return fixes
-                },
+                    for (const variable of fnScope.variables) {
+                      const keyName = localToKey.get(variable.name)
+                      if (keyName === undefined) continue
+
+                      for (const ref of variable.references) {
+                        if (
+                          ref.identifier.range[0] >= pattern.range[0] &&
+                          ref.identifier.range[1] <= pattern.range[1]
+                        ) {
+                          continue
+                        }
+
+                        const ancestors = sourceCode.getAncestors(ref.identifier)
+                        const parent = ancestors[ancestors.length - 1]
+                        if (
+                          parent &&
+                          parent.type === "Property" &&
+                          parent.shorthand &&
+                          parent.value === ref.identifier
+                        ) {
+                          fixes.push(
+                            fixer.replaceTextRange(
+                              parent.range,
+                              keyName + ": " + name + "." + keyName,
+                            ),
+                          )
+                        } else {
+                          fixes.push(
+                            fixer.replaceTextRange(ref.identifier.range, name + "." + keyName),
+                          )
+                        }
+                      }
+                    }
+
+                    return fixes
+                  },
             })
           }
         }
@@ -524,7 +505,10 @@ export default {
             }
           },
           MemberExpression(node) {
-            if (effect.isMember(node, "Effect", "runPromise") && findEnclosingAsyncTestCallback(node)) {
+            if (
+              effect.isMember(node, "Effect", "runPromise") &&
+              findEnclosingAsyncTestCallback(node)
+            ) {
               context.report({
                 node,
                 messageId: "noAwaitRunPromise",
@@ -578,10 +562,7 @@ export default {
                 node: first,
                 messageId: "requireNewline",
                 fix: (fixer) =>
-                  fixer.replaceTextRange(
-                    [openParen.range[1], first.range[0]],
-                    "\n" + indent,
-                  ),
+                  fixer.replaceTextRange([openParen.range[1], first.range[0]], "\n" + indent),
               })
             }
 
@@ -595,10 +576,7 @@ export default {
                 node: curr,
                 messageId: "requireNewline",
                 fix: (fixer) =>
-                  fixer.replaceTextRange(
-                    [comma.range[1], curr.range[0]],
-                    "\n" + indent,
-                  ),
+                  fixer.replaceTextRange([comma.range[1], curr.range[0]], "\n" + indent),
               })
             }
           },
@@ -611,14 +589,14 @@ export default {
 /**
  * Factories whose enclosing class or const name should match a string argument.
  *
- * `object`/`property` identify the `X.Y(...)` callee. `shape` says where the
- * string lives:
- *   - "call": direct argument of the factory call, e.g. Data.TaggedError("Tag")
- *   - "outer": Factory<Self>()("Tag", ...) — string on the outer of a double call
- *   - "inner": Factory<Self>("Id")(...) or Factory("Id")<...>() — string on the
- *     inner call (the factory's own call, which is the callee of the outer one)
- * `matchSegment` compares against the last "/"- or "."-segment of the string
- * instead of the whole string (namespaced identifiers like "effect-start/Routes").
+ * `object`/`property` identify the `X.Y(...)` callee. `shape` says where the string lives:
+ *
+ * - "call": direct argument of the factory call, e.g. Data.TaggedError("Tag")
+ * - "outer": Factory<Self>()("Tag", ...) — string on the outer of a double call
+ * - "inner": Factory<Self>("Id")(...) or Factory("Id")<...>() — string on the inner call (the
+ *   factory's own call, which is the callee of the outer one) `matchSegment` compares against the
+ *   last "/"- or "."-segment of the string instead of the whole string (namespaced identifiers like
+ *   "effect-start/Routes").
  */
 const taggedFactories = [
   { object: "Data", property: "TaggedError", shape: "call", kind: "tag" },
@@ -635,13 +613,14 @@ const taggedFactories = [
 ]
 
 /**
- * Track imports of a package's modules so rules match the module by binding,
- * not by a bare identifier name (a local `Effect`/`Schema` no longer matches).
+ * Track imports of a package's modules so rules match the module by binding, not by a bare
+ * identifier name (a local `Effect`/`Schema` no longer matches).
  *
  * Resolves a local (possibly aliased) name to a canonical module name across:
- *   - submodule namespace:  import * as S from "effect/Schema"   -> S resolves to "Schema"
- *   - barrel named:         import { Schema as S } from "effect" -> S resolves to "Schema"
- *   - package namespace:    import * as test from "bun:test"     -> test resolves to "bun:test"
+ *
+ * - Submodule namespace: import * as S from "effect/Schema" -> S resolves to "Schema"
+ * - Barrel named: import { Schema as S } from "effect" -> S resolves to "Schema"
+ * - Package namespace: import * as test from "bun:test" -> test resolves to "bun:test"
  *
  * Spread the returned `ImportDeclaration` into the rule's visitor object.
  */
@@ -658,7 +637,10 @@ function createImportTracker(pkg) {
         for (const specifier of node.specifiers) {
           if (specifier.type === "ImportNamespaceSpecifier") {
             local.set(specifier.local.name, pkg)
-          } else if (specifier.type === "ImportSpecifier" && specifier.imported.type === "Identifier") {
+          } else if (
+            specifier.type === "ImportSpecifier" &&
+            specifier.imported.type === "Identifier"
+          ) {
             local.set(specifier.local.name, specifier.imported.name)
           }
         }
@@ -695,17 +677,16 @@ function matchesCallee(callee, factory, imports) {
 }
 
 function getTaggedFactory(superClass, imports) {
-  const outer = superClass.type === "TSInstantiationExpression"
-    ? superClass.expression
-    : superClass
+  const outer = superClass.type === "TSInstantiationExpression" ? superClass.expression : superClass
   if (outer.type !== "CallExpression") return
 
-  const inner = outer.callee.type === "CallExpression"
-    ? outer.callee
-    : outer.callee.type === "TSInstantiationExpression" &&
-        outer.callee.expression.type === "CallExpression"
-    ? outer.callee.expression
-    : undefined
+  const inner =
+    outer.callee.type === "CallExpression"
+      ? outer.callee
+      : outer.callee.type === "TSInstantiationExpression" &&
+          outer.callee.expression.type === "CallExpression"
+        ? outer.callee.expression
+        : undefined
 
   for (const factory of taggedFactories) {
     if (factory.shape === "call") {

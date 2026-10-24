@@ -164,20 +164,26 @@ export const createRequest = (
           const contentType = response.headers.get("Content-Type")?.split(";")[0].trim()
           if (contentType === "text/event-stream") {
             retryable = true
-            await readEvents(response, attempt.signal, (event, data) => {
-              retryable = false
-              if (event === "datastar-patch-elements") patchElements(data)
-              else if (event === "datastar-patch-signals") {
-                const patch = JSON.parse(data)
-                signals.patch(patch.signals, patch.onlyIfMissing ?? false)
-              }
-              retryable = true
-            }, (id) => {
-              if (id) headers.set("Last-Event-ID", id)
-              else headers.delete("Last-Event-ID")
-            }, (value) => {
-              baseInterval = interval = value
-            })
+            await readEvents(
+              response,
+              attempt.signal,
+              (event, data) => {
+                retryable = false
+                if (event === "datastar-patch-elements") patchElements(data)
+                else if (event === "datastar-patch-signals") {
+                  const patch = JSON.parse(data)
+                  signals.patch(patch.signals, patch.onlyIfMissing ?? false)
+                }
+                retryable = true
+              },
+              (id) => {
+                if (id) headers.set("Last-Event-ID", id)
+                else headers.delete("Last-Event-ID")
+              },
+              (value) => {
+                baseInterval = interval = value
+              },
+            )
             if (attempt.signal.aborted) continue
             if (retry !== "always") return
           } else if (contentType === "text/html") {
@@ -187,7 +193,9 @@ export const createRequest = (
             return
           } else {
             await response.body?.cancel()
-            throw new TypeError(`Unsupported cell response: ${contentType ?? "missing Content-Type"}`)
+            throw new TypeError(
+              `Unsupported cell response: ${contentType ?? "missing Content-Type"}`,
+            )
           }
         } catch (error) {
           if (attempt.signal.aborted) continue

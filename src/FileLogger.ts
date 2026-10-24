@@ -26,10 +26,7 @@ export const toFile: {
   >
 } = Function.dual(
   (args) => Logger.isLogger(args[0]),
-  <Message>(
-    self: Logger.Logger<Message, string>,
-    options: FileWriter.Options,
-  ) =>
+  <Message>(self: Logger.Logger<Message, string>, options: FileWriter.Options) =>
     Effect.map(
       FileWriter.build({ ...options, batchWindow: options.batchWindow ?? 1000 }),
       (writer) => Logger.map(self, (output) => Effect.runSync(writer.append(output))),

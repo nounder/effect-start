@@ -8,15 +8,15 @@ import { createSignals } from "./internal/signals.ts"
 type RequestBody =
   | { body?: RequestInit["body"]; bodyJson?: never; bodyForm?: never }
   | {
-    body?: never
-    bodyJson: Values.Json
-    bodyForm?: never
-  }
+      body?: never
+      bodyJson: Values.Json
+      bodyForm?: never
+    }
   | {
-    body?: never
-    bodyJson?: never
-    bodyForm: FormData | HTMLFormElement | SubmitEvent | Record<string, string | Blob>
-  }
+      body?: never
+      bodyJson?: never
+      bodyForm: FormData | HTMLFormElement | SubmitEvent | Record<string, string | Blob>
+    }
 
 export interface Cell<E extends Element = Element> {
   readonly target: E
@@ -29,26 +29,31 @@ export interface Cell<E extends Element = Element> {
     handler: (event: HTMLElementEventMap[K]) => unknown,
     options?: AddEventListenerOptions | boolean,
   ): () => void
-  on(name: string, handler: (event: Event) => unknown, options?: AddEventListenerOptions | boolean): () => void
+  on(
+    name: string,
+    handler: (event: Event) => unknown,
+    options?: AddEventListenerOptions | boolean,
+  ): () => void
   effect(fn: () => void | (() => void)): () => void
   limit<This, Args extends Array<any>>(
     fn: (this: This, ...args: Args) => unknown,
-    options:
-      & ({ debounce: number; throttle?: never } | { throttle: number; debounce?: never })
-      & { concurrency?: number },
+    options: ({ debounce: number; throttle?: never } | { throttle: number; debounce?: never }) & {
+      concurrency?: number
+    },
   ): (this: This, ...args: Args) => void
   expand(source: unknown): () => void
   request(
     url: string | URL,
-    options?: Omit<RequestInit, "body"> & RequestBody & {
-      urlParams?: ConstructorParameters<typeof URLSearchParams>[0]
-      retry?: "auto" | "error" | "always" | "never"
-      retryInterval?: number
-      retryScaler?: number
-      retryMaxWait?: number
-      retryMaxCount?: number
-      openWhenHidden?: boolean
-    },
+    options?: Omit<RequestInit, "body"> &
+      RequestBody & {
+        urlParams?: ConstructorParameters<typeof URLSearchParams>[0]
+        retry?: "auto" | "error" | "always" | "never"
+        retryInterval?: number
+        retryScaler?: number
+        retryMaxWait?: number
+        retryMaxCount?: number
+        openWhenHidden?: boolean
+      },
   ): Promise<void>
 }
 
@@ -59,11 +64,10 @@ type Placement = "append" | "prepend" | "before" | "after" | "replace" | "morph"
 export type CellDeclaration<E extends Element = Element> =
   | ({ setup?: CellFunction<E> } & { [P in Placement]?: never })
   | {
-    [P in Placement]:
-      & { [K in P]: string }
-      & { [K in Exclude<Placement, P>]?: never }
-      & { setup?: CellFunction<P extends "morphChildren" ? Element : E> }
-  }[Placement]
+      [P in Placement]: { [K in P]: string } & { [K in Exclude<Placement, P>]?: never } & {
+        setup?: CellFunction<P extends "morphChildren" ? Element : E>
+      }
+    }[Placement]
 
 export interface RunOptions {
   signals?: Record<string, any>
@@ -77,30 +81,36 @@ export interface Runtime {
 
 const runtimes = new WeakMap<Document | Element | ShadowRoot, Runtime>()
 
-/**
- * Initialize and observe data-cell behavior on the DOM.
- */
-export const run = (root: Document | Element | ShadowRoot = document, options: RunOptions = {}): Runtime => {
+/** Initialize and observe data-cell behavior on the DOM. */
+export const run = (
+  root: Document | Element | ShadowRoot = document,
+  options: RunOptions = {},
+): Runtime => {
   if (runtimes.has(root)) return runtimes.get(root)!
-  const document = root.nodeType === 9 ? root as Document : root.ownerDocument!
+  const document = root.nodeType === 9 ? (root as Document) : root.ownerDocument!
   const window = document.defaultView!
   const signals = createSignals(options.signals)
-  const mounted = new Map<Node, {
-    source: string
-    controller: AbortController
-    cleanups: Set<() => void>
-  }>()
+  const mounted = new Map<
+    Node,
+    {
+      source: string
+      controller: AbortController
+      cleanups: Set<() => void>
+    }
+  >()
   const scopes = new WeakMap<Node, Scope>()
   const expansions = new Map<HTMLTemplateElement, ReturnType<typeof createExpansion>>()
   let stopped = false
-  const report = options.onError ?? ((error) => {
-    if (window.reportError) window.reportError(error)
-    else {
-      window.setTimeout(() => {
-        throw error
-      }, 0)
-    }
-  })
+  const report =
+    options.onError ??
+    ((error) => {
+      if (window.reportError) window.reportError(error)
+      else {
+        window.setTimeout(() => {
+          throw error
+        }, 0)
+      }
+    })
 
   const dispose = (target: Node) => {
     const state = mounted.get(target)
@@ -215,10 +225,13 @@ export const run = (root: Document | Element | ShadowRoot = document, options: R
         })
         return stopExpansion
       },
-      request: createRequest(target, controller.signal, signals, (html) => patchElements(document, html)),
+      request: createRequest(target, controller.signal, signals, (html) =>
+        patchElements(document, html),
+      ),
     }
     try {
-      const declaration = window.Function(`"use strict"; return (${source}\n)`)() as CellFunction | CellDeclaration
+      const declaration = window.Function(`"use strict"; return (${source}\n)`)() as
+        CellFunction | CellDeclaration
       const cleanup = (typeof declaration === "function" ? declaration : declaration.setup)?.(cell)
       if (cleanup) own(cleanup)
     } catch (error) {
@@ -262,7 +275,12 @@ export const run = (root: Document | Element | ShadowRoot = document, options: R
     },
   }
   runtimes.set(root, runtime)
-  observer.observe(root, { subtree: true, childList: true, attributes: true, attributeFilter: ["data-cell"] })
+  observer.observe(root, {
+    subtree: true,
+    childList: true,
+    attributes: true,
+    attributeFilter: ["data-cell"],
+  })
   scan(root)
   return runtime
 }

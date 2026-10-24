@@ -55,14 +55,13 @@ export interface DockerService {
 
 export class Docker extends Context.Service<Docker, DockerService>()("effect-start/Docker") {}
 
-export class DockerContainer extends Context.Service<
-  DockerContainer,
-  Container
->()("effect-start/DockerContainer") {}
+export class DockerContainer extends Context.Service<DockerContainer, Container>()(
+  "effect-start/DockerContainer",
+) {}
 
 const dockerExec = (...args: ReadonlyArray<string>) =>
   Effect.scoped(
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const handle = yield* ChildProcess.make("docker", args, {
         stdout: "ignore",
         stderr: "inherit",
@@ -73,19 +72,13 @@ const dockerExec = (...args: ReadonlyArray<string>) =>
 
 const dockerExecStdout = (...args: ReadonlyArray<string>) =>
   Effect.scoped(
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const handle = yield* ChildProcess.make("docker", args, {
         stdout: "pipe",
         stderr: "inherit",
       })
       const [stdout, exitCode] = yield* Effect.all(
-        [
-          handle.stdout.pipe(
-            Stream.decodeText(),
-            Stream.mkString,
-          ),
-          handle.exitCode,
-        ],
+        [handle.stdout.pipe(Stream.decodeText(), Stream.mkString), handle.exitCode],
         { concurrency: 2 },
       )
       return { stdout, exitCode }
@@ -96,7 +89,7 @@ const removeContainer = (container: string) => dockerExec("rm", "-f", container)
 
 export const layer = Layer.effect(
   Docker,
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const tracked = yield* Ref.make<ReadonlyArray<Container>>([])
 
     yield* Effect.addFinalizer(() =>
@@ -104,9 +97,9 @@ export const layer = Layer.effect(
         Effect.flatMap((containers) =>
           Effect.forEach(containers, (c) => removeContainer(c.id), {
             discard: true,
-          })
+          }),
         ),
-      )
+      ),
     )
 
     const track = (container: Container) => Ref.update(tracked, (cs) => [container, ...cs])
@@ -116,7 +109,7 @@ export const layer = Layer.effect(
       command: ReadonlyArray<string>,
       options?: { readonly detach?: boolean },
     ) =>
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const args: Array<string> = ["exec"]
         if (options?.detach) args.push("-d")
         args.push(container, ...command)
@@ -135,7 +128,7 @@ export const layer = Layer.effect(
       exec: execFn,
 
       run: (options) =>
-        Effect.gen(function*() {
+        Effect.gen(function* () {
           const args: Array<string> = ["run"]
 
           if (options.detach) args.push("-d")
@@ -178,7 +171,7 @@ export const layer = Layer.effect(
         }),
 
       start: (container) =>
-        Effect.gen(function*() {
+        Effect.gen(function* () {
           const code = yield* dockerExec("start", container).pipe(
             Effect.mapError((cause) => new DockerError({ message: `docker start failed`, cause })),
           )

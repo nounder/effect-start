@@ -25,7 +25,7 @@ function makeSchemaFilter(
   return RouteHook.filter((ctx: any) =>
     Effect.map(decode, (parsed) => ({
       context: { [binding]: { ...ctx[binding], ...parsed } },
-    }))
+    })),
   )
 }
 
@@ -47,10 +47,7 @@ export function schemaHeaders<F extends Schema.Struct.Fields>(
     >,
   ]
 >
-export function schemaHeaders<
-  A,
-  R,
->(
+export function schemaHeaders<A, R>(
   fields: Schema.ConstraintDecoder<A, R>,
 ): <D, SB, P extends Route.Route.Tuple>(
   self: Route.RouteSet<D, SB, P>,
@@ -90,10 +87,7 @@ export function schemaCookies<F extends Schema.Struct.Fields>(
     >,
   ]
 >
-export function schemaCookies<
-  A,
-  R,
->(
+export function schemaCookies<A, R>(
   fields: Schema.ConstraintDecoder<A, R>,
 ): <D, SB, P extends Route.Route.Tuple>(
   self: Route.RouteSet<D, SB, P>,
@@ -133,10 +127,7 @@ export function schemaSearchParams<F extends Schema.Struct.Fields>(
     >,
   ]
 >
-export function schemaSearchParams<
-  A,
-  R,
->(
+export function schemaSearchParams<A, R>(
   fields: Schema.ConstraintDecoder<A, R>,
 ): <D, SB, P extends Route.Route.Tuple>(
   self: Route.RouteSet<D, SB, P>,
@@ -176,10 +167,7 @@ export function schemaPathParams<F extends Schema.Struct.Fields>(
     >,
   ]
 >
-export function schemaPathParams<
-  A,
-  R,
->(
+export function schemaPathParams<A, R>(
   fields: Schema.ConstraintDecoder<A, R>,
 ): <D, SB, P extends Route.Route.Tuple>(
   self: Route.RouteSet<D, SB, P>,
@@ -188,13 +176,7 @@ export function schemaPathParams<
   SB,
   [
     ...P,
-    Route.Route<
-      {},
-      { pathParams: A },
-      unknown,
-      Schema.SchemaError,
-      R | HttpRouter.RouteContext
-    >,
+    Route.Route<{}, { pathParams: A }, unknown, Schema.SchemaError, R | HttpRouter.RouteContext>,
   ]
 >
 export function schemaPathParams(fields: SchemaOrFields) {
@@ -259,10 +241,7 @@ export function schemaBodyUrlParams<F extends Schema.Struct.Fields>(
     >,
   ]
 >
-export function schemaBodyUrlParams<
-  A,
-  R,
->(
+export function schemaBodyUrlParams<A, R>(
   fields: Schema.ConstraintDecoder<A, R>,
 ): <D, SB, P extends Route.Route.Tuple>(
   self: Route.RouteSet<D, SB, P>,
@@ -308,12 +287,7 @@ export function schemaBodyMultipart<F extends Schema.Struct.Fields>(
 >
 export function schemaBodyMultipart<
   A,
-  I extends Partial<
-    Record<
-      string,
-      ReadonlyArray<Multipart.PersistedFile | string> | string
-    >
-  >,
+  I extends Partial<Record<string, ReadonlyArray<Multipart.PersistedFile | string> | string>>,
   R,
 >(
   fields: Schema.ConstraintCodec<A, I, R, unknown>,
@@ -361,12 +335,7 @@ export function schemaBodyForm<F extends Schema.Struct.Fields>(
 >
 export function schemaBodyForm<
   A,
-  I extends Partial<
-    Record<
-      string,
-      ReadonlyArray<Multipart.PersistedFile | string> | string
-    >
-  >,
+  I extends Partial<Record<string, ReadonlyArray<Multipart.PersistedFile | string> | string>>,
   R,
 >(
   fields: Schema.ConstraintCodec<A, I, R, unknown>,
@@ -391,15 +360,13 @@ export function schemaBodyForm(fields: SchemaOrFields) {
 }
 
 /**
- * Intercepts typed errors from downstream handlers, encodes them through the
- * schema, and returns a JSON response with the given status code.
+ * Intercepts typed errors from downstream handlers, encodes them through the schema, and returns a
+ * JSON response with the given status code.
  *
- * Without `schemaError`, handler errors fall through to global catch during
- * execution of request. `schemaError` short circuts error handling by
- * return an error response immedietly.
+ * Without `schemaError`, handler errors fall through to global catch during execution of request.
+ * `schemaError` short circuts error handling by return an error response immedietly.
  *
- * TODO: store the errors in runtime to enable generating OpenAPI and other
- * goodies.
+ * TODO: store the errors in runtime to enable generating OpenAPI and other goodies.
  */
 export function schemaError<A, I, R>(
   schema: Schema.Schema<A> & Schema.ConstraintEncoder<I, R> & { readonly status: number },
@@ -426,22 +393,18 @@ export function schemaError<A, I, R>(
   }
   const encode = Schema.encodeEffect(schema)
   const is = Schema.is(schema)
-  return function<D, SB, P extends Route.Route.Tuple>(
+  return function <D, SB, P extends Route.Route.Tuple>(
     self: Route.RouteSet<D, SB, P>,
   ): Route.RouteSet<D, SB, [...P, Route.Route<{}, {}, unknown, never, R>]> {
     const route = Route.make<{}, {}, unknown, never, R>((_context, next) =>
       Entity.resolve(next).pipe(
-        Effect.catchIf(
-          is,
-          (error) => Effect.map(Effect.orDie(encode(error)), (encoded) => Entity.make(encoded, { status })),
+        Effect.catchIf(is, (error) =>
+          Effect.map(Effect.orDie(encode(error)), (encoded) => Entity.make(encoded, { status })),
         ),
-      )
+      ),
     )
 
-    const items: [...P, Route.Route<{}, {}, unknown, never, R>] = [
-      ...Route.items(self),
-      route,
-    ]
+    const items: [...P, Route.Route<{}, {}, unknown, never, R>] = [...Route.items(self), route]
 
     return Route.set(items, Route.descriptor(self))
   }
@@ -469,34 +432,24 @@ export function schemaSuccess<A, I, R>(
   schema: Schema.Schema<A> & Schema.ConstraintEncoder<I, R>,
 ): <D, SB, P extends Route.Route.Tuple>(
   self: Route.RouteSet<D, SB, P>,
-) => Route.RouteSet<
-  D,
-  SB,
-  [...P, Route.Route<{}, {}, I, Schema.SchemaError, R>]
->
-export function schemaSuccess(
-  schema: SchemaOrFields,
-): any {
+) => Route.RouteSet<D, SB, [...P, Route.Route<{}, {}, I, Schema.SchemaError, R>]>
+export function schemaSuccess(schema: SchemaOrFields): any {
   const s = toSchema(schema)
   const encode = Schema.encodeUnknownEffect(s)
-  return function(self: Route.RouteSet<any, any, any>) {
+  return function (self: Route.RouteSet<any, any, any>) {
     const route = Route.make((_context: any, next: any) =>
-      Effect.flatMap(
-        Entity.resolve(next),
-        (entity) =>
-          Effect.map(encode(entity.body), (encoded) =>
-            Entity.make(encoded, {
-              status: entity.status,
-              headers: entity.headers,
-              url: entity.url,
-            })),
-      )
+      Effect.flatMap(Entity.resolve(next), (entity) =>
+        Effect.map(encode(entity.body), (encoded) =>
+          Entity.make(encoded, {
+            status: entity.status,
+            headers: entity.headers,
+            url: entity.url,
+          }),
+        ),
+      ),
     )
 
-    const items = [
-      ...Route.items(self),
-      route,
-    ]
+    const items = [...Route.items(self), route]
 
     return Route.set(items as any, Route.descriptor(self))
   }

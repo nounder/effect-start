@@ -14,9 +14,7 @@ test.describe("Pretty", () => {
       },
     ])
 
-    test
-      .expect(message)
-      .toBe(`[waitForStable]
+    test.expect(message).toBe(`[waitForStable]
 {
   "window": 0,
   "count": 0,

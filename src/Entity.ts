@@ -17,9 +17,7 @@ function isBinary(v: unknown): v is Uint8Array | ArrayBuffer {
   return v instanceof Uint8Array || v instanceof ArrayBuffer
 }
 
-/**
- * Header keys are guaranteed to be lowercase.
- */
+/** Header keys are guaranteed to be lowercase. */
 export type Headers = {
   // `set-cookie` is the only header that supports multiple values, per RFC 6265
   readonly "set-cookie"?: string | ReadonlyArray<string> | null
@@ -31,28 +29,34 @@ export interface Entity<T = unknown, E = never> extends Effect.Effect<Entity<T, 
   readonly body: T
   readonly headers: Headers
   /**
-   * Accepts any valid URI, including URLs (http://, https://, file://),
-   * URNs (urn:isbn:...), S3 URIs (s3://bucket/key), and other schemes.
-   * While commonly called 'URL' in many APIs, this property handles URIs,
+   * Accepts any valid URI, including URLs (http://, https://, file://), URNs (urn:isbn:...), S3
+   * URIs (s3://bucket/key), and other schemes. While commonly called 'URL' in many APIs, this
+   * property handles URIs,
    */
   readonly url: string | undefined
   readonly status: number | undefined
-  readonly text: T extends string ? Effect.Effect<T, Schema.SchemaError | E>
+  readonly text: T extends string
+    ? Effect.Effect<T, Schema.SchemaError | E>
     : Effect.Effect<string, Schema.SchemaError | E>
   readonly html: Effect.Effect<Html.TrustedHtml, Schema.SchemaError | E>
-  readonly json: [T] extends [Effect.Effect<infer A, any, any>] ? Effect.Effect<
-      A extends string | Uint8Array | ArrayBuffer ? unknown : A,
-      Schema.SchemaError | E
-    >
-    : [T] extends [Stream.Stream<any, any, any>] ? Effect.Effect<unknown, Schema.SchemaError | E>
-    : [T] extends [string | Uint8Array | ArrayBuffer] ? Effect.Effect<unknown, Schema.SchemaError | E>
-    : [T] extends [Values.Json] ? Effect.Effect<T, Schema.SchemaError | E>
-    : Effect.Effect<unknown, Schema.SchemaError | E>
+  readonly json: [T] extends [Effect.Effect<infer A, any, any>]
+    ? Effect.Effect<
+        A extends string | Uint8Array | ArrayBuffer ? unknown : A,
+        Schema.SchemaError | E
+      >
+    : [T] extends [Stream.Stream<any, any, any>]
+      ? Effect.Effect<unknown, Schema.SchemaError | E>
+      : [T] extends [string | Uint8Array | ArrayBuffer]
+        ? Effect.Effect<unknown, Schema.SchemaError | E>
+        : [T] extends [Values.Json]
+          ? Effect.Effect<T, Schema.SchemaError | E>
+          : Effect.Effect<unknown, Schema.SchemaError | E>
   readonly schemaJson: <S extends Schema.ConstraintDecoder<unknown>>(
     schema: S,
   ) => Effect.Effect<S["Type"], Schema.SchemaError | E, S["DecodingServices"]>
   readonly bytes: Effect.Effect<Uint8Array, Schema.SchemaError | E>
-  readonly stream: T extends Stream.Stream<infer A, infer E1, any> ? Stream.Stream<A, Schema.SchemaError | E | E1>
+  readonly stream: T extends Stream.Stream<infer A, infer E1, any>
+    ? Stream.Stream<A, Schema.SchemaError | E | E1>
     : Stream.Stream<Uint8Array, Schema.SchemaError | E>
 }
 
@@ -64,9 +68,7 @@ function parseJson(s: string): Effect.Effect<unknown, Schema.SchemaError> {
   try {
     return Effect.succeed(JSON.parse(s))
   } catch {
-    return Effect.fail(
-      new Schema.SchemaError(new SchemaIssue.InvalidType(Schema.Unknown.ast, s)),
-    )
+    return Effect.fail(new Schema.SchemaError(new SchemaIssue.InvalidType(Schema.Unknown.ast, s)))
   }
 }
 
@@ -86,9 +88,7 @@ function getText(
 ): Effect.Effect<string, Schema.SchemaError | unknown> {
   const v = self.body
   if (StreamExtra.isStream(v)) {
-    return Stream.mkString(
-      Stream.decodeText(v as Stream.Stream<Uint8Array, unknown, never>),
-    )
+    return Stream.mkString(Stream.decodeText(v as Stream.Stream<Uint8Array, unknown, never>))
   }
   if (Effect.isEffect(v)) {
     return Effect.flatMap(
@@ -207,12 +207,8 @@ function getBytes(
 function getStream<A, E1, E2>(
   self: Entity<Stream.Stream<A, E1, never>, E2>,
 ): Stream.Stream<A, Schema.SchemaError | E1 | E2>
-function getStream<T, E>(
-  self: Entity<T, E>,
-): Stream.Stream<Uint8Array, Schema.SchemaError | E>
-function getStream(
-  self: Entity<unknown, unknown>,
-): Stream.Stream<unknown, unknown> {
+function getStream<T, E>(self: Entity<T, E>): Stream.Stream<Uint8Array, Schema.SchemaError | E>
+function getStream(self: Entity<unknown, unknown>): Stream.Stream<unknown, unknown> {
   const v = self.body
   if (StreamExtra.isStream(v)) {
     return v as Stream.Stream<unknown, unknown, never>
@@ -231,12 +227,14 @@ function getStream(
 }
 
 const Proto: Proto = Object.defineProperties(
-  Object.create(Effectable.Prototype<Entity>({
-    label: TypeId,
-    evaluate() {
-      return resolve(this)
-    },
-  })),
+  Object.create(
+    Effectable.Prototype<Entity>({
+      label: TypeId,
+      evaluate() {
+        return resolve(this)
+      },
+    }),
+  ),
   {
     [TypeId]: { value: TypeId },
     text: {
@@ -298,10 +296,7 @@ export function make<A extends Uint8Array | string, E>(
   options?: Options,
 ): Entity<Stream.Stream<A, E, never>, E>
 export function make<T>(body: T, options?: Options): Entity<T, never>
-export function make(
-  body: unknown,
-  options?: Options,
-): Entity<unknown, unknown> {
+export function make(body: unknown, options?: Options): Entity<unknown, unknown> {
   return Object.assign(Object.create(Proto), {
     body,
     headers: options?.headers ?? {},
@@ -310,9 +305,7 @@ export function make(
   })
 }
 
-export function effect<A, E, R>(
-  body: Effect.Effect<Entity<A> | A, E, R>,
-): Entity<A, E> {
+export function effect<A, E, R>(body: Effect.Effect<Entity<A> | A, E, R>): Entity<A, E> {
   return make(body) as unknown as Entity<A, E>
 }
 
@@ -327,19 +320,13 @@ function mergeSetCookie(
   return [...a, ...b]
 }
 
-export function merge<T, E>(
-  entity: Entity<T, E>,
-  options: Options,
-): Entity<T, E> {
+export function merge<T, E>(entity: Entity<T, E>, options: Options): Entity<T, E> {
   const headers: Headers = options.headers
     ? {
-      ...entity.headers,
-      ...options.headers,
-      "set-cookie": mergeSetCookie(
-        entity.headers["set-cookie"],
-        options.headers["set-cookie"],
-      ),
-    }
+        ...entity.headers,
+        ...options.headers,
+        "set-cookie": mergeSetCookie(entity.headers["set-cookie"], options.headers["set-cookie"]),
+      }
     : entity.headers
   return make(entity.body, {
     headers,
@@ -348,17 +335,13 @@ export function merge<T, E>(
   }) as Entity<T, E>
 }
 
-export function resolve<A, E>(
-  entity: Entity<A, E>,
-): Effect.Effect<Entity<A, E>, E, never> {
+export function resolve<A, E>(entity: Entity<A, E>): Effect.Effect<Entity<A, E>, E, never> {
   const body = entity.body
   if (Effect.isEffect(body)) {
-    return Effect.map(
-      body as Effect.Effect<Entity<A> | A, E, never>,
-      (inner) =>
-        isEntity(inner)
-          ? (inner as Entity<A, E>)
-          : (make(inner as A, {
+    return Effect.map(body as Effect.Effect<Entity<A> | A, E, never>, (inner) =>
+      isEntity(inner)
+        ? (inner as Entity<A, E>)
+        : (make(inner as A, {
             status: entity.status,
             headers: entity.headers,
             url: entity.url,
@@ -403,15 +386,16 @@ export function fromResponse<E extends Error = Error>(
   request?: Request,
 ): Entity<Stream.Stream<Uint8Array, E, never>, E> {
   const body = response.body
-    ? Stream.fromReadableStream(
-      { evaluate: () => response.body!, onError: (e) => (e instanceof Error ? e : new Error(String(e))) as E },
-    )
+    ? Stream.fromReadableStream({
+        evaluate: () => response.body!,
+        onError: (e) => (e instanceof Error ? e : new Error(String(e))) as E,
+      })
     : Stream.fromEffect(
-      Effect.tryPromise({
-        try: () => response.arrayBuffer().then((buf) => new Uint8Array(buf)),
-        catch: (e) => (e instanceof Error ? e : new Error(String(e))) as E,
-      }),
-    )
+        Effect.tryPromise({
+          try: () => response.arrayBuffer().then((buf) => new Uint8Array(buf)),
+          catch: (e) => (e instanceof Error ? e : new Error(String(e))) as E,
+        }),
+      )
 
   return make(body, {
     headers: Object.fromEntries(response.headers.entries()),
@@ -420,9 +404,6 @@ export function fromResponse<E extends Error = Error>(
   })
 }
 
-function mismatch(
-  expected: Schema.Top,
-  actual: unknown,
-): Schema.SchemaError {
+function mismatch(expected: Schema.Top, actual: unknown): Schema.SchemaError {
   return new Schema.SchemaError(new SchemaIssue.InvalidType(expected.ast, actual))
 }

@@ -87,7 +87,8 @@ export const createExpansion = (
         const parent = template.parentNode
         const before = previous.nextSibling
         for (const node of range(row)!) {
-          if ("moveBefore" in parent && parent.isConnected === node.isConnected) parent.moveBefore(node, before)
+          if ("moveBefore" in parent && parent.isConnected === node.isConnected)
+            parent.moveBefore(node, before)
           else parent.insertBefore(node, before)
         }
       }
@@ -120,7 +121,12 @@ export const createExpansion = (
       onError(error)
     }
   })
-  observer.observe(template.content, { subtree: true, childList: true, attributes: true, characterData: true })
+  observer.observe(template.content, {
+    subtree: true,
+    childList: true,
+    attributes: true,
+    characterData: true,
+  })
 
   return {
     refresh,

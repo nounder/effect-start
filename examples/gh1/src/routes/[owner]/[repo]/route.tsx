@@ -7,7 +7,7 @@ import * as Tabs from "../../../ui/Tabs.tsx"
 
 export default Route.get(
   Route.schemaPathParams({ owner: Schema.String, repo: Schema.String }),
-  Route.html(function*(ctx) {
+  Route.html(function* (ctx) {
     const { owner, repo } = ctx.pathParams
     const r = { owner, repo }
 
@@ -20,8 +20,13 @@ export default Route.get(
     return (
       <Layout.Layout>
         <div class="pt-4">
-          <div class="flex items-center gap-2 text-xl mb-2">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="#8b949e">
+          <div class="mb-2 flex items-center gap-2 text-xl">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="#8b949e"
+            >
               <path d="M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5Zm10.5-1h-8a1 1 0 0 0-1 1v6.708A2.486 2.486 0 0 1 4.5 9h8ZM5 12.25a.25.25 0 0 1 .25-.25h3.5a.25.25 0 0 1 .25.25v3.25a.25.25 0 0 1-.4.2l-1.45-1.087a.249.249 0 0 0-.3 0L5.4 15.7a.25.25 0 0 1-.4-.2Z" />
             </svg>
             <a
@@ -30,32 +35,28 @@ export default Route.get(
             >
               {owner}
             </a>
-            <span class="text-[#8b949e]">
-              /
-            </span>
+            <span class="text-[#8b949e]">/</span>
             <a
               href={Route.link("/:owner/:repo", r)}
-              class="text-[#58a6ff] font-bold hover:underline"
+              class="font-bold text-[#58a6ff] hover:underline"
             >
               {repo}
             </a>
-            <span class="text-[#8b949e] border border-[#30363d] rounded-full text-xs px-2 py-0.5 ml-1">
+            <span class="ml-1 rounded-full border border-[#30363d] px-2 py-0.5 text-xs text-[#8b949e]">
               {repoInfo.visibility ?? "Public"}
             </span>
           </div>
 
           {repoInfo.description && (
-            <p class="text-[#8b949e] text-sm mb-4">
-              {repoInfo.description}
-            </p>
+            <p class="mb-4 text-sm text-[#8b949e]">{repoInfo.description}</p>
           )}
 
           {repoInfo.topics && repoInfo.topics.length > 0 && (
-            <div class="flex flex-wrap gap-1 mb-4">
+            <div class="mb-4 flex flex-wrap gap-1">
               {[...repoInfo.topics].map((t) => (
                 <a
                   href={`/search?q=topic:${t}`}
-                  class="text-[#58a6ff] bg-[#388bfd1a] rounded-full text-xs px-2.5 py-0.5 hover:bg-[#58a6ff] hover:text-white transition-colors"
+                  class="rounded-full bg-[#388bfd1a] px-2.5 py-0.5 text-xs text-[#58a6ff] transition-colors hover:bg-[#58a6ff] hover:text-white"
                 >
                   {t}
                 </a>
@@ -63,7 +64,7 @@ export default Route.get(
             </div>
           )}
 
-          <div class="flex items-center gap-4 text-sm mb-4 flex-wrap">
+          <div class="mb-4 flex flex-wrap items-center gap-4 text-sm">
             <span class="flex items-center gap-1 text-[#8b949e]">
               <svg
                 width="16"
@@ -87,9 +88,7 @@ export default Route.get(
               >
                 <path d="M5 5.372v.878c0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75v-.878a2.25 2.25 0 1 0-1.5 0v.878H6.75v-.878a2.25 2.25 0 1 0-1.5 0ZM8 14.25a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5Z" />
               </svg>
-              <span class="font-semibold text-[#e6edf3]">
-                {Github.num(repoInfo.forks_count)}
-              </span>{" "}
+              <span class="font-semibold text-[#e6edf3]">{Github.num(repoInfo.forks_count)}</span>{" "}
               forks
             </span>
             <span class="flex items-center gap-1 text-[#8b949e]">
@@ -148,35 +147,27 @@ export default Route.get(
             ]}
           />
 
-          <div class="flex flex-col lg:flex-row gap-8">
-            <div class="flex-1 min-w-0">
+          <div class="flex flex-col gap-8 lg:flex-row">
+            <div class="min-w-0 flex-1">
               {readme && (
-                <div class="border border-[#21262d] rounded-md">
-                  <div class="px-4 py-3 border-b border-[#21262d] bg-[#161b22] rounded-t-md">
-                    <span class="text-sm font-semibold">
-                      README.md
-                    </span>
+                <div class="rounded-md border border-[#21262d]">
+                  <div class="rounded-t-md border-b border-[#21262d] bg-[#161b22] px-4 py-3">
+                    <span class="text-sm font-semibold">README.md</span>
                   </div>
-                  <div class="p-6 markdown-body">
-                    {Html.unsafe(readme)}
-                  </div>
+                  <div class="markdown-body p-6">{Html.unsafe(readme)}</div>
                 </div>
               )}
             </div>
 
-            <aside class="lg:w-[296px] shrink-0">
+            <aside class="shrink-0 lg:w-[296px]">
               {repoInfo.description && (
-                <div class="mb-4 pb-4 border-b border-[#21262d]">
-                  <h3 class="text-sm font-semibold mb-2">
-                    About
-                  </h3>
-                  <p class="text-sm text-[#8b949e]">
-                    {repoInfo.description}
-                  </p>
+                <div class="mb-4 border-b border-[#21262d] pb-4">
+                  <h3 class="mb-2 text-sm font-semibold">About</h3>
+                  <p class="text-sm text-[#8b949e]">{repoInfo.description}</p>
                   {repoInfo.homepage && (
                     <a
                       href={repoInfo.homepage}
-                      class="text-sm text-[#58a6ff] hover:underline flex items-center gap-1 mt-2"
+                      class="mt-2 flex items-center gap-1 text-sm text-[#58a6ff] hover:underline"
                     >
                       <svg
                         width="16"
@@ -193,15 +184,13 @@ export default Route.get(
               )}
 
               {repoInfo.topics && repoInfo.topics.length > 0 && (
-                <div class="mb-4 pb-4 border-b border-[#21262d]">
-                  <h3 class="text-sm font-semibold mb-2">
-                    Topics
-                  </h3>
+                <div class="mb-4 border-b border-[#21262d] pb-4">
+                  <h3 class="mb-2 text-sm font-semibold">Topics</h3>
                   <div class="flex flex-wrap gap-1">
                     {[...repoInfo.topics].map((t) => (
                       <a
                         href={`/search?q=topic:${t}`}
-                        class="text-[#58a6ff] bg-[#388bfd1a] rounded-full text-xs px-2.5 py-0.5 hover:bg-[#58a6ff] hover:text-white transition-colors"
+                        class="rounded-full bg-[#388bfd1a] px-2.5 py-0.5 text-xs text-[#58a6ff] transition-colors hover:bg-[#58a6ff] hover:text-white"
                       >
                         {t}
                       </a>
@@ -211,15 +200,13 @@ export default Route.get(
               )}
 
               {languages && Object.keys(languages).length > 0 && (
-                <div class="mb-4 pb-4 border-b border-[#21262d]">
-                  <h3 class="text-sm font-semibold mb-3">
-                    Languages
-                  </h3>
+                <div class="mb-4 border-b border-[#21262d] pb-4">
+                  <h3 class="mb-3 text-sm font-semibold">Languages</h3>
                   <Repo.LanguageBar languages={languages} />
                 </div>
               )}
 
-              <div class="text-sm text-[#8b949e] space-y-2">
+              <div class="space-y-2 text-sm text-[#8b949e]">
                 {repoInfo.has_issues && (
                   <a
                     href={Route.link("/:owner/:repo/issues", r)}

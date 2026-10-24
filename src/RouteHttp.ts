@@ -28,23 +28,21 @@ type UnboundedRouteWithMethod = Route.Route.With<{
   format?: RouteBody.Format
 }>
 
-type RouteRequirements<Routes> = Routes extends Iterable<infer Item>
-  ? Item extends Route.Route<any, any, any, any, infer R> ? Exclude<
-      R,
-      RouteMap.Provided
-    >
-  : never
-  : never
+type RouteRequirements<Routes> =
+  Routes extends Iterable<infer Item>
+    ? Item extends Route.Route<any, any, any, any, infer R>
+      ? Exclude<R, RouteMap.Provided>
+      : never
+    : never
 
 type IsAny<A> = 0 extends 1 & A ? true : false
 
-type RoutesProvidedBy<Routes, Provided> =
-  & Routes
-  & (
-    IsAny<RouteRequirements<Routes>> extends true ? unknown
-      : [Exclude<RouteRequirements<Routes>, Provided>] extends [never] ? unknown
-      : never
-  )
+type RoutesProvidedBy<Routes, Provided> = Routes &
+  (IsAny<RouteRequirements<Routes>> extends true
+    ? unknown
+    : [Exclude<RouteRequirements<Routes>, Provided>] extends [never]
+      ? unknown
+      : never)
 
 const mediaTypeToFormat: Readonly<Record<string, Exclude<RouteBody.Format, "*"> | undefined>> = {
   "application/json": "json",
@@ -89,52 +87,62 @@ const toResponse = (
   const contentType = Entity.type(entity)
   const options = responseOptions(entity, contentType)
   if (options.status === 304) {
-    return Effect.succeed(withCookies(
-      HttpServerResponse.empty({ status: options.status, headers: options.headers }),
-      options.cookies,
-    ))
+    return Effect.succeed(
+      withCookies(
+        HttpServerResponse.empty({ status: options.status, headers: options.headers }),
+        options.cookies,
+      ),
+    )
   }
   if (StreamExtra.isStream(entity.body)) {
     const encoder = new TextEncoder()
-    return Effect.succeed(withCookies(
-      HttpServerResponse.stream(
-        Stream.map(
-          Stream.provideContext(entity.body as Stream.Stream<unknown, unknown>, context),
-          (chunk) => typeof chunk === "string" ? encoder.encode(chunk) : chunk as Uint8Array,
+    return Effect.succeed(
+      withCookies(
+        HttpServerResponse.stream(
+          Stream.map(
+            Stream.provideContext(entity.body as Stream.Stream<unknown, unknown>, context),
+            (chunk) => (typeof chunk === "string" ? encoder.encode(chunk) : (chunk as Uint8Array)),
+          ),
+          options,
         ),
-        options,
+        options.cookies,
       ),
-      options.cookies,
-    ))
+    )
   }
   if (format === "json") {
-    return Effect.map(
-      entity.json,
-      (body) => withCookies(HttpServerResponse.text(JSON.stringify(body), options), options.cookies),
+    return Effect.map(entity.json, (body) =>
+      withCookies(HttpServerResponse.text(JSON.stringify(body), options), options.cookies),
     )
   }
   if (format === "text" || format === "html" || format === "sse") {
-    return Effect.map(entity.text, (body) => withCookies(HttpServerResponse.text(body, options), options.cookies))
-  }
-  if (format === "bytes") {
-    return Effect.map(
-      entity.bytes,
-      (body) => withCookies(HttpServerResponse.uint8Array(body, options), options.cookies),
+    return Effect.map(entity.text, (body) =>
+      withCookies(HttpServerResponse.text(body, options), options.cookies),
     )
   }
-  return Effect.succeed(withCookies(
-    HttpServerResponse.stream(
-      Stream.provideContext(entity.stream as Stream.Stream<Uint8Array, unknown>, context),
-      options,
+  if (format === "bytes") {
+    return Effect.map(entity.bytes, (body) =>
+      withCookies(HttpServerResponse.uint8Array(body, options), options.cookies),
+    )
+  }
+  return Effect.succeed(
+    withCookies(
+      HttpServerResponse.stream(
+        Stream.provideContext(entity.stream as Stream.Stream<Uint8Array, unknown>, context),
+        options,
+      ),
+      options.cookies,
     ),
-    options.cookies,
-  ))
+  )
 }
 
-type Handler = (context: any, next: Entity.Entity<any, any>) => Effect.Effect<Entity.Entity<any>, any, any>
+type Handler = (
+  context: any,
+  next: Entity.Entity<any, any>,
+) => Effect.Effect<Entity.Entity<any>, any, any>
 
 const isWildcard = (route: UnboundedRouteWithMethod) => Route.descriptor(route).method === "*"
-const isWebSocket = (route: UnboundedRouteWithMethod) => Route.descriptor<{ protocol?: "ws" }>(route).protocol === "ws"
+const isWebSocket = (route: UnboundedRouteWithMethod) =>
+  Route.descriptor<{ protocol?: "ws" }>(route).protocol === "ws"
 
 const runRoutes = (
   routes: Array<UnboundedRouteWithMethod>,
@@ -144,44 +152,53 @@ const runRoutes = (
     let index = 0
     const runNext = (): Effect.Effect<Entity.Entity<any>, any, any> => {
       if (index >= routes.length) {
-        return Effect.succeed(Entity.make({ status: 404, message: "route not found" }, { status: 404 }))
+        return Effect.succeed(
+          Entity.make({ status: 404, message: "route not found" }, { status: 404 }),
+        )
       }
       const route = routes[index++]
       const descriptor = Route.descriptor(route)
-      if (descriptor.format && descriptor.format !== "*" && descriptor.format !== format) return runNext()
-      return Effect.gen(function*() {
+      if (descriptor.format && descriptor.format !== "*" && descriptor.format !== format)
+        return runNext()
+      return Effect.gen(function* () {
         const ref = yield* Route.RouteContext
         ref.context = { ...ref.context, ...descriptor }
-        return yield* (route.handler as Handler)(ref.context, Entity.effect(Effect.suspend(runNext)))
+        return yield* (route.handler as Handler)(
+          ref.context,
+          Entity.effect(Effect.suspend(runNext)),
+        )
       })
     }
-    return Effect.map(runNext(), (result) => Entity.isEntity(result) ? result : Entity.make(result, { status: 200 }))
+    return Effect.map(runNext(), (result) =>
+      Entity.isEntity(result) ? result : Entity.make(result, { status: 200 }),
+    )
   })
 
 const withRequest = (
   effect: Effect.Effect<HttpServerResponse.HttpServerResponse, unknown, any>,
 ): Effect.Effect<HttpServerResponse.HttpServerResponse, never, HttpRouter.Provided> =>
-  Effect
-    .gen(function*() {
-      const request = yield* HttpServerRequest.HttpServerRequest
-      return yield* effect.pipe(
-        Effect.provideService(Route.Request, request.source),
-        Effect.provideService(Route.RouteContext, { context: {} }),
-      )
-    })
-    .pipe(
-      Effect.interruptible,
-      Effect.catchCause((cause) =>
-        Cause.hasInterruptsOnly(cause)
-          ? Effect.failCause(Cause.fromReasons(cause.reasons.filter(Cause.isInterruptReason)))
-          : Effect.gen(function*() {
+  Effect.gen(function* () {
+    const request = yield* HttpServerRequest.HttpServerRequest
+    return yield* effect.pipe(
+      Effect.provideService(Route.Request, request.source),
+      Effect.provideService(Route.RouteContext, { context: {} }),
+    )
+  }).pipe(
+    Effect.interruptible,
+    Effect.catchCause((cause) =>
+      Cause.hasInterruptsOnly(cause)
+        ? Effect.failCause(Cause.fromReasons(cause.reasons.filter(Cause.isInterruptReason)))
+        : Effect.gen(function* () {
             yield* Effect.logError(cause)
             const status = (yield* HttpServerError.causeResponse(cause))[0].status
             const development = yield* Development.option
-            return errorResponse(status, Option.isSome(development) ? Cause.pretty(cause) : "Internal Server Error")
-          })
-      ),
-    )
+            return errorResponse(
+              status,
+              Option.isSome(development) ? Cause.pretty(cause) : "Internal Server Error",
+            )
+          }),
+    ),
+  )
 
 const httpHandler = (routes: Array<UnboundedRouteWithMethod>) => {
   const hasConcreteRoutes = routes.some((route) => !isWildcard(route))
@@ -196,9 +213,11 @@ const httpHandler = (routes: Array<UnboundedRouteWithMethod>) => {
       if (!isWildcard(route) || !hasConcreteRoutes) negotiable.add(format)
     }
   }
-  const mediaTypes = Object.keys(mediaTypeToFormat).filter((mediaType) => negotiable.has(mediaTypeToFormat[mediaType]!))
+  const mediaTypes = Object.keys(mediaTypeToFormat).filter((mediaType) =>
+    negotiable.has(mediaTypeToFormat[mediaType]!),
+  )
   return withRequest(
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const request = yield* HttpServerRequest.HttpServerRequest
       const mediaType = request.headers.accept
         ? ContentNegotiation.media(request.headers.accept, mediaTypes)[0]
@@ -209,10 +228,12 @@ const httpHandler = (routes: Array<UnboundedRouteWithMethod>) => {
       }
 
       const entity = yield* runRoutes(routes, format)
-      if (entity.status === 404 && entity.body === undefined) return errorResponse(406, "not acceptable")
+      if (entity.status === 404 && entity.body === undefined)
+        return errorResponse(406, "not acceptable")
       const context = yield* Effect.context<any>()
       let response = yield* toResponse(entity, format, context)
-      if (specificFormats.size > 1) response = HttpServerResponse.setHeader(response, "vary", "Accept")
+      if (specificFormats.size > 1)
+        response = HttpServerResponse.setHeader(response, "vary", "Accept")
       if (request.method === "HEAD" && response.body._tag === "Stream") {
         response = HttpServerResponse.empty({
           status: response.status,
@@ -228,19 +249,24 @@ const httpHandler = (routes: Array<UnboundedRouteWithMethod>) => {
 
 const websocketHandler = (routes: Array<UnboundedRouteWithMethod>) =>
   withRequest(
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const entity = yield* runRoutes(routes)
       const context = yield* Effect.context<any>()
       return yield* toResponse(entity, undefined, context)
     }),
   )
 
-export const register = (map: RouteMap.RouteMap, router: HttpRouter.HttpRouter): Effect.Effect<void> =>
-  Effect.gen(function*() {
+export const register = (
+  map: RouteMap.RouteMap,
+  router: HttpRouter.HttpRouter,
+): Effect.Effect<void> =>
+  Effect.gen(function* () {
     for (const path of Object.keys(map) as Array<PathPattern.PathPattern>) {
       const routes = Array.from(RouteMap.walk({ [path]: map[path] }))
       const methods = new Set<RouteMount.RouteMount.Method>(
-        routes.map((route) => Route.descriptor(route).method).filter((method) => method && method !== "*"),
+        routes
+          .map((route) => Route.descriptor(route).method)
+          .filter((method) => method && method !== "*"),
       )
       if (methods.size === 0 && routes.length > 0) methods.add("*")
       for (const method of methods) {
@@ -250,51 +276,63 @@ export const register = (map: RouteMap.RouteMap, router: HttpRouter.HttpRouter):
         })
         const concreteRoutes = methodRoutes.filter((route) => !isWildcard(route))
         const httpRoutes = methodRoutes.filter((route) => isWildcard(route) || !isWebSocket(route))
-        const websocketRoutes = methodRoutes.filter((route) => isWildcard(route) || isWebSocket(route))
-        const upgradeRequired = Effect.succeed(HttpServerResponse.empty({
-          status: 426,
-          headers: { upgrade: "websocket" },
-        }))
-        const http = concreteRoutes.length > 0 && concreteRoutes.every(isWebSocket)
-          ? upgradeRequired
-          : httpHandler(httpRoutes)
-        const hasWebSocketRoute = (concreteRoutes.length === 0 ? methodRoutes : concreteRoutes).some(isWebSocket)
-        const websocket = (method === "GET" || method === "*") && hasWebSocketRoute
-          ? websocketHandler(websocketRoutes)
-          : upgradeRequired
+        const websocketRoutes = methodRoutes.filter(
+          (route) => isWildcard(route) || isWebSocket(route),
+        )
+        const upgradeRequired = Effect.succeed(
+          HttpServerResponse.empty({
+            status: 426,
+            headers: { upgrade: "websocket" },
+          }),
+        )
+        const http =
+          concreteRoutes.length > 0 && concreteRoutes.every(isWebSocket)
+            ? upgradeRequired
+            : httpHandler(httpRoutes)
+        const hasWebSocketRoute = (
+          concreteRoutes.length === 0 ? methodRoutes : concreteRoutes
+        ).some(isWebSocket)
+        const websocket =
+          (method === "GET" || method === "*") && hasWebSocketRoute
+            ? websocketHandler(websocketRoutes)
+            : upgradeRequired
         yield* router.addAll([
-          HttpRouter.route(
-            method,
-            path,
-            (request) => {
-              if (request.method === "GET" && request.headers.upgrade?.toLowerCase() === "websocket") {
-                return websocket
-              }
-              return http
-            },
-          ),
+          HttpRouter.route(method, path, (request) => {
+            if (
+              request.method === "GET" &&
+              request.headers.upgrade?.toLowerCase() === "websocket"
+            ) {
+              return websocket
+            }
+            return http
+          }),
         ])
       }
     }
   })
 
 export const toHttpRouter = (map: RouteMap.RouteMap): Effect.Effect<HttpRouter.HttpRouter> =>
-  Effect.gen(function*() {
-    const router = yield* HttpRouter.make.pipe(Effect.provideService(HttpRouter.RouterConfig, {
-      caseSensitive: true,
-      ignoreTrailingSlash: true,
-      ignoreDuplicateSlashes: true,
-      maxParamLength: Infinity,
-    }))
+  Effect.gen(function* () {
+    const router = yield* HttpRouter.make.pipe(
+      Effect.provideService(HttpRouter.RouterConfig, {
+        caseSensitive: true,
+        ignoreTrailingSlash: true,
+        ignoreDuplicateSlashes: true,
+        maxParamLength: Infinity,
+      }),
+    )
     yield* register(map, router)
     return router
   })
 
 export const toWebHandlerWith =
   <R>(context: Context.Context<R>) =>
-  <const Routes extends Iterable<UnboundedRouteWithMethod>>(routes: RoutesProvidedBy<Routes, R>): Http.WebHandler => {
+  <const Routes extends Iterable<UnboundedRouteWithMethod>>(
+    routes: RoutesProvidedBy<Routes, R>,
+  ): Http.WebHandler => {
     const items = Array.from(routes)
-    const path = items.length === 0 ? "/*" : Route.descriptor<{ path?: string }>(items[0]).path ?? "/*"
+    const path =
+      items.length === 0 ? "/*" : (Route.descriptor<{ path?: string }>(items[0]).path ?? "/*")
     const existing = Context.getOrUndefined(context, HttpRouter.HttpRouter)
     const router = existing ?? Effect.runSyncWith(context)(toHttpRouter({}))
     Effect.runSyncWith(context)(register({ [path]: items }, router))
@@ -311,23 +349,27 @@ export const toWebHandler = <const Routes extends Iterable<UnboundedRouteWithMet
 ): Http.WebHandler => toWebHandlerWith(Context.empty())(routes)
 
 export const layerRoutes = () =>
-  Layer.effectDiscard(Effect.gen(function*() {
-    const router = yield* HttpRouter.HttpRouter
-    const routes = yield* Effect.serviceOption(Route.Routes)
-    if (Option.isSome(routes)) yield* register(routes.value, router)
-  }))
+  Layer.effectDiscard(
+    Effect.gen(function* () {
+      const router = yield* HttpRouter.HttpRouter
+      const routes = yield* Effect.serviceOption(Route.Routes)
+      if (Option.isSome(routes)) yield* register(routes.value, router)
+    }),
+  )
 
 export const layer = () =>
-  HttpServer
-    .serve(HttpRouter.HttpRouter.use((router) => Effect.suspend(() => router.asHttpEffect())))
-    .pipe(Layer.provideMerge(layerRouter()))
+  HttpServer.serve(
+    HttpRouter.HttpRouter.use((router) => Effect.suspend(() => router.asHttpEffect())),
+  ).pipe(Layer.provideMerge(layerRouter()))
 
 export const layerRouter = () =>
-  Layer.effectContext(Effect.gen(function*() {
-    const existing = yield* Effect.serviceOption(HttpRouter.HttpRouter)
-    if (Option.isSome(existing)) {
-      return Context.make(HttpRouter.HttpRouter, existing.value)
-    }
-    const routes = yield* Route.Routes
-    return Context.make(HttpRouter.HttpRouter, yield* toHttpRouter(routes))
-  }))
+  Layer.effectContext(
+    Effect.gen(function* () {
+      const existing = yield* Effect.serviceOption(HttpRouter.HttpRouter)
+      if (Option.isSome(existing)) {
+        return Context.make(HttpRouter.HttpRouter, existing.value)
+      }
+      const routes = yield* Route.Routes
+      return Context.make(HttpRouter.HttpRouter, yield* toHttpRouter(routes))
+    }),
+  )

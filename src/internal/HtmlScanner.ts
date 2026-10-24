@@ -1,9 +1,9 @@
 /**
- * Lightweight HTML scanner for finding and rewriting, intended to find assets
- * in code rendered by the routes.
+ * Lightweight HTML scanner for finding and rewriting, intended to find assets in code rendered by
+ * the routes.
  *
- * Handles most common, modern HTML5 without foreign content (mathml, svg),
- * templates, and possibly many more.
+ * Handles most common, modern HTML5 without foreign content (mathml, svg), templates, and possibly
+ * many more.
  */
 const TEXT = 0
 const TAG_OPEN = 1
@@ -104,9 +104,10 @@ function* tokenize(html: string): Generator<TokenizedElement> {
           start: attrNameStart,
           end: attrNameStart + attrName.length,
         },
-        valueSpan: attrValueStart > 0
-          ? { start: attrValueStart, end: attrValueStart + attrValue.length }
-          : undefined,
+        valueSpan:
+          attrValueStart > 0
+            ? { start: attrValueStart, end: attrValueStart + attrValue.length }
+            : undefined,
       })
       attrName = ""
       attrValue = ""
@@ -158,9 +159,7 @@ function* tokenize(html: string): Generator<TokenizedElement> {
         break
 
       case TAG_NAME:
-        if (
-          ch === " " || ch === "\t" || ch === "\n" || ch === "\r" || ch === "\f"
-        ) {
+        if (ch === " " || ch === "\t" || ch === "\n" || ch === "\r" || ch === "\f") {
           state = BEFORE_ATTR_NAME
           i++
         } else if (ch === "/") {
@@ -176,9 +175,7 @@ function* tokenize(html: string): Generator<TokenizedElement> {
         break
 
       case BEFORE_ATTR_NAME:
-        if (
-          ch === " " || ch === "\t" || ch === "\n" || ch === "\r" || ch === "\f"
-        ) {
+        if (ch === " " || ch === "\t" || ch === "\n" || ch === "\r" || ch === "\f") {
           i++
         } else if (ch === "/") {
           state = SELF_CLOSING
@@ -198,9 +195,7 @@ function* tokenize(html: string): Generator<TokenizedElement> {
         if (ch === "=") {
           state = BEFORE_ATTR_VALUE
           i++
-        } else if (
-          ch === " " || ch === "\t" || ch === "\n" || ch === "\r" || ch === "\f"
-        ) {
+        } else if (ch === " " || ch === "\t" || ch === "\n" || ch === "\r" || ch === "\f") {
           state = AFTER_ATTR_NAME
           i++
         } else if (ch === "/" || ch === ">") {
@@ -219,9 +214,7 @@ function* tokenize(html: string): Generator<TokenizedElement> {
         break
 
       case AFTER_ATTR_NAME:
-        if (
-          ch === " " || ch === "\t" || ch === "\n" || ch === "\r" || ch === "\f"
-        ) {
+        if (ch === " " || ch === "\t" || ch === "\n" || ch === "\r" || ch === "\f") {
           i++
         } else if (ch === "=") {
           state = BEFORE_ATTR_VALUE
@@ -244,11 +237,9 @@ function* tokenize(html: string): Generator<TokenizedElement> {
         break
 
       case BEFORE_ATTR_VALUE:
-        if (
-          ch === " " || ch === "\t" || ch === "\n" || ch === "\r" || ch === "\f"
-        ) {
+        if (ch === " " || ch === "\t" || ch === "\n" || ch === "\r" || ch === "\f") {
           i++
-        } else if (ch === "\"") {
+        } else if (ch === '"') {
           attrValueStart = i + 1
           state = ATTR_VALUE_DOUBLE_QUOTED
           i++
@@ -269,7 +260,7 @@ function* tokenize(html: string): Generator<TokenizedElement> {
         break
 
       case ATTR_VALUE_DOUBLE_QUOTED:
-        if (ch === "\"") {
+        if (ch === '"') {
           commitAttr()
           state = BEFORE_ATTR_NAME
           i++
@@ -291,9 +282,7 @@ function* tokenize(html: string): Generator<TokenizedElement> {
         break
 
       case ATTR_VALUE_UNQUOTED:
-        if (
-          ch === " " || ch === "\t" || ch === "\n" || ch === "\r" || ch === "\f"
-        ) {
+        if (ch === " " || ch === "\t" || ch === "\n" || ch === "\r" || ch === "\f") {
           commitAttr()
           state = BEFORE_ATTR_NAME
           i++
@@ -420,7 +409,7 @@ class MutableElement {
 
   get attributes(): IterableIterator<[string, string]> {
     const entries = this._attrs.entries()
-    return (function*() {
+    return (function* () {
       for (const [name, attr] of entries) {
         yield [name, attr.value] as [string, string]
       }
@@ -447,9 +436,8 @@ export const rewrite = (html: string): RewriteResult => {
       edits.sort((a, b) => b.offset - a.offset)
       let result = html
       for (const edit of edits) {
-        result = result.slice(0, edit.offset) +
-          edit.insert +
-          result.slice(edit.offset + edit.deleteCount)
+        result =
+          result.slice(0, edit.offset) + edit.insert + result.slice(edit.offset + edit.deleteCount)
       }
       return result
     },

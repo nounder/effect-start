@@ -2,10 +2,7 @@ import type { HtmlElemenetProps, HtmlElement, HtmlElementType, JSX } from "../sr
 
 const NoChildren: ReadonlyArray<never> = Object.freeze([])
 
-export function make(
-  type: HtmlElementType,
-  props: HtmlElemenetProps,
-): HtmlElement {
+export function make(type: HtmlElementType, props: HtmlElemenetProps): HtmlElement {
   return {
     type,
     props: {
@@ -19,10 +16,7 @@ export function isGenericJsxObject(value: unknown): value is {
   type: any
   props: any
 } {
-  return typeof value === "object" &&
-    value !== null &&
-    "type" in value &&
-    "props" in value
+  return typeof value === "object" && value !== null && "type" in value && "props" in value
 }
 
 const EMPTY_TAGS = [
@@ -50,7 +44,7 @@ let map = {
   "&": "amp",
   "<": "lt",
   ">": "gt",
-  "\"": "quot",
+  '"': "quot",
   "'": "#39",
 }
 
@@ -65,13 +59,10 @@ const serializeObjectProperty = (value: unknown): string | undefined => {
     return `[${value.map((item) => serializeObjectProperty(item) ?? "null").join(",")}]`
   }
   if (value && typeof value === "object") {
-    const props = Object
-      .entries(value)
+    const props = Object.entries(value)
       .flatMap(([key, prop]) => {
         const serialized = serializeObjectProperty(prop)
-        return serialized === undefined
-          ? []
-          : [`${JSON.stringify(key)}:${serialized}`]
+        return serialized === undefined ? [] : [`${JSON.stringify(key)}:${serialized}`]
       })
       .join(",")
     return `{${props}}`
@@ -79,10 +70,7 @@ const serializeObjectProperty = (value: unknown): string | undefined => {
   return JSON.stringify(value)
 }
 
-export function text(
-  node: JSX.Element,
-  hooks?: { onNode?: (node: HtmlElement) => void },
-): string {
+export function text(node: JSX.Element, hooks?: { onNode?: (node: HtmlElement) => void }): string {
   const stack: Array<any> = [node]
   let result = ""
 
@@ -172,9 +160,7 @@ export function text(
             typeof (c as any)?.["~effect-start/Html/TrustedHtml"] === "string"
               ? ((c as any)["~effect-start/Html/TrustedHtml"] as string)
               : String(c)
-          const rawText = Array.isArray(children)
-            ? children.map(toRaw).join("")
-            : toRaw(children)
+          const rawText = Array.isArray(children) ? children.map(toRaw).join("") : toRaw(children)
           result += escapeRawText(rawText)
         } else if (Array.isArray(children)) {
           for (let i = children.length - 1; i >= 0; i--) {
@@ -219,9 +205,7 @@ type HtmlValue =
   | ReadonlyArray<HtmlValue>
 
 const resolveValue = (value: HtmlValue): string => {
-  if (
-    value === null || value === undefined || value === false || value === true
-  ) return ""
+  if (value === null || value === undefined || value === false || value === true) return ""
   if (isTrustedHtml(value)) return value.toString()
   if (Array.isArray(value)) {
     return (value as Array<HtmlValue>).map(resolveValue).join("")

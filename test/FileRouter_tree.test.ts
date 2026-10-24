@@ -13,25 +13,17 @@ test.it("fails on overlapping routes from groups", async () => {
     .map(FileRouter.parseRoute)
     .filter((h): h is FileRouter.FileRoute => h !== null)
 
-  const exit = await FileRouter
-    .getFileRoutes(routes.map((h) => h.modulePath))
-    .pipe(
-      Effect.runPromiseExit,
-    )
+  const exit = await FileRouter.getFileRoutes(routes.map((h) => h.modulePath)).pipe(
+    Effect.runPromiseExit,
+  )
 
-  test
-    .expect(Exit.isFailure(exit))
-    .toBe(true)
+  test.expect(Exit.isFailure(exit)).toBe(true)
 
   if (Exit.isFailure(exit)) {
     const error = Result.getOrThrow(Cause.findError(exit.cause))
 
-    test
-      .expect(error.reason)
-      .toBe("Conflict")
-    test
-      .expect(error.path)
-      .toBe("/users")
+    test.expect(error.reason).toBe("Conflict")
+    test.expect(error.path).toBe("/users")
   }
 })
 
@@ -40,71 +32,49 @@ test.it("fails on overlapping routes with same path", async () => {
     .map(FileRouter.parseRoute)
     .filter((h): h is FileRouter.FileRoute => h !== null)
 
-  const exit = await FileRouter
-    .getFileRoutes(routes.map((h) => h.modulePath))
-    .pipe(
-      Effect.runPromiseExit,
-    )
+  const exit = await FileRouter.getFileRoutes(routes.map((h) => h.modulePath)).pipe(
+    Effect.runPromiseExit,
+  )
 
-  test
-    .expect(Exit.isFailure(exit))
-    .toBe(true)
+  test.expect(Exit.isFailure(exit)).toBe(true)
 
   if (Exit.isFailure(exit)) {
     const error = Result.getOrThrow(Cause.findError(exit.cause))
 
-    test
-      .expect(error.reason)
-      .toBe("Conflict")
-    test
-      .expect(error.path)
-      .toBe("/about")
+    test.expect(error.reason).toBe("Conflict")
+    test.expect(error.path).toBe("/about")
   }
 })
 
 test.it("import error renders as 500 response", () =>
-  Effect
-    .gen(function*() {
-      const context = yield* Effect.context<Development.Development>()
-      const tree = yield* FileRouter.fromFileRoutes({
-        "/broken": [() => Promise.reject(new Error("module not found"))],
-      })
-
-      const router = yield* RouteHttp.toHttpRouter(tree)
-      const client = TestHttpClient.fromRouter(router, context)
-
-      const entity = yield* client.get("http://localhost/broken")
-
-      test
-        .expect(entity.status)
-        .toBe(500)
-
-      const text = yield* entity.text
-
-      test
-        .expect(text)
-        .toContain("FileRouterError")
-      test
-        .expect(text)
-        .toContain("module not found")
+  Effect.gen(function* () {
+    const context = yield* Effect.context<Development.Development>()
+    const tree = yield* FileRouter.fromFileRoutes({
+      "/broken": [() => Promise.reject(new Error("module not found"))],
     })
-    .pipe(
-      Effect.provide(Development.layerTest),
-      Effect.runPromise,
-    ))
+
+    const router = yield* RouteHttp.toHttpRouter(tree)
+    const client = TestHttpClient.fromRouter(router, context)
+
+    const entity = yield* client.get("http://localhost/broken")
+
+    test.expect(entity.status).toBe(500)
+
+    const text = yield* entity.text
+
+    test.expect(text).toContain("FileRouterError")
+    test.expect(text).toContain("module not found")
+  }).pipe(Effect.provide(Development.layerTest), Effect.runPromise),
+)
 
 test.it("allows route and layer at same path", async () => {
   const routes = ["users/route.tsx", "users/layer.tsx"]
     .map(FileRouter.parseRoute)
     .filter((h): h is FileRouter.FileRoute => h !== null)
 
-  const exit = await FileRouter
-    .getFileRoutes(routes.map((h) => h.modulePath))
-    .pipe(
-      Effect.runPromiseExit,
-    )
+  const exit = await FileRouter.getFileRoutes(routes.map((h) => h.modulePath)).pipe(
+    Effect.runPromiseExit,
+  )
 
-  test
-    .expect(Exit.isSuccess(exit))
-    .toBe(true)
+  test.expect(Exit.isSuccess(exit)).toBe(true)
 })

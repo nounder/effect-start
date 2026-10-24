@@ -14,9 +14,7 @@ export function isStudioTrace(spans: Array<Tracing.Span>): boolean {
   return spans.some((span) => span.attributes[studioTraceAttribute] === true)
 }
 
-export function filterOutStudioSpans(
-  spans: Array<Tracing.Span>,
-): Array<Tracing.Span> {
+export function filterOutStudioSpans(spans: Array<Tracing.Span>): Array<Tracing.Span> {
   const hiddenTraceIds = new Set<string>()
 
   for (const span of spans) {
@@ -89,9 +87,9 @@ export type StudioEvent =
   | { readonly _tag: "Log"; readonly log: LogEntry }
   | { readonly _tag: "Error"; readonly error: ErrorEntry }
   | {
-    readonly _tag: "MetricsSnapshot"
-    readonly metrics: Array<MetricSnapshot>
-  }
+      readonly _tag: "MetricsSnapshot"
+      readonly metrics: Array<MetricSnapshot>
+    }
   | { readonly _tag: "ProcessSnapshot" }
 
 export interface FiberContext {
@@ -100,11 +98,7 @@ export interface FiberContext {
   readonly annotations: Record<string, unknown>
 }
 
-export type Write = Effect.Effect<
-  unknown,
-  SqlError.SqlError,
-  StudioSql.StudioSql
->
+export type Write = Effect.Effect<unknown, SqlError.SqlError, StudioSql.StudioSql>
 
 export interface State {
   readonly events: PubSub.PubSub<StudioEvent>
@@ -174,27 +168,22 @@ const DDL = [
     ON MetricSample(timestamp)`,
 ]
 
-function canonicalTags(
-  tags: ReadonlyArray<{ key: string; value: string }>,
-): string {
+function canonicalTags(tags: ReadonlyArray<{ key: string; value: string }>): string {
   const sorted = [...tags].sort((a, b) => a.key.localeCompare(b.key))
   return JSON.stringify(sorted)
 }
 
 function canonicalJson(value: unknown): string {
   if (Array.isArray(value)) {
-    return `[${value.map((item) => item === undefined ? "null" : canonicalJson(item)).join(",")}]`
+    return `[${value.map((item) => (item === undefined ? "null" : canonicalJson(item))).join(",")}]`
   }
   if (value !== null && typeof value === "object") {
     const record = value as Record<string, unknown>
-    return `{${
-      Object
-        .keys(record)
-        .filter((key) => record[key] !== undefined)
-        .sort()
-        .map((key) => `${JSON.stringify(key)}:${canonicalJson(record[key])}`)
-        .join(",")
-    }}`
+    return `{${Object.keys(record)
+      .filter((key) => record[key] !== undefined)
+      .sort()
+      .map((key) => `${JSON.stringify(key)}:${canonicalJson(record[key])}`)
+      .join(",")}}`
   }
   return JSON.stringify(value) ?? "null"
 }
@@ -217,7 +206,7 @@ function decodeTelemetryId(id: string | bigint | Uint8Array): string {
   return String(id)
 }
 
-export const setupDatabase = Effect.gen(function*() {
+export const setupDatabase = Effect.gen(function* () {
   const sql = yield* StudioSql.StudioSql
   for (const ddl of DDL) {
     yield* sql.unsafe(ddl)
@@ -317,7 +306,9 @@ function deserializeMetric(row: MetricSampleRow): MetricSnapshot {
     tags: JSON.parse(row.tags),
     timestamp: Number(row.timestamp),
     resource: row.resource ? JSON.parse(row.resource) : undefined,
-    instrumentationScope: row.instrumentationScope ? JSON.parse(row.instrumentationScope) : undefined,
+    instrumentationScope: row.instrumentationScope
+      ? JSON.parse(row.instrumentationScope)
+      : undefined,
   }
 }
 
@@ -330,9 +321,7 @@ export function deserializeSpan(row: SpanRow): Tracing.Span {
     fiberId: row.fiberId ?? undefined,
     name: row.name,
     kind: row.kind,
-    parentSpanId: row.parentSpanId != null
-      ? decodeTelemetryId(row.parentSpanId)
-      : undefined,
+    parentSpanId: row.parentSpanId != null ? decodeTelemetryId(row.parentSpanId) : undefined,
     startTime: BigInt(row.startTime),
     endTime: row.endTime ? BigInt(row.endTime) : undefined,
     durationMs: row.durationMs ?? undefined,
@@ -340,7 +329,9 @@ export function deserializeSpan(row: SpanRow): Tracing.Span {
     attributes: JSON.parse(row.attributes),
     events,
     resource: row.resource ? JSON.parse(row.resource) : undefined,
-    instrumentationScope: row.instrumentationScope ? JSON.parse(row.instrumentationScope) : undefined,
+    instrumentationScope: row.instrumentationScope
+      ? JSON.parse(row.instrumentationScope)
+      : undefined,
   }
 }
 
@@ -355,7 +346,9 @@ export function deserializeLog(row: LogRow): LogEntry {
     spans: JSON.parse(row.spans),
     annotations: JSON.parse(row.annotations),
     resource: row.resource ? JSON.parse(row.resource) : undefined,
-    instrumentationScope: row.instrumentationScope ? JSON.parse(row.instrumentationScope) : undefined,
+    instrumentationScope: row.instrumentationScope
+      ? JSON.parse(row.instrumentationScope)
+      : undefined,
   }
 }
 
@@ -373,31 +366,29 @@ export function deserializeError(row: ErrorRow): ErrorEntry {
 const withSql = <A, E>(
   f: (sql: SqlClient.SqlClient) => Effect.Effect<A, E>,
 ): Effect.Effect<A, E, StudioSql.StudioSql> =>
-  Effect.flatMap(StudioSql.StudioSql, f).pipe(
-    Effect.provideService(SqlClient.SafeIntegers, true),
-  )
+  Effect.flatMap(StudioSql.StudioSql, f).pipe(Effect.provideService(SqlClient.SafeIntegers, true))
 
 export function insertSpan(span: Tracing.Span) {
   return withSql(
     (sql) =>
-      sql`INSERT OR REPLACE INTO Span ${
-        sql.insert({
-          spanId: encodeTelemetryId(span.spanId),
-          traceId: encodeTelemetryId(span.traceId),
-          fiberId: span.fiberId ?? null,
-          name: span.name,
-          kind: span.kind,
-          parentSpanId: span.parentSpanId ? encodeTelemetryId(span.parentSpanId) : null,
-          startTime: span.startTime.toString(),
-          endTime: span.endTime?.toString() ?? null,
-          durationMs: span.durationMs ?? null,
-          status: span.status,
-          attributes: JSON.stringify(span.attributes),
-          events: JSON.stringify(serializeBigint(span.events)),
-          resource: span.resource ? JSON.stringify(span.resource) : null,
-          instrumentationScope: span.instrumentationScope ? JSON.stringify(span.instrumentationScope) : null,
-        })
-      }`,
+      sql`INSERT OR REPLACE INTO Span ${sql.insert({
+        spanId: encodeTelemetryId(span.spanId),
+        traceId: encodeTelemetryId(span.traceId),
+        fiberId: span.fiberId ?? null,
+        name: span.name,
+        kind: span.kind,
+        parentSpanId: span.parentSpanId ? encodeTelemetryId(span.parentSpanId) : null,
+        startTime: span.startTime.toString(),
+        endTime: span.endTime?.toString() ?? null,
+        durationMs: span.durationMs ?? null,
+        status: span.status,
+        attributes: JSON.stringify(span.attributes),
+        events: JSON.stringify(serializeBigint(span.events)),
+        resource: span.resource ? JSON.stringify(span.resource) : null,
+        instrumentationScope: span.instrumentationScope
+          ? JSON.stringify(span.instrumentationScope)
+          : null,
+      })}`,
   )
 }
 
@@ -419,45 +410,41 @@ export function updateSpan(span: Tracing.Span) {
 export function insertLog(log: LogEntry) {
   return withSql(
     (sql) =>
-      sql`INSERT INTO Log ${
-        sql.insert({
-          id: log.id,
-          timestamp: log.timestamp,
-          level: log.level,
-          message: log.message,
-          fiberId: log.fiberId,
-          cause: log.cause ?? null,
-          spans: JSON.stringify(log.spans),
-          annotations: JSON.stringify(log.annotations),
-          resource: log.resource ? JSON.stringify(log.resource) : null,
-          instrumentationScope: log.instrumentationScope ? JSON.stringify(log.instrumentationScope) : null,
-        })
-      }`,
+      sql`INSERT INTO Log ${sql.insert({
+        id: log.id,
+        timestamp: log.timestamp,
+        level: log.level,
+        message: log.message,
+        fiberId: log.fiberId,
+        cause: log.cause ?? null,
+        spans: JSON.stringify(log.spans),
+        annotations: JSON.stringify(log.annotations),
+        resource: log.resource ? JSON.stringify(log.resource) : null,
+        instrumentationScope: log.instrumentationScope
+          ? JSON.stringify(log.instrumentationScope)
+          : null,
+      })}`,
   )
 }
 
 export function insertError(error: ErrorEntry) {
   return withSql(
     (sql) =>
-      sql`INSERT INTO Error ${
-        sql.insert({
-          id: error.id,
-          fiberId: error.fiberId,
-          interrupted: error.interrupted ? 1 : 0,
-          prettyPrint: error.prettyPrint,
-          details: JSON.stringify(error.details),
-        })
-      }`,
+      sql`INSERT INTO Error ${sql.insert({
+        id: error.id,
+        fiberId: error.fiberId,
+        interrupted: error.interrupted ? 1 : 0,
+        prettyPrint: error.prettyPrint,
+        details: JSON.stringify(error.details),
+      })}`,
   )
 }
 
-export function insertMetrics(
-  snapshots: ReadonlyArray<MetricSnapshot>,
-) {
+export function insertMetrics(snapshots: ReadonlyArray<MetricSnapshot>) {
   if (snapshots.length === 0) return Effect.void
-  return withSql((sql) =>
-    sql`INSERT INTO MetricSample ${
-      sql.insert(
+  return withSql(
+    (sql) =>
+      sql`INSERT INTO MetricSample ${sql.insert(
         snapshots.map((s) => ({
           name: s.name,
           type: s.type,
@@ -465,10 +452,11 @@ export function insertMetrics(
           timestamp: s.timestamp,
           value: JSON.stringify(s.value),
           resource: s.resource ? canonicalJson(s.resource) : null,
-          instrumentationScope: s.instrumentationScope ? canonicalJson(s.instrumentationScope) : null,
+          instrumentationScope: s.instrumentationScope
+            ? canonicalJson(s.instrumentationScope)
+            : null,
         })),
-      )
-    }`
+      )}`,
   )
 }
 
@@ -481,15 +469,13 @@ export function upsertFiber(
 ) {
   return withSql(
     (sql) =>
-      sql`INSERT OR REPLACE INTO Fiber ${
-        sql.insert({
-          id,
-          parentId: parentId ?? null,
-          spanName: spanName ?? null,
-          traceId: traceId ?? null,
-          annotations: JSON.stringify(annotations),
-        })
-      }`,
+      sql`INSERT OR REPLACE INTO Fiber ${sql.insert({
+        id,
+        parentId: parentId ?? null,
+        spanName: spanName ?? null,
+        traceId: traceId ?? null,
+        annotations: JSON.stringify(annotations),
+      })}`,
   )
 }
 
@@ -497,24 +483,23 @@ export function upsertFiber(
 // the newest rows is a single delete below the (capacity + 1)-th largest id.
 // When the table holds at most capacity rows, the subquery yields NULL and
 // nothing matches.
-export function evict(
-  table: "Log" | "Error" | "MetricSample",
-  capacity: number,
-) {
-  return withSql((sql) =>
-    sql`DELETE FROM ${sql(table)} WHERE rowid <= (
+export function evict(table: "Log" | "Error" | "MetricSample", capacity: number) {
+  return withSql(
+    (sql) =>
+      sql`DELETE FROM ${sql(table)} WHERE rowid <= (
       SELECT rowid FROM ${sql(table)}
       ORDER BY rowid DESC LIMIT 1 OFFSET ${capacity}
-    )`
+    )`,
   )
 }
 
 export function evictSpans(capacity: number) {
-  return withSql((sql) =>
-    sql`DELETE FROM Span WHERE status != 'started' AND rowid <= (
+  return withSql(
+    (sql) =>
+      sql`DELETE FROM Span WHERE status != 'started' AND rowid <= (
       SELECT rowid FROM Span
       ORDER BY rowid DESC LIMIT 1 OFFSET ${capacity}
-    )`
+    )`,
   )
 }
 
@@ -528,7 +513,7 @@ export function runWrite(store: State, effect: Write) {
 // Events are published synchronously while writes are queued, so readers
 // reacting to an event must flush before querying to observe its data.
 export function flushWrites() {
-  return Effect.gen(function*() {
+  return Effect.gen(function* () {
     const studio = yield* StudioContext.Studio
     const done = yield* Deferred.make<void>()
     yield* Queue.offer(studio.store.writes, Deferred.succeed(done, undefined))
@@ -536,17 +521,15 @@ export function flushWrites() {
   })
 }
 
-const noTrace = <A, E, R>(
-  effect: Effect.Effect<A, E, R>,
-): Effect.Effect<A, E, R> => Effect.withTracerEnabled(effect, false)
+const noTrace = <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
+  Effect.withTracerEnabled(effect, false)
 
 export function allSpans() {
   return noTrace(
     withSql((sql) =>
-      Effect.map(
-        sql<SpanRow>`SELECT * FROM Span ORDER BY rowid`,
-        (rows) => rows.map(deserializeSpan),
-      )
+      Effect.map(sql<SpanRow>`SELECT * FROM Span ORDER BY rowid`, (rows) =>
+        rows.map(deserializeSpan),
+      ),
     ),
   )
 }
@@ -554,10 +537,7 @@ export function allSpans() {
 export function allLogs() {
   return noTrace(
     withSql((sql) =>
-      Effect.map(
-        sql<LogRow>`SELECT * FROM Log ORDER BY rowid`,
-        (rows) => rows.map(deserializeLog),
-      )
+      Effect.map(sql<LogRow>`SELECT * FROM Log ORDER BY rowid`, (rows) => rows.map(deserializeLog)),
     ),
   )
 }
@@ -566,34 +546,36 @@ export function spansByTraceId(traceId: string) {
   return noTrace(
     withSql((sql) =>
       Effect.map(
-        sql<
-          SpanRow
-        >`SELECT * FROM Span WHERE traceId = ${encodeTelemetryId(traceId)} ORDER BY rowid`,
+        sql<SpanRow>`SELECT * FROM Span WHERE traceId = ${encodeTelemetryId(traceId)} ORDER BY rowid`,
         (rows) => rows.map(deserializeSpan),
-      )
+      ),
     ),
   )
 }
 
 export function traceContainsFiber(traceId: string, fiberId: string) {
-  return noTrace(withSql((sql) =>
-    Effect.map(
-      sql`SELECT 1 FROM Span WHERE traceId = ${encodeTelemetryId(traceId)} AND fiberId = ${fiberId} LIMIT 1`,
-      (rows) => rows.length > 0,
-    )
-  ))
+  return noTrace(
+    withSql((sql) =>
+      Effect.map(
+        sql`SELECT 1 FROM Span WHERE traceId = ${encodeTelemetryId(traceId)} AND fiberId = ${fiberId} LIMIT 1`,
+        (rows) => rows.length > 0,
+      ),
+    ),
+  )
 }
 
 export function logsByTraceId(traceId: string) {
-  return noTrace(withSql((sql) =>
-    Effect.map(
-      sql<LogRow>`SELECT * FROM Log WHERE fiberId IN (
+  return noTrace(
+    withSql((sql) =>
+      Effect.map(
+        sql<LogRow>`SELECT * FROM Log WHERE fiberId IN (
         SELECT DISTINCT fiberId FROM Span
         WHERE traceId = ${encodeTelemetryId(traceId)} AND fiberId IS NOT NULL
       ) ORDER BY rowid`,
-      (rows) => rows.map(deserializeLog),
-    )
-  ))
+        (rows) => rows.map(deserializeLog),
+      ),
+    ),
+  )
 }
 
 export interface MetricSeries {
@@ -604,7 +586,7 @@ export interface MetricSeries {
 export function latestMetricsWithHistory(historyMs: number) {
   return noTrace(
     withSql((sql) =>
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const rows = yield* sql<MetricSampleRow>`
           SELECT * FROM MetricSample
           WHERE timestamp >= (
@@ -629,7 +611,7 @@ export function latestMetricsWithHistory(historyMs: number) {
           series.push({ latest: history[history.length - 1], history })
         }
         return series
-      })
+      }),
     ),
   )
 }
@@ -637,7 +619,7 @@ export function latestMetricsWithHistory(historyMs: number) {
 export function processSeries(historyMs: number) {
   return noTrace(
     withSql((sql) =>
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const rows = yield* sql<MetricSampleRow>`
           SELECT * FROM MetricSample
           WHERE name LIKE ${PROCESS_METRIC_PREFIX + "%"}
@@ -647,10 +629,7 @@ export function processSeries(historyMs: number) {
             )
           ORDER BY name, timestamp
         `
-        const history: Record<
-          string,
-          Array<{ timestamp: number; value: number }>
-        > = {}
+        const history: Record<string, Array<{ timestamp: number; value: number }>> = {}
         const latest: Record<string, number> = {}
         for (const row of rows) {
           const key = row.name.slice(PROCESS_METRIC_PREFIX.length)
@@ -664,7 +643,7 @@ export function processSeries(historyMs: number) {
           latest[key] = value
         }
         return { latest, history } satisfies ProcessSeries
-      })
+      }),
     ),
   )
 }

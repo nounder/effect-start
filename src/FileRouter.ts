@@ -1,3 +1,5 @@
+import * as NPath from "node:path"
+import * as NUrl from "node:url"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as FileSystem from "effect/FileSystem"
@@ -6,8 +8,6 @@ import * as Layer from "effect/Layer"
 import type * as PlatformError from "effect/PlatformError"
 import * as Result from "effect/Result"
 import * as Stream from "effect/Stream"
-import * as NPath from "node:path"
-import * as NUrl from "node:url"
 import * as Development from "./Development.ts"
 import * as FileRouterCodegen from "./FileRouterCodegen.ts"
 import * as FilePathPattern from "./internal/FilePathPattern.ts"
@@ -35,17 +35,17 @@ export type FileRouteMap = {
 
 export namespace FileRouteMap {
   /**
-   * Extracts the union of `R` requirements from every route reachable in a
-   * {@link FileRouteMap}. Mirrors {@link RouteMap.Context} but walks the
-   * lazy-loader stacks at each path. Excludes services marked with
-   * {@link Route.IntrinsicService} since they are provided automatically by
-   * the request runtime.
+   * Extracts the union of `R` requirements from every route reachable in a {@link FileRouteMap}.
+   * Mirrors {@link RouteMap.Context} but walks the lazy-loader stacks at each path. Excludes
+   * services marked with {@link Route.IntrinsicService} since they are provided automatically by the
+   * request runtime.
    */
   export type Context<T> = Exclude<
     {
       [K in keyof T]: T[K] extends ReadonlyArray<LazyRoute<infer S>>
-        ? S extends Iterable<Route.Route<any, any, any, any, infer R>> ? R
-        : never
+        ? S extends Iterable<Route.Route<any, any, any, any, infer R>>
+          ? R
+          : never
         : never
     }[keyof T],
     RouteMap.Provided
@@ -62,9 +62,10 @@ export type FileRoute = {
 
 /**
  * Routes sorted by depth, with rest parameters at the end.
- * - layer.tsx
- * - users/route.tsx
- * - users/[userId]/route.tsx
+ *
+ * - Layer.tsx
+ * - Users/route.tsx
+ * - Users/[userId]/route.tsx
  * - [[rest]]/route.tsx
  */
 export type OrderedFileRoutes = Array<FileRoute>
@@ -92,23 +93,19 @@ export function parseRoute(path: string): FileRoute | null {
   }
 }
 
-function importModule<T>(
-  load: () => Promise<T>,
-): Effect.Effect<T, FileRouterError> {
+function importModule<T>(load: () => Promise<T>): Effect.Effect<T, FileRouterError> {
   return Effect.tryPromise({
     try: () => load(),
     catch: (cause) => new FileRouterError({ reason: "Import", cause }),
   })
 }
 
-const normalizeFsPath = (path: string) => path.startsWith("file://") ? NUrl.fileURLToPath(path) : path
+const normalizeFsPath = (path: string) =>
+  path.startsWith("file://") ? NUrl.fileURLToPath(path) : path
 
 const defaultRoutesPath = () => NPath.join(NPath.dirname(process.argv[1]!), "routes")
 
-function makeRouteMap(
-  routesPath: string,
-  fileRoutes: OrderedFileRoutes,
-): FileRouteMap {
+function makeRouteMap(routesPath: string, fileRoutes: OrderedFileRoutes): FileRouteMap {
   const routeMap: FileRouteMap = {}
 
   for (const entry of FileRouterCodegen.getRouteEntries(fileRoutes)) {
@@ -126,11 +123,9 @@ function makeRouteMap(
 function mergeWithExisting(
   routeMap: RouteMap.RouteMap,
 ): Effect.Effect<RouteMap.RouteMap, never, Route.Routes> {
-  return Effect.gen(function*() {
+  return Effect.gen(function* () {
     const existing = yield* Effect.serviceOption(Route.Routes)
-    return existing._tag === "Some"
-      ? RouteMap.merge(existing.value, routeMap)
-      : routeMap
+    return existing._tag === "Some" ? RouteMap.merge(existing.value, routeMap) : routeMap
   })
 }
 
@@ -139,7 +134,7 @@ function layerMemory(routesPath: string) {
 
   return Layer.effect(
     Route.Routes,
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const fileRoutes = yield* walkRoutesDirectory(routesPath)
       const routeMap = yield* fromFileRoutes(makeRouteMap(routesPath, fileRoutes))
 
@@ -153,12 +148,13 @@ function layerGenerated(
     | (() => Promise<{ default: FileRouteMap }>)
     | { load: () => Promise<{ default: FileRouteMap }>; path: string },
 ) {
-  const options = typeof loadOrOptions === "function"
-    ? {
-      load: loadOrOptions,
-      path: defaultRoutesPath(),
-    }
-    : loadOrOptions
+  const options =
+    typeof loadOrOptions === "function"
+      ? {
+          load: loadOrOptions,
+          path: defaultRoutesPath(),
+        }
+      : loadOrOptions
   let treePath = normalizeFsPath(options.path)
   if (NPath.extname(treePath) === "") {
     treePath = NPath.join(treePath, ".server.ts")
@@ -170,7 +166,7 @@ function layerGenerated(
 
   return Layer.effect(
     Route.Routes,
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       yield* FileRouterCodegen.update(routesPath, treeFilename)
 
       const m = yield* importModule(options.load)
@@ -188,26 +184,14 @@ function layerGenerated(
   )
 }
 
-export function layer(): Layer.Layer<
-  Route.Routes,
-  FileRouterError,
-  FileSystem.FileSystem
->
+export function layer(): Layer.Layer<Route.Routes, FileRouterError, FileSystem.FileSystem>
 export function layer<const T extends FileRouteMap>(
   load: () => Promise<{ default: T }>,
-): Layer.Layer<
-  Route.Routes,
-  FileRouterError,
-  FileSystem.FileSystem | FileRouteMap.Context<T>
->
+): Layer.Layer<Route.Routes, FileRouterError, FileSystem.FileSystem | FileRouteMap.Context<T>>
 export function layer<const T extends FileRouteMap>(options: {
   load: () => Promise<{ default: T }>
   path: string
-}): Layer.Layer<
-  Route.Routes,
-  FileRouterError,
-  FileSystem.FileSystem | FileRouteMap.Context<T>
->
+}): Layer.Layer<Route.Routes, FileRouterError, FileSystem.FileSystem | FileRouteMap.Context<T>>
 export function layer(
   loadOrOptions?:
     | (() => Promise<{ default: FileRouteMap }>)
@@ -218,10 +202,8 @@ export function layer(
     : layerGenerated(loadOrOptions)
 }
 
-export function fromFileRoutes(
-  fileRoutes: FileRouteMap,
-): Effect.Effect<RouteMap.RouteMap> {
-  return Effect.gen(function*() {
+export function fromFileRoutes(fileRoutes: FileRouteMap): Effect.Effect<RouteMap.RouteMap> {
+  return Effect.gen(function* () {
     const mounts: RouteMap.RouteMapInput = {}
 
     for (const [path, loaders] of Object.entries(fileRoutes)) {
@@ -237,11 +219,9 @@ export function fromFileRoutes(
 
         if (Result.isFailure(result)) {
           const error = result.failure
-          for (
-            const route of Route.use(
-              Route.handle((): Effect.Effect<string, FileRouterError> => Effect.fail(error)),
-            )
-          ) {
+          for (const route of Route.use(
+            Route.handle((): Effect.Effect<string, FileRouterError> => Effect.fail(error)),
+          )) {
             allRoutes.push(route as Route.Route.With<{ method: string }>)
           }
         } else {
@@ -268,7 +248,7 @@ export function walkRoutesDirectory(
   PlatformError.PlatformError | FileRouterError,
   FileSystem.FileSystem
 > {
-  return Effect.gen(function*() {
+  return Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const files = yield* fs.readDirectory(dir, { recursive: true })
 
@@ -279,7 +259,7 @@ export function walkRoutesDirectory(
 export function getFileRoutes(
   paths: Array<string>,
 ): Effect.Effect<OrderedFileRoutes, FileRouterError> {
-  return Effect.gen(function*() {
+  return Effect.gen(function* () {
     const routes = paths
       .map((f) => f.replaceAll("\\", "/"))
       .map((f) => f.match(ROUTE_PATH_REGEX))
@@ -296,14 +276,8 @@ export function getFileRoutes(
       .toSorted((a, b) => {
         const aDepth = a.modulePath.split("/").filter(Boolean).length - 1
         const bDepth = b.modulePath.split("/").filter(Boolean).length - 1
-        const aHasRest = a
-          .routePath
-          .split("/")
-          .some((seg) => seg === "*")
-        const bHasRest = b
-          .routePath
-          .split("/")
-          .some((seg) => seg === "*")
+        const aHasRest = a.routePath.split("/").some((seg) => seg === "*")
+        const bHasRest = b.routePath.split("/").some((seg) => seg === "*")
 
         return (
           // rest is a dominant factor (routes with rest come last)

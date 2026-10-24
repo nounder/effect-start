@@ -1,4 +1,10 @@
-import { attribute, beginBatch, DATASTAR_FETCH_EVENT, DATASTAR_SIGNAL_PATCH_EVENT, endBatch } from "../engine.ts"
+import {
+  attribute,
+  beginBatch,
+  DATASTAR_FETCH_EVENT,
+  DATASTAR_SIGNAL_PATCH_EVENT,
+  endBatch,
+} from "../engine.ts"
 import { modifyTiming, modifyViewTransition } from "../utils.ts"
 
 attribute({
@@ -32,10 +38,7 @@ attribute({
         if (!el.contains(evt?.target as HTMLElement)) cb(evt)
       }
     }
-    if (
-      eventName === DATASTAR_FETCH_EVENT ||
-      eventName === DATASTAR_SIGNAL_PATCH_EVENT
-    ) {
+    if (eventName === DATASTAR_FETCH_EVENT || eventName === DATASTAR_SIGNAL_PATCH_EVENT) {
       target = document
     }
     const listener = (evt?: Event) => {

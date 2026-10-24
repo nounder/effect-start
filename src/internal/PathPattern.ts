@@ -1,12 +1,18 @@
 export type PathPattern = `/${string}`
 
-export type Params<T extends string> = string extends T ? Record<string, string>
-  : T extends `/${infer Rest}` ? Params<Rest>
-  : T extends `${infer Head}/${infer Tail}` ? Params<Head> & Params<Tail>
-  : T extends "*" ? { "*"?: string }
-  : T extends `:${infer Name}?` ? { [K in Name]?: string }
-  : T extends `:${infer Name}` ? { [K in Name]: string }
-  : {}
+export type Params<T extends string> = string extends T
+  ? Record<string, string>
+  : T extends `/${infer Rest}`
+    ? Params<Rest>
+    : T extends `${infer Head}/${infer Tail}`
+      ? Params<Head> & Params<Tail>
+      : T extends "*"
+        ? { "*"?: string }
+        : T extends `:${infer Name}?`
+          ? { [K in Name]?: string }
+          : T extends `:${infer Name}`
+            ? { [K in Name]: string }
+            : {}
 
 export function validate(path: string): { ok: true } | { ok: false; error: string } {
   if (!path.startsWith("/")) return { ok: false, error: `Expected an absolute path: "${path}"` }
@@ -50,17 +56,21 @@ export function match(pattern: string, path: string): Record<string, string> | n
   }
 
   const walk = (patternIndex: number, pathIndex: number): Record<string, string> | null => {
-    if (patternIndex === patternSegments.length) return pathIndex === pathSegments.length ? {} : null
+    if (patternIndex === patternSegments.length)
+      return pathIndex === pathSegments.length ? {} : null
     const segment = patternSegments[patternIndex]
     if (segment === "*") {
-      return pathIndex === pathSegments.length ? {} : { "*": pathSegments.slice(pathIndex).join("/") }
+      return pathIndex === pathSegments.length
+        ? {}
+        : { "*": pathSegments.slice(pathIndex).join("/") }
     }
     if (segment.startsWith(":")) {
       const optional = segment.endsWith("?")
       if (optional && patternIndex !== patternSegments.length - 1) return null
       if (pathIndex < pathSegments.length) {
         const next = walk(patternIndex + 1, pathIndex + 1)
-        if (next !== null) return { [segment.slice(1, optional ? -1 : undefined)]: pathSegments[pathIndex], ...next }
+        if (next !== null)
+          return { [segment.slice(1, optional ? -1 : undefined)]: pathSegments[pathIndex], ...next }
       }
       return optional ? walk(patternIndex + 1, pathIndex) : null
     }
@@ -79,14 +89,16 @@ export function compare(a: string, b: string): number {
     if (leftSegment === rightSegment) continue
     if (leftSegment === undefined) return -1
     if (rightSegment === undefined) return 1
-    const leftPriority = leftSegment === "*" ? 3 : leftSegment.endsWith("?") ? 2 : leftSegment.startsWith(":") ? 1 : 0
-    const rightPriority = rightSegment === "*"
-      ? 3
-      : rightSegment.endsWith("?")
-      ? 2
-      : rightSegment.startsWith(":")
-      ? 1
-      : 0
+    const leftPriority =
+      leftSegment === "*" ? 3 : leftSegment.endsWith("?") ? 2 : leftSegment.startsWith(":") ? 1 : 0
+    const rightPriority =
+      rightSegment === "*"
+        ? 3
+        : rightSegment.endsWith("?")
+          ? 2
+          : rightSegment.startsWith(":")
+            ? 1
+            : 0
     if (leftPriority !== rightPriority) return leftPriority - rightPriority
   }
   return a.localeCompare(b)

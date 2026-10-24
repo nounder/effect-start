@@ -22,32 +22,27 @@ import * as RouteHttp from "./RouteHttp.ts"
  *
  * **Ordering: dependents first, dependencies last.**
  *
- * @example
- * ```ts
- * // UserRepo needs Database, Database needs Logger
- * const AppLayer = Start.build(
- *   UserRepoLive,   // needs Database, Logger
- *   DatabaseLive,   // needs Logger
- *   LoggerLive,     // no deps
- * )
- * // Result: Layer<UserRepo | Database | Logger, never, never>
- * ```
- *
  * @since 1.0.0
- * @category constructors
+ * @category Constructors
+ * @example
+ *   ;```ts
+ *   // UserRepo needs Database, Database needs Logger
+ *   const AppLayer = Start.build(
+ *     UserRepoLive, // needs Database, Logger
+ *     DatabaseLive, // needs Logger
+ *     LoggerLive, // no deps
+ *   )
+ *   // Result: Layer<UserRepo | Database | Logger, never, never>
+ *   ```
  */
-export function build<
-  const Layers extends readonly [Layer.Any, ...Array<Layer.Any>],
->(
+export function build<const Layers extends readonly [Layer.Any, ...Array<Layer.Any>]>(
   ...layers: Layers & LayerExtra.Ordered<NoInfer<Layers>, NoInfer<Layers>>
 ): Layer.Layer<
   LayerExtra.LayersSuccess<Layers>,
   LayerExtra.LayersError<Layers>,
   LayerExtra.LayersContext<Layers>
 > {
-  return (LayerExtra.provideMergeAll as (...l: Array<Layer.Any>) => any)(
-    ...layers,
-  )
+  return (LayerExtra.provideMergeAll as (...l: Array<Layer.Any>) => any)(...layers)
 }
 
 type StartServices =
@@ -57,22 +52,17 @@ type StartServices =
   | ChildProcessSpawner.ChildProcessSpawner
 
 /**
- * Like `build`, but accepts layers in any order. Every layer's dependencies
- * must be satisfied by another layer or a service supplied by `serve`.
+ * Like `build`, but accepts layers in any order. Every layer's dependencies must be satisfied by
+ * another layer or a service supplied by `serve`.
  *
  * @example
- * ```ts
- * // These all produce the same result:
- * Start.pack(LoggerLive, DatabaseLive, UserRepoLive)
- * Start.pack(UserRepoLive, DatabaseLive, LoggerLive)
- * ```
+ *   ;```ts
+ *   // These all produce the same result:
+ *   Start.pack(LoggerLive, DatabaseLive, UserRepoLive)
+ *   Start.pack(UserRepoLive, DatabaseLive, LoggerLive)
+ *   ```
  */
-export function pack<
-  const Layers extends readonly [
-    Layer.Any,
-    ...Array<Layer.Any>,
-  ],
->(
+export function pack<const Layers extends readonly [Layer.Any, ...Array<Layer.Any>]>(
   ...layers: LayerExtra.Unordered<Layers, StartServices>
 ): Layer.Layer<
   LayerExtra.LayersSuccess<Layers>,
@@ -96,70 +86,59 @@ class StartError extends Data.TaggedError("StartError")<{
 }> {}
 
 export function serve<ROut, E, RIn extends AppRequirements>(
-  app:
-    | Layer.Layer<ROut, E, RIn>
-    | (() => Promise<{ default: Layer.Layer<ROut, E, RIn> }>),
+  app: Layer.Layer<ROut, E, RIn> | (() => Promise<{ default: Layer.Layer<ROut, E, RIn> }>),
 ) {
-  const appLayer = typeof app === "function"
-    ? Function.pipe(
-      Effect.tryPromise({
-        try: app,
-        catch: (cause) => new StartError({ cause }),
-      }),
-      Effect.map((v) => v.default),
-      Effect.orDie,
-      Layer.unwrap,
-    )
-    : app
+  const appLayer =
+    typeof app === "function"
+      ? Function.pipe(
+          Effect.tryPromise({
+            try: app,
+            catch: (cause) => new StartError({ cause }),
+          }),
+          Effect.map((v) => v.default),
+          Effect.orDie,
+          Layer.unwrap,
+        )
+      : app
 
   const appLayerResolved = Function.pipe(
     appLayer,
-    Layer.provideMerge(Layer.merge(
-      layerDev(),
-      Layer.effect(HttpRouter.HttpRouter, RouteHttp.toHttpRouter({})),
-    )),
+    Layer.provideMerge(
+      Layer.merge(layerDev(), Layer.effect(HttpRouter.HttpRouter, RouteHttp.toHttpRouter({}))),
+    ),
   )
 
   const composed = Function.pipe(
-    HttpServer.serve(HttpRouter.HttpRouter.use((router) => Effect.suspend(() => router.asHttpEffect()))),
+    HttpServer.serve(
+      HttpRouter.HttpRouter.use((router) => Effect.suspend(() => router.asHttpEffect())),
+    ),
     Layer.provide(RouteHttp.layerRoutes()),
     Layer.provideMerge(BunServer.layerStart()),
     BunServer.withLogAddress,
-    Layer.provide(
-      Function.pipe(
-        BundleRoute.layer(),
-        Layer.provideMerge(appLayerResolved),
-      ),
-    ),
+    Layer.provide(Function.pipe(BundleRoute.layer(), Layer.provideMerge(appLayerResolved))),
   ) as Layer.Layer<HttpServer.HttpServer, never, never>
 
-  return Function.pipe(
-    composed,
-    Layer.launch,
-    BunRuntime.runMain,
-  )
+  return Function.pipe(composed, Layer.launch, BunRuntime.runMain)
 }
 
 /**
  * Given module meta of an entrypoint that exports Start app, run it.
  *
  * @example
- * ```ts
- * // server.ts or other entrypoint
- * import { Start } from "effect-start"
+ *   ;```ts
+ *   // server.ts or other entrypoint
+ *   import { Start } from "effect-start"
  *
- * export default Start.pack(...)
+ *   export default Start.pack(...)
  *
- * Start.runMain(import.meta)
- * ```
+ *   Start.runMain(import.meta)
+ *   ```
  */
 export function runMain(meta: ImportMeta): void {
   if (meta.main) {
     serve(() => import(meta.url))
   } else {
     // eslint-disable-next-line no-console
-    console.warn(
-      `Start.runMain: ${meta.url} is not an entrypoint, skipping.`,
-    )
+    console.warn(`Start.runMain: ${meta.url} is not an entrypoint, skipping.`)
   }
 }

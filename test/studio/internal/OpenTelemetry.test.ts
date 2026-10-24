@@ -16,7 +16,7 @@ const timestampNano = "1710000000000000000"
 
 const studioLayer = Layer.effect(
   Studio.Studio,
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     return {
       path: "/studio",
       auth: undefined,
@@ -32,17 +32,11 @@ const studioLayer = Layer.effect(
 )
 
 function run<A>(effect: Effect.Effect<A, unknown, Studio.Studio | StudioSql.StudioSql>) {
-  return effect.pipe(
-    Effect.provide(Layer.merge(
-      studioLayer,
-      StudioSql.layer(),
-    )),
-    Effect.runPromise,
-  )
+  return effect.pipe(Effect.provide(Layer.merge(studioLayer, StudioSql.layer())), Effect.runPromise)
 }
 
 function request(signal: "traces" | "logs" | "metrics", body: BodyInit, headers: HeadersInit) {
-  return Effect.gen(function*() {
+  return Effect.gen(function* () {
     const context = yield* Effect.context<Studio.Studio | StudioSql.StudioSql>()
     const handler = RouteHttp.toWebHandlerWith(context)(
       Route.post(Route.handle(() => OpenTelemetry.handle(signal))),
@@ -56,7 +50,7 @@ function request(signal: "traces" | "logs" | "metrics", body: BodyInit, headers:
             body,
           }),
         ),
-      )
+      ),
     )
   })
 }
@@ -88,11 +82,7 @@ function fieldVarint(field: number, value: bigint): Uint8Array {
 }
 
 function fieldBytes(field: number, value: Uint8Array): Uint8Array {
-  return concat([
-    varint(BigInt((field << 3) | 2)),
-    varint(BigInt(value.length)),
-    value,
-  ])
+  return concat([varint(BigInt((field << 3) | 2)), varint(BigInt(value.length)), value])
 }
 
 function fieldString(field: number, value: string): Uint8Array {
@@ -116,10 +106,7 @@ function fieldDouble(field: number, value: number): Uint8Array {
 }
 
 function keyValue(key: string, value: string): Uint8Array {
-  return concat([
-    fieldString(1, key),
-    fieldBytes(2, fieldString(1, value)),
-  ])
+  return concat([fieldString(1, key), fieldBytes(2, fieldString(1, value))])
 }
 
 function resource(): Uint8Array {
@@ -127,20 +114,11 @@ function resource(): Uint8Array {
 }
 
 function scope(signal: Uint8Array): Uint8Array {
-  return concat([
-    fieldBytes(1, fieldString(1, "integration-test")),
-    fieldBytes(2, signal),
-  ])
+  return concat([fieldBytes(1, fieldString(1, "integration-test")), fieldBytes(2, signal)])
 }
 
 function resourceEnvelope(signal: Uint8Array): Uint8Array {
-  return fieldBytes(
-    1,
-    concat([
-      fieldBytes(1, resource()),
-      fieldBytes(2, scope(signal)),
-    ]),
-  )
+  return fieldBytes(1, concat([fieldBytes(1, resource()), fieldBytes(2, scope(signal))]))
 }
 
 function binaryTraceRequest(): Uint8Array {
@@ -187,173 +165,200 @@ function binaryMetricRequest(): Uint8Array {
 }
 
 const jsonTrace = {
-  resourceSpans: [{
-    resource: {
-      attributes: [{ key: "service.name", value: { stringValue: "checkout" } }],
+  resourceSpans: [
+    {
+      resource: {
+        attributes: [{ key: "service.name", value: { stringValue: "checkout" } }],
+      },
+      scopeSpans: [
+        {
+          scope: { name: "json-test", version: "1.0.0" },
+          spans: [
+            {
+              traceId,
+              spanId,
+              name: "GET /cart",
+              kind: 2,
+              startTimeUnixNano: timestampNano,
+              endTimeUnixNano: String(BigInt(timestampNano) + 10_000_000n),
+              attributes: [{ key: "http.response.status_code", value: { intValue: "500" } }],
+              events: [
+                {
+                  timeUnixNano: timestampNano,
+                  name: "exception",
+                  attributes: [{ key: "exception.type", value: { stringValue: "Error" } }],
+                },
+              ],
+              status: { code: 2, message: "failed" },
+            },
+          ],
+        },
+      ],
     },
-    scopeSpans: [{
-      scope: { name: "json-test", version: "1.0.0" },
-      spans: [{
-        traceId,
-        spanId,
-        name: "GET /cart",
-        kind: 2,
-        startTimeUnixNano: timestampNano,
-        endTimeUnixNano: String(BigInt(timestampNano) + 10_000_000n),
-        attributes: [{ key: "http.response.status_code", value: { intValue: "500" } }],
-        events: [{
-          timeUnixNano: timestampNano,
-          name: "exception",
-          attributes: [{ key: "exception.type", value: { stringValue: "Error" } }],
-        }],
-        status: { code: 2, message: "failed" },
-      }],
-    }],
-  }],
+  ],
 }
 
 const jsonLog = {
-  resourceLogs: [{
-    resource: {
-      attributes: [{ key: "service.name", value: { stringValue: "checkout" } }],
+  resourceLogs: [
+    {
+      resource: {
+        attributes: [{ key: "service.name", value: { stringValue: "checkout" } }],
+      },
+      scopeLogs: [
+        {
+          scope: { name: "json-test" },
+          logRecords: [
+            {
+              timeUnixNano: timestampNano,
+              severityNumber: 13,
+              severityText: "WARN",
+              body: { stringValue: "cart is almost full" },
+              attributes: [{ key: "cart.items", value: { intValue: "99" } }],
+              traceId,
+              spanId,
+            },
+          ],
+        },
+      ],
     },
-    scopeLogs: [{
-      scope: { name: "json-test" },
-      logRecords: [{
-        timeUnixNano: timestampNano,
-        severityNumber: 13,
-        severityText: "WARN",
-        body: { stringValue: "cart is almost full" },
-        attributes: [{ key: "cart.items", value: { intValue: "99" } }],
-        traceId,
-        spanId,
-      }],
-    }],
-  }],
+  ],
 }
 
 const jsonMetrics = {
-  resourceMetrics: [{
-    resource: {
-      attributes: [{ key: "service.name", value: { stringValue: "checkout" } }],
+  resourceMetrics: [
+    {
+      resource: {
+        attributes: [{ key: "service.name", value: { stringValue: "checkout" } }],
+      },
+      scopeMetrics: [
+        {
+          scope: { name: "json-test" },
+          metrics: [
+            {
+              name: "cart.items",
+              unit: "{item}",
+              gauge: {
+                dataPoints: [
+                  {
+                    attributes: [{ key: "region", value: { stringValue: "us" } }],
+                    startTimeUnixNano: String(BigInt(timestampNano) - 1_000_000n),
+                    timeUnixNano: timestampNano,
+                    asInt: "99",
+                    flags: 1,
+                    exemplars: [
+                      {
+                        filteredAttributes: [{ key: "sampled", value: { boolValue: true } }],
+                        timeUnixNano: timestampNano,
+                        asDouble: 98.5,
+                        spanId,
+                        traceId,
+                      },
+                    ],
+                  },
+                ],
+              },
+            },
+            {
+              name: "requests.total",
+              sum: {
+                aggregationTemporality: 2,
+                isMonotonic: true,
+                dataPoints: [{ timeUnixNano: timestampNano, asDouble: 12 }],
+              },
+            },
+            {
+              name: "request.duration",
+              histogram: {
+                aggregationTemporality: 2,
+                dataPoints: [
+                  {
+                    timeUnixNano: timestampNano,
+                    count: "2",
+                    sum: 6,
+                    bucketCounts: ["1", "1"],
+                    explicitBounds: [3],
+                    min: 2,
+                    max: 4,
+                  },
+                ],
+              },
+            },
+            {
+              name: "payload.size",
+              exponentialHistogram: {
+                aggregationTemporality: 1,
+                dataPoints: [
+                  {
+                    timeUnixNano: timestampNano,
+                    count: "2",
+                    sum: 6,
+                    scale: 1,
+                    zeroCount: "0",
+                    positive: { offset: 0, bucketCounts: ["1", "1"] },
+                    min: 2,
+                    max: 4,
+                  },
+                ],
+              },
+            },
+            {
+              name: "response.size",
+              summary: {
+                dataPoints: [
+                  {
+                    timeUnixNano: timestampNano,
+                    count: "2",
+                    sum: 6,
+                    quantileValues: [
+                      { quantile: 0, value: 2 },
+                      { quantile: 0.5, value: 3 },
+                      { quantile: 1, value: 4 },
+                    ],
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      ],
     },
-    scopeMetrics: [{
-      scope: { name: "json-test" },
-      metrics: [{
-        name: "cart.items",
-        unit: "{item}",
-        gauge: {
-          dataPoints: [{
-            attributes: [{ key: "region", value: { stringValue: "us" } }],
-            startTimeUnixNano: String(BigInt(timestampNano) - 1_000_000n),
-            timeUnixNano: timestampNano,
-            asInt: "99",
-            flags: 1,
-            exemplars: [{
-              filteredAttributes: [{ key: "sampled", value: { boolValue: true } }],
-              timeUnixNano: timestampNano,
-              asDouble: 98.5,
-              spanId,
-              traceId,
-            }],
-          }],
-        },
-      }, {
-        name: "requests.total",
-        sum: {
-          aggregationTemporality: 2,
-          isMonotonic: true,
-          dataPoints: [{ timeUnixNano: timestampNano, asDouble: 12 }],
-        },
-      }, {
-        name: "request.duration",
-        histogram: {
-          aggregationTemporality: 2,
-          dataPoints: [{
-            timeUnixNano: timestampNano,
-            count: "2",
-            sum: 6,
-            bucketCounts: ["1", "1"],
-            explicitBounds: [3],
-            min: 2,
-            max: 4,
-          }],
-        },
-      }, {
-        name: "payload.size",
-        exponentialHistogram: {
-          aggregationTemporality: 1,
-          dataPoints: [{
-            timeUnixNano: timestampNano,
-            count: "2",
-            sum: 6,
-            scale: 1,
-            zeroCount: "0",
-            positive: { offset: 0, bucketCounts: ["1", "1"] },
-            min: 2,
-            max: 4,
-          }],
-        },
-      }, {
-        name: "response.size",
-        summary: {
-          dataPoints: [{
-            timeUnixNano: timestampNano,
-            count: "2",
-            sum: 6,
-            quantileValues: [
-              { quantile: 0, value: 2 },
-              { quantile: 0.5, value: 3 },
-              { quantile: 1, value: 4 },
-            ],
-          }],
-        },
-      }],
-    }],
-  }],
+  ],
 }
 
 test.it("ingests OTLP/HTTP JSON traces, logs, and gzip-compressed metrics", () =>
-  run(Effect.gen(function*() {
-    yield* StudioStore.setupDatabase
+  run(
+    Effect.gen(function* () {
+      yield* StudioStore.setupDatabase
 
-    const traceResponse = yield* request("traces", JSON.stringify(jsonTrace), {
-      "content-type": "application/json",
-    })
-    const logResponse = yield* request("logs", JSON.stringify(jsonLog), {
-      "content-type": "application/json",
-    })
-    const metricResponse = yield* request("metrics", new Blob([Bun.gzipSync(JSON.stringify(jsonMetrics))]), {
-      "content-type": "application/json",
-      "content-encoding": "gzip",
-    })
+      const traceResponse = yield* request("traces", JSON.stringify(jsonTrace), {
+        "content-type": "application/json",
+      })
+      const logResponse = yield* request("logs", JSON.stringify(jsonLog), {
+        "content-type": "application/json",
+      })
+      const metricResponse = yield* request(
+        "metrics",
+        new Blob([Bun.gzipSync(JSON.stringify(jsonMetrics))]),
+        {
+          "content-type": "application/json",
+          "content-encoding": "gzip",
+        },
+      )
 
-    test
-      .expect(traceResponse.status)
-      .toBe(200)
+      test.expect(traceResponse.status).toBe(200)
 
-    const traceResponseJson = yield* Effect.promise(() => traceResponse.json())
+      const traceResponseJson = yield* Effect.promise(() => traceResponse.json())
 
-    test
-      .expect(traceResponseJson)
-      .toEqual({})
-    test
-      .expect(logResponse.status)
-      .toBe(200)
-    test
-      .expect(metricResponse.status)
-      .toBe(200)
+      test.expect(traceResponseJson).toEqual({})
+      test.expect(logResponse.status).toBe(200)
+      test.expect(metricResponse.status).toBe(200)
 
-    const spans = yield* StudioStore.allSpans()
-    const logs = yield* StudioStore.allLogs()
-    const metrics = yield* StudioStore.latestMetricsWithHistory(120_000)
+      const spans = yield* StudioStore.allSpans()
+      const logs = yield* StudioStore.allLogs()
+      const metrics = yield* StudioStore.latestMetricsWithHistory(120_000)
 
-    test
-      .expect(spans)
-      .toHaveLength(1)
-    test
-      .expect(spans[0])
-      .toMatchObject({
+      test.expect(spans).toHaveLength(1)
+      test.expect(spans[0]).toMatchObject({
         traceId,
         spanId,
         name: "GET /cart",
@@ -375,27 +380,17 @@ test.it("ingests OTLP/HTTP JSON traces, logs, and gzip-compressed metrics", () =
           droppedAttributesCount: 0,
         },
       })
-    test
-      .expect(spans[0].attributes)
-      .not
-      .toHaveProperty("service.name")
-    test
-      .expect(spans[0].attributes)
-      .not
-      .toHaveProperty("otel.scope.name")
-    test
-      .expect(spans[0].events)
-      .toEqual([{
-        name: "exception",
-        startTime: BigInt(timestampNano),
-        attributes: { "exception.type": "Error" },
-      }])
-    test
-      .expect(logs)
-      .toHaveLength(1)
-    test
-      .expect(logs[0])
-      .toMatchObject({
+      test.expect(spans[0].attributes).not.toHaveProperty("service.name")
+      test.expect(spans[0].attributes).not.toHaveProperty("otel.scope.name")
+      test.expect(spans[0].events).toEqual([
+        {
+          name: "exception",
+          startTime: BigInt(timestampNano),
+          attributes: { "exception.type": "Error" },
+        },
+      ])
+      test.expect(logs).toHaveLength(1)
+      test.expect(logs[0]).toMatchObject({
         timestamp: Number(BigInt(timestampNano) / 1_000_000n),
         level: "WARNING",
         message: "cart is almost full",
@@ -408,112 +403,88 @@ test.it("ingests OTLP/HTTP JSON traces, logs, and gzip-compressed metrics", () =
         resource: { attributes: { "service.name": "checkout" } },
         instrumentationScope: { name: "json-test" },
       })
-    test
-      .expect(logs[0].annotations)
-      .not
-      .toHaveProperty("service.name")
-    test
-      .expect(logs[0].annotations)
-      .not
-      .toHaveProperty("otel.scope.name")
-    test
-      .expect(metrics)
-      .toHaveLength(5)
+      test.expect(logs[0].annotations).not.toHaveProperty("service.name")
+      test.expect(logs[0].annotations).not.toHaveProperty("otel.scope.name")
+      test.expect(metrics).toHaveLength(5)
 
-    const cartItems = metrics.find((series) => series.latest.name === "cart.items")
+      const cartItems = metrics.find((series) => series.latest.name === "cart.items")
 
-    test
-      .expect(cartItems?.latest)
-      .toMatchObject({
+      test.expect(cartItems?.latest).toMatchObject({
         name: "cart.items",
         type: "gauge",
         value: 99,
         timestamp: Number(BigInt(timestampNano) / 1_000_000n),
       })
-    test
-      .expect(cartItems?.latest.tags)
-      .toEqual(test.expect.arrayContaining([
-        { key: "region", value: "us" },
-        { key: "otel.metric.unit", value: "{item}" },
+      test.expect(cartItems?.latest.tags).toEqual(
+        test.expect.arrayContaining([
+          { key: "region", value: "us" },
+          { key: "otel.metric.unit", value: "{item}" },
+          {
+            key: "otel.metric.start_time_unix_nano",
+            value: String(BigInt(timestampNano) - 1_000_000n),
+          },
+          { key: "otel.metric.flags", value: "1" },
+        ]),
+      )
+
+      const exemplars = cartItems?.latest.tags.find(
+        (tag) => tag.key === "otel.metric.exemplars",
+      )?.value
+
+      test.expect(exemplars && JSON.parse(exemplars)).toEqual([
         {
-          key: "otel.metric.start_time_unix_nano",
-          value: String(BigInt(timestampNano) - 1_000_000n),
+          filteredAttributes: { sampled: true },
+          timeUnixNano: timestampNano,
+          asDouble: 98.5,
+          spanId,
+          traceId,
         },
-        { key: "otel.metric.flags", value: "1" },
-      ]))
-
-    const exemplars = cartItems?.latest.tags.find((tag) => tag.key === "otel.metric.exemplars")?.value
-
-    test
-      .expect(exemplars && JSON.parse(exemplars))
-      .toEqual([{
-        filteredAttributes: { sampled: true },
-        timeUnixNano: timestampNano,
-        asDouble: 98.5,
-        spanId,
-        traceId,
-      }])
-    test
-      .expect(cartItems?.latest.resource)
-      .toMatchObject({
+      ])
+      test.expect(cartItems?.latest.resource).toMatchObject({
         attributes: { "service.name": "checkout" },
       })
-    test
-      .expect(cartItems?.latest.instrumentationScope)
-      .toMatchObject({ name: "json-test" })
-    test
-      .expect(cartItems?.latest.tags)
-      .not
-      .toContainEqual({ key: "service.name", value: "checkout" })
-    test
-      .expect(cartItems?.latest.tags.some((tag) => tag.key === "otel.scope.name"))
-      .toBe(false)
-    test
-      .expect(metrics.map((series) => [series.latest.name, series.latest.type]))
-      .toEqual([
+      test.expect(cartItems?.latest.instrumentationScope).toMatchObject({ name: "json-test" })
+      test
+        .expect(cartItems?.latest.tags)
+        .not.toContainEqual({ key: "service.name", value: "checkout" })
+      test.expect(cartItems?.latest.tags.some((tag) => tag.key === "otel.scope.name")).toBe(false)
+      test.expect(metrics.map((series) => [series.latest.name, series.latest.type])).toEqual([
         ["cart.items", "gauge"],
         ["payload.size", "histogram"],
         ["request.duration", "histogram"],
         ["requests.total", "counter"],
         ["response.size", "summary"],
       ])
-  })))
+    }),
+  ),
+)
 
 test.it("ingests binary protobuf from standard OTLP/HTTP exporters", () =>
-  run(Effect.gen(function*() {
-    yield* StudioStore.setupDatabase
-    for (
-      const [signal, body] of [
+  run(
+    Effect.gen(function* () {
+      yield* StudioStore.setupDatabase
+      for (const [signal, body] of [
         ["traces", binaryTraceRequest()],
         ["logs", binaryLogRequest()],
         ["metrics", binaryMetricRequest()],
-      ] as const
-    ) {
-      const response = yield* request(signal, new Blob([body.buffer as ArrayBuffer]), {
-        "content-type": "application/x-protobuf",
-      })
+      ] as const) {
+        const response = yield* request(signal, new Blob([body.buffer as ArrayBuffer]), {
+          "content-type": "application/x-protobuf",
+        })
 
-      test
-        .expect(response.status)
-        .toBe(200)
-      test
-        .expect(response.headers.get("content-type"))
-        .toBe("application/x-protobuf")
+        test.expect(response.status).toBe(200)
+        test.expect(response.headers.get("content-type")).toBe("application/x-protobuf")
 
-      const responseBody = yield* Effect.promise(() => response.arrayBuffer())
+        const responseBody = yield* Effect.promise(() => response.arrayBuffer())
 
-      test
-        .expect(responseBody.byteLength)
-        .toBe(0)
-    }
+        test.expect(responseBody.byteLength).toBe(0)
+      }
 
-    const spans = yield* StudioStore.allSpans()
-    const logs = yield* StudioStore.allLogs()
-    const metrics = yield* StudioStore.latestMetricsWithHistory(120_000)
+      const spans = yield* StudioStore.allSpans()
+      const logs = yield* StudioStore.allLogs()
+      const metrics = yield* StudioStore.latestMetricsWithHistory(120_000)
 
-    test
-      .expect(spans[0])
-      .toMatchObject({
+      test.expect(spans[0]).toMatchObject({
         traceId,
         spanId,
         name: "POST /orders",
@@ -525,183 +496,168 @@ test.it("ingests binary protobuf from standard OTLP/HTTP exporters", () =>
         resource: { attributes: { "service.name": "checkout" } },
         instrumentationScope: { name: "integration-test" },
       })
-    test
-      .expect(logs[0])
-      .toMatchObject({
+      test.expect(logs[0]).toMatchObject({
         level: "ERROR",
         message: "payment failed",
         cause: "declined",
       })
-    test
-      .expect(metrics[0].latest)
-      .toMatchObject({
+      test.expect(metrics[0].latest).toMatchObject({
         name: "queue.depth",
         type: "gauge",
         value: 7.5,
       })
-    test
-      .expect(metrics[0].latest.tags)
-      .toContainEqual({ key: "otel.metric.flags", value: "3" })
-  })))
+      test.expect(metrics[0].latest.tags).toContainEqual({ key: "otel.metric.flags", value: "3" })
+    }),
+  ),
+)
 
 test.it("returns an OTLP partial-success response for invalid spans", () =>
-  run(Effect.gen(function*() {
-    yield* StudioStore.setupDatabase
-    const response = yield* request(
-      "traces",
-      JSON.stringify({
-        resourceSpans: [{
-          scopeSpans: [{
-            spans: [{ traceId: "invalid", spanId, name: "invalid" }],
-          }],
-        }],
-      }),
-      { "content-type": "application/json" },
-    )
+  run(
+    Effect.gen(function* () {
+      yield* StudioStore.setupDatabase
+      const response = yield* request(
+        "traces",
+        JSON.stringify({
+          resourceSpans: [
+            {
+              scopeSpans: [
+                {
+                  spans: [{ traceId: "invalid", spanId, name: "invalid" }],
+                },
+              ],
+            },
+          ],
+        }),
+        { "content-type": "application/json" },
+      )
 
-    test
-      .expect(response.status)
-      .toBe(200)
+      test.expect(response.status).toBe(200)
 
-    const responseJson = yield* Effect.promise(() => response.json())
+      const responseJson = yield* Effect.promise(() => response.json())
 
-    test
-      .expect(responseJson)
-      .toEqual({
+      test.expect(responseJson).toEqual({
         partialSuccess: {
           rejectedSpans: "1",
           errorMessage: "1 invalid traces item was rejected",
         },
       })
-    test
-      .expect(yield* StudioStore.allSpans())
-      .toEqual([])
-  })))
+      test.expect(yield* StudioStore.allSpans()).toEqual([])
+    }),
+  ),
+)
 
 test.it("returns protocol errors in the requested OTLP encoding", () =>
-  run(Effect.gen(function*() {
-    yield* StudioStore.setupDatabase
-    const malformedJson = yield* request("traces", "{", { "content-type": "application/json" })
+  run(
+    Effect.gen(function* () {
+      yield* StudioStore.setupDatabase
+      const malformedJson = yield* request("traces", "{", { "content-type": "application/json" })
 
-    test
-      .expect(malformedJson.status)
-      .toBe(400)
-    test
-      .expect(malformedJson.headers.get("content-type"))
-      .toBe("application/json")
+      test.expect(malformedJson.status).toBe(400)
+      test.expect(malformedJson.headers.get("content-type")).toBe("application/json")
 
-    const malformedJsonBody = yield* Effect.promise(() => malformedJson.json())
+      const malformedJsonBody = yield* Effect.promise(() => malformedJson.json())
 
-    test
-      .expect(malformedJsonBody)
-      .toMatchObject({ code: 3 })
+      test.expect(malformedJsonBody).toMatchObject({ code: 3 })
 
-    const malformedProto = yield* request("traces", new Blob([Uint8Array.of(0x80)]), {
-      "content-type": "application/x-protobuf",
-    })
+      const malformedProto = yield* request("traces", new Blob([Uint8Array.of(0x80)]), {
+        "content-type": "application/x-protobuf",
+      })
 
-    test
-      .expect(malformedProto.status)
-      .toBe(400)
-    test
-      .expect(malformedProto.headers.get("content-type"))
-      .toBe("application/x-protobuf")
+      test.expect(malformedProto.status).toBe(400)
+      test.expect(malformedProto.headers.get("content-type")).toBe("application/x-protobuf")
 
-    const malformedProtoBody = new Uint8Array(
-      yield* Effect.promise(() => malformedProto.arrayBuffer()),
-    )
+      const malformedProtoBody = new Uint8Array(
+        yield* Effect.promise(() => malformedProto.arrayBuffer()),
+      )
 
-    test
-      .expect(Array.from(malformedProtoBody.slice(0, 2)))
-      .toEqual([8, 3])
+      test.expect(Array.from(malformedProtoBody.slice(0, 2))).toEqual([8, 3])
 
-    const malformedGzip = yield* request("logs", "not gzip", {
-      "content-type": "application/json",
-      "content-encoding": "gzip",
-    })
+      const malformedGzip = yield* request("logs", "not gzip", {
+        "content-type": "application/json",
+        "content-encoding": "gzip",
+      })
 
-    test
-      .expect(malformedGzip.status)
-      .toBe(400)
+      test.expect(malformedGzip.status).toBe(400)
 
-    const unsupportedEncoding = yield* request("metrics", "{}", {
-      "content-type": "application/json",
-      "content-encoding": "br",
-    })
+      const unsupportedEncoding = yield* request("metrics", "{}", {
+        "content-type": "application/json",
+        "content-encoding": "br",
+      })
 
-    test
-      .expect(unsupportedEncoding.status)
-      .toBe(415)
+      test.expect(unsupportedEncoding.status).toBe(415)
 
-    const unsupportedContentType = yield* request("metrics", "{}", {
-      "content-type": "text/plain",
-    })
+      const unsupportedContentType = yield* request("metrics", "{}", {
+        "content-type": "text/plain",
+      })
 
-    test
-      .expect(unsupportedContentType.status)
-      .toBe(415)
+      test.expect(unsupportedContentType.status).toBe(415)
 
-    const oversized = yield* request("metrics", "{}", {
-      "content-type": "application/json",
-      "content-length": String(64 * 1024 * 1024 + 1),
-    })
+      const oversized = yield* request("metrics", "{}", {
+        "content-type": "application/json",
+        "content-length": String(64 * 1024 * 1024 + 1),
+      })
 
-    test
-      .expect(oversized.status)
-      .toBe(413)
-  })))
+      test.expect(oversized.status).toBe(413)
+    }),
+  ),
+)
 
 test.it("rejects malformed nested protobuf messages and packed metric fields", () =>
-  run(Effect.gen(function*() {
-    yield* StudioStore.setupDatabase
+  run(
+    Effect.gen(function* () {
+      yield* StudioStore.setupDatabase
 
-    const malformedSpan = concat([
-      fieldBytes(1, Uint8Array.fromHex(traceId)),
-      fieldBytes(2, Uint8Array.fromHex(spanId)),
-      Uint8Array.of((7 << 3) | 1, 0),
-    ])
-    const traceResponse = yield* request("traces", new Blob([resourceEnvelope(malformedSpan).slice()]), {
-      "content-type": "application/x-protobuf",
-    })
-
-    test
-      .expect(traceResponse.status)
-      .toBe(400)
-
-    const traceError = new TextDecoder().decode(
-      yield* Effect.promise(() => traceResponse.arrayBuffer()),
-    )
-
-    test
-      .expect(traceError)
-      .toContain(
-        "[\"resourceSpans\"][0][\"scopeSpans\"][0][\"spans\"][0][\"protobufField(7)\"]",
+      const malformedSpan = concat([
+        fieldBytes(1, Uint8Array.fromHex(traceId)),
+        fieldBytes(2, Uint8Array.fromHex(spanId)),
+        Uint8Array.of((7 << 3) | 1, 0),
+      ])
+      const traceResponse = yield* request(
+        "traces",
+        new Blob([resourceEnvelope(malformedSpan).slice()]),
+        {
+          "content-type": "application/x-protobuf",
+        },
       )
 
-    const point = concat([
-      fieldFixed64(3, BigInt(timestampNano)),
-      fieldFixed64(4, 1n),
-      fieldBytes(6, Uint8Array.of(1)),
-    ])
-    const metric = concat([
-      fieldString(1, "malformed.histogram"),
-      fieldBytes(9, fieldBytes(1, point)),
-    ])
-    const metricResponse = yield* request("metrics", new Blob([resourceEnvelope(metric).slice()]), {
-      "content-type": "application/x-protobuf",
-    })
+      test.expect(traceResponse.status).toBe(400)
 
-    test
-      .expect(metricResponse.status)
-      .toBe(400)
-
-    const metricError = new TextDecoder().decode(
-      yield* Effect.promise(() => metricResponse.arrayBuffer()),
-    )
-
-    test
-      .expect(metricError)
-      .toContain(
-        "[\"resourceMetrics\"][0][\"scopeMetrics\"][0][\"metrics\"][0][\"histogram\"][\"dataPoints\"][0][\"bucketCounts\"]",
+      const traceError = new TextDecoder().decode(
+        yield* Effect.promise(() => traceResponse.arrayBuffer()),
       )
-  })))
+
+      test
+        .expect(traceError)
+        .toContain('["resourceSpans"][0]["scopeSpans"][0]["spans"][0]["protobufField(7)"]')
+
+      const point = concat([
+        fieldFixed64(3, BigInt(timestampNano)),
+        fieldFixed64(4, 1n),
+        fieldBytes(6, Uint8Array.of(1)),
+      ])
+      const metric = concat([
+        fieldString(1, "malformed.histogram"),
+        fieldBytes(9, fieldBytes(1, point)),
+      ])
+      const metricResponse = yield* request(
+        "metrics",
+        new Blob([resourceEnvelope(metric).slice()]),
+        {
+          "content-type": "application/x-protobuf",
+        },
+      )
+
+      test.expect(metricResponse.status).toBe(400)
+
+      const metricError = new TextDecoder().decode(
+        yield* Effect.promise(() => metricResponse.arrayBuffer()),
+      )
+
+      test
+        .expect(metricError)
+        .toContain(
+          '["resourceMetrics"][0]["scopeMetrics"][0]["metrics"][0]["histogram"]["dataPoints"][0]["bucketCounts"]',
+        )
+    }),
+  ),
+)

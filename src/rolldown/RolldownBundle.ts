@@ -53,7 +53,7 @@ export const buildServer = (config: BuildOptions | string) => {
 export function build(
   config: BuildOptions,
 ): Effect.Effect<Bundle.BundleContext, Bundle.BundleError> {
-  return Effect.gen(function*() {
+  return Effect.gen(function* () {
     const {
       entrypoints: entrypointConfig,
       output: outputConfig,
@@ -96,10 +96,10 @@ export function build(
 function mutableContext(
   buildEffect: Effect.Effect<Bundle.BundleContext, Bundle.BundleError>,
 ): Effect.Effect<Bundle.BundleContext, Bundle.BundleError> {
-  return Effect.gen(function*() {
+  return Effect.gen(function* () {
     let current = yield* buildEffect
     const rebuild = () =>
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         current = yield* buildEffect
         return current
       })
@@ -112,9 +112,7 @@ function mutableContext(
   })
 }
 
-export function layer(
-  config: BuildOptions,
-): Layer.Layer<Bundle.Bundle, Bundle.BundleError>
+export function layer(config: BuildOptions): Layer.Layer<Bundle.Bundle, Bundle.BundleError>
 export function layer<T>(
   tag: Context.Key<T, Bundle.BundleContext>,
   config: BuildOptions,
@@ -127,14 +125,14 @@ export function layer(tagOrConfig: any, maybeConfig?: BuildOptions) {
 }
 
 function makeEntrypointSource(item: OutputItem): string | undefined {
-  return item.type === "chunk" && item.isEntry ? item.facadeModuleId ?? undefined : undefined
+  return item.type === "chunk" && item.isEntry ? (item.facadeModuleId ?? undefined) : undefined
 }
 
 function makeEntrypoints(
   paired: Array<BundleHelpers.EntrypointPair>,
   output: rolldown.RolldownOutput,
 ): Effect.Effect<Record<string, string>, Bundle.BundleError> {
-  return Effect.gen(function*() {
+  return Effect.gen(function* () {
     const entrypointIds = new Set(paired.map((p) => p.id))
     const artifactPathByEntrypoint = new Map<string, string>()
     for (const item of output.output) {

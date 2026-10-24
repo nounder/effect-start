@@ -8,8 +8,7 @@ watcher({
       throw error("PatchSignalsExpectedSignals")
     }
 
-    const ifMissing = typeof onlyIfMissing === "string" &&
-      onlyIfMissing.trim() === "true"
+    const ifMissing = typeof onlyIfMissing === "string" && onlyIfMissing.trim() === "true"
     mergePatch(jsStrToObject(signals), { ifMissing })
   },
 })

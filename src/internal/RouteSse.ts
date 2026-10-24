@@ -46,64 +46,52 @@ type SseHandlerInput<B, E, R> =
   | Stream.Stream<SseEvent, E, R>
   | Effect.Effect<Stream.Stream<SseEvent, E, R>, E, R>
   | ((
-    context: Values.Simplify<B>,
-    next: Entity.Entity<string, never>,
-  ) =>
-    | Stream.Stream<SseEvent, E, R>
-    | Effect.Effect<Stream.Stream<SseEvent, E, R>, E, R>
-    | Generator<
-      Effect.Effect<unknown, E, R>,
-      Stream.Stream<SseEvent, E, R>,
-      unknown
-    >)
+      context: Values.Simplify<B>,
+      next: Entity.Entity<string, never>,
+    ) =>
+      | Stream.Stream<SseEvent, E, R>
+      | Effect.Effect<Stream.Stream<SseEvent, E, R>, E, R>
+      | Generator<Effect.Effect<unknown, E, R>, Stream.Stream<SseEvent, E, R>, unknown>)
 
 /**
  * Server-sent events (SSE) with heartbeats to keep connection alive.
  *
  * @example
- * ```ts
- * Route.sse(
+ *   ```ts
+ *   Route.sse(
  *   Stream.fromIterable([
- *     {
- *       // pass custom event
- *       event: "content",
- *       // data with new lines is safely formatted and prefixed with data:
- *       data: "# intro \n hi guys"
- *     },
- *     {
- *       event: ""datastar-patch-elements"",
- *       // you can also pass array when each element is a new line
- *       data: [
- *         "selector #page",
- *          // note to properly handle multi-line html.
- *          // a simple replaceAll("\n", "") could work but may break
- *          // if js is embedded and doesn't use semicolons.
- *         Html.split("\n").map((v) => `elements ${v}`).join("\n"),
- *       ]
- *     },
+ *   {
+ *   // pass custom event
+ *   event: "content",
+ *   // data with new lines is safely formatted and prefixed with data:
+ *   data: "# intro \n hi guys"
+ *   },
+ *   {
+ *   event: ""datastar-patch-elements"",
+ *   // you can also pass array when each element is a new line
+ *   data: [
+ *   "selector #page",
+ *   // note to properly handle multi-line html.
+ *   // a simple replaceAll("\n", "") could work but may break
+ *   // if js is embedded and doesn't use semicolons.
+ *   Html.split("\n").map((v) => `elements ${v}`).join("\n"),
+ *   ]
+ *   },
  *   ])
- * )
- * ```
+ *   )
+ *   ```
  */
 export function sse<D, B, I extends Route.Route.Tuple, E = never, R = never>(
-  handler: SseHandlerInput<
-    NoInfer<D & B & Route.ExtractBindings<I> & { format: "sse" }>,
-    E,
-    R
-  >,
+  handler: SseHandlerInput<NoInfer<D & B & Route.ExtractBindings<I> & { format: "sse" }>, E, R>,
 ) {
-  return function(self: Route.RouteSet<D, B, I>) {
+  return function (self: Route.RouteSet<D, B, I>) {
     const sseHandler: Route.Route.Handler<
       D & B & Route.ExtractBindings<I> & { format: "sse" },
       Stream.Stream<string, E, R>,
       E,
       R
     > = (ctx, _next) => {
-      const getStream = (): Effect.Effect<
-        Stream.Stream<SseEvent, E, R>,
-        E,
-        R
-      > => {
+      const getStream = (): Effect.Effect<Stream.Stream<SseEvent, E, R>, E, R> => {
         if (typeof handler === "function") {
           const result = (handler as Function)(ctx, _next)
           if (StreamExtra.isStream(result)) {
@@ -112,7 +100,7 @@ export function sse<D, B, I extends Route.Route.Tuple, E = never, R = never>(
           if (Effect.isEffect(result)) {
             return result as Effect.Effect<Stream.Stream<SseEvent, E, R>, E, R>
           }
-          return Effect.gen(function*() {
+          return Effect.gen(function* () {
             return yield* result
           }) as Effect.Effect<Stream.Stream<SseEvent, E, R>, E, R>
         }
@@ -127,12 +115,10 @@ export function sse<D, B, I extends Route.Route.Tuple, E = never, R = never>(
 
       return Effect.map(getStream(), (eventStream) => {
         const formattedStream = Stream.map(eventStream, formatSseEvent)
-        const heartbeat = Stream
-          .repeat(
-            Stream.succeed(HEARTBEAT),
-            Schedule.spaced(HEARTBEAT_INTERVAL),
-          )
-          .pipe(Stream.drop(1))
+        const heartbeat = Stream.repeat(
+          Stream.succeed(HEARTBEAT),
+          Schedule.spaced(HEARTBEAT_INTERVAL),
+        ).pipe(Stream.drop(1))
         const merged = Stream.merge(formattedStream, heartbeat, {
           haltStrategy: "left",
         })
@@ -146,29 +132,20 @@ export function sse<D, B, I extends Route.Route.Tuple, E = never, R = never>(
       })
     }
 
-    const route = Route.make<
-      { format: "sse" },
-      {},
-      Stream.Stream<string, E, R>,
-      E,
-      R
-    >(
+    const route = Route.make<{ format: "sse" }, {}, Stream.Stream<string, E, R>, E, R>(
       sseHandler as any,
       { format: "sse" },
     )
 
-    const items: [
-      ...I,
-      Route.Route<{ format: "sse" }, {}, Stream.Stream<string, E, R>, E, R>,
-    ] = [...Route.items(self), route]
+    const items: [...I, Route.Route<{ format: "sse" }, {}, Stream.Stream<string, E, R>, E, R>] = [
+      ...Route.items(self),
+      route,
+    ]
 
     return Route.set<
       D,
       B,
-      [
-        ...I,
-        Route.Route<{ format: "sse" }, {}, Stream.Stream<string, E, R>, E, R>,
-      ]
+      [...I, Route.Route<{ format: "sse" }, {}, Stream.Stream<string, E, R>, E, R>]
     >(items, Route.descriptor(self))
   }
 }

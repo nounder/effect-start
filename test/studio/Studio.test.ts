@@ -24,283 +24,232 @@ const studioLayer = Start.pack(
 )
 
 test.it("keeps Studio SQL isolated from the application SQL client", () =>
-  Effect
-    .gen(function*() {
-      const server = yield* HttpServer.HttpServer
-      if (!NetAddress.isInetAddress(server.address)) return yield* Effect.die("Expected a TCP server")
+  Effect.gen(function* () {
+    const server = yield* HttpServer.HttpServer
+    if (!NetAddress.isInetAddress(server.address)) return yield* Effect.die("Expected a TCP server")
 
-      const sql = yield* SqlClient.SqlClient
-      const tables = yield* sql<{ name: string }>`SELECT name FROM sqlite_master
+    const sql = yield* SqlClient.SqlClient
+    const tables = yield* sql<{ name: string }>`SELECT name FROM sqlite_master
         WHERE type = 'table' AND name = 'Log'`
 
-      test
-        .expect(tables)
-        .toEqual([])
+    test.expect(tables).toEqual([])
 
-      const client = yield* HttpClient.HttpClient
-      const response = yield* client.get(`http://127.0.0.1:${server.address.port}/studio/fibers`, {
-        headers: { accept: "text/html" },
-      })
-
-      test
-        .expect(response.status)
-        .toBe(200)
+    const client = yield* HttpClient.HttpClient
+    const response = yield* client.get(`http://127.0.0.1:${server.address.port}/studio/fibers`, {
+      headers: { accept: "text/html" },
     })
-    .pipe(
-      Effect.provide(Start.build(
+
+    test.expect(response.status).toBe(200)
+  }).pipe(
+    Effect.provide(
+      Start.build(
         RouteHttp.layer(),
         BunServer.layer({ port: 0, hostname: "127.0.0.1" }),
         studioLayer,
         SqliteClient.layer({ filename: ":memory:" }),
-      )),
-      Effect.provide(FetchHttpClient.layer),
-      Effect.scoped,
-      Effect.runPromise,
-    ))
+      ),
+    ),
+    Effect.provide(FetchHttpClient.layer),
+    Effect.scoped,
+    Effect.runPromise,
+  ),
+)
 
 test.it("persists every request span and exposes the complete trace in Studio's API and UI", () =>
-  Effect
-    .gen(function*() {
-      const server = yield* HttpServer.HttpServer
+  Effect.gen(function* () {
+    const server = yield* HttpServer.HttpServer
 
-      test
-        .expect(server.address._tag)
-        .toBe("InetAddressV4")
+    test.expect(server.address._tag).toBe("InetAddressV4")
 
-      if (server.address._tag !== "InetAddressV4") return yield* Effect.die("Expected a TCP server")
-      const base = `http://127.0.0.1:${server.address.port}`
-      const client = (yield* HttpClient.HttpClient).pipe(
-        HttpClient.transformResponse(Effect.provideService(HttpClient.TracerDisabledWhen, () => true)),
-      )
-      const response = yield* client.get(`${base}/widgets`, { headers: { accept: "application/json" } })
-
-      test
-        .expect(response.status)
-        .toBe(200)
-
-      const result = (yield* response.json) as { traceId: string; spanId: string; widget: string }
-
-      test
-        .expect(result.widget)
-        .toBe("fabricated widget")
-      test
-        .expect(result.traceId)
-        .toBeString()
-
-      const otherResponse = yield* client.get(`${base}/widgets`, { headers: { accept: "application/json" } })
-
-      test
-        .expect(otherResponse.status)
-        .toBe(200)
-
-      const other = (yield* otherResponse.json) as { traceId: string; spanId: string }
-
-      test
-        .expect(other.traceId)
-        .not
-        .toBe(result.traceId)
-
-      const traceUrl = `${base}/studio/traces/${result.traceId}`
-      const traceResponse = yield* client.get(traceUrl, { headers: { accept: "application/json" } })
-
-      test
-        .expect(traceResponse.status)
-        .toBe(200)
-
-      const trace: unknown = yield* traceResponse.json
-      const spans = yield* StudioStore.spansByTraceId(result.traceId)
-
-      test
-        .expect(spans.map((span) => span.name))
-        .toEqual([
-          "http.server GET",
-          "widgets.route",
-          "widgets.load",
-          "widgets.decode",
-          "widgets.cache",
-        ])
-
-      const root = spans[0]!
-
-      test
-        .expect(spans.map((span) => span.parentSpanId))
-        .toEqual([
-          undefined,
-          root.spanId,
-          result.spanId,
-          spans[2]!.spanId,
-          result.spanId,
-        ])
-      test
-        .expect(spans[1]!.spanId)
-        .toBe(result.spanId)
-      test
-        .expect(root.kind)
-        .toBe("server")
-      test
-        .expect(root.attributes)
-        .toMatchObject({
-          "http.request.method": "GET",
-          "url.path": "/widgets",
-          "http.response.status_code": 200,
-        })
-      test
-        .expect(spans[2]!.attributes)
-        .toMatchObject({ "widget.id": "fixture-42" })
-      test
-        .expect(spans[2]!.events)
-        .toEqual([{
-          name: "widget.loaded",
-          startTime: spans[2]!.startTime,
-          attributes: { source: "fabricated database" },
-        }])
-
-      for (const span of spans) {
-        test
-          .expect(span.traceId)
-          .toBe(result.traceId)
-        test
-          .expect(span.status)
-          .toBe(span.name === "widgets.cache" ? "error" : "ok")
-        test
-          .expect(span.endTime)
-          .toBeGreaterThanOrEqual(span.startTime)
-        test
-          .expect(span.durationMs)
-          .toBeGreaterThanOrEqual(0)
-      }
-
-      test
-        .expect(trace)
-        .toEqual({
-          traceId: result.traceId,
-          spans: spans.map((span) => ({
-            ...span,
-            startTime: String(span.startTime),
-            endTime: String(span.endTime),
-            events: span.events.map((event) => ({ ...event, startTime: String(event.startTime) })),
-          })),
-          logs: [],
-        })
-
-      const listResponse = yield* client.get(`${base}/studio/traces`, { headers: { accept: "text/html" } })
-
-      test
-        .expect(listResponse.status)
-        .toBe(200)
-
-      const list = new JSDOM(yield* listResponse.text).window.document
-
-      test
-        .expect(list.querySelector(`#trace-${result.traceId}`)?.getAttribute("href"))
-        .toBe(`/studio/traces/${result.traceId}`)
-
-      const pageResponse = yield* client.get(traceUrl, { headers: { accept: "text/html" } })
-
-      test
-        .expect(pageResponse.status)
-        .toBe(200)
-
-      const page = new JSDOM(yield* pageResponse.text).window.document
-      const rows = Array.from(page.querySelectorAll("#trace-detail .wf-row"))
-
-      test
-        .expect(rows)
-        .toHaveLength(spans.length)
-      test
-        .expect(page.querySelectorAll("#trace-detail .wf-popover"))
-        .toHaveLength(spans.length)
-      test
-        .expect(page.getElementById(`wf-pop-${other.spanId}`))
-        .toBeNull()
-
-      for (const span of spans) {
-        test
-          .expect(rows.filter((row) => row.querySelector(".wf-name")?.textContent?.includes(span.name)))
-          .toHaveLength(1)
-
-        const detail = page.getElementById(`wf-pop-${span.spanId}`)
-
-        test
-          .expect(detail?.textContent)
-          .toContain(span.spanId)
-
-        if (span.parentSpanId) {
-          test
-            .expect(detail?.textContent)
-            .toContain(span.parentSpanId)
-        }
-      }
-      const loadDetail = page.getElementById(`wf-pop-${spans[2]!.spanId}`)
-
-      test
-        .expect(loadDetail?.textContent)
-        .toContain("fixture-42")
-      test
-        .expect(loadDetail?.textContent)
-        .toContain("widget.loaded")
-      test
-        .expect(loadDetail?.textContent)
-        .toContain("fabricated database")
+    if (server.address._tag !== "InetAddressV4") return yield* Effect.die("Expected a TCP server")
+    const base = `http://127.0.0.1:${server.address.port}`
+    const client = (yield* HttpClient.HttpClient).pipe(
+      HttpClient.transformResponse(
+        Effect.provideService(HttpClient.TracerDisabledWhen, () => true),
+      ),
+    )
+    const response = yield* client.get(`${base}/widgets`, {
+      headers: { accept: "application/json" },
     })
-    .pipe(
-      Effect.provide(Start.build(
+
+    test.expect(response.status).toBe(200)
+
+    const result = (yield* response.json) as { traceId: string; spanId: string; widget: string }
+
+    test.expect(result.widget).toBe("fabricated widget")
+    test.expect(result.traceId).toBeString()
+
+    const otherResponse = yield* client.get(`${base}/widgets`, {
+      headers: { accept: "application/json" },
+    })
+
+    test.expect(otherResponse.status).toBe(200)
+
+    const other = (yield* otherResponse.json) as { traceId: string; spanId: string }
+
+    test.expect(other.traceId).not.toBe(result.traceId)
+
+    const traceUrl = `${base}/studio/traces/${result.traceId}`
+    const traceResponse = yield* client.get(traceUrl, { headers: { accept: "application/json" } })
+
+    test.expect(traceResponse.status).toBe(200)
+
+    const trace: unknown = yield* traceResponse.json
+    const spans = yield* StudioStore.spansByTraceId(result.traceId)
+
+    test
+      .expect(spans.map((span) => span.name))
+      .toEqual([
+        "http.server GET",
+        "widgets.route",
+        "widgets.load",
+        "widgets.decode",
+        "widgets.cache",
+      ])
+
+    const root = spans[0]!
+
+    test
+      .expect(spans.map((span) => span.parentSpanId))
+      .toEqual([undefined, root.spanId, result.spanId, spans[2]!.spanId, result.spanId])
+    test.expect(spans[1]!.spanId).toBe(result.spanId)
+    test.expect(root.kind).toBe("server")
+    test.expect(root.attributes).toMatchObject({
+      "http.request.method": "GET",
+      "url.path": "/widgets",
+      "http.response.status_code": 200,
+    })
+    test.expect(spans[2]!.attributes).toMatchObject({ "widget.id": "fixture-42" })
+    test.expect(spans[2]!.events).toEqual([
+      {
+        name: "widget.loaded",
+        startTime: spans[2]!.startTime,
+        attributes: { source: "fabricated database" },
+      },
+    ])
+
+    for (const span of spans) {
+      test.expect(span.traceId).toBe(result.traceId)
+      test.expect(span.status).toBe(span.name === "widgets.cache" ? "error" : "ok")
+      test.expect(span.endTime).toBeGreaterThanOrEqual(span.startTime)
+      test.expect(span.durationMs).toBeGreaterThanOrEqual(0)
+    }
+
+    test.expect(trace).toEqual({
+      traceId: result.traceId,
+      spans: spans.map((span) => ({
+        ...span,
+        startTime: String(span.startTime),
+        endTime: String(span.endTime),
+        events: span.events.map((event) => ({ ...event, startTime: String(event.startTime) })),
+      })),
+      logs: [],
+    })
+
+    const listResponse = yield* client.get(`${base}/studio/traces`, {
+      headers: { accept: "text/html" },
+    })
+
+    test.expect(listResponse.status).toBe(200)
+
+    const list = new JSDOM(yield* listResponse.text).window.document
+
+    test
+      .expect(list.querySelector(`#trace-${result.traceId}`)?.getAttribute("href"))
+      .toBe(`/studio/traces/${result.traceId}`)
+
+    const pageResponse = yield* client.get(traceUrl, { headers: { accept: "text/html" } })
+
+    test.expect(pageResponse.status).toBe(200)
+
+    const page = new JSDOM(yield* pageResponse.text).window.document
+    const rows = Array.from(page.querySelectorAll("#trace-detail .wf-row"))
+
+    test.expect(rows).toHaveLength(spans.length)
+    test.expect(page.querySelectorAll("#trace-detail .wf-popover")).toHaveLength(spans.length)
+    test.expect(page.getElementById(`wf-pop-${other.spanId}`)).toBeNull()
+
+    for (const span of spans) {
+      test
+        .expect(
+          rows.filter((row) => row.querySelector(".wf-name")?.textContent?.includes(span.name)),
+        )
+        .toHaveLength(1)
+
+      const detail = page.getElementById(`wf-pop-${span.spanId}`)
+
+      test.expect(detail?.textContent).toContain(span.spanId)
+
+      if (span.parentSpanId) {
+        test.expect(detail?.textContent).toContain(span.parentSpanId)
+      }
+    }
+    const loadDetail = page.getElementById(`wf-pop-${spans[2]!.spanId}`)
+
+    test.expect(loadDetail?.textContent).toContain("fixture-42")
+    test.expect(loadDetail?.textContent).toContain("widget.loaded")
+    test.expect(loadDetail?.textContent).toContain("fabricated database")
+  }).pipe(
+    Effect.provide(
+      Start.build(
         RouteHttp.layer(),
         BunServer.layer({ port: 0, hostname: "127.0.0.1" }),
         Route.layerMerge({
-          "/widgets": Route.get(Route.json(
-            Effect
-              .gen(function*() {
+          "/widgets": Route.get(
+            Route.json(
+              Effect.gen(function* () {
                 const span = yield* Effect.currentSpan
-                const widget = yield* Effect
-                  .gen(function*() {
-                    const load = yield* Effect.currentSpan
-                    yield* Effect.annotateCurrentSpan("widget.id", "fixture-42")
-                    load.event("widget.loaded", load.status.startTime, { source: "fabricated database" })
-                    return yield* Effect.succeed("fabricated widget").pipe(Effect.withSpan("widgets.decode"))
+                const widget = yield* Effect.gen(function* () {
+                  const load = yield* Effect.currentSpan
+                  yield* Effect.annotateCurrentSpan("widget.id", "fixture-42")
+                  load.event("widget.loaded", load.status.startTime, {
+                    source: "fabricated database",
                   })
-                  .pipe(Effect.withSpan("widgets.load"))
+                  return yield* Effect.succeed("fabricated widget").pipe(
+                    Effect.withSpan("widgets.decode"),
+                  )
+                }).pipe(Effect.withSpan("widgets.load"))
                 yield* Effect.fail("fabricated cache failure").pipe(
                   Effect.withSpan("widgets.cache"),
                   Effect.exit,
                 )
                 return { traceId: span.traceId, spanId: span.spanId, widget }
-              })
-              .pipe(Effect.withSpan("widgets.route")),
-          )),
+              }).pipe(Effect.withSpan("widgets.route")),
+            ),
+          ),
         }),
         studioLayer,
-      )),
-      Effect.provide(FetchHttpClient.layer),
-      Effect.scoped,
-      Effect.runPromise,
-    ))
+      ),
+    ),
+    Effect.provide(FetchHttpClient.layer),
+    Effect.scoped,
+    Effect.runPromise,
+  ),
+)
 
 test.it("flushes queued telemetry writes when its scope closes", () => {
   let completed = false
 
-  return Effect
-    .gen(function*() {
-      const studio = yield* Studio.Studio
-      StudioStore.runWrite(
-        studio.store,
-        Effect.andThen(
-          Effect.sleep("20 millis"),
-          Effect.sync(() => {
-            completed = true
-          }),
-        ),
-      )
-    })
-    .pipe(
-      Effect.provide(studioLayer),
-      Effect.andThen(Effect.sync(() => {
-        test
-          .expect(completed)
-          .toBe(true)
-      })),
-      Effect.runPromise,
+  return Effect.gen(function* () {
+    const studio = yield* Studio.Studio
+    StudioStore.runWrite(
+      studio.store,
+      Effect.andThen(
+        Effect.sleep("20 millis"),
+        Effect.sync(() => {
+          completed = true
+        }),
+      ),
     )
+  }).pipe(
+    Effect.provide(studioLayer),
+    Effect.andThen(
+      Effect.sync(() => {
+        test.expect(completed).toBe(true)
+      }),
+    ),
+    Effect.runPromise,
+  )
 })
 
 test.it("retains tags and serializable properties for traced failures", () => {
@@ -309,38 +258,31 @@ test.it("retains tags and serializable properties for traced failures", () => {
     readonly attempt: bigint
   }> {}
 
-  return Effect
-    .gen(function*() {
-      yield* Effect.fail(new StudioTracerTestError({ resource: "widget", attempt: 2n })).pipe(
-        Effect.withSpan("studio.test.failure"),
-        Effect.exit,
-      )
-      yield* StudioStore.flushWrites()
+  return Effect.gen(function* () {
+    yield* Effect.fail(new StudioTracerTestError({ resource: "widget", attempt: 2n })).pipe(
+      Effect.withSpan("studio.test.failure"),
+      Effect.exit,
+    )
+    yield* StudioStore.flushWrites()
 
-      const sql = yield* StudioSql.StudioSql
-      const rows = yield* sql<StudioStore.ErrorRow>`
+    const sql = yield* StudioSql.StudioSql
+    const rows = yield* sql<StudioStore.ErrorRow>`
         SELECT * FROM Error
         WHERE details LIKE ${"%StudioTracerTestError%"}
         ORDER BY rowid DESC
         LIMIT 1
       `
-      const detail = StudioStore.deserializeError(rows[0]!).details[0]!
+    const detail = StudioStore.deserializeError(rows[0]!).details[0]!
 
-      test
-        .expect(detail)
-        .toEqual({
-          kind: "fail",
-          tag: "StudioTracerTestError",
-          message: "StudioTracerTestError",
-          properties: {
-            resource: "widget",
-            attempt: "2n",
-          },
-          span: "studio.test.failure",
-        })
+    test.expect(detail).toEqual({
+      kind: "fail",
+      tag: "StudioTracerTestError",
+      message: "StudioTracerTestError",
+      properties: {
+        resource: "widget",
+        attempt: "2n",
+      },
+      span: "studio.test.failure",
     })
-    .pipe(
-      Effect.provide(studioLayer),
-      Effect.runPromise,
-    )
+  }).pipe(Effect.provide(studioLayer), Effect.runPromise)
 })

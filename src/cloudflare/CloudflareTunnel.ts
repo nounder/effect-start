@@ -9,21 +9,18 @@ export const start = (opts: {
   logLevel?: LogLevel.Severity
   logPrefix?: string
 }) =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const executable = opts.command ?? "cloudflared"
     if (Bun.which(executable) === null) {
       return yield* Effect.fail(new Error(`Command not found: ${executable}`))
     }
-    const logPrefix = String.isString(opts.logPrefix)
-      ? opts.logPrefix
-      : "CloudflareTunnel: "
+    const logPrefix = String.isString(opts.logPrefix) ? opts.logPrefix : "CloudflareTunnel: "
     const args: Array<string> = [
       "tunnel",
       "run",
       opts.tunnelUrl ? ["--url", opts.tunnelUrl] : [],
       opts.tunnelName,
-    ]
-      .flatMap((v) => v)
+    ].flatMap((v) => v)
 
     const proc = yield* ChildProcess.make(executable, args)
 
@@ -45,24 +42,16 @@ export const start = (opts: {
 
 export const layer = () =>
   Layer.effectDiscard(
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const tunnelName = Option.getOrUndefined(
-        yield* pipe(
-          Config.String("CLOUDFLARE_TUNNEL_NAME"),
-          Config.option,
-        ),
+        yield* pipe(Config.String("CLOUDFLARE_TUNNEL_NAME"), Config.option),
       )
       const tunnelUrl = Option.getOrUndefined(
-        yield* pipe(
-          Config.String("CLOUDFLARE_TUNNEL_URL"),
-          Config.option,
-        ),
+        yield* pipe(Config.String("CLOUDFLARE_TUNNEL_URL"), Config.option),
       )
 
       if (!tunnelName) {
-        yield* Effect.logWarning(
-          "CLOUDFLARE_TUNNEL_NAME not provided. Skipping.",
-        )
+        yield* Effect.logWarning("CLOUDFLARE_TUNNEL_NAME not provided. Skipping.")
 
         return
       }
@@ -71,10 +60,7 @@ export const layer = () =>
         start({
           tunnelName,
           tunnelUrl,
-        })
-          .pipe(
-            Effect.catch((err) => Effect.logError("Cloudflare tunnel failed", err)),
-          ),
+        }).pipe(Effect.catch((err) => Effect.logError("Cloudflare tunnel failed", err))),
       )
     }),
   )

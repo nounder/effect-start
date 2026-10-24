@@ -1,8 +1,6 @@
-/**
- * Ported from effect@4.0.0-rc.112.
- */
-import type * as ChildProcess from "effect/process/ChildProcess"
 import type * as NodeChildProcess from "node:child_process"
+/** Ported from effect@4.0.0-rc.112. */
+import type * as ChildProcess from "effect/process/ChildProcess"
 
 export const buildSpawnOptions = (
   options: ChildProcess.CommandOptions,

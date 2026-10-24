@@ -33,13 +33,16 @@ function ChatMessage(props: { message: Message; isNew?: boolean }) {
 
 const routes = Route.map({
   "*": Route.use(
-    Route.html(function*(_ctx, next) {
+    Route.html(function* (_ctx, next) {
       const bundle = yield* Bundle.Bundle
 
       return (
         <html>
           <head>
-            <meta name="viewport" content="width=device-width, initial-scale=1" />
+            <meta
+              name="viewport"
+              content="width=device-width, initial-scale=1"
+            />
             <title>Chat</title>
             <style>
               {`
@@ -64,98 +67,112 @@ const routes = Route.map({
                 @keyframes slide-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
               `}
             </style>
-            <script type="module" src={bundle.resolve("effect-start/datastar")}></script>
+            <script
+              type="module"
+              src={bundle.resolve("effect-start/datastar")}
+            ></script>
           </head>
           <body>{yield* next.html}</body>
         </html>
       )
     }),
   ),
-  "/": Route
-    .get(
-      Route.html(function*() {
-        const chat = yield* Chat
-        const messages = yield* Ref.get(chat.messages)
+  "/": Route.get(
+    Route.html(function* () {
+      const chat = yield* Chat
+      const messages = yield* Ref.get(chat.messages)
 
-        return (
-          <main
-            class="chat"
-            data-signals={{ _draft: "", username: `User${Math.floor(Math.random() * 1000)}` }}
-            data-init={(e) => e.actions.get(location.href)}
+      return (
+        <main
+          class="chat"
+          data-signals={{ _draft: "", username: `User${Math.floor(Math.random() * 1000)}` }}
+          data-init={(e) => e.actions.get(location.href)}
+        >
+          <header>Chat</header>
+          <div id="chat-messages">
+            {messages.map((message) => (
+              <ChatMessage message={message} />
+            ))}
+          </div>
+          <form
+            data-on:submit={(e) => {
+              e.preventDefault()
+              e.actions.post(location.href, {
+                payload: { username: e.signals.username, text: e.signals._draft },
+              })
+              e.signals._draft = ""
+            }}
           >
-            <header>Chat</header>
-            <div id="chat-messages">
-              {messages.map((message) => <ChatMessage message={message} />)}
-            </div>
-            <form
-              data-on:submit={(e) => {
-                e.preventDefault()
-                e.actions.post(location.href, {
-                  payload: { username: e.signals.username, text: e.signals._draft },
-                })
-                e.signals._draft = ""
-              }}
+            <input
+              type="text"
+              placeholder="Type a message..."
+              data-bind="_draft"
+              autocomplete="off"
+            />
+            <button
+              type="submit"
+              data-indicator:sending
+              data-attr:disabled={(e) => e.signals.sending || !e.signals._draft.trim()}
             >
-              <input type="text" placeholder="Type a message..." data-bind="_draft" autocomplete="off" />
-              <button
-                type="submit"
-                data-indicator:sending
-                data-attr:disabled={(e) => e.signals.sending || !e.signals._draft.trim()}
-              >
-                Send
-              </button>
-            </form>
-            <script>
-              {() => {
-                const messages = document.getElementById("chat-messages")!
-                let atBottom = true
-                messages.addEventListener("scroll", () => {
-                  atBottom = messages.scrollHeight - messages.scrollTop - messages.clientHeight < 50
-                })
-                messages.scrollTop = messages.scrollHeight
-                new MutationObserver(() => {
-                  if (atBottom) requestAnimationFrame(() => messages.scrollTop = messages.scrollHeight)
-                }).observe(messages, { childList: true })
-              }}
-            </script>
-          </main>
-        )
-      }),
-      Route.sse(function*() {
-        const chat = yield* Chat
-        return chat.events.pipe(
-          Stream.map((message) => ({
-            event: "datastar-patch-elements",
-            data: [
-              "selector #chat-messages",
-              "mode append",
-              `elements ${Html.text(<ChatMessage message={message} isNew />)}`,
-            ],
-          })),
-        )
-      }),
-    )
-    .post(
-      Route.schemaBodyJson({
-        text: Schema.String,
-        username: Schema.String,
-      }),
-      Route.text(function*(ctx) {
-        const text = ctx.body.text.trim()
-        if (!text) return ""
+              Send
+            </button>
+          </form>
+          <script>
+            {() => {
+              const messages = document.getElementById("chat-messages")!
+              let atBottom = true
+              messages.addEventListener("scroll", () => {
+                atBottom = messages.scrollHeight - messages.scrollTop - messages.clientHeight < 50
+              })
+              messages.scrollTop = messages.scrollHeight
+              new MutationObserver(() => {
+                if (atBottom)
+                  requestAnimationFrame(() => (messages.scrollTop = messages.scrollHeight))
+              }).observe(messages, { childList: true })
+            }}
+          </script>
+        </main>
+      )
+    }),
+    Route.sse(function* () {
+      const chat = yield* Chat
+      return chat.events.pipe(
+        Stream.map((message) => ({
+          event: "datastar-patch-elements",
+          data: [
+            "selector #chat-messages",
+            "mode append",
+            `elements ${Html.text(
+              <ChatMessage
+                message={message}
+                isNew
+              />,
+            )}`,
+          ],
+        })),
+      )
+    }),
+  ).post(
+    Route.schemaBodyJson({
+      text: Schema.String,
+      username: Schema.String,
+    }),
+    Route.text(function* (ctx) {
+      const text = ctx.body.text.trim()
+      if (!text) return ""
 
-        const chat = yield* Chat
-        yield* chat.send(ctx.body.username || "Anonymous", text)
-        yield* Effect.sleep(100)
-        yield* chat.send("Assistant", "I don't understand")
-        return ""
-      }),
-    ),
+      const chat = yield* Chat
+      yield* chat.send(ctx.body.username || "Anonymous", text)
+      yield* Effect.sleep(100)
+      yield* chat.send("Assistant", "I don't understand")
+      return ""
+    }),
+  ),
 })
 
 const chatLayer = Layer.effect(
   Chat,
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const messages = yield* Ref.make<Array<Message>>([])
     const pubsub = yield* PubSub.unbounded<Message>()
 
@@ -163,7 +180,7 @@ const chatLayer = Layer.effect(
       messages,
       events: Stream.fromPubSub(pubsub),
       send: (user: string, text: string) =>
-        Effect.gen(function*() {
+        Effect.gen(function* () {
           const message = { id: crypto.randomUUID(), user, text, timestamp: Date.now() }
           yield* Ref.update(messages, (current) => [...current, message])
           yield* PubSub.publish(pubsub, message)
@@ -173,12 +190,14 @@ const chatLayer = Layer.effect(
 )
 
 if (import.meta.main) {
-  Start.serve(Start.pack(
-    Route.layer(routes),
-    chatLayer,
-    BunBundle.layer({
-      entrypoints: ["effect-start/datastar"],
-      ignoreDCEAnnotations: true,
-    }),
-  ))
+  Start.serve(
+    Start.pack(
+      Route.layer(routes),
+      chatLayer,
+      BunBundle.layer({
+        entrypoints: ["effect-start/datastar"],
+        ignoreDCEAnnotations: true,
+      }),
+    ),
+  )
 }

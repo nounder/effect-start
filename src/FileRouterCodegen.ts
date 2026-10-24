@@ -1,7 +1,7 @@
+import * as NPath from "node:path"
 import * as Effect from "effect/Effect"
 import * as FileSystem from "effect/FileSystem"
 import * as Schema from "effect/Schema"
-import * as NPath from "node:path"
 import * as FileRouter from "./FileRouter.ts"
 import * as PathPattern from "./internal/PathPattern.ts"
 import * as SchemaExtra from "./internal/SchemaExtra.ts"
@@ -22,15 +22,11 @@ export function validateRouteModule(
   return true
 }
 
-export function generatePathParamsSchema(
-  path: PathPattern.PathPattern,
-): Schema.Struct<any> | null {
+export function generatePathParamsSchema(path: PathPattern.PathPattern): Schema.Struct<any> | null {
   const fields: Record<PropertyKey, Schema.Constraint> = {}
 
   for (const param of PathPattern.params(path)) {
-    fields[param.name] = param.optional
-      ? Schema.optional(Schema.String)
-      : Schema.String
+    fields[param.name] = param.optional ? Schema.optional(Schema.String) : Schema.String
   }
 
   if (Object.keys(fields).length === 0) {
@@ -40,15 +36,13 @@ export function generatePathParamsSchema(
   return Schema.Struct(fields)
 }
 
-/**
- * Validates all route modules in the given route handles.
- */
+/** Validates all route modules in the given route handles. */
 
 export function validateRouteModules(
   path: string,
   routes: FileRouter.OrderedFileRoutes,
 ): Effect.Effect<void, FileRouter.FileRouterError, FileSystem.FileSystem> {
-  return Effect.gen(function*() {
+  return Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const routeHandles = routes.filter((h) => h.handle === "route")
 
@@ -74,26 +68,19 @@ export function validateRouteModules(
       })
 
       if (!validateRouteModule(module)) {
-        yield* Effect.logWarning(
-          `Route module ${routeModulePath} should export default Route`,
-        )
+        yield* Effect.logWarning(`Route module ${routeModulePath} should export default Route`)
         continue
       }
 
       // extract user schema
       const userSchema = undefined
 
-      if (
-        expectedSchema && userSchema && !SchemaExtra
-          .schemaEqual(userSchema, expectedSchema)
-      ) {
+      if (expectedSchema && userSchema && !SchemaExtra.schemaEqual(userSchema, expectedSchema)) {
         const relativeFilePath = NPath.relative(process.cwd(), routeModulePath)
         yield* Effect.logError(
-          `Route '${relativeFilePath}' has incorrect PathParams schema, expected schemaPathParams(${
-            SchemaExtra.formatSchemaCode(
-              expectedSchema,
-            )
-          })`,
+          `Route '${relativeFilePath}' has incorrect PathParams schema, expected schemaPathParams(${SchemaExtra.formatSchemaCode(
+            expectedSchema,
+          )})`,
         )
       }
     }
@@ -105,9 +92,7 @@ export type RouteEntry = {
   readonly modulePaths: ReadonlyArray<string>
 }
 
-export function getRouteEntries(
-  fileRoutes: FileRouter.OrderedFileRoutes,
-): Array<RouteEntry> {
+export function getRouteEntries(fileRoutes: FileRouter.OrderedFileRoutes): Array<RouteEntry> {
   const routesByPath = new Map<
     PathPattern.PathPattern,
     {
@@ -126,10 +111,7 @@ export function getRouteEntries(
     routesByPath.set(fileRoute.routePath, existing)
   }
 
-  const layerMatchesRoute = (
-    layer: FileRouter.FileRoute,
-    route: FileRouter.FileRoute,
-  ): boolean => {
+  const layerMatchesRoute = (layer: FileRouter.FileRoute, route: FileRouter.FileRoute): boolean => {
     const layerDir = layer.modulePath.replace(/(^|\/)(layer)\.(tsx?|jsx?)$/, "")
     if (layerDir === "") return true
     return route.modulePath.startsWith(layerDir + "/")
@@ -158,19 +140,14 @@ export function getRouteEntries(
 
     entries.push({
       path,
-      modulePaths: [
-        ...allLayers.map((layer) => layer.modulePath),
-        route.modulePath,
-      ],
+      modulePaths: [...allLayers.map((layer) => layer.modulePath), route.modulePath],
     })
   }
 
   return entries
 }
 
-export function generateCode(
-  fileRoutes: FileRouter.OrderedFileRoutes,
-): string | null {
+export function generateCode(fileRoutes: FileRouter.OrderedFileRoutes): string | null {
   const entries = getRouteEntries(fileRoutes)
 
   if (entries.length === 0) {
@@ -179,8 +156,7 @@ export function generateCode(
 
   const routeEntries = entries
     .map((v) => {
-      const loadersCode = v
-        .modulePaths
+      const loadersCode = v.modulePaths
         .map((modulePath) => `() => import("./${modulePath}")`)
         .join(",\n    ")
       return `  "${v.path}": [\n    ${loadersCode},\n  ]`
@@ -203,14 +179,14 @@ declare module "effect-start/dev" {
 }
 
 /**
- * Updates the tree file only if the generated content differs from the existing file.
- * This prevents infinite loops when watching for file changes.
+ * Updates the tree file only if the generated content differs from the existing file. This prevents
+ * infinite loops when watching for file changes.
  */
 export function update(
   routesPath: string,
   treePath = ".server.ts",
 ): Effect.Effect<void, FileRouter.FileRouterError, FileSystem.FileSystem> {
-  return Effect.gen(function*() {
+  return Effect.gen(function* () {
     treePath = NPath.resolve(routesPath, treePath)
 
     const fs = yield* FileSystem.FileSystem
@@ -281,7 +257,7 @@ export function dump(
   routesPath: string,
   treePath = ".server.ts",
 ): Effect.Effect<void, FileRouter.FileRouterError, FileSystem.FileSystem> {
-  return Effect.gen(function*() {
+  return Effect.gen(function* () {
     treePath = NPath.resolve(routesPath, treePath)
 
     const fs = yield* FileSystem.FileSystem

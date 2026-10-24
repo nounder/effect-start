@@ -14,9 +14,7 @@ export type JsonObject = {
 
 export type Json = JsonPrimitive | Array<Json> | JsonObject
 
-export function isPlainObject(
-  value: unknown,
-): value is Record<string, unknown> {
+export function isPlainObject(value: unknown): value is Record<string, unknown> {
   if (value === null || typeof value !== "object") {
     return false
   }
@@ -46,32 +44,42 @@ export function isPlainObject(
 }
 
 /**
- * Type helper that returns `true` if type T has any method properties,
- * otherwise returns `never`.
+ * Type helper that returns `true` if type T has any method properties, otherwise returns `never`.
  *
- * Used internally by IsPlainObject to distinguish plain objects from
- * class instances or objects with methods.
+ * Used internally by IsPlainObject to distinguish plain objects from class instances or objects
+ * with methods.
  */
 type HasMethod<T> = {
   [K in keyof T]: T[K] extends (...args: Array<any>) => any ? true : never
 }[keyof T]
 
-export type IsPlainObject<T> = T extends object ? T extends Function ? false
-  : HasMethod<T> extends never ? true
-  : false
+export type IsPlainObject<T> = T extends object
+  ? T extends Function
+    ? false
+    : HasMethod<T> extends never
+      ? true
+      : false
   : false
 
-type IsUnion<T, U = T> = [T] extends [never] ? false
-  : T extends any ? [U] extends [T] ? false : true
-  : false
+type IsUnion<T, U = T> = [T] extends [never]
+  ? false
+  : T extends any
+    ? [U] extends [T]
+      ? false
+      : true
+    : false
 
-type SimplifyValue<T> = IsUnion<T> extends true ? T
-  : IsPlainObject<T> extends true ? { -readonly [P in keyof T]: T[P] }
-  : T
+type SimplifyValue<T> =
+  IsUnion<T> extends true
+    ? T
+    : IsPlainObject<T> extends true
+      ? { -readonly [P in keyof T]: T[P] }
+      : T
 
 export type Simplify<T> = {
   -readonly [K in keyof T]: SimplifyValue<T[K]>
-} extends infer U ? { [K in keyof U]: U[K] }
+} extends infer U
+  ? { [K in keyof U]: U[K] }
   : never
 
 export const firstValue = <T>(record: Record<string, T>): T | undefined => {
@@ -81,9 +89,8 @@ export const firstValue = <T>(record: Record<string, T>): T | undefined => {
   return undefined
 }
 
-export const isTemplateStringsArray = (
-  value: unknown,
-): value is TemplateStringsArray => Array.isArray(value) && "raw" in value
+export const isTemplateStringsArray = (value: unknown): value is TemplateStringsArray =>
+  Array.isArray(value) && "raw" in value
 
 export const concatBytes = (a: Uint8Array, b: Uint8Array): Uint8Array => {
   const result = new Uint8Array(a.byteLength + b.byteLength)
@@ -92,9 +99,7 @@ export const concatBytes = (a: Uint8Array, b: Uint8Array): Uint8Array => {
   return result
 }
 
-export const compact = (
-  record: Record<string, unknown | undefined>,
-): Record<string, unknown> => {
+export const compact = (record: Record<string, unknown | undefined>): Record<string, unknown> => {
   const out: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(record)) {
     if (value !== undefined) out[key] = value

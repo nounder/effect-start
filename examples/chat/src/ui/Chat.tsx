@@ -22,27 +22,17 @@ export function Message(props: { msg: ChatMessage; isNew?: boolean }) {
   if (isUser) {
     return (
       <div
-        class={`py-3 px-4 rounded-lg max-w-[80%] ${animClass} bg-emerald-500 text-white ml-auto`}
+        class={`max-w-[80%] rounded-lg px-4 py-3 ${animClass} ml-auto bg-emerald-500 text-white`}
       >
-        <p>
-          {props.msg.text}
-        </p>
-        <small class={timeClasses}>
-          {time}
-        </small>
+        <p>{props.msg.text}</p>
+        <small class={timeClasses}>{time}</small>
       </div>
     )
   }
   return (
-    <div
-      class={`py-3 px-4 rounded-lg max-w-[80%] ${animClass} bg-gray-100 mr-auto`}
-    >
-      <p>
-        {props.msg.text}
-      </p>
-      <small class={timeClasses}>
-        {time}
-      </small>
+    <div class={`max-w-[80%] rounded-lg px-4 py-3 ${animClass} mr-auto bg-gray-100`}>
+      <p>{props.msg.text}</p>
+      <small class={timeClasses}>{time}</small>
     </div>
   )
 }

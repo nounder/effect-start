@@ -1,12 +1,15 @@
+import * as NPath from "node:path"
 import type * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as esbuild from "esbuild"
-import * as NPath from "node:path"
 import * as Bundle from "../bundler/Bundle.ts"
 import * as BundleHelpers from "../bundler/internal/BundleHelpers.ts"
 
-export type BuildOptions = Omit<esbuild.BuildOptions, "entryPoints" | "metafile" | "outfile" | "outdir" | "write"> & {
+export type BuildOptions = Omit<
+  esbuild.BuildOptions,
+  "entryPoints" | "metafile" | "outfile" | "outdir" | "write"
+> & {
   entrypoints: Array<string>
   publicPath?: string
 }
@@ -49,7 +52,7 @@ export const buildServer = (config: BuildOptions | string) => {
 export function build(
   config: BuildOptions,
 ): Effect.Effect<Bundle.BundleContext, Bundle.BundleError> {
-  return Effect.gen(function*() {
+  return Effect.gen(function* () {
     const { entrypoints: entrypointConfig, ...buildConfig } = config
     const paired = BundleHelpers.resolveEntrypointsPaired(entrypointConfig)
     const output = yield* buildEsbuild({
@@ -71,7 +74,9 @@ export function build(
     const artifactsMap = Object.fromEntries(
       output.outputFiles.map((file) => [
         BundleHelpers.toOutputPath(file.path),
-        new Blob([Uint8Array.from(file.contents).buffer], { type: BundleHelpers.artifactContentType(file.path) }),
+        new Blob([Uint8Array.from(file.contents).buffer], {
+          type: BundleHelpers.artifactContentType(file.path),
+        }),
       ]),
     )
     const publicPath = typeof config.publicPath === "string" ? config.publicPath : ""
@@ -93,10 +98,10 @@ export function build(
 function mutableContext(
   buildEffect: Effect.Effect<Bundle.BundleContext, Bundle.BundleError>,
 ): Effect.Effect<Bundle.BundleContext, Bundle.BundleError> {
-  return Effect.gen(function*() {
+  return Effect.gen(function* () {
     let current = yield* buildEffect
     const rebuild = () =>
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         current = yield* buildEffect
         return current
       })
@@ -109,9 +114,7 @@ function mutableContext(
   })
 }
 
-export function layer(
-  config: BuildOptions,
-): Layer.Layer<Bundle.Bundle, Bundle.BundleError>
+export function layer(config: BuildOptions): Layer.Layer<Bundle.Bundle, Bundle.BundleError>
 export function layer<T>(
   tag: Context.Key<T, Bundle.BundleContext>,
   config: BuildOptions,
@@ -128,7 +131,7 @@ function makeEntrypoints(
   metafile: esbuild.Metafile,
   outputFiles: Array<esbuild.OutputFile>,
 ): Effect.Effect<Record<string, string>, Bundle.BundleError> {
-  return Effect.gen(function*() {
+  return Effect.gen(function* () {
     const entrypointIds = new Set(paired.map((p) => p.id))
     const artifactPaths = new Set(outputFiles.map((file) => BundleHelpers.toOutputPath(file.path)))
     const artifactPathByBasename = new Map<string, string | undefined>()

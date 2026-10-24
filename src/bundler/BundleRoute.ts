@@ -10,8 +10,7 @@ import * as Route from "../Route.ts"
 import * as Bundle from "./Bundle.ts"
 
 /**
- * Creates a GET route that serves bundle artifacts.
- * Mount at a path ending in /*.
+ * Creates a GET route that serves bundle artifacts. Mount at a path ending in /*.
  *
  * ```ts
  * RouteMap.make({
@@ -19,12 +18,10 @@ import * as Bundle from "./Bundle.ts"
  * })
  * ```
  */
-export const make = <Tag extends Context.Key<any, Bundle.BundleContext>>(
-  tag: Tag,
-) =>
+export const make = <Tag extends Context.Key<any, Bundle.BundleContext>>(tag: Tag) =>
   Route.get(
     Route.schemaPathParams({ "*": Schema.optional(Schema.String) }),
-    Route.handle(function*(ctx) {
+    Route.handle(function* (ctx) {
       const bundle = yield* tag
       if (bundle.rebuild) {
         yield* bundle.rebuild()
@@ -37,9 +34,7 @@ export const make = <Tag extends Context.Key<any, Bundle.BundleContext>>(
       if (!blob) {
         return Entity.make("Not Found", { status: 404 })
       }
-      const bytes = new Uint8Array(
-        yield* Effect.promise(() => blob.arrayBuffer()),
-      )
+      const bytes = new Uint8Array(yield* Effect.promise(() => blob.arrayBuffer()))
       return Entity.make(bytes, {
         headers: {
           "content-type": blob.type || "application/octet-stream",
@@ -52,9 +47,9 @@ export const make = <Tag extends Context.Key<any, Bundle.BundleContext>>(
 /**
  * Merges a bundle-serving route into the route tree.
  *
- * When called without arguments, checks if `Bundle` is available
- * in context and only adds the route if it is. This makes it safe to
- * include unconditionally — it's a no-op when no bundle is provided.
+ * When called without arguments, checks if `Bundle` is available in context and only adds the route
+ * if it is. This makes it safe to include unconditionally — it's a no-op when no bundle is
+ * provided.
  */
 export const layer = (options?: {
   bundle?: Context.Key<any, Bundle.BundleContext>
@@ -70,7 +65,7 @@ export const layer = (options?: {
 
   return Layer.effect(
     Route.Routes,
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const bundle = yield* Effect.serviceOption(Bundle.Bundle)
       const existing = Option.getOrUndefined(yield* Effect.serviceOption(Route.Routes))
       if (Option.isNone(bundle)) {

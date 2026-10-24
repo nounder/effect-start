@@ -1,6 +1,4 @@
-/**
- * Ported from effect@4.0.0-rc.112.
- */
+/** Ported from effect@4.0.0-rc.112. */
 import { Database } from "bun:sqlite"
 import * as Config from "effect/Config"
 import * as Context from "effect/Context"
@@ -62,22 +60,18 @@ interface SqliteConnection extends SqlConnection.Connection {
 export const make = (
   options: SqliteClientConfig,
 ): Effect.Effect<SqliteClient, never, Scope.Scope | Reactivity.Reactivity> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const compiler = Statement.makeCompilerSqlite(options.transformQueryNames)
-    const transformRows = options.transformResultNames ?
-      Statement
-        .defaultTransforms(
-          options.transformResultNames,
-        )
-        .array :
-      undefined
+    const transformRows = options.transformResultNames
+      ? Statement.defaultTransforms(options.transformResultNames).array
+      : undefined
 
-    const makeConnection = Effect.gen(function*() {
+    const makeConnection = Effect.gen(function* () {
       const readonly = options.readonly === true
       const db = new Database(options.filename, {
         readonly,
-        readwrite: readonly ? false : options.readwrite ?? true,
-        create: readonly ? false : options.create ?? true,
+        readwrite: readonly ? false : (options.readwrite ?? true),
+        create: readonly ? false : (options.create ?? true),
       } as any)
       yield* Effect.addFinalizer(() => Effect.sync(() => db.close()))
       const busyTimeout = Math.min(
@@ -97,41 +91,41 @@ export const make = (
         return statement
       }
 
-      const run = (
-        sql: string,
-        params: ReadonlyArray<unknown> = [],
-      ) =>
+      const run = (sql: string, params: ReadonlyArray<unknown> = []) =>
         Effect.withFiber<Array<any>, SqlError.SqlError>((fiber) => {
           const useSafeIntegers = Context.get(fiber.context, Client.SafeIntegers)
           try {
-            return Effect.succeed((prepare(sql, useSafeIntegers).all(...(params as any)) ?? []) as Array<any>)
+            return Effect.succeed(
+              (prepare(sql, useSafeIntegers).all(...(params as any)) ?? []) as Array<any>,
+            )
           } catch (cause) {
             return Effect.fail(
-              new SqlError.SqlError({ reason: classifyError(cause, "Failed to execute statement", "execute") }),
+              new SqlError.SqlError({
+                reason: classifyError(cause, "Failed to execute statement", "execute"),
+              }),
             )
           }
         })
 
-      const runValues = (
-        sql: string,
-        params: ReadonlyArray<unknown> = [],
-      ) =>
+      const runValues = (sql: string, params: ReadonlyArray<unknown> = []) =>
         Effect.withFiber<Array<any>, SqlError.SqlError>((fiber) => {
           const useSafeIntegers = Context.get(fiber.context, Client.SafeIntegers)
           try {
-            return Effect.succeed((prepare(sql, useSafeIntegers).values(...(params as any)) ?? []) as Array<any>)
+            return Effect.succeed(
+              (prepare(sql, useSafeIntegers).values(...(params as any)) ?? []) as Array<any>,
+            )
           } catch (cause) {
             return Effect.fail(
-              new SqlError.SqlError({ reason: classifyError(cause, "Failed to execute statement", "executeValues") }),
+              new SqlError.SqlError({
+                reason: classifyError(cause, "Failed to execute statement", "executeValues"),
+              }),
             )
           }
         })
 
       return Function.identity<SqliteConnection>({
         execute(sql, params, transformRows) {
-          return transformRows
-            ? Effect.map(run(sql, params), transformRows)
-            : run(sql, params)
+          return transformRows ? Effect.map(run(sql, params), transformRows) : run(sql, params)
         },
         executeRaw(sql, params) {
           return run(sql, params)
@@ -151,13 +145,17 @@ export const make = (
         export: Effect.try({
           try: () => db.serialize(),
           catch: (cause) =>
-            new SqlError.SqlError({ reason: classifyError(cause, "Failed to export database", "export") }),
+            new SqlError.SqlError({
+              reason: classifyError(cause, "Failed to export database", "export"),
+            }),
         }),
         loadExtension: (path) =>
           Effect.try({
             try: () => db.loadExtension(path),
             catch: (cause) =>
-              new SqlError.SqlError({ reason: classifyError(cause, "Failed to load extension", "loadExtension") }),
+              new SqlError.SqlError({
+                reason: classifyError(cause, "Failed to load extension", "loadExtension"),
+              }),
           }),
       })
     })
@@ -170,9 +168,8 @@ export const make = (
       const fiber = Fiber.getCurrent()!
       const scope = Context.getUnsafe(fiber.context, Scope.Scope)
       return Effect.as(
-        Effect.tap(
-          restore(semaphore.take(1)),
-          () => Scope.addFinalizer(scope, semaphore.release(1)),
+        Effect.tap(restore(semaphore.take(1)), () =>
+          Scope.addFinalizer(scope, semaphore.release(1)),
         ),
         connection,
       )
@@ -202,27 +199,18 @@ export const make = (
 export const layerConfig = (
   config: Config.Wrap<SqliteClientConfig>,
 ): Layer.Layer<SqliteClient | Client.SqlClient, Config.ConfigError> =>
-  Layer
-    .effectContext(
-      Config.unwrap(config).pipe(
-        Effect.flatMap(make),
-        Effect.map((client) =>
-          Context.make(SqliteClient, client).pipe(
-            Context.add(Client.SqlClient, client),
-          )
-        ),
+  Layer.effectContext(
+    Config.unwrap(config).pipe(
+      Effect.flatMap(make),
+      Effect.map((client) =>
+        Context.make(SqliteClient, client).pipe(Context.add(Client.SqlClient, client)),
       ),
-    )
-    .pipe(Layer.provide(Reactivity.layer))
+    ),
+  ).pipe(Layer.provide(Reactivity.layer))
 
-export const layer = (
-  config: SqliteClientConfig,
-): Layer.Layer<SqliteClient | Client.SqlClient> =>
-  Layer
-    .effectContext(
-      Effect.map(make(config), (client) =>
-        Context.make(SqliteClient, client).pipe(
-          Context.add(Client.SqlClient, client),
-        )),
-    )
-    .pipe(Layer.provide(Reactivity.layer))
+export const layer = (config: SqliteClientConfig): Layer.Layer<SqliteClient | Client.SqlClient> =>
+  Layer.effectContext(
+    Effect.map(make(config), (client) =>
+      Context.make(SqliteClient, client).pipe(Context.add(Client.SqlClient, client)),
+    ),
+  ).pipe(Layer.provide(Reactivity.layer))

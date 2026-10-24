@@ -1,21 +1,20 @@
+import * as NPath from "node:path"
 import type { BuildConfig, BuildOutput } from "bun"
 import type * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import * as NPath from "node:path"
 import * as Bundle from "../bundler/Bundle.ts"
 import * as BundleHelpers from "../bundler/internal/BundleHelpers.ts"
 
 export type BuildOptions = Omit<BuildConfig, "outdir">
 
 /**
- * Bun v1.3.10 segfaults when CSS entrypoints are interleaved with JS
- * entrypoints, so CSS is grouped after non-CSS entrypoints.
+ * Bun v1.3.10 segfaults when CSS entrypoints are interleaved with JS entrypoints, so CSS is grouped
+ * after non-CSS entrypoints.
+ *
  * @see https://github.com/oven-sh/bun/issues/28947
  */
-function resolveEntrypointsPaired(
-  entrypoints: Array<string>,
-): Array<BundleHelpers.EntrypointPair> {
+function resolveEntrypointsPaired(entrypoints: Array<string>): Array<BundleHelpers.EntrypointPair> {
   const paired = BundleHelpers.resolveEntrypointsPaired(entrypoints)
   paired.sort((a, b) => {
     const aCss = NPath.extname(a.resolved) === ".css" ? 1 : 0
@@ -62,13 +61,11 @@ export const buildServer = (config: BuildOptions | string) => {
   })
 }
 
-/**
- * Builds a bundle and returns a fresh BundleContext each time the effect runs.
- */
+/** Builds a bundle and returns a fresh BundleContext each time the effect runs. */
 export function build(
   config: BuildOptions,
 ): Effect.Effect<Bundle.BundleContext, Bundle.BundleError> {
-  return Effect.gen(function*() {
+  return Effect.gen(function* () {
     const paired = resolveEntrypointsPaired(config.entrypoints)
     const resolvedConfig = {
       ...config,
@@ -78,14 +75,9 @@ export function build(
     const output = yield* buildBun(resolvedConfig)
     const entrypoints = yield* makeEntrypoints(paired, output)
     const artifactsMap = Object.fromEntries(
-      output.outputs.map((artifact) => [
-        BundleHelpers.toOutputPath(artifact.path),
-        artifact,
-      ]),
+      output.outputs.map((artifact) => [BundleHelpers.toOutputPath(artifact.path), artifact]),
     )
-    const publicPath = typeof config.publicPath === "string"
-      ? config.publicPath
-      : ""
+    const publicPath = typeof config.publicPath === "string" ? config.publicPath : ""
 
     const resolveRaw = Bundle.makeResolver(entrypoints)
 
@@ -96,27 +88,25 @@ export function build(
       },
       getArtifact: (path: string) => {
         const resolved = resolveRaw(path)
-        return (resolved ? artifactsMap[resolved] : undefined) ??
-          artifactsMap[path]
+        return (resolved ? artifactsMap[resolved] : undefined) ?? artifactsMap[path]
       },
     }
   })
 }
 
 /**
- * Wraps a build effect in a mutable BundleContext.
- * The initial build runs immediately. Subsequent calls to `rebuild()`
- * re-execute the build and swap the inner state so that `resolve` and
+ * Wraps a build effect in a mutable BundleContext. The initial build runs immediately. Subsequent
+ * calls to `rebuild()` re-execute the build and swap the inner state so that `resolve` and
  * `getArtifact` always reflect the latest build.
  */
 function mutableContext(
   buildEffect: Effect.Effect<Bundle.BundleContext, Bundle.BundleError>,
 ): Effect.Effect<Bundle.BundleContext, Bundle.BundleError> {
-  return Effect.gen(function*() {
+  return Effect.gen(function* () {
     let current = yield* buildEffect
 
     const rebuild = () =>
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         current = yield* buildEffect
         return current
       })
@@ -129,19 +119,14 @@ function mutableContext(
   })
 }
 
-export function layer(
-  config: BuildOptions,
-): Layer.Layer<Bundle.Bundle, Bundle.BundleError>
+export function layer(config: BuildOptions): Layer.Layer<Bundle.Bundle, Bundle.BundleError>
 export function layer<T>(
   tag: Context.Key<T, Bundle.BundleContext>,
   config: BuildOptions,
 ): Layer.Layer<T, Bundle.BundleError>
 export function layer(tagOrConfig: any, maybeConfig?: BuildOptions) {
   if (maybeConfig === undefined) {
-    return Layer.effect(
-      Bundle.Bundle,
-      mutableContext(buildClient(tagOrConfig)),
-    )
+    return Layer.effect(Bundle.Bundle, mutableContext(buildClient(tagOrConfig)))
   }
   return Layer.effect(tagOrConfig, mutableContext(build(maybeConfig)))
 }
@@ -149,20 +134,19 @@ export function layer(tagOrConfig: any, maybeConfig?: BuildOptions) {
 type BuildArtifact = BuildOutput["outputs"][number]
 
 const isEntrypointArtifact = (v: BuildArtifact): boolean =>
-  (v.kind === "entry-point" &&
-    !(v.loader === "html" && v.path.endsWith(".js"))) ||
+  (v.kind === "entry-point" && !(v.loader === "html" && v.path.endsWith(".js"))) ||
   (v.kind === "asset" && v.loader === "css")
 
 /**
  * Match emitted artifacts to entrypoints using Bun's metafile.
- * `metafile.outputs[artifact].entryPoint` is the only Bun-provided
- * back-reference from output artifact to source entrypoint.
+ * `metafile.outputs[artifact].entryPoint` is the only Bun-provided back-reference from output
+ * artifact to source entrypoint.
  */
 function makeEntrypoints(
   paired: Array<BundleHelpers.EntrypointPair>,
   output: BuildOutput,
 ): Effect.Effect<Record<string, string>, Bundle.BundleError> {
-  return Effect.gen(function*() {
+  return Effect.gen(function* () {
     if (!output.metafile) {
       return yield* Effect.fail(
         new Bundle.BundleError({
@@ -173,18 +157,11 @@ function makeEntrypoints(
 
     const entrypointIds = new Set(paired.map((p) => p.id))
     const artifactsByPath = new Map(
-      output.outputs.map((artifact) => [
-        BundleHelpers.toOutputPath(artifact.path),
-        artifact,
-      ]),
+      output.outputs.map((artifact) => [BundleHelpers.toOutputPath(artifact.path), artifact]),
     )
     const artifactPathByEntrypoint = new Map<string, string>()
 
-    for (
-      const [outputPath, metadata] of Object.entries(
-        output.metafile.outputs,
-      )
-    ) {
+    for (const [outputPath, metadata] of Object.entries(output.metafile.outputs)) {
       if (!metadata.entryPoint) continue
 
       const artifactPath = BundleHelpers.toOutputPath(outputPath)
@@ -203,15 +180,11 @@ function makeEntrypoints(
   })
 }
 
-function buildBun(
-  config: BuildOptions,
-): Effect.Effect<BuildOutput, Bundle.BundleError> {
+function buildBun(config: BuildOptions): Effect.Effect<BuildOutput, Bundle.BundleError> {
   return Effect.tryPromise({
     try: () => Bun.build(config),
     catch: (err: AggregateError | unknown) => {
-      const cause = err instanceof AggregateError
-        ? (err.errors?.[0] ?? err)
-        : err
+      const cause = err instanceof AggregateError ? (err.errors?.[0] ?? err) : err
       return new Bundle.BundleError({
         message: "Failed to Bun.build: " + cause,
         cause,

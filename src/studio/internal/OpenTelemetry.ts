@@ -1,9 +1,9 @@
+import * as NZlib from "node:zlib"
 import * as Effect from "effect/Effect"
 import * as PubSub from "effect/PubSub"
 import * as Schema from "effect/Schema"
 import * as SchemaIssue from "effect/SchemaIssue"
 import * as Stream from "effect/Stream"
-import * as NZlib from "node:zlib"
 import * as Entity from "../../Entity.ts"
 import type * as Tracing from "../../internal/Tracing.ts"
 import * as Route from "../../Route.ts"
@@ -54,14 +54,12 @@ const protocolError = (status: 413 | 415, message: string): ProtocolError => ({
 
 function parseError(actual: unknown, message: string, path: Path = []) {
   const issue = new SchemaIssue.Forbidden({ message }, actual, { reportInput: true })
-  return new Schema.SchemaError(
-    path.length === 0 ? issue : new SchemaIssue.Pointer(path, issue),
-  )
+  return new Schema.SchemaError(path.length === 0 ? issue : new SchemaIssue.Pointer(path, issue))
 }
 
 function asObject(value: unknown): JsonObject | undefined {
   return value !== null && typeof value === "object" && !Array.isArray(value)
-    ? value as JsonObject
+    ? (value as JsonObject)
     : undefined
 }
 
@@ -71,7 +69,7 @@ function readVarint(
   path: Path,
   description: string,
 ): Effect.Effect<{ readonly value: bigint; readonly offset: number }, ParseResult.ParseError> {
-  return Effect.gen(function*() {
+  return Effect.gen(function* () {
     let value = 0n
     let offset = initialOffset
     for (let index = 0; index < 10; index++) {
@@ -93,7 +91,7 @@ function decodeMessage(
   bytes: Uint8Array,
   path: Path,
 ): Effect.Effect<ProtoMessage, ParseResult.ParseError> {
-  return Effect.gen(function*() {
+  return Effect.gen(function* () {
     const fields = new Map<number, Array<WireValue>>()
     let offset = 0
     while (offset < bytes.length) {
@@ -108,12 +106,7 @@ function decodeMessage(
 
       let value: WireValue
       if (wireType === 0) {
-        const item = yield* readVarint(
-          bytes,
-          offset,
-          fieldPath,
-          "protobuf varint",
-        )
+        const item = yield* readVarint(bytes, offset, fieldPath, "protobuf varint")
         offset = item.offset
         value = { wireType: 0, value: item.value }
       } else if (wireType === 1) {
@@ -125,18 +118,11 @@ function decodeMessage(
         value = { wireType: 1, value: bytes.slice(offset, offset + 8) }
         offset += 8
       } else if (wireType === 2) {
-        const length = yield* readVarint(
-          bytes,
-          offset,
-          fieldPath,
-          "protobuf field length",
-        )
+        const length = yield* readVarint(bytes, offset, fieldPath, "protobuf field length")
         offset = length.offset
         const size = Number(length.value)
         if (!Number.isSafeInteger(size) || size < 0 || offset + size > bytes.length) {
-          return yield* Effect.fail(
-            parseError(bytes, "Invalid protobuf field length", fieldPath),
-          )
+          return yield* Effect.fail(parseError(bytes, "Invalid protobuf field length", fieldPath))
         }
         value = { wireType: 2, value: bytes.slice(offset, offset + size) }
         offset += size
@@ -170,7 +156,7 @@ function isProtoMessage(input: Input): input is ProtoMessage {
 }
 
 function wireValues(input: Input, fieldNumber: number): ReadonlyArray<WireValue> {
-  return isProtoMessage(input) ? input.get(fieldNumber) ?? [] : []
+  return isProtoMessage(input) ? (input.get(fieldNumber) ?? []) : []
 }
 
 function messages(
@@ -183,7 +169,9 @@ function messages(
     const values = wireValues(input, fieldNumber).filter(
       (item): item is Extract<WireValue, { wireType: 2 }> => item.wireType === 2,
     )
-    return Effect.forEach(values, (item, index) => decodeMessage(item.value, [...path, jsonKey, index]))
+    return Effect.forEach(values, (item, index) =>
+      decodeMessage(item.value, [...path, jsonKey, index]),
+    )
   }
   const value = input[jsonKey]
   return Effect.succeed(
@@ -214,11 +202,7 @@ function hasField(input: Input, jsonKey: string, fieldNumber: number): boolean {
     : input[jsonKey] !== undefined && input[jsonKey] !== null
 }
 
-function stringValue(
-  input: Input,
-  jsonKey: string,
-  fieldNumber: number,
-): string | undefined {
+function stringValue(input: Input, jsonKey: string, fieldNumber: number): string | undefined {
   if (isProtoMessage(input)) {
     const item = wireValues(input, fieldNumber).find((value) => value.wireType === 2)
     return item?.wireType === 2 ? textDecoder.decode(item.value) : undefined
@@ -227,11 +211,7 @@ function stringValue(
   return typeof value === "string" ? value : undefined
 }
 
-function varintValue(
-  input: Input,
-  jsonKey: string,
-  fieldNumber: number,
-): bigint | undefined {
+function varintValue(input: Input, jsonKey: string, fieldNumber: number): bigint | undefined {
   if (isProtoMessage(input)) {
     const item = wireValues(input, fieldNumber).find((value) => value.wireType === 0)
     return item?.wireType === 0 ? item.value : undefined
@@ -252,11 +232,7 @@ function littleEndian(bytes: Uint8Array): bigint {
   return value
 }
 
-function fixed64Value(
-  input: Input,
-  jsonKey: string,
-  fieldNumber: number,
-): bigint | undefined {
+function fixed64Value(input: Input, jsonKey: string, fieldNumber: number): bigint | undefined {
   if (isProtoMessage(input)) {
     const item = wireValues(input, fieldNumber).find((value) => value.wireType === 1)
     return item?.wireType === 1 ? littleEndian(item.value) : undefined
@@ -264,11 +240,7 @@ function fixed64Value(
   return varintValue(input, jsonKey, fieldNumber)
 }
 
-function fixed32Value(
-  input: Input,
-  jsonKey: string,
-  fieldNumber: number,
-): number | undefined {
+function fixed32Value(input: Input, jsonKey: string, fieldNumber: number): number | undefined {
   if (isProtoMessage(input)) {
     const item = wireValues(input, fieldNumber).find((value) => value.wireType === 5)
     return item?.wireType === 5 ? Number(littleEndian(item.value)) : undefined
@@ -281,11 +253,7 @@ function doubleFromBytes(bytes: Uint8Array): number {
   return new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength).getFloat64(0, true)
 }
 
-function doubleValue(
-  input: Input,
-  jsonKey: string,
-  fieldNumber: number,
-): number | undefined {
+function doubleValue(input: Input, jsonKey: string, fieldNumber: number): number | undefined {
   if (isProtoMessage(input)) {
     const item = wireValues(input, fieldNumber).find((value) => value.wireType === 1)
     return item?.wireType === 1 ? doubleFromBytes(item.value) : undefined
@@ -305,16 +273,10 @@ function signedFixed64Value(
   fieldNumber: number,
 ): bigint | undefined {
   const value = fixed64Value(input, jsonKey, fieldNumber)
-  return value !== undefined && value >= 0x8000000000000000n
-    ? value - 0x10000000000000000n
-    : value
+  return value !== undefined && value >= 0x8000000000000000n ? value - 0x10000000000000000n : value
 }
 
-function sint32Value(
-  input: Input,
-  jsonKey: string,
-  fieldNumber: number,
-): number | undefined {
+function sint32Value(input: Input, jsonKey: string, fieldNumber: number): number | undefined {
   const value = varintValue(input, jsonKey, fieldNumber)
   if (value === undefined) return undefined
   if (!isProtoMessage(input)) return Number(value)
@@ -332,11 +294,12 @@ function packedFixed64(
     return Effect.succeed(
       Array.isArray(values)
         ? values.flatMap((value) => {
-          if (typeof value === "bigint") return [value]
-          if (typeof value === "number" && Number.isFinite(value)) return [BigInt(Math.trunc(value))]
-          if (typeof value === "string" && /^\d+$/.test(value)) return [BigInt(value)]
-          return []
-        })
+            if (typeof value === "bigint") return [value]
+            if (typeof value === "number" && Number.isFinite(value))
+              return [BigInt(Math.trunc(value))]
+            if (typeof value === "string" && /^\d+$/.test(value)) return [BigInt(value)]
+            return []
+          })
         : [],
     )
   }
@@ -347,7 +310,9 @@ function packedFixed64(
       out.push(littleEndian(item.value))
     } else if (item.wireType === 2) {
       if (item.value.length % 8 !== 0) {
-        return Effect.fail(parseError(item.value, "Invalid packed fixed64 field", [...path, jsonKey]))
+        return Effect.fail(
+          parseError(item.value, "Invalid packed fixed64 field", [...path, jsonKey]),
+        )
       }
       for (let offset = 0; offset < item.value.length; offset += 8) {
         out.push(littleEndian(item.value.subarray(offset, offset + 8)))
@@ -366,9 +331,7 @@ function packedDoubles(
   if (!isProtoMessage(input)) {
     const values = input[jsonKey]
     return Effect.succeed(
-      Array.isArray(values)
-        ? values.map(Number).filter((value) => !Number.isNaN(value))
-        : [],
+      Array.isArray(values) ? values.map(Number).filter((value) => !Number.isNaN(value)) : [],
     )
   }
 
@@ -378,7 +341,9 @@ function packedDoubles(
       out.push(doubleFromBytes(item.value))
     } else if (item.wireType === 2) {
       if (item.value.length % 8 !== 0) {
-        return Effect.fail(parseError(item.value, "Invalid packed double field", [...path, jsonKey]))
+        return Effect.fail(
+          parseError(item.value, "Invalid packed double field", [...path, jsonKey]),
+        )
       }
       for (let offset = 0; offset < item.value.length; offset += 8) {
         out.push(doubleFromBytes(item.value.subarray(offset, offset + 8)))
@@ -399,16 +364,17 @@ function packedVarints(
     return Effect.succeed(
       Array.isArray(values)
         ? values.flatMap((value) => {
-          if (typeof value === "bigint") return [value]
-          if (typeof value === "number" && Number.isFinite(value)) return [BigInt(Math.trunc(value))]
-          if (typeof value === "string" && /^\d+$/.test(value)) return [BigInt(value)]
-          return []
-        })
+            if (typeof value === "bigint") return [value]
+            if (typeof value === "number" && Number.isFinite(value))
+              return [BigInt(Math.trunc(value))]
+            if (typeof value === "string" && /^\d+$/.test(value)) return [BigInt(value)]
+            return []
+          })
         : [],
     )
   }
 
-  return Effect.gen(function*() {
+  return Effect.gen(function* () {
     const out: Array<bigint> = []
     for (const item of wireValues(input, fieldNumber)) {
       if (item.wireType === 0) {
@@ -431,11 +397,7 @@ function packedVarints(
   })
 }
 
-function bytesHex(
-  input: Input,
-  jsonKey: string,
-  fieldNumber: number,
-): string | undefined {
+function bytesHex(input: Input, jsonKey: string, fieldNumber: number): string | undefined {
   if (isProtoMessage(input)) {
     const item = wireValues(input, fieldNumber).find((value) => value.wireType === 2)
     return item?.wireType === 2 ? item.value.toHex() : undefined
@@ -444,11 +406,7 @@ function bytesHex(
   return typeof value === "string" ? value.toLowerCase() : undefined
 }
 
-function attributeBytes(
-  input: Input,
-  jsonKey: string,
-  fieldNumber: number,
-): string | undefined {
+function attributeBytes(input: Input, jsonKey: string, fieldNumber: number): string | undefined {
   if (isProtoMessage(input)) {
     const item = wireValues(input, fieldNumber).find((value) => value.wireType === 2)
     return item?.wireType === 2 ? `0x${item.value.toHex()}` : undefined
@@ -461,16 +419,14 @@ function anyValue(
   input: Input | undefined,
   path: Path,
 ): Effect.Effect<unknown, ParseResult.ParseError> {
-  return Effect.gen(function*() {
+  return Effect.gen(function* () {
     if (!input) return undefined
     const stringItem = stringValue(input, "stringValue", 1)
     if (stringItem !== undefined) return stringItem
     if (hasField(input, "boolValue", 2)) return varintValue(input, "boolValue", 2) !== 0n
     const intItem = varintValue(input, "intValue", 3)
     if (intItem !== undefined) {
-      const signed = intItem >= 0x8000000000000000n
-        ? intItem - 0x10000000000000000n
-        : intItem
+      const signed = intItem >= 0x8000000000000000n ? intItem - 0x10000000000000000n : intItem
       return signed >= BigInt(Number.MIN_SAFE_INTEGER) && signed <= BigInt(Number.MAX_SAFE_INTEGER)
         ? Number(signed)
         : signed.toString()
@@ -480,7 +436,9 @@ function anyValue(
     const arrayItem = yield* message(input, "arrayValue", 5, path)
     if (arrayItem) {
       const values = yield* messages(arrayItem, "values", 1, [...path, "arrayValue"])
-      return yield* Effect.forEach(values, (value, index) => anyValue(value, [...path, "arrayValue", "values", index]))
+      return yield* Effect.forEach(values, (value, index) =>
+        anyValue(value, [...path, "arrayValue", "values", index]),
+      )
     }
     const listItem = yield* message(input, "kvlistValue", 6, path)
     if (listItem) return yield* attributes(listItem, "values", 1, [...path, "kvlistValue"])
@@ -496,7 +454,7 @@ function attributes(
   fieldNumber: number,
   path: Path,
 ): Effect.Effect<Record<string, unknown>, ParseResult.ParseError> {
-  return Effect.gen(function*() {
+  return Effect.gen(function* () {
     const out: Record<string, unknown> = {}
     const items = yield* messages(input, jsonKey, fieldNumber, path)
     for (let index = 0; index < items.length; index++) {
@@ -515,7 +473,7 @@ function resourceData(
   input: Input,
   path: Path,
 ): Effect.Effect<Tracing.Resource, ParseResult.ParseError> {
-  return Effect.gen(function*() {
+  return Effect.gen(function* () {
     const resource = yield* message(input, "resource", 1, path)
     return {
       attributes: resource
@@ -533,14 +491,12 @@ function scopeData(
   input: Input,
   path: Path,
 ): Effect.Effect<Tracing.InstrumentationScope, ParseResult.ParseError> {
-  return Effect.gen(function*() {
+  return Effect.gen(function* () {
     const scope = yield* message(input, "scope", 1, path)
     return {
       name: scope ? stringValue(scope, "name", 1) : undefined,
       version: scope ? stringValue(scope, "version", 2) : undefined,
-      attributes: scope
-        ? yield* attributes(scope, "attributes", 3, [...path, "scope"])
-        : {},
+      attributes: scope ? yield* attributes(scope, "attributes", 3, [...path, "scope"]) : {},
       droppedAttributesCount: scope
         ? Number(varintValue(scope, "droppedAttributesCount", 4) ?? 0n)
         : 0,
@@ -554,7 +510,7 @@ function validId(id: string | undefined, length: number): id is string {
 }
 
 function parseTraces(root: Input): Effect.Effect<Parsed<Tracing.Span>, ParseResult.ParseError> {
-  return Effect.gen(function*() {
+  return Effect.gen(function* () {
     const values: Array<Tracing.Span> = []
     let rejected = 0
     const resourceSpansValues = yield* messages(root, "resourceSpans", 1, [])
@@ -644,21 +600,18 @@ function parseTraces(root: Input): Effect.Effect<Parsed<Tracing.Span>, ParseResu
                   attributes: eventAttributes,
                 }
               },
-            ))
+            ),
+          )
 
           values.push({
             spanId,
             traceId,
             fiberId,
             name: stringValue(input, "name", 5) || "unknown",
-            kind: [
-              "internal",
-              "internal",
-              "server",
-              "client",
-              "producer",
-              "consumer",
-            ][Number(varintValue(input, "kind", 6) ?? 0n)] ?? "internal",
+            kind:
+              ["internal", "internal", "server", "client", "producer", "consumer"][
+                Number(varintValue(input, "kind", 6) ?? 0n)
+              ] ?? "internal",
             parentSpanId: validId(parentSpanId, 16) ? parentSpanId : undefined,
             startTime,
             endTime,
@@ -676,7 +629,10 @@ function parseTraces(root: Input): Effect.Effect<Parsed<Tracing.Span>, ParseResu
   })
 }
 
-function logLevel(severity: number, severityText: string | undefined): StudioStore.LogEntry["level"] {
+function logLevel(
+  severity: number,
+  severityText: string | undefined,
+): StudioStore.LogEntry["level"] {
   if (severity >= 21) return "FATAL"
   if (severity >= 17) return "ERROR"
   if (severity >= 13) return "WARNING"
@@ -689,8 +645,10 @@ function logLevel(severity: number, severityText: string | undefined): StudioSto
   return "DEBUG"
 }
 
-function parseLogs(root: Input): Effect.Effect<Parsed<StudioStore.LogEntry>, ParseResult.ParseError> {
-  return Effect.gen(function*() {
+function parseLogs(
+  root: Input,
+): Effect.Effect<Parsed<StudioStore.LogEntry>, ParseResult.ParseError> {
+  return Effect.gen(function* () {
     const values: Array<StudioStore.LogEntry> = []
     const resourceLogsValues = yield* messages(root, "resourceLogs", 1, [])
     for (let resourceIndex = 0; resourceIndex < resourceLogsValues.length; resourceIndex++) {
@@ -732,12 +690,14 @@ function parseLogs(root: Input): Effect.Effect<Parsed<StudioStore.LogEntry>, Par
           const flags = fixed32Value(input, "flags", 8)
           if (flags !== undefined) annotations["otel.log.flags"] = flags
           const dropped = varintValue(input, "droppedAttributesCount", 7)
-          if (dropped && dropped > 0n) annotations["otel.log.dropped_attributes_count"] = Number(dropped)
-          const messageText = body === undefined
-            ? eventName ?? ""
-            : typeof body === "string"
-            ? body
-            : JSON.stringify(body)
+          if (dropped && dropped > 0n)
+            annotations["otel.log.dropped_attributes_count"] = Number(dropped)
+          const messageText =
+            body === undefined
+              ? (eventName ?? "")
+              : typeof body === "string"
+                ? body
+                : JSON.stringify(body)
 
           values.push({
             id: Unique.snowflake(),
@@ -747,11 +707,12 @@ function parseLogs(root: Input): Effect.Effect<Parsed<StudioStore.LogEntry>, Par
             fiberId: validId(traceId, 32)
               ? `otlp:${traceId}`
               : `otlp:${String(resource.attributes["service.name"] ?? scope.name ?? "unknown")}`,
-            cause: typeof recordAttributes["exception.stacktrace"] === "string"
-              ? recordAttributes["exception.stacktrace"]
-              : typeof recordAttributes["exception.message"] === "string"
-              ? recordAttributes["exception.message"]
-              : undefined,
+            cause:
+              typeof recordAttributes["exception.stacktrace"] === "string"
+                ? recordAttributes["exception.stacktrace"]
+                : typeof recordAttributes["exception.message"] === "string"
+                  ? recordAttributes["exception.message"]
+                  : undefined,
             spans: [],
             annotations,
             resource,
@@ -800,7 +761,7 @@ function metricPointTags(
   flagsField: number,
   path: Path,
 ): Effect.Effect<void, ParseResult.ParseError> {
-  return Effect.gen(function*() {
+  return Effect.gen(function* () {
     const startTime = fixed64Value(input, "startTimeUnixNano", 2)
     const flags = varintValue(input, "flags", flagsField)
     if (startTime !== undefined) {
@@ -820,7 +781,8 @@ function metricPointTags(
           spanId: bytesHex(exemplar, "spanId", 4),
           traceId: bytesHex(exemplar, "traceId", 5),
         }),
-      ))
+      ),
+    )
     if (exemplars.length > 0) {
       tags.push({ key: "otel.metric.exemplars", value: JSON.stringify(exemplars) })
     }
@@ -840,15 +802,10 @@ function histogramBuckets(
   fieldNumber: 8 | 9,
   path: Path,
 ) {
-  return Effect.gen(function*() {
+  return Effect.gen(function* () {
     const bucketInput = yield* message(input, jsonKey, fieldNumber, path)
     if (!bucketInput) return { offset: 0, bucketCounts: [] }
-    const bucketCounts = yield* packedVarints(
-      bucketInput,
-      "bucketCounts",
-      2,
-      [...path, jsonKey],
-    )
+    const bucketCounts = yield* packedVarints(bucketInput, "bucketCounts", 2, [...path, jsonKey])
     return {
       offset: sint32Value(bucketInput, "offset", 1) ?? 0,
       bucketCounts: bucketCounts.map(Number),
@@ -856,8 +813,10 @@ function histogramBuckets(
   })
 }
 
-function parseMetrics(root: Input): Effect.Effect<Parsed<StudioStore.MetricSnapshot>, ParseResult.ParseError> {
-  return Effect.gen(function*() {
+function parseMetrics(
+  root: Input,
+): Effect.Effect<Parsed<StudioStore.MetricSnapshot>, ParseResult.ParseError> {
+  return Effect.gen(function* () {
     const values: Array<StudioStore.MetricSnapshot> = []
     let rejected = 0
     const resourceMetricsValues = yield* messages(root, "resourceMetrics", 1, [])
@@ -881,14 +840,21 @@ function parseMetrics(root: Input): Effect.Effect<Parsed<StudioStore.MetricSnaps
           const gauge = yield* message(metric, "gauge", 5, metricPath)
           const sum = yield* message(metric, "sum", 7, metricPath)
           const histogram = yield* message(metric, "histogram", 9, metricPath)
-          const exponentialHistogram = yield* message(metric, "exponentialHistogram", 10, metricPath)
+          const exponentialHistogram = yield* message(
+            metric,
+            "exponentialHistogram",
+            10,
+            metricPath,
+          )
           const summary = yield* message(metric, "summary", 11, metricPath)
 
           if (gauge || sum) {
             const data = gauge ?? sum!
             const dataPath = [...metricPath, gauge ? "gauge" : "sum"]
             const monotonic = sum ? (varintValue(sum, "isMonotonic", 3) ?? 0n) !== 0n : false
-            const temporality = sum ? Number(varintValue(sum, "aggregationTemporality", 2) ?? 0n) : 0
+            const temporality = sum
+              ? Number(varintValue(sum, "aggregationTemporality", 2) ?? 0n)
+              : 0
             const pointValues = yield* messages(data, "dataPoints", 1, dataPath)
             for (let pointIndex = 0; pointIndex < pointValues.length; pointIndex++) {
               const point = pointValues[pointIndex]
@@ -967,8 +933,15 @@ function parseMetrics(root: Input): Effect.Effect<Parsed<StudioStore.MetricSnaps
 
           if (exponentialHistogram) {
             const histogramPath = [...metricPath, "exponentialHistogram"]
-            const temporality = Number(varintValue(exponentialHistogram, "aggregationTemporality", 2) ?? 0n)
-            const pointValues = yield* messages(exponentialHistogram, "dataPoints", 1, histogramPath)
+            const temporality = Number(
+              varintValue(exponentialHistogram, "aggregationTemporality", 2) ?? 0n,
+            )
+            const pointValues = yield* messages(
+              exponentialHistogram,
+              "dataPoints",
+              1,
+              histogramPath,
+            )
             for (let pointIndex = 0; pointIndex < pointValues.length; pointIndex++) {
               const point = pointValues[pointIndex]
               const pointPath = [...histogramPath, "dataPoints", pointIndex]
@@ -1096,19 +1069,22 @@ function responseBody(
   if (rejected === 0) {
     return contentType === "application/json" ? textEncoder.encode("{}") : emptyBytes
   }
-  const rejectedName = signal === "traces"
-    ? "rejectedSpans"
-    : signal === "logs"
-    ? "rejectedLogRecords"
-    : "rejectedDataPoints"
+  const rejectedName =
+    signal === "traces"
+      ? "rejectedSpans"
+      : signal === "logs"
+        ? "rejectedLogRecords"
+        : "rejectedDataPoints"
   const errorMessage = `${rejected} invalid ${signal} item${rejected === 1 ? " was" : "s were"} rejected`
   if (contentType === "application/json") {
-    return textEncoder.encode(JSON.stringify({
-      partialSuccess: {
-        [rejectedName]: String(rejected),
-        errorMessage,
-      },
-    }))
+    return textEncoder.encode(
+      JSON.stringify({
+        partialSuccess: {
+          [rejectedName]: String(rejected),
+          errorMessage,
+        },
+      }),
+    )
   }
   const partial = concatBytes([
     encodeVarint(8n),
@@ -1127,13 +1103,15 @@ function errorBody(
   return contentType === "application/json"
     ? textEncoder.encode(JSON.stringify({ code, message }))
     : concatBytes([
-      encodeVarint(8n),
-      encodeVarint(BigInt(code)),
-      lengthDelimited(2, textEncoder.encode(message)),
-    ])
+        encodeVarint(8n),
+        encodeVarint(BigInt(code)),
+        lengthDelimited(2, textEncoder.encode(message)),
+      ])
 }
 
-function requestContentType(request: Request): "application/json" | "application/x-protobuf" | undefined {
+function requestContentType(
+  request: Request,
+): "application/json" | "application/x-protobuf" | undefined {
   const contentType = request.headers.get("content-type")?.split(";", 1)[0].trim().toLowerCase()
   if (contentType === "application/json" || contentType === "application/x-protobuf") {
     return contentType
@@ -1142,30 +1120,37 @@ function requestContentType(request: Request): "application/json" | "application
 }
 
 function readRequest(request: Request) {
-  return Effect.gen(function*() {
+  return Effect.gen(function* () {
     const contentLength = Number(request.headers.get("content-length"))
     if (Number.isFinite(contentLength) && contentLength > MAX_REQUEST_BYTES) {
       return yield* Effect.fail(protocolError(413, "OTLP request exceeds the 64 MiB limit"))
     }
     const contentEncoding = request.headers.get("content-encoding")?.trim().toLowerCase()
     if (contentEncoding && contentEncoding !== "identity" && contentEncoding !== "gzip") {
-      return yield* Effect.fail(protocolError(415, `Unsupported content encoding: ${contentEncoding}`))
+      return yield* Effect.fail(
+        protocolError(415, `Unsupported content encoding: ${contentEncoding}`),
+      )
     }
 
-    const accumulator = request.body === null
-      ? { chunks: [] as Array<Uint8Array>, size: 0 }
-      : yield* Stream
-        .fromReadableStream({
-          evaluate: () => request.body!,
-          onError: (cause) => parseError("request body stream", `Unable to read OTLP request: ${String(cause)}`),
-        })
-        .pipe(Stream.runFoldEffect(() => ({ chunks: [] as Array<Uint8Array>, size: 0 }), (accumulator, chunk) => {
-          accumulator.size += chunk.length
-          accumulator.chunks.push(chunk)
-          return accumulator.size > MAX_REQUEST_BYTES
-            ? Effect.fail(protocolError(413, "OTLP request exceeds the 64 MiB limit"))
-            : Effect.succeed(accumulator)
-        }))
+    const accumulator =
+      request.body === null
+        ? { chunks: [] as Array<Uint8Array>, size: 0 }
+        : yield* Stream.fromReadableStream({
+            evaluate: () => request.body!,
+            onError: (cause) =>
+              parseError("request body stream", `Unable to read OTLP request: ${String(cause)}`),
+          }).pipe(
+            Stream.runFoldEffect(
+              () => ({ chunks: [] as Array<Uint8Array>, size: 0 }),
+              (accumulator, chunk) => {
+                accumulator.size += chunk.length
+                accumulator.chunks.push(chunk)
+                return accumulator.size > MAX_REQUEST_BYTES
+                  ? Effect.fail(protocolError(413, "OTLP request exceeds the 64 MiB limit"))
+                  : Effect.succeed(accumulator)
+              },
+            ),
+          )
     let bytes = concatBytes(accumulator.chunks)
     if (contentEncoding === "gzip") {
       bytes = yield* Effect.try({
@@ -1187,117 +1172,115 @@ function parseRequest(
   if (contentType === "application/x-protobuf") {
     return decodeMessage(bytes, [])
   }
-  return Effect
-    .try({
-      try: () => JSON.parse(textDecoder.decode(bytes)),
-      catch: (cause) => parseError("JSON body", `Malformed OTLP JSON: ${String(cause)}`),
-    })
-    .pipe(Effect.flatMap((parsed) => {
+  return Effect.try({
+    try: () => JSON.parse(textDecoder.decode(bytes)),
+    catch: (cause) => parseError("JSON body", `Malformed OTLP JSON: ${String(cause)}`),
+  }).pipe(
+    Effect.flatMap((parsed) => {
       const object = asObject(parsed)
       return object
         ? Effect.succeed(object)
         : Effect.fail(parseError(typeof parsed, "Malformed OTLP JSON: root must be an object"))
-    }))
+    }),
+  )
 }
 
 function persist(signal: OpenTelemetrySignal, input: Input) {
-  return Effect
-    .gen(function*() {
-      const studio = yield* StudioContext.Studio
-      const sql = yield* StudioSql.StudioSql
-      if (signal === "traces") {
-        const parsed = yield* parseTraces(input)
-        yield* sql.withTransaction(
-          Effect.gen(function*() {
-            yield* Effect.forEach(parsed.values, StudioStore.insertSpan, { discard: true })
-            yield* StudioStore.evictSpans(studio.store.spanCapacity)
-          }),
-        )
-        const traceIds = new Set<string>()
-        for (const span of parsed.values) {
-          traceIds.add(span.traceId)
-          yield* PubSub.publish(studio.store.events, { _tag: "SpanStart", span })
-          if (span.endTime !== undefined) {
-            yield* PubSub.publish(studio.store.events, { _tag: "SpanEnd", span })
-          }
-        }
-        for (const traceId of traceIds) {
-          yield* PubSub.publish(studio.store.events, { _tag: "TraceEnd", traceId })
-        }
-        return parsed.rejected
-      }
-      if (signal === "logs") {
-        const parsed = yield* parseLogs(input)
-        yield* sql.withTransaction(
-          Effect.gen(function*() {
-            yield* Effect.forEach(parsed.values, StudioStore.insertLog, { discard: true })
-            yield* StudioStore.evict("Log", studio.store.logCapacity)
-          }),
-        )
-        yield* Effect.forEach(
-          parsed.values,
-          (log) => PubSub.publish(studio.store.events, { _tag: "Log", log }),
-          { discard: true },
-        )
-        return parsed.rejected
-      }
-
-      const parsed = yield* parseMetrics(input)
+  return Effect.gen(function* () {
+    const studio = yield* StudioContext.Studio
+    const sql = yield* StudioSql.StudioSql
+    if (signal === "traces") {
+      const parsed = yield* parseTraces(input)
       yield* sql.withTransaction(
-        Effect.gen(function*() {
-          yield* StudioStore.insertMetrics(parsed.values)
-          yield* StudioStore.evict("MetricSample", METRIC_CAPACITY)
+        Effect.gen(function* () {
+          yield* Effect.forEach(parsed.values, StudioStore.insertSpan, { discard: true })
+          yield* StudioStore.evictSpans(studio.store.spanCapacity)
         }),
       )
-      if (parsed.values.length > 0) {
-        yield* PubSub.publish(studio.store.events, {
-          _tag: "MetricsSnapshot",
-          metrics: parsed.values,
-        })
+      const traceIds = new Set<string>()
+      for (const span of parsed.values) {
+        traceIds.add(span.traceId)
+        yield* PubSub.publish(studio.store.events, { _tag: "SpanStart", span })
+        if (span.endTime !== undefined) {
+          yield* PubSub.publish(studio.store.events, { _tag: "SpanEnd", span })
+        }
+      }
+      for (const traceId of traceIds) {
+        yield* PubSub.publish(studio.store.events, { _tag: "TraceEnd", traceId })
       }
       return parsed.rejected
-    })
-    .pipe(Effect.withTracerEnabled(false))
+    }
+    if (signal === "logs") {
+      const parsed = yield* parseLogs(input)
+      yield* sql.withTransaction(
+        Effect.gen(function* () {
+          yield* Effect.forEach(parsed.values, StudioStore.insertLog, { discard: true })
+          yield* StudioStore.evict("Log", studio.store.logCapacity)
+        }),
+      )
+      yield* Effect.forEach(
+        parsed.values,
+        (log) => PubSub.publish(studio.store.events, { _tag: "Log", log }),
+        { discard: true },
+      )
+      return parsed.rejected
+    }
+
+    const parsed = yield* parseMetrics(input)
+    yield* sql.withTransaction(
+      Effect.gen(function* () {
+        yield* StudioStore.insertMetrics(parsed.values)
+        yield* StudioStore.evict("MetricSample", METRIC_CAPACITY)
+      }),
+    )
+    if (parsed.values.length > 0) {
+      yield* PubSub.publish(studio.store.events, {
+        _tag: "MetricsSnapshot",
+        metrics: parsed.values,
+      })
+    }
+    return parsed.rejected
+  }).pipe(Effect.withTracerEnabled(false))
 }
 
 export function handle(signal: OpenTelemetrySignal) {
-  return Effect
-    .gen(function*() {
-      const request = yield* Route.Request
-      const contentType = requestContentType(request)
-      if (contentType === undefined) {
-        return yield* Effect.fail(protocolError(415, "OTLP requires application/json or application/x-protobuf"))
-      }
-      const bytes = yield* readRequest(request)
-      const input = yield* parseRequest(bytes, contentType)
-      const rejected = yield* persist(signal, input)
-      return Entity.make(responseBody(signal, contentType, rejected), {
-        status: 200,
-        headers: { "content-type": contentType },
-      })
+  return Effect.gen(function* () {
+    const request = yield* Route.Request
+    const contentType = requestContentType(request)
+    if (contentType === undefined) {
+      return yield* Effect.fail(
+        protocolError(415, "OTLP requires application/json or application/x-protobuf"),
+      )
+    }
+    const bytes = yield* readRequest(request)
+    const input = yield* parseRequest(bytes, contentType)
+    const rejected = yield* persist(signal, input)
+    return Entity.make(responseBody(signal, contentType, rejected), {
+      status: 200,
+      headers: { "content-type": contentType },
     })
-    .pipe(
-      Effect.matchEffect({
-        onFailure: (cause) => {
-          const status = Schema.isSchemaError(cause)
-            ? 400
-            : asObject(cause)?._tag === "ProtocolError"
+  }).pipe(
+    Effect.matchEffect({
+      onFailure: (cause) => {
+        const status = Schema.isSchemaError(cause)
+          ? 400
+          : asObject(cause)?._tag === "ProtocolError"
             ? (cause as ProtocolError).status
             : 500
-          const message = Schema.isSchemaError(cause)
-            ? String(cause)
-            : asObject(cause)?._tag === "ProtocolError"
+        const message = Schema.isSchemaError(cause)
+          ? String(cause)
+          : asObject(cause)?._tag === "ProtocolError"
             ? (cause as ProtocolError).message
             : "Unable to persist OTLP telemetry"
-          return Effect.map(Route.Request, (request) => {
-            const contentType = requestContentType(request) ?? "application/json"
-            return Entity.make(errorBody(contentType, status, message), {
-              status,
-              headers: { "content-type": contentType },
-            })
+        return Effect.map(Route.Request, (request) => {
+          const contentType = requestContentType(request) ?? "application/json"
+          return Entity.make(errorBody(contentType, status, message), {
+            status,
+            headers: { "content-type": contentType },
           })
-        },
-        onSuccess: Effect.succeed,
-      }),
-    )
+        })
+      },
+      onSuccess: Effect.succeed,
+    }),
+  )
 }

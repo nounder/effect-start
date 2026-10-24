@@ -8,18 +8,14 @@ import * as Sql from "effect/sql/SqlClient"
 
 const sqlLayer = SqliteClient.layer({ filename: ":memory:" })
 
-const runSql = <A, E>(effect: Effect.Effect<A, E, Sql.SqlClient>) => Effect.runPromise(Effect.provide(effect, sqlLayer))
+const runSql = <A, E>(effect: Effect.Effect<A, E, Sql.SqlClient>) =>
+  Effect.runPromise(Effect.provide(effect, sqlLayer))
 
-const runSqlCached = <A, E>(
-  effect: Effect.Effect<A, E, Sql.SqlClient | SqlCache.SqlCache>,
-) =>
+const runSqlCached = <A, E>(effect: Effect.Effect<A, E, Sql.SqlClient | SqlCache.SqlCache>) =>
   Effect.runPromise(
     Effect.provide(
       effect,
-      Layer.mergeAll(
-        sqlLayer,
-        SqlCache.layer({ capacity: 100, timeToLive: "1 minutes" }),
-      ),
+      Layer.mergeAll(sqlLayer, SqlCache.layer({ capacity: 100, timeToLive: "1 minutes" })),
     ),
   )
 
@@ -27,7 +23,7 @@ test.describe("SqlCache", () => {
   test.describe("withCache(cache)", () => {
     test.it("returns cached result on second call with same query", () =>
       runSql(
-        Effect.gen(function*() {
+        Effect.gen(function* () {
           const sql = yield* Sql.SqlClient
           yield* sql`CREATE TABLE cache_test (id INTEGER PRIMARY KEY, name TEXT)`
           yield* sql`INSERT INTO cache_test (name) VALUES (${"Alice"})`
@@ -38,35 +34,26 @@ test.describe("SqlCache", () => {
             lookup: (key) => Effect.die(`unexpected lookup: ${key}`),
           })
 
-          const first = yield* sql<
-            { id: number; name: string }
-          >`SELECT * FROM cache_test`
-            .pipe(
-              SqlCache.withCache(cache),
-            )
+          const first = yield* sql<{ id: number; name: string }>`SELECT * FROM cache_test`.pipe(
+            SqlCache.withCache(cache),
+          )
 
-          test
-            .expect(first)
-            .toEqual([{ id: 1, name: "Alice" }])
+          test.expect(first).toEqual([{ id: 1, name: "Alice" }])
 
           yield* sql`INSERT INTO cache_test (name) VALUES (${"Bob"})`
 
-          const second = yield* sql<
-            { id: number; name: string }
-          >`SELECT * FROM cache_test`
-            .pipe(
-              SqlCache.withCache(cache),
-            )
+          const second = yield* sql<{ id: number; name: string }>`SELECT * FROM cache_test`.pipe(
+            SqlCache.withCache(cache),
+          )
 
-          test
-            .expect(second)
-            .toEqual([{ id: 1, name: "Alice" }])
+          test.expect(second).toEqual([{ id: 1, name: "Alice" }])
         }),
-      ))
+      ),
+    )
 
     test.it("different parameters produce different cache entries", () =>
       runSql(
-        Effect.gen(function*() {
+        Effect.gen(function* () {
           const sql = yield* Sql.SqlClient
           yield* sql`CREATE TABLE cache_params (id INTEGER PRIMARY KEY, name TEXT)`
           yield* sql`INSERT INTO cache_params (name) VALUES (${"Alice"})`
@@ -81,28 +68,23 @@ test.describe("SqlCache", () => {
           const alice = yield* sql<{
             id: number
             name: string
-          }>`SELECT * FROM cache_params WHERE name = ${"Alice"}`
-            .pipe(SqlCache.withCache(cache))
+          }>`SELECT * FROM cache_params WHERE name = ${"Alice"}`.pipe(SqlCache.withCache(cache))
 
-          test
-            .expect(alice)
-            .toEqual([{ id: 1, name: "Alice" }])
+          test.expect(alice).toEqual([{ id: 1, name: "Alice" }])
 
           const bob = yield* sql<{
             id: number
             name: string
-          }>`SELECT * FROM cache_params WHERE name = ${"Bob"}`
-            .pipe(SqlCache.withCache(cache))
+          }>`SELECT * FROM cache_params WHERE name = ${"Bob"}`.pipe(SqlCache.withCache(cache))
 
-          test
-            .expect(bob)
-            .toEqual([{ id: 2, name: "Bob" }])
+          test.expect(bob).toEqual([{ id: 2, name: "Bob" }])
         }),
-      ))
+      ),
+    )
 
     test.it("works with unsafe queries", () =>
       runSql(
-        Effect.gen(function*() {
+        Effect.gen(function* () {
           const sql = yield* Sql.SqlClient
           yield* sql`CREATE TABLE cache_unsafe (id INTEGER PRIMARY KEY, val TEXT)`
           yield* sql`INSERT INTO cache_unsafe (val) VALUES (${"x"})`
@@ -117,9 +99,7 @@ test.describe("SqlCache", () => {
             .unsafe<{ id: number; val: string }>("SELECT * FROM cache_unsafe")
             .pipe(SqlCache.withCache(cache))
 
-          test
-            .expect(first)
-            .toEqual([{ id: 1, val: "x" }])
+          test.expect(first).toEqual([{ id: 1, val: "x" }])
 
           yield* sql`INSERT INTO cache_unsafe (val) VALUES (${"y"})`
 
@@ -127,50 +107,40 @@ test.describe("SqlCache", () => {
             .unsafe<{ id: number; val: string }>("SELECT * FROM cache_unsafe")
             .pipe(SqlCache.withCache(cache))
 
-          test
-            .expect(second)
-            .toEqual([{ id: 1, val: "x" }])
+          test.expect(second).toEqual([{ id: 1, val: "x" }])
         }),
-      ))
+      ),
+    )
   })
 
   test.describe("withCache() from context", () => {
     test.it("uses SqlCache from the environment", () =>
       runSqlCached(
-        Effect.gen(function*() {
+        Effect.gen(function* () {
           const sql = yield* Sql.SqlClient
           yield* sql`CREATE TABLE cache_ctx (id INTEGER PRIMARY KEY, name TEXT)`
           yield* sql`INSERT INTO cache_ctx (name) VALUES (${"Alice"})`
 
-          const first = yield* sql<
-            { id: number; name: string }
-          >`SELECT * FROM cache_ctx`
-            .pipe(
-              SqlCache.withCache(),
-            )
+          const first = yield* sql<{ id: number; name: string }>`SELECT * FROM cache_ctx`.pipe(
+            SqlCache.withCache(),
+          )
 
-          test
-            .expect(first)
-            .toEqual([{ id: 1, name: "Alice" }])
+          test.expect(first).toEqual([{ id: 1, name: "Alice" }])
 
           yield* sql`INSERT INTO cache_ctx (name) VALUES (${"Bob"})`
 
-          const second = yield* sql<
-            { id: number; name: string }
-          >`SELECT * FROM cache_ctx`
-            .pipe(
-              SqlCache.withCache(),
-            )
+          const second = yield* sql<{ id: number; name: string }>`SELECT * FROM cache_ctx`.pipe(
+            SqlCache.withCache(),
+          )
 
-          test
-            .expect(second)
-            .toEqual([{ id: 1, name: "Alice" }])
+          test.expect(second).toEqual([{ id: 1, name: "Alice" }])
         }),
-      ))
+      ),
+    )
 
     test.it("different parameters produce different cache entries from context", () =>
       runSqlCached(
-        Effect.gen(function*() {
+        Effect.gen(function* () {
           const sql = yield* Sql.SqlClient
           yield* sql`CREATE TABLE cache_ctx_params (id INTEGER PRIMARY KEY, name TEXT)`
           yield* sql`INSERT INTO cache_ctx_params (name) VALUES (${"Alice"})`
@@ -179,23 +149,18 @@ test.describe("SqlCache", () => {
           const alice = yield* sql<{
             id: number
             name: string
-          }>`SELECT * FROM cache_ctx_params WHERE name = ${"Alice"}`
-            .pipe(SqlCache.withCache())
+          }>`SELECT * FROM cache_ctx_params WHERE name = ${"Alice"}`.pipe(SqlCache.withCache())
 
-          test
-            .expect(alice)
-            .toEqual([{ id: 1, name: "Alice" }])
+          test.expect(alice).toEqual([{ id: 1, name: "Alice" }])
 
           const bob = yield* sql<{
             id: number
             name: string
-          }>`SELECT * FROM cache_ctx_params WHERE name = ${"Bob"}`
-            .pipe(SqlCache.withCache())
+          }>`SELECT * FROM cache_ctx_params WHERE name = ${"Bob"}`.pipe(SqlCache.withCache())
 
-          test
-            .expect(bob)
-            .toEqual([{ id: 2, name: "Bob" }])
+          test.expect(bob).toEqual([{ id: 2, name: "Bob" }])
         }),
-      ))
+      ),
+    )
   })
 })

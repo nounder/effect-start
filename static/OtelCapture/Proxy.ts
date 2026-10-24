@@ -1,6 +1,6 @@
 /**
- * Recording proxy. OTel SDKs export to this, it appends every request to
- * Traffic.ndjson and forwards it verbatim to the studio server.
+ * Recording proxy. OTel SDKs export to this, it appends every request to Traffic.ndjson and
+ * forwards it verbatim to the studio server.
  */
 import * as NFs from "node:fs"
 import * as NPath from "node:path"
@@ -22,7 +22,13 @@ const server = Bun.serve({
     // The body is buffered here, so hop-by-hop framing headers from the exporter
     // (notably transfer-encoding: chunked) no longer describe what we forward.
     const headers = new Headers(request.headers)
-    for (const header of ["transfer-encoding", "connection", "keep-alive", "host", "content-length"]) {
+    for (const header of [
+      "transfer-encoding",
+      "connection",
+      "keep-alive",
+      "host",
+      "content-length",
+    ]) {
       headers.delete(header)
     }
 

@@ -1,36 +1,20 @@
 import type { EventCallbackHandler, HTMLOrSVG, Modifiers, Paths } from "./engine.ts"
 
-/*********
- * dom.ts
- *********/
+/** Dom.ts */
 export const isHTMLOrSVG = (el: Node): el is HTMLOrSVG =>
-  el instanceof HTMLElement ||
-  el instanceof SVGElement ||
-  el instanceof MathMLElement
+  el instanceof HTMLElement || el instanceof SVGElement || el instanceof MathMLElement
 
-/*********
- * math.ts
- *********/
+/** Math.ts */
 export const clamp = (value: number, min: number, max: number): number => {
   return Math.max(min, Math.min(max, value))
 }
 
-export const lerp = (
-  min: number,
-  max: number,
-  t: number,
-  clamped = true,
-): number => {
+export const lerp = (min: number, max: number, t: number, clamped = true): number => {
   const v = min + (max - min) * t
   return clamped ? clamp(v, min, max) : v
 }
 
-export const inverseLerp = (
-  min: number,
-  max: number,
-  value: number,
-  clamped = true,
-): number => {
+export const inverseLerp = (min: number, max: number, value: number, clamped = true): number => {
   if (value < min) return 0
   if (value > max) return 1
   const v = (value - min) / (max - min)
@@ -51,9 +35,7 @@ export const fit = (
   return rounded ? Math.round(fitted) : fitted
 }
 
-/*********
- * text.ts
- *********/
+/** Text.ts */
 export const kebab = (str: string): string =>
   str
     .replace(/([A-Z]+)([A-Z][a-z])/g, "$1-$2")
@@ -67,7 +49,8 @@ export const camel = (str: string): string => kebab(str).replace(/-./g, (x) => x
 
 export const snake = (str: string): string => kebab(str).replace(/-/g, "_")
 
-export const pascal = (str: string): string => camel(str).replace(/(^.|(?<=\.).)/g, (x) => x[0].toUpperCase())
+export const pascal = (str: string): string =>
+  camel(str).replace(/(^.|(?<=\.).)/g, (x) => x[0].toUpperCase())
 
 export const title = (str: string): string => str.replace(/\b\w/g, (char) => char.toUpperCase())
 
@@ -85,11 +68,7 @@ const caseFns: Record<string, (s: string) => string> = {
   pascal: (str) => str[0].toUpperCase() + caseFns.camel(str.slice(1)),
 }
 
-export const modifyCasing = (
-  str: string,
-  mods: Modifiers,
-  defaultCase = "camel",
-): string => {
+export const modifyCasing = (str: string, mods: Modifiers, defaultCase = "camel"): string => {
   for (const c of mods.get("case") || [defaultCase]) {
     str = caseFns[c]?.(str) || str
   }
@@ -98,9 +77,7 @@ export const modifyCasing = (
 
 export const aliasify = (name: string) => `data-${name}`
 
-/*********
- * tags.ts
- *********/
+/** Tags.ts */
 export const tagToMs = (args: Set<string>) => {
   if (!args || args.size <= 0) return 0
   for (const arg of args) {
@@ -117,11 +94,7 @@ export const tagToMs = (args: Set<string>) => {
   return 0
 }
 
-export const tagHas = (
-  tags: Set<string>,
-  tag: string,
-  defaultValue = false,
-) => {
+export const tagHas = (tags: Set<string>, tag: string, defaultValue = false) => {
   if (!tags) return defaultValue
   return tags.has(tag.toLowerCase())
 }
@@ -135,21 +108,16 @@ export const tagFirst = (tags?: Set<string>, defaultValue = ""): string => {
   return defaultValue
 }
 
-/*********
- * polyfills.ts
- *********/
+/** Polyfills.ts */
 export const hasOwn: (obj: object, prop: PropertyKey) => boolean =
   // @ts-ignore
   Object.hasOwn ?? Object.prototype.hasOwnProperty.call
 
-/*********
- * paths.ts
- *********/
+/** Paths.ts */
 export const isPojo = (obj: any): obj is Record<string, any> =>
   obj !== null &&
   typeof obj === "object" &&
-  (Object.getPrototypeOf(obj) === Object.prototype ||
-    Object.getPrototypeOf(obj) === null)
+  (Object.getPrototypeOf(obj) === Object.prototype || Object.getPrototypeOf(obj) === null)
 
 export const isEmpty = (obj: Record<string, any>): boolean => {
   for (const prop in obj) {
@@ -160,10 +128,7 @@ export const isEmpty = (obj: Record<string, any>): boolean => {
   return true
 }
 
-export const updateLeaves = (
-  obj: Record<string, any>,
-  fn: (oldValue: any) => any,
-) => {
+export const updateLeaves = (obj: Record<string, any>, fn: (oldValue: any) => any) => {
   for (const key in obj) {
     const val = obj[key]
     if (isPojo(val) || Array.isArray(val)) {
@@ -185,13 +150,8 @@ export const pathToObj = (paths: Paths): Record<string, any> => {
   return result
 }
 
-/*********
- * timing.ts
- *********/
-export const delay = (
-  callback: EventCallbackHandler,
-  wait: number,
-): EventCallbackHandler => {
+/** Timing.ts */
+export const delay = (callback: EventCallbackHandler, wait: number): EventCallbackHandler => {
   return (...args: Array<any>) => {
     setTimeout(() => {
       callback(...args)
@@ -260,9 +220,7 @@ export const modifyTiming = (
   return callback
 }
 
-/*********
- * view-transitions.ts
- *********/
+/** View-transitions.ts */
 export const supportsViewTransitions = !!document.startViewTransition
 
 export const modifyViewTransition = (

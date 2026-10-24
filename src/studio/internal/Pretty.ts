@@ -33,9 +33,7 @@ export function prettyPrintJson(value: unknown): string {
 
 export function formatLogMessage(message: unknown): string {
   if (!Array.isArray(message)) {
-    return isStructuredValue(message)
-      ? prettyPrintJson(message)
-      : String(message)
+    return isStructuredValue(message) ? prettyPrintJson(message) : String(message)
   }
 
   const lines: Array<string> = []

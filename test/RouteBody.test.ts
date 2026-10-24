@@ -1,5 +1,6 @@
 import * as test from "bun:test"
 import * as Entity from "effect-start/Entity"
+import * as RouteBody from "effect-start/internal/RouteBody"
 import * as Route from "effect-start/Route"
 import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
@@ -8,66 +9,59 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import type * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
-import * as RouteBody from "effect-start/internal/RouteBody"
 
 test.it("infers parent descriptions", () => {
   Route.get(
     Route.text((ctx) =>
-      Effect.gen(function*() {
-        test
-          .expectTypeOf(ctx)
-          .toExtend<{
-            method: "GET"
-            format: "text"
-          }>()
+      Effect.gen(function* () {
+        test.expectTypeOf(ctx).toExtend<{
+          method: "GET"
+          format: "text"
+        }>()
 
         return "Hello, world!"
-      })
+      }),
     ),
   )
 })
 
 test.it("next is an Entity", () => {
   Route.text((ctx, next) =>
-    Effect.gen(function*() {
-      test
-        .expectTypeOf(next)
-        .toExtend<Entity.Entity<string>>()
+    Effect.gen(function* () {
+      test.expectTypeOf(next).toExtend<Entity.Entity<string>>()
 
       return "Hello, world!"
-    })
+    }),
   )
 })
 
 test.it("enforces result value", () => {
   // @ts-expect-error must return string
   Route.text((_ctx, _next) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       return 1337
-    })
+    }),
   )
 })
 
 test.it("accepts text stream", () => {
   Route.get(
     Route.text((ctx) =>
-      Effect.gen(function*() {
-        test
-          .expectTypeOf(ctx)
-          .toExtend<{
-            method: "GET"
-            format: "text"
-          }>()
+      Effect.gen(function* () {
+        test.expectTypeOf(ctx).toExtend<{
+          method: "GET"
+          format: "text"
+        }>()
 
         return Stream.make("Hello", " ", "world!")
-      })
+      }),
     ),
   )
 })
 
 test.it("accepts Effect<Stream<string>> for html format", () => {
   Route.get(
-    Route.html(function*() {
+    Route.html(function* () {
       return Stream.make("<div>", "content", "</div>")
     }),
   )
@@ -77,7 +71,7 @@ test.it("accepts Effect<Stream<Uint8Array>> for bytes format", () => {
   const encoder = new TextEncoder()
 
   Route.get(
-    Route.bytes(function*() {
+    Route.bytes(function* () {
       return Stream.make(encoder.encode("chunk"))
     }),
   )
@@ -87,7 +81,7 @@ test.it("accepts Entity wrapping Stream<Uint8Array> for bytes format", () => {
   const encoder = new TextEncoder()
 
   Route.get(
-    Route.bytes(function*() {
+    Route.bytes(function* () {
       return Entity.make(Stream.make(encoder.encode("chunk")), {
         headers: { "content-type": "audio/mpeg" },
       })
@@ -97,7 +91,7 @@ test.it("accepts Entity wrapping Stream<Uint8Array> for bytes format", () => {
 
 test.it("rejects Stream for json format", () => {
   // @ts-expect-error Stream not allowed for json format
-  Route.json(function*() {
+  Route.json(function* () {
     return Stream.make({ msg: "hello" })
   })
 })
@@ -105,9 +99,7 @@ test.it("rejects Stream for json format", () => {
 test.it("accepts value directly", () => {
   const value = "Hello, world!"
 
-  test
-    .expectTypeOf(Route.text)
-    .toBeCallableWith(value)
+  test.expectTypeOf(Route.text).toBeCallableWith(value)
 })
 
 test.describe(`${RouteBody.normalize.name}()`, () => {
@@ -116,130 +108,91 @@ test.describe(`${RouteBody.normalize.name}()`, () => {
 
   test.it("accepts all HandlerInput variants", () => {
     test
-      .expectTypeOf<
-        RouteBody.HandlerInput<{ foo: string }, string, Error, never>
-      >()
+      .expectTypeOf<RouteBody.HandlerInput<{ foo: string }, string, Error, never>>()
       .toExtend<Parameters<typeof RouteBody.normalize>[0]>()
   })
 
   test.it("handles plain value", () =>
-    Effect
-      .gen(function*() {
-        const handler = RouteBody.normalize<{}, string, never, never>("hello")
-        const result = yield* handler(ctx, next)
+    Effect.gen(function* () {
+      const handler = RouteBody.normalize<{}, string, never, never>("hello")
+      const result = yield* handler(ctx, next)
 
-        test
-          .expect(result.body)
-          .toBe("hello")
-        test
-          .expect(result.status)
-          .toBe(200)
-      })
-      .pipe(Effect.runPromise))
+      test.expect(result.body).toBe("hello")
+      test.expect(result.status).toBe(200)
+    }).pipe(Effect.runPromise),
+  )
 
   test.it("handles Effect directly", () =>
-    Effect
-      .gen(function*() {
-        const handler = RouteBody.normalize<{}, string, never, never>(
-          Effect.succeed("from effect"),
-        )
-        const result = yield* handler(ctx, next)
+    Effect.gen(function* () {
+      const handler = RouteBody.normalize<{}, string, never, never>(Effect.succeed("from effect"))
+      const result = yield* handler(ctx, next)
 
-        test
-          .expect(result.body)
-          .toBe("from effect")
-      })
-      .pipe(Effect.runPromise))
+      test.expect(result.body).toBe("from effect")
+    }).pipe(Effect.runPromise),
+  )
 
   test.it("handles Effect with error", async () => {
-    const handler = RouteBody.normalize<{}, never, Error, never>(
-      Effect.fail(new Error("oops")),
-    )
+    const handler = RouteBody.normalize<{}, never, Error, never>(Effect.fail(new Error("oops")))
 
-    test
-      .expectTypeOf(handler)
-      .returns
-      .toExtend<
-        Effect.Effect<Entity.Entity<never>, Error, never>
-      >()
+    test.expectTypeOf(handler).returns.toExtend<Effect.Effect<Entity.Entity<never>, Error, never>>()
   })
 
   test.it("handles function", () =>
-    Effect
-      .gen(function*() {
-        const handler = RouteBody.normalize<{ id: number }, number, never, never>((
-          ctx,
-        ) => Effect.succeed(ctx.id))
+    Effect.gen(function* () {
+      const handler = RouteBody.normalize<{ id: number }, number, never, never>((ctx) =>
+        Effect.succeed(ctx.id),
+      )
 
-        test
-          .expectTypeOf(handler)
-          .parameters
-          .toEqualTypeOf<[{ id: number }, Entity.Entity<number, never>]>()
-        test
-          .expectTypeOf(handler)
-          .returns
-          .toEqualTypeOf<Effect.Effect<Entity.Entity<number>, never, never>>()
+      test
+        .expectTypeOf(handler)
+        .parameters.toEqualTypeOf<[{ id: number }, Entity.Entity<number, never>]>()
+      test
+        .expectTypeOf(handler)
+        .returns.toEqualTypeOf<Effect.Effect<Entity.Entity<number>, never, never>>()
 
-        const numNext = Entity.effect(Effect.succeed(Entity.make(23)))
-        const result = yield* handler({ id: 42 }, numNext)
+      const numNext = Entity.effect(Effect.succeed(Entity.make(23)))
+      const result = yield* handler({ id: 42 }, numNext)
 
-        test
-          .expect(result.body)
-          .toBe(42)
-      })
-      .pipe(Effect.runPromise))
+      test.expect(result.body).toBe(42)
+    }).pipe(Effect.runPromise),
+  )
 
   test.it("handles generator", () =>
-    Effect
-      .gen(function*() {
-        const handler = RouteBody.normalize<{ id: number }, number, never, never>(
-          function*(ctx) {
-            const n = yield* Effect.succeed(ctx.id)
-            return n * 2
-          },
-        )
-
-        test
-          .expectTypeOf(handler)
-          .parameters
-          .toEqualTypeOf<[{ id: number }, Entity.Entity<number, never>]>()
-
-        test
-          .expectTypeOf(handler)
-          .returns
-          .toEqualTypeOf<Effect.Effect<Entity.Entity<number>, never, never>>()
-
-        const numNext = Entity.effect(Effect.succeed(Entity.make(23)))
-        const result = yield* handler({ id: 21 }, numNext)
-
-        test
-          .expect(result.body)
-          .toBe(42)
+    Effect.gen(function* () {
+      const handler = RouteBody.normalize<{ id: number }, number, never, never>(function* (ctx) {
+        const n = yield* Effect.succeed(ctx.id)
+        return n * 2
       })
-      .pipe(Effect.runPromise))
+
+      test
+        .expectTypeOf(handler)
+        .parameters.toEqualTypeOf<[{ id: number }, Entity.Entity<number, never>]>()
+
+      test
+        .expectTypeOf(handler)
+        .returns.toEqualTypeOf<Effect.Effect<Entity.Entity<number>, never, never>>()
+
+      const numNext = Entity.effect(Effect.succeed(Entity.make(23)))
+      const result = yield* handler({ id: 21 }, numNext)
+
+      test.expect(result.body).toBe(42)
+    }).pipe(Effect.runPromise),
+  )
 
   test.it("generator can call next", () =>
-    Effect
-      .gen(function*() {
-        const handler = RouteBody.normalize<
-          {},
-          string,
-          Schema.SchemaError,
-          never
-        >(
-          function*(_ctx, next) {
-            const fromNext = yield* next.text
-            return `got: ${fromNext}`
-          },
-        )
+    Effect.gen(function* () {
+      const handler = RouteBody.normalize<{}, string, Schema.SchemaError, never>(
+        function* (_ctx, next) {
+          const fromNext = yield* next.text
+          return `got: ${fromNext}`
+        },
+      )
 
-        const result = yield* Effect.orDie(handler(ctx, next))
+      const result = yield* Effect.orDie(handler(ctx, next))
 
-        test
-          .expect(result.body)
-          .toBe("got: next")
-      })
-      .pipe(Effect.runPromise))
+      test.expect(result.body).toBe("got: next")
+    }).pipe(Effect.runPromise),
+  )
 
   test.it("generator type checks missing services", () => {
     interface ServiceA {
@@ -247,33 +200,23 @@ test.describe(`${RouteBody.normalize.name}()`, () => {
     }
     const ServiceA = Context.Service<ServiceA>("ServiceA")
 
-    const handler = RouteBody.normalize(function*() {
+    const handler = RouteBody.normalize(function* () {
       yield* ServiceA
       return "ok"
     })
 
-    test
-      .expectTypeOf(handler(ctx, next))
-      .toMatchTypeOf<
-        Effect.Effect<unknown, unknown, ServiceA>
-      >()
+    test.expectTypeOf(handler(ctx, next)).toMatchTypeOf<Effect.Effect<unknown, unknown, ServiceA>>()
 
     return (handler(ctx, next) as Effect.Effect<unknown>).pipe(
       Effect.exit,
       Effect.flatMap((exit) =>
         Effect.sync(() => {
-          test
-            .expect(Exit.isFailure(exit))
-            .toBe(true)
+          test.expect(Exit.isFailure(exit)).toBe(true)
 
           if (Exit.isFailure(exit)) {
-            test
-              .expect(Cause.pretty(exit.cause))
-              .toMatch(
-                /Service not found: ServiceA/,
-              )
+            test.expect(Cause.pretty(exit.cause)).toMatch(/Service not found: ServiceA/)
           }
-        })
+        }),
       ),
       Effect.runPromise,
     )
@@ -282,40 +225,32 @@ test.describe(`${RouteBody.normalize.name}()`, () => {
   test.it("generator infers error type from yielded effects", () => {
     class CustomError extends Data.TaggedError("CustomError")<{}> {}
 
-    const handler = RouteBody.normalize(function*() {
+    const handler = RouteBody.normalize(function* () {
       yield* Effect.fail(new CustomError())
       return "ok"
     })
 
     test
       .expectTypeOf(handler)
-      .returns
-      .toExtend<Effect.Effect<Entity.Entity<string>, CustomError, never>>()
+      .returns.toExtend<Effect.Effect<Entity.Entity<string>, CustomError, never>>()
   })
 
   test.it("Route.text infers error type from yielded effects", () => {
     class MyError extends Data.TaggedError("MyError")<{}> {}
 
     const routes = Route.get(
-      Route.text(function*() {
+      Route.text(function* () {
         yield* Effect.fail(new MyError())
         return "error occurred"
       }),
     )
 
-    type Items = typeof routes extends Route.RouteSet<any, any, infer I> ? I
-      : never
+    type Items = typeof routes extends Route.RouteSet<any, any, infer I> ? I : never
 
     test
       .expectTypeOf<Items[0]>()
       .toExtend<
-        Route.Route<
-          { method: "GET"; format: "text" },
-          {},
-          "error occurred",
-          MyError,
-          never
-        >
+        Route.Route<{ method: "GET"; format: "text" }, {}, "error occurred", MyError, never>
       >()
   })
 })

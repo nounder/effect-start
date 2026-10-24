@@ -33,9 +33,7 @@ export interface Span {
   readonly attributes: Record<string, unknown>
   readonly resource?: Resource
   readonly instrumentationScope?: InstrumentationScope
-  readonly events: Array<
-    { name: string; startTime: bigint; attributes?: Record<string, unknown> }
-  >
+  readonly events: Array<{ name: string; startTime: bigint; attributes?: Record<string, unknown> }>
 }
 
 export const nextPackedId = (): bigint => Unique.snowflake()
@@ -62,9 +60,8 @@ export const makeTracer = (spans: Array<Span>): Tracer.Tracer =>
       const links = options.links
       const startTime = options.startTime
       const kind = options.kind
-      const parentSpanId = Option.isSome(parent) && parent.value._tag === "Span"
-        ? parent.value.spanId
-        : undefined
+      const parentSpanId =
+        Option.isSome(parent) && parent.value._tag === "Span" ? parent.value.spanId : undefined
       const traceId = Option.isSome(parent) ? parent.value.traceId : nextTraceId()
       const spanId = nextSpanId()
       const currentFiber = Fiber.getCurrent()

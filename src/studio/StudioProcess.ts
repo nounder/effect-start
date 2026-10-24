@@ -1,8 +1,8 @@
+import * as NOS from "node:os"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as PubSub from "effect/PubSub"
 import * as Schedule from "effect/Schedule"
-import * as NOS from "node:os"
 import * as StudioContext from "./internal/StudioContext.ts"
 import type * as StudioSql from "./internal/StudioSql.ts"
 import * as StudioStore from "./StudioStore.ts"
@@ -63,23 +63,17 @@ function gauges(timestamp: number): Array<StudioStore.MetricSnapshot> {
   }))
 }
 
-export const layer: Layer.Layer<
-  never,
-  never,
-  StudioContext.Studio | StudioSql.StudioSql
-> = Layer
-  .effectDiscard(
-    Effect.gen(function*() {
+export const layer: Layer.Layer<never, never, StudioContext.Studio | StudioSql.StudioSql> =
+  Layer.effectDiscard(
+    Effect.gen(function* () {
       const { store } = yield* StudioContext.Studio
 
-      const tick = Effect.gen(function*() {
+      const tick = Effect.gen(function* () {
         const timestamp = Math.floor(Date.now() / PERIOD_MS) * PERIOD_MS
         yield* StudioStore.insertMetrics(gauges(timestamp))
         yield* PubSub.publish(store.events, { _tag: "ProcessSnapshot" })
       })
 
-      yield* Effect.forkScoped(
-        Effect.schedule(tick, Schedule.spaced(`${PERIOD_MS} millis`)),
-      )
+      yield* Effect.forkScoped(Effect.schedule(tick, Schedule.spaced(`${PERIOD_MS} millis`)))
     }),
   )

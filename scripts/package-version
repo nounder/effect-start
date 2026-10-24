@@ -4,7 +4,7 @@ import { $ } from "bun"
 
 const args = process.argv.slice(2)
 const skipPrompt = args.includes("-y")
-const positional = args.filter(a => a !== "-y")
+const positional = args.filter((a) => a !== "-y")
 const type = positional[0]
 const version = positional[1]
 
@@ -36,11 +36,13 @@ const major = Number(match[1])
 const minor = Number(match[2])
 const patch = Number(match[3])
 
-const newVersion = version ?? (
-  type === "major" ? `${major + 1}.0.0`
-  : type === "minor" ? `${major}.${minor + 1}.0`
-  : `${major}.${minor}.${patch + 1}`
-)
+const newVersion =
+  version ??
+  (type === "major"
+    ? `${major + 1}.0.0`
+    : type === "minor"
+      ? `${major}.${minor + 1}.0`
+      : `${major}.${minor}.${patch + 1}`)
 
 console.log(`${match[1]}.${match[2]}.${match[3]} -> ${newVersion}`)
 console.log(`This will: commit, tag, push, and publish to npm`)

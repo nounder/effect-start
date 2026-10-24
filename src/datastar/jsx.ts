@@ -28,10 +28,8 @@ export interface DataActions {
   delete: (url: string, args?: FetchActionArgs) => Promise<void>
 }
 
-export type DataEvent<E extends HTMLOrSVG = HTMLOrSVG> =
-  & Omit<Event, "currentTarget" | "target">
-  & DataActions
-  & {
+export type DataEvent<E extends HTMLOrSVG = HTMLOrSVG> = Omit<Event, "currentTarget" | "target"> &
+  DataActions & {
     signals: Record<string, any>
     actions: DataActions
     target: HTMLOrSVG
@@ -40,11 +38,17 @@ export type DataEvent<E extends HTMLOrSVG = HTMLOrSVG> =
   }
 
 type DataFunction<T = any, E extends HTMLOrSVG = HTMLOrSVG> = (e: DataEvent<E>) => T
-type DataLifecycleFunction<E extends HTMLOrSVG = HTMLOrSVG> = DataFunction<unknown | (() => void), E>
+type DataLifecycleFunction<E extends HTMLOrSVG = HTMLOrSVG> = DataFunction<
+  unknown | (() => void),
+  E
+>
 
 // Datastar object types for specific attributes
 type DatastarSignalsObject = Record<string, any>
-type DatastarClassObject<E extends HTMLOrSVG = HTMLOrSVG> = Record<string, boolean | string | DataFunction<any, E>>
+type DatastarClassObject<E extends HTMLOrSVG = HTMLOrSVG> = Record<
+  string,
+  boolean | string | DataFunction<any, E>
+>
 type DatastarAttrObject<E extends HTMLOrSVG = HTMLOrSVG> = Record<
   string,
   string | boolean | number | DataFunction<any, E>
@@ -56,14 +60,17 @@ type DatastarStyleObject<E extends HTMLOrSVG = HTMLOrSVG> = Record<
 
 /**
  * Datastar attributes for reactive web applications
+ *
  * @see https://data-star.dev/reference/attributes
  */
 export interface DatastarAttributes<E extends HTMLOrSVG = HTMLOrSVG> {
   // Core attributes that can accept objects (but also strings)
   "data-signals"?: string | DatastarSignalsObject | undefined
-  "data-class"?: string | DataFunction<DatastarClassObject<E>, E> | DatastarClassObject<E> | undefined
+  "data-class"?:
+    string | DataFunction<DatastarClassObject<E>, E> | DatastarClassObject<E> | undefined
   "data-attr"?: string | DataFunction<DatastarAttrObject<E>, E> | DatastarAttrObject<E> | undefined
-  "data-style"?: string | DataFunction<DatastarStyleObject<E>, E> | DatastarStyleObject<E> | undefined
+  "data-style"?:
+    string | DataFunction<DatastarStyleObject<E>, E> | DatastarStyleObject<E> | undefined
 
   // Boolean/presence attributes (but also strings)
   "data-show"?: string | DataFunction<boolean, E> | boolean | undefined
@@ -104,8 +111,10 @@ export interface DatastarAttributes<E extends HTMLOrSVG = HTMLOrSVG> {
 
   // Dynamic attributes with suffixes
   [key: `data-class:${string}`]: string | DataFunction<boolean, E> | undefined
-  [key: `data-attr:${string}`]: string | DataFunction<string | number | boolean | null | undefined, E> | undefined
-  [key: `data-style:${string}`]: string | DataFunction<string | number | null | undefined, E> | undefined
+  [key: `data-attr:${string}`]:
+    string | DataFunction<string | number | boolean | null | undefined, E> | undefined
+  [key: `data-style:${string}`]:
+    string | DataFunction<string | number | null | undefined, E> | undefined
   [key: `data-computed:${string}`]: string | DataFunction<any, E> | undefined
   [key: `data-on:${string}`]: string | DataFunction<any, E> | undefined
 }

@@ -18,16 +18,21 @@ export const fromRouter = <R = never>(
       R | HttpRouter.HttpRouter,
       HttpServerRequest.HttpServerRequest | Scope.Scope,
       never
-    >(Context.add(context, HttpRouter.HttpRouter, router))(Effect.suspend(() => router.asHttpEffect())),
+    >(Context.add(context, HttpRouter.HttpRouter, router))(
+      Effect.suspend(() => router.asHttpEffect()),
+    ),
   )
 
-export const fromHandler = (handler: (request: Request) => Response | Promise<Response>): HttpClient.HttpClient =>
+export const fromHandler = (
+  handler: (request: Request) => Response | Promise<Response>,
+): HttpClient.HttpClient =>
   HttpClient.make((request, _url, signal) =>
     HttpClientRequest.toWeb(request, { signal }).pipe(
-      Effect.mapError((cause) =>
-        new HttpClientError.HttpClientError({
-          reason: new HttpClientError.TransportError({ request, cause }),
-        })
+      Effect.mapError(
+        (cause) =>
+          new HttpClientError.HttpClientError({
+            reason: new HttpClientError.TransportError({ request, cause }),
+          }),
       ),
       Effect.flatMap((webRequest) =>
         Effect.tryPromise({
@@ -36,8 +41,8 @@ export const fromHandler = (handler: (request: Request) => Response | Promise<Re
             new HttpClientError.HttpClientError({
               reason: new HttpClientError.TransportError({ request, cause }),
             }),
-        })
+        }),
       ),
       Effect.map((response) => HttpClientResponse.fromWeb(request, response)),
-    )
+    ),
   )

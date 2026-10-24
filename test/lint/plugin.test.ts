@@ -8,13 +8,7 @@ function lint(code: string, filename = "test.ts") {
   const filePath = NPath.join(tmpDir, filename)
   NFs.writeFileSync(filePath, code)
   try {
-    const result = Bun.spawnSync([
-      "bunx",
-      "oxlint",
-      "--format",
-      "json",
-      filePath,
-    ], {
+    const result = Bun.spawnSync(["bunx", "oxlint", "--format", "json", filePath], {
       cwd: NPath.join(import.meta.dirname, "../.."),
     })
     const json = JSON.parse(result.stdout.toString()) as {
@@ -50,36 +44,21 @@ function lintFix(code: string, filename = "test.ts") {
 
 test.describe.skipIf(!process.env.TEST_LINT)("namespace-import", () => {
   test.it("flags named import from capitalized module", () => {
-    const diags = lintRule(
-      `import { Schema } from "effect/Schema"\nSchema\n`,
-      "namespace-import",
-    )
+    const diags = lintRule(`import { Schema } from "effect/Schema"\nSchema\n`, "namespace-import")
 
-    test
-      .expect(diags)
-      .toHaveLength(1)
+    test.expect(diags).toHaveLength(1)
   })
 
   test.it("allows namespace import from capitalized module", () => {
-    const diags = lintRule(
-      `import * as Schema from "effect/Schema"\nSchema\n`,
-      "namespace-import",
-    )
+    const diags = lintRule(`import * as Schema from "effect/Schema"\nSchema\n`, "namespace-import")
 
-    test
-      .expect(diags)
-      .toHaveLength(0)
+    test.expect(diags).toHaveLength(0)
   })
 
   test.it("flags named import from bun:test", () => {
-    const diags = lintRule(
-      `import { expect } from "bun:test"\nexpect\n`,
-      "namespace-import",
-    )
+    const diags = lintRule(`import { expect } from "bun:test"\nexpect\n`, "namespace-import")
 
-    test
-      .expect(diags)
-      .toHaveLength(1)
+    test.expect(diags).toHaveLength(1)
   })
 
   test.it("ignores lowercase modules", () => {
@@ -88,9 +67,7 @@ test.describe.skipIf(!process.env.TEST_LINT)("namespace-import", () => {
       "namespace-import",
     )
 
-    test
-      .expect(diags)
-      .toHaveLength(0)
+    test.expect(diags).toHaveLength(0)
   })
 
   test.it("flags named import from internal capitalized module", () => {
@@ -99,9 +76,7 @@ test.describe.skipIf(!process.env.TEST_LINT)("namespace-import", () => {
       "namespace-import",
     )
 
-    test
-      .expect(diags)
-      .toHaveLength(1)
+    test.expect(diags).toHaveLength(1)
   })
 
   test.it("allows internal module with matching alias", () => {
@@ -110,20 +85,13 @@ test.describe.skipIf(!process.env.TEST_LINT)("namespace-import", () => {
       "namespace-import",
     )
 
-    test
-      .expect(diags)
-      .toHaveLength(0)
+    test.expect(diags).toHaveLength(0)
   })
 
   test.it("flags alias that doesn't match basename (local import)", () => {
-    const diags = lintRule(
-      `import * as Sql from "./SqlClient.ts"\nSql\n`,
-      "namespace-import",
-    )
+    const diags = lintRule(`import * as Sql from "./SqlClient.ts"\nSql\n`, "namespace-import")
 
-    test
-      .expect(diags)
-      .toHaveLength(1)
+    test.expect(diags).toHaveLength(1)
   })
 
   test.it("allows matching alias and basename", () => {
@@ -132,20 +100,13 @@ test.describe.skipIf(!process.env.TEST_LINT)("namespace-import", () => {
       "namespace-import",
     )
 
-    test
-      .expect(diags)
-      .toHaveLength(0)
+    test.expect(diags).toHaveLength(0)
   })
 
   test.it("ignores mismatched alias for package imports", () => {
-    const diags = lintRule(
-      `import * as S from "effect/Schema"\nS\n`,
-      "namespace-import",
-    )
+    const diags = lintRule(`import * as S from "effect/Schema"\nS\n`, "namespace-import")
 
-    test
-      .expect(diags)
-      .toHaveLength(0)
+    test.expect(diags).toHaveLength(0)
   })
 
   test.it("strips file extension for basename comparison", () => {
@@ -154,9 +115,7 @@ test.describe.skipIf(!process.env.TEST_LINT)("namespace-import", () => {
       "namespace-import",
     )
 
-    test
-      .expect(diags)
-      .toHaveLength(1)
+    test.expect(diags).toHaveLength(1)
   })
 
   test.it("flags internal module with mismatched alias", () => {
@@ -165,9 +124,7 @@ test.describe.skipIf(!process.env.TEST_LINT)("namespace-import", () => {
       "namespace-import",
     )
 
-    test
-      .expect(diags)
-      .toHaveLength(1)
+    test.expect(diags).toHaveLength(1)
   })
 
   test.it("allows internal module with matching alias", () => {
@@ -176,195 +133,157 @@ test.describe.skipIf(!process.env.TEST_LINT)("namespace-import", () => {
       "namespace-import",
     )
 
-    test
-      .expect(diags)
-      .toHaveLength(0)
+    test.expect(diags).toHaveLength(0)
   })
 
   test.it("flags both duplicate imports from same module", () => {
     const diags = lintRule(
       [
-        "import type { Param } from \"./Param.ts\"",
-        "import { isParam } from \"./Param.ts\"",
+        'import type { Param } from "./Param.ts"',
+        'import { isParam } from "./Param.ts"',
         "const a: Param = isParam(1)",
         "",
-      ]
-        .join("\n"),
+      ].join("\n"),
       "namespace-import",
     )
 
-    test
-      .expect(diags)
-      .toHaveLength(2)
+    test.expect(diags).toHaveLength(2)
   })
 })
 
 test.describe.skipIf(!process.env.TEST_LINT)("test-space-around", () => {
   test.it("flags missing blank line before test call", () => {
     const code = [
-      "import * as test from \"bun:test\"",
+      'import * as test from "bun:test"',
       "const x = 1",
-      "test.it(\"a\", () => {})",
+      'test.it("a", () => {})',
       "",
-    ]
-      .join("\n")
+    ].join("\n")
     const diags = lintRule(code, "test-space-around", "a.test.ts")
 
-    test
-      .expect(diags.some((d) => d.message.includes("preceded")))
-      .toBe(true)
+    test.expect(diags.some((d) => d.message.includes("preceded"))).toBe(true)
   })
 
   test.it("flags missing blank line after test call", () => {
     const code = [
-      "import * as test from \"bun:test\"",
+      'import * as test from "bun:test"',
       "",
-      "test.it(\"a\", () => {})",
+      'test.it("a", () => {})',
       "const x = 1",
       "",
-    ]
-      .join("\n")
+    ].join("\n")
     const diags = lintRule(code, "test-space-around", "a.test.ts")
 
-    test
-      .expect(diags.some((d) => d.message.includes("followed")))
-      .toBe(true)
+    test.expect(diags.some((d) => d.message.includes("followed"))).toBe(true)
   })
 
   test.it("allows blank lines around test call", () => {
     const code = [
-      "import * as test from \"bun:test\"",
+      'import * as test from "bun:test"',
       "",
-      "test.it(\"a\", () => {})",
+      'test.it("a", () => {})',
       "",
       "const x = 1",
       "",
-    ]
-      .join("\n")
+    ].join("\n")
     const diags = lintRule(code, "test-space-around", "a.test.ts")
 
-    test
-      .expect(diags)
-      .toHaveLength(0)
+    test.expect(diags).toHaveLength(0)
   })
 
   test.it("skips non-test files", () => {
     const code = [
-      "import * as test from \"bun:test\"",
+      'import * as test from "bun:test"',
       "const x = 1",
-      "test.it(\"a\", () => {})",
+      'test.it("a", () => {})',
       "",
-    ]
-      .join("\n")
+    ].join("\n")
     const diags = lintRule(code, "test-space-around", "a.ts")
 
-    test
-      .expect(diags)
-      .toHaveLength(0)
+    test.expect(diags).toHaveLength(0)
   })
 })
 
 test.describe.skipIf(!process.env.TEST_LINT)("schema-type-helpers", () => {
   test.it("flags Schema.Schema.Type<typeof User>", () => {
     const code = [
-      "import * as Schema from \"effect/Schema\"",
+      'import * as Schema from "effect/Schema"',
       "const User = Schema.Struct({ name: Schema.String })",
       "type User = Schema.Schema.Type<typeof User>",
       "",
-    ]
-      .join("\n")
+    ].join("\n")
     const diags = lintRule(code, "schema-type-helpers")
 
-    test
-      .expect(diags)
-      .toHaveLength(1)
+    test.expect(diags).toHaveLength(1)
   })
 
   test.it("allows typeof User.Type", () => {
     const code = [
-      "import * as Schema from \"effect/Schema\"",
+      'import * as Schema from "effect/Schema"',
       "const User = Schema.Struct({ name: Schema.String })",
       "type User = typeof User.Type",
       "",
-    ]
-      .join("\n")
+    ].join("\n")
     const diags = lintRule(code, "schema-type-helpers")
 
-    test
-      .expect(diags)
-      .toHaveLength(0)
+    test.expect(diags).toHaveLength(0)
   })
 
   test.it("flags in export type alias", () => {
     const code = [
-      "import * as Schema from \"effect/Schema\"",
+      'import * as Schema from "effect/Schema"',
       "const Person = Schema.Struct({ age: Schema.Number })",
       "export type Person = Schema.Schema.Type<typeof Person>",
       "",
-    ]
-      .join("\n")
+    ].join("\n")
     const diags = lintRule(code, "schema-type-helpers")
 
-    test
-      .expect(diags)
-      .toHaveLength(1)
+    test.expect(diags).toHaveLength(1)
   })
 
   test.it("ignores Schema.Schema.Type with non-typeof param", () => {
     const code = [
-      "import * as Schema from \"effect/Schema\"",
+      'import * as Schema from "effect/Schema"',
       "type User = Schema.Schema.Type<any>",
       "",
-    ]
-      .join("\n")
+    ].join("\n")
     const diags = lintRule(code, "schema-type-helpers")
 
-    test
-      .expect(diags)
-      .toHaveLength(0)
+    test.expect(diags).toHaveLength(0)
   })
 
   test.it("ignores Schema.Schema.Type with multiple type params", () => {
     const code = [
-      "import * as Schema from \"effect/Schema\"",
+      'import * as Schema from "effect/Schema"',
       "type User = Schema.Schema.Type<typeof User, typeof User>",
       "",
-    ]
-      .join("\n")
+    ].join("\n")
     const diags = lintRule(code, "schema-type-helpers")
 
-    test
-      .expect(diags)
-      .toHaveLength(0)
+    test.expect(diags).toHaveLength(0)
   })
 
   test.it("fixes to typeof X.Type", () => {
     const code = [
-      "import * as Schema from \"effect/Schema\"",
+      'import * as Schema from "effect/Schema"',
       "const User = Schema.Struct({ name: Schema.String })",
       "type User = Schema.Schema.Type<typeof User>",
       "",
-    ]
-      .join("\n")
+    ].join("\n")
     const fixed = lintFix(code)
 
-    test
-      .expect(fixed)
-      .toContain("type User = typeof User.Type")
+    test.expect(fixed).toContain("type User = typeof User.Type")
   })
 
   test.it("ignores a local module named Schema", () => {
     const code = [
-      "import * as Schema from \"./local.ts\"",
+      'import * as Schema from "./local.ts"',
       "type User = Schema.Schema.Type<typeof User>",
       "",
-    ]
-      .join("\n")
+    ].join("\n")
     const diags = lintRule(code, "schema-type-helpers")
 
-    test
-      .expect(diags)
-      .toHaveLength(0)
+    test.expect(diags).toHaveLength(0)
   })
 })
 
@@ -375,9 +294,7 @@ test.describe.skipIf(!process.env.TEST_LINT)("effect-try-promise", () => {
       "effect-try-promise",
     )
 
-    test
-      .expect(diags)
-      .toHaveLength(1)
+    test.expect(diags).toHaveLength(1)
   })
 
   test.it("flags object form without catch", () => {
@@ -386,9 +303,7 @@ test.describe.skipIf(!process.env.TEST_LINT)("effect-try-promise", () => {
       "effect-try-promise",
     )
 
-    test
-      .expect(diags)
-      .toHaveLength(1)
+    test.expect(diags).toHaveLength(1)
   })
 
   test.it("allows object form with try and catch", () => {
@@ -397,9 +312,7 @@ test.describe.skipIf(!process.env.TEST_LINT)("effect-try-promise", () => {
       "effect-try-promise",
     )
 
-    test
-      .expect(diags)
-      .toHaveLength(0)
+    test.expect(diags).toHaveLength(0)
   })
 
   test.it("ignores other Effect calls", () => {
@@ -408,9 +321,7 @@ test.describe.skipIf(!process.env.TEST_LINT)("effect-try-promise", () => {
       "effect-try-promise",
     )
 
-    test
-      .expect(diags)
-      .toHaveLength(0)
+    test.expect(diags).toHaveLength(0)
   })
 
   test.it("flags aliased Effect import", () => {
@@ -419,9 +330,7 @@ test.describe.skipIf(!process.env.TEST_LINT)("effect-try-promise", () => {
       "effect-try-promise",
     )
 
-    test
-      .expect(diags)
-      .toHaveLength(1)
+    test.expect(diags).toHaveLength(1)
   })
 
   test.it("ignores a local module named Effect", () => {
@@ -430,22 +339,15 @@ test.describe.skipIf(!process.env.TEST_LINT)("effect-try-promise", () => {
       "effect-try-promise",
     )
 
-    test
-      .expect(diags)
-      .toHaveLength(0)
+    test.expect(diags).toHaveLength(0)
   })
 })
 
 test.describe.skipIf(!process.env.TEST_LINT)("no-destructured-params", () => {
   test.it("flags arrow function with destructured param", () => {
-    const diags = lintRule(
-      `const fn = ({ client }: any) => client\nfn\n`,
-      "no-destructured-params",
-    )
+    const diags = lintRule(`const fn = ({ client }: any) => client\nfn\n`, "no-destructured-params")
 
-    test
-      .expect(diags)
-      .toHaveLength(1)
+    test.expect(diags).toHaveLength(1)
   })
 
   test.it("flags function declaration with destructured param", () => {
@@ -454,79 +356,51 @@ test.describe.skipIf(!process.env.TEST_LINT)("no-destructured-params", () => {
       "no-destructured-params",
     )
 
-    test
-      .expect(diags)
-      .toHaveLength(1)
+    test.expect(diags).toHaveLength(1)
   })
 
   test.it("flags destructured param with default value", () => {
-    const diags = lintRule(
-      `const fn = ({ x }: any = {}) => x\nfn\n`,
-      "no-destructured-params",
-    )
+    const diags = lintRule(`const fn = ({ x }: any = {}) => x\nfn\n`, "no-destructured-params")
 
-    test
-      .expect(diags)
-      .toHaveLength(1)
+    test.expect(diags).toHaveLength(1)
   })
 
   test.it("allows normal parameters", () => {
-    const diags = lintRule(
-      `const fn = (client: any) => client\nfn\n`,
-      "no-destructured-params",
-    )
+    const diags = lintRule(`const fn = (client: any) => client\nfn\n`, "no-destructured-params")
 
-    test
-      .expect(diags)
-      .toHaveLength(0)
+    test.expect(diags).toHaveLength(0)
   })
 
   test.it("allows no parameters", () => {
     const diags = lintRule(`const fn = () => 1\nfn\n`, "no-destructured-params")
 
-    test
-      .expect(diags)
-      .toHaveLength(0)
+    test.expect(diags).toHaveLength(0)
   })
 
   test.it("fixes arrow function with single property", () => {
     const fixed = lintFix(`const fn = ({ client }: any) => client\nfn\n`)
 
-    test
-      .expect(fixed)
-      .toBe(`const fn = (options: any) => options.client\nfn\n`)
+    test.expect(fixed).toBe(`const fn = (options: any) => options.client\nfn\n`)
   })
 
   test.it("fixes arrow function with multiple properties", () => {
-    const fixed = lintFix(
-      `const fn = ({ fiber, teardown }: any) => { fiber; teardown }\nfn\n`,
-    )
+    const fixed = lintFix(`const fn = ({ fiber, teardown }: any) => { fiber; teardown }\nfn\n`)
 
     test
       .expect(fixed)
-      .toBe(
-        `const fn = (options: any) => { options.fiber; options.teardown }\nfn\n`,
-      )
+      .toBe(`const fn = (options: any) => { options.fiber; options.teardown }\nfn\n`)
   })
 
   test.it("fixes function declaration", () => {
-    const fixed = lintFix(
-      `function fn({ client }: any) { return client }\nfn\n`,
-    )
+    const fixed = lintFix(`function fn({ client }: any) { return client }\nfn\n`)
 
-    test
-      .expect(fixed)
-      .toBe(
-        `function fn(options: any) { return options.client }\nfn\n`,
-      )
+    test.expect(fixed).toBe(`function fn(options: any) { return options.client }\nfn\n`)
   })
 
   test.it("fixes aliased destructuring", () => {
     const fixed = lintFix(`const fn = ({ client: c }: any) => c\nfn\n`)
 
-    test
-      .expect(fixed)
-      .toBe(`const fn = (options: any) => options.client\nfn\n`)
+    test.expect(fixed).toBe(`const fn = (options: any) => options.client\nfn\n`)
   })
 
   test.it("fixes with type annotation preserved", () => {
@@ -544,9 +418,7 @@ test.describe.skipIf(!process.env.TEST_LINT)("no-destructured-params", () => {
   test.it("fixes with default parameter value", () => {
     const fixed = lintFix(`const fn = ({ x }: any = {}) => x\nfn\n`)
 
-    test
-      .expect(fixed)
-      .toBe(`const fn = (options: any = {}) => options.x\nfn\n`)
+    test.expect(fixed).toBe(`const fn = (options: any = {}) => options.x\nfn\n`)
   })
 
   test.it("fixes multiline real-world pattern", () => {
@@ -556,8 +428,7 @@ test.describe.skipIf(!process.env.TEST_LINT)("no-destructured-params", () => {
       "  teardown(prev)",
       "})",
       "",
-    ]
-      .join("\n")
+    ].join("\n")
     const fixed = lintFix(code)
 
     test
@@ -569,8 +440,7 @@ test.describe.skipIf(!process.env.TEST_LINT)("no-destructured-params", () => {
           "  v.teardown(prev)",
           "})",
           "",
-        ]
-          .join("\n"),
+        ].join("\n"),
       )
   })
 
@@ -581,8 +451,7 @@ test.describe.skipIf(!process.env.TEST_LINT)("no-destructured-params", () => {
       "  return { mssql, q }",
       "})",
       "",
-    ]
-      .join("\n")
+    ].join("\n")
     const fixed = lintFix(code)
 
     test
@@ -594,30 +463,23 @@ test.describe.skipIf(!process.env.TEST_LINT)("no-destructured-params", () => {
           "  return { mssql: v.mssql, q }",
           "})",
           "",
-        ]
-          .join("\n"),
+        ].join("\n"),
       )
   })
 
   test.it("fixes shorthand property that references destructured var", () => {
-    const fixed = lintFix(
-      `const fn = ({ a, b }: any) => ({ a, b, c: 1 })\nfn\n`,
-    )
+    const fixed = lintFix(`const fn = ({ a, b }: any) => ({ a, b, c: 1 })\nfn\n`)
 
     test
       .expect(fixed)
-      .toBe(
-        `const fn = (options: any) => ({ a: options.a, b: options.b, c: 1 })\nfn\n`,
-      )
+      .toBe(`const fn = (options: any) => ({ a: options.a, b: options.b, c: 1 })\nfn\n`)
   })
 
   test.it("does not auto-fix when properties have defaults", () => {
     const code = `const fn = ({ x = 1, y }: any) => x + y\nfn\n`
     const fixed = lintFix(code)
 
-    test
-      .expect(fixed)
-      .toBe(code)
+    test.expect(fixed).toBe(code)
   })
 
   test.it("flags destructured second param in callback", () => {
@@ -627,13 +489,10 @@ test.describe.skipIf(!process.env.TEST_LINT)("no-destructured-params", () => {
       "}",
       "fn",
       "",
-    ]
-      .join("\n")
+    ].join("\n")
     const diags = lintRule(code, "no-destructured-params")
 
-    test
-      .expect(diags)
-      .toHaveLength(1)
+    test.expect(diags).toHaveLength(1)
   })
 
   test.it("fixes destructured second param in callback", () => {
@@ -643,8 +502,7 @@ test.describe.skipIf(!process.env.TEST_LINT)("no-destructured-params", () => {
       "}",
       "fn",
       "",
-    ]
-      .join("\n")
+    ].join("\n")
     const fixed = lintFix(code)
 
     test
@@ -656,35 +514,22 @@ test.describe.skipIf(!process.env.TEST_LINT)("no-destructured-params", () => {
           "}",
           "fn",
           "",
-        ]
-          .join("\n"),
+        ].join("\n"),
       )
   })
 
   test.it("avoids shadowing existing variable with suffix", () => {
-    const code = [
-      "const options = 1",
-      "const fn = ({ a }: any) => a + options",
-      "fn",
-      "",
-    ]
-      .join(
-        "\n",
-      )
+    const code = ["const options = 1", "const fn = ({ a }: any) => a + options", "fn", ""].join(
+      "\n",
+    )
     const fixed = lintFix(code)
 
     test
       .expect(fixed)
       .toBe(
-        [
-          "const options = 1",
-          "const fn = (options2: any) => options2.a + options",
-          "fn",
-          "",
-        ]
-          .join(
-            "\n",
-          ),
+        ["const options = 1", "const fn = (options2: any) => options2.a + options", "fn", ""].join(
+          "\n",
+        ),
       )
   })
 })
@@ -692,63 +537,48 @@ test.describe.skipIf(!process.env.TEST_LINT)("no-destructured-params", () => {
 test.describe.skipIf(!process.env.TEST_LINT)("tagged-symbol-name", () => {
   test.it("flags class name that does not match the tag", () => {
     const code = [
-      "import * as Data from \"effect/Data\"",
-      "export class UnsupportedError extends Data.TaggedError(\"FixtureUnsupportedError\")<{",
+      'import * as Data from "effect/Data"',
+      'export class UnsupportedError extends Data.TaggedError("FixtureUnsupportedError")<{',
       "  readonly message: string",
       "}> {}",
       "",
-    ]
-      .join("\n")
+    ].join("\n")
     const diags = lintRule(code, "tagged-symbol-name")
 
-    test
-      .expect(diags)
-      .toHaveLength(1)
+    test.expect(diags).toHaveLength(1)
   })
 
   test.it("allows class name that matches the tag", () => {
     const code = [
-      "import * as Data from \"effect/Data\"",
-      "export class FetchError extends Data.TaggedError(\"FetchError\")<{",
+      'import * as Data from "effect/Data"',
+      'export class FetchError extends Data.TaggedError("FetchError")<{',
       "  readonly message: string",
       "}> {}",
       "",
-    ]
-      .join("\n")
+    ].join("\n")
     const diags = lintRule(code, "tagged-symbol-name")
 
-    test
-      .expect(diags)
-      .toHaveLength(0)
+    test.expect(diags).toHaveLength(0)
   })
 
   test.it("ignores unrelated classes", () => {
-    const code = [
-      "export class Foo {}",
-      "",
-    ]
-      .join("\n")
+    const code = ["export class Foo {}", ""].join("\n")
     const diags = lintRule(code, "tagged-symbol-name")
 
-    test
-      .expect(diags)
-      .toHaveLength(0)
+    test.expect(diags).toHaveLength(0)
   })
 
   test.it("fixes the tag to match the class name", () => {
     const code = [
-      "import * as Data from \"effect/Data\"",
-      "export class UnsupportedError extends Data.TaggedError(\"FixtureUnsupportedError\")<{",
+      'import * as Data from "effect/Data"',
+      'export class UnsupportedError extends Data.TaggedError("FixtureUnsupportedError")<{',
       "  readonly message: string",
       "}> {}",
       "",
-    ]
-      .join("\n")
+    ].join("\n")
     const fixed = lintFix(code)
 
-    test
-      .expect(fixed)
-      .toContain("Data.TaggedError(\"UnsupportedError\")")
+    test.expect(fixed).toContain('Data.TaggedError("UnsupportedError")')
   })
 
   test.it("flags Data.TaggedClass mismatch", () => {
@@ -757,9 +587,7 @@ test.describe.skipIf(!process.env.TEST_LINT)("tagged-symbol-name", () => {
       "tagged-symbol-name",
     )
 
-    test
-      .expect(diags)
-      .toHaveLength(1)
+    test.expect(diags).toHaveLength(1)
   })
 
   test.it("flags Request.TaggedClass mismatch", () => {
@@ -768,9 +596,7 @@ test.describe.skipIf(!process.env.TEST_LINT)("tagged-symbol-name", () => {
       "tagged-symbol-name",
     )
 
-    test
-      .expect(diags)
-      .toHaveLength(1)
+    test.expect(diags).toHaveLength(1)
   })
 
   test.it("flags Schema.TaggedError mismatch (double-call)", () => {
@@ -779,9 +605,7 @@ test.describe.skipIf(!process.env.TEST_LINT)("tagged-symbol-name", () => {
       "tagged-symbol-name",
     )
 
-    test
-      .expect(diags)
-      .toHaveLength(1)
+    test.expect(diags).toHaveLength(1)
   })
 
   test.it("allows Schema.TaggedError match", () => {
@@ -790,26 +614,21 @@ test.describe.skipIf(!process.env.TEST_LINT)("tagged-symbol-name", () => {
       "tagged-symbol-name",
     )
 
-    test
-      .expect(diags)
-      .toHaveLength(0)
+    test.expect(diags).toHaveLength(0)
   })
 
   test.it("flags Schema.TaggedClass and Schema.TaggedRequest mismatch", () => {
     const diags = lintRule(
       [
-        "import * as Schema from \"effect/Schema\"",
-        "export class A extends Schema.TaggedClass<A>()(\"X\", {}) {}",
-        "export class B extends Schema.TaggedRequest<B>()(\"Y\", { failure: Schema.Never, success: Schema.Void, payload: {} }) {}",
+        'import * as Schema from "effect/Schema"',
+        'export class A extends Schema.TaggedClass<A>()("X", {}) {}',
+        'export class B extends Schema.TaggedRequest<B>()("Y", { failure: Schema.Never, success: Schema.Void, payload: {} }) {}',
         "",
-      ]
-        .join("\n"),
+      ].join("\n"),
       "tagged-symbol-name",
     )
 
-    test
-      .expect(diags)
-      .toHaveLength(2)
+    test.expect(diags).toHaveLength(2)
   })
 
   test.it("flags Schema.Class identifier mismatch (inner-call)", () => {
@@ -818,9 +637,7 @@ test.describe.skipIf(!process.env.TEST_LINT)("tagged-symbol-name", () => {
       "tagged-symbol-name",
     )
 
-    test
-      .expect(diags)
-      .toHaveLength(1)
+    test.expect(diags).toHaveLength(1)
   })
 
   test.it("allows Context.Service class identifier matching last segment", () => {
@@ -829,9 +646,7 @@ test.describe.skipIf(!process.env.TEST_LINT)("tagged-symbol-name", () => {
       "tagged-symbol-name",
     )
 
-    test
-      .expect(diags)
-      .toHaveLength(0)
+    test.expect(diags).toHaveLength(0)
   })
 
   test.it("flags Context.Service class last-segment mismatch", () => {
@@ -840,9 +655,7 @@ test.describe.skipIf(!process.env.TEST_LINT)("tagged-symbol-name", () => {
       "tagged-symbol-name",
     )
 
-    test
-      .expect(diags)
-      .toHaveLength(1)
+    test.expect(diags).toHaveLength(1)
   })
 
   test.it("fixes Context.Service class last segment while preserving the namespace prefix", () => {
@@ -851,9 +664,7 @@ test.describe.skipIf(!process.env.TEST_LINT)("tagged-symbol-name", () => {
       "context-service-class-fix.ts",
     )
 
-    test
-      .expect(fixed)
-      .toContain("Context.Service<Routes, {}>()(\"app/Routes\")")
+    test.expect(fixed).toContain('Context.Service<Routes, {}>()("app/Routes")')
   })
 
   test.it("allows Context.Service const identifier matching last segment", () => {
@@ -862,9 +673,7 @@ test.describe.skipIf(!process.env.TEST_LINT)("tagged-symbol-name", () => {
       "tagged-symbol-name",
     )
 
-    test
-      .expect(diags)
-      .toHaveLength(0)
+    test.expect(diags).toHaveLength(0)
   })
 
   test.it("flags Context.Service const last-segment mismatch", () => {
@@ -873,9 +682,7 @@ test.describe.skipIf(!process.env.TEST_LINT)("tagged-symbol-name", () => {
       "tagged-symbol-name",
     )
 
-    test
-      .expect(diags)
-      .toHaveLength(1)
+    test.expect(diags).toHaveLength(1)
   })
 
   test.it("fixes Context.Service const key preserving the prefix", () => {
@@ -884,9 +691,7 @@ test.describe.skipIf(!process.env.TEST_LINT)("tagged-symbol-name", () => {
       "context-service-const-fix.ts",
     )
 
-    test
-      .expect(fixed)
-      .toContain("Context.Service<{}>(\"app/Routes\")")
+    test.expect(fixed).toContain('Context.Service<{}>("app/Routes")')
   })
 
   test.it("allows dot-namespaced identifier matching last segment", () => {
@@ -895,9 +700,7 @@ test.describe.skipIf(!process.env.TEST_LINT)("tagged-symbol-name", () => {
       "tagged-symbol-name",
     )
 
-    test
-      .expect(diags)
-      .toHaveLength(0)
+    test.expect(diags).toHaveLength(0)
   })
 
   test.it("flags dot-namespaced identifier with mismatched last segment", () => {
@@ -906,9 +709,7 @@ test.describe.skipIf(!process.env.TEST_LINT)("tagged-symbol-name", () => {
       "tagged-symbol-name",
     )
 
-    test
-      .expect(diags)
-      .toHaveLength(1)
+    test.expect(diags).toHaveLength(1)
   })
 
   test.it("allows Context.Reference const matching last segment", () => {
@@ -917,9 +718,7 @@ test.describe.skipIf(!process.env.TEST_LINT)("tagged-symbol-name", () => {
       "tagged-symbol-name",
     )
 
-    test
-      .expect(diags)
-      .toHaveLength(0)
+    test.expect(diags).toHaveLength(0)
   })
 
   test.it("flags Context.Reference const with mismatched last segment", () => {
@@ -928,9 +727,7 @@ test.describe.skipIf(!process.env.TEST_LINT)("tagged-symbol-name", () => {
       "tagged-symbol-name",
     )
 
-    test
-      .expect(diags)
-      .toHaveLength(1)
+    test.expect(diags).toHaveLength(1)
   })
 
   test.it("fixes Context.Reference const key preserving the prefix", () => {
@@ -939,9 +736,7 @@ test.describe.skipIf(!process.env.TEST_LINT)("tagged-symbol-name", () => {
       "context-reference-fix.ts",
     )
 
-    test
-      .expect(fixed)
-      .toContain("Context.Reference<string>(\"app/LogLevel\"")
+    test.expect(fixed).toContain('Context.Reference<string>("app/LogLevel"')
   })
 
   test.it("allows Schema.TaggedStruct const matching its tag", () => {
@@ -950,9 +745,7 @@ test.describe.skipIf(!process.env.TEST_LINT)("tagged-symbol-name", () => {
       "tagged-symbol-name",
     )
 
-    test
-      .expect(diags)
-      .toHaveLength(0)
+    test.expect(diags).toHaveLength(0)
   })
 
   test.it("flags Schema.TaggedStruct const with mismatched tag", () => {
@@ -961,9 +754,7 @@ test.describe.skipIf(!process.env.TEST_LINT)("tagged-symbol-name", () => {
       "tagged-symbol-name",
     )
 
-    test
-      .expect(diags)
-      .toHaveLength(1)
+    test.expect(diags).toHaveLength(1)
   })
 
   test.it("resolves aliased namespace import", () => {
@@ -972,9 +763,7 @@ test.describe.skipIf(!process.env.TEST_LINT)("tagged-symbol-name", () => {
       "tagged-symbol-name",
     )
 
-    test
-      .expect(diags)
-      .toHaveLength(1)
+    test.expect(diags).toHaveLength(1)
   })
 
   test.it("resolves barrel import", () => {
@@ -983,9 +772,7 @@ test.describe.skipIf(!process.env.TEST_LINT)("tagged-symbol-name", () => {
       "tagged-symbol-name",
     )
 
-    test
-      .expect(diags)
-      .toHaveLength(1)
+    test.expect(diags).toHaveLength(1)
   })
 
   test.it("resolves aliased barrel import", () => {
@@ -994,9 +781,7 @@ test.describe.skipIf(!process.env.TEST_LINT)("tagged-symbol-name", () => {
       "tagged-symbol-name",
     )
 
-    test
-      .expect(diags)
-      .toHaveLength(1)
+    test.expect(diags).toHaveLength(1)
   })
 
   test.it("ignores a same-named factory not imported from effect", () => {
@@ -1005,9 +790,7 @@ test.describe.skipIf(!process.env.TEST_LINT)("tagged-symbol-name", () => {
       "tagged-symbol-name",
     )
 
-    test
-      .expect(diags)
-      .toHaveLength(0)
+    test.expect(diags).toHaveLength(0)
   })
 
   test.it("ignores a factory used with no matching import", () => {
@@ -1016,85 +799,68 @@ test.describe.skipIf(!process.env.TEST_LINT)("tagged-symbol-name", () => {
       "tagged-symbol-name",
     )
 
-    test
-      .expect(diags)
-      .toHaveLength(0)
+    test.expect(diags).toHaveLength(0)
   })
 })
 
 test.describe.skipIf(!process.env.TEST_LINT)("test-effects", () => {
   test.it("flags await Effect.runPromise in async test callback", () => {
     const code = [
-      "import * as test from \"bun:test\"",
-      "import * as Effect from \"effect/Effect\"",
-      "test.it(\"x\", async () => { await Effect.runPromise(Effect.void) })",
+      'import * as test from "bun:test"',
+      'import * as Effect from "effect/Effect"',
+      'test.it("x", async () => { await Effect.runPromise(Effect.void) })',
       "",
-    ]
-      .join("\n")
+    ].join("\n")
     const diags = lintRule(code, "test-effects", "a.test.ts")
 
-    test
-      .expect(diags.some((d) => d.message.includes("runPromise")))
-      .toBe(true)
+    test.expect(diags.some((d) => d.message.includes("runPromise"))).toBe(true)
   })
 
   test.it("flags Effect.scoped(...) wrapping", () => {
     const code = [
-      "import * as test from \"bun:test\"",
-      "import * as Effect from \"effect/Effect\"",
-      "test.it(\"x\", () => Effect.scoped(Effect.void))",
+      'import * as test from "bun:test"',
+      'import * as Effect from "effect/Effect"',
+      'test.it("x", () => Effect.scoped(Effect.void))',
       "",
-    ]
-      .join("\n")
+    ].join("\n")
     const diags = lintRule(code, "test-effects", "a.test.ts")
 
-    test
-      .expect(diags.some((d) => d.message.includes("scoped")))
-      .toBe(true)
+    test.expect(diags.some((d) => d.message.includes("scoped"))).toBe(true)
   })
 
   test.it("resolves aliased Effect and test imports", () => {
     const code = [
-      "import * as t from \"bun:test\"",
-      "import * as E from \"effect/Effect\"",
-      "t.it(\"x\", async () => { await E.runPromise(E.void) })",
+      'import * as t from "bun:test"',
+      'import * as E from "effect/Effect"',
+      't.it("x", async () => { await E.runPromise(E.void) })',
       "",
-    ]
-      .join("\n")
+    ].join("\n")
     const diags = lintRule(code, "test-effects", "a.test.ts")
 
-    test
-      .expect(diags.some((d) => d.message.includes("runPromise")))
-      .toBe(true)
+    test.expect(diags.some((d) => d.message.includes("runPromise"))).toBe(true)
   })
 
   test.it("ignores a local module named Effect", () => {
     const code = [
-      "import * as test from \"bun:test\"",
-      "import * as Effect from \"./local.ts\"",
-      "test.it(\"x\", async () => { await Effect.runPromise(Effect.void) })",
+      'import * as test from "bun:test"',
+      'import * as Effect from "./local.ts"',
+      'test.it("x", async () => { await Effect.runPromise(Effect.void) })',
       "",
-    ]
-      .join("\n")
+    ].join("\n")
     const diags = lintRule(code, "test-effects", "a.test.ts")
 
-    test
-      .expect(diags)
-      .toHaveLength(0)
+    test.expect(diags).toHaveLength(0)
   })
 
   test.it("skips non-test files", () => {
     const code = [
-      "import * as Effect from \"effect/Effect\"",
+      'import * as Effect from "effect/Effect"',
       "async function run() { await Effect.runPromise(Effect.void) }",
       "run",
       "",
-    ]
-      .join("\n")
+    ].join("\n")
     const diags = lintRule(code, "test-effects", "a.ts")
 
-    test
-      .expect(diags)
-      .toHaveLength(0)
+    test.expect(diags).toHaveLength(0)
   })
 })

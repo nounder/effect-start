@@ -25,223 +25,189 @@ const multipartContext = Effect.runSync(
 
 test.describe("Effect HTTP interoperability", () => {
   test.it("shares request services and core schema decoders across middleware and handlers", () =>
-    Effect
-      .gen(function*() {
-        const routes = Route
-          .use(
-            Route.filter(Effect.gen(function*() {
-              const request = yield* HttpServerRequest.HttpServerRequest
+    Effect.gen(function* () {
+      const routes = Route.use(
+        Route.filter(
+          Effect.gen(function* () {
+            const request = yield* HttpServerRequest.HttpServerRequest
 
-              test
-                .expect(request.source)
-                .toBe(yield* Route.Request)
+            test.expect(request.source).toBe(yield* Route.Request)
 
-              const searchParams = yield* HttpServerRequest.schemaSearchParams(Schema.Struct({
+            const searchParams = yield* HttpServerRequest.schemaSearchParams(
+              Schema.Struct({
                 tag: Schema.Array(Schema.String),
-              }))
-              return { context: { request, coreSearchParams: searchParams } }
-            })),
-          )
-          .get(
-            Route.schemaSearchParams({ tag: Schema.Array(Schema.String) }),
-            Route.json(function*(ctx) {
-              test
-                .expect(yield* HttpServerRequest.HttpServerRequest)
-                .toBe(ctx.request)
-              test
-                .expect(ctx.searchParams)
-                .toEqual(ctx.coreSearchParams)
+              }),
+            )
+            return { context: { request, coreSearchParams: searchParams } }
+          }),
+        ),
+      ).get(
+        Route.schemaSearchParams({ tag: Schema.Array(Schema.String) }),
+        Route.json(function* (ctx) {
+          test.expect(yield* HttpServerRequest.HttpServerRequest).toBe(ctx.request)
+          test.expect(ctx.searchParams).toEqual(ctx.coreSearchParams)
 
-              return { tag: [...ctx.searchParams.tag] }
-            }),
-          )
-        const layer = Route.layer({ "/": routes })
+          return { tag: [...ctx.searchParams.tag] }
+        }),
+      )
+      const layer = Route.layer({ "/": routes })
 
-        test
-          .expectTypeOf<Layer.Services<typeof layer>>()
-          .toEqualTypeOf<never>()
+      test.expectTypeOf<Layer.Services<typeof layer>>().toEqualTypeOf<never>()
 
-        const client = TestHttpClient.fromHandler(RouteHttp.toWebHandler(routes))
-        for (const tags of [["first", "second"], ["third", "fourth"]]) {
-          const entity = yield* client.get(`http://localhost/?tag=${tags[0]}&tag=${tags[1]}`)
+      const client = TestHttpClient.fromHandler(RouteHttp.toWebHandler(routes))
+      for (const tags of [
+        ["first", "second"],
+        ["third", "fourth"],
+      ]) {
+        const entity = yield* client.get(`http://localhost/?tag=${tags[0]}&tag=${tags[1]}`)
 
-          test
-            .expect(entity.status)
-            .toBe(200)
-          test
-            .expect(yield* entity.json)
-            .toEqual({ tag: tags })
-        }
-      })
-      .pipe(Effect.runPromise))
+        test.expect(entity.status).toBe(200)
+        test.expect(yield* entity.json).toEqual({ tag: tags })
+      }
+    }).pipe(Effect.runPromise),
+  )
 
   test.it("decodes modified headers and uses the matched path parameters", () =>
-    Effect
-      .gen(function*() {
-        const routes = Route.map({
-          "/users/:id": Route
-            .use(
-              Route.json(function*(_, next) {
-                const request = yield* HttpServerRequest.HttpServerRequest
-                return yield* next.pipe(Effect.provideService(
-                  HttpServerRequest.HttpServerRequest,
-                  request.modify({
-                    url: "/users/42",
-                    headers: Headers.fromInput({ "x-name": "modified", cookie: "session=updated" }),
-                  }),
-                ))
-              }),
+    Effect.gen(function* () {
+      const routes = Route.map({
+        "/users/:id": Route.use(
+          Route.json(function* (_, next) {
+            const request = yield* HttpServerRequest.HttpServerRequest
+            return yield* next.pipe(
+              Effect.provideService(
+                HttpServerRequest.HttpServerRequest,
+                request.modify({
+                  url: "/users/42",
+                  headers: Headers.fromInput({ "x-name": "modified", cookie: "session=updated" }),
+                }),
+              ),
             )
-            .get(
-              Route.schemaHeaders({ "x-name": Schema.String }),
-              Route.schemaCookies({ session: Schema.String }),
-              Route.schemaPathParams({ id: Schema.NumberFromString }),
-              Route.json(function*(ctx) {
-                test
-                  .expect(yield* HttpRouter.params)
-                  .toEqual({ id: "1" })
+          }),
+        ).get(
+          Route.schemaHeaders({ "x-name": Schema.String }),
+          Route.schemaCookies({ session: Schema.String }),
+          Route.schemaPathParams({ id: Schema.NumberFromString }),
+          Route.json(function* (ctx) {
+            test.expect(yield* HttpRouter.params).toEqual({ id: "1" })
 
-                return { name: ctx.headers["x-name"], session: ctx.cookies.session, id: ctx.pathParams.id }
-              }),
-            ),
-        })
-        const router = yield* RouteHttp.toHttpRouter(routes)
-        const client = TestHttpClient.fromRouter(router)
-        const entity = yield* client.get("http://localhost/users/1", {
-          headers: { "x-name": "original", cookie: "session=original" },
-        })
-
-        test
-          .expect(entity.status)
-          .toBe(200)
-        test
-          .expect(yield* entity.json)
-          .toEqual({ name: "modified", session: "updated", id: 1 })
+            return {
+              name: ctx.headers["x-name"],
+              session: ctx.cookies.session,
+              id: ctx.pathParams.id,
+            }
+          }),
+        ),
       })
-      .pipe(Effect.runPromise))
+      const router = yield* RouteHttp.toHttpRouter(routes)
+      const client = TestHttpClient.fromRouter(router)
+      const entity = yield* client.get("http://localhost/users/1", {
+        headers: { "x-name": "original", cookie: "session=original" },
+      })
+
+      test.expect(entity.status).toBe(200)
+      test.expect(yield* entity.json).toEqual({ name: "modified", session: "updated", id: 1 })
+    }).pipe(Effect.runPromise),
+  )
 
   test.it("shares cached JSON bodies with core middleware and multiple route schemas", () =>
-    Effect
-      .gen(function*() {
-        const client = TestHttpClient.fromHandler(RouteHttp.toWebHandler(
-          Route
-            .use(
-              Route.filter(function*() {
-                const body = yield* HttpServerRequest.schemaBodyJson(Schema.Struct({ name: Schema.String }))
-                return { context: { name: body.name } }
-              }),
-            )
-            .post(
-              Route.schemaBodyJson({ name: Schema.String }),
-              Route.schemaBodyJson({ age: Schema.Number }),
-              Route.json(function*(ctx) {
-                test
-                  .expect(ctx.body.name)
-                  .toBe(ctx.name)
+    Effect.gen(function* () {
+      const client = TestHttpClient.fromHandler(
+        RouteHttp.toWebHandler(
+          Route.use(
+            Route.filter(function* () {
+              const body = yield* HttpServerRequest.schemaBodyJson(
+                Schema.Struct({ name: Schema.String }),
+              )
+              return { context: { name: body.name } }
+            }),
+          ).post(
+            Route.schemaBodyJson({ name: Schema.String }),
+            Route.schemaBodyJson({ age: Schema.Number }),
+            Route.json(function* (ctx) {
+              test.expect(ctx.body.name).toBe(ctx.name)
 
-                const body = yield* HttpServerRequest.schemaBodyJson(Schema.Struct({ age: Schema.Number }))
+              const body = yield* HttpServerRequest.schemaBodyJson(
+                Schema.Struct({ age: Schema.Number }),
+              )
 
-                test
-                  .expect(ctx.body.age)
-                  .toBe(body.age)
+              test.expect(ctx.body.age).toBe(body.age)
 
-                return ctx.body
-              }),
-            ),
-        ))
-        const entity = yield* client.post("http://localhost/", {
-          headers: { "content-type": "application/json" },
-          body: HttpBody.jsonUnsafe({ name: "Alice", age: 30 }),
-        })
-
-        test
-          .expect(entity.status)
-          .toBe(200)
-        test
-          .expect(yield* entity.json)
-          .toEqual({ name: "Alice", age: 30 })
+              return ctx.body
+            }),
+          ),
+        ),
+      )
+      const entity = yield* client.post("http://localhost/", {
+        headers: { "content-type": "application/json" },
+        body: HttpBody.jsonUnsafe({ name: "Alice", age: 30 }),
       })
-      .pipe(Effect.runPromise))
+
+      test.expect(entity.status).toBe(200)
+      test.expect(yield* entity.json).toEqual({ name: "Alice", age: 30 })
+    }).pipe(Effect.runPromise),
+  )
 
   test.it("shares URL-encoded bodies across core, URL params, and form decoders", () =>
-    Effect
-      .gen(function*() {
-        const client = TestHttpClient.fromHandler(
-          RouteHttp.toWebHandlerWith(multipartContext)(
-            Route.post(
-              Route.schemaBodyUrlParams({ name: Schema.String }),
-              Route.schemaBodyForm({ tag: Schema.Array(Schema.String) }),
-              Route.json(function*(ctx) {
-                const body = yield* HttpServerRequest.schemaBodyUrlParams(Schema.Struct({ name: Schema.String }))
+    Effect.gen(function* () {
+      const client = TestHttpClient.fromHandler(
+        RouteHttp.toWebHandlerWith(multipartContext)(
+          Route.post(
+            Route.schemaBodyUrlParams({ name: Schema.String }),
+            Route.schemaBodyForm({ tag: Schema.Array(Schema.String) }),
+            Route.json(function* (ctx) {
+              const body = yield* HttpServerRequest.schemaBodyUrlParams(
+                Schema.Struct({ name: Schema.String }),
+              )
 
-                test
-                  .expect(body.name)
-                  .toBe(ctx.body.name)
+              test.expect(body.name).toBe(ctx.body.name)
 
-                return { name: ctx.body.name, tag: [...ctx.body.tag] }
-              }),
-            ),
+              return { name: ctx.body.name, tag: [...ctx.body.tag] }
+            }),
           ),
-        )
-        const entity = yield* client.post("http://localhost/", {
-          headers: { "content-type": "application/x-www-form-urlencoded" },
-          body: HttpBody.raw("name=Alice&tag=first&tag=second"),
-        })
-
-        test
-          .expect(entity.status)
-          .toBe(200)
-        test
-          .expect(yield* entity.json)
-          .toEqual({ name: "Alice", tag: ["first", "second"] })
+        ),
+      )
+      const entity = yield* client.post("http://localhost/", {
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+        body: HttpBody.raw("name=Alice&tag=first&tag=second"),
       })
-      .pipe(Effect.runPromise))
+
+      test.expect(entity.status).toBe(200)
+      test.expect(yield* entity.json).toEqual({ name: "Alice", tag: ["first", "second"] })
+    }).pipe(Effect.runPromise),
+  )
 
   test.it("preserves HttpServerError for malformed JSON", () =>
-    Effect
-      .gen(function*() {
-        const context = yield* Effect.context<TestLogger.TestLogger>()
-        const client = TestHttpClient.fromHandler(
-          RouteHttp.toWebHandlerWith(context)(
-            Route
-              .use(
-                Route.json((_, next) =>
-                  next.pipe(
-                    Effect.tapError((error) => {
-                      test
-                        .expect(error)
-                        .toBeInstanceOf(HttpServerError.HttpServerError)
-                      test
-                        .expect(error)
-                        .toMatchObject({ reason: { _tag: "RequestParseError", cause: test.expect.any(SyntaxError) } })
+    Effect.gen(function* () {
+      const context = yield* Effect.context<TestLogger.TestLogger>()
+      const client = TestHttpClient.fromHandler(
+        RouteHttp.toWebHandlerWith(context)(
+          Route.use(
+            Route.json((_, next) =>
+              next.pipe(
+                Effect.tapError((error) => {
+                  test.expect(error).toBeInstanceOf(HttpServerError.HttpServerError)
+                  test.expect(error).toMatchObject({
+                    reason: { _tag: "RequestParseError", cause: test.expect.any(SyntaxError) },
+                  })
 
-                      return Effect.void
-                    }),
-                  )
-                ),
-              )
-              .post(
-                Route.schemaBodyJson({ name: Schema.String }),
-                Route.json({ ok: true }),
+                  return Effect.void
+                }),
               ),
-          ),
-        )
-        const entity = yield* client.post("http://localhost/", {
-          headers: { "content-type": "application/json" },
-          body: HttpBody.raw("{"),
-        })
-
-        test
-          .expect(entity.status)
-          .toBe(400)
-        test
-          .expect((yield* TestLogger.messages).some((message) => message.includes("HttpServerError")))
-          .toBe(true)
+            ),
+          ).post(Route.schemaBodyJson({ name: Schema.String }), Route.json({ ok: true })),
+        ),
+      )
+      const entity = yield* client.post("http://localhost/", {
+        headers: { "content-type": "application/json" },
+        body: HttpBody.raw("{"),
       })
-      .pipe(
-        Effect.provide(TestLogger.layer()),
-        Effect.runPromise,
-      ))
+
+      test.expect(entity.status).toBe(400)
+      test
+        .expect((yield* TestLogger.messages).some((message) => message.includes("HttpServerError")))
+        .toBe(true)
+    }).pipe(Effect.provide(TestLogger.layer()), Effect.runPromise),
+  )
 })
 
 test.describe(`${RouteSchema.schemaHeaders.name}()`, () => {
@@ -250,34 +216,28 @@ test.describe(`${RouteSchema.schemaHeaders.name}()`, () => {
       hello: string
       "x-custom-header": string
     }
-    const route = Route
-      .use(
-        RouteSchema.schemaHeaders(
-          Schema.Struct({
-            hello: Schema.String,
-          }),
-        ),
-      )
-      .get(
-        RouteSchema.schemaHeaders(
-          Schema.Struct({
-            "x-custom-header": Schema.String,
-          }),
-        ),
-        Route.html(function*(ctx) {
-          test
-            .expectTypeOf(ctx.headers)
-            .toExtend<ExpectedBindings>()
-
-          return `<h1>Hello, world!</h1>`
+    const route = Route.use(
+      RouteSchema.schemaHeaders(
+        Schema.Struct({
+          hello: Schema.String,
         }),
-      )
+      ),
+    ).get(
+      RouteSchema.schemaHeaders(
+        Schema.Struct({
+          "x-custom-header": Schema.String,
+        }),
+      ),
+      Route.html(function* (ctx) {
+        test.expectTypeOf(ctx.headers).toExtend<ExpectedBindings>()
 
-    test
-      .expectTypeOf<Route.Route.Context<typeof route>>()
-      .toExtend<{
-        headers: ExpectedBindings
-      }>()
+        return `<h1>Hello, world!</h1>`
+      }),
+    )
+
+    test.expectTypeOf<Route.Route.Context<typeof route>>().toExtend<{
+      headers: ExpectedBindings
+    }>()
   })
 
   test.it("passes bindings and parses value", async () => {
@@ -295,27 +255,19 @@ test.describe(`${RouteSchema.schemaHeaders.name}()`, () => {
         }),
       ),
       Route.text((context) =>
-        Effect.gen(function*() {
-          test
-            .expectTypeOf(context)
-            .toExtend<ExpectedBindings>()
+        Effect.gen(function* () {
+          test.expectTypeOf(context).toExtend<ExpectedBindings>()
 
-          test
-            .expect(context)
-            .toMatchObject({
-              headers,
-            })
+          test.expect(context).toMatchObject({
+            headers,
+          })
 
           return "Hello, World!"
-        })
+        }),
       ),
     )
 
-    test
-      .expectTypeOf<Route.Route.Context<typeof route>>()
-      .toExtend<
-        ExpectedBindings
-      >()
+    test.expectTypeOf<Route.Route.Context<typeof route>>().toExtend<ExpectedBindings>()
   })
 })
 
@@ -325,66 +277,55 @@ test.describe(`${RouteSchema.schemaCookies.name}()`, () => {
       session: string
       token: string
     }
-    const route = Route
-      .use(
-        RouteSchema.schemaCookies(
-          Schema.Struct({
-            session: Schema.String,
-          }),
-        ),
-      )
-      .get(
-        RouteSchema.schemaCookies(
-          Schema.Struct({
-            token: Schema.String,
-          }),
-        ),
-        Route.html(function*(ctx) {
-          test
-            .expectTypeOf(ctx.cookies)
-            .toExtend<ExpectedBindings>()
-
-          return `<h1>Hello, world!</h1>`
+    const route = Route.use(
+      RouteSchema.schemaCookies(
+        Schema.Struct({
+          session: Schema.String,
         }),
-      )
+      ),
+    ).get(
+      RouteSchema.schemaCookies(
+        Schema.Struct({
+          token: Schema.String,
+        }),
+      ),
+      Route.html(function* (ctx) {
+        test.expectTypeOf(ctx.cookies).toExtend<ExpectedBindings>()
 
-    test
-      .expectTypeOf<Route.Route.Context<typeof route>>()
-      .toExtend<{
-        cookies: ExpectedBindings
-      }>()
+        return `<h1>Hello, world!</h1>`
+      }),
+    )
+
+    test.expectTypeOf<Route.Route.Context<typeof route>>().toExtend<{
+      cookies: ExpectedBindings
+    }>()
   })
 
   test.it("parses cookies from request", () =>
-    Effect
-      .gen(function*() {
-        const handler = RouteHttp.toWebHandler(
-          Route.get(
-            RouteSchema.schemaCookies(
-              Schema.Struct({
-                session: Schema.String,
-              }),
-            ),
-            Route.text(function*(ctx) {
-              return `session=${ctx.cookies.session}`
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.get(
+          RouteSchema.schemaCookies(
+            Schema.Struct({
+              session: Schema.String,
             }),
           ),
-        )
-        const client = TestHttpClient.fromHandler(handler)
-        const entity = yield* client.get("http://localhost/test", {
-          headers: {
-            Cookie: "session=abc123",
-          },
-        })
-
-        test
-          .expect(entity.status)
-          .toBe(200)
-        test
-          .expect(yield* entity.text)
-          .toBe("session=abc123")
+          Route.text(function* (ctx) {
+            return `session=${ctx.cookies.session}`
+          }),
+        ),
+      )
+      const client = TestHttpClient.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/test", {
+        headers: {
+          Cookie: "session=abc123",
+        },
       })
-      .pipe(Effect.runPromise))
+
+      test.expect(entity.status).toBe(200)
+      test.expect(yield* entity.text).toBe("session=abc123")
+    }).pipe(Effect.runPromise),
+  )
 })
 
 test.describe(`${RouteSchema.schemaSearchParams.name}()`, () => {
@@ -393,65 +334,52 @@ test.describe(`${RouteSchema.schemaSearchParams.name}()`, () => {
       page: string
       limit: string
     }
-    const route = Route
-      .use(
-        RouteSchema.schemaSearchParams(
-          Schema.Struct({
-            page: Schema.String,
-          }),
-        ),
-      )
-      .get(
-        RouteSchema.schemaSearchParams(
-          Schema.Struct({
-            limit: Schema.String,
-          }),
-        ),
-        Route.html(function*(ctx) {
-          test
-            .expectTypeOf(ctx.searchParams)
-            .toExtend<ExpectedBindings>()
-
-          return `<h1>Hello, world!</h1>`
+    const route = Route.use(
+      RouteSchema.schemaSearchParams(
+        Schema.Struct({
+          page: Schema.String,
         }),
-      )
+      ),
+    ).get(
+      RouteSchema.schemaSearchParams(
+        Schema.Struct({
+          limit: Schema.String,
+        }),
+      ),
+      Route.html(function* (ctx) {
+        test.expectTypeOf(ctx.searchParams).toExtend<ExpectedBindings>()
 
-    test
-      .expectTypeOf<Route.Route.Context<typeof route>>()
-      .toExtend<{
-        searchParams: ExpectedBindings
-      }>()
+        return `<h1>Hello, world!</h1>`
+      }),
+    )
+
+    test.expectTypeOf<Route.Route.Context<typeof route>>().toExtend<{
+      searchParams: ExpectedBindings
+    }>()
   })
 
   test.it("parses search params from request", () =>
-    Effect
-      .gen(function*() {
-        const handler = RouteHttp.toWebHandler(
-          Route.get(
-            RouteSchema.schemaSearchParams(
-              Schema.Struct({
-                page: Schema.FiniteFromString,
-                limit: Schema.FiniteFromString,
-              }),
-            ),
-            Route.text(function*(ctx) {
-              return `page=${ctx.searchParams.page},limit=${ctx.searchParams.limit}`
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.get(
+          RouteSchema.schemaSearchParams(
+            Schema.Struct({
+              page: Schema.FiniteFromString,
+              limit: Schema.FiniteFromString,
             }),
           ),
-        )
-        const client = TestHttpClient.fromHandler(handler)
-        const entity = yield* client.get(
-          "http://localhost/test?page=2&limit=10",
-        )
+          Route.text(function* (ctx) {
+            return `page=${ctx.searchParams.page},limit=${ctx.searchParams.limit}`
+          }),
+        ),
+      )
+      const client = TestHttpClient.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/test?page=2&limit=10")
 
-        test
-          .expect(entity.status)
-          .toBe(200)
-        test
-          .expect(yield* entity.text)
-          .toBe("page=2,limit=10")
-      })
-      .pipe(Effect.runPromise))
+      test.expect(entity.status).toBe(200)
+      test.expect(yield* entity.text).toBe("page=2,limit=10")
+    }).pipe(Effect.runPromise),
+  )
 })
 
 test.describe(`${RouteSchema.schemaBodyJson.name}()`, () => {
@@ -467,52 +395,43 @@ test.describe(`${RouteSchema.schemaBodyJson.name}()`, () => {
           age: Schema.Number,
         }),
       ),
-      Route.json(function*(ctx) {
-        test
-          .expectTypeOf(ctx.body)
-          .toExtend<ExpectedBindings>()
+      Route.json(function* (ctx) {
+        test.expectTypeOf(ctx.body).toExtend<ExpectedBindings>()
 
         return { received: ctx.body }
       }),
     )
 
-    test
-      .expectTypeOf<Route.Route.Context<typeof route>>()
-      .toExtend<{
-        body: ExpectedBindings
-      }>()
+    test.expectTypeOf<Route.Route.Context<typeof route>>().toExtend<{
+      body: ExpectedBindings
+    }>()
   })
 
   test.it("parses JSON body from schema fields", () =>
-    Effect
-      .gen(function*() {
-        const handler = RouteHttp.toWebHandler(
-          Route.post(
-            RouteSchema.schemaBodyJson({
-              name: Schema.String,
-              age: Schema.Number,
-            }),
-            Route.json(function*(ctx) {
-              return { name: ctx.body.name, age: ctx.body.age }
-            }),
-          ),
-        )
-        const client = TestHttpClient.fromHandler(handler)
-        const entity = yield* client.post("http://localhost/test", {
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: HttpBody.jsonUnsafe({ name: "Alice", age: 30 }),
-        })
-
-        test
-          .expect(entity.status)
-          .toBe(200)
-        test
-          .expect(yield* entity.json)
-          .toEqual({ name: "Alice", age: 30 })
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.post(
+          RouteSchema.schemaBodyJson({
+            name: Schema.String,
+            age: Schema.Number,
+          }),
+          Route.json(function* (ctx) {
+            return { name: ctx.body.name, age: ctx.body.age }
+          }),
+        ),
+      )
+      const client = TestHttpClient.fromHandler(handler)
+      const entity = yield* client.post("http://localhost/test", {
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: HttpBody.jsonUnsafe({ name: "Alice", age: 30 }),
       })
-      .pipe(Effect.runPromise))
+
+      test.expect(entity.status).toBe(200)
+      test.expect(yield* entity.json).toEqual({ name: "Alice", age: 30 })
+    }).pipe(Effect.runPromise),
+  )
 
   test.it("preserves discriminated union type from Schema.Union body", () => {
     const Event = Schema.Union([
@@ -525,65 +444,51 @@ test.describe(`${RouteSchema.schemaBodyJson.name}()`, () => {
 
     const route = Route.post(
       RouteSchema.schemaBodyJson(Event),
-      Route.json(function*(ctx) {
-        test
-          .expectTypeOf(ctx.body)
-          .toEqualTypeOf<Event>()
+      Route.json(function* (ctx) {
+        test.expectTypeOf(ctx.body).toEqualTypeOf<Event>()
 
         if (ctx.body._tag === "Intent") {
-          test
-            .expectTypeOf(ctx.body.type)
-            .toEqualTypeOf<"yes" | "no">()
+          test.expectTypeOf(ctx.body.type).toEqualTypeOf<"yes" | "no">()
         }
 
         return { received: ctx.body }
       }),
     )
 
-    test
-      .expectTypeOf<Route.Route.Context<typeof route>>()
-      .toExtend<{ body: Event }>()
+    test.expectTypeOf<Route.Route.Context<typeof route>>().toExtend<{ body: Event }>()
   })
 
   test.it("returns error for invalid JSON body", () =>
-    Effect
-      .gen(function*() {
-        const context = yield* Effect.context<TestLogger.TestLogger>()
-        const handler = RouteHttp.toWebHandlerWith(context)(
-          Route.post(
-            RouteSchema.schemaBodyJson(
-              Schema.Struct({
-                name: Schema.String,
-                age: Schema.Number,
-              }),
-            ),
-            Route.json(function*(ctx) {
-              return ctx.body
+    Effect.gen(function* () {
+      const context = yield* Effect.context<TestLogger.TestLogger>()
+      const handler = RouteHttp.toWebHandlerWith(context)(
+        Route.post(
+          RouteSchema.schemaBodyJson(
+            Schema.Struct({
+              name: Schema.String,
+              age: Schema.Number,
             }),
           ),
-        )
-        const client = TestHttpClient.fromHandler(handler)
-        const entity = yield* client.post("http://localhost/test", {
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: HttpBody.jsonUnsafe({ name: "Alice", age: "not a number" }),
-        })
-
-        test
-          .expect(entity.status)
-          .toBe(400)
-
-        const messages = yield* TestLogger.messages
-
-        test
-          .expect(messages.some((m) => m.includes("SchemaError")))
-          .toBe(true)
+          Route.json(function* (ctx) {
+            return ctx.body
+          }),
+        ),
+      )
+      const client = TestHttpClient.fromHandler(handler)
+      const entity = yield* client.post("http://localhost/test", {
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: HttpBody.jsonUnsafe({ name: "Alice", age: "not a number" }),
       })
-      .pipe(
-        Effect.provide(TestLogger.layer()),
-        Effect.runPromise,
-      ))
+
+      test.expect(entity.status).toBe(400)
+
+      const messages = yield* TestLogger.messages
+
+      test.expect(messages.some((m) => m.includes("SchemaError"))).toBe(true)
+    }).pipe(Effect.provide(TestLogger.layer()), Effect.runPromise),
+  )
 })
 
 test.describe(`${RouteSchema.schemaBodyUrlParams.name}()`, () => {
@@ -599,60 +504,51 @@ test.describe(`${RouteSchema.schemaBodyUrlParams.name}()`, () => {
           password: Schema.String,
         }),
       ),
-      Route.json(function*(ctx) {
-        test
-          .expectTypeOf(ctx.body)
-          .toExtend<ExpectedBindings>()
+      Route.json(function* (ctx) {
+        test.expectTypeOf(ctx.body).toExtend<ExpectedBindings>()
 
         return { received: ctx.body }
       }),
     )
 
-    test
-      .expectTypeOf<Route.Route.Context<typeof route>>()
-      .toExtend<{
-        body: ExpectedBindings
-      }>()
+    test.expectTypeOf<Route.Route.Context<typeof route>>().toExtend<{
+      body: ExpectedBindings
+    }>()
   })
 
   test.it("parses URL-encoded body from request", () =>
-    Effect
-      .gen(function*() {
-        const handler = RouteHttp.toWebHandler(
-          Route.post(
-            RouteSchema.schemaBodyUrlParams(
-              Schema.Struct({
-                username: Schema.String,
-                password: Schema.String,
-              }),
-            ),
-            Route.json(function*(ctx) {
-              return {
-                username: ctx.body.username,
-                password: ctx.body.password,
-              }
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.post(
+          RouteSchema.schemaBodyUrlParams(
+            Schema.Struct({
+              username: Schema.String,
+              password: Schema.String,
             }),
           ),
-        )
-        const client = TestHttpClient.fromHandler(handler)
-        const entity = yield* client.post("http://localhost/test", {
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-          },
-          body: HttpBody.raw("username=alice&password=secret123"),
-        })
-
-        test
-          .expect(entity.status)
-          .toBe(200)
-        test
-          .expect(yield* entity.json)
-          .toEqual({
-            username: "alice",
-            password: "secret123",
-          })
+          Route.json(function* (ctx) {
+            return {
+              username: ctx.body.username,
+              password: ctx.body.password,
+            }
+          }),
+        ),
+      )
+      const client = TestHttpClient.fromHandler(handler)
+      const entity = yield* client.post("http://localhost/test", {
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: HttpBody.raw("username=alice&password=secret123"),
       })
-      .pipe(Effect.runPromise))
+
+      test.expect(entity.status).toBe(200)
+      test.expect(yield* entity.json).toEqual({
+        username: "alice",
+        password: "secret123",
+      })
+    }).pipe(Effect.runPromise),
+  )
 })
 
 test.describe(`${RouteSchema.schemaBodyMultipart.name}()`, () => {
@@ -663,20 +559,16 @@ test.describe(`${RouteSchema.schemaBodyMultipart.name}()`, () => {
           name: Schema.String,
         }),
       ),
-      Route.json(function*(ctx) {
-        test
-          .expectTypeOf(ctx.body)
-          .toExtend<{ name: string }>()
+      Route.json(function* (ctx) {
+        test.expectTypeOf(ctx.body).toExtend<{ name: string }>()
 
         return { name: ctx.body.name }
       }),
     )
 
-    test
-      .expectTypeOf<Route.Route.Context<typeof route>>()
-      .toExtend<{
-        body: { name: string }
-      }>()
+    test.expectTypeOf<Route.Route.Context<typeof route>>().toExtend<{
+      body: { name: string }
+    }>()
 
     const layer = Route.layer(Route.map({ "/upload": route }))
 
@@ -694,301 +586,238 @@ test.describe(`${RouteSchema.schemaBodyForm.name}()`, () => {
           email: Schema.String,
         }),
       ),
-      Route.json(function*(ctx) {
-        test
-          .expectTypeOf(ctx.body)
-          .toExtend<{ email: string }>()
+      Route.json(function* (ctx) {
+        test.expectTypeOf(ctx.body).toExtend<{ email: string }>()
 
         return { email: ctx.body.email }
       }),
     )
 
-    test
-      .expectTypeOf<Route.Route.Context<typeof route>>()
-      .toExtend<{
-        body: { email: string }
-      }>()
+    test.expectTypeOf<Route.Route.Context<typeof route>>().toExtend<{
+      body: { email: string }
+    }>()
   })
 
   test.it("parses multipart fields with single and multiple files", () =>
-    Effect
-      .gen(function*() {
-        const handler = RouteHttp.toWebHandlerWith(multipartContext)(
-          Route.post(
-            Route.schemaBodyForm({
-              title: Schema.String,
-              tags: Schema.Array(Schema.String),
-              file: Multipart.SingleFileSchema,
-              files: Multipart.FilesSchema,
-            }),
-            Route.json(function*(ctx) {
-              test
-                .expectTypeOf(ctx.body)
-                .toExtend<{
-                  title: string
-                  tags: ReadonlyArray<string>
-                  file: Multipart.PersistedFile
-                  files: ReadonlyArray<Multipart.PersistedFile>
-                }>()
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandlerWith(multipartContext)(
+        Route.post(
+          Route.schemaBodyForm({
+            title: Schema.String,
+            tags: Schema.Array(Schema.String),
+            file: Multipart.SingleFileSchema,
+            files: Multipart.FilesSchema,
+          }),
+          Route.json(function* (ctx) {
+            test.expectTypeOf(ctx.body).toExtend<{
+              title: string
+              tags: ReadonlyArray<string>
+              file: Multipart.PersistedFile
+              files: ReadonlyArray<Multipart.PersistedFile>
+            }>()
 
-              const files: Array<{
-                key: string
-                name: string
-                contentType: string
-                content: string
-              }> = []
-              for (const file of [ctx.body.file, ...ctx.body.files]) {
-                test
-                  .expect(Multipart.isPersistedFile(file))
-                  .toBe(true)
-                test
-                  .expect(file._tag)
-                  .toBe("PersistedFile")
+            const files: Array<{
+              key: string
+              name: string
+              contentType: string
+              content: string
+            }> = []
+            for (const file of [ctx.body.file, ...ctx.body.files]) {
+              test.expect(Multipart.isPersistedFile(file)).toBe(true)
+              test.expect(file._tag).toBe("PersistedFile")
 
-                const content = yield* Effect.promise(() => Bun.file(file.path).text())
-                files.push({
-                  key: file.key,
-                  name: file.name,
-                  contentType: file.contentType.split(";", 1)[0],
-                  content,
-                })
-              }
+              const content = yield* Effect.promise(() => Bun.file(file.path).text())
+              files.push({
+                key: file.key,
+                name: file.name,
+                contentType: file.contentType.split(";", 1)[0],
+                content,
+              })
+            }
 
-              return {
-                title: ctx.body.title,
-                tags: [...ctx.body.tags],
-                files,
-              }
-            }),
-          ),
-        )
-        const formData = new FormData()
-        formData.append("title", "My Upload")
-        formData.append("tags", "first")
-        formData.append("tags", "second")
-        formData.append(
-          "file",
-          new Blob(["hello"], { type: "text/plain" }),
-          "hello.txt",
-        )
-        formData.append(
-          "files",
-          new Blob(["world"], { type: "text/markdown" }),
-          "world.md",
-        )
-        formData.append(
-          "files",
-          new Blob(["second"], { type: "text/plain" }),
-          "second.txt",
-        )
-        const client = TestHttpClient.fromHandler(handler)
-        const entity = yield* client.post("http://localhost/upload", {
-          body: HttpBody.formData(formData),
-        })
-
-        test
-          .expect(entity.status)
-          .toBe(200)
-        test
-          .expect(yield* entity.json)
-          .toEqual({
-            title: "My Upload",
-            tags: ["first", "second"],
-            files: [
-              {
-                key: "file",
-                name: "hello.txt",
-                contentType: "text/plain",
-                content: "hello",
-              },
-              {
-                key: "files",
-                name: "world.md",
-                contentType: "text/markdown",
-                content: "world",
-              },
-              {
-                key: "files",
-                name: "second.txt",
-                contentType: "text/plain",
-                content: "second",
-              },
-            ],
-          })
+            return {
+              title: ctx.body.title,
+              tags: [...ctx.body.tags],
+              files,
+            }
+          }),
+        ),
+      )
+      const formData = new FormData()
+      formData.append("title", "My Upload")
+      formData.append("tags", "first")
+      formData.append("tags", "second")
+      formData.append("file", new Blob(["hello"], { type: "text/plain" }), "hello.txt")
+      formData.append("files", new Blob(["world"], { type: "text/markdown" }), "world.md")
+      formData.append("files", new Blob(["second"], { type: "text/plain" }), "second.txt")
+      const client = TestHttpClient.fromHandler(handler)
+      const entity = yield* client.post("http://localhost/upload", {
+        body: HttpBody.formData(formData),
       })
-      .pipe(Effect.runPromise))
+
+      test.expect(entity.status).toBe(200)
+      test.expect(yield* entity.json).toEqual({
+        title: "My Upload",
+        tags: ["first", "second"],
+        files: [
+          {
+            key: "file",
+            name: "hello.txt",
+            contentType: "text/plain",
+            content: "hello",
+          },
+          {
+            key: "files",
+            name: "world.md",
+            contentType: "text/markdown",
+            content: "world",
+          },
+          {
+            key: "files",
+            name: "second.txt",
+            contentType: "text/plain",
+            content: "second",
+          },
+        ],
+      })
+    }).pipe(Effect.runPromise),
+  )
 
   test.it("rejects multiple files for SingleFileSchema", () =>
-    Effect
-      .gen(function*() {
-        let handled = false
-        const context = yield* Effect.context<TestLogger.TestLogger>()
-        const handler = RouteHttp.toWebHandlerWith(Context.merge(multipartContext, context))(
-          Route.post(
-            Route.schemaBodyForm({
-              file: Multipart.SingleFileSchema,
-            }),
-            Route.json(function*() {
-              handled = true
-              return { ok: true }
-            }),
-          ),
-        )
-        const formData = new FormData()
-        formData.append("file", new File(["first"], "first.txt"))
-        formData.append("file", new File(["second"], "second.txt"))
-        const client = TestHttpClient.fromHandler(handler)
-        const entity = yield* client.post("http://localhost/upload", {
-          body: HttpBody.formData(formData),
-        })
-
-        test
-          .expect(entity.status)
-          .toBe(400)
-        test
-          .expect(handled)
-          .toBe(false)
-
-        const messages = yield* TestLogger.messages
-
-        test
-          .expect(messages.some((message) => message.includes("SchemaError")))
-          .toBe(true)
+    Effect.gen(function* () {
+      let handled = false
+      const context = yield* Effect.context<TestLogger.TestLogger>()
+      const handler = RouteHttp.toWebHandlerWith(Context.merge(multipartContext, context))(
+        Route.post(
+          Route.schemaBodyForm({
+            file: Multipart.SingleFileSchema,
+          }),
+          Route.json(function* () {
+            handled = true
+            return { ok: true }
+          }),
+        ),
+      )
+      const formData = new FormData()
+      formData.append("file", new File(["first"], "first.txt"))
+      formData.append("file", new File(["second"], "second.txt"))
+      const client = TestHttpClient.fromHandler(handler)
+      const entity = yield* client.post("http://localhost/upload", {
+        body: HttpBody.formData(formData),
       })
-      .pipe(
-        Effect.provide(TestLogger.layer()),
-        Effect.runPromise,
-      ))
+
+      test.expect(entity.status).toBe(400)
+      test.expect(handled).toBe(false)
+
+      const messages = yield* TestLogger.messages
+
+      test.expect(messages.some((message) => message.includes("SchemaError"))).toBe(true)
+    }).pipe(Effect.provide(TestLogger.layer()), Effect.runPromise),
+  )
 })
 
 test.describe(`${RouteSchema.schemaSuccess.name}()`, () => {
   test.it("encodes response body through schema", () =>
-    Effect
-      .gen(function*() {
-        const UserResponse = Schema.Struct({
-          name: Schema.String,
-          age: Schema.Number,
-        })
-
-        const handler = RouteHttp.toWebHandler(
-          Route.get(
-            RouteSchema.schemaSuccess(UserResponse),
-            Route.json(function*() {
-              return { name: "Alice", age: 30 }
-            }),
-          ),
-        )
-        const client = TestHttpClient.fromHandler(handler)
-        const entity = yield* client.get("http://localhost/test")
-
-        test
-          .expect(entity.status)
-          .toBe(200)
-        test
-          .expect(yield* entity.json)
-          .toEqual({ name: "Alice", age: 30 })
+    Effect.gen(function* () {
+      const UserResponse = Schema.Struct({
+        name: Schema.String,
+        age: Schema.Number,
       })
-      .pipe(Effect.runPromise))
+
+      const handler = RouteHttp.toWebHandler(
+        Route.get(
+          RouteSchema.schemaSuccess(UserResponse),
+          Route.json(function* () {
+            return { name: "Alice", age: 30 }
+          }),
+        ),
+      )
+      const client = TestHttpClient.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/test")
+
+      test.expect(entity.status).toBe(200)
+      test.expect(yield* entity.json).toEqual({ name: "Alice", age: 30 })
+    }).pipe(Effect.runPromise),
+  )
 
   test.it("returns error when response body does not match schema", () =>
-    Effect
-      .gen(function*() {
-        const StrictResponse = Schema.Struct({
-          name: Schema.String,
-          age: Schema.Number,
-        })
-
-        const context = yield* Effect.context<TestLogger.TestLogger>()
-        const handler = RouteHttp.toWebHandlerWith(context)(
-          Route.get(
-            RouteSchema.schemaSuccess(StrictResponse),
-            Route.json(function*() {
-              return { name: "Alice", age: "not a number" }
-            }),
-          ),
-        )
-        const client = TestHttpClient.fromHandler(handler)
-        const entity = yield* client.get("http://localhost/test")
-
-        test
-          .expect(entity.status)
-          .toBe(400)
-
-        const messages = yield* TestLogger.messages
-
-        test
-          .expect(messages.some((m) => m.includes("SchemaError")))
-          .toBe(true)
+    Effect.gen(function* () {
+      const StrictResponse = Schema.Struct({
+        name: Schema.String,
+        age: Schema.Number,
       })
-      .pipe(
-        Effect.provide(TestLogger.layer()),
-        Effect.runPromise,
-      ))
+
+      const context = yield* Effect.context<TestLogger.TestLogger>()
+      const handler = RouteHttp.toWebHandlerWith(context)(
+        Route.get(
+          RouteSchema.schemaSuccess(StrictResponse),
+          Route.json(function* () {
+            return { name: "Alice", age: "not a number" }
+          }),
+        ),
+      )
+      const client = TestHttpClient.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/test")
+
+      test.expect(entity.status).toBe(400)
+
+      const messages = yield* TestLogger.messages
+
+      test.expect(messages.some((m) => m.includes("SchemaError"))).toBe(true)
+    }).pipe(Effect.provide(TestLogger.layer()), Effect.runPromise),
+  )
 
   test.it("strips extra fields via schema encode", () =>
-    Effect
-      .gen(function*() {
-        const StrictResponse = Schema.Struct({
-          id: Schema.Number,
-          name: Schema.String,
-        })
-
-        const handler = RouteHttp.toWebHandler(
-          Route.get(
-            RouteSchema.schemaSuccess(StrictResponse),
-            Route.json(function*() {
-              return { id: 1, name: "Alice", secret: "should-be-stripped" }
-            }),
-          ),
-        )
-        const client = TestHttpClient.fromHandler(handler)
-        const entity = yield* client.get("http://localhost/test")
-
-        test
-          .expect(entity.status)
-          .toBe(200)
-
-        const body = yield* entity.json
-
-        test
-          .expect(body)
-          .toEqual({ id: 1, name: "Alice" })
-        test
-          .expect(body)
-          .not
-          .toHaveProperty("secret")
+    Effect.gen(function* () {
+      const StrictResponse = Schema.Struct({
+        id: Schema.Number,
+        name: Schema.String,
       })
-      .pipe(Effect.runPromise))
+
+      const handler = RouteHttp.toWebHandler(
+        Route.get(
+          RouteSchema.schemaSuccess(StrictResponse),
+          Route.json(function* () {
+            return { id: 1, name: "Alice", secret: "should-be-stripped" }
+          }),
+        ),
+      )
+      const client = TestHttpClient.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/test")
+
+      test.expect(entity.status).toBe(200)
+
+      const body = yield* entity.json
+
+      test.expect(body).toEqual({ id: 1, name: "Alice" })
+      test.expect(body).not.toHaveProperty("secret")
+    }).pipe(Effect.runPromise),
+  )
 
   test.it("works with schema transforms", () =>
-    Effect
-      .gen(function*() {
-        const DateResponse = Schema.Struct({
-          createdAt: Schema.DateFromString,
-        })
-
-        const handler = RouteHttp.toWebHandler(
-          Route.get(
-            RouteSchema.schemaSuccess(DateResponse),
-            // @ts-expect-error Date is not Json, but schemaSuccess encodes it to string
-            Route.json(function*() {
-              return { createdAt: new Date("2025-01-01") }
-            }),
-          ),
-        )
-        const client = TestHttpClient.fromHandler(handler)
-        const entity = yield* client.get("http://localhost/test")
-
-        test
-          .expect(entity.status)
-          .toBe(200)
-        test
-          .expect(yield* entity.json)
-          .toEqual({
-            createdAt: "2025-01-01T00:00:00.000Z",
-          })
+    Effect.gen(function* () {
+      const DateResponse = Schema.Struct({
+        createdAt: Schema.DateFromString,
       })
-      .pipe(Effect.runPromise))
+
+      const handler = RouteHttp.toWebHandler(
+        Route.get(
+          RouteSchema.schemaSuccess(DateResponse),
+          // @ts-expect-error Date is not Json, but schemaSuccess encodes it to string
+          Route.json(function* () {
+            return { createdAt: new Date("2025-01-01") }
+          }),
+        ),
+      )
+      const client = TestHttpClient.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/test")
+
+      test.expect(entity.status).toBe(200)
+      test.expect(yield* entity.json).toEqual({
+        createdAt: "2025-01-01T00:00:00.000Z",
+      })
+    }).pipe(Effect.runPromise),
+  )
 })
 
 test.describe(`${RouteSchema.schemaError.name}()`, () => {
@@ -1001,212 +830,175 @@ test.describe(`${RouteSchema.schemaError.name}()`, () => {
   }) {}
 
   test.it("catches matching error and returns structured response", () =>
-    Effect
-      .gen(function*() {
-        const handler = RouteHttp.toWebHandler(
-          Route.get(
-            RouteSchema.schemaError(NotFound, { status: 404 }),
-            Route.json(function*() {
-              const found = false as boolean
-              if (!found) {
-                return yield* new NotFound({ message: "User not found" })
-              }
-              return { name: "Alice" }
-            }),
-          ),
-        )
-        const client = TestHttpClient.fromHandler(handler)
-        const entity = yield* client.get("http://localhost/test")
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.get(
+          RouteSchema.schemaError(NotFound, { status: 404 }),
+          Route.json(function* () {
+            const found = false as boolean
+            if (!found) {
+              return yield* new NotFound({ message: "User not found" })
+            }
+            return { name: "Alice" }
+          }),
+        ),
+      )
+      const client = TestHttpClient.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/test")
 
-        test
-          .expect(entity.status)
-          .toBe(404)
-        test
-          .expect(yield* entity.json)
-          .toEqual({
-            _tag: "NotFound",
-            message: "User not found",
-          })
+      test.expect(entity.status).toBe(404)
+      test.expect(yield* entity.json).toEqual({
+        _tag: "NotFound",
+        message: "User not found",
       })
-      .pipe(Effect.runPromise))
+    }).pipe(Effect.runPromise),
+  )
 
   test.it("passes through unmatched errors", () =>
-    Effect
-      .gen(function*() {
-        const context = yield* Effect.context<TestLogger.TestLogger>()
-        const handler = RouteHttp.toWebHandlerWith(context)(
-          Route.get(
-            RouteSchema.schemaError(NotFound, { status: 404 }),
-            Route.json(function*() {
-              const ok = false as boolean
-              if (!ok) return yield* new Unauthorized({ message: "No access" })
-              return { name: "Alice" }
-            }),
-          ),
-        )
-        const client = TestHttpClient.fromHandler(handler)
-        const entity = yield* client.get("http://localhost/test")
+    Effect.gen(function* () {
+      const context = yield* Effect.context<TestLogger.TestLogger>()
+      const handler = RouteHttp.toWebHandlerWith(context)(
+        Route.get(
+          RouteSchema.schemaError(NotFound, { status: 404 }),
+          Route.json(function* () {
+            const ok = false as boolean
+            if (!ok) return yield* new Unauthorized({ message: "No access" })
+            return { name: "Alice" }
+          }),
+        ),
+      )
+      const client = TestHttpClient.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/test")
 
-        test
-          .expect(entity.status)
-          .toBe(500)
-      })
-      .pipe(
-        Effect.provide(TestLogger.layer()),
-        Effect.runPromise,
-      ))
+      test.expect(entity.status).toBe(500)
+    }).pipe(Effect.provide(TestLogger.layer()), Effect.runPromise),
+  )
 
   test.it("chains multiple schemaError pipes", () =>
-    Effect
-      .gen(function*() {
-        const handler = RouteHttp.toWebHandler(
-          Route.get(
-            RouteSchema.schemaError(NotFound, { status: 404 }),
-            RouteSchema.schemaError(Unauthorized, { status: 401 }),
-            Route.json(function*() {
-              const ok = false as boolean
-              if (!ok) return yield* new Unauthorized({ message: "Denied" })
-              return { name: "Alice" }
-            }),
-          ),
-        )
-        const client = TestHttpClient.fromHandler(handler)
-        const entity = yield* client.get("http://localhost/test")
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.get(
+          RouteSchema.schemaError(NotFound, { status: 404 }),
+          RouteSchema.schemaError(Unauthorized, { status: 401 }),
+          Route.json(function* () {
+            const ok = false as boolean
+            if (!ok) return yield* new Unauthorized({ message: "Denied" })
+            return { name: "Alice" }
+          }),
+        ),
+      )
+      const client = TestHttpClient.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/test")
 
-        test
-          .expect(entity.status)
-          .toBe(401)
-        test
-          .expect(yield* entity.json)
-          .toEqual({
-            _tag: "Unauthorized",
-            message: "Denied",
-          })
+      test.expect(entity.status).toBe(401)
+      test.expect(yield* entity.json).toEqual({
+        _tag: "Unauthorized",
+        message: "Denied",
       })
-      .pipe(Effect.runPromise))
+    }).pipe(Effect.runPromise),
+  )
 
   test.it("success responses pass through unchanged", () =>
-    Effect
-      .gen(function*() {
-        const handler = RouteHttp.toWebHandler(
-          Route.get(
-            RouteSchema.schemaError(NotFound, { status: 404 }),
-            Route.json(function*() {
-              return { name: "Alice" }
-            }),
-          ),
-        )
-        const client = TestHttpClient.fromHandler(handler)
-        const entity = yield* client.get("http://localhost/test")
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.get(
+          RouteSchema.schemaError(NotFound, { status: 404 }),
+          Route.json(function* () {
+            return { name: "Alice" }
+          }),
+        ),
+      )
+      const client = TestHttpClient.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/test")
 
-        test
-          .expect(entity.status)
-          .toBe(200)
-        test
-          .expect(yield* entity.json)
-          .toEqual({ name: "Alice" })
-      })
-      .pipe(Effect.runPromise))
+      test.expect(entity.status).toBe(200)
+      test.expect(yield* entity.json).toEqual({ name: "Alice" })
+    }).pipe(Effect.runPromise),
+  )
 
   test.it("schemaError route has E=never", () => {
-    const routeSet = RouteSchema.schemaError(NotFound, { status: 404 })(
-      Route.empty,
-    )
+    const routeSet = RouteSchema.schemaError(NotFound, { status: 404 })(Route.empty)
 
     type Items = Route.RouteSet.Items<typeof routeSet>
     type ErrorRoute = Items[0]
-    type E = ErrorRoute extends Route.Route<any, any, any, infer _E, any> ? _E
-      : "fail"
+    type E = ErrorRoute extends Route.Route<any, any, any, infer _E, any> ? _E : "fail"
 
     true satisfies [E] extends [never] ? true : false
   })
 
   test.it("infers status from static property on schema", () =>
-    Effect
-      .gen(function*() {
-        const handler = RouteHttp.toWebHandler(
-          Route.get(
-            RouteSchema.schemaError(RouteError.NotFound),
-            Route.json(function*() {
-              const found = false as boolean
-              if (!found) {
-                return yield* new RouteError.NotFound({ message: "Gone" })
-              }
-              return { name: "Alice" }
-            }),
-          ),
-        )
-        const client = TestHttpClient.fromHandler(handler)
-        const entity = yield* client.get("http://localhost/test")
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.get(
+          RouteSchema.schemaError(RouteError.NotFound),
+          Route.json(function* () {
+            const found = false as boolean
+            if (!found) {
+              return yield* new RouteError.NotFound({ message: "Gone" })
+            }
+            return { name: "Alice" }
+          }),
+        ),
+      )
+      const client = TestHttpClient.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/test")
 
-        test
-          .expect(entity.status)
-          .toBe(404)
-        test
-          .expect(yield* entity.json)
-          .toEqual({
-            _tag: "NotFound",
-            message: "Gone",
-          })
+      test.expect(entity.status).toBe(404)
+      test.expect(yield* entity.json).toEqual({
+        _tag: "NotFound",
+        message: "Gone",
       })
-      .pipe(Effect.runPromise))
+    }).pipe(Effect.runPromise),
+  )
 
   test.it("explicit status overrides static property", () =>
-    Effect
-      .gen(function*() {
-        const handler = RouteHttp.toWebHandler(
-          Route.get(
-            RouteSchema.schemaError(RouteError.NotFound, { status: 410 }),
-            Route.json(function*() {
-              const found = false as boolean
-              if (!found) {
-                return yield* new RouteError.NotFound({
-                  message: "Gone forever",
-                })
-              }
-              return { name: "Alice" }
-            }),
-          ),
-        )
-        const client = TestHttpClient.fromHandler(handler)
-        const entity = yield* client.get("http://localhost/test")
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.get(
+          RouteSchema.schemaError(RouteError.NotFound, { status: 410 }),
+          Route.json(function* () {
+            const found = false as boolean
+            if (!found) {
+              return yield* new RouteError.NotFound({
+                message: "Gone forever",
+              })
+            }
+            return { name: "Alice" }
+          }),
+        ),
+      )
+      const client = TestHttpClient.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/test")
 
-        test
-          .expect(entity.status)
-          .toBe(410)
-      })
-      .pipe(Effect.runPromise))
+      test.expect(entity.status).toBe(410)
+    }).pipe(Effect.runPromise),
+  )
 
   test.it("pre-built errors work with multiple chained schemaError", () =>
-    Effect
-      .gen(function*() {
-        const handler = RouteHttp.toWebHandler(
-          Route.get(
-            RouteSchema.schemaError(RouteError.NotFound),
-            RouteSchema.schemaError(RouteError.Unauthorized),
-            Route.json(function*() {
-              const ok = false as boolean
-              if (!ok) {
-                return yield* new RouteError.Unauthorized({
-                  message: "No token",
-                })
-              }
-              return { name: "Alice" }
-            }),
-          ),
-        )
-        const client = TestHttpClient.fromHandler(handler)
-        const entity = yield* client.get("http://localhost/test")
+    Effect.gen(function* () {
+      const handler = RouteHttp.toWebHandler(
+        Route.get(
+          RouteSchema.schemaError(RouteError.NotFound),
+          RouteSchema.schemaError(RouteError.Unauthorized),
+          Route.json(function* () {
+            const ok = false as boolean
+            if (!ok) {
+              return yield* new RouteError.Unauthorized({
+                message: "No token",
+              })
+            }
+            return { name: "Alice" }
+          }),
+        ),
+      )
+      const client = TestHttpClient.fromHandler(handler)
+      const entity = yield* client.get("http://localhost/test")
 
-        test
-          .expect(entity.status)
-          .toBe(401)
-        test
-          .expect(yield* entity.json)
-          .toEqual({
-            _tag: "Unauthorized",
-            message: "No token",
-          })
+      test.expect(entity.status).toBe(401)
+      test.expect(yield* entity.json).toEqual({
+        _tag: "Unauthorized",
+        message: "No token",
       })
-      .pipe(Effect.runPromise))
+    }).pipe(Effect.runPromise),
+  )
 })

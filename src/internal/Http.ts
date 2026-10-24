@@ -1,11 +1,4 @@
-export type Method =
-  | "GET"
-  | "POST"
-  | "PUT"
-  | "DELETE"
-  | "PATCH"
-  | "HEAD"
-  | "OPTIONS"
+export type Method = "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "HEAD" | "OPTIONS"
 
 type Respondable = Response | Promise<Response>
 
@@ -14,9 +7,7 @@ export type WebHandler = (request: Request) => Respondable
 export type WebMiddleware = (request: Request, next: WebHandler) => Respondable
 
 export function createAbortableRequest(
-  init:
-    & Omit<RequestInit, "signal">
-    & ({ url: string } | { path: `/${string}` }),
+  init: Omit<RequestInit, "signal"> & ({ url: string } | { path: `/${string}` }),
 ): { request: Request; abort: () => void } {
   const url = "path" in init ? `http://localhost${init.path}` : init.url
   const controller = new AbortController()
@@ -24,9 +15,7 @@ export function createAbortableRequest(
   return { request, abort: () => controller.abort() }
 }
 
-export function mapHeaders(
-  headers: Headers,
-): Record<string, string | undefined> {
+export function mapHeaders(headers: Headers): Record<string, string | undefined> {
   const result: Record<string, string | undefined> = {}
   headers.forEach((value, key) => {
     result[key.toLowerCase()] = value
@@ -34,9 +23,7 @@ export function mapHeaders(
   return result
 }
 
-export function parseCookies(
-  cookieHeader: string | null,
-): Record<string, string | undefined> {
+export function parseCookies(cookieHeader: string | null): Record<string, string | undefined> {
   if (!cookieHeader) return {}
   const result: Record<string, string | undefined> = {}
   for (const part of cookieHeader.split(";")) {

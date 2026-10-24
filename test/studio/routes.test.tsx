@@ -14,10 +14,10 @@ import * as TestHttpClient from "../internal/TestHttpClient.ts"
 
 const tree = Route.map({ "/studio": routes })
 
-const studioLayer = (auth: typeof Studio.Studio.Service["auth"]) =>
+const studioLayer = (auth: (typeof Studio.Studio.Service)["auth"]) =>
   Layer.effect(
     Studio.Studio,
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       return {
         path: "/studio",
         auth,
@@ -39,90 +39,65 @@ const bundleLayer = Layer.succeed(Bundle.Bundle, {
 })
 
 const runWithAuth = (
-  auth: typeof Studio.Studio.Service["auth"],
+  auth: (typeof Studio.Studio.Service)["auth"],
   perform: (client: HttpClient.HttpClient) => Effect.Effect<void, any, never>,
 ) =>
-  Effect
-    .gen(function*() {
-      const context = yield* Effect.context<Studio.Studio | Bundle.Bundle>()
-      const router = yield* RouteHttp.toHttpRouter(tree)
-      yield* perform(TestHttpClient.fromRouter(router, context))
-    })
-    .pipe(
-      Effect.provide(Layer.mergeAll(studioLayer(auth), bundleLayer)),
-      Effect.runPromise,
-    )
+  Effect.gen(function* () {
+    const context = yield* Effect.context<Studio.Studio | Bundle.Bundle>()
+    const router = yield* RouteHttp.toHttpRouter(tree)
+    yield* perform(TestHttpClient.fromRouter(router, context))
+  }).pipe(Effect.provide(Layer.mergeAll(studioLayer(auth), bundleLayer)), Effect.runPromise)
 
 test.describe("studio layer basic auth", () => {
   test.it("does not require auth when auth option is undefined", () =>
     runWithAuth(undefined, (client) =>
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const entity = yield* client.get("http://localhost/studio/services")
 
-        test
-          .expect(entity.status)
-          .toBe(200)
-        test
-          .expect(yield* entity.text)
-          .toContain("Services")
-      })))
+        test.expect(entity.status).toBe(200)
+        test.expect(yield* entity.text).toContain("Services")
+      }),
+    ),
+  )
 
   test.it("returns 401 with WWW-Authenticate header when no credentials sent", () =>
-    runWithAuth(
-      { type: "basic", username: "admin", password: "s3cret" },
-      (client) =>
-        Effect.gen(function*() {
-          const entity = yield* client.get("http://localhost/studio/services")
+    runWithAuth({ type: "basic", username: "admin", password: "s3cret" }, (client) =>
+      Effect.gen(function* () {
+        const entity = yield* client.get("http://localhost/studio/services")
 
-          test
-            .expect(entity.status)
-            .toBe(401)
-          test
-            .expect(entity.headers["www-authenticate"])
-            .toBe(
-              "Basic realm=\"Studio\", charset=\"UTF-8\"",
-            )
-          test
-            .expect(yield* entity.text)
-            .not
-            .toContain("Services")
-        }),
-    ))
+        test.expect(entity.status).toBe(401)
+        test
+          .expect(entity.headers["www-authenticate"])
+          .toBe('Basic realm="Studio", charset="UTF-8"')
+        test.expect(yield* entity.text).not.toContain("Services")
+      }),
+    ),
+  )
 
   test.it("returns 401 when credentials are wrong", () =>
-    runWithAuth(
-      { type: "basic", username: "admin", password: "s3cret" },
-      (client) =>
-        Effect.gen(function*() {
-          const wrong = "Basic " + btoa("admin:wrong")
-          const entity = yield* client.get(
-            "http://localhost/studio/services",
-            { headers: { authorization: wrong } },
-          )
+    runWithAuth({ type: "basic", username: "admin", password: "s3cret" }, (client) =>
+      Effect.gen(function* () {
+        const wrong = "Basic " + btoa("admin:wrong")
+        const entity = yield* client.get("http://localhost/studio/services", {
+          headers: { authorization: wrong },
+        })
 
-          test
-            .expect(entity.status)
-            .toBe(401)
-        }),
-    ))
+        test.expect(entity.status).toBe(401)
+      }),
+    ),
+  )
 
   test.it("passes through with 200 when credentials are correct", () =>
-    runWithAuth(
-      { type: "basic", username: "admin", password: "s3cret" },
-      (client) =>
-        Effect.gen(function*() {
-          const ok = "Basic " + btoa("admin:s3cret")
-          const entity = yield* client.get(
-            "http://localhost/studio/services",
-            { headers: { authorization: ok } },
-          )
+    runWithAuth({ type: "basic", username: "admin", password: "s3cret" }, (client) =>
+      Effect.gen(function* () {
+        const ok = "Basic " + btoa("admin:s3cret")
+        const entity = yield* client.get("http://localhost/studio/services", {
+          headers: { authorization: ok },
+        })
 
-          test
-            .expect(entity.status)
-            .toBe(200)
-          test
-            .expect(yield* entity.text)
-            .toContain("Services")
-        }),
-    ))
+        test.expect(entity.status).toBe(200)
+        test.expect(yield* entity.text).toContain("Services")
+      }),
+    ),
+  )
 })

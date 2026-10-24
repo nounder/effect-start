@@ -35,18 +35,14 @@ const Proto = Object.assign(Object.create(null), {
   options,
 })
 
-function make<D = {}, I extends Route.Route.Tuple = []>(
-  items: I,
-): RouteMount.Builder<D, I> {
+function make<D = {}, I extends Route.Route.Tuple = []>(items: I): RouteMount.Builder<D, I> {
   return Object.assign(Object.create(Proto), {
     [Route.RouteItems]: items,
     [Route.RouteDescriptor]: {},
   })
 }
 
-function makeMethodDescriber<M extends RouteMount.Method>(
-  method: M,
-): RouteMount.Describer<M> {
+function makeMethodDescriber<M extends RouteMount.Method>(method: M): RouteMount.Describer<M> {
   function describeMethod(
     this: Self,
     ...fs: Array<(self: Route.RouteSet.Any) => Route.RouteSet.Any>
@@ -54,9 +50,7 @@ function makeMethodDescriber<M extends RouteMount.Method>(
     const baseItems = Route.isRouteSet(this) ? Route.items(this) : ([] as const)
 
     const methodSet = Route.set<{ method: M }, []>([], { method })
-    const f = Function.flow(
-      ...(fs as [(_: Route.RouteSet.Any) => Route.RouteSet.Any]),
-    )
+    const f = Function.flow(...(fs as [(_: Route.RouteSet.Any) => Route.RouteSet.Any]))
     const result = f(methodSet)
     const resultItems = Route.items(result)
 
@@ -87,20 +81,10 @@ export type MountedRoute = Route.Route<
 export namespace RouteMount {
   export type Method = "*" | Http.Method
 
-  export type MountSet = Route.RouteSet<
-    { method: Method },
-    {},
-    Route.Route.Tuple
-  >
+  export type MountSet = Route.RouteSet<{ method: Method }, {}, Route.Route.Tuple>
 
-  export type Builder<D = {}, I extends Route.Route.Tuple = []> =
-    & Route.RouteSet<
-      D,
-      {},
-      I
-    >
-    & (HasMethod<I> extends true ? {} : { use: Describer<"*"> })
-    & {
+  export type Builder<D = {}, I extends Route.Route.Tuple = []> = Route.RouteSet<D, {}, I> &
+    (HasMethod<I> extends true ? {} : { use: Describer<"*"> }) & {
       get: Describer<"GET">
       post: Describer<"POST">
       put: Describer<"PUT">
@@ -113,27 +97,28 @@ export namespace RouteMount {
   type HasMethod<I extends Route.Route.Tuple> = I extends [
     infer Head,
     ...infer Tail extends Route.Route.Tuple,
-  ] ? Head extends Route.Route<{ method: infer M }, any, any, any, any> ? M extends Http.Method ? true
+  ]
+    ? Head extends Route.Route<{ method: infer M }, any, any, any, any>
+      ? M extends Http.Method
+        ? true
+        : HasMethod<Tail>
       : HasMethod<Tail>
-    : HasMethod<Tail>
     : false
 
-  export type EmptySet<M extends Method, B = {}> = Route.RouteSet<
-    { method: M },
-    B,
-    []
-  >
+  export type EmptySet<M extends Method, B = {}> = Route.RouteSet<{ method: M }, B, []>
 
   export type Items<S> = S extends Builder<any, infer I> ? I : []
 
-  export type BuilderBindings<S> = S extends Builder<any, infer I> ? Types.Simplify<WildcardBindings<I>>
-    : {}
+  export type BuilderBindings<S> =
+    S extends Builder<any, infer I> ? Types.Simplify<WildcardBindings<I>> : {}
 
-  type WildcardBindingsItem<T> = T extends Route.Route<{ method: "*" }, infer B, any, any, any> ? B : {}
+  type WildcardBindingsItem<T> =
+    T extends Route.Route<{ method: "*" }, infer B, any, any, any> ? B : {}
 
   type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (
     k: infer I,
-  ) => void ? I
+  ) => void
+    ? I
     : never
 
   export type WildcardBindings<I extends Route.Route.Tuple> = UnionToIntersection<
@@ -145,10 +130,8 @@ export namespace RouteMount {
   export type FlattenItems<M extends Method, I extends Route.Route.Tuple> = I extends [
     Route.Route<infer D, infer RB, infer A, infer E, infer R>,
     ...infer Tail extends Route.Route.Tuple,
-  ] ? [
-      Route.Route<Types.Simplify<{ method: M } & D> & {}, RB, A, E, R>,
-      ...FlattenItems<M, Tail>,
-    ]
+  ]
+    ? [Route.Route<Types.Simplify<{ method: M } & D> & {}, RB, A, E, R>, ...FlattenItems<M, Tail>]
     : []
 
   export interface Describer<M extends Method> {
@@ -157,11 +140,7 @@ export namespace RouteMount {
       ab: (a: EmptySet<M, BuilderBindings<S>>) => A,
     ): Builder<{}, [...Items<S>, ...FlattenItems<M, Route.RouteSet.Items<A>>]>
 
-    <
-      S extends Self,
-      A extends Route.RouteSet.Any,
-      B extends Route.RouteSet.Any,
-    >(
+    <S extends Self, A extends Route.RouteSet.Any, B extends Route.RouteSet.Any>(
       this: S,
       ab: (a: EmptySet<M, BuilderBindings<S>>) => A,
       bc: (b: A) => B,

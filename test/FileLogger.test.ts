@@ -1,98 +1,81 @@
 import * as test from "bun:test"
+import * as NPath from "node:path"
 import { BunFileSystem } from "effect-start/bun"
+import * as FileLogger from "effect-start/FileLogger"
 import * as Effect from "effect/Effect"
 import * as FileSystem from "effect/FileSystem"
 import * as Logger from "effect/Logger"
-import * as NPath from "node:path"
-import * as FileLogger from "effect-start/FileLogger"
 
-const withTempDir = <A, E>(
-  f: (dir: string) => Effect.Effect<A, E, FileSystem.FileSystem>,
-) =>
-  Effect
-    .gen(function*() {
-      const fs = yield* FileSystem.FileSystem
-      const dir = yield* fs.makeTempDirectoryScoped()
-      return yield* f(dir)
-    })
-    .pipe(
-      Effect.scoped,
-      Effect.provide(BunFileSystem.layer),
-      Effect.runPromise,
-    )
+const withTempDir = <A, E>(f: (dir: string) => Effect.Effect<A, E, FileSystem.FileSystem>) =>
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    const dir = yield* fs.makeTempDirectoryScoped()
+    return yield* f(dir)
+  }).pipe(Effect.scoped, Effect.provide(BunFileSystem.layer), Effect.runPromise)
 
 test.it("writes log lines to the file", () =>
   withTempDir((dir) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem
       const path = NPath.join(dir, "app.log")
 
       const loggerLayer = Logger.layer([FileLogger.toFile(Logger.formatLogFmt, { path })])
 
-      yield* Effect
-        .gen(function*() {
-          yield* Effect.log("hello")
-          yield* Effect.log("world")
-        })
-        .pipe(Effect.provide(loggerLayer))
+      yield* Effect.gen(function* () {
+        yield* Effect.log("hello")
+        yield* Effect.log("world")
+      }).pipe(Effect.provide(loggerLayer))
 
       const contents = yield* fs.readFileString(path)
 
-      test
-        .expect(contents)
-        .toContain("message=hello")
-      test
-        .expect(contents)
-        .toContain("message=world")
-    })
-  ))
+      test.expect(contents).toContain("message=hello")
+      test.expect(contents).toContain("message=world")
+    }),
+  ),
+)
 
 test.it("writes multiple entries as separate lines", () =>
   withTempDir((dir) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem
       const path = NPath.join(dir, "app.log")
 
       const loggerLayer = Logger.layer([FileLogger.toFile(Logger.formatLogFmt, { path })])
 
-      yield* Effect
-        .gen(function*() {
-          yield* Effect.log("one")
-          yield* Effect.log("two")
-          yield* Effect.log("three")
-        })
-        .pipe(Effect.provide(loggerLayer))
+      yield* Effect.gen(function* () {
+        yield* Effect.log("one")
+        yield* Effect.log("two")
+        yield* Effect.log("three")
+      }).pipe(Effect.provide(loggerLayer))
 
       const lines = (yield* fs.readFileString(path)).trimEnd().split("\n")
 
-      test
-        .expect(lines.length)
-        .toBe(3)
-      test
-        .expect(lines.every((line) => line.startsWith("timestamp=")))
-        .toBe(true)
-    })
-  ))
+      test.expect(lines.length).toBe(3)
+      test.expect(lines.every((line) => line.startsWith("timestamp="))).toBe(true)
+    }),
+  ),
+)
 
 test.it("respects a custom batch window and flushes on close", () =>
   withTempDir((dir) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem
       const path = NPath.join(dir, "app.log")
 
-      const loggerLayer = Logger.layer([FileLogger.toFile(Logger.formatLogFmt, { path, batchWindow: "1 hour" })])
+      const loggerLayer = Logger.layer([
+        FileLogger.toFile(Logger.formatLogFmt, { path, batchWindow: "1 hour" }),
+      ])
 
       yield* Effect.log("buffered").pipe(Effect.provide(loggerLayer))
 
-      test
-        .expect(yield* fs.readFileString(path))
-        .toContain("message=buffered")
-    })
-  ))
+      test.expect(yield* fs.readFileString(path)).toContain("message=buffered")
+    }),
+  ),
+)
 
 test.it("data-last form pipes onto a logger", () =>
   withTempDir((dir) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem
       const path = NPath.join(dir, "app.log")
 
@@ -101,15 +84,14 @@ test.it("data-last form pipes onto a logger", () =>
 
       yield* Effect.log("piped").pipe(Effect.provide(loggerLayer))
 
-      test
-        .expect(yield* fs.readFileString(path))
-        .toContain("message=piped")
-    })
-  ))
+      test.expect(yield* fs.readFileString(path)).toContain("message=piped")
+    }),
+  ),
+)
 
 test.it("composes with another logger via zip", () =>
   withTempDir((dir) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem
       const path = NPath.join(dir, "app.log")
 
@@ -120,11 +102,8 @@ test.it("composes with another logger via zip", () =>
 
       yield* Effect.log("both").pipe(Effect.provide(loggerLayer))
 
-      test
-        .expect(captured)
-        .toEqual(["both"])
-      test
-        .expect(yield* fs.readFileString(path))
-        .toContain("message=both")
-    })
-  ))
+      test.expect(captured).toEqual(["both"])
+      test.expect(yield* fs.readFileString(path)).toContain("message=both")
+    }),
+  ),
+)

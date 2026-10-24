@@ -1,57 +1,59 @@
 /**
- * Route defines HTTP endpoints with content negotiation, type-safe middlewares,
- * and validated payloads (via schema* functions)
+ * Route defines HTTP endpoints with content negotiation, type-safe middlewares, and validated
+ * payloads (via schema* functions)
  *
  * @example
- * ```ts
- * import { Schema } from "effect"
- * import { Start, Route } from "effect-start"
+ *   ```ts
+ *   import { Schema } from "effect"
+ *   import { Start, Route } from "effect-start"
  *
- * // map routes to paths
- * const routes = Route.map({
+ *   // map routes to paths
+ *   const routes = Route.map({
  *   // wildcard paths accept a route layer (similar to middlewares)
  *   // that applies to all routes underneath it.
  *   "*": Route.use(
- *     // only wraps HTML handlers
- *     Route.html(function* (ctx, next) {
- *       return (
- *         <html>
- *           <head>
- *             <title>Todos</title>
- *           </head>
- *           <body>
- *             <div>{yield* next.html}</div>
- *           </body>
- *         </html>
- *       )
- *     }),
+ *   // only wraps HTML handlers
+ *   Route.html(function* (ctx, next) {
+ *   return (
+ *   <html>
+ *   <head>
+ *   <title>Todos</title>
+ *   </head>
+ *   <body>
+ *   <div>{yield* next.html}</div>
+ *   </body>
+ *   </html>
+ *   )
+ *   }),
  *   ),
- *   "/": Route.get(
- *     Route.redirect("/todos")
+ *   "/": Route.get(Route.redirect("/todos")),
+ *   "/todos": Route.get(
+ *   Route.html(function* () {
+ *   const todos = yield* sql`select * from todos`
+ *
+ *   return (
+ *   <ul>
+ *   {todos.map((todo) => (
+ *   <li>{todo.text}</li>
+ *   ))}
+ *   </ul>
+ *   )
+ *   }),
+ *   ).post(
+ *   // require a json payload
+ *   Route.schemaBodyJson({
+ *   text: Schema.String,
+ *   }),
+ *   Route.json(function* (ctx) {
+ *   // request payloads are parsed and validated
+ *   yield* sql`insert into todos ${ctx.body}`
+ *   }),
  *   ),
- *   "/todos": Route
- *     .get(
- *       Route.html(function* () {
- *         const todos = yield* sql`select * from todos`
+ *   })
  *
- *         return <ul>{todos.map(todo => <li>{todo.text}</li>)}</ul>
- *       }),
- *     )
- *     .post(
- *       // require a json payload
- *       Route.schemaBodyJson({
- *         text: Schema.String
- *       }),
- *       Route.json(function* (ctx) {
- *         // request payloads are parsed and validated
- *         yield* sql`insert into todos ${ctx.body}`
- *       })
- *     ),
- * })
- *
- * // later, provide routes manually or use FileRouter for file-based router.
- * Start.pack(Route.layer(routes))
- * ```
+ *   // later, provide routes manually or use FileRouter for file-based router.
+ *   Start.pack(Route.layer(routes))
+ *   ```
  */
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
@@ -74,13 +76,10 @@ declare const RouteBindings: unique symbol
 
 export const TypeId = "~effect-start/RouteSet" as const
 
-export type RouteSet<D = {}, B = {}, M extends Route.Tuple = []> =
-  & RouteSet.Data<D, B, M>
-  & {
-    [TypeId]: typeof TypeId
-  }
-  & Pipeable.Pipeable
-  & Iterable<M[number]>
+export type RouteSet<D = {}, B = {}, M extends Route.Tuple = []> = RouteSet.Data<D, B, M> & {
+  [TypeId]: typeof TypeId
+} & Pipeable.Pipeable &
+  Iterable<M[number]>
 
 export namespace RouteSet {
   export type Data<D = {}, B = {}, M extends Route.Tuple = []> = {
@@ -89,10 +88,8 @@ export namespace RouteSet {
     [RouteBindings]: B
   }
 
-  export type Proto =
-    & Pipeable.Pipeable
-    & Iterable<Route<any, any, any, any, any>>
-    & {
+  export type Proto = Pipeable.Pipeable &
+    Iterable<Route<any, any, any, any, any>> & {
       [TypeId]: typeof TypeId
     }
 
@@ -100,16 +97,15 @@ export namespace RouteSet {
 
   export type Items<T extends Data<any, any, any>> = T extends Data<any, any, infer M> ? M : never
 
-  export type Descriptor<T extends Data<any, any, any>> = T extends Data<infer D, any, any> ? D : never
+  export type Descriptor<T extends Data<any, any, any>> =
+    T extends Data<infer D, any, any> ? D : never
 }
 
-export interface Route<D = {}, B = {}, A = any, E = never, R = never> extends
-  RouteSet<
-    D,
-    B,
-    [Route<D, B, A, E, R>]
-  >
-{
+export interface Route<D = {}, B = {}, A = any, E = never, R = never> extends RouteSet<
+  D,
+  B,
+  [Route<D, B, A, E, R>]
+> {
   readonly handler: Route.Handler<any, any, any, any>
 }
 
@@ -125,35 +121,31 @@ export namespace Route {
     next: Entity.Entity<A, never>,
   ) => Effect.Effect<Entity.Entity<A>, E, R>
 
-  /**
-   * Extracts only the bindings (B) from routes, excluding descriptors.
-   */
-  export type Bindings<
-    T extends RouteSet.Any,
-    M extends Tuple = RouteSet.Items<T>,
-  > = M extends [
+  /** Extracts only the bindings (B) from routes, excluding descriptors. */
+  export type Bindings<T extends RouteSet.Any, M extends Tuple = RouteSet.Items<T>> = M extends [
     infer Head,
     ...infer Tail extends Tuple,
-  ] ? Head extends Route<any, infer B, any, any, any> ? ShallowMerge<B, Bindings<T, Tail>>
-    : Bindings<T, Tail>
+  ]
+    ? Head extends Route<any, infer B, any, any, any>
+      ? ShallowMerge<B, Bindings<T, Tail>>
+      : Bindings<T, Tail>
     : {}
 
   /**
-   * Extracts the full handler context from a RouteSet.
-   * Merges descriptors and bindings from all routes, with later values
-   * taking precedence via ShallowMerge to avoid `never` from conflicting
+   * Extracts the full handler context from a RouteSet. Merges descriptors and bindings from all
+   * routes, with later values taking precedence via ShallowMerge to avoid `never` from conflicting
    * literal types (e.g. `{ method: "*" } & { method: "GET" }`).
    */
-  export type Context<T extends RouteSet.Any> =
-    & Omit<
-      RouteSet.Descriptor<T>,
-      keyof ExtractContext<RouteSet.Items<T>>
-    >
-    & ExtractContext<RouteSet.Items<T>>
+  export type Context<T extends RouteSet.Any> = Omit<
+    RouteSet.Descriptor<T>,
+    keyof ExtractContext<RouteSet.Items<T>>
+  > &
+    ExtractContext<RouteSet.Items<T>>
 
   type ExtractContext<M extends Tuple> = M extends [infer Head, ...infer Tail extends Tuple]
-    ? Head extends Route<infer D, infer B, any, any, any> ? ShallowMerge<Omit<D, keyof B> & B, ExtractContext<Tail>>
-    : ExtractContext<Tail>
+    ? Head extends Route<infer D, infer B, any, any, any>
+      ? ShallowMerge<Omit<D, keyof B> & B, ExtractContext<Tail>>
+      : ExtractContext<Tail>
     : {}
 }
 
@@ -163,9 +155,7 @@ export const text = RouteBody.build<string, "text">({
 
 export const html = RouteBody.build<string | JSX.Element, string, "html">({
   format: "html",
-  handle: (
-    body,
-  ) => (typeof body === "string" ? body : Html.text(body as JSX.Element)),
+  handle: (body) => (typeof body === "string" ? body : Html.text(body as JSX.Element)),
 })
 
 export const json = RouteBody.build<Values.Json, "json">({
@@ -177,8 +167,7 @@ export const bytes = RouteBody.build<Uint8Array, "bytes">({
 })
 
 /**
- * Renders an arbitrary response.
- * Prefer text/html/json/bytes since they handle content negotiation
+ * Renders an arbitrary response. Prefer text/html/json/bytes since they handle content negotiation
  * and more friendly interace for each content type.
  */
 export const handle = RouteBody.handle
@@ -186,9 +175,7 @@ export const handle = RouteBody.handle
 export function redirect<D, B, I extends Route.Tuple>(
   url: string | URL,
   options?: { status?: 301 | 302 | 303 | 307 | 308 },
-): (
-  self: RouteSet<D, B, I>,
-) => RouteSet<D, B, [...I, Route<{}, {}, "", never, never>]> {
+): (self: RouteSet<D, B, I>) => RouteSet<D, B, [...I, Route<{}, {}, "", never, never>]> {
   const route = make<{}, {}, "">(
     () =>
       Effect.succeed(
@@ -203,31 +190,13 @@ export function redirect<D, B, I extends Route.Tuple>(
   )
 
   return (self) =>
-    set<D, B, [...I, Route<{}, {}, "", never, never>]>(
-      [...items(self), route],
-      descriptor(self),
-    )
+    set<D, B, [...I, Route<{}, {}, "", never, never>]>([...items(self), route], descriptor(self))
 }
 
-export {
-  filter,
-} from "./internal/RouteHook.ts"
-export {
-  link,
-} from "./internal/RouteLink.ts"
-export {
-  make as map,
-} from "./internal/RouteMap.ts"
-export {
-  del,
-  get,
-  head,
-  options,
-  patch,
-  post,
-  put,
-  use,
-} from "./internal/RouteMount.ts"
+export { filter } from "./internal/RouteHook.ts"
+export { link } from "./internal/RouteLink.ts"
+export { make as map } from "./internal/RouteMap.ts"
+export { del, get, head, options, patch, post, put, use } from "./internal/RouteMount.ts"
 export {
   schemaBodyForm,
   schemaBodyJson,
@@ -240,12 +209,8 @@ export {
   schemaSearchParams,
   schemaSuccess,
 } from "./internal/RouteSchema.ts"
-export {
-  ws,
-} from "./internal/RouteSocket.ts"
-export {
-  sse,
-} from "./internal/RouteSse.ts"
+export { ws } from "./internal/RouteSocket.ts"
+export { sse } from "./internal/RouteSse.ts"
 
 export class Routes extends Context.Service<Routes, RouteMap.RouteMap>()("effect-start/Routes") {}
 
@@ -264,7 +229,7 @@ export function layerMerge<const Input extends RouteMap.RouteMapInput>(
 ): Layer.Layer<Routes, never, RouteMap.Context<Input>> {
   return Layer.effect(
     Routes,
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const existing = Option.getOrUndefined(yield* Effect.serviceOption(Routes))
       const map = RouteMap.make(routes)
       if (!existing) return map
@@ -273,16 +238,10 @@ export function layerMerge<const Input extends RouteMap.RouteMapInput>(
   ) as Layer.Layer<Routes, never, RouteMap.Context<Input>>
 }
 
-/**
- * Continues the route chain in development and returns 404 otherwise.
- */
+/** Continues the route chain in development and returns 404 otherwise. */
 export function devOnly<D, B, I extends Route.Tuple>(
   self: RouteSet<D, B, I>,
-): RouteSet<
-  D,
-  B,
-  [...I, Route<{ dev: true }, { dev: true }, unknown, any, any>]
-> {
+): RouteSet<D, B, [...I, Route<{ dev: true }, { dev: true }, unknown, any, any>]> {
   const route: Route<{ dev: true }, { dev: true }, unknown, any, any> = make<
     { dev: true },
     { dev: true },
@@ -291,29 +250,20 @@ export function devOnly<D, B, I extends Route.Tuple>(
     any
   >(
     (_context, next) =>
-      Effect.flatMap(
-        Development.option,
-        (developmentOption) =>
-          Option.isSome(developmentOption)
-            ? Effect.succeed(next)
-            : Effect.succeed(Entity.make("", { status: 404 })),
+      Effect.flatMap(Development.option, (developmentOption) =>
+        Option.isSome(developmentOption)
+          ? Effect.succeed(next)
+          : Effect.succeed(Entity.make("", { status: 404 })),
       ),
     { dev: true },
   )
 
-  const nextItems: [
-    ...I,
-    Route<{ dev: true }, { dev: true }, unknown, any, any>,
-  ] = [
+  const nextItems: [...I, Route<{ dev: true }, { dev: true }, unknown, any, any>] = [
     ...items(self),
     route,
   ]
 
-  return set<
-    D,
-    B,
-    [...I, Route<{ dev: true }, { dev: true }, unknown, any, any>]
-  >(
+  return set<D, B, [...I, Route<{ dev: true }, { dev: true }, unknown, any, any>]>(
     nextItems,
     descriptor(self),
   )
@@ -386,9 +336,7 @@ export function describe<D extends {} = {}>(descriptor: D) {
   return set([], descriptor)
 }
 
-export function items<T extends RouteSet.Data<any, any, any>>(
-  self: T,
-): RouteSet.Items<T> {
+export function items<T extends RouteSet.Data<any, any, any>>(self: T): RouteSet.Items<T> {
   return self[RouteItems]
 }
 
@@ -411,36 +359,34 @@ export function descriptor(
 export type ExtractBindings<M extends Route.Tuple> = M extends [
   infer Head,
   ...infer Tail extends Route.Tuple,
-] ? Head extends Route<any, infer B, any, any, any> ? ShallowMerge<B, ExtractBindings<Tail>>
-  : ExtractBindings<Tail>
+]
+  ? Head extends Route<any, infer B, any, any, any>
+    ? ShallowMerge<B, ExtractBindings<Tail>>
+    : ExtractBindings<Tail>
   : {}
 
 // Shallow merge two object types.
 // For overlapping keys, intersect the values.
-type ShallowMerge<A, B> =
-  & Omit<A, keyof B>
-  & {
-    [K in keyof B]: K extends keyof A ? A[K] & B[K] : B[K]
-  }
+type ShallowMerge<A, B> = Omit<A, keyof B> & {
+  [K in keyof B]: K extends keyof A ? A[K] & B[K] : B[K]
+}
 
-export type ExtractContext<Items extends Route.Tuple, Descriptor> =
-  & ExtractBindings<Items>
-  & Descriptor
+export type ExtractContext<Items extends Route.Tuple, Descriptor> = ExtractBindings<Items> &
+  Descriptor
 
 /**
- * Phantom marker for services that are provided automatically.
- * Routes may declare them as requirements, but they are stripped
- * from the R since they are provided by default when handling.
+ * Phantom marker for services that are provided automatically. Routes may declare them as
+ * requirements, but they are stripped from the R since they are provided by default when handling.
  */
 export declare const IntrinsicService: unique symbol
 
-export class Request extends Context.Service<Request, globalThis.Request>()("effect-start/Route/Request") {
+export class Request extends Context.Service<Request, globalThis.Request>()(
+  "effect-start/Route/Request",
+) {
   declare readonly [IntrinsicService]: never
 }
 
-/**
- * Context shared across handlers per request.
- */
+/** Context shared across handlers per request. */
 export const RouteContext = Context.Reference("effect-start/RouteContext", {
   defaultValue: () => ({
     context: Object.freeze({}) as Record<string, unknown>,

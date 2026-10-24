@@ -21,9 +21,8 @@ export type BundleKey = `${string}Bundle`
 export type BundleId = `${typeof IdPrefix}${BundleKey}`
 
 /**
- * Passed to bundle effects and within bundle runtime.
- * Used to expose artifacts via HTTP server and properly resolve
- * imports within the bundle.
+ * Passed to bundle effects and within bundle runtime. Used to expose artifacts via HTTP server and
+ * properly resolve imports within the bundle.
  */
 export type BundleContext = {
   resolve: (url: string, parent?: string) => string | undefined
@@ -42,11 +41,10 @@ export const emptyBundleContext: BundleContext = {
   getArtifact: () => undefined,
 }
 
-export const Tag = <const T extends BundleKey>(name: T) => <Identifier>() =>
-  Context.Service<
-    Identifier,
-    BundleContext
-  >()(`${IdPrefix}${name}` as `${typeof IdPrefix}${T}`)
+export const Tag =
+  <const T extends BundleKey>(name: T) =>
+  <Identifier>() =>
+    Context.Service<Identifier, BundleContext>()(`${IdPrefix}${name}` as `${typeof IdPrefix}${T}`)
 
 export type Tag<T extends BundleKey = BundleKey> = Context.Key<
   `${typeof IdPrefix}${T}`,
@@ -62,24 +60,24 @@ export class Bundle extends Tag("Bundle")<Bundle>() {}
  *
  * When `parent` is provided, the path is resolved against the parent's directory.
  *
- * Returns `undefined` when no path matches, or when two or more
- * entrypoints tie at the most-specific match length (ambiguous). To
- * disambiguate basename collisions across directories, pass `parent`.
+ * Returns `undefined` when no path matches, or when two or more entrypoints tie at the
+ * most-specific match length (ambiguous). To disambiguate basename collisions across directories,
+ * pass `parent`.
  */
 export const makeResolver = (
   entrypoints: Record<string, string>,
-): (path: string, parent?: string) => string | undefined => {
+): ((path: string, parent?: string) => string | undefined) => {
   const cache: Record<string, string | undefined> = Object.create(null)
 
   const stripFileUrl = (s: string): string => {
     const noQuery = s.split("?")[0]!.split("#")[0]!
-    return noQuery.startsWith("file://")
-      ? noQuery.slice("file://".length)
-      : noQuery
+    return noQuery.startsWith("file://") ? noQuery.slice("file://".length) : noQuery
   }
 
   const toSegments = (s: string): Array<string> =>
-    stripFileUrl(s).split("/").filter((seg) => seg.length > 0 && seg !== ".")
+    stripFileUrl(s)
+      .split("/")
+      .filter((seg) => seg.length > 0 && seg !== ".")
 
   const joinAgainstParent = (parent: string, rel: string): Array<string> => {
     const parentSegs = toSegments(parent)
@@ -151,8 +149,7 @@ export const makeResolver = (
       }
     }
 
-    return (cache[cacheKey] = bestKey !== undefined && !ambiguous
-      ? entrypoints[bestKey]
-      : undefined)
+    return (cache[cacheKey] =
+      bestKey !== undefined && !ambiguous ? entrypoints[bestKey] : undefined)
   }
 }

@@ -11,15 +11,14 @@ const client = Effect.map(HttpClient.HttpClient, (client) =>
           Accept: request.headers.accept ?? "application/vnd.github+json",
           "X-GitHub-Api-Version": "2022-11-28",
           Authorization: `Bearer ${token}`,
-        }))
+        }),
+      ),
     ),
     HttpClient.filterStatusOk,
-  ))
+  ),
+)
 
-function buildUrl(
-  path: string,
-  params?: Record<string, string | number | undefined>,
-): string {
+function buildUrl(path: string, params?: Record<string, string | number | undefined>): string {
   const url = new URL(`${API}${path}`)
   if (params) {
     for (const [k, v] of Object.entries(params)) {
@@ -36,7 +35,10 @@ function request<A>(
 ) {
   const url = buildUrl(path, params)
   return Effect.flatMap(
-    Effect.flatMap(Effect.flatMap(client, (client) => client.get(url)), (response) => response.json),
+    Effect.flatMap(
+      Effect.flatMap(client, (client) => client.get(url)),
+      (response) => response.json,
+    ),
     Schema.decodeUnknownEffect(schema),
   )
 }
@@ -48,7 +50,8 @@ function requestHtml(path: string) {
       Effect.flatMap(client, (client) =>
         client.get(url, {
           headers: { Accept: "application/vnd.github.html+json" },
-        })),
+        }),
+      ),
       (entity) => entity.text,
     ),
     () => Effect.succeed(""),
@@ -160,12 +163,8 @@ const PullRequest = Schema.Struct({
   created_at: Schema.String,
   updated_at: Schema.String,
   closed_at: Schema.NullOr(Schema.String),
-  base: Schema.optional(
-    Schema.Struct({ label: Schema.optional(Schema.String) }),
-  ),
-  head: Schema.optional(
-    Schema.Struct({ label: Schema.optional(Schema.String) }),
-  ),
+  base: Schema.optional(Schema.Struct({ label: Schema.optional(Schema.String) })),
+  head: Schema.optional(Schema.Struct({ label: Schema.optional(Schema.String) })),
 })
 export type PullRequest = typeof PullRequest.Type
 
@@ -335,13 +334,9 @@ export const getIssueComments = (
   number: number,
   opts?: { per_page?: number },
 ) =>
-  request(
-    Schema.Array(IssueComment),
-    `/repos/${owner}/${repo}/issues/${number}/comments`,
-    {
-      per_page: opts?.per_page ?? 50,
-    },
-  )
+  request(Schema.Array(IssueComment), `/repos/${owner}/${repo}/issues/${number}/comments`, {
+    per_page: opts?.per_page ?? 50,
+  })
 
 export const getPull = (owner: string, repo: string, number: number) =>
   request(PullRequest, `/repos/${owner}/${repo}/pulls/${number}`)
@@ -349,9 +344,11 @@ export const getPull = (owner: string, repo: string, number: number) =>
 export const getCommit = (owner: string, repo: string, sha: string) =>
   request(Commit, `/repos/${owner}/${repo}/commits/${sha}`)
 
-export const getRepoReadme = (owner: string, repo: string) => requestHtml(`/repos/${owner}/${repo}/readme`)
+export const getRepoReadme = (owner: string, repo: string) =>
+  requestHtml(`/repos/${owner}/${repo}/readme`)
 
-export const getRepoLanguages = (owner: string, repo: string) => request(Languages, `/repos/${owner}/${repo}/languages`)
+export const getRepoLanguages = (owner: string, repo: string) =>
+  request(Languages, `/repos/${owner}/${repo}/languages`)
 
 export const searchRepos = (
   q: string,
@@ -389,10 +386,7 @@ export const getOrgRepos = (
     type: "public",
   })
 
-export const getOrgMembers = (
-  org: string,
-  opts?: { per_page?: number; page?: number },
-) =>
+export const getOrgMembers = (org: string, opts?: { per_page?: number; page?: number }) =>
   request(Schema.Array(OrgMember), `/orgs/${org}/members`, {
     per_page: opts?.per_page ?? 100,
     page: opts?.page,

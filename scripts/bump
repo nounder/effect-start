@@ -26,9 +26,11 @@ if (!match) {
 const [, major, minor, patch] = match.map(Number)
 
 const newVersion =
-  type === "major" ? `${major + 1}.0.0`
-  : type === "minor" ? `${major}.${minor + 1}.0`
-  : `${major}.${minor}.${patch + 1}`
+  type === "major"
+    ? `${major + 1}.0.0`
+    : type === "minor"
+      ? `${major}.${minor + 1}.0`
+      : `${major}.${minor}.${patch + 1}`
 
 const tag = `v${newVersion}`
 

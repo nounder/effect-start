@@ -1,6 +1,5 @@
-/**
- * Ported from effect@4.0.0-rc.112.
- */
+import * as NDns from "node:dns/promises"
+/** Ported from effect@4.0.0-rc.112. */
 import type { Server as NativeServer, ServerWebSocket } from "bun"
 import type * as Array from "effect/Array"
 import * as Cause from "effect/Cause"
@@ -36,7 +35,6 @@ import * as Scope from "effect/Scope"
 import * as Semaphore from "effect/Semaphore"
 import * as Socket from "effect/socket/Socket"
 import * as Stream from "effect/Stream"
-import * as NDns from "node:dns/promises"
 import * as RouteSocket from "../../internal/RouteSocket.ts"
 import * as BunFileSystem from "../BunFileSystem.ts"
 import * as BunPath from "../BunPath.ts"
@@ -53,41 +51,32 @@ export interface WebSocketContext {
   run: (_: Uint8Array | string) => void
 }
 
-export type WebSocketOptions =
-  & Omit<
-    Bun.WebSocketHandler<WebSocketContext>,
-    "open" | "message" | "close" | "drain" | "ping" | "pong" | "data" | "binaryType"
-  >
-  & {
-    readonly compressionThreshold?: number
-  }
+export type WebSocketOptions = Omit<
+  Bun.WebSocketHandler<WebSocketContext>,
+  "open" | "message" | "close" | "drain" | "ping" | "pong" | "data" | "binaryType"
+> & {
+  readonly compressionThreshold?: number
+}
 
-export type ServeOptions =
-  & (
-    | Bun.Serve.UnixServeOptions<WebSocketContext>
-    | Bun.Serve.HostnamePortServeOptions<WebSocketContext>
-  )
-  & {
-    readonly disablePreemptiveShutdown?: boolean
-    readonly gracefulShutdownTimeout?: Duration.Input
-    readonly websocket?: WebSocketOptions
-  }
+export type ServeOptions = (
+  | Bun.Serve.UnixServeOptions<WebSocketContext>
+  | Bun.Serve.HostnamePortServeOptions<WebSocketContext>
+) & {
+  readonly disablePreemptiveShutdown?: boolean
+  readonly gracefulShutdownTimeout?: Duration.Input
+  readonly websocket?: WebSocketOptions
+}
 
 export const layerHttpServices: Layer.Layer<
   HttpPlatform.HttpPlatform | Etag.Generator | FileSystem.FileSystem | Path.Path
-> = Layer.mergeAll(
-  BunHttpPlatform.layer,
-  Etag.layerWeak,
-  BunFileSystem.layer,
-  BunPath.layer,
-)
+> = Layer.mergeAll(BunHttpPlatform.layer, Etag.layerWeak, BunFileSystem.layer, BunPath.layer)
 
 type FetchHandler = (
   request: Request,
   server: NativeServer<WebSocketContext>,
 ) => Response | Promise<Response>
 
-export const make = Effect.fnUntraced(function*(options: ServeOptions) {
+export const make = Effect.fnUntraced(function* (options: ServeOptions) {
   const initialGeneration = MainFiber.get()
   let ownerGeneration = initialGeneration
   const parentScope = yield* Effect.scope
@@ -95,28 +84,26 @@ export const make = Effect.fnUntraced(function*(options: ServeOptions) {
   const websocket = { ...options.websocket }
   delete websocket.compressionThreshold
 
-  const handlerStack: Array<FetchHandler> = [
-    () => new Response("not found", { status: 404 }),
-  ]
+  const handlerStack: Array<FetchHandler> = [() => new Response("not found", { status: 404 })]
   const handlerGenerations = new Map<FetchHandler, Fiber.Fiber<unknown, unknown> | undefined>()
-  const listenOptions = "unix" in options && options.unix !== undefined
-    ? options
-    : {
-      ...options,
-      hostname: "hostname" in options && options.hostname !== undefined
-        ? yield* Effect
-          .tryPromise({
-            try: () => NDns.lookup(options.hostname!),
-            catch: (cause) => new HttpServerError.ServeError({ cause }),
-          })
-          .pipe(
-            Effect.map((address) => address.address),
-            Effect.orDie,
-          )
-        : "0.0.0.0",
-    }
+  const listenOptions =
+    "unix" in options && options.unix !== undefined
+      ? options
+      : {
+          ...options,
+          hostname:
+            "hostname" in options && options.hostname !== undefined
+              ? yield* Effect.tryPromise({
+                  try: () => NDns.lookup(options.hostname!),
+                  catch: (cause) => new HttpServerError.ServeError({ cause }),
+                }).pipe(
+                  Effect.map((address) => address.address),
+                  Effect.orDie,
+                )
+              : "0.0.0.0",
+        }
   const server = Bun.serve<WebSocketContext, string>({
-    ...listenOptions as ServeOptions,
+    ...(listenOptions as ServeOptions),
     fetch: handlerStack[0],
     websocket: {
       ...websocket,
@@ -137,24 +124,21 @@ export const make = Effect.fnUntraced(function*(options: ServeOptions) {
     },
   })
 
-  const stop = yield* Effect
-    .tryPromise({
-      try: () => server.stop(true),
-      catch: (cause) => new HttpServerError.ServeError({ cause }),
-    })
-    .pipe(
-      Effect.orDie,
-      Effect.cached,
-    )
+  const stop = yield* Effect.tryPromise({
+    try: () => server.stop(true),
+    catch: (cause) => new HttpServerError.ServeError({ cause }),
+  }).pipe(Effect.orDie, Effect.cached)
   const shutdown = (generation: Fiber.Fiber<unknown, unknown> | undefined) =>
-    Effect.suspend(() => MainFiber.get() === generation && ownerGeneration === generation ? stop : Effect.void)
+    Effect.suspend(() =>
+      MainFiber.get() === generation && ownerGeneration === generation ? stop : Effect.void,
+    )
   const preemptiveShutdown = (generation: Fiber.Fiber<unknown, unknown> | undefined) =>
     options.disablePreemptiveShutdown
       ? Effect.void
       : Effect.timeoutOrElse(shutdown(generation), {
-        duration: options.gracefulShutdownTimeout ?? Duration.seconds(20),
-        orElse: () => Effect.void,
-      })
+          duration: options.gracefulShutdownTimeout ?? Duration.seconds(20),
+          orElse: () => Effect.void,
+        })
 
   yield* Scope.addFinalizer(parentScope, shutdown(initialGeneration))
 
@@ -175,10 +159,11 @@ export const make = Effect.fnUntraced(function*(options: ServeOptions) {
   }
 
   const service = HttpServer.make({
-    address: "unix" in options && options.unix !== undefined
-      ? NetAddress.unixPathAddress(options.unix)
-      : NetAddress.inetAddressFromIpStringUnsafe(server.hostname!, server.port!),
-    serve: Effect.fnUntraced(function*(httpApp, middleware) {
+    address:
+      "unix" in options && options.unix !== undefined
+        ? NetAddress.unixPathAddress(options.unix)
+        : NetAddress.inetAddressFromIpStringUnsafe(server.hostname!, server.port!),
+    serve: Effect.fnUntraced(function* (httpApp, middleware) {
       const generation = MainFiber.get()
       const parent = yield* Effect.fiber
       const services = parent.context
@@ -209,10 +194,7 @@ export const make = Effect.fnUntraced(function*(options: ServeOptions) {
               compressionThreshold,
             ),
           )
-          const fiber = Fiber.runIn(
-            Effect.runForkWith(context)(httpEffect),
-            requestScope,
-          )
+          const fiber = Fiber.runIn(Effect.runForkWith(context)(httpEffect), requestScope)
           request.signal.addEventListener(
             "abort",
             () => fiber.interruptUnsafe(parent.id, HttpServerError.ClientAbort.annotation),
@@ -285,10 +267,12 @@ const makeResponse = (
     case "Stream":
       return new Response(
         Stream.toReadableStreamWith(
-          Stream.unwrap(Effect.withFiber((fiber) => {
-            Fiber.runIn(fiber, scope)
-            return Effect.succeed(body.stream)
-          })),
+          Stream.unwrap(
+            Effect.withFiber((fiber) => {
+              Fiber.runIn(fiber, scope)
+              return Effect.succeed(body.stream)
+            }),
+          ),
           context,
         ),
         fields,
@@ -365,7 +349,10 @@ class BunServerRequest extends Inspectable.Class implements HttpServerRequest.Ht
   }
 
   get remoteAddress(): Option.Option<string> {
-    return this.remoteAddressOverride ?? Option.fromNullishOr(this.bunServer.requestIP(this.source)?.address)
+    return (
+      this.remoteAddressOverride ??
+      Option.fromNullishOr(this.bunServer.requestIP(this.source)?.address)
+    )
   }
 
   get headers(): Headers.Headers {
@@ -375,38 +362,40 @@ class BunServerRequest extends Inspectable.Class implements HttpServerRequest.Ht
 
   private cachedCookies?: Record.ReadonlyRecord<string, string>
   get cookies(): Record.ReadonlyRecord<string, string> {
-    return this.cachedCookies ??= Cookies.parseHeader(this.headers.cookie ?? "")
+    return (this.cachedCookies ??= Cookies.parseHeader(this.headers.cookie ?? ""))
   }
 
   get stream(): Stream.Stream<Uint8Array, HttpServerError.HttpServerError> {
     return this.source.body
       ? BunStream.fromReadableStream({
-        evaluate: () => this.source.body ?? emptyReadableStream,
-        onError: (cause) =>
-          new HttpServerError.HttpServerError({
-            reason: new HttpServerError.RequestParseError({ request: this, cause }),
-          }),
-      })
+          evaluate: () => this.source.body ?? emptyReadableStream,
+          onError: (cause) =>
+            new HttpServerError.HttpServerError({
+              reason: new HttpServerError.RequestParseError({ request: this, cause }),
+            }),
+        })
       : Stream.fail(
-        new HttpServerError.HttpServerError({
-          reason: new HttpServerError.RequestParseError({
-            request: this,
-            description: "can not create stream from empty body",
+          new HttpServerError.HttpServerError({
+            reason: new HttpServerError.RequestParseError({
+              request: this,
+              description: "can not create stream from empty body",
+            }),
           }),
-        }),
-      )
+        )
   }
 
   private textEffect?: Effect.Effect<string, HttpServerError.HttpServerError>
   get text(): Effect.Effect<string, HttpServerError.HttpServerError> {
-    return this.textEffect ??= Effect.runSync(Effect.cached(
-      Effect.tryPromise({
-        try: () => this.source.text(),
-        catch: (cause) =>
-          new HttpServerError.HttpServerError({
-            reason: new HttpServerError.RequestParseError({ request: this, cause }),
-          }),
-      }),
+    return (this.textEffect ??= Effect.runSync(
+      Effect.cached(
+        Effect.tryPromise({
+          try: () => this.source.text(),
+          catch: (cause) =>
+            new HttpServerError.HttpServerError({
+              reason: new HttpServerError.RequestParseError({ request: this, cause }),
+            }),
+        }),
+      ),
     ))
   }
 
@@ -418,7 +407,8 @@ class BunServerRequest extends Inspectable.Class implements HttpServerRequest.Ht
           new HttpServerError.HttpServerError({
             reason: new HttpServerError.RequestParseError({ request: this, cause }),
           }),
-      }))
+      }),
+    )
   }
 
   get urlParamsBody(): Effect.Effect<UrlParams.UrlParams, HttpServerError.HttpServerError> {
@@ -429,7 +419,8 @@ class BunServerRequest extends Inspectable.Class implements HttpServerRequest.Ht
           new HttpServerError.HttpServerError({
             reason: new HttpServerError.RequestParseError({ request: this, cause }),
           }),
-      }))
+      }),
+    )
   }
 
   private multipartEffect?: Effect.Effect<
@@ -442,8 +433,8 @@ class BunServerRequest extends Inspectable.Class implements HttpServerRequest.Ht
     Multipart.MultipartError,
     Scope.Scope | FileSystem.FileSystem | Path.Path
   > {
-    return this.multipartEffect ??= Effect.runSync(Effect.cached(
-      BunMultipart.persisted(this.source),
+    return (this.multipartEffect ??= Effect.runSync(
+      Effect.cached(BunMultipart.persisted(this.source)),
     ))
   }
 
@@ -454,18 +445,19 @@ class BunServerRequest extends Inspectable.Class implements HttpServerRequest.Ht
   private arrayBufferEffect?: Effect.Effect<ArrayBuffer, HttpServerError.HttpServerError>
   get arrayBuffer(): Effect.Effect<ArrayBuffer, HttpServerError.HttpServerError> {
     if (this.arrayBufferEffect !== undefined) return this.arrayBufferEffect
-    this.arrayBufferEffect = Effect.runSync(Effect.cached(
-      Effect.tryPromise({
-        try: () => this.source.arrayBuffer(),
-        catch: (cause) =>
-          new HttpServerError.HttpServerError({
-            reason: new HttpServerError.RequestParseError({ request: this, cause }),
-          }),
-      }),
-    ))
-    this.textEffect = Effect.map(
-      this.arrayBufferEffect,
-      (buffer) => new TextDecoder().decode(buffer),
+    this.arrayBufferEffect = Effect.runSync(
+      Effect.cached(
+        Effect.tryPromise({
+          try: () => this.source.arrayBuffer(),
+          catch: (cause) =>
+            new HttpServerError.HttpServerError({
+              reason: new HttpServerError.RequestParseError({ request: this, cause }),
+            }),
+        }),
+      ),
+    )
+    this.textEffect = Effect.map(this.arrayBufferEffect, (buffer) =>
+      new TextDecoder().decode(buffer),
     )
     return this.arrayBufferEffect
   }
@@ -485,96 +477,102 @@ class BunServerRequest extends Inspectable.Class implements HttpServerRequest.Ht
         },
       })
       if (!success) {
-        resume(Effect.fail(
-          new HttpServerError.HttpServerError({
-            reason: new HttpServerError.RequestParseError({
-              request: this,
-              description: "Not an upgradeable ServerRequest",
+        resume(
+          Effect.fail(
+            new HttpServerError.HttpServerError({
+              reason: new HttpServerError.RequestParseError({
+                request: this,
+                description: "Not an upgradeable ServerRequest",
+              }),
             }),
-          }),
-        ))
+          ),
+        )
         return
       }
       const compressionThreshold = this.compressionThreshold
-      resume(Effect.map(Deferred.await(deferred), (ws) => {
-        const write = (chunk: Uint8Array | string | Socket.CloseEvent) =>
-          Effect.sync(() => {
-            if (typeof chunk === "string") {
-              ws.sendText(chunk, chunk.length >= compressionThreshold)
-            } else if (Socket.isCloseEvent(chunk)) {
-              ws.close(chunk.code, chunk.reason)
-            } else {
-              ws.sendBinary(chunk, chunk.byteLength >= compressionThreshold)
-            }
-          })
-        const writeAll = (chunks: ReadonlyArray<Uint8Array | string>) =>
-          Effect.sync(() => {
-            for (let i = 0; i < chunks.length; i++) {
-              const chunk = chunks[i]
+      resume(
+        Effect.map(Deferred.await(deferred), (ws) => {
+          const write = (chunk: Uint8Array | string | Socket.CloseEvent) =>
+            Effect.sync(() => {
               if (typeof chunk === "string") {
                 ws.sendText(chunk, chunk.length >= compressionThreshold)
+              } else if (Socket.isCloseEvent(chunk)) {
+                ws.close(chunk.code, chunk.reason)
               } else {
                 ws.sendBinary(chunk, chunk.byteLength >= compressionThreshold)
               }
-            }
-          })
-        const writer: Socket.Socket["writer"] = Effect.succeed({ write, writeAll })
-
-        const reader: Socket.Socket["reader"] = Effect.gen(function*() {
-          const dispatcher = (yield* Scheduler.Scheduler).makeDispatcher()
-          yield* Effect.acquireRelease(semaphore.take(1), () => semaphore.release(1))
-          const closeError = ws.data.closeError ?? (ws.readyState >= 2
-            ? new Socket.SocketError({
-              reason: new Socket.SocketCloseError({ code: 1006 }),
             })
-            : undefined)
-          if (closeError !== undefined && ws.data.buffer.length === 0) {
-            return yield* closeError
-          }
-          const scope = yield* Effect.scope
+          const writeAll = (chunks: ReadonlyArray<Uint8Array | string>) =>
+            Effect.sync(() => {
+              for (let i = 0; i < chunks.length; i++) {
+                const chunk = chunks[i]
+                if (typeof chunk === "string") {
+                  ws.sendText(chunk, chunk.length >= compressionThreshold)
+                } else {
+                  ws.sendBinary(chunk, chunk.byteLength >= compressionThreshold)
+                }
+              }
+            })
+          const writer: Socket.Socket["writer"] = Effect.succeed({ write, writeAll })
 
-          type ReadResume = (
-            effect: Effect.Effect<Array.NonEmptyReadonlyArray<Uint8Array | string>, Socket.SocketError>,
-          ) => void
-
-          let buffer: Array<Uint8Array | string> = ws.data.buffer.splice(0)
-          let error: Socket.SocketError | undefined = closeError
-          let waiter: ReadResume | undefined
-          let flushScheduled = false
-
-          function takeBuffer(): Array.NonEmptyReadonlyArray<Uint8Array | string> {
-            const chunk = buffer
-            buffer = []
-            return chunk as unknown as Array.NonEmptyReadonlyArray<Uint8Array | string>
-          }
-          function deliver() {
-            flushScheduled = false
-            if (waiter === undefined || buffer.length === 0) return
-            const resumeRead = waiter
-            waiter = undefined
-            resumeRead(Effect.succeed(takeBuffer()))
-          }
-          function push(data: Uint8Array | string) {
-            buffer.push(data)
-            if (waiter !== undefined && !flushScheduled) {
-              flushScheduled = true
-              dispatcher.scheduleTask(deliver, 0)
+          const reader: Socket.Socket["reader"] = Effect.gen(function* () {
+            const dispatcher = (yield* Scheduler.Scheduler).makeDispatcher()
+            yield* Effect.acquireRelease(semaphore.take(1), () => semaphore.release(1))
+            const closeError =
+              ws.data.closeError ??
+              (ws.readyState >= 2
+                ? new Socket.SocketError({
+                    reason: new Socket.SocketCloseError({ code: 1006 }),
+                  })
+                : undefined)
+            if (closeError !== undefined && ws.data.buffer.length === 0) {
+              return yield* closeError
             }
-          }
-          function fail(err: Socket.SocketError) {
-            if (error === undefined) error = err
-            if (waiter !== undefined) {
+            const scope = yield* Effect.scope
+
+            type ReadResume = (
+              effect: Effect.Effect<
+                Array.NonEmptyReadonlyArray<Uint8Array | string>,
+                Socket.SocketError
+              >,
+            ) => void
+
+            let buffer: Array<Uint8Array | string> = ws.data.buffer.splice(0)
+            let error: Socket.SocketError | undefined = closeError
+            let waiter: ReadResume | undefined
+            let flushScheduled = false
+
+            function takeBuffer(): Array.NonEmptyReadonlyArray<Uint8Array | string> {
+              const chunk = buffer
+              buffer = []
+              return chunk as unknown as Array.NonEmptyReadonlyArray<Uint8Array | string>
+            }
+            function deliver() {
+              flushScheduled = false
+              if (waiter === undefined || buffer.length === 0) return
               const resumeRead = waiter
               waiter = undefined
-              resumeRead(buffer.length > 0 ? Effect.succeed(takeBuffer()) : Effect.fail(error))
+              resumeRead(Effect.succeed(takeBuffer()))
             }
-          }
+            function push(data: Uint8Array | string) {
+              buffer.push(data)
+              if (waiter !== undefined && !flushScheduled) {
+                flushScheduled = true
+                dispatcher.scheduleTask(deliver, 0)
+              }
+            }
+            function fail(err: Socket.SocketError) {
+              if (error === undefined) error = err
+              if (waiter !== undefined) {
+                const resumeRead = waiter
+                waiter = undefined
+                resumeRead(buffer.length > 0 ? Effect.succeed(takeBuffer()) : Effect.fail(error))
+              }
+            }
 
-          ws.data.run = push
-          ws.data.onClose = fail
-          yield* Scope.addFinalizerExit(
-            scope,
-            (exit) =>
+            ws.data.run = push
+            ws.data.onClose = fail
+            yield* Scope.addFinalizerExit(scope, (exit) =>
               Effect.suspend(() => {
                 // resume a pull blocked in another fiber before detaching
                 fail(
@@ -584,29 +582,32 @@ class BunServerRequest extends Inspectable.Class implements HttpServerRequest.Ht
                 )
                 ws.data.run = wsDefaultRun
                 ws.data.onClose = () => {}
-                ws.close(Exit.isSuccess(exit) ? 1000 : Cause.hasInterruptsOnly(exit.cause) ? 1001 : 1011)
+                ws.close(
+                  Exit.isSuccess(exit) ? 1000 : Cause.hasInterruptsOnly(exit.cause) ? 1001 : 1011,
+                )
                 return Effect.void
               }),
-          )
+            )
 
-          return {
-            pull: Effect.callback<
-              Array.NonEmptyReadonlyArray<Uint8Array | string>,
-              Socket.SocketError
-            >((resumeRead) => {
-              if (buffer.length > 0) return resumeRead(Effect.succeed(takeBuffer()))
-              if (error !== undefined) return resumeRead(Effect.fail(error))
-              waiter = resumeRead
-              return Effect.sync(() => {
-                if (waiter === resumeRead) waiter = undefined
-              })
-            }),
-            upgrade: Socket.SocketUpgradeError.unsupported,
-          }
-        })
+            return {
+              pull: Effect.callback<
+                Array.NonEmptyReadonlyArray<Uint8Array | string>,
+                Socket.SocketError
+              >((resumeRead) => {
+                if (buffer.length > 0) return resumeRead(Effect.succeed(takeBuffer()))
+                if (error !== undefined) return resumeRead(Effect.fail(error))
+                waiter = resumeRead
+                return Effect.sync(() => {
+                  if (waiter === resumeRead) waiter = undefined
+                })
+              }),
+              upgrade: Socket.SocketUpgradeError.unsupported,
+            }
+          })
 
-        return Socket.make({ reader, writer })
-      }))
+          return Socket.make({ reader, writer })
+        }),
+      )
     })
   }
 }

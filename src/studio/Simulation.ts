@@ -13,20 +13,18 @@ const randomMs = (min: number, max: number) =>
   Random.nextIntBetween(min, max).pipe(Effect.map((ms) => Duration.millis(ms)))
 
 const maybe = (pct: number, op: Effect.Effect<void, any>) =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     if ((yield* Random.nextIntBetween(0, 100)) < pct) yield* op
   })
 
 const httpRequestsTotal = Metric.counter("http.requests.total")
-const httpRequestDuration = Metric.histogram(
-  "http.request.duration_ms",
-  { boundaries: Metric.linearBoundaries({ start: 0, width: 50, count: 20 }) },
-)
+const httpRequestDuration = Metric.histogram("http.request.duration_ms", {
+  boundaries: Metric.linearBoundaries({ start: 0, width: 50, count: 20 }),
+})
 const activeConnections = Metric.gauge("http.active_connections")
-const dbQueryDuration = Metric.histogram(
-  "db.query.duration_ms",
-  { boundaries: Metric.linearBoundaries({ start: 0, width: 10, count: 25 }) },
-)
+const dbQueryDuration = Metric.histogram("db.query.duration_ms", {
+  boundaries: Metric.linearBoundaries({ start: 0, width: 10, count: 25 }),
+})
 const dbPoolSize = Metric.gauge("db.pool.active")
 const cacheHits = Metric.counter("cache.hits")
 const cacheMisses = Metric.counter("cache.misses")
@@ -35,10 +33,9 @@ const eventCount = Metric.counter("events.processed")
 const retryCount = Metric.counter("retry.total")
 const circuitBreakerTrips = Metric.counter("circuit_breaker.trips")
 const rateLimitRejections = Metric.counter("rate_limit.rejections")
-const serializationDuration = Metric.histogram(
-  "serialization.duration_ms",
-  { boundaries: Metric.linearBoundaries({ start: 0, width: 5, count: 15 }) },
-)
+const serializationDuration = Metric.histogram("serialization.duration_ms", {
+  boundaries: Metric.linearBoundaries({ start: 0, width: 5, count: 15 }),
+})
 
 const routes = [
   { method: "GET", path: "/api/users", handler: "UserController.list" },
@@ -190,790 +187,609 @@ class CircuitBreakerError extends Data.TaggedError("CircuitBreakerError")<{
   readonly failureCount: number
 }> {}
 
-const simulateDnsResolve = Effect
-  .gen(function*() {
-    const hosts = [
-      "db-primary.internal",
-      "cache-01.internal",
-      "payment-service.prod",
-      "queue.internal",
-      "analytics.internal.svc",
-    ]
-    const host = yield* pick(hosts)
-    yield* Effect.annotateCurrentSpan("dns.host", host)
-    yield* Effect.sleep(yield* randomMs(0, 5))
-    if ((yield* Random.nextIntBetween(0, 100)) < 2) {
-      return yield* Effect.fail(
-        new TimeoutError({
-          operation: `dns.resolve(${host})`,
-          durationMs: 5000,
-        }),
-      )
-    }
-  })
-  .pipe(Effect.withSpan("dns.resolve"))
-
-const simulateTlsHandshake = Effect
-  .gen(function*() {
-    yield* Effect.sleep(yield* randomMs(2, 20))
-    yield* Effect.annotateCurrentSpan("tls.version", "1.3")
-    yield* Effect.annotateCurrentSpan("tls.cipher", "TLS_AES_256_GCM_SHA384")
-    if ((yield* Random.nextIntBetween(0, 100)) < 1) {
-      return yield* Effect.fail(
-        new TimeoutError({ operation: "tls.handshake", durationMs: 10000 }),
-      )
-    }
-  })
-  .pipe(Effect.withSpan("tls.handshake"))
-
-const simulateConnectionPoolAcquire = Effect
-  .gen(function*() {
-    const pool = yield* Random.nextIntBetween(1, 20)
-    const maxPool = 20
-    yield* Effect.annotateCurrentSpan("pool.active", pool)
-    yield* Effect.annotateCurrentSpan("pool.max", maxPool)
-    yield* Metric.update(dbPoolSize, pool)
-    yield* Effect.sleep(yield* randomMs(0, pool > 15 ? 50 : 5))
-    if (pool >= 19 && (yield* Random.nextIntBetween(0, 100)) < 30) {
-      return yield* Effect.die(
-        new DatabaseError({ query: "", reason: "connection pool exhausted" }),
-      )
-    }
-  })
-  .pipe(Effect.withSpan("db.pool.acquire"))
-
-const simulateConnectionPoolRelease = Effect
-  .gen(function*() {
-    yield* Effect.sleep(yield* randomMs(0, 1))
-  })
-  .pipe(Effect.withSpan("db.pool.release"))
-
-const simulateQueryParse = Effect
-  .gen(function*() {
-    yield* Effect.sleep(yield* randomMs(0, 3))
-    yield* Effect.annotateCurrentSpan(
-      "db.parse.cached",
-      (yield* Random.nextIntBetween(0, 100)) < 80,
+const simulateDnsResolve = Effect.gen(function* () {
+  const hosts = [
+    "db-primary.internal",
+    "cache-01.internal",
+    "payment-service.prod",
+    "queue.internal",
+    "analytics.internal.svc",
+  ]
+  const host = yield* pick(hosts)
+  yield* Effect.annotateCurrentSpan("dns.host", host)
+  yield* Effect.sleep(yield* randomMs(0, 5))
+  if ((yield* Random.nextIntBetween(0, 100)) < 2) {
+    return yield* Effect.fail(
+      new TimeoutError({
+        operation: `dns.resolve(${host})`,
+        durationMs: 5000,
+      }),
     )
-  })
-  .pipe(Effect.withSpan("db.query.parse"))
+  }
+}).pipe(Effect.withSpan("dns.resolve"))
 
-const simulateQueryExecute = Effect
-  .gen(function*() {
-    const query = yield* pick(dbQueries)
-    const delay = yield* randomMs(1, 80)
-    yield* Effect.annotateCurrentSpan("db.statement", query)
-    yield* Metric.update(dbQueryDuration, Math.round(Duration.toMillis(delay)))
-    yield* Effect.sleep(delay)
-    const roll = yield* Random.nextIntBetween(0, 100)
-    if (roll < 2) {
-      return yield* Effect.fail(
-        new DatabaseError({
-          query,
-          reason: "deadlock detected on table orders",
+const simulateTlsHandshake = Effect.gen(function* () {
+  yield* Effect.sleep(yield* randomMs(2, 20))
+  yield* Effect.annotateCurrentSpan("tls.version", "1.3")
+  yield* Effect.annotateCurrentSpan("tls.cipher", "TLS_AES_256_GCM_SHA384")
+  if ((yield* Random.nextIntBetween(0, 100)) < 1) {
+    return yield* Effect.fail(new TimeoutError({ operation: "tls.handshake", durationMs: 10000 }))
+  }
+}).pipe(Effect.withSpan("tls.handshake"))
+
+const simulateConnectionPoolAcquire = Effect.gen(function* () {
+  const pool = yield* Random.nextIntBetween(1, 20)
+  const maxPool = 20
+  yield* Effect.annotateCurrentSpan("pool.active", pool)
+  yield* Effect.annotateCurrentSpan("pool.max", maxPool)
+  yield* Metric.update(dbPoolSize, pool)
+  yield* Effect.sleep(yield* randomMs(0, pool > 15 ? 50 : 5))
+  if (pool >= 19 && (yield* Random.nextIntBetween(0, 100)) < 30) {
+    return yield* Effect.die(new DatabaseError({ query: "", reason: "connection pool exhausted" }))
+  }
+}).pipe(Effect.withSpan("db.pool.acquire"))
+
+const simulateConnectionPoolRelease = Effect.gen(function* () {
+  yield* Effect.sleep(yield* randomMs(0, 1))
+}).pipe(Effect.withSpan("db.pool.release"))
+
+const simulateQueryParse = Effect.gen(function* () {
+  yield* Effect.sleep(yield* randomMs(0, 3))
+  yield* Effect.annotateCurrentSpan("db.parse.cached", (yield* Random.nextIntBetween(0, 100)) < 80)
+}).pipe(Effect.withSpan("db.query.parse"))
+
+const simulateQueryExecute = Effect.gen(function* () {
+  const query = yield* pick(dbQueries)
+  const delay = yield* randomMs(1, 80)
+  yield* Effect.annotateCurrentSpan("db.statement", query)
+  yield* Metric.update(dbQueryDuration, Math.round(Duration.toMillis(delay)))
+  yield* Effect.sleep(delay)
+  const roll = yield* Random.nextIntBetween(0, 100)
+  if (roll < 2) {
+    return yield* Effect.fail(
+      new DatabaseError({
+        query,
+        reason: "deadlock detected on table orders",
+      }),
+    )
+  }
+  if (roll < 4) {
+    return yield* Effect.fail(
+      new TimeoutError({
+        operation: "db.query.execute",
+        durationMs: Math.round(Duration.toMillis(delay)),
+      }),
+    )
+  }
+}).pipe(Effect.withSpan("db.query.execute"))
+
+const simulateResultDeserialization = Effect.gen(function* () {
+  const rowCount = yield* Random.nextIntBetween(0, 500)
+  yield* Effect.annotateCurrentSpan("db.rows", rowCount)
+  yield* Effect.sleep(yield* randomMs(0, rowCount > 100 ? 15 : 3))
+}).pipe(Effect.withSpan("db.result.deserialize"))
+
+const simulateDbQuery = Effect.gen(function* () {
+  yield* simulateConnectionPoolAcquire
+  yield* simulateQueryParse
+  yield* simulateQueryExecute
+  yield* simulateResultDeserialization
+  yield* simulateConnectionPoolRelease
+}).pipe(Effect.withSpan("db.query"))
+
+const simulateCacheSerialize = Effect.gen(function* () {
+  const ms = yield* Random.nextIntBetween(0, 5)
+  yield* Metric.update(serializationDuration, ms)
+  yield* Effect.sleep(Duration.millis(ms))
+}).pipe(Effect.withSpan("cache.serialize"))
+
+const simulateCacheDeserialize = Effect.gen(function* () {
+  const ms = yield* Random.nextIntBetween(0, 4)
+  yield* Metric.update(serializationDuration, ms)
+  yield* Effect.sleep(Duration.millis(ms))
+}).pipe(Effect.withSpan("cache.deserialize"))
+
+const simulateCache = Effect.gen(function* () {
+  const key = yield* pick(cacheKeys)
+  const hit = (yield* Random.nextIntBetween(0, 100)) < 75
+  yield* Effect.annotateCurrentSpan("cache.key", key)
+  yield* Effect.annotateCurrentSpan("cache.hit", hit)
+  yield* Effect.sleep(yield* randomMs(0, 3))
+  if (hit) {
+    yield* Metric.update(cacheHits, 1)
+    yield* simulateCacheDeserialize
+    yield* Effect.logDebug(`cache hit: ${key}`)
+  } else {
+    yield* Metric.update(cacheMisses, 1)
+    yield* Effect.logDebug(`cache miss: ${key}`)
+  }
+}).pipe(Effect.withSpan("cache.lookup"))
+
+const simulateTokenDecode = Effect.gen(function* () {
+  yield* Effect.sleep(yield* randomMs(0, 2))
+  yield* Effect.annotateCurrentSpan("jwt.alg", "RS256")
+}).pipe(Effect.withSpan("jwt.decode"))
+
+const simulateTokenVerify = Effect.gen(function* () {
+  yield* Effect.sleep(yield* randomMs(1, 8))
+  const roll = yield* Random.nextIntBetween(0, 100)
+  if (roll < 3) {
+    return yield* Effect.fail(
+      new AuthenticationError({
+        reason: "JWT expired at 2025-12-01T00:00:00Z",
+      }),
+    )
+  }
+  if (roll < 5) {
+    return yield* Effect.fail(
+      new AuthenticationError({
+        reason: "invalid signature",
+        userId: "user_" + (yield* Random.nextIntBetween(100, 999)),
+      }),
+    )
+  }
+}).pipe(Effect.withSpan("jwt.verify"))
+
+const simulatePermissionCheck = Effect.gen(function* () {
+  const roles = ["admin", "editor", "viewer", "moderator"]
+  const role = yield* pick(roles)
+  yield* Effect.annotateCurrentSpan("auth.role", role)
+  yield* Effect.sleep(yield* randomMs(0, 3))
+  if ((yield* Random.nextIntBetween(0, 100)) < 2) {
+    return yield* Effect.fail(
+      new AuthenticationError({
+        reason: `insufficient permissions for role: ${role}`,
+      }),
+    )
+  }
+}).pipe(Effect.withSpan("auth.permission_check"))
+
+const simulateAuth = Effect.gen(function* () {
+  yield* simulateTokenDecode
+  yield* simulateTokenVerify
+  yield* simulatePermissionCheck
+  yield* Effect.logDebug("token validated")
+}).pipe(Effect.withSpan("auth.validate"))
+
+const simulateRateLimit = Effect.gen(function* () {
+  const ips = ["10.0.3.44", "192.168.1.1", "172.16.0.55", "10.0.7.12", "203.0.113.42"]
+  const ip = yield* pick(ips)
+  const remaining = yield* Random.nextIntBetween(0, 100)
+  yield* Effect.annotateCurrentSpan("rate_limit.client_ip", ip)
+  yield* Effect.annotateCurrentSpan("rate_limit.remaining", remaining)
+  yield* Effect.sleep(yield* randomMs(0, 2))
+  if (remaining < 3) {
+    yield* Metric.update(rateLimitRejections, 1)
+    yield* Effect.logWarning(`rate limit near threshold for ${ip}`)
+    if ((yield* Random.nextIntBetween(0, 100)) < 40) {
+      return yield* Effect.fail(new RateLimitError({ clientIp: ip, limit: 100 }))
+    }
+  }
+}).pipe(Effect.withSpan("middleware.rate_limit"))
+
+const simulateCors = Effect.gen(function* () {
+  const origins = [
+    "https://app.example.com",
+    "https://admin.example.com",
+    "https://mobile.example.com",
+    "null",
+  ]
+  const origin = yield* pick(origins)
+  yield* Effect.annotateCurrentSpan("cors.origin", origin)
+  yield* Effect.sleep(yield* randomMs(0, 1))
+  if (origin === "null") {
+    yield* Effect.logWarning("CORS: rejected null origin")
+  }
+}).pipe(Effect.withSpan("middleware.cors"))
+
+const simulateRequestParsing = Effect.gen(function* () {
+  const contentTypes = [
+    "application/json",
+    "multipart/form-data",
+    "application/x-www-form-urlencoded",
+    "text/plain",
+  ]
+  const ct = yield* pick(contentTypes)
+  yield* Effect.annotateCurrentSpan("http.content_type", ct)
+  const bodySize = yield* Random.nextIntBetween(0, 50000)
+  yield* Effect.annotateCurrentSpan("http.body_size", bodySize)
+  yield* Effect.sleep(yield* randomMs(0, bodySize > 10000 ? 15 : 3))
+  if (bodySize > 40000) {
+    return yield* Effect.fail(
+      new ValidationError({
+        field: "body",
+        message: "request body exceeds 10MB limit",
+      }),
+    )
+  }
+  if ((yield* Random.nextIntBetween(0, 100)) < 3) {
+    return yield* Effect.fail(
+      new ValidationError({
+        field: "body",
+        message: "malformed JSON at position 42",
+      }),
+    )
+  }
+}).pipe(Effect.withSpan("http.parse_body"))
+
+const simulateInputValidation = Effect.gen(function* () {
+  yield* Effect.sleep(yield* randomMs(0, 3))
+  const fields = ["email", "name", "amount", "quantity", "phone", "address.zip"]
+  if ((yield* Random.nextIntBetween(0, 100)) < 5) {
+    const field = yield* pick(fields)
+    return yield* Effect.fail(
+      new ValidationError({ field, message: `invalid format for ${field}` }),
+    )
+  }
+}).pipe(Effect.withSpan("validation.input"))
+
+const simulateResponseSerialization = Effect.gen(function* () {
+  const formats = ["json", "msgpack", "protobuf"]
+  const format = yield* pick(formats)
+  yield* Effect.annotateCurrentSpan("serialization.format", format)
+  const ms = yield* Random.nextIntBetween(0, 10)
+  yield* Metric.update(serializationDuration, ms)
+  yield* Effect.sleep(Duration.millis(ms))
+}).pipe(Effect.withSpan("http.serialize_response"))
+
+const simulateCompression = Effect.gen(function* () {
+  const algos = ["gzip", "br", "none"]
+  const algo = yield* pick(algos)
+  yield* Effect.annotateCurrentSpan("compression.algorithm", algo)
+  yield* Effect.sleep(yield* randomMs(0, algo === "none" ? 1 : 8))
+}).pipe(Effect.withSpan("http.compress"))
+
+const simulateAccessLog = Effect.gen(function* () {
+  yield* Effect.sleep(yield* randomMs(0, 1))
+}).pipe(Effect.withSpan("middleware.access_log"))
+
+const simulateCircuitBreaker = (inner: Effect.Effect<void, any>, service: string) =>
+  Effect.gen(function* () {
+    const failures = yield* Random.nextIntBetween(0, 10)
+    yield* Effect.annotateCurrentSpan("circuit_breaker.service", service)
+    yield* Effect.annotateCurrentSpan("circuit_breaker.failure_count", failures)
+    if (failures >= 8) {
+      yield* Metric.update(circuitBreakerTrips, 1)
+      yield* Effect.logWarning(`circuit breaker OPEN for ${service}`)
+      return yield* Effect.fail(new CircuitBreakerError({ service, failureCount: failures }))
+    }
+    yield* inner
+  }).pipe(Effect.withSpan("circuit_breaker"))
+
+const simulateRetry = (inner: Effect.Effect<void, any>, opName: string) =>
+  Effect.gen(function* () {
+    const maxRetries = 3
+    let attempt = 0
+    let succeeded = false
+    while (attempt < maxRetries && !succeeded) {
+      attempt++
+      yield* Effect.annotateCurrentSpan("retry.attempt", attempt)
+      const result = yield* inner.pipe(
+        Effect.map(() => true),
+        Effect.matchEffect({
+          onFailure: (e) => {
+            if (attempt < maxRetries) {
+              return Effect.gen(function* () {
+                yield* Metric.update(retryCount, 1)
+                yield* Effect.logWarning(`${opName} attempt ${attempt} failed, retrying`)
+                yield* Effect.sleep(yield* randomMs(10, 50 * attempt))
+                return false
+              })
+            }
+            return Effect.fail(e)
+          },
+          onSuccess: Effect.succeed,
         }),
       )
+      succeeded = result
     }
-    if (roll < 4) {
-      return yield* Effect.fail(
-        new TimeoutError({
-          operation: "db.query.execute",
-          durationMs: Math.round(Duration.toMillis(delay)),
-        }),
-      )
-    }
-  })
-  .pipe(Effect.withSpan("db.query.execute"))
+  }).pipe(Effect.withSpan("retry"))
 
-const simulateResultDeserialization = Effect
-  .gen(function*() {
-    const rowCount = yield* Random.nextIntBetween(0, 500)
-    yield* Effect.annotateCurrentSpan("db.rows", rowCount)
-    yield* Effect.sleep(yield* randomMs(0, rowCount > 100 ? 15 : 3))
-  })
-  .pipe(Effect.withSpan("db.result.deserialize"))
+const simulateExternalCall = Effect.gen(function* () {
+  const services = [
+    "payment-service",
+    "email-service",
+    "notification-service",
+    "inventory-service",
+    "shipping-service",
+    "tax-service",
+  ]
+  const service = yield* pick(services)
+  yield* Effect.annotateCurrentSpan("peer.service", service)
 
-const simulateDbQuery = Effect
-  .gen(function*() {
-    yield* simulateConnectionPoolAcquire
-    yield* simulateQueryParse
-    yield* simulateQueryExecute
-    yield* simulateResultDeserialization
-    yield* simulateConnectionPoolRelease
-  })
-  .pipe(Effect.withSpan("db.query"))
+  yield* simulateDnsResolve
+  yield* simulateTlsHandshake
 
-const simulateCacheSerialize = Effect
-  .gen(function*() {
-    const ms = yield* Random.nextIntBetween(0, 5)
-    yield* Metric.update(serializationDuration, ms)
-    yield* Effect.sleep(Duration.millis(ms))
-  })
-  .pipe(Effect.withSpan("cache.serialize"))
+  const delay = yield* randomMs(10, 300)
+  yield* Effect.annotateCurrentSpan(
+    "http.outgoing.duration_ms",
+    Math.round(Duration.toMillis(delay)),
+  )
+  yield* Effect.sleep(delay)
 
-const simulateCacheDeserialize = Effect
-  .gen(function*() {
-    const ms = yield* Random.nextIntBetween(0, 4)
-    yield* Metric.update(serializationDuration, ms)
-    yield* Effect.sleep(Duration.millis(ms))
-  })
-  .pipe(Effect.withSpan("cache.deserialize"))
+  const roll = yield* Random.nextIntBetween(0, 100)
+  if (roll < 4) {
+    yield* Effect.logError(`${service} responded with 503`)
+    return yield* Effect.fail(
+      new ExternalServiceError({
+        service,
+        statusCode: 503,
+        reason: "service unavailable",
+      }),
+    )
+  }
+  if (roll < 6) {
+    yield* Effect.logError(`${service} timed out after ${Math.round(Duration.toMillis(delay))}ms`)
+    return yield* Effect.fail(
+      new TimeoutError({
+        operation: `${service} call`,
+        durationMs: Math.round(Duration.toMillis(delay)),
+      }),
+    )
+  }
+  if (roll < 8) {
+    yield* Effect.logError(`${service} responded with 502`)
+    return yield* Effect.fail(
+      new ExternalServiceError({
+        service,
+        statusCode: 502,
+        reason: "bad gateway",
+      }),
+    )
+  }
+}).pipe(Effect.withSpan("http.outgoing"))
 
-const simulateCache = Effect
-  .gen(function*() {
-    const key = yield* pick(cacheKeys)
-    const hit = (yield* Random.nextIntBetween(0, 100)) < 75
-    yield* Effect.annotateCurrentSpan("cache.key", key)
-    yield* Effect.annotateCurrentSpan("cache.hit", hit)
-    yield* Effect.sleep(yield* randomMs(0, 3))
-    if (hit) {
-      yield* Metric.update(cacheHits, 1)
-      yield* simulateCacheDeserialize
-      yield* Effect.logDebug(`cache hit: ${key}`)
-    } else {
-      yield* Metric.update(cacheMisses, 1)
-      yield* Effect.logDebug(`cache miss: ${key}`)
-    }
-  })
-  .pipe(Effect.withSpan("cache.lookup"))
+const simulateExternalCallWithResilience = Effect.gen(function* () {
+  const service = yield* pick([
+    "payment-service",
+    "email-service",
+    "notification-service",
+    "inventory-service",
+  ])
+  yield* simulateCircuitBreaker(simulateRetry(simulateExternalCall, `external.${service}`), service)
+}).pipe(Effect.withSpan("external.resilient_call"))
 
-const simulateTokenDecode = Effect
-  .gen(function*() {
-    yield* Effect.sleep(yield* randomMs(0, 2))
-    yield* Effect.annotateCurrentSpan("jwt.alg", "RS256")
-  })
-  .pipe(Effect.withSpan("jwt.decode"))
+const simulateSearchQuery = Effect.gen(function* () {
+  const terms = ["shoes", "laptop", "organic food", "headphones", "gift ideas"]
+  const term = yield* pick(terms)
+  yield* Effect.annotateCurrentSpan("search.query", term)
 
-const simulateTokenVerify = Effect
-  .gen(function*() {
-    yield* Effect.sleep(yield* randomMs(1, 8))
-    const roll = yield* Random.nextIntBetween(0, 100)
-    if (roll < 3) {
-      return yield* Effect.fail(
-        new AuthenticationError({
-          reason: "JWT expired at 2025-12-01T00:00:00Z",
-        }),
-      )
-    }
-    if (roll < 5) {
-      return yield* Effect.fail(
-        new AuthenticationError({
-          reason: "invalid signature",
-          userId: "user_" + (yield* Random.nextIntBetween(100, 999)),
-        }),
-      )
-    }
-  })
-  .pipe(Effect.withSpan("jwt.verify"))
+  yield* simulateCache
 
-const simulatePermissionCheck = Effect
-  .gen(function*() {
-    const roles = ["admin", "editor", "viewer", "moderator"]
-    const role = yield* pick(roles)
-    yield* Effect.annotateCurrentSpan("auth.role", role)
-    yield* Effect.sleep(yield* randomMs(0, 3))
-    if ((yield* Random.nextIntBetween(0, 100)) < 2) {
-      return yield* Effect.fail(
-        new AuthenticationError({
-          reason: `insufficient permissions for role: ${role}`,
-        }),
-      )
-    }
-  })
-  .pipe(Effect.withSpan("auth.permission_check"))
+  yield* Effect.gen(function* () {
+    yield* Effect.sleep(yield* randomMs(5, 40))
+    yield* Effect.annotateCurrentSpan("search.engine", "elasticsearch")
+    yield* Effect.annotateCurrentSpan("search.index", "products_v3")
+    const hits = yield* Random.nextIntBetween(0, 200)
+    yield* Effect.annotateCurrentSpan("search.hits", hits)
+  }).pipe(Effect.withSpan("search.execute"))
 
-const simulateAuth = Effect
-  .gen(function*() {
-    yield* simulateTokenDecode
-    yield* simulateTokenVerify
-    yield* simulatePermissionCheck
-    yield* Effect.logDebug("token validated")
-  })
-  .pipe(Effect.withSpan("auth.validate"))
+  yield* Effect.gen(function* () {
+    yield* Effect.sleep(yield* randomMs(1, 10))
+    yield* Effect.annotateCurrentSpan("search.boost", "relevance+recency")
+  }).pipe(Effect.withSpan("search.rank"))
 
-const simulateRateLimit = Effect
-  .gen(function*() {
-    const ips = [
-      "10.0.3.44",
-      "192.168.1.1",
-      "172.16.0.55",
-      "10.0.7.12",
-      "203.0.113.42",
-    ]
-    const ip = yield* pick(ips)
-    const remaining = yield* Random.nextIntBetween(0, 100)
-    yield* Effect.annotateCurrentSpan("rate_limit.client_ip", ip)
-    yield* Effect.annotateCurrentSpan("rate_limit.remaining", remaining)
-    yield* Effect.sleep(yield* randomMs(0, 2))
-    if (remaining < 3) {
-      yield* Metric.update(rateLimitRejections, 1)
-      yield* Effect.logWarning(`rate limit near threshold for ${ip}`)
-      if ((yield* Random.nextIntBetween(0, 100)) < 40) {
-        return yield* Effect.fail(
-          new RateLimitError({ clientIp: ip, limit: 100 }),
-        )
-      }
-    }
-  })
-  .pipe(Effect.withSpan("middleware.rate_limit"))
+  yield* Effect.gen(function* () {
+    yield* Effect.sleep(yield* randomMs(0, 5))
+  }).pipe(Effect.withSpan("search.highlight"))
+}).pipe(Effect.withSpan("search.pipeline"))
 
-const simulateCors = Effect
-  .gen(function*() {
-    const origins = [
-      "https://app.example.com",
-      "https://admin.example.com",
-      "https://mobile.example.com",
-      "null",
-    ]
-    const origin = yield* pick(origins)
-    yield* Effect.annotateCurrentSpan("cors.origin", origin)
-    yield* Effect.sleep(yield* randomMs(0, 1))
-    if (origin === "null") {
-      yield* Effect.logWarning("CORS: rejected null origin")
-    }
-  })
-  .pipe(Effect.withSpan("middleware.cors"))
+const simulateFileUpload = Effect.gen(function* () {
+  const fileSize = yield* Random.nextIntBetween(1000, 5_000_000)
+  yield* Effect.annotateCurrentSpan("upload.size_bytes", fileSize)
 
-const simulateRequestParsing = Effect
-  .gen(function*() {
-    const contentTypes = [
-      "application/json",
-      "multipart/form-data",
-      "application/x-www-form-urlencoded",
-      "text/plain",
-    ]
-    const ct = yield* pick(contentTypes)
-    yield* Effect.annotateCurrentSpan("http.content_type", ct)
-    const bodySize = yield* Random.nextIntBetween(0, 50000)
-    yield* Effect.annotateCurrentSpan("http.body_size", bodySize)
-    yield* Effect.sleep(yield* randomMs(0, bodySize > 10000 ? 15 : 3))
-    if (bodySize > 40000) {
-      return yield* Effect.fail(
-        new ValidationError({
-          field: "body",
-          message: "request body exceeds 10MB limit",
-        }),
-      )
-    }
+  yield* Effect.gen(function* () {
+    yield* Effect.sleep(yield* randomMs(1, 10))
+    const types = ["image/jpeg", "image/png", "application/pdf", "image/webp"]
+    const mime = yield* pick(types)
+    yield* Effect.annotateCurrentSpan("upload.mime", mime)
     if ((yield* Random.nextIntBetween(0, 100)) < 3) {
       return yield* Effect.fail(
         new ValidationError({
-          field: "body",
-          message: "malformed JSON at position 42",
+          field: "file",
+          message: "unsupported mime type",
         }),
       )
     }
-  })
-  .pipe(Effect.withSpan("http.parse_body"))
+  }).pipe(Effect.withSpan("upload.validate_mime"))
 
-const simulateInputValidation = Effect
-  .gen(function*() {
-    yield* Effect.sleep(yield* randomMs(0, 3))
-    const fields = [
-      "email",
-      "name",
-      "amount",
-      "quantity",
-      "phone",
-      "address.zip",
-    ]
-    if ((yield* Random.nextIntBetween(0, 100)) < 5) {
-      const field = yield* pick(fields)
-      return yield* Effect.fail(
-        new ValidationError({ field, message: `invalid format for ${field}` }),
-      )
-    }
-  })
-  .pipe(Effect.withSpan("validation.input"))
+  yield* Effect.gen(function* () {
+    yield* Effect.sleep(yield* randomMs(0, 5))
+  }).pipe(Effect.withSpan("upload.virus_scan"))
 
-const simulateResponseSerialization = Effect
-  .gen(function*() {
-    const formats = ["json", "msgpack", "protobuf"]
-    const format = yield* pick(formats)
-    yield* Effect.annotateCurrentSpan("serialization.format", format)
-    const ms = yield* Random.nextIntBetween(0, 10)
-    yield* Metric.update(serializationDuration, ms)
-    yield* Effect.sleep(Duration.millis(ms))
-  })
-  .pipe(Effect.withSpan("http.serialize_response"))
+  yield* Effect.gen(function* () {
+    yield* Effect.sleep(yield* randomMs(5, 50))
+    yield* Effect.annotateCurrentSpan("upload.bucket", "user-uploads-prod")
+  }).pipe(Effect.withSpan("upload.store_s3"))
 
-const simulateCompression = Effect
-  .gen(function*() {
-    const algos = ["gzip", "br", "none"]
-    const algo = yield* pick(algos)
-    yield* Effect.annotateCurrentSpan("compression.algorithm", algo)
-    yield* Effect.sleep(yield* randomMs(0, algo === "none" ? 1 : 8))
-  })
-  .pipe(Effect.withSpan("http.compress"))
+  yield* Effect.gen(function* () {
+    yield* simulateDbQuery
+  }).pipe(Effect.withSpan("upload.persist_metadata"))
+}).pipe(Effect.withSpan("upload.pipeline"))
 
-const simulateAccessLog = Effect
-  .gen(function*() {
-    yield* Effect.sleep(yield* randomMs(0, 1))
-  })
-  .pipe(Effect.withSpan("middleware.access_log"))
+const simulateOrderWorkflow = Effect.gen(function* () {
+  yield* Effect.annotateCurrentSpan("order.workflow", "create")
 
-const simulateCircuitBreaker = (
-  inner: Effect.Effect<void, any>,
-  service: string,
-) =>
-  Effect
-    .gen(function*() {
-      const failures = yield* Random.nextIntBetween(0, 10)
-      yield* Effect.annotateCurrentSpan("circuit_breaker.service", service)
-      yield* Effect.annotateCurrentSpan(
-        "circuit_breaker.failure_count",
-        failures,
-      )
-      if (failures >= 8) {
-        yield* Metric.update(circuitBreakerTrips, 1)
-        yield* Effect.logWarning(`circuit breaker OPEN for ${service}`)
-        return yield* Effect.fail(
-          new CircuitBreakerError({ service, failureCount: failures }),
-        )
-      }
-      yield* inner
-    })
-    .pipe(Effect.withSpan("circuit_breaker"))
+  yield* simulateInputValidation
 
-const simulateRetry = (inner: Effect.Effect<void, any>, opName: string) =>
-  Effect
-    .gen(function*() {
-      const maxRetries = 3
-      let attempt = 0
-      let succeeded = false
-      while (attempt < maxRetries && !succeeded) {
-        attempt++
-        yield* Effect.annotateCurrentSpan("retry.attempt", attempt)
-        const result = yield* inner.pipe(
-          Effect.map(() => true),
-          Effect.matchEffect({
-            onFailure: (e) => {
-              if (attempt < maxRetries) {
-                return Effect.gen(function*() {
-                  yield* Metric.update(retryCount, 1)
-                  yield* Effect.logWarning(
-                    `${opName} attempt ${attempt} failed, retrying`,
-                  )
-                  yield* Effect.sleep(yield* randomMs(10, 50 * attempt))
-                  return false
-                })
-              }
-              return Effect.fail(e)
-            },
-            onSuccess: Effect.succeed,
-          }),
-        )
-        succeeded = result
-      }
-    })
-    .pipe(Effect.withSpan("retry"))
+  yield* Effect.gen(function* () {
+    yield* simulateDbQuery
+    yield* Effect.sleep(yield* randomMs(1, 10))
+  }).pipe(Effect.withSpan("order.check_inventory"))
 
-const simulateExternalCall = Effect
-  .gen(function*() {
-    const services = [
-      "payment-service",
-      "email-service",
-      "notification-service",
-      "inventory-service",
-      "shipping-service",
-      "tax-service",
-    ]
-    const service = yield* pick(services)
-    yield* Effect.annotateCurrentSpan("peer.service", service)
+  yield* Effect.gen(function* () {
+    yield* simulateExternalCallWithResilience
+  }).pipe(Effect.withSpan("order.process_payment"))
 
-    yield* simulateDnsResolve
-    yield* simulateTlsHandshake
+  yield* Effect.gen(function* () {
+    yield* simulateDbQuery
+  }).pipe(Effect.withSpan("order.persist"))
 
-    const delay = yield* randomMs(10, 300)
+  yield* Effect.gen(function* () {
+    yield* simulateCache
+    yield* simulateCacheSerialize
+  }).pipe(Effect.withSpan("order.invalidate_cache"))
+
+  yield* Effect.gen(function* () {
+    yield* Effect.sleep(yield* randomMs(1, 10))
+    yield* Effect.logInfo("order confirmation email queued")
+  }).pipe(Effect.withSpan("order.queue_notification"))
+}).pipe(Effect.withSpan("order.workflow"))
+
+const simulateAnalyticsPipeline = Effect.gen(function* () {
+  yield* Effect.gen(function* () {
+    yield* simulateDbQuery
+    yield* simulateDbQuery
+  }).pipe(Effect.withSpan("analytics.fetch_raw"))
+
+  yield* Effect.gen(function* () {
+    yield* Effect.sleep(yield* randomMs(5, 30))
+    yield* Effect.annotateCurrentSpan("analytics.aggregation", "time_series")
+  }).pipe(Effect.withSpan("analytics.aggregate"))
+
+  yield* Effect.gen(function* () {
+    yield* simulateCache
+  }).pipe(Effect.withSpan("analytics.cache_result"))
+
+  yield* Effect.gen(function* () {
+    yield* Effect.sleep(yield* randomMs(2, 15))
+    yield* Effect.annotateCurrentSpan("analytics.format", "dashboard_v2")
+  }).pipe(Effect.withSpan("analytics.transform"))
+}).pipe(Effect.withSpan("analytics.pipeline"))
+
+const simulateBackgroundTask = Effect.gen(function* () {
+  const tasks = [
+    "process-webhook",
+    "send-email",
+    "generate-report",
+    "sync-inventory",
+    "cleanup-sessions",
+    "rebuild-search-index",
+    "process-refund",
+    "generate-invoice-pdf",
+    "sync-crm",
+  ]
+  const task = yield* pick(tasks)
+  yield* Effect.logInfo(`starting background task: ${task}`)
+
+  yield* Effect.gen(function* () {
+    yield* Effect.sleep(yield* randomMs(0, 5))
     yield* Effect.annotateCurrentSpan(
-      "http.outgoing.duration_ms",
-      Math.round(Duration.toMillis(delay)),
+      "task.priority",
+      yield* pick(["low", "normal", "high", "critical"]),
     )
-    yield* Effect.sleep(delay)
+  }).pipe(Effect.withSpan("task.dequeue"))
 
+  yield* Effect.gen(function* () {
+    yield* simulateDbQuery
+  }).pipe(Effect.withSpan("task.load_context"))
+
+  yield* Effect.gen(function* () {
+    yield* Effect.sleep(yield* randomMs(20, 300))
     const roll = yield* Random.nextIntBetween(0, 100)
     if (roll < 4) {
-      yield* Effect.logError(`${service} responded with 503`)
-      return yield* Effect.fail(
-        new ExternalServiceError({
-          service,
-          statusCode: 503,
-          reason: "service unavailable",
-        }),
-      )
+      return yield* Effect.fail(new TaskError({ task, reason: "execution exceeded 30s deadline" }))
     }
-    if (roll < 6) {
-      yield* Effect.logError(
-        `${service} timed out after ${Math.round(Duration.toMillis(delay))}ms`,
-      )
-      return yield* Effect.fail(
-        new TimeoutError({
-          operation: `${service} call`,
-          durationMs: Math.round(Duration.toMillis(delay)),
-        }),
-      )
+    if (roll < 7) {
+      const err = yield* pick(errorMessages)
+      yield* Effect.logError(`task ${task} failed: ${err}`)
+      return yield* Effect.fail(new TaskError({ task, reason: err }))
     }
-    if (roll < 8) {
-      yield* Effect.logError(`${service} responded with 502`)
-      return yield* Effect.fail(
-        new ExternalServiceError({
-          service,
-          statusCode: 502,
-          reason: "bad gateway",
-        }),
-      )
+    if (roll < 9) {
+      return yield* Effect.die(new TaskError({ task, reason: "out of memory" }))
     }
-  })
-  .pipe(Effect.withSpan("http.outgoing"))
+  }).pipe(Effect.withSpan("task.execute"))
 
-const simulateExternalCallWithResilience = Effect
-  .gen(function*() {
-    const service = yield* pick([
-      "payment-service",
-      "email-service",
-      "notification-service",
-      "inventory-service",
-    ])
-    yield* simulateCircuitBreaker(
-      simulateRetry(simulateExternalCall, `external.${service}`),
-      service,
-    )
-  })
-  .pipe(Effect.withSpan("external.resilient_call"))
+  yield* maybe(
+    60,
+    Effect.gen(function* () {
+      yield* simulateExternalCall
+    }).pipe(Effect.withSpan("task.external_dependency")),
+  )
 
-const simulateSearchQuery = Effect
-  .gen(function*() {
-    const terms = [
-      "shoes",
-      "laptop",
-      "organic food",
-      "headphones",
-      "gift ideas",
-    ]
-    const term = yield* pick(terms)
-    yield* Effect.annotateCurrentSpan("search.query", term)
+  yield* Effect.gen(function* () {
+    yield* simulateDbQuery
+  }).pipe(Effect.withSpan("task.persist_result"))
 
-    yield* simulateCache
+  yield* Effect.gen(function* () {
+    yield* Effect.sleep(yield* randomMs(0, 3))
+  }).pipe(Effect.withSpan("task.ack"))
 
-    yield* Effect
-      .gen(function*() {
-        yield* Effect.sleep(yield* randomMs(5, 40))
-        yield* Effect.annotateCurrentSpan("search.engine", "elasticsearch")
-        yield* Effect.annotateCurrentSpan("search.index", "products_v3")
-        const hits = yield* Random.nextIntBetween(0, 200)
-        yield* Effect.annotateCurrentSpan("search.hits", hits)
-      })
-      .pipe(Effect.withSpan("search.execute"))
+  yield* Metric.update(eventCount, 1)
+  yield* Effect.logInfo(`completed background task: ${task}`)
+}).pipe(Effect.withSpan("task.background"))
 
-    yield* Effect
-      .gen(function*() {
-        yield* Effect.sleep(yield* randomMs(1, 10))
-        yield* Effect.annotateCurrentSpan("search.boost", "relevance+recency")
-      })
-      .pipe(Effect.withSpan("search.rank"))
-
-    yield* Effect
-      .gen(function*() {
-        yield* Effect.sleep(yield* randomMs(0, 5))
-      })
-      .pipe(Effect.withSpan("search.highlight"))
-  })
-  .pipe(Effect.withSpan("search.pipeline"))
-
-const simulateFileUpload = Effect
-  .gen(function*() {
-    const fileSize = yield* Random.nextIntBetween(1000, 5_000_000)
-    yield* Effect.annotateCurrentSpan("upload.size_bytes", fileSize)
-
-    yield* Effect
-      .gen(function*() {
-        yield* Effect.sleep(yield* randomMs(1, 10))
-        const types = [
-          "image/jpeg",
-          "image/png",
-          "application/pdf",
-          "image/webp",
-        ]
-        const mime = yield* pick(types)
-        yield* Effect.annotateCurrentSpan("upload.mime", mime)
-        if ((yield* Random.nextIntBetween(0, 100)) < 3) {
-          return yield* Effect.fail(
-            new ValidationError({
-              field: "file",
-              message: "unsupported mime type",
-            }),
-          )
-        }
-      })
-      .pipe(Effect.withSpan("upload.validate_mime"))
-
-    yield* Effect
-      .gen(function*() {
-        yield* Effect.sleep(yield* randomMs(0, 5))
-      })
-      .pipe(Effect.withSpan("upload.virus_scan"))
-
-    yield* Effect
-      .gen(function*() {
-        yield* Effect.sleep(yield* randomMs(5, 50))
-        yield* Effect.annotateCurrentSpan("upload.bucket", "user-uploads-prod")
-      })
-      .pipe(Effect.withSpan("upload.store_s3"))
-
-    yield* Effect
-      .gen(function*() {
-        yield* simulateDbQuery
-      })
-      .pipe(Effect.withSpan("upload.persist_metadata"))
-  })
-  .pipe(Effect.withSpan("upload.pipeline"))
-
-const simulateOrderWorkflow = Effect
-  .gen(function*() {
-    yield* Effect.annotateCurrentSpan("order.workflow", "create")
-
-    yield* simulateInputValidation
-
-    yield* Effect
-      .gen(function*() {
-        yield* simulateDbQuery
-        yield* Effect.sleep(yield* randomMs(1, 10))
-      })
-      .pipe(Effect.withSpan("order.check_inventory"))
-
-    yield* Effect
-      .gen(function*() {
-        yield* simulateExternalCallWithResilience
-      })
-      .pipe(Effect.withSpan("order.process_payment"))
-
-    yield* Effect
-      .gen(function*() {
-        yield* simulateDbQuery
-      })
-      .pipe(Effect.withSpan("order.persist"))
-
-    yield* Effect
-      .gen(function*() {
-        yield* simulateCache
-        yield* simulateCacheSerialize
-      })
-      .pipe(Effect.withSpan("order.invalidate_cache"))
-
-    yield* Effect
-      .gen(function*() {
-        yield* Effect.sleep(yield* randomMs(1, 10))
-        yield* Effect.logInfo("order confirmation email queued")
-      })
-      .pipe(Effect.withSpan("order.queue_notification"))
-  })
-  .pipe(Effect.withSpan("order.workflow"))
-
-const simulateAnalyticsPipeline = Effect
-  .gen(function*() {
-    yield* Effect
-      .gen(function*() {
-        yield* simulateDbQuery
-        yield* simulateDbQuery
-      })
-      .pipe(Effect.withSpan("analytics.fetch_raw"))
-
-    yield* Effect
-      .gen(function*() {
-        yield* Effect.sleep(yield* randomMs(5, 30))
-        yield* Effect.annotateCurrentSpan(
-          "analytics.aggregation",
-          "time_series",
-        )
-      })
-      .pipe(Effect.withSpan("analytics.aggregate"))
-
-    yield* Effect
-      .gen(function*() {
-        yield* simulateCache
-      })
-      .pipe(Effect.withSpan("analytics.cache_result"))
-
-    yield* Effect
-      .gen(function*() {
-        yield* Effect.sleep(yield* randomMs(2, 15))
-        yield* Effect.annotateCurrentSpan("analytics.format", "dashboard_v2")
-      })
-      .pipe(Effect.withSpan("analytics.transform"))
-  })
-  .pipe(Effect.withSpan("analytics.pipeline"))
-
-const simulateBackgroundTask = Effect
-  .gen(function*() {
-    const tasks = [
-      "process-webhook",
-      "send-email",
-      "generate-report",
-      "sync-inventory",
-      "cleanup-sessions",
-      "rebuild-search-index",
-      "process-refund",
-      "generate-invoice-pdf",
-      "sync-crm",
-    ]
-    const task = yield* pick(tasks)
-    yield* Effect.logInfo(`starting background task: ${task}`)
-
-    yield* Effect
-      .gen(function*() {
-        yield* Effect.sleep(yield* randomMs(0, 5))
-        yield* Effect.annotateCurrentSpan(
-          "task.priority",
-          yield* pick(["low", "normal", "high", "critical"]),
-        )
-      })
-      .pipe(Effect.withSpan("task.dequeue"))
-
-    yield* Effect
-      .gen(function*() {
-        yield* simulateDbQuery
-      })
-      .pipe(Effect.withSpan("task.load_context"))
-
-    yield* Effect
-      .gen(function*() {
-        yield* Effect.sleep(yield* randomMs(20, 300))
-        const roll = yield* Random.nextIntBetween(0, 100)
-        if (roll < 4) {
-          return yield* Effect.fail(
-            new TaskError({ task, reason: "execution exceeded 30s deadline" }),
-          )
-        }
-        if (roll < 7) {
-          const err = yield* pick(errorMessages)
-          yield* Effect.logError(`task ${task} failed: ${err}`)
-          return yield* Effect.fail(new TaskError({ task, reason: err }))
-        }
-        if (roll < 9) {
-          return yield* Effect.die(
-            new TaskError({ task, reason: "out of memory" }),
-          )
-        }
-      })
-      .pipe(Effect.withSpan("task.execute"))
-
-    yield* maybe(
-      60,
-      Effect
-        .gen(function*() {
-          yield* simulateExternalCall
-        })
-        .pipe(Effect.withSpan("task.external_dependency")),
-    )
-
-    yield* Effect
-      .gen(function*() {
-        yield* simulateDbQuery
-      })
-      .pipe(Effect.withSpan("task.persist_result"))
-
-    yield* Effect
-      .gen(function*() {
-        yield* Effect.sleep(yield* randomMs(0, 3))
-      })
-      .pipe(Effect.withSpan("task.ack"))
-
-    yield* Metric.update(eventCount, 1)
-    yield* Effect.logInfo(`completed background task: ${task}`)
-  })
-  .pipe(Effect.withSpan("task.background"))
-
-const simulateRequest = Effect.gen(function*() {
+const simulateRequest = Effect.gen(function* () {
   const route = yield* pick(routes)
-  const statusCodes = [
-    200,
-    200,
-    200,
-    200,
-    200,
-    201,
-    204,
-    301,
-    400,
-    401,
-    404,
-    500,
-  ]
+  const statusCodes = [200, 200, 200, 200, 200, 201, 204, 301, 400, 401, 404, 500]
 
   yield* Metric.update(httpRequestsTotal, 1)
   yield* Metric.update(activeConnections, 1)
 
-  const result = yield* Effect
-    .gen(function*() {
-      yield* Effect.annotateCurrentSpan("http.method", route.method)
-      yield* Effect.annotateCurrentSpan("http.route", route.path)
-      yield* Effect.annotateCurrentSpan("handler", route.handler)
+  const result = yield* Effect.gen(function* () {
+    yield* Effect.annotateCurrentSpan("http.method", route.method)
+    yield* Effect.annotateCurrentSpan("http.route", route.path)
+    yield* Effect.annotateCurrentSpan("handler", route.handler)
 
-      // middleware chain
-      yield* simulateAccessLog
-      yield* simulateCors
-      yield* simulateRateLimit
-      yield* simulateRequestParsing
+    // middleware chain
+    yield* simulateAccessLog
+    yield* simulateCors
+    yield* simulateRateLimit
+    yield* simulateRequestParsing
 
-      // auth (most routes)
-      yield* maybe(70, simulateAuth)
+    // auth (most routes)
+    yield* maybe(70, simulateAuth)
 
-      // handler body — pick a complex workflow or simple CRUD based on the route
-      const handler = route.handler
-      if (
-        handler === "OrderController.create" ||
-        handler === "OrderController.updateStatus"
-      ) {
-        yield* simulateOrderWorkflow
-      } else if (handler === "SearchController.query") {
-        yield* simulateSearchQuery
-      } else if (handler === "UploadController.image") {
-        yield* simulateFileUpload
-      } else if (handler === "AnalyticsController.dashboard") {
-        yield* simulateAnalyticsPipeline
-      } else if (handler === "WebhookController.stripe") {
-        yield* simulateInputValidation
-        yield* simulateExternalCallWithResilience
-        yield* simulateDbQuery
-      } else {
-        // standard CRUD
-        yield* maybe(50, simulateCache)
-        yield* simulateDbQuery
-        yield* maybe(25, simulateExternalCall)
-        yield* maybe(30, simulateDbQuery) // secondary query
-      }
+    // handler body — pick a complex workflow or simple CRUD based on the route
+    const handler = route.handler
+    if (handler === "OrderController.create" || handler === "OrderController.updateStatus") {
+      yield* simulateOrderWorkflow
+    } else if (handler === "SearchController.query") {
+      yield* simulateSearchQuery
+    } else if (handler === "UploadController.image") {
+      yield* simulateFileUpload
+    } else if (handler === "AnalyticsController.dashboard") {
+      yield* simulateAnalyticsPipeline
+    } else if (handler === "WebhookController.stripe") {
+      yield* simulateInputValidation
+      yield* simulateExternalCallWithResilience
+      yield* simulateDbQuery
+    } else {
+      // standard CRUD
+      yield* maybe(50, simulateCache)
+      yield* simulateDbQuery
+      yield* maybe(25, simulateExternalCall)
+      yield* maybe(30, simulateDbQuery) // secondary query
+    }
 
-      // response pipeline
-      yield* simulateResponseSerialization
-      yield* maybe(40, simulateCompression)
+    // response pipeline
+    yield* simulateResponseSerialization
+    yield* maybe(40, simulateCompression)
 
-      const status = yield* pick(statusCodes)
-      yield* Effect.annotateCurrentSpan("http.status_code", status)
+    const status = yield* pick(statusCodes)
+    yield* Effect.annotateCurrentSpan("http.status_code", status)
 
-      if (status >= 500) {
-        const err = yield* pick(errorMessages)
-        yield* Effect.logError(
-          `${route.method} ${route.path} → ${status}: ${err}`,
-        )
-        return yield* Effect.fail(
-          new HttpError({
-            method: route.method,
-            path: route.path,
-            statusCode: status,
-            message: err,
-          }),
-        )
-      }
+    if (status >= 500) {
+      const err = yield* pick(errorMessages)
+      yield* Effect.logError(`${route.method} ${route.path} → ${status}: ${err}`)
+      return yield* Effect.fail(
+        new HttpError({
+          method: route.method,
+          path: route.path,
+          statusCode: status,
+          message: err,
+        }),
+      )
+    }
 
-      if (status >= 400) {
-        yield* Effect.logWarning(`${route.method} ${route.path} → ${status}`)
-      } else {
-        yield* Effect.logInfo(`${route.method} ${route.path} → ${status}`)
-      }
+    if (status >= 400) {
+      yield* Effect.logWarning(`${route.method} ${route.path} → ${status}`)
+    } else {
+      yield* Effect.logInfo(`${route.method} ${route.path} → ${status}`)
+    }
 
-      return status
-    })
-    .pipe(Effect.withSpan(`${route.method} ${route.path}`))
+    return status
+  }).pipe(Effect.withSpan(`${route.method} ${route.path}`))
 
   yield* Metric.update(activeConnections, 0)
 
@@ -983,10 +799,10 @@ const simulateRequest = Effect.gen(function*() {
   return result
 })
 
-const requestLoop = Effect.gen(function*() {
+const requestLoop = Effect.gen(function* () {
   yield* Effect.logInfo("simulation: request loop started")
   yield* Effect.schedule(
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const burst = yield* Random.nextIntBetween(1, 4)
       yield* Effect.forEach(
         Array.from({ length: burst }, (_, i) => i),
@@ -998,10 +814,10 @@ const requestLoop = Effect.gen(function*() {
   )
 })
 
-const backgroundLoop = Effect.gen(function*() {
+const backgroundLoop = Effect.gen(function* () {
   yield* Effect.logInfo("simulation: background task loop started")
   yield* Effect.schedule(
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       yield* Effect.forkChild(simulateBackgroundTask)
       const depth = yield* Random.nextIntBetween(0, 25)
       yield* Metric.update(queueDepth, depth)
@@ -1012,7 +828,7 @@ const backgroundLoop = Effect.gen(function*() {
 
 export function layer() {
   return Layer.effectDiscard(
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       yield* Effect.logInfo("simulation layer starting")
       yield* Effect.forkScoped(requestLoop)
       yield* Effect.forkScoped(backgroundLoop)

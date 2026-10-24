@@ -13,9 +13,6 @@
     "package.json"
   ],
   "type": "module",
-  "engines": {
-    "bun": ">=1.4.4"
-  },
   "exports": {
     ".": {
       "bun": "./src/index.ts",
@@ -188,5 +185,8 @@
     "rolldown": {
       "optional": true
     }
+  },
+  "engines": {
+    "bun": ">=1.4.4"
   }
 }

@@ -1,6 +1,4 @@
-/**
- * Ported from effect@4.0.0-rc.112.
- */
+/** Ported from effect@4.0.0-rc.112. */
 import type * as Layer from "effect/Layer"
 import type * as Path from "effect/Path"
 import * as NodePath from "../node/NodePath.ts"

@@ -7,7 +7,6 @@ A minimal Effect Start app looks like this:
 
 ```tsx
 import { Effect, Schema, Stream } from "effect"
-import * as RouteError from "effect-start/RouteError"
 import {
   Entity,
   FileRouter, // file-based routing from `routes/` directory
@@ -17,63 +16,65 @@ import {
   Start, // setup Start app
   Unique,
 } from "effect-start"
+import * as RouteError from "effect-start/RouteError"
 
 // define map of routes
 const routes = Route.map({
   // a middleware that applies to all routes under it
   "*": Route.use(
     // only applies to HTML requests
-    Route.html(function*(_ctx, next) {
+    Route.html(function* (_ctx, next) {
       return (
         <html>
           <head>
-            <title>
-              App
-            </title>
+            <title>App</title>
           </head>
           <body class="bg-black text-white">
-            <div>
-              {yield* next.html}
-            </div>
+            <div>{yield* next.html}</div>
           </body>
         </html>
       )
     }),
     // wraps all JSON route that fail
-    Route.json(function*(_ctx, next) {
+    Route.json(function* (_ctx, next) {
       return yield* next.pipe(
         Effect.catch((e) =>
-          Effect.succeed(Entity.make(
-            { error: String(e) },
-            { status: (e as unknown) instanceof RouteError.Unauthorized ? 401 : 500 },
-          ))
+          Effect.succeed(
+            Entity.make(
+              { error: String(e) },
+              { status: (e as unknown) instanceof RouteError.Unauthorized ? 401 : 500 },
+            ),
+          ),
         ),
       )
     }),
   ),
-  "/": Route.get(
-    Route.redirect("/todos"),
-  ),
+  "/": Route.get(Route.redirect("/todos")),
   "/todos": {
     "/": Route
       // renders all todos
       .get(
-        Route.html(function*() {
+        Route.html(function* () {
           const todos = yield* Store.allTodos
 
           return (
             <div>
-              <div>
-                Items
-              </div>
+              <div>Items</div>
               <ul id="list">
-                {todos.map((todo) => <TodoItem {...todo} />)}
+                {todos.map((todo) => (
+                  <TodoItem {...todo} />
+                ))}
               </ul>
-              <form action="/todos" method="post">
-                <input name="text" type="text" required />
-                <button type="submit">
-                  add
-                </button>
+              <form
+                action="/todos"
+                method="post"
+              >
+                <input
+                  name="text"
+                  type="text"
+                  required
+                />
+                <button type="submit">add</button>
               </form>
               <script>
                 {/* JSX <script /> accepts type-safe functions that are executed in the browser */}
@@ -81,14 +82,10 @@ const routes = Route.map({
                   const events = new EventSource(location.href)
 
                   events.addEventListener("patch", (e) => {
-                    const [, mode, selector, html] = e.data.match(
-                      /^(\S+) (\S+)\n([\s\S]*)/,
-                    )!
+                    const [, mode, selector, html] = e.data.match(/^(\S+) (\S+)\n([\s\S]*)/)!
                     const target = document.querySelector(selector)
 
-                    target?.[mode]?.(
-                      document.createRange().createContextualFragment(html),
-                    )
+                    target?.[mode]?.(document.createRange().createContextualFragment(html))
                   })
                 }}
               </script>
@@ -96,16 +93,14 @@ const routes = Route.map({
           )
         }),
         // stream server-sent events
-        Route.sse(function*() {
+        Route.sse(function* () {
           const store = yield* Store.Store
 
           return store.events.pipe(
             Stream.map((e) => ({
               event: "patch",
               data: [
-                e._tag === "Add"
-                  ? "append #list"
-                  : `replaceWith #todo-${e.todo.id}`,
+                e._tag === "Add" ? "append #list" : `replaceWith #todo-${e.todo.id}`,
                 Html.text(<TodoItem {...e.todo} />),
               ],
             })),
@@ -117,7 +112,7 @@ const routes = Route.map({
         Route.schemaBodyForm({
           text: Schema.String,
         }),
-        Route.handle(function*(ctx) {
+        Route.handle(function* (ctx) {
           const store = yield* Store.Store
           yield* store.add({
             id: Unique.uuid7(),
@@ -136,7 +131,7 @@ const routes = Route.map({
       Route.schemaBodyJson({
         done: Schema.Boolean,
       }),
-      Route.json(function*(ctx) {
+      Route.json(function* (ctx) {
         const store = yield* Store.Store
 
         // everything is typed!
@@ -149,12 +144,13 @@ const routes = Route.map({
   "/api/users": {
     "*": Route.use(
       Route.schemaHeaders({ authorization: Schema.optional(Schema.String) }),
-      Route.filter(function*(ctx) {
+      Route.filter(function* (ctx) {
         const authorization = ctx.headers.authorization?.split(" ")
         const token = authorization?.[0] === "Bearer" ? authorization[1] : undefined
         const user = token ? yield* UserRepo.findByToken(token) : undefined
 
-        if (!user) return yield* Effect.fail(new RouteError.Unauthorized({ message: "Login required" }))
+        if (!user)
+          return yield* Effect.fail(new RouteError.Unauthorized({ message: "Login required" }))
         return { context: { user } }
       }),
     ),
@@ -163,7 +159,7 @@ const routes = Route.map({
         email: Schema.String,
         password: Schema.String,
       }),
-      Route.json(function*(ctx) {
+      Route.json(function* (ctx) {
         const password = yield* Password.hash(ctx.body.password)
         const user = yield* UserRepo.create(ctx.body.email, password)
 
@@ -176,7 +172,7 @@ const routes = Route.map({
       email: Schema.String,
       password: Schema.String,
     }),
-    Route.json(function*(ctx) {
+    Route.json(function* (ctx) {
       const user = yield* UserRepo.find(ctx.body.email)
       const valid = yield* Password.verify(ctx.body.password, user.password)
 
@@ -214,30 +210,30 @@ src/routes/
 Effect Start comes with small Datastar fork
 
 ```tsx
-import { BunBundle } from "effect-start/bun"
 import { Bundle } from "effect-start"
+import { BunBundle } from "effect-start/bun"
 
 export default Start.pack(
-  Route.layer(Route.map({
-    "*": Route.use(
-      Route.html(function*(_, next) {
-        const bundle = yield* Bundle.Bundle
-        return (
-          <html>
-            <head>
-              <script
-                type="module"
-                src={bundle.resolve("effect-start/datastar")}
-              ></script>
-            </head>
-            <body>{yield* next.html}</body>
-          </html>
-        )
-      }),
-    ),
-    "/": Route
-      .get(
-        Route.html(function*() {
+  Route.layer(
+    Route.map({
+      "*": Route.use(
+        Route.html(function* (_, next) {
+          const bundle = yield* Bundle.Bundle
+          return (
+            <html>
+              <head>
+                <script
+                  type="module"
+                  src={bundle.resolve("effect-start/datastar")}
+                ></script>
+              </head>
+              <body>{yield* next.html}</body>
+            </html>
+          )
+        }),
+      ),
+      "/": Route.get(
+        Route.html(function* () {
           return (
             <div data-signals={{ draft: "" }}>
               <ul id="messages"></ul>
@@ -252,16 +248,15 @@ export default Start.pack(
                   data-bind="draft"
                   data-init={(e) => e.currentTarget.focus()}
                 />
-                <button
-                  data-attr:disabled={(e) => !e.signals.draft.trim()}
-                >Send</button>
+                <button data-attr:disabled={(e) => !e.signals.draft.trim()}>Send</button>
               </form>
-              <small><span data-text={e => e.signals.draft.length} /> characters</small>
+              <small>
+                <span data-text={(e) => e.signals.draft.length} /> characters
+              </small>
             </div>
           )
         }),
-      )
-      .post(
+      ).post(
         Route.schemaBodyJson({ text: Schema.String }),
         Route.sse((ctx) =>
           Stream.succeed({
@@ -271,10 +266,11 @@ export default Start.pack(
               "mode append",
               `elements ${Html.text(<li>{ctx.body.text}</li>)}`,
             ],
-          })
+          }),
         ),
       ),
-  })),
+    }),
+  ),
   BunBundle.layer({ entrypoints: ["effect-start/datastar"] }),
 )
 ```
@@ -287,24 +283,26 @@ Install `tailwindcss` package to use integration with Effect Start:
 import { TailwindPlugin } from "effect-start/tailwind"
 
 export default Start.pack(
-  Route.layer(Route.map({
-    "*": Route.use(
-      Route.html(function*(_, next) {
-        const bundle = yield* Bundle.Bundle
-        return (
-          <html>
-            <head>
-              <link
-                rel="stylesheet"
-                href={bundle.resolve("./app.css")}
-              />
-            </head>
-            <body>{yield* next.html}</body>
-          </html>
-        )
-      }),
-    ),
-  })),
+  Route.layer(
+    Route.map({
+      "*": Route.use(
+        Route.html(function* (_, next) {
+          const bundle = yield* Bundle.Bundle
+          return (
+            <html>
+              <head>
+                <link
+                  rel="stylesheet"
+                  href={bundle.resolve("./app.css")}
+                />
+              </head>
+              <body>{yield* next.html}</body>
+            </html>
+          )
+        }),
+      ),
+    }),
+  ),
   BunBundle.layer({
     entrypoints: [import.meta.resolve("./app.css")],
     plugins: [TailwindPlugin.make()],
@@ -344,25 +342,27 @@ Run `bunx oxlint`.
 Install `@effect/sql-sqlite-bun` and `@effect/platform-bun` at your Effect version. Pass their SQLite, filesystem, and path layers to `Start.pack`. The migrator discovers files like `FileRouter` discovers routes:
 
 ```ts
-import { Schema } from "effect"
-import { SqlClient } from "effect/sql"
-import { Route, Start } from "effect-start"
 import { BunFileSystem, BunPath } from "@effect/platform-bun"
 import { SqliteClient, SqliteMigrator } from "@effect/sql-sqlite-bun"
+import { Schema } from "effect"
+import { Route, Start } from "effect-start"
+import { SqlClient } from "effect/sql"
 
 export default Start.pack(
-  Route.layer(Route.map({
-    "/users/:id": Route.get(
-      Route.schemaPathParams({ id: Schema.String }),
-      Route.json(function*(ctx) {
-        const sql = yield* SqlClient.SqlClient
-        const users = yield* sql<{ id: string; email: string }>`
+  Route.layer(
+    Route.map({
+      "/users/:id": Route.get(
+        Route.schemaPathParams({ id: Schema.String }),
+        Route.json(function* (ctx) {
+          const sql = yield* SqlClient.SqlClient
+          const users = yield* sql<{ id: string; email: string }>`
           select id, email from User where id = ${ctx.pathParams.id}
         `
-        return users[0] ?? null
-      }),
-    ),
-  })),
+          return users[0] ?? null
+        }),
+      ),
+    }),
+  ),
   BunFileSystem.layer,
   BunPath.layer,
   SqliteClient.layer({ filename: "./db.sqlite3" }),
@@ -379,7 +379,7 @@ Put migrations in `db/migrations/`, under file time ordered name like `202610142
 import { Effect } from "effect"
 import { SqlClient } from "effect/sql"
 
-export default Effect.gen(function*() {
+export default Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient
   yield* sql`create table User (id text primary key, email text not null unique)`
 })

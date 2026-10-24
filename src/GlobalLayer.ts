@@ -13,13 +13,14 @@ const cacheKey = Symbol.for("effect-start/GlobalLayer/cache")
 const globalRegistry = globalThis as typeof globalThis & {
   [cacheKey]?: Map<string, CacheEntry<any, any>>
 }
-const cache = globalRegistry[cacheKey] ??= new Map()
+const cache = (globalRegistry[cacheKey] ??= new Map())
 
-export const globalLayer = (key: string) => <A, E, R>(layer: Layer.Layer<A, E, R>): Layer.Layer<A, E, R> =>
-  Layer.fromBuild(() => {
-    const typedCache: Map<string, CacheEntry<A, E>> = cache
-    return (
-      Effect.gen(function*() {
+export const globalLayer =
+  (key: string) =>
+  <A, E, R>(layer: Layer.Layer<A, E, R>): Layer.Layer<A, E, R> =>
+    Layer.fromBuild(() => {
+      const typedCache: Map<string, CacheEntry<A, E>> = cache
+      return Effect.gen(function* () {
         const existing = typedCache.get(key)
         if (existing !== undefined) {
           return yield* Deferred.await(existing.context)
@@ -32,13 +33,11 @@ export const globalLayer = (key: string) => <A, E, R>(layer: Layer.Layer<A, E, R
 
         const fiber = Effect.runForkWith(context)(
           Effect.scoped(
-            Effect
-              .gen(function*() {
-                const built = yield* Layer.build(layer)
-                yield* Deferred.succeed(deferred, built)
-                return yield* Effect.never
-              })
-              .pipe(Effect.catchCause((cause) => Deferred.failCause(deferred, cause))),
+            Effect.gen(function* () {
+              const built = yield* Layer.build(layer)
+              yield* Deferred.succeed(deferred, built)
+              return yield* Effect.never
+            }).pipe(Effect.catchCause((cause) => Deferred.failCause(deferred, cause))),
           ),
         )
         entry.fiber = fiber
@@ -48,5 +47,4 @@ export const globalLayer = (key: string) => <A, E, R>(layer: Layer.Layer<A, E, R
 
         return yield* Deferred.await(deferred)
       })
-    )
-  })
+    })

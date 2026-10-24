@@ -10,16 +10,12 @@ import * as StudioStore from "./StudioStore.ts"
 const PERIOD_MS = 2000
 const SAMPLE_CAPACITY = 50_000
 
-export const layer: Layer.Layer<
-  never,
-  never,
-  StudioContext.Studio | StudioSql.StudioSql
-> = Layer
-  .effectDiscard(
-    Effect.gen(function*() {
+export const layer: Layer.Layer<never, never, StudioContext.Studio | StudioSql.StudioSql> =
+  Layer.effectDiscard(
+    Effect.gen(function* () {
       const { store } = yield* StudioContext.Studio
 
-      const tick = Effect.gen(function*() {
+      const tick = Effect.gen(function* () {
         const timestamp = Math.floor(Date.now() / PERIOD_MS) * PERIOD_MS
         const pairs = yield* Metric.snapshot
         const snapshots: Array<StudioStore.MetricSnapshot> = []
@@ -61,9 +57,13 @@ export const layer: Layer.Layer<
             name: pair.id,
             type,
             value,
-            tags: pair.attributes === undefined
-              ? []
-              : Object.entries(pair.attributes).map(([key, value]) => ({ key, value: String(value) })),
+            tags:
+              pair.attributes === undefined
+                ? []
+                : Object.entries(pair.attributes).map(([key, value]) => ({
+                    key,
+                    value: String(value),
+                  })),
             timestamp,
           })
         }
@@ -76,8 +76,6 @@ export const layer: Layer.Layer<
         })
       })
 
-      yield* Effect.forkScoped(
-        Effect.schedule(tick, Schedule.windowed(`${PERIOD_MS} millis`)),
-      )
+      yield* Effect.forkScoped(Effect.schedule(tick, Schedule.windowed(`${PERIOD_MS} millis`)))
     }),
   )

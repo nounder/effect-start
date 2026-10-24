@@ -14,34 +14,32 @@ test.it("virtual import", async () => {
     plugins: [trackerPlugin],
   })
 
-  test
-    .expect([...trackerPlugin.state.entries()])
-    .toEqual([
+  test.expect([...trackerPlugin.state.entries()]).toEqual([
+    [
+      "test/bun/BunImportTrackerPlugin.test.ts",
       [
-        "test/bun/BunImportTrackerPlugin.test.ts",
-        [
-          {
-            kind: "import-statement",
-            path: "bun:test",
-          },
-          {
-            kind: "import-statement",
-            path: "test/bun/effect-start/bun/BunImportTrackerPlugin",
-          },
-          {
-            kind: "import-statement",
-            path: "test/bun/effect-start/bun/BunVirtualFilesPlugin",
-          },
-        ],
+        {
+          kind: "import-statement",
+          path: "bun:test",
+        },
+        {
+          kind: "import-statement",
+          path: "test/bun/effect-start/bun/BunImportTrackerPlugin",
+        },
+        {
+          kind: "import-statement",
+          path: "test/bun/effect-start/bun/BunVirtualFilesPlugin",
+        },
       ],
+    ],
+    [
+      "src/bun/BunImportTrackerPlugin.ts",
       [
-        "src/bun/BunImportTrackerPlugin.ts",
-        [
-          {
-            kind: "import-statement",
-            path: "node:path",
-          },
-        ],
+        {
+          kind: "import-statement",
+          path: "node:path",
+        },
       ],
-    ])
+    ],
+  ])
 })

@@ -1,6 +1,6 @@
 /**
- * DOM matching and morphing adapted from the bundled Datastar v1.0.1 fork (MIT).
- * Consumes newContent. No attribute handling, script execution, or runtime hooks.
+ * DOM matching and morphing adapted from the bundled Datastar v1.0.1 fork (MIT). Consumes
+ * newContent. No attribute handling, script execution, or runtime hooks.
  */
 export const morph = (
   oldElt: Element | ShadowRoot,
@@ -73,9 +73,10 @@ export const morph = (
       if (ctxIdMap.has(newChild)) {
         const namespaceURI = (newChild as Element).namespaceURI
         const tagName = (newChild as Element).tagName
-        const newEmptyChild = namespaceURI && namespaceURI !== "http://www.w3.org/1999/xhtml"
-          ? document.createElementNS(namespaceURI, tagName)
-          : document.createElement(tagName)
+        const newEmptyChild =
+          namespaceURI && namespaceURI !== "http://www.w3.org/1999/xhtml"
+            ? document.createElementNS(namespaceURI, tagName)
+            : document.createElement(tagName)
         oldParent.insertBefore(newEmptyChild, insertionPoint)
         morphNode(newEmptyChild, newChild)
         insertionPoint = newEmptyChild.nextSibling
@@ -93,7 +94,11 @@ export const morph = (
     }
   }
 
-  const findBestMatch = (node: Node, startPoint: Node | null, endPoint: Node | null): Node | null => {
+  const findBestMatch = (
+    node: Node,
+    startPoint: Node | null,
+    endPoint: Node | null,
+  ): Node | null => {
     let bestMatch: Node | null | undefined = null
     let nextSibling = node.nextSibling
     let siblingSoftMatchCount = 0
@@ -155,13 +160,15 @@ export const morph = (
     (!(oldNode as Element).id || (oldNode as Element).id === (newNode as Element).id)
 
   const removeNode = (node: Node) => {
-    ctxIdMap.has(node)
-      ? moveBefore(ctxPantry, node, null)
-      : node.parentNode?.removeChild(node)
+    ctxIdMap.has(node) ? moveBefore(ctxPantry, node, null) : node.parentNode?.removeChild(node)
   }
 
   const moveBefore = (parentNode: ParentNode, node: Node, after: Node | null) => {
-    if ("moveBefore" in parentNode && node.parentNode && parentNode.isConnected === node.isConnected) {
+    if (
+      "moveBefore" in parentNode &&
+      node.parentNode &&
+      parentNode.isConnected === node.isConnected
+    ) {
       parentNode.moveBefore(node, after)
       return
     }
@@ -174,11 +181,13 @@ export const morph = (
     if (type === 1) {
       const oldElt = oldNode as Element
       const newElt = newNode as Element
-      const updateElementProp = <K extends string>(oldElt: Element & Record<K, boolean>, newElt: Element, name: K) => {
+      const updateElementProp = <K extends string>(
+        oldElt: Element & Record<K, boolean>,
+        newElt: Element,
+        name: K,
+      ) => {
         const newEltHasAttr = newElt.hasAttribute(name)
-        if (
-          oldElt.hasAttribute(name) !== newEltHasAttr
-        ) {
+        if (oldElt.hasAttribute(name) !== newEltHasAttr) {
           ;(oldElt as Record<K, boolean>)[name] = newEltHasAttr
           return true
         }
@@ -191,9 +200,7 @@ export const morph = (
         newElt.type !== "file"
       ) {
         const newValue = newElt.getAttribute("value")
-        if (
-          oldElt.getAttribute("value") !== newValue
-        ) {
+        if (oldElt.getAttribute("value") !== newValue) {
           oldElt.value = newValue ?? ""
         }
         updateElementProp(oldElt, newElt, "checked")
@@ -207,7 +214,8 @@ export const morph = (
           oldElt.value = newValue
         }
       } else if (
-        oldElt instanceof window.HTMLOptionElement && newElt instanceof window.HTMLOptionElement
+        oldElt instanceof window.HTMLOptionElement &&
+        newElt instanceof window.HTMLOptionElement
       ) {
         updateElementProp(oldElt, newElt, "selected")
       }
@@ -215,9 +223,7 @@ export const morph = (
       for (const attribute of newElt.attributes) {
         const name = attribute.name
         const value = attribute.value
-        if (
-          oldElt.getAttribute(name) !== value
-        ) {
+        if (oldElt.getAttribute(name) !== value) {
           oldElt.setAttribute(name, value)
         }
       }

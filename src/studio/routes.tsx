@@ -21,7 +21,7 @@ const METRICS_HISTORY_MS = 120_000
 
 export default Route.map({
   "*": Route.use(
-    Route.handle(function*(_, next) {
+    Route.handle(function* (_, next) {
       const studio = yield* StudioContext.Studio
       const request = yield* Route.Request
 
@@ -30,13 +30,12 @@ export default Route.map({
       }
 
       const header = request.headers.get("authorization")
-      const expected = "Basic " +
-        btoa(`${studio.auth.username}:${studio.auth.password}`)
+      const expected = "Basic " + btoa(`${studio.auth.username}:${studio.auth.password}`)
       if (header !== expected) {
         return Entity.make("Unauthorized", {
           status: 401,
           headers: {
-            "www-authenticate": "Basic realm=\"Studio\", charset=\"UTF-8\"",
+            "www-authenticate": 'Basic realm="Studio", charset="UTF-8"',
             "content-type": "text/plain; charset=utf-8",
           },
         })
@@ -44,11 +43,11 @@ export default Route.map({
 
       return yield* next
     }),
-    Route.filter(function*() {
+    Route.filter(function* () {
       yield* Effect.annotateCurrentSpan(StudioStore.studioTraceAttribute, true)
       return { context: {} }
     }),
-    Route.html(function*(_, next) {
+    Route.html(function* (_, next) {
       const studio = yield* StudioContext.Studio
       const request = yield* Route.Request
       if (request.headers.get("datastar-request") === "true") {
@@ -59,32 +58,26 @@ export default Route.map({
       return (
         <html style="height: 100%">
           <head>
-            <title>
-              Effect Studio
-            </title>
+            <title>Effect Studio</title>
             <meta
               name="viewport"
               content="width=device-width, initial-scale=1"
             />
             <base href={base} />
-            <style>
-              {css}
-            </style>
+            <style>{css}</style>
             <script
               type="module"
               src={bundle.resolve("effect-start/datastar")}
             />
           </head>
-          <body>
-            {yield* next.html}
-          </body>
+          <body>{yield* next.html}</body>
         </html>
       )
     }),
   ),
 
   "/": Route.get(
-    Route.handle(function*() {
+    Route.handle(function* () {
       const studio = yield* StudioContext.Studio
       return Route.redirect(`${studio.path}/traces`)
     }),
@@ -102,17 +95,14 @@ export default Route.map({
         traceSearch: Schema.String.pipe(Schema.withDecodingDefault(Effect.succeed(""))),
       }),
     ),
-    Route.json(function*(ctx) {
+    Route.json(function* (ctx) {
       const search = ctx.searchParams.traceSearch
-      let spans = StudioStore.filterOutStudioSpans(
-        yield* StudioStore.allSpans(),
-      )
+      let spans = StudioStore.filterOutStudioSpans(yield* StudioStore.allSpans())
       if (search) {
         const lower = search.toLowerCase()
         spans = spans.filter((s) => s.name.toLowerCase().startsWith(lower))
       }
-      const traces = Array
-        .from(Ui.groupByTraceId(spans).values())
+      const traces = Array.from(Ui.groupByTraceId(spans).values())
         .sort((a, b) => Number(b[0].startTime) - Number(a[0].startTime))
         .map((group) => ({
           traceId: group[0].traceId,
@@ -120,13 +110,11 @@ export default Route.map({
         }))
       return { traces }
     }),
-    Route.html(function*(ctx) {
+    Route.html(function* (ctx) {
       const studio = yield* StudioContext.Studio
       const request = yield* Route.Request
       const search = ctx.searchParams.traceSearch
-      const allSpans = StudioStore.filterOutStudioSpans(
-        yield* StudioStore.allSpans(),
-      )
+      const allSpans = StudioStore.filterOutStudioSpans(yield* StudioStore.allSpans())
       const names = Array.from(new Set(allSpans.map((s) => s.name))).sort()
       let spans = allSpans
       if (search) {
@@ -140,9 +128,7 @@ export default Route.map({
           data-signals={{ traceSearch: search }}
           style="display:flex;flex-direction:column;flex:1;overflow:hidden;min-width:0"
         >
-          <div class="tab-header">
-            Traces
-          </div>
+          <div class="tab-header">Traces</div>
           <div class="filter-bar">
             <input
               type="text"
@@ -154,10 +140,7 @@ export default Route.map({
               {...{
                 "data-on:input__debounce.400ms": (c: any) => {
                   const url = new URL(location.href)
-                  url.searchParams.set(
-                    "traceSearch",
-                    c.signals.traceSearch ?? "",
-                  )
+                  url.searchParams.set("traceSearch", c.signals.traceSearch ?? "")
                   return c.actions.get(url.toString(), {
                     headers: { Accept: "text/html" },
                   })
@@ -165,11 +148,19 @@ export default Route.map({
               }}
             />
             <datalist id="trace-names">
-              {names.map((n) => <option value={n} />)}
+              {names.map((n) => (
+                <option value={n} />
+              ))}
             </datalist>
           </div>
-          <div id="traces-container" class="tab-body">
-            <Ui.TraceGroups prefix={studio.path} spans={spans} />
+          <div
+            id="traces-container"
+            class="tab-body"
+          >
+            <Ui.TraceGroups
+              prefix={studio.path}
+              spans={spans}
+            />
           </div>
           <div
             data-effect={(c) => {
@@ -185,59 +176,58 @@ export default Route.map({
         return body
       }
       return (
-        <Ui.Shell prefix={studio.path} active="traces">
+        <Ui.Shell
+          prefix={studio.path}
+          active="traces"
+        >
           {body}
         </Ui.Shell>
       )
     }),
     Route.sse((ctx) =>
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const studio = yield* StudioContext.Studio
         const sql = yield* StudioSql.StudioSql
         const search = ctx.searchParams.traceSearch.toLowerCase()
         return Stream.fromPubSub(studio.store.events).pipe(
           Stream.filter((e) => e._tag === "TraceEnd"),
           Stream.filterEffect((e) =>
-            Effect
-              .gen(function*() {
-                yield* StudioStore.flushWrites()
-                const traceSpans = yield* StudioStore.spansByTraceId(e.traceId)
-                return traceSpans.length > 0 &&
-                  !StudioStore.isStudioTrace(traceSpans)
-              })
-              .pipe(
-                Effect.provideService(StudioContext.Studio, studio),
-                Effect.provideService(StudioSql.StudioSql, sql),
-              )
+            Effect.gen(function* () {
+              yield* StudioStore.flushWrites()
+              const traceSpans = yield* StudioStore.spansByTraceId(e.traceId)
+              return traceSpans.length > 0 && !StudioStore.isStudioTrace(traceSpans)
+            }).pipe(
+              Effect.provideService(StudioContext.Studio, studio),
+              Effect.provideService(StudioSql.StudioSql, sql),
+            ),
           ),
           Stream.debounce("500 millis"),
           Stream.mapEffect(() =>
-            Effect
-              .gen(function*() {
-                let spans = StudioStore.filterOutStudioSpans(
-                  yield* StudioStore.allSpans(),
-                )
-                if (search) {
-                  spans = spans.filter((s) => s.name.toLowerCase().startsWith(search))
-                }
-                const html = Html
-                  .text(<Ui.TraceGroups prefix={studio.path} spans={spans} />)
-                  .replace(/\n/g, "")
-                return {
-                  event: "datastar-patch-elements",
-                  data: `selector #traces-container\nmode inner\nelements ${html}`,
-                }
-              })
-              .pipe(Effect.provideService(StudioSql.StudioSql, sql))
+            Effect.gen(function* () {
+              let spans = StudioStore.filterOutStudioSpans(yield* StudioStore.allSpans())
+              if (search) {
+                spans = spans.filter((s) => s.name.toLowerCase().startsWith(search))
+              }
+              const html = Html.text(
+                <Ui.TraceGroups
+                  prefix={studio.path}
+                  spans={spans}
+                />,
+              ).replace(/\n/g, "")
+              return {
+                event: "datastar-patch-elements",
+                data: `selector #traces-container\nmode inner\nelements ${html}`,
+              }
+            }).pipe(Effect.provideService(StudioSql.StudioSql, sql)),
           ),
         )
-      })
+      }),
     ),
   ),
 
   "/traces/:id": Route.get(
     RouteSchema.schemaPathParams(Schema.Struct({ id: Schema.String })),
-    Route.json(function*(ctx) {
+    Route.json(function* (ctx) {
       const data = yield* traceData(ctx.pathParams.id)
       if (data.spans.length === 0) {
         return Entity.make({ error: "Trace not found" }, { status: 404 })
@@ -248,11 +238,14 @@ export default Route.map({
         logs: data.logs.map(logJson),
       }
     }),
-    Route.html(function*(ctx) {
+    Route.html(function* (ctx) {
       const studio = yield* StudioContext.Studio
       const traceId = ctx.pathParams.id
       return (
-        <Ui.Shell prefix={studio.path} active="traces">
+        <Ui.Shell
+          prefix={studio.path}
+          active="traces"
+        >
           <div
             id="trace-detail"
             style="display:flex;flex-direction:column;flex:1;overflow:hidden;min-width:0"
@@ -264,7 +257,7 @@ export default Route.map({
       )
     }),
     Route.sse((ctx) =>
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const studio = yield* StudioContext.Studio
         const sql = yield* StudioSql.StudioSql
         const traceId = ctx.pathParams.id
@@ -280,36 +273,36 @@ export default Route.map({
           }),
           Stream.debounce("500 millis"),
           Stream.mapEffect(() =>
-            Effect
-              .gen(function*() {
-                const html = Html
-                  .text(yield* renderTraceDetail(traceId))
-                  .replace(/\n/g, "")
-                return {
-                  event: "datastar-patch-elements",
-                  data: `selector #trace-detail\nmode inner\nelements ${html}`,
-                }
-              })
-              .pipe(
-                Effect.provideService(StudioContext.Studio, studio),
-                Effect.provideService(StudioSql.StudioSql, sql),
-              )
+            Effect.gen(function* () {
+              const html = Html.text(yield* renderTraceDetail(traceId)).replace(/\n/g, "")
+              return {
+                event: "datastar-patch-elements",
+                data: `selector #trace-detail\nmode inner\nelements ${html}`,
+              }
+            }).pipe(
+              Effect.provideService(StudioContext.Studio, studio),
+              Effect.provideService(StudioSql.StudioSql, sql),
+            ),
           ),
         )
-      })
+      }),
     ),
   ),
 
   "/metrics": Route.get(
-    Route.html(function*() {
+    Route.html(function* () {
       const studio = yield* StudioContext.Studio
       const series = yield* StudioStore.latestMetricsWithHistory(METRICS_HISTORY_MS)
       return (
-        <Ui.Shell prefix={studio.path} active="metrics">
-          <div class="tab-header">
-            Metrics
-          </div>
-          <div id="metrics-container" class="tab-body metrics-grid">
+        <Ui.Shell
+          prefix={studio.path}
+          active="metrics"
+        >
+          <div class="tab-header">Metrics</div>
+          <div
+            id="metrics-container"
+            class="tab-body metrics-grid"
+          >
             <Ui.MetricsGrid series={series} />
           </div>
           <div data-init={(c) => c.actions.get("metrics")} />
@@ -317,26 +310,22 @@ export default Route.map({
       )
     }),
     Route.sse(
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const studio = yield* StudioContext.Studio
         const sql = yield* StudioSql.StudioSql
         return Stream.fromPubSub(studio.store.events).pipe(
           Stream.filter((e) => e._tag === "MetricsSnapshot"),
           Stream.mapEffect(() =>
-            StudioStore
-              .latestMetricsWithHistory(METRICS_HISTORY_MS)
-              .pipe(
-                Effect.map((series) => {
-                  const html = Html
-                    .text(<Ui.MetricsGrid series={series} />)
-                    .replace(/\n/g, "")
-                  return {
-                    event: "datastar-patch-elements",
-                    data: `selector #metrics-container\nmode inner\nelements ${html}`,
-                  }
-                }),
-                Effect.provideService(StudioSql.StudioSql, sql),
-              )
+            StudioStore.latestMetricsWithHistory(METRICS_HISTORY_MS).pipe(
+              Effect.map((series) => {
+                const html = Html.text(<Ui.MetricsGrid series={series} />).replace(/\n/g, "")
+                return {
+                  event: "datastar-patch-elements",
+                  data: `selector #metrics-container\nmode inner\nelements ${html}`,
+                }
+              }),
+              Effect.provideService(StudioSql.StudioSql, sql),
+            ),
           ),
         )
       }),
@@ -350,7 +339,7 @@ export default Route.map({
         logSearch: Schema.optional(Schema.String),
       }),
     ),
-    Route.html(function*(ctx) {
+    Route.html(function* (ctx) {
       const studio = yield* StudioContext.Studio
       const request = yield* Route.Request
       const level = ctx.searchParams.logLevel ?? ""
@@ -369,9 +358,7 @@ export default Route.map({
           data-signals={{ logLevel: level, logSearch: search }}
           style="display:flex;flex-direction:column;flex:1;overflow:hidden;min-width:0"
         >
-          <div class="tab-header">
-            Logs
-          </div>
+          <div class="tab-header">Logs</div>
           <div class="filter-bar">
             <select
               name="logLevel"
@@ -385,22 +372,40 @@ export default Route.map({
                 })
               }}
             >
-              <option value="" selected={level === ""}>
+              <option
+                value=""
+                selected={level === ""}
+              >
                 All levels
               </option>
-              <option value="DEBUG" selected={level === "DEBUG"}>
+              <option
+                value="DEBUG"
+                selected={level === "DEBUG"}
+              >
                 DEBUG
               </option>
-              <option value="INFO" selected={level === "INFO"}>
+              <option
+                value="INFO"
+                selected={level === "INFO"}
+              >
                 INFO
               </option>
-              <option value="WARNING" selected={level === "WARNING"}>
+              <option
+                value="WARNING"
+                selected={level === "WARNING"}
+              >
                 WARNING
               </option>
-              <option value="ERROR" selected={level === "ERROR"}>
+              <option
+                value="ERROR"
+                selected={level === "ERROR"}
+              >
                 ERROR
               </option>
-              <option value="FATAL" selected={level === "FATAL"}>
+              <option
+                value="FATAL"
+                selected={level === "FATAL"}
+              >
                 FATAL
               </option>
             </select>
@@ -422,8 +427,16 @@ export default Route.map({
               }}
             />
           </div>
-          <div id="logs-container" class="tab-body">
-            {logs.map((l) => <Ui.LogLine prefix={studio.path} log={l} />)}
+          <div
+            id="logs-container"
+            class="tab-body"
+          >
+            {logs.map((l) => (
+              <Ui.LogLine
+                prefix={studio.path}
+                log={l}
+              />
+            ))}
           </div>
           <div
             data-effect={(c) => {
@@ -440,13 +453,16 @@ export default Route.map({
         return body
       }
       return (
-        <Ui.Shell prefix={studio.path} active="logs">
+        <Ui.Shell
+          prefix={studio.path}
+          active="logs"
+        >
           {body}
         </Ui.Shell>
       )
     }),
     Route.sse((ctx) =>
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const studio = yield* StudioContext.Studio
         const level = ctx.searchParams.logLevel ?? ""
         const search = (ctx.searchParams.logSearch ?? "").toLowerCase()
@@ -455,16 +471,19 @@ export default Route.map({
           Stream.filter((e) => !level || e.log.level === level),
           Stream.filter((e) => !search || e.log.message.toLowerCase().includes(search)),
           Stream.map((e) => {
-            const html = Html
-              .text(<Ui.LogLine prefix={studio.path} log={e.log} />)
-              .replace(/\n/g, "")
+            const html = Html.text(
+              <Ui.LogLine
+                prefix={studio.path}
+                log={e.log}
+              />,
+            ).replace(/\n/g, "")
             return {
               event: "datastar-patch-elements",
               data: `selector #logs-container\nmode prepend\nelements ${html}`,
             }
           }),
         )
-      })
+      }),
     ),
   ),
 
@@ -474,7 +493,7 @@ export default Route.map({
         errorSearch: Schema.optional(Schema.String),
       }),
     ),
-    Route.html(function*(ctx) {
+    Route.html(function* (ctx) {
       const studio = yield* StudioContext.Studio
       const request = yield* Route.Request
       const search = ctx.searchParams.errorSearch ?? ""
@@ -495,9 +514,7 @@ export default Route.map({
         const lower = search.toLowerCase()
         const isTag = tagSet.has(search)
         errors = errors.filter((e) => {
-          if (
-            isTag && e.details.some((d) => d.tag && d.tag === search)
-          ) return true
+          if (isTag && e.details.some((d) => d.tag && d.tag === search)) return true
           const firstLine = e.prettyPrint.split("\n")[0] ?? ""
           return firstLine.toLowerCase().includes(lower)
         })
@@ -510,9 +527,7 @@ export default Route.map({
           data-signals={{ errorSearch: search }}
           style="display:flex;flex-direction:column;flex:1;overflow:hidden;min-width:0"
         >
-          <div class="tab-header">
-            Errors
-          </div>
+          <div class="tab-header">Errors</div>
           <div class="filter-bar">
             <input
               type="text"
@@ -524,10 +539,7 @@ export default Route.map({
               {...{
                 "data-on:input__debounce.400ms": (c: any) => {
                   const url = new URL(location.href)
-                  url.searchParams.set(
-                    "errorSearch",
-                    c.signals.errorSearch ?? "",
-                  )
+                  url.searchParams.set("errorSearch", c.signals.errorSearch ?? "")
                   return c.actions.get(url.toString(), {
                     headers: { Accept: "text/html" },
                   })
@@ -535,11 +547,21 @@ export default Route.map({
               }}
             />
             <datalist id="error-tags">
-              {sortedTags.map((t) => <option value={t} />)}
+              {sortedTags.map((t) => (
+                <option value={t} />
+              ))}
             </datalist>
           </div>
-          <div id="errors-list" class="tab-body">
-            {errors.map((e) => <Ui.ErrorLine prefix={studio.path} error={e} />)}
+          <div
+            id="errors-list"
+            class="tab-body"
+          >
+            {errors.map((e) => (
+              <Ui.ErrorLine
+                prefix={studio.path}
+                error={e}
+              />
+            ))}
           </div>
           <div
             data-effect={(c) => {
@@ -555,13 +577,16 @@ export default Route.map({
         return body
       }
       return (
-        <Ui.Shell prefix={studio.path} active="errors">
+        <Ui.Shell
+          prefix={studio.path}
+          active="errors"
+        >
           {body}
         </Ui.Shell>
       )
     }),
     Route.sse((ctx) =>
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const studio = yield* StudioContext.Studio
         const rawSearch = ctx.searchParams.errorSearch ?? ""
         const search = rawSearch.toLowerCase()
@@ -576,33 +601,43 @@ export default Route.map({
             return firstLine.toLowerCase().includes(search)
           }),
           Stream.map((e) => {
-            const html = Html
-              .text(<Ui.ErrorLine prefix={studio.path} error={e.error} />)
-              .replace(/\n/g, "")
+            const html = Html.text(
+              <Ui.ErrorLine
+                prefix={studio.path}
+                error={e.error}
+              />,
+            ).replace(/\n/g, "")
             return {
               event: "datastar-patch-elements",
               data: `selector #errors-list\nmode prepend\nelements ${html}`,
             }
           }),
         )
-      })
+      }),
     ),
   ),
 
   "/fibers": Route.get(
-    Route.html(function*() {
+    Route.html(function* () {
       const studio = yield* StudioContext.Studio
       const logs = yield* StudioStore.allLogs()
       const spans = yield* StudioStore.allSpans()
       const fibers = Ui.collectFibers(logs, spans)
       return (
-        <Ui.Shell prefix={studio.path} active="fibers">
+        <Ui.Shell
+          prefix={studio.path}
+          active="fibers"
+        >
           <div style="display:flex;flex-direction:column;flex:1;overflow:hidden">
-            <div class="tab-header">
-              Fibers
-            </div>
-            <div id="fibers-container" class="tab-body">
-              <Ui.FiberList fibers={fibers} prefix={studio.path} />
+            <div class="tab-header">Fibers</div>
+            <div
+              id="fibers-container"
+              class="tab-body"
+            >
+              <Ui.FiberList
+                fibers={fibers}
+                prefix={studio.path}
+              />
             </div>
             <div data-init={(c) => c.actions.get("fibers")} />
           </div>
@@ -610,29 +645,28 @@ export default Route.map({
       )
     }),
     Route.sse(
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const studio = yield* StudioContext.Studio
         const sql = yield* StudioSql.StudioSql
         return Stream.fromPubSub(studio.store.events).pipe(
           Stream.filter((e) => e._tag === "SpanStart" || e._tag === "SpanEnd" || e._tag === "Log"),
           Stream.debounce("500 millis"),
           Stream.mapEffect(() =>
-            Effect
-              .gen(function*() {
-                const logs = yield* StudioStore.allLogs()
-                const spans = yield* StudioStore.allSpans()
-                const fibers = Ui.collectFibers(logs, spans)
-                const html = Html
-                  .text(
-                    <Ui.FiberList fibers={fibers} prefix={studio.path} />,
-                  )
-                  .replace(/\n/g, "")
-                return {
-                  event: "datastar-patch-elements",
-                  data: `selector #fibers-container\nmode inner\nelements ${html}`,
-                }
-              })
-              .pipe(Effect.provideService(StudioSql.StudioSql, sql))
+            Effect.gen(function* () {
+              const logs = yield* StudioStore.allLogs()
+              const spans = yield* StudioStore.allSpans()
+              const fibers = Ui.collectFibers(logs, spans)
+              const html = Html.text(
+                <Ui.FiberList
+                  fibers={fibers}
+                  prefix={studio.path}
+                />,
+              ).replace(/\n/g, "")
+              return {
+                event: "datastar-patch-elements",
+                data: `selector #fibers-container\nmode inner\nelements ${html}`,
+              }
+            }).pipe(Effect.provideService(StudioSql.StudioSql, sql)),
           ),
         )
       }),
@@ -641,14 +675,16 @@ export default Route.map({
 
   "/fibers/:id": Route.get(
     RouteSchema.schemaPathParams(Schema.Struct({ id: Schema.String })),
-    Route.html(function*(ctx) {
+    Route.html(function* (ctx) {
       const studio = yield* StudioContext.Studio
       const fiberId = ctx.pathParams.id
-      const fiberName = fiberId.startsWith("#") || fiberId.startsWith("otlp:")
-        ? fiberId
-        : `#${fiberId}`
+      const fiberName =
+        fiberId.startsWith("#") || fiberId.startsWith("otlp:") ? fiberId : `#${fiberId}`
       return (
-        <Ui.Shell prefix={studio.path} active="fibers">
+        <Ui.Shell
+          prefix={studio.path}
+          active="fibers"
+        >
           <div
             id="fiber-detail"
             style="display:flex;flex-direction:column;flex:1;overflow:hidden;min-width:0"
@@ -660,60 +696,54 @@ export default Route.map({
       )
     }),
     Route.sse((ctx) =>
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const studio = yield* StudioContext.Studio
         const sql = yield* StudioSql.StudioSql
         const fiberId = ctx.pathParams.id
         const fiberName = fiberId.startsWith("#") ? fiberId : `#${fiberId}`
         return Stream.fromPubSub(studio.store.events).pipe(
-          Stream.filter((e) =>
-            (e._tag === "Log" && e.log.fiberId === fiberName) ||
-            ((e._tag === "SpanStart" || e._tag === "SpanEnd") &&
-              e.span.fiberId === fiberName)
+          Stream.filter(
+            (e) =>
+              (e._tag === "Log" && e.log.fiberId === fiberName) ||
+              ((e._tag === "SpanStart" || e._tag === "SpanEnd") && e.span.fiberId === fiberName),
           ),
           Stream.debounce("500 millis"),
           Stream.mapEffect(() =>
-            Effect
-              .gen(function*() {
-                const html = Html
-                  .text(yield* renderFiberDetail(fiberName))
-                  .replace(/\n/g, "")
-                return {
-                  event: "datastar-patch-elements",
-                  data: `selector #fiber-detail\nmode inner\nelements ${html}`,
-                }
-              })
-              .pipe(
-                Effect.provideService(StudioContext.Studio, studio),
-                Effect.provideService(StudioSql.StudioSql, sql),
-              )
+            Effect.gen(function* () {
+              const html = Html.text(yield* renderFiberDetail(fiberName)).replace(/\n/g, "")
+              return {
+                event: "datastar-patch-elements",
+                data: `selector #fiber-detail\nmode inner\nelements ${html}`,
+              }
+            }).pipe(
+              Effect.provideService(StudioContext.Studio, studio),
+              Effect.provideService(StudioSql.StudioSql, sql),
+            ),
           ),
         )
-      })
+      }),
     ),
   ),
 
   "/routes": Route.get(
-    Route.html(function*() {
+    Route.html(function* () {
       const studio = yield* StudioContext.Studio
       const routes = yield* Route.Routes
-      const infos: Array<Ui.RouteInfo> = Array.from(
-        RouteMap.walk(routes),
-        (route) => {
-          const desc = Route.descriptor(route)
-          return {
-            method: desc.method ?? "*",
-            path: desc.path ?? "/",
-            format: desc.format,
-          }
-        },
-      )
+      const infos: Array<Ui.RouteInfo> = Array.from(RouteMap.walk(routes), (route) => {
+        const desc = Route.descriptor(route)
+        return {
+          method: desc.method ?? "*",
+          path: desc.path ?? "/",
+          format: desc.format,
+        }
+      })
 
       return (
-        <Ui.Shell prefix={studio.path} active="routes">
-          <div class="tab-header">
-            Routes
-          </div>
+        <Ui.Shell
+          prefix={studio.path}
+          active="routes"
+        >
+          <div class="tab-header">Routes</div>
           <div class="tab-body">
             <Ui.RouteList routes={infos} />
           </div>
@@ -723,25 +753,30 @@ export default Route.map({
   ),
 
   "/system": Route.get(
-    Route.html(function*() {
+    Route.html(function* () {
       const studio = yield* StudioContext.Studio
       const series = yield* StudioStore.processSeries(METRICS_HISTORY_MS)
       const info = StudioProcess.processInfo()
       const hasData = Object.keys(series.latest).length > 0
       return (
-        <Ui.Shell prefix={studio.path} active="system">
+        <Ui.Shell
+          prefix={studio.path}
+          active="system"
+        >
           <div style="display:flex;flex-direction:column;flex:1;overflow:hidden">
-            <div class="tab-header">
-              System
-            </div>
-            <div id="system-container" class="tab-body">
-              {hasData ?
-                <Ui.SystemStatsView info={info} series={series} /> :
-                (
-                  <div class="empty">
-                    Waiting for system data...
-                  </div>
-                )}
+            <div class="tab-header">System</div>
+            <div
+              id="system-container"
+              class="tab-body"
+            >
+              {hasData ? (
+                <Ui.SystemStatsView
+                  info={info}
+                  series={series}
+                />
+              ) : (
+                <div class="empty">Waiting for system data...</div>
+              )}
             </div>
             <div data-init={(c) => c.actions.get("system")} />
           </div>
@@ -749,27 +784,28 @@ export default Route.map({
       )
     }),
     Route.sse(
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const studio = yield* StudioContext.Studio
         const sql = yield* StudioSql.StudioSql
         return Stream.fromPubSub(studio.store.events).pipe(
           Stream.filter((e) => e._tag === "ProcessSnapshot"),
           Stream.mapEffect(() =>
-            StudioStore
-              .processSeries(METRICS_HISTORY_MS)
-              .pipe(
-                Effect.map((series) => {
-                  const info = StudioProcess.processInfo()
-                  const html = Html
-                    .text(<Ui.SystemStatsView info={info} series={series} />)
-                    .replace(/\n/g, "")
-                  return {
-                    event: "datastar-patch-elements",
-                    data: `selector #system-container\nmode inner\nelements ${html}`,
-                  }
-                }),
-                Effect.provideService(StudioSql.StudioSql, sql),
-              )
+            StudioStore.processSeries(METRICS_HISTORY_MS).pipe(
+              Effect.map((series) => {
+                const info = StudioProcess.processInfo()
+                const html = Html.text(
+                  <Ui.SystemStatsView
+                    info={info}
+                    series={series}
+                  />,
+                ).replace(/\n/g, "")
+                return {
+                  event: "datastar-patch-elements",
+                  data: `selector #system-container\nmode inner\nelements ${html}`,
+                }
+              }),
+              Effect.provideService(StudioSql.StudioSql, sql),
+            ),
           ),
         )
       }),
@@ -777,15 +813,16 @@ export default Route.map({
   ),
 
   "/services": Route.get(
-    Route.html(function*() {
+    Route.html(function* () {
       const studio = yield* StudioContext.Studio
       const ctx = yield* Effect.context<never>()
       const services = Ui.collectServices(ctx.mapUnsafe)
       return (
-        <Ui.Shell prefix={studio.path} active="services">
-          <div class="tab-header">
-            Services ({services.length})
-          </div>
+        <Ui.Shell
+          prefix={studio.path}
+          active="services"
+        >
+          <div class="tab-header">Services ({services.length})</div>
           <div class="tab-body">
             <Ui.ServiceList services={services} />
           </div>
@@ -796,18 +833,16 @@ export default Route.map({
 })
 
 function traceData(traceId: string) {
-  return Effect
-    .gen(function*() {
-      yield* StudioStore.flushWrites()
-      const spans = yield* StudioStore.spansByTraceId(traceId)
-      const logs = yield* StudioStore.logsByTraceId(traceId)
-      return { spans, logs }
-    })
-    .pipe(Effect.withTracerEnabled(false))
+  return Effect.gen(function* () {
+    yield* StudioStore.flushWrites()
+    const spans = yield* StudioStore.spansByTraceId(traceId)
+    const logs = yield* StudioStore.logsByTraceId(traceId)
+    return { spans, logs }
+  }).pipe(Effect.withTracerEnabled(false))
 }
 
 function renderTraceDetail(traceId: string) {
-  return Effect.gen(function*() {
+  return Effect.gen(function* () {
     const studio = yield* StudioContext.Studio
     const data = yield* traceData(traceId)
     return (
@@ -866,57 +901,54 @@ function logJson(log: StudioStore.LogEntry) {
 }
 
 function renderFiberDetail(fiberName: string) {
-  return Effect
-    .gen(function*() {
-      const studio = yield* StudioContext.Studio
-      const sql = yield* StudioSql.StudioSql
-      yield* StudioStore.flushWrites()
-      const logRows = yield* sql<StudioStore.LogRow>`SELECT * FROM Log
+  return Effect.gen(function* () {
+    const studio = yield* StudioContext.Studio
+    const sql = yield* StudioSql.StudioSql
+    yield* StudioStore.flushWrites()
+    const logRows = yield* sql<StudioStore.LogRow>`SELECT * FROM Log
       WHERE fiberId = ${fiberName} ORDER BY rowid`
-      const logs = logRows.map(StudioStore.deserializeLog)
-      const spanRows = yield* sql<StudioStore.SpanRow>`SELECT * FROM Span
+    const logs = logRows.map(StudioStore.deserializeLog)
+    const spanRows = yield* sql<StudioStore.SpanRow>`SELECT * FROM Span
       WHERE fiberId = ${fiberName} ORDER BY rowid`
-      const spans = spanRows.map(StudioStore.deserializeSpan)
-      const hasRecent = logs.some((log) => Date.now() - log.timestamp < 5000)
+    const spans = spanRows.map(StudioStore.deserializeSpan)
+    const hasRecent = logs.some((log) => Date.now() - log.timestamp < 5000)
 
-      const parents: Array<string> = []
-      const visited = new Set<string>()
-      let current = fiberName
-      while (true) {
-        const rows = yield* sql<StudioStore.FiberRow>`SELECT * FROM Fiber
+    const parents: Array<string> = []
+    const visited = new Set<string>()
+    let current = fiberName
+    while (true) {
+      const rows = yield* sql<StudioStore.FiberRow>`SELECT * FROM Fiber
         WHERE id = ${current}`
-        if (rows.length === 0 || !rows[0].parentId) break
-        const parentId = rows[0].parentId
-        if (visited.has(parentId)) break
-        parents.push(parentId)
-        visited.add(parentId)
-        current = parentId
-      }
-      parents.reverse()
+      if (rows.length === 0 || !rows[0].parentId) break
+      const parentId = rows[0].parentId
+      if (visited.has(parentId)) break
+      parents.push(parentId)
+      visited.add(parentId)
+      current = parentId
+    }
+    parents.reverse()
 
-      const fiberRows = yield* sql<StudioStore.FiberRow>`SELECT * FROM Fiber
+    const fiberRows = yield* sql<StudioStore.FiberRow>`SELECT * FROM Fiber
       WHERE id = ${fiberName}`
-      const context: StudioStore.FiberContext | undefined = fiberRows.length > 0
+    const context: StudioStore.FiberContext | undefined =
+      fiberRows.length > 0
         ? {
-          spanName: fiberRows[0].spanName ?? undefined,
-          traceId: fiberRows[0].traceId != null
-            ? String(fiberRows[0].traceId)
-            : undefined,
-          annotations: JSON.parse(fiberRows[0].annotations),
-        }
+            spanName: fiberRows[0].spanName ?? undefined,
+            traceId: fiberRows[0].traceId != null ? String(fiberRows[0].traceId) : undefined,
+            annotations: JSON.parse(fiberRows[0].annotations),
+          }
         : undefined
 
-      return (
-        <Ui.FiberDetail
-          prefix={studio.path}
-          fiberId={fiberName}
-          logs={logs}
-          spans={spans}
-          status={hasRecent ? "alive" : "dead"}
-          parents={parents}
-          context={context}
-        />
-      )
-    })
-    .pipe(Effect.withTracerEnabled(false))
+    return (
+      <Ui.FiberDetail
+        prefix={studio.path}
+        fiberId={fiberName}
+        logs={logs}
+        spans={spans}
+        status={hasRecent ? "alive" : "dead"}
+        parents={parents}
+        context={context}
+      />
+    )
+  }).pipe(Effect.withTracerEnabled(false))
 }

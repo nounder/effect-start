@@ -1,8 +1,8 @@
 import * as test from "bun:test"
-import * as Html from "effect-start/Html"
-import { JSDOM } from "jsdom"
 import type * as Engine from "effect-start/datastar"
+import * as Html from "effect-start/Html"
 import type { JSX } from "effect-start/jsx-runtime"
+import { JSDOM } from "jsdom"
 
 const dom = new JSDOM("<!DOCTYPE html><html><body></body></html>", {
   url: "http://localhost",
@@ -83,18 +83,12 @@ test.describe("datastar jsx", () => {
   test.it("data-init function argument is typed as DataEvent", () => {
     const props: JSX.IntrinsicElements["div"] = {
       "data-init": (e) => {
-        test
-          .expectTypeOf(e)
-          .toMatchTypeOf<Engine.DataEvent>()
-        test
-          .expectTypeOf(e.target)
-          .toMatchTypeOf<Engine.HTMLOrSVG>()
+        test.expectTypeOf(e).toMatchTypeOf<Engine.DataEvent>()
+        test.expectTypeOf(e.target).toMatchTypeOf<Engine.HTMLOrSVG>()
       },
     }
 
-    test
-      .expect(props)
-      .toBeDefined()
+    test.expect(props).toBeDefined()
   })
 })
 
@@ -109,12 +103,8 @@ test.describe("signals", () => {
       </div>
     `)
 
-    test
-      .expect(c.querySelector("#count")!.textContent)
-      .toBe("0")
-    test
-      .expect(c.querySelector("#name")!.textContent)
-      .toBe("alice")
+    test.expect(c.querySelector("#count")!.textContent).toBe("0")
+    test.expect(c.querySelector("#name")!.textContent).toBe("alice")
   })
 
   test.it("initializes with key form", async () => {
@@ -125,9 +115,7 @@ test.describe("signals", () => {
       </div>
     `)
 
-    test
-      .expect(c.querySelector("span")!.textContent)
-      .toBe("42")
+    test.expect(c.querySelector("span")!.textContent).toBe("42")
   })
 
   test.it("ifmissing does not overwrite existing", async () => {
@@ -140,12 +128,8 @@ test.describe("signals", () => {
       </div>
     `)
 
-    test
-      .expect(c.querySelector("#existing")!.textContent)
-      .toBe("keep")
-    test
-      .expect(c.querySelector("#fresh")!.textContent)
-      .toBe("new")
+    test.expect(c.querySelector("#existing")!.textContent).toBe("keep")
+    test.expect(c.querySelector("#fresh")!.textContent).toBe("new")
   })
 
   test.it("ifmissing with function form and __ifmissing modifier", async () => {
@@ -158,12 +142,8 @@ test.describe("signals", () => {
       </div>
     `)
 
-    test
-      .expect(c.querySelector("#existing")!.textContent)
-      .toBe("keep")
-    test
-      .expect(c.querySelector("#fresh")!.textContent)
-      .toBe("new")
+    test.expect(c.querySelector("#existing")!.textContent).toBe("keep")
+    test.expect(c.querySelector("#fresh")!.textContent).toBe("new")
   })
 
   test.it("initializes nested objects", async () => {
@@ -174,12 +154,8 @@ test.describe("signals", () => {
       </div>
     `)
 
-    test
-      .expect(c.querySelector("#name")!.textContent)
-      .toBe("bob")
-    test
-      .expect(c.querySelector("#age")!.textContent)
-      .toBe("30")
+    test.expect(c.querySelector("#name")!.textContent).toBe("bob")
+    test.expect(c.querySelector("#age")!.textContent).toBe("30")
   })
 
   test.it("initializes from function expression and stays reactive", async () => {
@@ -190,18 +166,12 @@ test.describe("signals", () => {
       </div>
     `)
 
-    test
-      .expect(c.querySelector("#count")!.textContent)
-      .toBe("10")
-    test
-      .expect(c.querySelector("#name")!.textContent)
-      .toBe("eve")
+    test.expect(c.querySelector("#count")!.textContent).toBe("10")
+    test.expect(c.querySelector("#name")!.textContent).toBe("eve")
 
     await setSignals({ fnCount: 99 })
 
-    test
-      .expect(c.querySelector("#count")!.textContent)
-      .toBe("99")
+    test.expect(c.querySelector("#count")!.textContent).toBe("99")
   })
 
   test.it("initializes with key form function expression and stays reactive", async () => {
@@ -212,15 +182,11 @@ test.describe("signals", () => {
       </div>
     `)
 
-    test
-      .expect(c.querySelector("span")!.textContent)
-      .toBe("99")
+    test.expect(c.querySelector("span")!.textContent).toBe("99")
 
     await setSignals({ fnVal: 200 })
 
-    test
-      .expect(c.querySelector("span")!.textContent)
-      .toBe("200")
+    test.expect(c.querySelector("span")!.textContent).toBe("200")
   })
 
   test.it("deletes keys set to null via data-signals", async () => {
@@ -230,15 +196,11 @@ test.describe("signals", () => {
       </div>
     `)
 
-    test
-      .expect(JSON.parse(c.querySelector("pre")!.textContent || "{}").toDelete)
-      .toBe("exists")
+    test.expect(JSON.parse(c.querySelector("pre")!.textContent || "{}").toDelete).toBe("exists")
 
     await setSignals({ toDelete: null })
 
-    test
-      .expect(JSON.parse(c.querySelector("pre")!.textContent || "{}").toDelete)
-      .toBeUndefined()
+    test.expect(JSON.parse(c.querySelector("pre")!.textContent || "{}").toDelete).toBeUndefined()
   })
 })
 
@@ -252,9 +214,7 @@ test.describe("text", () => {
       </div>
     `)
 
-    test
-      .expect(c.querySelector("span")!.textContent)
-      .toBe("hello")
+    test.expect(c.querySelector("span")!.textContent).toBe("hello")
   })
 
   test.it("updates reactively", async () => {
@@ -264,15 +224,11 @@ test.describe("text", () => {
       </div>
     `)
 
-    test
-      .expect(c.querySelector("span")!.textContent)
-      .toBe("before")
+    test.expect(c.querySelector("span")!.textContent).toBe("before")
 
     await setSignals({ textLabel: "after" })
 
-    test
-      .expect(c.querySelector("span")!.textContent)
-      .toBe("after")
+    test.expect(c.querySelector("span")!.textContent).toBe("after")
   })
 
   test.it("reads nested signal paths", async () => {
@@ -282,9 +238,7 @@ test.describe("text", () => {
       </div>
     `)
 
-    test
-      .expect(c.querySelector("span")!.textContent)
-      .toBe("bob")
+    test.expect(c.querySelector("span")!.textContent).toBe("bob")
   })
 })
 
@@ -299,16 +253,11 @@ test.describe("show", () => {
     `)
     const el = c.querySelector("[data-show]") as HTMLElement
 
-    test
-      .expect(el.style.display)
-      .toBe("none")
+    test.expect(el.style.display).toBe("none")
 
     await setSignals({ visible: true })
 
-    test
-      .expect(el.style.display)
-      .not
-      .toBe("none")
+    test.expect(el.style.display).not.toBe("none")
   })
 })
 
@@ -323,15 +272,11 @@ test.describe("effect", () => {
       </div>
     `)
 
-    test
-      .expect(c.querySelector("span")!.textContent)
-      .toBe("0")
+    test.expect(c.querySelector("span")!.textContent).toBe("0")
 
     await setSignals({ effectCounter: 5 })
 
-    test
-      .expect(c.querySelector("span")!.textContent)
-      .toBe("10")
+    test.expect(c.querySelector("span")!.textContent).toBe("10")
   })
 
   test.it("tracks multiple dependencies", async () => {
@@ -342,21 +287,15 @@ test.describe("effect", () => {
       </div>
     `)
 
-    test
-      .expect(c.querySelector("span")!.textContent)
-      .toBe("3")
+    test.expect(c.querySelector("span")!.textContent).toBe("3")
 
     await setSignals({ effectA: 10 })
 
-    test
-      .expect(c.querySelector("span")!.textContent)
-      .toBe("12")
+    test.expect(c.querySelector("span")!.textContent).toBe("12")
 
     await setSignals({ effectB: 20 })
 
-    test
-      .expect(c.querySelector("span")!.textContent)
-      .toBe("30")
+    test.expect(c.querySelector("span")!.textContent).toBe("30")
   })
 })
 
@@ -371,9 +310,7 @@ test.describe("computed", () => {
       </div>
     `)
 
-    test
-      .expect(c.querySelector("span")!.textContent)
-      .toBe("5")
+    test.expect(c.querySelector("span")!.textContent).toBe("5")
   })
 
   test.it("updates when deps change", async () => {
@@ -384,15 +321,11 @@ test.describe("computed", () => {
       </div>
     `)
 
-    test
-      .expect(c.querySelector("span")!.textContent)
-      .toBe("20")
+    test.expect(c.querySelector("span")!.textContent).toBe("20")
 
     await setSignals({ compX: 5 })
 
-    test
-      .expect(c.querySelector("span")!.textContent)
-      .toBe("10")
+    test.expect(c.querySelector("span")!.textContent).toBe("10")
   })
 
   test.it("creates multiple computeds from object", async () => {
@@ -404,21 +337,13 @@ test.describe("computed", () => {
       </div>
     `)
 
-    test
-      .expect(c.querySelector("#double")!.textContent)
-      .toBe("10")
-    test
-      .expect(c.querySelector("#triple")!.textContent)
-      .toBe("15")
+    test.expect(c.querySelector("#double")!.textContent).toBe("10")
+    test.expect(c.querySelector("#triple")!.textContent).toBe("15")
 
     await setSignals({ base: 10 })
 
-    test
-      .expect(c.querySelector("#double")!.textContent)
-      .toBe("20")
-    test
-      .expect(c.querySelector("#triple")!.textContent)
-      .toBe("30")
+    test.expect(c.querySelector("#double")!.textContent).toBe("20")
+    test.expect(c.querySelector("#triple")!.textContent).toBe("30")
   })
 
   test.it("chained computed depends on another computed", async () => {
@@ -431,21 +356,13 @@ test.describe("computed", () => {
       </div>
     `)
 
-    test
-      .expect(c.querySelector("#squared")!.textContent)
-      .toBe("9")
-    test
-      .expect(c.querySelector("#quad")!.textContent)
-      .toBe("81")
+    test.expect(c.querySelector("#squared")!.textContent).toBe("9")
+    test.expect(c.querySelector("#quad")!.textContent).toBe("81")
 
     await setSignals({ compN: 2 })
 
-    test
-      .expect(c.querySelector("#squared")!.textContent)
-      .toBe("4")
-    test
-      .expect(c.querySelector("#quad")!.textContent)
-      .toBe("16")
+    test.expect(c.querySelector("#squared")!.textContent).toBe("4")
+    test.expect(c.querySelector("#quad")!.textContent).toBe("16")
   })
 
   test.it("key form works with e.signals syntax", async () => {
@@ -456,15 +373,11 @@ test.describe("computed", () => {
       </div>
     `)
 
-    test
-      .expect(c.querySelector("span")!.textContent)
-      .toBe("64")
+    test.expect(c.querySelector("span")!.textContent).toBe("64")
 
     await setSignals({ compP: 2 })
 
-    test
-      .expect(c.querySelector("span")!.textContent)
-      .toBe("8")
+    test.expect(c.querySelector("span")!.textContent).toBe("8")
   })
 
   test.it("object form works with e.signals syntax", async () => {
@@ -475,15 +388,11 @@ test.describe("computed", () => {
       </div>
     `)
 
-    test
-      .expect(c.querySelector("span")!.textContent)
-      .toBe("64")
+    test.expect(c.querySelector("span")!.textContent).toBe("64")
 
     await setSignals({ compQ: 2 })
 
-    test
-      .expect(c.querySelector("span")!.textContent)
-      .toBe("8")
+    test.expect(c.querySelector("span")!.textContent).toBe("8")
   })
 
   test.it("rendered object value works with function leaves", async () => {
@@ -516,21 +425,13 @@ test.describe("computed", () => {
       ),
     )
 
-    test
-      .expect(c.querySelector("#listening")!.textContent)
-      .toBe("false")
-    test
-      .expect(c.querySelector("#status")!.textContent)
-      .toBe("Idle")
+    test.expect(c.querySelector("#listening")!.textContent).toBe("false")
+    test.expect(c.querySelector("#status")!.textContent).toBe("Idle")
 
     await setSignals({ speechState: "speaking" })
 
-    test
-      .expect(c.querySelector("#listening")!.textContent)
-      .toBe("true")
-    test
-      .expect(c.querySelector("#status")!.textContent)
-      .toBe("Speaking")
+    test.expect(c.querySelector("#listening")!.textContent).toBe("true")
+    test.expect(c.querySelector("#status")!.textContent).toBe("Speaking")
   })
 })
 
@@ -545,15 +446,11 @@ test.describe("attr", () => {
     `)
     const el = c.querySelector("a")!
 
-    test
-      .expect(el.getAttribute("href"))
-      .toBe("/foo")
+    test.expect(el.getAttribute("href")).toBe("/foo")
 
     await setSignals({ href: "/bar" })
 
-    test
-      .expect(el.getAttribute("href"))
-      .toBe("/bar")
+    test.expect(el.getAttribute("href")).toBe("/bar")
   })
 
   test.it("removes attribute when false", async () => {
@@ -563,9 +460,7 @@ test.describe("attr", () => {
       </div>
     `)
 
-    test
-      .expect(c.querySelector("button")!.hasAttribute("disabled"))
-      .toBe(false)
+    test.expect(c.querySelector("button")!.hasAttribute("disabled")).toBe(false)
   })
 
   test.it("sets multiple attributes from object expression", async () => {
@@ -576,12 +471,8 @@ test.describe("attr", () => {
     `)
     const el = c.querySelector("[data-attr]")!
 
-    test
-      .expect(el.getAttribute("id"))
-      .toBe("test-id")
-    test
-      .expect(el.getAttribute("title"))
-      .toBe("tip")
+    test.expect(el.getAttribute("id")).toBe("test-id")
+    test.expect(el.getAttribute("title")).toBe("tip")
   })
 
   test.it("serializes object values as JSON", async () => {
@@ -591,11 +482,7 @@ test.describe("attr", () => {
       </div>
     `)
 
-    test
-      .expect(c.querySelector("#cfg")!.getAttribute("data-config"))
-      .toBe(
-        "{\"x\":1}",
-      )
+    test.expect(c.querySelector("#cfg")!.getAttribute("data-config")).toBe('{"x":1}')
   })
 
   test.it("key form works with function expression", async () => {
@@ -613,15 +500,11 @@ test.describe("attr", () => {
       ),
     )
 
-    test
-      .expect(c.querySelector("#btn")!.hasAttribute("disabled"))
-      .toBe(false)
+    test.expect(c.querySelector("#btn")!.hasAttribute("disabled")).toBe(false)
 
     await setSignals({ disabled: true })
 
-    test
-      .expect(c.querySelector("#btn")!.hasAttribute("disabled"))
-      .toBe(true)
+    test.expect(c.querySelector("#btn")!.hasAttribute("disabled")).toBe(true)
   })
 
   test.it("rendered object value works with function leaves", async () => {
@@ -643,21 +526,13 @@ test.describe("attr", () => {
     )
     const el = c.querySelector("#lnk")!
 
-    test
-      .expect(el.getAttribute("title"))
-      .toBe("hi")
-    test
-      .expect(el.getAttribute("aria-disabled"))
-      .toBe(null)
+    test.expect(el.getAttribute("title")).toBe("hi")
+    test.expect(el.getAttribute("aria-disabled")).toBe(null)
 
     await setSignals({ tip: "bye", banned: true })
 
-    test
-      .expect(el.getAttribute("title"))
-      .toBe("bye")
-    test
-      .expect(el.getAttribute("aria-disabled"))
-      .toBe("")
+    test.expect(el.getAttribute("title")).toBe("bye")
+    test.expect(el.getAttribute("aria-disabled")).toBe("")
   })
 })
 
@@ -672,15 +547,11 @@ test.describe("class", () => {
     `)
     const el = c.querySelector("#cls")!
 
-    test
-      .expect(el.classList.contains("active"))
-      .toBe(false)
+    test.expect(el.classList.contains("active")).toBe(false)
 
     await setSignals({ active: true })
 
-    test
-      .expect(el.classList.contains("active"))
-      .toBe(true)
+    test.expect(el.classList.contains("active")).toBe(true)
   })
 
   test.it("handles multiple classes from object expression", async () => {
@@ -691,12 +562,8 @@ test.describe("class", () => {
     `)
     const el = c.querySelector("[data-class]")!
 
-    test
-      .expect(el.classList.contains("bold"))
-      .toBe(true)
-    test
-      .expect(el.classList.contains("italic"))
-      .toBe(false)
+    test.expect(el.classList.contains("bold")).toBe(true)
+    test.expect(el.classList.contains("italic")).toBe(false)
   })
 
   test.it("toggles space-separated classes", async () => {
@@ -707,18 +574,12 @@ test.describe("class", () => {
     `)
     const el = c.querySelector("[data-class]")!
 
-    test
-      .expect(el.classList.contains("font-bold"))
-      .toBe(true)
-    test
-      .expect(el.classList.contains("text-red"))
-      .toBe(true)
+    test.expect(el.classList.contains("font-bold")).toBe(true)
+    test.expect(el.classList.contains("text-red")).toBe(true)
 
     await setSignals({ multi: false })
 
-    test
-      .expect(el.classList.contains("font-bold"))
-      .toBe(false)
+    test.expect(el.classList.contains("font-bold")).toBe(false)
   })
 
   test.it("key form works with function expression", async () => {
@@ -737,15 +598,11 @@ test.describe("class", () => {
     )
     const el = c.querySelector("#cls")!
 
-    test
-      .expect(el.classList.contains("active"))
-      .toBe(false)
+    test.expect(el.classList.contains("active")).toBe(false)
 
     await setSignals({ showActive: true })
 
-    test
-      .expect(el.classList.contains("active"))
-      .toBe(true)
+    test.expect(el.classList.contains("active")).toBe(true)
   })
 
   test.it("rendered object value works with function leaves", async () => {
@@ -767,21 +624,13 @@ test.describe("class", () => {
     )
     const el = c.querySelector("#cls")!
 
-    test
-      .expect(el.classList.contains("bold"))
-      .toBe(true)
-    test
-      .expect(el.classList.contains("italic"))
-      .toBe(false)
+    test.expect(el.classList.contains("bold")).toBe(true)
+    test.expect(el.classList.contains("italic")).toBe(false)
 
     await setSignals({ bold: false, italic: true })
 
-    test
-      .expect(el.classList.contains("bold"))
-      .toBe(false)
-    test
-      .expect(el.classList.contains("italic"))
-      .toBe(true)
+    test.expect(el.classList.contains("bold")).toBe(false)
+    test.expect(el.classList.contains("italic")).toBe(true)
   })
 })
 
@@ -796,15 +645,11 @@ test.describe("style", () => {
     `)
     const el = c.querySelector("#styled") as HTMLElement
 
-    test
-      .expect(el.style.fontSize)
-      .toBe("12px")
+    test.expect(el.style.fontSize).toBe("12px")
 
     await setSignals({ fontSize: "20px" })
 
-    test
-      .expect(el.style.fontSize)
-      .toBe("20px")
+    test.expect(el.style.fontSize).toBe("20px")
   })
 
   test.it("sets multiple styles from object", async () => {
@@ -815,12 +660,8 @@ test.describe("style", () => {
     `)
     const el = c.querySelector("[data-style]") as HTMLElement
 
-    test
-      .expect(el.style.width)
-      .toBe("100px")
-    test
-      .expect(el.style.height)
-      .toBe("50px")
+    test.expect(el.style.width).toBe("100px")
+    test.expect(el.style.height).toBe("50px")
   })
 
   test.it("key form works with function expression", async () => {
@@ -839,15 +680,11 @@ test.describe("style", () => {
     )
     const el = c.querySelector("#styled") as HTMLElement
 
-    test
-      .expect(el.style.fontSize)
-      .toBe("12px")
+    test.expect(el.style.fontSize).toBe("12px")
 
     await setSignals({ sz: "24px" })
 
-    test
-      .expect(el.style.fontSize)
-      .toBe("24px")
+    test.expect(el.style.fontSize).toBe("24px")
   })
 
   test.it("rendered object value works with function leaves", async () => {
@@ -869,21 +706,13 @@ test.describe("style", () => {
     )
     const el = c.querySelector("#styled") as HTMLElement
 
-    test
-      .expect(el.style.width)
-      .toBe("100px")
-    test
-      .expect(el.style.height)
-      .toBe("50px")
+    test.expect(el.style.width).toBe("100px")
+    test.expect(el.style.height).toBe("50px")
 
     await setSignals({ wide: "200px", tall: "75px" })
 
-    test
-      .expect(el.style.width)
-      .toBe("200px")
-    test
-      .expect(el.style.height)
-      .toBe("75px")
+    test.expect(el.style.width).toBe("200px")
+    test.expect(el.style.height).toBe("75px")
   })
 })
 
@@ -903,9 +732,7 @@ test.describe("on", () => {
     btn.click()
     btn.click()
 
-    test
-      .expect(span.textContent)
-      .toBe("3")
+    test.expect(span.textContent).toBe("3")
   })
 
   test.it("supports function form", async () => {
@@ -920,9 +747,7 @@ test.describe("on", () => {
     )
     c.querySelector("button")!.click()
 
-    test
-      .expect(clicked)
-      .toBe(true)
+    test.expect(clicked).toBe(true)
 
     delete (globalThis as any).__testClick
   })
@@ -938,9 +763,7 @@ test.describe("on", () => {
     btn.click()
     btn.click()
 
-    test
-      .expect(c.querySelector("span")!.textContent)
-      .toBe("2")
+    test.expect(c.querySelector("span")!.textContent).toBe("2")
   })
 
   test.it("prevent modifier prevents default", async () => {
@@ -954,9 +777,7 @@ test.describe("on", () => {
     `)
     c.querySelector("button")!.click()
 
-    test
-      .expect(c.querySelector("span")!.textContent)
-      .toBe("true")
+    test.expect(c.querySelector("span")!.textContent).toBe("true")
   })
 
   test.it("stop modifier stops propagation", async () => {
@@ -971,12 +792,8 @@ test.describe("on", () => {
     `)
     c.querySelector("button")!.click()
 
-    test
-      .expect(c.querySelector("#child")!.textContent)
-      .toBe("true")
-    test
-      .expect(c.querySelector("#parent")!.textContent)
-      .toBe("false")
+    test.expect(c.querySelector("#child")!.textContent).toBe("true")
+    test.expect(c.querySelector("#parent")!.textContent).toBe("false")
   })
 
   test.it("once modifier fires only once", async () => {
@@ -991,9 +808,7 @@ test.describe("on", () => {
     btn.click()
     btn.click()
 
-    test
-      .expect(c.querySelector("span")!.textContent)
-      .toBe("1")
+    test.expect(c.querySelector("span")!.textContent).toBe("1")
   })
 
   test.it("outside modifier fires on clicks outside", async () => {
@@ -1005,9 +820,7 @@ test.describe("on", () => {
     `)
     document.body.click()
 
-    test
-      .expect(c.querySelector("span")!.textContent)
-      .toBe("true")
+    test.expect(c.querySelector("span")!.textContent).toBe("true")
   })
 
   test.it("window modifier listens on window", async () => {
@@ -1019,9 +832,7 @@ test.describe("on", () => {
     `)
     window.dispatchEvent(new Event("custom-evt"))
 
-    test
-      .expect(c.querySelector("span")!.textContent)
-      .toBe("true")
+    test.expect(c.querySelector("span")!.textContent).toBe("true")
   })
 
   test.it("debounce modifier delays handler", async () => {
@@ -1037,15 +848,11 @@ test.describe("on", () => {
     btn.click()
     btn.click()
 
-    test
-      .expect(c.querySelector("span")!.textContent)
-      .toBe("0")
+    test.expect(c.querySelector("span")!.textContent).toBe("0")
 
     test.jest.advanceTimersByTime(50)
 
-    test
-      .expect(c.querySelector("span")!.textContent)
-      .toBe("1")
+    test.expect(c.querySelector("span")!.textContent).toBe("1")
 
     test.jest.useRealTimers()
   })
@@ -1060,16 +867,12 @@ test.describe("on", () => {
     const btn = c.querySelector("button")!
     btn.click()
 
-    test
-      .expect(c.querySelector("span")!.textContent)
-      .toBe("1")
+    test.expect(c.querySelector("span")!.textContent).toBe("1")
 
     btn.click()
     btn.click()
 
-    test
-      .expect(c.querySelector("span")!.textContent)
-      .toBe("1")
+    test.expect(c.querySelector("span")!.textContent).toBe("1")
   })
 
   test.it("form submit auto-prevents default", async () => {
@@ -1081,9 +884,7 @@ test.describe("on", () => {
     `)
     c.querySelector("form")!.dispatchEvent(new Event("submit"))
 
-    test
-      .expect(c.querySelector("span")!.textContent)
-      .toBe("true")
+    test.expect(c.querySelector("span")!.textContent).toBe("true")
   })
 })
 
@@ -1099,16 +900,12 @@ test.describe("bind", () => {
     `)
     const el = c.querySelector("input")!
 
-    test
-      .expect(el.value)
-      .toBe("initial")
+    test.expect(el.value).toBe("initial")
 
     el.value = "changed"
     el.dispatchEvent(new Event("input"))
 
-    test
-      .expect(c.querySelector("span")!.textContent)
-      .toBe("changed")
+    test.expect(c.querySelector("span")!.textContent).toBe("changed")
   })
 
   test.it("two-way binds text input (value form)", async () => {
@@ -1118,9 +915,7 @@ test.describe("bind", () => {
       </div>
     `)
 
-    test
-      .expect(c.querySelector("input")!.value)
-      .toBe("alice")
+    test.expect(c.querySelector("input")!.value).toBe("alice")
   })
 
   test.it("binds checkbox", async () => {
@@ -1132,16 +927,12 @@ test.describe("bind", () => {
     `)
     const el = c.querySelector("input")!
 
-    test
-      .expect(el.checked)
-      .toBe(false)
+    test.expect(el.checked).toBe(false)
 
     el.checked = true
     el.dispatchEvent(new Event("change"))
 
-    test
-      .expect(c.querySelector("span")!.textContent)
-      .toBe("true")
+    test.expect(c.querySelector("span")!.textContent).toBe("true")
   })
 
   test.it("binds number input", async () => {
@@ -1153,16 +944,12 @@ test.describe("bind", () => {
     `)
     const el = c.querySelector("input")!
 
-    test
-      .expect(el.value)
-      .toBe("25")
+    test.expect(el.value).toBe("25")
 
     el.value = "30"
     el.dispatchEvent(new Event("input"))
 
-    test
-      .expect(c.querySelector("span")!.textContent)
-      .toBe("30")
+    test.expect(c.querySelector("span")!.textContent).toBe("30")
   })
 
   test.it("binds select", async () => {
@@ -1176,9 +963,7 @@ test.describe("bind", () => {
       </div>
     `)
 
-    test
-      .expect(c.querySelector("select")!.value)
-      .toBe("blue")
+    test.expect(c.querySelector("select")!.value).toBe("blue")
   })
 
   test.it("binds radio buttons", async () => {
@@ -1192,22 +977,14 @@ test.describe("bind", () => {
     `)
     const radios = c.querySelectorAll<HTMLInputElement>("input")
 
-    test
-      .expect(radios[0].checked)
-      .toBe(false)
-    test
-      .expect(radios[1].checked)
-      .toBe(true)
-    test
-      .expect(radios[2].checked)
-      .toBe(false)
+    test.expect(radios[0].checked).toBe(false)
+    test.expect(radios[1].checked).toBe(true)
+    test.expect(radios[2].checked).toBe(false)
 
     radios[2].checked = true
     radios[2].dispatchEvent(new Event("change"))
 
-    test
-      .expect(c.querySelector("span")!.textContent)
-      .toBe("c")
+    test.expect(c.querySelector("span")!.textContent).toBe("c")
   })
 
   test.it("updates element when signal changes", async () => {
@@ -1218,15 +995,11 @@ test.describe("bind", () => {
     `)
     const el = c.querySelector("input")!
 
-    test
-      .expect(el.value)
-      .toBe("old")
+    test.expect(el.value).toBe("old")
 
     await setSignals({ field: "new" })
 
-    test
-      .expect(el.value)
-      .toBe("new")
+    test.expect(el.value).toBe("new")
   })
 })
 
@@ -1242,9 +1015,7 @@ test.describe("ref", () => {
       </div>
     `)
 
-    test
-      .expect(c.querySelector("span")!.textContent)
-      .toBe("true")
+    test.expect(c.querySelector("span")!.textContent).toBe("true")
   })
 
   test.it("stores element reference with value", async () => {
@@ -1256,9 +1027,7 @@ test.describe("ref", () => {
       </div>
     `)
 
-    test
-      .expect(c.querySelector("span")!.textContent)
-      .toBe("true")
+    test.expect(c.querySelector("span")!.textContent).toBe("true")
   })
 })
 
@@ -1273,9 +1042,7 @@ test.describe("init", () => {
       </div>
     `)
 
-    test
-      .expect(c.querySelector("span")!.textContent)
-      .toBe("true")
+    test.expect(c.querySelector("span")!.textContent).toBe("true")
   })
 
   test.it("function form receives event with target element", async () => {
@@ -1286,9 +1053,7 @@ test.describe("init", () => {
       </div>
     `)
 
-    test
-      .expect(c.querySelector("#out")!.textContent)
-      .toBe("SPAN")
+    test.expect(c.querySelector("#out")!.textContent).toBe("SPAN")
   })
 
   test.it("expression form receives el as the element", async () => {
@@ -1299,9 +1064,7 @@ test.describe("init", () => {
       </div>
     `)
 
-    test
-      .expect(c.querySelector("#out")!.textContent)
-      .toBe("SPAN")
+    test.expect(c.querySelector("#out")!.textContent).toBe("SPAN")
   })
 
   test.it("delay modifier delays initialization", async () => {
@@ -1317,15 +1080,11 @@ test.describe("init", () => {
     await Promise.resolve()
     test.jest.advanceTimersByTime(1)
 
-    test
-      .expect(container.querySelector("span")!.textContent)
-      .toBe("false")
+    test.expect(container.querySelector("span")!.textContent).toBe("false")
 
     test.jest.advanceTimersByTime(50)
 
-    test
-      .expect(container.querySelector("span")!.textContent)
-      .toBe("true")
+    test.expect(container.querySelector("span")!.textContent).toBe("true")
 
     test.jest.useRealTimers()
   })
@@ -1348,9 +1107,7 @@ test.describe("on-interval", () => {
     test.jest.advanceTimersByTime(1)
     test.jest.advanceTimersByTime(150)
 
-    test
-      .expect(Number(container.querySelector("span")!.textContent))
-      .toBeGreaterThanOrEqual(2)
+    test.expect(Number(container.querySelector("span")!.textContent)).toBeGreaterThanOrEqual(2)
 
     test.jest.useRealTimers()
   })
@@ -1363,9 +1120,7 @@ test.describe("on-interval", () => {
       </div>
     `)
 
-    test
-      .expect(Number(c.querySelector("span")!.textContent))
-      .toBeGreaterThanOrEqual(1)
+    test.expect(Number(c.querySelector("span")!.textContent)).toBeGreaterThanOrEqual(1)
   })
 })
 
@@ -1381,9 +1136,7 @@ test.describe("indicator", () => {
     `)
     const el = c.querySelector("#ind")!
 
-    test
-      .expect(c.querySelector("span")!.textContent)
-      .toBe("false")
+    test.expect(c.querySelector("span")!.textContent).toBe("false")
 
     document.dispatchEvent(
       new CustomEvent("datastar-fetch", {
@@ -1391,9 +1144,7 @@ test.describe("indicator", () => {
       }),
     )
 
-    test
-      .expect(c.querySelector("span")!.textContent)
-      .toBe("true")
+    test.expect(c.querySelector("span")!.textContent).toBe("true")
 
     document.dispatchEvent(
       new CustomEvent("datastar-fetch", {
@@ -1401,9 +1152,7 @@ test.describe("indicator", () => {
       }),
     )
 
-    test
-      .expect(c.querySelector("span")!.textContent)
-      .toBe("false")
+    test.expect(c.querySelector("span")!.textContent).toBe("false")
   })
 
   test.it("ignores events from other elements", async () => {
@@ -1419,9 +1168,7 @@ test.describe("indicator", () => {
       }),
     )
 
-    test
-      .expect(c.querySelector("span")!.textContent)
-      .toBe("false")
+    test.expect(c.querySelector("span")!.textContent).toBe("false")
   })
 })
 
@@ -1436,12 +1183,8 @@ test.describe("json-signals", () => {
     `)
     const content = JSON.parse(c.querySelector("pre")!.textContent || "{}")
 
-    test
-      .expect(content.jsonX)
-      .toBe(1)
-    test
-      .expect(content.jsonY)
-      .toBe(2)
+    test.expect(content.jsonX).toBe(1)
+    test.expect(content.jsonY).toBe(2)
   })
 
   test.it("terse mode uses compact JSON", async () => {
@@ -1451,10 +1194,7 @@ test.describe("json-signals", () => {
       </div>
     `)
 
-    test
-      .expect(c.querySelector("pre")!.textContent)
-      .not
-      .toContain("\n")
+    test.expect(c.querySelector("pre")!.textContent).not.toContain("\n")
   })
 
   test.it("filters with include regex", async () => {
@@ -1465,15 +1205,9 @@ test.describe("json-signals", () => {
     `)
     const content = JSON.parse(c.querySelector("pre")!.textContent || "{}")
 
-    test
-      .expect(content.prefix_a)
-      .toBe(1)
-    test
-      .expect(content.prefix_b)
-      .toBe(2)
-    test
-      .expect(content.other)
-      .toBeUndefined()
+    test.expect(content.prefix_a).toBe(1)
+    test.expect(content.prefix_b).toBe(2)
+    test.expect(content.other).toBeUndefined()
   })
 
   test.it("updates reactively", async () => {
@@ -1484,15 +1218,11 @@ test.describe("json-signals", () => {
     `)
     const el = c.querySelector("pre")!
 
-    test
-      .expect(JSON.parse(el.textContent || "{}").reactive)
-      .toBe("initial")
+    test.expect(JSON.parse(el.textContent || "{}").reactive).toBe("initial")
 
     await setSignals({ reactive: "updated" })
 
-    test
-      .expect(JSON.parse(el.textContent || "{}").reactive)
-      .toBe("updated")
+    test.expect(JSON.parse(el.textContent || "{}").reactive).toBe("updated")
   })
 })
 
@@ -1509,15 +1239,9 @@ test.describe("actions", () => {
     c.querySelector("button")!.click()
     const content = JSON.parse(c.querySelector("pre")!.textContent || "{}")
 
-    test
-      .expect(content.actA)
-      .toBe(false)
-    test
-      .expect(content.actB)
-      .toBe(false)
-    test
-      .expect(content.actC)
-      .toBe(false)
+    test.expect(content.actA).toBe(false)
+    test.expect(content.actB).toBe(false)
+    test.expect(content.actC).toBe(false)
   })
 
   test.it("toggleAll toggles boolean signals", async () => {
@@ -1530,12 +1254,8 @@ test.describe("actions", () => {
     c.querySelector("button")!.click()
     const content = JSON.parse(c.querySelector("pre")!.textContent || "{}")
 
-    test
-      .expect(content.actX)
-      .toBe(false)
-    test
-      .expect(content.actY)
-      .toBe(true)
+    test.expect(content.actX).toBe(false)
+    test.expect(content.actY).toBe(true)
   })
 })
 
@@ -1554,12 +1274,8 @@ test.describe("data-ignore", () => {
       </div>
     `)
 
-    test
-      .expect(c.querySelector("#sne")!.textContent)
-      .toBe("false")
-    test
-      .expect(c.querySelector("#ci")!.textContent)
-      .toBe("false")
+    test.expect(c.querySelector("#sne")!.textContent).toBe("false")
+    test.expect(c.querySelector("#ci")!.textContent).toBe("false")
   })
 
   test.it("ignores self but not children with __self", async () => {
@@ -1573,12 +1289,8 @@ test.describe("data-ignore", () => {
     `)
     const content = JSON.parse(c.querySelector("pre")!.textContent || "{}")
 
-    test
-      .expect(content.selfOnly)
-      .toBeUndefined()
-    test
-      .expect(content.childOk)
-      .toBe(true)
+    test.expect(content.selfOnly).toBeUndefined()
+    test.expect(content.childOk).toBe(true)
   })
 })
 
@@ -1596,15 +1308,13 @@ test.describe("watcher: patchSignals", () => {
         detail: {
           type: "datastar-patch-signals",
           el: document.body,
-          argsRaw: { signals: "{\"patchedVal\": 123}" },
+          argsRaw: { signals: '{"patchedVal": 123}' },
         },
       }),
     )
     const content = JSON.parse(c.querySelector("pre")!.textContent || "{}")
 
-    test
-      .expect(content.patchedVal)
-      .toBe(123)
+    test.expect(content.patchedVal).toBe(123)
   })
 
   test.it("patches with onlyIfMissing", async () => {
@@ -1619,7 +1329,7 @@ test.describe("watcher: patchSignals", () => {
           type: "datastar-patch-signals",
           el: document.body,
           argsRaw: {
-            signals: "{\"existingVal\": \"overwrite\", \"newVal\": \"added\"}",
+            signals: '{"existingVal": "overwrite", "newVal": "added"}',
             onlyIfMissing: "true",
           },
         },
@@ -1627,12 +1337,8 @@ test.describe("watcher: patchSignals", () => {
     )
     const content = JSON.parse(c.querySelector("pre")!.textContent || "{}")
 
-    test
-      .expect(content.existingVal)
-      .toBe("keep")
-    test
-      .expect(content.newVal)
-      .toBe("added")
+    test.expect(content.existingVal).toBe("keep")
+    test.expect(content.newVal).toBe("added")
   })
 })
 
@@ -1656,11 +1362,9 @@ test.describe("watcher: patchElements", () => {
     target.id = "patch-outer"
     target.textContent = "old"
     document.body.appendChild(target)
-    dispatchPatch({ elements: "<div id=\"patch-outer\">new</div>" })
+    dispatchPatch({ elements: '<div id="patch-outer">new</div>' })
 
-    test
-      .expect(document.getElementById("patch-outer")?.textContent)
-      .toBe("new")
+    test.expect(document.getElementById("patch-outer")?.textContent).toBe("new")
 
     document.getElementById("patch-outer")?.remove()
   })
@@ -1676,9 +1380,7 @@ test.describe("watcher: patchElements", () => {
       elements: "<span>new child</span>",
     })
 
-    test
-      .expect(target.innerHTML)
-      .toContain("new child")
+    test.expect(target.innerHTML).toContain("new child")
 
     target.remove()
   })
@@ -1689,9 +1391,7 @@ test.describe("watcher: patchElements", () => {
     document.body.appendChild(target)
     dispatchPatch({ selector: "#patch-remove", mode: "remove", elements: "" })
 
-    test
-      .expect(document.getElementById("patch-remove"))
-      .toBeNull()
+    test.expect(document.getElementById("patch-remove")).toBeNull()
   })
 
   test.it("append mode adds to end", () => {
@@ -1705,12 +1405,8 @@ test.describe("watcher: patchElements", () => {
       elements: "<span>second</span>",
     })
 
-    test
-      .expect(target.children.length)
-      .toBe(2)
-    test
-      .expect(target.lastElementChild?.textContent)
-      .toBe("second")
+    test.expect(target.children.length).toBe(2)
+    test.expect(target.lastElementChild?.textContent).toBe("second")
 
     target.remove()
   })
@@ -1726,12 +1422,8 @@ test.describe("watcher: patchElements", () => {
       elements: "<span>first</span>",
     })
 
-    test
-      .expect(target.children.length)
-      .toBe(2)
-    test
-      .expect(target.firstElementChild?.textContent)
-      .toBe("first")
+    test.expect(target.children.length).toBe(2)
+    test.expect(target.firstElementChild?.textContent).toBe("first")
 
     target.remove()
   })
@@ -1748,15 +1440,11 @@ test.describe("integration: signals + effect + text", () => {
       </div>
     `)
 
-    test
-      .expect(c.querySelector("span")!.textContent)
-      .toBe("Count is 1")
+    test.expect(c.querySelector("span")!.textContent).toBe("Count is 1")
 
     await setSignals({ intCount: 42 })
 
-    test
-      .expect(c.querySelector("span")!.textContent)
-      .toBe("Count is 42")
+    test.expect(c.querySelector("span")!.textContent).toBe("Count is 42")
   })
 
   test.it("click increments counter and updates display", async () => {
@@ -1769,22 +1457,16 @@ test.describe("integration: signals + effect + text", () => {
     const btn = c.querySelector("button")!
     const span = c.querySelector("span")!
 
-    test
-      .expect(span.textContent)
-      .toBe("0")
+    test.expect(span.textContent).toBe("0")
 
     btn.click()
 
-    test
-      .expect(span.textContent)
-      .toBe("1")
+    test.expect(span.textContent).toBe("1")
 
     btn.click()
     btn.click()
 
-    test
-      .expect(span.textContent)
-      .toBe("3")
+    test.expect(span.textContent).toBe("3")
   })
 
   test.it("bind + text stay in sync", async () => {
@@ -1797,19 +1479,13 @@ test.describe("integration: signals + effect + text", () => {
     const input = c.querySelector("input")!
     const span = c.querySelector("span")!
 
-    test
-      .expect(input.value)
-      .toBe("hello")
-    test
-      .expect(span.textContent)
-      .toBe("hello")
+    test.expect(input.value).toBe("hello")
+    test.expect(span.textContent).toBe("hello")
 
     input.value = "world"
     input.dispatchEvent(new Event("input"))
 
-    test
-      .expect(span.textContent)
-      .toBe("world")
+    test.expect(span.textContent).toBe("world")
   })
 
   test.it("show + class + style driven by same signal", async () => {
@@ -1825,27 +1501,14 @@ test.describe("integration: signals + effect + text", () => {
     `)
     const el = c.querySelector("#target") as HTMLElement
 
-    test
-      .expect(el.style.display)
-      .not
-      .toBe("none")
-    test
-      .expect(el.classList.contains("active"))
-      .toBe(true)
-    test
-      .expect(el.style.opacity)
-      .toBe("1")
+    test.expect(el.style.display).not.toBe("none")
+    test.expect(el.classList.contains("active")).toBe(true)
+    test.expect(el.style.opacity).toBe("1")
 
     await setSignals({ intOn: false })
 
-    test
-      .expect(el.style.display)
-      .toBe("none")
-    test
-      .expect(el.classList.contains("active"))
-      .toBe(false)
-    test
-      .expect(el.style.opacity)
-      .toBe("0")
+    test.expect(el.style.display).toBe("none")
+    test.expect(el.classList.contains("active")).toBe(false)
+    test.expect(el.style.opacity).toBe("0")
   })
 })

@@ -1,6 +1,7 @@
 export const ALPHABET_BASE32_CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
 export const ALPHABET_BASE32_RFC4648 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"
-export const ALPHABET_BASE64_URL = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+export const ALPHABET_BASE64_URL =
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
 export const ALPHABET_HEX = "0123456789abcdef"
 
 interface Snowflake {
@@ -14,13 +15,14 @@ interface Snowflake {
 
 /**
  * Monotonic Snowflake variant:
+ *
  * - 48-bit unix timestamp
  * - 16-bit sequence
- * - sequence resets on timestamp increment
- * - sequence overflow carries into next millisecond
+ * - Sequence resets on timestamp increment
+ * - Sequence overflow carries into next millisecond
  *
- * Snowflake originated at Twitter. We use 7 more bits for timestamp,
- * sacraficing shard bits, to avoid using custom epoch and use unix epoch instead.
+ * Snowflake originated at Twitter. We use 7 more bits for timestamp, sacraficing shard bits, to
+ * avoid using custom epoch and use unix epoch instead.
  */
 function buildSnowflake(): Snowflake {
   const timestampBits = 48n
@@ -31,9 +33,7 @@ function buildSnowflake(): Snowflake {
   const fn = Object.assign(
     (time: number = Date.now()) => {
       const nowMs = BigInt(toSafeTime(time))
-      const timestampMs = nowMs > fn.state.timestampMs
-        ? nowMs
-        : fn.state.timestampMs
+      const timestampMs = nowMs > fn.state.timestampMs ? nowMs : fn.state.timestampMs
 
       if (timestampMs > fn.state.timestampMs) {
         fn.state.timestampMs = timestampMs
@@ -46,8 +46,7 @@ function buildSnowflake(): Snowflake {
         }
       }
 
-      return ((fn.state.timestampMs & timestampMask) << seqBits) |
-        fn.state.sequence
+      return ((fn.state.timestampMs & timestampMask) << seqBits) | fn.state.sequence
     },
     {
       state: {
@@ -61,13 +60,14 @@ function buildSnowflake(): Snowflake {
 }
 
 /**
- * Generate a random string for ids, session tokens, and API keys.
- * It uses human-friendly crockford base32 encoding (5 bit of entropy per char)
+ * Generate a random string for ids, session tokens, and API keys. It uses human-friendly crockford
+ * base32 encoding (5 bit of entropy per char)
  *
  * Minimal recommended length:
- * - public ids: 16 chars (~80 bits)
+ *
+ * - Public ids: 16 chars (~80 bits)
  * - API keys: 32 chars (~160 bits)
- * - session tokens: 32-40 chars (~160-200 bits)
+ * - Session tokens: 32-40 chars (~160-200 bits)
  */
 export function token(stringLength = 32): string {
   if (stringLength <= 0) return ""
@@ -90,8 +90,8 @@ export function bytes(length: number): Uint8Array {
 }
 
 /**
- * Generate a random unsigned bigint from the given number of bytes.
- * Never returns zero. Always same amount of digits.
+ * Generate a random unsigned bigint from the given number of bytes. Never returns zero. Always same
+ * amount of digits.
  */
 export function bigint(bytesLength: number): bigint {
   if (bytesLength <= 0) return 0n
@@ -127,12 +127,12 @@ function uuid4bytes(): Uint8Array {
  * Decode a 48-bit Unix timestamp (ms) from UUID7 or ULID.
  *
  * @example
- * const bytes = Unique.uuid7Bytes()
- * const timestamp = Unique.toTimestamp(bytes)
+ *   const bytes = Unique.uuid7Bytes()
+ *   const timestamp = Unique.toTimestamp(bytes)
  *
  * @example
- * const bytes = Unique.ulidBytes()
- * const timestamp = Unique.toTimestamp(bytes)
+ *   const bytes = Unique.ulidBytes()
+ *   const timestamp = Unique.toTimestamp(bytes)
  */
 export function toTimestamp(bytesLength: Uint8Array): number {
   if (bytesLength.length < 6) return 0
@@ -174,7 +174,7 @@ export function uuid7Bytes(time: number = Date.now()): Uint8Array {
  * Convert UUID bytes to canonical (RFC9562) representation.
  *
  * @example
- * Unique.formatUuid(new Uint8Array(16))
+ *   Unique.formatUuid(new Uint8Array(16))
  */
 export function formatUuid(bytes: Uint8Array): string {
   if (bytes.length === 0) return ""
@@ -246,11 +246,10 @@ export const snowflake = buildSnowflake()
 /**
  * Generate a nanoid-style random string.
  *
- * FUN_FACT: Original nanoid implementation uses base64url alphabet
- * with non-standard custom order where charater form common words found
- * in source code (like use, random, strict) to make gzip/brotli more efficient.
- * It's qt lil opt from the times where web developers
- * were competing to have the smallest possible bundle size.
+ * FUN_FACT: Original nanoid implementation uses base64url alphabet with non-standard custom order
+ * where charater form common words found in source code (like use, random, strict) to make
+ * gzip/brotli more efficient. It's qt lil opt from the times where web developers were competing to
+ * have the smallest possible bundle size.
  */
 export function nanoid(size = 21, alphabet = ALPHABET_BASE64_URL): string {
   if (size <= 0 || alphabet.length === 0) return ""
@@ -272,10 +271,7 @@ export function nanoid(size = 21, alphabet = ALPHABET_BASE64_URL): string {
   return id
 }
 
-function toBase32(
-  bytes: Uint8Array,
-  alphabet = ALPHABET_BASE32_CROCKFORD,
-): string {
+function toBase32(bytes: Uint8Array, alphabet = ALPHABET_BASE32_CROCKFORD): string {
   if (bytes.length === 0) return ""
 
   let result = ""

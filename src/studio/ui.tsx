@@ -10,7 +10,7 @@ const htmlEscapeMap: Record<string, string> = {
   "&": "&amp;",
   "<": "&lt;",
   ">": "&gt;",
-  "\"": "&quot;",
+  '"': "&quot;",
   "'": "&#39;",
 }
 
@@ -26,9 +26,7 @@ export function PreformattedText(props: { text: string; style?: string }) {
   return <pre style={props.style}>{Html.unsafe(toPreHtml(props.text))}</pre>
 }
 
-export function PrettyValue(
-  props: { value: unknown; style?: string; preStyle?: string },
-) {
+export function PrettyValue(props: { value: unknown; style?: string; preStyle?: string }) {
   if (props.value == null) return null
   if (Pretty.isStructuredValue(props.value)) {
     return (
@@ -38,29 +36,16 @@ export function PrettyValue(
       />
     )
   }
-  return (
-    <span style={props.style}>
-      {String(props.value)}
-    </span>
-  )
+  return <span style={props.style}>{String(props.value)}</span>
 }
 
 export type NavTab =
-  | "traces"
-  | "metrics"
-  | "logs"
-  | "errors"
-  | "fibers"
-  | "routes"
-  | "system"
-  | "services"
+  "traces" | "metrics" | "logs" | "errors" | "fibers" | "routes" | "system" | "services"
 
 function Sidebar(props: { prefix: string; active: NavTab }) {
   return (
     <div class="sidebar">
-      <div class="sidebar-title">
-        Effect Studio
-      </div>
+      <div class="sidebar-title">Effect Studio</div>
       <a
         href={`${props.prefix}/traces`}
         class={props.active === "traces" ? "nav-link active" : "nav-link"}
@@ -113,15 +98,14 @@ function Sidebar(props: { prefix: string; active: NavTab }) {
   )
 }
 
-export function Shell(
-  props: { prefix: string; active: NavTab; children: any },
-) {
+export function Shell(props: { prefix: string; active: NavTab; children: any }) {
   return (
     <div class="shell">
-      <Sidebar prefix={props.prefix} active={props.active} />
-      <div class="content">
-        {props.children}
-      </div>
+      <Sidebar
+        prefix={props.prefix}
+        active={props.active}
+      />
+      <div class="content">{props.children}</div>
     </div>
   )
 }
@@ -137,25 +121,20 @@ function levelColor(level: string): string {
 
 export function LogLine(props: { prefix: string; log: StudioStore.LogEntry }) {
   const color = levelColor(props.log.level)
-  const time = new Date(props.log.timestamp)
-    .toLocaleTimeString("en", {
-      hour12: false,
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    })
+  const time = new Date(props.log.timestamp).toLocaleTimeString("en", {
+    hour12: false,
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  })
 
   return (
     <div
       id={`log-${props.log.id}`}
       style="padding:6px 8px;border-bottom:1px solid #1f2937;font-family:monospace;font-size:12px;display:flex;align-items:flex-start;gap:8px"
     >
-      <span style="color:#6b7280;white-space:nowrap">
-        {time}
-      </span>
-      <span
-        style={`color:${color};font-weight:600;width:56px;text-align:left;flex-shrink:0`}
-      >
+      <span style="color:#6b7280;white-space:nowrap">{time}</span>
+      <span style={`color:${color};font-weight:600;width:56px;text-align:left;flex-shrink:0`}>
         {props.log.level}
       </span>
       <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
@@ -169,7 +148,12 @@ export function LogLine(props: { prefix: string; log: StudioStore.LogEntry }) {
             style="color:#ef4444;font-size:11px;margin:0;white-space:pre-wrap;word-break:break-word;font:inherit"
           />
         )}
-        {props.log.resource && <KeyValue label="Resource" value={props.log.resource} />}
+        {props.log.resource && (
+          <KeyValue
+            label="Resource"
+            value={props.log.resource}
+          />
+        )}
         {props.log.instrumentationScope && (
           <KeyValue
             label="Instrumentation scope"
@@ -187,16 +171,16 @@ export function LogLine(props: { prefix: string; log: StudioStore.LogEntry }) {
   )
 }
 
-export function ErrorLine(
-  props: { prefix: string; error: StudioStore.ErrorEntry },
-) {
-  const time = new Date(Number(Unique.snowflake.timestamp(props.error.id)))
-    .toLocaleTimeString("en", {
+export function ErrorLine(props: { prefix: string; error: StudioStore.ErrorEntry }) {
+  const time = new Date(Number(Unique.snowflake.timestamp(props.error.id))).toLocaleTimeString(
+    "en",
+    {
       hour12: false,
       hour: "2-digit",
       minute: "2-digit",
       second: "2-digit",
-    })
+    },
+  )
   const firstLine = props.error.prettyPrint.split("\n")[0] ?? ""
   const tags = props.error.details.map((d) => d.tag).filter(Boolean)
   const allSpans = props.error.details.map((d) => d.span).filter(Boolean)
@@ -205,21 +189,15 @@ export function ErrorLine(
   return (
     <details style="border-bottom:1px solid #1e293b">
       <summary style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12px;font-family:monospace">
-        <span style="color:#6b7280;flex-shrink:0">
-          {time}
-        </span>
-        <span style="color:#fca5a5">
-          {firstLine}
-        </span>
+        <span style="color:#6b7280;flex-shrink:0">{time}</span>
+        <span style="color:#fca5a5">{firstLine}</span>
       </summary>
       <div style="padding:4px 12px 10px;font-size:12px;font-family:monospace">
         {tags.length > 0 && (
           <div style="display:flex;flex-wrap:wrap;gap:4px 12px;margin-bottom:6px">
             {tags.map((t) => (
               <div>
-                <span style="color:#64748b">
-                  tag
-                </span>
+                <span style="color:#64748b">tag</span>
                 <span
                   style="color:#fca5a5;text-decoration:underline;cursor:copy"
                   data-on:click={`(e) => { e.signals.errorSearch = '${t}'; const u = new URL(location.href); u.searchParams.set('errorSearch', '${t}'); e.actions.get(u.toString(), { headers: { Accept: 'text/html' } }) }`}
@@ -234,12 +212,8 @@ export function ErrorLine(
           <div style="display:flex;flex-wrap:wrap;gap:4px 12px;margin-bottom:6px">
             {allSpans.map((s) => (
               <div>
-                <span style="color:#64748b">
-                  span
-                </span>
-                <span style="color:#818cf8">
-                  {s}
-                </span>
+                <span style="color:#64748b">span</span>
+                <span style="color:#818cf8">{s}</span>
               </div>
             ))}
           </div>
@@ -248,12 +222,8 @@ export function ErrorLine(
           <div style="display:flex;flex-wrap:wrap;gap:4px 12px;margin-bottom:6px">
             {allProps.map(([k, v]) => (
               <div>
-                <span style="color:#64748b">
-                  {k}
-                </span>
-                <span style="color:#4b5563">
-                  =
-                </span>
+                <span style="color:#64748b">{k}</span>
+                <span style="color:#4b5563">=</span>
                 <span style="color:#e2e8f0">
                   {typeof v === "object" ? JSON.stringify(v) : String(v)}
                 </span>
@@ -262,9 +232,7 @@ export function ErrorLine(
           </div>
         )}
         <div style="margin-bottom:6px">
-          <span style="color:#64748b">
-            fiber
-          </span>
+          <span style="color:#64748b">fiber</span>
           <a
             href={`${props.prefix}/fibers/${props.error.fiberId.replace("#", "")}`}
             style="color:#9ca3af;text-decoration:none"
@@ -301,19 +269,13 @@ function spanDurationMs(span: Tracing.Span, nowMs: number): number {
   return Math.max(0, nowMs - Number(span.startTime) / 1_000_000)
 }
 
-function traceTimelineMs(
-  spans: Array<Tracing.Span>,
-  root: Tracing.Span,
-  nowMs: number,
-): number {
+function traceTimelineMs(spans: Array<Tracing.Span>, root: Tracing.Span, nowMs: number): number {
   if (root.durationMs != null) return root.durationMs
   const rootStartMs = Number(root.startTime) / 1_000_000
   let maxEndMs = rootStartMs
   for (const span of spans) {
     const startMs = Number(span.startTime) / 1_000_000
-    const endMs = span.durationMs != null
-      ? startMs + span.durationMs
-      : nowMs
+    const endMs = span.durationMs != null ? startMs + span.durationMs : nowMs
     if (endMs > maxEndMs) maxEndMs = endMs
   }
   return Math.max(maxEndMs - rootStartMs, 0.001)
@@ -329,9 +291,7 @@ function KeyValue(props: { label: string; value: unknown }) {
   if (props.value == null) return null
   return (
     <div style="display:flex;align-items:flex-start;gap:8px;padding:4px 0;border-bottom:1px solid #1e293b;font-size:12px">
-      <span style="color:#64748b;min-width:120px">
-        {props.label}
-      </span>
+      <span style="color:#64748b;min-width:120px">{props.label}</span>
       <div style="flex:1;min-width:0">
         <PrettyValue
           value={props.value}
@@ -344,20 +304,10 @@ function KeyValue(props: { label: string; value: unknown }) {
 }
 
 function StatusBadge(props: { status: string }) {
-  const bg = props.status === "ok"
-    ? "#166534"
-    : props.status === "error"
-    ? "#7f1d1d"
-    : "#713f12"
-  const fg = props.status === "ok"
-    ? "#4ade80"
-    : props.status === "error"
-    ? "#fca5a5"
-    : "#fde047"
+  const bg = props.status === "ok" ? "#166534" : props.status === "error" ? "#7f1d1d" : "#713f12"
+  const fg = props.status === "ok" ? "#4ade80" : props.status === "error" ? "#fca5a5" : "#fde047"
   return (
-    <span
-      style={`font-size:11px;padding:2px 8px;border-radius:4px;background:${bg};color:${fg}`}
-    >
+    <span style={`font-size:11px;padding:2px 8px;border-radius:4px;background:${bg};color:${fg}`}>
       {props.status}
     </span>
   )
@@ -371,22 +321,17 @@ interface TreeSpan {
   ancestorHasNextSibling: Array<boolean>
 }
 
-function sortByStartTime(
-  a: Tracing.Span,
-  b: Tracing.Span,
-): number {
+function sortByStartTime(a: Tracing.Span, b: Tracing.Span): number {
   if (a.startTime < b.startTime) return -1
   if (a.startTime > b.startTime) return 1
   return 0
 }
 
-function pickRootSpan(
-  spans: Array<Tracing.Span>,
-): Tracing.Span {
+function pickRootSpan(spans: Array<Tracing.Span>): Tracing.Span {
   const spanIds = new Set(spans.map((span) => span.spanId))
   return (
     spans.find((span) => !span.parentSpanId || !spanIds.has(span.parentSpanId)) ??
-      spans.slice().sort(sortByStartTime)[0]
+    spans.slice().sort(sortByStartTime)[0]
   )
 }
 
@@ -445,10 +390,7 @@ function buildSpanTree(spans: Array<Tracing.Span>): Array<TreeSpan> {
       ancestorHasNextSibling: [...ancestors],
     })
     for (let i = 0; i < children.length; i++) {
-      walk(children[i], depth + 1, i === children.length - 1, [
-        ...ancestors,
-        !isLast,
-      ], nextLineage)
+      walk(children[i], depth + 1, i === children.length - 1, [...ancestors, !isLast], nextLineage)
     }
   }
 
@@ -456,9 +398,7 @@ function buildSpanTree(spans: Array<Tracing.Span>): Array<TreeSpan> {
     walk(roots[i], 0, i === roots.length - 1, [], new Set())
   }
 
-  const remaining = spans.filter((span) => !visited.has(span.spanId)).sort(
-    sortByStartTime,
-  )
+  const remaining = spans.filter((span) => !visited.has(span.spanId)).sort(sortByStartTime)
 
   for (let i = 0; i < remaining.length; i++) {
     walk(remaining[i], 0, i === remaining.length - 1, [], new Set())
@@ -478,22 +418,43 @@ function TreeConnectors(props: { tree: TreeSpan }) {
   for (let i = 1; i < props.tree.ancestorHasNextSibling.length; i++) {
     if (props.tree.ancestorHasNextSibling[i]) {
       elements.push(
-        <div class="wf-vline" style={`left:${(i - 1) * TREE_INDENT + 4}px`} />,
+        <div
+          class="wf-vline"
+          style={`left:${(i - 1) * TREE_INDENT + 4}px`}
+        />,
       )
     }
   }
 
   const elbowLeft = (props.tree.depth - 1) * TREE_INDENT + 4
   if (props.tree.isLastChild) {
-    elements.push(<div class="wf-elbow" style={`left:${elbowLeft}px`} />)
+    elements.push(
+      <div
+        class="wf-elbow"
+        style={`left:${elbowLeft}px`}
+      />,
+    )
   } else {
-    elements.push(<div class="wf-vline" style={`left:${elbowLeft}px`} />)
+    elements.push(
+      <div
+        class="wf-vline"
+        style={`left:${elbowLeft}px`}
+      />,
+    )
   }
 
-  elements.push(<div class="wf-hline" style={`left:${elbowLeft}px`} />)
+  elements.push(
+    <div
+      class="wf-hline"
+      style={`left:${elbowLeft}px`}
+    />,
+  )
 
   return (
-    <div class="wf-tree" style={`width:${indent}px`}>
+    <div
+      class="wf-tree"
+      style={`width:${indent}px`}
+    >
       {elements}
     </div>
   )
@@ -507,14 +468,10 @@ function TimeAxis(props: { totalMs: number }) {
   }
   return (
     <div class="wf-axis">
-      <div style="padding:4px 8px;color:#64748b;font-size:11px">
-        Span
-      </div>
+      <div style="padding:4px 8px;color:#64748b;font-size:11px">Span</div>
       <div class="wf-axis-ticks">
         {labels.map((l) => (
-          <span>
-            {l}
-          </span>
+          <span>{l}</span>
         ))}
       </div>
     </div>
@@ -527,23 +484,50 @@ function SpanDetailBody(props: { span: Tracing.Span }) {
   const customAttrs = Object.entries(s.attributes).filter(([k]) => k !== "code.stacktrace")
   return (
     <div class="wf-detail">
-      <KeyValue label="Span ID" value={s.spanId} />
-      <KeyValue label="Kind" value={s.kind} />
-      {s.parentSpanId && <KeyValue label="Parent" value={s.parentSpanId} />}
-      {s.resource && <KeyValue label="Resource" value={s.resource} />}
-      {s.instrumentationScope && <KeyValue label="Instrumentation scope" value={s.instrumentationScope} />}
-      {stacktrace && <KeyValue label="Source" value={stacktrace} />}
-      {customAttrs.map(([k, v]) => <KeyValue label={k} value={v} />)}
+      <KeyValue
+        label="Span ID"
+        value={s.spanId}
+      />
+      <KeyValue
+        label="Kind"
+        value={s.kind}
+      />
+      {s.parentSpanId && (
+        <KeyValue
+          label="Parent"
+          value={s.parentSpanId}
+        />
+      )}
+      {s.resource && (
+        <KeyValue
+          label="Resource"
+          value={s.resource}
+        />
+      )}
+      {s.instrumentationScope && (
+        <KeyValue
+          label="Instrumentation scope"
+          value={s.instrumentationScope}
+        />
+      )}
+      {stacktrace && (
+        <KeyValue
+          label="Source"
+          value={stacktrace}
+        />
+      )}
+      {customAttrs.map(([k, v]) => (
+        <KeyValue
+          label={k}
+          value={v}
+        />
+      ))}
       {s.events.length > 0 && (
         <div style="margin-top:4px">
-          <span style="color:#64748b;font-size:11px">
-            Events:
-          </span>
+          <span style="color:#64748b;font-size:11px">Events:</span>
           {s.events.map((ev) => (
             <div style="display:flex;align-items:flex-start;gap:8px;padding:4px 0;font-size:11px;color:#94a3b8;font-family:monospace">
-              <span>
-                {ev.name}
-              </span>
+              <span>{ev.name}</span>
               {ev.attributes && (
                 <div style="flex:1;min-width:0">
                   <PreformattedText
@@ -560,18 +544,18 @@ function SpanDetailBody(props: { span: Tracing.Span }) {
   )
 }
 
-function WaterfallRow(
-  props: { tree: TreeSpan; totalMs: number; rootStart: bigint; nowMs: number },
-) {
+function WaterfallRow(props: {
+  tree: TreeSpan
+  totalMs: number
+  rootStart: bigint
+  nowMs: number
+}) {
   const s = props.tree.span
   const offsetMs = Number(s.startTime - props.rootStart) / 1_000_000
   const durMs = spanDurationMs(s, props.nowMs)
-  const leftPct = props.totalMs > 0
-    ? Math.min(100, (offsetMs / props.totalMs) * 100)
-    : 0
-  const widthPct = props.totalMs > 0
-    ? Math.max(0.5, Math.min(100 - leftPct, (durMs / props.totalMs) * 100))
-    : 100
+  const leftPct = props.totalMs > 0 ? Math.min(100, (offsetMs / props.totalMs) * 100) : 0
+  const widthPct =
+    props.totalMs > 0 ? Math.max(0.5, Math.min(100 - leftPct, (durMs / props.totalMs) * 100)) : 100
   const color = tracesStatusColor(s.status)
   const durationLabel = formatSpanDuration(s)
   const durLabelLeft = leftPct + widthPct + 0.5
@@ -579,13 +563,10 @@ function WaterfallRow(
   const barAnchor = `--wf-b-${s.spanId}`
   const popoverId = `wf-pop-${s.spanId}`
 
-  const enterFromName =
-    `clearTimeout(window.__wfTimer_${s.spanId});var p=document.getElementById('${popoverId}');p.classList.remove('wf-popover-left');p.classList.add('wf-popover-right');p.style.positionAnchor='${nameAnchor}';p.showPopover()`
-  const enterFromBar =
-    `clearTimeout(window.__wfTimer_${s.spanId});var p=document.getElementById('${popoverId}');p.classList.remove('wf-popover-right');p.classList.add('wf-popover-left');p.style.positionAnchor='${barAnchor}';p.showPopover()`
+  const enterFromName = `clearTimeout(window.__wfTimer_${s.spanId});var p=document.getElementById('${popoverId}');p.classList.remove('wf-popover-left');p.classList.add('wf-popover-right');p.style.positionAnchor='${nameAnchor}';p.showPopover()`
+  const enterFromBar = `clearTimeout(window.__wfTimer_${s.spanId});var p=document.getElementById('${popoverId}');p.classList.remove('wf-popover-right');p.classList.add('wf-popover-left');p.style.positionAnchor='${barAnchor}';p.showPopover()`
   const enterFromPopover = `clearTimeout(window.__wfTimer_${s.spanId})`
-  const leave =
-    `window.__wfTimer_${s.spanId}=setTimeout(()=>document.getElementById('${popoverId}')?.hidePopover(),120)`
+  const leave = `window.__wfTimer_${s.spanId}=setTimeout(()=>document.getElementById('${popoverId}')?.hidePopover(),120)`
 
   return (
     <>
@@ -600,11 +581,7 @@ function WaterfallRow(
           <span style="overflow:hidden;text-overflow:ellipsis">
             <SpanTitle span={s} />
           </span>
-          {props.tree.childCount > 0 && (
-            <span class="wf-badge">
-              {props.tree.childCount}
-            </span>
-          )}
+          {props.tree.childCount > 0 && <span class="wf-badge">{props.tree.childCount}</span>}
         </div>
         <div class="wf-bar-cell">
           <div
@@ -614,7 +591,10 @@ function WaterfallRow(
             onmouseleave={leave}
           />
           {durationLabel != null && (
-            <div class="wf-dur" style={`left:${durLabelLeft}%`}>
+            <div
+              class="wf-dur"
+              style={`left:${durLabelLeft}%`}
+            >
               {durationLabel}
             </div>
           )}
@@ -646,10 +626,7 @@ function MiniWaterfall(props: {
         const offsetMs = Number(s.startTime - props.rootStart) / 1_000_000
         const durMs = spanDurationMs(s, props.nowMs)
         const leftPct = Math.min(100, (offsetMs / props.totalMs) * 100)
-        const widthPct = Math.max(
-          0.3,
-          Math.min(100 - leftPct, (durMs / props.totalMs) * 100),
-        )
+        const widthPct = Math.max(0.3, Math.min(100 - leftPct, (durMs / props.totalMs) * 100))
         return (
           <div
             class="mini-wf-bar"
@@ -661,9 +638,7 @@ function MiniWaterfall(props: {
   )
 }
 
-export function groupByTraceId(
-  spans: Array<Tracing.Span>,
-): Map<string, Array<Tracing.Span>> {
+export function groupByTraceId(spans: Array<Tracing.Span>): Map<string, Array<Tracing.Span>> {
   const groups = new Map<string, Array<Tracing.Span>>()
   for (const span of spans) {
     let group = groups.get(span.traceId)
@@ -697,11 +672,7 @@ function SpanTitle(props: { span: Tracing.Span }) {
   const isServer = span.name.startsWith("http.server")
   const isClient = span.name.startsWith("http.client")
   if (!isServer && !isClient) {
-    return (
-      <>
-        {span.name}
-      </>
-    )
+    return <>{span.name}</>
   }
 
   const target = span.attributes[isServer ? "url.path" : "url.full"]
@@ -729,11 +700,7 @@ function SpanTitle(props: { span: Tracing.Span }) {
   )
 }
 
-export function TraceGroup(props: {
-  prefix: string
-  id?: string
-  spans: Array<Tracing.Span>
-}) {
+export function TraceGroup(props: { prefix: string; id?: string; spans: Array<Tracing.Span> }) {
   if (props.spans.length === 0) return null
   const root = pickRootSpan(props.spans)
   const traceId = props.id ?? root.traceId
@@ -755,70 +722,48 @@ export function TraceGroup(props: {
       <span class="tl-cell tl-cell-name">
         <SpanTitle span={root} />
       </span>
-      <span class="tl-cell tl-cell-spans">
-        {props.spans.length}
-      </span>
-      <span class="tl-cell tl-cell-dur">
-        {durationLabel ?? ""}
-      </span>
-      <span class="tl-cell tl-cell-id">
-        {String(traceId).slice(0, 12)}
-      </span>
+      <span class="tl-cell tl-cell-spans">{props.spans.length}</span>
+      <span class="tl-cell tl-cell-dur">{durationLabel ?? ""}</span>
+      <span class="tl-cell tl-cell-id">{String(traceId).slice(0, 12)}</span>
     </a>
   )
 }
 
-export function TraceGroups(
-  props: { prefix: string; spans: Array<Tracing.Span> },
-) {
+export function TraceGroups(props: { prefix: string; spans: Array<Tracing.Span> }) {
   const groups = groupByTraceId(props.spans)
-  const sorted = Array
-    .from(groups.values())
+  const sorted = Array.from(groups.values())
     .sort((a, b) => Number(b[0].startTime) - Number(a[0].startTime))
     .slice(0, 50)
 
   if (sorted.length === 0) {
-    return (
-      <div class="empty">
-        Waiting for traces...
-      </div>
-    )
+    return <div class="empty">Waiting for traces...</div>
   }
   return (
     <div class="tl-grid">
       <div class="tl-header tl-cols">
         <span class="tl-cell tl-cell-status" />
-        <span class="tl-cell tl-cell-name">
-          Name
-        </span>
-        <span class="tl-cell tl-cell-spans">
-          Spans
-        </span>
-        <span class="tl-cell tl-cell-dur">
-          Duration
-        </span>
-        <span class="tl-cell tl-cell-id">
-          Trace
-        </span>
+        <span class="tl-cell tl-cell-name">Name</span>
+        <span class="tl-cell tl-cell-spans">Spans</span>
+        <span class="tl-cell tl-cell-dur">Duration</span>
+        <span class="tl-cell tl-cell-id">Trace</span>
       </div>
-      {sorted.map((group) => <TraceGroup prefix={props.prefix} spans={group} />)}
+      {sorted.map((group) => (
+        <TraceGroup
+          prefix={props.prefix}
+          spans={group}
+        />
+      ))}
     </div>
   )
 }
 
-export function TraceDetail(
-  props: {
-    prefix: string
-    spans: Array<Tracing.Span>
-    logs: Array<StudioStore.LogEntry>
-  },
-) {
+export function TraceDetail(props: {
+  prefix: string
+  spans: Array<Tracing.Span>
+  logs: Array<StudioStore.LogEntry>
+}) {
   if (props.spans.length === 0) {
-    return (
-      <div class="empty">
-        Trace not found
-      </div>
-    )
+    return <div class="empty">Trace not found</div>
   }
   const root = pickRootSpan(props.spans)
   const traceId = root.traceId
@@ -839,9 +784,7 @@ export function TraceDetail(
           >
             Traces
           </a>
-          <span style="color:#475569">
-            /
-          </span>
+          <span style="color:#475569">/</span>
           <span style="color:#e2e8f0;font-size:13px;font-family:monospace">
             <SpanTitle span={root} />
           </span>
@@ -854,17 +797,9 @@ export function TraceDetail(
           <span>
             {props.logs.length} log{props.logs.length !== 1 ? "s" : ""}
           </span>
-          {durationLabel != null && (
-            <span>
-              {durationLabel}
-            </span>
-          )}
-          <span>
-            {startDate.toLocaleTimeString("en", { hour12: false })}
-          </span>
-          <span style="color:#475569;font-family:monospace;font-size:10px">
-            {traceId}
-          </span>
+          {durationLabel != null && <span>{durationLabel}</span>}
+          <span>{startDate.toLocaleTimeString("en", { hour12: false })}</span>
+          <span style="color:#475569;font-family:monospace;font-size:10px">{traceId}</span>
         </div>
       </div>
 
@@ -893,10 +828,13 @@ export function TraceDetail(
 
       {props.logs.length > 0 && (
         <div style="padding:8px 16px">
-          <div style="color:#94a3b8;font-size:12px;font-weight:600;margin-bottom:8px">
-            Logs
-          </div>
-          {props.logs.map((l) => <LogLine prefix={props.prefix} log={l} />)}
+          <div style="color:#94a3b8;font-size:12px;font-weight:600;margin-bottom:8px">Logs</div>
+          {props.logs.map((l) => (
+            <LogLine
+              prefix={props.prefix}
+              log={l}
+            />
+          ))}
         </div>
       )}
     </div>
@@ -912,10 +850,7 @@ export interface FiberSummary {
   readonly levels: Set<string>
 }
 
-export function getParentChain(
-  fiberId: string,
-  fiberParents: Map<string, string>,
-): Array<string> {
+export function getParentChain(fiberId: string, fiberParents: Map<string, string>): Array<string> {
   const chain: Array<string> = []
   const visited = new Set<string>()
   let current = fiberParents.get(fiberId)
@@ -993,11 +928,11 @@ function FiberRow(props: { fiber: FiberSummary; prefix: string }) {
   const statusBg = props.fiber.status === "alive" ? "#166534" : "#7f1d1d"
   const lastSeen = props.fiber.lastSeen
     ? new Date(props.fiber.lastSeen).toLocaleTimeString("en", {
-      hour12: false,
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    })
+        hour12: false,
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      })
     : "—"
 
   return (
@@ -1039,19 +974,18 @@ function FiberRow(props: { fiber: FiberSummary; prefix: string }) {
   )
 }
 
-export function FiberList(
-  props: { fibers: Array<FiberSummary>; prefix: string },
-) {
+export function FiberList(props: { fibers: Array<FiberSummary>; prefix: string }) {
   if (props.fibers.length === 0) {
-    return (
-      <div class="empty">
-        Waiting for fibers...
-      </div>
-    )
+    return <div class="empty">Waiting for fibers...</div>
   }
   return (
     <>
-      {props.fibers.map((f) => <FiberRow fiber={f} prefix={props.prefix} />)}
+      {props.fibers.map((f) => (
+        <FiberRow
+          fiber={f}
+          prefix={props.prefix}
+        />
+      ))}
     </>
   )
 }
@@ -1070,7 +1004,10 @@ export function FiberDetail(props: {
 
   return (
     <>
-      <div class="tab-header" style="height:auto;padding:8px 16px;flex-direction:column;align-items:flex-start;gap:4px">
+      <div
+        class="tab-header"
+        style="height:auto;padding:8px 16px;flex-direction:column;align-items:flex-start;gap:4px"
+      >
         <div style="display:flex;align-items:center;gap:8px">
           <a
             href={`${props.prefix}/fibers`}
@@ -1078,12 +1015,8 @@ export function FiberDetail(props: {
           >
             Fibers
           </a>
-          <span style="color:#475569">
-            /
-          </span>
-          <span style="color:#e2e8f0;font-size:13px;font-family:monospace">
-            {props.fiberId}
-          </span>
+          <span style="color:#475569">/</span>
+          <span style="color:#e2e8f0;font-size:13px;font-family:monospace">{props.fiberId}</span>
           <span
             style={`font-size:11px;padding:2px 8px;border-radius:4px;background:${statusBg};color:${statusColor}`}
           >
@@ -1121,19 +1054,21 @@ export function FiberDetail(props: {
         {props.context &&
           (props.context.spanName ||
             props.context.traceId ||
-            Object.keys(props.context.annotations).length > 0) &&
-          (
+            Object.keys(props.context.annotations).length > 0) && (
             <div style="padding:8px 16px">
               <div style="color:#94a3b8;font-size:12px;font-weight:600;margin-bottom:8px">
                 Context
               </div>
               <div style="background:#111827;border:1px solid #1e293b;border-radius:6px;padding:8px 12px">
-                {props.context.spanName && <KeyValue label="Span" value={props.context.spanName} />}
+                {props.context.spanName && (
+                  <KeyValue
+                    label="Span"
+                    value={props.context.spanName}
+                  />
+                )}
                 {props.context.traceId && (
                   <div style="display:flex;gap:8px;padding:4px 0;border-bottom:1px solid #1e293b;font-size:12px">
-                    <span style="color:#64748b;min-width:120px">
-                      Trace
-                    </span>
+                    <span style="color:#64748b;min-width:120px">Trace</span>
                     <a
                       href={`${props.prefix}/traces/${props.context.traceId}`}
                       style="color:#38bdf8;font-family:monospace;word-break:break-all;text-decoration:none"
@@ -1142,20 +1077,21 @@ export function FiberDetail(props: {
                     </a>
                   </div>
                 )}
-                {Object.entries(props.context.annotations).map(([k, v]) => <KeyValue label={k} value={v} />)}
+                {Object.entries(props.context.annotations).map(([k, v]) => (
+                  <KeyValue
+                    label={k}
+                    value={v}
+                  />
+                ))}
               </div>
             </div>
           )}
 
         {props.spans.length > 0 && (
           <div style="padding:8px 16px">
-            <div style="color:#94a3b8;font-size:12px;font-weight:600;margin-bottom:8px">
-              Spans
-            </div>
+            <div style="color:#94a3b8;font-size:12px;font-weight:600;margin-bottom:8px">Spans</div>
             {props.spans.map((s) => {
-              const stacktrace = s.attributes["code.stacktrace"] as
-                | string
-                | undefined
+              const stacktrace = s.attributes["code.stacktrace"] as string | undefined
               return (
                 <div style="margin-bottom:6px;background:#111827;border:1px solid #1e293b;border-radius:6px;padding:8px 12px">
                   <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
@@ -1172,15 +1108,40 @@ export function FiberDetail(props: {
                       </span>
                     )}
                   </div>
-                  <KeyValue label="Trace" value={s.traceId} />
-                  <KeyValue label="Kind" value={s.kind} />
-                  {s.resource && <KeyValue label="Resource" value={s.resource} />}
-                  {s.instrumentationScope && <KeyValue label="Instrumentation scope" value={s.instrumentationScope} />}
-                  {stacktrace && <KeyValue label="Source" value={stacktrace} />}
-                  {Object
-                    .entries(s.attributes)
+                  <KeyValue
+                    label="Trace"
+                    value={s.traceId}
+                  />
+                  <KeyValue
+                    label="Kind"
+                    value={s.kind}
+                  />
+                  {s.resource && (
+                    <KeyValue
+                      label="Resource"
+                      value={s.resource}
+                    />
+                  )}
+                  {s.instrumentationScope && (
+                    <KeyValue
+                      label="Instrumentation scope"
+                      value={s.instrumentationScope}
+                    />
+                  )}
+                  {stacktrace && (
+                    <KeyValue
+                      label="Source"
+                      value={stacktrace}
+                    />
+                  )}
+                  {Object.entries(s.attributes)
                     .filter(([k]) => k !== "code.stacktrace")
-                    .map(([k, v]) => <KeyValue label={k} value={v} />)}
+                    .map(([k, v]) => (
+                      <KeyValue
+                        label={k}
+                        value={v}
+                      />
+                    ))}
                 </div>
               )
             })}
@@ -1189,17 +1150,18 @@ export function FiberDetail(props: {
 
         {props.logs.length > 0 && (
           <div style="padding:8px 16px">
-            <div style="color:#94a3b8;font-size:12px;font-weight:600;margin-bottom:8px">
-              Logs
-            </div>
-            {props.logs.map((l) => <LogLine prefix={props.prefix} log={l} />)}
+            <div style="color:#94a3b8;font-size:12px;font-weight:600;margin-bottom:8px">Logs</div>
+            {props.logs.map((l) => (
+              <LogLine
+                prefix={props.prefix}
+                log={l}
+              />
+            ))}
           </div>
         )}
 
         {props.logs.length === 0 && props.spans.length === 0 && (
-          <div class="empty">
-            No data found for fiber {props.fiberId}
-          </div>
+          <div class="empty">No data found for fiber {props.fiberId}</div>
         )}
       </div>
     </>
@@ -1215,9 +1177,7 @@ function formatCompact(n: number): string {
   return n.toFixed(2)
 }
 
-function HistogramRange(
-  props: { min: number; max: number; avg: number },
-) {
+function HistogramRange(props: { min: number; max: number; avg: number }) {
   const span = props.max - props.min
   const avgPct = span === 0 ? 50 : ((props.avg - props.min) / span) * 100
   return (
@@ -1229,26 +1189,15 @@ function HistogramRange(
         />
       </div>
       <div style="display:flex;justify-content:space-between;font-size:10px;color:#6b7280;font-family:monospace;margin-top:3px">
-        <span>
-          {formatCompact(props.min)}
-        </span>
-        <span style="color:#94a3b8">
-          avg {formatCompact(props.avg)}
-        </span>
-        <span>
-          {formatCompact(props.max)}
-        </span>
+        <span>{formatCompact(props.min)}</span>
+        <span style="color:#94a3b8">avg {formatCompact(props.avg)}</span>
+        <span>{formatCompact(props.max)}</span>
       </div>
     </div>
   )
 }
 
-function MetricValue(
-  props: {
-    metric: StudioStore.MetricSnapshot
-    subtitle?: string
-  },
-) {
+function MetricValue(props: { metric: StudioStore.MetricSnapshot; subtitle?: string }) {
   if (props.metric.type === "counter" || props.metric.type === "gauge") {
     return (
       <div style="margin:1em 0;text-align:center">
@@ -1286,17 +1235,12 @@ function MetricValue(
     const occ = props.metric.value as Record<string, number>
     return (
       <div style="display:grid;grid-template-columns:auto auto;gap:2px 12px;font-size:12px;font-family:monospace">
-        {Object
-          .entries(occ)
+        {Object.entries(occ)
           .slice(0, 10)
           .map(([k, v]) => (
             <>
-              <span style="color:#6b7280">
-                {k}
-              </span>
-              <span style="color:#e5e7eb">
-                {v}
-              </span>
+              <span style="color:#6b7280">{k}</span>
+              <span style="color:#e5e7eb">{v}</span>
             </>
           ))}
       </div>
@@ -1334,12 +1278,11 @@ export function BarChart(props: {
     const y = SPARKLINE_VIEW_H - ratio * (SPARKLINE_VIEW_H - 1) - 0.5
     return { x, y }
   })
-  const linePath = linePts
-    .map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`)
-    .join(" ")
-  const areaPath = linePts.length < 2
-    ? ""
-    : `${linePath} L${linePts[linePts.length - 1].x},${SPARKLINE_VIEW_H} L${linePts[0].x},${SPARKLINE_VIEW_H} Z`
+  const linePath = linePts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`).join(" ")
+  const areaPath =
+    linePts.length < 2
+      ? ""
+      : `${linePath} L${linePts[linePts.length - 1].x},${SPARKLINE_VIEW_H} L${linePts[0].x},${SPARKLINE_VIEW_H} Z`
   return (
     <div class="sparkline">
       <svg
@@ -1347,7 +1290,13 @@ export function BarChart(props: {
         viewBox={`0 0 ${SPARKLINE_VIEW_W} ${SPARKLINE_VIEW_H}`}
         preserveAspectRatio="none"
       >
-        {areaPath && <path d={areaPath} fill="#60a5fa" fill-opacity="0.18" />}
+        {areaPath && (
+          <path
+            d={areaPath}
+            fill="#60a5fa"
+            fill-opacity="0.18"
+          />
+        )}
         {linePath && (
           <path
             d={linePath}
@@ -1365,11 +1314,12 @@ export function BarChart(props: {
           if (slot === null) return <div class="sparkline-slot" />
           return (
             <div class="sparkline-slot">
-              <div class="sparkline-marker" style="left:50%" />
+              <div
+                class="sparkline-marker"
+                style="left:50%"
+              />
               <div class="sparkline-popover">
-                <div>
-                  {fmt(slot.value)}
-                </div>
+                <div>{fmt(slot.value)}</div>
                 <div class="sparkline-popover-time">
                   {new Date(slot.timestamp).toLocaleTimeString()}
                 </div>
@@ -1382,32 +1332,28 @@ export function BarChart(props: {
   )
 }
 
-function CounterSparkline(
-  props: { history: ReadonlyArray<StudioStore.MetricSnapshot> },
-) {
+function CounterSparkline(props: { history: ReadonlyArray<StudioStore.MetricSnapshot> }) {
   const deltas = props.history.slice(1).map((curr, i) => ({
-    value: Math.max(
-      0,
-      (curr.value as number) - (props.history[i].value as number),
-    ),
+    value: Math.max(0, (curr.value as number) - (props.history[i].value as number)),
     timestamp: curr.timestamp,
   }))
   return <BarChart data={deltas} />
 }
 
-function GaugeSparkline(
-  props: { history: ReadonlyArray<StudioStore.MetricSnapshot> },
-) {
+function GaugeSparkline(props: { history: ReadonlyArray<StudioStore.MetricSnapshot> }) {
   const data = props.history.map((s) => ({
     value: s.value as number,
     timestamp: s.timestamp,
   }))
-  return <BarChart data={data} format={formatCompact} />
+  return (
+    <BarChart
+      data={data}
+      format={formatCompact}
+    />
+  )
 }
 
-function counterRatePerSec(
-  history: ReadonlyArray<StudioStore.MetricSnapshot>,
-): number | undefined {
+function counterRatePerSec(history: ReadonlyArray<StudioStore.MetricSnapshot>): number | undefined {
   if (history.length < 2) return undefined
   const first = history[0]
   const last = history[history.length - 1]
@@ -1419,9 +1365,7 @@ function counterRatePerSec(
 
 function MetricCard(props: { series: StudioStore.MetricSeries }) {
   const metric = props.series.latest
-  const rate = metric.type === "counter"
-    ? counterRatePerSec(props.series.history)
-    : undefined
+  const rate = metric.type === "counter" ? counterRatePerSec(props.series.history) : undefined
   return (
     <div
       class="metric-card"
@@ -1429,9 +1373,7 @@ function MetricCard(props: { series: StudioStore.MetricSeries }) {
     >
       <div style="padding:8px 10px 4px 10px;flex:1">
         <div style="display:flex;align-items:center;gap:6px">
-          <span style="color:#d1d5db;font-size:12px;font-weight:600">
-            {metric.name}
-          </span>
+          <span style="color:#d1d5db;font-size:12px;font-weight:600">{metric.name}</span>
           <span
             class="metric-type"
             style="font-size:10px;padding:1px 6px;border-radius:4px;background:#1e3a5f;color:#60a5fa"
@@ -1441,14 +1383,13 @@ function MetricCard(props: { series: StudioStore.MetricSeries }) {
         </div>
         <MetricValue
           metric={metric}
-          subtitle={rate !== undefined && rate > 0
-            ? `${formatCompact(rate)}/s`
-            : undefined}
+          subtitle={rate !== undefined && rate > 0 ? `${formatCompact(rate)}/s` : undefined}
         />
         {(() => {
-          const tags = metric.type === "histogram"
-            ? metric.tags.filter((t) => t.key !== "time_unit")
-            : metric.tags
+          const tags =
+            metric.type === "histogram"
+              ? metric.tags.filter((t) => t.key !== "time_unit")
+              : metric.tags
           if (tags.length === 0) return null
           return (
             <div style="font-size:10px;color:#6b7280;margin-top:4px">
@@ -1456,39 +1397,52 @@ function MetricCard(props: { series: StudioStore.MetricSeries }) {
             </div>
           )
         })()}
-        {metric.resource && <KeyValue label="Resource" value={metric.resource} />}
-        {metric.instrumentationScope && <KeyValue label="Instrumentation scope" value={metric.instrumentationScope} />}
+        {metric.resource && (
+          <KeyValue
+            label="Resource"
+            value={metric.resource}
+          />
+        )}
+        {metric.instrumentationScope && (
+          <KeyValue
+            label="Instrumentation scope"
+            value={metric.instrumentationScope}
+          />
+        )}
       </div>
       {metric.type === "counter" && <CounterSparkline history={props.series.history} />}
       {metric.type === "gauge" && <GaugeSparkline history={props.series.history} />}
-      {metric.type === "histogram" && (() => {
-        const h = metric.value as {
-          count: number
-          sum: number
-          min: number
-          max: number
-        }
-        const avg = h.count === 0 ? 0 : h.sum / h.count
-        return <HistogramRange min={h.min} max={h.max} avg={avg} />
-      })()}
+      {metric.type === "histogram" &&
+        (() => {
+          const h = metric.value as {
+            count: number
+            sum: number
+            min: number
+            max: number
+          }
+          const avg = h.count === 0 ? 0 : h.sum / h.count
+          return (
+            <HistogramRange
+              min={h.min}
+              max={h.max}
+              avg={avg}
+            />
+          )
+        })()}
     </div>
   )
 }
 
-export function MetricsGrid(
-  props: { series: Array<StudioStore.MetricSeries> },
-) {
+export function MetricsGrid(props: { series: Array<StudioStore.MetricSeries> }) {
   if (props.series.length === 0) {
-    return (
-      <div class="empty">
-        Waiting for metrics...
-      </div>
-    )
+    return <div class="empty">Waiting for metrics...</div>
   }
   const sorted = [...props.series].sort((a, b) => a.latest.name.localeCompare(b.latest.name))
   return (
     <>
-      {sorted.map((s) => <MetricCard series={s} />)}
+      {sorted.map((s) => (
+        <MetricCard series={s} />
+      ))}
     </>
   )
 }
@@ -1499,20 +1453,9 @@ export interface RouteInfo {
   readonly format: string | undefined
 }
 
-const methodOrder = [
-  "GET",
-  "POST",
-  "PUT",
-  "PATCH",
-  "DELETE",
-  "HEAD",
-  "OPTIONS",
-  "*",
-]
+const methodOrder = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "*"]
 
-function groupByPath(
-  routes: Array<RouteInfo>,
-): Array<{ path: string; routes: Array<RouteInfo> }> {
+function groupByPath(routes: Array<RouteInfo>): Array<{ path: string; routes: Array<RouteInfo> }> {
   const byPath = new Map<string, Array<RouteInfo>>()
   for (const r of routes) {
     let group = byPath.get(r.path)
@@ -1522,12 +1465,10 @@ function groupByPath(
     }
     group.push(r)
   }
-  return Array
-    .from(byPath, ([path, routes]) => ({
-      path,
-      routes: routes.sort((a, b) => methodOrder.indexOf(a.method) - methodOrder.indexOf(b.method)),
-    }))
-    .sort((a, b) => a.path.localeCompare(b.path))
+  return Array.from(byPath, ([path, routes]) => ({
+    path,
+    routes: routes.sort((a, b) => methodOrder.indexOf(a.method) - methodOrder.indexOf(b.method)),
+  })).sort((a, b) => a.path.localeCompare(b.path))
 }
 
 function methodColor(method: string): string {
@@ -1552,9 +1493,9 @@ function methodBg(method: string): string {
 function MethodBadge(props: { method: string }) {
   return (
     <span
-      style={`font-size:10px;font-weight:700;font-family:monospace;padding:2px 6px;border-radius:3px;background:${
-        methodBg(props.method)
-      };color:${methodColor(props.method)};min-width:48px;text-align:center;display:inline-block`}
+      style={`font-size:10px;font-weight:700;font-family:monospace;padding:2px 6px;border-radius:3px;background:${methodBg(
+        props.method,
+      )};color:${methodColor(props.method)};min-width:48px;text-align:center;display:inline-block`}
     >
       {props.method}
     </span>
@@ -1573,27 +1514,19 @@ function ColoredPath(props: { path: string }) {
   const segments = props.path.split("/").filter(Boolean)
   return (
     <span style="font-family:monospace;font-size:13px">
-      {segments.length === 0 ?
-        (
-          <span style="color:#e2e8f0">
-            /
-          </span>
-        ) :
-        (
-          segments.map((seg) => {
-            const isParam = seg.startsWith(":")
-            return (
-              <>
-                <span style="color:#475569">
-                  /
-                </span>
-                <span style={isParam ? "color:#c084fc" : "color:#e2e8f0"}>
-                  {seg}
-                </span>
-              </>
-            )
-          })
-        )}
+      {segments.length === 0 ? (
+        <span style="color:#e2e8f0">/</span>
+      ) : (
+        segments.map((seg) => {
+          const isParam = seg.startsWith(":")
+          return (
+            <>
+              <span style="color:#475569">/</span>
+              <span style={isParam ? "color:#c084fc" : "color:#e2e8f0"}>{seg}</span>
+            </>
+          )
+        })
+      )}
     </span>
   )
 }
@@ -1618,11 +1551,7 @@ function PathGroup(props: { path: string; routes: Array<RouteInfo> }) {
 
 export function RouteList(props: { routes: Array<RouteInfo> }) {
   if (props.routes.length === 0) {
-    return (
-      <div class="empty">
-        No routes registered
-      </div>
-    )
+    return <div class="empty">No routes registered</div>
   }
 
   const groups = groupByPath(props.routes)
@@ -1639,7 +1568,12 @@ export function RouteList(props: { routes: Array<RouteInfo> }) {
           {routeCount} route{routeCount !== 1 ? "s" : ""}
         </span>
       </div>
-      {groups.map((g) => <PathGroup path={g.path} routes={g.routes} />)}
+      {groups.map((g) => (
+        <PathGroup
+          path={g.path}
+          routes={g.routes}
+        />
+      ))}
     </>
   )
 }
@@ -1857,9 +1791,7 @@ function ServiceRow(props: { entry: ServiceEntry }) {
             style={`width:8px;height:8px;border-radius:50%;background:${colors.fg};display:block`}
           />
         </span>
-        <span class="tl-cell tl-cell-name">
-          {props.entry.key}
-        </span>
+        <span class="tl-cell tl-cell-name">{props.entry.key}</span>
         <span class="tl-cell tl-cell-dur">
           <span
             style={`font-size:10px;padding:1px 6px;border-radius:4px;background:${colors.bg};color:${colors.fg}`}
@@ -1869,17 +1801,13 @@ function ServiceRow(props: { entry: ServiceEntry }) {
         </span>
       </summary>
       <div class="tl-body">
-        {props.entry.display ?
-          (
-            <pre style="color:#e2e8f0;font-family:monospace;font-size:12px;margin:0;padding:8px;white-space:pre-wrap;word-break:break-all">
+        {props.entry.display ? (
+          <pre style="color:#e2e8f0;font-family:monospace;font-size:12px;margin:0;padding:8px;white-space:pre-wrap;word-break:break-all">
             {props.entry.display}
-            </pre>
-          ) :
-          (
-            <div style="padding:4px 8px;color:#64748b;font-size:12px">
-              No inspectable values
-            </div>
-          )}
+          </pre>
+        ) : (
+          <div style="padding:4px 8px;color:#64748b;font-size:12px">No inspectable values</div>
+        )}
       </div>
     </details>
   )
@@ -1887,24 +1815,18 @@ function ServiceRow(props: { entry: ServiceEntry }) {
 
 export function ServiceList(props: { services: Array<ServiceEntry> }) {
   if (props.services.length === 0) {
-    return (
-      <div class="empty">
-        No services registered
-      </div>
-    )
+    return <div class="empty">No services registered</div>
   }
   return (
     <div class="tl-grid">
       <div class="tl-header tl-cols service-cols">
         <span class="tl-cell tl-cell-status" />
-        <span class="tl-cell tl-cell-name">
-          Service
-        </span>
-        <span class="tl-cell tl-cell-dur">
-          Kind
-        </span>
+        <span class="tl-cell tl-cell-name">Service</span>
+        <span class="tl-cell tl-cell-dur">Kind</span>
       </div>
-      {props.services.map((s) => <ServiceRow entry={s} />)}
+      {props.services.map((s) => (
+        <ServiceRow entry={s} />
+      ))}
     </div>
   )
 }
@@ -1915,18 +1837,15 @@ const HIDDEN_SERVICES = new Set([
   "effect/Layer/CurrentMemoMap",
 ])
 
-export function collectServices(
-  unsafeMap: ReadonlyMap<string, any>,
-): Array<ServiceEntry> {
+export function collectServices(unsafeMap: ReadonlyMap<string, any>): Array<ServiceEntry> {
   const entries: Array<ServiceEntry> = []
   for (const [key, value] of unsafeMap) {
     if (HIDDEN_SERVICES.has(key)) continue
-    const isConfig = key.toLowerCase().includes("config") ||
-      key.toLowerCase().includes("configuration")
+    const isConfig =
+      key.toLowerCase().includes("config") || key.toLowerCase().includes("configuration")
 
-    const effectType = typeof value === "object" && value !== null
-      ? detectEffectType(value)
-      : undefined
+    const effectType =
+      typeof value === "object" && value !== null ? detectEffectType(value) : undefined
     if (effectType) {
       const info = inspectEffectValue(effectType, value)
       entries.push({
@@ -1951,9 +1870,7 @@ export function collectServices(
     const type = isConfig ? ("config" as const) : ("value" as const)
     const plain: Record<string, unknown> = {}
     collectDisplayValues(value, "", plain)
-    const display = Object.keys(plain).length > 0
-      ? JSON.stringify(plain, jsonReplacer, 2)
-      : ""
+    const display = Object.keys(plain).length > 0 ? JSON.stringify(plain, jsonReplacer, 2) : ""
 
     let kind = "object"
     if (typeof value !== "object") {
@@ -1991,17 +1908,11 @@ function formatUptime(seconds: number): string {
 function StatCard(props: { label: string; value: string; sub?: string }) {
   return (
     <div style="background:#111827;border:1px solid #374151;border-radius:6px;padding:12px;min-width:180px">
-      <div style="color:#9ca3af;font-size:11px;margin-bottom:4px">
-        {props.label}
-      </div>
+      <div style="color:#9ca3af;font-size:11px;margin-bottom:4px">{props.label}</div>
       <div style="color:#f3f4f6;font-size:22px;font-weight:700;font-family:monospace">
         {props.value}
       </div>
-      {props.sub && (
-        <div style="color:#6b7280;font-size:10px;margin-top:2px">
-          {props.sub}
-        </div>
-      )}
+      {props.sub && <div style="color:#6b7280;font-size:10px;margin-top:2px">{props.sub}</div>}
     </div>
   )
 }
@@ -2011,17 +1922,13 @@ function BarMeter(props: {
   history: ReadonlyArray<{ value: number; timestamp: number }>
   total: number
 }) {
-  const used = props.history.length > 0
-    ? props.history[props.history.length - 1].value
-    : 0
+  const used = props.history.length > 0 ? props.history[props.history.length - 1].value : 0
   const pct = props.total > 0 ? (used / props.total) * 100 : 0
   return (
     <div style="background:#111827;border:1px solid #374151;border-radius:6px;display:flex;flex-direction:column;justify-content:space-between">
       <div style="padding:12px">
         <div style="display:flex;justify-content:space-between">
-          <span style="color:#9ca3af;font-size:11px">
-            {props.label}
-          </span>
+          <span style="color:#9ca3af;font-size:11px">{props.label}</span>
           <span style="color:#e5e7eb;font-size:11px;font-family:monospace">
             {formatBytes(used)} / {formatBytes(props.total)} ({pct.toFixed(1)}%)
           </span>
@@ -2079,7 +1986,10 @@ export function SystemStatsView(props: SystemStatsProps) {
           value={String(info.pid)}
           sub={`${info.platform} ${info.arch}`}
         />
-        <StatCard label="Uptime" value={formatUptime(info.uptime)} />
+        <StatCard
+          label="Uptime"
+          value={formatUptime(info.uptime)}
+        />
         <StatCard
           label="CPU Time"
           value={`${(cpuTotal / 1_000_000).toFixed(2)}s`}
@@ -2127,9 +2037,7 @@ export function SystemStatsView(props: SystemStatsProps) {
       </div>
       <div style="padding:0 12px 12px">
         <div style="background:#111827;border:1px solid #374151;border-radius:6px;padding:12px">
-          <div style="color:#9ca3af;font-size:11px;margin-bottom:8px">
-            Resource Usage
-          </div>
+          <div style="color:#9ca3af;font-size:11px;margin-bottom:8px">Resource Usage</div>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:4px">
             <ResourceRow
               label="Page Faults (minor)"
@@ -2153,10 +2061,7 @@ export function SystemStatsView(props: SystemStatsProps) {
             />
             <ResourceRow
               label="Context Switches (invol)"
-              value={gaugeAt(
-                series,
-                "resourceUsage.involuntaryContextSwitches",
-              )}
+              value={gaugeAt(series, "resourceUsage.involuntaryContextSwitches")}
             />
           </div>
         </div>
@@ -2168,12 +2073,8 @@ export function SystemStatsView(props: SystemStatsProps) {
 function ResourceRow(props: { label: string; value: number }) {
   return (
     <div style="display:flex;justify-content:space-between;font-size:12px">
-      <span style="color:#6b7280">
-        {props.label}
-      </span>
-      <span style="color:#e5e7eb;font-family:monospace">
-        {props.value}
-      </span>
+      <span style="color:#6b7280">{props.label}</span>
+      <span style="color:#e5e7eb;font-family:monospace">{props.value}</span>
     </div>
   )
 }

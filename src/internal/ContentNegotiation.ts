@@ -1,6 +1,6 @@
 /**
- * RFC 7231 Content Negotiation compatible with Express/Node.js ecosystem.
- * Based on {@link https://github.com/jshttp/negotiator}
+ * RFC 7231 Content Negotiation compatible with Express/Node.js ecosystem. Based on
+ * {@link https://github.com/jshttp/negotiator}
  */
 
 interface ParsedSpec {
@@ -40,7 +40,7 @@ function splitMediaTypeParams(params: string): {
     const key = trimmed.slice(0, eqIndex).trim().toLowerCase()
     let value = trimmed.slice(eqIndex + 1).trim()
 
-    if (value.startsWith("\"") && value.endsWith("\"")) {
+    if (value.startsWith('"') && value.endsWith('"')) {
       value = value.slice(1, -1)
     }
 
@@ -81,9 +81,7 @@ function parseAccept(accept: string): Array<{
 
     const type = match[1].toLowerCase()
     const subtype = match[2].toLowerCase()
-    const { params, q } = match[3]
-      ? splitMediaTypeParams(match[3])
-      : { params: {}, q: 1 }
+    const { params, q } = match[3] ? splitMediaTypeParams(match[3]) : { params: {}, q: 1 }
 
     specs.push({ type, subtype, params, q, o })
   }
@@ -275,9 +273,7 @@ function getLanguagePriority(
   }
 }
 
-function parseAcceptEncoding(
-  accept: string,
-): Array<{ encoding: string; q: number; o: number }> {
+function parseAcceptEncoding(accept: string): Array<{ encoding: string; q: number; o: number }> {
   const specs: Array<{ encoding: string; q: number; o: number }> = []
   const parts = accept.split(",")
   let hasIdentity = false
@@ -348,9 +344,7 @@ function getEncodingPriority(
   }
 }
 
-function parseAcceptCharset(
-  accept: string,
-): Array<{ charset: string; q: number; o: number }> {
+function parseAcceptCharset(accept: string): Array<{ charset: string; q: number; o: number }> {
   const specs: Array<{ charset: string; q: number; o: number }> = []
   const parts = accept.split(",")
 
@@ -417,10 +411,7 @@ function compareSpecs(a: ParsedSpec, b: ParsedSpec): number {
   return b.q - a.q || b.s - a.s || a.o - b.o || a.i - b.i
 }
 
-export function media(
-  accept: string,
-  available?: Array<string>,
-): Array<string> {
+export function media(accept: string, available?: Array<string>): Array<string> {
   const parsed = parseAccept(accept)
   if (parsed.length === 0) {
     return []
@@ -439,10 +430,7 @@ export function media(
   return sorted.map((p) => p.value)
 }
 
-export function language(
-  accept: string,
-  available?: Array<string>,
-): Array<string> {
+export function language(accept: string, available?: Array<string>): Array<string> {
   const parsed = parseAcceptLanguage(accept)
   if (parsed.length === 0) {
     return []
@@ -461,10 +449,7 @@ export function language(
   return sorted.map((p) => p.value)
 }
 
-export function encoding(
-  accept: string,
-  available?: Array<string>,
-): Array<string> {
+export function encoding(accept: string, available?: Array<string>): Array<string> {
   const parsed = parseAcceptEncoding(accept)
   if (parsed.length === 0) {
     return []
@@ -483,10 +468,7 @@ export function encoding(
   return sorted.map((p) => p.value)
 }
 
-export function charset(
-  accept: string,
-  available?: Array<string>,
-): Array<string> {
+export function charset(accept: string, available?: Array<string>): Array<string> {
   const parsed = parseAcceptCharset(accept)
   if (parsed.length === 0) {
     return []
@@ -505,37 +487,25 @@ export function charset(
   return sorted.map((p) => p.value)
 }
 
-export function headerMedia(
-  headers: Headers,
-  available?: Array<string>,
-): Array<string> {
+export function headerMedia(headers: Headers, available?: Array<string>): Array<string> {
   const accept = headers.get("accept")
   if (!accept) return []
   return media(accept, available)
 }
 
-export function headerLanguage(
-  headers: Headers,
-  available?: Array<string>,
-): Array<string> {
+export function headerLanguage(headers: Headers, available?: Array<string>): Array<string> {
   const accept = headers.get("accept-language")
   if (!accept) return []
   return language(accept, available)
 }
 
-export function headerEncoding(
-  headers: Headers,
-  available?: Array<string>,
-): Array<string> {
+export function headerEncoding(headers: Headers, available?: Array<string>): Array<string> {
   const accept = headers.get("accept-encoding")
   if (!accept) return []
   return encoding(accept, available)
 }
 
-export function headerCharset(
-  headers: Headers,
-  available?: Array<string>,
-): Array<string> {
+export function headerCharset(headers: Headers, available?: Array<string>): Array<string> {
   const accept = headers.get("accept-charset")
   if (!accept) return []
   return charset(accept, available)

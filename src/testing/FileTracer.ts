@@ -33,7 +33,12 @@ export const filterDuration = (minDuration: Duration.Input) => {
 
 const jsonValue = (value: unknown): unknown => {
   if (typeof value === "bigint") return value.toString()
-  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean" || value === null) {
+  if (
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean" ||
+    value === null
+  ) {
     return value
   }
   if (Array.isArray(value)) return value.map(jsonValue)
@@ -45,7 +50,10 @@ const rowsFromSpans = (
   filter: (span: Tracing.Span) => boolean,
 ): ReadonlyArray<Row> => {
   if (spans.length === 0) return []
-  const startedAt = spans.reduce((min, span) => span.startTime < min ? span.startTime : min, spans[0].startTime)
+  const startedAt = spans.reduce(
+    (min, span) => (span.startTime < min ? span.startTime : min),
+    spans[0].startTime,
+  )
   return spans
     .filter((span) => span.parentSpanId === undefined || filter(span))
     .map((span): Row => ({
@@ -66,19 +74,19 @@ export interface Options extends FileWriter.Options {
   readonly filter?: ((span: Span) => boolean) | undefined
 }
 
-export const layer = (
-  options: Options,
-): Layer.Layer<never, never, FileSystem.FileSystem> => {
+export const layer = (options: Options): Layer.Layer<never, never, FileSystem.FileSystem> => {
   const filter = options.filter ?? filterDuration("50 millis")
   const spans: Array<Tracing.Span> = []
   return Layer.merge(
     Layer.succeed(Tracer.Tracer, Tracing.makeTracer(spans)),
     Layer.effectDiscard(
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const writer = yield* Effect.orDie(FileWriter.build(options))
         yield* Effect.addFinalizer(() => {
           const rows = rowsFromSpans(spans, filter)
-          return rows.length === 0 ? Effect.void : writer.append(rows.map((row) => encodeRow(row)).join("\n"))
+          return rows.length === 0
+            ? Effect.void
+            : writer.append(rows.map((row) => encodeRow(row)).join("\n"))
         })
       }),
     ),

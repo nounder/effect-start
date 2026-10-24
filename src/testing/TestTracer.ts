@@ -11,7 +11,12 @@ export type Span = Tracing.Span
 
 const jsonValue = (value: unknown): unknown => {
   if (typeof value === "bigint") return value.toString()
-  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean" || value === null) {
+  if (
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean" ||
+    value === null
+  ) {
     return value
   }
   if (Array.isArray(value)) return value.map(jsonValue)
@@ -28,7 +33,10 @@ type Row = {
 }
 
 const rowsFromSpans = (spans: ReadonlyArray<Tracing.Span>): ReadonlyArray<Row> => {
-  const startedAt = spans.reduce((min, span) => span.startTime < min ? span.startTime : min, spans[0].startTime)
+  const startedAt = spans.reduce(
+    (min, span) => (span.startTime < min ? span.startTime : min),
+    spans[0].startTime,
+  )
   return spans
     .map((span): Row => ({
       id: span.spanId,
@@ -50,7 +58,9 @@ const formatTrace = (
 ) => {
   if (spans.length === 0) return "[trace] no spans"
   const kept = new Set(
-    spans.filter((span) => span.parentSpanId === undefined || filter(span)).map((span) => span.spanId),
+    spans
+      .filter((span) => span.parentSpanId === undefined || filter(span))
+      .map((span) => span.spanId),
   )
   const rows = rowsFromSpans(spans)
   const selected = rows.filter((row) => kept.has(row.id))
@@ -60,7 +70,8 @@ const formatTrace = (
 
   const visibleParent = (row: Row): string | undefined => {
     let parentId = row.parentId
-    while (parentId !== undefined && !selectedIds.has(parentId)) parentId = byId.get(parentId)?.parentId
+    while (parentId !== undefined && !selectedIds.has(parentId))
+      parentId = byId.get(parentId)?.parentId
     return parentId
   }
 
@@ -70,17 +81,15 @@ const formatTrace = (
   }
 
   const formatRow = (row: Row, depth: number): ReadonlyArray<string> => {
-    const attrs = Object.keys(row.attributes).length === 0 ? "" : ` ${JSON.stringify(row.attributes)}`
+    const attrs =
+      Object.keys(row.attributes).length === 0 ? "" : ` ${JSON.stringify(row.attributes)}`
     return [
       `${"  ".repeat(depth)}- +${row.startMs}ms ${row.durationMs}ms ${row.name}${attrs}`,
       ...(children.get(row.id) ?? []).flatMap((child) => formatRow(child, depth + 1)),
     ]
   }
 
-  const out = [
-    "[trace]",
-    ...((children.get(undefined) ?? []).flatMap((row) => formatRow(row, 0))),
-  ]
+  const out = ["[trace]", ...(children.get(undefined) ?? []).flatMap((row) => formatRow(row, 0))]
   if (json) {
     const serialized = selected.map((row) => ({
       ...row,
@@ -105,7 +114,7 @@ export const layer = (
   return Layer.merge(
     Layer.succeed(Tracer.Tracer, Tracing.makeTracer(spans)),
     Layer.effectDiscard(
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const print = yield* Effect.orElseSucceed(Config.Boolean("TRACE_PRINT"), () => false).pipe(
           Effect.provideService(ConfigProvider.ConfigProvider, ConfigProvider.fromEnv()),
         )

@@ -1,4 +1,6 @@
 import * as test from "bun:test"
+import * as NFs from "node:fs"
+import * as NPath from "node:path"
 import { BunFileSystem } from "effect-start/bun"
 import * as Development from "effect-start/Development"
 import * as Effect from "effect/Effect"
@@ -6,8 +8,6 @@ import * as Fiber from "effect/Fiber"
 import * as FileSystem from "effect/FileSystem"
 import * as Layer from "effect/Layer"
 import * as Stream from "effect/Stream"
-import * as NFs from "node:fs"
-import * as NPath from "node:path"
 
 test.beforeEach(() => {
   Development._testResetState()
@@ -15,84 +15,53 @@ test.beforeEach(() => {
 
 test.describe("layer", () => {
   test.it("provides Development service", () =>
-    Effect
-      .gen(function*() {
-        const fs = yield* FileSystem.FileSystem
-        const root = yield* fs.makeTempDirectoryScoped({ prefix: "effect-start-" })
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem
+      const root = yield* fs.makeTempDirectoryScoped({ prefix: "effect-start-" })
 
-        return yield* Effect
-          .gen(function*() {
-            const dev = yield* Development.Development
+      return yield* Effect.gen(function* () {
+        const dev = yield* Development.Development
 
-            test
-              .expect(dev.events)
-              .toBeDefined()
-          })
-          .pipe(
-            Effect.provide(Development.layer({ path: root })),
-          )
-      })
-      .pipe(
-        Effect.scoped,
-        Effect.provide(BunFileSystem.layer),
-        Effect.runPromise,
-      ))
+        test.expect(dev.events).toBeDefined()
+      }).pipe(Effect.provide(Development.layer({ path: root })))
+    }).pipe(Effect.scoped, Effect.provide(BunFileSystem.layer), Effect.runPromise),
+  )
 })
 
 test.describe("stream", () => {
   test.it("returns stream from pubsub when Development is available", () =>
-    Effect
-      .gen(function*() {
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem
+      const root = yield* fs.makeTempDirectoryScoped({ prefix: "effect-start-" })
+
+      return yield* Effect.gen(function* () {
         const fs = yield* FileSystem.FileSystem
-        const root = yield* fs.makeTempDirectoryScoped({ prefix: "effect-start-" })
 
-        return yield* Effect
-          .gen(function*() {
-            const fs = yield* FileSystem.FileSystem
+        const collectFiber = yield* Stream.runCollect(Stream.take(Development.events, 1)).pipe(
+          Effect.forkChild({ startImmediately: true }),
+        )
 
-            const collectFiber = yield* Stream.runCollect(Stream.take(Development.events, 1)).pipe(
-              Effect.forkChild({ startImmediately: true }),
-            )
+        yield* Effect.sleep(1)
+        yield* fs.writeFileString(`${root}/file.ts`, "content")
 
-            yield* Effect.sleep(1)
-            yield* fs.writeFileString(`${root}/file.ts`, "content")
+        const collected = yield* Fiber.join(collectFiber)
 
-            const collected = yield* Fiber.join(collectFiber)
+        test.expect(collected.length).toBe(1)
 
-            test
-              .expect(collected.length)
-              .toBe(1)
+        const first = collected[0]!
 
-            const first = collected[0]!
-
-            test
-              .expect("path" in first && first.path)
-              .toContain("file.ts")
-          })
-          .pipe(
-            Effect.provide(Development.layer({ path: root })),
-          )
-      })
-      .pipe(
-        Effect.scoped,
-        Effect.provide(BunFileSystem.layer),
-        Effect.runPromise,
-      ))
+        test.expect("path" in first && first.path).toContain("file.ts")
+      }).pipe(Effect.provide(Development.layer({ path: root })))
+    }).pipe(Effect.scoped, Effect.provide(BunFileSystem.layer), Effect.runPromise),
+  )
 
   test.it("returns empty stream when Development is not available", () =>
-    Effect
-      .gen(function*() {
-        const collected = yield* Stream.runCollect(Development.events)
+    Effect.gen(function* () {
+      const collected = yield* Stream.runCollect(Development.events)
 
-        test
-          .expect(collected.length)
-          .toBe(0)
-      })
-      .pipe(
-        Effect.scoped,
-        Effect.provide(Layer.empty),
-        Effect.runPromise,
-      ))
+      test.expect(collected.length).toBe(0)
+    }).pipe(Effect.scoped, Effect.provide(Layer.empty), Effect.runPromise),
+  )
 
   // Regression: when a route directory is dropped (e.g. `rm -rf routes/chat`)
   // or moved into the watched tree, the underlying NFS watcher emits a single
@@ -103,98 +72,70 @@ test.describe("stream", () => {
   test.it(
     "propagates events for removed directories",
     () =>
-      Effect
-        .gen(function*() {
+      Effect.gen(function* () {
+        const fs = yield* FileSystem.FileSystem
+        const root = yield* fs.makeTempDirectoryScoped({ prefix: "effect-start-" })
+        const routes = NPath.join(root, "routes")
+        NFs.mkdirSync(routes, { recursive: true })
+
+        return yield* Effect.gen(function* () {
           const fs = yield* FileSystem.FileSystem
-          const root = yield* fs.makeTempDirectoryScoped({ prefix: "effect-start-" })
-          const routes = NPath.join(root, "routes")
-          NFs.mkdirSync(routes, { recursive: true })
 
-          return yield* Effect
-            .gen(function*() {
-              const fs = yield* FileSystem.FileSystem
+          yield* fs.makeDirectory(`${routes}/chat`, { recursive: true })
+          yield* fs.writeFileString(`${routes}/chat/route.ts`, "")
 
-              yield* fs.makeDirectory(`${routes}/chat`, { recursive: true })
-              yield* fs.writeFileString(`${routes}/chat/route.ts`, "")
+          const collectFiber = yield* Stream.runCollect(Stream.take(Development.events, 1)).pipe(
+            Effect.forkChild({ startImmediately: true }),
+          )
 
-              const collectFiber = yield* Stream.runCollect(Stream.take(Development.events, 1)).pipe(
-                Effect.forkChild({ startImmediately: true }),
-              )
+          yield* Effect.sleep(1)
+          yield* fs.remove(`${routes}/chat`, { recursive: true })
 
-              yield* Effect.sleep(1)
-              yield* fs.remove(`${routes}/chat`, { recursive: true })
+          const collected = yield* Fiber.join(collectFiber)
 
-              const collected = yield* Fiber.join(collectFiber)
+          test.expect(collected.length).toBe(1)
 
-              test
-                .expect(collected.length)
-                .toBe(1)
+          const first = collected[0]!
 
-              const first = collected[0]!
-
-              test
-                .expect("path" in first && first.path)
-                .toContain("chat")
-            })
-            .pipe(
-              Effect.provide(Development.layer({ path: routes })),
-            )
-        })
-        .pipe(
-          Effect.scoped,
-          Effect.provide(BunFileSystem.layer),
-          Effect.runPromise,
-        ),
+          test.expect("path" in first && first.path).toContain("chat")
+        }).pipe(Effect.provide(Development.layer({ path: routes })))
+      }).pipe(Effect.scoped, Effect.provide(BunFileSystem.layer), Effect.runPromise),
     500,
   )
 
   test.it(
     "propagates events for directories moved in",
     () =>
-      Effect
-        .gen(function*() {
+      Effect.gen(function* () {
+        const fs = yield* FileSystem.FileSystem
+        const root = yield* fs.makeTempDirectoryScoped({ prefix: "effect-start-" })
+        const routes = NPath.join(root, "routes")
+        const staging = NPath.join(root, "staging")
+        NFs.mkdirSync(routes, { recursive: true })
+        NFs.mkdirSync(staging, { recursive: true })
+
+        return yield* Effect.gen(function* () {
           const fs = yield* FileSystem.FileSystem
-          const root = yield* fs.makeTempDirectoryScoped({ prefix: "effect-start-" })
-          const routes = NPath.join(root, "routes")
-          const staging = NPath.join(root, "staging")
-          NFs.mkdirSync(routes, { recursive: true })
-          NFs.mkdirSync(staging, { recursive: true })
 
-          return yield* Effect
-            .gen(function*() {
-              const fs = yield* FileSystem.FileSystem
+          yield* fs.makeDirectory(`${staging}/chat`, { recursive: true })
+          yield* fs.writeFileString(`${staging}/chat/route.ts`, "")
 
-              yield* fs.makeDirectory(`${staging}/chat`, { recursive: true })
-              yield* fs.writeFileString(`${staging}/chat/route.ts`, "")
+          const collectFiber = yield* Stream.runCollect(Stream.take(Development.events, 1)).pipe(
+            Effect.forkChild({ startImmediately: true }),
+          )
 
-              const collectFiber = yield* Stream.runCollect(Stream.take(Development.events, 1)).pipe(
-                Effect.forkChild({ startImmediately: true }),
-              )
+          yield* Effect.sleep(1)
+          yield* fs.rename(`${staging}/chat`, `${routes}/chat`)
 
-              yield* Effect.sleep(1)
-              yield* fs.rename(`${staging}/chat`, `${routes}/chat`)
+          const collected = yield* Fiber.join(collectFiber)
 
-              const collected = yield* Fiber.join(collectFiber)
+          test.expect(collected.length).toBe(1)
 
-              test
-                .expect(collected.length)
-                .toBe(1)
+          const first = collected[0]!
 
-              const first = collected[0]!
-
-              test
-                .expect("path" in first && first.path)
-                .toContain("chat")
-            })
-            .pipe(
-              Effect.provide(Development.layer({ path: routes })),
-            )
-        })
-        .pipe(
-          Effect.scoped,
-          Effect.provide(BunFileSystem.layer),
-          Effect.runPromise,
-        ),
+          test.expect("path" in first && first.path).toContain("chat")
+        }).pipe(Effect.provide(Development.layer({ path: routes })))
+      }).pipe(Effect.scoped, Effect.provide(BunFileSystem.layer), Effect.runPromise),
     500,
   )
 })

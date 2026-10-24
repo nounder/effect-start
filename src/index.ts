@@ -9,6 +9,4 @@ export * as Start from "./Start.ts"
 export * as StaticRoute from "./StaticRoute.ts"
 export * as Unique from "./Unique.ts"
 
-export type {
-  JSX,
-} from "./jsx.ts"
+export type { JSX } from "./jsx.ts"

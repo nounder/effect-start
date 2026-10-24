@@ -1,7 +1,7 @@
-import * as Effect from "effect/Effect"
 import * as NFs from "node:fs"
 import * as NPath from "node:path"
 import * as NUrl from "node:url"
+import * as Effect from "effect/Effect"
 import * as Mime from "../../internal/Mime.ts"
 import * as Bundle from "../Bundle.ts"
 
@@ -11,7 +11,8 @@ export type EntrypointPair = {
   id: string
 }
 
-export const toPath = (path: string) => path.startsWith("file://") ? NUrl.fileURLToPath(path) : path
+export const toPath = (path: string) =>
+  path.startsWith("file://") ? NUrl.fileURLToPath(path) : path
 
 export const toOutputPath = (path: string) => {
   const withoutDot = path.startsWith("./") ? path.slice(2) : path
@@ -27,9 +28,7 @@ export const normalizeEntrypointPath = (path: string): string => {
   }
 }
 
-export const resolveEntrypointsPaired = (
-  entrypoints: Array<string>,
-): Array<EntrypointPair> =>
+export const resolveEntrypointsPaired = (entrypoints: Array<string>): Array<EntrypointPair> =>
   entrypoints.map((original) => {
     let resolved: string
     try {
@@ -40,11 +39,7 @@ export const resolveEntrypointsPaired = (
     return { original, resolved, id: normalizeEntrypointPath(resolved) }
   })
 
-export const entrypointKey = (
-  original: string,
-  resolved: string,
-  baseDir: string,
-): string => {
+export const entrypointKey = (original: string, resolved: string, baseDir: string): string => {
   const originalPath = toPath(original)
   if (!NPath.isAbsolute(originalPath)) return originalPath
   const prefix = baseDir ? baseDir + "/" : ""
@@ -70,14 +65,14 @@ export const finishEntrypointMap = (
   paired: Array<EntrypointPair>,
   artifactPathByEntrypoint: Map<string, string>,
 ): Effect.Effect<Record<string, string>, Bundle.BundleError> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const missing = paired.filter((entrypoint) => !artifactPathByEntrypoint.has(entrypoint.id))
     if (missing.length > 0) {
       return yield* Effect.fail(
         new Bundle.BundleError({
-          message: `No artifact emitted for ${missing.length} entrypoint(s): ${
-            missing.map((p) => p.original).join(", ")
-          }`,
+          message: `No artifact emitted for ${missing.length} entrypoint(s): ${missing
+            .map((p) => p.original)
+            .join(", ")}`,
         }),
       )
     }
@@ -97,7 +92,7 @@ export const recordEntrypointArtifact = (
   entryPointSource: string,
   artifactPath: string,
 ): Effect.Effect<void, Bundle.BundleError> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const id = normalizeEntrypointPath(entryPointSource)
     if (!entrypointIds.has(id)) return
 

@@ -18,7 +18,7 @@ await NFs.rm("vendor/effect", { recursive: true, force: true })
 await Promise.all(
   files
     .entries()
-    .map(([path, blob]) => [path.split("/").slice(1).join("/"), blob] as const)
+    .map(([path, blob]) => [path.split("/").slice(1).join("/"), blob])
     .filter(([rel]) => rel.startsWith(prefix))
     .map(([rel, blob]) => Bun.write(`vendor/effect/${rel.slice(prefix.length)}`, blob))
     .toArray(),

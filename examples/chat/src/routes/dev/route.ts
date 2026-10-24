@@ -4,11 +4,10 @@ import { HttpClient } from "effect/http"
 
 export default Route.get(
   Route.sse(
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const client = yield* HttpClient.HttpClient
       const request = yield* Route.Request
-      const referer = request.headers.get("referer") ??
-        new URL(request.url).origin
+      const referer = request.headers.get("referer") ?? new URL(request.url).origin
 
       return Development.events.pipe(
         Stream.debounce("50 millis"),
@@ -17,10 +16,7 @@ export default Route.get(
         Stream.map((html) => ({
           event: "datastar-patch-elements",
           // TODO:
-          data: [
-            "mode outer",
-            ...html.split("\n").map((line) => `elements ${line}`),
-          ],
+          data: ["mode outer", ...html.split("\n").map((line) => `elements ${line}`)],
         })),
       )
     }),

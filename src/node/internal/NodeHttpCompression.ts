@@ -1,13 +1,11 @@
-/**
- * Ported from effect@4.0.0-rc.112.
- */
+import type { Duplex } from "node:stream"
+import { Readable } from "node:stream"
+import * as Zlib from "node:zlib"
+/** Ported from effect@4.0.0-rc.112. */
 import * as Effect from "effect/Effect"
 import * as HttpBody from "effect/http/HttpBody"
 import type * as Platform from "effect/http/HttpPlatform"
 import * as Response from "effect/http/HttpServerResponse"
-import type { Duplex } from "node:stream"
-import { Readable } from "node:stream"
-import * as Zlib from "node:zlib"
 
 export const algorithms: ReadonlySet<Platform.CompressionAlgorithm> = new Set(
   typeof Zlib.zstdCompress === "function"
@@ -27,7 +25,9 @@ const brotliParams = (level: number | undefined, sizeHint?: number): Zlib.Brotli
 }
 
 const zstdParams = (level: number | undefined): Zlib.ZstdOptions | undefined =>
-  level === undefined || level === 3 ? undefined : { params: { [Zlib.constants.ZSTD_c_compressionLevel]: level } }
+  level === undefined || level === 3
+    ? undefined
+    : { params: { [Zlib.constants.ZSTD_c_compressionLevel]: level } }
 
 const compress = (
   data: Uint8Array,
@@ -74,7 +74,8 @@ export const make = (fallback: Platform.Compression): Platform.Compression => ({
         Response.setBody(response, HttpBody.uint8Array(result, body.contentType)),
         "content-length",
         result.byteLength.toString(),
-      ))
+      ),
+    )
   },
 })
 
@@ -104,14 +105,12 @@ export const compressTransform = (
   }
 }
 
-export const compressTransformWeb = (
-  algorithm: Platform.CompressionAlgorithm,
-  options?: Platform.CompressionOptions | undefined,
-) =>
-(stream: ReadableStream<Uint8Array>): ReadableStream<Uint8Array> => {
-  const transform = compressTransform(algorithm, options)
-  const source = Readable.fromWeb(stream as any)
-  source.on("error", (cause) => transform.destroy(cause))
-  transform.on("close", () => source.destroy())
-  return Readable.toWeb(source.pipe(transform)) as unknown as ReadableStream<Uint8Array>
-}
+export const compressTransformWeb =
+  (algorithm: Platform.CompressionAlgorithm, options?: Platform.CompressionOptions | undefined) =>
+  (stream: ReadableStream<Uint8Array>): ReadableStream<Uint8Array> => {
+    const transform = compressTransform(algorithm, options)
+    const source = Readable.fromWeb(stream as any)
+    source.on("error", (cause) => transform.destroy(cause))
+    transform.on("close", () => source.destroy())
+    return Readable.toWeb(source.pipe(transform)) as unknown as ReadableStream<Uint8Array>
+  }

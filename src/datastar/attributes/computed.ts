@@ -15,9 +15,7 @@ attribute({
       updateLeaves(patch, (old) => {
         if (typeof old === "function") {
           return computed(() =>
-            old(
-              createDataEvent({ el, cleanups: new Map(), error: () => error }),
-            )
+            old(createDataEvent({ el, cleanups: new Map(), error: () => error })),
           )
         } else {
           throw error("ComputedExpectedFunction")

@@ -25,10 +25,5 @@
   "sql": {
     "linesBetweenQueries": 3
   },
-  "excludes": [
-    "**/node_modules",
-    "**/*-lock.json",
-    "**/package.json",
-    "vscode/*.json"
-  ]
+  "excludes": ["**/node_modules", "**/*-lock.json", "**/package.json", "vscode/*.json"]
 }

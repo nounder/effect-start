@@ -20,9 +20,8 @@ const make = (store: StudioStore.State) =>
         Fatal: "FATAL",
       }
       const level = levelMap[logOptions.logLevel] ?? "INFO"
-      const causeStr = logOptions.cause.reasons.length > 0
-        ? Cause.pretty(logOptions.cause)
-        : undefined
+      const causeStr =
+        logOptions.cause.reasons.length > 0 ? Cause.pretty(logOptions.cause) : undefined
       const spanNames = logOptions.fiber.getRef(References.CurrentLogSpans).map(([label]) => label)
       const ann = logOptions.fiber.getRef(References.CurrentLogAnnotations)
 
@@ -38,19 +37,15 @@ const make = (store: StudioStore.State) =>
       }
       StudioStore.runWrite(
         store,
-        Effect.andThen(
-          StudioStore.insertLog(log),
-          StudioStore.evict("Log", store.logCapacity),
-        ),
+        Effect.andThen(StudioStore.insertLog(log), StudioStore.evict("Log", store.logCapacity)),
       )
       Effect.runSync(PubSub.publish(store.events, { _tag: "Log", log }))
     } catch {}
   })
 
-export const layer: Layer.Layer<never, never, StudioContext.Studio> = Layer
-  .unwrap(
-    Effect.gen(function*() {
-      const studio = yield* StudioContext.Studio
-      return Logger.layer([make(studio.store)], { mergeWithExisting: true })
-    }),
-  )
+export const layer: Layer.Layer<never, never, StudioContext.Studio> = Layer.unwrap(
+  Effect.gen(function* () {
+    const studio = yield* StudioContext.Studio
+    return Logger.layer([make(studio.store)], { mergeWithExisting: true })
+  }),
+)

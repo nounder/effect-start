@@ -17,9 +17,9 @@ export const createSignals = (initial: Record<string, any> = {}) => {
   const track = (target: object, key: PropertyKey) => {
     if (!active) return
     let properties = dependencies.get(target)
-    if (!properties) dependencies.set(target, properties = new Map())
+    if (!properties) dependencies.set(target, (properties = new Map()))
     let subscribers = properties.get(key)
-    if (!subscribers) properties.set(key, subscribers = new Set())
+    if (!subscribers) properties.set(key, (subscribers = new Set()))
     subscribers.add(active)
     active.dependencies.add(subscribers)
   }
@@ -60,7 +60,11 @@ export const createSignals = (initial: Record<string, any> = {}) => {
           notify(target, keys)
           if (target.length < length!) {
             for (const property of dependencies.get(target)?.keys() ?? []) {
-              if (typeof property === "string" && /^\d+$/.test(property) && +property >= target.length) {
+              if (
+                typeof property === "string" &&
+                /^\d+$/.test(property) &&
+                +property >= target.length
+              ) {
                 notify(target, property)
               }
             }
@@ -138,8 +142,10 @@ export const createSignals = (initial: Record<string, any> = {}) => {
       const value = source[key]
       if (value && typeof value === "object" && !Array.isArray(value)) {
         if (
-          !Object.hasOwn(target, key) || !target[key] || typeof target[key] !== "object" || Array
-            .isArray(target[key])
+          !Object.hasOwn(target, key) ||
+          !target[key] ||
+          typeof target[key] !== "object" ||
+          Array.isArray(target[key])
         ) {
           if (onlyIfMissing && Object.hasOwn(target, key)) continue
           target[key] = {}

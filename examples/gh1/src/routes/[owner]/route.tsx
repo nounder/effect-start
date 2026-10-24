@@ -8,7 +8,7 @@ import * as Tabs from "../../ui/Tabs.tsx"
 export default Route.get(
   Route.schemaPathParams({ owner: Schema.String }),
   Route.schemaSearchParams({ tab: Schema.String }),
-  Route.html(function*(ctx) {
+  Route.html(function* (ctx) {
     const { owner } = ctx.pathParams
     const { tab } = ctx.searchParams
 
@@ -26,25 +26,17 @@ export default Route.get(
 
     return (
       <Layout.Layout>
-        <div class="flex flex-col lg:flex-row gap-8 pt-4">
-          <aside class="lg:w-[296px] shrink-0">
+        <div class="flex flex-col gap-8 pt-4 lg:flex-row">
+          <aside class="shrink-0 lg:w-[296px]">
             <img
               src={user.avatar_url}
-              class="w-[296px] h-[296px] rounded-full border-2 border-[#21262d] mb-4"
+              class="mb-4 h-[296px] w-[296px] rounded-full border-2 border-[#21262d]"
             />
-            <h1 class="text-2xl font-bold">
-              {user.name ?? user.login}
-            </h1>
-            <h2 class="text-xl text-[#8b949e] font-light mb-2">
-              {user.login}
-            </h2>
-            {user.bio && (
-              <p class="text-sm text-[#8b949e] mb-4">
-                {user.bio}
-              </p>
-            )}
+            <h1 class="text-2xl font-bold">{user.name ?? user.login}</h1>
+            <h2 class="mb-2 text-xl font-light text-[#8b949e]">{user.login}</h2>
+            {user.bio && <p class="mb-4 text-sm text-[#8b949e]">{user.bio}</p>}
 
-            <div class="flex items-center gap-2 text-sm text-[#8b949e] mb-4">
+            <div class="mb-4 flex items-center gap-2 text-sm text-[#8b949e]">
               <svg
                 width="16"
                 height="16"
@@ -57,21 +49,15 @@ export default Route.get(
                 href={`${Route.link("/:owner", { owner })}?tab=followers`}
                 class="hover:text-[#58a6ff]"
               >
-                <span class="font-semibold text-[#e6edf3]">
-                  {Github.num(user.followers)}
-                </span>{" "}
+                <span class="font-semibold text-[#e6edf3]">{Github.num(user.followers)}</span>{" "}
                 followers
               </a>
-              <span>
-                ·
-              </span>
+              <span>·</span>
               <a
                 href={`${Route.link("/:owner", { owner })}?tab=following`}
                 class="hover:text-[#58a6ff]"
               >
-                <span class="font-semibold text-[#e6edf3]">
-                  {Github.num(user.following)}
-                </span>{" "}
+                <span class="font-semibold text-[#e6edf3]">{Github.num(user.following)}</span>{" "}
                 following
               </a>
             </div>
@@ -114,10 +100,8 @@ export default Route.get(
                     <path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z" />
                   </svg>
                   <a
-                    href={user.blog.startsWith("http")
-                      ? user.blog
-                      : `https://${user.blog}`}
-                    class="text-[#58a6ff] hover:underline truncate"
+                    href={user.blog.startsWith("http") ? user.blog : `https://${user.blog}`}
+                    class="truncate text-[#58a6ff] hover:underline"
                   >
                     {user.blog}
                   </a>
@@ -144,7 +128,7 @@ export default Route.get(
             </div>
           </aside>
 
-          <div class="flex-1 min-w-0">
+          <div class="min-w-0 flex-1">
             <Tabs.Tabs
               items={[
                 {
@@ -161,7 +145,7 @@ export default Route.get(
               ]}
             />
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
               {[...displayRepos].map((r) => (
                 <Repo.RepoCard
                   owner={r.owner.login}
@@ -186,39 +170,25 @@ function renderOrg(org: Github.User, repos: ReadonlyArray<Github.Repo>) {
   return (
     <Layout.Layout>
       <div class="pt-6">
-        <div class="flex items-center gap-4 mb-6">
+        <div class="mb-6 flex items-center gap-4">
           <img
             src={org.avatar_url}
-            class="w-20 h-20 rounded-md border border-[#21262d]"
+            class="h-20 w-20 rounded-md border border-[#21262d]"
           />
           <div>
-            <h1 class="text-2xl font-bold">
-              {org.name ?? org.login}
-            </h1>
-            {org.bio && (
-              <p class="text-[#8b949e] text-sm mt-1">
-                {org.bio}
-              </p>
-            )}
-            <div class="flex items-center gap-4 text-sm text-[#8b949e] mt-2">
-              {org.location && (
-                <span>
-                  {org.location}
-                </span>
-              )}
+            <h1 class="text-2xl font-bold">{org.name ?? org.login}</h1>
+            {org.bio && <p class="mt-1 text-sm text-[#8b949e]">{org.bio}</p>}
+            <div class="mt-2 flex items-center gap-4 text-sm text-[#8b949e]">
+              {org.location && <span>{org.location}</span>}
               {org.blog && (
                 <a
-                  href={org.blog.startsWith("http")
-                    ? org.blog
-                    : `https://${org.blog}`}
+                  href={org.blog.startsWith("http") ? org.blog : `https://${org.blog}`}
                   class="text-[#58a6ff] hover:underline"
                 >
                   {org.blog}
                 </a>
               )}
-              <span>
-                {Github.num(org.public_repos)} repositories
-              </span>
+              <span>{Github.num(org.public_repos)} repositories</span>
             </div>
           </div>
         </div>
@@ -234,7 +204,7 @@ function renderOrg(org: Github.User, repos: ReadonlyArray<Github.Repo>) {
           ]}
         />
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
           {repos.map((r) => (
             <Repo.RepoCard
               owner={r.owner.login}

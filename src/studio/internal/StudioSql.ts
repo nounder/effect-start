@@ -9,7 +9,7 @@ export class StudioSql extends Context.Service<StudioSql, SqlClient.SqlClient>()
 ) {}
 
 export function layer() {
-  return Layer
-    .effect(StudioSql, SqliteClient.make({ filename: ":memory:" }))
-    .pipe(Layer.provide(Reactivity.layer))
+  return Layer.effect(StudioSql, SqliteClient.make({ filename: ":memory:" })).pipe(
+    Layer.provide(Reactivity.layer),
+  )
 }

@@ -7,9 +7,7 @@ test.describe(Bundle.makeResolver, () => {
       "effect-start/datastar": "datastar-abc.js",
     })
 
-    test
-      .expect(resolve("effect-start/datastar"))
-      .toBe("datastar-abc.js")
+    test.expect(resolve("effect-start/datastar")).toBe("datastar-abc.js")
   })
 
   test.it("resolves a relative path with a unique basename", () => {
@@ -17,9 +15,7 @@ test.describe(Bundle.makeResolver, () => {
       "speak/client.ts": "client-xyz.js",
     })
 
-    test
-      .expect(resolve("./client.ts"))
-      .toBe("client-xyz.js")
+    test.expect(resolve("./client.ts")).toBe("client-xyz.js")
   })
 
   test.it("returns undefined when the relative path does not match", () => {
@@ -27,9 +23,7 @@ test.describe(Bundle.makeResolver, () => {
       "speak/client.ts": "client-xyz.js",
     })
 
-    test
-      .expect(resolve("./missing.ts"))
-      .toBeUndefined()
+    test.expect(resolve("./missing.ts")).toBeUndefined()
   })
 
   test.describe("ambiguous matches without parent", () => {
@@ -40,9 +34,7 @@ test.describe(Bundle.makeResolver, () => {
         "speak/client.ts": "client-ccc.js",
       })
 
-      test
-        .expect(resolve("./client.ts"))
-        .toBeUndefined()
+      test.expect(resolve("./client.ts")).toBeUndefined()
     })
 
     test.it("still picks an unambiguous longer-tail match", () => {
@@ -51,12 +43,8 @@ test.describe(Bundle.makeResolver, () => {
         "other/thing.ts": "thing-yyy.js",
       })
 
-      test
-        .expect(resolve("./b/widget.ts"))
-        .toBe("widget-xxx.js")
-      test
-        .expect(resolve("./widget.ts"))
-        .toBe("widget-xxx.js")
+      test.expect(resolve("./b/widget.ts")).toBe("widget-xxx.js")
+      test.expect(resolve("./widget.ts")).toBe("widget-xxx.js")
     })
   })
 
@@ -71,39 +59,27 @@ test.describe(Bundle.makeResolver, () => {
       const resolve = Bundle.makeResolver(entrypoints)
 
       test
-        .expect(
-          resolve("./client.ts", "file:///repo/core/routes/speak/route.tsx"),
-        )
+        .expect(resolve("./client.ts", "file:///repo/core/routes/speak/route.tsx"))
         .toBe("client-ccc.js")
       test
-        .expect(
-          resolve("./client.ts", "file:///repo/core/routes/chat/route.tsx"),
-        )
+        .expect(resolve("./client.ts", "file:///repo/core/routes/chat/route.tsx"))
         .toBe("client-aaa.js")
       test
-        .expect(
-          resolve("./client.ts", "file:///repo/core/routes/home/route.tsx"),
-        )
+        .expect(resolve("./client.ts", "file:///repo/core/routes/home/route.tsx"))
         .toBe("client-bbb.js")
     })
 
     test.it("accepts plain filesystem paths as parent", () => {
       const resolve = Bundle.makeResolver(entrypoints)
 
-      test
-        .expect(
-          resolve("./client.ts", "/repo/core/routes/speak/route.tsx"),
-        )
-        .toBe("client-ccc.js")
+      test.expect(resolve("./client.ts", "/repo/core/routes/speak/route.tsx")).toBe("client-ccc.js")
     })
 
     test.it("honors `..` segments in the relative path", () => {
       const resolve = Bundle.makeResolver(entrypoints)
 
       test
-        .expect(
-          resolve("../speak/client.ts", "file:///repo/core/routes/home/route.tsx"),
-        )
+        .expect(resolve("../speak/client.ts", "file:///repo/core/routes/home/route.tsx"))
         .toBe("client-ccc.js")
     })
 
@@ -111,9 +87,7 @@ test.describe(Bundle.makeResolver, () => {
       const resolve = Bundle.makeResolver(entrypoints)
 
       test
-        .expect(
-          resolve("./client.ts", "file:///repo/core/routes/other/route.tsx"),
-        )
+        .expect(resolve("./client.ts", "file:///repo/core/routes/other/route.tsx"))
         .toBeUndefined()
     })
 
@@ -124,9 +98,7 @@ test.describe(Bundle.makeResolver, () => {
       })
 
       test
-        .expect(
-          resolve("effect-start/datastar", "file:///repo/core/routes/speak/route.tsx"),
-        )
+        .expect(resolve("effect-start/datastar", "file:///repo/core/routes/speak/route.tsx"))
         .toBe("datastar-abc.js")
     })
 
@@ -139,14 +111,10 @@ test.describe(Bundle.makeResolver, () => {
       })
 
       test
-        .expect(
-          resolve("./client.ts", "file:///repo/core/routes/speak/route.tsx"),
-        )
+        .expect(resolve("./client.ts", "file:///repo/core/routes/speak/route.tsx"))
         .toBe("client-ccc.js")
       test
-        .expect(
-          resolve("./client.ts", "file:///repo/core/routes/chat/route.tsx"),
-        )
+        .expect(resolve("./client.ts", "file:///repo/core/routes/chat/route.tsx"))
         .toBe("client-aaa.js")
     })
   })

@@ -6,8 +6,10 @@ function getBaseSchemaAST(schema: Schema.Constraint): SchemaAST.AST {
 }
 
 function isOptional(schema: Schema.Constraint): boolean {
-  return schema["~type.optionality"] === "optional" ||
+  return (
+    schema["~type.optionality"] === "optional" ||
     (schema.ast._tag === "Union" && schema.ast.types.some(SchemaAST.isUndefined))
+  )
 }
 
 export function schemaEqual(

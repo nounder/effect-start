@@ -14,8 +14,8 @@ import * as BunPath from "./bun/BunPath.ts"
 export type DevelopmentEvent =
   | FileSystem.WatchEvent
   | {
-    readonly _tag: "Reload"
-  }
+      readonly _tag: "Reload"
+    }
 
 const devStateKey = Symbol.for("effect-start/Development")
 const globals = globalThis as typeof globalThis & {
@@ -24,7 +24,7 @@ const globals = globalThis as typeof globalThis & {
     pubsub: PubSub.PubSub<DevelopmentEvent> | null
   }
 }
-const devState = globals[devStateKey] ??= { count: 0, pubsub: null }
+const devState = (globals[devStateKey] ??= { count: 0, pubsub: null })
 
 export const _testResetState = () => {
   devState.count = 0
@@ -49,19 +49,14 @@ const watchSource = (opts?: {
   path?: string
   recursive?: boolean
   filter?: (event: FileSystem.WatchEvent) => boolean
-}): Stream.Stream<
-  FileSystem.WatchEvent,
-  PlatformError.PlatformError,
-  FileSystem.FileSystem
-> => {
+}): Stream.Stream<FileSystem.WatchEvent, PlatformError.PlatformError, FileSystem.FileSystem> => {
   const baseDir = opts?.path ?? process.cwd()
   const customFilter = opts?.filter
 
   return Function.pipe(
     Stream.unwrap(
-      Effect.map(
-        FileSystem.FileSystem,
-        (fs) => fs.watch(baseDir, { recursive: opts?.recursive ?? true }),
+      Effect.map(FileSystem.FileSystem, (fs) =>
+        fs.watch(baseDir, { recursive: opts?.recursive ?? true }),
       ),
     ),
     customFilter ? Stream.filter(customFilter) : Function.identity,
@@ -80,7 +75,7 @@ const watch = (opts?: {
   recursive?: boolean
   filter?: (event: FileSystem.WatchEvent) => boolean
 }) =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     devState.count++
 
     if (devState.count === 1) {
@@ -131,9 +126,6 @@ export const events: Stream.Stream<DevelopmentEvent> = Stream.unwrap(
 
 export function layerBase() {
   return BunChildProcessSpawner.layer.pipe(
-    Layer.provideMerge(Layer.merge(
-      BunFileSystem.layer,
-      BunPath.layer,
-    )),
+    Layer.provideMerge(Layer.merge(BunFileSystem.layer, BunPath.layer)),
   )
 }

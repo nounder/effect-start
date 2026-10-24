@@ -25,28 +25,21 @@ test.afterEach(() => {
 })
 
 test.it("imports safely outside the browser", () => {
-  test
-    .expect(() => new Function(bundle)())
-    .not
-    .toThrow()
+  test.expect(() => new Function(bundle)()).not.toThrow()
 })
 
 test.it("automatically starts from a side-effect import and observes later elements", async () => {
   dom.window.document.body.innerHTML = `<button data-cell="cell => { cell.target.textContent = 'started' }"></button>`
   dom.window.eval(bundle)
 
-  test
-    .expect(dom.window.document.querySelector("button")!.textContent)
-    .toBe("started")
+  test.expect(dom.window.document.querySelector("button")!.textContent).toBe("started")
 
   const target = dom.window.document.createElement("div")
   target.setAttribute("data-cell", "cell => { cell.target.textContent = 'mounted' }")
   dom.window.document.body.append(target)
   await Promise.resolve()
 
-  test
-    .expect(target.textContent)
-    .toBe("mounted")
+  test.expect(target.textContent).toBe("mounted")
 })
 
 test.it("separate copies tear down the previous runtime before restarting", () => {
@@ -66,14 +59,7 @@ test.it("separate copies tear down the previous runtime before restarting", () =
   test
     .expect([target.dataset.setups, target.dataset.cleanups, target.textContent])
     .toEqual(["2", "1", "1"])
-  test
-    .expect(previousSignal.aborted)
-    .toBe(true)
-  test
-    .expect((target as any).abortSignal.aborted)
-    .toBe(false)
-  test
-    .expect(error)
-    .not
-    .toHaveBeenCalled()
+  test.expect(previousSignal.aborted).toBe(true)
+  test.expect((target as any).abortSignal.aborted).toBe(false)
+  test.expect(error).not.toHaveBeenCalled()
 })

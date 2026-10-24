@@ -9,36 +9,30 @@ import * as User from "../../../ui/User.tsx"
 export default Route.get(
   Route.schemaPathParams({ org: Schema.String }),
   Route.schemaSearchParams({ tab: Schema.String }),
-  Route.html(function*(ctx) {
+  Route.html(function* (ctx) {
     const { org } = ctx.pathParams
     const { tab } = ctx.searchParams
 
     const [orgInfo, repos, members] = yield* Effect.all([
       Github.getOrg(org),
       Github.getOrgRepos(org, { per_page: 30 }),
-      tab === "people"
-        ? Github.getOrgMembers(org, { per_page: 100 })
-        : Effect.succeed([]),
+      tab === "people" ? Github.getOrgMembers(org, { per_page: 100 }) : Effect.succeed([]),
     ])
 
     return (
       <Layout.Layout>
         <div class="pt-6">
-          <div class="flex items-center gap-4 mb-6 pb-6 border-b border-[#21262d]">
+          <div class="mb-6 flex items-center gap-4 border-b border-[#21262d] pb-6">
             <img
               src={orgInfo.avatar_url}
-              class="w-20 h-20 rounded-md border border-[#21262d]"
+              class="h-20 w-20 rounded-md border border-[#21262d]"
             />
             <div>
-              <h1 class="text-2xl font-bold">
-                {orgInfo.name ?? orgInfo.login}
-              </h1>
+              <h1 class="text-2xl font-bold">{orgInfo.name ?? orgInfo.login}</h1>
               {orgInfo.description && (
-                <p class="text-[#8b949e] text-sm mt-1">
-                  {orgInfo.description}
-                </p>
+                <p class="mt-1 text-sm text-[#8b949e]">{orgInfo.description}</p>
               )}
-              <div class="flex items-center gap-4 text-sm text-[#8b949e] mt-2 flex-wrap">
+              <div class="mt-2 flex flex-wrap items-center gap-4 text-sm text-[#8b949e]">
                 {orgInfo.location && (
                   <span class="flex items-center gap-1">
                     <svg
@@ -54,10 +48,10 @@ export default Route.get(
                 )}
                 {orgInfo.blog && (
                   <a
-                    href={orgInfo.blog.startsWith("http")
-                      ? orgInfo.blog
-                      : `https://${orgInfo.blog}`}
-                    class="text-[#58a6ff] hover:underline flex items-center gap-1"
+                    href={
+                      orgInfo.blog.startsWith("http") ? orgInfo.blog : `https://${orgInfo.blog}`
+                    }
+                    class="flex items-center gap-1 text-[#58a6ff] hover:underline"
                   >
                     <svg
                       width="16"
@@ -70,9 +64,7 @@ export default Route.get(
                     {orgInfo.blog}
                   </a>
                 )}
-                <span>
-                  {Github.num(orgInfo.public_repos)} repositories
-                </span>
+                <span>{Github.num(orgInfo.public_repos)} repositories</span>
               </div>
             </div>
           </div>
@@ -93,34 +85,32 @@ export default Route.get(
             ]}
           />
 
-          {tab === "people" ?
-            (
-              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                {members.map((m: any) => (
-                  <User.UserCard
-                    login={m.login}
-                    avatar={m.avatar_url}
-                    type="User"
-                  />
-                ))}
-              </div>
-            ) :
-            (
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {repos.map((r: any) => (
-                  <Repo.RepoCard
-                    owner={r.owner.login}
-                    name={r.name}
-                    description={r.description}
-                    language={r.language}
-                    stars={r.stargazers_count}
-                    forks={r.forks_count}
-                    updated={r.updated_at}
-                    topics={r.topics}
-                  />
-                ))}
-              </div>
-            )}
+          {tab === "people" ? (
+            <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {members.map((m: any) => (
+                <User.UserCard
+                  login={m.login}
+                  avatar={m.avatar_url}
+                  type="User"
+                />
+              ))}
+            </div>
+          ) : (
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+              {repos.map((r: any) => (
+                <Repo.RepoCard
+                  owner={r.owner.login}
+                  name={r.name}
+                  description={r.description}
+                  language={r.language}
+                  stars={r.stargazers_count}
+                  forks={r.forks_count}
+                  updated={r.updated_at}
+                  topics={r.topics}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </Layout.Layout>
     )

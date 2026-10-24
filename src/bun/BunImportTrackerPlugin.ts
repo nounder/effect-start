@@ -1,12 +1,11 @@
-import type { BunPlugin, Import } from "bun"
 import * as NPath from "node:path"
+import type { BunPlugin, Import } from "bun"
 
 export type ImportMap = ReadonlyMap<string, Array<Import>>
 
 /**
- * Tracks all imported modules.
- * State can be accessed via 'virtual:import-tracker' module within a bundle
- * or through `state` property returned by this function.
+ * Tracks all imported modules. State can be accessed via 'virtual:import-tracker' module within a
+ * bundle or through `state` property returned by this function.
  */
 export const make = (
   opts: {
@@ -33,9 +32,7 @@ export const make = (
           filter: /\.(ts|js)x?$/,
         },
         async (args) => {
-          if (
-            !opts.includeNodeModules && args.path.includes("/node_modules/")
-          ) {
+          if (!opts.includeNodeModules && args.path.includes("/node_modules/")) {
             return undefined
           }
 
@@ -57,10 +54,7 @@ export const make = (
                   : NPath.relative(baseDir, absoluteImportPath),
               }
             })
-            foundImports.set(
-              NPath.relative(baseDir, args.path),
-              resolvedImports,
-            )
+            foundImports.set(NPath.relative(baseDir, args.path), resolvedImports)
           } catch {}
 
           return undefined
@@ -92,9 +86,7 @@ export const make = (
 
           // Emit JSON containing the stats of each import
           return {
-            contents: JSON.stringify(
-              Object.fromEntries(foundImports.entries()),
-            ),
+            contents: JSON.stringify(Object.fromEntries(foundImports.entries())),
             loader: "json",
           }
         },

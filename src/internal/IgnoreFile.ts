@@ -6,9 +6,9 @@ import * as NPath from "node:path"
 interface Pattern {
   readonly source: string
   readonly negate: boolean
-  /** matches directories only (e.g. `build/`) */
+  /** Matches directories only (e.g. `build/`) */
   readonly directoryOnly: boolean
-  /**  matches relative to the ignore file's dir, not anywhere in the tree. */
+  /** Matches relative to the ignore file's dir, not anywhere in the tree. */
   readonly anchored: boolean
   readonly regex: RegExp
 }
@@ -104,12 +104,11 @@ type WalkSignal = "abort" | "pass" | undefined
 type Visit = (item: { path: string; entry: Dirent }) => WalkSignal
 
 /**
- * Recursively walk `root`, applying `.gitignore` rules found at each level
- * (plus any `.gitignore`s above `root`, between it and the filesystem root).
+ * Recursively walk `root`, applying `.gitignore` rules found at each level (plus any `.gitignore`s
+ * above `root`, between it and the filesystem root).
  *
- * `visit` is called for every non-ignored entry. Return `"abort"` to stop the
- * entire walk, `"pass"` to skip descending into a directory, or nothing to
- * continue.
+ * `visit` is called for every non-ignored entry. Return `"abort"` to stop the entire walk, `"pass"`
+ * to skip descending into a directory, or nothing to continue.
  */
 export const walk = async (root: string, visit: Visit): Promise<void> => {
   const stack = make()
@@ -128,10 +127,7 @@ export const walk = async (root: string, visit: Visit): Promise<void> => {
   await walkInto(resolved, stack, visit)
 }
 
-const pushIgnore = async (
-  stack: IgnoreStack,
-  dir: string,
-): Promise<boolean> => {
+const pushIgnore = async (stack: IgnoreStack, dir: string): Promise<boolean> => {
   const path = NPath.join(dir, ".gitignore")
   const stat = NFSSync.statSync(path, { throwIfNoEntry: false })
   if (!stat?.isFile()) return false
@@ -140,11 +136,7 @@ const pushIgnore = async (
   return true
 }
 
-const walkInto = async (
-  dir: string,
-  stack: IgnoreStack,
-  visit: Visit,
-): Promise<WalkSignal> => {
+const walkInto = async (dir: string, stack: IgnoreStack, visit: Visit): Promise<WalkSignal> => {
   const pushed = await pushIgnore(stack, dir)
 
   let entries: Array<Dirent>

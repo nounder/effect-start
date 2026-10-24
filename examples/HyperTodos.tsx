@@ -17,18 +17,14 @@ class Store extends Context.Service<
 
 const routes = Route.map({
   "*": Route.use(
-    Route.html(function*(_ctx, next) {
+    Route.html(function* (_ctx, next) {
       return (
         <html>
           <head>
-            <title>
-              Hello
-            </title>
+            <title>Hello</title>
           </head>
           <body class="bg-black text-white">
-            <div>
-              {yield* next.html}
-            </div>
+            <div>{yield* next.html}</div>
           </body>
         </html>
       )
@@ -38,25 +34,23 @@ const routes = Route.map({
   "/todos": Route
     // renders todo lists
     .get(
-      Route.html(function*() {
+      Route.html(function* () {
         const store = yield* Store
         const todos = yield* Ref.get(store.todos)
 
         return (
           <div>
-            <div>
-              Items
-            </div>
+            <div>Items</div>
             <ul id="list">
-              {todos.map((todo) => <TimeItem {...todo} />)}
+              {todos.map((todo) => (
+                <TimeItem {...todo} />
+              ))}
             </ul>
             <form
               onsubmit={(e) => {
                 e.preventDefault()
                 const form = e.currentTarget as HTMLFormElement
-                const input = form.elements.namedItem(
-                  "text",
-                ) as HTMLInputElement
+                const input = form.elements.namedItem("text") as HTMLInputElement
                 fetch(location.href, {
                   method: "POST",
                   headers: { "content-type": "application/json" },
@@ -65,24 +59,22 @@ const routes = Route.map({
                 input.value = ""
               }}
             >
-              <input name="text" type="text" required />
-              <button type="submit">
-                add
-              </button>
+              <input
+                name="text"
+                type="text"
+                required
+              />
+              <button type="submit">add</button>
             </form>
             <script>
               {() => {
                 const events = new EventSource(location.href)
 
                 events.addEventListener("patch", (e) => {
-                  const [, mode, selector, html] = e.data.match(
-                    /^(\S+) (\S+)\n([\s\S]*)/,
-                  )!
+                  const [, mode, selector, html] = e.data.match(/^(\S+) (\S+)\n([\s\S]*)/)!
                   const target = document.querySelector(selector)
 
-                  target?.[mode]?.(
-                    document.createRange().createContextualFragment(html),
-                  )
+                  target?.[mode]?.(document.createRange().createContextualFragment(html))
                 })
               }}
             </script>
@@ -90,16 +82,14 @@ const routes = Route.map({
         )
       }),
       // streams it
-      Route.sse(function*() {
+      Route.sse(function* () {
         const store = yield* Store
 
         return store.events.pipe(
           Stream.map((e) => ({
             event: "patch",
             data: [
-              e._tag === "Add"
-                ? "append #list"
-                : `replaceWith #todo-${e.todo.id}`,
+              e._tag === "Add" ? "append #list" : `replaceWith #todo-${e.todo.id}`,
               Html.text(<TimeItem {...e.todo} />),
             ],
           })),
@@ -111,7 +101,7 @@ const routes = Route.map({
       Route.schemaBodyJson({
         text: Schema.String,
       }),
-      Route.json(function*(ctx) {
+      Route.json(function* (ctx) {
         const store = yield* Store
         const newTodo = yield* store.add(ctx.body.text)
 
@@ -125,7 +115,7 @@ const routes = Route.map({
     Route.schemaBodyJson({
       done: Schema.Boolean,
     }),
-    Route.json(function*(ctx) {
+    Route.json(function* (ctx) {
       const store = yield* Store
       yield* store.toggle(ctx.pathParams.id, ctx.body.done)
       return { ok: true }
@@ -135,7 +125,7 @@ const routes = Route.map({
 
 const layerStore = Layer.effect(
   Store,
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const todos = yield* Ref.make<Array<Todo>>([])
     const pubsub = yield* PubSub.unbounded<TodoEvent>()
 
@@ -143,7 +133,7 @@ const layerStore = Layer.effect(
       todos,
       events: Stream.fromPubSub(pubsub),
       add: (text) =>
-        Effect.gen(function*() {
+        Effect.gen(function* () {
           const id = Math.random().toString(36).slice(2, 8)
           const todo: Todo = { id, text, done: false }
           yield* Ref.update(todos, (curr) => [...curr, todo])
@@ -151,7 +141,7 @@ const layerStore = Layer.effect(
           return { id }
         }),
       toggle: (id, done) =>
-        Effect.gen(function*() {
+        Effect.gen(function* () {
           const updated = yield* Ref.modify(todos, (curr) => {
             let next: Todo | undefined
             const arr = curr.map((todo) => {
@@ -187,9 +177,7 @@ function TimeItem(props: { id: string; text: string; done: boolean }) {
           })
         }}
       />
-      <span style={props.done ? "text-decoration: line-through" : ""}>
-        {props.text}
-      </span>
+      <span style={props.done ? "text-decoration: line-through" : ""}>{props.text}</span>
     </li>
   )
 }

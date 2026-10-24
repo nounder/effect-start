@@ -41,7 +41,7 @@ function makePasswordSchema(options?: HashOptions) {
       decode: SchemaGetter.transformEffect((input) =>
         hash(input, options).pipe(
           Effect.mapError((error) => new SchemaIssue.InvalidValue({ message: formatError(error) })),
-        )
+        ),
       ),
       encode: SchemaGetter.forbidden(
         () => "Password hashes are write-only and cannot be encoded back to plain text.",
@@ -62,16 +62,14 @@ export function hash(
   password: string,
   options?: HashOptions,
 ): Effect.Effect<PasswordStored, PasswordError> {
-  return Effect.gen(function*() {
+  return Effect.gen(function* () {
     const algorithm = options?.algorithm ?? defaultAlgorithm
 
     const digest = yield* Effect.tryPromise({
       try: () => Bun.password.hash(password, toBunAlgorithm(options)),
       catch: (cause) =>
         new PasswordError({
-          reason: isSupportedAlgorithm(algorithm)
-            ? "HashFailure"
-            : "UnsupportedAlgorithm",
+          reason: isSupportedAlgorithm(algorithm) ? "HashFailure" : "UnsupportedAlgorithm",
           algorithm,
           cause,
         }),
@@ -97,11 +95,7 @@ export function verify(
 
 function toBunAlgorithm(
   options?: HashOptions,
-):
-  | Bun.Password.AlgorithmLabel
-  | Bun.Password.Argon2Algorithm
-  | Bun.Password.BCryptAlgorithm
-{
+): Bun.Password.AlgorithmLabel | Bun.Password.Argon2Algorithm | Bun.Password.BCryptAlgorithm {
   const algorithm = options?.algorithm ?? defaultAlgorithm
 
   switch (algorithm) {
@@ -121,9 +115,7 @@ function toBunAlgorithm(
   }
 }
 
-function isSupportedAlgorithm(
-  algorithm: string,
-): algorithm is PasswordAlgorithm {
+function isSupportedAlgorithm(algorithm: string): algorithm is PasswordAlgorithm {
   return bunAlgorithms.includes(algorithm as PasswordAlgorithm)
 }
 

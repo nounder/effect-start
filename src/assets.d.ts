@@ -1,7 +1,6 @@
 /**
- * Allow importing static assets as modules.
- * Bun/Vite resolves these to file paths.
- * For WASM you're better of
+ * Allow importing static assets as modules. Bun/Vite resolves these to file paths. For WASM you're
+ * better of
  */
 
 declare module "*.png"

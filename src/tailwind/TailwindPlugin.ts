@@ -1,18 +1,14 @@
-import type { BunPlugin } from "bun"
 import * as NPath from "node:path"
+import type { BunPlugin } from "bun"
 import * as BunProjectRoot from "../bun/internal/BunProjectRoot.ts"
 import * as IgnoreFile from "../internal/IgnoreFile.ts"
 import { compile } from "./compile.ts"
 
 export const make = (opts?: {
-  /**
-   * Pattern to match component and HTML files for class name extraction.
-   */
+  /** Pattern to match component and HTML files for class name extraction. */
   filesPattern?: RegExp
 
-  /**
-   * Pattern to match CSS files that import Tailwind.
-   */
+  /** Pattern to match CSS files that import Tailwind. */
   cssPattern?: RegExp
 
   target?: "browser" | "bun" | "node"
@@ -55,9 +51,7 @@ export const make = (opts?: {
             return undefined
           }
 
-          /**
-           * Register every visited module.
-           */
+          /** Register every visited module. */
           {
             if (!importAncestors.has(fullPath)) {
               importAncestors.set(fullPath, new Set())
@@ -83,9 +77,7 @@ export const make = (opts?: {
         },
       )
 
-      /**
-       * Scan for class name candidates in component files.
-       */
+      /** Scan for class name candidates in component files. */
       builder.onLoad(
         {
           filter: filesPattern,
@@ -102,9 +94,7 @@ export const make = (opts?: {
         },
       )
 
-      /**
-       * Compile tailwind entrypoints.
-       */
+      /** Compile tailwind entrypoints. */
       builder.onLoad(
         {
           filter: cssPattern,
@@ -152,14 +142,11 @@ export const make = (opts?: {
           // - `@source "..."` directives → `compiler.sources`
           // When `source(...)` is omitted, default to the project root. Only
           // `source(none)` opts out and relies solely on the module graph.
-          const projectRoot = compiler.root === undefined
-            ? await BunProjectRoot.find(args.path)
-            : undefined
+          const projectRoot =
+            compiler.root === undefined ? await BunProjectRoot.find(args.path) : undefined
           const sourceRoots = [
             ...(projectRoot ? [projectRoot] : []),
-            ...(compiler.root && compiler.root !== "none"
-              ? [compiler.root.base]
-              : []),
+            ...(compiler.root && compiler.root !== "none" ? [compiler.root.base] : []),
             ...compiler.sources.filter((s) => !s.negated).map((s) => s.base),
           ]
           for (const root of sourceRoots) {
@@ -207,10 +194,10 @@ function hasCssImport(css: string, specifier?: string): boolean {
 /**
  * Extract Tailwind candidate class names from arbitrary source text.
  *
- * Mirrors Tailwind v4's plain-text scanning rules: the whole file is treated
- * as text, tokens are split on Tailwind's boundary characters, and any token
- * shaped like a candidate is emitted. The Tailwind compiler discards tokens
- * that don't map to known utilities, so over-matching here is expected.
+ * Mirrors Tailwind v4's plain-text scanning rules: the whole file is treated as text, tokens are
+ * split on Tailwind's boundary characters, and any token shaped like a candidate is emitted. The
+ * Tailwind compiler discards tokens that don't map to known utilities, so over-matching here is
+ * expected.
  *
  * @see https://tailwindcss.com/docs/detecting-classes-in-source-files
  * @see https://github.com/tailwindlabs/tailwindcss/blob/main/crates/oxide/src/extractor/boundary.rs
@@ -254,17 +241,7 @@ export function extractClassNames(source: string): Set<string> {
   return candidates
 }
 
-const BOUNDARY_COMMON = new Set([
-  " ",
-  "\t",
-  "\n",
-  "\r",
-  "\f",
-  "\"",
-  "'",
-  "`",
-  "\0",
-])
+const BOUNDARY_COMMON = new Set([" ", "\t", "\n", "\r", "\f", '"', "'", "`", "\0"])
 const BOUNDARY_BEFORE_ONLY = new Set([".", "}", ">"])
 const BOUNDARY_AFTER_ONLY = new Set(["]", "{", "=", "\\", "<"])
 
@@ -298,9 +275,8 @@ interface ReadResult {
 }
 
 /**
- * Read a single Tailwind candidate starting at `start`. Returns null when the
- * position cannot begin a valid candidate. The returned `end` is the index
- * one past the last consumed character.
+ * Read a single Tailwind candidate starting at `start`. Returns null when the position cannot begin
+ * a valid candidate. The returned `end` is the index one past the last consumed character.
  */
 function readCandidate(source: string, start: number): ReadResult | null {
   const len = source.length
@@ -365,9 +341,9 @@ function readCandidate(source: string, start: number): ReadResult | null {
 }
 
 /**
- * Read either a variant or a utility body starting at `i`. Returns the end
- * index, or null if nothing valid was consumed. The caller decides whether
- * the next char (":") promotes this to a variant.
+ * Read either a variant or a utility body starting at `i`. Returns the end index, or null if
+ * nothing valid was consumed. The caller decides whether the next char (":") promotes this to a
+ * variant.
  */
 function readVariantOrUtility(source: string, start: number): number | null {
   const len = source.length
@@ -407,10 +383,9 @@ function readVariantOrUtility(source: string, start: number): number | null {
 }
 
 /**
- * Read a utility name body starting at `start`. The first char is assumed to
- * already be valid for starting (lowercase letter, or has been consumed). We
- * accept letters / digits / "_" / "-" / "." (positional rules) plus embedded
- * "[...]" and "(...)" runs. Returns the end index.
+ * Read a utility name body starting at `start`. The first char is assumed to already be valid for
+ * starting (lowercase letter, or has been consumed). We accept letters / digits / "_" / "-" / "."
+ * (positional rules) plus embedded "[...]" and "(...)" runs. Returns the end index.
  */
 function readNameBody(source: string, start: number): number {
   const len = source.length
@@ -479,18 +454,12 @@ function readNameBody(source: string, start: number): number {
 }
 
 /**
- * Consume a bracketed run starting at `start` (which must be `open`). Tracks
- * nested brackets (mixing of "[]" and "()" both supported via stack). Returns
- * the index one past the matching close, or null if unmatched / contains a
- * disallowed boundary char (raw whitespace breaks the candidate; Tailwind
- * uses "_" as the in-bracket space).
+ * Consume a bracketed run starting at `start` (which must be `open`). Tracks nested brackets
+ * (mixing of "[]" and "()" both supported via stack). Returns the index one past the matching
+ * close, or null if unmatched / contains a disallowed boundary char (raw whitespace breaks the
+ * candidate; Tailwind uses "_" as the in-bracket space).
  */
-function skipBracketed(
-  source: string,
-  start: number,
-  open: string,
-  close: string,
-): number | null {
+function skipBracketed(source: string, start: number, open: string, close: string): number | null {
   const len = source.length
   if (source[start] !== open) return null
   const stack: Array<string> = [close]
@@ -537,9 +506,9 @@ function skipBracketed(
 }
 
 /**
- * Read a "/modifier" body. The modifier can be a name (alnum/_/-) optionally
- * ending with "%", an arbitrary "[...]", or a CSS variable "(...)". Returns
- * the end index (one past the modifier) or null if empty.
+ * Read a "/modifier" body. The modifier can be a name (alnum/_/-) optionally ending with "%", an
+ * arbitrary "[...]", or a CSS variable "(...)". Returns the end index (one past the modifier) or
+ * null if empty.
  */
 function readModifier(source: string, start: number): number | null {
   const len = source.length

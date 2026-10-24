@@ -33,30 +33,33 @@ const keepTail = (contents: Uint8Array, keep: number, alignLines: boolean): Uint
 export const build = (
   options: Options,
 ): Effect.Effect<FileWriter, PlatformError.PlatformError, Scope.Scope | FileSystem.FileSystem> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const path = options.path
     const fs = yield* FileSystem.FileSystem
     const encoder = new TextEncoder()
-    const truncateSize = options.truncateSize !== undefined
-      ? Number(ByteSize.fromInputUnsafe(options.truncateSize))
-      : undefined
+    const truncateSize =
+      options.truncateSize !== undefined
+        ? Number(ByteSize.fromInputUnsafe(options.truncateSize))
+        : undefined
     const alignLines = options.truncateAlignLines ?? true
     const file = yield* fs.open(path, { flag: "a+", mode: options.mode })
     let written = Number((yield* file.stat).size)
 
     const semaphore = Semaphore.makeUnsafe(1)
     const write = (bytes: Uint8Array) =>
-      semaphore.withPermits(1)(Effect.gen(function*() {
-        if (truncateSize !== undefined && written > 0 && written + bytes.length > truncateSize) {
-          const tail = keepTail(yield* fs.readFile(path), truncateSize - bytes.length, alignLines)
-          yield* file.truncate()
-          yield* file.seek(0n, "start")
-          if (tail.length > 0) yield* file.writeAll(tail)
-          written = tail.length
-        }
-        yield* file.writeAll(bytes)
-        written += bytes.length
-      }))
+      semaphore.withPermits(1)(
+        Effect.gen(function* () {
+          if (truncateSize !== undefined && written > 0 && written + bytes.length > truncateSize) {
+            const tail = keepTail(yield* fs.readFile(path), truncateSize - bytes.length, alignLines)
+            yield* file.truncate()
+            yield* file.seek(0n, "start")
+            if (tail.length > 0) yield* file.writeAll(tail)
+            written = tail.length
+          }
+          yield* file.writeAll(bytes)
+          written += bytes.length
+        }),
+      )
 
     let buffer: Array<string> = []
     const flush = Effect.suspend(() => {
@@ -73,7 +76,9 @@ export const build = (
       }
     }
 
-    yield* Effect.forkScoped(Effect.forever(Effect.andThen(Effect.sleep(options.batchWindow), flush)))
+    yield* Effect.forkScoped(
+      Effect.forever(Effect.andThen(Effect.sleep(options.batchWindow), flush)),
+    )
     yield* Effect.addFinalizer(() => flush)
 
     return {

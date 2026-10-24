@@ -4,51 +4,52 @@ import type { JSX } from "effect-start/jsx-runtime"
  * Displays a card with header, content, and footer.
  *
  * @example
- * ```tsx
- * <Card>
- *   <CardHeader>
- *     <CardTitle>Card Title</CardTitle>
- *     <CardDescription>Card Description</CardDescription>
- *     <CardAction>Card Action</CardAction>
- *   </CardHeader>
- *   <CardContent>
- *     <p>Card Content</p>
- *   </CardContent>
- *   <CardFooter>
- *     <p>Card Footer</p>
- *   </CardFooter>
- * </Card>
- * ```
+ *   ;```tsx
+ *   ;<Card>
+ *     <CardHeader>
+ *       <CardTitle>Card Title</CardTitle>
+ *       <CardDescription>Card Description</CardDescription>
+ *       <CardAction>Card Action</CardAction>
+ *     </CardHeader>
+ *     <CardContent>
+ *       <p>Card Content</p>
+ *     </CardContent>
+ *     <CardFooter>
+ *       <p>Card Footer</p>
+ *     </CardFooter>
+ *   </Card>
+ *   ```
  *
- * @example card with an image
- * ```tsx
- * <Card class="relative mx-auto w-full max-w-sm pt-0">
+ * @example
+ *   card with an image
+ *   ```tsx
+ *   <Card class="relative mx-auto w-full max-w-sm pt-0">
  *   <div class="absolute inset-0 z-30 aspect-video bg-black/35" />
  *   <img
- *     src="https://avatar.vercel.sh/shadcn1"
- *     alt="Event cover"
- *     class="relative z-20 aspect-video w-full object-cover brightness-60 grayscale dark:brightness-40"
+ *   src="https://avatar.vercel.sh/shadcn1"
+ *   alt="Event cover"
+ *   class="relative z-20 aspect-video w-full object-cover brightness-60 grayscale dark:brightness-40"
  *   />
  *   <CardHeader>
- *     <CardAction>
- *       <Badge variant="secondary">Featured</Badge>
- *     </CardAction>
- *     <CardTitle>Design systems meetup</CardTitle>
- *     <CardDescription>
- *       A practical talk on component APIs, accessibility, and shipping faster.
- *     </CardDescription>
+ *   <CardAction>
+ *   <Badge variant="secondary">Featured</Badge>
+ *   </CardAction>
+ *   <CardTitle>Design systems meetup</CardTitle>
+ *   <CardDescription>
+ *   A practical talk on component APIs, accessibility, and shipping faster.
+ *   </CardDescription>
  *   </CardHeader>
  *   <CardFooter>
- *     <Button class="w-full">View Event</Button>
+ *   <Button class="w-full">View Event</Button>
  *   </CardFooter>
- * </Card>
- * ```
+ *   </Card>
+ *   ```
  */
 export function Card(props: JSX.IntrinsicElements["div"]) {
   const rest = omit(props, ["class"])
   return (
     <div
-      class={`flex flex-col gap-6 rounded-xl border bg-card py-6 text-card-foreground shadow-sm ${props.class ?? ""}`}
+      class={`bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6 shadow-sm ${props.class ?? ""}`}
       {...rest}
     />
   )
@@ -81,7 +82,7 @@ export function CardDescription(props: JSX.IntrinsicElements["div"]) {
   const rest = omit(props, ["class"])
   return (
     <div
-      class={`text-sm text-muted-foreground ${props.class ?? ""}`}
+      class={`text-muted-foreground text-sm ${props.class ?? ""}`}
       {...rest}
     />
   )
@@ -100,7 +101,13 @@ export function CardAction(props: JSX.IntrinsicElements["div"]) {
 
 export function CardContent(props: JSX.IntrinsicElements["div"]) {
   const rest = omit(props, ["class"])
-  return <div data-slot="Card_content" class={`px-6 ${props.class ?? ""}`} {...rest} />
+  return (
+    <div
+      data-slot="Card_content"
+      class={`px-6 ${props.class ?? ""}`}
+      {...rest}
+    />
+  )
 }
 
 export function CardFooter(props: JSX.IntrinsicElements["div"]) {
@@ -115,48 +122,51 @@ export function CardFooter(props: JSX.IntrinsicElements["div"]) {
 }
 
 /**
- * A text input component for forms and user data entry with built-in styling
- * and accessibility features.
+ * A text input component for forms and user data entry with built-in styling and accessibility
+ * features.
  *
  * @example
- * ```tsx
- * <Input />
- * ```
+ *   ;```tsx
+ *   ;<Input />
+ *   ```
  *
- * @example input with a label and description
- * ```tsx
- * <Field>
+ * @example
+ *   input with a label and description
+ *   ```tsx
+ *   <Field>
  *   <FieldLabel for="input-field-username">Username</FieldLabel>
  *   <Input id="input-field-username" type="text" placeholder="Enter your username" />
  *   <FieldDescription>Choose a unique username for your account.</FieldDescription>
- * </Field>
- * ```
+ *   </Field>
+ *   ```
  *
- * @example invalid input
- * ```tsx
- * <Field data-invalid>
+ * @example
+ *   invalid input
+ *   ```tsx
+ *   <Field data-invalid>
  *   <FieldLabel for="input-invalid">Invalid Input</FieldLabel>
  *   <Input id="input-invalid" placeholder="Error" aria-invalid />
  *   <FieldDescription>This field contains validation errors.</FieldDescription>
- * </Field>
- * ```
+ *   </Field>
+ *   ```
  *
- * @example input with a button group
- * ```tsx
- * <Field>
+ * @example
+ *   input with a button group
+ *   ```tsx
+ *   <Field>
  *   <FieldLabel for="input-button-group">Search</FieldLabel>
  *   <ButtonGroup>
- *     <Input id="input-button-group" placeholder="Type to search..." />
- *     <Button variant="outline">Search</Button>
+ *   <Input id="input-button-group" placeholder="Type to search..." />
+ *   <Button variant="outline">Search</Button>
  *   </ButtonGroup>
- * </Field>
- * ```
+ *   </Field>
+ *   ```
  */
 export function Input(props: JSX.IntrinsicElements["input"]) {
   const rest = omit(props, ["class"])
   return (
     <input
-      class={`h-9 w-full min-w-0 rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none selection:bg-primary selection:text-primary-foreground file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 ${
+      class={`border-input selection:bg-primary selection:text-primary-foreground file:text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 h-9 w-full min-w-0 rounded-md border bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:ring-[3px] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm ${
         props.class ?? ""
       }`}
       {...rest}
@@ -168,24 +178,25 @@ export function Input(props: JSX.IntrinsicElements["input"]) {
  * Displays a form textarea or a component that looks like a textarea.
  *
  * @example
- * ```tsx
- * <Textarea />
- * ```
+ *   ;```tsx
+ *   ;<Textarea />
+ *   ```
  *
- * @example textarea with a label and description
- * ```tsx
- * <Field>
+ * @example
+ *   textarea with a label and description
+ *   ```tsx
+ *   <Field>
  *   <FieldLabel for="textarea-message">Message</FieldLabel>
  *   <FieldDescription>Enter your message below.</FieldDescription>
  *   <Textarea id="textarea-message" placeholder="Type your message here." />
- * </Field>
- * ```
+ *   </Field>
+ *   ```
  */
 export function Textarea(props: JSX.IntrinsicElements["textarea"]) {
   const rest = omit(props, ["class"])
   return (
     <textarea
-      class={`flex field-sizing-content min-h-16 w-full rounded-md border border-input bg-transparent px-3 py-2 text-base shadow-xs transition-[color,box-shadow] outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 md:text-sm ${
+      class={`border-input placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 flex field-sizing-content min-h-16 w-full rounded-md border bg-transparent px-3 py-2 text-base shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 md:text-sm ${
         props.class ?? ""
       }`}
       {...rest}
@@ -194,22 +205,22 @@ export function Textarea(props: JSX.IntrinsicElements["textarea"]) {
 }
 
 /**
- * Renders an accessible label associated with controls. For form fields,
- * prefer the `Field` component which includes built-in label, description,
- * and error handling.
+ * Renders an accessible label associated with controls. For form fields, prefer the `Field`
+ * component which includes built-in label, description, and error handling.
  *
  * @example
- * ```tsx
- * <Label for="email">Your email address</Label>
- * ```
+ *   ;```tsx
+ *   ;<Label for="email">Your email address</Label>
+ *   ```
  *
- * @example label paired with a checkbox
- * ```tsx
- * <div class="flex gap-2">
+ * @example
+ *   label paired with a checkbox
+ *   ```tsx
+ *   <div class="flex gap-2">
  *   <Checkbox id="terms" />
  *   <Label for="terms">Accept terms and conditions</Label>
- * </div>
- * ```
+ *   </div>
+ *   ```
  */
 export function Label(props: JSX.IntrinsicElements["label"]) {
   const rest = omit(props, ["class"])
@@ -227,19 +238,20 @@ export function Label(props: JSX.IntrinsicElements["label"]) {
  * Displays a badge or a component that looks like a badge.
  *
  * @example
- * ```tsx
- * <Badge variant="default | outline | secondary | destructive">Badge</Badge>
- * ```
+ *   ;```tsx
+ *   ;<Badge variant="default | outline | secondary | destructive">Badge</Badge>
+ *   ```
  *
- * @example badge with an icon
- * Use `data-icon="inline-start"` or `data-icon="inline-end"` on the icon for
- * proper spacing.
- * ```tsx
- * <Badge variant="secondary">
+ * @example
+ *   badge with an icon
+ *   Use `data-icon="inline-start"` or `data-icon="inline-end"` on the icon for
+ *   proper spacing.
+ *   ```tsx
+ *   <Badge variant="secondary">
  *   <BadgeCheck data-icon="inline-start" />
  *   Verified
- * </Badge>
- * ```
+ *   </Badge>
+ *   ```
  */
 export function Badge(
   props: JSX.IntrinsicElements["span"] & {
@@ -254,7 +266,8 @@ export function Badge(
   const variants = {
     default: "bg-primary text-primary-foreground [a&]:hover:bg-primary/90",
     secondary: "bg-secondary text-secondary-foreground [a&]:hover:bg-secondary/90",
-    destructive: "bg-destructive text-white focus-visible:ring-destructive/20 [a&]:hover:bg-destructive/90",
+    destructive:
+      "bg-destructive text-white focus-visible:ring-destructive/20 [a&]:hover:bg-destructive/90",
     outline: "border-border text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
     ghost: "[a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
     link: "text-primary underline-offset-4 [a&]:hover:underline",
@@ -272,35 +285,34 @@ export function Badge(
 /**
  * An image element with a fallback for representing the user.
  *
- * AvatarGroup
- * ├── Avatar
- * └── AvatarGroupCount
+ * AvatarGroup ├── Avatar └── AvatarGroupCount
  *
  * @example
- * ```tsx
- * <Avatar>
- *   <AvatarImage src="https://github.com/shadcn.png" />
- *   <AvatarFallback>CN</AvatarFallback>
- * </Avatar>
- * ```
- *
- * @example overlapping avatar group
- * ```tsx
- * <AvatarGroup>
- *   <Avatar>
- *     <AvatarImage src="https://github.com/shadcn.png" alt="@shadcn" />
+ *   ;```tsx
+ *   ;<Avatar>
+ *     <AvatarImage src="https://github.com/shadcn.png" />
  *     <AvatarFallback>CN</AvatarFallback>
  *   </Avatar>
+ *   ```
+ *
+ * @example
+ *   overlapping avatar group
+ *   ```tsx
+ *   <AvatarGroup>
  *   <Avatar>
- *     <AvatarImage src="https://github.com/maxleiter.png" alt="@maxleiter" />
- *     <AvatarFallback>LR</AvatarFallback>
+ *   <AvatarImage src="https://github.com/shadcn.png" alt="@shadcn" />
+ *   <AvatarFallback>CN</AvatarFallback>
  *   </Avatar>
  *   <Avatar>
- *     <AvatarImage src="https://github.com/evilrabbit.png" alt="@evilrabbit" />
- *     <AvatarFallback>ER</AvatarFallback>
+ *   <AvatarImage src="https://github.com/maxleiter.png" alt="@maxleiter" />
+ *   <AvatarFallback>LR</AvatarFallback>
  *   </Avatar>
- * </AvatarGroup>
- * ```
+ *   <Avatar>
+ *   <AvatarImage src="https://github.com/evilrabbit.png" alt="@evilrabbit" />
+ *   <AvatarFallback>ER</AvatarFallback>
+ *   </Avatar>
+ *   </AvatarGroup>
+ *   ```
  */
 export function Avatar(props: JSX.IntrinsicElements["span"] & { size?: "default" | "sm" | "lg" }) {
   const size = props.size
@@ -332,7 +344,7 @@ export function AvatarFallback(props: JSX.IntrinsicElements["span"]) {
   const rest = omit(props, ["class"])
   return (
     <span
-      class={`flex size-full items-center justify-center rounded-full bg-muted text-sm text-muted-foreground [[data-slot=Avatar]:has(img)_&]:hidden group-data-[size=sm]/avatar:text-xs ${
+      class={`bg-muted text-muted-foreground flex size-full items-center justify-center rounded-full text-sm group-data-[size=sm]/avatar:text-xs [[data-slot=Avatar]:has(img)_&]:hidden ${
         props.class ?? ""
       }`}
       {...rest}
@@ -345,7 +357,7 @@ export function AvatarBadge(props: JSX.IntrinsicElements["span"]) {
   return (
     <span
       data-slot="Avatar_badge"
-      class={`absolute right-0 bottom-0 z-10 inline-flex items-center justify-center rounded-full bg-primary text-primary-foreground ring-2 ring-background select-none group-data-[size=sm]/avatar:size-2 group-data-[size=sm]/avatar:[&>svg]:hidden group-data-[size=default]/avatar:size-2.5 group-data-[size=default]/avatar:[&>svg]:size-2 group-data-[size=lg]/avatar:size-3 group-data-[size=lg]/avatar:[&>svg]:size-2 ${
+      class={`bg-primary text-primary-foreground ring-background absolute right-0 bottom-0 z-10 inline-flex items-center justify-center rounded-full ring-2 select-none group-data-[size=default]/avatar:size-2.5 group-data-[size=lg]/avatar:size-3 group-data-[size=sm]/avatar:size-2 group-data-[size=default]/avatar:[&>svg]:size-2 group-data-[size=lg]/avatar:[&>svg]:size-2 group-data-[size=sm]/avatar:[&>svg]:hidden ${
         props.class ?? ""
       }`}
       {...rest}
@@ -357,7 +369,7 @@ export function AvatarGroup(props: JSX.IntrinsicElements["div"]) {
   const rest = omit(props, ["class"])
   return (
     <div
-      class={`group/avatar-group flex -space-x-2 *:data-[slot=Avatar]:ring-2 *:data-[slot=Avatar]:ring-background ${
+      class={`group/avatar-group *:data-[slot=Avatar]:ring-background flex -space-x-2 *:data-[slot=Avatar]:ring-2 ${
         props.class ?? ""
       }`}
       {...rest}
@@ -369,7 +381,7 @@ export function AvatarGroupCount(props: JSX.IntrinsicElements["div"]) {
   const rest = omit(props, ["class"])
   return (
     <div
-      class={`relative flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-sm text-muted-foreground ring-2 ring-background group-has-data-[size=lg]/avatar-group:size-10 group-has-data-[size=sm]/avatar-group:size-6 [&>svg]:size-4 group-has-data-[size=lg]/avatar-group:[&>svg]:size-5 group-has-data-[size=sm]/avatar-group:[&>svg]:size-3 ${
+      class={`bg-muted text-muted-foreground ring-background relative flex size-8 shrink-0 items-center justify-center rounded-full text-sm ring-2 group-has-data-[size=lg]/avatar-group:size-10 group-has-data-[size=sm]/avatar-group:size-6 [&>svg]:size-4 group-has-data-[size=lg]/avatar-group:[&>svg]:size-5 group-has-data-[size=sm]/avatar-group:[&>svg]:size-3 ${
         props.class ?? ""
       }`}
       {...rest}
@@ -381,27 +393,28 @@ export function AvatarGroupCount(props: JSX.IntrinsicElements["div"]) {
  * Displays a callout for user attention.
  *
  * @example
- * ```tsx
- * <Alert>
- *   <InfoIcon />
- *   <AlertTitle>Heads up!</AlertTitle>
- *   <AlertDescription>
- *     You can add components and dependencies to your app using the cli.
- *   </AlertDescription>
- * </Alert>
- * ```
+ *   ;```tsx
+ *   ;<Alert>
+ *     <InfoIcon />
+ *     <AlertTitle>Heads up!</AlertTitle>
+ *     <AlertDescription>
+ *       You can add components and dependencies to your app using the cli.
+ *     </AlertDescription>
+ *   </Alert>
+ *   ```
  *
- * @example destructive alert
- * ```tsx
- * <Alert variant="destructive" class="max-w-md">
+ * @example
+ *   destructive alert
+ *   ```tsx
+ *   <Alert variant="destructive" class="max-w-md">
  *   <AlertCircleIcon />
  *   <AlertTitle>Payment failed</AlertTitle>
  *   <AlertDescription>
- *     Your payment could not be processed. Please check your payment method
- *     and try again.
+ *   Your payment could not be processed. Please check your payment method
+ *   and try again.
  *   </AlertDescription>
- * </Alert>
- * ```
+ *   </Alert>
+ *   ```
  */
 export function Alert(
   props: JSX.IntrinsicElements["div"] & { variant?: "default" | "destructive" },
@@ -439,7 +452,7 @@ export function AlertDescription(props: JSX.IntrinsicElements["div"]) {
   return (
     <div
       data-slot="Alert_description"
-      class={`col-start-2 grid justify-items-start gap-1 text-sm text-muted-foreground [&_p]:leading-relaxed ${
+      class={`text-muted-foreground col-start-2 grid justify-items-start gap-1 text-sm [&_p]:leading-relaxed ${
         props.class ?? ""
       }`}
       {...rest}
@@ -451,23 +464,24 @@ export function AlertDescription(props: JSX.IntrinsicElements["div"]) {
  * Used to display textual user input from keyboard.
  *
  * @example
- * ```tsx
- * <Kbd>Ctrl</Kbd>
- * ```
+ *   ;```tsx
+ *   ;<Kbd>Ctrl</Kbd>
+ *   ```
  *
- * @example grouped keyboard shortcuts
- * ```tsx
- * <KbdGroup>
+ * @example
+ *   grouped keyboard shortcuts
+ *   ```tsx
+ *   <KbdGroup>
  *   <Kbd>Ctrl + B</Kbd>
  *   <Kbd>Ctrl + K</Kbd>
- * </KbdGroup>
- * ```
+ *   </KbdGroup>
+ *   ```
  */
 export function Kbd(props: JSX.IntrinsicElements["kbd"]) {
   const rest = omit(props, ["class"])
   return (
     <kbd
-      class={`pointer-events-none inline-flex h-5 w-fit min-w-5 items-center justify-center gap-1 rounded-sm bg-muted px-1 font-sans text-xs font-medium text-muted-foreground select-none [&_svg:not([class*='size-'])]:size-3 ${
+      class={`bg-muted text-muted-foreground pointer-events-none inline-flex h-5 w-fit min-w-5 items-center justify-center gap-1 rounded-sm px-1 font-sans text-xs font-medium select-none [&_svg:not([class*='size-'])]:size-3 ${
         props.class ?? ""
       }`}
       {...rest}
@@ -486,17 +500,19 @@ export function KbdGroup(props: JSX.IntrinsicElements["kbd"]) {
 }
 
 /**
- * Displays a hierarchy of links with separators between items. Items without
- * a URL render as text; mark the current resource with `current`.
+ * Displays a hierarchy of links with separators between items. Items without a URL render as text;
+ * mark the current resource with `current`.
  *
  * @example
- * ```tsx
- * <Breadcrumb items={[
- *   { label: "Home", url: "/" },
- *   { label: "Components", url: "/components" },
- *   { label: "Breadcrumb", current: true },
- * ]} />
- * ```
+ *   ;```tsx
+ *   ;<Breadcrumb
+ *     items={[
+ *       { label: "Home", url: "/" },
+ *       { label: "Components", url: "/components" },
+ *       { label: "Breadcrumb", current: true },
+ *     ]}
+ *   />
+ *   ```
  */
 export function Breadcrumb(
   props: Omit<JSX.IntrinsicElements["nav"], "children"> & {
@@ -509,12 +525,19 @@ export function Breadcrumb(
 ) {
   const rest = omit(props, ["items"])
   return (
-    <nav aria-label="breadcrumb" {...rest}>
-      <ol class="flex flex-wrap items-center gap-1.5 text-sm wrap-break-word text-muted-foreground">
+    <nav
+      aria-label="breadcrumb"
+      {...rest}
+    >
+      <ol class="text-muted-foreground flex flex-wrap items-center gap-1.5 text-sm wrap-break-word">
         {props.items.map((item, index) => (
           <li class="inline-flex items-center gap-1.5">
             {index > 0 ? (
-              <Svg data-slot="Breadcrumb_separator" aria-hidden="true" class="size-3.5 shrink-0">
+              <Svg
+                data-slot="Breadcrumb_separator"
+                aria-hidden="true"
+                class="size-3.5 shrink-0"
+              >
                 <path d="m9 18 6-6-6-6" />
               </Svg>
             ) : null}
@@ -522,7 +545,7 @@ export function Breadcrumb(
               <a
                 href={item.url}
                 aria-current={item.current ? "page" : undefined}
-                class={`inline-flex min-h-11 items-center transition-colors hover:text-foreground md:min-h-0 ${item.current ? "text-foreground" : ""}`}
+                class={`hover:text-foreground inline-flex min-h-11 items-center transition-colors md:min-h-0 ${item.current ? "text-foreground" : ""}`}
               >
                 {item.label}
               </a>
@@ -549,7 +572,8 @@ const buttonBase =
 
 const buttonVariants: Record<ButtonVariant, string> = {
   default: "bg-primary text-primary-foreground hover:bg-primary/90",
-  destructive: "bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20",
+  destructive:
+    "bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20",
   outline: "border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground",
   secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
   ghost: "hover:bg-accent hover:text-accent-foreground",
@@ -558,8 +582,7 @@ const buttonVariants: Record<ButtonVariant, string> = {
 
 const buttonSizes: Record<ButtonSize, string> = {
   default: "min-h-11 min-w-11 px-4 py-2 md:h-9 md:min-h-0 md:min-w-0 has-[>svg]:px-3",
-  xs:
-    "min-h-11 min-w-11 gap-1 rounded-md px-3 text-xs md:h-6 md:min-h-0 md:min-w-0 md:px-2 has-[>svg]:px-2 md:has-[>svg]:px-1.5 [&_svg:not([class*='size-'])]:size-3",
+  xs: "min-h-11 min-w-11 gap-1 rounded-md px-3 text-xs md:h-6 md:min-h-0 md:min-w-0 md:px-2 has-[>svg]:px-2 md:has-[>svg]:px-1.5 [&_svg:not([class*='size-'])]:size-3",
   sm: "min-h-11 min-w-11 gap-1.5 rounded-md px-3 md:h-8 md:min-h-0 md:min-w-0 has-[>svg]:px-2.5",
   lg: "min-h-11 min-w-11 rounded-md px-6 md:h-10 md:min-h-0 md:min-w-0 has-[>svg]:px-4",
   icon: "size-11 md:size-9",
@@ -582,18 +605,19 @@ export function buttonClassName(opts: {
  * Displays a button or a component that looks like a button.
  *
  * @example
- * ```tsx
- * <Button variant="outline">Button</Button>
- * ```
+ *   ;```tsx
+ *   ;<Button variant="outline">Button</Button>
+ *   ```
  *
- * @example button with an icon
- * Use `data-icon="inline-start"` or `data-icon="inline-end"` on the icon for
- * proper spacing.
- * ```tsx
- * <Button variant="outline">
+ * @example
+ *   button with an icon
+ *   Use `data-icon="inline-start"` or `data-icon="inline-end"` on the icon for
+ *   proper spacing.
+ *   ```tsx
+ *   <Button variant="outline">
  *   <Icon name="git-branch" data-icon="inline-start" /> New Branch
- * </Button>
- * ```
+ *   </Button>
+ *   ```
  */
 export function Button(
   props: JSX.IntrinsicElements["button"] & {
@@ -617,29 +641,31 @@ export function Button(
 }
 
 /**
- * Renders pagination links in the supplied order. Items without a URL render
- * as text; disabled items never render a link. The caller supplies page ranges,
- * ellipses, or cursor URLs.
+ * Renders pagination links in the supplied order. Items without a URL render as text; disabled
+ * items never render a link. The caller supplies page ranges, ellipses, or cursor URLs.
  *
  * @example
- * ```tsx
- * <Pagination items={[
- *   { label: "Previous", url: "?page=1" },
- *   { label: 1, url: "?page=1" },
- *   { label: 2, url: "?page=2", current: true },
- *   { label: "…" },
- *   { label: 10, url: "?page=10" },
- *   { label: "Next", url: "?page=3" },
- * ]} />
- * ```
+ *   ;```tsx
+ *   ;<Pagination
+ *     items={[
+ *       { label: "Previous", url: "?page=1" },
+ *       { label: 1, url: "?page=1" },
+ *       { label: 2, url: "?page=2", current: true },
+ *       { label: "…" },
+ *       { label: 10, url: "?page=10" },
+ *       { label: "Next", url: "?page=3" },
+ *     ]}
+ *   />
+ *   ```
  *
- * @example cursor navigation
- * ```tsx
- * <Pagination items={[
+ * @example
+ *   cursor navigation
+ *   ```tsx
+ *   <Pagination items={[
  *   { label: "Previous", disabled: true },
  *   { label: "Next", url: "?after=cursor" },
- * ]} />
- * ```
+ *   ]} />
+ *   ```
  */
 export function Pagination(
   props: Omit<JSX.IntrinsicElements["nav"], "children"> & {
@@ -662,29 +688,30 @@ export function Pagination(
       <ul class="flex flex-wrap items-center justify-center gap-1">
         {props.items.map((item) => {
           const attributes = {
-            "aria-current": item.current ? "page" as const : undefined,
-            "aria-disabled": item.disabled ? "true" as const : undefined,
+            "aria-current": item.current ? ("page" as const) : undefined,
+            "aria-disabled": item.disabled ? ("true" as const) : undefined,
             "data-active": item.current ? "true" : undefined,
-            class: item.url !== undefined || item.current || item.disabled
-              ? buttonClassName({
-                variant: item.current ? "outline" : "ghost",
-                class: "min-w-9 px-2.5 aria-disabled:pointer-events-none aria-disabled:opacity-50",
-              })
-              : "inline-flex h-9 min-w-9 items-center justify-center px-2.5 text-sm",
+            class:
+              item.url !== undefined || item.current || item.disabled
+                ? buttonClassName({
+                    variant: item.current ? "outline" : "ghost",
+                    class:
+                      "min-w-9 px-2.5 aria-disabled:pointer-events-none aria-disabled:opacity-50",
+                  })
+                : "inline-flex h-9 min-w-9 items-center justify-center px-2.5 text-sm",
           }
           return (
             <li>
-              {item.url !== undefined && !item.disabled
-                ? (
-                  <a href={item.url} {...attributes}>
-                    {item.label}
-                  </a>
-                )
-                : (
-                  <span {...attributes}>
-                    {item.label}
-                  </span>
-                )}
+              {item.url !== undefined && !item.disabled ? (
+                <a
+                  href={item.url}
+                  {...attributes}
+                >
+                  {item.label}
+                </a>
+              ) : (
+                <span {...attributes}>{item.label}</span>
+              )}
             </li>
           )
         })}
@@ -697,39 +724,40 @@ export function Pagination(
  * A responsive table component.
  *
  * @example
- * ```tsx
- * <Table>
- *   <TableCaption>A list of your recent invoices.</TableCaption>
- *   <TableHeader>
- *     <TableRow>
- *       <TableHead class="w-[100px]">Invoice</TableHead>
- *       <TableHead>Status</TableHead>
- *       <TableHead class="text-right">Amount</TableHead>
- *     </TableRow>
- *   </TableHeader>
- *   <TableBody>
- *     <TableRow>
- *       <TableCell class="font-medium">INV001</TableCell>
- *       <TableCell>Paid</TableCell>
- *       <TableCell class="text-right">$250.00</TableCell>
- *     </TableRow>
- *   </TableBody>
- * </Table>
- * ```
+ *   ;```tsx
+ *   ;<Table>
+ *     <TableCaption>A list of your recent invoices.</TableCaption>
+ *     <TableHeader>
+ *       <TableRow>
+ *         <TableHead class="w-[100px]">Invoice</TableHead>
+ *         <TableHead>Status</TableHead>
+ *         <TableHead class="text-right">Amount</TableHead>
+ *       </TableRow>
+ *     </TableHeader>
+ *     <TableBody>
+ *       <TableRow>
+ *         <TableCell class="font-medium">INV001</TableCell>
+ *         <TableCell>Paid</TableCell>
+ *         <TableCell class="text-right">$250.00</TableCell>
+ *       </TableRow>
+ *     </TableBody>
+ *   </Table>
+ *   ```
  *
- * @example table with a footer total row
- * ```tsx
- * <Table>
+ * @example
+ *   table with a footer total row
+ *   ```tsx
+ *   <Table>
  *   <TableHeader>...</TableHeader>
  *   <TableBody>...</TableBody>
  *   <TableFooter>
- *     <TableRow>
- *       <TableCell colspan={3}>Total</TableCell>
- *       <TableCell class="text-right">$2,500.00</TableCell>
- *     </TableRow>
+ *   <TableRow>
+ *   <TableCell colspan={3}>Total</TableCell>
+ *   <TableCell class="text-right">$2,500.00</TableCell>
+ *   </TableRow>
  *   </TableFooter>
- * </Table>
- * ```
+ *   </Table>
+ *   ```
  */
 export function Table(props: JSX.IntrinsicElements["table"]) {
   const rest = omit(props, ["class"])
@@ -745,7 +773,12 @@ export function Table(props: JSX.IntrinsicElements["table"]) {
 
 export function TableHeader(props: JSX.IntrinsicElements["thead"]) {
   const rest = omit(props, ["class"])
-  return <thead class={`[&_tr]:border-b ${props.class ?? ""}`} {...rest} />
+  return (
+    <thead
+      class={`[&_tr]:border-b ${props.class ?? ""}`}
+      {...rest}
+    />
+  )
 }
 
 export function TableBody(props: JSX.IntrinsicElements["tbody"]) {
@@ -762,7 +795,7 @@ export function TableFooter(props: JSX.IntrinsicElements["tfoot"]) {
   const rest = omit(props, ["class"])
   return (
     <tfoot
-      class={`border-t bg-muted/50 font-medium [&>tr]:last:border-b-0 ${props.class ?? ""}`}
+      class={`bg-muted/50 border-t font-medium [&>tr]:last:border-b-0 ${props.class ?? ""}`}
       {...rest}
     />
   )
@@ -772,7 +805,7 @@ export function TableRow(props: JSX.IntrinsicElements["tr"]) {
   const rest = omit(props, ["class"])
   return (
     <tr
-      class={`border-b transition-colors hover:bg-muted/50 has-aria-expanded:bg-muted/50 data-[state=selected]:bg-muted ${
+      class={`hover:bg-muted/50 has-aria-expanded:bg-muted/50 data-[state=selected]:bg-muted border-b transition-colors ${
         props.class ?? ""
       }`}
       {...rest}
@@ -784,7 +817,7 @@ export function TableHead(props: JSX.IntrinsicElements["th"]) {
   const rest = omit(props, ["class"])
   return (
     <th
-      class={`h-10 px-2 text-left align-middle font-medium whitespace-nowrap text-foreground [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px] ${
+      class={`text-foreground h-10 px-2 text-left align-middle font-medium whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px] ${
         props.class ?? ""
       }`}
       {...rest}
@@ -808,7 +841,7 @@ export function TableCaption(props: JSX.IntrinsicElements["caption"]) {
   const rest = omit(props, ["class"])
   return (
     <caption
-      class={`mt-4 text-sm text-muted-foreground ${props.class ?? ""}`}
+      class={`text-muted-foreground mt-4 text-sm ${props.class ?? ""}`}
       {...rest}
     />
   )
@@ -818,20 +851,20 @@ export function TableCaption(props: JSX.IntrinsicElements["caption"]) {
  * Use the Empty component to display an empty state.
  *
  * @example
- * ```tsx
- * <Empty>
- *   <EmptyHeader>
- *     <EmptyMedia variant="icon">
- *       <Icon name="inbox" />
- *     </EmptyMedia>
- *     <EmptyTitle>No data</EmptyTitle>
- *     <EmptyDescription>No data found</EmptyDescription>
- *   </EmptyHeader>
- *   <EmptyContent>
- *     <Button>Add data</Button>
- *   </EmptyContent>
- * </Empty>
- * ```
+ *   ;```tsx
+ *   ;<Empty>
+ *     <EmptyHeader>
+ *       <EmptyMedia variant="icon">
+ *         <Icon name="inbox" />
+ *       </EmptyMedia>
+ *       <EmptyTitle>No data</EmptyTitle>
+ *       <EmptyDescription>No data found</EmptyDescription>
+ *     </EmptyHeader>
+ *     <EmptyContent>
+ *       <Button>Add data</Button>
+ *     </EmptyContent>
+ *   </Empty>
+ *   ```
  */
 export function Empty(props: JSX.IntrinsicElements["div"]) {
   const rest = omit(props, ["class"])
@@ -861,8 +894,7 @@ export function EmptyMedia(props: JSX.IntrinsicElements["div"] & { variant?: "de
   const v = variant ?? "default"
   const variants = {
     default: "bg-transparent",
-    icon:
-      "flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted text-foreground [&_svg:not([class*='size-'])]:size-6",
+    icon: "flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted text-foreground [&_svg:not([class*='size-'])]:size-6",
   }
   return (
     <div
@@ -891,7 +923,7 @@ export function EmptyDescription(props: JSX.IntrinsicElements["div"]) {
   return (
     <div
       data-slot="Empty_description"
-      class={`text-sm/relaxed text-muted-foreground [&>a]:underline [&>a]:underline-offset-4 [&>a:hover]:text-primary ${
+      class={`text-muted-foreground [&>a:hover]:text-primary text-sm/relaxed [&>a]:underline [&>a]:underline-offset-4 ${
         props.class ?? ""
       }`}
       {...rest}
@@ -910,24 +942,24 @@ export function EmptyContent(props: JSX.IntrinsicElements["div"]) {
 }
 
 /**
- * A versatile component for displaying content with media, title, description,
- * and actions. Use `Item` for non-form content; use `Field` for form inputs.
+ * A versatile component for displaying content with media, title, description, and actions. Use
+ * `Item` for non-form content; use `Field` for form inputs.
  *
  * @example
- * ```tsx
- * <Item>
- *   <ItemMedia variant="icon">
- *     <Icon name="folder" />
- *   </ItemMedia>
- *   <ItemContent>
- *     <ItemTitle>Title</ItemTitle>
- *     <ItemDescription>Description</ItemDescription>
- *   </ItemContent>
- *   <ItemActions>
- *     <Button>Action</Button>
- *   </ItemActions>
- * </Item>
- * ```
+ *   ;```tsx
+ *   ;<Item>
+ *     <ItemMedia variant="icon">
+ *       <Icon name="folder" />
+ *     </ItemMedia>
+ *     <ItemContent>
+ *       <ItemTitle>Title</ItemTitle>
+ *       <ItemDescription>Description</ItemDescription>
+ *     </ItemContent>
+ *     <ItemActions>
+ *       <Button>Action</Button>
+ *     </ItemActions>
+ *   </Item>
+ *   ```
  */
 export function Item(
   props: JSX.IntrinsicElements["div"] & {
@@ -1010,7 +1042,7 @@ export function ItemDescription(props: JSX.IntrinsicElements["p"]) {
   return (
     <p
       data-slot="Item_description"
-      class={`line-clamp-2 text-sm leading-normal font-normal text-balance text-muted-foreground [&>a]:underline [&>a]:underline-offset-4 [&>a:hover]:text-primary ${
+      class={`text-muted-foreground [&>a:hover]:text-primary line-clamp-2 text-sm leading-normal font-normal text-balance [&>a]:underline [&>a]:underline-offset-4 ${
         props.class ?? ""
       }`}
       {...rest}
@@ -1065,46 +1097,49 @@ export function ItemSeparator(props: JSX.IntrinsicElements["div"]) {
     <div
       data-orientation="horizontal"
       role="none"
-      class={`my-0 h-px w-full shrink-0 bg-border ${props.class ?? ""}`}
+      class={`bg-border my-0 h-px w-full shrink-0 ${props.class ?? ""}`}
       {...rest}
     />
   )
 }
 
 /**
- * Combine labels, controls, and help text to compose accessible form fields
- * and grouped inputs.
+ * Combine labels, controls, and help text to compose accessible form fields and grouped inputs.
  *
  * @example
- * ```tsx
- * <FieldSet>
- *   <FieldLegend>Profile</FieldLegend>
- *   <FieldDescription>This appears on invoices and emails.</FieldDescription>
- *   <FieldGroup>
- *     <Field>
- *       <FieldLabel for="name">Full name</FieldLabel>
- *       <Input id="name" placeholder="Evil Rabbit" />
- *     </Field>
- *     <Field>
- *       <FieldLabel for="username">Username</FieldLabel>
- *       <Input id="username" aria-invalid />
- *       <FieldError>Choose another username.</FieldError>
- *     </Field>
- *     <Field orientation="horizontal">
- *       <Switch id="newsletter" />
- *       <FieldLabel for="newsletter">Subscribe to the newsletter</FieldLabel>
- *     </Field>
- *   </FieldGroup>
- * </FieldSet>
- * ```
+ *   ;```tsx
+ *   ;<FieldSet>
+ *     <FieldLegend>Profile</FieldLegend>
+ *     <FieldDescription>This appears on invoices and emails.</FieldDescription>
+ *     <FieldGroup>
+ *       <Field>
+ *         <FieldLabel for="name">Full name</FieldLabel>
+ *         <Input
+ *           id="name"
+ *           placeholder="Evil Rabbit"
+ *         />
+ *       </Field>
+ *       <Field>
+ *         <FieldLabel for="username">Username</FieldLabel>
+ *         <Input
+ *           id="username"
+ *           aria-invalid
+ *         />
+ *         <FieldError>Choose another username.</FieldError>
+ *       </Field>
+ *       <Field orientation="horizontal">
+ *         <Switch id="newsletter" />
+ *         <FieldLabel for="newsletter">Subscribe to the newsletter</FieldLabel>
+ *       </Field>
+ *     </FieldGroup>
+ *   </FieldSet>
+ *   ```
  */
 export function FieldSet(props: JSX.IntrinsicElements["fieldset"]) {
   const rest = omit(props, ["class"])
   return (
     <fieldset
-      class={`flex flex-col gap-6 has-[>[data-slot=RadioGroup]]:gap-3 ${
-        props.class ?? ""
-      }`}
+      class={`flex flex-col gap-6 has-[>[data-slot=RadioGroup]]:gap-3 ${props.class ?? ""}`}
       {...rest}
     />
   )
@@ -1148,17 +1183,15 @@ export function Field(
   const o = orientation ?? "vertical"
   const variants = {
     vertical: "flex-col [&>*]:w-full [&>.sr-only]:w-auto",
-    horizontal:
-      String.raw`flex-row items-center [&>[data-slot=Field\_label]]:flex-auto has-[>[data-slot=Field\_content]]:items-start has-[>[data-slot=Field\_content]]:[&>[role=checkbox],[role=radio]]:mt-px`,
-    responsive:
-      String.raw`flex-col @md/field-group:flex-row @md/field-group:items-center [&>*]:w-full @md/field-group:[&>*]:w-auto [&>.sr-only]:w-auto @md/field-group:[&>[data-slot=Field\_label]]:flex-auto @md/field-group:has-[>[data-slot=Field\_content]]:items-start @md/field-group:has-[>[data-slot=Field\_content]]:[&>[role=checkbox],[role=radio]]:mt-px`,
+    horizontal: String.raw`flex-row items-center [&>[data-slot=Field\_label]]:flex-auto has-[>[data-slot=Field\_content]]:items-start has-[>[data-slot=Field\_content]]:[&>[role=checkbox],[role=radio]]:mt-px`,
+    responsive: String.raw`flex-col @md/field-group:flex-row @md/field-group:items-center [&>*]:w-full @md/field-group:[&>*]:w-auto [&>.sr-only]:w-auto @md/field-group:[&>[data-slot=Field\_label]]:flex-auto @md/field-group:has-[>[data-slot=Field\_content]]:items-start @md/field-group:has-[>[data-slot=Field\_content]]:[&>[role=checkbox],[role=radio]]:mt-px`,
   }
   return (
     <div
       role="group"
       data-slot="Field"
       data-orientation={o}
-      class={`group/field flex w-full gap-3 data-[invalid=true]:text-destructive ${variants[o]} ${props.class ?? ""}`}
+      class={`group/field data-[invalid=true]:text-destructive flex w-full gap-3 ${variants[o]} ${props.class ?? ""}`}
       {...rest}
     />
   )
@@ -1180,7 +1213,7 @@ export function FieldLabel(props: JSX.IntrinsicElements["label"]) {
   return (
     <label
       data-slot="Field_label"
-      class={`flex items-center gap-2 text-sm leading-none font-medium select-none group/field-label peer/field-label flex w-fit gap-2 leading-snug group-data-[disabled=true]/field:opacity-50 has-[>[data-slot=Field]]:w-full has-[>[data-slot=Field]]:flex-col has-[>[data-slot=Field]]:rounded-md has-[>[data-slot=Field]]:border [&>*]:data-[slot=Field]:p-4 has-data-[state=checked]:border-primary has-data-[state=checked]:bg-primary/5 ${
+      class={`group/field-label peer/field-label has-data-[state=checked]:border-primary has-data-[state=checked]:bg-primary/5 flex w-fit items-center gap-2 text-sm leading-none leading-snug font-medium select-none group-data-[disabled=true]/field:opacity-50 has-[>[data-slot=Field]]:w-full has-[>[data-slot=Field]]:flex-col has-[>[data-slot=Field]]:rounded-md has-[>[data-slot=Field]]:border [&>*]:data-[slot=Field]:p-4 ${
         props.class ?? ""
       }`}
       {...rest}
@@ -1205,7 +1238,7 @@ export function FieldDescription(props: JSX.IntrinsicElements["p"]) {
   const rest = omit(props, ["class"])
   return (
     <p
-      class={`text-sm leading-normal font-normal text-muted-foreground group-has-[[data-orientation=horizontal]]/field:text-balance last:mt-0 nth-last-2:-mt-1 [[data-variant=legend]+&]:-mt-1.5 [&>a]:underline [&>a]:underline-offset-4 [&>a:hover]:text-primary ${
+      class={`text-muted-foreground [&>a:hover]:text-primary text-sm leading-normal font-normal group-has-[[data-orientation=horizontal]]/field:text-balance last:mt-0 nth-last-2:-mt-1 [&>a]:underline [&>a]:underline-offset-4 [[data-variant=legend]+&]:-mt-1.5 ${
         props.class ?? ""
       }`}
       {...rest}
@@ -1222,16 +1255,15 @@ export function FieldSeparator(props: JSX.IntrinsicElements["div"]) {
       class={`relative -my-2 h-5 text-sm group-data-[variant=outline]/field-group:-mb-2 ${props.class ?? ""}`}
       {...rest}
     >
-      <div role="none" class="absolute inset-0 top-1/2 h-px w-full shrink-0 bg-border" />
-      {children ?
-        (
-          <span
-            class="relative mx-auto block w-fit bg-background px-2 text-muted-foreground"
-          >
-            {children}
-          </span>
-        ) :
-        null}
+      <div
+        role="none"
+        class="bg-border absolute inset-0 top-1/2 h-px w-full shrink-0"
+      />
+      {children ? (
+        <span class="bg-background text-muted-foreground relative mx-auto block w-fit px-2">
+          {children}
+        </span>
+      ) : null}
     </div>
   )
 }
@@ -1243,7 +1275,7 @@ export function FieldError(props: JSX.IntrinsicElements["div"]) {
   return (
     <div
       role="alert"
-      class={`text-sm font-normal text-destructive ${props.class ?? ""}`}
+      class={`text-destructive text-sm font-normal ${props.class ?? ""}`}
       {...rest}
     >
       {children}
@@ -1252,24 +1284,25 @@ export function FieldError(props: JSX.IntrinsicElements["div"]) {
 }
 
 /**
- * A container that groups related buttons together with consistent styling.
- * Use `ButtonGroup` for action buttons; use `ToggleGroup` for state toggles.
+ * A container that groups related buttons together with consistent styling. Use `ButtonGroup` for
+ * action buttons; use `ToggleGroup` for state toggles.
  *
  * @example
- * ```tsx
- * <ButtonGroup>
- *   <Button>Button 1</Button>
- *   <Button>Button 2</Button>
- * </ButtonGroup>
- * ```
+ *   ;```tsx
+ *   ;<ButtonGroup>
+ *     <Button>Button 1</Button>
+ *     <Button>Button 2</Button>
+ *   </ButtonGroup>
+ *   ```
  *
- * @example labeled button group
- * ```tsx
- * <ButtonGroup aria-label="Button group">
+ * @example
+ *   labeled button group
+ *   ```tsx
+ *   <ButtonGroup aria-label="Button group">
  *   <Button>Button 1</Button>
  *   <Button>Button 2</Button>
- * </ButtonGroup>
- * ```
+ *   </ButtonGroup>
+ *   ```
  */
 export function ButtonGroup(
   props: JSX.IntrinsicElements["div"] & {
@@ -1302,7 +1335,7 @@ export function ButtonGroupText(props: JSX.IntrinsicElements["div"]) {
   const rest = omit(props, ["class"])
   return (
     <div
-      class={`flex items-center gap-2 rounded-md border bg-muted px-4 text-sm font-medium shadow-xs [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 ${
+      class={`bg-muted flex items-center gap-2 rounded-md border px-4 text-sm font-medium shadow-xs [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 ${
         props.class ?? ""
       }`}
       {...rest}
@@ -1321,7 +1354,7 @@ export function ButtonGroupSeparator(
     <div
       data-orientation={orientation}
       role="none"
-      class={`relative m-0! shrink-0 self-stretch bg-input ${orientation === "horizontal" ? "h-px w-full" : "h-auto w-px"} ${
+      class={`bg-input relative m-0! shrink-0 self-stretch ${orientation === "horizontal" ? "h-px w-full" : "h-auto w-px"} ${
         props.class ?? ""
       }`}
       {...rest}
@@ -1333,24 +1366,28 @@ export function ButtonGroupSeparator(
  * An indicator that can be used to show a loading state.
  *
  * @example
- * ```tsx
- * <Spinner />
- * ```
+ *   ;```tsx
+ *   ;<Spinner />
+ *   ```
  *
- * @example spinner inside a button
- * Place before the label with `data-icon="inline-start"` (or after with
- * `inline-end`) for proper spacing.
- * ```tsx
- * <Button disabled>
+ * @example
+ *   spinner inside a button
+ *   Place before the label with `data-icon="inline-start"` (or after with
+ *   `inline-end`) for proper spacing.
+ *   ```tsx
+ *   <Button disabled>
  *   <Spinner data-icon="inline-start" />
  *   Saving...
- * </Button>
- * ```
+ *   </Button>
+ *   ```
  */
 export function Spinner(props: JSX.IntrinsicElements["svg"]) {
   const rest = omit(props, ["class"])
   return (
-    <Svg class={`size-4 animate-spin ${props.class ?? ""}`} {...rest}>
+    <Svg
+      class={`size-4 animate-spin ${props.class ?? ""}`}
+      {...rest}
+    >
       <path d="M21 12a9 9 0 1 1-6.219-8.56" />
     </Svg>
   )
@@ -1359,19 +1396,19 @@ export function Spinner(props: JSX.IntrinsicElements["svg"]) {
 /**
  * Add addons, buttons, and helper content to inputs.
  *
- * For proper focus management, `InputGroupAddon` should always be placed
- * after `InputGroupInput`/`InputGroupTextarea` in the DOM. Use the `align`
- * prop to visually position the addon.
+ * For proper focus management, `InputGroupAddon` should always be placed after
+ * `InputGroupInput`/`InputGroupTextarea` in the DOM. Use the `align` prop to visually position the
+ * addon.
  *
  * @example
- * ```tsx
- * <InputGroup>
- *   <InputGroupInput placeholder="Search..." />
- *   <InputGroupAddon>
- *     <Icon name="search" />
- *   </InputGroupAddon>
- * </InputGroup>
- * ```
+ *   ;```tsx
+ *   ;<InputGroup>
+ *     <InputGroupInput placeholder="Search..." />
+ *     <InputGroupAddon>
+ *       <Icon name="search" />
+ *     </InputGroupAddon>
+ *   </InputGroup>
+ *   ```
  */
 export function InputGroup(props: JSX.IntrinsicElements["div"]) {
   const rest = omit(props, ["class"])
@@ -1379,7 +1416,7 @@ export function InputGroup(props: JSX.IntrinsicElements["div"]) {
     <div
       data-slot="InputGroup"
       role="group"
-      class={String.raw`group/input-group relative flex w-full items-center rounded-md border border-input shadow-xs transition-[color,box-shadow] outline-none h-9 min-w-0 has-[>textarea]:h-auto has-[>[data-align=inline-start]]:[&>input]:pl-2 has-[>[data-align=inline-end]]:[&>input]:pr-2 has-[>[data-align=block-start]]:h-auto has-[>[data-align=block-start]]:flex-col has-[>[data-align=block-start]]:[&>input]:pb-3 has-[>[data-align=block-end]]:h-auto has-[>[data-align=block-end]]:flex-col has-[>[data-align=block-end]]:[&>input]:pt-3 has-[[data-slot=InputGroup\_control]:focus-visible]:border-ring has-[[data-slot=InputGroup\_control]:focus-visible]:ring-2 has-[[data-slot=InputGroup\_control]:focus-visible]:ring-ring/40 has-[[aria-invalid=true]]:border-destructive has-[[aria-invalid=true]]:ring-destructive/20 ${
+      class={String.raw`group/input-group border-input has-[[data-slot=InputGroup\_control]:focus-visible]:border-ring has-[[data-slot=InputGroup\_control]:focus-visible]:ring-ring/40 has-[[aria-invalid=true]]:border-destructive has-[[aria-invalid=true]]:ring-destructive/20 relative flex h-9 w-full min-w-0 items-center rounded-md border shadow-xs transition-[color,box-shadow] outline-none has-[[data-slot=InputGroup\_control]:focus-visible]:ring-2 has-[>[data-align=block-end]]:h-auto has-[>[data-align=block-end]]:flex-col has-[>[data-align=block-start]]:h-auto has-[>[data-align=block-start]]:flex-col has-[>textarea]:h-auto has-[>[data-align=block-end]]:[&>input]:pt-3 has-[>[data-align=block-start]]:[&>input]:pb-3 has-[>[data-align=inline-end]]:[&>input]:pr-2 has-[>[data-align=inline-start]]:[&>input]:pl-2 ${
         props.class ?? ""
       }`}
       {...rest}
@@ -1398,14 +1435,16 @@ export function InputGroupAddon(
   const aligns = {
     "inline-start": "order-first pl-3 has-[>button]:ml-[-0.45rem] has-[>kbd]:ml-[-0.35rem]",
     "inline-end": "order-last pr-3 has-[>button]:mr-[-0.45rem] has-[>kbd]:mr-[-0.35rem]",
-    "block-start": "order-first w-full justify-start px-3 pt-3 group-has-[>input]/input-group:pt-2.5 [.border-b]:pb-3",
-    "block-end": "order-last w-full justify-start px-3 pb-3 group-has-[>input]/input-group:pb-2.5 [.border-t]:pt-3",
+    "block-start":
+      "order-first w-full justify-start px-3 pt-3 group-has-[>input]/input-group:pt-2.5 [.border-b]:pb-3",
+    "block-end":
+      "order-last w-full justify-start px-3 pb-3 group-has-[>input]/input-group:pb-2.5 [.border-t]:pt-3",
   }
   return (
     <div
       role="group"
       data-align={a}
-      class={`flex h-auto cursor-text items-center justify-center gap-2 py-1.5 text-sm font-medium text-muted-foreground select-none group-data-[disabled=true]/input-group:opacity-50 [&>kbd]:rounded-[calc(var(--radius)-5px)] [&>svg:not([class*='size-'])]:size-4 ${
+      class={`text-muted-foreground flex h-auto cursor-text items-center justify-center gap-2 py-1.5 text-sm font-medium select-none group-data-[disabled=true]/input-group:opacity-50 [&>kbd]:rounded-[calc(var(--radius)-5px)] [&>svg:not([class*='size-'])]:size-4 ${
         aligns[a]
       } ${props.class ?? ""}`}
       {...rest}
@@ -1448,7 +1487,7 @@ export function InputGroupText(props: JSX.IntrinsicElements["span"]) {
   const rest = omit(props, ["class"])
   return (
     <span
-      class={`flex items-center gap-2 text-sm text-muted-foreground [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 ${
+      class={`text-muted-foreground flex items-center gap-2 text-sm [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 ${
         props.class ?? ""
       }`}
       {...rest}
@@ -1461,7 +1500,7 @@ export function InputGroupInput(props: JSX.IntrinsicElements["input"]) {
   return (
     <input
       data-slot="InputGroup_control"
-      class={`h-9 w-full min-w-0 flex-1 rounded-none border-0 bg-transparent px-3 py-1 text-base shadow-none outline-none selection:bg-primary selection:text-primary-foreground file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm ${
+      class={`selection:bg-primary selection:text-primary-foreground file:text-foreground placeholder:text-muted-foreground h-9 w-full min-w-0 flex-1 rounded-none border-0 bg-transparent px-3 py-1 text-base shadow-none outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm ${
         props.class ?? ""
       }`}
       {...rest}
@@ -1474,7 +1513,7 @@ export function InputGroupTextarea(props: JSX.IntrinsicElements["textarea"]) {
   return (
     <textarea
       data-slot="InputGroup_control"
-      class={`flex field-sizing-content min-h-16 w-full flex-1 resize-none rounded-none border-0 bg-transparent px-3 py-3 text-base shadow-none outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50 md:text-sm ${
+      class={`placeholder:text-muted-foreground flex field-sizing-content min-h-16 w-full flex-1 resize-none rounded-none border-0 bg-transparent px-3 py-3 text-base shadow-none outline-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm ${
         props.class ?? ""
       }`}
       {...rest}
@@ -1486,26 +1525,27 @@ export function InputGroupTextarea(props: JSX.IntrinsicElements["textarea"]) {
  * A control that allows the user to toggle between checked and not checked.
  *
  * @example
- * ```tsx
- * <Checkbox />
- * ```
+ *   ;```tsx
+ *   ;<Checkbox />
+ *   ```
  *
- * @example invalid checkbox
- * Set `aria-invalid` on the checkbox and `data-invalid` on the field wrapper
- * to show the invalid styles.
- * ```tsx
- * <Field data-invalid>
+ * @example
+ *   invalid checkbox
+ *   Set `aria-invalid` on the checkbox and `data-invalid` on the field wrapper
+ *   to show the invalid styles.
+ *   ```tsx
+ *   <Field data-invalid>
  *   <Checkbox aria-invalid />
  *   <FieldLabel>Accept terms</FieldLabel>
- * </Field>
- * ```
+ *   </Field>
+ *   ```
  */
 export function Checkbox(props: JSX.IntrinsicElements["input"]) {
   const rest = omit(props, ["class", "type"])
   return (
     <input
       type="checkbox"
-      class={`peer size-4 shrink-0 rounded-[4px] border border-input shadow-xs transition-shadow outline-none accent-primary focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 ${
+      class={`peer border-input accent-primary focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 size-4 shrink-0 rounded-[4px] border shadow-xs transition-shadow outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 ${
         props.class ?? ""
       }`}
       {...rest}
@@ -1517,19 +1557,22 @@ export function Checkbox(props: JSX.IntrinsicElements["input"]) {
  * A control that allows the user to toggle between checked and not checked.
  *
  * @example
- * ```tsx
- * <Switch />
- * ```
+ *   ;```tsx
+ *   ;<Switch />
+ *   ```
  *
- * @example horizontal field with label
- * ```tsx
- * <Field orientation="horizontal">
+ * @example
+ *   horizontal field with label
+ *   ```tsx
+ *   <Field orientation="horizontal">
  *   <Switch id="newsletter" />
  *   <FieldLabel for="newsletter">Subscribe to the newsletter</FieldLabel>
- * </Field>
- * ```
+ *   </Field>
+ *   ```
  */
-export function Switch(props: Omit<JSX.IntrinsicElements["input"], "size"> & { size?: "default" | "sm" }) {
+export function Switch(
+  props: Omit<JSX.IntrinsicElements["input"], "size"> & { size?: "default" | "sm" },
+) {
   const size = props.size
   const rest = omit(props, ["class", "size", "type"])
   const s = size ?? "default"
@@ -1542,9 +1585,13 @@ export function Switch(props: Omit<JSX.IntrinsicElements["input"], "size"> & { s
         props.class ?? ""
       }`}
     >
-      <input type="checkbox" class="peer sr-only" {...rest} />
+      <input
+        type="checkbox"
+        class="peer sr-only"
+        {...rest}
+      />
       <span
-        class={`pointer-events-none block translate-x-0 rounded-full bg-background ring-0 transition-transform ${
+        class={`bg-background pointer-events-none block translate-x-0 rounded-full ring-0 transition-transform ${
           s === "default"
             ? "size-4 peer-checked:translate-x-[calc(100%-2px)]"
             : "size-3 peer-checked:translate-x-[calc(100%-2px)]"
@@ -1555,26 +1602,30 @@ export function Switch(props: Omit<JSX.IntrinsicElements["input"], "size"> & { s
 }
 
 /**
- * A set of checkable buttons — known as radio buttons — where no more than
- * one of the buttons can be checked at a time.
+ * A set of checkable buttons — known as radio buttons — where no more than one of the buttons can
+ * be checked at a time.
  *
  * @example
- * ```tsx
- * <RadioGroup defaultValue="option-one">
- *   <div class="flex items-center gap-3">
- *     <RadioGroupItem value="option-one" id="option-one" />
- *     <Label for="option-one">Option One</Label>
- *   </div>
- *   <div class="flex items-center gap-3">
- *     <RadioGroupItem value="option-two" id="option-two" />
- *     <Label for="option-two">Option Two</Label>
- *   </div>
- * </RadioGroup>
- * ```
+ *   ;```tsx
+ *   ;<RadioGroup defaultValue="option-one">
+ *     <div class="flex items-center gap-3">
+ *       <RadioGroupItem
+ *         value="option-one"
+ *         id="option-one"
+ *       />
+ *       <Label for="option-one">Option One</Label>
+ *     </div>
+ *     <div class="flex items-center gap-3">
+ *       <RadioGroupItem
+ *         value="option-two"
+ *         id="option-two"
+ *       />
+ *       <Label for="option-two">Option Two</Label>
+ *     </div>
+ *   </RadioGroup>
+ *   ```
  */
-export function RadioGroup(
-  props: JSX.IntrinsicElements["div"] & { name?: string },
-) {
+export function RadioGroup(props: JSX.IntrinsicElements["div"] & { name?: string }) {
   const name = props.name
   const children = props.children
   const rest = omit(props, ["class", "name", "children"])
@@ -1587,23 +1638,21 @@ export function RadioGroup(
       {...rest}
     >
       {children}
-      {name ?
-        (
-          <script>
-            {() => {
-              const d = window.document
-              const script = d.currentScript
-              const root = script && script.parentElement
-              if (!root) return
-              const groupName = root.getAttribute("data-radio-group-name")
-              if (!groupName) return
-              root.querySelectorAll("input[type=\"radio\"]").forEach(function(el: any) {
-                if (!el.name) el.name = groupName
-              })
-            }}
-          </script>
-        ) :
-        null}
+      {name ? (
+        <script>
+          {() => {
+            const d = window.document
+            const script = d.currentScript
+            const root = script && script.parentElement
+            if (!root) return
+            const groupName = root.getAttribute("data-radio-group-name")
+            if (!groupName) return
+            root.querySelectorAll('input[type="radio"]').forEach(function (el: any) {
+              if (!el.name) el.name = groupName
+            })
+          }}
+        </script>
+      ) : null}
     </div>
   )
 }
@@ -1613,7 +1662,7 @@ export function RadioGroupItem(props: JSX.IntrinsicElements["input"]) {
   return (
     <input
       type="radio"
-      class={`aspect-square size-4 shrink-0 rounded-full border border-input text-primary shadow-xs transition-[color,box-shadow] outline-none accent-primary focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 ${
+      class={`border-input text-primary accent-primary focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 aspect-square size-4 shrink-0 rounded-full border shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 ${
         props.class ?? ""
       }`}
       {...rest}
@@ -1625,14 +1674,16 @@ export function RadioGroupItem(props: JSX.IntrinsicElements["input"]) {
  * A native range input with horizontal or vertical orientation.
  *
  * @example
- * ```tsx
- * <Slider value={33} min={0} max={100} step={1} aria-label="Volume" />
- * <Slider orientation="vertical" value={50} aria-label="Level" />
- * <Slider list="stops" aria-label="Amount" />
- * <datalist id="stops"><option value="0" /><option value="50" /><option value="100" /></datalist>
- * ```
+ *   ;```tsx
+ *   <Slider value={33} min={0} max={100} step={1} aria-label="Volume" />
+ *   <Slider orientation="vertical" value={50} aria-label="Level" />
+ *   <Slider list="stops" aria-label="Amount" />
+ *   <datalist id="stops"><option value="0" /><option value="50" /><option value="100" /></datalist>
+ *   ```
  */
-export function Slider(props: JSX.IntrinsicElements["input"] & { orientation?: "horizontal" | "vertical" }) {
+export function Slider(
+  props: JSX.IntrinsicElements["input"] & { orientation?: "horizontal" | "vertical" },
+) {
   const orientation = props.orientation ?? "horizontal"
   const rest = omit(props, ["class", "type", "orientation"])
   return (
@@ -1640,8 +1691,10 @@ export function Slider(props: JSX.IntrinsicElements["input"] & { orientation?: "
       type="range"
       data-orientation={orientation}
       aria-orientation={orientation}
-      class={`relative flex touch-none items-center select-none accent-primary disabled:opacity-50 ${
-        orientation === "vertical" ? "h-40 w-4 [writing-mode:vertical-lr] [direction:rtl]" : "w-full"
+      class={`accent-primary relative flex touch-none items-center select-none disabled:opacity-50 ${
+        orientation === "vertical"
+          ? "h-40 w-4 [direction:rtl] [writing-mode:vertical-lr]"
+          : "w-full"
       } ${props.class ?? ""}`}
       {...rest}
     />
@@ -1649,21 +1702,22 @@ export function Slider(props: JSX.IntrinsicElements["input"] & { orientation?: "
 }
 
 /**
- * Displays an indicator showing the completion progress of a task, typically
- * displayed as a progress bar.
+ * Displays an indicator showing the completion progress of a task, typically displayed as a
+ * progress bar.
  *
  * @example
- * ```tsx
- * <Progress value={33} />
- * ```
+ *   ;```tsx
+ *   ;<Progress value={33} />
+ *   ```
  *
- * @example labeled progress with value
- * ```tsx
- * <Progress value={56} class="w-full max-w-sm">
+ * @example
+ *   labeled progress with value
+ *   ```tsx
+ *   <Progress value={56} class="w-full max-w-sm">
  *   <ProgressLabel>Upload progress</ProgressLabel>
  *   <ProgressValue />
- * </Progress>
- * ```
+ *   </Progress>
+ *   ```
  */
 export function Progress(props: JSX.IntrinsicElements["div"] & { value?: number }) {
   const value = props.value
@@ -1675,12 +1729,12 @@ export function Progress(props: JSX.IntrinsicElements["div"] & { value?: number 
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={v}
-      class={`relative h-2 w-full overflow-hidden rounded-full bg-primary/20 ${props.class ?? ""}`}
+      class={`bg-primary/20 relative h-2 w-full overflow-hidden rounded-full ${props.class ?? ""}`}
       {...rest}
     >
       <div
         data-slot="Progress_indicator"
-        class="h-full w-full flex-1 bg-primary transition-all"
+        class="bg-primary h-full w-full flex-1 transition-all"
         style={`transform: translateX(-${100 - v}%)`}
       />
     </div>
@@ -1688,30 +1742,31 @@ export function Progress(props: JSX.IntrinsicElements["div"] & { value?: number 
 }
 
 /**
- * A styled native HTML select element with consistent design system integration.
- * For a fully custom-styled select, use the `Select` component instead.
+ * A styled native HTML select element with consistent design system integration. For a fully
+ * custom-styled select, use the `Select` component instead.
  *
  * @example
- * ```tsx
- * <NativeSelect>
- *   <option value="">Select a fruit</option>
- *   <option value="apple">Apple</option>
- *   <option value="banana">Banana</option>
- * </NativeSelect>
- * ```
- *
- * @example grouped options
- * ```tsx
- * <NativeSelect>
- *   <optgroup label="Fruit">
+ *   ;```tsx
+ *   ;<NativeSelect>
+ *     <option value="">Select a fruit</option>
  *     <option value="apple">Apple</option>
  *     <option value="banana">Banana</option>
+ *   </NativeSelect>
+ *   ```
+ *
+ * @example
+ *   grouped options
+ *   ```tsx
+ *   <NativeSelect>
+ *   <optgroup label="Fruit">
+ *   <option value="apple">Apple</option>
+ *   <option value="banana">Banana</option>
  *   </optgroup>
  *   <optgroup label="Vegetable">
- *     <option value="carrot">Carrot</option>
+ *   <option value="carrot">Carrot</option>
  *   </optgroup>
- * </NativeSelect>
- * ```
+ *   </NativeSelect>
+ *   ```
  */
 export function NativeSelect(
   props: Omit<JSX.IntrinsicElements["select"], "size"> & { size?: "default" | "sm" },
@@ -1720,19 +1775,17 @@ export function NativeSelect(
   const rest = omit(props, ["class", "size"])
   const s = size ?? "default"
   return (
-    <div
-      class="group/native-select relative w-fit has-[select:disabled]:opacity-50"
-    >
+    <div class="group/native-select relative w-fit has-[select:disabled]:opacity-50">
       <select
         data-size={s}
-        class={`[&_option]:bg-[Canvas] [&_option]:text-[CanvasText] [&_optgroup]:bg-[Canvas] [&_optgroup]:text-[CanvasText] h-9 w-full min-w-0 appearance-none rounded-md border border-input bg-transparent px-3 py-2 pr-9 text-sm shadow-xs transition-[color,box-shadow] outline-none selection:bg-primary selection:text-primary-foreground placeholder:text-muted-foreground disabled:pointer-events-none disabled:cursor-not-allowed ${
+        class={`border-input selection:bg-primary selection:text-primary-foreground placeholder:text-muted-foreground h-9 w-full min-w-0 appearance-none rounded-md border bg-transparent px-3 py-2 pr-9 text-sm shadow-xs transition-[color,box-shadow] outline-none disabled:pointer-events-none disabled:cursor-not-allowed [&_optgroup]:bg-[Canvas] [&_optgroup]:text-[CanvasText] [&_option]:bg-[Canvas] [&_option]:text-[CanvasText] ${
           s === "sm" ? "h-8 py-1" : ""
-        } focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 ${
+        } focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 focus-visible:ring-[3px] ${
           props.class ?? ""
         }`}
         {...rest}
       />
-      <Svg class="pointer-events-none absolute top-1/2 right-3.5 size-4 -translate-y-1/2 text-muted-foreground opacity-50 select-none">
+      <Svg class="text-muted-foreground pointer-events-none absolute top-1/2 right-3.5 size-4 -translate-y-1/2 opacity-50 select-none">
         <path d="m6 9 6 6 6-6" />
       </Svg>
     </div>
@@ -1740,20 +1793,17 @@ export function NativeSelect(
 }
 
 /**
- * A vertically stacked set of interactive headings that each reveal a
- * section of content.
+ * A vertically stacked set of interactive headings that each reveal a section of content.
  *
  * @example
- * ```tsx
- * <Accordion defaultValue={["item-1"]}>
- *   <AccordionItem value="item-1">
- *     <AccordionTrigger>Is it accessible?</AccordionTrigger>
- *     <AccordionContent>
- *       Yes. It adheres to the WAI-ARIA design pattern.
- *     </AccordionContent>
- *   </AccordionItem>
- * </Accordion>
- * ```
+ *   ;```tsx
+ *   ;<Accordion defaultValue={["item-1"]}>
+ *     <AccordionItem value="item-1">
+ *       <AccordionTrigger>Is it accessible?</AccordionTrigger>
+ *       <AccordionContent>Yes. It adheres to the WAI-ARIA design pattern.</AccordionContent>
+ *     </AccordionItem>
+ *   </Accordion>
+ *   ```
  */
 export function Accordion(props: JSX.IntrinsicElements["div"]) {
   return <div {...props} />
@@ -1774,13 +1824,13 @@ export function AccordionTrigger(props: JSX.IntrinsicElements["summary"]) {
   const rest = omit(props, ["class", "children"])
   return (
     <summary
-      class={`flex flex-1 items-start justify-between gap-4 rounded-md py-4 text-left text-sm font-medium transition-all outline-none cursor-pointer hover:underline focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 list-none [&::-webkit-details-marker]:hidden group-open/accordion-item:[&>svg]:rotate-180 ${
+      class={`focus-visible:border-ring focus-visible:ring-ring/50 flex flex-1 cursor-pointer list-none items-start justify-between gap-4 rounded-md py-4 text-left text-sm font-medium transition-all outline-none hover:underline focus-visible:ring-[3px] [&::-webkit-details-marker]:hidden group-open/accordion-item:[&>svg]:rotate-180 ${
         props.class ?? ""
       }`}
       {...rest}
     >
       {children}
-      <Svg class="pointer-events-none size-4 shrink-0 translate-y-0.5 text-muted-foreground transition-transform duration-200">
+      <Svg class="text-muted-foreground pointer-events-none size-4 shrink-0 translate-y-0.5 transition-transform duration-200">
         <path d="m6 9 6 6 6-6" />
       </Svg>
     </summary>
@@ -1792,7 +1842,10 @@ export function AccordionContent(props: JSX.IntrinsicElements["div"]) {
   const rest = omit(props, ["class", "children"])
   return (
     <div class="overflow-hidden text-sm">
-      <div class={`pt-0 pb-4 ${props.class ?? ""}`} {...rest}>
+      <div
+        class={`pt-0 pb-4 ${props.class ?? ""}`}
+        {...rest}
+      >
         {children}
       </div>
     </div>
@@ -1803,19 +1856,24 @@ export function AccordionContent(props: JSX.IntrinsicElements["div"]) {
  * Autocomplete input with a list of suggestions.
  *
  * @example
- * ```tsx
- * <Combobox items={frameworks}>
- *   <ComboboxInput placeholder="Select a framework" />
- *   <ComboboxContent>
- *     <ComboboxEmpty>No items found.</ComboboxEmpty>
- *     <ComboboxList>
- *       {(item) => (
- *         <ComboboxItem key={item} value={item}>{item}</ComboboxItem>
- *       )}
- *     </ComboboxList>
- *   </ComboboxContent>
- * </Combobox>
- * ```
+ *   ;```tsx
+ *   ;<Combobox items={frameworks}>
+ *     <ComboboxInput placeholder="Select a framework" />
+ *     <ComboboxContent>
+ *       <ComboboxEmpty>No items found.</ComboboxEmpty>
+ *       <ComboboxList>
+ *         {(item) => (
+ *           <ComboboxItem
+ *             key={item}
+ *             value={item}
+ *           >
+ *             {item}
+ *           </ComboboxItem>
+ *         )}
+ *       </ComboboxList>
+ *     </ComboboxContent>
+ *   </Combobox>
+ *   ```
  */
 export function Combobox(
   props: JSX.IntrinsicElements["input"] & {
@@ -1830,39 +1888,48 @@ export function Combobox(
   const id = listId ?? `combobox-list-${Math.random().toString(36).slice(2, 9)}`
   return (
     <>
-      <Input list={list ?? id} class={props.class} {...rest} />
-      {options ?
-        (
-          <datalist id={id}>
-            {options.map((opt) => <option value={opt} />)}
-          </datalist>
-        ) :
-        null}
+      <Input
+        list={list ?? id}
+        class={props.class}
+        {...rest}
+      />
+      {options ? (
+        <datalist id={id}>
+          {options.map((opt) => (
+            <option value={opt} />
+          ))}
+        </datalist>
+      ) : null}
     </>
   )
 }
 
 /**
- * Navigates server-rendered commands without filtering or fetching results.
- * Keep the root and input mounted, and give items stable, document-unique IDs.
- * Selection follows an ID across updates, falling back to the previous position.
+ * Navigates server-rendered commands without filtering or fetching results. Keep the root and input
+ * mounted, and give items stable, document-unique IDs. Selection follows an ID across updates,
+ * falling back to the previous position.
  *
  * @example
- * ```tsx
- * <Command id="actions">
- *   <CommandInput aria-label="Search actions" />
- *   <CommandList id="action-results">
- *     <CommandItem id="action-settings" href="/settings">Settings</CommandItem>
- *   </CommandList>
- * </Command>
- * ```
+ *   ;```tsx
+ *   ;<Command id="actions">
+ *     <CommandInput aria-label="Search actions" />
+ *     <CommandList id="action-results">
+ *       <CommandItem
+ *         id="action-settings"
+ *         href="/settings"
+ *       >
+ *         Settings
+ *       </CommandItem>
+ *     </CommandList>
+ *   </Command>
+ *   ```
  */
 export function Command(props: JSX.IntrinsicElements["div"] & { id: string }) {
   return (
     <div
       {...omit(props, ["class", "children"])}
       data-slot="Command"
-      class={`flex w-full flex-col overflow-hidden rounded-lg bg-popover text-popover-foreground ${props.class ?? ""}`}
+      class={`bg-popover text-popover-foreground flex w-full flex-col overflow-hidden rounded-lg ${props.class ?? ""}`}
     >
       {props.children}
       <script>
@@ -1874,9 +1941,9 @@ export function Command(props: JSX.IntrinsicElements["div"] & { id: string }) {
           let activeId: string | undefined
           let activeIndex = 0
           const owned = (selector: string) =>
-            Array
-              .from(root.querySelectorAll<HTMLElement>(selector))
-              .filter((element) => element.closest("[data-slot=Command]") === root)
+            Array.from(root.querySelectorAll<HTMLElement>(selector)).filter(
+              (element) => element.closest("[data-slot=Command]") === root,
+            )
           const attribute = (element: Element, name: string, value: string | undefined) => {
             if (value === undefined) {
               if (element.hasAttribute(name)) element.removeAttribute(name)
@@ -1888,12 +1955,17 @@ export function Command(props: JSX.IntrinsicElements["div"] & { id: string }) {
             const items = owned("[data-slot=Command_item]")
             const available = items.filter((item) => {
               const unavailable = item.closest("[hidden], [inert], [aria-disabled=true]")
-              return list?.contains(item) &&
+              return (
+                list?.contains(item) &&
                 item.id &&
                 !item.matches(":disabled") &&
                 (!unavailable || !root.contains(unavailable))
+              )
             })
-            const active = (next && available.includes(next) ? next : available.find((item) => item.id === activeId)) ??
+            const active =
+              (next && available.includes(next)
+                ? next
+                : available.find((item) => item.id === activeId)) ??
               available[Math.min(activeIndex, available.length - 1)]
             activeId = active?.id
             activeIndex = active ? available.indexOf(active) : 0
@@ -1915,7 +1987,10 @@ export function Command(props: JSX.IntrinsicElements["div"] & { id: string }) {
               event.preventDefault()
               const index = Math.max(
                 0,
-                Math.min(state.available.length - 1, activeIndex + (event.key === "ArrowDown" ? 1 : -1)),
+                Math.min(
+                  state.available.length - 1,
+                  activeIndex + (event.key === "ArrowDown" ? 1 : -1),
+                ),
               )
               reconcile(state.available[index], true)
             } else if (event.key === "Enter") {
@@ -1925,30 +2000,39 @@ export function Command(props: JSX.IntrinsicElements["div"] & { id: string }) {
           })
           root.addEventListener("pointermove", (event) => {
             if (event.pointerType === "touch" || (!event.movementX && !event.movementY)) return
-            const item = event.target instanceof window.Element
-              ? event.target.closest<HTMLElement>("[data-slot=Command_item]")
-              : null
+            const item =
+              event.target instanceof window.Element
+                ? event.target.closest<HTMLElement>("[data-slot=Command_item]")
+                : null
             if (item && item.closest("[data-slot=Command]") === root) reconcile(item)
           })
           root.addEventListener("pointerdown", (event) => {
             if (event.button !== 0 || event.pointerType !== "mouse") return
-            const item = event.target instanceof window.Element ? event.target.closest("[data-slot=Command_item]") : null
+            const item =
+              event.target instanceof window.Element
+                ? event.target.closest("[data-slot=Command_item]")
+                : null
             if (item && item.closest("[data-slot=Command]") === root) event.preventDefault()
           })
-          root.addEventListener("click", (event) => {
-            const item = event.target instanceof window.Element
-              ? event.target.closest<HTMLElement>("[data-slot=Command_item]")
-              : null
-            if (!item || item.closest("[data-slot=Command]") !== root) return
-            const state = reconcile()
-            if (!state.available.includes(item)) {
-              event.preventDefault()
-              event.stopImmediatePropagation()
-              return
-            }
-            reconcile(item)
-            state.input?.focus({ preventScroll: true })
-          }, true)
+          root.addEventListener(
+            "click",
+            (event) => {
+              const item =
+                event.target instanceof window.Element
+                  ? event.target.closest<HTMLElement>("[data-slot=Command_item]")
+                  : null
+              if (!item || item.closest("[data-slot=Command]") !== root) return
+              const state = reconcile()
+              if (!state.available.includes(item)) {
+                event.preventDefault()
+                event.stopImmediatePropagation()
+                return
+              }
+              reconcile(item)
+              state.input?.focus({ preventScroll: true })
+            },
+            true,
+          )
 
           const observer = new window.MutationObserver(() => reconcile())
           observer.observe(root, {
@@ -1978,7 +2062,10 @@ export function Command(props: JSX.IntrinsicElements["div"] & { id: string }) {
 export function CommandInput(props: JSX.IntrinsicElements["input"] & { "aria-label": string }) {
   return (
     <div class="flex items-center gap-2 border-b px-3">
-      <Icon name="search" class="size-4 shrink-0 opacity-50" />
+      <Icon
+        name="search"
+        class="size-4 shrink-0 opacity-50"
+      />
       <input
         type="text"
         autocomplete="off"
@@ -1988,7 +2075,7 @@ export function CommandInput(props: JSX.IntrinsicElements["input"] & { "aria-lab
         role="combobox"
         aria-autocomplete="list"
         aria-expanded="true"
-        class={`h-11 w-full bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:opacity-50 ${
+        class={`placeholder:text-muted-foreground h-11 w-full bg-transparent py-3 text-sm outline-none disabled:opacity-50 ${
           props.class ?? ""
         }`}
       />
@@ -2003,7 +2090,7 @@ export function CommandList(props: JSX.IntrinsicElements["div"] & { id: string }
       {...omit(props, ["class"])}
       data-slot="Command_list"
       role="listbox"
-      class={`max-h-80 overflow-y-auto overflow-x-hidden py-1 ${props.class ?? ""}`}
+      class={`max-h-80 overflow-x-hidden overflow-y-auto py-1 ${props.class ?? ""}`}
     />
   )
 }
@@ -2019,34 +2106,39 @@ export function CommandItem(
     role: "option",
     tabindex: -1,
     "aria-selected": "false" as const,
-    "aria-disabled": props.disabled ? "true" as const : props["aria-disabled"],
-    class:
-      `relative flex min-h-10 w-full cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm outline-none aria-selected:bg-accent aria-selected:text-accent-foreground aria-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 ${
-        props.class ?? ""
-      }`,
+    "aria-disabled": props.disabled ? ("true" as const) : props["aria-disabled"],
+    class: `relative flex min-h-10 w-full cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm outline-none aria-selected:bg-accent aria-selected:text-accent-foreground aria-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 ${
+      props.class ?? ""
+    }`,
   }
-  return props.href !== undefined
-    ? <a {...attributes as JSX.IntrinsicElements["a"]} />
-    : <button type="button" {...attributes as JSX.IntrinsicElements["button"]} disabled={props.disabled} />
+  return props.href !== undefined ? (
+    <a {...(attributes as JSX.IntrinsicElements["a"])} />
+  ) : (
+    <button
+      type="button"
+      {...(attributes as JSX.IntrinsicElements["button"])}
+      disabled={props.disabled}
+    />
+  )
 }
 
 /**
  * A modal dialog overlaying the page, rendering content underneath inert.
  *
  * @example
- * ```tsx
- * <DialogTrigger for="confirm-delete">Open</DialogTrigger>
- * <Dialog id="confirm-delete">
+ *   ;```tsx
+ *   <DialogTrigger for="confirm-delete">Open</DialogTrigger>
+ *   <Dialog id="confirm-delete">
  *   <DialogHeader>
- *     <DialogTitle>Are you absolutely sure?</DialogTitle>
- *     <DialogDescription>
- *       This action cannot be undone. This will permanently delete your
- *       account and remove your data from our servers.
- *     </DialogDescription>
+ *   <DialogTitle>Are you absolutely sure?</DialogTitle>
+ *   <DialogDescription>
+ *   This action cannot be undone. This will permanently delete your
+ *   account and remove your data from our servers.
+ *   </DialogDescription>
  *   </DialogHeader>
  *   <DialogClose />
- * </Dialog>
- * ```
+ *   </Dialog>
+ *   ```
  */
 export function Dialog(props: JSX.IntrinsicElements["dialog"] & { id: string }) {
   return (
@@ -2055,10 +2147,10 @@ export function Dialog(props: JSX.IntrinsicElements["dialog"] & { id: string }) 
       {...omit(props, ["id", "children", "class"])}
       closedby="any"
       onclick="if (event.target === this) this.close()"
-      class="fixed inset-0 z-50 m-0 max-h-none max-w-none w-full h-full bg-transparent p-4 open:grid place-items-center"
+      class="fixed inset-0 z-50 m-0 h-full max-h-none w-full max-w-none place-items-center bg-transparent p-4 open:grid"
     >
       <div
-        class={`relative grid max-h-[calc(100dvh-2rem)] w-full max-w-[calc(100%-2rem)] gap-4 overflow-y-auto rounded-lg border border-border bg-background text-foreground p-6 shadow-lg outline-none sm:max-w-lg ${
+        class={`border-border bg-background text-foreground relative grid max-h-[calc(100dvh-2rem)] w-full max-w-[calc(100%-2rem)] gap-4 overflow-y-auto rounded-lg border p-6 shadow-lg outline-none sm:max-w-lg ${
           props.class ?? ""
         }`}
       >
@@ -2082,7 +2174,8 @@ export function DialogTrigger(
   const size = props.size
   const children = props.children
   const rest = omit(props, ["class", "for", "onclick", "type", "variant", "size", "children"])
-  const onClick = onclick ??
+  const onClick =
+    onclick ??
     "if (!('commandForElement' in this)) document.getElementById(this.getAttribute('commandfor')).showModal()"
   return (
     <button
@@ -2102,9 +2195,11 @@ export function DialogClose(props: JSX.IntrinsicElements["button"] & { for?: str
   const forId = props.for
   const onclick = props.onclick
   const type = props.type
-  const children = Array.isArray(props.children) && props.children.length === 0 ? undefined : props.children
+  const children =
+    Array.isArray(props.children) && props.children.length === 0 ? undefined : props.children
   const rest = omit(props, ["class", "for", "onclick", "type", "children"])
-  const onClick = onclick ??
+  const onClick =
+    onclick ??
     (forId
       ? "if (!('commandForElement' in this)) document.getElementById(this.getAttribute('commandfor')).close()"
       : "this.closest('dialog').close()")
@@ -2114,7 +2209,7 @@ export function DialogClose(props: JSX.IntrinsicElements["button"] & { for?: str
       data-slot="Dialog_close"
       commandfor={forId}
       command={forId ? "close" : undefined}
-      class={`absolute top-4 right-4 inline-flex size-6 items-center justify-center rounded-xs opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 cursor-pointer ${
+      class={`ring-offset-background focus:ring-ring absolute top-4 right-4 inline-flex size-6 cursor-pointer items-center justify-center rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 ${
         props.class ?? ""
       }`}
       onclick={onClick}
@@ -2126,9 +2221,7 @@ export function DialogClose(props: JSX.IntrinsicElements["button"] & { for?: str
             <path d="M18 6 6 18" />
             <path d="m6 6 12 12" />
           </Svg>
-          <span class="sr-only">
-            Close
-          </span>
+          <span class="sr-only">Close</span>
         </>
       )}
     </button>
@@ -2169,33 +2262,32 @@ export function DialogDescription(props: JSX.IntrinsicElements["p"]) {
   const rest = omit(props, ["class"])
   return (
     <p
-      class={`text-sm text-muted-foreground ${props.class ?? ""}`}
+      class={`text-muted-foreground text-sm ${props.class ?? ""}`}
       {...rest}
     />
   )
 }
 
 /**
- * A modal dialog that interrupts the user with important content and expects
- * a response.
+ * A modal dialog that interrupts the user with important content and expects a response.
  *
  * @example
- * ```tsx
- * <DialogTrigger for="confirm" variant="destructive">Delete account</DialogTrigger>
- * <AlertDialog id="confirm">
+ *   ;```tsx
+ *   <DialogTrigger for="confirm" variant="destructive">Delete account</DialogTrigger>
+ *   <AlertDialog id="confirm">
  *   <AlertDialogHeader>
- *     <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
- *     <AlertDialogDescription>
- *       This action cannot be undone. This will permanently delete your
- *       account from our servers.
- *     </AlertDialogDescription>
+ *   <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+ *   <AlertDialogDescription>
+ *   This action cannot be undone. This will permanently delete your
+ *   account from our servers.
+ *   </AlertDialogDescription>
  *   </AlertDialogHeader>
  *   <AlertDialogFooter>
- *     <Button variant="outline" onclick="this.closest('dialog').close()">Cancel</Button>
- *     <AlertDialogAction variant="destructive">Continue</AlertDialogAction>
+ *   <Button variant="outline" onclick="this.closest('dialog').close()">Cancel</Button>
+ *   <AlertDialogAction variant="destructive">Continue</AlertDialogAction>
  *   </AlertDialogFooter>
- * </AlertDialog>
- * ```
+ *   </AlertDialog>
+ *   ```
  */
 export function AlertDialog(
   props: JSX.IntrinsicElements["dialog"] & {
@@ -2212,7 +2304,7 @@ export function AlertDialog(
       role="alertdialog"
       {...omit(props, ["id", "children", "class", "size"])}
       data-size={s}
-      class={`group/alert-dialog-content fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-[calc(100%-2rem)] gap-4 rounded-lg border bg-background p-6 shadow-lg outline-none open:grid m-0 data-[size=sm]:max-w-xs data-[size=default]:sm:max-w-lg ${
+      class={`group/alert-dialog-content bg-background fixed top-1/2 left-1/2 z-50 m-0 w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-lg border p-6 shadow-lg outline-none open:grid data-[size=sm]:max-w-xs data-[size=default]:sm:max-w-lg ${
         props.class ?? ""
       }`}
     >
@@ -2237,7 +2329,8 @@ export function AlertDialogAction(
   const size = props.size
   const children = props.children
   const rest = omit(props, ["class", "for", "onclick", "type", "variant", "size", "children"])
-  const onClick = onclick ??
+  const onClick =
+    onclick ??
     (forId
       ? "if (!('commandForElement' in this)) document.getElementById(this.getAttribute('commandfor')).close()"
       : "this.closest('dialog').close()")
@@ -2293,7 +2386,7 @@ export function AlertDialogDescription(props: JSX.IntrinsicElements["p"]) {
   const rest = omit(props, ["class"])
   return (
     <p
-      class={`text-sm text-muted-foreground ${props.class ?? ""}`}
+      class={`text-muted-foreground text-sm ${props.class ?? ""}`}
       {...rest}
     />
   )
@@ -2304,7 +2397,7 @@ export function AlertDialogMedia(props: JSX.IntrinsicElements["div"]) {
   return (
     <div
       data-slot="AlertDialog_media"
-      class={`mb-2 inline-flex size-16 items-center justify-center rounded-md bg-muted sm:group-data-[size=default]/alert-dialog-content:row-span-2 *:[svg:not([class*='size-'])]:size-8 ${
+      class={`bg-muted mb-2 inline-flex size-16 items-center justify-center rounded-md sm:group-data-[size=default]/alert-dialog-content:row-span-2 *:[svg:not([class*='size-'])]:size-8 ${
         props.class ?? ""
       }`}
       {...rest}
@@ -2316,18 +2409,18 @@ export function AlertDialogMedia(props: JSX.IntrinsicElements["div"]) {
  * A modal panel that slides in from one edge of the screen.
  *
  * @example
- * ```tsx
- * <DialogTrigger for="nav" variant="outline">Open</DialogTrigger>
- * <Sheet id="nav" side="right">
+ *   ;```tsx
+ *   <DialogTrigger for="nav" variant="outline">Open</DialogTrigger>
+ *   <Sheet id="nav" side="right">
  *   <SheetHeader>
- *     <SheetTitle>Are you absolutely sure?</SheetTitle>
- *     <SheetDescription>This action cannot be undone.</SheetDescription>
+ *   <SheetTitle>Are you absolutely sure?</SheetTitle>
+ *   <SheetDescription>This action cannot be undone.</SheetDescription>
  *   </SheetHeader>
  *   <SheetFooter>
- *     <Button variant="outline" onclick="this.closest('dialog').close()">Close</Button>
+ *   <Button variant="outline" onclick="this.closest('dialog').close()">Close</Button>
  *   </SheetFooter>
- * </Sheet>
- * ```
+ *   </Sheet>
+ *   ```
  */
 export function Sheet(
   props: JSX.IntrinsicElements["dialog"] & {
@@ -2351,7 +2444,7 @@ export function Sheet(
       {...omit(props, ["id", "children", "class", "side"])}
       data-side={side}
       closedby="any"
-      class={`z-50 open:flex flex-col gap-4 bg-background shadow-lg outline-none p-0 ${borders[side]} ${
+      class={`bg-background z-50 flex-col gap-4 p-0 shadow-lg outline-none open:flex ${borders[side]} ${
         props.class ?? ""
       }`}
     >
@@ -2364,13 +2457,17 @@ export function Sheet(
           let outside = false
           const isOutside = (event: MouseEvent) => {
             const bounds = sheet.getBoundingClientRect()
-            return event.target === sheet && (event.clientX < bounds.left || event
-                  .clientX > bounds.right || event
-                  .clientY < bounds.top || event
-                  .clientY > bounds.bottom)
+            return (
+              event.target === sheet &&
+              (event.clientX < bounds.left ||
+                event.clientX > bounds.right ||
+                event.clientY < bounds.top ||
+                event.clientY > bounds.bottom)
+            )
           }
           sheet.addEventListener("pointerdown", (event) => {
-            outside = event.button === 0 && !event.ctrlKey && !event.defaultPrevented && isOutside(event)
+            outside =
+              event.button === 0 && !event.ctrlKey && !event.defaultPrevented && isOutside(event)
           })
           sheet.addEventListener("pointercancel", () => {
             outside = false
@@ -2413,7 +2510,7 @@ export function SheetTitle(props: JSX.IntrinsicElements["h2"]) {
   const rest = omit(props, ["class"])
   return (
     <h2
-      class={`font-semibold text-foreground ${props.class ?? ""}`}
+      class={`text-foreground font-semibold ${props.class ?? ""}`}
       {...rest}
     />
   )
@@ -2423,30 +2520,30 @@ export function SheetDescription(props: JSX.IntrinsicElements["p"]) {
   const rest = omit(props, ["class"])
   return (
     <p
-      class={`text-sm text-muted-foreground ${props.class ?? ""}`}
+      class={`text-muted-foreground text-sm ${props.class ?? ""}`}
       {...rest}
     />
   )
 }
 
 /**
- * A modal panel that slides up from the bottom of the screen with a drag
- * handle. Reuses Sheet's header/footer/title/description components.
+ * A modal panel that slides up from the bottom of the screen with a drag handle. Reuses Sheet's
+ * header/footer/title/description components.
  *
  * @example
- * ```tsx
- * <DialogTrigger for="dr-1">Open</DialogTrigger>
- * <Drawer id="dr-1">
+ *   ;```tsx
+ *   <DialogTrigger for="dr-1">Open</DialogTrigger>
+ *   <Drawer id="dr-1">
  *   <SheetHeader>
- *     <SheetTitle>Are you absolutely sure?</SheetTitle>
- *     <SheetDescription>This action cannot be undone.</SheetDescription>
+ *   <SheetTitle>Are you absolutely sure?</SheetTitle>
+ *   <SheetDescription>This action cannot be undone.</SheetDescription>
  *   </SheetHeader>
  *   <SheetFooter>
- *     <Button>Submit</Button>
- *     <Button variant="outline" onclick="this.closest('dialog').close()">Cancel</Button>
+ *   <Button>Submit</Button>
+ *   <Button variant="outline" onclick="this.closest('dialog').close()">Cancel</Button>
  *   </SheetFooter>
- * </Drawer>
- * ```
+ *   </Drawer>
+ *   ```
  */
 export function Drawer(props: JSX.IntrinsicElements["dialog"] & { id: string }) {
   return (
@@ -2455,7 +2552,7 @@ export function Drawer(props: JSX.IntrinsicElements["dialog"] & { id: string }) 
       data-slot="Drawer"
       {...omit(props, ["id", "children", "class"])}
       closedby="any"
-      class={`group/drawer-content z-50 open:flex flex-col rounded-t-lg border-t bg-background outline-none p-0 ${
+      class={`group/drawer-content bg-background z-50 flex-col rounded-t-lg border-t p-0 outline-none open:flex ${
         props.class ?? ""
       }`}
     >
@@ -2463,9 +2560,9 @@ export function Drawer(props: JSX.IntrinsicElements["dialog"] & { id: string }) 
         type="button"
         data-slot="Drawer_handle"
         aria-label="Close drawer"
-        class="mx-auto flex h-10 w-32 shrink-0 touch-none select-none items-center justify-center rounded-md outline-none cursor-grab active:cursor-grabbing"
+        class="mx-auto flex h-10 w-32 shrink-0 cursor-grab touch-none items-center justify-center rounded-md outline-none select-none active:cursor-grabbing"
       >
-        <span class="h-2 w-[100px] rounded-full bg-muted" />
+        <span class="bg-muted h-2 w-[100px] rounded-full" />
       </button>
       {props.children}
       <script>
@@ -2546,20 +2643,20 @@ const popoverGap: Record<PopoverSide, string> = {
 /**
  * Displays rich content in a portal, anchored to a trigger button.
  *
- * The trigger must declare `anchor-name: --<id>` (matching the Popover's `id`)
- * either via `<PopoverTrigger for="<id>">` or by passing `style="anchor-name: --<id>"`
- * directly on a `<Button popovertarget="<id>">`.
+ * The trigger must declare `anchor-name: --<id>` (matching the Popover's `id`) either via
+ * `<PopoverTrigger for="<id>">` or by passing `style="anchor-name: --<id>"` directly on a `<Button
+ * popovertarget="<id>">`.
  *
  * @example
- * ```tsx
- * <PopoverTrigger for="pop">Open</PopoverTrigger>
- * <Popover id="pop">
+ *   ;```tsx
+ *   <PopoverTrigger for="pop">Open</PopoverTrigger>
+ *   <Popover id="pop">
  *   <div class="flex flex-col gap-1 text-sm">
- *     <h3 class="font-medium">Title</h3>
- *     <p class="text-muted-foreground">Description.</p>
+ *   <h3 class="font-medium">Title</h3>
+ *   <p class="text-muted-foreground">Description.</p>
  *   </div>
- * </Popover>
- * ```
+ *   </Popover>
+ *   ```
  */
 export function PopoverTrigger(
   props: JSX.IntrinsicElements["button"] & {
@@ -2602,7 +2699,7 @@ export function Popover(props: {
     <div
       id={props.id}
       popover="auto"
-      class={`z-50 w-72 rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-hidden ${
+      class={`bg-popover text-popover-foreground z-50 w-72 rounded-md border p-4 shadow-md outline-hidden ${
         props.class ?? ""
       }`}
       style={`position-anchor: --${props.id}; position-area: ${popoverSideArea[side][align]}; ${popoverGap[side]};`}
@@ -2615,20 +2712,20 @@ export function Popover(props: {
 /**
  * Displays a menu of actions, anchored to a trigger button.
  *
- * The trigger must declare `anchor-name: --<id>` (matching the DropdownMenu's `id`)
- * either via `<PopoverTrigger for="<id>">` or by passing `style="anchor-name: --<id>"`
- * directly on a `<Button popovertarget="<id>">`.
+ * The trigger must declare `anchor-name: --<id>` (matching the DropdownMenu's `id`) either via
+ * `<PopoverTrigger for="<id>">` or by passing `style="anchor-name: --<id>"` directly on a `<Button
+ * popovertarget="<id>">`.
  *
  * @example
- * ```tsx
- * <PopoverTrigger for="menu">Open</PopoverTrigger>
- * <DropdownMenu id="menu">
+ *   ;```tsx
+ *   <PopoverTrigger for="menu">Open</PopoverTrigger>
+ *   <DropdownMenu id="menu">
  *   <DropdownMenuLabel>My Account</DropdownMenuLabel>
  *   <DropdownMenuItem>Profile</DropdownMenuItem>
  *   <DropdownMenuSeparator />
  *   <DropdownMenuItem>Log out</DropdownMenuItem>
- * </DropdownMenu>
- * ```
+ *   </DropdownMenu>
+ *   ```
  */
 export function DropdownMenu(props: {
   id: string
@@ -2647,7 +2744,7 @@ export function DropdownMenu(props: {
       role="menu"
       aria-labelledby={props.labelledBy}
       tabindex={-1}
-      class={`z-50 min-w-[8rem] overflow-x-hidden overflow-y-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md outline-none ${
+      class={`bg-popover text-popover-foreground z-50 min-w-[8rem] overflow-x-hidden overflow-y-auto rounded-md border p-1 shadow-md outline-none ${
         props.class ?? ""
       }`}
       style={`position-anchor: --${props.id}; position-area: ${popoverSideArea[side][align]}; ${
@@ -2655,15 +2752,18 @@ export function DropdownMenu(props: {
       }; min-width: anchor-size(width);`}
     >
       {props.children}
-      <script>
-        {menuScript}
-      </script>
+      <script>{menuScript}</script>
     </div>
   )
 }
 
 export function DropdownMenuGroup(props: JSX.IntrinsicElements["div"]) {
-  return <div role="group" {...props} />
+  return (
+    <div
+      role="group"
+      {...props}
+    />
+  )
 }
 
 export function DropdownMenuItem(
@@ -2685,7 +2785,7 @@ export function DropdownMenuItem(
       data-slot="DropdownMenu_item"
       data-inset={inset ? "true" : undefined}
       data-variant={v}
-      class={`relative flex min-h-11 w-full cursor-default items-center gap-2 rounded-sm px-3 py-1.5 text-sm whitespace-nowrap outline-hidden select-none focus:bg-accent focus:text-accent-foreground hover:bg-accent hover:text-accent-foreground md:min-h-0 md:px-2 data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50 data-[inset=true]:pl-8 data-[variant=destructive]:text-destructive data-[variant=destructive]:focus:bg-destructive/10 data-[variant=destructive]:focus:text-destructive data-[variant=destructive]:hover:bg-destructive/10 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-muted-foreground ${
+      class={`focus:bg-accent focus:text-accent-foreground hover:bg-accent hover:text-accent-foreground data-[variant=destructive]:text-destructive data-[variant=destructive]:focus:bg-destructive/10 data-[variant=destructive]:focus:text-destructive data-[variant=destructive]:hover:bg-destructive/10 [&_svg:not([class*='text-'])]:text-muted-foreground relative flex min-h-11 w-full cursor-default items-center gap-2 rounded-sm px-3 py-1.5 text-sm whitespace-nowrap outline-hidden select-none data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50 data-[inset=true]:pl-8 md:min-h-0 md:px-2 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 ${
         props.class ?? ""
       }`}
       {...rest}
@@ -2693,7 +2793,9 @@ export function DropdownMenuItem(
   )
 }
 
-export function DropdownMenuCheckboxItem(props: JSX.IntrinsicElements["button"] & { checked?: boolean }) {
+export function DropdownMenuCheckboxItem(
+  props: JSX.IntrinsicElements["button"] & { checked?: boolean },
+) {
   const rest = omit(props, ["class", "checked", "type", "children"])
   return (
     <button
@@ -2704,7 +2806,7 @@ export function DropdownMenuCheckboxItem(props: JSX.IntrinsicElements["button"] 
       data-state={props.checked ? "checked" : "unchecked"}
       aria-checked={props.checked ? "true" : "false"}
       onclick="const checked = this.getAttribute('aria-checked') !== 'true'; this.setAttribute('aria-checked', String(checked)); this.dataset.state = checked ? 'checked' : 'unchecked'"
-      class={`relative flex w-full cursor-default items-center gap-2 rounded-sm py-1.5 pr-2 pl-8 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50 ${
+      class={`focus:bg-accent focus:text-accent-foreground hover:bg-accent hover:text-accent-foreground relative flex w-full cursor-default items-center gap-2 rounded-sm py-1.5 pr-2 pl-8 text-sm outline-hidden select-none disabled:pointer-events-none disabled:opacity-50 ${
         props.class ?? ""
       }`}
       {...rest}
@@ -2720,10 +2822,18 @@ export function DropdownMenuCheckboxItem(props: JSX.IntrinsicElements["button"] 
 }
 
 export function DropdownMenuRadioGroup(props: JSX.IntrinsicElements["div"]) {
-  return <div data-slot="DropdownMenu_radioGroup" role="group" {...props} />
+  return (
+    <div
+      data-slot="DropdownMenu_radioGroup"
+      role="group"
+      {...props}
+    />
+  )
 }
 
-export function DropdownMenuRadioItem(props: JSX.IntrinsicElements["button"] & { checked?: boolean }) {
+export function DropdownMenuRadioItem(
+  props: JSX.IntrinsicElements["button"] & { checked?: boolean },
+) {
   const rest = omit(props, ["class", "checked", "type", "children"])
   return (
     <button
@@ -2734,14 +2844,18 @@ export function DropdownMenuRadioItem(props: JSX.IntrinsicElements["button"] & {
       data-state={props.checked ? "checked" : "unchecked"}
       aria-checked={props.checked ? "true" : "false"}
       onclick="for (const item of this.closest('[data-slot=DropdownMenu_radioGroup]').querySelectorAll('[role=menuitemradio]')) { const checked = item === this; item.setAttribute('aria-checked', String(checked)); item.dataset.state = checked ? 'checked' : 'unchecked' }"
-      class={`relative flex w-full cursor-default items-center gap-2 rounded-sm py-1.5 pr-2 pl-8 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50 ${
+      class={`focus:bg-accent focus:text-accent-foreground hover:bg-accent hover:text-accent-foreground relative flex w-full cursor-default items-center gap-2 rounded-sm py-1.5 pr-2 pl-8 text-sm outline-hidden select-none disabled:pointer-events-none disabled:opacity-50 ${
         props.class ?? ""
       }`}
       {...rest}
     >
       <span class="pointer-events-none absolute left-2 flex size-3.5 items-center justify-center [[data-state=unchecked]_&]:invisible">
         <Svg class="size-2 fill-current">
-          <circle cx="12" cy="12" r="10" />
+          <circle
+            cx="12"
+            cy="12"
+            r="10"
+          />
         </Svg>
       </span>
       {props.children}
@@ -2766,7 +2880,7 @@ export function DropdownMenuSeparator(props: JSX.IntrinsicElements["div"]) {
   return (
     <div
       role="separator"
-      class={`-mx-1 my-1 h-px bg-border ${props.class ?? ""}`}
+      class={`bg-border -mx-1 my-1 h-px ${props.class ?? ""}`}
       {...rest}
     />
   )
@@ -2776,7 +2890,7 @@ export function DropdownMenuShortcut(props: JSX.IntrinsicElements["span"]) {
   const rest = omit(props, ["class"])
   return (
     <span
-      class={`ml-auto text-xs tracking-widest text-muted-foreground ${props.class ?? ""}`}
+      class={`text-muted-foreground ml-auto text-xs tracking-widest ${props.class ?? ""}`}
       {...rest}
     />
   )
@@ -2806,7 +2920,7 @@ export function DropdownMenuSubTrigger(
       data-slot="DropdownMenu_subTrigger"
       style={`anchor-name: --${forId};`}
       data-inset={inset ? "true" : undefined}
-      class={`flex w-full cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground hover:bg-accent hover:text-accent-foreground data-[inset=true]:pl-8 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-muted-foreground ${
+      class={`focus:bg-accent focus:text-accent-foreground hover:bg-accent hover:text-accent-foreground [&_svg:not([class*='text-'])]:text-muted-foreground flex w-full cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none data-[inset=true]:pl-8 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 ${
         props.class ?? ""
       }`}
       {...rest}
@@ -2831,15 +2945,13 @@ export function DropdownMenuSubContent(props: {
       popover="auto"
       role="menu"
       tabindex={-1}
-      class={`z-50 min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-lg outline-none ${
+      class={`bg-popover text-popover-foreground z-50 min-w-[8rem] overflow-hidden rounded-md border p-1 shadow-lg outline-none ${
         props.class ?? ""
       }`}
       style={`position-anchor: --${props.for}; position-area: right span-bottom; ${popoverGap.right};`}
     >
       {props.children}
-      <script>
-        {menuScript}
-      </script>
+      <script>{menuScript}</script>
     </div>
   )
 }
@@ -2848,23 +2960,19 @@ export function DropdownMenuSubContent(props: {
  * Displays a menu of actions triggered by a right click.
  *
  * @example
- * ```tsx
- * <ContextMenu>
- *   <ContextMenuTrigger>Right click here</ContextMenuTrigger>
- *   <ContextMenuContent>
- *     <ContextMenuItem>Profile</ContextMenuItem>
- *     <ContextMenuItem>Billing</ContextMenuItem>
- *     <ContextMenuItem>Team</ContextMenuItem>
- *   </ContextMenuContent>
- * </ContextMenu>
- * ```
+ *   ;```tsx
+ *   ;<ContextMenu>
+ *     <ContextMenuTrigger>Right click here</ContextMenuTrigger>
+ *     <ContextMenuContent>
+ *       <ContextMenuItem>Profile</ContextMenuItem>
+ *       <ContextMenuItem>Billing</ContextMenuItem>
+ *       <ContextMenuItem>Team</ContextMenuItem>
+ *     </ContextMenuContent>
+ *   </ContextMenu>
+ *   ```
  */
 export function ContextMenu(props: { children?: JSX.Children }) {
-  return (
-    <>
-      {props.children}
-    </>
-  )
+  return <>{props.children}</>
 }
 
 export function ContextMenuTrigger(props: JSX.IntrinsicElements["div"] & { for: string }) {
@@ -2872,7 +2980,11 @@ export function ContextMenuTrigger(props: JSX.IntrinsicElements["div"] & { for: 
   const children = props.children
   const rest = omit(props, ["class", "for", "children"])
   return (
-    <div data-context-menu-target={forId} class={props.class} {...rest}>
+    <div
+      data-context-menu-target={forId}
+      class={props.class}
+      {...rest}
+    >
       {children}
       <script>
         {() => {
@@ -2882,7 +2994,7 @@ export function ContextMenuTrigger(props: JSX.IntrinsicElements["div"] & { for: 
           if (!trigger) return
           const targetId = trigger.getAttribute("data-context-menu-target")
           if (!targetId) return
-          trigger.addEventListener("contextmenu", function(e: MouseEvent) {
+          trigger.addEventListener("contextmenu", function (e: MouseEvent) {
             const menu = d.getElementById(targetId)
             if (!menu) return
             e.preventDefault()
@@ -2911,43 +3023,46 @@ export function ContextMenuTrigger(props: JSX.IntrinsicElements["div"] & { for: 
 // directly — the popover content shape is identical.
 
 /**
- * A visually persistent menu common in desktop applications that provides
- * quick access to a consistent set of commands.
+ * A visually persistent menu common in desktop applications that provides quick access to a
+ * consistent set of commands.
  *
  * @example
- * ```tsx
- * <Menubar>
- *   <MenubarMenu>
- *     <MenubarTrigger>File</MenubarTrigger>
- *     <MenubarContent>
- *       <MenubarItem>New Tab</MenubarItem>
- *       <MenubarItem>New Window</MenubarItem>
- *       <MenubarSeparator />
- *       <MenubarItem>Share</MenubarItem>
- *       <MenubarItem>Print</MenubarItem>
- *     </MenubarContent>
- *   </MenubarMenu>
- * </Menubar>
- * ```
+ *   ;```tsx
+ *   ;<Menubar>
+ *     <MenubarMenu>
+ *       <MenubarTrigger>File</MenubarTrigger>
+ *       <MenubarContent>
+ *         <MenubarItem>New Tab</MenubarItem>
+ *         <MenubarItem>New Window</MenubarItem>
+ *         <MenubarSeparator />
+ *         <MenubarItem>Share</MenubarItem>
+ *         <MenubarItem>Print</MenubarItem>
+ *       </MenubarContent>
+ *     </MenubarMenu>
+ *   </Menubar>
+ *   ```
  */
 export function Menubar(props: JSX.IntrinsicElements["div"]) {
   const rest = omit(props, ["class"])
   return (
     <div
       role="menubar"
-      class={`flex h-9 items-center gap-1 rounded-md border bg-background p-1 shadow-xs ${props.class ?? ""}`}
+      class={`bg-background flex h-9 items-center gap-1 rounded-md border p-1 shadow-xs ${props.class ?? ""}`}
       {...rest}
     />
   )
 }
 
 export function MenubarMenu(props: JSX.IntrinsicElements["div"]) {
-  return <div class="relative" {...props} />
+  return (
+    <div
+      class="relative"
+      {...props}
+    />
+  )
 }
 
-export function MenubarTrigger(
-  props: JSX.IntrinsicElements["button"] & { for: string },
-) {
+export function MenubarTrigger(props: JSX.IntrinsicElements["button"] & { for: string }) {
   const forId = props.for
   const type = props.type
   const children = props.children
@@ -2958,7 +3073,7 @@ export function MenubarTrigger(
       id={`${forId}-trigger`}
       popovertarget={forId}
       style={`anchor-name: --${forId};`}
-      class={`flex items-center rounded-sm px-2 py-1 text-sm font-medium outline-hidden select-none focus:bg-accent focus:text-accent-foreground hover:bg-accent hover:text-accent-foreground ${
+      class={`focus:bg-accent focus:text-accent-foreground hover:bg-accent hover:text-accent-foreground flex items-center rounded-sm px-2 py-1 text-sm font-medium outline-hidden select-none ${
         props.class ?? ""
       }`}
       {...rest}
@@ -2972,17 +3087,17 @@ export function MenubarTrigger(
 // directly — the popover content shape is identical.
 
 /**
- * Rich preview shown on hover/focus of a trigger element. Trigger is resolved once
- * on mount: swapping the trigger after load won't rewire, and removing the card
- * while the trigger remains leaks listeners (no-op on hover).
+ * Rich preview shown on hover/focus of a trigger element. Trigger is resolved once on mount:
+ * swapping the trigger after load won't rewire, and removing the card while the trigger remains
+ * leaks listeners (no-op on hover).
  *
  * @example
- * ```tsx
- * <a id="hc1-link" href="/v">Vercel</a>
- * <HoverCard for="hc1-link" id="hc1">
+ *   ;```tsx
+ *   <a id="hc1-link" href="/v">Vercel</a>
+ *   <HoverCard for="hc1-link" id="hc1">
  *   The React framework, by @vercel.
- * </HoverCard>
- * ```
+ *   </HoverCard>
+ *   ```
  */
 export function HoverCard(props: {
   id: string
@@ -2999,7 +3114,7 @@ export function HoverCard(props: {
       id={props.id}
       popover="manual"
       data-trigger={props.for}
-      class={`z-50 w-64 rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-hidden ${
+      class={`bg-popover text-popover-foreground z-50 w-64 rounded-md border p-4 shadow-md outline-hidden ${
         props.class ?? ""
       }`}
       style={`position-area: ${popoverSideArea[side][align]}; ${popoverGap[side]};`}
@@ -3021,22 +3136,22 @@ export function HoverCard(props: {
           card.style.setProperty("position-anchor", anchorName)
           let openTimer: any = null
           let closeTimer: any = null
-          const open = function() {
+          const open = function () {
             if (closeTimer) {
               clearTimeout(closeTimer)
               closeTimer = null
             }
-            openTimer = setTimeout(function() {
+            openTimer = setTimeout(function () {
               if (!card.isConnected) return
               if (!card.matches(":popover-open")) card.showPopover()
             }, 200)
           }
-          const close = function() {
+          const close = function () {
             if (openTimer) {
               clearTimeout(openTimer)
               openTimer = null
             }
-            closeTimer = setTimeout(function() {
+            closeTimer = setTimeout(function () {
               if (!card.isConnected) return
               if (card.matches(":popover-open")) card.hidePopover()
             }, 150)
@@ -3045,7 +3160,7 @@ export function HoverCard(props: {
           trigger.addEventListener("mouseleave", close)
           trigger.addEventListener("focus", open)
           trigger.addEventListener("blur", close)
-          card.addEventListener("mouseenter", function() {
+          card.addEventListener("mouseenter", function () {
             if (closeTimer) {
               clearTimeout(closeTimer)
               closeTimer = null
@@ -3059,15 +3174,15 @@ export function HoverCard(props: {
 }
 
 /**
- * A small label shown when the user hovers or focuses the trigger element.
- * Trigger is resolved once on mount: swapping the trigger after load won't rewire,
- * and removing the tooltip while the trigger remains leaks listeners (no-op on hover).
+ * A small label shown when the user hovers or focuses the trigger element. Trigger is resolved once
+ * on mount: swapping the trigger after load won't rewire, and removing the tooltip while the
+ * trigger remains leaks listeners (no-op on hover).
  *
  * @example
- * ```tsx
- * <Button id="t1-btn">Hover me</Button>
- * <Tooltip for="t1-btn" id="t1">Add to library</Tooltip>
- * ```
+ *   ;```tsx
+ *   <Button id="t1-btn">Hover me</Button>
+ *   <Tooltip for="t1-btn" id="t1">Add to library</Tooltip>
+ *   ```
  */
 export function Tooltip(props: {
   id: string
@@ -3084,7 +3199,7 @@ export function Tooltip(props: {
       id={props.id}
       popover="manual"
       data-trigger={props.for}
-      class={`z-50 w-fit rounded-md bg-foreground px-3 py-1.5 text-xs text-balance text-background outline-none ${
+      class={`bg-foreground text-background z-50 w-fit rounded-md px-3 py-1.5 text-xs text-balance outline-none ${
         props.class ?? ""
       }`}
       style={`position-area: ${popoverSideArea[side][align]}; ${popoverGap[side]};`}
@@ -3104,13 +3219,13 @@ export function Tooltip(props: {
           trigger.style.setProperty("anchor-name", anchorName)
           tip.style.setProperty("position-anchor", anchorName)
           let openTimer: any = null
-          const open = function() {
-            openTimer = setTimeout(function() {
+          const open = function () {
+            openTimer = setTimeout(function () {
               if (!tip.isConnected) return
               if (!tip.matches(":popover-open")) tip.showPopover()
             }, 100)
           }
-          const close = function() {
+          const close = function () {
             if (openTimer) {
               clearTimeout(openTimer)
               openTimer = null
@@ -3132,20 +3247,22 @@ export function Tooltip(props: {
 }
 
 /**
- * A set of layered sections of content — known as tab panels — that are
- * displayed one at a time.
+ * A set of layered sections of content — known as tab panels — that are displayed one at a time.
  *
  * @example
- * ```tsx
- * <Tabs defaultValue="account" class="w-[400px]">
- *   <TabsList>
- *     <TabsTrigger value="account">Account</TabsTrigger>
- *     <TabsTrigger value="password">Password</TabsTrigger>
- *   </TabsList>
- *   <TabsContent value="account">Make changes to your account here.</TabsContent>
- *   <TabsContent value="password">Change your password here.</TabsContent>
- * </Tabs>
- * ```
+ *   ;```tsx
+ *   ;<Tabs
+ *     defaultValue="account"
+ *     class="w-[400px]"
+ *   >
+ *     <TabsList>
+ *       <TabsTrigger value="account">Account</TabsTrigger>
+ *       <TabsTrigger value="password">Password</TabsTrigger>
+ *     </TabsList>
+ *     <TabsContent value="account">Make changes to your account here.</TabsContent>
+ *     <TabsContent value="password">Change your password here.</TabsContent>
+ *   </Tabs>
+ *   ```
  */
 export function Tabs(
   props: JSX.IntrinsicElements["div"] & {
@@ -3178,7 +3295,7 @@ export function TabsList(props: JSX.IntrinsicElements["div"] & { variant?: "defa
     <div
       data-variant={v}
       role="tablist"
-      class={`group/tabs-list inline-flex w-fit items-center justify-center rounded-lg p-[3px] text-muted-foreground group-data-[orientation=horizontal]/tabs:h-9 group-data-[orientation=vertical]/tabs:h-fit group-data-[orientation=vertical]/tabs:flex-col data-[variant=line]:rounded-none ${
+      class={`group/tabs-list text-muted-foreground inline-flex w-fit items-center justify-center rounded-lg p-[3px] group-data-[orientation=horizontal]/tabs:h-9 group-data-[orientation=vertical]/tabs:h-fit group-data-[orientation=vertical]/tabs:flex-col data-[variant=line]:rounded-none ${
         variants[v]
       } ${props.class ?? ""}`}
       {...rest}
@@ -3200,7 +3317,7 @@ export function TabsTrigger(
   const rest = omit(props, ["class", "name", "value", "checked", "children"])
   return (
     <label
-      class={`relative inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 rounded-md border border-transparent px-2 py-1 text-sm font-medium whitespace-nowrap text-foreground/60 transition-all cursor-pointer group-data-[orientation=vertical]/tabs:w-full group-data-[orientation=vertical]/tabs:justify-start hover:text-foreground has-[:checked]:bg-background has-[:checked]:text-foreground has-[:disabled]:pointer-events-none has-[:disabled]:opacity-50 group-data-[variant=default]/tabs-list:has-[:checked]:shadow-sm group-data-[variant=line]/tabs-list:has-[:checked]:shadow-none has-[:focus-visible]:border-ring has-[:focus-visible]:ring-[3px] has-[:focus-visible]:ring-ring/50 group-data-[variant=line]/tabs-list:bg-transparent group-data-[variant=line]/tabs-list:has-[:checked]:bg-transparent after:absolute after:bg-foreground after:opacity-0 after:transition-opacity group-data-[orientation=horizontal]/tabs:after:inset-x-0 group-data-[orientation=horizontal]/tabs:after:bottom-[-5px] group-data-[orientation=horizontal]/tabs:after:h-0.5 group-data-[orientation=vertical]/tabs:after:inset-y-0 group-data-[orientation=vertical]/tabs:after:-right-1 group-data-[orientation=vertical]/tabs:after:w-0.5 group-data-[variant=line]/tabs-list:has-[:checked]:after:opacity-100 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 ${
+      class={`text-foreground/60 hover:text-foreground has-[:checked]:bg-background has-[:checked]:text-foreground has-[:focus-visible]:border-ring has-[:focus-visible]:ring-ring/50 after:bg-foreground relative inline-flex h-[calc(100%-1px)] flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-md border border-transparent px-2 py-1 text-sm font-medium whitespace-nowrap transition-all group-data-[orientation=vertical]/tabs:w-full group-data-[orientation=vertical]/tabs:justify-start group-data-[variant=line]/tabs-list:bg-transparent after:absolute after:opacity-0 after:transition-opacity group-data-[orientation=horizontal]/tabs:after:inset-x-0 group-data-[orientation=horizontal]/tabs:after:bottom-[-5px] group-data-[orientation=horizontal]/tabs:after:h-0.5 group-data-[orientation=vertical]/tabs:after:inset-y-0 group-data-[orientation=vertical]/tabs:after:-right-1 group-data-[orientation=vertical]/tabs:after:w-0.5 group-data-[variant=default]/tabs-list:has-[:checked]:shadow-sm group-data-[variant=line]/tabs-list:has-[:checked]:bg-transparent group-data-[variant=line]/tabs-list:has-[:checked]:shadow-none group-data-[variant=line]/tabs-list:has-[:checked]:after:opacity-100 has-[:disabled]:pointer-events-none has-[:disabled]:opacity-50 has-[:focus-visible]:ring-[3px] [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 ${
         props.class ?? ""
       }`}
       {...rest}
@@ -3242,7 +3359,7 @@ export function TabsContent(props: JSX.IntrinsicElements["div"] & { name: string
           const groupName = panel.getAttribute("data-tabs-name")
           const groupValue = panel.getAttribute("data-tabs-value")
           if (!groupName || !groupValue) return
-          const sync = function() {
+          const sync = function () {
             const trigger = d.querySelector<HTMLInputElement>(
               `input[type=radio][data-tabs-name="${groupName}"]:checked`,
             )
@@ -3253,7 +3370,7 @@ export function TabsContent(props: JSX.IntrinsicElements["div"] & { name: string
               panel.hidden = active !== groupValue
             }
           }
-          d.querySelectorAll(`input[type=radio][data-tabs-name="${groupName}"]`).forEach(function(
+          d.querySelectorAll(`input[type=radio][data-tabs-name="${groupName}"]`).forEach(function (
             el: any,
           ) {
             el.addEventListener("change", sync)
@@ -3273,7 +3390,8 @@ const toggleBase =
 
 const toggleVariants: Record<ToggleVariant, string> = {
   default: "bg-transparent",
-  outline: "border border-input bg-transparent shadow-xs hover:bg-accent hover:text-accent-foreground",
+  outline:
+    "border border-input bg-transparent shadow-xs hover:bg-accent hover:text-accent-foreground",
 }
 
 const toggleSizes: Record<ToggleSize, string> = {
@@ -3286,16 +3404,17 @@ const toggleSizes: Record<ToggleSize, string> = {
  * A two-state button that can be either on or off.
  *
  * @example
- * ```tsx
- * <Toggle>Toggle</Toggle>
- * ```
+ *   ;```tsx
+ *   ;<Toggle>Toggle</Toggle>
+ *   ```
  *
- * @example icon toggle with aria label
- * ```tsx
- * <Toggle aria-label="Toggle bold">
+ * @example
+ *   icon toggle with aria label
+ *   ```tsx
+ *   <Toggle aria-label="Toggle bold">
  *   <Icon name="bold" />
- * </Toggle>
- * ```
+ *   </Toggle>
+ *   ```
  */
 export function Toggle(
   props: Omit<JSX.IntrinsicElements["input"], "size"> & {
@@ -3317,7 +3436,11 @@ export function Toggle(
       data-size={s}
       class={`${toggleBase} ${toggleVariants[v]} ${toggleSizes[s]} ${props.class ?? ""}`}
     >
-      <input type="checkbox" class="peer sr-only" {...rest} />
+      <input
+        type="checkbox"
+        class="peer sr-only"
+        {...rest}
+      />
       {children}
     </label>
   )
@@ -3327,13 +3450,13 @@ export function Toggle(
  * A set of two-state buttons that can be toggled on or off.
  *
  * @example
- * ```tsx
- * <ToggleGroup type="single">
- *   <ToggleGroupItem value="a">A</ToggleGroupItem>
- *   <ToggleGroupItem value="b">B</ToggleGroupItem>
- *   <ToggleGroupItem value="c">C</ToggleGroupItem>
- * </ToggleGroup>
- * ```
+ *   ;```tsx
+ *   ;<ToggleGroup type="single">
+ *     <ToggleGroupItem value="a">A</ToggleGroupItem>
+ *     <ToggleGroupItem value="b">B</ToggleGroupItem>
+ *     <ToggleGroupItem value="c">C</ToggleGroupItem>
+ *   </ToggleGroup>
+ *   ```
  */
 export function ToggleGroup(
   props: JSX.IntrinsicElements["div"] & {
@@ -3388,11 +3511,15 @@ export function ToggleGroupItem(
       data-size={s}
       class={`${toggleBase} ${toggleVariants[v]} ${
         toggleSizes[s]
-      } w-auto min-w-0 shrink-0 px-3 focus:z-10 focus-visible:z-10 group-data-[spacing=0]/toggle-group:rounded-none group-data-[spacing=0]/toggle-group:shadow-none group-data-[spacing=0]/toggle-group:first:rounded-l-md group-data-[spacing=0]/toggle-group:last:rounded-r-md group-data-[spacing=0]/toggle-group:data-[variant=outline]:border-l-0 group-data-[spacing=0]/toggle-group:data-[variant=outline]:first:border-l ${
+      } w-auto min-w-0 shrink-0 px-3 group-data-[spacing=0]/toggle-group:rounded-none group-data-[spacing=0]/toggle-group:shadow-none group-data-[spacing=0]/toggle-group:first:rounded-l-md group-data-[spacing=0]/toggle-group:last:rounded-r-md focus:z-10 focus-visible:z-10 group-data-[spacing=0]/toggle-group:data-[variant=outline]:border-l-0 group-data-[spacing=0]/toggle-group:data-[variant=outline]:first:border-l ${
         props.class ?? ""
       }`}
     >
-      <input type={t} class="peer sr-only" {...rest} />
+      <input
+        type={t}
+        class="peer sr-only"
+        {...rest}
+      />
       {children}
     </label>
   )
@@ -3407,19 +3534,20 @@ export function ToggleGroupItem(
  * An opinionated toast component to display a transient message to the user.
  *
  * @example
- * ```tsx
- * <Toast title="Event has been created." />
- * ```
+ *   ;```tsx
+ *   ;<Toast title="Event has been created." />
+ *   ```
  *
- * @example destructive toast with description
- * ```tsx
- * <Toast
+ * @example
+ *   destructive toast with description
+ *   ```tsx
+ *   <Toast
  *   variant="error"
  *   title="Something went wrong"
  *   description="Please try again."
  *   position="top-right"
- * />
- * ```
+ *   />
+ *   ```
  */
 export function Toast(props: {
   title?: string
@@ -3427,12 +3555,7 @@ export function Toast(props: {
   variant?: "default" | "success" | "info" | "warning" | "error"
   duration?: number
   position?:
-    | "top-left"
-    | "top-center"
-    | "top-right"
-    | "bottom-left"
-    | "bottom-center"
-    | "bottom-right"
+    "top-left" | "top-center" | "top-right" | "bottom-left" | "bottom-center" | "bottom-right"
   class?: string
   children?: JSX.Children
 }) {
@@ -3447,16 +3570,30 @@ export function Toast(props: {
     error: "text-destructive",
   }[variant]
   const iconPath = {
-    default: <circle cx="12" cy="12" r="10" />,
+    default: (
+      <circle
+        cx="12"
+        cy="12"
+        r="10"
+      />
+    ),
     success: (
       <>
-        <circle cx="12" cy="12" r="10" />
+        <circle
+          cx="12"
+          cy="12"
+          r="10"
+        />
         <path d="m9 12 2 2 4-4" />
       </>
     ),
     info: (
       <>
-        <circle cx="12" cy="12" r="10" />
+        <circle
+          cx="12"
+          cy="12"
+          r="10"
+        />
         <path d="M12 16v-4" />
         <path d="M12 8h.01" />
       </>
@@ -3470,7 +3607,11 @@ export function Toast(props: {
     ),
     error: (
       <>
-        <circle cx="12" cy="12" r="10" />
+        <circle
+          cx="12"
+          cy="12"
+          r="10"
+        />
         <path d="m15 9-6 6" />
         <path d="m9 9 6 6" />
       </>
@@ -3484,36 +3625,26 @@ export function Toast(props: {
       data-variant={variant}
       data-duration={duration}
       data-position={position}
-      class={`pointer-events-auto flex w-full items-center gap-1.5 rounded-[10px] border bg-popover text-popover-foreground p-4 text-[13px] font-medium shadow-[0_4px_12px_rgba(0,0,0,0.1)] ${
+      class={`bg-popover text-popover-foreground pointer-events-auto flex w-full items-center gap-1.5 rounded-[10px] border p-4 text-[13px] font-medium shadow-[0_4px_12px_rgba(0,0,0,0.1)] ${
         props.class ?? ""
       }`}
       style="opacity:0;transform:translateY(-100%);transition:opacity 400ms,transform 400ms;"
     >
-      <Svg class={`size-4 shrink-0 mr-1 ${iconColor}`}>
-        {iconPath}
-      </Svg>
+      <Svg class={`mr-1 size-4 shrink-0 ${iconColor}`}>{iconPath}</Svg>
       <div class="flex flex-1 flex-col gap-1">
-        {props.title
-          ? (
-            <div class="leading-[1.5]">
-              {props.title}
-            </div>
-          )
-          : null}
-        {props.description ?
-          (
-            <div class="text-[13px] font-normal text-muted-foreground leading-[1.5]">
-              {props.description}
-            </div>
-          ) :
-          null}
+        {props.title ? <div class="leading-[1.5]">{props.title}</div> : null}
+        {props.description ? (
+          <div class="text-muted-foreground text-[13px] leading-[1.5] font-normal">
+            {props.description}
+          </div>
+        ) : null}
         {props.children}
       </div>
       <script>
         {() => {
           const doc = window.document
           const script = doc.currentScript
-          const toast = script && script.parentElement as HTMLElement | null
+          const toast = script && (script.parentElement as HTMLElement | null)
           if (!toast) return
           const pos = toast.getAttribute("data-position") || "bottom-right"
           const positionClasses: Record<string, string> = {
@@ -3524,7 +3655,9 @@ export function Toast(props: {
             "bottom-center": "bottom-6 left-1/2 -translate-x-1/2 items-center",
             "bottom-right": "bottom-6 right-6 items-end",
           }
-          let toaster = doc.querySelector<HTMLElement>(`[data-slot=Toaster][data-position="${pos}"]`)
+          let toaster = doc.querySelector<HTMLElement>(
+            `[data-slot=Toaster][data-position="${pos}"]`,
+          )
           if (!toaster) {
             toaster = doc.createElement("ol")
             toaster.setAttribute("data-slot", "Toaster")
@@ -3546,10 +3679,10 @@ export function Toast(props: {
           })
           const dur = parseInt(toast.getAttribute("data-duration") || "4000", 10)
           if (dur > 0) {
-            setTimeout(function() {
+            setTimeout(function () {
               toast.style.opacity = "0"
               toast.style.transform = enterFrom
-              setTimeout(function() {
+              setTimeout(function () {
                 toast.remove()
                 if (toaster && toaster.children.length === 0) toaster.remove()
               }, 400)
@@ -3565,13 +3698,13 @@ export function Toast(props: {
  * Accessible resizable panel groups and layouts with keyboard support.
  *
  * @example
- * ```tsx
- * <ResizablePanelGroup orientation="horizontal">
- *   <ResizablePanel>One</ResizablePanel>
- *   <ResizableHandle />
- *   <ResizablePanel>Two</ResizablePanel>
- * </ResizablePanelGroup>
- * ```
+ *   ;```tsx
+ *   ;<ResizablePanelGroup orientation="horizontal">
+ *     <ResizablePanel>One</ResizablePanel>
+ *     <ResizableHandle />
+ *     <ResizablePanel>Two</ResizablePanel>
+ *   </ResizablePanelGroup>
+ *   ```
  */
 export function ResizablePanelGroup(
   props: JSX.IntrinsicElements["div"] & { direction?: "horizontal" | "vertical" },
@@ -3598,7 +3731,7 @@ export function ResizablePanelGroup(
           const sizeProp = isVertical ? "offsetHeight" : "offsetWidth"
           const clientProp = isVertical ? "clientY" : "clientX"
           let dragging: any = null
-          group.addEventListener("pointerdown", function(e: any) {
+          group.addEventListener("pointerdown", function (e: any) {
             const handle = e.target.closest("[data-slot=Resizable_handle]")
             if (!handle || !group.contains(handle)) return
             const prev = handle.previousElementSibling
@@ -3626,7 +3759,7 @@ export function ResizablePanelGroup(
               nextMax,
             }
           })
-          group.addEventListener("pointermove", function(e: any) {
+          group.addEventListener("pointermove", function (e: any) {
             if (!dragging) return
             const delta = e[clientProp] - dragging.start
             const newPrevPx = Math.max(0, Math.min(dragging.total, dragging.startPrev + delta))
@@ -3651,7 +3784,7 @@ export function ResizablePanelGroup(
             dragging.prev.style.flex = prevPct + " 1 0"
             dragging.next.style.flex = nextPct + " 1 0"
           })
-          const stop = function(e: any) {
+          const stop = function (e: any) {
             if (!dragging) return
             try {
               dragging.handle.releasePointerCapture(e.pointerId)
@@ -3660,7 +3793,7 @@ export function ResizablePanelGroup(
           }
           group.addEventListener("pointerup", stop)
           group.addEventListener("pointercancel", stop)
-          group.addEventListener("keydown", function(e: any) {
+          group.addEventListener("keydown", function (e: any) {
             const handle = e.target.closest("[data-slot=Resizable_handle]")
             if (!handle || !group.contains(handle)) return
             const prev = handle.previousElementSibling
@@ -3740,43 +3873,79 @@ export function ResizableHandle(props: JSX.IntrinsicElements["div"] & { withHand
       data-slot="Resizable_handle"
       role="separator"
       tabindex={0}
-      class={`relative flex w-px items-center justify-center bg-border after:absolute after:inset-y-0 after:left-1/2 after:w-1 after:-translate-x-1/2 focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:outline-hidden cursor-col-resize touch-none [[data-direction=vertical]_&]:h-px [[data-direction=vertical]_&]:w-full [[data-direction=vertical]_&]:cursor-row-resize [[data-direction=vertical]_&]:after:left-0 [[data-direction=vertical]_&]:after:h-1 [[data-direction=vertical]_&]:after:w-full [[data-direction=vertical]_&]:after:translate-x-0 [[data-direction=vertical]_&]:after:-translate-y-1/2 [[data-direction=vertical]_&>div]:rotate-90 ${
+      class={`bg-border focus-visible:ring-ring relative flex w-px cursor-col-resize touch-none items-center justify-center after:absolute after:inset-y-0 after:left-1/2 after:w-1 after:-translate-x-1/2 focus-visible:ring-1 focus-visible:ring-offset-1 focus-visible:outline-hidden [[data-direction=vertical]_&]:h-px [[data-direction=vertical]_&]:w-full [[data-direction=vertical]_&]:cursor-row-resize [[data-direction=vertical]_&]:after:left-0 [[data-direction=vertical]_&]:after:h-1 [[data-direction=vertical]_&]:after:w-full [[data-direction=vertical]_&]:after:translate-x-0 [[data-direction=vertical]_&]:after:-translate-y-1/2 [[data-direction=vertical]_&>div]:rotate-90 ${
         props.class ?? ""
       }`}
       {...rest}
     >
-      {withHandle ?
-        (
-          <div class="z-10 flex h-4 w-3 items-center justify-center rounded-xs border bg-border">
-            <Svg class="size-2.5">
-              <circle cx="9" cy="12" r="1" />
-              <circle cx="9" cy="5" r="1" />
-              <circle cx="9" cy="19" r="1" />
-              <circle cx="15" cy="12" r="1" />
-              <circle cx="15" cy="5" r="1" />
-              <circle cx="15" cy="19" r="1" />
-            </Svg>
-          </div>
-        ) :
-        children}
+      {withHandle ? (
+        <div class="bg-border z-10 flex h-4 w-3 items-center justify-center rounded-xs border">
+          <Svg class="size-2.5">
+            <circle
+              cx="9"
+              cy="12"
+              r="1"
+            />
+            <circle
+              cx="9"
+              cy="5"
+              r="1"
+            />
+            <circle
+              cx="9"
+              cy="19"
+              r="1"
+            />
+            <circle
+              cx="15"
+              cy="12"
+              r="1"
+            />
+            <circle
+              cx="15"
+              cy="5"
+              r="1"
+            />
+            <circle
+              cx="15"
+              cy="19"
+              r="1"
+            />
+          </Svg>
+        </div>
+      ) : (
+        children
+      )}
     </div>
   )
 }
 
 /**
- * A carousel with scroll snapping, touch scrolling, and keyboard navigation.
- * Optional leftButton and rightButton props replace the contents of its buttons.
- * Leave either undefined for the default arrow, or pass null to omit that button.
+ * A carousel with scroll snapping, touch scrolling, and keyboard navigation. Optional leftButton
+ * and rightButton props replace the contents of its buttons. Leave either undefined for the default
+ * arrow, or pass null to omit that button.
  *
  * @example
- * ```tsx
- * <Carousel items={[<img src="/one.jpg" alt="One" />, <img src="/two.jpg" alt="Two" />]} />
- * ```
+ *   ;```tsx
+ *   ;<Carousel
+ *     items={[
+ *       <img
+ *         src="/one.jpg"
+ *         alt="One"
+ *       />,
+ *       <img
+ *         src="/two.jpg"
+ *         alt="Two"
+ *       />,
+ *     ]}
+ *   />
+ *   ```
  *
- * @example custom button content
- * ```tsx
- * <Carousel items={["One", "Two"]} leftButton="Back" rightButton="Next" />
- * ```
+ * @example
+ *   custom button content
+ *   ```tsx
+ *   <Carousel items={["One", "Two"]} leftButton="Back" rightButton="Next" />
+ *   ```
  */
 export function Carousel(
   props: Omit<JSX.IntrinsicElements["div"], "children"> & {
@@ -3800,9 +3969,9 @@ export function Carousel(
     >
       <div
         data-slot="Carousel_contentTrack"
-        class={`flex h-full snap-mandatory scroll-smooth [scrollbar-width:none] ${
+        class={`flex h-full snap-mandatory [scrollbar-width:none] scroll-smooth ${
           orientation === "vertical"
-            ? "flex-col snap-y overflow-x-hidden overflow-y-auto"
+            ? "snap-y flex-col overflow-x-hidden overflow-y-auto"
             : "snap-x overflow-x-auto overflow-y-hidden"
         }`}
       >
@@ -3829,13 +3998,16 @@ export function Carousel(
             variant: "outline",
             class: `absolute min-w-9 rounded-full px-2 ${
               orientation === "vertical"
-                ? "bottom-full mb-4 left-1/2 -translate-x-1/2"
+                ? "bottom-full left-1/2 mb-4 -translate-x-1/2"
                 : "top-1/2 right-full mr-4 -translate-y-1/2"
             }`,
           })}
         >
           {props.leftButton ?? (
-            <Svg aria-hidden="true" class={`size-4 ${orientation === "vertical" ? "rotate-90" : ""}`}>
+            <Svg
+              aria-hidden="true"
+              class={`size-4 ${orientation === "vertical" ? "rotate-90" : ""}`}
+            >
               <path d="m12 19-7-7 7-7M19 12H5" />
             </Svg>
           )}
@@ -3852,13 +4024,16 @@ export function Carousel(
             variant: "outline",
             class: `absolute min-w-9 rounded-full px-2 ${
               orientation === "vertical"
-                ? "top-full mt-4 left-1/2 -translate-x-1/2"
+                ? "top-full left-1/2 mt-4 -translate-x-1/2"
                 : "top-1/2 left-full ml-4 -translate-y-1/2"
             }`,
           })}
         >
           {props.rightButton ?? (
-            <Svg aria-hidden="true" class={`size-4 ${orientation === "vertical" ? "rotate-90" : ""}`}>
+            <Svg
+              aria-hidden="true"
+              class={`size-4 ${orientation === "vertical" ? "rotate-90" : ""}`}
+            >
               <path d="M5 12h14m-7-7 7 7-7 7" />
             </Svg>
           )}
@@ -3873,11 +4048,13 @@ export function Carousel(
           const track = root.querySelector<HTMLElement>("[data-slot=Carousel_contentTrack]")
           if (!track) return
           const isVertical = root.getAttribute("data-orientation") === "vertical"
-          const buttons = Array.from(root.querySelectorAll<HTMLButtonElement>("[data-carousel-direction]"))
-          const step = function() {
+          const buttons = Array.from(
+            root.querySelectorAll<HTMLButtonElement>("[data-carousel-direction]"),
+          )
+          const step = function () {
             return isVertical ? track.clientHeight : track.clientWidth
           }
-          const update = function() {
+          const update = function () {
             const scroll = isVertical ? track.scrollTop : track.scrollLeft
             const max = isVertical
               ? track.scrollHeight - track.clientHeight
@@ -3893,7 +4070,7 @@ export function Carousel(
           resize.observe(track)
           for (const slide of track.children) resize.observe(slide)
           update()
-          root.addEventListener("click", function(e: any) {
+          root.addEventListener("click", function (e: any) {
             const btn = e.target.closest("[data-carousel-direction]")
             if (!btn || btn.disabled || !root.contains(btn)) return
             const dir = btn.getAttribute("data-carousel-direction") === "next" ? 1 : -1
@@ -3903,8 +4080,12 @@ export function Carousel(
                 : { left: dir * step(), behavior: "auto" },
             )
           })
-          root.addEventListener("keydown", function(e: any) {
-            if (e.target instanceof Element && e.target.closest("input,textarea,select,[contenteditable]")) return
+          root.addEventListener("keydown", function (e: any) {
+            if (
+              e.target instanceof Element &&
+              e.target.closest("input,textarea,select,[contenteditable]")
+            )
+              return
             if (isVertical) {
               if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return
             } else {
@@ -3966,13 +4147,18 @@ const iconPaths = {
   moon: "M20.9 13A9 9 0 0 1 11 3.1 9 9 0 1 0 20.9 13",
   plus: "M12 5v14M5 12h14",
   search: "m21 21-4.3-4.3M19 11a8 8 0 1 1-16 0 8 8 0 0 1 16 0",
-  settings: "M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8M12 2v3m0 14v3M2 12h3m14 0h3M5 5l2 2m10 10 2 2M5 19l2-2M17 7l2-2",
+  settings:
+    "M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8M12 2v3m0 14v3M2 12h3m14 0h3M5 5l2 2m10 10 2 2M5 19l2-2M17 7l2-2",
   sun: "M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1 1m12 12 1 1M5 19l1-1M18 6l1-1",
 }
 
 export function Icon(props: { name: keyof typeof iconPaths; class?: string }) {
   return (
-    <Svg stroke-width="1.6" class={props.class} aria-hidden="true">
+    <Svg
+      stroke-width="1.6"
+      class={props.class}
+      aria-hidden="true"
+    >
       <path d={iconPaths[props.name]} />
     </Svg>
   )
@@ -3981,15 +4167,15 @@ export function Icon(props: { name: keyof typeof iconPaths; class?: string }) {
 function menuScript() {
   const menu = document.currentScript?.parentElement
   if (!menu) return
-  const triggers = Array.from(document.querySelectorAll<HTMLElement>(`[popovertarget="${CSS.escape(menu.id)}"]`))
+  const triggers = Array.from(
+    document.querySelectorAll<HTMLElement>(`[popovertarget="${CSS.escape(menu.id)}"]`),
+  )
   const items = () =>
-    Array
-      .from(
-        menu.querySelectorAll<HTMLElement>(
-          "[role^=menuitem]:not(:disabled):not([aria-disabled=true]):not([data-disabled=true])",
-        ),
-      )
-      .filter((item) => item.closest("[role=menu]") === menu)
+    Array.from(
+      menu.querySelectorAll<HTMLElement>(
+        "[role^=menuitem]:not(:disabled):not([aria-disabled=true]):not([data-disabled=true])",
+      ),
+    ).filter((item) => item.closest("[role=menu]") === menu)
   const parent = menu.parentElement?.closest<HTMLElement>("[role=menu]")
   menu.addEventListener("toggle", (event) => {
     const expanded = menu.matches(":popover-open")
@@ -4015,23 +4201,26 @@ function menuScript() {
       event.preventDefault()
       event.stopPropagation()
       const index = active ? choices.indexOf(active) : -1
-      const next = event.key === "Home"
-        ? 0
-        : event.key === "End"
-        ? choices.length - 1
-        : event.key === "ArrowDown"
-        ? (index + 1) % choices.length
-        : (index - 1 + choices.length) % choices.length
+      const next =
+        event.key === "Home"
+          ? 0
+          : event.key === "End"
+            ? choices.length - 1
+            : event.key === "ArrowDown"
+              ? (index + 1) % choices.length
+              : (index - 1 + choices.length) % choices.length
       choices[next].focus({ preventScroll: true })
     }
   })
   menu.addEventListener("click", (event) => {
     const item = event.target instanceof Element ? event.target.closest("[role=menuitem]") : null
     if (
-      !item || item.matches("[data-slot=DropdownMenu_subTrigger]") || item
-          .closest("[role=menu]") !== menu || event
-        .defaultPrevented
-    ) return
+      !item ||
+      item.matches("[data-slot=DropdownMenu_subTrigger]") ||
+      item.closest("[role=menu]") !== menu ||
+      event.defaultPrevented
+    )
+      return
     for (
       let current: HTMLElement | null = menu;
       current;

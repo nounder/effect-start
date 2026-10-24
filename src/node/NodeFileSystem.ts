@@ -1,6 +1,8 @@
-/**
- * Ported from effect@4.0.0-rc.112.
- */
+import * as Crypto from "node:crypto"
+import * as NFS from "node:fs"
+import * as OS from "node:os"
+import * as Path from "node:path"
+/** Ported from effect@4.0.0-rc.112. */
 import * as ByteSize from "effect/ByteSize"
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
@@ -11,10 +13,6 @@ import * as Option from "effect/Option"
 import * as Error from "effect/PlatformError"
 import * as Queue from "effect/Queue"
 import * as Stream from "effect/Stream"
-import * as Crypto from "node:crypto"
-import * as NFS from "node:fs"
-import * as OS from "node:os"
-import * as Path from "node:path"
 
 const handleBadArgument = (method: string) => (err: unknown) =>
   Error.badArgument({
@@ -126,9 +124,8 @@ const makeTempDirectoryFactory = (method: string): FileSystem.FileSystem["makeTe
   return (options) =>
     Effect.suspend(() => {
       const prefix = options?.prefix ?? ""
-      const directory = typeof options?.directory === "string"
-        ? Path.join(options.directory, ".")
-        : OS.tmpdir()
+      const directory =
+        typeof options?.directory === "string" ? Path.join(options.directory, ".") : OS.tmpdir()
 
       return nodeMkdtemp(prefix ? Path.join(directory, prefix) : directory + "/")
     })
@@ -142,10 +139,7 @@ const removeFactory = (method: string): FileSystem.FileSystem["remove"] => {
     handleBadArgument(method),
   )
   return (path, options) =>
-    nodeRm(
-      path,
-      { recursive: options?.recursive ?? false, force: options?.force ?? false },
-    )
+    nodeRm(path, { recursive: options?.recursive ?? false, force: options?.force ?? false })
 }
 const remove = removeFactory("remove")
 
@@ -153,9 +147,8 @@ const makeTempDirectoryScoped = ((): FileSystem.FileSystem["makeTempDirectorySco
   const makeDirectory = makeTempDirectoryFactory("makeTempDirectoryScoped")
   const removeDirectory = removeFactory("makeTempDirectoryScoped")
   return (options) =>
-    Effect.acquireRelease(
-      makeDirectory(options),
-      (directory) => Effect.orDie(removeDirectory(directory, { recursive: true })),
+    Effect.acquireRelease(makeDirectory(options), (directory) =>
+      Effect.orDie(removeDirectory(directory, { recursive: true })),
     )
 })()
 
@@ -173,9 +166,8 @@ const openFactory = (method: string): FileSystem.FileSystem["open"] => {
 
   return (path, options) =>
     Function.pipe(
-      Effect.acquireRelease(
-        nodeOpen(path, options?.flag ?? "r", options?.mode),
-        (fd) => Effect.orDie(nodeClose(fd)),
+      Effect.acquireRelease(nodeOpen(path, options?.flag ?? "r", options?.mode), (fd) =>
+        Effect.orDie(nodeClose(fd)),
       ),
       Effect.map((fd) => makeFile(fd, options?.flag?.startsWith("a") ?? false)),
     )
@@ -224,10 +216,7 @@ const makeFile = (() => {
 
     private position: bigint = BigInt(0)
 
-    constructor(
-      fd: number,
-      append: boolean,
-    ) {
+    constructor(fd: number, append: boolean) {
       this[FileSystem.FileTypeId] = FileSystem.FileTypeId
       this.fd = fd
       this.append = append
@@ -256,13 +245,10 @@ const makeFile = (() => {
     read(buffer: Uint8Array) {
       return Effect.suspend(() => {
         const position = this.position
-        return Effect.map(
-          nodeRead(this.fd, { buffer, position }),
-          (bytesRead) => {
-            this.position = position + BigInt(bytesRead)
-            return bytesRead
-          },
-        )
+        return Effect.map(nodeRead(this.fd, { buffer, position }), (bytesRead) => {
+          this.position = position + BigInt(bytesRead)
+          return bytesRead
+        })
       })
     }
 
@@ -305,7 +291,13 @@ const makeFile = (() => {
       return Effect.suspend(() => {
         const position = this.position
         return Effect.map(
-          nodeWrite(this.fd, buffer, undefined, undefined, this.append ? undefined : Number(position)),
+          nodeWrite(
+            this.fd,
+            buffer,
+            undefined,
+            undefined,
+            this.append ? undefined : Number(position),
+          ),
           (bytesWritten) => {
             if (!this.append) {
               this.position = position + BigInt(bytesWritten)
@@ -320,7 +312,13 @@ const makeFile = (() => {
       return Effect.suspend(() => {
         const position = this.position
         return Effect.flatMap(
-          nodeWriteAll(this.fd, buffer, undefined, undefined, this.append ? undefined : Number(position)),
+          nodeWriteAll(
+            this.fd,
+            buffer,
+            undefined,
+            undefined,
+            this.append ? undefined : Number(position),
+          ),
           (bytesWritten) => {
             if (bytesWritten === 0) {
               return Effect.fail(
@@ -338,7 +336,9 @@ const makeFile = (() => {
               this.position = position + BigInt(bytesWritten)
             }
 
-            return bytesWritten < buffer.length ? this.writeAllChunk(buffer.subarray(bytesWritten)) : Effect.void
+            return bytesWritten < buffer.length
+              ? this.writeAllChunk(buffer.subarray(bytesWritten))
+              : Effect.void
           },
         )
       })
@@ -354,7 +354,7 @@ const makeFile = (() => {
 
 const makeTempFileFactory = (method: string): FileSystem.FileSystem["makeTempFile"] => {
   const makeDirectory = makeTempDirectoryFactory(method)
-  return Effect.fnUntraced(function*(options) {
+  return Effect.fnUntraced(function* (options) {
     const directory = yield* makeDirectory(options)
     const random = Crypto.randomBytes(6).toString("hex")
     const name = Path.join(directory, options?.suffix ? `${random}${options.suffix}` : random)
@@ -368,9 +368,8 @@ const makeTempFileScoped = ((): FileSystem.FileSystem["makeTempFileScoped"] => {
   const makeFile = makeTempFileFactory("makeTempFileScoped")
   const removeDirectory = removeFactory("makeTempFileScoped")
   return (options) =>
-    Effect.acquireRelease(
-      makeFile(options),
-      (file) => Effect.orDie(removeDirectory(Path.dirname(file), { recursive: true })),
+    Effect.acquireRelease(makeFile(options), (file) =>
+      Effect.orDie(removeDirectory(Path.dirname(file), { recursive: true })),
     )
 })()
 
@@ -423,21 +422,21 @@ const rename = (() => {
 })()
 
 const makeFileInfo = (stat: NFS.Stats): FileSystem.File.Info => ({
-  type: stat.isFile() ?
-    "File" :
-    stat.isDirectory() ?
-    "Directory" :
-    stat.isSymbolicLink() ?
-    "SymbolicLink" :
-    stat.isBlockDevice() ?
-    "BlockDevice" :
-    stat.isCharacterDevice() ?
-    "CharacterDevice" :
-    stat.isFIFO() ?
-    "FIFO" :
-    stat.isSocket() ?
-    "Socket" :
-    "Unknown",
+  type: stat.isFile()
+    ? "File"
+    : stat.isDirectory()
+      ? "Directory"
+      : stat.isSymbolicLink()
+        ? "SymbolicLink"
+        : stat.isBlockDevice()
+          ? "BlockDevice"
+          : stat.isCharacterDevice()
+            ? "CharacterDevice"
+            : stat.isFIFO()
+              ? "FIFO"
+              : stat.isSocket()
+                ? "Socket"
+                : "Unknown",
   mtime: Option.fromNullishOr(stat.mtime),
   atime: Option.fromNullishOr(stat.atime),
   birthtime: Option.fromNullishOr(stat.birthtime),
@@ -476,7 +475,8 @@ const truncate = (() => {
     handleErrnoException("FileSystem", "truncate"),
     handleBadArgument("truncate"),
   )
-  return (path: string, length?: number) => nodeTruncate(path, length !== undefined ? Number(length) : undefined)
+  return (path: string, length?: number) =>
+    nodeTruncate(path, length !== undefined ? Number(length) : undefined)
 })()
 
 const utimes = (() => {
@@ -485,31 +485,38 @@ const utimes = (() => {
     handleErrnoException("FileSystem", "utime"),
     handleBadArgument("utime"),
   )
-  return (path: string, atime: number | Date, mtime: number | Date) => nodeUtimes(path, atime, mtime)
+  return (path: string, atime: number | Date, mtime: number | Date) =>
+    nodeUtimes(path, atime, mtime)
 })()
 
 const watchNode = (path: string, options?: FileSystem.WatchOptions) =>
   Stream.callback<FileSystem.WatchEvent, Error.PlatformError>((queue) =>
     Effect.acquireRelease(
       Effect.sync(() => {
-        const watcher = NFS.watch(path, {
-          recursive: options?.recursive ?? false,
-        }, (event, path) => {
-          if (!path) return
-          switch (event) {
-            case "rename": {
-              Effect.runFork(Effect.matchEffect(stat(path), {
-                onSuccess: (_) => Queue.offer(queue, { _tag: "Create", path }),
-                onFailure: (_) => Queue.offer(queue, { _tag: "Remove", path }),
-              }))
-              return
+        const watcher = NFS.watch(
+          path,
+          {
+            recursive: options?.recursive ?? false,
+          },
+          (event, path) => {
+            if (!path) return
+            switch (event) {
+              case "rename": {
+                Effect.runFork(
+                  Effect.matchEffect(stat(path), {
+                    onSuccess: (_) => Queue.offer(queue, { _tag: "Create", path }),
+                    onFailure: (_) => Queue.offer(queue, { _tag: "Remove", path }),
+                  }),
+                )
+                return
+              }
+              case "change": {
+                Queue.offerUnsafe(queue, { _tag: "Update", path })
+                return
+              }
             }
-            case "change": {
-              Queue.offerUnsafe(queue, { _tag: "Update", path })
-              return
-            }
-          }
-        })
+          },
+        )
         watcher.on("error", (error) => {
           Queue.failCauseUnsafe(
             queue,
@@ -530,7 +537,7 @@ const watchNode = (path: string, options?: FileSystem.WatchOptions) =>
         return watcher
       }),
       (watcher) => Effect.sync(() => watcher.close()),
-    )
+    ),
   )
 
 const watch = (
@@ -543,7 +550,7 @@ const watch = (
       backend.pipe(
         Option.flatMap((_) => _.register(path, stat, options)),
         Option.getOrElse(() => watchNode(path, options)),
-      )
+      ),
     ),
     Stream.unwrap,
   )
@@ -551,17 +558,22 @@ const watch = (
 const writeFile: FileSystem.FileSystem["writeFile"] = (path, data, options) =>
   Effect.callback<void, Error.PlatformError>((resume, signal) => {
     try {
-      NFS.writeFile(path, data, {
-        signal,
-        flag: options?.flag,
-        mode: options?.mode,
-      }, (err) => {
-        if (err) {
-          resume(Effect.fail(handleErrnoException("FileSystem", "writeFile")(err, [path])))
-        } else {
-          resume(Effect.void)
-        }
-      })
+      NFS.writeFile(
+        path,
+        data,
+        {
+          signal,
+          flag: options?.flag,
+          mode: options?.mode,
+        },
+        (err) => {
+          if (err) {
+            resume(Effect.fail(handleErrnoException("FileSystem", "writeFile")(err, [path])))
+          } else {
+            resume(Effect.void)
+          }
+        },
+      )
     } catch (err) {
       resume(Effect.fail(handleBadArgument("writeFile")(err)))
     }
@@ -596,12 +608,15 @@ const makeFileSystem = Effect.map(Effect.serviceOption(FileSystem.WatchBackend),
       return watch(backend, path, options)
     },
     writeFile,
-  }))
+  }),
+)
 
-export const layer: Layer.Layer<FileSystem.FileSystem> = Layer.effect(FileSystem.FileSystem)(makeFileSystem)
+export const layer: Layer.Layer<FileSystem.FileSystem> = Layer.effect(FileSystem.FileSystem)(
+  makeFileSystem,
+)
 
 export function handleErrnoException(module: string, method: string) {
-  return function(
+  return function (
     err: NodeJS.ErrnoException,
     [path]: [path: NFS.PathLike | number | string | ReadonlyArray<string>, ...args: Array<any>],
   ): Error.PlatformError {

@@ -25,103 +25,65 @@ const testBundle: Bundle.BundleContext = {
 const testLayer = Layer.succeed(Bundle.Bundle, testBundle)
 
 test.it("serves a JS artifact", () =>
-  Effect
-    .gen(function*() {
-      const context = yield* Effect.context<Bundle.Bundle>()
-      const routes = BundleRoute.make(Bundle.Bundle)
-      const tree = Route.map({ "/_bundle/*": routes })
-      const router = yield* RouteHttp.toHttpRouter(tree)
+  Effect.gen(function* () {
+    const context = yield* Effect.context<Bundle.Bundle>()
+    const routes = BundleRoute.make(Bundle.Bundle)
+    const tree = Route.map({ "/_bundle/*": routes })
+    const router = yield* RouteHttp.toHttpRouter(tree)
 
-      const client = TestHttpClient.fromRouter(router, context)
-      const entity = yield* client.get("http://localhost/_bundle/app-abc123.js")
+    const client = TestHttpClient.fromRouter(router, context)
+    const entity = yield* client.get("http://localhost/_bundle/app-abc123.js")
 
-      test
-        .expect(entity.status)
-        .toBe(200)
-      test
-        .expect(entity.headers)
-        .toMatchObject({
-          "content-type": test.expect.stringContaining("javascript"),
-          "cache-control": "public, max-age=31536000, immutable",
-        })
-      test
-        .expect(yield* entity.text)
-        .toBe("console.log('hello')")
+    test.expect(entity.status).toBe(200)
+    test.expect(entity.headers).toMatchObject({
+      "content-type": test.expect.stringContaining("javascript"),
+      "cache-control": "public, max-age=31536000, immutable",
     })
-    .pipe(
-      Effect.provide(testLayer),
-      Effect.runPromise,
-    ))
+    test.expect(yield* entity.text).toBe("console.log('hello')")
+  }).pipe(Effect.provide(testLayer), Effect.runPromise),
+)
 
 test.it("serves a CSS artifact", () =>
-  Effect
-    .gen(function*() {
-      const context = yield* Effect.context<Bundle.Bundle>()
-      const routes = BundleRoute.make(Bundle.Bundle)
-      const tree = Route.map({ "/_bundle/*": routes })
-      const router = yield* RouteHttp.toHttpRouter(tree)
+  Effect.gen(function* () {
+    const context = yield* Effect.context<Bundle.Bundle>()
+    const routes = BundleRoute.make(Bundle.Bundle)
+    const tree = Route.map({ "/_bundle/*": routes })
+    const router = yield* RouteHttp.toHttpRouter(tree)
 
-      const client = TestHttpClient.fromRouter(router, context)
-      const entity = yield* client.get(
-        "http://localhost/_bundle/style-def456.css",
-      )
+    const client = TestHttpClient.fromRouter(router, context)
+    const entity = yield* client.get("http://localhost/_bundle/style-def456.css")
 
-      test
-        .expect(entity.status)
-        .toBe(200)
-      test
-        .expect(entity.headers["content-type"])
-        .toStartWith("text/css")
-      test
-        .expect(yield* entity.text)
-        .toBe("body{color:red}")
-    })
-    .pipe(
-      Effect.provide(testLayer),
-      Effect.runPromise,
-    ))
+    test.expect(entity.status).toBe(200)
+    test.expect(entity.headers["content-type"]).toStartWith("text/css")
+    test.expect(yield* entity.text).toBe("body{color:red}")
+  }).pipe(Effect.provide(testLayer), Effect.runPromise),
+)
 
 test.it("returns 404 for missing artifact", () =>
-  Effect
-    .gen(function*() {
-      const context = yield* Effect.context<Bundle.Bundle>()
-      const routes = BundleRoute.make(Bundle.Bundle)
-      const tree = Route.map({ "/_bundle/*": routes })
-      const router = yield* RouteHttp.toHttpRouter(tree)
+  Effect.gen(function* () {
+    const context = yield* Effect.context<Bundle.Bundle>()
+    const routes = BundleRoute.make(Bundle.Bundle)
+    const tree = Route.map({ "/_bundle/*": routes })
+    const router = yield* RouteHttp.toHttpRouter(tree)
 
-      const client = TestHttpClient.fromRouter(router, context)
-      const entity = yield* client.get(
-        "http://localhost/_bundle/nonexistent.js",
-      )
+    const client = TestHttpClient.fromRouter(router, context)
+    const entity = yield* client.get("http://localhost/_bundle/nonexistent.js")
 
-      test
-        .expect(entity.status)
-        .toBe(404)
-    })
-    .pipe(
-      Effect.provide(testLayer),
-      Effect.runPromise,
-    ))
+    test.expect(entity.status).toBe(404)
+  }).pipe(Effect.provide(testLayer), Effect.runPromise),
+)
 
 test.it("supports custom mount path", () =>
-  Effect
-    .gen(function*() {
-      const context = yield* Effect.context<Bundle.Bundle>()
-      const routes = BundleRoute.make(Bundle.Bundle)
-      const tree = Route.map({ "/assets/*": routes })
-      const router = yield* RouteHttp.toHttpRouter(tree)
+  Effect.gen(function* () {
+    const context = yield* Effect.context<Bundle.Bundle>()
+    const routes = BundleRoute.make(Bundle.Bundle)
+    const tree = Route.map({ "/assets/*": routes })
+    const router = yield* RouteHttp.toHttpRouter(tree)
 
-      const client = TestHttpClient.fromRouter(router, context)
-      const entity = yield* client.get("http://localhost/assets/app-abc123.js")
+    const client = TestHttpClient.fromRouter(router, context)
+    const entity = yield* client.get("http://localhost/assets/app-abc123.js")
 
-      test
-        .expect(entity.status)
-        .toBe(200)
-      test
-        .expect(yield* entity.text)
-        .toBe("console.log('hello')")
-    })
-    .pipe(
-      Effect.provide(testLayer),
-      Effect.runPromise,
-    ))
+    test.expect(entity.status).toBe(200)
+    test.expect(yield* entity.text).toBe("console.log('hello')")
+  }).pipe(Effect.provide(testLayer), Effect.runPromise),
+)
