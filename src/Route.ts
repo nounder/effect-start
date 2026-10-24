@@ -61,13 +61,13 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Pipeable from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
-import type { JSX } from "../src/jsx.ts"
 import * as Development from "./Development.ts"
 import * as Entity from "./Entity.ts"
 import * as Html from "./Html.ts"
 import * as RouteBody from "./internal/RouteBody.ts"
 import * as RouteMap from "./internal/RouteMap.ts"
 import type * as Values from "./internal/Values.ts"
+import type { JSX } from "./jsx.ts"
 
 export const RouteItems: unique symbol = Symbol()
 export const RouteDescriptor: unique symbol = Symbol()

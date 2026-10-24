@@ -1,4 +1,4 @@
-import type { HtmlElemenetProps, HtmlElement, HtmlElementType, JSX } from "../src/jsx.ts"
+import type { HtmlElemenetProps, HtmlElement, HtmlElementType, JSX } from "./jsx.ts"
 
 const NoChildren: ReadonlyArray<never> = Object.freeze([])
 
@@ -40,7 +40,7 @@ const EMPTY_TAGS = [
 
 let esc = (str: any) => String(str).replace(/[&<>"']/g, (s) => `&${map[s]};`)
 let escSQ = (str: any) => String(str).replace(/[&<>']/g, (s) => `&${map[s]};`)
-let map = {
+let map: Record<string, string> = {
   "&": "amp",
   "<": "lt",
   ">": "gt",
