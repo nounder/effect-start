@@ -85,20 +85,16 @@ tsgo
 import * as test from "bun:test"
 
 // use test.expect when testing runtime
-test
-  .expect(routes)
-  .toEqual([
-    {
-      type: "Literal",
-    },
-  ])
+test.expect(routes).toEqual([
+  {
+    type: "Literal",
+  },
+])
 
 // use test.expectTypeOf when testing types
-test
-  .expectTypeOf(context)
-  .toMatchObjectType<{
-    method: "GET"
-  }>()
+test.expectTypeOf(context).toMatchObjectType<{
+  method: "GET"
+}>()
 ```
 
 ```ts
@@ -107,9 +103,7 @@ test.it("does something", () =>
   Effect.gen(function* () {
     const parsed = yield* Commander.parse(cmd, args)
 
-    test
-      .expect(parsed.args)
-      .toBe([])
+    test.expect(parsed.args).toBe([])
   }).pipe(Effect.scoped, Effect.runPromise),
 )
 
@@ -117,8 +111,6 @@ test.it("does something", () =>
 test.it("does something", async () => {
   await Effect.runPromise(Commander.parse(cmd, args))
 
-  test
-    .expect(executed)
-    .toBe(false)
+  test.expect(executed).toBe(false)
 })
 ```

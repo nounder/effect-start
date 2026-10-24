@@ -107,7 +107,6 @@ const tsRules: Rules = {
  */
 export const formatRules: Rules = {
   "effect-start/test-space-around": "warn",
-  "effect-start/test-assertion-newline": "warn",
   "effect-start/pipe-args-newline": "warn",
 }
 
