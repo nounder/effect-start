@@ -21,9 +21,9 @@ jobs:
           package-manager-cache: false
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: "1.4.1"
+          bun-version: "1.4.4"
       - run: npm install --global npm@latest
       - run: bun install --frozen-lockfile
       - run: bun test
-      - run: bunx tsc --noEmit
+      - run: bun check
       - run: npm publish --access public

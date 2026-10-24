@@ -4,7 +4,7 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
-minimum_bun_version="1.4.1"
+minimum_bun_version="1.4.4"
 mkdir -p "$HOME/bin"
 export PATH="$HOME/bin:$PATH"
 
