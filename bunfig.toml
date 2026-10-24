@@ -1,0 +1,16 @@
+[fmt]
+printWidth = 100
+tabWidth = 2
+useTabs = false
+semi = false
+singleQuote = false
+jsxSingleQuote = false
+trailingComma = "all"
+arrowParens = "always"
+endOfLine = "lf"
+singleAttributePerLine = true
+sortImports = { newlinesBetween = false }
+sortTailwindcss = true
+sortPackageJson = true
+jsdoc = true
+ignorePatterns = ["**/node_modules", "**/*-lock.json", "vscode/*.json"]

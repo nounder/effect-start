@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "bun --hot server.ts",
     "start": "bun server.ts",
-    "typecheck": "bunx tsc --noEmit"
+    "typecheck": "bun check"
   },
   "dependencies": {
     "effect": "^4.0.0"

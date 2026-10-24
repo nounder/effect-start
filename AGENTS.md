@@ -4,7 +4,8 @@ Use Bun runtime and package manager:
 
 ```
 bun install
-bunx tsc
+# type check
+bun check
 ```
 
 # Code
@@ -74,9 +75,6 @@ bun test
 
 # run specific test
 bun test routing.test.ts
-
-# type check
-tsgo
 ```
 
 ## Writing tests
