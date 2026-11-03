@@ -205,6 +205,8 @@ src/routes/
   [[rest]]/route.tsx       /:rest*
 ```
 
+Use `Route.link("/users/:id", { id: "123" })` to build URLs. It encodes path values and appends remaining parameters as a query string.
+
 ## Datastar
 
 Effect Start comes with small Datastar fork
