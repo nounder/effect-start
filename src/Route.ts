@@ -252,7 +252,7 @@ export function devOnly<D, B, I extends Route.Tuple>(
     (_context, next) =>
       Effect.flatMap(Development.option, (developmentOption) =>
         Option.isSome(developmentOption)
-          ? Effect.succeed(next)
+          ? next
           : Effect.succeed(Entity.make("", { status: 404 })),
       ),
     { dev: true },
