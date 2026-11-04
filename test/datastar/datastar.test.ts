@@ -4,6 +4,10 @@ import * as Html from "effect-start/Html"
 import type { JSX } from "effect-start/jsx-runtime"
 import { JSDOM } from "jsdom"
 
+// JSDOM's event getters accept proxies, so retain Bun's native events for the regression test.
+const NativeEvent = globalThis.Event
+const NativeCustomEvent = globalThis.CustomEvent
+
 const dom = new JSDOM("<!DOCTYPE html><html><body></body></html>", {
   url: "http://localhost",
 })
@@ -56,7 +60,7 @@ if (typeof globalThis.MathMLElement === "undefined") {
   ;(globalThis as any).MathMLElement = class MathMLElement extends (_window as any).HTMLElement {}
 }
 
-await import("effect-start/datastar")
+const Datastar = await import("effect-start/datastar")
 
 const tick = () => new Promise<void>((r) => setTimeout(r, 0))
 
@@ -78,6 +82,45 @@ const mount = async (markup: string | Html.TrustedHtml) => {
 const cleanup = () => {
   document.body.innerHTML = ""
 }
+
+test.describe("createDataEvent", () => {
+  test.it("reads native event getters and keeps methods bound to the source event", () => {
+    const el = document.createElement("button")
+    const detail = { type: "finished" }
+    const sourceEvent = new NativeCustomEvent("complete", { detail, cancelable: true })
+    const EventConstructor = globalThis.Event
+    let dataEvent: Engine.DataEvent & CustomEvent<typeof detail>
+
+    try {
+      globalThis.Event = NativeEvent
+      dataEvent = Datastar.createDataEvent({
+        el,
+        evt: sourceEvent,
+        cleanups: new Map(),
+        error: () => () => {},
+      }) as typeof dataEvent
+    } finally {
+      globalThis.Event = EventConstructor
+    }
+
+    test.expect(dataEvent.detail).toBe(detail)
+    test.expect(dataEvent.type).toBe("complete")
+    test.expect(dataEvent.cancelable).toBe(true)
+    test.expect(dataEvent.target).toBe(el)
+    test.expect(dataEvent.currentTarget).toBe(el)
+    test.expect(sourceEvent.target).toBeNull()
+    test.expect(sourceEvent.currentTarget).toBeNull()
+
+    const preventDefault = dataEvent.preventDefault
+    preventDefault()
+    test.expect(sourceEvent.defaultPrevented).toBe(true)
+    test.expect(dataEvent.defaultPrevented).toBe(true)
+
+    const stopPropagation = dataEvent.stopPropagation
+    stopPropagation()
+    test.expect(sourceEvent.cancelBubble).toBe(true)
+  })
+})
 
 test.describe("datastar jsx", () => {
   test.it("data-init function argument is typed as DataEvent", () => {
@@ -764,6 +807,44 @@ test.describe("on", () => {
     btn.click()
 
     test.expect(c.querySelector("span")!.textContent).toBe("2")
+  })
+
+  test.it("filters custom events by detail in function form handlers", async () => {
+    const c = await mount(Html.html`
+      <div data-signals="{completedEvents: 0}">
+        <button data-on:complete="(e) => { if (e.detail.type === 'finished') e.signals.completedEvents = e.actions.peek(() => e.signals.completedEvents) + 1 }"></button>
+        <span data-text="$completedEvents"></span>
+      </div>
+    `)
+    const button = c.querySelector("button")!
+
+    button.dispatchEvent(new CustomEvent("complete", { detail: { type: "started" } }))
+    test.expect(c.querySelector("span")!.textContent).toBe("0")
+
+    button.dispatchEvent(new CustomEvent("complete", { detail: { type: "finished" } }))
+    test.expect(c.querySelector("span")!.textContent).toBe("1")
+  })
+
+  test.it("reads keyboard event properties in function form handlers", async () => {
+    const c = await mount(Html.html`
+      <div data-signals="{pressedKey: ''}">
+        <input data-on:keydown="(e) => { if (e.key === 'Enter' && e.code === 'Enter' && e.ctrlKey) e.signals.pressedKey = e.peek(() => e.key + ':' + e.currentTarget.tagName) }" />
+        <span data-text="$pressedKey"></span>
+      </div>
+    `)
+    const input = c.querySelector("input")!
+
+    input.dispatchEvent(new _window.KeyboardEvent("keydown", { key: "Escape", code: "Escape" }))
+    test.expect(c.querySelector("span")!.textContent).toBe("")
+
+    input.dispatchEvent(
+      new _window.KeyboardEvent("keydown", {
+        key: "Enter",
+        code: "Enter",
+        ctrlKey: true,
+      }),
+    )
+    test.expect(c.querySelector("span")!.textContent).toBe("Enter:INPUT")
   })
 
   test.it("prevent modifier prevents default", async () => {

@@ -153,7 +153,7 @@ export const createDataEvent = ({
   const sourceEvt = evt instanceof Event ? evt : new Event("datastar:expression")
 
   return new Proxy(sourceEvt, {
-    get(target, prop, receiver) {
+    get(target, prop) {
       if (prop === "target" || prop === "currentTarget") return el
       if (prop === "signals") return privateRoot
       // we're only keepit it for backward compat
@@ -162,7 +162,7 @@ export const createDataEvent = ({
       if (typeof prop === "string" && actionPlugins.has(prop)) {
         return dispatchAction(prop)
       }
-      const value = Reflect.get(target, prop, receiver)
+      const value = Reflect.get(target, prop)
       return typeof value === "function" ? value.bind(target) : value
     },
     ownKeys(target) {
