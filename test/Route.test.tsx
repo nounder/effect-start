@@ -434,6 +434,60 @@ test.describe(Route.devOnly, () => {
       test.expect(yield* entity.text).toBe("dev=true")
     }).pipe(Effect.provide(Development.layerTest), Effect.runPromise),
   )
+
+  test.it("preserves downstream error status and body", () =>
+    Effect.gen(function* () {
+      const context = yield* Effect.context<Development.Development>()
+      const handler = RouteHttp.toWebHandlerWith(context)(
+        Route.post(
+          Route.devOnly,
+          Route.text(function* () {
+            return Entity.make("Unknown user.", { status: 400 })
+          }),
+        ),
+      )
+      const client = TestHttpClient.fromHandler(handler)
+      const entity = yield* client.post("http://localhost/login")
+
+      test.expect(entity.status).toBe(400)
+      test.expect(yield* entity.text).toBe("Unknown user.")
+    }).pipe(
+      Effect.provide(Development.layerTest),
+      Effect.runPromise,
+    ),
+  )
+
+  test.it("preserves downstream redirect status and headers", () =>
+    Effect.gen(function* () {
+      const context = yield* Effect.context<Development.Development>()
+      const handler = RouteHttp.toWebHandlerWith(context)(
+        Route.post(
+          Route.devOnly,
+          Route.handle(function* () {
+            return Entity.make("", {
+              status: 303,
+              headers: {
+                location: "/dashboard",
+                "set-cookie": "session=token; Path=/; HttpOnly; SameSite=Lax",
+              },
+            })
+          }),
+        ),
+      )
+      const client = TestHttpClient.fromHandler(handler)
+      const entity = yield* client.post("http://localhost/login")
+
+      test.expect(entity.status).toBe(303)
+      test.expect(entity.headers.location).toBe("/dashboard")
+      test
+        .expect(entity.headers["set-cookie"])
+        .toBe("session=token; Path=/; HttpOnly; SameSite=Lax")
+      test.expect(yield* entity.text).toBe("")
+    }).pipe(
+      Effect.provide(Development.layerTest),
+      Effect.runPromise,
+    ),
+  )
 })
 
 test.describe("Route generator handler must not allow returning an Effect", () => {
