@@ -1,3 +1,4 @@
+import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Effectable from "effect/Effectable"
 import * as Predicate from "effect/Predicate"
@@ -15,6 +16,17 @@ const textEncoder = new TextEncoder()
 
 function isBinary(v: unknown): v is Uint8Array | ArrayBuffer {
   return v instanceof Uint8Array || v instanceof ArrayBuffer
+}
+
+class BlobReadError extends Data.TaggedError("BlobReadError")<{
+  cause: unknown
+}> {}
+
+function readBlob(blob: Blob): Effect.Effect<Uint8Array, BlobReadError> {
+  return Effect.tryPromise({
+    try: () => blob.arrayBuffer().then((buffer) => new Uint8Array(buffer)),
+    catch: (cause) => new BlobReadError({ cause }),
+  })
 }
 
 /** Header keys are guaranteed to be lowercase. */
@@ -113,6 +125,9 @@ function getText(
   if (isBinary(v)) {
     return Effect.succeed(textDecoder.decode(v))
   }
+  if (v instanceof Blob) {
+    return Effect.map(readBlob(v), (bytes) => textDecoder.decode(bytes))
+  }
   return Effect.fail(mismatch(Schema.String, v))
 }
 
@@ -153,6 +168,9 @@ function getJson(
   }
   if (isBinary(v)) {
     return parseJson(textDecoder.decode(v))
+  }
+  if (v instanceof Blob) {
+    return Effect.flatMap(getText(self), parseJson)
   }
   return Effect.fail(mismatch(Schema.Unknown, v))
 }
@@ -196,6 +214,9 @@ function getBytes(
   }
   if (typeof v === "string") {
     return Effect.succeed(textEncoder.encode(v))
+  }
+  if (v instanceof Blob) {
+    return readBlob(v)
   }
   // Allows entity.stream to work when body is a JSON value.
   if (isDirectJson(v)) {
@@ -363,6 +384,9 @@ export function type(self: Entity): string {
   if (isDirectJson(v)) {
     return "application/json"
   }
+  if (v instanceof Blob && v.type) {
+    return v.type
+  }
   return "application/octet-stream"
 }
 
@@ -377,6 +401,9 @@ export function length(self: Entity): number | undefined {
   }
   if (isBinary(v)) {
     return v.byteLength
+  }
+  if (v instanceof Blob) {
+    return v.size
   }
   return undefined
 }

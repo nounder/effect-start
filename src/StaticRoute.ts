@@ -1,3 +1,4 @@
+import * as NFs from "node:fs"
 import * as NPath from "node:path"
 import * as NUrl from "node:url"
 import * as Effect from "effect/Effect"
@@ -96,22 +97,31 @@ export const from = (options: { path: string | URL; directoryIndex: boolean }) =
             })
           }
 
-          const bytes = yield* fs.readFile(filePath)
+          // A disk-backed Blob is read lazily, so only the requested bytes are sent.
+          // Falls back to FileSystem when the file is not on the real disk.
+          const file = yield* Effect.tryPromise(() => NFs.openAsBlob(filePath)).pipe(
+            Effect.catch(() =>
+              Effect.map(
+                fs.readFile(filePath),
+                (bytes) => new Blob([bytes as Uint8Array<ArrayBuffer>]),
+              ),
+            ),
+          )
           if (range !== null) {
-            const body = bytes.slice(range.start, range.end + 1)
+            const body = file.slice(range.start, range.end + 1)
             return Entity.make(body, {
               status: 206,
               headers: {
                 ...headers,
-                "content-length": String(body.length),
+                "content-length": String(body.size),
                 "content-range": `bytes ${range.start}-${range.end}/${size}`,
               },
             })
           }
-          return Entity.make(bytes, {
+          return Entity.make(file, {
             headers: {
               ...headers,
-              "content-length": String(info.size),
+              "content-length": String(file.size),
             },
           })
         }

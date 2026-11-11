@@ -119,7 +119,16 @@ const toResponse = (
       withCookies(HttpServerResponse.text(body, options), options.cookies),
     )
   }
-  if (format === "bytes") {
+  // Blobs pass through untouched so the runtime can send them with a known length
+  // (Bun uses sendfile for file-backed blobs).
+  if (entity.body instanceof Blob) {
+    return Effect.succeed(
+      withCookies(HttpServerResponse.raw(entity.body, options), options.cookies),
+    )
+  }
+  // In-memory bodies must keep their length: streaming them drops Content-Length,
+  // which breaks range requests (e.g. Safari video playback).
+  if (format === "bytes" || !Effect.isEffect(entity.body)) {
     return Effect.map(entity.bytes, (body) =>
       withCookies(HttpServerResponse.uint8Array(body, options), options.cookies),
     )

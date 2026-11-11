@@ -5,8 +5,13 @@ import { BunFileSystem } from "effect-start/bun"
 import * as Route from "effect-start/Route"
 import * as RouteHttp from "effect-start/RouteHttp"
 import * as StaticRoute from "effect-start/StaticRoute"
+import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as FileSystem from "effect/FileSystem"
+import * as HttpEffect from "effect/http/HttpEffect"
+import * as HttpRouter from "effect/http/HttpRouter"
+import type * as HttpServerRequest from "effect/http/HttpServerRequest"
+import type * as Scope from "effect/Scope"
 import * as TestHttpClient from "./internal/TestHttpClient.ts"
 
 test.it("renders a directory index as JSON and HTML and serves its files", () =>
@@ -209,5 +214,53 @@ test.it("detects javascript and source map content types", () =>
     test.expect(js.headers["content-type"]).toBe("text/javascript; charset=utf-8")
     test.expect(map.status).toBe(200)
     test.expect(map.headers["content-type"]).toBe("application/json")
+  }).pipe(Effect.scoped, Effect.provide(BunFileSystem.layer), Effect.runPromise),
+)
+
+test.it("sends files with Content-Length instead of chunked encoding", () =>
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    const directory = yield* fs.makeTempDirectoryScoped()
+    const content = Uint8Array.from({ length: 1000 }, (_, i) => i % 256)
+    yield* fs.writeFile(NPath.join(directory, "clip.mp4"), content)
+
+    const context = yield* Effect.context<FileSystem.FileSystem>()
+    const router = yield* RouteHttp.toHttpRouter(
+      Route.map({ "/files/*": StaticRoute.from({ path: directory, directoryIndex: false }) }),
+    )
+    const handler = HttpEffect.toWebHandlerWith<
+      FileSystem.FileSystem | HttpRouter.HttpRouter,
+      HttpServerRequest.HttpServerRequest | Scope.Scope,
+      never
+    >(Context.add(context, HttpRouter.HttpRouter, router))(
+      Effect.suspend(() => router.asHttpEffect()),
+    )
+    const server = yield* Effect.acquireRelease(
+      Effect.sync(() => Bun.serve({ port: 0, fetch: (request) => handler(request) })),
+      (server) => Effect.promise(() => server.stop(true)),
+    )
+
+    const url = `http://localhost:${server.port}/files/clip.mp4`
+    const full = yield* Effect.promise(() => fetch(url, { headers: { accept: "*/*" } }))
+    const range = yield* Effect.promise(() =>
+      fetch(url, { headers: { accept: "*/*", range: "bytes=100-199" } }),
+    )
+    const head = yield* Effect.promise(() => fetch(url, { method: "HEAD" }))
+
+    test.expect(full.status).toBe(200)
+    test.expect(full.headers.get("content-length")).toBe("1000")
+    test.expect(full.headers.get("transfer-encoding")).toBeNull()
+    test.expect(full.headers.get("content-type")).toBe("video/mp4")
+    test.expect(new Uint8Array(yield* Effect.promise(() => full.arrayBuffer()))).toEqual(content)
+    test.expect(range.status).toBe(206)
+    test.expect(range.headers.get("content-length")).toBe("100")
+    test.expect(range.headers.get("content-range")).toBe("bytes 100-199/1000")
+    test.expect(range.headers.get("transfer-encoding")).toBeNull()
+    test
+      .expect(new Uint8Array(yield* Effect.promise(() => range.arrayBuffer())))
+      .toEqual(content.slice(100, 200))
+    test.expect(head.status).toBe(200)
+    test.expect(head.headers.get("content-length")).toBe("1000")
+    test.expect((yield* Effect.promise(() => head.arrayBuffer())).byteLength).toBe(0)
   }).pipe(Effect.scoped, Effect.provide(BunFileSystem.layer), Effect.runPromise),
 )

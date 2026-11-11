@@ -703,3 +703,21 @@ test.describe(Entity.merge, () => {
     test.expect(entity.headers["set-cookie"]).toBe("a=1; Path=/")
   })
 })
+
+test.describe("Blob body", () => {
+  test.it("reads bytes, text and json", () =>
+    Effect.gen(function* () {
+      const entity = Entity.make(new Blob(['{"a":1}'], { type: "application/json" }))
+
+      test.expect(yield* entity.text).toBe('{"a":1}')
+      test.expect(yield* entity.json).toEqual({ a: 1 })
+      test.expect(yield* entity.bytes).toEqual(new TextEncoder().encode('{"a":1}'))
+      test.expect(Entity.type(entity)).toBe("application/json")
+      test.expect(Entity.length(entity)).toBe(7)
+    }).pipe(Effect.runPromise),
+  )
+
+  test.it("falls back to octet-stream for untyped blobs", () => {
+    test.expect(Entity.type(Entity.make(new Blob(["x"])))).toBe("application/octet-stream")
+  })
+})

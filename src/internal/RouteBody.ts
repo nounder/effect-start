@@ -25,6 +25,7 @@ type HandlerReturn<A, Value = A> =
   | Entity.Entity<Stream.Stream<Value, any, any>, any>
   // support returing bytes from text/json/etc
   | Entity.Entity<Uint8Array, any>
+  | Entity.Entity<Blob, any>
   | ((self: Route.RouteSet.Any) => Route.RouteSet.Any)
 
 type HandlerFunction<B, A, E, R, Value = A> = (
