@@ -23,16 +23,11 @@ export const make = (opts?: {
     name: "Tailwind.css plugin",
     target,
     async setup(builder) {
-      // (file) -> (class names)
       const classNameCandidates = new Map<string, Set<string>>()
-      // (importer path) -> (imported paths)
       const importAncestors = new Map<string, Set<string>>()
-      // (imported path) -> (importer paths)
       const importDescendants = new Map<string, Set<string>>()
 
-      // Track import relationships from tailwind entrypoints.
-      // Filter to relative/absolute paths only. Bare specifiers (eg. `effect-start/datastar`)
-      // As of Bun 1.3, when a a module is used in HTML bundle, and a plugin intercepts it, the server breaks.
+      // Intercepting bare specifiers breaks HTML bundles served by Bun 1.3.
       // @see https://github.com/oven-sh/bun/issues/20877
       builder.onResolve(
         {
@@ -51,7 +46,6 @@ export const make = (opts?: {
             return undefined
           }
 
-          /** Register every visited module. */
           {
             if (!importAncestors.has(fullPath)) {
               importAncestors.set(fullPath, new Set())
@@ -77,7 +71,6 @@ export const make = (opts?: {
         },
       )
 
-      /** Scan for class name candidates in component files. */
       builder.onLoad(
         {
           filter: filesPattern,
@@ -94,7 +87,6 @@ export const make = (opts?: {
         },
       )
 
-      /** Compile tailwind entrypoints. */
       builder.onLoad(
         {
           filter: cssPattern,
@@ -137,7 +129,6 @@ export const make = (opts?: {
             visitedModules.add(currentPath)
           }
 
-          // Honor explicit source configuration:
           // - `@import "tailwindcss" source("...")` → `compiler.root`
           // - `@source "..."` directives → `compiler.sources`
           // When `source(...)` is omitted, default to the project root. Only
@@ -229,7 +220,6 @@ export function extractClassNames(source: string): Set<string> {
     candidates.add(token.value)
 
     // Datastar convention: data-class:<utility>="..." conditionally applies <utility>.
-    // The plain-text token is "data-class:<utility>"; surface the utility part too.
     if (token.value.startsWith("data-class:")) {
       const inner = token.value.slice("data-class:".length)
       if (inner.length > 0) candidates.add(inner)
@@ -309,12 +299,10 @@ function readCandidate(source: string, start: number): ReadResult | null {
       }
     }
     if (source[afterEnd] === ":") {
-      // Consumed a variant; loop for the next segment.
       i = afterEnd + 1
       if (i >= len) return null
       continue
     }
-    // No trailing ":" — this segment is the utility. We're done with the body.
     i = variantEnd
     // Re-check: a variant that's just "*"/"**" without ":" is not a utility.
     if (variantStart === start && !importantPrefix) {
@@ -324,7 +312,6 @@ function readCandidate(source: string, start: number): ReadResult | null {
     break
   }
 
-  // Optional "/modifier".
   if (source[i] === "/") {
     const modEnd = readModifier(source, i + 1)
     if (modEnd !== null) i = modEnd
@@ -351,13 +338,11 @@ function readVariantOrUtility(source: string, start: number): number | null {
   if (i >= len) return null
   const head = source[i]
 
-  // Arbitrary property/variant: "[...]"
   if (head === "[") {
     const end = skipBracketed(source, i, "[", "]")
     return end === null ? null : end
   }
 
-  // Child variants "*" and "**"
   if (head === "*") {
     i++
     if (source[i] === "*") i++
@@ -370,23 +355,16 @@ function readVariantOrUtility(source: string, start: number): number | null {
     return readNameBody(source, i)
   }
 
-  // Negative utility: "-<lower>..."
   if (head === "-") {
     if (!source[i + 1] || !isLower(source[i + 1])) return null
     i++
     return readNameBody(source, i)
   }
 
-  // Normal utility: must start with a lowercase letter.
   if (!isLower(head)) return null
   return readNameBody(source, i)
 }
 
-/**
- * Read a utility name body starting at `start`. The first char is assumed to already be valid for
- * starting (lowercase letter, or has been consumed). We accept letters / digits / "_" / "-" / "."
- * (positional rules) plus embedded "[...]" and "(...)" runs. Returns the end index.
- */
 function readNameBody(source: string, start: number): number {
   const len = source.length
   let i = start
@@ -399,7 +377,6 @@ function readNameBody(source: string, start: number): number {
     }
     if (ch === "-") {
       const next = source[i + 1]
-      // "-" must be followed by alnum, "-", "[", or "(" to remain in the name.
       if (next === undefined) break
       if (isAlphaNum(next) || next === "-" || next === "[" || next === "(") {
         i++
@@ -408,7 +385,6 @@ function readNameBody(source: string, start: number): number {
       break
     }
     if (ch === ".") {
-      // "." valid only between digits.
       const prev = source[i - 1]
       const next = source[i + 1]
       if (isDigit(prev) && isDigit(next)) {
@@ -418,7 +394,6 @@ function readNameBody(source: string, start: number): number {
       break
     }
     if (ch === "%") {
-      // "%" valid only directly after a digit; ends the name.
       const prev = source[i - 1]
       if (isDigit(prev)) {
         i++
@@ -440,7 +415,6 @@ function readNameBody(source: string, start: number): number {
     break
   }
 
-  // Disallow trailing "-" / "_" / ".".
   while (i > start) {
     const last = source[i - 1]
     if (last === "-" || last === "_" || last === ".") {

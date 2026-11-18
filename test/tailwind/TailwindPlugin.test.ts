@@ -50,7 +50,6 @@ test.describe(`${TailwindPlugin.extractClassNames.name}`, () => {
     const result = TailwindPlugin.extractClassNames(source)
 
     containsAll(result, ["text-lg"])
-    // The "bg-" prefix is broken by ${} so it must NOT survive as a token.
     containsNone(result, ["bg-"])
   })
 
@@ -163,9 +162,6 @@ test.describe(`${TailwindPlugin.extractClassNames.name}`, () => {
     const source = `<div class="" className=''>Empty</div>`
     const result = TailwindPlugin.extractClassNames(source)
 
-    // No utility candidates inside the empty quotes; words like "Empty" are
-    // outside any class-y context but still get scanned. Just verify nothing
-    // pretends the empty value produced a real candidate.
     containsNone(result, [""])
   })
 
@@ -183,7 +179,6 @@ test.describe(`${TailwindPlugin.extractClassNames.name}`, () => {
     `
     const result = TailwindPlugin.extractClassNames(source)
 
-    // Tailwind v4 doesn't strip comments — both names appear.
     containsAll(result, ["commented-out", "real-class"])
   })
 
@@ -207,7 +202,6 @@ test.describe(`${TailwindPlugin.extractClassNames.name}`, () => {
     const result = TailwindPlugin.extractClassNames(source)
 
     containsAll(result, ["conditional-class", "other-class", "static-class"])
-    // Template literal interpolation breaks the prefix.
     containsNone(result, ["template-"])
   })
 
@@ -361,7 +355,6 @@ test.describe(`${TailwindPlugin.extractClassNames.name}`, () => {
     const source = `<div class={\`bg-[\${color}]\`}>Bad</div>`
     const result = TailwindPlugin.extractClassNames(source)
 
-    // bg-[${color}] has a $ inside the brackets, which v4 treats as invalid.
     containsNone(result, ["bg-[${color}]"])
   })
 })
