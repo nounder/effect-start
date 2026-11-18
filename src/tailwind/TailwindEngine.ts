@@ -22,10 +22,10 @@ export interface TailwindEngine {
 
 export function make(options: Options = {}): TailwindEngine {
   const theme = new Theme()
-  for (const line of lines(DefaultTheme.variables)) {
+  for (const line of DefaultTheme.variables.trim().split("\n")) {
     theme.add(line.slice(0, line.indexOf(":")), line.slice(line.indexOf(":") + 2), ThemeFlag.None)
   }
-  for (const line of lines(DefaultTheme.referenceVariables)) {
+  for (const line of DefaultTheme.referenceVariables.trim().split("\n")) {
     const name = line.slice(0, line.indexOf(":"))
     theme.add(name, line.slice(line.indexOf(":") + 2), ThemeFlag.Inline | ThemeFlag.Reference)
   }
@@ -162,23 +162,22 @@ class Theme {
 }
 
 /** Theme keys that share a namespace prefix but belong to another namespace. */
-const IGNORED_THEME_KEYS = new Map([
-  ["--font", ["--font-weight", "--font-size"]],
-  ["--inset", ["--inset-shadow", "--inset-ring"]],
-  [
-    "--text",
-    [
-      "--text-color",
-      "--text-decoration-color",
-      "--text-decoration-thickness",
-      "--text-indent",
-      "--text-shadow",
-      "--text-underline-offset",
-    ],
-  ],
-  ["--grid-column", ["--grid-column-start", "--grid-column-end"]],
-  ["--grid-row", ["--grid-row-start", "--grid-row-end"]],
-])
+const pairs = (text: string) =>
+  text.split(";").map((pair) => [pair.slice(0, pair.indexOf(" ")), pair.slice(pair.indexOf(" ") + 1)] as const)
+
+/** `namespace ignored-key ignored-key` */
+const IGNORED_THEME_KEYS = new Map(
+  `
+--font --font-weight --font-size
+--inset --inset-shadow --inset-ring
+--text --text-color --text-decoration-color --text-decoration-thickness --text-indent --text-shadow --text-underline-offset
+--grid-column --grid-column-start --grid-column-end
+--grid-row --grid-row-start --grid-row-end
+`
+    .trim()
+    .split("\n")
+    .map((line) => [line.slice(0, line.indexOf(" ")), line.slice(line.indexOf(" ") + 1).split(" ")]),
+)
 
 function isIgnoredThemeKey(key: string, ns: string): boolean {
   return (IGNORED_THEME_KEYS.get(ns) ?? []).some((i) => key === i || key.startsWith(`${i}-`))
@@ -499,27 +498,9 @@ function isValidArbitrary(input: string): boolean {
   return true
 }
 
-const MATH_FUNCTIONS = [
-  "calc",
-  "min",
-  "max",
-  "clamp",
-  "mod",
-  "rem",
-  "sin",
-  "cos",
-  "tan",
-  "asin",
-  "acos",
-  "atan",
-  "atan2",
-  "pow",
-  "sqrt",
-  "hypot",
-  "log",
-  "exp",
-  "round",
-]
+const MATH_FUNCTIONS = "calc min max clamp mod rem sin cos tan asin acos atan atan2 pow sqrt hypot log exp round".split(
+  " ",
+)
 
 function hasMathFn(value: string): boolean {
   return value.includes("(") && MATH_FUNCTIONS.some((fn) => value.includes(`${fn}(`))
@@ -1179,6 +1160,11 @@ const isLength = (v: string) => IS_LENGTH.test(v) || hasMathFn(v)
 const isPercentage = (v: string) => IS_PERCENTAGE.test(v) || hasMathFn(v)
 const isNumber = (v: string) => IS_NUMBER.test(v) || hasMathFn(v)
 
+const GENERIC_FONT_NAMES = new Set(
+  "serif sans-serif monospace cursive fantasy system-ui ui-serif ui-sans-serif ui-monospace ui-rounded math emoji fangsong"
+    .split(" "),
+)
+
 const DATA_TYPES: Record<string, (value: string) => boolean> = {
   color: (v) => v.charCodeAt(0) === 35 || IS_COLOR_FN.test(v) || NAMED_COLORS.has(v.toLowerCase()),
   length: isLength,
@@ -1243,23 +1229,7 @@ const DATA_TYPES: Record<string, (value: string) => boolean> = {
     }
     return count > 0
   },
-  "generic-name": (v) =>
-    [
-      "serif",
-      "sans-serif",
-      "monospace",
-      "cursive",
-      "fantasy",
-      "system-ui",
-      "ui-serif",
-      "ui-sans-serif",
-      "ui-monospace",
-      "ui-rounded",
-      "math",
-      "emoji",
-      "fangsong",
-    ]
-      .includes(v),
+  "generic-name": (v) => GENERIC_FONT_NAMES.has(v),
   "absolute-size": (v) =>
     ["xx-small", "x-small", "small", "medium", "large", "x-large", "xx-large", "xxx-large"].includes(v),
   "relative-size": (v) => v === "larger" || v === "smaller",
@@ -1357,13 +1327,6 @@ interface FunctionalOptions {
   handle: (value: string, dataType: string | null) => UtilityResult
 }
 
-const words = (text: string) => text.split(" ")
-
-const lines = (text: string) => text.trim().split("\n")
-
-const pairs = (text: string) =>
-  text.split(";").map((pair) => [pair.slice(0, pair.indexOf(" ")), pair.slice(pair.indexOf(" ") + 1)] as const)
-
 function registerUtilities(design: DesignSystem) {
   const theme = design.theme
   const add = (root: string, utility: Utility) => {
@@ -1456,7 +1419,7 @@ function registerUtilities(design: DesignSystem) {
     })
   }
 
-  for (const line of lines(STATIC_UTILITIES)) {
+  for (const line of STATIC_UTILITIES.trim().split("\n")) {
     const space = line.indexOf(" ")
     staticUtility(
       line.slice(0, space),
@@ -1464,11 +1427,43 @@ function registerUtilities(design: DesignSystem) {
     )
   }
 
+  const colorOrWidth = (
+    name: string,
+    o: {
+      colorKeys: ReadonlyArray<string>
+      widthKeys: ReadonlyArray<string>
+      widthTypes: ReadonlyArray<string>
+      color: (value: string) => Array<Node>
+      width: (value: string) => Array<Node>
+      defaultWidth?: string
+      unit?: string
+      widthFirst?: boolean
+      widthAllowsModifier?: boolean
+    },
+  ) =>
+    functional(name, (c) => {
+      if (!c.value) return c.modifier || o.defaultWidth === undefined ? undefined : o.width(o.defaultWidth)
+      if (c.value.kind === "arbitrary") {
+        const v = c.value.value
+        const type = c.value.dataType ?? inferDataType(v, ["color", ...o.widthTypes])
+        if (type !== null && o.widthTypes.includes(type)) return c.modifier ? undefined : o.width(v)
+        const color = applyModifier(v, c.modifier, theme)
+        return color === null ? undefined : o.color(color)
+      }
+      const named = c.value.value
+      const width = theme.resolve(named, o.widthKeys) ?? (isPositiveInteger(named) ? `${named}${o.unit ?? "px"}` : null)
+      if (o.widthFirst && width !== null) return c.modifier ? undefined : o.width(width)
+      const color = resolveColor(c, theme, o.colorKeys)
+      if (color) return o.color(color)
+      if (o.widthFirst || width === null || (c.modifier && !o.widthAllowsModifier)) return
+      return o.width(width)
+    })
+
   const integer = (named: NamedValue) => (isPositiveInteger(named.value) ? named.value : null)
   const suffix = (unit: string) => (named: NamedValue) =>
     isPositiveInteger(named.value) ? `${named.value}${unit}` : null
 
-  for (const v of words("static fixed absolute relative sticky")) staticUtility(v, [["position", v]])
+  for (const v of "static fixed absolute relative sticky".split(" ")) staticUtility(v, [["position", v]])
 
   for (
     const [name, prop] of pairs(
@@ -1512,7 +1507,7 @@ function registerUtilities(design: DesignSystem) {
       handle: (v) => [decl(prop, `span ${v} / span ${v}`)],
       staticValues: { full: [decl(prop, "1 / -1")] },
     })
-    for (const edge of words("start end")) {
+    for (const edge of "start end".split(" ")) {
       functionalUtility(`${name}-${edge}`, {
         supportsNegative: true,
         handleBareValue: integer,
@@ -1651,7 +1646,7 @@ function registerUtilities(design: DesignSystem) {
     decl("--tw-border-spacing-y", v),
     decl("border-spacing", borderSpacing),
   ])
-  for (const axis of words("x y")) {
+  for (const axis of "x y".split(" ")) {
     spacingUtility(`border-spacing-${axis}`, ["--border-spacing", "--spacing"], (v) => [
       ...borderSpacingProps(),
       decl(`--tw-border-spacing-${axis}`, v),
@@ -1718,7 +1713,7 @@ function registerUtilities(design: DesignSystem) {
     ],
     { supportsNegative: true, supportsFractions: true },
   )
-  for (const axis of words("x y")) {
+  for (const axis of "x y".split(" ")) {
     staticUtility(`-translate-${axis}-full`, [translateProps, [`--tw-translate-${axis}`, "-100%"], [
       "translate",
       translate2d,
@@ -1762,7 +1757,7 @@ function registerUtilities(design: DesignSystem) {
   }
   functional("-scale", scale(true))
   functional("scale", scale(false))
-  for (const axis of words("x y z")) {
+  for (const axis of "x y z".split(" ")) {
     functionalUtility(`scale-${axis}`, {
       supportsNegative: true,
       themeKeys: ["--scale"],
@@ -1803,7 +1798,7 @@ function registerUtilities(design: DesignSystem) {
     property("--tw-skew-x"),
     property("--tw-skew-y"),
   ]
-  for (const axis of words("x y z")) {
+  for (const axis of "x y z".split(" ")) {
     functionalUtility(`rotate-${axis}`, {
       supportsNegative: true,
       themeKeys: ["--rotate"],
@@ -1826,7 +1821,7 @@ function registerUtilities(design: DesignSystem) {
       decl("transform", transformValue),
     ],
   })
-  for (const axis of words("x y")) {
+  for (const axis of "x y".split(" ")) {
     functionalUtility(`skew-${axis}`, {
       supportsNegative: true,
       themeKeys: ["--skew"],
@@ -1847,47 +1842,40 @@ function registerUtilities(design: DesignSystem) {
   })
   staticUtility("transform-cpu", [["transform", transformValue]])
   staticUtility("transform-gpu", [["transform", `translateZ(0) ${transformValue}`]])
-  for (const v of words("content border fill stroke view")) {
+  for (const v of "content border fill stroke view".split(" ")) {
     staticUtility(`transform-${v}`, [["transform-box", `${v}-box`]])
   }
   for (
-    const v of words(
-      "auto default pointer wait text move help not-allowed none context-menu progress cell crosshair vertical-text alias copy no-drop grab grabbing all-scroll col-resize row-resize n-resize e-resize s-resize w-resize ne-resize nw-resize se-resize sw-resize ew-resize ns-resize nesw-resize nwse-resize zoom-in zoom-out",
-    )
+    const v
+      of "auto default pointer wait text move help not-allowed none context-menu progress cell crosshair vertical-text alias copy no-drop grab grabbing all-scroll col-resize row-resize n-resize e-resize s-resize w-resize ne-resize nw-resize se-resize sw-resize ew-resize ns-resize nesw-resize nwse-resize zoom-in zoom-out"
+        .split(" ")
   ) {
     staticUtility(`cursor-${v}`, [["cursor", v]])
   }
   functionalUtility("cursor", { themeKeys: ["--cursor"], handle: (v) => [decl("cursor", v)] })
 
-  for (const v of words("auto none manipulation")) staticUtility(`touch-${v}`, [["touch-action", v]])
+  for (const v of "auto none manipulation".split(" ")) staticUtility(`touch-${v}`, [["touch-action", v]])
   const touchProps = () => [property("--tw-pan-x"), property("--tw-pan-y"), property("--tw-pinch-zoom")]
   const touchValue = "var(--tw-pan-x,) var(--tw-pan-y,) var(--tw-pinch-zoom,)"
-  for (const v of words("x left right")) {
+  for (const v of "x left right".split(" ")) {
     staticUtility(`touch-pan-${v}`, [touchProps, ["--tw-pan-x", `pan-${v}`], ["touch-action", touchValue]])
   }
-  for (const v of words("y up down")) {
+  for (const v of "y up down".split(" ")) {
     staticUtility(`touch-pan-${v}`, [touchProps, ["--tw-pan-y", `pan-${v}`], ["touch-action", touchValue]])
   }
   staticUtility("touch-pinch-zoom", [touchProps, ["--tw-pinch-zoom", "pinch-zoom"], ["touch-action", touchValue]])
-  for (const v of words("none text all auto")) {
+  for (const v of "none text all auto".split(" ")) {
     staticUtility(`select-${v}`, [["-webkit-user-select", v], ["user-select", v]])
   }
   const snapProps = () => [property("--tw-scroll-snap-strictness", "proximity", "*")]
-  for (const v of words("x y both")) {
+  for (const v of "x y both".split(" ")) {
     staticUtility(`snap-${v}`, [snapProps, ["scroll-snap-type", `${v} var(--tw-scroll-snap-strictness)`]])
   }
   staticUtility("snap-mandatory", [snapProps, ["--tw-scroll-snap-strictness", "mandatory"]])
   staticUtility("snap-proximity", [snapProps, ["--tw-scroll-snap-strictness", "proximity"]])
-  const sides: ReadonlyArray<[string, string]> = [
+  const sides: ReadonlyArray<readonly [string, string]> = [
     ["", ""],
-    ["x", "-inline"],
-    ["y", "-block"],
-    ["s", "-inline-start"],
-    ["e", "-inline-end"],
-    ["t", "-top"],
-    ["r", "-right"],
-    ["b", "-bottom"],
-    ["l", "-left"],
+    ...pairs("x -inline;y -block;s -inline-start;e -inline-end;t -top;r -right;b -bottom;l -left"),
   ]
   for (const [side, prop] of sides) {
     spacingUtility(`scroll-m${side}`, ["--scroll-margin", "--spacing"], (v) => [decl(`scroll-margin${prop}`, v)], {
@@ -1925,13 +1913,13 @@ function registerUtilities(design: DesignSystem) {
     handle: (v) => [decl("columns", v)],
     staticValues: { auto: [decl("columns", "auto")] },
   })
-  for (const v of words("auto avoid all avoid-page page left right column")) {
+  for (const v of "auto avoid all avoid-page page left right column".split(" ")) {
     staticUtility(`break-before-${v}`, [["break-before", v]])
   }
-  for (const v of words("auto avoid avoid-page avoid-column")) {
+  for (const v of "auto avoid avoid-page avoid-column".split(" ")) {
     staticUtility(`break-inside-${v}`, [["break-inside", v]])
   }
-  for (const v of words("auto avoid all avoid-page page left right column")) {
+  for (const v of "auto avoid all avoid-page page left right column".split(" ")) {
     staticUtility(`break-after-${v}`, [["break-after", v]])
   }
   for (const [name, prop] of pairs("auto-cols grid-auto-columns;auto-rows grid-auto-rows")) {
@@ -1955,7 +1943,7 @@ function registerUtilities(design: DesignSystem) {
       staticValues: { none: [decl(prop, "none")], subgrid: [decl(prop, "subgrid")] },
     })
   }
-  for (const v of words("row row-reverse col col-reverse")) {
+  for (const v of "row row-reverse col col-reverse".split(" ")) {
     staticUtility(`flex-${v}`, [["flex-direction", v.replace("col", "column")]])
   }
   spacingUtility("gap", ["--gap", "--spacing"], (v) => [decl("gap", v)])
@@ -1994,18 +1982,18 @@ function registerUtilities(design: DesignSystem) {
   colorUtility("divide", ["--divide-color", "--border-color", "--color"], (v) => [
     rule(notLast, [decl("--tw-sort", "divide-color"), decl("border-color", v)]),
   ])
-  for (const v of words("auto hidden clip visible scroll")) {
+  for (const v of "auto hidden clip visible scroll".split(" ")) {
     staticUtility(`overflow-${v}`, [["overflow", v]])
     staticUtility(`overflow-x-${v}`, [["overflow-x", v]])
     staticUtility(`overflow-y-${v}`, [["overflow-y", v]])
   }
-  for (const v of words("auto contain none")) {
+  for (const v of "auto contain none".split(" ")) {
     staticUtility(`overscroll-${v}`, [["overscroll-behavior", v]])
     staticUtility(`overscroll-x-${v}`, [["overscroll-behavior-x", v]])
     staticUtility(`overscroll-y-${v}`, [["overscroll-behavior-y", v]])
   }
-  for (const v of words("none manual auto")) staticUtility(`hyphens-${v}`, [["-webkit-hyphens", v], ["hyphens", v]])
-  for (const v of words("normal nowrap pre pre-line pre-wrap break-spaces")) {
+  for (const v of "none manual auto".split(" ")) staticUtility(`hyphens-${v}`, [["-webkit-hyphens", v], ["hyphens", v]])
+  for (const v of "normal nowrap pre pre-line pre-wrap break-spaces".split(" ")) {
     staticUtility(`whitespace-${v}`, [["white-space", v]])
   }
   for (
@@ -2036,7 +2024,7 @@ function registerUtilities(design: DesignSystem) {
       },
     })
   }
-  for (const v of words("solid dashed dotted double hidden none")) {
+  for (const v of "solid dashed dotted double hidden none".split(" ")) {
     staticUtility(`border-${v}`, [["--tw-border-style", v], ["border-style", v]])
   }
 
@@ -2046,33 +2034,13 @@ function registerUtilities(design: DesignSystem) {
       "border border;border-x border-inline;border-y border-block;border-s border-inline-start;border-e border-inline-end;border-t border-top;border-r border-right;border-b border-bottom;border-l border-left",
     )
   ) {
-    const width = (
-      v: string,
-    ) => [borderProps(), decl(`${prefix}-style`, "var(--tw-border-style)"), decl(`${prefix}-width`, v)]
-    const color = (v: string) => [decl(`${prefix}-color`, v)]
-    functional(name, (c) => {
-      if (!c.value) {
-        if (c.modifier) return
-        return width(theme.get(["--default-border-width"]) ?? "1px")
-      }
-      if (c.value.kind === "arbitrary") {
-        const v = c.value.value
-        switch (c.value.dataType ?? inferDataType(v, ["color", "line-width", "length"])) {
-          case "line-width":
-          case "length":
-            return c.modifier ? undefined : width(v)
-          default: {
-            const value = applyModifier(v, c.modifier, theme)
-            return value === null ? undefined : color(value)
-          }
-        }
-      }
-      const resolved = resolveColor(c, theme, ["--border-color", "--color"])
-      if (resolved) return color(resolved)
-      if (c.modifier) return
-      const w = theme.resolve(c.value.value, ["--border-width"])
-      if (w) return width(w)
-      if (isPositiveInteger(c.value.value)) return width(`${c.value.value}px`)
+    colorOrWidth(name, {
+      colorKeys: ["--border-color", "--color"],
+      widthKeys: ["--border-width"],
+      widthTypes: ["line-width", "length"],
+      defaultWidth: theme.get(["--default-border-width"]) ?? "1px",
+      color: (v) => [decl(`${prefix}-color`, v)],
+      width: (v) => [borderProps(), decl(`${prefix}-style`, "var(--tw-border-style)"), decl(`${prefix}-width`, v)],
     })
   }
   functionalUtility("divide-x", {
@@ -2108,13 +2076,13 @@ function registerUtilities(design: DesignSystem) {
       ]),
     ],
   })
-  for (const axis of words("x y")) {
+  for (const axis of "x y".split(" ")) {
     staticUtility(`divide-${axis}-reverse`, [
       () => property(`--tw-divide-${axis}-reverse`, "0"),
       () => rule(notLast, [decl(`--tw-divide-${axis}-reverse`, "1")]),
     ])
   }
-  for (const v of words("solid dashed dotted double none")) {
+  for (const v of "solid dashed dotted double none".split(" ")) {
     staticUtility(`divide-${v}`, [
       () => rule(notLast, [decl("--tw-sort", "divide-style"), decl("--tw-border-style", v), decl("border-style", v)]),
     ])
@@ -2144,16 +2112,11 @@ function registerUtilities(design: DesignSystem) {
     }
     return modifier?.kind === "arbitrary" ? modifier.value : "in oklab"
   }
-  const linearDirections = new Map([
-    ["to-t", "to top"],
-    ["to-tr", "to top right"],
-    ["to-r", "to right"],
-    ["to-br", "to bottom right"],
-    ["to-b", "to bottom"],
-    ["to-bl", "to bottom left"],
-    ["to-l", "to left"],
-    ["to-tl", "to top left"],
-  ])
+  const linearDirections = new Map(
+    pairs(
+      "to-t to top;to-tr to top right;to-r to right;to-br to bottom right;to-b to bottom;to-bl to bottom left;to-l to left;to-tl to top left",
+    ),
+  )
   const linear = (negative: boolean) => (c: FunctionalCandidate): UtilityResult => {
     if (!c.value) return
     if (c.value.kind === "arbitrary") {
@@ -2344,8 +2307,8 @@ function registerUtilities(design: DesignSystem) {
         return [decl("mask-image", v)]
     }
   })
-  for (const v of words("add subtract intersect exclude")) staticUtility(`mask-${v}`, [["mask-composite", v]])
-  for (const v of words("auto cover contain")) staticUtility(`mask-${v}`, [["mask-size", v]])
+  for (const v of "add subtract intersect exclude".split(" ")) staticUtility(`mask-${v}`, [["mask-composite", v]])
+  for (const v of "auto cover contain".split(" ")) staticUtility(`mask-${v}`, [["mask-size", v]])
   functionalUtility("mask-size", { handle: (v) => [decl("mask-size", v)] })
   for (
     const [name, value] of pairs(
@@ -2362,7 +2325,7 @@ function registerUtilities(design: DesignSystem) {
   ) {
     staticUtility(`mask-${name}`, [["mask-repeat", value]])
   }
-  for (const v of words("border padding content fill stroke view")) {
+  for (const v of "border padding content fill stroke view".split(" ")) {
     staticUtility(`mask-clip-${v}`, [["mask-clip", `${v}-box`]])
     staticUtility(`mask-origin-${v}`, [["mask-origin", `${v}-box`]])
   }
@@ -2420,7 +2383,7 @@ function registerUtilities(design: DesignSystem) {
       ["l", ["left"]],
     ] as const
   ) {
-    for (const stop of words("from to")) {
+    for (const stop of "from to".split(" ")) {
       const handler = (kind: "color" | "position") => (v: string) => {
         const nodes: Array<Node> = [
           ...maskImage(),
@@ -2430,7 +2393,7 @@ function registerUtilities(design: DesignSystem) {
             "var(--tw-mask-left), var(--tw-mask-right), var(--tw-mask-bottom), var(--tw-mask-top)",
           ),
         ]
-        for (const edge of words("top right bottom left")) {
+        for (const edge of "top right bottom left".split(" ")) {
           if (!(edges as ReadonlyArray<string>).includes(edge)) continue
           nodes.push(
             decl(
@@ -2508,7 +2471,7 @@ function registerUtilities(design: DesignSystem) {
         ],
       })
     }
-    for (const stop of words("from to")) {
+    for (const stop of "from to".split(" ")) {
       const handler = (kind: "color" | "position") => (v: string): Array<Node> => [
         ...base(),
         decl(`--tw-mask-${shape}-stops`, stopsValue),
@@ -2518,25 +2481,25 @@ function registerUtilities(design: DesignSystem) {
       maskStop(`mask-${shape}-${stop}`, { color: handler("color"), position: handler("position") })
     }
     if (shape === "radial") {
-      for (const v of words("closest-side farthest-side closest-corner farthest-corner")) {
+      for (const v of "closest-side farthest-side closest-corner farthest-corner".split(" ")) {
         staticUtility(`mask-radial-${v}`, [["--tw-mask-radial-size", v]])
       }
       for (
-        const v of words("top top-left top-right bottom bottom-left bottom-right left right center")
+        const v of "top top-left top-right bottom bottom-left bottom-right left right center".split(" ")
       ) {
         staticUtility(`mask-radial-at-${v}`, [["--tw-mask-radial-position", v.replace("-", " ")]])
       }
       functionalUtility("mask-radial-at", { defaultValue: null, handle: (v) => [decl("--tw-mask-radial-position", v)] })
     }
   }
-  for (const v of words("border padding content")) {
+  for (const v of "border padding content".split(" ")) {
     staticUtility(`bg-clip-${v}`, [["background-clip", `${v}-box`]])
     staticUtility(`bg-origin-${v}`, [["background-origin", `${v}-box`]])
   }
   for (
-    const v of words(
-      "normal multiply screen overlay darken lighten color-dodge color-burn hard-light soft-light difference exclusion hue saturation color luminosity",
-    )
+    const v
+      of "normal multiply screen overlay darken lighten color-dodge color-burn hard-light soft-light difference exclusion hue saturation color luminosity"
+        .split(" ")
   ) {
     staticUtility(`bg-blend-${v}`, [["background-blend-mode", v]])
     staticUtility(`mix-blend-${v}`, [["mix-blend-mode", v]])
@@ -2550,28 +2513,16 @@ function registerUtilities(design: DesignSystem) {
     const color = resolveColor(c, theme, ["--fill", "--color"])
     if (color) return [decl("fill", color)]
   })
-  functional("stroke", (c) => {
-    if (!c.value) return
-    if (c.value.kind === "arbitrary") {
-      const v = c.value.value
-      switch (c.value.dataType ?? inferDataType(v, ["color", "number", "length", "percentage"])) {
-        case "number":
-        case "length":
-        case "percentage":
-          return c.modifier ? undefined : [decl("stroke-width", v)]
-        default: {
-          const value = applyModifier(v, c.modifier, theme)
-          return value === null ? undefined : [decl("stroke", value)]
-        }
-      }
-    }
-    const color = resolveColor(c, theme, ["--stroke", "--color"])
-    if (color) return [decl("stroke", color)]
-    const width = theme.resolve(c.value.value, ["--stroke-width"])
-    if (width) return [decl("stroke-width", width)]
-    if (isPositiveInteger(c.value.value)) return [decl("stroke-width", c.value.value)]
+  colorOrWidth("stroke", {
+    colorKeys: ["--stroke", "--color"],
+    widthKeys: ["--stroke-width"],
+    widthTypes: ["number", "length", "percentage"],
+    unit: "",
+    widthAllowsModifier: true,
+    color: (v) => [decl("stroke", v)],
+    width: (v) => [decl("stroke-width", v)],
   })
-  for (const v of words("contain cover fill none scale-down")) staticUtility(`object-${v}`, [["object-fit", v]])
+  for (const v of "contain cover fill none scale-down".split(" ")) staticUtility(`object-${v}`, [["object-fit", v]])
   functionalUtility("object", {
     themeKeys: ["--object-position"],
     handle: (v) => [decl("object-position", v)],
@@ -2590,11 +2541,11 @@ function registerUtilities(design: DesignSystem) {
   for (const [side, prop] of sides) {
     spacingUtility(`p${side}`, ["--padding", "--spacing"], (v) => [decl(`padding${prop}`, v)])
   }
-  for (const v of words("left center right justify start end")) {
+  for (const v of "left center right justify start end".split(" ")) {
     staticUtility(`text-${v}`, [["text-align", v]])
   }
   spacingUtility("indent", ["--text-indent", "--spacing"], (v) => [decl("text-indent", v)], { supportsNegative: true })
-  for (const v of words("baseline top middle bottom text-top text-bottom sub super")) {
+  for (const v of "baseline top middle bottom text-top text-bottom sub super".split(" ")) {
     staticUtility(`align-${v}`, [["vertical-align", v]])
   }
   functionalUtility("align", { themeKeys: [], handle: (v) => [decl("vertical-align", v)] })
@@ -2628,9 +2579,9 @@ function registerUtilities(design: DesignSystem) {
     if (weight) return [fontWeightProps(), decl("--tw-font-weight", weight), decl("font-weight", weight)]
   })
   for (
-    const v of words(
-      "normal ultra-condensed extra-condensed condensed semi-condensed semi-expanded expanded extra-expanded ultra-expanded",
-    )
+    const v
+      of "normal ultra-condensed extra-condensed condensed semi-condensed semi-expanded expanded extra-expanded ultra-expanded"
+        .split(" ")
   ) {
     staticUtility(`font-stretch-${v}`, [["font-stretch", v]])
   }
@@ -2645,30 +2596,16 @@ function registerUtilities(design: DesignSystem) {
   colorUtility("placeholder", ["--background-color", "--color"], (v) => [
     rule("&::placeholder", [decl("--tw-sort", "placeholder-color"), decl("color", v)]),
   ])
-  for (const v of words("solid double dotted dashed wavy")) {
+  for (const v of "solid double dotted dashed wavy".split(" ")) {
     staticUtility(`decoration-${v}`, [["text-decoration-style", v]])
   }
-  functional("decoration", (c) => {
-    if (!c.value) return
-    if (c.value.kind === "arbitrary") {
-      const v = c.value.value
-      switch (c.value.dataType ?? inferDataType(v, ["color", "length", "percentage"])) {
-        case "length":
-        case "percentage":
-          return c.modifier ? undefined : [decl("text-decoration-thickness", v)]
-        default: {
-          const value = applyModifier(v, c.modifier, theme)
-          return value === null ? undefined : [decl("text-decoration-color", value)]
-        }
-      }
-    }
-    const thickness = theme.resolve(c.value.value, ["--text-decoration-thickness"])
-    if (thickness) return c.modifier ? undefined : [decl("text-decoration-thickness", thickness)]
-    if (isPositiveInteger(c.value.value)) {
-      return c.modifier ? undefined : [decl("text-decoration-thickness", `${c.value.value}px`)]
-    }
-    const color = resolveColor(c, theme, ["--text-decoration-color", "--color"])
-    if (color) return [decl("text-decoration-color", color)]
+  colorOrWidth("decoration", {
+    colorKeys: ["--text-decoration-color", "--color"],
+    widthKeys: ["--text-decoration-thickness"],
+    widthTypes: ["length", "percentage"],
+    widthFirst: true,
+    color: (v) => [decl("text-decoration-color", v)],
+    width: (v) => [decl("text-decoration-thickness", v)],
   })
   functionalUtility("animate", {
     themeKeys: ["--animate"],
@@ -2676,51 +2613,20 @@ function registerUtilities(design: DesignSystem) {
     staticValues: { none: [decl("animation", "none")] },
   })
 
-  const filterValue = [
-    "blur",
-    "brightness",
-    "contrast",
-    "grayscale",
-    "hue-rotate",
-    "invert",
-    "saturate",
-    "sepia",
-    "drop-shadow",
-  ]
+  const filterValue = "blur brightness contrast grayscale hue-rotate invert saturate sepia drop-shadow"
+    .split(" ")
     .map((n) => `var(--tw-${n},)`)
     .join(" ")
-  const backdropValue = [
-    "blur",
-    "brightness",
-    "contrast",
-    "grayscale",
-    "hue-rotate",
-    "invert",
-    "opacity",
-    "saturate",
-    "sepia",
-  ]
-    .map((n) => `var(--tw-backdrop-${n},)`)
-    .join(" ")
+  const backdropNames = "blur brightness contrast grayscale hue-rotate invert opacity saturate sepia".split(" ")
+  const backdropValue = backdropNames.map((n) => `var(--tw-backdrop-${n},)`).join(" ")
   const filterProps = () => [
-    property("--tw-blur"),
-    property("--tw-brightness"),
-    property("--tw-contrast"),
-    property("--tw-grayscale"),
-    property("--tw-hue-rotate"),
-    property("--tw-invert"),
-    property("--tw-opacity"),
-    property("--tw-saturate"),
-    property("--tw-sepia"),
-    property("--tw-drop-shadow"),
-    property("--tw-drop-shadow-color"),
+    ..."blur brightness contrast grayscale hue-rotate invert opacity saturate sepia drop-shadow drop-shadow-color"
+      .split(" ")
+      .map((n) => property(`--tw-${n}`)),
     property("--tw-drop-shadow-alpha", "100%", "<percentage>"),
     property("--tw-drop-shadow-size"),
   ]
-  const backdropProps = () =>
-    ["blur", "brightness", "contrast", "grayscale", "hue-rotate", "invert", "opacity", "saturate", "sepia"].map((n) =>
-      property(`--tw-backdrop-${n}`)
-    )
+  const backdropProps = () => backdropNames.map((n) => property(`--tw-backdrop-${n}`))
   const backdrop = () => [decl("-webkit-backdrop-filter", backdropValue), decl("backdrop-filter", backdropValue)]
   functional("filter", (c) => {
     if (c.modifier) return
@@ -2774,73 +2680,41 @@ function registerUtilities(design: DesignSystem) {
   }
   staticUtility("drop-shadow-none", [filterProps, ["--tw-drop-shadow", " "], ["filter", filterValue]])
   functional("drop-shadow", (c) => {
-    let alpha: string | undefined
-    if (c.modifier) {
-      if (c.modifier.kind === "arbitrary") alpha = c.modifier.value
-      else if (isPositiveInteger(c.modifier.value)) alpha = `${c.modifier.value}%`
-    }
-    const shadowColor = (color: string) => `var(--tw-drop-shadow-color, ${color})`
+    const alpha = alphaOf(c)
+    const withSize = (shadow: string, value: string) => [
+      ...filterProps(),
+      decl("--tw-drop-shadow-alpha", alpha),
+      ...dropShadowDecls("--tw-drop-shadow-size", shadow, alpha, (color) => `var(--tw-drop-shadow-color, ${color})`),
+      decl("--tw-drop-shadow", value),
+      decl("filter", filterValue),
+    ]
+    const withColor = (color: string) => [
+      ...filterProps(),
+      decl("--tw-drop-shadow-color", color),
+      decl("--tw-drop-shadow", "var(--tw-drop-shadow-size)"),
+    ]
+    const dropShadows = (value: string) => segment(value, ",").map((s) => `drop-shadow(${s})`).join(" ")
     if (!c.value) {
       const raw = theme.get(["--drop-shadow"])
       const resolved = theme.resolve(null, ["--drop-shadow"])
-      if (raw === null || resolved === null) return
-      return [
-        ...filterProps(),
-        decl("--tw-drop-shadow-alpha", alpha),
-        ...dropShadowDecls("--tw-drop-shadow-size", raw, alpha, shadowColor),
-        decl("--tw-drop-shadow", segment(resolved, ",").map((s) => `drop-shadow(${s})`).join(" ")),
-        decl("filter", filterValue),
-      ]
+      return raw === null || resolved === null ? undefined : withSize(raw, dropShadows(resolved))
     }
     if (c.value.kind === "arbitrary") {
-      let v: string | null = c.value.value
+      const v = c.value.value
       if ((c.value.dataType ?? inferDataType(v, ["color"])) === "color") {
-        v = applyModifier(v, c.modifier, theme)
-        if (v === null) return
-        return [
-          ...filterProps(),
-          decl("--tw-drop-shadow-color", withAlpha(v, "var(--tw-drop-shadow-alpha)")),
-          decl("--tw-drop-shadow", "var(--tw-drop-shadow-size)"),
-        ]
+        const color = applyModifier(v, c.modifier, theme)
+        return color === null ? undefined : withColor(withAlpha(color, "var(--tw-drop-shadow-alpha)"))
       }
-      if (c.modifier && !alpha) return
-      return [
-        ...filterProps(),
-        decl("--tw-drop-shadow-alpha", alpha),
-        ...dropShadowDecls("--tw-drop-shadow-size", v, alpha, shadowColor),
-        decl("--tw-drop-shadow", "var(--tw-drop-shadow-size)"),
-        decl("filter", filterValue),
-      ]
+      return c.modifier && !alpha ? undefined : withSize(v, "var(--tw-drop-shadow-size)")
     }
     const raw = theme.get([`--drop-shadow-${c.value.value}`])
     const resolved = theme.resolve(c.value.value, ["--drop-shadow"])
     if (raw && resolved) {
       if (c.modifier && !alpha) return
-      return [
-        ...filterProps(),
-        decl("--tw-drop-shadow-alpha", alpha),
-        ...dropShadowDecls("--tw-drop-shadow-size", raw, alpha, shadowColor),
-        decl(
-          "--tw-drop-shadow",
-          alpha ? "var(--tw-drop-shadow-size)" : segment(resolved, ",").map((s) => `drop-shadow(${s})`).join(" "),
-        ),
-        decl("filter", filterValue),
-      ]
+      return withSize(raw, alpha ? "var(--tw-drop-shadow-size)" : dropShadows(resolved))
     }
     const color = resolveColor(c, theme, ["--drop-shadow-color", "--color"])
-    if (color) {
-      return color === "inherit"
-        ? [
-          ...filterProps(),
-          decl("--tw-drop-shadow-color", "inherit"),
-          decl("--tw-drop-shadow", "var(--tw-drop-shadow-size)"),
-        ]
-        : [
-          ...filterProps(),
-          decl("--tw-drop-shadow-color", withAlpha(color, "var(--tw-drop-shadow-alpha)")),
-          decl("--tw-drop-shadow", "var(--tw-drop-shadow-size)"),
-        ]
-    }
+    if (color) return withColor(color === "inherit" ? "inherit" : withAlpha(color, "var(--tw-drop-shadow-alpha)"))
   })
   functionalUtility("backdrop-opacity", {
     themeKeys: ["--backdrop-opacity", "--opacity"],
@@ -2946,36 +2820,19 @@ function registerUtilities(design: DesignSystem) {
       rule("@media (forced-colors: active)", [decl("outline", "2px solid transparent"), decl("outline-offset", "2px")]),
     ],
   })
-  for (const v of words("none solid dashed dotted double")) {
+  for (const v of "none solid dashed dotted double".split(" ")) {
     staticUtility(`outline-${v}`, [["--tw-outline-style", v], ["outline-style", v]])
   }
   const outlineWidth = (
     v: string,
   ) => [outlineProps(), decl("outline-style", "var(--tw-outline-style)"), decl("outline-width", v)]
-  functional("outline", (c) => {
-    if (c.value === null) {
-      if (c.modifier) return
-      return outlineWidth(theme.get(["--default-outline-width"]) ?? "1px")
-    }
-    if (c.value.kind === "arbitrary") {
-      const v = c.value.value
-      switch (c.value.dataType ?? inferDataType(v, ["color", "length", "number", "percentage"])) {
-        case "length":
-        case "number":
-        case "percentage":
-          return c.modifier ? undefined : outlineWidth(v)
-        default: {
-          const value = applyModifier(v, c.modifier, theme)
-          return value === null ? undefined : [decl("outline-color", value)]
-        }
-      }
-    }
-    const color = resolveColor(c, theme, ["--outline-color", "--color"])
-    if (color) return [decl("outline-color", color)]
-    if (c.modifier) return
-    const width = theme.resolve(c.value.value, ["--outline-width"])
-    if (width) return outlineWidth(width)
-    if (isPositiveInteger(c.value.value)) return outlineWidth(`${c.value.value}px`)
+  colorOrWidth("outline", {
+    colorKeys: ["--outline-color", "--color"],
+    widthKeys: ["--outline-width"],
+    widthTypes: ["length", "number", "percentage"],
+    defaultWidth: theme.get(["--default-outline-width"]) ?? "1px",
+    color: (v) => [decl("outline-color", v)],
+    width: outlineWidth,
   })
   functionalUtility("outline-offset", {
     supportsNegative: true,
@@ -3058,62 +2915,57 @@ function registerUtilities(design: DesignSystem) {
     if (isPositiveInteger(c.modifier.value)) return `${c.modifier.value}%`
   }
 
-  const textShadowProps = () => [
-    property("--tw-text-shadow-color"),
-    property("--tw-text-shadow-alpha", "100%", "<percentage>"),
-  ]
-  const textShadowColor = (color: string) => `var(--tw-text-shadow-color, ${color})`
-  staticUtility("text-shadow-initial", [textShadowProps, ["--tw-text-shadow-color", "initial"]])
-  functional("text-shadow", (c) => {
-    const alpha = alphaOf(c)
-    if (!c.value) {
-      const v = theme.get(["--text-shadow"])
-      if (v === null) return
-      return [
-        ...textShadowProps(),
-        decl("--tw-text-shadow-alpha", alpha),
-        ...shadowDecls("text-shadow", v, alpha, textShadowColor),
-      ]
-    }
-    if (c.value.kind === "arbitrary") {
-      let v: string | null = c.value.value
-      if ((c.value.dataType ?? inferDataType(v, ["color"])) === "color") {
-        v = applyModifier(v, c.modifier, theme)
-        if (v === null) return
-        return [...textShadowProps(), decl("--tw-text-shadow-color", withAlpha(v, "var(--tw-text-shadow-alpha)"))]
+  const shadowUtility = (
+    name: string,
+    o: {
+      props: () => Array<Node>
+      colorVar: string
+      alphaVar: string
+      colorKeys: ReadonlyArray<string>
+      shadow: (value: string, alpha: string | undefined, prefix: string) => Array<Node>
+      none: () => Array<Node>
+      prefix?: string
+    },
+  ) => {
+    const withShadow = (value: string, alpha: string | undefined, prefix = "") => [
+      ...o.props(),
+      decl(o.alphaVar, alpha),
+      ...o.shadow(value, alpha, prefix),
+    ]
+    const withColor = (color: string) => [...o.props(), decl(o.colorVar, withAlpha(color, `var(${o.alphaVar})`))]
+    staticUtility(`${name}-initial`, [o.props, [o.colorVar, "initial"]])
+    functional(name, (c) => {
+      const alpha = alphaOf(c)
+      if (!c.value) {
+        const v = theme.get([`--${name}`])
+        return v === null ? undefined : withShadow(v, alpha)
       }
-      return [
-        ...textShadowProps(),
-        decl("--tw-text-shadow-alpha", alpha),
-        ...shadowDecls("text-shadow", v, alpha, textShadowColor),
-      ]
-    }
-    if (c.value.value === "none") return c.modifier ? undefined : [...textShadowProps(), decl("text-shadow", "none")]
-    if (c.value.value === "inherit") {
-      return c.modifier ? undefined : [...textShadowProps(), decl("--tw-text-shadow-color", "inherit")]
-    }
-    const v = theme.get([`--text-shadow-${c.value.value}`])
-    if (v) {
-      return [
-        ...textShadowProps(),
-        decl("--tw-text-shadow-alpha", alpha),
-        ...shadowDecls("text-shadow", v, alpha, textShadowColor),
-      ]
-    }
-    const color = resolveColor(c, theme, ["--text-shadow-color", "--color"])
-    if (color) {
-      return [...textShadowProps(), decl("--tw-text-shadow-color", withAlpha(color, "var(--tw-text-shadow-alpha)"))]
-    }
+      if (c.value.kind === "arbitrary") {
+        const v = c.value.value
+        if ((c.value.dataType ?? inferDataType(v, ["color"])) !== "color") return withShadow(v, alpha, o.prefix)
+        const color = applyModifier(v, c.modifier, theme)
+        return color === null ? undefined : withColor(color)
+      }
+      if (c.value.value === "none") return c.modifier ? undefined : [...o.props(), ...o.none()]
+      if (c.value.value === "inherit") return c.modifier ? undefined : [...o.props(), decl(o.colorVar, "inherit")]
+      const v = theme.get([`--${name}-${c.value.value}`])
+      if (v) return withShadow(v, alpha)
+      const color = resolveColor(c, theme, o.colorKeys)
+      if (color) return withColor(color)
+    })
+  }
+
+  shadowUtility("text-shadow", {
+    props: () => [property("--tw-text-shadow-color"), property("--tw-text-shadow-alpha", "100%", "<percentage>")],
+    colorVar: "--tw-text-shadow-color",
+    alphaVar: "--tw-text-shadow-alpha",
+    colorKeys: ["--text-shadow-color", "--color"],
+    shadow: (v, alpha) => shadowDecls("text-shadow", v, alpha, (color) => `var(--tw-text-shadow-color, ${color})`),
+    none: () => [decl("text-shadow", "none")],
   })
 
-  const boxShadowValue = [
-    "var(--tw-inset-shadow)",
-    "var(--tw-inset-ring-shadow)",
-    "var(--tw-ring-offset-shadow)",
-    "var(--tw-ring-shadow)",
-    "var(--tw-shadow)",
-  ]
-    .join(", ")
+  const boxShadowValue =
+    "var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow)"
   const noShadow = "0 0 #0000"
   const shadowProps = () => [
     property("--tw-shadow", noShadow),
@@ -3131,54 +2983,19 @@ function registerUtilities(design: DesignSystem) {
     property("--tw-ring-offset-color", "#fff"),
     property("--tw-ring-offset-shadow", noShadow),
   ]
-  for (const kind of words("shadow inset-shadow")) {
+  for (const kind of "shadow inset-shadow".split(" ")) {
     const varName = `--tw-${kind}`
-    const prefix = kind === "inset-shadow" ? "inset " : ""
-    const shadowColor = (color: string) => `var(${varName}-color, ${color})`
-    staticUtility(`${kind}-initial`, [shadowProps, [`${varName}-color`, "initial"]])
-    functional(kind, (c) => {
-      const alpha = alphaOf(c)
-      if (!c.value) {
-        const v = theme.get([`--${kind}`])
-        if (v === null) return
-        return [
-          ...shadowProps(),
-          decl(`${varName}-alpha`, alpha),
-          ...shadowDecls(varName, v, alpha, shadowColor),
-          decl("box-shadow", boxShadowValue),
-        ]
-      }
-      if (c.value.kind === "arbitrary") {
-        let v: string | null = c.value.value
-        if ((c.value.dataType ?? inferDataType(v, ["color"])) === "color") {
-          v = applyModifier(v, c.modifier, theme)
-          if (v === null) return
-          return [...shadowProps(), decl(`${varName}-color`, withAlpha(v, `var(${varName}-alpha)`))]
-        }
-        return [
-          ...shadowProps(),
-          decl(`${varName}-alpha`, alpha),
-          ...shadowDecls(varName, v, alpha, shadowColor, prefix),
-          decl("box-shadow", boxShadowValue),
-        ]
-      }
-      if (c.value.value === "none") {
-        return c.modifier ? undefined : [...shadowProps(), decl(varName, noShadow), decl("box-shadow", boxShadowValue)]
-      }
-      if (c.value.value === "inherit") {
-        return c.modifier ? undefined : [...shadowProps(), decl(`${varName}-color`, "inherit")]
-      }
-      const v = theme.get([`--${kind}-${c.value.value}`])
-      if (v) {
-        return [
-          ...shadowProps(),
-          decl(`${varName}-alpha`, alpha),
-          ...shadowDecls(varName, v, alpha, shadowColor),
-          decl("box-shadow", boxShadowValue),
-        ]
-      }
-      const color = resolveColor(c, theme, ["--box-shadow-color", "--color"])
-      if (color) return [...shadowProps(), decl(`${varName}-color`, withAlpha(color, `var(${varName}-alpha)`))]
+    shadowUtility(kind, {
+      props: shadowProps,
+      colorVar: `${varName}-color`,
+      alphaVar: `${varName}-alpha`,
+      colorKeys: ["--box-shadow-color", "--color"],
+      shadow: (v, alpha, prefix) => [
+        ...shadowDecls(varName, v, alpha, (color) => `var(${varName}-color, ${color})`, prefix),
+        decl("box-shadow", boxShadowValue),
+      ],
+      none: () => [decl(varName, noShadow), decl("box-shadow", boxShadowValue)],
+      prefix: kind === "inset-shadow" ? "inset " : "",
     })
   }
   staticUtility("ring-inset", [shadowProps, ["--tw-ring-inset", "inset"]])
@@ -3194,50 +3011,23 @@ function registerUtilities(design: DesignSystem) {
   ) {
     const shadowVar = colorVar.replace("-color", "-shadow")
     const width = (v: string) => [...shadowProps(), decl(shadowVar, shadow(v)), decl("box-shadow", boxShadowValue)]
-    functional(name, (c) => {
-      if (!c.value) return c.modifier ? undefined : width(defaultWidth)
-      if (c.value.kind === "arbitrary") {
-        const v = c.value.value
-        if ((c.value.dataType ?? inferDataType(v, ["color", "length"])) === "length") {
-          return c.modifier ? undefined : width(v)
-        }
-        const value = applyModifier(v, c.modifier, theme)
-        return value === null ? undefined : [decl(colorVar, value)]
-      }
-      const color = resolveColor(c, theme, ["--ring-color", "--color"])
-      if (color) return [decl(colorVar, color)]
-      if (c.modifier) return
-      let w = theme.resolve(c.value.value, ["--ring-width"])
-      if (w === null && isPositiveInteger(c.value.value)) w = `${c.value.value}px`
-      if (w) return width(w)
+    colorOrWidth(name, {
+      colorKeys: ["--ring-color", "--color"],
+      widthKeys: ["--ring-width"],
+      widthTypes: ["length"],
+      defaultWidth,
+      color: (v) => [decl(colorVar, v)],
+      width,
     })
   }
   const ringOffsetShadow = "var(--tw-ring-inset,) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color)"
-  functional("ring-offset", (c) => {
-    if (!c.value) return
-    if (c.value.kind === "arbitrary") {
-      const v = c.value.value
-      if ((c.value.dataType ?? inferDataType(v, ["color", "length"])) === "length") {
-        return c.modifier
-          ? undefined
-          : [decl("--tw-ring-offset-width", v), decl("--tw-ring-offset-shadow", ringOffsetShadow)]
-      }
-      const value = applyModifier(v, c.modifier, theme)
-      return value === null ? undefined : [decl("--tw-ring-offset-color", value)]
-    }
-    const w = theme.resolve(c.value.value, ["--ring-offset-width"])
-    if (w) {
-      return c.modifier
-        ? undefined
-        : [decl("--tw-ring-offset-width", w), decl("--tw-ring-offset-shadow", ringOffsetShadow)]
-    }
-    if (isPositiveInteger(c.value.value)) {
-      return c.modifier
-        ? undefined
-        : [decl("--tw-ring-offset-width", `${c.value.value}px`), decl("--tw-ring-offset-shadow", ringOffsetShadow)]
-    }
-    const color = resolveColor(c, theme, ["--ring-offset-color", "--color"])
-    if (color) return [decl("--tw-ring-offset-color", color)]
+  colorOrWidth("ring-offset", {
+    colorKeys: ["--ring-offset-color", "--color"],
+    widthKeys: ["--ring-offset-width"],
+    widthTypes: ["length"],
+    widthFirst: true,
+    color: (v) => [decl("--tw-ring-offset-color", v)],
+    width: (v) => [decl("--tw-ring-offset-width", v), decl("--tw-ring-offset-shadow", ringOffsetShadow)],
   })
   for (
     const [side, value] of pairs(
@@ -3338,6 +3128,13 @@ class Variants {
 
   static(name: string, apply: VariantDef["apply"], compounds: number = Compounds.StyleRules) {
     this.set(name, { kind: "static", apply, compounds, compoundsWith: 0 })
+  }
+
+  /** `name selector | selector` */
+  table(text: string) {
+    for (const line of text.trim().split("\n")) {
+      this.selectors(line.slice(0, line.indexOf(" ")), line.slice(line.indexOf(" ") + 1).split(" | "))
+    }
   }
 
   selectors(name: string, selectors: ReadonlyArray<string>, compounds = compoundsFor(selectors)) {
@@ -3552,36 +3349,62 @@ function createVariants(theme: Theme): Variants {
     })
   }
 
-  variants.selectors("first-letter", ["&::first-letter"])
-  variants.selectors("first-line", ["&::first-line"])
-  variants.selectors("marker", ["& *::marker", "&::marker", "& *::-webkit-details-marker", "&::-webkit-details-marker"])
-  variants.selectors("selection", ["& *::selection", "&::selection"])
-  variants.selectors("file", ["&::file-selector-button"])
-  variants.selectors("placeholder", ["&::placeholder"])
-  variants.selectors("backdrop", ["&::backdrop"])
-  variants.selectors("details-content", ["&::details-content"])
-  for (const pseudo of words("before after")) {
+  variants.table(`
+first-letter &::first-letter
+first-line &::first-line
+marker & *::marker | &::marker | & *::-webkit-details-marker | &::-webkit-details-marker
+selection & *::selection | &::selection
+file &::file-selector-button
+placeholder &::placeholder
+backdrop &::backdrop
+details-content &::details-content
+`)
+  for (const pseudo of "before after".split(" ")) {
     variants.static(pseudo, (node) => {
       const content: Property = { ...property("--tw-content", "\"\""), initialFirst: true }
       node.nodes = [rule(`&::${pseudo}`, [content, decl("content", "var(--tw-content)"), ...node.nodes])]
     }, Compounds.Never)
   }
-  for (
-    const [name, selector] of pairs(
-      "first &:first-child;last &:last-child;only &:only-child;odd &:nth-child(odd);even &:nth-child(even);first-of-type &:first-of-type;last-of-type &:last-of-type;only-of-type &:only-of-type;visited &:visited;target &:target;open &:is([open], :popover-open, :open);default &:default;checked &:checked;indeterminate &:indeterminate;placeholder-shown &:placeholder-shown;autofill &:autofill;optional &:optional;required &:required;valid &:valid;invalid &:invalid;user-valid &:user-valid;user-invalid &:user-invalid;in-range &:in-range;out-of-range &:out-of-range;read-only &:read-only;empty &:empty;focus-within &:focus-within",
-    )
-  ) {
-    variants.selectors(name, [selector])
-  }
+  variants.table(`
+first &:first-child
+last &:last-child
+only &:only-child
+odd &:nth-child(odd)
+even &:nth-child(even)
+first-of-type &:first-of-type
+last-of-type &:last-of-type
+only-of-type &:only-of-type
+visited &:visited
+target &:target
+open &:is([open], :popover-open, :open)
+default &:default
+checked &:checked
+indeterminate &:indeterminate
+placeholder-shown &:placeholder-shown
+autofill &:autofill
+optional &:optional
+required &:required
+valid &:valid
+invalid &:invalid
+user-valid &:user-valid
+user-invalid &:user-invalid
+in-range &:in-range
+out-of-range &:out-of-range
+read-only &:read-only
+empty &:empty
+focus-within &:focus-within
+`)
   variants.static("hover", (node) => {
     node.nodes = [rule("&:hover", [rule("@media (hover: hover)", node.nodes)])]
   })
-  variants.selectors("focus", ["&:focus"])
-  variants.selectors("focus-visible", ["&:focus-visible"])
-  variants.selectors("active", ["&:active"])
-  variants.selectors("enabled", ["&:enabled"])
-  variants.selectors("disabled", ["&:disabled"])
-  variants.selectors("inert", ["&:is([inert], [inert] *)"])
+  variants.table(`
+focus &:focus
+focus-visible &:focus-visible
+active &:active
+enabled &:enabled
+disabled &:disabled
+inert &:is([inert], [inert] *)
+`)
 
   for (const name of ["in", "has"] as const) {
     variants.compound(name, Compounds.StyleRules, (node, variant) => {
@@ -3642,10 +3465,12 @@ function createVariants(theme: Theme): Variants {
     if (value[0] !== "(" || value[value.length - 1] !== ")") value = `(${value})`
     node.nodes = [rule(`@supports ${value}`, node.nodes)]
   }, Compounds.AtRules)
-  variants.selectors("motion-safe", ["@media (prefers-reduced-motion: no-preference)"])
-  variants.selectors("motion-reduce", ["@media (prefers-reduced-motion: reduce)"])
-  variants.selectors("contrast-more", ["@media (prefers-contrast: more)"])
-  variants.selectors("contrast-less", ["@media (prefers-contrast: less)"])
+  variants.table(`
+motion-safe @media (prefers-reduced-motion: no-preference)
+motion-reduce @media (prefers-reduced-motion: reduce)
+contrast-more @media (prefers-contrast: more)
+contrast-less @media (prefers-contrast: less)
+`)
 
   const compareResolved = (
     a: Variant,
@@ -3714,22 +3539,24 @@ function createVariants(theme: Theme): Variants {
     variants.functional("@min", containerQuery(">="), Compounds.AtRules)
   }, (a, b) => compareResolved(a, b, "asc", container))
 
-  variants.selectors("portrait", ["@media (orientation: portrait)"])
-  variants.selectors("landscape", ["@media (orientation: landscape)"])
-  variants.selectors("ltr", ["&:where(:dir(ltr), [dir=\"ltr\"], [dir=\"ltr\"] *)"])
-  variants.selectors("rtl", ["&:where(:dir(rtl), [dir=\"rtl\"], [dir=\"rtl\"] *)"])
-  variants.selectors("dark", ["@media (prefers-color-scheme: dark)"])
-  variants.selectors("starting", ["@starting-style"])
-  variants.selectors("print", ["@media print"])
-  variants.selectors("forced-colors", ["@media (forced-colors: active)"])
-  variants.selectors("inverted-colors", ["@media (inverted-colors: inverted)"])
-  variants.selectors("pointer-none", ["@media (pointer: none)"])
-  variants.selectors("pointer-coarse", ["@media (pointer: coarse)"])
-  variants.selectors("pointer-fine", ["@media (pointer: fine)"])
-  variants.selectors("any-pointer-none", ["@media (any-pointer: none)"])
-  variants.selectors("any-pointer-coarse", ["@media (any-pointer: coarse)"])
-  variants.selectors("any-pointer-fine", ["@media (any-pointer: fine)"])
-  variants.selectors("noscript", ["@media (scripting: none)"])
+  variants.table(`
+portrait @media (orientation: portrait)
+landscape @media (orientation: landscape)
+ltr &:where(:dir(ltr), [dir="ltr"], [dir="ltr"] *)
+rtl &:where(:dir(rtl), [dir="rtl"], [dir="rtl"] *)
+dark @media (prefers-color-scheme: dark)
+starting @starting-style
+print @media print
+forced-colors @media (forced-colors: active)
+inverted-colors @media (inverted-colors: inverted)
+pointer-none @media (pointer: none)
+pointer-coarse @media (pointer: coarse)
+pointer-fine @media (pointer: fine)
+any-pointer-none @media (any-pointer: none)
+any-pointer-coarse @media (any-pointer: coarse)
+any-pointer-fine @media (any-pointer: fine)
+noscript @media (scripting: none)
+`)
   return variants
 }
 

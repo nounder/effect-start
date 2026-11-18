@@ -171,6 +171,37 @@ test.describe("make", () => {
     test.expect(removed).not.toContain("@keyframes wiggle")
   })
 
+  test.it("matches tailwindcss output for color, width and shadow values", async () => {
+    const roots = [
+      "border",
+      "border-x",
+      "border-t",
+      "outline",
+      "ring",
+      "inset-ring",
+      "ring-offset",
+      "decoration",
+      "stroke",
+      "shadow",
+      "inset-shadow",
+      "text-shadow",
+      "drop-shadow",
+    ]
+    const values = `
+      /50 -none -none/50 -inherit -inherit/50 -initial -current -current/50 -transparent -red-500 -red-500/50
+      -red-500/[0.3] -red-500/(--a) -0 -2 -2/50 -8 -[3px] -[3px]/50 -[length:3px] -[line-width:3px] -[#f00]
+      -[#f00]/50 -[color:var(--x)] -[var(--x)] -(--x) -(length:--x) -(color:--x) -sm -sm/50 -lg/[30%] -2xs -md
+      -[0_1px_2px_#000] -[0_1px_2px_#000]/50 -[0_1px_2px_var(--c)]/40 -[2] -[10%] -[thin] -[number:2]
+    `
+      .trim()
+      .split(/\s+/)
+    const used = roots.flatMap((root) => [root, ...values.map((value) => root + value)])
+    const expected = await tailwind(`@import "tailwindcss";`, used)
+    const actual = TailwindEngine.make().generate(used)
+
+    test.expect(normalize(actual)).toBe(normalize(expected))
+  })
+
   test.it("rejects variables without a leading --", () => {
     test.expect(() => TailwindEngine.make({ variables: { color: "red" } })).toThrow("must start with")
   })
