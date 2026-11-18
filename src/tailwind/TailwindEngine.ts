@@ -22,15 +22,23 @@ export interface TailwindEngine {
 
 export function make(options: Options = {}): TailwindEngine {
   const theme = new Theme()
-  for (const [name, value, reference] of DefaultTheme.variables) {
-    theme.add(name, value, reference ? ThemeFlag.Inline | ThemeFlag.Reference : ThemeFlag.None)
+  for (const line of lines(DefaultTheme.variables)) {
+    theme.add(line.slice(0, line.indexOf(":")), line.slice(line.indexOf(":") + 2), ThemeFlag.None)
   }
-  for (const [name, body] of DefaultTheme.keyframes) theme.keyframes.set(name, body)
+  for (const line of lines(DefaultTheme.referenceVariables)) {
+    const name = line.slice(0, line.indexOf(":"))
+    theme.add(name, line.slice(line.indexOf(":") + 2), ThemeFlag.Inline | ThemeFlag.Reference)
+  }
+  for (const block of DefaultTheme.keyframes.trimStart().split(/^(?=@keyframes )/m)) {
+    theme.keyframes.set(block.slice(11, block.indexOf(" ", 11)), block)
+  }
   for (const [name, value] of Object.entries(options.variables ?? {})) {
     if (!name.startsWith("--")) throw new Error(`Theme variable must start with "--": ${name}`)
     theme.add(name, value, ThemeFlag.None)
   }
-  for (const [name, body] of Object.entries(options.keyframes ?? {})) theme.keyframes.set(name, body)
+  for (const [name, body] of Object.entries(options.keyframes ?? {})) {
+    theme.keyframes.set(name, `@keyframes ${name} {\n  ${body}\n}\n`)
+  }
 
   const design = new DesignSystem(theme)
   for (const [name, selectors] of Object.entries(options.variants ?? {})) {
@@ -367,10 +375,10 @@ class DesignSystem {
       collectVariables(entry.value, ctx.variables)
       if (name.startsWith("--animate-")) {
         for (const word of entry.value.split(/[\s,]+/)) {
-          const body = this.theme.keyframes.get(word)
-          if (body !== undefined && !animations.has(word)) {
+          const block = this.theme.keyframes.get(word)
+          if (block !== undefined && !animations.has(word)) {
             animations.add(word)
-            collectVariables(body, ctx.variables)
+            collectVariables(block, ctx.variables)
           }
         }
       }
@@ -390,8 +398,8 @@ class DesignSystem {
       universal.push(`      ${prop.name}: ${prop.initial ?? "initial"};\n`)
     }
 
-    for (const [name, body] of this.theme.keyframes) {
-      if (animations.has(name)) css += `@keyframes ${name} {\n  ${body}\n}\n`
+    for (const [name, block] of this.theme.keyframes) {
+      if (animations.has(name)) css += block
     }
 
     if (universal.length === 0) return css
@@ -1349,6 +1357,13 @@ interface FunctionalOptions {
   handle: (value: string, dataType: string | null) => UtilityResult
 }
 
+const words = (text: string) => text.split(" ")
+
+const lines = (text: string) => text.trim().split("\n")
+
+const pairs = (text: string) =>
+  text.split(";").map((pair) => [pair.slice(0, pair.indexOf(" ")), pair.slice(pair.indexOf(" ") + 1)] as const)
+
 function registerUtilities(design: DesignSystem) {
   const theme = design.theme
   const add = (root: string, utility: Utility) => {
@@ -1441,50 +1456,24 @@ function registerUtilities(design: DesignSystem) {
     })
   }
 
+  for (const line of lines(STATIC_UTILITIES)) {
+    const space = line.indexOf(" ")
+    staticUtility(
+      line.slice(0, space),
+      line.slice(space + 1).split(";").map((d) => [d.slice(0, d.indexOf(":")), d.slice(d.indexOf(":") + 1)]),
+    )
+  }
+
   const integer = (named: NamedValue) => (isPositiveInteger(named.value) ? named.value : null)
   const suffix = (unit: string) => (named: NamedValue) =>
     isPositiveInteger(named.value) ? `${named.value}${unit}` : null
 
-  staticUtility("sr-only", [
-    ["position", "absolute"],
-    ["width", "1px"],
-    ["height", "1px"],
-    ["padding", "0"],
-    ["margin", "-1px"],
-    ["overflow", "hidden"],
-    ["clip-path", "inset(50%)"],
-    ["white-space", "nowrap"],
-    ["border-width", "0"],
-  ])
-  staticUtility("not-sr-only", [
-    ["position", "static"],
-    ["width", "auto"],
-    ["height", "auto"],
-    ["padding", "0"],
-    ["margin", "0"],
-    ["overflow", "visible"],
-    ["clip-path", "none"],
-    ["white-space", "normal"],
-  ])
-  staticUtility("pointer-events-none", [["pointer-events", "none"]])
-  staticUtility("pointer-events-auto", [["pointer-events", "auto"]])
-  staticUtility("visible", [["visibility", "visible"]])
-  staticUtility("invisible", [["visibility", "hidden"]])
-  staticUtility("collapse", [["visibility", "collapse"]])
-  for (const v of ["static", "fixed", "absolute", "relative", "sticky"]) staticUtility(v, [["position", v]])
+  for (const v of words("static fixed absolute relative sticky")) staticUtility(v, [["position", v]])
 
   for (
-    const [name, prop] of [
-      ["inset", "inset"],
-      ["inset-x", "inset-inline"],
-      ["inset-y", "inset-block"],
-      ["start", "inset-inline-start"],
-      ["end", "inset-inline-end"],
-      ["top", "top"],
-      ["right", "right"],
-      ["bottom", "bottom"],
-      ["left", "left"],
-    ]
+    const [name, prop] of pairs(
+      "inset inset;inset-x inset-inline;inset-y inset-block;start inset-inline-start;end inset-inline-end;top top;right right;bottom bottom;left left",
+    )
   ) {
     staticUtility(`${name}-auto`, [[prop, "auto"]])
     staticUtility(`${name}-full`, [[prop, "100%"]])
@@ -1495,8 +1484,6 @@ function registerUtilities(design: DesignSystem) {
     })
   }
 
-  staticUtility("isolate", [["isolation", "isolate"]])
-  staticUtility("isolation-auto", [["isolation", "auto"]])
   functionalUtility("z", {
     supportsNegative: true,
     handleBareValue: integer,
@@ -1511,7 +1498,7 @@ function registerUtilities(design: DesignSystem) {
     handle: (v) => [decl("order", v)],
     staticValues: { first: [decl("order", "-9999")], last: [decl("order", "9999")] },
   })
-  for (const [name, prop] of [["col", "grid-column"], ["row", "grid-row"]]) {
+  for (const [name, prop] of pairs("col grid-column;row grid-row")) {
     functionalUtility(name, {
       supportsNegative: true,
       handleBareValue: integer,
@@ -1525,7 +1512,7 @@ function registerUtilities(design: DesignSystem) {
       handle: (v) => [decl(prop, `span ${v} / span ${v}`)],
       staticValues: { full: [decl(prop, "1 / -1")] },
     })
-    for (const edge of ["start", "end"]) {
+    for (const edge of words("start end")) {
       functionalUtility(`${name}-${edge}`, {
         supportsNegative: true,
         handleBareValue: integer,
@@ -1536,48 +1523,25 @@ function registerUtilities(design: DesignSystem) {
     }
   }
   for (
-    const [name, value] of [
-      ["start", "inline-start"],
-      ["end", "inline-end"],
-      ["right", "right"],
-      ["left", "left"],
-      ["none", "none"],
-    ]
+    const [name, value] of pairs("start inline-start;end inline-end;right right;left left;none none")
   ) {
     staticUtility(`float-${name}`, [["float", value]])
   }
   for (
-    const [name, value] of [
-      ["start", "inline-start"],
-      ["end", "inline-end"],
-      ["right", "right"],
-      ["left", "left"],
-      ["both", "both"],
-      ["none", "none"],
-    ]
+    const [name, value] of pairs("start inline-start;end inline-end;right right;left left;both both;none none")
   ) {
     staticUtility(`clear-${name}`, [["clear", value]])
   }
 
   for (
-    const [name, prop] of [
-      ["m", "margin"],
-      ["mx", "margin-inline"],
-      ["my", "margin-block"],
-      ["ms", "margin-inline-start"],
-      ["me", "margin-inline-end"],
-      ["mt", "margin-top"],
-      ["mr", "margin-right"],
-      ["mb", "margin-bottom"],
-      ["ml", "margin-left"],
-    ]
+    const [name, prop] of pairs(
+      "m margin;mx margin-inline;my margin-block;ms margin-inline-start;me margin-inline-end;mt margin-top;mr margin-right;mb margin-bottom;ml margin-left",
+    )
   ) {
     staticUtility(`${name}-auto`, [[prop, "auto"]])
     spacingUtility(name, ["--margin", "--spacing"], (v) => [decl(prop, v)], { supportsNegative: true })
   }
 
-  staticUtility("box-border", [["box-sizing", "border-box"]])
-  staticUtility("box-content", [["box-sizing", "content-box"]])
   functionalUtility("line-clamp", {
     themeKeys: ["--line-clamp"],
     handleBareValue: integer,
@@ -1597,34 +1561,12 @@ function registerUtilities(design: DesignSystem) {
     },
   })
   for (
-    const [name, value] of [
-      ["block", "block"],
-      ["inline-block", "inline-block"],
-      ["inline", "inline"],
-      ["hidden", "none"],
-      ["inline-flex", "inline-flex"],
-      ["table", "table"],
-      ["inline-table", "inline-table"],
-      ["table-caption", "table-caption"],
-      ["table-cell", "table-cell"],
-      ["table-column", "table-column"],
-      ["table-column-group", "table-column-group"],
-      ["table-footer-group", "table-footer-group"],
-      ["table-header-group", "table-header-group"],
-      ["table-row-group", "table-row-group"],
-      ["table-row", "table-row"],
-      ["flow-root", "flow-root"],
-      ["flex", "flex"],
-      ["grid", "grid"],
-      ["inline-grid", "inline-grid"],
-      ["contents", "contents"],
-      ["list-item", "list-item"],
-    ]
+    const [name, value] of pairs(
+      "block block;inline-block inline-block;inline inline;hidden none;inline-flex inline-flex;table table;inline-table inline-table;table-caption table-caption;table-cell table-cell;table-column table-column;table-column-group table-column-group;table-footer-group table-footer-group;table-header-group table-header-group;table-row-group table-row-group;table-row table-row;flow-root flow-root;flex flex;grid grid;inline-grid inline-grid;contents contents;list-item list-item",
+    )
   ) {
     staticUtility(name, [["display", value]])
   }
-  staticUtility("field-sizing-content", [["field-sizing", "content"]])
-  staticUtility("field-sizing-fixed", [["field-sizing", "fixed"]])
   functionalUtility("aspect", {
     themeKeys: ["--aspect"],
     handleBareValue: (named) => {
@@ -1637,18 +1579,9 @@ function registerUtilities(design: DesignSystem) {
   })
 
   for (
-    const [name, value] of [
-      ["full", "100%"],
-      ["svw", "100svw"],
-      ["lvw", "100lvw"],
-      ["dvw", "100dvw"],
-      ["svh", "100svh"],
-      ["lvh", "100lvh"],
-      ["dvh", "100dvh"],
-      ["min", "min-content"],
-      ["max", "max-content"],
-      ["fit", "fit-content"],
-    ]
+    const [name, value] of pairs(
+      "full 100%;svw 100svw;lvw 100lvw;dvw 100dvw;svh 100svh;lvh 100lvh;dvh 100dvh;min min-content;max max-content;fit fit-content",
+    )
   ) {
     staticUtility(`size-${name}`, [["--tw-sort", "size"], ["width", value], ["height", value]])
     staticUtility(`w-${name}`, [["width", value]])
@@ -1658,22 +1591,6 @@ function registerUtilities(design: DesignSystem) {
     staticUtility(`max-w-${name}`, [["max-width", value]])
     staticUtility(`max-h-${name}`, [["max-height", value]])
   }
-  staticUtility("size-auto", [["--tw-sort", "size"], ["width", "auto"], ["height", "auto"]])
-  staticUtility("w-auto", [["width", "auto"]])
-  staticUtility("h-auto", [["height", "auto"]])
-  staticUtility("min-w-auto", [["min-width", "auto"]])
-  staticUtility("min-h-auto", [["min-height", "auto"]])
-  staticUtility("h-lh", [["height", "1lh"]])
-  staticUtility("min-h-lh", [["min-height", "1lh"]])
-  staticUtility("max-h-lh", [["max-height", "1lh"]])
-  staticUtility("w-screen", [["width", "100vw"]])
-  staticUtility("min-w-screen", [["min-width", "100vw"]])
-  staticUtility("max-w-screen", [["max-width", "100vw"]])
-  staticUtility("h-screen", [["height", "100vh"]])
-  staticUtility("min-h-screen", [["min-height", "100vh"]])
-  staticUtility("max-h-screen", [["max-height", "100vh"]])
-  staticUtility("max-w-none", [["max-width", "none"]])
-  staticUtility("max-h-none", [["max-height", "none"]])
   spacingUtility(
     "size",
     ["--size", "--spacing"],
@@ -1707,9 +1624,6 @@ function registerUtilities(design: DesignSystem) {
     },
   })
 
-  staticUtility("flex-auto", [["flex", "auto"]])
-  staticUtility("flex-initial", [["flex", "0 auto"]])
-  staticUtility("flex-none", [["flex", "none"]])
   functional("flex", (c) => {
     if (!c.value) return
     if (c.value.kind === "arbitrary") return c.modifier ? undefined : [decl("flex", c.value.value)]
@@ -1723,18 +1637,9 @@ function registerUtilities(design: DesignSystem) {
   })
   functionalUtility("shrink", { defaultValue: "1", handleBareValue: integer, handle: (v) => [decl("flex-shrink", v)] })
   functionalUtility("grow", { defaultValue: "1", handleBareValue: integer, handle: (v) => [decl("flex-grow", v)] })
-  staticUtility("basis-auto", [["flex-basis", "auto"]])
-  staticUtility("basis-full", [["flex-basis", "100%"]])
   spacingUtility("basis", ["--flex-basis", "--spacing", "--container"], (v) => [decl("flex-basis", v)], {
     supportsFractions: true,
   })
-  staticUtility("table-auto", [["table-layout", "auto"]])
-  staticUtility("table-fixed", [["table-layout", "fixed"]])
-  staticUtility("caption-top", [["caption-side", "top"]])
-  staticUtility("caption-bottom", [["caption-side", "bottom"]])
-  staticUtility("border-collapse", [["border-collapse", "collapse"]])
-  staticUtility("border-separate", [["border-collapse", "separate"]])
-
   const borderSpacingProps = () => [
     property("--tw-border-spacing-x", "0", "<length>"),
     property("--tw-border-spacing-y", "0", "<length>"),
@@ -1746,7 +1651,7 @@ function registerUtilities(design: DesignSystem) {
     decl("--tw-border-spacing-y", v),
     decl("border-spacing", borderSpacing),
   ])
-  for (const axis of ["x", "y"]) {
+  for (const axis of words("x y")) {
     spacingUtility(`border-spacing-${axis}`, ["--border-spacing", "--spacing"], (v) => [
       ...borderSpacingProps(),
       decl(`--tw-border-spacing-${axis}`, v),
@@ -1788,7 +1693,6 @@ function registerUtilities(design: DesignSystem) {
   ]
   const translate2d = "var(--tw-translate-x) var(--tw-translate-y)"
   const translate3d = "var(--tw-translate-x) var(--tw-translate-y) var(--tw-translate-z)"
-  staticUtility("translate-none", [["translate", "none"]])
   staticUtility("-translate-full", [
     translateProps,
     ["--tw-translate-x", "-100%"],
@@ -1814,7 +1718,7 @@ function registerUtilities(design: DesignSystem) {
     ],
     { supportsNegative: true, supportsFractions: true },
   )
-  for (const axis of ["x", "y"]) {
+  for (const axis of words("x y")) {
     staticUtility(`-translate-${axis}-full`, [translateProps, [`--tw-translate-${axis}`, "-100%"], [
       "translate",
       translate2d,
@@ -1839,7 +1743,6 @@ function registerUtilities(design: DesignSystem) {
   staticUtility("translate-3d", [translateProps, ["translate", translate3d]])
 
   const scaleProps = () => [property("--tw-scale-x", "1"), property("--tw-scale-y", "1"), property("--tw-scale-z", "1")]
-  staticUtility("scale-none", [["scale", "none"]])
   const scale = (negative: boolean) => (c: FunctionalCandidate): UtilityResult => {
     if (!c.value || c.modifier) return
     if (c.value.kind === "arbitrary") {
@@ -1859,7 +1762,7 @@ function registerUtilities(design: DesignSystem) {
   }
   functional("-scale", scale(true))
   functional("scale", scale(false))
-  for (const axis of ["x", "y", "z"]) {
+  for (const axis of words("x y z")) {
     functionalUtility(`scale-${axis}`, {
       supportsNegative: true,
       themeKeys: ["--scale"],
@@ -1873,7 +1776,6 @@ function registerUtilities(design: DesignSystem) {
   }
   staticUtility("scale-3d", [scaleProps, ["scale", "var(--tw-scale-x) var(--tw-scale-y) var(--tw-scale-z)"]])
 
-  staticUtility("rotate-none", [["rotate", "none"]])
   const rotate = (negative: boolean) => (c: FunctionalCandidate): UtilityResult => {
     if (!c.value || c.modifier) return
     let v: string | null
@@ -1901,7 +1803,7 @@ function registerUtilities(design: DesignSystem) {
     property("--tw-skew-x"),
     property("--tw-skew-y"),
   ]
-  for (const axis of ["x", "y", "z"]) {
+  for (const axis of words("x y z")) {
     functionalUtility(`rotate-${axis}`, {
       supportsNegative: true,
       themeKeys: ["--rotate"],
@@ -1924,7 +1826,7 @@ function registerUtilities(design: DesignSystem) {
       decl("transform", transformValue),
     ],
   })
-  for (const axis of ["x", "y"]) {
+  for (const axis of words("x y")) {
     functionalUtility(`skew-${axis}`, {
       supportsNegative: true,
       themeKeys: ["--skew"],
@@ -1945,90 +1847,37 @@ function registerUtilities(design: DesignSystem) {
   })
   staticUtility("transform-cpu", [["transform", transformValue]])
   staticUtility("transform-gpu", [["transform", `translateZ(0) ${transformValue}`]])
-  staticUtility("transform-none", [["transform", "none"]])
-  staticUtility("transform-flat", [["transform-style", "flat"]])
-  staticUtility("transform-3d", [["transform-style", "preserve-3d"]])
-  for (const v of ["content", "border", "fill", "stroke", "view"]) {
+  for (const v of words("content border fill stroke view")) {
     staticUtility(`transform-${v}`, [["transform-box", `${v}-box`]])
   }
-  staticUtility("backface-visible", [["backface-visibility", "visible"]])
-  staticUtility("backface-hidden", [["backface-visibility", "hidden"]])
-
   for (
-    const v of [
-      "auto",
-      "default",
-      "pointer",
-      "wait",
-      "text",
-      "move",
-      "help",
-      "not-allowed",
-      "none",
-      "context-menu",
-      "progress",
-      "cell",
-      "crosshair",
-      "vertical-text",
-      "alias",
-      "copy",
-      "no-drop",
-      "grab",
-      "grabbing",
-      "all-scroll",
-      "col-resize",
-      "row-resize",
-      "n-resize",
-      "e-resize",
-      "s-resize",
-      "w-resize",
-      "ne-resize",
-      "nw-resize",
-      "se-resize",
-      "sw-resize",
-      "ew-resize",
-      "ns-resize",
-      "nesw-resize",
-      "nwse-resize",
-      "zoom-in",
-      "zoom-out",
-    ]
+    const v of words(
+      "auto default pointer wait text move help not-allowed none context-menu progress cell crosshair vertical-text alias copy no-drop grab grabbing all-scroll col-resize row-resize n-resize e-resize s-resize w-resize ne-resize nw-resize se-resize sw-resize ew-resize ns-resize nesw-resize nwse-resize zoom-in zoom-out",
+    )
   ) {
     staticUtility(`cursor-${v}`, [["cursor", v]])
   }
   functionalUtility("cursor", { themeKeys: ["--cursor"], handle: (v) => [decl("cursor", v)] })
 
-  for (const v of ["auto", "none", "manipulation"]) staticUtility(`touch-${v}`, [["touch-action", v]])
+  for (const v of words("auto none manipulation")) staticUtility(`touch-${v}`, [["touch-action", v]])
   const touchProps = () => [property("--tw-pan-x"), property("--tw-pan-y"), property("--tw-pinch-zoom")]
   const touchValue = "var(--tw-pan-x,) var(--tw-pan-y,) var(--tw-pinch-zoom,)"
-  for (const v of ["x", "left", "right"]) {
+  for (const v of words("x left right")) {
     staticUtility(`touch-pan-${v}`, [touchProps, ["--tw-pan-x", `pan-${v}`], ["touch-action", touchValue]])
   }
-  for (const v of ["y", "up", "down"]) {
+  for (const v of words("y up down")) {
     staticUtility(`touch-pan-${v}`, [touchProps, ["--tw-pan-y", `pan-${v}`], ["touch-action", touchValue]])
   }
   staticUtility("touch-pinch-zoom", [touchProps, ["--tw-pinch-zoom", "pinch-zoom"], ["touch-action", touchValue]])
-  for (const v of ["none", "text", "all", "auto"]) {
+  for (const v of words("none text all auto")) {
     staticUtility(`select-${v}`, [["-webkit-user-select", v], ["user-select", v]])
   }
-  staticUtility("resize-none", [["resize", "none"]])
-  staticUtility("resize-x", [["resize", "horizontal"]])
-  staticUtility("resize-y", [["resize", "vertical"]])
-  staticUtility("resize", [["resize", "both"]])
-  staticUtility("snap-none", [["scroll-snap-type", "none"]])
   const snapProps = () => [property("--tw-scroll-snap-strictness", "proximity", "*")]
-  for (const v of ["x", "y", "both"]) {
+  for (const v of words("x y both")) {
     staticUtility(`snap-${v}`, [snapProps, ["scroll-snap-type", `${v} var(--tw-scroll-snap-strictness)`]])
   }
   staticUtility("snap-mandatory", [snapProps, ["--tw-scroll-snap-strictness", "mandatory"]])
   staticUtility("snap-proximity", [snapProps, ["--tw-scroll-snap-strictness", "proximity"]])
-  staticUtility("snap-align-none", [["scroll-snap-align", "none"]])
-  staticUtility("snap-start", [["scroll-snap-align", "start"]])
-  staticUtility("snap-end", [["scroll-snap-align", "end"]])
-  staticUtility("snap-center", [["scroll-snap-align", "center"]])
-  staticUtility("snap-normal", [["scroll-snap-stop", "normal"]])
-  staticUtility("snap-always", [["scroll-snap-stop", "always"]])
-
   const sides: ReadonlyArray<[string, string]> = [
     ["", ""],
     ["x", "-inline"],
@@ -2049,8 +1898,6 @@ function registerUtilities(design: DesignSystem) {
     spacingUtility(`scroll-p${side}`, ["--scroll-padding", "--spacing"], (v) => [decl(`scroll-padding${prop}`, v)])
   }
 
-  staticUtility("list-inside", [["list-style-position", "inside"]])
-  staticUtility("list-outside", [["list-style-position", "outside"]])
   functionalUtility("list", {
     themeKeys: ["--list-style-type"],
     handle: (v) => [decl("list-style-type", v)],
@@ -2065,17 +1912,10 @@ function registerUtilities(design: DesignSystem) {
     handle: (v) => [decl("list-style-image", v)],
     staticValues: { none: [decl("list-style-image", "none")] },
   })
-  staticUtility("appearance-none", [["appearance", "none"]])
-  staticUtility("appearance-auto", [["appearance", "auto"]])
   for (
-    const [name, value] of [
-      ["normal", "normal"],
-      ["dark", "dark"],
-      ["light", "light"],
-      ["light-dark", "light dark"],
-      ["only-dark", "only dark"],
-      ["only-light", "only light"],
-    ]
+    const [name, value] of pairs(
+      "normal normal;dark dark;light light;light-dark light dark;only-dark only dark;only-light only light",
+    )
   ) {
     staticUtility(`scheme-${name}`, [["color-scheme", value]])
   }
@@ -2085,21 +1925,16 @@ function registerUtilities(design: DesignSystem) {
     handle: (v) => [decl("columns", v)],
     staticValues: { auto: [decl("columns", "auto")] },
   })
-  for (const v of ["auto", "avoid", "all", "avoid-page", "page", "left", "right", "column"]) {
+  for (const v of words("auto avoid all avoid-page page left right column")) {
     staticUtility(`break-before-${v}`, [["break-before", v]])
   }
-  for (const v of ["auto", "avoid", "avoid-page", "avoid-column"]) {
+  for (const v of words("auto avoid avoid-page avoid-column")) {
     staticUtility(`break-inside-${v}`, [["break-inside", v]])
   }
-  for (const v of ["auto", "avoid", "all", "avoid-page", "page", "left", "right", "column"]) {
+  for (const v of words("auto avoid all avoid-page page left right column")) {
     staticUtility(`break-after-${v}`, [["break-after", v]])
   }
-  staticUtility("grid-flow-row", [["grid-auto-flow", "row"]])
-  staticUtility("grid-flow-col", [["grid-auto-flow", "column"]])
-  staticUtility("grid-flow-dense", [["grid-auto-flow", "dense"]])
-  staticUtility("grid-flow-row-dense", [["grid-auto-flow", "row dense"]])
-  staticUtility("grid-flow-col-dense", [["grid-auto-flow", "column dense"]])
-  for (const [name, prop] of [["auto-cols", "grid-auto-columns"], ["auto-rows", "grid-auto-rows"]]) {
+  for (const [name, prop] of pairs("auto-cols grid-auto-columns;auto-rows grid-auto-rows")) {
     functionalUtility(name, {
       themeKeys: [`--${prop}`],
       handle: (v) => [decl(prop, v)],
@@ -2111,7 +1946,7 @@ function registerUtilities(design: DesignSystem) {
       },
     })
   }
-  for (const [name, prop] of [["grid-cols", "grid-template-columns"], ["grid-rows", "grid-template-rows"]]) {
+  for (const [name, prop] of pairs("grid-cols grid-template-columns;grid-rows grid-template-rows")) {
     functionalUtility(name, {
       themeKeys: [`--${prop}`],
       handleBareValue: (named) =>
@@ -2120,82 +1955,9 @@ function registerUtilities(design: DesignSystem) {
       staticValues: { none: [decl(prop, "none")], subgrid: [decl(prop, "subgrid")] },
     })
   }
-  for (const v of ["row", "row-reverse", "col", "col-reverse"]) {
+  for (const v of words("row row-reverse col col-reverse")) {
     staticUtility(`flex-${v}`, [["flex-direction", v.replace("col", "column")]])
   }
-  staticUtility("flex-wrap", [["flex-wrap", "wrap"]])
-  staticUtility("flex-nowrap", [["flex-wrap", "nowrap"]])
-  staticUtility("flex-wrap-reverse", [["flex-wrap", "wrap-reverse"]])
-
-  const alignments = (prefix: string, prop: string, values: ReadonlyArray<[string, string]>) => {
-    for (const [name, value] of values) staticUtility(`${prefix}-${name}`, [[prop, value]])
-  }
-  alignments("place-content", "place-content", [
-    ["center", "center"],
-    ["start", "start"],
-    ["end", "end"],
-    ["center-safe", "safe center"],
-    ["end-safe", "safe end"],
-    ["between", "space-between"],
-    ["around", "space-around"],
-    ["evenly", "space-evenly"],
-    ["baseline", "baseline"],
-    ["stretch", "stretch"],
-  ])
-  alignments("place-items", "place-items", [
-    ["center", "center"],
-    ["start", "start"],
-    ["end", "end"],
-    ["center-safe", "safe center"],
-    ["end-safe", "safe end"],
-    ["baseline", "baseline"],
-    ["stretch", "stretch"],
-  ])
-  alignments("content", "align-content", [
-    ["normal", "normal"],
-    ["center", "center"],
-    ["start", "flex-start"],
-    ["end", "flex-end"],
-    ["center-safe", "safe center"],
-    ["end-safe", "safe flex-end"],
-    ["between", "space-between"],
-    ["around", "space-around"],
-    ["evenly", "space-evenly"],
-    ["baseline", "baseline"],
-    ["stretch", "stretch"],
-  ])
-  alignments("items", "align-items", [
-    ["center", "center"],
-    ["start", "flex-start"],
-    ["end", "flex-end"],
-    ["center-safe", "safe center"],
-    ["end-safe", "safe flex-end"],
-    ["baseline", "baseline"],
-    ["baseline-last", "last baseline"],
-    ["stretch", "stretch"],
-  ])
-  alignments("justify", "justify-content", [
-    ["normal", "normal"],
-    ["center", "center"],
-    ["start", "flex-start"],
-    ["end", "flex-end"],
-    ["center-safe", "safe center"],
-    ["end-safe", "safe flex-end"],
-    ["between", "space-between"],
-    ["around", "space-around"],
-    ["evenly", "space-evenly"],
-    ["baseline", "baseline"],
-    ["stretch", "stretch"],
-  ])
-  alignments("justify-items", "justify-items", [
-    ["normal", "normal"],
-    ["center", "center"],
-    ["start", "start"],
-    ["end", "end"],
-    ["center-safe", "safe center"],
-    ["end-safe", "safe end"],
-    ["stretch", "stretch"],
-  ])
   spacingUtility("gap", ["--gap", "--spacing"], (v) => [decl("gap", v)])
   spacingUtility("gap-x", ["--gap", "--spacing"], (v) => [decl("column-gap", v)])
   spacingUtility("gap-y", ["--gap", "--spacing"], (v) => [decl("row-gap", v)])
@@ -2227,71 +1989,25 @@ function registerUtilities(design: DesignSystem) {
     () => property("--tw-space-y-reverse", "0"),
     () => rule(notLast, [decl("--tw-sort", "column-gap"), decl("--tw-space-y-reverse", "1")]),
   ])
-  staticUtility("accent-auto", [["accent-color", "auto"]])
   colorUtility("accent", ["--accent-color", "--color"], (v) => [decl("accent-color", v)])
   colorUtility("caret", ["--caret-color", "--color"], (v) => [decl("caret-color", v)])
   colorUtility("divide", ["--divide-color", "--border-color", "--color"], (v) => [
     rule(notLast, [decl("--tw-sort", "divide-color"), decl("border-color", v)]),
   ])
-  alignments("place-self", "place-self", [
-    ["auto", "auto"],
-    ["start", "start"],
-    ["end", "end"],
-    ["center", "center"],
-    ["end-safe", "safe end"],
-    ["center-safe", "safe center"],
-    ["stretch", "stretch"],
-  ])
-  alignments("self", "align-self", [
-    ["auto", "auto"],
-    ["start", "flex-start"],
-    ["end", "flex-end"],
-    ["center", "center"],
-    ["end-safe", "safe flex-end"],
-    ["center-safe", "safe center"],
-    ["stretch", "stretch"],
-    ["baseline", "baseline"],
-    ["baseline-last", "last baseline"],
-  ])
-  alignments("justify-self", "justify-self", [
-    ["auto", "auto"],
-    ["start", "flex-start"],
-    ["end", "flex-end"],
-    ["center", "center"],
-    ["end-safe", "safe flex-end"],
-    ["center-safe", "safe center"],
-    ["stretch", "stretch"],
-  ])
-  for (const v of ["auto", "hidden", "clip", "visible", "scroll"]) {
+  for (const v of words("auto hidden clip visible scroll")) {
     staticUtility(`overflow-${v}`, [["overflow", v]])
     staticUtility(`overflow-x-${v}`, [["overflow-x", v]])
     staticUtility(`overflow-y-${v}`, [["overflow-y", v]])
   }
-  for (const v of ["auto", "contain", "none"]) {
+  for (const v of words("auto contain none")) {
     staticUtility(`overscroll-${v}`, [["overscroll-behavior", v]])
     staticUtility(`overscroll-x-${v}`, [["overscroll-behavior-x", v]])
     staticUtility(`overscroll-y-${v}`, [["overscroll-behavior-y", v]])
   }
-  staticUtility("scroll-auto", [["scroll-behavior", "auto"]])
-  staticUtility("scroll-smooth", [["scroll-behavior", "smooth"]])
-  staticUtility("truncate", [["overflow", "hidden"], ["text-overflow", "ellipsis"], ["white-space", "nowrap"]])
-  staticUtility("text-ellipsis", [["text-overflow", "ellipsis"]])
-  staticUtility("text-clip", [["text-overflow", "clip"]])
-  for (const v of ["none", "manual", "auto"]) staticUtility(`hyphens-${v}`, [["-webkit-hyphens", v], ["hyphens", v]])
-  for (const v of ["normal", "nowrap", "pre", "pre-line", "pre-wrap", "break-spaces"]) {
+  for (const v of words("none manual auto")) staticUtility(`hyphens-${v}`, [["-webkit-hyphens", v], ["hyphens", v]])
+  for (const v of words("normal nowrap pre pre-line pre-wrap break-spaces")) {
     staticUtility(`whitespace-${v}`, [["white-space", v]])
   }
-  staticUtility("text-wrap", [["text-wrap", "wrap"]])
-  staticUtility("text-nowrap", [["text-wrap", "nowrap"]])
-  staticUtility("text-balance", [["text-wrap", "balance"]])
-  staticUtility("text-pretty", [["text-wrap", "pretty"]])
-  staticUtility("break-normal", [["overflow-wrap", "normal"], ["word-break", "normal"]])
-  staticUtility("break-all", [["word-break", "break-all"]])
-  staticUtility("break-keep", [["word-break", "keep-all"]])
-  staticUtility("wrap-anywhere", [["overflow-wrap", "anywhere"]])
-  staticUtility("wrap-break-word", [["overflow-wrap", "break-word"]])
-  staticUtility("wrap-normal", [["overflow-wrap", "normal"]])
-
   for (
     const [name, props] of [
       ["rounded", ["border-radius"]],
@@ -2320,23 +2036,15 @@ function registerUtilities(design: DesignSystem) {
       },
     })
   }
-  for (const v of ["solid", "dashed", "dotted", "double", "hidden", "none"]) {
+  for (const v of words("solid dashed dotted double hidden none")) {
     staticUtility(`border-${v}`, [["--tw-border-style", v], ["border-style", v]])
   }
 
   const borderProps = () => property("--tw-border-style", "solid")
   for (
-    const [name, prefix] of [
-      ["border", "border"],
-      ["border-x", "border-inline"],
-      ["border-y", "border-block"],
-      ["border-s", "border-inline-start"],
-      ["border-e", "border-inline-end"],
-      ["border-t", "border-top"],
-      ["border-r", "border-right"],
-      ["border-b", "border-bottom"],
-      ["border-l", "border-left"],
-    ]
+    const [name, prefix] of pairs(
+      "border border;border-x border-inline;border-y border-block;border-s border-inline-start;border-e border-inline-end;border-t border-top;border-r border-right;border-b border-bottom;border-l border-left",
+    )
   ) {
     const width = (
       v: string,
@@ -2400,55 +2108,34 @@ function registerUtilities(design: DesignSystem) {
       ]),
     ],
   })
-  for (const axis of ["x", "y"]) {
+  for (const axis of words("x y")) {
     staticUtility(`divide-${axis}-reverse`, [
       () => property(`--tw-divide-${axis}-reverse`, "0"),
       () => rule(notLast, [decl(`--tw-divide-${axis}-reverse`, "1")]),
     ])
   }
-  for (const v of ["solid", "dashed", "dotted", "double", "none"]) {
+  for (const v of words("solid dashed dotted double none")) {
     staticUtility(`divide-${v}`, [
       () => rule(notLast, [decl("--tw-sort", "divide-style"), decl("--tw-border-style", v), decl("border-style", v)]),
     ])
   }
 
-  staticUtility("bg-auto", [["background-size", "auto"]])
-  staticUtility("bg-cover", [["background-size", "cover"]])
-  staticUtility("bg-contain", [["background-size", "contain"]])
   functionalUtility("bg-size", { handle: (v) => [decl("background-size", v)] })
-  staticUtility("bg-fixed", [["background-attachment", "fixed"]])
-  staticUtility("bg-local", [["background-attachment", "local"]])
-  staticUtility("bg-scroll", [["background-attachment", "scroll"]])
   for (
-    const [name, value] of [
-      ["top", "top"],
-      ["top-left", "left top"],
-      ["top-right", "right top"],
-      ["bottom", "bottom"],
-      ["bottom-left", "left bottom"],
-      ["bottom-right", "right bottom"],
-      ["left", "left"],
-      ["right", "right"],
-      ["center", "center"],
-    ]
+    const [name, value] of pairs(
+      "top top;top-left left top;top-right right top;bottom bottom;bottom-left left bottom;bottom-right right bottom;left left;right right;center center",
+    )
   ) {
     staticUtility(`bg-${name}`, [["background-position", value]])
   }
   functionalUtility("bg-position", { handle: (v) => [decl("background-position", v)] })
   for (
-    const [name, value] of [
-      ["repeat", "repeat"],
-      ["no-repeat", "no-repeat"],
-      ["repeat-x", "repeat-x"],
-      ["repeat-y", "repeat-y"],
-      ["repeat-round", "round"],
-      ["repeat-space", "space"],
-    ]
+    const [name, value] of pairs(
+      "repeat repeat;no-repeat no-repeat;repeat-x repeat-x;repeat-y repeat-y;repeat-round round;repeat-space space",
+    )
   ) {
     staticUtility(`bg-${name}`, [["background-repeat", value]])
   }
-  staticUtility("bg-none", [["background-image", "none"]])
-
   const interpolation = (modifier: Modifier | null) => {
     if (modifier?.kind === "named") {
       return ["longer", "shorter", "increasing", "decreasing"].includes(modifier.value)
@@ -2619,7 +2306,6 @@ function registerUtilities(design: DesignSystem) {
     ],
     position: (v) => [...gradientProps(), decl("--tw-gradient-from-position", v)],
   })
-  staticUtility("via-none", [["--tw-gradient-via-stops", "initial"]])
   gradientStop("via", {
     color: (v) => [
       ...gradientProps(),
@@ -2643,7 +2329,6 @@ function registerUtilities(design: DesignSystem) {
     position: (v) => [...gradientProps(), decl("--tw-gradient-to-position", v)],
   })
 
-  staticUtility("mask-none", [["mask-image", "none"]])
   functional("mask", (c) => {
     if (!c.value || c.modifier || c.value.kind !== "arbitrary") return
     const v = c.value.value
@@ -2659,48 +2344,28 @@ function registerUtilities(design: DesignSystem) {
         return [decl("mask-image", v)]
     }
   })
-  for (const v of ["add", "subtract", "intersect", "exclude"]) staticUtility(`mask-${v}`, [["mask-composite", v]])
-  staticUtility("mask-alpha", [["mask-mode", "alpha"]])
-  staticUtility("mask-luminance", [["mask-mode", "luminance"]])
-  staticUtility("mask-match", [["mask-mode", "match-source"]])
-  staticUtility("mask-type-alpha", [["mask-type", "alpha"]])
-  staticUtility("mask-type-luminance", [["mask-type", "luminance"]])
-  for (const v of ["auto", "cover", "contain"]) staticUtility(`mask-${v}`, [["mask-size", v]])
+  for (const v of words("add subtract intersect exclude")) staticUtility(`mask-${v}`, [["mask-composite", v]])
+  for (const v of words("auto cover contain")) staticUtility(`mask-${v}`, [["mask-size", v]])
   functionalUtility("mask-size", { handle: (v) => [decl("mask-size", v)] })
   for (
-    const [name, value] of [
-      ["top", "top"],
-      ["top-left", "left top"],
-      ["top-right", "right top"],
-      ["bottom", "bottom"],
-      ["bottom-left", "left bottom"],
-      ["bottom-right", "right bottom"],
-      ["left", "left"],
-      ["right", "right"],
-      ["center", "center"],
-    ]
+    const [name, value] of pairs(
+      "top top;top-left left top;top-right right top;bottom bottom;bottom-left left bottom;bottom-right right bottom;left left;right right;center center",
+    )
   ) {
     staticUtility(`mask-${name}`, [["mask-position", value]])
   }
   functionalUtility("mask-position", { handle: (v) => [decl("mask-position", v)] })
   for (
-    const [name, value] of [
-      ["repeat", "repeat"],
-      ["no-repeat", "no-repeat"],
-      ["repeat-x", "repeat-x"],
-      ["repeat-y", "repeat-y"],
-      ["repeat-round", "round"],
-      ["repeat-space", "space"],
-    ]
+    const [name, value] of pairs(
+      "repeat repeat;no-repeat no-repeat;repeat-x repeat-x;repeat-y repeat-y;repeat-round round;repeat-space space",
+    )
   ) {
     staticUtility(`mask-${name}`, [["mask-repeat", value]])
   }
-  for (const v of ["border", "padding", "content", "fill", "stroke", "view"]) {
+  for (const v of words("border padding content fill stroke view")) {
     staticUtility(`mask-clip-${v}`, [["mask-clip", `${v}-box`]])
     staticUtility(`mask-origin-${v}`, [["mask-origin", `${v}-box`]])
   }
-  staticUtility("mask-no-clip", [["mask-clip", "no-clip"]])
-
   const maskWhite = "linear-gradient(#fff, #fff)"
   const maskProps = () => [
     property("--tw-mask-linear", maskWhite),
@@ -2755,7 +2420,7 @@ function registerUtilities(design: DesignSystem) {
       ["l", ["left"]],
     ] as const
   ) {
-    for (const stop of ["from", "to"]) {
+    for (const stop of words("from to")) {
       const handler = (kind: "color" | "position") => (v: string) => {
         const nodes: Array<Node> = [
           ...maskImage(),
@@ -2765,7 +2430,7 @@ function registerUtilities(design: DesignSystem) {
             "var(--tw-mask-left), var(--tw-mask-right), var(--tw-mask-bottom), var(--tw-mask-top)",
           ),
         ]
-        for (const edge of ["top", "right", "bottom", "left"]) {
+        for (const edge of words("top right bottom left")) {
           if (!(edges as ReadonlyArray<string>).includes(edge)) continue
           nodes.push(
             decl(
@@ -2843,7 +2508,7 @@ function registerUtilities(design: DesignSystem) {
         ],
       })
     }
-    for (const stop of ["from", "to"]) {
+    for (const stop of words("from to")) {
       const handler = (kind: "color" | "position") => (v: string): Array<Node> => [
         ...base(),
         decl(`--tw-mask-${shape}-stops`, stopsValue),
@@ -2853,53 +2518,29 @@ function registerUtilities(design: DesignSystem) {
       maskStop(`mask-${shape}-${stop}`, { color: handler("color"), position: handler("position") })
     }
     if (shape === "radial") {
-      staticUtility("mask-circle", [["--tw-mask-radial-shape", "circle"]])
-      staticUtility("mask-ellipse", [["--tw-mask-radial-shape", "ellipse"]])
-      for (const v of ["closest-side", "farthest-side", "closest-corner", "farthest-corner"]) {
+      for (const v of words("closest-side farthest-side closest-corner farthest-corner")) {
         staticUtility(`mask-radial-${v}`, [["--tw-mask-radial-size", v]])
       }
       for (
-        const v of ["top", "top-left", "top-right", "bottom", "bottom-left", "bottom-right", "left", "right", "center"]
+        const v of words("top top-left top-right bottom bottom-left bottom-right left right center")
       ) {
         staticUtility(`mask-radial-at-${v}`, [["--tw-mask-radial-position", v.replace("-", " ")]])
       }
       functionalUtility("mask-radial-at", { defaultValue: null, handle: (v) => [decl("--tw-mask-radial-position", v)] })
     }
   }
-  staticUtility("box-decoration-slice", [["-webkit-box-decoration-break", "slice"], ["box-decoration-break", "slice"]])
-  staticUtility("box-decoration-clone", [["-webkit-box-decoration-break", "clone"], ["box-decoration-break", "clone"]])
-  staticUtility("bg-clip-text", [["background-clip", "text"]])
-  for (const v of ["border", "padding", "content"]) {
+  for (const v of words("border padding content")) {
     staticUtility(`bg-clip-${v}`, [["background-clip", `${v}-box`]])
     staticUtility(`bg-origin-${v}`, [["background-origin", `${v}-box`]])
   }
   for (
-    const v of [
-      "normal",
-      "multiply",
-      "screen",
-      "overlay",
-      "darken",
-      "lighten",
-      "color-dodge",
-      "color-burn",
-      "hard-light",
-      "soft-light",
-      "difference",
-      "exclusion",
-      "hue",
-      "saturation",
-      "color",
-      "luminosity",
-    ]
+    const v of words(
+      "normal multiply screen overlay darken lighten color-dodge color-burn hard-light soft-light difference exclusion hue saturation color luminosity",
+    )
   ) {
     staticUtility(`bg-blend-${v}`, [["background-blend-mode", v]])
     staticUtility(`mix-blend-${v}`, [["mix-blend-mode", v]])
   }
-  staticUtility("mix-blend-plus-darker", [["mix-blend-mode", "plus-darker"]])
-  staticUtility("mix-blend-plus-lighter", [["mix-blend-mode", "plus-lighter"]])
-
-  staticUtility("fill-none", [["fill", "none"]])
   functional("fill", (c) => {
     if (!c.value) return
     if (c.value.kind === "arbitrary") {
@@ -2909,7 +2550,6 @@ function registerUtilities(design: DesignSystem) {
     const color = resolveColor(c, theme, ["--fill", "--color"])
     if (color) return [decl("fill", color)]
   })
-  staticUtility("stroke-none", [["stroke", "none"]])
   functional("stroke", (c) => {
     if (!c.value) return
     if (c.value.kind === "arbitrary") {
@@ -2931,7 +2571,7 @@ function registerUtilities(design: DesignSystem) {
     if (width) return [decl("stroke-width", width)]
     if (isPositiveInteger(c.value.value)) return [decl("stroke-width", c.value.value)]
   })
-  for (const v of ["contain", "cover", "fill", "none", "scale-down"]) staticUtility(`object-${v}`, [["object-fit", v]])
+  for (const v of words("contain cover fill none scale-down")) staticUtility(`object-${v}`, [["object-fit", v]])
   functionalUtility("object", {
     themeKeys: ["--object-position"],
     handle: (v) => [decl("object-position", v)],
@@ -2950,11 +2590,11 @@ function registerUtilities(design: DesignSystem) {
   for (const [side, prop] of sides) {
     spacingUtility(`p${side}`, ["--padding", "--spacing"], (v) => [decl(`padding${prop}`, v)])
   }
-  for (const v of ["left", "center", "right", "justify", "start", "end"]) {
+  for (const v of words("left center right justify start end")) {
     staticUtility(`text-${v}`, [["text-align", v]])
   }
   spacingUtility("indent", ["--text-indent", "--spacing"], (v) => [decl("text-indent", v)], { supportsNegative: true })
-  for (const v of ["baseline", "top", "middle", "bottom", "text-top", "text-bottom", "sub", "super"]) {
+  for (const v of words("baseline top middle bottom text-top text-bottom sub super")) {
     staticUtility(`align-${v}`, [["vertical-align", v]])
   }
   functionalUtility("align", { themeKeys: [], handle: (v) => [decl("vertical-align", v)] })
@@ -2987,28 +2627,10 @@ function registerUtilities(design: DesignSystem) {
     const weight = theme.resolve(c.value.value, ["--font-weight"])
     if (weight) return [fontWeightProps(), decl("--tw-font-weight", weight), decl("font-weight", weight)]
   })
-  staticUtility("uppercase", [["text-transform", "uppercase"]])
-  staticUtility("lowercase", [["text-transform", "lowercase"]])
-  staticUtility("capitalize", [["text-transform", "capitalize"]])
-  staticUtility("normal-case", [["text-transform", "none"]])
-  staticUtility("italic", [["font-style", "italic"]])
-  staticUtility("not-italic", [["font-style", "normal"]])
-  staticUtility("underline", [["text-decoration-line", "underline"]])
-  staticUtility("overline", [["text-decoration-line", "overline"]])
-  staticUtility("line-through", [["text-decoration-line", "line-through"]])
-  staticUtility("no-underline", [["text-decoration-line", "none"]])
   for (
-    const v of [
-      "normal",
-      "ultra-condensed",
-      "extra-condensed",
-      "condensed",
-      "semi-condensed",
-      "semi-expanded",
-      "expanded",
-      "extra-expanded",
-      "ultra-expanded",
-    ]
+    const v of words(
+      "normal ultra-condensed extra-condensed condensed semi-condensed semi-expanded expanded extra-expanded ultra-expanded",
+    )
   ) {
     staticUtility(`font-stretch-${v}`, [["font-stretch", v]])
   }
@@ -3023,11 +2645,9 @@ function registerUtilities(design: DesignSystem) {
   colorUtility("placeholder", ["--background-color", "--color"], (v) => [
     rule("&::placeholder", [decl("--tw-sort", "placeholder-color"), decl("color", v)]),
   ])
-  for (const v of ["solid", "double", "dotted", "dashed", "wavy"]) {
+  for (const v of words("solid double dotted dashed wavy")) {
     staticUtility(`decoration-${v}`, [["text-decoration-style", v]])
   }
-  staticUtility("decoration-auto", [["text-decoration-thickness", "auto"]])
-  staticUtility("decoration-from-font", [["text-decoration-thickness", "from-font"]])
   functional("decoration", (c) => {
     if (!c.value) return
     if (c.value.kind === "arbitrary") {
@@ -3251,8 +2871,6 @@ function registerUtilities(design: DesignSystem) {
       transform: transition("transform, translate, scale, rotate"),
     },
   })
-  staticUtility("transition-discrete", [["transition-behavior", "allow-discrete"]])
-  staticUtility("transition-normal", [["transition-behavior", "normal"]])
   functionalUtility("delay", {
     handleBareValue: suffix("ms"),
     themeKeys: ["--transition-delay"],
@@ -3279,12 +2897,7 @@ function registerUtilities(design: DesignSystem) {
       linear: [easeProps(), decl("--tw-ease", "linear"), decl("transition-timing-function", "linear")],
     },
   })
-  staticUtility("will-change-auto", [["will-change", "auto"]])
-  staticUtility("will-change-scroll", [["will-change", "scroll-position"]])
-  staticUtility("will-change-contents", [["will-change", "contents"]])
-  staticUtility("will-change-transform", [["will-change", "transform"]])
   functionalUtility("will-change", { themeKeys: [], handle: (v) => [decl("will-change", v)] })
-  staticUtility("content-none", [["--tw-content", "none"], ["content", "none"]])
   functionalUtility("content", {
     themeKeys: ["--content"],
     handle: (v) => [property("--tw-content", "\"\""), decl("--tw-content", v), decl("content", "var(--tw-content)")],
@@ -3293,17 +2906,12 @@ function registerUtilities(design: DesignSystem) {
   const containValue =
     "var(--tw-contain-size,) var(--tw-contain-layout,) var(--tw-contain-paint,) var(--tw-contain-style,)"
   const containProps = () => ["size", "layout", "paint", "style"].map((n) => property(`--tw-contain-${n}`))
-  staticUtility("contain-none", [["contain", "none"]])
-  staticUtility("contain-content", [["contain", "content"]])
-  staticUtility("contain-strict", [["contain", "strict"]])
   staticUtility("contain-size", [containProps, ["--tw-contain-size", "size"], ["contain", containValue]])
   staticUtility("contain-inline-size", [containProps, ["--tw-contain-size", "inline-size"], ["contain", containValue]])
   staticUtility("contain-layout", [containProps, ["--tw-contain-layout", "layout"], ["contain", containValue]])
   staticUtility("contain-paint", [containProps, ["--tw-contain-paint", "paint"], ["contain", containValue]])
   staticUtility("contain-style", [containProps, ["--tw-contain-style", "style"], ["contain", containValue]])
   functionalUtility("contain", { themeKeys: [], handle: (v) => [decl("contain", v)] })
-  staticUtility("forced-color-adjust-none", [["forced-color-adjust", "none"]])
-  staticUtility("forced-color-adjust-auto", [["forced-color-adjust", "auto"]])
   spacingUtility(
     "leading",
     ["--leading", "--spacing"],
@@ -3315,27 +2923,16 @@ function registerUtilities(design: DesignSystem) {
     themeKeys: ["--tracking"],
     handle: (v) => [property("--tw-tracking"), decl("--tw-tracking", v), decl("letter-spacing", v)],
   })
-  staticUtility("antialiased", [["-webkit-font-smoothing", "antialiased"], ["-moz-osx-font-smoothing", "grayscale"]])
-  staticUtility("subpixel-antialiased", [["-webkit-font-smoothing", "auto"], ["-moz-osx-font-smoothing", "auto"]])
-
   const numericValue =
     "var(--tw-ordinal,) var(--tw-slashed-zero,) var(--tw-numeric-figure,) var(--tw-numeric-spacing,) var(--tw-numeric-fraction,)"
   const numericProps = () =>
     ["ordinal", "slashed-zero", "numeric-figure", "numeric-spacing", "numeric-fraction"].map((n) =>
       property(`--tw-${n}`)
     )
-  staticUtility("normal-nums", [["font-variant-numeric", "normal"]])
   for (
-    const [name, prop] of [
-      ["ordinal", "ordinal"],
-      ["slashed-zero", "slashed-zero"],
-      ["lining-nums", "numeric-figure"],
-      ["oldstyle-nums", "numeric-figure"],
-      ["proportional-nums", "numeric-spacing"],
-      ["tabular-nums", "numeric-spacing"],
-      ["diagonal-fractions", "numeric-fraction"],
-      ["stacked-fractions", "numeric-fraction"],
-    ]
+    const [name, prop] of pairs(
+      "ordinal ordinal;slashed-zero slashed-zero;lining-nums numeric-figure;oldstyle-nums numeric-figure;proportional-nums numeric-spacing;tabular-nums numeric-spacing;diagonal-fractions numeric-fraction;stacked-fractions numeric-fraction",
+    )
   ) {
     staticUtility(name, [numericProps, [`--tw-${prop}`, name], ["font-variant-numeric", numericValue]])
   }
@@ -3349,7 +2946,7 @@ function registerUtilities(design: DesignSystem) {
       rule("@media (forced-colors: active)", [decl("outline", "2px solid transparent"), decl("outline-offset", "2px")]),
     ],
   })
-  for (const v of ["none", "solid", "dashed", "dotted", "double"]) {
+  for (const v of words("none solid dashed dotted double")) {
     staticUtility(`outline-${v}`, [["--tw-outline-style", v], ["outline-style", v]])
   }
   const outlineWidth = (
@@ -3534,7 +3131,7 @@ function registerUtilities(design: DesignSystem) {
     property("--tw-ring-offset-color", "#fff"),
     property("--tw-ring-offset-shadow", noShadow),
   ]
-  for (const kind of ["shadow", "inset-shadow"]) {
+  for (const kind of words("shadow inset-shadow")) {
     const varName = `--tw-${kind}`
     const prefix = kind === "inset-shadow" ? "inset " : ""
     const shadowColor = (color: string) => `var(${varName}-color, ${color})`
@@ -3643,23 +3240,16 @@ function registerUtilities(design: DesignSystem) {
     if (color) return [decl("--tw-ring-offset-color", color)]
   })
   for (
-    const [side, value] of [
-      ["t", "top"],
-      ["tr", "top right"],
-      ["r", "right"],
-      ["br", "bottom right"],
-      ["b", "bottom"],
-      ["bl", "bottom left"],
-      ["l", "left"],
-      ["tl", "top left"],
-    ]
+    const [side, value] of pairs(
+      "t top;tr top right;r right;br bottom right;b bottom;bl bottom left;l left;tl top left",
+    )
   ) {
     staticUtility(`bg-gradient-to-${side}`, [
       ["--tw-gradient-position", `to ${value} in oklab`],
       ["background-image", "linear-gradient(var(--tw-gradient-stops))"],
     ])
   }
-  for (const [x, y] of [["left", "top"], ["right", "top"], ["left", "bottom"], ["right", "bottom"]]) {
+  for (const [x, y] of pairs("left top;right top;left bottom;right bottom")) {
     staticUtility(`bg-${x}-${y}`, [["background-position", `${x} ${y}`]])
     staticUtility(`object-${x}-${y}`, [["object-position", `${x} ${y}`]])
   }
@@ -3668,18 +3258,13 @@ function registerUtilities(design: DesignSystem) {
     const v = theme.resolve(c.value.value, ["--breakpoint"])
     if (v) return [decl("max-width", v)]
   })
-  staticUtility("overflow-ellipsis", [["text-overflow", "ellipsis"]])
-  staticUtility("decoration-slice", [["-webkit-box-decoration-break", "slice"], ["box-decoration-break", "slice"]])
-  staticUtility("decoration-clone", [["-webkit-box-decoration-break", "clone"], ["box-decoration-break", "clone"]])
-  for (const [name, prop] of [["flex-shrink", "flex-shrink"], ["flex-grow", "flex-grow"]]) {
+  for (const [name, prop] of pairs("flex-shrink flex-shrink;flex-grow flex-grow")) {
     functional(name, (c) => {
       if (c.modifier) return
       if (!c.value) return [decl(prop, "1")]
       if (c.value.kind === "arbitrary" || isPositiveInteger(c.value.value)) return [decl(prop, c.value.value)]
     })
   }
-  staticUtility("order-none", [["order", "0"]])
-  staticUtility("break-words", [["overflow-wrap", "break-word"]])
   functional("@container", (c) => {
     let type: string | null = null
     if (c.value === null) type = "inline-size"
@@ -3975,42 +3560,16 @@ function createVariants(theme: Theme): Variants {
   variants.selectors("placeholder", ["&::placeholder"])
   variants.selectors("backdrop", ["&::backdrop"])
   variants.selectors("details-content", ["&::details-content"])
-  for (const pseudo of ["before", "after"]) {
+  for (const pseudo of words("before after")) {
     variants.static(pseudo, (node) => {
       const content: Property = { ...property("--tw-content", "\"\""), initialFirst: true }
       node.nodes = [rule(`&::${pseudo}`, [content, decl("content", "var(--tw-content)"), ...node.nodes])]
     }, Compounds.Never)
   }
   for (
-    const [name, selector] of [
-      ["first", "&:first-child"],
-      ["last", "&:last-child"],
-      ["only", "&:only-child"],
-      ["odd", "&:nth-child(odd)"],
-      ["even", "&:nth-child(even)"],
-      ["first-of-type", "&:first-of-type"],
-      ["last-of-type", "&:last-of-type"],
-      ["only-of-type", "&:only-of-type"],
-      ["visited", "&:visited"],
-      ["target", "&:target"],
-      ["open", "&:is([open], :popover-open, :open)"],
-      ["default", "&:default"],
-      ["checked", "&:checked"],
-      ["indeterminate", "&:indeterminate"],
-      ["placeholder-shown", "&:placeholder-shown"],
-      ["autofill", "&:autofill"],
-      ["optional", "&:optional"],
-      ["required", "&:required"],
-      ["valid", "&:valid"],
-      ["invalid", "&:invalid"],
-      ["user-valid", "&:user-valid"],
-      ["user-invalid", "&:user-invalid"],
-      ["in-range", "&:in-range"],
-      ["out-of-range", "&:out-of-range"],
-      ["read-only", "&:read-only"],
-      ["empty", "&:empty"],
-      ["focus-within", "&:focus-within"],
-    ]
+    const [name, selector] of pairs(
+      "first &:first-child;last &:last-child;only &:only-child;odd &:nth-child(odd);even &:nth-child(even);first-of-type &:first-of-type;last-of-type &:last-of-type;only-of-type &:only-of-type;visited &:visited;target &:target;open &:is([open], :popover-open, :open);default &:default;checked &:checked;indeterminate &:indeterminate;placeholder-shown &:placeholder-shown;autofill &:autofill;optional &:optional;required &:required;valid &:valid;invalid &:invalid;user-valid &:user-valid;user-invalid &:user-invalid;in-range &:in-range;out-of-range &:out-of-range;read-only &:read-only;empty &:empty;focus-within &:focus-within",
+    )
   ) {
     variants.selectors(name, [selector])
   }
@@ -4061,12 +3620,9 @@ function createVariants(theme: Theme): Variants {
     node.nodes = [rule(`&[data-${attributeSelector(v.value.value)}]`, node.nodes)]
   })
   for (
-    const [name, pseudo] of [
-      ["nth", "nth-child"],
-      ["nth-last", "nth-last-child"],
-      ["nth-of-type", "nth-of-type"],
-      ["nth-last-of-type", "nth-last-of-type"],
-    ]
+    const [name, pseudo] of pairs(
+      "nth nth-child;nth-last nth-last-child;nth-of-type nth-of-type;nth-last-of-type nth-last-of-type",
+    )
   ) {
     variants.functional(name, (node, variant) => {
       const v = functionalValue(variant)
@@ -4177,6 +3733,231 @@ function createVariants(theme: Theme): Variants {
   return variants
 }
 
+/** `name property:value;property:value` */
+const STATIC_UTILITIES = `
+sr-only position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border-width:0
+not-sr-only position:static;width:auto;height:auto;padding:0;margin:0;overflow:visible;clip-path:none;white-space:normal
+pointer-events-none pointer-events:none
+pointer-events-auto pointer-events:auto
+visible visibility:visible
+invisible visibility:hidden
+collapse visibility:collapse
+isolate isolation:isolate
+isolation-auto isolation:auto
+box-border box-sizing:border-box
+box-content box-sizing:content-box
+field-sizing-content field-sizing:content
+field-sizing-fixed field-sizing:fixed
+size-auto --tw-sort:size;width:auto;height:auto
+w-auto width:auto
+h-auto height:auto
+min-w-auto min-width:auto
+min-h-auto min-height:auto
+h-lh height:1lh
+min-h-lh min-height:1lh
+max-h-lh max-height:1lh
+w-screen width:100vw
+min-w-screen min-width:100vw
+max-w-screen max-width:100vw
+h-screen height:100vh
+min-h-screen min-height:100vh
+max-h-screen max-height:100vh
+max-w-none max-width:none
+max-h-none max-height:none
+flex-auto flex:auto
+flex-initial flex:0 auto
+flex-none flex:none
+basis-auto flex-basis:auto
+basis-full flex-basis:100%
+table-auto table-layout:auto
+table-fixed table-layout:fixed
+caption-top caption-side:top
+caption-bottom caption-side:bottom
+border-collapse border-collapse:collapse
+border-separate border-collapse:separate
+translate-none translate:none
+scale-none scale:none
+rotate-none rotate:none
+transform-none transform:none
+transform-flat transform-style:flat
+transform-3d transform-style:preserve-3d
+backface-visible backface-visibility:visible
+backface-hidden backface-visibility:hidden
+resize-none resize:none
+resize-x resize:horizontal
+resize-y resize:vertical
+resize resize:both
+snap-none scroll-snap-type:none
+snap-align-none scroll-snap-align:none
+snap-start scroll-snap-align:start
+snap-end scroll-snap-align:end
+snap-center scroll-snap-align:center
+snap-normal scroll-snap-stop:normal
+snap-always scroll-snap-stop:always
+list-inside list-style-position:inside
+list-outside list-style-position:outside
+appearance-none appearance:none
+appearance-auto appearance:auto
+grid-flow-row grid-auto-flow:row
+grid-flow-col grid-auto-flow:column
+grid-flow-dense grid-auto-flow:dense
+grid-flow-row-dense grid-auto-flow:row dense
+grid-flow-col-dense grid-auto-flow:column dense
+flex-wrap flex-wrap:wrap
+flex-nowrap flex-wrap:nowrap
+flex-wrap-reverse flex-wrap:wrap-reverse
+accent-auto accent-color:auto
+scroll-auto scroll-behavior:auto
+scroll-smooth scroll-behavior:smooth
+truncate overflow:hidden;text-overflow:ellipsis;white-space:nowrap
+text-ellipsis text-overflow:ellipsis
+text-clip text-overflow:clip
+text-wrap text-wrap:wrap
+text-nowrap text-wrap:nowrap
+text-balance text-wrap:balance
+text-pretty text-wrap:pretty
+break-normal overflow-wrap:normal;word-break:normal
+break-all word-break:break-all
+break-keep word-break:keep-all
+wrap-anywhere overflow-wrap:anywhere
+wrap-break-word overflow-wrap:break-word
+wrap-normal overflow-wrap:normal
+bg-auto background-size:auto
+bg-cover background-size:cover
+bg-contain background-size:contain
+bg-fixed background-attachment:fixed
+bg-local background-attachment:local
+bg-scroll background-attachment:scroll
+bg-none background-image:none
+via-none --tw-gradient-via-stops:initial
+mask-none mask-image:none
+mask-alpha mask-mode:alpha
+mask-luminance mask-mode:luminance
+mask-match mask-mode:match-source
+mask-type-alpha mask-type:alpha
+mask-type-luminance mask-type:luminance
+mask-no-clip mask-clip:no-clip
+mask-circle --tw-mask-radial-shape:circle
+mask-ellipse --tw-mask-radial-shape:ellipse
+box-decoration-slice -webkit-box-decoration-break:slice;box-decoration-break:slice
+box-decoration-clone -webkit-box-decoration-break:clone;box-decoration-break:clone
+bg-clip-text background-clip:text
+mix-blend-plus-darker mix-blend-mode:plus-darker
+mix-blend-plus-lighter mix-blend-mode:plus-lighter
+fill-none fill:none
+stroke-none stroke:none
+uppercase text-transform:uppercase
+lowercase text-transform:lowercase
+capitalize text-transform:capitalize
+normal-case text-transform:none
+italic font-style:italic
+not-italic font-style:normal
+underline text-decoration-line:underline
+overline text-decoration-line:overline
+line-through text-decoration-line:line-through
+no-underline text-decoration-line:none
+decoration-auto text-decoration-thickness:auto
+decoration-from-font text-decoration-thickness:from-font
+transition-discrete transition-behavior:allow-discrete
+transition-normal transition-behavior:normal
+will-change-auto will-change:auto
+will-change-scroll will-change:scroll-position
+will-change-contents will-change:contents
+will-change-transform will-change:transform
+content-none --tw-content:none;content:none
+contain-none contain:none
+contain-content contain:content
+contain-strict contain:strict
+forced-color-adjust-none forced-color-adjust:none
+forced-color-adjust-auto forced-color-adjust:auto
+antialiased -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale
+subpixel-antialiased -webkit-font-smoothing:auto;-moz-osx-font-smoothing:auto
+normal-nums font-variant-numeric:normal
+overflow-ellipsis text-overflow:ellipsis
+decoration-slice -webkit-box-decoration-break:slice;box-decoration-break:slice
+decoration-clone -webkit-box-decoration-break:clone;box-decoration-break:clone
+order-none order:0
+break-words overflow-wrap:break-word
+place-content-center place-content:center
+place-content-start place-content:start
+place-content-end place-content:end
+place-content-center-safe place-content:safe center
+place-content-end-safe place-content:safe end
+place-content-between place-content:space-between
+place-content-around place-content:space-around
+place-content-evenly place-content:space-evenly
+place-content-baseline place-content:baseline
+place-content-stretch place-content:stretch
+place-items-center place-items:center
+place-items-start place-items:start
+place-items-end place-items:end
+place-items-center-safe place-items:safe center
+place-items-end-safe place-items:safe end
+place-items-baseline place-items:baseline
+place-items-stretch place-items:stretch
+content-normal align-content:normal
+content-center align-content:center
+content-start align-content:flex-start
+content-end align-content:flex-end
+content-center-safe align-content:safe center
+content-end-safe align-content:safe flex-end
+content-between align-content:space-between
+content-around align-content:space-around
+content-evenly align-content:space-evenly
+content-baseline align-content:baseline
+content-stretch align-content:stretch
+items-center align-items:center
+items-start align-items:flex-start
+items-end align-items:flex-end
+items-center-safe align-items:safe center
+items-end-safe align-items:safe flex-end
+items-baseline align-items:baseline
+items-baseline-last align-items:last baseline
+items-stretch align-items:stretch
+justify-normal justify-content:normal
+justify-center justify-content:center
+justify-start justify-content:flex-start
+justify-end justify-content:flex-end
+justify-center-safe justify-content:safe center
+justify-end-safe justify-content:safe flex-end
+justify-between justify-content:space-between
+justify-around justify-content:space-around
+justify-evenly justify-content:space-evenly
+justify-baseline justify-content:baseline
+justify-stretch justify-content:stretch
+justify-items-normal justify-items:normal
+justify-items-center justify-items:center
+justify-items-start justify-items:start
+justify-items-end justify-items:end
+justify-items-center-safe justify-items:safe center
+justify-items-end-safe justify-items:safe end
+justify-items-stretch justify-items:stretch
+place-self-auto place-self:auto
+place-self-start place-self:start
+place-self-end place-self:end
+place-self-center place-self:center
+place-self-end-safe place-self:safe end
+place-self-center-safe place-self:safe center
+place-self-stretch place-self:stretch
+self-auto align-self:auto
+self-start align-self:flex-start
+self-end align-self:flex-end
+self-center align-self:center
+self-end-safe align-self:safe flex-end
+self-center-safe align-self:safe center
+self-stretch align-self:stretch
+self-baseline align-self:baseline
+self-baseline-last align-self:last baseline
+justify-self-auto justify-self:auto
+justify-self-start justify-self:flex-start
+justify-self-end justify-self:flex-end
+justify-self-center justify-self:center
+justify-self-end-safe justify-self:safe flex-end
+justify-self-center-safe justify-self:safe center
+justify-self-stretch justify-self:stretch
+`
+
+/** Utilities sort by the first of these properties they declare. */
 const PROPERTY_ORDER = new Map(
   `
   container-type pointer-events visibility position inset inset-inline inset-block inset-inline-start inset-inline-end
