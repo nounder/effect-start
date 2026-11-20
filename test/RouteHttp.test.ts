@@ -2236,7 +2236,7 @@ test.describe("stream response scope", () => {
     }).pipe(Effect.runPromise),
   )
 
-  test.it("keeps the returned stream alive until its body is cancelled", () =>
+  test.it("releases the returned stream when its request is aborted", () =>
     Effect.gen(function* () {
       let released = false
 
@@ -2267,11 +2267,8 @@ test.describe("stream response scope", () => {
       abort()
       yield* Effect.sleep("50 millis")
 
-      test.expect(released).toBe(false)
-
-      yield* Effect.promise(() => reader.cancel())
-
       test.expect(released).toBe(true)
+      test.expect((yield* Effect.promise(() => reader.read())).done).toBe(true)
     }).pipe(Effect.runPromise),
   )
 

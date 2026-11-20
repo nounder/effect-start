@@ -669,20 +669,20 @@ function statusBadgeColors(status: number): { bg: string; fg: string } {
 
 function SpanTitle(props: { span: Tracing.Span }) {
   const span = props.span
-  const isServer = span.name.startsWith("http.server")
-  const isClient = span.name.startsWith("http.client")
-  if (!isServer && !isClient) {
+  // Effect names HTTP spans by method alone, so the kind and the method attribute identify them.
+  const method = span.attributes["http.request.method"]
+  if (typeof method !== "string" || (span.kind !== "server" && span.kind !== "client")) {
     return <>{span.name}</>
   }
 
-  const target = span.attributes[isServer ? "url.path" : "url.full"]
+  const target = span.attributes[span.kind === "server" ? "url.path" : "url.full"]
   const status = span.attributes["http.response.status_code"]
   const contentType = span.attributes["http.response.header.content-type"]
   const colors = statusBadgeColors(typeof status === "number" ? status : 0)
 
   return (
     <>
-      {span.name}
+      {method}
       {typeof target === "string" && ` ${target}`}
       {status !== undefined && (
         <span
@@ -1099,7 +1099,7 @@ export function FiberDetail(props: {
                       href={`${props.prefix}/traces/${s.traceId}`}
                       style="color:#38bdf8;font-family:monospace;font-size:13px;text-decoration:none"
                     >
-                      {s.name}
+                      <SpanTitle span={s} />
                     </a>
                     <StatusBadge status={s.status} />
                     {formatSpanDuration(s) != null && (

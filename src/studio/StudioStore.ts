@@ -1,3 +1,4 @@
+import * as Array from "effect/Array"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import type * as PubSub from "effect/PubSub"
@@ -201,7 +202,7 @@ function encodeTelemetryId(id: string): string | bigint | Uint8Array {
 
 function decodeTelemetryId(id: string | bigint | Uint8Array): string {
   if (id instanceof Uint8Array) {
-    return Array.from(id, (byte) => byte.toString(16).padStart(2, "0")).join("")
+    return globalThis.Array.from(id, (byte) => byte.toString(16).padStart(2, "0")).join("")
   }
   return String(id)
 }
@@ -441,11 +442,11 @@ export function insertError(error: ErrorEntry) {
 }
 
 export function insertMetrics(snapshots: ReadonlyArray<MetricSnapshot>) {
-  if (snapshots.length === 0) return Effect.void
+  if (!Array.isReadonlyArrayNonEmpty(snapshots)) return Effect.void
   return withSql(
     (sql) =>
       sql`INSERT INTO MetricSample ${sql.insert(
-        snapshots.map((s) => ({
+        Array.map(snapshots, (s) => ({
           name: s.name,
           type: s.type,
           tags: canonicalTags(s.tags),

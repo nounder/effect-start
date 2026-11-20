@@ -99,13 +99,7 @@ test.it("persists every request span and exposes the complete trace in Studio's 
 
     test
       .expect(spans.map((span) => span.name))
-      .toEqual([
-        "http.server GET",
-        "widgets.route",
-        "widgets.load",
-        "widgets.decode",
-        "widgets.cache",
-      ])
+      .toEqual(["GET", "widgets.route", "widgets.load", "widgets.decode", "widgets.cache"])
 
     const root = spans[0]!
 
@@ -166,6 +160,7 @@ test.it("persists every request span and exposes the complete trace in Studio's 
     const rows = Array.from(page.querySelectorAll("#trace-detail .wf-row"))
 
     test.expect(rows).toHaveLength(spans.length)
+    test.expect(rows[0]?.querySelector(".wf-name")?.textContent).toContain("GET /widgets")
     test.expect(page.querySelectorAll("#trace-detail .wf-popover")).toHaveLength(spans.length)
     test.expect(page.getElementById(`wf-pop-${other.spanId}`)).toBeNull()
 

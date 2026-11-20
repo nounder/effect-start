@@ -29,20 +29,23 @@ const fileUrlOps = (windows: boolean | undefined) => ({
     }),
 })
 
-export const layerPosix: Layer.Layer<Path.Path> = Layer.succeed(Path.Path)({
-  [Path.TypeId]: Path.TypeId,
-  ...NodePath.posix,
-  ...fileUrlOps(false),
-})
+export const layerPosix: Layer.Layer<Path.Path> = Layer.succeed(Path.Path)(
+  Path.make({
+    ...NodePath.posix,
+    ...fileUrlOps(false),
+  }),
+)
 
-export const layerWin32: Layer.Layer<Path.Path> = Layer.succeed(Path.Path)({
-  [Path.TypeId]: Path.TypeId,
-  ...NodePath.win32,
-  ...fileUrlOps(true),
-})
+export const layerWin32: Layer.Layer<Path.Path> = Layer.succeed(Path.Path)(
+  Path.make({
+    ...NodePath.win32,
+    ...fileUrlOps(true),
+  }),
+)
 
-export const layer: Layer.Layer<Path.Path> = Layer.succeed(Path.Path)({
-  [Path.TypeId]: Path.TypeId,
-  ...NodePath,
-  ...fileUrlOps(undefined),
-})
+export const layer: Layer.Layer<Path.Path> = Layer.succeed(Path.Path)(
+  Path.make({
+    ...NodePath,
+    ...fileUrlOps(undefined),
+  }),
+)

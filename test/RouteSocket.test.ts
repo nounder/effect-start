@@ -637,19 +637,20 @@ test.describe("Route.ws", () => {
         const server = yield* HttpServer.HttpServer
         const url = `${httpUrl(server)}/ws`
         for (const accept of ["text/html", "application/json", "image/png"]) {
-          const response = yield* HttpClient.get(url, {
-            headers: { upgrade: "websocket", connection: "Upgrade", accept },
-          })
+          // Effect's fetch client refuses to send upgrade requests, so this goes through fetch itself.
+          const response = yield* Effect.promise(() =>
+            fetch(url, { headers: { upgrade: "websocket", connection: "Upgrade", accept } }),
+          )
 
           test.expect(response.status).toBe(401)
-          test.expect(response.headers["www-authenticate"]).toBe("Bearer")
-          test.expect(response.headers["content-type"]).toBe("text/plain")
-          test.expect(response.headers.vary).toBeUndefined()
-          test.expect(yield* response.text).toBe("Unauthorized")
+          test.expect(response.headers.get("www-authenticate")).toBe("Bearer")
+          test.expect(response.headers.get("content-type")).toBe("text/plain")
+          test.expect(response.headers.get("vary")).toBeNull()
+          test.expect(yield* Effect.promise(() => response.text())).toBe("Unauthorized")
         }
 
         test.expect(requests).toEqual([url, url, url])
-      }).pipe(Effect.provide(testLayer(routes)), Effect.provide(FetchHttpClient.layer))
+      }).pipe(Effect.provide(testLayer(routes)))
     }).pipe(Effect.scoped, runPromise),
   )
 

@@ -177,6 +177,7 @@ export const make = (
 
     return Object.assign(
       (yield* Client.make({
+        driver: "sqlite-bun",
         acquirer,
         compiler,
         transactionAcquirer,
