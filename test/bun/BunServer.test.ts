@@ -7,16 +7,21 @@ import * as Route from "effect-start/Route"
 import * as RouteHttp from "effect-start/RouteHttp"
 import * as Start from "effect-start/Start"
 import * as StaticRoute from "effect-start/StaticRoute"
+import * as ByteSize from "effect/ByteSize"
 import * as ConfigProvider from "effect/ConfigProvider"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
+import * as HttpIncomingMessage from "effect/http/HttpIncomingMessage"
+import * as HttpMiddleware from "effect/http/HttpMiddleware"
 import * as HttpRouter from "effect/http/HttpRouter"
 import * as HttpServer from "effect/http/HttpServer"
+import * as HttpServerRequest from "effect/http/HttpServerRequest"
 import * as HttpServerResponse from "effect/http/HttpServerResponse"
 import * as Layer from "effect/Layer"
 import * as NetAddress from "effect/net/NetAddress"
+import * as Option from "effect/Option"
 import * as Scope from "effect/Scope"
 import * as TestHttpClient from "../internal/TestHttpClient.ts"
 
@@ -590,3 +595,69 @@ test.it("serves normalized catch-alls through HttpRouter", () =>
     test.expect((yield* client.get(address + "/missing")).status).toBe(404)
   }).pipe(Effect.scoped, Effect.runPromise),
 )
+
+test.describe("BunServer request", () => {
+  test.it("resolves the client address behind a trusted proxy", () =>
+    Effect.gen(function* () {
+      const server = yield* BunServer.make({ hostname: "localhost", port: 0 })
+      yield* server.serve(
+        HttpMiddleware.xForwardedHeaders({ trustedProxies: () => true })(
+          Effect.map(HttpServerRequest.HttpServerRequest, (request) =>
+            HttpServerResponse.text(Option.getOrElse(request.remoteAddress, () => "none")),
+          ),
+        ),
+      )
+      const body = yield* Effect.promise(() =>
+        fetch(HttpServer.formatAddress(server.address), {
+          headers: { "x-forwarded-for": "198.51.100.7" },
+        }).then((response) => response.text()),
+      )
+
+      test.expect(body).toBe("198.51.100.7")
+    }).pipe(Effect.scoped, Effect.runPromise),
+  )
+
+  test.it("rejects a body over MaxBodySize", () =>
+    Effect.gen(function* () {
+      const server = yield* BunServer.make({ hostname: "localhost", port: 0 })
+      yield* server.serve(
+        HttpServerRequest.HttpServerRequest.pipe(
+          Effect.flatMap((request) => request.text),
+          Effect.map((text) => HttpServerResponse.text(String(text.length))),
+          Effect.provideService(HttpIncomingMessage.MaxBodySize, ByteSize.bytes(10)),
+        ),
+      )
+      const address = HttpServer.formatAddress(server.address)
+      const over = yield* Effect.promise(() =>
+        fetch(address, { method: "POST", body: "x".repeat(100) }),
+      )
+      const under = yield* Effect.promise(() =>
+        fetch(address, { method: "POST", body: "x".repeat(5) }),
+      )
+
+      test.expect(over.status).toBe(413)
+      test.expect(yield* Effect.promise(() => under.text())).toBe("5")
+    }).pipe(Effect.scoped, Effect.runPromise),
+  )
+
+  test.it("keeps a leading question mark in a form body", () =>
+    Effect.gen(function* () {
+      const server = yield* BunServer.make({ hostname: "localhost", port: 0 })
+      yield* server.serve(
+        HttpServerRequest.HttpServerRequest.pipe(
+          Effect.flatMap((request) => request.urlParamsBody),
+          Effect.map((params) => HttpServerResponse.text(JSON.stringify(params.params))),
+        ),
+      )
+      const body = yield* Effect.promise(() =>
+        fetch(HttpServer.formatAddress(server.address), {
+          method: "POST",
+          body: "?a=1",
+          headers: { "content-type": "application/x-www-form-urlencoded" },
+        }).then((response) => response.text()),
+      )
+
+      test.expect(body).toBe('[["?a","1"]]')
+    }).pipe(Effect.scoped, Effect.runPromise),
+  )
+})
