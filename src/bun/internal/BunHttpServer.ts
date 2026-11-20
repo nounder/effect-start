@@ -281,23 +281,34 @@ const makeResponse = (
         : new Response(body.body as any, fields)
     case "FormData":
       return new Response(body.formData as any, fields)
-    case "Stream":
-      return new Response(
-        Stream.toReadableStreamWith(
-          // Attach before transforming: startup can suspend. Register the request finalizer before the first pull.
-          Stream.fromChannel(
-            Channel.fromTransform((upstream, streamScope) =>
-              Effect.withFiber((fiber) => {
-                Fiber.runIn(fiber, scope)
-                return Channel.toTransform(body.stream.channel)(upstream, streamScope)
-              }),
-            ),
+    case "Stream": {
+      const reader = Stream.toReadableStreamWith(
+        // Attach before transforming: startup can suspend. Register the request finalizer before the first pull.
+        Stream.fromChannel(
+          Channel.fromTransform((upstream, streamScope) =>
+            Effect.withFiber((fiber) => {
+              Fiber.runIn(fiber, scope)
+              return Channel.toTransform(body.stream.channel)(upstream, streamScope)
+            }),
           ),
-          context,
-          { signal: request.source.signal },
         ),
+        context,
+        { signal: request.source.signal },
+      ).getReader()
+      return new Response(
+        new ReadableStream({
+          pull: (controller) =>
+            reader.read().then(
+              (next) => (next.done ? controller.close() : controller.enqueue(next.value)),
+              // On hot reload the request scope closes and Effect errors the body, which Bun would print.
+              // Bun stays silent for `undefined` and still resets the connection, so the client sees the cut.
+              (error) => controller.error(scope.state._tag === "Closed" ? undefined : error),
+            ),
+          cancel: (reason) => reader.cancel(reason),
+        }),
         fields,
       )
+    }
   }
 }
 

@@ -22,7 +22,9 @@ import * as HttpServerResponse from "effect/http/HttpServerResponse"
 import * as Layer from "effect/Layer"
 import * as NetAddress from "effect/net/NetAddress"
 import * as Option from "effect/Option"
+import * as Schedule from "effect/Schedule"
 import * as Scope from "effect/Scope"
+import * as Stream from "effect/Stream"
 import * as TestHttpClient from "../internal/TestHttpClient.ts"
 
 const staticDir = NPath.resolve(import.meta.dir, "../../static")
@@ -661,3 +663,46 @@ test.describe("BunServer request", () => {
     }).pipe(Effect.scoped, Effect.runPromise),
   )
 })
+
+test.it("resets a streamed response when its route scope closes under a newer handler", () =>
+  Effect.gen(function* () {
+    const ownerScope = yield* Effect.scope
+    const server = yield* BunServer.make({ hostname: "localhost", port: 0 })
+    const firstScope = yield* Scope.fork(ownerScope)
+    const secondScope = yield* Scope.fork(ownerScope)
+    const address = HttpServer.formatAddress(server.address)
+    const encoder = new TextEncoder()
+    let finalized = false
+
+    yield* server
+      .serve(
+        Effect.succeed(
+          HttpServerResponse.stream(
+            Stream.fromSchedule(Schedule.spaced("10 millis")).pipe(
+              Stream.map(() => encoder.encode("tick\n")),
+              Stream.ensuring(Effect.sync(() => void (finalized = true))),
+            ),
+          ),
+        ),
+      )
+      .pipe(Scope.provide(firstScope))
+    const response = yield* Effect.promise(() => fetch(address))
+    const reader = response.body!.getReader()
+    yield* Effect.promise(() => reader.read())
+
+    yield* serveText(server, secondScope, "second")
+    yield* Scope.close(firstScope, Exit.void)
+    const outcome = yield* Effect.promise(async () => {
+      try {
+        while (!(await reader.read()).done) {}
+        return "completed"
+      } catch {
+        return "reset"
+      }
+    })
+
+    test.expect(outcome).toBe("reset")
+    test.expect(finalized).toBe(true)
+    test.expect(yield* fetchText(address)).toBe("second")
+  }).pipe(Effect.scoped, Effect.runPromise),
+)
