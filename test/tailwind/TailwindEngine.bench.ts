@@ -1,7 +1,7 @@
 import { heapStats } from "bun:jsc"
+import * as NPath from "node:path"
 import { TailwindEngine } from "effect-start/tailwind"
 import * as TailwindPlugin from "effect-start/tailwind/TailwindPlugin"
-import * as NPath from "node:path"
 import * as TailwindCss from "tailwindcss"
 
 const root = NPath.resolve(import.meta.dir, "../..")
@@ -23,27 +23,39 @@ const tailwindCompile = () =>
   })
 
 const chatCandidates = new Set<string>()
-for await (const file of new Bun.Glob("examples/chat/src/**/*.{ts,tsx}").scan({ cwd: root, absolute: true })) {
-  for (const c of TailwindPlugin.extractClassNames(await Bun.file(file).text())) chatCandidates.add(c)
+for await (const file of new Bun.Glob("examples/chat/src/**/*.{ts,tsx}").scan({
+  cwd: root,
+  absolute: true,
+})) {
+  for (const c of TailwindPlugin.extractClassNames(await Bun.file(file).text()))
+    chatCandidates.add(c)
 }
 
-const designSystem = await TailwindCss.__unstable__loadDesignSystem(
-  css,
-  {
-    base: root,
-    loadStylesheet: async (id: string, base: string) => ({
-      path: id,
-      base,
-      content: stylesheets.get(id === "tailwindcss" ? "index.css" : id.replace("tailwindcss/", ""))!,
-    }),
-  } as Parameters<typeof TailwindCss.__unstable__loadDesignSystem>[1],
-)
+const designSystem = await TailwindCss.__unstable__loadDesignSystem(css, {
+  base: root,
+  loadStylesheet: async (id: string, base: string) => ({
+    path: id,
+    base,
+    content: stylesheets.get(id === "tailwindcss" ? "index.css" : id.replace("tailwindcss/", ""))!,
+  }),
+} as Parameters<typeof TailwindCss.__unstable__loadDesignSystem>[1])
 const classList = designSystem.getClassList().map(([name]) => name)
-const variants = ["hover", "focus", "md", "lg", "dark", "group-hover", "data-[state=open]", "has-checked", "not-first"]
+const variants = [
+  "hover",
+  "focus",
+  "md",
+  "lg",
+  "dark",
+  "group-hover",
+  "data-[state=open]",
+  "has-checked",
+  "not-first",
+]
 
 let seed = 1
 const random = () => (seed = (seed * 16807) % 2147483647) / 2147483647
-const sample = (n: number) => Array.from({ length: n }, () => classList[Math.floor(random() * classList.length)])
+const sample = (n: number) =>
+  Array.from({ length: n }, () => classList[Math.floor(random() * classList.length)])
 const withVariants = (list: Array<string>) =>
   list.map((c, i) => (i % 3 === 0 ? `${variants[i % variants.length]}:${c}` : c))
 const typical = withVariants(sample(1500))
@@ -60,7 +72,11 @@ function median(times: Array<number>): number {
   return times[Math.floor(times.length / 2)]
 }
 
-async function measure(fn: () => unknown | Promise<unknown>, minTime = 1000, minRuns = 5): Promise<number> {
+async function measure(
+  fn: () => unknown | Promise<unknown>,
+  minTime = 1000,
+  minRuns = 5,
+): Promise<number> {
   for (let i = 0; i < 3; i++) await fn()
   const times: Array<number> = []
   const start = performance.now()
@@ -73,7 +89,11 @@ async function measure(fn: () => unknown | Promise<unknown>, minTime = 1000, min
   return median(times)
 }
 
-const normalize = (css: string) => css.replace(/^\/\*! tailwindcss [^\n]+\n/, "").replace(/\s+/g, " ").trim()
+const normalize = (css: string) =>
+  css
+    .replace(/^\/\*! tailwindcss [^\n]+\n/, "")
+    .replace(/\s+/g, " ")
+    .trim()
 
 async function measureEdit(candidates: Array<string>): Promise<[number, number]> {
   const edited = [...candidates, "w-[98765px]"]
@@ -83,7 +103,8 @@ async function measureEdit(candidates: Array<string>): Promise<[number, number]>
     const tw = await tailwindCompile()
     const ours = TailwindEngine.make()
     const baseline = tw.build(candidates)
-    if (normalize(baseline) !== normalize(ours.generate(candidates))) throw new Error("baseline CSS differs")
+    if (normalize(baseline) !== normalize(ours.generate(candidates)))
+      throw new Error("baseline CSS differs")
 
     const start = performance.now()
     const expected = tw.build(edited)
@@ -91,7 +112,8 @@ async function measureEdit(candidates: Array<string>): Promise<[number, number]>
     const actual = ours.generate(edited)
     const end = performance.now()
 
-    if (baseline === expected || normalize(expected) !== normalize(actual)) throw new Error("edited CSS differs")
+    if (baseline === expected || normalize(expected) !== normalize(actual))
+      throw new Error("edited CSS differs")
     if (trial >= 2) {
       upstream.push(middle - start)
       vendored.push(end - middle)
@@ -104,9 +126,9 @@ const format = (ms: number) => (ms < 1 ? `${(ms * 1000).toFixed(0)} µs` : `${ms
 
 async function importTime(specifier: string): Promise<number> {
   const runs: Array<number> = []
-  const script = `const t = performance.now(); await import(${
-    JSON.stringify(specifier)
-  }); console.log(performance.now() - t)`
+  const script = `const t = performance.now(); await import(${JSON.stringify(
+    specifier,
+  )}); console.log(performance.now() - t)`
   for (let attempt = 0; runs.length < 7 && attempt < 20; attempt++) {
     const proc = Bun.spawn(["bun", "-e", script], { cwd: root, stdout: "pipe", stderr: "ignore" })
     const ms = Number((await new Response(proc.stdout).text()).trim())
@@ -134,7 +156,8 @@ row(
 for (const [name, candidates] of corpora) {
   const tw = await tailwindCompile()
   const ours = TailwindEngine.make()
-  if (tw.build(candidates).length === 0 || ours.generate(candidates).length === 0) throw new Error("empty output")
+  if (tw.build(candidates).length === 0 || ours.generate(candidates).length === 0)
+    throw new Error("empty output")
 
   row(
     `${name}: setup + generate (cold)`,
@@ -146,7 +169,7 @@ for (const [name, candidates] of corpora) {
     await measure(() => tw.build(candidates)),
     await measure(() => ours.generate(candidates)),
   )
-  row(`${name}: rebuild, one new candidate`, ...await measureEdit(candidates))
+  row(`${name}: rebuild, one new candidate`, ...(await measureEdit(candidates)))
 }
 
 const log = (text: string) => process.stdout.write(`${text}\n`)
@@ -160,7 +183,10 @@ const header: [string, string, string, string, string] = [
 ]
 const widths = header.map((_, i) => Math.max(...[header, ...rows].map((r) => r[i].length)))
 const line = (r: Array<string>) =>
-  r.slice(0, 4).map((c, i) => (i === 0 ? c.padEnd(widths[i]) : c.padStart(widths[i]))).join("  ")
+  r
+    .slice(0, 4)
+    .map((c, i) => (i === 0 ? c.padEnd(widths[i]) : c.padStart(widths[i])))
+    .join("  ")
 log(
   `tailwindcss ${(await Bun.file(NPath.join(tailwindDir, "package.json")).json()).version}, Bun ${Bun.version}\n`,
 )
@@ -183,7 +209,8 @@ watchEngine.generate(chatCandidates)
 Bun.gc(true)
 const retained = heapStats().heapSize - initialHeap
 log(
-  `Watch mode (200 replacements of one rule and 256 rejected tokens): ${format(median(times))} median, `
-    + `${(retained / 1024 / 1024).toFixed(2)} MiB heap change`,
+  `Watch mode (200 replacements of one rule and 256 rejected tokens): ${format(median(times))} median, ` +
+    `${(retained / 1024 / 1024).toFixed(2)} MiB heap change`,
 )
-if (watchEngine.generate(chatCandidates) !== baseline) throw new Error("removed rules survived watch edits")
+if (watchEngine.generate(chatCandidates) !== baseline)
+  throw new Error("removed rules survived watch edits")

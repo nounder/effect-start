@@ -440,10 +440,10 @@ test.describe("Effect body", () => {
       readonly reason: string
     }> {}
 
-    const entity = Entity.make(Effect.fail(new CustomError({ reason: "test" })))
+    const _entity = Entity.make(Effect.fail(new CustomError({ reason: "test" })))
 
     test
-      .expectTypeOf<CustomError extends Effect.Error<typeof entity.text> ? true : false>()
+      .expectTypeOf<CustomError extends Effect.Error<typeof _entity.text> ? true : false>()
       .toEqualTypeOf<true>()
   })
 
@@ -586,15 +586,15 @@ test.describe("type inference", () => {
   })
 
   test.it("text returns string for string body", () => {
-    const entity = Entity.make("hello")
+    const _entity = Entity.make("hello")
 
-    test.expectTypeOf<Effect.Success<typeof entity.text>>().toEqualTypeOf<string>()
+    test.expectTypeOf<Effect.Success<typeof _entity.text>>().toEqualTypeOf<string>()
   })
 
   test.it("json returns T for object body", () => {
-    const entity = Entity.make({ key: "value" })
+    const _entity = Entity.make({ key: "value" })
 
-    test.expectTypeOf<Effect.Success<typeof entity.json>>().toEqualTypeOf<{ key: string }>()
+    test.expectTypeOf<Effect.Success<typeof _entity.json>>().toEqualTypeOf<{ key: string }>()
   })
 
   test.it("schemaJson returns the schema output type", () => {
@@ -608,15 +608,15 @@ test.describe("type inference", () => {
   })
 
   test.it("bytes returns Uint8Array for string body", () => {
-    const entity = Entity.make("hello")
+    const _entity = Entity.make("hello")
 
-    test.expectTypeOf<Effect.Success<typeof entity.bytes>>().toEqualTypeOf<Uint8Array>()
+    test.expectTypeOf<Effect.Success<typeof _entity.bytes>>().toEqualTypeOf<Uint8Array>()
   })
 
   test.it("stream returns Stream for string body", () => {
-    const entity = Entity.make("hello")
+    const _entity = Entity.make("hello")
 
-    test.expectTypeOf<Stream.Success<typeof entity.stream>>().toEqualTypeOf<Uint8Array>()
+    test.expectTypeOf<Stream.Success<typeof _entity.stream>>().toEqualTypeOf<Uint8Array>()
   })
 })
 

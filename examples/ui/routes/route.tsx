@@ -2105,7 +2105,7 @@ export default Route.get(
             type Check = { name: string; passed: boolean; detail?: string }
             type Result = {
               id: string
-              checks: Check[]
+              checks: Array<Check>
               duration: number
             }
             type Context = {
@@ -3189,7 +3189,7 @@ export default Route.get(
               const notificationText = notifications.textContent
               const notificationClass = notifications.className
               const existingToasts = new Set(document.querySelectorAll("[data-slot=Toast]"))
-              const runtimeErrors: string[] = []
+              const runtimeErrors: Array<string> = []
               const onError = (event: ErrorEvent) => runtimeErrors.push(event.message)
               const onRejection = (event: PromiseRejectionEvent) =>
                 runtimeErrors.push(String(event.reason))
@@ -3280,7 +3280,7 @@ export default Route.get(
                 ? Array.from(document.querySelectorAll<HTMLElement>("[data-doc-section]"))
                 : [button.closest<HTMLElement>("[data-doc-section]")!]
               const start = performance.now()
-              const results: Result[] = []
+              const results: Array<Result> = []
               button.textContent = "Testing…"
               try {
                 for (const section of sections) {

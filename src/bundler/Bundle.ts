@@ -2,17 +2,16 @@ import * as Context from "effect/Context"
 import * as Data from "effect/Data"
 import type * as Effect from "effect/Effect"
 import type * as PubSub from "effect/PubSub"
-import * as Schema from "effect/Schema"
 
-const BundleEventChange = Schema.TaggedStruct("BundleEventChange", {
-  path: Schema.String,
-})
-
-const BundleEventBuildError = Schema.TaggedStruct("BundleEventBuildError", {
-  error: Schema.String,
-})
-
-const BundleEvent = Schema.Union([BundleEventChange, BundleEventBuildError])
+type BundleEvent =
+  | {
+      readonly _tag: "BundleEventChange"
+      readonly path: string
+    }
+  | {
+      readonly _tag: "BundleEventBuildError"
+      readonly error: string
+    }
 
 const IdPrefix = "effect-start/tags/"
 
@@ -28,7 +27,7 @@ export type BundleContext = {
   resolve: (url: string, parent?: string) => string | undefined
   getArtifact: (path: string) => Blob | undefined
   rebuild?: () => Effect.Effect<BundleContext, BundleError>
-  events?: PubSub.PubSub<typeof BundleEvent.Encoded>
+  events?: PubSub.PubSub<BundleEvent>
 }
 
 export class BundleError extends Data.TaggedError("BundleError")<{

@@ -26,9 +26,9 @@ test.describe(Start.build, () => {
   })
 
   test.test("type signature: surfaces unsatisfied dependencies on R", () => {
-    const AppLayer = Start.build(UserRepoLive, DatabaseLive, LoggerLive)
+    const _AppLayer = Start.build(UserRepoLive, DatabaseLive, LoggerLive)
 
-    test.expectTypeOf<Layer.Services<typeof AppLayer>>().toEqualTypeOf<ExternalApi>()
+    test.expectTypeOf<Layer.Services<typeof _AppLayer>>().toEqualTypeOf<ExternalApi>()
   })
 
   test.test("smoke: produces a working layer", () => {
@@ -116,9 +116,9 @@ test.describe(Start.pack, () => {
     const ExternalApiLive = Layer.succeed(ExternalApi, {
       call: () => Effect.void,
     })
-    const AppLayer = Start.pack(LoggerLive, DatabaseLive, UserRepoLive, ExternalApiLive)
+    const _AppLayer = Start.pack(LoggerLive, DatabaseLive, UserRepoLive, ExternalApiLive)
 
-    test.expectTypeOf<Layer.Services<typeof AppLayer>>().toEqualTypeOf<never>()
+    test.expectTypeOf<Layer.Services<typeof _AppLayer>>().toEqualTypeOf<never>()
   })
 
   test.test("type signature: a layer with partial satisfaction is still flagged", () => {

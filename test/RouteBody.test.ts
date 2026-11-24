@@ -238,14 +238,14 @@ test.describe(`${RouteBody.normalize.name}()`, () => {
   test.it("Route.text infers error type from yielded effects", () => {
     class MyError extends Data.TaggedError("MyError")<{}> {}
 
-    const routes = Route.get(
+    const _routes = Route.get(
       Route.text(function* () {
         yield* Effect.fail(new MyError())
         return "error occurred"
       }),
     )
 
-    type Items = typeof routes extends Route.RouteSet<any, any, infer I> ? I : never
+    type Items = typeof _routes extends Route.RouteSet<any, any, infer I> ? I : never
 
     test
       .expectTypeOf<Items[0]>()

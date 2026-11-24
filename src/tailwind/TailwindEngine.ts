@@ -1,7 +1,9 @@
 /**
- * Port of Tailwind CSS v4.1 utilities and variants. Output is nested CSS; lowering is left to the bundler.
+ * Port of Tailwind CSS v4.1 utilities and variants. Output is nested CSS; lowering is left to the
+ * bundler.
  *
  * Copyright (c) Tailwind Labs, Inc. MIT License.
+ *
  * @see https://github.com/tailwindlabs/tailwindcss/tree/main/packages/tailwindcss/src
  */
 import * as DefaultTheme from "./internal/DefaultTheme.ts"
@@ -11,7 +13,7 @@ export interface Options {
   readonly variables?: Readonly<Record<string, string>>
   /** Emitted only when an `--animate-*` variable referencing them is used. */
   readonly keyframes?: Readonly<Record<string, string>>
-  /** eg. `{ dark: "&:where(.dark, .dark *)" }`. An array lists alternatives. */
+  /** Eg. `{ dark: "&:where(.dark, .dark *)" }`. An array lists alternatives. */
   readonly variants?: Readonly<Record<string, string | ReadonlyArray<string>>>
   readonly preflight?: boolean
 }
@@ -50,7 +52,9 @@ export function make(options: Options = {}): TailwindEngine {
   }
 }
 
-function memoize(fn: (candidates: Set<string>) => string): (candidates: Iterable<string>) => string {
+function memoize(
+  fn: (candidates: Set<string>) => string,
+): (candidates: Iterable<string>) => string {
   let previous: Array<string> = []
   let lastSet: Set<string> | undefined
   let result = ""
@@ -83,7 +87,8 @@ class Theme {
 
   add(name: string, value: string, flags: number) {
     if (name.endsWith("-*")) {
-      if (value !== "initial") throw new Error(`Invalid theme value \`${value}\` for namespace \`${name}\``)
+      if (value !== "initial")
+        throw new Error(`Invalid theme value \`${value}\` for namespace \`${name}\``)
       if (name === "--*") this.values.clear()
       else this.#clearNamespace(name.slice(0, -2))
     }
@@ -163,7 +168,9 @@ class Theme {
 
 /** Theme keys that share a namespace prefix but belong to another namespace. */
 const pairs = (text: string) =>
-  text.split(";").map((pair) => [pair.slice(0, pair.indexOf(" ")), pair.slice(pair.indexOf(" ") + 1)] as const)
+  text
+    .split(";")
+    .map((pair) => [pair.slice(0, pair.indexOf(" ")), pair.slice(pair.indexOf(" ") + 1)] as const)
 
 /** `namespace ignored-key ignored-key` */
 const IGNORED_THEME_KEYS = new Map(
@@ -176,7 +183,10 @@ const IGNORED_THEME_KEYS = new Map(
 `
     .trim()
     .split("\n")
-    .map((line) => [line.slice(0, line.indexOf(" ")), line.slice(line.indexOf(" ") + 1).split(" ")]),
+    .map((line) => [
+      line.slice(0, line.indexOf(" ")),
+      line.slice(line.indexOf(" ") + 1).split(" "),
+    ]),
 )
 
 function isIgnoredThemeKey(key: string, ns: string): boolean {
@@ -243,17 +253,17 @@ interface CandidateBase {
 type Candidate =
   | (CandidateBase & { kind: "static"; root: string })
   | (CandidateBase & {
-    kind: "functional"
-    root: string
-    value: NamedValue | ArbitraryValue | null
-    modifier: Modifier | null
-  })
+      kind: "functional"
+      root: string
+      value: NamedValue | ArbitraryValue | null
+      modifier: Modifier | null
+    })
   | (CandidateBase & {
-    kind: "arbitrary"
-    property: string
-    value: string
-    modifier: Modifier | null
-  })
+      kind: "arbitrary"
+      property: string
+      value: string
+      modifier: Modifier | null
+    })
 
 type FunctionalCandidate = Extract<Candidate, { kind: "functional" }>
 
@@ -261,11 +271,11 @@ type Variant =
   | { kind: "arbitrary"; selector: string; relative: boolean }
   | { kind: "static"; root: string }
   | {
-    kind: "functional"
-    root: string
-    value: { kind: "named" | "arbitrary"; value: string } | null
-    modifier: Modifier | null
-  }
+      kind: "functional"
+      root: string
+      value: { kind: "named" | "arbitrary"; value: string } | null
+      modifier: Modifier | null
+    }
   | { kind: "compound"; root: string; variant: Variant; modifier: Modifier | null }
 
 type UtilityResult = Array<Node> | undefined | null
@@ -402,9 +412,9 @@ class DesignSystem {
     }
 
     if (universal.length === 0) return css
-    return `@layer properties;\n${css}@layer properties {\n  @supports ${PROPERTIES_SUPPORTS} {\n    *, ::before, ::after, ::backdrop {\n${
-      universal.join("")
-    }    }\n  }\n}\n`
+    return `@layer properties;\n${css}@layer properties {\n  @supports ${PROPERTIES_SUPPORTS} {\n    *, ::before, ::after, ::backdrop {\n${universal.join(
+      "",
+    )}    }\n  }\n}\n`
   }
 
   #themeLayer(used: Set<string>): string {
@@ -498,9 +508,10 @@ function isValidArbitrary(input: string): boolean {
   return true
 }
 
-const MATH_FUNCTIONS = "calc min max clamp mod rem sin cos tan asin acos atan atan2 pow sqrt hypot log exp round".split(
-  " ",
-)
+const MATH_FUNCTIONS =
+  "calc min max clamp mod rem sin cos tan asin acos atan atan2 pow sqrt hypot log exp round".split(
+    " ",
+  )
 
 function hasMathFn(value: string): boolean {
   return value.includes("(") && MATH_FUNCTIONS.some((fn) => value.includes(`${fn}(`))
@@ -575,7 +586,10 @@ function addMathSpaces(input: string): string {
   let lastValuePos: number | null = null
   for (let i = 0; i < input.length; i++) {
     const c = input.charCodeAt(i)
-    if ((c >= 48 && c <= 57) || (valuePos !== null && (c === 37 || (c >= 97 && c <= 122) || (c >= 65 && c <= 90)))) {
+    if (
+      (c >= 48 && c <= 57) ||
+      (valuePos !== null && (c === 37 || (c >= 97 && c <= 122) || (c >= 65 && c <= 90)))
+    ) {
       valuePos = i
     } else {
       lastValuePos = valuePos
@@ -633,7 +647,9 @@ const NAMED_VALUE = /^[a-zA-Z0-9_.%-]+$/
 function parseModifier(raw: string): Modifier | null {
   if (raw[0] === "[" && raw[raw.length - 1] === "]") {
     const value = decodeArbitraryValue(raw.slice(1, -1))
-    return !isValidArbitrary(value) || value.trim().length === 0 ? null : { kind: "arbitrary", value }
+    return !isValidArbitrary(value) || value.trim().length === 0
+      ? null
+      : { kind: "arbitrary", value }
   }
   if (raw[0] === "(" && raw[raw.length - 1] === ")") {
     const inner = raw.slice(1, -1)
@@ -643,7 +659,10 @@ function parseModifier(raw: string): Modifier | null {
   return NAMED_VALUE.test(raw) ? { kind: "named", value: raw } : null
 }
 
-function* findRoots(input: string, exists: (root: string) => boolean): IterableIterator<[string, string | null]> {
+function* findRoots(
+  input: string,
+  exists: (root: string) => boolean,
+): IterableIterator<[string, string | null]> {
   if (exists(input)) yield [input, null]
   let idx = input.lastIndexOf("-")
   while (idx > 0) {
@@ -693,7 +712,15 @@ function parseCandidate(raw: string, design: DesignSystem): Array<Candidate> {
     if (colon <= 0 || colon === inner.length - 1) return result
     const value = decodeArbitraryValue(inner.slice(colon + 1))
     if (!isValidArbitrary(value)) return result
-    result.push({ kind: "arbitrary", property: inner.slice(0, colon), value, modifier, variants, important, raw })
+    result.push({
+      kind: "arbitrary",
+      property: inner.slice(0, colon),
+      value,
+      modifier,
+      variants,
+      important,
+      raw,
+    })
     return result
   }
 
@@ -755,7 +782,10 @@ function parseCandidate(raw: string, design: DesignSystem): Array<Candidate> {
       candidate.value = { kind: "arbitrary", dataType, value }
     } else {
       if (!NAMED_VALUE.test(valuePart)) continue
-      const fraction = modifierPart === null || modifier?.kind === "arbitrary" ? null : `${valuePart}/${modifierPart}`
+      const fraction =
+        modifierPart === null || modifier?.kind === "arbitrary"
+          ? null
+          : `${valuePart}/${modifierPart}`
       candidate.value = { kind: "named", value: valuePart, fraction }
     }
     result.push(candidate)
@@ -794,8 +824,14 @@ function parseVariant(raw: string, design: DesignSystem): Variant | null {
         if (value[value.length - 1] === ")") {
           if (value[0] !== "(") continue
           const v = decodeArbitraryValue(value.slice(1, -1))
-          if (!isValidArbitrary(v) || v.trim().length === 0 || v[0] !== "-" || v[1] !== "-") return null
-          return { kind: "functional", root, modifier, value: { kind: "arbitrary", value: `var(${v})` } }
+          if (!isValidArbitrary(v) || v.trim().length === 0 || v[0] !== "-" || v[1] !== "-")
+            return null
+          return {
+            kind: "functional",
+            root,
+            modifier,
+            value: { kind: "arbitrary", value: `var(${v})` },
+          }
         }
         if (!NAMED_VALUE.test(value)) continue
         return { kind: "functional", root, modifier, value: { kind: "named", value } }
@@ -979,7 +1015,13 @@ function collectVariables(text: string, into: Set<string>) {
 }
 
 const isNameChar = (c: number) =>
-  (c >= 97 && c <= 122) || (c >= 65 && c <= 90) || (c >= 48 && c <= 57) || c === 95 || c === 45 || c === 46 || c === 92
+  (c >= 97 && c <= 122) ||
+  (c >= 65 && c <= 90) ||
+  (c >= 48 && c <= 57) ||
+  c === 95 ||
+  c === 45 ||
+  c === 46 ||
+  c === 92
 
 const INDENTS = Array.from({ length: 16 }, (_, i) => "  ".repeat(i))
 
@@ -990,7 +1032,9 @@ function printNode(node: Node, depth: number, ctx: PrintContext): string {
       if (node.value === undefined || node.property === "--tw-sort") return ""
       collectVariables(node.value, ctx.variables)
       const important = node.important ? " !important" : ""
-      const fallback = node.value.includes("color-mix(") ? colorMixFallback(node.value, ctx.theme) : null
+      const fallback = node.value.includes("color-mix(")
+        ? colorMixFallback(node.value, ctx.theme)
+        : null
       if (fallback === null) return `${indent}${node.property}: ${node.value}${important};\n`
       return `${indent}${node.property}: ${fallback}${important};\n${indent}@supports (color: color-mix(in lab, red, red)) {\n${
         INDENTS[depth + 1] ?? "  ".repeat(depth + 1)
@@ -1020,7 +1064,8 @@ function printBody(children: ReadonlyArray<Node>, depth: number, ctx: PrintConte
           other.property === child.property &&
           other.value === child.value &&
           other.important === child.important
-        ) continue outer
+        )
+          continue outer
       }
     }
     body += printNode(child, depth, ctx)
@@ -1040,36 +1085,38 @@ function colorMixFallback(value: string, theme: Theme): string | null {
       out += input.slice(last, idx)
       let failed = false
       let current = false
-      const inner = input.slice(open + 1, close).replace(
-        /var\((--[\w-]+)[^()]*(?:\([^()]*\)[^()]*)*\)|\bcurrentcolor\b/gi,
-        (match, name) => {
-          touched = true
-          if (name === undefined) {
-            current = true
-            return match
-          }
-          let resolved: string | null = name
-          const seen = new Set<string>()
-          while (resolved !== null && resolved.startsWith("--")) {
-            if (seen.has(resolved)) {
-              resolved = null
-              break
-            }
-            seen.add(resolved)
-            const v = theme.get([resolved])
-            if (v === null) resolved = null
-            else if (v.toLowerCase() === "currentcolor") {
+      const inner = input
+        .slice(open + 1, close)
+        .replace(
+          /var\((--[\w-]+)[^()]*(?:\([^()]*\)[^()]*)*\)|\bcurrentcolor\b/gi,
+          (match, name) => {
+            touched = true
+            if (name === undefined) {
               current = true
               return match
-            } else resolved = /^var\((--[\w-]+)\)$/.exec(v)?.[1] ?? v
-          }
-          if (resolved === null) {
-            failed = true
-            return match
-          }
-          return resolved
-        },
-      )
+            }
+            let resolved: string | null = name
+            const seen = new Set<string>()
+            while (resolved !== null && resolved.startsWith("--")) {
+              if (seen.has(resolved)) {
+                resolved = null
+                break
+              }
+              seen.add(resolved)
+              const v = theme.get([resolved])
+              if (v === null) resolved = null
+              else if (v.toLowerCase() === "currentcolor") {
+                current = true
+                return match
+              } else resolved = /^var\((--[\w-]+)\)$/.exec(v)?.[1] ?? v
+            }
+            if (resolved === null) {
+              failed = true
+              return match
+            }
+            return resolved
+          },
+        )
       if (failed || current) {
         const args = segment(inner, ",")
         out += args.length > 1 ? process(segment(args[1].trim(), " ")[0]) : `color-mix(${inner})`
@@ -1105,7 +1152,11 @@ function applyModifier(color: string, modifier: Modifier | null, theme: Theme): 
   return isMultipleOf(modifier.value, 0.25) ? withAlpha(color, `${modifier.value}%`) : null
 }
 
-function resolveColor(candidate: FunctionalCandidate, theme: Theme, keys: ReadonlyArray<string>): string | null {
+function resolveColor(
+  candidate: FunctionalCandidate,
+  theme: Theme,
+  keys: ReadonlyArray<string>,
+): string | null {
   const value = candidate.value as NamedValue
   let color: string | null
   switch (value.value) {
@@ -1152,8 +1203,9 @@ const IS_ANGLE = new RegExp(`^${NUMBER}(deg|rad|grad|turn)$`)
 const IS_VECTOR = new RegExp(`^${NUMBER} +${NUMBER} +${NUMBER}$`)
 const IS_COLOR_FN = /^(rgba?|hsla?|hwb|color|(ok)?(lab|lch)|light-dark|color-mix)\(/i
 const NAMED_COLORS = new Set(
-  "black silver gray white maroon red purple fuchsia green lime olive yellow navy blue teal aqua aliceblue antiquewhite aquamarine azure beige bisque blanchedalmond blueviolet brown burlywood cadetblue chartreuse chocolate coral cornflowerblue cornsilk crimson cyan darkblue darkcyan darkgoldenrod darkgray darkgreen darkgrey darkkhaki darkmagenta darkolivegreen darkorange darkorchid darkred darksalmon darkseagreen darkslateblue darkslategray darkslategrey darkturquoise darkviolet deeppink deepskyblue dimgray dimgrey dodgerblue firebrick floralwhite forestgreen gainsboro ghostwhite gold goldenrod greenyellow grey honeydew hotpink indianred indigo ivory khaki lavender lavenderblush lawngreen lemonchiffon lightblue lightcoral lightcyan lightgoldenrodyellow lightgray lightgreen lightgrey lightpink lightsalmon lightseagreen lightskyblue lightslategray lightslategrey lightsteelblue lightyellow limegreen linen magenta mediumaquamarine mediumblue mediumorchid mediumpurple mediumseagreen mediumslateblue mediumspringgreen mediumturquoise mediumvioletred midnightblue mintcream mistyrose moccasin navajowhite oldlace olivedrab orange orangered orchid palegoldenrod palegreen paleturquoise palevioletred papayawhip peachpuff peru pink plum powderblue rebeccapurple rosybrown royalblue saddlebrown salmon sandybrown seagreen seashell sienna skyblue slateblue slategray slategrey snow springgreen steelblue tan thistle tomato turquoise violet wheat whitesmoke yellowgreen transparent currentcolor canvas canvastext linktext visitedtext activetext buttonface buttontext buttonborder field fieldtext highlight highlighttext selecteditem selecteditemtext mark marktext graytext accentcolor accentcolortext"
-    .split(" "),
+  "black silver gray white maroon red purple fuchsia green lime olive yellow navy blue teal aqua aliceblue antiquewhite aquamarine azure beige bisque blanchedalmond blueviolet brown burlywood cadetblue chartreuse chocolate coral cornflowerblue cornsilk crimson cyan darkblue darkcyan darkgoldenrod darkgray darkgreen darkgrey darkkhaki darkmagenta darkolivegreen darkorange darkorchid darkred darksalmon darkseagreen darkslateblue darkslategray darkslategrey darkturquoise darkviolet deeppink deepskyblue dimgray dimgrey dodgerblue firebrick floralwhite forestgreen gainsboro ghostwhite gold goldenrod greenyellow grey honeydew hotpink indianred indigo ivory khaki lavender lavenderblush lawngreen lemonchiffon lightblue lightcoral lightcyan lightgoldenrodyellow lightgray lightgreen lightgrey lightpink lightsalmon lightseagreen lightskyblue lightslategray lightslategrey lightsteelblue lightyellow limegreen linen magenta mediumaquamarine mediumblue mediumorchid mediumpurple mediumseagreen mediumslateblue mediumspringgreen mediumturquoise mediumvioletred midnightblue mintcream mistyrose moccasin navajowhite oldlace olivedrab orange orangered orchid palegoldenrod palegreen paleturquoise palevioletred papayawhip peachpuff peru pink plum powderblue rebeccapurple rosybrown royalblue saddlebrown salmon sandybrown seagreen seashell sienna skyblue slateblue slategray slategrey snow springgreen steelblue tan thistle tomato turquoise violet wheat whitesmoke yellowgreen transparent currentcolor canvas canvastext linktext visitedtext activetext buttonface buttontext buttonborder field fieldtext highlight highlighttext selecteditem selecteditemtext mark marktext graytext accentcolor accentcolortext".split(
+    " ",
+  ),
 )
 
 const isLength = (v: string) => IS_LENGTH.test(v) || hasMathFn(v)
@@ -1161,8 +1213,9 @@ const isPercentage = (v: string) => IS_PERCENTAGE.test(v) || hasMathFn(v)
 const isNumber = (v: string) => IS_NUMBER.test(v) || hasMathFn(v)
 
 const GENERIC_FONT_NAMES = new Set(
-  "serif sans-serif monospace cursive fantasy system-ui ui-serif ui-sans-serif ui-monospace ui-rounded math emoji fangsong"
-    .split(" "),
+  "serif sans-serif monospace cursive fantasy system-ui ui-serif ui-sans-serif ui-monospace ui-rounded math emoji fangsong".split(
+    " ",
+  ),
 )
 
 const DATA_TYPES: Record<string, (value: string) => boolean> = {
@@ -1176,7 +1229,13 @@ const DATA_TYPES: Record<string, (value: string) => boolean> = {
   position: (v) => {
     let count = 0
     for (const part of segment(v, " ")) {
-      if (part === "center" || part === "top" || part === "right" || part === "bottom" || part === "left") {
+      if (
+        part === "center" ||
+        part === "top" ||
+        part === "right" ||
+        part === "bottom" ||
+        part === "left"
+      ) {
         count++
         continue
       }
@@ -1203,7 +1262,9 @@ const DATA_TYPES: Record<string, (value: string) => boolean> = {
     return count > 0
   },
   "line-width": (v) =>
-    segment(v, " ").every((x) => isLength(x) || isNumber(x) || x === "thin" || x === "medium" || x === "thick"),
+    segment(v, " ").every(
+      (x) => isLength(x) || isNumber(x) || x === "thin" || x === "medium" || x === "thick",
+    ),
   image: (v) => {
     let count = 0
     for (const part of segment(v, ",")) {
@@ -1231,7 +1292,16 @@ const DATA_TYPES: Record<string, (value: string) => boolean> = {
   },
   "generic-name": (v) => GENERIC_FONT_NAMES.has(v),
   "absolute-size": (v) =>
-    ["xx-small", "x-small", "small", "medium", "large", "x-large", "xx-large", "xxx-large"].includes(v),
+    [
+      "xx-small",
+      "x-small",
+      "small",
+      "medium",
+      "large",
+      "x-large",
+      "xx-large",
+      "xxx-large",
+    ].includes(v),
   "relative-size": (v) => v === "larger" || v === "smaller",
   angle: (v) => IS_ANGLE.test(v),
   vector: (v) => IS_VECTOR.test(v),
@@ -1279,7 +1349,12 @@ function shadowDecls(
     if (color.startsWith("var(") || alpha.startsWith("var(")) needsSupports = true
     return fn(withAlphaRelative(color, alpha))
   })
-  const addPrefix = (v: string) => (prefix ? segment(v, ",").map((s) => prefix + s).join(",") : v)
+  const addPrefix = (v: string) =>
+    prefix
+      ? segment(v, ",")
+          .map((s) => prefix + s)
+          .join(",")
+      : v
   if (needsSupports) {
     return [
       decl(prop, addPrefix(replaceShadowColors(value, fn))),
@@ -1303,13 +1378,18 @@ function dropShadowDecls(
         if (color.startsWith("current")) return fn(withAlpha(color, alpha))
         if (color.startsWith("var(") || alpha.startsWith("var(")) needsSupports = true
         return fn(withAlphaRelative(color, alpha))
-      })
+      }),
     )
     .map((s) => `drop-shadow(${s})`)
     .join(" ")
   if (needsSupports) {
     return [
-      decl(prop, segment(value, ",").map((s) => `drop-shadow(${replaceShadowColors(s, fn)})`).join(" ")),
+      decl(
+        prop,
+        segment(value, ",")
+          .map((s) => `drop-shadow(${replaceShadowColors(s, fn)})`)
+          .join(" "),
+      ),
       rule("@supports (color: lab(from red l a b))", [decl(prop, converted)]),
     ]
   }
@@ -1331,10 +1411,13 @@ function registerUtilities(design: DesignSystem) {
   const theme = design.theme
   const add = (root: string, utility: Utility) => {
     let list = design.utilities.get(root)
-    if (!list) design.utilities.set(root, list = [])
+    if (!list) design.utilities.set(root, (list = []))
     list.push(utility)
   }
-  const staticUtility = (name: string, decls: Array<[string, string] | (() => Node | Array<Node>)>) =>
+  const staticUtility = (
+    name: string,
+    decls: Array<[string, string] | (() => Node | Array<Node>)>,
+  ) =>
     add(name, {
       kind: "static",
       compile: () => decls.flatMap((d) => (typeof d === "function" ? d() : decl(d[0], d[1]))),
@@ -1343,52 +1426,62 @@ function registerUtilities(design: DesignSystem) {
     add(name, { kind: "functional", compile: (c) => fn(c as FunctionalCandidate) })
 
   const functionalUtility = (name: string, options: FunctionalOptions) => {
-    const create = (negative: boolean) => (c: FunctionalCandidate): UtilityResult => {
-      let value: string | null = null
-      let dataType: string | null = null
-      if (c.value) {
-        if (c.value.kind === "arbitrary") {
-          if (c.modifier) return
-          value = c.value.value
-          dataType = c.value.dataType
+    const create =
+      (negative: boolean) =>
+      (c: FunctionalCandidate): UtilityResult => {
+        let value: string | null = null
+        let dataType: string | null = null
+        if (c.value) {
+          if (c.value.kind === "arbitrary") {
+            if (c.modifier) return
+            value = c.value.value
+            dataType = c.value.dataType
+          } else {
+            value = theme.resolve(c.value.fraction ?? c.value.value, options.themeKeys ?? [])
+            if (value === null && options.supportsFractions && c.value.fraction) {
+              const [a, b] = segment(c.value.fraction, "/")
+              if (!isPositiveInteger(a) || !isPositiveInteger(b)) return
+              value = `calc(${c.value.fraction} * 100%)`
+            }
+            if (value === null && negative && options.handleNegativeBareValue) {
+              value = options.handleNegativeBareValue(c.value)
+              if (!value?.includes("/") && c.modifier) return
+              if (value !== null) return options.handle(value, null)
+            }
+            if (value === null && options.handleBareValue) {
+              value = options.handleBareValue(c.value)
+              if (!value?.includes("/") && c.modifier) return
+            }
+            if (value === null && !negative && options.staticValues && !c.modifier) {
+              const nodes = options.staticValues[c.value.value]
+              if (nodes) return cloneNodes(nodes)
+            }
+          }
         } else {
-          value = theme.resolve(c.value.fraction ?? c.value.value, options.themeKeys ?? [])
-          if (value === null && options.supportsFractions && c.value.fraction) {
-            const [a, b] = segment(c.value.fraction, "/")
-            if (!isPositiveInteger(a) || !isPositiveInteger(b)) return
-            value = `calc(${c.value.fraction} * 100%)`
-          }
-          if (value === null && negative && options.handleNegativeBareValue) {
-            value = options.handleNegativeBareValue(c.value)
-            if (!value?.includes("/") && c.modifier) return
-            if (value !== null) return options.handle(value, null)
-          }
-          if (value === null && options.handleBareValue) {
-            value = options.handleBareValue(c.value)
-            if (!value?.includes("/") && c.modifier) return
-          }
-          if (value === null && !negative && options.staticValues && !c.modifier) {
-            const nodes = options.staticValues[c.value.value]
-            if (nodes) return cloneNodes(nodes)
-          }
+          if (c.modifier) return
+          value =
+            options.defaultValue !== undefined
+              ? options.defaultValue
+              : theme.resolve(null, options.themeKeys ?? [])
         }
-      } else {
-        if (c.modifier) return
-        value = options.defaultValue !== undefined ? options.defaultValue : theme.resolve(null, options.themeKeys ?? [])
+        if (value === null) return
+        return options.handle(negative ? `calc(${value} * -1)` : value, dataType)
       }
-      if (value === null) return
-      return options.handle(negative ? `calc(${value} * -1)` : value, dataType)
-    }
     if (options.supportsNegative) functional(`-${name}`, create(true))
     functional(name, create(false))
   }
 
-  const colorUtility = (name: string, keys: ReadonlyArray<string>, handle: (value: string) => Array<Node>) =>
+  const colorUtility = (
+    name: string,
+    keys: ReadonlyArray<string>,
+    handle: (value: string) => Array<Node>,
+  ) =>
     functional(name, (c) => {
       if (!c.value) return
-      const value = c.value.kind === "arbitrary"
-        ? applyModifier(c.value.value, c.modifier, theme)
-        : resolveColor(c, theme, keys)
+      const value =
+        c.value.kind === "arbitrary"
+          ? applyModifier(c.value.value, c.modifier, theme)
+          : resolveColor(c, theme, keys)
       if (value !== null) return handle(value)
     })
 
@@ -1396,8 +1489,11 @@ function registerUtilities(design: DesignSystem) {
     name: string,
     themeKeys: ReadonlyArray<string>,
     handle: (value: string) => Array<Node>,
-    options: { supportsNegative?: boolean; supportsFractions?: boolean; staticValues?: Record<string, Array<Node>> } =
-      {},
+    options: {
+      supportsNegative?: boolean
+      supportsFractions?: boolean
+      staticValues?: Record<string, Array<Node>>
+    } = {},
   ) => {
     if (options.supportsNegative) staticUtility(`-${name}-px`, [() => handle("-1px")])
     staticUtility(`${name}-px`, [() => handle("1px")])
@@ -1423,7 +1519,10 @@ function registerUtilities(design: DesignSystem) {
     const space = line.indexOf(" ")
     staticUtility(
       line.slice(0, space),
-      line.slice(space + 1).split(";").map((d) => [d.slice(0, d.indexOf(":")), d.slice(d.indexOf(":") + 1)]),
+      line
+        .slice(space + 1)
+        .split(";")
+        .map((d) => [d.slice(0, d.indexOf(":")), d.slice(d.indexOf(":") + 1)]),
     )
   }
 
@@ -1442,7 +1541,8 @@ function registerUtilities(design: DesignSystem) {
     },
   ) =>
     functional(name, (c) => {
-      if (!c.value) return c.modifier || o.defaultWidth === undefined ? undefined : o.width(o.defaultWidth)
+      if (!c.value)
+        return c.modifier || o.defaultWidth === undefined ? undefined : o.width(o.defaultWidth)
       if (c.value.kind === "arbitrary") {
         const v = c.value.value
         const type = c.value.dataType ?? inferDataType(v, ["color", ...o.widthTypes])
@@ -1451,7 +1551,9 @@ function registerUtilities(design: DesignSystem) {
         return color === null ? undefined : o.color(color)
       }
       const named = c.value.value
-      const width = theme.resolve(named, o.widthKeys) ?? (isPositiveInteger(named) ? `${named}${o.unit ?? "px"}` : null)
+      const width =
+        theme.resolve(named, o.widthKeys) ??
+        (isPositiveInteger(named) ? `${named}${o.unit ?? "px"}` : null)
       if (o.widthFirst && width !== null) return c.modifier ? undefined : o.width(width)
       const color = resolveColor(c, theme, o.colorKeys)
       if (color) return o.color(color)
@@ -1463,13 +1565,12 @@ function registerUtilities(design: DesignSystem) {
   const suffix = (unit: string) => (named: NamedValue) =>
     isPositiveInteger(named.value) ? `${named.value}${unit}` : null
 
-  for (const v of "static fixed absolute relative sticky".split(" ")) staticUtility(v, [["position", v]])
+  for (const v of "static fixed absolute relative sticky".split(" "))
+    staticUtility(v, [["position", v]])
 
-  for (
-    const [name, prop] of pairs(
-      "inset inset;inset-x inset-inline;inset-y inset-block;start inset-inline-start;end inset-inline-end;top top;right right;bottom bottom;left left",
-    )
-  ) {
+  for (const [name, prop] of pairs(
+    "inset inset;inset-x inset-inline;inset-y inset-block;start inset-inline-start;end inset-inline-end;top top;right right;bottom bottom;left left",
+  )) {
     staticUtility(`${name}-auto`, [[prop, "auto"]])
     staticUtility(`${name}-full`, [[prop, "100%"]])
     staticUtility(`-${name}-full`, [[prop, "-100%"]])
@@ -1517,24 +1618,24 @@ function registerUtilities(design: DesignSystem) {
       })
     }
   }
-  for (
-    const [name, value] of pairs("start inline-start;end inline-end;right right;left left;none none")
-  ) {
+  for (const [name, value] of pairs(
+    "start inline-start;end inline-end;right right;left left;none none",
+  )) {
     staticUtility(`float-${name}`, [["float", value]])
   }
-  for (
-    const [name, value] of pairs("start inline-start;end inline-end;right right;left left;both both;none none")
-  ) {
+  for (const [name, value] of pairs(
+    "start inline-start;end inline-end;right right;left left;both both;none none",
+  )) {
     staticUtility(`clear-${name}`, [["clear", value]])
   }
 
-  for (
-    const [name, prop] of pairs(
-      "m margin;mx margin-inline;my margin-block;ms margin-inline-start;me margin-inline-end;mt margin-top;mr margin-right;mb margin-bottom;ml margin-left",
-    )
-  ) {
+  for (const [name, prop] of pairs(
+    "m margin;mx margin-inline;my margin-block;ms margin-inline-start;me margin-inline-end;mt margin-top;mr margin-right;mb margin-bottom;ml margin-left",
+  )) {
     staticUtility(`${name}-auto`, [[prop, "auto"]])
-    spacingUtility(name, ["--margin", "--spacing"], (v) => [decl(prop, v)], { supportsNegative: true })
+    spacingUtility(name, ["--margin", "--spacing"], (v) => [decl(prop, v)], {
+      supportsNegative: true,
+    })
   }
 
   functionalUtility("line-clamp", {
@@ -1555,11 +1656,9 @@ function registerUtilities(design: DesignSystem) {
       ],
     },
   })
-  for (
-    const [name, value] of pairs(
-      "block block;inline-block inline-block;inline inline;hidden none;inline-flex inline-flex;table table;inline-table inline-table;table-caption table-caption;table-cell table-cell;table-column table-column;table-column-group table-column-group;table-footer-group table-footer-group;table-header-group table-header-group;table-row-group table-row-group;table-row table-row;flow-root flow-root;flex flex;grid grid;inline-grid inline-grid;contents contents;list-item list-item",
-    )
-  ) {
+  for (const [name, value] of pairs(
+    "block block;inline-block inline-block;inline inline;hidden none;inline-flex inline-flex;table table;inline-table inline-table;table-caption table-caption;table-cell table-cell;table-column table-column;table-column-group table-column-group;table-footer-group table-footer-group;table-header-group table-header-group;table-row-group table-row-group;table-row table-row;flow-root flow-root;flex flex;grid grid;inline-grid inline-grid;contents contents;list-item list-item",
+  )) {
     staticUtility(name, [["display", value]])
   }
   functionalUtility("aspect", {
@@ -1573,12 +1672,14 @@ function registerUtilities(design: DesignSystem) {
     staticValues: { auto: [decl("aspect-ratio", "auto")], square: [decl("aspect-ratio", "1 / 1")] },
   })
 
-  for (
-    const [name, value] of pairs(
-      "full 100%;svw 100svw;lvw 100lvw;dvw 100dvw;svh 100svh;lvh 100lvh;dvh 100dvh;min min-content;max max-content;fit fit-content",
-    )
-  ) {
-    staticUtility(`size-${name}`, [["--tw-sort", "size"], ["width", value], ["height", value]])
+  for (const [name, value] of pairs(
+    "full 100%;svw 100svw;lvw 100lvw;dvw 100dvw;svh 100svh;lvh 100lvh;dvh 100dvh;min min-content;max max-content;fit fit-content",
+  )) {
+    staticUtility(`size-${name}`, [
+      ["--tw-sort", "size"],
+      ["width", value],
+      ["height", value],
+    ])
     staticUtility(`w-${name}`, [["width", value]])
     staticUtility(`h-${name}`, [["height", value]])
     staticUtility(`min-w-${name}`, [["min-width", value]])
@@ -1594,23 +1695,23 @@ function registerUtilities(design: DesignSystem) {
       supportsFractions: true,
     },
   )
-  for (
-    const [name, keys, prop] of [
-      ["w", ["--width", "--spacing", "--container"], "width"],
-      ["min-w", ["--min-width", "--spacing", "--container"], "min-width"],
-      ["max-w", ["--max-width", "--spacing", "--container"], "max-width"],
-      ["h", ["--height", "--spacing"], "height"],
-      ["min-h", ["--min-height", "--height", "--spacing"], "min-height"],
-      ["max-h", ["--max-height", "--height", "--spacing"], "max-height"],
-    ] as const
-  ) {
+  for (const [name, keys, prop] of [
+    ["w", ["--width", "--spacing", "--container"], "width"],
+    ["min-w", ["--min-width", "--spacing", "--container"], "min-width"],
+    ["max-w", ["--max-width", "--spacing", "--container"], "max-width"],
+    ["h", ["--height", "--spacing"], "height"],
+    ["min-h", ["--min-height", "--height", "--spacing"], "min-height"],
+    ["max-h", ["--max-height", "--height", "--spacing"], "max-height"],
+  ] as const) {
     spacingUtility(name, keys, (v) => [decl(prop, v)], { supportsFractions: true })
   }
 
   add("container", {
     kind: "static",
     compile: () => {
-      const breakpoints = [...theme.namespace("--breakpoint").values()].sort((a, b) => compareBreakpoints(a, b, "asc"))
+      const breakpoints = [...theme.namespace("--breakpoint").values()].sort((a, b) =>
+        compareBreakpoints(a, b, "asc"),
+      )
       return [
         decl("--tw-sort", "--tw-container-component"),
         decl("width", "100%"),
@@ -1628,13 +1729,27 @@ function registerUtilities(design: DesignSystem) {
         ? undefined
         : [decl("flex", `calc(${c.value.fraction} * 100%)`)]
     }
-    if (isPositiveInteger(c.value.value)) return c.modifier ? undefined : [decl("flex", c.value.value)]
+    if (isPositiveInteger(c.value.value))
+      return c.modifier ? undefined : [decl("flex", c.value.value)]
   })
-  functionalUtility("shrink", { defaultValue: "1", handleBareValue: integer, handle: (v) => [decl("flex-shrink", v)] })
-  functionalUtility("grow", { defaultValue: "1", handleBareValue: integer, handle: (v) => [decl("flex-grow", v)] })
-  spacingUtility("basis", ["--flex-basis", "--spacing", "--container"], (v) => [decl("flex-basis", v)], {
-    supportsFractions: true,
+  functionalUtility("shrink", {
+    defaultValue: "1",
+    handleBareValue: integer,
+    handle: (v) => [decl("flex-shrink", v)],
   })
+  functionalUtility("grow", {
+    defaultValue: "1",
+    handleBareValue: integer,
+    handle: (v) => [decl("flex-grow", v)],
+  })
+  spacingUtility(
+    "basis",
+    ["--flex-basis", "--spacing", "--container"],
+    (v) => [decl("flex-basis", v)],
+    {
+      supportsFractions: true,
+    },
+  )
   const borderSpacingProps = () => [
     property("--tw-border-spacing-x", "0", "<length>"),
     property("--tw-border-spacing-y", "0", "<length>"),
@@ -1703,9 +1818,7 @@ function registerUtilities(design: DesignSystem) {
   spacingUtility(
     "translate",
     ["--translate", "--spacing"],
-    (
-      v,
-    ) => [
+    (v) => [
       ...translateProps(),
       decl("--tw-translate-x", v),
       decl("--tw-translate-y", v),
@@ -1714,18 +1827,24 @@ function registerUtilities(design: DesignSystem) {
     { supportsNegative: true, supportsFractions: true },
   )
   for (const axis of "x y".split(" ")) {
-    staticUtility(`-translate-${axis}-full`, [translateProps, [`--tw-translate-${axis}`, "-100%"], [
-      "translate",
-      translate2d,
-    ]])
-    staticUtility(`translate-${axis}-full`, [translateProps, [`--tw-translate-${axis}`, "100%"], [
-      "translate",
-      translate2d,
-    ]])
+    staticUtility(`-translate-${axis}-full`, [
+      translateProps,
+      [`--tw-translate-${axis}`, "-100%"],
+      ["translate", translate2d],
+    ])
+    staticUtility(`translate-${axis}-full`, [
+      translateProps,
+      [`--tw-translate-${axis}`, "100%"],
+      ["translate", translate2d],
+    ])
     spacingUtility(
       `translate-${axis}`,
       ["--translate", "--spacing"],
-      (v) => [...translateProps(), decl(`--tw-translate-${axis}`, v), decl("translate", translate2d)],
+      (v) => [
+        ...translateProps(),
+        decl(`--tw-translate-${axis}`, v),
+        decl("translate", translate2d),
+      ],
       { supportsNegative: true, supportsFractions: true },
     )
   }
@@ -1737,24 +1856,30 @@ function registerUtilities(design: DesignSystem) {
   )
   staticUtility("translate-3d", [translateProps, ["translate", translate3d]])
 
-  const scaleProps = () => [property("--tw-scale-x", "1"), property("--tw-scale-y", "1"), property("--tw-scale-z", "1")]
-  const scale = (negative: boolean) => (c: FunctionalCandidate): UtilityResult => {
-    if (!c.value || c.modifier) return
-    if (c.value.kind === "arbitrary") {
-      return [decl("scale", negative ? `calc(${c.value.value} * -1)` : c.value.value)]
+  const scaleProps = () => [
+    property("--tw-scale-x", "1"),
+    property("--tw-scale-y", "1"),
+    property("--tw-scale-z", "1"),
+  ]
+  const scale =
+    (negative: boolean) =>
+    (c: FunctionalCandidate): UtilityResult => {
+      if (!c.value || c.modifier) return
+      if (c.value.kind === "arbitrary") {
+        return [decl("scale", negative ? `calc(${c.value.value} * -1)` : c.value.value)]
+      }
+      let v = theme.resolve(c.value.value, ["--scale"])
+      if (!v && isPositiveInteger(c.value.value)) v = `${c.value.value}%`
+      if (!v) return
+      v = negative ? `calc(${v} * -1)` : v
+      return [
+        ...scaleProps(),
+        decl("--tw-scale-x", v),
+        decl("--tw-scale-y", v),
+        decl("--tw-scale-z", v),
+        decl("scale", "var(--tw-scale-x) var(--tw-scale-y)"),
+      ]
     }
-    let v = theme.resolve(c.value.value, ["--scale"])
-    if (!v && isPositiveInteger(c.value.value)) v = `${c.value.value}%`
-    if (!v) return
-    v = negative ? `calc(${v} * -1)` : v
-    return [
-      ...scaleProps(),
-      decl("--tw-scale-x", v),
-      decl("--tw-scale-y", v),
-      decl("--tw-scale-z", v),
-      decl("scale", "var(--tw-scale-x) var(--tw-scale-y)"),
-    ]
-  }
   functional("-scale", scale(true))
   functional("scale", scale(false))
   for (const axis of "x y z".split(" ")) {
@@ -1765,27 +1890,35 @@ function registerUtilities(design: DesignSystem) {
       handle: (v) => [
         ...scaleProps(),
         decl(`--tw-scale-${axis}`, v),
-        decl("scale", `var(--tw-scale-x) var(--tw-scale-y)${axis === "z" ? " var(--tw-scale-z)" : ""}`),
+        decl(
+          "scale",
+          `var(--tw-scale-x) var(--tw-scale-y)${axis === "z" ? " var(--tw-scale-z)" : ""}`,
+        ),
       ],
     })
   }
-  staticUtility("scale-3d", [scaleProps, ["scale", "var(--tw-scale-x) var(--tw-scale-y) var(--tw-scale-z)"]])
+  staticUtility("scale-3d", [
+    scaleProps,
+    ["scale", "var(--tw-scale-x) var(--tw-scale-y) var(--tw-scale-z)"],
+  ])
 
-  const rotate = (negative: boolean) => (c: FunctionalCandidate): UtilityResult => {
-    if (!c.value || c.modifier) return
-    let v: string | null
-    if (c.value.kind === "arbitrary") {
-      v = c.value.value
-      const type = c.value.dataType ?? inferDataType(v, ["angle", "vector"])
-      if (type === "vector") return [decl("rotate", `${v} var(--tw-rotate)`)]
-      if (type !== "angle") return [decl("rotate", negative ? `calc(${v} * -1)` : v)]
-    } else {
-      v = theme.resolve(c.value.value, ["--rotate"])
-      if (!v && isPositiveInteger(c.value.value)) v = `${c.value.value}deg`
-      if (!v) return
+  const rotate =
+    (negative: boolean) =>
+    (c: FunctionalCandidate): UtilityResult => {
+      if (!c.value || c.modifier) return
+      let v: string | null
+      if (c.value.kind === "arbitrary") {
+        v = c.value.value
+        const type = c.value.dataType ?? inferDataType(v, ["angle", "vector"])
+        if (type === "vector") return [decl("rotate", `${v} var(--tw-rotate)`)]
+        if (type !== "angle") return [decl("rotate", negative ? `calc(${v} * -1)` : v)]
+      } else {
+        v = theme.resolve(c.value.value, ["--rotate"])
+        if (!v && isPositiveInteger(c.value.value)) v = `${c.value.value}deg`
+        if (!v) return
+      }
+      return [decl("rotate", negative ? `calc(${v} * -1)` : v)]
     }
-    return [decl("rotate", negative ? `calc(${v} * -1)` : v)]
-  }
   functional("-rotate", rotate(true))
   functional("rotate", rotate(false))
 
@@ -1845,31 +1978,52 @@ function registerUtilities(design: DesignSystem) {
   for (const v of "content border fill stroke view".split(" ")) {
     staticUtility(`transform-${v}`, [["transform-box", `${v}-box`]])
   }
-  for (
-    const v
-      of "auto default pointer wait text move help not-allowed none context-menu progress cell crosshair vertical-text alias copy no-drop grab grabbing all-scroll col-resize row-resize n-resize e-resize s-resize w-resize ne-resize nw-resize se-resize sw-resize ew-resize ns-resize nesw-resize nwse-resize zoom-in zoom-out"
-        .split(" ")
-  ) {
+  for (const v of "auto default pointer wait text move help not-allowed none context-menu progress cell crosshair vertical-text alias copy no-drop grab grabbing all-scroll col-resize row-resize n-resize e-resize s-resize w-resize ne-resize nw-resize se-resize sw-resize ew-resize ns-resize nesw-resize nwse-resize zoom-in zoom-out".split(
+    " ",
+  )) {
     staticUtility(`cursor-${v}`, [["cursor", v]])
   }
   functionalUtility("cursor", { themeKeys: ["--cursor"], handle: (v) => [decl("cursor", v)] })
 
-  for (const v of "auto none manipulation".split(" ")) staticUtility(`touch-${v}`, [["touch-action", v]])
-  const touchProps = () => [property("--tw-pan-x"), property("--tw-pan-y"), property("--tw-pinch-zoom")]
+  for (const v of "auto none manipulation".split(" "))
+    staticUtility(`touch-${v}`, [["touch-action", v]])
+  const touchProps = () => [
+    property("--tw-pan-x"),
+    property("--tw-pan-y"),
+    property("--tw-pinch-zoom"),
+  ]
   const touchValue = "var(--tw-pan-x,) var(--tw-pan-y,) var(--tw-pinch-zoom,)"
   for (const v of "x left right".split(" ")) {
-    staticUtility(`touch-pan-${v}`, [touchProps, ["--tw-pan-x", `pan-${v}`], ["touch-action", touchValue]])
+    staticUtility(`touch-pan-${v}`, [
+      touchProps,
+      ["--tw-pan-x", `pan-${v}`],
+      ["touch-action", touchValue],
+    ])
   }
   for (const v of "y up down".split(" ")) {
-    staticUtility(`touch-pan-${v}`, [touchProps, ["--tw-pan-y", `pan-${v}`], ["touch-action", touchValue]])
+    staticUtility(`touch-pan-${v}`, [
+      touchProps,
+      ["--tw-pan-y", `pan-${v}`],
+      ["touch-action", touchValue],
+    ])
   }
-  staticUtility("touch-pinch-zoom", [touchProps, ["--tw-pinch-zoom", "pinch-zoom"], ["touch-action", touchValue]])
+  staticUtility("touch-pinch-zoom", [
+    touchProps,
+    ["--tw-pinch-zoom", "pinch-zoom"],
+    ["touch-action", touchValue],
+  ])
   for (const v of "none text all auto".split(" ")) {
-    staticUtility(`select-${v}`, [["-webkit-user-select", v], ["user-select", v]])
+    staticUtility(`select-${v}`, [
+      ["-webkit-user-select", v],
+      ["user-select", v],
+    ])
   }
   const snapProps = () => [property("--tw-scroll-snap-strictness", "proximity", "*")]
   for (const v of "x y both".split(" ")) {
-    staticUtility(`snap-${v}`, [snapProps, ["scroll-snap-type", `${v} var(--tw-scroll-snap-strictness)`]])
+    staticUtility(`snap-${v}`, [
+      snapProps,
+      ["scroll-snap-type", `${v} var(--tw-scroll-snap-strictness)`],
+    ])
   }
   staticUtility("snap-mandatory", [snapProps, ["--tw-scroll-snap-strictness", "mandatory"]])
   staticUtility("snap-proximity", [snapProps, ["--tw-scroll-snap-strictness", "proximity"]])
@@ -1878,12 +2032,19 @@ function registerUtilities(design: DesignSystem) {
     ...pairs("x -inline;y -block;s -inline-start;e -inline-end;t -top;r -right;b -bottom;l -left"),
   ]
   for (const [side, prop] of sides) {
-    spacingUtility(`scroll-m${side}`, ["--scroll-margin", "--spacing"], (v) => [decl(`scroll-margin${prop}`, v)], {
-      supportsNegative: true,
-    })
+    spacingUtility(
+      `scroll-m${side}`,
+      ["--scroll-margin", "--spacing"],
+      (v) => [decl(`scroll-margin${prop}`, v)],
+      {
+        supportsNegative: true,
+      },
+    )
   }
   for (const [side, prop] of sides) {
-    spacingUtility(`scroll-p${side}`, ["--scroll-padding", "--spacing"], (v) => [decl(`scroll-padding${prop}`, v)])
+    spacingUtility(`scroll-p${side}`, ["--scroll-padding", "--spacing"], (v) => [
+      decl(`scroll-padding${prop}`, v),
+    ])
   }
 
   functionalUtility("list", {
@@ -1900,11 +2061,9 @@ function registerUtilities(design: DesignSystem) {
     handle: (v) => [decl("list-style-image", v)],
     staticValues: { none: [decl("list-style-image", "none")] },
   })
-  for (
-    const [name, value] of pairs(
-      "normal normal;dark dark;light light;light-dark light dark;only-dark only dark;only-light only light",
-    )
-  ) {
+  for (const [name, value] of pairs(
+    "normal normal;dark dark;light light;light-dark light dark;only-dark only dark;only-light only light",
+  )) {
     staticUtility(`scheme-${name}`, [["color-scheme", value]])
   }
   functionalUtility("columns", {
@@ -1934,7 +2093,9 @@ function registerUtilities(design: DesignSystem) {
       },
     })
   }
-  for (const [name, prop] of pairs("grid-cols grid-template-columns;grid-rows grid-template-rows")) {
+  for (const [name, prop] of pairs(
+    "grid-cols grid-template-columns;grid-rows grid-template-rows",
+  )) {
     functionalUtility(name, {
       themeKeys: [`--${prop}`],
       handleBareValue: (named) =>
@@ -1951,24 +2112,34 @@ function registerUtilities(design: DesignSystem) {
   spacingUtility("gap-y", ["--gap", "--spacing"], (v) => [decl("row-gap", v)])
 
   const notLast = ":where(& > :not(:last-child))"
-  spacingUtility("space-x", ["--space", "--spacing"], (v) => [
-    property("--tw-space-x-reverse", "0"),
-    rule(notLast, [
-      decl("--tw-sort", "row-gap"),
-      decl("--tw-space-x-reverse", "0"),
-      decl("margin-inline-start", `calc(${v} * var(--tw-space-x-reverse))`),
-      decl("margin-inline-end", `calc(${v} * calc(1 - var(--tw-space-x-reverse)))`),
-    ]),
-  ], { supportsNegative: true })
-  spacingUtility("space-y", ["--space", "--spacing"], (v) => [
-    property("--tw-space-y-reverse", "0"),
-    rule(notLast, [
-      decl("--tw-sort", "column-gap"),
-      decl("--tw-space-y-reverse", "0"),
-      decl("margin-block-start", `calc(${v} * var(--tw-space-y-reverse))`),
-      decl("margin-block-end", `calc(${v} * calc(1 - var(--tw-space-y-reverse)))`),
-    ]),
-  ], { supportsNegative: true })
+  spacingUtility(
+    "space-x",
+    ["--space", "--spacing"],
+    (v) => [
+      property("--tw-space-x-reverse", "0"),
+      rule(notLast, [
+        decl("--tw-sort", "row-gap"),
+        decl("--tw-space-x-reverse", "0"),
+        decl("margin-inline-start", `calc(${v} * var(--tw-space-x-reverse))`),
+        decl("margin-inline-end", `calc(${v} * calc(1 - var(--tw-space-x-reverse)))`),
+      ]),
+    ],
+    { supportsNegative: true },
+  )
+  spacingUtility(
+    "space-y",
+    ["--space", "--spacing"],
+    (v) => [
+      property("--tw-space-y-reverse", "0"),
+      rule(notLast, [
+        decl("--tw-sort", "column-gap"),
+        decl("--tw-space-y-reverse", "0"),
+        decl("margin-block-start", `calc(${v} * var(--tw-space-y-reverse))`),
+        decl("margin-block-end", `calc(${v} * calc(1 - var(--tw-space-y-reverse)))`),
+      ]),
+    ],
+    { supportsNegative: true },
+  )
   staticUtility("space-x-reverse", [
     () => property("--tw-space-x-reverse", "0"),
     () => rule(notLast, [decl("--tw-sort", "row-gap"), decl("--tw-space-x-reverse", "1")]),
@@ -1992,29 +2163,31 @@ function registerUtilities(design: DesignSystem) {
     staticUtility(`overscroll-x-${v}`, [["overscroll-behavior-x", v]])
     staticUtility(`overscroll-y-${v}`, [["overscroll-behavior-y", v]])
   }
-  for (const v of "none manual auto".split(" ")) staticUtility(`hyphens-${v}`, [["-webkit-hyphens", v], ["hyphens", v]])
+  for (const v of "none manual auto".split(" "))
+    staticUtility(`hyphens-${v}`, [
+      ["-webkit-hyphens", v],
+      ["hyphens", v],
+    ])
   for (const v of "normal nowrap pre pre-line pre-wrap break-spaces".split(" ")) {
     staticUtility(`whitespace-${v}`, [["white-space", v]])
   }
-  for (
-    const [name, props] of [
-      ["rounded", ["border-radius"]],
-      ["rounded-s", ["border-start-start-radius", "border-end-start-radius"]],
-      ["rounded-e", ["border-start-end-radius", "border-end-end-radius"]],
-      ["rounded-t", ["border-top-left-radius", "border-top-right-radius"]],
-      ["rounded-r", ["border-top-right-radius", "border-bottom-right-radius"]],
-      ["rounded-b", ["border-bottom-right-radius", "border-bottom-left-radius"]],
-      ["rounded-l", ["border-top-left-radius", "border-bottom-left-radius"]],
-      ["rounded-ss", ["border-start-start-radius"]],
-      ["rounded-se", ["border-start-end-radius"]],
-      ["rounded-ee", ["border-end-end-radius"]],
-      ["rounded-es", ["border-end-start-radius"]],
-      ["rounded-tl", ["border-top-left-radius"]],
-      ["rounded-tr", ["border-top-right-radius"]],
-      ["rounded-br", ["border-bottom-right-radius"]],
-      ["rounded-bl", ["border-bottom-left-radius"]],
-    ] as const
-  ) {
+  for (const [name, props] of [
+    ["rounded", ["border-radius"]],
+    ["rounded-s", ["border-start-start-radius", "border-end-start-radius"]],
+    ["rounded-e", ["border-start-end-radius", "border-end-end-radius"]],
+    ["rounded-t", ["border-top-left-radius", "border-top-right-radius"]],
+    ["rounded-r", ["border-top-right-radius", "border-bottom-right-radius"]],
+    ["rounded-b", ["border-bottom-right-radius", "border-bottom-left-radius"]],
+    ["rounded-l", ["border-top-left-radius", "border-bottom-left-radius"]],
+    ["rounded-ss", ["border-start-start-radius"]],
+    ["rounded-se", ["border-start-end-radius"]],
+    ["rounded-ee", ["border-end-end-radius"]],
+    ["rounded-es", ["border-end-start-radius"]],
+    ["rounded-tl", ["border-top-left-radius"]],
+    ["rounded-tr", ["border-top-right-radius"]],
+    ["rounded-br", ["border-bottom-right-radius"]],
+    ["rounded-bl", ["border-bottom-left-radius"]],
+  ] as const) {
     functionalUtility(name, {
       themeKeys: ["--radius"],
       handle: (v) => props.map((p) => decl(p, v)),
@@ -2025,22 +2198,27 @@ function registerUtilities(design: DesignSystem) {
     })
   }
   for (const v of "solid dashed dotted double hidden none".split(" ")) {
-    staticUtility(`border-${v}`, [["--tw-border-style", v], ["border-style", v]])
+    staticUtility(`border-${v}`, [
+      ["--tw-border-style", v],
+      ["border-style", v],
+    ])
   }
 
   const borderProps = () => property("--tw-border-style", "solid")
-  for (
-    const [name, prefix] of pairs(
-      "border border;border-x border-inline;border-y border-block;border-s border-inline-start;border-e border-inline-end;border-t border-top;border-r border-right;border-b border-bottom;border-l border-left",
-    )
-  ) {
+  for (const [name, prefix] of pairs(
+    "border border;border-x border-inline;border-y border-block;border-s border-inline-start;border-e border-inline-end;border-t border-top;border-r border-right;border-b border-bottom;border-l border-left",
+  )) {
     colorOrWidth(name, {
       colorKeys: ["--border-color", "--color"],
       widthKeys: ["--border-width"],
       widthTypes: ["line-width", "length"],
       defaultWidth: theme.get(["--default-border-width"]) ?? "1px",
       color: (v) => [decl(`${prefix}-color`, v)],
-      width: (v) => [borderProps(), decl(`${prefix}-style`, "var(--tw-border-style)"), decl(`${prefix}-width`, v)],
+      width: (v) => [
+        borderProps(),
+        decl(`${prefix}-style`, "var(--tw-border-style)"),
+        decl(`${prefix}-width`, v),
+      ],
     })
   }
   functionalUtility("divide-x", {
@@ -2084,24 +2262,25 @@ function registerUtilities(design: DesignSystem) {
   }
   for (const v of "solid dashed dotted double none".split(" ")) {
     staticUtility(`divide-${v}`, [
-      () => rule(notLast, [decl("--tw-sort", "divide-style"), decl("--tw-border-style", v), decl("border-style", v)]),
+      () =>
+        rule(notLast, [
+          decl("--tw-sort", "divide-style"),
+          decl("--tw-border-style", v),
+          decl("border-style", v),
+        ]),
     ])
   }
 
   functionalUtility("bg-size", { handle: (v) => [decl("background-size", v)] })
-  for (
-    const [name, value] of pairs(
-      "top top;top-left left top;top-right right top;bottom bottom;bottom-left left bottom;bottom-right right bottom;left left;right right;center center",
-    )
-  ) {
+  for (const [name, value] of pairs(
+    "top top;top-left left top;top-right right top;bottom bottom;bottom-left left bottom;bottom-right right bottom;left left;right right;center center",
+  )) {
     staticUtility(`bg-${name}`, [["background-position", value]])
   }
   functionalUtility("bg-position", { handle: (v) => [decl("background-position", v)] })
-  for (
-    const [name, value] of pairs(
-      "repeat repeat;no-repeat no-repeat;repeat-x repeat-x;repeat-y repeat-y;repeat-round round;repeat-space space",
-    )
-  ) {
+  for (const [name, value] of pairs(
+    "repeat repeat;no-repeat no-repeat;repeat-x repeat-x;repeat-y repeat-y;repeat-round round;repeat-space space",
+  )) {
     staticUtility(`bg-${name}`, [["background-repeat", value]])
   }
   const interpolation = (modifier: Modifier | null) => {
@@ -2117,62 +2296,66 @@ function registerUtilities(design: DesignSystem) {
       "to-t to top;to-tr to top right;to-r to right;to-br to bottom right;to-b to bottom;to-bl to bottom left;to-l to left;to-tl to top left",
     ),
   )
-  const linear = (negative: boolean) => (c: FunctionalCandidate): UtilityResult => {
-    if (!c.value) return
-    if (c.value.kind === "arbitrary") {
-      if (c.modifier) return
-      let v = c.value.value
-      if ((c.value.dataType ?? inferDataType(v, ["angle"])) === "angle") {
-        v = negative ? `calc(${v} * -1)` : v
+  const linear =
+    (negative: boolean) =>
+    (c: FunctionalCandidate): UtilityResult => {
+      if (!c.value) return
+      if (c.value.kind === "arbitrary") {
+        if (c.modifier) return
+        let v = c.value.value
+        if ((c.value.dataType ?? inferDataType(v, ["angle"])) === "angle") {
+          v = negative ? `calc(${v} * -1)` : v
+          return [
+            decl("--tw-gradient-position", v),
+            decl("background-image", `linear-gradient(var(--tw-gradient-stops,${v}))`),
+          ]
+        }
+        if (negative) return
         return [
           decl("--tw-gradient-position", v),
           decl("background-image", `linear-gradient(var(--tw-gradient-stops,${v}))`),
         ]
       }
-      if (negative) return
+      let v = c.value.value
+      if (!negative && linearDirections.has(v)) v = linearDirections.get(v)!
+      else if (isPositiveInteger(v)) v = negative ? `calc(${v}deg * -1)` : `${v}deg`
+      else return
       return [
         decl("--tw-gradient-position", v),
-        decl("background-image", `linear-gradient(var(--tw-gradient-stops,${v}))`),
+        rule("@supports (background-image: linear-gradient(in lab, red, red))", [
+          decl("--tw-gradient-position", `${v} ${interpolation(c.modifier)}`),
+        ]),
+        decl("background-image", "linear-gradient(var(--tw-gradient-stops))"),
       ]
     }
-    let v = c.value.value
-    if (!negative && linearDirections.has(v)) v = linearDirections.get(v)!
-    else if (isPositiveInteger(v)) v = negative ? `calc(${v}deg * -1)` : `${v}deg`
-    else return
-    return [
-      decl("--tw-gradient-position", v),
-      rule("@supports (background-image: linear-gradient(in lab, red, red))", [
-        decl("--tw-gradient-position", `${v} ${interpolation(c.modifier)}`),
-      ]),
-      decl("background-image", "linear-gradient(var(--tw-gradient-stops))"),
-    ]
-  }
   functional("-bg-linear", linear(true))
   functional("bg-linear", linear(false))
-  const conic = (negative: boolean) => (c: FunctionalCandidate): UtilityResult => {
-    if (c.value?.kind === "arbitrary") {
-      if (c.modifier) return
-      const v = c.value.value
+  const conic =
+    (negative: boolean) =>
+    (c: FunctionalCandidate): UtilityResult => {
+      if (c.value?.kind === "arbitrary") {
+        if (c.modifier) return
+        const v = c.value.value
+        return [
+          decl("--tw-gradient-position", v),
+          decl("background-image", `conic-gradient(var(--tw-gradient-stops,${v}))`),
+        ]
+      }
+      const interp = interpolation(c.modifier)
+      if (!c.value) {
+        return [
+          decl("--tw-gradient-position", interp),
+          decl("background-image", "conic-gradient(var(--tw-gradient-stops))"),
+        ]
+      }
+      let v = c.value.value
+      if (!isPositiveInteger(v)) return
+      v = negative ? `calc(${v}deg * -1)` : `${v}deg`
       return [
-        decl("--tw-gradient-position", v),
-        decl("background-image", `conic-gradient(var(--tw-gradient-stops,${v}))`),
-      ]
-    }
-    const interp = interpolation(c.modifier)
-    if (!c.value) {
-      return [
-        decl("--tw-gradient-position", interp),
+        decl("--tw-gradient-position", `from ${v} ${interp}`),
         decl("background-image", "conic-gradient(var(--tw-gradient-stops))"),
       ]
     }
-    let v = c.value.value
-    if (!isPositiveInteger(v)) return
-    v = negative ? `calc(${v}deg * -1)` : `${v}deg`
-    return [
-      decl("--tw-gradient-position", `from ${v} ${interp}`),
-      decl("background-image", "conic-gradient(var(--tw-gradient-stops))"),
-    ]
-  }
   functional("-bg-conic", conic(true))
   functional("bg-conic", conic(false))
   functional("bg-radial", (c) => {
@@ -2196,7 +2379,8 @@ function registerUtilities(design: DesignSystem) {
     if (c.value.kind === "arbitrary") {
       const v = c.value.value
       switch (
-        c.value.dataType ?? inferDataType(v, ["image", "color", "percentage", "position", "bg-size", "length", "url"])
+        c.value.dataType ??
+        inferDataType(v, ["image", "color", "percentage", "position", "bg-size", "length", "url"])
       ) {
         case "percentage":
         case "position":
@@ -2295,7 +2479,10 @@ function registerUtilities(design: DesignSystem) {
   functional("mask", (c) => {
     if (!c.value || c.modifier || c.value.kind !== "arbitrary") return
     const v = c.value.value
-    switch (c.value.dataType ?? inferDataType(v, ["image", "percentage", "position", "bg-size", "length", "url"])) {
+    switch (
+      c.value.dataType ??
+      inferDataType(v, ["image", "percentage", "position", "bg-size", "length", "url"])
+    ) {
       case "percentage":
       case "position":
         return [decl("mask-position", v)]
@@ -2307,22 +2494,19 @@ function registerUtilities(design: DesignSystem) {
         return [decl("mask-image", v)]
     }
   })
-  for (const v of "add subtract intersect exclude".split(" ")) staticUtility(`mask-${v}`, [["mask-composite", v]])
+  for (const v of "add subtract intersect exclude".split(" "))
+    staticUtility(`mask-${v}`, [["mask-composite", v]])
   for (const v of "auto cover contain".split(" ")) staticUtility(`mask-${v}`, [["mask-size", v]])
   functionalUtility("mask-size", { handle: (v) => [decl("mask-size", v)] })
-  for (
-    const [name, value] of pairs(
-      "top top;top-left left top;top-right right top;bottom bottom;bottom-left left bottom;bottom-right right bottom;left left;right right;center center",
-    )
-  ) {
+  for (const [name, value] of pairs(
+    "top top;top-left left top;top-right right top;bottom bottom;bottom-left left bottom;bottom-right right bottom;left left;right right;center center",
+  )) {
     staticUtility(`mask-${name}`, [["mask-position", value]])
   }
   functionalUtility("mask-position", { handle: (v) => [decl("mask-position", v)] })
-  for (
-    const [name, value] of pairs(
-      "repeat repeat;no-repeat no-repeat;repeat-x repeat-x;repeat-y repeat-y;repeat-round round;repeat-space space",
-    )
-  ) {
+  for (const [name, value] of pairs(
+    "repeat repeat;no-repeat no-repeat;repeat-x repeat-x;repeat-y repeat-y;repeat-round round;repeat-space space",
+  )) {
     staticUtility(`mask-${name}`, [["mask-repeat", value]])
   }
   for (const v of "border padding content fill stroke view".split(" ")) {
@@ -2354,7 +2538,9 @@ function registerUtilities(design: DesignSystem) {
             return value === null ? undefined : handlers.color(value)
           }
           case "percentage":
-            return c.modifier || !isPositiveInteger(v.slice(0, -1)) ? undefined : handlers.position(v)
+            return c.modifier || !isPositiveInteger(v.slice(0, -1))
+              ? undefined
+              : handlers.position(v)
           default:
             return c.modifier ? undefined : handlers.position(v)
         }
@@ -2366,23 +2552,24 @@ function registerUtilities(design: DesignSystem) {
       switch (inferDataType(v, ["number", "percentage"])) {
         case "number": {
           const spacing = theme.resolve(null, ["--spacing"])
-          return !spacing || !isSpacing(v) ? undefined : handlers.position(`calc(${spacing} * ${v})`)
+          return !spacing || !isSpacing(v)
+            ? undefined
+            : handlers.position(`calc(${spacing} * ${v})`)
         }
         case "percentage":
           return isPositiveInteger(v.slice(0, -1)) ? handlers.position(v) : undefined
       }
     })
-  const edgeProps = () => ["left", "right", "bottom", "top"].map((edge) => property(`--tw-mask-${edge}`, maskWhite))
-  for (
-    const [axis, edges] of [
-      ["x", ["right", "left"]],
-      ["y", ["top", "bottom"]],
-      ["t", ["top"]],
-      ["r", ["right"]],
-      ["b", ["bottom"]],
-      ["l", ["left"]],
-    ] as const
-  ) {
+  const edgeProps = () =>
+    ["left", "right", "bottom", "top"].map((edge) => property(`--tw-mask-${edge}`, maskWhite))
+  for (const [axis, edges] of [
+    ["x", ["right", "left"]],
+    ["y", ["top", "bottom"]],
+    ["t", ["top"]],
+    ["r", ["right"]],
+    ["b", ["bottom"]],
+    ["l", ["left"]],
+  ] as const) {
     for (const stop of "from to".split(" ")) {
       const handler = (kind: "color" | "position") => (v: string) => {
         const nodes: Array<Node> = [
@@ -2412,28 +2599,26 @@ function registerUtilities(design: DesignSystem) {
       maskStop(`mask-${axis}-${stop}`, { color: handler("color"), position: handler("position") })
     }
   }
-  for (
-    const [shape, gradient, stopsValue, hasPosition] of [
-      [
-        "linear",
-        "linear-gradient",
-        "var(--tw-mask-linear-position), var(--tw-mask-linear-from-color) var(--tw-mask-linear-from-position), var(--tw-mask-linear-to-color) var(--tw-mask-linear-to-position)",
-        true,
-      ],
-      [
-        "radial",
-        "radial-gradient",
-        "var(--tw-mask-radial-shape) var(--tw-mask-radial-size) at var(--tw-mask-radial-position), var(--tw-mask-radial-from-color) var(--tw-mask-radial-from-position), var(--tw-mask-radial-to-color) var(--tw-mask-radial-to-position)",
-        false,
-      ],
-      [
-        "conic",
-        "conic-gradient",
-        "from var(--tw-mask-conic-position), var(--tw-mask-conic-from-color) var(--tw-mask-conic-from-position), var(--tw-mask-conic-to-color) var(--tw-mask-conic-to-position)",
-        true,
-      ],
-    ] as const
-  ) {
+  for (const [shape, gradient, stopsValue, hasPosition] of [
+    [
+      "linear",
+      "linear-gradient",
+      "var(--tw-mask-linear-position), var(--tw-mask-linear-from-color) var(--tw-mask-linear-from-position), var(--tw-mask-linear-to-color) var(--tw-mask-linear-to-position)",
+      true,
+    ],
+    [
+      "radial",
+      "radial-gradient",
+      "var(--tw-mask-radial-shape) var(--tw-mask-radial-size) at var(--tw-mask-radial-position), var(--tw-mask-radial-from-color) var(--tw-mask-radial-from-position), var(--tw-mask-radial-to-color) var(--tw-mask-radial-to-position)",
+      false,
+    ],
+    [
+      "conic",
+      "conic-gradient",
+      "from var(--tw-mask-conic-position), var(--tw-mask-conic-from-color) var(--tw-mask-conic-from-position), var(--tw-mask-conic-to-color) var(--tw-mask-conic-to-position)",
+      true,
+    ],
+  ] as const) {
     const props = (): Array<Node> => [
       ...(hasPosition ? [property(`--tw-mask-${shape}-position`, "0deg")] : []),
       property(`--tw-mask-${shape}-from-position`, "0%"),
@@ -2442,10 +2627,10 @@ function registerUtilities(design: DesignSystem) {
       property(`--tw-mask-${shape}-to-color`, "transparent"),
       ...(shape === "radial"
         ? [
-          property("--tw-mask-radial-shape", "ellipse"),
-          property("--tw-mask-radial-size", "farthest-corner"),
-          property("--tw-mask-radial-position", "center"),
-        ]
+            property("--tw-mask-radial-shape", "ellipse"),
+            property("--tw-mask-radial-size", "farthest-corner"),
+            property("--tw-mask-radial-position", "center"),
+          ]
         : []),
     ]
     const base = () => [...maskProps(), ...props(), ...maskImage().slice(3)]
@@ -2454,7 +2639,10 @@ function registerUtilities(design: DesignSystem) {
         defaultValue: null,
         handle: (v) => [
           ...base(),
-          decl("--tw-mask-radial", "radial-gradient(var(--tw-mask-radial-stops, var(--tw-mask-radial-size)))"),
+          decl(
+            "--tw-mask-radial",
+            "radial-gradient(var(--tw-mask-radial-stops, var(--tw-mask-radial-size)))",
+          ),
           decl("--tw-mask-radial-size", v),
         ],
       })
@@ -2462,45 +2650,53 @@ function registerUtilities(design: DesignSystem) {
       functionalUtility(`mask-${shape}`, {
         defaultValue: null,
         supportsNegative: true,
-        handleBareValue: (named) => (isPositiveInteger(named.value) ? `calc(1deg * ${named.value})` : null),
-        handleNegativeBareValue: (named) => (isPositiveInteger(named.value) ? `calc(1deg * -${named.value})` : null),
+        handleBareValue: (named) =>
+          isPositiveInteger(named.value) ? `calc(1deg * ${named.value})` : null,
+        handleNegativeBareValue: (named) =>
+          isPositiveInteger(named.value) ? `calc(1deg * -${named.value})` : null,
         handle: (v) => [
           ...base(),
-          decl(`--tw-mask-${shape}`, `${gradient}(var(--tw-mask-${shape}-stops, var(--tw-mask-${shape}-position)))`),
+          decl(
+            `--tw-mask-${shape}`,
+            `${gradient}(var(--tw-mask-${shape}-stops, var(--tw-mask-${shape}-position)))`,
+          ),
           decl(`--tw-mask-${shape}-position`, v),
         ],
       })
     }
     for (const stop of "from to".split(" ")) {
-      const handler = (kind: "color" | "position") => (v: string): Array<Node> => [
-        ...base(),
-        decl(`--tw-mask-${shape}-stops`, stopsValue),
-        decl(`--tw-mask-${shape}`, `${gradient}(var(--tw-mask-${shape}-stops))`),
-        decl(`--tw-mask-${shape}-${stop}-${kind}`, v),
-      ]
+      const handler =
+        (kind: "color" | "position") =>
+        (v: string): Array<Node> => [
+          ...base(),
+          decl(`--tw-mask-${shape}-stops`, stopsValue),
+          decl(`--tw-mask-${shape}`, `${gradient}(var(--tw-mask-${shape}-stops))`),
+          decl(`--tw-mask-${shape}-${stop}-${kind}`, v),
+        ]
       maskStop(`mask-${shape}-${stop}`, { color: handler("color"), position: handler("position") })
     }
     if (shape === "radial") {
       for (const v of "closest-side farthest-side closest-corner farthest-corner".split(" ")) {
         staticUtility(`mask-radial-${v}`, [["--tw-mask-radial-size", v]])
       }
-      for (
-        const v of "top top-left top-right bottom bottom-left bottom-right left right center".split(" ")
-      ) {
+      for (const v of "top top-left top-right bottom bottom-left bottom-right left right center".split(
+        " ",
+      )) {
         staticUtility(`mask-radial-at-${v}`, [["--tw-mask-radial-position", v.replace("-", " ")]])
       }
-      functionalUtility("mask-radial-at", { defaultValue: null, handle: (v) => [decl("--tw-mask-radial-position", v)] })
+      functionalUtility("mask-radial-at", {
+        defaultValue: null,
+        handle: (v) => [decl("--tw-mask-radial-position", v)],
+      })
     }
   }
   for (const v of "border padding content".split(" ")) {
     staticUtility(`bg-clip-${v}`, [["background-clip", `${v}-box`]])
     staticUtility(`bg-origin-${v}`, [["background-origin", `${v}-box`]])
   }
-  for (
-    const v
-      of "normal multiply screen overlay darken lighten color-dodge color-burn hard-light soft-light difference exclusion hue saturation color luminosity"
-        .split(" ")
-  ) {
+  for (const v of "normal multiply screen overlay darken lighten color-dodge color-burn hard-light soft-light difference exclusion hue saturation color luminosity".split(
+    " ",
+  )) {
     staticUtility(`bg-blend-${v}`, [["background-blend-mode", v]])
     staticUtility(`mix-blend-${v}`, [["mix-blend-mode", v]])
   }
@@ -2522,7 +2718,8 @@ function registerUtilities(design: DesignSystem) {
     color: (v) => [decl("stroke", v)],
     width: (v) => [decl("stroke-width", v)],
   })
-  for (const v of "contain cover fill none scale-down".split(" ")) staticUtility(`object-${v}`, [["object-fit", v]])
+  for (const v of "contain cover fill none scale-down".split(" "))
+    staticUtility(`object-${v}`, [["object-fit", v]])
   functionalUtility("object", {
     themeKeys: ["--object-position"],
     handle: (v) => [decl("object-position", v)],
@@ -2544,7 +2741,9 @@ function registerUtilities(design: DesignSystem) {
   for (const v of "left center right justify start end".split(" ")) {
     staticUtility(`text-${v}`, [["text-align", v]])
   }
-  spacingUtility("indent", ["--text-indent", "--spacing"], (v) => [decl("text-indent", v)], { supportsNegative: true })
+  spacingUtility("indent", ["--text-indent", "--spacing"], (v) => [decl("text-indent", v)], {
+    supportsNegative: true,
+  })
   for (const v of "baseline top middle bottom text-top text-bottom sub super".split(" ")) {
     staticUtility(`align-${v}`, [["vertical-align", v]])
   }
@@ -2563,10 +2762,11 @@ function registerUtilities(design: DesignSystem) {
           return [fontWeightProps(), decl("--tw-font-weight", v), decl("font-weight", v)]
       }
     }
-    const family = theme.resolveWith(c.value.value, ["--font"], [
-      "--font-feature-settings",
-      "--font-variation-settings",
-    ])
+    const family = theme.resolveWith(
+      c.value.value,
+      ["--font"],
+      ["--font-feature-settings", "--font-variation-settings"],
+    )
     if (family) {
       const [v, extra] = family
       return [
@@ -2576,13 +2776,12 @@ function registerUtilities(design: DesignSystem) {
       ]
     }
     const weight = theme.resolve(c.value.value, ["--font-weight"])
-    if (weight) return [fontWeightProps(), decl("--tw-font-weight", weight), decl("font-weight", weight)]
+    if (weight)
+      return [fontWeightProps(), decl("--tw-font-weight", weight), decl("font-weight", weight)]
   })
-  for (
-    const v
-      of "normal ultra-condensed extra-condensed condensed semi-condensed semi-expanded expanded extra-expanded ultra-expanded"
-        .split(" ")
-  ) {
+  for (const v of "normal ultra-condensed extra-condensed condensed semi-condensed semi-expanded expanded extra-expanded ultra-expanded".split(
+    " ",
+  )) {
     staticUtility(`font-stretch-${v}`, [["font-stretch", v]])
   }
   functionalUtility("font-stretch", {
@@ -2613,11 +2812,13 @@ function registerUtilities(design: DesignSystem) {
     staticValues: { none: [decl("animation", "none")] },
   })
 
-  const filterValue = "blur brightness contrast grayscale hue-rotate invert saturate sepia drop-shadow"
-    .split(" ")
-    .map((n) => `var(--tw-${n},)`)
-    .join(" ")
-  const backdropNames = "blur brightness contrast grayscale hue-rotate invert opacity saturate sepia".split(" ")
+  const filterValue =
+    "blur brightness contrast grayscale hue-rotate invert saturate sepia drop-shadow"
+      .split(" ")
+      .map((n) => `var(--tw-${n},)`)
+      .join(" ")
+  const backdropNames =
+    "blur brightness contrast grayscale hue-rotate invert opacity saturate sepia".split(" ")
   const backdropValue = backdropNames.map((n) => `var(--tw-backdrop-${n},)`).join(" ")
   const filterProps = () => [
     ..."blur brightness contrast grayscale hue-rotate invert opacity saturate sepia drop-shadow drop-shadow-color"
@@ -2627,7 +2828,10 @@ function registerUtilities(design: DesignSystem) {
     property("--tw-drop-shadow-size"),
   ]
   const backdropProps = () => backdropNames.map((n) => property(`--tw-backdrop-${n}`))
-  const backdrop = () => [decl("-webkit-backdrop-filter", backdropValue), decl("backdrop-filter", backdropValue)]
+  const backdrop = () => [
+    decl("-webkit-backdrop-filter", backdropValue),
+    decl("backdrop-filter", backdropValue),
+  ]
   functional("filter", (c) => {
     if (c.modifier) return
     if (c.value === null) return [...filterProps(), decl("filter", filterValue)]
@@ -2638,9 +2842,13 @@ function registerUtilities(design: DesignSystem) {
     if (c.modifier) return
     if (c.value === null) return [...backdropProps(), ...backdrop()]
     if (c.value.kind === "arbitrary") {
-      return [decl("-webkit-backdrop-filter", c.value.value), decl("backdrop-filter", c.value.value)]
+      return [
+        decl("-webkit-backdrop-filter", c.value.value),
+        decl("backdrop-filter", c.value.value),
+      ]
     }
-    if (c.value.value === "none") return [decl("-webkit-backdrop-filter", "none"), decl("backdrop-filter", "none")]
+    if (c.value.value === "none")
+      return [decl("-webkit-backdrop-filter", "none"), decl("backdrop-filter", "none")]
   })
   functionalUtility("blur", {
     themeKeys: ["--blur"],
@@ -2652,39 +2860,54 @@ function registerUtilities(design: DesignSystem) {
     handle: (v) => [...backdropProps(), decl("--tw-backdrop-blur", `blur(${v})`), ...backdrop()],
     staticValues: { none: [...backdropProps(), decl("--tw-backdrop-blur", " "), ...backdrop()] },
   })
-  for (
-    const [name, unit, defaultValue, negative] of [
-      ["brightness", "%", undefined, false],
-      ["contrast", "%", undefined, false],
-      ["grayscale", "%", "100%", false],
-      ["hue-rotate", "deg", undefined, true],
-      ["invert", "%", "100%", false],
-      ["saturate", "%", undefined, false],
-      ["sepia", "%", "100%", false],
-    ] as const
-  ) {
+  for (const [name, unit, defaultValue, negative] of [
+    ["brightness", "%", undefined, false],
+    ["contrast", "%", undefined, false],
+    ["grayscale", "%", "100%", false],
+    ["hue-rotate", "deg", undefined, true],
+    ["invert", "%", "100%", false],
+    ["saturate", "%", undefined, false],
+    ["sepia", "%", "100%", false],
+  ] as const) {
     functionalUtility(name, {
       themeKeys: [`--${name}`],
       supportsNegative: negative,
       handleBareValue: suffix(unit),
       defaultValue,
-      handle: (v) => [...filterProps(), decl(`--tw-${name}`, `${name}(${v})`), decl("filter", filterValue)],
+      handle: (v) => [
+        ...filterProps(),
+        decl(`--tw-${name}`, `${name}(${v})`),
+        decl("filter", filterValue),
+      ],
     })
     functionalUtility(`backdrop-${name}`, {
       themeKeys: [`--backdrop-${name}`, `--${name}`],
       supportsNegative: negative,
       handleBareValue: suffix(unit),
       defaultValue,
-      handle: (v) => [...backdropProps(), decl(`--tw-backdrop-${name}`, `${name}(${v})`), ...backdrop()],
+      handle: (v) => [
+        ...backdropProps(),
+        decl(`--tw-backdrop-${name}`, `${name}(${v})`),
+        ...backdrop(),
+      ],
     })
   }
-  staticUtility("drop-shadow-none", [filterProps, ["--tw-drop-shadow", " "], ["filter", filterValue]])
+  staticUtility("drop-shadow-none", [
+    filterProps,
+    ["--tw-drop-shadow", " "],
+    ["filter", filterValue],
+  ])
   functional("drop-shadow", (c) => {
     const alpha = alphaOf(c)
     const withSize = (shadow: string, value: string) => [
       ...filterProps(),
       decl("--tw-drop-shadow-alpha", alpha),
-      ...dropShadowDecls("--tw-drop-shadow-size", shadow, alpha, (color) => `var(--tw-drop-shadow-color, ${color})`),
+      ...dropShadowDecls(
+        "--tw-drop-shadow-size",
+        shadow,
+        alpha,
+        (color) => `var(--tw-drop-shadow-color, ${color})`,
+      ),
       decl("--tw-drop-shadow", value),
       decl("filter", filterValue),
     ]
@@ -2693,7 +2916,10 @@ function registerUtilities(design: DesignSystem) {
       decl("--tw-drop-shadow-color", color),
       decl("--tw-drop-shadow", "var(--tw-drop-shadow-size)"),
     ]
-    const dropShadows = (value: string) => segment(value, ",").map((s) => `drop-shadow(${s})`).join(" ")
+    const dropShadows = (value: string) =>
+      segment(value, ",")
+        .map((s) => `drop-shadow(${s})`)
+        .join(" ")
     if (!c.value) {
       const raw = theme.get(["--drop-shadow"])
       const resolved = theme.resolve(null, ["--drop-shadow"])
@@ -2703,7 +2929,9 @@ function registerUtilities(design: DesignSystem) {
       const v = c.value.value
       if ((c.value.dataType ?? inferDataType(v, ["color"])) === "color") {
         const color = applyModifier(v, c.modifier, theme)
-        return color === null ? undefined : withColor(withAlpha(color, "var(--tw-drop-shadow-alpha)"))
+        return color === null
+          ? undefined
+          : withColor(withAlpha(color, "var(--tw-drop-shadow-alpha)"))
       }
       return c.modifier && !alpha ? undefined : withSize(v, "var(--tw-drop-shadow-size)")
     }
@@ -2714,12 +2942,19 @@ function registerUtilities(design: DesignSystem) {
       return withSize(raw, alpha ? "var(--tw-drop-shadow-size)" : dropShadows(resolved))
     }
     const color = resolveColor(c, theme, ["--drop-shadow-color", "--color"])
-    if (color) return withColor(color === "inherit" ? "inherit" : withAlpha(color, "var(--tw-drop-shadow-alpha)"))
+    if (color)
+      return withColor(
+        color === "inherit" ? "inherit" : withAlpha(color, "var(--tw-drop-shadow-alpha)"),
+      )
   })
   functionalUtility("backdrop-opacity", {
     themeKeys: ["--backdrop-opacity", "--opacity"],
     handleBareValue: (named) => (isSpacing(named.value) ? `${named.value}%` : null),
-    handle: (v) => [...backdropProps(), decl("--tw-backdrop-opacity", `opacity(${v})`), ...backdrop()],
+    handle: (v) => [
+      ...backdropProps(),
+      decl("--tw-backdrop-opacity", `opacity(${v})`),
+      ...backdrop(),
+    ],
   })
 
   const ease = `var(--tw-ease, ${theme.resolve(null, ["--default-transition-timing-function"]) ?? "ease"})`
@@ -2732,8 +2967,7 @@ function registerUtilities(design: DesignSystem) {
   const colors =
     "color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to"
   functionalUtility("transition", {
-    defaultValue:
-      `${colors}, opacity, box-shadow, transform, translate, scale, rotate, filter, -webkit-backdrop-filter, backdrop-filter, display, content-visibility, overlay, pointer-events`,
+    defaultValue: `${colors}, opacity, box-shadow, transform, translate, scale, rotate, filter, -webkit-backdrop-filter, backdrop-filter, display, content-visibility, overlay, pointer-events`,
     themeKeys: ["--transition-property"],
     handle: (v) => transition(v),
     staticValues: {
@@ -2760,7 +2994,8 @@ function registerUtilities(design: DesignSystem) {
       v = theme.resolve(c.value.fraction ?? c.value.value, ["--transition-duration"])
       if (v === null && isPositiveInteger(c.value.value)) v = `${c.value.value}ms`
     }
-    if (v !== null) return [durationProps(), decl("--tw-duration", v), decl("transition-duration", v)]
+    if (v !== null)
+      return [durationProps(), decl("--tw-duration", v), decl("transition-duration", v)]
   })
   const easeProps = () => property("--tw-ease")
   functionalUtility("ease", {
@@ -2768,29 +3003,62 @@ function registerUtilities(design: DesignSystem) {
     handle: (v) => [easeProps(), decl("--tw-ease", v), decl("transition-timing-function", v)],
     staticValues: {
       initial: [easeProps(), decl("--tw-ease", "initial")],
-      linear: [easeProps(), decl("--tw-ease", "linear"), decl("transition-timing-function", "linear")],
+      linear: [
+        easeProps(),
+        decl("--tw-ease", "linear"),
+        decl("transition-timing-function", "linear"),
+      ],
     },
   })
   functionalUtility("will-change", { themeKeys: [], handle: (v) => [decl("will-change", v)] })
   functionalUtility("content", {
     themeKeys: ["--content"],
-    handle: (v) => [property("--tw-content", "\"\""), decl("--tw-content", v), decl("content", "var(--tw-content)")],
+    handle: (v) => [
+      property("--tw-content", '""'),
+      decl("--tw-content", v),
+      decl("content", "var(--tw-content)"),
+    ],
   })
 
   const containValue =
     "var(--tw-contain-size,) var(--tw-contain-layout,) var(--tw-contain-paint,) var(--tw-contain-style,)"
-  const containProps = () => ["size", "layout", "paint", "style"].map((n) => property(`--tw-contain-${n}`))
-  staticUtility("contain-size", [containProps, ["--tw-contain-size", "size"], ["contain", containValue]])
-  staticUtility("contain-inline-size", [containProps, ["--tw-contain-size", "inline-size"], ["contain", containValue]])
-  staticUtility("contain-layout", [containProps, ["--tw-contain-layout", "layout"], ["contain", containValue]])
-  staticUtility("contain-paint", [containProps, ["--tw-contain-paint", "paint"], ["contain", containValue]])
-  staticUtility("contain-style", [containProps, ["--tw-contain-style", "style"], ["contain", containValue]])
+  const containProps = () =>
+    ["size", "layout", "paint", "style"].map((n) => property(`--tw-contain-${n}`))
+  staticUtility("contain-size", [
+    containProps,
+    ["--tw-contain-size", "size"],
+    ["contain", containValue],
+  ])
+  staticUtility("contain-inline-size", [
+    containProps,
+    ["--tw-contain-size", "inline-size"],
+    ["contain", containValue],
+  ])
+  staticUtility("contain-layout", [
+    containProps,
+    ["--tw-contain-layout", "layout"],
+    ["contain", containValue],
+  ])
+  staticUtility("contain-paint", [
+    containProps,
+    ["--tw-contain-paint", "paint"],
+    ["contain", containValue],
+  ])
+  staticUtility("contain-style", [
+    containProps,
+    ["--tw-contain-style", "style"],
+    ["contain", containValue],
+  ])
   functionalUtility("contain", { themeKeys: [], handle: (v) => [decl("contain", v)] })
   spacingUtility(
     "leading",
     ["--leading", "--spacing"],
     (v) => [property("--tw-leading"), decl("--tw-leading", v), decl("line-height", v)],
-    { staticValues: { none: [property("--tw-leading"), decl("--tw-leading", "1"), decl("line-height", "1")] } },
+    {
+      staticValues: {
+        none: [property("--tw-leading"), decl("--tw-leading", "1"), decl("line-height", "1")],
+      },
+    },
   )
   functionalUtility("tracking", {
     supportsNegative: true,
@@ -2801,14 +3069,16 @@ function registerUtilities(design: DesignSystem) {
     "var(--tw-ordinal,) var(--tw-slashed-zero,) var(--tw-numeric-figure,) var(--tw-numeric-spacing,) var(--tw-numeric-fraction,)"
   const numericProps = () =>
     ["ordinal", "slashed-zero", "numeric-figure", "numeric-spacing", "numeric-fraction"].map((n) =>
-      property(`--tw-${n}`)
+      property(`--tw-${n}`),
     )
-  for (
-    const [name, prop] of pairs(
-      "ordinal ordinal;slashed-zero slashed-zero;lining-nums numeric-figure;oldstyle-nums numeric-figure;proportional-nums numeric-spacing;tabular-nums numeric-spacing;diagonal-fractions numeric-fraction;stacked-fractions numeric-fraction",
-    )
-  ) {
-    staticUtility(name, [numericProps, [`--tw-${prop}`, name], ["font-variant-numeric", numericValue]])
+  for (const [name, prop] of pairs(
+    "ordinal ordinal;slashed-zero slashed-zero;lining-nums numeric-figure;oldstyle-nums numeric-figure;proportional-nums numeric-spacing;tabular-nums numeric-spacing;diagonal-fractions numeric-fraction;stacked-fractions numeric-fraction",
+  )) {
+    staticUtility(name, [
+      numericProps,
+      [`--tw-${prop}`, name],
+      ["font-variant-numeric", numericValue],
+    ])
   }
 
   const outlineProps = () => property("--tw-outline-style", "solid")
@@ -2817,15 +3087,23 @@ function registerUtilities(design: DesignSystem) {
     compile: () => [
       decl("--tw-outline-style", "none"),
       decl("outline-style", "none"),
-      rule("@media (forced-colors: active)", [decl("outline", "2px solid transparent"), decl("outline-offset", "2px")]),
+      rule("@media (forced-colors: active)", [
+        decl("outline", "2px solid transparent"),
+        decl("outline-offset", "2px"),
+      ]),
     ],
   })
   for (const v of "none solid dashed dotted double".split(" ")) {
-    staticUtility(`outline-${v}`, [["--tw-outline-style", v], ["outline-style", v]])
+    staticUtility(`outline-${v}`, [
+      ["--tw-outline-style", v],
+      ["outline-style", v],
+    ])
   }
-  const outlineWidth = (
-    v: string,
-  ) => [outlineProps(), decl("outline-style", "var(--tw-outline-style)"), decl("outline-width", v)]
+  const outlineWidth = (v: string) => [
+    outlineProps(),
+    decl("outline-style", "var(--tw-outline-style)"),
+    decl("outline-width", v),
+  ]
   colorOrWidth("outline", {
     colorKeys: ["--outline-color", "--color"],
     widthKeys: ["--outline-width"],
@@ -2854,7 +3132,8 @@ function registerUtilities(design: DesignSystem) {
   })
 
   const lineHeight = (modifier: Modifier): string | null => {
-    let v = modifier.kind === "arbitrary" ? modifier.value : theme.resolve(modifier.value, ["--leading"])
+    let v =
+      modifier.kind === "arbitrary" ? modifier.value : theme.resolve(modifier.value, ["--leading"])
     if (!v && isSpacing(modifier.value)) {
       const spacing = theme.resolve(null, ["--spacing"])
       if (!spacing) return null
@@ -2868,7 +3147,8 @@ function registerUtilities(design: DesignSystem) {
     if (c.value.kind === "arbitrary") {
       const v = c.value.value
       switch (
-        c.value.dataType ?? inferDataType(v, ["color", "length", "percentage", "absolute-size", "relative-size"])
+        c.value.dataType ??
+        inferDataType(v, ["color", "length", "percentage", "absolute-size", "relative-size"])
       ) {
         case "size":
         case "length":
@@ -2889,7 +3169,11 @@ function registerUtilities(design: DesignSystem) {
     }
     const color = resolveColor(c, theme, ["--text-color", "--color"])
     if (color) return [decl("color", color)]
-    const size = theme.resolveWith(c.value.value, ["--text"], ["--line-height", "--letter-spacing", "--font-weight"])
+    const size = theme.resolveWith(
+      c.value.value,
+      ["--text"],
+      ["--line-height", "--letter-spacing", "--font-weight"],
+    )
     if (size) {
       const [v, extra] = size
       if (c.modifier) {
@@ -2899,12 +3183,20 @@ function registerUtilities(design: DesignSystem) {
       }
       return [
         decl("font-size", v),
-        decl("line-height", extra["--line-height"] ? `var(--tw-leading, ${extra["--line-height"]})` : undefined),
+        decl(
+          "line-height",
+          extra["--line-height"] ? `var(--tw-leading, ${extra["--line-height"]})` : undefined,
+        ),
         decl(
           "letter-spacing",
-          extra["--letter-spacing"] ? `var(--tw-tracking, ${extra["--letter-spacing"]})` : undefined,
+          extra["--letter-spacing"]
+            ? `var(--tw-tracking, ${extra["--letter-spacing"]})`
+            : undefined,
         ),
-        decl("font-weight", extra["--font-weight"] ? `var(--tw-font-weight, ${extra["--font-weight"]})` : undefined),
+        decl(
+          "font-weight",
+          extra["--font-weight"] ? `var(--tw-font-weight, ${extra["--font-weight"]})` : undefined,
+        ),
       ]
     }
   })
@@ -2932,7 +3224,10 @@ function registerUtilities(design: DesignSystem) {
       decl(o.alphaVar, alpha),
       ...o.shadow(value, alpha, prefix),
     ]
-    const withColor = (color: string) => [...o.props(), decl(o.colorVar, withAlpha(color, `var(${o.alphaVar})`))]
+    const withColor = (color: string) => [
+      ...o.props(),
+      decl(o.colorVar, withAlpha(color, `var(${o.alphaVar})`)),
+    ]
     staticUtility(`${name}-initial`, [o.props, [o.colorVar, "initial"]])
     functional(name, (c) => {
       const alpha = alphaOf(c)
@@ -2942,12 +3237,14 @@ function registerUtilities(design: DesignSystem) {
       }
       if (c.value.kind === "arbitrary") {
         const v = c.value.value
-        if ((c.value.dataType ?? inferDataType(v, ["color"])) !== "color") return withShadow(v, alpha, o.prefix)
+        if ((c.value.dataType ?? inferDataType(v, ["color"])) !== "color")
+          return withShadow(v, alpha, o.prefix)
         const color = applyModifier(v, c.modifier, theme)
         return color === null ? undefined : withColor(color)
       }
       if (c.value.value === "none") return c.modifier ? undefined : [...o.props(), ...o.none()]
-      if (c.value.value === "inherit") return c.modifier ? undefined : [...o.props(), decl(o.colorVar, "inherit")]
+      if (c.value.value === "inherit")
+        return c.modifier ? undefined : [...o.props(), decl(o.colorVar, "inherit")]
       const v = theme.get([`--${name}-${c.value.value}`])
       if (v) return withShadow(v, alpha)
       const color = resolveColor(c, theme, o.colorKeys)
@@ -2956,11 +3253,15 @@ function registerUtilities(design: DesignSystem) {
   }
 
   shadowUtility("text-shadow", {
-    props: () => [property("--tw-text-shadow-color"), property("--tw-text-shadow-alpha", "100%", "<percentage>")],
+    props: () => [
+      property("--tw-text-shadow-color"),
+      property("--tw-text-shadow-alpha", "100%", "<percentage>"),
+    ],
     colorVar: "--tw-text-shadow-color",
     alphaVar: "--tw-text-shadow-alpha",
     colorKeys: ["--text-shadow-color", "--color"],
-    shadow: (v, alpha) => shadowDecls("text-shadow", v, alpha, (color) => `var(--tw-text-shadow-color, ${color})`),
+    shadow: (v, alpha) =>
+      shadowDecls("text-shadow", v, alpha, (color) => `var(--tw-text-shadow-color, ${color})`),
     none: () => [decl("text-shadow", "none")],
   })
 
@@ -3003,14 +3304,16 @@ function registerUtilities(design: DesignSystem) {
   const ringShadow = (v: string) =>
     `var(--tw-ring-inset,) 0 0 0 calc(${v} + var(--tw-ring-offset-width)) var(--tw-ring-color, ${ringColor})`
   const insetRingShadow = (v: string) => `inset 0 0 0 ${v} var(--tw-inset-ring-color, currentcolor)`
-  for (
-    const [name, shadow, colorVar, defaultWidth] of [
-      ["ring", ringShadow, "--tw-ring-color", theme.get(["--default-ring-width"]) ?? "1px"],
-      ["inset-ring", insetRingShadow, "--tw-inset-ring-color", "1px"],
-    ] as const
-  ) {
+  for (const [name, shadow, colorVar, defaultWidth] of [
+    ["ring", ringShadow, "--tw-ring-color", theme.get(["--default-ring-width"]) ?? "1px"],
+    ["inset-ring", insetRingShadow, "--tw-inset-ring-color", "1px"],
+  ] as const) {
     const shadowVar = colorVar.replace("-color", "-shadow")
-    const width = (v: string) => [...shadowProps(), decl(shadowVar, shadow(v)), decl("box-shadow", boxShadowValue)]
+    const width = (v: string) => [
+      ...shadowProps(),
+      decl(shadowVar, shadow(v)),
+      decl("box-shadow", boxShadowValue),
+    ]
     colorOrWidth(name, {
       colorKeys: ["--ring-color", "--color"],
       widthKeys: ["--ring-width"],
@@ -3020,20 +3323,22 @@ function registerUtilities(design: DesignSystem) {
       width,
     })
   }
-  const ringOffsetShadow = "var(--tw-ring-inset,) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color)"
+  const ringOffsetShadow =
+    "var(--tw-ring-inset,) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color)"
   colorOrWidth("ring-offset", {
     colorKeys: ["--ring-offset-color", "--color"],
     widthKeys: ["--ring-offset-width"],
     widthTypes: ["length"],
     widthFirst: true,
     color: (v) => [decl("--tw-ring-offset-color", v)],
-    width: (v) => [decl("--tw-ring-offset-width", v), decl("--tw-ring-offset-shadow", ringOffsetShadow)],
+    width: (v) => [
+      decl("--tw-ring-offset-width", v),
+      decl("--tw-ring-offset-shadow", ringOffsetShadow),
+    ],
   })
-  for (
-    const [side, value] of pairs(
-      "t top;tr top right;r right;br bottom right;b bottom;bl bottom left;l left;tl top left",
-    )
-  ) {
+  for (const [side, value] of pairs(
+    "t top;tr top right;r right;br bottom right;b bottom;bl bottom left;l left;tl top left",
+  )) {
     staticUtility(`bg-gradient-to-${side}`, [
       ["--tw-gradient-position", `to ${value} in oklab`],
       ["background-image", "linear-gradient(var(--tw-gradient-stops))"],
@@ -3052,7 +3357,8 @@ function registerUtilities(design: DesignSystem) {
     functional(name, (c) => {
       if (c.modifier) return
       if (!c.value) return [decl(prop, "1")]
-      if (c.value.kind === "arbitrary" || isPositiveInteger(c.value.value)) return [decl(prop, c.value.value)]
+      if (c.value.kind === "arbitrary" || isPositiveInteger(c.value.value))
+        return [decl(prop, c.value.value)]
     })
   }
   functional("@container", (c) => {
@@ -3073,7 +3379,8 @@ function compareBreakpoints(a: string, b: string, direction: "asc" | "desc"): nu
   const bi = b.indexOf("(")
   const aUnit = ai === -1 ? a.replace(/[\d.]+/g, "") : a.slice(0, ai)
   const bUnit = bi === -1 ? b.replace(/[\d.]+/g, "") : b.slice(0, bi)
-  const result = (aUnit === bUnit ? 0 : aUnit < bUnit ? -1 : 1) ||
+  const result =
+    (aUnit === bUnit ? 0 : aUnit < bUnit ? -1 : 1) ||
     (direction === "asc" ? parseInt(a) - parseInt(b) : parseInt(b) - parseInt(a))
   return Number.isNaN(result) ? (a < b ? -1 : 1) : result
 }
@@ -3092,7 +3399,8 @@ function compoundsFor(selectors: ReadonlyArray<string>): number {
   let flags = 0
   for (const s of selectors) {
     if (s[0] === "@") {
-      if (!s.startsWith("@media") && !s.startsWith("@supports") && !s.startsWith("@container")) return 0
+      if (!s.startsWith("@media") && !s.startsWith("@supports") && !s.startsWith("@container"))
+        return 0
       flags |= Compounds.AtRules
       continue
     }
@@ -3133,14 +3441,21 @@ class Variants {
   /** `name selector | selector` */
   table(text: string) {
     for (const line of text.trim().split("\n")) {
-      this.selectors(line.slice(0, line.indexOf(" ")), line.slice(line.indexOf(" ") + 1).split(" | "))
+      this.selectors(
+        line.slice(0, line.indexOf(" ")),
+        line.slice(line.indexOf(" ") + 1).split(" | "),
+      )
     }
   }
 
   selectors(name: string, selectors: ReadonlyArray<string>, compounds = compoundsFor(selectors)) {
-    this.static(name, (node) => {
-      node.nodes = selectors.map((s) => rule(s, node.nodes))
-    }, compounds)
+    this.static(
+      name,
+      (node) => {
+        node.nodes = selectors.map((s) => rule(s, node.nodes))
+      },
+      compounds,
+    )
   }
 
   functional(name: string, apply: VariantDef["apply"], compounds: number = Compounds.StyleRules) {
@@ -3161,14 +3476,17 @@ class Variants {
 
   compoundsWith(parent: string, child: Variant): boolean {
     const parentDef = this.defs.get(parent)
-    const childCompounds = child.kind === "arbitrary"
-      ? compoundsFor([child.selector])
-      : this.defs.get(child.root)?.compounds
+    const childCompounds =
+      child.kind === "arbitrary"
+        ? compoundsFor([child.selector])
+        : this.defs.get(child.root)?.compounds
     if (!parentDef || childCompounds === undefined) return false
-    return parentDef.kind === "compound" &&
+    return (
+      parentDef.kind === "compound" &&
       childCompounds !== 0 &&
       parentDef.compoundsWith !== 0 &&
       (parentDef.compoundsWith & childCompounds) !== 0
+    )
   }
 
   compare(a: Variant | null, b: Variant | null): number {
@@ -3273,7 +3591,7 @@ function attributeSelector(value: string): string {
   if (!value.includes("=")) return value
   const [name, ...rest] = segment(value, "=")
   const v = rest.join("=").trim()
-  if (v[0] === "'" || v[0] === "\"") return value
+  if (v[0] === "'" || v[0] === '"') return value
   if (v.length > 1) {
     const flag = v[v.length - 1]
     if (v[v.length - 2] === " " && (flag === "i" || flag === "I" || flag === "s" || flag === "S")) {
@@ -3304,7 +3622,14 @@ function createVariants(theme: Theme): Variants {
           applied = false
           return "stop"
         }
-        replacements.push(rule(`&:not(${segment(s.selector, ",").map((p) => p.replaceAll("&", "*")).join(", ")})`, []))
+        replacements.push(
+          rule(
+            `&:not(${segment(s.selector, ",")
+              .map((p) => p.replaceAll("&", "*"))
+              .join(", ")})`,
+            [],
+          ),
+        )
       }
       for (const a of atRules) {
         const match = /^(@media|@supports|@container)\s+(.*)$/s.exec(a.selector)
@@ -3317,7 +3642,9 @@ function createVariants(theme: Theme): Variants {
           applied = false
           return "stop"
         }
-        replacements.push(rule(`${match[1]} ${negateConditions(match[1], conditions).join(", ")}`, []))
+        replacements.push(
+          rule(`${match[1]} ${negateConditions(match[1], conditions).join(", ")}`, []),
+        )
       }
       node.selector = "&"
       node.nodes = replacements
@@ -3328,7 +3655,10 @@ function createVariants(theme: Theme): Variants {
     if (!applied) return null
   })
 
-  for (const [name, combinator] of [["group", " *"], ["peer", " ~ *"]] as const) {
+  for (const [name, combinator] of [
+    ["group", " *"],
+    ["peer", " ~ *"],
+  ] as const) {
     variants.compound(name, Compounds.StyleRules, (node, variant) => {
       const v = variant as Extract<Variant, { kind: "compound" }>
       if (v.variant.kind === "arbitrary" && v.variant.relative) return null
@@ -3360,10 +3690,16 @@ backdrop &::backdrop
 details-content &::details-content
 `)
   for (const pseudo of "before after".split(" ")) {
-    variants.static(pseudo, (node) => {
-      const content: Property = { ...property("--tw-content", "\"\""), initialFirst: true }
-      node.nodes = [rule(`&::${pseudo}`, [content, decl("content", "var(--tw-content)"), ...node.nodes])]
-    }, Compounds.Never)
+    variants.static(
+      pseudo,
+      (node) => {
+        const content: Property = { ...property("--tw-content", '""'), initialFirst: true }
+        node.nodes = [
+          rule(`&::${pseudo}`, [content, decl("content", "var(--tw-content)"), ...node.nodes]),
+        ]
+      },
+      Compounds.Never,
+    )
   }
   variants.table(`
 first &:first-child
@@ -3442,29 +3778,32 @@ inert &:is([inert], [inert] *)
     if (!v.value || v.modifier) return null
     node.nodes = [rule(`&[data-${attributeSelector(v.value.value)}]`, node.nodes)]
   })
-  for (
-    const [name, pseudo] of pairs(
-      "nth nth-child;nth-last nth-last-child;nth-of-type nth-of-type;nth-last-of-type nth-last-of-type",
-    )
-  ) {
+  for (const [name, pseudo] of pairs(
+    "nth nth-child;nth-last nth-last-child;nth-of-type nth-of-type;nth-last-of-type nth-last-of-type",
+  )) {
     variants.functional(name, (node, variant) => {
       const v = functionalValue(variant)
-      if (!v.value || v.modifier || (v.value.kind === "named" && !isPositiveInteger(v.value.value))) return null
+      if (!v.value || v.modifier || (v.value.kind === "named" && !isPositiveInteger(v.value.value)))
+        return null
       node.nodes = [rule(`&:${pseudo}(${v.value.value})`, node.nodes)]
     })
   }
-  variants.functional("supports", (node, variant) => {
-    const v = functionalValue(variant)
-    if (!v.value || v.modifier) return null
-    let value = v.value.value
-    if (/^[\w-]*\s*\(/.test(value)) {
-      node.nodes = [rule(`@supports ${value.replace(/\b(and|or|not)\b/g, " $1 ")}`, node.nodes)]
-      return
-    }
-    if (!value.includes(":")) value = `${value}: var(--tw)`
-    if (value[0] !== "(" || value[value.length - 1] !== ")") value = `(${value})`
-    node.nodes = [rule(`@supports ${value}`, node.nodes)]
-  }, Compounds.AtRules)
+  variants.functional(
+    "supports",
+    (node, variant) => {
+      const v = functionalValue(variant)
+      if (!v.value || v.modifier) return null
+      let value = v.value.value
+      if (/^[\w-]*\s*\(/.test(value)) {
+        node.nodes = [rule(`@supports ${value.replace(/\b(and|or|not)\b/g, " $1 ")}`, node.nodes)]
+        return
+      }
+      if (!value.includes(":")) value = `${value}: var(--tw)`
+      if (value[0] !== "(" || value[value.length - 1] !== ")") value = `(${value})`
+      node.nodes = [rule(`@supports ${value}`, node.nodes)]
+    },
+    Compounds.AtRules,
+  )
   variants.table(`
 motion-safe @media (prefers-reduced-motion: no-preference)
 motion-reduce @media (prefers-reduced-motion: reduce)
@@ -3491,53 +3830,88 @@ contrast-less @media (prefers-contrast: less)
     let result: string | null = null
     if (v.kind === "static") result = theme.resolveValue(v.root, ["--breakpoint"])
     else if (v.kind === "functional" && v.value && !v.modifier) {
-      const value = v.value.kind === "arbitrary" ? v.value.value : theme.resolveValue(v.value.value, ["--breakpoint"])
+      const value =
+        v.value.kind === "arbitrary"
+          ? v.value.value
+          : theme.resolveValue(v.value.value, ["--breakpoint"])
       result = !value || value.includes("var(") ? null : value
     }
     breakpointCache.set(v, result)
     return result
   }
-  variants.group(() => {
-    variants.functional("max", (node, variant) => {
-      if ((variant as { modifier?: unknown }).modifier) return null
-      const value = breakpoint(variant)
-      if (value === null) return null
-      node.nodes = [rule(`@media (width < ${value})`, node.nodes)]
-    }, Compounds.AtRules)
-  }, (a, b) => compareResolved(a, b, "desc", breakpoint))
-  variants.group(() => {
-    for (const [name, value] of theme.namespace("--breakpoint")) {
-      if (name === null) continue
-      variants.static(name, (node) => {
-        node.nodes = [rule(`@media (width >= ${value})`, node.nodes)]
-      }, Compounds.AtRules)
-    }
-    variants.functional("min", (node, variant) => {
-      if ((variant as { modifier?: unknown }).modifier) return null
-      const value = breakpoint(variant)
-      if (value === null) return null
-      node.nodes = [rule(`@media (width >= ${value})`, node.nodes)]
-    }, Compounds.AtRules)
-  }, (a, b) => compareResolved(a, b, "asc", breakpoint))
+  variants.group(
+    () => {
+      variants.functional(
+        "max",
+        (node, variant) => {
+          if ((variant as { modifier?: unknown }).modifier) return null
+          const value = breakpoint(variant)
+          if (value === null) return null
+          node.nodes = [rule(`@media (width < ${value})`, node.nodes)]
+        },
+        Compounds.AtRules,
+      )
+    },
+    (a, b) => compareResolved(a, b, "desc", breakpoint),
+  )
+  variants.group(
+    () => {
+      for (const [name, value] of theme.namespace("--breakpoint")) {
+        if (name === null) continue
+        variants.static(
+          name,
+          (node) => {
+            node.nodes = [rule(`@media (width >= ${value})`, node.nodes)]
+          },
+          Compounds.AtRules,
+        )
+      }
+      variants.functional(
+        "min",
+        (node, variant) => {
+          if ((variant as { modifier?: unknown }).modifier) return null
+          const value = breakpoint(variant)
+          if (value === null) return null
+          node.nodes = [rule(`@media (width >= ${value})`, node.nodes)]
+        },
+        Compounds.AtRules,
+      )
+    },
+    (a, b) => compareResolved(a, b, "asc", breakpoint),
+  )
 
   const container = (v: Variant): string | null => {
     if (v.kind !== "functional" || v.value === null) return null
-    const value = v.value.kind === "arbitrary" ? v.value.value : theme.resolveValue(v.value.value, ["--container"])
+    const value =
+      v.value.kind === "arbitrary"
+        ? v.value.value
+        : theme.resolveValue(v.value.value, ["--container"])
     return !value || value.includes("var(") ? null : value
   }
   const containerQuery = (op: string) => (node: Rule, variant: Variant) => {
     const value = container(variant)
     if (value === null) return null
     const v = functionalValue(variant)
-    node.nodes = [rule(`@container ${v.modifier ? `${v.modifier.value} ` : ""}(width ${op} ${value})`, node.nodes)]
+    node.nodes = [
+      rule(
+        `@container ${v.modifier ? `${v.modifier.value} ` : ""}(width ${op} ${value})`,
+        node.nodes,
+      ),
+    ]
   }
-  variants.group(() => {
-    variants.functional("@max", containerQuery("<"), Compounds.AtRules)
-  }, (a, b) => compareResolved(a, b, "desc", container))
-  variants.group(() => {
-    variants.functional("@", containerQuery(">="), Compounds.AtRules)
-    variants.functional("@min", containerQuery(">="), Compounds.AtRules)
-  }, (a, b) => compareResolved(a, b, "asc", container))
+  variants.group(
+    () => {
+      variants.functional("@max", containerQuery("<"), Compounds.AtRules)
+    },
+    (a, b) => compareResolved(a, b, "desc", container),
+  )
+  variants.group(
+    () => {
+      variants.functional("@", containerQuery(">="), Compounds.AtRules)
+      variants.functional("@min", containerQuery(">="), Compounds.AtRules)
+    },
+    (a, b) => compareResolved(a, b, "asc", container),
+  )
 
   variants.table(`
 portrait @media (orientation: portrait)

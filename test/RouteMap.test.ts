@@ -7,23 +7,23 @@ import * as HttpServerRequest from "effect/http/HttpServerRequest"
 
 test.describe("layer route", () => {
   test.it("merges LayerRoute into other routes", () => {
-    const tree = RouteMap.make({
+    const _tree = RouteMap.make({
       "*": Route.use(Route.filter({ context: { authenticated: true } })),
       "/users": Route.get(Route.text("users")),
     })
 
-    test.expectTypeOf<typeof tree>().toExtend<{
+    test.expectTypeOf<typeof _tree>().toExtend<{
       "/users": Route.Route.Tuple
     }>()
 
     // "*" key should not exist in the resulting type
-    test.expectTypeOf<typeof tree>().not.toHaveProperty("*")
+    test.expectTypeOf<typeof _tree>().not.toHaveProperty("*")
 
     // layer route should be first in the tuple (method: "*")
-    test.expectTypeOf<(typeof tree)["/users"][0]>().toExtend<Route.Route.With<{ method: "*" }>>()
+    test.expectTypeOf<(typeof _tree)["/users"][0]>().toExtend<Route.Route.With<{ method: "*" }>>()
 
     // actual route should be second (method: "GET")
-    test.expectTypeOf<(typeof tree)["/users"][1]>().toExtend<Route.Route.With<{ method: "GET" }>>()
+    test.expectTypeOf<(typeof _tree)["/users"][1]>().toExtend<Route.Route.With<{ method: "GET" }>>()
   })
 
   test.it("prepends LayerRoute to all other routes when walking", () => {
@@ -87,7 +87,7 @@ test.describe(RouteMap.make, () => {
   })
 
   test.it("makes", () => {
-    const routes = RouteMap.make({
+    const _routes = RouteMap.make({
       "/admin": Route.use(
         Route.filter({
           context: {
@@ -99,7 +99,7 @@ test.describe(RouteMap.make, () => {
       "/users": Route.get(Route.text("users list")),
     })
 
-    test.expectTypeOf<typeof routes>().toExtend<{
+    test.expectTypeOf<typeof _routes>().toExtend<{
       "/admin": unknown
       "/users": unknown
     }>()
@@ -111,27 +111,27 @@ test.describe(RouteMap.make, () => {
       "/posts": Route.get(Route.json({ posts: [] })),
     })
 
-    const tree = RouteMap.make({
+    const _tree = RouteMap.make({
       "/": Route.get(Route.text("home")),
       "/api": apiTree,
     })
 
-    test.expectTypeOf<(typeof tree)["/"]>().toExtend<Route.Route.Tuple>()
+    test.expectTypeOf<(typeof _tree)["/"]>().toExtend<Route.Route.Tuple>()
 
     test
-      .expectTypeOf<(typeof tree)["/"][0]>()
+      .expectTypeOf<(typeof _tree)["/"][0]>()
       .toExtend<Route.Route.With<{ method: "GET"; format: "text" }>>()
 
-    test.expectTypeOf<(typeof tree)["/api/users"]>().toExtend<Route.Route.Tuple>()
+    test.expectTypeOf<(typeof _tree)["/api/users"]>().toExtend<Route.Route.Tuple>()
 
     test
-      .expectTypeOf<(typeof tree)["/api/users"][0]>()
+      .expectTypeOf<(typeof _tree)["/api/users"][0]>()
       .toExtend<Route.Route.With<{ method: "GET"; format: "json" }>>()
 
-    test.expectTypeOf<(typeof tree)["/api/posts"]>().toExtend<Route.Route.Tuple>()
+    test.expectTypeOf<(typeof _tree)["/api/posts"]>().toExtend<Route.Route.Tuple>()
 
     test
-      .expectTypeOf<(typeof tree)["/api/posts"][0]>()
+      .expectTypeOf<(typeof _tree)["/api/posts"][0]>()
       .toExtend<Route.Route.With<{ method: "GET"; format: "json" }>>()
   })
 
@@ -295,7 +295,7 @@ test.describe("RouteMap.Context", () => {
   class A extends Context.Service<A, { a: number }>()("A") {}
   class B extends Context.Service<B, { b: number }>()("B") {}
 
-  const flat = {
+  const _flat = {
     "/x": Route.get(
       Route.html(function* () {
         yield* A
@@ -304,9 +304,9 @@ test.describe("RouteMap.Context", () => {
     ),
   }
 
-  test.expectTypeOf<RouteMap.Context<typeof flat>>().toEqualTypeOf<A>()
+  test.expectTypeOf<RouteMap.Context<typeof _flat>>().toEqualTypeOf<A>()
 
-  const nested = {
+  const _nested = {
     "/api": {
       "*": Route.use(
         Route.html(function* () {
@@ -323,9 +323,9 @@ test.describe("RouteMap.Context", () => {
     },
   }
 
-  test.expectTypeOf<RouteMap.Context<typeof nested>>().toEqualTypeOf<A | B>()
+  test.expectTypeOf<RouteMap.Context<typeof _nested>>().toEqualTypeOf<A | B>()
 
-  const withRequest = {
+  const _withRequest = {
     "/x": Route.get(
       Route.html(function* () {
         yield* Route.Request
@@ -334,9 +334,9 @@ test.describe("RouteMap.Context", () => {
     ),
   }
 
-  test.expectTypeOf<RouteMap.Context<typeof withRequest>>().toEqualTypeOf<never>()
+  test.expectTypeOf<RouteMap.Context<typeof _withRequest>>().toEqualTypeOf<never>()
 
-  const withCoreRequest = {
+  const _withCoreRequest = {
     "/x": Route.get(
       Route.text(function* () {
         yield* HttpServerRequest.HttpServerRequest
@@ -349,9 +349,9 @@ test.describe("RouteMap.Context", () => {
     ),
   }
 
-  test.expectTypeOf<RouteMap.Context<typeof withCoreRequest>>().toEqualTypeOf<A>()
+  test.expectTypeOf<RouteMap.Context<typeof _withCoreRequest>>().toEqualTypeOf<A>()
 
-  const flattened = RouteMap.make({
+  const _flattened = RouteMap.make({
     "/x": Route.get(
       Route.html(function* () {
         yield* A
@@ -360,5 +360,5 @@ test.describe("RouteMap.Context", () => {
     ),
   })
 
-  test.expectTypeOf<RouteMap.Context<typeof flattened>>().toEqualTypeOf<A>()
+  test.expectTypeOf<RouteMap.Context<typeof _flattened>>().toEqualTypeOf<A>()
 })

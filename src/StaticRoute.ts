@@ -99,7 +99,10 @@ export const from = (options: { path: string | URL; directoryIndex: boolean }) =
 
           // A disk-backed Blob is read lazily, so only the requested bytes are sent.
           // Falls back to FileSystem when the file is not on the real disk.
-          const file = yield* Effect.tryPromise(() => NFs.openAsBlob(filePath)).pipe(
+          const file = yield* Effect.tryPromise({
+            try: () => NFs.openAsBlob(filePath),
+            catch: (cause) => cause,
+          }).pipe(
             Effect.catch(() =>
               Effect.map(
                 fs.readFile(filePath),

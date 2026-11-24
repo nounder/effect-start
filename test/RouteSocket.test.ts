@@ -903,7 +903,7 @@ test.describe("Route.ws types", () => {
   })
 
   test.it("does not leak HttpServer or Scope into the app requirements", () => {
-    const layer = Route.layer(
+    const _layer = Route.layer(
       Route.map({
         "/ws": Route.get(
           Route.ws(function* (ctx) {
@@ -918,7 +918,7 @@ test.describe("Route.ws types", () => {
     // HttpServerRequest is provided automatically at handling time;
     // Scope is provided by the scoped runner around the handler. Neither should
     // surface in the layer's requirements.
-    test.expectTypeOf<Layer.Services<typeof layer>>().toEqualTypeOf<never>()
+    test.expectTypeOf<Layer.Services<typeof _layer>>().toEqualTypeOf<never>()
   })
 
   test.it("infers the union of error and requirement types from generator yields", () => {
@@ -933,10 +933,10 @@ test.describe("Route.ws types", () => {
       }),
     )
 
-    const layer = Route.layer(Route.map({ "/ws": rs }))
+    const _layer = Route.layer(Route.map({ "/ws": rs }))
 
     // Db survives as a real requirement; HttpServerRequest and Scope are stripped.
-    test.expectTypeOf<Layer.Services<typeof layer>>().toEqualTypeOf<Db>()
+    test.expectTypeOf<Layer.Services<typeof _layer>>().toEqualTypeOf<Db>()
   })
 })
 

@@ -1,5 +1,6 @@
 /**
  * Copyright (c) Tailwind Labs, Inc. MIT License.
+ *
  * @see https://github.com/tailwindlabs/tailwindcss/blob/main/packages/tailwindcss/theme.css
  * @see https://github.com/tailwindlabs/tailwindcss/blob/main/packages/tailwindcss/preflight.css
  */

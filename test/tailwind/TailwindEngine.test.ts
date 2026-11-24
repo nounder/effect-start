@@ -1,6 +1,6 @@
 import * as test from "bun:test"
-import { TailwindEngine } from "effect-start/tailwind"
 import * as NPath from "node:path"
+import { TailwindEngine } from "effect-start/tailwind"
 import * as TailwindCss from "tailwindcss"
 
 const tailwindDir = NPath.dirname(Bun.resolveSync("tailwindcss/package.json", import.meta.dir))
@@ -128,19 +128,23 @@ test.describe("make", () => {
   }
 }
 `
-    const used = ["bg-brand/50", "text-red-500", "dark:text-brand", "animate-wiggle", "border-brand/25"]
+    const used = [
+      "bg-brand/50",
+      "text-red-500",
+      "dark:text-brand",
+      "animate-wiggle",
+      "border-brand/25",
+    ]
     const expected = await tailwind(css, used)
-    const actual = TailwindEngine
-      .make({
-        variables: {
-          "--color-*": "initial",
-          "--color-brand": "oklch(60% 0.2 30)",
-          "--animate-wiggle": "wiggle 1s ease-in-out infinite",
-        },
-        keyframes: { wiggle: "50% { rotate: 3deg; }" },
-        variants: { dark: "&:where(.dark, .dark *)" },
-      })
-      .generate(used)
+    const actual = TailwindEngine.make({
+      variables: {
+        "--color-*": "initial",
+        "--color-brand": "oklch(60% 0.2 30)",
+        "--animate-wiggle": "wiggle 1s ease-in-out infinite",
+      },
+      keyframes: { wiggle: "50% { rotate: 3deg; }" },
+      variants: { dark: "&:where(.dark, .dark *)" },
+    }).generate(used)
 
     test.expect(normalize(actual)).toBe(normalize(expected))
   })
@@ -203,15 +207,19 @@ test.describe("make", () => {
   })
 
   test.it("rejects variables without a leading --", () => {
-    test.expect(() => TailwindEngine.make({ variables: { color: "red" } })).toThrow("must start with")
+    test
+      .expect(() => TailwindEngine.make({ variables: { color: "red" } }))
+      .toThrow("must start with")
   })
 
   test.it("omits preflight", () => {
     const css = TailwindEngine.make({ preflight: false }).generate(["flex"])
 
-    test.expect(css).toBe(
-      "@layer theme, base, components, utilities;\n@layer utilities {\n  .flex {\n    display: flex;\n  }\n}\n",
-    )
+    test
+      .expect(css)
+      .toBe(
+        "@layer theme, base, components, utilities;\n@layer utilities {\n  .flex {\n    display: flex;\n  }\n}\n",
+      )
   })
 
   test.it("emits only theme variables in use", () => {

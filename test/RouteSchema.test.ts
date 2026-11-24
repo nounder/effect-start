@@ -50,9 +50,9 @@ test.describe("Effect HTTP interoperability", () => {
           return { tag: [...ctx.searchParams.tag] }
         }),
       )
-      const layer = Route.layer({ "/": routes })
+      const _layer = Route.layer({ "/": routes })
 
-      test.expectTypeOf<Layer.Services<typeof layer>>().toEqualTypeOf<never>()
+      test.expectTypeOf<Layer.Services<typeof _layer>>().toEqualTypeOf<never>()
 
       const client = TestHttpClient.fromHandler(RouteHttp.toWebHandler(routes))
       for (const tags of [
@@ -216,7 +216,7 @@ test.describe(`${RouteSchema.schemaHeaders.name}()`, () => {
       hello: string
       "x-custom-header": string
     }
-    const route = Route.use(
+    const _route = Route.use(
       RouteSchema.schemaHeaders(
         Schema.Struct({
           hello: Schema.String,
@@ -235,7 +235,7 @@ test.describe(`${RouteSchema.schemaHeaders.name}()`, () => {
       }),
     )
 
-    test.expectTypeOf<Route.Route.Context<typeof route>>().toExtend<{
+    test.expectTypeOf<Route.Route.Context<typeof _route>>().toExtend<{
       headers: ExpectedBindings
     }>()
   })
@@ -248,7 +248,7 @@ test.describe(`${RouteSchema.schemaHeaders.name}()`, () => {
       headers: typeof headers
     }
 
-    const route = Route.get(
+    const _route = Route.get(
       RouteSchema.schemaHeaders(
         Schema.Struct({
           "x-hello": Schema.String,
@@ -267,7 +267,7 @@ test.describe(`${RouteSchema.schemaHeaders.name}()`, () => {
       ),
     )
 
-    test.expectTypeOf<Route.Route.Context<typeof route>>().toExtend<ExpectedBindings>()
+    test.expectTypeOf<Route.Route.Context<typeof _route>>().toExtend<ExpectedBindings>()
   })
 })
 
@@ -277,7 +277,7 @@ test.describe(`${RouteSchema.schemaCookies.name}()`, () => {
       session: string
       token: string
     }
-    const route = Route.use(
+    const _route = Route.use(
       RouteSchema.schemaCookies(
         Schema.Struct({
           session: Schema.String,
@@ -296,7 +296,7 @@ test.describe(`${RouteSchema.schemaCookies.name}()`, () => {
       }),
     )
 
-    test.expectTypeOf<Route.Route.Context<typeof route>>().toExtend<{
+    test.expectTypeOf<Route.Route.Context<typeof _route>>().toExtend<{
       cookies: ExpectedBindings
     }>()
   })
@@ -334,7 +334,7 @@ test.describe(`${RouteSchema.schemaSearchParams.name}()`, () => {
       page: string
       limit: string
     }
-    const route = Route.use(
+    const _route = Route.use(
       RouteSchema.schemaSearchParams(
         Schema.Struct({
           page: Schema.String,
@@ -353,7 +353,7 @@ test.describe(`${RouteSchema.schemaSearchParams.name}()`, () => {
       }),
     )
 
-    test.expectTypeOf<Route.Route.Context<typeof route>>().toExtend<{
+    test.expectTypeOf<Route.Route.Context<typeof _route>>().toExtend<{
       searchParams: ExpectedBindings
     }>()
   })
@@ -388,7 +388,7 @@ test.describe(`${RouteSchema.schemaBodyJson.name}()`, () => {
       name: string
       age: number
     }
-    const route = Route.post(
+    const _route = Route.post(
       RouteSchema.schemaBodyJson(
         Schema.Struct({
           name: Schema.String,
@@ -402,7 +402,7 @@ test.describe(`${RouteSchema.schemaBodyJson.name}()`, () => {
       }),
     )
 
-    test.expectTypeOf<Route.Route.Context<typeof route>>().toExtend<{
+    test.expectTypeOf<Route.Route.Context<typeof _route>>().toExtend<{
       body: ExpectedBindings
     }>()
   })
@@ -442,7 +442,7 @@ test.describe(`${RouteSchema.schemaBodyJson.name}()`, () => {
     ])
     type Event = typeof Event.Type
 
-    const route = Route.post(
+    const _route = Route.post(
       RouteSchema.schemaBodyJson(Event),
       Route.json(function* (ctx) {
         test.expectTypeOf(ctx.body).toEqualTypeOf<Event>()
@@ -455,7 +455,7 @@ test.describe(`${RouteSchema.schemaBodyJson.name}()`, () => {
       }),
     )
 
-    test.expectTypeOf<Route.Route.Context<typeof route>>().toExtend<{ body: Event }>()
+    test.expectTypeOf<Route.Route.Context<typeof _route>>().toExtend<{ body: Event }>()
   })
 
   test.it("returns error for invalid JSON body", () =>
@@ -497,7 +497,7 @@ test.describe(`${RouteSchema.schemaBodyUrlParams.name}()`, () => {
       username: string
       password: string
     }
-    const route = Route.post(
+    const _route = Route.post(
       RouteSchema.schemaBodyUrlParams(
         Schema.Struct({
           username: Schema.String,
@@ -511,7 +511,7 @@ test.describe(`${RouteSchema.schemaBodyUrlParams.name}()`, () => {
       }),
     )
 
-    test.expectTypeOf<Route.Route.Context<typeof route>>().toExtend<{
+    test.expectTypeOf<Route.Route.Context<typeof _route>>().toExtend<{
       body: ExpectedBindings
     }>()
   })
@@ -570,17 +570,17 @@ test.describe(`${RouteSchema.schemaBodyMultipart.name}()`, () => {
       body: { name: string }
     }>()
 
-    const layer = Route.layer(Route.map({ "/upload": route }))
+    const _layer = Route.layer(Route.map({ "/upload": route }))
 
     test
-      .expectTypeOf<Layer.Services<typeof layer>>()
+      .expectTypeOf<Layer.Services<typeof _layer>>()
       .toEqualTypeOf<FileSystem.FileSystem | Path.Path>()
   })
 })
 
 test.describe(`${RouteSchema.schemaBodyForm.name}()`, () => {
   test.it("has correct type signature for form body", () => {
-    const route = Route.post(
+    const _route = Route.post(
       RouteSchema.schemaBodyForm(
         Schema.Struct({
           email: Schema.String,
@@ -593,7 +593,7 @@ test.describe(`${RouteSchema.schemaBodyForm.name}()`, () => {
       }),
     )
 
-    test.expectTypeOf<Route.Route.Context<typeof route>>().toExtend<{
+    test.expectTypeOf<Route.Route.Context<typeof _route>>().toExtend<{
       body: { email: string }
     }>()
   })
@@ -917,9 +917,9 @@ test.describe(`${RouteSchema.schemaError.name}()`, () => {
   )
 
   test.it("schemaError route has E=never", () => {
-    const routeSet = RouteSchema.schemaError(NotFound, { status: 404 })(Route.empty)
+    const _routeSet = RouteSchema.schemaError(NotFound, { status: 404 })(Route.empty)
 
-    type Items = Route.RouteSet.Items<typeof routeSet>
+    type Items = Route.RouteSet.Items<typeof _routeSet>
     type ErrorRoute = Items[0]
     type E = ErrorRoute extends Route.Route<any, any, any, infer _E, any> ? _E : "fail"
 

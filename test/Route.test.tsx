@@ -451,10 +451,7 @@ test.describe(Route.devOnly, () => {
 
       test.expect(entity.status).toBe(400)
       test.expect(yield* entity.text).toBe("Unknown user.")
-    }).pipe(
-      Effect.provide(Development.layerTest),
-      Effect.runPromise,
-    ),
+    }).pipe(Effect.provide(Development.layerTest), Effect.runPromise),
   )
 
   test.it("preserves downstream redirect status and headers", () =>
@@ -483,10 +480,7 @@ test.describe(Route.devOnly, () => {
         .expect(entity.headers["set-cookie"])
         .toBe("session=token; Path=/; HttpOnly; SameSite=Lax")
       test.expect(yield* entity.text).toBe("")
-    }).pipe(
-      Effect.provide(Development.layerTest),
-      Effect.runPromise,
-    ),
+    }).pipe(Effect.provide(Development.layerTest), Effect.runPromise),
   )
 })
 
@@ -609,7 +603,7 @@ test.describe("Route.link", () => {
   })
 
   test.it("extra params become search params", () => {
-    const routes = Route.get(
+    const _routes = Route.get(
       Route.schemaPathParams({
         id: Schema.String,
       }),
@@ -620,7 +614,7 @@ test.describe("Route.link", () => {
       Route.html(""),
     )
 
-    type R = { "/users/:id": [() => Promise<{ default: typeof routes }>] }
+    type R = { "/users/:id": [() => Promise<{ default: typeof _routes }>] }
 
     test
       .expect(Route.link<R>("/users/:id", { id: "5", tab: "posts", page: "2" }))
@@ -628,20 +622,20 @@ test.describe("Route.link", () => {
   })
 
   test.it("search params are encoded", () => {
-    const routes = Route.get(
+    const _routes = Route.get(
       Route.schemaSearchParams({
         q: Schema.String,
       }),
       Route.html(""),
     )
 
-    type R = { "/search": [() => Promise<{ default: typeof routes }>] }
+    type R = { "/search": [() => Promise<{ default: typeof _routes }>] }
 
     test.expect(Route.link<R>("/search", { q: "hello world" })).toBe("/search?q=hello+world")
   })
 
   test.it("null/undefined search params are omitted", () => {
-    const routes = Route.get(
+    const _routes = Route.get(
       Route.schemaPathParams({
         id: Schema.String,
       }),
@@ -651,27 +645,27 @@ test.describe("Route.link", () => {
       Route.html(""),
     )
 
-    type R = { "/users/:id": [() => Promise<{ default: typeof routes }>] }
+    type R = { "/users/:id": [() => Promise<{ default: typeof _routes }>] }
 
     test.expect(Route.link<R>("/users/:id", { id: "1", tab: undefined })).toBe("/users/1")
   })
 
   test.it("type: search params are optional", () => {
-    const routes = Route.get(
+    const _routes = Route.get(
       Route.schemaSearchParams({
         tab: Schema.String,
       }),
       Route.html(""),
     )
 
-    type R = { "/foo": [() => Promise<{ default: typeof routes }>] }
+    type R = { "/foo": [() => Promise<{ default: typeof _routes }>] }
 
     Route.link<R>("/foo")
     Route.link<R>("/foo", { tab: "bar" })
   })
 
   test.it("type: path params preserve schema types", () => {
-    const routes = Route.get(
+    const _routes = Route.get(
       Route.schemaPathParams({
         owner: Schema.String,
         repo: Schema.String,
@@ -679,7 +673,7 @@ test.describe("Route.link", () => {
       Route.html(""),
     )
 
-    type R = { "/:owner/:repo": [() => Promise<{ default: typeof routes }>] }
+    type R = { "/:owner/:repo": [() => Promise<{ default: typeof _routes }>] }
 
     Route.link<R>("/:owner/:repo", { owner: "a", repo: "b" })
 
@@ -688,7 +682,7 @@ test.describe("Route.link", () => {
   })
 
   test.it("type: search params preserve schema types", () => {
-    const routes = Route.get(
+    const _routes = Route.get(
       Route.schemaPathParams({
         owner: Schema.String,
         repo: Schema.String,
@@ -700,7 +694,7 @@ test.describe("Route.link", () => {
     )
 
     type R = {
-      "/:owner/:repo/issues": [() => Promise<{ default: typeof routes }>]
+      "/:owner/:repo/issues": [() => Promise<{ default: typeof _routes }>]
     }
 
     Route.link<R>("/:owner/:repo/issues", {
@@ -714,14 +708,14 @@ test.describe("Route.link", () => {
   })
 
   test.it("type: optional search params from schema", () => {
-    const routes = Route.get(
+    const _routes = Route.get(
       Route.schemaSearchParams({
         tab: Schema.optional(Schema.String),
       }),
       Route.html(""),
     )
 
-    type R = { "/foo": [() => Promise<{ default: typeof routes }>] }
+    type R = { "/foo": [() => Promise<{ default: typeof _routes }>] }
 
     Route.link<R>("/foo")
     Route.link<R>("/foo", { tab: "bar" })
@@ -744,15 +738,15 @@ test.describe("Route.layer / Route.layerMerge type inference", () => {
       }),
     ),
   })
-  const flatLayer = Route.layer(flat)
-  const flatMerge = Route.layerMerge(flat)
+  const _flatLayer = Route.layer(flat)
+  const _flatMerge = Route.layerMerge(flat)
 
-  test.expectTypeOf<Layer.Success<typeof flatLayer>>().toEqualTypeOf<Route.Routes>()
-  test.expectTypeOf<Layer.Error<typeof flatLayer>>().toEqualTypeOf<never>()
-  test.expectTypeOf<Layer.Services<typeof flatLayer>>().toEqualTypeOf<SomeService>()
-  test.expectTypeOf<Layer.Success<typeof flatMerge>>().toEqualTypeOf<Route.Routes>()
-  test.expectTypeOf<Layer.Error<typeof flatMerge>>().toEqualTypeOf<never>()
-  test.expectTypeOf<Layer.Services<typeof flatMerge>>().toEqualTypeOf<SomeService>()
+  test.expectTypeOf<Layer.Success<typeof _flatLayer>>().toEqualTypeOf<Route.Routes>()
+  test.expectTypeOf<Layer.Error<typeof _flatLayer>>().toEqualTypeOf<never>()
+  test.expectTypeOf<Layer.Services<typeof _flatLayer>>().toEqualTypeOf<SomeService>()
+  test.expectTypeOf<Layer.Success<typeof _flatMerge>>().toEqualTypeOf<Route.Routes>()
+  test.expectTypeOf<Layer.Error<typeof _flatMerge>>().toEqualTypeOf<never>()
+  test.expectTypeOf<Layer.Services<typeof _flatMerge>>().toEqualTypeOf<SomeService>()
 
   const nested = Route.map({
     "/api": {
@@ -770,10 +764,10 @@ test.describe("Route.layer / Route.layerMerge type inference", () => {
       ),
     },
   })
-  const nestedLayer = Route.layer(nested)
+  const _nestedLayer = Route.layer(nested)
 
   test
-    .expectTypeOf<Layer.Services<typeof nestedLayer>>()
+    .expectTypeOf<Layer.Services<typeof _nestedLayer>>()
     .toEqualTypeOf<SomeService | OtherService>()
 
   const withRequest = Route.map({
@@ -784,9 +778,9 @@ test.describe("Route.layer / Route.layerMerge type inference", () => {
       }),
     ),
   })
-  const requestLayer = Route.layer(withRequest)
+  const _requestLayer = Route.layer(withRequest)
 
-  test.expectTypeOf<Layer.Services<typeof requestLayer>>().toEqualTypeOf<never>()
+  test.expectTypeOf<Layer.Services<typeof _requestLayer>>().toEqualTypeOf<never>()
 })
 
 test.it("builds links with unnamed catch-alls while preserving path separators", () => {
