@@ -8,24 +8,24 @@ function lint(code: string, filename = "test.ts") {
   const filePath = NPath.join(tmpDir, filename)
   NFs.writeFileSync(filePath, code)
   try {
-    const result = Bun.spawnSync(["bunx", "oxlint", "--format", "json", filePath], {
+    const result = Bun.spawnSync(["bun", "lint", "--no-script", "--format", "json", filePath], {
       cwd: NPath.join(import.meta.dirname, "../.."),
     })
-    const json = JSON.parse(result.stdout.toString()) as {
-      diagnostics: Array<{
+    const json = JSON.parse(result.stdout.toString()) as Array<{
+      messages: Array<{
         message: string
-        code: string
-        severity: string
+        ruleId: string | null
+        severity: number
       }>
-    }
-    return json.diagnostics
+    }>
+    return json.flatMap((file) => file.messages)
   } finally {
     NFs.rmSync(tmpDir, { recursive: true, force: true })
   }
 }
 
 function lintRule(code: string, rule: string, filename?: string) {
-  return lint(code, filename).filter((d) => d.code === `effect-start(${rule})`)
+  return lint(code, filename).filter((d) => d.ruleId === `effect-start/${rule}`)
 }
 
 function lintFix(code: string, filename = "test.ts") {
@@ -33,7 +33,7 @@ function lintFix(code: string, filename = "test.ts") {
   const filePath = NPath.join(tmpDir, filename)
   NFs.writeFileSync(filePath, code)
   try {
-    Bun.spawnSync(["bunx", "oxlint", "--fix", filePath], {
+    Bun.spawnSync(["bun", "lint", "--no-script", "--fix", filePath], {
       cwd: NPath.join(import.meta.dirname, "../.."),
     })
     return NFs.readFileSync(filePath, "utf-8")

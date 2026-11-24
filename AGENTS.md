@@ -6,6 +6,9 @@ Use Bun runtime and package manager:
 bun install
 # type check
 bun check
+# lint and format
+bun lint
+bun fmt
 ```
 
 # Code

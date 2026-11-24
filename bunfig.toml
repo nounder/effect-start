@@ -13,4 +13,79 @@ sortImports = { newlinesBetween = false }
 sortTailwindcss = true
 sortPackageJson = true
 jsdoc = true
-ignorePatterns = ["**/node_modules", "**/*-lock.json", "vscode/*.json"]
+ignorePatterns = [
+  ".agents/**",
+  ".build/**",
+  "dist/**",
+  "**/node_modules",
+  "**/*-lock.json",
+  "vscode/*.json",
+]
+
+[lint]
+plugins = ["./src/lint/plugin.js"]
+typeAware = false
+ignorePatterns = [".agents/", ".build/", "dist/"]
+
+[lint.categories]
+correctness = "error"
+
+[lint.rules]
+"object-shorthand" = "error"
+"import/first" = "error"
+"import/no-duplicates" = "error"
+"import/no-self-import" = "error"
+"import/no-empty-named-blocks" = "error"
+"typescript/array-type" = ["error", { default = "generic", readonly = "generic" }]
+"typescript/consistent-type-imports" = ["error", { fixStyle = "inline-type-imports" }]
+"typescript/no-import-type-side-effects" = "error"
+"typescript/no-unnecessary-type-assertion" = "error"
+"typescript/no-unnecessary-type-constraint" = "error"
+"typescript/no-useless-empty-export" = "error"
+"eslint/no-console" = "error"
+"eslint/no-var" = "error"
+"eslint/no-useless-constructor" = "error"
+"eslint/no-unneeded-ternary" = "error"
+"eslint/no-useless-concat" = "error"
+"oxc/misrefactored-assign-op" = "error"
+"unicorn/prefer-array-flat-map" = "error"
+"unicorn/no-accessor-recursion" = "error"
+"unicorn/no-abusive-eslint-disable" = "error"
+"typescript/no-unused-vars" = ["error", { argsIgnorePattern = "^_", varsIgnorePattern = "^_" }]
+"typescript/no-non-null-assertion" = "off"
+"typescript/no-explicit-any" = "off"
+"typescript/no-namespace" = "off"
+"typescript/no-empty-interface" = "off"
+"typescript/no-require-imports" = "off"
+"no-control-regex" = "off"
+"no-prototype-builtins" = "off"
+"no-case-declarations" = "off"
+"no-empty" = "off"
+"unicorn/no-nested-ternary" = "off"
+"no-bitwise" = "off"
+"no-empty-pattern" = "off"
+"unicorn/no-new-array" = "off"
+"require-yield" = "off"
+"import/namespace" = "off"
+"no-unused-expressions" = "off"
+"effect-start/test-space-around" = "warn"
+# Bun's formatter controls pipe argument layout.
+"effect-start/pipe-args-newline" = "off"
+"effect-start/namespace-import" = "error"
+"effect-start/effect-try-promise" = "error"
+"effect-start/no-destructured-params" = "warn"
+"effect-start/test-effects" = "warn"
+"effect-start/schema-type-helpers" = "warn"
+"effect-start/tagged-symbol-name" = "error"
+# Bun defaults that oxlint did not run.
+"@typescript-eslint/ban-ts-comment" = "off"
+"@typescript-eslint/no-empty-object-type" = "off"
+"@typescript-eslint/no-unsafe-function-type" = "off"
+"no-fallthrough" = "off"
+"no-useless-assignment" = "off"
+"prefer-const" = "off"
+"prefer-rest-params" = "off"
+
+[[lint.overrides]]
+files = ["src/datastar/**"]
+rules = { "effect-start/no-destructured-params" = "off", "eslint/no-console" = "off", "eslint/no-unused-vars" = "off", "typescript/no-unused-vars" = "off" }
