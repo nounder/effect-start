@@ -11,7 +11,7 @@ interface CacheEntry<A, E> {
 
 const cacheKey = Symbol.for("effect-start/GlobalLayer/cache")
 const globalRegistry = globalThis as typeof globalThis & {
-  [cacheKey]?: Map<string, CacheEntry<any, any>>
+  [cacheKey]?: Map<string, CacheEntry<unknown, unknown>>
 }
 const cache = (globalRegistry[cacheKey] ??= new Map())
 

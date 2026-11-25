@@ -18,36 +18,40 @@ export type RouteMapInput = {
 }
 
 export type RouteMap = {
-  [path: PathPattern.PathPattern]: Route.Route.Tuple
+  [path: PathPattern.PathPattern]: Array<MethodRoute>
 }
 
 export type Provided =
-  { readonly [Route.IntrinsicService]?: any } | HttpRouter.Provided | HttpRouter.HttpRouter
+  { readonly [Route.IntrinsicService]?: unknown } | HttpRouter.Provided | HttpRouter.HttpRouter
 
 /**
  * Extracts the union of `R` requirements from every route reachable in a {@link RouteMapInput} or
  * {@link RouteMap}, including layer routes (`*`) and nested inputs. Excludes intrinsic and
  * HttpRouter services supplied by the request runtime.
  */
-export type Context<T> = Exclude<
-  {
-    [K in keyof T]: T[K] extends Iterable<Route.Route<any, any, any, any, infer R>>
-      ? R
-      : Context<T[K]>
-  }[keyof T],
-  Provided
->
+export type Context<T> =
+  T extends Iterable<infer Item>
+    ? Item extends Route.Route<unknown, unknown, unknown, unknown, infer R>
+      ? Exclude<R, Provided>
+      : never
+    : T extends object
+      ? { [K in keyof T]-?: Context<T[K]> }[keyof T]
+      : never
 
 type PrefixKeys<T, Prefix extends string> = {
   [K in keyof T as K extends string ? `${Prefix}${K}` : never]: T[K]
 }
 
 type InferItems<T> =
-  T extends Route.RouteSet.Data<any, any, infer M> ? M : T extends Route.Route.Tuple ? T : []
+  T extends Route.RouteSet.Data<unknown, unknown, infer M>
+    ? M
+    : T extends Route.Route.Tuple
+      ? T
+      : []
 
 type LayerItems<T extends RouteMapInput> = "*" extends keyof T ? InferItems<T["*"]> : []
 
-type IsLeaf<T> = T extends Iterable<any> ? true : false
+type IsLeaf<T> = T extends Iterable<unknown> ? true : false
 
 type FlattenRouteMap<T extends RouteMapInput> = string extends keyof T
   ? RouteMap
@@ -70,7 +74,9 @@ type PrependLayers<T extends RouteMap, L extends Route.Route.Tuple> = {
   [K in keyof T]: T[K] extends Route.Route.Tuple ? [...L, ...T[K]] : never
 }
 
-type UnionToIntersection<U> = (U extends any ? (x: U) => void : never) extends (x: infer I) => void
+type UnionToIntersection<U> = (U extends unknown ? (x: U) => void : never) extends (
+  x: infer I,
+) => void
   ? I
   : never
 
@@ -106,7 +112,7 @@ function flatten(
 
 export function* walk(map: RouteMap): Generator<RouteMount.MountedRoute> {
   for (const path of Object.keys(map) as Array<PathPattern.PathPattern>) {
-    yield* flattenRoutes(path, map[path])
+    yield* flattenRoutes(path, map[path] as Array<MethodRoute>)
   }
 }
 
@@ -141,6 +147,6 @@ function* flattenRoutes(
       ...route[Route.RouteDescriptor],
       path,
     }
-    yield Route.make(route.handler as any, descriptor) as RouteMount.MountedRoute
+    yield Route.make(route.handler, descriptor) as RouteMount.MountedRoute
   }
 }

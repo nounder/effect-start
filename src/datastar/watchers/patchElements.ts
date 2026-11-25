@@ -185,7 +185,7 @@ const applyPatchMode = (
     }
     const nextNode = consume ? element : (element.cloneNode(true) as Element)
     execute(nextNode as Element)
-    ;(target as any)[action](nextNode)
+    target[action](nextNode)
     used = true
   }
 }
@@ -476,7 +476,7 @@ const morphNode = (oldNode: Node, newNode: Node): Node => {
     const updateElementProp = (oldElt: Element, newElt: Element, name: string): boolean => {
       const newEltHasAttr = newElt.hasAttribute(name)
       if (oldElt.hasAttribute(name) !== newEltHasAttr && !preserveAttrs.includes(name)) {
-        ;(oldElt as any)[name] = newEltHasAttr
+        ;(oldElt as unknown as Record<string, unknown>)[name] = newEltHasAttr
         return true
       }
       return false

@@ -87,7 +87,7 @@ export default Route.get(
 
           {tab === "people" ? (
             <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {members.map((m: any) => (
+              {members.map((m) => (
                 <User.UserCard
                   login={m.login}
                   avatar={m.avatar_url}
@@ -97,7 +97,7 @@ export default Route.get(
             </div>
           ) : (
             <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-              {repos.map((r: any) => (
+              {repos.map((r) => (
                 <Repo.RepoCard
                   owner={r.owner.login}
                   name={r.name}

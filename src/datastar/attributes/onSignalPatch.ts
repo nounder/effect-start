@@ -30,9 +30,9 @@ attribute({
 
     let running = false
 
-    const callback: EventListener = modifyTiming((evt: CustomEvent<JSONPatch>) => {
+    const callback: EventListener = modifyTiming((evt?: Event) => {
       if (running) return
-      const watched = filtered(filters, evt.detail)
+      const watched = filtered(filters, (evt as CustomEvent<JSONPatch>).detail)
       if (!isEmpty(watched)) {
         running = true
         beginBatch()

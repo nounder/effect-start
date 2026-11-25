@@ -50,7 +50,7 @@ export function isPlainObject(value: unknown): value is Record<string, unknown> 
  * with methods.
  */
 type HasMethod<T> = {
-  [K in keyof T]: T[K] extends (...args: Array<any>) => any ? true : never
+  [K in keyof T]: T[K] extends (...args: Array<never>) => unknown ? true : never
 }[keyof T]
 
 export type IsPlainObject<T> = T extends object
@@ -63,7 +63,7 @@ export type IsPlainObject<T> = T extends object
 
 type IsUnion<T, U = T> = [T] extends [never]
   ? false
-  : T extends any
+  : T extends unknown
     ? [U] extends [T]
       ? false
       : true

@@ -51,12 +51,12 @@ export interface Entity<T = unknown, E = never> extends Effect.Effect<Entity<T, 
     ? Effect.Effect<T, Schema.SchemaError | E>
     : Effect.Effect<string, Schema.SchemaError | E>
   readonly html: Effect.Effect<Html.TrustedHtml, Schema.SchemaError | E>
-  readonly json: [T] extends [Effect.Effect<infer A, any, any>]
+  readonly json: [T] extends [Effect.Effect<infer A, unknown, unknown>]
     ? Effect.Effect<
         A extends string | Uint8Array | ArrayBuffer ? unknown : A,
         Schema.SchemaError | E
       >
-    : [T] extends [Stream.Stream<any, any, any>]
+    : [T] extends [Stream.Stream<unknown, unknown, unknown>]
       ? Effect.Effect<unknown, Schema.SchemaError | E>
       : [T] extends [string | Uint8Array | ArrayBuffer]
         ? Effect.Effect<unknown, Schema.SchemaError | E>
@@ -67,7 +67,7 @@ export interface Entity<T = unknown, E = never> extends Effect.Effect<Entity<T, 
     schema: S,
   ) => Effect.Effect<S["Type"], Schema.SchemaError | E, S["DecodingServices"]>
   readonly bytes: Effect.Effect<Uint8Array, Schema.SchemaError | E>
-  readonly stream: T extends Stream.Stream<infer A, infer E1, any>
+  readonly stream: T extends Stream.Stream<infer A, infer E1, unknown>
     ? Stream.Stream<A, Schema.SchemaError | E | E1>
     : Stream.Stream<Uint8Array, Schema.SchemaError | E>
 }

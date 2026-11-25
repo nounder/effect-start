@@ -26,7 +26,7 @@ export type HtmlElemenetProps = {
     | HtmlElement
     | Iterable<HtmlPrimitive | HtmlElement>
     | Record<string, unknown>
-    | ((e: { window: Window; target: HTMLScriptElement }) => void)
+    | ((...args: Array<never>) => unknown)
 }
 export type HtmlComponent = (props: HtmlElemenetProps) => HtmlElement | HtmlPrimitive
 export interface HtmlElement {
@@ -786,7 +786,7 @@ export namespace JSX {
     // RDFa Attributes
     about?: string | undefined
     datatype?: string | undefined
-    inlist?: any | undefined
+    inlist?: unknown | undefined
     prefix?: string | undefined
     property?: string | undefined
     resource?: string | undefined

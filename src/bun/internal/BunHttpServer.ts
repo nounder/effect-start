@@ -274,13 +274,13 @@ const makeResponse = (
     case "Empty":
       return new Response(undefined, fields)
     case "Uint8Array":
-      return new Response(body.text ?? (body.body as any), fields)
+      return new Response(body.text ?? (body.body as BodyInit), fields)
     case "Raw":
       return body.body instanceof Response
         ? HttpServerResponse.toWeb(transferred)
-        : new Response(body.body as any, fields)
+        : new Response(body.body as BodyInit, fields)
     case "FormData":
-      return new Response(body.formData as any, fields)
+      return new Response(body.formData as BodyInit, fields)
     case "Stream": {
       const reader = Stream.toReadableStreamWith(
         // Attach before transforming: startup can suspend. Register the request finalizer before the first pull.

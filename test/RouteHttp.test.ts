@@ -124,7 +124,7 @@ test.it("handles errors by returning 500 response with generic message in produc
 
     test.expect(entity.status).toBe(500)
 
-    const body = (yield* entity.json) as any
+    const body = (yield* entity.json) as Record<string, unknown>
 
     test.expect(body.message).toBe("Internal Server Error")
     test.expect(body.message).not.toContain("Something went wrong")
@@ -198,7 +198,7 @@ test.it("error response hides stack trace and cause chain in production", () =>
 
     test.expect(entity.status).toBe(500)
 
-    const body = (yield* entity.json) as any
+    const body = (yield* entity.json) as Record<string, unknown>
 
     test.expect(body.message).toBe("Internal Server Error")
     test.expect(body.message).not.toContain("Query failed")
@@ -230,7 +230,7 @@ test.it("error response includes stack trace in development", () =>
 
     test.expect(entity.status).toBe(500)
 
-    const body = (yield* entity.json) as any
+    const body = (yield* entity.json) as Record<string, unknown>
 
     test
       .expect(body.message)
@@ -257,7 +257,7 @@ test.it("handles errors with verbose details in development", () =>
 
     test.expect(entity.status).toBe(500)
 
-    const body = (yield* entity.json) as any
+    const body = (yield* entity.json) as Record<string, unknown>
 
     test.expect(body.message).toContain("Something went wrong")
   }).pipe(
@@ -960,7 +960,7 @@ test.describe("middleware chain", () => {
 
       test.expect(entity.status).toBe(500)
 
-      const body = (yield* entity.json) as any
+      const body = (yield* entity.json) as Record<string, unknown>
 
       test.expect(body.message).toBe("Internal Server Error")
 
@@ -1041,7 +1041,7 @@ test.describe("middleware chain", () => {
           }),
         ).post(
           Route.text(function* (ctx) {
-            return `POST:${(ctx as any).getOnly}`
+            return `POST:${(ctx as { getOnly?: unknown }).getOnly}`
           }),
         ),
       )
@@ -1640,7 +1640,7 @@ test.describe("schema handlers", () => {
 
       test.expect(entity.status).toBe(200)
 
-      const json = (yield* entity.json) as any
+      const json = (yield* entity.json) as Record<string, unknown>
 
       test.expect(json.title).toBe("My Upload")
       test.expect(json.fileName).toBe("test.txt")
@@ -1692,7 +1692,7 @@ test.describe("schema handlers", () => {
 
       test.expect(entity.status).toBe(200)
 
-      const json = (yield* entity.json) as any
+      const json = (yield* entity.json) as Record<string, unknown>
 
       test.expect(json.count).toBe(3)
       test.expect(json.names).toEqual(["doc1.txt", "doc2.txt", "doc3.txt"])
@@ -1730,7 +1730,7 @@ test.describe("schema handlers", () => {
 
       test.expect(entity.status).toBe(200)
 
-      const json = (yield* entity.json) as any
+      const json = (yield* entity.json) as Record<string, unknown>
 
       test.expect(json.name).toBe("avatar.png")
       test.expect(json.type).toContain("image/png")
@@ -1770,7 +1770,7 @@ test.describe("schema handlers", () => {
 
       test.expect(entity.status).toBe(200)
 
-      const json = (yield* entity.json) as any
+      const json = (yield* entity.json) as Record<string, unknown>
 
       test.expect(json.title).toBe("My Post")
       test.expect(json.tags).toEqual(["javascript", "typescript", "effect"])
@@ -1802,7 +1802,7 @@ test.describe("schema handlers", () => {
 
       test.expect(entity.status).toBe(200)
 
-      const json = (yield* entity.json) as any
+      const json = (yield* entity.json) as Record<string, unknown>
 
       test.expect(json.name).toBe("John")
     }).pipe(Effect.runPromise),
@@ -1837,7 +1837,7 @@ test.describe("schema handlers", () => {
 
         test.expect(entity.status).toBe(400)
 
-        const body = (yield* entity.json) as any
+        const body = (yield* entity.json) as Record<string, unknown>
 
         test.expect(body.message).toBe("Internal Server Error")
 
@@ -2637,7 +2637,7 @@ test.describe("RouteMap layer routes", () => {
 
       test.expect(handlerExecuted).toBe(false)
 
-      const body = (yield* entity.json) as any
+      const body = (yield* entity.json) as Record<string, unknown>
 
       test.expect(body.message).toBe("Internal Server Error")
 

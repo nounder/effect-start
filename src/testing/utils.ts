@@ -10,17 +10,17 @@ import type * as Scope from "effect/Scope"
 
 /** Creates a scoped Effects and runs is asynchronously. Useful for testing. */
 export function effectFn(): <AEff>(
-  f: () => Generator<Effect.Effect<any, any, Scope.Scope>, AEff, never>,
+  f: () => Generator<Effect.Effect<unknown, unknown, Scope.Scope>, AEff, never>,
 ) => Promise<void>
 export function effectFn<RL>(
-  layer: Layer.Layer<RL, any>,
+  layer: Layer.Layer<RL, unknown>,
 ): <AEff>(
-  f: () => Generator<Effect.Effect<any, any, RL | Scope.Scope>, AEff, never>,
+  f: () => Generator<Effect.Effect<unknown, unknown, RL | Scope.Scope>, AEff, never>,
 ) => Promise<void>
-export function effectFn(layer?: Layer.Layer<any, any>) {
+export function effectFn(layer?: Layer.Layer<unknown, unknown>) {
   if (layer === undefined) {
     return <AEff>(
-      f: () => Generator<Effect.Effect<any, any, Scope.Scope>, AEff, never>,
+      f: () => Generator<Effect.Effect<unknown, unknown, Scope.Scope>, AEff, never>,
     ): Promise<void> => {
       const runtime = ManagedRuntime.make(Logger.layer([Logger.consolePretty()]))
       return runtime
@@ -29,7 +29,9 @@ export function effectFn(layer?: Layer.Layer<any, any>) {
         .finally(() => runtime.dispose())
     }
   }
-  return <AEff>(f: () => Generator<Effect.Effect<any, any, any>, AEff, never>): Promise<void> => {
+  return <AEff>(
+    f: () => Generator<Effect.Effect<unknown, unknown, unknown>, AEff, never>,
+  ): Promise<void> => {
     const runtime = ManagedRuntime.make(Layer.merge(layer, Logger.layer([Logger.consolePretty()])))
     return runtime
       .runPromise(Effect.scoped(Effect.gen(f)))

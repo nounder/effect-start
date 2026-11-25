@@ -1,7 +1,7 @@
 import type { Signals } from "./signals.ts"
 
 export interface Scope {
-  item: any
+  item: unknown
   index: number
 }
 

@@ -27,7 +27,10 @@ export type RouteModule<R extends Route.RouteSet.Any> = {
 
 export type LazyRoute<R extends Route.RouteSet.Any> = () => Promise<RouteModule<R>>
 
-export type LazyStack = readonly [LazyRoute<any>, ...Array<LazyRoute<any>>]
+export type LazyStack = readonly [
+  LazyRoute<Route.RouteSet.Any>,
+  ...Array<LazyRoute<Route.RouteSet.Any>>,
+]
 
 export type FileRouteMap = {
   [path: PathPattern.PathPattern]: LazyStack
@@ -43,7 +46,7 @@ export namespace FileRouteMap {
   export type Context<T> = Exclude<
     {
       [K in keyof T]: T[K] extends ReadonlyArray<LazyRoute<infer S>>
-        ? S extends Iterable<Route.Route<any, any, any, any, infer R>>
+        ? S extends Iterable<Route.Route<unknown, unknown, unknown, unknown, infer R>>
           ? R
           : never
         : never
@@ -109,9 +112,9 @@ function makeRouteMap(routesPath: string, fileRoutes: OrderedFileRoutes): FileRo
   const routeMap: FileRouteMap = {}
 
   for (const entry of FileRouterCodegen.getRouteEntries(fileRoutes)) {
-    const loaders = entry.modulePaths.map((modulePath): LazyRoute<any> => {
+    const loaders = entry.modulePaths.map((modulePath): LazyRoute<Route.RouteSet.Any> => {
       const href = NUrl.pathToFileURL(NPath.resolve(routesPath, modulePath)).href
-      return () => import(href) as Promise<RouteModule<any>>
+      return () => import(href) as Promise<RouteModule<Route.RouteSet.Any>>
     })
 
     routeMap[entry.path] = loaders as unknown as LazyStack
@@ -196,7 +199,7 @@ export function layer(
   loadOrOptions?:
     | (() => Promise<{ default: FileRouteMap }>)
     | { load: () => Promise<{ default: FileRouteMap }>; path: string },
-) {
+): unknown {
   return loadOrOptions === undefined
     ? layerMemory(defaultRoutesPath())
     : layerGenerated(loadOrOptions)

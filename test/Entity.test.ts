@@ -110,7 +110,7 @@ test.describe(Entity.type, () => {
   })
 
   test.it("returns application/octet-stream for unknown body types", () => {
-    const entity = Entity.make(Symbol.for("unknown") as any)
+    const entity = Entity.make(Symbol.for("unknown") as unknown)
 
     test.expect(Entity.type(entity)).toBe("application/octet-stream")
   })
@@ -200,7 +200,7 @@ test.describe("text", () => {
   )
 
   test.it("fails for unsupported body types", async () => {
-    const entity = Entity.make(42 as any)
+    const entity = Entity.make(42 as unknown)
     const result = await Effect.runPromiseExit(entity.text)
 
     test.expect(result._tag).toBe("Failure")
@@ -285,7 +285,7 @@ test.describe("json", () => {
   })
 
   test.it("fails for unsupported body types", async () => {
-    const entity = Entity.make(Symbol.for("unsupported") as any)
+    const entity = Entity.make(Symbol.for("unsupported") as unknown)
     const result = await Effect.runPromiseExit(entity.json)
 
     test.expect(result._tag).toBe("Failure")

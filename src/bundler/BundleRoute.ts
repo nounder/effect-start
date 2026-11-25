@@ -18,7 +18,7 @@ import * as Bundle from "./Bundle.ts"
  * })
  * ```
  */
-export const make = <Tag extends Context.Key<any, Bundle.BundleContext>>(tag: Tag) =>
+export const make = <Tag extends Context.Key<unknown, Bundle.BundleContext>>(tag: Tag) =>
   Route.get(
     Route.schemaPathParams({ "*": Schema.optional(Schema.String) }),
     Route.handle(function* (ctx) {
@@ -52,7 +52,7 @@ export const make = <Tag extends Context.Key<any, Bundle.BundleContext>>(tag: Ta
  * provided.
  */
 export const layer = (options?: {
-  bundle?: Context.Key<any, Bundle.BundleContext>
+  bundle?: Context.Key<unknown, Bundle.BundleContext>
   path?: PathPattern.PathPattern
 }) => {
   const path = options?.path ?? "/_bundle/*"

@@ -15,22 +15,22 @@ type SignalFile = {
 }
 
 type BindAdapter = {
-  get: (el: any, type: string) => any
-  set: (el: any, value: any) => void
+  get(el: Element, type: string): unknown
+  set(el: Element, value: unknown): void
   events: Array<string>
 }
 
 const propAdapter = (prop: string, ...events: Array<string>): BindAdapter => ({
-  get: (el: any) => el[prop],
-  set: (el: any, value: any) => {
-    el[prop] = value
+  get: (el: Element) => (el as unknown as Record<string, unknown>)[prop],
+  set: (el: Element, value: unknown) => {
+    ;(el as unknown as Record<string, unknown>)[prop] = value
   },
   events,
 })
 
 const attrAdapter = (attr: string, ...events: Array<string>): BindAdapter => ({
   get: (el: Element) => el.getAttribute(attr),
-  set: (el: Element, value: any) => {
+  set: (el: Element, value: unknown) => {
     el.setAttribute(attr, `${value}`)
   },
   events,
@@ -56,7 +56,7 @@ const boundPath = (
   value: string | null | undefined,
   signalName: string,
   adapter: BindAdapter,
-  initialValue: any,
+  initialValue: unknown,
 ) => {
   if (initialValue === undefined && el instanceof HTMLInputElement && el.type === "radio") {
     const signalNameKebab = key ? key : value!

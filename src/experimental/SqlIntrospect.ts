@@ -625,7 +625,7 @@ const makeTableReader = (ts: TableSchema): TableReader => {
           fragments.push(...buildWhereFragments(options.filters, columnSet))
         }
         const rows = yield* concatSql(sql, fragments)
-        return Number((rows[0] as any).count)
+        return Number((rows[0] as { count: number }).count)
       }),
   }
 }

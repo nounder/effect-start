@@ -74,7 +74,7 @@ export default Route.get(
             />
           ) : (
             <div class="divide-y divide-[#21262d] rounded-md border border-[#21262d]">
-              {pulls.map((pr: any) => (
+              {pulls.map((pr) => (
                 <Issue.IssueRow
                   number={pr.number}
                   title={pr.title}

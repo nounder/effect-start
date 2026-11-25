@@ -28,7 +28,7 @@ test.describe("SqlCache", () => {
           yield* sql`CREATE TABLE cache_test (id INTEGER PRIMARY KEY, name TEXT)`
           yield* sql`INSERT INTO cache_test (name) VALUES (${"Alice"})`
 
-          const cache = yield* Cache.make<string, ReadonlyArray<any>>({
+          const cache = yield* Cache.make<string, ReadonlyArray<unknown>>({
             capacity: 10,
             timeToLive: "1 minutes",
             lookup: (key) => Effect.die(`unexpected lookup: ${key}`),
@@ -59,7 +59,7 @@ test.describe("SqlCache", () => {
           yield* sql`INSERT INTO cache_params (name) VALUES (${"Alice"})`
           yield* sql`INSERT INTO cache_params (name) VALUES (${"Bob"})`
 
-          const cache = yield* Cache.make<string, ReadonlyArray<any>>({
+          const cache = yield* Cache.make<string, ReadonlyArray<unknown>>({
             capacity: 10,
             timeToLive: "1 minutes",
             lookup: (key) => Effect.die(`unexpected lookup: ${key}`),
@@ -89,7 +89,7 @@ test.describe("SqlCache", () => {
           yield* sql`CREATE TABLE cache_unsafe (id INTEGER PRIMARY KEY, val TEXT)`
           yield* sql`INSERT INTO cache_unsafe (val) VALUES (${"x"})`
 
-          const cache = yield* Cache.make<string, ReadonlyArray<any>>({
+          const cache = yield* Cache.make<string, ReadonlyArray<unknown>>({
             capacity: 10,
             timeToLive: "1 minutes",
             lookup: (key) => Effect.die(`unexpected lookup: ${key}`),

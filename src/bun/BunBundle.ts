@@ -124,11 +124,17 @@ export function layer<T>(
   tag: Context.Key<T, Bundle.BundleContext>,
   config: BuildOptions,
 ): Layer.Layer<T, Bundle.BundleError>
-export function layer(tagOrConfig: any, maybeConfig?: BuildOptions) {
+export function layer<T>(
+  tagOrConfig: BuildOptions | Context.Key<T, Bundle.BundleContext>,
+  maybeConfig?: BuildOptions,
+) {
   if (maybeConfig === undefined) {
-    return Layer.effect(Bundle.Bundle, mutableContext(buildClient(tagOrConfig)))
+    return Layer.effect(Bundle.Bundle, mutableContext(buildClient(tagOrConfig as BuildOptions)))
   }
-  return Layer.effect(tagOrConfig, mutableContext(build(maybeConfig)))
+  return Layer.effect(
+    tagOrConfig as Context.Key<T, Bundle.BundleContext>,
+    mutableContext(build(maybeConfig)),
+  )
 }
 
 type BuildArtifact = BuildOutput["outputs"][number]

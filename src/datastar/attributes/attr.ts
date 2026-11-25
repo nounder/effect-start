@@ -5,7 +5,7 @@ attribute({
   requirement: { value: "must" },
   returnsValue: true,
   apply({ el, key, rx }) {
-    const syncAttr = (key: string, val: any) => {
+    const syncAttr = (key: string, val: unknown) => {
       if (val === "" || val === true) {
         el.setAttribute(key, "")
       } else if (val === false || val == null) {
@@ -33,7 +33,7 @@ attribute({
         }
       : () => {
           observer.disconnect()
-          const obj = rx() as Record<string, any>
+          const obj = rx() as Record<string, unknown>
           const attributeFilter = Object.keys(obj)
           for (const key of attributeFilter) {
             syncAttr(key, obj[key])

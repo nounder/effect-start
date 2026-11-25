@@ -133,7 +133,7 @@ export function sse<D, B, I extends Route.Route.Tuple, E = never, R = never>(
     }
 
     const route = Route.make<{ format: "sse" }, {}, Stream.Stream<string, E, R>, E, R>(
-      sseHandler as any,
+      sseHandler as Route.Route.Handler<{ format: "sse" }, Stream.Stream<string, E, R>, E, R>,
       { format: "sse" },
     )
 

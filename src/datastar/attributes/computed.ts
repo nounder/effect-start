@@ -11,7 +11,7 @@ attribute({
     if (key) {
       mergePaths([[modifyCasing(key, mods), computed(rx)]])
     } else {
-      const patch = Object.assign({}, rx() as Record<string, () => any>)
+      const patch = Object.assign({}, rx() as Record<string, () => unknown>)
       updateLeaves(patch, (old) => {
         if (typeof old === "function") {
           return computed(() =>

@@ -33,9 +33,13 @@ test.beforeEach(() => {
     .getElementById("cell")!
     .setAttribute("data-cell", "cell => { cell.target.cell = cell }")
   runtime = run(dom.window.document)
-  cell = (dom.window.document.getElementById("cell") as any).cell
+  cell = (
+    dom.window.document.getElementById("cell") as unknown as { cell: Cell<HTMLButtonElement> }
+  ).cell
   phases = []
-  cell.target.addEventListener("cell:request", (event: any) => phases.push(event.detail.phase))
+  cell.target.addEventListener("cell:request", (event) =>
+    phases.push((event as CustomEvent<{ phase: string }>).detail.phase),
+  )
   test.jest.useFakeTimers()
 })
 
@@ -274,8 +278,9 @@ test.it("bodyJson rejects unsupported values through its type", () => {
 test.it("network retries back off, cap the delay, and stop at the configured limit", async () => {
   let calls = 0
   const delays: Array<number> = []
-  cell.target.addEventListener("cell:request", (event: any) => {
-    if (event.detail.phase === "retrying") delays.push(event.detail.delay)
+  cell.target.addEventListener("cell:request", (event) => {
+    const detail = (event as CustomEvent<{ phase: string; delay: number }>).detail
+    if (detail.phase === "retrying") delays.push(detail.delay)
   })
   dom.window.fetch = (async () => {
     calls++
@@ -616,7 +621,7 @@ test.it.each(["HTML", "SSE"])(
     test.expect(document.getElementById("obsolete")).toBeNull()
     test.expect(document.querySelector("footer")!.textContent).toBe("New footer")
     test.expect(document.getElementById("cell")).toBe(cell.target)
-    test.expect((cell.target as any).cell).toBe(cell)
+    test.expect((cell.target as unknown as { cell: Cell<HTMLButtonElement> }).cell).toBe(cell)
     test.expect(cell.abortSignal.aborted).toBe(false)
     test.expect(document.getElementById("field")).toBe(input)
     test.expect(input.value).toBe("typed")

@@ -4,8 +4,15 @@ import { morph, run } from "effect-start/cell"
 import type { Cell, Runtime } from "effect-start/cell"
 import { JSDOM } from "jsdom"
 
+type Signals = Record<string, unknown> & {
+  todos: Array<{ title: string; visible?: boolean; tags?: Array<string> }>
+  items: Array<unknown>
+  rows: Array<string>
+  cleanups?: number
+}
+
 let dom: JSDOM
-let runtime: Runtime
+let runtime: Runtime<Signals>
 let errors: Array<unknown>
 
 const tick = () => new Promise<void>((resolve) => setTimeout(resolve, 0))
@@ -16,7 +23,7 @@ test.beforeEach(() => {
     pretendToBeVisual: true,
   })
   errors = []
-  runtime = run(dom.window.document, { onError: (error) => errors.push(error) })
+  runtime = run<Signals>(dom.window.document, { onError: (error) => errors.push(error) })
 })
 
 test.afterEach(() => {
@@ -32,14 +39,34 @@ test.it(
     runtime.signals.todos = [{ title: "First" }, { title: "Second" }]
     dom.window.document.body.innerHTML = Html.text(
       <ol>
-        <template data-cell={(cell) => cell.expand(() => cell.signals.todos)}>
+        <template
+          data-cell={(
+            cell: Cell<
+              HTMLTemplateElement,
+              Signals,
+              { title: string; visible?: boolean; tags?: Array<string> }
+            >,
+          ) => cell.expand(() => cell.signals.todos)}
+        >
           <li
-            data-cell={(cell) => {
+            data-cell={(
+              cell: Cell<
+                HTMLLIElement,
+                Signals,
+                { title: string; visible?: boolean; tags?: Array<string> }
+              >,
+            ) => {
               cell.target.dataset.setups = String(Number(cell.target.dataset.setups ?? 0) + 1)
             }}
           >
             <span
-              data-cell={(cell) =>
+              data-cell={(
+                cell: Cell<
+                  HTMLSpanElement,
+                  Signals,
+                  { title: string; visible?: boolean; tags?: Array<string> }
+                >,
+              ) =>
                 cell.effect(() => {
                   cell.target.textContent = `${cell.index}: ${cell.item.title}`
                 })
@@ -47,7 +74,13 @@ test.it(
             />
             <input />
             <button
-              data-cell={(cell) =>
+              data-cell={(
+                cell: Cell<
+                  HTMLButtonElement,
+                  Signals,
+                  { title: string; visible?: boolean; tags?: Array<string> }
+                >,
+              ) =>
                 cell.on("click", () => {
                   cell.item.title += "!"
                 })
@@ -101,17 +134,37 @@ test.it(
   async () => {
     runtime.signals.items = [false, null, undefined, 0, ""]
     dom.window.document.body.innerHTML = Html.text(
-      <template data-cell={(cell) => cell.expand(() => cell.signals.items)}>
+      <template
+        data-cell={(
+          cell: Cell<
+            HTMLTemplateElement,
+            Signals,
+            { title: string; visible?: boolean; tags?: Array<string> }
+          >,
+        ) => cell.expand(() => cell.signals.items)}
+      >
         {"["}
         <span
-          data-cell={(cell) =>
+          data-cell={(
+            cell: Cell<
+              HTMLSpanElement,
+              Signals,
+              { title: string; visible?: boolean; tags?: Array<string> }
+            >,
+          ) =>
             cell.effect(() => {
               cell.target.textContent = String(cell.item)
             })
           }
         />
         <b
-          data-cell={(cell) =>
+          data-cell={(
+            cell: Cell<
+              HTMLElement,
+              Signals,
+              { title: string; visible?: boolean; tags?: Array<string> }
+            >,
+          ) =>
             cell.effect(() => {
               cell.target.textContent = String(cell.index)
             })
@@ -136,7 +189,15 @@ test.it(
   "hides every falsy value and empty arrays, and preserves a shown instance across truthy values",
   async () => {
     dom.window.document.body.innerHTML = Html.text(
-      <template data-cell={(cell) => cell.expand(() => cell.signals.show)}>
+      <template
+        data-cell={(
+          cell: Cell<
+            HTMLTemplateElement,
+            Signals,
+            { title: string; visible?: boolean; tags?: Array<string> }
+          >,
+        ) => cell.expand(() => cell.signals.show)}
+      >
         <input value="initial" />
       </template>,
     )
@@ -175,21 +236,65 @@ test.it(
   async () => {
     runtime.signals.todos = [{ title: "First", visible: true, tags: ["a", "b"] }]
     dom.window.document.body.innerHTML = Html.text(
-      <template data-cell={(cell) => cell.expand(() => cell.signals.todos.length)}>
+      <template
+        data-cell={(
+          cell: Cell<
+            HTMLTemplateElement,
+            Signals,
+            { title: string; visible?: boolean; tags?: Array<string> }
+          >,
+        ) => cell.expand(() => cell.signals.todos.length)}
+      >
         <ol>
-          <template data-cell={(cell) => cell.expand(() => cell.signals.todos)}>
+          <template
+            data-cell={(
+              cell: Cell<
+                HTMLTemplateElement,
+                Signals,
+                { title: string; visible?: boolean; tags?: Array<string> }
+              >,
+            ) => cell.expand(() => cell.signals.todos)}
+          >
             <li>
-              <template data-cell={(cell) => cell.expand(() => cell.item.visible)}>
+              <template
+                data-cell={(
+                  cell: Cell<
+                    HTMLTemplateElement,
+                    Signals,
+                    { title: string; visible?: boolean; tags?: Array<string> }
+                  >,
+                ) => cell.expand(() => cell.item.visible)}
+              >
                 <span
-                  data-cell={(cell) =>
+                  data-cell={(
+                    cell: Cell<
+                      HTMLSpanElement,
+                      Signals,
+                      { title: string; visible?: boolean; tags?: Array<string> }
+                    >,
+                  ) =>
                     cell.effect(() => {
                       cell.target.textContent = `${cell.index}: ${cell.item.title}`
                     })
                   }
                 />
-                <template data-cell={(cell) => cell.expand(() => cell.item.tags)}>
+                <template
+                  data-cell={(
+                    cell: Cell<
+                      HTMLTemplateElement,
+                      Signals,
+                      { title: string; visible?: boolean; tags?: Array<string> }
+                    >,
+                  ) => cell.expand(() => cell.item.tags)}
+                >
                   <b
-                    data-cell={(cell) =>
+                    data-cell={(
+                      cell: Cell<
+                        HTMLElement,
+                        Signals,
+                        { title: string; visible?: boolean; tags?: Array<string> }
+                      >,
+                    ) =>
                       cell.effect(() => {
                         cell.target.textContent = `${cell.index}: ${cell.item}`
                       })
@@ -236,9 +341,23 @@ test.it(
 test.it("switching between array and condition modes resets item scope", async () => {
   runtime.signals.value = ["row"]
   dom.window.document.body.innerHTML = Html.text(
-    <template data-cell={(cell) => cell.expand(() => cell.signals.value)}>
+    <template
+      data-cell={(
+        cell: Cell<
+          HTMLTemplateElement,
+          Signals,
+          { title: string; visible?: boolean; tags?: Array<string> }
+        >,
+      ) => cell.expand(() => cell.signals.value)}
+    >
       <span
-        data-cell={(cell) =>
+        data-cell={(
+          cell: Cell<
+            HTMLSpanElement,
+            Signals,
+            { title: string; visible?: boolean; tags?: Array<string> }
+          >,
+        ) =>
           cell.effect(() => {
             cell.target.textContent = `${cell.item}:${cell.index}`
           })
@@ -271,12 +390,34 @@ test.it(
     }) as typeof fetch
     runtime.signals.rows = ["first", "second"]
     dom.window.document.body.innerHTML = Html.text(
-      <template data-cell={(cell) => cell.expand(() => cell.signals.rows)}>
-        <template data-cell={(cell) => cell.expand(true)}>
+      <template
+        data-cell={(
+          cell: Cell<
+            HTMLTemplateElement,
+            Signals,
+            { title: string; visible?: boolean; tags?: Array<string> }
+          >,
+        ) => cell.expand(() => cell.signals.rows)}
+      >
+        <template
+          data-cell={(
+            cell: Cell<
+              HTMLTemplateElement,
+              Signals,
+              { title: string; visible?: boolean; tags?: Array<string> }
+            >,
+          ) => cell.expand(true)}
+        >
           <button
-            data-cell={(cell) => {
+            data-cell={(
+              cell: Cell<
+                HTMLButtonElement,
+                Signals,
+                { title: string; visible?: boolean; tags?: Array<string> }
+              >,
+            ) => {
               cell.effect(() => {
-                cell.target.textContent = cell.item
+                cell.target.textContent = String(cell.item)
               })
               cell.on("click", () => {
                 cell.signals.clicked = cell.item
@@ -321,18 +462,46 @@ test.it("moves template output with its owner without rerunning nested cells", a
   dom.window.document.body.innerHTML = Html.text(
     <main>
       <section>
-        <template data-cell={(cell) => cell.expand(["one", "two"])}>
-          <template data-cell={(cell) => cell.expand(true)}>
+        <template
+          data-cell={(
+            cell: Cell<
+              HTMLTemplateElement,
+              Signals,
+              { title: string; visible?: boolean; tags?: Array<string> }
+            >,
+          ) => cell.expand(["one", "two"])}
+        >
+          <template
+            data-cell={(
+              cell: Cell<
+                HTMLTemplateElement,
+                Signals,
+                { title: string; visible?: boolean; tags?: Array<string> }
+              >,
+            ) => cell.expand(true)}
+          >
             <input
-              data-cell={(cell) => {
+              data-cell={(
+                cell: Cell<
+                  HTMLInputElement,
+                  Signals,
+                  { title: string; visible?: boolean; tags?: Array<string> }
+                >,
+              ) => {
                 cell.target.dataset.setups = String(Number(cell.target.dataset.setups ?? 0) + 1)
               }}
             />
           </template>
           <span
-            data-cell={(cell) =>
+            data-cell={(
+              cell: Cell<
+                HTMLSpanElement,
+                Signals,
+                { title: string; visible?: boolean; tags?: Array<string> }
+              >,
+            ) =>
               cell.effect(() => {
-                cell.target.textContent = cell.item
+                cell.target.textContent = String(cell.item)
               })
             }
           />
@@ -363,12 +532,24 @@ test.it(
     const markup = Html.text(
       <template
         id="rows"
-        data-cell={(cell) => cell.expand(() => cell.signals.items)}
+        data-cell={(
+          cell: Cell<
+            HTMLTemplateElement,
+            Signals,
+            { title: string; visible?: boolean; tags?: Array<string> }
+          >,
+        ) => cell.expand(() => cell.signals.items)}
       >
         <span
-          data-cell={(cell) =>
+          data-cell={(
+            cell: Cell<
+              HTMLSpanElement,
+              Signals,
+              { title: string; visible?: boolean; tags?: Array<string> }
+            >,
+          ) =>
             cell.effect(() => {
-              cell.target.textContent = cell.item
+              cell.target.textContent = String(cell.item)
             })
           }
         />
@@ -406,7 +587,7 @@ test.it(
     template.setAttribute("data-cell", "cell => { cell.target.cell = cell; cell.expand(true) }")
     dom.window.document.body.append(template)
     await tick()
-    const cell = (template as any).cell as Cell<HTMLTemplateElement>
+    const cell = (template as unknown as { cell: Cell }).cell as Cell<HTMLTemplateElement>
     const dispose = cell.expand([1, 2])
     await tick()
 
@@ -430,7 +611,7 @@ test.it(
 
     test.expect(dom.window.document.body.childNodes.length).toBe(1)
 
-    runtime = run(dom.window.document, { onError: (error) => errors.push(error) })
+    runtime = run<Signals>(dom.window.document, { onError: (error) => errors.push(error) })
     await tick()
 
     test.expect(dom.window.document.querySelectorAll("span").length).toBe(1)
@@ -440,9 +621,23 @@ test.it(
 test.it("reports non-template usage and cleans up expansion after a failed setup", async () => {
   dom.window.document.body.innerHTML = Html.text(
     <main>
-      <div data-cell={(cell) => cell.expand(true)} />
+      <div
+        data-cell={(
+          cell: Cell<
+            HTMLDivElement,
+            Signals,
+            { title: string; visible?: boolean; tags?: Array<string> }
+          >,
+        ) => cell.expand(true)}
+      />
       <template
-        data-cell={(cell) => {
+        data-cell={(
+          cell: Cell<
+            HTMLTemplateElement,
+            Signals,
+            { title: string; visible?: boolean; tags?: Array<string> }
+          >,
+        ) => {
           cell.expand(true)
           throw new Error("failed setup")
         }}

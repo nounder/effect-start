@@ -5,8 +5,13 @@ import type { Cell, CellDeclaration, Runtime } from "effect-start/cell"
 import type { JSX } from "effect-start/jsx-runtime"
 import { JSDOM } from "jsdom"
 
+type Signals = Record<string, unknown> & {
+  user?: { name?: string; obsolete?: boolean }
+  items?: Array<string | number | null>
+}
+
 let dom: JSDOM
-let runtime: Runtime
+let runtime: Runtime<Signals>
 let errors: Array<unknown>
 
 const tick = () => new Promise<void>((resolve) => setTimeout(resolve, 0))
@@ -18,7 +23,7 @@ test.beforeEach(() => {
     pretendToBeVisual: true,
   })
   errors = []
-  runtime = run(dom.window.document, { onError: (error) => errors.push(error) })
+  runtime = run<Signals>(dom.window.document, { onError: (error) => errors.push(error) })
 })
 
 test.afterEach(() => {
@@ -175,14 +180,14 @@ test.it(
 
     test.expect(runtime.signals.count).toBe(3)
 
-    runtime.signals.user.name = "Grace"
-    runtime.signals.items.push("c")
+    runtime.signals.user!.name = "Grace"
+    runtime.signals.items!.push("c")
     await tick()
 
     test.expect(target.textContent).toBe('[3,"Grace",3,"b"]')
 
-    delete runtime.signals.user.name
-    runtime.signals.items.length = 1
+    delete runtime.signals.user!.name
+    runtime.signals.items!.length = 1
     await tick()
 
     test.expect(target.textContent).toBe("[3,null,1,null]")
@@ -193,7 +198,10 @@ test.it(
   "signal existence reacts to undefined property creation and deletion, but not repeated assignment",
   async () => {
     const target = await mount(`cell => { cell.target.cell = cell }`)
-    const cell = (target as any).cell as Cell
+    const cell = (target as unknown as { cell: Cell }).cell as Cell<
+      Element,
+      Record<string, unknown> & { user?: { name: string; obsolete?: boolean } }
+    >
     const observations: Array<boolean> = []
     cell.effect(() => {
       observations.push("foo" in cell.signals)
@@ -229,7 +237,10 @@ test.it(
     })
   }`)
     const writer = await mount(`cell => { cell.target.cell = cell }`)
-    const cell = (writer as any).cell as Cell
+    const cell = (writer as unknown as { cell: Cell }).cell as Cell<
+      Element,
+      Record<string, unknown> & { user?: { name: string; obsolete?: boolean } }
+    >
 
     test.expect([reader.textContent, Object.keys(runtime.signals)]).toEqual(["missing", []])
 
@@ -244,29 +255,33 @@ test.it(
     await tick()
 
     test.expect(runtime.signals).toEqual({ user: { name: "Grace" }, nullable: null })
-    test.expect([reader.textContent, (reader as any).runs]).toEqual(["Grace", 3])
+    test
+      .expect([reader.textContent, (reader as unknown as { runs: number }).runs])
+      .toEqual(["Grace", 3])
 
-    previous.user.name = "Old root"
+    previous.user!.name = "Old root"
     await tick()
 
-    test.expect((reader as any).runs).toBe(3)
+    test.expect((reader as unknown as { runs: number }).runs).toBe(3)
 
-    cell.signals.user.name = "Lin"
+    cell.signals.user!.name = "Lin"
     await tick()
 
-    test.expect([reader.textContent, (reader as any).runs]).toEqual(["Lin", 4])
+    test
+      .expect([reader.textContent, (reader as unknown as { runs: number }).runs])
+      .toEqual(["Lin", 4])
 
     Reflect.set(cell, "signals", cell.signals)
     cell.signals.unrelated = true
     await tick()
 
-    test.expect((reader as any).runs).toBe(4)
+    test.expect((reader as unknown as { runs: number }).runs).toBe(4)
 
     for (const value of [null, undefined, [], 1]) {
       test.expect(() => Reflect.set(cell, "signals", value)).toThrow("Signals must be an object")
     }
 
-    test.expect(runtime.signals.user.name).toBe("Lin")
+    test.expect(runtime.signals.user!.name).toBe("Lin")
   },
 )
 
@@ -285,7 +300,7 @@ test.it("a root cell can replace startup signals before descendant setup", () =>
       />
     </main>,
   )
-  runtime = run(dom.window.document, {
+  runtime = run<Signals>(dom.window.document, {
     signals: { obsolete: true },
     onError: (error) => errors.push(error),
   })
@@ -306,7 +321,10 @@ test.it(
       })
     }) as typeof fetch
     const target = await mount(`cell => { cell.target.cell = cell }`)
-    const cell = (target as any).cell as Cell
+    const cell = (target as unknown as { cell: Cell }).cell as Cell<
+      Element,
+      Record<string, unknown> & { user?: { name: string; obsolete?: boolean } }
+    >
     cell.signals = { count: 1 }
     const request = cell.request("/update", { method: "POST" })
 
@@ -394,13 +412,13 @@ test.it("stop is idempotent, aborts cell lifetimes, and permits restart", async 
   runtime.stop()
   runtime.stop()
 
-  test.expect((target as any).cellSignal.aborted).toBe(true)
+  test.expect((target as unknown as { cellSignal: AbortSignal }).cellSignal.aborted).toBe(true)
 
   target.click()
 
   test.expect(target.textContent).toBe("")
 
-  runtime = run(dom.window.document, { onError: (error) => errors.push(error) })
+  runtime = run<Signals>(dom.window.document, { onError: (error) => errors.push(error) })
   target.click()
 
   test.expect(target.textContent).toBe("x")
@@ -461,8 +479,10 @@ test.it(
     runtime.signals._private = "local"
     const target = await mount(`cell => { cell.target.cell = cell }`)
     const phases: Array<string> = []
-    target.addEventListener("cell:request", (event: any) => phases.push(event.detail.phase))
-    await (target as any).cell.request("/count")
+    target.addEventListener("cell:request", (event) =>
+      phases.push((event as CustomEvent<{ phase: string }>).detail.phase),
+    )
+    await (target as unknown as { cell: Cell }).cell.request("/count")
 
     test.expect(requests[0].url.search).toBe("")
     test.expect(requests[0].init.body).toBeUndefined()
@@ -473,7 +493,7 @@ test.it(
     test.expect(phases).toEqual(["started", "finished"])
 
     const body = JSON.stringify({ count: 2, _included: true, nested: { _included: true } })
-    await (target as any).cell.request("/count", {
+    await (target as unknown as { cell: Cell }).cell.request("/count", {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "text/html", "X-Custom": "explicit" },
       body,
@@ -498,10 +518,12 @@ test.it("request rejects JSON responses without patching signals", async () => {
   runtime.signals.remove = true
   const target = await mount(`cell => { cell.target.cell = cell }`)
   const phases: Array<string> = []
-  target.addEventListener("cell:request", (event: any) => phases.push(event.detail.phase))
+  target.addEventListener("cell:request", (event) =>
+    phases.push((event as CustomEvent<{ phase: string }>).detail.phase),
+  )
 
   await test
-    .expect((target as any).cell.request("/count"))
+    .expect((target as unknown as { cell: Cell }).cell.request("/count"))
     .rejects.toThrow("Unsupported cell response: application/json")
 
   test.expect(runtime.signals.count).toBe(0)
@@ -524,7 +546,10 @@ test.it.each(["GET", "HEAD", "DELETE", "POST", "PUT", "PATCH"])(
     runtime.signals._local = true
     runtime.signals.circular = runtime.signals
     const target = await mount(`cell => { cell.target.cell = cell }`)
-    const cell = (target as any).cell as Cell
+    const cell = (target as unknown as { cell: Cell }).cell as Cell<
+      Element,
+      Record<string, unknown> & { user?: { name: string; obsolete?: boolean } }
+    >
     await cell.request("/empty", { method })
 
     test.expect(requestedUrl?.href).toBe("http://localhost/empty")
@@ -542,7 +567,10 @@ test.it.each(["string", "URL"])(
       return new Response(null, { status: 204 })
     }) as typeof fetch
     const target = await mount(`cell => { cell.target.cell = cell }`)
-    const cell = (target as any).cell as Cell
+    const cell = (target as unknown as { cell: Cell }).cell as Cell<
+      Element,
+      Record<string, unknown> & { user?: { name: string; obsolete?: boolean } }
+    >
     const url = new URL("http://localhost/search?q=hello%20world&tag=a&tag=b&datastar=explicit")
     await cell.request(kind === "URL" ? url : url.pathname + url.search)
 
@@ -578,7 +606,10 @@ test.it(
     target.append(unrelated)
     const form = new FormData()
     form.set("name", "Ada")
-    await (target as any).cell.request("/save", { method: "POST", body: form })
+    await (target as unknown as { cell: Cell }).cell.request("/save", {
+      method: "POST",
+      body: form,
+    })
     await tick()
 
     test.expect(body).toBe(form)
@@ -615,7 +646,7 @@ test.it(
     const result = dom.window.document.createElement("div")
     result.id = "result"
     dom.window.document.body.append(result)
-    await (target as any).cell.request("/stream")
+    await (target as unknown as { cell: Cell }).cell.request("/stream")
 
     test.expect(dom.window.document.getElementById("result")).toBe(result)
     test.expect(result.textContent).toBe("café")
@@ -647,7 +678,7 @@ test.it.each([undefined, false, true])(
       cell.target.textContent = JSON.stringify([cell.signals.existing, "added" in cell.signals, cell.signals.nested.added])
     })
   }`)
-    await (target as any).cell.request("/stream")
+    await (target as unknown as { cell: Cell }).cell.request("/stream")
     await tick()
 
     test.expect(runtime.signals).toEqual({
@@ -672,8 +703,8 @@ test.it(
         requests.push({ signal: options!.signal!, respond })
       })) as typeof fetch
     const target = await mount(`cell => { cell.target.cell = cell }`)
-    const first = (target as any).cell.request("/first")
-    const second = (target as any).cell.request("/second")
+    const first = (target as unknown as { cell: Cell }).cell.request("/first")
+    const second = (target as unknown as { cell: Cell }).cell.request("/second")
     const result = dom.window.document.createElement("div")
     result.id = "result"
     result.textContent = "original"
@@ -707,8 +738,12 @@ test.it("HTTP errors reject with balanced lifecycle events and no signal mutatio
     Response.json({ bad: true }, { status: 500 })) as unknown as typeof fetch
   const target = await mount(`cell => { cell.target.cell = cell }`)
   const phases: Array<string> = []
-  target.addEventListener("cell:request", (event: any) => phases.push(event.detail.phase))
-  await test.expect((target as any).cell.request("/error")).rejects.toThrow("500")
+  target.addEventListener("cell:request", (event) =>
+    phases.push((event as CustomEvent<{ phase: string }>).detail.phase),
+  )
+  await test
+    .expect((target as unknown as { cell: Cell }).cell.request("/error"))
+    .rejects.toThrow("500")
 
   test.expect(phases).toEqual(["started", "error", "finished"])
   test.expect(runtime.signals.bad).toBeUndefined()

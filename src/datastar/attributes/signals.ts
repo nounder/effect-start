@@ -12,7 +12,7 @@ attribute({
       const value = rx?.()
       mergePaths([[key, value]], { ifMissing })
     } else {
-      const patch = Object.assign({}, rx?.() as Record<string, any>)
+      const patch = Object.assign({}, rx?.() as Record<string, unknown>)
       mergePatch(patch, { ifMissing })
     }
   },

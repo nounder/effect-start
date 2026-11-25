@@ -36,7 +36,7 @@ export function IssueRow(props: {
           >
             {props.title}
           </a>
-          {props.labels?.map((l: any) => (
+          {props.labels?.map((l) => (
             <span
               class="rounded-full border px-2 py-0.5 text-xs font-medium"
               style={`color: #${l.color}; border-color: #${l.color}40; background-color: #${l.color}18`}

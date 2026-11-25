@@ -114,12 +114,12 @@ export const hasOwn: (obj: object, prop: PropertyKey) => boolean =
   Object.hasOwn ?? Object.prototype.hasOwnProperty.call
 
 /** Paths.ts */
-export const isPojo = (obj: any): obj is Record<string, any> =>
+export const isPojo = (obj: unknown): obj is Record<string, unknown> =>
   obj !== null &&
   typeof obj === "object" &&
   (Object.getPrototypeOf(obj) === Object.prototype || Object.getPrototypeOf(obj) === null)
 
-export const isEmpty = (obj: Record<string, any>): boolean => {
+export const isEmpty = (obj: Record<string, unknown>): boolean => {
   for (const prop in obj) {
     if (hasOwn(obj, prop)) {
       return false
@@ -128,23 +128,23 @@ export const isEmpty = (obj: Record<string, any>): boolean => {
   return true
 }
 
-export const updateLeaves = (obj: Record<string, any>, fn: (oldValue: any) => any) => {
+export const updateLeaves = (obj: Record<string, unknown>, fn: (oldValue: unknown) => unknown) => {
   for (const key in obj) {
     const val = obj[key]
     if (isPojo(val) || Array.isArray(val)) {
-      updateLeaves(val, fn)
+      updateLeaves(val as Record<string, unknown>, fn)
     } else {
       obj[key] = fn(val)
     }
   }
 }
 
-export const pathToObj = (paths: Paths): Record<string, any> => {
-  const result: Record<string, any> = {}
+export const pathToObj = (paths: Paths): Record<string, unknown> => {
+  const result: Record<string, unknown> = {}
   for (const [path, value] of paths) {
     const keys = path.split(".")
     const lastKey = keys.pop()!
-    const obj = keys.reduce((acc, key) => (acc[key] ??= {}), result)
+    const obj = keys.reduce((acc, key) => (acc[key] ??= {}) as Record<string, unknown>, result)
     obj[lastKey] = value
   }
   return result
@@ -152,7 +152,7 @@ export const pathToObj = (paths: Paths): Record<string, any> => {
 
 /** Timing.ts */
 export const delay = (callback: EventCallbackHandler, wait: number): EventCallbackHandler => {
-  return (...args: Array<any>) => {
+  return (...args: Parameters<EventCallbackHandler>) => {
     setTimeout(() => {
       callback(...args)
     }, wait)
@@ -167,9 +167,9 @@ export const throttle = (
   debounce = false,
 ): EventCallbackHandler => {
   let lastArgs: Parameters<EventCallbackHandler> | null = null
-  let timer: any = 0
+  let timer: ReturnType<typeof setTimeout> | 0 = 0
 
-  return (...args: Array<any>) => {
+  return (...args: Parameters<EventCallbackHandler>) => {
     if (leading && !timer) {
       callback(...args)
       lastArgs = null
@@ -229,7 +229,8 @@ export const modifyViewTransition = (
 ): EventCallbackHandler => {
   if (mods.has("viewtransition") && supportsViewTransitions) {
     const cb = callback
-    callback = (...args: Array<any>) => document.startViewTransition(() => cb(...args))
+    callback = (...args: Parameters<EventCallbackHandler>) =>
+      document.startViewTransition(() => cb(...args))
   }
 
   return callback

@@ -325,6 +325,30 @@ test.describe("RouteMap.Context", () => {
 
   test.expectTypeOf<RouteMap.Context<typeof _nested>>().toEqualTypeOf<A | B>()
 
+  test.it("collects requirements from optional layer routes", () => {
+    type Middleware = (typeof _nested)["/api"]["*"]
+    test
+      .expectTypeOf<RouteMap.Context<typeof _flat & { "*"?: Middleware }>>()
+      .toEqualTypeOf<A | B>()
+    test.expectTypeOf<RouteMap.Context<typeof _flat & { "*": undefined }>>().toEqualTypeOf<A>()
+  })
+
+  test.it("ignores empty route collections", () => {
+    test.expectTypeOf<RouteMap.Context<{ "/x": [] }>>().toEqualTypeOf<never>()
+    test.expectTypeOf<RouteMap.Context<{ "/x": typeof Route.empty }>>().toEqualTypeOf<never>()
+  })
+
+  test.it("collects requirements from both leaf and nested alternatives", () => {
+    const _leaf = Route.get(
+      Route.text(function* () {
+        yield* B
+        return "hi"
+      }),
+    )
+    type Input = { "/api": Iterable<Route.RouteSet.Items<typeof _leaf>[number]> | typeof _flat }
+    test.expectTypeOf<RouteMap.Context<Input>>().toEqualTypeOf<A | B>()
+  })
+
   const _withRequest = {
     "/x": Route.get(
       Route.html(function* () {

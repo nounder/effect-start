@@ -2,6 +2,7 @@ import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
 import * as Html from "../Html.ts"
 import type * as Tracing from "../internal/Tracing.ts"
+import type { JSX } from "../jsx.ts"
 import * as Unique from "../Unique.ts"
 import * as Pretty from "./internal/Pretty.ts"
 import type * as StudioStore from "./StudioStore.ts"
@@ -98,7 +99,7 @@ function Sidebar(props: { prefix: string; active: NavTab }) {
   )
 }
 
-export function Shell(props: { prefix: string; active: NavTab; children: any }) {
+export function Shell(props: { prefix: string; active: NavTab; children: JSX.Element }) {
   return (
     <div class="shell">
       <Sidebar
@@ -413,7 +414,7 @@ function TreeConnectors(props: { tree: TreeSpan }) {
   if (props.tree.depth === 0) return null
 
   const indent = props.tree.depth * TREE_INDENT
-  const elements: Array<any> = []
+  const elements: Array<JSX.Element> = []
 
   for (let i = 1; i < props.tree.ancestorHasNextSibling.length; i++) {
     if (props.tree.ancestorHasNextSibling[i]) {
@@ -1610,67 +1611,72 @@ function detectEffectType(value: unknown): string | undefined {
   return undefined
 }
 
-function inspectEffectValue(type: string, value: any): Record<string, unknown> {
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null
+
+function inspectEffectValue(type: string, value: unknown): Record<string, unknown> {
   const info: Record<string, unknown> = { _type: type }
+  if (typeof value !== "object" || value === null) return info
+  const fields = value as Record<string, unknown>
   try {
     switch (type) {
       case "PubSub": {
-        if (typeof value.capacity === "function") {
-          info.capacity = value.capacity()
+        if (typeof fields.capacity === "function") {
+          info.capacity = fields.capacity()
         }
-        if (typeof value.isActive === "function") info.active = value.isActive()
-        if (typeof value.unsafeSize === "function") {
-          const size = value.unsafeSize()
+        if (typeof fields.isActive === "function") info.active = fields.isActive()
+        if (typeof fields.unsafeSize === "function") {
+          const size = fields.unsafeSize()
           info.size = Option.isSome(size) ? size.value : "shutdown"
         }
-        if (value.pubsub && typeof value.pubsub.subscriberCount === "number") {
-          info.subscribers = value.pubsub.subscriberCount
+        if (isRecord(fields.pubsub) && typeof fields.pubsub.subscriberCount === "number") {
+          info.subscribers = fields.pubsub.subscriberCount
         }
         break
       }
       case "Enqueue":
       case "Dequeue": {
-        if (typeof value.capacity === "function") {
-          info.capacity = value.capacity()
+        if (typeof fields.capacity === "function") {
+          info.capacity = fields.capacity()
         }
-        if (typeof value.isActive === "function") info.active = value.isActive()
-        if (typeof value.unsafeSize === "function") {
-          const size = value.unsafeSize()
+        if (typeof fields.isActive === "function") info.active = fields.isActive()
+        if (typeof fields.unsafeSize === "function") {
+          const size = fields.unsafeSize()
           info.size = Option.isSome(size) ? size.value : "shutdown"
         }
         break
       }
       case "Ref":
       case "SynchronizedRef": {
-        if (value.ref && "current" in value.ref) {
-          const current = value.ref.current
+        if (isRecord(fields.ref) && "current" in fields.ref) {
+          const current = fields.ref.current
           info.value = safeSerialize(current)
         }
         break
       }
       case "Pool": {
-        if (typeof value.minSize === "number") info.minSize = value.minSize
-        if (typeof value.maxSize === "number") info.maxSize = value.maxSize
-        if (typeof value.concurrency === "number") {
-          info.concurrency = value.concurrency
+        if (typeof fields.minSize === "number") info.minSize = fields.minSize
+        if (typeof fields.maxSize === "number") info.maxSize = fields.maxSize
+        if (typeof fields.concurrency === "number") {
+          info.concurrency = fields.concurrency
         }
-        if (value.items instanceof Set) info.items = value.items.size
-        if (value.available instanceof Set) {
-          info.available = value.available.size
+        if (fields.items instanceof Set) info.items = fields.items.size
+        if (fields.available instanceof Set) {
+          info.available = fields.available.size
         }
-        if (value.invalidated instanceof Set) {
-          info.invalidated = value.invalidated.size
+        if (fields.invalidated instanceof Set) {
+          info.invalidated = fields.invalidated.size
         }
-        if (typeof value.waiters === "number") info.waiters = value.waiters
+        if (typeof fields.waiters === "number") info.waiters = fields.waiters
         break
       }
       case "FiberRef": {
-        if ("initial" in value) info.initial = safeSerialize(value.initial)
+        if ("initial" in value) info.initial = safeSerialize(fields.initial)
         break
       }
       case "Deferred": {
-        if ("state" in value && value.state) {
-          const state = value.state
+        if ("state" in value && fields.state) {
+          const state = fields.state
           if (typeof state === "object" && "_tag" in state) {
             info.status = state._tag
           }
@@ -1837,7 +1843,7 @@ const HIDDEN_SERVICES = new Set([
   "effect/Layer/CurrentMemoMap",
 ])
 
-export function collectServices(unsafeMap: ReadonlyMap<string, any>): Array<ServiceEntry> {
+export function collectServices(unsafeMap: ReadonlyMap<string, unknown>): Array<ServiceEntry> {
   const entries: Array<ServiceEntry> = []
   for (const [key, value] of unsafeMap) {
     if (HIDDEN_SERVICES.has(key)) continue

@@ -39,9 +39,9 @@ export const pullIntoWritable = <A, IE, E>(options: {
       let i = 0
       return Effect.callback<void, E>(function loop(resume) {
         for (; i < chunk.length;) {
-          const success = options.writable.write(chunk[i++], options.encoding as any)
+          const success = options.writable.write(chunk[i++], options.encoding as BufferEncoding)
           if (!success) {
-            options.writable.once("drain", () => (loop as any)(resume))
+            options.writable.once("drain", () => loop.call(this, resume))
             return
           }
         }

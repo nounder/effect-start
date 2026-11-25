@@ -2,6 +2,23 @@
 import { Effect, Schema, Stream } from "effect"
 import { Bundle, Html, Route, Start } from "effect-start"
 import { BunBundle, BunFileSystem, BunPath } from "effect-start/bun"
+import type { Cell } from "effect-start/cell"
+
+type Signals = Record<string, unknown> & {
+  count: number
+  status: string
+  todos: Array<{ title: string }>
+  build: { progress: number; label: string }
+  timerVisible: boolean
+  timerRunning: boolean
+  timerDelay: number
+  timerTicks: number
+  timerSetups: number
+  timerCleanups: number
+  search: string
+  notes: Array<{ title: string }>
+  undo: { item: { title: string }; index: number } | null
+}
 
 const routes = Route.map({
   "/": Route.get(
@@ -48,7 +65,7 @@ const routes = Route.map({
             />
           </head>
           <body
-            data-cell={(cell) => {
+            data-cell={(cell: Cell<HTMLBodyElement, Signals, { title: string }>) => {
               cell.signals = {
                 count: 0,
                 status: "Ready",
@@ -78,16 +95,16 @@ const routes = Route.map({
                   <h2>01 / Local interaction</h2>
                   <output
                     aria-label="Count"
-                    data-cell={(cell) =>
+                    data-cell={(cell: Cell<HTMLOutputElement, Signals, { title: string }>) =>
                       cell.effect(() => {
-                        cell.target.textContent = cell.signals.count
+                        cell.target.textContent = String(cell.signals.count)
                       })
                     }
                   >
                     0
                   </output>
                   <button
-                    data-cell={(cell) =>
+                    data-cell={(cell: Cell<HTMLButtonElement, Signals, { title: string }>) =>
                       cell.on("click", () => {
                         cell.signals.count++
                       })
@@ -109,7 +126,7 @@ const routes = Route.map({
                   <h2>02 / Server signals + HTML</h2>
                   <p id="server-message">The server has not been called yet.</p>
                   <button
-                    data-cell={(cell) => {
+                    data-cell={(cell: Cell<HTMLButtonElement, Signals, { title: string }>) => {
                       cell.on("click", async () => {
                         cell.target.disabled = true
                         try {
@@ -145,7 +162,11 @@ const routes = Route.map({
                     />
                     <p>Original server fragment.</p>
                   </div>
-                  <button data-cell={(cell) => cell.on("click", () => cell.request("/fragment"))}>
+                  <button
+                    data-cell={(cell: Cell<HTMLButtonElement, Signals, { title: string }>) =>
+                      cell.on("click", () => cell.request("/fragment"))
+                    }
+                  >
                     Refresh fragment
                   </button>
                 </div>
@@ -155,7 +176,7 @@ const routes = Route.map({
                 <div>
                   <h2>04 / Native form submission</h2>
                   <form
-                    data-cell={(cell) => {
+                    data-cell={(cell: Cell<HTMLFormElement, Signals, { title: string }>) => {
                       cell.on("submit", async (event) => {
                         event.preventDefault()
                         await cell.request("/save", {
@@ -195,7 +216,7 @@ const routes = Route.map({
                 <div>
                   <h2>05 / Local list + conditional content</h2>
                   <form
-                    data-cell={(cell) =>
+                    data-cell={(cell: Cell<HTMLFormElement, Signals, { title: string }>) =>
                       cell.on("submit", (event) => {
                         event.preventDefault()
                         const input = cell.target.elements.namedItem("todo") as HTMLInputElement
@@ -216,21 +237,31 @@ const routes = Route.map({
                     />
                     <button type="submit">Add reminder</button>
                   </form>
-                  <template data-cell={(cell) => cell.expand(() => cell.signals.todos.length)}>
+                  <template
+                    data-cell={(cell: Cell<HTMLTemplateElement, Signals, { title: string }>) =>
+                      cell.expand(() => cell.signals.todos.length)
+                    }
+                  >
                     <ol aria-label="Local reminders">
-                      <template data-cell={(cell) => cell.expand(() => cell.signals.todos)}>
+                      <template
+                        data-cell={(cell: Cell<HTMLTemplateElement, Signals, { title: string }>) =>
+                          cell.expand(() => cell.signals.todos)
+                        }
+                      >
                         <li>
                           <span
-                            data-cell={(cell) =>
+                            data-cell={(cell: Cell<HTMLSpanElement, Signals, { title: string }>) =>
                               cell.effect(() => {
                                 cell.target.textContent = cell.item.title
                               })
                             }
                           ></span>
                           <button
-                            data-cell={(cell) =>
+                            data-cell={(
+                              cell: Cell<HTMLButtonElement, Signals, { title: string }>,
+                            ) =>
                               cell.on("click", () => {
-                                cell.signals.todos.splice(cell.index, 1)
+                                cell.signals.todos.splice(cell.index!, 1)
                               })
                             }
                           >
@@ -240,7 +271,11 @@ const routes = Route.map({
                       </template>
                     </ol>
                   </template>
-                  <template data-cell={(cell) => cell.expand(() => !cell.signals.todos.length)}>
+                  <template
+                    data-cell={(cell: Cell<HTMLTemplateElement, Signals, { title: string }>) =>
+                      cell.expand(() => !cell.signals.todos.length)
+                    }
+                  >
                     <p>No reminders yet.</p>
                   </template>
                 </div>
@@ -254,7 +289,7 @@ cell => cell.expand(() => cell.signals.todos.length)`}
                   <h2>06 / A live SSE build</h2>
                   <strong
                     aria-live="polite"
-                    data-cell={(cell) =>
+                    data-cell={(cell: Cell<HTMLElement, Signals, { title: string }>) =>
                       cell.effect(() => {
                         cell.target.textContent = cell.signals.build.label
                       })
@@ -266,14 +301,14 @@ cell => cell.expand(() => cell.signals.todos.length)`}
                     aria-label="Build progress"
                     max="100"
                     value="0"
-                    data-cell={(cell) =>
+                    data-cell={(cell: Cell<HTMLProgressElement, Signals, { title: string }>) =>
                       cell.effect(() => {
                         cell.target.value = cell.signals.build.progress
                       })
                     }
                   ></progress>
                   <button
-                    data-cell={(cell) =>
+                    data-cell={(cell: Cell<HTMLButtonElement, Signals, { title: string }>) =>
                       cell.on("click", () =>
                         cell.request("/build").catch((error) => {
                           cell.signals.build.label = "Build failed: " + String(error)
@@ -294,7 +329,7 @@ cell => cell.expand(() => cell.signals.todos.length)`}
                   <h2>07 / An interval with a lifetime</h2>
                   <div class="controls">
                     <button
-                      data-cell={(cell) => {
+                      data-cell={(cell: Cell<HTMLButtonElement, Signals, { title: string }>) => {
                         cell.effect(() => {
                           cell.target.textContent = cell.signals.timerVisible
                             ? "Remove timer"
@@ -308,7 +343,7 @@ cell => cell.expand(() => cell.signals.todos.length)`}
                       Mount timer
                     </button>
                     <button
-                      data-cell={(cell) => {
+                      data-cell={(cell: Cell<HTMLButtonElement, Signals, { title: string }>) => {
                         cell.effect(() => {
                           cell.target.disabled = !cell.signals.timerVisible
                         })
@@ -326,7 +361,7 @@ cell => cell.expand(() => cell.signals.todos.length)`}
                       Move timer
                     </button>
                     <button
-                      data-cell={(cell) => {
+                      data-cell={(cell: Cell<HTMLButtonElement, Signals, { title: string }>) => {
                         cell.effect(() => {
                           cell.target.disabled = !cell.signals.timerVisible
                           cell.target.textContent = cell.signals.timerRunning
@@ -343,7 +378,7 @@ cell => cell.expand(() => cell.signals.todos.length)`}
                     <label for="timer-speed">Tick every</label>
                     <select
                       id="timer-speed"
-                      data-cell={(cell) =>
+                      data-cell={(cell: Cell<HTMLSelectElement, Signals, { title: string }>) =>
                         cell.on("change", () => {
                           cell.signals.timerDelay = Number(cell.target.value)
                         })
@@ -359,10 +394,12 @@ cell => cell.expand(() => cell.signals.todos.length)`}
                       <strong>Spot A</strong>
                       <template
                         id="timer-blueprint"
-                        data-cell={(cell) => cell.expand(() => cell.signals.timerVisible)}
+                        data-cell={(cell: Cell<HTMLTemplateElement, Signals, { title: string }>) =>
+                          cell.expand(() => cell.signals.timerVisible)
+                        }
                       >
                         <div
-                          data-cell={(cell) => {
+                          data-cell={(cell: Cell<HTMLDivElement, Signals, { title: string }>) => {
                             cell.signals.timerSetups++
                             cell.effect(() => {
                               const delay = cell.signals.timerDelay
@@ -378,7 +415,7 @@ cell => cell.expand(() => cell.signals.todos.length)`}
                           }}
                         >
                           <span
-                            data-cell={(cell) =>
+                            data-cell={(cell: Cell<HTMLSpanElement, Signals, { title: string }>) =>
                               cell.effect(() => {
                                 cell.target.textContent = cell.signals.timerRunning
                                   ? "Ticking"
@@ -390,9 +427,11 @@ cell => cell.expand(() => cell.signals.todos.length)`}
                           </span>
                           <output
                             aria-label="Timer ticks"
-                            data-cell={(cell) =>
+                            data-cell={(
+                              cell: Cell<HTMLOutputElement, Signals, { title: string }>,
+                            ) =>
                               cell.effect(() => {
-                                cell.target.textContent = cell.signals.timerTicks
+                                cell.target.textContent = String(cell.signals.timerTicks)
                               })
                             }
                           >
@@ -407,14 +446,14 @@ cell => cell.expand(() => cell.signals.todos.length)`}
                   </div>
                   <p class="controls">
                     <span
-                      data-cell={(cell) =>
+                      data-cell={(cell: Cell<HTMLSpanElement, Signals, { title: string }>) =>
                         cell.effect(() => {
                           cell.target.textContent = "Cell setups: " + cell.signals.timerSetups
                         })
                       }
                     ></span>
                     <span
-                      data-cell={(cell) =>
+                      data-cell={(cell: Cell<HTMLSpanElement, Signals, { title: string }>) =>
                         cell.effect(() => {
                           cell.target.textContent =
                             "Intervals cleared: " + cell.signals.timerCleanups
@@ -422,7 +461,7 @@ cell => cell.expand(() => cell.signals.todos.length)`}
                       }
                     ></span>
                     <span
-                      data-cell={(cell) =>
+                      data-cell={(cell: Cell<HTMLSpanElement, Signals, { title: string }>) =>
                         cell.effect(() => {
                           cell.target.textContent = "Total ticks: " + cell.signals.timerTicks
                         })
@@ -450,7 +489,7 @@ cell => cell.expand(() => cell.signals.todos.length)`}
                     type="search"
                     placeholder="Try server, template, or timer"
                     autocomplete="off"
-                    data-cell={(cell) => {
+                    data-cell={(cell: Cell<HTMLInputElement, Signals, { title: string }>) => {
                       let request: AbortController | undefined
                       const search = cell.limit(
                         (q: string) => {
@@ -493,20 +532,24 @@ cell.on('input', e => search(e.target.value))`}
                 <div>
                   <h2>09 / A deletion you can undo</h2>
                   <ul aria-label="Notes">
-                    <template data-cell={(cell) => cell.expand(() => cell.signals.notes)}>
+                    <template
+                      data-cell={(cell: Cell<HTMLTemplateElement, Signals, { title: string }>) =>
+                        cell.expand(() => cell.signals.notes)
+                      }
+                    >
                       <li>
                         <span
-                          data-cell={(cell) =>
+                          data-cell={(cell: Cell<HTMLSpanElement, Signals, { title: string }>) =>
                             cell.effect(() => {
                               cell.target.textContent = cell.item.title
                             })
                           }
                         ></span>
                         <button
-                          data-cell={(cell) =>
+                          data-cell={(cell: Cell<HTMLButtonElement, Signals, { title: string }>) =>
                             cell.on("click", () => {
-                              cell.signals.undo = { item: cell.item, index: cell.index }
-                              cell.signals.notes.splice(cell.index, 1)
+                              cell.signals.undo = { item: cell.item, index: cell.index! }
+                              cell.signals.notes.splice(cell.index!, 1)
                             })
                           }
                         >
@@ -515,13 +558,21 @@ cell.on('input', e => search(e.target.value))`}
                       </li>
                     </template>
                   </ul>
-                  <template data-cell={(cell) => cell.expand(() => !cell.signals.notes.length)}>
+                  <template
+                    data-cell={(cell: Cell<HTMLTemplateElement, Signals, { title: string }>) =>
+                      cell.expand(() => !cell.signals.notes.length)
+                    }
+                  >
                     <p>All notes removed. Reset them to try again.</p>
                   </template>
-                  <template data-cell={(cell) => cell.expand(() => cell.signals.undo)}>
+                  <template
+                    data-cell={(cell: Cell<HTMLTemplateElement, Signals, { title: string }>) =>
+                      cell.expand(() => cell.signals.undo)
+                    }
+                  >
                     <div
                       aria-live="polite"
-                      data-cell={(cell) =>
+                      data-cell={(cell: Cell<HTMLDivElement, Signals, { title: string }>) =>
                         cell.effect(() => {
                           const pending = cell.signals.undo
                           if (!pending) return
@@ -533,7 +584,7 @@ cell.on('input', e => search(e.target.value))`}
                       }
                     >
                       <span
-                        data-cell={(cell) =>
+                        data-cell={(cell: Cell<HTMLSpanElement, Signals, { title: string }>) =>
                           cell.effect(() => {
                             cell.target.textContent =
                               "Removed: " + (cell.signals.undo?.item.title ?? "")
@@ -541,7 +592,7 @@ cell.on('input', e => search(e.target.value))`}
                         }
                       ></span>
                       <button
-                        data-cell={(cell) =>
+                        data-cell={(cell: Cell<HTMLButtonElement, Signals, { title: string }>) =>
                           cell.on("click", () => {
                             const pending = cell.signals.undo
                             if (!pending) return
@@ -556,7 +607,7 @@ cell.on('input', e => search(e.target.value))`}
                   </template>
                   <div class="controls">
                     <button
-                      data-cell={(cell) =>
+                      data-cell={(cell: Cell<HTMLButtonElement, Signals, { title: string }>) =>
                         cell.on("click", () => {
                           cell.signals.undo = null
                           cell.signals.notes = [
@@ -588,7 +639,7 @@ cell.on('input', e => search(e.target.value))`}
                 <div>
                   <h2>10 / Placement in the response</h2>
                   <form
-                    data-cell={(cell) => {
+                    data-cell={(cell: Cell<HTMLFormElement, Signals, { title: string }>) => {
                       cell.on("submit", async (event) => {
                         event.preventDefault()
                         await cell.request("/messages", {
@@ -624,7 +675,7 @@ cell.on('input', e => search(e.target.value))`}
             </main>
             <p
               aria-live="polite"
-              data-cell={(cell) => {
+              data-cell={(cell: Cell<HTMLParagraphElement, Signals, { title: string }>) => {
                 cell.effect(() => {
                   cell.target.textContent = cell.signals.status
                 })
@@ -661,7 +712,7 @@ cell.on('input', e => search(e.target.value))`}
           id="server-fragment"
           data-cell={{
             morph: "#server-fragment",
-            setup: (cell) => {
+            setup: (cell: Cell<HTMLDivElement, Signals, { title: string }>) => {
               cell.on("input", () => {
                 cell.target.querySelector("p")!.textContent =
                   "Your local draft will survive the next refresh."

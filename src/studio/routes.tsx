@@ -138,9 +138,9 @@ export default Route.map({
               value={search}
               data-bind="traceSearch"
               {...{
-                "data-on:input__debounce.400ms": (c: any) => {
+                "data-on:input__debounce.400ms": (c) => {
                   const url = new URL(location.href)
-                  url.searchParams.set("traceSearch", c.signals.traceSearch ?? "")
+                  url.searchParams.set("traceSearch", String(c.signals.traceSearch ?? ""))
                   return c.actions.get(url.toString(), {
                     headers: { Accept: "text/html" },
                   })
@@ -165,7 +165,7 @@ export default Route.map({
           <div
             data-effect={(c) => {
               const u = new URL("traces", location.href)
-              u.searchParams.set("traceSearch", c.signals.traceSearch ?? "")
+              u.searchParams.set("traceSearch", String(c.signals.traceSearch ?? ""))
               c.actions.get(u.pathname + u.search)
             }}
           />
@@ -365,8 +365,8 @@ export default Route.map({
               data-bind="logLevel"
               data-on:change={(c) => {
                 const url = new URL(location.href)
-                url.searchParams.set("logLevel", c.signals.logLevel ?? "")
-                url.searchParams.set("logSearch", c.signals.logSearch ?? "")
+                url.searchParams.set("logLevel", String(c.signals.logLevel ?? ""))
+                url.searchParams.set("logSearch", String(c.signals.logSearch ?? ""))
                 return c.actions.get(url.toString(), {
                   headers: { Accept: "text/html" },
                 })
@@ -416,10 +416,10 @@ export default Route.map({
               value={search}
               data-bind="logSearch"
               {...{
-                "data-on:input__debounce.400ms": (c: any) => {
+                "data-on:input__debounce.400ms": (c) => {
                   const url = new URL(location.href)
-                  url.searchParams.set("logLevel", c.signals.logLevel ?? "")
-                  url.searchParams.set("logSearch", c.signals.logSearch ?? "")
+                  url.searchParams.set("logLevel", String(c.signals.logLevel ?? ""))
+                  url.searchParams.set("logSearch", String(c.signals.logSearch ?? ""))
                   return c.actions.get(url.toString(), {
                     headers: { Accept: "text/html" },
                   })
@@ -441,8 +441,8 @@ export default Route.map({
           <div
             data-effect={(c) => {
               const u = new URL("logs", location.href)
-              u.searchParams.set("logLevel", c.signals.logLevel ?? "")
-              u.searchParams.set("logSearch", c.signals.logSearch ?? "")
+              u.searchParams.set("logLevel", String(c.signals.logLevel ?? ""))
+              u.searchParams.set("logSearch", String(c.signals.logSearch ?? ""))
               c.actions.get(u.pathname + u.search)
             }}
           />
@@ -537,9 +537,9 @@ export default Route.map({
               value={search}
               data-bind="errorSearch"
               {...{
-                "data-on:input__debounce.400ms": (c: any) => {
+                "data-on:input__debounce.400ms": (c) => {
                   const url = new URL(location.href)
-                  url.searchParams.set("errorSearch", c.signals.errorSearch ?? "")
+                  url.searchParams.set("errorSearch", String(c.signals.errorSearch ?? ""))
                   return c.actions.get(url.toString(), {
                     headers: { Accept: "text/html" },
                   })
@@ -566,7 +566,7 @@ export default Route.map({
           <div
             data-effect={(c) => {
               const u = new URL("errors", location.href)
-              u.searchParams.set("errorSearch", c.signals.errorSearch ?? "")
+              u.searchParams.set("errorSearch", String(c.signals.errorSearch ?? ""))
               c.actions.get(u.pathname + u.search)
             }}
           />

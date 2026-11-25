@@ -245,7 +245,7 @@ test.describe(`${RouteBody.normalize.name}()`, () => {
       }),
     )
 
-    type Items = typeof _routes extends Route.RouteSet<any, any, infer I> ? I : never
+    type Items = typeof _routes extends Route.RouteSet<unknown, unknown, infer I> ? I : never
 
     test
       .expectTypeOf<Items[0]>()

@@ -28,7 +28,7 @@ test.it("passes bindings", () => {
         {},
         {},
         [
-          Route.Route<{}, typeof filterResult.context, any>,
+          Route.Route<{}, typeof filterResult.context, unknown>,
           Route.Route<{ format: "text" }, {}, string>,
         ]
       >

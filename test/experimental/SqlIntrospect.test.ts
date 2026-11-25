@@ -352,7 +352,7 @@ test.describe("SqlIntrospect", () => {
           })
 
           test.expect(rows).toHaveLength(1)
-          test.expect((rows[0] as any).name).toBe("Bob")
+          test.expect((rows[0] as Record<string, unknown>).name).toBe("Bob")
         }),
       ),
     )
@@ -385,8 +385,8 @@ test.describe("SqlIntrospect", () => {
             sort: [{ column: "id" }],
           })
 
-          test.expect((rows[0] as any).id).toBe(1)
-          test.expect((rows[2] as any).id).toBe(3)
+          test.expect((rows[0] as Record<string, unknown>).id).toBe(1)
+          test.expect((rows[2] as Record<string, unknown>).id).toBe(3)
         }),
       ),
     )
@@ -402,8 +402,8 @@ test.describe("SqlIntrospect", () => {
             sort: [{ column: "id", reverse: true }],
           })
 
-          test.expect((rows[0] as any).id).toBe(3)
-          test.expect((rows[2] as any).id).toBe(1)
+          test.expect((rows[0] as Record<string, unknown>).id).toBe(3)
+          test.expect((rows[2] as Record<string, unknown>).id).toBe(1)
         }),
       ),
     )
@@ -442,11 +442,11 @@ test.describe("SqlIntrospect", () => {
             sort: [{ column: "category" }, { column: "id", reverse: true }],
           })
 
-          test.expect((rows[0] as any).category).toBe(1)
-          test.expect((rows[0] as any).name).toBe("D")
-          test.expect((rows[1] as any).category).toBe(1)
-          test.expect((rows[1] as any).name).toBe("A")
-          test.expect((rows[2] as any).category).toBe(2)
+          test.expect((rows[0] as Record<string, unknown>).category).toBe(1)
+          test.expect((rows[0] as Record<string, unknown>).name).toBe("D")
+          test.expect((rows[1] as Record<string, unknown>).category).toBe(1)
+          test.expect((rows[1] as Record<string, unknown>).name).toBe("A")
+          test.expect((rows[2] as Record<string, unknown>).category).toBe(2)
         }),
       ),
     )
@@ -464,7 +464,7 @@ test.describe("SqlIntrospect", () => {
             })
 
             test.expect(rows).toHaveLength(1)
-            test.expect((rows[0] as any).name).toBe("Alice")
+            test.expect((rows[0] as Record<string, unknown>).name).toBe("Alice")
           }),
         ),
       )
@@ -481,7 +481,9 @@ test.describe("SqlIntrospect", () => {
             })
 
             test.expect(rows).toHaveLength(2)
-            test.expect((rows as Array<any>).every((r) => r.name !== "Alice")).toBe(true)
+            test
+              .expect((rows as Array<Record<string, unknown>>).every((r) => r.name !== "Alice"))
+              .toBe(true)
           }),
         ),
       )
@@ -498,7 +500,7 @@ test.describe("SqlIntrospect", () => {
             })
 
             test.expect(rows).toHaveLength(1)
-            test.expect((rows[0] as any).name).toBe("Charlie")
+            test.expect((rows[0] as Record<string, unknown>).name).toBe("Charlie")
           }),
         ),
       )
@@ -534,7 +536,7 @@ test.describe("SqlIntrospect", () => {
             })
 
             test.expect(rows).toHaveLength(1)
-            test.expect((rows[0] as any).name).toBe("Bob")
+            test.expect((rows[0] as Record<string, unknown>).name).toBe("Bob")
           }),
         ),
       )
@@ -569,7 +571,7 @@ test.describe("SqlIntrospect", () => {
             })
 
             test.expect(rows).toHaveLength(1)
-            test.expect((rows[0] as any).name).toBe("Bob")
+            test.expect((rows[0] as Record<string, unknown>).name).toBe("Bob")
           }),
         ),
       )
@@ -602,7 +604,7 @@ test.describe("SqlIntrospect", () => {
           const db = yield* SqlIntrospect.introspect("sqlite")
           const reader = SqlIntrospect.makeDatabaseReader(db)
           const users = reader.table("users")!
-          const user = (yield* users.findById(2)) as any
+          const user = (yield* users.findById(2)) as Record<string, unknown>
 
           test.expect(user.name).toBe("Bob")
         }),

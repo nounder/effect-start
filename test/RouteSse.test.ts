@@ -19,7 +19,7 @@ import * as TestHttpClient from "./internal/TestHttpClient.ts"
 const testLayer = <const Input extends RouteMap.RouteMapInput>(routes: Input) =>
   RouteHttp.layer().pipe(
     Layer.provideMerge(BunServer.layer({ port: 0 })),
-    Layer.provide(Route.layer(Route.map(routes))),
+    Layer.provide(Route.layer(routes)),
   )
 
 test.describe("Route.sse()", () => {
@@ -155,7 +155,9 @@ test.describe("Route.sse()", () => {
 
     const _routes = [...route]
     type RouteError =
-      (typeof _routes)[0] extends Route.Route<any, any, any, infer E, any> ? E : never
+      (typeof _routes)[0] extends Route.Route<unknown, unknown, unknown, infer E, unknown>
+        ? E
+        : never
 
     test.expectTypeOf<RouteError>().toEqualTypeOf<MyError>()
   })
@@ -169,7 +171,9 @@ test.describe("Route.sse()", () => {
 
     const _routes = [...route]
     type RouteContext =
-      (typeof _routes)[0] extends Route.Route<any, any, any, any, infer R> ? R : never
+      (typeof _routes)[0] extends Route.Route<unknown, unknown, unknown, unknown, infer R>
+        ? R
+        : never
 
     test.expectTypeOf<RouteContext>().toEqualTypeOf<Config>()
   })

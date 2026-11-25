@@ -6,7 +6,7 @@ export type LinkParams<
   Routes,
   P extends string,
   B = P extends keyof Routes
-    ? Routes[P] extends [...Array<any>, infer L] // last route
+    ? Routes[P] extends [...Array<unknown>, infer L] // last route
       ? L extends () => Promise<{ default: infer R extends Route.RouteSet.Any }>
         ? Route.Route.Bindings<R>
         : {}

@@ -22,7 +22,9 @@ export function validateRouteModule(
   return true
 }
 
-export function generatePathParamsSchema(path: PathPattern.PathPattern): Schema.Struct<any> | null {
+export function generatePathParamsSchema(
+  path: PathPattern.PathPattern,
+): Schema.Struct<Schema.Struct.Fields> | null {
   const fields: Record<PropertyKey, Schema.Constraint> = {}
 
   for (const param of PathPattern.params(path)) {

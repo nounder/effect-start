@@ -112,7 +112,7 @@ const routes = Route.map({
             <button
               type="submit"
               data-indicator:sending
-              data-attr:disabled={(e) => e.signals.sending || !e.signals._draft.trim()}
+              data-attr:disabled={(e) => e.signals.sending || !String(e.signals._draft).trim()}
             >
               Send
             </button>

@@ -1,4 +1,6 @@
-export function Layout(props: { title?: string; children: any }) {
+import type { JSX } from "effect-start/jsx-runtime"
+
+export function Layout(props: { title?: string; children: JSX.Element }) {
   return (
     <div class="min-h-screen bg-[#0d1117] text-[#e6edf3]">
       <Nav />

@@ -29,7 +29,7 @@ function createCompileOptions(options: CompileOptions) {
       return loadModule(id, base, options.onDependency, options.customJsResolver)
     },
     async loadStylesheet(id: string, sheetBase: string) {
-      let sheet = await loadStylesheet(
+      const sheet = await loadStylesheet(
         id,
         sheetBase,
         options.onDependency,
@@ -46,9 +46,9 @@ async function ensureSourceDetectionRootExists(compiler: {
 }) {
   // Verify if the `source(…)` path exists (until the glob pattern starts)
   if (compiler.root && compiler.root !== "none") {
-    let globSymbols = /[*{]/
-    let basePath: Array<string> = []
-    for (let segment of compiler.root.pattern.split("/")) {
+    const globSymbols = /[*{]/
+    const basePath: Array<string> = []
+    for (const segment of compiler.root.pattern.split("/")) {
       if (globSymbols.test(segment)) {
         break
       }
@@ -56,7 +56,7 @@ async function ensureSourceDetectionRootExists(compiler: {
       basePath.push(segment)
     }
 
-    let exists = await fsPromises
+    const exists = await fsPromises
       .stat(path.resolve(compiler.root.base, basePath.join("/")))
       .then((stat) => stat.isDirectory())
       .catch(() => false)
@@ -73,13 +73,13 @@ export async function compileAst(
   ast: Array<AstNode>,
   options: CompileOptions,
 ): ReturnType<typeof _compileAst> {
-  let compiler = await _compileAst(ast, createCompileOptions(options))
+  const compiler = await _compileAst(ast, createCompileOptions(options))
   await ensureSourceDetectionRootExists(compiler)
   return compiler
 }
 
 export async function compile(css: string, options: CompileOptions): ReturnType<typeof _compile> {
-  let compiler = await _compile(css, createCompileOptions(options))
+  const compiler = await _compile(css, createCompileOptions(options))
   await ensureSourceDetectionRootExists(compiler)
   return compiler
 }
@@ -91,12 +91,12 @@ export async function loadModule(
   customJsResolver?: Resolver,
 ) {
   if (id[0] !== ".") {
-    let resolvedPath = await resolveJsId(id, base, customJsResolver)
+    const resolvedPath = await resolveJsId(id, base, customJsResolver)
     if (!resolvedPath) {
       throw new Error(`Could not resolve '${id}' from '${base}'`)
     }
 
-    let module = await importModule(pathToFileURL(resolvedPath).href)
+    const module = await importModule(pathToFileURL(resolvedPath).href)
     return {
       path: resolvedPath,
       base: path.dirname(resolvedPath),
@@ -104,12 +104,12 @@ export async function loadModule(
     }
   }
 
-  let resolvedPath = await resolveJsId(id, base, customJsResolver)
+  const resolvedPath = await resolveJsId(id, base, customJsResolver)
   if (!resolvedPath) {
     throw new Error(`Could not resolve '${id}' from '${base}'`)
   }
 
-  let module = await importModule(pathToFileURL(resolvedPath).href + "?id=" + Date.now())
+  const module = await importModule(pathToFileURL(resolvedPath).href + "?id=" + Date.now())
 
   return {
     path: resolvedPath,
@@ -124,12 +124,12 @@ async function loadStylesheet(
   onDependency: (path: string) => void,
   cssResolver?: Resolver,
 ) {
-  let resolvedPath = await resolveCssId(id, base, cssResolver)
+  const resolvedPath = await resolveCssId(id, base, cssResolver)
   if (!resolvedPath) throw new Error(`Could not resolve '${id}' from '${base}'`)
 
   onDependency(resolvedPath)
 
-  let file = await fsPromises.readFile(resolvedPath, "utf-8")
+  const file = await fsPromises.readFile(resolvedPath, "utf-8")
   return {
     path: resolvedPath,
     base: path.dirname(resolvedPath),
@@ -137,9 +137,9 @@ async function loadStylesheet(
   }
 }
 
-async function importModule(path: string): Promise<any> {
+async function importModule(path: string): Promise<Record<string, unknown>> {
   if (typeof globalThis.__tw_load === "function") {
-    let module = await globalThis.__tw_load(path)
+    const module = await globalThis.__tw_load(path)
     if (module) {
       return module
     }
@@ -159,14 +159,14 @@ async function resolveCssId(
   customCssResolver?: Resolver,
 ): Promise<string | false | undefined> {
   if (typeof globalThis.__tw_resolve === "function") {
-    let resolved = globalThis.__tw_resolve(id, base)
+    const resolved = globalThis.__tw_resolve(id, base)
     if (resolved) {
       return Promise.resolve(resolved)
     }
   }
 
   if (customCssResolver) {
-    let customResolution = await customCssResolver(id, base)
+    const customResolution = await customCssResolver(id, base)
     if (customResolution) {
       return customResolution
     }
@@ -193,14 +193,14 @@ async function resolveJsId(
   customJsResolver?: Resolver,
 ): Promise<string | false | undefined> {
   if (typeof globalThis.__tw_resolve === "function") {
-    let resolved = globalThis.__tw_resolve(id, base)
+    const resolved = globalThis.__tw_resolve(id, base)
     if (resolved) {
       return Promise.resolve(resolved)
     }
   }
 
   if (customJsResolver) {
-    let customResolution = await customJsResolver(id, base)
+    const customResolution = await customJsResolver(id, base)
     if (customResolution) {
       return customResolution
     }

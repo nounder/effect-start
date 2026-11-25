@@ -17,7 +17,7 @@ export default Route.get(
       state,
       per_page: 50,
     })
-    const filtered = issues.filter((i: any) => !i.pull_request)
+    const filtered = issues.filter((i) => !i.pull_request)
 
     return (
       <Layout.Layout>
@@ -75,7 +75,7 @@ export default Route.get(
             />
           ) : (
             <div class="divide-y divide-[#21262d] rounded-md border border-[#21262d]">
-              {filtered.map((issue: any) => (
+              {filtered.map((issue) => (
                 <Issue.IssueRow
                   number={issue.number}
                   title={issue.title}

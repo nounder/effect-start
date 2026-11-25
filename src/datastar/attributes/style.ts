@@ -11,7 +11,7 @@ attribute({
     const { style } = el
     const initialStyles = new Map<string, string>()
 
-    const apply = (prop: string, value: any) => {
+    const apply = (prop: string, value: unknown) => {
       const initial = initialStyles.get(prop)
       if (!value && value !== 0) {
         initial !== undefined &&
@@ -28,7 +28,7 @@ attribute({
       if (key) {
         apply(key, rx())
       } else {
-        const styles = rx() as Record<string, any>
+        const styles = rx() as Record<string, unknown>
 
         for (const [prop, initial] of initialStyles) {
           prop in styles ||

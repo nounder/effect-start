@@ -12,7 +12,7 @@ export default Route.get(
     const { owner, repo } = ctx.pathParams
     const commits = yield* Github.getRepoCommits(owner, repo, { per_page: 40 })
 
-    const grouped: Record<string, Array<any>> = {}
+    const grouped: Record<string, Array<(typeof commits)[number]>> = {}
     for (const c of commits) {
       const date = new Date(c.commit.author.date).toLocaleDateString("en-US", {
         month: "long",
@@ -77,7 +77,7 @@ export default Route.get(
                     Commits on {date}
                   </h3>
                   <div class="divide-y divide-[#21262d] rounded-md border border-[#21262d]">
-                    {dayCommits.map((c: any) => (
+                    {dayCommits.map((c) => (
                       <Commit.CommitRow
                         sha={c.sha}
                         message={c.commit.message}

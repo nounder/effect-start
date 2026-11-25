@@ -13,8 +13,8 @@ export function make(type: HtmlElementType, props: HtmlElemenetProps): HtmlEleme
 }
 
 export function isGenericJsxObject(value: unknown): value is {
-  type: any
-  props: any
+  type: HtmlElementType
+  props: HtmlElemenetProps
 } {
   return typeof value === "object" && value !== null && "type" in value && "props" in value
 }
@@ -38,9 +38,9 @@ const EMPTY_TAGS = [
   "wbr",
 ]
 
-let esc = (str: any) => String(str).replace(/[&<>"']/g, (s) => `&${map[s]};`)
-let escSQ = (str: any) => String(str).replace(/[&<>']/g, (s) => `&${map[s]};`)
-let map: Record<string, string> = {
+const esc = (str: unknown) => String(str).replace(/[&<>"']/g, (s) => `&${map[s]};`)
+const escSQ = (str: unknown) => String(str).replace(/[&<>']/g, (s) => `&${map[s]};`)
+const map: Record<string, string> = {
   "&": "amp",
   "<": "lt",
   ">": "gt",
@@ -71,7 +71,7 @@ const serializeObjectProperty = (value: unknown): string | undefined => {
 }
 
 export function text(node: JSX.Element, hooks?: { onNode?: (node: HtmlElement) => void }): string {
-  const stack: Array<any> = [node]
+  const stack: Array<unknown> = [node]
   let result = ""
 
   while (stack.length > 0) {
@@ -87,7 +87,7 @@ export function text(node: JSX.Element, hooks?: { onNode?: (node: HtmlElement) =
       continue
     }
 
-    const trusted = current?.["~effect-start/Html/TrustedHtml"]
+    const trusted = isTrustedHtml(current) ? current["~effect-start/Html/TrustedHtml"] : undefined
     if (typeof trusted === "string") {
       result += trusted
       continue
@@ -108,7 +108,7 @@ export function text(node: JSX.Element, hooks?: { onNode?: (node: HtmlElement) =
       continue
     }
 
-    if (current && typeof current === "object" && current.type) {
+    if (isGenericJsxObject(current) && current.type) {
       hooks?.onNode?.(current)
 
       if (typeof current.type === "function") {
@@ -157,9 +157,7 @@ export function text(node: JSX.Element, hooks?: { onNode?: (node: HtmlElement) =
           )
         } else if (isRawText && children != null) {
           const toRaw = (c: unknown) =>
-            typeof (c as any)?.["~effect-start/Html/TrustedHtml"] === "string"
-              ? ((c as any)["~effect-start/Html/TrustedHtml"] as string)
-              : String(c)
+            isTrustedHtml(c) ? c["~effect-start/Html/TrustedHtml"] : String(c)
           const rawText = Array.isArray(children) ? children.map(toRaw).join("") : toRaw(children)
           result += escapeRawText(rawText)
         } else if (Array.isArray(children)) {
@@ -190,7 +188,10 @@ export class TrustedHtml {
 export const unsafe = (html: string): TrustedHtml => new TrustedHtml(html)
 
 export const isTrustedHtml = (value: unknown): value is TrustedHtml =>
-  typeof (value as any)?.["~effect-start/Html/TrustedHtml"] === "string"
+  typeof value === "object" &&
+  value !== null &&
+  "~effect-start/Html/TrustedHtml" in value &&
+  typeof value["~effect-start/Html/TrustedHtml"] === "string"
 
 type HtmlValue =
   | string

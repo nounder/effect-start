@@ -40,7 +40,7 @@ const bundleLayer = Layer.succeed(Bundle.Bundle, {
 
 const runWithAuth = (
   auth: (typeof Studio.Studio.Service)["auth"],
-  perform: (client: HttpClient.HttpClient) => Effect.Effect<void, any, never>,
+  perform: (client: HttpClient.HttpClient) => Effect.Effect<void, unknown, never>,
 ) =>
   Effect.gen(function* () {
     const context = yield* Effect.context<Studio.Studio | Bundle.Bundle>()

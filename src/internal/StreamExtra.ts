@@ -4,10 +4,10 @@ import * as Stream from "effect/Stream"
 
 export const isStream = Stream.isStream
 
-export type IsStream<T> = T extends Stream.Stream<any, any, any> ? true : false
-export type Chunk<T> = T extends Stream.Stream<infer A, any, any> ? A : never
-export type StreamError<T> = T extends Stream.Stream<any, infer E, any> ? E : never
-export type Context<T> = T extends Stream.Stream<any, any, infer R> ? R : never
+export type IsStream<T> = T extends Stream.Stream<unknown, unknown, unknown> ? true : false
+export type Chunk<T> = T extends Stream.Stream<infer A, unknown, unknown> ? A : never
+export type StreamError<T> = T extends Stream.Stream<unknown, infer E, unknown> ? E : never
+export type Context<T> = T extends Stream.Stream<unknown, unknown, infer R> ? R : never
 
 export const toReadableStreamRuntimePatched = Function.dual<
   <A, XR>(

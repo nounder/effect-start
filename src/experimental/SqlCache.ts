@@ -6,7 +6,7 @@ import * as Layer from "effect/Layer"
 import type * as SqlError from "effect/sql/SqlError"
 import type * as Statement from "effect/sql/Statement"
 
-type SqlCacheInstance = Cache.Cache<string, ReadonlyArray<any>>
+type SqlCacheInstance = Cache.Cache<string, ReadonlyArray<unknown>>
 
 export class SqlCache extends Context.Service<SqlCache, SqlCacheInstance>()(
   "effect-start/SqlCache",
@@ -34,7 +34,7 @@ export function layer(
   }
   return Layer.effect(
     SqlCache,
-    Cache.make<string, ReadonlyArray<any>>({
+    Cache.make<string, ReadonlyArray<unknown>>({
       capacity: options.capacity,
       timeToLive: options.timeToLive,
       lookup: (key) => Effect.die(`cache miss without populate for key: ${key}`),

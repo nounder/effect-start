@@ -7,7 +7,7 @@ function Fragment(props: { children: JSX.Element }) {
 
 function jsx<T extends HtmlElementType>(
   type: T,
-  props: T extends string ? HtmlElemenetProps : T extends (props: infer P) => any ? P : never,
+  props: T extends string ? HtmlElemenetProps : T extends (props: infer P) => unknown ? P : never,
 ): HtmlElement {
   return Html.make(type, props)
 }

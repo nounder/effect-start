@@ -12,7 +12,7 @@ const pick = <T>(arr: ReadonlyArray<T>): Effect.Effect<T> =>
 const randomMs = (min: number, max: number) =>
   Random.nextIntBetween(min, max).pipe(Effect.map((ms) => Duration.millis(ms)))
 
-const maybe = (pct: number, op: Effect.Effect<void, any>) =>
+const maybe = (pct: number, op: Effect.Effect<void, unknown>) =>
   Effect.gen(function* () {
     if ((yield* Random.nextIntBetween(0, 100)) < pct) yield* op
   })
@@ -443,7 +443,7 @@ const simulateAccessLog = Effect.gen(function* () {
   yield* Effect.sleep(yield* randomMs(0, 1))
 }).pipe(Effect.withSpan("middleware.access_log"))
 
-const simulateCircuitBreaker = (inner: Effect.Effect<void, any>, service: string) =>
+const simulateCircuitBreaker = (inner: Effect.Effect<void, unknown>, service: string) =>
   Effect.gen(function* () {
     const failures = yield* Random.nextIntBetween(0, 10)
     yield* Effect.annotateCurrentSpan("circuit_breaker.service", service)
@@ -456,7 +456,7 @@ const simulateCircuitBreaker = (inner: Effect.Effect<void, any>, service: string
     yield* inner
   }).pipe(Effect.withSpan("circuit_breaker"))
 
-const simulateRetry = (inner: Effect.Effect<void, any>, opName: string) =>
+const simulateRetry = (inner: Effect.Effect<void, unknown>, opName: string) =>
   Effect.gen(function* () {
     const maxRetries = 3
     let attempt = 0

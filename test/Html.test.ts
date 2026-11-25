@@ -97,7 +97,7 @@ test.describe("html", () => {
   })
 
   test.test("array of strings escapes each item", () => {
-    test.expect(Html.html`${["<a>", "<b>"] as any}`.toString()).toBe("&lt;a&gt;&lt;b&gt;")
+    test.expect(Html.html`${["<a>", "<b>"]}`.toString()).toBe("&lt;a&gt;&lt;b&gt;")
   })
 })
 

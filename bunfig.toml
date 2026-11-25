@@ -53,7 +53,7 @@ correctness = "error"
 "unicorn/no-abusive-eslint-disable" = "error"
 "typescript/no-unused-vars" = ["error", { argsIgnorePattern = "^_", varsIgnorePattern = "^_" }]
 "typescript/no-non-null-assertion" = "off"
-"typescript/no-explicit-any" = "off"
+"typescript/no-explicit-any" = "error"
 "typescript/no-namespace" = "off"
 "typescript/no-empty-interface" = "off"
 "typescript/no-require-imports" = "off"
@@ -83,7 +83,7 @@ correctness = "error"
 "@typescript-eslint/no-unsafe-function-type" = "off"
 "no-fallthrough" = "off"
 "no-useless-assignment" = "off"
-"prefer-const" = "off"
+"prefer-const" = "error"
 "prefer-rest-params" = "off"
 
 [[lint.overrides]]

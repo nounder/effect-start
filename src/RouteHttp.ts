@@ -30,7 +30,7 @@ type UnboundedRouteWithMethod = Route.Route.With<{
 
 type RouteRequirements<Routes> =
   Routes extends Iterable<infer Item>
-    ? Item extends Route.Route<any, any, any, any, infer R>
+    ? Item extends Route.Route<unknown, unknown, unknown, unknown, infer R>
       ? Exclude<R, RouteMap.Provided>
       : never
     : never
@@ -58,7 +58,7 @@ const errorResponse = (status: number, message: string) =>
     headers: { "content-type": "application/json" },
   })
 
-const responseOptions = (entity: Entity.Entity<any>, contentType: string) => {
+const responseOptions = (entity: Entity.Entity<unknown>, contentType: string) => {
   const headers: Record<string, string | Array<string>> = {}
   let cookies = Cookies.empty
   for (const name in entity.headers) {
@@ -80,9 +80,9 @@ const withCookies = (
   Cookies.isEmpty(cookies) ? response : HttpServerResponse.mergeCookies(response, cookies)
 
 const toResponse = (
-  entity: Entity.Entity<any>,
+  entity: Entity.Entity<unknown>,
   format: RouteBody.Format | undefined,
-  context: Context.Context<any>,
+  context: Context.Context<unknown>,
 ): Effect.Effect<HttpServerResponse.HttpServerResponse, unknown> => {
   const contentType = Entity.type(entity)
   const options = responseOptions(entity, contentType)
@@ -145,9 +145,9 @@ const toResponse = (
 }
 
 type Handler = (
-  context: any,
-  next: Entity.Entity<any, any>,
-) => Effect.Effect<Entity.Entity<any>, any, any>
+  context: unknown,
+  next: Entity.Entity<unknown, unknown>,
+) => Effect.Effect<Entity.Entity<unknown>, unknown, unknown>
 
 const isWildcard = (route: UnboundedRouteWithMethod) => Route.descriptor(route).method === "*"
 const isWebSocket = (route: UnboundedRouteWithMethod) =>
@@ -156,10 +156,10 @@ const isWebSocket = (route: UnboundedRouteWithMethod) =>
 const runRoutes = (
   routes: Array<UnboundedRouteWithMethod>,
   format?: RouteBody.Format,
-): Effect.Effect<Entity.Entity<any>, any, any> =>
+): Effect.Effect<Entity.Entity<unknown>, unknown, unknown> =>
   Effect.suspend(() => {
     let index = 0
-    const runNext = (): Effect.Effect<Entity.Entity<any>, any, any> => {
+    const runNext = (): Effect.Effect<Entity.Entity<unknown>, unknown, unknown> => {
       if (index >= routes.length) {
         return Effect.succeed(
           Entity.make({ status: 404, message: "route not found" }, { status: 404 }),
@@ -184,11 +184,17 @@ const runRoutes = (
   })
 
 const withRequest = (
-  effect: Effect.Effect<HttpServerResponse.HttpServerResponse, unknown, any>,
+  effect: Effect.Effect<HttpServerResponse.HttpServerResponse, unknown, unknown>,
 ): Effect.Effect<HttpServerResponse.HttpServerResponse, never, HttpRouter.Provided> =>
   Effect.gen(function* () {
     const request = yield* HttpServerRequest.HttpServerRequest
-    return yield* effect.pipe(
+    return yield* (
+      effect as Effect.Effect<
+        HttpServerResponse.HttpServerResponse,
+        unknown,
+        HttpRouter.Provided | Route.Request
+      >
+    ).pipe(
       Effect.provideService(Route.Request, request.source),
       Effect.provideService(Route.RouteContext, { context: {} }),
     )
@@ -239,7 +245,7 @@ const httpHandler = (routes: Array<UnboundedRouteWithMethod>) => {
       const entity = yield* runRoutes(routes, format)
       if (entity.status === 404 && entity.body === undefined)
         return errorResponse(406, "not acceptable")
-      const context = yield* Effect.context<any>()
+      const context = yield* Effect.context<unknown>()
       let response = yield* toResponse(entity, format, context)
       if (specificFormats.size > 1)
         response = HttpServerResponse.setHeader(response, "vary", "Accept")
@@ -260,7 +266,7 @@ const websocketHandler = (routes: Array<UnboundedRouteWithMethod>) =>
   withRequest(
     Effect.gen(function* () {
       const entity = yield* runRoutes(routes)
-      const context = yield* Effect.context<any>()
+      const context = yield* Effect.context<unknown>()
       return yield* toResponse(entity, undefined, context)
     }),
   )

@@ -2,7 +2,7 @@ import { action, startPeeking, stopPeeking } from "../engine.ts"
 
 action({
   name: "peek",
-  apply(_, fn: () => any) {
+  apply(_, fn: () => unknown) {
     startPeeking()
     try {
       return fn()

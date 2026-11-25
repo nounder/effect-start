@@ -13,8 +13,8 @@ function isOptional(schema: Schema.Constraint): boolean {
 }
 
 export function schemaEqual(
-  userSchema: Schema.Struct<any> | undefined,
-  expectedSchema: Schema.Struct<any> | null,
+  userSchema: Schema.Struct<Schema.Struct.Fields> | undefined,
+  expectedSchema: Schema.Struct<Schema.Struct.Fields> | null,
 ): boolean {
   if (!userSchema && !expectedSchema) {
     return true

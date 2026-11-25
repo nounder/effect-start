@@ -14,17 +14,21 @@ import * as RouteHook from "./RouteHook.ts"
 
 type SchemaOrFields = Schema.Constraint | Schema.Struct.Fields
 
-function toSchema(input: SchemaOrFields): Schema.ConstraintCodec<any, any, any, any> {
-  return Schema.isSchema(input) ? input : Schema.Struct(input as Schema.Struct.Fields)
+function toSchema<I = unknown>(
+  input: SchemaOrFields,
+): Schema.ConstraintCodec<unknown, I, unknown, unknown> {
+  return (
+    Schema.isSchema(input) ? input : Schema.Struct(input as Schema.Struct.Fields)
+  ) as Schema.ConstraintCodec<unknown, I, unknown, unknown>
 }
 
 function makeSchemaFilter(
   binding: "headers" | "cookies" | "searchParams" | "pathParams" | "body",
-  decode: Effect.Effect<any, any, any>,
-): any {
-  return RouteHook.filter((ctx: any) =>
+  decode: Effect.Effect<unknown, unknown, unknown>,
+) {
+  return RouteHook.filter((ctx: Partial<Record<typeof binding, object>>) =>
     Effect.map(decode, (parsed) => ({
-      context: { [binding]: { ...ctx[binding], ...parsed } },
+      context: { [binding]: { ...ctx[binding], ...(parsed as object) } },
     })),
   )
 }
@@ -66,7 +70,12 @@ export function schemaHeaders<A, R>(
   ]
 >
 export function schemaHeaders(fields: SchemaOrFields) {
-  return makeSchemaFilter("headers", HttpServerRequest.schemaHeaders(toSchema(fields)))
+  return makeSchemaFilter(
+    "headers",
+    HttpServerRequest.schemaHeaders(
+      toSchema<Parameters<typeof HttpServerRequest.schemaHeaders>[0]["Encoded"]>(fields),
+    ),
+  )
 }
 
 export function schemaCookies<F extends Schema.Struct.Fields>(
@@ -106,7 +115,12 @@ export function schemaCookies<A, R>(
   ]
 >
 export function schemaCookies(fields: SchemaOrFields) {
-  return makeSchemaFilter("cookies", HttpServerRequest.schemaCookies(toSchema(fields)))
+  return makeSchemaFilter(
+    "cookies",
+    HttpServerRequest.schemaCookies(
+      toSchema<Parameters<typeof HttpServerRequest.schemaCookies>[0]["Encoded"]>(fields),
+    ),
+  )
 }
 
 export function schemaSearchParams<F extends Schema.Struct.Fields>(
@@ -146,7 +160,12 @@ export function schemaSearchParams<A, R>(
   ]
 >
 export function schemaSearchParams(fields: SchemaOrFields) {
-  return makeSchemaFilter("searchParams", HttpServerRequest.schemaSearchParams(toSchema(fields)))
+  return makeSchemaFilter(
+    "searchParams",
+    HttpServerRequest.schemaSearchParams(
+      toSchema<Parameters<typeof HttpServerRequest.schemaSearchParams>[0]["Encoded"]>(fields),
+    ),
+  )
 }
 
 export function schemaPathParams<F extends Schema.Struct.Fields>(
@@ -180,7 +199,12 @@ export function schemaPathParams<A, R>(
   ]
 >
 export function schemaPathParams(fields: SchemaOrFields) {
-  return makeSchemaFilter("pathParams", HttpRouter.schemaPathParams(toSchema(fields)))
+  return makeSchemaFilter(
+    "pathParams",
+    HttpRouter.schemaPathParams(
+      toSchema<Parameters<typeof HttpRouter.schemaPathParams>[0]["Encoded"]>(fields),
+    ),
+  )
 }
 
 export function schemaBodyJson<F extends Schema.Struct.Fields>(
@@ -260,7 +284,12 @@ export function schemaBodyUrlParams<A, R>(
   ]
 >
 export function schemaBodyUrlParams(fields: SchemaOrFields) {
-  return makeSchemaFilter("body", HttpServerRequest.schemaBodyUrlParams(toSchema(fields)))
+  return makeSchemaFilter(
+    "body",
+    HttpServerRequest.schemaBodyUrlParams(
+      toSchema<Parameters<typeof HttpServerRequest.schemaBodyUrlParams>[0]["Encoded"]>(fields),
+    ),
+  )
 }
 
 export function schemaBodyMultipart<F extends Schema.Struct.Fields>(
@@ -308,7 +337,12 @@ export function schemaBodyMultipart<
   ]
 >
 export function schemaBodyMultipart(fields: SchemaOrFields) {
-  return makeSchemaFilter("body", HttpServerRequest.schemaBodyMultipart(toSchema(fields)))
+  return makeSchemaFilter(
+    "body",
+    HttpServerRequest.schemaBodyMultipart(
+      toSchema<Parameters<typeof HttpServerRequest.schemaBodyMultipart>[0]["Encoded"]>(fields),
+    ),
+  )
 }
 
 export function schemaBodyForm<F extends Schema.Struct.Fields>(
@@ -356,7 +390,12 @@ export function schemaBodyForm<
   ]
 >
 export function schemaBodyForm(fields: SchemaOrFields) {
-  return makeSchemaFilter("body", HttpServerRequest.schemaBodyForm(toSchema(fields)))
+  return makeSchemaFilter(
+    "body",
+    HttpServerRequest.schemaBodyForm(
+      toSchema<Parameters<typeof HttpServerRequest.schemaBodyForm>[0]["Encoded"]>(fields),
+    ),
+  )
 }
 
 /**
@@ -385,7 +424,7 @@ export function schemaError<A, I, R>(
 ): <D, SB, P extends Route.Route.Tuple>(
   self: Route.RouteSet<D, SB, P>,
 ) => Route.RouteSet<D, SB, [...P, Route.Route<{}, {}, unknown, never, R>]> {
-  const status = options?.status ?? (schema as any).status
+  const status = options?.status ?? schema.status
   if (typeof status !== "number") {
     throw new Error(
       "schemaError: status is required either via options or as a static property on the schema",
@@ -433,11 +472,11 @@ export function schemaSuccess<A, I, R>(
 ): <D, SB, P extends Route.Route.Tuple>(
   self: Route.RouteSet<D, SB, P>,
 ) => Route.RouteSet<D, SB, [...P, Route.Route<{}, {}, I, Schema.SchemaError, R>]>
-export function schemaSuccess(schema: SchemaOrFields): any {
+export function schemaSuccess(schema: SchemaOrFields): unknown {
   const s = toSchema(schema)
   const encode = Schema.encodeUnknownEffect(s)
-  return function (self: Route.RouteSet<any, any, any>) {
-    const route = Route.make((_context: any, next: any) =>
+  return function (self: Route.RouteSet<unknown, unknown, Route.Route.Tuple>) {
+    const route = Route.make((_context: unknown, next: Entity.Entity<unknown>) =>
       Effect.flatMap(Entity.resolve(next), (entity) =>
         Effect.map(encode(entity.body), (encoded) =>
           Entity.make(encoded, {
@@ -451,6 +490,6 @@ export function schemaSuccess(schema: SchemaOrFields): any {
 
     const items = [...Route.items(self), route]
 
-    return Route.set(items as any, Route.descriptor(self))
+    return Route.set(items, Route.descriptor(self))
   }
 }

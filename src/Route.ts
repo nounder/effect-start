@@ -57,10 +57,12 @@
  */
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as Function from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Pipeable from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
+import type * as Types from "effect/Types"
 import * as Development from "./Development.ts"
 import * as Entity from "./Entity.ts"
 import * as Html from "./Html.ts"
@@ -73,6 +75,20 @@ export const RouteItems: unique symbol = Symbol()
 export const RouteDescriptor: unique symbol = Symbol()
 // only for structural type matching
 declare const RouteBindings: unique symbol
+
+const RouteTypeId = "~effect-start/Route" as const
+
+interface Variance<A, E, R> {
+  readonly _A: Types.Covariant<A>
+  readonly _E: Types.Covariant<E>
+  readonly _R: Types.Covariant<R>
+}
+
+const routeVariance: Variance<never, never, never> = {
+  _A: Function.identity,
+  _E: Function.identity,
+  _R: Function.identity,
+}
 
 export const TypeId = "~effect-start/RouteSet" as const
 
@@ -89,32 +105,36 @@ export namespace RouteSet {
   }
 
   export type Proto = Pipeable.Pipeable &
-    Iterable<Route<any, any, any, any, any>> & {
+    Iterable<Route<unknown, unknown, unknown, unknown, unknown>> & {
       [TypeId]: typeof TypeId
     }
 
   export type Any = RouteSet<{}, {}, Route.Tuple>
 
-  export type Items<T extends Data<any, any, any>> = T extends Data<any, any, infer M> ? M : never
+  export type Items<T extends Data<unknown, unknown, Route.Tuple>> =
+    T extends Data<unknown, unknown, infer M> ? M : never
 
-  export type Descriptor<T extends Data<any, any, any>> =
-    T extends Data<infer D, any, any> ? D : never
+  export type Descriptor<T extends Data<unknown, unknown, Route.Tuple>> =
+    T extends Data<infer D, unknown, Route.Tuple> ? D : never
 }
 
-export interface Route<D = {}, B = {}, A = any, E = never, R = never> extends RouteSet<
-  D,
-  B,
-  [Route<D, B, A, E, R>]
-> {
-  readonly handler: Route.Handler<any, any, any, any>
+export interface Route<
+  D = {},
+  B = {},
+  out A = unknown,
+  out E = never,
+  out R = never,
+> extends RouteSet<D, B, [Route<D, B, A, E, R>]> {
+  readonly [RouteTypeId]: Variance<A, E, R>
+  readonly handler: Route.Handler<unknown, unknown, unknown, unknown>
 }
 
 export namespace Route {
-  export type With<D> = Route<any, any, any, any, any> & {
+  export type With<D> = Route<unknown, unknown, unknown, unknown, unknown> & {
     [RouteDescriptor]: D
   }
 
-  export type Tuple = [...Array<Route<any, any, any, any, any>>]
+  export type Tuple = [...Array<Route<unknown, unknown, unknown, unknown, unknown>>]
 
   export type Handler<B, A, E, R> = (
     context: B,
@@ -126,7 +146,7 @@ export namespace Route {
     infer Head,
     ...infer Tail extends Tuple,
   ]
-    ? Head extends Route<any, infer B, any, any, any>
+    ? Head extends Route<unknown, infer B, unknown, unknown, unknown>
       ? ShallowMerge<B, Bindings<T, Tail>>
       : Bindings<T, Tail>
     : {}
@@ -143,7 +163,7 @@ export namespace Route {
     ExtractContext<RouteSet.Items<T>>
 
   type ExtractContext<M extends Tuple> = M extends [infer Head, ...infer Tail extends Tuple]
-    ? Head extends Route<infer D, infer B, any, any, any>
+    ? Head extends Route<infer D, infer B, unknown, unknown, unknown>
       ? ShallowMerge<Omit<D, keyof B> & B, ExtractContext<Tail>>
       : ExtractContext<Tail>
     : {}
@@ -239,15 +259,13 @@ export function layerMerge<const Input extends RouteMap.RouteMapInput>(
 }
 
 /** Continues the route chain in development and returns 404 otherwise. */
-export function devOnly<D, B, I extends Route.Tuple>(
-  self: RouteSet<D, B, I>,
-): RouteSet<D, B, [...I, Route<{ dev: true }, { dev: true }, unknown, any, any>]> {
-  const route: Route<{ dev: true }, { dev: true }, unknown, any, any> = make<
+export function devOnly<D, B, I extends Route.Tuple>(self: RouteSet<D, B, I>) {
+  const route: Route<{ dev: true }, { dev: true }, unknown, never, never> = make<
     { dev: true },
     { dev: true },
     unknown,
-    any,
-    any
+    never,
+    never
   >(
     (_context, next) =>
       Effect.flatMap(Development.option, (developmentOption) =>
@@ -256,15 +274,12 @@ export function devOnly<D, B, I extends Route.Tuple>(
     { dev: true },
   )
 
-  const nextItems: [...I, Route<{ dev: true }, { dev: true }, unknown, any, any>] = [
+  const nextItems: [...I, Route<{ dev: true }, { dev: true }, unknown, never, never>] = [
     ...items(self),
     route,
   ]
 
-  return set<D, B, [...I, Route<{ dev: true }, { dev: true }, unknown, any, any>]>(
-    nextItems,
-    descriptor(self),
-  )
+  return set<D, B, typeof nextItems>(nextItems, descriptor(self))
 }
 
 export function lazy<T extends RouteSet.Any>(
@@ -316,8 +331,9 @@ export function make<D, B, A, E = never, R = never>(
   handler: Route.Handler<B & D, A, E, R>,
   descriptor?: D,
 ): Route<D, B, A, E, R> {
-  const items: any = []
+  const items: Array<Route<D, B, A, E, R>> = []
   const route: Route<D, B, A, E, R> = Object.assign(Object.create(Proto), {
+    [RouteTypeId]: routeVariance,
     [RouteItems]: items,
     [RouteDescriptor]: descriptor,
     handler,
@@ -334,20 +350,24 @@ export function describe<D extends {} = {}>(descriptor: D) {
   return set([], descriptor)
 }
 
-export function items<T extends RouteSet.Data<any, any, any>>(self: T): RouteSet.Items<T> {
-  return self[RouteItems]
+export function items<T extends RouteSet.Data<unknown, unknown, Route.Tuple>>(
+  self: T,
+): RouteSet.Items<T> {
+  return self[RouteItems] as RouteSet.Items<T>
 }
 
-export function descriptor<T extends RouteSet.Data<any, any, any>>(
+export function descriptor<T extends RouteSet.Data<unknown, unknown, Route.Tuple>>(
   self: T,
 ): T[typeof RouteDescriptor]
-export function descriptor<E>(self: RouteSet.Data<any, any, any>): E
-export function descriptor<T extends RouteSet.Data<any, any, any>>(
+export function descriptor<E>(self: RouteSet.Data<unknown, unknown, Route.Tuple>): E
+export function descriptor<T extends RouteSet.Data<unknown, unknown, Route.Tuple>>(
   self: Iterable<T>,
 ): Array<T[typeof RouteDescriptor]>
 export function descriptor(
-  self: RouteSet.Data<any, any, any> | Iterable<RouteSet.Data<any, any, any>>,
-): object | Array<object> {
+  self:
+    | RouteSet.Data<unknown, unknown, Route.Tuple>
+    | Iterable<RouteSet.Data<unknown, unknown, Route.Tuple>>,
+): unknown {
   if (RouteDescriptor in self) {
     return self[RouteDescriptor]
   }
@@ -358,7 +378,7 @@ export type ExtractBindings<M extends Route.Tuple> = M extends [
   infer Head,
   ...infer Tail extends Route.Tuple,
 ]
-  ? Head extends Route<any, infer B, any, any, any>
+  ? Head extends Route<unknown, infer B, unknown, unknown, unknown>
     ? ShallowMerge<B, ExtractBindings<Tail>>
     : ExtractBindings<Tail>
   : {}

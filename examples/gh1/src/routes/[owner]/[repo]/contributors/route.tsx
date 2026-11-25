@@ -56,7 +56,7 @@ export default Route.get(
             />
           ) : (
             <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {contributors.map((c: any) => (
+              {contributors.map((c) => (
                 <User.ContributorCard
                   login={c.login}
                   avatar={c.avatar_url}

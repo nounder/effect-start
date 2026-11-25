@@ -109,7 +109,7 @@ export const compressTransformWeb =
   (algorithm: Platform.CompressionAlgorithm, options?: Platform.CompressionOptions | undefined) =>
   (stream: ReadableStream<Uint8Array>): ReadableStream<Uint8Array> => {
     const transform = compressTransform(algorithm, options)
-    const source = Readable.fromWeb(stream as any)
+    const source = Readable.fromWeb(stream as unknown as Parameters<typeof Readable.fromWeb>[0])
     source.on("error", (cause) => transform.destroy(cause))
     transform.on("close", () => source.destroy())
     return Readable.toWeb(source.pipe(transform)) as unknown as ReadableStream<Uint8Array>

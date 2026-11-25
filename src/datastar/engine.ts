@@ -13,8 +13,8 @@ export const DATASTAR_SCOPE_CHILDREN_EVENT = "datastar-scope-children"
 export const DATASTAR_SIGNAL_PATCH_EVENT = "datastar-signal-patch"
 
 /** Types.ts */
-export type JSONPatch = Record<string, any> & { length?: never }
-export type Paths = Array<[string, any]>
+export type JSONPatch = Record<string, unknown> & { length?: never }
+export type Paths = Array<[string, unknown]>
 
 export type WatcherArgsValue = string | Element | DocumentFragment | undefined
 export type WatcherArgs = Record<string, WatcherArgsValue>
@@ -33,7 +33,7 @@ export type WatcherFn<K extends keyof CustomEventMap> = (
   ev: CustomEventMap[K],
 ) => void
 
-export type ErrorFn = (name: string, ctx?: Record<string, any>) => void
+export type ErrorFn = (name: string, ctx?: Record<string, unknown>) => void
 
 export type ActionContext = {
   el: HTMLOrSVG
@@ -55,7 +55,7 @@ export type Requirement =
       value: Exclude<RequirementType, "exclusive">
     }
 
-type Rx<B extends boolean> = (...args: Array<any>) => B extends true ? unknown : void
+type Rx<B extends boolean> = (...args: Array<unknown>) => B extends true ? unknown : void
 
 type ReqField<R, K extends "key" | "value", Return> = R extends "must" | { [P in K]: "must" }
   ? Return
@@ -115,9 +115,9 @@ export type WatcherPlugin = {
 
 export type ActionPlugins = Record<string, ActionPlugin>
 
-export type ActionPlugin<T = any> = {
+export type ActionPlugin<T = unknown> = {
   name: string
-  apply: (ctx: ActionContext, ...args: Array<any>) => T
+  apply(ctx: ActionContext, ...args: Array<never>): T
 }
 
 export type MergePatchArgs = {
@@ -137,7 +137,7 @@ export const createDataEvent = ({
 }): DataEvent => {
   const dispatchAction =
     (name: string) =>
-    (...actionArgs: Array<any>) => {
+    (...actionArgs: Array<unknown>) => {
       const err = error(name)
       const fn = actions[name]
       if (fn) {
@@ -146,7 +146,7 @@ export const createDataEvent = ({
       throw err("UndefinedAction")
     }
 
-  const actionsProxy = new Proxy({} as Record<string, any>, {
+  const actionsProxy = new Proxy({} as Record<string, unknown>, {
     get: (_, name: string) => dispatchAction(name),
   })
 
@@ -177,7 +177,7 @@ export const createDataEvent = ({
 
 export type Modifiers = Map<string, Set<string>>
 
-export type EventCallbackHandler = (...args: Array<any>) => void
+export type EventCallbackHandler = (event?: Event) => void
 
 export type SignalFilter = RegExp
 export type SignalFilterOptions = {
@@ -732,24 +732,24 @@ const isValidLink = (checkLink: Link, sub: ReactiveNode): boolean => {
   return false
 }
 
-export const getPath = <T = any>(path: string): T | undefined => {
-  let result = root
+export const getPath = <T = unknown>(path: string): T | undefined => {
+  let result: unknown = root
   const split = path.split(".")
   for (const path of split) {
-    if (result == null || !hasOwn(result, path)) {
+    if (result == null || !hasOwn(Object(result), path)) {
       return
     }
-    result = result[path]
+    result = (Object(result) as Record<string, unknown>)[path]
   }
   return result as T
 }
 
-const deep = (value: any, prefix = ""): any => {
+const deep = (value: unknown, prefix = ""): unknown => {
   const isArr = Array.isArray(value)
   if (isArr || isPojo(value)) {
-    const deepObj = (isArr ? [] : {}) as Record<string, Signal<any>>
+    const deepObj = (isArr ? [] : {}) as Record<string, Signal<unknown>>
     for (const key in value) {
-      deepObj[key] = signal(deep((value as Record<string, Signal<any>>)[key], `${prefix + key}.`))
+      deepObj[key] = signal(deep((value as Record<string, unknown>)[key], `${prefix + key}.`))
     }
     const keys = signal(0)
     return new Proxy(deepObj, {
@@ -763,7 +763,7 @@ const deep = (value: any, prefix = ""): any => {
             return deepObj[prop]
           }
           if (!hasOwn(deepObj, prop) || deepObj[prop]() == null) {
-            deepObj[prop] = signal("")
+            deepObj[prop] = signal<unknown>("")
             dispatch(prefix + prop, "")
             keys(keys() + 1)
           }
@@ -776,7 +776,7 @@ const deep = (value: any, prefix = ""): any => {
           const diff = (deepObj[prop] as unknown as number) - newValue
           deepObj[prop] = newValue
           if (diff > 0) {
-            const patch: Record<string, any> = {}
+            const patch: Record<string, unknown> = {}
             for (let i = newValue; i < deepObj[prop]; i++) {
               patch[i] = null
             }
@@ -840,7 +840,7 @@ const deep = (value: any, prefix = ""): any => {
   return value
 }
 
-const dispatch = (path?: string, value?: any) => {
+const dispatch = (path?: string, value?: unknown) => {
   if (path !== undefined && value !== undefined) {
     currentPatch.push([path, value])
   }
@@ -873,9 +873,9 @@ export const mergePaths = (paths: Paths, options?: MergePatchArgs): void =>
   mergePatch(pathToObj(paths), options)
 
 const mergeInner = (
-  patch: any,
+  patch: unknown,
   target: string,
-  targetParent: Record<string, any>,
+  targetParent: Record<string, unknown>,
   prefix: string,
   ifMissing: boolean | undefined,
 ): void => {
@@ -890,10 +890,16 @@ const mergeInner = (
     for (const key in patch) {
       if (patch[key] == null) {
         if (!ifMissing) {
-          delete targetParent[target][key]
+          delete (targetParent[target] as Record<string, unknown>)[key]
         }
       } else {
-        mergeInner(patch[key], key, targetParent[target], `${prefix + target}.`, ifMissing)
+        mergeInner(
+          patch[key],
+          key,
+          targetParent[target] as Record<string, unknown>,
+          `${prefix + target}.`,
+          ifMissing,
+        )
       }
     }
   } else if (!(ifMissing && hasOwn(targetParent, target))) {
@@ -907,11 +913,11 @@ const toRegExp = (val: string | RegExp): RegExp =>
 export const filtered = (
   { include = /.*/, exclude = /(?!)/ }: SignalFilterOptions = {},
   obj: JSONPatch = root,
-): Record<string, any> => {
+): Record<string, unknown> => {
   const includeRe = toRegExp(include)
   const excludeRe = toRegExp(exclude)
   const paths: Paths = []
-  const stack: Array<[any, string]> = [[obj, ""]]
+  const stack: Array<[Record<string, unknown>, string]> = [[obj, ""]]
 
   while (stack.length) {
     const [node, prefix] = stack.pop()!
@@ -929,12 +935,12 @@ export const filtered = (
   return pathToObj(paths)
 }
 
-export const root: Record<string, any> = deep({})
+export const root: Record<string, unknown> = deep({}) as Record<string, unknown>
 /**
  * Proxy to root that doesn't expose any keys so when effect enumerates root (eg. `e =>
  * console.log(e.signals)`), the reactive signals won't subscribe to all immediate signals.
  */
-const privateRoot: Record<string, any> = new Proxy(root, {
+const privateRoot: Record<string, unknown> = new Proxy(root, {
   ownKeys: () => [],
   getOwnPropertyDescriptor: () => undefined,
 })
@@ -942,7 +948,11 @@ const privateRoot: Record<string, any> = new Proxy(root, {
 /** Engine.ts (plugin system) */
 const url = "https://data-star.dev/errors"
 
-const error = (ctx: Record<string, any>, reason: string, metadata: Record<string, any> = {}) => {
+const error = (
+  ctx: Record<string, unknown>,
+  reason: string,
+  metadata: Record<string, unknown> = {},
+) => {
   Object.assign(metadata, ctx)
   const e = new Error()
   const r = snake(reason)
@@ -958,16 +968,17 @@ const actionPlugins: Map<string, ActionPlugin> = new Map()
 const attributePlugins: Map<string, AttributePlugin> = new Map()
 const watcherPlugins: Map<string, WatcherPlugin> = new Map()
 
-export const actions: Record<string, (ctx: ActionContext, ...args: Array<any>) => any> = new Proxy(
-  {},
-  {
-    get: (_, prop: string) => actionPlugins.get(prop)?.apply,
-    has: (_, prop: string) => actionPlugins.has(prop),
-    ownKeys: () => Reflect.ownKeys(actionPlugins),
-    set: () => false,
-    deleteProperty: () => false,
-  },
-)
+export const actions: Record<string, (ctx: ActionContext, ...args: Array<unknown>) => unknown> =
+  new Proxy(
+    {},
+    {
+      get: (_, prop: string) => actionPlugins.get(prop)?.apply,
+      has: (_, prop: string) => actionPlugins.has(prop),
+      ownKeys: () => Reflect.ownKeys(actionPlugins),
+      set: () => false,
+      deleteProperty: () => false,
+    },
+  )
 
 const removals = new Map<HTMLOrSVG, Map<string, Map<string, () => void>>>()
 
@@ -1242,7 +1253,7 @@ const applyAttributePlugin = (
 
     if (valueProvided) {
       let cachedRx: GenRxFn
-      ctx.rx = (...args: Array<any>) => {
+      ctx.rx = (...args: Array<unknown>) => {
         if (!cachedRx) {
           cachedRx = genRx(value, {
             returnsValue: plugin.returnsValue,
@@ -1302,7 +1313,7 @@ type GenRxOptions = {
   cleanups?: Map<string, () => void>
 }
 
-type GenRxFn = <T>(el: HTMLOrSVG, ...args: Array<any>) => T
+type GenRxFn = <T>(el: HTMLOrSVG, ...args: Array<unknown>) => T
 
 const genRx = (
   value: string,
@@ -1311,10 +1322,10 @@ const genRx = (
   if (/^\s*(?:async\s+)?(?:\(.*?\)\s*=>|[\w$]+\s*=>|function\s*[\w$]*\s*\()/.test(value)) {
     const userFn = Function(`return (${value.trim()})`)()
 
-    return (el: HTMLOrSVG, ...args: Array<any>) => {
+    return (el: HTMLOrSVG, ...args: Array<unknown>) => {
       const dataEvt = createDataEvent({
         el,
-        evt: args[0],
+        evt: args[0] as Event | undefined,
         cleanups,
         error: (name) =>
           error.bind(0, {
@@ -1326,13 +1337,13 @@ const genRx = (
 
       try {
         return userFn(dataEvt)
-      } catch (e: any) {
+      } catch (e: unknown) {
         console.error(e)
         throw error(
           {
             element: { id: el.id, tag: el.tagName },
             expression: { fnContent: value, value },
-            error: e.message,
+            error: e instanceof Error ? e.message : String(e),
           },
           "ExecuteExpression",
         )
@@ -1397,8 +1408,8 @@ const genRx = (
 
   try {
     const fn = Function("el", "$", "__action", "evt", ...argNames, expr)
-    return (el: HTMLOrSVG, ...args: Array<any>) => {
-      const action = (name: string, evt: Event | undefined, ...args: Array<any>) => {
+    return (el: HTMLOrSVG, ...args: Array<unknown>) => {
+      const action = (name: string, evt: Event | undefined, ...args: Array<unknown>) => {
         const err = error.bind(0, {
           plugin: { type: "action", name },
           element: { id: el.id, tag: el.tagName },
@@ -1423,7 +1434,7 @@ const genRx = (
       }
       try {
         return fn(el, root, action, undefined, ...args)
-      } catch (e: any) {
+      } catch (e: unknown) {
         console.error(e)
         throw error(
           {
@@ -1432,13 +1443,13 @@ const genRx = (
               fnContent: expr,
               value,
             },
-            error: e.message,
+            error: e instanceof Error ? e.message : String(e),
           },
           "ExecuteExpression",
         )
       }
     }
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error(e)
     throw error(
       {
@@ -1446,7 +1457,7 @@ const genRx = (
           fnContent: expr,
           value,
         },
-        error: e.message,
+        error: e instanceof Error ? e.message : String(e),
       },
       "GenerateExpression",
     )

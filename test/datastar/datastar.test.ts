@@ -3,6 +3,7 @@ import type * as Engine from "effect-start/datastar"
 import * as Html from "effect-start/Html"
 import type { JSX } from "effect-start/jsx-runtime"
 import { JSDOM } from "jsdom"
+import type { DataEvent } from "../../src/datastar/jsx.ts"
 
 // JSDOM's event getters accept proxies, so retain Bun's native events for the regression test.
 const NativeEvent = globalThis.Event
@@ -50,21 +51,22 @@ const globals = [
 
 for (const key of globals) {
   Object.defineProperty(globalThis, key, {
-    value: (_window as any)[key],
+    value: (_window as unknown as Record<string, unknown>)[key],
     writable: true,
     configurable: true,
   })
 }
 
 if (typeof globalThis.MathMLElement === "undefined") {
-  ;(globalThis as any).MathMLElement = class MathMLElement extends (_window as any).HTMLElement {}
+  ;(globalThis as unknown as { MathMLElement: typeof HTMLElement }).MathMLElement =
+    class MathMLElement extends _window.HTMLElement {}
 }
 
 const Datastar = await import("effect-start/datastar")
 
 const tick = () => new Promise<void>((r) => setTimeout(r, 0))
 
-const setSignals = async (signals: Record<string, any>) => {
+const setSignals = async (signals: Record<string, unknown>) => {
   const el = document.createElement("div")
   el.setAttribute("data-signals", JSON.stringify(signals))
   document.body.appendChild(el)
@@ -446,8 +448,8 @@ test.describe("computed", () => {
           children: [
             Html.make("div", {
               "data-computed": {
-                listening: (e: any) => e.signals.speechState !== "idle",
-                statusText: (e: any) => {
+                listening: (e) => e.signals.speechState !== "idle",
+                statusText: (e) => {
                   return (
                     (
                       {
@@ -536,7 +538,7 @@ test.describe("attr", () => {
           children: [
             Html.make("button", {
               id: "btn",
-              "data-attr:disabled": (e: any) => e.signals.disabled,
+              "data-attr:disabled": (e: DataEvent) => e.signals.disabled,
             }),
           ],
         }),
@@ -559,8 +561,8 @@ test.describe("attr", () => {
             Html.make("a", {
               id: "lnk",
               "data-attr": {
-                title: (e: any) => e.signals.tip,
-                "aria-disabled": (e: any) => e.signals.banned,
+                title: (e) => e.signals.tip,
+                "aria-disabled": (e) => e.signals.banned,
               },
             }),
           ],
@@ -633,7 +635,7 @@ test.describe("class", () => {
           children: [
             Html.make("div", {
               id: "cls",
-              "data-class:active": (e: any) => e.signals.showActive,
+              "data-class:active": (e: DataEvent) => e.signals.showActive,
             }),
           ],
         }),
@@ -657,8 +659,8 @@ test.describe("class", () => {
             Html.make("div", {
               id: "cls",
               "data-class": {
-                bold: (e: any) => e.signals.bold,
-                italic: (e: any) => e.signals.italic,
+                bold: (e) => e.signals.bold,
+                italic: (e) => e.signals.italic,
               },
             }),
           ],
@@ -715,7 +717,7 @@ test.describe("style", () => {
           children: [
             Html.make("div", {
               id: "styled",
-              "data-style:font-size": (e: any) => e.signals.sz,
+              "data-style:font-size": (e: DataEvent) => e.signals.sz,
             }),
           ],
         }),
@@ -739,8 +741,8 @@ test.describe("style", () => {
             Html.make("div", {
               id: "styled",
               "data-style": {
-                width: (e: any) => e.signals.wide,
-                height: (e: any) => e.signals.tall,
+                width: (e) => e.signals.wide,
+                height: (e) => e.signals.tall,
               },
             }),
           ],
@@ -780,7 +782,7 @@ test.describe("on", () => {
 
   test.it("supports function form", async () => {
     let clicked = false
-    ;(globalThis as any).__testClick = () => {
+    ;(globalThis as unknown as { __testClick?: () => void }).__testClick = () => {
       clicked = true
     }
     const c = await mount(
@@ -792,7 +794,7 @@ test.describe("on", () => {
 
     test.expect(clicked).toBe(true)
 
-    delete (globalThis as any).__testClick
+    delete (globalThis as unknown as { __testClick?: () => void }).__testClick
   })
 
   test.it("passes signals to function form handlers", async () => {

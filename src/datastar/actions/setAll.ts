@@ -10,7 +10,7 @@ import { updateLeaves } from "../utils.ts"
 
 action({
   name: "setAll",
-  apply(_, value: any, filter: SignalFilterOptions) {
+  apply(_, value: unknown, filter: SignalFilterOptions) {
     startPeeking()
     const masked = filtered(filter)
     updateLeaves(masked, () => value)

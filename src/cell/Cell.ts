@@ -18,10 +18,14 @@ type RequestBody =
       bodyForm: FormData | HTMLFormElement | SubmitEvent | Record<string, string | Blob>
     }
 
-export interface Cell<E extends Element = Element> {
+export interface Cell<
+  E extends Element = Element,
+  S extends object = Record<string, unknown>,
+  Item = unknown,
+> {
   readonly target: E
-  signals: Record<string, any>
-  readonly item: any
+  signals: S
+  readonly item: Item
   readonly index: number | undefined
   readonly abortSignal: AbortSignal
   on<K extends keyof HTMLElementEventMap>(
@@ -35,7 +39,7 @@ export interface Cell<E extends Element = Element> {
     options?: AddEventListenerOptions | boolean,
   ): () => void
   effect(fn: () => void | (() => void)): () => void
-  limit<This, Args extends Array<any>>(
+  limit<This, Args extends Array<unknown>>(
     fn: (this: This, ...args: Args) => unknown,
     options: ({ debounce: number; throttle?: never } | { throttle: number; debounce?: never }) & {
       concurrency?: number
@@ -57,7 +61,9 @@ export interface Cell<E extends Element = Element> {
   ): Promise<void>
 }
 
-export type CellFunction<E extends Element = Element> = (cell: Cell<E>) => void | (() => void)
+export type CellFunction<E extends Element = Element> = {
+  setup(cell: Cell<E>): void | (() => void)
+}["setup"]
 
 type Placement = "append" | "prepend" | "before" | "after" | "replace" | "morph" | "morphChildren"
 
@@ -69,27 +75,27 @@ export type CellDeclaration<E extends Element = Element> =
       }
     }[Placement]
 
-export interface RunOptions {
-  signals?: Record<string, any>
+export interface RunOptions<S extends object = Record<string, unknown>> {
+  signals?: S
   onError?: (error: unknown, target: Element) => void
 }
 
-export interface Runtime {
-  readonly signals: Record<string, any>
+export interface Runtime<S extends object = Record<string, unknown>> {
+  readonly signals: S
   stop(): void
 }
 
 const runtimes = new WeakMap<Document | Element | ShadowRoot, Runtime>()
 
 /** Initialize and observe data-cell behavior on the DOM. */
-export const run = (
+export const run = <S extends object = Record<string, unknown>>(
   root: Document | Element | ShadowRoot = document,
-  options: RunOptions = {},
-): Runtime => {
-  if (runtimes.has(root)) return runtimes.get(root)!
+  options: RunOptions<S> = {},
+): Runtime<S> => {
+  if (runtimes.has(root)) return runtimes.get(root)! as unknown as Runtime<S>
   const document = root.nodeType === 9 ? (root as Document) : root.ownerDocument!
   const window = document.defaultView!
-  const signals = createSignals(options.signals)
+  const signals = createSignals(options.signals as Record<string, unknown> | undefined)
   const mounted = new Map<
     Node,
     {
@@ -282,5 +288,5 @@ export const run = (
     attributeFilter: ["data-cell"],
   })
   scan(root)
-  return runtime
+  return runtime as unknown as Runtime<S>
 }

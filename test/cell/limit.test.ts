@@ -20,7 +20,10 @@ test.describe("limiter", () => {
     return { promise, resolve, reject }
   }
 
-  const limit = (fn: (...args: Array<any>) => unknown, options: unknown) => {
+  const limit = <This, Args extends Array<unknown>>(
+    fn: (this: This, ...args: Args) => unknown,
+    options: Parameters<typeof createLimit>[1],
+  ) => {
     const limiter = createLimit(fn, options, globalThis, (error) => errors.push(error))
     limits.push(limiter)
     return limiter.run
@@ -68,7 +71,7 @@ test.describe("limiter", () => {
 
   test.it("continuous calls postpone debounce until the final quiet period", () => {
     const calls: Array<number> = []
-    const run = limit((value) => calls.push(value), { debounce: 300 })
+    const run = limit((value: number) => calls.push(value), { debounce: 300 })
     for (let value = 0; value < 20; value++) {
       run(value)
       test.jest.advanceTimersByTime(100)
@@ -85,7 +88,7 @@ test.describe("limiter", () => {
     "throttle runs immediately, keeps the latest trailing call, and resumes immediately after idle",
     () => {
       const calls: Array<unknown> = []
-      const run = limit((value) => calls.push([Date.now(), value]), { throttle: 100 })
+      const run = limit((value: string) => calls.push([Date.now(), value]), { throttle: 100 })
       run("first")
       test.jest.advanceTimersByTime(20)
       run("discarded")
@@ -132,8 +135,8 @@ test.describe("limiter", () => {
     () => {
       const debounced: Array<number> = []
       const throttled: Array<number> = []
-      const debounce = limit((value) => debounced.push(value), { debounce: 0 })
-      const throttle = limit((value) => throttled.push(value), { throttle: 0 })
+      const debounce = limit((value: number) => debounced.push(value), { debounce: 0 })
+      const throttle = limit((value: number) => throttled.push(value), { throttle: 0 })
       for (let value = 1; value <= 3; value++) {
         debounce(value)
         throttle(value)
@@ -153,7 +156,7 @@ test.describe("limiter", () => {
       const calls: Array<unknown> = []
       const jobs: Array<ReturnType<typeof deferred>> = []
       const run = limit(
-        (value) => {
+        (value: string) => {
           calls.push([Date.now(), value])
           const job = deferred()
           jobs.push(job)
@@ -204,7 +207,7 @@ test.describe("limiter", () => {
       const job = deferred()
       const calls: Array<unknown> = []
       const run = limit(
-        (value) => {
+        (value: string) => {
           calls.push([Date.now(), value])
           return value === "first" ? job.promise : undefined
         },
@@ -228,7 +231,7 @@ test.describe("limiter", () => {
     const job = deferred()
     const calls: Array<unknown> = []
     const run = limit(
-      (value) => {
+      (value: string) => {
         calls.push([Date.now(), value])
         return value === "first" ? job.promise : undefined
       },
@@ -257,7 +260,7 @@ test.describe("limiter", () => {
       const jobs: Array<ReturnType<typeof deferred>> = []
       const calls: Array<unknown> = []
       const run = limit(
-        (value) => {
+        (value: string) => {
           calls.push([Date.now(), value])
           const job = deferred()
           jobs.push(job)
@@ -300,7 +303,7 @@ test.describe("limiter", () => {
   test.it("omitting concurrency permits overlapping promises at the configured pace", () => {
     const calls: Array<number> = []
     const run = limit(
-      (value) => {
+      (value: number) => {
         calls.push(value)
         return new Promise(() => {})
       },
@@ -317,7 +320,7 @@ test.describe("limiter", () => {
   test.it("synchronous return values release capacity without waiting for a microtask", () => {
     const calls: Array<number> = []
     const run = limit(
-      (value) => {
+      (value: number) => {
         calls.push(value)
         return { value }
       },
@@ -340,7 +343,7 @@ test.describe("limiter", () => {
       const first = Promise.resolve()
       const calls: Array<number> = []
       const run = limit(
-        (value) => {
+        (value: number) => {
           calls.push(value)
           return first
         },
@@ -362,7 +365,7 @@ test.describe("limiter", () => {
       const calls: Array<number> = []
       const failure = new Error("callback failed")
       const run = limit(
-        (value) => {
+        (value: number) => {
           calls.push(value)
           if (value === 1) throw failure
         },
@@ -384,7 +387,7 @@ test.describe("limiter", () => {
       const first = deferred()
       const calls: Array<number> = []
       const run = limit(
-        (value) => {
+        (value: number) => {
           calls.push(value)
           return value === 1 ? first.promise : undefined
         },
@@ -411,7 +414,7 @@ test.describe("limiter", () => {
       const thirdStarted = deferred()
       const calls: Array<number> = []
       const run = limit(
-        (value) => {
+        (value: number) => {
           calls.push(value)
           if (value === 1) {
             return {
@@ -483,7 +486,7 @@ test.describe("limiter", () => {
       let maxDepth = 0
       const calls: Array<number> = []
       const run = limit(
-        (value) => {
+        (value: number) => {
           depth++
           maxDepth = Math.max(maxDepth, depth)
           calls.push(value)
@@ -503,7 +506,7 @@ test.describe("limiter", () => {
     "stopping cancels pending work and makes the wrapper inert: %j",
     (timing) => {
       const calls: Array<number> = []
-      const run = limit((value) => calls.push(value), timing)
+      const run = limit((value: number) => calls.push(value), timing)
       run(1)
       run(2)
       const before = [...calls]
@@ -524,7 +527,7 @@ test.describe("limiter", () => {
       const calls: Array<number> = []
       const failure = new Error("late rejection")
       const run = limit(
-        (value) => {
+        (value: number) => {
           calls.push(value)
           return jobs[value].promise
         },
@@ -578,7 +581,7 @@ test.describe("limiter", () => {
       const first = deferred()
       const calls: Array<number> = []
       const run = limit(
-        (value) => {
+        (value: number) => {
           calls.push(value)
           return value === 0 ? first.promise : undefined
         },
@@ -620,7 +623,9 @@ test.describe("limiter", () => {
         test.expect(() => limit(() => {}, options)).toThrow()
       }
 
-      test.expect(() => limit(null as any, { debounce: 10 })).toThrow("requires a function")
+      test
+        .expect(() => limit(null as unknown as () => void, { debounce: 10 }))
+        .toThrow("requires a function")
       test.expect(test.jest.getTimerCount()).toBe(0)
     },
   )
@@ -657,7 +662,7 @@ test.describe("cell integration", () => {
       onError: (error, target) => errors.push({ error, target }),
     })
     target = dom.window.document.querySelector("button")!
-    cell = (target as any).cell
+    cell = (target as unknown as { cell: Cell<HTMLButtonElement> }).cell
     test.jest.useFakeTimers({ now: 0 })
   })
 
@@ -829,7 +834,7 @@ test.describe("cell integration", () => {
       test.expect(cell.abortSignal.aborted).toBe(true)
 
       if (mode === "code") {
-        const replacement = (target as any).cell as Cell
+        const replacement = (target as unknown as { cell: Cell<HTMLButtonElement> }).cell as Cell
         replacement.limit(() => calls.push("replacement"), { throttle: 0 })()
 
         test.expect(calls).toEqual(["throttled", "replacement"])
@@ -873,7 +878,7 @@ test.describe("cell integration", () => {
     const scope = dom.window.document.querySelector("section")!
     scope.append(target)
     runtime = run(scope, { onError: (error, target) => errors.push({ error, target }) })
-    cell = (target as any).cell
+    cell = (target as unknown as { cell: Cell<HTMLButtonElement> }).cell
     let calls = 0
     const invoke = cell.limit(
       () => {

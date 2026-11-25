@@ -2,6 +2,7 @@ import * as test from "bun:test"
 import type * as RouteMount from "effect-start/internal/RouteMount"
 import * as Route from "effect-start/Route"
 import * as Effect from "effect/Effect"
+import type * as HttpServerRequest from "effect/http/HttpServerRequest"
 import * as Schema from "effect/Schema"
 
 test.it("uses GET method", async () => {
@@ -241,7 +242,7 @@ test.it("Builder extends RouteSet", () => {
 
   test.expectTypeOf(builder).toExtend<Route.RouteSet.Any>()
 
-  test.expectTypeOf(builder).toExtend<Route.RouteSet<any, any, any>>()
+  test.expectTypeOf(builder).toExtend<Route.RouteSet<unknown, unknown, Route.Route.Tuple>>()
 
   // Verify it has the TypeId
   test.expect(builder[Route.TypeId]).toBe(Route.TypeId)
@@ -293,7 +294,7 @@ test.it("schemaHeaders flattens method into route descriptor", () => {
       },
       unknown,
       Schema.SchemaError,
-      Route.Request
+      HttpServerRequest.HttpServerRequest
     >
   >()
 
@@ -308,7 +309,7 @@ test.it("schemaHeaders flattens method into route descriptor", () => {
       },
       unknown,
       Schema.SchemaError,
-      Route.Request
+      HttpServerRequest.HttpServerRequest
     >
   >()
 
@@ -320,7 +321,7 @@ test.it("schemaHeaders flattens method into route descriptor", () => {
         format: "html"
       },
       {},
-      any
+      unknown
     >
   >()
 

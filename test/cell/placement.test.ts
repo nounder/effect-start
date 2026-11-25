@@ -48,7 +48,7 @@ test.beforeEach(() => {
     .getElementById("request")!
     .setAttribute("data-cell", "cell => { cell.target.cell = cell }")
   runtime = run(dom.window.document, { onError: (error) => errors.push(error) })
-  cell = (dom.window.document.getElementById("request") as any).cell
+  cell = (dom.window.document.getElementById("request") as unknown as { cell: Cell }).cell
 })
 
 test.afterEach(() => {
@@ -152,7 +152,7 @@ test.it("an appended cell and its descendants can react and make subsequent requ
   await tick()
   const target = dom.window.document.querySelector("#messages li:last-child")!
   dom.window.fetch = (async () => new Response(null, { status: 204 })) as unknown as typeof fetch
-  await (target as any).cell.request("/next")
+  await (target as unknown as { cell: Cell }).cell.request("/next")
 
   test.expect(target.getAttribute("title")).toBe("5")
   test.expect(target.querySelector("span")!.textContent).toBe("5")
@@ -203,7 +203,7 @@ test.it.each(["morph", "morphChildren"])(
       'id="anchor" class="new"',
     )
     await respond(html)
-    const owner = (destination as any).cell as Cell
+    const owner = (destination as unknown as { cell: Cell }).cell as Cell
     await respond(html)
     ;(destination as HTMLElement).click()
     runtime.signals.title = "updated"
@@ -244,7 +244,7 @@ test.it(
     const destination = dom.window.document.getElementById("anchor")!
 
     test.expect(destination.tagName).toBe("SECTION")
-    test.expect((destination as any).cell.target).toBe(destination)
+    test.expect((destination as unknown as { cell: Cell }).cell.target).toBe(destination)
     test.expect(runtime.signals.rootMounts).toBe(1)
     test.expect(runtime.signals.childMounts).toBe(1)
   },
@@ -272,7 +272,7 @@ test.it("ordinary roots morph by ID and preserve nested cell setup", async () =>
   test.expect(target.getAttribute("title")).toBe("3")
   test.expect(runtime.signals.setups).toBe(1)
   test.expect(runtime.signals.clicked).toBe(true)
-  test.expect((target as any).cell.target).toBe(target)
+  test.expect((target as unknown as { cell: Cell }).cell.target).toBe(target)
 })
 
 test.it.each([false, true])(
@@ -296,9 +296,9 @@ test.it.each([false, true])(
     test.expect(dom.window.document.getElementById("anchor")).toBe(anchor)
     test.expect(anchor.textContent).toBe("Again")
     test.expect(runtime.signals.setups).toBe(1)
-    test.expect((dom.window as any).effects).toBe(1)
+    test.expect((dom.window as unknown as { effects: number }).effects).toBe(1)
     test.expect(runtime.signals.clicked).toBe(true)
-    test.expect((anchor as any).cell.target).toBe(anchor)
+    test.expect((anchor as unknown as { cell: Cell }).cell.target).toBe(anchor)
   },
 )
 
@@ -388,13 +388,13 @@ test.it(
     const target = dom.window.document.getElementById("anchor")!
     target.setAttribute("data-cell", source)
     await tick()
-    const previous = (target as any).cell as Cell
+    const previous = (target as unknown as { cell: Cell }).cell as Cell
     await respond(fragment("div", source, "New", 'id="anchor"'))
     const next = dom.window.document.getElementById("anchor")!
 
     test.expect(next).not.toBe(target)
     test.expect(previous.abortSignal.aborted).toBe(true)
-    test.expect((next as any).cell.abortSignal.aborted).toBe(false)
+    test.expect((next as unknown as { cell: Cell }).cell.abortSignal.aborted).toBe(false)
     test.expect(runtime.signals.mounts).toBe(2)
     test.expect(runtime.signals.cleanups).toBe(1)
   },
@@ -492,7 +492,7 @@ test.it("a full-document SSE morph preserves its unchanged connection-owning cel
   )
   document.body.append(owner)
   await tick()
-  const connection = (owner as any).cell as Cell
+  const connection = (owner as unknown as { cell: Cell }).cell as Cell
   const html = document.documentElement.outerHTML.replace(
     '<div id="anchor">Anchor</div>',
     '<div id="anchor">Updated</div>',
@@ -523,7 +523,7 @@ test.it("a full-document SSE morph preserves its unchanged connection-owning cel
 
   owner.remove()
   await tick()
-  await (dom.window as any).connection
+  await (dom.window as unknown as { connection: Promise<void> }).connection
 
   test.expect(signal!.aborted).toBe(true)
 })

@@ -5,8 +5,8 @@ import * as Route from "../Route.ts"
 import * as StreamExtra from "./StreamExtra.ts"
 import type * as Values from "./Values.ts"
 
-type YieldError<T> = T extends Effect.Effect<any, infer E, any> ? E : never
-type YieldContext<T> = T extends Effect.Effect<any, any, infer R> ? R : never
+type YieldError<T> = T extends Effect.Effect<unknown, infer E, unknown> ? E : never
+type YieldContext<T> = T extends Effect.Effect<unknown, unknown, infer R> ? R : never
 
 export type Format = "text" | "html" | "json" | "bytes" | "sse" | "*"
 
@@ -21,28 +21,28 @@ const formatToContentType: Record<Format, string | undefined> = {
 
 type HandlerReturn<A, Value = A> =
   | A
-  | Entity.Entity<Value, any>
-  | Entity.Entity<Stream.Stream<Value, any, any>, any>
+  | Entity.Entity<Value, unknown>
+  | Entity.Entity<Stream.Stream<Value, unknown, unknown>, unknown>
   // support returing bytes from text/json/etc
-  | Entity.Entity<Uint8Array, any>
-  | Entity.Entity<Blob, any>
+  | Entity.Entity<Uint8Array, unknown>
+  | Entity.Entity<Blob, unknown>
   | ((self: Route.RouteSet.Any) => Route.RouteSet.Any)
 
 type HandlerFunction<B, A, E, R, Value = A> = (
   context: Values.Simplify<B>,
-  next: Entity.Entity<A extends Stream.Stream<infer V, any, any> ? V : A, never>,
+  next: Entity.Entity<A extends Stream.Stream<infer V, unknown, unknown> ? V : A, never>,
 ) =>
   | Effect.Effect<HandlerReturn<A, Value>, E, R>
   | Generator<Effect.Effect<unknown, E, R>, HandlerReturn<A, Value>, unknown>
 
 export type GeneratorHandler<B, A, Y, Value = A> = (
   context: Values.Simplify<B>,
-  next: Entity.Entity<A extends Stream.Stream<infer V, any, any> ? V : A, never>,
+  next: Entity.Entity<A extends Stream.Stream<infer V, unknown, unknown> ? V : A, never>,
 ) => Generator<Y, HandlerReturn<A, Value>, never>
 
 export type HandlerInput<B, A, E, R, Value = A> =
   | A
-  | Entity.Entity<Value, any>
+  | Entity.Entity<Value, unknown>
   | Effect.Effect<HandlerReturn<A, Value>, E, R>
   | HandlerFunction<B, A, E, R, Value>
 
@@ -52,7 +52,7 @@ function isHandlerFunction<B, A, E, R, Value>(
   return typeof handler === "function"
 }
 
-export function normalize<B, A, Y extends Effect.Effect<any, any, any>, Value = A>(
+export function normalize<B, A, Y extends Effect.Effect<unknown, unknown, unknown>, Value = A>(
   handler: GeneratorHandler<B, A, Y, Value>,
 ): Route.Route.Handler<B, A, YieldError<Y>, YieldContext<Y>>
 export function normalize<B, A, E, R, Value = A>(
@@ -62,7 +62,10 @@ export function normalize<B, A, E, R, Value = A>(
   handler: HandlerInput<B, A, E, R, Value>,
 ): Route.Route.Handler<B, A, E, R> {
   if (isHandlerFunction(handler)) {
-    return ((context: any, next: any) => {
+    return ((
+      context: Values.Simplify<B>,
+      next: Entity.Entity<A extends Stream.Stream<infer V, unknown, unknown> ? V : A, never>,
+    ) => {
       const result = handler(context, next)
       const effect = Effect.isEffect(result)
         ? result
@@ -73,13 +76,13 @@ export function normalize<B, A, E, R, Value = A>(
     }) as Route.Route.Handler<B, A, E, R>
   }
   if (Effect.isEffect(handler)) {
-    return ((_context: any, _next: any) =>
+    return ((_context: unknown, _next: unknown) =>
       Effect.flatMap(handler, normalizeToEntity)) as Route.Route.Handler<B, A, E, R>
   }
   if (Entity.isEntity(handler)) {
     return (_context, _next) => Effect.succeed(handler as Entity.Entity<A>)
   }
-  return ((_context: any, _next: any) => normalizeToEntity(handler)) as Route.Route.Handler<
+  return ((_context: unknown, _next: unknown) => normalizeToEntity(handler)) as Route.Route.Handler<
     B,
     A,
     E,
@@ -87,13 +90,13 @@ export function normalize<B, A, E, R, Value = A>(
   >
 }
 
-function normalizeToEntity(value: unknown): Effect.Effect<Entity.Entity<any>> {
+function normalizeToEntity(value: unknown): Effect.Effect<Entity.Entity<unknown>> {
   if (typeof value === "function") {
     const result = (value as (self: Route.RouteSet.Any) => Route.RouteSet.Any)(Route.empty)
     const routes = Route.items(result)
     const route = routes[0]
     if (route) {
-      return route.handler({}, Entity.make("")) as Effect.Effect<Entity.Entity<any>>
+      return route.handler({}, Entity.make("")) as Effect.Effect<Entity.Entity<unknown>>
     }
   }
   if (Entity.isEntity(value)) {
@@ -107,8 +110,8 @@ export interface BuildReturn<Value, F extends Format, Body = never> {
     D,
     B,
     I extends Route.Route.Tuple,
-    A extends (F extends "json" ? Value : Value | Stream.Stream<Value, any, any>) = Value,
-    Y extends Effect.Effect<any, any, any> = never,
+    A extends (F extends "json" ? Value : Value | Stream.Stream<Value, unknown, unknown>) = Value,
+    Y extends Effect.Effect<unknown, unknown, unknown> = never,
   >(
     handler: GeneratorHandler<
       NoInfer<D & B & Route.ExtractBindings<I> & { format: F }>,
@@ -137,7 +140,7 @@ export interface BuildReturn<Value, F extends Format, Body = never> {
     D,
     B,
     I extends Route.Route.Tuple,
-    A extends (F extends "json" ? Value : Value | Stream.Stream<Value, any, any>) = Value,
+    A extends (F extends "json" ? Value : Value | Stream.Stream<Value, unknown, unknown>) = Value,
     E = never,
     R = never,
   >(
@@ -164,14 +167,14 @@ export function build<Value, Body, F extends Format>(options: {
 }): BuildReturn<Value, F, Body>
 export function build<Value, F extends Format>(options: {
   format: F
-  handle?: (body: any) => any
-}): any {
+  handle?: (body: Value) => unknown
+}): unknown {
   const { handle: handleBody, ...descriptors } = options
   return function <
     D,
     B,
     I extends Route.Route.Tuple,
-    A extends (F extends "json" ? Value : Value | Stream.Stream<Value, any, any>),
+    A extends (F extends "json" ? Value : Value | Stream.Stream<Value, unknown, unknown>),
     E = never,
     R = never,
   >(
@@ -191,7 +194,7 @@ export function build<Value, F extends Format>(options: {
           Effect.map((entity) => {
             const body =
               handleBody && !StreamExtra.isStream(entity.body)
-                ? handleBody(entity.body)
+                ? handleBody(entity.body as unknown as Value)
                 : entity.body
             if (
               body === entity.body &&
@@ -220,14 +223,14 @@ export function build<Value, F extends Format>(options: {
   } as BuildReturn<Value, F>
 }
 
-export type RenderValue = string | Uint8Array | Stream.Stream<string | Uint8Array, any, any>
+export type RenderValue = string | Uint8Array | Stream.Stream<string | Uint8Array, unknown, unknown>
 
 export function handle<
   D extends {},
   B extends {},
   I extends Route.Route.Tuple,
   A extends RenderValue,
-  Y extends Effect.Effect<any, any, any>,
+  Y extends Effect.Effect<unknown, unknown, unknown>,
 >(
   handler: GeneratorHandler<NoInfer<D & B & Route.ExtractBindings<I> & { format: "*" }>, A, Y>,
 ): (

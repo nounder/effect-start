@@ -387,13 +387,17 @@ const makeTempFileScoped = ((): FileSystem.FileSystem["makeTempFileScoped"] => {
 const readDirectory: FileSystem.FileSystem["readDirectory"] = (path, options) =>
   Effect.tryPromise({
     try: () => NFS.promises.readdir(path, options),
-    catch: (err) => handleErrnoException("FileSystem", "readDirectory")(err as any, [path]),
+    catch: (err) =>
+      handleErrnoException("FileSystem", "readDirectory")(err as NodeJS.ErrnoException, [path]),
   })
 
 const readDirectoryEntries = (path: string) =>
   Effect.tryPromise({
     try: () => NFS.promises.readdir(path, { withFileTypes: true }),
-    catch: (err) => handleErrnoException("FileSystem", "readDirectoryEntries")(err as any, [path]),
+    catch: (err) =>
+      handleErrnoException("FileSystem", "readDirectoryEntries")(err as NodeJS.ErrnoException, [
+        path,
+      ]),
   }).pipe(
     Effect.map((entries) => entries.map((entry) => ({ name: entry.name, type: fileType(entry) }))),
   )
@@ -661,7 +665,7 @@ export const layer: Layer.Layer<FileSystem.FileSystem> = Layer.effect(FileSystem
 export function handleErrnoException(module: string, method: string) {
   return function (
     err: NodeJS.ErrnoException,
-    [path]: [path: NFS.PathLike | number | string | ReadonlyArray<string>, ...args: Array<any>],
+    [path]: [path: NFS.PathLike | number | string | ReadonlyArray<string>, ...args: Array<unknown>],
   ): Error.PlatformError {
     let reason: Error.SystemErrorTag = "Unknown"
 

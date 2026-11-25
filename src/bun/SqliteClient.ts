@@ -1,5 +1,5 @@
 /** Ported from effect@4.0.0-rc.112. */
-import { Database } from "bun:sqlite"
+import { Database, type SQLQueryBindings } from "bun:sqlite"
 import * as Config from "effect/Config"
 import * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
@@ -72,7 +72,7 @@ export const make = (
         readonly,
         readwrite: readonly ? false : (options.readwrite ?? true),
         create: readonly ? false : (options.create ?? true),
-      } as any)
+      })
       yield* Effect.addFinalizer(() => Effect.sync(() => db.close()))
       const busyTimeout = Math.min(
         MAX_BUSY_TIMEOUT,
@@ -92,11 +92,12 @@ export const make = (
       }
 
       const run = (sql: string, params: ReadonlyArray<unknown> = []) =>
-        Effect.withFiber<Array<any>, SqlError.SqlError>((fiber) => {
+        Effect.withFiber<Array<Record<string, unknown>>, SqlError.SqlError>((fiber) => {
           const useSafeIntegers = Context.get(fiber.context, Client.SafeIntegers)
           try {
             return Effect.succeed(
-              (prepare(sql, useSafeIntegers).all(...(params as any)) ?? []) as Array<any>,
+              (prepare(sql, useSafeIntegers).all(...(params as ReadonlyArray<SQLQueryBindings>)) ??
+                []) as Array<Record<string, unknown>>,
             )
           } catch (cause) {
             return Effect.fail(
@@ -108,11 +109,13 @@ export const make = (
         })
 
       const runValues = (sql: string, params: ReadonlyArray<unknown> = []) =>
-        Effect.withFiber<Array<any>, SqlError.SqlError>((fiber) => {
+        Effect.withFiber<Array<Array<unknown>>, SqlError.SqlError>((fiber) => {
           const useSafeIntegers = Context.get(fiber.context, Client.SafeIntegers)
           try {
             return Effect.succeed(
-              (prepare(sql, useSafeIntegers).values(...(params as any)) ?? []) as Array<any>,
+              (prepare(sql, useSafeIntegers).values(
+                ...(params as ReadonlyArray<SQLQueryBindings>),
+              ) ?? []) as Array<Array<unknown>>,
             )
           } catch (cause) {
             return Effect.fail(

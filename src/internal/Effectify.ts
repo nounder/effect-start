@@ -7,7 +7,7 @@ interface Callback<E, A> {
   (err: E, a?: A): void
 }
 
-type ArgsWithCallback<Args extends Array<any>, E, A> = [...args: Args, cb: Callback<E, A>]
+type ArgsWithCallback<Args extends Array<unknown>, E, A> = [...args: Args, cb: Callback<E, A>]
 
 type WithoutNull<A> = unknown extends A ? void : Exclude<A, null | undefined>
 
@@ -250,26 +250,28 @@ type EffectifyError<T> = T extends {
                     ? NonNullable<E1>
                     : never
 
-export const effectify: {
-  <F extends (...args: Array<any>) => any>(fn: F): Effectify<F, EffectifyError<F>>
-  <F extends (...args: Array<any>) => any, E>(
+type EffectifyFunction = {
+  <F extends (...args: Array<never>) => unknown>(fn: F): Effectify<F, EffectifyError<F>>
+  <F extends (...args: Array<never>) => unknown, E>(
     fn: F,
     onError: (error: EffectifyError<F>, args: Parameters<F>) => E,
   ): Effectify<F, E>
-  <F extends (...args: Array<any>) => any, E, E2>(
+  <F extends (...args: Array<never>) => unknown, E, E2>(
     fn: F,
     onError: (error: EffectifyError<F>, args: Parameters<F>) => E,
     onSyncError: (error: unknown, args: Parameters<F>) => E2,
   ): Effectify<F, E | E2>
-} = ((
+}
+
+export const effectify: EffectifyFunction = ((
     fn: Function,
-    onError?: (e: any, args: any) => any,
-    onSyncError?: (e: any, args: any) => any,
+    onError?: (e: unknown, args: unknown) => unknown,
+    onSyncError?: (e: unknown, args: unknown) => unknown,
   ) =>
-  (...args: Array<any>) =>
-    Effect.callback<any, any>((resume) => {
+  (...args: Array<unknown>) =>
+    Effect.callback<unknown, unknown>((resume) => {
       try {
-        fn(...args, (err: any, result: any) => {
+        fn(...args, (err: unknown, result: unknown) => {
           if (err) {
             resume(Effect.fail(onError ? onError(err, args) : err))
           } else {
@@ -279,4 +281,4 @@ export const effectify: {
       } catch (err) {
         resume(onSyncError ? Effect.fail(onSyncError(err, args)) : Effect.die(err))
       }
-    })) as any
+    })) as EffectifyFunction

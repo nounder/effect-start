@@ -64,13 +64,13 @@ export type Unordered<Layers extends ReadonlyArray<Layer.Any>, Provided = never>
 export function provideMergeAll<const Layers extends readonly [Layer.Any, ...Array<Layer.Any>]>(
   ...layers: Layers & Ordered<NoInfer<Layers>, NoInfer<Layers>>
 ): Layer.Layer<LayersSuccess<Layers>, LayersError<Layers>, LayersContext<Layers>> {
-  type AnyLayer = Layer.Layer<any, any, any>
+  type AnyLayer = Layer.Layer<unknown, unknown, unknown>
   const layerArray = layers as unknown as ReadonlyArray<AnyLayer>
   const result: AnyLayer = layerArray.reduce(
     (acc: AnyLayer, layer: AnyLayer) => Layer.provideMerge(acc, layer),
     Layer.succeedContext(Context.empty()) as unknown as AnyLayer,
   )
-  return result as any
+  return result as Layer.Layer<LayersSuccess<Layers>, LayersError<Layers>, LayersContext<Layers>>
 }
 
 /**
@@ -90,17 +90,17 @@ export function provideMergeAll<const Layers extends readonly [Layer.Any, ...Arr
  */
 export function buildUnordered<const Layers extends ReadonlyArray<Layer.Any>>(
   layers: Layers,
-  replaceable: ReadonlyArray<Context.Key<any, any>> = [],
+  replaceable: ReadonlyArray<Context.Key<unknown, unknown>> = [],
 ): Effect.Effect<
   Context.Context<LayersSuccess<Layers>>,
   LayersError<Layers>,
   LayersContext<Layers> | Scope.Scope
 > {
-  type AnyLayer = Layer.Layer<any, any, any>
+  type AnyLayer = Layer.Layer<unknown, unknown, unknown>
 
   return Effect.gen(function* () {
     const scope = yield* Effect.scope
-    let ctx = yield* Effect.context<any>()
+    let ctx = yield* Effect.context<unknown>()
     const provided = new Map<string, unknown>()
     const pending = new Set<AnyLayer>(layers as unknown as ReadonlyArray<AnyLayer>)
 
@@ -165,5 +165,9 @@ export function buildUnordered<const Layers extends ReadonlyArray<Layer.Any>>(
     }
 
     return ctx
-  })
+  }) as Effect.Effect<
+    Context.Context<LayersSuccess<Layers>>,
+    LayersError<Layers>,
+    LayersContext<Layers> | Scope.Scope
+  >
 }

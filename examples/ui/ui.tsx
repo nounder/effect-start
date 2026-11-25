@@ -1647,7 +1647,7 @@ export function RadioGroup(props: JSX.IntrinsicElements["div"] & { name?: string
             if (!root) return
             const groupName = root.getAttribute("data-radio-group-name")
             if (!groupName) return
-            root.querySelectorAll('input[type="radio"]').forEach(function (el: any) {
+            root.querySelectorAll<HTMLInputElement>('input[type="radio"]').forEach(function (el) {
               if (!el.name) el.name = groupName
             })
           }}
@@ -3134,8 +3134,8 @@ export function HoverCard(props: {
           const anchorName = `--${triggerId}`
           trigger.style.setProperty("anchor-name", anchorName)
           card.style.setProperty("position-anchor", anchorName)
-          let openTimer: any = null
-          let closeTimer: any = null
+          let openTimer: ReturnType<typeof setTimeout> | null = null
+          let closeTimer: ReturnType<typeof setTimeout> | null = null
           const open = function () {
             if (closeTimer) {
               clearTimeout(closeTimer)
@@ -3218,7 +3218,7 @@ export function Tooltip(props: {
           const anchorName = `--${triggerId}`
           trigger.style.setProperty("anchor-name", anchorName)
           tip.style.setProperty("position-anchor", anchorName)
-          let openTimer: any = null
+          let openTimer: ReturnType<typeof setTimeout> | null = null
           const open = function () {
             openTimer = setTimeout(function () {
               if (!tip.isConnected) return
@@ -3371,7 +3371,7 @@ export function TabsContent(props: JSX.IntrinsicElements["div"] & { name: string
             }
           }
           d.querySelectorAll(`input[type=radio][data-tabs-name="${groupName}"]`).forEach(function (
-            el: any,
+            el: Element,
           ) {
             el.addEventListener("change", sync)
           })
@@ -3730,12 +3730,23 @@ export function ResizablePanelGroup(
           const isVertical = group.getAttribute("data-direction") === "vertical"
           const sizeProp = isVertical ? "offsetHeight" : "offsetWidth"
           const clientProp = isVertical ? "clientY" : "clientX"
-          let dragging: any = null
-          group.addEventListener("pointerdown", function (e: any) {
-            const handle = e.target.closest("[data-slot=Resizable_handle]")
+          let dragging: {
+            handle: Element
+            prev: HTMLElement
+            next: HTMLElement
+            total: number
+            start: number
+            startPrev: number
+            prevMin: number
+            prevMax: number
+            nextMin: number
+            nextMax: number
+          } | null = null
+          group.addEventListener("pointerdown", function (e) {
+            const handle = (e.target as Element).closest("[data-slot=Resizable_handle]")
             if (!handle || !group.contains(handle)) return
-            const prev = handle.previousElementSibling
-            const next = handle.nextElementSibling
+            const prev = handle.previousElementSibling as HTMLElement | null
+            const next = handle.nextElementSibling as HTMLElement | null
             if (!prev || !next) return
             e.preventDefault()
             handle.setPointerCapture(e.pointerId)
@@ -3759,7 +3770,7 @@ export function ResizablePanelGroup(
               nextMax,
             }
           })
-          group.addEventListener("pointermove", function (e: any) {
+          group.addEventListener("pointermove", function (e) {
             if (!dragging) return
             const delta = e[clientProp] - dragging.start
             const newPrevPx = Math.max(0, Math.min(dragging.total, dragging.startPrev + delta))
@@ -3784,7 +3795,7 @@ export function ResizablePanelGroup(
             dragging.prev.style.flex = prevPct + " 1 0"
             dragging.next.style.flex = nextPct + " 1 0"
           })
-          const stop = function (e: any) {
+          const stop = function (e: PointerEvent) {
             if (!dragging) return
             try {
               dragging.handle.releasePointerCapture(e.pointerId)
@@ -3793,11 +3804,11 @@ export function ResizablePanelGroup(
           }
           group.addEventListener("pointerup", stop)
           group.addEventListener("pointercancel", stop)
-          group.addEventListener("keydown", function (e: any) {
-            const handle = e.target.closest("[data-slot=Resizable_handle]")
+          group.addEventListener("keydown", function (e) {
+            const handle = (e.target as Element).closest("[data-slot=Resizable_handle]")
             if (!handle || !group.contains(handle)) return
-            const prev = handle.previousElementSibling
-            const next = handle.nextElementSibling
+            const prev = handle.previousElementSibling as HTMLElement | null
+            const next = handle.nextElementSibling as HTMLElement | null
             if (!prev || !next) return
             const decrease = isVertical ? "ArrowUp" : "ArrowLeft"
             const increase = isVertical ? "ArrowDown" : "ArrowRight"
@@ -4070,8 +4081,10 @@ export function Carousel(
           resize.observe(track)
           for (const slide of track.children) resize.observe(slide)
           update()
-          root.addEventListener("click", function (e: any) {
-            const btn = e.target.closest("[data-carousel-direction]")
+          root.addEventListener("click", function (e) {
+            const btn = (e.target as Element).closest<HTMLButtonElement>(
+              "[data-carousel-direction]",
+            )
             if (!btn || btn.disabled || !root.contains(btn)) return
             const dir = btn.getAttribute("data-carousel-direction") === "next" ? 1 : -1
             track.scrollBy(
@@ -4080,7 +4093,7 @@ export function Carousel(
                 : { left: dir * step(), behavior: "auto" },
             )
           })
-          root.addEventListener("keydown", function (e: any) {
+          root.addEventListener("keydown", function (e) {
             if (
               e.target instanceof Element &&
               e.target.closest("input,textarea,select,[contenteditable]")

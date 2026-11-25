@@ -42,7 +42,11 @@ export function build<const Layers extends readonly [Layer.Any, ...Array<Layer.A
   LayerExtra.LayersError<Layers>,
   LayerExtra.LayersContext<Layers>
 > {
-  return (LayerExtra.provideMergeAll as (...l: Array<Layer.Any>) => any)(...layers)
+  return (
+    LayerExtra.provideMergeAll as (
+      ...layers: Array<Layer.Any>
+    ) => ReturnType<typeof LayerExtra.provideMergeAll<Layers>>
+  )(...layers)
 }
 
 type StartServices =
@@ -69,9 +73,7 @@ export function pack<const Layers extends readonly [Layer.Any, ...Array<Layer.An
   LayerExtra.LayersError<Layers>,
   LayerExtra.LayersContext<Layers>
 > {
-  return Layer.effectContext(
-    LayerExtra.buildUnordered(layers as unknown as Layers, [Route.Routes]),
-  ) as any
+  return Layer.effectContext(LayerExtra.buildUnordered(layers as unknown as Layers, [Route.Routes]))
 }
 
 export function layerDev() {

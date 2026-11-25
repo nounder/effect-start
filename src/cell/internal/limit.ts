@@ -1,4 +1,4 @@
-export const createLimit = <This, Args extends Array<any>, Timer>(
+export const createLimit = <This, Args extends Array<unknown>, Timer>(
   fn: (this: This, ...args: Args) => unknown,
   options: unknown,
   window: {

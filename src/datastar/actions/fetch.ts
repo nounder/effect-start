@@ -60,7 +60,7 @@ const createHttpMethod = (
           throw error("FetchNoUrlProvided", { action })
         }
 
-        const initialHeaders: Record<string, any> = {
+        const initialHeaders: Record<string, unknown> = {
           Accept: "text/event-stream, text/html, application/json",
           "Datastar-Request": true,
         }
@@ -103,13 +103,14 @@ const createHttpMethod = (
 
             dispatchFetch(type, el, argsRaw)
           },
-          onerror: (error) => {
-            if (isWrongContent(error)) {
+          onerror: (cause) => {
+            if (isWrongContent(cause)) {
               throw error("FetchExpectedTextEventStream", { url })
             }
-            if (error) {
-              console.error(error.message)
-              dispatchFetch(RETRYING, el, { message: error.message })
+            if (cause) {
+              const message = cause instanceof Error ? cause.message : String(cause)
+              console.error(message)
+              dispatchFetch(RETRYING, el, { message })
             }
           },
         }
@@ -166,7 +167,7 @@ const createHttpMethod = (
               headers["Content-Type"] = "application/x-www-form-urlencoded"
             }
 
-            const formParams = new URLSearchParams(formData as any)
+            const formParams = new URLSearchParams(formData as unknown as Record<string, string>)
             if (methodSupportsRequestBody(method)) {
               if (multipart) {
                 req.body = formData
@@ -190,9 +191,13 @@ const createHttpMethod = (
 
         try {
           await fetchEventSource(el, buildFetchEventSourceInit)
-        } catch (e: any) {
+        } catch (e: unknown) {
           if (!isWrongContent(e)) {
-            throw error("FetchFailed", { method, url, error: e.message })
+            throw error("FetchFailed", {
+              method,
+              url,
+              error: e instanceof Error ? e.message : String(e),
+            })
           }
         }
       } finally {
@@ -222,7 +227,7 @@ const dispatchFetch = (type: string, el: HTMLOrSVG, argsRaw: WatcherArgs) =>
     }),
   )
 
-const isWrongContent = (err: any) => `${err}`.includes("text/event-stream")
+const isWrongContent = (err: unknown) => `${err}`.includes("text/event-stream")
 
 type ResponseOverrides =
   | {
@@ -241,7 +246,7 @@ export type FetchArgs = {
   contentType?: "json" | "form"
   filterSignals?: SignalFilterOptions
   openWhenHidden?: boolean
-  payload?: any
+  payload?: unknown
   requestCancellation?: "auto" | "cleanup" | "disabled" | AbortController
   responseOverrides?: ResponseOverrides
   retry?: "auto" | "error" | "always" | "never"
@@ -385,7 +390,7 @@ type FetchEventSourceInit =
       onopen?: (response: Response) => Promise<void>
       onmessage?: (ev: EventSourceMessage) => void
       onclose?: () => void
-      onerror?: (err: any) => number | null | undefined | void
+      onerror?: (err: unknown) => number | null | undefined | void
       openWhenHidden?: boolean
       fetch?: typeof fetch
       retry?: "auto" | "error" | "always" | "never"
@@ -406,8 +411,8 @@ const fetchEventSource = (
     if (!fetchInit) {
       return
     }
-    let {
-      input,
+    let input = fetchInit.input
+    const {
       signal: inputSignal,
       headers: inputHeaders,
       onopen: inputOnOpen,
@@ -417,7 +422,7 @@ const fetchEventSource = (
       openWhenHidden,
       fetch: inputFetch,
       retry = "auto",
-      retryInterval = 1_000,
+      retryInterval: initialRetryInterval = 1_000,
       retryScaler = 2,
       retryMaxWait = 30_000,
       retryMaxCount = 10,
@@ -425,6 +430,7 @@ const fetchEventSource = (
       ...rest
     }: FetchEventSourceInit = fetchInit
 
+    let retryInterval = initialRetryInterval
     const headers: Record<string, string> = {
       ...inputHeaders,
     }
@@ -488,7 +494,7 @@ const fetchEventSource = (
           for (const n of argNames) {
             let v = response.headers.get(`datastar-${kebab(n)}`)
             if (responseOverrides) {
-              const o = (responseOverrides as any)[n]
+              const o = responseOverrides[n as keyof ResponseOverrides]
               if (o) v = typeof o === "string" ? o : JSON.stringify(o)
             }
             if (v) argsRaw[n] = v
@@ -595,7 +601,7 @@ const fetchEventSource = (
       } catch (err) {
         if (!curRequestSignal.aborted) {
           try {
-            const interval: any = onerror?.(err) || retryInterval
+            const interval = onerror?.(err) || retryInterval
             clearTimeout(retryTimer)
             retryTimer = setTimeout(create, interval)
             retryInterval = Math.min(retryInterval * retryScaler, retryMaxWait)

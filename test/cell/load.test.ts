@@ -52,7 +52,8 @@ test.it("separate copies tear down the previous runtime before restarting", () =
   }">0</button>`
   dom.window.eval(bundle)
   const target = dom.window.document.querySelector("button")!
-  const previousSignal: AbortSignal = (target as any).abortSignal
+  const previousSignal: AbortSignal = (target as unknown as { abortSignal: AbortSignal })
+    .abortSignal
   dom.window.eval(bundle)
   target.click()
 
@@ -60,6 +61,6 @@ test.it("separate copies tear down the previous runtime before restarting", () =
     .expect([target.dataset.setups, target.dataset.cleanups, target.textContent])
     .toEqual(["2", "1", "1"])
   test.expect(previousSignal.aborted).toBe(true)
-  test.expect((target as any).abortSignal.aborted).toBe(false)
+  test.expect((target as unknown as { abortSignal: AbortSignal }).abortSignal.aborted).toBe(false)
   test.expect(error).not.toHaveBeenCalled()
 })

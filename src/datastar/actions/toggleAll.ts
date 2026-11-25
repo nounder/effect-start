@@ -13,7 +13,7 @@ action({
   apply(_, filter: SignalFilterOptions) {
     startPeeking()
     const masked = filtered(filter)
-    updateLeaves(masked, (oldValue: any) => !oldValue)
+    updateLeaves(masked, (oldValue: unknown) => !oldValue)
     mergePatch(masked)
     stopPeeking()
   },

@@ -13,8 +13,8 @@ export const HandlerScope = Context.Reference<Scope.Scope | undefined>(
   { defaultValue: () => undefined },
 )
 
-type YieldError<T> = T extends Effect.Effect<any, infer E, any> ? E : never
-type YieldContext<T> = T extends Effect.Effect<any, any, infer R> ? R : never
+type YieldError<T> = T extends Effect.Effect<unknown, infer E, unknown> ? E : never
+type YieldContext<T> = T extends Effect.Effect<unknown, unknown, infer R> ? R : never
 
 type WsContext<D, B, I extends Route.Route.Tuple> = Values.Simplify<
   D & B & Route.ExtractBindings<I> & { protocol: "ws"; socket: Socket.Socket }
@@ -27,7 +27,12 @@ type WsRoute<I extends Route.Route.Tuple, E, R> = [
   Route.Route<{ protocol: "ws" }, {}, void, E, WsRouteR<R>>,
 ]
 
-export function ws<D, B, I extends Route.Route.Tuple, Y extends Effect.Effect<any, any, any>>(
+export function ws<
+  D,
+  B,
+  I extends Route.Route.Tuple,
+  Y extends Effect.Effect<unknown, unknown, unknown>,
+>(
   handler: (context: WsContext<D, B, I>) => Generator<Y, void, unknown>,
 ): (
   self: Route.RouteSet<D, B, I>,
@@ -43,7 +48,9 @@ export function ws<D, B, I extends Route.Route.Tuple, E = never, R = never>(
     | Generator<Effect.Effect<unknown, E, R | Scope.Scope>, void, unknown>,
 ) {
   return function (self: Route.RouteSet<D, B, I>): Route.RouteSet<D, B, WsRoute<I, E, R>> {
-    const handle = (context: any): Effect.Effect<void, E, R | Scope.Scope> => {
+    const handle = (
+      context: Parameters<typeof handler>[0],
+    ): Effect.Effect<void, E, R | Scope.Scope> => {
       const result = handler(context)
       const effect = Effect.isEffect(result)
         ? result
@@ -59,7 +66,9 @@ export function ws<D, B, I extends Route.Route.Tuple, E = never, R = never>(
           const request = yield* HttpServerRequest.HttpServerRequest
           const socket = yield* request.upgrade
           const handlerScope = yield* HandlerScope
-          const handlerEffect = handle({ ...context, socket }).pipe(
+          const handlerEffect = handle({ ...context, socket } as unknown as Parameters<
+            typeof handler
+          >[0]).pipe(
             Effect.catchIf(
               (error) =>
                 Socket.isSocketError(error) &&

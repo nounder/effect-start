@@ -7,7 +7,7 @@ type Subscription = {
 
 export type Signals = ReturnType<typeof createSignals>
 
-export const createSignals = (initial: Record<string, any> = {}) => {
+export const createSignals = (initial: Record<string, unknown> = {}) => {
   const proxies = new WeakMap<object, object>()
   const dependencies = new WeakMap<object, Map<PropertyKey, Set<Subscription>>>()
   const queued = new Set<Subscription>()
@@ -134,7 +134,11 @@ export const createSignals = (initial: Record<string, any> = {}) => {
     }
   }
 
-  const patch = (source: Record<string, any>, onlyIfMissing = false, target = root.value): void => {
+  const patch = (
+    source: Record<string, unknown>,
+    onlyIfMissing = false,
+    target = root.value,
+  ): void => {
     if (!source || typeof source !== "object" || Array.isArray(source)) {
       throw new TypeError("Signal patches must be objects")
     }
@@ -150,7 +154,11 @@ export const createSignals = (initial: Record<string, any> = {}) => {
           if (onlyIfMissing && Object.hasOwn(target, key)) continue
           target[key] = {}
         }
-        patch(value, onlyIfMissing, target[key])
+        patch(
+          value as Record<string, unknown>,
+          onlyIfMissing,
+          target[key] as Record<string, unknown>,
+        )
       } else if (!onlyIfMissing || !Object.hasOwn(target, key)) {
         target[key] = value
       }

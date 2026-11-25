@@ -35,7 +35,7 @@ export const fromReadableChannel = <A = Uint8Array, E = Cause.UnknownError>(opti
     readableToPullUnsafe({
       scope,
       readable: options.evaluate(),
-      onError: options.onError ?? (defaultOnError as any),
+      onError: options.onError ?? (defaultOnError as (error: unknown) => E),
       chunkSize: options.chunkSize,
       closeOnDone: options.closeOnDone,
     }),
@@ -56,7 +56,7 @@ export const fromDuplex = <IE, I = Uint8Array, O = Uint8Array, E = Cause.Unknown
     return NodeSink.pullIntoWritable({
       pull: upstream,
       writable: duplex,
-      onError: options.onError ?? (defaultOnError as any),
+      onError: options.onError ?? (defaultOnError as (error: unknown) => E),
       endOnDone: options.endOnDone,
       encoding: options.encoding,
     }).pipe(
@@ -71,7 +71,7 @@ export const fromDuplex = <IE, I = Uint8Array, O = Uint8Array, E = Cause.Unknown
           scope,
           exit,
           readable: duplex,
-          onError: options.onError ?? (defaultOnError as any),
+          onError: options.onError ?? (defaultOnError as (error: unknown) => E),
           chunkSize: options.chunkSize,
         }),
       ),
@@ -340,7 +340,7 @@ class StreamAdapter<E, R> extends Readable {
       if (Exit.isSuccess(exit)) {
         this.push(null)
       } else {
-        this.destroy(Cause.squash(exit.cause) as any)
+        this.destroy(Cause.squash(exit.cause) as Error)
       }
     })
   }
@@ -357,7 +357,7 @@ class StreamAdapter<E, R> extends Readable {
       return callback(error)
     }
     Effect.runFork(Fiber.interrupt(this.fiber)).addObserver((exit) => {
-      callback(exit._tag === "Failure" ? (Cause.squash(exit.cause) as any) : error)
+      callback(exit._tag === "Failure" ? (Cause.squash(exit.cause) as Error) : error)
     })
   }
 }
